@@ -10,7 +10,6 @@ import { EmptyNote, Shimmer } from "@/components/v2/ui";
 import {
   versionsOf,
   type CostMargin,
-  type CurrentPrice,
   type PaidFrom,
   type ProviderSourcesRow,
   type PriceVersion,
@@ -23,10 +22,12 @@ import {
  * the since-inception figures runs-service serves. A row opens a drawer with the vendor's
  * monthly cost since inception (the month in progress drawn dashed), the accounts that pay
  * it (read from the bank ledger by costs-service, never typed here), and each cost item's
- * price timeline.
+ * vendor cost timeline.
  *
- * Every money figure is served: the margin read per provider, the dated series per provider
- * per month. This file formats and draws; it never adds, subtracts or divides money.
+ * Cost only (owner 2026-10-01): no price, markup or margin figure on any Cost page; those live
+ * under Price and Margin. Every money figure is served: the vendor cost per provider, the dated
+ * series per provider per month. This file formats and draws; it never adds, subtracts or
+ * divides money.
  */
 
 const ONCE = { staleTime: 5 * 60_000, retry: false } as const;
@@ -38,7 +39,6 @@ const unitUsd = (cents: number | null) => {
   if (v === 0) return "$0";
   return `$${v.toLocaleString("en-US", v >= 1 ? { minimumFractionDigits: 2, maximumFractionDigits: 2 } : { maximumSignificantDigits: 4 })}`;
 };
-const markup = (m: number | null) => (m == null ? null : `×${m.toLocaleString("en-US", { maximumFractionDigits: 3 })}`);
 const day = (iso: string) => new Date(iso).toLocaleDateString("en-US", { year: "numeric", month: "short", day: "numeric", timeZone: "UTC" });
 const providerName = (p: string | null) => p ?? "Unknown provider";
 const dash = <span className="k-fg4">{"—"}</span>;
@@ -52,17 +52,11 @@ function useProviderSources() {
 
 // ─── Table ─────────────────────────────────────────────────────────────────
 
-export type ProviderColumn = "items" | "vendor" | "billedNet" | "billedGross" | "marginNet" | "marginGross" | "refunded" | "unpriced";
+export type ProviderColumn = "items" | "vendor";
 
 const COLUMN: Record<ProviderColumn, { label: string; cell: (p: ProviderMargin) => React.ReactNode; wide?: boolean }> = {
   items: { label: "Cost items", cell: () => null },
   vendor: { label: "Vendor cost", cell: (p) => usd(p.vendorCostInUsdCents) },
-  billedNet: { label: "Billed, net", cell: (p) => usd(p.netBilledCostInUsdCents) },
-  billedGross: { label: "Billed, gross", cell: (p) => usd(p.billedCostInUsdCents), wide: true },
-  marginNet: { label: "Margin, net", cell: (p) => usd(p.netMarginCostInUsdCents) },
-  marginGross: { label: "Margin, gross", cell: (p) => usd(p.marginCostInUsdCents), wide: true },
-  refunded: { label: "Refunded", cell: (p) => (Number(p.refundedCostInUsdCents) ? usd(p.refundedCostInUsdCents) : null), wide: true },
-  unpriced: { label: "Unpriced spend", cell: (p) => (Number(p.unpricedBilledCostInUsdCents) ? usd(p.unpricedBilledCostInUsdCents) : null) },
 };
 
 /** A provider as the table lists it: its name, and its margin row when it has spend. */
@@ -99,14 +93,12 @@ export function ProvidersTable({
   margin,
   marginError = false,
   versions,
-  prices,
   columns,
   catalogue,
 }: {
   margin: CostMargin | undefined;
   marginError?: boolean;
   versions: PriceVersion[] | undefined;
-  prices: CurrentPrice[] | undefined;
   columns: ProviderColumn[];
   catalogue: boolean;
 }) {
@@ -212,7 +204,6 @@ export function ProvidersTable({
           row={openRow}
           domain={domainOf(openRow.provider)}
           versions={versions ?? []}
-          prices={prices ?? []}
           sources={sourcesOf(openRow.provider)}
           sourcesState={sources.isError ? "error" : sources.data === undefined ? "loading" : "ok"}
           onClose={() => setOpen(undefined)}
@@ -282,7 +273,6 @@ function ProviderDrawer({
   row,
   domain,
   versions,
-  prices,
   sources,
   sourcesState,
   onClose,
@@ -290,7 +280,6 @@ function ProviderDrawer({
   row: Row;
   domain: string | null;
   versions: PriceVersion[];
-  prices: CurrentPrice[];
   sources: ProviderSourcesRow | null;
   sourcesState: "loading" | "error" | "ok";
   onClose: () => void;
@@ -336,12 +325,10 @@ function ProviderDrawer({
           {(
             [
               ["Vendor cost", m && usd(m.vendorCostInUsdCents)],
-              ["Billed, net", m && usd(m.netBilledCostInUsdCents)],
-              ["Margin, net", m && usd(m.netMarginCostInUsdCents)],
-              ["Unpriced spend", m && Number(m.unpricedBilledCostInUsdCents) ? usd(m.unpricedBilledCostInUsdCents) : null],
+              ["Paid from", sources && sources.match !== "unmatched" ? `${sources.paidFrom.length} account${sources.paidFrom.length === 1 ? "" : "s"}` : null],
             ] as const
           ).map(([label, v], i) => (
-            <div key={label} className={`min-w-0 px-3 py-2.5 ${i % 2 === 0 ? "border-r border-[var(--line-subtle)]" : ""} ${i < 2 ? "border-b border-[var(--line-subtle)]" : ""}`}>
+            <div key={label} className={`min-w-0 px-3 py-2.5 ${i % 2 === 0 ? "border-r border-[var(--line-subtle)]" : ""}`}>
               <p className="k-label">{label}</p>
               <p className="mt-1 text-[18px] font-medium tabular-nums">{v ?? dash}</p>
             </div>
@@ -358,15 +345,15 @@ function ProviderDrawer({
         </section>
 
         <section>
-          <p className="k-label mb-2">Price timeline</p>
+          <p className="k-label mb-2">Vendor cost timeline</p>
           {items.length === 0 ? (
             <div className="k-card">
-              <EmptyNote>This provider has no price in the catalogue.</EmptyNote>
+              <EmptyNote>This provider has no cost item in the catalogue.</EmptyNote>
             </div>
           ) : (
             <div className="space-y-4">
               {items.map((name) => (
-                <PriceTimeline key={name} name={name} versions={versionsOf(versions, name)} inForce={prices.find((p) => p.name === name) ?? null} />
+                <CostTimeline key={name} name={name} versions={versionsOf(versions, name)} />
               ))}
             </div>
           )}
@@ -377,13 +364,14 @@ function ProviderDrawer({
   );
 }
 
-/** One cost item's price versions, oldest first, as a vertical timeline. */
-function PriceTimeline({ name, versions, inForce }: { name: string; versions: PriceVersion[]; inForce: CurrentPrice | null }) {
+/** One cost item's catalogue versions, oldest first, as a vertical timeline of vendor cost. */
+function CostTimeline({ name, versions }: { name: string; versions: PriceVersion[] }) {
+  const latest = versions.length ? versions[versions.length - 1] : null;
   return (
     <div>
       <div className="flex items-baseline justify-between gap-2">
         <p className="k-mono truncate text-[12px]">{name}</p>
-        <p className="k-fg3 shrink-0 text-[12px] tabular-nums">{inForce ? `${unitUsd(inForce.pricePerUnitInUsdCents)} / ${inForce.unit ?? "unit"} now` : "not priced now"}</p>
+        <p className="k-fg3 shrink-0 text-[12px] tabular-nums">{latest?.vendorCostKnown ? `${unitUsd(latest.vendorCostPerUnitInUsdCents)} / unit latest` : "vendor cost unknown"}</p>
       </div>
       <ol className="mt-2 space-y-0">
         {versions.map((v, i) => (
@@ -398,11 +386,8 @@ function PriceTimeline({ name, versions, inForce }: { name: string; versions: Pr
                 {v.reconstructed && <span className="k-fg3 ml-1.5">reconstructed</span>}
               </span>
               <span className="tabular-nums">
-                {unitUsd(v.billedPricePerUnitInUsdCents) ?? "—"}
-                <span className="k-fg3"> billed · </span>
                 {v.vendorCostKnown ? unitUsd(v.vendorCostPerUnitInUsdCents) : "unknown"}
-                <span className="k-fg3"> vendor</span>
-                {v.markupMultiplier != null && <span className="k-fg3"> · {markup(v.markupMultiplier)}</span>}
+                <span className="k-fg3"> / unit</span>
               </span>
             </div>
           </li>
@@ -446,7 +431,6 @@ function MonthlyCost({ provider }: { provider: string | null }) {
           <span className="k-fg3 text-[12px]">
             {label(shown.period)}
             {!shown.complete && " · in progress"}
-            {` · ${usd(shown.netBilledCostInUsdCents)} billed`}
           </span>
         </div>
         <div className="mt-3 flex h-[120px] items-end gap-[3px]" onMouseLeave={() => setHover(null)}>
