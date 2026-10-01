@@ -3,6 +3,8 @@ import { docsHeading } from "@/lib/docs-routes";
 import Link from "next/link";
 import { URLS, DISTRIBUTION_FEATURES } from "@distribute/content";
 import { CopyForLLM } from "@/components/copy-for-llm";
+import { AgentQuickstart } from "@/components/agent-quickstart";
+import { agentQuickstartMarkdown } from "@/lib/agent-quickstart";
 import {
   AUTH_HEADER_LINE,
   CLAUDE_CODE_MCP_COMMAND,
@@ -20,6 +22,8 @@ const channelList = liveFeatures
   .join("\n");
 
 const LLM_INSTRUCTIONS = `# distribute.you Documentation
+
+${agentQuickstartMarkdown()}
 
 ## What is distribute.you?
 AI cold email outreach, done for you. One API.
@@ -59,6 +63,7 @@ export default function DocsHome() {
         <h1 className="text-2xl font-semibold text-gray-900">{docsHeading("/")}</h1>
         <CopyForLLM content={LLM_INSTRUCTIONS} />
       </div>
+      <AgentQuickstart />
       <p className="text-base text-gray-500 mb-8">
         Provide a URL and a budget. distribute.you finds the right people,
         writes personalized cold email, sends it on your behalf, AI-qualifies the replies,

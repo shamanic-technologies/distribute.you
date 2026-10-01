@@ -56,3 +56,29 @@ describe("the AI tab", () => {
     expect(VIEW).not.toContain("err.message");
   });
 });
+
+describe("a key says what it reads, where it is made", () => {
+  const VIEW = read("src/components/v2/integrations-ai.tsx");
+  const PANEL = read("src/components/settings/api-keys-panel.tsx");
+  const SCOPE = read("src/components/settings/api-key-scope.tsx");
+
+  it("is a real button from Integrations > AI to the API Keys page", () => {
+    expect(VIEW).toContain('<Link href={v2Href(orgId, brandId, "api-keys")} className="k-btn shrink-0">');
+    expect(VIEW).toContain("Manage API keys");
+    expect(read("src/components/v2/sidebar-menus.tsx")).toContain('{ href: `${base}/api-keys`, label: "API Keys"');
+  });
+
+  it("names the organization on both creation surfaces", () => {
+    expect(VIEW).toContain("<ApiKeyScope />");
+    expect(PANEL.match(/<ApiKeyScope \/>/g)?.length).toBe(2);
+    expect(SCOPE).toContain("This key reads the organization <strong>{organization.name}</strong>");
+    expect(SCOPE).toContain("It acts as\n      you, in this organization only.");
+  });
+
+  it("reads the org from Clerk and the brands from the served list, never a staff or beta option", () => {
+    expect(SCOPE).toContain("useOrganization()");
+    expect(SCOPE).toContain('["brands"], () => listBrands()');
+    expect(SCOPE).not.toMatch(/isStaff|staffMode|beta/i);
+    expect(SCOPE).not.toContain("—");
+  });
+});

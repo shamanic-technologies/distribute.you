@@ -7,6 +7,7 @@ import { createApiKey, listApiKeys, type ApiKey } from "@/lib/api";
 import { AI_RESOURCES, MCP_ENDPOINT_URL, aiSetupPrompt } from "@/lib/ai-integration";
 import { v2Href } from "@/lib/v2/routes";
 import { Toast } from "@/components/toast";
+import { ApiKeyScope } from "@/components/settings/api-key-scope";
 
 /**
  * Integrations → AI: one line to paste into any assistant, and every developer
@@ -86,14 +87,18 @@ export function V2AiIntegrationView({ orgId, brandId }: { orgId: string; brandId
             </>
           )}
         </div>
+        <p className="k-fg2 mt-2 text-[12px]">
+          <ApiKeyScope />
+        </p>
         {error && <p className="mt-2 text-[12px] text-[var(--data-rose)]">{error}</p>}
       </div>
 
       <div className="k-card p-4">
-        <div className="flex items-baseline justify-between gap-3">
+        <div className="flex items-center justify-between gap-3">
           <p className="k-label">MCP server</p>
-          <Link href={v2Href(orgId, brandId, "api-keys")} className="k-fg3 text-[12px] hover:text-[var(--fg-1)]">
-            {keyCount === null ? "API keys →" : `API keys (${keyCount}) →`}
+          <Link href={v2Href(orgId, brandId, "api-keys")} className="k-btn shrink-0">
+            Manage API keys
+            {keyCount !== null && <span className="k-fg3 tabular-nums">{keyCount}</span>}
           </Link>
         </div>
         <div className="mt-2 flex items-center gap-2">

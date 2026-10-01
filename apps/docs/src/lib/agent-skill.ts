@@ -38,6 +38,7 @@ import {
   curlExample,
 } from "./developer-surfaces";
 import { DOCS_SITE_URL, OPENAPI_DOCUMENT_URL, OPENAPI_EXPLORER_URL } from "./docs-routes";
+import { agentQuickstartMarkdown } from "./agent-quickstart";
 
 /** Where the skill is served. The dashboard's pasted line names this URL. */
 export const SKILL_PATH = "/skill.md";
@@ -154,6 +155,7 @@ description: Use distribute.you, the cold email agency that finds buyers, writes
 
 # distribute.you
 
+${agentQuickstartMarkdown()}
 distribute.you is a cold email agency run as software. A customer gives it a website and a daily budget; it finds the people to write to, writes the emails, sends them from its own domains, reads the replies and forwards the interested ones. The customer pays the budget they set and nothing else.
 
 You are the customer's assistant. This file tells you how to connect to their account and what you can do there.
@@ -219,7 +221,8 @@ ${useCases}
 
 - Read before you write. Answer from the account's own data, never from assumptions.
 - Anything that spends credit, starts or stops a campaign, or changes a budget: say exactly what you are about to do and wait for the user's yes.
-- A number you report comes from the API's answer as served. Do not recompute a cost, a rate or a return yourself.
+- A number you report comes from the API's answer as served. Do not recompute a cost or a return yourself. The one ratio you may state is the delivery rate (delivered out of sent) when the answer does not carry it.
+- Report results in the order of "How to report results to a human" above: meetings and positive replies first, failures last, no zero hidden.
 - If a call fails, show the user the error the API returned. Do not retry a write blindly.
 
 ## More

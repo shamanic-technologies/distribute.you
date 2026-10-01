@@ -2,6 +2,8 @@ import { docsMetadata } from "@/lib/docs-metadata";
 import { docsHeading } from "@/lib/docs-routes";
 import Link from "next/link";
 import { CopyForLLM } from "@/components/copy-for-llm";
+import { AgentQuickstart } from "@/components/agent-quickstart";
+import { agentQuickstartMarkdown } from "@/lib/agent-quickstart";
 import { URLS } from "@distribute/content";
 import {
   AUTH_HEADER_LINE,
@@ -15,6 +17,8 @@ import {
 export const metadata = docsMetadata("/api");
 
 const LLM_INSTRUCTIONS = `# distribute.you REST API
+
+${agentQuickstartMarkdown()}
 
 ## Base URL
 https://api.distribute.you/v1
@@ -58,6 +62,7 @@ export default function ApiOverviewPage() {
         <h1 className="text-2xl font-semibold text-gray-900">{docsHeading("/api")}</h1>
         <CopyForLLM content={LLM_INSTRUCTIONS} />
       </div>
+      <AgentQuickstart />
       <p className="text-base text-gray-500 mb-4">
         Direct REST API access to distribute.you. The machine-readable contract
         for everything on this page is the{" "}

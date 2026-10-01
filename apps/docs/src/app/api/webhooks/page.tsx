@@ -81,10 +81,10 @@ X-Distribute-Signature: sha256=xxxxx
   "data": {
     "milestone": "100_emails",
     "stats": {
-      "emails_sent": 100,
+      "replied": 3,
       "delivered": 94,
-      "opened": 21,
-      "replied": 3
+      "emails_sent": 100,
+      "opened": 21
     }
   }
 }`}</code>
@@ -113,11 +113,11 @@ X-Distribute-Signature: sha256=xxxxx
   "data": {
     "reason": "trial_ended",
     "final_stats": {
-      "emails_sent": 487,
-      "delivered": 456,
-      "opened": 112,
+      "meetings_booked": 5,
       "replied": 23,
-      "meetings_booked": 5
+      "delivered": 456,
+      "emails_sent": 487,
+      "opened": 112
     },
     "total_cost_usd": 8.74
   }
