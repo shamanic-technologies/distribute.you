@@ -187,5 +187,29 @@
       }
     ],
     "wall": "There is no wall: Keel is a public demo workspace with no sign-up and no account, so every screen is reachable signed out. The whole app is mock data (the Loomwell workspace, 24 companies, 34 people, 38 deals, five agents) rendered in the browser, so the clone is the app, not a landing in front of it."
+  },
+  "instinct": {
+    "origin": "https://instinct.com",
+    "sites": [
+      {
+        "label": "app",
+        "origin": "https://app.instinct.com"
+      }
+    ],
+    "steps": [
+      {
+        "url": "https://app.instinct.com/login",
+        "mode": "bytes"
+      },
+      {
+        "url": "https://instinct.com/privacy-policy",
+        "mode": "bytes"
+      },
+      {
+        "url": "https://instinct.com/terms",
+        "mode": "bytes"
+      }
+    ],
+    "wall": "The only CTA, \"Text Instinct to get started\", leads to app.instinct.com/login: a phone number, a Cloudflare Turnstile check, then a 6-digit code by SMS from short code 22395. There is no email, no password, no Google, and no signup page (/signup is a 404): signing in with a new number IS the signup. Twilio numbers do not receive the code (the carrier delivers the SMS as failed with the code stripped), so walking past it needs a real mobile."
   }
 }
