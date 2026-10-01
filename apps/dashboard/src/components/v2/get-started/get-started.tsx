@@ -251,10 +251,15 @@ export function GetStarted() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // The steps, the legs and each channel's floor, off the public catalogue: no session needed.
-  useEffect(() => {
-    getPublicCatalogueSignedOut()
-      .then((cat) => {
+  // The steps, the legs and each channel's floor, off the public catalogue: no session
+  // needed. Asked again on a failure (a cold gateway), then stated with a retry: the
+  // sales path screens cannot be drawn without it.
+  const [catalogueFailed, setCatalogueFailed] = useState(false);
+  async function loadCatalogue(attempts = 3) {
+    setCatalogueFailed(false);
+    for (let i = 0; i < attempts; i += 1) {
+      try {
+        const cat = await getPublicCatalogueSignedOut();
         const mins = channelMinimumsFromWire(cat.channels);
         const cents = channelMinimumCents(mins, NEW_ORG_CHANNEL_SLUG);
         if (cents != null) setFloorUsd(cents / 100);
@@ -265,8 +270,17 @@ export function GetStarted() {
         }
         setFloorCents(floors);
         setCatalogue(legCatalogueFromWire(cat));
-      })
-      .catch((e) => console.error("[get-started] catalogue read failed:", e));
+        return;
+      } catch (e) {
+        console.error(`[get-started] catalogue read failed (attempt ${i + 1}):`, e);
+        if (i < attempts - 1) await new Promise((r) => setTimeout(r, 1500 * (i + 1)));
+      }
+    }
+    setCatalogueFailed(true);
+  }
+  useEffect(() => {
+    void loadCatalogue();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const offered = useMemo(() => offeredFromCatalogue(catalogue, SALES_PATH_CHANNEL_SLUGS), [catalogue]);
@@ -1093,6 +1107,8 @@ export function GetStarted() {
           part={key === "salesSteps" ? "steps" : "legs"}
           state={steps[key]}
           catalogue={catalogue}
+          catalogueFailed={catalogueFailed}
+          onRetryCatalogue={() => void loadCatalogue()}
           selection={selection}
           drafted={key === "salesSteps" && !!draftedSteps.current?.length}
           onChange={(next) => {
@@ -1788,6 +1804,8 @@ function SalesPathStage({
   part,
   state,
   catalogue,
+  catalogueFailed,
+  onRetryCatalogue,
   selection,
   drafted,
   onChange,
@@ -1798,6 +1816,8 @@ function SalesPathStage({
   part: "steps" | "legs";
   state: StepState;
   catalogue: LegCatalogue;
+  catalogueFailed: boolean;
+  onRetryCatalogue: () => void;
   selection: SalesPathSelection;
   drafted: boolean;
   onChange: (next: SalesPathSelection) => void;
@@ -1817,7 +1837,14 @@ function SalesPathStage({
       state={state}
       meta={<StateWord state={state} doneLabel={part === "steps" ? `${selection.steps.size} steps` : `${selection.legs.size} ways`} />}
     >
-      {state === "waiting" || state === "running" || catalogue.legs.size === 0 ? (
+      {catalogueFailed && catalogue.legs.size === 0 && state !== "waiting" ? (
+        <div className="flex flex-wrap items-center gap-3">
+          <p className="k-fg2 text-[13px]">We could not load the sales steps just now.</p>
+          <button type="button" className="k-btn h-8 px-3" onClick={onRetryCatalogue}>
+            Try again
+          </button>
+        </div>
+      ) : state === "waiting" || state === "running" || catalogue.legs.size === 0 ? (
         <OptionSkeleton />
       ) : done ? (
         <ul className="flex flex-wrap gap-1.5">
