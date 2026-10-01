@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useParams, usePathname } from "next/navigation";
 import { useAuthQuery } from "@/lib/use-auth-query";
-import { getStaffCostMargin, getStaffCurrentPrices, getStaffEmailSendPrice, getStaffEmailsSent, getStaffPriceVersions, getStaffSubscriptionCosts } from "@/lib/api";
+import { getStaffCostMargin, getStaffCurrentPrices, getStaffEmailSendPrice, getStaffEmailsSent, getStaffPriceVersions, getStaffRealCosts, getStaffSubscriptionCosts } from "@/lib/api";
 import { formatCentsAsUsd } from "@/lib/format-number";
 import { v2Href } from "@/lib/v2/routes";
 import { EmptyNote, Figure, SectionTitle, Shimmer, StatTile, TopBar } from "@/components/v2/ui";
@@ -11,6 +11,8 @@ import { ProvidersTable } from "@/components/v2/monitoring-providers";
 import { EmailsCharts } from "@/components/v2/monitoring-emails";
 import { EmailPriceView } from "@/components/v2/monitoring-email-price";
 import { SubscriptionsView } from "@/components/v2/monitoring-subscriptions";
+import { NewPricingView } from "@/components/v2/monitoring-new-pricing";
+import { PricingComparisonView } from "@/components/v2/monitoring-pricing-comparison";
 import { ReceiptIcon } from "@phosphor-icons/react/dist/csr/Receipt";
 import { TagIcon } from "@phosphor-icons/react/dist/csr/Tag";
 import { TrendUpIcon } from "@phosphor-icons/react/dist/csr/TrendUp";
@@ -54,6 +56,9 @@ function useEmails() {
 function useEmailSendPrice() {
   return useAuthQuery(["staffEmailSendPrice"], getStaffEmailSendPrice, ONCE);
 }
+function useLatestRealCosts() {
+  return useAuthQuery(["staffRealCosts", null], () => getStaffRealCosts(null), ONCE);
+}
 function useSubscriptionCosts() {
   return useAuthQuery(["staffSubscriptionCosts"], getStaffSubscriptionCosts, ONCE);
 }
@@ -95,7 +100,9 @@ const PAGE: Record<MonitoringPage, { section: SectionKey; title: string; questio
   "price/current": { section: "price", title: "Current prices", question: "How much are we pricing each cost item right now?" },
   "price/history": { section: "price", title: "Prices since inception", question: "How has each cost item been priced since inception?" },
   "price/email-sending": { section: "price", title: "Email sending", question: "What does sending one cold email really cost us?" },
+  "price/new-pricing": { section: "price", title: "New pricing", question: "What would each cost item cost at its real cost ×2?" },
   margin: { section: "margin", title: "Margin", question: "How much margin have we made since inception?" },
+  "margin/pricing-comparison": { section: "margin", title: "Pricing comparison", question: "What would a client have paid, and our margin, under two price lists?" },
   emails: { section: "emails", title: "Emails", question: "How many emails have we sent since inception?" },
 };
 
@@ -162,6 +169,8 @@ export function V2Monitoring() {
         {view.page === "price/current" && <CurrentPricesPage />}
         {view.page === "price/history" && <PriceHistoryPage />}
         {view.page === "price/email-sending" && <EmailSendingPage />}
+        {view.page === "price/new-pricing" && <NewPricingView />}
+        {view.page === "margin/pricing-comparison" && <PricingComparisonView />}
         {view.page === "margin" && <MarginPage />}
         {view.page === "emails" && <EmailsPage />}
       </div>
@@ -230,6 +239,8 @@ function Hub({ base }: { base: string }) {
   const emails = useEmails();
   const sendPrice = useEmailSendPrice();
   const subs = useSubscriptionCosts();
+  const real = useLatestRealCosts();
+  const rc = real.data;
   const sp = sendPrice.data;
   const m = margin.data;
   const t = m?.total;
@@ -288,7 +299,7 @@ function Hub({ base }: { base: string }) {
         />
       </Section>
 
-      <Section section="price" count={4}>
+      <Section section="price" count={5}>
         <Card
           href={href("price/billed")}
           page="price/billed"
@@ -330,9 +341,18 @@ function Hub({ base }: { base: string }) {
             { label: "Emails to leads", value: sp?.totals.emailsToLeads.toLocaleString("en-US"), note: sp ? `${usd(sp.totals.spendUsd * 100)} infra spend, net` : undefined },
           ]}
         />
+        <Card
+          href={href("price/new-pricing")}
+          page="price/new-pricing"
+          error={real.isError}
+          cells={[
+            { label: "Priced at real ×2", value: rc?.items.filter((x) => x.proposedBasis === "real-cost-x2").length, note: rc ? `of ${rc.items.length} cost items` : undefined },
+            { label: "Flagged", value: rc?.items.filter((x) => x.flag != null).length, note: rc ? `as of ${day(rc.asOf)}, not billed yet` : undefined },
+          ]}
+        />
       </Section>
 
-      <Section section="margin" count={1}>
+      <Section section="margin" count={2}>
         <Card
           href={href("margin")}
           page="margin"
@@ -340,6 +360,15 @@ function Hub({ base }: { base: string }) {
           cells={[
             { label: "Margin, net", value: t && usd(t.netMarginCostInUsdCents), note: `${t ? usd(t.marginCostInUsdCents) : "…"} gross`, bars: byProvider("netMarginCostInUsdCents") },
             { label: "Largest provider", value: top === undefined ? undefined : top ? providerName(top.provider) : null, note: top ? `${usd(top.netMarginCostInUsdCents)} margin` : undefined },
+          ]}
+        />
+        <Card
+          href={href("margin/pricing-comparison")}
+          page="margin/pricing-comparison"
+          error={real.isError}
+          cells={[
+            { label: "Price lists", value: rc === undefined ? undefined : "2 sources", note: "catalogue or proposed, any day" },
+            { label: "Since", value: rc && day(rc.rules.since), note: rc ? `to ${day(rc.asOf)}, per org and brand` : undefined },
           ]}
         />
       </Section>
