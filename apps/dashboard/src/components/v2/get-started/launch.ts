@@ -23,8 +23,14 @@ import {
   type UserFieldValue,
 } from "@/lib/api";
 import { LEVER_QUESTIONS, NEW_ORG_CHANNEL_SLUG, newOrgLeg, recommendedDailyBudgetUsd, type NewOrgLegKey } from "@/lib/v2/new-org-wizard";
+import { campaignsForOutcome, type GetStartedOutcome } from "@/lib/v2/get-started";
 
 export const GET_STARTED_LEG: NewOrgLegKey = "start_to_website_visit";
+
+/** The cold-email leg an outcome starts with: it prices the recommended budget. */
+export function coldEmailLegFor(outcome: GetStartedOutcome | null): NewOrgLegKey {
+  return outcome === "meetings" ? "start_to_conversation" : GET_STARTED_LEG;
+}
 
 export interface LaunchInput {
   brandId: string;
@@ -33,17 +39,23 @@ export interface LaunchInput {
   offer: { offerId: string; name: string };
   /** The audience picked at step 4, already created under that offer. */
   audienceId: string;
+  /** Whole dollars a day, set on EACH campaign the outcome launches. */
   budgetUsd: number;
+  /** What the visitor buys: one campaign (visits) or two (meetings). */
+  outcome: GetStartedOutcome;
+  /** The offer points were answered in the preview and saved on the offer already. */
+  answered: boolean;
 }
 
 export interface LaunchProgress {
   levers: boolean;
   audiences: boolean;
-  budget: boolean;
-  campaignId: string | null;
+  /** Per campaign (keyed `featureSlug|legKey`): its budget written, and its id once created. */
+  budgets: Record<string, boolean>;
+  campaignIds: Record<string, string>;
 }
 
-export const EMPTY_PROGRESS: LaunchProgress = { levers: false, audiences: false, budget: false, campaignId: null };
+export const EMPTY_PROGRESS: LaunchProgress = { levers: false, audiences: false, budgets: {}, campaignIds: {} };
 
 /**
  * The daily budget the v2 "Add a brand" modal would recommend for this offer:
@@ -51,16 +63,21 @@ export const EMPTY_PROGRESS: LaunchProgress = { levers: false, audiences: false,
  * outcome, turned into a daily figure by the leg's own rule, never under the channel
  * floor. `null` when no price is held yet.
  */
-export async function recommendedBudgetForPreview(brandId: string, offerId: string, floorUsd: number): Promise<number | null> {
+export async function recommendedBudgetForPreview(
+  brandId: string,
+  offerId: string,
+  floorUsd: number,
+  legKey: NewOrgLegKey = GET_STARTED_LEG,
+): Promise<number | null> {
   const ladder = await getWorkflowProjectionLadder({
     featureSlug: NEW_ORG_CHANNEL_SLUG,
     brandId,
     offerId,
-    leg: GET_STARTED_LEG,
+    leg: legKey,
   });
   const rec = ladder.recommendedWorkflowDynastySlug;
   const row = ladder.rows.find((r) => r.audienceId === null && r.workflow.workflowDynastySlug === rec);
-  return recommendedDailyBudgetUsd(newOrgLeg(GET_STARTED_LEG), row?.resolved.costPerOutcomeUsd ?? null, floorUsd);
+  return recommendedDailyBudgetUsd(newOrgLeg(legKey), row?.resolved.costPerOutcomeUsd ?? null, floorUsd);
 }
 
 /**
@@ -86,15 +103,17 @@ async function prefillOfferLevers(brandId: string, offerId: string): Promise<voi
 }
 
 /**
- * Runs the launch on the offer and audience the visitor picked (no re-pick),
- * mutating `progress` as each write lands so a retry resumes. Returns the campaign id.
+ * Runs the launch on the offer and audience the visitor picked (no re-pick), one
+ * campaign per (channel, leg) the outcome needs, each with the daily budget the
+ * visitor set. Mutates `progress` as each write lands so a retry resumes. Returns the
+ * first campaign's id (the cold email one, where the mission page opens).
  */
 export async function launchFromPreview(input: LaunchInput, progress: LaunchProgress): Promise<string> {
-  const leg = newOrgLeg(GET_STARTED_LEG);
   const { offerId, name: offerName } = input.offer;
 
-  // The levers are read while the rest is written: the campaign's inputs are prefilled
-  // from the offer below, so they are awaited before that read.
+  // Levers answered in the preview are already saved on the offer; otherwise they are
+  // drafted and saved now, before the campaign inputs are prefilled from the offer.
+  if (input.answered) progress.levers = true;
   const levers = progress.levers
     ? Promise.resolve()
     : prefillOfferLevers(input.brandId, offerId).then(() => {
@@ -115,43 +134,38 @@ export async function launchFromPreview(input: LaunchInput, progress: LaunchProg
     progress.audiences = true;
   }
 
-  if (!progress.budget) {
-    await saveCampaignBudget(
-      input.brandId,
-      { offerId, legKey: GET_STARTED_LEG, featureSlug: NEW_ORG_CHANNEL_SLUG },
-      input.budgetUsd * 100,
-    );
-    progress.budget = true;
-  }
+  const ids: string[] = [];
+  for (const c of campaignsForOutcome(input.outcome)) {
+    const key = `${c.featureSlug}|${c.legKey}`;
+    if (!progress.budgets[key]) {
+      await saveCampaignBudget(input.brandId, { offerId, legKey: c.legKey, featureSlug: c.featureSlug }, input.budgetUsd * 100);
+      progress.budgets[key] = true;
+    }
+    if (progress.campaignIds[key]) {
+      ids.push(progress.campaignIds[key]);
+      continue;
+    }
+    const ladder = await getWorkflowProjectionLadder({ featureSlug: c.featureSlug, brandId: input.brandId, offerId, leg: c.legKey });
+    const workflowSlug = ladder.recommendedWorkflowDynastySlug;
+    if (!workflowSlug) throw new Error(`Nothing is ready to run for ${c.label.toLowerCase()} yet, so the campaign cannot start.`);
 
-  if (progress.campaignId) {
     await levers;
-    return progress.campaignId;
+    const prefill = await prefillFeatureInputs(c.featureSlug, [input.brandId], offerId);
+    const featureInputs: Record<string, string> = {};
+    for (const [k, v] of Object.entries(prefill.prefilled)) if (typeof v === "string" && v.trim()) featureInputs[k] = v;
+
+    const { campaign } = await createCampaignWithoutBrandEnrichment({
+      name: `${offerName} (${c.label})`,
+      workflowSlug,
+      brandUrls: [input.website],
+      offerId,
+      legKey: c.legKey,
+      featureSlug: c.featureSlug,
+      featureInputs,
+    });
+    progress.campaignIds[key] = campaign.id;
+    ids.push(campaign.id);
   }
-
-  const ladder = await getWorkflowProjectionLadder({
-    featureSlug: NEW_ORG_CHANNEL_SLUG,
-    brandId: input.brandId,
-    offerId,
-    leg: GET_STARTED_LEG,
-  });
-  const workflowSlug = ladder.recommendedWorkflowDynastySlug;
-  if (!workflowSlug) throw new Error(`Nothing is ready to run for ${leg.unitPlural} yet, so the campaign cannot start.`);
-
   await levers;
-  const prefill = await prefillFeatureInputs(NEW_ORG_CHANNEL_SLUG, [input.brandId], offerId);
-  const featureInputs: Record<string, string> = {};
-  for (const [k, v] of Object.entries(prefill.prefilled)) if (typeof v === "string" && v.trim()) featureInputs[k] = v;
-
-  const { campaign } = await createCampaignWithoutBrandEnrichment({
-    name: `${offerName} (${leg.label}, Cold email)`,
-    workflowSlug,
-    brandUrls: [input.website],
-    offerId,
-    legKey: GET_STARTED_LEG,
-    featureSlug: NEW_ORG_CHANNEL_SLUG,
-    featureInputs,
-  });
-  progress.campaignId = campaign.id;
-  return campaign.id;
+  return ids[0];
 }

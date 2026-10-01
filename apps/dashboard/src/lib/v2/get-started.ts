@@ -10,16 +10,22 @@
  */
 
 /**
- * The six live steps. Steps 1 and 2 are read off the site; 3 and 4 are PICKS (one
- * offer, one audience) whose proposals are prepared in the background from the
- * moment the website is known, so they are ready when the stage reaches them; 5 is
- * the audience's companies with one person each; 6 is the first emails.
+ * The live steps. 1 and 2 are read off the site; 3 and 4 are PICKS (one offer, one
+ * audience) whose proposals are prepared in the background; 5 to 8 are QUESTIONS the
+ * visitor answers about the offer (what they want to buy, what a client is worth, the
+ * six offer points, what they give away and never give), each prefilled from the site;
+ * 9 is the audience's companies with one person each; 10 is the first emails, written
+ * only once 5 to 8 are answered, since they are written from those answers.
  */
 export const GET_STARTED_STEPS = [
   { key: "company", label: "Read your company" },
   { key: "competitors", label: "Find your competitors" },
   { key: "offer", label: "Pick your offer" },
   { key: "audience", label: "Pick who to write to" },
+  { key: "outcome", label: "Pick what you want" },
+  { key: "value", label: "What a client is worth" },
+  { key: "levers", label: "Sharpen your offer" },
+  { key: "gives", label: "What you give away" },
   { key: "companies", label: "Find 100 companies" },
   { key: "email", label: "Write the first emails" },
 ] as const;
@@ -32,6 +38,170 @@ export type GetStartedStepKey = (typeof GET_STARTED_STEPS)[number]["key"];
  * is withdrawn goes back to saying so in one line.
  */
 export const STEPS_NOT_LIVE: ReadonlySet<GetStartedStepKey> = new Set<GetStartedStepKey>([]);
+
+/** Index of a step in `GET_STARTED_STEPS`. */
+export function stepIndex(key: GetStartedStepKey): number {
+  return GET_STARTED_STEPS.findIndex((s) => s.key === key);
+}
+
+/**
+ * What the visitor buys (owner-decided 2026-09-29). Visits are one campaign; meetings
+ * are two, cold email getting the positive reply then meeting booking turning it into
+ * a meeting, and the daily amount the visitor sets goes on EACH of them.
+ */
+export type GetStartedOutcome = "visits" | "meetings";
+
+export const OUTCOME_OPTIONS: ReadonlyArray<{ key: GetStartedOutcome; label: string; unit: string; blurb: string }> = [
+  {
+    key: "visits",
+    label: "Website visits",
+    unit: "visit",
+    blurb: "We email your audience and send the interested ones to your website.",
+  },
+  {
+    key: "meetings",
+    label: "Meetings booked",
+    unit: "meeting",
+    blurb: "We email your audience, then book a meeting with everyone who replies with interest.",
+  },
+];
+
+/**
+ * The expected price of one outcome, as features-service serves it
+ * (`/public/stats/outcome-prices`). `early` = at least one leg it rests on is priced on
+ * early (flash) evidence because no workflow is mature there yet. Null price = the
+ * producer could not measure it; the card then states none, never one of ours.
+ */
+export interface OutcomePrice {
+  priceUsd: number | null;
+  early: boolean;
+}
+
+/** Reads the producer's body into one price per outcome. Throws on a body it cannot read. */
+export function parseOutcomePrices(raw: unknown): Record<GetStartedOutcome, OutcomePrice> {
+  const outcomes = (raw as { outcomes?: Record<string, unknown> } | null)?.outcomes;
+  if (!outcomes || typeof outcomes !== "object") throw new Error("[get-started] outcome prices: no outcomes in body");
+  const read = (key: string): OutcomePrice => {
+    const o = outcomes[key] as { priceUsd?: unknown; maturity?: unknown } | undefined;
+    if (!o || typeof o !== "object") throw new Error(`[get-started] outcome prices: ${key} missing`);
+    const p = o.priceUsd;
+    if (p !== null && (typeof p !== "number" || !Number.isFinite(p))) throw new Error(`[get-started] outcome prices: ${key}.priceUsd unreadable`);
+    return { priceUsd: p === null || p <= 0 ? null : p, early: o.maturity === "early" };
+  };
+  return { visits: read("websiteVisit"), meetings: read("meetingBooked") };
+}
+
+/** "About $2.49 per visit" / "About $117 per meeting": cents under $10, whole dollars above. */
+export function outcomePriceLine(price: OutcomePrice | null | undefined, unit: string): string | null {
+  if (!price || price.priceUsd == null) return null;
+  const usd = price.priceUsd;
+  const amount = usd < 10 ? usd.toFixed(2) : Math.round(usd).toLocaleString("en-US");
+  return `About $${amount} per ${unit}`;
+}
+
+/** The campaigns an outcome launches: channel + leg, in launch order. */
+export function campaignsForOutcome(outcome: GetStartedOutcome): Array<{ featureSlug: string; legKey: string; label: string }> {
+  if (outcome === "visits") return [{ featureSlug: "sales-cold-email-outreach", legKey: "start_to_website_visit", label: "Cold email" }];
+  return [
+    { featureSlug: "sales-cold-email-outreach", legKey: "start_to_conversation", label: "Cold email" },
+    { featureSlug: "ai-meeting-booking", legKey: "conversation_to_meeting_booked", label: "Meeting booking" },
+  ];
+}
+
+/** Whole dollars a day across every campaign the outcome launches. */
+export function totalDailyUsd(outcome: GetStartedOutcome, perCampaignUsd: number): number {
+  return perCampaignUsd * campaignsForOutcome(outcome).length;
+}
+
+/** What a client is worth, drafted off the site. A key of our own: it prefills nothing stored. */
+export const VALUE_FIELDS = [
+  {
+    key: "clientLifetimeRevenueUsd",
+    description:
+      "Best estimate, in US dollars, of the total revenue ONE new client brings this company over the whole relationship (price times how long a client typically stays or how often they buy again). Use the prices on the site when stated, else a sensible estimate for this kind of business. Answer with one number only, no currency sign, no words.",
+  },
+] as const;
+
+/** A drafted dollar amount as a whole number of dollars, or null when none can be read. */
+export function parseUsdEstimate(value: unknown): number | null {
+  const text = Array.isArray(value) ? value.join(" ") : typeof value === "number" ? String(value) : typeof value === "string" ? value : "";
+  const m = text.replace(/,/g, "").match(/\d+(?:\.\d+)?\s*[kKmM]?/);
+  if (!m) return null;
+  const raw = m[0].trim();
+  const mult = /[kK]$/.test(raw) ? 1000 : /[mM]$/.test(raw) ? 1_000_000 : 1;
+  const n = Math.round(parseFloat(raw) * mult);
+  return Number.isFinite(n) && n > 0 ? n : null;
+}
+
+/** A typed lifetime revenue: whole dollars, above zero. */
+export function parseLifetimeRevenue(input: string): { usd: number } | { problem: string } {
+  const t = input.replace(/[$,\s]/g, "");
+  if (!t) return { problem: "Enter what one client brings you." };
+  if (!/^\d+(\.\d+)?$/.test(t)) return { problem: "Enter an amount in dollars, digits only." };
+  const usd = Math.round(parseFloat(t));
+  if (usd <= 0) return { problem: "Enter an amount above zero." };
+  return { usd };
+}
+
+/**
+ * The six offer points (Hormozi), drafted as SHORT bullets so they fit six boxes. The
+ * keys are the stored lever keys, so a confirmed value overlays the draft.
+ */
+export const LEVER_DRAFT_FIELDS = [
+  { key: "dreamOutcome", label: "Dream outcome", question: "What does your customer get, in their words?", description: "Dream outcome: the concrete result the customer most wants from this offer. Two or three short bullet points, each under twelve words." },
+  { key: "perceivedLikelihood", label: "Why it works", question: "What makes them believe it will work for them?", description: "Perceived likelihood: why a buyer believes it will work for them (track record, method, named results). Two or three short bullet points, each under twelve words." },
+  { key: "socialProof", label: "Proof", question: "Which clients, results or testimonials can you show?", description: "Social proof: clients, results and testimonials the site shows. Two or three short bullet points, each under twelve words. Facts from the site only." },
+  { key: "riskReversal", label: "Guarantee", question: "What happens if it does not work?", description: "Risk reversal: trial, guarantee or refund that removes the buyer's risk. Two or three short bullet points, each under twelve words." },
+  { key: "urgency", label: "Why now", question: "Why should they start this week?", description: "Urgency: why the buyer should act now rather than later. Two or three short bullet points, each under twelve words." },
+  { key: "scarcity", label: "Why it is limited", question: "What is capped: seats, slots, a deadline?", description: "Scarcity: what is limited (capacity, slots, a deadline). Two or three short bullet points, each under twelve words." },
+] as const;
+
+export type LeverDraftKey = (typeof LEVER_DRAFT_FIELDS)[number]["key"];
+
+/** What is given away to whoever replies, and what is never promised (brand-service #584 keys). */
+export const GIVE_DRAFT_FIELDS = [
+  {
+    key: "giveForFree",
+    label: "What we can give for free",
+    question: "What could you give, for free, to someone who replies?",
+    description:
+      "What this company could offer for free to a prospect who replies to a cold email, to make replying worth it: a free audit, a trial, a sample, a custom mockup, a short consultation. Four to six short bullet points, each under ten words, fitting what this company sells.",
+  },
+  {
+    key: "neverGive",
+    label: "What we will never give",
+    question: "What should an email never promise?",
+    description:
+      "What an email written for this company must never promise a prospect: discounts, free implementation, unlimited revisions, anything that would cost them too much. Three to five short bullet points, each under ten words.",
+  },
+] as const;
+
+export type GiveDraftKey = (typeof GIVE_DRAFT_FIELDS)[number]["key"];
+
+/** Bullet lines of an answer: one per line, list markers dropped. */
+export function answerLines(text: string): string[] {
+  return text
+    .split(/\n+/)
+    .map((l) => l.replace(/^\s*(?:[-*\u2022]|\d+[.)])\s*/, "").trim())
+    .filter(Boolean);
+}
+
+/** The six questions and their answers, as a prompt to paste into an LLM. */
+export function leversLLMPrompt(offerName: string, answers: Partial<Record<LeverDraftKey, string>>): string {
+  const blocks = LEVER_DRAFT_FIELDS.map((f) => {
+    const lines = answerLines(answers[f.key] ?? "");
+    const body = lines.length ? lines.map((l) => `- ${l}`).join("\n") : "- (not answered yet)";
+    return `${f.label}: ${f.question}\n${body}`;
+  });
+  return [
+    `I sell "${offerName}". Below are my answers to the six questions of Alex Hormozi's value equation.`,
+    "Improve each answer: make it concrete, specific and credible, two or three short bullet points each, and tell me what is missing.",
+    "",
+    ...blocks.flatMap((b) => [b, ""]),
+  ]
+    .join("\n")
+    .trim();
+}
 
 /** Emails written before the account exists: the first rows are written ahead, the rest on click, up to the cap. */
 export const PREWRITTEN_EMAILS = 3;
@@ -259,6 +429,12 @@ export interface GetStartedSnapshot {
   budgetUsd: number | null;
   /** An email written during the preview, so the wall still shows it after the Google round trip. */
   email: GetStartedEmail | null;
+  /** What the visitor buys; null until answered. Absent on an older snapshot. */
+  outcome?: GetStartedOutcome | null;
+  /** What one client is worth, whole dollars; null until answered. */
+  lifetimeRevenueUsd?: number | null;
+  /** Whether the offer points and the give lists were answered (and saved on the offer). */
+  answered?: boolean;
 }
 
 function parseOffer(v: unknown): GetStartedOffer | null {
@@ -304,6 +480,10 @@ export function parseGetStartedSnapshot(raw: string | null): GetStartedSnapshot 
     audience: parseAudience(s.audience),
     budgetUsd: typeof s.budgetUsd === "number" && Number.isInteger(s.budgetUsd) && s.budgetUsd > 0 ? s.budgetUsd : null,
     email: parseSnapshotEmail(s.email),
+    outcome: s.outcome === "visits" || s.outcome === "meetings" ? s.outcome : null,
+    lifetimeRevenueUsd:
+      typeof s.lifetimeRevenueUsd === "number" && Number.isInteger(s.lifetimeRevenueUsd) && s.lifetimeRevenueUsd > 0 ? s.lifetimeRevenueUsd : null,
+    answered: s.answered === true,
   };
 }
 

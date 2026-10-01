@@ -63,6 +63,12 @@ const RULES: Rule[] = [
   // path-bound to this session's brand.
   { method: "POST", segments: ["brands", ":brand", "offers", "proposals"] },
   { method: "POST", segments: ["brands", ":brand", "offers", "confirm"] },
+  // Steps 6 to 8 of /get-started: what a client is worth and the offer's six points +
+  // give lists, saved on the offer picked at step 3, before any first message is
+  // drafted (it is drafted from them). Path-bound to this session's brand; brand-service
+  // refuses an offer that is not the brand's.
+  { method: "PUT", segments: ["brands", ":brand", "offers", ":seg", "economics"] },
+  { method: "PUT", segments: ["brands", ":brand", "offers", ":seg", "user-fields"] },
 
   // ── The audiences we assemble for it ─────────────────────────────────
   { method: "GET", segments: ["orgs", "audiences"] },

@@ -84,7 +84,8 @@ describe("the rules the page decides on", () => {
       budgetUsd: 10,
       email: null,
     };
-    expect(parseGetStartedSnapshot(JSON.stringify(snap))).toEqual(snap);
+    // The answers to steps 5 to 8 are absent on an older snapshot and read as not given.
+    expect(parseGetStartedSnapshot(JSON.stringify(snap))).toEqual({ ...snap, outcome: null, lifetimeRevenueUsd: null, answered: false });
     expect(parseGetStartedSnapshot("{nope")).toBeNull();
     // A snapshot from before the offer and audience steps starts over.
     expect(parseGetStartedSnapshot(JSON.stringify({ ...snap, version: 1 }))).toBeNull();
@@ -92,8 +93,19 @@ describe("the rules the page decides on", () => {
     expect(parseGetStartedSnapshot(JSON.stringify({ ...snap, offer: { name: "x" } }))?.offer).toBeNull();
   });
 
-  it("asks for ONE offer and ONE audience, then 100 companies and the emails", () => {
-    expect(GET_STARTED_STEPS.map((s) => s.key)).toEqual(["company", "competitors", "offer", "audience", "companies", "email"]);
+  it("asks for ONE offer and ONE audience, the offer questions, then 100 companies and the emails", () => {
+    expect(GET_STARTED_STEPS.map((s) => s.key)).toEqual([
+      "company",
+      "competitors",
+      "offer",
+      "audience",
+      "outcome",
+      "value",
+      "levers",
+      "gives",
+      "companies",
+      "email",
+    ]);
   });
 
   it("splits offers from the offer lines, else the overview", () => {
@@ -279,17 +291,17 @@ describe("the surface", () => {
   });
 
   it("prices the budget on the picked offer, and launches that offer and that audience with the levers prefilled", () => {
-    expect(LAUNCH).toContain("export async function recommendedBudgetForPreview(brandId: string, offerId: string");
-    expect(LAUNCH).toContain("recommendedDailyBudgetUsd(newOrgLeg(GET_STARTED_LEG)");
-    expect(WALL).toContain("recommendedBudgetForPreview(brandId, offer.offerId, floorUsd)");
-    expect(WALL).toContain("{ brandId, website, offer, audienceId: audience.audienceId, budgetUsd }");
+    expect(LAUNCH).toContain("export async function recommendedBudgetForPreview(");
+    expect(LAUNCH).toContain("recommendedDailyBudgetUsd(newOrgLeg(legKey)");
+    expect(WALL).toContain("recommendedBudgetForPreview(brandId, offer.offerId, floorUsd, coldEmailLegFor(outcome))");
+    expect(WALL).toContain("{ brandId, website, offer, audienceId: audience.audienceId, budgetUsd, outcome, answered }");
     // No re-pick at launch: the offer is the one confirmed at step 3.
     expect(LAUNCH).not.toContain("proposeBrandOffers");
     // The six levers are read off the site for that offer and saved on it.
     expect(LAUNCH).toContain('extractBrandFields([brandId], leverFields, { mode: "suggest", urlStrategy: "landing", offerId })');
     expect(LAUNCH).toContain("saveOfferUserFields(brandId, offerId, fields)");
     // The campaign's inputs are read after the levers land.
-    expect(LAUNCH.indexOf("await levers;\n  const prefill")).toBeGreaterThan(0);
+    expect(LAUNCH.indexOf("await levers;\n    const prefill")).toBeGreaterThan(0);
     // A default never blocks a price that lands later.
     expect(WALL).toContain("if (budgetTouched.current) onBudget(");
   });
