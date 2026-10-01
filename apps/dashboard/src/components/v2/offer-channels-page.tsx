@@ -148,7 +148,7 @@ export function V2OfferChannelsPage() {
       ) : (
         <div className="space-y-8">
           {sections.map((s) => {
-            const rate = s.fromKey === null ? undefined : legRateFor(rates.data?.legs ?? [], stepLabel(s.fromKey), stepLabel(s.toKey));
+            const rate = s.fromKey === null ? undefined : legRateFor(rates.data?.legs ?? [], s.legKey);
             return (
               <section key={s.legKey}>
                 <SectionTitle
