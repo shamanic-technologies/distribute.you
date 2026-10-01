@@ -48,51 +48,14 @@ describe("one mapping, no inline copies", () => {
   // Three surfaces used to inline their own ternary. Two of them were 2-branch only
   // (`isVisitDrivenGoal(g) ? "signup" : "meetingBooked"`), so a sales / form_submissions /
   // website_purchase brand already asked for the wrong goal there too.
-  // The brand Overview is NOT in this list any more: its Top-audiences card names
-  // neither a funnel nor a goal, which features-service v0.129.0 treats as the
-  // brand-level read (every audience priced through the best-returning funnel the
-  // brand declared, sorted on return). A brand runs several funnels at once, so there
-  // is no goal to derive there — guarded in `brand-overview-roi-focus.test.ts`.
-  // These two still resolve one, as the fallback for a campaign that predates the
-  // funnel model and for the funnel-scoped cost columns.
-  const sites = [
-    "../src/components/campaigns/campaign-overview-page.tsx",
-    "../src/components/audiences/customer-audiences-page.tsx",
-  ];
+  // Every live surface that resolves a goal for audience-stats reads the helper.
+  const sites = ["../src/components/v2/use-audience-table.ts"];
 
   for (const rel of sites) {
     it(`${rel.split("/").pop()} derives the goal from the shared helper`, () => {
       const src = read(rel);
       expect(src).toContain("goalForOptimizationGoal(optimizationGoal)");
       expect(src).not.toMatch(/isVisitDrivenGoal\(optimizationGoal\)\s*\?\s*"signup"/);
-    });
-  }
-});
-
-describe("column + sort gates follow the goal FAMILY, not one literal", () => {
-  it("the Audiences reply columns stay for a positiveReply brand", () => {
-    // showMeetingCols === "meetingBooked" alone would HIDE the Positive replies + CPPR
-    // columns the moment the goal stops being meetingBooked — on the very brand whose goal
-    // IS positive replies.
-    const src = read("../src/components/audiences/customer-audiences-page.tsx");
-    const line = src.split("\n").find((l) => l.includes("const showMeetingCols"));
-    expect(line).toBeDefined();
-    expect(line).toContain("positiveReply");
-  });
-
-  // The brand Overview is NOT here: its Top-audiences card passes no `metric` at all.
-  // The card ranks on the served return and its second line is the row's own cost per
-  // paying client — goal-free, and the same figure the Audiences table's `$ CAC` shows.
-  // A CAMPAIGN still picks a column, correctly: it sells one funnel.
-  for (const rel of [
-    "../src/components/campaigns/campaign-overview-page.tsx",
-  ]) {
-    it(`${rel.split("/").pop()} picks the card's column from the shared helper`, () => {
-      const src = read(rel);
-      const line = src.split("\n").find((l) => l.includes("const audienceStatsMetric"));
-      expect(line).toBeDefined();
-      expect(line).toContain("audienceRankMetric(optimizationGoal, trackerSetUp)");
-      expect(line).not.toContain('=== "signup"');
     });
   }
 });

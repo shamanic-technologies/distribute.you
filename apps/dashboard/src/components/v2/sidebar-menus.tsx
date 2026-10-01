@@ -11,7 +11,6 @@ import { useAuthQuery } from "@/lib/use-auth-query";
 import { leadsSearchParam, leadsSearchProblem } from "@/lib/leads-server-page";
 import { formatCount } from "@/lib/format-number";
 import { useTenantSwitcher } from "@/lib/use-tenant-switcher";
-import { backToV1Href, switchUiVersion } from "@/components/ui-version-switch";
 import { BrandLogo } from "@/components/brand-logo";
 import { OrgAvatar } from "@/components/org-avatar";
 import { supportWhatsAppHref } from "@/components/support/support-button";
@@ -33,7 +32,7 @@ import { useStaffMode } from "@/lib/use-staff-mode";
  * friend), and Keel's command palette behind the search box and ⌘K.
  *
  * Switching reuses `useTenantSwitcher` — the org switch is the same guarded
- * join / setActive / token re-mint dance v1 runs, so v2 cannot race it differently.
+ * join / setActive / token re-mint dance, written once.
  */
 
 function useOutside(open: boolean, onClose: () => void) {
@@ -243,8 +242,7 @@ export function TenantSwitcherV2() {
  *
  * Explee's Notifications, Feedback and Theme are left out: we store no notification
  * preferences, have nowhere to send a feedback note, and v2 has no dark theme, so each
- * would be a control that does nothing. Back to v1 is ours (the one way out of v2), and
- * the email row opens the Profile page, since Explee's menu has no profile item.
+ * would be a control that does nothing. The email row opens the Profile page, since Explee's menu has no profile item.
  */
 const MENU_ICON = {
   team: "M6 7.5a2.25 2.25 0 1 0 0-4.5 2.25 2.25 0 0 0 0 4.5Zm-4 5.5c.4-2 2-3.2 4-3.2s3.6 1.2 4 3.2M10.5 3.2a2.2 2.2 0 0 1 0 4.1M12 9.9c1.2.4 2 1.4 2.2 3.1",
@@ -254,7 +252,6 @@ const MENU_ICON = {
   research: "M6 2.5h4M6.5 2.5v4L3 12.3a.9.9 0 0 0 .8 1.2h8.4a.9.9 0 0 0 .8-1.2L9.5 6.5v-4M4.8 9.5h6.4",
   gift: "M2.5 6h11v2.5h-11zM3.5 8.5v5h9v-5M8 6v7.5M8 6c-1-2.5-4-2.5-4-.8C4 6 6 6 8 6Zm0 0c1-2.5 4-2.5 4-.8C12 6 10 6 8 6Z",
   help: "M8 14A6 6 0 1 0 8 2a6 6 0 0 0 0 12ZM6.3 6.3a1.8 1.8 0 1 1 2.4 1.7c-.4.2-.7.5-.7 1v.5M8 11.3v.2",
-  back: "M6 4 3 7l3 3M3.5 7H10a3 3 0 0 1 0 6H8",
   out: "M9.5 3.5h3v9h-3M6.5 5 3.5 8l3 3M3.5 8h7",
   staff: "M8 2 3 4v4c0 3 2.2 5.2 5 6 2.8-.8 5-3 5-6V4L8 2ZM6 8l1.5 1.5L10.5 6.5",
 };
@@ -368,16 +365,6 @@ export function AccountMenuV2({ orgId, brandId }: { orgId: string; brandId: stri
               </button>
             </>
           )}
-          <div className="my-1 h-px bg-[var(--line-subtle)]" />
-          <button
-            type="button"
-            role="menuitem"
-            className={itemCls}
-            onClick={() => switchUiVersion("v1", backToV1Href(orgId, brandId || null))}
-          >
-            <MI d={MENU_ICON.back} />
-            Back to v1
-          </button>
           <div className="my-1 h-px bg-[var(--line-subtle)]" />
           <button type="button" role="menuitem" className={itemCls} onClick={() => void signOut({ redirectUrl: "/sign-in" })}>
             <MI d={MENU_ICON.out} />

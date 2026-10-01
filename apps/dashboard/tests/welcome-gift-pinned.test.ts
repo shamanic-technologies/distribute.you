@@ -6,10 +6,6 @@ const apiContent = fs.readFileSync(
   path.resolve(__dirname, "../src/lib/api.ts"),
   "utf-8",
 );
-const homePageContent = fs.readFileSync(
-  path.resolve(__dirname, "../src/app/(authed)/(dashboard)/page.tsx"),
-  "utf-8",
-);
 const instrumentationContent = fs.readFileSync(
   path.resolve(__dirname, "../src/instrumentation.ts"),
   "utf-8",
@@ -22,10 +18,6 @@ describe("welcome gift is not front-end editable", () => {
       "../src/components/admin/welcome-gift-admin.tsx",
     );
     expect(fs.existsSync(componentPath)).toBe(false);
-  });
-
-  it("the staff home no longer renders or imports WelcomeGiftAdmin", () => {
-    expect(homePageContent).not.toContain("WelcomeGiftAdmin");
   });
 
   it("api.ts exposes no read/write helper for the welcome promo", () => {

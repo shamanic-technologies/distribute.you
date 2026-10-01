@@ -12,78 +12,20 @@ import { resolve } from "path";
  * disk, and the table cold-loaded on EVERY visit. That is the loading skeleton customers
  * reported: not a caching bug, a payload that could not be cached.
  *
- * These are call-site guards. The rules themselves (which bucket a tab asks for, what the
+ * These guard the reader and the persisted cache. The rules themselves (which bucket a tab asks for, what the
  * search box may send, how many pages a total makes) are REAL unit tests in
  * `leads-server-page.test.ts` — the module is alias-free precisely so they can be.
  */
 const ROOT = resolve(__dirname, "..");
-const PAGE = readFileSync(resolve(ROOT, "src/components/audiences/engaged-leads-page.tsx"), "utf8");
 const API = readFileSync(resolve(ROOT, "src/lib/api.ts"), "utf8");
 const PERSIST = readFileSync(resolve(ROOT, "src/lib/persist-cache.ts"), "utf8");
 
-describe("the Leads page pages instead of holding the population", () => {
-  it("reads a page and the bucket counts, and nothing whole-population", () => {
-    expect(PAGE).toContain('["leadsPage", scopeKey, activeTab, wireSearch, page]');
-    expect(PAGE).toContain('["leadBucketCounts", scopeKey, wireSearch]');
-    // The two whole-population readers still exist for the consumers that genuinely want
-    // every row (the funnel-leg board partitions them; features-service prices them).
-    // They must not come back HERE.
-    expect(PAGE).not.toContain("listBrandLeads");
-    expect(PAGE).not.toContain("listCampaignLeads");
-  });
-
-  it("keys every entry on the scope, the tab, the search AND the page", () => {
-    // Two windows onto one brand sharing an entry is how a reader on page 7 of Sales
-    // interests is served page 1 of Contacted.
-    expect(PAGE).toContain(
-      "const scopeKey = campaignId ? `campaign:${campaignId}` : `brand:${brandId}`;",
-    );
-    expect(PAGE).toContain('["leadsPage", scopeKey, activeTab, wireSearch, page]');
-  });
-
+describe("the paged leads readers", () => {
   it("allowlists the new roots, or the page cold-loads exactly as it did before", () => {
     // An unlisted root is default-OFF: the whole point of a small payload is that it can
     // be written to disk.
     expect(PERSIST).toContain('"leadsPage"');
     expect(PERSIST).toContain('"leadBucketCounts"');
-  });
-
-  it("pages over the TOTAL the producer states, not over the rows in memory", () => {
-    expect(PAGE).toContain("const pageCount = pageCountFor(activeTotal);");
-    expect(PAGE).toContain("const activeTotal = pageData?.total ?? tabCount(bucketCounts, activeTab);");
-    // Counting pages over a slice of the loaded array is only correct when the array IS
-    // the population — which is the thing being removed.
-    expect(PAGE).not.toContain("filteredLeads.length / PAGE_SIZE");
-  });
-
-  it("labels each tab with its OWN size, and says nothing when it has not been told", () => {
-    expect(PAGE).toContain("count: tabCount(bucketCounts, key),");
-    expect(PAGE).toContain("{tab.count != null && (");
-  });
-
-  it("debounces the search onto the wire without debouncing the box", () => {
-    expect(PAGE).toContain("const LEADS_SEARCH_DEBOUNCE_MS = 300;");
-    expect(PAGE).toContain("useDebouncedValue(search, LEADS_SEARCH_DEBOUNCE_MS)");
-    // The INPUT reads `search`, so typing never lags behind the keyboard.
-    expect(PAGE).toContain("<EntitySearchBar\n              value={search}");
-  });
-
-  it("refuses locally what the producer would 400, and shows the reason", () => {
-    expect(PAGE).toContain("const searchProblem = leadsSearchProblem(search);");
-    expect(PAGE).toContain("{searchProblem && (");
-  });
-
-  it("skeletons on a tab or page CHANGE rather than showing the previous one's rows", () => {
-    // The global `keepPreviousData` hands back the old key's data while the new one
-    // loads; rendering it shows one tab's leads under another's heading.
-    expect(PAGE).toContain("(isPending || isPlaceholderData)");
-  });
-
-  it("does not hold the BOARD behind the table's page read", () => {
-    // The board draws from five per-column reads with their own skeletons. Gating it on
-    // the table's page made a board whose rows are already on disk wait for a request it
-    // never uses.
-    expect(PAGE).toContain("const loading = (isPending || isPlaceholderData) && !showBoard;");
   });
 
   it("lets the producer stream the export instead of assembling a second one", () => {
@@ -98,25 +40,6 @@ describe("the Leads page pages instead of holding the population", () => {
     // Through `apiCall`, so the export carries the same per-tab bearer and the same
     // org-desync retry as every other read rather than being a second auth path.
     expect(API).toContain('responseType: "text"');
-  });
-
-  it("asks the export for the WHOLE matching set, never the page's bounded query", () => {
-    // The button reused `leadsPageQuery({ ..., page: 0 })`, which always carries
-    // `limit=50` — and lead-service honours that on the CSV path exactly as on the JSON
-    // one, so the download was the first page. Measured in production on a brand whose
-    // Outreach tab reads 8,135 leads: 50 rows in the file, ~8,100 without the bound.
-    const call = PAGE.slice(PAGE.indexOf("<CsvDownloadButton"), PAGE.indexOf("label=\"Export leads\""));
-    expect(call).toContain("leadsExportQuery({ search: wireSearch })");
-    expect(call).not.toContain("leadsPageQuery(");
-  });
-
-  it("passes NO tab to the export, so the file is every row the page holds", () => {
-    // The call used to carry `activeTab`, so a press on a tab holding 20 people
-    // downloaded 20 rows under a header reading 16,212 — a correct file that reads as
-    // truncated. One component serves all four Leads grains, so this one call site is
-    // the whole surface.
-    const call = PAGE.slice(PAGE.indexOf("<CsvDownloadButton"), PAGE.indexOf("label=\"Export leads\""));
-    expect(call).not.toContain("activeTab");
   });
 
   it("parses the rows through the SAME reader every other leads read uses", () => {

@@ -110,10 +110,11 @@ describe("postpaid saves a card in the page, charging nothing, then arms auto to
 describe("an org with no brand stays in v2, with one way forward", () => {
   const proxy = read("proxy.ts");
   const picker = read("components/v2/brand-picker.tsx");
-  it("the edge lets a v2 user reach the bare org page even while the org is not set up", () => {
+  it("the edge lets a user reach the bare org page even while the org is not set up", () => {
     expect(proxy).toContain("const v2OrgRoot =");
     const gate = proxy.slice(proxy.indexOf("const v2OrgRoot ="), proxy.indexOf("return NextResponse.redirect(new URL(onboardingHref(), req.url));", proxy.indexOf("const v2OrgRoot =")));
-    expect(gate).toContain('=== "v2"');
+    // Both the old and the v2 bare-org URL, and nothing deeper.
+    expect(gate).toContain("/^(\\/v2)?\\/orgs\\/[^/]+\\/?$/");
     expect(gate).toContain("!v2OrgRoot &&");
   });
   it("the org page offers Add a brand, which runs the modal from the brand step on that org", () => {

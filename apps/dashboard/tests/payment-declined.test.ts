@@ -164,13 +164,9 @@ describe("buildControlRows paymentHold", () => {
 
 describe("call sites", () => {
   it("every campaign status surface reads the payment hold", () => {
-    expect(read("components/campaigns/campaigns-table.tsx")).toContain(
-      "<StatusPill status={campaign.status} stopReason={campaign.stopReason} />",
-    );
     expect(read("components/campaigns/campaign-controls-trigger.tsx")).toContain("r.paymentHold");
     expect(read("components/campaigns/campaign-controls-modal.tsx")).toContain("row.paymentHold");
     expect(read("components/settings/campaign-settings-card.tsx")).toContain("paymentHoldKind(campaign)");
-    expect(read("components/settings/offer-campaigns-card.tsx")).toContain("row.paymentHold && !row.running");
   });
   it("dashboard v2 states it on every mission and on every brand page", () => {
     expect(read("components/v2/use-missions.ts")).toContain("paymentHold: paymentHoldKind(c)");
@@ -185,9 +181,7 @@ describe("call sites", () => {
     expect(read("components/settings/campaign-settings-card.tsx")).toContain("campaignStartRefusalMessage(err.status, err.body)");
     expect(read("lib/channel-start.ts")).toContain("campaignStartRefusalMessage(");
   });
-  it("the notice links to Billing and rides every Overview", () => {
+  it("the notice links to Billing", () => {
     expect(read("components/billing/payment-declined-notice.tsx")).toContain("/billing");
-    expect(read("app/(authed)/(dashboard)/orgs/[orgId]/brands/[brandId]/page.tsx")).toContain("<ScopePaymentDeclinedBand");
-    expect(read("components/campaigns/campaign-overview-page.tsx")).toContain("<ScopePaymentDeclinedBand");
   });
 });

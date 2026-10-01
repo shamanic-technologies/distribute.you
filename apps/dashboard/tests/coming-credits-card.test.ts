@@ -5,7 +5,7 @@ import { join } from "node:path";
 const read = (p: string) => readFileSync(join(process.cwd(), p), "utf8");
 
 const card = read("src/components/billing/coming-credits-card.tsx");
-const page = (read("src/components/billing/use-billing-controller.ts") + read("src/app/(authed)/(dashboard)/orgs/[orgId]/billing/page.tsx"));
+const page = (read("src/components/billing/use-billing-controller.ts") + read("src/components/v2/billing-page.tsx"));
 const api = read("src/lib/api.ts");
 const persist = read("src/lib/persist-cache.ts");
 

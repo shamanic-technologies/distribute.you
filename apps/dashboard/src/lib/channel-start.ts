@@ -19,69 +19,6 @@
 
 import { campaignStartRefusalMessage } from "./payment-declined";
 
-/**
- * What one (leg, channel) of an offer is DOING.
- *
- * `not_started` is a real fourth state and is the whole point: a channel the brand
- * has funded and nobody has launched is neither running nor paused. Calling it
- * "paused" tells a customer to look for a switch that was never flipped, and calling
- * it "running" is the lie this replaced.
- *
- * `unknown` is the honest reading while the campaigns read is in flight. Guessing
- * either way there is a verdict we do not have.
- */
-export type ChannelRunState = "running" | "paused" | "not_started" | "unknown";
-
-/**
- * The state, from campaign-service's own word plus the presence of a campaign.
- *
- * `campaignId` is `buildControlRows`' answer: the campaign a status write can
- * ADDRESS, null for a channel that has none. It is never derived from the ceiling,
- * which is exactly the drift that put "Running" on one screen and "Paused" on
- * another for the same channel at the same moment.
- */
-export function channelRunState(input: {
-  /** Both reads resolved or errored. False means the answer is not in yet. */
-  settled: boolean;
-  /** The campaign a status write targets, or null when the channel has none. */
-  campaignId: string | null;
-  /** campaign-service reports at least one member campaign running. */
-  running: boolean;
-}): ChannelRunState {
-  if (!input.settled) return "unknown";
-  if (input.campaignId === null) return "not_started";
-  return input.running ? "running" : "paused";
-}
-
-/** One word per state, as the customer reads it. `unknown` draws a skeleton. */
-export const CHANNEL_RUN_STATE_LABEL: Record<ChannelRunState, string> = {
-  running: "Running",
-  paused: "Paused",
-  not_started: "Not started",
-  unknown: "",
-};
-
-/**
- * Why this channel cannot be turned ON right now, or null when it can.
- *
- * A campaign with no ceiling does not send: campaign-service holds it on the funding
- * gate every tick, so starting one would produce a campaign that exists and does
- * nothing, which is the state this whole surface exists to remove. The customer is
- * told to fund it rather than being handed a switch that silently achieves nothing.
- *
- * Only ever blocks turning ON. Pausing is always available, including on a channel
- * funded at zero: stopping something is never refused for want of money.
- */
-export function channelStartBlocker(input: {
-  state: ChannelRunState;
-  /** What the FORM currently holds for this channel, in cents, as typed. */
-  typedCents: number;
-}): string | null {
-  if (input.state === "unknown" || input.state === "running") return null;
-  if (input.typedCents > 0) return null;
-  return "Give this channel a daily budget first. A campaign with no ceiling never sends.";
-}
-
 /** One channel's pending status change, for the sentence below. */
 export interface ChannelStatusMove {
   channelName: string;

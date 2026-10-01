@@ -7,7 +7,6 @@ const root = join(__dirname, "..");
 const read = (rel: string) => readFileSync(join(root, rel), "utf8");
 const V2 = read("src/components/v2/billing-page.tsx");
 const ROUTE = read("src/app/(authed)/v2/orgs/[orgId]/brands/[brandId]/billing/page.tsx");
-const V1 = read("src/app/(authed)/(dashboard)/orgs/[orgId]/billing/page.tsx");
 const API = read("src/lib/api.ts");
 
 describe("paymentModeOf", () => {
@@ -29,9 +28,8 @@ describe("the v2 Billing page draws; it re-implements no money path", () => {
     expect(ROUTE).not.toContain("V2AccountFrame");
   });
 
-  it("runs the SAME controller as v1", () => {
+  it("runs the shared billing controller", () => {
     expect(V2).toContain("useBillingController()");
-    expect(V1).toContain("useBillingController()");
   });
 
   it("owns no charge path of its own", () => {

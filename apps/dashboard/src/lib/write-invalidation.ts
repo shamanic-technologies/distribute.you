@@ -36,25 +36,18 @@ export interface InvalidatingClient {
  * lead cannot move it, and it is one of the most expensive reads in the app.
  */
 export const LEAD_OUTCOME_ROOTS = [
-  // The same money at five grains. Each is its own answer from features-service, and a
-  // page scoped to one of them polls only its own key — so all five have to be told.
+  // The same money at four grains. Each is its own answer from features-service, and a
+  // page scoped to one of them polls only its own key — so all four have to be told.
   "featureRevenue",
   "featureRevenueByCampaign",
-  "offerRevenue",
   "brandRevenue",
   "brandOfferMoney",
-  // The offer's outcome rows count the same outcomes.
-  "offerOutcomes",
   // A lead that converts leaves the contacted population v2 Deals prices.
   "contactedValue",
   "dealsValue",
   // Per-audience evidence and costs — the Audiences table and the Top-3 card both rank
   // on an outcome count that just changed.
   "featureAudienceStats",
-  // The outreach stat row's own counts.
-  "featureStats",
-  // The activity and outcome charts.
-  "featurePipelineActivity",
 ] as const;
 
 /**
@@ -86,16 +79,13 @@ export const CAMPAIGN_MONEY_ROOTS = [
 /**
  * Every root a CONVERSION RATE or a LIFETIME REVENUE moves. A rate is what every money figure is priced
  * on, so changing one moves the same money grains a lead statement does, plus the
- * rates read itself and the workflow projection (whose ROI and CAC divide by the
- * rate's product). The projection is expensive, and it is here anyway: a brand that
- * just corrected a rate is looking at exactly the figures it feeds.
+ * rates read itself.
  */
 export const CONVERSION_RATE_ROOTS = [
   ...LEAD_OUTCOME_ROOTS,
   "brandConversionRates",
   "brandLegRates",
   "offerEconomics",
-  "workflowProjection",
 ] as const;
 
 export function invalidateRoots(client: InvalidatingClient, roots: readonly string[]): void {

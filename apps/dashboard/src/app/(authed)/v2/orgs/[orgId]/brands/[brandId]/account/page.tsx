@@ -1,6 +1,6 @@
 "use client";
 
-import AccountPage from "@/app/(authed)/(dashboard)/account/page";
+import AccountPage from "@/components/settings/account-profile";
 import { V2AccountFrame } from "@/components/v2/setup-pages";
 
 export default function Page() {

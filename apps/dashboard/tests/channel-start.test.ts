@@ -1,75 +1,10 @@
 import { describe, expect, it } from "vitest";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
-import {
-  CHANNEL_RUN_STATE_LABEL,
-  channelRunState,
-  channelStartBlocker,
-  channelStartErrorMessage,
-  channelStatusSummary,
-  startableWorkflowDynastySlug,
-} from "../src/lib/channel-start";
+import { channelStartErrorMessage, channelStatusSummary, startableWorkflowDynastySlug } from "../src/lib/channel-start";
 
 const SRC = join(__dirname, "..", "src");
 const read = (p: string) => readFileSync(join(SRC, p), "utf8");
-
-describe("channelRunState", () => {
-  it("is running when campaign-service reports a running campaign", () => {
-    expect(channelRunState({ settled: true, campaignId: "c1", running: true })).toBe("running");
-  });
-
-  it("is paused when the campaign exists and is not running", () => {
-    expect(channelRunState({ settled: true, campaignId: "c1", running: false })).toBe("paused");
-  });
-
-  // The whole reason this module exists. Funding a channel has not created a campaign
-  // since campaign-service deleted provisioning on 2026-09-06, so money says NOTHING
-  // about whether anything runs.
-  it("is NOT_STARTED when the channel is funded but has no campaign", () => {
-    expect(channelRunState({ settled: true, campaignId: null, running: false })).toBe("not_started");
-  });
-
-  it("is NOT_STARTED when the channel has neither campaign nor money", () => {
-    expect(channelRunState({ settled: true, campaignId: null, running: false })).toBe("not_started");
-  });
-
-  it("is unknown while the reads are in flight, never a guess", () => {
-    expect(channelRunState({ settled: false, campaignId: null, running: false })).toBe("unknown");
-    expect(channelRunState({ settled: false, campaignId: "c1", running: true })).toBe("unknown");
-  });
-
-  it("labels every state, and says nothing for unknown", () => {
-    expect(CHANNEL_RUN_STATE_LABEL.running).toBe("Running");
-    expect(CHANNEL_RUN_STATE_LABEL.paused).toBe("Paused");
-    expect(CHANNEL_RUN_STATE_LABEL.not_started).toBe("Not started");
-    expect(CHANNEL_RUN_STATE_LABEL.unknown).toBe("");
-  });
-});
-
-describe("channelStartBlocker", () => {
-  it("refuses a start with no daily budget, and says to fund it", () => {
-    const blocker = channelStartBlocker({ state: "not_started", typedCents: 0 });
-    expect(blocker).toMatch(/daily budget/i);
-  });
-
-  it("refuses a restart with no daily budget too", () => {
-    expect(channelStartBlocker({ state: "paused", typedCents: 0 })).not.toBeNull();
-  });
-
-  it("allows a start once the channel is funded", () => {
-    expect(channelStartBlocker({ state: "not_started", typedCents: 500 })).toBeNull();
-    expect(channelStartBlocker({ state: "paused", typedCents: 100 })).toBeNull();
-  });
-
-  // Stopping is never refused for want of money.
-  it("never blocks a running channel, whatever its budget reads", () => {
-    expect(channelStartBlocker({ state: "running", typedCents: 0 })).toBeNull();
-  });
-
-  it("never blocks while the state is unknown", () => {
-    expect(channelStartBlocker({ state: "unknown", typedCents: 0 })).toBeNull();
-  });
-});
 
 describe("channelStatusSummary", () => {
   it("says nothing when no switch moved", () => {

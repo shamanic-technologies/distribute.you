@@ -22,7 +22,7 @@ describe("Org switch cross-org isolation framework", () => {
     fs.readFileSync(path.join(__dirname, "..", rel), "utf-8");
 
   const invalidatorPath = "src/components/org-cache-invalidator.tsx";
-  const layoutPath = "src/app/(authed)/(dashboard)/layout.tsx";
+  const layoutPath = "src/components/v2/v2-client-layout.tsx";
   const orgActivatorPath = "src/components/org-activator.tsx";
   const breadcrumbPath = "src/components/breadcrumb-nav.tsx";
   // Org identity + the switch handlers were extracted out of breadcrumb-nav into
@@ -180,9 +180,8 @@ describe("Org switch cross-org isolation framework", () => {
     expect(match, "getToken must sit between setActive and router.push").not.toBeNull();
   });
 
-  it("both tenant surfaces read the ONE tenant-switch hook", () => {
+  it("the breadcrumb reads the ONE tenant-switch hook", () => {
     // No second copy of the org/brand identity + switch logic to drift.
     expect(read(breadcrumbPath)).toContain("@/lib/use-tenant-switcher");
-    expect(read("src/components/tenant-switcher.tsx")).toContain("@/lib/use-tenant-switcher");
   });
 });

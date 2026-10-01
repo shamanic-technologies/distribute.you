@@ -5,7 +5,6 @@ import {
   NO_CHANNEL_MINIMUMS,
   channelBudgetBelowMinimum,
   channelBudgetFloorMessage,
-  channelBudgetHint,
   channelMinimumCents,
   channelMinimumsFromWire,
   fmtDailyFloorUsd,
@@ -94,7 +93,6 @@ describe("what a funded ceiling may be stated at", () => {
     expect(channelBudgetBelowMinimum(null, 1, 0)).toBe(false);
     expect(channelBudgetBelowMinimum(null, 0.01, 0)).toBe(false);
     expect(isGrandfatheredChannelFunding(null, 500)).toBe(false);
-    expect(channelBudgetHint(null, 0)).toBeNull();
     expect(minimumChannelBudgetUsd(null, 0, 0)).toBe(0);
   });
 
@@ -130,20 +128,13 @@ describe("what a funded ceiling may be stated at", () => {
 });
 
 describe("what a person is told", () => {
-  it("names the channel's real figure, not one this app decided", () => {
-    expect(channelBudgetHint(800, 0)).toBe("From $8 a day.");
-    expect(channelBudgetHint(10000, 0)).toBe("From $100 a day.");
+  it("writes the channel's floor in dollars", () => {
     expect(fmtDailyFloorUsd(850)).toBe("$8.50");
   });
 
   it("tells a grandfathered pair what it may DO, not a floor it is under", () => {
     // Quoting the floor to someone already funded below it reads as "you are not
     // allowed to be here", on a ceiling they have been paying against for weeks.
-    const hint = channelBudgetHint(10000, 5000)!;
-    expect(hint).toContain("$50 a day today");
-    expect(hint).toContain("keep or raise");
-    expect(hint).not.toContain("From $100");
-
     const refusal = channelBudgetFloorMessage("LinkedIn Ads", 10000, 5000);
     expect(refusal).toContain("LinkedIn Ads");
     expect(refusal).toContain("$50 a day");

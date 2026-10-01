@@ -5,9 +5,7 @@ import { join } from "path";
 const read = (p: string) => readFileSync(join(__dirname, "..", p), "utf-8");
 
 const CARD = read("src/components/settings/brand-identity-card.tsx");
-const PAGE = read(
-  "src/app/(authed)/(dashboard)/orgs/[orgId]/brands/[brandId]/settings/page.tsx",
-);
+const PAGE = read("src/components/v2/brand-settings-page.tsx");
 const LOGO = read("src/components/brand-logo.tsx");
 const FAVICON = read("src/components/brand-favicon.tsx");
 const SWITCHER = read("src/lib/use-tenant-switcher.ts");
@@ -52,12 +50,8 @@ describe("the stored logo wins over the crawl", () => {
     // A surface left on `domain` alone silently keeps drawing the crawl, and
     // nothing goes red — it simply disagrees with the sidebar beside it.
     for (const [file, marker] of [
-      ["src/components/tenant-switcher.tsx", "logoUrl={t.displayBrand?.logoUrl}"],
-      ["src/components/tenant-switcher.tsx", "logoUrl={b.logoUrl}"],
       ["src/components/breadcrumb-nav.tsx", "logoUrl={displayBrand.logoUrl}"],
       ["src/components/breadcrumb-nav.tsx", "logoUrl={b.logoUrl}"],
-      ["src/app/(authed)/(dashboard)/orgs/[orgId]/page.tsx", "logoUrl={brand.logoUrl}"],
-      ["src/components/audiences/lead-scope-cards.tsx", "logoUrl={displayBrand?.logoUrl}"],
     ] as const) {
       expect(read(file), `${file} still draws the crawl`).toContain(marker);
     }

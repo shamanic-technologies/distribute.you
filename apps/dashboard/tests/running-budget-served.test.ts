@@ -14,47 +14,9 @@ const src = (p: string) => readFileSync(join(process.cwd(), "src", p), "utf8");
  * billing's status-blind total while the customer dashboard read a corrected one.
  *
  * campaign-service serves both figures now, decomposed per offer and per campaign, so nothing sums
- * anything. These guards pin that the hook reads it rather than rebuilding it.
+ * anything. These guards pin the served read and its persistence.
  */
 describe("the running daily budget is read, never rebuilt in the browser", () => {
-  const hook = src("lib/use-running-daily-budget.ts");
-
-  it("reads the served spendable-budget endpoint", () => {
-    expect(hook).toContain("getBrandSpendableBudget");
-    expect(hook).toContain('["brandSpendableBudget", brandId]');
-  });
-
-  it("does not re-derive the figure from the campaign list and the funnel budgets", () => {
-    // The two reads the old join paired up, and the pure helper that paired them.
-    expect(hook).not.toContain("listCampaignsByBrand");
-    expect(hook).not.toContain("getBrandFunnelBudgets");
-    expect(hook).not.toContain("buildControlRows");
-    expect(hook).not.toContain("scopeTotalCents");
-  });
-
-  it("narrows to an offer by SELECTING the offer's own served total", () => {
-    // `offers` carries each offer's own running figure, so the offer case is a lookup — never a
-    // sum of the campaigns under it, which is what the old browser join did.
-    expect(hook).toContain("data.offers.find((o) => o.offerId === offerId)");
-    expect(hook).not.toContain("data.offers.filter");
-    expect(hook).not.toContain("data.offers\n");
-  });
-
-  // The funnel grain went with the sales-funnel model. The finest grain left is ONE campaign,
-  // and it is a SELECTION over the producer's per-campaign decomposition, never a sum.
-  it("narrows to a campaign by SELECTING the campaign's own served figure", () => {
-    expect(hook).toContain("data.campaigns.find((c) => c.campaignId === campaignId)");
-    expect(hook).not.toContain("reduce(");
-    expect(hook).not.toContain("normalizeSalesFunnelKey");
-  });
-
-  it("reports null — not zero — while the read is unresolved or failed", () => {
-    // "We could not measure this" and "this brand spends nothing" are different statements, and the
-    // callers render a dash for the first.
-    expect(hook).toContain("data === undefined\n      ? null");
-    expect(hook).toContain("spendableQ.isError");
-  });
-
   it("is persisted, or the money on the header cold-skeletons every visit", () => {
     expect(src("lib/persist-cache.ts")).toContain('"brandSpendableBudget"');
   });

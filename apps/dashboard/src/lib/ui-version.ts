@@ -1,89 +1,42 @@
 /**
- * Which version of the dashboard a user is on: v2 (the Keel-style shell under `/v2`,
- * the default for everyone) or v1 (the previous one, kept behind "Back to v1").
+ * Old (v1) dashboard URLs, mapped to the v2 dashboard.
  *
- * The choice is a COOKIE rather than a client store because it is a routing
- * decision, and routing decisions belong at the edge (`proxy.ts`): a beta user who
- * picked v2 must land on v2 from the very first frame after a reload or a new
- * sign-in, and only a cookie can be read before paint. It is NOT httpOnly because
- * the switch control that writes it is a client component.
- *
- * The cookie is a PREFERENCE, never an authorisation: it only picks between two
- * dashboards over the same data, both open to every signed-in user.
+ * v1 was deleted (it lives in git history). Its URLs still arrive: sent emails,
+ * bookmarks, Stripe returns, and links inside the shared business components v2
+ * embeds. `proxy.ts` redirects every one of them here, pre-paint, so an old link
+ * never 404s.
  *
  * Alias-free on purpose: the edge imports it, and the `@` alias is not resolved
  * under vitest, so keeping it on no imports at all is what lets it carry real unit
  * tests.
  */
 
-export const UI_VERSION_COOKIE = "distribute-ui";
-export type UiVersion = "v1" | "v2";
-
-/** One year: the choice should outlive every session it is made in. */
-const UI_VERSION_MAX_AGE_S = 60 * 60 * 24 * 365;
-
-/**
- * v2 is the default dashboard: anything but an exact `v1` reads as v2. `v1` is only
- * ever written by the "Back to v1" switch, so a person lands on v1 only by asking.
- */
-export function parseUiVersion(raw: string | null | undefined): UiVersion {
-  return raw === "v1" ? "v1" : "v2";
-}
-
-/** The `document.cookie` assignment for a choice. Pure, so the string is testable. */
-export function uiVersionCookieAssignment(version: UiVersion, secure: boolean): string {
-  return `${UI_VERSION_COOKIE}=${version}; Path=/; Max-Age=${UI_VERSION_MAX_AGE_S}; SameSite=Lax${
-    secure ? "; Secure" : ""
-  }`;
-}
-
-/** Drop a leading `/v2` so the v1 path parsers can read a v2 URL unchanged. */
+/** Drop a leading `/v2` so path parsers written for the old URLs read a v2 URL unchanged. */
 export function stripV2Prefix(pathname: string): string {
   if (pathname === "/v2") return "/";
   return pathname.startsWith("/v2/") ? pathname.slice(3) : pathname;
-}
-
-export function isV2Path(pathname: string): boolean {
-  return pathname === "/v2" || pathname.startsWith("/v2/");
 }
 
 export function v2DashboardHref(orgId: string, brandId: string): string {
   return `/v2/orgs/${encodeURIComponent(orgId)}/brands/${encodeURIComponent(brandId)}`;
 }
 
-export function v1BrandHref(orgId: string, brandId: string): string {
-  return `/orgs/${encodeURIComponent(orgId)}/brands/${encodeURIComponent(brandId)}`;
-}
-
-const V1_BRAND_ROOT_RE = /^\/orgs\/([^/]+)\/brands\/([^/]+)\/?$/;
+/** Where a signed-in user with no org to name goes: Clerk's org picker. */
+export const NO_ORG_HREF = "/session-tasks/choose-organization";
 
 /**
- * The v1 brand ROOT (the brand Overview), exactly — the one v1 page a v2 user is
- * sent past at the edge, because v2's Dashboard answers the same question. Deeper
- * v1 pages (Leads, Settings, a campaign) stay reachable: v2 links to them for every
- * section it has not rebuilt yet, and bouncing those would make them unreachable.
- */
-export function matchV1BrandRoot(pathname: string): { orgId: string; brandId: string } | null {
-  const m = V1_BRAND_ROOT_RE.exec(pathname);
-  return m ? { orgId: m[1], brandId: m[2] } : null;
-}
-
-/**
- * Where a v1 dashboard URL lives in v2, for a user on v2 (everyone but those who
- * chose "Back to v1").
+ * Where an old dashboard URL lives in v2, or null when the path is not an old
+ * dashboard URL at all (onboarding, sign-in, api, a v2 path).
  *
- * Every v1 brand page now has a v2 twin, so a v2 user is never sent back to v1 by a
- * link, a `router.push` or a typed URL: `proxy.ts` rewrites the v1 path here, pre-paint,
- * which covers the v1 business components v2 embeds (their links still name v1 paths)
- * without touching them. The only way into v1 is the explicit "Back to v1" switch,
- * which flips the cookie first.
+ * Every old dashboard URL maps somewhere: a page with a v2 twin goes to the twin,
+ * anything else goes to the nearest v2 page above it (the brand, else the org).
  *
  * The search string rides along untouched (a Stripe return carries `?success=true`),
  * except that the Leads panel's `leadRowId` becomes the person's own v2 page.
  *
  * Org-level pages (billing, API key, account) have no brand in their URL; v2 files
  * them under a brand, so they need the last brand opened in that org. Without one
- * there is no v2 page to send them to, and the v1 page is served (null).
+ * they land on the org's v2 page (the brand picker).
  */
 export function v2PathForV1(
   pathname: string,
@@ -97,24 +50,30 @@ export function v2PathForV1(
     return s ? `${path}?${s}` : path;
   };
   const brandBase = (orgId: string, brandId: string) => v2DashboardHref(orgId, brandId);
+  const orgBase = (orgId: string) => `/v2/orgs/${encodeURIComponent(orgId)}`;
   const orgLevel = (orgId: string, section: string) => {
     const brandId = opts.lastBrand?.(orgId);
-    return brandId ? withQuery(`${brandBase(orgId, brandId)}/${section}`) : null;
+    return withQuery(brandId ? `${brandBase(orgId, brandId)}/${section}` : orgBase(orgId));
+  };
+  const activeOrg = (section: string | null) => {
+    const org = opts.activeOrgId;
+    if (!org) return NO_ORG_HREF;
+    return section ? orgLevel(org, section) : withQuery(orgBase(org));
   };
 
-  if (parts[0] === "account" && parts.length === 1) {
-    const org = opts.activeOrgId;
-    return org ? orgLevel(org, "account") : null;
-  }
-  if (parts[0] !== "orgs" || !parts[1]) return null;
+  // The old root and org list: the active org's v2 landing.
+  if (parts.length === 0) return activeOrg(null);
+  if (parts[0] === "orgs" && parts.length === 1) return activeOrg(null);
+  if (parts[0] === "account" && parts.length === 1) return activeOrg("account");
+  if (parts[0] === "api-keys" && parts.length === 1) return activeOrg("api-keys");
+  if (parts[0] !== "orgs") return null;
   const orgId = decodeURIComponent(parts[1]);
   if (parts.length === 3 && parts[2] === "billing") return orgLevel(orgId, "billing");
   if (parts.length === 3 && (parts[2] === "api-keys" || parts[2] === "provider-keys")) {
     return orgLevel(orgId, "api-keys");
   }
-  // The bare org: v2's own landing (the last brand, else a picker).
-  if (parts.length === 2) return withQuery(`/v2/orgs/${encodeURIComponent(orgId)}`);
-  if (parts[2] !== "brands" || !parts[3]) return null;
+  // The bare org, and anything else under it: v2's own landing (the last brand, else a picker).
+  if (parts[2] !== "brands" || !parts[3]) return withQuery(orgBase(orgId));
   const brandId = decodeURIComponent(parts[3]);
   const base = brandBase(orgId, brandId);
   const rest = parts.slice(4);
@@ -134,14 +93,14 @@ export function v2PathForV1(
   if (a === "settings" && rest.length === 1) return withQuery(`${base}/settings`);
   if (a === "crm" && rest.length === 1) return withQuery(`${base}/integrations`);
   if (a === "crm" && b === "merged" && rest.length === 2) return withQuery(`${base}/integrations/merged`);
-  if (a !== "offers") return null;
+  if (a !== "offers") return withQuery(base);
   if (rest.length === 1) return withQuery(`${base}/offers`);
   const offer = `${base}/offers/${enc(b)}`;
   if (rest.length === 2) return withQuery(offer);
   if (c === "settings" && rest.length === 3) return withQuery(offer);
   if (c === "audiences" && rest.length === 3) return withQuery(`${offer}/targeting`);
   if (c === "audiences" && d === "leads" && rest.length === 4) return withQuery(`${base}/people`);
-  if (c !== "campaigns") return null;
+  if (c !== "campaigns") return withQuery(base);
   if (rest.length === 3) return withQuery(`${base}/missions`);
   const mission = `${base}/missions/${enc(d)}`;
   if (rest.length === 4) return withQuery(mission);
@@ -154,5 +113,5 @@ export function v2PathForV1(
     next.set("workflow", decodeURIComponent(f));
     return withQuery(`${mission}/workflows`, next);
   }
-  return null;
+  return withQuery(base);
 }

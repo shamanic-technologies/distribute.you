@@ -75,7 +75,7 @@ const PAGE = (readFileSync(
 ) + readFileSync(
   join(
     __dirname,
-    "../src/app/(authed)/(dashboard)/orgs/[orgId]/billing/page.tsx",
+    "../src/components/v2/billing-page.tsx",
   ),
   "utf8",
 ));
@@ -107,9 +107,9 @@ describe("the billing page asks before it charges", () => {
   it("routes BOTH buttons through the gate, never the raw open", () => {
     // "View invoices" hits the same endpoint and settles identically, and
     // nothing about its label suggests money moves.
-    // Three of them: the failed-payment banner's Update card, the Payment
-    // method card, and the auto-topup-unavailable banner.
-    expect(PAGE.match(/handleManagePayment\("manage"\)/g) ?? []).toHaveLength(3);
+    // Two of them: the failed-payment banner's Update card and the Payment
+    // method card.
+    expect(PAGE.match(/handleManagePayment\("manage"\)/g) ?? []).toHaveLength(2);
     expect(PAGE.match(/handleManagePayment\("invoices"\)/g) ?? []).toHaveLength(1);
     // The only call site of the un-gated open is the gate itself and the
     // modal's own Confirm.
@@ -117,14 +117,13 @@ describe("the billing page asks before it charges", () => {
   });
 
   it("mounts the modal and hands it the amount and the in-flight state", () => {
-    // Bound by the element that FOLLOWS it. `<h1 className=` is not a bound:
-    // the loading branch above carries one, so indexOf lands before the modal
-    // and the slice comes back empty.
+    // The modal is self-closing and none of its props carry JSX, so `/>` bounds it.
     const at = PAGE.indexOf("<CardChangeConfirmModal");
-    const mount = PAGE.slice(at, PAGE.indexOf('<div className="mb-6', at));
-    expect(mount).toContain("settleCents={settleCents}");
-    expect(mount).toContain("pending={portalLoadingSource !== null}");
-    expect(mount).toContain("onConfirm={() => void openCardPage(confirmSource)}");
+    expect(at).toBeGreaterThan(-1);
+    const mount = PAGE.slice(at, PAGE.indexOf("/>", at));
+    expect(mount).toContain("settleCents={c.settleCents}");
+    expect(mount).toContain("pending={c.portalLoadingSource !== null}");
+    expect(mount).toContain("onConfirm={() => void c.openCardPage(c.confirmSource!)}");
   });
 
   it("declares settleCents ABOVE the JSX that renders it", () => {
@@ -136,8 +135,8 @@ describe("the billing page asks before it charges", () => {
   });
 
   it("states the settle under the button from the same rule", () => {
-    expect(PAGE).toContain("{settleCents !== null && (");
-    expect(PAGE).toContain("{formatBillingCents(settleCents)} balance to the card on file");
+    expect(PAGE).toContain("{c.settleCents !== null && (");
+    expect(PAGE).toContain("{formatBillingCents(c.settleCents)} balance to the card on file");
     // The old gate promised a charge for a card that cannot be charged
     // off_session and for a deficit under the acquirer minimum.
     expect(PAGE).not.toContain("formatBillingCents(Math.abs(availableCents))");
@@ -208,7 +207,7 @@ describe("billing page: a failed settle is stated before the card page opens", (
     join(__dirname, "../src/components/billing/use-billing-controller.ts"),
     "utf8",
   ) + readFileSync(
-    join(__dirname, "../src/app/(authed)/(dashboard)/orgs/[orgId]/billing/page.tsx"),
+    join(__dirname, "../src/components/v2/billing-page.tsx"),
     "utf8",
   ));
   const open = page.slice(
@@ -225,7 +224,7 @@ describe("billing page: a failed settle is stated before the card page opens", (
   });
 
   it("passes the problem and a way on to the modal", () => {
-    expect(page).toContain("problem={settleProblem?.problem ?? null}");
-    expect(page).toContain("onContinue={continueAfterSettleProblem}");
+    expect(page).toContain("problem={c.settleProblem?.problem ?? null}");
+    expect(page).toContain("onContinue={c.continueAfterSettleProblem}");
   });
 });

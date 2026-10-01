@@ -12,10 +12,6 @@ const proxy = fs.readFileSync(
   path.join(__dirname, "../src/proxy.ts"),
   "utf-8"
 );
-const layout = fs.readFileSync(
-  path.join(__dirname, "../src/app/(authed)/(dashboard)/layout.tsx"),
-  "utf-8"
-);
 const apiProxyRoute = fs.readFileSync(
   path.join(__dirname, "../src/app/(authed)/api/v1/[...path]/route.ts"),
   "utf-8"
@@ -55,15 +51,16 @@ describe("DIS-111 edge gate lives in proxy.ts", () => {
     expect(proxy).toContain('return "/onboarding";');
   });
 
-  it("exempts the onboarding flow, API routes, and the autoCreate hop (no loop)", () => {
+  it("exempts the onboarding flow and API routes (no loop)", () => {
+    // The `?autoCreate` brand-creation hop went with the v1 dashboard: nothing sends it.
     expect(proxy).toContain("isOnboardingRoute");
     expect(proxy).toContain("isApiRoute");
-    expect(proxy).toContain('searchParams.has("autoCreate")');
   });
 
   it("does not send completed auth flows to the public metrics root", () => {
-    expect(proxy).toContain('new URL("/orgs", req.url)');
-    // Sign-up defaults completed flows to /orgs; a landing pricing ?url= prefill
+    // A signed-in user on an auth page lands on the dashboard (v2; v1 is gone).
+    expect(proxy).toContain('new URL("/v2", req.url)');
+    // Sign-up defaults completed flows to /orgs (redirected to v2 at the edge); a landing pricing ?url= prefill
     // instead routes to /onboarding (gate-exempt) to carry the brand website
     // through the Google OAuth round-trip.
     expect(signUpPage).toContain("redirectUrlComplete");
@@ -72,18 +69,6 @@ describe("DIS-111 edge gate lives in proxy.ts", () => {
     expect(signUpPage).toContain('router.replace("/orgs")');
     expect(signInPage).toContain('redirectUrlComplete: "/orgs"');
     expect(signInPage).toContain('router.replace("/orgs")');
-  });
-});
-
-describe("DIS-111 removes the client-side brand-count gate", () => {
-  it("dashboard layout no longer fetches brands or pushes to /onboarding", () => {
-    expect(layout).not.toContain("listBrands");
-    expect(layout).not.toContain('router.push("/onboarding")');
-  });
-
-  it("dashboard layout keeps the connection-error retry UI", () => {
-    expect(layout).toContain("if (isError)");
-    expect(layout).toContain("window.location.reload()");
   });
 });
 

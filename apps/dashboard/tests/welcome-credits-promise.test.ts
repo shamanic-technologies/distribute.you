@@ -52,7 +52,6 @@ const SURFACES = [
   // a referred signup is owed BOTH offers and the step has to say so. See the
   // referred-cohort block at the bottom of this file.
   "apps/dashboard/src/lib/welcome-offer-copy.ts",
-  "apps/dashboard/src/lib/onboarding-content.ts",
   "apps/dashboard/src/instrumentation.ts",
   "apps/landing/public/llms.txt",
   "apps/landing/src/lib/v2-shell.ts",

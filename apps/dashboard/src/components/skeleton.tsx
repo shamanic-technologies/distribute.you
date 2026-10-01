@@ -66,26 +66,3 @@ export function SkeletonCampaignList() {
   );
 }
 
-export function SkeletonApiKey() {
-  return (
-    <div className="space-y-6 max-w-2xl">
-      <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-5">
-        <div className="flex items-center justify-between mb-4">
-          <Skeleton className="h-5 w-24" />
-          <Skeleton className="h-6 w-20 rounded-full" />
-        </div>
-        <div className="bg-gray-50 dark:bg-gray-700 rounded-lg p-3 mb-4">
-          <Skeleton className="h-5 w-full" />
-        </div>
-        <div className="flex items-center justify-between">
-          <Skeleton className="h-4 w-32" />
-          <Skeleton className="h-4 w-24" />
-        </div>
-      </div>
-      <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-5">
-        <Skeleton className="h-5 w-24 mb-4" />
-        <Skeleton className="h-32 w-full rounded-lg" />
-      </div>
-    </div>
-  );
-}

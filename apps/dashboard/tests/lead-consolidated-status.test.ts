@@ -1,6 +1,4 @@
 import { describe, it, expect } from "vitest";
-import { readFileSync } from "node:fs";
-import { join } from "node:path";
 import { getLeadConsolidatedStatus, type Lead } from "../src/lib/api";
 
 function makeLead(overrides: Partial<Lead> = {}): Lead {
@@ -95,23 +93,5 @@ describe("getLeadConsolidatedStatus", () => {
   it("keeps replied and clicked above bounced", () => {
     expect(getLeadConsolidatedStatus(makeLead({ sent: true, bounced: true, replied: true }))).toBe("replied");
     expect(getLeadConsolidatedStatus(makeLead({ sent: true, bounced: true, clicked: true }))).toBe("clicked");
-  });
-
-  // The monotonic latch suppresses a "downgrade", so a priority list still ranking
-  // `sent` above `bounced` would pin the row on Sent however the derivation reads.
-  it("LEAD_STATUS_ORDER matches the derivation's own precedence", () => {
-    const src = readFileSync(
-      join(__dirname, "../src/components/audiences/engaged-leads-page.tsx"),
-      "utf8",
-    );
-    const at = src.indexOf("const LEAD_STATUS_ORDER");
-    const order = src.slice(at, src.indexOf("];", at));
-    const rank = (s: string) => order.indexOf(`"${s}"`);
-    expect(rank("bounced")).toBeGreaterThan(-1);
-    expect(rank("bounced")).toBeLessThan(rank("sent"));
-    expect(rank("bounced")).toBeLessThan(rank("delivered"));
-    expect(rank("unsubscribed")).toBeLessThan(rank("delivered"));
-    expect(rank("replied")).toBeLessThan(rank("bounced"));
-    expect(rank("clicked")).toBeLessThan(rank("bounced"));
   });
 });

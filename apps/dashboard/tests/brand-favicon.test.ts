@@ -13,7 +13,7 @@ describe("Brand favicon", () => {
     fs.readFileSync(path.join(__dirname, "..", rel), "utf-8");
 
   const src = read("src/components/brand-favicon.tsx");
-  const layout = read("src/app/(authed)/(dashboard)/layout.tsx");
+  const layout = read("src/components/v2/v2-client-layout.tsx");
 
   const sliceFrom = (haystack: string, marker: string, len: number) => {
     const at = haystack.indexOf(marker);
@@ -94,7 +94,7 @@ describe("Brand favicon", () => {
     expect(read("src/app/icon.svg")).toBe(kit);
   });
 
-  it("is mounted once in the dashboard layout", () => {
+  it("is mounted once in the dashboard v2 shell", () => {
     expect(layout).toContain('import { BrandFavicon } from "@/components/brand-favicon"');
     expect(layout).toContain("<BrandFavicon />");
   });

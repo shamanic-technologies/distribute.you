@@ -132,26 +132,6 @@ export function channelBudgetBelowMinimum(
 }
 
 /**
- * The line under a channel's budget field. A channel already funded under its floor
- * is told what it may DO, not a starting figure it is already below: quoting the
- * floor there reads as "you are not allowed to be here", on a ceiling the brand
- * has been paying against for weeks.
- *
- * Null when the catalogue states no floor for this channel — the figure is the
- * channel's to publish, and there is nothing honest to write in its place.
- */
-export function channelBudgetHint(
-  minimumCents: number | null,
-  savedGroupCents: number,
-): string | null {
-  if (minimumCents === null) return null;
-  if (!isGrandfatheredChannelFunding(minimumCents, savedGroupCents)) {
-    return `From ${fmtDailyFloorUsd(minimumCents)} a day.`;
-  }
-  return `Funded at ${fmtDailyFloorUsd(savedGroupCents)} a day today, which you can keep or raise.`;
-}
-
-/**
  * What to tell someone whose budget was refused. A grandfathered channel gets the
  * moves it actually has, not a floor it is not allowed to walk down to.
  *

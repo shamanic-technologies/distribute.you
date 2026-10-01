@@ -92,10 +92,10 @@ describe("crm attribution read", () => {
 
 describe("crm attribution call sites", () => {
   it("one card, mounted in the lead panel and in the CRM Merged panel", () => {
-    expect(src("src/components/audiences/engaged-leads-page.tsx")).toContain(
-      "<CrmAttributionCard leadRowId={selectedLead.id} brandId={brandId} />",
+    expect(src("src/components/v2/person-page.tsx")).toContain(
+      "<CrmAttributionCard leadRowId={leadRowId} brandId={brandId} />",
     );
-    const merged = src("src/components/crm/crm-merged-page.tsx");
+    const merged = src("src/components/v2/integrations-merged.tsx");
     expect(merged).toContain("<CrmAttributionCard leadRowId={lead.leadCampaignId} brandId={brandId} />");
     expect(merged).toContain('p.state === "paired"');
   });

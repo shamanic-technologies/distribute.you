@@ -40,7 +40,7 @@ const q = (status: string, key: readonly unknown[]): PersistableQuery => ({
 describe("shouldPersistQuery — only successful, non-sensitive queries persist", () => {
   it("persists a successful, non-sensitive query", () => {
     expect(shouldPersistQuery(q("success", ["campaigns", { brandId: "b1" }]))).toBe(true);
-    expect(shouldPersistQuery(q("success", ["featureStats", "ai-visibility-scoring"]))).toBe(true);
+    expect(shouldPersistQuery(q("success", ["featureRevenue", "ai-visibility-scoring"]))).toBe(true);
   });
 
   it("never persists a non-success (pending / error) query", () => {
@@ -67,19 +67,18 @@ describe("shouldPersistQuery — only successful, non-sensitive queries persist"
       "orgIdentity", "billingAccount", "subscription", "creditGrants", "billingPayments",
       "inviteStatus", "freeCreditPromises",
       // brand metadata + config
-      "brand", "brands", "brandSalesEconomics", "brandCampaignBudgets",
+      "brand", "brands", "brandCampaignBudgets",
       "brandSpendableBudget", "brandDailyBudget", "brandConversionToken",
       // offers + their outcome rows
       "brandOffers", "brandOffer", "offerUserFields", "offerEconomics",
-      "offerOutcomes",
       // leads
-      "brandLeads", "leadEmail", "leadReplyKind", "campaignReplyKinds",
+      "leadEmail",
       // money, at each grain it is asked at
-      "featureStats", "featureRevenue", "offerRevenue", "brandRevenue",
-      "featureRevenueByCampaign", "brandOfferMoney", "featurePipelineActivity",
+      "featureRevenue", "brandRevenue",
+      "featureRevenueByCampaign", "brandOfferMoney",
       "featureAudienceStats",
       // audiences / projection / campaigns
-      "audiences", "workflowProjection", "campaign", "campaigns", "campaignLeads",
+      "audiences", "campaign", "campaigns",
     ]) {
       expect(shouldPersistQuery(q("success", [root, "x"])), root).toBe(true);
     }
@@ -108,6 +107,10 @@ describe("shouldPersistQuery — only successful, non-sensitive queries persist"
       "brandEmails", "brandOutlets", "brandArticles", "brandJournalists",
       "enrichedJournalists", "brandMediaKits", "mediaKit", "outletStatsCosts",
       "campaignActivity", "domainTrafficHistory", "domainDrStatus", "domainAiVisibility",
+      // Went with dashboard v1 (deleted): their only readers were v1 pages.
+      "rewardTasks", "brandSalesEconomics", "brandLeads", "leadReplyKind",
+      "campaignReplyKinds", "campaignLeads", "offerOutcomes", "featureStats", "offerRevenue",
+      "featurePipelineActivity", "workflowProjection",
       // Retired with the sales-funnel model: budgets and lifetime revenue are keyed on
       // (offer x leg x channel) and on the offer now.
       "brandFunnelBudgets", "offerSalesFunnels",
@@ -355,9 +358,5 @@ describe("every org-scoped read's root is allowlisted (or explicitly sensitive)"
       }
     }
     expect([...unlisted].map(([r, f]) => `${r} (${f})`)).toEqual([]);
-  });
-
-  it("persists the offer's outcome rows", () => {
-    expect(isPersistableQueryKey(["offerOutcomes", "brand", "offer"])).toBe(true);
   });
 });

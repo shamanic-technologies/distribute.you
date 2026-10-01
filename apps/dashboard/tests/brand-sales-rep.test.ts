@@ -2,10 +2,7 @@ import { describe, expect, it } from "vitest";
 import { readFileSync } from "node:fs";
 
 const CARD = readFileSync("src/components/settings/brand-sales-rep-card.tsx", "utf8");
-const PAGE = readFileSync(
-  "src/app/(authed)/(dashboard)/orgs/[orgId]/brands/[brandId]/settings/page.tsx",
-  "utf8",
-);
+const PAGE = readFileSync("src/components/v2/brand-settings-page.tsx", "utf8");
 const API = readFileSync("src/lib/api.ts", "utf8");
 const PERSIST = readFileSync("src/lib/persist-cache.ts", "utf8");
 
@@ -31,7 +28,7 @@ function sliceToNextExport(src: string, marker: string): string {
 
 describe("the brand states one person to reach", () => {
   it("is mounted on brand Settings, not on a campaign or offer surface", () => {
-    expect(PAGE).toContain("<BrandSalesRepCard brandId={brandId} />");
+    expect(PAGE).toContain("<BrandSalesRepCard brandId={brandId}");
   });
 
   it("reads and writes the REP through the gateway, not the deprecated phone alias", () => {

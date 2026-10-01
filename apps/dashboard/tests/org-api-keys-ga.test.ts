@@ -5,10 +5,8 @@ import * as featureGates from "../src/lib/feature-gates";
 
 const read = (rel: string) => fs.readFileSync(path.join(__dirname, rel), "utf-8");
 
-const page = read(
-  "../src/app/(authed)/(dashboard)/orgs/[orgId]/api-keys/page.tsx",
-);
-const sidebar = read("../src/components/context-sidebar.tsx");
+// The org API key page moved into the v2 settings as a panel.
+const page = read("../src/components/settings/api-keys-panel.tsx");
 
 /**
  * The org API key page is GA.
@@ -24,17 +22,6 @@ describe("org API keys — GA, no maturity gate", () => {
     // `useFeatureFlag` returned false unconditionally in this app, so a gate hid a
     // surface rather than staging it. Registry and hook are both deleted.
     expect(featureGates).not.toHaveProperty("FEATURE_GATES");
-  });
-
-  it("the sidebar entry is ungated and wears no maturity badge", () => {
-    const org = sidebar.slice(
-      sidebar.indexOf("function OrgLevelSidebar"),
-      sidebar.indexOf("const ENTITY_ICON_MAP"),
-    );
-    expect(org.length).toBeGreaterThan(0);
-    expect(org).toMatch(/id:\s*"api-keys"/);
-    expect(org).not.toContain('FEATURE_GATES["keys"]');
-    expect(org).not.toContain("keysEnabled");
   });
 
   it("the page itself gates on nothing", () => {

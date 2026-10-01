@@ -28,39 +28,3 @@ export function landingHref(pathname: string): string {
   return `${pathname}${sep}${LANDING_PARAM}=${LANDING_VALUE}`;
 }
 
-/**
- * How long a landing may wait for the answer before it stops walking and renders where
- * it stands. Sized to cover the per-query persister's IndexedDB restore (local, a tick
- * after mount) and NOT a cold features-service round trip (seconds).
- */
-export const LANDING_RESOLVE_BUDGET_MS = 600;
-
-export function hasLandingIntent(
-  searchParams: Pick<URLSearchParams, "get">,
-): boolean {
-  return searchParams.get(LANDING_PARAM) === LANDING_VALUE;
-}
-
-/**
- * The one child to drill into, or null to stop here.
- *
- * `null` covers three genuinely different situations that all mean "this page is the
- * destination": nothing to drill into, and a real choice to make. Counting is the whole
- * rule — a list of one has no decision in it, a list of two or more does.
- *
- * Callers pass the rows the page WOULD RENDER, so skipping a page can never hide a row
- * from the reader.
- */
-export function soleChildId<T>(
-  rows: ReadonlyArray<T> | undefined,
-  idOf: (row: T) => string,
-): string | null {
-  if (!rows || rows.length !== 1) return null;
-  const id = idOf(rows[0]);
-  return id ? id : null;
-}
-
-/** `/orgs/:orgId/brands/:brandId/offers/:offerId`, still resolving. */
-export function landingOfferHref(brandPath: string, offerId: string): string {
-  return landingHref(`${brandPath}/offers/${encodeURIComponent(offerId)}`);
-}

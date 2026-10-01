@@ -4,74 +4,12 @@ import { join } from "node:path";
 
 const read = (rel: string) => readFileSync(join(process.cwd(), rel), "utf8");
 
-const src = read("src/components/header-page-context.tsx");
-
-describe("the top bar names where you are below the tenant", () => {
-  // Org and brand stay in the sidebar switcher: they are what does NOT change
-  // as you move around, and restating them here would duplicate the switcher.
-  // What changes is the proposition and the campaign of it.
-  it("carries the offer and the campaign, never the org or the brand", () => {
-    expect(src).toContain("OfferMark");
-    expect(src).toContain("<CampaignTitle");
-    expect(src).not.toContain("OrgAvatar");
-    expect(src).not.toContain("BrandLogo");
-  });
-
-  // The parser lives in ONE place with a test on it. The previous version
-  // hardcoded the campaign at path segment 4 inside the component and broke
-  // silently the day campaigns moved under the offer — the bar rendered
-  // nothing on every campaign page and nothing went red.
-  it("parses the path in one named function, not inline indices", () => {
-    expect(src).toContain("export function offerRouteFromPath");
-    const marker = "export function offerRouteFromPath";
-    const after = src.slice(src.indexOf(marker) + marker.length);
-    const component = after.slice(after.indexOf("export function HeaderPageContext"));
-    expect(component).not.toContain("split(\"/\")");
-  });
-
-  // A breadcrumb's last item is where you already are.
-  it("links the offer only when it is not the current page", () => {
-    expect(src).toContain("offerIsCurrent");
-    expect(src).toContain('aria-current="page"');
-  });
-
-  // Both keys are byte-equal to the ones the pages below already poll, so the
-  // bar costs no extra request.
-  it("shares its queries with the pages under it", () => {
-    expect(src).toContain('["campaign", route?.campaignId ?? "none"]');
-    expect(src).toContain('["brandOffer", route?.brandId ?? "none", route?.offerId ?? "none"]');
-  });
-
-  // A placeholder word would state a name we do not have yet.
-  it("skeletons an unresolved label rather than naming it", () => {
-    expect(src).toContain("CrumbSkeleton");
-    expect(src).not.toContain('|| "Offer"');
-    expect(src).not.toContain('|| "Campaign"');
-  });
-
-  // The funnel is no longer a page, so the bar names no funnel: Offer / Campaign.
-  it("names no funnel crumb", () => {
-    expect(src).not.toContain("funnel");
-    expect(src).not.toContain("/funnels/");
-  });
-
-  // Every tile in the bar is the SAME size, and it holds by construction.
+describe("the offer and the campaign marks share one tile size", () => {
+  // Every tile on one line is the SAME size, and it holds by construction.
   // `OfferMark`'s "sm" is 18px while the leg and channel marks' "sm" is a
-  // 32px table tile, so passing "sm" to both drew an 18px offer beside two
-  // 32px campaign marks on one line — reported as the two crumbs reading as
-  // different styles. The campaign half now asks for "xs", which those two
+  // 32px table tile, so the campaign half asks for "xs", which those two
   // marks define as the same 18px `rounded` tile the offer wears.
   it("draws the offer and the campaign at one tile size", () => {
-    expect(src).toContain('<OfferMark size="sm" />');
-    // The campaign crumb no longer carries a size: it renders the shared inline
-    // identity, which pins both of its marks to `xs` itself — one place decides
-    // the tile, so the crumbs line up by construction rather than by a prop a
-    // call site can get wrong.
-    const identity = read("src/components/campaigns/campaign-identity.tsx");
-    const inline = identity.slice(identity.indexOf("export function CampaignIdentityInline("));
-    // Two: the leg's tile and the channel's.
-    expect((inline.match(/size="xs"/g) ?? []).length).toBe(2);
-
     const offer = read("src/components/marks/offer-mark.tsx");
     expect(offer).toContain('size === "sm" ? "h-[18px] w-[18px] rounded"');
 
@@ -84,17 +22,5 @@ describe("the top bar names where you are below the tenant", () => {
       expect(mark).toContain('xs: "h-[18px] w-[18px] rounded"');
       expect(mark).toContain("xs: 12");
     }
-  });
-});
-/**
- * The funnel leg page is GONE (owner-decided 2026-09-25), and so is the funnel level
- * above it: the bar names the offer and, under it, the campaign.
- */
-describe("no leg crumb", () => {
-  it("parses no `legs` segment and draws no leg crumb", () => {
-    expect(src).not.toContain("legKey");
-    expect(src).not.toContain('"legs"');
-    expect(src).not.toContain("<LegMark");
-    expect(src).toContain("const offerIsCurrent = route.campaignId === null;");
   });
 });

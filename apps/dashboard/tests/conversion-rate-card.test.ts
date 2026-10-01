@@ -1,16 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { readFileSync } from "node:fs";
-import { join } from "node:path";
 import { parseFeatureRevenue } from "../src/lib/revenue-parse";
-import { formatConversionPct } from "../src/components/revenue/conversion-rate-card";
 import { NULL_PAIR } from "./fixtures/maturity";
-
-const SRC = join(__dirname, "..", "src");
-const CARD = readFileSync(join(SRC, "components/revenue/conversion-rate-card.tsx"), "utf8");
-const PAGE = readFileSync(
-  join(SRC, "components/campaigns/campaign-overview-page.tsx"),
-  "utf8",
-);
 
 /**
  * THE BLOCK PRODUCTION ACTUALLY SENDS, captured verbatim — brand `6e21bb6c…` /
@@ -134,16 +124,6 @@ describe("a null point and a zero point are different statements", () => {
     expect(plottable[0].conversionRatePct).toBe(0);
     void parsed;
   });
-
-  it("the card's own filter is the same one — null out, zero in", () => {
-    expect(CARD).toContain("d.conversionRatePct != null");
-    // Never a truthiness test, which would silently drop the measured zero.
-    expect(CARD).not.toMatch(/filter\(\(d\) => d\.conversionRatePct\)/);
-  });
-
-  it("states the OPPOSITE polarity to the cost curve, so nobody 'fixes' it later", () => {
-    expect(CARD).toContain("OPPOSITE");
-  });
 });
 
 describe("the headline reconciles with the rung the same body serves", () => {
@@ -156,66 +136,5 @@ describe("the headline reconciles with the rung the same body serves", () => {
     expect(h.scopeConversionRatePct).toBe(PROD_RUNG_PCT);
     expect(h.daily[h.daily.length - 1].conversionRatePct).toBe(PROD_RUNG_PCT);
     expect(h.undatedContacted + h.undatedOutcomes).toBe(0);
-  });
-});
-
-describe("the card divides nothing and invents nothing", () => {
-  it("prints the SERVED mature rate rather than dividing two of the producer's fields", () => {
-    // features-service#1196: the headline is the MATURE half of the scope's conversion,
-    // Learning exactly where the producer says the scope is not mature.
-    expect(CARD).toContain('shownFigure(history?.maturity, (h) => h.conversionRatePct, "mature")');
-    expect(CARD).toContain("headline.learning ?");
-    expect(CARD).toContain("<LearningTag paused={paused} />");
-    expect(CARD).not.toMatch(/cumulativeOutcomes\s*\/\s*cumulativeContacted/);
-    expect(CARD).not.toMatch(/datedOutcomes\s*\//);
-  });
-
-  it("names the step in the producer's words, never a noun of its own", () => {
-    expect(CARD).toContain("history?.outcomeStep?.label");
-  });
-
-  it("says a projection is a projection", () => {
-    expect(CARD).toContain("outcomeObserved === false");
-    expect(CARD).toContain("Projected, since launch");
-  });
-
-  it("says the line and the figure count two populations rather than reconciling them", () => {
-    // The line is every person and outcome to date; the figure is the mature cohort. The
-    // tip states both, with the one shared sentence that describes a mature figure.
-    expect(CARD).toContain("MATURE_COST_NOTE");
-    expect(CARD).toContain("The line is every person and outcome to date");
-  });
-});
-
-describe("formatConversionPct keeps the decimal where it changes an answer", () => {
-  it("one decimal under 10%", () => {
-    // 0.1% and 0.9% are different answers about a campaign and both round to 0%.
-    expect(formatConversionPct(0.1)).toBe("0.1%");
-    expect(formatConversionPct(0.9)).toBe("0.9%");
-    expect(formatConversionPct(PROD_RUNG_PCT)).toBe("5.1%");
-  });
-
-  it("none at or above 10%, where it is false precision", () => {
-    expect(formatConversionPct(10)).toBe("10%");
-    expect(formatConversionPct(16.9)).toBe("17%");
-  });
-
-  it("a measured zero prints as a zero", () => {
-    expect(formatConversionPct(0)).toBe("0.0%");
-  });
-});
-
-describe("the campaign Overview mounts it", () => {
-  it("renders the card in the charts row, third", () => {
-    // A card perfectly able to draw is the feature entirely absent if the page never
-    // renders it.
-    const row = PAGE.slice(PAGE.indexOf("chartsRow={"), PAGE.indexOf("topRow={"));
-    expect(row).toContain("<ConversionRateCard");
-    expect(row.indexOf("<TopModelsCard")).toBeLessThan(row.indexOf("<ConversionRateCard"));
-  });
-
-  it("reads the field off the revenue body the page already polls — no second request", () => {
-    expect(PAGE).toContain("data?.conversionRateHistory");
-    expect(PAGE).not.toContain("conversion-rate-history");
   });
 });

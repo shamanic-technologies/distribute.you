@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
-import { keepLastGoodFields, keepLastGoodList } from "../src/lib/keep-last-good";
+import { keepLastGoodFields } from "../src/lib/keep-last-good";
 
 // keep-last-good = the cache-write-boundary merge that stops a valid-but-degenerate refetch
 // (a non-null field flipping to null on a 200) from collapsing UI derived off it. See the
@@ -49,36 +49,3 @@ describe("keepLastGoodFields", () => {
   });
 });
 
-describe("keepLastGoodList", () => {
-  const keyFn = (w: { slug: string; cpc: number | null }) => w.slug;
-
-  it("returns a copy of next when prev is empty/undefined", () => {
-    const next = [{ slug: "a", cpc: 1 }];
-    expect(keepLastGoodList(undefined, next, { keyFn, fields: ["cpc"] })).toEqual(next);
-    expect(keepLastGoodList([], next, { keyFn, fields: ["cpc"] })).toEqual(next);
-  });
-
-  it("per-item coalesces a nulled field against the matching prev item", () => {
-    const prev = [{ slug: "a", cpc: 10 }, { slug: "b", cpc: 20 }];
-    const next = [{ slug: "a", cpc: null }, { slug: "b", cpc: 25 }];
-    const merged = keepLastGoodList(prev, next, { keyFn, fields: ["cpc"] });
-    expect(merged.find((w) => w.slug === "a")?.cpc).toBe(10); // kept last-good
-    expect(merged.find((w) => w.slug === "b")?.cpc).toBe(25); // real update wins
-  });
-
-  it("retains a prev item that vanished from next (transient empty payload)", () => {
-    const prev = [{ slug: "a", cpc: 10 }, { slug: "b", cpc: 20 }];
-    const next = [{ slug: "a", cpc: 11 }]; // 'b' dropped on this refetch
-    const merged = keepLastGoodList(prev, next, { keyFn, fields: ["cpc"] });
-    expect(merged.map((w) => w.slug).sort()).toEqual(["a", "b"]);
-    expect(merged.find((w) => w.slug === "b")?.cpc).toBe(20); // last-good retained
-    expect(errSpy).toHaveBeenCalled(); // fail-loud on the vanished item
-  });
-
-  it("adds a genuinely-new item from next", () => {
-    const prev = [{ slug: "a", cpc: 10 }];
-    const next = [{ slug: "a", cpc: 10 }, { slug: "c", cpc: 30 }];
-    const merged = keepLastGoodList(prev, next, { keyFn, fields: ["cpc"] });
-    expect(merged.map((w) => w.slug).sort()).toEqual(["a", "c"]);
-  });
-});

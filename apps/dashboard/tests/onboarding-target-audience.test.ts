@@ -19,8 +19,6 @@ import { join } from "node:path";
  */
 const flow = readFileSync(join(__dirname, "../src/components/onboarding/onboarding.tsx"), "utf8");
 const api = readFileSync(join(__dirname, "../src/lib/api.ts"), "utf8");
-const banner = readFileSync(join(__dirname, "../src/components/onboarding/no-audience-banner.tsx"), "utf8");
-const reminders = readFileSync(join(__dirname, "../src/components/onboarding/onboarding-reminders.tsx"), "utf8");
 
 const step = flow.slice(flow.indexOf("function OnboardingAudiences("), flow.indexOf("function BrandStepHeader("));
 const saver = flow.slice(flow.indexOf("async function saveTargetAudienceAndContinue()"), flow.indexOf("function continueFromServices()"));
@@ -88,18 +86,5 @@ describe("nothing creates or activates an audience during onboarding", () => {
   it("the built summary states the text as prose, not an audience list", () => {
     expect(flow).toContain("targetAudience: audiencePrompt,");
     expect(flow).not.toContain("audiences: (audienceCandidates");
-  });
-});
-
-describe("the dashboard does not ask the customer to add what we are building", () => {
-  it("the no-audience banner carries no CTA and reads as status, not alarm", () => {
-    expect(banner).toContain("{copy.cta && (");
-    expect(banner).toContain('const building = nudge.tier === "zero-active";');
-    expect(banner).toContain('role={building ? "status" : "alert"}');
-  });
-
-  it("the reminder modal has no zero-active copy to show", () => {
-    expect(reminders).not.toContain("REMINDER_COPY.audience;");
-    expect(reminders).toContain("audience reminder has no copy for tier");
   });
 });

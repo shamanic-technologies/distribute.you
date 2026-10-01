@@ -42,17 +42,10 @@ describe("wentColdReason says why in the customer's words", () => {
   });
 });
 
-describe("call sites: the board card and the lead panel read the ONE helper", () => {
-  it("the page threads it onto the card and renders it in the panel", () => {
-    const page = read("components/audiences/engaged-leads-page.tsx");
-    expect(page).toContain("wentCold: leadWentCold(lead.standing)");
-    expect(page).toContain("leadWentCold(selectedLead.standing)");
-  });
-  it("the board card renders the tag, and the panel carries the reason", () => {
-    const board = read("components/leads/lead-board.tsx");
-    expect(board).toContain('data-testid="lead-board-card-cold"');
-    expect(board).toContain("{card.wentCold && (");
-    const page = read("components/audiences/engaged-leads-page.tsx");
+describe("call site: the person page reads the ONE helper", () => {
+  it("reads the served fact and states the reason", () => {
+    const page = read("components/v2/person-page.tsx");
+    expect(page).toContain("leadWentCold(");
     expect(page).toContain("wentColdReason(cold)");
   });
 });

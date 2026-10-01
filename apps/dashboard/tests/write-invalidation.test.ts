@@ -40,27 +40,19 @@ describe("invalidateRoots", () => {
 describe("LEAD_OUTCOME_ROOTS", () => {
   it("covers EVERY grain the same money is served under", () => {
     // The bug this closes: `featureRevenue` alone left the brand Overview, the offer
-    // money, the offer's outcome rows and the per-campaign rows on the pre-write figure.
+    // money and the per-campaign rows on the pre-write figure.
     for (const root of [
       "featureRevenue",
       "featureRevenueByCampaign",
-      "offerRevenue",
       "brandRevenue",
       "brandOfferMoney",
-      "offerOutcomes",
     ]) {
       expect(LEAD_OUTCOME_ROOTS).toContain(root);
     }
   });
 
-  it("covers the per-audience costs, the stat row and the activity grain", () => {
-    for (const root of [
-      "featureAudienceStats",
-      "featureStats",
-      "featurePipelineActivity",
-    ]) {
-      expect(LEAD_OUTCOME_ROOTS).toContain(root);
-    }
+  it("covers the per-audience costs", () => {
+    expect(LEAD_OUTCOME_ROOTS).toContain("featureAudienceStats");
   });
 
   it("does NOT invalidate the fleet-wide workflow projection", () => {
@@ -132,10 +124,8 @@ describe("the module stays unit-testable", () => {
 describe("call sites", () => {
   const sites: [string, string][] = [
     ["lib/use-lead-step-statements.ts", "invalidateLeadOutcome"],
-    ["components/audiences/engaged-leads-page.tsx", "invalidateLeadOutcome"],
     ["components/campaigns/campaign-controls-modal.tsx", "invalidateCampaignMoney"],
     ["components/settings/campaign-settings-card.tsx", "invalidateCampaignMoney"],
-    ["components/settings/offer-campaigns-card.tsx", "invalidateCampaignMoney"],
   ];
 
   for (const [path, fn] of sites) {
@@ -146,13 +136,8 @@ describe("call sites", () => {
     });
   }
 
-  it("the lead write sites no longer invalidate featureRevenue alone", () => {
-    for (const path of [
-      "lib/use-lead-step-statements.ts",
-      "components/audiences/engaged-leads-page.tsx",
-    ]) {
-      expect(read(path)).not.toContain('queryKey: ["featureRevenue"]');
-    }
+  it("the lead write site no longer invalidates featureRevenue alone", () => {
+    expect(read("lib/use-lead-step-statements.ts")).not.toContain('queryKey: ["featureRevenue"]');
   });
 
   it("the budget writers no longer hand-list their own roots", () => {
@@ -164,16 +149,9 @@ describe("call sites", () => {
     }
   });
 
-  it("the four lead-outcome mutations each invalidate the whole set", () => {
-    // set + withdraw per-lead, and their two row-scoped twins for the board.
+  it("the lead-outcome mutation invalidates the whole set", () => {
+    // The row-scoped statement (`useSetAnyLeadStepStatement`), the one write left.
     const src = read("lib/use-lead-step-statements.ts");
-    expect((src.match(/invalidateLeadOutcome\(queryClient\)/g) ?? []).length).toBe(4);
-  });
-
-  it("the four lead-page writes each invalidate the whole set", () => {
-    // setReply, withdrawReply, the board's triage move, and the board's sale move —
-    // the last one states or takes back a deal, which moves money at every grain.
-    const src = read("components/audiences/engaged-leads-page.tsx");
-    expect((src.match(/invalidateLeadOutcome\(queryClient\)/g) ?? []).length).toBe(4);
+    expect((src.match(/invalidateLeadOutcome\(queryClient\)/g) ?? []).length).toBe(1);
   });
 });

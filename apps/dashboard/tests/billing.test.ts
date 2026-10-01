@@ -4,10 +4,9 @@ import * as path from "path";
 
 const apiPath = path.resolve(__dirname, "../src/lib/api.ts");
 const proxyPath = path.resolve(__dirname, "../src/app/(authed)/api/v1/[...path]/route.ts");
-const billingPagePath = path.resolve(__dirname, "../src/app/(authed)/(dashboard)/orgs/[orgId]/billing/page.tsx");
+const billingPagePath = path.resolve(__dirname, "../src/components/v2/billing-page.tsx");
 const billingGuardPath = path.resolve(__dirname, "../src/lib/billing-guard.tsx");
-const layoutPath = path.resolve(__dirname, "../src/app/(authed)/(dashboard)/layout.tsx");
-const sidebarPath = path.resolve(__dirname, "../src/components/context-sidebar.tsx");
+const layoutPath = path.resolve(__dirname, "../src/components/v2/v2-client-layout.tsx");
 
 describe("Billing API wrappers", () => {
   const content = fs.readFileSync(apiPath, "utf-8");
@@ -211,11 +210,11 @@ describe("Billing guard wired into layout", () => {
 });
 
 describe("Billing page", () => {
-  it("should exist at orgs/[orgId]/billing/page.tsx", () => {
+  it("should exist at components/v2/billing-page.tsx", () => {
     expect(fs.existsSync(billingPagePath)).toBe(true);
   });
 
-  const content = fs.readFileSync(billingPagePath.replace("app/(authed)/(dashboard)/orgs/[orgId]/billing/page.tsx", "components/billing/use-billing-controller.ts"), "utf-8") + fs.readFileSync(billingPagePath, "utf-8");
+  const content = fs.readFileSync(path.resolve(__dirname, "../src/components/billing/use-billing-controller.ts"), "utf-8") + fs.readFileSync(billingPagePath, "utf-8");
 
   it("should be a client component", () => {
     expect(content).toContain('"use client"');
@@ -232,7 +231,6 @@ describe("Billing page", () => {
     expect(content).not.toContain("listBillingTransactions");
     expect(content).not.toContain("BillingTransaction");
     expect(content).not.toContain("Transaction History");
-    expect(content).not.toContain('"payments"');
   });
 
   it("should read has_auto_topup from snake_case response", () => {
@@ -272,55 +270,12 @@ describe("Billing page", () => {
     expect(content).not.toContain("Credit Balance</p>");
   });
 
-  it("should show depleted warning keyed on AVAILABLE balance (balance_cents), not the gross actual balance", () => {
-    expect(content).toContain("isDepleted");
-    expect(content).toContain("Credits depleted");
-    // isDepleted now keys on availableCents (= balance_cents), so the warning fires
-    // when spending is actually blocked even with a positive gross total.
-    expect(content).toMatch(/isDepleted\s*=\s*account\s*\?\s*!hasAutoTopup\s*&&\s*availableCents\s*<=\s*0/);
-  });
-
-  it("should give each breakdown line an info tooltip with no em-dash", () => {
-    expect(content).toContain("InfoTooltip");
-    // Tooltip copy present (humanizer-clean, plain language).
-    expect(content).toContain("Everything added to your account, including top-ups.");
-    expect(content).toContain("Emails already sent and billed. This won't change.");
-    expect(content).toContain("Reserved for follow-up emails we've scheduled.");
-    // The user-facing breakdown copy uses a real minus glyph (&minus;) for charges,
-    // never an em-dash. (Code comments are exempt from the em-dash rule.)
-    expect(content).toContain("&minus;");
-  });
-
   it("should show top-up flow when auto-topup is not configured", () => {
     // Presets are sized to N days of the org's combined daily burn.
     expect(content).toContain("topupPresetsForDailyBudget");
     expect(content).toContain("presetAmounts");
     expect(content).toContain("Add Credits");
     expect(content).toContain("handleTopup");
-  });
-
-  it("should show a READ-ONLY next-charge status when auto-topup is configured (no editable amount/threshold — derived server-side)", () => {
-    // Auto-topup amount + credit-line floor are DERIVED (billing-service tier
-    // ladder), so the page shows the upcoming charge, not editable inputs.
-    expect(content).toContain("Next charge");
-    expect(content).toContain("spentSinceChargeCents");
-    expect(content).toContain("creditLineCents");
-    expect(content).toContain("chargePct");
-    expect(content).toContain("nextChargeDate");
-    // The old editable-config UI + the Disable button are gone (auto-topup is
-    // mandatory for a recurring subscription; amount/threshold are derived).
-    expect(content).not.toContain("editingTopup");
-    expect(content).not.toContain("handleSaveTopup");
-    expect(content).not.toContain("Save changes");
-    expect(content).not.toContain("handleDisableTopup");
-    expect(content).not.toContain("Disable auto-topup");
-  });
-
-  it("should fold the auto-topup status into the Credits card as compact subtext (one consolidated card, not a separate auto-topup card)", () => {
-    // Best-practice consolidation: the balance + next-charge status live in one
-    // card; auto-topup is dynamic subtext, gated on hasAutoTopup.
-    expect(content).toContain("Auto-topup on");
-    expect(content).toContain("{hasAutoTopup && (");
   });
 
   it("should show a short dedicated Payment method section", () => {
@@ -332,16 +287,6 @@ describe("Billing page", () => {
   it("should show the month-end sweep guarantee date on the next-charge line", () => {
     expect(content).toContain("lastDayOfMonthLabel");
     expect(content).toContain("or on ");
-  });
-
-  it("should integrate auto-topup as a checkbox (no amount/threshold inputs) inside the Add Credits card", () => {
-    expect(content).toContain("enableAutoTopup");
-    expect(content).toContain("Enable auto-topup");
-    // Amount + threshold are derived server-side — no user-editable input STATE
-    // remains (the derived display value topupAmountCents is fine).
-    expect(content).not.toContain("setTopupAmount");
-    expect(content).not.toContain("setTopupThreshold");
-    expect(content).not.toContain("topupThreshold");
   });
 
   it("should default the auto-topup checkbox to on", () => {
@@ -370,13 +315,6 @@ describe("Billing page", () => {
     expect(content).not.toContain("topupAmountError");
   });
 
-  it("should show inline error on blur when custom amount is below $10", () => {
-    expect(content).toContain("handleCustomAmountBlur");
-    expect(content).toContain("Minimum top-up is $10.");
-    expect(content).toContain("customAmountError");
-    expect(content).toContain("onBlur={handleCustomAmountBlur}");
-  });
-
   it("should disable Add Credits button when validation errors exist", () => {
     expect(content).toContain("hasValidationError");
   });
@@ -402,11 +340,6 @@ describe("Billing page", () => {
     expect(content).toContain("handleManagePayment");
     expect(content).toContain("Payment method");
     expect(content).toContain("createPortalSession");
-  });
-
-  it("should have loading skeleton state", () => {
-    expect(content).toContain("animate-pulse");
-    expect(content).toContain("accountPending");
   });
 });
 
@@ -536,55 +469,12 @@ describe("Credit-balance breakdown math", () => {
   });
 });
 
-describe("Billing sidebar link", () => {
-  const content = fs.readFileSync(sidebarPath, "utf-8");
-
-  it("should have billing link in org-level sidebar", () => {
-    expect(content).toContain('"Billing"');
-    expect(content).toContain('`/orgs/${orgId}/billing`');
-  });
-
-  it("should have a BillingIcon component", () => {
-    expect(content).toContain("BillingIcon");
-  });
-});
-
-describe("billing page — change card settles first (T4 of the card-removal guard)", () => {
-  const page = (fs.readFileSync(
-    path.join(__dirname, "../src/components/billing/use-billing-controller.ts"),
-    "utf8"
-  ) + fs.readFileSync(
-    path.join(__dirname, "../src/app/(authed)/(dashboard)/orgs/[orgId]/billing/page.tsx"),
-    "utf8"
-  ));
-  const paymentMethod = page.slice(page.indexOf("Payment method — short dedicated section"));
-
-  it("the card button reads Change card, never Manage (the page lets a customer replace a card, not manage a list)", () => {
-    expect(paymentMethod).toContain('"Change card"');
-    expect(paymentMethod).not.toContain('"Manage"');
-  });
-
-  it("a customer running on credit is told the balance is charged on the current card when the page opens", () => {
-    // Keyed on the shared settle rule rather than on the raw balance: billing
-    // skips the charge for a card that cannot be charged off_session and for a
-    // deficit under the acquirer minimum, and this line used to promise one in
-    // both cases. See lib/card-change-settle.
-    expect(paymentMethod).toContain("settleCents !== null && (");
-    expect(paymentMethod).toContain("Opening this charges your");
-    expect(paymentMethod).toContain("formatBillingCents(settleCents)");
-  });
-
-  it("states that the card can be changed whatever the charge does, which is the whole point of the notice", () => {
-    expect(paymentMethod).toContain("whether or not it goes through");
-  });
-});
-
 describe("billing page — opening the card page is never refused", () => {
   const page = (fs.readFileSync(
     path.join(__dirname, "../src/components/billing/use-billing-controller.ts"),
     "utf8"
   ) + fs.readFileSync(
-    path.join(__dirname, "../src/app/(authed)/(dashboard)/orgs/[orgId]/billing/page.tsx"),
+    billingPagePath,
     "utf8"
   ));
   // `openCardPage` is the half that actually opens it; `handleManagePayment`

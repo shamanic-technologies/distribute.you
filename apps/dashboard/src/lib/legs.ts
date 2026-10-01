@@ -163,14 +163,6 @@ export function legFor(catalogue: LegCatalogue, legKey: string | null | undefine
   return catalogue.legs.get(legKey) ?? null;
 }
 
-/** The legs a channel performs, resolved. Empty for a channel the catalogue misses. */
-export function channelLegs(catalogue: LegCatalogue, featureSlug: string | null | undefined): LegDef[] {
-  if (!featureSlug) return [];
-  return (catalogue.legsByChannel.get(featureSlug) ?? [])
-    .map((key) => catalogue.legs.get(key))
-    .filter((leg): leg is LegDef => leg !== undefined);
-}
-
 /**
  * The leg identified by the two steps it connects — the inverse lookup, for a surface
  * that knows which move it is buying and must state it the way the fleet keys it.

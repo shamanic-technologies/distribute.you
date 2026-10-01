@@ -86,14 +86,6 @@ export const MATURITY_LEARNING_NOTE =
   "Still learning: a price here only counts the runs old enough for their results to have arrived, and those runs have not produced enough results yet to state one. It appears as soon as they have.";
 
 /**
- * What a MATURE figure is, in one sentence a customer can restate. ONE constant behind
- * every tooltip that explains a mature cost or rate, so two surfaces cannot describe two
- * different rules. No number in it: the duration is the producer's, published per leg.
- */
-export const MATURE_COST_NOTE =
-  "It only counts outreach sent long enough ago for the answers to have arrived, together with every result those leads produced, so recent emails still waiting for a reply do not skew it.";
-
-/**
  * What the tag says when the campaign that would have produced the outcomes is PAUSED.
  * A paused campaign lands nothing, so `Learning` there would state a process that is not
  * running; the word is the one the status pill already uses.

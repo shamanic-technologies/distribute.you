@@ -36,19 +36,38 @@ describe("v2PathForV1: every v1 brand page has a v2 twin", () => {
     expect(map(p, s)).toBe(want);
   });
 
-  it("an org-level page with no remembered brand stays on v1", () => {
-    expect(v2PathForV1(`/orgs/${O}/billing`, "", { lastBrand: () => undefined })).toBeNull();
+  it("an org-level page with no remembered brand lands on the org's v2 page (v1 is gone)", () => {
+    expect(v2PathForV1(`/orgs/${O}/billing`, "", { lastBrand: () => undefined })).toBe(`/v2/orgs/${O}`);
+    expect(v2PathForV1(`/orgs/${O}/billing`, "?success=true", { lastBrand: () => undefined })).toBe(
+      `/v2/orgs/${O}?success=true`,
+    );
   });
 
-  it("paths v2 has no twin for are left alone", () => {
+  it("the old root, org list, account and API key pages land on the active org", () => {
+    const opts = { activeOrgId: O, lastBrand: () => B };
+    expect(v2PathForV1("/", "", opts)).toBe(`/v2/orgs/${O}`);
+    expect(v2PathForV1("/orgs", "", opts)).toBe(`/v2/orgs/${O}`);
+    expect(v2PathForV1("/account", "", opts)).toBe(`/v2/orgs/${O}/brands/${B}/account`);
+    expect(v2PathForV1("/api-keys", "", opts)).toBe(`/v2/orgs/${O}/brands/${B}/api-keys`);
+    // No active org: Clerk's org picker, never a loop back through /orgs.
+    expect(v2PathForV1("/orgs", "", {})).toBe("/session-tasks/choose-organization");
+  });
+
+  it("an old page with no v2 twin lands on the nearest v2 page above it, never a 404", () => {
+    expect(map(`/orgs/${O}/brands/${B}/unknown`)).toBe(`/v2/orgs/${O}/brands/${B}`);
+    expect(map(`/orgs/${O}/brands/${B}/offers/x/unknown`)).toBe(`/v2/orgs/${O}/brands/${B}`);
+    expect(map(`/orgs/${O}/whatever`)).toBe(`/v2/orgs/${O}`);
+  });
+
+  it("paths that are not old dashboard URLs are left alone", () => {
     expect(map("/onboarding")).toBeNull();
+    expect(map("/get-started")).toBeNull();
     expect(map(`/v2/orgs/${O}/brands/${B}`)).toBeNull();
-    expect(map(`/orgs/${O}/brands/${B}/unknown`)).toBeNull();
   });
 });
 
 describe("v2 never links to v1", () => {
-  const { readdirSync, readFileSync, statSync } = require("fs") as typeof import("fs");
+  const { existsSync, readdirSync, readFileSync, statSync } = require("fs") as typeof import("fs");
   const { join, resolve } = require("path") as typeof import("path");
   const walk = (dir: string): string[] =>
     readdirSync(dir).flatMap((f) => {
@@ -73,8 +92,10 @@ describe("v2 never links to v1", () => {
     expect(hits).toEqual([]);
   });
 
-  it("the Back-to-v1 switch is the only exit, and it lives in the account menu", () => {
+  it("v1 is deleted: no version switch is left anywhere", () => {
     const menus = readFileSync(join(root, "components/v2/sidebar-menus.tsx"), "utf-8");
-    expect(menus).toContain('switchUiVersion("v1", backToV1Href(');
+    expect(menus).not.toContain("switchUiVersion");
+    expect(existsSync(join(root, "components/ui-version-switch.tsx"))).toBe(false);
+    expect(existsSync(join(root, "app/(authed)/(dashboard)"))).toBe(false);
   });
 });

@@ -22,9 +22,8 @@ import {
 } from "./leads-server-page";
 import type { PublishedChannelTerms } from "./channel-minimums";
 import { ORG_DESYNC_ERROR, ORG_DESYNC_STATUS } from "./org-desync";
-import { keepLastGoodFields, keepLastGoodList } from "./keep-last-good";
+import { keepLastGoodFields } from "./keep-last-good";
 import type { RevenueOverview } from "./revenue-view";
-import { parseOfferOutcomes, type OfferOutcomes } from "./offer-outcomes";
 import type {
   WorkflowCatalogueRow,
   WorkflowDynastyMembership,
@@ -33,8 +32,6 @@ import type {
 } from "./campaign-workflow-rows";
 import type { LeadStanding } from "./lead-standing";
 import type { LeadConversation } from "./lead-conversation";
-import type { ReplyKind } from "./reply-kind";
-import type { OptOutChannel } from "./opt-out-channel";
 import { EconomicsMaturitySchema, ScopeMaturitySchema, parseFeatureRevenue } from "./revenue-parse";
 import { maturityPairSchema, type MaturityPair } from "./maturity";
 import type { EconomicsFigures, OutcomeFigures, ScopeMaturity } from "./revenue-view";
@@ -843,11 +840,6 @@ export async function getChatSessionHistory(
   return parsed.data;
 }
 
-// Activity tracking
-export async function trackActivity(token?: string): Promise<{ ok: boolean }> {
-  return apiCall<{ ok: boolean }>("/activity", { token, method: "POST" });
-}
-
 // Auth event notifications (signup/signin)
 export async function sendAuthNotification(
   eventType: string,
@@ -1534,33 +1526,11 @@ const BrandSalesEconomicsSchema = z.object({
   updatedAt: z.string(),
 });
 
-// READ: salesEconomics is null when nothing is saved yet (unset is a 200, not a 404).
-const GetBrandSalesEconomicsResponseSchema = z.object({
-  salesEconomics: BrandSalesEconomicsSchema.nullable(),
-});
-
 // WRITE: the row was just persisted, so salesEconomics is always present. Per CLAUDE.md
 // #1221 the write response DTO is narrower than the read sibling — its own schema.
 const SaveBrandSalesEconomicsResponseSchema = z.object({
   salesEconomics: BrandSalesEconomicsSchema,
 });
-
-/** GET /brands/:brandId/sales-economics — saved set or { salesEconomics: null } when unset. */
-export async function getBrandSalesEconomics(
-  brandId: string,
-  token?: string,
-): Promise<{ salesEconomics: BrandSalesEconomics | null }> {
-  const raw = await apiCall<unknown>(`/brands/${brandId}/sales-economics`, { token });
-  const parsed = GetBrandSalesEconomicsResponseSchema.safeParse(raw);
-  if (!parsed.success) {
-    console.error("[dashboard] getBrandSalesEconomics: response shape mismatch", {
-      issues: parsed.error.issues,
-      raw,
-    });
-    throw new Error("[dashboard] getBrandSalesEconomics: invalid response shape");
-  }
-  return parsed.data;
-}
 
 /** PUT /brands/:brandId/sales-economics — idempotent upsert of the 5 metrics (+ optional businessModel). */
 export async function saveBrandSalesEconomics(
@@ -2797,93 +2767,6 @@ export type LeadStepName = "signup" | "meeting_booked" | "meeting_attended" | "f
 
 export type LeadStepState = "outcome" | "never" | "pending";
 
-const LeadStepEntrySchema = z.object({
-  step: z.string(),
-  state: z.enum(["outcome", "never", "pending"]),
-  /**
-   * Whether a PERSON stated this step or the step ORDER implies it (lead-service v0.60.0).
-   * An implied step carries no author, no note and no date, and it moves on its own when
-   * the statement behind it is retracted — so it must not be offered as a control, and
-   * must not read as something somebody said.
-   *
-   * `.optional()` only to decouple the rollout; it is required on the producer.
-   */
-  origin: z.enum(["stated", "implied"]).nullable().optional(),
-  /** The STATED step an implied one follows from. */
-  impliedBy: z.string().nullable().optional(),
-  /**
-   * What a person actually stated about THIS step, whatever the step order concluded — so a
-   * real statement is never lost to satisfy the step order. A `never` later contradicted by
-   * an outcome reads state=outcome, origin=implied, statedState=never.
-   */
-  statedState: z.enum(["outcome", "never"]).nullable().optional(),
-  /**
-   * Who evidenced the step: `manual` = a person stated it, `tracker` = the website
-   * tracker reported it, `crm` = the customer's own CRM evidenced it (a paired contact's
-   * meeting or deal). Read as a plain STRING: the vocabulary is lead-service's and it
-   * grows, and an enum here throws the whole lead panel away the first time a value
-   * lands that this app has not heard of yet. Only `manual` is somebody's own words.
-   */
-  source: z.string().nullable(),
-  valueCents: z.number().nullable(),
-  /**
-   * What the CUSTOMER stated getting through this step cost THEM, in cents. Their own
-   * money: we record it because they told us, we never charge it, and it never enters
-   * the platform's spend ledger or their billing.
-   *
-   * Required-and-nullable, matching the producer. `0` is a STATED zero. `null` means
-   * nobody answered: a pending step, a step the step order implied, a tracker-reported one,
-   * or a statement made before the cost became mandatory. Declaring it `.optional()`
-   * would read `undefined` on a body that legitimately carries a null, which is the one
-   * distinction this field exists to hold.
-   */
-  costCents: z.number().nullable(),
-  note: z.string().nullable(),
-  statedByUserId: z.string().nullable(),
-  at: z.string().nullable(),
-});
-
-// `.passthrough()` on the envelope, not a narrowed object: lead-service owns this shape
-// and a field it adds later must reach a consumer rather than being stripped at the
-// parse boundary. `step` is a bare string on purpose — the producer serves a legacy
-// "purchase" spelling alongside "sale", and an enum here would throw the whole read
-// away over a value we simply do not render.
-const LeadStepStatementsSchema = z
-  .object({
-    leadCampaignId: z.string(),
-    leadId: z.string(),
-    campaignId: z.string(),
-    brandId: z.string(),
-    steps: z.array(LeadStepEntrySchema),
-  })
-  .passthrough();
-
-export type LeadStepStatements = z.infer<typeof LeadStepStatementsSchema>;
-
-/**
- * The step-statements parse, exported so a guard runs the REAL parser over a real body
- * (a `source: "crm"` step must parse, not throw the lead panel away).
- */
-export function parseLeadStepStatements(raw: unknown) {
-  return LeadStepStatementsSchema.safeParse(raw);
-}
-
-export async function getLeadStepStatements(
-  leadRowId: string,
-  token?: string,
-): Promise<LeadStepStatements> {
-  const raw = await apiCall<unknown>(`/leads/${leadRowId}/step-statements`, { token });
-  const parsed = parseLeadStepStatements(raw);
-  if (!parsed.success) {
-    console.error("[dashboard] getLeadStepStatements: response shape mismatch", {
-      issues: parsed.error.issues,
-      raw,
-    });
-    throw new Error("[dashboard] getLeadStepStatements: invalid response shape");
-  }
-  return parsed.data;
-}
-
 /**
  * State what happened at one step, or that it never will.
  *
@@ -3013,46 +2896,6 @@ export async function withdrawLeadCrmAttribution(
     `/leads/${leadRowId}/crm-attribution/${step}?brandId=${encodeURIComponent(brandId)}`,
     { token, method: "DELETE" },
   );
-}
-
-/**
- * Take back a statement somebody made by hand about one step of one lead.
- *
- * The undo for the write above, and the ONLY one: a person who picked the wrong lead,
- * the wrong step, or misread a reply had no way out, and the statement kept counting —
- * the outcome stayed on the ledger and the cost they stated for that leg stayed in their
- * spend, so every cost of acquisition and return downstream carried money nobody spent.
- *
- * It is the ABSENCE of a statement, not a third kind of one: nothing new to count, and
- * nothing is deleted (what was stated and the fact it was withdrawn both stay readable).
- *
- * Only a statement a PERSON made can be withdrawn. A tracker-reported outcome is a 409
- * `not_a_statement` and a step that merely READS as reached because the step order implies it
- * is a 409 `nothing_stated` — the panel does not offer the control in either case, so
- * those refusals are a backstop rather than something a customer should meet.
- *
- * The response is the SAME per-step shape the read serves, re-derived after the
- * withdrawal — so a caller writes it straight into the read's cache instead of guessing
- * what its own withdrawal did to the steps after it.
- */
-export async function withdrawLeadStepStatement(
-  leadRowId: string,
-  step: LeadStepName,
-  token?: string,
-): Promise<LeadStepStatements> {
-  const raw = await apiCall<unknown>(`/leads/${leadRowId}/step-statements/${step}`, {
-    token,
-    method: "DELETE",
-  });
-  const parsed = parseLeadStepStatements(raw);
-  if (!parsed.success) {
-    console.error("[dashboard] withdrawLeadStepStatement: response shape mismatch", {
-      issues: parsed.error.issues,
-      raw,
-    });
-    throw new Error("[dashboard] withdrawLeadStepStatement: invalid response shape");
-  }
-  return parsed.data;
 }
 
 // The welcome signup gift is NOT front-end editable. Its grant amount is
@@ -4190,54 +4033,11 @@ export interface StatsGroup {
   stats: Record<string, number>;
 }
 
-export interface FeatureStatsResponse {
-  featureSlug?: string;
-  groupBy?: string;
-  systemStats: SystemStats;
-  stats: Record<string, number>;
-  groups?: StatsGroup[];
-}
-
 export interface GlobalStatsResponse {
   groupBy?: string;
   systemStats: SystemStats;
   stats: Record<string, number>;
   groups?: StatsGroup[];
-}
-
-export type PipelineActivityMetricKey =
-  | "outreach"
-  | "clicks"
-  | "signups"
-  | "formSubmissions";
-
-export interface PipelineActivityMetric {
-  actual: number | null;
-  expected: number | null;
-  conversionPct?: number | null;
-}
-
-export interface PipelineActivityDay {
-  date: string;
-  isToday: boolean;
-  metrics: Record<PipelineActivityMetricKey, PipelineActivityMetric>;
-}
-
-export interface PipelineActivitySummary {
-  dailyBudgetUsd: number | null;
-  clickToSignupPct: number | null;
-  /** Brand effective visit→form-submission rate (form-submission projection rate).
-   *  Null when economics absent or the brand carries no form-submission rate. */
-  clickToFormSubmissionPct?: number | null;
-}
-
-export interface PipelineActivityResponse {
-  featureSlug: string;
-  brandId: string;
-  timezone: string;
-  generatedAt: string;
-  days: PipelineActivityDay[];
-  summary: PipelineActivitySummary;
 }
 
 /** features-service's canonical Goal enum, minus the goals no brand can pick today.
@@ -4506,27 +4306,6 @@ export async function fetchStatsRegistry(token?: string): Promise<{ registry: St
   return apiCall<{ registry: StatsRegistry }>("/features/stats/registry", { token });
 }
 
-/** GET /features/:featureSlug/stats — stats for a feature */
-export async function fetchFeatureStats(
-  featureSlug: string,
-  params?: { groupBy?: string; brandId?: string; offerId?: string; campaignId?: string; workflowSlug?: string; workflowDynastySlug?: string },
-  token?: string,
-): Promise<FeatureStatsResponse> {
-  const query = new URLSearchParams();
-  if (params?.groupBy) query.set("groupBy", params.groupBy);
-  if (params?.brandId) query.set("brandId", params.brandId);
-  // An OFFER narrows the brand to one proposition. features-service refuses an
-  // `offerId` stated together with a `campaignId` (400) — a campaign already
-  // belongs to exactly one offer, so the pair would be two answers to one
-  // question — so a caller states one grain, never both.
-  if (params?.offerId) query.set("offerId", params.offerId);
-  if (params?.campaignId) query.set("campaignId", params.campaignId);
-  if (params?.workflowSlug) query.set("workflowSlug", params.workflowSlug);
-  if (params?.workflowDynastySlug) query.set("workflowDynastySlug", params.workflowDynastySlug);
-  const qs = query.toString();
-  return apiCall<FeatureStatsResponse>(`/features/${featureSlug}/stats${qs ? `?${qs}` : ""}`, { token });
-}
-
 /** GET /features/:featureSlug/audience-stats — real audience-level cost/outcome evidence. */
 export async function fetchFeatureAudienceStats(
   featureSlug: string,
@@ -4604,93 +4383,6 @@ export async function fetchGlobalStats(
   if (params?.brandId) query.set("brandId", params.brandId);
   const qs = query.toString();
   return apiCall<GlobalStatsResponse>(`/features/stats${qs ? `?${qs}` : ""}`, { token });
-}
-
-// ─── Feature revenue (expected pipeline) ─────────────────────────────────────
-// features-service computes everything (MAX inside an entity, SUM across orgs);
-// the dashboard only renders. The wire→view-model parse is shared with the
-// public-report server build — see `parseFeatureRevenue` in `./revenue-parse`.
-/**
- * GET /features/:slug/revenue — expected pipeline revenue for a brand, or for ONE
- * grain under it.
- *
- * `scope` names at most one narrower grain: an OFFER (one proposition) or a
- * CAMPAIGN (one offer x leg x channel). Stating both is a 400 — a campaign
- * already belongs to exactly one offer, so the pair would be two answers to one
- * question — so this sends whichever the caller asked for and never both.
- */
-export async function getFeatureRevenue(
-  featureSlug: string,
-  brandId: string,
-  scope?: { campaignId?: string; offerId?: string },
-  token?: string,
-): Promise<RevenueOverview> {
-  const query = new URLSearchParams({ brandId });
-  if (scope?.campaignId) query.set("campaignId", scope.campaignId);
-  else if (scope?.offerId) query.set("offerId", scope.offerId);
-  // pricing=net → every MONEY metric (spend block, costEconomics committedCostUsd,
-  // CAC, ROI, cps/cpsm/cpfs) reflects the org's FROZEN post-usage-discount cost
-  // (frozen at cost-write in runs-service; features-service does NOT recompute the
-  // discount — never multiply client-side). Coherent with the NET-paced campaign
-  // budget so "Budget spent today / <budget>" can't exceed 100% for a discounted
-  // brand. net == gross for a non-discounted org, so this is a no-op there. Every
-  // consumer of the shared `["featureRevenue", …]` key gets net → the dedupe stays
-  // consistent (do not make it a per-caller toggle).
-  query.set("pricing", "net");
-  const raw = await apiCall<unknown>(`/features/${featureSlug}/revenue?${query.toString()}`, { token });
-  return parseFeatureRevenue(raw, "getFeatureRevenue");
-}
-
-/**
- * An offer's OUTCOMES: one row per outcome it buys, and under each the leg × channel
- * rows serving it in parallel. The model and every rule behind reading it live in
- * `lib/offer-outcomes.ts`; this only asks, on the NET basis every money read here uses.
- * Rows are not additive, so no consumer prints a total of them.
- */
-export async function getOfferOutcomes(
-  offerId: string,
-  brandId: string,
-  token?: string,
-): Promise<OfferOutcomes> {
-  const query = new URLSearchParams({ brandId });
-  query.set("pricing", "net");
-  const raw = await apiCall<unknown>(`/offers/${offerId}/outcomes?${query.toString()}`, { token });
-  return parseOfferOutcomes(raw, "getOfferOutcomes");
-}
-
-/**
- * What an OFFER returned — across every acquisition channel it is sold through.
- *
- * The read above names ONE channel, because a feature IS a channel in this fleet.
- * An offer is sold through several at once, so a screen scoped to an offer that
- * asks the per-feature read describes whichever channel it happened to name and
- * understates the offer by whatever the others did. Silently: nothing errors, the
- * figures are simply about less than they claim. Measured on the brand that
- * surfaced this — `$40.07` from the per-feature read against `$50.38` here, on the
- * same day, for the same offer.
- *
- * features-service combines the parts; this only asks. Money adds because a run
- * belongs to exactly one channel, but people do not (a lead worked through two
- * channels is one lead) and no ratio does (a ratio of sums is neither the sum nor
- * the average of ratios) — which is why summing per-channel reads in the browser
- * would be wrong as well as banned.
- *
- * Same body as the per-feature read plus `brandId`, `offerId` and a per-channel
- * `channels` breakdown, minus `featureSlug`. The parser is shared deliberately: the
- * money block a consumer renders is identical, so a second one would be a second
- * place for it to drift. The breakdown is not read yet and is stripped on parse.
- */
-export async function getOfferRevenue(
-  offerId: string,
-  brandId: string,
-  token?: string,
-): Promise<RevenueOverview> {
-  const query = new URLSearchParams({ brandId });
-  // Same NET basis and the same reason as the per-feature read above — see its
-  // comment. Never a per-caller toggle.
-  query.set("pricing", "net");
-  const raw = await apiCall<unknown>(`/offers/${offerId}/revenue?${query.toString()}`, { token });
-  return parseFeatureRevenue(raw, "getOfferRevenue");
 }
 
 /**
@@ -5508,68 +5200,6 @@ export async function getBrandOfferMoney(
     roiMultiple: o.costEconomics.roiMultiple,
     economicsMaturity: o.costEconomics.maturity ?? null,
   }));
-}
-
-const PipelineActivityMetricSchema = z.object({
-  actual: z.number().nullable(),
-  expected: z.number().nullable(),
-  conversionPct: z.number().nullable().optional(),
-});
-
-const PipelineActivityResponseSchema = z.object({
-  featureSlug: z.string(),
-  brandId: z.string(),
-  timezone: z.string(),
-  generatedAt: z.string(),
-  days: z.array(
-    z.object({
-      date: z.string(),
-      isToday: z.boolean(),
-      metrics: z.object({
-        outreach: PipelineActivityMetricSchema,
-        clicks: PipelineActivityMetricSchema,
-        signups: PipelineActivityMetricSchema,
-        formSubmissions: PipelineActivityMetricSchema,
-      }),
-    }),
-  ),
-  summary: z.object({
-    dailyBudgetUsd: z.number().nullable(),
-    clickToSignupPct: z.number().nullable(),
-    clickToFormSubmissionPct: z.number().nullable().optional(),
-  }),
-});
-
-/** GET /features/:slug/pipeline-activity — 7-day actual + expected activity. */
-export async function getFeaturePipelineActivity(
-  featureSlug: string,
-  params: { brandId: string; days?: number; timezone?: string },
-  token?: string,
-): Promise<PipelineActivityResponse> {
-  const query = new URLSearchParams({ brandId: params.brandId });
-  if (params.days != null) query.set("days", String(params.days));
-  if (params.timezone) query.set("timezone", params.timezone);
-  // pricing=net — the forecast bar is `daily budget / cost per outreach`, and the
-  // budget is money the org really spends, i.e. already discounted. Reading the
-  // divisor at gross therefore promised a discounted org roughly half the sends
-  // its budget buys, right beside actual bars twice as tall (a 50%-off brand read
-  // 15.88 expected against 30 real). Net is also what every other money surface on
-  // this page asks for — `getFeatureRevenue`, `fetchFeatureAudienceStats` and
-  // `getWorkflowProjectionLadder` all send it, and this was the last reader left out.
-  query.set("pricing", "net");
-  const raw = await apiCall<unknown>(
-    `/features/${encodeURIComponent(featureSlug)}/pipeline-activity?${query.toString()}`,
-    { token },
-  );
-  const parsed = PipelineActivityResponseSchema.safeParse(raw);
-  if (!parsed.success) {
-    console.error("[dashboard] getFeaturePipelineActivity: response shape mismatch", {
-      issues: parsed.error.issues,
-      raw,
-    });
-    throw new Error("[dashboard] getFeaturePipelineActivity: invalid response shape");
-  }
-  return parsed.data;
 }
 
 /** POST /brands — upsert brand by URL, returns brandId */
@@ -6990,233 +6620,7 @@ export async function getLeadConversation(
  *  "brand" (own brand) · "org" (same org, other brand) · "global" (any org — public examples).
  *  `brandName` labels the source brand for the cross-source tag (null for own brand). */
 
-// Manual reply qualifications (api-service proxy → email-gateway → instantly-service).
-// Wire shape is snake_case (request) + camelCase (response) per the upstream contract;
-// helpers below translate camelCase request inputs to snake_case query / body.
-/**
- * What a person states about a reply, as instantly-service accepts it on the write.
- *
- * The nine REPLY KINDS, plus the two retired deal-progress spellings it still accepts
- * while the consoles migrate their pickers. This app writes only reply kinds; the two
- * retired values are here so a historical row still types, and they resolve to a reply
- * kind upstream at WRITE time, never on read.
- *
- * `lead_meeting_booked` and `lead_closed` are facts about the DEAL, not the reply, and
- * they are stated on the lead's steps instead (see `lead-stages.ts`). They used
- * to share this one statement per lead, where only the latest survived — so booking a
- * meeting erased the reply sentiment that led to it.
- */
-/**
- * ⚠️ READ from the one catalogue, never re-listed. This used to spell the nine reply
- * kinds out again, which is a second copy of a vocabulary instantly-service owns — and
- * it had already gone stale: `lead_changed_job` shipped upstream and this list did not
- * carry it, so a person who had left the role could not be stated even though the
- * gateway would have accepted the write. A copy of somebody else's enum rots in the
- * direction that silently removes a capability.
- */
-export type ManualQualificationStatus =
-  | ReplyKind
-  // Retired, accepted upstream during the migration. Do NOT write these.
-  | "lead_meeting_booked"
-  | "lead_closed";
-
 export type ManualQualificationClassification = "positive" | "negative" | "neutral";
-
-export interface ManualQualification {
-  id: string;
-  orgId: string;
-  campaignId: string;
-  instantlyCampaignId: string;
-  email: string;
-  /** The RAW statement a person made. Kept as provenance; not what to render. */
-  status: ManualQualificationStatus;
-  /**
-   * What kind of reply that statement resolves to (instantly-service v0.74.0). This is
-   * the value to render: the two retired deal-progress spellings still accepted on the
-   * write path are resolved to a reply kind HERE, at write, so a reader never has to
-   * translate one. Distinct from `status` rather than a rename of it — both are served,
-   * they mean different things, and coalescing them would render one under the other's
-   * name. Optional only because an older row predates the column.
-   */
-  replyKind?: string;
-  qualifiedBy: string;
-  notes: string | null;
-  qualifiedAt: string;
-  /**
-   * When a person TOOK THIS BACK, or null while it still stands (instantly-service
-   * v0.75.1). The list serves withdrawn statements alongside standing ones — they are
-   * the audit of what was asserted — so a reader that takes the newest row verbatim
-   * renders a kind nobody stands behind. Filter on this, never on recency alone.
-   *
-   * `.optional()` in spirit: a row written before the column existed carries neither
-   * field, which reads as standing, exactly as it did before withdrawal existed.
-   */
-  withdrawnAt?: string | null;
-  withdrawnBy?: string | null;
-}
-
-export interface SetManualQualificationResponse {
-  idempotent: boolean;
-  qualification: ManualQualification;
-}
-
-export interface ListManualQualificationsResponse {
-  qualifications: ManualQualification[];
-}
-
-export async function setManualQualification(
-  body: { campaignId: string; email: string; status: ManualQualificationStatus; notes?: string },
-  token?: string,
-): Promise<SetManualQualificationResponse> {
-  return apiCall<SetManualQualificationResponse>("/emails/manual-qualifications", {
-    token,
-    method: "POST",
-    body: {
-      campaign_id: body.campaignId,
-      email: body.email,
-      status: body.status,
-      ...(body.notes !== undefined ? { notes: body.notes } : {}),
-    },
-  });
-}
-
-/**
- * Take back the standing reply-kind statement for one (campaign, lead) pair.
- *
- * The undo for the write above. Picking the wrong kind was permanent: the vocabulary has
- * no "nothing stated" member, the store is append-only, and the write is idempotent on
- * the current value, so re-picking the same kind was a no-op rather than a way back.
- *
- * Afterwards the lead reads as it did before anybody spoke — no standing human statement
- * — and the AUTOMATIC classification takes over again, because the manual pin that kept
- * later webhook events from reclassifying the reply is released.
- *
- * NOT an erasure: nothing is deleted and no sentinel kind enters the vocabulary. It also
- * does not retract the separate fact that a reply ARRIVED, nor undo the sequence stop a
- * stopping statement already caused — those are actions already taken.
- *
- * 404 `no_standing_qualification` when nothing stands (never stated, or already
- * withdrawn — withdrawing twice is that same refusal, not a success).
- */
-export async function withdrawManualQualification(
-  body: { campaignId: string; email: string; notes?: string },
-  token?: string,
-): Promise<{ qualification: ManualQualification }> {
-  return apiCall<{ qualification: ManualQualification }>(
-    "/emails/manual-qualifications/withdrawals",
-    {
-      token,
-      method: "POST",
-      body: {
-        campaign_id: body.campaignId,
-        email: body.email,
-        ...(body.notes !== undefined ? { notes: body.notes } : {}),
-      },
-    },
-  );
-}
-
-export async function listManualQualifications(
-  params: { campaignId?: string; email?: string; limit?: number } = {},
-  token?: string,
-): Promise<ListManualQualificationsResponse> {
-  const qs = new URLSearchParams();
-  if (params.campaignId) qs.set("campaign_id", params.campaignId);
-  if (params.email) qs.set("email", params.email);
-  if (params.limit != null) qs.set("limit", String(params.limit));
-  const suffix = qs.toString() ? `?${qs.toString()}` : "";
-  return apiCall<ListManualQualificationsResponse>(`/emails/manual-qualifications${suffix}`, { token });
-}
-
-
-/**
- * Record that a named person asked us to stop being contacted, and how they said it.
- *
- * ⚠️ SCOPED TO THE PERSON, not to a campaign — which is why this body carries no
- * campaign id even though the board card that triggers it belongs to one. Honouring
- * "stop contacting me" in one campaign while another keeps sending is precisely the
- * outcome the law cares about (CAN-SPAM, GDPR), so instantly-service applies it to
- * every campaign the org holds for that address.
- *
- * It STOPS THE SENDING as well as recording the statement: the sequence is stopped, the
- * open holds are cancelled, and the campaign is paused at the sender. A clicked
- * unsubscribe gets that last part for free because the provider served the link; a
- * statement made over SMS or on a call does not, so it is done explicitly.
- *
- * Idempotent: a person who already has a standing opt-out writes nothing and fires no
- * side effect a second time (`idempotent: true` on the response). The record is written
- * even when the org holds no campaign for the address — refusing to record a consent
- * statement because we have nothing to stop is the wrong direction to be wrong in, and
- * the response then reports `campaignsAffected: 0`.
- */
-export async function recordLeadOptOut(
-  body: { email: string; channel: OptOutChannel; notes?: string },
-  token?: string,
-): Promise<RecordLeadOptOutResponse> {
-  return apiCall<RecordLeadOptOutResponse>("/emails/opt-outs", {
-    token,
-    method: "POST",
-    body: {
-      email: body.email,
-      channel: body.channel,
-      ...(body.notes !== undefined ? { notes: body.notes } : {}),
-    },
-  });
-}
-
-/**
- * Take back an opt-out somebody recorded — the wrong lead, or a person who has since
- * asked to be contacted again.
- *
- * NOT an erasure. The withdrawal is appended, the original record stands as the audit of
- * what was asserted, and only the unsubscribe events THIS record produced are released —
- * an unsubscribe the prospect produced by clicking the link is never touched, because
- * nobody withdrew that.
- *
- * ⚠️ It does NOT resume the sequences that were stopped. The holds were cancelled and the
- * campaigns paused, and silently restarting outreach at somebody who asked us to stop is
- * the one mistake worth being unable to make by accident. A new send is a new decision.
- *
- * 404 `no_standing_optout` when nothing stands (never recorded, or already withdrawn —
- * withdrawing twice is that same refusal, not a success).
- */
-export async function withdrawLeadOptOut(
-  body: { email: string; notes?: string },
-  token?: string,
-): Promise<{ optOut: LeadOptOut }> {
-  return apiCall<{ optOut: LeadOptOut }>("/emails/opt-outs/withdrawals", {
-    token,
-    method: "POST",
-    body: {
-      email: body.email,
-      ...(body.notes !== undefined ? { notes: body.notes } : {}),
-    },
-  });
-}
-
-/** One recorded opt-out, as the consent record it is: who, when, and through what. */
-export interface LeadOptOut {
-  id: string;
-  email: string;
-  channel: string;
-  notes: string | null;
-  recordedBy?: string;
-  recordedAt?: string;
-  withdrawnAt?: string | null;
-}
-
-export interface RecordLeadOptOutResponse {
-  /** True when a standing opt-out already existed — nothing written, nothing re-fired. */
-  idempotent: boolean;
-  /** Campaigns of this org holding that address. */
-  campaignsAffected: number;
-  /**
-   * How many of them could be stopped AT THE SENDER. Below `campaignsAffected` means a
-   * pause failed upstream and was logged; the local stop and the record still hold.
-   */
-  campaignsStopped: number;
-  optOut: LeadOptOut;
-}
 
 // Workflows
 export interface DAGNode {
@@ -7524,48 +6928,6 @@ const WorkflowProjectionResponseSchema = z.object({
 export type WorkflowCountProjection = z.infer<typeof WorkflowCountProjectionSchema>;
 export type WorkflowProjectionItem = z.infer<typeof WorkflowProjectionItemSchema>;
 export type WorkflowProjectionResponse = z.infer<typeof WorkflowProjectionResponseSchema>;
-
-/**
- * `structuralSharing` merge for the workflow-projection query. Every field above is `.nullable()`
- * because a COLD Neon path (api→features→workflow/runs/email-gateway/brand, all scale-to-zero)
- * can answer a poll/refocus refetch with a VALID 200 whose unit costs / cost-per-close are null,
- * or with fewer workflows, while it half-warms. That degenerate-but-valid payload would otherwise
- * collapse the budget cards + Launch button (which derive off `costPerCloseUsd`). Keep the last-good
- * per-workflow values + recommended pick across such a refetch; a real persistent downgrade still
- * fails loud (console.error in keep-last-good). Opt-in here ONLY — a null is "transient/not-ready",
- * not "removed". See lib/keep-last-good.ts + CLAUDE.md "keep-last-good (cache-write boundary)".
- */
-export function keepLastGoodWorkflowProjection(
-  prev: WorkflowProjectionResponse | undefined,
-  next: WorkflowProjectionResponse,
-): WorkflowProjectionResponse {
-  if (!prev) return next;
-  const top = keepLastGoodFields(
-    prev,
-    next,
-    ["recommendedWorkflowDynastySlug", "recommendedBudgetUsd"],
-    "workflowProjection",
-  );
-  return {
-    ...top,
-    workflows: keepLastGoodList(prev.workflows, next.workflows, {
-      keyFn: (w) => w.workflowDynastySlug,
-      fields: [
-        "contactedUsd",
-        "replyUsd",
-        "clickUsd",
-        "costPerSignupUsd",
-        "costPerFormSubmissionUsd",
-        "costPerOutcomeUsd",
-        "costPerCloseUsd",
-        "costPerMeetingBookedUsd",
-        "projection",
-        "workflowDynastyName",
-      ],
-      label: "workflowProjection.workflows",
-    }),
-  };
-}
 
 /**
  * Adapt ONE ladder row (a workflow dynasty's brand-level row) into the legacy
@@ -8596,114 +7958,6 @@ export async function getOrgUsage(token?: string): Promise<OrgUsage> {
     throw new Error("[dashboard] getOrgUsage: invalid response shape");
   }
   return parsed.data;
-}
-
-// ── Reward tasks ──
-//
-// The reward-task ledger, owned by client-service and reached through the
-// gateway's passthrough at `GET /v1/brands/:brandId/reward-tasks` (api-service
-// #940, verified against its deployed openapi). One read per BRAND answers every
-// task of every offer plus a per-offer roll-up, so a page filtering it to its own
-// row is a display lookup rather than a second request.
-//
-// NOTHING here is derived. Whether a task is due, since when, what it pays and
-// how it knows when the numbers last changed are all client-service's answers —
-// which is the whole reason it owns the ledger. `lib/reward-tasks.ts` only
-// SELECTS out of what was served.
-//
-// ⚠️ `status` and `contentChangedProvenance` are read as plain STRINGS, never
-// `z.enum`. Both are producer vocabularies that can grow, and a reader that
-// closes the set throws the whole page the day it widens. Consumers branch on
-// the value they know (`status === "ok"`, `provenance === "observed"`) and treat
-// anything else as "not that", which degrades honestly.
-//
-// ⚠️ The org is NOT a parameter. api-service takes it from the authenticated
-// session, and client-service 400s `ORG_REQUIRED` when several orgs claim one
-// brand rather than guessing whose ledger to read — verified in prod against a
-// brand ten orgs claim.
-export interface RewardTaskScopeWire {
-  type: string;
-  brandId: string;
-  offerId: string;
-}
-
-export interface RewardTaskWire {
-  taskKey: string;
-  scope: RewardTaskScopeWire;
-  rewardCents: number;
-  due: boolean;
-  dueAt: string;
-  lastCompletedAt: string | null;
-  completedCount: number;
-  contentChangedAt: string;
-  contentChangedProvenance: string;
-}
-
-export interface BrandRewardTasks {
-  brandId: string;
-  /** Null only when no org claims the brand: there is then nobody to reward. */
-  orgId: string | null;
-  /** `ok`, or `no_org_claims_brand` — a determinate answer, not a failure. */
-  status: string;
-  rewardCentsPerTask: number;
-  tasks: RewardTaskWire[];
-  rollup: {
-    brand: { dueCount: number; taskCount: number };
-    offers: { offerId: string; dueCount: number; taskCount: number }[];
-  };
-}
-
-const RewardTaskWireSchema = z.object({
-  taskKey: z.string(),
-  scope: z.object({
-    type: z.string(),
-    brandId: z.string(),
-    offerId: z.string(),
-  }),
-  rewardCents: z.number(),
-  due: z.boolean(),
-  dueAt: z.string(),
-  // Required AND nullable on the wire: null means never completed, which is a
-  // real answer. `.optional()` would refuse exactly the body the null is for.
-  lastCompletedAt: z.string().nullable(),
-  completedCount: z.number(),
-  contentChangedAt: z.string(),
-  contentChangedProvenance: z.string(),
-});
-
-const RewardRollupEntrySchema = z.object({
-  offerId: z.string(),
-  dueCount: z.number(),
-  taskCount: z.number(),
-});
-
-const BrandRewardTasksResponseSchema = z.object({
-  brandId: z.string(),
-  orgId: z.string().nullable(),
-  status: z.string(),
-  rewardCentsPerTask: z.number(),
-  tasks: z.array(RewardTaskWireSchema),
-  rollup: z.object({
-    brand: z.object({ dueCount: z.number(), taskCount: z.number() }),
-    offers: z.array(RewardRollupEntrySchema),
-  }),
-});
-
-/** GET /brands/:brandId/reward-tasks — this brand's reward tasks and due counts. */
-export async function getBrandRewardTasks(
-  brandId: string,
-  token?: string,
-): Promise<BrandRewardTasks> {
-  const raw = await apiCall<unknown>(`/brands/${brandId}/reward-tasks`, { token });
-  const parsed = BrandRewardTasksResponseSchema.safeParse(raw);
-  if (!parsed.success) {
-    console.error("[dashboard] getBrandRewardTasks: response shape mismatch", {
-      issues: parsed.error.issues,
-      raw,
-    });
-    throw new Error("[dashboard] getBrandRewardTasks: invalid response shape");
-  }
-  return parsed.data as BrandRewardTasks;
 }
 
 // --- Referral invites ---------------------------------------------------------

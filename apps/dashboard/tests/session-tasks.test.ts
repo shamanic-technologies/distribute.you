@@ -35,6 +35,6 @@ describe("Clerk session tasks", () => {
     expect(proxy).toContain('sessionStatus === "pending"');
     expect(proxy).toContain('new URL("/session-tasks/choose-organization", req.url)');
     expect(proxy).toContain('new URL("/sign-in", req.url)');
-    expect(proxy).toContain('new URL("/orgs", req.url)');
+    expect(proxy).toContain('new URL("/v2", req.url)');
   });
 });

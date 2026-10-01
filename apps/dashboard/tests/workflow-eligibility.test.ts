@@ -2,7 +2,6 @@ import { describe, expect, it } from "vitest";
 import {
   deprecatedOnLegSlugs,
   hiddenWorkflowNote,
-  notSelectableWorkflowSlugs,
   hiddenWorkflowSlugs,
   type EligibilityLadderRow,
   type EligibilityObservedPicks,
@@ -192,16 +191,14 @@ describe("hiddenWorkflowNote", () => {
 });
 
 describe("deprecated on a leg", () => {
-  it("is DRAWN (never hidden) but never selectable", () => {
+  it("is DRAWN (never hidden)", () => {
     const rows = [row("maelstrom", { state: "deprecated" }), row("atoll", { eligible: true })];
     expect(hiddenWorkflowSlugs({ rows, observedPicks: NEVER_RAN }).size).toBe(0);
     expect([...deprecatedOnLegSlugs(rows)]).toEqual(["maelstrom"]);
-    expect([...notSelectableWorkflowSlugs(rows)]).toEqual(["maelstrom"]);
   });
 
-  it("a workflow never put on the leg is not selectable either", () => {
+  it("a workflow never put on the leg is not deprecated on it", () => {
     const rows = [row("dawn", { eligible: false }), row("atoll", { eligible: true })];
-    expect([...notSelectableWorkflowSlugs(rows)]).toEqual(["dawn"]);
     expect(deprecatedOnLegSlugs(rows).size).toBe(0);
   });
 });

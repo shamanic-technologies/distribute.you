@@ -92,35 +92,19 @@ describe("locale-aware numeric text helpers", () => {
   });
 });
 
-describe("sidebar components use formatCount for badges", () => {
-  // mcp-sidebar.tsx was removed with the campaign concept.
-  it("context-sidebar imports and uses formatCount", () => {
-    const content = fs.readFileSync(
-      path.join(__dirname, "../src/components/context-sidebar.tsx"),
-      "utf-8"
-    );
-    expect(content).toContain('import { formatCount } from "@/lib/format-number"');
-    expect(content).toContain("formatCount(item.badge)");
-  });
-
-  // The campaign press-kit detail page (which used formatCount for view stats)
-  // was removed with the campaign concept.
-});
-
 describe("sales economics surfaces use locale-aware text inputs", () => {
   // The flat settings sales-economics card is gone; a funnel now owns the rates
   // and the lifetime revenue, and its inputs carry the same helpers.
-  it("offer campaign settings take amounts as text inputs, never number inputs", () => {
+  it("offer settings take the lifetime revenue as a text input, never a number input", () => {
     const content = fs.readFileSync(
       path.join(__dirname, "../src/components/settings/offer-campaigns-card.tsx"),
       "utf-8"
     );
-    // Lifetime revenue and the per-campaign budgets are text, so a thousands
-    // separator is typeable; the lifetime revenue strips it before parsing.
+    // Lifetime revenue is text, so a thousands separator is typeable; it is
+    // stripped before parsing.
     expect(content).toContain('type="text"');
     expect(content).not.toContain('type="number"');
     expect(content).toContain('value.replace(/,/g, "")');
-    expect(content).toContain("parseDailyBudgetUsd(budget)");
   });
   it("brand conversion rates render through the shared RateInput", () => {
     const content = fs.readFileSync(

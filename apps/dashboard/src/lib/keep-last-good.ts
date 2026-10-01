@@ -50,32 +50,3 @@ export function keepLastGoodFields<T extends object>(
   return merged;
 }
 
-/**
- * Keyed list merge: union `prev` and `next` by `keyFn`. For items present in BOTH, per-field
- * coalesce via `keepLastGoodFields`. Items present only in `prev` (vanished from `next`) are
- * RETAINED (so a derived pick can't disappear on a transient empty payload). Order follows
- * `next`, then appended retained-prev items. Fail-loud on vanished items + field downgrades.
- */
-export function keepLastGoodList<T extends object>(
-  prev: ReadonlyArray<T> | undefined,
-  next: ReadonlyArray<T>,
-  opts: { keyFn: (item: T) => string; fields: ReadonlyArray<keyof T>; label?: string },
-): T[] {
-  const label = opts.label ?? "keepLastGoodList";
-  if (!prev || prev.length === 0) return [...next];
-  const prevByKey = new Map(prev.map((it) => [opts.keyFn(it), it] as const));
-  const nextKeys = new Set(next.map(opts.keyFn));
-  const merged = next.map((it) =>
-    keepLastGoodFields(prevByKey.get(opts.keyFn(it)), it, opts.fields, `${label}[${opts.keyFn(it)}]`),
-  );
-  for (const it of prev) {
-    if (!nextKeys.has(opts.keyFn(it))) {
-      console.error(
-        `[keep-last-good] ${label}: item "${opts.keyFn(it)}" vanished from refetch — retaining last-good`,
-        { item: it },
-      );
-      merged.push(it);
-    }
-  }
-  return merged;
-}

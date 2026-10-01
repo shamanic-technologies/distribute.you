@@ -42,15 +42,12 @@ describe("archive wiring", () => {
     expect(api).toMatch(/status: z\.enum\(\["active", "archived"\]\)\.nullish\(\)/);
   });
 
-  it("offers Archive on both offer settings pages", () => {
+  it("offers Archive on the offer settings page", () => {
     expect(read("components/v2/setup-pages.tsx")).toContain("<OfferArchiveCard");
-    expect(read("app/(authed)/(dashboard)/orgs/[orgId]/brands/[brandId]/offers/[offerId]/settings/page.tsx")).toContain(
-      "<OfferArchiveCard",
-    );
   });
 
   it("history readers keep an archived offer's name and mark", () => {
-    for (const f of ["components/v2/use-missions.ts", "lib/use-offer-images.ts", "components/v2/setup-pages.tsx"]) {
+    for (const f of ["components/v2/use-missions.ts", "components/v2/setup-pages.tsx"]) {
       expect(read(f)).toContain("includeArchived: true");
     }
   });

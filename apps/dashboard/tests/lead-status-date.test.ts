@@ -90,61 +90,15 @@ describe("leadDateForStatus", () => {
   });
 });
 
-// Source-substring, not a render test: the component imports through the `@` alias,
-// which vitest does not resolve in this repo.
-describe("leads table Date column", () => {
-  const src = fs.readFileSync(
-    path.join(__dirname, "../src/components/audiences/engaged-leads-page.tsx"),
-    "utf-8",
-  );
-  const table = (() => {
-    const at = src.indexOf("function LeadsTable(");
-    expect(at).toBeGreaterThan(-1);
-    return src.slice(at, at + 12000);
-  })();
-
-  it("dates the row from the status the row shows, not from the tab", () => {
-    expect(table).toContain("const status = statusOf(lead);");
-    expect(table).toContain("const statusAt = leadDateForStatus(lead, status);");
-    expect(table).toContain("      : statusAt;");
-    expect(table).toContain("<StatusBadge status={status} />");
-    // The per-tab date is gone: Outreach dated every row at firstContactedAt, so a
-    // row reading "Replied" was dated days before the reply it names.
-    expect(src).not.toContain("leadDateForTab");
-  });
-
-  it("keeps ONE date per row, read once and rendered in both places", () => {
-    // The Date column below `md` folds under the tag; a second, differently-sourced
-    // date beside the badge would put two answers on one row.
-    expect(table).toContain('className="mt-1 md:hidden">{dateNode}');
-    expect(table).not.toContain("statusDateNode");
-    expect(table.match(/leadDateForStatus\(lead, status\)/g)?.length).toBe(1);
-  });
-
-  it("leaves the outcome tabs on the realized-outcome instant", () => {
-    // A signup has no delivery status to date, so those tabs keep the /revenue join's
-    // timestamp — the one exception, and it is a different column meaning, not a bug.
-    expect(table).toContain("const dateAt = isOutcomeTab(tab)");
-    // Where the join has no instant (a meeting or deal it never attributed, listed on a
-    // funnel page), the row falls back to its status date rather than a dash.
-    expect(table).toContain("? outcomeDates?.get(lead.id) ?? statusAt");
-    expect(table).toContain('hidden md:table-cell">Date</th>');
-  });
-
-  it("orders every row by the value the Date column shows", () => {
-    // Sorting on a different field than the column displays makes the column read as
-    // unordered. That order is the PRODUCER's now — `sort=activity`, newest first on the
-    // timestamp that proves each lead's most advanced status, which is what this column
-    // renders — because a client-side sort can only order the page it holds, and a page
-    // ordered among itself reads as if the whole tab were ordered.
+describe("leads ordering", () => {
+  it("asks the producer to order every row by its most advanced status's instant", () => {
+    // That order is the PRODUCER's — `sort=activity`, newest first on the timestamp
+    // that proves each lead's most advanced status — because a client-side sort can
+    // only order the page it holds.
     const q = fs.readFileSync(
       path.resolve(__dirname, "../src/lib/leads-server-page.ts"),
       "utf-8",
     );
     expect(q).toContain('sort: "activity"');
-    expect(src).not.toContain("const sortByStatusDate");
-    // Membership is what differs per tab, never what a date means — and membership is a
-    // bucket the producer answers, so no tab re-sorts anything here.
-    expect(q).toContain("bucketForTab(req.tab)");
   });
 });

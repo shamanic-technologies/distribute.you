@@ -15,10 +15,6 @@ const TIMELINE = readFileSync(
   join(__dirname, "../src/components/audiences/lead-history-timeline.tsx"),
   "utf8",
 );
-const PAGE = readFileSync(
-  join(__dirname, "../src/components/audiences/engaged-leads-page.tsx"),
-  "utf8",
-);
 
 describe("the lead panel shows every email body to every reader", () => {
   it("renders a body whenever the message has one, behind no flag", () => {
@@ -45,11 +41,5 @@ describe("the lead panel shows every email body to every reader", () => {
 
   it("still says when we hold a message and could not read it", () => {
     expect(TIMELINE).toContain('{e.bodyStatus === "unavailable" && (');
-  });
-
-  it("the page resolves no copy gate and passes none", () => {
-    expect(PAGE).not.toContain("canReadEmailCopy");
-    expect(PAGE).not.toContain("betaOnlyCopy");
-    expect(PAGE).not.toContain("hasSalesInterest(selectedLead)");
   });
 });

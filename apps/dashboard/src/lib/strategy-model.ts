@@ -115,33 +115,6 @@ export function audienceRankMetric(
   return "cpc";
 }
 
-/** Column header. Byte-equal to the Audiences table's own `SortHeader` labels. */
-export const AUDIENCE_RANK_METRIC_LABEL: Record<AudienceRankMetric, string> = {
-  cppr: "Cost per positive reply",
-  cps: "Cost per signup",
-  cpfs: "Cost per form submission",
-  cpsale: "Cost per sale",
-  cpc: "Cost per website visit",
-};
-
-/** Tooltip copy. Byte-equal to the Audiences table's own `info` strings. */
-export const AUDIENCE_RANK_METRIC_INFO: Record<AudienceRankMetric, string> = {
-  cppr: "Cost per positive reply — audience-scoped spend divided by positive replies. Lower is better.",
-  cps: "Cost per signup — audience-scoped spend divided by signups. Lower is better.",
-  cpfs: "Cost per form submission — audience-scoped spend divided by form submissions. Lower is better.",
-  cpsale: "Cost per sale — audience-scoped spend divided by sales (paying clients won). Lower is better.",
-  cpc: "Cost per website visit — audience-scoped spend divided by website visits. Lower is better.",
-};
-
-/** Plural noun for the outcome the metric divides by ("3 replies", "0 sales"). */
-export const AUDIENCE_RANK_METRIC_OUTCOME_NOUN: Record<AudienceRankMetric, string> = {
-  cppr: "positive replies",
-  cps: "signups",
-  cpfs: "form submissions",
-  cpsale: "sales",
-  cpc: "clicks",
-};
-
 /** Human noun for one outcome of the brand's objective. */
 export function outcomeNoun(goal: BrandOptimizationGoal): string {
   switch (goal) {

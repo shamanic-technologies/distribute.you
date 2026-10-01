@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, useContext, type ReactNode } from "react";
+import { createContext, type ReactNode } from "react";
 import { useOrganization } from "@clerk/nextjs";
 
 interface OrgContextValue {
@@ -33,6 +33,3 @@ export function OrgContextProvider({ children }: { children: ReactNode }) {
   );
 }
 
-export function useOrg() {
-  return useContext(OrgContext);
-}

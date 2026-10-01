@@ -75,7 +75,6 @@
 // Alias-free on purpose (its runtime import is relative and pulls no "@" alias in) so
 // this module carries REAL unit tests. Keep it that way.
 
-import { REPLY_KINDS, type ReplyKind } from "./reply-kind";
 import type { LeadStanding, LeadStandingState } from "./lead-standing";
 
 /** The column key. Every lead the producer can place is in exactly one. */
@@ -175,86 +174,6 @@ export const LEAD_BOARD_COLUMNS: readonly LeadBoardColumn[] = [
   },
 ];
 
-/**
- * The blurb, with the scope the reader is standing in filled in.
- *
- * `{scope}` rather than four copies of the sentence: one column's wording depends on
- * the grain and the rest do not, and a second column needing it later is one token.
- * An absent scope reads "campaign", which is the grain this board is mounted at
- * whenever it can be written to.
- */
-export function columnBlurb(column: LeadBoardColumn, scopeNoun?: string | null): string {
-  return column.blurb.replace("{scope}", scopeNoun || "campaign");
-}
-
-/**
- * The kinds a person may state to put a card in Positive reply.
- *
- * ⚠️ This is the WRITE picker, NOT how a card is placed. Placement is the producer's
- * (`leadBoardColumnFor`), and the producer decides where the card lands AFTER the
- * write — which is why a move can visibly not take: on a campaign whose leg lands on a
- * website visit, stating "Interested" is a positive reply, and a positive
- * reply is not the step that campaign sells, so lead-service answers `engaged` and the
- * card comes back to Contacted. That is the correct answer, not a bug to override.
- *
- * `lead_referral` is deliberately absent. "Not them, but points us on" is valuable and
- * it is not THIS person's interest; instantly-service projects it to `neutral` for the
- * same reason, so offering it here would offer a move nothing could honour.
- */
-export const INTEREST_STATEMENT_KINDS: readonly ReplyKind[] = [
-  "lead_interested",
-  "lead_info_requested",
-  "lead_meeting_requested",
-];
-
-/**
- * The kinds a person may state to put a card in Disqualified — an objective fact about
- * the person, never a judgement about the moment.
- *
- * BOTH are offered now. `lead_changed_job` sat here unrendered for a while — listed
- * ahead of this app's own catalogue, which is what the bare-string type is for — so the
- * picker offered "Wrong person" alone and somebody who had simply left the role could
- * not be stated at all. `columnReplyKinds` filters against the catalogue, so a kind
- * listed early still cannot reach a picker until there is a label for it; keep that
- * filter, and when a kind is added upstream give it a label here in the same pass.
- *
- * What is NOT here, deliberately: `lead_not_interested`. A decline today is about the
- * offer at this moment, the person stays reachable, and stating it must leave the card
- * in Leads.
- */
-export const DISQUALIFYING_STATEMENT_KINDS: readonly string[] = [
-  "lead_wrong_person",
-  "lead_changed_job",
-];
-
-/**
- * The kinds a person may STATE from each column, in catalogue order.
- *
- * Derived from the catalogue rather than re-listed, so a kind the producer adds shows
- * up in the picker of whichever column already claims it.
- *
- * THREE columns offer none, and only one of them means "nothing can be written".
- * Moving into Opt-out states the CHANNEL somebody told us through (`OPT_OUT_CHANNELS`),
- * scoped to the person rather than to this campaign. Moving into Close won states the
- * SALE — what it cost, what it was worth, and whether our outreach caused it — which is
- * a step statement to lead-service, not a fact about a message. `unresolved`
- * really is nothing: it is lead-service reporting it could not answer.
- */
-export function columnReplyKinds(key: LeadBoardColumnKey): ReplyKind[] {
-  if (key === "opt_out" || key === "won" || key === "unresolved") return [];
-  return REPLY_KINDS.filter((o) => {
-    if (key === "sales_interest") return INTEREST_STATEMENT_KINDS.includes(o.kind);
-    if (key === "disqualified") return DISQUALIFYING_STATEMENT_KINDS.includes(o.kind);
-    // Contacted takes what a person can honestly say and that leaves them in play. The
-    // automated kinds are not statements anybody makes, so they are not offered.
-    return (
-      !INTEREST_STATEMENT_KINDS.includes(o.kind) &&
-      !DISQUALIFYING_STATEMENT_KINDS.includes(o.kind) &&
-      o.tone !== "automated"
-    );
-  }).map((o) => o.kind);
-}
-
 /** What the board needs to know about one lead to place it. Structural on purpose. */
 export type LeadBoardStanding = Pick<LeadStanding, "state" | "signal">;
 
@@ -341,83 +260,6 @@ export const STANDINGS_BY_COLUMN: Record<LeadBoardColumnKey, readonly LeadStandi
   opt_out: ["opted_out"],
   unresolved: ["unresolved"],
 };
-
-/**
- * Which columns a card in `from` may be MOVED to — every writable column except the one
- * it is already in, whichever column it starts from.
- *
- * Deliberately not "forward only": these are triage states, not steps, so
- * correcting one a person got wrong is a statement like any other and the producer
- * supersedes the earlier one.
- *
- * ⚠️ That INCLUDES out of `opt_out`, and that is a decision rather than an oversight.
- * An opt-out gets recorded on the wrong person, and a prospect can come back and ask to
- * hear from us again; leaving no way back means the only fix is a database write. What
- * protects the person is not a locked column, it is that leaving is a WITHDRAWAL —
- * appended, never an erasure, and it does not resume anything that was stopped. The
- * board says so before it does it (`columnMoveConfirmation`).
- *
- * That includes out of `won`, on the same reasoning and with the same shape: a sale
- * gets recorded on the wrong lead, and the undo lead-service offers is a WITHDRAWAL of
- * the statement (its own words: correcting one is never the opposite statement). So the
- * card leaves, the money it carried stops counting, and where it lands afterwards is
- * the producer's answer rather than the column the reader happened to drop it on.
- *
- * `unresolved` still lets nothing out, and `writable: false` does not cover it — that
- * only stops a card ARRIVING. A card is there when lead-service could not resolve what
- * the campaign sells, and nothing anybody states moves it: its own ladder answers
- * `unresolved` before it ever looks at a statement. Offering the move would offer a
- * control that cannot take.
- */
-export function movableColumnsFrom(from: LeadBoardColumnKey | null): LeadBoardColumn[] {
-  if (from === "unresolved") return [];
-  return LEAD_BOARD_COLUMNS.filter((c) => c.writable && c.key !== from);
-}
-
-/**
- * Why a card cannot land in `to`, or null when it can.
- *
- * A drop is accepted EVERYWHERE — a target that silently refuses a drag reads as a
- * broken board rather than as a rule, so the drop lands, the move form opens, and the
- * form says what is missing. This is the sentence it says.
- *
- * One column is left, and it is not a preference: `unresolved` is lead-service reporting
- * that it could not answer, which no statement of ours makes it able to.
- */
-export function columnMoveRefusal(to: LeadBoardColumnKey): string | null {
-  if (to === "unresolved") {
-    return "Nothing to state here. These leads are unplaced because we could not tell what their campaign sells, which no answer about the person can settle.";
-  }
-  return null;
-}
-
-/**
- * What a move OUT of `from` needs somebody to confirm before it is written, or null
- * when it needs nothing.
- *
- * TWO moves do, and both are the same shape: a card leaving a column whose state
- * somebody WROTE, where the undo is a withdrawal rather than the opposite statement.
- * Every other move states something about a reply and is superseded by the next one.
- *
- * Leaving Opt-out puts a person who asked us to stop back where we can contact them, so
- * it says out loud both what it does and — the half that is easy to assume — what it
- * does NOT do.
- *
- * Leaving Close won takes the SALE back. lead-service is explicit that correcting a
- * statement is a WITHDRAWAL and never the opposite statement ("stating the other thing
- * to undo a mistake is itself a false statement, and it keeps counting"), so this is its
- * own undo and not a reply kind dressed as one — and the money it removes is the money
- * it removes at every grain, which is the half worth saying before it happens.
- */
-export function columnMoveConfirmation(from: LeadBoardColumnKey | null): string | null {
-  if (from === "opt_out") {
-    return "They asked us to stop. Only take that back if they have asked to hear from us again — the record stays either way, and nothing that was stopped starts again on its own.";
-  }
-  if (from === "won") {
-    return "This takes the deal back. Its value stops counting toward your revenue and the cost you stated for it stops counting as your spend, at every grain — only do it if the sale was recorded by mistake. What was stated stays readable either way.";
-  }
-  return null;
-}
 
 /**
  * How many cards a column draws before it asks.

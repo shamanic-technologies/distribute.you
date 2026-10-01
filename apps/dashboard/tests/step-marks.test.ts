@@ -80,7 +80,5 @@ describe("step marks — one tile per step, the same product-wide", () => {
 
   it("is what every surface naming a step draws", () => {
     expect(read("components/start/start-picks.tsx")).toContain("<StepMark stepKey={o.key}");
-    expect(read("components/offers/offer-outcomes-table.tsx")).toContain("<StepMark stepKey={row.step.key}");
-    expect(read("components/leads/lead-stage-section.tsx")).toContain("<StepMark stageKey={stage.key}");
   });
 });

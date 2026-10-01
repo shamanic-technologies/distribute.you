@@ -1,60 +1,9 @@
 import { describe, it, expect } from "vitest";
 import * as fs from "fs";
 import * as path from "path";
-import { leadTabsForLegs } from "../src/lib/goal-steps";
 
 const SRC = path.join(__dirname, "../src");
 const read = (rel: string) => fs.readFileSync(path.join(SRC, rel), "utf-8");
-
-/**
- * At brand level there is no goal.
- *
- * The brand goal is a RETIRED brand-service column: `NOT NULL` with a server default,
- * so it reads "website purchases" for a brand that stated nothing. What a brand
- * actually sells through is the legs its live campaigns run, and what it is judged on
- * is the return.
- */
-describe("Leads tabs come from the active campaigns' legs", () => {
-  const REPLY_TO_MEETING = { fromKey: "conversation", toKey: "meeting_booked" };
-  const ONTO_VISIT = { fromKey: null, toKey: "website_visit" };
-  const VISIT_TO_SIGNUP = { fromKey: "website_visit", toKey: "signup" };
-
-  it("unions the legs, most advanced first, with Outreach always last", () => {
-    const both = leadTabsForLegs([REPLY_TO_MEETING, VISIT_TO_SIGNUP]);
-    expect(both.engagement).toEqual(["positive-replies", "clicks", "outreach"]);
-    expect(both.outcomes).toEqual(["meetings", "signups"]);
-  });
-
-  it("gives a brand with no live campaign the one tab that is always true", () => {
-    // Every lead we contacted is in Outreach whatever the leg, so this is the
-    // honest floor rather than an empty page.
-    expect(leadTabsForLegs([])).toEqual({ engagement: ["outreach"], outcomes: [] });
-  });
-
-  it("dedupes two legs that share a step", () => {
-    const visits = leadTabsForLegs([ONTO_VISIT, VISIT_TO_SIGNUP]);
-    expect(visits.engagement).toEqual(["clicks", "outreach"]);
-    expect(visits.outcomes).toEqual(["signups"]);
-  });
-
-  it("orders the union the same way whichever order the legs arrive in", () => {
-    // A page whose tab order depended on which campaign was created first would look
-    // different to two brands running the same legs.
-    expect(leadTabsForLegs([VISIT_TO_SIGNUP, REPLY_TO_MEETING])).toEqual(
-      leadTabsForLegs([REPLY_TO_MEETING, VISIT_TO_SIGNUP]),
-    );
-  });
-
-  it("reads the live campaigns, and no goal, on the Leads page", () => {
-    const page = read("components/audiences/engaged-leads-page.tsx");
-    expect(page).toContain("useCampaignRows(brandId, soleFeatureSlug)");
-    expect(page).toContain("leadTabsForLegs(activeLegs)");
-    // The retired goal is gone from this surface entirely.
-    expect(page).not.toContain("optimizationGoal");
-    expect(page).not.toContain("leadTabsFor(goal");
-    expect(page).not.toContain("getBrandSalesEconomics");
-  });
-});
 
 /**
  * The digest fires on the RETURN, and names what moved it.

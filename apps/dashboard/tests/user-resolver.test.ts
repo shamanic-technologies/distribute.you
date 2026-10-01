@@ -8,7 +8,7 @@ const resolverPath = path.resolve(
 );
 const layoutPath = path.resolve(
   __dirname,
-  "../src/app/(authed)/(dashboard)/layout.tsx"
+  "../src/components/v2/v2-client-layout.tsx"
 );
 const apiPath = path.resolve(__dirname, "../src/lib/api.ts");
 
