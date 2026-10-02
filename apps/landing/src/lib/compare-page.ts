@@ -18,6 +18,7 @@ import {
   COMPARE_VERIFIED_LABEL,
   COMPETITORS,
   DISTRIBUTE_ROW,
+  monthLabel,
   type Category,
   type Competitor,
 } from "./competitors";
@@ -82,8 +83,13 @@ function featureRow(label: string, ours: string, theirs: string): string {
   return `<tr><th scope="row">${esc(label)}</th><td class="us">${ours}</td><td>${esc(theirs)}</td></tr>`;
 }
 
-export function comparePageTitle(c: Competitor): string {
-  return `${c.name} alternative: distribute.you vs ${c.name} pricing (${COMPARE_VERIFIED_LABEL})`;
+/**
+ * A title states the month the page is SERVED in, read at render time (the routes revalidate
+ * daily), so it never shows last month. The "Verified" eyebrow keeps the month the prices were
+ * actually read: that one is a fact about the data, this one is the page's freshness.
+ */
+export function comparePageTitle(c: Competitor, now: Date = new Date()): string {
+  return `${c.name} alternative: distribute.you vs ${c.name} pricing (${monthLabel(now)})`;
 }
 
 export function comparePageDescription(c: Competitor): string {
@@ -243,7 +249,7 @@ export function renderCompareHub(): string {
 </section>
 ${liveBand()}`;
   return shell({
-    title: `Compare distribute.you with ${COMPETITORS.length} cold email tools and AI SDRs (${COMPARE_VERIFIED_LABEL})`,
+    title: `Compare distribute.you with ${COMPETITORS.length} cold email tools and AI SDRs (${monthLabel(new Date())})`,
     description: `Side-by-side pages against ${COMPETITORS.map((c) => c.name).join(", ")}: entry price, who runs the campaign, whose domains send, and the measured cost of a positive reply.`,
     path: "/compare",
     body,
@@ -274,7 +280,7 @@ export function renderAlternativesPage(): string {
 </section>
 ${liveBand()}`;
   return shell({
-    title: `Alternatives to ${COMPETITORS.slice(0, 4).map((c) => c.name).join(", ")} and ${COMPETITORS.length - 4} more (${COMPARE_VERIFIED_LABEL})`,
+    title: `Alternatives to ${COMPETITORS.slice(0, 4).map((c) => c.name).join(", ")} and ${COMPETITORS.length - 4} more (${monthLabel(new Date())})`,
     description: `Weighing ${COMPETITORS.map((c) => c.name).join(", ")}? distribute.you runs the outbound for you from domains we own, from $1 a day, and publishes what a positive reply costs.`,
     path: "/alternatives",
     body,
