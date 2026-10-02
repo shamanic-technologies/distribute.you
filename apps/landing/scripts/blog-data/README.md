@@ -242,19 +242,3 @@ than the first. The article states lifts (x2, +67%); the counts sit in its Notes
 ## Research on two cost bases
 
 The Research page is written twice. The billed snapshot (`research.mjs <facts.json> apps/dashboard/src/lib/research`) is the default view. The staff-only ACTUAL cost snapshot (what the vendors charged us, before our markup) is derived with `COST_BASIS=actual node derive.mjs <dir> > <dir>/facts-actual.json` then `research.mjs <dir>/facts-actual.json apps/dashboard/src/lib/research/actual` (delete the `research-templates.json` it writes there). extract.sh prices every spend row through costs-service's vendor catalogue with runs-service's match rule; a workflow version carrying billed spend no vendor cost prices is left out of the actual figures whole, and the page states how much. Every research JSON (billed and actual) is imported ONLY by the staff route `/api/research/{basis}/{part}`, never by a client module.
-
-## The best LLM article
-
-`content/blog/best-llm-for-cold-email` compares Flash with Pro only on the same client in the same
-month (`like-for-like.mjs`: Mantel-Haenszel pooled rate ratio, 95% Greenland-Robins interval, price
-and cost per outcome on the same strata). The Research page's LLM studies print the same pooling, so
-the two never disagree for one extract. The snapshot holds bare count pairs: no org, month or lead.
-
-```sh
-node apps/landing/scripts/blog-data/llm/derive-llm.mjs /tmp/research-data/facts.json > apps/landing/scripts/blog-data/llm/llm.snapshot.json
-node apps/landing/scripts/blog-data/llm/render-llm-article.mjs apps/landing/scripts/blog-data/llm/llm.snapshot.json apps/landing/content/blog
-```
-
-The renderer refuses a snapshot where Flash and Pro start to differ on visits, Flash stops being
-measurably cheaper per visit (also with the sequence step held fixed), the cost ratio stops reading
-"half", or the positive replies start to differ.

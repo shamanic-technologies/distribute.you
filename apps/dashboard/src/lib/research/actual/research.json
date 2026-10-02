@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-10-02T08:48:23.262Z",
+  "generatedAt": "2026-10-02T09:25:05.161Z",
   "allOrgs": true,
   "costBasis": "actual",
   "unpricedBilledUsd": 0,
@@ -2532,8 +2532,8 @@
       "conclusion": [
         "Gemini 3.5 Flash: 62 website visits · 2,431 emails with a link, $30 spent.",
         "Over time: $0.54 in Jun, $0.42 in Jul.",
-        "Same clients, same months, a website visit from Gemini 3.5 Flash costs 0.80x one from Gemini 3 Flash (95% interval 0.56x to 1.13x): 0.77x the price per email, 0.96x the website visits per email (49 website visits in 1,554 emails with a link against 150 in 4,671).",
-        "Same clients, same months, a website visit from Gemini 3.5 Flash costs 0.35x one from Gemini 3.1 Pro (95% interval 0.23x to 0.53x): 0.51x the price per email, 1.47x the website visits per email (49 website visits in 1,438 emails with a link against 54 in 2,288).",
+        "Same clients, same months, a website visit from Gemini 3.5 Flash costs 0.81x one from Gemini 3 Flash (95% interval 0.57x to 1.15x; 0.96x the website visits per email; 49 website visits in 1,554 emails with a link against 150 in 4,671).",
+        "Same clients, same months, a website visit from Gemini 3.5 Flash costs 0.42x one from Gemini 3.1 Pro (95% interval 0.28x to 0.65x; 1.47x the website visits per email; 49 website visits in 1,438 emails with a link against 54 in 2,288).",
         "Same clients, same months, Gemini 3.5 Flash against Gemini 3.5 Flash-Lite: 2 website visits in 50 emails with a link against 3 in 224, under 5 on one side, so no ratio."
       ]
     },

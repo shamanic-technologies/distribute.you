@@ -306,7 +306,7 @@ function likeForLikeLines(o, strata, winner, { goal }) {
       if (c.a.outcomes < LFL_MIN || c.b.outcomes < LFL_MIN || !c.rate) return `Same clients, same months, ${winner} against ${c.other}: ${tally}, under ${LFL_MIN} on one side, so no ratio.`;
       const { ratio, lo, hi } = c.rate;
       if (goal === "rate") return `Same clients, same months, ${winner} gets ${x(ratio)} the ${o.nounPlural} per email of ${c.other} (95% interval ${x(lo)} to ${x(hi)}; ${tally}).`;
-      return `Same clients, same months, a ${o.noun} from ${winner} costs ${x(c.cost.ratio)} one from ${c.other} (95% interval ${x(c.cost.lo)} to ${x(c.cost.hi)}): ${x(c.price)} the price per email, ${x(ratio)} the ${o.nounPlural} per email (${tally}).`;
+      return `Same clients, same months, a ${o.noun} from ${winner} costs ${x(c.cost.ratio)} one from ${c.other} (95% interval ${x(c.cost.lo)} to ${x(c.cost.hi)}; ${x(ratio)} the ${o.nounPlural} per email; ${tally}).`;
     });
 }
 
