@@ -100,7 +100,7 @@ const COLUMN_HINT: Partial<Record<SortKey, string>> = {
   dailyLimit:
     "The daily max send this account actually has today: its configured limit capped by the age ramp. This is the ceiling send selection compares today's load against.",
   queuedToday:
-    "Emails actually due today = Initial (one first email per never-started lead) + Followups (steps projected today/overdue).",
+    "Emails actually due today = first email unsent (one per never-started sequence, at any age, not only added today) + Followups (steps projected today/overdue).",
   queuedOverdue:
     "Backlog: the part of Followups we owed on an EARLIER day and never dispatched. A subset of Queued today, never added to it.",
   queuedNextTomorrow: "Steps projected tomorrow (UTC)",
@@ -387,8 +387,8 @@ function AddressPanel({ row, onClose }: { row: OpsAddressRow; onClose: () => voi
           never-started lead owes one email today but several steps overall, so the
           two totals differ on purpose and must never be read as one number. */}
       <PanelGroup title="Due today">
-        <PanelRow label="Queued today (Initial + Followups)">{num(queuedTodayFor(row))}</PanelRow>
-        <PanelRow label="— Initial (leads not yet contacted)">{num(row.queuedFirstUnsentSequences)}</PanelRow>
+        <PanelRow label="Queued today (first email unsent + Followups)">{num(queuedTodayFor(row))}</PanelRow>
+        <PanelRow label="— First email unsent (any age, not only added today)">{num(row.queuedFirstUnsentSequences)}</PanelRow>
         <PanelRow label="— Followups (steps today/overdue)">{num(row.queuedNextToday)}</PanelRow>
         <PanelRow label="— of which overdue (owed before today)">
           {row.queuedOverdue === undefined ? "—" : num(row.queuedOverdue)}
@@ -758,8 +758,11 @@ export default function ColdEmailAccountsPage() {
                             >
                               {num(queuedToday)}
                             </div>
-                            <div className="text-[10px] tabular-nums text-gray-400">
-                              Initial: {num(r.queuedFirstUnsentSequences)}
+                            <div
+                              className="text-[10px] tabular-nums text-gray-400"
+                              title="Sequences on this account whose first email has not sent yet, at any age. Not the count of sequences added today."
+                            >
+                              First email unsent: {num(r.queuedFirstUnsentSequences)}
                             </div>
                             <div className="text-[10px] tabular-nums text-gray-400">
                               Followups: {num(r.queuedNextToday)}
@@ -809,7 +812,7 @@ export default function ColdEmailAccountsPage() {
                                   }`}
                                   title={
                                     ok
-                                      ? "Matches Initial + Followups + tomorrow + later"
+                                      ? "Matches first-unsent steps + Followups + tomorrow + later"
                                       : `Mismatch: backend queueSize ${num(r.queueSize)} vs visible sum ${num(visibleSum)}`
                                   }
                                 >
