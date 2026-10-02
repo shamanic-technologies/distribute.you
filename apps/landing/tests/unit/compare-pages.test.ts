@@ -5,12 +5,13 @@ import { describe, expect, it } from "vitest";
 
 import {
   comparePageDescription,
+  comparePageTitle,
   renderAlternativesPage,
   renderCompareHub,
   renderComparePage,
   V2_STYLES_VERSION,
 } from "../../src/lib/compare-page";
-import { COMPETITORS, comparePaths, competitorBySlug } from "../../src/lib/competitors";
+import { COMPARE_VERIFIED_LABEL, COMPETITORS, comparePaths, competitorBySlug, monthLabel } from "../../src/lib/competitors";
 
 /**
  * The comparison cluster: `/compare/<slug>`, `/compare`, `/alternatives`.
@@ -73,7 +74,7 @@ describe("a comparison page", () => {
       it("states who it compares, canonically, with the verification date", () => {
         expect(html).toContain(`<h1>distribute.you <span class="accent">vs</span> ${c.name}</h1>`);
         expect(html).toContain(`<link rel="canonical" href="https://distribute.you/compare/${c.slug}">`);
-        expect(html).toContain("Verified September 2026");
+        expect(html).toContain(`Verified ${COMPARE_VERIFIED_LABEL}`);
         expect(html).toContain(`href="${c.sourceUrl}" rel="nofollow noopener"`);
         expect(html).not.toContain("noindex");
       });
@@ -239,5 +240,24 @@ describe("served through the pipeline", () => {
     );
     expect(md.headers.get("content-type")).toContain("text/markdown");
     expect(await md.text()).toContain(`distribute.you vs ${c.name}`);
+  });
+});
+
+describe("the month a compare title shows", () => {
+  it("is the month the page is served in, never a hard-coded one", () => {
+    const artisan = competitorBySlug("artisan")!;
+    expect(comparePageTitle(artisan, new Date("2026-10-02T09:00:00Z"))).toBe(
+      "Artisan alternative: distribute.you vs Artisan pricing (October 2026)",
+    );
+    expect(comparePageTitle(artisan, new Date("2027-01-15T09:00:00Z"))).toContain("(January 2027)");
+    const thisMonth = monthLabel(new Date());
+    for (const c of COMPETITORS) expect(renderComparePage(c), c.slug).toContain(`pricing (${thisMonth})</title>`);
+    expect(renderCompareHub()).toContain(`AI SDRs (${thisMonth})</title>`);
+    expect(renderAlternativesPage()).toContain(`more (${thisMonth})</title>`);
+  });
+
+  it("keeps the Verified eyebrow on the month the prices were read", () => {
+    const newest = COMPETITORS.map((c) => c.verifiedOn).sort().at(-1)!;
+    expect(COMPARE_VERIFIED_LABEL).toBe(monthLabel(new Date(`${newest}T12:00:00Z`)));
   });
 });

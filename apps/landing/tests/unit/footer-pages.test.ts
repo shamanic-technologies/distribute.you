@@ -239,6 +239,13 @@ describe("the orphaned pages are gone, everywhere they were listed", () => {
       ["/cold-email-for-saas-founders/:path*", "/"],
       ["/cold-email-vs-linkedin/:path*", "/"],
       ["/developers/:path+", "/developers"],
+      ["/blog/digital-narratives-examples", "/blog/email-marketing-strategy"],
+      ["/blog/what-is-thought-leadership-marketing", "/blog/email-marketing-strategy"],
+      ["/blog/examples-of-great-press-releases", "/blog/press-release-distribution-software"],
+      ["/blog/boutique-pr-firms", "/blog/press-release-distribution-software"],
+      ["/blog/venture-capital-due-diligence", "/blog"],
+      ["/blog/the-slug", "/blog"],
+      ["/blog/second", "/blog"],
     ]) {
       expect(config).toContain(`{ source: "${source}", destination: "${destination}", permanent: true, missing: offLab }`);
     }

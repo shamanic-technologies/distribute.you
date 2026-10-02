@@ -63,7 +63,6 @@ export type Competitor = {
   readonly faq: readonly { readonly q: string; readonly a: string }[];
 };
 
-export const COMPARE_VERIFIED_LABEL = "September 2026";
 
 /**
  * How WE answer each row. Stated once, so eleven pages cannot describe us eleven ways.
@@ -618,4 +617,17 @@ export function competitorBySlug(slug: string): Competitor | undefined {
 /** Every path the cluster serves, for the sitemap and llms.txt. */
 export function comparePaths(): string[] {
   return ["/compare", "/alternatives", ...COMPETITORS.map((c) => `/compare/${c.slug}`)];
+}
+
+/**
+ * The month the catalogue was last read, derived from the newest `verifiedOn`, so the
+ * "Verified" eyebrow moves with the data and never needs its own edit.
+ */
+export const COMPARE_VERIFIED_LABEL = monthLabel(
+  new Date(`${COMPETITORS.map((c) => c.verifiedOn).sort().at(-1)}T12:00:00Z`),
+);
+
+/** "October 2026". UTC, so the label does not depend on the server's zone. */
+export function monthLabel(d: Date): string {
+  return d.toLocaleDateString("en-US", { month: "long", year: "numeric", timeZone: "UTC" });
 }
