@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-10-02T09:24:28.256Z",
+  "generatedAt": "2026-10-02T10:20:17.853Z",
   "allOrgs": true,
   "costBasis": "user",
   "unpricedBilledUsd": 0,
@@ -91,14 +91,14 @@
       "goal": "roi",
       "question": "Which LLM gets the cheapest positive reply?",
       "status": "measured",
-      "headline": "GLM 5.2 Pro wins at $34 per positive reply.",
+      "headline": "GLM 5.2 Pro leads at $34 per positive reply. Noise so far.",
       "winner": "GLM 5.2 Pro",
       "result": {
         "display": "$34",
         "unit": "per positive reply",
         "sample": "1 positive reply · 599 emails"
       },
-      "crowned": true,
+      "crowned": false,
       "charts": [
         {
           "kind": "bars",
@@ -180,7 +180,11 @@
         "Same clients, same months, GLM 5.2 Pro against Gemini 3.1 Pro: 1 positive reply in 597 emails against 8 in 16,162, under 5 on one side, so no ratio.",
         "Same clients, same months, GLM 5.2 Pro against DeepSeek V4 Pro: 1 positive reply in 599 emails against 1 in 5,050, under 5 on one side, so no ratio.",
         "Same clients, same months, GLM 5.2 Pro against DeepSeek V4 Flash: 0 positive replies in 22 emails against 0 in 343, under 5 on one side, so no ratio."
-      ]
+      ],
+      "verdict": {
+        "kind": "noise",
+        "reason": "GLM 5.2 Pro rests on 1 positive reply; a lead needs at least 5 before chance stops dominating."
+      }
     },
     {
       "id": "herald-llm-rate",
@@ -189,14 +193,14 @@
       "goal": "rate",
       "question": "Which LLM gets the most positive replies?",
       "status": "measured",
-      "headline": "Gemini 3.5 Flash-Lite wins with a 0.23% positive reply rate.",
+      "headline": "Gemini 3.5 Flash-Lite leads with a 0.23% positive reply rate. Noise so far.",
       "winner": "Gemini 3.5 Flash-Lite",
       "result": {
         "display": "0.23%",
         "unit": "positive reply rate",
         "sample": "1 positive reply · 437 emails"
       },
-      "crowned": true,
+      "crowned": false,
       "charts": [
         {
           "kind": "bars",
@@ -351,7 +355,11 @@
         "Same clients, same months, Gemini 3.5 Flash-Lite against Gemini 3.6 Flash: 1 positive reply in 425 emails against 0 in 201, under 5 on one side, so no ratio.",
         "Same clients, same months, Gemini 3.5 Flash-Lite against Gemini 3.5 Flash: 1 positive reply in 425 emails against 0 in 157, under 5 on one side, so no ratio.",
         "A LLM with fewer than 1 positive reply is ranked where its value puts it and marked Learning."
-      ]
+      ],
+      "verdict": {
+        "kind": "noise",
+        "reason": "Gemini 3.5 Flash-Lite rests on 1 positive reply; a lead needs at least 5 before chance stops dominating."
+      }
     },
     {
       "id": "herald-cost-over-time",
@@ -361,7 +369,7 @@
       "question": "What does a positive reply cost on average?",
       "status": "measured",
       "headline": "$181 per positive reply on average since inception, across all our emails.",
-      "winner": "GLM 5.2 Pro",
+      "winner": null,
       "result": {
         "display": "$181",
         "unit": "per positive reply, average since inception",
@@ -472,46 +480,15 @@
             ]
           },
           "note": "Only people we started writing to at least 21 days before the read (before Sep 11) count, with every positive reply and website visit they sent since. A figure needs 1 positive reply (10 website visits) behind it; below that it reads Learning."
-        },
-        {
-          "kind": "months",
-          "title": "GLM 5.2 Pro (cheapest LLM): cost per positive reply by month",
-          "lowerIsBetter": true,
-          "points": [
-            {
-              "label": "Sep",
-              "value": 20.86,
-              "display": "$21",
-              "note": "1 positive reply · 373 emails",
-              "thin": false
-            }
-          ],
-          "cumulative": {
-            "title": "GLM 5.2 Pro (cheapest LLM): average since inception",
-            "points": [
-              {
-                "label": "Sep",
-                "value": 33.39,
-                "display": "$33",
-                "note": "1 positive reply · 597 emails to date",
-                "thin": false
-              },
-              {
-                "label": "Oct",
-                "value": 33.5,
-                "display": "$34",
-                "note": "1 positive reply · 599 emails to date",
-                "thin": false
-              }
-            ]
-          },
-          "note": "Only people we started writing to at least 21 days before the read (before Sep 11) count, with every positive reply and website visit they sent since. A figure needs 1 positive reply (10 website visits) behind it; below that it reads Learning."
         }
       ],
       "conclusion": [
-        "The average divides everything spent since the first email by every positive reply since; the monthly bars are context, not the answer.",
-        "GLM 5.2 Pro (cheapest LLM): $34 per positive reply on average since inception."
-      ]
+        "The average divides everything spent since the first email by every positive reply since; the monthly bars are context, not the answer."
+      ],
+      "verdict": {
+        "kind": "conclusion",
+        "reason": "A measurement on 38 positive replies: 95% interval $132 to $256 per positive reply."
+      }
     },
     {
       "id": "herald-followups-roi",
@@ -520,14 +497,14 @@
       "goal": "roi",
       "question": "How many follow-ups give the cheapest positive reply?",
       "status": "measured",
-      "headline": "First email only: $132 per positive reply, the cheapest depth.",
+      "headline": "First email only: $132 per positive reply, the cheapest depth. Noise so far.",
       "winner": "First email only",
       "result": {
         "display": "$132",
         "unit": "per positive reply, first email only",
         "sample": "18 positive replies · $2,383 spent"
       },
-      "crowned": true,
+      "crowned": false,
       "charts": [
         {
           "kind": "bars",
@@ -598,7 +575,11 @@
       "conclusion": [
         "Each depth adds up the spend and the positive replies of every email up to it.",
         "The second chart prices each email alone, which is what the next follow-up would cost."
-      ]
+      ],
+      "verdict": {
+        "kind": "noise",
+        "reason": "The first email against the follow-ups, positive replies per dollar: p 0.122, a gap chance alone produces often."
+      }
     },
     {
       "id": "herald-followups-rate",
@@ -658,7 +639,11 @@
         "+ 1 follow-up: +0.04 points.",
         "+ 2 follow-ups: +0.02 points.",
         "+ 3 follow-ups: +0.00 points."
-      ]
+      ],
+      "verdict": {
+        "kind": "conclusion",
+        "reason": "Follow-ups brought 19 of 37 positive replies, on the same people the first email reached, and the last useful one (follow-up 2) brought 7 on its own."
+      }
     },
     {
       "id": "herald-opens-roi",
@@ -667,7 +652,7 @@
       "goal": "roi",
       "question": "Should we track opens for the cheapest positive reply?",
       "status": "measured",
-      "headline": "Tracking off wins: 0.13% of people replied positively, against 0.10% (p 0.40).",
+      "headline": "Tracking off leads: 0.13% of people replied positively, against 0.10% (p 0.40). Noise so far.",
       "winner": "Tracking off",
       "result": {
         "display": "0.13%",
@@ -702,7 +687,11 @@
       "conclusion": [
         "An email costs the same with or without the pixel, so the cheaper positive reply is the arm with more of them per person.",
         "Tracking was on from 2026-02-10 to 2026-06-28 and off until 2026-09-10: two periods, not a split test, over 48,258 people."
-      ]
+      ],
+      "verdict": {
+        "kind": "noise",
+        "reason": "p 0.40: a gap chance alone produces often, and the two periods are not a split test."
+      }
     },
     {
       "id": "herald-opens-rate",
@@ -711,14 +700,14 @@
       "goal": "rate",
       "question": "Should we track opens for the best reply rate?",
       "status": "measured",
-      "headline": "Tracking off wins: 0.40% of people replied, against 0.29% (p 0.03).",
+      "headline": "Tracking off leads: 0.40% of people replied, against 0.29% (p 0.03). A signal to confirm, not yet a conclusion.",
       "winner": "Tracking off",
       "result": {
         "display": "0.40%",
         "unit": "with tracking off, 0.29% on",
         "sample": "p 0.03, 48,258 people"
       },
-      "crowned": true,
+      "crowned": false,
       "charts": [
         {
           "kind": "bars",
@@ -768,7 +757,11 @@
       "conclusion": [
         "Auto-replies and out-of-office messages are not counted as replies.",
         "Tracking was on from 2026-02-10 to 2026-06-28 and off until 2026-09-10: two periods, not a split test, over 48,258 people."
-      ]
+      ],
+      "verdict": {
+        "kind": "signal",
+        "reason": "p 0.03, but tracking was on and off in two different periods, not a split test: the calendar can move this as much as the pixel."
+      }
     },
     {
       "id": "herald-template-roi",
@@ -777,14 +770,14 @@
       "goal": "roi",
       "question": "Which template gets the cheapest positive reply?",
       "status": "measured",
-      "headline": "Cold email v33 wins at $34 per positive reply.",
+      "headline": "Cold email v33 leads at $34 per positive reply. Noise so far.",
       "winner": "Cold email v33",
       "result": {
         "display": "$34",
         "unit": "per positive reply",
         "sample": "1 positive reply · 325 emails"
       },
-      "crowned": true,
+      "crowned": false,
       "charts": [
         {
           "kind": "bars",
@@ -911,7 +904,11 @@
       ],
       "conclusion": [
         "Cold email v33: 1 positive reply · 325 emails, $34 spent."
-      ]
+      ],
+      "verdict": {
+        "kind": "noise",
+        "reason": "Cold email v33 rests on 1 positive reply; a lead needs at least 5 before chance stops dominating."
+      }
     },
     {
       "id": "herald-template-rate",
@@ -920,14 +917,14 @@
       "goal": "rate",
       "question": "Which template gets the most positive replies?",
       "status": "measured",
-      "headline": "Cold email v33 wins with a 0.31% positive reply rate.",
+      "headline": "Cold email v33 leads with a 0.31% positive reply rate. Noise so far.",
       "winner": "Cold email v33",
       "result": {
         "display": "0.31%",
         "unit": "positive reply rate",
         "sample": "1 positive reply · 325 emails"
       },
-      "crowned": true,
+      "crowned": false,
       "charts": [
         {
           "kind": "bars",
@@ -1245,7 +1242,11 @@
         "Cold email v33: 1 positive reply · 325 emails.",
         "Over time: 0.00% in Jul, 0.00% in Sep.",
         "A template with fewer than 1 positive reply is ranked where its value puts it and marked Learning."
-      ]
+      ],
+      "verdict": {
+        "kind": "noise",
+        "reason": "Cold email v33 rests on 1 positive reply; a lead needs at least 5 before chance stops dominating."
+      }
     },
     {
       "id": "herald-naming-rate",
@@ -1254,14 +1255,14 @@
       "goal": "rate",
       "question": "Does naming the client get more positive replies?",
       "status": "measured",
-      "headline": "Client not named wins: a 0.05% positive reply rate, against 0.02% with the client named (p 0.04).",
+      "headline": "Client not named leads: a 0.05% positive reply rate, against 0.02% with the client named (p 0.04). A signal to confirm, not yet a conclusion.",
       "winner": "Client not named",
       "result": {
         "display": "0.05%",
         "unit": "with the client not named, 0.02% named",
         "sample": "p 0.04, 96,610 emails"
       },
-      "crowned": true,
+      "crowned": false,
       "charts": [
         {
           "kind": "bars",
@@ -1292,7 +1293,11 @@
         "6 emails whose template was not recorded are left out.",
         "The two sides ran for different clients, audiences and months: this is not a split test.",
         "The p-value asks whether positive replies per email differ between the two sides."
-      ]
+      ],
+      "verdict": {
+        "kind": "signal",
+        "reason": "Client not named against Client named, positive replies per email: p 0.049, but on the same clients in the same months it reads 1.57x (p 0.245): the gap may be the clients'."
+      }
     },
     {
       "id": "herald-naming-roi",
@@ -1301,7 +1306,7 @@
       "goal": "roi",
       "question": "Does naming the client get a cheaper positive reply?",
       "status": "measured",
-      "headline": "Client not named wins at $154 per positive reply, against $257 with the client named (p 0.18).",
+      "headline": "Client not named leads at $154 per positive reply, against $257 with the client named (p 0.18). Noise so far.",
       "winner": "Client not named",
       "result": {
         "display": "$154",
@@ -1340,7 +1345,11 @@
         "The two sides ran for different clients, audiences and months: this is not a split test.",
         "An email with the client not named cost $0.08 to write and send, $0.06 with the client named.",
         "The p-value asks whether positive replies per dollar spent differ between the two sides."
-      ]
+      ],
+      "verdict": {
+        "kind": "noise",
+        "reason": "Client not named against Client named, positive replies per dollar: p 0.182, a gap chance alone produces often."
+      }
     },
     {
       "id": "herald-layout-roi",
@@ -1349,14 +1358,14 @@
       "goal": "roi",
       "question": "Does the layout of the first email change what a positive reply costs?",
       "status": "measured",
-      "headline": "Double line breaks wins at $162 per positive reply.",
+      "headline": "Double line breaks leads at $162 per positive reply. Noise so far.",
       "winner": "Double line breaks",
       "result": {
         "display": "$162",
         "unit": "per positive reply",
         "sample": "35 positive replies · 77,439 emails"
       },
-      "crowned": true,
+      "crowned": false,
       "charts": [
         {
           "kind": "bars",
@@ -1455,7 +1464,11 @@
         "6 emails whose first email text is not on record are left out.",
         "Positive replies include 4 the client recorded in their CRM (a phone call, a LinkedIn message), as the dashboard counts them.",
         "The buckets ran for different clients, audiences and months: this is not a split test."
-      ]
+      ],
+      "verdict": {
+        "kind": "noise",
+        "reason": "Double line breaks against One block, positive replies per dollar: p 0.194, a gap chance alone produces often."
+      }
     },
     {
       "id": "herald-opening-roi",
@@ -1464,14 +1477,14 @@
       "goal": "roi",
       "question": "Does the way the first email opens change what a positive reply costs?",
       "status": "measured",
-      "headline": "Greeting + first name wins at $152 per positive reply.",
+      "headline": "Greeting + first name leads at $152 per positive reply. Noise so far.",
       "winner": "Greeting + first name",
       "result": {
         "display": "$152",
         "unit": "per positive reply",
         "sample": "21 positive replies · 40,762 emails"
       },
-      "crowned": true,
+      "crowned": false,
       "charts": [
         {
           "kind": "bars",
@@ -1570,7 +1583,11 @@
         "6 emails whose first email text is not on record are left out.",
         "Positive replies include 4 the client recorded in their CRM (a phone call, a LinkedIn message), as the dashboard counts them.",
         "The buckets ran for different clients, audiences and months: this is not a split test."
-      ]
+      ],
+      "verdict": {
+        "kind": "noise",
+        "reason": "Greeting + first name against First name alone, positive replies per dollar: p 0.316, a gap chance alone produces often."
+      }
     },
     {
       "id": "herald-dash-roi",
@@ -1579,14 +1596,14 @@
       "goal": "roi",
       "question": "Do dashes in the first email change what a positive reply costs, and how often one comes?",
       "status": "measured",
-      "headline": "Em dash wins at $155 per positive reply.",
+      "headline": "Em dash leads at $155 per positive reply. Noise so far.",
       "winner": "Em dash",
       "result": {
         "display": "$155",
         "unit": "per positive reply",
         "sample": "14 positive replies · 27,735 emails"
       },
-      "crowned": true,
+      "crowned": false,
       "charts": [
         {
           "kind": "bars",
@@ -1867,7 +1884,11 @@
         "6 emails whose first email text is not on record are left out.",
         "Positive replies include 4 the client recorded in their CRM (a phone call, a LinkedIn message), as the dashboard counts them.",
         "The buckets ran for different clients, audiences and months: this is not a split test."
-      ]
+      ],
+      "verdict": {
+        "kind": "noise",
+        "reason": "Em dash against No dash, positive replies per dollar: p 0.491, a gap chance alone produces often."
+      }
     },
     {
       "id": "herald-workflow-roi",
@@ -1876,14 +1897,14 @@
       "goal": "roi",
       "question": "Which workflow gets the cheapest positive reply?",
       "status": "measured",
-      "headline": "Gemini 3 Flash · Cold email v33 wins at $36 per positive reply.",
+      "headline": "Gemini 3 Flash · Cold email v33 leads at $36 per positive reply. Noise so far.",
       "winner": "Gemini 3 Flash · Cold email v33",
       "result": {
         "display": "$36",
         "unit": "per positive reply",
         "sample": "1 positive reply · 385 emails"
       },
-      "crowned": true,
+      "crowned": false,
       "charts": [
         {
           "kind": "bars",
@@ -2018,7 +2039,11 @@
       ],
       "conclusion": [
         "Gemini 3 Flash · Cold email v33: 1 positive reply · 385 emails, $36 spent."
-      ]
+      ],
+      "verdict": {
+        "kind": "noise",
+        "reason": "Gemini 3 Flash · Cold email v33 rests on 1 positive reply; a lead needs at least 5 before chance stops dominating."
+      }
     },
     {
       "id": "herald-workflow-rate",
@@ -2027,14 +2052,14 @@
       "goal": "rate",
       "question": "Which workflow gets the most positive replies?",
       "status": "measured",
-      "headline": "Gemini 3 Flash · Cold email v33 wins with a 0.26% positive reply rate.",
+      "headline": "Gemini 3 Flash · Cold email v33 leads with a 0.26% positive reply rate. Noise so far.",
       "winner": "Gemini 3 Flash · Cold email v33",
       "result": {
         "display": "0.26%",
         "unit": "positive reply rate",
         "sample": "1 positive reply · 385 emails"
       },
-      "crowned": true,
+      "crowned": false,
       "charts": [
         {
           "kind": "bars",
@@ -2414,7 +2439,11 @@
         "Gemini 3 Flash · Cold email v33: 1 positive reply · 385 emails.",
         "Over time: 0.00% in Jun, 0.00% in Sep.",
         "A workflow with fewer than 1 positive reply is ranked where its value puts it and marked Learning."
-      ]
+      ],
+      "verdict": {
+        "kind": "noise",
+        "reason": "Gemini 3 Flash · Cold email v33 rests on 1 positive reply; a lead needs at least 5 before chance stops dominating."
+      }
     },
     {
       "id": "scout-llm-roi",
@@ -2423,14 +2452,14 @@
       "goal": "roi",
       "question": "Which LLM gets the cheapest website visit?",
       "status": "measured",
-      "headline": "Gemini 3.5 Flash wins at $1.18 per website visit.",
+      "headline": "Gemini 3.5 Flash leads at $1.18 per website visit. Noise so far.",
       "winner": "Gemini 3.5 Flash",
       "result": {
         "display": "$1.18",
         "unit": "per website visit",
         "sample": "62 website visits · 2,431 emails with a link"
       },
-      "crowned": true,
+      "crowned": false,
       "charts": [
         {
           "kind": "bars",
@@ -2535,7 +2564,11 @@
         "Same clients, same months, a website visit from Gemini 3.5 Flash costs 1.02x one from Gemini 3 Flash (95% interval 0.72x to 1.44x; 0.96x the website visits per email; 49 website visits in 1,554 emails with a link against 150 in 4,671).",
         "Same clients, same months, a website visit from Gemini 3.5 Flash costs 0.54x one from Gemini 3.1 Pro (95% interval 0.35x to 0.82x; 1.47x the website visits per email; 49 website visits in 1,438 emails with a link against 54 in 2,288).",
         "Same clients, same months, Gemini 3.5 Flash against Gemini 3.5 Flash-Lite: 2 website visits in 50 emails with a link against 3 in 224, under 5 on one side, so no ratio."
-      ]
+      ],
+      "verdict": {
+        "kind": "noise",
+        "reason": "Gemini 3.5 Flash against Gemini 3 Flash, website visits per dollar: p 0.819, a gap chance alone produces often."
+      }
     },
     {
       "id": "scout-llm-rate",
@@ -2544,14 +2577,14 @@
       "goal": "rate",
       "question": "Which LLM gets the most website visits?",
       "status": "measured",
-      "headline": "Gemini 3 Flash wins with a 3.20% website visit rate.",
+      "headline": "Gemini 3 Flash leads with a 3.20% website visit rate. Noise so far.",
       "winner": "Gemini 3 Flash",
       "result": {
         "display": "3.20%",
         "unit": "website visit rate",
         "sample": "151 website visits · 4,713 emails with a link"
       },
-      "crowned": true,
+      "crowned": false,
       "charts": [
         {
           "kind": "bars",
@@ -2688,7 +2721,11 @@
         "Same clients, same months, Gemini 3 Flash gets 1.04x the website visits per email of Gemini 3.5 Flash (95% interval 0.73x to 1.47x; 150 website visits in 4,671 emails with a link against 49 in 1,554).",
         "Same clients, same months, Gemini 3 Flash gets 1.95x the website visits per email of Gemini 3.5 Flash-Lite (95% interval 0.67x to 5.64x; 11 website visits in 318 emails with a link against 21 in 1,141).",
         "A LLM with fewer than 10 website visits is ranked where its value puts it and marked Learning."
-      ]
+      ],
+      "verdict": {
+        "kind": "noise",
+        "reason": "Gemini 3 Flash against Gemini 3.5 Flash, website visits per email: p 0.148, a gap chance alone produces often."
+      }
     },
     {
       "id": "scout-cost-over-time",
@@ -2698,7 +2735,7 @@
       "question": "What does a website visit cost on average?",
       "status": "measured",
       "headline": "$2.87 per website visit on average since inception, across all our emails.",
-      "winner": "Gemini 3.5 Flash",
+      "winner": null,
       "result": {
         "display": "$2.87",
         "unit": "per website visit, average since inception",
@@ -2795,60 +2832,15 @@
             ]
           },
           "note": "Only people we started writing to at least 21 days before the read (before Sep 11) count, with every positive reply and website visit they sent since. A figure needs 1 positive reply (10 website visits) behind it; below that it reads Learning."
-        },
-        {
-          "kind": "months",
-          "title": "Gemini 3.5 Flash (cheapest LLM): cost per website visit by month",
-          "lowerIsBetter": true,
-          "points": [
-            {
-              "label": "Jun",
-              "value": 1.05,
-              "display": "$1.05",
-              "note": "26 website visits · 1,407 emails with a link",
-              "thin": false
-            },
-            {
-              "label": "Jul",
-              "value": 1.24,
-              "display": "$1.24",
-              "note": "36 website visits · 985 emails with a link",
-              "thin": false
-            }
-          ],
-          "cumulative": {
-            "title": "Gemini 3.5 Flash (cheapest LLM): average since inception",
-            "points": [
-              {
-                "label": "Jun",
-                "value": 1.05,
-                "display": "$1.05",
-                "note": "26 website visits · 1,407 emails with a link to date",
-                "thin": false
-              },
-              {
-                "label": "Jul",
-                "value": 1.16,
-                "display": "$1.16",
-                "note": "62 website visits · 2,392 emails with a link to date",
-                "thin": false
-              },
-              {
-                "label": "Aug",
-                "value": 1.18,
-                "display": "$1.18",
-                "note": "62 website visits · 2,431 emails with a link to date",
-                "thin": false
-              }
-            ]
-          },
-          "note": "Only people we started writing to at least 21 days before the read (before Sep 11) count, with every positive reply and website visit they sent since. A figure needs 1 positive reply (10 website visits) behind it; below that it reads Learning."
         }
       ],
       "conclusion": [
-        "The average divides everything spent since the first email by every website visit since; the monthly bars are context, not the answer.",
-        "Gemini 3.5 Flash (cheapest LLM): $1.18 per website visit on average since inception."
-      ]
+        "The average divides everything spent since the first email by every website visit since; the monthly bars are context, not the answer."
+      ],
+      "verdict": {
+        "kind": "conclusion",
+        "reason": "A measurement on 389 website visits: 95% interval $2.60 to $3.18 per website visit."
+      }
     },
     {
       "id": "scout-followups-roi",
@@ -2928,7 +2920,11 @@
       "conclusion": [
         "Each depth adds up the spend and the website visits of every email up to it.",
         "The second chart prices each email alone, which is what the next follow-up would cost."
-      ]
+      ],
+      "verdict": {
+        "kind": "conclusion",
+        "reason": "The first email against the follow-ups, website visits per dollar: p < 0.001, on the same people."
+      }
     },
     {
       "id": "scout-followups-rate",
@@ -2980,7 +2976,11 @@
         "Counted per person reached, so a follow-up is judged on what it adds, not on how many emails it took.",
         "+ 1 follow-up: +0.61 points.",
         "+ 2 follow-ups: +0.07 points."
-      ]
+      ],
+      "verdict": {
+        "kind": "conclusion",
+        "reason": "Follow-ups brought 55 of 377 website visits, on the same people the first email reached, and the last useful one (follow-up 2) brought 6 on its own."
+      }
     },
     {
       "id": "scout-opens-roi",
@@ -2989,14 +2989,14 @@
       "goal": "roi",
       "question": "Should we track opens for the cheapest website visit?",
       "status": "measured",
-      "headline": "Tracking off wins: 2.00% of people visited the website, against 1.50% (p < 0.001).",
+      "headline": "Tracking off leads: 2.00% of people visited the website, against 1.50% (p < 0.001). A signal to confirm, not yet a conclusion.",
       "winner": "Tracking off",
       "result": {
         "display": "2.00%",
         "unit": "with tracking off, 1.50% on",
         "sample": "p < 0.001, 48,258 people"
       },
-      "crowned": true,
+      "crowned": false,
       "charts": [
         {
           "kind": "bars",
@@ -3024,7 +3024,11 @@
       "conclusion": [
         "An email costs the same with or without the pixel, so the cheaper website visit is the arm with more of them per person.",
         "Tracking was on from 2026-02-10 to 2026-06-28 and off until 2026-09-10: two periods, not a split test, over 48,258 people."
-      ]
+      ],
+      "verdict": {
+        "kind": "signal",
+        "reason": "p < 0.001, but tracking was on and off in two different periods, not a split test: the calendar can move this as much as the pixel."
+      }
     },
     {
       "id": "scout-opens-rate",
@@ -3033,14 +3037,14 @@
       "goal": "rate",
       "question": "Should we track opens for the most website visits?",
       "status": "measured",
-      "headline": "Tracking off wins: 2.00% of people visited the website, against 1.50% (p < 0.001).",
+      "headline": "Tracking off leads: 2.00% of people visited the website, against 1.50% (p < 0.001). A signal to confirm, not yet a conclusion.",
       "winner": "Tracking off",
       "result": {
         "display": "2.00%",
         "unit": "with tracking off, 1.50% on",
         "sample": "p < 0.001, 48,258 people"
       },
-      "crowned": true,
+      "crowned": false,
       "charts": [
         {
           "kind": "bars",
@@ -3068,7 +3072,11 @@
       "conclusion": [
         "A visit is the first tracked click a person made.",
         "Tracking was on from 2026-02-10 to 2026-06-28 and off until 2026-09-10: two periods, not a split test, over 48,258 people."
-      ]
+      ],
+      "verdict": {
+        "kind": "signal",
+        "reason": "p < 0.001, but tracking was on and off in two different periods, not a split test: the calendar can move this as much as the pixel."
+      }
     },
     {
       "id": "scout-template-roi",
@@ -3077,14 +3085,14 @@
       "goal": "roi",
       "question": "Which template gets the cheapest website visit?",
       "status": "measured",
-      "headline": "Cold email v19 wins at $1.08 per website visit.",
+      "headline": "Cold email v19 leads at $1.08 per website visit. Noise so far.",
       "winner": "Cold email v19",
       "result": {
         "display": "$1.08",
         "unit": "per website visit",
         "sample": "163 website visits · 4,913 emails with a link"
       },
-      "crowned": true,
+      "crowned": false,
       "charts": [
         {
           "kind": "bars",
@@ -3231,7 +3239,11 @@
       "conclusion": [
         "Cold email v19: 163 website visits · 4,913 emails with a link, $176 spent.",
         "Over time: $4.75 in May, $9.43 in Aug."
-      ]
+      ],
+      "verdict": {
+        "kind": "noise",
+        "reason": "Cold email v19 against Blind discovery v16, website visits per dollar: p 0.312, a gap chance alone produces often."
+      }
     },
     {
       "id": "scout-template-rate",
@@ -3240,14 +3252,14 @@
       "goal": "rate",
       "question": "Which template gets the most website visits?",
       "status": "measured",
-      "headline": "Cold email v19 wins with a 3.32% website visit rate.",
+      "headline": "Cold email v19 leads with a 3.32% website visit rate. A signal to confirm, not yet a conclusion.",
       "winner": "Cold email v19",
       "result": {
         "display": "3.32%",
         "unit": "website visit rate",
         "sample": "163 website visits · 4,913 emails with a link"
       },
-      "crowned": true,
+      "crowned": false,
       "charts": [
         {
           "kind": "bars",
@@ -3403,7 +3415,11 @@
         "Cold email v19: 163 website visits · 4,913 emails with a link.",
         "Over time: 1.22% in May, 0.75% in Aug.",
         "A template with fewer than 10 website visits is ranked where its value puts it and marked Learning."
-      ]
+      ],
+      "verdict": {
+        "kind": "signal",
+        "reason": "Cold email v19 against Cold email v31, website visits per email: p 0.010, but not under the corrected bar (8 comparisons, so the bar is p < 0.006)."
+      }
     },
     {
       "id": "scout-layout-roi",
@@ -3516,7 +3532,11 @@
         "Every email of a sequence is filed under how its first email looked, and the sequence's website visits with it. Three layouts: one block (no line break at all), single line breaks (a new line with no empty line), double line breaks (an empty line between paragraphs). Classified by a regex on the text of the first email, no LLM involved.",
         "The model chose this on its own until Sep 28, 2026, when the templates started requiring a greeting and blank-line paragraphs. Every email here was written before, the last in Oct.",
         "The buckets ran for different clients, audiences and months: this is not a split test."
-      ]
+      ],
+      "verdict": {
+        "kind": "conclusion",
+        "reason": "Double line breaks against One block, website visits per dollar: p < 0.001 (2 comparisons, so the bar is p < 0.025), and it holds on the same clients in the same months (1.53x, p < 0.001)."
+      }
     },
     {
       "id": "scout-opening-roi",
@@ -3525,14 +3545,14 @@
       "goal": "roi",
       "question": "Does the way the first email opens change what a website visit costs?",
       "status": "measured",
-      "headline": "No greeting wins at $1.94 per website visit.",
+      "headline": "No greeting leads at $1.94 per website visit. A signal to confirm, not yet a conclusion.",
       "winner": "No greeting",
       "result": {
         "display": "$1.94",
         "unit": "per website visit",
         "sample": "192 website visits · 6,593 emails with a link"
       },
-      "crowned": true,
+      "crowned": false,
       "charts": [
         {
           "kind": "bars",
@@ -3629,7 +3649,11 @@
         "Every email of a sequence is filed under how its first email looked, and the sequence's website visits with it. A greeting word in any language we write in (Hi, Hallo, Bonjour...) counts as a greeting whatever follows; a first name followed by a comma, a colon or a dash, with no greeting word before it (\"Marie, most clinics...\"), counts as the first name alone. Classified by a regex on the text of the first email, no LLM involved.",
         "The model chose this on its own until Sep 28, 2026, when the templates started requiring a greeting and blank-line paragraphs. Every email here was written before, the last in Oct.",
         "The buckets ran for different clients, audiences and months: this is not a split test."
-      ]
+      ],
+      "verdict": {
+        "kind": "signal",
+        "reason": "No greeting against Greeting + first name, website visits per dollar: p < 0.001 (2 comparisons, so the bar is p < 0.025), but on the same clients in the same months it reads 0.67x (p 0.217): the gap may be the clients'."
+      }
     },
     {
       "id": "scout-dash-roi",
@@ -3638,7 +3662,7 @@
       "goal": "roi",
       "question": "Do dashes in the first email change what a website visit costs, and how often one comes?",
       "status": "measured",
-      "headline": "En dash wins at $1.91 per website visit.",
+      "headline": "En dash leads at $1.91 per website visit. Noise so far.",
       "winner": "En dash",
       "result": {
         "display": "$1.91",
@@ -3896,7 +3920,11 @@
         "Three buckets on the first email's text: an em dash, an en dash, neither. A plain hyphen is not a dash. The 4 emails with a link whose first email carries both (0.0%, under 2%) are counted with the em dash. Every email of a sequence is filed under its first email, and the sequence's website visits with it. Classified by a character test on the text, no LLM involved.",
         "Our templates never banned dashes until Sep 29, 2026, when every template started forbidding both. Every email here was generated before that date (the last in Oct).",
         "The buckets ran for different clients, audiences and months: this is not a split test."
-      ]
+      ],
+      "verdict": {
+        "kind": "noise",
+        "reason": "En dash rests on 1 website visit; a lead needs at least 5 before chance stops dominating."
+      }
     },
     {
       "id": "scout-workflow-roi",
@@ -3905,14 +3933,14 @@
       "goal": "roi",
       "question": "Which workflow gets the cheapest website visit?",
       "status": "measured",
-      "headline": "Gemini 3 Flash · Cold email v19 wins at $1.11 per website visit.",
+      "headline": "Gemini 3 Flash · Cold email v19 leads at $1.11 per website visit. Noise so far.",
       "winner": "Gemini 3 Flash · Cold email v19",
       "result": {
         "display": "$1.11",
         "unit": "per website visit",
         "sample": "77 website visits · 1,586 emails with a link"
       },
-      "crowned": true,
+      "crowned": false,
       "charts": [
         {
           "kind": "bars",
@@ -4052,7 +4080,11 @@
       "conclusion": [
         "Gemini 3 Flash · Cold email v19: 77 website visits · 1,586 emails with a link, $85 spent.",
         "Over time: $0.73 in Jun, $6.89 in Aug."
-      ]
+      ],
+      "verdict": {
+        "kind": "noise",
+        "reason": "Gemini 3 Flash · Cold email v19 against Gemini 3.1 Pro · Blind discovery v16, website visits per dollar: p 0.358, a gap chance alone produces often."
+      }
     },
     {
       "id": "scout-workflow-rate",
@@ -4061,14 +4093,14 @@
       "goal": "rate",
       "question": "Which workflow gets the most website visits?",
       "status": "measured",
-      "headline": "Gemini 3 Flash · Cold email v19 wins with a 4.85% website visit rate.",
+      "headline": "Gemini 3 Flash · Cold email v19 leads with a 4.85% website visit rate. A signal to confirm, not yet a conclusion.",
       "winner": "Gemini 3 Flash · Cold email v19",
       "result": {
         "display": "4.85%",
         "unit": "website visit rate",
         "sample": "77 website visits · 1,586 emails with a link"
       },
-      "crowned": true,
+      "crowned": false,
       "charts": [
         {
           "kind": "bars",
@@ -4232,7 +4264,11 @@
         "Gemini 3 Flash · Cold email v19: 77 website visits · 1,586 emails with a link.",
         "Over time: 3.99% in Jun, 0.00% in Sep.",
         "A workflow with fewer than 10 website visits is ranked where its value puts it and marked Learning."
-      ]
+      ],
+      "verdict": {
+        "kind": "signal",
+        "reason": "Gemini 3 Flash · Cold email v19 against Gemini 3.5 Flash · Cold email v19, website visits per email: p < 0.001 (9 comparisons, so the bar is p < 0.006), but the two never ran for the same client in the same month, so the gap may be the clients'."
+      }
     },
     {
       "id": "pilot-llm",
@@ -4248,7 +4284,11 @@
       "charts": [],
       "conclusion": [
         "Pilot has run one workflow (one LLM, one template) on 3 campaigns since 2 Sep 2026. A comparison needs at least two."
-      ]
+      ],
+      "verdict": {
+        "kind": "noise",
+        "reason": "Pilot has run one workflow (one LLM, one template) on 3 campaigns since 2 Sep 2026. A comparison needs at least two."
+      }
     },
     {
       "id": "pilot-template",
@@ -4264,7 +4304,11 @@
       "charts": [],
       "conclusion": [
         "Pilot has run one workflow (one LLM, one template) on 3 campaigns since 2 Sep 2026. A comparison needs at least two."
-      ]
+      ],
+      "verdict": {
+        "kind": "noise",
+        "reason": "Pilot has run one workflow (one LLM, one template) on 3 campaigns since 2 Sep 2026. A comparison needs at least two."
+      }
     },
     {
       "id": "pilot-followups",
@@ -4280,7 +4324,11 @@
       "charts": [],
       "conclusion": [
         "Pilot has run one workflow (one LLM, one template) on 3 campaigns since 2 Sep 2026. A comparison needs at least two."
-      ]
+      ],
+      "verdict": {
+        "kind": "noise",
+        "reason": "Pilot has run one workflow (one LLM, one template) on 3 campaigns since 2 Sep 2026. A comparison needs at least two."
+      }
     },
     {
       "id": "pilot-cost",
@@ -4296,7 +4344,11 @@
       "charts": [],
       "conclusion": [
         "Pilot has run one workflow (one LLM, one template) on 3 campaigns since 2 Sep 2026. A comparison needs at least two."
-      ]
+      ],
+      "verdict": {
+        "kind": "noise",
+        "reason": "Pilot has run one workflow (one LLM, one template) on 3 campaigns since 2 Sep 2026. A comparison needs at least two."
+      }
     },
     {
       "id": "pilot-workflow-roi",
@@ -4312,7 +4364,11 @@
       "charts": [],
       "conclusion": [
         "Pilot has run one workflow (one LLM, one template) on 3 campaigns since 2 Sep 2026. A comparison needs at least two."
-      ]
+      ],
+      "verdict": {
+        "kind": "noise",
+        "reason": "Pilot has run one workflow (one LLM, one template) on 3 campaigns since 2 Sep 2026. A comparison needs at least two."
+      }
     },
     {
       "id": "pilot-workflow-rate",
@@ -4328,7 +4384,11 @@
       "charts": [],
       "conclusion": [
         "Pilot has run one workflow (one LLM, one template) on 3 campaigns since 2 Sep 2026. A comparison needs at least two."
-      ]
+      ],
+      "verdict": {
+        "kind": "noise",
+        "reason": "Pilot has run one workflow (one LLM, one template) on 3 campaigns since 2 Sep 2026. A comparison needs at least two."
+      }
     }
   ],
   "catalogCounts": {

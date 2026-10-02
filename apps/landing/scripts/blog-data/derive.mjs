@@ -662,6 +662,7 @@ function dashCuts(rows) {
   const key = (r) => (folded && r.firstDash === DASH.both ? DASH.em : r.firstDash);
   return {
     byDash: cut(rows, key),
+    dashStrata: strataPer(rows, key),
     dashByTier: Object.fromEntries(["Flash", "Pro"].map((t) => [t, cut(rows.filter((r) => r.tier === t), key)])),
     dashByModel: dashByModel(rows),
     dashBoth: { emails: both, share: classified.length ? both / classified.length : 0, folded, min: DASH_BOTH_MIN },
@@ -701,6 +702,11 @@ function researchFor(rows) {
   return {
     byModel: cut(rows, modelLabel),
     modelStrata: strataPer(rows, modelLabel),
+    // the same per template, workflow and first-email shape, for every study's verdict (verdict.mjs)
+    templateStrata: strataPer(rows, (r) => r.template),
+    workflowStrata: strataPer(rows, (r) => r.dynasty),
+    layoutStrata: strataPer(rows, (r) => r.firstLayout),
+    openingStrata: strataPer(rows, (r) => r.firstOpening),
     byTemplate: cut(rows, (r) => r.template),
     byStep: cut(rows, stepLabel, STEPS),
     byMonth: cut(rows, (r) => r.month, monthsOf(rows)),

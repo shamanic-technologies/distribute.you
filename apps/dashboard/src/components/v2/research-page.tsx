@@ -50,10 +50,10 @@ import {
  * `research.json`; this file lays them out and picks one thing only: each topic's mark.
  */
 
-/** What the WINNER cell is called, per topic: the cost curve's cell names the cheapest LLM. */
+/** What the WINNER cell is called, per topic: the cost curve is a measurement, it ranks nothing. */
 const WINNER_LABEL: Record<ResearchTopic, string> = {
   llm: "Winner",
-  cost: "Cheapest LLM",
+  cost: "Comparison",
   followups: "Best depth",
   opens: "Winner",
   template: "Winner",
@@ -65,10 +65,17 @@ const WINNER_LABEL: Record<ResearchTopic, string> = {
 };
 
 const STATE_LOOK: Record<StudyState, { label: string; dot: string }> = {
-  winner: { label: "Winner", dot: "bg-[var(--data-teal)]" },
-  thin: { label: "No winner", dot: "bg-[var(--data-amber)]" },
+  conclusion: { label: "Conclusion", dot: "bg-[var(--data-teal)]" },
+  signal: { label: "Signal", dot: "bg-[var(--data-amber)]" },
+  noise: { label: "Noise", dot: "bg-[var(--fg-4)]" },
   "no-data": { label: "Not enough data", dot: "border-[1.5px] border-[var(--fg-3)]" },
 };
+
+/** The first bar is a winner only when the verdict is a conclusion; otherwise it merely leads. */
+function winnerLabel(study: ResearchStudy, state: StudyState): string {
+  const label = WINNER_LABEL[study.topic];
+  return state === "conclusion" || label !== "Winner" ? label : "Leader";
+}
 
 /** A dot plus a capitalised word, Keel's state. */
 function StudyStateDot({ state }: { state: StudyState }) {
@@ -143,11 +150,11 @@ function StudyCard({ study, href }: { study: ResearchStudy; href: string }) {
 
       <div className="k-inset mt-4 grid grid-cols-2 overflow-hidden rounded-[10px] shadow-[inset_0_0_0_1px_var(--line-subtle)]">
         <div className="min-w-0 border-r border-[var(--line-subtle)] p-3">
-          <p className="k-label">{WINNER_LABEL[study.topic]}</p>
+          <p className="k-label">{winnerLabel(study, state)}</p>
           <p className="mt-1.5 truncate text-[14px] font-medium leading-6" title={study.winner ?? undefined}>
             {study.winner ?? <span className="k-fg4">{"—"}</span>}
           </p>
-          {state !== "winner" && <p className="k-fg3 mt-0.5 truncate text-[11px]">nothing to compare</p>}
+          {state === "no-data" && <p className="k-fg3 mt-0.5 truncate text-[11px]">nothing to compare</p>}
         </div>
         <div className="min-w-0 p-3">
           <p className="k-label">Result</p>
@@ -176,7 +183,8 @@ function StudyCard({ study, href }: { study: ResearchStudy; href: string }) {
 function V2ResearchHub({ base }: { base: string }) {
   const RESEARCH = useResearch().file;
   const v = RESEARCH.volume;
-  const called = RESEARCH.studies.filter((st) => studyState(st) === "winner").length;
+  const called = RESEARCH.studies.filter((st) => studyState(st) === "conclusion").length;
+  const signals = RESEARCH.studies.filter((st) => studyState(st) === "signal").length;
   const maxMonth = Math.max(...v.byMonth.map((m) => m.emails), 1);
   return (
     <>
@@ -185,7 +193,7 @@ function V2ResearchHub({ base }: { base: string }) {
         <div className="flex flex-wrap items-end justify-between gap-3">
           <div className="min-w-0">
             <h1 className="text-[28px] font-medium leading-[34px] tracking-[-0.02em]">
-              {RESEARCH.studies.length} questions, {called} with a winner
+              {RESEARCH.studies.length} questions, {called} with a conclusion, {signals} with a signal
             </h1>
             <p className="k-fg2 mt-1 text-[14px]">
               What works in cold email, measured on every campaign we ran for every client, {monthText(RESEARCH.window.from)} to{" "}
@@ -220,7 +228,7 @@ function V2ResearchHub({ base }: { base: string }) {
           <StatTile label="Workflows compared">
             <Figure value={v.workflows.toLocaleString("en-US")} />
           </StatTile>
-          <StatTile label="Winners" note={`of ${RESEARCH.studies.length}`}>
+          <StatTile label="Conclusions" note={`of ${RESEARCH.studies.length}`}>
             <div className="flex items-end justify-between gap-2">
               <Figure value={called} />
               <div className="flex min-w-0 flex-wrap justify-end gap-[3px]" aria-hidden="true">
@@ -228,7 +236,7 @@ function V2ResearchHub({ base }: { base: string }) {
                   <span
                     key={st.id}
                     className="h-4 w-[4px] rounded-full"
-                    style={{ background: studyState(st) === "winner" ? "var(--data-teal)" : "var(--data-track)" }}
+                    style={{ background: studyState(st) === "conclusion" ? "var(--data-teal)" : studyState(st) === "signal" ? "var(--data-amber)" : "var(--data-track)" }}
                   />
                 ))}
               </div>
@@ -372,7 +380,7 @@ function V2ResearchStudy({ base, studyId }: { base: string; studyId: string }) {
         </div>
 
         <div className="mt-5 grid grid-cols-2 gap-3 lg:grid-cols-4">
-          <StatTile label={WINNER_LABEL[study.topic]}>
+          <StatTile label={winnerLabel(study, state)}>
             <p className="truncate text-[18px] font-medium leading-7" title={study.winner ?? undefined}>
               {study.winner ?? <span className="k-fg4">{"—"}</span>}
             </p>
@@ -399,6 +407,11 @@ function V2ResearchStudy({ base, studyId }: { base: string; studyId: string }) {
               <SectionTitle>What we found</SectionTitle>
               <div className="k-card p-4">
                 <p className="text-[14px] font-medium leading-6">{study.headline}</p>
+                {study.verdict && study.status === "measured" && (
+                  <p className="mt-2 text-[13px] leading-5">
+                    <span className="font-medium">{STATE_LOOK[state].label}.</span> <span className="k-fg2">{study.verdict.reason}</span>
+                  </p>
+                )}
                 <ul className="k-fg2 mt-2 space-y-1 text-[13px] leading-5">
                   {study.conclusion.map((line) => (
                     <li key={line} className="flex gap-2">
