@@ -42,6 +42,7 @@ import {
   useBrandRevenue,
   useBucketCounts,
   useLatestInBucket,
+  useOrgUsage,
   useTheirLastWords,
   useStandingCounts,
 } from "@/components/v2/data";
@@ -80,6 +81,7 @@ export function TodayPage() {
   const today = utcDay(now);
   const brand = useBrandInfo(brandId).data?.brand ?? null;
   const rev = useBrandRevenue(brandId);
+  const usage = useOrgUsage();
   const data = rev.data;
   const standings = useStandingCounts(brandId).data;
   const buckets = useBucketCounts(brandId).data;
@@ -253,12 +255,11 @@ export function TodayPage() {
                   </p>
                 </div>
               </StatTile>
-              <StatTile label="Spent" note="all time">
-                {rev.pending ? <Shimmer className="h-7 w-16" /> : <Figure value={data?.spend ? formatCentsAsUsdAdaptive(data.spend.totalSpentCents) : "—"} />}
-                <SparkLine
-                  className="mt-auto h-8 pt-2"
-                  values={data?.roiHistory ? cumulativeWindow(data.roiHistory.daily.map((d) => ({ date: d.date, value: d.cumulativeSpendUsd })), 30, today) : null}
-                />
+              {/* Everything taken from the credit, setup included: the number billing debits.
+                  Campaign spend alone left setup out and read as credit still left. */}
+              <StatTile label="Taken from credit" note="all time" href={`${v2Href(orgId, brandId, "billing")}#usage`}>
+                {usage.pending ? <Shimmer className="h-7 w-16" /> : <Figure value={usage.data ? formatUsdAdaptive(usage.data.totalBilledUsd) : "—"} />}
+                <p className="k-fg3 mt-auto pt-2 text-[12px]">Setup and outreach, all brands</p>
               </StatTile>
             </div>
 

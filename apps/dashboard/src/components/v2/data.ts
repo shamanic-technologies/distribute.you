@@ -8,6 +8,7 @@ import {
   getLeadBucketCounts,
   getLeadHistory,
   getLeadStandingCounts,
+  getOrgUsage,
   keepLastGoodFeatureRevenue,
   listLeadsPage,
 } from "@/lib/api";
@@ -42,6 +43,16 @@ export function useBrandRevenue(brandId: string) {
   });
   // Reveal on SETTLE: a failed read shows its dashes, never an eternal skeleton.
   return { ...q, enabled, pending: q.data === undefined && !q.isError && enabled };
+}
+
+/**
+ * Everything the org has been billed, every brand and every kind of work (setting up a
+ * brand, finding contacts, writing, replies), net. features-service serves the total
+ * billing debits; the Billing page's Usage section reads the same key.
+ */
+export function useOrgUsage() {
+  const q = useAuthQuery(["orgUsage"], () => getOrgUsage(), pollOptions);
+  return { ...q, pending: q.data === undefined && !q.isError };
 }
 
 export function useBucketCounts(brandId: string) {

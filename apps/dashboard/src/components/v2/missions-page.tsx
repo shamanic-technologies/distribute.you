@@ -46,7 +46,8 @@ export function MissionsPage() {
       spark: data?.repliedPositive ? dailyWindow(data.repliedPositive.daily, DAYS, today) : null,
     },
     {
-      label: "Spent",
+      // Missions only: setup spend is outside them, and Today states the full amount.
+      label: "Spent on missions",
       value: data?.spend ? formatCentsAsUsdAdaptive(data.spend.totalSpentCents) : "—",
       spark: data?.roiHistory
         ? cumulativeWindow(data.roiHistory.daily.map((p) => ({ date: p.date, value: p.cumulativeSpendUsd })), DAYS, today)
