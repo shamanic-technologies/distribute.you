@@ -19,15 +19,15 @@ const q = (s = "") => new URLSearchParams(s);
 const SUBSCRIPTION_SRC = readFileSync(path.join(__dirname, "../../src/lib/pages/subscription.ts"), "utf8");
 
 describe("the split rule", () => {
-  it("draws a first-time human 45/45/10 between the homepage, its $99 plan arm and the instinct page", () => {
-    expect(VARIANT_WEIGHTS).toEqual({ control: 0.45, subscription: 0.45, instinct: 0.1, assistant: 0, concierge: 0 });
+  it("draws a first-time human 10/85/5 between the homepage, its $99 plan arm and the instinct page", () => {
+    expect(VARIANT_WEIGHTS).toEqual({ control: 0.1, subscription: 0.85, instinct: 0.05, assistant: 0, concierge: 0 });
     const counts: Record<string, number> = {};
     for (let i = 0; i < 10000; i++) counts[drawVariant(i / 10000)] = (counts[drawVariant(i / 10000)] ?? 0) + 1;
     expect(Object.keys(counts).sort()).toEqual(["control", "instinct", "subscription"]);
-    expect(counts.control).toBe(4500);
-    expect(Math.abs(counts.instinct - 1000)).toBeLessThanOrEqual(1);
-    expect(Math.abs(counts.subscription - 4500)).toBeLessThanOrEqual(1);
-    expect(decideVariant({ cookieHeader: null, userAgent: CHROME, query: q(), random: 0.5, enabled: true })).toEqual({
+    expect(counts.control).toBe(1000);
+    expect(Math.abs(counts.instinct - 500)).toBeLessThanOrEqual(1);
+    expect(Math.abs(counts.subscription - 8500)).toBeLessThanOrEqual(1);
+    expect(decideVariant({ cookieHeader: null, userAgent: CHROME, query: q(), random: 0.12, enabled: true })).toEqual({
       variant: "instinct", setCookie: true, inTest: true,
     });
   });
@@ -41,7 +41,7 @@ describe("the split rule", () => {
 
   it("redraws a visitor whose cookie names a retired arm, or nothing", () => {
     for (const v of ["assistant", "concierge", "junk"]) {
-      const d = decideVariant({ cookieHeader: `${VARIANT_COOKIE}=${v}`, userAgent: CHROME, query: q(), random: 0.1, enabled: true });
+      const d = decideVariant({ cookieHeader: `${VARIANT_COOKIE}=${v}`, userAgent: CHROME, query: q(), random: 0.05, enabled: true });
       expect(d, v).toEqual({ variant: "control", setCookie: true, inTest: true });
     }
   });
