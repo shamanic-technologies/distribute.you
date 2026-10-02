@@ -3,18 +3,19 @@ import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 
 /**
- * Guards for the hand-written "Flash or Pro" article, recut on 2026-09-10 to
- * lead with the BEST workflow of each tier rather than the tier average, to
- * state the A/B spread across the workflows the fleet tested, to cut the data
- * ten ways as the cost-per-click article does, and to close on the industry's
- * own studies with distribute.you named as the option to pick.
+ * Guards for the generated "Flash or Pro" article, recut on 2026-10-02 to lead
+ * with the TIER result (Flash buys a visit cheaper than Pro, a conclusion; the
+ * reply gap is noise), to crown no workflow (the cheapest of 23, each run for
+ * its own clients, is partly luck) and to drop the "A/B" wording (they were
+ * never split tests). It still cuts the data ten ways as the cost-per-click
+ * article does, and closes on the industry's own studies.
  *
  * Three families of rule. The landing's copy rules (no em-dash, the cost is
  * the client's and never ours, no promised meetings, no rate card, no opens).
  * The dataset's coherence (the headline, the hero, the charts and the method
  * state the same figures; a price is stated only above the floors Method
- * declares). And the owner's editorial rules: the headline is the best
- * workflow, every money figure is a whole dollar, the tiers are Flash / Pro /
+ * declares). And the owner's editorial rules: the headline is the tier
+ * result, no workflow is crowned, every money figure is a whole dollar, the tiers are Flash / Pro /
  * Frontier, the charts are inline SVG, the hero is a 16:9 illustration whose
  * content sits in the central safe zone, and no figure is a fleet average
  * dressed as a promise.
@@ -41,12 +42,20 @@ const section = (id: string) => {
   return html.slice(at, next === -1 ? undefined : next);
 };
 
-// The headline figures, read once so every assertion below pins the same ones.
-const BEST_PRO_CPPR = "$94";
-const PRO_CPPR = "$164";
-const BEST_FLASH_CPWV = "$1";
-const FLASH_CPWV = "$2";
-const PRO_CPWV = "$5";
+// The headline figures, read once off the two answer charts (the producing artifact) so
+// every assertion below pins the same ones and none rots on a re-render.
+const tierChart = (title: string) => {
+  const svg = svgs.find((one) => one.includes(`aria-label="${title} (USD, lower is better): Flash `));
+  const m = /: Flash (\$[\d,]+), Pro (\$[\d,]+)"/.exec(svg ?? "");
+  return { svg: svg ?? "", flash: m?.[1] ?? "MISSING", pro: m?.[2] ?? "MISSING" };
+};
+const VISIT = tierChart("Cost per website visit");
+const REPLY = tierChart("Cost per positive reply");
+const PRO_CPPR = REPLY.pro;
+const FLASH_CPPR = REPLY.flash;
+const FLASH_CPWV = VISIT.flash;
+const PRO_CPWV = VISIT.pro;
+const CROWNED = /best (Pro|Flash) workflow|winning workflow\b[^.<]*\$\d|workflow that won|its winner/i;
 
 describe("flash-or-pro article: copy rules", () => {
   it("carries no em-dash anywhere (body, meta, hero)", () => {
@@ -90,53 +99,67 @@ describe("flash-or-pro article: copy rules", () => {
   });
 });
 
-describe("flash-or-pro article: the headline is the best workflow, not the tier average", () => {
-  it("the answer leads with the best Pro workflow's reply price and the best Flash workflow's visit price", () => {
+describe("flash-or-pro article: the headline is the tier result, and no workflow is crowned", () => {
+  it("the answer leads with the Flash visit conclusion and calls the reply gap noise, charting the two tiers only", () => {
     const answer = section("the-answer");
-    expect(answer).toContain(`<strong>Our best Pro workflow buys a positive reply for ${BEST_PRO_CPPR}.</strong>`);
-    expect(answer).toContain(`<strong>Our best Flash workflow buys a website visit for ${BEST_FLASH_CPWV}.</strong>`);
-    expect(answer).toContain(`The Pro tier as a whole pays ${PRO_CPPR}`);
-    expect(answer).toContain(`The Flash tier as a whole pays ${FLASH_CPWV}, Pro ${PRO_CPWV}`);
+    for (const v of [PRO_CPPR, FLASH_CPPR, FLASH_CPWV, PRO_CPWV]) expect(v).not.toBe("MISSING");
+    expect(answer).toContain("<strong>Flash buys a website visit cheaper than Pro.</strong>");
+    expect(answer).toContain(`The Flash tier pays ${FLASH_CPWV} per visit, Pro ${PRO_CPWV}`);
+    expect(answer).toMatch(/same clients in the same months: a conclusion\./);
+    expect(answer).toContain("<strong>On positive replies, nothing is settled.</strong>");
+    expect(answer).toContain(`The Pro tier pays ${PRO_CPPR}; Flash pays ${FLASH_CPPR}`);
+    expect(answer).toMatch(/: noise\./);
+    expect(answer).not.toMatch(CROWNED);
+    // The two answer charts draw the two tiers and nothing else: no best-workflow row.
+    const charts = answer.match(/<svg[\s\S]*?<\/svg>/g) ?? [];
+    expect(charts.length).toBe(2);
+    for (const svg of charts) {
+      const labels = [...svg.matchAll(/<text x="0" y="\d+" font-size="14" fill="#475569">([^<]*)<\/text>/g)].map((m) => m[1]);
+      expect(labels).toEqual(["Flash", "Pro"]);
+    }
   });
 
-  it("the hero states the best-workflow figures and the tier they beat, and says the test was an A/B", () => {
-    expect(hero).toContain(`>${BEST_FLASH_CPWV}<`);
-    expect(hero).toContain(`>${BEST_PRO_CPPR}<`);
-    expect(hero).toContain(`per website visit, tier ${FLASH_CPWV}`);
-    expect(hero).toContain(`per positive reply, tier ${PRO_CPPR}`);
-    expect(hero).toContain("Best workflow, the click");
-    expect(hero).toContain("Best workflow, the reply");
-    expect(hero).toContain("125,000 emails, 23 A/B tests");
+  it("the hero states the tier figures, the reply as not settled, and no best-workflow price", () => {
+    expect(hero).toContain(`>${FLASH_CPWV}<`);
+    expect(hero).toContain(`per website visit, Pro pays ${PRO_CPWV}`);
+    expect(hero).toContain(">Not settled<");
+    expect(hero).toContain("125,000 emails");
     expect(hero).toContain("FLASH TIER");
     expect(hero).toContain("PRO TIER");
+    expect(hero).not.toContain(">$94<");
+    expect(hero).not.toContain(">$1<");
+    expect(hero).not.toMatch(/best workflow/i);
   });
 
-  it("the title and the excerpt carry the A/B framing and the best-workflow figures", () => {
-    expect(String(meta.title)).toContain("ran 23 A/B tests");
-    expect(String(meta.title)).toContain("125,000 emails");
-    expect(String(meta.excerpt)).toContain(BEST_PRO_CPPR);
-    expect(String(meta.excerpt)).toContain(BEST_FLASH_CPWV);
-    expect(String(meta.excerpt)).toContain("beats its own tier's average");
+  it("nothing calls it an A/B test: not the title, the excerpt, the hero or the page", () => {
+    // Owner-decided 2026-10-02: each workflow ran for its own clients, so none was a split test.
+    for (const surface of [html, JSON.stringify(meta), hero]) expect(surface).not.toMatch(/A\/B/);
+    expect(String(meta.title)).toContain("Flash vs Pro");
+    expect(String(meta.title)).toMatch(/125k Emails|125,000 emails/);
+    expect(String(meta.excerpt)).toContain("Flash bought a website visit cheaper than Pro");
+    expect(String(meta.excerpt)).toContain("nothing is settled");
+    expect(String(meta.excerpt)).not.toMatch(CROWNED);
+    expect(String(meta.excerpt)).not.toContain("$94");
   });
 
-  it("the A/B section names the winner of each outcome and the gap distribute.you hands its clients", () => {
+  it("the workflow section crowns no workflow and calls the gap between workflows noise", () => {
     const spread = section("the-spread");
-    expect(spread).toContain("23 A/B tests, one winner per outcome");
+    expect(spread).toContain("why we crown none");
+    expect(spread).toContain("So we name no winning workflow: noise.");
     // Owner rule (2026-09-10): no per-workflow chart at all, named or numbered.
-    // The page states the best workflow per outcome and the tier it beats, nothing finer.
     expect(spread).not.toContain("<svg");
     expect(html).not.toMatch(/by workflow, (Flash|Pro)/);
-    expect(spread).toContain("<strong>This is the gap distribute.you gives its clients.</strong>");
-    expect(spread).toContain("They get its winner");
+    expect(html).not.toMatch(CROWNED);
+    expect(html).not.toContain("This is the gap distribute.you gives its clients");
   });
 
-  it("the CTA and the best-option box quote the best workflow's prices, never the tier's", () => {
+  it("the CTA and the best-option box quote the tier prices, never a best workflow's", () => {
     const forYou = section("for-you");
-    expect(forYou).toContain(`a positive reply costs ${BEST_PRO_CPPR} and a website visit ${BEST_FLASH_CPWV}`);
+    expect(forYou).toContain(`a positive reply cost ${PRO_CPPR} on the Pro tier and a website visit ${FLASH_CPWV} on the Flash tier`);
     expect(forYou).toContain('<a href="/">Start with your website URL</a>');
     const best = section("best-tool");
-    expect(best).toContain(`Best option for the lowest cost per positive reply: distribute.you, ${BEST_PRO_CPPR} per positive reply, all in`);
-    expect(best).toContain(`${PRO_CPPR} across the Pro tier`);
+    expect(best).toContain(`Best option for the lowest cost per positive reply: distribute.you, ${PRO_CPPR} per positive reply, all in, across the Pro tier`);
+    expect(forYou + best).not.toMatch(CROWNED);
   });
 });
 
@@ -171,9 +194,11 @@ describe("flash-or-pro article: editorial rules", () => {
     expect((cuts.match(/Positive replies per 10,000 emails by /g) ?? []).length).toBeGreaterThanOrEqual(9);
   });
 
-  it("the twist charts the reply by link and by brand naming, per tier, and prices no visit on an email that had nothing to click", () => {
+  it("the twist charts the reply by link on Pro, calls the gap noise, and prices no visit on an email that had nothing to click", () => {
     const twist = section("the-twist");
-    expect(twist).toContain("<strong>The positive replies come from Pro emails with no link in them</strong>");
+    // Owner-decided 2026-10-02: the link gap does not clear chance, so it is stated as noise.
+    expect(twist).toContain("close, not settled");
+    expect(twist).toContain("noise for now");
     expect(twist).not.toMatch(/\b\d+ (of|came from)/);
     expect(twist).toContain("Positive replies per 10,000 emails by link in the email, Pro");
     // The brand-naming cut is gone: the generation record carries the client's name on too
@@ -250,12 +275,12 @@ describe("flash-or-pro article: what others measured, and where we stand", () =>
     expect(others).not.toMatch(/our reply rate is (higher|better)/i);
   });
 
-  it("the comparison table lists us first with the only measured cost per positive reply, every competitor row sourced and dated", () => {
+  it("the comparison table lists us first with the Pro tier's measured cost per positive reply, every competitor row sourced and dated", () => {
     const best = section("best-tool");
     const rows = best.match(/<tr><td>.*?<\/tr>/g) ?? [];
     expect(rows.length).toBeGreaterThanOrEqual(10);
     expect(rows[0]).toContain("<strong>distribute.you</strong>");
-    expect(rows[0]).toContain(`<strong>${BEST_PRO_CPPR}</strong> measured, all in`);
+    expect(rows[0]).toContain(`<strong>${PRO_CPPR}</strong> measured, all in, across the Pro tier`);
     for (const row of rows.slice(1)) {
       expect(row).toContain("Not published");
       expect(row).toMatch(/href="https:\/\//);
@@ -267,15 +292,18 @@ describe("flash-or-pro article: what others measured, and where we stand", () =>
 
 describe("flash-or-pro article: dataset coherence", () => {
   it("story, charts, hero and method state the same headline figures", () => {
-    for (const figure of [BEST_PRO_CPPR, PRO_CPPR, BEST_FLASH_CPWV, FLASH_CPWV, PRO_CPWV, "33,521", "77,195", "$6,682"]) {
+    for (const figure of [PRO_CPPR, FLASH_CPPR, FLASH_CPWV, PRO_CPWV, "33,521", "77,195", "$6,683"]) {
       expect(html).toContain(figure);
     }
   });
 
   it("the twist reads the tier gap off the charts, never as a multiple they do not print", () => {
     // A chart prices each tier; it does not print the ratio between them, so neither does
-    // the prose. Flash earned too few positive replies to price one at all.
-    expect(story).toContain("Pro is the only tier that prices one at all; on the visit, Flash is the cheaper tier by a wide margin");
+    // the prose.
+    // The answer quotes each tier's price exactly as its chart prints it.
+    const answer = section("the-answer");
+    expect(answer).toContain(`The Flash tier pays ${FLASH_CPWV} per visit, Pro ${PRO_CPWV}`);
+    expect(answer).toContain(`The Pro tier pays ${PRO_CPPR}; Flash pays ${FLASH_CPPR}`);
     expect(story).not.toMatch(/factor of \d|\d+x (rarer|cheaper|more)/);
   });
 
@@ -299,7 +327,7 @@ describe("flash-or-pro article: dataset coherence", () => {
     // and the Method states both: a bucket is a reading, a crowned workflow is a claim.
     expect(method).toContain("is a thin read and is labelled (thin)");
     expect(method).toContain("Crowning a workflow is the stricter question");
-    expect(method).toContain("which only the best Pro workflow clears");
+    expect(method).toContain("We name no winning workflow");
   });
 
   it("names the vendor model that ran and sources every list price", () => {

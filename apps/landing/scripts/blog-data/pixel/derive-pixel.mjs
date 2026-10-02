@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 // Derives every figure the open-tracking article states from the committed snapshot.
 //
-//   node derive-pixel.mjs pixel.snapshot.json > /tmp/pixel-facts.json
+//   node derive-pixel.mjs pixel.research.snapshot.json > /tmp/pixel-facts.json
 //
 // A rate is a count of LEADS over the leads of that arm (one sequence = one lead, counted
 // once however many steps it received). "Delivered" drops the leads whose email bounced,
@@ -10,7 +10,7 @@
 // limits section, it does not dress a small sample up as a proof.
 import { readFileSync } from "node:fs";
 
-const snap = JSON.parse(readFileSync(process.argv[2] ?? new URL("./pixel.snapshot.json", import.meta.url), "utf8"));
+const snap = JSON.parse(readFileSync(process.argv[2] ?? new URL("./pixel.research.snapshot.json", import.meta.url), "utf8"));
 const arm = (name) => {
   const a = snap.arms.find((r) => r.arm === name);
   if (!a) throw new Error(`no arm ${name}`);

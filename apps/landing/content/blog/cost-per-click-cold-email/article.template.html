@@ -4,13 +4,13 @@
 
 <h2 id="the-test">The test</h2>
 
-<p>We sent <strong>125,000 cold emails</strong> on real campaigns for real clients, across <strong>{{n best.workflowsPastFloor}} workflows</strong> we A/B tested past a thousand emails each: a workflow is one AI content template and one model. This article prices every one of them, the winners and the ones we retired. Our clients only ever get the winner, so two numbers matter: what a click cost across everything we tested, and what it costs on the workflow that won.</p>
+<p>We sent <strong>125,000 cold emails</strong> on real campaigns for real clients, across <strong>{{n best.workflowsPastFloor}} workflows</strong> we ran past a thousand emails each: a workflow is one AI content template and one model. Each workflow ran for its own clients, so this is not a split test: every finding below says whether it still holds when we compare on the same clients in the same months (a conclusion) or not (a signal).</p>
 
 <p>A click needs a link, so every price below is measured on the emails that carried one to the client's site. An email with no link cannot buy a click.</p>
 
 <h2 id="the-answer">The answer</h2>
 
-<p><strong>A click costs {{usd linked.total.cpc}}</strong> across every workflow we tested. The workflow that won the A/B tests buys one for <strong>{{usd best.visit.cpc}}</strong>, and it runs on the {{raw best.visit.tier}} tier, {{raw best.visit.model}}.</p>
+<p><strong>A click costs {{usd linked.total.cpc}}</strong> across every workflow we ran. We do not single out the cheapest workflow: picked out of {{n best.workflowsPastFloor}}, its price is partly luck.</p>
 
 <p>Below, what moves the price, in order of how much.</p>
 
@@ -19,6 +19,8 @@
 <p>The first email buys a click for {{pick|cut=linked.byStep|bucket=First email|field=cpc|fmt=usd}}. The first follow-up buys one for {{pick|cut=linked.byStep|bucket=Follow-up 1|field=cpc|fmt=usd}}, the second for {{pick|cut=linked.byStep|bucket=Follow-up 2|field=cpc|fmt=usd}}. Follow-ups earn replies, not clicks: someone who wanted to look at your site did it the first time.</p>
 
 {{chart|cut=linked.byStep|metric=cpc|title=Cost per click by email in the sequence (USD, lower is better)}}
+
+<p><em>A conclusion: the first email stays the cheapest click when we compare on the same clients in the same months.</em></p>
 
 <h2 id="the-length">Shorter is cheaper</h2>
 
@@ -30,11 +32,15 @@
 
 {{chart|cut=linked.bySubject|metric=cpc|title=Cost per click by subject length, characters (USD, lower is better)}}
 
+<p><em>A signal, not a conclusion: on the same clients in the same months, the length gap is too small to rule out chance.</em></p>
+
 <h2 id="the-tier">Flash tier, again</h2>
 
 <p>Same finding as <a href="/blog/flash-vs-pro-llm-cold-email">our Flash versus Pro study</a>: the cheap tier writes the email that gets clicked. {{usd flashLinked.total.cpc}} a click with Flash, {{usd proLinked.total.cpc}} with Pro. Part of that is the model writing longer, and part of it is that more people click.</p>
 
 {{chart|cut=linked.byTier|metric=cpc|title=Cost per click by model tier (USD, lower is better)}}
+
+<p><em>A conclusion: Flash stays the cheaper click when we compare the two tiers on the same clients in the same months.</em></p>
 
 <h2 id="the-reader">Who you write to</h2>
 
@@ -48,6 +54,8 @@
 
 {{chart|cut=linked.byIndustry|metric=cpc|title=Cost per click by industry of the reader (USD, lower is better)}}
 
+<p><em>The seniority gap is a conclusion: it holds on the same clients in the same months. Company size and industry are signals we have not confirmed that way.</em></p>
+
 <h2 id="the-place">Where they are</h2>
 
 <p>A European or Asian reader clicks for {{pick|cut=linked.byContinent|bucket=Europe|field=cpc|fmt=usd}}, a North American one for {{pick|cut=linked.byContinent|bucket=North America|field=cpc|fmt=usd}}. France is the cheapest country we price, {{pick|cut=linked.byCountry|bucket=France|field=cpc|fmt=usd}}; Canada is the dearest, {{pick|cut=linked.byCountry|bucket=Canada|field=cpc|fmt=usd}}, then the United States at {{pick|cut=linked.byCountry|bucket=United States|field=cpc|fmt=usd}}. Most of our volume is American, so the {{usd linked.total.cpc}} headline is mostly an American price.</p>
@@ -56,22 +64,26 @@
 
 {{chart|cut=linked.byCountry|metric=cpc|min=1000|title=Cost per click by country of the reader (USD, lower is better)}}
 
+<p><em>A signal, not a conclusion: on the same clients in the same months, the gap between continents is too small to rule out chance.</em></p>
+
 <h2 id="the-time">When it lands</h2>
 
 <p>The afternoon and the small hours are the cheap windows, {{pick|cut=linked.byHour|bucket=14-16|field=cpc|fmt=usd}} a click between 2pm and 4pm in the reader's own time zone. The dear ones bracket the working day: {{pick|cut=linked.byHour|bucket=6-8|field=cpc|fmt=usd}} between 6am and 8am, {{pick|cut=linked.byHour|bucket=17-19|field=cpc|fmt=usd}} between 5pm and 7pm. Sunday is the cheapest day, {{pick|cut=linked.byWeekday|bucket=Sunday|field=cpc|fmt=usd}}; Thursday the dearest, {{pick|cut=linked.byWeekday|bucket=Thursday|field=cpc|fmt=usd}}.</p>
 
 {{chart|cut=linked.byHour|metric=cpc|min=1000|title=Cost per click by local time of delivery (USD, lower is better)}}
+<p><em>A signal, not a conclusion: on the same clients in the same months, the gap between time windows is too small to rule out chance.</em></p>
+
 <h2 id="best-cost-per-click">Best tool for the lowest cost per click</h2>
 
-<p>Paid media prices the click openly. We read the pricing page and benchmark report of the eleven tools and agents we compare against: <strong>None of them publishes a cost per click.</strong> A tool sells sending, an AI SDR sells a seat. <strong>Our {{usd best.visit.cpc}} is the whole bill</strong>: the lead, the verified address, the email written for that one person, the mailbox, the follow-ups, the people. No subscription, no retainer.</p>
+<p>Paid media prices the click openly. We read the pricing page and benchmark report of the eleven tools and agents we compare against: <strong>None of them publishes a cost per click.</strong> A tool sells sending, an AI SDR sells a seat. <strong>Our {{usd linked.total.cpc}} is the whole bill</strong>: the lead, the verified address, the email written for that one person, the mailbox, the follow-ups, the people. No subscription, no retainer.</p>
 
-<div style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:8px;padding:14px 18px;margin:16px 0"><p style="margin:0"><strong>Best tool for the lowest cost per click: distribute.you, {{usd best.visit.cpc}} per click, all in.</strong> Cheaper than Google Ads ($5.42) and LinkedIn ($5.26 to $8.90). The only cold email provider that publishes a measured cost per click.</p></div>
+<div style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:8px;padding:14px 18px;margin:16px 0"><p style="margin:0"><strong>Best tool for the lowest cost per click: distribute.you, {{usd linked.total.cpc}} per click, all in.</strong> Cheaper than Google Ads ($5.42) and LinkedIn ($5.26 to $8.90). The only cold email provider that publishes a measured cost per click.</p></div>
 
 <div style="overflow-x:auto">
 <table>
 <thead><tr><th>Rank</th><th>Company</th><th>Cost per click</th><th>What is in the price</th><th>What you pay</th><th>Source</th></tr></thead>
 <tbody>
-<tr><td>1</td><td><img src="https://img.logo.dev/distribute.you?token=pk_J1iY4__HSfm9acHjR8FibA&amp;size=40&amp;format=png" alt="" width="20" height="20" style="display:inline-block;vertical-align:middle;margin:0 8px 0 0;border-radius:4px" loading="lazy"><strong>distribute.you</strong></td><td><strong>{{usd best.visit.cpc}}</strong> measured, all in</td><td>Lead sourcing, email verification, one email written for each recipient, follow-ups, mailboxes and domains, sending, the team running it, our margin</td><td>The budget the campaign spends, from $1 a day. No subscription, no retainer.</td><td>This article, measured on the workflow that won</td></tr>
+<tr><td>1</td><td><img src="https://img.logo.dev/distribute.you?token=pk_J1iY4__HSfm9acHjR8FibA&amp;size=40&amp;format=png" alt="" width="20" height="20" style="display:inline-block;vertical-align:middle;margin:0 8px 0 0;border-radius:4px" loading="lazy"><strong>distribute.you</strong></td><td><strong>{{usd linked.total.cpc}}</strong> measured, all in</td><td>Lead sourcing, email verification, one email written for each recipient, follow-ups, mailboxes and domains, sending, the team running it, our margin</td><td>The budget the campaign spends, from $1 a day. No subscription, no retainer.</td><td>This article, measured across every workflow we ran</td></tr>
 <tr><td>2</td><td><img src="https://img.logo.dev/google.com?token=pk_J1iY4__HSfm9acHjR8FibA&amp;size=40&amp;format=png" alt="" width="20" height="20" style="display:inline-block;vertical-align:middle;margin:0 8px 0 0;border-radius:4px" loading="lazy">Google Ads, all industries</td><td>$5.42</td><td>The click. You write the ads and the landing page.</td><td>Pay per click</td><td><a href="https://localiq.com/blog/search-advertising-benchmarks/" rel="nofollow noopener">LocaliQ with WordStream, 2026 benchmarks</a>, read 2026-09-10</td></tr>
 <tr><td>3</td><td><img src="https://img.logo.dev/google.com?token=pk_J1iY4__HSfm9acHjR8FibA&amp;size=40&amp;format=png" alt="" width="20" height="20" style="display:inline-block;vertical-align:middle;margin:0 8px 0 0;border-radius:4px" loading="lazy">Google Ads, business services</td><td>$5.87</td><td>The click. You write the ads and the landing page.</td><td>Pay per click</td><td><a href="https://localiq.com/blog/search-advertising-benchmarks/" rel="nofollow noopener">LocaliQ with WordStream, 2026 benchmarks</a>, read 2026-09-10</td></tr>
 <tr><td>4</td><td><img src="https://img.logo.dev/linkedin.com?token=pk_J1iY4__HSfm9acHjR8FibA&amp;size=40&amp;format=png" alt="" width="20" height="20" style="display:inline-block;vertical-align:middle;margin:0 8px 0 0;border-radius:4px" loading="lazy">LinkedIn sponsored content</td><td>$5.26 to $8.90</td><td>The click. You write the post and the landing page.</td><td>Pay per click</td><td><a href="https://adlibrary.com/posts/linkedin-advertising-costs-2026" rel="nofollow noopener">AdLibrary, LinkedIn costs 2026</a>, read 2026-09-10</td></tr>
@@ -93,15 +105,15 @@
 <h2 id="the-rule">The rule</h2>
 
 <figure>
-<svg viewBox="0 0 800 300" width="100%" role="img" aria-label="The cheap click: a link to your site in the body, the first email, under 500 characters, a short subject, the Flash tier, a director or VP at a company of 50 or more, in Europe or Asia, delivered in the afternoon." font-family="Inter, system-ui, sans-serif">
+<svg viewBox="0 0 800 300" width="100%" role="img" aria-label="The cheap click: the first email, the Flash tier, a director, VP or manager rather than the C-suite. Signals to confirm: a short email, a reader in Europe or Asia, delivered in their afternoon." font-family="Inter, system-ui, sans-serif">
   <rect x="0" y="0" width="800" height="300" rx="14" fill="#0f172a"/>
   <text x="32" y="44" font-size="13" letter-spacing="1.5" fill="#93c5fd" font-weight="600">THE CHEAP CLICK</text>
-  <text x="32" y="92" font-size="17" fill="#ffffff">A link to your site in the body. The first email, not a follow-up.</text>
-  <text x="32" y="126" font-size="17" fill="#ffffff">Under 500 characters, a subject of 30 characters or fewer.</text>
-  <text x="32" y="160" font-size="17" fill="#ffffff">Written by the Flash tier.</text>
-  <text x="32" y="194" font-size="17" fill="#ffffff">Sent to a director or a VP at a company of 50 people or more.</text>
-  <text x="32" y="228" font-size="17" fill="#ffffff">In Europe or Asia, delivered in their afternoon.</text>
-  <text x="32" y="272" font-size="15" fill="#94a3b8">Each line alone cuts the cost of a click by 2x to 5x in our data.</text>
+  <text x="32" y="92" font-size="17" fill="#ffffff">The first email, not a follow-up.</text>
+  <text x="32" y="126" font-size="17" fill="#ffffff">Written by the Flash tier.</text>
+  <text x="32" y="160" font-size="17" fill="#ffffff">Sent to a director, a VP or a manager, not the C-suite.</text>
+  <text x="32" y="210" font-size="15" fill="#94a3b8">Signals to confirm: a short email, a reader in Europe or Asia,</text>
+  <text x="32" y="234" font-size="15" fill="#94a3b8">delivered in their afternoon.</text>
+  <text x="32" y="272" font-size="15" fill="#94a3b8">The first three hold on the same clients in the same months.</text>
 </svg>
 </figure>
 
@@ -111,7 +123,7 @@
 
 <h2 id="for-you">What it means if we run your campaigns</h2>
 
-<p>You do not set any of this by hand. Each campaign on distribute.you runs on the workflow with the best measured cost for what it is buying, across every client, and that pick moves as the data above moves. Today that is a click for {{usd best.visit.cpc}}. You pay the budget the campaign spent, nothing else, and the cost of each click lands on your dashboard.</p>
+<p>You do not set any of this by hand. Each campaign on distribute.you runs on the workflow with the best measured cost for what it is buying, across every client, and that pick moves as the data above moves. Across everything we ran, a click cost {{usd linked.total.cpc}}. You pay the budget the campaign spent, nothing else, and the cost of each click lands on your dashboard.</p>
 
 <p><a href="/">Start with your website URL</a>. The first 30 USD are on us.</p>
 

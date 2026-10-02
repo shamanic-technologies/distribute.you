@@ -43,8 +43,7 @@ const factsPath = process.argv[2];
 if (!factsPath) throw new Error("usage: research.mjs <facts.json>");
 const facts = JSON.parse(readFileSync(factsPath, "utf8"));
 if (!facts.research) throw new Error("facts.json carries no research block: re-run derive.mjs");
-// The open-tracking studies read their OWN snapshot, cut at the research rule's duration: the
-// published article keeps its own (pixel.snapshot.json), which this refresh never moves.
+// The open-tracking studies read their OWN snapshot, cut at the research rule's duration.
 const pixel = JSON.parse(
   execFileSync("node", [join(here, "pixel/derive-pixel.mjs"), join(here, "pixel/pixel.research.snapshot.json")], { encoding: "utf8" }),
 );
@@ -387,8 +386,8 @@ function dimensionStudies(key, o, R, { dim, dimNoun, cutKey, byMonthKey, label, 
 }
 
 // ---------- naming the client (positive-reply leg only) ----------
-// The classification, the two sides and the p-values live in naming/naming.mjs, shared with the
-// blog article that states the same study (cold-email-response-rate).
+// The classification, the two sides and the p-values live in naming/naming.mjs (its blog article
+// was taken down on 2026-10-02: the headline was a signal, not a conclusion).
 function namingStudies(o, R) {
   const LABEL = NAMING_LABEL;
   const WITH = { held: "with the client not named", named: "with the client named" };
