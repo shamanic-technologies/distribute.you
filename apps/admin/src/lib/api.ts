@@ -5150,6 +5150,12 @@ export interface InstantlyAccountHealthRow {
   // producer omits it, and the honest render for an absent figure is a dash, not
   // a fabricated 0. Never derive it from the other fields.
   queuedOverdue?: number;
+  // #4805 split of queuedFirstUnsentSequences (instantly-service #970/#971), all
+  // three optional until the producer is live; an absent figure renders a dash.
+  // queuedFirstUnsentSequences === queuedFirstDueTodaySequences + queuedFirstOverdueSequences.
+  newSequencesToday?: number; // sequences ASSIGNED to this account today (UTC created_at), sent or not
+  queuedFirstDueTodaySequences?: number; // first email unsent, assigned today: genuinely due today
+  queuedFirstOverdueSequences?: number; // first email unsent, assigned on an EARLIER day: stuck
   accountType: string | null; // "google" | "microsoft" | "imap"; null when unknown
   // 1-based position of this mailbox in send-selection's fill ORDER over the
   // in-production pool (infrastructure vendor, then domain rank, then age). Rank 1
@@ -5213,6 +5219,9 @@ const InstantlyAccountHealthRowSchema = z.object({
   queuedNextTomorrow: z.number(),
   queuedNextLater: z.number(),
   queuedOverdue: z.number().optional(),
+  newSequencesToday: z.number().optional(),
+  queuedFirstDueTodaySequences: z.number().optional(),
+  queuedFirstOverdueSequences: z.number().optional(),
   accountType: z.string().nullable(),
   // Additive (instantly-service): optional AND nullable so the page renders
   // identically against a producer that has not deployed them yet.

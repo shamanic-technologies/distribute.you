@@ -173,7 +173,7 @@ describe("the Accounts page is the old table, from the superset read", () => {
   });
 
   it("reads due-today from the LEAD count, never from queuedFirstUnsent (which counts every remaining step)", () => {
-    expect(src).toContain("return r.queuedFirstUnsentSequences + r.queuedNextToday;");
+    expect(src).toContain("return r.queuedFirstDueTodaySequences + r.queuedNextToday;");
   });
 
   it("reads the daily max from the producer's ramp-aware cap, never the pre-ramp limit alone", () => {
