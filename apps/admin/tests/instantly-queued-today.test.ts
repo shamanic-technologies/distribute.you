@@ -37,7 +37,7 @@ describe("Instantly audit — queued today", () => {
 
   it("derives the due-today figure from sequences, not steps", () => {
     expect(page).toContain(
-      "return r.queuedFirstUnsentSequences + r.queuedNextToday;",
+      "return r.queuedFirstDueTodaySequences + r.queuedNextToday;",
     );
   });
 
@@ -54,7 +54,7 @@ describe("Instantly audit — queued today", () => {
     // the table cannot display one number and order by another.
     expect(page).toContain("const av = queuedTodayFor(a);");
     expect(page).toContain("const queuedToday = queuedTodayFor(r);");
-    expect(page).toContain("{num(queuedTodayFor(row))}");
+    expect(page).toContain("const q = queuedTodayFor(row);");
     // Exactly one definition of the value.
     const defs = page.match(/function queuedTodayFor\(/g) ?? [];
     expect(defs).toHaveLength(1);
@@ -124,12 +124,12 @@ describe("Instantly audit — overdue backlog", () => {
   });
 
   it("keeps the due-today figure unchanged", () => {
-    // queuedTodayFor stays Initial + Followups. Overdue is a read on the same
+    // queuedTodayFor stays first emails due today + Followups. Overdue is a read on the same
     // Followups half, never an addition to the day's due volume.
     const defs = page.match(/function queuedTodayFor\(/g) ?? [];
     expect(defs).toHaveLength(1);
     expect(page).toContain(
-      "return r.queuedFirstUnsentSequences + r.queuedNextToday;",
+      "return r.queuedFirstDueTodaySequences + r.queuedNextToday;",
     );
   });
 });
@@ -141,6 +141,25 @@ describe("first-unsent label never reads as 'added today' (#4805)", () => {
   );
   it("does not label queuedFirstUnsentSequences as 'Initial'", () => {
     expect(page).not.toContain("Initial: {num(r.queuedFirstUnsentSequences)}");
-    expect(page).toContain("First email unsent: {num(r.queuedFirstUnsentSequences)}");
+  });
+
+  it("serves the producer's split as optional fields (instantly-service #970/#971)", () => {
+    const api = readFileSync(join(__dirname, "../src/lib/api.ts"), "utf8");
+    for (const f of ["newSequencesToday", "queuedFirstDueTodaySequences", "queuedFirstOverdueSequences"]) {
+      expect(api).toContain(`${f}?: number;`);
+      expect(api).toContain(`${f}: z.number().optional(),`);
+    }
+  });
+
+  it("shows sequences added today per account", () => {
+    expect(page).toContain("New today: {r.newSequencesToday === undefined");
+  });
+
+  it("never folds a stuck first email into Queued today, and flags it red like Overdue", () => {
+    const fn = page.slice(page.indexOf("function queuedTodayFor("), page.indexOf("function dailyMaxFor("));
+    expect(fn).not.toContain("queuedFirstOverdueSequences +");
+    expect(fn).not.toContain("r.queuedFirstUnsentSequences +");
+    expect(page).toContain('{ key: "queuedFirstOverdueSequences", label: "Stuck first email", align: "right" }');
+    expect(page).toContain('r.queuedFirstOverdueSequences > 0 ? "font-medium text-red-600" : "text-gray-400"');
   });
 });

@@ -47,7 +47,7 @@ describe("Instantly audit — daily max send", () => {
   it("colours Queued today against the same ceiling it renders", () => {
     // A young account compared against its pre-ramp limit reads green against a
     // cap the selector is not letting it reach.
-    expect(page).toContain("dailyMax !== null && queuedToday > dailyMax");
+    expect(page).toContain("dailyMax !== null && queuedToday !== null && queuedToday > dailyMax");
     expect(page).not.toMatch(/queuedToday\s*>\s*r\.dailyLimit/);
   });
 

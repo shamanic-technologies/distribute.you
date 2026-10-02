@@ -49,13 +49,19 @@ function statusKey(row: OpsAddressRow): string {
 }
 
 /**
- * The one honest "how full is this account today" figure, and the exact quantity
- * the send selector counts toward an account's daily load. A never-started lead
- * owes ONE email today, not one per remaining step — so this reads the LEAD
- * count, never `queuedFirstUnsent` (which counts every remaining step).
+ * "How full is this account today": first emails genuinely due today plus
+ * Followups. A never-started lead owes ONE email today, not one per remaining
+ * step, so this reads LEAD counts, never `queuedFirstUnsent` (every remaining step).
+ *
+ * #4805: a first email stuck from an EARLIER day is a problem, shown in its own
+ * red "Stuck first email" column, never folded in here. So this reads the
+ * producer's served `queuedFirstDueTodaySequences`, never
+ * `queuedFirstUnsentSequences` (which still includes the stuck ones). null when
+ * the producer does not serve the split: rendered as a dash, never guessed.
  */
-function queuedTodayFor(r: OpsAddressRow): number {
-  return r.queuedFirstUnsentSequences + r.queuedNextToday;
+function queuedTodayFor(r: OpsAddressRow): number | null {
+  if (r.queuedFirstDueTodaySequences === undefined) return null;
+  return r.queuedFirstDueTodaySequences + r.queuedNextToday;
 }
 
 /**
@@ -80,6 +86,7 @@ const COLUMNS = [
   { key: "dailyLimit", label: "Daily max send", align: "right" },
   { key: "queuedToday", label: "Queued today", align: "right" },
   { key: "queuedOverdue", label: "Overdue", align: "right" },
+  { key: "queuedFirstOverdueSequences", label: "Stuck first email", align: "right" },
   { key: "queuedNextTomorrow", label: "Queued tomorrow", align: "right" },
   { key: "queuedNextLater", label: "Queued later", align: "right" },
   { key: "volume7d", label: "Volume 7d", align: "right" },
@@ -100,9 +107,11 @@ const COLUMN_HINT: Partial<Record<SortKey, string>> = {
   dailyLimit:
     "The daily max send this account actually has today: its configured limit capped by the age ramp. This is the ceiling send selection compares today's load against.",
   queuedToday:
-    "Emails actually due today = first email unsent (one per never-started sequence, at any age, not only added today) + Followups (steps projected today/overdue).",
+    "Emails actually due today = first emails of sequences assigned today and not sent yet + Followups (steps projected today/overdue). Stuck first emails from an earlier day are NOT in here: see Stuck first email. New today = sequences assigned to this account today.",
   queuedOverdue:
     "Backlog: the part of Followups we owed on an EARLIER day and never dispatched. A subset of Queued today, never added to it.",
+  queuedFirstOverdueSequences:
+    "Sequences assigned on an EARLIER day whose first email never sent. A problem, never counted in Queued today. The send selector still counts them against today's capacity.",
   queuedNextTomorrow: "Steps projected tomorrow (UTC)",
   queuedNextLater: "Steps projected after tomorrow",
   volume7d: "What this address actually sent and received over the last 7 days, by typology.",
@@ -130,6 +139,9 @@ function compareRows(a: OpsAddressRow, b: OpsAddressRow, key: SortKey, dir: "asc
   if (key === "queuedToday") {
     const av = queuedTodayFor(a);
     const bv = queuedTodayFor(b);
+    if (av === null && bv === null) return 0;
+    if (av === null) return 1;
+    if (bv === null) return -1;
     return (av - bv) * sign;
   }
   if (key === "volume7d") return (a.volume7d.outreach - b.volume7d.outreach) * sign;
@@ -387,11 +399,30 @@ function AddressPanel({ row, onClose }: { row: OpsAddressRow; onClose: () => voi
           never-started lead owes one email today but several steps overall, so the
           two totals differ on purpose and must never be read as one number. */}
       <PanelGroup title="Due today">
-        <PanelRow label="Queued today (first email unsent + Followups)">{num(queuedTodayFor(row))}</PanelRow>
-        <PanelRow label="— First email unsent (any age, not only added today)">{num(row.queuedFirstUnsentSequences)}</PanelRow>
+        <PanelRow label="New sequences assigned today">
+          {row.newSequencesToday === undefined ? "—" : num(row.newSequencesToday)}
+        </PanelRow>
+        <PanelRow label="Queued today (first emails + Followups)">
+          {(() => {
+            const q = queuedTodayFor(row);
+            return q === null ? "—" : num(q);
+          })()}
+        </PanelRow>
+        <PanelRow label="— First emails (assigned today, unsent)">
+          {row.queuedFirstDueTodaySequences === undefined ? "—" : num(row.queuedFirstDueTodaySequences)}
+        </PanelRow>
         <PanelRow label="— Followups (steps today/overdue)">{num(row.queuedNextToday)}</PanelRow>
         <PanelRow label="— of which overdue (owed before today)">
           {row.queuedOverdue === undefined ? "—" : num(row.queuedOverdue)}
+        </PanelRow>
+        <PanelRow label="Stuck first emails (assigned earlier, never sent)">
+          {row.queuedFirstOverdueSequences === undefined ? (
+            "—"
+          ) : (
+            <span className={row.queuedFirstOverdueSequences > 0 ? "font-medium text-red-600" : undefined}>
+              {num(row.queuedFirstOverdueSequences)}
+            </span>
+          )}
         </PanelRow>
       </PanelGroup>
 
@@ -478,7 +509,7 @@ export default function ColdEmailAccountsPage() {
   const queueBins: QueueDistributionBin[] = QUEUE_BINS.map((b) => {
     const count = allowed.filter((r) => {
       const q = queuedTodayFor(r);
-      return q >= b.lo && q <= b.hi;
+      return q !== null && q >= b.lo && q <= b.hi;
     }).length;
     return { label: b.label, count, pct: allowed.length ? (count / allowed.length) * 100 : 0 };
   });
@@ -663,7 +694,7 @@ export default function ColdEmailAccountsPage() {
                     rows.map((r) => {
                       const dailyMax = dailyMaxFor(r);
                       const queuedToday = queuedTodayFor(r);
-                      const overLimit = dailyMax !== null && queuedToday > dailyMax;
+                      const overLimit = dailyMax !== null && queuedToday !== null && queuedToday > dailyMax;
                       const ramping =
                         r.dailyLimit !== null &&
                         r.effectiveDailyCap !== null &&
@@ -756,13 +787,19 @@ export default function ColdEmailAccountsPage() {
                                     : "text-emerald-600"
                               }`}
                             >
-                              {num(queuedToday)}
+                              {queuedToday === null ? "—" : num(queuedToday)}
                             </div>
                             <div
                               className="text-[10px] tabular-nums text-gray-400"
-                              title="Sequences on this account whose first email has not sent yet, at any age. Not the count of sequences added today."
+                              title="Sequences assigned to this account today (UTC), sent or not"
                             >
-                              First email unsent: {num(r.queuedFirstUnsentSequences)}
+                              New today: {r.newSequencesToday === undefined ? "—" : num(r.newSequencesToday)}
+                            </div>
+                            <div
+                              className="text-[10px] tabular-nums text-gray-400"
+                              title="First emails of sequences assigned today, not sent yet"
+                            >
+                              First emails: {r.queuedFirstDueTodaySequences === undefined ? "—" : num(r.queuedFirstDueTodaySequences)}
                             </div>
                             <div className="text-[10px] tabular-nums text-gray-400">
                               Followups: {num(r.queuedNextToday)}
@@ -783,6 +820,24 @@ export default function ColdEmailAccountsPage() {
                                 }
                               >
                                 {num(r.queuedOverdue)}
+                              </span>
+                            )}
+                          </Cell>
+                          <Cell align="right">
+                            {r.queuedFirstOverdueSequences === undefined ? (
+                              <span className="text-gray-400">—</span>
+                            ) : (
+                              <span
+                                className={`tabular-nums ${
+                                  r.queuedFirstOverdueSequences > 0 ? "font-medium text-red-600" : "text-gray-400"
+                                }`}
+                                title={
+                                  r.queuedFirstOverdueSequences > 0
+                                    ? `${num(r.queuedFirstOverdueSequences)} sequences assigned on an earlier day never sent their first email`
+                                    : "No first email stuck from an earlier day"
+                                }
+                              >
+                                {num(r.queuedFirstOverdueSequences)}
                               </span>
                             )}
                           </Cell>
