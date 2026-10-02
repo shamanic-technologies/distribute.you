@@ -20,7 +20,9 @@ const ONCE = { staleTime: 5 * 60_000, retry: false } as const;
 const METHOD_LABEL: Record<string, string> = {
   "email-send-price": "Email sending",
   subscription: "Subscription",
+  "api-list-cost": "API, list cost",
   "pay-as-you-go-ratio": "Pay as you go",
+  "included-at-vendor": "Included at the vendor",
   "pass-through": "Stripe and media",
   "catalogue-vendor-cost": "Catalogue cost",
 };
@@ -156,8 +158,8 @@ function Body({ d, day, setDay, fetching }: { d: RealCosts; day: string | null; 
       </section>
 
       <section>
-        <SectionTitle count={d.payAsYouGo.length} right={<span>What we paid for usage over what our runs recorded</span>}>
-          Pay-as-you-go correction
+        <SectionTitle count={d.payAsYouGo.length} right={<span>APIs are priced at list cost; the rest is internal</span>}>
+          API vendors: what the bank paid beyond list cost
         </SectionTitle>
         <div className="k-card overflow-x-auto">
           <table className="w-full text-[13px]">
@@ -168,9 +170,8 @@ function Body({ d, day, setDay, fetching }: { d: RealCosts; day: string | null; 
                 <th className={THR}>Paid</th>
                 <th className={THR}>Refunded</th>
                 <th className={THR}>Net paid</th>
-                <th className={THR}>Counted as usage</th>
-                <th className={THR}>Recorded by our runs</th>
-                <th className={THR}>Correction</th>
+                <th className={THR}>Our runs at list cost</th>
+                <th className={THR}>Internal, outside clients</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-[var(--line-subtle)]">
@@ -180,7 +181,7 @@ function Body({ d, day, setDay, fetching }: { d: RealCosts; day: string | null; 
             </tbody>
           </table>
           <p className="k-fg3 border-t border-[var(--line-subtle)] px-4 py-2.5 text-[12px]">
-            The correction multiplies the vendor&apos;s list cost by what we paid for usage over what our runs recorded. A split vendor counts only its metered part; the other parts are shown under it and price no unit. Not counted as API usage:{" "}
+            Owner rule: an API is re-billed at its vendor list cost, never averaged. What the bank paid beyond the list cost of what our runs recorded is internal and outside clients; a split vendor shows what that money paid for under it. Not counted as API usage at all:{" "}
             {d.rules.payAsYouGoVendors.flatMap((v) => v.excludedLedgerVendors.map((e) => `${e.key} (${e.reason})`)).join(", ") || "none"}.
           </p>
         </div>
@@ -202,7 +203,6 @@ const PART_LABEL: Record<string, string> = {
 
 /** A vendor's row; a split vendor lists what its bank money paid for under it, counted or not. */
 function PaygRows({ v }: { v: RealCosts["payAsYouGo"][number] }) {
-  const counted = v.split ? v.meteredUsdCents : v.netPaidUsdCents;
   return (
     <>
       <tr className="k-row">
@@ -211,9 +211,8 @@ function PaygRows({ v }: { v: RealCosts["payAsYouGo"][number] }) {
         <td className={TDR}>{dollars(v.paidUsdCents / 100)}</td>
         <td className={`${TDR} k-fg2`}>{v.refundedUsdCents ? dollars(v.refundedUsdCents / 100) : <Dash />}</td>
         <td className={TDR}>{dollars(v.netPaidUsdCents / 100)}</td>
-        <td className={`${TDR} font-medium`}>{counted == null ? <Dash /> : dollars(counted / 100)}</td>
-        <td className={`${TDR} k-fg2`}>{dollars(v.vendorCostRecordedUsdCents / 100)}</td>
-        <td className={`${TDR} font-medium`}>{ratio(v.ratio) ?? <Dash />}</td>
+        <td className={`${TDR} k-fg2`}>{dollars(v.vendorCostRecordedAtListUsdCents / 100)}</td>
+        <td className={`${TDR} font-medium`}>{dollars(v.internalCostUsdCents / 100)}</td>
       </tr>
       {v.split &&
         [...v.split.parts, { part: "unexplained", ...v.split.unexplained }].map((p) => (
@@ -225,9 +224,7 @@ function PaygRows({ v }: { v: RealCosts["payAsYouGo"][number] }) {
             <td className={`${TDR} k-fg2 text-[12px]`} colSpan={3}>
               {dollars(p.usdCents / 100)}
             </td>
-            <td className={`${TDR} text-[12px]`} colSpan={3}>
-              {p.loadedOnUnits ? <span style={{ color: "var(--data-teal)" }}>Counted</span> : <span className="k-fg3">Not counted</span>}
-            </td>
+            <td className={TD} colSpan={2} />
           </tr>
         ))}
     </>
@@ -252,7 +249,7 @@ function ItemRow({ i, open, onToggle }: { i: RealCostItem; open: boolean; onTogg
         </td>
         <td className={`${TD} k-fg2`}>
           {label(METHOD_LABEL, i.method)}
-          {i.ratio != null && <span className="k-fg3"> {ratio(i.ratio)}</span>}
+          {i.method === "pay-as-you-go-ratio" && i.ratio != null && <span className="k-fg3"> {ratio(i.ratio)}</span>}
           {i.flag && <span className="k-fg3"> · {label(FLAG_LABEL, i.flag)}</span>}
         </td>
         <td className={`${TDR} k-fg2`}>{cents(i.catalogueVendorCostPerUnitUsdCents) ?? <Dash />}</td>

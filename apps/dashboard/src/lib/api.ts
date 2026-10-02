@@ -39,6 +39,8 @@ import {
   type ComparisonInterval,
   StaffBrandsSchema,
   type StaffBrand,
+  BasisSummarySchema,
+  type BasisSummary,
 } from "./monitoring/monitoring";
 import {
   LeadBucketCountsSchema,
@@ -1498,6 +1500,12 @@ export async function getStaffSubscriptionCosts(): Promise<SubscriptionCosts> {
 export async function getStaffRealCosts(day: string | null): Promise<RealCosts> {
   const q = day ? `?day=${encodeURIComponent(day)}` : "";
   return parseStaff("getStaffRealCosts", RealCostsSchema, await apiCall<unknown>(`${STAFF_MONITORING_PATHS.realCosts}${q}`));
+}
+
+/** Which cost items are priced on an average and which at list cost, fleet-wide (costs-service). */
+export async function getStaffBasisSummary(day: string | null): Promise<BasisSummary> {
+  const q = day ? `?day=${encodeURIComponent(day)}` : "";
+  return parseStaff("getStaffBasisSummary", BasisSummarySchema, await apiCall<unknown>(`${STAFF_MONITORING_PATHS.realCosts}/basis-summary${q}`));
 }
 
 /** One cost item's real cost, catalogue price and proposed price per day. */

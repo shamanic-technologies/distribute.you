@@ -391,6 +391,10 @@ export const RealCostsSchema = z.object({
       // of a split vendor (Google from its billing export, Twilio from its usage records).
       numeratorBasis: z.string(),
       meteredUsdCents: Num,
+      // Owner 2026-10-01: an API is priced at list cost; what the bank paid beyond it is internal, outside clients.
+      vendorCostRecordedAtListUsdCents: z.number(),
+      internalCostUsdCents: z.number(),
+      internalCostBasis: z.string(),
       split: z
         .object({
           parts: z.array(SplitPart),
@@ -468,6 +472,41 @@ export const StaffBrandsSchema = z.object({
 });
 export type StaffBrand = z.infer<typeof StaffBrandsSchema>["brands"][number];
 
+/**
+ * costs-service's pricing-basis summary (owner 2026-10-01): which cost items are priced on an
+ * AVERAGE (email infrastructure, subscriptions: bank money / units) and which at the vendor's
+ * catalogue list cost (APIs), with the fleet's real cost and what it would bill at today's
+ * catalogue and at the proposed list, plus what we paid API vendors beyond list cost (internal,
+ * outside clients). Every figure is the producer's.
+ */
+export const BasisSummarySchema = z.object({
+  day: z.string(),
+  asOf: z.string(),
+  stale: z.boolean(),
+  rule: z.string(),
+  bases: z.array(
+    z.object({
+      basis: z.string(),
+      providers: z.array(z.string()),
+      itemCount: z.number(),
+      consumedItemCount: z.number(),
+      realCostUsdCents: z.number(),
+      amountCatalogueUsdCents: z.number(),
+      amountProposedUsdCents: z.number(),
+    }),
+  ),
+  totals: z.object(FiguresShape),
+  unpricedCostNames2: z.array(z.string()),
+  realCostUnknownCostNames: z.array(z.string()),
+  internalCost: z.object({
+    byVendor: z.array(
+      z.object({ provider: z.string(), netPaidUsdCents: z.number(), vendorCostRecordedAtListUsdCents: z.number(), internalCostUsdCents: z.number(), internalCostBasis: z.string() }),
+    ),
+    totalUsdCents: z.number(),
+  }),
+});
+export type BasisSummary = z.infer<typeof BasisSummarySchema>;
+
 /** Every price version of one cost item, oldest first. */
 export function versionsOf(versions: PriceVersion[], name: string): PriceVersion[] {
   return versions
@@ -506,7 +545,7 @@ export type MonitoringView =
   | { view: "moved"; page: MonitoringPage }
   | { view: "missing"; rest: string };
 
-export const MONITORING_PAGES = ["cost/providers", "cost/spend", "cost/subscriptions", "cost/email-sending", "price/billed", "price/new-pricing", "margin", "margin/pricing-comparison", "emails"] as const;
+export const MONITORING_PAGES = ["cost/providers", "cost/spend", "cost/subscriptions", "cost/email-sending", "price/billed", "price/new-pricing", "price/pricing-basis", "margin", "margin/pricing-comparison", "emails"] as const;
 export type MonitoringPage = (typeof MONITORING_PAGES)[number];
 
 /** Retired URLs (owner 2026-10-01): links already shared keep landing on the page that absorbed them. */
