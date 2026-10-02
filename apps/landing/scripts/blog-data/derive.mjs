@@ -680,9 +680,27 @@ function dashByModel(rows) {
   }
   return [...by.values()].sort((a, b) => b.emails - a.emails);
 }
+// Per bucket, its emails split by (client org, month): the strata research.mjs compares two
+// buckets on, so a model is weighed against another on the SAME clients in the SAME months and
+// a client mix cannot pass for a model effect. Keyed by org id here only (facts.json is never
+// committed); research.mjs prints ratios, never a stratum.
+function strataPer(rows, keyFn) {
+  const out = {};
+  for (const r of rows) {
+    const k = keyFn(r);
+    if (!k || !r.orgId) continue;
+    const s = ((out[k] ||= {})[`${r.orgId}|${r.month}`] ||= { emails: 0, clicks: 0, replies: 0, spend: 0 });
+    s.emails++;
+    s.spend += r.cost;
+    if (r.clicked) s.clicks++;
+    if (r.replied) s.replies++;
+  }
+  return out;
+}
 function researchFor(rows) {
   return {
     byModel: cut(rows, modelLabel),
+    modelStrata: strataPer(rows, modelLabel),
     byTemplate: cut(rows, (r) => r.template),
     byStep: cut(rows, stepLabel, STEPS),
     byMonth: cut(rows, (r) => r.month, monthsOf(rows)),

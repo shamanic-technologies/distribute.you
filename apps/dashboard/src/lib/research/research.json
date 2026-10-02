@@ -1,19 +1,19 @@
 {
-  "generatedAt": "2026-09-29T04:43:41.262Z",
+  "generatedAt": "2026-10-02T08:47:09.653Z",
   "allOrgs": true,
   "costBasis": "user",
   "unpricedBilledUsd": 0,
   "unpricedEmails": 0,
   "window": {
     "from": "2026-04",
-    "to": "2026-09"
+    "to": "2026-10"
   },
-  "readOn": "2026-09-29",
+  "readOn": "2026-10-02",
   "volume": {
-    "emails": 122034,
+    "emails": 125991,
     "orgs": 28,
-    "workflows": 50,
-    "linkedEmails": 15934,
+    "workflows": 57,
+    "linkedEmails": 16284,
     "byMonth": [
       {
         "label": "Apr",
@@ -37,30 +37,34 @@
       },
       {
         "label": "Sep",
-        "emails": 15965
+        "emails": 19811
+      },
+      {
+        "label": "Oct",
+        "emails": 111
       }
     ]
   },
   "maturation": {
     "rule": "run_start",
     "days": 21,
-    "cutoff": "2026-09-08",
-    "windowEnd": "2026-09-29",
+    "cutoff": "2026-09-11",
+    "windowEnd": "2026-10-02",
     "legs": {
       "reply": {
         "durationDays": 21,
         "outcomesRequired": 1,
-        "cutoff": "2026-09-08"
+        "cutoff": "2026-09-11"
       },
       "visit": {
         "durationDays": 21,
         "outcomesRequired": 10,
-        "cutoff": "2026-09-08"
+        "cutoff": "2026-09-11"
       }
     },
-    "excludedEmails": 22208,
+    "excludedEmails": 22115,
     "noRunStart": 2346,
-    "note": "Only people we started writing to at least 21 days before the read (before Sep 8) count, with every positive reply and website visit they sent since. A figure needs 1 positive reply (10 website visits) behind it; below that it reads Learning."
+    "note": "Only people we started writing to at least 21 days before the read (before Sep 11) count, with every positive reply and website visit they sent since. A figure needs 1 positive reply (10 website visits) behind it; below that it reads Learning."
   },
   "crews": [
     {
@@ -87,12 +91,12 @@
       "goal": "roi",
       "question": "Which LLM gets the cheapest positive reply?",
       "status": "measured",
-      "headline": "GLM 5.2 Pro wins at $33 per positive reply.",
+      "headline": "GLM 5.2 Pro wins at $34 per positive reply.",
       "winner": "GLM 5.2 Pro",
       "result": {
-        "display": "$33",
+        "display": "$34",
         "unit": "per positive reply",
-        "sample": "1 positive reply · 592 emails"
+        "sample": "1 positive reply · 599 emails"
       },
       "crowned": true,
       "charts": [
@@ -104,9 +108,9 @@
             {
               "key": "glm-5.2-pro",
               "label": "GLM 5.2 Pro",
-              "value": 33.46,
-              "display": "$33",
-              "note": "1 positive reply · 592 emails",
+              "value": 33.5,
+              "display": "$34",
+              "note": "1 positive reply · 599 emails",
               "thin": false
             },
             {
@@ -120,9 +124,9 @@
             {
               "key": "gemini-3.1-pro",
               "label": "Gemini 3.1 Pro",
-              "value": 160.01,
-              "display": "$160",
-              "note": "35 positive replies · 77,094 emails",
+              "value": 166.47,
+              "display": "$166",
+              "note": "35 positive replies · 79,715 emails",
               "thin": false
             },
             {
@@ -130,11 +134,11 @@
               "label": "DeepSeek V4 Pro",
               "value": 413.13,
               "display": "$413",
-              "note": "1 positive reply · 4,931 emails",
+              "note": "1 positive reply · 5,105 emails",
               "thin": false
             }
           ],
-          "note": "Only people we started writing to at least 21 days before the read (before Sep 8) count, with every positive reply and website visit they sent since. A figure needs 1 positive reply (10 website visits) behind it; below that it reads Learning."
+          "note": "Only people we started writing to at least 21 days before the read (before Sep 11) count, with every positive reply and website visit they sent since. A figure needs 1 positive reply (10 website visits) behind it; below that it reads Learning."
         },
         {
           "kind": "months",
@@ -143,9 +147,9 @@
           "points": [
             {
               "label": "Sep",
-              "value": 20.8,
+              "value": 20.86,
               "display": "$21",
-              "note": "1 positive reply · 368 emails",
+              "note": "1 positive reply · 373 emails",
               "thin": false
             }
           ],
@@ -154,18 +158,28 @@
             "points": [
               {
                 "label": "Sep",
-                "value": 33.46,
+                "value": 33.39,
                 "display": "$33",
-                "note": "1 positive reply · 592 emails to date",
+                "note": "1 positive reply · 597 emails to date",
+                "thin": false
+              },
+              {
+                "label": "Oct",
+                "value": 33.5,
+                "display": "$34",
+                "note": "1 positive reply · 599 emails to date",
                 "thin": false
               }
             ]
           },
-          "note": "Only people we started writing to at least 21 days before the read (before Sep 8) count, with every positive reply and website visit they sent since. A figure needs 1 positive reply (10 website visits) behind it; below that it reads Learning."
+          "note": "Only people we started writing to at least 21 days before the read (before Sep 11) count, with every positive reply and website visit they sent since. A figure needs 1 positive reply (10 website visits) behind it; below that it reads Learning."
         }
       ],
       "conclusion": [
-        "GLM 5.2 Pro: 1 positive reply · 592 emails, $33 spent."
+        "GLM 5.2 Pro: 1 positive reply · 599 emails, $34 spent.",
+        "Same clients, same months, GLM 5.2 Pro against Gemini 3.1 Pro: 1 positive reply in 597 emails against 8 in 16,162, under 5 on one side, so no ratio.",
+        "Same clients, same months, GLM 5.2 Pro against DeepSeek V4 Pro: 1 positive reply in 599 emails against 1 in 5,050, under 5 on one side, so no ratio.",
+        "Same clients, same months, GLM 5.2 Pro against DeepSeek V4 Flash: 0 positive replies in 22 emails against 0 in 343, under 5 on one side, so no ratio."
       ]
     },
     {
@@ -200,17 +214,17 @@
             {
               "key": "glm-5.2-pro",
               "label": "GLM 5.2 Pro",
-              "value": 16.9,
+              "value": 16.7,
               "display": "0.17%",
-              "note": "1 positive reply · 592 emails",
+              "note": "1 positive reply · 599 emails",
               "thin": false
             },
             {
               "key": "gemini-3.1-pro",
               "label": "Gemini 3.1 Pro",
-              "value": 4.5,
+              "value": 4.4,
               "display": "0.04%",
-              "note": "35 positive replies · 77,094 emails",
+              "note": "35 positive replies · 79,715 emails",
               "thin": false
             },
             {
@@ -218,7 +232,7 @@
               "label": "DeepSeek V4 Pro",
               "value": 2,
               "display": "0.02%",
-              "note": "1 positive reply · 4,931 emails",
+              "note": "1 positive reply · 5,105 emails",
               "thin": false
             },
             {
@@ -238,6 +252,22 @@
               "thin": true
             },
             {
+              "key": "deepseek-v4-flash",
+              "label": "DeepSeek V4 Flash",
+              "value": 0,
+              "display": "0.00%",
+              "note": "0 positive replies · 343 emails",
+              "thin": true
+            },
+            {
+              "key": "glm-5.3-flash",
+              "label": "GLM 5.3 Flash",
+              "value": 0,
+              "display": "0.00%",
+              "note": "0 positive replies · 336 emails",
+              "thin": true
+            },
+            {
               "key": "glm-5.3-pro",
               "label": "GLM 5.3 Pro",
               "value": 0,
@@ -252,9 +282,25 @@
               "display": "0.00%",
               "note": "0 positive replies · 202 emails",
               "thin": true
+            },
+            {
+              "key": "gpt-6-astra",
+              "label": "GPT-6 Astra",
+              "value": 0,
+              "display": "0.00%",
+              "note": "0 positive replies · 86 emails",
+              "thin": true
+            },
+            {
+              "key": "claude-fable-5.1",
+              "label": "Claude Fable 5.1",
+              "value": 0,
+              "display": "0.00%",
+              "note": "0 positive replies · 40 emails",
+              "thin": true
             }
           ],
-          "note": "Only people we started writing to at least 21 days before the read (before Sep 8) count, with every positive reply and website visit they sent since. A figure needs 1 positive reply (10 website visits) behind it; below that it reads Learning."
+          "note": "Only people we started writing to at least 21 days before the read (before Sep 11) count, with every positive reply and website visit they sent since. A figure needs 1 positive reply (10 website visits) behind it; below that it reads Learning."
         },
         {
           "kind": "months",
@@ -295,12 +341,15 @@
               }
             ]
           },
-          "note": "Only people we started writing to at least 21 days before the read (before Sep 8) count, with every positive reply and website visit they sent since. A figure needs 1 positive reply (10 website visits) behind it; below that it reads Learning."
+          "note": "Only people we started writing to at least 21 days before the read (before Sep 11) count, with every positive reply and website visit they sent since. A figure needs 1 positive reply (10 website visits) behind it; below that it reads Learning."
         }
       ],
       "conclusion": [
         "Gemini 3.5 Flash-Lite: 1 positive reply · 437 emails.",
         "Over time: 0.23% in Aug, 0.00% in Sep.",
+        "Same clients, same months, Gemini 3.5 Flash-Lite against Gemini 3.1 Pro: 1 positive reply in 434 emails against 0 in 2,039, under 5 on one side, so no ratio.",
+        "Same clients, same months, Gemini 3.5 Flash-Lite against Gemini 3.6 Flash: 1 positive reply in 425 emails against 0 in 201, under 5 on one side, so no ratio.",
+        "Same clients, same months, Gemini 3.5 Flash-Lite against Gemini 3.5 Flash: 1 positive reply in 425 emails against 0 in 157, under 5 on one side, so no ratio.",
         "A LLM with fewer than 1 positive reply is ranked where its value puts it and marked Learning."
       ]
     },
@@ -311,12 +360,12 @@
       "goal": "roi",
       "question": "What does a positive reply cost on average?",
       "status": "measured",
-      "headline": "$173 per positive reply on average since inception, across all our emails.",
+      "headline": "$181 per positive reply on average since inception, across all our emails.",
       "winner": "GLM 5.2 Pro",
       "result": {
-        "display": "$173",
+        "display": "$181",
         "unit": "per positive reply, average since inception",
-        "sample": "38 positive replies · 93,009 emails to date"
+        "sample": "38 positive replies · 96,616 emails to date"
       },
       "crowned": true,
       "charts": [
@@ -341,30 +390,30 @@
             },
             {
               "label": "Jun",
-              "value": 250.28,
+              "value": 250.27,
               "display": "$250",
               "note": "4 positive replies · 22,527 emails",
               "thin": false
             },
             {
               "label": "Jul",
-              "value": 166.3,
+              "value": 166.03,
               "display": "$166",
               "note": "11 positive replies · 22,501 emails",
               "thin": false
             },
             {
               "label": "Aug",
-              "value": 128.04,
-              "display": "$128",
+              "value": 127.12,
+              "display": "$127",
               "note": "12 positive replies · 16,412 emails",
               "thin": false
             },
             {
               "label": "Sep",
-              "value": 413.98,
-              "display": "$414",
-              "note": "3 positive replies · 13,800 emails",
+              "value": 518.57,
+              "display": "$519",
+              "note": "3 positive replies · 17,299 emails",
               "thin": false
             }
           ],
@@ -394,28 +443,35 @@
               },
               {
                 "label": "Jul",
-                "value": 165.21,
+                "value": 165.08,
                 "display": "$165",
                 "note": "23 positive replies · 62,797 emails to date",
                 "thin": false
               },
               {
                 "label": "Aug",
-                "value": 152.47,
+                "value": 152.06,
                 "display": "$152",
                 "note": "35 positive replies · 79,209 emails to date",
                 "thin": false
               },
               {
                 "label": "Sep",
-                "value": 173.11,
-                "display": "$173",
-                "note": "38 positive replies · 93,009 emails to date",
+                "value": 181,
+                "display": "$181",
+                "note": "38 positive replies · 96,508 emails to date",
+                "thin": false
+              },
+              {
+                "label": "Oct",
+                "value": 181.26,
+                "display": "$181",
+                "note": "38 positive replies · 96,616 emails to date",
                 "thin": false
               }
             ]
           },
-          "note": "Only people we started writing to at least 21 days before the read (before Sep 8) count, with every positive reply and website visit they sent since. A figure needs 1 positive reply (10 website visits) behind it; below that it reads Learning."
+          "note": "Only people we started writing to at least 21 days before the read (before Sep 11) count, with every positive reply and website visit they sent since. A figure needs 1 positive reply (10 website visits) behind it; below that it reads Learning."
         },
         {
           "kind": "months",
@@ -424,9 +480,9 @@
           "points": [
             {
               "label": "Sep",
-              "value": 20.8,
+              "value": 20.86,
               "display": "$21",
-              "note": "1 positive reply · 368 emails",
+              "note": "1 positive reply · 373 emails",
               "thin": false
             }
           ],
@@ -435,19 +491,26 @@
             "points": [
               {
                 "label": "Sep",
-                "value": 33.46,
+                "value": 33.39,
                 "display": "$33",
-                "note": "1 positive reply · 592 emails to date",
+                "note": "1 positive reply · 597 emails to date",
+                "thin": false
+              },
+              {
+                "label": "Oct",
+                "value": 33.5,
+                "display": "$34",
+                "note": "1 positive reply · 599 emails to date",
                 "thin": false
               }
             ]
           },
-          "note": "Only people we started writing to at least 21 days before the read (before Sep 8) count, with every positive reply and website visit they sent since. A figure needs 1 positive reply (10 website visits) behind it; below that it reads Learning."
+          "note": "Only people we started writing to at least 21 days before the read (before Sep 11) count, with every positive reply and website visit they sent since. A figure needs 1 positive reply (10 website visits) behind it; below that it reads Learning."
         }
       ],
       "conclusion": [
         "The average divides everything spent since the first email by every positive reply since; the monthly bars are context, not the answer.",
-        "GLM 5.2 Pro (cheapest LLM): $33 per positive reply on average since inception."
+        "GLM 5.2 Pro (cheapest LLM): $34 per positive reply on average since inception."
       ]
     },
     {
@@ -457,12 +520,12 @@
       "goal": "roi",
       "question": "How many follow-ups give the cheapest positive reply?",
       "status": "measured",
-      "headline": "First email only: $127 per positive reply, the cheapest depth.",
+      "headline": "First email only: $132 per positive reply, the cheapest depth.",
       "winner": "First email only",
       "result": {
-        "display": "$127",
+        "display": "$132",
         "unit": "per positive reply, first email only",
-        "sample": "18 positive replies · $2,280 spent"
+        "sample": "18 positive replies · $2,383 spent"
       },
       "crowned": true,
       "charts": [
@@ -473,34 +536,34 @@
           "points": [
             {
               "label": "First email only",
-              "value": 126.69,
-              "display": "$127",
-              "note": "18 positive replies · $2,280 spent",
+              "value": 132.37,
+              "display": "$132",
+              "note": "18 positive replies · $2,383 spent",
               "thin": false
             },
             {
               "label": "+ 1 follow-up",
-              "value": 146.64,
-              "display": "$147",
-              "note": "30 positive replies · $4,399 spent",
+              "value": 153.46,
+              "display": "$153",
+              "note": "30 positive replies · $4,604 spent",
               "thin": false
             },
             {
               "label": "+ 2 follow-ups",
-              "value": 171.61,
-              "display": "$172",
-              "note": "37 positive replies · $6,350 spent",
+              "value": 179.98,
+              "display": "$180",
+              "note": "37 positive replies · $6,659 spent",
               "thin": false
             },
             {
               "label": "+ 3 follow-ups",
-              "value": 171.62,
-              "display": "$172",
-              "note": "37 positive replies · $6,350 spent",
+              "value": 179.98,
+              "display": "$180",
+              "note": "37 positive replies · $6,659 spent",
               "thin": false
             }
           ],
-          "note": "Only people we started writing to at least 21 days before the read (before Sep 8) count, with every positive reply and website visit they sent since. A figure needs 1 positive reply (10 website visits) behind it; below that it reads Learning."
+          "note": "Only people we started writing to at least 21 days before the read (before Sep 11) count, with every positive reply and website visit they sent since. A figure needs 1 positive reply (10 website visits) behind it; below that it reads Learning."
         },
         {
           "kind": "bars",
@@ -509,27 +572,27 @@
           "points": [
             {
               "label": "First email",
-              "value": 126.69,
-              "display": "$127",
-              "note": "18 positive replies · 31,535 emails",
+              "value": 132.37,
+              "display": "$132",
+              "note": "18 positive replies · 32,742 emails",
               "thin": false
             },
             {
               "label": "Follow-up 1",
-              "value": 176.56,
-              "display": "$177",
-              "note": "12 positive replies · 29,717 emails",
+              "value": 185.1,
+              "display": "$185",
+              "note": "12 positive replies · 30,913 emails",
               "thin": false
             },
             {
               "label": "Follow-up 2",
-              "value": 278.67,
-              "display": "$279",
-              "note": "7 positive replies · 27,478 emails",
+              "value": 293.64,
+              "display": "$294",
+              "note": "7 positive replies · 28,682 emails",
               "thin": false
             }
           ],
-          "note": "Only people we started writing to at least 21 days before the read (before Sep 8) count, with every positive reply and website visit they sent since. A figure needs 1 positive reply (10 website visits) behind it; below that it reads Learning."
+          "note": "Only people we started writing to at least 21 days before the read (before Sep 11) count, with every positive reply and website visit they sent since. A figure needs 1 positive reply (10 website visits) behind it; below that it reads Learning."
         }
       ],
       "conclusion": [
@@ -547,9 +610,9 @@
       "headline": "Positive replies keep coming through 2 follow-ups: the last one adds 0.02 points.",
       "winner": "+ 2 follow-ups",
       "result": {
-        "display": "0.12%",
+        "display": "0.11%",
         "unit": "of people got a positive reply, all follow-ups",
-        "sample": "37 positive replies from 31,535 people"
+        "sample": "37 positive replies from 32,742 people"
       },
       "crowned": true,
       "charts": [
@@ -560,34 +623,34 @@
           "points": [
             {
               "label": "First email only",
-              "value": 5.7,
-              "display": "0.06%",
-              "note": "18 positive replies from 31,535 people",
+              "value": 5.5,
+              "display": "0.05%",
+              "note": "18 positive replies from 32,742 people",
               "thin": false
             },
             {
               "label": "+ 1 follow-up",
-              "value": 9.5,
-              "display": "0.10%",
-              "note": "30 positive replies from 31,535 people",
+              "value": 9.2,
+              "display": "0.09%",
+              "note": "30 positive replies from 32,742 people",
               "thin": false
             },
             {
               "label": "+ 2 follow-ups",
-              "value": 11.7,
-              "display": "0.12%",
-              "note": "37 positive replies from 31,535 people",
+              "value": 11.3,
+              "display": "0.11%",
+              "note": "37 positive replies from 32,742 people",
               "thin": false
             },
             {
               "label": "+ 3 follow-ups",
-              "value": 11.7,
-              "display": "0.12%",
-              "note": "37 positive replies from 31,535 people",
+              "value": 11.3,
+              "display": "0.11%",
+              "note": "37 positive replies from 32,742 people",
               "thin": false
             }
           ],
-          "note": "Only people we started writing to at least 21 days before the read (before Sep 8) count, with every positive reply and website visit they sent since. A figure needs 1 positive reply (10 website visits) behind it; below that it reads Learning."
+          "note": "Only people we started writing to at least 21 days before the read (before Sep 11) count, with every positive reply and website visit they sent since. A figure needs 1 positive reply (10 website visits) behind it; below that it reads Learning."
         }
       ],
       "conclusion": [
@@ -604,12 +667,12 @@
       "goal": "roi",
       "question": "Should we track opens for the cheapest positive reply?",
       "status": "measured",
-      "headline": "Tracking off wins: 0.14% of people replied positively, against 0.10% (p 0.28).",
+      "headline": "Tracking off wins: 0.13% of people replied positively, against 0.10% (p 0.40).",
       "winner": "Tracking off",
       "result": {
-        "display": "0.14%",
+        "display": "0.13%",
         "unit": "with tracking off, 0.10% on",
-        "sample": "p 0.28, 46,897 people"
+        "sample": "p 0.40, 48,258 people"
       },
       "crowned": false,
       "charts": [
@@ -620,9 +683,9 @@
           "points": [
             {
               "label": "Tracking off",
-              "value": 0.14,
-              "display": "0.14%",
-              "note": "28 of 20,504 people",
+              "value": 0.13,
+              "display": "0.13%",
+              "note": "28 of 21,865 people",
               "thin": false
             },
             {
@@ -633,12 +696,12 @@
               "thin": false
             }
           ],
-          "note": "People we started writing to in the 21 days before the read are left out (from Sep 8 on), at least the 21 days every price here waits for replies and visits to arrive."
+          "note": "People we started writing to in the 21 days before the read are left out (from Sep 11 on), at least the 21 days every price here waits for replies and visits to arrive."
         }
       ],
       "conclusion": [
         "An email costs the same with or without the pixel, so the cheaper positive reply is the arm with more of them per person.",
-        "Tracking was on from 2026-02-10 to 2026-06-28 and off until 2026-09-07: two periods, not a split test, over 46,897 people."
+        "Tracking was on from 2026-02-10 to 2026-06-28 and off until 2026-09-10: two periods, not a split test, over 48,258 people."
       ]
     },
     {
@@ -648,12 +711,12 @@
       "goal": "rate",
       "question": "Should we track opens for the best reply rate?",
       "status": "measured",
-      "headline": "Tracking off wins: 0.41% of people replied, against 0.29% (p 0.02).",
+      "headline": "Tracking off wins: 0.40% of people replied, against 0.29% (p 0.03).",
       "winner": "Tracking off",
       "result": {
-        "display": "0.41%",
+        "display": "0.40%",
         "unit": "with tracking off, 0.29% on",
-        "sample": "p 0.02, 46,897 people"
+        "sample": "p 0.03, 48,258 people"
       },
       "crowned": true,
       "charts": [
@@ -664,9 +727,9 @@
           "points": [
             {
               "label": "Tracking off",
-              "value": 0.41,
-              "display": "0.41%",
-              "note": "84 of 20,504 people",
+              "value": 0.4,
+              "display": "0.40%",
+              "note": "88 of 21,865 people",
               "thin": false
             },
             {
@@ -677,7 +740,7 @@
               "thin": false
             }
           ],
-          "note": "People we started writing to in the 21 days before the read are left out (from Sep 8 on), at least the 21 days every price here waits for replies and visits to arrive."
+          "note": "People we started writing to in the 21 days before the read are left out (from Sep 11 on), at least the 21 days every price here waits for replies and visits to arrive."
         },
         {
           "kind": "bars",
@@ -686,25 +749,25 @@
           "points": [
             {
               "label": "Tracking off",
-              "value": 8.93,
-              "display": "8.93%",
-              "note": "1,832 of 20,504 people",
+              "value": 9.13,
+              "display": "9.13%",
+              "note": "1,996 of 21,865 people",
               "thin": false
             },
             {
               "label": "Tracking on",
-              "value": 1.41,
-              "display": "1.41%",
-              "note": "373 of 26,393 people",
+              "value": 1.42,
+              "display": "1.42%",
+              "note": "376 of 26,393 people",
               "thin": false
             }
           ],
-          "note": "People we started writing to in the 21 days before the read are left out (from Sep 8 on), at least the 21 days every price here waits for replies and visits to arrive."
+          "note": "People we started writing to in the 21 days before the read are left out (from Sep 11 on), at least the 21 days every price here waits for replies and visits to arrive."
         }
       ],
       "conclusion": [
         "Auto-replies and out-of-office messages are not counted as replies.",
-        "Tracking was on from 2026-02-10 to 2026-06-28 and off until 2026-09-07: two periods, not a split test, over 46,897 people."
+        "Tracking was on from 2026-02-10 to 2026-06-28 and off until 2026-09-10: two periods, not a split test, over 48,258 people."
       ]
     },
     {
@@ -739,7 +802,7 @@
             {
               "key": "cold-email-v28",
               "label": "Cold email v28",
-              "value": 67.42,
+              "value": 67.35,
               "display": "$67",
               "note": "2 positive replies · 1,204 emails",
               "thin": false
@@ -753,35 +816,27 @@
               "thin": false
             },
             {
-              "key": "blind-discovery-email-v9",
-              "label": "Blind discovery v9",
-              "value": 111.14,
-              "display": "$111",
-              "note": "5 positive replies · 6,802 emails",
-              "thin": false
-            },
-            {
               "key": "cold-email-v27",
               "label": "Cold email v27",
-              "value": 118.93,
+              "value": 118.91,
               "display": "$119",
-              "note": "4 positive replies · 3,962 emails",
+              "note": "4 positive replies · 3,968 emails",
               "thin": false
             },
             {
               "key": "blind-discovery-email-v5",
               "label": "Blind discovery v5",
-              "value": 119.18,
+              "value": 119.16,
               "display": "$119",
               "note": "1 positive reply · 2,097 emails",
               "thin": false
             },
             {
-              "key": "blind-discovery-email-v26",
-              "label": "Blind discovery v26",
-              "value": 131.1,
-              "display": "$131",
-              "note": "14 positive replies · 18,941 emails",
+              "key": "blind-discovery-email-v9",
+              "label": "Blind discovery v9",
+              "value": 120.7,
+              "display": "$121",
+              "note": "5 positive replies · 7,466 emails",
               "thin": false
             },
             {
@@ -790,6 +845,14 @@
               "value": 139.45,
               "display": "$139",
               "note": "1 positive reply · 2,865 emails",
+              "thin": false
+            },
+            {
+              "key": "blind-discovery-email-v26",
+              "label": "Blind discovery v26",
+              "value": 143.84,
+              "display": "$144",
+              "note": "14 positive replies · 21,061 emails",
               "thin": false
             },
             {
@@ -809,7 +872,7 @@
               "thin": false
             }
           ],
-          "note": "Only people we started writing to at least 21 days before the read (before Sep 8) count, with every positive reply and website visit they sent since. A figure needs 1 positive reply (10 website visits) behind it; below that it reads Learning."
+          "note": "Only people we started writing to at least 21 days before the read (before Sep 11) count, with every positive reply and website visit they sent since. A figure needs 1 positive reply (10 website visits) behind it; below that it reads Learning."
         },
         {
           "kind": "months",
@@ -843,7 +906,7 @@
               }
             ]
           },
-          "note": "Only people we started writing to at least 21 days before the read (before Sep 8) count, with every positive reply and website visit they sent since. A figure needs 1 positive reply (10 website visits) behind it; below that it reads Learning."
+          "note": "Only people we started writing to at least 21 days before the read (before Sep 11) count, with every positive reply and website visit they sent since. A figure needs 1 positive reply (10 website visits) behind it; below that it reads Learning."
         }
       ],
       "conclusion": [
@@ -892,23 +955,23 @@
               "label": "Cold email v27",
               "value": 10.1,
               "display": "0.10%",
-              "note": "4 positive replies · 3,962 emails",
-              "thin": false
-            },
-            {
-              "key": "blind-discovery-email-v26",
-              "label": "Blind discovery v26",
-              "value": 7.4,
-              "display": "0.07%",
-              "note": "14 positive replies · 18,941 emails",
+              "note": "4 positive replies · 3,968 emails",
               "thin": false
             },
             {
               "key": "blind-discovery-email-v9",
               "label": "Blind discovery v9",
-              "value": 7.4,
+              "value": 6.7,
               "display": "0.07%",
-              "note": "5 positive replies · 6,802 emails",
+              "note": "5 positive replies · 7,466 emails",
+              "thin": false
+            },
+            {
+              "key": "blind-discovery-email-v26",
+              "label": "Blind discovery v26",
+              "value": 6.6,
+              "display": "0.07%",
+              "note": "14 positive replies · 21,061 emails",
               "thin": false
             },
             {
@@ -988,7 +1051,7 @@
               "label": "Cold email v35",
               "value": 0,
               "display": "0.00%",
-              "note": "0 positive replies · 1,430 emails",
+              "note": "0 positive replies · 2,109 emails",
               "thin": true
             },
             {
@@ -996,7 +1059,7 @@
               "label": "Blind discovery v7",
               "value": 0,
               "display": "0.00%",
-              "note": "0 positive replies · 1,398 emails",
+              "note": "0 positive replies · 1,399 emails",
               "thin": true
             },
             {
@@ -1028,7 +1091,7 @@
               "label": "Blind discovery v10",
               "value": 0,
               "display": "0.00%",
-              "note": "0 positive replies · 879 emails",
+              "note": "0 positive replies · 881 emails",
               "thin": true
             },
             {
@@ -1044,7 +1107,7 @@
               "label": "Blind discovery v13",
               "value": 0,
               "display": "0.00%",
-              "note": "0 positive replies · 814 emails",
+              "note": "0 positive replies · 815 emails",
               "thin": true
             },
             {
@@ -1076,7 +1139,15 @@
               "label": "Cold email v31",
               "value": 0,
               "display": "0.00%",
-              "note": "0 positive replies · 651 emails",
+              "note": "0 positive replies · 653 emails",
+              "thin": true
+            },
+            {
+              "key": "cold-email-v39",
+              "label": "Cold email v39",
+              "value": 0,
+              "display": "0.00%",
+              "note": "0 positive replies · 543 emails",
               "thin": true
             },
             {
@@ -1092,15 +1163,7 @@
               "label": "Cold email v41",
               "value": 0,
               "display": "0.00%",
-              "note": "0 positive replies · 418 emails",
-              "thin": true
-            },
-            {
-              "key": "cold-email-v39",
-              "label": "Cold email v39",
-              "value": 0,
-              "display": "0.00%",
-              "note": "0 positive replies · 413 emails",
+              "note": "0 positive replies · 420 emails",
               "thin": true
             },
             {
@@ -1120,7 +1183,7 @@
               "thin": true
             }
           ],
-          "note": "Only people we started writing to at least 21 days before the read (before Sep 8) count, with every positive reply and website visit they sent since. A figure needs 1 positive reply (10 website visits) behind it; below that it reads Learning."
+          "note": "Only people we started writing to at least 21 days before the read (before Sep 11) count, with every positive reply and website visit they sent since. A figure needs 1 positive reply (10 website visits) behind it; below that it reads Learning."
         },
         {
           "kind": "months",
@@ -1175,7 +1238,7 @@
               }
             ]
           },
-          "note": "Only people we started writing to at least 21 days before the read (before Sep 8) count, with every positive reply and website visit they sent since. A figure needs 1 positive reply (10 website visits) behind it; below that it reads Learning."
+          "note": "Only people we started writing to at least 21 days before the read (before Sep 11) count, with every positive reply and website visit they sent since. A figure needs 1 positive reply (10 website visits) behind it; below that it reads Learning."
         }
       ],
       "conclusion": [
@@ -1196,7 +1259,7 @@
       "result": {
         "display": "0.05%",
         "unit": "with the client not named, 0.02% named",
-        "sample": "p 0.04, 93,003 emails"
+        "sample": "p 0.04, 96,610 emails"
       },
       "crowned": true,
       "charts": [
@@ -1207,25 +1270,25 @@
           "points": [
             {
               "label": "Client not named",
-              "value": 5.3,
+              "value": 5.04,
               "display": "0.05%",
-              "note": "28 positive replies · 52,790 emails",
+              "note": "28 positive replies · 55,578 emails",
               "thin": false
             },
             {
               "label": "Client named",
-              "value": 2.49,
+              "value": 2.44,
               "display": "0.02%",
-              "note": "10 positive replies · 40,213 emails",
+              "note": "10 positive replies · 41,032 emails",
               "thin": false
             }
           ],
-          "note": "Only people we started writing to at least 21 days before the read (before Sep 8) count, with every positive reply and website visit they sent since. A figure needs 1 positive reply (10 website visits) behind it; below that it reads Learning."
+          "note": "Only people we started writing to at least 21 days before the read (before Sep 11) count, with every positive reply and website visit they sent since. A figure needs 1 positive reply (10 website visits) behind it; below that it reads Learning."
         }
       ],
       "conclusion": [
-        "Client not named: 28 positive replies · 52,790 emails, $4,094 spent, over 16 template versions whose prompt tells the model never to name the client or give its website.",
-        "Client named: 10 positive replies · 40,213 emails, $2,483 spent, over 15 template versions whose prompt tells the model to name the client, some with a link to its website.",
+        "Client not named: 28 positive replies · 55,578 emails, $4,321 spent, over 16 template versions whose prompt tells the model never to name the client or give its website.",
+        "Client named: 10 positive replies · 41,032 emails, $2,567 spent, over 15 template versions whose prompt tells the model to name the client, some with a link to its website.",
         "6 emails whose template was not recorded are left out.",
         "The two sides ran for different clients, audiences and months: this is not a split test.",
         "The p-value asks whether positive replies per email differ between the two sides."
@@ -1238,11 +1301,11 @@
       "goal": "roi",
       "question": "Does naming the client get a cheaper positive reply?",
       "status": "measured",
-      "headline": "Client not named wins at $146 per positive reply, against $248 with the client named (p 0.18).",
+      "headline": "Client not named wins at $154 per positive reply, against $257 with the client named (p 0.18).",
       "winner": "Client not named",
       "result": {
-        "display": "$146",
-        "unit": "per positive reply with the client not named, $248 named",
+        "display": "$154",
+        "unit": "per positive reply with the client not named, $257 named",
         "sample": "p 0.18, 38 positive replies"
       },
       "crowned": false,
@@ -1254,25 +1317,25 @@
           "points": [
             {
               "label": "Client not named",
-              "value": 146.23,
-              "display": "$146",
-              "note": "28 positive replies · 52,790 emails",
+              "value": 154.31,
+              "display": "$154",
+              "note": "28 positive replies · 55,578 emails",
               "thin": false
             },
             {
               "label": "Client named",
-              "value": 248.33,
-              "display": "$248",
-              "note": "10 positive replies · 40,213 emails",
+              "value": 256.67,
+              "display": "$257",
+              "note": "10 positive replies · 41,032 emails",
               "thin": false
             }
           ],
-          "note": "Only people we started writing to at least 21 days before the read (before Sep 8) count, with every positive reply and website visit they sent since. A figure needs 1 positive reply (10 website visits) behind it; below that it reads Learning."
+          "note": "Only people we started writing to at least 21 days before the read (before Sep 11) count, with every positive reply and website visit they sent since. A figure needs 1 positive reply (10 website visits) behind it; below that it reads Learning."
         }
       ],
       "conclusion": [
-        "Client not named: 28 positive replies · 52,790 emails, $4,094 spent, over 16 template versions whose prompt tells the model never to name the client or give its website.",
-        "Client named: 10 positive replies · 40,213 emails, $2,483 spent, over 15 template versions whose prompt tells the model to name the client, some with a link to its website.",
+        "Client not named: 28 positive replies · 55,578 emails, $4,321 spent, over 16 template versions whose prompt tells the model never to name the client or give its website.",
+        "Client named: 10 positive replies · 41,032 emails, $2,567 spent, over 15 template versions whose prompt tells the model to name the client, some with a link to its website.",
         "6 emails whose template was not recorded are left out.",
         "The two sides ran for different clients, audiences and months: this is not a split test.",
         "An email with the client not named cost $0.08 to write and send, $0.06 with the client named.",
@@ -1286,12 +1349,12 @@
       "goal": "roi",
       "question": "Does the layout of the first email change what a positive reply costs?",
       "status": "measured",
-      "headline": "Double line breaks wins at $155 per positive reply.",
+      "headline": "Double line breaks wins at $162 per positive reply.",
       "winner": "Double line breaks",
       "result": {
-        "display": "$155",
+        "display": "$162",
         "unit": "per positive reply",
-        "sample": "35 positive replies · 74,731 emails"
+        "sample": "35 positive replies · 77,439 emails"
       },
       "crowned": true,
       "charts": [
@@ -1302,27 +1365,27 @@
           "points": [
             {
               "label": "Double line breaks",
-              "value": 155.04,
-              "display": "$155",
-              "note": "35 positive replies · 74,731 emails",
+              "value": 162.12,
+              "display": "$162",
+              "note": "35 positive replies · 77,439 emails",
               "thin": false
             },
             {
               "label": "One block",
-              "value": 376.06,
-              "display": "$376",
-              "note": "3 positive replies · 18,041 emails",
+              "value": 396.57,
+              "display": "$397",
+              "note": "3 positive replies · 18,940 emails",
               "thin": false
             },
             {
               "label": "Single line breaks",
-              "value": 376.06,
+              "value": 396.57,
               "display": "None yet",
               "note": "0 positive replies · 231 emails, $23 spent",
               "thin": true
             }
           ],
-          "note": "Only people we started writing to at least 21 days before the read (before Sep 8) count, with every positive reply and website visit they sent since. A figure needs 1 positive reply (10 website visits) behind it; below that it reads Learning."
+          "note": "Only people we started writing to at least 21 days before the read (before Sep 11) count, with every positive reply and website visit they sent since. A figure needs 1 positive reply (10 website visits) behind it; below that it reads Learning."
         },
         {
           "kind": "bars",
@@ -1331,27 +1394,27 @@
           "points": [
             {
               "label": "Double line breaks",
-              "value": 298.34,
-              "display": "$298",
-              "note": "1 positive reply · 5,228 emails",
+              "value": 314.88,
+              "display": "$315",
+              "note": "1 positive reply · 5,504 emails",
               "thin": false
             },
             {
               "label": "One block",
-              "value": 298.34,
+              "value": 314.88,
               "display": "None yet",
-              "note": "0 positive replies · 4,950 emails, $206 spent",
+              "note": "0 positive replies · 5,353 emails, $230 spent",
               "thin": true
             },
             {
               "label": "Single line breaks",
-              "value": 298.34,
+              "value": 314.88,
               "display": "None yet",
               "note": "0 positive replies · 3 emails, $0.07 spent",
               "thin": true
             }
           ],
-          "note": "Only people we started writing to at least 21 days before the read (before Sep 8) count, with every positive reply and website visit they sent since. A figure needs 1 positive reply (10 website visits) behind it; below that it reads Learning."
+          "note": "Only people we started writing to at least 21 days before the read (before Sep 11) count, with every positive reply and website visit they sent since. A figure needs 1 positive reply (10 website visits) behind it; below that it reads Learning."
         },
         {
           "kind": "bars",
@@ -1360,35 +1423,35 @@
           "points": [
             {
               "label": "Double line breaks",
-              "value": 150.82,
-              "display": "$151",
-              "note": "34 positive replies · 69,503 emails",
+              "value": 156.36,
+              "display": "$156",
+              "note": "34 positive replies · 71,809 emails",
               "thin": false
             },
             {
               "label": "One block",
-              "value": 307.29,
-              "display": "$307",
-              "note": "3 positive replies · 13,091 emails",
+              "value": 319.77,
+              "display": "$320",
+              "note": "3 positive replies · 13,587 emails",
               "thin": false
             },
             {
               "label": "Single line breaks",
-              "value": 307.29,
+              "value": 319.77,
               "display": "None yet",
               "note": "0 positive replies · 228 emails, $23 spent",
               "thin": true
             }
           ],
-          "note": "Only people we started writing to at least 21 days before the read (before Sep 8) count, with every positive reply and website visit they sent since. A figure needs 1 positive reply (10 website visits) behind it; below that it reads Learning."
+          "note": "Only people we started writing to at least 21 days before the read (before Sep 11) count, with every positive reply and website visit they sent since. A figure needs 1 positive reply (10 website visits) behind it; below that it reads Learning."
         }
       ],
       "conclusion": [
-        "Double line breaks: 35 positive replies · 74,731 emails, $5,426 spent.",
-        "Flash tier: Double line breaks is cheapest at $298 per positive reply (1 positive reply · 5,228 emails).",
-        "Pro tier: Double line breaks is cheapest at $151 per positive reply (34 positive replies · 69,503 emails).",
+        "Double line breaks: 35 positive replies · 77,439 emails, $5,674 spent.",
+        "Flash tier: Double line breaks is cheapest at $315 per positive reply (1 positive reply · 5,504 emails).",
+        "Pro tier: Double line breaks is cheapest at $156 per positive reply (34 positive replies · 71,809 emails).",
         "Every email of a sequence is filed under how its first email looked, and the sequence's positive replies with it. Three layouts: one block (no line break at all), single line breaks (a new line with no empty line), double line breaks (an empty line between paragraphs). Classified by a regex on the text of the first email, no LLM involved.",
-        "The model chose this on its own until Sep 28, 2026, when the templates started requiring a greeting and blank-line paragraphs. Every email here was written before, the last in Sep.",
+        "The model chose this on its own until Sep 28, 2026, when the templates started requiring a greeting and blank-line paragraphs. Every email here was written before, the last in Oct.",
         "6 emails whose first email text is not on record are left out.",
         "Positive replies include 4 the client recorded in their CRM (a phone call, a LinkedIn message), as the dashboard counts them.",
         "The buckets ran for different clients, audiences and months: this is not a split test."
@@ -1401,12 +1464,12 @@
       "goal": "roi",
       "question": "Does the way the first email opens change what a positive reply costs?",
       "status": "measured",
-      "headline": "Greeting + first name wins at $145 per positive reply.",
+      "headline": "Greeting + first name wins at $152 per positive reply.",
       "winner": "Greeting + first name",
       "result": {
-        "display": "$145",
+        "display": "$152",
         "unit": "per positive reply",
-        "sample": "21 positive replies · 39,200 emails"
+        "sample": "21 positive replies · 40,762 emails"
       },
       "crowned": true,
       "charts": [
@@ -1417,27 +1480,27 @@
           "points": [
             {
               "label": "Greeting + first name",
-              "value": 144.55,
-              "display": "$145",
-              "note": "21 positive replies · 39,200 emails",
+              "value": 151.87,
+              "display": "$152",
+              "note": "21 positive replies · 40,762 emails",
               "thin": false
             },
             {
               "label": "First name alone",
-              "value": 205.24,
-              "display": "$205",
-              "note": "14 positive replies · 40,720 emails",
+              "value": 216.3,
+              "display": "$216",
+              "note": "14 positive replies · 42,752 emails",
               "thin": false
             },
             {
               "label": "No greeting",
-              "value": 222.93,
+              "value": 223.24,
               "display": "$223",
-              "note": "3 positive replies · 13,083 emails",
+              "note": "3 positive replies · 13,096 emails",
               "thin": false
             }
           ],
-          "note": "Only people we started writing to at least 21 days before the read (before Sep 8) count, with every positive reply and website visit they sent since. A figure needs 1 positive reply (10 website visits) behind it; below that it reads Learning."
+          "note": "Only people we started writing to at least 21 days before the read (before Sep 11) count, with every positive reply and website visit they sent since. A figure needs 1 positive reply (10 website visits) behind it; below that it reads Learning."
         },
         {
           "kind": "bars",
@@ -1446,27 +1509,27 @@
           "points": [
             {
               "label": "No greeting",
-              "value": 279.45,
-              "display": "$279",
-              "note": "1 positive reply · 4,964 emails",
+              "value": 279.75,
+              "display": "$280",
+              "note": "1 positive reply · 4,969 emails",
               "thin": false
             },
             {
               "label": "First name alone",
-              "value": 279.45,
+              "value": 279.75,
               "display": "None yet",
-              "note": "0 positive replies · 4,866 emails, $192 spent",
+              "note": "0 positive replies · 5,346 emails, $220 spent",
               "thin": true
             },
             {
               "label": "Greeting + first name",
-              "value": 279.45,
+              "value": 279.75,
               "display": "None yet",
-              "note": "0 positive replies · 351 emails, $34 spent",
+              "note": "0 positive replies · 545 emails, $45 spent",
               "thin": true
             }
           ],
-          "note": "Only people we started writing to at least 21 days before the read (before Sep 8) count, with every positive reply and website visit they sent since. A figure needs 1 positive reply (10 website visits) behind it; below that it reads Learning."
+          "note": "Only people we started writing to at least 21 days before the read (before Sep 11) count, with every positive reply and website visit they sent since. A figure needs 1 positive reply (10 website visits) behind it; below that it reads Learning."
         },
         {
           "kind": "bars",
@@ -1475,35 +1538,35 @@
           "points": [
             {
               "label": "Greeting + first name",
-              "value": 142.95,
-              "display": "$143",
-              "note": "21 positive replies · 38,849 emails",
-              "thin": false
-            },
-            {
-              "label": "First name alone",
-              "value": 191.55,
-              "display": "$192",
-              "note": "14 positive replies · 35,854 emails",
+              "value": 147.67,
+              "display": "$148",
+              "note": "21 positive replies · 40,091 emails",
               "thin": false
             },
             {
               "label": "No greeting",
-              "value": 194.68,
+              "value": 194.98,
               "display": "$195",
-              "note": "2 positive replies · 8,119 emails",
+              "note": "2 positive replies · 8,127 emails",
+              "thin": false
+            },
+            {
+              "label": "First name alone",
+              "value": 200.57,
+              "display": "$201",
+              "note": "14 positive replies · 37,406 emails",
               "thin": false
             }
           ],
-          "note": "Only people we started writing to at least 21 days before the read (before Sep 8) count, with every positive reply and website visit they sent since. A figure needs 1 positive reply (10 website visits) behind it; below that it reads Learning."
+          "note": "Only people we started writing to at least 21 days before the read (before Sep 11) count, with every positive reply and website visit they sent since. A figure needs 1 positive reply (10 website visits) behind it; below that it reads Learning."
         }
       ],
       "conclusion": [
-        "Greeting + first name: 21 positive replies · 39,200 emails, $3,036 spent.",
-        "Flash tier: No greeting is cheapest at $279 per positive reply (1 positive reply · 4,964 emails).",
-        "Pro tier: Greeting + first name is cheapest at $143 per positive reply (21 positive replies · 38,849 emails).",
+        "Greeting + first name: 21 positive replies · 40,762 emails, $3,189 spent.",
+        "Flash tier: No greeting is cheapest at $280 per positive reply (1 positive reply · 4,969 emails).",
+        "Pro tier: Greeting + first name is cheapest at $148 per positive reply (21 positive replies · 40,091 emails).",
         "Every email of a sequence is filed under how its first email looked, and the sequence's positive replies with it. A greeting word in any language we write in (Hi, Hallo, Bonjour...) counts as a greeting whatever follows; a first name followed by a comma, a colon or a dash, with no greeting word before it (\"Marie, most clinics...\"), counts as the first name alone. Classified by a regex on the text of the first email, no LLM involved.",
-        "The model chose this on its own until Sep 28, 2026, when the templates started requiring a greeting and blank-line paragraphs. Every email here was written before, the last in Sep.",
+        "The model chose this on its own until Sep 28, 2026, when the templates started requiring a greeting and blank-line paragraphs. Every email here was written before, the last in Oct.",
         "6 emails whose first email text is not on record are left out.",
         "Positive replies include 4 the client recorded in their CRM (a phone call, a LinkedIn message), as the dashboard counts them.",
         "The buckets ran for different clients, audiences and months: this is not a split test."
@@ -1516,12 +1579,12 @@
       "goal": "roi",
       "question": "Do dashes in the first email change what a positive reply costs, and how often one comes?",
       "status": "measured",
-      "headline": "Em dash wins at $149 per positive reply.",
+      "headline": "Em dash wins at $155 per positive reply.",
       "winner": "Em dash",
       "result": {
-        "display": "$149",
+        "display": "$155",
         "unit": "per positive reply",
-        "sample": "14 positive replies · 26,475 emails"
+        "sample": "14 positive replies · 27,735 emails"
       },
       "crowned": true,
       "charts": [
@@ -1532,27 +1595,27 @@
           "points": [
             {
               "label": "Em dash",
-              "value": 149.31,
-              "display": "$149",
-              "note": "14 positive replies · 26,475 emails",
+              "value": 154.91,
+              "display": "$155",
+              "note": "14 positive replies · 27,735 emails",
               "thin": false
             },
             {
               "label": "No dash",
-              "value": 184.19,
-              "display": "$184",
-              "note": "24 positive replies · 65,511 emails",
+              "value": 193.77,
+              "display": "$194",
+              "note": "24 positive replies · 67,829 emails",
               "thin": false
             },
             {
               "label": "En dash",
-              "value": 184.19,
+              "value": 193.77,
               "display": "None yet",
-              "note": "0 positive replies · 1,017 emails, $67 spent",
+              "note": "0 positive replies · 1,046 emails, $68 spent",
               "thin": true
             }
           ],
-          "note": "Only people we started writing to at least 21 days before the read (before Sep 8) count, with every positive reply and website visit they sent since. A figure needs 1 positive reply (10 website visits) behind it; below that it reads Learning."
+          "note": "Only people we started writing to at least 21 days before the read (before Sep 11) count, with every positive reply and website visit they sent since. A figure needs 1 positive reply (10 website visits) behind it; below that it reads Learning."
         },
         {
           "kind": "bars",
@@ -1561,27 +1624,27 @@
           "points": [
             {
               "label": "Em dash",
-              "value": 5.3,
+              "value": 5,
               "display": "0.05%",
-              "note": "14 positive replies · 26,475 emails",
+              "note": "14 positive replies · 27,735 emails",
               "thin": false
             },
             {
               "label": "No dash",
-              "value": 3.7,
+              "value": 3.5,
               "display": "0.04%",
-              "note": "24 positive replies · 65,511 emails",
+              "note": "24 positive replies · 67,829 emails",
               "thin": false
             },
             {
               "label": "En dash",
               "value": 0,
               "display": "0.00%",
-              "note": "0 positive replies · 1,017 emails",
+              "note": "0 positive replies · 1,046 emails",
               "thin": true
             }
           ],
-          "note": "Only people we started writing to at least 21 days before the read (before Sep 8) count, with every positive reply and website visit they sent since. A figure needs 1 positive reply (10 website visits) behind it; below that it reads Learning."
+          "note": "Only people we started writing to at least 21 days before the read (before Sep 11) count, with every positive reply and website visit they sent since. A figure needs 1 positive reply (10 website visits) behind it; below that it reads Learning."
         },
         {
           "kind": "bars",
@@ -1590,20 +1653,27 @@
           "points": [
             {
               "label": "No dash",
-              "value": 361.44,
-              "display": "$361",
-              "note": "1 positive reply · 7,553 emails",
+              "value": 365.68,
+              "display": "$366",
+              "note": "1 positive reply · 7,624 emails",
               "thin": false
             },
             {
               "label": "Em dash",
-              "value": 361.44,
+              "value": 365.68,
               "display": "None yet",
-              "note": "0 positive replies · 2,628 emails, $143 spent",
+              "note": "0 positive replies · 3,214 emails, $178 spent",
+              "thin": true
+            },
+            {
+              "label": "En dash",
+              "value": 365.68,
+              "display": "None yet",
+              "note": "0 positive replies · 22 emails, $1.31 spent",
               "thin": true
             }
           ],
-          "note": "Only people we started writing to at least 21 days before the read (before Sep 8) count, with every positive reply and website visit they sent since. A figure needs 1 positive reply (10 website visits) behind it; below that it reads Learning."
+          "note": "Only people we started writing to at least 21 days before the read (before Sep 11) count, with every positive reply and website visit they sent since. A figure needs 1 positive reply (10 website visits) behind it; below that it reads Learning."
         },
         {
           "kind": "bars",
@@ -1614,18 +1684,25 @@
               "label": "No dash",
               "value": 1.3,
               "display": "0.01%",
-              "note": "1 positive reply · 7,553 emails",
+              "note": "1 positive reply · 7,624 emails",
               "thin": false
             },
             {
               "label": "Em dash",
               "value": 0,
               "display": "0.00%",
-              "note": "0 positive replies · 2,628 emails",
+              "note": "0 positive replies · 3,214 emails",
+              "thin": true
+            },
+            {
+              "label": "En dash",
+              "value": 0,
+              "display": "0.00%",
+              "note": "0 positive replies · 22 emails",
               "thin": true
             }
           ],
-          "note": "Only people we started writing to at least 21 days before the read (before Sep 8) count, with every positive reply and website visit they sent since. A figure needs 1 positive reply (10 website visits) behind it; below that it reads Learning."
+          "note": "Only people we started writing to at least 21 days before the read (before Sep 11) count, with every positive reply and website visit they sent since. A figure needs 1 positive reply (10 website visits) behind it; below that it reads Learning."
         },
         {
           "kind": "bars",
@@ -1634,27 +1711,27 @@
           "points": [
             {
               "label": "Em dash",
-              "value": 139.07,
-              "display": "$139",
-              "note": "14 positive replies · 23,847 emails",
+              "value": 142.17,
+              "display": "$142",
+              "note": "14 positive replies · 24,521 emails",
               "thin": false
             },
             {
               "label": "No dash",
-              "value": 176.49,
-              "display": "$176",
-              "note": "23 positive replies · 57,958 emails",
+              "value": 184.43,
+              "display": "$184",
+              "note": "23 positive replies · 60,079 emails",
               "thin": false
             },
             {
               "label": "En dash",
-              "value": 176.49,
+              "value": 184.43,
               "display": "None yet",
-              "note": "0 positive replies · 1,017 emails, $67 spent",
+              "note": "0 positive replies · 1,024 emails, $67 spent",
               "thin": true
             }
           ],
-          "note": "Only people we started writing to at least 21 days before the read (before Sep 8) count, with every positive reply and website visit they sent since. A figure needs 1 positive reply (10 website visits) behind it; below that it reads Learning."
+          "note": "Only people we started writing to at least 21 days before the read (before Sep 11) count, with every positive reply and website visit they sent since. A figure needs 1 positive reply (10 website visits) behind it; below that it reads Learning."
         },
         {
           "kind": "bars",
@@ -1663,27 +1740,27 @@
           "points": [
             {
               "label": "Em dash",
-              "value": 5.9,
+              "value": 5.7,
               "display": "0.06%",
-              "note": "14 positive replies · 23,847 emails",
+              "note": "14 positive replies · 24,521 emails",
               "thin": false
             },
             {
               "label": "No dash",
-              "value": 4,
+              "value": 3.8,
               "display": "0.04%",
-              "note": "23 positive replies · 57,958 emails",
+              "note": "23 positive replies · 60,079 emails",
               "thin": false
             },
             {
               "label": "En dash",
               "value": 0,
               "display": "0.00%",
-              "note": "0 positive replies · 1,017 emails",
+              "note": "0 positive replies · 1,024 emails",
               "thin": true
             }
           ],
-          "note": "Only people we started writing to at least 21 days before the read (before Sep 8) count, with every positive reply and website visit they sent since. A figure needs 1 positive reply (10 website visits) behind it; below that it reads Learning."
+          "note": "Only people we started writing to at least 21 days before the read (before Sep 11) count, with every positive reply and website visit they sent since. A figure needs 1 positive reply (10 website visits) behind it; below that it reads Learning."
         },
         {
           "kind": "bars",
@@ -1694,7 +1771,7 @@
               "label": "GLM 5.2 Pro",
               "value": 100,
               "display": "100%",
-              "note": "592 with a dash · 592 emails",
+              "note": "599 with a dash · 599 emails",
               "thin": false
             },
             {
@@ -1705,10 +1782,24 @@
               "thin": false
             },
             {
+              "label": "GLM 5.3 Flash",
+              "value": 91.1,
+              "display": "91%",
+              "note": "306 with a dash · 336 emails",
+              "thin": false
+            },
+            {
+              "label": "DeepSeek V4 Flash",
+              "value": 88,
+              "display": "88%",
+              "note": "302 with a dash · 343 emails",
+              "thin": false
+            },
+            {
               "label": "DeepSeek V4 Pro",
-              "value": 76.4,
-              "display": "76%",
-              "note": "3,767 with a dash · 4,931 emails",
+              "value": 76.6,
+              "display": "77%",
+              "note": "3,908 with a dash · 5,105 emails",
               "thin": false
             },
             {
@@ -1720,9 +1811,9 @@
             },
             {
               "label": "Gemini 3.1 Pro",
-              "value": 26.3,
+              "value": 26.1,
               "display": "26%",
-              "note": "20,303 with a dash · 77,094 emails",
+              "note": "20,836 with a dash · 79,715 emails",
               "thin": false
             },
             {
@@ -1745,20 +1836,34 @@
               "display": "4%",
               "note": "18 with a dash · 437 emails",
               "thin": false
+            },
+            {
+              "label": "GPT-6 Astra",
+              "value": 0,
+              "display": "0%",
+              "note": "0 with a dash · 86 emails",
+              "thin": false
+            },
+            {
+              "label": "Claude Fable 5.1",
+              "value": 0,
+              "display": "0%",
+              "note": "0 with a dash · 40 emails",
+              "thin": false
             }
           ],
-          "note": "Only people we started writing to at least 21 days before the read (before Sep 8) count, with every positive reply and website visit they sent since. A figure needs 1 positive reply (10 website visits) behind it; below that it reads Learning."
+          "note": "Only people we started writing to at least 21 days before the read (before Sep 11) count, with every positive reply and website visit they sent since. A figure needs 1 positive reply (10 website visits) behind it; below that it reads Learning."
         }
       ],
       "conclusion": [
-        "Em dash: 14 positive replies · 26,475 emails, $2,090 spent, a 0.05% positive reply rate.",
-        "Flash tier: No dash is cheapest at $361 per positive reply (1 positive reply · 7,553 emails).",
-        "Pro tier: Em dash is cheapest at $139 per positive reply (14 positive replies · 23,847 emails).",
-        "Dashes are a model habit: GLM 5.2 Pro puts one in 100% of its first emails, Gemini 3.5 Flash-Lite in 4%. Read each tier against the models writing its buckets.",
-        "Flash tier: 68% of the em dash emails come from Gemini 3 Flash, 57% of the no-dash emails come from Gemini 3 Flash: one model writes most of both, so within this tier the gap is closer to a dash effect.",
-        "Pro tier: 82% of the em dash emails come from Gemini 3.1 Pro, 98% of the no-dash emails come from Gemini 3.1 Pro: one model writes most of both, so within this tier the gap is closer to a dash effect.",
-        "Three buckets on the first email's text: an em dash, an en dash, neither. A plain hyphen is not a dash. The 1,723 emails whose first email carries both (1.9%, under 2%) are counted with the em dash. Every email of a sequence is filed under its first email, and the sequence's positive replies with it. Classified by a character test on the text, no LLM involved.",
-        "Our templates never banned dashes until Sep 29, 2026, when every template started forbidding both. Every email here was generated before that date (the last in Sep).",
+        "Em dash: 14 positive replies · 27,735 emails, $2,169 spent, a 0.05% positive reply rate.",
+        "Flash tier: No dash is cheapest at $366 per positive reply (1 positive reply · 7,624 emails).",
+        "Pro tier: Em dash is cheapest at $142 per positive reply (14 positive replies · 24,521 emails).",
+        "Dashes are a model habit: GLM 5.2 Pro puts one in 100% of its first emails, Claude Fable 5.1 in 0%. Read each tier against the models writing its buckets.",
+        "Flash tier: 55% of the em dash emails come from Gemini 3 Flash, 57% of the no-dash emails come from Gemini 3 Flash: one model writes most of both, so within this tier the gap is closer to a dash effect.",
+        "Pro tier: 81% of the em dash emails come from Gemini 3.1 Pro, 98% of the no-dash emails come from Gemini 3.1 Pro: one model writes most of both, so within this tier the gap is closer to a dash effect.",
+        "Three buckets on the first email's text: an em dash, an en dash, neither. A plain hyphen is not a dash. The 1,813 emails whose first email carries both (1.9%, under 2%) are counted with the em dash. Every email of a sequence is filed under its first email, and the sequence's positive replies with it. Classified by a character test on the text, no LLM involved.",
+        "Our templates never banned dashes until Sep 29, 2026, when every template started forbidding both. Every email here was generated before that date (the last in Oct).",
         "6 emails whose first email text is not on record are left out.",
         "Positive replies include 4 the client recorded in their CRM (a phone call, a LinkedIn message), as the dashboard counts them.",
         "The buckets ran for different clients, audiences and months: this is not a split test."
@@ -1798,7 +1903,7 @@
               "label": "GLM 5.2 Pro · Blind discovery v26",
               "value": 37.75,
               "display": "$38",
-              "note": "1 positive reply · 668 emails",
+              "note": "1 positive reply · 675 emails",
               "thin": false
             },
             {
@@ -1820,25 +1925,25 @@
             {
               "key": "sales-cold-email-outreach-ballad",
               "label": "Gemini 3.1 Pro · Cold email v27",
-              "value": 98.53,
+              "value": 98.56,
               "display": "$99",
-              "note": "4 positive replies · 3,150 emails",
+              "note": "4 positive replies · 3,152 emails",
               "thin": false
             },
             {
               "key": "sales-cold-email-outreach-lithium",
               "label": "Gemini 3.1 Pro · Blind discovery v26",
-              "value": 109.88,
-              "display": "$110",
-              "note": "20 positive replies · 27,730 emails",
+              "value": 118.75,
+              "display": "$119",
+              "note": "20 positive replies · 29,675 emails",
               "thin": false
             },
             {
               "key": "sales-cold-email-outreach-azalea",
               "label": "Gemini 3.1 Pro · Blind discovery v9",
-              "value": 115.15,
-              "display": "$115",
-              "note": "5 positive replies · 7,047 emails",
+              "value": 124.78,
+              "display": "$125",
+              "note": "5 positive replies · 7,718 emails",
               "thin": false
             },
             {
@@ -1852,9 +1957,9 @@
             {
               "key": "sales-cold-email-outreach-permafrost",
               "label": "Gemini 3.1 Pro · Cold email v16",
-              "value": 251.64,
+              "value": 251.71,
               "display": "$252",
-              "note": "1 positive reply · 5,444 emails",
+              "note": "1 positive reply · 5,446 emails",
               "thin": false
             },
             {
@@ -1862,7 +1967,7 @@
               "label": "DeepSeek V4 Pro · Blind discovery v26",
               "value": 334.77,
               "display": "$335",
-              "note": "1 positive reply · 3,532 emails",
+              "note": "1 positive reply · 3,698 emails",
               "thin": false
             },
             {
@@ -1874,7 +1979,7 @@
               "thin": false
             }
           ],
-          "note": "Only people we started writing to at least 21 days before the read (before Sep 8) count, with every positive reply and website visit they sent since. A figure needs 1 positive reply (10 website visits) behind it; below that it reads Learning."
+          "note": "Only people we started writing to at least 21 days before the read (before Sep 11) count, with every positive reply and website visit they sent since. A figure needs 1 positive reply (10 website visits) behind it; below that it reads Learning."
         },
         {
           "kind": "months",
@@ -1908,7 +2013,7 @@
               }
             ]
           },
-          "note": "Only people we started writing to at least 21 days before the read (before Sep 8) count, with every positive reply and website visit they sent since. A figure needs 1 positive reply (10 website visits) behind it; below that it reads Learning."
+          "note": "Only people we started writing to at least 21 days before the read (before Sep 11) count, with every positive reply and website visit they sent since. A figure needs 1 positive reply (10 website visits) behind it; below that it reads Learning."
         }
       ],
       "conclusion": [
@@ -1955,9 +2060,9 @@
             {
               "key": "sales-cold-email-outreach-nobelium",
               "label": "GLM 5.2 Pro · Blind discovery v26",
-              "value": 15,
+              "value": 14.8,
               "display": "0.15%",
-              "note": "1 positive reply · 668 emails",
+              "note": "1 positive reply · 675 emails",
               "thin": false
             },
             {
@@ -1965,23 +2070,23 @@
               "label": "Gemini 3.1 Pro · Cold email v27",
               "value": 12.7,
               "display": "0.13%",
-              "note": "4 positive replies · 3,150 emails",
+              "note": "4 positive replies · 3,152 emails",
               "thin": false
             },
             {
               "key": "sales-cold-email-outreach-lithium",
               "label": "Gemini 3.1 Pro · Blind discovery v26",
-              "value": 7.2,
+              "value": 6.7,
               "display": "0.07%",
-              "note": "20 positive replies · 27,730 emails",
+              "note": "20 positive replies · 29,675 emails",
               "thin": false
             },
             {
               "key": "sales-cold-email-outreach-azalea",
               "label": "Gemini 3.1 Pro · Blind discovery v9",
-              "value": 7.1,
+              "value": 6.5,
               "display": "0.07%",
-              "note": "5 positive replies · 7,047 emails",
+              "note": "5 positive replies · 7,718 emails",
               "thin": false
             },
             {
@@ -1995,9 +2100,9 @@
             {
               "key": "sales-cold-email-outreach-cerulean",
               "label": "DeepSeek V4 Pro · Blind discovery v26",
-              "value": 2.8,
+              "value": 2.7,
               "display": "0.03%",
-              "note": "1 positive reply · 3,532 emails",
+              "note": "1 positive reply · 3,698 emails",
               "thin": false
             },
             {
@@ -2013,7 +2118,7 @@
               "label": "Gemini 3.1 Pro · Cold email v16",
               "value": 1.8,
               "display": "0.02%",
-              "note": "1 positive reply · 5,444 emails",
+              "note": "1 positive reply · 5,446 emails",
               "thin": false
             },
             {
@@ -2093,7 +2198,7 @@
               "label": "Gemini 3.1 Pro · Blind discovery v10",
               "value": 0,
               "display": "0.00%",
-              "note": "0 positive replies · 844 emails",
+              "note": "0 positive replies · 845 emails",
               "thin": true
             },
             {
@@ -2133,7 +2238,7 @@
               "label": "DeepSeek V4 Pro · Cold email v41",
               "value": 0,
               "display": "0.00%",
-              "note": "0 positive replies · 708 emails",
+              "note": "0 positive replies · 710 emails",
               "thin": true
             },
             {
@@ -2149,7 +2254,7 @@
               "label": "DeepSeek V4 Pro · Cold email v39",
               "value": 0,
               "display": "0.00%",
-              "note": "0 positive replies · 691 emails",
+              "note": "0 positive replies · 697 emails",
               "thin": true
             },
             {
@@ -2177,6 +2282,30 @@
               "thin": true
             },
             {
+              "key": "sales-cold-email-outreach-lyonesse",
+              "label": "DeepSeek V4 Flash · Cold email v35",
+              "value": 0,
+              "display": "0.00%",
+              "note": "0 positive replies · 343 emails",
+              "thin": true
+            },
+            {
+              "key": "sales-cold-email-outreach-maelstrom",
+              "label": "GLM 5.3 Flash · Cold email v35",
+              "value": 0,
+              "display": "0.00%",
+              "note": "0 positive replies · 336 emails",
+              "thin": true
+            },
+            {
+              "key": "sales-cold-email-outreach-delphi",
+              "label": "GPT-6 Astra · Cold email v39",
+              "value": 0,
+              "display": "0.00%",
+              "note": "0 positive replies · 86 emails",
+              "thin": true
+            },
+            {
               "key": "sales-cold-email-outreach-nocturne",
               "label": "GLM 5.3 Pro · Cold email v29",
               "value": 0,
@@ -2199,9 +2328,17 @@
               "display": "0.00%",
               "note": "0 positive replies · 53 emails",
               "thin": true
+            },
+            {
+              "key": "sales-cold-email-outreach-alioth",
+              "label": "Claude Fable 5.1 · Cold email v39",
+              "value": 0,
+              "display": "0.00%",
+              "note": "0 positive replies · 40 emails",
+              "thin": true
             }
           ],
-          "note": "Only people we started writing to at least 21 days before the read (before Sep 8) count, with every positive reply and website visit they sent since. A figure needs 1 positive reply (10 website visits) behind it; below that it reads Learning."
+          "note": "Only people we started writing to at least 21 days before the read (before Sep 11) count, with every positive reply and website visit they sent since. A figure needs 1 positive reply (10 website visits) behind it; below that it reads Learning."
         },
         {
           "kind": "months",
@@ -2270,7 +2407,7 @@
               }
             ]
           },
-          "note": "Only people we started writing to at least 21 days before the read (before Sep 8) count, with every positive reply and website visit they sent since. A figure needs 1 positive reply (10 website visits) behind it; below that it reads Learning."
+          "note": "Only people we started writing to at least 21 days before the read (before Sep 11) count, with every positive reply and website visit they sent since. A figure needs 1 positive reply (10 website visits) behind it; below that it reads Learning."
         }
       ],
       "conclusion": [
@@ -2319,17 +2456,17 @@
             {
               "key": "gemini-3.5-flash-lite",
               "label": "Gemini 3.5 Flash-Lite",
-              "value": 4.37,
-              "display": "$4.37",
-              "note": "47 website visits · 3,085 emails with a link",
+              "value": 3.83,
+              "display": "$3.83",
+              "note": "58 website visits · 3,314 emails with a link",
               "thin": false
             },
             {
               "key": "gemini-3.1-pro",
               "label": "Gemini 3.1 Pro",
-              "value": 5.21,
-              "display": "$5.21",
-              "note": "111 website visits · 5,343 emails with a link",
+              "value": 5.16,
+              "display": "$5.16",
+              "note": "114 website visits · 5,427 emails with a link",
               "thin": false
             },
             {
@@ -2341,7 +2478,7 @@
               "thin": true
             }
           ],
-          "note": "Only people we started writing to at least 21 days before the read (before Sep 8) count, with every positive reply and website visit they sent since. A figure needs 1 positive reply (10 website visits) behind it; below that it reads Learning."
+          "note": "Only people we started writing to at least 21 days before the read (before Sep 11) count, with every positive reply and website visit they sent since. A figure needs 1 positive reply (10 website visits) behind it; below that it reads Learning."
         },
         {
           "kind": "months",
@@ -2389,12 +2526,15 @@
               }
             ]
           },
-          "note": "Only people we started writing to at least 21 days before the read (before Sep 8) count, with every positive reply and website visit they sent since. A figure needs 1 positive reply (10 website visits) behind it; below that it reads Learning."
+          "note": "Only people we started writing to at least 21 days before the read (before Sep 11) count, with every positive reply and website visit they sent since. A figure needs 1 positive reply (10 website visits) behind it; below that it reads Learning."
         }
       ],
       "conclusion": [
         "Gemini 3.5 Flash: 62 website visits · 2,431 emails with a link, $73 spent.",
-        "Over time: $1.05 in Jun, $1.24 in Jul."
+        "Over time: $1.05 in Jun, $1.24 in Jul.",
+        "Same clients, same months, a website visit from Gemini 3.5 Flash costs 0.96x one from Gemini 3 Flash (95% interval 0.68x to 1.36x): 0.92x the price per email, 0.96x the website visits per email (49 website visits in 1,554 emails with a link against 150 in 4,671).",
+        "Same clients, same months, a website visit from Gemini 3.5 Flash costs 0.34x one from Gemini 3.1 Pro (95% interval 0.22x to 0.52x): 0.50x the price per email, 1.47x the website visits per email (49 website visits in 1,438 emails with a link against 54 in 2,288).",
+        "Same clients, same months, Gemini 3.5 Flash against Gemini 3.5 Flash-Lite: 2 website visits in 50 emails with a link against 3 in 224, under 5 on one side, so no ratio."
       ]
     },
     {
@@ -2437,17 +2577,17 @@
             {
               "key": "gemini-3.1-pro",
               "label": "Gemini 3.1 Pro",
-              "value": 20.8,
-              "display": "2.08%",
-              "note": "111 website visits · 5,343 emails with a link",
+              "value": 21,
+              "display": "2.10%",
+              "note": "114 website visits · 5,427 emails with a link",
               "thin": false
             },
             {
               "key": "gemini-3.5-flash-lite",
               "label": "Gemini 3.5 Flash-Lite",
-              "value": 15.2,
-              "display": "1.52%",
-              "note": "47 website visits · 3,085 emails with a link",
+              "value": 17.5,
+              "display": "1.75%",
+              "note": "58 website visits · 3,314 emails with a link",
               "thin": false
             },
             {
@@ -2465,9 +2605,25 @@
               "display": "0.00%",
               "note": "0 website visits · 86 emails with a link",
               "thin": true
+            },
+            {
+              "key": "glm-5.3-flash",
+              "label": "GLM 5.3 Flash",
+              "value": 0,
+              "display": "0.00%",
+              "note": "0 website visits · 24 emails with a link",
+              "thin": true
+            },
+            {
+              "key": "deepseek-v4-flash",
+              "label": "DeepSeek V4 Flash",
+              "value": 0,
+              "display": "0.00%",
+              "note": "0 website visits · 13 emails with a link",
+              "thin": true
             }
           ],
-          "note": "Only people we started writing to at least 21 days before the read (before Sep 8) count, with every positive reply and website visit they sent since. A figure needs 1 positive reply (10 website visits) behind it; below that it reads Learning."
+          "note": "Only people we started writing to at least 21 days before the read (before Sep 11) count, with every positive reply and website visit they sent since. A figure needs 1 positive reply (10 website visits) behind it; below that it reads Learning."
         },
         {
           "kind": "months",
@@ -2522,12 +2678,15 @@
               }
             ]
           },
-          "note": "Only people we started writing to at least 21 days before the read (before Sep 8) count, with every positive reply and website visit they sent since. A figure needs 1 positive reply (10 website visits) behind it; below that it reads Learning."
+          "note": "Only people we started writing to at least 21 days before the read (before Sep 11) count, with every positive reply and website visit they sent since. A figure needs 1 positive reply (10 website visits) behind it; below that it reads Learning."
         }
       ],
       "conclusion": [
         "Gemini 3 Flash: 151 website visits · 4,713 emails with a link.",
         "Over time: 3.35% in Jun, 0.81% in Aug.",
+        "Same clients, same months, Gemini 3 Flash gets 1.00x the website visits per email of Gemini 3.1 Pro (95% interval 0.69x to 1.45x; 130 website visits in 4,354 emails with a link against 94 in 3,772).",
+        "Same clients, same months, Gemini 3 Flash gets 1.04x the website visits per email of Gemini 3.5 Flash (95% interval 0.73x to 1.47x; 150 website visits in 4,671 emails with a link against 49 in 1,554).",
+        "Same clients, same months, Gemini 3 Flash gets 1.95x the website visits per email of Gemini 3.5 Flash-Lite (95% interval 0.67x to 5.64x; 11 website visits in 318 emails with a link against 21 in 1,141).",
         "A LLM with fewer than 10 website visits is ranked where its value puts it and marked Learning."
       ]
     },
@@ -2538,12 +2697,12 @@
       "goal": "roi",
       "question": "What does a website visit cost on average?",
       "status": "measured",
-      "headline": "$2.89 per website visit on average since inception, across all our emails.",
+      "headline": "$2.87 per website visit on average since inception, across all our emails.",
       "winner": "Gemini 3.5 Flash",
       "result": {
-        "display": "$2.89",
+        "display": "$2.87",
         "unit": "per website visit, average since inception",
-        "sample": "375 website visits · 15,934 emails with a link to date"
+        "sample": "389 website visits · 16,284 emails with a link to date"
       },
       "crowned": true,
       "charts": [
@@ -2575,16 +2734,16 @@
             },
             {
               "label": "Aug",
-              "value": 6.59,
-              "display": "$6.59",
+              "value": 6.58,
+              "display": "$6.58",
               "note": "66 website visits · 3,955 emails with a link",
               "thin": false
             },
             {
               "label": "Sep",
-              "value": 5.79,
-              "display": "$5.79",
-              "note": "32 website visits · 2,132 emails with a link",
+              "value": 4.7,
+              "display": "$4.70",
+              "note": "46 website visits · 2,479 emails with a link",
               "thin": false
             }
           ],
@@ -2621,14 +2780,21 @@
               },
               {
                 "label": "Sep",
-                "value": 2.89,
-                "display": "$2.89",
-                "note": "375 website visits · 15,934 emails with a link to date",
+                "value": 2.87,
+                "display": "$2.87",
+                "note": "389 website visits · 16,281 emails with a link to date",
+                "thin": false
+              },
+              {
+                "label": "Oct",
+                "value": 2.87,
+                "display": "$2.87",
+                "note": "389 website visits · 16,284 emails with a link to date",
                 "thin": false
               }
             ]
           },
-          "note": "Only people we started writing to at least 21 days before the read (before Sep 8) count, with every positive reply and website visit they sent since. A figure needs 1 positive reply (10 website visits) behind it; below that it reads Learning."
+          "note": "Only people we started writing to at least 21 days before the read (before Sep 11) count, with every positive reply and website visit they sent since. A figure needs 1 positive reply (10 website visits) behind it; below that it reads Learning."
         },
         {
           "kind": "months",
@@ -2676,7 +2842,7 @@
               }
             ]
           },
-          "note": "Only people we started writing to at least 21 days before the read (before Sep 8) count, with every positive reply and website visit they sent since. A figure needs 1 positive reply (10 website visits) behind it; below that it reads Learning."
+          "note": "Only people we started writing to at least 21 days before the read (before Sep 11) count, with every positive reply and website visit they sent since. A figure needs 1 positive reply (10 website visits) behind it; below that it reads Learning."
         }
       ],
       "conclusion": [
@@ -2691,12 +2857,12 @@
       "goal": "roi",
       "question": "How many follow-ups give the cheapest website visit?",
       "status": "measured",
-      "headline": "First email only: $1.59 per website visit, the cheapest depth.",
+      "headline": "First email only: $1.58 per website visit, the cheapest depth.",
       "winner": "First email only",
       "result": {
-        "display": "$1.59",
+        "display": "$1.58",
         "unit": "per website visit, first email only",
-        "sample": "311 website visits · $494 spent"
+        "sample": "322 website visits · $507 spent"
       },
       "crowned": true,
       "charts": [
@@ -2707,27 +2873,27 @@
           "points": [
             {
               "label": "First email only",
-              "value": 1.59,
-              "display": "$1.59",
-              "note": "311 website visits · $494 spent",
+              "value": 1.58,
+              "display": "$1.58",
+              "note": "322 website visits · $507 spent",
               "thin": false
             },
             {
               "label": "+ 1 follow-up",
-              "value": 2.2,
-              "display": "$2.20",
-              "note": "359 website visits · $788 spent",
+              "value": 2.18,
+              "display": "$2.18",
+              "note": "371 website visits · $811 spent",
               "thin": false
             },
             {
               "label": "+ 2 follow-ups",
-              "value": 2.96,
-              "display": "$2.96",
-              "note": "363 website visits · $1,076 spent",
+              "value": 2.93,
+              "display": "$2.93",
+              "note": "377 website visits · $1,106 spent",
               "thin": false
             }
           ],
-          "note": "Only people we started writing to at least 21 days before the read (before Sep 8) count, with every positive reply and website visit they sent since. A figure needs 1 positive reply (10 website visits) behind it; below that it reads Learning."
+          "note": "Only people we started writing to at least 21 days before the read (before Sep 11) count, with every positive reply and website visit they sent since. A figure needs 1 positive reply (10 website visits) behind it; below that it reads Learning."
         },
         {
           "kind": "bars",
@@ -2736,27 +2902,27 @@
           "points": [
             {
               "label": "First email",
-              "value": 1.59,
-              "display": "$1.59",
-              "note": "311 website visits · 7,861 emails with a link",
+              "value": 1.58,
+              "display": "$1.58",
+              "note": "322 website visits · 8,018 emails with a link",
               "thin": false
             },
             {
               "label": "Follow-up 1",
-              "value": 6.14,
-              "display": "$6.14",
-              "note": "48 website visits · 3,937 emails with a link",
+              "value": 6.19,
+              "display": "$6.19",
+              "note": "49 website visits · 4,037 emails with a link",
               "thin": false
             },
             {
               "label": "Follow-up 2",
-              "value": 71.9,
-              "display": "$72",
-              "note": "4 website visits · 3,806 emails with a link",
+              "value": 49.28,
+              "display": "$49",
+              "note": "6 website visits · 3,899 emails with a link",
               "thin": true
             }
           ],
-          "note": "Only people we started writing to at least 21 days before the read (before Sep 8) count, with every positive reply and website visit they sent since. A figure needs 1 positive reply (10 website visits) behind it; below that it reads Learning."
+          "note": "Only people we started writing to at least 21 days before the read (before Sep 11) count, with every positive reply and website visit they sent since. A figure needs 1 positive reply (10 website visits) behind it; below that it reads Learning."
         }
       ],
       "conclusion": [
@@ -2771,12 +2937,12 @@
       "goal": "rate",
       "question": "How many follow-ups get the most website visits?",
       "status": "measured",
-      "headline": "Website visits keep coming through 2 follow-ups: the last one adds 0.05 points.",
+      "headline": "Website visits keep coming through 2 follow-ups: the last one adds 0.07 points.",
       "winner": "+ 2 follow-ups",
       "result": {
-        "display": "4.62%",
+        "display": "4.70%",
         "unit": "of people got a website visit, all follow-ups",
-        "sample": "363 website visits from 7,861 people"
+        "sample": "377 website visits from 8,018 people"
       },
       "crowned": true,
       "charts": [
@@ -2787,33 +2953,33 @@
           "points": [
             {
               "label": "First email only",
-              "value": 39.6,
-              "display": "3.96%",
-              "note": "311 website visits from 7,861 people",
+              "value": 40.2,
+              "display": "4.02%",
+              "note": "322 website visits from 8,018 people",
               "thin": false
             },
             {
               "label": "+ 1 follow-up",
-              "value": 45.7,
-              "display": "4.57%",
-              "note": "359 website visits from 7,861 people",
+              "value": 46.3,
+              "display": "4.63%",
+              "note": "371 website visits from 8,018 people",
               "thin": false
             },
             {
               "label": "+ 2 follow-ups",
-              "value": 46.2,
-              "display": "4.62%",
-              "note": "363 website visits from 7,861 people",
+              "value": 47,
+              "display": "4.70%",
+              "note": "377 website visits from 8,018 people",
               "thin": false
             }
           ],
-          "note": "Only people we started writing to at least 21 days before the read (before Sep 8) count, with every positive reply and website visit they sent since. A figure needs 1 positive reply (10 website visits) behind it; below that it reads Learning."
+          "note": "Only people we started writing to at least 21 days before the read (before Sep 11) count, with every positive reply and website visit they sent since. A figure needs 1 positive reply (10 website visits) behind it; below that it reads Learning."
         }
       ],
       "conclusion": [
         "Counted per person reached, so a follow-up is judged on what it adds, not on how many emails it took.",
         "+ 1 follow-up: +0.61 points.",
-        "+ 2 follow-ups: +0.05 points."
+        "+ 2 follow-ups: +0.07 points."
       ]
     },
     {
@@ -2823,12 +2989,12 @@
       "goal": "roi",
       "question": "Should we track opens for the cheapest website visit?",
       "status": "measured",
-      "headline": "Tracking off wins: 1.94% of people visited the website, against 1.50% (p < 0.001).",
+      "headline": "Tracking off wins: 2.00% of people visited the website, against 1.50% (p < 0.001).",
       "winner": "Tracking off",
       "result": {
-        "display": "1.94%",
+        "display": "2.00%",
         "unit": "with tracking off, 1.50% on",
-        "sample": "p < 0.001, 46,897 people"
+        "sample": "p < 0.001, 48,258 people"
       },
       "crowned": true,
       "charts": [
@@ -2839,9 +3005,9 @@
           "points": [
             {
               "label": "Tracking off",
-              "value": 1.94,
-              "display": "1.94%",
-              "note": "397 of 20,504 people",
+              "value": 2,
+              "display": "2.00%",
+              "note": "438 of 21,865 people",
               "thin": false
             },
             {
@@ -2852,12 +3018,12 @@
               "thin": false
             }
           ],
-          "note": "People we started writing to in the 21 days before the read are left out (from Sep 8 on), at least the 21 days every price here waits for replies and visits to arrive."
+          "note": "People we started writing to in the 21 days before the read are left out (from Sep 11 on), at least the 21 days every price here waits for replies and visits to arrive."
         }
       ],
       "conclusion": [
         "An email costs the same with or without the pixel, so the cheaper website visit is the arm with more of them per person.",
-        "Tracking was on from 2026-02-10 to 2026-06-28 and off until 2026-09-07: two periods, not a split test, over 46,897 people."
+        "Tracking was on from 2026-02-10 to 2026-06-28 and off until 2026-09-10: two periods, not a split test, over 48,258 people."
       ]
     },
     {
@@ -2867,12 +3033,12 @@
       "goal": "rate",
       "question": "Should we track opens for the most website visits?",
       "status": "measured",
-      "headline": "Tracking off wins: 1.94% of people visited the website, against 1.50% (p < 0.001).",
+      "headline": "Tracking off wins: 2.00% of people visited the website, against 1.50% (p < 0.001).",
       "winner": "Tracking off",
       "result": {
-        "display": "1.94%",
+        "display": "2.00%",
         "unit": "with tracking off, 1.50% on",
-        "sample": "p < 0.001, 46,897 people"
+        "sample": "p < 0.001, 48,258 people"
       },
       "crowned": true,
       "charts": [
@@ -2883,9 +3049,9 @@
           "points": [
             {
               "label": "Tracking off",
-              "value": 1.94,
-              "display": "1.94%",
-              "note": "397 of 20,504 people",
+              "value": 2,
+              "display": "2.00%",
+              "note": "438 of 21,865 people",
               "thin": false
             },
             {
@@ -2896,12 +3062,12 @@
               "thin": false
             }
           ],
-          "note": "People we started writing to in the 21 days before the read are left out (from Sep 8 on), at least the 21 days every price here waits for replies and visits to arrive."
+          "note": "People we started writing to in the 21 days before the read are left out (from Sep 11 on), at least the 21 days every price here waits for replies and visits to arrive."
         }
       ],
       "conclusion": [
         "A visit is the first tracked click a person made.",
-        "Tracking was on from 2026-02-10 to 2026-06-28 and off until 2026-09-07: two periods, not a split test, over 46,897 people."
+        "Tracking was on from 2026-02-10 to 2026-06-28 and off until 2026-09-10: two periods, not a split test, over 48,258 people."
       ]
     },
     {
@@ -2952,17 +3118,17 @@
             {
               "key": "cold-email-v35",
               "label": "Cold email v35",
-              "value": 3.83,
-              "display": "$3.83",
-              "note": "51 website visits · 3,103 emails with a link",
+              "value": 3.47,
+              "display": "$3.47",
+              "note": "62 website visits · 3,369 emails with a link",
               "thin": false
             },
             {
               "key": "cold-email-v31",
               "label": "Cold email v31",
-              "value": 6.21,
-              "display": "$6.21",
-              "note": "60 website visits · 2,688 emails with a link",
+              "value": 6.08,
+              "display": "$6.08",
+              "note": "63 website visits · 2,772 emails with a link",
               "thin": false
             },
             {
@@ -2990,7 +3156,7 @@
               "thin": true
             }
           ],
-          "note": "Only people we started writing to at least 21 days before the read (before Sep 8) count, with every positive reply and website visit they sent since. A figure needs 1 positive reply (10 website visits) behind it; below that it reads Learning."
+          "note": "Only people we started writing to at least 21 days before the read (before Sep 11) count, with every positive reply and website visit they sent since. A figure needs 1 positive reply (10 website visits) behind it; below that it reads Learning."
         },
         {
           "kind": "months",
@@ -3059,7 +3225,7 @@
               }
             ]
           },
-          "note": "Only people we started writing to at least 21 days before the read (before Sep 8) count, with every positive reply and website visit they sent since. A figure needs 1 positive reply (10 website visits) behind it; below that it reads Learning."
+          "note": "Only people we started writing to at least 21 days before the read (before Sep 11) count, with every positive reply and website visit they sent since. A figure needs 1 positive reply (10 website visits) behind it; below that it reads Learning."
         }
       ],
       "conclusion": [
@@ -3099,9 +3265,9 @@
             {
               "key": "cold-email-v31",
               "label": "Cold email v31",
-              "value": 22.3,
-              "display": "2.23%",
-              "note": "60 website visits · 2,688 emails with a link",
+              "value": 22.7,
+              "display": "2.27%",
+              "note": "63 website visits · 2,772 emails with a link",
               "thin": false
             },
             {
@@ -3129,20 +3295,20 @@
               "thin": false
             },
             {
+              "key": "cold-email-v35",
+              "label": "Cold email v35",
+              "value": 18.4,
+              "display": "1.84%",
+              "note": "62 website visits · 3,369 emails with a link",
+              "thin": false
+            },
+            {
               "key": "blind-discovery-email-v16",
               "label": "Blind discovery v16",
               "value": 16.9,
               "display": "1.69%",
               "note": "9 website visits · 531 emails with a link",
               "thin": true
-            },
-            {
-              "key": "cold-email-v35",
-              "label": "Cold email v35",
-              "value": 16.4,
-              "display": "1.64%",
-              "note": "51 website visits · 3,103 emails with a link",
-              "thin": false
             },
             {
               "key": "cold-email-v33",
@@ -3161,7 +3327,7 @@
               "thin": true
             }
           ],
-          "note": "Only people we started writing to at least 21 days before the read (before Sep 8) count, with every positive reply and website visit they sent since. A figure needs 1 positive reply (10 website visits) behind it; below that it reads Learning."
+          "note": "Only people we started writing to at least 21 days before the read (before Sep 11) count, with every positive reply and website visit they sent since. A figure needs 1 positive reply (10 website visits) behind it; below that it reads Learning."
         },
         {
           "kind": "months",
@@ -3230,7 +3396,7 @@
               }
             ]
           },
-          "note": "Only people we started writing to at least 21 days before the read (before Sep 8) count, with every positive reply and website visit they sent since. A figure needs 1 positive reply (10 website visits) behind it; below that it reads Learning."
+          "note": "Only people we started writing to at least 21 days before the read (before Sep 11) count, with every positive reply and website visit they sent since. A figure needs 1 positive reply (10 website visits) behind it; below that it reads Learning."
         }
       ],
       "conclusion": [
@@ -3246,12 +3412,12 @@
       "goal": "roi",
       "question": "Does the layout of the first email change what a website visit costs?",
       "status": "measured",
-      "headline": "Double line breaks wins at $2.18 per website visit.",
+      "headline": "Double line breaks wins at $2.19 per website visit.",
       "winner": "Double line breaks",
       "result": {
-        "display": "$2.18",
+        "display": "$2.19",
         "unit": "per website visit",
-        "sample": "238 website visits · 9,032 emails with a link"
+        "sample": "241 website visits · 9,141 emails with a link"
       },
       "crowned": true,
       "charts": [
@@ -3262,27 +3428,27 @@
           "points": [
             {
               "label": "Double line breaks",
-              "value": 2.18,
-              "display": "$2.18",
-              "note": "238 website visits · 9,032 emails with a link",
+              "value": 2.19,
+              "display": "$2.19",
+              "note": "241 website visits · 9,141 emails with a link",
               "thin": false
             },
             {
               "label": "One block",
-              "value": 4.13,
-              "display": "$4.13",
-              "note": "137 website visits · 6,893 emails with a link",
+              "value": 3.98,
+              "display": "$3.98",
+              "note": "148 website visits · 7,134 emails with a link",
               "thin": false
             },
             {
               "label": "Single line breaks",
-              "value": 4.13,
+              "value": 3.98,
               "display": "None yet",
               "note": "0 website visits · 9 emails with a link, $0.96 spent",
               "thin": true
             }
           ],
-          "note": "Only people we started writing to at least 21 days before the read (before Sep 8) count, with every positive reply and website visit they sent since. A figure needs 1 positive reply (10 website visits) behind it; below that it reads Learning."
+          "note": "Only people we started writing to at least 21 days before the read (before Sep 11) count, with every positive reply and website visit they sent since. A figure needs 1 positive reply (10 website visits) behind it; below that it reads Learning."
         },
         {
           "kind": "bars",
@@ -3291,27 +3457,27 @@
           "points": [
             {
               "label": "Double line breaks",
-              "value": 1.79,
-              "display": "$1.79",
-              "note": "187 website visits · 6,488 emails with a link",
+              "value": 1.8,
+              "display": "$1.80",
+              "note": "190 website visits · 6,591 emails with a link",
               "thin": false
             },
             {
               "label": "One block",
-              "value": 2.23,
-              "display": "$2.23",
-              "note": "77 website visits · 4,097 emails with a link",
+              "value": 2.17,
+              "display": "$2.17",
+              "note": "85 website visits · 4,260 emails with a link",
               "thin": false
             },
             {
               "label": "Single line breaks",
-              "value": 2.23,
+              "value": 2.17,
               "display": "None yet",
               "note": "0 website visits · 6 emails with a link, $0.53 spent",
               "thin": true
             }
           ],
-          "note": "Only people we started writing to at least 21 days before the read (before Sep 8) count, with every positive reply and website visit they sent since. A figure needs 1 positive reply (10 website visits) behind it; below that it reads Learning."
+          "note": "Only people we started writing to at least 21 days before the read (before Sep 11) count, with every positive reply and website visit they sent since. A figure needs 1 positive reply (10 website visits) behind it; below that it reads Learning."
         },
         {
           "kind": "bars",
@@ -3320,35 +3486,35 @@
           "points": [
             {
               "label": "Double line breaks",
-              "value": 3.59,
-              "display": "$3.59",
-              "note": "51 website visits · 2,544 emails with a link",
+              "value": 3.6,
+              "display": "$3.60",
+              "note": "51 website visits · 2,550 emails with a link",
               "thin": false
             },
             {
               "label": "One block",
-              "value": 6.58,
-              "display": "$6.58",
-              "note": "60 website visits · 2,796 emails with a link",
+              "value": 6.42,
+              "display": "$6.42",
+              "note": "63 website visits · 2,874 emails with a link",
               "thin": false
             },
             {
               "label": "Single line breaks",
-              "value": 6.58,
+              "value": 6.42,
               "display": "None yet",
               "note": "0 website visits · 3 emails with a link, $0.43 spent",
               "thin": true
             }
           ],
-          "note": "Only people we started writing to at least 21 days before the read (before Sep 8) count, with every positive reply and website visit they sent since. A figure needs 1 positive reply (10 website visits) behind it; below that it reads Learning."
+          "note": "Only people we started writing to at least 21 days before the read (before Sep 11) count, with every positive reply and website visit they sent since. A figure needs 1 positive reply (10 website visits) behind it; below that it reads Learning."
         }
       ],
       "conclusion": [
-        "Double line breaks: 238 website visits · 9,032 emails with a link, $518 spent.",
-        "Flash tier: Double line breaks is cheapest at $1.79 per website visit (187 website visits · 6,488 emails with a link).",
-        "Pro tier: Double line breaks is cheapest at $3.59 per website visit (51 website visits · 2,544 emails with a link).",
+        "Double line breaks: 241 website visits · 9,141 emails with a link, $527 spent.",
+        "Flash tier: Double line breaks is cheapest at $1.80 per website visit (190 website visits · 6,591 emails with a link).",
+        "Pro tier: Double line breaks is cheapest at $3.60 per website visit (51 website visits · 2,550 emails with a link).",
         "Every email of a sequence is filed under how its first email looked, and the sequence's website visits with it. Three layouts: one block (no line break at all), single line breaks (a new line with no empty line), double line breaks (an empty line between paragraphs). Classified by a regex on the text of the first email, no LLM involved.",
-        "The model chose this on its own until Sep 28, 2026, when the templates started requiring a greeting and blank-line paragraphs. Every email here was written before, the last in Sep.",
+        "The model chose this on its own until Sep 28, 2026, when the templates started requiring a greeting and blank-line paragraphs. Every email here was written before, the last in Oct.",
         "The buckets ran for different clients, audiences and months: this is not a split test."
       ]
     },
@@ -3364,7 +3530,7 @@
       "result": {
         "display": "$1.94",
         "unit": "per website visit",
-        "sample": "192 website visits · 6,589 emails with a link"
+        "sample": "192 website visits · 6,593 emails with a link"
       },
       "crowned": true,
       "charts": [
@@ -3377,25 +3543,25 @@
               "label": "No greeting",
               "value": 1.94,
               "display": "$1.94",
-              "note": "192 website visits · 6,589 emails with a link",
+              "note": "192 website visits · 6,593 emails with a link",
               "thin": false
             },
             {
               "label": "Greeting + first name",
-              "value": 3.68,
-              "display": "$3.68",
-              "note": "47 website visits · 2,931 emails with a link",
+              "value": 3.31,
+              "display": "$3.31",
+              "note": "57 website visits · 3,136 emails with a link",
               "thin": false
             },
             {
               "label": "First name alone",
-              "value": 3.97,
-              "display": "$3.97",
-              "note": "136 website visits · 6,414 emails with a link",
+              "value": 3.96,
+              "display": "$3.96",
+              "note": "140 website visits · 6,555 emails with a link",
               "thin": false
             }
           ],
-          "note": "Only people we started writing to at least 21 days before the read (before Sep 8) count, with every positive reply and website visit they sent since. A figure needs 1 positive reply (10 website visits) behind it; below that it reads Learning."
+          "note": "Only people we started writing to at least 21 days before the read (before Sep 11) count, with every positive reply and website visit they sent since. A figure needs 1 positive reply (10 website visits) behind it; below that it reads Learning."
         },
         {
           "kind": "bars",
@@ -3406,25 +3572,25 @@
               "label": "No greeting",
               "value": 1.57,
               "display": "$1.57",
-              "note": "155 website visits · 4,877 emails with a link",
+              "note": "155 website visits · 4,878 emails with a link",
               "thin": false
             },
             {
               "label": "First name alone",
-              "value": 1.6,
-              "display": "$1.60",
-              "note": "69 website visits · 3,269 emails with a link",
+              "value": 1.64,
+              "display": "$1.64",
+              "note": "70 website visits · 3,329 emails with a link",
               "thin": false
             },
             {
               "label": "Greeting + first name",
-              "value": 3.83,
-              "display": "$3.83",
-              "note": "40 website visits · 2,445 emails with a link",
+              "value": 3.37,
+              "display": "$3.37",
+              "note": "50 website visits · 2,650 emails with a link",
               "thin": false
             }
           ],
-          "note": "Only people we started writing to at least 21 days before the read (before Sep 8) count, with every positive reply and website visit they sent since. A figure needs 1 positive reply (10 website visits) behind it; below that it reads Learning."
+          "note": "Only people we started writing to at least 21 days before the read (before Sep 11) count, with every positive reply and website visit they sent since. A figure needs 1 positive reply (10 website visits) behind it; below that it reads Learning."
         },
         {
           "kind": "bars",
@@ -3440,28 +3606,28 @@
             },
             {
               "label": "No greeting",
-              "value": 3.49,
-              "display": "$3.49",
-              "note": "37 website visits · 1,712 emails with a link",
+              "value": 3.5,
+              "display": "$3.50",
+              "note": "37 website visits · 1,715 emails with a link",
               "thin": false
             },
             {
               "label": "First name alone",
-              "value": 6.41,
-              "display": "$6.41",
-              "note": "67 website visits · 3,145 emails with a link",
+              "value": 6.27,
+              "display": "$6.27",
+              "note": "70 website visits · 3,226 emails with a link",
               "thin": false
             }
           ],
-          "note": "Only people we started writing to at least 21 days before the read (before Sep 8) count, with every positive reply and website visit they sent since. A figure needs 1 positive reply (10 website visits) behind it; below that it reads Learning."
+          "note": "Only people we started writing to at least 21 days before the read (before Sep 11) count, with every positive reply and website visit they sent since. A figure needs 1 positive reply (10 website visits) behind it; below that it reads Learning."
         }
       ],
       "conclusion": [
-        "No greeting: 192 website visits · 6,589 emails with a link, $373 spent.",
-        "Flash tier: No greeting is cheapest at $1.57 per website visit (155 website visits · 4,877 emails with a link).",
+        "No greeting: 192 website visits · 6,593 emails with a link, $373 spent.",
+        "Flash tier: No greeting is cheapest at $1.57 per website visit (155 website visits · 4,878 emails with a link).",
         "Pro tier: Greeting + first name is cheapest at $2.84 per website visit (7 website visits · 486 emails with a link).",
         "Every email of a sequence is filed under how its first email looked, and the sequence's website visits with it. A greeting word in any language we write in (Hi, Hallo, Bonjour...) counts as a greeting whatever follows; a first name followed by a comma, a colon or a dash, with no greeting word before it (\"Marie, most clinics...\"), counts as the first name alone. Classified by a regex on the text of the first email, no LLM involved.",
-        "The model chose this on its own until Sep 28, 2026, when the templates started requiring a greeting and blank-line paragraphs. Every email here was written before, the last in Sep.",
+        "The model chose this on its own until Sep 28, 2026, when the templates started requiring a greeting and blank-line paragraphs. Every email here was written before, the last in Oct.",
         "The buckets ran for different clients, audiences and months: this is not a split test."
       ]
     },
@@ -3472,12 +3638,12 @@
       "goal": "roi",
       "question": "Do dashes in the first email change what a website visit costs, and how often one comes?",
       "status": "measured",
-      "headline": "En dash wins at $1.56 per website visit.",
+      "headline": "En dash wins at $1.91 per website visit.",
       "winner": "En dash",
       "result": {
-        "display": "$1.56",
+        "display": "$1.91",
         "unit": "per website visit",
-        "sample": "1 website visit · 55 emails with a link"
+        "sample": "1 website visit · 58 emails with a link"
       },
       "crowned": false,
       "charts": [
@@ -3488,27 +3654,27 @@
           "points": [
             {
               "label": "En dash",
-              "value": 1.56,
-              "display": "$1.56",
-              "note": "1 website visit · 55 emails with a link",
+              "value": 1.91,
+              "display": "$1.91",
+              "note": "1 website visit · 58 emails with a link",
               "thin": true
             },
             {
               "label": "No dash",
-              "value": 2.87,
-              "display": "$2.87",
-              "note": "354 website visits · 14,818 emails with a link",
+              "value": 2.84,
+              "display": "$2.84",
+              "note": "368 website visits · 15,133 emails with a link",
               "thin": false
             },
             {
               "label": "Em dash",
-              "value": 3.36,
-              "display": "$3.36",
-              "note": "20 website visits · 1,061 emails with a link",
+              "value": 3.48,
+              "display": "$3.48",
+              "note": "20 website visits · 1,093 emails with a link",
               "thin": false
             }
           ],
-          "note": "Only people we started writing to at least 21 days before the read (before Sep 8) count, with every positive reply and website visit they sent since. A figure needs 1 positive reply (10 website visits) behind it; below that it reads Learning."
+          "note": "Only people we started writing to at least 21 days before the read (before Sep 11) count, with every positive reply and website visit they sent since. A figure needs 1 positive reply (10 website visits) behind it; below that it reads Learning."
         },
         {
           "kind": "bars",
@@ -3517,27 +3683,27 @@
           "points": [
             {
               "label": "No dash",
-              "value": 23.9,
-              "display": "2.39%",
-              "note": "354 website visits · 14,818 emails with a link",
+              "value": 24.3,
+              "display": "2.43%",
+              "note": "368 website visits · 15,133 emails with a link",
               "thin": false
             },
             {
               "label": "Em dash",
-              "value": 18.9,
-              "display": "1.89%",
-              "note": "20 website visits · 1,061 emails with a link",
+              "value": 18.3,
+              "display": "1.83%",
+              "note": "20 website visits · 1,093 emails with a link",
               "thin": false
             },
             {
               "label": "En dash",
-              "value": 18.2,
-              "display": "1.82%",
-              "note": "1 website visit · 55 emails with a link",
+              "value": 17.2,
+              "display": "1.72%",
+              "note": "1 website visit · 58 emails with a link",
               "thin": true
             }
           ],
-          "note": "Only people we started writing to at least 21 days before the read (before Sep 8) count, with every positive reply and website visit they sent since. A figure needs 1 positive reply (10 website visits) behind it; below that it reads Learning."
+          "note": "Only people we started writing to at least 21 days before the read (before Sep 11) count, with every positive reply and website visit they sent since. A figure needs 1 positive reply (10 website visits) behind it; below that it reads Learning."
         },
         {
           "kind": "bars",
@@ -3546,27 +3712,27 @@
           "points": [
             {
               "label": "En dash",
-              "value": 1.41,
-              "display": "$1.41",
-              "note": "1 website visit · 54 emails with a link",
+              "value": 1.76,
+              "display": "$1.76",
+              "note": "1 website visit · 57 emails with a link",
               "thin": true
             },
             {
               "label": "No dash",
-              "value": 1.92,
-              "display": "$1.92",
-              "note": "253 website visits · 10,150 emails with a link",
+              "value": 1.91,
+              "display": "$1.91",
+              "note": "264 website visits · 10,385 emails with a link",
               "thin": false
             },
             {
               "label": "Em dash",
-              "value": 2.02,
-              "display": "$2.02",
-              "note": "10 website visits · 387 emails with a link",
+              "value": 2.23,
+              "display": "$2.23",
+              "note": "10 website visits · 415 emails with a link",
               "thin": false
             }
           ],
-          "note": "Only people we started writing to at least 21 days before the read (before Sep 8) count, with every positive reply and website visit they sent since. A figure needs 1 positive reply (10 website visits) behind it; below that it reads Learning."
+          "note": "Only people we started writing to at least 21 days before the read (before Sep 11) count, with every positive reply and website visit they sent since. A figure needs 1 positive reply (10 website visits) behind it; below that it reads Learning."
         },
         {
           "kind": "bars",
@@ -3574,28 +3740,28 @@
           "lowerIsBetter": false,
           "points": [
             {
-              "label": "Em dash",
-              "value": 25.8,
-              "display": "2.58%",
-              "note": "10 website visits · 387 emails with a link",
+              "label": "No dash",
+              "value": 25.4,
+              "display": "2.54%",
+              "note": "264 website visits · 10,385 emails with a link",
               "thin": false
             },
             {
-              "label": "No dash",
-              "value": 24.9,
-              "display": "2.49%",
-              "note": "253 website visits · 10,150 emails with a link",
+              "label": "Em dash",
+              "value": 24.1,
+              "display": "2.41%",
+              "note": "10 website visits · 415 emails with a link",
               "thin": false
             },
             {
               "label": "En dash",
-              "value": 18.5,
-              "display": "1.85%",
-              "note": "1 website visit · 54 emails with a link",
+              "value": 17.5,
+              "display": "1.75%",
+              "note": "1 website visit · 57 emails with a link",
               "thin": true
             }
           ],
-          "note": "Only people we started writing to at least 21 days before the read (before Sep 8) count, with every positive reply and website visit they sent since. A figure needs 1 positive reply (10 website visits) behind it; below that it reads Learning."
+          "note": "Only people we started writing to at least 21 days before the read (before Sep 11) count, with every positive reply and website visit they sent since. A figure needs 1 positive reply (10 website visits) behind it; below that it reads Learning."
         },
         {
           "kind": "bars",
@@ -3604,27 +3770,27 @@
           "points": [
             {
               "label": "Em dash",
-              "value": 4.7,
-              "display": "$4.70",
-              "note": "10 website visits · 674 emails with a link",
+              "value": 4.74,
+              "display": "$4.74",
+              "note": "10 website visits · 678 emails with a link",
               "thin": false
             },
             {
               "label": "No dash",
-              "value": 5.26,
-              "display": "$5.26",
-              "note": "101 website visits · 4,668 emails with a link",
+              "value": 5.2,
+              "display": "$5.20",
+              "note": "104 website visits · 4,748 emails with a link",
               "thin": false
             },
             {
               "label": "En dash",
-              "value": 5.26,
+              "value": 5.2,
               "display": "None yet",
               "note": "0 website visits · 1 emails with a link, $0.15 spent",
               "thin": true
             }
           ],
-          "note": "Only people we started writing to at least 21 days before the read (before Sep 8) count, with every positive reply and website visit they sent since. A figure needs 1 positive reply (10 website visits) behind it; below that it reads Learning."
+          "note": "Only people we started writing to at least 21 days before the read (before Sep 11) count, with every positive reply and website visit they sent since. A figure needs 1 positive reply (10 website visits) behind it; below that it reads Learning."
         },
         {
           "kind": "bars",
@@ -3633,16 +3799,16 @@
           "points": [
             {
               "label": "No dash",
-              "value": 21.6,
-              "display": "2.16%",
-              "note": "101 website visits · 4,668 emails with a link",
+              "value": 21.9,
+              "display": "2.19%",
+              "note": "104 website visits · 4,748 emails with a link",
               "thin": false
             },
             {
               "label": "Em dash",
-              "value": 14.8,
-              "display": "1.48%",
-              "note": "10 website visits · 674 emails with a link",
+              "value": 14.7,
+              "display": "1.47%",
+              "note": "10 website visits · 678 emails with a link",
               "thin": false
             },
             {
@@ -3653,7 +3819,7 @@
               "thin": true
             }
           ],
-          "note": "Only people we started writing to at least 21 days before the read (before Sep 8) count, with every positive reply and website visit they sent since. A figure needs 1 positive reply (10 website visits) behind it; below that it reads Learning."
+          "note": "Only people we started writing to at least 21 days before the read (before Sep 11) count, with every positive reply and website visit they sent since. A figure needs 1 positive reply (10 website visits) behind it; below that it reads Learning."
         },
         {
           "kind": "bars",
@@ -3661,10 +3827,24 @@
           "lowerIsBetter": false,
           "points": [
             {
+              "label": "GLM 5.3 Flash",
+              "value": 87.5,
+              "display": "88%",
+              "note": "21 with a dash · 24 emails with a link",
+              "thin": false
+            },
+            {
+              "label": "DeepSeek V4 Flash",
+              "value": 76.9,
+              "display": "77%",
+              "note": "10 with a dash · 13 emails with a link",
+              "thin": false
+            },
+            {
               "label": "Gemini 3.1 Pro",
-              "value": 12.6,
+              "value": 12.5,
               "display": "13%",
-              "note": "675 with a dash · 5,343 emails with a link",
+              "note": "679 with a dash · 5,427 emails with a link",
               "thin": false
             },
             {
@@ -3692,7 +3872,7 @@
               "label": "Gemini 3.5 Flash-Lite",
               "value": 0.1,
               "display": "0%",
-              "note": "3 with a dash · 3,085 emails with a link",
+              "note": "3 with a dash · 3,314 emails with a link",
               "thin": false
             },
             {
@@ -3703,18 +3883,18 @@
               "thin": false
             }
           ],
-          "note": "Only people we started writing to at least 21 days before the read (before Sep 8) count, with every positive reply and website visit they sent since. A figure needs 1 positive reply (10 website visits) behind it; below that it reads Learning."
+          "note": "Only people we started writing to at least 21 days before the read (before Sep 11) count, with every positive reply and website visit they sent since. A figure needs 1 positive reply (10 website visits) behind it; below that it reads Learning."
         }
       ],
       "conclusion": [
-        "En dash: 1 website visit · 55 emails with a link, $1.56 spent, a 1.82% website visit rate.",
-        "Flash tier: En dash is cheapest at $1.41 per website visit (1 website visit · 54 emails with a link).",
-        "Pro tier: Em dash is cheapest at $4.70 per website visit (10 website visits · 674 emails with a link).",
-        "Dashes are a model habit: Gemini 3.1 Pro puts one in 13% of its first emails, Gemini 3.7 Flash in 0%. Read each tier against the models writing its buckets.",
-        "Flash tier: 64% of the em dash emails come from Gemini 3 Flash, 43% of the no-dash emails come from Gemini 3 Flash: the same model leads both but does not write most of each, so within this tier dashes and models are mixed.",
+        "En dash: 1 website visit · 58 emails with a link, $1.91 spent, a 1.72% website visit rate.",
+        "Flash tier: En dash is cheapest at $1.76 per website visit (1 website visit · 57 emails with a link).",
+        "Pro tier: Em dash is cheapest at $4.74 per website visit (10 website visits · 678 emails with a link).",
+        "Dashes are a model habit: GLM 5.3 Flash puts one in 88% of its first emails, Gemini 3.7 Flash in 0%. Read each tier against the models writing its buckets.",
+        "Flash tier: 60% of the em dash emails come from Gemini 3 Flash, 42% of the no-dash emails come from Gemini 3 Flash: the same model leads both but does not write most of each, so within this tier dashes and models are mixed.",
         "Pro tier: 100% of the em dash emails come from Gemini 3.1 Pro, 100% of the no-dash emails come from Gemini 3.1 Pro: one model writes most of both, so within this tier the gap is closer to a dash effect.",
         "Three buckets on the first email's text: an em dash, an en dash, neither. A plain hyphen is not a dash. The 4 emails with a link whose first email carries both (0.0%, under 2%) are counted with the em dash. Every email of a sequence is filed under its first email, and the sequence's website visits with it. Classified by a character test on the text, no LLM involved.",
-        "Our templates never banned dashes until Sep 29, 2026, when every template started forbidding both. Every email here was generated before that date (the last in Sep).",
+        "Our templates never banned dashes until Sep 29, 2026, when every template started forbidding both. Every email here was generated before that date (the last in Oct).",
         "The buckets ran for different clients, audiences and months: this is not a split test."
       ]
     },
@@ -3766,9 +3946,9 @@
             {
               "key": "sales-cold-email-outreach-rampart",
               "label": "Gemini 3 Flash · Cold email v35",
-              "value": 2.44,
-              "display": "$2.44",
-              "note": "112 website visits · 5,874 emails with a link",
+              "value": 2.36,
+              "display": "$2.36",
+              "note": "123 website visits · 6,103 emails with a link",
               "thin": false
             },
             {
@@ -3790,9 +3970,9 @@
             {
               "key": "sales-cold-email-outreach-permafrost",
               "label": "Gemini 3.1 Pro · Cold email v31",
-              "value": 6.3,
-              "display": "$6.30",
-              "note": "58 website visits · 2,572 emails with a link",
+              "value": 6.15,
+              "display": "$6.15",
+              "note": "61 website visits · 2,656 emails with a link",
               "thin": false
             },
             {
@@ -3804,7 +3984,7 @@
               "thin": true
             }
           ],
-          "note": "Only people we started writing to at least 21 days before the read (before Sep 8) count, with every positive reply and website visit they sent since. A figure needs 1 positive reply (10 website visits) behind it; below that it reads Learning."
+          "note": "Only people we started writing to at least 21 days before the read (before Sep 11) count, with every positive reply and website visit they sent since. A figure needs 1 positive reply (10 website visits) behind it; below that it reads Learning."
         },
         {
           "kind": "months",
@@ -3866,7 +4046,7 @@
               }
             ]
           },
-          "note": "Only people we started writing to at least 21 days before the read (before Sep 8) count, with every positive reply and website visit they sent since. A figure needs 1 positive reply (10 website visits) behind it; below that it reads Learning."
+          "note": "Only people we started writing to at least 21 days before the read (before Sep 11) count, with every positive reply and website visit they sent since. A figure needs 1 positive reply (10 website visits) behind it; below that it reads Learning."
         }
       ],
       "conclusion": [
@@ -3922,9 +4102,9 @@
             {
               "key": "sales-cold-email-outreach-permafrost",
               "label": "Gemini 3.1 Pro · Cold email v31",
-              "value": 22.6,
-              "display": "2.26%",
-              "note": "58 website visits · 2,572 emails with a link",
+              "value": 23,
+              "display": "2.30%",
+              "note": "61 website visits · 2,656 emails with a link",
               "thin": false
             },
             {
@@ -3938,9 +4118,9 @@
             {
               "key": "sales-cold-email-outreach-rampart",
               "label": "Gemini 3 Flash · Cold email v35",
-              "value": 19.1,
-              "display": "1.91%",
-              "note": "112 website visits · 5,874 emails with a link",
+              "value": 20.2,
+              "display": "2.02%",
+              "note": "123 website visits · 6,103 emails with a link",
               "thin": false
             },
             {
@@ -3958,9 +4138,25 @@
               "display": "1.45%",
               "note": "7 website visits · 484 emails with a link",
               "thin": true
+            },
+            {
+              "key": "sales-cold-email-outreach-maelstrom",
+              "label": "GLM 5.3 Flash · Cold email v35",
+              "value": 0,
+              "display": "0.00%",
+              "note": "0 website visits · 24 emails with a link",
+              "thin": true
+            },
+            {
+              "key": "sales-cold-email-outreach-lyonesse",
+              "label": "DeepSeek V4 Flash · Cold email v35",
+              "value": 0,
+              "display": "0.00%",
+              "note": "0 website visits · 13 emails with a link",
+              "thin": true
             }
           ],
-          "note": "Only people we started writing to at least 21 days before the read (before Sep 8) count, with every positive reply and website visit they sent since. A figure needs 1 positive reply (10 website visits) behind it; below that it reads Learning."
+          "note": "Only people we started writing to at least 21 days before the read (before Sep 11) count, with every positive reply and website visit they sent since. A figure needs 1 positive reply (10 website visits) behind it; below that it reads Learning."
         },
         {
           "kind": "months",
@@ -4029,7 +4225,7 @@
               }
             ]
           },
-          "note": "Only people we started writing to at least 21 days before the read (before Sep 8) count, with every positive reply and website visit they sent since. A figure needs 1 positive reply (10 website visits) behind it; below that it reads Learning."
+          "note": "Only people we started writing to at least 21 days before the read (before Sep 11) count, with every positive reply and website visit they sent since. A figure needs 1 positive reply (10 website visits) behind it; below that it reads Learning."
         }
       ],
       "conclusion": [
@@ -4137,14 +4333,14 @@
   ],
   "catalogCounts": {
     "herald": {
-      "workflows": 33,
+      "workflows": 37,
       "templates": 31,
-      "models": 8
+      "models": 12
     },
     "scout": {
-      "workflows": 8,
+      "workflows": 10,
       "templates": 9,
-      "models": 6
+      "models": 8
     },
     "pilot": {
       "workflows": 0,

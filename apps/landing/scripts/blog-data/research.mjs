@@ -281,11 +281,56 @@ function movement(points) {
   return `${a.display} in ${a.label}, ${b.display} in ${b.label}`;
 }
 
+// ---------- like for like ----------
+// A crude bar mixes clients and months: a model that ran for the clients who click most "wins"
+// without writing better emails. So every LLM study also weighs its winner against each other LLM
+// on the SAME client in the SAME month only (derive.mjs modelStrata), Mantel-Haenszel pooled, with
+// a 95% interval (Greenland-Robins variance). The price ratio is read on those same strata.
+// a ratio on 1 outcome against 8 spans 0.00x to 1,900x: print the counts instead
+const LFL_MIN = 5;
+function likeForLike(o, strata, winner, { goal }) {
+  if (!strata || !strata[winner]) return [];
+  const W = strata[winner];
+  const out = [];
+  for (const [other, X] of Object.entries(strata)) {
+    if (other === winner) continue;
+    let num = 0, den = 0, v = 0, wE = 0, wK = 0, wS = 0, xE = 0, xK = 0, xS = 0;
+    for (const [k, a] of Object.entries(W)) {
+      const b = X[k];
+      if (!b) continue;
+      const T = a.emails + b.emails;
+      const ka = a[o.count], kb = b[o.count];
+      num += (ka * b.emails) / T;
+      den += (kb * a.emails) / T;
+      v += (a.emails * b.emails * (ka + kb)) / (T * T);
+      wE += a.emails; wK += ka; wS += a.spend;
+      xE += b.emails; xK += kb; xS += b.spend;
+    }
+    if (!wE) continue;
+    out.push({ other, num, den, v, wE, wK, wS, xE, xK, xS });
+  }
+  if (!out.length) return [`Same clients, same months: ${winner} ran for no client in a month another LLM also wrote for, so it has no like-for-like comparison.`];
+  const x = (r) => `${r.toFixed(2)}x`;
+  return out
+    .sort((a, b) => b.xE - a.xE)
+    .slice(0, 3)
+    .map((c) => {
+      const tally = `${n(c.wK)} ${c.wK === 1 ? o.noun : o.nounPlural} in ${n(c.wE)} ${o.emailsNoun} against ${n(c.xK)} in ${n(c.xE)}`;
+      if (c.wK < LFL_MIN || c.xK < LFL_MIN) return `Same clients, same months, ${winner} against ${c.other}: ${tally}, under ${LFL_MIN} on one side, so no ratio.`;
+      const rr = c.num / c.den;
+      const se = Math.sqrt(c.v / (c.num * c.den));
+      const lo = rr * Math.exp(-1.96 * se), hi = rr * Math.exp(1.96 * se);
+      if (goal === "rate") return `Same clients, same months, ${winner} gets ${x(rr)} the ${o.nounPlural} per email of ${c.other} (95% interval ${x(lo)} to ${x(hi)}; ${tally}).`;
+      const price = (c.wS / c.wE) / (c.xS / c.xE);
+      return `Same clients, same months, a ${o.noun} from ${winner} costs ${x(price / rr)} one from ${c.other} (95% interval ${x(price / hi)} to ${x(price / lo)}): ${x(price)} the price per email, ${x(rr)} the ${o.nounPlural} per email (${tally}).`;
+    });
+}
+
 // ---------- studies ----------
 const studies = [];
 const add = (s) => studies.push(s);
 
-function dimensionStudies(key, o, R, { dim, dimNoun, cutKey, byMonthKey, label }) {
+function dimensionStudies(key, o, R, { dim, dimNoun, cutKey, byMonthKey, label, strataKey }) {
   const rows = R[cutKey];
   // A workflow's or a template's bar carries its key, so the page can open that one's own page.
   const keyed = dim === "workflow" || dim === "template" || dim === "llm";
@@ -314,6 +359,7 @@ function dimensionStudies(key, o, R, { dim, dimNoun, cutKey, byMonthKey, label }
       conclusion: [
         w ? `${label(w.row.bucket)}: ${counts(o, w.row)}, ${usd(w.row.spend)} spent.` : `Nothing priced yet.`,
         ...(moved ? [`Over time: ${moved}.`] : []),
+        ...(w && strataKey ? likeForLike(o, R[strataKey], w.row.bucket, { goal: "roi" }) : []),
       ].filter(Boolean),
     });
   }
@@ -342,6 +388,7 @@ function dimensionStudies(key, o, R, { dim, dimNoun, cutKey, byMonthKey, label }
       conclusion: [
         w ? `${label(w.row.bucket)}: ${counts(o, w.row)}.` : null,
         ...(moved ? [`Over time: ${moved}.`] : []),
+        ...(w && strataKey ? likeForLike(o, R[strataKey], w.row.bucket, { goal: "rate" }) : []),
         `A ${dimNoun} with fewer than ${o.outcomesRequired} ${o.outcomesRequired === 1 ? o.noun : o.nounPlural} is ranked where its value puts it and marked Learning.`,
       ].filter(Boolean),
     });
@@ -576,7 +623,7 @@ for (const key of ["reply", "visit"]) {
   const o = OUTCOMES[key];
   const R = facts.research[key];
 
-  dimensionStudies(key, o, R, { dim: "llm", dimNoun: "LLM", cutKey: "byModel", byMonthKey: "modelByMonth", label: (b) => b });
+  dimensionStudies(key, o, R, { dim: "llm", dimNoun: "LLM", cutKey: "byModel", byMonthKey: "modelByMonth", label: (b) => b, strataKey: "modelStrata" });
 
   // cost: the AVERAGE since inception (everything spent over every outcome, all months pooled),
   // never the last month on its own. The monthly bars stay beside it as context.
