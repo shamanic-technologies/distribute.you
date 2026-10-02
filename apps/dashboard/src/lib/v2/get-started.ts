@@ -94,6 +94,8 @@ export interface PlanPath {
   legs: ReadonlyArray<{
     legKey: string;
     fromStep: { key: string } | null;
+    /** The step the leg reaches: names the campaign working it. */
+    toStep: { label: string };
     workedBy: string;
     channel: { slug: string | null; name: string | null } | null;
   }>;
@@ -113,6 +115,8 @@ export interface PlanCampaign {
   featureSlug: string;
   legKey: string;
   label: string;
+  /** The step the leg reaches ("Website visit"): two legs of one channel are told apart by it. */
+  outcome: string;
   reactive: boolean;
   /** On the path launched first: its campaign must be created or the launch fails. */
   required: boolean;
@@ -140,6 +144,7 @@ export function launchPlan(paths: readonly PlanPath[]): PlanCampaign[] {
         featureSlug: slug,
         legKey: l.legKey,
         label: SALES_PATH_CHANNEL_LABEL[slug] ?? l.channel?.name ?? slug,
+        outcome: l.toStep.label,
         reactive: l.fromStep !== null,
         required: p === first,
       });

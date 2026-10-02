@@ -25,6 +25,7 @@ const PATHS = read("src/components/v2/offer-sales-paths.tsx");
 const leg = (legKey: string, from: string | null, slug: string | null) => ({
   legKey,
   fromStep: from ? { key: from } : null,
+  toStep: { label: legKey.split("_to_")[1] },
   workedBy: slug ? "platform" : "human",
   channel: slug ? { slug, name: null } : null,
 });
@@ -88,16 +89,26 @@ describe("what we launch", () => {
 
   it("creates every leg a channel of ours works, the framed path first, once each", () => {
     expect(launchPlan(PATHS_FIXTURE)).toEqual([
-      { featureSlug: "sales-cold-email-outreach", legKey: "start_to_conversation", label: "Cold email", reactive: false, required: true },
-      { featureSlug: "ai-meeting-booking", legKey: "conversation_to_meeting_booked", label: "Meeting booking", reactive: true, required: true },
-      { featureSlug: "sales-cold-email-outreach", legKey: "start_to_website_visit", label: "Cold email", reactive: false, required: false },
+      { featureSlug: "sales-cold-email-outreach", legKey: "start_to_conversation", label: "Cold email", outcome: "conversation", reactive: false, required: true },
+      { featureSlug: "ai-meeting-booking", legKey: "conversation_to_meeting_booked", label: "Meeting booking", outcome: "meeting_booked", reactive: true, required: true },
+      { featureSlug: "sales-cold-email-outreach", legKey: "start_to_website_visit", label: "Cold email", outcome: "website_visit", reactive: false, required: false },
     ]);
+  });
+
+  // Prod 2026-10-02: a visit path and a reply path both entered by cold email named both
+  // campaigns "<offer> (Cold email)", and campaign-service refused the second (409, name
+  // taken), so every launch with two paths stopped on the wall.
+  it("names every campaign of the plan apart, even one channel on two legs", () => {
+    const plan = launchPlan(PATHS_FIXTURE);
+    const names = plan.map((c) => `${c.outcome}, ${c.label}`);
+    expect(new Set(names).size).toBe(plan.length);
+    expect(LAUNCH).toContain("name: `${offerName} (${c.outcome}, ${c.label})`");
   });
 
   it("reads the production body through the real parser", () => {
     const data = parseOfferSalesPaths(JSON.parse(read("tests/fixtures/offer-sales-paths.prod.json")), "test");
     expect(launchPlan(data.paths)).toEqual([
-      { featureSlug: "sales-cold-email-outreach", legKey: "start_to_website_visit", label: "Cold email", reactive: false, required: true },
+      { featureSlug: "sales-cold-email-outreach", legKey: "start_to_website_visit", label: "Cold email", outcome: "Website visit", reactive: false, required: true },
     ]);
   });
 });
