@@ -87,7 +87,7 @@ export function comparePageTitle(c: Competitor): string {
 }
 
 export function comparePageDescription(c: Competitor): string {
-  return `Looking at ${c.name} alternatives? distribute.you runs your cold email for you from $1 a day, from our own domains. Compare the entry price, who runs the campaign and the measured cost of a positive reply.`;
+  return `Looking at ${c.name} alternatives? distribute.you runs your cold email from $1 a day, from our own domains. Compare price and cost per positive reply.`;
 }
 
 export function renderComparePage(c: Competitor): string {
