@@ -201,3 +201,18 @@ than the first. The article states lifts (x2, +67%); the counts sit in its Notes
 ## Research on two cost bases
 
 The Research page is written twice. The billed snapshot (`research.mjs <facts.json> apps/dashboard/src/lib/research`) is the default view. The staff-only ACTUAL cost snapshot (what the vendors charged us, before our markup) is derived with `COST_BASIS=actual node derive.mjs <dir> > <dir>/facts-actual.json` then `research.mjs <dir>/facts-actual.json apps/dashboard/src/lib/research/actual` (delete the `research-templates.json` it writes there). extract.sh prices every spend row through costs-service's vendor catalogue with runs-service's match rule; a workflow version carrying billed spend no vendor cost prices is left out of the actual figures whole, and the page states how much. Every research JSON (billed and actual) is imported ONLY by the staff route `/api/research/{basis}/{part}`, never by a client module.
+
+## The cost per positive reply article
+
+`content/blog/cold-email-cost-per-positive-reply` states the Research page's two average-cost studies
+(`herald-cost-over-time`, `scout-cost-over-time`): what a positive reply and a website visit cost on
+average since inception, on what clients were billed. It reads the committed `research.json`, never a
+fresh extract, so refresh the Research page first (above), then:
+
+```sh
+node apps/landing/scripts/blog-data/cost/derive-cost.mjs apps/dashboard/src/lib/research/research.json > apps/landing/scripts/blog-data/cost/cost.snapshot.json
+node apps/landing/scripts/blog-data/cost/render-cost-article.mjs apps/landing/scripts/blog-data/cost/cost.snapshot.json apps/landing/content/blog
+```
+
+derive-cost.mjs refuses a study that is not a `conclusion`; the renderer refuses a snapshot where the
+running average stopped rising since its first month or the latest month stopped being the dearest.

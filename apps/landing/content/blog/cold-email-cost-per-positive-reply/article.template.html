@@ -1,0 +1,62 @@
+<div style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:12px;padding:20px 24px;margin:0 0 32px">
+<p style="margin:0 0 8px;font-size:12px;font-weight:600;letter-spacing:0.08em;text-transform:uppercase;color:#1d4ed8">Key takeaway</p>
+<p style="margin:0 0 8px;font-weight:600;color:#0f172a">A positive reply to our cold emails cost {{raw reply.average.display}} on average, measured on what our clients paid:</p>
+<ul style="margin:0;padding-left:20px">
+<li><strong>{{raw reply.average.display}} per positive reply</strong>, average since {{month windowFrom}}</li>
+<li><strong>About {{dollars visit.average.value}} per website visit</strong> on emails that carry a link</li>
+<li>A measured price, not a rate card: everything spent, divided by every positive reply</li>
+</ul>
+</div>
+
+<h2 id="the-question">The question</h2>
+
+<p>Ask what cold email costs and you usually get a reply rate, or a price per lead. Neither tells you what you pay for the thing you want: a prospect who answers with interest.</p>
+
+<p>We run cold email for our clients and bill each campaign for what it spends. So we can answer from the bill. We added up what our clients paid for the emails that ask for a reply, and divided by the positive replies those emails brought back.</p>
+
+<h2 id="the-answer">The answer</h2>
+
+<p><strong>A positive reply cost {{raw reply.average.display}} on average.</strong> That is everything spent since {{month windowFrom}}, divided by every positive reply since, across all our clients.</p>
+
+{{chart running}}
+
+<p>The running average read {{raw firstRunning.display}} after {{raw firstRunning.name}} and stands at {{raw reply.average.display}} today. A positive reply is a prospect answering with interest. Auto-replies, out-of-office messages and refusals do not count.</p>
+
+<h2 id="by-month">Month by month</h2>
+
+{{chart months}}
+
+<p>Single months swing between {{raw cheapestMonth.display}} in {{raw cheapestMonth.name}} and {{raw dearestMonth.display}} in {{raw dearestMonth.name}}. One month carries only a handful of positive replies, so one reply more or less moves its bar a long way. Read the average since the start, not the latest month.</p>
+
+<h2 id="website-visits">What a website visit cost</h2>
+
+<p>Some campaigns ask for a click to the client's site rather than a reply. On the emails that carry a link, <strong>a website visit cost about {{dollars visit.average.value}}</strong> on average since {{month windowFrom}}.</p>
+
+<p>A visit costs far less because many more people click than answer. The two are different goals, priced on different emails, so one price does not convert into the other.</p>
+
+<h2 id="your-number">How to read your own number</h2>
+
+<p>Set the price of a positive reply against what one new customer is worth to you. A positive reply is the start of a conversation, not a sale, so count how many of them it takes you to sign one customer.</p>
+
+<p>Our average spans every client and every offer we ran. Yours will sit above or below it, depending on what you sell and to whom. The point is to see it: a price you measure on your own campaigns, not one you are quoted up front.</p>
+
+<h2 id="the-limits">What this data cannot tell you</h2>
+
+<ul>
+<li>Positive replies are rare, so the average carries a range: the true figure most likely sits between {{dollars reply.interval.lo}} and {{dollars reply.interval.hi}} per positive reply (95% interval).</li>
+<li>It is an average across all our clients. One campaign can cost a lot more or a lot less per positive reply.</li>
+<li>Only people we started writing to at least {{raw durationDays}} days before the read count, so a reply still on its way does not make the price look higher than it is.</li>
+</ul>
+
+<h2 id="notes">Notes</h2>
+
+<ul>
+<li>Positive replies: {{n reply.outcomes}} from {{n reply.emails}} cold emails on campaigns that ask for a reply, {{dollars reply.average.value}} each, 95% interval {{dollars reply.interval.lo}} to {{dollars reply.interval.hi}}.</li>
+<li>Website visits: {{n visit.outcomes}} from {{n visit.emails}} cold emails that carry a link, {{cents visit.average.value}} each, 95% interval {{cents visit.interval.lo}} to {{cents visit.interval.hi}}. Clicks through our own redirect are cleared of security scanners; most were recorded by the sending provider's tracking.</li>
+<li>Emails sent from {{month windowFrom}}, read from our production database on {{day readOn}}. People first written to before {{day cutoff}} count, with every outcome since. The price is what clients were billed; intervals are Poisson on the outcome count. A measurement, not a split test.</li>
+<li>The figures come from our internal research page, copied by the scripts on <a href="https://github.com/shamanic-technologies/distribute.you/tree/main/apps/landing/scripts/blog-data/cost">GitHub</a>.</li>
+</ul>
+
+<h2 id="about-us">About distribute.you</h2>
+
+<p>distribute.you runs cold email for you and shows what it cost you per positive reply while the campaign runs, with a daily cap and a pause button. From $1/day, first $30 free. <a href="https://distribute.you">distribute.you</a></p>
