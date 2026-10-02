@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-10-02T10:20:17.853Z",
+  "generatedAt": "2026-10-02T20:52:25.495Z",
   "allOrgs": true,
   "costBasis": "user",
   "unpricedBilledUsd": 0,
@@ -412,14 +412,14 @@
             },
             {
               "label": "Aug",
-              "value": 127.12,
+              "value": 127.13,
               "display": "$127",
               "note": "12 positive replies · 16,412 emails",
               "thin": false
             },
             {
               "label": "Sep",
-              "value": 518.57,
+              "value": 518.58,
               "display": "$519",
               "note": "3 positive replies · 17,299 emails",
               "thin": false
@@ -458,7 +458,7 @@
               },
               {
                 "label": "Aug",
-                "value": 152.06,
+                "value": 152.07,
                 "display": "$152",
                 "note": "35 positive replies · 79,209 emails to date",
                 "thin": false
@@ -657,7 +657,7 @@
       "result": {
         "display": "0.13%",
         "unit": "with tracking off, 0.10% on",
-        "sample": "p 0.40, 48,258 people"
+        "sample": "p 0.40, 48,259 people"
       },
       "crowned": false,
       "charts": [
@@ -670,7 +670,7 @@
               "label": "Tracking off",
               "value": 0.13,
               "display": "0.13%",
-              "note": "28 of 21,865 people",
+              "note": "28 of 21,866 people",
               "thin": false
             },
             {
@@ -686,7 +686,7 @@
       ],
       "conclusion": [
         "An email costs the same with or without the pixel, so the cheaper positive reply is the arm with more of them per person.",
-        "Tracking was on from 2026-02-10 to 2026-06-28 and off until 2026-09-10: two periods, not a split test, over 48,258 people."
+        "Tracking was on from 2026-02-10 to 2026-06-28 and off until 2026-09-10: two periods, not a split test, over 48,259 people."
       ],
       "verdict": {
         "kind": "noise",
@@ -705,7 +705,7 @@
       "result": {
         "display": "0.40%",
         "unit": "with tracking off, 0.29% on",
-        "sample": "p 0.03, 48,258 people"
+        "sample": "p 0.03, 48,259 people"
       },
       "crowned": false,
       "charts": [
@@ -718,7 +718,7 @@
               "label": "Tracking off",
               "value": 0.4,
               "display": "0.40%",
-              "note": "88 of 21,865 people",
+              "note": "88 of 21,866 people",
               "thin": false
             },
             {
@@ -740,14 +740,14 @@
               "label": "Tracking off",
               "value": 9.13,
               "display": "9.13%",
-              "note": "1,996 of 21,865 people",
+              "note": "1,997 of 21,866 people",
               "thin": false
             },
             {
               "label": "Tracking on",
-              "value": 1.42,
-              "display": "1.42%",
-              "note": "376 of 26,393 people",
+              "value": 1.43,
+              "display": "1.43%",
+              "note": "378 of 26,393 people",
               "thin": false
             }
           ],
@@ -756,7 +756,7 @@
       ],
       "conclusion": [
         "Auto-replies and out-of-office messages are not counted as replies.",
-        "Tracking was on from 2026-02-10 to 2026-06-28 and off until 2026-09-10: two periods, not a split test, over 48,258 people."
+        "Tracking was on from 2026-02-10 to 2026-06-28 and off until 2026-09-10: two periods, not a split test, over 48,259 people."
       ],
       "verdict": {
         "kind": "signal",
@@ -827,7 +827,7 @@
             {
               "key": "blind-discovery-email-v9",
               "label": "Blind discovery v9",
-              "value": 120.7,
+              "value": 120.71,
               "display": "$121",
               "note": "5 positive replies · 7,466 emails",
               "thin": false
@@ -1381,14 +1381,14 @@
             },
             {
               "label": "One block",
-              "value": 396.57,
+              "value": 396.58,
               "display": "$397",
               "note": "3 positive replies · 18,940 emails",
               "thin": false
             },
             {
               "label": "Single line breaks",
-              "value": 396.57,
+              "value": 396.58,
               "display": "None yet",
               "note": "0 positive replies · 231 emails, $23 spent",
               "thin": true
@@ -1439,14 +1439,14 @@
             },
             {
               "label": "One block",
-              "value": 319.77,
+              "value": 319.78,
               "display": "$320",
               "note": "3 positive replies · 13,587 emails",
               "thin": false
             },
             {
               "label": "Single line breaks",
-              "value": 319.77,
+              "value": 319.78,
               "display": "None yet",
               "note": "0 positive replies · 228 emails, $23 spent",
               "thin": true
@@ -1500,7 +1500,7 @@
             },
             {
               "label": "First name alone",
-              "value": 216.3,
+              "value": 216.31,
               "display": "$216",
               "note": "14 positive replies · 42,752 emails",
               "thin": false
@@ -1962,7 +1962,7 @@
             {
               "key": "sales-cold-email-outreach-azalea",
               "label": "Gemini 3.1 Pro · Blind discovery v9",
-              "value": 124.78,
+              "value": 124.79,
               "display": "$125",
               "note": "5 positive replies · 7,718 emails",
               "thin": false
@@ -2485,9 +2485,9 @@
             {
               "key": "gemini-3.5-flash-lite",
               "label": "Gemini 3.5 Flash-Lite",
-              "value": 3.83,
-              "display": "$3.83",
-              "note": "58 website visits · 3,314 emails with a link",
+              "value": 4.54,
+              "display": "$4.54",
+              "note": "49 website visits · 3,314 emails with a link",
               "thin": false
             },
             {
@@ -2563,7 +2563,7 @@
         "Over time: $1.05 in Jun, $1.24 in Jul.",
         "Same clients, same months, a website visit from Gemini 3.5 Flash costs 1.02x one from Gemini 3 Flash (95% interval 0.72x to 1.44x; 0.96x the website visits per email; 49 website visits in 1,554 emails with a link against 150 in 4,671).",
         "Same clients, same months, a website visit from Gemini 3.5 Flash costs 0.54x one from Gemini 3.1 Pro (95% interval 0.35x to 0.82x; 1.47x the website visits per email; 49 website visits in 1,438 emails with a link against 54 in 2,288).",
-        "Same clients, same months, Gemini 3.5 Flash against Gemini 3.5 Flash-Lite: 2 website visits in 50 emails with a link against 3 in 224, under 5 on one side, so no ratio."
+        "Same clients, same months, Gemini 3.5 Flash against Gemini 3.5 Flash-Lite: 2 website visits in 50 emails with a link against 4 in 224, under 5 on one side, so no ratio."
       ],
       "verdict": {
         "kind": "noise",
@@ -2618,9 +2618,9 @@
             {
               "key": "gemini-3.5-flash-lite",
               "label": "Gemini 3.5 Flash-Lite",
-              "value": 17.5,
-              "display": "1.75%",
-              "note": "58 website visits · 3,314 emails with a link",
+              "value": 14.8,
+              "display": "1.48%",
+              "note": "49 website visits · 3,314 emails with a link",
               "thin": false
             },
             {
@@ -2719,7 +2719,7 @@
         "Over time: 3.35% in Jun, 0.81% in Aug.",
         "Same clients, same months, Gemini 3 Flash gets 1.00x the website visits per email of Gemini 3.1 Pro (95% interval 0.69x to 1.45x; 130 website visits in 4,354 emails with a link against 94 in 3,772).",
         "Same clients, same months, Gemini 3 Flash gets 1.04x the website visits per email of Gemini 3.5 Flash (95% interval 0.73x to 1.47x; 150 website visits in 4,671 emails with a link against 49 in 1,554).",
-        "Same clients, same months, Gemini 3 Flash gets 1.95x the website visits per email of Gemini 3.5 Flash-Lite (95% interval 0.67x to 5.64x; 11 website visits in 318 emails with a link against 21 in 1,141).",
+        "Same clients, same months, Gemini 3 Flash gets 1.59x the website visits per email of Gemini 3.5 Flash-Lite (95% interval 0.59x to 4.25x; 11 website visits in 318 emails with a link against 21 in 1,141).",
         "A LLM with fewer than 10 website visits is ranked where its value puts it and marked Learning."
       ],
       "verdict": {
@@ -2734,12 +2734,12 @@
       "goal": "roi",
       "question": "What does a website visit cost on average?",
       "status": "measured",
-      "headline": "$2.87 per website visit on average since inception, across all our emails.",
+      "headline": "$2.94 per website visit on average since inception, across all our emails.",
       "winner": null,
       "result": {
-        "display": "$2.87",
+        "display": "$2.94",
         "unit": "per website visit, average since inception",
-        "sample": "389 website visits · 16,284 emails with a link to date"
+        "sample": "380 website visits · 16,284 emails with a link to date"
       },
       "crowned": true,
       "charts": [
@@ -2764,23 +2764,23 @@
             },
             {
               "label": "Jul",
-              "value": 1.79,
-              "display": "$1.79",
-              "note": "188 website visits · 5,803 emails with a link",
+              "value": 1.78,
+              "display": "$1.78",
+              "note": "189 website visits · 5,803 emails with a link",
               "thin": false
             },
             {
               "label": "Aug",
-              "value": 6.58,
-              "display": "$6.58",
-              "note": "66 website visits · 3,955 emails with a link",
+              "value": 6.68,
+              "display": "$6.68",
+              "note": "65 website visits · 3,955 emails with a link",
               "thin": false
             },
             {
               "label": "Sep",
-              "value": 4.7,
-              "display": "$4.70",
-              "note": "46 website visits · 2,479 emails with a link",
+              "value": 5.84,
+              "display": "$5.84",
+              "note": "37 website visits · 2,479 emails with a link",
               "thin": false
             }
           ],
@@ -2803,9 +2803,9 @@
               },
               {
                 "label": "Jul",
-                "value": 1.68,
-                "display": "$1.68",
-                "note": "277 website visits · 9,847 emails with a link to date",
+                "value": 1.67,
+                "display": "$1.67",
+                "note": "278 website visits · 9,847 emails with a link to date",
                 "thin": false
               },
               {
@@ -2817,16 +2817,16 @@
               },
               {
                 "label": "Sep",
-                "value": 2.87,
-                "display": "$2.87",
-                "note": "389 website visits · 16,281 emails with a link to date",
+                "value": 2.94,
+                "display": "$2.94",
+                "note": "380 website visits · 16,281 emails with a link to date",
                 "thin": false
               },
               {
                 "label": "Oct",
-                "value": 2.87,
-                "display": "$2.87",
-                "note": "389 website visits · 16,284 emails with a link to date",
+                "value": 2.94,
+                "display": "$2.94",
+                "note": "380 website visits · 16,284 emails with a link to date",
                 "thin": false
               }
             ]
@@ -2839,7 +2839,7 @@
       ],
       "verdict": {
         "kind": "conclusion",
-        "reason": "A measurement on 389 website visits: 95% interval $2.60 to $3.18 per website visit."
+        "reason": "A measurement on 380 website visits: 95% interval $2.66 to $3.26 per website visit."
       }
     },
     {
@@ -2849,12 +2849,12 @@
       "goal": "roi",
       "question": "How many follow-ups give the cheapest website visit?",
       "status": "measured",
-      "headline": "First email only: $1.58 per website visit, the cheapest depth.",
+      "headline": "First email only: $1.60 per website visit, the cheapest depth.",
       "winner": "First email only",
       "result": {
-        "display": "$1.58",
+        "display": "$1.60",
         "unit": "per website visit, first email only",
-        "sample": "322 website visits · $507 spent"
+        "sample": "318 website visits · $507 spent"
       },
       "crowned": true,
       "charts": [
@@ -2865,23 +2865,23 @@
           "points": [
             {
               "label": "First email only",
-              "value": 1.58,
-              "display": "$1.58",
-              "note": "322 website visits · $507 spent",
+              "value": 1.6,
+              "display": "$1.60",
+              "note": "318 website visits · $507 spent",
               "thin": false
             },
             {
               "label": "+ 1 follow-up",
-              "value": 2.18,
-              "display": "$2.18",
-              "note": "371 website visits · $811 spent",
+              "value": 2.23,
+              "display": "$2.23",
+              "note": "363 website visits · $811 spent",
               "thin": false
             },
             {
               "label": "+ 2 follow-ups",
-              "value": 2.93,
-              "display": "$2.93",
-              "note": "377 website visits · $1,106 spent",
+              "value": 3.01,
+              "display": "$3.01",
+              "note": "368 website visits · $1,106 spent",
               "thin": false
             }
           ],
@@ -2894,23 +2894,23 @@
           "points": [
             {
               "label": "First email",
-              "value": 1.58,
-              "display": "$1.58",
-              "note": "322 website visits · 8,018 emails with a link",
+              "value": 1.6,
+              "display": "$1.60",
+              "note": "318 website visits · 8,018 emails with a link",
               "thin": false
             },
             {
               "label": "Follow-up 1",
-              "value": 6.19,
-              "display": "$6.19",
-              "note": "49 website visits · 4,037 emails with a link",
+              "value": 6.74,
+              "display": "$6.74",
+              "note": "45 website visits · 4,037 emails with a link",
               "thin": false
             },
             {
               "label": "Follow-up 2",
-              "value": 49.28,
-              "display": "$49",
-              "note": "6 website visits · 3,899 emails with a link",
+              "value": 59.14,
+              "display": "$59",
+              "note": "5 website visits · 3,899 emails with a link",
               "thin": true
             }
           ],
@@ -2933,12 +2933,12 @@
       "goal": "rate",
       "question": "How many follow-ups get the most website visits?",
       "status": "measured",
-      "headline": "Website visits keep coming through 2 follow-ups: the last one adds 0.07 points.",
+      "headline": "Website visits keep coming through 2 follow-ups: the last one adds 0.06 points.",
       "winner": "+ 2 follow-ups",
       "result": {
-        "display": "4.70%",
+        "display": "4.59%",
         "unit": "of people got a website visit, all follow-ups",
-        "sample": "377 website visits from 8,018 people"
+        "sample": "368 website visits from 8,018 people"
       },
       "crowned": true,
       "charts": [
@@ -2949,23 +2949,23 @@
           "points": [
             {
               "label": "First email only",
-              "value": 40.2,
-              "display": "4.02%",
-              "note": "322 website visits from 8,018 people",
+              "value": 39.7,
+              "display": "3.97%",
+              "note": "318 website visits from 8,018 people",
               "thin": false
             },
             {
               "label": "+ 1 follow-up",
-              "value": 46.3,
-              "display": "4.63%",
-              "note": "371 website visits from 8,018 people",
+              "value": 45.3,
+              "display": "4.53%",
+              "note": "363 website visits from 8,018 people",
               "thin": false
             },
             {
               "label": "+ 2 follow-ups",
-              "value": 47,
-              "display": "4.70%",
-              "note": "377 website visits from 8,018 people",
+              "value": 45.9,
+              "display": "4.59%",
+              "note": "368 website visits from 8,018 people",
               "thin": false
             }
           ],
@@ -2974,12 +2974,12 @@
       ],
       "conclusion": [
         "Counted per person reached, so a follow-up is judged on what it adds, not on how many emails it took.",
-        "+ 1 follow-up: +0.61 points.",
-        "+ 2 follow-ups: +0.07 points."
+        "+ 1 follow-up: +0.56 points.",
+        "+ 2 follow-ups: +0.06 points."
       ],
       "verdict": {
         "kind": "conclusion",
-        "reason": "Follow-ups brought 55 of 377 website visits, on the same people the first email reached, and the last useful one (follow-up 2) brought 6 on its own."
+        "reason": "Follow-ups brought 50 of 368 website visits, on the same people the first email reached, and the last useful one (follow-up 2) brought 5 on its own."
       }
     },
     {
@@ -2989,12 +2989,12 @@
       "goal": "roi",
       "question": "Should we track opens for the cheapest website visit?",
       "status": "measured",
-      "headline": "Tracking off leads: 2.00% of people visited the website, against 1.50% (p < 0.001). A signal to confirm, not yet a conclusion.",
+      "headline": "Tracking off leads: 1.81% of people visited the website, against 1.50% (p 0.008). A signal to confirm, not yet a conclusion.",
       "winner": "Tracking off",
       "result": {
-        "display": "2.00%",
+        "display": "1.81%",
         "unit": "with tracking off, 1.50% on",
-        "sample": "p < 0.001, 48,258 people"
+        "sample": "p 0.008, 48,259 people"
       },
       "crowned": false,
       "charts": [
@@ -3005,9 +3005,9 @@
           "points": [
             {
               "label": "Tracking off",
-              "value": 2,
-              "display": "2.00%",
-              "note": "438 of 21,865 people",
+              "value": 1.81,
+              "display": "1.81%",
+              "note": "395 of 21,866 people",
               "thin": false
             },
             {
@@ -3023,11 +3023,11 @@
       ],
       "conclusion": [
         "An email costs the same with or without the pixel, so the cheaper website visit is the arm with more of them per person.",
-        "Tracking was on from 2026-02-10 to 2026-06-28 and off until 2026-09-10: two periods, not a split test, over 48,258 people."
+        "Tracking was on from 2026-02-10 to 2026-06-28 and off until 2026-09-10: two periods, not a split test, over 48,259 people."
       ],
       "verdict": {
         "kind": "signal",
-        "reason": "p < 0.001, but tracking was on and off in two different periods, not a split test: the calendar can move this as much as the pixel."
+        "reason": "p 0.008, but tracking was on and off in two different periods, not a split test: the calendar can move this as much as the pixel."
       }
     },
     {
@@ -3037,12 +3037,12 @@
       "goal": "rate",
       "question": "Should we track opens for the most website visits?",
       "status": "measured",
-      "headline": "Tracking off leads: 2.00% of people visited the website, against 1.50% (p < 0.001). A signal to confirm, not yet a conclusion.",
+      "headline": "Tracking off leads: 1.81% of people visited the website, against 1.50% (p 0.008). A signal to confirm, not yet a conclusion.",
       "winner": "Tracking off",
       "result": {
-        "display": "2.00%",
+        "display": "1.81%",
         "unit": "with tracking off, 1.50% on",
-        "sample": "p < 0.001, 48,258 people"
+        "sample": "p 0.008, 48,259 people"
       },
       "crowned": false,
       "charts": [
@@ -3053,9 +3053,9 @@
           "points": [
             {
               "label": "Tracking off",
-              "value": 2,
-              "display": "2.00%",
-              "note": "438 of 21,865 people",
+              "value": 1.81,
+              "display": "1.81%",
+              "note": "395 of 21,866 people",
               "thin": false
             },
             {
@@ -3071,11 +3071,11 @@
       ],
       "conclusion": [
         "A visit is the first tracked click a person made.",
-        "Tracking was on from 2026-02-10 to 2026-06-28 and off until 2026-09-10: two periods, not a split test, over 48,258 people."
+        "Tracking was on from 2026-02-10 to 2026-06-28 and off until 2026-09-10: two periods, not a split test, over 48,259 people."
       ],
       "verdict": {
         "kind": "signal",
-        "reason": "p < 0.001, but tracking was on and off in two different periods, not a split test: the calendar can move this as much as the pixel."
+        "reason": "p 0.008, but tracking was on and off in two different periods, not a split test: the calendar can move this as much as the pixel."
       }
     },
     {
@@ -3126,9 +3126,9 @@
             {
               "key": "cold-email-v35",
               "label": "Cold email v35",
-              "value": 3.47,
-              "display": "$3.47",
-              "note": "62 website visits · 3,369 emails with a link",
+              "value": 4.06,
+              "display": "$4.06",
+              "note": "53 website visits · 3,369 emails with a link",
               "thin": false
             },
             {
@@ -3187,16 +3187,16 @@
             },
             {
               "label": "Jul",
-              "value": 0.6,
-              "display": "$0.60",
-              "note": "96 website visits · 1,656 emails with a link",
+              "value": 0.59,
+              "display": "$0.59",
+              "note": "97 website visits · 1,656 emails with a link",
               "thin": false
             },
             {
               "label": "Aug",
-              "value": 9.43,
-              "display": "$9.43",
-              "note": "2 website visits · 267 emails with a link",
+              "value": 18.85,
+              "display": "$19",
+              "note": "1 website visit · 267 emails with a link",
               "thin": true
             }
           ],
@@ -3219,9 +3219,9 @@
               },
               {
                 "label": "Jul",
-                "value": 0.98,
-                "display": "$0.98",
-                "note": "161 website visits · 4,646 emails with a link to date",
+                "value": 0.97,
+                "display": "$0.97",
+                "note": "162 website visits · 4,646 emails with a link to date",
                 "thin": false
               },
               {
@@ -3238,7 +3238,7 @@
       ],
       "conclusion": [
         "Cold email v19: 163 website visits · 4,913 emails with a link, $176 spent.",
-        "Over time: $4.75 in May, $9.43 in Aug."
+        "Over time: $4.75 in May, $19 in Aug."
       ],
       "verdict": {
         "kind": "noise",
@@ -3307,20 +3307,20 @@
               "thin": false
             },
             {
-              "key": "cold-email-v35",
-              "label": "Cold email v35",
-              "value": 18.4,
-              "display": "1.84%",
-              "note": "62 website visits · 3,369 emails with a link",
-              "thin": false
-            },
-            {
               "key": "blind-discovery-email-v16",
               "label": "Blind discovery v16",
               "value": 16.9,
               "display": "1.69%",
               "note": "9 website visits · 531 emails with a link",
               "thin": true
+            },
+            {
+              "key": "cold-email-v35",
+              "label": "Cold email v35",
+              "value": 15.7,
+              "display": "1.57%",
+              "note": "53 website visits · 3,369 emails with a link",
+              "thin": false
             },
             {
               "key": "cold-email-v33",
@@ -3362,16 +3362,16 @@
             },
             {
               "label": "Jul",
-              "value": 58,
-              "display": "5.80%",
-              "note": "96 website visits · 1,656 emails with a link",
+              "value": 58.6,
+              "display": "5.86%",
+              "note": "97 website visits · 1,656 emails with a link",
               "thin": false
             },
             {
               "label": "Aug",
-              "value": 7.5,
-              "display": "0.75%",
-              "note": "2 website visits · 267 emails with a link",
+              "value": 3.7,
+              "display": "0.37%",
+              "note": "1 website visit · 267 emails with a link",
               "thin": true
             }
           ],
@@ -3394,9 +3394,9 @@
               },
               {
                 "label": "Jul",
-                "value": 34.65,
-                "display": "3.47%",
-                "note": "161 website visits · 4,646 emails with a link to date",
+                "value": 34.87,
+                "display": "3.49%",
+                "note": "162 website visits · 4,646 emails with a link to date",
                 "thin": false
               },
               {
@@ -3413,7 +3413,7 @@
       ],
       "conclusion": [
         "Cold email v19: 163 website visits · 4,913 emails with a link.",
-        "Over time: 1.22% in May, 0.75% in Aug.",
+        "Over time: 1.22% in May, 0.37% in Aug.",
         "A template with fewer than 10 website visits is ranked where its value puts it and marked Learning."
       ],
       "verdict": {
@@ -3428,12 +3428,12 @@
       "goal": "roi",
       "question": "Does the layout of the first email change what a website visit costs?",
       "status": "measured",
-      "headline": "Double line breaks wins at $2.19 per website visit.",
+      "headline": "Double line breaks wins at $2.23 per website visit.",
       "winner": "Double line breaks",
       "result": {
-        "display": "$2.19",
+        "display": "$2.23",
         "unit": "per website visit",
-        "sample": "241 website visits · 9,141 emails with a link"
+        "sample": "236 website visits · 9,141 emails with a link"
       },
       "crowned": true,
       "charts": [
@@ -3444,21 +3444,21 @@
           "points": [
             {
               "label": "Double line breaks",
-              "value": 2.19,
-              "display": "$2.19",
-              "note": "241 website visits · 9,141 emails with a link",
+              "value": 2.23,
+              "display": "$2.23",
+              "note": "236 website visits · 9,141 emails with a link",
               "thin": false
             },
             {
               "label": "One block",
-              "value": 3.98,
-              "display": "$3.98",
-              "note": "148 website visits · 7,134 emails with a link",
+              "value": 4.09,
+              "display": "$4.09",
+              "note": "144 website visits · 7,134 emails with a link",
               "thin": false
             },
             {
               "label": "Single line breaks",
-              "value": 3.98,
+              "value": 4.09,
               "display": "None yet",
               "note": "0 website visits · 9 emails with a link, $0.96 spent",
               "thin": true
@@ -3473,21 +3473,21 @@
           "points": [
             {
               "label": "Double line breaks",
-              "value": 1.8,
-              "display": "$1.80",
-              "note": "190 website visits · 6,591 emails with a link",
+              "value": 1.85,
+              "display": "$1.85",
+              "note": "185 website visits · 6,591 emails with a link",
               "thin": false
             },
             {
               "label": "One block",
-              "value": 2.17,
-              "display": "$2.17",
-              "note": "85 website visits · 4,260 emails with a link",
+              "value": 2.27,
+              "display": "$2.27",
+              "note": "81 website visits · 4,260 emails with a link",
               "thin": false
             },
             {
               "label": "Single line breaks",
-              "value": 2.17,
+              "value": 2.27,
               "display": "None yet",
               "note": "0 website visits · 6 emails with a link, $0.53 spent",
               "thin": true
@@ -3526,8 +3526,8 @@
         }
       ],
       "conclusion": [
-        "Double line breaks: 241 website visits · 9,141 emails with a link, $527 spent.",
-        "Flash tier: Double line breaks is cheapest at $1.80 per website visit (190 website visits · 6,591 emails with a link).",
+        "Double line breaks: 236 website visits · 9,141 emails with a link, $527 spent.",
+        "Flash tier: Double line breaks is cheapest at $1.85 per website visit (185 website visits · 6,591 emails with a link).",
         "Pro tier: Double line breaks is cheapest at $3.60 per website visit (51 website visits · 2,550 emails with a link).",
         "Every email of a sequence is filed under how its first email looked, and the sequence's website visits with it. Three layouts: one block (no line break at all), single line breaks (a new line with no empty line), double line breaks (an empty line between paragraphs). Classified by a regex on the text of the first email, no LLM involved.",
         "The model chose this on its own until Sep 28, 2026, when the templates started requiring a greeting and blank-line paragraphs. Every email here was written before, the last in Oct.",
@@ -3535,7 +3535,7 @@
       ],
       "verdict": {
         "kind": "conclusion",
-        "reason": "Double line breaks against One block, website visits per dollar: p < 0.001 (2 comparisons, so the bar is p < 0.025), and it holds on the same clients in the same months (1.53x, p < 0.001)."
+        "reason": "Double line breaks against One block, website visits per dollar: p < 0.001 (2 comparisons, so the bar is p < 0.025), and it holds on the same clients in the same months (1.50x, p < 0.001)."
       }
     },
     {
@@ -3568,9 +3568,9 @@
             },
             {
               "label": "Greeting + first name",
-              "value": 3.31,
-              "display": "$3.31",
-              "note": "57 website visits · 3,136 emails with a link",
+              "value": 3.93,
+              "display": "$3.93",
+              "note": "48 website visits · 3,136 emails with a link",
               "thin": false
             },
             {
@@ -3604,9 +3604,9 @@
             },
             {
               "label": "Greeting + first name",
-              "value": 3.37,
-              "display": "$3.37",
-              "note": "50 website visits · 2,650 emails with a link",
+              "value": 4.11,
+              "display": "$4.11",
+              "note": "41 website visits · 2,650 emails with a link",
               "thin": false
             }
           ],
@@ -3652,7 +3652,7 @@
       ],
       "verdict": {
         "kind": "signal",
-        "reason": "No greeting against Greeting + first name, website visits per dollar: p < 0.001 (2 comparisons, so the bar is p < 0.025), but on the same clients in the same months it reads 0.67x (p 0.217): the gap may be the clients'."
+        "reason": "No greeting against Greeting + first name, website visits per dollar: p < 0.001 (2 comparisons, so the bar is p < 0.025), but on the same clients in the same months it reads 0.65x (p 0.188): the gap may be the clients'."
       }
     },
     {
@@ -3685,9 +3685,9 @@
             },
             {
               "label": "No dash",
-              "value": 2.84,
-              "display": "$2.84",
-              "note": "368 website visits · 15,133 emails with a link",
+              "value": 2.91,
+              "display": "$2.91",
+              "note": "359 website visits · 15,133 emails with a link",
               "thin": false
             },
             {
@@ -3707,9 +3707,9 @@
           "points": [
             {
               "label": "No dash",
-              "value": 24.3,
-              "display": "2.43%",
-              "note": "368 website visits · 15,133 emails with a link",
+              "value": 23.7,
+              "display": "2.37%",
+              "note": "359 website visits · 15,133 emails with a link",
               "thin": false
             },
             {
@@ -3743,9 +3743,9 @@
             },
             {
               "label": "No dash",
-              "value": 1.91,
-              "display": "$1.91",
-              "note": "264 website visits · 10,385 emails with a link",
+              "value": 1.97,
+              "display": "$1.97",
+              "note": "255 website visits · 10,385 emails with a link",
               "thin": false
             },
             {
@@ -3765,9 +3765,9 @@
           "points": [
             {
               "label": "No dash",
-              "value": 25.4,
-              "display": "2.54%",
-              "note": "264 website visits · 10,385 emails with a link",
+              "value": 24.6,
+              "display": "2.46%",
+              "note": "255 website visits · 10,385 emails with a link",
               "thin": false
             },
             {
@@ -3974,9 +3974,9 @@
             {
               "key": "sales-cold-email-outreach-rampart",
               "label": "Gemini 3 Flash · Cold email v35",
-              "value": 2.36,
-              "display": "$2.36",
-              "note": "123 website visits · 6,103 emails with a link",
+              "value": 2.55,
+              "display": "$2.55",
+              "note": "114 website visits · 6,103 emails with a link",
               "thin": false
             },
             {
@@ -4150,9 +4150,9 @@
             {
               "key": "sales-cold-email-outreach-rampart",
               "label": "Gemini 3 Flash · Cold email v35",
-              "value": 20.2,
-              "display": "2.02%",
-              "note": "123 website visits · 6,103 emails with a link",
+              "value": 18.7,
+              "display": "1.87%",
+              "note": "114 website visits · 6,103 emails with a link",
               "thin": false
             },
             {
