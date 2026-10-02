@@ -485,7 +485,7 @@ export function renderOutcomeDigestHtml(summaries: DigestBrandSummary[]): string
 function renderOutcomeDigestText(summaries: DigestBrandSummary[]): string {
   return summaries.map((summary) => {
     const peopleLabel = `${summary.leads.length} ${summary.leads.length === 1 ? "person" : "people"} in your pipeline`;
-    const header = `${summary.brandName} — ${peopleLabel}`;
+    const header = `${summary.brandName}: ${peopleLabel}`;
     const rows = summary.leads.slice(0, MAX_LEADS_PER_BRAND).map((lead) => {
       const title = lead.title ? `, ${lead.title}` : "";
       const company = lead.companyName ? ` @ ${lead.companyName}` : "";
@@ -495,7 +495,7 @@ function renderOutcomeDigestText(summaries: DigestBrandSummary[]): string {
         lead.location,
       ].filter(Boolean).join(" · ");
       const metaText = meta ? ` [${meta}]` : "";
-      const when = lead.outcomeAt ? ` — ${formatTimeAgo(lead.outcomeAt)}` : "";
+      const when = lead.outcomeAt ? `, ${formatTimeAgo(lead.outcomeAt)}` : "";
       const tags = lead.tags.length > 0 ? ` (${lead.tags.join(", ")})` : "";
       return `- ${lead.name}${title}${company}${metaText}${when}${tags}`;
     });

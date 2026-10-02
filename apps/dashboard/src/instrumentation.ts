@@ -40,6 +40,59 @@ function emailLayout(content: string): string {
 </html>`;
 }
 
+const P = `color:#1a1a1a;font-size:16px;line-height:1.6;margin-bottom:16px;`;
+const DUNNING_BUTTON = "Send the next batch";
+const DUNNING_AUTO_TOPUP = "Turn on auto top-up while you're there so the next batch never has to wait.";
+const DUNNING_BLOCKED_CARD = "Your bank doesn't allow automatic top-ups, so add credit whenever your balance runs low and your outreach keeps going.";
+
+function founderEmail(name: string, subject: string, paragraphs: string[]) {
+  return {
+    name,
+    subject,
+    htmlBody: emailLayout(`
+      <p style="${P}">Hey,</p>
+${paragraphs.map((p) => `      <p style="${P}">${p}</p>`).join("\n")}
+      <p style="margin-bottom:20px;">
+        <a href="${DASHBOARD_URL}" style="display:inline-block;background:${EMAIL_ACCENT};color:#fff;padding:12px 24px;border-radius:6px;text-decoration:none;font-size:16px;">${DUNNING_BUTTON}</a>
+      </p>
+      <p style="${P}">Kevin<br />Founder, distribute.you</p>`),
+    textBody: `Hey,\n\n${paragraphs.join("\n\n")}\n\n${DUNNING_BUTTON}: ${DASHBOARD_URL}\n\nKevin\nFounder, distribute.you`,
+  };
+}
+
+function dunningTemplates() {
+  const steps: { name: string; subject: string; paragraphs: string[] }[] = [
+    {
+      name: "credit-depleted",
+      subject: "All your outreach went out",
+      paragraphs: [
+        "Every email your balance covered has gone out to your prospects. Any reply still comes straight to you.",
+        "Add credit and the next batch goes out to new decision-makers at the companies you target. Everything is set up, so it picks up where it left off.",
+      ],
+    },
+    {
+      name: "credit-depleted-followup-3d",
+      subject: "Your next batch is ready to go",
+      paragraphs: [
+        "Your last batch went out in full, and your campaigns are set up for the next one.",
+        "It goes out as soon as you add credit, to new decision-makers at the companies you target.",
+      ],
+    },
+    {
+      name: "credit-depleted-followup-10d",
+      subject: "Your campaigns are ready when you are",
+      paragraphs: [
+        "Your campaigns are set up exactly as you left them, audiences and emails included.",
+        "Add credit and the next batch goes out to new decision-makers at the companies you target.",
+      ],
+    },
+  ];
+  return steps.flatMap(({ name, subject, paragraphs }) => [
+    founderEmail(name, subject, [...paragraphs, DUNNING_AUTO_TOPUP]),
+    founderEmail(`${name}-blocked`, subject, [...paragraphs, DUNNING_BLOCKED_CARD]),
+  ]);
+}
+
 export const EMAIL_TEMPLATES = [
   // ── Campaign templates (branded) ──
   {
@@ -188,63 +241,19 @@ export const EMAIL_TEMPLATES = [
   STAFF_DIGEST_TEMPLATE_DEF,
 
   // ── Out-of-credit dunning (triggered by billing-service on depletion) ──
-  // billing-service sends { eventType, recipientEmail, metadata: {} } — NO template
-  // variables (generic founder-voice copy). Sequence: instant (T0) → +3d → +10d,
-  // stopped on recharge by billing-service. Sibling: billing-service#147.
-  //   credit-depleted             → instant, when the balance hits zero
-  //   credit-depleted-followup-3d → ~3 days later, if still depleted
-  //   credit-depleted-followup-10d → ~10 days later, if still depleted
-  {
-    name: "credit-depleted",
-    subject: "Your campaigns just stopped — you're out of credit",
-    htmlBody: emailLayout(`
-      <p style="color:#1a1a1a;font-size:16px;line-height:1.6;margin-bottom:16px;">Hey,</p>
-      <p style="color:#1a1a1a;font-size:16px;line-height:1.6;margin-bottom:16px;">
-        Your credit ran out, so your campaigns have stopped sending. Nothing is lost — add credit and they pick right back up.
-      </p>
-      <p style="color:#1a1a1a;font-size:16px;line-height:1.6;margin-bottom:16px;">
-        Want them to never stop again? Turn on auto-topup while you're there — it adds credit automatically when you run low.
-      </p>
-      <p style="margin-bottom:20px;">
-        <a href="${DASHBOARD_URL}" style="display:inline-block;background:${EMAIL_ACCENT};color:#fff;padding:12px 24px;border-radius:6px;text-decoration:none;font-size:16px;">Add credit & resume</a>
-      </p>
-      <p style="color:#1a1a1a;font-size:16px;line-height:1.6;margin-bottom:16px;">— Kevin, founder of distribute.you</p>`),
-    textBody: `Hey,\n\nYour credit ran out, so your campaigns have stopped sending. Nothing is lost — add credit and they pick right back up.\n\nWant them to never stop again? Turn on auto-topup while you're there — it adds credit automatically when you run low.\n\nAdd credit & resume: ${DASHBOARD_URL}\n\n— Kevin, founder of distribute.you`,
-  },
-  {
-    name: "credit-depleted-followup-3d",
-    subject: "Your campaigns are still paused",
-    htmlBody: emailLayout(`
-      <p style="color:#1a1a1a;font-size:16px;line-height:1.6;margin-bottom:16px;">Hey,</p>
-      <p style="color:#1a1a1a;font-size:16px;line-height:1.6;margin-bottom:16px;">
-        Quick nudge — your campaigns are still paused because your account is out of credit. Every day they're off is outreach you're not sending.
-      </p>
-      <p style="color:#1a1a1a;font-size:16px;line-height:1.6;margin-bottom:16px;">
-        Add credit to get them running again, and flip on auto-topup so this doesn't happen next time.
-      </p>
-      <p style="margin-bottom:20px;">
-        <a href="${DASHBOARD_URL}" style="display:inline-block;background:${EMAIL_ACCENT};color:#fff;padding:12px 24px;border-radius:6px;text-decoration:none;font-size:16px;">Add credit & resume</a>
-      </p>
-      <p style="color:#1a1a1a;font-size:16px;line-height:1.6;margin-bottom:16px;">— Kevin, founder of distribute.you</p>`),
-    textBody: `Hey,\n\nQuick nudge — your campaigns are still paused because your account is out of credit. Every day they're off is outreach you're not sending.\n\nAdd credit to get them running again, and flip on auto-topup so this doesn't happen next time.\n\nAdd credit & resume: ${DASHBOARD_URL}\n\n— Kevin, founder of distribute.you`,
-  },
-  {
-    name: "credit-depleted-followup-10d",
-    subject: "Still want to keep your outreach running?",
-    htmlBody: emailLayout(`
-      <p style="color:#1a1a1a;font-size:16px;line-height:1.6;margin-bottom:16px;">Hey,</p>
-      <p style="color:#1a1a1a;font-size:16px;line-height:1.6;margin-bottom:16px;">
-        Your campaigns have been paused for a while now — out of credit. They're still set up exactly as you left them and will resume the moment you add credit.
-      </p>
-      <p style="color:#1a1a1a;font-size:16px;line-height:1.6;margin-bottom:16px;">
-        If now's the time, add credit and turn on auto-topup so your outreach just keeps running.
-      </p>
-      <p style="margin-bottom:20px;">
-        <a href="${DASHBOARD_URL}" style="display:inline-block;background:${EMAIL_ACCENT};color:#fff;padding:12px 24px;border-radius:6px;text-decoration:none;font-size:16px;">Add credit & resume</a>
-      </p>
-      <p style="color:#1a1a1a;font-size:16px;line-height:1.6;margin-bottom:16px;">— Kevin, founder of distribute.you</p>`),
-    textBody: `Hey,\n\nYour campaigns have been paused for a while now — out of credit. They're still set up exactly as you left them and will resume the moment you add credit.\n\nIf now's the time, add credit and turn on auto-topup so your outreach just keeps running.\n\nAdd credit & resume: ${DASHBOARD_URL}\n\n— Kevin, founder of distribute.you`,
-  },
+  // billing-service sends { eventType, recipientEmail, metadata: {} }: NO template
+  // variables, so this copy carries no figure (a number the client's dashboard
+  // does not show, or one we cannot read at send time, is left out). Sequence:
+  // instant (T0), +3d, +10d, stopped on recharge by billing-service (#147). Each
+  // step has a `-blocked` twin, sent when the saved card cannot be charged off
+  // session (India / RBI): auto top-up is a dead end there, so the twin swaps that
+  // line for a manual one. This app owns all six (they used to be hand-seeded).
+  //
+  // Owner rule (2026-10-01/02): a balance used up is a SUCCESS moment. Lead with
+  // what went out, then the gain of continuing, then ONE button. Never "ran out",
+  // "stopped", "exhausted", and never an em/en dash (guard:
+  // tests/email-templates-no-dash.test.ts).
+  ...dunningTemplates(),
 
   // ── Daily return digest ──
   // The dashboard cron sends ONE email PER BRAND, and ONLY when that brand's return
@@ -278,8 +287,8 @@ export const EMAIL_TEMPLATES = [
       <p style="margin-bottom:20px;">
         <a href="${DASHBOARD_URL}" style="display:inline-block;background:${EMAIL_ACCENT};color:#fff;padding:12px 24px;border-radius:6px;text-decoration:none;font-size:16px;">Open dashboard</a>
       </p>
-      <p style="color:#1a1a1a;font-size:16px;line-height:1.6;margin-bottom:16px;">— Kevin, founder of distribute.you</p>`),
-    textBody: `Hey,\n\n{{brandName}} is now returning {{roiToday}} for every dollar spent, up from {{roiPrevious}}.\n\nWhat moved it: {{newOutcomes}}.\n\n{{totalLeads}} people in your pipeline.\n\n{{digestText}}\n\nOpen dashboard: ${DASHBOARD_URL}\n\n— Kevin, founder of distribute.you`,
+      <p style="color:#1a1a1a;font-size:16px;line-height:1.6;margin-bottom:16px;">Kevin<br />Founder, distribute.you</p>`),
+    textBody: `Hey,\n\n{{brandName}} is now returning {{roiToday}} for every dollar spent, up from {{roiPrevious}}.\n\nWhat moved it: {{newOutcomes}}.\n\n{{totalLeads}} people in your pipeline.\n\n{{digestText}}\n\nOpen dashboard: ${DASHBOARD_URL}\n\nKevin\nFounder, distribute.you`,
   },
 ];
 
