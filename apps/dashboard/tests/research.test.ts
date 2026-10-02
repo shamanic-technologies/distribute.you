@@ -102,8 +102,9 @@ describe("research.json is coherent", () => {
     }
   });
 
-  it("ranks thin bars by their value and calls the first bar the winner, thin or not", () => {
-    // Owner rule 2026-09-27: never sink a thin bar below the others; the first one wins.
+  it("ranks thin bars by their value and keeps the first bar as the leader, thin or not", () => {
+    // Owner rule 2026-09-27: never sink a thin bar below the others. Since 2026-10-02 the first
+    // bar only WINS when its verdict is a conclusion; otherwise it leads.
     for (const s of RESEARCH.studies.filter((st) => ["llm", "template", "workflow"].includes(st.topic) && st.status === "measured")) {
       const pts = s.charts[0].points;
       expect(s.winner, s.id).toBe(pts[0].label);
@@ -111,19 +112,24 @@ describe("research.json is coherent", () => {
         if (s.charts[0].lowerIsBetter) expect(pts[i].value, s.id).toBeGreaterThanOrEqual(pts[i - 1].value);
         else expect(pts[i].value, s.id).toBeLessThanOrEqual(pts[i - 1].value);
       }
-      expect(s.crowned, s.id).toBe(!pts[0].thin);
+      expect(s.crowned, s.id).toBe(s.verdict?.kind === "conclusion");
       expect(s.headline, s.id).not.toMatch(/thin/i);
     }
   });
 
-  it("always names the first bar the winner of a two-arm study, whatever its p-value", () => {
-    // Owner rule 2026-09-28: a p-value is shown, it never withholds the winner.
+  it("states a verdict on every measured study, and only a conclusion's headline says it wins", () => {
+    // Owner 2026-10-02: every study says whether it holds a conclusion, a signal or noise. The
+    // first bar stays the leader whatever the word; the p-value is shown beside it.
     for (const s of RESEARCH.studies.filter((st) => ["naming", "opens"].includes(st.topic))) {
       expect(s.winner, s.id).toBe(s.charts[0].points[0].label);
       expect(s.headline, s.id).toMatch(/\(p [<\d]/);
     }
-    for (const s of RESEARCH.studies) {
-      if (s.status === "measured") expect(s.winner, s.id).not.toBeNull();
+    for (const s of RESEARCH.studies.filter((st) => st.status === "measured")) {
+      expect(["conclusion", "signal", "noise"], s.id).toContain(s.verdict?.kind);
+      expect(s.verdict?.reason.length, s.id).toBeGreaterThan(10);
+      if (s.verdict?.kind !== "conclusion") expect(s.headline, s.id).not.toMatch(/ wins /);
+      if (s.verdict?.kind === "signal") expect(s.headline, s.id).toMatch(/A signal to confirm/);
+      if (s.verdict?.kind === "noise") expect(s.headline, s.id).toMatch(/Noise so far/);
       expect(s.headline, s.id).not.toMatch(/no clear winner|not significant/i);
     }
   });
@@ -186,9 +192,9 @@ describe("research.json is coherent", () => {
       expect(s.status, s.id).toBe("measured");
       expect(s.charts[0].points.map((p) => p.label).sort(), s.id).toEqual(["Client named", "Client not named"]);
       expect(s.headline, s.id).toMatch(/\(p [<\d]/);
-      // the better side always wins and is the first bar; the p-value is information, not a gate
+      // the better side is the first bar; it wins only when the verdict is a conclusion
       expect(s.winner, s.id).toBe(s.charts[0].points[0].label);
-      expect(s.headline, s.id).toMatch(new RegExp(`^${s.winner} wins`));
+      expect(s.headline, s.id).toMatch(new RegExp(`^${s.winner} ${s.verdict?.kind === "conclusion" ? "wins" : "leads"}`));
       expect(s.conclusion.join(" "), s.id).toContain("not a split test");
       expect(s.charts[0].note, s.id).toBe(RESEARCH.maturation.note);
       // the crews' names stay internal: the study joins its section by its crew field alone

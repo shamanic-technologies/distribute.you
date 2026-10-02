@@ -53,8 +53,14 @@ export interface ResearchStudy {
   headline: string;
   /** The label of the winning bar, when there is one. */
   winner: string | null;
-  /** False when the leader sits on counts too thin to call a winner. */
+  /** True only when the verdict is a conclusion. */
   crowned: boolean;
+  /**
+   * What the data can carry (verdict.mjs, owner 2026-10-02): a conclusion (holds after the
+   * multiple-comparison correction AND on the same clients in the same months), a signal (to
+   * confirm) or noise. Optional on a snapshot written before verdicts existed.
+   */
+  verdict?: { kind: "conclusion" | "signal" | "noise"; reason: string };
   /** The figure the card leads with, its unit in words, and the counts behind it. */
   result: { display: string; unit: string; sample: string } | null;
   charts: ResearchChart[];
@@ -199,11 +205,11 @@ export function studyById(id: string, file: ResearchFile): ResearchStudy | null 
   return file.studies.find((s) => s.id === id) ?? null;
 }
 
-/** A study's standing as one word: a called winner, a leader on thin counts, or no data. */
-export type StudyState = "winner" | "thin" | "no-data";
+/** A study's standing as one word: its verdict, or no data. */
+export type StudyState = "conclusion" | "signal" | "noise" | "no-data";
 export function studyState(study: ResearchStudy): StudyState {
   if (study.status !== "measured") return "no-data";
-  return study.winner ? "winner" : "thin";
+  return study.verdict?.kind ?? "noise";
 }
 
 /**

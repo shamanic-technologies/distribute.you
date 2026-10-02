@@ -30,12 +30,13 @@
 //  - A WORKFLOW is named by what it runs (its model and its template, and the month it first sent
 //    when two share both), never by its codename: nobody outside the team knows the names.
 import { likeForLike, sharedPairs } from "./like-for-like.mjs";
+import { compareVerdict, headlineFor, MIN_OUTCOMES } from "./verdict.mjs";
 import { readFileSync, writeFileSync } from "node:fs";
 import { execFileSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
 import { MODEL_LABEL } from "./model-label.mjs";
-import { NAMING_LABEL, namingSides, rateP, costP, pText } from "./naming/naming.mjs";
+import { NAMING_LABEL, namingOf, namingSides, rateP, costP, pText } from "./naming/naming.mjs";
 
 const here = dirname(fileURLToPath(import.meta.url));
 const factsPath = process.argv[2];
@@ -77,6 +78,12 @@ const PIXEL_NOTE = `People we started writing to in the ${pixelHeldDays} days be
 const n = (v) => Number(v).toLocaleString("en-US");
 const usd = (v) => (Math.abs(v) < 10 ? `$${v.toFixed(2)}` : `$${Math.round(v).toLocaleString("en-US")}`);
 // The window sits inside one year, so a month reads alone; a second year would need it stated.
+// Exact 95% Poisson interval on a count, by bisection on the cumulative distribution.
+function poissonInterval(k) {
+  const cdf = (x, l) => { let t = Math.exp(-l), s = t; for (let i = 1; i <= x; i++) { t *= l / i; s += t; } return s; };
+  const solve = (f, target) => { let lo = 0, hi = k * 5 + 20; for (let i = 0; i < 200; i++) { const mid = (lo + hi) / 2; if (f(mid) > target) lo = mid; else hi = mid; } return (lo + hi) / 2; };
+  return [k === 0 ? 0 : solve((l) => cdf(k - 1, l), 0.975), solve((l) => cdf(k, l), 0.025)];
+}
 const monthLabel = (ym) => MONTHS[Number(ym.slice(5, 7)) - 1];
 
 // A template id reads as `cold-email-v12`; the page shows it in words, the version kept since two
@@ -613,10 +620,8 @@ for (const key of ["reply", "visit"]) {
   // never the last month on its own. The monthly bars stay beside it as context.
   {
     const avg = sinceInception(o, R.byMonth, "cost");
-    const w = costWinner(o, R.byModel);
-    const wavg = w ? sinceInception(o, R.modelByMonth[w.row.bucket], "cost") : [];
+    // The cheapest LLM is the LLM study's question, under its own verdict: not repeated here.
     const all = avg.length ? avg[avg.length - 1] : null;
-    const best = wavg.length ? wavg[wavg.length - 1] : null;
     add({
       id: `${o.crew}-cost-over-time`,
       crew: o.crew,
@@ -625,17 +630,11 @@ for (const key of ["reply", "visit"]) {
       question: `What does a ${o.noun} cost on average?`,
       status: all ? "measured" : "not_enough_data",
       headline: all ? `${all.display} per ${o.noun} on average since inception, across all our emails.` : `Not enough ${o.nounPlural} to state an average yet.`,
-      winner: w ? w.row.bucket : null,
+      winner: null,
       result: all ? { display: all.display, unit: `per ${o.noun}, average since inception`, sample: all.note } : null,
-      crowned: w ? w.crowned : false,
-      charts: [
-        monthsChart(o, R.byMonth, "cost", "All our emails", true),
-        ...(wavg.length ? [monthsChart(o, R.modelByMonth[w.row.bucket], "cost", `${w.row.bucket} (cheapest LLM)`, true)] : []),
-      ],
-      conclusion: [
-        `The average divides everything spent since the first email by every ${o.noun} since; the monthly bars are context, not the answer.`,
-        best ? `${w.row.bucket} (cheapest LLM): ${best.display} per ${o.noun} on average since inception.` : null,
-      ].filter(Boolean),
+      crowned: false,
+      charts: [monthsChart(o, R.byMonth, "cost", "All our emails", true)],
+      conclusion: [`The average divides everything spent since the first email by every ${o.noun} since; the monthly bars are context, not the answer.`],
     });
   }
 
@@ -966,6 +965,120 @@ for (const key of ["reply", "visit"]) {
   catalog[o.crew] = { workflows, templates, models };
 }
 catalog.pilot = { workflows: [], templates: [], models: [] };
+
+// ---------- verdicts ----------
+// Every measured study gets one word, conclusion / signal / noise (verdict.mjs), and its headline
+// says only what that word allows. The leader stays the first bar whatever the word.
+{
+  const side = (o, label, r) => (r ? { label, key: r.bucket, outcomes: r[o.count], emails: r.emails, spend: r.spend } : null);
+  // leader and runner-up of a categorical cut, in the order its chart draws them
+  const pairOf = (o, rows, goal) => {
+    const drawn = rows.filter((r) => r.emails > 0);
+    if (goal === "rate") {
+      const sorted = [...drawn].sort((a, b) => b[o.rate] - a[o.rate] || b.emails - a.emails);
+      return { a: sorted[0], b: sorted[1], m: drawn.length - 1 };
+    }
+    const priced = drawn.filter((r) => r[o.cost] !== null).sort(byCost(o));
+    const unpriced = drawn.filter((r) => r[o.cost] === null).sort((x, y) => y.spend - x.spend);
+    return { a: priced[0], b: priced[1] ?? unpriced[0], m: drawn.length - 1 };
+  };
+  const judge = (study, v) => {
+    study.verdict = { kind: v.kind, reason: v.reason };
+    study.crowned = v.kind === "conclusion";
+    if (study.status === "measured") study.headline = headlineFor(study.headline, v.kind);
+  };
+  const byId = new Map(studies.map((st) => [st.id, st]));
+  for (const key of ["reply", "visit"]) {
+    const o = OUTCOMES[key];
+    const R = facts.research[key];
+    const nouns = { noun: o.noun, nouns: o.nounPlural, count: o.count };
+    const categorical = [
+      { dim: "llm", cut: "byModel", strata: R.modelStrata, label: (b) => b },
+      { dim: "template", cut: "byTemplate", strata: R.templateStrata, label: templateLabel },
+      { dim: "workflow", cut: "byWorkflow", strata: R.workflowStrata, label: workflowLabelFor(key) },
+    ];
+    for (const c of categorical) {
+      for (const goal of ["roi", "rate"]) {
+        const st = byId.get(`${o.crew}-${c.dim}-${goal}`);
+        if (!st || st.status !== "measured") continue;
+        const { a, b, m } = pairOf(o, R[c.cut], goal);
+        judge(st, compareVerdict({ a: side(o, a && c.label(a.bucket), a), b: side(o, b && c.label(b.bucket), b), goal, comparisons: m, strata: c.strata, ...nouns }));
+      }
+    }
+    for (const [dim, cut, strata] of [["layout", "byLayout", R.layoutStrata], ["opening", "byOpening", R.openingStrata], ["dash", "byDash", R.dashStrata]]) {
+      const st = byId.get(`${o.crew}-${dim}-roi`);
+      if (!st || st.status !== "measured") continue;
+      const { a, b, m } = pairOf(o, R[cut], "roi");
+      judge(st, compareVerdict({ a: side(o, a?.bucket, a), b: side(o, b?.bucket, b), goal: "roi", comparisons: m, strata, ...nouns }));
+    }
+    if (key === "reply") {
+      // naming: the template strata merged per side, by what each template's prompt says
+      const { rows } = namingSides(o, R, templateTexts);
+      const strata = {};
+      for (const [tpl, byStratum] of Object.entries(R.templateStrata)) {
+        const k = namingOf(templateTexts, tpl);
+        if (!k) continue;
+        const into = (strata[NAMING_LABEL[k]] ||= {});
+        for (const [sk, x] of Object.entries(byStratum)) {
+          const t = (into[sk] ||= { emails: 0, clicks: 0, replies: 0, spend: 0 });
+          t.emails += x.emails; t.clicks += x.clicks; t.replies += x.replies; t.spend += x.spend;
+        }
+      }
+      for (const goal of ["rate", "roi"]) {
+        const st = byId.get(`${o.crew}-naming-${goal}`);
+        if (!st || st.status !== "measured") continue;
+        const { a, b } = pairOf(o, rows, goal);
+        judge(st, compareVerdict({ a: side(o, a?.bucket, a), b: side(o, b?.bucket, b), goal, comparisons: 1, strata, ...nouns }));
+      }
+    }
+    // follow-ups: the first email against every follow-up, on the SAME people (no client mix)
+    {
+      const first = R.byStep.find((s) => s.bucket === "First email");
+      const rest = R.byStep.filter((s) => s.bucket !== "First email").reduce((t, s) => ({ emails: t.emails + s.emails, spend: t.spend + s.spend, out: t.out + s[o.count] }), { emails: 0, spend: 0, out: 0 });
+      const roi = byId.get(`${o.crew}-followups-roi`);
+      if (roi?.status === "measured" && first) {
+        const f = { label: "The first email", outcomes: first[o.count], emails: first.emails, spend: first.spend };
+        const u = { label: "the follow-ups", outcomes: rest.out, emails: rest.emails, spend: rest.spend };
+        const firstCheaper = (f.outcomes / f.spend || 0) >= (u.outcomes / u.spend || 0);
+        const [a, b] = firstCheaper ? [f, { ...u, label: "the follow-ups" }] : [{ ...u, label: "The follow-ups" }, { ...f, label: "the first email" }];
+        judge(roi, compareVerdict({ a, b, goal: "roi", comparisons: 1, splitTest: true, ...nouns }));
+      }
+      const rate = byId.get(`${o.crew}-followups-rate`);
+      if (rate?.status === "measured") {
+        const lastStep = [...R.byStep].reverse().find((s) => s.bucket !== "First email" && s[o.count] > 0);
+        const last = lastStep ? lastStep[o.count] : 0;
+        const v = rest.out < MIN_OUTCOMES
+          ? { kind: "noise", reason: `Follow-ups brought ${n(rest.out)} ${rest.out === 1 ? o.noun : o.nounPlural} in all: too few to say they add any.` }
+          : last >= MIN_OUTCOMES
+            ? { kind: "conclusion", reason: `Follow-ups brought ${n(rest.out)} of ${n(rest.out + (first?.[o.count] ?? 0))} ${o.nounPlural}, on the same people the first email reached, and the last useful one (${lastStep.bucket.toLowerCase()}) brought ${n(last)} on its own.` }
+            : { kind: "signal", reason: `Follow-ups brought ${n(rest.out)} of ${n(rest.out + (first?.[o.count] ?? 0))} ${o.nounPlural}, so they add some; but the last useful one (${lastStep.bucket.toLowerCase()}) brought only ${n(last)}, too few to say how far to go.` };
+        judge(rate, v);
+      }
+    }
+    // open tracking: two periods, never a split test, so at best a signal
+    for (const goal of ["roi", "rate"]) {
+      const st = byId.get(`${o.crew}-opens-${goal}`);
+      if (!st) continue;
+      const mtr = goal === "roi" ? (key === "reply" ? pixel.positive : pixel.clicked) : key === "reply" ? pixel.replied : pixel.clicked;
+      judge(st, mtr.significant
+        ? { kind: "signal", reason: `p ${mtr.p}, but tracking was on and off in two different periods, not a split test: the calendar can move this as much as the pixel.` }
+        : { kind: "noise", reason: `p ${mtr.p}: a gap chance alone produces often, and the two periods are not a split test.` });
+    }
+    // the average cost: a measurement, not a comparison
+    {
+      const st = byId.get(`${o.crew}-cost-over-time`);
+      if (st?.status === "measured") {
+        const got = R.byMonth.reduce((t, r) => t + r[o.count], 0);
+        const spend = R.byMonth.reduce((t, r) => t + r.spend, 0);
+        const [lo, hi] = poissonInterval(got);
+        judge(st, got >= MIN_OUTCOMES
+          ? { kind: "conclusion", reason: `A measurement on ${n(got)} ${o.nounPlural}: 95% interval ${usd(spend / hi)} to ${usd(spend / lo)} per ${o.noun}.` }
+          : { kind: "noise", reason: `Only ${n(got)} ${got === 1 ? o.noun : o.nounPlural} so far.` });
+      }
+    }
+  }
+  for (const st of studies) if (!st.verdict) st.verdict = { kind: "noise", reason: st.conclusion[0] ?? "Not enough data yet." };
+}
 
 const sideDir = process.argv[3];
 if (!sideDir) throw new Error("usage: research.mjs <facts.json> <dir for research-catalog.json + research-templates.json>");
