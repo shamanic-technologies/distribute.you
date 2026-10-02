@@ -173,8 +173,11 @@ export async function launchFromPreview(input: LaunchInput, progress: LaunchProg
     const featureInputs: Record<string, string> = {};
     for (const [k, v] of Object.entries(prefill.prefilled)) if (typeof v === "string" && v.trim()) featureInputs[k] = v;
 
+    // A campaign name is unique per org, and one channel works several legs (cold email
+    // finds website visits AND positive replies): the leg's outcome tells them apart,
+    // the way the "Add a brand" modal names its campaigns.
     const { campaign } = await createCampaignWithoutBrandEnrichment({
-      name: `${offerName} (${c.label})`,
+      name: `${offerName} (${c.outcome}, ${c.label})`,
       workflowSlug,
       brandUrls: [input.website],
       offerId,
