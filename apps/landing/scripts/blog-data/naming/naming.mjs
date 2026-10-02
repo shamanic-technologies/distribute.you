@@ -1,7 +1,5 @@
-// Naming the client: the ONE derivation behind both the Research page's naming studies
-// (research.mjs, `herald-naming-rate` / `herald-naming-roi`) and the blog article
-// `cold-email-response-rate` (render-naming-article.mjs), so the two can never state two
-// figures for one population.
+// Naming the client: the derivation behind the Research page's naming studies (research.mjs,
+// `herald-naming-rate` / `herald-naming-roi`). Its blog article was taken down on 2026-10-02.
 //
 // Does an email that keeps the client's name back get more positive replies, and cheaper ones,
 // than one that names it? Each template VERSION is put on a side by what its prompt tells the

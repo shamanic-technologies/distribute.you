@@ -16,25 +16,25 @@
 </figure>
 <h2 id="the-test">The test</h2>
 
-<p>We wrote <strong>125,000 cold emails</strong> with both tiers, on real campaigns for {{n volume.orgs}} clients, and counted two things per dollar spent: how many people clicked the link, and how many wrote back with interest. Not one prompt per tier. Every client runs an A/B test across our whole catalogue of writing workflows, so the question we can answer is sharper than Flash or Pro: which workflow, on which tier, buys the outcome for the least, and by how much it beats the average.</p>
+<p>We wrote <strong>125,000 cold emails</strong> with both tiers, on real campaigns for {{n volume.orgs}} clients, and counted two things per dollar spent: how many people clicked the link, and how many wrote back with interest. Not one prompt per tier: our campaigns run a catalogue of writing workflows, each for its own clients. That is not a split test, so every finding below says whether it still holds when we compare the two tiers on the same clients in the same months (a conclusion), only on the raw counts (a signal), or not at all (noise).</p>
 
 <h2 id="the-answer">The answer</h2>
 
-<p><strong>Our best Pro workflow buys a positive reply for {{usd best.reply.cpr}}.</strong> The Pro tier as a whole pays {{usd pro.total.cpr}}; Flash pays {{usd flash.total.cpr}}, on a single reply. <strong>Our best Flash workflow buys a website visit for {{usd best.visit.cpc}}.</strong> The Flash tier as a whole pays {{usd flashLinked.total.cpc}}, Pro {{usd proLinked.total.cpc}}. Each tier wins one match, and inside each tier the winning workflow beats its own average.</p>
+<p><strong>Flash buys a website visit cheaper than Pro.</strong> The Flash tier pays {{usd flashLinked.total.cpc}} per visit, Pro {{usd proLinked.total.cpc}}, and the gap holds when we compare the two tiers on the same clients in the same months: a conclusion. <strong>On positive replies, nothing is settled.</strong> The Pro tier pays {{usd pro.total.cpr}}; Flash pays {{usd flash.total.cpr}}, on a single reply, far too few to compare: noise.</p>
 
-{{chart|best=visit|cut=linked.byTier|metric=cpc|title=Cost per website visit (USD, lower is better)|note=Measured on the emails whose body carried a link to the client's site.}}
+{{chart|cut=linked.byTier|metric=cpc|title=Cost per website visit (USD, lower is better)|note=Measured on the emails whose body carried a link to the client's site.}}
 
-{{chart|best=reply|cut=all.byTier|metric=cpr|title=Cost per positive reply (USD, lower is better)|note=Measured on every email, since a reply needs no link.}}
+{{chart|cut=all.byTier|metric=cpr|title=Cost per positive reply (USD, lower is better)|note=Measured on every email, since a reply needs no link.}}
 
-<h2 id="the-spread">{{n best.workflowsPastFloor}} A/B tests, one winner per outcome</h2>
+<h2 id="the-spread">{{n best.workflowsPastFloor}} workflows, and why we crown none</h2>
 
-<p>Each A/B test is one prompt on one model, which we call a workflow. We ran {{n best.workflowsPastFloor}} of them past a thousand emails each, on the same kinds of lists. The spread between them is the whole point of running the test. The best Pro workflow buys a positive reply for {{usd best.reply.cpr}} where its own tier pays {{usd pro.total.cpr}}, and no other workflow has enough replies to be priced yet. On the visit, {{n best.pricedCount}} workflows clear the bar: the two cheapest are Flash and buy one for {{usd best.visit.cpc}}, and the cheapest Pro workflow costs {{usd best.bestPricedPro.cpc}}.</p>
+<p>A workflow is one prompt on one model. We ran {{n best.workflowsPastFloor}} of them past a thousand emails each. The cheapest of {{n best.workflowsPastFloor}} always looks better than it is: part of its lead is luck, and each ran for different clients. On positive replies the cheapest workflows rest on one or two replies each, and on website visits the gap between the cheapest ones does not hold on the same clients. So we name no winning workflow: noise.</p>
 
-<p><strong>This is the gap distribute.you gives its clients.</strong> Every campaign runs on the workflow with the best measured cost for what that campaign buys, across every client. A client never gets the average of the test. They get its winner, and the winner changes when the numbers do.</p>
+<p>Every campaign still runs on the workflow with the best measured cost for what it buys, and that pick moves as the numbers move. What we can state is the tier result above.</p>
 
-<h2 id="the-twist">The twist: what the email asks for decides the outcome</h2>
+<h2 id="the-twist">Links and replies: close, not settled</h2>
 
-<p><strong>The positive replies come from Pro emails with no link in them</strong>: {{pick|cut=pro.byLink|bucket=no link|field=repliesPerTenThousand|fmt=raw}} positive replies per 10,000 without a link against {{pick|cut=pro.byLink|bucket=link in the body|field=repliesPerTenThousand|fmt=raw}} with one. Put a link in the email and people click it instead of writing back. Leave the link out and they reply. Flash or Pro does not change that. It only changes what each one costs: on the reply, Pro is the only tier that prices one at all; on the visit, Flash is the cheaper tier by a wide margin.</p>
+<p>Pro emails with no link got {{pick|cut=pro.byLink|bucket=no link|field=repliesPerTenThousand|fmt=raw}} positive replies per 10,000, against {{pick|cut=pro.byLink|bucket=link in the body|field=repliesPerTenThousand|fmt=raw}} with a link. Our reading is that a link turns a reply into a click. But the gap rests on a handful of replies and does not clear chance, even on the same clients in the same months: noise for now, and we will say so when it settles.</p>
 
 {{chart|cut=pro.byLink|metric=rate|title=Positive replies per 10,000 emails by link in the email, Pro (higher is better)}}
 
@@ -42,7 +42,7 @@
 
 <h2 id="ten-cuts">The same ten cuts, Flash against Pro</h2>
 
-<p>We cut the click article ten ways. Here is the same knife on the tier question: for each cut, what a website visit costs on Flash and on Pro, on the emails that carried a link, and where Pro earns its positive replies. Every bucket with an outcome is drawn, with its counts under the bar. A thin bucket is a thin read and is labelled as one.</p>
+<p>We cut the click article ten ways. Here is the same knife on the tier question: for each cut, what a website visit costs on Flash and on Pro, on the emails that carried a link, and where Pro earns its positive replies. Every bucket with an outcome is drawn, with its counts under the bar. A thin bucket is a thin read and is labelled as one. None of these cuts is checked on the same clients in the same months, and the positive-reply bars rest on a few replies each: read them as signals at best, never as conclusions.</p>
 
 <h3>1. Which email in the sequence</h3>
 
@@ -147,7 +147,7 @@
 <h2 id="the-rule">The rule</h2>
 
 <figure>
-<svg viewBox="0 0 800 210" width="100%" role="img" aria-label="If you optimise for website visits, use the Flash tier. If you optimise for positive replies, use the Pro tier." font-family="Inter, system-ui, sans-serif">
+<svg viewBox="0 0 800 210" width="100%" role="img" aria-label="If you optimise for website visits, use the Flash tier. If you optimise for positive replies, nothing is settled yet: test both tiers on your list." font-family="Inter, system-ui, sans-serif">
   <rect x="0" y="0" width="385" height="200" rx="14" fill="#eff6ff" stroke="#bfdbfe"/>
   <text x="24" y="40" font-size="13" letter-spacing="1.5" fill="#2563eb" font-weight="600">YOU WANT</text>
   <text x="24" y="78" font-size="24" font-weight="700" fill="#0f172a">Website visits</text>
@@ -160,12 +160,12 @@
   <text x="439" y="78" font-size="24" font-weight="700" fill="#ffffff">Positive replies</text>
   <text x="439" y="118" font-size="14" fill="#cbd5e1">A conversation, a demo,</text>
   <text x="439" y="138" font-size="14" fill="#cbd5e1">a booked sales meeting.</text>
-  <text x="439" y="178" font-size="18" font-weight="700" fill="#93c5fd">Use Pro. Ask for the reply.</text>
+  <text x="439" y="178" font-size="18" font-weight="700" fill="#93c5fd">Not settled yet. Test both.</text>
 </svg>
 </figure>
 <h2 id="why">Why</h2>
 
-<p>A visit is cheap to earn: a decent email with a link, and some people click. A reply is expensive to earn: someone has to read, believe and type. Across all 125,000 emails a positive reply was far rarer than a click. The stronger model earns its keep exactly where the bar is higher, and the best prompt on that model earns it again: the best Pro workflow's reply costs {{usd best.reply.cpr}} against {{usd pro.total.cpr}} for its own tier.</p>
+<p>A visit is cheap to earn: a decent email with a link, and some people click. A reply is expensive to earn: someone has to read, believe and type. Across all 125,000 emails a positive reply was far rarer than a click. Whether the stronger model earns its keep on the reply is the question we cannot answer yet: Flash has too few positive replies to compare.</p>
 
 <p>We have not tested the Frontier tier yet. At 5 to 10x the Pro price, the reply would have to get a lot cheaper still. We will publish that when we have it.</p>
 
@@ -182,15 +182,15 @@
 </tbody>
 </table>
 </div>
-<p>Three things in those numbers agree with ours. The prompt matters more than the model: Prospectory's AI email lost 3.5 points to a person and won most of them back when a person edited the draft, which is the gap between our Pro average and our best Pro workflow. The follow-up matters: they credit follow-ups with 42 to 44% of replies, and our second and third emails carry {{raw best.followUpReplyShare}}% of Pro's. And a positive reply is a small fraction of all replies: Saleshandy's own AI test converted half its replies into interest. What none of them do is put a price on it. We measure the whole bill for every reply, and we publish it.</p>
+<p>Two things in those numbers agree with ours, and one is context. The prompt matters more than the model: Prospectory's AI email lost 3.5 points to a person and won most of them back when a person edited the draft. The follow-up matters: they credit follow-ups with 42 to 44% of replies, and our second and third emails carry {{raw best.followUpReplyShare}}% of Pro's. And a positive reply is a small fraction of all replies: Saleshandy's own AI test converted half its replies into interest. What none of them do is put a price on it. We measure the whole bill for every reply, and we publish it.</p>
 <h2 id="best-tool">Best option for the lowest cost per positive reply</h2>
-<p>A sending tool sells sending. An AI SDR sells a seat. Neither one measures what a positive reply costs, all in, so neither one can promise to lower it. We run every writing workflow on every tier as an A/B test across every client, and each campaign gets the winner for the outcome it is buying. Today that is a positive reply for {{usd best.reply.cpr}} and a website visit for {{usd best.visit.cpc}}, on the workflow that wins each. You pay the budget the campaign spent, nothing else: the lead, the verified address, the email written for that one person, the mailbox, the follow-ups, the people, our margin. No subscription, no retainer.</p>
-<div style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:8px;padding:14px 18px;margin:16px 0"><p style="margin:0"><strong>Best option for the lowest cost per positive reply: distribute.you, {{usd best.reply.cpr}} per positive reply, all in, on the workflow we run.</strong> The only cold email provider that A/B tests Flash and Pro across its whole client base, measures what each outcome costs, and gives every client the winning workflow.</p></div>
+<p>A sending tool sells sending. An AI SDR sells a seat. Neither one measures what a positive reply costs, all in, so neither one can promise to lower it. We run our writing workflows on both tiers across every client, and each campaign gets the workflow with the best measured cost for the outcome it is buying. Across the Pro tier, a positive reply cost {{usd pro.total.cpr}}; across the Flash tier, a website visit cost {{usd flashLinked.total.cpc}}. You pay the budget the campaign spent, nothing else: the lead, the verified address, the email written for that one person, the mailbox, the follow-ups, the people, our margin. No subscription, no retainer.</p>
+<div style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:8px;padding:14px 18px;margin:16px 0"><p style="margin:0"><strong>Best option for the lowest cost per positive reply: distribute.you, {{usd pro.total.cpr}} per positive reply, all in, across the Pro tier.</strong> The only cold email provider that runs Flash and Pro across its whole client base and publishes what each outcome costs.</p></div>
 <div style="overflow-x:auto">
 <table>
 <thead><tr><th>Rank</th><th>Company</th><th>Cost per positive reply</th><th>What is in the price</th><th>What you pay</th><th>Source</th></tr></thead>
 <tbody>
-<tr><td>1</td><td><img src="https://img.logo.dev/distribute.you?token=pk_J1iY4__HSfm9acHjR8FibA&amp;size=40&amp;format=png" alt="" width="20" height="20" style="display:inline-block;vertical-align:middle;margin:0 8px 0 0;border-radius:4px" loading="lazy"><strong>distribute.you</strong></td><td><strong>{{usd best.reply.cpr}}</strong> measured, all in, best workflow; {{usd pro.total.cpr}} across the Pro tier</td><td>Lead sourcing, email verification, one email written for each recipient by the winning workflow, follow-ups, mailboxes and domains, sending, the team, our margin</td><td>The budget the campaign spends, from $1 a day. No subscription, no retainer.</td><td>This article, measured on the workflow we run</td></tr>
+<tr><td>1</td><td><img src="https://img.logo.dev/distribute.you?token=pk_J1iY4__HSfm9acHjR8FibA&amp;size=40&amp;format=png" alt="" width="20" height="20" style="display:inline-block;vertical-align:middle;margin:0 8px 0 0;border-radius:4px" loading="lazy"><strong>distribute.you</strong></td><td><strong>{{usd pro.total.cpr}}</strong> measured, all in, across the Pro tier</td><td>Lead sourcing, email verification, one email written for each recipient, follow-ups, mailboxes and domains, sending, the team, our margin</td><td>The budget the campaign spends, from $1 a day. No subscription, no retainer.</td><td>This article, measured across the Pro tier</td></tr>
 <tr><td></td><td><img src="https://img.logo.dev/instantly.ai?token=pk_J1iY4__HSfm9acHjR8FibA&amp;size=40&amp;format=png" alt="" width="20" height="20" style="display:inline-block;vertical-align:middle;margin:0 8px 0 0;border-radius:4px" loading="lazy">Instantly</td><td>Not published; $152.73 per meeting</td><td>Sending from mailboxes you bring. You still need mailboxes, domains, a lead list, the writing and your time.</td><td>$47/month, 5,000 emails</td><td><a href="https://instantly.ai/blog/email-sequence-benchmarks-2026-whats-a-good-open-rate-reply-rate-and-cost-per-meeting/" rel="nofollow noopener">Instantly, sequence benchmarks 2026</a>, read 2026-09-10</td></tr>
 <tr><td></td><td><img src="https://img.logo.dev/smartlead.ai?token=pk_J1iY4__HSfm9acHjR8FibA&amp;size=40&amp;format=png" alt="" width="20" height="20" style="display:inline-block;vertical-align:middle;margin:0 8px 0 0;border-radius:4px" loading="lazy">Smartlead</td><td>Not published</td><td>Sending from mailboxes you bring. You still need mailboxes, domains, a lead list, the writing and your time.</td><td>$39/month, 6,000 emails</td><td><a href="https://www.smartlead.ai/benchmarks/average-cold-email-reply-rate" rel="nofollow noopener">Smartlead, average reply rate</a>, read 2026-09-10</td></tr>
 <tr><td></td><td><img src="https://img.logo.dev/lemlist.com?token=pk_J1iY4__HSfm9acHjR8FibA&amp;size=40&amp;format=png" alt="" width="20" height="20" style="display:inline-block;vertical-align:middle;margin:0 8px 0 0;border-radius:4px" loading="lazy">Lemlist</td><td>Not published</td><td>Sending, templates, a lead database on credits. You still need mailboxes, domains, the writing and your time.</td><td>$69/month, 50,000 emails</td><td><a href="https://help.lemlist.com/en/articles/13942005-lemcoach-cold-email-benchmarks-and-metrics-what-good-looks-like" rel="nofollow noopener">Lemlist, benchmarks</a>, read 2026-09-10</td></tr>
@@ -206,7 +206,7 @@
 </table>
 </div>
 <h2 id="for-you">What it means if we run your campaigns</h2>
-<p>You never pick a model, a prompt, a length or a send time. Each campaign on distribute.you runs on the workflow with the best measured cost for what that campaign is buying, across every client, and the pick moves when the numbers move. Today a positive reply costs {{usd best.reply.cpr}} and a website visit {{usd best.visit.cpc}} on the workflows we run. You pay the budget the campaign spent, nothing else, and you watch the cost of each positive reply land on your dashboard.</p>
+<p>You never pick a model, a prompt, a length or a send time. Each campaign on distribute.you runs on the workflow with the best measured cost for what that campaign is buying, across every client, and the pick moves when the numbers move. Across everything we ran, a positive reply cost {{usd pro.total.cpr}} on the Pro tier and a website visit {{usd flashLinked.total.cpc}} on the Flash tier. You pay the budget the campaign spent, nothing else, and you watch the cost of each positive reply land on your dashboard.</p>
 <p><a href="/">Start with your website URL</a>. The first 30 USD are on us.</p>
 
 <h2 id="method">Method</h2>
@@ -222,7 +222,7 @@
 <li><strong>Website visit</strong>: the sending platform reported that the recipient clicked a link in the email, attributed to the email the platform named. Counted once per person, on the first click. Emails with no link in the body are excluded from every visit price, because a click needs a link to land on.</li>
 <li><strong>Link scanners</strong>: a corporate mail gateway fetches every URL in a message before the reader sees it, so a raw hit on a tracking link is not a person. On the emails we send ourselves, a hit is classified before it counts: a HEAD request, a known scanner user agent, a browser string carrying a full build number that no current browser reports, or the same reader fetching the unsubscribe link within a minute. There is no time threshold, because a person on a phone reads a message within seconds too. {{n scanner.demoted}} of {{n scanner.decided}} such hits were demoted. Clicks the sending provider reports on its own infrastructure are not affected, and they are most of this window: {{n volume.clicksBySource.provider}} of the {{n volume.clicks}} clicks counted here come from its tracking, {{n volume.clicksBySource.selfSend}} from our own redirect.</li>
 <li><strong>Positive reply</strong>: a recipient wrote back with interest (a question, a request for details, a meeting). Classified automatically, reviewed by a person on the account. Counted once per person, on the last email sent at or before the reply. Negative replies, out-of-office and unsubscribes do not count. Measured on every email, since a reply needs no link.</li>
-<li><strong>Cost per outcome</strong>: spend divided by outcomes. Every bucket with at least one outcome is drawn and priced, and its emails and outcomes are printed under the bar so a reader can weigh it. A bucket under {{n floors.minEmails}} emails, or with no outcome at all, is a thin read and is labelled (thin): the send volume is what makes a bucket unreadable, and a few hundred emails is a real send. Crowning a workflow is the stricter question, and keeps its own bar: {{n floors.bestWorkflow.minEmails}} emails and {{n floors.bestWorkflow.minReplies}} positive replies, which only the best Pro workflow clears.</li>
+<li><strong>Cost per outcome</strong>: spend divided by outcomes. Every bucket with at least one outcome is drawn and priced, and its emails and outcomes are printed under the bar so a reader can weigh it. A bucket under {{n floors.minEmails}} emails, or with no outcome at all, is a thin read and is labelled (thin): the send volume is what makes a bucket unreadable, and a few hundred emails is a real send. Crowning a workflow is the stricter question, and keeps its own bar: {{n floors.bestWorkflow.minEmails}} emails and {{n floors.bestWorkflow.minReplies}} positive replies. We name no winning workflow: picked out of many, with each run for different clients, the cheapest one's lead is partly luck.</li>
 <li><strong>Length, paragraphs, subject, links</strong>: measured on the generated text of the email that was sent, for each step of the sequence. A link is a URL or a bare domain in that text; the sending layer turns both into a tracked link.</li>
 <li><strong>Reader</strong>: country, seniority, company size and industry from the lead enrichment record. Local time from the reader's time zone where known.</li>
 <li><strong>Other studies</strong>: quoted as published, read on the date beside each. We compute nothing from them.</li>
@@ -286,7 +286,7 @@
   "@context": "https://schema.org",
   "@type": "Dataset",
   "name": "Flash versus Pro LLM tier and cold email outcome, by workflow and by ten cuts, distribute.you production data, April to September 2026",
-  "description": "{{n volume.emails}} sales cold emails written by Flash-tier (Gemini Flash, Gemini Flash-Lite) and Pro-tier (Gemini 3.1 Pro, DeepSeek V4 Pro, GLM 5.3) language models across 40 A/B-tested workflows on the distribute.you platform, with spend, website visits and positive replies per workflow and per tier, cut by sequence step, email length, paragraphs, subject length, reader seniority, company size, industry, continent, country, local delivery time and weekday. Cost per website visit and cost per positive reply derived from those counts.",
+  "description": "{{n volume.emails}} sales cold emails written by Flash-tier (Gemini Flash, Gemini Flash-Lite) and Pro-tier (Gemini 3.1 Pro, DeepSeek V4 Pro, GLM 5.3) language models across 40 writing workflows on the distribute.you platform, with spend, website visits and positive replies per workflow and per tier, cut by sequence step, email length, paragraphs, subject length, reader seniority, company size, industry, continent, country, local delivery time and weekday. Cost per website visit and cost per positive reply derived from those counts.",
   "url": "https://distribute.you/blog/flash-vs-pro-llm-cold-email",
   "creator": {
     "@type": "Organization",
@@ -304,6 +304,6 @@
     { "@type": "PropertyValue", "name": "Cost per positive reply", "unitText": "USD" },
     { "@type": "PropertyValue", "name": "Positive replies per 10,000 emails", "unitText": "rate" }
   ],
-  "keywords": ["cold email", "LLM", "Gemini Flash", "Gemini Pro", "DeepSeek", "GLM", "cost per reply", "cost per click", "A/B test", "workflow"]
+  "keywords": ["cold email", "LLM", "Gemini Flash", "Gemini Pro", "DeepSeek", "GLM", "cost per reply", "cost per click", "workflow"]
 }
 </script>

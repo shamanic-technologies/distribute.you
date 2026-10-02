@@ -50,10 +50,11 @@
   <!-- right: the workflow we run for you -->
   <g transform="translate(820,380)">
     <rect x="0" y="0" width="570" height="330" rx="28" fill="#0f172a" filter="url(#shadow)"/>
-    <text x="40" y="60" font-size="20" letter-spacing="2" fill="#93c5fd" font-weight="700">THE WORKFLOW THAT WON</text>
-    <text x="40" y="180" font-size="88" font-weight="800" fill="#ffffff">$1</text>
-    <text x="40" y="222" font-size="20" fill="#cbd5e1">per click, after A/B testing 23 workflows</text>
-    <text x="40" y="292" font-size="17" fill="#94a3b8">Leads, writing, sending and the team, all in the price.</text>
+    <text x="40" y="60" font-size="20" letter-spacing="2" fill="#93c5fd" font-weight="700">WHAT MAKES IT CHEAPER</text>
+    <text x="40" y="130" font-size="34" font-weight="800" fill="#ffffff">The first email</text>
+    <text x="40" y="180" font-size="34" font-weight="800" fill="#ffffff">The Flash tier</text>
+    <text x="40" y="230" font-size="34" font-weight="800" fill="#ffffff">A director, not the C-suite</text>
+    <text x="40" y="292" font-size="17" fill="#94a3b8">Each holds on the same clients in the same months.</text>
   </g>
 
   <!-- brand: the mark from public/brand/logo-mark.svg beside the wordmark, inside the safe zone -->

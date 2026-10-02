@@ -31,7 +31,7 @@ import {
  */
 
 const CHART = /<svg viewBox="0 0 800 (\d+)"[\s\S]*?<\/svg>/g;
-const ARTICLES = ["cost-per-click-cold-email", "flash-vs-pro-llm-cold-email", "cold-email-unsubscribe-link-spam", "cold-email-response-rate", "cold-email-follow-up"] as const;
+const ARTICLES = ["cost-per-click-cold-email", "flash-vs-pro-llm-cold-email", "cold-email-unsubscribe-link-spam", "cold-email-follow-up"] as const;
 
 type Chart = {
   slug: string;
@@ -148,36 +148,17 @@ describe("blog chart geometry", () => {
   });
 });
 
-describe("the Flash article's two answer charts state our best workflow", () => {
-  // The client is served the winner of the A/B test, never the tier's average. A chart that
-  // draws only the average contradicts the paragraph above it, which names the winner.
+describe("the Flash article's two answer charts compare the tiers, never a best workflow", () => {
+  // 2026-10-02: the cheapest of 23 workflows is partly luck and each ran for different clients,
+  // so the answer charts draw the two tiers only (Research verdicts: the best workflow is noise).
   const flash = chartsOf("flash-vs-pro-llm-cold-email");
   const answer = flash.filter((c) => /^Cost per (website visit|positive reply) \(USD/.test(c.title.trim()));
 
-  it("both are there, ranked with the winner first", () => {
+  it("both are there, one bar per tier, no best-workflow row", () => {
     expect(answer).toHaveLength(2);
-    for (const c of answer) expect(c.labels[0]).toMatch(/^Best (Flash|Pro) workflow$/);
-  });
-
-  it("the visit chart prices our best Flash and Pro workflows beside their tiers", () => {
-    const visit = answer.find((c) => c.title.includes("website visit"))!;
-    expect(visit.labels).toContain("Best Flash workflow");
-    expect(visit.labels).toContain("Best Pro workflow");
-    expect(visit.labels).toContain("Flash tier, all workflows");
-    expect(visit.labels).toContain("Pro tier, all workflows");
-  });
-
-  it("the reply chart prices our best Pro workflow beside both tiers", () => {
-    const reply = answer.find((c) => c.title.includes("positive reply"))!;
-    expect(reply.labels[0]).toBe("Best Pro workflow");
-    expect(reply.labels).toContain("Pro tier, all workflows");
-    expect(reply.labels.some((l) => l.startsWith("Flash tier, all workflows"))).toBe(true);
-  });
-
-  it("a best-workflow row names its model under the bar, never a codename", () => {
     for (const c of answer) {
-      const named = [...c.body.matchAll(/font-size="11"[^>]*>([^<]*)</g)].map((m) => m[1]);
-      expect(named.some((n) => /^Gemini [\d.]+ (Flash|Pro)/.test(n))).toBe(true);
+      expect([...c.labels].sort()).toEqual(["Flash", "Pro"]);
+      expect(c.labels.join(" ")).not.toMatch(/best/i);
     }
   });
 });

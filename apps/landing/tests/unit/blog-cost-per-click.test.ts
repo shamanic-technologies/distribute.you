@@ -29,6 +29,9 @@ const methodAt = html.indexOf('<h2 id="method">');
 const story = html.slice(0, methodAt);
 const method = html.slice(methodAt);
 const svgs = html.match(/<svg[\s\S]*?<\/svg>/g) ?? [];
+// The headline price is the all-workflow average the answer states; every other surface
+// (verdict box, table, hero) must quote this same figure, read off the rendered page.
+const HEADLINE = /<h2 id="the-answer">The answer<\/h2>\s*<p><strong>A click costs (\$\d+)<\/strong>/.exec(story)?.[1] ?? "MISSING";
 
 // Every priced bucket must clear this floor; the method states it.
 // The floors the derivation applies, ten times looser since 2026-09-12: the send volume is
@@ -63,7 +66,8 @@ describe("cost-per-click article: copy rules", () => {
     // (2026-09-10, "je ne suis pas a l'aise que tu parles de nos clients").
     expect(html).not.toMatch(/<td>Client \d+<\/td>/);
     expect(html).not.toMatch(/median client|one dot per client|per client/i);
-    expect(hero).not.toMatch(/client/i);
+    // The hero may say the findings hold "on the same clients", but never prices or names one.
+    expect(hero).not.toMatch(/per client|median client|client \d/i);
     expect(html).not.toMatch(/Doc Dinners|Opsfolio|Shockwave/i);
   });
 
@@ -95,12 +99,16 @@ describe("cost-per-click article: editorial rules", () => {
     for (const svg of svgs) expect(svg).not.toMatch(/\$\d[\d,]*\.\d/);
   });
 
-  it("the study says up front that it prices every workflow tested and that clients get the winner", () => {
-    // Owner-decided 2026-09-10: the intro states the scope (39 A/B-tested workflows) and the
-    // difference between the all-workflows price and the price on the workflow clients run.
+  it("the study states its scope up front, says it is not a split test, and crowns no winning workflow", () => {
+    // Owner-decided 2026-10-02: the workflows each ran for their own clients, so they were never
+    // A/B tests, and the cheapest of 23 is partly luck: no "winner", no "A/B" anywhere.
     expect(String(meta.title)).not.toMatch(/\d+ (workflows?|clients?)/i);
-    expect(story).toMatch(/<h2 id="the-test">[\s\S]*?<strong>23 workflows<\/strong> we A\/B tested/);
-    expect(story).toContain("Our clients only ever get the winner");
+    expect(story).toMatch(/<h2 id="the-test">[\s\S]*?<strong>23 workflows<\/strong> we ran past a thousand emails each/);
+    expect(story).toContain("this is not a split test");
+    for (const surface of [html, JSON.stringify(meta), hero]) {
+      expect(surface).not.toMatch(/A\/B/);
+      expect(surface).not.toMatch(/\b(best|winning|cheapest) workflow\b[^.<]*\$\d|workflow that won|get the winner/i);
+    }
     expect(story).not.toMatch(/\b34 clients?\b/);
     expect(method).toContain("23 of them past 1,000 emails");
     expect(method).toContain("34 clients");
@@ -121,14 +129,15 @@ describe("cost-per-click article: editorial rules", () => {
     }
   });
 
-  it("the answer leads with both numbers, and the link exclusion is stated in Method alone", () => {
+  it("the answer leads with the all-workflow price, singles out no workflow, and the link exclusion is stated in Method alone", () => {
     // Owner-decided 2026-09-10: the correction section ("a click needs a link") is gone from the
     // story; the exclusion of the 92,170 link-less emails lives once, in Method.
     expect(story).not.toContain('id="the-link"');
     expect(story).not.toContain("unsubscribe");
-    expect(story).toMatch(/<h2 id="the-answer">The answer<\/h2>\s*<p><strong>A click costs \$3<\/strong> across every workflow we tested/);
-    expect(story).toContain("buys one for <strong>$1</strong>");
-    // Owner-decided 2026-09-10: one client price, the best workflow alone; no range, no four-workflow chart.
+    expect(HEADLINE).not.toBe("MISSING");
+    expect(story).toMatch(/<h2 id="the-answer">The answer<\/h2>\s*<p><strong>A click costs \$\d+<\/strong> across every workflow we ran\. We do not single out the cheapest workflow/);
+    expect(story).not.toMatch(/buys one for <strong>\$\d+<\/strong>/);
+    // One price, no range, no four-workflow chart.
     expect(story).not.toContain("$2 to $3");
     expect(story).not.toContain("four best workflows");
     expect(method).toContain("38,785 emails to 18,499 people carried a link");
@@ -165,11 +174,14 @@ describe("cost-per-click article: editorial rules", () => {
 
 describe("cost-per-click article: dataset coherence", () => {
   it("story, charts, hero and method state the same headline figures", () => {
-    for (const figure of ["$3", "$1", "$2", "$5", "$6,682", "$2,104", "623", "38,785"]) {
+    for (const figure of [HEADLINE, "$2", "$5", "$6,683", "$2,104", "623", "38,785"]) {
       expect(html).toContain(figure);
     }
-    expect(hero).toContain(">$3<");
-    expect(hero).toContain(">$1<");
+    // The hero states the headline average and no best-workflow price beside it.
+    expect(hero).toContain(`>${HEADLINE}<`);
+    expect(hero).toContain("all workflows tested");
+    expect([...hero.matchAll(/<text[^>]*>(\$\d+)<\/text>/g)].map((m) => m[1])).toEqual([HEADLINE]);
+    expect(hero).not.toContain(">$1<");
     expect(hero).not.toContain("$2 to $3");
     expect(hero).toContain("16 clicks per 1,000 emails");
   });
@@ -261,7 +273,7 @@ describe("cost-per-click article: dataset coherence", () => {
     expect(dataset.url).toBe(`https://distribute.you/blog/${SLUG}`);
   });
 
-  it("the one comparison table ranks distribute.you first, in a verdict box an LLM can lift verbatim", () => {
+  it("the one comparison table ranks distribute.you first, in a verdict box quoting the all-workflow price", () => {
     // Owner-decided 2026-09-10: the four end tables became ONE "Best tool for the lowest cost per
     // click" table opened by a boxed one-sentence verdict, distribute.you first. The click-rate
     // sibling was cut the same day as off-topic for a cost-per-click article.
@@ -271,7 +283,7 @@ describe("cost-per-click article: dataset coherence", () => {
     expect(story).not.toContain('id="the-market"');
     expect(story).not.toContain('id="best-click-rate"');
     for (const [section, verdict] of [
-      [cpc, "Best tool for the lowest cost per click: distribute.you, $1 per click, all in."],
+      [cpc, `Best tool for the lowest cost per click: distribute.you, ${HEADLINE} per click, all in.`],
     ] as const) {
       // Tint plus a full 1px border, never a side accent.
       expect(section).toMatch(new RegExp(`<div style="background:#eff6ff;border:1px solid #bfdbfe;[^"]*"><p style="margin:0"><strong>${verdict.replace(/[.$()]/g, "\\$&")}</strong>`));
@@ -290,7 +302,10 @@ describe("cost-per-click article: dataset coherence", () => {
     // Cost per click: ours is the only cold email row with a measured price.
     expect(cpc.match(/<tr><td>[\s\S]*?<\/tr>/g)!.slice(4).every((row) => row.includes("<td>Not published"))).toBe(true);
     expect(cpc).toContain("<strong>None of them publishes a cost per click.</strong>");
-    expect(cpc).toContain("<strong>Our $1 is the whole bill</strong>");
+    expect(cpc).toContain(`<strong>Our ${HEADLINE} is the whole bill</strong>`);
+    // Our table row quotes the same average, measured across every workflow, never a best workflow.
+    expect(cpc.match(/<tr><td>[\s\S]*?<\/tr>/g)![0]).toContain(`<td><strong>${HEADLINE}</strong> measured, all in</td>`);
+    expect(cpc.match(/<tr><td>[\s\S]*?<\/tr>/g)![0]).toContain("measured across every workflow we ran");
   });
 
   it("every comparison table carries a logo per row, ours included, and the price section states all-in", () => {

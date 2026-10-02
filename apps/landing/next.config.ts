@@ -78,8 +78,10 @@ const nextConfig: NextConfig = {
       { source: "/blog/venture-capital-due-diligence", destination: "/blog", permanent: true, missing: offLab },
       { source: "/blog/the-slug", destination: "/blog", permanent: true, missing: offLab },
       { source: "/blog/second", destination: "/blog", permanent: true, missing: offLab },
-      // Blog slug shortened to its keyword after publication.
-      { source: "/blog/cold-email-open-tracking-pixel", destination: "/blog/cold-email-open-tracking", permanent: true, missing: offLab },
+      // Articles taken down on 2026-10-02: their headline was a signal, not a conclusion (Research verdicts).
+      { source: "/blog/cold-email-open-tracking-pixel", destination: "/blog", permanent: true, missing: offLab },
+      { source: "/blog/cold-email-open-tracking", destination: "/blog", permanent: true, missing: offLab },
+      { source: "/blog/cold-email-response-rate", destination: "/blog", permanent: true, missing: offLab },
       { source: "/sign-in", destination: "https://dashboard.distribute.you/sign-in", permanent: false, missing: offLab },
       { source: "/sign-up", destination: "https://dashboard.distribute.you/sign-up", permanent: false, missing: offLab },
     ];

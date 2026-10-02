@@ -20,11 +20,10 @@ node --max-old-space-size=8192 apps/landing/scripts/blog-data/derive.mjs /tmp/bl
 # 3. render both articles from their templates
 node apps/landing/scripts/blog-data/render-articles.mjs /tmp/blog-data/facts.json apps/landing/content/blog
 
-# 4. re-render the covers and, for the Flash article, the newsletter's PNG charts
+# 4. re-render the covers
 cd apps/landing
 node scripts/render-blog-hero.mjs cost-per-click-cold-email
 node scripts/render-blog-hero.mjs flash-vs-pro-llm-cold-email
-node scripts/render-newsletter-charts.mjs flash-vs-pro-llm-cold-email 2,3,4,18,20,21,23,26,35
 ```
 
 Step 4's newsletter charts are RE-LAID before they are rastered (`blog-data/narrow-chart.mjs`).
@@ -70,8 +69,7 @@ the three inputs they need beside the dumps (`templates.json`, `workflow-runs.js
 LLM's and template's own month curve); `research.mjs` turns it into one study per question,
 with its charts, its one-line result and its conclusion written out, so the page divides
 nothing. The open-tracking studies read `pixel/pixel.research.snapshot.json`, cut at least the
-rule's duration before the read (research.mjs refuses a snapshot cut any later); the article
-keeps its own `pixel.snapshot.json`. Do NOT re-render the
+rule's duration before the read (research.mjs refuses a snapshot cut any later). Do NOT re-render the
 two articles from a refreshed extract unless you mean to move their published figures.
 
 ## Emails too young to count (two rules, one per surface)
@@ -149,50 +147,11 @@ The design file naming the sending and receiving addresses stays on the box
 sending addresses. The committed snapshot carries indices only, and is the record once the
 spam folders have been emptied.
 
-## The open-tracking article
+## Open tracking and naming the client: Research only
 
-`content/blog/cold-email-open-tracking` is rendered from `pixel/`: one aggregate row per
-arm (pixel on, pixel off), read from instantly-service's own database. The snapshot carries
-counts only.
-
-```sh
-# 1. re-read the two arms (exclusive cutoff, 14 days before the read so replies can land)
-apps/landing/scripts/blog-data/pixel/extract-pixel.sh 2026-09-13 "$PWD/apps/landing/scripts/blog-data/pixel/pixel.snapshot.json"
-
-# 2. derive rates, lifts and two-proportion p-values
-node apps/landing/scripts/blog-data/pixel/derive-pixel.mjs apps/landing/scripts/blog-data/pixel/pixel.snapshot.json > /tmp/pixel-facts.json
-
-# 3. render
-node apps/landing/scripts/blog-data/pixel/render-pixel-article.mjs /tmp/pixel-facts.json apps/landing/content/blog
-```
-
-An arm is decided by the campaign's FIRST stored config (`open_tracking`); a sequence we sent
-ourselves (`self:`) carries no pixel and counts as off. This is an observational comparison of
-two periods, not a controlled test, and the article says so.
-
-## The naming-the-client article
-
-`content/blog/cold-email-response-rate` states the Research page's naming study (`herald-naming-rate`
-/ `herald-naming-roi`): does a cold email that asks for a reply do better when it names the client,
-or when it keeps the name and link back? `naming/naming.mjs` holds the classification (read from
-each template version's PROMPT, never its name), the two sides and the p-values, and research.mjs
-imports it, so the article and the Research page state the same figures for one extract. The
-committed snapshot carries aggregates only.
-
-```sh
-# 1. the same extract and facts the Research page is built from (end = today)
-apps/landing/scripts/blog-data/extract.sh 2026-04-15 <today> /tmp/research-data
-node --max-old-space-size=8192 apps/landing/scripts/blog-data/derive.mjs /tmp/research-data > /tmp/research-data/facts.json
-
-# 2. the two sides, positive-reply leg only
-node apps/landing/scripts/blog-data/naming/derive-naming.mjs /tmp/research-data/facts.json > apps/landing/scripts/blog-data/naming/naming.snapshot.json
-
-# 3. render
-node apps/landing/scripts/blog-data/naming/render-naming-article.mjs apps/landing/scripts/blog-data/naming/naming.snapshot.json apps/landing/content/blog
-```
-
-The renderer refuses a snapshot where the client-not-named side stops winning on rate or on cost,
-since the prose names the winner in words.
+Both studies live on the Research page only (`pixel/pixel.research.snapshot.json` via `pixel/derive-pixel.mjs`,
+and `naming/naming.mjs`). Their articles (`cold-email-open-tracking`, `cold-email-response-rate`)
+were taken down on 2026-10-02: each headline was a signal, not a conclusion (`verdict.mjs`).
 
 ## The greeting article
 

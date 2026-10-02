@@ -37,7 +37,8 @@ describe("the cold email greeting article", () => {
     expect(prose).toContain("Skipping the greeting got more clicks.");
     expect(prose).toContain(`${pct(none)} of emails with no greeting got one, against ${pct(name)} with the first name alone and ${pct(greet)}`);
     expect(prose).toContain(`+${Math.round((none / name - 1) * 100)}% visits against "Marie,"`);
-    expect(prose).toContain(`x${(none / greet).toFixed(1)} against the full "Hi Marie,"`);
+    expect(prose).toContain(`Against the full "Hi Marie," it reads x${(none / greet).toFixed(1)}, but that gap mostly disappears on the same clients: a signal, not a conclusion`);
+    expect(prose).toContain("the gap holds when we compare the two openings on the same clients in the same months");
   });
 
   it("names no reply winner: the openings made no measurable difference", () => {
@@ -49,7 +50,8 @@ describe("the cold email greeting article", () => {
   it("opens on a key-takeaway card with the lifts, before the first section", () => {
     const card = html.slice(html.indexOf("Key takeaway"), html.indexOf('id="the-question"'));
     expect(card).toContain(`+${Math.round((none / name - 1) * 100)}% website visits`);
-    expect(card).toContain(`x${(none / greet).toFixed(1)} website visits`);
+    // the "Hi" + first name gap is only a signal (Research verdicts, 2026-10-02): never in the card
+    expect(card).not.toContain(`x${(none / greet).toFixed(1)}`);
     expect(card).toContain("no measurable difference");
     expect(card).not.toMatch(/split test|thin|directional|interval/);
     expect(html).toContain("background:#eff6ff;border:1px solid #bfdbfe");
