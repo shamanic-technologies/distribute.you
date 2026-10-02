@@ -506,11 +506,19 @@ describe("monitoring: pricing basis (owner 2026-10-01: averaging only for flat f
   it("costs-service's basis summary parses", () => {
     const p = BasisSummarySchema.parse({
       day: "2026-10-01", asOf: "2026-10-01", stale: false, rule: "r", perimeter: { grain: "fleet" }, lists: {},
-      bases: [{ basis: "api-list-cost", providers: ["anthropic"], itemCount: 114, consumedItemCount: 77, realCostUsdCents: 212652, amountCatalogueUsdCents: 1063249, amountProposedUsdCents: 425304 }],
+      bases: [{ basis: "api-list-cost", providers: ["anthropic"], itemCount: 114, consumedItemCount: 77, flooredItemCount: 0, flooredItems: [], realCostUsdCents: 212652, amountCatalogueUsdCents: 1063249, amountProposedUsdCents: 425304 }],
       totals: fig, unpricedCostNames2: [], realCostUnknownCostNames: [],
       internalCost: { byVendor: [{ provider: "google", netPaidUsdCents: 462368, vendorCostRecordedAtListUsdCents: 171071, internalCostUsdCents: 291297, internalCostBasis: "b" }], totalUsdCents: 347090 },
     });
     expect(p.bases[0].basis).toBe("api-list-cost");
+  });
+  it("a subscription floored at its vendor list cost is said on both pages (owner 2026-10-02)", () => {
+    const basis = read("components/v2/monitoring-pricing-basis.tsx");
+    expect(basis).toContain("const floored = d.bases.flatMap((b) => b.flooredItems);");
+    expect(basis).toContain("<th className={THR}>Floored</th>");
+    const np = read("components/v2/monitoring-new-pricing.tsx");
+    expect(np).toContain('i.proposedBasis === "vendor-list-cost-floor"');
+    expect(np).toContain("i.averagedProposedPricePerUnitUsdCents");
   });
   it("is a Price card and page, read through the staff gateway, never written to disk, computing nothing", () => {
     expect(MONITORING_PAGES).toContain("price/pricing-basis");
