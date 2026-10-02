@@ -1,7 +1,9 @@
 "use client";
 
+import { useRef } from "react";
 import { useUser } from "@clerk/nextjs";
 import { isAdminEmail } from "./admin-allowlist";
+import { latchedEmail } from "./staff-latch";
 
 /**
  * True when the signed-in user's email is on the staff (god-mode) allowlist.
@@ -16,5 +18,8 @@ import { isAdminEmail } from "./admin-allowlist";
  */
 export function useIsAdminUser(): boolean {
   const { user } = useUser();
-  return isAdminEmail(user?.primaryEmailAddress?.emailAddress);
+  // Latched: Clerk's transient `user: null` must not switch Staff mode off (see staff-latch.ts).
+  const email = useRef<string | null>(null);
+  email.current = latchedEmail(email.current, user?.primaryEmailAddress?.emailAddress);
+  return isAdminEmail(email.current);
 }
