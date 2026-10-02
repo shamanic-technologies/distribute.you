@@ -55,6 +55,7 @@ export function PricingBasisView() {
 function Body({ d, day, setDay, fetching }: { d: BasisSummary; day: string | null; setDay: (v: string | null) => void; fetching: boolean }) {
   const t = d.totals;
   const bases = d.bases.filter((b) => b.itemCount > 0);
+  const floored = d.bases.flatMap((b) => b.flooredItems);
   const kpis: { label: string; value: React.ReactNode; sub?: React.ReactNode }[] = [
     { label: "At today's catalogue", value: usdC(t.amount1UsdCents), sub: `margin ${pct(t.margin1Pct) ?? "—"}` },
     { label: "At the proposed list", value: usdC(t.amount2UsdCents), sub: `margin ${pct(t.margin2Pct) ?? "—"}` },
@@ -109,6 +110,12 @@ function Body({ d, day, setDay, fetching }: { d: BasisSummary; day: string | nul
         <p className="k-fg3 col-span-2 border-t border-[var(--line-subtle)] px-4 py-2.5 text-[12px] md:col-span-5">{d.rule}</p>
       </div>
 
+      <p className="k-card px-4 py-2.5 text-[13px]" style={floored.length ? { color: "var(--data-amber)" } : undefined}>
+        {floored.length
+          ? `${floored.length} subscription credit${floored.length > 1 ? "s are" : " is"} proposed at the vendor list cost, because the averaged real cost ×2 fell below it: ${floored.join(", ")}.`
+          : "No subscription credit falls below its vendor list cost: every averaged price ×2 stays above what the vendor charges per unit."}
+      </p>
+
       <section>
         <SectionTitle count={bases.length} right={<span>Fleet since Jan 1, 2026</span>}>
           By pricing basis
@@ -120,6 +127,7 @@ function Body({ d, day, setDay, fetching }: { d: BasisSummary; day: string | nul
                 <th className={TH}>Basis</th>
                 <th className={TH}>Providers</th>
                 <th className={THR}>Items used</th>
+                <th className={THR}>Floored</th>
                 <th className={THR}>Real cost</th>
                 <th className={THR}>At catalogue</th>
                 <th className={THR}>At proposed</th>
@@ -141,13 +149,14 @@ function Body({ d, day, setDay, fetching }: { d: BasisSummary; day: string | nul
                     {n(b.consumedItemCount)}
                     <span className="k-fg3"> of {n(b.itemCount)}</span>
                   </td>
+                  <td className={TDR}>{b.flooredItemCount > 0 ? <span style={{ color: "var(--data-amber)" }}>{n(b.flooredItemCount)}</span> : <Dash />}</td>
                   <td className={TDR}>{usdC(b.realCostUsdCents)}</td>
                   <td className={`${TDR} k-fg2`}>{usdC(b.amountCatalogueUsdCents)}</td>
                   <td className={`${TDR} font-medium`}>{usdC(b.amountProposedUsdCents)}</td>
                 </tr>
               ))}
               <tr className="border-t border-[var(--line)]">
-                <td className={`${TD} font-medium`} colSpan={3}>
+                <td className={`${TD} font-medium`} colSpan={4}>
                   Total
                 </td>
                 <td className={`${TDR} font-medium`}>{usdC(t.realCostUsdCents)}</td>

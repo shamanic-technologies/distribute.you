@@ -39,6 +39,7 @@ const FLAG_LABEL: Record<string, string> = {
 const BASIS_LABEL: Record<string, string> = {
   "real-cost-x2": "real cost ×2",
   "real-cost-x1": "real cost ×1",
+  "vendor-list-cost-floor": "floored at vendor list cost",
   "current-price-kept": "current price kept",
   "no-price": "no price",
 };
@@ -258,7 +259,13 @@ function ItemRow({ i, open, onToggle }: { i: RealCostItem; open: boolean; onTogg
         <td className={`${TDR} k-fg2`}>{ratio(i.catalogueMarkupOnRealCost) ?? <Dash />}</td>
         <td className={`${TDR} font-medium`}>
           {cents(i.proposedPricePerUnitUsdCents) ?? <Dash />}
-          <span className="k-fg3 block text-[11px] font-normal">{label(BASIS_LABEL, i.proposedBasis)}</span>
+          {i.proposedBasis === "vendor-list-cost-floor" ? (
+            <span className="block text-[11px] font-normal" style={{ color: "var(--data-amber)" }}>
+              floored at list cost · averaged ×2 was {cents(i.averagedProposedPricePerUnitUsdCents ?? null) ?? "—"}
+            </span>
+          ) : (
+            <span className="k-fg3 block text-[11px] font-normal">{label(BASIS_LABEL, i.proposedBasis)}</span>
+          )}
         </td>
         <td className={TDR}>
           <Change v={i.proposedVsCataloguePct} />

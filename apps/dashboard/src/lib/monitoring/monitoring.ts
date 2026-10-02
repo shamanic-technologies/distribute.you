@@ -347,6 +347,8 @@ const RealCostFields = {
   multiplier: Num,
   proposedPricePerUnitUsdCents: Num,
   proposedBasis: z.string(),
+  // `vendor-list-cost-floor` only (owner 2026-10-02): the averaged real cost x2 the vendor list cost replaced.
+  averagedProposedPricePerUnitUsdCents: Num.optional(),
   proposedVsCataloguePct: Num,
 };
 /** One slice of a split vendor's bank money; only `loadedOnUnits` slices price a unit. */
@@ -490,6 +492,9 @@ export const BasisSummarySchema = z.object({
       providers: z.array(z.string()),
       itemCount: z.number(),
       consumedItemCount: z.number(),
+      // Subscription credits proposed at the vendor list cost because averaged x2 fell below it.
+      flooredItemCount: z.number(),
+      flooredItems: z.array(z.string()),
       realCostUsdCents: z.number(),
       amountCatalogueUsdCents: z.number(),
       amountProposedUsdCents: z.number(),
