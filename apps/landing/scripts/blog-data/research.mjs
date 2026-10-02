@@ -29,6 +29,7 @@
 //    requires is marked Learning (the `thin` flag). Every chart carries a `note` saying so.
 //  - A WORKFLOW is named by what it runs (its model and its template, and the month it first sent
 //    when two share both), never by its codename: nobody outside the team knows the names.
+import { likeForLike, sharedPairs } from "./like-for-like.mjs";
 import { readFileSync, writeFileSync } from "node:fs";
 import { execFileSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
@@ -284,45 +285,28 @@ function movement(points) {
 // ---------- like for like ----------
 // A crude bar mixes clients and months: a model that ran for the clients who click most "wins"
 // without writing better emails. So every LLM study also weighs its winner against each other LLM
-// on the SAME client in the SAME month only (derive.mjs modelStrata), Mantel-Haenszel pooled, with
-// a 95% interval (Greenland-Robins variance). The price ratio is read on those same strata.
+// on the SAME client in the SAME month only (like-for-like.mjs, over derive.mjs modelStrata).
 // a ratio on 1 outcome against 8 spans 0.00x to 1,900x: print the counts instead
 const LFL_MIN = 5;
-function likeForLike(o, strata, winner, { goal }) {
+function likeForLikeLines(o, strata, winner, { goal }) {
   if (!strata || !strata[winner]) return [];
-  const W = strata[winner];
   const out = [];
-  for (const [other, X] of Object.entries(strata)) {
+  for (const other of Object.keys(strata)) {
     if (other === winner) continue;
-    let num = 0, den = 0, v = 0, wE = 0, wK = 0, wS = 0, xE = 0, xK = 0, xS = 0;
-    for (const [k, a] of Object.entries(W)) {
-      const b = X[k];
-      if (!b) continue;
-      const T = a.emails + b.emails;
-      const ka = a[o.count], kb = b[o.count];
-      num += (ka * b.emails) / T;
-      den += (kb * a.emails) / T;
-      v += (a.emails * b.emails * (ka + kb)) / (T * T);
-      wE += a.emails; wK += ka; wS += a.spend;
-      xE += b.emails; xK += kb; xS += b.spend;
-    }
-    if (!wE) continue;
-    out.push({ other, num, den, v, wE, wK, wS, xE, xK, xS });
+    const pairs = sharedPairs(strata[winner], strata[other], o.count);
+    if (pairs.length) out.push({ other, ...likeForLike(pairs) });
   }
   if (!out.length) return [`Same clients, same months: ${winner} ran for no client in a month another LLM also wrote for, so it has no like-for-like comparison.`];
   const x = (r) => `${r.toFixed(2)}x`;
   return out
-    .sort((a, b) => b.xE - a.xE)
+    .sort((p, q) => q.b.emails - p.b.emails)
     .slice(0, 3)
     .map((c) => {
-      const tally = `${n(c.wK)} ${c.wK === 1 ? o.noun : o.nounPlural} in ${n(c.wE)} ${o.emailsNoun} against ${n(c.xK)} in ${n(c.xE)}`;
-      if (c.wK < LFL_MIN || c.xK < LFL_MIN) return `Same clients, same months, ${winner} against ${c.other}: ${tally}, under ${LFL_MIN} on one side, so no ratio.`;
-      const rr = c.num / c.den;
-      const se = Math.sqrt(c.v / (c.num * c.den));
-      const lo = rr * Math.exp(-1.96 * se), hi = rr * Math.exp(1.96 * se);
-      if (goal === "rate") return `Same clients, same months, ${winner} gets ${x(rr)} the ${o.nounPlural} per email of ${c.other} (95% interval ${x(lo)} to ${x(hi)}; ${tally}).`;
-      const price = (c.wS / c.wE) / (c.xS / c.xE);
-      return `Same clients, same months, a ${o.noun} from ${winner} costs ${x(price / rr)} one from ${c.other} (95% interval ${x(price / hi)} to ${x(price / lo)}): ${x(price)} the price per email, ${x(rr)} the ${o.nounPlural} per email (${tally}).`;
+      const tally = `${n(c.a.outcomes)} ${c.a.outcomes === 1 ? o.noun : o.nounPlural} in ${n(c.a.emails)} ${o.emailsNoun} against ${n(c.b.outcomes)} in ${n(c.b.emails)}`;
+      if (c.a.outcomes < LFL_MIN || c.b.outcomes < LFL_MIN || !c.rate) return `Same clients, same months, ${winner} against ${c.other}: ${tally}, under ${LFL_MIN} on one side, so no ratio.`;
+      const { ratio, lo, hi } = c.rate;
+      if (goal === "rate") return `Same clients, same months, ${winner} gets ${x(ratio)} the ${o.nounPlural} per email of ${c.other} (95% interval ${x(lo)} to ${x(hi)}; ${tally}).`;
+      return `Same clients, same months, a ${o.noun} from ${winner} costs ${x(c.cost.ratio)} one from ${c.other} (95% interval ${x(c.cost.lo)} to ${x(c.cost.hi)}): ${x(c.price)} the price per email, ${x(ratio)} the ${o.nounPlural} per email (${tally}).`;
     });
 }
 
@@ -359,7 +343,7 @@ function dimensionStudies(key, o, R, { dim, dimNoun, cutKey, byMonthKey, label, 
       conclusion: [
         w ? `${label(w.row.bucket)}: ${counts(o, w.row)}, ${usd(w.row.spend)} spent.` : `Nothing priced yet.`,
         ...(moved ? [`Over time: ${moved}.`] : []),
-        ...(w && strataKey ? likeForLike(o, R[strataKey], w.row.bucket, { goal: "roi" }) : []),
+        ...(w && strataKey ? likeForLikeLines(o, R[strataKey], w.row.bucket, { goal: "roi" }) : []),
       ].filter(Boolean),
     });
   }
@@ -388,7 +372,7 @@ function dimensionStudies(key, o, R, { dim, dimNoun, cutKey, byMonthKey, label, 
       conclusion: [
         w ? `${label(w.row.bucket)}: ${counts(o, w.row)}.` : null,
         ...(moved ? [`Over time: ${moved}.`] : []),
-        ...(w && strataKey ? likeForLike(o, R[strataKey], w.row.bucket, { goal: "rate" }) : []),
+        ...(w && strataKey ? likeForLikeLines(o, R[strataKey], w.row.bucket, { goal: "rate" }) : []),
         `A ${dimNoun} with fewer than ${o.outcomesRequired} ${o.outcomesRequired === 1 ? o.noun : o.nounPlural} is ranked where its value puts it and marked Learning.`,
       ].filter(Boolean),
     });

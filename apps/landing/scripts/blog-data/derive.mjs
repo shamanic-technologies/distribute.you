@@ -684,12 +684,13 @@ function dashByModel(rows) {
 // buckets on, so a model is weighed against another on the SAME clients in the SAME months and
 // a client mix cannot pass for a model effect. Keyed by org id here only (facts.json is never
 // committed); research.mjs prints ratios, never a stratum.
-function strataPer(rows, keyFn) {
+function strataPer(rows, keyFn, { step = false } = {}) {
   const out = {};
   for (const r of rows) {
     const k = keyFn(r);
     if (!k || !r.orgId) continue;
-    const s = ((out[k] ||= {})[`${r.orgId}|${r.month}`] ||= { emails: 0, clicks: 0, replies: 0, spend: 0 });
+    const stratum = step ? `${r.orgId}|${r.month}|${r.stepNo}` : `${r.orgId}|${r.month}`;
+    const s = ((out[k] ||= {})[stratum] ||= { emails: 0, clicks: 0, replies: 0, spend: 0 });
     s.emails++;
     s.spend += r.cost;
     if (r.clicked) s.clicks++;
@@ -701,6 +702,9 @@ function researchFor(rows) {
   return {
     byModel: cut(rows, modelLabel),
     modelStrata: strataPer(rows, modelLabel),
+    // the same per model TIER (Flash, Pro), and per tier with the sequence step held fixed too
+    tierStrata: strataPer(rows, (r) => r.tier),
+    tierStepStrata: strataPer(rows, (r) => r.tier, { step: true }),
     byTemplate: cut(rows, (r) => r.template),
     byStep: cut(rows, stepLabel, STEPS),
     byMonth: cut(rows, (r) => r.month, monthsOf(rows)),
