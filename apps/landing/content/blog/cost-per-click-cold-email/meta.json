@@ -1,8 +1,16 @@
 {
   "slug": "cost-per-click-cold-email",
   "title": "How much does a click cost with cold email? We sent 125,000 emails to find out",
-  "excerpt": "A click costs $3 across the 23 workflows we A/B tested past a thousand emails, and $1 on the one that won. We cut 125,000 cold emails ten ways: a link in the body, the first email, a short message and the right reader move the price 5x.",
-  "tags": ["cold email", "cost per click", "benchmarks", "LLM", "Gemini", "Europe", "seniority"],
+  "excerpt": "A click costs $3 across the workflows we ran past a thousand emails. We cut 125,000 cold emails ten ways: the first email, the Flash tier and writing to a director rather than the C-suite make a click cheaper, and each still holds on the same clients in the same months.",
+  "tags": [
+    "cold email",
+    "cost per click",
+    "benchmarks",
+    "LLM",
+    "Gemini",
+    "Europe",
+    "seniority"
+  ],
   "publishedAt": "2026-09-10T15:00:00.000Z",
   "coverImagePath": "/blog/cost-per-click-cold-email/hero.png",
   "source": "manual"

@@ -2,7 +2,7 @@
 # Reads the open-tracking comparison out of production, one aggregate row per arm.
 #
 #   ./extract-pixel.sh <cutoff YYYY-MM-DD, exclusive> <out-file>
-#   ./extract-pixel.sh 2026-09-13 apps/landing/scripts/blog-data/pixel/pixel.snapshot.json
+#   ./extract-pixel.sh 2026-09-13 apps/landing/scripts/blog-data/pixel/pixel.research.snapshot.json
 #
 # Read-only, over ssh to the Hetzner box. The query (pixel.sql) aggregates inside the
 # database, so the snapshot carries counts only: no address, no lead, no campaign id.
