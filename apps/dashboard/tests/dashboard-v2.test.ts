@@ -309,6 +309,19 @@ describe("Keel parity, second pass", () => {
     expect(read(V2 + "work-page.tsx")).toContain("useTheirLastWords(lead.id, brandId)");
   });
 
+  it("Today states everything taken from the credit, setup included, off the figure billing debits", () => {
+    // Hany Tawfik 2026-10-02: $29.66 used, Today printed the $20 of campaign spend and
+    // the client read $10 still left. The tile reads the org total Billing's Usage reads.
+    const today = read(V2 + "today-page.tsx");
+    expect(read(V2 + "data.ts")).toContain('useAuthQuery(["orgUsage"], () => getOrgUsage()');
+    expect(today).toContain("const usage = useOrgUsage();");
+    expect(today).toContain('label="Taken from credit"');
+    expect(today).toContain("formatUsdAdaptive(usage.data.totalBilledUsd)");
+    expect(today).not.toContain("data.spend.totalSpentCents");
+    // Missions keeps the campaign figure, labelled as such.
+    expect(read(V2 + "missions-page.tsx")).toContain('label: "Spent on missions"');
+  });
+
   it("Today states runs off runs-service and the meeting date off the served outcome", () => {
     const today = read(V2 + "today-page.tsx");
     expect(today).toContain("useCrewRuns(brandId, missionByCampaignId)");
