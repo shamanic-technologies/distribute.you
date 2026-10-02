@@ -3,13 +3,13 @@
 // prospects click most would otherwise "win" without writing better emails.
 //
 // `pairs` is one entry per stratum both arms ran in: [a, b], each { emails, outcomes, spend }.
-// The rate ratio is Mantel-Haenszel pooled over the strata, with a 95% interval from the
-// Greenland-Robins variance. The price ratio (spend per email) is read on the same strata, and the
-// cost per outcome ratio is the price ratio over the rate ratio, its interval from the rate's.
-// Shared by research.mjs (the Research page) and llm/render-llm-article.mjs (the blog article),
-// so the two can never state different figures for one extract.
+// Two Mantel-Haenszel rate ratios, each with a 95% Greenland-Robins interval: outcomes per EMAIL
+// (the rate) and outcomes per DOLLAR (spend as the exposure); the cost per outcome ratio is the
+// inverse of the second. Never the crude price ratio divided by the pooled rate ratio: the two carry
+// different weights, and that shortcut read 0.46x where the per-dollar pooling reads 0.57x
+// (2026-10-02, Flash against Pro on website visits). Used by research.mjs (the LLM studies).
 export function likeForLike(pairs) {
-  let num = 0, den = 0, v = 0;
+  let num = 0, den = 0, v = 0, numS = 0, denS = 0, vS = 0;
   const a = { emails: 0, outcomes: 0, spend: 0, strata: pairs.length };
   const b = { emails: 0, outcomes: 0, spend: 0, strata: pairs.length };
   for (const [x, y] of pairs) {
@@ -17,6 +17,12 @@ export function likeForLike(pairs) {
     num += (x.outcomes * y.emails) / T;
     den += (y.outcomes * x.emails) / T;
     v += (x.emails * y.emails * (x.outcomes + y.outcomes)) / (T * T);
+    const S = x.spend + y.spend;
+    if (S > 0) {
+      numS += (x.outcomes * y.spend) / S;
+      denS += (y.outcomes * x.spend) / S;
+      vS += (x.spend * y.spend * (x.outcomes + y.outcomes)) / (S * S);
+    }
     for (const [acc, s] of [[a, x], [b, y]]) {
       acc.emails += s.emails;
       acc.outcomes += s.outcomes;
@@ -25,15 +31,20 @@ export function likeForLike(pairs) {
   }
   const price = a.emails && b.emails && b.spend ? a.spend / a.emails / (b.spend / b.emails) : null;
   if (!num || !den) return { a, b, price, rate: null, cost: null };
-  const rr = num / den;
-  const se = Math.sqrt(v / (num * den));
-  const lo = rr * Math.exp(-1.96 * se), hi = rr * Math.exp(1.96 * se);
+  const ci = (n, d, va) => {
+    const r = n / d;
+    const se = Math.sqrt(va / (n * d));
+    return { ratio: r, lo: r * Math.exp(-1.96 * se), hi: r * Math.exp(1.96 * se) };
+  };
+  const rate = ci(num, den, v);
+  // outcomes per dollar, inverted: a cost per outcome ratio and its interval
+  const perDollar = numS && denS ? ci(numS, denS, vS) : null;
   return {
     a,
     b,
     price,
-    rate: { ratio: rr, lo, hi },
-    cost: price === null ? null : { ratio: price / rr, lo: price / hi, hi: price / lo },
+    rate,
+    cost: perDollar ? { ratio: 1 / perDollar.ratio, lo: 1 / perDollar.hi, hi: 1 / perDollar.lo } : null,
   };
 }
 
