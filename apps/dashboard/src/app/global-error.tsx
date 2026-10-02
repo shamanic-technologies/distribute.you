@@ -3,6 +3,8 @@
 import { useEffect } from "react";
 import posthog from "posthog-js";
 
+import { browserChunkReloadEnv, isChunkLoadError, reloadOnceForStaleChunk } from "@/lib/stale-chunk-reload";
+
 // The last boundary: an error thrown in the root layout itself. It replaces the whole
 // document, so it renders its own <html>. Reported explicitly, because a boundary
 // swallows the error before exception autocapture can see it.
@@ -16,6 +18,8 @@ export default function GlobalError({
   useEffect(() => {
     console.error("[dashboard] root error:", error);
     posthog.captureException(error, { boundary: "dashboard-global", digest: error.digest });
+    // A chunk the last deploy removed: the current HTML names the current chunks.
+    if (isChunkLoadError(error)) reloadOnceForStaleChunk(browserChunkReloadEnv(), error);
   }, [error]);
 
   return (

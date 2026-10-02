@@ -1,6 +1,14 @@
 import posthog from "posthog-js";
 
 import { dropVendorNoise } from "./lib/posthog-before-send";
+import { browserChunkReloadEnv, installStaleChunkReload } from "./lib/stale-chunk-reload";
+
+// A tab holding a previous build's HTML that asks for a chunk the deploy removed
+// reloads once instead of staying dead (lib/stale-chunk-reload.ts).
+installStaleChunkReload({
+  ...browserChunkReloadEnv(),
+  addEventListener: (type, fn) => window.addEventListener(type, fn),
+});
 
 const posthogToken = process.env.NEXT_PUBLIC_POSTHOG_PROJECT_TOKEN;
 const posthogHost = process.env.NEXT_PUBLIC_POSTHOG_HOST;
@@ -20,7 +28,8 @@ if (posthogToken) {
       capture_unhandled_rejections: true,
       capture_console_errors: false,
     },
-    // A blocked Partnero script is not our crash (lib/posthog-before-send.ts).
+    // Third-party noise nobody can act on: a blocked Partnero script, an opaque
+    // cross-origin "Script error.", code injected by a link scanner (lib/posthog-before-send.ts).
     before_send: dropVendorNoise,
   });
   // The release every event (exceptions included) was captured on. Written into

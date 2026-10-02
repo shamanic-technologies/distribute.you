@@ -2,6 +2,7 @@
 
 import { useEffect } from "react";
 import posthog from "posthog-js";
+import { browserChunkReloadEnv, isChunkLoadError, reloadOnceForStaleChunk } from "@/lib/stale-chunk-reload";
 import { TopBar } from "@/components/v2/ui";
 
 interface ErrorProps {
@@ -19,6 +20,8 @@ export default function V2Error({ error, reset }: ErrorProps) {
     // A boundary swallows the error, so it never reaches the global handler that
     // exception autocapture listens on. Report it explicitly.
     posthog.captureException(error, { boundary: "dashboard", digest: error.digest });
+    // A chunk the last deploy removed: the current HTML names the current chunks.
+    if (isChunkLoadError(error)) reloadOnceForStaleChunk(browserChunkReloadEnv(), error);
   }, [error]);
 
   return (
