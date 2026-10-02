@@ -1,5 +1,7 @@
 import posthog from "posthog-js";
 
+import { dropVendorNoise } from "./lib/posthog-before-send";
+import { browserChunkReloadEnv, installStaleChunkReload } from "./lib/stale-chunk-reload";
 import { installStaleServerActionReload } from "./lib/stale-server-action";
 
 // A tab left open across a deploy recovers by itself (lib/stale-server-action.ts).
@@ -8,6 +10,13 @@ installStaleServerActionReload({
   sessionStorage: window.sessionStorage,
   location: window.location,
   now: Date.now,
+});
+
+// A tab holding a previous build's HTML that asks for a chunk the deploy removed
+// reloads once instead of staying dead (lib/stale-chunk-reload.ts).
+installStaleChunkReload({
+  ...browserChunkReloadEnv(),
+  addEventListener: (type, fn) => window.addEventListener(type, fn),
 });
 
 const posthogToken = process.env.NEXT_PUBLIC_POSTHOG_PROJECT_TOKEN;
@@ -28,6 +37,9 @@ if (posthogToken) {
       capture_unhandled_rejections: true,
       capture_console_errors: false,
     },
+    // Third-party noise nobody can act on: an opaque cross-origin "Script error.",
+    // code injected by a link scanner (lib/posthog-before-send.ts).
+    before_send: dropVendorNoise,
   });
   // The release every event (exceptions included) was captured on. Written into
   // the build env by the box's deploy script; absent in a local build.

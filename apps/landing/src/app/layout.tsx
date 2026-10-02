@@ -178,6 +178,7 @@ export default function RootLayout({
         <script
           src="https://analytics.ahrefs.com/analytics.js"
           data-key="6jqRRazbkHBZRDiWAmampA"
+          crossOrigin="anonymous"
           async
         />
         {/* Partnero affiliate program KHV3KEHI — loader (records the referral

@@ -50,8 +50,10 @@ function analyticsHead(): string {
     : "";
 
   // Ahrefs Web Analytics — first-party page-view + traffic tracking (data-key
-  // = the distribute.you Ahrefs project). Mirrors app/layout.tsx.
-  const ahrefs = `<script src="https://analytics.ahrefs.com/analytics.js" data-key="6jqRRazbkHBZRDiWAmampA" async></script>`;
+  // = the distribute.you Ahrefs project). Mirrors app/layout.tsx. `crossorigin`: Ahrefs
+  // serves CORS (`ACAO: *`), so its errors reach PostHog with file and line instead of
+  // an opaque "Script error." (lib/posthog-before-send.ts lists every vendor).
+  const ahrefs = `<script src="https://analytics.ahrefs.com/analytics.js" data-key="6jqRRazbkHBZRDiWAmampA" crossorigin="anonymous" async></script>`;
 
   // Partnero affiliate tracking + cross-subdomain via-forward, then the customer
   // referral code on the same journey.
