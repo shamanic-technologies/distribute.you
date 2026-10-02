@@ -14,6 +14,7 @@ import {
   SubscriptionCostsSchema,
   RealCostsSchema,
   PriceComparisonSchema,
+  BasisSummarySchema,
   costItemNames,
   parseMonitoringPath,
   versionInForce,
@@ -454,13 +455,13 @@ describe("monitoring: new pricing and pricing comparison (owner 2026-10-01)", ()
 
   it("a split pay-as-you-go vendor parses with its parts, and the page shows which part prices units", () => {
     const part = (p: string, c: number, loaded: boolean) => ({ part: p, usdCents: c, basis: "b", loadedOnUnits: loaded, flag: loaded ? null : "f" });
-    const v = { provider: "google", ledgerVendors: ["google cloud"], paidUsdCents: 554840, refundedUsdCents: 0, netPaidUsdCents: 554840, vendorCostRecordedUsdCents: 42865, ratio: 1.44, numeratorBasis: "google-cloud-split-metered", meteredUsdCents: 61749, split: { parts: [part("metered", 61749, true), part("other-services", 1717, false)], unexplained: { usdCents: 400000, basis: null, loadedOnUnits: false, flag: "u" } } };
+    const v = { provider: "google", ledgerVendors: ["google cloud"], paidUsdCents: 554840, refundedUsdCents: 0, netPaidUsdCents: 554840, vendorCostRecordedUsdCents: 42865, ratio: 1.44, numeratorBasis: "google-cloud-split-metered", meteredUsdCents: 61749, vendorCostRecordedAtListUsdCents: 42865, internalCostUsdCents: 291297, internalCostBasis: "bank minus runs at list", split: { parts: [part("metered", 61749, true), part("other-services", 1717, false)], unexplained: { usdCents: 400000, basis: null, loadedOnUnits: false, flag: "u" } } };
     const base = { formula: "f", rules: { since: "2026-01-01", proposedMultiplier: 2, passThroughMultiplier: 1, x1Rule: "x1", payAsYouGoVendors: [], catalogueVendorCostProviders: {} }, day: "2026-10-01", asOf: "2026-10-01", refreshedAt: "2026-10-01T17:16:00Z", stale: false, lastRefresh: null, items: [] };
     const p = RealCostsSchema.parse({ ...base, payAsYouGo: [v, { ...v, provider: "openai", numeratorBasis: "ledger-net-paid", meteredUsdCents: null, split: null }] });
     expect(p.payAsYouGo[0].split?.parts).toHaveLength(2);
     const view = read("components/v2/monitoring-new-pricing.tsx");
-    expect(view).toContain("const counted = v.split ? v.meteredUsdCents : v.netPaidUsdCents;");
-    expect(view).toContain("<th className={THR}>Counted as usage</th>");
+    expect(view).toContain("<th className={THR}>Internal, outside clients</th>");
+    expect(view).toContain("v.internalCostUsdCents");
   });
 
   it("the comparison parses at fleet grain (per org and brand) and at org x brand grain (none)", () => {
@@ -472,7 +473,7 @@ describe("monitoring: new pricing and pricing comparison (owner 2026-10-01)", ()
   it("two pages, one per section, read through the staff gateway and never written to disk", () => {
     for (const p of ["price/new-pricing", "margin/pricing-comparison"]) expect(MONITORING_PAGES).toContain(p);
     const page = read("components/v2/monitoring-page.tsx");
-    expect(page).toContain('<Section section="price" count={2}>');
+    expect(page).toContain('<Section section="price" count={3}>');
     expect(page).toContain('<Section section="margin" count={2}>');
     expect(page).toContain('page="price/new-pricing"');
     expect(page).toContain('page="margin/pricing-comparison"');
@@ -497,5 +498,29 @@ describe("monitoring: new pricing and pricing comparison (owner 2026-10-01)", ()
       expect(v).not.toMatch(/proposedPricePerUnitUsdCents\s*\/\s*[\w.]*cataloguePrice/);
       expect(v).not.toMatch(/\/\s*[\w.]*(amount1|realCost|vendorCostRecorded)UsdCents/);
     }
+  });
+});
+
+describe("monitoring: pricing basis (owner 2026-10-01: averaging only for flat fees, APIs at list cost)", () => {
+  const fig = { amount1UsdCents: 1847123, amount2UsdCents: 1605960, differenceUsdCents: -241163, differencePct: -13.06, realCostUsdCents: 802967, margin1UsdCents: 1044156, margin1Pct: 56.5, margin2UsdCents: 802993, margin2Pct: 50, billedUsdCents: 1694835, netBilledUsdCents: 1601353, billedPlatformKeyUsdCents: 1669708, netBilledPlatformKeyUsdCents: 1576226 };
+  it("costs-service's basis summary parses", () => {
+    const p = BasisSummarySchema.parse({
+      day: "2026-10-01", asOf: "2026-10-01", stale: false, rule: "r", perimeter: { grain: "fleet" }, lists: {},
+      bases: [{ basis: "api-list-cost", providers: ["anthropic"], itemCount: 114, consumedItemCount: 77, realCostUsdCents: 212652, amountCatalogueUsdCents: 1063249, amountProposedUsdCents: 425304 }],
+      totals: fig, unpricedCostNames2: [], realCostUnknownCostNames: [],
+      internalCost: { byVendor: [{ provider: "google", netPaidUsdCents: 462368, vendorCostRecordedAtListUsdCents: 171071, internalCostUsdCents: 291297, internalCostBasis: "b" }], totalUsdCents: 347090 },
+    });
+    expect(p.bases[0].basis).toBe("api-list-cost");
+  });
+  it("is a Price card and page, read through the staff gateway, never written to disk, computing nothing", () => {
+    expect(MONITORING_PAGES).toContain("price/pricing-basis");
+    const page = read("components/v2/monitoring-page.tsx");
+    expect(page).toContain('page="price/pricing-basis"');
+    expect(page).toContain('{view.page === "price/pricing-basis" && <PricingBasisView />}');
+    expect(read("lib/api.ts")).toContain("/basis-summary");
+    const persist = read("lib/persist-cache.ts");
+    expect(persist.slice(persist.indexOf("export const SENSITIVE_QUERY_ROOTS"), persist.indexOf("export const PERSISTABLE_QUERY_ROOTS"))).toContain('"staffBasisSummary"');
+    const v = read("components/v2/monitoring-pricing-basis.tsx");
+    expect(v).not.toMatch(/amountProposedUsdCents\s*-|-\s*[\w.]*amountCatalogueUsdCents|\/\s*[\w.]*(realCost|amountCatalogue)UsdCents/);
   });
 });

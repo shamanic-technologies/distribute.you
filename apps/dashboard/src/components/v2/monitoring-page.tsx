@@ -14,6 +14,7 @@ import { EmailPriceView } from "@/components/v2/monitoring-email-price";
 import { BillingTable } from "@/components/v2/monitoring-billing";
 import { SubscriptionsView } from "@/components/v2/monitoring-subscriptions";
 import { NewPricingView } from "@/components/v2/monitoring-new-pricing";
+import { PricingBasisView } from "@/components/v2/monitoring-pricing-basis";
 import { PricingComparisonView } from "@/components/v2/monitoring-pricing-comparison";
 import { ReceiptIcon } from "@phosphor-icons/react/dist/csr/Receipt";
 import { TagIcon } from "@phosphor-icons/react/dist/csr/Tag";
@@ -90,6 +91,7 @@ const PAGE: Record<MonitoringPage, { section: SectionKey; title: string; questio
   "cost/email-sending": { section: "cost", title: "Email sending", question: "What does sending one cold email really cost us?" },
   "price/billed": { section: "price", title: "Billed to users", question: "What did we bill for each cost item, and at what price?" },
   "price/new-pricing": { section: "price", title: "New pricing", question: "What would each cost item cost at its real cost ×2?" },
+  "price/pricing-basis": { section: "price", title: "Pricing basis", question: "Which costs are re-billed on an average, and which at list cost?" },
   margin: { section: "margin", title: "Margin", question: "How much margin have we made since inception?" },
   "margin/pricing-comparison": { section: "margin", title: "Pricing comparison", question: "What would a client have paid, and our margin, under two price lists?" },
   emails: { section: "emails", title: "Emails", question: "How many emails have we sent since inception?" },
@@ -163,6 +165,7 @@ export function V2Monitoring() {
         {view.page === "cost/email-sending" && <EmailSendingPage />}
         {view.page === "price/billed" && <BilledPage />}
         {view.page === "price/new-pricing" && <NewPricingView />}
+        {view.page === "price/pricing-basis" && <PricingBasisView />}
         {view.page === "margin/pricing-comparison" && <PricingComparisonView />}
         {view.page === "margin" && <MarginPage />}
         {view.page === "emails" && <EmailsPage />}
@@ -306,7 +309,7 @@ function Hub({ base }: { base: string }) {
         />
       </Section>
 
-      <Section section="price" count={2}>
+      <Section section="price" count={3}>
         <Card
           href={href("price/billed")}
           page="price/billed"
@@ -323,6 +326,15 @@ function Hub({ base }: { base: string }) {
           cells={[
             { label: "Priced at real ×2", value: rc?.items.filter((x) => x.proposedBasis === "real-cost-x2").length, note: rc ? `of ${rc.items.length} cost items` : undefined },
             { label: "Flagged", value: rc?.items.filter((x) => x.flag != null).length, note: rc ? `as of ${day(rc.asOf)}, not billed yet` : undefined },
+          ]}
+        />
+        <Card
+          href={href("price/pricing-basis")}
+          page="price/pricing-basis"
+          error={real.isError}
+          cells={[
+            { label: "Averaged", value: rc?.items.filter((x) => x.method === "subscription" || x.method === "email-send-price").length, note: "subscriptions and email" },
+            { label: "At list cost", value: rc?.items.filter((x) => x.method === "api-list-cost").length, note: "API cost items" },
           ]}
         />
       </Section>
