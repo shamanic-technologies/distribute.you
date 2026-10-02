@@ -147,7 +147,7 @@ describe("a comparison page", () => {
       });
 
       it("keeps the meta description under a search snippet's length", () => {
-        expect(comparePageDescription(c).length).toBeLessThan(230);
+        expect(comparePageDescription(c).length).toBeLessThanOrEqual(155);
       });
     });
   }
