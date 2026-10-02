@@ -133,3 +133,14 @@ describe("Instantly audit — overdue backlog", () => {
     );
   });
 });
+
+describe("first-unsent label never reads as 'added today' (#4805)", () => {
+  const page = readFileSync(
+    join(__dirname, "../src/app/(authed)/(dashboard)/audit/cold-email/accounts/page.tsx"),
+    "utf8",
+  );
+  it("does not label queuedFirstUnsentSequences as 'Initial'", () => {
+    expect(page).not.toContain("Initial: {num(r.queuedFirstUnsentSequences)}");
+    expect(page).toContain("First email unsent: {num(r.queuedFirstUnsentSequences)}");
+  });
+});
