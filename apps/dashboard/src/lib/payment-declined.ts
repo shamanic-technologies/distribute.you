@@ -43,14 +43,6 @@ export const PAYMENT_HOLD_NOTE: Record<PaymentHoldKind, string> = {
     "There is no payment method on your account, so we paused your campaigns. Add a card, then start them again.",
 };
 
-/** The row-level line in the controls modal. */
-export const PAYMENT_HOLD_ROW_NOTE: Record<PaymentHoldKind, string> = {
-  declined:
-    "Paused because your card was declined, not by anyone on your team. It can be started again once your balance is paid and a working card is on file.",
-  no_payment_method:
-    "Paused because there is no payment method on your account, not by anyone on your team. It can be started again once a card is on file.",
-};
-
 /**
  * Amber, a warning the customer can act on, from the closed set `html.dark`
  * remaps. Red would read as a fault of ours; grey reads as a pause somebody chose.

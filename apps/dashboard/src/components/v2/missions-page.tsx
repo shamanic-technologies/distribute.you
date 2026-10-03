@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { useParams } from "next/navigation";
+import { useSelectedOfferIfAny } from "@/components/v2/selected-offer";
 import { CampaignControlsTrigger } from "@/components/campaigns/campaign-controls-trigger";
 import { formatCentsAsUsdAdaptive, formatCount } from "@/lib/format-number";
 import { cumulativeWindow, dailyWindow, utcDay } from "@/lib/v2/series";
@@ -24,6 +25,8 @@ const pct = (v: number) => `${v < 10 || v > 99 ? v.toFixed(1) : Math.round(v)}%`
  */
 export function MissionsPage() {
   const { orgId, brandId } = useParams<{ orgId: string; brandId: string }>();
+  // A plan is one brand x offer, so Pause/Activate acts on the offer being looked at.
+  const selectedOfferId = useSelectedOfferIfAny()?.offerId ?? null;
   const rev = useBrandRevenue(brandId);
   const data = rev.data;
   const { missions, crews, settled } = useMissions(orgId, brandId);
@@ -64,7 +67,7 @@ export function MissionsPage() {
         actions={
           <>
             <StatBasisSwitch />
-            {rev.enabled && <CampaignControlsTrigger brandId={brandId} dailyOnly />}
+            {rev.enabled && <CampaignControlsTrigger brandId={brandId} offerId={selectedOfferId ?? undefined} dailyOnly />}
           </>
         }
       />

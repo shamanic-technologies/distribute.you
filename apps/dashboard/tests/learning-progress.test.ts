@@ -171,12 +171,3 @@ describe("the modules the served verdict replaced stay gone", () => {
     expect(choice).not.toContain("workflowSignalUnitCost");
   });
 });
-
-describe("the budget form takes a prefilled figure only for one campaign", () => {
-  it("drafts on the prefill, and drops it at a wider grain", () => {
-    const modal = src("components/campaigns/campaign-controls-modal.tsx");
-    expect(modal).toContain("draftFor(row, prefill)");
-    // A figure offered for ONE campaign has no row to land on at a wider grain.
-    expect(modal).toContain("const prefill = campaignId != null ? prefillBudgetUsd : undefined;");
-  });
-});

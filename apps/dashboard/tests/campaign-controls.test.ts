@@ -6,16 +6,12 @@ import {
   ROLLUP_STYLE,
   buildControlRows,
   controlWriteErrorMessage,
-  controlsDiff,
-  diffSummary,
-  hasChanges,
   isRunningStatus,
-  nextTotalCents,
   parseDailyBudgetUsd,
   rollupStatus,
+  scopeToggleWrites,
   scopeTotalCents,
   type ControlCampaign,
-  type ControlDraft,
 } from "../src/lib/campaign-controls";
 import { acquisitionChannelsFromFeatures } from "../src/lib/acquisition-channels";
 
@@ -143,58 +139,10 @@ describe("buildControlRows — a channel with no campaign yet", () => {
     // board at the same moment Offer Settings read `Paused` for the same channel.
     expect(offered.running).toBe(false);
   });
-
-  it("emits a budget write and NEVER a status write when it is turned on", () => {
-    const rows = buildControlRows([campaign({ id: "a" })], undefined, CHANNELS, {}, OFFERABLE);
-    const offered = rows.find((r) => r.campaignId === null)!;
-    const diff = controlsDiff(rows, {
-      [offered.rowId]: { running: true, budget: "12" },
-    });
-    expect(diff.statusWrites).toEqual([]);
-    expect(diff.budgetWrites).toEqual([
-      {
-        rowId: offered.rowId,
-        legKey: LEG_A,
-        featureSlug: "feedback-request-cold-email-outreach",
-        offerId: OFFER_A,
-        cents: 1200,
-      },
-    ]);
-  });
-
-  // Turning one OFF is defunding it: there is no campaign whose status could be set.
-  it("writes a zero ceiling when it is turned off", () => {
-    const rows = buildControlRows(
-      [campaign({ id: "a" })],
-      budgets([
-        {
-          legKey: LEG_A,
-          featureSlug: "feedback-request-cold-email-outreach",
-          offerId: OFFER_A,
-          cents: 700,
-        },
-      ]),
-      CHANNELS,
-      {},
-      OFFERABLE,
-    );
-    const offered = rows.find((r) => r.campaignId === null)!;
-    const diff = controlsDiff(rows, { [offered.rowId]: { running: false, budget: "7" } });
-    expect(diff.statusWrites).toEqual([]);
-    expect(diff.budgetWrites).toEqual([
-      {
-        rowId: offered.rowId,
-        legKey: LEG_A,
-        featureSlug: "feedback-request-cold-email-outreach",
-        offerId: OFFER_A,
-        cents: 0,
-      },
-    ]);
-  });
 });
 
 /**
- * A surface can open this modal for ONE channel under one leg. Without a channel filter
+ * A surface can scope the controls to ONE channel under one leg. Without a channel filter
  * the reader pressed one card and was handed a budget field and a toggle for every
  * sibling channel.
  *
@@ -643,229 +591,35 @@ describe("scopeTotalCents", () => {
   });
 });
 
-/** Drafts written against each row's representative campaign id, keyed by rowId. */
-function draftsBy(
-  rows: ReturnType<typeof buildControlRows>,
-  vals: Record<string, ControlDraft>,
-): Record<string, ControlDraft> {
-  return Object.fromEntries(rows.map((r) => [r.rowId, vals[r.campaignId ?? r.rowId]]));
-}
-
-describe("controlsDiff — only what changed", () => {
-  const set = budgets([
-    { legKey: LEG_A, featureSlug: COLD_EMAIL, offerId: OFFER_A, cents: 2400 },
-  ]);
-  const rows = buildControlRows([campaign({ id: "a" })], set, CHANNELS);
-  const unchanged = draftsBy(rows, { a: { running: true, budget: "24" } });
-
-  it("an untouched row writes nothing", () => {
-    const diff = controlsDiff(rows, unchanged);
-    expect(diff.statusWrites).toEqual([]);
-    expect(diff.budgetWrites).toEqual([]);
-    expect(hasChanges(diff)).toBe(false);
-  });
-
-  it("taking a running campaign to zero PAUSES it, not just defunds it", () => {
-    // campaign-service holds an unfunded campaign on the funding gate every tick, so
-    // leaving the status at `ongoing` would claim something that is not happening.
-    const diff = controlsDiff(rows, draftsBy(rows, { a: { running: true, budget: "0" } }));
-    expect(diff.budgetWrites).toEqual([
-      expect.objectContaining({ cents: 0, featureSlug: COLD_EMAIL }),
-    ]);
-    expect(diff.statusWrites).toEqual([
-      expect.objectContaining({ campaignId: "a", activate: false }),
-    ]);
-  });
-
-  it("an EMPTY budget field pauses it too — empty is a real value and means zero", () => {
-    const diff = controlsDiff(rows, draftsBy(rows, { a: { running: true, budget: "" } }));
-    expect(diff.budgetWrites).toEqual([expect.objectContaining({ cents: 0 })]);
-    expect(diff.statusWrites).toEqual([
-      expect.objectContaining({ campaignId: "a", activate: false }),
-    ]);
-  });
-
-  it("pauses EVERY running row of the campaign, as a toggle-driven pause does", () => {
-    const many = buildControlRows(
-      [campaign({ id: "a" }), campaign({ id: "b" })],
-      set,
-      CHANNELS,
-    );
-    const diff = controlsDiff(many, draftsBy(many, { a: { running: true, budget: "0" } }));
-    expect(diff.statusWrites.map((w) => w.campaignId).sort()).toEqual(["a", "b"]);
-    expect(diff.statusWrites.every((w) => w.activate === false)).toBe(true);
-  });
-
-  it("leaves a row billing ALREADY stores at zero alone", () => {
-    // The modal edits several rows at once, so stopping a campaign nobody touched
-    // would be a write nobody asked for.
-    const zeroSet = budgets([
-      { legKey: LEG_A, featureSlug: COLD_EMAIL, offerId: OFFER_A, cents: 0 },
-    ]);
-    const zeroRows = buildControlRows([campaign({ id: "a" })], zeroSet, CHANNELS);
-    const diff = controlsDiff(zeroRows, draftsBy(zeroRows, { a: { running: true, budget: "" } }));
-    expect(diff.budgetWrites).toEqual([]);
-    expect(diff.statusWrites).toEqual([]);
-  });
-
-  it("does NOT restart a paused campaign that is being funded — money starts nothing", () => {
-    const paused = buildControlRows([campaign({ id: "a", status: "stopped" })], set, CHANNELS);
-    const diff = controlsDiff(paused, draftsBy(paused, { a: { running: false, budget: "48" } }));
-    expect(diff.budgetWrites).toEqual([expect.objectContaining({ cents: 4800 })]);
-    expect(diff.statusWrites).toEqual([]);
-  });
-
-  it("a half-typed budget states no opinion on the status", () => {
-    const diff = controlsDiff(rows, draftsBy(rows, { a: { running: true, budget: "2.5" } }));
-    expect(diff.invalidRows).toEqual([rows[0].rowId]);
-    expect(diff.statusWrites).toEqual([]);
-    expect(diff.budgetWrites).toEqual([]);
-  });
-
-  it("flipping the toggle does NOT restate the amount", () => {
-    const diff = controlsDiff(rows, draftsBy(rows, { a: { running: false, budget: "24" } }));
-    expect(diff.statusWrites.map((w) => [w.campaignId, w.activate])).toEqual([["a", false]]);
-    expect(diff.budgetWrites).toEqual([]);
-  });
-
-  it("editing the amount does NOT restate the status", () => {
-    const diff = controlsDiff(rows, draftsBy(rows, { a: { running: true, budget: "40" } }));
-    expect(diff.statusWrites).toEqual([]);
-    expect(diff.budgetWrites).toEqual([
-      {
-        rowId: rows[0].rowId,
-        legKey: LEG_A,
-        featureSlug: COLD_EMAIL,
-        offerId: OFFER_A,
-        cents: 4000,
-      },
-    ]);
-  });
-
-  it("blank writes a real zero", () => {
-    const diff = controlsDiff(rows, draftsBy(rows, { a: { running: true, budget: "" } }));
-    expect(diff.budgetWrites[0].cents).toBe(0);
-  });
-
-  it("a non-integer amount is reported, not written", () => {
-    const diff = controlsDiff(rows, draftsBy(rows, { a: { running: true, budget: "12.5" } }));
-    expect(diff.invalidRows).toEqual([rows[0].rowId]);
-    expect(diff.budgetWrites).toEqual([]);
-  });
-
-  it("a row with no scope never produces a budget write", () => {
-    const old = buildControlRows([campaign({ id: "old", legKey: null })], set, CHANNELS);
-    const diff = controlsDiff(old, draftsBy(old, { old: { running: false, budget: "99" } }));
-    expect(diff.budgetWrites).toEqual([]);
-    expect(diff.statusWrites.map((w) => [w.campaignId, w.activate])).toEqual([["old", false]]);
-  });
-
-  it("pausing stops EVERY running row of the campaign, not just the one we picked", () => {
-    // campaign-service keeps at most one `ongoing` per identity, so this is the
-    // defensive branch — but stopping only the row we happened to pick would
-    // silently leave a second live if that ever changed.
-    const many = buildControlRows(
-      [campaign({ id: "live-a" }), campaign({ id: "live-b" }), campaign({ id: "old", status: "stopped" })],
-      set, CHANNELS,
-    );
-    expect(many).toHaveLength(1);
-    const diff = controlsDiff(many, { [many[0].rowId]: { running: false, budget: "24" } });
-    expect(diff.statusWrites.map((w) => w.campaignId).sort()).toEqual(["live-a", "live-b"]);
-    expect(diff.statusWrites.every((w) => !w.activate)).toBe(true);
-  });
-
-  it("restarting addresses the representative alone, never every ancestor", () => {
-    const stopped = buildControlRows(
-      [
-        campaign({ id: "newest", status: "stopped", createdAt: "2026-06-12T00:00:00.000Z" }),
-        campaign({ id: "older", status: "stopped", createdAt: "2026-05-01T00:00:00.000Z" }),
-      ],
-      set, CHANNELS,
-    );
-    const diff = controlsDiff(stopped, { [stopped[0].rowId]: { running: true, budget: "24" } });
-    expect(diff.statusWrites.map((w) => [w.campaignId, w.activate])).toEqual([["newest", true]]);
-  });
-});
-
-describe("diffSummary — what Confirm is about to do", () => {
-  const set = budgets([
-    { legKey: LEG_A, featureSlug: COLD_EMAIL, offerId: OFFER_A, cents: 2400 },
-    { legKey: LEG_B, featureSlug: COLD_EMAIL, offerId: OFFER_A, cents: 1000 },
-  ]);
+describe("scopeToggleWrites — one press for the whole scope", () => {
   const rows = buildControlRows(
-    [campaign({ id: "a" }), campaign({ id: "b", legKey: LEG_B })],
-    set, CHANNELS,
+    [
+      campaign({ id: "live" }),
+      campaign({ id: "older-live", createdAt: "2026-01-01T00:00:00Z" }),
+      campaign({ id: "paused", status: "stopped", legKey: LEG_B }),
+    ],
+    undefined,
+    CHANNELS,
+    { offerId: OFFER_A },
   );
 
-  it("nothing changed means no sentence", () => {
-    const diff = controlsDiff(
-      rows,
-      draftsBy(rows, { a: { running: true, budget: "24" }, b: { running: true, budget: "10" } }),
-    );
-    expect(diffSummary(rows, diff)).toBeNull();
+  it("Pause stops every running stored row, and touches nothing already stopped", () => {
+    const ids = scopeToggleWrites(rows, false).map((w) => w.campaignId).sort();
+    expect(ids).toEqual(["live", "older-live"]);
   });
 
-  it("states the counts and the money, before and after", () => {
-    const diff = controlsDiff(
-      rows,
-      draftsBy(rows, { a: { running: false, budget: "24" }, b: { running: true, budget: "20" } }),
-    );
-    const summary = diffSummary(rows, diff)!;
-    expect(summary).toContain("1 campaign pausing");
-    // $34 to $20: b's ceiling rises 10 -> 20, and a's $24 leaves the daily total
-    // because it is being PAUSED, though its ceiling is untouched and comes back
-    // with it. The line reports what will be spent, not what is configured.
-    expect(summary).toContain("$34 to $20");
+  it("Activate restarts every stopped campaign once, and nothing running", () => {
+    expect(scopeToggleWrites(rows, true)).toEqual([{ campaignId: "paused", featureSlug: COLD_EMAIL }]);
   });
 
-  it("reports the money moving on a PAUSE alone, with no budget write at all", () => {
-    const diff = controlsDiff(
-      rows,
-      draftsBy(rows, { a: { running: false, budget: "24" }, b: { running: true, budget: "10" } }),
+  it("Activate includes a campaign held over payment: nothing resumes on its own", () => {
+    const held = buildControlRows(
+      [campaign({ id: "held", status: "stopped", stopReason: "payment_declined" })],
+      undefined,
+      CHANNELS,
     );
-    expect(diff.budgetWrites).toHaveLength(0);
-    const summary = diffSummary(rows, diff)!;
-    expect(summary).toContain("$34 to $10");
-  });
-
-  it("says nothing about money when the edit cannot change what is spent today", () => {
-    // Editing a PAUSED campaign's ceiling is a real write and moves nothing today,
-    // so the line would otherwise read "$24 to $24".
-    const mixed = buildControlRows(
-      [
-        campaign({ id: "a" }),
-        campaign({ id: "b", status: "stopped", legKey: LEG_B }),
-      ],
-      set, CHANNELS,
-    );
-    const diff = controlsDiff(
-      mixed,
-      draftsBy(mixed, { a: { running: true, budget: "24" }, b: { running: false, budget: "99" } }),
-    );
-    expect(diff.budgetWrites).toHaveLength(1);
-    expect(diffSummary(mixed, diff)).not.toContain("daily budget");
-  });
-
-  it("counts restarts and pauses separately", () => {
-    const stopped = buildControlRows(
-      [campaign({ id: "a", status: "stopped" }), campaign({ id: "b", legKey: LEG_B })],
-      set, CHANNELS,
-    );
-    const diff = controlsDiff(
-      stopped,
-      draftsBy(stopped, { a: { running: true, budget: "24" }, b: { running: false, budget: "10" } }),
-    );
-    const summary = diffSummary(stopped, diff)!;
-    expect(summary).toContain("1 campaign restarting");
-    expect(summary).toContain("1 campaign pausing");
-  });
-
-  it("nextTotalCents keeps an untouched row's own ceiling", () => {
-    const diff = controlsDiff(
-      rows,
-      draftsBy(rows, { a: { running: true, budget: "30" }, b: { running: true, budget: "10" } }),
-    );
-    expect(nextTotalCents(rows, diff)).toBe(4000);
+    expect(held[0].paymentHold).toBe("declined");
+    expect(scopeToggleWrites(held, true).map((w) => w.campaignId)).toEqual(["held"]);
   });
 });
 

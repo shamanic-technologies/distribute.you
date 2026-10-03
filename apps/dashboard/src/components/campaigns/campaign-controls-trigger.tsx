@@ -1,32 +1,22 @@
 "use client";
 
-import { PAYMENT_HOLD_LABEL, PAYMENT_HOLD_STYLE, strongestPaymentHold } from "@/lib/payment-declined";
-import { useMemo, useState } from "react";
-import { getBrandCampaignBudgets, listCampaignsByBrand } from "@/lib/api";
-import { useAcquisitionChannels } from "@/lib/use-acquisition-channels";
+import { PAYMENT_HOLD_LABEL, PAYMENT_HOLD_STYLE } from "@/lib/payment-declined";
 import { useLegCatalogue } from "@/lib/use-leg-catalogue";
 import { legFor } from "@/lib/legs";
-import { useAuthQuery } from "@/lib/use-auth-query";
-import {
-  ROLLUP_LABEL,
-  ROLLUP_STYLE,
-  buildControlRows,
-  rollupStatus,
-  scopeTotalCents,
-} from "@/lib/campaign-controls";
+import { ROLLUP_LABEL, ROLLUP_STYLE, scopeTotalCents } from "@/lib/campaign-controls";
 import { fmtDailyBudgetUsd } from "@/lib/campaign-budget";
 import { useDailyBudgetHidden } from "@/lib/use-daily-budget-hidden";
-import { CampaignControlsModal } from "@/components/campaigns/campaign-controls-modal";
+import { useScopeToggle } from "@/lib/use-scope-toggle";
 import { Skeleton } from "@/components/skeleton";
 
 /**
  * Is this running, and how hard — stated at whatever grain the page is on, and
- * the way into the modal that changes it.
+ * the ONE press that pauses or activates it (owner 2026-10-03: no modal, no
+ * per-campaign toggles, "simplement activer ou mettre en pause").
  *
- * The whole control IS the pill, deliberately: a hover-revealed pencil is a dead
- * affordance on a phone (a finger produces no hover), which is the same reason
- * this repo's info tips are never a native `title`. It is a `role="button"` span
- * rather than a native button element, because it renders inside clickable
+ * The whole control IS the pill plus its action word, always painted: a
+ * hover-revealed control is a dead affordance on a phone. It is a `role="button"`
+ * span rather than a native button element, because it renders inside clickable
  * regions and a nested button is invalid HTML: the parser closes the outer one
  * early and the surrounding card breaks.
  *
@@ -84,31 +74,13 @@ export function CampaignControlsTrigger({
   cap?: boolean;
   className?: string;
 }) {
-  const [open, setOpen] = useState(false);
-
-  const campaignsQ = useAuthQuery(["campaigns", brandId], () => listCampaignsByBrand(brandId));
-  const budgetsQ = useAuthQuery(["brandCampaignBudgets", brandId], () =>
-    getBrandCampaignBudgets(brandId),
-  );
-
-  const channels = useAcquisitionChannels();
+  const { rows, settled, rollup, hold, pending, error, toggle } = useScopeToggle(brandId, {
+    offerId,
+    legKey,
+    campaignId,
+  });
   const catalogue = useLegCatalogue();
-  const rows = useMemo(
-    () =>
-      buildControlRows(campaignsQ.data?.campaigns ?? [], budgetsQ.data, channels, {
-        offerId,
-        legKey,
-        campaignId,
-      }),
-    [campaignsQ.data, budgetsQ.data, channels, offerId, legKey, campaignId],
-  );
-
-  // Reveal on SETTLE (resolved OR errored) — a failed read shows the honest
-  // answer rather than an eternal skeleton.
   const budgetHidden = useDailyBudgetHidden();
-  const settled =
-    (campaignsQ.data !== undefined || campaignsQ.isError) &&
-    (budgetsQ.data !== undefined || budgetsQ.isError);
 
   if (!settled) {
     return (
@@ -119,10 +91,6 @@ export function CampaignControlsTrigger({
     );
   }
 
-  const rollup = rollupStatus(rows);
-  // Nothing runs AND the reason is payment: a pause the customer did not choose and
-  // cannot undo by flipping a switch, so the pill names it.
-  const hold = rollup === "paused" ? strongestPaymentHold(rows.map((r) => r.paymentHold)) : null;
   const totalCents =
     totalCentsOverride !== undefined
       ? totalCentsOverride
@@ -130,21 +98,30 @@ export function CampaignControlsTrigger({
           dailyOnly ? rows.filter((r) => (legFor(catalogue, r.legKey)?.fromKey ?? null) === null) : rows,
         );
 
+  const actionable = rollup !== "none";
+  const action = pending ? "Saving…" : rollup === "active" ? "Pause" : "Activate";
+
   return (
-    <>
+    <div className={`flex flex-col items-end gap-1 ${className}`}>
       <div
         role="button"
-        tabIndex={0}
-        aria-haspopup="dialog"
-        aria-label={budgetHidden ? "Pause or restart" : "Change what is running and what it may spend"}
-        onClick={() => setOpen(true)}
+        tabIndex={actionable ? 0 : -1}
+        aria-disabled={!actionable || pending}
+        aria-busy={pending}
+        // Activate fires the workflow right away, not at the next tick: say so.
+        aria-label={rollup === "active" ? "Pause" : "Activate. Sending starts right away."}
+        onClick={() => {
+          if (actionable) void toggle();
+        }}
         onKeyDown={(e) => {
-          if (e.key === "Enter" || e.key === " ") {
+          if (actionable && (e.key === "Enter" || e.key === " ")) {
             e.preventDefault();
-            setOpen(true);
+            void toggle();
           }
         }}
-        className={`group -mx-1 flex cursor-pointer items-center justify-end gap-2.5 rounded-md px-1 py-0.5 hover:bg-gray-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-300 ${className}`}
+        className={`group -mx-1 flex items-center justify-end gap-2.5 rounded-md px-1 py-0.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-300 ${
+          actionable ? "cursor-pointer hover:bg-gray-100" : ""
+        } ${pending ? "opacity-60" : ""}`}
       >
         {/* A plan's $50/day is fixed, so a subscriber sees the status alone. */}
         {!budgetHidden && (
@@ -160,31 +137,17 @@ export function CampaignControlsTrigger({
         >
           {hold ? PAYMENT_HOLD_LABEL[hold] : ROLLUP_LABEL[rollup]}
         </span>
-        {/* Persistent, not hover-only: a control discoverable only by accident is
-            not discoverable on a touch screen at all. */}
-        <svg
-          className="h-3.5 w-3.5 shrink-0 text-gray-300 transition group-hover:text-gray-500"
-          fill="none"
-          stroke="currentColor"
-          viewBox="0 0 24 24"
-          aria-hidden="true"
-        >
-          <path
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            strokeWidth={2}
-            d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
-          />
-        </svg>
+        {actionable && (
+          <span className="whitespace-nowrap text-[12px] font-medium text-gray-500 underline-offset-2 group-hover:text-gray-800 group-hover:underline">
+            {action}
+          </span>
+        )}
       </div>
-      {open && (
-        <CampaignControlsModal
-          brandId={brandId}
-          offerId={offerId}
-          campaignId={campaignId}
-          onClose={() => setOpen(false)}
-        />
+      {error && (
+        <p role="alert" className="max-w-[260px] text-right text-[12px] text-red-600">
+          {error}
+        </p>
       )}
-    </>
+    </div>
   );
 }
