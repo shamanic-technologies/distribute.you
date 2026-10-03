@@ -1,4 +1,5 @@
-import { renderedResponse, staticResponse } from "@/lib/static-html";
+import { renderedResponse } from "@/lib/static-html";
+import { renderNotFoundPage } from "@/lib/pages/not-found";
 import { renderComparePage } from "@/lib/compare-page";
 import { COMPETITORS, competitorBySlug } from "@/lib/competitors";
 
@@ -17,7 +18,7 @@ export async function GET(request: Request, context: { params: Promise<{ slug: s
   const { slug } = await context.params;
   const competitor = competitorBySlug(slug);
   if (!competitor) {
-    return staticResponse("404.html", request, { status: 404, canonicalPath: "/404" });
+    return renderedResponse(renderNotFoundPage(), request, { status: 404, canonicalPath: "/404" });
   }
   return renderedResponse(renderComparePage(competitor), request, {
     canonicalPath: `/compare/${competitor.slug}`,

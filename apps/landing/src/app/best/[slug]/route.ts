@@ -1,4 +1,5 @@
-import { renderedResponse, staticResponse } from "@/lib/static-html";
+import { renderedResponse } from "@/lib/static-html";
+import { renderNotFoundPage } from "@/lib/pages/not-found";
 import { renderBestForPage } from "@/lib/best-for-page";
 import { BEST_FOR_PAGES, bestForBySlug } from "@/lib/best-for";
 
@@ -17,7 +18,7 @@ export async function GET(request: Request, context: { params: Promise<{ slug: s
   const { slug } = await context.params;
   const page = bestForBySlug(slug);
   if (!page) {
-    return staticResponse("404.html", request, { status: 404, canonicalPath: "/404" });
+    return renderedResponse(renderNotFoundPage(), request, { status: 404, canonicalPath: "/404" });
   }
   return renderedResponse(renderBestForPage(page), request, { canonicalPath: `/best/${page.slug}` });
 }

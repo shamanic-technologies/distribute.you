@@ -14,7 +14,7 @@
  * Alias-free (no `@/` import) so `tests/unit/compare-pages.test.ts` can import it directly.
  */
 
-export type Category = "cold-email-tool" | "ai-sdr" | "data-platform";
+export type Category = "cold-email-tool" | "ai-sdr" | "data-platform" | "post-purchase";
 
 export type PricePoint = {
   /** The plan as the competitor names it. */
@@ -602,12 +602,58 @@ export const COMPETITORS: readonly Competitor[] = [
       { q: "Is there a commitment with distribute.you?", a: "No. Pause in one click, and the daily budget is a hard cap." },
     ],
   },
+  {
+    slug: "parcellab",
+    name: "parcelLab",
+    domain: "parcellab.com",
+    category: "post-purchase",
+    oneLiner: "A post-purchase platform for retailers: order tracking, branded delivery messages, returns, exchanges and refunds in one place.",
+    sourceUrl: "https://parcellab.com/",
+    verifiedOn: "2026-10-03",
+    pricingModel: "Not published. Demo and contract through their sales team.",
+    entryPrice: "On request",
+    prices: [
+      { plan: "Platform (Convert, Engage, Retain, Insights, AI Agents)", price: "On request", note: "Sold after a demo; no price on the site" },
+    ],
+    operatedBy: "you",
+    sendingDomains: "Your store's own domain, writing to shoppers who already ordered. It sends no cold email.",
+    leads: "None. It messages the customers already in your order data.",
+    replies: "Not what it is for. Its AI agent answers where-is-my-order, return and refund questions from your customers.",
+    channels: "Branded tracking pages and post-purchase email to existing customers.",
+    costPerMeetingPublished: false,
+    freeTier: "None published; it starts with a demo.",
+    contract: "Not published. Enterprise sales.",
+    whereTheyWin: [
+      "Everything after the checkout: tracking pages, delivery updates, returns, exchanges and refunds in one platform.",
+      "Built for large retailers, with IKEA, Puma and Dyson among the brands on its site.",
+      "Fewer where-is-my-order tickets for your support team.",
+    ],
+    whereWeWin: [
+      "We bring you buyers you do not have yet. parcelLab talks to people who already bought from you.",
+      "From $1 a day, with no demo, no contract and nothing to set up on your side.",
+      "The cost of a positive reply is measured and shown on your dashboard.",
+    ],
+    chooseThemIf: [
+      "You run an online store with steady order volume and want fewer support tickets and more repeat purchases.",
+      "Your problem is returns, delivery updates or customers asking where their order is.",
+    ],
+    chooseUsIf: [
+      "You sell to businesses and need sales meetings with companies that have never heard of you.",
+      "You searched for a parcelLab alternative because you want new customers, not a better experience for the ones you have.",
+    ],
+    faq: [
+      { q: "Is distribute.you a parcelLab alternative?", a: "Only if what you need is new customers. parcelLab improves what happens after a shopper buys: tracking, delivery messages and returns. distribute.you is a cold email agency that finds companies who have never bought from you and books sales meetings with them. A retailer can use both." },
+      { q: "Does distribute.you send order or shipping notifications?", a: "No. We send cold email to prospects from domains we own, never transactional email to your customers. For tracking pages and delivery updates, a post-purchase platform like parcelLab is the right pick." },
+      { q: "Can an e-commerce brand use distribute.you?", a: "Yes, when it sells to other businesses, for example wholesale buyers, shops that could stock your products, or corporate gifting. You paste your website and we find and qualify those buyers." },
+    ],
+  },
 ];
 
 export const CATEGORY_LABEL: Record<Category, string> = {
   "cold-email-tool": "Cold email software",
   "ai-sdr": "AI SDR agents",
   "data-platform": "Data platforms",
+  "post-purchase": "Post-purchase platforms",
 };
 
 export function competitorBySlug(slug: string): Competitor | undefined {
