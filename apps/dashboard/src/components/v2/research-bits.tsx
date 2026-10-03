@@ -11,6 +11,8 @@ import { IdentificationBadgeIcon } from "@phosphor-icons/react/dist/csr/Identifi
 import { ParagraphIcon } from "@phosphor-icons/react/dist/csr/Paragraph";
 import { HandWavingIcon } from "@phosphor-icons/react/dist/csr/HandWaving";
 import { MinusIcon } from "@phosphor-icons/react/dist/csr/Minus";
+import { CalendarIcon } from "@phosphor-icons/react/dist/csr/Calendar";
+import { ClockIcon } from "@phosphor-icons/react/dist/csr/Clock";
 import { EmptyNote, SectionTitle } from "@/components/v2/ui";
 import { crewFor, type CrewGlyph } from "@/lib/v2/crews";
 import {
@@ -42,6 +44,9 @@ export const TOPIC_LOOK: Record<ResearchTopic, { color: string; Icon: typeof Bra
   layout: { color: "var(--data-rose)", Icon: ParagraphIcon },
   opening: { color: "var(--data-rose)", Icon: HandWavingIcon },
   dash: { color: "var(--data-rose)", Icon: MinusIcon },
+  // when the email went out, in the prospect's timezone: a sending-schedule question
+  weekday: { color: "var(--data-sky)", Icon: CalendarIcon },
+  hour: { color: "var(--data-sky)", Icon: ClockIcon },
 };
 
 export const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];

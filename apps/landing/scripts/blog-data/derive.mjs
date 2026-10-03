@@ -284,6 +284,18 @@ function localHour(sentAt, tz) {
     return Number.isFinite(n) ? n % 24 : null;
   } catch { return null; }
 }
+// The day of the week in the PROSPECT's own timezone (the Research weekday study): Sunday 11 PM in
+// UTC is already Monday morning in Sydney, so the UTC day (`weekday`) would file it wrong.
+// null when the email carries no timezone, or one Intl cannot read.
+const tzWeekday = new Map();
+function localWeekday(sentAt, tz) {
+  if (!tz) return null;
+  try {
+    if (!tzWeekday.has(tz)) tzWeekday.set(tz, new Intl.DateTimeFormat("en-US", { timeZone: tz, weekday: "long" }));
+    const w = tzWeekday.get(tz).format(new Date(`${sentAt.replace(" ", "T")}Z`));
+    return WEEKDAY.includes(w) ? w : null;
+  } catch { return null; }
+}
 
 const facts = [];
 // One row per email whose campaign states a leg, for the research block. It carries no cost yet:
@@ -337,6 +349,7 @@ for (const e of emails) {
     size: sizeBucket(lead?.estimated_num_employees),
     industry: (lead?.industry || "").trim() || null,
     localHour: localHour(sentAt, e.timezone || lead?.timezone),
+    localWeekday: localWeekday(sentAt, e.timezone || lead?.timezone),
     weekday: WEEKDAY[d.getUTCDay()],
     month: sentAt.slice(0, 7),
     // an outcome lands on exactly one email: the one the provider named for a click,
@@ -709,6 +722,22 @@ function strataPer(rows, keyFn) {
   }
   return out;
 }
+// Per bucket: its first and last month sent, how many clients sent in it, and its share of emails
+// per month, so research.mjs can say how far a bucket's population is from the others'.
+function scopePer(rows, keyFn) {
+  const out = {};
+  for (const r of rows) {
+    const k = keyFn(r);
+    if (!k) continue;
+    const s = (out[k] ||= { from: r.month, to: r.month, orgs: new Set(), byMonth: {} });
+    if (r.month < s.from) s.from = r.month;
+    if (r.month > s.to) s.to = r.month;
+    if (r.orgId) s.orgs.add(r.orgId);
+    s.byMonth[r.month] = (s.byMonth[r.month] || 0) + 1;
+  }
+  for (const s of Object.values(out)) s.orgs = s.orgs.size;
+  return out;
+}
 function researchFor(rows) {
   return {
     byModel: cut(rows, modelLabel),
@@ -734,6 +763,32 @@ function researchFor(rows) {
     byOpening: cut(rows, (r) => r.firstOpening),
     layoutByTier: Object.fromEntries(["Flash", "Pro"].map((t) => [t, cut(rows.filter((r) => r.tier === t), (r) => r.firstLayout)])),
     openingByTier: Object.fromEntries(["Flash", "Pro"].map((t) => [t, cut(rows.filter((r) => r.tier === t), (r) => r.firstOpening)])),
+    // WHEN the email went out, in the prospect's own timezone: the day of the week and the hour.
+    // Every email is filed under its own send time (a follow-up on its own day), and an outcome on
+    // the email that earned it. Ordinal: drawn Monday to Sunday, 0h to 23h, never ranked.
+    byLocalWeekday: cut(rows, (r) => r.localWeekday, DAYS),
+    localWeekdayStrata: strataPer(rows, (r) => r.localWeekday),
+    byLocalHour: cut(rows, (r) => (r.localHour === null ? null : String(r.localHour)), Array.from({ length: 24 }, (_, h) => String(h))),
+    localHourStrata: strataPer(rows, (r) => (r.localHour === null ? null : String(r.localHour))),
+    // per bucket, which months and how many clients it was sent in: a day sent only in the spring
+    // by a few clients is not the same population as one sent every month by all of them
+    localWeekdayScope: scopePer(rows, (r) => r.localWeekday),
+    localHourScope: scopePer(rows, (r) => (r.localHour === null ? null : String(r.localHour))),
+    noLocalTime: rows.filter((r) => r.localWeekday === null).length,
+    // per month sent: how many emails went out Monday to Friday, 08:00 to 17:00 in the prospect's
+    // timezone, and how many on a weekend. The schedule moved over the window, so every bucket of
+    // the two timing studies is also a bucket of months; research.mjs states it.
+    sendWindowByMonth: (() => {
+      const by = {};
+      for (const r of rows) {
+        if (r.localWeekday === null || r.localHour === null) continue;
+        const m = (by[r.month] ||= { emails: 0, inWindow: 0, weekend: 0 });
+        m.emails++;
+        if (r.localWeekday === "Saturday" || r.localWeekday === "Sunday") m.weekend++;
+        else if (r.localHour >= 8 && r.localHour < 17) m.inWindow++;
+      }
+      return by;
+    })(),
     // Em dash / en dash / both / neither in the first email, and the same per tier. Dash use is
     // mostly the MODEL's habit, so byModelDash says, per model, how its first emails split.
     ...dashCuts(rows),

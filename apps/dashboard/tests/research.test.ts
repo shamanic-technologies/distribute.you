@@ -160,6 +160,33 @@ describe("research.json is coherent", () => {
     }
   });
 
+  it("asks which day of the week a cold email should go out on, in the prospect's timezone, and says what it cannot answer", () => {
+    // Owner 2026-10-03 (copying a Sunday-to-Friday schedule?): one leg, positive replies, judged by
+    // verdict.mjs like every other cut. The days are drawn Monday to Sunday, never ranked.
+    const s = studyById("herald-weekday-rate", RESEARCH);
+    expect(s).toBeTruthy();
+    if (!s) return;
+    expect(s.topic).toBe("weekday");
+    expect(s.question).toBe("Which day of the week should a cold email go out on?");
+    const days = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
+    const labels = s.charts[0].points.map((p) => p.label);
+    expect(labels).toEqual(days.filter((d) => labels.includes(d)));
+    expect(s.charts[0].title).toContain("prospect's timezone");
+    for (const c of s.charts) for (const p of c.points) expect(p.note, s.id).toMatch(/·/);
+    const text = s.conclusion.join(" ");
+    expect(text).toMatch(/Sunday against Monday to Friday: .*(Conclusion|Signal|Noise): /);
+    expect(text).toContain("What this cannot answer");
+    expect(text).toContain("The schedule moved over the window");
+    // the hour study rides the same rules, drawn 00:00 to 23:00
+    const h = studyById("herald-hour-rate", RESEARCH);
+    expect(h?.topic).toBe("hour");
+    const hours = h!.charts[0].points.map((p) => p.label);
+    expect(hours).toEqual([...hours].sort());
+    // a leg whose every day is still Learning gets no weekday study (one leg x one channel per figure)
+    const scout = studyById("scout-weekday-rate", RESEARCH);
+    if (scout) expect(scout.charts[0].points.some((p) => !p.thin)).toBe(true);
+  });
+
   it("draws something for every measured study, and nothing is invented for one that is not", () => {
     for (const s of RESEARCH.studies) {
       if (s.status === "measured") {

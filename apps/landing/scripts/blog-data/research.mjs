@@ -634,6 +634,130 @@ function dashStudy(key, o, R) {
   });
 }
 
+// ---------- when the email went out: day of the week, hour of the day ----------
+// Read in the PROSPECT's own timezone (derive.mjs). Every email is filed under its own send time
+// and an outcome under the email that earned it. Ordinal charts (Monday to Sunday, 0h to 23h), so
+// the leader is named in words and judged against the runner-up like every other cut. The buckets
+// are NOT one population: campaigns once sent seven days a week at any hour and now send in a
+// weekday window, so a bucket outside that window is older and from fewer clients. Each study
+// states that, sized per bucket, and what the data therefore cannot answer.
+const WEEKDAYS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"];
+const TIMING = {
+  weekday: {
+    cutKey: "byLocalWeekday",
+    strataKey: "localWeekdayStrata",
+    scopeKey: "localWeekdayScope",
+    question: () => `Which day of the week should a cold email go out on?`,
+    label: (b) => b,
+    unitNoun: "day",
+  },
+  hour: {
+    cutKey: "byLocalHour",
+    strataKey: "localHourStrata",
+    scopeKey: "localHourScope",
+    question: () => `Which hour of the day should a cold email go out at?`,
+    label: (b) => `${String(b).padStart(2, "0")}:00`,
+    unitNoun: "hour",
+  },
+};
+// two buckets' strata merged under one label (Monday to Friday pooled, say), for a verdict on them
+function mergeStrata(strata, keys) {
+  const into = {};
+  for (const k of keys) {
+    for (const [sk, x] of Object.entries(strata[k] || {})) {
+      const t = (into[sk] ||= { emails: 0, clicks: 0, replies: 0, spend: 0 });
+      t.emails += x.emails; t.clicks += x.clicks; t.replies += x.replies; t.spend += x.spend;
+    }
+  }
+  return into;
+}
+function poolRows(o, rows, label) {
+  const t = { bucket: label, emails: 0, spend: 0, clicks: 0, replies: 0 };
+  for (const r of rows) { t.emails += r.emails; t.spend += r.spend; t.clicks += r.clicks; t.replies += r.replies; }
+  t[o.rate] = t.emails ? (t[o.count] / t.emails) * o.per : 0;
+  return t;
+}
+const monthsText = (sc) => (sc.from === sc.to ? monthLabel(sc.from) : `${monthLabel(sc.from)} to ${monthLabel(sc.to)}`);
+function timingStudy(key, o, R, dim) {
+  const d = TIMING[dim];
+  const rows = R[d.cutKey];
+  const scope = R[d.scopeKey];
+  const drawn = rows.filter((r) => r.emails > 0);
+  const total = drawn.reduce((t, r) => t + r[o.count], 0);
+  // one leg x one channel per figure: a leg whose every bucket is still Learning (or with too few
+  // outcomes in all to rank anything) gets no study
+  if (total < MIN_OUTCOMES || !drawn.some((r) => !learningOf(o, r))) return;
+  const w = rateWinner(o, rows);
+  const sorted = [...drawn].sort((a, b) => b[o.rate] - a[o.rate] || b.emails - a.emails);
+  const runnerUp = sorted.find((r) => r !== w?.row) ?? null;
+  const allEmails = drawn.reduce((t, r) => t + r.emails, 0);
+  const side = (label, r) => (r ? { label, outcomes: r[o.count], emails: r.emails, spend: r.spend } : null);
+  const nouns = { noun: o.noun, nouns: o.nounPlural, count: o.count };
+  const v = w
+    ? compareVerdict({ a: side(d.label(w.row.bucket), w.row), b: side(runnerUp && d.label(runnerUp.bucket), runnerUp), goal: "rate", comparisons: drawn.length - 1, strata: Object.fromEntries(Object.entries(R[d.strataKey]).map(([k, x]) => [d.label(k), x])), ...nouns })
+    : { kind: "noise", reason: `No ${d.unitNoun} has earned a ${o.noun} yet.` };
+  const lines = [];
+  if (w) lines.push(`${d.label(w.row.bucket)}: ${counts(o, w.row)}${runnerUp ? `; runner-up ${d.label(runnerUp.bucket)}, ${rateText(o, runnerUp[o.rate])} (${counts(o, runnerUp)})` : ""}.`);
+  const allOrgs = Math.max(0, ...Object.values(scope).map((sc) => sc.orgs));
+  // how the sending schedule moved: first and last month of the window, in the prospect's timezone
+  const months = Object.keys(R.sendWindowByMonth).sort();
+  const pctOfMonth = (m, f) => Math.round((R.sendWindowByMonth[m][f] / R.sendWindowByMonth[m].emails) * 100);
+  const era = months.length > 1
+    ? `The schedule moved over the window: in ${monthLabel(months[0])}, ${pctOfMonth(months[0], "inWindow")}% of emails went out Monday to Friday between 08:00 and 17:00 in the prospect's timezone and ${pctOfMonth(months[0], "weekend")}% on a weekend; in ${monthLabel(months[months.length - 1])}, ${pctOfMonth(months[months.length - 1], "inWindow")}% and ${pctOfMonth(months[months.length - 1], "weekend")}%. So a day or an hour outside that window is also an older month, other clients and other campaigns.`
+    : null;
+  if (dim === "weekday") {
+    // Kevin's question is Sunday: Sunday against Monday to Friday pooled, on the same footing.
+    const sun = rows.find((r) => r.bucket === "Sunday");
+    const week = poolRows(o, rows.filter((r) => WEEKDAYS.includes(r.bucket)), "Monday to Friday");
+    if (sun && sun.emails > 0 && week.emails > 0) {
+      const sunHigher = sun[o.rate] > week[o.rate];
+      const [a, b] = sunHigher ? [sun, week] : [week, sun];
+      const sv = compareVerdict({
+        a: side(sunHigher ? "Sunday" : "Monday to Friday", a), b: side(sunHigher ? "Monday to Friday" : "Sunday", b),
+        goal: "rate", comparisons: 1, strata: { Sunday: R[d.strataKey].Sunday || {}, "Monday to Friday": mergeStrata(R[d.strataKey], WEEKDAYS) }, ...nouns,
+      });
+      lines.push(`Sunday against Monday to Friday: ${rateText(o, sun[o.rate])} against ${rateText(o, week[o.rate])} (${counts(o, sun)}; ${counts(o, week)}). ${sv.kind === "conclusion" ? "Conclusion" : sv.kind === "signal" ? "Signal" : "Noise"}: ${sv.reason}`);
+    }
+    // how far the weekend's population is from the week's
+    for (const day of ["Saturday", "Sunday"]) {
+      const sc = scope[day];
+      if (!sc) { lines.push(`${day}: no email went out on a ${day} in the prospect's timezone.`); continue; }
+      lines.push(`${day}: every email sent from ${monthsText(sc)}, for ${n(sc.orgs)} of the ${n(allOrgs)} clients the busiest day reached.`);
+    }
+    const sunScope = scope.Sunday;
+    if (era) lines.push(era);
+    lines.push(`What this cannot answer: whether a Sunday email works on today's campaigns. ${sunScope ? `Every Sunday email here dates from ${monthsText(sunScope)}, from campaigns that also sent on weekends` : "No Sunday email is on record"}, so no recent Sunday send exists to weigh against recent weekdays. The days also differ by client, month and step of the sequence, which a same-clients, same-months check only partly removes. Only a split test (Sunday against a weekday, same clients, same weeks) can settle it.`);
+    lines.push(`No country with a Sunday to Thursday week (UAE, Saudi Arabia, Israel...) is read apart here.`);
+  } else {
+    const inWindow = drawn.filter((r) => Number(r.bucket) >= 8 && Number(r.bucket) < 17).reduce((t, r) => t + r.emails, 0);
+    const outside = drawn.filter((r) => Number(r.bucket) < 8 || Number(r.bucket) >= 17);
+    lines.push(`${allEmails ? Math.round((inWindow / allEmails) * 100) : 0}% of these emails went out between 08:00 and 17:00 in the prospect's timezone; the other ${n(outside.reduce((t, r) => t + r.emails, 0))} are spread over ${n(outside.length)} hours.`);
+    if (era) lines.push(era);
+    lines.push(`What this cannot answer: whether an evening or early-morning email works on today's campaigns. The hours outside 08:00 to 17:00 come from older months, and an hour's bar mixes the clients, months and steps of the sequence sent in it. Only a split test on the same clients in the same weeks can settle it.`);
+  }
+  if (R.noLocalTime > 0) lines.push(`${n(R.noLocalTime)} ${o.emailsNoun} whose prospect has no timezone on record are left out.`);
+  lines.push(`Each email is filed under its own send ${dim === "weekday" ? "day" : "hour"} in the prospect's timezone, and a ${o.noun} under the email that earned it.`);
+  const headline = w ? `${d.label(w.row.bucket)} wins with ${rateSentence(o, w.row[o.rate])}.` : `No ${d.unitNoun} has earned a ${o.noun} yet.`;
+  add({
+    id: `${o.crew}-${dim}-rate`,
+    crew: o.crew,
+    topic: dim,
+    goal: "rate",
+    question: d.question(o),
+    status: w ? "measured" : "not_enough_data",
+    headline: w ? headlineFor(headline, v.kind) : headline,
+    winner: w ? d.label(w.row.bucket) : null,
+    result: w ? { display: rateText(o, w.row[o.rate]), unit: rateLabel(o), sample: counts(o, w.row) } : null,
+    crowned: v.kind === "conclusion",
+    verdict: { kind: v.kind, reason: v.reason },
+    charts: [
+      { kind: "bars", title: `${dim === "weekday" ? "By day of the week" : "By hour of the day"}, prospect's timezone: ${rateTitle(o).charAt(0).toLowerCase()}${rateTitle(o).slice(1)}`, lowerIsBetter: false, points: rateBars(o, rows, d.label, { ordinal: true }), note: RULE_NOTE },
+      { kind: "bars", title: `${dim === "weekday" ? "By day of the week" : "By hour of the day"}, prospect's timezone: ${costTitle(o).charAt(0).toLowerCase()}${costTitle(o).slice(1)}`, lowerIsBetter: true, points: costBars(o, rows, d.label, { ordinal: true }), note: RULE_NOTE },
+    ],
+    conclusion: lines,
+  });
+}
+
 for (const key of ["reply", "visit"]) {
   const o = OUTCOMES[key];
   const R = facts.research[key];
@@ -828,6 +952,8 @@ for (const key of ["reply", "visit"]) {
   shapeStudies(key, o, R, "layout");
   shapeStudies(key, o, R, "opening");
   dashStudy(key, o, R);
+  timingStudy(key, o, R, "weekday");
+  timingStudy(key, o, R, "hour");
 
   // The best workflow: one model and one template together, which is what a campaign actually
   // runs. The same floors crown it as every other study.

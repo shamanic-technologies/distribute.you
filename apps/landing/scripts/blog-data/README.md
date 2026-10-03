@@ -45,6 +45,11 @@ node apps/landing/scripts/blog-data/research.mjs /tmp/research-data/facts.json a
 pnpm --filter @distribute/dashboard test research
 ```
 
+The two timing studies (day of the week, hour of the day) read each email's send time in the
+PROSPECT's timezone (the campaign row's, else the lead's) and state, per month, how much went out
+Monday to Friday between 08:00 and 17:00: campaigns sent on any day and hour until the summer, so
+a weekend day or an off-hour is also an older month. A leg whose every bucket is Learning gets none.
+
 The second argument receives two side files the workflow and template pages read
 (`research-catalog.json`: one entry per workflow, per template and per model, per crew, with its months and
 its last runs; `research-templates.json`: the text of every listed template). extract.sh writes
