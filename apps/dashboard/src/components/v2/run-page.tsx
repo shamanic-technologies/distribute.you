@@ -21,7 +21,7 @@ import { workflowTemplateLabel } from "@/lib/workflow-template-label";
 import { v2Href, v2PersonHref, v2WorkflowHref } from "@/lib/v2/routes";
 import { CrewMark } from "@/components/v2/crew-mark";
 import { useMissions } from "@/components/v2/use-missions";
-import { runTaskLabel } from "@/components/v2/runs";
+import { foldSteps, runTaskLabel } from "@/components/v2/runs";
 import { EmptyNote, Shimmer, TopBar } from "@/components/v2/ui";
 import { useStaffMode } from "@/lib/use-staff-mode";
 
@@ -38,6 +38,14 @@ function statusLabel(run: Pick<RunDetail, "status" | "completedAt">): string {
   if (run.status === "failed" || run.status === "error") return "Failed";
   if (run.completedAt || run.status === "completed") return "Done";
   return "Running";
+}
+
+/** A folded group of steps: Failed if any failed, Running if any still runs, else Done. */
+function groupStatus(items: { status: string; completedAt?: string | null }[]): string {
+  const labels = items.map((x) => statusLabel({ status: x.status, completedAt: x.completedAt ?? null }));
+  if (labels.includes("Failed")) return "Failed";
+  if (labels.includes("Running")) return "Running";
+  return "Done";
 }
 
 function cents(v: string | null | undefined): string {
@@ -163,12 +171,17 @@ export function RunPage() {
                     <EmptyNote>This run spawned no steps.</EmptyNote>
                   ) : (
                     <ul className="mt-2">
-                      {steps.map((s) => (
-                        <li key={s.id} className="k-row flex h-10 items-center gap-3 px-4 text-[13px]">
-                          <span className="min-w-0 flex-1 truncate">{runTaskLabel(s as unknown as RunRow)}</span>
-                          <span className="k-fg3 hidden truncate text-[12px] md:inline">{s.serviceName}</span>
-                          <span className="k-fg3 w-16 shrink-0 text-right text-[12px]">{statusLabel({ status: s.status, completedAt: s.completedAt ?? null })}</span>
-                          <span className="k-mono w-16 shrink-0 text-right tabular-nums">{cents(s.ownCostInUsdCents)}</span>
+                      {foldSteps(steps).map((g) => (
+                        <li key={g.first.id} className="k-row flex h-10 items-center gap-3 px-4 text-[13px]">
+                          <span className="min-w-0 flex-1 truncate">
+                            {g.label}
+                            {g.count > 1 ? <span className="k-fg3 tabular-nums">{` ×${g.count}`}</span> : null}
+                          </span>
+                          {staffMode && <span className="k-fg3 hidden truncate text-[12px] md:inline">{g.first.serviceName}</span>}
+                          <span className="k-fg3 w-16 shrink-0 text-right text-[12px]">{groupStatus(g.items)}</span>
+                          <span className="k-mono w-16 shrink-0 text-right tabular-nums">
+                            {cents(String(g.items.reduce((sum, x) => sum + Number(x.ownCostInUsdCents), 0)))}
+                          </span>
                         </li>
                       ))}
                     </ul>
