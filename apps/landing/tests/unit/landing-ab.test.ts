@@ -19,30 +19,27 @@ const q = (s = "") => new URLSearchParams(s);
 const SUBSCRIPTION_SRC = readFileSync(path.join(__dirname, "../../src/lib/pages/subscription.ts"), "utf8");
 
 describe("the split rule", () => {
-  it("draws a first-time human 10/85/5 between the homepage, its $99 plan arm and the instinct page", () => {
-    expect(VARIANT_WEIGHTS).toEqual({ control: 0.1, subscription: 0.85, instinct: 0.05, assistant: 0, concierge: 0 });
+  it("draws every first-time human onto the $99 plan arm", () => {
+    expect(VARIANT_WEIGHTS).toEqual({ control: 0, subscription: 1, instinct: 0, assistant: 0, concierge: 0 });
     const counts: Record<string, number> = {};
     for (let i = 0; i < 10000; i++) counts[drawVariant(i / 10000)] = (counts[drawVariant(i / 10000)] ?? 0) + 1;
-    expect(Object.keys(counts).sort()).toEqual(["control", "instinct", "subscription"]);
-    expect(counts.control).toBe(1000);
-    expect(Math.abs(counts.instinct - 500)).toBeLessThanOrEqual(1);
-    expect(Math.abs(counts.subscription - 8500)).toBeLessThanOrEqual(1);
+    expect(counts).toEqual({ subscription: 10000 });
     expect(decideVariant({ cookieHeader: null, userAgent: CHROME, query: q(), random: 0.12, enabled: true })).toEqual({
-      variant: "instinct", setCookie: true, inTest: true,
+      variant: "subscription", setCookie: true, inTest: true,
     });
   });
 
   it("keeps a returning visitor on a live arm their cookie names, and does not rewrite it", () => {
     const d = decideVariant({
-      cookieHeader: `a=1; ${VARIANT_COOKIE}=instinct; b=2`, userAgent: CHROME, query: q(), random: 0.1, enabled: true,
+      cookieHeader: `a=1; ${VARIANT_COOKIE}=subscription; b=2`, userAgent: CHROME, query: q(), random: 0.1, enabled: true,
     });
-    expect(d).toEqual({ variant: "instinct", setCookie: false, inTest: true });
+    expect(d).toEqual({ variant: "subscription", setCookie: false, inTest: true });
   });
 
   it("redraws a visitor whose cookie names a retired arm, or nothing", () => {
-    for (const v of ["assistant", "concierge", "junk"]) {
+    for (const v of ["control", "instinct", "assistant", "concierge", "junk"]) {
       const d = decideVariant({ cookieHeader: `${VARIANT_COOKIE}=${v}`, userAgent: CHROME, query: q(), random: 0.05, enabled: true });
-      expect(d, v).toEqual({ variant: "control", setCookie: true, inTest: true });
+      expect(d, v).toEqual({ variant: "subscription", setCookie: true, inTest: true });
     }
   });
 
@@ -138,8 +135,8 @@ describe("GET / with the test on", () => {
     expect(SUBSCRIPTION_SRC).toContain("return PLAN_PICKER_LIVE ? withAmountPicker(html) : html;");
   });
 
-  it("serves the homepage to the control arm, tagged", async () => {
-    const { html } = await get({ cookie: "lp_variant=control" });
+  it("serves the homepage to the control arm when forced, tagged", async () => {
+    const { html } = await get({ qs: "?variant=control" });
     expect(html).toContain("Get <span class=\"accent\">revenue in 24h</span>");
     expect(html).toContain('lp_variant:"control"');
   });
