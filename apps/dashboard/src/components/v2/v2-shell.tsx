@@ -8,13 +8,14 @@ import { useMissions } from "@/components/v2/use-missions";
 import { CrewMark } from "@/components/v2/crew-mark";
 import { V2NavContext } from "@/components/v2/nav-context";
 import { useBucketCounts, useBrandRevenue, useNeedsYourCall, useStandingCounts } from "@/components/v2/data";
-import { v2Href, v2MissionHref, v2SectionOf } from "@/lib/v2/routes";
+import { v2Href, v2MissionHref, v2OfferHref, v2SectionOf } from "@/lib/v2/routes";
 import { formatCount } from "@/lib/format-number";
 import { boardColumnTotals } from "@/lib/leads-server-page";
 import { CompanyMark } from "@/components/v2/people-bits";
 import { companyHref } from "@/components/v2/companies-page";
 import { ScopePaymentDeclinedBand } from "@/components/billing/scope-payment-declined-band";
 import { useStaffMode } from "@/lib/use-staff-mode";
+import { SelectedOfferProvider, useSelectedOffer } from "@/components/v2/selected-offer";
 
 /**
  * Keel's frame: a grey canvas, a one-level sidebar sitting ON it, and every page in one
@@ -31,7 +32,7 @@ export function V2Shell({ children }: { children: React.ReactNode }) {
   // A navigation closes the drawer, wherever it was started from.
   useEffect(() => setOpen(false), [pathname, search]);
 
-  return (
+  const shell = (
     <V2NavContext.Provider value={() => setOpen(true)}>
       <div className="v2-root flex h-[100dvh] w-full overflow-hidden">
         {open && <div className="fixed inset-0 z-40 bg-[#10101247] lg:hidden" onClick={() => setOpen(false)} />}
@@ -58,6 +59,8 @@ export function V2Shell({ children }: { children: React.ReactNode }) {
       </div>
     </V2NavContext.Provider>
   );
+  // Every brand page reads ONE offer, the one the sidebar's switcher picked.
+  return brandId ? <SelectedOfferProvider brandId={brandId}>{shell}</SelectedOfferProvider> : shell;
 }
 
 function Count({ n }: { n: number | null | undefined }) {
@@ -149,6 +152,7 @@ function V2Sidebar() {
   const orgId = params.orgId ?? "";
   const brandId = params.brandId ?? "";
   const section = v2SectionOf(pathname);
+  const { offerId } = useSelectedOffer();
   const { missions, crews } = useMissions(orgId, brandId);
   const activeCrews = crews.filter((c) => c.running > 0);
   const activeMissions = missions.filter((m) => m.running);
@@ -263,8 +267,20 @@ function V2Sidebar() {
         </Group>
 
         <Group title="Setup">
-          <NavItem href={v2Href(orgId, brandId, "offers")} label="Offers" icon={<I d={ICONS.offer} />} active={section === "offers"} />
-          <NavItem href={v2Href(orgId, brandId, "targeting")} label="Targeting" icon={<I d={ICONS.target} />} active={section === "targeting"} />
+          {/* The selected offer's own page: there is no list of offers (owner 2026-10-03),
+              the switcher at the top is where another one is picked. */}
+          <NavItem
+            href={offerId ? v2OfferHref(orgId, brandId, offerId) : v2Href(orgId, brandId, "offers")}
+            label="Offer"
+            icon={<I d={ICONS.offer} />}
+            active={section === "offers" && !pathname.endsWith("/targeting")}
+          />
+          <NavItem
+            href={offerId ? v2OfferHref(orgId, brandId, offerId, "targeting") : v2Href(orgId, brandId, "targeting")}
+            label="Targeting"
+            icon={<I d={ICONS.target} />}
+            active={section === "targeting" || (section === "offers" && pathname.endsWith("/targeting"))}
+          />
           <NavItem href={`${v2Href(orgId, brandId, "integrations")}/ai`} label="Integrations" icon={<I d={ICONS.plug} />} active={section === "integrations"} />
           <NavItem href={v2Href(orgId, brandId, "settings")} label="Brand settings" icon={<I d={ICONS.settings} />} active={section === "settings"} />
         </Group>

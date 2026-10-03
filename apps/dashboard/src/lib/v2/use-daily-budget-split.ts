@@ -6,6 +6,7 @@ import { useAuthQuery } from "@/lib/use-auth-query";
 import { useLegCatalogue } from "@/lib/use-leg-catalogue";
 import { legFor } from "@/lib/legs";
 import { splitDailyBudget } from "@/lib/v2/budget-split";
+import { useSelectedOffer } from "@/components/v2/selected-offer";
 
 /**
  * The brand's running daily budget SPLIT by how its crews work: what daily crews may
@@ -13,7 +14,8 @@ import { splitDailyBudget } from "@/lib/v2/budget-split";
  * booking a meeting off a positive reply), which spend only when that step is reached.
  * The top bar and Crew state the first; the second is stated beside it, never added.
  *
- * Both are `null` until the served budget, the campaigns and the leg catalogue are in.
+ * Both are the SELECTED offer's (owner 2026-10-03: the dashboard reads one offer), and
+ * `null` until the served budget, the campaigns, the leg catalogue and the offer are in.
  */
 export function useDailyBudgetSplit(
   brandId: string,
@@ -28,16 +30,25 @@ export function useDailyBudgetSplit(
     enabled: enabled && !!brandId,
   });
   const catalogue = useLegCatalogue();
+  const { offerId } = useSelectedOffer();
 
   const split = useMemo(() => {
-    if (!spendableQ.data || !campaignsQ.data || catalogue.legs.size === 0) return null;
+    if (!spendableQ.data || !campaignsQ.data || catalogue.legs.size === 0 || !offerId) return null;
     const legKeyById = new Map<string, string | null>();
-    for (const c of campaignsQ.data.campaigns) legKeyById.set(c.id, c.legKey ?? null);
-    return splitDailyBudget(spendableQ.data, (id) => {
-      const leg = legFor(catalogue, legKeyById.get(id) ?? null);
-      return leg !== null && leg.fromKey !== null;
-    });
-  }, [spendableQ.data, campaignsQ.data, catalogue]);
+    const offerById = new Map<string, string | null>();
+    for (const c of campaignsQ.data.campaigns) {
+      legKeyById.set(c.id, c.legKey ?? null);
+      offerById.set(c.id, c.offerId ?? null);
+    }
+    return splitDailyBudget(
+      spendableQ.data,
+      (id) => {
+        const leg = legFor(catalogue, legKeyById.get(id) ?? null);
+        return leg !== null && leg.fromKey !== null;
+      },
+      (id) => offerById.get(id) === offerId,
+    );
+  }, [spendableQ.data, campaignsQ.data, catalogue, offerId]);
 
   return {
     dailyCents: split?.dailyCents ?? null,

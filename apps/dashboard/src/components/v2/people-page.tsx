@@ -14,7 +14,7 @@ import { ExportButton, RecordsFooter, RecordsTabs, RecordsToolbar, REC_TH, useRo
 import { v2Href } from "@/lib/v2/routes";
 import { CrewMark } from "@/components/v2/crew-mark";
 import { useMissions } from "@/components/v2/use-missions";
-import { brandLeadScopeKey, useBucketCounts } from "@/components/v2/data";
+import { useLeadScope, useBucketCounts } from "@/components/v2/data";
 import { EmptyNote, Shimmer, TopBar } from "@/components/v2/ui";
 import {
   CompanyMark,
@@ -63,11 +63,12 @@ export function PeoplePage() {
   const wire = problem ? "" : (leadsSearchParam(search) ?? "");
   const counts = useBucketCounts(brandId).data;
   const { missionByCampaignId, crews } = useMissions(orgId, brandId);
+  const lead = useLeadScope(brandId);
   const pageQ = useAuthQuery(
-    ["leadsPage", brandLeadScopeKey(brandId), "v2-people", tab.bucket, wire, page],
+    ["leadsPage", lead.key, "v2-people", tab.bucket, wire, page],
     () =>
       listLeadsPage(
-        { brandId },
+        lead.scope,
         {
           view: "basic",
           bucket: tab.bucket,
@@ -130,7 +131,7 @@ export function PeoplePage() {
         right={
           <ExportButton
             filename={`people-${brandId}.csv`}
-            csv={() => fetchLeadsCsv({ brandId }, leadsExportQuery({ search: wire }))}
+            csv={() => fetchLeadsCsv(lead.scope, leadsExportQuery({ search: wire }))}
             disabled={counts?.counts.contacted === 0}
           />
         }

@@ -4,14 +4,16 @@ import { useMemo } from "react";
 import { useAuthQuery } from "@/lib/use-auth-query";
 import {
   getBrand,
-  getBrandRevenue,
+  getOfferRevenue,
   getLeadBucketCounts,
   getLeadHistory,
   getLeadStandingCounts,
   getOrgUsage,
   keepLastGoodFeatureRevenue,
   listLeadsPage,
+  type LeadScope,
 } from "@/lib/api";
+import { useSelectedOffer } from "@/components/v2/selected-offer";
 import type { RevenueOverview } from "@/lib/revenue-view";
 import type { LeadHistoryEvent } from "@/lib/lead-history";
 import { pollOptions } from "@/lib/query-options";
@@ -21,21 +23,43 @@ import { useSoleFeatureSlug } from "@/lib/sole-feature";
 import { leadBucketCountsQuery, standingCountsQuery, type LeadBucket } from "@/lib/leads-server-page";
 
 /**
- * The reads every v2 page shares, on EXACTLY v1's query keys — so v2 and v1 paint from
- * one cache and cannot state two numbers for one brand. Nothing here derives a metric.
+ * The reads every v2 page shares. Each is about the ONE offer the sidebar's switcher
+ * picked (`useSelectedOffer`, owner 2026-10-03): no v2 page states a brand-wide total.
+ * The keys keep v1's prefixes with the offer appended, so a prefix invalidation of the
+ * brand still reaches them. Nothing here derives a metric.
  */
 
-/** v1's lead scope key for a brand (`engaged-leads-page.tsx`). */
-export const brandLeadScopeKey = (brandId: string) => `brand:${brandId}`;
+/** v1's lead scope key for a brand (`engaged-leads-page.tsx`), narrowed to one offer. */
+export const brandLeadScopeKey = (brandId: string, offerId?: string | null) =>
+  offerId ? `brand:${brandId}:offer:${offerId}` : `brand:${brandId}`;
+
+/**
+ * The lead scope every v2 people read sends: the brand, narrowed to the selected offer.
+ * `ready` is false until an offer is picked, so no read ever asks for the whole brand.
+ */
+export function useLeadScope(brandId: string): { scope: LeadScope; key: string; ready: boolean } {
+  const { offerId } = useSelectedOffer();
+  return {
+    scope: offerId ? { brandId, offerId } : { brandId },
+    key: brandLeadScopeKey(brandId, offerId),
+    ready: !!brandId && !!offerId,
+  };
+}
 
 export function useBrandInfo(brandId: string) {
   return useAuthQuery(["brand", brandId], () => getBrand(brandId), pollOptions);
 }
 
+/**
+ * The selected offer's money (features-service's offer grain). Not asked while the offer
+ * has no campaign: that offer has no money yet, and features-service answers it with a
+ * 404 rather than an empty body, so `enabled` is false and pages show their no-data state.
+ */
 export function useBrandRevenue(brandId: string) {
   const featureSlug = useSoleFeatureSlug();
-  const enabled = isRevenueFeature(featureSlug);
-  const q = useAuthQuery(["brandRevenue", brandId], () => getBrandRevenue(brandId), {
+  const { offerId, campaignIds } = useSelectedOffer();
+  const enabled = isRevenueFeature(featureSlug) && !!offerId && (campaignIds?.length ?? 0) > 0;
+  const q = useAuthQuery(["brandRevenue", brandId, "offer", offerId], () => getOfferRevenue(offerId!, brandId), {
     enabled,
     ...pollOptions,
     structuralSharing: (prev, next) =>
@@ -56,18 +80,20 @@ export function useOrgUsage() {
 }
 
 export function useBucketCounts(brandId: string) {
+  const lead = useLeadScope(brandId);
   return useAuthQuery(
-    ["leadBucketCounts", brandLeadScopeKey(brandId), ""],
-    () => getLeadBucketCounts({ brandId }, leadBucketCountsQuery("")),
-    pollOptions,
+    ["leadBucketCounts", lead.key, ""],
+    () => getLeadBucketCounts(lead.scope, leadBucketCountsQuery("")),
+    { ...pollOptions, enabled: lead.ready },
   );
 }
 
 export function useStandingCounts(brandId: string) {
+  const lead = useLeadScope(brandId);
   return useAuthQuery(
-    ["leadStandingCounts", brandLeadScopeKey(brandId), ""],
-    () => getLeadStandingCounts({ brandId }, standingCountsQuery("")),
-    pollOptions,
+    ["leadStandingCounts", lead.key, ""],
+    () => getLeadStandingCounts(lead.scope, standingCountsQuery("")),
+    { ...pollOptions, enabled: lead.ready },
   );
 }
 
@@ -81,16 +107,17 @@ export function useStandingCounts(brandId: string) {
  * "wants to talk" stated 87 conversations for a brand with two replies ever.
  */
 export function useNeedsYourCall(brandId: string, limit: number) {
+  const lead = useLeadScope(brandId);
   return useAuthQuery(
-    ["leadsPage", brandLeadScopeKey(brandId), "v2-needs-call", limit],
+    ["leadsPage", lead.key, "v2-needs-call", limit],
     () =>
       listLeadsPage(
-        { brandId },
+        lead.scope,
         { view: "basic", bucket: "positive_reply", standing: "sales_interest", sort: "activity", limit: String(limit) },
         undefined,
         { includeCampaigns: false },
       ),
-    { refetchInterval: POLL_INTERVAL },
+    { refetchInterval: POLL_INTERVAL, enabled: lead.ready },
   );
 }
 
@@ -104,17 +131,18 @@ export function useLatestInBucket(
   limit: number,
   campaignId?: string,
 ) {
-  const scopeKey = campaignId ? `campaign:${campaignId}` : brandLeadScopeKey(brandId);
+  const lead = useLeadScope(brandId);
+  const scopeKey = campaignId ? `campaign:${campaignId}` : lead.key;
   return useAuthQuery(
     ["leadsPage", scopeKey, "v2-latest", bucket, limit],
     () =>
       listLeadsPage(
-        campaignId ? { campaignId } : { brandId },
+        campaignId ? { campaignId } : lead.scope,
         { view: "basic", bucket, sort: "activity", limit: String(limit) },
         undefined,
         { includeCampaigns: false },
       ),
-    { refetchInterval: POLL_INTERVAL },
+    { refetchInterval: POLL_INTERVAL, enabled: !!campaignId || lead.ready },
   );
 }
 

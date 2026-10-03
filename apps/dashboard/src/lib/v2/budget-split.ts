@@ -26,16 +26,25 @@ export interface BudgetSplit {
   eventCapCents: number;
 }
 
+/**
+ * `inScope`, when given, narrows the split to ONE offer's campaigns (the v2 dashboard
+ * reads one offer): the served per-campaign budgets of that offer, which are disjoint
+ * from every other offer's, so they add. Without it, the served brand total is the base.
+ */
 export function splitDailyBudget(
   spendable: SpendableLike,
   isEventCampaign: (campaignId: string) => boolean,
+  inScope?: (campaignId: string) => boolean,
 ): BudgetSplit {
   let eventCapCents = 0;
+  let scopedCents = 0;
   for (const c of spendable.campaigns) {
+    if (inScope && !inScope(c.campaignId)) continue;
     if (isEventCampaign(c.campaignId)) eventCapCents += c.runningDailyBudgetCents;
+    else scopedCents += c.runningDailyBudgetCents;
   }
   return {
-    dailyCents: Math.max(0, spendable.runningDailyBudgetCents - eventCapCents),
+    dailyCents: inScope ? scopedCents : Math.max(0, spendable.runningDailyBudgetCents - eventCapCents),
     eventCapCents,
   };
 }

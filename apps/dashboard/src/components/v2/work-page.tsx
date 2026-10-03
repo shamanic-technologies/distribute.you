@@ -9,6 +9,7 @@ import { friendlyTime, timeAgo } from "@/lib/friendly-datetime";
 import { fmtDailyBudgetUsd } from "@/lib/campaign-budget";
 import { CrewMark } from "@/components/v2/crew-mark";
 import { campaignHoldCopy, useMissionHold } from "@/components/v2/mission-hold";
+import { useSelectedOffer } from "@/components/v2/selected-offer";
 import { useMissions, type Mission } from "@/components/v2/use-missions";
 import { useNeedsYourCall, useTheirLastWords } from "@/components/v2/data";
 import { useCrewRuns, useRunsTodayList, runState, runTaskLabel } from "@/components/v2/runs";
@@ -35,9 +36,10 @@ interface DoneGroup {
 export function WorkPage() {
   const { orgId, brandId } = useParams<{ orgId: string; brandId: string }>();
   const { missions, crews, settled, missionByCampaignId } = useMissions(orgId, brandId);
+  const { campaignIds } = useSelectedOffer();
   const callQ = useNeedsYourCall(brandId, 10);
   const interested = callQ.data?.total ?? null;
-  const today = useRunsTodayList(brandId, 200);
+  const today = useRunsTodayList(brandId, campaignIds, 200);
   const { byCrew, settled: rollupSettled } = useCrewRuns(brandId, missionByCampaignId);
   const [crewFilter, setCrewFilter] = useState<string | null>(null);
   const [view, setView] = useState<"board" | "list">("board");

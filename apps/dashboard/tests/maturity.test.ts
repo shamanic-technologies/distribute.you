@@ -110,7 +110,6 @@ describe("the staff Mature / Flash switch", () => {
       "components/v2/missions-page.tsx",
       "components/v2/mission-page.tsx",
       "components/v2/crew-page.tsx",
-      "components/v2/offers-list.tsx",
       "components/v2/workflows-page.tsx",
       "components/v2/workflow-page.tsx",
     ]) {

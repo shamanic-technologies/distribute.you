@@ -949,7 +949,7 @@ function RunsCard({
     },
     { ...pollOptions, enabled: read.length > 0 },
   );
-  const { missionByCampaignId } = useMissions(orgId, brandId);
+  const { missionByCampaignId } = useMissions(orgId, brandId, { allOffers: true });
   const runs = q.data ?? [];
   const shown = expanded ? runs : runs.slice(0, RUNS_SHOWN);
   const pending = read.length > 0 && q.data === undefined && !q.isFetchedAfterMount;

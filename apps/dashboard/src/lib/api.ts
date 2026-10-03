@@ -4732,6 +4732,23 @@ const ContactedValueSchema = z.object({
 export type ContactedValue = z.infer<typeof ContactedValueSchema>;
 
 /** The priced subset for the lead ids given (≤1000, the producer's cap), plus the brand total. */
+/**
+ * What ONE offer's contacted leads are worth — features-service
+ * `GET /offers/:offerId/contacted-value` (#1264), priced on the brand's entry rates.
+ */
+export async function getOfferContactedValue(offerId: string, brandId: string, leadIds: string[]): Promise<ContactedValue> {
+  const query = new URLSearchParams({ brandId, pricing: "net" });
+  if (leadIds.length > 0) query.set("leadIds", leadIds.slice(0, 1000).join(","));
+  else query.set("limit", "1");
+  const raw = await apiCall<unknown>(`/offers/${encodeURIComponent(offerId)}/contacted-value?${query.toString()}`);
+  const parsed = ContactedValueSchema.safeParse(raw);
+  if (!parsed.success) {
+    console.error("[getOfferContactedValue] response shape mismatch", parsed.error.issues, raw);
+    throw new Error("getOfferContactedValue: invalid response shape");
+  }
+  return parsed.data;
+}
+
 export async function getContactedValue(brandId: string, leadIds: string[]): Promise<ContactedValue> {
   const query = new URLSearchParams();
   if (leadIds.length > 0) query.set("leadIds", leadIds.slice(0, 1000).join(","));
@@ -4784,6 +4801,22 @@ export async function getDealsValue(brandId: string): Promise<DealsValue> {
   if (!parsed.success) {
     console.error("[getDealsValue] response shape mismatch", parsed.error.issues, raw);
     throw new Error("getDealsValue: invalid response shape");
+  }
+  return parsed.data;
+}
+
+/**
+ * The SAME columns for ONE offer — features-service `GET /offers/:offerId/deals-value`
+ * (#1264): the brand body plus `offerId`, over the leads served on the offer's campaigns.
+ * People do not add across offers (a lead served under two counts on both boards).
+ */
+export async function getOfferDealsValue(offerId: string, brandId: string): Promise<DealsValue> {
+  const query = new URLSearchParams({ brandId, pricing: "net" });
+  const raw = await apiCall<unknown>(`/offers/${encodeURIComponent(offerId)}/deals-value?${query.toString()}`);
+  const parsed = DealsValueSchema.safeParse(raw);
+  if (!parsed.success) {
+    console.error("[getOfferDealsValue] response shape mismatch", parsed.error.issues, raw);
+    throw new Error("getOfferDealsValue: invalid response shape");
   }
   return parsed.data;
 }
@@ -4842,6 +4875,24 @@ export async function getBrandRevenue(
   const query = new URLSearchParams({ pricing: "net" });
   const raw = await apiCall<unknown>(`/brands/${brandId}/revenue?${query.toString()}`, { token });
   return parseFeatureRevenue(raw, "getBrandRevenue");
+}
+
+/**
+ * ONE offer's money across every channel selling it — features-service's offer grain
+ * (`/offers/:offerId/revenue`), the same engine and body as the brand read, narrowed to
+ * the campaigns that sell the offer. v2 reads every money figure through it now that the
+ * dashboard is about one offer (owner 2026-10-03). An offer no campaign sells is a 404
+ * there (`offer_has_no_campaigns`), never the brand's numbers: callers do not ask until
+ * the offer has a campaign.
+ */
+export async function getOfferRevenue(
+  offerId: string,
+  brandId: string,
+  token?: string,
+): Promise<RevenueOverview> {
+  const query = new URLSearchParams({ brandId, pricing: "net" });
+  const raw = await apiCall<unknown>(`/offers/${encodeURIComponent(offerId)}/revenue?${query.toString()}`, { token });
+  return parseFeatureRevenue(raw, "getOfferRevenue");
 }
 
 /**
@@ -6378,14 +6429,22 @@ export interface LeadsPage {
   nextCursor: string | null;
 }
 
-/** `?brandId=` or `?campaignId=`, exactly as the unpaginated readers scope themselves. */
+/**
+ * `?brandId=` or `?campaignId=`, exactly as the unpaginated readers scope themselves.
+ * `offerId` narrows a brand read to the campaigns selling that offer (lead-service
+ * resolves it; never sent beside a campaign, which already sells one offer).
+ */
 export interface LeadScope {
   brandId?: string;
   campaignId?: string;
+  offerId?: string;
 }
 
 function leadScopeQuery(scope: LeadScope): string {
   if (scope.campaignId) return `campaignId=${encodeURIComponent(scope.campaignId)}`;
+  if (scope.brandId && scope.offerId) {
+    return `brandId=${encodeURIComponent(scope.brandId)}&offerId=${encodeURIComponent(scope.offerId)}`;
+  }
   if (scope.brandId) return `brandId=${encodeURIComponent(scope.brandId)}`;
   throw new Error("[dashboard] leadScopeQuery: a leads read must name a brand or a campaign");
 }

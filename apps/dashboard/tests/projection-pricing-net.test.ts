@@ -85,6 +85,18 @@ describe("every Overview money reader asks for net pricing", () => {
 });
 
 /**
+ * The v2 dashboard reads ONE offer (owner 2026-10-03), so its money comes from the
+ * offer grain: the revenue body, and the Deals board's two values beside it.
+ */
+describe("every v2 offer-grain money reader asks for net pricing", () => {
+  for (const reader of ["getOfferRevenue", "getOfferDealsValue", "getOfferContactedValue"]) {
+    it(`${reader} requests net pricing`, () => {
+      expect(readerBody(reader)).toContain('new URLSearchParams({ brandId, pricing: "net" })');
+    });
+  }
+});
+
+/**
  * The rule is not "every reader in api.ts" — it is every reader of a money
  * endpoint, wherever it lives. The outcome digest builds its own URL server-side
  * (it runs on the cron, with admin identity, so it never touches the browser api

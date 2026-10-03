@@ -19,7 +19,7 @@ import { useLegCatalogue } from "@/lib/use-leg-catalogue";
 import { useAcquisitionChannels } from "@/lib/use-acquisition-channels";
 import { useIsBetaUser } from "@/lib/use-beta-user";
 import { invalidateConversionRates } from "@/lib/write-invalidation";
-import { v2Href, v2OfferHref } from "@/lib/v2/routes";
+import { v2OfferHref } from "@/lib/v2/routes";
 import { SALES_PATH_CHANNEL_SLUGS } from "@/lib/offer-sales-path";
 import { isColdEmailChannel } from "@/lib/offer-levers-home";
 import { formatRatePct, LEG_RATE_RULE, rateSourceLabel, roundLegRatePct } from "@/lib/brand-conversion-rates";
@@ -119,7 +119,6 @@ export function V2OfferChannelsPage() {
   return (
     <V2Page
       crumbs={[
-        { label: "Offers", href: v2Href(orgId, brandId, "offers") },
         { label: name ?? " ", href: v2OfferHref(orgId, brandId, offerId) },
         { label: "Channels" },
       ]}

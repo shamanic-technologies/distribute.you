@@ -33,7 +33,7 @@ import { CompanyMark, PersonAvatar, leadCompany, leadCompanyDomain, leadName, le
  */
 export function MissionPage() {
   const { orgId, brandId, campaignId } = useParams<{ orgId: string; brandId: string; campaignId: string }>();
-  const { missions, settled, missionByCampaignId } = useMissions(orgId, brandId);
+  const { missions, settled, missionByCampaignId } = useMissions(orgId, brandId, { allOffers: true });
   const mission = missionByCampaignId.get(campaignId) ?? null;
   const id = mission?.row.campaign.id ?? campaignId;
   const hold = useMissionHold(id, mission?.running ?? false);
