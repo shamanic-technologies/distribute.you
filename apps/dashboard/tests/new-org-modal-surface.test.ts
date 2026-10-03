@@ -165,6 +165,10 @@ describe("an org that is not set up yet", () => {
     expect(picker).toContain("existingBrand={resuming}");
     expect(picker).toContain("setUp ? (");
   });
+  it("a set-up org with one brand skips the picker, never an org still in setup", () => {
+    expect(picker).toContain("setUp && brands !== null && brands.length === 1 ? brands[0].id : null");
+    expect(picker).toContain("router.replace(v2Base(orgId, onlyId))");
+  });
   it("still draws a frame: tenant switcher + account menu with no brand", () => {
     expect(shell).toContain("<V2OrgSidebar orgId={params.orgId} />");
     const org = shell.slice(shell.indexOf("function V2OrgSidebar("), shell.indexOf("function V2Sidebar("));
