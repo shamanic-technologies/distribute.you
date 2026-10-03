@@ -638,7 +638,12 @@ out.best = {
 // table, so a study and an article can never state two figures for one population. Every
 // month series is per model and per template, so the page can draw how the WINNER moved.
 const modelLabel = (r) => (r.model ? MODEL_LABEL[r.model] || r.model : null);
-const monthsOf = (rows) => [...new Set(rows.map((r) => r.month))].filter(Boolean).sort();
+// A research row's month on the charts is `chartMonth`: the month it was sent, but never past its
+// leg's LAST COHORT MONTH (the month of the day before the cutoff). A lead served before the cutoff
+// keeps receiving follow-ups after it; those emails count, filed under the last cohort month, so no
+// bar ever stands for a month whose people are not counted (research.mjs draws that month as in
+// progress when the cutoff falls inside it).
+const monthsOf = (rows) => [...new Set(rows.map((r) => r.chartMonth))].filter(Boolean).sort();
 function byMonthPer(rows, keyFn) {
   const groups = new Map();
   for (const r of rows) {
@@ -648,7 +653,7 @@ function byMonthPer(rows, keyFn) {
     groups.get(k).push(r);
   }
   const outMap = {};
-  for (const [k, rs] of groups) outMap[k] = cut(rs, (r) => r.month, monthsOf(rs));
+  for (const [k, rs] of groups) outMap[k] = cut(rs, (r) => r.chartMonth, monthsOf(rs));
   return outMap;
 }
 // An email with BOTH dashes is its own bucket, unless it is under DASH_BOTH_MIN of the classified
@@ -709,7 +714,7 @@ function researchFor(rows) {
     openingStrata: strataPer(rows, (r) => r.firstOpening),
     byTemplate: cut(rows, (r) => r.template),
     byStep: cut(rows, stepLabel, STEPS),
-    byMonth: cut(rows, (r) => r.month, monthsOf(rows)),
+    byMonth: cut(rows, (r) => r.chartMonth, monthsOf(rows)),
     modelByMonth: byMonthPer(rows, modelLabel),
     templateByMonth: byMonthPer(rows, (r) => r.template),
     // A workflow here is a DYNASTY (every version of one lineage, pooled), keyed by its slug
@@ -754,6 +759,8 @@ function workflowMeta(rows) {
 // Cost per email = what a (workflow version, leg) was charged on runs started in the same span,
 // over the mature emails of that pair, so numerator and denominator cover the same runs.
 const researchCutoff = (leg) => maturationCutoff(WINDOW.to, LEG_MATURITY.get(leg).durationDays);
+// the month of the last day a lead could be served and still count (the day before the cutoff)
+const lastCohortMonth = (leg) => new Date(Date.parse(`${researchCutoff(leg)}T00:00:00Z`) - 86_400_000).toISOString().slice(0, 7);
 const research = (() => {
   let noRunStart = 0;
   let young = 0;
@@ -805,6 +812,7 @@ const research = (() => {
     if (spend === undefined) { noSpend++; continue; }
     if (unpricedKeys.has(k)) { noVendorCost++; continue; }
     r.cost = spend / emailsByVersionLeg.get(k);
+    r.chartMonth = r.month < lastCohortMonth(r.leg) ? r.month : lastCohortMonth(r.leg);
     delete r._replyAt; delete r._sentAt; delete r._clickAt; delete r._runStartedAt;
     priced.push(r);
   }
@@ -855,7 +863,7 @@ out.research = {
     orgs: new Set(research.union.map((f) => f.orgId)).size,
     workflows: new Set(research.union.map((f) => f.workflow)).size,
     linkedEmails: research.scout.length,
-    byMonth: cut(research.union, (r) => r.month, monthsOf(research.union)).map((r) => ({ bucket: r.bucket, emails: r.emails })),
+    byMonth: cut(research.union, (r) => r.chartMonth, monthsOf(research.union)).map((r) => ({ bucket: r.bucket, emails: r.emails })),
   },
   excludedEmails: research.immature,
   scope: research.scope,
@@ -871,7 +879,7 @@ out.researchMaturity = {
   legs: Object.fromEntries(
     [["reply", HERALD_LEG], ["visit", SCOUT_LEG]].map(([key, leg]) => {
       const m = LEG_MATURITY.get(leg);
-      return [key, { legKey: leg, durationDays: m.durationDays, outcomesRequired: m.outcomesRequired, outcomeSignal: m.outcomeSignal ?? null, source: m.source ?? null, cutoff: researchCutoff(leg) }];
+      return [key, { legKey: leg, durationDays: m.durationDays, outcomesRequired: m.outcomesRequired, outcomeSignal: m.outcomeSignal ?? null, source: m.source ?? null, cutoff: researchCutoff(leg), lastCohortMonth: lastCohortMonth(leg) }];
     }),
   ),
   excludedEmails: research.immature,

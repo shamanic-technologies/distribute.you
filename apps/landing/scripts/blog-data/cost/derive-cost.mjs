@@ -30,7 +30,8 @@ function study(id) {
   const sample = s.result.sample.match(/^([\d,]+) [a-z ]+ · ([\d,]+) emails/);
   if (!sample) throw new Error(`${id}: cannot read the sample "${s.result.sample}"`);
   const num = (x) => Number(String(x).replace(/,/g, ""));
-  const pts = (ps) => ps.map((p) => ({ label: p.label, value: p.value, display: p.display, note: p.note, thin: p.thin }));
+  // `partial`: the month the maturity cutoff falls inside, drawn dotted (research.mjs sets it)
+  const pts = (ps) => ps.map((p) => ({ label: p.label, value: p.value, display: p.display, note: p.note, thin: p.thin, partial: p.partial === true }));
   return {
     id,
     average: { value: chart.cumulative.points.at(-1).value, display: s.result.display },

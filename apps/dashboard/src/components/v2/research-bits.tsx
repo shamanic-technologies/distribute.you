@@ -94,7 +94,8 @@ function pointTooltip(points: ResearchPoint[]) {
 const axisTick = { fontSize: 11, fill: "var(--fg-3)" };
 const tickFor = (money: boolean) => (n: number) => (money ? `$${Math.round(n)}` : String(Math.round(n * 10) / 10));
 
-/** One bar per month, v2 chart styling: fg-3 ticks, no grid, a k-popover tooltip. Thin months fade. */
+/** One bar per month, v2 chart styling: fg-3 ticks, no grid, a k-popover tooltip. Thin months fade;
+ *  the month still in progress (only part of its people counted yet) is a dotted outline. */
 function MonthBars({ points, color, money }: { points: ResearchPoint[]; color: string; money: boolean }) {
   if (!points.length) return <EmptyNote>Nothing to draw yet.</EmptyNote>;
   const Tip = pointTooltip(points);
@@ -107,7 +108,14 @@ function MonthBars({ points, color, money }: { points: ResearchPoint[]; color: s
           <Tooltip cursor={{ fill: "var(--data-track)" }} content={<Tip />} />
           <Bar dataKey="value" radius={[3, 3, 0, 0]} maxBarSize={36} isAnimationActive={false}>
             {points.map((p) => (
-              <Cell key={p.label} fill={color} fillOpacity={p.thin ? 0.35 : 0.85} />
+              <Cell
+                key={p.label}
+                fill={color}
+                fillOpacity={p.partial ? 0.12 : p.thin ? 0.35 : 0.85}
+                stroke={p.partial ? color : undefined}
+                strokeWidth={p.partial ? 1.5 : 0}
+                strokeDasharray={p.partial ? "3 3" : undefined}
+              />
             ))}
           </Bar>
         </BarChart>
@@ -145,18 +153,27 @@ export function MonthsRow({ chart, color }: { chart: ResearchChart; color: strin
   );
 }
 
-/** A line over the months, styled like v2's other charts: fg-3 ticks, no grid, a k-popover tooltip. */
+/** A line over the months, styled like v2's other charts: fg-3 ticks, no grid, a k-popover tooltip.
+ *  The segment into a month still in progress is dotted: two series, `solid` stops at the last whole
+ *  month and `pending` runs from there through the partial ones. */
 function LineCard({ points, color, money }: { points: ResearchPoint[]; color: string; money: boolean }) {
   if (!points.length) return <EmptyNote>Nothing to draw yet.</EmptyNote>;
   const Tip = pointTooltip(points);
+  const data = points.map((p, i) => ({
+    ...p,
+    solid: p.partial ? undefined : p.value,
+    pending: p.partial || points[i + 1]?.partial ? p.value : undefined,
+  }));
   return (
     <div className="h-[180px] px-2 pb-2 pt-3">
       <ResponsiveContainer width="100%" height="100%">
-        <LineChart data={points} margin={{ top: 8, right: 12, bottom: 0, left: 0 }}>
+        <LineChart data={data} margin={{ top: 8, right: 12, bottom: 0, left: 0 }}>
           <XAxis dataKey="label" tick={axisTick} tickLine={false} axisLine={false} />
           <YAxis tick={axisTick} tickLine={false} axisLine={false} width={48} tickCount={3} tickFormatter={tickFor(money)} />
           <Tooltip cursor={{ stroke: "var(--line-strong)", strokeWidth: 1 }} content={<Tip />} />
-          <Line type="linear" dataKey="value" stroke={color} strokeWidth={1.5} dot={{ r: 2.5, fill: color, strokeWidth: 0 }} isAnimationActive={false} />
+          {/* pending first, so a whole month's filled dot sits over the hollow one where they meet */}
+          <Line type="linear" dataKey="pending" stroke={color} strokeWidth={1.5} strokeDasharray="3 3" dot={{ r: 2.5, fill: "none", stroke: color, strokeWidth: 1.2, strokeDasharray: "0" }} activeDot={false} isAnimationActive={false} />
+          <Line type="linear" dataKey="solid" stroke={color} strokeWidth={1.5} dot={{ r: 2.5, fill: color, strokeWidth: 0 }} isAnimationActive={false} />
         </LineChart>
       </ResponsiveContainer>
     </div>

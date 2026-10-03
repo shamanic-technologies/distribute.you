@@ -146,6 +146,22 @@ const MODEL_LABELS = new Set(Object.values(MODEL_LABEL));
 const keyOf = (bucket) => (MODEL_LABELS.has(bucket) ? modelKey(bucket) : bucket);
 
 // ---------- the two outcomes ----------
+// The month the cutoff falls INSIDE: only the people served before the cutoff day count in it, so
+// its bar is IN PROGRESS (`partial`, drawn dotted) and will move at the next read. A cutoff on the
+// 1st leaves every counted month whole. derive.mjs files no month after the last cohort month.
+for (const l of [M.legs.reply, M.legs.visit]) {
+  if (!/^\d{4}-\d{2}$/.test(l.lastCohortMonth || "")) throw new Error(`researchMaturity carries no lastCohortMonth for ${l.legKey}: re-run derive.mjs`);
+}
+function partialMonthOf(l) {
+  return l.cutoff.slice(8, 10) === "01" ? null : l.cutoff.slice(0, 7);
+}
+const IN_PROGRESS = "month in progress";
+// a month series past its leg's last cohort month means derive.mjs filed a month nobody is counted in
+function assertCohortMonths(o, series) {
+  const late = series.find((r) => r.bucket > o.lastCohortMonth);
+  if (late) throw new Error(`${o.crew}: a month bar after the last cohort month (${late.bucket} > ${o.lastCohortMonth}): re-run derive.mjs`);
+}
+
 const OUTCOMES = {
   reply: {
     crew: "herald",
@@ -160,6 +176,8 @@ const OUTCOMES = {
     per: 10000,
     pct: true,
     outcomesRequired: M.legs.reply.outcomesRequired,
+    lastCohortMonth: M.legs.reply.lastCohortMonth,
+    partialMonth: partialMonthOf(M.legs.reply),
     emailsNoun: "emails",
   },
   visit: {
@@ -175,6 +193,8 @@ const OUTCOMES = {
     per: 1000,
     pct: true,
     outcomesRequired: M.legs.visit.outcomesRequired,
+    lastCohortMonth: M.legs.visit.lastCohortMonth,
+    partialMonth: partialMonthOf(M.legs.visit),
     emailsNoun: "emails with a link",
   },
 };
@@ -235,14 +255,16 @@ function rateWinner(o, rows) {
 
 function monthLine(o, series, kind) {
   if (!series) return [];
+  assertCohortMonths(o, series);
   return series
     .filter((r) => (kind === "cost" ? r[o.cost] !== null : r.emails > 0))
     .map((r) => ({
       label: monthLabel(r.bucket),
       value: kind === "cost" ? r[o.cost] : r[o.rate],
       display: kind === "cost" ? usd(r[o.cost]) : rateText(o, r[o.rate]),
-      note: counts(o, r),
+      note: r.bucket === o.partialMonth ? `${counts(o, r)} · ${IN_PROGRESS}` : counts(o, r),
       thin: learningOf(o, r),
+      ...(r.bucket === o.partialMonth ? { partial: true } : {}),
     }));
 }
 // The average SINCE INCEPTION at the end of each month: everything spent (or sent) up to that
@@ -250,6 +272,7 @@ function monthLine(o, series, kind) {
 // average climbs through a dry spell instead of skipping it. Written here, never in the browser.
 function sinceInception(o, series, kind) {
   if (!series) return [];
+  assertCohortMonths(o, series);
   let spend = 0, got = 0, emails = 0;
   const out = [];
   for (const r of series) {
@@ -260,8 +283,9 @@ function sinceInception(o, series, kind) {
       label: monthLabel(r.bucket),
       value: Number(value.toFixed(2)),
       display: kind === "cost" ? usd(value) : rateText(o, value),
-      note: `${n(got)} ${got === 1 ? o.noun : o.nounPlural} · ${n(emails)} ${o.emailsNoun} to date`,
+      note: `${n(got)} ${got === 1 ? o.noun : o.nounPlural} · ${n(emails)} ${o.emailsNoun} to date${r.bucket === o.partialMonth ? ` · ${IN_PROGRESS}` : ""}`,
       thin: got < o.outcomesRequired,
+      ...(r.bucket === o.partialMonth ? { partial: true } : {}),
     });
   }
   return out;
@@ -630,7 +654,8 @@ for (const key of ["reply", "visit"]) {
       status: all ? "measured" : "not_enough_data",
       headline: all ? `${all.display} per ${o.noun} on average since inception, across all our emails.` : `Not enough ${o.nounPlural} to state an average yet.`,
       winner: null,
-      result: all ? { display: all.display, unit: `per ${o.noun}, average since inception`, sample: all.note } : null,
+      // the sample states the counts to date; the in-progress mark belongs to the chart's last bar
+      result: all ? { display: all.display, unit: `per ${o.noun}, average since inception`, sample: all.note.replace(` · ${IN_PROGRESS}`, "") } : null,
       crowned: false,
       charts: [monthsChart(o, R.byMonth, "cost", "All our emails", true)],
       conclusion: [`The average divides everything spent since the first email by every ${o.noun} since; the monthly bars are context, not the answer.`],
