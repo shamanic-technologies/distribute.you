@@ -1491,10 +1491,10 @@ function Hero({
         <p className="k-label gs-in">distribute.you</p>
         <p className="gs-in k-fg2 mt-1 text-[13px] font-medium">{BRAND_WHY}</p>
         <h1 className="gs-in k-fg mt-3 text-[28px] font-medium leading-9 tracking-[-0.01em]" style={{ animationDelay: "60ms" }}>
-          See who we would sell to for you.
+          We find your next clients.
         </h1>
         <p className="gs-in k-fg2 mt-2 text-[14px] leading-6" style={{ animationDelay: "120ms" }}>
-          Type your website. In about a minute we read your company, find your competitors, and show you 100 companies we would write to, with the first emails. No account needed.
+          Type your website. See 100 of them in a minute. No account needed.
         </p>
         <form
           className="gs-in k-card mt-6 flex items-center gap-2 p-2"

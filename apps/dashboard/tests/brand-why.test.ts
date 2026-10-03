@@ -30,7 +30,7 @@ describe("the why: Revenue made easy.", () => {
     const src = read("src/components/v2/get-started/get-started.tsx");
     const hero = src.slice(src.indexOf("function Hero("), src.indexOf("function Hero(") + 1200);
     expect(hero).toContain("{BRAND_WHY}");
-    expect(hero).toContain("See who we would sell to for you.");
+    expect(hero).toContain("We find your next clients.");
   });
 
   it("sits on the celebrate step beside its title", () => {
