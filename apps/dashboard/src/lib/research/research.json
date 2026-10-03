@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-10-03T06:27:06.074Z",
+  "generatedAt": "2026-10-03T07:50:07.311Z",
   "allOrgs": true,
   "costBasis": "user",
   "unpricedBilledUsd": 0,
@@ -77,6 +77,14 @@
       "id": "pilot",
       "outcome": "Meeting booked",
       "description": "Turns a positive reply into a booked meeting."
+    }
+  ],
+  "outcomes": [
+    {
+      "id": "meeting",
+      "outcome": "Meeting booked",
+      "description": "One outcome across every leg, from the first cold email to the meeting.",
+      "population": "Measured on the 1 brand that reports its booked meetings to us (CRM import or tracker): every dollar it was charged on cold email and meeting booking, against every meeting our outreach gets the credit for. Brands that report no meetings are left out, since zero meetings there means we cannot see them."
     }
   ],
   "studies": [
@@ -3791,18 +3799,148 @@
       "topic": "cost",
       "goal": "roi",
       "question": "What does a booked meeting cost on average?",
-      "status": "not_enough_data",
-      "headline": "Not enough data yet.",
+      "status": "measured",
+      "headline": "$2.83 per meeting booked on this step alone, from a positive reply to the meeting. Noise so far.",
       "winner": null,
       "crowned": false,
-      "result": null,
-      "charts": [],
+      "result": {
+        "display": "$2.83",
+        "unit": "per meeting booked, this step only",
+        "sample": "1 meeting · $2.83 spent · 6 people acted on"
+      },
+      "charts": [
+        {
+          "kind": "bars",
+          "title": "Cost per meeting booked, positive reply to meeting (USD, lower is better)",
+          "lowerIsBetter": true,
+          "points": [
+            {
+              "label": "Every campaign on this step",
+              "value": 2.83,
+              "display": "$2.83",
+              "note": "1 meeting · $2.83 spent · 6 people acted on",
+              "thin": true
+            }
+          ],
+          "note": "A meeting counts here when it was booked on or after this step first acted on that person, and our outreach gets the credit for it. A figure needs 10 meetings behind it; below that it reads Learning."
+        }
+      ],
       "conclusion": [
-        "Pilot has run one workflow (one LLM, one template) on 3 campaigns since 2 Sep 2026. A comparison needs at least two."
+        "Everything this step was charged ($2.83), divided by the meetings booked after it acted. The cold email that won the positive reply is not in this price: the Meeting booked section below counts it."
       ],
       "verdict": {
         "kind": "noise",
-        "reason": "Pilot has run one workflow (one LLM, one template) on 3 campaigns since 2 Sep 2026. A comparison needs at least two."
+        "reason": "Learning: 1 meeting of the 10 a figure needs."
+      }
+    },
+    {
+      "id": "meeting-cost",
+      "crew": null,
+      "outcome": "meeting",
+      "topic": "cost",
+      "goal": "roi",
+      "question": "What does a booked meeting cost, from the first cold email?",
+      "status": "measured",
+      "headline": "$912 per meeting booked on average since inception, every leg from the first cold email to the meeting. Noise so far.",
+      "winner": null,
+      "crowned": false,
+      "result": {
+        "display": "$912",
+        "unit": "per meeting booked, all legs, average since inception",
+        "sample": "6 meetings · $5,473 spent · 1 brand"
+      },
+      "charts": [
+        {
+          "kind": "months",
+          "title": "Brands reporting meetings: cost per meeting booked by month",
+          "lowerIsBetter": true,
+          "points": [
+            {
+              "label": "May",
+              "value": 853.33,
+              "display": "$853",
+              "note": "1 meeting · $853 spent",
+              "thin": true
+            },
+            {
+              "label": "Jul",
+              "value": 536.65,
+              "display": "$537",
+              "note": "2 meetings · $1,073 spent",
+              "thin": true
+            },
+            {
+              "label": "Aug",
+              "value": 1152.89,
+              "display": "$1,153",
+              "note": "1 meeting · $1,153 spent",
+              "thin": true
+            },
+            {
+              "label": "Sep",
+              "value": 1145.9,
+              "display": "$1,146",
+              "note": "2 meetings · $2,292 spent",
+              "thin": true
+            }
+          ],
+          "cumulative": {
+            "title": "Brands reporting meetings: average since inception",
+            "points": [
+              {
+                "label": "May",
+                "value": 895.49,
+                "display": "$895",
+                "note": "1 meeting · $895 spent to date",
+                "thin": true
+              },
+              {
+                "label": "Jun",
+                "value": 950.68,
+                "display": "$951",
+                "note": "1 meeting · $951 spent to date",
+                "thin": true
+              },
+              {
+                "label": "Jul",
+                "value": 674.66,
+                "display": "$675",
+                "note": "3 meetings · $2,024 spent to date",
+                "thin": true
+              },
+              {
+                "label": "Aug",
+                "value": 794.22,
+                "display": "$794",
+                "note": "4 meetings · $3,177 spent to date",
+                "thin": true
+              },
+              {
+                "label": "Sep",
+                "value": 911.45,
+                "display": "$911",
+                "note": "6 meetings · $5,469 spent to date",
+                "thin": true
+              },
+              {
+                "label": "Oct",
+                "value": 912.23,
+                "display": "$912",
+                "note": "6 meetings · $5,473 spent to date · month in progress",
+                "thin": true,
+                "partial": true
+              }
+            ]
+          },
+          "note": "Spend on cold email and meeting booking from Apr 15 to the read (Oct 3), against the meetings booked in the same window. A figure needs 10 meetings behind it; below that it reads Learning."
+        }
+      ],
+      "conclusion": [
+        "The average divides everything those brands were charged, positive reply leg and meeting leg alike, by every meeting booked since; the monthly bars are context, not the answer."
+      ],
+      "verdict": {
+        "kind": "noise",
+        "reason": "Learning: 6 meetings of the 10 a figure needs."
       }
     },
     {

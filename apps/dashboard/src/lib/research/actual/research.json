@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-10-03T06:23:56.116Z",
+  "generatedAt": "2026-10-03T07:52:16.202Z",
   "allOrgs": true,
   "costBasis": "actual",
   "unpricedBilledUsd": 0,
@@ -77,6 +77,14 @@
       "id": "pilot",
       "outcome": "Meeting booked",
       "description": "Turns a positive reply into a booked meeting."
+    }
+  ],
+  "outcomes": [
+    {
+      "id": "meeting",
+      "outcome": "Meeting booked",
+      "description": "One outcome across every leg, from the first cold email to the meeting.",
+      "population": "Measured on the 1 brand that reports its booked meetings to us (CRM import or tracker): every dollar it was charged on cold email and meeting booking, against every meeting our outreach gets the credit for. Brands that report no meetings are left out, since zero meetings there means we cannot see them."
     }
   ],
   "studies": [
@@ -3786,17 +3794,38 @@
       "goal": "roi",
       "question": "What does a booked meeting cost on average?",
       "status": "not_enough_data",
-      "headline": "Not enough data yet.",
+      "headline": "Not measured on vendor cost yet.",
       "winner": null,
       "crowned": false,
       "result": null,
       "charts": [],
       "conclusion": [
-        "Pilot has run one workflow (one LLM, one template) on 3 campaigns since 2 Sep 2026. A comparison needs at least two."
+        "The meeting figures are on what clients were charged only. Switch to the billed basis to read them."
       ],
       "verdict": {
         "kind": "noise",
-        "reason": "Pilot has run one workflow (one LLM, one template) on 3 campaigns since 2 Sep 2026. A comparison needs at least two."
+        "reason": "Not measured on vendor cost yet."
+      }
+    },
+    {
+      "id": "meeting-cost",
+      "crew": null,
+      "outcome": "meeting",
+      "topic": "cost",
+      "goal": "roi",
+      "question": "What does a booked meeting cost, from the first cold email?",
+      "status": "not_enough_data",
+      "headline": "Not measured on vendor cost yet.",
+      "winner": null,
+      "crowned": false,
+      "result": null,
+      "charts": [],
+      "conclusion": [
+        "The meeting figures are on what clients were charged only. Switch to the billed basis to read them."
+      ],
+      "verdict": {
+        "kind": "noise",
+        "reason": "Not measured on vendor cost yet."
       }
     },
     {
