@@ -317,7 +317,7 @@ describe("Keel parity, second pass", () => {
     const today = read(V2 + "today-page.tsx");
     expect(read(V2 + "data.ts")).toContain('useAuthQuery(["orgUsage"], () => getOrgUsage()');
     expect(today).toContain("const usage = useOrgUsage();");
-    expect(today).toContain('label="Taken from credit"');
+    expect(today).toContain('<StatTile label="Spent" note="all time"');
     expect(today).toContain("formatUsdAdaptive(usage.data.totalBilledUsd)");
     expect(today).not.toContain("data.spend.totalSpentCents");
     // Missions keeps the campaign figure, labelled as such.
