@@ -8201,6 +8201,8 @@ const SubscriptionSchema = z.object({
   currency: z.string(),
   has_payment_method: z.boolean(),
   can_change_amount: z.boolean().nullish(),
+  // billing#583: true while trialing with no cancel pending (start paying now).
+  can_start_now: z.boolean().nullish(),
   can_raise: z.boolean().nullish(),
   next_raise_monthly_amount_cents: z.coerce.number().nullish(),
 });
@@ -8283,6 +8285,19 @@ export async function changeSubscriptionAmount(monthly_amount_cents: number): Pr
     body: { monthly_amount_cents },
   });
   return parseSubscriptionRead(raw, "changeSubscriptionAmount");
+}
+
+/**
+ * End the free trial now and charge `monthly_amount_cents` today (billing#583, same
+ * route as the amount change with an explicit `start_now`). Refusals leave the trial
+ * untouched: `first_charge_declined`, `card_required`, `charge_unavailable`, ...
+ */
+export async function startSubscriptionNow(monthly_amount_cents: number): Promise<SubscriptionRead> {
+  const raw = await apiCall<unknown>("/billing/accounts/subscription", {
+    method: "PATCH",
+    body: { monthly_amount_cents, start_now: true },
+  });
+  return parseSubscriptionRead(raw, "startSubscriptionNow");
 }
 
 /** Cancel at the end of the period: no further charge. */

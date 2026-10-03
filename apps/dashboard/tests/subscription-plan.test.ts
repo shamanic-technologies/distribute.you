@@ -156,6 +156,28 @@ describe("the plan on the Billing page", () => {
     expect(planAmountOptions(39900)).toContain(39900);
   });
 
+  // Owner 2026-10-03: a trial is never a lock. Any amount, same or other, can start now,
+  // behind a modal saying the card is charged today.
+  it("offers to start the plan now during the trial, at any amount, behind a charge modal", () => {
+    expect(PLAN).not.toContain("once your free trial ends");
+    expect(PLAN).toContain('const startable = trialing && sub.can_start_now === true;');
+    expect(PLAN).toContain("onClick={() => setChargeOpen(true)}");
+    expect(PLAN).toContain('onConfirm={() => void run("start", () => startSubscriptionNow(amount))}');
+    const dialog = PLAN.slice(PLAN.indexOf("export function ChargeNowDialog("), PLAN.indexOf("export function LossDialog("));
+    expect(dialog).toContain("We charge {amount} to your card today.");
+    expect(dialog).toContain("Your free trial ends now.");
+    expect(dialog).toContain("Keep my free trial");
+    const start = API.slice(API.indexOf("export async function startSubscriptionNow("), API.indexOf("export async function cancelSubscription("));
+    expect(start).toContain('"/billing/accounts/subscription"');
+    expect(start).toContain("start_now: true");
+    expect(API).toContain("can_start_now: z.boolean().nullish()");
+  });
+
+  it("explains a refused start by billing's code, nothing charged", () => {
+    expect(PLAN).toContain('code === "first_charge_declined"');
+    expect(PLAN).toContain('code === "card_required"');
+  });
+
   it("draws with the v2 primitives, no hand-rolled greys or cards", () => {
     for (const p of ["<Figure", "<StateDot", "k-label", "<EmptyNote"]) expect(PLAN, p).toContain(p);
     expect(PLAN).not.toMatch(/text-gray-|bg-brand-50|rounded-lg border|shadow-2xl|text-\[22px\]/);
