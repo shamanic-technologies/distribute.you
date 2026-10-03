@@ -22,7 +22,7 @@ export const metadata: Metadata = {
     "outbound done for you",
     "cost per sales meeting",
     "B2B lead generation agency",
-    "pay as you go outbound",
+    "cold email agency pricing",
     "distribute.you",
   ],
   authors: [{ name: "distribute.you" }],
@@ -85,10 +85,10 @@ const jsonLd = {
   offers: [
     {
       "@type": "Offer",
-      name: "Free credits",
-      price: "0",
+      name: "Monthly plan",
+      price: "99",
       priceCurrency: "USD",
-      description: "$30 of free credits at signup, then a daily budget from $1 a day",
+      description: "3-day free trial, then from $99 a month. Every dollar becomes campaign credit. Cancel anytime.",
     },
   ],
   provider: {
@@ -133,7 +133,7 @@ const howToJsonLd = {
       "@type": "HowToStep",
       position: 2,
       name: "Confirm what we found",
-      text: "Check the offer, the audiences and the sales funnel, then set a daily budget. The first $30 is free.",
+      text: "Check the offer, the audiences and the sales funnel, then pick your monthly amount, from $99. The first 3 days are free.",
     },
     {
       "@type": "HowToStep",

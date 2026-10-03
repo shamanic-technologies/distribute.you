@@ -48,7 +48,7 @@ describe("the unsubscribe footer article", () => {
     expect(html).not.toContain("—");
     expect(meta.title + meta.excerpt).not.toContain("—");
     expect(prose).not.toMatch(/\bour cost\b|\bat cost\b|guarantee/i);
-    expect(prose).toContain("From $1/day, first $30 free");
+    expect(prose).toContain("From $99 a month, 3-day free trial");
     expect(new Date(meta.publishedAt).getTime()).toBeLessThanOrEqual(Date.now());
   });
 
