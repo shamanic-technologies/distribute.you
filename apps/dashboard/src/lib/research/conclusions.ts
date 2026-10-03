@@ -14,7 +14,7 @@
  *
  * Alias-free so it carries real unit tests.
  */
-import type { ResearchFile, ResearchStudy } from "./research";
+import { studyOutcomeText, type ResearchFile, type ResearchStudy } from "./research";
 
 /** One quotable fact: the claim, and the counts it rests on (null when the claim states its own). */
 export interface ResearchFact {
@@ -68,12 +68,11 @@ export function researchConclusions(file: ResearchFile): ResearchConclusionsBody
   if (file.costBasis !== undefined && file.costBasis !== "user") {
     throw new Error(`[dashboard] research conclusions must come from the billed basis, got ${file.costBasis}`);
   }
-  const outcomeOf = new Map(file.crews.map((c) => [c.id, c.outcome]));
   const conclusions: ResearchConclusion[] = [];
   for (const study of file.studies) {
     if (study.status !== "measured" || study.verdict?.kind !== "conclusion") continue;
-    const outcome = outcomeOf.get(study.crew);
-    if (!outcome) throw new Error(`[dashboard] research study ${study.id} names crew ${study.crew}, absent from the file's crews`);
+    const outcome = studyOutcomeText(study, file);
+    if (!outcome) throw new Error(`[dashboard] research study ${study.id} names section ${study.crew ?? study.outcome}, absent from the file's crews and outcomes`);
     conclusions.push({
       id: study.id,
       outcome,

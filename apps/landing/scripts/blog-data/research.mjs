@@ -36,6 +36,7 @@ import { execFileSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
 import { MODEL_LABEL } from "./model-label.mjs";
+import { meetingStudies } from "./meetings.mjs";
 import { NAMING_LABEL, namingOf, namingSides, rateP, costP, pText } from "./naming/naming.mjs";
 
 const here = dirname(fileURLToPath(import.meta.url));
@@ -840,10 +841,31 @@ for (const [topic, question] of [
   ["llm", "Which LLM books the most meetings from a positive reply?"],
   ["template", "Which template books the most meetings from a positive reply?"],
   ["followups", "How many follow-ups after a positive reply book the most meetings?"],
-  ["cost", "What does a booked meeting cost on average?"],
 ]) {
-  add({ id: `pilot-${topic}`, crew: "pilot", topic, goal: topic === "cost" ? "roi" : "rate", question, status: "not_enough_data", headline: "Not enough data yet.", winner: null, crowned: false, result: null, charts: [], conclusion: [PILOT_REASON] });
+  add({ id: `pilot-${topic}`, crew: "pilot", topic, goal: "rate", question, status: "not_enough_data", headline: "Not enough data yet.", winner: null, crowned: false, result: null, charts: [], conclusion: [PILOT_REASON] });
 }
+// What a booked meeting costs: on the Pilot leg alone, and across every leg as the Meeting booked
+// OUTCOME section (meetings.mjs). Both carry their own verdict.
+const csvRows = (f) => {
+  const [head, ...lines] = readFileSync(join(dataDir, f), "utf8").trim().split("\n");
+  const cols = head.split(",");
+  return lines.map((l) => {
+    const v = l.split(",");
+    if (v.length !== cols.length) throw new Error(`${f}: a row with ${v.length} fields under ${cols.length} columns`);
+    return Object.fromEntries(cols.map((c, i) => [c, v[i]]));
+  });
+};
+const MEETINGS = meetingStudies({
+  meetings: csvRows("meetings.csv"),
+  acted: csvRows("pilot-acted.csv"),
+  campaigns: csvRows("meeting-campaigns.csv"),
+  spend: csvRows("meeting-spend.csv"),
+  maturity: readJson("maturity.json"),
+  // the extract's DAY window (extract.sh writes it), the read day exclusive
+  window: readJson("window.json"),
+  costBasis: facts.research.costBasis ?? "user",
+});
+for (const st of MEETINGS.studies) add(st);
 for (const [goal, question] of [
   ["roi", "Which workflow books a meeting for the least?"],
   ["rate", "Which workflow books the most meetings from a positive reply?"],
@@ -1190,6 +1212,7 @@ const out = {
     { id: "scout", outcome: "Website visit", description: "Cold email that brings a prospect to the website." },
     { id: "pilot", outcome: "Meeting booked", description: "Turns a positive reply into a booked meeting." },
   ],
+  outcomes: MEETINGS.outcomes,
   studies,
   catalogCounts,
 };

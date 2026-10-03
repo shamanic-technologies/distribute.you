@@ -14,6 +14,8 @@ import {
   TopicMark,
   crewIdentity,
   dayText,
+  outcomeIdentity,
+  sectionIdentity,
   monthText,
 } from "@/components/v2/research-bits";
 import { V2ResearchCatalogView, CrewCatalogLinks } from "@/components/v2/research-catalog";
@@ -25,11 +27,14 @@ import { v2Href } from "@/lib/v2/routes";
 import {
   GOAL_LABEL,
   CREW_ORDER,
+  OUTCOME_ORDER,
   TOPIC_LABEL,
   parseResearchPath,
   pointHref,
   studiesFor,
+  studiesForOutcome,
   studyById,
+  studyOutcomeText,
   studySpark,
   studyState,
   type ResearchChart,
@@ -267,6 +272,31 @@ function V2ResearchHub({ base }: { base: string }) {
             </section>
           );
         })}
+
+        {/* Outcome sections: one outcome across every leg that leads to it, after the legs. */}
+        {OUTCOME_ORDER.map((outcome) => {
+          const id = outcomeIdentity(outcome);
+          const meta = RESEARCH.outcomes?.find((o) => o.id === outcome);
+          const studies = studiesForOutcome(outcome, RESEARCH);
+          if (!studies.length) return null;
+          return (
+            <section key={outcome} className="mt-8">
+              <SectionTitle count={studies.length} right={meta ? <span className="hidden sm:inline">{meta.description}</span> : null}>
+                <span className="inline-flex items-center gap-2">
+                  <CrewMark color={id.color} glyph={id.glyph} size={18} />
+                  {id.name}
+                  <span className="k-chip font-normal">All legs</span>
+                </span>
+              </SectionTitle>
+              {meta && <p className="k-fg3 -mt-1 mb-3 text-[12px] leading-5">{meta.population}</p>}
+              <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3">
+                {studies.map((st) => (
+                  <StudyCard key={st.id} study={st} href={`${base}/${encodeURIComponent(st.id)}`} />
+                ))}
+              </div>
+            </section>
+          );
+        })}
       </div>
     </>
   );
@@ -356,8 +386,12 @@ function V2ResearchStudy({ base, studyId }: { base: string; studyId: string }) {
       </>
     );
   }
-  const id = crewIdentity(study.crew);
-  const meta = RESEARCH.crews.find((c) => c.id === study.crew);
+  const id = sectionIdentity(study);
+  const outcomeText = studyOutcomeText(study, RESEARCH);
+  const outcomeMeta = study.crew ? null : RESEARCH.outcomes?.find((o) => o.id === study.outcome) ?? null;
+  // The email legs' population and rule (clients, emails, the run-start wait) describe Herald and
+  // Scout's figures only: a meeting study states its own in its sample and chart note.
+  const emailLeg = study.crew === "herald" || study.crew === "scout";
   const look = TOPIC_LOOK[study.topic];
   const state = studyState(study);
   return (
@@ -394,7 +428,7 @@ function V2ResearchStudy({ base, studyId }: { base: string; studyId: string }) {
           <StatTile label="Sample">
             <p className="k-fg2 text-[13px] leading-5 tabular-nums">{study.result?.sample ?? <span className="k-fg4">{"—"}</span>}</p>
           </StatTile>
-          <StatTile label="Period" note="all orgs">
+          <StatTile label="Period" note={emailLeg ? "all orgs" : undefined}>
             <p className="text-[18px] font-medium leading-7">
               {monthText(RESEARCH.window.from).slice(0, 3)} to {monthText(RESEARCH.window.to)}
             </p>
@@ -441,7 +475,7 @@ function V2ResearchStudy({ base, studyId }: { base: string; studyId: string }) {
             <p className="k-label">Details</p>
             <dl className="mt-3 space-y-2.5 text-[13px]">
               <Row
-                k="Crew"
+                k={study.crew ? "Crew" : "Section"}
                 v={
                   <span className="inline-flex items-center gap-1.5">
                     <CrewMark color={id.color} glyph={id.glyph} />
@@ -449,25 +483,29 @@ function V2ResearchStudy({ base, studyId }: { base: string; studyId: string }) {
                   </span>
                 }
               />
-              <Row k="Outcome" v={meta?.outcome ?? null} />
+              <Row k="Outcome" v={outcomeText} />
+              {outcomeMeta && <Row k="Legs" v="All legs, first email to meeting" />}
               <Row k="Question" v={`${TOPIC_LABEL[study.topic]}, ${GOAL_LABEL[study.goal]}`} />
-              <Row k="Clients" v={`${RESEARCH.volume.orgs}, all orgs`} />
-              <Row k="Emails" v={RESEARCH.volume.emails.toLocaleString("en-US")} />
+              {emailLeg && <Row k="Clients" v={`${RESEARCH.volume.orgs}, all orgs`} />}
+              {emailLeg && <Row k="Emails" v={RESEARCH.volume.emails.toLocaleString("en-US")} />}
               <Row k="Read on" v={dayText(RESEARCH.readOn)} />
             </dl>
             <p className="k-label mt-5">How we measured</p>
+            {outcomeMeta && <p className="k-fg2 mt-2 text-[12px] leading-5">{outcomeMeta.population}</p>}
             <p className="k-fg2 mt-2 text-[12px] leading-5">
               ROI is read as the cost per outcome: every crew buys one outcome, so the cheaper outcome is the better return. A website visit is priced on the
               emails that carried a link.
             </p>
-            <p className="k-fg2 mt-2 text-[12px] leading-5">
-              Every figure is on the rule every price in the dashboard is on: only people we started writing to at least {RESEARCH.maturation.legs.reply.durationDays}{" "}
-              days before the read count (before {dayText(RESEARCH.maturation.legs.reply.cutoff)}), with every positive reply and website visit they sent since. A
-              bar resting on fewer than {RESEARCH.maturation.legs.reply.outcomesRequired} positive{" "}
-              {RESEARCH.maturation.legs.reply.outcomesRequired === 1 ? "reply" : "replies"} ({RESEARCH.maturation.legs.visit.outcomesRequired} website visits) is
-              ranked where its value puts it and marked Learning. {RESEARCH.maturation.excludedEmails.toLocaleString("en-US")} emails from more recent runs wait until
-              they are old enough to count.
-            </p>
+            {emailLeg && (
+              <p className="k-fg2 mt-2 text-[12px] leading-5">
+                Every figure is on the rule every price in the dashboard is on: only people we started writing to at least {RESEARCH.maturation.legs.reply.durationDays}{" "}
+                days before the read count (before {dayText(RESEARCH.maturation.legs.reply.cutoff)}), with every positive reply and website visit they sent since. A
+                bar resting on fewer than {RESEARCH.maturation.legs.reply.outcomesRequired} positive{" "}
+                {RESEARCH.maturation.legs.reply.outcomesRequired === 1 ? "reply" : "replies"} ({RESEARCH.maturation.legs.visit.outcomesRequired} website visits) is
+                ranked where its value puts it and marked Learning. {RESEARCH.maturation.excludedEmails.toLocaleString("en-US")} emails from more recent runs wait until
+                they are old enough to count.
+              </p>
+            )}
           </aside>
         </div>
       </div>

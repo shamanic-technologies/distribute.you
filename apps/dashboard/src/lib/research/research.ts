@@ -14,6 +14,11 @@
  * Alias-free so it carries real unit tests.
  */
 export type ResearchCrew = "herald" | "scout" | "pilot";
+/**
+ * An OUTCOME section: a question asked of one outcome across every leg that leads to it (what a
+ * booked meeting costs from the first cold email on), where a crew section is one leg x one channel.
+ */
+export type ResearchOutcome = "meeting";
 export type ResearchTopic = "llm" | "cost" | "followups" | "opens" | "template" | "workflow" | "naming" | "layout" | "opening" | "dash";
 export type ResearchGoal = "roi" | "rate";
 
@@ -47,7 +52,10 @@ export interface ResearchChart {
 
 export interface ResearchStudy {
   id: string;
-  crew: ResearchCrew;
+  /** The leg section the study sits in; null on an outcome study, which names its `outcome`. */
+  crew: ResearchCrew | null;
+  /** Set exactly when `crew` is null: the outcome section the study sits in. */
+  outcome?: ResearchOutcome;
   topic: ResearchTopic;
   goal: ResearchGoal;
   question: string;
@@ -115,6 +123,11 @@ export interface ResearchFile {
     note: string;
   };
   crews: { id: ResearchCrew; outcome: string; description: string }[];
+  /**
+   * The outcome sections, each measured across every leg: `population` says which brands the
+   * figures rest on. Absent on a snapshot written before outcome sections existed.
+   */
+  outcomes?: { id: ResearchOutcome; outcome: string; description: string; population: string }[];
   studies: ResearchStudy[];
   /** How many workflows and templates each crew's pages list (the pages read the catalogue). */
   catalogCounts: Record<ResearchCrew, { workflows: number; templates: number; models: number }>;
@@ -177,6 +190,7 @@ export const CATALOG_KINDS: CatalogKind[] = ["workflows", "templates", "models"]
 
 
 export const CREW_ORDER: ResearchCrew[] = ["herald", "scout", "pilot"];
+export const OUTCOME_ORDER: ResearchOutcome[] = ["meeting"];
 
 /** The crew each study belongs to, as `lib/v2/crews` keys it (channel slug + landing step). */
 export const CREW_KEY: Record<ResearchCrew, { channel: string; step: string }> = {
@@ -202,6 +216,16 @@ export const TOPIC_LABEL: Record<ResearchTopic, string> = {
 
 export function studiesFor(crew: ResearchCrew, file: ResearchFile): ResearchStudy[] {
   return file.studies.filter((s) => s.crew === crew);
+}
+
+export function studiesForOutcome(outcome: ResearchOutcome, file: ResearchFile): ResearchStudy[] {
+  return file.studies.filter((s) => s.crew === null && s.outcome === outcome);
+}
+
+/** The outcome a study measures, in plain words, read off its section's entry in the file. */
+export function studyOutcomeText(study: ResearchStudy, file: ResearchFile): string | null {
+  if (study.crew) return file.crews.find((c) => c.id === study.crew)?.outcome ?? null;
+  return file.outcomes?.find((o) => o.id === study.outcome)?.outcome ?? null;
 }
 
 export function studyById(id: string, file: ResearchFile): ResearchStudy | null {
@@ -253,7 +277,7 @@ export function researchCatalogHref(base: string, crew: ResearchCrew, kind: Cata
 
 /** The page a study's bar opens: its workflow's or template's own, when the bar names one. */
 export function pointHref(base: string, study: ResearchStudy, point: ResearchPoint): string | null {
-  if (!point.key) return null;
+  if (!point.key || !study.crew) return null;
   if (study.topic === "workflow") return researchCatalogHref(base, study.crew, "workflows", point.key);
   if (study.topic === "template") return researchCatalogHref(base, study.crew, "templates", point.key);
   if (study.topic === "llm") return researchCatalogHref(base, study.crew, "models", point.key);

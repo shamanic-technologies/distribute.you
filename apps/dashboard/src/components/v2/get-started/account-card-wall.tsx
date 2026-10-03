@@ -24,6 +24,7 @@
 
 import { defaultSalesRepToAccountEmail } from "@/lib/sales-rep-default";
 import { useEffect, useRef, useState } from "react";
+import { BRAND_WHY } from "@/lib/brand-why";
 import { EnvelopeIcon } from "@heroicons/react/24/outline";
 import { createPortal } from "react-dom";
 import { useAuth, useSession, useUser } from "@clerk/nextjs";
@@ -695,6 +696,7 @@ export function AccountCardWall({
               {copy.formTitle}
             </p>
             <p className="k-fg2 mt-0.5 text-[13px]">{copy.formSub}</p>
+            <p className="k-fg3 mt-1.5 text-[12px] font-medium">{BRAND_WHY}</p>
           </div>
           <div className="p-5">
           {/* The scarcity and the steps first, then the buttons under them (owner 2026-10-01). */}

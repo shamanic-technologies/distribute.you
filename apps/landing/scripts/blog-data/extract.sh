@@ -162,6 +162,50 @@ WHERE event = 'positive_reply' AND caused_by_outreach = true
   AND withdrawn_at IS NULL AND matched_lead_id IS NOT NULL
 " crm-positive-replies.csv
 
+# ---------- Meeting booked (the Pilot leg and the cross-leg Meeting booked outcome) ----------
+# Every live booked meeting lead-service records (CRM import, tracker, reply, manual), unfiltered by
+# the window: a brand that has ANY such row reports its meetings, which is the population the
+# cross-leg cost per meeting rests on. caused_by_outreach says whether our outreach gets the credit
+# (booked after the first email reached that person).
+run lead_service "
+SELECT id AS conversion_id, brand_id, org_id,
+       to_char(received_at AT TIME ZONE 'UTC', 'YYYY-MM-DD HH24:MI:SS.MS') AS received_at,
+       coalesce(caused_by_outreach::text, '') AS caused_by_outreach,
+       coalesce(matched_lead_id::text, '') AS matched_lead_id, source
+FROM conversion_events
+WHERE event = 'meeting_booked' AND withdrawn_at IS NULL
+ORDER BY received_at
+" meetings.csv
+
+# The people the positive-reply-to-meeting leg acted on, first action per person and campaign.
+run lead_service "
+SELECT lead_id, brand_ids[1] AS brand_id, acting_campaign_id,
+       to_char(min(occurred_at) AT TIME ZONE 'UTC', 'YYYY-MM-DD HH24:MI:SS.MS') AS acted_at
+FROM followup_actions
+WHERE action = 'acted'
+GROUP BY 1, 2, 3
+" pilot-acted.csv
+
+# The leg each cold-email and meeting-booking campaign performs, for the spend below.
+run campaign_service "
+SELECT id AS campaign_id, feature_slug, coalesce(leg_key, '') AS leg_key
+FROM campaigns
+WHERE feature_slug IN ('sales-cold-email-outreach', 'ai-meeting-booking')
+" meeting-campaigns.csv
+
+# What clients were charged per campaign, brand and day, on both features (actual rows only,
+# before per-account discounts, the basis every other Research price is on). A few meeting-booking
+# rows carry no feature_slug: kept here, filed by their campaign in research.mjs.
+run runs_service "
+SELECT campaign_id, brand_ids[1] AS brand_id, coalesce(feature_slug, '') AS feature_slug, day,
+       sum(gross_actual) AS cents
+FROM stats_rollup_campaign_costs
+WHERE cost_source = 'platform'
+  AND (feature_slug IN ('sales-cold-email-outreach', 'ai-meeting-booking') OR feature_slug IS NULL)
+  AND day >= '$FROM' AND day < '$TO'
+GROUP BY 1, 2, 3, 4
+" meeting-spend.csv
+
 # What the client was charged, per workflow, before per-account discounts.
 run runs_service "
 SELECT r.workflow_slug, sum(rc.total_cost_in_usd_cents) AS cents

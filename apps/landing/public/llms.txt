@@ -1,5 +1,7 @@
 # distribute.you
 
+> Revenue made easy.
+>
 > distribute.you does done-for-you revenue automation: it finds your buyers,
 > contacts them and books the meetings. You give us a website and
 > a daily budget; we pick the buyers, write the emails, A/B test the templates,

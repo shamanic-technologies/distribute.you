@@ -12,8 +12,16 @@ import { ParagraphIcon } from "@phosphor-icons/react/dist/csr/Paragraph";
 import { HandWavingIcon } from "@phosphor-icons/react/dist/csr/HandWaving";
 import { MinusIcon } from "@phosphor-icons/react/dist/csr/Minus";
 import { EmptyNote, SectionTitle } from "@/components/v2/ui";
-import { crewFor } from "@/lib/v2/crews";
-import { CREW_KEY, type ResearchChart, type ResearchCrew, type ResearchPoint, type ResearchTopic } from "@/lib/research/research";
+import { crewFor, type CrewGlyph } from "@/lib/v2/crews";
+import {
+  CREW_KEY,
+  type ResearchChart,
+  type ResearchCrew,
+  type ResearchOutcome,
+  type ResearchPoint,
+  type ResearchStudy,
+  type ResearchTopic,
+} from "@/lib/research/research";
 
 /**
  * The pieces every Research view draws with (the hub, a question, the workflow and template
@@ -47,6 +55,21 @@ export function dayText(ymd: string): string {
 export function crewIdentity(crew: ResearchCrew) {
   const k = CREW_KEY[crew];
   return crewFor(k.channel, k.step, crew);
+}
+
+/** An outcome section's mark: one outcome across every leg, so it wears no crew's colour. */
+const OUTCOME_LOOK: Record<ResearchOutcome, { name: string; color: string; glyph: CrewGlyph }> = {
+  meeting: { name: "Meeting booked", color: "var(--data-sky)", glyph: "square" },
+};
+export function outcomeIdentity(outcome: ResearchOutcome) {
+  return OUTCOME_LOOK[outcome];
+}
+
+/** The section a study sits in, as its mark and name: its crew, or its outcome. */
+export function sectionIdentity(study: ResearchStudy): { name: string; color: string; glyph: CrewGlyph } {
+  if (study.crew) return crewIdentity(study.crew);
+  if (!study.outcome) throw new Error(`[dashboard] research study ${study.id} names neither a crew nor an outcome`);
+  return outcomeIdentity(study.outcome);
 }
 
 /** A topic's mark: a soft tile in its colour, drawn like a crew's mark. */

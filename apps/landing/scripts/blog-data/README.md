@@ -133,6 +133,20 @@ The design file naming the sending and receiving addresses stays on the box
 sending addresses. The committed snapshot carries indices only, and is the record once the
 spam folders have been emptied.
 
+## Meeting booked: one leg, and one OUTCOME section across every leg
+
+`meetings.mjs` (called by research.mjs, unit-tested in `tests/unit/research-meetings.test.ts`) writes two studies from
+four extract.sh dumps (`meetings.csv`, `pilot-acted.csv`, `meeting-campaigns.csv`, `meeting-spend.csv`):
+- `pilot-cost` (the positive reply -> meeting booked leg, `conversation_to_meeting_booked`): that leg's spend over the
+  meetings lead-service credits to our outreach AND booked on or after the leg first acted on the person.
+- `meeting-cost` (the Meeting booked OUTCOME section, `crew: null, outcome: "meeting"`, listed in the file's
+  `outcomes`): every dollar charged on cold email + meeting booking over every credited meeting, on the brands that
+  REPORT meetings only (any live `meeting_booked` row; owner pick 2026-10-03: a brand with no CRM import or tracker
+  reads zero meetings by construction). Its `population` line says how many brands that is.
+Learning comes from features-service's rule for `conversation_to_meeting_booked` / `start_to_meeting_booked`
+(maturity.json); research.mjs throws if the catalogue states none. Spend is billed gross (actual rows); the actual
+basis states "not measured on vendor cost yet" instead of a figure.
+
 ## Open tracking and naming the client: Research only
 
 Both studies live on the Research page only (`pixel/pixel.research.snapshot.json` via `pixel/derive-pixel.mjs`,

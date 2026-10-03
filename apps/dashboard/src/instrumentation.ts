@@ -1,4 +1,5 @@
 import { STAFF_DIGEST_TEMPLATE_DEF } from "@/lib/staff-digest";
+import { BRAND_WHY } from "./lib/brand-why";
 const DASHBOARD_URL = "https://dashboard.distribute.you";
 const DOCS_URL = "https://docs.distribute.you";
 const HOW_IT_WORKS_URL = "https://distribute.you/how-it-works";
@@ -31,7 +32,8 @@ function emailLayout(content: string): string {
     <div style="background:${EMAIL_SURFACE};border:1px solid ${EMAIL_BORDER};border-radius:12px;padding:36px 32px;">
       ${content}
     </div>
-    <p style="color:${EMAIL_MUTED};font-size:13px;line-height:1.6;margin-top:28px;text-align:center;">
+    <p style="color:${EMAIL_TEXT};font-size:15px;font-weight:600;line-height:1.5;margin:28px 0 0;text-align:center;">${BRAND_WHY}</p>
+    <p style="color:${EMAIL_MUTED};font-size:13px;line-height:1.6;margin-top:6px;text-align:center;">
       Done-for-you cold outreach, sent from our domains on your behalf.<br />
       <a href="${DASHBOARD_URL}" style="color:${EMAIL_MUTED};">Dashboard</a> &nbsp;·&nbsp; <a href="${DOCS_URL}" style="color:${EMAIL_MUTED};">Docs</a>
     </p>
@@ -41,6 +43,9 @@ function emailLayout(content: string): string {
 }
 
 const P = `color:#1a1a1a;font-size:16px;line-height:1.6;margin-bottom:16px;`;
+// The why closes every customer email, in the plain-text part too (the HTML part
+// carries it in emailLayout's footer). Admin notifications and the staff digest skip it.
+const TEXT_SIGNOFF = `\n\n--\ndistribute.you\n${BRAND_WHY}`;
 const DUNNING_BUTTON = "Send the next batch";
 const DUNNING_AUTO_TOPUP = "Turn on auto top-up while you're there so the next batch never has to wait.";
 const DUNNING_BLOCKED_CARD = "Your bank doesn't allow automatic top-ups, so add credit whenever your balance runs low and your outreach keeps going.";
@@ -56,7 +61,7 @@ ${paragraphs.map((p) => `      <p style="${P}">${p}</p>`).join("\n")}
         <a href="${DASHBOARD_URL}" style="display:inline-block;background:${EMAIL_ACCENT};color:#fff;padding:12px 24px;border-radius:6px;text-decoration:none;font-size:16px;">${DUNNING_BUTTON}</a>
       </p>
       <p style="${P}">Kevin<br />Founder, distribute.you</p>`),
-    textBody: `Hey,\n\n${paragraphs.join("\n\n")}\n\n${DUNNING_BUTTON}: ${DASHBOARD_URL}\n\nKevin\nFounder, distribute.you`,
+    textBody: `Hey,\n\n${paragraphs.join("\n\n")}\n\n${DUNNING_BUTTON}: ${DASHBOARD_URL}\n\nKevin\nFounder, distribute.you${TEXT_SIGNOFF}`,
   };
 }
 
@@ -106,7 +111,7 @@ export const EMAIL_TEMPLATES = [
       <p style="margin-bottom:20px;">
         <a href="${DASHBOARD_URL}" style="display:inline-block;background:${EMAIL_ACCENT};color:#fff;padding:12px 24px;border-radius:6px;text-decoration:none;font-size:16px;">View in dashboard</a>
       </p>`),
-    textBody: `Campaign created: {{campaignName}}\n\nYour campaign "{{campaignName}}" has been created and is now live.\n\nView in dashboard: ${DASHBOARD_URL}`,
+    textBody: `Campaign created: {{campaignName}}\n\nYour campaign "{{campaignName}}" has been created and is now live.\n\nView in dashboard: ${DASHBOARD_URL}${TEXT_SIGNOFF}`,
   },
   {
     name: "campaign_stopped",
@@ -122,7 +127,7 @@ export const EMAIL_TEMPLATES = [
       <p style="margin-bottom:20px;">
         <a href="${DASHBOARD_URL}" style="display:inline-block;background:${EMAIL_ACCENT};color:#fff;padding:12px 24px;border-radius:6px;text-decoration:none;font-size:16px;">View in dashboard</a>
       </p>`),
-    textBody: `Campaign stopped: {{campaignName}}\n\nYour campaign "{{campaignName}}" has been stopped. You can resume it at any time from your dashboard.\n\nView in dashboard: ${DASHBOARD_URL}`,
+    textBody: `Campaign stopped: {{campaignName}}\n\nYour campaign "{{campaignName}}" has been stopped. You can resume it at any time from your dashboard.\n\nView in dashboard: ${DASHBOARD_URL}${TEXT_SIGNOFF}`,
   },
 
   // ── User-facing templates (branded) ──
@@ -141,7 +146,7 @@ export const EMAIL_TEMPLATES = [
         <li><a href="https://docs.distribute.you" style="color:${EMAIL_ACCENT_TEXT};">Read the documentation</a></li>
         <li><a href="https://github.com/shamanic-technologies/distribute.you" style="color:${EMAIL_ACCENT_TEXT};">Star us on GitHub</a></li>
       </ul>`),
-    textBody: "You're on the list!\n\nThanks for joining the distribute.you waitlist. We'll notify you as soon as we're ready to launch.\n\nIn the meantime, you can:\n- Read the documentation: https://docs.distribute.you\n- Star us on GitHub: https://github.com/shamanic-technologies/distribute.you.you",
+    textBody: "You're on the list!\n\nThanks for joining the distribute.you waitlist. We'll notify you as soon as we're ready to launch.\n\nIn the meantime, you can:\n- Read the documentation: https://docs.distribute.you\n- Star us on GitHub: https://github.com/shamanic-technologies/distribute.you" + TEXT_SIGNOFF,
   },
   // Email 1 — sent at SIGNUP (before onboarding, so no brand/goal exists yet).
   // Short "why distribute" value-prop, goal-agnostic. The goal-specific
@@ -170,7 +175,7 @@ export const EMAIL_TEMPLATES = [
       <p style="color:${EMAIL_MUTED};font-size:14px;line-height:1.6;margin:20px 0 0;">
         New to this? <a href="${HOW_IT_WORKS_URL}" style="color:${EMAIL_ACCENT_TEXT};">See how it works.</a>
       </p>`),
-    textBody: `Welcome to distribute.you.\n\nCold outreach that lands takes domains, warmup, list-building, writing, and an inbox someone babysits every day. Do it wrong and you torch your own domain's reputation.\n\nSo we run all of it for you. You drop a URL. We find the decision-makers at the companies you want, write the emails, and send them from our own domains, on your behalf. Your domain never touches cold outreach.\n\nOnly interested prospects come back to you. You close.\n\nYour first 3 days are free: your campaign starts sending on day one, and nothing is charged before day 3. Enough for a real first run, not a demo.\n\nOpen your dashboard: ${DASHBOARD_URL}\n\nNew to this? See how it works: ${HOW_IT_WORKS_URL}`,
+    textBody: `Welcome to distribute.you.\n\nCold outreach that lands takes domains, warmup, list-building, writing, and an inbox someone babysits every day. Do it wrong and you torch your own domain's reputation.\n\nSo we run all of it for you. You drop a URL. We find the decision-makers at the companies you want, write the emails, and send them from our own domains, on your behalf. Your domain never touches cold outreach.\n\nOnly interested prospects come back to you. You close.\n\nYour first 3 days are free: your campaign starts sending on day one, and nothing is charged before day 3. Enough for a real first run, not a demo.\n\nOpen your dashboard: ${DASHBOARD_URL}\n\nNew to this? See how it works: ${HOW_IT_WORKS_URL}${TEXT_SIGNOFF}`,
   },
   // Email 2 — sent AFTER the user pays and launches (completeLaunchAfterCheckout).
   // {{outcomeNoun}} is the plural of the brand's chosen optimization goal (clicks /
@@ -189,7 +194,7 @@ export const EMAIL_TEMPLATES = [
       <p style="margin:0;">
         <a href="${DASHBOARD_URL}" style="display:inline-block;background:${EMAIL_ACCENT};color:#ffffff;padding:13px 28px;border-radius:10px;text-decoration:none;font-size:16px;font-weight:600;">Open your dashboard</a>
       </p>`),
-    textBody: `You're live. Your first {{outcomeNoun}} are on the way.\n\nYour campaign just went live. From here it runs on its own: we reach out, screen the replies, and pass you the prospects worth your time.\n\nWatch your {{outcomeNoun}} land from the dashboard as they come in.\n\nOpen your dashboard: ${DASHBOARD_URL}`,
+    textBody: `You're live. Your first {{outcomeNoun}} are on the way.\n\nYour campaign just went live. From here it runs on its own: we reach out, screen the replies, and pass you the prospects worth your time.\n\nWatch your {{outcomeNoun}} land from the dashboard as they come in.\n\nOpen your dashboard: ${DASHBOARD_URL}${TEXT_SIGNOFF}`,
   },
   // Sent to every other admin when somebody joins through the org's invite link
   // (lib/team-joined-email.ts). The link has no expiry, so this email IS its guard:
@@ -207,7 +212,7 @@ export const EMAIL_TEMPLATES = [
       <p style="margin:0;">
         <a href="{{teamUrl}}" style="display:inline-block;background:${EMAIL_ACCENT};color:#ffffff;padding:13px 28px;border-radius:10px;text-decoration:none;font-size:16px;font-weight:600;">Open your dashboard</a>
       </p>`),
-    textBody: `{{joinerEmail}} just joined {{orgName}} as an admin, through your team's invite link.\n\nIf you do not know this person, remove them and revoke the link from the Team page.\n\nOpen your dashboard: {{teamUrl}}`,
+    textBody: `{{joinerEmail}} just joined {{orgName}} as an admin, through your team's invite link.\n\nIf you do not know this person, remove them and revoke the link from the Team page.\n\nOpen your dashboard: {{teamUrl}}${TEXT_SIGNOFF}`,
   },
   // ── Admin notifications (plain, no layout) ──
   {
@@ -288,7 +293,7 @@ export const EMAIL_TEMPLATES = [
         <a href="${DASHBOARD_URL}" style="display:inline-block;background:${EMAIL_ACCENT};color:#fff;padding:12px 24px;border-radius:6px;text-decoration:none;font-size:16px;">Open dashboard</a>
       </p>
       <p style="color:#1a1a1a;font-size:16px;line-height:1.6;margin-bottom:16px;">Kevin<br />Founder, distribute.you</p>`),
-    textBody: `Hey,\n\n{{brandName}} is now returning {{roiToday}} for every dollar spent, up from {{roiPrevious}}.\n\nWhat moved it: {{newOutcomes}}.\n\n{{totalLeads}} people in your pipeline.\n\n{{digestText}}\n\nOpen dashboard: ${DASHBOARD_URL}\n\nKevin\nFounder, distribute.you`,
+    textBody: `Hey,\n\n{{brandName}} is now returning {{roiToday}} for every dollar spent, up from {{roiPrevious}}.\n\nWhat moved it: {{newOutcomes}}.\n\n{{totalLeads}} people in your pipeline.\n\n{{digestText}}\n\nOpen dashboard: ${DASHBOARD_URL}\n\nKevin\nFounder, distribute.you${TEXT_SIGNOFF}`,
   },
 ];
 

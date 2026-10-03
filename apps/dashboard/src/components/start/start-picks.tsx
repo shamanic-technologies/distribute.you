@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { BRAND_WHY } from "@/lib/brand-why";
 import { RocketIcon } from "@phosphor-icons/react/dist/csr/Rocket";
 import { WalletIcon } from "@phosphor-icons/react/dist/csr/Wallet";
 import { ChartLineUpIcon } from "@phosphor-icons/react/dist/csr/ChartLineUp";
@@ -255,9 +256,12 @@ export function StartPicks({
           </>
         }
         subtitle={
-          brand
-            ? `One question and you see what our clients got back. Then we set it up for ${brand.host}.`
-            : "One question and you see what our clients got back. You only make an account once you have seen the price."
+          <>
+            <span className="block font-medium text-gray-900">{BRAND_WHY}</span>
+            {brand
+              ? `One question and you see what our clients got back. Then we set it up for ${brand.host}.`
+              : "One question and you see what our clients got back. You only make an account once you have seen the price."}
+          </>
         }
         footer={footer(<StartButton onClick={() => go("outcome")}>Start</StartButton>)}
       >

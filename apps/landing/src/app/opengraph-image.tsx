@@ -45,7 +45,7 @@ export default async function OG() {
               maxWidth: 1000,
             }}
           >
-            Sales cold email outreach done for you.
+            Revenue made easy.
           </div>
           <div
             style={{
@@ -55,7 +55,7 @@ export default async function OG() {
               maxWidth: 1000,
             }}
           >
-            Drop a URL. We find prospects, send sequences, qualify replies, and forward buyers to Gmail.
+            The cold email agency: paste your website, we find your buyers, run the campaign and book your meetings. From $99 a month.
           </div>
         </div>
         <div
@@ -68,7 +68,7 @@ export default async function OG() {
           }}
         >
           <div>distribute.you</div>
-          <div>Sales automation</div>
+          <div>Get started: distribute.you</div>
         </div>
       </div>
     ),

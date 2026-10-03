@@ -3,6 +3,7 @@ import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import {
   CREW_ORDER,
+  OUTCOME_ORDER,
   parseResearchPath,
   pointHref,
   researchCatalogHref,
@@ -12,6 +13,8 @@ import {
   researchWorkflow,
   studyById,
   studiesFor,
+  studiesForOutcome,
+  studyOutcomeText,
   type ResearchCatalog,
   type ResearchFile,
 } from "../src/lib/research/research";
@@ -35,7 +38,8 @@ describe("research.json is coherent", () => {
     const legs = (RESEARCH as unknown as { maturation: { legs: Record<string, { cutoff: string }> } }).maturation.legs;
     let partials = 0;
     for (const s of RESEARCH.studies) {
-      const cutoff = legs[s.crew === "scout" ? "visit" : "reply"].cutoff;
+      // an outcome study (meetings) waits no days under its leg's rule: its months run to the read
+      const cutoff = s.crew === null ? RESEARCH.maturation.windowEnd : legs[s.crew === "scout" ? "visit" : "reply"].cutoff;
       const last = MONTHS[Number(cutoff.slice(5, 7)) - 1];
       for (const c of s.charts.filter((x) => x.kind === "months")) {
         for (const pts of [c.points, c.cumulative?.points ?? []]) {
@@ -54,11 +58,52 @@ describe("research.json is coherent", () => {
     expect(bits).toContain('dataKey="pending" stroke={color} strokeWidth={1.5} strokeDasharray="3 3"');
   });
 
-  it("gives every study a unique id and a known crew", () => {
+  it("gives every study a unique id and exactly one section: a known crew, or a known outcome", () => {
     const ids = RESEARCH.studies.map((s) => s.id);
     expect(new Set(ids).size).toBe(ids.length);
-    for (const s of RESEARCH.studies) expect(CREW_ORDER).toContain(s.crew);
+    for (const s of RESEARCH.studies) {
+      if (s.crew === null) expect(OUTCOME_ORDER, s.id).toContain(s.outcome);
+      else {
+        expect(CREW_ORDER, s.id).toContain(s.crew);
+        expect(s.outcome, s.id).toBeUndefined();
+      }
+      expect(studyOutcomeText(s, RESEARCH), s.id).toBeTruthy();
+    }
     for (const s of RESEARCH.studies) expect(studyById(s.id, RESEARCH)).toBe(s);
+  });
+
+  it("prices a booked meeting on the positive reply to meeting leg, and across every leg as the Meeting booked outcome", () => {
+    const leg = studyById("pilot-cost", RESEARCH);
+    expect(leg?.crew).toBe("pilot");
+    expect(leg?.topic).toBe("cost");
+    const meeting = RESEARCH.outcomes?.find((o) => o.id === "meeting");
+    expect(meeting?.outcome).toBe("Meeting booked");
+    // the population is stated: only brands that report their meetings count (owner pick A, 2026-10-03)
+    expect(meeting?.population).toMatch(/report(s)? (its|their) booked meetings/);
+    const all = studiesForOutcome("meeting", RESEARCH);
+    expect(all.map((s) => s.id)).toEqual(["meeting-cost"]);
+    for (const s of [leg!, ...all]) {
+      expect(s.verdict, s.id).toBeTruthy();
+      // a meeting figure under features-service's count reads Learning, so never a conclusion yet
+      for (const c of s.charts) for (const p of [...c.points, ...(c.cumulative?.points ?? [])]) if (p.thin) expect(s.verdict?.kind, s.id).not.toBe("conclusion");
+      const text = [s.question, s.headline, ...s.conclusion].join(" ");
+      expect(text, s.id).not.toMatch(/herald|scout|pilot/i);
+    }
+  });
+
+  it("draws the outcome sections on the hub after the crews, with their population line", () => {
+    const page = read("components/v2/research-page.tsx");
+    const hub = page.slice(page.indexOf("function V2ResearchHub("), page.indexOf("function BarsChart("));
+    expect(hub.indexOf("CREW_ORDER.map(")).toBeGreaterThan(0);
+    expect(hub.indexOf("OUTCOME_ORDER.map(")).toBeGreaterThan(hub.indexOf("CREW_ORDER.map("));
+    expect(hub).toContain("studiesForOutcome(outcome, RESEARCH)");
+    expect(hub).toContain("{meta.population}");
+    // a question page names its section whatever it is
+    expect(page).toContain("const id = sectionIdentity(study);");
+    // the email legs' clients, emails and run-start wait are never printed beside a meeting figure
+    expect(page).toContain('const emailLeg = study.crew === "herald" || study.crew === "scout";');
+    expect(page).toContain("{emailLeg && <Row k=\"Emails\"");
+    expect(page).toContain("{emailLeg && (");
   });
 
   it("covers the nine questions for Herald and for Scout, plus Pilot", () => {
@@ -332,7 +377,9 @@ describe("the maturity rule is features-service's, read per leg and applied ever
     for (const s of RESEARCH.studies) {
       for (const c of s.charts) {
         expect(c.note, `${s.id}: ${c.title}`).toBeTruthy();
-        if (s.topic !== "opens") expect(c.note, s.id).toBe(m.note);
+        // the meeting studies sit on the meeting legs' own rule (outcomesRequired meetings), stated in their note
+        if (s.crew !== "herald" && s.crew !== "scout") expect(c.note, s.id).toMatch(/needs \d+ meetings? behind it/);
+        else if (s.topic !== "opens") expect(c.note, s.id).toBe(m.note);
       }
     }
   });
@@ -379,6 +426,11 @@ describe("workflow and template pages (the research catalogue)", () => {
       for (const c of s.charts.filter((ch) => ch.kind === "bars")) {
         for (const p of c.points) {
           const href = pointHref(base, s, p);
+          // an outcome study spans every leg: no catalogue page to open
+          if (s.crew === null) {
+            expect(href, s.id).toBeNull();
+            continue;
+          }
           if (s.topic === "workflow") {
             expect(researchWorkflow(catalog, s.crew, p.key!), `${s.id} ${p.label}`).not.toBeNull();
             expect(href).toBe(`${base}/${s.crew}/workflows/${encodeURIComponent(p.key!)}`);

@@ -23,6 +23,7 @@ import { createContext, useContext, useEffect, useMemo, useRef, useState } from 
 import { useSearchParams } from "next/navigation";
 import { useAuth } from "@clerk/nextjs";
 import posthog from "posthog-js";
+import { BRAND_WHY } from "@/lib/brand-why";
 import {
   ApiError,
   checkAudienceCompanyEmail,
@@ -1488,6 +1489,7 @@ function Hero({
     <div className="k-canvas flex min-h-[100dvh] items-center justify-center px-6">
       <div className="w-full max-w-[560px]">
         <p className="k-label gs-in">distribute.you</p>
+        <p className="gs-in k-fg2 mt-1 text-[13px] font-medium">{BRAND_WHY}</p>
         <h1 className="gs-in k-fg mt-3 text-[28px] font-medium leading-9 tracking-[-0.01em]" style={{ animationDelay: "60ms" }}>
           See who we would sell to for you.
         </h1>
