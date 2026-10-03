@@ -7,6 +7,7 @@ import { Section } from "@/components/section";
 import { PROD_URLS } from "@/lib/env-urls";
 import { DEFAULT_OG_IMAGE_PATH, TWITTER_HANDLE } from "@/lib/seo";
 import { listArticles, type BlogArticle } from "@/lib/blog/db";
+import { WHY } from "@/lib/v2-shell";
 
 export const revalidate = 60;
 
@@ -182,14 +183,12 @@ export default async function BlogIndexPage() {
       <Section variant="prose" outerClassName="dy-section" className="text-center">
         <div className="dy-eyebrow mb-6">
           <span className="dy-dot" />
-          distribute.you blog
+          {WHY}
         </div>
-        <h1 className="dy-title mb-4 text-4xl md:text-5xl">
-          Stories from the solo path
-        </h1>
+        <h1 className="dy-title mb-4 text-4xl md:text-5xl">The distribute.you blog</h1>
         <p className="dy-body mx-auto max-w-xl text-base md:text-lg">
-          Playbooks, benchmarks, and field notes on running distribution for a
-          portfolio of products — without a marketing team.
+          Benchmarks, playbooks and test results from the cold email campaigns
+          we run for our clients.
         </p>
       </Section>
 

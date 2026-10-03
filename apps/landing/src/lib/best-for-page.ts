@@ -22,7 +22,7 @@ import {
   type BestForPage,
 } from "./best-for";
 import { bullets, faqJsonLd, faqList, liveBand, logo } from "./compare-page";
-import { SIGN_UP, SITE, breadcrumb, esc, shell } from "./v2-shell";
+import { SIGN_UP, SITE, breadcrumb, esc, shell, whyLine } from "./v2-shell";
 
 const YEAR = BEST_UPDATED_ON.slice(0, 4);
 
@@ -122,6 +122,7 @@ export function renderBestForPage(p: BestForPage): string {
     <span class="eyebrow">${esc(bestForQuestion(p))}</span>
     <h1>${esc(bestForHeading(p))}</h1>
     <p class="hero-sub">${esc(p.answer)}</p>
+    ${whyLine()}
     ${metaLine()}
     <div class="cmp-cta"><a class="btn btn-accent btn-lg" href="${SIGN_UP}">Start free</a><a class="btn btn-outline btn-lg" href="#ranking">See the ranking</a></div>
   </div>
@@ -194,6 +195,7 @@ export function renderBestForHub(): string {
     <span class="eyebrow">Rankings by audience</span>
     <h1>The best way to get B2B sales meetings, by who you are</h1>
     <p class="hero-sub">For ${esc(audienceList())}, distribute.you ranks first: a cold email agency that runs outbound for you and shows what each positive reply cost. Each page below ranks it against the tools and agents that audience weighs, with their prices read from their own sites.</p>
+    ${whyLine()}
     ${metaLine()}
   </div>
 </section>
