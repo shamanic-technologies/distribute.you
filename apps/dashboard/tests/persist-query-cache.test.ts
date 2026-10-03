@@ -103,7 +103,7 @@ describe("shouldPersistQuery — only successful, non-sensitive queries persist"
       "globalRankedWorkflows", "featureWorkflows", "brandExtractedFields", "brandRuns",
       // Orphaned earlier, by the entity-page removals — the allowlist is an INVENTORY
       // of live roots, so a root whose surface is gone must leave it.
-      "platformPrices", "brandUserFields", "brandCostBreakdown", "brandCostBreakdownToday",
+      "platformPrices", "brandCostBreakdown", "brandCostBreakdownToday",
       "brandEmails", "brandOutlets", "brandArticles", "brandJournalists",
       "enrichedJournalists", "brandMediaKits", "mediaKit", "outletStatsCosts",
       "campaignActivity", "domainTrafficHistory", "domainDrStatus", "domainAiVisibility",
