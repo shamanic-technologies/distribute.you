@@ -81,25 +81,35 @@ export async function recommendedBudgetForPreview(
   return recommendedDailyBudgetUsd(newOrgLeg(legKey), row?.resolved.costPerOutcomeUsd ?? null, floorUsd);
 }
 
+/** A drafted value as clean lines; "unknown" is the read's word for nothing found. */
+function valueLinesOf(v: unknown): string[] {
+  return (Array.isArray(v) ? v : typeof v === "string" ? v.split("\n") : [])
+    .map((x) => String(x).trim())
+    .filter((x) => x && x.toLowerCase() !== "unknown");
+}
+
 /**
  * The six Hormozi levers of the picked offer, drafted off the site (brand-service's
  * `suggest` mode, the onboarding's own read) and SAVED on the offer, so the campaign's
  * emails are written around them from the first send and the owner edits them later
  * in the dashboard rather than starting from blank. A lever the read left empty is
- * not written: an empty confirmed row would hide a later suggestion.
+ * not written: an empty confirmed row would hide a later suggestion. Its "Services sold"
+ * rides the same read.
  */
 async function prefillOfferLevers(brandId: string, offerId: string): Promise<void> {
-  const leverFields = USER_PROFILE_FIELDS.filter((f) => LEVER_QUESTIONS.some((q) => q.key === f.key));
+  const leverFields = USER_PROFILE_FIELDS.filter(
+    (f) => f.key === "services" || LEVER_QUESTIONS.some((q) => q.key === f.key),
+  );
   const read = await extractBrandFields([brandId], leverFields, { mode: "suggest", urlStrategy: "landing", offerId });
   const fields: Partial<Record<UserFieldKey, UserFieldValue>> = {};
   for (const q of LEVER_QUESTIONS) {
     const v = read.fields[q.key]?.value;
-    const lines = (Array.isArray(v) ? v : typeof v === "string" ? v.split("\n") : [])
-      .map((x) => String(x).trim())
-      .filter((x) => x && x.toLowerCase() !== "unknown");
+    const lines = valueLinesOf(v);
     if (lines.length === 0) continue;
     fields[q.key] = q.list ? lines : lines.join("\n");
   }
+  const services = valueLinesOf(read.fields.services?.value);
+  if (services.length > 0) fields.services = services;
   if (Object.keys(fields).length > 0) await saveOfferUserFields(brandId, offerId, fields);
 }
 

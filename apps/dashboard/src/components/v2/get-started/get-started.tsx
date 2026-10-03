@@ -67,6 +67,7 @@ import {
   GET_STARTED_STEPS,
   GIVE_DRAFT_FIELDS,
   LEVER_DRAFT_FIELDS,
+  SERVICES_DRAFT_FIELD,
   NEXT_STEPS,
   OFFER_FIELDS,
   REOPENABLE_STEPS,
@@ -489,7 +490,7 @@ export function GetStarted() {
             ),
           ]
         : [];
-      const fields = [...VALUE_FIELDS, ...stepsField, ...LEVER_DRAFT_FIELDS, ...GIVE_DRAFT_FIELDS].map((f) => ({ key: f.key, description: f.description }));
+      const fields = [...VALUE_FIELDS, ...stepsField, ...LEVER_DRAFT_FIELDS, ...GIVE_DRAFT_FIELDS, SERVICES_DRAFT_FIELD].map((f) => ({ key: f.key, description: f.description }));
       const r = await extractBrandFields([id], fields, { mode: "suggest", urlStrategy: "landing", offerId });
       const said = r.fields.salesSteps?.value;
       draftedSteps.current = Array.isArray(said) ? said.map(String) : typeof said === "string" ? said.split("\n") : [];
@@ -498,6 +499,13 @@ export function GetStarted() {
       setLevers((cur) => fillBlank(cur, LEVER_DRAFT_FIELDS, (k) => valueLines(r.fields[k]?.value).join("\n")));
       setGives((cur) => fillBlank(cur, GIVE_DRAFT_FIELDS, (k) => valueLines(r.fields[k]?.value).join("\n")));
       setDrafted("done");
+      // No screen asks for it: saved as drafted so the offer page shows what is sold.
+      const services = valueLines(r.fields.services?.value);
+      if (services.length > 0) {
+        saveOfferUserFields(id, offerId, { services }).catch((e) =>
+          console.error("[get-started] offer services save failed:", { brandId: id, offerId, e }),
+        );
+      }
     } catch (e) {
       console.error("[get-started] answer drafts failed:", e);
       setDrafted("failed");
