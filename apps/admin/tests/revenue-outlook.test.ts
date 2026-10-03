@@ -86,6 +86,13 @@ describe("revenue outlook (billing fleet read)", () => {
     expect(classReasonSentence("brand_new_reason")).toBe("brand_new_reason");
   });
 
+  it("reads billing's idle and retries-exhausted reasons as sentences", () => {
+    expect(classReasonSentence("postpaid_idle")).toBe("Postpaid, card on file, nothing spending");
+    expect(classReasonSentence("prepaid_auto_topup_idle")).toBe("Prepaid, auto top-up on, nothing spending");
+    expect(classReasonSentence("postpaid_charge_retries_exhausted")).toBe("Postpaid, card refused: retries exhausted");
+    expect(classReasonSentence("postpaid_chargeable_card")).toBe("Postpaid, card on file");
+  });
+
   it("lists recurring by MRR, then one-off by what is left, then the rest", () => {
     const o = outlook([
       row({ orgId: "none-cash", cashEvents: [{ at: "2026-09-30T23:00:00Z", expectedAmountCents: "10800" }] }),
