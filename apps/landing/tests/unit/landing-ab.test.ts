@@ -16,7 +16,7 @@ import {
 const CHROME =
   "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0 Safari/537.36";
 const q = (s = "") => new URLSearchParams(s);
-const SUBSCRIPTION_SRC = readFileSync(path.join(__dirname, "../../src/lib/pages/subscription.ts"), "utf8");
+const HOMEPAGE_SRC = readFileSync(path.join(__dirname, "../../public/landing/index-v2.html"), "utf8");
 
 describe("the split rule", () => {
   it("draws every first-time human onto the $99 plan arm", () => {
@@ -128,11 +128,12 @@ describe("GET / with the test on", () => {
     expect(res.headers.get("set-cookie")).toContain("lp_variant=subscription");
   });
 
-  it("builds the amount picker once it goes live, from billing's ladder", () => {
+  it("carries the amount picker in the homepage itself, from billing's ladder", () => {
     // Owner 2026-10-01: the visitor picks the monthly amount, never a bare "+$100".
-    expect(SUBSCRIPTION_SRC).toContain('<select data-plan-amount aria-label="Monthly amount">');
-    expect(SUBSCRIPTION_SRC).toContain("PLAN_AMOUNTS_USD = [99, 199, 299, 499, 999, 1999]");
-    expect(SUBSCRIPTION_SRC).toContain("return PLAN_PICKER_LIVE ? withAmountPicker(html) : html;");
+    // Owner 2026-10-03: the $99/month plan is the homepage, for every visitor and crawler.
+    expect(HOMEPAGE_SRC).toContain('<select data-plan-amount aria-label="Monthly amount">');
+    for (const v of ["9900", "19900", "29900", "49900", "99900", "199900"]) expect(HOMEPAGE_SRC).toContain(`<option value="${v}">`);
+    expect(HOMEPAGE_SRC).toContain("lp_plan=");
   });
 
   it("serves the homepage to the control arm when forced, tagged", async () => {
@@ -143,6 +144,8 @@ describe("GET / with the test on", () => {
 
   it("gives a crawler the homepage, untagged, with no cookie", async () => {
     const { res, html } = await get({ ua: "Googlebot/2.1", qs: "?variant=instinct" });
+    expect(html).toContain("From $99/month");
+    expect(html).not.toContain("$1/day");
     expect(html).not.toContain("Text distribute.you to get started");
     expect(html).not.toContain("landing_variant_viewed");
     expect(res.headers.get("set-cookie")).toBeNull();

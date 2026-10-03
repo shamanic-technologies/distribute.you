@@ -4,7 +4,6 @@ import { renderedResponse } from "@/lib/static-html";
 import { renderAssistantPage } from "@/lib/pages/assistant";
 import { renderConciergePage } from "@/lib/pages/concierge";
 import { renderInstinctPage } from "@/lib/pages/instinct";
-import { renderSubscriptionPage } from "@/lib/pages/subscription";
 import {
   AB_TEST_ENABLED,
   decideVariant,
@@ -35,6 +34,8 @@ export async function GET(request: Request) {
     random: Math.random(),
   });
 
+  // `index-v2.html` IS the $99/month plan since 2026-10-03 (owner: the default offer,
+  // "$1/day" is no longer sold), so `subscription`, `control` and crawlers share it.
   const homepage = () => readFileSync(join(process.cwd(), "public/landing", "index-v2.html"), "utf8");
   const page =
     decision.variant === "assistant"
@@ -43,9 +44,7 @@ export async function GET(request: Request) {
         ? renderConciergePage(undefined, { at: "homepage" })
         : decision.variant === "instinct"
           ? renderInstinctPage()
-          : decision.variant === "subscription"
-            ? renderSubscriptionPage(homepage())
-            : homepage();
+          : homepage();
   const html = decision.inTest
     ? withBeforeBodyEnd(page, variantTrackingScript(decision.variant))
     : page;
