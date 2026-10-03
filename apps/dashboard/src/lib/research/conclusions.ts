@@ -85,3 +85,53 @@ export function researchConclusions(file: ResearchFile): ResearchConclusionsBody
   }
   return { generatedAt: file.generatedAt, readOn: file.readOn, window: file.window, costBasis: "user", conclusions };
 }
+
+/**
+ * EVERY measured study, for a backend READER (social-service's comment writer reads the ones
+ * relevant to a post before it comments, owner 2026-10-03). Same strings and facts as the
+ * conclusions, same billed basis, but a `signal` or `noise` study is included for context with
+ * `quotable: false`: its figures may be read, never stated as a finding. A study still
+ * `not_enough_data` has nothing to read and is left out.
+ */
+export interface ResearchStudyItem {
+  id: string;
+  outcome: string;
+  question: string;
+  headline: string;
+  verdict: { kind: "conclusion" | "signal" | "noise"; reason: string } | null;
+  /** True only for a conclusion: the only kind whose figures a public text may state. */
+  quotable: boolean;
+  result: { display: string; unit: string; sample: string } | null;
+  facts: ResearchFact[];
+}
+
+export interface ResearchStudiesBody {
+  generatedAt: string;
+  readOn: string;
+  window: { from: string; to: string };
+  costBasis: "user";
+  studies: ResearchStudyItem[];
+}
+
+export function researchStudies(file: ResearchFile): ResearchStudiesBody {
+  if (file.costBasis !== undefined && file.costBasis !== "user") {
+    throw new Error(`[dashboard] research studies must come from the billed basis, got ${file.costBasis}`);
+  }
+  const studies: ResearchStudyItem[] = [];
+  for (const study of file.studies) {
+    if (study.status !== "measured") continue;
+    const outcome = studyOutcomeText(study, file);
+    if (!outcome) throw new Error(`[dashboard] research study ${study.id} names section ${study.crew ?? study.outcome}, absent from the file's crews and outcomes`);
+    studies.push({
+      id: study.id,
+      outcome,
+      question: study.question,
+      headline: study.headline,
+      verdict: study.verdict ?? null,
+      quotable: study.verdict?.kind === "conclusion",
+      result: study.result,
+      facts: factsOf(study),
+    });
+  }
+  return { generatedAt: file.generatedAt, readOn: file.readOn, window: file.window, costBasis: "user", studies };
+}

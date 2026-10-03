@@ -51,14 +51,16 @@ describe("the switch sits in the top bar of every page that states costs", () =>
 
 const RESEARCH_ROUTE = join("app", "(authed)", "api", "research", "[basis]", "[part]", "route.ts");
 const CONCLUSIONS_ROUTE = join("app", "api", "internal", "research", "conclusions", "route.ts");
+// The second service-key reader (social-service reads every measured study, quotable only when a conclusion).
+const STUDIES_ROUTE = join("app", "api", "internal", "research", "studies", "route.ts");
 
 describe("no research snapshot reaches a browser bundle (billed or actual)", () => {
-  it("only the staff route and the service-key conclusions route import a research JSON file", () => {
+  it("only the staff route and the two service-key routes import a research JSON file", () => {
     const importers = walk(SRC).filter((p) => /lib\/research\/(actual\/)?research[\w-]*\.json|\.\/research[\w-]*\.json/.test(readFileSync(p, "utf8")));
-    expect(importers.map((p) => p.slice(SRC.length + 1)).sort()).toEqual([RESEARCH_ROUTE, CONCLUSIONS_ROUTE].sort());
+    expect(importers.map((p) => p.slice(SRC.length + 1)).sort()).toEqual([RESEARCH_ROUTE, CONCLUSIONS_ROUTE, STUDIES_ROUTE].sort());
   });
-  it("the conclusions route reads the billed file only, behind the service key", () => {
-    const route = read(CONCLUSIONS_ROUTE);
+  it.each([CONCLUSIONS_ROUTE, STUDIES_ROUTE])("the service-key route %s reads the billed file only, behind the service key", (path) => {
+    const route = read(path);
     expect(route).toContain("verifyServiceKey(req)");
     expect(route).toContain("status: 401");
     expect(route).toContain('from "@/lib/research/research.json"');
