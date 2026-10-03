@@ -3,6 +3,7 @@ import type { ReactNode } from "react";
 import { BEST_FOR_PAGES, bestForLinkLabel } from "@/lib/best-for";
 import { COMPETITORS } from "@/lib/competitors";
 import { PROD_URLS } from "@/lib/env-urls";
+import { WHY } from "@/lib/v2-shell";
 
 interface FooterProps {
   /** Optional context-specific note rendered under the columns. */
@@ -72,9 +73,7 @@ export function Footer({ disclaimer }: FooterProps) {
               <Image src="/landing/v2/assets/logo-mark.svg" alt="" width={26} height={26} className="rounded-md" />
               distribute.you
             </a>
-            <p className="mt-3 max-w-[260px] text-sm text-[#6b6b6b]">
-              Done-for-you revenue automation
-            </p>
+            <p className="mt-3 max-w-[260px] text-sm text-[#6b6b6b]">{WHY}</p>
           </div>
           <Column title="Product" links={PRODUCT} />
           <Column title="Compare" links={compare} />

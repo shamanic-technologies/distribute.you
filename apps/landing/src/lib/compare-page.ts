@@ -30,6 +30,7 @@ import {
   compareFooterColumn,
   esc,
   shell,
+  whyLine,
 } from "./v2-shell";
 
 export { V2_STYLES_VERSION };
@@ -137,6 +138,7 @@ export function renderComparePage(c: Competitor): string {
     <div class="cmp-logos" aria-hidden="true"><span class="cmp-logo"><img src="/landing/v2/assets/logo-mark.svg" alt="" width="40" height="40"></span><span class="cmp-vs">vs</span><span class="cmp-logo">${logo(c.domain)}</span></div>
     <h1>distribute.you <span class="accent">vs</span> ${esc(c.name)}</h1>
     <p class="hero-sub">${esc(c.name)}: ${esc(c.oneLiner)} distribute.you is a cold email agency: you paste a website, we run the campaign from domains we own, and you see what each positive reply cost.</p>
+    ${whyLine()}
     <div class="cmp-cta"><a class="btn btn-accent btn-lg" href="${SIGN_UP}">Start free</a><a class="btn btn-outline btn-lg" href="#table">See the table</a></div>
   </div>
 </section>
@@ -242,6 +244,7 @@ export function renderCompareHub(): string {
     <span class="eyebrow">Compare · Verified ${COMPARE_VERIFIED_LABEL}</span>
     <h1>distribute.you <span class="accent">vs</span> the tools and agents you are weighing</h1>
     <p class="hero-sub">Every page reads the competitor's price from their own site, states where they win, and puts our measured cost per positive reply beside it. One thing is different on all of them: we run the campaign, they sell you the means to.</p>
+    ${whyLine()}
   </div>
 </section>
 <section class="framed tint">
@@ -269,6 +272,7 @@ export function renderAlternativesPage(): string {
     <span class="eyebrow">Alternatives · Verified ${COMPARE_VERIFIED_LABEL}</span>
     <h1>The alternative to running <span class="accent">outbound yourself</span></h1>
     <p class="hero-sub">Cold email tools, AI SDR agents and data platforms all sell you a way to run outbound. distribute.you is the alternative to all of them: an agency that runs it from domains we own, charges what the campaign spent, and shows what each positive reply cost.</p>
+    ${whyLine()}
     <div class="cmp-cta"><a class="btn btn-accent btn-lg" href="${SIGN_UP}">Start free</a><a class="btn btn-outline btn-lg" href="/compare">Every comparison</a></div>
   </div>
 </section>

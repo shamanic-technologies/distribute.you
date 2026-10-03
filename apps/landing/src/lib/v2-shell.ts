@@ -27,8 +27,20 @@ export const SIGN_IN = "https://dashboard.distribute.you/sign-in";
  * Bumped together with the homepage's link: every page reads the same stylesheet, so
  * an edit to it ships to a returning visitor only if every `?v=` moves at once.
  */
-export const V2_STYLES_VERSION = 16;
+export const V2_STYLES_VERSION = 17;
 export const V2_MAIN_VERSION = 8;
+
+/**
+ * Why distribute.you exists, in the owner's frozen wording (2026-10-03). One spelling,
+ * read by every surface that states it: the footer tag, the closing CTA box and the
+ * hero line on the pages rendered here. The H1s keep saying WHAT we are.
+ */
+export const WHY = "Revenue made easy.";
+
+/** The why under a hero's lead paragraph (compare, best-for, alternatives, About...). */
+export function whyLine(): string {
+  return `<p class="why">${WHY}</p>`;
+}
 
 export function esc(s: string): string {
   return s
@@ -73,7 +85,7 @@ export function footer(): string {
     <div class="foot">
       <div>
         <a class="brand" href="/"><img src="/landing/v2/assets/logo-mark.svg" alt="" width="26" height="26">distribute.you</a>
-        <p class="tag">Done-for-you revenue automation</p>
+        <p class="tag">${WHY}</p>
       </div>
       <div><h4>Product</h4><ul><li><a href="/#how">How it works</a></li><li><a href="/#features">Features</a></li><li><a href="/#pricing">Pricing</a></li><li><a href="/#faq">FAQ</a></li></ul></div>
       ${compareFooterColumn()}
@@ -89,6 +101,7 @@ export function ctaBox(): string {
   return `<section class="framed">
   <div class="wrap">
     <div class="cta-box rv">
+      <p class="why">${WHY}</p>
       <h2>Your next <span class="accent">customers</span><br>are already out there.</h2>
       <p class="lead">Paste your website and let the campaign find them.</p>
       <form class="launch" action="${SIGN_UP}" method="get">
@@ -209,6 +222,7 @@ export function docPage(p: DocPage): string {
     <span class="eyebrow">${esc(p.eyebrow)}</span>
     <h1>${p.h1}</h1>
     <p class="hero-sub">${p.lead}</p>
+    ${whyLine()}
   </div>
 </section>
 ${sections}`;

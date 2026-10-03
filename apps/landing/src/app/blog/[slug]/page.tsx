@@ -12,6 +12,7 @@ import {
   TWITTER_HANDLE,
 } from "@/lib/seo";
 import { getArticleBySlug } from "@/lib/blog/db";
+import { SIGN_UP, WHY } from "@/lib/v2-shell";
 
 export const revalidate = 60;
 
@@ -166,6 +167,15 @@ export default async function BlogArticlePage({ params }: Props) {
         ) : (
           <p className="text-[var(--dy-muted)]">No content available for this article.</p>
         )}
+
+        {/* Every article closes on the why and the one CTA wording, from the template so
+            the articles already in the database carry it with no row edit. */}
+        <aside className="mt-16 rounded-2xl border border-gray-200 bg-gray-50 px-6 py-10 text-center">
+          <p className="dy-title text-2xl md:text-3xl">{WHY}</p>
+          <a href={SIGN_UP} className="dy-btn dy-btn-p dy-btn-lg mt-6 inline-flex">
+            Get started: distribute.you
+          </a>
+        </aside>
 
         <div className="mt-16 flex items-center justify-between border-t border-[var(--dy-border)] pt-8 text-sm">
           <Link
