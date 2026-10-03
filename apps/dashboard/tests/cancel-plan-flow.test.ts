@@ -5,6 +5,7 @@ import {
   CANCEL_REASONS,
   CANCEL_STEPS,
   LOWEST_PLAN_CENTS,
+  PAUSE_MONTHS,
   nextCancelStep,
   saveOfferFor,
   talkHref,
@@ -25,12 +26,34 @@ describe("the cancel-plan flow", () => {
   });
 
   it("offers the lowest plan only when price is the reason and the amount can move", () => {
-    const plan = { monthlyAmountCents: 29900, canChangeAmount: true };
+    const plan = { monthlyAmountCents: 29900, canChangeAmount: true, canPause: false };
     expect(saveOfferFor("too_expensive", plan)).toBe("lower_plan");
     expect(saveOfferFor("too_expensive", { ...plan, canChangeAmount: false })).toBe("talk");
     expect(saveOfferFor("too_expensive", { ...plan, monthlyAmountCents: LOWEST_PLAN_CENTS })).toBe("talk");
     for (const r of ["no_results", "need_a_break", "other"] as const) expect(saveOfferFor(r, plan)).toBe("talk");
     expect(saveOfferFor(null, plan)).toBe("talk");
+  });
+
+  it("offers a pause for a break, and for price when the plan cannot go lower", () => {
+    const plan = { monthlyAmountCents: LOWEST_PLAN_CENTS, canChangeAmount: true, canPause: true };
+    expect(saveOfferFor("need_a_break", plan)).toBe("pause");
+    expect(saveOfferFor("too_expensive", plan)).toBe("pause");
+    expect(saveOfferFor("too_expensive", { ...plan, monthlyAmountCents: 29900 })).toBe("lower_plan");
+    expect(saveOfferFor("need_a_break", { ...plan, canPause: false })).toBe("talk");
+    expect(saveOfferFor("no_results", plan)).toBe("talk");
+    expect(PAUSE_MONTHS).toEqual([1, 2, 3]);
+  });
+
+  // Owner 2026-10-03: a stepper makes reaching the end feel like the goal.
+  it("shows no step counter and no progress bar", () => {
+    expect(FLOW).not.toMatch(/Step \{|of \{CANCEL_STEPS|stepIndex/);
+  });
+
+  it("pauses through billing, and shows a paused plan with a way to restart", () => {
+    expect(PLAN).toContain('onPause={(months) => void run("pause", () => pauseSubscription(months))}');
+    expect(PLAN).toContain("canPause={sub.can_pause === true}");
+    expect(PLAN).toContain('run("unpause", () => unpauseSubscription())');
+    expect(PLAN).toContain('label: "Paused"');
   });
 
   it("writes to Kevin with the reason in the mail", () => {

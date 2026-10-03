@@ -8203,6 +8203,12 @@ const SubscriptionSchema = z.object({
   can_change_amount: z.boolean().nullish(),
   // billing#583: true while trialing with no cancel pending (start paying now).
   can_start_now: z.boolean().nullish(),
+  // billing#586: a plan can be paused 1-3 months; status stays trialing/active meanwhile.
+  paused: z.boolean().nullish(),
+  paused_at: z.string().nullish(),
+  pause_ends_at: z.string().nullish(),
+  can_pause: z.boolean().nullish(),
+  can_unpause: z.boolean().nullish(),
   can_raise: z.boolean().nullish(),
   next_raise_monthly_amount_cents: z.coerce.number().nullish(),
 });
@@ -8304,6 +8310,22 @@ export async function startSubscriptionNow(monthly_amount_cents: number): Promis
 export async function cancelSubscription(): Promise<SubscriptionRead> {
   const raw = await apiCall<unknown>("/billing/accounts/subscription/cancel", { method: "POST" });
   return parseSubscriptionRead(raw, "cancelSubscription");
+}
+
+/**
+ * Pause the plan for 1, 2 or 3 months: no charge, sending stops, credit kept; it
+ * resumes on its own at `pause_ends_at`. Refusals are 409 `{ code }`:
+ * subscription_paused | subscription_ended | subscription_not_active | subscription_cancel_pending.
+ */
+export async function pauseSubscription(months: 1 | 2 | 3): Promise<SubscriptionRead> {
+  const raw = await apiCall<unknown>("/billing/accounts/subscription/pause", { method: "POST", body: { months } });
+  return parseSubscriptionRead(raw, "pauseSubscription");
+}
+
+/** End a pause early. No immediate charge: the next one is on `next_charge_at`. */
+export async function unpauseSubscription(): Promise<SubscriptionRead> {
+  const raw = await apiCall<unknown>("/billing/accounts/subscription/unpause", { method: "POST" });
+  return parseSubscriptionRead(raw, "unpauseSubscription");
 }
 
 /** Undo a pending cancel. */
