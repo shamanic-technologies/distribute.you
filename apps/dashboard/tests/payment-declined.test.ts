@@ -6,7 +6,6 @@ import {
   paymentHoldKind,
   PAYMENT_HOLD_LABEL,
   PAYMENT_HOLD_NOTE,
-  PAYMENT_HOLD_ROW_NOTE,
   PAYMENT_HOLD_TITLE,
   scopePaymentHold,
   strongestPaymentHold,
@@ -109,7 +108,7 @@ describe("campaignStartRefusalMessage", () => {
 
 describe("copy", () => {
   it("carries no em dash", () => {
-    for (const table of [PAYMENT_HOLD_LABEL, PAYMENT_HOLD_NOTE, PAYMENT_HOLD_ROW_NOTE, PAYMENT_HOLD_TITLE]) {
+    for (const table of [PAYMENT_HOLD_LABEL, PAYMENT_HOLD_NOTE, PAYMENT_HOLD_TITLE]) {
       for (const line of Object.values(table)) expect(line).not.toContain("—");
     }
     expect(read("components/billing/payment-declined-notice.tsx")).not.toContain("—");
@@ -164,8 +163,8 @@ describe("buildControlRows paymentHold", () => {
 
 describe("call sites", () => {
   it("every campaign status surface reads the payment hold", () => {
-    expect(read("components/campaigns/campaign-controls-trigger.tsx")).toContain("r.paymentHold");
-    expect(read("components/campaigns/campaign-controls-modal.tsx")).toContain("row.paymentHold");
+    expect(read("lib/use-scope-toggle.ts")).toContain("r.paymentHold");
+    expect(read("components/campaigns/campaign-controls-trigger.tsx")).toContain("PAYMENT_HOLD_LABEL[hold]");
     expect(read("components/settings/campaign-settings-card.tsx")).toContain("paymentHoldKind(campaign)");
   });
   it("dashboard v2 states it on every mission and on every brand page", () => {
@@ -177,7 +176,7 @@ describe("call sites", () => {
     expect(read("components/v2/v2-shell.tsx")).toContain("<ScopePaymentDeclinedBand brandId={brandId} />");
   });
   it("every restart surface renders campaign-service's refusal", () => {
-    expect(read("components/campaigns/campaign-controls-modal.tsx")).toContain("campaignStartRefusalMessage(err.status, err.body)");
+    expect(read("lib/use-scope-toggle.ts")).toContain("campaignStartRefusalMessage(err.status, err.body)");
     expect(read("components/settings/campaign-settings-card.tsx")).toContain("campaignStartRefusalMessage(err.status, err.body)");
     expect(read("lib/channel-start.ts")).toContain("campaignStartRefusalMessage(");
   });

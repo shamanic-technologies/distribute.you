@@ -124,7 +124,7 @@ describe("the module stays unit-testable", () => {
 describe("call sites", () => {
   const sites: [string, string][] = [
     ["lib/use-lead-step-statements.ts", "invalidateLeadOutcome"],
-    ["components/campaigns/campaign-controls-modal.tsx", "invalidateCampaignMoney"],
+    ["lib/use-scope-toggle.ts", "invalidateCampaignMoney"],
     ["components/settings/campaign-settings-card.tsx", "invalidateCampaignMoney"],
   ];
 
@@ -142,7 +142,7 @@ describe("call sites", () => {
 
   it("the budget writers no longer hand-list their own roots", () => {
     for (const path of [
-      "components/campaigns/campaign-controls-modal.tsx",
+      "lib/use-scope-toggle.ts",
       "components/settings/campaign-settings-card.tsx",
     ]) {
       expect(read(path)).not.toContain('queryKey: ["campaigns"]');

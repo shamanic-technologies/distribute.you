@@ -52,7 +52,6 @@ describe("planMissionBudgetUsd", () => {
 describe("every dashboard surface that states a daily budget asks whether to hide it", () => {
   const surfaces = [
     "src/components/campaigns/campaign-controls-trigger.tsx",
-    "src/components/campaigns/campaign-controls-modal.tsx",
     "src/components/settings/campaign-settings-card.tsx",
     "src/components/v2/today-page.tsx",
     "src/components/v2/mission-page.tsx",
@@ -69,10 +68,7 @@ describe("every dashboard surface that states a daily budget asks whether to hid
     });
   }
 
-  it("the controls keep the run switch and drop the budget field", () => {
-    const modal = read("src/components/campaigns/campaign-controls-modal.tsx");
-    expect(modal).toContain('role="switch"');
-    expect(modal).toContain("{!budgetHidden && (\n            <div className=\"flex items-center gap-1 text-sm text-gray-600\">");
+  it("the controls keep Pause/Activate and drop the budget figure", () => {
     const trigger = read("src/components/campaigns/campaign-controls-trigger.tsx");
     expect(trigger).toContain("{!budgetHidden && (\n          <span className=\"text-sm tabular-nums text-gray-600\">");
   });

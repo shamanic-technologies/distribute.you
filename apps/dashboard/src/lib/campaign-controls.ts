@@ -14,8 +14,8 @@
 // stopped that way and never restarted at the same figure. A status flag costs nothing
 // to reverse, which is what makes "pause and resume" an ordinary action.
 //
-// This module holds the ROW MODEL the controls modal edits and the pure derivations
-// around it. Every grain edits the same rows — a campaign — because that is the only
+// This module holds the ROW MODEL the Pause/Activate control reads and the pure
+// derivations around it. Every grain acts on the same rows — a campaign — because that is the only
 // thing either write can address: the brand and the offer are scopes.
 //
 // Only relative value imports live here, so this module stays directly unit-testable
@@ -29,7 +29,6 @@ import {
 import {
   campaignBudgetScope,
   campaignSavedCents,
-  runningAfterBudget,
   type CampaignBudgetRow,
   type CampaignBudgetScope,
   type CampaignBudgetSet,
@@ -81,7 +80,7 @@ export function isRunningStatus(status: string): boolean {
 }
 
 /**
- * One campaign, as the controls modal shows and edits it.
+ * One campaign, as the Pause/Activate control reads it.
  *
  * A row is one campaign as a CUSTOMER knows it — (leg x channel x offer) —
  * not one campaign-service row. campaign-service mints a fresh row every time a
@@ -154,7 +153,7 @@ export interface ControlRow {
  * campaign is the only thing either write can address. Four rules, each
  * load-bearing:
  *
- *   - STOPPED campaigns are included. The modal is where a customer restarts
+ *   - STOPPED campaigns are included. Activate is where a customer restarts
  *     one, so a live-only list would make stopping irreversible from the UI.
  *   - Only ACQUISITION-CHANNEL campaigns. A brand's PR or AI-visibility campaign
  *     performs no leg, so it has no ceiling and belongs to no offer; listing
@@ -383,221 +382,38 @@ export function parseDailyBudgetUsd(value: string): number | null {
   return Number(trimmed);
 }
 
-/** What the form holds for one row while it is being edited. */
-export interface ControlDraft {
-  running: boolean;
-  /** Whole dollars as typed. Empty string is a real value and means zero. */
-  budget: string;
-}
-
 /**
- * One write the Confirm will make.
+ * The writes ONE Pause or Activate press sends across a scope (brand, offer, or one
+ * campaign). There is no per-campaign choice any more (owner 2026-10-03: "on simplifie"):
+ * the scope runs or it does not.
  *
- * Both carry `rowId` as well as what they address, because a failure is reported
- * against the ROW the customer edited — and a pause fans out over every stored
- * row of one campaign that is running, so several writes can belong to one line.
- */
-export interface StatusWrite {
-  rowId: string;
-  campaignId: string;
-  activate: boolean;
-}
-
-export interface BudgetWrite {
-  rowId: string;
-  legKey: string;
-  featureSlug: string;
-  offerId: string | null;
-  cents: number;
-}
-
-export interface ControlsDiff {
-  statusWrites: StatusWrite[];
-  budgetWrites: BudgetWrite[];
-  /** A row whose typed budget is not a whole number of dollars, by `rowId`. */
-  invalidRows: string[];
-}
-
-/**
- * Only what CHANGED, so a Confirm never re-states a value it was not asked to
- * touch. The two write
- * kinds are computed independently: flipping a toggle must not restate an
- * amount, and editing an amount must not restate a status.
+ *   - Pause stops EVERY running stored row of every campaign in scope, so a pause
+ *     cannot leave one live.
+ *   - Activate restarts every stopped campaign in scope at the row it last ran on.
+ *     One held over payment is INCLUDED: nothing resumes on its own once the card is
+ *     fixed, so this press is how the customer starts it again, and campaign-service's
+ *     refusal is what says the card is still not fixed. A channel with no campaign
+ *     at all is skipped (nothing to address).
  *
- * A row with no scope produces no budget write whatever is typed; the modal
- * disables its field, and writing one would address a row billing would refuse.
+ * `featureSlug` is null for a campaign that names no leg: campaign-service validates
+ * the channel header before it flips a row, so the caller reports that row as failed
+ * rather than sending a request it knows is refused.
  */
-/**
- * Whether ONE row's switch reads ON, once its typed budget is taken into account.
- *
- * The toggle a customer sees and the `stop` the Confirm sends must come from the
- * same expression, or the modal shows a campaign as running while the write pauses
- * it. `controlsDiff` reads this too — see `runningAfterBudget` for why zero pauses.
- */
-export function draftRunning(row: ControlRow, draft: ControlDraft): boolean {
-  if (!row.scope) return draft.running;
-  const typed = parseDailyBudgetUsd(draft.budget);
-  return runningAfterBudget({
-    running: draft.running,
-    nextCents: typed === null ? null : typed * 100,
-    savedCents: row.savedCents,
-  });
-}
-
-export function controlsDiff(
+export function scopeToggleWrites(
   rows: ControlRow[],
-  drafts: Record<string, ControlDraft>,
-): ControlsDiff {
-  const statusWrites: StatusWrite[] = [];
-  const budgetWrites: BudgetWrite[] = [];
-  const invalidRows: string[] = [];
-
+  activate: boolean,
+): { campaignId: string; featureSlug: string | null }[] {
+  const out: { campaignId: string; featureSlug: string | null }[] = [];
   for (const row of rows) {
-    const draft = drafts[row.rowId];
-    if (!draft) continue;
-
-    // The MONEY is read first, because it decides the status: a campaign the
-    // customer just took to zero is paused whatever its switch says. A row with no
-    // ceiling to point at states no opinion and keeps whatever the switch holds.
-    const typed = row.scope ? parseDailyBudgetUsd(draft.budget) : null;
-    if (row.scope && typed === null) invalidRows.push(row.rowId);
-    const nextRunning = draftRunning(row, draft);
-
-    // A row with no campaign has no status to set. Its toggle is the ceiling: ON is
-    // whatever was typed, OFF is zero, and the budget branch below writes it. Sending a
-    // status write here would name a campaign that does not exist.
-    if (nextRunning !== row.running && row.campaignId !== null) {
-      if (nextRunning) {
-        // One write: the row a restart addresses is the campaign as it last ran.
-        statusWrites.push({ rowId: row.rowId, campaignId: row.campaignId!, activate: true });
-      } else {
-        // Every running row of this campaign, so a pause cannot leave one live.
-        for (const campaignId of row.runningCampaignIds) {
-          statusWrites.push({ rowId: row.rowId, campaignId, activate: false });
-        }
-      }
+    const featureSlug = row.scope?.featureSlug ?? null;
+    if (activate) {
+      if (row.running || row.campaignId === null) continue;
+      out.push({ campaignId: row.campaignId, featureSlug });
+    } else {
+      for (const campaignId of row.runningCampaignIds) out.push({ campaignId, featureSlug });
     }
-
-    if (!row.scope || typed === null) continue;
-    // Turned OFF with no campaign to stop: defunding is what stops it.
-    const cents = row.campaignId === null && !draft.running ? 0 : typed * 100;
-    if (cents !== row.savedCents) {
-      budgetWrites.push({
-        rowId: row.rowId,
-        legKey: row.scope.legKey,
-        featureSlug: row.scope.featureSlug,
-        offerId: row.offerId,
-        cents,
-      });
-    }
-  }
-
-  return { statusWrites, budgetWrites, invalidRows };
-}
-
-/**
- * What each CHANNEL would be funded at, across the brand, once this form lands — in
- * whole dollars. billing judges a channel's floor on that total, and this modal can
- * move several rows of one channel at once, so each is checked against the total the
- * form is simultaneously changing. Campaigns the modal does not show are held
- * constant at what billing stores.
- *
- * Computed ONLY to check the form before it is written. billing holds the same rule
- * and its 400 is what decides; nothing displayed is derived from this.
- */
-export function projectedChannelTotalsUsd(
-  rows: ControlRow[],
-  drafts: Record<string, ControlDraft>,
-  savedChannelCents: Record<string, number>,
-): Record<string, number> {
-  const out: Record<string, number> = {};
-  const seen = new Set<string>();
-  for (const row of rows) {
-    if (!row.scope) continue;
-    const key = row.scope.featureSlug;
-    if (!seen.has(key)) {
-      seen.add(key);
-      const inModal = rows
-        .filter((r) => r.scope?.featureSlug === key)
-        .reduce((sum, r) => sum + (r.savedCents > 0 ? r.savedCents : 0), 0);
-      const siblings = Math.max(0, (savedChannelCents[key] ?? 0) - inModal);
-      out[key] = Math.round(siblings / 100);
-    }
-    const typed = parseDailyBudgetUsd(drafts[row.rowId]?.budget ?? "");
-    out[key] += typed !== null && typed > 0 ? typed : 0;
   }
   return out;
-}
-
-/** Is there anything to write? */
-export function hasChanges(diff: ControlsDiff): boolean {
-  return diff.statusWrites.length > 0 || diff.budgetWrites.length > 0;
-}
-
-/**
- * What Confirm is about to do, in a sentence, above the button that does it.
- *
- * Money and a campaign's life are what this modal changes, so what changed is
- * stated before it is committed rather than reported after. `null` when nothing
- * changed — there is no sentence to write, and the button is not offered.
- */
-export function diffSummary(rows: ControlRow[], diff: ControlsDiff): string | null {
-  if (!hasChanges(diff)) return null;
-
-  const parts: string[] = [];
-  // Counted by ROW, never by write: a pause fans out over every stored row of one
-  // campaign, and the sentence names campaigns as the customer knows them.
-  const activating = new Set(
-    diff.statusWrites.filter((w) => w.activate).map((w) => w.rowId),
-  ).size;
-  const stopping = new Set(
-    diff.statusWrites.filter((w) => !w.activate).map((w) => w.rowId),
-  ).size;
-  if (activating > 0) parts.push(`${activating} ${plural(activating)} restarting`);
-  if (stopping > 0) parts.push(`${stopping} ${plural(stopping)} pausing`);
-
-  // Gated on the money actually MOVING, not on a budget write existing. Pausing
-  // takes a campaign's ceiling out of the daily total without touching it, so a
-  // write-gated line stayed silent on the one action that changes what gets
-  // spent tomorrow; and editing a PAUSED campaign's ceiling moves no money
-  // today, so it would otherwise print "$50 to $50".
-  const before = scopeTotalCents(rows);
-  const after = nextTotalCents(rows, diff);
-  if (before !== after) {
-    parts.push(`daily budget ${fmtWhole(before)} to ${fmtWhole(after)}`);
-  }
-
-  return `${parts.join(", ")}.`;
-}
-
-function plural(n: number): string {
-  return n === 1 ? "campaign" : "campaigns";
-}
-
-function fmtWhole(cents: number): string {
-  return `$${Math.round(cents / 100).toLocaleString("en-US")}`;
-}
-
-/**
- * What this scope would spend per day once this diff lands. Used only by the
- * summary.
- *
- * It reads the diff's STATUS writes as well as its budget ones, so it answers
- * on the same basis `scopeTotalCents` does — only what will be RUNNING counts.
- * A pause therefore reports the money leaving the daily total even though its
- * ceiling is untouched, and a restart reports it coming back; reading only the
- * budget writes would report "no change" for the one action that changes what
- * gets spent tomorrow.
- */
-export function nextTotalCents(rows: ControlRow[], diff: ControlsDiff): number {
-  const byRow = new Map(diff.budgetWrites.map((w) => [w.rowId, w.cents]));
-  const runningByRow = new Map(diff.statusWrites.map((w) => [w.rowId, w.activate]));
-  return rows.reduce((sum, r) => {
-    const running = runningByRow.get(r.rowId) ?? r.running;
-    if (!running) return sum;
-    const cents = byRow.get(r.rowId) ?? r.savedCents;
-    return sum + (cents > 0 ? cents : 0);
-  }, 0);
 }
 
 /**

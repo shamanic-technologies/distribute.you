@@ -171,7 +171,7 @@ export function TodayPage() {
         actions={
           <>
             <StatBasisSwitch />
-            {rev.enabled && <CampaignControlsTrigger brandId={brandId} dailyOnly />}
+            {rev.enabled && <CampaignControlsTrigger brandId={brandId} offerId={selectedOfferId ?? undefined} dailyOnly />}
           </>
         }
       />

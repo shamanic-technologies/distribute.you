@@ -21,7 +21,7 @@ import { useDailyBudgetSplit } from "@/lib/v2/use-daily-budget-split";
 import { CrewTriggerTag } from "@/components/v2/crew-trigger-tag";
 import { AddMissionModal } from "@/components/v2/add-mission-modal";
 import { useBrandRevenue, useNeedsYourCall } from "@/components/v2/data";
-import { CampaignControlsModal } from "@/components/campaigns/campaign-controls-modal";
+import { useScopeToggle } from "@/lib/use-scope-toggle";
 
 /**
  * The result a mission's leg lands on, read off its own served group: the count, and what
@@ -229,17 +229,20 @@ function CrewCard({
   onAddMission: () => void;
 }) {
   const [menuOpen, setMenuOpen] = useState(false);
-  const [controlsOpen, setControlsOpen] = useState(false);
   const { basis } = useStatBasis();
   const { staffMode } = useStaffMode();
   const running = crew.running > 0;
   const offerIds = [...new Set(missions.map((m) => m.offerId))];
-  const scope =
-    missions.length === 1
-      ? { campaignId: missions[0].row.campaign.id }
-      : offerIds.length === 1
-        ? { offerId: offerIds[0], featureSlug: missions[0]?.row.campaign.featureSlug ?? null }
-        : {};
+  // The crew IS one (channel, leg): a press reaches exactly its missions, on the one
+  // offer they share when they share one. Never the bare brand scope, which would
+  // pause every other crew too.
+  const scope = {
+    ...(offerIds.length === 1 ? { offerId: offerIds[0] } : {}),
+    featureSlug: crew.featureSlug,
+    legKey: crew.legKey,
+  };
+  // One press pauses or restarts the whole crew scope, no modal (owner 2026-10-03).
+  const scopeToggle = useScopeToggle(brandId, scope);
   const ceiling = crewCeilingCents(missions);
   const budgetHidden = useDailyBudgetHidden();
   const leg = missions[0]?.leg?.label ?? null;
@@ -282,11 +285,12 @@ function CrewCard({
                         type="button"
                         onClick={() => {
                           setMenuOpen(false);
-                          setControlsOpen(true);
+                          void scopeToggle.toggle();
                         }}
-                        className="k-hover flex w-full items-center rounded-[8px] px-2 py-1.5 text-left text-[13px]"
+                        disabled={missions.length === 0 || scopeToggle.pending || scopeToggle.rollup === "none"}
+                        className="k-hover flex w-full items-center rounded-[8px] px-2 py-1.5 text-left text-[13px] disabled:opacity-40"
                       >
-                        {budgetHidden ? (running ? "Pause" : "Restart") : running ? "Pause or change budget" : "Restart or change budget"}
+                        {scopeToggle.pending ? "Saving…" : scopeToggle.rollup === "active" ? "Pause" : "Activate"}
                       </button>
                       <Link href={workHref} className="k-hover flex items-center rounded-[8px] px-2 py-1.5 text-[13px]">
                         See its work
@@ -480,7 +484,11 @@ function CrewCard({
       </div>
         </>
       )}
-      {controlsOpen && <CampaignControlsModal brandId={brandId} {...scope} onClose={() => setControlsOpen(false)} />}
+      {scopeToggle.error && (
+        <p role="alert" className="mt-2 text-[12px] text-[var(--data-rose)]">
+          {scopeToggle.error}
+        </p>
+      )}
     </div>
   );
 }

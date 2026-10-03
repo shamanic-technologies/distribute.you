@@ -15,7 +15,6 @@ const read = (rel: string) => fs.readFileSync(path.join(SRC, rel), "utf-8");
 describe("Campaign rows (useCampaignRows)", () => {
   const table = read("components/campaigns/campaigns-table.tsx");
   const identity = read("components/campaigns/campaign-identity.tsx");
-  const modal = read("components/campaigns/campaign-controls-modal.tsx");
   const api = read("lib/api.ts");
 
   // A campaign is set up with us, not spun up from a table row. The create
@@ -40,12 +39,6 @@ describe("Campaign rows (useCampaignRows)", () => {
     expect(identity).toContain("<LegMark");
     expect(identity).not.toContain("<SalesFunnelMark");
     expect(identity).toContain("acquisitionChannelForFeatureSlug(featureSlug, channels)");
-    // The layout lives in one module, because the budget modal states the same
-    // pair for the same campaigns and a second copy is how the row and the modal
-    // that funds it come to describe one campaign two ways.
-    expect(modal).toContain("<CampaignIdentity");
-    expect(modal).not.toContain("FunnelCell");
-    expect(modal).not.toContain("ChannelCell");
   });
 
   // The funnel column reads the campaign's OWN key and NOTHING else. The goal is
