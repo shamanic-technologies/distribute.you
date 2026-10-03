@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-10-03T08:26:38.987Z",
+  "generatedAt": "2026-10-03T16:25:44.422Z",
   "allOrgs": true,
   "costBasis": "actual",
   "unpricedBilledUsd": 0,
@@ -10,7 +10,7 @@
   },
   "readOn": "2026-10-03",
   "volume": {
-    "emails": 128253,
+    "emails": 128257,
     "orgs": 29,
     "workflows": 62,
     "linkedEmails": 1181,
@@ -37,7 +37,7 @@
       },
       {
         "label": "Sep",
-        "emails": 22184
+        "emails": 22188
       }
     ]
   },
@@ -58,8 +58,8 @@
         "cutoff": "2026-09-12"
       }
     },
-    "excludedEmails": 20443,
-    "noRunStart": 2349,
+    "excludedEmails": 20398,
+    "noRunStart": 2394,
     "note": "Only people we started writing to at least 21 days before the read (before Sep 12) count, with every positive reply and website visit they sent since. A figure needs 1 positive reply (10 website visits) behind it; below that it reads Learning. A website visit is a click our link-scanner check judged human, which only the emails we send ourselves can carry: website-visit figures leave out the emails sent through the provider, whose clicks are mostly scanners and cannot be screened."
   },
   "crews": [
@@ -374,7 +374,7 @@
       "result": {
         "display": "$64",
         "unit": "per positive reply, average since inception",
-        "sample": "38 positive replies · 98,078 emails to date"
+        "sample": "38 positive replies · 98,082 emails to date"
       },
       "crowned": true,
       "charts": [
@@ -422,7 +422,7 @@
               "label": "Sep",
               "value": 85.04,
               "display": "$85",
-              "note": "3 positive replies · 18,869 emails · month in progress",
+              "note": "3 positive replies · 18,873 emails · month in progress",
               "thin": false,
               "partial": true
             }
@@ -469,7 +469,7 @@
                 "label": "Sep",
                 "value": 63.84,
                 "display": "$64",
-                "note": "38 positive replies · 98,078 emails to date · month in progress",
+                "note": "38 positive replies · 98,082 emails to date · month in progress",
                 "thin": false,
                 "partial": true
               }
@@ -511,14 +511,14 @@
               "label": "First email",
               "value": 101.54,
               "display": "$102",
-              "note": "18 positive replies · 33,267 emails",
+              "note": "18 positive replies · 33,269 emails",
               "thin": false
             },
             {
               "label": "Follow-up 1",
               "value": 23.62,
               "display": "$24",
-              "note": "12 positive replies · 31,390 emails",
+              "note": "12 positive replies · 31,392 emails",
               "thin": false
             },
             {
@@ -589,7 +589,7 @@
       "result": {
         "display": "0.11%",
         "unit": "of people got a positive reply, all follow-ups",
-        "sample": "37 positive replies from 33,267 people"
+        "sample": "37 positive replies from 33,269 people"
       },
       "crowned": true,
       "charts": [
@@ -602,28 +602,28 @@
               "label": "First email only",
               "value": 5.4,
               "display": "0.05%",
-              "note": "18 positive replies from 33,267 people",
+              "note": "18 positive replies from 33,269 people",
               "thin": false
             },
             {
               "label": "+ 1 follow-up",
               "value": 9,
               "display": "0.09%",
-              "note": "30 positive replies from 33,267 people",
+              "note": "30 positive replies from 33,269 people",
               "thin": false
             },
             {
               "label": "+ 2 follow-ups",
               "value": 11.1,
               "display": "0.11%",
-              "note": "37 positive replies from 33,267 people",
+              "note": "37 positive replies from 33,269 people",
               "thin": false
             },
             {
               "label": "+ 3 follow-ups",
               "value": 11.1,
               "display": "0.11%",
-              "note": "37 positive replies from 33,267 people",
+              "note": "37 positive replies from 33,269 people",
               "thin": false
             }
           ],
@@ -799,7 +799,7 @@
             {
               "key": "blind-discovery-email-v9",
               "label": "Blind discovery v9",
-              "value": 27.41,
+              "value": 27.4,
               "display": "$27",
               "note": "5 positive replies · 7,671 emails",
               "thin": false
@@ -1289,7 +1289,7 @@
       "conclusion": [
         "Client not named: 28 positive replies · 57,040 emails, $1,362 spent, over 16 template versions whose prompt tells the model never to name the client or give its website.",
         "Client named: 10 positive replies · 41,032 emails, $1,064 spent, over 15 template versions whose prompt tells the model to name the client, some with a link to its website.",
-        "6 emails whose template was not recorded are left out.",
+        "10 emails whose template was not recorded are left out.",
         "The two sides ran for different clients, audiences and months: this is not a split test.",
         "The p-value asks whether positive replies per email differ between the two sides."
       ],
@@ -1328,7 +1328,7 @@
             },
             {
               "label": "Client named",
-              "value": 106.4,
+              "value": 106.39,
               "display": "$106",
               "note": "10 positive replies · 41,032 emails",
               "thin": false
@@ -1340,7 +1340,7 @@
       "conclusion": [
         "Client not named: 28 positive replies · 57,040 emails, $1,362 spent, over 16 template versions whose prompt tells the model never to name the client or give its website.",
         "Client named: 10 positive replies · 41,032 emails, $1,064 spent, over 15 template versions whose prompt tells the model to name the client, some with a link to its website.",
-        "6 emails whose template was not recorded are left out.",
+        "10 emails whose template was not recorded are left out.",
         "The two sides ran for different clients, audiences and months: this is not a split test.",
         "An email with the client not named cost $0.02 to write and send, $0.03 with the client named.",
         "The p-value asks whether positive replies per dollar spent differ between the two sides."
@@ -1380,14 +1380,14 @@
             },
             {
               "label": "One block",
-              "value": 129.42,
+              "value": 129.41,
               "display": "$129",
               "note": "3 positive replies · 19,117 emails",
               "thin": false
             },
             {
               "label": "Single line breaks",
-              "value": 129.42,
+              "value": 129.41,
               "display": "None yet",
               "note": "0 positive replies · 231 emails, $6.88 spent",
               "thin": true
@@ -1431,7 +1431,7 @@
           "points": [
             {
               "label": "Double line breaks",
-              "value": 56.22,
+              "value": 56.21,
               "display": "$56",
               "note": "34 positive replies · 73,094 emails",
               "thin": false
@@ -1460,7 +1460,7 @@
         "Pro tier: Double line breaks is cheapest at $56 per positive reply (34 positive replies · 73,094 emails).",
         "Every email of a sequence is filed under how its first email looked, and the sequence's positive replies with it. Three layouts: one block (no line break at all), single line breaks (a new line with no empty line), double line breaks (an empty line between paragraphs). Classified by a regex on the text of the first email, no LLM involved.",
         "The model chose this on its own until Sep 28, 2026, when the templates started requiring a greeting and blank-line paragraphs. Every email here was written before, the last in Oct.",
-        "6 emails whose first email text is not on record are left out.",
+        "10 emails whose first email text is not on record are left out.",
         "Positive replies include 4 the client recorded in their CRM (a phone call, a LinkedIn message), as the dashboard counts them.",
         "The buckets ran for different clients, audiences and months: this is not a split test."
       ],
@@ -1557,7 +1557,7 @@
             },
             {
               "label": "First name alone",
-              "value": 69.91,
+              "value": 69.9,
               "display": "$70",
               "note": "14 positive replies · 38,350 emails",
               "thin": false
@@ -1579,7 +1579,7 @@
         "Pro tier: Greeting + first name is cheapest at $49 per positive reply (21 positive replies · 40,608 emails).",
         "Every email of a sequence is filed under how its first email looked, and the sequence's positive replies with it. A greeting word in any language we write in (Hi, Hallo, Bonjour...) counts as a greeting whatever follows; a first name followed by a comma, a colon or a dash, with no greeting word before it (\"Marie, most clinics...\"), counts as the first name alone. Classified by a regex on the text of the first email, no LLM involved.",
         "The model chose this on its own until Sep 28, 2026, when the templates started requiring a greeting and blank-line paragraphs. Every email here was written before, the last in Oct.",
-        "6 emails whose first email text is not on record are left out.",
+        "10 emails whose first email text is not on record are left out.",
         "Positive replies include 4 the client recorded in their CRM (a phone call, a LinkedIn message), as the dashboard counts them.",
         "The buckets ran for different clients, audiences and months: this is not a split test."
       ],
@@ -1618,14 +1618,14 @@
             },
             {
               "label": "No dash",
-              "value": 71.63,
+              "value": 71.62,
               "display": "$72",
               "note": "24 positive replies · 68,962 emails",
               "thin": false
             },
             {
               "label": "En dash",
-              "value": 71.63,
+              "value": 71.62,
               "display": "None yet",
               "note": "0 positive replies · 1,046 emails, $27 spent",
               "thin": true
@@ -1734,14 +1734,14 @@
             },
             {
               "label": "No dash",
-              "value": 67.96,
+              "value": 67.95,
               "display": "$68",
               "note": "23 positive replies · 61,212 emails",
               "thin": false
             },
             {
               "label": "En dash",
-              "value": 67.96,
+              "value": 67.95,
               "display": "None yet",
               "note": "0 positive replies · 1,024 emails, $27 spent",
               "thin": true
@@ -1880,7 +1880,7 @@
         "Pro tier: 82% of the em dash emails come from Gemini 3.1 Pro, 98% of the no-dash emails come from Gemini 3.1 Pro: one model writes most of both, so within this tier the gap is closer to a dash effect.",
         "Three buckets on the first email's text: an em dash, an en dash, neither. A plain hyphen is not a dash. The 1,813 emails whose first email carries both (1.8%, under 2%) are counted with the em dash. Every email of a sequence is filed under its first email, and the sequence's positive replies with it. Classified by a character test on the text, no LLM involved.",
         "Our templates never banned dashes until Sep 29, 2026, when every template started forbidding both. Every email here was generated before that date (the last in Oct).",
-        "6 emails whose first email text is not on record are left out.",
+        "10 emails whose first email text is not on record are left out.",
         "Positive replies include 4 the client recorded in their CRM (a phone call, a LinkedIn message), as the dashboard counts them.",
         "The buckets ran for different clients, audiences and months: this is not a split test."
       ],
@@ -1888,6 +1888,430 @@
         "kind": "noise",
         "reason": "Em dash against No dash, positive replies per dollar: p 0.279, a gap chance alone produces often."
       }
+    },
+    {
+      "id": "herald-weekday-rate",
+      "crew": "herald",
+      "topic": "weekday",
+      "goal": "rate",
+      "question": "Which day of the week should a cold email go out on?",
+      "status": "measured",
+      "headline": "Saturday leads with a 0.08% positive reply rate. Noise so far.",
+      "winner": "Saturday",
+      "result": {
+        "display": "0.08%",
+        "unit": "positive reply rate",
+        "sample": "5 positive replies · 6,517 emails"
+      },
+      "crowned": false,
+      "verdict": {
+        "kind": "noise",
+        "reason": "Saturday against Monday, positive replies per email: p 0.588, a gap chance alone produces often."
+      },
+      "charts": [
+        {
+          "kind": "bars",
+          "title": "By day of the week, prospect's timezone: positive reply rate, % of emails (higher is better)",
+          "lowerIsBetter": false,
+          "points": [
+            {
+              "label": "Monday",
+              "value": 6.1,
+              "display": "0.06%",
+              "note": "13 positive replies · 21,367 emails",
+              "thin": false
+            },
+            {
+              "label": "Tuesday",
+              "value": 2.7,
+              "display": "0.03%",
+              "note": "4 positive replies · 14,650 emails",
+              "thin": false
+            },
+            {
+              "label": "Wednesday",
+              "value": 4,
+              "display": "0.04%",
+              "note": "5 positive replies · 12,571 emails",
+              "thin": false
+            },
+            {
+              "label": "Thursday",
+              "value": 2.9,
+              "display": "0.03%",
+              "note": "5 positive replies · 17,361 emails",
+              "thin": false
+            },
+            {
+              "label": "Friday",
+              "value": 2.7,
+              "display": "0.03%",
+              "note": "4 positive replies · 14,553 emails",
+              "thin": false
+            },
+            {
+              "label": "Saturday",
+              "value": 7.7,
+              "display": "0.08%",
+              "note": "5 positive replies · 6,517 emails",
+              "thin": false
+            },
+            {
+              "label": "Sunday",
+              "value": 2.9,
+              "display": "0.03%",
+              "note": "2 positive replies · 6,806 emails",
+              "thin": false
+            }
+          ],
+          "note": "Only people we started writing to at least 21 days before the read (before Sep 12) count, with every positive reply and website visit they sent since. A figure needs 1 positive reply (10 website visits) behind it; below that it reads Learning. A website visit is a click our link-scanner check judged human, which only the emails we send ourselves can carry: website-visit figures leave out the emails sent through the provider, whose clicks are mostly scanners and cannot be screened."
+        },
+        {
+          "kind": "bars",
+          "title": "By day of the week, prospect's timezone: cost per positive reply (USD, lower is better)",
+          "lowerIsBetter": true,
+          "points": [
+            {
+              "label": "Monday",
+              "value": 39.31,
+              "display": "$39",
+              "note": "13 positive replies · 21,367 emails",
+              "thin": false
+            },
+            {
+              "label": "Tuesday",
+              "value": 84.77,
+              "display": "$85",
+              "note": "4 positive replies · 14,650 emails",
+              "thin": false
+            },
+            {
+              "label": "Wednesday",
+              "value": 67.54,
+              "display": "$68",
+              "note": "5 positive replies · 12,571 emails",
+              "thin": false
+            },
+            {
+              "label": "Thursday",
+              "value": 78.37,
+              "display": "$78",
+              "note": "5 positive replies · 17,361 emails",
+              "thin": false
+            },
+            {
+              "label": "Friday",
+              "value": 89,
+              "display": "$89",
+              "note": "4 positive replies · 14,553 emails",
+              "thin": false
+            },
+            {
+              "label": "Saturday",
+              "value": 36.64,
+              "display": "$37",
+              "note": "5 positive replies · 6,517 emails",
+              "thin": false
+            },
+            {
+              "label": "Sunday",
+              "value": 101.17,
+              "display": "$101",
+              "note": "2 positive replies · 6,806 emails",
+              "thin": false
+            }
+          ],
+          "note": "Only people we started writing to at least 21 days before the read (before Sep 12) count, with every positive reply and website visit they sent since. A figure needs 1 positive reply (10 website visits) behind it; below that it reads Learning. A website visit is a click our link-scanner check judged human, which only the emails we send ourselves can carry: website-visit figures leave out the emails sent through the provider, whose clicks are mostly scanners and cannot be screened."
+        }
+      ],
+      "conclusion": [
+        "Saturday: 5 positive replies · 6,517 emails; runner-up Monday, 0.06% (13 positive replies · 21,367 emails).",
+        "Sunday against Monday to Friday: 0.03% against 0.04% (2 positive replies · 6,806 emails; 31 positive replies · 80,502 emails). Noise: Monday to Friday against Sunday, positive replies per email: p 1.000, a gap chance alone produces often.",
+        "Saturday: every email sent from Apr to Aug, for 11 of the 14 clients the busiest day reached.",
+        "Sunday: every email sent from Apr to Aug, for 11 of the 14 clients the busiest day reached.",
+        "The schedule moved over the window: in Apr, 4% of emails went out Monday to Friday between 08:00 and 17:00 in the prospect's timezone and 25% on a weekend; in Oct, 98% and 0%. So a day or an hour outside that window is also an older month, other clients and other campaigns.",
+        "What this cannot answer: whether a Sunday email works on today's campaigns. Every Sunday email here dates from Apr to Aug, from campaigns that also sent on weekends, so no recent Sunday send exists to weigh against recent weekdays. The days also differ by client, month and step of the sequence, which a same-clients, same-months check only partly removes. Only a split test (Sunday against a weekday, same clients, same weeks) can settle it.",
+        "No country with a Sunday to Thursday week (UAE, Saudi Arabia, Israel...) is read apart here.",
+        "4,257 emails whose prospect has no timezone on record are left out.",
+        "Each email is filed under its own send day in the prospect's timezone, and a positive reply under the email that earned it."
+      ]
+    },
+    {
+      "id": "herald-hour-rate",
+      "crew": "herald",
+      "topic": "hour",
+      "goal": "rate",
+      "question": "Which hour of the day should a cold email go out at?",
+      "status": "measured",
+      "headline": "04:00 leads with a 0.15% positive reply rate. Noise so far.",
+      "winner": "04:00",
+      "result": {
+        "display": "0.15%",
+        "unit": "positive reply rate",
+        "sample": "1 positive reply · 664 emails"
+      },
+      "crowned": false,
+      "verdict": {
+        "kind": "noise",
+        "reason": "04:00 rests on 1 positive reply; a lead needs at least 5 before chance stops dominating."
+      },
+      "charts": [
+        {
+          "kind": "bars",
+          "title": "By hour of the day, prospect's timezone: positive reply rate, % of emails (higher is better)",
+          "lowerIsBetter": false,
+          "points": [
+            {
+              "label": "00:00",
+              "value": 0,
+              "display": "0.00%",
+              "note": "0 positive replies · 1,775 emails",
+              "thin": true
+            },
+            {
+              "label": "01:00",
+              "value": 9.8,
+              "display": "0.10%",
+              "note": "4 positive replies · 4,095 emails",
+              "thin": false
+            },
+            {
+              "label": "02:00",
+              "value": 0,
+              "display": "0.00%",
+              "note": "0 positive replies · 3,322 emails",
+              "thin": true
+            },
+            {
+              "label": "03:00",
+              "value": 0,
+              "display": "0.00%",
+              "note": "0 positive replies · 1,242 emails",
+              "thin": true
+            },
+            {
+              "label": "04:00",
+              "value": 15.1,
+              "display": "0.15%",
+              "note": "1 positive reply · 664 emails",
+              "thin": false
+            },
+            {
+              "label": "05:00",
+              "value": 0,
+              "display": "0.00%",
+              "note": "0 positive replies · 1,383 emails",
+              "thin": true
+            },
+            {
+              "label": "06:00",
+              "value": 4.3,
+              "display": "0.04%",
+              "note": "2 positive replies · 4,636 emails",
+              "thin": false
+            },
+            {
+              "label": "07:00",
+              "value": 9.7,
+              "display": "0.10%",
+              "note": "3 positive replies · 3,107 emails",
+              "thin": false
+            },
+            {
+              "label": "08:00",
+              "value": 6.4,
+              "display": "0.06%",
+              "note": "18 positive replies · 27,955 emails",
+              "thin": false
+            },
+            {
+              "label": "09:00",
+              "value": 5.4,
+              "display": "0.05%",
+              "note": "5 positive replies · 9,259 emails",
+              "thin": false
+            },
+            {
+              "label": "10:00",
+              "value": 0,
+              "display": "0.00%",
+              "note": "0 positive replies · 2,462 emails",
+              "thin": true
+            },
+            {
+              "label": "11:00",
+              "value": 0,
+              "display": "0.00%",
+              "note": "0 positive replies · 1,123 emails",
+              "thin": true
+            },
+            {
+              "label": "12:00",
+              "value": 0,
+              "display": "0.00%",
+              "note": "0 positive replies · 510 emails",
+              "thin": true
+            },
+            {
+              "label": "13:00",
+              "value": 0,
+              "display": "0.00%",
+              "note": "0 positive replies · 845 emails",
+              "thin": true
+            },
+            {
+              "label": "14:00",
+              "value": 0,
+              "display": "0.00%",
+              "note": "0 positive replies · 1,733 emails",
+              "thin": true
+            },
+            {
+              "label": "15:00",
+              "value": 0,
+              "display": "0.00%",
+              "note": "0 positive replies · 1,792 emails",
+              "thin": true
+            },
+            {
+              "label": "16:00",
+              "value": 0,
+              "display": "0.00%",
+              "note": "0 positive replies · 506 emails",
+              "thin": true
+            },
+            {
+              "label": "17:00",
+              "value": 0,
+              "display": "0.00%",
+              "note": "0 positive replies · 5,287 emails",
+              "thin": true
+            },
+            {
+              "label": "18:00",
+              "value": 5.4,
+              "display": "0.05%",
+              "note": "1 positive reply · 1,859 emails",
+              "thin": false
+            },
+            {
+              "label": "19:00",
+              "value": 3.2,
+              "display": "0.03%",
+              "note": "2 positive replies · 6,215 emails",
+              "thin": false
+            },
+            {
+              "label": "20:00",
+              "value": 0,
+              "display": "0.00%",
+              "note": "0 positive replies · 10,481 emails",
+              "thin": true
+            },
+            {
+              "label": "21:00",
+              "value": 0,
+              "display": "0.00%",
+              "note": "0 positive replies · 876 emails",
+              "thin": true
+            },
+            {
+              "label": "22:00",
+              "value": 11.6,
+              "display": "0.12%",
+              "note": "2 positive replies · 1,724 emails",
+              "thin": false
+            },
+            {
+              "label": "23:00",
+              "value": 0,
+              "display": "0.00%",
+              "note": "0 positive replies · 974 emails",
+              "thin": true
+            }
+          ],
+          "note": "Only people we started writing to at least 21 days before the read (before Sep 12) count, with every positive reply and website visit they sent since. A figure needs 1 positive reply (10 website visits) behind it; below that it reads Learning. A website visit is a click our link-scanner check judged human, which only the emails we send ourselves can carry: website-visit figures leave out the emails sent through the provider, whose clicks are mostly scanners and cannot be screened."
+        },
+        {
+          "kind": "bars",
+          "title": "By hour of the day, prospect's timezone: cost per positive reply (USD, lower is better)",
+          "lowerIsBetter": true,
+          "points": [
+            {
+              "label": "01:00",
+              "value": 20.16,
+              "display": "$20",
+              "note": "4 positive replies · 4,095 emails",
+              "thin": false
+            },
+            {
+              "label": "04:00",
+              "value": 22.74,
+              "display": "$23",
+              "note": "1 positive reply · 664 emails",
+              "thin": false
+            },
+            {
+              "label": "06:00",
+              "value": 67.41,
+              "display": "$67",
+              "note": "2 positive replies · 4,636 emails",
+              "thin": false
+            },
+            {
+              "label": "07:00",
+              "value": 20.53,
+              "display": "$21",
+              "note": "3 positive replies · 3,107 emails",
+              "thin": false
+            },
+            {
+              "label": "08:00",
+              "value": 32.43,
+              "display": "$32",
+              "note": "18 positive replies · 27,955 emails",
+              "thin": false
+            },
+            {
+              "label": "09:00",
+              "value": 48.42,
+              "display": "$48",
+              "note": "5 positive replies · 9,259 emails",
+              "thin": false
+            },
+            {
+              "label": "18:00",
+              "value": 53.87,
+              "display": "$54",
+              "note": "1 positive reply · 1,859 emails",
+              "thin": false
+            },
+            {
+              "label": "19:00",
+              "value": 84.46,
+              "display": "$84",
+              "note": "2 positive replies · 6,215 emails",
+              "thin": false
+            },
+            {
+              "label": "22:00",
+              "value": 14.38,
+              "display": "$14",
+              "note": "2 positive replies · 1,724 emails",
+              "thin": false
+            }
+          ],
+          "note": "Only people we started writing to at least 21 days before the read (before Sep 12) count, with every positive reply and website visit they sent since. A figure needs 1 positive reply (10 website visits) behind it; below that it reads Learning. A website visit is a click our link-scanner check judged human, which only the emails we send ourselves can carry: website-visit figures leave out the emails sent through the provider, whose clicks are mostly scanners and cannot be screened."
+        }
+      ],
+      "conclusion": [
+        "04:00: 1 positive reply · 664 emails; runner-up 22:00, 0.12% (2 positive replies · 1,724 emails).",
+        "49% of these emails went out between 08:00 and 17:00 in the prospect's timezone; the other 47,640 are spread over 15 hours.",
+        "The schedule moved over the window: in Apr, 4% of emails went out Monday to Friday between 08:00 and 17:00 in the prospect's timezone and 25% on a weekend; in Oct, 98% and 0%. So a day or an hour outside that window is also an older month, other clients and other campaigns.",
+        "What this cannot answer: whether an evening or early-morning email works on today's campaigns. The hours outside 08:00 to 17:00 come from older months, and an hour's bar mixes the clients, months and steps of the sequence sent in it. Only a split test on the same clients in the same weeks can settle it.",
+        "4,257 emails whose prospect has no timezone on record are left out.",
+        "Each email is filed under its own send hour in the prospect's timezone, and a positive reply under the email that earned it."
+      ]
     },
     {
       "id": "herald-workflow-roi",
@@ -1947,7 +2371,7 @@
               "label": "Gemini 3.1 Pro · Blind discovery v9",
               "value": 28.36,
               "display": "$28",
-              "note": "5 positive replies · 7,924 emails",
+              "note": "5 positive replies · 7,926 emails",
               "thin": false
             },
             {
@@ -2105,7 +2529,7 @@
               "label": "Gemini 3.1 Pro · Blind discovery v9",
               "value": 6.3,
               "display": "0.06%",
-              "note": "5 positive replies · 7,924 emails",
+              "note": "5 positive replies · 7,926 emails",
               "thin": false
             },
             {
@@ -2321,7 +2745,7 @@
               "label": "GPT-6 Astra · Cold email v39",
               "value": 0,
               "display": "0.00%",
-              "note": "0 positive replies · 86 emails",
+              "note": "0 positive replies · 88 emails",
               "thin": true
             },
             {
@@ -3521,6 +3945,192 @@
         "kind": "noise",
         "reason": "No dash against Em dash, website visits per dollar: p 0.102, a gap chance alone produces often."
       }
+    },
+    {
+      "id": "scout-hour-rate",
+      "crew": "scout",
+      "topic": "hour",
+      "goal": "rate",
+      "question": "Which hour of the day should a cold email go out at?",
+      "status": "measured",
+      "headline": "10:00 leads with a 4.76% website visit rate. Noise so far.",
+      "winner": "10:00",
+      "result": {
+        "display": "4.76%",
+        "unit": "website visit rate",
+        "sample": "11 website visits · 231 emails with a link"
+      },
+      "crowned": false,
+      "verdict": {
+        "kind": "noise",
+        "reason": "10:00 against 11:00, website visits per email: p 0.489, a gap chance alone produces often."
+      },
+      "charts": [
+        {
+          "kind": "bars",
+          "title": "By hour of the day, prospect's timezone: website visit rate, % of emails with a link (higher is better)",
+          "lowerIsBetter": false,
+          "points": [
+            {
+              "label": "02:00",
+              "value": 0,
+              "display": "0.00%",
+              "note": "0 website visits · 1 emails with a link",
+              "thin": true
+            },
+            {
+              "label": "04:00",
+              "value": 0,
+              "display": "0.00%",
+              "note": "0 website visits · 1 emails with a link",
+              "thin": true
+            },
+            {
+              "label": "06:00",
+              "value": 0,
+              "display": "0.00%",
+              "note": "0 website visits · 2 emails with a link",
+              "thin": true
+            },
+            {
+              "label": "08:00",
+              "value": 4.2,
+              "display": "0.42%",
+              "note": "1 website visit · 236 emails with a link",
+              "thin": true
+            },
+            {
+              "label": "09:00",
+              "value": 10.8,
+              "display": "1.08%",
+              "note": "2 website visits · 185 emails with a link",
+              "thin": true
+            },
+            {
+              "label": "10:00",
+              "value": 47.6,
+              "display": "4.76%",
+              "note": "11 website visits · 231 emails with a link",
+              "thin": false
+            },
+            {
+              "label": "11:00",
+              "value": 33.2,
+              "display": "3.32%",
+              "note": "7 website visits · 211 emails with a link",
+              "thin": true
+            },
+            {
+              "label": "12:00",
+              "value": 27.8,
+              "display": "2.78%",
+              "note": "1 website visit · 36 emails with a link",
+              "thin": true
+            },
+            {
+              "label": "13:00",
+              "value": 0,
+              "display": "0.00%",
+              "note": "0 website visits · 75 emails with a link",
+              "thin": true
+            },
+            {
+              "label": "14:00",
+              "value": 0,
+              "display": "0.00%",
+              "note": "0 website visits · 127 emails with a link",
+              "thin": true
+            },
+            {
+              "label": "15:00",
+              "value": 0,
+              "display": "0.00%",
+              "note": "0 website visits · 10 emails with a link",
+              "thin": true
+            },
+            {
+              "label": "16:00",
+              "value": 0,
+              "display": "0.00%",
+              "note": "0 website visits · 17 emails with a link",
+              "thin": true
+            },
+            {
+              "label": "17:00",
+              "value": 0,
+              "display": "0.00%",
+              "note": "0 website visits · 1 emails with a link",
+              "thin": true
+            },
+            {
+              "label": "18:00",
+              "value": 0,
+              "display": "0.00%",
+              "note": "0 website visits · 2 emails with a link",
+              "thin": true
+            },
+            {
+              "label": "20:00",
+              "value": 0,
+              "display": "0.00%",
+              "note": "0 website visits · 1 emails with a link",
+              "thin": true
+            }
+          ],
+          "note": "Only people we started writing to at least 21 days before the read (before Sep 12) count, with every positive reply and website visit they sent since. A figure needs 1 positive reply (10 website visits) behind it; below that it reads Learning. A website visit is a click our link-scanner check judged human, which only the emails we send ourselves can carry: website-visit figures leave out the emails sent through the provider, whose clicks are mostly scanners and cannot be screened."
+        },
+        {
+          "kind": "bars",
+          "title": "By hour of the day, prospect's timezone: cost per website visit (USD, lower is better)",
+          "lowerIsBetter": true,
+          "points": [
+            {
+              "label": "08:00",
+              "value": 2.61,
+              "display": "$2.61",
+              "note": "1 website visit · 236 emails with a link",
+              "thin": true
+            },
+            {
+              "label": "09:00",
+              "value": 0.56,
+              "display": "$0.56",
+              "note": "2 website visits · 185 emails with a link",
+              "thin": true
+            },
+            {
+              "label": "10:00",
+              "value": 0.26,
+              "display": "$0.26",
+              "note": "11 website visits · 231 emails with a link",
+              "thin": false
+            },
+            {
+              "label": "11:00",
+              "value": 0.61,
+              "display": "$0.61",
+              "note": "7 website visits · 211 emails with a link",
+              "thin": true
+            },
+            {
+              "label": "12:00",
+              "value": 0.7,
+              "display": "$0.70",
+              "note": "1 website visit · 36 emails with a link",
+              "thin": true
+            }
+          ],
+          "note": "Only people we started writing to at least 21 days before the read (before Sep 12) count, with every positive reply and website visit they sent since. A figure needs 1 positive reply (10 website visits) behind it; below that it reads Learning. A website visit is a click our link-scanner check judged human, which only the emails we send ourselves can carry: website-visit figures leave out the emails sent through the provider, whose clicks are mostly scanners and cannot be screened."
+        }
+      ],
+      "conclusion": [
+        "10:00: 11 website visits · 231 emails with a link; runner-up 11:00, 3.32% (7 website visits · 211 emails with a link).",
+        "99% of these emails went out between 08:00 and 17:00 in the prospect's timezone; the other 8 are spread over 6 hours.",
+        "The schedule moved over the window: in Aug, 11% of emails went out Monday to Friday between 08:00 and 17:00 in the prospect's timezone and 22% on a weekend; in Oct, 100% and 0%. So a day or an hour outside that window is also an older month, other clients and other campaigns.",
+        "What this cannot answer: whether an evening or early-morning email works on today's campaigns. The hours outside 08:00 to 17:00 come from older months, and an hour's bar mixes the clients, months and steps of the sequence sent in it. Only a split test on the same clients in the same weeks can settle it.",
+        "45 emails with a link whose prospect has no timezone on record are left out.",
+        "Each email is filed under its own send hour in the prospect's timezone, and a website visit under the email that earned it."
+      ]
     },
     {
       "id": "scout-workflow-roi",

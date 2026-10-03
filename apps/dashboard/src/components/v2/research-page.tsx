@@ -67,6 +67,8 @@ const WINNER_LABEL: Record<ResearchTopic, string> = {
   layout: "Winner",
   opening: "Winner",
   dash: "Winner",
+  weekday: "Winner",
+  hour: "Winner",
 };
 
 const STATE_LOOK: Record<StudyState, { label: string; dot: string }> = {

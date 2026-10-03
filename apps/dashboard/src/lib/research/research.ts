@@ -19,7 +19,7 @@ export type ResearchCrew = "herald" | "scout" | "pilot";
  * booked meeting costs from the first cold email on), where a crew section is one leg x one channel.
  */
 export type ResearchOutcome = "meeting";
-export type ResearchTopic = "llm" | "cost" | "followups" | "opens" | "template" | "workflow" | "naming" | "layout" | "opening" | "dash";
+export type ResearchTopic = "llm" | "cost" | "followups" | "opens" | "template" | "workflow" | "naming" | "layout" | "opening" | "dash" | "weekday" | "hour";
 export type ResearchGoal = "roi" | "rate";
 
 export interface ResearchPoint {
@@ -212,6 +212,8 @@ export const TOPIC_LABEL: Record<ResearchTopic, string> = {
   layout: "Email layout",
   opening: "Email opening",
   dash: "Dashes",
+  weekday: "Day of the week",
+  hour: "Hour of the day",
 };
 
 export function studiesFor(crew: ResearchCrew, file: ResearchFile): ResearchStudy[] {
