@@ -144,7 +144,8 @@ describe("research.json is coherent", () => {
   it("states a verdict on every measured study, and only a conclusion's headline says it wins", () => {
     // Owner 2026-10-02: every study says whether it holds a conclusion, a signal or noise. The
     // first bar stays the leader whatever the word; the p-value is shown beside it.
-    for (const s of RESEARCH.studies.filter((st) => ["naming", "opens"].includes(st.topic))) {
+    // (a study that cannot be measured, the website-visit opens study since 2026-10-03, draws no bar)
+    for (const s of RESEARCH.studies.filter((st) => ["naming", "opens"].includes(st.topic) && st.status === "measured")) {
       expect(s.winner, s.id).toBe(s.charts[0].points[0].label);
       expect(s.headline, s.id).toMatch(/\(p [<\d]/);
     }

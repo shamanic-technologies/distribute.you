@@ -7,7 +7,8 @@
 //  - an EMAIL is one email_sent event on a sales-cold-email-outreach sequence row
 //  - a CLICK is the first tracked link click a person made, attributed to the step the
 //    provider named; self-send clicks reach this table only after the scanner classifier
-//    promotes them, so link-scanner prefetches are already excluded
+//    promotes them, the provider's webhook clicks are never screened
+//  - a WEBSITE VISIT (Research page) is a self-send click only: the human-classified ones
 //  - a POSITIVE REPLY is the frozen classification on the sequence row, attributed to the
 //    last email sent at or before the inbound message
 //  - SPEND is what the client is charged, per workflow, before per-account discounts; each
@@ -344,6 +345,11 @@ for (const e of emails) {
     // which tracking recorded the visit: our own /c/ redirect, or the sending provider's.
     // Only the self-send hits pass through the link-scanner classification.
     clickSource: click ? click.source : null,
+    // A WEBSITE VISIT is a click a human made: only a self-send hit can be one, because only our
+    // own /c/ redirect records the IP and user agent the scanner classifier reads, and only its
+    // `human` verdict reaches instantly_events. The provider's webhook clicks carry neither, and
+    // most decided clicks are link scanners, so a provider click is never a visit.
+    visited: click ? click.source === "self_send" && Number(click.step) === Number(e.step) : false,
     _clickAt: click && Number(click.step) === Number(e.step) ? click.clicked_at : null,
     replied: false,
     _replyAt: reply?.replied_at || null,
@@ -818,7 +824,11 @@ const research = (() => {
   }
   const herald = priced.filter((r) => r.leg === HERALD_LEG);
   const scoutAll = priced.filter((r) => r.leg === SCOUT_LEG);
-  const scout = scoutAll.filter((r) => r.hasLink);
+  // Scout is measured on the emails whose clicks the scanner classifier screens (self-send, our
+  // own /c/ redirect), and its outcome is the HUMAN visit. A provider-sent email cannot produce a
+  // visit we can tell from a bot, so it is out of the population, stated in scope.scout.
+  const scoutLinked = scoutAll.filter((r) => r.hasLink);
+  const scout = scoutLinked.filter((r) => r.transport === "smtp").map((r) => ({ ...r, clicked: r.visited }));
   const union = [...herald, ...scoutAll];
   // what the leg scope moved out of each crew, measured on the article's (fleet-wide) population
   const scope = {
@@ -832,7 +842,14 @@ const research = (() => {
       before: linked.length,
       otherLeg: linked.filter((f) => f.leg && f.leg !== SCOUT_LEG).length,
       noLeg: linked.filter((f) => !f.leg).length,
+      // linked emails of the leg sent through the provider: their clicks are never screened
+      providerSent: scoutLinked.length - scout.length,
+      providerClicks: scoutLinked.filter((r) => r.transport !== "smtp" && r.clicked).length,
       after: scout.length,
+      visits: scout.filter((r) => r.clicked).length,
+      // every human visit on the leg before the maturity, link and pricing filters: equals the
+      // people instantly_service's scanner classified human on this leg's campaigns
+      legVisits: researchRows.filter((r) => r.leg === SCOUT_LEG && r.visited).length,
     },
     immature: young,
     servedBeforeWindow: beforeWindow,

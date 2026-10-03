@@ -69,7 +69,7 @@ const RULE_DAYS = Math.max(M.legs.reply.durationDays, M.legs.visit.durationDays)
 const ruleWhen = sameRule
   ? `at least ${M.legs.reply.durationDays} days before the read (before ${cutoffText(M.legs.reply.cutoff)})`
   : `at least ${M.legs.reply.durationDays} days (positive replies) or ${M.legs.visit.durationDays} days (website visits) before the read`;
-const RULE_NOTE = `Only people we started writing to ${ruleWhen} count, with every positive reply and website visit they sent since. A figure needs ${M.legs.reply.outcomesRequired} positive ${M.legs.reply.outcomesRequired === 1 ? "reply" : "replies"} (${M.legs.visit.outcomesRequired} website ${M.legs.visit.outcomesRequired === 1 ? "visit" : "visits"}) behind it; below that it reads Learning.`;
+const RULE_NOTE = `Only people we started writing to ${ruleWhen} count, with every positive reply and website visit they sent since. A figure needs ${M.legs.reply.outcomesRequired} positive ${M.legs.reply.outcomesRequired === 1 ? "reply" : "replies"} (${M.legs.visit.outcomesRequired} website ${M.legs.visit.outcomesRequired === 1 ? "visit" : "visits"}) behind it; below that it reads Learning. A website visit is a click our link-scanner check judged human, which only the emails we send ourselves can carry: website-visit figures leave out the emails sent through the provider, whose clicks are mostly scanners and cannot be screened.`;
 // The open-tracking study is read from its own snapshot, with its own cutoff before the read.
 const pixelHeldDays = Math.round((Date.parse(`${pixel.readAt.slice(0, 10)}T00:00:00Z`) - Date.parse(`${pixel.cutoff}T00:00:00Z`)) / 86_400_000);
 if (pixelHeldDays < RULE_DAYS) throw new Error(`the open-tracking research snapshot leaves ${pixelHeldDays} days, under the ${RULE_DAYS}-day rule: re-extract pixel.research.snapshot.json`);
@@ -652,7 +652,7 @@ for (const key of ["reply", "visit"]) {
       goal: "roi",
       question: `What does a ${o.noun} cost on average?`,
       status: all ? "measured" : "not_enough_data",
-      headline: all ? `${all.display} per ${o.noun} on average since inception, across all our emails.` : `Not enough ${o.nounPlural} to state an average yet.`,
+      headline: all ? `${all.display} per ${o.noun} on average since inception, across all our emails${o.crew === "scout" ? " whose clicks are screened for bots" : ""}.` : `Not enough ${o.nounPlural} to state an average yet.`,
       winner: null,
       // the sample states the counts to date; the in-progress mark belongs to the chart's last bar
       result: all ? { display: all.display, unit: `per ${o.noun}, average since inception`, sample: all.note.replace(` · ${IN_PROGRESS}`, "") } : null,
@@ -734,8 +734,15 @@ for (const key of ["reply", "visit"]) {
     });
   }
 
-  // open tracking: the pixel study (two periods, not a split test)
-  {
+  // open tracking: the pixel study (two periods, not a split test). The pixel only ever ran on
+  // provider-sent emails, whose clicks no scanner classifier screens, so the "tracking on" arm
+  // holds no human visit by construction: the website-visit question cannot be measured.
+  if (key === "visit") {
+    const reason = "The open pixel only ran on emails sent through the provider, whose clicks cannot be told apart from link scanners. A website visit is a human click, so this cannot be measured.";
+    for (const [goal, question] of [["roi", `Should we track opens for the cheapest ${o.noun}?`], ["rate", `Should we track opens for the most website visits?`]]) {
+      add({ id: `${o.crew}-opens-${goal}`, crew: o.crew, topic: "opens", goal, question, status: "not_enough_data", headline: "Cannot be measured on human visits.", winner: null, crowned: false, result: null, charts: [], conclusion: [reason] });
+    }
+  } else {
     const metric = key === "reply" ? pixel.positive : pixel.clicked;
     const rateMetric = key === "reply" ? pixel.replied : pixel.clicked;
     const arm = (m, which) => ({

@@ -1,30 +1,14 @@
 # blog-data
 
-The two cold-email data articles are derived, not typed.
+The data articles are derived, not typed: each one's figures come out of `extract.sh` ->
+`derive.mjs` and a renderer per article (sections below).
 
-- `apps/landing/content/blog/cost-per-click-cold-email`
-- `apps/landing/content/blog/flash-vs-pro-llm-cold-email`
-
-Each one is an `article.template.html` holding the prose, with every figure, every
-bar and every table cell as a token the renderer fills from production data. Running
-the three steps below reproduces both `article.html` files byte for byte, which is what
-makes a correction to production a re-run rather than a rewrite.
-
-```sh
-# 1. pull the fact tables (read-only, over ssh to the Hetzner box)
-apps/landing/scripts/blog-data/extract.sh 2026-04-15 2026-09-12 /tmp/blog-data
-
-# 2. derive every bucket, every cut and the best workflow per outcome
-node --max-old-space-size=8192 apps/landing/scripts/blog-data/derive.mjs /tmp/blog-data > /tmp/blog-data/facts.json
-
-# 3. render both articles from their templates
-node apps/landing/scripts/blog-data/render-articles.mjs /tmp/blog-data/facts.json apps/landing/content/blog
-
-# 4. re-render the covers
-cd apps/landing
-node scripts/render-blog-hero.mjs cost-per-click-cold-email
-node scripts/render-blog-hero.mjs flash-vs-pro-llm-cold-email
-```
+**A website visit is a HUMAN click** (2026-10-03): a self-send click through our own `/c/` redirect
+that the scanner classifier judged human. The provider's webhook clicks carry no IP or user agent,
+so they can never be screened, and most decided clicks are link scanners: they are never a visit.
+`cost-per-click-cold-email`, `flash-vs-pro-llm-cold-email` and `cold-email-greeting` were taken down
+that day (301 to /blog): every click finding they stated rested on provider clicks, and none holds
+on human visits. Their renderers and tests went with them.
 
 Step 4's newsletter charts are RE-LAID before they are rastered (`blog-data/narrow-chart.mjs`).
 The article's chart is an 800-unit viewBox built for a page, and a mail client shows it at
@@ -152,28 +136,6 @@ spam folders have been emptied.
 Both studies live on the Research page only (`pixel/pixel.research.snapshot.json` via `pixel/derive-pixel.mjs`,
 and `naming/naming.mjs`). Their articles (`cold-email-open-tracking`, `cold-email-response-rate`)
 were taken down on 2026-10-02: each headline was a signal, not a conclusion (`verdict.mjs`).
-
-## The greeting article
-
-`content/blog/cold-email-greeting` states the Research page's two opening studies (`scout-opening-roi`
-/ `herald-opening-roi`): how the first email opens (first-email-shape.mjs `openingOf`, a regex, no
-model), priced per website visit and per positive reply, all tiers and per tier. The committed
-snapshot carries aggregates only.
-
-```sh
-# 1. the same extract and facts the Research page is built from (end = today)
-apps/landing/scripts/blog-data/extract.sh 2026-04-15 <today> /tmp/research-data
-node --max-old-space-size=8192 apps/landing/scripts/blog-data/derive.mjs /tmp/research-data > /tmp/research-data/facts.json
-
-# 2. the opening buckets, both legs
-node apps/landing/scripts/blog-data/greeting/derive-greeting.mjs /tmp/research-data/facts.json > apps/landing/scripts/blog-data/greeting/greeting.snapshot.json
-
-# 3. render
-node apps/landing/scripts/blog-data/greeting/render-greeting-article.mjs apps/landing/scripts/blog-data/greeting/greeting.snapshot.json apps/landing/content/blog
-```
-
-The renderer refuses a snapshot where no greeting stops winning on visits, "Hi" + first name stops
-winning on positive replies, or the tier caveats in the limits stop holding.
 
 ## The follow-up article
 

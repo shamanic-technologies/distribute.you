@@ -108,7 +108,10 @@ describe("the Research page computes every figure over ONE leg of ONE channel", 
     expect(src).toContain('const HERALD_LEG = "start_to_conversation";');
     expect(src).toContain('const SCOUT_LEG = "start_to_website_visit";');
     expect(src).toContain("const herald = priced.filter((r) => r.leg === HERALD_LEG);");
-    expect(src).toContain("const scout = scoutAll.filter((r) => r.hasLink);");
+    // a website visit is a HUMAN click: Scout is the self-send link emails, outcome = visited
+    expect(src).toContain("const scoutLinked = scoutAll.filter((r) => r.hasLink);");
+    expect(src).toContain('const scout = scoutLinked.filter((r) => r.transport === "smtp").map((r) => ({ ...r, clicked: r.visited }));');
+    expect(src).toContain('visited: click ? click.source === "self_send" && Number(click.step) === Number(e.step) : false,');
     // the fleet-wide populations the articles use never feed a study
     expect(src).not.toContain("reply: researchFor(facts)");
     expect(src).not.toContain("visit: researchFor(linked)");
@@ -122,17 +125,4 @@ describe("the Research page computes every figure over ONE leg of ONE channel", 
     // every "last runs" list is per leg
     expect((extract.match(/JOIN \(VALUES \$LEGS_VALUES\)/g) || []).length).toBe(3);
   });
-});
-
-describe("both articles state the rule", () => {
-  for (const slug of ["cost-per-click-cold-email", "flash-vs-pro-llm-cold-email"]) {
-    it(`${slug}: in its Method and under every chart`, () => {
-      const html = readFileSync(join(__dirname, `../../content/blog/${slug}/article.html`), "utf8");
-      expect(html).toContain("<strong>Emails too young to count</strong>");
-      // every data chart (a bar per bucket) carries the line; a summary card and the vendors' list prices count no outcome
-      const charts = html.split("<figure>").slice(1).map((f) => f.slice(0, f.indexOf("</figure>"))).filter((f) => f.includes('height="26" rx="5"') && !f.includes("list price"));
-      expect(charts.length).toBeGreaterThan(0);
-      for (const c of charts) expect(c).toMatch(/<figcaption[^>]*>Emails sent in the last \d+ days are left out/);
-    });
-  }
 });

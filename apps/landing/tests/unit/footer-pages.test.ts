@@ -235,7 +235,7 @@ describe("the orphaned pages are gone, everywhere they were listed", () => {
       ["/performance/:path*", "/"],
       ["/use-cases", "/"],
       ["/outcomes/:path*", "/"],
-      ["/cold-email-cost-guide/:path*", "/blog/cost-per-click-cold-email"],
+      ["/cold-email-cost-guide/:path*", "/blog/cold-email-cost-per-positive-reply"],
       ["/cold-email-for-saas-founders/:path*", "/"],
       ["/cold-email-vs-linkedin/:path*", "/"],
       ["/developers/:path+", "/developers"],

@@ -3,7 +3,7 @@
 <p style="margin:0 0 8px;font-weight:600;color:#0f172a">A positive reply to our cold emails cost {{raw reply.average.display}} on average, measured on what our clients paid:</p>
 <ul style="margin:0;padding-left:20px">
 <li><strong>{{raw reply.average.display}} per positive reply</strong>, average since {{month windowFrom}}</li>
-<li><strong>About {{dollars visit.average.value}} per website visit</strong> on emails that carry a link</li>
+<li><strong>About {{dollars visit.average.value}} per website visit</strong>, counting human clicks only</li>
 <li>A measured price, not a rate card: everything spent, divided by every positive reply</li>
 </ul>
 </div>
@@ -30,7 +30,7 @@
 
 <h2 id="website-visits">What a website visit cost</h2>
 
-<p>Some campaigns ask for a click to the client's site rather than a reply. On the emails that carry a link, <strong>a website visit cost about {{dollars visit.average.value}}</strong> on average since {{month windowFrom}}.</p>
+<p>Some campaigns ask for a click to the client's site rather than a reply. On the emails we send ourselves with a link, the only ones whose clicks we can check for a real person, <strong>a website visit cost about {{dollars visit.average.value}}</strong> on average since {{month windowFrom}}.</p>
 
 <p>A visit costs far less because many more people click than answer. The two are different goals, priced on different emails, so one price does not convert into the other.</p>
 
@@ -52,7 +52,7 @@
 
 <ul>
 <li>Positive replies: {{n reply.outcomes}} from {{n reply.emails}} cold emails on campaigns that ask for a reply, {{dollars reply.average.value}} each, 95% interval {{dollars reply.interval.lo}} to {{dollars reply.interval.hi}}.</li>
-<li>Website visits: {{n visit.outcomes}} from {{n visit.emails}} cold emails that carry a link, {{cents visit.average.value}} each, 95% interval {{cents visit.interval.lo}} to {{cents visit.interval.hi}}. Clicks through our own redirect are cleared of security scanners; most were recorded by the sending provider's tracking.</li>
+<li>Website visits: {{n visit.outcomes}} from {{n visit.emails}} cold emails that carry a link, {{cents visit.average.value}} each, 95% interval {{cents visit.interval.lo}} to {{cents visit.interval.hi}}. Only clicks through our own redirect count, where a human click can be told from a mail security scanner.</li>
 <li>Emails sent from {{month windowFrom}}, read from our production database on {{day readOn}}. People first written to before {{day cutoff}} count, with every outcome since. The price is what clients were billed; intervals are Poisson on the outcome count. A measurement, not a split test.</li>
 <li>The figures come from our internal research page, copied by the scripts on <a href="https://github.com/shamanic-technologies/distribute.you/tree/main/apps/landing/scripts/blog-data/cost">GitHub</a>.</li>
 </ul>
