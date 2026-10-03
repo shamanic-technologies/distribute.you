@@ -24,7 +24,6 @@ import { EditWithAIChat } from "@/components/ai-edit/edit-with-ai-chat";
 import { EmptyNote, Shimmer, StateDot } from "@/components/v2/ui";
 import { RecordsFooter, RecordsTabs, RecordsToolbar, REC_TH, useRowKeys } from "@/components/v2/records";
 import { useAudienceTable } from "@/components/v2/use-audience-table";
-import { V2SignalAudienceModal } from "@/components/v2/signal-audience-modal";
 import { useStatBasis } from "@/lib/use-stat-basis";
 import { shownFigure, type MaturityPair, type StatBasis } from "@/lib/maturity";
 import { LEG_PAIR_NOUN } from "@/lib/campaign-leg-columns";
@@ -184,7 +183,6 @@ export function V2AudiencesTable({ campaignId, offerId }: { campaignId?: string;
   const [sortCol, setSortCol] = useState<AudienceSortCol>(t.defaultSortCol);
   const [sortDir, setSortDir] = useState<"asc" | "desc">(t.defaultSortDir);
   const [userSorted, setUserSorted] = useState(false);
-  const [signalOpen, setSignalOpen] = useState(false);
   const searchRef = useRef<HTMLInputElement | null>(null);
 
   // The default sort follows the grain until the reader picks a column.
@@ -311,13 +309,6 @@ export function V2AudiencesTable({ campaignId, offerId }: { campaignId?: string;
                   <path d="M6 9.5v-7M3 5l3-3 3 3" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" />
                 </svg>
               </button>
-              {/* Audiences belong to the offer, so a new one is made on its Targeting page only. */}
-              {!t.campaignScoped && (
-                <button type="button" onClick={() => setSignalOpen(true)} className="k-btn">
-                  <LinkedInIcon />
-                  LinkedIn signal
-                </button>
-              )}
               <button
                 type="button"
                 onClick={() => {
@@ -435,20 +426,6 @@ export function V2AudiencesTable({ campaignId, offerId }: { campaignId?: string;
           pendingStatus={
             t.statusMut.isPending && t.statusMut.variables?.id === selected.id ? t.statusMut.variables.status : null
           }
-        />
-      )}
-
-      {signalOpen && (
-        <V2SignalAudienceModal
-          brandId={t.brandId}
-          offerId={t.offerId}
-          seedPrompt={t.audiences.find((a) => a.nlPrompt?.trim())?.nlPrompt ?? null}
-          onClose={() => setSignalOpen(false)}
-          onCreated={(id) => {
-            setSignalOpen(false);
-            setTab("active");
-            setSelectedId(id);
-          }}
         />
       )}
 
