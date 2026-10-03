@@ -144,6 +144,8 @@ describe("the offer the page states", () => {
     for (const gone of ["$1/day", "From $1<", "$30 free", "Start free with $30", "No subscription", "Pay as you go"]) {
       expect(html, gone).not.toContain(gone);
     }
+    // The stats band splits "$" and the figure into two spans, so "$1/day" alone missed it.
+    expect(html).not.toMatch(/per day/i);
   });
 
   it("says nothing about the $400 credit match", () => {
