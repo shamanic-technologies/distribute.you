@@ -782,6 +782,8 @@ const research = (() => {
     return true;
   });
   const spendByVersionLeg = new Map();
+  // the part of it charged per email sent (extract.sh per_email_*): what one more email costs
+  const perEmailByVersionLeg = new Map();
   let spendNoLeg = 0;
   let unpricedCents = 0;
   // Actual basis: a (workflow version, leg) carrying ANY billed spend no vendor cost prices is
@@ -803,12 +805,28 @@ const research = (() => {
       unpricedKeys.add(k);
     }
     spendByVersionLeg.set(k, (spendByVersionLeg.get(k) || 0) + cents / 100);
+    const perEmail = COST_BASIS === "actual" ? s.per_email_vendor_cents : s.per_email_cents;
+    if (perEmail === undefined) throw new Error("spend-legs.csv carries no per_email_cents: re-run extract.sh");
+    perEmailByVersionLeg.set(k, (perEmailByVersionLeg.get(k) || 0) + Number(perEmail) / 100);
   }
   const emailsByVersionLeg = new Map();
+  const firstEmailsByVersionLeg = new Map();
+  // the per-email charges are Instantly's (extract.sh PER_EMAIL_COSTS): they land on the emails
+  // Instantly sent, never on one we sent ourselves
+  const providerEmailsByVersionLeg = new Map();
   for (const r of mature) {
     const k = `${r.workflow}|${r.leg}`;
     emailsByVersionLeg.set(k, (emailsByVersionLeg.get(k) || 0) + 1);
+    if (r.transport === "instantly") providerEmailsByVersionLeg.set(k, (providerEmailsByVersionLeg.get(k) || 0) + 1);
+    if (r.stepNo === 1) firstEmailsByVersionLeg.set(k, (firstEmailsByVersionLeg.get(k) || 0) + 1);
   }
+  // An email costs what sending it costs, and the FIRST email also carries everything bought once
+  // per person (the lead, writing the whole sequence, the contact upload): a follow-up adds only
+  // its own sending. Spread evenly over every email, a follow-up was billed the lead and the
+  // writing a second time, and "first email only" read as the cheapest depth by construction.
+  // A (version, leg) with no first email in the window cannot carry its per-person part on one:
+  // it is spread over its emails, and counted in scope.perPersonSpreadEvenly.
+  let perPersonSpreadEvenly = 0;
   const priced = [];
   let noSpend = 0;
   let noVendorCost = 0;
@@ -817,7 +835,15 @@ const research = (() => {
     const spend = spendByVersionLeg.get(k);
     if (spend === undefined) { noSpend++; continue; }
     if (unpricedKeys.has(k)) { noVendorCost++; continue; }
-    r.cost = spend / emailsByVersionLeg.get(k);
+    const emailsOfKey = emailsByVersionLeg.get(k);
+    const firstOfKey = firstEmailsByVersionLeg.get(k) || 0;
+    const perEmail = perEmailByVersionLeg.get(k) || 0;
+    if (!firstOfKey) { perPersonSpreadEvenly++; r.cost = spend / emailsOfKey; }
+    else {
+      const providerOfKey = providerEmailsByVersionLeg.get(k) || 0;
+      const send = providerOfKey ? (r.transport === "instantly" ? perEmail / providerOfKey : 0) : perEmail / emailsOfKey;
+      r.cost = send + (r.stepNo === 1 ? (spend - perEmail) / firstOfKey : 0);
+    }
     r.chartMonth = r.month < lastCohortMonth(r.leg) ? r.month : lastCohortMonth(r.leg);
     delete r._replyAt; delete r._sentAt; delete r._clickAt; delete r._runStartedAt;
     priced.push(r);
@@ -854,6 +880,7 @@ const research = (() => {
     immature: young,
     servedBeforeWindow: beforeWindow,
     droppedForNoSpend: noSpend,
+    perPersonSpreadEvenly,
     droppedForNoDynasty: researchNoDynasty,
     spendOnNoLeg: round(spendNoLeg / 100, 2),
     // actual basis only: billed spend on the two crews' legs no vendor cost is on record for
