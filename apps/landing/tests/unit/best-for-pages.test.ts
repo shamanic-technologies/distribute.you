@@ -197,5 +197,5 @@ describe("served through the pipeline", () => {
     );
     expect(md.headers.get("content-type")).toContain("text/markdown");
     expect(await md.text()).toContain(bestForHeading(p));
-  });
+  }, 20_000); // awaits the fleet read, up to its own 8s timeout (static-html.ts)
 });

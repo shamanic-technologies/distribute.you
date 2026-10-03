@@ -14,7 +14,7 @@
  * Alias-free (no `@/` import) so `tests/unit/compare-pages.test.ts` can import it directly.
  */
 
-export type Category = "cold-email-tool" | "ai-sdr" | "data-platform" | "post-purchase";
+export type Category = "cold-email-tool" | "ai-sdr" | "data-platform" | "post-purchase" | "employee-advocacy";
 
 export type PricePoint = {
   /** The plan as the competitor names it. */
@@ -647,6 +647,100 @@ export const COMPETITORS: readonly Competitor[] = [
       { q: "Can an e-commerce brand use distribute.you?", a: "Yes, when it sells to other businesses, for example wholesale buyers, shops that could stock your products, or corporate gifting. You paste your website and we find and qualify those buyers." },
     ],
   },
+  {
+    slug: "postbeyond",
+    name: "PostBeyond",
+    domain: "postbeyond.com",
+    category: "employee-advocacy",
+    oneLiner: "An employee advocacy platform: your staff share approved company content on their own social networks, with analytics on what it drives.",
+    sourceUrl: "https://www.postbeyond.com/pricing",
+    verifiedOn: "2026-10-03",
+    pricingModel: "Priced by the number of enrolled employees, with a 100-employee minimum on the paid plan.",
+    entryPrice: "Free up to 30 employees, then $1,125/month",
+    prices: [
+      { plan: "Free Trial", price: "$0", note: "Up to 30 enrolled employees, content management, social sharing, Slack and Teams notifications, analytics" },
+      { plan: "Growth", price: "$1,125/month", note: "100 enrolled employees minimum, adds single sign-on and a client success team" },
+      { plan: "Enterprise", price: "On request", note: "250+ enrolled employees, lower per-user cost, user groups, managed services" },
+    ],
+    operatedBy: "you",
+    sendingDomains: "Your employees' own social accounts. It sends no cold email.",
+    leads: "None. Reach comes from the followers your employees already have.",
+    replies: "Comments and messages land on each employee's own profile.",
+    channels: "Employee posts on LinkedIn and other social networks, plus internal newsletters.",
+    costPerMeetingPublished: false,
+    freeTier: "Free plan for up to 30 enrolled employees.",
+    contract: "Not published on the pricing page.",
+    whereTheyWin: [
+      "Brand reach through your own people: one approved post goes out on dozens of employee profiles.",
+      "Use cases beyond sales, like recruiting, partner marketing and customer advocacy.",
+      "Larger companies trust it, with Dynatrace, Fivetran, Gainsight and Scotiabank among the logos on its site.",
+    ],
+    whereWeWin: [
+      "We contact buyers who do not follow you or your staff yet. PostBeyond reaches the networks your team already has.",
+      "From $99 a month, with no employee minimum. PostBeyond's paid plan starts at $1,125 a month for 100 employees.",
+      "Nothing for your team to do. Nobody has to post, share or answer comments.",
+    ],
+    chooseThemIf: [
+      "You have a few hundred employees and want them sharing company content to grow brand awareness and hiring reach.",
+      "Your marketing team already produces content and needs a way to spread it through staff profiles.",
+    ],
+    chooseUsIf: [
+      "You need sales meetings with companies that have never heard of you.",
+      "Your team is small, so employee sharing would reach too few people to fill a pipeline.",
+    ],
+    faq: [
+      { q: "Is distribute.you a PostBeyond alternative?", a: "Only if what you want is new sales conversations. PostBeyond helps your employees share company posts on social media. distribute.you is a cold email agency: we find companies that match your offer, write to them from our own domains and hand you the interested replies. Some teams use both." },
+      { q: "Does distribute.you post on LinkedIn for my employees?", a: "No. We send cold email only, from domains and mailboxes we own. Your team's social accounts stay untouched." },
+      { q: "Which one is cheaper for a small team?", a: "PostBeyond is free for up to 30 enrolled employees and its paid plan starts at $1,125 a month for 100 employees. distribute.you starts at $99 a month with no seat count, and every dollar goes to your campaign." },
+    ],
+  },
+  {
+    slug: "leadrebel",
+    name: "LeadRebel",
+    domain: "leadinfo.com",
+    category: "data-platform",
+    oneLiner: "A website visitor identification tool. leadrebel.io now forwards to Leadinfo, which shows the companies visiting your site and the decision makers there.",
+    sourceUrl: "https://www.leadinfo.com/en/pricing/",
+    verifiedOn: "2026-10-03",
+    pricingModel: "LeadRebel's own plans are gone; leadrebel.io forwards to Leadinfo, priced per month by the number of companies it identifies on your site.",
+    entryPrice: "€69/month (annual), 14-day trial",
+    prices: [
+      { plan: "Starter (Leadinfo)", price: "€69/month annual, €99/month monthly", note: "Up to 100 identified companies a month, 3 users, decision maker database, lead scoring" },
+      { plan: "Scale (Leadinfo)", price: "€159/month", note: "Up to 5,000 identified companies, 10 users, HubSpot and LinkedIn Ads integrations" },
+      { plan: "Pro (Leadinfo)", price: "€359/month", note: "Unlimited users and automations, Salesforce integration, mobile numbers, customer success manager" },
+    ],
+    operatedBy: "you",
+    sendingDomains: "Yours. Follow-up email goes out from your own tools and inbox.",
+    leads: "Companies that already visit your website, plus contacts from its decision maker database.",
+    replies: "Yours to handle, in your inbox or CRM.",
+    channels: "Visitor identification, with follow-up through email, LinkedIn and your CRM.",
+    costPerMeetingPublished: false,
+    freeTier: "14-day trial, no credit card.",
+    contract: "Monthly or annual; annual is cheaper on the Starter plan.",
+    whereTheyWin: [
+      "It shows you which companies are already reading your site, so you can call warm accounts first.",
+      "Many CRM integrations, with Salesforce, HubSpot, Pipedrive and Microsoft Dynamics on its site.",
+      "A low entry price if your site already gets steady B2B traffic.",
+    ],
+    whereWeWin: [
+      "We do not need your traffic. We find buyers who have never visited your site and write to them.",
+      "We do the outreach. Leadinfo hands you a list of visitors; someone on your team still has to write, send and follow up.",
+      "Your domain stays out of it. We send from domains we own and warm.",
+    ],
+    chooseThemIf: [
+      "Your website already gets a steady flow of B2B visitors and your sales team has time to follow up on them.",
+      "You were a LeadRebel customer and want the same visitor tracking, now under the Leadinfo name.",
+    ],
+    chooseUsIf: [
+      "Your site gets little traffic, so there are too few visitors to identify.",
+      "You want someone else to find the buyers, write the emails and answer the replies.",
+    ],
+    faq: [
+      { q: "What happened to LeadRebel?", a: "leadrebel.io now forwards to Leadinfo, which took over the product. Leadinfo does the same core job: it identifies the companies visiting your website and gives you contacts there. Its plans start at €69 a month on annual billing." },
+      { q: "Is distribute.you a LeadRebel alternative?", a: "It solves the same problem from the other side. LeadRebel and Leadinfo tell you who already visited your site. distribute.you finds companies that have never heard of you, sends them cold email from our own domains and passes you the interested replies." },
+      { q: "Can I use both?", a: "Yes. Visitor tracking catches warm accounts that found you. distribute.you adds new buyers who would not have found your site on their own." },
+    ],
+  },
 ];
 
 export const CATEGORY_LABEL: Record<Category, string> = {
@@ -654,6 +748,7 @@ export const CATEGORY_LABEL: Record<Category, string> = {
   "ai-sdr": "AI SDR agents",
   "data-platform": "Data platforms",
   "post-purchase": "Post-purchase platforms",
+  "employee-advocacy": "Employee advocacy platforms",
 };
 
 export function competitorBySlug(slug: string): Competitor | undefined {
