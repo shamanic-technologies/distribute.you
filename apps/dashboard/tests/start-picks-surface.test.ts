@@ -140,7 +140,8 @@ describe("the signed-out onboarding wears the landing's charter", () => {
     expect(SHELL).toContain("data-landing-brand-eyebrow={brand.host}");
     expect(SHELL).toContain("Setting this up for");
     // Absent brand: the offer pill, never a guessed host.
-    expect(SHELL).toContain("First $30 free");
+    expect(SHELL).toContain("3-day free trial");
+    expect(SHELL).not.toContain("$30");
   });
 
   it("wears the landing: display face, hero glow, logo, trust strip off a floored count", () => {

@@ -37,7 +37,8 @@ describe("Beta onboarding guided flow", () => {
     for (const copy of [
       "revenue in 24h",
       "We run it for you",
-      "You set the daily budget",
+      "Every dollar goes to outreach",
+      "From $99/month.",
       "You see the real cost",
     ]) {
       expect(picks).toContain(copy);

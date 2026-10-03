@@ -412,7 +412,7 @@ export default function SignUpPage() {
                   {claimedCopy.tail}
                 </>
               ) : (
-                "First $30 free, no commitment."
+                "3-day free trial, then from $99 a month. Cancel anytime."
               )}
             </p>
           </div>
