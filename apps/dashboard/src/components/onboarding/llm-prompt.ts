@@ -125,3 +125,27 @@ export function copyStepIntent(ctx: CopyContext): "rewrite" | "passthrough" {
   if (!ctx.selectionText.trim()) return "passthrough";
   return "rewrite";
 }
+
+/** One lever of the offer card as it reads on screen: its label, the one-line
+ *  hint under it, and the value in the field right now (a draft included). */
+export type OfferPromptLever = { label: string; tip: string; value: string };
+
+/** The offer page's "Copy all for LLM": every Hormozi lever at once, with what is
+ *  in each field now, so the reader gets one tighter version of the WHOLE offer
+ *  back instead of asking seven times. Same headings in and out, so each answer
+ *  pastes back under its own field. */
+export function buildOfferLLMPrompt(levers: OfferPromptLever[], domain: string): string {
+  const blocks = levers.flatMap((l) => [`## ${l.label}`, `(${l.tip})`, draftOr(l.value), ""]);
+  return joinPrompt([
+    businessLine(domain),
+    "",
+    "I'm setting up a cold-email campaign with a done-for-you agency. They write every email around my offer, framed with Alex Hormozi's value equation.",
+    "",
+    "Here is my offer as it stands, one part per heading:",
+    "",
+    ...blocks,
+    "Rewrite each part so it is specific, concrete, and believable for a cold email.",
+    "Use real details about my business. Keep each part to 1-3 short sentences; for lists, one item per line.",
+    "Keep the same headings in the same order, and return only the headings and the rewritten text.",
+  ]);
+}

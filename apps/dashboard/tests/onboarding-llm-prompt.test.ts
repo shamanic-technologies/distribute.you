@@ -3,6 +3,7 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import {
   buildAudienceLLMPrompt,
+  buildOfferLLMPrompt,
   buildServicesLLMPrompt,
   copyStepIntent,
 } from "../src/components/onboarding/llm-prompt";
@@ -279,5 +280,31 @@ describe("the step SHOWS that the field is part of the copy", () => {
     // onboarding-flow.test.ts bans /Copy.*key/i over this file (no API-key copy UI),
     // and `data-copy-value key={s}` matched it. React convention anyway.
     expect(ONBOARDING).toContain("<span key={s} data-copy-value");
+  });
+});
+
+describe("offer page: Copy all for LLM", () => {
+  it("carries every lever, its hint and the value on screen, in order", () => {
+    const out = buildOfferLLMPrompt(
+      [
+        { label: "Dream outcome", tip: "The result your customer wants most.", value: "More demos" },
+        { label: "Social proof", tip: "Other people who got results.", value: "Acme\nGlobex" },
+        { label: "Scarcity", tip: "Limited availability.", value: "  " },
+      ],
+      "acme.com",
+    );
+    expect(out).toContain("I run this business: acme.com");
+    expect(out).toContain("## Dream outcome\n(The result your customer wants most.)\nMore demos");
+    expect(out).toContain("## Social proof\n(Other people who got results.)\nAcme\nGlobex");
+    expect(out).toContain("## Scarcity\n(Limited availability.)\n(nothing yet)");
+    expect(out.indexOf("## Dream outcome")).toBeLessThan(out.indexOf("## Scarcity"));
+    expect(out).not.toMatch(/[\u2013\u2014]/);
+  });
+
+  it("is a button on the offer card, fed by the builder", () => {
+    const card = readFileSync(join(SRC, "components/settings/brand-offer-card.tsx"), "utf8");
+    expect(card).toContain('"Copy all for LLM"');
+    expect(card).toContain("buildOfferLLMPrompt(");
+    expect(card).toContain("onClick={copyAllForLLM}");
   });
 });
