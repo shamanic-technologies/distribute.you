@@ -31,6 +31,8 @@ export const SERVICE_IDENTITY = {
   /** The Google Ads offline-conversion feed (`dashboard/lib/ads-conversion-feed.ts`),
    *  read by a Google Ads Script that uploads gclid conversions daily. */
   adsConversionFeed: "system-ads-conversion-feed",
+  /** The morning staff Telegram listing active clients (`dashboard/lib/clients-telegram.ts`). */
+  clientsTelegram: "system-clients-telegram",
 } as const;
 
 /**
