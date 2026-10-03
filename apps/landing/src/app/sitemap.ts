@@ -8,6 +8,12 @@ import { bestForPaths } from "@/lib/best-for";
 // (e.g. CI build runners without a Neon binding) we skip article rows
 // instead of crashing the entire build — crawlers will rediscover them
 // after the next deploy that has DATABASE_URL set.
+//
+// Re-read hourly, like the blog pages (ISR): an article is published by a DB row written
+// AFTER its deploy, so a build-time-only sitemap never listed it until the next unrelated
+// deploy, and kept listing rows deleted since.
+export const revalidate = 3600;
+
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const baseUrl = PROD_URLS.landing;
 
