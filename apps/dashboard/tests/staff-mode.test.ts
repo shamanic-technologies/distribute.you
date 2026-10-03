@@ -98,3 +98,36 @@ describe("nothing below a mission reaches a customer", () => {
     }
   });
 });
+
+describe("Work, Crew and Missions are staff mode only (owner 2026-10-03: a simpler dashboard for customers)", () => {
+  const route = (p: string) => read(`app/(authed)/v2/orgs/[orgId]/brands/[brandId]/${p}/page.tsx`);
+
+  it("the pages sit behind StaffOnly, the mission detail page stays open (onboarding lands there)", () => {
+    for (const p of ["work", "work/runs/[runId]", "crew", "missions"]) expect(route(p)).toContain("<StaffOnly>");
+    expect(route("missions/[campaignId]")).not.toContain("StaffOnly");
+  });
+
+  it("the sidebar entries and its Crew / Missions groups need staff mode", () => {
+    const shell = read("components/v2/v2-shell.tsx");
+    const at = shell.indexOf("{staffMode && (\n            <>");
+    expect(at).toBeGreaterThan(-1);
+    const block = shell.slice(at, shell.indexOf("</>", at));
+    for (const s of ['"work"', '"crew"', '"missions"']) expect(block).toContain(`v2Href(orgId, brandId, ${s})`);
+    expect(shell).toContain("{staffMode && activeCrews.length > 0 && (");
+    expect(shell).toContain("{staffMode && activeMissions.length > 0 && (");
+  });
+
+  it("the G-keys and the palette skip them outside staff mode", () => {
+    const menus = read("components/v2/sidebar-menus.tsx");
+    for (const k of ['"work", label: "Work", key: "w", staff: true', '"crew", label: "Crew", key: "c", staff: true', '"missions", label: "Missions", key: "m", staff: true']) {
+      expect(menus).toContain(k);
+    }
+    expect(menus).toContain("if (g.staff && !staffMode) continue;");
+    expect(menus).toContain("(!g.staff || staffMode)");
+  });
+
+  it("Today and the bell send a customer's 'needs your call' to the Inbox, not Work", () => {
+    expect(read("components/v2/today-page.tsx")).toContain('const callHref = staffMode ? v2Href(orgId, brandId, "work") : `${v2Href(orgId, brandId, "people")}?tab=positive-replies`;');
+    expect(read("components/v2/ui.tsx")).toContain('href={staffMode ? v2Href(orgId, brandId, "work") : `${v2Href(orgId, brandId, "people")}?tab=positive-replies`}');
+  });
+});

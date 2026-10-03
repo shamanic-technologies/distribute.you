@@ -64,7 +64,7 @@ export function MissionPage() {
   if (settled && !mission) {
     return (
       <>
-        <TopBar crumbs={[{ label: "Missions", href: v2Href(orgId, brandId, "missions") }, { label: "Not found" }]} />
+        <TopBar crumbs={[{ label: "Missions", href: staffMode ? v2Href(orgId, brandId, "missions") : undefined }, { label: "Not found" }]} />
         <EmptyNote>This mission does not exist on this brand.</EmptyNote>
       </>
     );
@@ -86,7 +86,7 @@ export function MissionPage() {
   return (
     <>
       <TopBar
-        crumbs={[{ label: "Missions", href: v2Href(orgId, brandId, "missions") }, { label: name || " " }]}
+        crumbs={[{ label: "Missions", href: staffMode ? v2Href(orgId, brandId, "missions") : undefined }, { label: name || " " }]}
         actions={<StatBasisSwitch />}
       />
       <div className="mx-auto max-w-[1280px] px-4 pb-16 pt-6 md:px-6">

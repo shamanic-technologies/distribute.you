@@ -10,6 +10,7 @@ import { friendlyDate, timeAgo } from "@/lib/friendly-datetime";
 import { leadWentCold, wentColdReason, WENT_COLD_LABEL } from "@/lib/lead-cold";
 import { useSetAnyLeadStepStatement } from "@/lib/use-lead-step-statements";
 import { v2Href, v2RunHref } from "@/lib/v2/routes";
+import { useStaffMode } from "@/lib/use-staff-mode";
 import { LeadHistoryTimeline } from "@/components/audiences/lead-history-timeline";
 import { CrmAttributionCard } from "@/components/crm/crm-attribution-card";
 import { CloseWonForm } from "@/components/leads/close-won-form";
@@ -44,6 +45,8 @@ function standingState(lead: Lead): string | null {
  */
 export function PersonPage() {
   const { orgId, brandId, leadRowId } = useParams<{ orgId: string; brandId: string; leadRowId: string }>();
+  // A run opens the staff-only Work run page: a customer reads the step, with no link.
+  const { staffMode } = useStaffMode();
   const leadQ = useAuthQuery(["leadDetail", leadRowId, brandId], () => getLeadDetail(leadRowId, brandId), pollOptions);
   const historyQ = useAuthQuery(
     ["leadHistory", leadRowId, brandId, "campaign"],
@@ -135,7 +138,7 @@ export function PersonPage() {
                     history={historyQ.data}
                     heading="Conversation and activity"
                     showNextFollowup
-                    runHref={(runId) => `${v2RunHref(orgId, brandId, runId)}?person=${encodeURIComponent(leadRowId)}`}
+                    runHref={staffMode ? (runId) => `${v2RunHref(orgId, brandId, runId)}?person=${encodeURIComponent(leadRowId)}` : undefined}
                   />
                 ) : (
                   <div className="k-card p-4">

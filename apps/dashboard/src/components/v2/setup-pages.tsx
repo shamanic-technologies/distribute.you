@@ -348,7 +348,7 @@ export function V2MissionSettingsPage() {
   const showLevers = !isPending && !isError && isColdEmailChannel(data?.campaign.featureSlug);
   return (
     <V2Page
-      crumbs={[{ label: "Missions", href: v2Href(orgId, brandId, "missions") }, { label: name, href: v2MissionHref(orgId, brandId, campaignId) }, { label: "Settings" }]}
+      crumbs={[{ label: "Missions", href: staffMode ? v2Href(orgId, brandId, "missions") : undefined }, { label: name, href: v2MissionHref(orgId, brandId, campaignId) }, { label: "Settings" }]}
       title={mission ? <MissionTitle crewColor={mission.crew.color} glyph={mission.crew.glyph} name={name} running={mission.running} hold={mission.paymentHold} /> : name}
       tabs={missionTabs(orgId, brandId, campaignId, "settings", staffMode)}
     >
@@ -397,7 +397,7 @@ export function V2MissionAudiencesPage() {
   const offerId = mission?.offerId ?? null;
   return (
     <V2Page
-      crumbs={[{ label: "Missions", href: v2Href(orgId, brandId, "missions") }, { label: name, href: v2MissionHref(orgId, brandId, campaignId) }, { label: "Audiences" }]}
+      crumbs={[{ label: "Missions", href: staffMode ? v2Href(orgId, brandId, "missions") : undefined }, { label: name, href: v2MissionHref(orgId, brandId, campaignId) }, { label: "Audiences" }]}
       title={mission ? <MissionTitle crewColor={mission.crew.color} glyph={mission.crew.glyph} name={name} running={mission.running} hold={mission.paymentHold} /> : name}
       tabs={missionTabs(orgId, brandId, campaignId, "audiences", staffMode)}
       width="max-w-[1280px]"
@@ -422,7 +422,7 @@ export function V2MissionWorkflowsPage() {
   if (!campaignId) return null;
   return (
     <V2Page
-      crumbs={[{ label: "Missions", href: v2Href(orgId, brandId, "missions") }, { label: name, href: v2MissionHref(orgId, brandId, campaignId) }, { label: "Workflows" }]}
+      crumbs={[{ label: "Missions", href: staffMode ? v2Href(orgId, brandId, "missions") : undefined }, { label: name, href: v2MissionHref(orgId, brandId, campaignId) }, { label: "Workflows" }]}
       title={mission ? <MissionTitle crewColor={mission.crew.color} glyph={mission.crew.glyph} name={name} running={mission.running} hold={mission.paymentHold} /> : name}
       tabs={missionTabs(orgId, brandId, campaignId, "workflows", staffMode)}
       width="max-w-none"
