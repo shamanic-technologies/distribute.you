@@ -34,6 +34,7 @@ import {
   USER_PROFILE_FIELDS,
   configureAutoTopup,
   confirmAudienceSegments,
+  launchAudiencePortfolio,
   confirmBrandOffers,
   createBrandWithoutWebsite,
   createCampaignWithoutBrandEnrichment,
@@ -648,6 +649,9 @@ export function NewOrgModal({
           if (!(e instanceof ApiError && e.status === 409)) throw e;
           console.warn("[new-org] audiences already exist for this offer, reusing them:", e.message);
         }
+        // The segments just confirmed are adopted and activated, and the buying-signal
+        // audiences of the same target are added: the offer's whole portfolio, all active.
+        await launchAudiencePortfolio(id, chosenOffer, audienceText.trim());
         launched.current.audiences = true;
       }
       if (!launched.current.budget) {

@@ -501,6 +501,8 @@ export interface GetStartedSnapshot {
   lifetimeRevenueUsd?: number | null;
   /** Whether the offer points and the give lists were answered (and saved on the offer). */
   answered?: boolean;
+  /** Who the brand sells to (the ICP text the audiences were split from); the launch builds every audience from it. Absent on an older snapshot. */
+  icp?: string | null;
 }
 
 function parseOffer(v: unknown): GetStartedOffer | null {
@@ -551,6 +553,7 @@ export function parseGetStartedSnapshot(raw: string | null): GetStartedSnapshot 
     lifetimeRevenueUsd:
       typeof s.lifetimeRevenueUsd === "number" && Number.isInteger(s.lifetimeRevenueUsd) && s.lifetimeRevenueUsd > 0 ? s.lifetimeRevenueUsd : null,
     answered: s.answered === true,
+    icp: typeof s.icp === "string" && s.icp.trim() ? s.icp : null,
   };
 }
 

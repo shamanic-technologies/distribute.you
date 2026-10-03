@@ -341,6 +341,7 @@ export function GetStarted() {
     }
     if (s.lifetimeRevenueUsd != null) setValueInput(String(s.lifetimeRevenueUsd));
     setAnswered(!!s.answered);
+    if (s.icp) icpRef.current = s.icp;
     setStarted(true);
     ran.current = true;
     setStageIdx(s.audience ? stepIndex("audience") : s.offer ? stepIndex("offer") : 0);
@@ -401,6 +402,7 @@ export function GetStarted() {
     try {
       const { icp } = await suggestBrandIcp(id);
       icpRef.current = icp;
+      saveSnapshot({ icp });
       const { segments } = await proposeAudienceSegments(id, icp);
       setAudienceProposals(segments.slice(0, 6));
       setStep("audience", segments.length ? "choose" : "failed");
@@ -1399,6 +1401,7 @@ export function GetStarted() {
           brandName={brandName ?? domain ?? website}
           offer={offer}
           audience={audience}
+          targetAudience={icpRef.current}
           note={wallNote}
           email={(selectedKey ? emails[selectedKey] : undefined) ?? firstWritten(emails, audience.audienceId) ?? restoredEmail}
           floorUsd={planFloorUsd(plan, floorCents, floorUsd)}

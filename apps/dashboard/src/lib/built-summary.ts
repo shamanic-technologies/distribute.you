@@ -41,7 +41,7 @@ export interface BuiltInput {
   campaigns: BuiltCampaign[];
   /**
    * Who the customer sells to, in their own words. NOT a list of audiences:
-   * those are built by hand after payment, from exactly this text.
+   * those are built at launch, after payment, from exactly this text.
    */
   targetAudience?: string | null;
   levers: BuiltLever[];
