@@ -18,11 +18,14 @@ import { REFERRAL_CREDIT_USD } from "@/lib/invite-link";
 import { CrewMark } from "@/components/v2/crew-mark";
 import { OPEN_PALETTE_EVENT } from "@/components/v2/ui";
 import { NewOrgModal } from "@/components/v2/new-org-modal";
+import { V2NewOfferModal } from "@/components/v2/new-offer-modal";
+import { OfferMark } from "@/components/marks/offer-mark";
+import { useSelectedOfferIfAny } from "@/components/v2/selected-offer";
 import { useMissions } from "@/components/v2/use-missions";
-import { brandLeadScopeKey, useBrandRevenue, useBucketCounts, useNeedsYourCall } from "@/components/v2/data";
+import { useLeadScope, useBrandRevenue, useBucketCounts, useNeedsYourCall } from "@/components/v2/data";
 import { CompanyMark, PersonAvatar, leadCompany, leadCompanyDomain, leadName, personHref } from "@/components/v2/people-bits";
 import { companyHref } from "@/components/v2/companies-page";
-import { v2Base, v2Href, type V2Section } from "@/lib/v2/routes";
+import { v2Base, v2Href, v2OfferHref, type V2Section } from "@/lib/v2/routes";
 import { useStaffMode } from "@/lib/use-staff-mode";
 
 /**
@@ -103,7 +106,11 @@ export function TenantSwitcherV2() {
   // One modal, two entries: a new org (from the org step) or a new brand in this org
   // (from the brand step). Unmounted on close, so a reopened one starts from zero.
   const [setupFor, setSetupFor] = useState<null | "org" | "brand">(null);
+  const [newOffer, setNewOffer] = useState(false);
   const name = t.displayBrand?.name || t.displayBrand?.domain || t.displayOrgName || "Brand";
+  // The ONE offer every brand page reads (owner 2026-10-03). Null on org pages.
+  const selected = useSelectedOfferIfAny();
+  const offerName = selected?.offer?.name ?? null;
   // Every org on the platform only in staff mode; with it off, a staff reader sees their
   // own memberships, exactly as a customer does.
   const { staffMode } = useStaffMode();
@@ -128,6 +135,9 @@ export function TenantSwitcherV2() {
           existingOrgId={setupFor === "brand" ? t.orgId : null}
         />
       )}
+      {newOffer && selected && t.orgId && (
+        <V2NewOfferModal brandId={selected.brandId} orgId={t.orgId} onClose={() => setNewOffer(false)} />
+      )}
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
@@ -142,7 +152,12 @@ export function TenantSwitcherV2() {
           className="shrink-0 rounded-[5px]"
           fallbackClassName="h-5 w-5 shrink-0"
         />
-        <span className="min-w-0 truncate text-[13px] font-semibold">{t.switchingOrgName ?? name}</span>
+        <span className="min-w-0 leading-4">
+          <span className="block truncate text-[13px] font-semibold">{t.switchingOrgName ?? name}</span>
+          {selected && !t.switchingOrgName && (
+            <span className="k-fg3 block truncate text-[12px]">{offerName ?? (selected.settled ? "No offer yet" : " ")}</span>
+          )}
+        </span>
         <Updown />
       </button>
       {open && (
@@ -183,6 +198,52 @@ export function TenantSwitcherV2() {
             <Plus />
             New brand
           </button>
+          {selected && (
+            <>
+              <div className="my-1 h-px bg-[var(--line-subtle)]" />
+              <MenuLabel>Offers</MenuLabel>
+              <div className="k-scroll max-h-48 overflow-y-auto">
+                {!selected.settled ? (
+                  <p className="k-fg3 px-2 py-1.5 text-[12px]">Loading…</p>
+                ) : (
+                  selected.offers.map((o) => (
+                    <button
+                      key={o.offerId}
+                      type="button"
+                      role="menuitem"
+                      aria-current={o.offerId === selected.offerId ? "true" : undefined}
+                      className={`${itemCls} ${o.offerId === selected.offerId ? currentCls : ""}`}
+                      onClick={() => {
+                        setOpen(false);
+                        selected.select(o.offerId);
+                        // On an offer's own page, follow the switch to the new offer's page.
+                        if (t.orgId && /\/offers\/[^/]+/.test(window.location.pathname)) {
+                          router.push(v2OfferHref(t.orgId, selected.brandId, o.offerId));
+                        }
+                      }}
+                    >
+                      <OfferMark size="sm" imageUrl={o.imageUrl} />
+                      <span className="truncate">{o.name || "Offer"}</span>
+                    </button>
+                  ))
+                )}
+              </div>
+              <div className="my-1 h-px bg-[var(--line-subtle)]" />
+              <button
+                type="button"
+                role="menuitem"
+                className={itemCls}
+                disabled={!t.orgId}
+                onClick={() => {
+                  setOpen(false);
+                  setNewOffer(true);
+                }}
+              >
+                <Plus />
+                New offer
+              </button>
+            </>
+          )}
           <div className="my-1 h-px bg-[var(--line-subtle)]" />
           <MenuLabel>Organizations</MenuLabel>
           {t.switchError && <p className="px-2 py-1 text-[12px] text-[var(--data-rose)]">{t.switchError}</p>}
@@ -416,7 +477,7 @@ export const GO_KEYS: { section: V2Section; label: string; key: string }[] = [
   { section: "missions", label: "Missions", key: "m" },
 ];
 const SETUP: { section: V2Section; label: string }[] = [
-  { section: "offers", label: "Offers" },
+  { section: "offers", label: "Offer" },
   { section: "targeting", label: "Targeting" },
   { section: "integrations", label: "Integrations" },
   { section: "settings", label: "Brand settings" },
@@ -462,10 +523,11 @@ export function CommandPalette({ orgId, brandId, open, onClose }: { orgId: strin
   const revenue = useBrandRevenue(brandId).data;
   const buckets = useBucketCounts(brandId).data;
   const call = useNeedsYourCall(brandId, 5).data?.leads ?? [];
+  const lead = useLeadScope(brandId);
   const peopleQ = useAuthQuery(
-    ["leadsPage", brandLeadScopeKey(brandId), "v2-palette", wire],
-    () => listLeadsPage({ brandId }, { view: "basic", sort: "activity", limit: "6", q: wire }, undefined, { includeCampaigns: false }),
-    { enabled: open && wire.length > 0 },
+    ["leadsPage", lead.key, "v2-palette", wire],
+    () => listLeadsPage(lead.scope, { view: "basic", sort: "activity", limit: "6", q: wire }, undefined, { includeCampaigns: false }),
+    { enabled: open && wire.length > 0 && lead.ready },
   );
 
   const items = useMemo<PaletteItem[]>(() => {

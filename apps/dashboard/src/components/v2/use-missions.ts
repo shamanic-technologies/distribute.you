@@ -18,6 +18,7 @@ import {
 import { OFFERED_CREWS, crewFor, crewTrigger, type CrewIdentity, type CrewTrigger } from "@/lib/v2/crews";
 import { v2MissionHref } from "@/lib/v2/routes";
 import { paymentHoldKind, type PaymentHoldKind } from "@/lib/payment-declined";
+import { useSelectedOffer } from "@/components/v2/selected-offer";
 
 export interface Mission {
   row: CampaignRow;
@@ -60,9 +61,18 @@ export interface CrewSummary {
  * costs a request v1 does not already make. The only thing added is naming: which
  * crew performs a mission is the campaign's own leg on its own channel, read off the
  * producer's leg catalogue, as v1 names a campaign.
+ *
+ * Narrowed to the SELECTED offer (owner 2026-10-03: the dashboard reads one offer), so
+ * every crew, run and budget filed through these missions is that offer's. `allOffers`
+ * is for the pages addressed by a mission or run id, which must resolve whatever offer
+ * it sells (the provider then selects that offer), and for an offer's own page.
  */
-export function useMissions(orgId: string, brandId: string) {
+export function useMissions(orgId: string, brandId: string, { allOffers = false }: { allOffers?: boolean } = {}) {
   const featureSlug = useSoleFeatureSlug();
+  const selected = useSelectedOffer();
+  const scopeOfferId = allOffers ? null : selected.offerId;
+  // Nothing to file until an offer is picked: never the whole brand under one offer.
+  const scopeReady = allOffers || selected.offerId !== null;
   const { rows, settled } = useCampaignRows(brandId, featureSlug, ALL_OFFERS);
   const channels = useAcquisitionChannels();
   const legCatalogue = useLegCatalogue();
@@ -83,6 +93,7 @@ export function useMissions(orgId: string, brandId: string) {
       rows.flatMap((row) => {
         const c = row.campaign;
         if (!c.offerId || !c.featureSlug) return [];
+        if (!scopeReady || (scopeOfferId && c.offerId !== scopeOfferId)) return [];
         const def = acquisitionChannelForFeatureSlug(c.featureSlug, channels);
         const leg = legFor(legCatalogue, c.legKey);
         const crew = crewFor(
@@ -104,7 +115,7 @@ export function useMissions(orgId: string, brandId: string) {
           },
         ];
       }),
-    [rows, channels, legCatalogue, offerNames, orgId, brandId],
+    [rows, channels, legCatalogue, offerNames, orgId, brandId, scopeReady, scopeOfferId],
   );
 
   // Every stored campaign row → its mission. A campaign as the customer knows it is
@@ -179,5 +190,5 @@ export function useMissions(orgId: string, brandId: string) {
     return [...byKey.values()].sort((a, b) => rank(a) - rank(b) || a.crew.name.localeCompare(b.crew.name));
   }, [missions, legCatalogue, channels]);
 
-  return { missions, crews, settled, missionByCampaignId };
+  return { missions, crews, settled: settled && (allOffers || selected.settled), missionByCampaignId };
 }

@@ -3,7 +3,7 @@
 import { useMemo, useState } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
-import { getContactedValue, getDealsValue, getLeadConsolidatedStatus, leadDateForStatus, listLeadsPage } from "@/lib/api";
+import { getOfferContactedValue, getOfferDealsValue, getLeadConsolidatedStatus, leadDateForStatus, listLeadsPage } from "@/lib/api";
 import { useAuthQuery } from "@/lib/use-auth-query";
 import { POLL_INTERVAL } from "@/lib/query-options";
 import { formatCount, formatUsdAdaptive } from "@/lib/format-number";
@@ -14,7 +14,8 @@ import { STANDINGS_BY_COLUMN, LEAD_BOARD_COLUMNS, LEAD_BOARD_PAGE_SIZE, type Lea
 import { boardColumnTotals, leadsColumnPageQuery } from "@/lib/leads-server-page";
 import { CrewMark } from "@/components/v2/crew-mark";
 import { useMissions, type Mission } from "@/components/v2/use-missions";
-import { brandLeadScopeKey, useBrandRevenue, useNeedsYourCall, useStandingCounts } from "@/components/v2/data";
+import { useSelectedOffer } from "@/components/v2/selected-offer";
+import { useLeadScope, useBrandRevenue, useNeedsYourCall, useStandingCounts } from "@/components/v2/data";
 import { EmptyNote, Shimmer, TopBar } from "@/components/v2/ui";
 import { CompanyMark, PersonAvatar, leadCompany, leadCompanyDomain, leadName, personHref } from "@/components/v2/people-bits";
 
@@ -64,9 +65,12 @@ export function DealsPage() {
   // What each column holds, priced by features-service (a separate figure, not in the
   // pipeline or the ROI). A column is one standing; its value and each card's value are
   // read, never summed here.
-  const dealsValue = useAuthQuery(["dealsValue", brandId], () => getDealsValue(brandId), {
+  // The selected offer's columns (no brand-wide figure, owner 2026-10-03). Not asked
+  // while the offer has no campaign: features-service 404s it, there is nothing to price.
+  const { offerId, campaignIds } = useSelectedOffer();
+  const dealsValue = useAuthQuery(["dealsValue", brandId, "offer", offerId], () => getOfferDealsValue(offerId!, brandId), {
     refetchInterval: POLL_INTERVAL,
-    enabled: !!brandId,
+    enabled: !!brandId && !!offerId && (campaignIds?.length ?? 0) > 0,
   });
   const servedFor = useMemo(() => {
     const byStanding = new Map((dealsValue.data?.columns ?? []).map((c) => [c.standing, c]));
@@ -187,13 +191,14 @@ function DealColumn({
   served: ServedColumnValue | null;
 }) {
   const [shown, setShown] = useState(LEAD_BOARD_PAGE_SIZE);
+  const lead = useLeadScope(brandId);
   const q = useAuthQuery(
-    ["leadsPage", brandLeadScopeKey(brandId), "v2-deals", column, shown],
+    ["leadsPage", lead.key, "v2-deals", column, shown],
     () =>
-      listLeadsPage({ brandId }, leadsColumnPageQuery({ column, search: "", shown }), undefined, {
+      listLeadsPage(lead.scope, leadsColumnPageQuery({ column, search: "", shown }), undefined, {
         includeCampaigns: false,
       }),
-    { refetchInterval: POLL_INTERVAL, enabled: total === null || total > 0 },
+    { refetchInterval: POLL_INTERVAL, enabled: lead.ready && (total === null || total > 0) },
   );
   const all = total === 0 ? [] : (q.data?.leads ?? null);
   // What the contacted, not-yet-engaged people are worth in expectation. features-service
@@ -201,10 +206,11 @@ function DealColumn({
   // shows it, joined to its cards by lead id.
   const valued = column === "contacted";
   const valueIds = valued && all ? all.map((l) => l.leadId).filter((id): id is string => !!id) : [];
+  const { offerId } = useSelectedOffer();
   const contactedValue = useAuthQuery(
-    ["contactedValue", brandId, valueIds.join(",")],
-    () => getContactedValue(brandId, valueIds),
-    { refetchInterval: POLL_INTERVAL, enabled: valued && total !== 0 && all !== null },
+    ["contactedValue", brandId, "offer", offerId, valueIds.join(",")],
+    () => getOfferContactedValue(offerId!, brandId, valueIds),
+    { refetchInterval: POLL_INTERVAL, enabled: valued && !!offerId && total !== 0 && all !== null },
   );
   const valueByLead = new Map((contactedValue.data?.leads ?? []).map((v) => [v.leadId, v.expectedValueUsd]));
   const columnValue = contactedValue.data?.totalExpectedValueUsd ?? null;

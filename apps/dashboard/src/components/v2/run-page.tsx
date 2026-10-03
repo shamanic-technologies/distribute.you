@@ -55,7 +55,7 @@ function cents(v: string | null | undefined): string {
 export function RunPage() {
   const { orgId, brandId, runId } = useParams<{ orgId: string; brandId: string; runId: string }>();
   const personRowId = useSearchParams().get("person");
-  const { missionByCampaignId } = useMissions(orgId, brandId);
+  const { missionByCampaignId } = useMissions(orgId, brandId, { allOffers: true });
   // The workflow, its version, model and template sit below the mission: staff mode only.
   const { staffMode } = useStaffMode();
 

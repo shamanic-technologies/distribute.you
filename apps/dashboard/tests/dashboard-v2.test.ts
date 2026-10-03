@@ -85,7 +85,8 @@ const V2_FILES = [
   "src/components/v2/crew-page.tsx",
   "src/components/v2/missions-page.tsx",
   "src/components/v2/missions-table.tsx",
-  "src/components/v2/offers-list.tsx",
+  "src/components/v2/archived-offers.tsx",
+  "src/components/v2/selected-offer.tsx",
   "src/components/v2/new-offer-modal.tsx",
   "src/components/v2/mission-page.tsx",
   "src/components/v2/people-page.tsx",
@@ -177,11 +178,12 @@ describe("v2 wiring", () => {
     }
   });
 
-  it("reads v1's own query keys, so v2 and v1 share one cache", () => {
+  it("keeps v1's key prefixes with the selected offer appended, so a brand invalidation still reaches them", () => {
     const data = read("src/components/v2/data.ts");
-    expect(data).toContain('["brandRevenue", brandId]');
-    expect(data).toContain('["leadBucketCounts", brandLeadScopeKey(brandId), ""]');
-    expect(data).toContain('["leadStandingCounts", brandLeadScopeKey(brandId), ""]');
+    expect(data).toContain('["brandRevenue", brandId, "offer", offerId]');
+    expect(data).toContain('["leadBucketCounts", lead.key, ""]');
+    expect(data).toContain('["leadStandingCounts", lead.key, ""]');
+    expect(data).toContain("key: brandLeadScopeKey(brandId, offerId)");
     expect(read("src/components/v2/use-missions.ts")).toContain("useCampaignRows(brandId, featureSlug, ALL_OFFERS)");
     expect(read("src/components/v2/mission-hold.tsx")).toContain('["campaignHold", campaignId]');
   });
@@ -221,7 +223,7 @@ describe("v2 wiring", () => {
     expect(runs).toContain("getBrandRunsByCampaign(brandId, { startedAfter: start })");
     expect(runs).toContain("missionByCampaignId.get(g.campaignId)?.crew.key");
     expect(read("src/components/v2/crew-page.tsx")).toContain("useCrewRuns(brandId, missionByCampaignId)");
-    expect(read("src/components/v2/work-page.tsx")).toContain("useRunsTodayList(brandId, 200)");
+    expect(read("src/components/v2/work-page.tsx")).toContain("useRunsTodayList(brandId, campaignIds, 200)");
   });
 
   it("every company row opens its own record page", () => {
@@ -277,8 +279,8 @@ describe("v2 Deals states who we contacted", () => {
 describe("v2 Deals prices the contacted column off features-service", () => {
   const src = read("src/components/v2/deals-page.tsx");
   it("reads the served contacted value and computes none of it", () => {
-    expect(src).toContain("getContactedValue(brandId, valueIds)");
-    expect(src).toContain('["contactedValue", brandId, valueIds.join(",")]');
+    expect(src).toContain("getOfferContactedValue(offerId!, brandId, valueIds)");
+    expect(src).toContain('["contactedValue", brandId, "offer", offerId, valueIds.join(",")]');
     expect(src).toContain("contactedValue.data?.totalExpectedValueUsd");
     expect(src).not.toMatch(/expectedValueUsd\s*\*/);
     expect(src).not.toMatch(/\.reduce\(/);
@@ -340,7 +342,7 @@ describe("Keel parity, second pass", () => {
 
   it("Deals column and card values are features-service's deals-value, read, never summed", () => {
     const deals = read(V2 + "deals-page.tsx");
-    expect(deals).toContain('["dealsValue", brandId]');
+    expect(deals).toContain('["dealsValue", brandId, "offer", offerId], () => getOfferDealsValue(offerId!, brandId)');
     expect(deals).toContain("served.byLead.get(lead.leadId)");
     expect(deals).not.toContain("valueByDomain");
     expect(deals).not.toMatch(/reduce\(/);

@@ -13,7 +13,7 @@ import { leadsSearchParam } from "@/lib/leads-server-page";
 import { v2Href } from "@/lib/v2/routes";
 import { CrewMark } from "@/components/v2/crew-mark";
 import { useMissions, type Mission } from "@/components/v2/use-missions";
-import { brandLeadScopeKey, useBrandRevenue } from "@/components/v2/data";
+import { useLeadScope, useBrandRevenue } from "@/components/v2/data";
 import { CompanyMark, PersonAvatar, leadName, leadTitle, personHref } from "@/components/v2/people-bits";
 import { EmptyNote, SectionTitle, Shimmer, TopBar } from "@/components/v2/ui";
 import { HIDDEN_TAGS, TAG_LABEL, companyHref, companyKey, companyStage } from "@/components/v2/companies-page";
@@ -56,10 +56,11 @@ export function CompanyPage() {
   const org = index >= 0 ? sorted[index] : null;
   const name = org?.orgName ?? org?.orgDomain ?? key;
   const q = org?.orgName ? leadsSearchParam(org.orgName) ?? "" : "";
+  const lead = useLeadScope(brandId);
   const peopleQ = useAuthQuery(
-    ["leadsPage", brandLeadScopeKey(brandId), "v2-company", q],
-    () => listLeadsPage({ brandId }, { view: "basic", sort: "activity", limit: "50", q }, undefined, { includeCampaigns: false }),
-    { enabled: !!q, refetchInterval: POLL_INTERVAL },
+    ["leadsPage", lead.key, "v2-company", q],
+    () => listLeadsPage(lead.scope, { view: "basic", sort: "activity", limit: "50", q }, undefined, { includeCampaigns: false }),
+    { enabled: !!q && lead.ready, refetchInterval: POLL_INTERVAL },
   );
   // lead-service searches names and companies; keep the people who work HERE.
   const people = useMemo(

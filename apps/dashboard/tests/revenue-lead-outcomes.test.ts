@@ -247,9 +247,10 @@ describe("no browser surface reads the full lead array", () => {
   it("routes every dashboard revenue reader through the leadless parse", () => {
     const api = read("src/lib/api.ts");
     expect(api).not.toContain("parseRevenueWithLeads");
-    // Two: the brand grain of the money read, plus the per-workflow drill-down, which
-    // is the SAME body narrowed and therefore goes through the same parse.
-    expect((api.match(/parseFeatureRevenue\(/g) ?? []).length).toBe(2);
+    // Three: the brand grain of the money read, the offer grain v2 reads (the same
+    // engine and body narrowed to one offer), plus the per-workflow drill-down, which is
+    // the SAME body narrowed and therefore goes through the same parse.
+    expect((api.match(/parseFeatureRevenue\(/g) ?? []).length).toBe(3);
   });
 
   it("keeps the full array to the digest, which runs server-side", () => {

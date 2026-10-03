@@ -20,7 +20,9 @@ import { formatBillingCentsWhole } from "@/lib/format-number";
 import { REFERRAL_CREDIT_USD, inviteLinkForCode } from "@/lib/invite-link";
 import { promiseProgressSentence, promiseProgressWidth, promiseUnlockLine } from "@/lib/free-credit-promise-view";
 import { v2Base, v2Href, v2MissionHref, v2OfferHref } from "@/lib/v2/routes";
-import { V2OffersList } from "@/components/v2/offers-list";
+import { ArchivedOffers } from "@/components/v2/archived-offers";
+import { V2NewOfferModal } from "@/components/v2/new-offer-modal";
+import { useSelectedOffer } from "@/components/v2/selected-offer";
 import { OfferIdentityCard } from "@/components/settings/offer-identity-card";
 import { OfferArchiveCard } from "@/components/settings/offer-archive-card";
 import { OfferLifetimeRevenue } from "@/components/settings/offer-campaigns-card";
@@ -127,8 +129,38 @@ export function V2Page({
 
 // ─── Offers ─────────────────────────────────────────────────────────────────
 
+/**
+ * There is no list of offers (owner 2026-10-03): the dashboard is about ONE offer, picked
+ * in the sidebar's switcher. `/offers` (old links, the `?new=1` entry) opens the selected
+ * offer's page, or says there is none yet with the way to make one.
+ */
 export function V2OffersPage() {
-  return <V2OffersList />;
+  return <SelectedOfferRedirect title="Offer" />;
+}
+
+function SelectedOfferRedirect({ title, tab }: { title: string; tab?: "targeting" }) {
+  const { orgId, brandId } = useIds();
+  const router = useRouter();
+  const { offerId, settled } = useSelectedOffer();
+  const [creating, setCreating] = useState(false);
+  useEffect(() => {
+    if (offerId) router.replace(v2OfferHref(orgId, brandId, offerId, tab));
+  }, [offerId, orgId, brandId, tab, router]);
+  return (
+    <V2Page crumbs={[{ label: title }]} title={title}>
+      {!settled || offerId ? (
+        <Shimmer className="h-10 w-full" />
+      ) : (
+        <div className="k-card flex items-center justify-between gap-3 p-4">
+          <p className="k-fg2 text-[13px]">This brand has no offer yet.</p>
+          <button type="button" className="k-btn-accent" onClick={() => setCreating(true)}>
+            New offer
+          </button>
+        </div>
+      )}
+      {creating && <V2NewOfferModal brandId={brandId} orgId={orgId} onClose={() => setCreating(false)} />}
+    </V2Page>
+  );
 }
 
 export function useOfferName(brandId: string, offerId: string | null) {
@@ -171,13 +203,13 @@ export function V2OfferPage() {
   const { orgId, brandId, offerId } = useIds();
   const name = useOfferName(brandId, offerId);
   const isBeta = useIsBetaUser();
-  const { missions, crews, settled } = useMissions(orgId, brandId);
+  const { missions, crews, settled } = useMissions(orgId, brandId, { allOffers: true });
   const [adding, setAdding] = useState(false);
   if (!offerId) return null;
   const mine = missions.filter((m) => m.offerId === offerId);
   return (
     <V2Page
-      crumbs={[{ label: "Offers", href: v2Href(orgId, brandId, "offers") }, { label: name ?? " " }]}
+      crumbs={[{ label: name ?? " " }]}
       title={name ?? " "}
       tabs={offerTabs(orgId, brandId, offerId, "settings", isBeta)}
       width="max-w-[1280px]"
@@ -188,6 +220,7 @@ export function V2OfferPage() {
           <OfferLifetimeRevenue brandId={brandId} offerId={offerId} />
           <BrandOfferCard brandId={brandId} offerId={offerId} />
           <OfferArchiveCard brandId={brandId} offerId={offerId} />
+          <ArchivedOffers brandId={brandId} />
         </div>
         <aside className="min-w-0">
           <div className="k-card p-4">
@@ -251,7 +284,7 @@ export function V2TargetingPage() {
   if (!offerId) return null;
   return (
     <V2Page
-      crumbs={[{ label: "Offers", href: v2Href(orgId, brandId, "offers") }, { label: name ?? " ", href: v2OfferHref(orgId, brandId, offerId) }, { label: "Targeting" }]}
+      crumbs={[{ label: name ?? " ", href: v2OfferHref(orgId, brandId, offerId) }, { label: "Targeting" }]}
       title={name ?? " "}
       tabs={offerTabs(orgId, brandId, offerId, "targeting", isBeta)}
       width="max-w-[1280px]"
@@ -261,44 +294,16 @@ export function V2TargetingPage() {
   );
 }
 
-/**
- * Targeting from the sidebar: it belongs to an offer, so with one offer it IS that
- * offer's Targeting, and with several the reader picks the offer first.
- */
+/** Targeting from the sidebar or an old link: the selected offer's Targeting. */
 export function V2TargetingIndexPage() {
-  const { orgId, brandId } = useIds();
-  const router = useRouter();
-  const q = useAuthQuery(["brandOffers", brandId], () => listBrandOffers(brandId), { enabled: !!brandId });
-  const offers = q.data?.offers ?? null;
-  const sole = offers && offers.length === 1 ? offers[0].offerId : null;
-  useEffect(() => {
-    if (sole) router.replace(v2OfferHref(orgId, brandId, sole, "targeting"));
-  }, [sole, orgId, brandId, router]);
-  return (
-    <V2Page crumbs={[{ label: "Setup" }, { label: "Targeting" }]} title="Targeting" sub="Who each offer is sold to. Pick an offer.">
-      <div className="k-card divide-y divide-[var(--line-subtle)]">
-        {offers === null ? (
-          <div className="p-4">{q.isError ? <p className="k-fg3 text-[13px]">We could not read your offers.</p> : <Shimmer className="h-10 w-full" />}</div>
-        ) : offers.length === 0 ? (
-          <EmptyNote>No offer yet.</EmptyNote>
-        ) : (
-          offers.map((o) => (
-            <Link key={o.offerId} href={v2OfferHref(orgId, brandId, o.offerId, "targeting")} className="k-hover flex items-center justify-between px-4 py-3 text-[13px]">
-              <span className="font-medium">{o.name ?? "Offer"}</span>
-              <span className="k-fg3">Targeting →</span>
-            </Link>
-          ))
-        )}
-      </div>
-    </V2Page>
-  );
+  return <SelectedOfferRedirect title="Targeting" tab="targeting" />;
 }
 
 // ─── Mission settings and workflows ─────────────────────────────────────────
 
 function useMissionCrumbs() {
   const { orgId, brandId, campaignId } = useIds();
-  const { missionByCampaignId, settled } = useMissions(orgId, brandId);
+  const { missionByCampaignId, settled } = useMissions(orgId, brandId, { allOffers: true });
   const mission = campaignId ? missionByCampaignId.get(campaignId) ?? null : null;
   const name = mission ? `${mission.crew.name} · ${mission.offerName ?? "Offer"}` : " ";
   return { orgId, brandId, campaignId, mission, settled, name };

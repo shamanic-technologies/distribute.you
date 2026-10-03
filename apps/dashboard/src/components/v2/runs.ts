@@ -81,13 +81,19 @@ export function missionCampaignIds(
   return [...live, ...[...missionByCampaignId.keys()].filter((id) => !seen.has(id))];
 }
 
-/** Today's runs themselves, newest first, bounded. `complete` is false when the cap cut it. */
-export function useRunsTodayList(brandId: string, limit = 200) {
+/**
+ * Today's runs themselves, newest first, bounded. `complete` is false when the cap cut it.
+ * Narrowed server-side to the selected offer's campaigns (`campaignIds`, null while they
+ * resolve; empty = the offer has no campaign, so there is nothing to ask for).
+ */
+export function useRunsTodayList(brandId: string, campaignIds: string[] | null, limit = 200) {
   const start = localDayStart(0);
+  const ids = campaignIds ? campaignIds.slice(0, MAX_RUN_CAMPAIGN_IDS) : null;
+  const key = ids ? [...ids].sort().join(",") : null;
   const q = useAuthQuery(
-    ["v2RecentRuns", brandId, limit, start],
-    () => listBrandRunLedger(brandId, { limit, startedAfter: start }),
-    { enabled: !!brandId, refetchInterval: POLL_INTERVAL },
+    ["v2RecentRuns", brandId, limit, start, key],
+    () => (ids && ids.length > 0 ? listBrandRunLedger(brandId, { limit, startedAfter: start, campaignIds: ids }) : Promise.resolve([])),
+    { enabled: !!brandId && ids !== null, refetchInterval: POLL_INTERVAL },
   );
   return { ...q, complete: q.data ? q.data.length < limit : false };
 }
