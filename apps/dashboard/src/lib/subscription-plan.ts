@@ -1,7 +1,7 @@
 /**
  * The subscription plan: $99/month, a 3-day free trial, card required (owner
- * 2026-10-01). Sold to the landing's `subscription` arm, which the visitor carries in
- * the `lp_variant` cookie (set on `.distribute.you` by the landing).
+ * 2026-10-01), the default offer since 2026-10-03. Every visitor is in it unless the
+ * `lp_variant` cookie (set on `.distribute.you` by the landing) names another variant.
  *
  * Owner's model, restated: the money paid IS the credit ($99 paid, $99 to spend; the
  * trial start grants $99 at our expense). Outbound runs at $50 a day from the start so
@@ -36,14 +36,22 @@ export const SUBSCRIPTION_OUTBOUND_DAILY_USD = 50;
 /** What reactive work may spend a day on top: +50% of the outbound. */
 export const SUBSCRIPTION_REACTIVE_DAILY_USD = SUBSCRIPTION_OUTBOUND_DAILY_USD / 2;
 
-/** True when the landing drew this visitor into the subscription arm. */
+/**
+ * True when this visitor is sold the subscription plan. The plan is the DEFAULT offer
+ * (owner 2026-10-03: "we stop talking about $1/day"), so a visitor with no
+ * `lp_variant` cookie (blog, compare page, direct link, another device) is in it.
+ * Only a cookie that explicitly names another variant (`control`, `instinct`,
+ * `assistant`, `concierge`, set by staff testing with `?variant=`) keeps pay-as-you-go.
+ */
 export function isSubscriptionArm(cookieHeader: string | null | undefined): boolean {
-  if (!cookieHeader) return false;
+  if (!cookieHeader) return true;
   for (const part of cookieHeader.split(";")) {
     const [k, ...rest] = part.trim().split("=");
-    if (k === "lp_variant") return decodeURIComponent(rest.join("=")) === SUBSCRIPTION_ARM;
+    if (k !== "lp_variant") continue;
+    const variant = decodeURIComponent(rest.join("=")).trim();
+    return variant === "" || variant === SUBSCRIPTION_ARM;
   }
-  return false;
+  return true;
 }
 
 /** The fields of a campaign pair this module reads. */

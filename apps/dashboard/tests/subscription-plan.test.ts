@@ -19,13 +19,21 @@ const BILLING = read("src/components/v2/billing-page.tsx");
 const API = read("src/lib/api.ts");
 
 describe("who is in the $99/month arm", () => {
-  it("reads the landing's lp_variant cookie, and nothing else", () => {
+  it("is everyone with no lp_variant cookie: the plan is the default offer", () => {
+    expect(isSubscriptionArm(null)).toBe(true);
+    expect(isSubscriptionArm(undefined)).toBe(true);
+    expect(isSubscriptionArm("")).toBe(true);
+    expect(isSubscriptionArm("a=1; b=2")).toBe(true);
+    expect(isSubscriptionArm("x_lp_variant=control")).toBe(true);
+    expect(isSubscriptionArm("lp_variant=")).toBe(true);
     expect(isSubscriptionArm("a=1; lp_variant=subscription; b=2")).toBe(true);
-    expect(isSubscriptionArm("lp_variant=control")).toBe(false);
-    expect(isSubscriptionArm("lp_variant=instinct")).toBe(false);
-    expect(isSubscriptionArm("x_lp_variant=subscription")).toBe(false);
-    expect(isSubscriptionArm("")).toBe(false);
-    expect(isSubscriptionArm(null)).toBe(false);
+  });
+
+  it("keeps pay-as-you-go only for a cookie that names another variant", () => {
+    for (const v of ["control", "instinct", "assistant", "concierge"]) {
+      expect(isSubscriptionArm(`lp_variant=${v}`)).toBe(false);
+      expect(isSubscriptionArm(`a=1; lp_variant=${v}; b=2`)).toBe(false);
+    }
   });
 });
 

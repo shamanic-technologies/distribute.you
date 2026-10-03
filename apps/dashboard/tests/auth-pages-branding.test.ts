@@ -51,10 +51,13 @@ describe("Auth pages branding", () => {
   });
 
   it("states the served landing's headline, offer and proof line", () => {
-    // Verbatim from apps/landing/public/landing/index-v2.html.
+    // Verbatim from the landing as the $99/month plan serves it (the default offer
+    // since 2026-10-03, swaps in apps/landing/src/lib/pages/subscription.ts).
     expect(panel).toContain("revenue in 24h");
-    expect(panel).toContain("From $1/day");
-    expect(panel).toContain("First $30 free, no commitment");
+    expect(panel).toContain("From $99/month");
+    expect(panel).toContain("3-day free trial, cancel anytime");
+    expect(panel).not.toContain("$1/day");
+    expect(panel).not.toContain("$30");
     expect(panel).toContain(
       "We A/B test the templates, the AI models and the audiences on every"
     );
