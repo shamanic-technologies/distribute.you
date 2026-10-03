@@ -93,7 +93,8 @@ describe("onboarding asks no budget of a subscriber", () => {
   it("the /get-started wall shows no budget row and no margin box on the plan", () => {
     const wall = read("src/components/v2/get-started/account-card-wall.tsx");
     expect(wall).toContain('{!subscription && <div className="k-inset rounded-lg p-3">{budgetRow}</div>}');
-    expect(wall).toContain("const [marginOk, setMarginOk] = useState(subscription);");
+    // No margin box anywhere since the one pot (owner 2026-10-03).
+    expect(wall).not.toContain("marginOk");
   });
 
   it("v1 /onboarding writes the plan's money and skips the budget step", () => {
