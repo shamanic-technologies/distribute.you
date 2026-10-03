@@ -9,17 +9,15 @@
  */
 
 import {
-  ApiError,
   USER_PROFILE_FIELDS,
   createCampaignWithoutBrandEnrichment,
-  listAudiences,
+  launchAudiencePortfolio,
   extractBrandFields,
   getWorkflowProjectionLadder,
   prefillFeatureInputs,
   saveCampaignBudget,
   saveOfferUserFields,
   setBrandSalesBudget,
-  setAudienceStatus,
   type UserFieldKey,
   type UserFieldValue,
 } from "@/lib/api";
@@ -38,8 +36,8 @@ export interface LaunchInput {
   website: string;
   /** The offer picked at step 3, already confirmed on the brand. */
   offer: { offerId: string; name: string };
-  /** The audience picked at step 4, already created under that offer. */
-  audienceId: string;
+  /** Who the customer sells to (the ICP text): every launched audience is derived from it. */
+  targetAudience: string;
   /** The ONE daily budget (whole dollars): billing's global budget, spent on the best path first. */
   budgetUsd: number;
   /** Every campaign the ranked paths need, the path launched first first (`launchPlan`). */
@@ -128,16 +126,15 @@ export async function launchFromPreview(input: LaunchInput, progress: LaunchProg
       });
 
   if (!progress.audiences) {
-    // The picked audience is the one launched. Another one picked earlier and left
-    // (each pick creates its audience) goes back to suggested: recoverable, not sent to.
-    const { audiences } = await listAudiences(input.brandId, { status: "active", offerId });
-    for (const a of audiences) if (a.id !== input.audienceId) await setAudienceStatus(a.id, "suggested");
-    try {
-      await setAudienceStatus(input.audienceId, "active");
-    } catch (e) {
-      // Already active (created active at the pick, or a retry) is what we wanted.
-      if (!(e instanceof ApiError && e.status === 409)) throw e;
+    // The customer validated WHO they sell to; we launch the whole portfolio built from
+    // it (the cold audiences confirmed during the preview, adopted, plus buying-signal
+    // audiences), all active. The audience picked in the preview only chose the sample.
+    const targetAudience = input.targetAudience.trim();
+    if (!targetAudience) {
+      console.error("[get-started] launch: no ICP text to build the audiences from", { brandId: input.brandId, offerId });
+      throw new Error("We lost who you sell to on the way. Refresh the page and try again.");
     }
+    await launchAudiencePortfolio(input.brandId, offerId, targetAudience);
     progress.audiences = true;
   }
 

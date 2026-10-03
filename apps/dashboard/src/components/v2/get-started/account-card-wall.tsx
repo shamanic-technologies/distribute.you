@@ -100,6 +100,7 @@ export function AccountCardWall({
   brandName,
   offer,
   audience,
+  targetAudience,
   note = null,
   email: writtenEmail,
   floorUsd,
@@ -118,6 +119,8 @@ export function AccountCardWall({
   offer: GetStartedOffer;
   /** The audience picked at step 4. */
   audience: GetStartedAudience;
+  /** Who the brand sells to (the ICP text): the launch builds every audience from it. */
+  targetAudience: string;
   /** Why the wall opened, when it was not the visitor's own click (the free emails ran out). */
   note?: string | null;
   /** The email the preview wrote, or null when none was written. */
@@ -544,7 +547,7 @@ export function AccountCardWall({
         if (postpaid) await configureAutoTopup(5000, 1000);
       }
       const campaignId = await launchFromPreview(
-        { brandId, website, offer, audienceId: audience.audienceId, budgetUsd, plan, answered },
+        { brandId, website, offer, targetAudience, budgetUsd, plan, answered },
         progress.current,
       );
       await defaultSalesRepToAccountEmail(brandId, user?.primaryEmailAddress?.emailAddress);

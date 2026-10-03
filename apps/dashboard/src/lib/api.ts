@@ -3448,6 +3448,75 @@ export async function confirmAudienceSegments(
   return parsed.data;
 }
 
+const PortfolioAudienceSchema = z
+  .object({
+    id: z.string(),
+    name: z.string(),
+    /** cold = a segment of the ICP split; signal = the whole ICP narrowed to one buying signal. Read as a string: the producer's vocabulary. */
+    kind: z.string(),
+    adopted: z.boolean(),
+  })
+  .passthrough();
+const PortfolioSignalOutcomeSchema = z
+  .object({
+    type: z.string(),
+    /** created | below_threshold | failed, the producer's words. */
+    outcome: z.string(),
+    companies: z.number().nullable(),
+    audienceId: z.string().nullable(),
+  })
+  .passthrough();
+const LaunchAudiencePortfolioResponseSchema = z.object({
+  portfolioId: z.string(),
+  replayed: z.boolean(),
+  audiences: z.array(PortfolioAudienceSchema),
+  signals: z.array(PortfolioSignalOutcomeSchema),
+});
+export type LaunchAudiencePortfolioResponse = z.infer<typeof LaunchAudiencePortfolioResponseSchema>;
+
+/**
+ * POST /orgs/audiences/portfolio: at the terminal launch, human-service turns the
+ * customer's ICP text into the brand + offer's ACTIVE audience portfolio: the cold
+ * split (the rows a pre-payment flow already confirmed are adopted, never copied)
+ * plus one buying-signal audience per signal that reaches enough companies. Every
+ * audience carries the same target, so the pre-pay screen filters them all alike.
+ * Idempotent per (brand, offer): a resumed launch replays the same set.
+ */
+export async function launchAudiencePortfolio(
+  brandId: string,
+  offerId: string,
+  targetAudience: string,
+  token?: string,
+): Promise<LaunchAudiencePortfolioResponse> {
+  const raw = await apiCall<unknown>(`/orgs/audiences/portfolio`, {
+    token,
+    method: "POST",
+    body: { brandId, offerId, targetAudience },
+  });
+  const parsed = LaunchAudiencePortfolioResponseSchema.safeParse(raw);
+  if (!parsed.success) {
+    console.error("[dashboard] launchAudiencePortfolio: response shape mismatch", { issues: parsed.error.issues, raw });
+    throw new Error("[dashboard] launchAudiencePortfolio: invalid response shape");
+  }
+  if (parsed.data.audiences.length === 0) {
+    console.error("[dashboard] launchAudiencePortfolio: no audience launched", { brandId, offerId, raw });
+    throw new Error("[dashboard] launchAudiencePortfolio: the portfolio holds no audience");
+  }
+  return parsed.data;
+}
+
+/** The ICP text the customer validated, saved on the brand as its `targetAudience` user-field. */
+export async function readBrandTargetAudience(brandId: string, token?: string): Promise<string> {
+  const { fields } = await getBrandUserFields(brandId, token);
+  const value = fields.targetAudience?.value;
+  const text = typeof value === "string" ? value.trim() : Array.isArray(value) ? value.join("\n").trim() : "";
+  if (!text) {
+    console.error("[dashboard] readBrandTargetAudience: the brand holds no targetAudience", { brandId });
+    throw new Error("We could not find who you sell to on this brand. Go back to that step and save it again.");
+  }
+  return text;
+}
+
 export interface AudienceWire {
   id: string;
   orgId: string;

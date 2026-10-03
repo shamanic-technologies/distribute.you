@@ -5,8 +5,8 @@ import { join } from "node:path";
 /**
  * The onboarding audience step is ONE box: who the customer sells to, in their
  * own words, saved on the brand as the `targetAudience` user-field. Nothing is
- * searched, suggested, picked or activated during onboarding any more; the
- * audiences are built by hand after payment, from that text.
+ * searched, suggested, picked or activated before payment; the launch turns
+ * that text into the audience portfolio (owner 2026-10-03).
  *
  * Owner-decided 2026-09-19: "On veut juste l'input de leur target audience,
  * mais pas lancer la recherche. Je ferai ca a la main une fois que la personne
@@ -69,7 +69,7 @@ describe("what it writes", () => {
   });
 });
 
-describe("nothing creates or activates an audience during onboarding", () => {
+describe("nothing creates or activates an audience before the launch", () => {
   it("imports neither the suggest nor the status write", () => {
     expect(flow).not.toContain("suggestAudiences");
     expect(flow).not.toContain("setAudienceStatus");

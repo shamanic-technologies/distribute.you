@@ -52,6 +52,8 @@ import {
   getBrandUserFields,
   saveBrandUserFields,
   saveBrandTargetAudience,
+  launchAudiencePortfolio,
+  readBrandTargetAudience,
   USER_FIELD_KEYS,
   type FieldProvenance,
   type UserFieldKey,
@@ -1096,7 +1098,7 @@ export function Onboarding() {
   // in the background, so the target-audience box opens already filled. Stashed in
   // state (not a ref) so a late-resolving prewarm still flows into the step as a prop.
   // NO audience is searched, suggested or created here: the customer states who
-  // they sell to in one box, and the audiences are built by hand once they have
+  // they sell to in one box, and the audiences are built from it at launch once they have
   // paid. `audienceCandidates` / `selectedAudienceIds` stay on the persisted shape
   // (removing a field is a version bump, which strands an in-flight checkout) and
   // are written EMPTY.
@@ -1555,7 +1557,7 @@ export function Onboarding() {
     // + manual "Suggest audiences".
     const audiencePrewarm = (async (): Promise<{ prompt: string; icpFailed: boolean }> => {
       // The ICP draft ONLY. No audience suggest runs during onboarding any more:
-      // the customer states who they sell to and the audiences are built by hand
+      // the customer states who they sell to and the audiences are built from it at launch
       // after payment, so a suggest here would be LLM spend on a result nobody
       // reads. An ICP that came back empty is the same situation as one that
       // threw: nothing brand-service drafted, so the step must not present its
@@ -2144,10 +2146,6 @@ export function Onboarding() {
     if (pending.profile && pending.services) {
       await saveBrandUserFields(pending.brandId, buildUserFieldsPayload(pending.profile, pending.services));
     }
-    // Activation happens ONLY here, at the TERMINAL launch commit — never at the
-    // NO audience is activated here. Onboarding collects the customer's own words
-    // for who they sell to (saved on the brand as `targetAudience`); the audiences
-    // themselves are built by hand after payment, so there is nothing to commit.
     // A card some countries only let us charge with each payment approved (India, RBI)
     // cannot top up by itself, and billing refuses to arm auto-reload on it. Refusing
     // here used to fail the whole launch for a customer who had done everything right,
@@ -2187,6 +2185,11 @@ export function Onboarding() {
         "We could not find this brand's offer, so there is nowhere to fund the campaign yet. Try again in a moment.",
       );
     }
+    // Audiences are activated ONLY here, at the terminal launch. The customer told us
+    // who they sell to (saved on the brand as `targetAudience`); human-service turns
+    // that text into the offer's active portfolio (cold split + buying-signal
+    // audiences, all screened against the same target). Idempotent on a resumed launch.
+    await launchAudiencePortfolio(pending.brandId, launchOfferId, await readBrandTargetAudience(pending.brandId));
     const launchCampaigns = await resolveLaunchCampaigns(pending);
     const funded = launchCampaigns.filter((c) => c.dailyBudgetUsd > 0);
     if (funded.length === 0) {
@@ -2366,7 +2369,7 @@ export function Onboarding() {
       throw new Error("Checkout state is missing. Go back to pricing and try again.");
     }
     // No audience gate: nothing is picked during onboarding any more (the
-    // audiences are built by hand after payment), so the blob carries an empty
+    // audiences are built from it at launch after payment), so the blob carries an empty
     // list under the field older readers still expect.
     const launchAudienceIds: string[] = [];
     // Live funding wins, the stored blob is the fallback, so a re-checkout after a
@@ -3606,7 +3609,7 @@ export function Onboarding() {
         channelName: pair.channelName,
       })),
       // The customer's own words for who they sell to. Not an audience list: the
-      // audiences are built by hand after payment, from exactly this text.
+      // audiences are built from it at launch after payment, from exactly this text.
       targetAudience: audiencePrompt,
       levers: POST_PAYMENT_OFFER_LEVERS.map((l) => ({
         key: l.key,
@@ -3957,8 +3960,8 @@ export function Onboarding() {
 }
 
 // The target audience, in the customer's own words. Nothing is searched or
-// created: the text is saved on the brand (`targetAudience`) and the audiences
-// are built by hand after payment. The audience suggest + pick that stood here
+// created here: the text is saved on the brand (`targetAudience`) and the launch
+// turns it into the audience portfolio after payment. The audience suggest + pick that stood here
 // was a ~35 s billed run whose result nobody read before paying.
 function OnboardingAudiences({
   chrome,
@@ -3997,7 +4000,7 @@ function OnboardingAudiences({
   // One string, two paths: the button writes it and Ctrl+C rewrites to it.
   const audienceLlmPrompt = buildAudienceLLMPrompt(prompt, services, hostname || brandDomain || "my business");
   // ONE box. The customer says who they sell to and nothing is searched: the
-  // audiences are built by hand after payment, from this text. The old step ran
+  // audiences are built from it at launch after payment, from this text. The old step ran
   // an audience suggest (LLM + a people search, ~35 s, billed) and asked the
   // customer to pick cards; it is gone with the picks and the activation.
   const [icpLoading, setIcpLoading] = useState(true);

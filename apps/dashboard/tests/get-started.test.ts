@@ -83,7 +83,7 @@ describe("the rules the page decides on", () => {
       email: null,
     };
     // The answers to steps 5 to 8 are absent on an older snapshot and read as not given.
-    expect(parseGetStartedSnapshot(JSON.stringify(snap))).toEqual({ ...snap, salesPath: null, pathsDone: false, lifetimeRevenueUsd: null, answered: false });
+    expect(parseGetStartedSnapshot(JSON.stringify(snap))).toEqual({ ...snap, salesPath: null, pathsDone: false, lifetimeRevenueUsd: null, answered: false, icp: null });
     expect(parseGetStartedSnapshot("{nope")).toBeNull();
     // A snapshot from before the offer and audience steps starts over.
     expect(parseGetStartedSnapshot(JSON.stringify({ ...snap, version: 1 }))).toBeNull();
@@ -286,7 +286,7 @@ describe("the surface", () => {
     expect(LAUNCH).toContain("export async function recommendedBudgetForPreview(");
     expect(LAUNCH).toContain("recommendedDailyBudgetUsd(newOrgLeg(legKey)");
     expect(WALL).toContain("recommendedBudgetForPreview(brandId, offer.offerId, floorUsd, pricingLeg)");
-    expect(WALL).toContain("{ brandId, website, offer, audienceId: audience.audienceId, budgetUsd, plan, answered }");
+    expect(WALL).toContain("{ brandId, website, offer, targetAudience, budgetUsd, plan, answered }");
     // No re-pick at launch: the offer is the one confirmed at step 3.
     expect(LAUNCH).not.toContain("proposeBrandOffers");
     // The six levers are read off the site for that offer and saved on it.
