@@ -7,7 +7,6 @@ import { useAuthQuery } from "@/lib/use-auth-query";
 import { getOfferSalesPath, getOfferSalesPaths, saveOfferSalesPath } from "@/lib/api";
 import { useLegCatalogue } from "@/lib/use-leg-catalogue";
 import { useAcquisitionChannels } from "@/lib/use-acquisition-channels";
-import { useIsBetaUser } from "@/lib/use-beta-user";
 import { v2OfferHref } from "@/lib/v2/routes";
 import { SALES_PATH_CHANNEL_SLUGS, type SalesPathSelection } from "@/lib/offer-sales-path";
 import { EmptyNote, Shimmer } from "@/components/v2/ui";
@@ -18,7 +17,7 @@ import { BrandSalesBudgetCard } from "@/components/v2/brand-sales-budget-card";
 import { useDailyBudgetHidden } from "@/lib/use-daily-budget-hidden";
 
 /**
- * How an offer sells (beta): the steps and legs the customer ticks, saved per offer
+ * How an offer sells: the steps and legs the customer ticks, saved per offer
  * in brand-service, over features-service's catalogue. Every tick is saved at once;
  * the page holds what was just ticked until brand-service answers, then shows its answer.
  */
@@ -26,19 +25,18 @@ export function V2OfferSalesPathPage() {
   const p = useParams<{ orgId: string; brandId: string; offerId: string }>();
   const { orgId, brandId, offerId } = p;
   const name = useOfferName(brandId, offerId);
-  const isBeta = useIsBetaUser();
   const budgetHidden = useDailyBudgetHidden();
   const catalogue = useLegCatalogue();
   const channels = useAcquisitionChannels();
   const qc = useQueryClient();
 
   const q = useAuthQuery(["offerSalesPath", brandId, offerId], () => getOfferSalesPath(brandId, offerId), {
-    enabled: isBeta && !!offerId,
+    enabled: !!offerId,
   });
   // The paths are features-service's answer over the SAVED selection, so they re-read
   // after every save (below) rather than on a poll.
   const paths = useAuthQuery(["offerSalesPaths", brandId, offerId], () => getOfferSalesPaths(brandId, offerId), {
-    enabled: isBeta && !!offerId,
+    enabled: !!offerId,
   });
   const [draft, setDraft] = useState<SalesPathSelection | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -72,7 +70,6 @@ export function V2OfferSalesPathPage() {
       });
   };
 
-  if (!isBeta) return null;
   const selection = draft ?? served;
   const settled = q.isFetchedAfterMount || q.data !== undefined;
 
@@ -84,7 +81,7 @@ export function V2OfferSalesPathPage() {
       ]}
       title={name ?? " "}
       sub="Tick the steps this offer sells through. The legs between them, and who works each one, follow."
-      tabs={offerTabs(orgId, brandId, offerId, "sales-path", isBeta)}
+      tabs={offerTabs(orgId, brandId, offerId, "sales-path")}
       width="max-w-[1280px]"
     >
       {error && <p className="mb-4 text-[13px] text-[var(--data-rose)]">{error}</p>}

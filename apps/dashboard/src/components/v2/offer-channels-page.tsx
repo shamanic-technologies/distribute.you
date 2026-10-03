@@ -17,7 +17,6 @@ import {
 } from "@/lib/api";
 import { useLegCatalogue } from "@/lib/use-leg-catalogue";
 import { useAcquisitionChannels } from "@/lib/use-acquisition-channels";
-import { useIsBetaUser } from "@/lib/use-beta-user";
 import { invalidateConversionRates } from "@/lib/write-invalidation";
 import { v2OfferHref } from "@/lib/v2/routes";
 import { SALES_PATH_CHANNEL_SLUGS } from "@/lib/offer-sales-path";
@@ -43,7 +42,7 @@ const GIVE_FIELDS = [
 ] as const;
 
 /**
- * An offer's channels (beta): per leg its sales path validated, the brand's conversion
+ * An offer's channels: per leg its sales path validated, the brand's conversion
  * rate on that leg, the channels that can work it and each channel's own settings.
  * Cold email's settings are the offer's two give lists, on the offer's user-fields
  * (what content-generation reads on every email). Everything saves on its own when the
@@ -53,23 +52,22 @@ const GIVE_FIELDS = [
 export function V2OfferChannelsPage() {
   const { orgId, brandId, offerId } = useParams<{ orgId: string; brandId: string; offerId: string }>();
   const name = useOfferName(brandId, offerId);
-  const isBeta = useIsBetaUser();
   const catalogue = useLegCatalogue();
   const channels = useAcquisitionChannels();
   const qc = useQueryClient();
 
   const path = useAuthQuery(["offerSalesPath", brandId, offerId], () => getOfferSalesPath(brandId, offerId), {
-    enabled: isBeta && !!offerId,
+    enabled: !!offerId,
   });
   const fields = useAuthQuery(["offerUserFields", brandId, offerId], () => getOfferUserFields(brandId, offerId), {
     ...pollOptions,
-    enabled: isBeta && !!brandId && !!offerId,
+    enabled: !!brandId && !!offerId,
   });
   // The EFFECTIVE rate per leg (features-service): measured, else what the brand stated,
   // else the fleet median, else a benchmark. Never re-derived here.
   const rates = useAuthQuery(["brandConversionRates", brandId], () => getBrandConversionRates(brandId), {
     ...pollOptions,
-    enabled: isBeta && !!brandId,
+    enabled: !!brandId,
   });
 
   const { sections, unknown } = useMemo(
@@ -87,8 +85,6 @@ export function V2OfferChannelsPage() {
     const f = fields.data?.fields;
     return GIVE_FIELDS.some((g) => f?.[g.key]?.provenance !== "confirmed" && giveListLines(f?.[g.key]?.value).length > 0);
   }, [fields.data]);
-
-  if (!isBeta) return null;
 
   /** One list changed: both keys go out (an omitted key is left as stored, an emptied one is []). */
   const saveList = async (key: keyof GiveLists, lines: string[]) => {
@@ -124,7 +120,7 @@ export function V2OfferChannelsPage() {
       ]}
       title={name ?? " "}
       sub="What each channel may and may not do, on every leg of this offer's sales path. Click a value to change it."
-      tabs={offerTabs(orgId, brandId, offerId, "channels", isBeta)}
+      tabs={offerTabs(orgId, brandId, offerId, "channels")}
       width="max-w-[1280px]"
     >
       {!pathSettled || catalogue.legs.size === 0 ? (

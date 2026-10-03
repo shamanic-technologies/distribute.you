@@ -89,13 +89,17 @@ describe("Channels tab wiring", () => {
   const tabs = read("src/components/v2/setup-pages.tsx");
   const page = read("src/components/v2/offer-channels-page.tsx");
 
-  it("rides the SAME beta gate as Sales path", () => {
-    const gate = tabs.indexOf("if (isBeta) {");
-    const close = tabs.indexOf("return tabs;", gate);
-    const block = tabs.slice(gate, close);
+  it("is GA beside Sales path: every signed-in user, no beta gate, no badge", () => {
+    const start = tabs.indexOf("export function offerTabs(");
+    const block = tabs.slice(start, tabs.indexOf("\n}\n", start));
     expect(block).toContain('label: "Sales path"');
     expect(block).toContain('label: "Channels"');
-    expect(page).toContain("if (!isBeta) return null;");
+    expect(block).not.toContain("isBeta");
+    expect(block).not.toContain("badge");
+    for (const src of [page, read("src/components/v2/offer-sales-path-page.tsx")]) {
+      expect(src).not.toContain("useIsBetaUser");
+      expect(src).not.toContain("isBeta");
+    }
   });
 
   it("reads the legs off the saved sales path and the give lists off the offer user-fields", () => {
