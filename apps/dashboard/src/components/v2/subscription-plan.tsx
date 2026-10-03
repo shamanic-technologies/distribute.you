@@ -17,7 +17,7 @@ import {
 import { useAuthQuery, useQueryClient } from "@/lib/use-auth-query";
 import { monthlyUsd, planAmountOptions } from "@/lib/subscription-plan";
 import { EmptyNote, Figure, Shimmer, StateDot } from "@/components/v2/ui";
-import { LOWEST_PLAN_CENTS, SUBSCRIPTION_LOSSES } from "@/lib/cancel-plan";
+import { SUBSCRIPTION_LOSSES } from "@/lib/cancel-plan";
 import { CancelPlanFlow } from "@/components/v2/cancel-plan-flow";
 
 export { SUBSCRIPTION_LOSSES };
@@ -69,11 +69,13 @@ export function SubscriptionPlan() {
   const [chargeOpen, setChargeOpen] = useState(false);
   const [picked, setPicked] = useState<number | null>(null);
 
-  async function run(kind: PlanWrite, write: () => Promise<SubscriptionRead>) {
+  async function run(kind: PlanWrite, write: () => Promise<SubscriptionRead>, opts: { keepFlowOpen?: boolean } = {}): Promise<boolean> {
+    let ok = false;
     setBusy(kind);
     setError(null);
     try {
       const next = await write();
+      ok = true;
       queryClient.setQueryData(["subscription"], next);
       setPicked(null);
       await queryClient
@@ -87,8 +89,10 @@ export function SubscriptionPlan() {
       setError(planRefusal(kind, code));
     }
     setBusy(null);
-    setLossOpen(false);
+    // The stay-for-less answer celebrates inside the flow, so a success keeps it open.
+    if (!(opts.keepFlowOpen && ok)) setLossOpen(false);
     setChargeOpen(false);
+    return ok;
   }
 
   if (!data && !isFetchedAfterMount) {
@@ -243,10 +247,15 @@ export function SubscriptionPlan() {
           monthlyAmountCents={sub.monthly_amount_cents}
           canChangeAmount={!locked}
           canPause={sub.can_pause === true}
+          trialing={startable}
           endsOn={shortDate(trialing ? sub.trial_end : sub.current_period_end)}
           pending={busy === "cancel" || busy === "amount" || busy === "pause" ? busy : null}
           onCancel={() => void run("cancel", () => cancelSubscription())}
-          onLowerPlan={() => void run("amount", () => changeSubscriptionAmount(LOWEST_PLAN_CENTS))}
+          onStay={(cents) =>
+            startable
+              ? run("amount", () => startSubscriptionNow(cents), { keepFlowOpen: true })
+              : run("amount", () => changeSubscriptionAmount(cents), { keepFlowOpen: true })
+          }
           onPause={(months) => void run("pause", () => pauseSubscription(months))}
           onKeep={() => setLossOpen(false)}
         />

@@ -28,8 +28,19 @@ export const CANCEL_REASONS = [
 ] as const;
 export type CancelReason = (typeof CANCEL_REASONS)[number]["id"];
 
-/** The smallest plan on billing's ladder. */
+/** The smallest plan on billing's ladder, and the stay-for-less form's prefill. */
 export const LOWEST_PLAN_CENTS = 9900;
+
+/** The least a customer may type to stay (owner 2026-10-03). */
+export const STAY_MIN_USD = 29;
+
+/** The typed amount in cents when it is whole dollars from $29, else null. */
+export function stayAmountCents(typed: string): number | null {
+  const t = typed.trim().replace(/^\$/, "");
+  if (!/^\d+$/.test(t)) return null;
+  const usd = Number(t);
+  return usd >= STAY_MIN_USD ? usd * 100 : null;
+}
 
 export type SaveOffer = "lower_plan" | "pause" | "talk";
 
@@ -38,18 +49,16 @@ export const PAUSE_MONTHS = [1, 2, 3] as const;
 export type PauseMonths = (typeof PAUSE_MONTHS)[number];
 
 /**
- * The offer that answers the reason. Price: a lower plan when the plan is above the
- * lowest rung and billing says the amount can move now, else a pause. A break: a pause.
- * A pause only when billing says the plan can pause. Everything else, and a skipped
- * reason, is a talk with Kevin.
+ * The offer that answers the reason. Price: stay for less (any amount from $29, owner
+ * 2026-10-03) when billing says the amount can move now (a trial counts: it starts
+ * paying at once), else a pause. A break: a pause. A pause only when billing says the
+ * plan can pause. Everything else, and a skipped reason, is a talk with Kevin.
  */
 export function saveOfferFor(
   reason: CancelReason | null,
   plan: { monthlyAmountCents: number; canChangeAmount: boolean; canPause: boolean },
 ): SaveOffer {
-  if (reason === "too_expensive" && plan.monthlyAmountCents > LOWEST_PLAN_CENTS && plan.canChangeAmount) {
-    return "lower_plan";
-  }
+  if (reason === "too_expensive" && plan.canChangeAmount) return "lower_plan";
   if ((reason === "too_expensive" || reason === "need_a_break") && plan.canPause) return "pause";
   return "talk";
 }

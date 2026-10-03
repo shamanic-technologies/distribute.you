@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import { useParams } from "next/navigation";
+import { ConfettiBurst } from "@/components/confetti-burst";
 import posthog from "posthog-js";
 import { useBucketCounts } from "@/components/v2/data";
 import { monthlyUsd } from "@/lib/subscription-plan";
@@ -10,6 +11,8 @@ import {
   CANCEL_REASONS,
   LOWEST_PLAN_CENTS,
   PAUSE_MONTHS,
+  STAY_MIN_USD,
+  stayAmountCents,
   nextCancelStep,
   saveOfferFor,
   talkHref,
@@ -67,21 +70,25 @@ export function CancelPlanFlow({
   monthlyAmountCents,
   canChangeAmount,
   canPause,
+  trialing,
   endsOn,
   pending,
   onCancel,
-  onLowerPlan,
+  onStay,
   onPause,
   onKeep,
 }: {
   monthlyAmountCents: number;
   canChangeAmount: boolean;
   canPause: boolean;
+  /** A trial starts paying the new amount today (card on file), not at the next charge. */
+  trialing: boolean;
   /** When sending stops if they cancel (end of the trial or of the paid month). */
   endsOn: string | null;
   pending: "cancel" | "amount" | "pause" | null;
   onCancel: () => void;
-  onLowerPlan: () => void;
+  /** Resolves true once billing took the amount: the flow then celebrates. */
+  onStay: (cents: number) => Promise<boolean>;
   onPause: (months: PauseMonths) => void;
   onKeep: () => void;
 }) {
@@ -90,6 +97,9 @@ export function CancelPlanFlow({
   const [step, setStep] = useState<CancelStep>("loss");
   const [reason, setReason] = useState<CancelReason | null>(null);
   const [months, setMonths] = useState<PauseMonths>(1);
+  const [typed, setTyped] = useState(String(LOWEST_PLAN_CENTS / 100));
+  const [stayedCents, setStayedCents] = useState<number | null>(null);
+  const stayCents = stayAmountCents(typed);
   const offer = saveOfferFor(reason, { monthlyAmountCents, canChangeAmount, canPause });
   const busy = pending !== null;
 
@@ -98,7 +108,7 @@ export function CancelPlanFlow({
 
   const keep = () => {
     if (busy) return;
-    track("kept");
+    if (stayedCents === null) track("kept");
     onKeep();
   };
 
@@ -109,6 +119,38 @@ export function CancelPlanFlow({
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   });
+
+  if (stayedCents !== null) {
+    if (typeof document === "undefined") return null;
+    return createPortal(
+      <div className="fixed inset-0 z-[60] flex items-start justify-center bg-[#10101247] px-3 pt-[10vh]" onMouseDown={keep}>
+        <ConfettiBurst />
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="v2-stayed-title"
+          className="k-popover flex w-full max-w-[500px] flex-col items-center overflow-hidden px-6 py-8 text-center"
+          onMouseDown={(e) => e.stopPropagation()}
+        >
+          <span className="text-[40px] leading-none" aria-hidden="true">
+            🎉
+          </span>
+          <p id="v2-stayed-title" className="mt-4 text-[20px] font-semibold leading-7">
+            You are staying. Thank you!
+          </p>
+          <p className="k-fg2 mt-1.5 text-[14px]">
+            {trialing
+              ? `Your plan is ${monthlyUsd(stayedCents)} a month, starting today. Your outreach keeps running.`
+              : `From your next charge, you pay ${monthlyUsd(stayedCents)} a month. Your outreach keeps running.`}
+          </p>
+          <button type="button" onClick={onKeep} className="k-btn-accent k-cta mt-6 w-full justify-center">
+            Back to my plan
+          </button>
+        </div>
+      </div>,
+      document.getElementById("v2-portal") ?? document.body,
+    );
+  }
 
   if (typeof document === "undefined") return null;
   const host = document.getElementById("v2-portal") ?? document.body;
@@ -208,21 +250,46 @@ export function CancelPlanFlow({
 
           {step === "offer" && offer === "lower_plan" && (
             <>
-              <p className="text-[15px] font-semibold leading-6">Stay for {monthlyUsd(LOWEST_PLAN_CENTS)} a month.</p>
+              <p className="text-[15px] font-semibold leading-6">Stay for less.</p>
               <p className="k-fg2 mt-0.5 text-[13px]">
-                Pay {monthlyUsd(LOWEST_PLAN_CENTS)} instead of {monthlyUsd(monthlyAmountCents)}. Your outreach keeps running.
+                {trialing ? "Pick what you want to pay. We start your plan today." : "Pick what you want to pay each month."}
               </p>
-              <button
-                type="button"
-                onClick={() => {
+              <form
+                className="mt-3"
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  if (stayCents === null || busy) return;
                   track("lowered");
-                  onLowerPlan();
+                  void onStay(stayCents).then((ok) => ok && setStayedCents(stayCents));
                 }}
-                disabled={busy}
-                className={`k-btn-accent k-cta mt-4 w-full justify-center ${pending === "amount" ? "cursor-wait" : ""}`}
               >
-                {pending === "amount" ? "Switching..." : `Switch to ${monthlyUsd(LOWEST_PLAN_CENTS)} a month`}
-              </button>
+                <label className="k-inset flex h-12 items-center gap-1 rounded-[10px] px-4">
+                  <span className="k-fg2 text-[18px]">$</span>
+                  <input
+                    aria-label="Monthly amount in dollars"
+                    inputMode="numeric"
+                    autoFocus
+                    value={typed}
+                    onChange={(e) => setTyped(e.target.value)}
+                    className="w-full bg-transparent text-[18px] font-medium tabular-nums outline-none"
+                  />
+                  <span className="k-fg3 shrink-0 text-[13px]">/ month</span>
+                </label>
+                <p className={`mt-1.5 text-[12px] ${stayCents === null ? "text-[var(--data-rose)]" : "k-fg3"}`}>
+                  Any amount from ${STAY_MIN_USD}.
+                </p>
+                <button
+                  type="submit"
+                  disabled={busy || stayCents === null}
+                  className={`k-btn-accent k-cta mt-3 w-full justify-center disabled:opacity-40 ${pending === "amount" ? "cursor-wait" : ""}`}
+                >
+                  {pending === "amount"
+                    ? "Saving..."
+                    : stayCents === null
+                      ? "Stay for less"
+                      : `Stay for ${monthlyUsd(stayCents)} a month`}
+                </button>
+              </form>
             </>
           )}
 
