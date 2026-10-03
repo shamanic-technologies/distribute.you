@@ -169,7 +169,8 @@ describe("the call sites", () => {
   });
 
   it("asks the reply margin as a required box, unticked by default, on the payment wall", () => {
-    expect(WALL).toContain("const [marginOk, setMarginOk] = useState(false);");
+    // Unticked for pay-as-you-go; a plan's budget is fixed, so there is nothing to tick.
+    expect(WALL).toContain("const [marginOk, setMarginOk] = useState(subscription);");
     expect(WALL).toContain("if (hasReplies && !marginOk) {");
     expect(WALL).toContain("up to +50% of my daily budget");
     expect(WALL).not.toContain("a day on each");

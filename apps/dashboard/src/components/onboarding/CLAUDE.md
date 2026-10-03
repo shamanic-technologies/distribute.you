@@ -40,6 +40,7 @@ Rules for the signup/onboarding flows. Fleet-generic lessons live in the global 
 - Every wizard step has Back except `loading`, `launching`, `celebrate`. `url` returns to Results, `services` to `url`, `phone` to `celebrate`. Guard `claimed-signup.test.ts`.
 
 ## The $99/month arm (`lp_variant=subscription`, owner 2026-10-01)
+**Owner 2026-10-03: a plan ($99+) is PER brand x offer and always runs $50/day (+$25 reply): not a choice, never shown, never editable, no "confirm your budget" step.** A new offer/brand/org created from the dashboard ends on a "choose your plan" step (no trial: the 3 days are for the first signup only).
 Since 2026-10-01 the landing sends this arm to `/get-started` (below); v1 keeps serving it for direct `/onboarding` links: `subscriptionArm` (cookie via `lib/subscription-plan.ts`, never for `?from=add`) locks the budget step to the plan ($50/day on the first entry leg, +50% ceiling on the first reactive leg), swaps the $30 screen for the 3-day trial, opens billing's hosted subscription checkout (same return URLs, no Ads `daily_budget`), and `runLaunchWork` settles with `getSubscription()` (flips the mode, lands the $99) instead of arming a top-up. Never declare Revolut for it (billing 409 `acquirer_not_supported`). Guards `tests/subscription-plan.test.ts`.
 
 ## `/get-started` (onboarding v2, Explee's order)

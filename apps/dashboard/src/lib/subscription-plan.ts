@@ -76,6 +76,23 @@ export function subscriptionBudgets(pairs: readonly PlanPair[]): Record<string, 
   return out;
 }
 
+/**
+ * The daily budget a subscriber's NEW mission is started at, in whole dollars, or null
+ * when the plan already funds a mission of the same kind on that offer.
+ *
+ * Same rule as `subscriptionBudgets`, one mission at a time: a plan runs ONE outbound
+ * mission at $50/day and ONE reactive mission at $25/day per offer (owner 2026-10-03:
+ * fixed, not a choice). A second mission of a funded kind would double the plan's spend.
+ */
+export function planMissionBudgetUsd(
+  pair: { fromKey: string | null },
+  fundedOnOffer: readonly { fromKey: string | null }[],
+): number | null {
+  const entry = pair.fromKey === null;
+  if (fundedOnOffer.some((p) => (p.fromKey === null) === entry)) return null;
+  return entry ? SUBSCRIPTION_OUTBOUND_DAILY_USD : SUBSCRIPTION_REACTIVE_DAILY_USD;
+}
+
 /** The monthly amount the visitor picked on the landing (`lp_plan`, cents), or $99. */
 export function pickedPlanCents(cookieHeader: string | null | undefined): number {
   if (cookieHeader) {
