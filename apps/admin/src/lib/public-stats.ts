@@ -273,6 +273,28 @@ async function posthogQuery(query: string): Promise<Array<Array<string | number 
   return posthogQueryResponseSchema.parse(data).results;
 }
 
+/**
+ * Humans only. A visitor is dropped when any of its pageviews carries one of these
+ * fingerprints (same rules as the daily-update brief, `03-web.sh`):
+ * - headless browser, i.e. an email link scanner: desktop OS with the viewport equal
+ *   to the screen in BOTH dimensions (a real window has browser chrome). Measured
+ *   2026-10-03: about half of all landing visitors, 61% of the last 30 days.
+ * - internal: Kevin's identities and @distribute.you accounts.
+ * PostHog already drops bots that announce themselves in their user agent.
+ */
+const HUMAN_VISITOR = `distinct_id NOT IN (
+        SELECT distinct_id FROM events
+        WHERE event = '$pageview'
+          AND (
+            (properties.$os IN ('Windows', 'Mac OS X', 'Linux', 'Chrome OS')
+              AND properties.$screen_width = properties.$viewport_width
+              AND properties.$screen_height = properties.$viewport_height)
+            OR person.properties.email IN ('kevin.lourd@gmail.com', 'kevin@pressbeat.io')
+            OR person.properties.email LIKE '%@distribute.you'
+            OR person.properties.email LIKE 'kevin.lourd+%'
+          )
+      )`;
+
 async function fetchLandingDaily(): Promise<Map<string, number>> {
   const rows = await posthogQuery(`
     SELECT
@@ -280,6 +302,7 @@ async function fetchLandingDaily(): Promise<Map<string, number>> {
       uniq(distinct_id) AS visitors
     FROM sessions
     WHERE \`$entry_hostname\` = 'distribute.you'
+      AND ${HUMAN_VISITOR}
     GROUP BY day
     ORDER BY day ASC
     LIMIT 500
@@ -293,6 +316,7 @@ async function fetchLandingUniqueVisitors(): Promise<number> {
       uniq(distinct_id) AS visitors
     FROM sessions
     WHERE \`$entry_hostname\` = 'distribute.you'
+      AND ${HUMAN_VISITOR}
   `);
   const row = rows[0];
   if (!row) throw new Error("[public-stats] landing unique visitors query returned no rows");
@@ -314,6 +338,7 @@ async function fetchVisitorFirstSeenMonths(): Promise<FirstSeenMonthRow[]> {
         formatDateTime(min(\`$start_timestamp\`), '%Y-%m') AS month
       FROM sessions
       WHERE \`$entry_hostname\` = 'distribute.you'
+      AND ${HUMAN_VISITOR}
       GROUP BY distinct_id
     )
     GROUP BY month
@@ -364,6 +389,7 @@ async function fetchFunnelWindowTotals(): Promise<FunnelWindowTotals> {
         uniqIf(distinct_id, \`$start_timestamp\` >= now() - INTERVAL 90 DAY) AS d90
       FROM sessions
       WHERE \`$entry_hostname\` = 'distribute.you'
+      AND ${HUMAN_VISITOR}
     `),
     posthogQuery(`
       SELECT
@@ -416,6 +442,7 @@ async function fetchTrafficSources(totalVisitors: number): Promise<TrafficSource
       uniq(distinct_id) AS visitors
     FROM sessions
     WHERE \`$entry_hostname\` = 'distribute.you'
+      AND ${HUMAN_VISITOR}
     GROUP BY source
     ORDER BY visitors DESC
     LIMIT 100

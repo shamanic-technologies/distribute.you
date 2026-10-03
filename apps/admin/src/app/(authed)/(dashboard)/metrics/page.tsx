@@ -124,24 +124,48 @@ function ViewTabs({ active }: { active: PublicAnalyticsView }) {
   );
 }
 
+/** Rows shown before "See all", so the card stays as tall as the chart beside it. */
+const VISIBLE_SOURCES = 8;
+
+function SourceRow({ source }: { source: TrafficSource }) {
+  return (
+    <div className="grid gap-3 py-3 sm:grid-cols-[1fr_7rem_7rem] sm:items-center">
+      <div className="min-w-0">
+        <p className="truncate text-sm font-medium text-gray-900">{source.source}</p>
+        <div className="mt-2 h-2 overflow-hidden rounded-full bg-gray-100">
+          <div className="h-full rounded-full bg-sky-500" style={{ width: `${source.sharePct}%` }} />
+        </div>
+      </div>
+      <p className="text-sm font-semibold text-gray-950 sm:text-right">{formatCount(source.visitors)}</p>
+      <p className="text-xs text-gray-500 sm:text-right">{formatPctAdaptive(source.sharePct)}</p>
+    </div>
+  );
+}
+
 function SourcesTable({ sources }: { sources: TrafficSource[] }) {
+  const visible = sources.slice(0, VISIBLE_SOURCES);
+  const hidden = sources.slice(VISIBLE_SOURCES);
   return (
     <div className="rounded-lg border border-gray-200 bg-white p-6">
       <h2 className="text-lg font-semibold text-gray-950">Visitor origins</h2>
       <div className="mt-4 divide-y divide-gray-100">
-        {sources.map((source) => (
-          <div key={source.source} className="grid gap-3 py-3 sm:grid-cols-[1fr_7rem_7rem] sm:items-center">
-            <div className="min-w-0">
-              <p className="truncate text-sm font-medium text-gray-900">{source.source}</p>
-              <div className="mt-2 h-2 overflow-hidden rounded-full bg-gray-100">
-                <div className="h-full rounded-full bg-sky-500" style={{ width: `${source.sharePct}%` }} />
-              </div>
-            </div>
-            <p className="text-sm font-semibold text-gray-950 sm:text-right">{formatCount(source.visitors)}</p>
-            <p className="text-xs text-gray-500 sm:text-right">{formatPctAdaptive(source.sharePct)}</p>
-          </div>
+        {visible.map((source) => (
+          <SourceRow key={source.source} source={source} />
         ))}
       </div>
+      {hidden.length > 0 && (
+        <details className="group mt-2">
+          <summary className="cursor-pointer list-none rounded-md py-2 text-sm font-medium text-sky-700 hover:text-sky-900 [&::-webkit-details-marker]:hidden">
+            <span className="group-open:hidden">See all {formatCount(sources.length)} origins</span>
+            <span className="hidden group-open:inline">Show top {VISIBLE_SOURCES} only</span>
+          </summary>
+          <div className="divide-y divide-gray-100 border-t border-gray-100">
+            {hidden.map((source) => (
+              <SourceRow key={source.source} source={source} />
+            ))}
+          </div>
+        </details>
+      )}
     </div>
   );
 }

@@ -77,6 +77,22 @@ describe("cross-org build-in-public metrics page", () => {
     expect(metricsPage).not.toContain("Pending");
   });
 
+  it("counts humans only: every visitor query drops headless scanners and internal accounts", () => {
+    const visitorQueries = publicStats.split("FROM sessions").length - 1;
+    expect(visitorQueries).toBe(5);
+    expect(publicStats.split("AND ${HUMAN_VISITOR}").length - 1).toBe(visitorQueries);
+    expect(publicStats).toContain("properties.$screen_width = properties.$viewport_width");
+    expect(publicStats).toContain("properties.$screen_height = properties.$viewport_height");
+    expect(publicStats).toContain("person.properties.email LIKE '%@distribute.you'");
+  });
+
+  it("caps Visitor origins at the top rows and folds the rest behind See all", () => {
+    expect(metricsPage).toContain("const VISIBLE_SOURCES = 8;");
+    expect(metricsPage).toContain("sources.slice(0, VISIBLE_SOURCES)");
+    expect(metricsPage).toContain("<details");
+    expect(metricsPage).toContain("See all {formatCount(sources.length)} origins");
+  });
+
   it("renders the three requested public analytics sub-pages", () => {
     expect(metricsPage).toContain("Unique visitors over time");
     expect(metricsPage).toContain("Visitor origins");
