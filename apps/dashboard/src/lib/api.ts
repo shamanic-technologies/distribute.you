@@ -3,6 +3,7 @@ import { parseBrandSalesBudget, type BrandSalesBudget } from "./brand-sales-budg
 import { browserHasAnonSession } from "./anon-session-cookie";
 import { offerArchiveRefusalSentence } from "./offer-archive";
 import { CrmAttributionSchema, type CrmAttribution } from "./crm-attribution";
+import { SendingScheduleResponseSchema, type SendingSchedule } from "./sending-schedule";
 import {
   PeopleListSchema,
   PersonTimelineSchema,
@@ -3195,6 +3196,31 @@ export async function getLeadCrmAttribution(
     throw new Error("[dashboard] getLeadCrmAttribution: invalid response shape");
   }
   return parsed.data;
+}
+
+/**
+ * WHEN we may email one lead (weekdays, local hours, their timezone), served by
+ * instantly-service from the same values its send path books against. `brand_id` rides the
+ * query: the gateway forwards it and sets `x-brand-id` from it.
+ */
+export async function getLeadSendingSchedule(
+  email: string,
+  brandId: string,
+  token?: string,
+): Promise<SendingSchedule> {
+  const raw = await apiCall<unknown>(
+    `/sending-schedule?email=${encodeURIComponent(email)}&brand_id=${encodeURIComponent(brandId)}`,
+    { token },
+  );
+  const parsed = SendingScheduleResponseSchema.safeParse(raw);
+  if (!parsed.success) {
+    console.error("[dashboard] getLeadSendingSchedule: response shape mismatch", {
+      issues: parsed.error.issues,
+      raw,
+    });
+    throw new Error("[dashboard] getLeadSendingSchedule: invalid response shape");
+  }
+  return parsed.data.schedule;
 }
 
 /**

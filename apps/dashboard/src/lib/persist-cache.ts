@@ -214,6 +214,9 @@ export const PERSISTABLE_QUERY_ROOTS = new Set([
   "v2RecentRuns",
   "leadHistory",
   "leadDetail",
+  // When we may email one lead (instantly-service): small and stable, so the person
+  // page paints it from disk.
+  "leadSendingSchedule",
   // Per-lead generated email content — the leads detail-panel fetch, click-gated, so
   // re-opening a lead paints its last-known email from disk.
   "leadEmail",
