@@ -28,6 +28,9 @@ export interface ResearchPoint {
   /** LEARNING under features-service's per-leg rule: fewer outcomes than the leg requires.
    *  Drawn at its rank, and marked. (The field keeps its historical name.) */
   thin: boolean;
+  /** On a month chart: the month the maturity cutoff falls inside, so only part of its people
+   *  count yet and the figure will move. Drawn dotted. */
+  partial?: boolean;
 }
 
 export interface ResearchChart {

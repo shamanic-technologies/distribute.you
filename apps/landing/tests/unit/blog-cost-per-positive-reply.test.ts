@@ -52,6 +52,22 @@ describe("the cold email cost per positive reply article", () => {
     for (const price of months.match(/\$\d+/g) ?? []) expect(values(charts[1])).toContain(price);
   });
 
+  it("draws no month after the cutoff's month, and that month dotted as in progress", () => {
+    const cutoffMonth = snap.cutoff.slice(5, 7);
+    const SHORT = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+    for (const series of [snap.reply.months, snap.reply.running]) {
+      const last = series.at(-1);
+      expect(SHORT.indexOf(last.label) + 1).toBe(Number(cutoffMonth));
+      expect(last.partial).toBe(snap.cutoff.slice(8, 10) !== "01");
+      expect(series.slice(0, -1).every((p: { partial: boolean }) => !p.partial)).toBe(true);
+    }
+    const charts = [...html.matchAll(/<figure>[\s\S]*?<\/figure>/g)].map((m) => m[0]);
+    for (const fig of charts) {
+      expect(fig.match(/stroke-dasharray/g) ?? []).toHaveLength(1);
+      expect(fig).toContain("A dotted bar is a month still in progress");
+    }
+  });
+
   it("keeps the counts in the notes", () => {
     const notes = prose.slice(prose.indexOf("Notes"), prose.indexOf("About distribute.you"));
     expect(notes).toContain(`${snap.reply.outcomes} from ${snap.reply.emails.toLocaleString("en-US")} cold emails`);
