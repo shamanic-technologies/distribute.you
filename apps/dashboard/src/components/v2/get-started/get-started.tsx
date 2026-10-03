@@ -76,7 +76,7 @@ import {
   previousStep,
   firstLaunchedPath,
   launchPlan,
-  parseDraftedSteps,
+  initialSalesSteps,
   planFloorUsd,
   salesStepsDraftField,
   answerLines,
@@ -305,11 +305,11 @@ export function GetStarted() {
 
   const offered = useMemo(() => offeredFromCatalogue(catalogue, SALES_PATH_CHANNEL_SLUGS), [catalogue]);
 
-  // The drafted steps tick the screen once both the draft and the catalogue are in,
-  // unless the visitor already ticked something.
+  // The drafted steps, plus the positive reply every offer gets, tick the screen once
+  // both the draft and the catalogue are in, unless the visitor already ticked something.
   useEffect(() => {
     if (selectionTouched.current || !draftedSteps.current || offered.legs.length === 0) return;
-    const keys = parseDraftedSteps(draftedSteps.current, offered.steps);
+    const keys = initialSalesSteps(draftedSteps.current, offered.steps);
     if (keys.length > 0) setSelection(selectionFromSteps(keys, offered.legs));
   }, [offered, drafted]);
 
@@ -500,6 +500,8 @@ export function GetStarted() {
       setDrafted("done");
     } catch (e) {
       console.error("[get-started] answer drafts failed:", e);
+      // No draft, but the positive reply is still ticked (it never came from the site).
+      draftedSteps.current = [];
       setDrafted("failed");
     }
   }

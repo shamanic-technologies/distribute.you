@@ -5,6 +5,7 @@ import {
   REPLY_MARGIN_SHARE,
   firstLaunchedPath,
   launchPlan,
+  initialSalesSteps,
   parseDraftedSteps,
   planFloorUsd,
   replyCeilingUsd,
@@ -55,13 +56,38 @@ const PATHS_FIXTURE: PlanPath[] = [
 ];
 
 describe("the steps are drafted off the site, from the catalogue only", () => {
-  it("asks for keys from the list it names", () => {
+  it("asks for keys from the list it names, never the positive reply (no site shows it)", () => {
     const f = salesStepsDraftField([
       { key: "conversation", label: "Positive reply" },
+      { key: "website_visit", label: "Website visit" },
       { key: "meeting_booked", label: "Meeting booked" },
     ]);
     expect(f.key).toBe("salesSteps");
-    expect(f.description).toContain("conversation (Positive reply), meeting_booked (Meeting booked)");
+    expect(f.description).toContain("website_visit (Website visit), meeting_booked (Meeting booked).");
+    expect(f.description).not.toContain("conversation (Positive reply)");
+  });
+
+  it("always opens with the positive reply ticked, whatever the draft said", () => {
+    const offered = ["conversation", "website_visit", "meeting_booked", "meeting_attended", "signup"];
+    // Legistai 2026-10-03: the site read drafted website-visit steps only.
+    expect(initialSalesSteps(["website_visit", "meeting_booked", "meeting_attended", "signup"], offered)).toEqual(offered);
+    // A failed or empty draft still ticks it.
+    expect(initialSalesSteps([], offered)).toEqual(["conversation"]);
+    expect(initialSalesSteps(null, offered)).toEqual(["conversation"]);
+    // Said by the model too: once, in catalogue order.
+    expect(initialSalesSteps("meeting_booked\nconversation", offered)).toEqual(["conversation", "meeting_booked"]);
+  });
+
+  it("the positive reply ticked beside a meeting ticks the reply-to-meeting leg", () => {
+    const legs: PathLeg[] = [
+      { legKey: "start_to_conversation", fromKey: null, toKey: "conversation" },
+      { legKey: "conversation_to_meeting_booked", fromKey: "conversation", toKey: "meeting_booked" },
+      { legKey: "start_to_website_visit", fromKey: null, toKey: "website_visit" },
+      { legKey: "website_visit_to_meeting_booked", fromKey: "website_visit", toKey: "meeting_booked" },
+    ];
+    const sel = selectionFromSteps(initialSalesSteps(["website_visit", "meeting_booked"], ["conversation", "website_visit", "meeting_booked"]), legs);
+    expect(sel.legs.has("start_to_conversation")).toBe(true);
+    expect(sel.legs.has("conversation_to_meeting_booked")).toBe(true);
   });
 
   it("keeps only offered steps, in catalogue order, however the model wrote them", () => {
