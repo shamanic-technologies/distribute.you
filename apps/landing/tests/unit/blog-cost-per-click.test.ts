@@ -71,12 +71,13 @@ describe("cost-per-click article: copy rules", () => {
     expect(html).not.toMatch(/Doc Dinners|Opsfolio|Shockwave/i);
   });
 
-  it("does not reveal the $400 offer and states the $30 one", () => {
+  it("does not reveal the $400 offer and states the 3-day trial", () => {
     // Scoped to the COPY: the folded appendix prices a bucket's spend, and a derived
     // figure that happens to read $400 is a number, never the retired welcome offer.
     const copy = prose.replace(/<table>[\s\S]*?<\/table>/g, "");
     expect(copy).not.toContain("$400");
-    expect(html).toContain("first 30 USD");
+    expect(html).toContain("The first 3 days are free.");
+    expect(copy).not.toMatch(/\$30|30 USD|\$1\/day/);
   });
 });
 
@@ -261,7 +262,7 @@ describe("cost-per-click article: dataset coherence", () => {
     expect(method).toContain("Emails with no link in the body are excluded from every price");
     // The price is what the client is charged, all in, and the method says so.
     expect(method).toMatch(/<strong>Pricing<\/strong>: every dollar here is what the client is charged, all in/);
-    expect(method).toContain("no subscription and no retainer");
+    expect(method).toContain("no seat and no retainer");
   });
 
   it("carries a schema.org Dataset with the study window", () => {

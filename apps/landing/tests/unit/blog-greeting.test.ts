@@ -103,7 +103,7 @@ describe("the cold email greeting article", () => {
     expect(html + meta.title + meta.excerpt).not.toContain("—");
     expect(prose).not.toMatch(/\bour cost\b|\bat cost\b|guarantee|meetings? booked/i);
     expect(prose).toContain("what it cost you");
-    expect(prose).toContain("From $1/day, first $30 free");
+    expect(prose).toContain("From $99 a month, 3-day free trial");
     expect(html).toContain('href="https://distribute.you"');
     expect(html).toContain('href="https://github.com/shamanic-technologies/distribute.you/tree/main/apps/landing/scripts/blog-data/greeting"');
     expect(meta.source).toBe("manual");

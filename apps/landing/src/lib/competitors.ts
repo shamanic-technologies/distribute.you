@@ -71,17 +71,17 @@ export type Competitor = {
  * homepage hero, so a compare page and the homepage cannot state two different fleets.
  */
 export const DISTRIBUTE_ROW = {
-  entryPrice: "From $1/day, first $30 free",
+  entryPrice: "From $99/month, 3-day free trial",
   pricingModel:
-    "You set a daily budget and are charged what the campaign spent. No seat, no retainer, no term.",
+    "A monthly plan from $99: every dollar becomes campaign credit, spent on your outreach. No seat, no setup fee, cancel anytime.",
   operatedBy: "Our agency runs it end to end",
   sendingDomains: "Domains and mailboxes we own and warm. Your domain never sends cold email.",
   leads: "We find and qualify the buyers from your website. Bring your own list as an extra audience if you like.",
   replies: "We read every reply and answer the interested ones until the meeting is booked.",
-  channels: "Cold email today, more channels as they prove out, all measured the same way.",
+  channels: "Cold email, every campaign A/B tested and measured.",
   costPerMeeting: "Yes. What a hot lead and a meeting cost you is on your dashboard, and the fleet's median cost per hot lead is published on this page.",
-  freeTier: "$30 of budget at signup, no card needed to see the plan.",
-  contract: "None. Pause in one click, the daily budget is a hard cap.",
+  freeTier: "3-day free trial: your campaign starts sending on day one, nothing charged before day 3.",
+  contract: "None. Cancel anytime; your monthly amount is a hard cap.",
 } as const;
 
 export const COMPETITORS: readonly Competitor[] = [
@@ -162,7 +162,7 @@ export const COMPETITORS: readonly Competitor[] = [
     ],
     whereWeWin: [
       "A person answers the interested replies and books the meeting; you are handed a conversation, not a lead to chase.",
-      "Pay for what was spent, from $1/day, rather than a flat $99 whether the month was busy or quiet.",
+      "The same $99 a month entry, but every dollar becomes campaign credit: the list, the emails and the sending are inside it.",
       "The cost of a positive reply is measured on your account and published across ours.",
     ],
     chooseThemIf: [
@@ -176,7 +176,7 @@ export const COMPETITORS: readonly Competitor[] = [
     faq: [
       { q: "Both are AI sales reps for founders. What is the difference?", a: "Gojiberry sells you an AI agent you configure and watch. distribute.you is an agency: we run the campaign, read the replies and book the meeting, and you see what each one cost." },
       { q: "Does distribute.you do LinkedIn?", a: "Not today. Cold email is the channel we run; new channels are added once we can measure them the same way." },
-      { q: "Which is cheaper?", a: "It depends on volume. Gojiberry is $99 a month flat. distribute.you starts at $1 a day and charges what the campaign spent, so a quiet month costs less and a busy one costs what it bought." },
+      { q: "Which is cheaper?", a: "Both start at $99 a month. Gojiberry sells the agent for that price. At distribute.you the $99 becomes campaign credit, and a bigger monthly amount reaches more leads." },
     ],
   },
   {
@@ -221,7 +221,7 @@ export const COMPETITORS: readonly Competitor[] = [
       "You want a human in the loop from the first interested reply.",
     ],
     faq: [
-      { q: "Both start with $30 free. Is the offer the same?", a: "Both give you $30 to start. Explee prices in emails sent, distribute.you in daily budget spent, and shows you what each positive reply cost." },
+      { q: "Explee gives $30 in free credits. What does distribute.you give?", a: "Explee prices in emails sent. distribute.you starts with a 3-day free trial, then a monthly plan from $99 that becomes campaign credit, and shows you what each positive reply cost." },
       { q: "Explee sends from pre-warmed domains too. What differs?", a: "Who runs it. Explee hands the agent to you. distribute.you runs the campaign as an agency and answers the interested replies until a meeting is booked." },
       { q: "Is $30 per 1,000 emails cheaper than distribute.you?", a: "Per email, yes. Per meeting, the honest answer is on your dashboard after the first weeks. We publish our clients' cost per positive reply so you can judge before you start." },
     ],
@@ -258,7 +258,7 @@ export const COMPETITORS: readonly Competitor[] = [
     whereWeWin: [
       "Nobody on your side has to run sequences or warm mailboxes.",
       "Your own domain never sends cold email.",
-      "You are charged what the campaign spent, not a seat per person on the team.",
+      "One monthly plan that becomes campaign credit, not a seat per person on the team.",
     ],
     chooseThemIf: [
       "You have a sales team that needs a shared database and a dialer.",
@@ -271,7 +271,7 @@ export const COMPETITORS: readonly Competitor[] = [
     faq: [
       { q: "Does distribute.you use Apollo data?", a: "We source contacts from several providers and pay for them inside your budget. You never buy credits or manage a database." },
       { q: "Can my team use Apollo for the CRM and still run distribute.you?", a: "Yes. The interested replies we forward can be logged in whatever CRM you keep." },
-      { q: "Why is Apollo priced per user and distribute.you per day?", a: "Apollo sells software seats. distribute.you sells a campaign that runs on a daily budget, so the number of people on your side changes nothing." },
+      { q: "Why is Apollo priced per user and distribute.you per month?", a: "Apollo sells software seats. distribute.you sells a campaign: your monthly amount becomes campaign credit, so the number of people on your side changes nothing." },
     ],
   },
   {
@@ -317,9 +317,9 @@ export const COMPETITORS: readonly Competitor[] = [
       "You want one number: what a meeting costs you.",
     ],
     faq: [
-      { q: "Agent Frank is an AI agent too. How is distribute.you different?", a: "Frank is software you configure at $499 a month. distribute.you is an agency that starts at $1 a day, runs the campaign on domains we own, and answers the interested replies." },
+      { q: "Agent Frank is an AI agent too. How is distribute.you different?", a: "Frank is software you configure at $499 a month. distribute.you is an agency that starts at $99 a month, runs the campaign on domains we own, and answers the interested replies." },
       { q: "Do I still need mailboxes with distribute.you?", a: "No. We send from mailboxes and domains we own and warm. Your domain never touches cold outreach." },
-      { q: "Which costs less?", a: "For a team running its own outbound at volume, Salesforge's $40 or $80 plan is cheap software. For a founder who wants meetings without running anything, distribute.you charges what the campaign spent and shows what each positive reply cost." },
+      { q: "Which costs less?", a: "For a team running its own outbound at volume, Salesforge's $40 or $80 plan is cheap software. For a founder who wants meetings without running anything, distribute.you starts at $99 a month, every dollar spent on the campaign, and shows what each positive reply cost." },
     ],
   },
   {
@@ -349,7 +349,7 @@ export const COMPETITORS: readonly Competitor[] = [
       "Backed by a16z and Benchmark with $70M+ raised.",
     ],
     whereWeWin: [
-      "You can start today for $1 a day, without a demo or an annual contract.",
+      "You can start today with a 3-day free trial, without a demo or an annual contract.",
       "A price you can see, and a cost per positive reply measured on your account.",
       "Built for founders and small teams, not procurement.",
     ],
@@ -362,7 +362,7 @@ export const COMPETITORS: readonly Competitor[] = [
       "You want to know the price before the call.",
     ],
     faq: [
-      { q: "How much does 11x cost?", a: "They do not publish it. Pricing comes after a demo, on an annual contract. distribute.you publishes its model: from $1 a day, charged on what the campaign spent." },
+      { q: "How much does 11x cost?", a: "They do not publish it. Pricing comes after a demo, on an annual contract. distribute.you publishes its price: from $99 a month after a 3-day free trial, every dollar spent on your campaign." },
       { q: "Is distribute.you enterprise-ready?", a: "We serve founders and small B2B teams. If you need SOC 2 paperwork and a security review before a pilot, 11x is built for that buyer." },
       { q: "Can a small company use 11x?", a: "Their site targets sales, RevOps and marketing teams at larger companies. For a solo founder or a team of three, distribute.you is sized and priced for you." },
     ],
@@ -410,7 +410,7 @@ export const COMPETITORS: readonly Competitor[] = [
       "You want to be charged on spend, not on a plan tier you have to size.",
     ],
     faq: [
-      { q: "Smartlead is $39 a month. How can distribute.you compete on price?", a: "Different things are being priced. $39 buys the sending software; you still buy mailboxes, a list and someone's time. distribute.you charges what the campaign spent and includes all of that." },
+      { q: "Smartlead is $39 a month. How can distribute.you compete on price?", a: "Different things are being priced. $39 buys the sending software; you still buy mailboxes, a list and someone's time. distribute.you starts at $99 a month, and that becomes campaign credit covering all of it." },
       { q: "I run an agency. Which should I use?", a: "If your team runs client outbound by hand, Smartlead's workspaces are made for you. If you want to resell outbound without staffing it, distribute.you runs each client brand as its own campaign." },
       { q: "Does distribute.you have a warmup pool?", a: "We warm the domains we own, on our side. There is no pool to join because you never send from your own mailboxes." },
     ],
@@ -458,7 +458,7 @@ export const COMPETITORS: readonly Competitor[] = [
     ],
     faq: [
       { q: "Lemlist does LinkedIn and calls. Does distribute.you?", a: "Not yet. We run cold email and measure every outcome; other channels are added once we can measure them the same way." },
-      { q: "Is distribute.you cheaper than Lemlist?", a: "For one person, Lemlist is $69 a month plus your time. distribute.you starts at $1 a day and charges what the campaign spent, with the work included." },
+      { q: "Is distribute.you cheaper than Lemlist?", a: "For one person, Lemlist is $69 a month plus your time. distribute.you starts at $99 a month, every dollar spent on your campaign, with the work included." },
       { q: "Can I keep Lemlist for my house list?", a: "Yes. Many clients keep a tool for warm contacts and let us run cold outreach from our own domains." },
     ],
   },
@@ -537,7 +537,7 @@ export const COMPETITORS: readonly Competitor[] = [
       "Built for teams from startup to enterprise.",
     ],
     whereWeWin: [
-      "A published price: from $1 a day, charged on what was spent.",
+      "A published price: from $99 a month, every dollar spent on your campaign.",
       "A person, not only a model, answers the interested replies.",
       "You can start today from a website, without a sales call.",
     ],
@@ -550,7 +550,7 @@ export const COMPETITORS: readonly Competitor[] = [
       "You want the campaign run as a service and measured per meeting.",
     ],
     faq: [
-      { q: "How much does Artisan cost?", a: "Their pricing page describes credit-based tiers without figures; a call sets the price. distribute.you starts at $1 a day and charges what the campaign spent." },
+      { q: "How much does Artisan cost?", a: "Their pricing page describes credit-based tiers without figures; a call sets the price. distribute.you starts at $99 a month after a 3-day free trial." },
       { q: "Ava books meetings. So does distribute.you. What differs?", a: "Ava is an agent you license and steer. distribute.you is an agency: we run the campaign from our own domains and a person handles the interested replies with the model." },
       { q: "Which is faster to start?", a: "distribute.you runs from your website within minutes and the first sends leave the same day. Artisan starts with a demo and an onboarding." },
     ],
@@ -584,7 +584,7 @@ export const COMPETITORS: readonly Competitor[] = [
       "HubSpot and Salesforce integrations out of the box.",
     ],
     whereWeWin: [
-      "From $1 a day instead of $250 a month, charged on what was spent.",
+      "From $99 a month instead of $250, every dollar spent on your campaign.",
       "No quarterly commitment.",
       "The cost of a positive reply measured on your account and published across clients.",
     ],
@@ -597,9 +597,9 @@ export const COMPETITORS: readonly Competitor[] = [
       "You want a human in the loop on the interested replies.",
     ],
     faq: [
-      { q: "AiSDR's Solo plan is $250 a month. What does distribute.you cost for the same?", a: "There is no fixed volume to match. You set a daily budget from $1 and are charged what the campaign spent; the dashboard shows what each positive reply cost." },
+      { q: "AiSDR's Solo plan is $250 a month. What does distribute.you cost for the same?", a: "From $99 a month, with no fixed contact count: every dollar becomes campaign credit, and the dashboard shows what each positive reply cost." },
       { q: "Do both handle infrastructure?", a: "Yes. AiSDR sets up and warms domains inside your plan. distribute.you sends from domains we own and warm, so nothing is set up in your name at all." },
-      { q: "Is there a commitment with distribute.you?", a: "No. Pause in one click, and the daily budget is a hard cap." },
+      { q: "Is there a commitment with distribute.you?", a: "No. Cancel anytime, and your monthly amount is a hard cap." },
     ],
   },
   {
@@ -630,7 +630,7 @@ export const COMPETITORS: readonly Competitor[] = [
     ],
     whereWeWin: [
       "We bring you buyers you do not have yet. parcelLab talks to people who already bought from you.",
-      "From $1 a day, with no demo, no contract and nothing to set up on your side.",
+      "From $99 a month with a 3-day free trial, no demo, no contract and nothing to set up on your side.",
       "The cost of a positive reply is measured and shown on your dashboard.",
     ],
     chooseThemIf: [

@@ -239,7 +239,6 @@ export default function InvestorsPage() {
                     <li>SPF / DKIM / DMARC setup</li>
                     <li>Warming mailboxes for 6 weeks</li>
                     <li>Triaging raw replies (spam vs lead)</li>
-                    <li>Subscriptions ($99/mo × N products = impossible)</li>
                     <li>Lock-in / opaque pricing</li>
                   </ul>
                 </div>
@@ -249,7 +248,7 @@ export default function InvestorsPage() {
                     <li>An agency sending on their behalf, from domains it owns</li>
                     <li>Interested replies answered and handed over with the meeting</li>
                     <li>Our margin inside the budget, the cost per outcome shown</li>
-                    <li>Pay as you go, $30 free at signup, no subscription</li>
+                    <li>One plan from $99 a month, 3-day free trial, cancel anytime</li>
                     <li>Every brand, offer, channel and audience in one dashboard, ranked by return</li>
                   </ul>
                 </div>

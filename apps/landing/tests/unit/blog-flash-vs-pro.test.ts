@@ -81,12 +81,13 @@ describe("flash-or-pro article: copy rules", () => {
     expect(html).not.toMatch(/testimonial/i);
   });
 
-  it("does not reveal the $400 offer and states the $30 one", () => {
+  it("does not reveal the $400 offer and states the 3-day trial", () => {
     // Scoped to the COPY: the folded appendix prices a bucket's spend, and a derived
     // figure that happens to read $400 is a number, never the retired welcome offer.
     const copy = prose.replace(/<table>[\s\S]*?<\/table>/g, "");
     expect(copy).not.toContain("$400");
-    expect(html).toContain("first 30 USD");
+    expect(html).toContain("The first 3 days are free.");
+    expect(copy).not.toMatch(/\$30|30 USD|\$1\/day/);
   });
 
   it("no money figure carries cents in our own prose, charts or hero", () => {

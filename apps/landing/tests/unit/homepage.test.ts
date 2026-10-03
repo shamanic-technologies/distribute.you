@@ -135,11 +135,15 @@ describe("homepage copy discipline", () => {
 });
 
 describe("the offer the page states", () => {
-  it("leads with revenue, from one dollar a day, and thirty free dollars", () => {
+  it("leads with revenue and the $99/month plan, with a 3-day free trial", () => {
+    // Owner 2026-10-03: the $99/month plan is the default offer; $1/day is no longer sold.
     expect(html).toContain("Get revenue in 24h");
-    expect(html).toContain("From $1/day");
-    expect(html).toMatch(/First \$30 free/);
-    expect(html).toContain("Start free");
+    expect(html).toContain("From $99/month");
+    expect(html).toContain("3-day free trial");
+    expect(html).toContain("Start my free trial");
+    for (const gone of ["$1/day", "From $1<", "$30 free", "Start free with $30", "No subscription", "Pay as you go"]) {
+      expect(html, gone).not.toContain(gone);
+    }
   });
 
   it("says nothing about the $400 credit match", () => {

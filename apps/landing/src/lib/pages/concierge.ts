@@ -33,7 +33,7 @@ const TELEGRAM_HREF = `https://t.me/${CONTACT.telegram}`;
 
 const TITLE = "distribute.you: your AI sales assistant. Just message it.";
 const DESCRIPTION =
-  "Message your AI sales assistant by email, WhatsApp, Telegram or chat. It finds your buyers, writes and tests the cold emails and books the meetings. No app, no setup. First $30 free.";
+  "Message your AI sales assistant by email, WhatsApp, Telegram or chat. It finds your buyers, writes and tests the cold emails and books the meetings. No app, no setup. 3-day free trial.";
 
 const I = {
   chat: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12a8 8 0 0 1-11.6 7.1L4 20l1-4.6A8 8 0 1 1 21 12z"/></svg>`,
@@ -238,7 +238,7 @@ export function renderConciergePage(
     <h1>Your AI sales assistant.<br><span class="accent">Just message it.</span></h1>
     <p class="cc-sub">Tell it what you sell. It finds your buyers, writes and tests the cold emails, books the meetings and reports back, right where you already talk. No app, no setup.</p>
     ${ctas("hero")}
-    <div class="cc-fine">First $30 free · It answers instantly, day and night · Stop any time</div>
+    <div class="cc-fine">3-day free trial · It answers instantly, day and night · Cancel anytime</div>
     <div class="cc-proof">__HOT_LEAD_ROW__</div>
   </div>
 </section>
@@ -260,7 +260,7 @@ export function renderConciergePage(
     <div class="cc-steps">
       <div class="cc-step rv"><b>01</b><h3>Message it</h3><p>Chat here, WhatsApp, Telegram or email. It recognises you on every channel.</p></div>
       <div class="cc-step rv"><b>02</b><h3>It sets you up</h3><p>It reads your website, asks what it needs to know and shows you who it will write to.</p></div>
-      <div class="cc-step rv"><b>03</b><h3>Pay by link</h3><p>You get a secure checkout link in the conversation. Your first $30 are on us.</p></div>
+      <div class="cc-step rv"><b>03</b><h3>Pay by link</h3><p>You get a secure checkout link in the conversation. The first 3 days are free.</p></div>
       <div class="cc-step rv"><b>04</b><h3>Buyers reply</h3><p>Interested replies and meetings come to you. Ask for a report whenever you like.</p></div>
     </div>
   </div>
@@ -285,7 +285,7 @@ ${faq}
 <section class="framed tint" id="talk">
   <div class="wrap cc-close">
     <h2>Say hi. It answers now.</h2>
-    <p>From $1/day, and you only pay what your campaign spends. You get a checkout link in the conversation when you are ready.</p>
+    <p>From $99 a month, and every dollar becomes campaign credit. You get a checkout link in the conversation when you are ready.</p>
     ${ctas("close")}
   </div>
 </section>
