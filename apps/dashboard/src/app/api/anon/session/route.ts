@@ -198,7 +198,16 @@ export async function POST(req: NextRequest) {
       secret,
     );
 
-    const res = NextResponse.json({ started: true, website: decision.website, domain });
+    // The org id rides back so the browser can record THIS org's creation in
+    // PostHog (lib/anon-session-client.ts `anonymous_org_created`): the weekly brief's
+    // onboarding-start count joins the DB row and the PostHog event on it, and
+    // the event's browser fingerprint (webdriver, headless screen) says whether a
+    // human made the org. The user agent is logged for the org a browser never
+    // reports (a scripted POST runs no PostHog).
+    console.log(
+      `[anon-session] created org ${orgId} ua=${JSON.stringify(req.headers.get("user-agent") ?? "")}`,
+    );
+    const res = NextResponse.json({ started: true, created: true, orgId, website: decision.website, domain });
     const opts = ANON_COOKIE_OPTIONS(isSecure(req));
     res.cookies.set(ANON_SESSION_COOKIE, token, { ...opts, httpOnly: true });
     res.cookies.set(ANON_FLAG_COOKIE, "1", opts);

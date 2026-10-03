@@ -11,10 +11,19 @@
  * sentence and sends them to signup rather than stopping them.
  */
 
+import posthog from "posthog-js";
+
 export interface AnonSessionStarted {
   started: true;
   domain: string | null;
 }
+
+/** One onboarding start = one anonymous org created. Recorded here, the single
+ *  door both onboardings (v1 /onboarding, v2 /get-started) go through, so the
+ *  weekly brief's PostHog count and client-service's anonymous orgs are the SAME
+ *  population, joined on `org_id` (daily-update 04). A reused session created
+ *  nothing and records nothing. */
+export const ANON_ORG_CREATED_EVENT = "anonymous_org_created";
 
 export interface AnonSessionRefused {
   started: false;
@@ -64,10 +73,20 @@ export async function startAnonSession(
       message?: unknown;
       domain?: unknown;
       reason?: unknown;
+      created?: unknown;
+      orgId?: unknown;
     };
 
     if (body.started === true) {
-      return { started: true, domain: typeof body.domain === "string" ? body.domain : null };
+      const domain = typeof body.domain === "string" ? body.domain : null;
+      if (body.created === true) {
+        if (typeof body.orgId === "string") {
+          posthog.capture(ANON_ORG_CREATED_EVENT, { org_id: body.orgId, domain });
+        } else {
+          console.error("[anon-session] created an org but the response carried no orgId", body);
+        }
+      }
+      return { started: true, domain };
     }
 
     return {

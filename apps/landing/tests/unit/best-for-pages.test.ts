@@ -175,7 +175,7 @@ describe("the lists that name the cluster equal the catalogue", () => {
     expect(read("src/app/best/route.ts")).toContain("renderBestForHub");
     const slug = read("src/app/best/[slug]/route.ts");
     expect(slug).toContain("bestForBySlug");
-    expect(slug).toContain('staticResponse("404.html", request, { status: 404');
+    expect(slug).toContain("renderNotFoundPage(), request, { status: 404");
   });
 });
 
