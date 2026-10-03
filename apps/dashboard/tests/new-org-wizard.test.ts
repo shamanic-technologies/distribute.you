@@ -75,12 +75,21 @@ describe("canSkipPayment", () => {
 
 describe("step order", () => {
   it("skips the offer pick when one offer was detected, both ways", () => {
-    expect(nextStep("offerText", { offerCount: 1 })).toBe("audienceText");
-    expect(previousStep("audienceText", { offerCount: 1 })).toBe("offerText");
+    expect(nextStep("offerText", { offerCount: 1, planFlow: true })).toBe("audienceText");
+    expect(previousStep("audienceText", { offerCount: 1, planFlow: true })).toBe("offerText");
   });
   it("shows the offer pick when several were detected", () => {
-    expect(nextStep("offerText", { offerCount: 3 })).toBe("offerPick");
-    expect(previousStep("audienceText", { offerCount: 3 })).toBe("offerPick");
+    expect(nextStep("offerText", { offerCount: 3, planFlow: true })).toBe("offerPick");
+    expect(previousStep("audienceText", { offerCount: 3, planFlow: true })).toBe("offerPick");
+  });
+  it("ends on Choose your plan: no budget or payment screen (owner 2026-10-03)", () => {
+    expect(nextStep("leg", { offerCount: 1, planFlow: true })).toBe("plan");
+    expect(nextStep("plan", { offerCount: 1, planFlow: true })).toBe("plan");
+    expect(previousStep("plan", { offerCount: 1, planFlow: true })).toBe("leg");
+  });
+  it("keeps the budget and payment screens for an org billing keeps on pay-as-you-go", () => {
+    expect(nextStep("leg", { offerCount: 1, planFlow: false })).toBe("budget");
+    expect(previousStep("budget", { offerCount: 1, planFlow: false })).toBe("leg");
   });
 });
 

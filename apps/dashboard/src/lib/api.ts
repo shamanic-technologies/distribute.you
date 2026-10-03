@@ -8339,6 +8339,59 @@ export async function resumeSubscription(): Promise<SubscriptionRead> {
   return parseSubscriptionRead(raw, "resumeSubscription");
 }
 
+// ── Plans per brand x offer (billing-service #580, owner 2026-10-03) ──
+// A plan belongs to ONE brand x offer. `GET /v1/billing/accounts/subscriptions` lists
+// them (the onboarding plan is stamped with the org's first brand x offer on read);
+// `POST` starts one with NO trial, charging the first month on the card on file.
+// Refusals are named by `code`: offer_not_found 404, plan_exists_for_offer |
+// card_required | first_charge_declined | existing_paying_org 409, charge_unavailable 502.
+
+const PlanSchema = SubscriptionSchema.extend({
+  brand_id: z.string().nullable(),
+  offer_id: z.string().nullable(),
+});
+export type Plan = z.infer<typeof PlanSchema>;
+
+const PlanListSchema = z.object({
+  org_id: z.string(),
+  payment_mode: z.string().nullish(),
+  subscriptions: z.array(PlanSchema),
+  credits_remaining_cents: z.string().nullish(),
+  expired_cents: z.string().nullish(),
+});
+export type PlanList = z.infer<typeof PlanListSchema>;
+
+const PlanStartSchema = z.object({
+  org_id: z.string(),
+  subscription: PlanSchema,
+  credits_remaining_cents: z.string().nullish(),
+});
+
+export async function listPlans(): Promise<PlanList> {
+  const raw = await apiCall<unknown>("/billing/accounts/subscriptions");
+  const parsed = PlanListSchema.safeParse(raw);
+  if (!parsed.success) {
+    console.error("[dashboard] listPlans: response shape mismatch", { issues: parsed.error.issues, raw });
+    throw new Error("[dashboard] listPlans: invalid response shape");
+  }
+  return parsed.data;
+}
+
+/** Start a plan for one brand x offer: no trial, the first month is charged now. */
+export async function startPlan(body: {
+  brand_id: string;
+  offer_id: string;
+  monthly_amount_cents: number;
+}): Promise<z.infer<typeof PlanStartSchema>> {
+  const raw = await apiCall<unknown>("/billing/accounts/subscriptions", { method: "POST", body });
+  const parsed = PlanStartSchema.safeParse(raw);
+  if (!parsed.success) {
+    console.error("[dashboard] startPlan: response shape mismatch", { issues: parsed.error.issues, raw });
+    throw new Error("[dashboard] startPlan: invalid response shape");
+  }
+  return parsed.data;
+}
+
 export async function getBillingAccount(token?: string): Promise<BillingAccount> {
   return apiCall<BillingAccount>("/billing/accounts", { token });
 }
