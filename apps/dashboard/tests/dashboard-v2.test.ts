@@ -311,14 +311,13 @@ describe("Keel parity, second pass", () => {
     expect(read(V2 + "work-page.tsx")).toContain("useTheirLastWords(lead.id, brandId)");
   });
 
-  it("Today states everything taken from the credit, setup included, off the figure billing debits", () => {
+  it("Today states the spend over its window, setup included", () => {
     // Hany Tawfik 2026-10-02: $29.66 used, Today printed the $20 of campaign spend and
-    // the client read $10 still left. The tile reads the org total Billing's Usage reads.
+    // the client read $10 still left. The window's actual spend carries the brand's own
+    // setup work (features-service v0.179.41), so the tile never drops it again.
     const today = read(V2 + "today-page.tsx");
-    expect(read(V2 + "data.ts")).toContain('useAuthQuery(["orgUsage"], () => getOrgUsage()');
-    expect(today).toContain("const usage = useOrgUsage();");
-    expect(today).toContain('<StatTile label="Spent" note="all time"');
-    expect(today).toContain("formatUsdAdaptive(usage.data.totalBilledUsd)");
+    expect(today).toContain('label="Spent"');
+    expect(today).toContain("formatCentsAsUsdAdaptive(winSpend.actualSpentCents)");
     expect(today).not.toContain("data.spend.totalSpentCents");
     // Missions keeps the campaign figure, labelled as such.
     expect(read(V2 + "missions-page.tsx")).toContain('label: "Spent on missions"');

@@ -41,6 +41,7 @@ export const LEAD_OUTCOME_ROOTS = [
   "featureRevenue",
   "featureRevenueByCampaign",
   "brandRevenue",
+  "brandRevenueWindow",
   "brandOfferMoney",
   // A lead that converts leaves the contacted population v2 Deals prices.
   "contactedValue",

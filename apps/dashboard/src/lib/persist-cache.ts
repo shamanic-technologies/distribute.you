@@ -230,6 +230,8 @@ export const PERSISTABLE_QUERY_ROOTS = new Set([
   // across every channel it covers, so it is a DIFFERENT answer from the per-feature
   // entry above and gets its own root.
   "brandRevenue",
+  // The same read over Today's chosen window (`?windowDays=`), its own answer.
+  "brandRevenueWindow",
   // What the contacted-but-not-engaged leads are worth (v2 Deals), a separate figure.
   "contactedValue",
   "dealsValue",
