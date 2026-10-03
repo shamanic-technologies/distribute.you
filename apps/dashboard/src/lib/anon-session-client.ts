@@ -18,13 +18,6 @@ export interface AnonSessionStarted {
   domain: string | null;
 }
 
-/** One onboarding start = one anonymous org created. Recorded here, the single
- *  door both onboardings (v1 /onboarding, v2 /get-started) go through, so the
- *  weekly brief's PostHog count and client-service's anonymous orgs are the SAME
- *  population, joined on `org_id` (daily-update 04). A reused session created
- *  nothing and records nothing. */
-export const ANON_ORG_CREATED_EVENT = "anonymous_org_created";
-
 export interface AnonSessionRefused {
   started: false;
   /** Shown to the visitor verbatim. */
@@ -58,7 +51,14 @@ export async function startAnonSession(
     const res = await fetch("/api/anon/session", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(noWebsite ? { website: "", noWebsite: true } : { website }),
+      body: JSON.stringify({
+        ...(noWebsite ? { website: "", noWebsite: true } : { website }),
+        // Stated for the server's PostHog record of the org this creates
+        // (lib/anon-org-created-event.ts): the automation flag, and this
+        // visitor's PostHog id so the record lands on their person.
+        webdriver: navigator.webdriver === true,
+        posthogDistinctId: posthog.get_distinct_id?.() ?? null,
+      }),
     });
 
     // The route answers 200 for a refusal too — from the visitor's side nothing
@@ -73,20 +73,10 @@ export async function startAnonSession(
       message?: unknown;
       domain?: unknown;
       reason?: unknown;
-      created?: unknown;
-      orgId?: unknown;
     };
 
     if (body.started === true) {
-      const domain = typeof body.domain === "string" ? body.domain : null;
-      if (body.created === true) {
-        if (typeof body.orgId === "string") {
-          posthog.capture(ANON_ORG_CREATED_EVENT, { org_id: body.orgId, domain });
-        } else {
-          console.error("[anon-session] created an org but the response carried no orgId", body);
-        }
-      }
-      return { started: true, domain };
+      return { started: true, domain: typeof body.domain === "string" ? body.domain : null };
     }
 
     return {
