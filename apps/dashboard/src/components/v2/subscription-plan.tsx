@@ -17,7 +17,7 @@ import {
 import { useAuthQuery, useQueryClient } from "@/lib/use-auth-query";
 import { monthlyUsd, planAmountOptions } from "@/lib/subscription-plan";
 import { EmptyNote, Figure, Shimmer, StateDot } from "@/components/v2/ui";
-import { LOWEST_PLAN_CENTS, SUBSCRIPTION_LOSSES } from "@/lib/cancel-plan";
+import { SUBSCRIPTION_LOSSES } from "@/lib/cancel-plan";
 import { CancelPlanFlow } from "@/components/v2/cancel-plan-flow";
 
 export { SUBSCRIPTION_LOSSES };
@@ -69,11 +69,13 @@ export function SubscriptionPlan() {
   const [chargeOpen, setChargeOpen] = useState(false);
   const [picked, setPicked] = useState<number | null>(null);
 
-  async function run(kind: PlanWrite, write: () => Promise<SubscriptionRead>) {
+  async function run(kind: PlanWrite, write: () => Promise<SubscriptionRead>, opts: { keepFlowOpen?: boolean } = {}): Promise<boolean> {
+    let ok = false;
     setBusy(kind);
     setError(null);
     try {
       const next = await write();
+      ok = true;
       queryClient.setQueryData(["subscription"], next);
       setPicked(null);
       await queryClient
@@ -87,8 +89,10 @@ export function SubscriptionPlan() {
       setError(planRefusal(kind, code));
     }
     setBusy(null);
-    setLossOpen(false);
+    // The stay-for-less answer celebrates inside the flow, so a success keeps it open.
+    if (!(opts.keepFlowOpen && ok)) setLossOpen(false);
     setChargeOpen(false);
+    return ok;
   }
 
   if (!data && !isFetchedAfterMount) {
@@ -201,7 +205,9 @@ export function SubscriptionPlan() {
       <div className="k-line-subtle flex items-center gap-3 border-t px-4 py-2.5">
         <p className="k-fg3 min-w-0 flex-1 text-[12px]">
           {sub.cancel_at_period_end
-            ? `Cancelled. Sending stops on ${next.date ?? "the end of this period"}.`
+            ? data.sending_stopped
+              ? "Cancelled. All sending has stopped. Keep your plan to restart it."
+              : `Cancelled. Your plan ends on ${next.date ?? "the end of this period"}.`
             : sub.paused
               ? `Paused. Sending restarts on ${next.date ?? "the end of the pause"}.`
               : "Sending stops when the month's credit reaches $0."}
@@ -243,10 +249,14 @@ export function SubscriptionPlan() {
           monthlyAmountCents={sub.monthly_amount_cents}
           canChangeAmount={!locked}
           canPause={sub.can_pause === true}
-          endsOn={shortDate(trialing ? sub.trial_end : sub.current_period_end)}
+          trialing={startable}
           pending={busy === "cancel" || busy === "amount" || busy === "pause" ? busy : null}
           onCancel={() => void run("cancel", () => cancelSubscription())}
-          onLowerPlan={() => void run("amount", () => changeSubscriptionAmount(LOWEST_PLAN_CENTS))}
+          onStay={(cents) =>
+            startable
+              ? run("amount", () => startSubscriptionNow(cents), { keepFlowOpen: true })
+              : run("amount", () => changeSubscriptionAmount(cents), { keepFlowOpen: true })
+          }
           onPause={(months) => void run("pause", () => pauseSubscription(months))}
           onKeep={() => setLossOpen(false)}
         />
@@ -259,6 +269,8 @@ type PlanWrite = "amount" | "start" | "cancel" | "resume" | "pause" | "unpause";
 
 /** A refusal in one sentence, by billing's code. */
 function planRefusal(kind: PlanWrite, code: string | undefined): string {
+  if (code === "amount_below_minimum") return "Your plan can start at $29 a month.";
+  if (code === "amount_not_whole_dollars") return "Pick a whole dollar amount.";
   if (code === "subscription_paused") return "Your plan is paused. Restart it first.";
   if (kind === "pause") {
     if (code === "subscription_not_active") return "Your last payment failed. Update your card first.";
