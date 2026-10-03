@@ -41,6 +41,9 @@ const isPublicRoute = createRouteMatcher([
   "/api/public(.*)",
   "/api/anon(.*)",
   "/api/cron(.*)",
+  // Service-to-service reads (social-service): no Clerk session, each route checks the
+  // `x-api-key` service key itself (lib/service-key.ts).
+  "/api/internal(.*)",
 ]);
 
 const isAuthRoute = createRouteMatcher([
