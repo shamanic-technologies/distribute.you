@@ -3,7 +3,6 @@ import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import {
   ROLLUP_LABEL,
-  ROLLUP_STYLE,
   buildControlRows,
   controlWriteErrorMessage,
   isRunningStatus,
@@ -442,21 +441,9 @@ describe("rollupStatus — one word for a scope, exhaustive", () => {
     expect(Object.keys(ROLLUP_LABEL).sort()).toEqual(["active", "none", "paused"]);
   });
 
-  it("every verdict has a label and a tint", () => {
+  it("every verdict has a label", () => {
     for (const verdict of ["none", "paused", "active"] as const) {
       expect(ROLLUP_LABEL[verdict].length).toBeGreaterThan(0);
-      expect(ROLLUP_STYLE[verdict].length).toBeGreaterThan(0);
-    }
-  });
-
-  it("every tint is in the html.dark remapped closed set", () => {
-    const globals = read("app/globals.css");
-    for (const cls of Object.values(ROLLUP_STYLE)) {
-      const bg = cls.split(" ").find((c) => c.startsWith("bg-"))!;
-      // gray-100 is a neutral, remapped with the base surface rather than as an
-      // accent tint; every accent tint must carry its own rule.
-      if (bg === "bg-gray-100") continue;
-      expect(globals).toContain(`html.dark .${bg}`);
     }
   });
 });

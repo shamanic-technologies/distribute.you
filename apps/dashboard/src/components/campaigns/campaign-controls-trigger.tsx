@@ -1,24 +1,30 @@
 "use client";
 
-import { PAYMENT_HOLD_LABEL, PAYMENT_HOLD_STYLE } from "@/lib/payment-declined";
+import { useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
+import { PAYMENT_HOLD_LABEL } from "@/lib/payment-declined";
 import { useLegCatalogue } from "@/lib/use-leg-catalogue";
 import { legFor } from "@/lib/legs";
-import { ROLLUP_LABEL, ROLLUP_STYLE, scopeTotalCents } from "@/lib/campaign-controls";
+import { ROLLUP_LABEL, scopeTotalCents } from "@/lib/campaign-controls";
 import { fmtDailyBudgetUsd } from "@/lib/campaign-budget";
 import { useDailyBudgetHidden } from "@/lib/use-daily-budget-hidden";
 import { useScopeToggle } from "@/lib/use-scope-toggle";
-import { Skeleton } from "@/components/skeleton";
+import { Shimmer } from "@/components/v2/ui";
 
 /**
  * Is this running, and how hard — stated at whatever grain the page is on, and
  * the ONE press that pauses or activates it (owner 2026-10-03: no modal, no
  * per-campaign toggles, "simplement activer ou mettre en pause").
  *
- * The whole control IS the pill plus its action word, always painted: a
- * hover-revealed control is a dead affordance on a phone. It is a `role="button"`
- * span rather than a native button element, because it renders inside clickable
- * regions and a nested button is invalid HTML: the parser closes the outer one
- * early and the surrounding card breaks.
+ * What reads is the STATE alone ("Active"), never a Pause button: pausing is rare
+ * and nobody should be invited to do it (owner 2026-10-03). The state is a
+ * `k-btn` with a chevron, so it reads as clickable on a phone too; a press opens
+ * a one-item menu holding the other state ("Pause" / "Activate"), so a pause
+ * always takes two deliberate presses. The trigger and the menu item are
+ * `role="button"` spans rather than native button elements, because the control
+ * renders inside clickable regions (a mission row) and a nested button is
+ * invalid HTML: the parser closes the outer one early and the row breaks. The
+ * menu is portalled to `#v2-portal` so a table's scroll box cannot clip it.
  *
  * The MONEY is what this scope may spend TODAY — `scopeTotalCents` over the rows,
  * i.e. the ceilings of the campaigns that are RUNNING — at brand grain and offer
@@ -81,12 +87,37 @@ export function CampaignControlsTrigger({
   });
   const catalogue = useLegCatalogue();
   const budgetHidden = useDailyBudgetHidden();
+  const anchor = useRef<HTMLSpanElement>(null);
+  const menu = useRef<HTMLDivElement>(null);
+  const [at, setAt] = useState<{ top: number; right: number } | null>(null);
+
+  useEffect(() => {
+    if (!at) return;
+    const close = () => setAt(null);
+    const onDown = (e: MouseEvent) => {
+      const t = e.target as Node;
+      if (!menu.current?.contains(t) && !anchor.current?.contains(t)) close();
+    };
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") close();
+    };
+    document.addEventListener("mousedown", onDown);
+    window.addEventListener("keydown", onKey);
+    window.addEventListener("resize", close);
+    window.addEventListener("scroll", close, true);
+    return () => {
+      document.removeEventListener("mousedown", onDown);
+      window.removeEventListener("keydown", onKey);
+      window.removeEventListener("resize", close);
+      window.removeEventListener("scroll", close, true);
+    };
+  }, [at]);
 
   if (!settled) {
     return (
       <div className={`flex items-center justify-end gap-2.5 ${className}`}>
-        <Skeleton className="h-4 w-16" />
-        <Skeleton className="h-5 w-16" />
+        <Shimmer className="h-4 w-16" />
+        <Shimmer className="h-7 w-20" />
       </div>
     );
   }
@@ -98,53 +129,99 @@ export function CampaignControlsTrigger({
           dailyOnly ? rows.filter((r) => (legFor(catalogue, r.legKey)?.fromKey ?? null) === null) : rows,
         );
 
-  const actionable = rollup !== "none";
-  const action = pending ? "Saving…" : rollup === "active" ? "Pause" : "Activate";
+  const running = rollup === "active";
+  const actionable = rollup !== "none" && !pending;
+  const label = pending ? "Saving…" : hold ? PAYMENT_HOLD_LABEL[hold] : ROLLUP_LABEL[rollup];
+  const action = running ? "Pause" : "Activate";
+  // Activate fires the workflow right away, not at the next tick: say so.
+  const consequence = running ? "Sending stops until you restart it." : "Sending starts right away.";
+
+  const openMenu = () => {
+    if (!actionable) return;
+    if (at) return setAt(null);
+    const r = anchor.current?.getBoundingClientRect();
+    if (r) setAt({ top: r.bottom + 6, right: window.innerWidth - r.right });
+  };
+  const choose = () => {
+    setAt(null);
+    void toggle();
+  };
+  const host = typeof document === "undefined" ? null : document.getElementById("v2-portal");
 
   return (
-    <div className={`flex flex-col items-end gap-1 ${className}`}>
-      <div
-        role="button"
-        tabIndex={actionable ? 0 : -1}
-        aria-disabled={!actionable || pending}
-        aria-busy={pending}
-        // Activate fires the workflow right away, not at the next tick: say so.
-        aria-label={rollup === "active" ? "Pause" : "Activate. Sending starts right away."}
-        onClick={() => {
-          if (actionable) void toggle();
-        }}
-        onKeyDown={(e) => {
-          if (actionable && (e.key === "Enter" || e.key === " ")) {
-            e.preventDefault();
-            void toggle();
-          }
-        }}
-        className={`group -mx-1 flex items-center justify-end gap-2.5 rounded-md px-1 py-0.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-300 ${
-          actionable ? "cursor-pointer hover:bg-gray-100" : ""
-        } ${pending ? "opacity-60" : ""}`}
-      >
+    <div className={`flex flex-col items-end gap-1 ${className}`} onClick={(e) => e.stopPropagation()}>
+      <div className="flex items-center justify-end gap-2.5">
         {/* A plan's $50/day is fixed, so a subscriber sees the status alone. */}
         {!budgetHidden && (
-          <span className="text-sm tabular-nums text-gray-600">
+          <span className="k-fg2 text-[13px] tabular-nums">
             {fmtDailyBudgetUsd(totalCents)}
-            <span className="text-gray-400">{cap ? " cap / day" : " / day"}</span>
+            <span className="k-fg3">{cap ? " cap / day" : " / day"}</span>
           </span>
         )}
         <span
-          className={`whitespace-nowrap rounded-full border px-2 py-0.5 text-[11px] uppercase tracking-wide ${
-            hold ? PAYMENT_HOLD_STYLE : ROLLUP_STYLE[rollup]
-          }`}
+          ref={anchor}
+          role="button"
+          tabIndex={actionable ? 0 : -1}
+          aria-haspopup="menu"
+          aria-expanded={at !== null}
+          aria-disabled={!actionable}
+          aria-busy={pending}
+          onClick={openMenu}
+          onKeyDown={(e) => {
+            if (e.key === "Enter" || e.key === " ") {
+              e.preventDefault();
+              openMenu();
+            }
+          }}
+          className={`k-btn whitespace-nowrap ${actionable ? "cursor-pointer" : ""} ${pending ? "opacity-60" : ""}`}
         >
-          {hold ? PAYMENT_HOLD_LABEL[hold] : ROLLUP_LABEL[rollup]}
+          {running ? (
+            <span className="k-dot-pulse h-1.5 w-1.5 rounded-full bg-[var(--run)] text-[var(--run)]" />
+          ) : (
+            <span
+              className={`h-2 w-2 rounded-full border-[1.5px] ${hold ? "border-[var(--data-amber)]" : "border-[var(--fg-3)]"}`}
+            />
+          )}
+          {label}
+          {actionable && (
+            <svg width="10" height="10" viewBox="0 0 10 10" className="k-fg3" aria-hidden="true">
+              <path d="M2.5 4l2.5 2.5L7.5 4" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
+          )}
         </span>
-        {actionable && (
-          <span className="whitespace-nowrap text-[12px] font-medium text-gray-500 underline-offset-2 group-hover:text-gray-800 group-hover:underline">
-            {action}
-          </span>
-        )}
       </div>
+      {at &&
+        host &&
+        createPortal(
+          <div
+            ref={menu}
+            role="menu"
+            className="k-popover fixed z-[70] w-[240px] p-1"
+            style={{ top: at.top, right: at.right }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <span
+              role="menuitem"
+              tabIndex={0}
+              aria-label={`${action}. ${consequence}`}
+              autoFocus
+              onClick={choose}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" || e.key === " ") {
+                  e.preventDefault();
+                  choose();
+                }
+              }}
+              className="block cursor-pointer rounded-md px-2.5 py-2 hover:bg-[var(--bg-hover)] focus-visible:bg-[var(--bg-hover)] focus-visible:outline-none"
+            >
+              <span className="k-fg block text-[13px] font-medium">{action}</span>
+              <span className="k-fg3 block text-[12px]">{consequence}</span>
+            </span>
+          </div>,
+          host,
+        )}
       {error && (
-        <p role="alert" className="max-w-[260px] text-right text-[12px] text-red-600">
+        <p role="alert" className="max-w-[260px] text-right text-[12px] text-[var(--data-rose)]">
           {error}
         </p>
       )}

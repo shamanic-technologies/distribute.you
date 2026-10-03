@@ -43,12 +43,6 @@ export const PAYMENT_HOLD_NOTE: Record<PaymentHoldKind, string> = {
     "There is no payment method on your account, so we paused your campaigns. Add a card, then start them again.",
 };
 
-/**
- * Amber, a warning the customer can act on, from the closed set `html.dark`
- * remaps. Red would read as a fault of ours; grey reads as a pause somebody chose.
- */
-export const PAYMENT_HOLD_STYLE = "bg-amber-50 text-amber-700 border-amber-200";
-
 export interface StatusWithReason {
   status: string;
   stopReason?: string | null;
