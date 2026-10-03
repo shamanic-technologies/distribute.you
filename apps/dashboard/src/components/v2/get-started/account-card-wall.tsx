@@ -158,8 +158,9 @@ export function AccountCardWall({
   const [code, setCode] = useState("");
   const [consent, setConsent] = useState(false);
   // The reply margin: unticked by default, so it is read before anything is paid.
+  // A plan's budget is fixed and never shown (owner 2026-10-03), so there is nothing to tick.
   const hasReplies = plan.some((c) => c.reactive);
-  const [marginOk, setMarginOk] = useState(false);
+  const [marginOk, setMarginOk] = useState(subscription);
   // The price read once the brand has an owner (and therefore an offer) wins over the
   // one the preview could read signed out, which is none for a brand with no offer yet.
   const [pricedUsd, setPricedUsd] = useState<number | null>(null);
@@ -835,7 +836,7 @@ export function AccountCardWall({
                 {(subscription || !account?.has_payment_method) && (
                   <p className="k-fg2 -mt-2 text-[13px] leading-5">{copy.cardNote}</p>
                 )}
-                <div className="k-inset rounded-lg p-3">{budgetRow}</div>
+                {!subscription && <div className="k-inset rounded-lg p-3">{budgetRow}</div>}
                 <Consent brandName={brandName} checked={consent} onChange={setConsent} />
                 <button type="button" className="k-btn-accent gs-glow h-9 justify-center" onClick={() => void addCard()} disabled={busy}>
                   {busy ? "Opening the card form..." : account?.has_payment_method && !subscription ? "Start outreach" : copy.cardCta}

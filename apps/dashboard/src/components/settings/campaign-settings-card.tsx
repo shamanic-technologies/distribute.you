@@ -17,6 +17,7 @@ import {
   type BrandCampaignBudgets,
 } from "@/lib/api";
 import { useAuthQuery, useQueryClient } from "@/lib/use-auth-query";
+import { useDailyBudgetHidden } from "@/lib/use-daily-budget-hidden";
 import { invalidateCampaignMoney } from "@/lib/write-invalidation";
 import { useAcquisitionChannels } from "@/lib/use-acquisition-channels";
 import {
@@ -122,6 +123,8 @@ export function CampaignSettingsCard({
 
   // The same key the campaign Overview and the top-bar campaign name already
   // poll, so all three share one request.
+  // A plan's $50/day is fixed (owner 2026-10-03): a subscriber keeps the run switch only.
+  const budgetHidden = useDailyBudgetHidden();
   const { data: campaignData, isPending, isError } = useAuthQuery(
     ["campaign", campaignId],
     () => getCampaign(campaignId),
@@ -368,7 +371,7 @@ export function CampaignSettingsCard({
         </div>
       </section>
 
-      {scope === null ? (
+      {budgetHidden ? null : scope === null ? (
         <section className="rounded-xl border border-gray-200 bg-white p-5">
           <h3 className="mb-1 text-sm font-semibold text-gray-900">Daily budget</h3>
           <p className="text-sm text-gray-500">

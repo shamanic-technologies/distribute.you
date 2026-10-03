@@ -13,6 +13,7 @@ import {
 import { getStripe } from "@/lib/stripe";
 import { formatBillingCents, formatCentsAsUsd } from "@/lib/format-number";
 import { topupPresetsForDailyBudget } from "@/lib/credit-runway";
+import { paymentModeOf } from "@/lib/payment-mode";
 
 // API responses now ship cents as decimal strings (billing-service v2). FE-computed
 // budgets are still integer cents — accept both shapes everywhere they cross.
@@ -309,12 +310,15 @@ export function BillingGuardProvider({ children }: { children: ReactNode }) {
   // Recharge variant (auto-reload-blocked card): no auto-topup to offer, so frame
   // the modal as a plain top-up.
   const rechargeTitle = "Add credits to keep going.";
-  const rechargeDescription =
-    "Auto-top-up isn't available for your card's country, so add credits to keep your campaigns running. Each brand daily budget stays the spend cap.";
+  // A plan's $50/day is fixed and never shown (owner 2026-10-03): no budget words for it.
+  const onPlan = paymentModeOf(account) === "subscription";
+  const rechargeDescription = onPlan
+    ? "Auto-top-up isn't available for your card's country, so add credits to keep your campaigns running."
+    : "Auto-top-up isn't available for your card's country, so add credits to keep your campaigns running. Each brand daily budget stays the spend cap.";
   // Top-up presets sized to N days of the in-scope brand's daily budget (5/15/45/
   // 135 days). Falls back to flat dollar presets when no brand budget was passed
   // (org-level caller) or it's 0/unset.
-  const brandDailyBudgetCents = info.brandDailyBudgetCents ?? null;
+  const brandDailyBudgetCents = onPlan ? null : info.brandDailyBudgetCents ?? null;
   const presetAmounts = topupPresetsForDailyBudget(brandDailyBudgetCents);
 
   return (

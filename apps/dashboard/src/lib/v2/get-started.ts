@@ -64,9 +64,20 @@ export const SALES_PATH_CHANNEL_LABEL: Readonly<Record<string, string>> = {
   "ai-instant-call": "Instant call",
 };
 
+/**
+ * The step every offer is ticked on, whatever the site says (owner 2026-10-03): a
+ * positive reply to our cold email is the base of every sales meeting, and no website
+ * can show it, so asking the site read about it dropped it on 8 drafts of 11 (Legistai
+ * launched on website visits only while the reply path was ~40% cheaper per client).
+ */
+export const ALWAYS_TICKED_STEP = "conversation";
+
 /** The site read that drafts the steps: ONE field, answered with step keys from the catalogue. */
 export function salesStepsDraftField(steps: ReadonlyArray<{ key: string; label: string }>): { key: "salesSteps"; description: string } {
-  const list = steps.map((s) => `${s.key} (${s.label})`).join(", ");
+  const list = steps
+    .filter((s) => s.key !== ALWAYS_TICKED_STEP)
+    .map((s) => `${s.key} (${s.label})`)
+    .join(", ");
   return {
     key: "salesSteps",
     description:
@@ -85,6 +96,13 @@ export function parseDraftedSteps(value: unknown, offered: readonly string[]): s
       .filter(Boolean),
   );
   return offered.filter((k) => said.has(k));
+}
+
+/** The steps the screen opens ticked on: the drafted ones plus the positive reply, in catalogue order. */
+export function initialSalesSteps(drafted: unknown, offered: readonly string[]): string[] {
+  const keys = new Set(parseDraftedSteps(drafted, offered));
+  keys.add(ALWAYS_TICKED_STEP);
+  return offered.filter((k) => keys.has(k));
 }
 
 /** A path as this flow reads it: what features-service served, narrowed to what we use. */
