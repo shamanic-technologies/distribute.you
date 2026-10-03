@@ -8,12 +8,13 @@ import { useBucketCounts } from "@/components/v2/data";
 import { monthlyUsd } from "@/lib/subscription-plan";
 import {
   CANCEL_REASONS,
-  CANCEL_STEPS,
   LOWEST_PLAN_CENTS,
+  PAUSE_MONTHS,
   nextCancelStep,
   saveOfferFor,
   talkHref,
   type CancelReason,
+  type PauseMonths,
   SUBSCRIPTION_LOSSES,
   type CancelStep,
 } from "@/lib/cancel-plan";
@@ -21,9 +22,11 @@ import {
 /**
  * Cancelling the plan, in four screens (owner 2026-10-03: the old one-screen dialog
  * did not make leaving feel like a loss). What you lose, in your own numbers; why you
- * leave; an offer fitted to that reason; then the final confirm. Keeping the plan is
- * the primary action on every screen, and "Continue to cancel" sits beside it on every
- * screen too: the rules are in `lib/cancel-plan.ts`.
+ * leave; an offer fitted to that reason (a lower plan, a pause, or a word with Kevin);
+ * then the final confirm. Keeping the plan is the primary action on every screen, and
+ * "Continue to cancel" sits beside it on every screen too: the rules are in
+ * `lib/cancel-plan.ts`. No step counter and no progress bar (owner 2026-10-03): a
+ * stepper makes reaching the end feel like the goal.
  */
 
 const ROSE_TINT = "bg-[color-mix(in_srgb,var(--data-rose)_7%,transparent)] border border-[color-mix(in_srgb,var(--data-rose)_22%,transparent)]";
@@ -63,30 +66,34 @@ function LossFigure({ label, value }: { label: string; value: number | undefined
 export function CancelPlanFlow({
   monthlyAmountCents,
   canChangeAmount,
+  canPause,
   endsOn,
   pending,
   onCancel,
   onLowerPlan,
+  onPause,
   onKeep,
 }: {
   monthlyAmountCents: number;
   canChangeAmount: boolean;
+  canPause: boolean;
   /** When sending stops if they cancel (end of the trial or of the paid month). */
   endsOn: string | null;
-  pending: "cancel" | "amount" | null;
+  pending: "cancel" | "amount" | "pause" | null;
   onCancel: () => void;
   onLowerPlan: () => void;
+  onPause: (months: PauseMonths) => void;
   onKeep: () => void;
 }) {
   const { brandId } = useParams<{ brandId: string }>();
   const counts = useBucketCounts(brandId).data?.counts;
   const [step, setStep] = useState<CancelStep>("loss");
   const [reason, setReason] = useState<CancelReason | null>(null);
-  const offer = saveOfferFor(reason, { monthlyAmountCents, canChangeAmount });
+  const [months, setMonths] = useState<PauseMonths>(1);
+  const offer = saveOfferFor(reason, { monthlyAmountCents, canChangeAmount, canPause });
   const busy = pending !== null;
-  const stepIndex = CANCEL_STEPS.indexOf(step);
 
-  const track = (outcome: "kept" | "lowered" | "cancelled" | "wrote") =>
+  const track = (outcome: "kept" | "lowered" | "paused" | "cancelled" | "wrote") =>
     posthog.capture("plan_cancel_flow", { outcome, step, reason, monthly_amount_cents: monthlyAmountCents });
 
   const keep = () => {
@@ -132,23 +139,10 @@ export function CancelPlanFlow({
           <span id="v2-cancel-title" className="k-label">
             Cancel plan
           </span>
-          <span className="k-mono k-fg3 text-[11px] tabular-nums">
-            Step {stepIndex + 1} of {CANCEL_STEPS.length}
-          </span>
           <button type="button" aria-label="Close" className="k-btn-ghost ml-auto h-7 w-7 justify-center p-0" onClick={keep} disabled={busy}>
             ×
           </button>
         </div>
-        {/* Progress toward the loss fills in rose. */}
-        <div className="flex gap-1 px-4 pt-3" aria-hidden="true">
-          {CANCEL_STEPS.map((s, i) => (
-            <span
-              key={s}
-              className={`h-1 flex-1 rounded-full ${i <= stepIndex ? "bg-[var(--data-rose)]" : "bg-[var(--bg-inset)]"}`}
-            />
-          ))}
-        </div>
-
         <div className="px-4 pb-4 pt-4">
           {step === "loss" && (
             <>
@@ -228,6 +222,41 @@ export function CancelPlanFlow({
                 className={`k-btn-accent k-cta mt-4 w-full justify-center ${pending === "amount" ? "cursor-wait" : ""}`}
               >
                 {pending === "amount" ? "Switching..." : `Switch to ${monthlyUsd(LOWEST_PLAN_CENTS)} a month`}
+              </button>
+            </>
+          )}
+
+          {step === "offer" && offer === "pause" && (
+            <>
+              <p className="text-[15px] font-semibold leading-6">Take a break instead.</p>
+              <p className="k-fg2 mt-0.5 text-[13px]">Pause your plan. You pay nothing and keep everything.</p>
+              <div role="radiogroup" aria-label="Pause length" className="mt-3 grid grid-cols-3 gap-1.5">
+                {PAUSE_MONTHS.map((m) => {
+                  const on = months === m;
+                  return (
+                    <button
+                      key={m}
+                      type="button"
+                      role="radio"
+                      aria-checked={on}
+                      onClick={() => setMonths(m)}
+                      className={`h-10 rounded-lg text-[13px] ${on ? "bg-[var(--accent)] font-medium text-white" : "k-inset k-fg2 hover:text-[var(--fg-1)]"}`}
+                    >
+                      {m === 1 ? "1 month" : `${m} months`}
+                    </button>
+                  );
+                })}
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  track("paused");
+                  onPause(months);
+                }}
+                disabled={busy}
+                className={`k-btn-accent k-cta mt-3 w-full justify-center ${pending === "pause" ? "cursor-wait" : ""}`}
+              >
+                {pending === "pause" ? "Pausing..." : `Pause for ${months === 1 ? "1 month" : `${months} months`}`}
               </button>
             </>
           )}

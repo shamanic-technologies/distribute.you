@@ -7,7 +7,9 @@ import {
   cancelSubscription,
   getSubscription,
   changeSubscriptionAmount,
+  pauseSubscription,
   resumeSubscription,
+  unpauseSubscription,
   startSubscriptionNow,
   type Subscription,
   type SubscriptionRead,
@@ -43,6 +45,7 @@ function shortDate(iso: string | null): string | null {
 /** The plan's state as a dot and a word, from billing's own fields. */
 function planState(sub: Subscription): { running: boolean; label: string } {
   if (sub.cancel_at_period_end) return { running: false, label: "Cancelling" };
+  if (sub.paused) return { running: false, label: "Paused" };
   if (sub.status === "trialing") return { running: true, label: "Free trial" };
   if (sub.status === "active") return { running: true, label: "Active" };
   if (sub.status === "past_due") return { running: false, label: "Payment failed" };
@@ -52,6 +55,7 @@ function planState(sub: Subscription): { running: boolean; label: string } {
 /** The date that matters next, and what it is. */
 function nextDate(sub: Subscription): { label: string; date: string | null } {
   if (sub.cancel_at_period_end) return { label: "Ends", date: shortDate(sub.current_period_end) };
+  if (sub.paused) return { label: "Restarts", date: shortDate(sub.pause_ends_at ?? null) };
   if (sub.status === "trialing") return { label: "Trial ends", date: shortDate(sub.trial_end) };
   return { label: "Next charge", date: shortDate(sub.next_charge_at) };
 }
@@ -59,13 +63,13 @@ function nextDate(sub: Subscription): { label: string; date: string | null } {
 export function SubscriptionPlan() {
   const queryClient = useQueryClient();
   const { data, isFetchedAfterMount, isError } = useAuthQuery(["subscription"], () => getSubscription());
-  const [busy, setBusy] = useState<"amount" | "start" | "cancel" | "resume" | null>(null);
+  const [busy, setBusy] = useState<PlanWrite | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [lossOpen, setLossOpen] = useState(false);
   const [chargeOpen, setChargeOpen] = useState(false);
   const [picked, setPicked] = useState<number | null>(null);
 
-  async function run(kind: "amount" | "start" | "cancel" | "resume", write: () => Promise<SubscriptionRead>) {
+  async function run(kind: PlanWrite, write: () => Promise<SubscriptionRead>) {
     setBusy(kind);
     setError(null);
     try {
@@ -143,8 +147,8 @@ export function SubscriptionPlan() {
         </div>
       </div>
 
-      {/* The amount: a choice, never a step. */}
-      {live && (
+      {/* The amount: a choice, never a step. Hidden while paused: nothing is charged. */}
+      {live && !sub.paused && (
         <div className="k-line-subtle flex flex-wrap items-center gap-3 border-t px-4 py-3">
           <div className="min-w-0 flex-1">
             <p className="text-[13px] font-medium">Monthly amount</p>
@@ -198,8 +202,15 @@ export function SubscriptionPlan() {
         <p className="k-fg3 min-w-0 flex-1 text-[12px]">
           {sub.cancel_at_period_end
             ? `Cancelled. Sending stops on ${next.date ?? "the end of this period"}.`
-            : "Sending stops when the month's credit reaches $0."}
+            : sub.paused
+              ? `Paused. Sending restarts on ${next.date ?? "the end of the pause"}.`
+              : "Sending stops when the month's credit reaches $0."}
         </p>
+        {sub.paused && sub.can_unpause === true && (
+          <button type="button" className="k-btn h-6 text-[12px]" disabled={busy !== null} onClick={() => void run("unpause", () => unpauseSubscription())}>
+            {busy === "unpause" ? "Restarting..." : "Restart now"}
+          </button>
+        )}
         {sub.cancel_at_period_end ? (
           <button type="button" className="k-btn h-6 text-[12px]" disabled={busy !== null} onClick={() => void run("resume", () => resumeSubscription())}>
             {busy === "resume" ? "Resuming..." : "Keep my plan"}
@@ -231,10 +242,12 @@ export function SubscriptionPlan() {
         <CancelPlanFlow
           monthlyAmountCents={sub.monthly_amount_cents}
           canChangeAmount={!locked}
+          canPause={sub.can_pause === true}
           endsOn={shortDate(trialing ? sub.trial_end : sub.current_period_end)}
-          pending={busy === "cancel" || busy === "amount" ? busy : null}
+          pending={busy === "cancel" || busy === "amount" || busy === "pause" ? busy : null}
           onCancel={() => void run("cancel", () => cancelSubscription())}
           onLowerPlan={() => void run("amount", () => changeSubscriptionAmount(LOWEST_PLAN_CENTS))}
+          onPause={(months) => void run("pause", () => pauseSubscription(months))}
           onKeep={() => setLossOpen(false)}
         />
       )}
@@ -242,8 +255,16 @@ export function SubscriptionPlan() {
   );
 }
 
+type PlanWrite = "amount" | "start" | "cancel" | "resume" | "pause" | "unpause";
+
 /** A refusal in one sentence, by billing's code. */
-function planRefusal(kind: "amount" | "start" | "cancel" | "resume", code: string | undefined): string {
+function planRefusal(kind: PlanWrite, code: string | undefined): string {
+  if (code === "subscription_paused") return "Your plan is paused. Restart it first.";
+  if (kind === "pause") {
+    if (code === "subscription_not_active") return "Your last payment failed. Update your card first.";
+    if (code === "subscription_cancel_pending") return "Your plan is already set to end. Keep it first.";
+    return "We could not pause your plan. Please try again.";
+  }
   if (kind === "start") {
     if (code === "first_charge_declined") return "Your card was declined. Nothing was charged. Your free trial goes on.";
     if (code === "card_required") return "Add a card to start your plan.";
