@@ -217,14 +217,19 @@ FROM jsonb_to_recordset('$VERSIONS_JSON'::jsonb) AS x(cost_name text, billed num
 # the cost STARTED, the clock features-service's mature figures use (runs-service startedBefore
 # filters the cost row's own run), so derive.mjs cuts spend and emails at the same run-start
 # cutoff. vendor_cents is the priced rows at vendor cost, unpriced_cents the billed amount of the
-# rows no version prices.
+# rows no version prices. per_email_* is the part charged PER EMAIL SENT (the sending mailbox and
+# domain): the only spend a follow-up adds. Everything else (the lead, writing the whole sequence,
+# the contact upload) is bought once per person, when the first email goes out.
+PER_EMAIL_COSTS="'instantly-account-email-sent','instantly-domain-email-sent','instantly-email-send'"
 run runs_service "
 WITH v AS MATERIALIZED ($VENDOR_WINDOWS)
 SELECT r.workflow_slug, r.campaign_id AS platform_campaign_id,
        (r.started_at AT TIME ZONE 'UTC')::date AS day,
        sum(rc.total_cost_in_usd_cents) AS cents,
        coalesce(sum(rc.quantity * v.vendor) FILTER (WHERE v.vendor IS NOT NULL), 0) AS vendor_cents,
-       coalesce(sum(rc.total_cost_in_usd_cents) FILTER (WHERE v.vendor IS NULL), 0) AS unpriced_cents
+       coalesce(sum(rc.total_cost_in_usd_cents) FILTER (WHERE v.vendor IS NULL), 0) AS unpriced_cents,
+       coalesce(sum(rc.total_cost_in_usd_cents) FILTER (WHERE rc.cost_name IN ($PER_EMAIL_COSTS)), 0) AS per_email_cents,
+       coalesce(sum(rc.quantity * v.vendor) FILTER (WHERE v.vendor IS NOT NULL AND rc.cost_name IN ($PER_EMAIL_COSTS)), 0) AS per_email_vendor_cents
 FROM runs_costs rc
 JOIN runs r ON r.id = rc.run_id
 LEFT JOIN v ON v.cost_name = rc.cost_name AND v.billed = rc.unit_cost_in_usd_cents

@@ -3,6 +3,8 @@
 The data articles are derived, not typed: each one's figures come out of `extract.sh` ->
 `derive.mjs` and a renderer per article (sections below).
 
+**Spend is MARGINAL per email** (2026-10-03): Instantly's per-email sending charges (`PER_EMAIL_COSTS` in extract.sh) land on the emails Instantly sent; everything bought once per person (the lead, writing the whole sequence, the upload) lands on the first email. A follow-up therefore costs only its own sending, and the follow-up ROI study compares that extra cost with the extra outcomes, against what an outcome costs on a first email.
+
 **A website visit is a HUMAN click** (2026-10-03): a self-send click through our own `/c/` redirect
 that the scanner classifier judged human. The provider's webhook clicks carry no IP or user agent,
 so they can never be screened, and most decided clicks are link scanners: they are never a visit.

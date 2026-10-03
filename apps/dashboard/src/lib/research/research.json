@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-10-03T06:27:06.074Z",
+  "generatedAt": "2026-10-03T08:13:30.576Z",
   "allOrgs": true,
   "costBasis": "user",
   "unpricedBilledUsd": 0,
@@ -59,7 +59,7 @@
       }
     },
     "excludedEmails": 20443,
-    "noRunStart": 2349,
+    "noRunStart": 2390,
     "note": "Only people we started writing to at least 21 days before the read (before Sep 12) count, with every positive reply and website visit they sent since. A figure needs 1 positive reply (10 website visits) behind it; below that it reads Learning. A website visit is a click our link-scanner check judged human, which only the emails we send ourselves can carry: website-visit figures leave out the emails sent through the provider, whose clicks are mostly scanners and cannot be screened."
   },
   "crews": [
@@ -104,7 +104,7 @@
             {
               "key": "glm-5.2-pro",
               "label": "GLM 5.2 Pro",
-              "value": 33.5,
+              "value": 33.59,
               "display": "$34",
               "note": "1 positive reply · 599 emails",
               "thin": false
@@ -112,8 +112,8 @@
             {
               "key": "gemini-3.5-flash-lite",
               "label": "Gemini 3.5 Flash-Lite",
-              "value": 43.61,
-              "display": "$44",
+              "value": 41.71,
+              "display": "$42",
               "note": "1 positive reply · 437 emails",
               "thin": false
             },
@@ -143,8 +143,8 @@
           "points": [
             {
               "label": "Sep",
-              "value": 20.97,
-              "display": "$21",
+              "value": 8,
+              "display": "$8.00",
               "note": "1 positive reply · 375 emails · month in progress",
               "thin": false,
               "partial": true
@@ -155,7 +155,7 @@
             "points": [
               {
                 "label": "Sep",
-                "value": 33.5,
+                "value": 33.59,
                 "display": "$34",
                 "note": "1 positive reply · 599 emails to date · month in progress",
                 "thin": false,
@@ -377,43 +377,43 @@
           "points": [
             {
               "label": "Apr",
-              "value": 120.11,
-              "display": "$120",
+              "value": 181.65,
+              "display": "$182",
               "note": "1 positive reply · 2,657 emails",
               "thin": false
             },
             {
               "label": "May",
-              "value": 121.32,
-              "display": "$121",
+              "value": 145.85,
+              "display": "$146",
               "note": "7 positive replies · 15,112 emails",
               "thin": false
             },
             {
               "label": "Jun",
-              "value": 250.27,
-              "display": "$250",
+              "value": 224.99,
+              "display": "$225",
               "note": "4 positive replies · 22,527 emails",
               "thin": false
             },
             {
               "label": "Jul",
-              "value": 166.02,
-              "display": "$166",
+              "value": 175.34,
+              "display": "$175",
               "note": "11 positive replies · 22,501 emails",
               "thin": false
             },
             {
               "label": "Aug",
-              "value": 127.11,
-              "display": "$127",
+              "value": 145.17,
+              "display": "$145",
               "note": "12 positive replies · 16,412 emails",
               "thin": false
             },
             {
               "label": "Sep",
-              "value": 570.7,
-              "display": "$571",
+              "value": 420.23,
+              "display": "$420",
               "note": "3 positive replies · 18,869 emails · month in progress",
               "thin": false,
               "partial": true
@@ -424,36 +424,36 @@
             "points": [
               {
                 "label": "Apr",
-                "value": 120.11,
-                "display": "$120",
+                "value": 181.65,
+                "display": "$182",
                 "note": "1 positive reply · 2,657 emails to date",
                 "thin": false
               },
               {
                 "label": "May",
-                "value": 121.17,
-                "display": "$121",
+                "value": 150.32,
+                "display": "$150",
                 "note": "8 positive replies · 17,769 emails to date",
                 "thin": false
               },
               {
                 "label": "Jun",
-                "value": 164.2,
-                "display": "$164",
+                "value": 175.21,
+                "display": "$175",
                 "note": "12 positive replies · 40,296 emails to date",
                 "thin": false
               },
               {
                 "label": "Jul",
-                "value": 165.07,
-                "display": "$165",
+                "value": 175.28,
+                "display": "$175",
                 "note": "23 positive replies · 62,797 emails to date",
                 "thin": false
               },
               {
                 "label": "Aug",
-                "value": 152.06,
-                "display": "$152",
+                "value": 164.95,
+                "display": "$165",
                 "note": "35 positive replies · 79,209 emails to date",
                 "thin": false
               },
@@ -483,48 +483,41 @@
       "crew": "herald",
       "topic": "followups",
       "goal": "roi",
-      "question": "How many follow-ups give the cheapest positive reply?",
+      "question": "How many follow-ups are worth their cost, for positive replies?",
       "status": "measured",
-      "headline": "First email only: $135 per positive reply, the cheapest depth. Noise so far.",
-      "winner": "First email only",
+      "headline": "Send through follow-up 2: it adds positive replies at $103 per extra positive reply, against $303 on a first email.",
+      "winner": "Follow-up 2",
       "result": {
-        "display": "$135",
-        "unit": "per positive reply, first email only",
-        "sample": "18 positive replies · $2,435 spent"
+        "display": "$103",
+        "unit": "per extra positive reply, follow-up 2",
+        "sample": "7 positive replies · $722 extra spent"
       },
-      "crowned": false,
+      "crowned": true,
       "charts": [
         {
           "kind": "bars",
-          "title": "Cost per positive reply if the sequence stopped here (USD, lower is better)",
+          "title": "What each email adds: cost per extra positive reply (USD, lower is better)",
           "lowerIsBetter": true,
           "points": [
             {
-              "label": "First email only",
-              "value": 135.3,
-              "display": "$135",
-              "note": "18 positive replies · $2,435 spent",
+              "label": "First email",
+              "value": 302.82,
+              "display": "$303",
+              "note": "18 positive replies · 33,267 emails",
               "thin": false
             },
             {
-              "label": "+ 1 follow-up",
-              "value": 156.81,
-              "display": "$157",
-              "note": "30 positive replies · $4,704 spent",
+              "label": "Follow-up 1",
+              "value": 63.8,
+              "display": "$64",
+              "note": "12 positive replies · 31,390 emails",
               "thin": false
             },
             {
-              "label": "+ 2 follow-ups",
-              "value": 183.94,
-              "display": "$184",
-              "note": "37 positive replies · $6,806 spent",
-              "thin": false
-            },
-            {
-              "label": "+ 3 follow-ups",
-              "value": 183.94,
-              "display": "$184",
-              "note": "37 positive replies · $6,806 spent",
+              "label": "Follow-up 2",
+              "value": 103.18,
+              "display": "$103",
+              "note": "7 positive replies · 29,142 emails",
               "thin": false
             }
           ],
@@ -532,28 +525,35 @@
         },
         {
           "kind": "bars",
-          "title": "Each email on its own: cost per positive reply (USD, lower is better)",
+          "title": "Cost per positive reply if the sequence stopped here (USD, lower is better)",
           "lowerIsBetter": true,
           "points": [
             {
-              "label": "First email",
-              "value": 135.3,
-              "display": "$135",
-              "note": "18 positive replies · 33,267 emails",
+              "label": "First email only",
+              "value": 302.82,
+              "display": "$303",
+              "note": "18 positive replies · $5,451 spent",
               "thin": false
             },
             {
-              "label": "Follow-up 1",
-              "value": 189.08,
-              "display": "$189",
-              "note": "12 positive replies · 31,390 emails",
+              "label": "+ 1 follow-up",
+              "value": 207.21,
+              "display": "$207",
+              "note": "30 positive replies · $6,216 spent",
               "thin": false
             },
             {
-              "label": "Follow-up 2",
-              "value": 300.19,
-              "display": "$300",
-              "note": "7 positive replies · 29,142 emails",
+              "label": "+ 2 follow-ups",
+              "value": 187.53,
+              "display": "$188",
+              "note": "37 positive replies · $6,939 spent",
+              "thin": false
+            },
+            {
+              "label": "+ 3 follow-ups",
+              "value": 187.53,
+              "display": "$188",
+              "note": "37 positive replies · $6,939 spent",
               "thin": false
             }
           ],
@@ -561,12 +561,12 @@
         }
       ],
       "conclusion": [
-        "Each depth adds up the spend and the positive replies of every email up to it.",
-        "The second chart prices each email alone, which is what the next follow-up would cost."
+        "A first email carries everything bought once per person: the lead, writing the whole sequence, the upload. A follow-up adds only its own sending, so its bar is the extra cost of the extra positive replies it brought.",
+        "A follow-up is worth sending while its extra positive reply costs no more than one bought with a first email to a new person."
       ],
       "verdict": {
-        "kind": "noise",
-        "reason": "The first email against the follow-ups, positive replies per dollar: p 0.122, a gap chance alone produces often."
+        "kind": "conclusion",
+        "reason": "The follow-ups against the first email, positive replies per dollar: p < 0.001, on the same people."
       }
     },
     {
@@ -783,7 +783,7 @@
             {
               "key": "cold-email-v28",
               "label": "Cold email v28",
-              "value": 67.35,
+              "value": 67.44,
               "display": "$67",
               "note": "2 positive replies · 1,204 emails",
               "thin": false
@@ -799,7 +799,7 @@
             {
               "key": "cold-email-v27",
               "label": "Cold email v27",
-              "value": 118.91,
+              "value": 118.89,
               "display": "$119",
               "note": "4 positive replies · 3,968 emails",
               "thin": false
@@ -807,7 +807,7 @@
             {
               "key": "blind-discovery-email-v5",
               "label": "Blind discovery v5",
-              "value": 119.16,
+              "value": 119.2,
               "display": "$119",
               "note": "1 positive reply · 2,097 emails",
               "thin": false
@@ -815,7 +815,7 @@
             {
               "key": "blind-discovery-email-v9",
               "label": "Blind discovery v9",
-              "value": 123.92,
+              "value": 123.78,
               "display": "$124",
               "note": "5 positive replies · 7,671 emails",
               "thin": false
@@ -831,7 +831,7 @@
             {
               "key": "blind-discovery-email-v26",
               "label": "Blind discovery v26",
-              "value": 153.13,
+              "value": 153.15,
               "display": "$153",
               "note": "14 positive replies · 22,317 emails",
               "thin": false
@@ -862,8 +862,8 @@
           "points": [
             {
               "label": "Aug",
-              "value": 5.62,
-              "display": "$5.62",
+              "value": 5.14,
+              "display": "$5.14",
               "note": "1 positive reply · 53 emails",
               "thin": false
             }
@@ -873,7 +873,7 @@
             "points": [
               {
                 "label": "Aug",
-                "value": 34.13,
+                "value": 34.33,
                 "display": "$34",
                 "note": "1 positive reply · 322 emails to date",
                 "thin": false
@@ -1365,23 +1365,23 @@
           "points": [
             {
               "label": "Double line breaks",
-              "value": 165.85,
+              "value": 165.86,
               "display": "$166",
               "note": "35 positive replies · 78,724 emails",
               "thin": false
             },
             {
               "label": "One block",
-              "value": 401.81,
+              "value": 401.65,
               "display": "$402",
               "note": "3 positive replies · 19,117 emails",
               "thin": false
             },
             {
               "label": "Single line breaks",
-              "value": 401.81,
+              "value": 401.65,
               "display": "None yet",
-              "note": "0 positive replies · 231 emails, $23 spent",
+              "note": "0 positive replies · 231 emails, $24 spent",
               "thin": true
             }
           ],
@@ -1394,21 +1394,21 @@
           "points": [
             {
               "label": "Double line breaks",
-              "value": 314.88,
+              "value": 314.93,
               "display": "$315",
               "note": "1 positive reply · 5,504 emails",
               "thin": false
             },
             {
               "label": "One block",
-              "value": 314.88,
+              "value": 314.93,
               "display": "None yet",
               "note": "0 positive replies · 5,353 emails, $230 spent",
               "thin": true
             },
             {
               "label": "Single line breaks",
-              "value": 314.88,
+              "value": 314.93,
               "display": "None yet",
               "note": "0 positive replies · 3 emails, $0.07 spent",
               "thin": true
@@ -1430,14 +1430,14 @@
             },
             {
               "label": "One block",
-              "value": 325,
+              "value": 324.87,
               "display": "$325",
               "note": "3 positive replies · 13,764 emails",
               "thin": false
             },
             {
               "label": "Single line breaks",
-              "value": 325,
+              "value": 324.87,
               "display": "None yet",
               "note": "0 positive replies · 228 emails, $23 spent",
               "thin": true
@@ -1468,10 +1468,10 @@
       "goal": "roi",
       "question": "Does the way the first email opens change what a positive reply costs?",
       "status": "measured",
-      "headline": "Greeting + first name leads at $154 per positive reply. Noise so far.",
+      "headline": "Greeting + first name leads at $155 per positive reply. Noise so far.",
       "winner": "Greeting + first name",
       "result": {
-        "display": "$154",
+        "display": "$155",
         "unit": "per positive reply",
         "sample": "21 positive replies · 41,279 emails"
       },
@@ -1484,22 +1484,22 @@
           "points": [
             {
               "label": "Greeting + first name",
-              "value": 154.35,
-              "display": "$154",
+              "value": 154.5,
+              "display": "$155",
               "note": "21 positive replies · 41,279 emails",
               "thin": false
             },
             {
               "label": "First name alone",
-              "value": 223.04,
+              "value": 222.74,
               "display": "$223",
               "note": "14 positive replies · 43,696 emails",
               "thin": false
             },
             {
               "label": "No greeting",
-              "value": 223.27,
-              "display": "$223",
+              "value": 223.61,
+              "display": "$224",
               "note": "3 positive replies · 13,097 emails",
               "thin": false
             }
@@ -1513,23 +1513,23 @@
           "points": [
             {
               "label": "No greeting",
-              "value": 279.75,
+              "value": 280.27,
               "display": "$280",
               "note": "1 positive reply · 4,969 emails",
               "thin": false
             },
             {
               "label": "First name alone",
-              "value": 279.75,
+              "value": 280.27,
               "display": "None yet",
-              "note": "0 positive replies · 5,346 emails, $220 spent",
+              "note": "0 positive replies · 5,346 emails, $221 spent",
               "thin": true
             },
             {
               "label": "Greeting + first name",
-              "value": 279.75,
+              "value": 280.27,
               "display": "None yet",
-              "note": "0 positive replies · 545 emails, $45 spent",
+              "note": "0 positive replies · 545 emails, $44 spent",
               "thin": true
             }
           ],
@@ -1542,21 +1542,21 @@
           "points": [
             {
               "label": "Greeting + first name",
-              "value": 150.15,
+              "value": 150.34,
               "display": "$150",
               "note": "21 positive replies · 40,608 emails",
               "thin": false
             },
             {
               "label": "No greeting",
-              "value": 195.03,
+              "value": 195.27,
               "display": "$195",
               "note": "2 positive replies · 8,128 emails",
               "thin": false
             },
             {
               "label": "First name alone",
-              "value": 207.3,
+              "value": 206.98,
               "display": "$207",
               "note": "14 positive replies · 38,350 emails",
               "thin": false
@@ -1566,7 +1566,7 @@
         }
       ],
       "conclusion": [
-        "Greeting + first name: 21 positive replies · 41,279 emails, $3,241 spent.",
+        "Greeting + first name: 21 positive replies · 41,279 emails, $3,244 spent.",
         "Flash tier: No greeting is cheapest at $280 per positive reply (1 positive reply · 4,969 emails).",
         "Pro tier: Greeting + first name is cheapest at $150 per positive reply (21 positive replies · 40,608 emails).",
         "Every email of a sequence is filed under how its first email looked, and the sequence's positive replies with it. A greeting word in any language we write in (Hi, Hallo, Bonjour...) counts as a greeting whatever follows; a first name followed by a comma, a colon or a dash, with no greeting word before it (\"Marie, most clinics...\"), counts as the first name alone. Classified by a regex on the text of the first email, no LLM involved.",
@@ -1577,7 +1577,7 @@
       ],
       "verdict": {
         "kind": "noise",
-        "reason": "Greeting + first name against First name alone, positive replies per dollar: p 0.313, a gap chance alone produces often."
+        "reason": "Greeting + first name against First name alone, positive replies per dollar: p 0.314, a gap chance alone produces often."
       }
     },
     {
@@ -1603,23 +1603,23 @@
           "points": [
             {
               "label": "Em dash",
-              "value": 157.27,
+              "value": 157.11,
               "display": "$157",
               "note": "14 positive replies · 28,064 emails",
               "thin": false
             },
             {
               "label": "No dash",
-              "value": 198.49,
-              "display": "$198",
+              "value": 198.67,
+              "display": "$199",
               "note": "24 positive replies · 68,962 emails",
               "thin": false
             },
             {
               "label": "En dash",
-              "value": 198.49,
+              "value": 198.67,
               "display": "None yet",
-              "note": "0 positive replies · 1,046 emails, $68 spent",
+              "note": "0 positive replies · 1,046 emails, $66 spent",
               "thin": true
             }
           ],
@@ -1661,23 +1661,23 @@
           "points": [
             {
               "label": "No dash",
-              "value": 365.68,
-              "display": "$366",
+              "value": 364.65,
+              "display": "$365",
               "note": "1 positive reply · 7,624 emails",
               "thin": false
             },
             {
               "label": "Em dash",
-              "value": 365.68,
+              "value": 364.65,
               "display": "None yet",
-              "note": "0 positive replies · 3,214 emails, $178 spent",
+              "note": "0 positive replies · 3,214 emails, $179 spent",
               "thin": true
             },
             {
               "label": "En dash",
-              "value": 365.68,
+              "value": 364.65,
               "display": "None yet",
-              "note": "0 positive replies · 22 emails, $1.31 spent",
+              "note": "0 positive replies · 22 emails, $1.29 spent",
               "thin": true
             }
           ],
@@ -1719,23 +1719,23 @@
           "points": [
             {
               "label": "Em dash",
-              "value": 144.52,
-              "display": "$145",
+              "value": 144.3,
+              "display": "$144",
               "note": "14 positive replies · 24,850 emails",
               "thin": false
             },
             {
               "label": "No dash",
-              "value": 189.36,
-              "display": "$189",
+              "value": 189.58,
+              "display": "$190",
               "note": "23 positive replies · 61,212 emails",
               "thin": false
             },
             {
               "label": "En dash",
-              "value": 189.36,
+              "value": 189.58,
               "display": "None yet",
-              "note": "0 positive replies · 1,024 emails, $67 spent",
+              "note": "0 positive replies · 1,024 emails, $65 spent",
               "thin": true
             }
           ],
@@ -1864,9 +1864,9 @@
         }
       ],
       "conclusion": [
-        "Em dash: 14 positive replies · 28,064 emails, $2,202 spent, a 0.05% positive reply rate.",
-        "Flash tier: No dash is cheapest at $366 per positive reply (1 positive reply · 7,624 emails).",
-        "Pro tier: Em dash is cheapest at $145 per positive reply (14 positive replies · 24,850 emails).",
+        "Em dash: 14 positive replies · 28,064 emails, $2,200 spent, a 0.05% positive reply rate.",
+        "Flash tier: No dash is cheapest at $365 per positive reply (1 positive reply · 7,624 emails).",
+        "Pro tier: Em dash is cheapest at $144 per positive reply (14 positive replies · 24,850 emails).",
         "Dashes are a model habit: GLM 5.2 Pro puts one in 100% of its first emails, Claude Fable 5.1 in 0%. Read each tier against the models writing its buckets.",
         "Flash tier: 55% of the em dash emails come from Gemini 3 Flash, 57% of the no-dash emails come from Gemini 3 Flash: one model writes most of both, so within this tier the gap is closer to a dash effect.",
         "Pro tier: 82% of the em dash emails come from Gemini 3.1 Pro, 98% of the no-dash emails come from Gemini 3.1 Pro: one model writes most of both, so within this tier the gap is closer to a dash effect.",
@@ -2000,8 +2000,8 @@
           "points": [
             {
               "label": "Aug",
-              "value": 5.62,
-              "display": "$5.62",
+              "value": 5.14,
+              "display": "$5.14",
               "note": "1 positive reply · 53 emails",
               "thin": false
             }
@@ -2011,14 +2011,14 @@
             "points": [
               {
                 "label": "Aug",
-                "value": 36.04,
+                "value": 36.23,
                 "display": "$36",
                 "note": "1 positive reply · 382 emails to date",
                 "thin": false
               },
               {
                 "label": "Sep",
-                "value": 36.36,
+                "value": 36.35,
                 "display": "$36",
                 "note": "1 positive reply · 385 emails to date · month in progress",
                 "thin": false,
@@ -2446,10 +2446,10 @@
       "goal": "roi",
       "question": "Which LLM gets the cheapest website visit?",
       "status": "measured",
-      "headline": "Gemini 3.5 Flash-Lite leads at $2.56 per website visit. Noise so far.",
+      "headline": "Gemini 3.5 Flash-Lite leads at $2.62 per website visit. Noise so far.",
       "winner": "Gemini 3.5 Flash-Lite",
       "result": {
-        "display": "$2.56",
+        "display": "$2.62",
         "unit": "per website visit",
         "sample": "19 website visits · 751 emails with a link"
       },
@@ -2463,16 +2463,16 @@
             {
               "key": "gemini-3.5-flash-lite",
               "label": "Gemini 3.5 Flash-Lite",
-              "value": 2.56,
-              "display": "$2.56",
+              "value": 2.62,
+              "display": "$2.62",
               "note": "19 website visits · 751 emails with a link",
               "thin": false
             },
             {
               "key": "gemini-3.1-pro",
               "label": "Gemini 3.1 Pro",
-              "value": 7.22,
-              "display": "$7.22",
+              "value": 7.01,
+              "display": "$7.01",
               "note": "4 website visits · 220 emails with a link",
               "thin": true
             }
@@ -2486,8 +2486,8 @@
           "points": [
             {
               "label": "Sep",
-              "value": 2.56,
-              "display": "$2.56",
+              "value": 2.62,
+              "display": "$2.62",
               "note": "19 website visits · 751 emails with a link · month in progress",
               "thin": false,
               "partial": true
@@ -2498,8 +2498,8 @@
             "points": [
               {
                 "label": "Sep",
-                "value": 2.56,
-                "display": "$2.56",
+                "value": 2.62,
+                "display": "$2.62",
                 "note": "19 website visits · 751 emails with a link to date · month in progress",
                 "thin": false,
                 "partial": true
@@ -2510,14 +2510,14 @@
         }
       ],
       "conclusion": [
-        "Gemini 3.5 Flash-Lite: 19 website visits · 751 emails with a link, $49 spent.",
+        "Gemini 3.5 Flash-Lite: 19 website visits · 751 emails with a link, $50 spent.",
         "Same clients, same months, Gemini 3.5 Flash-Lite against Gemini 3.1 Pro: 19 website visits in 751 emails with a link against 4 in 211, under 5 on one side, so no ratio.",
         "Same clients, same months, Gemini 3.5 Flash-Lite against DeepSeek V4 Flash: 16 website visits in 726 emails with a link against 0 in 151, under 5 on one side, so no ratio.",
         "Same clients, same months, Gemini 3.5 Flash-Lite against GLM 5.3 Flash: 18 website visits in 629 emails with a link against 0 in 33, under 5 on one side, so no ratio."
       ],
       "verdict": {
         "kind": "noise",
-        "reason": "Gemini 3.5 Flash-Lite against Gemini 3.1 Pro, website visits per dollar: p 0.053, a gap chance alone produces often."
+        "reason": "Gemini 3.5 Flash-Lite against Gemini 3.1 Pro, website visits per dollar: p 0.081, a gap chance alone produces often."
       }
     },
     {
@@ -2633,10 +2633,10 @@
       "goal": "roi",
       "question": "What does a website visit cost on average?",
       "status": "measured",
-      "headline": "$3.96 per website visit on average since inception, across all our emails whose clicks are screened for bots.",
+      "headline": "$4.16 per website visit on average since inception, across all our emails whose clicks are screened for bots.",
       "winner": null,
       "result": {
-        "display": "$3.96",
+        "display": "$4.16",
         "unit": "per website visit, average since inception",
         "sample": "23 website visits · 1,181 emails with a link to date"
       },
@@ -2649,8 +2649,8 @@
           "points": [
             {
               "label": "Sep",
-              "value": 3.91,
-              "display": "$3.91",
+              "value": 4.13,
+              "display": "$4.13",
               "note": "23 website visits · 1,172 emails with a link · month in progress",
               "thin": false,
               "partial": true
@@ -2661,8 +2661,8 @@
             "points": [
               {
                 "label": "Sep",
-                "value": 3.96,
-                "display": "$3.96",
+                "value": 4.16,
+                "display": "$4.16",
                 "note": "23 website visits · 1,181 emails with a link to date · month in progress",
                 "thin": false,
                 "partial": true
@@ -2677,7 +2677,7 @@
       ],
       "verdict": {
         "kind": "conclusion",
-        "reason": "A measurement on 23 website visits: 95% interval $2.64 to $6.25 per website visit."
+        "reason": "A measurement on 23 website visits: 95% interval $2.77 to $6.57 per website visit."
       }
     },
     {
@@ -2685,17 +2685,39 @@
       "crew": "scout",
       "topic": "followups",
       "goal": "roi",
-      "question": "How many follow-ups give the cheapest website visit?",
+      "question": "How many follow-ups are worth their cost, for website visits?",
       "status": "measured",
-      "headline": "First email only: $2.13 per website visit, the cheapest depth.",
-      "winner": "First email only",
+      "headline": "Send through follow-up 1: it adds website visits at no extra cost (sending is not charged per email), against $4.79 on a first email. Noise so far.",
+      "winner": "Follow-up 1",
       "result": {
-        "display": "$2.13",
-        "unit": "per website visit, first email only",
-        "sample": "20 website visits · $43 spent"
+        "display": "$0.00",
+        "unit": "per extra website visit, follow-up 1",
+        "sample": "3 website visits · $0.00 extra spent"
       },
-      "crowned": true,
+      "crowned": false,
       "charts": [
+        {
+          "kind": "bars",
+          "title": "What each email adds: cost per extra website visit (USD, lower is better)",
+          "lowerIsBetter": true,
+          "points": [
+            {
+              "label": "First email",
+              "value": 4.79,
+              "display": "$4.79",
+              "note": "20 website visits · 548 emails with a link",
+              "thin": false
+            },
+            {
+              "label": "Follow-up 1",
+              "value": 0,
+              "display": "$0.00",
+              "note": "3 website visits · 355 emails with a link",
+              "thin": true
+            }
+          ],
+          "note": "Only people we started writing to at least 21 days before the read (before Sep 12) count, with every positive reply and website visit they sent since. A figure needs 1 positive reply (10 website visits) behind it; below that it reads Learning. A website visit is a click our link-scanner check judged human, which only the emails we send ourselves can carry: website-visit figures leave out the emails sent through the provider, whose clicks are mostly scanners and cannot be screened."
+        },
         {
           "kind": "bars",
           "title": "Cost per website visit if the sequence stopped here (USD, lower is better)",
@@ -2703,58 +2725,36 @@
           "points": [
             {
               "label": "First email only",
-              "value": 2.13,
-              "display": "$2.13",
-              "note": "20 website visits · $43 spent",
+              "value": 4.79,
+              "display": "$4.79",
+              "note": "20 website visits · $96 spent",
               "thin": false
             },
             {
               "label": "+ 1 follow-up",
-              "value": 3.01,
-              "display": "$3.01",
-              "note": "23 website visits · $69 spent",
+              "value": 4.16,
+              "display": "$4.16",
+              "note": "23 website visits · $96 spent",
               "thin": false
             },
             {
               "label": "+ 2 follow-ups",
-              "value": 3.96,
-              "display": "$3.96",
-              "note": "23 website visits · $91 spent",
+              "value": 4.16,
+              "display": "$4.16",
+              "note": "23 website visits · $96 spent",
               "thin": false
-            }
-          ],
-          "note": "Only people we started writing to at least 21 days before the read (before Sep 12) count, with every positive reply and website visit they sent since. A figure needs 1 positive reply (10 website visits) behind it; below that it reads Learning. A website visit is a click our link-scanner check judged human, which only the emails we send ourselves can carry: website-visit figures leave out the emails sent through the provider, whose clicks are mostly scanners and cannot be screened."
-        },
-        {
-          "kind": "bars",
-          "title": "Each email on its own: cost per website visit (USD, lower is better)",
-          "lowerIsBetter": true,
-          "points": [
-            {
-              "label": "First email",
-              "value": 2.13,
-              "display": "$2.13",
-              "note": "20 website visits · 548 emails with a link",
-              "thin": false
-            },
-            {
-              "label": "Follow-up 1",
-              "value": 8.9,
-              "display": "$8.90",
-              "note": "3 website visits · 355 emails with a link",
-              "thin": true
             }
           ],
           "note": "Only people we started writing to at least 21 days before the read (before Sep 12) count, with every positive reply and website visit they sent since. A figure needs 1 positive reply (10 website visits) behind it; below that it reads Learning. A website visit is a click our link-scanner check judged human, which only the emails we send ourselves can carry: website-visit figures leave out the emails sent through the provider, whose clicks are mostly scanners and cannot be screened."
         }
       ],
       "conclusion": [
-        "Each depth adds up the spend and the website visits of every email up to it.",
-        "The second chart prices each email alone, which is what the next follow-up would cost."
+        "A first email carries everything bought once per person: the lead, writing the whole sequence, the upload. A follow-up adds only its own sending, so its bar is the extra cost of the extra website visits it brought.",
+        "A follow-up is worth sending while its extra website visit costs no more than one bought with a first email to a new person."
       ],
       "verdict": {
-        "kind": "conclusion",
-        "reason": "The first email against the follow-ups, website visits per dollar: p < 0.001, on the same people."
+        "kind": "noise",
+        "reason": "Follow-ups cost nothing extra but brought 3 website visits in all: too few to say they add any."
       }
     },
     {
@@ -2860,10 +2860,10 @@
       "goal": "roi",
       "question": "Which template gets the cheapest website visit?",
       "status": "measured",
-      "headline": "Cold email v35 leads at $2.93 per website visit. Noise so far.",
+      "headline": "Cold email v35 leads at $2.82 per website visit. Noise so far.",
       "winner": "Cold email v35",
       "result": {
-        "display": "$2.93",
+        "display": "$2.82",
         "unit": "per website visit",
         "sample": "19 website visits · 885 emails with a link"
       },
@@ -2877,16 +2877,16 @@
             {
               "key": "cold-email-v35",
               "label": "Cold email v35",
-              "value": 2.93,
-              "display": "$2.93",
+              "value": 2.82,
+              "display": "$2.82",
               "note": "19 website visits · 885 emails with a link",
               "thin": false
             },
             {
               "key": "cold-email-v31",
               "label": "Cold email v31",
-              "value": 6.11,
-              "display": "$6.11",
+              "value": 5.46,
+              "display": "$5.46",
               "note": "4 website visits · 180 emails with a link",
               "thin": true
             }
@@ -2900,8 +2900,8 @@
           "points": [
             {
               "label": "Sep",
-              "value": 2.93,
-              "display": "$2.93",
+              "value": 2.82,
+              "display": "$2.82",
               "note": "19 website visits · 885 emails with a link · month in progress",
               "thin": false,
               "partial": true
@@ -2912,8 +2912,8 @@
             "points": [
               {
                 "label": "Sep",
-                "value": 2.93,
-                "display": "$2.93",
+                "value": 2.82,
+                "display": "$2.82",
                 "note": "19 website visits · 885 emails with a link to date · month in progress",
                 "thin": false,
                 "partial": true
@@ -2924,11 +2924,11 @@
         }
       ],
       "conclusion": [
-        "Cold email v35: 19 website visits · 885 emails with a link, $56 spent."
+        "Cold email v35: 19 website visits · 885 emails with a link, $54 spent."
       ],
       "verdict": {
         "kind": "noise",
-        "reason": "Cold email v35 against Cold email v31, website visits per dollar: p 0.256, a gap chance alone produces often."
+        "reason": "Cold email v35 against Cold email v31, website visits per dollar: p 0.259, a gap chance alone produces often."
       }
     },
     {
@@ -3064,10 +3064,10 @@
       "goal": "roi",
       "question": "Does the layout of the first email change what a website visit costs?",
       "status": "measured",
-      "headline": "One block leads at $3.23 per website visit. Noise so far.",
+      "headline": "One block leads at $3.03 per website visit. Noise so far.",
       "winner": "One block",
       "result": {
-        "display": "$3.23",
+        "display": "$3.03",
         "unit": "per website visit",
         "sample": "16 website visits · 633 emails with a link"
       },
@@ -3080,23 +3080,23 @@
           "points": [
             {
               "label": "One block",
-              "value": 3.23,
-              "display": "$3.23",
+              "value": 3.03,
+              "display": "$3.03",
               "note": "16 website visits · 633 emails with a link",
               "thin": false
             },
             {
               "label": "Double line breaks",
-              "value": 5.55,
-              "display": "$5.55",
+              "value": 6.59,
+              "display": "$6.59",
               "note": "7 website visits · 542 emails with a link",
               "thin": true
             },
             {
               "label": "Single line breaks",
-              "value": 5.55,
+              "value": 6.59,
               "display": "None yet",
-              "note": "0 website visits · 6 emails with a link, $0.60 spent",
+              "note": "0 website visits · 6 emails with a link, $1.06 spent",
               "thin": true
             }
           ],
@@ -3109,23 +3109,23 @@
           "points": [
             {
               "label": "One block",
-              "value": 2.47,
-              "display": "$2.47",
+              "value": 2.38,
+              "display": "$2.38",
               "note": "12 website visits · 470 emails with a link",
               "thin": false
             },
             {
               "label": "Double line breaks",
-              "value": 4.64,
-              "display": "$4.64",
+              "value": 5.54,
+              "display": "$5.54",
               "note": "7 website visits · 489 emails with a link",
               "thin": true
             },
             {
               "label": "Single line breaks",
-              "value": 4.64,
+              "value": 5.54,
               "display": "None yet",
-              "note": "0 website visits · 2 emails with a link, $0.15 spent",
+              "note": "0 website visits · 2 emails with a link, $0.41 spent",
               "thin": true
             }
           ],
@@ -3138,23 +3138,23 @@
           "points": [
             {
               "label": "One block",
-              "value": 5.52,
-              "display": "$5.52",
+              "value": 5,
+              "display": "$5.00",
               "note": "4 website visits · 163 emails with a link",
               "thin": true
             },
             {
               "label": "Double line breaks",
-              "value": 5.52,
+              "value": 5,
               "display": "None yet",
-              "note": "0 website visits · 53 emails with a link, $6.38 spent",
+              "note": "0 website visits · 53 emails with a link, $7.40 spent",
               "thin": true
             },
             {
               "label": "Single line breaks",
-              "value": 5.52,
+              "value": 5,
               "display": "None yet",
-              "note": "0 website visits · 4 emails with a link, $0.45 spent",
+              "note": "0 website visits · 4 emails with a link, $0.65 spent",
               "thin": true
             }
           ],
@@ -3162,16 +3162,16 @@
         }
       ],
       "conclusion": [
-        "One block: 16 website visits · 633 emails with a link, $52 spent.",
-        "Flash tier: One block is cheapest at $2.47 per website visit (12 website visits · 470 emails with a link).",
-        "Pro tier: One block is cheapest at $5.52 per website visit (4 website visits · 163 emails with a link).",
+        "One block: 16 website visits · 633 emails with a link, $49 spent.",
+        "Flash tier: One block is cheapest at $2.38 per website visit (12 website visits · 470 emails with a link).",
+        "Pro tier: One block is cheapest at $5.00 per website visit (4 website visits · 163 emails with a link).",
         "Every email of a sequence is filed under how its first email looked, and the sequence's website visits with it. Three layouts: one block (no line break at all), single line breaks (a new line with no empty line), double line breaks (an empty line between paragraphs). Classified by a regex on the text of the first email, no LLM involved.",
         "The model chose this on its own until Sep 28, 2026, when the templates started requiring a greeting and blank-line paragraphs. Every email here was written before, the last in Oct.",
         "The buckets ran for different clients, audiences and months: this is not a split test."
       ],
       "verdict": {
         "kind": "noise",
-        "reason": "One block against Double line breaks, website visits per dollar: p 0.293, a gap chance alone produces often."
+        "reason": "One block against Double line breaks, website visits per dollar: p 0.096, a gap chance alone produces often."
       }
     },
     {
@@ -3181,10 +3181,10 @@
       "goal": "roi",
       "question": "Does the way the first email opens change what a website visit costs?",
       "status": "measured",
-      "headline": "Greeting + first name leads at $2.22 per website visit. A signal to confirm, not yet a conclusion.",
+      "headline": "Greeting + first name leads at $2.09 per website visit. A signal to confirm, not yet a conclusion.",
       "winner": "Greeting + first name",
       "result": {
-        "display": "$2.22",
+        "display": "$2.09",
         "unit": "per website visit",
         "sample": "18 website visits · 629 emails with a link"
       },
@@ -3197,23 +3197,23 @@
           "points": [
             {
               "label": "Greeting + first name",
-              "value": 2.22,
-              "display": "$2.22",
+              "value": 2.09,
+              "display": "$2.09",
               "note": "18 website visits · 629 emails with a link",
               "thin": false
             },
             {
               "label": "First name alone",
-              "value": 7.64,
-              "display": "$7.64",
+              "value": 7.21,
+              "display": "$7.21",
               "note": "5 website visits · 417 emails with a link",
               "thin": true
             },
             {
               "label": "No greeting",
-              "value": 7.64,
+              "value": 7.21,
               "display": "None yet",
-              "note": "0 website visits · 135 emails with a link, $13 spent",
+              "note": "0 website visits · 135 emails with a link, $22 spent",
               "thin": true
             }
           ],
@@ -3226,23 +3226,23 @@
           "points": [
             {
               "label": "Greeting + first name",
-              "value": 2.22,
-              "display": "$2.22",
+              "value": 2.09,
+              "display": "$2.09",
               "note": "18 website visits · 629 emails with a link",
               "thin": false
             },
             {
               "label": "First name alone",
-              "value": 15.31,
+              "value": 15.42,
               "display": "$15",
               "note": "1 website visit · 249 emails with a link",
               "thin": true
             },
             {
               "label": "No greeting",
-              "value": 15.31,
+              "value": 15.42,
               "display": "None yet",
-              "note": "0 website visits · 83 emails with a link, $6.99 spent",
+              "note": "0 website visits · 83 emails with a link, $15 spent",
               "thin": true
             }
           ],
@@ -3255,16 +3255,16 @@
           "points": [
             {
               "label": "First name alone",
-              "value": 5.72,
-              "display": "$5.72",
+              "value": 5.16,
+              "display": "$5.16",
               "note": "4 website visits · 168 emails with a link",
               "thin": true
             },
             {
               "label": "No greeting",
-              "value": 5.72,
+              "value": 5.16,
               "display": "None yet",
-              "note": "0 website visits · 52 emails with a link, $6.01 spent",
+              "note": "0 website visits · 52 emails with a link, $7.42 spent",
               "thin": true
             }
           ],
@@ -3272,16 +3272,16 @@
         }
       ],
       "conclusion": [
-        "Greeting + first name: 18 website visits · 629 emails with a link, $40 spent.",
-        "Flash tier: Greeting + first name is cheapest at $2.22 per website visit (18 website visits · 629 emails with a link).",
-        "Pro tier: First name alone is cheapest at $5.72 per website visit (4 website visits · 168 emails with a link).",
+        "Greeting + first name: 18 website visits · 629 emails with a link, $38 spent.",
+        "Flash tier: Greeting + first name is cheapest at $2.09 per website visit (18 website visits · 629 emails with a link).",
+        "Pro tier: First name alone is cheapest at $5.16 per website visit (4 website visits · 168 emails with a link).",
         "Every email of a sequence is filed under how its first email looked, and the sequence's website visits with it. A greeting word in any language we write in (Hi, Hallo, Bonjour...) counts as a greeting whatever follows; a first name followed by a comma, a colon or a dash, with no greeting word before it (\"Marie, most clinics...\"), counts as the first name alone. Classified by a regex on the text of the first email, no LLM involved.",
         "The model chose this on its own until Sep 28, 2026, when the templates started requiring a greeting and blank-line paragraphs. Every email here was written before, the last in Oct.",
         "The buckets ran for different clients, audiences and months: this is not a split test."
       ],
       "verdict": {
         "kind": "signal",
-        "reason": "Greeting + first name against First name alone, website visits per dollar: p 0.011 (2 comparisons, so the bar is p < 0.025), but on the same clients in the same months it reads 2.05x (p 0.145): the gap may be the clients'."
+        "reason": "Greeting + first name against First name alone, website visits per dollar: p 0.011 (2 comparisons, so the bar is p < 0.025), but on the same clients in the same months it reads 1.79x (p 0.235): the gap may be the clients'."
       }
     },
     {
@@ -3291,10 +3291,10 @@
       "goal": "roi",
       "question": "Do dashes in the first email change what a website visit costs, and how often one comes?",
       "status": "measured",
-      "headline": "No dash leads at $3.46 per website visit. Noise so far.",
+      "headline": "No dash leads at $3.64 per website visit. Noise so far.",
       "winner": "No dash",
       "result": {
-        "display": "$3.46",
+        "display": "$3.64",
         "unit": "per website visit",
         "sample": "23 website visits · 1,000 emails with a link"
       },
@@ -3307,23 +3307,23 @@
           "points": [
             {
               "label": "No dash",
-              "value": 3.46,
-              "display": "$3.46",
+              "value": 3.64,
+              "display": "$3.64",
               "note": "23 website visits · 1,000 emails with a link",
               "thin": false
             },
             {
               "label": "Em dash",
-              "value": 3.46,
+              "value": 3.64,
               "display": "None yet",
-              "note": "0 website visits · 178 emails with a link, $11 spent",
+              "note": "0 website visits · 178 emails with a link, $12 spent",
               "thin": true
             },
             {
               "label": "En dash",
-              "value": 3.46,
+              "value": 3.64,
               "display": "None yet",
-              "note": "0 website visits · 3 emails with a link, $0.19 spent",
+              "note": "0 website visits · 3 emails with a link, $0.17 spent",
               "thin": true
             }
           ],
@@ -3365,23 +3365,23 @@
           "points": [
             {
               "label": "No dash",
-              "value": 2.72,
-              "display": "$2.72",
+              "value": 2.99,
+              "display": "$2.99",
               "note": "19 website visits · 788 emails with a link",
               "thin": false
             },
             {
               "label": "Em dash",
-              "value": 2.72,
+              "value": 2.99,
               "display": "None yet",
-              "note": "0 website visits · 170 emails with a link, $10 spent",
+              "note": "0 website visits · 170 emails with a link, $11 spent",
               "thin": true
             },
             {
               "label": "En dash",
-              "value": 2.72,
+              "value": 2.99,
               "display": "None yet",
-              "note": "0 website visits · 3 emails with a link, $0.19 spent",
+              "note": "0 website visits · 3 emails with a link, $0.17 spent",
               "thin": true
             }
           ],
@@ -3423,16 +3423,16 @@
           "points": [
             {
               "label": "No dash",
-              "value": 6.96,
-              "display": "$6.96",
+              "value": 6.72,
+              "display": "$6.72",
               "note": "4 website visits · 212 emails with a link",
               "thin": true
             },
             {
               "label": "Em dash",
-              "value": 6.96,
+              "value": 6.72,
               "display": "None yet",
-              "note": "0 website visits · 8 emails with a link, $1.06 spent",
+              "note": "0 website visits · 8 emails with a link, $1.16 spent",
               "thin": true
             }
           ],
@@ -3505,9 +3505,9 @@
         }
       ],
       "conclusion": [
-        "No dash: 23 website visits · 1,000 emails with a link, $80 spent, a 2.30% website visit rate.",
-        "Flash tier: No dash is cheapest at $2.72 per website visit (19 website visits · 788 emails with a link).",
-        "Pro tier: No dash is cheapest at $6.96 per website visit (4 website visits · 212 emails with a link).",
+        "No dash: 23 website visits · 1,000 emails with a link, $84 spent, a 2.30% website visit rate.",
+        "Flash tier: No dash is cheapest at $2.99 per website visit (19 website visits · 788 emails with a link).",
+        "Pro tier: No dash is cheapest at $6.72 per website visit (4 website visits · 212 emails with a link).",
         "Dashes are a model habit: DeepSeek V4 Flash puts one in 94% of its first emails, Gemini 3.5 Flash-Lite in 0%. Read each tier against the models writing its buckets.",
         "Flash tier: 82% of the em dash emails come from DeepSeek V4 Flash, 95% of the no-dash emails come from Gemini 3.5 Flash-Lite: different models, so within this tier the gap is largely a model gap, not a dash effect.",
         "Pro tier: 100% of the em dash emails come from Gemini 3.1 Pro, 100% of the no-dash emails come from Gemini 3.1 Pro: one model writes most of both, so within this tier the gap is closer to a dash effect.",
@@ -3517,7 +3517,7 @@
       ],
       "verdict": {
         "kind": "noise",
-        "reason": "No dash against Em dash, website visits per dollar: p 0.105, a gap chance alone produces often."
+        "reason": "No dash against Em dash, website visits per dollar: p 0.104, a gap chance alone produces often."
       }
     },
     {
@@ -3527,10 +3527,10 @@
       "goal": "roi",
       "question": "Which workflow gets the cheapest website visit?",
       "status": "measured",
-      "headline": "Gemini 3.5 Flash-Lite · Cold email v35 leads at $2.35 per website visit. Noise so far.",
+      "headline": "Gemini 3.5 Flash-Lite · Cold email v35 leads at $2.23 per website visit. Noise so far.",
       "winner": "Gemini 3.5 Flash-Lite · Cold email v35",
       "result": {
-        "display": "$2.35",
+        "display": "$2.23",
         "unit": "per website visit",
         "sample": "19 website visits · 701 emails with a link"
       },
@@ -3544,16 +3544,16 @@
             {
               "key": "sales-cold-email-outreach-rampart",
               "label": "Gemini 3.5 Flash-Lite · Cold email v35",
-              "value": 2.35,
-              "display": "$2.35",
+              "value": 2.23,
+              "display": "$2.23",
               "note": "19 website visits · 701 emails with a link",
               "thin": false
             },
             {
               "key": "sales-cold-email-outreach-permafrost",
               "label": "Gemini 3.1 Pro · Cold email v31",
-              "value": 6.11,
-              "display": "$6.11",
+              "value": 5.46,
+              "display": "$5.46",
               "note": "4 website visits · 180 emails with a link",
               "thin": true
             }
@@ -3567,8 +3567,8 @@
           "points": [
             {
               "label": "Sep",
-              "value": 2.35,
-              "display": "$2.35",
+              "value": 2.23,
+              "display": "$2.23",
               "note": "19 website visits · 701 emails with a link · month in progress",
               "thin": false,
               "partial": true
@@ -3579,8 +3579,8 @@
             "points": [
               {
                 "label": "Sep",
-                "value": 2.35,
-                "display": "$2.35",
+                "value": 2.23,
+                "display": "$2.23",
                 "note": "19 website visits · 701 emails with a link to date · month in progress",
                 "thin": false,
                 "partial": true
@@ -3591,11 +3591,11 @@
         }
       ],
       "conclusion": [
-        "Gemini 3.5 Flash-Lite · Cold email v35: 19 website visits · 701 emails with a link, $45 spent."
+        "Gemini 3.5 Flash-Lite · Cold email v35: 19 website visits · 701 emails with a link, $42 spent."
       ],
       "verdict": {
         "kind": "noise",
-        "reason": "Gemini 3.5 Flash-Lite · Cold email v35 against Gemini 3.1 Pro · Cold email v31, website visits per dollar: p 0.082, a gap chance alone produces often."
+        "reason": "Gemini 3.5 Flash-Lite · Cold email v35 against Gemini 3.1 Pro · Cold email v31, website visits per dollar: p 0.122, a gap chance alone produces often."
       }
     },
     {
