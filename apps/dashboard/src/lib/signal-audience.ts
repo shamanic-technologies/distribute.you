@@ -4,22 +4,13 @@
  * (`POST /orgs/audiences/signal`) and stores the criterion on the row as
  * `filters.buying_signal = { type: "linkedin_engagement", window_days, competitor_pages }`.
  *
+ * We find the competitors and create it (done for you); the client never types pages.
+ * This module only READS the criterion back for the table and the drawer.
+ *
  * Alias-free on purpose (no runtime `@/` import) so the unit tests import it directly.
  */
 
-export const SIGNAL_MAX_PAGES = 3;
-export const SIGNAL_DEFAULT_WINDOW_DAYS = 30;
-export const SIGNAL_WINDOW_OPTIONS = [7, 14, 30, 60, 90] as const;
-
 const COMPANY_PAGE = /^https?:\/\/(?:[a-z]{2,3}\.)?linkedin\.com\/company\/([^/?#\s]+)\/?(?:[?#].*)?$/i;
-
-/**
- * Whether a pasted URL LOOKS like a LinkedIn company page. A hint for the form only:
- * apollo-service validates the pages and its named 400 is the truth the modal shows.
- */
-export function isLinkedInCompanyPage(url: string): boolean {
-  return COMPANY_PAGE.test(url.trim());
-}
 
 /** The `<slug>` of `https://www.linkedin.com/company/<slug>/`, or the URL itself when it has none. */
 export function companyPageSlug(url: string): string {
