@@ -172,36 +172,17 @@ export function launchPlan(paths: readonly PlanPath[]): PlanCampaign[] {
 }
 
 /**
- * The margin for replies (owner-decided 2026-10-01, Google Ads' way): the daily budget
- * goes to finding new leads, and on top of it UP TO half of it may be spent answering the
- * leads who reply (every campaign set off by a step: meeting booking, calls). The visitor
- * ticks a box saying so before paying.
- */
-export const REPLY_MARGIN_SHARE = 0.5;
-
-/** Whole dollars a day each reply campaign may spend: the margin shared between them. */
-export function replyCeilingUsd(budgetUsd: number, replyCampaigns: number): number {
-  if (replyCampaigns <= 0) return 0;
-  return Math.floor((budgetUsd * REPLY_MARGIN_SHARE) / replyCampaigns);
-}
-
-/** The whole-dollar margin for replies on a budget. */
-export function replyMarginUsd(budgetUsd: number): number {
-  return Math.floor(budgetUsd * REPLY_MARGIN_SHARE);
-}
-
-/**
- * The smallest daily budget the plan can run on: every lead-finding campaign must clear
- * its channel's floor at the full budget, and every reply campaign at its share of the
- * margin (billing refuses a ceiling under the floor).
+ * The smallest daily budget the plan can run on: every campaign, lead-finding or reply,
+ * must clear its channel's floor at the full budget (billing refuses a ceiling under the
+ * floor). ONE pot per brand (owner 2026-10-03): the daily budget pays every step of the sales path,
+ * replies to leads first, and every campaign's own ceiling is that budget.
  */
 export function planFloorUsd(plan: readonly PlanCampaign[], floorCentsBySlug: ReadonlyMap<string, number>, fallbackUsd: number): number {
   let floor = fallbackUsd;
-  const replies = plan.filter((c) => c.reactive).length;
   for (const c of plan) {
     const cents = floorCentsBySlug.get(c.featureSlug);
     if (cents == null) continue;
-    const need = c.reactive ? Math.ceil((cents / 100) * replies / REPLY_MARGIN_SHARE) : Math.ceil(cents / 100);
+    const need = Math.ceil(cents / 100);
     if (need > floor) floor = need;
   }
   return floor;

@@ -8,6 +8,7 @@ import { formatCount } from "@/lib/format-number";
 import { formatRoi, roiIsGood } from "@/lib/format-roi";
 import { PROVIDER_DOMAINS } from "@/lib/api-registry";
 import { audienceFilterGroups } from "@/lib/audience-filter-groups";
+import { companyPageSlug, linkedInSignalOf, type LinkedInSignal } from "@/lib/signal-audience";
 import {
   audienceCount,
   audienceFigure,
@@ -23,6 +24,7 @@ import { EditWithAIChat } from "@/components/ai-edit/edit-with-ai-chat";
 import { EmptyNote, Shimmer, StateDot } from "@/components/v2/ui";
 import { RecordsFooter, RecordsTabs, RecordsToolbar, REC_TH, useRowKeys } from "@/components/v2/records";
 import { useAudienceTable } from "@/components/v2/use-audience-table";
+import { V2SignalAudienceModal } from "@/components/v2/signal-audience-modal";
 import { useStatBasis } from "@/lib/use-stat-basis";
 import { shownFigure, type MaturityPair, type StatBasis } from "@/lib/maturity";
 import { LEG_PAIR_NOUN } from "@/lib/campaign-leg-columns";
@@ -41,6 +43,26 @@ function SparkleIcon() {
         strokeLinejoin="round"
       />
     </svg>
+  );
+}
+
+function LinkedInIcon() {
+  return (
+    <svg width="12" height="12" viewBox="0 0 16 16" aria-hidden="true" className="shrink-0">
+      <rect x="1" y="1" width="14" height="14" rx="3" fill="currentColor" />
+      <path d="M4.5 6.5v5M4.5 4.3v.1M7.3 11.5V6.5m0 2.3c0-1.4.9-2.4 2-2.4s1.9.8 1.9 2.2v2.9" stroke="var(--bg-raised)" strokeWidth="1.5" strokeLinecap="round" />
+    </svg>
+  );
+}
+
+/** A LinkedIn signal audience names its competitors where an Apollo one names nothing. */
+function SignalTag({ signal }: { signal: LinkedInSignal }) {
+  const slugs = signal.competitorPages.map(companyPageSlug).join(", ");
+  return (
+    <span className="k-chip min-w-0 shrink gap-1" title={`LinkedIn signal: ${slugs}`}>
+      <LinkedInIcon />
+      <span className="truncate">{slugs || "LinkedIn signal"}</span>
+    </span>
   );
 }
 
@@ -162,6 +184,7 @@ export function V2AudiencesTable({ campaignId, offerId }: { campaignId?: string;
   const [sortCol, setSortCol] = useState<AudienceSortCol>(t.defaultSortCol);
   const [sortDir, setSortDir] = useState<"asc" | "desc">(t.defaultSortDir);
   const [userSorted, setUserSorted] = useState(false);
+  const [signalOpen, setSignalOpen] = useState(false);
   const searchRef = useRef<HTMLInputElement | null>(null);
 
   // The default sort follows the grain until the reader picks a column.
@@ -288,6 +311,13 @@ export function V2AudiencesTable({ campaignId, offerId }: { campaignId?: string;
                   <path d="M6 9.5v-7M3 5l3-3 3 3" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" />
                 </svg>
               </button>
+              {/* Audiences belong to the offer, so a new one is made on its Targeting page only. */}
+              {!t.campaignScoped && (
+                <button type="button" onClick={() => setSignalOpen(true)} className="k-btn">
+                  <LinkedInIcon />
+                  LinkedIn signal
+                </button>
+              )}
               <button
                 type="button"
                 onClick={() => {
@@ -334,6 +364,7 @@ export function V2AudiencesTable({ campaignId, offerId }: { campaignId?: string;
                 rows.map((a, i) => {
                   const stats = t.statsFor(a.id);
                   const name = a.name || "Untitled";
+                  const signal = linkedInSignalOf(a.filters);
                   return (
                     <tr
                       key={a.id}
@@ -342,10 +373,11 @@ export function V2AudiencesTable({ campaignId, offerId }: { campaignId?: string;
                       aria-label={`Open ${name}`}
                       className={`group k-row h-10 cursor-pointer ${i === cursor || a.id === selectedId ? "k-selected" : ""}`}
                     >
-                      <td className="max-w-[280px] pl-4 pr-3">
+                      <td className={`${signal ? "max-w-[420px]" : "max-w-[280px]"} pl-4 pr-3`}>
                         <span className="flex min-w-0 items-center gap-2">
                           <AudienceAvatar name={name} avatarUrl={a.avatarUrl} size={20} />
                           <span className="truncate font-medium">{name}</span>
+                          {signal && <SignalTag signal={signal} />}
                         </span>
                       </td>
                       <td className="whitespace-nowrap px-3">
@@ -403,6 +435,20 @@ export function V2AudiencesTable({ campaignId, offerId }: { campaignId?: string;
           pendingStatus={
             t.statusMut.isPending && t.statusMut.variables?.id === selected.id ? t.statusMut.variables.status : null
           }
+        />
+      )}
+
+      {signalOpen && (
+        <V2SignalAudienceModal
+          brandId={t.brandId}
+          offerId={t.offerId}
+          seedPrompt={t.audiences.find((a) => a.nlPrompt?.trim())?.nlPrompt ?? null}
+          onClose={() => setSignalOpen(false)}
+          onCreated={(id) => {
+            setSignalOpen(false);
+            setTab("active");
+            setSelectedId(id);
+          }}
         />
       )}
 
@@ -523,7 +569,9 @@ function AudienceDrawer({
   const name = audience.name || "Untitled";
   const count = audience.apolloCount ?? audience.apifyCount;
   const providerDomain = audience.provider ? PROVIDER_DOMAINS[audience.provider.toLowerCase()] ?? null : null;
-  const groups = audience.filters ? audienceFilterGroups(audience.filters) : [];
+  const signal = linkedInSignalOf(audience.filters);
+  // A signal audience's filters hold its criterion, not Apollo filters: it gets its own section.
+  const groups = audience.filters && !signal ? audienceFilterGroups(audience.filters) : [];
   const busy = (s: AudienceStatus) => pendingStatus === s;
   const StatusBtn = ({ label, to }: { label: string; to: AudienceStatus }) => (
     <button type="button" onClick={() => onSetStatus(to)} disabled={pendingStatus != null} className="k-btn disabled:opacity-60">
@@ -584,6 +632,43 @@ function AudienceDrawer({
               </div>
             ))}
           </div>
+        )}
+
+        {signal && (
+          <section>
+            <p className="k-label mb-2">Targeting</p>
+            <dl className="space-y-2">
+              <div className="grid grid-cols-[7rem_minmax(0,1fr)] items-start gap-2">
+                <dt className="k-fg3 pt-0.5 text-[12px]">LinkedIn signal</dt>
+                <dd className="text-[13px]">
+                  Liked or commented on these pages&apos; posts
+                  {signal.windowDays != null ? ` in the last ${signal.windowDays} days` : ""}
+                </dd>
+              </div>
+              <div className="grid grid-cols-[7rem_minmax(0,1fr)] items-start gap-2">
+                <dt className="k-fg3 pt-0.5 text-[12px]">Competitors</dt>
+                <dd className="flex min-w-0 flex-wrap gap-1">
+                  {signal.competitorPages.map((page) => (
+                    <a
+                      key={page}
+                      href={page}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="k-chip h-auto min-h-5 whitespace-normal break-words py-0.5 hover:text-[var(--accent)]"
+                    >
+                      {companyPageSlug(page)}
+                    </a>
+                  ))}
+                </dd>
+              </div>
+              {audience.nlPrompt && (
+                <div className="grid grid-cols-[7rem_minmax(0,1fr)] items-start gap-2">
+                  <dt className="k-fg3 pt-0.5 text-[12px]">Who to write to</dt>
+                  <dd className="text-[13px]">{audience.nlPrompt}</dd>
+                </div>
+              )}
+            </dl>
+          </section>
         )}
 
         {groups.length > 0 && (

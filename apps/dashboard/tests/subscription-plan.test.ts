@@ -17,6 +17,7 @@ const ONBOARDING = read("src/components/onboarding/onboarding.tsx");
 const PLAN = read("src/components/v2/subscription-plan.tsx");
 const BILLING = read("src/components/v2/billing-page.tsx");
 const API = read("src/lib/api.ts");
+const CANCEL_LIB = read("src/lib/cancel-plan.ts");
 
 describe("who is in the $99/month arm", () => {
   it("is everyone with no lp_variant cookie: the plan is the default offer", () => {
@@ -139,10 +140,11 @@ describe("the plan on the Billing page", () => {
 
   it("lists what stops before a cancel, and before a plan's card is removed", () => {
     for (const loss of ["outreach stops", "Follow-ups stop", "Replies from your leads", "contact list", "history of every email"]) {
-      expect(PLAN, loss).toContain(loss);
+      expect(CANCEL_LIB, loss).toContain(loss);
     }
     expect(PLAN).toContain('onClick={() => setLossOpen(true)}');
-    expect(PLAN).toContain("onConfirm={() => void run(\"cancel\", () => cancelSubscription())}");
+    expect(PLAN).toContain("<CancelPlanFlow");
+    expect(PLAN).toContain('onCancel={() => void run("cancel", () => cancelSubscription())}');
     expect(BILLING).toContain('mode === "subscription" ? setCardLossOpen(true) : c.setRemoveConfirmOpen(true)');
   });
 

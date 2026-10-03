@@ -15,6 +15,10 @@ import {
 import { useAuthQuery, useQueryClient } from "@/lib/use-auth-query";
 import { monthlyUsd, planAmountOptions } from "@/lib/subscription-plan";
 import { EmptyNote, Figure, Shimmer, StateDot } from "@/components/v2/ui";
+import { LOWEST_PLAN_CENTS, SUBSCRIPTION_LOSSES } from "@/lib/cancel-plan";
+import { CancelPlanFlow } from "@/components/v2/cancel-plan-flow";
+
+export { SUBSCRIPTION_LOSSES };
 
 /**
  * The monthly plan on the v2 Billing page (an org billing-service holds in
@@ -23,19 +27,11 @@ import { EmptyNote, Figure, Shimmer, StateDot } from "@/components/v2/ui";
  *
  * Owner 2026-10-01: the customer picks the monthly amount they want from a dropdown of
  * several choices (never a bare "+$100"); more money is more credit is more leads. And
- * leaving costs a moment's thought: cancelling (and removing the card) first lists what
- * stops. The list is the owner's; the backend cut-off it describes is built with the
+ * leaving costs a moment's thought: removing the card first lists what stops, and
+ * cancelling walks `CancelPlanFlow`'s four screens (owner 2026-10-03). The list is the owner's; the backend cut-off it describes is built with the
  * first customer who cancels.
  */
 
-/** What the customer loses, in the owner's order. */
-export const SUBSCRIPTION_LOSSES = [
-  "Your outreach stops. No new prospect gets an email.",
-  "Follow-ups stop, so the conversations already started go quiet.",
-  "Replies from your leads are no longer handled, and you lose them.",
-  "You lose access to your contact list.",
-  "You lose access to the history of every email we sent.",
-] as const;
 
 function shortDate(iso: string | null): string | null {
   if (!iso) return null;
@@ -232,13 +228,13 @@ export function SubscriptionPlan() {
       )}
 
       {lossOpen && (
-        <LossDialog
-          title="Cancel plan"
-          question="Cancel your plan? Here is what stops."
-          confirmLabel={busy === "cancel" ? "Cancelling..." : "Cancel my plan"}
-          keepLabel="Keep my plan"
-          pending={busy === "cancel"}
-          onConfirm={() => void run("cancel", () => cancelSubscription())}
+        <CancelPlanFlow
+          monthlyAmountCents={sub.monthly_amount_cents}
+          canChangeAmount={!locked}
+          endsOn={shortDate(trialing ? sub.trial_end : sub.current_period_end)}
+          pending={busy === "cancel" || busy === "amount" ? busy : null}
+          onCancel={() => void run("cancel", () => cancelSubscription())}
+          onLowerPlan={() => void run("amount", () => changeSubscriptionAmount(LOWEST_PLAN_CENTS))}
           onKeep={() => setLossOpen(false)}
         />
       )}
