@@ -8,7 +8,7 @@ import { CampaignControlsTrigger } from "@/components/campaigns/campaign-control
 import { formatCentsAsUsdAdaptive, formatCount, formatUsdAdaptive } from "@/lib/format-number";
 import { formatRoi } from "@/lib/format-roi";
 import { friendlyDate, friendlyDateTime, timeAgo } from "@/lib/friendly-datetime";
-import { shownFigure } from "@/lib/maturity";
+import { shownFigure, shownReturn } from "@/lib/maturity";
 import { useStatBasis } from "@/lib/use-stat-basis";
 import { useStaffMode } from "@/lib/use-staff-mode";
 import { StatBasisSwitch } from "@/components/v2/stat-basis-switch";
@@ -64,7 +64,7 @@ export function MissionPage() {
   if (settled && !mission) {
     return (
       <>
-        <TopBar crumbs={[{ label: "Missions", href: v2Href(orgId, brandId, "missions") }, { label: "Not found" }]} />
+        <TopBar crumbs={[{ label: "Missions", href: staffMode ? v2Href(orgId, brandId, "missions") : undefined }, { label: "Not found" }]} />
         <EmptyNote>This mission does not exist on this brand.</EmptyNote>
       </>
     );
@@ -75,7 +75,7 @@ export function MissionPage() {
   const resultCount = replyLed ? g?.positiveReplies : g?.websiteClicks;
   // The MATURE half of the served pairs, Learning exactly where the producer says so.
   const resultCost = shownFigure(g?.outcomesMaturity, (h) => (replyLed ? h.cpprCents : h.cpcCents), basis);
-  const roi = shownFigure(g?.economicsMaturity, (h) => h.roiMultiple, basis);
+  const roi = shownReturn(g?.economicsMaturity, basis);
   const name = mission ? `${mission.crew.name} · ${mission.offerName ?? "Offer"}` : "";
   const siblings = mission ? missions.filter((m) => m.crew.key === mission.crew.key && m !== mission) : [];
   const isEvent = crewTrigger(mission?.leg ?? null)?.kind === "event";
@@ -86,7 +86,7 @@ export function MissionPage() {
   return (
     <>
       <TopBar
-        crumbs={[{ label: "Missions", href: v2Href(orgId, brandId, "missions") }, { label: name || " " }]}
+        crumbs={[{ label: "Missions", href: staffMode ? v2Href(orgId, brandId, "missions") : undefined }, { label: name || " " }]}
         actions={<StatBasisSwitch />}
       />
       <div className="mx-auto max-w-[1280px] px-4 pb-16 pt-6 md:px-6">

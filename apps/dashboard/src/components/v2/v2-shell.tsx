@@ -172,7 +172,7 @@ function V2Sidebar() {
   const revenue = useBrandRevenue(brandId).data;
   const needsCall = useNeedsYourCall(brandId, 5).data?.total ?? null;
   const [recordsOpen, setRecordsOpen] = useState(true);
-  // Workflows sit below a mission: a customer never sees them, staff mode does.
+  // Work, Crew, Missions and Workflows are staff surfaces: a customer never sees them, staff mode does.
   const { staffMode } = useStaffMode();
   // Keel's Favorites: the three companies worth most, on features-service's own figure.
   const topCompanies = useMemo(
@@ -244,9 +244,13 @@ function V2Sidebar() {
               />
             </>
           )}
-          <NavItem href={v2Href(orgId, brandId, "work")} label="Work" icon={<I d={ICONS.work} />} active={section === "work"} />
-          <NavItem href={v2Href(orgId, brandId, "crew")} label="Crew" icon={<I d={ICONS.crew} />} active={section === "crew"} />
-          <NavItem href={v2Href(orgId, brandId, "missions")} label="Missions" icon={<I d={ICONS.missions} />} active={section === "missions"} />
+          {staffMode && (
+            <>
+              <NavItem href={v2Href(orgId, brandId, "work")} label="Work" icon={<I d={ICONS.work} />} active={section === "work"} />
+              <NavItem href={v2Href(orgId, brandId, "crew")} label="Crew" icon={<I d={ICONS.crew} />} active={section === "crew"} />
+              <NavItem href={v2Href(orgId, brandId, "missions")} label="Missions" icon={<I d={ICONS.missions} />} active={section === "missions"} />
+            </>
+          )}
           {staffMode && (
             <NavItem
               href={v2Href(orgId, brandId, "workflows")}
@@ -293,8 +297,9 @@ function V2Sidebar() {
         </Group>
 
         {/* The sidebar lists only what is WORKING: a crew with a running mission, and
-            running missions. Everything else stays one click away on Crew / Missions. */}
-        {activeCrews.length > 0 && (
+            running missions. Everything else stays one click away on Crew / Missions.
+            Both groups are staff mode only, like the pages they open. */}
+        {staffMode && activeCrews.length > 0 && (
           <Group title="Crew">
             {activeCrews.map((c) => (
               <NavItem
@@ -328,7 +333,7 @@ function V2Sidebar() {
           </Group>
         )}
 
-        {activeMissions.length > 0 && (
+        {staffMode && activeMissions.length > 0 && (
           <Group title="Missions">
             {activeMissions.map((m) => (
               <NavItem

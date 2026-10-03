@@ -27,9 +27,9 @@ describe("v2 run page — one workflow run, opened from the email it wrote", () 
     expect(read("lib/lead-history.ts")).toContain("workflowRunId: z.string().nullable().optional()");
   });
 
-  it("the person timeline links each email to its run", () => {
+  it("the person timeline links each email to its run, in staff mode (the run page is staff-only)", () => {
     const person = read("components/v2/person-page.tsx");
-    expect(person).toContain("runHref={(runId) =>");
+    expect(person).toContain("runHref={staffMode ? (runId) =>");
     expect(person).toContain("v2RunHref(orgId, brandId, runId)");
     const timeline = read("components/audiences/lead-history-timeline.tsx");
     expect(timeline).toContain("runHref && e.workflowRunId ? runHref(e.workflowRunId) : null");

@@ -7,6 +7,7 @@ import {
   maturityPairSchema,
   pairIsLearning,
   shownFigure,
+  shownReturn,
   type MaturityPair,
 } from "../src/lib/maturity";
 import { STAT_BASIS_COOKIE, statBasisCookieAssignment, statBasisFromCookie } from "../src/lib/stat-basis-cookie";
@@ -17,6 +18,41 @@ const read = (p: string) => readFileSync(join(__dirname, "..", "src", p), "utf8"
 // features-service#1196: every ratio is served as a PAIR (flash, mature) with the
 // producer's verdict. The dashboard states the mature half and tags Learning exactly where
 // the producer says `isMature: false`. It decides nothing itself.
+// Owner 2026-10-03: a return still learning shows its to-date (flash) figure when that is
+// already above break-even; at or below 1x it stays Learning.
+describe("shownReturn — Learning gives way to a to-date return above 1x", () => {
+  type R = { roiMultiple: number | null };
+  const pair = (p: Partial<MaturityPair<R>>): MaturityPair<R> => ({ flash: null, mature: null, isMature: null, ...p });
+
+  it("not mature, flash above 1x: states the flash return, no Learning", () => {
+    expect(shownReturn(pair({ flash: { roiMultiple: 2.4 }, mature: { roiMultiple: 0.3 }, isMature: false }), "mature")).toEqual({
+      value: 2.4,
+      learning: false,
+    });
+  });
+
+  it("not mature, flash at or below 1x or absent: Learning", () => {
+    for (const flash of [{ roiMultiple: 1 }, { roiMultiple: 0.4 }, { roiMultiple: null }, null]) {
+      expect(shownReturn(pair({ flash, isMature: false }), "mature")).toEqual({ value: null, learning: true });
+    }
+  });
+
+  it("mature: the mature half, even when flash is higher", () => {
+    expect(shownReturn(pair({ flash: { roiMultiple: 5 }, mature: { roiMultiple: 0.8 }, isMature: true }), "mature")).toEqual({
+      value: 0.8,
+      learning: false,
+    });
+  });
+
+  it("every brand-page return reads it", () => {
+    for (const p of ["components/v2/today-page.tsx", "components/v2/mission-page.tsx", "components/v2/missions-table.tsx"]) {
+      const src = read(p);
+      expect(src).toContain("shownReturn(");
+      expect(src).not.toContain("h.roiMultiple");
+    }
+  });
+});
+
 describe("shownFigure — one ratio, read off the served pair", () => {
   type F = { cpprCents: number | null };
   const pair = (p: Partial<MaturityPair<F>>): MaturityPair<F> => ({ flash: null, mature: null, isMature: null, ...p });

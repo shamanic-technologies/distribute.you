@@ -8,6 +8,7 @@ import {
   getSubscription,
   changeSubscriptionAmount,
   resumeSubscription,
+  startSubscriptionNow,
   type Subscription,
   type SubscriptionRead,
 } from "@/lib/api";
@@ -58,12 +59,13 @@ function nextDate(sub: Subscription): { label: string; date: string | null } {
 export function SubscriptionPlan() {
   const queryClient = useQueryClient();
   const { data, isFetchedAfterMount, isError } = useAuthQuery(["subscription"], () => getSubscription());
-  const [busy, setBusy] = useState<"amount" | "cancel" | "resume" | null>(null);
+  const [busy, setBusy] = useState<"amount" | "start" | "cancel" | "resume" | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [lossOpen, setLossOpen] = useState(false);
+  const [chargeOpen, setChargeOpen] = useState(false);
   const [picked, setPicked] = useState<number | null>(null);
 
-  async function run(kind: "amount" | "cancel" | "resume", write: () => Promise<SubscriptionRead>) {
+  async function run(kind: "amount" | "start" | "cancel" | "resume", write: () => Promise<SubscriptionRead>) {
     setBusy(kind);
     setError(null);
     try {
@@ -76,15 +78,13 @@ export function SubscriptionPlan() {
     } catch (err) {
       // Logged, never rendered: the thrown message is the downstream body verbatim.
       console.error(`[billing v2] plan ${kind} failed:`, err);
-      const code = err instanceof ApiError ? err.body?.code : undefined;
-      setError(
-        code === "subscription_trialing"
-          ? "You can change the amount once your free trial ends."
-          : "We could not change your plan. Please try again.",
-      );
+      const raw = err instanceof ApiError ? err.body?.code : undefined;
+      const code = typeof raw === "string" ? raw : undefined;
+      setError(planRefusal(kind, code));
     }
     setBusy(null);
     setLossOpen(false);
+    setChargeOpen(false);
   }
 
   if (!data && !isFetchedAfterMount) {
@@ -114,9 +114,11 @@ export function SubscriptionPlan() {
   const amount = picked ?? sub.monthly_amount_cents;
   const changed = picked !== null && picked !== sub.monthly_amount_cents;
   const trialing = sub.status === "trialing";
-  // billing says whether the amount can move now (not during the trial, not while a
-  // cancel is pending); an older read without the flag falls back to the trial rule.
-  const locked = sub.can_change_amount != null ? !sub.can_change_amount : trialing;
+  // Owner 2026-10-03: a trial is never a lock. The customer can start paying now, at the
+  // amount on the plan or another one, after a modal that says the card is charged today.
+  const startable = trialing && sub.can_start_now === true;
+  // billing says whether the amount can move now (not while a cancel is pending).
+  const locked = startable ? false : sub.can_change_amount != null ? !sub.can_change_amount : trialing;
 
   return (
     <div className="k-card">
@@ -147,11 +149,11 @@ export function SubscriptionPlan() {
           <div className="min-w-0 flex-1">
             <p className="text-[13px] font-medium">Monthly amount</p>
             <p className="k-fg3 text-[12px] leading-[18px]">
-              {locked
-                ? trialing
-                  ? "You can change it once your free trial ends."
-                  : "You can change it again once your plan is active."
-                : "Each dollar becomes credit for your outreach. A new amount applies from your next charge."}
+              {startable
+                ? "Start now and your credit lands today."
+                : locked
+                  ? "You can change it again once your plan is active."
+                  : "Each dollar becomes credit for your outreach. A new amount applies from your next charge."}
             </p>
           </div>
           <label className={`k-btn relative h-7 text-[12px] ${locked ? "opacity-50" : ""}`}>
@@ -173,7 +175,12 @@ export function SubscriptionPlan() {
               ))}
             </select>
           </label>
-          {changed && (
+          {startable && (
+            <button type="button" className="k-btn-accent h-7" disabled={busy !== null} onClick={() => setChargeOpen(true)}>
+              Start my plan now
+            </button>
+          )}
+          {!startable && changed && (
             <button
               type="button"
               className={`k-btn-accent h-7 ${busy === "amount" ? "cursor-wait" : ""}`}
@@ -211,6 +218,15 @@ export function SubscriptionPlan() {
         </p>
       )}
 
+      {chargeOpen && (
+        <ChargeNowDialog
+          amount={monthlyUsd(amount)}
+          pending={busy === "start"}
+          onConfirm={() => void run("start", () => startSubscriptionNow(amount))}
+          onKeep={() => setChargeOpen(false)}
+        />
+      )}
+
       {lossOpen && (
         <CancelPlanFlow
           monthlyAmountCents={sub.monthly_amount_cents}
@@ -223,6 +239,95 @@ export function SubscriptionPlan() {
         />
       )}
     </div>
+  );
+}
+
+/** A refusal in one sentence, by billing's code. */
+function planRefusal(kind: "amount" | "start" | "cancel" | "resume", code: string | undefined): string {
+  if (kind === "start") {
+    if (code === "first_charge_declined") return "Your card was declined. Nothing was charged. Your free trial goes on.";
+    if (code === "card_required") return "Add a card to start your plan.";
+    return "We could not start your plan. Nothing was charged. Please try again.";
+  }
+  return "We could not change your plan. Please try again.";
+}
+
+/**
+ * Paying now ends the free trial: said before the click, in the loss dialog's anatomy.
+ * Keeping the trial is one click away and Esc keeps it.
+ */
+export function ChargeNowDialog({
+  amount,
+  pending,
+  onConfirm,
+  onKeep,
+}: {
+  amount: string;
+  pending: boolean;
+  onConfirm: () => void;
+  onKeep: () => void;
+}) {
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape" && !pending) onKeep();
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [onKeep, pending]);
+
+  if (typeof document === "undefined") return null;
+  const host = document.getElementById("v2-portal") ?? document.body;
+  return createPortal(
+    <div
+      className="fixed inset-0 z-[60] flex items-start justify-center bg-[#1010121f] px-3 pt-[12vh]"
+      onMouseDown={() => !pending && onKeep()}
+    >
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="v2-charge-title"
+        className="k-popover flex w-full max-w-[460px] flex-col overflow-hidden"
+        onMouseDown={(e) => e.stopPropagation()}
+      >
+        <div className="flex h-11 shrink-0 items-center gap-2 border-b border-[var(--line-subtle)] px-4">
+          <span id="v2-charge-title" className="k-label">
+            Start my plan now
+          </span>
+          <button
+            type="button"
+            aria-label="Close"
+            className="k-btn-ghost ml-auto h-7 w-7 justify-center p-0"
+            onClick={onKeep}
+            disabled={pending}
+          >
+            ×
+          </button>
+        </div>
+        <div className="px-4 py-4">
+          <p className="text-[13px] font-medium">We charge {amount} to your card today.</p>
+          <ul className="k-inset mt-3 divide-y divide-[var(--line-subtle)] rounded-lg">
+            {[
+              "Your free trial ends now.",
+              `Your ${amount} becomes credit right away.`,
+              "Your next charge is in one month.",
+            ].map((line) => (
+              <li key={line} className="k-fg2 px-3 py-2 text-[13px] leading-5">
+                {line}
+              </li>
+            ))}
+          </ul>
+          <div className="mt-5 flex items-center justify-end gap-2">
+            <button type="button" onClick={onKeep} disabled={pending} className="k-btn-ghost">
+              Keep my free trial
+            </button>
+            <button type="button" onClick={onConfirm} disabled={pending} className={`k-btn-accent ${pending ? "cursor-wait" : ""}`}>
+              {pending ? "Charging..." : `Pay ${amount} now`}
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>,
+    host,
   );
 }
 
