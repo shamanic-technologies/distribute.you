@@ -5992,7 +5992,10 @@ export type AccountStatus =
   | "no_payment_method"
   | "reactive_only"
   | "paused"
-  | "inactive";
+  | "inactive"
+  // features-service v0.179.30: billing could not be read for this org, so its
+  // status is not known (never guessed). `statusUnknownReason` says why.
+  | "unknown";
 
 /** Display rank, mirroring the producer's order. */
 export const ACCOUNT_STATUS_RANK: Record<AccountStatus, number> = {
@@ -6002,6 +6005,7 @@ export const ACCOUNT_STATUS_RANK: Record<AccountStatus, number> = {
   reactive_only: 3,
   paused: 4,
   inactive: 5,
+  unknown: 6,
 };
 
 export interface AuditAccountsStats {
@@ -6270,6 +6274,7 @@ export interface CustomerRow {
   activeDays: string[]; // YYYY-MM-DD, ascending
   status: AccountStatus;
   paymentDeclinedReason?: string | null;
+  statusUnknownReason?: string | null; // why status is "unknown" (billing unreadable)
   configuredDailyBudgetUsd: number; // every ceiling this account set (USD)
   runningDailyBudgetUsd: number; // PROACTIVE only — the money in play
   proactiveRunningDailyBudgetUsd: number; // same value, named for what it is
