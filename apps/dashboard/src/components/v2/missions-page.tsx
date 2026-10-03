@@ -11,6 +11,7 @@ import { useBrandRevenue } from "@/components/v2/data";
 import { Figure, SectionTitle, Shimmer, SparkLine, StatTile, TopBar } from "@/components/v2/ui";
 import { StatBasisSwitch } from "@/components/v2/stat-basis-switch";
 import { AddMissionModal } from "@/components/v2/add-mission-modal";
+import { useDailyBudgetHidden } from "@/lib/use-daily-budget-hidden";
 
 const DAYS = 30;
 /** A served rate, one decimal under 10% and above 99% (98.6% vs 100% matters), whole between. */
@@ -27,6 +28,7 @@ export function MissionsPage() {
   const data = rev.data;
   const { missions, crews, settled } = useMissions(orgId, brandId);
   const [adding, setAdding] = useState(false);
+  const budgetHidden = useDailyBudgetHidden();
   const today = useMemo(() => utcDay(new Date()), []);
   const sent = data?.sequences ?? data?.outreachContacted;
   const running = missions.filter((m) => m.running).length;
@@ -72,7 +74,7 @@ export function MissionsPage() {
         </h1>
         <div className="mt-1 flex flex-wrap items-center justify-between gap-3">
           <p className="k-fg2 text-[14px]">
-            A mission is one crew working for one of your offers, with its own budget. Herald and Scout target the
+            A mission is one crew working for one of your offers{budgetHidden ? "" : ", with its own budget"}. Herald and Scout target the
             offer&apos;s audiences; Pilot turns their positive replies into meetings.
           </p>
           <button type="button" onClick={() => setAdding(true)} className="k-btn-accent">

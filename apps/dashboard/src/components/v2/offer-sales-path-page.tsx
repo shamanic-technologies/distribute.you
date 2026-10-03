@@ -15,6 +15,7 @@ import { V2Page, offerTabs, useOfferName } from "@/components/v2/setup-pages";
 import { OfferSalesPath } from "@/components/v2/offer-sales-path";
 import { OfferSalesPaths } from "@/components/v2/offer-sales-paths";
 import { BrandSalesBudgetCard } from "@/components/v2/brand-sales-budget-card";
+import { useDailyBudgetHidden } from "@/lib/use-daily-budget-hidden";
 
 /**
  * How an offer sells (beta): the steps and legs the customer ticks, saved per offer
@@ -26,6 +27,7 @@ export function V2OfferSalesPathPage() {
   const { orgId, brandId, offerId } = p;
   const name = useOfferName(brandId, offerId);
   const isBeta = useIsBetaUser();
+  const budgetHidden = useDailyBudgetHidden();
   const catalogue = useLegCatalogue();
   const channels = useAcquisitionChannels();
   const qc = useQueryClient();
@@ -104,7 +106,8 @@ export function V2OfferSalesPathPage() {
       )}
       <div className="mt-8 space-y-8">
         <OfferSalesPaths data={paths.data} pending={paths.isPending && !paths.isError} failed={paths.isError} />
-        <BrandSalesBudgetCard brandId={brandId} />
+        {/* A plan's $50/day is fixed (owner 2026-10-03): no budget card for a subscriber. */}
+        {budgetHidden ? null : <BrandSalesBudgetCard brandId={brandId} />}
       </div>
     </V2Page>
   );

@@ -817,7 +817,7 @@ export function AccountCardWall({
                 {(subscription || !account?.has_payment_method) && (
                   <p className="k-fg2 -mt-2 text-[13px] leading-5">{copy.cardNote}</p>
                 )}
-                <div className="k-inset rounded-lg p-3">{budgetRow}</div>
+                {!subscription && <div className="k-inset rounded-lg p-3">{budgetRow}</div>}
                 <Consent brandName={brandName} checked={consent} onChange={setConsent} />
                 <button type="button" className="k-btn-accent gs-glow h-9 justify-center" onClick={() => void addCard()} disabled={busy}>
                   {busy ? "Opening the card form..." : account?.has_payment_method && !subscription ? "Start outreach" : copy.cardCta}

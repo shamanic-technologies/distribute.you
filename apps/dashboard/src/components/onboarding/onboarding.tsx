@@ -3050,9 +3050,11 @@ export function Onboarding() {
   useEffect(() => {
     const first = launchPairs.find((p) => p.toKey === startOutcomes[0]) ?? launchPairs[0];
     if (step !== "pricing" || !first) return;
-    // The plan sets the money, so it is written whatever the map held.
+    // The plan sets the money, so it is written whatever the map held, and the step
+    // is never shown: a plan's $50/day is fixed, nothing to confirm (owner 2026-10-03).
     if (subscriptionArm) {
       setCampaignBudgets(subscriptionBudgets(launchPairs));
+      setStep("bonus");
       return;
     }
     const floorCents = floorCentsFor(first.channelSlug);
@@ -3736,7 +3738,8 @@ export function Onboarding() {
           </button>
         }
       >
-          <BackButton onClick={() => setStep("pricing")} />
+          {/* The plan skips the budget step, so Back returns to the one before it. */}
+          <BackButton onClick={() => setStep("consent")} />
           {error && <div className="mb-4 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{error}</div>}
           <div className="rounded-2xl border border-brand-200 bg-brand-50 p-6 text-center">
             <span className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-brand-100">
@@ -3819,6 +3822,8 @@ export function Onboarding() {
   // pricing — one daily ceiling per campaign. The brand is charged their sum, and
   // billing stores them per (offer, leg, channel), so the money the customer commits
   // to is allocated to the campaigns their outcomes need.
+  // The plan never shows it: the seeding effect writes the plan's money and moves on.
+  if (subscriptionArm) return null;
   const displayBudget = budgetForCharge();
   const displayCount = displayBudget != null ? countForBudget(displayBudget) : null;
   const fundedCount = launchPairs.filter((pair) => pairBudgetUsd(pair.key) > 0).length;

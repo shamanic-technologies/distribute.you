@@ -26,3 +26,19 @@ export function paymentModeOf(account: PaymentModeAccount | null | undefined): B
   const mode = account?.payment_mode;
   return mode === "prepaid" || mode === "postpaid" || mode === "subscription" ? mode : null;
 }
+
+/**
+ * Whether the daily budget is hidden from this org (owner 2026-10-03).
+ *
+ * A plan ($99/month and up) runs every brand x offer it covers at a fixed $50/day
+ * (+$25/day on replies): not a choice, so the dashboard neither shows nor edits it.
+ * Hidden too while billing has not answered yet (`settled` false): a subscriber must
+ * never see a budget flash in, and a prepaid org's budget only appears a frame later.
+ */
+export function dailyBudgetHidden(
+  account: PaymentModeAccount | null | undefined,
+  settled: boolean,
+): boolean {
+  if (!settled) return true;
+  return paymentModeOf(account) === "subscription";
+}

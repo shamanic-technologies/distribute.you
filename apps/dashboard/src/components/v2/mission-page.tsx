@@ -13,6 +13,7 @@ import { useStatBasis } from "@/lib/use-stat-basis";
 import { useStaffMode } from "@/lib/use-staff-mode";
 import { StatBasisSwitch } from "@/components/v2/stat-basis-switch";
 import { fmtDailyBudgetUsd } from "@/lib/campaign-budget";
+import { useDailyBudgetHidden } from "@/lib/use-daily-budget-hidden";
 import { v2Href, v2RunHref } from "@/lib/v2/routes";
 import { runState, runTaskLabel, useRecentRuns } from "@/components/v2/runs";
 import { CrewMark } from "@/components/v2/crew-mark";
@@ -37,6 +38,7 @@ export function MissionPage() {
   const mission = missionByCampaignId.get(campaignId) ?? null;
   const id = mission?.row.campaign.id ?? campaignId;
   const hold = useMissionHold(id, mission?.running ?? false);
+  const budgetHidden = useDailyBudgetHidden();
   const visits = useLatestInBucket(brandId, "website_visit", 20, id);
   const replies = useLatestInBucket(brandId, "positive_reply", 20, id);
   const { basis } = useStatBasis();
@@ -105,7 +107,7 @@ export function MissionPage() {
                   ) : null}
                 </div>
                 <dl className="k-fg3 mt-2 flex flex-wrap gap-x-4 gap-y-1 text-[12px]">
-                  <Fact k={isEvent ? "Daily cap" : "Daily budget"} v={`${fmtDailyBudgetUsd(mission.row.budgetCents)} / day`} />
+                  {budgetHidden ? null : <Fact k={isEvent ? "Daily cap" : "Daily budget"} v={`${fmtDailyBudgetUsd(mission.row.budgetCents)} / day`} />}
                   {mission.row.campaign.createdAt ? <Fact k="Started" v={friendlyDate(mission.row.campaign.createdAt)} /> : null}
                   {g?.totalPipelineUsd != null ? <Fact k="Pipeline" v={formatUsdAdaptive(g.totalPipelineUsd)} /> : null}
                   {siblings.length > 0 ? (

@@ -29,6 +29,7 @@ import { OfferLifetimeRevenue } from "@/components/settings/offer-campaigns-card
 import { AddMissionModal } from "@/components/v2/add-mission-modal";
 import { CrewTriggerTag } from "@/components/v2/crew-trigger-tag";
 import { fmtDailyBudgetUsd } from "@/lib/campaign-budget";
+import { useDailyBudgetHidden } from "@/lib/use-daily-budget-hidden";
 import { BrandOfferCard } from "@/components/settings/brand-offer-card";
 import { CampaignSettingsCard } from "@/components/settings/campaign-settings-card";
 import { V2AudiencesTable } from "@/components/v2/audiences-table";
@@ -205,6 +206,7 @@ export function V2OfferPage() {
   const isBeta = useIsBetaUser();
   const { missions, crews, settled } = useMissions(orgId, brandId, { allOffers: true });
   const [adding, setAdding] = useState(false);
+  const budgetHidden = useDailyBudgetHidden();
   if (!offerId) return null;
   const mine = missions.filter((m) => m.offerId === offerId);
   return (
@@ -254,10 +256,12 @@ export function V2OfferPage() {
                           </span>
                           <span className="k-fg2 flex items-center justify-between gap-2 text-[12px]">
                             {trigger ? <CrewTriggerTag trigger={trigger} className="min-w-0" /> : <span className="truncate">{m.leg?.label ?? "—"}</span>}
-                            <span className="k-mono shrink-0 tabular-nums">
-                              {fmtDailyBudgetUsd(m.row.budgetCents ?? 0)}
-                              {trigger?.kind === "event" ? " cap" : ""}
-                            </span>
+                            {budgetHidden ? null : (
+                              <span className="k-mono shrink-0 tabular-nums">
+                                {fmtDailyBudgetUsd(m.row.budgetCents ?? 0)}
+                                {trigger?.kind === "event" ? " cap" : ""}
+                              </span>
+                            )}
                           </span>
                         </span>
                       </Link>

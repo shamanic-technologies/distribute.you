@@ -7,6 +7,7 @@ import type { Lead, RunRow } from "@/lib/api";
 import { formatCount, formatCentsAsUsdAdaptive } from "@/lib/format-number";
 import { friendlyTime, timeAgo } from "@/lib/friendly-datetime";
 import { fmtDailyBudgetUsd } from "@/lib/campaign-budget";
+import { useDailyBudgetHidden } from "@/lib/use-daily-budget-hidden";
 import { CrewMark } from "@/components/v2/crew-mark";
 import { campaignHoldCopy, useMissionHold } from "@/components/v2/mission-hold";
 import { useSelectedOffer } from "@/components/v2/selected-offer";
@@ -282,6 +283,7 @@ function WaitingList({ missions }: { missions: Mission[] }) {
 
 function WaitingCard({ m }: { m: Mission }) {
   const hold = useMissionHold(m.row.campaign.id, m.running);
+  const budgetHidden = useDailyBudgetHidden();
   // A running mission with no hold is sending: it belongs to Running, not here.
   if (m.running && !hold) return null;
   return (
@@ -291,7 +293,9 @@ function WaitingCard({ m }: { m: Mission }) {
         <span className="font-medium">{m.crew.name}</span>
         <span className="k-fg3">·</span>
         <span className="k-fg2 truncate">{m.running ? "Held" : "Paused"}</span>
-        <span className="k-mono k-fg3 ml-auto shrink-0 text-[11px]">{fmtDailyBudgetUsd(m.row.budgetCents ?? 0)}/day</span>
+        {budgetHidden ? null : (
+          <span className="k-mono k-fg3 ml-auto shrink-0 text-[11px]">{fmtDailyBudgetUsd(m.row.budgetCents ?? 0)}/day</span>
+        )}
       </div>
       <p className="mt-1.5 truncate text-[13px] font-medium">{m.offerName ?? "Offer"}{m.leg ? ` · ${m.leg.label}` : ""}</p>
       <p className={`mt-1 text-[12px] ${hold ? "text-[var(--data-amber)]" : "k-fg3"}`}>
