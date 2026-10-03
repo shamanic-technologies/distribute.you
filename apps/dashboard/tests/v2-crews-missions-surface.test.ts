@@ -22,10 +22,10 @@ describe("Crew page", () => {
 });
 
 describe("the daily budget excludes event crews", () => {
-  it("on Today and Missions, in the top bar and the crew tile", () => {
+  // Today states no daily budget since its crew tile became Delivered (2026-10-03).
+  it("on Today and Missions, in the top bar", () => {
     const today = read("components/v2/today-page.tsx");
     expect(today).toContain("<CampaignControlsTrigger brandId={brandId} offerId={selectedOfferId ?? undefined} dailyOnly />");
-    expect(today).toContain("useDailyBudgetSplit(brandId");
     expect(read("components/v2/missions-page.tsx")).toContain("<CampaignControlsTrigger brandId={brandId} offerId={selectedOfferId ?? undefined} dailyOnly />");
   });
   it("an event mission's figure reads as a cap", () => {

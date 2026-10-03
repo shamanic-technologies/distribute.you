@@ -6,19 +6,16 @@ import { useParams, useRouter } from "next/navigation";
 import { useUser } from "@clerk/nextjs";
 import type { Lead } from "@/lib/api";
 import type { LeadOutcome } from "@/lib/revenue-view";
-import { formatCount, formatUsdAdaptive, formatCentsAsUsdAdaptive } from "@/lib/format-number";
+import { formatCount, formatUsdAdaptive } from "@/lib/format-number";
 import { formatRoi } from "@/lib/format-roi";
 import { friendlyDate, friendlyTime, timeAgo } from "@/lib/friendly-datetime";
-import { cumulativeWindow, dailyWindow, utcDay } from "@/lib/v2/series";
+import { dailyWindow, utcDay } from "@/lib/v2/series";
 import { v2Href } from "@/lib/v2/routes";
-import { useDailyBudgetSplit } from "@/lib/v2/use-daily-budget-split";
 import { shownReturn } from "@/lib/maturity";
 import { useStatBasis } from "@/lib/use-stat-basis";
 import { useStaffMode } from "@/lib/use-staff-mode";
 import { useClientClock } from "@/lib/use-client-clock";
 import { StatBasisSwitch } from "@/components/v2/stat-basis-switch";
-import { fmtDailyBudgetUsd } from "@/lib/campaign-budget";
-import { useDailyBudgetHidden } from "@/lib/use-daily-budget-hidden";
 import { OfferPlanBanner } from "@/components/v2/choose-plan";
 import { useSelectedOfferIfAny } from "@/components/v2/selected-offer";
 import { CampaignControlsTrigger } from "@/components/campaigns/campaign-controls-trigger";
@@ -29,9 +26,7 @@ import {
   KeyHint,
   SectionTitle,
   Shimmer,
-  SparkLine,
   StateDot,
-  StackMeter,
   StatTile,
   TickGauge,
   TopBar,
@@ -60,7 +55,8 @@ import {
   personHref,
 } from "@/components/v2/people-bits";
 
-const SPARK_DAYS = 14;
+const SPARK_DAYS = 7;
+const pct = (v: number) => `${v < 10 || v > 99 ? v.toFixed(1) : Math.round(v)}%`;
 /** Meetings shown on Today, and how many are read to pick them by booking date. */
 const MEETINGS_SHOWN = 3;
 const MEETINGS_READ_LIMIT = 100;
@@ -89,25 +85,16 @@ export function TodayPage() {
   const data = rev.data;
   const standings = useStandingCounts(brandId).data;
   const buckets = useBucketCounts(brandId).data;
-  const { missions, crews, settled: missionsSettled, missionByCampaignId } = useMissions(orgId, brandId);
+  const { missions, settled: missionsSettled, missionByCampaignId } = useMissions(orgId, brandId);
   const { byCrew, settled: runsSettled } = useCrewRuns(brandId, missionByCampaignId);
   const recentRuns = useRecentRuns(brandId, missionsSettled ? missionCampaignIds(missions, missionByCampaignId) : null, 60);
-  // Daily crews only: an event crew (booking a meeting off a reply) spends against a
-  // cap, and only when its step is reached, so it is not part of the daily budget.
-  const { dailyCents: budgetCents } = useDailyBudgetSplit(brandId, { enabled: rev.enabled });
-  const budgetHidden = useDailyBudgetHidden();
   // Work, Crew and Missions pages are staff mode only: a customer gets the figures, no
   // link to them, and "needs your call" opens the Inbox instead of Work.
   const { staffMode } = useStaffMode();
   const callHref = staffMode ? v2Href(orgId, brandId, "work") : `${v2Href(orgId, brandId, "people")}?tab=positive-replies`;
   const selectedOfferId = useSelectedOfferIfAny()?.offerId ?? null;
 
-  // "Spent" is what was actually taken from the credit, the same basis as the
-  // "Taken from credit" tile beside it. Open holds are money set aside for runs still
-  // working: they show on their own line, never inside "spent".
-  const spentToday = data?.spend?.actualSpentTodayCents ?? null;
-  const onHoldToday = data?.spend?.provisionedSpentTodayCents ?? null;
-  const running = missions.filter((m) => m.running);
+  const sending = data?.sending ?? null;
   const { basis } = useStatBasis();
   // The brand's return is the MATURE half of the served pair, and it reads Learning
   // exactly where the producer says the brand is not mature (lib/maturity.ts).
@@ -118,11 +105,6 @@ export function TodayPage() {
   // Runs today, per crew: runs-service's own roll-up filed under each crew.
   let runsToday = 0;
   for (const r of byCrew.values()) runsToday += r.runsToday;
-  const crewSpend = crews.map((c) => ({
-    key: c.crew.key,
-    value: byCrew.get(c.crew.key)?.spendTodayCents ?? 0,
-    color: c.crew.color,
-  }));
 
   // Needs your call: people who REPLIED with interest and whom nobody has closed or
   // disqualified yet. `total` is lead-service's count of that set.
@@ -252,40 +234,37 @@ export function TodayPage() {
                   </div>
                 )}
               </StatTile>
+              {/* No curve: the only daily pipeline served is the realized one, so it read flat
+                  at $0 under an expected headline. It returns once a series on the headline's
+                  own basis is served. */}
               <StatTile label="Pipeline" note={brand?.name ? "expected" : undefined}>
                 {rev.pending ? <Shimmer className="h-7 w-20" /> : <Figure value={data?.totalPipelineUsd != null ? formatUsdAdaptive(data.totalPipelineUsd) : "—"} />}
-                <SparkLine
-                  className="mt-auto h-8 pt-2"
-                  values={data?.roiHistory ? cumulativeWindow(data.roiHistory.daily.map((d) => ({ date: d.date, value: d.cumulativePipelineUsd })), 30, today) : null}
-                />
               </StatTile>
-              <StatTile label="Positive replies" note={`${SPARK_DAYS} days`} href={`${v2Href(orgId, brandId, "people")}?tab=positive-replies`}>
+              <StatTile label="Positive replies" note="all time" href={`${v2Href(orgId, brandId, "people")}?tab=positive-replies`}>
                 {rev.pending ? <Shimmer className="h-7 w-12" /> : <Figure value={data?.repliedPositive ? formatCount(data.repliedPositive.total) : "—"} />}
                 <BarSpark className="mt-auto pt-2" values={data?.repliedPositive ? dailyWindow(data.repliedPositive.daily, SPARK_DAYS, today) : null} />
               </StatTile>
-              <StatTile label="Website visits" note={`${SPARK_DAYS} days`} href={`${v2Href(orgId, brandId, "people")}?tab=website-visits`}>
+              <StatTile label="Website visits" note="all time" href={`${v2Href(orgId, brandId, "people")}?tab=website-visits`}>
                 {rev.pending ? <Shimmer className="h-7 w-12" /> : <Figure value={data?.clicked ? formatCount(data.clicked.total) : "—"} />}
                 <BarSpark className="mt-auto pt-2" values={data?.clicked ? dailyWindow(data.clicked.daily, SPARK_DAYS, today) : null} />
               </StatTile>
-              <StatTile label="Crew today" note={`${running.length} running`} href={staffMode ? v2Href(orgId, brandId, "crew") : undefined}>
-                {!runsSettled ? <Shimmer className="h-7 w-16" /> : <Figure value={formatCount(runsToday)} unit={runsToday === 1 ? "run" : "runs"} />}
-                <div className="mt-auto pt-2">
-                  {/* A plan's $50/day is fixed: a subscriber reads what was spent, never a budget. */}
-                  {budgetHidden ? null : <StackMeter parts={crewSpend} max={budgetCents} />}
-                  <p className="k-mono k-fg3 mt-1.5 text-[11px]">
-                    {spentToday != null ? formatCentsAsUsdAdaptive(spentToday) : "—"}
-                    {budgetHidden ? " spent today" : ` spent of ${fmtDailyBudgetUsd(budgetCents)} budget`}
-                  </p>
-                  {onHoldToday != null && onHoldToday > 0 && (
-                    <p className="k-mono k-fg3 text-[11px]">{formatCentsAsUsdAdaptive(onHoldToday)} on hold</p>
-                  )}
-                </div>
+              {/* Explee's row: how many emails landed, then what it cost. Every figure on
+                  this row is all time; the bars under the counts show the last 7 days. */}
+              <StatTile label="Delivered" note={sending ? `${formatCount(sending.recipientsBounced)} bounced` : undefined}>
+                {rev.pending ? (
+                  <Shimmer className="h-7 w-16" />
+                ) : (
+                  <Figure value={sending?.deliveryRatePct != null ? pct(sending.deliveryRatePct) : "—"} />
+                )}
+                <p className="k-fg3 mt-auto pt-2 text-[12px] tabular-nums">
+                  {sending ? `${formatCount(sending.recipientsDelivered)} of ${formatCount(sending.recipientsSent)} emails` : "\u00a0"}
+                </p>
               </StatTile>
               {/* Everything taken from the credit, setup included: the number billing debits.
                   Campaign spend alone left setup out and read as credit still left. */}
-              <StatTile label="Taken from credit" note="all time" href={`${v2Href(orgId, brandId, "billing")}#usage`}>
+              <StatTile label="Spent" note="all time" href={`${v2Href(orgId, brandId, "billing")}#usage`}>
                 {usage.pending ? <Shimmer className="h-7 w-16" /> : <Figure value={usage.data ? formatUsdAdaptive(usage.data.totalBilledUsd) : "—"} />}
-                <p className="k-fg3 mt-auto pt-2 text-[12px]">Setup and outreach, all brands</p>
+                <p className="k-fg3 mt-auto pt-2 text-[12px]">Setup and outreach</p>
               </StatTile>
             </div>
 
