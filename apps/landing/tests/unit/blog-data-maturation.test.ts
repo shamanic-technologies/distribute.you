@@ -84,7 +84,7 @@ describe("no outcome maths includes an email younger than the window at the wind
     expect(src.slice(researchFilter, researchFilter + 900)).toContain("if (day >= researchCutoff(r.leg)) { young++; return false; }");
     // the research rows never pass through the articles' measured window
     expect(src).not.toContain("researchRows.filter((r) => isMature(r._sentAt");
-    for (const consumer of ["r.cost = spend / emailsByVersionLeg.get(k);", "reply: researchFor(research.herald)", "visit: researchFor(research.scout)"]) {
+    for (const consumer of ["const emailsOfKey = emailsByVersionLeg.get(k);", "reply: researchFor(research.herald)", "visit: researchFor(research.scout)"]) {
       expect(src.indexOf(consumer), consumer).toBeGreaterThan(researchFilter);
     }
     // an outcome after the window's end was not observed in it
@@ -108,6 +108,10 @@ describe("the Research page computes every figure over ONE leg of ONE channel", 
     expect(src).toContain('const HERALD_LEG = "start_to_conversation";');
     expect(src).toContain('const SCOUT_LEG = "start_to_website_visit";');
     expect(src).toContain("const herald = priced.filter((r) => r.leg === HERALD_LEG);");
+    // ROI is marginal: a follow-up carries only its own sending, the first email everything bought
+    // once per person (owner 2026-10-03: "compare the extra cost to send a followup N versus the extra gain")
+    expect(src).toContain("r.cost = send + (r.stepNo === 1 ? (spend - perEmail) / firstOfKey : 0);");
+    expect(src).not.toContain("r.cost = spend / emailsByVersionLeg.get(k);");
     // a website visit is a HUMAN click: Scout is the self-send link emails, outcome = visited
     expect(src).toContain("const scoutLinked = scoutAll.filter((r) => r.hasLink);");
     expect(src).toContain('const scout = scoutLinked.filter((r) => r.transport === "smtp").map((r) => ({ ...r, clicked: r.visited }));');

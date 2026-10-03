@@ -689,27 +689,41 @@ for (const key of ["reply", "visit"]) {
       thin: d.got < o.outcomesRequired,
     })) : [];
     const stepCost = costBars(o, steps, (b) => b, { ordinal: true });
-    const bestRoi = roiPts.length ? [...roiPts].sort((a, b) => a.value - b.value)[0] : null;
     const gains = ratePts.slice(1).map((p, i) => ({ label: p.label, gain: Number((p.value - ratePts[i].value).toFixed(1)) }));
     const lastUseful = [...gains].reverse().find((g) => g.gain > 0);
+    // ROI is MARGINAL: what one more follow-up costs (its own sending only, derive.mjs prices the
+    // lead and the writing on the first email) against the outcomes it adds, set beside what an
+    // outcome costs on a first email, which is the other way to buy one (a new person). A follow-up
+    // is worth sending while its extra outcome costs no more than that. The deepest such step wins.
+    const firstCpo = first && first[o.count] > 0 ? first.spend / first[o.count] : null;
+    const marginal = steps.slice(1).map((st) => ({ bucket: st.bucket, spend: st.spend, got: st[o.count], cpo: st[o.count] > 0 ? st.spend / st[o.count] : null }));
+    const worth = marginal.filter((m) => m.got > 0 && (firstCpo === null || m.cpo <= firstCpo));
+    const deepest = worth.length ? worth[worth.length - 1] : null;
+    const extra = (m) => (m.spend > 0 ? `${usd(m.cpo)} per extra ${o.noun}` : `no extra cost (sending is not charged per email)`);
     add({
       id: `${o.crew}-followups-roi`,
       crew: o.crew,
       topic: "followups",
       goal: "roi",
-      question: `How many follow-ups give the cheapest ${o.noun}?`,
-      status: bestRoi ? "measured" : "not_enough_data",
-      headline: bestRoi ? `${bestRoi.label}: ${bestRoi.display} per ${o.noun}, the cheapest depth.` : `No ${o.noun} yet at any depth.`,
-      winner: bestRoi ? bestRoi.label : null,
-      result: bestRoi ? { display: bestRoi.display, unit: `per ${o.noun}, ${bestRoi.label.toLowerCase()}`, sample: bestRoi.note } : null,
-      crowned: bestRoi ? !bestRoi.thin : false,
+      question: `How many follow-ups are worth their cost, for ${o.nounPlural}?`,
+      status: first && first.emails > 0 ? "measured" : "not_enough_data",
+      headline: !first || first.emails === 0
+        ? `No sequences yet.`
+        : deepest
+          ? `Send through ${deepest.bucket.toLowerCase()}: it adds ${o.nounPlural} at ${extra(deepest)}${firstCpo !== null ? `, against ${usd(firstCpo)} on a first email` : ""}.`
+          : `Stop after the first email: no follow-up adds a ${o.noun} for less than the ${firstCpo !== null ? usd(firstCpo) : "price"} a first email pays.`,
+      winner: deepest ? deepest.bucket : firstCpo !== null ? "First email" : null,
+      result: first && first.emails > 0 ? (deepest
+        ? { display: deepest.spend > 0 ? usd(deepest.cpo) : usd(0), unit: `per extra ${o.noun}, ${deepest.bucket.toLowerCase()}`, sample: `${n(deepest.got)} ${deepest.got === 1 ? o.noun : o.nounPlural} · ${usd(deepest.spend)} extra spent` }
+        : firstCpo !== null ? { display: usd(firstCpo), unit: `per ${o.noun}, first email`, sample: `${n(first[o.count])} ${o.nounPlural} · ${usd(first.spend)} spent` } : null) : null,
+      crowned: false,
       charts: [
+        { kind: "bars", title: `What each email adds: cost per extra ${o.noun} (USD, lower is better)`, lowerIsBetter: true, points: stepCost, note: RULE_NOTE },
         { kind: "bars", title: `Cost per ${o.noun} if the sequence stopped here (USD, lower is better)`, lowerIsBetter: true, points: roiPts, note: RULE_NOTE },
-        { kind: "bars", title: `Each email on its own: cost per ${o.noun} (USD, lower is better)`, lowerIsBetter: true, points: stepCost, note: RULE_NOTE },
       ],
       conclusion: [
-        `Each depth adds up the spend and the ${o.nounPlural} of every email up to it.`,
-        `The second chart prices each email alone, which is what the next follow-up would cost.`,
+        `A first email carries everything bought once per person: the lead, writing the whole sequence, the upload. A follow-up adds only its own sending, so its bar is the extra cost of the extra ${o.nounPlural} it brought.`,
+        `A follow-up is worth sending while its extra ${o.noun} costs no more than one bought with a first email to a new person.`,
       ],
     });
     add({
@@ -1089,9 +1103,22 @@ catalog.pilot = { workflows: [], templates: [], models: [] };
       const first = R.byStep.find((s) => s.bucket === "First email");
       const rest = R.byStep.filter((s) => s.bucket !== "First email").reduce((t, s) => ({ emails: t.emails + s.emails, spend: t.spend + s.spend, out: t.out + s[o.count] }), { emails: 0, spend: 0, out: 0 });
       const roi = byId.get(`${o.crew}-followups-roi`);
+      // the ROI verdict judges the follow-ups the study says to send (through its winner), or all
+      // of them when it says to stop, so the verdict and the winner speak about the same emails
+      let sentUp = rest;
       if (roi?.status === "measured" && first) {
+        const upTo = roi.winner && roi.winner !== "First email" ? R.byStep.findIndex((st) => st.bucket === roi.winner) : R.byStep.length - 1;
+        const sent = R.byStep.slice(1, upTo + 1);
+        sentUp = sent.reduce((t, st) => ({ emails: t.emails + st.emails, spend: t.spend + st.spend, out: t.out + st[o.count] }), { emails: 0, spend: 0, out: 0 });
+      }
+      if (roi?.status === "measured" && first && sentUp.spend === 0) {
+        // follow-ups add no spend at all: the ROI question is only whether they add outcomes
+        judge(roi, sentUp.out < MIN_OUTCOMES
+          ? { kind: "noise", reason: `Follow-ups cost nothing extra but brought ${n(sentUp.out)} ${sentUp.out === 1 ? o.noun : o.nounPlural} in all: too few to say they add any.` }
+          : { kind: "conclusion", reason: `Follow-ups cost nothing extra and brought ${n(sentUp.out)} ${o.nounPlural} on the same people the first email reached.` });
+      } else if (roi?.status === "measured" && first) {
         const f = { label: "The first email", outcomes: first[o.count], emails: first.emails, spend: first.spend };
-        const u = { label: "the follow-ups", outcomes: rest.out, emails: rest.emails, spend: rest.spend };
+        const u = { label: "the follow-ups", outcomes: sentUp.out, emails: sentUp.emails, spend: sentUp.spend };
         const firstCheaper = (f.outcomes / f.spend || 0) >= (u.outcomes / u.spend || 0);
         const [a, b] = firstCheaper ? [f, { ...u, label: "the follow-ups" }] : [{ ...u, label: "The follow-ups" }, { ...f, label: "the first email" }];
         judge(roi, compareVerdict({ a, b, goal: "roi", comparisons: 1, splitTest: true, ...nouns }));

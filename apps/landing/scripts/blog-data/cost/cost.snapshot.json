@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-10-03T06:27:06.074Z",
+  "generatedAt": "2026-10-03T08:26:38.592Z",
   "readOn": "2026-10-03",
   "windowFrom": "2026-04",
   "durationDays": 21,
@@ -19,48 +19,48 @@
     "months": [
       {
         "label": "Apr",
-        "value": 120.11,
-        "display": "$120",
+        "value": 181.65,
+        "display": "$182",
         "note": "1 positive reply · 2,657 emails",
         "thin": false,
         "partial": false
       },
       {
         "label": "May",
-        "value": 121.32,
-        "display": "$121",
+        "value": 145.85,
+        "display": "$146",
         "note": "7 positive replies · 15,112 emails",
         "thin": false,
         "partial": false
       },
       {
         "label": "Jun",
-        "value": 250.27,
-        "display": "$250",
+        "value": 224.99,
+        "display": "$225",
         "note": "4 positive replies · 22,527 emails",
         "thin": false,
         "partial": false
       },
       {
         "label": "Jul",
-        "value": 166.02,
-        "display": "$166",
+        "value": 175.34,
+        "display": "$175",
         "note": "11 positive replies · 22,501 emails",
         "thin": false,
         "partial": false
       },
       {
         "label": "Aug",
-        "value": 127.11,
-        "display": "$127",
+        "value": 145.17,
+        "display": "$145",
         "note": "12 positive replies · 16,412 emails",
         "thin": false,
         "partial": false
       },
       {
         "label": "Sep",
-        "value": 570.7,
-        "display": "$571",
+        "value": 420.23,
+        "display": "$420",
         "note": "3 positive replies · 18,869 emails · month in progress",
         "thin": false,
         "partial": true
@@ -69,40 +69,40 @@
     "running": [
       {
         "label": "Apr",
-        "value": 120.11,
-        "display": "$120",
+        "value": 181.65,
+        "display": "$182",
         "note": "1 positive reply · 2,657 emails to date",
         "thin": false,
         "partial": false
       },
       {
         "label": "May",
-        "value": 121.17,
-        "display": "$121",
+        "value": 150.32,
+        "display": "$150",
         "note": "8 positive replies · 17,769 emails to date",
         "thin": false,
         "partial": false
       },
       {
         "label": "Jun",
-        "value": 164.2,
-        "display": "$164",
+        "value": 175.21,
+        "display": "$175",
         "note": "12 positive replies · 40,296 emails to date",
         "thin": false,
         "partial": false
       },
       {
         "label": "Jul",
-        "value": 165.07,
-        "display": "$165",
+        "value": 175.28,
+        "display": "$175",
         "note": "23 positive replies · 62,797 emails to date",
         "thin": false,
         "partial": false
       },
       {
         "label": "Aug",
-        "value": 152.06,
-        "display": "$152",
+        "value": 164.95,
+        "display": "$165",
         "note": "35 positive replies · 79,209 emails to date",
         "thin": false,
         "partial": false
@@ -120,20 +120,20 @@
   "visit": {
     "id": "scout-cost-over-time",
     "average": {
-      "value": 3.96,
-      "display": "$3.96"
+      "value": 4.16,
+      "display": "$4.16"
     },
     "outcomes": 23,
     "emails": 1181,
     "interval": {
-      "lo": 2.64,
-      "hi": 6.25
+      "lo": 2.77,
+      "hi": 6.57
     },
     "months": [
       {
         "label": "Sep",
-        "value": 3.91,
-        "display": "$3.91",
+        "value": 4.13,
+        "display": "$4.13",
         "note": "23 website visits · 1,172 emails with a link · month in progress",
         "thin": false,
         "partial": true
@@ -142,8 +142,8 @@
     "running": [
       {
         "label": "Sep",
-        "value": 3.96,
-        "display": "$3.96",
+        "value": 4.16,
+        "display": "$4.16",
         "note": "23 website visits · 1,181 emails with a link to date · month in progress",
         "thin": false,
         "partial": true
