@@ -41,6 +41,7 @@ import { InfoTooltip } from "@/components/visibility/metric-info";
 import { OnboardingAccountWidget } from "@/components/onboarding/onboarding-account-widget";
 import { useOnboardingEscapeChrome } from "@/components/onboarding/onboarding-top-chrome";
 import posthog from "posthog-js";
+import { BRAND_WHY } from "@/lib/brand-why";
 import {
   upsertBrand,
   createBrandWithoutWebsite,
@@ -3456,7 +3457,8 @@ export function Onboarding() {
           <div className="flex h-16 w-16 items-center justify-center rounded-2xl border border-brand-100 bg-brand-50 text-brand-600">
             <SparklesIcon className="h-8 w-8" />
           </div>
-          <h1 className="mt-6 font-display text-4xl font-bold leading-tight text-gray-950">You're in. Welcome aboard.</h1>
+          <p className="mt-6 text-sm font-medium text-brand-600">{BRAND_WHY}</p>
+          <h1 className="mt-2 font-display text-4xl font-bold leading-tight text-gray-950">You're in. Welcome aboard.</h1>
           <p className="mt-3 max-w-md text-base leading-7 text-gray-500">
             Your outreach is funded and ready to launch. Now a few quick details so we get the most value out of every dollar you put in. It takes under a minute.
           </p>
