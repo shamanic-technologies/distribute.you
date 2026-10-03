@@ -14,6 +14,7 @@ import { v2Href } from "@/lib/v2/routes";
 import { useDailyBudgetSplit } from "@/lib/v2/use-daily-budget-split";
 import { shownFigure } from "@/lib/maturity";
 import { useStatBasis } from "@/lib/use-stat-basis";
+import { useStaffMode } from "@/lib/use-staff-mode";
 import { useClientClock } from "@/lib/use-client-clock";
 import { StatBasisSwitch } from "@/components/v2/stat-basis-switch";
 import { fmtDailyBudgetUsd } from "@/lib/campaign-budget";
@@ -95,6 +96,10 @@ export function TodayPage() {
   // cap, and only when its step is reached, so it is not part of the daily budget.
   const { dailyCents: budgetCents } = useDailyBudgetSplit(brandId, { enabled: rev.enabled });
   const budgetHidden = useDailyBudgetHidden();
+  // Work, Crew and Missions pages are staff mode only: a customer gets the figures, no
+  // link to them, and "needs your call" opens the Inbox instead of Work.
+  const { staffMode } = useStaffMode();
+  const callHref = staffMode ? v2Href(orgId, brandId, "work") : `${v2Href(orgId, brandId, "people")}?tab=positive-replies`;
   const selectedOfferId = useSelectedOfferIfAny()?.offerId ?? null;
 
   const spentToday = data?.spend ? data.spend.totalSpentTodayCents ?? data.spend.todaySpentCents ?? null : null;
@@ -189,17 +194,23 @@ export function TodayPage() {
               ) : (
                 <>
                   Your crew finished{" "}
-                  <Link
-                    href={v2Href(orgId, brandId, "crew")}
-                    className="k-fg underline decoration-[var(--line-strong)] underline-offset-4 hover:decoration-[var(--fg-2)]"
-                  >
-                    {formatCount(runsToday)} {runsToday === 1 ? "run" : "runs"}
-                  </Link>{" "}
+                  {staffMode ? (
+                    <Link
+                      href={v2Href(orgId, brandId, "crew")}
+                      className="k-fg underline decoration-[var(--line-strong)] underline-offset-4 hover:decoration-[var(--fg-2)]"
+                    >
+                      {formatCount(runsToday)} {runsToday === 1 ? "run" : "runs"}
+                    </Link>
+                  ) : (
+                    <span className="k-fg">
+                      {formatCount(runsToday)} {runsToday === 1 ? "run" : "runs"}
+                    </span>
+                  )}{" "}
                   today.
                   {needsCall != null && needsCall > 0 && (
                     <>
                       {" "}
-                      <Link href={v2Href(orgId, brandId, "work")} className="k-fg hover:underline">
+                      <Link href={callHref} className="k-fg hover:underline">
                         {formatCount(needsCall)} {needsCall === 1 ? "needs" : "need"} your call.
                       </Link>
                     </>
@@ -252,7 +263,7 @@ export function TodayPage() {
                 {rev.pending ? <Shimmer className="h-7 w-12" /> : <Figure value={data?.clicked ? formatCount(data.clicked.total) : "—"} />}
                 <BarSpark className="mt-auto pt-2" values={data?.clicked ? dailyWindow(data.clicked.daily, SPARK_DAYS, today) : null} />
               </StatTile>
-              <StatTile label="Crew today" note={`${running.length} running`} href={v2Href(orgId, brandId, "crew")}>
+              <StatTile label="Crew today" note={`${running.length} running`} href={staffMode ? v2Href(orgId, brandId, "crew") : undefined}>
                 {!runsSettled ? <Shimmer className="h-7 w-16" /> : <Figure value={formatCount(runsToday)} unit={runsToday === 1 ? "run" : "runs"} />}
                 <div className="mt-auto pt-2">
                   {/* A plan's $50/day is fixed: a subscriber reads what was spent, never a budget. */}
@@ -313,8 +324,8 @@ export function TodayPage() {
                     ))
                   )}
                   {needsCall != null && needsCall > callLeads.length && (
-                    <Link href={v2Href(orgId, brandId, "work")} className="k-btn-ghost w-full justify-center">
-                      {formatCount(needsCall - callLeads.length)} more in Work →
+                    <Link href={callHref} className="k-btn-ghost w-full justify-center">
+                      {formatCount(needsCall - callLeads.length)} more in {staffMode ? "Work" : "Inbox"} →
                     </Link>
                   )}
                 </div>
@@ -356,9 +367,11 @@ export function TodayPage() {
                   <SectionTitle
                     count={missionsSettled ? missions.length : null}
                     right={
-                      <Link href={v2Href(orgId, brandId, "missions")} className="hover:text-[var(--fg-1)]">
-                        All missions →
-                      </Link>
+                      staffMode ? (
+                        <Link href={v2Href(orgId, brandId, "missions")} className="hover:text-[var(--fg-1)]">
+                          All missions →
+                        </Link>
+                      ) : undefined
                     }
                   >
                     Missions
@@ -381,11 +394,16 @@ export function TodayPage() {
                           <span className="k-dot-pulse h-1.5 w-1.5 rounded-full bg-[var(--run)] text-[var(--run)]" />
                           Live
                         </span>
-                        {runsSettled && (
-                          <Link href={v2Href(orgId, brandId, "crew")} className="hover:text-[var(--fg-1)]">
-                            {formatCount(runsToday)} {runsToday === 1 ? "run" : "runs"} today
-                          </Link>
-                        )}
+                        {runsSettled &&
+                          (staffMode ? (
+                            <Link href={v2Href(orgId, brandId, "crew")} className="hover:text-[var(--fg-1)]">
+                              {formatCount(runsToday)} {runsToday === 1 ? "run" : "runs"} today
+                            </Link>
+                          ) : (
+                            <span>
+                              {formatCount(runsToday)} {runsToday === 1 ? "run" : "runs"} today
+                            </span>
+                          ))}
                       </span>
                     }
                   >

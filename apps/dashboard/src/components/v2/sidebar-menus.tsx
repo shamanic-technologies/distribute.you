@@ -466,15 +466,16 @@ type PaletteItem = {
   shortcut?: string;
 };
 
-/** Keel's "G then letter" jumps. One home so the palette shows what the keys do. */
-export const GO_KEYS: { section: V2Section; label: string; key: string }[] = [
+/** Keel's "G then letter" jumps. One home so the palette shows what the keys do.
+ *  `staff` entries (Work, Crew, Missions) exist only in staff mode, like their pages. */
+export const GO_KEYS: { section: V2Section; label: string; key: string; staff?: true }[] = [
   { section: "today", label: "Today", key: "t" },
   { section: "companies", label: "Companies", key: "r" },
   { section: "people", label: "People", key: "p" },
   { section: "deals", label: "Deals", key: "d" },
-  { section: "work", label: "Work", key: "w" },
-  { section: "crew", label: "Crew", key: "c" },
-  { section: "missions", label: "Missions", key: "m" },
+  { section: "work", label: "Work", key: "w", staff: true },
+  { section: "crew", label: "Crew", key: "c", staff: true },
+  { section: "missions", label: "Missions", key: "m", staff: true },
 ];
 const SETUP: { section: V2Section; label: string }[] = [
   { section: "offers", label: "Offer" },
@@ -520,6 +521,7 @@ export function CommandPalette({ orgId, brandId, open, onClose }: { orgId: strin
   }, [q]);
 
   const { missions, crews } = useMissions(orgId, brandId);
+  const { staffMode } = useStaffMode();
   const revenue = useBrandRevenue(brandId).data;
   const buckets = useBucketCounts(brandId).data;
   const call = useNeedsYourCall(brandId, 5).data?.leads ?? [];
@@ -547,6 +549,7 @@ export function CommandPalette({ orgId, brandId, open, onClose }: { orgId: strin
     };
     if (!term) for (const l of call) out.push({ ...personItem("Needs your call", l), label: `Follow up with ${leadName(l)}?` });
     for (const g of GO_KEYS) {
+      if (g.staff && !staffMode) continue;
       if (!term || matches(g.label, term)) {
         out.push({ key: `go-${g.section}`, group: "Go to", text: g.label, label: g.label, href: v2Href(orgId, brandId, g.section), shortcut: `G ${g.key.toUpperCase()}` });
       }
@@ -554,7 +557,7 @@ export function CommandPalette({ orgId, brandId, open, onClose }: { orgId: strin
     for (const s of SETUP) {
       if (!term || matches(s.label, term)) out.push({ key: `setup-${s.section}`, group: "Setup", text: s.label, label: s.label, href: v2Href(orgId, brandId, s.section) });
     }
-    if (term) {
+    if (term && staffMode) {
       for (const m of missions) {
         const label = m.offerName ? `${m.crew.name} · ${m.offerName}` : m.crew.name;
         if (matches(`${label} ${m.leg?.label ?? ""}`, term)) {
@@ -566,6 +569,8 @@ export function CommandPalette({ orgId, brandId, open, onClose }: { orgId: strin
           out.push({ key: `c-${c.crew.key}`, group: "Crew", text: c.crew.name, label: c.crew.name, icon: <CrewMark color={c.crew.color} glyph={c.crew.glyph} />, href: `${v2Href(orgId, brandId, "crew")}#${encodeURIComponent(c.crew.key)}` });
         }
       }
+    }
+    if (term) {
       let companies = 0;
       for (const o of revenue?.organizations ?? []) {
         const name = o.orgName ?? o.orgDomain ?? "";
@@ -577,7 +582,7 @@ export function CommandPalette({ orgId, brandId, open, onClose }: { orgId: strin
       for (const l of peopleQ.data?.leads ?? []) out.push(personItem("People", l));
     }
     return out;
-  }, [q, call, missions, crews, revenue, peopleQ.data, orgId, brandId]);
+  }, [q, call, missions, crews, staffMode, revenue, peopleQ.data, orgId, brandId]);
 
   useEffect(() => setCursor(0), [q, items.length]);
   useEffect(() => {
@@ -687,6 +692,7 @@ export function CommandPalette({ orgId, brandId, open, onClose }: { orgId: strin
 export function SearchTrigger({ orgId, brandId }: { orgId: string; brandId: string }) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
+  const { staffMode } = useStaffMode();
   useEffect(() => {
     let pendingG = 0;
     const onKey = (e: KeyboardEvent) => {
@@ -704,7 +710,7 @@ export function SearchTrigger({ orgId, brandId }: { orgId: string; brandId: stri
         return;
       }
       if (pendingG && Date.now() - pendingG < 1200) {
-        const hit = GO_KEYS.find((g) => g.key === key);
+        const hit = GO_KEYS.find((g) => g.key === key && (!g.staff || staffMode));
         pendingG = 0;
         if (hit) {
           e.preventDefault();
@@ -719,7 +725,7 @@ export function SearchTrigger({ orgId, brandId }: { orgId: string; brandId: stri
       window.removeEventListener("keydown", onKey);
       window.removeEventListener(OPEN_PALETTE_EVENT, onOpen);
     };
-  }, [orgId, brandId, router]);
+  }, [orgId, brandId, router, staffMode]);
   return (
     <>
       <button

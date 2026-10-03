@@ -7,6 +7,7 @@ import { useParams } from "next/navigation";
 import { useOpenV2Nav } from "@/components/v2/nav-context";
 import { useNeedsYourCall } from "@/components/v2/data";
 import { v2Href } from "@/lib/v2/routes";
+import { useStaffMode } from "@/lib/use-staff-mode";
 
 /** Opens the ⌘K palette from anywhere (`SearchTrigger` owns it and listens for this). */
 export const OPEN_PALETTE_EVENT = "v2:open-palette";
@@ -96,9 +97,11 @@ function TopBarUniversal() {
 
 function Bell({ orgId, brandId }: { orgId: string; brandId: string }) {
   const needs = useNeedsYourCall(brandId, 5).data?.total ?? null;
+  // Work is staff mode only: a customer's bell opens the Inbox, where those replies are.
+  const { staffMode } = useStaffMode();
   return (
         <Link
-          href={v2Href(orgId, brandId, "work")}
+          href={staffMode ? v2Href(orgId, brandId, "work") : `${v2Href(orgId, brandId, "people")}?tab=positive-replies`}
           aria-label={needs ? `${needs} need your call` : "Nothing needs your call"}
           title={needs ? `${needs} need your call` : "Nothing needs your call"}
           className="k-btn-ghost relative h-8 w-8 justify-center px-0"
