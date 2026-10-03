@@ -1,7 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { listBrands } from "@/lib/api";
 import { useAuthQuery } from "@/lib/use-auth-query";
 import { BrandLogo } from "@/components/brand-logo";
@@ -13,7 +14,8 @@ import { StorefrontIcon } from "@phosphor-icons/react/dist/csr/Storefront";
 /**
  * The v2 org page: an org with no remembered brand picks one. An org with NO brand at
  * all (a New organization modal someone closed) gets one big way forward, "Add a
- * brand", which runs the same modal from the brand step. The edge lets a v2 user reach
+ * brand", which runs the same modal from the brand step. A set-up org with exactly ONE
+ * brand has nothing to pick: it goes straight to that brand's page. The edge lets a v2 user reach
  * this page even while the org is not set up, instead of the full-page onboarding.
  * The `["brands"]` key v1 polls.
  */
@@ -21,6 +23,12 @@ export function V2BrandPicker({ orgId, setUp }: { orgId: string; setUp: boolean 
   const q = useAuthQuery(["brands"], () => listBrands());
   const brands = q.data?.brands ?? null;
   const [adding, setAdding] = useState(false);
+  const router = useRouter();
+  // One brand in a set-up org: nothing to pick, open it (replace, so Back skips this page).
+  const onlyId = setUp && brands !== null && brands.length === 1 ? brands[0].id : null;
+  useEffect(() => {
+    if (onlyId) router.replace(v2Base(orgId, onlyId));
+  }, [onlyId, orgId, router]);
   // An org not set up yet: its brand pages are behind the edge's first-run gate (the old
   // onboarding), so a brand is RESUMED in the v2 modal rather than opened.
   const [resuming, setResuming] = useState<{ id: string; domain: string | null; name: string | null } | null>(null);
@@ -68,7 +76,7 @@ export function V2BrandPicker({ orgId, setUp }: { orgId: string; setUp: boolean 
       <div className="mx-auto max-w-[640px] px-4 pb-16 pt-6 md:px-6">
         <h1 className="mb-5 text-[24px] font-medium leading-[30px] tracking-[-0.02em]">Pick a brand</h1>
         <div className="k-card divide-y divide-[var(--line-subtle)]">
-          {brands === null ? (
+          {brands === null || onlyId ? (
             <div className="p-4">{q.isError ? <p className="k-fg3 text-[13px]">We could not read your brands.</p> : <Shimmer className="h-10 w-full" />}</div>
           ) : (
             brands.map((b) => {
