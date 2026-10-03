@@ -123,25 +123,34 @@ export const NEW_ORG_STEPS = [
   "audiencePick",
   "levers",
   "leg",
+  "plan",
   "budget",
   "payment",
   "launching",
 ] as const;
 export type NewOrgStep = (typeof NEW_ORG_STEPS)[number];
 
-export function nextStep(step: NewOrgStep, ctx: { offerCount: number }): NewOrgStep {
+/**
+ * `planFlow` (owner 2026-10-03): the brand ends on "Choose your plan" (a plan per brand x
+ * offer, no trial, its $50/day fixed), so the budget and payment screens are never
+ * shown. Off only for an org billing keeps on pay-as-you-go (`existing_paying_org`).
+ */
+export function nextStep(step: NewOrgStep, ctx: { offerCount: number; planFlow: boolean }): NewOrgStep {
+  if (step === "plan") return step;
   const i = NEW_ORG_STEPS.indexOf(step);
   const next = NEW_ORG_STEPS[i + 1];
   if (!next) return step;
   if (next === "offerPick" && ctx.offerCount <= 1) return NEW_ORG_STEPS[i + 2];
+  if (next === "plan" && !ctx.planFlow) return NEW_ORG_STEPS[i + 2];
   return next;
 }
 
-export function previousStep(step: NewOrgStep, ctx: { offerCount: number }): NewOrgStep {
+export function previousStep(step: NewOrgStep, ctx: { offerCount: number; planFlow: boolean }): NewOrgStep {
   const i = NEW_ORG_STEPS.indexOf(step);
   const prev = NEW_ORG_STEPS[i - 1];
   if (!prev) return step;
   if (prev === "offerPick" && ctx.offerCount <= 1) return NEW_ORG_STEPS[i - 2];
+  if (prev === "plan" && !ctx.planFlow) return NEW_ORG_STEPS[i - 2];
   return prev;
 }
 

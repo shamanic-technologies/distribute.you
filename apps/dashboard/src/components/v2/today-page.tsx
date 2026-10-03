@@ -18,6 +18,8 @@ import { useClientClock } from "@/lib/use-client-clock";
 import { StatBasisSwitch } from "@/components/v2/stat-basis-switch";
 import { fmtDailyBudgetUsd } from "@/lib/campaign-budget";
 import { useDailyBudgetHidden } from "@/lib/use-daily-budget-hidden";
+import { OfferPlanBanner } from "@/components/v2/choose-plan";
+import { useSelectedOfferIfAny } from "@/components/v2/selected-offer";
 import { CampaignControlsTrigger } from "@/components/campaigns/campaign-controls-trigger";
 import {
   BarSpark,
@@ -93,6 +95,7 @@ export function TodayPage() {
   // cap, and only when its step is reached, so it is not part of the daily budget.
   const { dailyCents: budgetCents } = useDailyBudgetSplit(brandId, { enabled: rev.enabled });
   const budgetHidden = useDailyBudgetHidden();
+  const selectedOfferId = useSelectedOfferIfAny()?.offerId ?? null;
 
   // "Spent" is what was actually taken from the credit, the same basis as the
   // "Taken from credit" tile beside it. Open holds are money set aside for runs still
@@ -177,6 +180,7 @@ export function TodayPage() {
         }
       />
       <div className="mx-auto max-w-[1280px] px-4 pb-16 pt-6 md:px-6">
+        <OfferPlanBanner brandId={brandId} offerId={selectedOfferId} missions={missions} />
         <div className="mb-6 flex flex-wrap items-end justify-between gap-2">
           <div className="min-w-0">
             <h1 className="text-[28px] font-medium leading-[34px] tracking-[-0.02em]">

@@ -64,7 +64,6 @@ import {
   nextSlide,
   parseDailyBudget,
   type GetStartedEmail,
-  replyMarginUsd,
   type GetStartedAudience,
   type GetStartedOffer,
   type PlanCampaign,
@@ -157,10 +156,6 @@ export function AccountCardWall({
   const [emailOpen, setEmailOpen] = useState(false);
   const [code, setCode] = useState("");
   const [consent, setConsent] = useState(false);
-  // The reply margin: unticked by default, so it is read before anything is paid.
-  // A plan's budget is fixed and never shown (owner 2026-10-03), so there is nothing to tick.
-  const hasReplies = plan.some((c) => c.reactive);
-  const [marginOk, setMarginOk] = useState(subscription);
   // The price read once the brand has an owner (and therefore an offer) wins over the
   // one the preview could read signed out, which is none for a brand with no offer yet.
   const [pricedUsd, setPricedUsd] = useState<number | null>(null);
@@ -262,11 +257,11 @@ export function AccountCardWall({
   // the code and the card. Only when the terms were already accepted (a Google return
   // comes back with the box unticked, and then the button asks for it).
   useEffect(() => {
-    if (stage !== "card" || cardOpened.current || busy || claiming || !consent || (hasReplies && !marginOk) || !account) return;
+    if (stage !== "card" || cardOpened.current || busy || claiming || !consent || !account) return;
     cardOpened.current = true;
     void addCard();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [stage, busy, claiming, consent, marginOk, account]);
+  }, [stage, busy, claiming, consent, account]);
 
   const parsedBudget = parseDailyBudget(budget, subscription ? 1 : floorUsd);
   const budgetUsd = "usd" in parsedBudget ? parsedBudget.usd : null;
@@ -279,10 +274,6 @@ export function AccountCardWall({
     if (scope === "account") return true;
     if ("problem" in parsedBudget) {
       setError(parsedBudget.problem);
-      return false;
-    }
-    if (hasReplies && !marginOk) {
-      setError("Tick the box about replying to your leads.");
       return false;
     }
     if (budgetTouched.current) onBudget(parsedBudget.usd);
@@ -612,18 +603,8 @@ export function AccountCardWall({
       )}
       {pricing && recommendation == null && <span className="k-fg3 text-[12px]">Pricing your offer...</span>}
       <span className="k-fg3 w-full text-[12px] leading-5">
-        One budget for finding new leads. It goes to your most profitable path first, then follows what brings you the most revenue.
+        One budget a day for every step of your sales. Replies to your leads come first. The rest finds new leads on your most profitable path.
       </span>
-      {hasReplies && (
-        <label className="mt-1 flex w-full items-start gap-2 text-[12px] leading-5">
-          <input type="checkbox" className="mt-1" checked={marginOk} onChange={(e) => setMarginOk(e.target.checked)} disabled={stage === "launching"} />
-          <span className="k-fg2">
-            {budgetUsd != null
-              ? `I understand that up to +50% of my daily budget (up to $${replyMarginUsd(budgetUsd)} a day) can be used to reply to my leads, calls included.`
-              : "I understand that up to +50% of my daily budget can be used to reply to my leads, calls included."}
-          </span>
-        </label>
-      )}
     </div>
   );
 

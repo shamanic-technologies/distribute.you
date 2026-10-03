@@ -2,14 +2,11 @@ import { describe, expect, it } from "vitest";
 import { readFileSync } from "fs";
 import { resolve } from "path";
 import {
-  REPLY_MARGIN_SHARE,
   firstLaunchedPath,
   launchPlan,
   initialSalesSteps,
   parseDraftedSteps,
   planFloorUsd,
-  replyCeilingUsd,
-  replyMarginUsd,
   salesStepsDraftField,
   type PlanPath,
 } from "../src/lib/v2/get-started";
@@ -139,23 +136,15 @@ describe("what we launch", () => {
   });
 });
 
-describe("the reply margin, Google Ads' way", () => {
-  it("is half the budget, shared between the reply campaigns, whole dollars", () => {
-    expect(REPLY_MARGIN_SHARE).toBe(0.5);
-    expect(replyMarginUsd(20)).toBe(10);
-    expect(replyCeilingUsd(20, 1)).toBe(10);
-    expect(replyCeilingUsd(20, 2)).toBe(5);
-    expect(replyCeilingUsd(20, 0)).toBe(0);
-  });
-
-  it("lifts the smallest budget so every campaign clears its channel's floor", () => {
+describe("one pot for every step of the sales path (owner 2026-10-03)", () => {
+  it("lifts the smallest budget so every campaign clears its channel's floor at the full budget", () => {
     const plan = launchPlan(PATHS_FIXTURE);
     const floors = new Map([
       ["sales-cold-email-outreach", 100],
       ["ai-meeting-booking", 300],
     ]);
-    // The meeting booking needs $3 out of a 50% margin: a $6 budget.
-    expect(planFloorUsd(plan, floors, 1)).toBe(6);
+    // The meeting booking draws on the same pot: its $3 floor is the plan's floor.
+    expect(planFloorUsd(plan, floors, 1)).toBe(3);
     expect(planFloorUsd(plan.filter((c) => !c.reactive), floors, 1)).toBe(1);
   });
 });
@@ -165,15 +154,14 @@ describe("the call sites", () => {
     const at = LAUNCH.indexOf("await setBrandSalesBudget(input.brandId, input.budgetUsd * 100)");
     expect(at).toBeGreaterThan(0);
     expect(at).toBeLessThan(LAUNCH.indexOf("createCampaignWithoutBrandEnrichment({"));
-    expect(LAUNCH).toContain("c.reactive ? replyCeilingUsd(input.budgetUsd, replies) : input.budgetUsd");
+    expect(LAUNCH).toContain("{ offerId, legKey: c.legKey, featureSlug: c.featureSlug }, input.budgetUsd * 100);");
+    expect(LAUNCH).not.toContain("replyCeilingUsd");
   });
 
-  it("asks the reply margin as a required box, unticked by default, on the payment wall", () => {
-    // Unticked for pay-as-you-go; a plan's budget is fixed, so there is nothing to tick.
-    expect(WALL).toContain("const [marginOk, setMarginOk] = useState(subscription);");
-    expect(WALL).toContain("if (hasReplies && !marginOk) {");
-    expect(WALL).toContain("up to +50% of my daily budget");
-    expect(WALL).not.toContain("a day on each");
+  it("states one budget for every step of the sales path on the payment wall, with no reply margin box", () => {
+    expect(WALL).toContain("One budget a day for every step of your sales. Replies to your leads come first.");
+    expect(WALL).not.toContain("marginOk");
+    expect(WALL).not.toContain("+50%");
   });
 
   it("frames the path launched first and lets a rate be overwritten from its detail", () => {
