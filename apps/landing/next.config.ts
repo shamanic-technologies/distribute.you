@@ -73,8 +73,8 @@ const nextConfig: NextConfig = {
       // same subject; one with no live article on its subject, and junk slugs, land on /blog.
       { source: "/blog/digital-narratives-examples", destination: "/blog/email-marketing-strategy", permanent: true, missing: offLab },
       { source: "/blog/what-is-thought-leadership-marketing", destination: "/blog/email-marketing-strategy", permanent: true, missing: offLab },
-      { source: "/blog/examples-of-great-press-releases", destination: "/blog/press-release-distribution-software", permanent: true, missing: offLab },
-      { source: "/blog/boutique-pr-firms", destination: "/blog/press-release-distribution-software", permanent: true, missing: offLab },
+      { source: "/blog/examples-of-great-press-releases", destination: "/blog", permanent: true, missing: offLab },
+      { source: "/blog/boutique-pr-firms", destination: "/blog", permanent: true, missing: offLab },
       { source: "/blog/venture-capital-due-diligence", destination: "/blog", permanent: true, missing: offLab },
       { source: "/blog/the-slug", destination: "/blog", permanent: true, missing: offLab },
       { source: "/blog/second", destination: "/blog", permanent: true, missing: offLab },
@@ -82,6 +82,12 @@ const nextConfig: NextConfig = {
       { source: "/blog/cold-email-open-tracking-pixel", destination: "/blog", permanent: true, missing: offLab },
       { source: "/blog/cold-email-open-tracking", destination: "/blog", permanent: true, missing: offLab },
       { source: "/blog/cold-email-response-rate", destination: "/blog", permanent: true, missing: offLab },
+      // Articles taken down on 2026-10-03: their subject is a channel we do not run (positioning
+      // 2026-09-24: a cold email agency).
+      { source: "/blog/press-release-distribution-software", destination: "/blog", permanent: true, missing: offLab },
+      { source: "/blog/journalism-pitch-example", destination: "/blog", permanent: true, missing: offLab },
+      { source: "/blog/influencer-discovery-tools", destination: "/blog", permanent: true, missing: offLab },
+      { source: "/blog/text-messages-to-email", destination: "/blog", permanent: true, missing: offLab },
       { source: "/sign-in", destination: "https://dashboard.distribute.you/sign-in", permanent: false, missing: offLab },
       { source: "/sign-up", destination: "https://dashboard.distribute.you/sign-up", permanent: false, missing: offLab },
     ];
