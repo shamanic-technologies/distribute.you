@@ -1040,9 +1040,9 @@ export function GetStarted() {
     setExits(null);
     setStarted(true);
     setStep("company", "running");
-    posthog.capture("get_started_website_submitted");
-
     const url = websiteUrl(raw);
+    // `website` feeds the owner's Telegram visit recap (lib/visit-recap.ts).
+    posthog.capture("get_started_website_submitted", { website: raw.trim().replace(/^https?:\/\//i, "").replace(/\/$/, "") });
     const session = await startAnonSession(url);
     if (!session.started) {
       ran.current = false;

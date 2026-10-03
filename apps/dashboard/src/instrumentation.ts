@@ -813,6 +813,12 @@ async function fetchWithRetry(
 }
 
 export async function register() {
+  // The owner's Telegram recap of each human visit that reached onboarding.
+  if (process.env.NEXT_RUNTIME === "nodejs" && process.env.NODE_ENV === "production") {
+    const { startVisitRecaps } = await import("@/lib/visit-recap-job");
+    startVisitRecaps();
+  }
+
   const apiUrl = process.env.NEXT_PUBLIC_DISTRIBUTE_API_URL || "https://api.distribute.you";
   const apiKey = process.env.ADMIN_DISTRIBUTE_API_KEY;
 
