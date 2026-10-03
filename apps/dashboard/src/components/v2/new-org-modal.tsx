@@ -61,6 +61,8 @@ import {
   type UserFieldValue,
 } from "@/lib/api";
 import { getStripe } from "@/lib/stripe";
+import { ChoosePlanPanel } from "@/components/v2/choose-plan";
+import { SUBSCRIPTION_OUTBOUND_DAILY_USD } from "@/lib/subscription-plan";
 import { channelMinimumCents, channelMinimumsFromWire } from "@/lib/channel-minimums";
 import { websiteInputProblem } from "@/lib/website-input";
 import { v2MissionHref } from "@/lib/v2/routes";
@@ -112,6 +114,7 @@ const STEP_TITLE: Record<NewOrgStep, string> = {
   audiencePick: "Your audiences",
   levers: "Your offer, in six answers",
   leg: "What do you want for this brand?",
+  plan: "Choose your plan",
   budget: "Daily budget",
   payment: "Fund your campaign",
   launching: "Launching your campaign",
@@ -186,6 +189,9 @@ export function NewOrgModal({
   const [presetCents, setPresetCents] = useState<number | null>(PREPAID_PRESETS_CENTS[0]);
   const [customAmount, setCustomAmount] = useState("");
   const [checkoutSecret, setCheckoutSecret] = useState<string | null>(null);
+  // Owner 2026-10-03: a brand ends on "Choose your plan" (per brand x offer, no trial,
+  // $50/day fixed and never shown). Off only when billing keeps the org on pay-as-you-go.
+  const [planFlow, setPlanFlow] = useState(true);
 
   // Background prefills, keyed on the brand they were read for.
   const prefillRef = useRef<Promise<void> | null>(null);
@@ -236,14 +242,14 @@ export function NewOrgModal({
   }
 
   const go = (s: NewOrgStep) => setStep(s);
-  const forward = () => go(nextStep(step, { offerCount: offerProposals.length }));
+  const forward = () => go(nextStep(step, { offerCount: offerProposals.length, planFlow }));
   const back = () => {
     // The six levers walk back one question at a time before leaving the step.
     if (step === "levers" && leverIndex > 0) return setLeverIndex((i) => i - 1);
     // A resumed brand's existing offers: no "What you sell" screen to go back to.
     if (existingOffers && step === "offerPick") return go("brand");
     if (existingOffers && step === "audienceText") return go(existingOffers.length > 1 ? "offerPick" : "brand");
-    go(previousStep(step, { offerCount: offerProposals.length }));
+    go(previousStep(step, { offerCount: offerProposals.length, planFlow }));
   };
 
   // ── Prefill: everything readable off the brand, started the moment it exists ──
@@ -639,7 +645,8 @@ export function NewOrgModal({
       // Record the payment mode FIRST: a new org is postpaid by default, and a postpaid
       // org with no card is stopped at once (no_chargeable_card), which is what made a
       // free-credit start stop immediately. Prepaid runs without a card.
-      await setPaymentMode(startOnFreeCredit.current ? "prepaid" : payMode);
+      // A plan put the org in subscription mode itself: writing a mode would undo it.
+      if (!planFlow) await setPaymentMode(startOnFreeCredit.current ? "prepaid" : payMode);
       if (!launched.current.audiences) {
         try {
           await confirmAudienceSegments(id, chosenOffer, audienceText.trim(), segments.filter((_, i) => pickedSegments.has(i)));
@@ -655,7 +662,8 @@ export function NewOrgModal({
         launched.current.audiences = true;
       }
       if (!launched.current.budget) {
-        await saveCampaignBudget(id, { offerId: chosenOffer, legKey, featureSlug: NEW_ORG_CHANNEL_SLUG }, budgetUsd * 100);
+        const dailyUsd = planFlow ? SUBSCRIPTION_OUTBOUND_DAILY_USD : budgetUsd;
+        await saveCampaignBudget(id, { offerId: chosenOffer, legKey, featureSlug: NEW_ORG_CHANNEL_SLUG }, dailyUsd * 100);
         launched.current.budget = true;
       }
       const workflowSlug = legPrices[legKey]?.workflow;
@@ -691,7 +699,7 @@ export function NewOrgModal({
       if (!setActive) throw new Error("Your session is still loading. Try again in a moment.");
       await setActive({ organization: orgId! });
       await session?.getToken({ skipCache: true });
-      posthog.capture("new_org_modal_launched", { org_id: orgId, brand_id: id, leg: legKey, budget_usd: budgetUsd, pay_mode: payMode });
+      posthog.capture("new_org_modal_launched", { org_id: orgId, brand_id: id, leg: legKey, budget_usd: planFlow ? SUBSCRIPTION_OUTBOUND_DAILY_USD : budgetUsd, pay_mode: planFlow ? "plan" : payMode });
       setApiActiveOrgOverride(null);
       onClose();
       router.push(v2MissionHref(orgId!, id, campaignId));
@@ -701,7 +709,7 @@ export function NewOrgModal({
   if (!open) return null;
   const host = document.getElementById("v2-portal") ?? document.body;
   const stepIndex = ["org", "brand", "offerText", "audienceText", "levers", "leg", "budget", "payment"].indexOf(
-    step === "offerPick" ? "offerText" : step === "audiencePick" ? "audienceText" : step,
+    step === "offerPick" ? "offerText" : step === "audiencePick" ? "audienceText" : step === "plan" ? "budget" : step,
   );
 
   return createPortal(
@@ -858,6 +866,26 @@ export function NewOrgModal({
             </div>
           )}
 
+          {step === "plan" && brandId && offerId && (
+            <div className="mt-4">
+              <ChoosePlanPanel
+                brandId={brandId}
+                offerId={offerId}
+                beforeCard={declareRevolut}
+                personName={personName}
+                email={user?.primaryEmailAddress?.emailAddress ?? null}
+                onStarted={launch}
+                onRefused={(code) => {
+                  // billing keeps this org on pay-as-you-go: its own budget and payment screens.
+                  if (code !== "existing_paying_org") return false;
+                  setPlanFlow(false);
+                  go("budget");
+                  return true;
+                }}
+              />
+            </div>
+          )}
+
           {step === "budget" && (
             <div className="mt-4 space-y-2">
               <Field label="Dollars a day">
@@ -958,9 +986,11 @@ export function NewOrgModal({
                   Start with free credit
                 </button>
               )}
-              <button type="button" className="k-btn-strong" disabled={busy} onClick={() => primary()}>
-                {readingSite ? "Reading your site…" : busy ? "Working…" : primaryLabel()}
-              </button>
+              {step !== "plan" && (
+                <button type="button" className="k-btn-strong" disabled={busy} onClick={() => primary()}>
+                  {readingSite ? "Reading your site…" : busy ? "Working…" : primaryLabel()}
+                </button>
+              )}
             </div>
           </div>
         )}

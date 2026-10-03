@@ -108,6 +108,41 @@ export function pickedPlanCents(cookieHeader: string | null | undefined): number
   return SUBSCRIPTION_MONTHLY_CENTS;
 }
 
+/** The fields of a plan this module reads (billing's per brand x offer plan). */
+export interface PlanLike {
+  brand_id: string | null;
+  offer_id: string | null;
+  status: string;
+}
+
+/**
+ * True when this brand x offer has a live plan (anything but ended). A plan is per
+ * brand x offer (owner 2026-10-03): an offer without one does not send on a plan org.
+ */
+export function offerHasLivePlan(plans: readonly PlanLike[], brandId: string, offerId: string): boolean {
+  const b = brandId.toLowerCase();
+  const o = offerId.toLowerCase();
+  return plans.some(
+    (p) => p.status !== "canceled" && p.brand_id?.toLowerCase() === b && p.offer_id?.toLowerCase() === o,
+  );
+}
+
+/** What a plan start refusal means, keyed on billing's machine `code`. */
+export function planStartRefusal(code: unknown): string {
+  switch (code) {
+    case "plan_exists_for_offer":
+      return "This offer already has a plan.";
+    case "first_charge_declined":
+      return "Your card was not charged, so the plan did not start. Try another card.";
+    case "existing_paying_org":
+      return "This account pays as you go, so plans are not available on it. Write to us and we will switch it.";
+    case "offer_not_found":
+      return "We could not find this offer. Refresh the page and try again.";
+    default:
+      return "The plan did not start and nothing was charged. Try again in a moment.";
+  }
+}
+
 /** "$99", "$199": a monthly amount in whole dollars. */
 export function monthlyUsd(cents: number): string {
   return `$${Math.round(cents / 100).toLocaleString("en-US")}`;

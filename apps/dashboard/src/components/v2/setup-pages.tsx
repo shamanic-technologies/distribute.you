@@ -22,6 +22,7 @@ import { promiseProgressSentence, promiseProgressWidth, promiseUnlockLine } from
 import { v2Base, v2Href, v2MissionHref, v2OfferHref } from "@/lib/v2/routes";
 import { ArchivedOffers } from "@/components/v2/archived-offers";
 import { V2NewOfferModal } from "@/components/v2/new-offer-modal";
+import { OfferPlanBanner } from "@/components/v2/choose-plan";
 import { useSelectedOffer } from "@/components/v2/selected-offer";
 import { OfferIdentityCard } from "@/components/settings/offer-identity-card";
 import { OfferArchiveCard } from "@/components/settings/offer-archive-card";
@@ -216,6 +217,7 @@ export function V2OfferPage() {
       tabs={offerTabs(orgId, brandId, offerId, "settings", isBeta)}
       width="max-w-[1280px]"
     >
+      <OfferPlanBanner brandId={brandId} offerId={offerId} missions={missions} />
       <div className="grid gap-6 lg:grid-cols-[minmax(0,7fr)_minmax(0,3fr)]">
         <div className="min-w-0 space-y-8">
           <OfferIdentityCard brandId={brandId} offerId={offerId} />
