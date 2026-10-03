@@ -22,7 +22,7 @@ import {
   type UserFieldValue,
 } from "@/lib/api";
 import { LEVER_QUESTIONS, NEW_ORG_CHANNEL_SLUG, newOrgLeg, recommendedDailyBudgetUsd, type NewOrgLegKey } from "@/lib/v2/new-org-wizard";
-import { replyCeilingUsd, type PlanCampaign } from "@/lib/v2/get-started";
+import type { PlanCampaign } from "@/lib/v2/get-started";
 
 export const GET_STARTED_LEG: NewOrgLegKey = "start_to_website_visit";
 
@@ -107,8 +107,8 @@ async function prefillOfferLevers(brandId: string, offerId: string): Promise<voi
  * Runs the launch on the offer and audience the visitor picked (no re-pick): the ONE
  * daily budget stated as the brand's global sales budget (campaign-service spends it on
  * the best-ROI path first), then one campaign per (channel, leg) the ranked paths need.
- * A lead-finding campaign's own ceiling is the whole budget (the global one caps them
- * together); a reply campaign's is its share of the reply margin. A campaign of the path
+ * Every campaign's own ceiling is the whole budget: the global one is the ONE pot of every
+ * step of the sales path, replies to leads served first (owner 2026-10-03). A campaign of the path
  * launched first must be created or the launch fails; one of a later path that has
  * nothing ready to run is skipped and logged. Mutates `progress` as each write lands so
  * a retry resumes. Returns the first campaign's id (where the mission page opens).
@@ -144,7 +144,6 @@ export async function launchFromPreview(input: LaunchInput, progress: LaunchProg
     progress.salesBudget = true;
   }
 
-  const replies = input.plan.filter((c) => c.reactive).length;
   const ids: string[] = [];
   for (const c of input.plan) {
     const key = `${c.featureSlug}|${c.legKey}`;
@@ -160,8 +159,7 @@ export async function launchFromPreview(input: LaunchInput, progress: LaunchProg
       continue;
     }
     if (!progress.budgets[key]) {
-      const ceilingUsd = c.reactive ? replyCeilingUsd(input.budgetUsd, replies) : input.budgetUsd;
-      await saveCampaignBudget(input.brandId, { offerId, legKey: c.legKey, featureSlug: c.featureSlug }, ceilingUsd * 100);
+      await saveCampaignBudget(input.brandId, { offerId, legKey: c.legKey, featureSlug: c.featureSlug }, input.budgetUsd * 100);
       progress.budgets[key] = true;
     }
 
