@@ -13,6 +13,7 @@ import { v2Href, v2RunHref } from "@/lib/v2/routes";
 import { useStaffMode } from "@/lib/use-staff-mode";
 import { LeadHistoryTimeline } from "@/components/audiences/lead-history-timeline";
 import { CrmAttributionCard } from "@/components/crm/crm-attribution-card";
+import { SendingScheduleCard } from "@/components/v2/sending-schedule-card";
 import { CloseWonForm } from "@/components/leads/close-won-form";
 import { EmptyNote, Shimmer, TopBar } from "@/components/v2/ui";
 import { CompanyMark, PersonAvatar, leadCompany, leadCompanyDomain, leadName, leadTitle } from "@/components/v2/people-bits";
@@ -183,6 +184,7 @@ export function PersonPage() {
                     />
                   </dl>
                 </div>
+                {lead.email ? <SendingScheduleCard email={lead.email} brandId={brandId} /> : null}
                 <CrmAttributionCard leadRowId={leadRowId} brandId={brandId} />
               </aside>
             </div>
