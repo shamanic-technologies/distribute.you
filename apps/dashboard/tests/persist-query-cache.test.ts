@@ -74,7 +74,7 @@ describe("shouldPersistQuery — only successful, non-sensitive queries persist"
       // leads
       "leadEmail",
       // money, at each grain it is asked at
-      "featureRevenue", "brandRevenue",
+      "featureRevenue", "brandRevenue", "brandRevenueWindow",
       "featureRevenueByCampaign", "brandOfferMoney",
       "featureAudienceStats",
       // audiences / projection / campaigns

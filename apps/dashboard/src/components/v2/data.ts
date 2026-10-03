@@ -5,6 +5,7 @@ import { useAuthQuery } from "@/lib/use-auth-query";
 import {
   getBrand,
   getOfferRevenue,
+  getOfferRevenueWindow,
   getLeadBucketCounts,
   getLeadHistory,
   getLeadStandingCounts,
@@ -67,6 +68,18 @@ export function useBrandRevenue(brandId: string) {
   });
   // Reveal on SETTLE: a failed read shows its dashes, never an eternal skeleton.
   return { ...q, enabled, pending: q.data === undefined && !q.isError && enabled };
+}
+
+/** Today's stat row over the last `days` UTC days, same offer and gate as `useBrandRevenue`. */
+export function useBrandRevenueWindow(brandId: string, days: number) {
+  const featureSlug = useSoleFeatureSlug();
+  const { offerId, campaignIds } = useSelectedOffer();
+  const enabled = isRevenueFeature(featureSlug) && !!offerId && (campaignIds?.length ?? 0) > 0;
+  const q = useAuthQuery(["brandRevenueWindow", brandId, "offer", offerId, days], () => getOfferRevenueWindow(offerId!, brandId, days), {
+    enabled,
+    ...pollOptions,
+  });
+  return { ...q, pending: q.data === undefined && !q.isError && enabled };
 }
 
 /**

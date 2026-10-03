@@ -53,6 +53,7 @@ import type { PublishedChannelTerms } from "./channel-minimums";
 import { ORG_DESYNC_ERROR, ORG_DESYNC_STATUS } from "./org-desync";
 import { keepLastGoodFields } from "./keep-last-good";
 import type { RevenueOverview } from "./revenue-view";
+import { RevenueWindowResponseSchema, type RevenueWindow } from "./revenue-window";
 import type {
   WorkflowCatalogueRow,
   WorkflowDynastyMembership,
@@ -4962,6 +4963,31 @@ export async function getOfferRevenue(
   const query = new URLSearchParams({ brandId, pricing: "net" });
   const raw = await apiCall<unknown>(`/offers/${encodeURIComponent(offerId)}/revenue?${query.toString()}`, { token });
   return parseFeatureRevenue(raw, "getOfferRevenue");
+}
+
+/**
+ * The same offer read asked for its `window` block: every Today stat over the last
+ * `days` UTC days (features-service `?windowDays=`). Only the window is kept; the rest
+ * of the body is read by `getOfferRevenue` under its own key.
+ */
+export async function getOfferRevenueWindow(
+  offerId: string,
+  brandId: string,
+  days: number,
+  token?: string,
+): Promise<RevenueWindow> {
+  const query = new URLSearchParams({ brandId, pricing: "net", windowDays: String(days) });
+  const raw = await apiCall<unknown>(`/offers/${encodeURIComponent(offerId)}/revenue?${query.toString()}`, { token });
+  const parsed = RevenueWindowResponseSchema.safeParse(raw);
+  if (!parsed.success) {
+    console.error("[dashboard] getOfferRevenueWindow: response shape mismatch", {
+      offerId,
+      days,
+      issues: parsed.error.issues,
+    });
+    throw new Error("[dashboard] getOfferRevenueWindow: invalid response shape");
+  }
+  return parsed.data.window;
 }
 
 /**
