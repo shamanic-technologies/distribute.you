@@ -28,9 +28,9 @@ const prose = (html: string) =>
   html.replace(/<script[\s\S]*?<\/script>/g, "").replace(/<style[\s\S]*?<\/style>/g, "");
 
 describe("the competitor catalogue", () => {
-  it("names the eleven competitors the owner picked, and not Amplemarket", () => {
+  it("names the competitors the owner picked, parcelLab for its search demand, and not Amplemarket", () => {
     expect(COMPETITORS.map((c) => c.slug).sort()).toEqual(
-      ["11x", "aisdr", "apollo", "artisan", "clay", "explee", "gojiberry", "instantly", "lemlist", "salesforge", "smartlead"],
+      ["11x", "aisdr", "apollo", "artisan", "clay", "explee", "gojiberry", "instantly", "lemlist", "parcellab", "salesforge", "smartlead"],
     );
     expect(COMPETITORS.some((c) => /amplemarket/i.test(c.name))).toBe(false);
   });
@@ -39,7 +39,7 @@ describe("the competitor catalogue", () => {
     for (const c of COMPETITORS) {
       expect(c.sourceUrl, c.slug).toMatch(/^https:\/\//);
       expect(new URL(c.sourceUrl).hostname.replace(/^www\./, ""), c.slug).toBe(c.domain);
-      expect(c.verifiedOn, c.slug).toMatch(/^2026-09-\d\d$/);
+      expect(c.verifiedOn, c.slug).toMatch(/^2026-(09|10)-\d\d$/);
       expect(c.prices.length, c.slug).toBeGreaterThan(0);
       for (const p of c.prices) expect(p.price, `${c.slug} ${p.plan}`).toMatch(/\$|On request/);
     }
@@ -206,7 +206,7 @@ describe("every list that names the cluster reads the catalogue", () => {
     expect(read("src/app/alternatives/route.ts")).toContain("renderAlternativesPage");
     const slug = read("src/app/compare/[slug]/route.ts");
     expect(slug).toContain("competitorBySlug");
-    expect(slug).toContain('staticResponse("404.html", request, { status: 404');
+    expect(slug).toContain("renderNotFoundPage(), request, { status: 404");
   });
 
   it("the stylesheet carries the compare rules and the five-column footer", () => {
@@ -259,5 +259,31 @@ describe("the month a compare title shows", () => {
   it("keeps the Verified eyebrow on the month the prices were read", () => {
     const newest = COMPETITORS.map((c) => c.verifiedOn).sort().at(-1)!;
     expect(COMPARE_VERIFIED_LABEL).toBe(monthLabel(new Date(`${newest}T12:00:00Z`)));
+  });
+});
+
+describe("an unknown slug", () => {
+  // Was a 500 in prod: the handlers read a 404.html that no longer exists on disk.
+  for (const [cluster, load] of [
+    ["compare", () => import("@/app/compare/[slug]/route")],
+    ["best", () => import("@/app/best/[slug]/route")],
+  ] as const) {
+    it(`/${cluster}/<unknown> answers the designed 404, never a 500`, async () => {
+      const { GET } = await load();
+      const res = await GET(new Request(`https://distribute.you/${cluster}/nonexistent-xyz`), {
+        params: Promise.resolve({ slug: "nonexistent-xyz" }),
+      });
+      expect(res.status).toBe(404);
+      expect(await res.text()).toContain("<html");
+    });
+  }
+
+  it("/compare/parcellab is a real page", async () => {
+    const { GET } = await import("@/app/compare/[slug]/route");
+    const res = await GET(new Request("https://distribute.you/compare/parcellab"), {
+      params: Promise.resolve({ slug: "parcellab" }),
+    });
+    expect(res.status).toBe(200);
+    expect(await res.text()).toContain("parcelLab alternative: distribute.you vs parcelLab pricing");
   });
 });
