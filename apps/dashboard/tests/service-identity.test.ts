@@ -47,6 +47,7 @@ const read = (p: string) => fs.readFileSync(path.join(__dirname, p), "utf-8");
 describe("no call site invents its own identity", () => {
   for (const [label, file] of [
     ["the outcome digest", "../src/lib/outcome-digest.ts"],
+    ["the clients telegram", "../src/lib/clients-telegram.ts"],
   ] as const) {
     it(`${label} reads the catalogue`, () => {
       const src = read(file);

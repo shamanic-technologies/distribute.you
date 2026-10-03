@@ -113,3 +113,15 @@ describe("the outcome digest reads the same net basis as the Overview", () => {
     expect(body).not.toMatch(/if \(.*pricing/);
   });
 });
+
+/** The morning clients Telegram builds its own /revenue URL server-side too. */
+const clientsTelegramSrc = fs.readFileSync(path.join(__dirname, "../src/lib/clients-telegram.ts"), "utf-8");
+
+describe("the clients telegram reads invested at the net basis", () => {
+  it("fetchInvested requests net pricing", () => {
+    const start = clientsTelegramSrc.indexOf("async function fetchInvested");
+    expect(start, "fetchInvested not found in clients-telegram.ts").toBeGreaterThan(-1);
+    const body = clientsTelegramSrc.slice(start, clientsTelegramSrc.indexOf("\nexport async function", start + 1));
+    expect(body).toContain('pricing: "net"');
+  });
+});
