@@ -72,6 +72,26 @@ export function shownFigure<T>(
   return { value: pair.mature == null ? null : pick(pair.mature) ?? null, learning: false };
 }
 
+/**
+ * The RETURN a surface states (owner 2026-10-03): the one exception to "not mature is
+ * Learning". A scope still learning whose to-date return is already above break-even
+ * shows that return; at or below 1x it stays `Learning`, since a thin figure under 1x
+ * would read as a verdict. The to-date (flash) half is the conservative one: spend whose
+ * outcomes have not landed yet pulls it down, never up.
+ *
+ * Every return on a brand page reads this, so one mission never shows `1.8×` on one
+ * screen and Learning on another. Costs per outcome keep `shownFigure`.
+ */
+export function shownReturn<T extends { roiMultiple: number | null }>(
+  pair: MaturityPair<T> | null | undefined,
+  basis: StatBasis,
+): ShownFigure {
+  const shown = shownFigure(pair, (h) => h.roiMultiple, basis);
+  if (!shown.learning) return shown;
+  const toDate = pair?.flash?.roiMultiple ?? null;
+  return toDate != null && Number.isFinite(toDate) && toDate > 1 ? { value: toDate, learning: false } : shown;
+}
+
 /** Whether the producer said this scope is not mature. Null ("cannot judge") is not Learning. */
 export function pairIsLearning(pair: { isMature: boolean | null } | null | undefined): boolean {
   return pair?.isMature === false;

@@ -4,7 +4,7 @@ import { useRouter } from "next/navigation";
 import { CampaignControlsTrigger } from "@/components/campaigns/campaign-controls-trigger";
 import { formatCentsAsUsdAdaptive, formatCount, formatUsdAdaptive } from "@/lib/format-number";
 import { formatRoi } from "@/lib/format-roi";
-import { shownFigure, type StatBasis } from "@/lib/maturity";
+import { shownFigure, shownReturn, type StatBasis } from "@/lib/maturity";
 import { useStatBasis } from "@/lib/use-stat-basis";
 import { useRoutePrefetch } from "@/lib/use-route-prefetch";
 import { CrewMark } from "@/components/v2/crew-mark";
@@ -91,7 +91,7 @@ export function MissionsTable({
               missions.map((m) => {
                 const g = m.row.revenue;
                 const cost = costPerResult(m, basis);
-                const roi = shownFigure(g?.economicsMaturity, (h) => h.roiMultiple, basis);
+                const roi = shownReturn(g?.economicsMaturity, basis);
                 return (
                   <tr
                     key={m.row.campaign.id}
