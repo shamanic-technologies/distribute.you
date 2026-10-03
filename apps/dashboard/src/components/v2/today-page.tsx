@@ -280,15 +280,10 @@ export function TodayPage() {
                   {emails ? `${formatCount(emails.delivered)} of ${formatCount(emails.sent)} emails` : "\u00a0"}
                 </p>
               </StatTile>
-              {/* Actual spend over the window, setup included: the brand's own work no
-                  campaign carries is in it, so it never reads as credit still left. */}
-              <StatTile
-                label="Spent"
-                note={emails && winSpend?.costPerEmailSentCents != null ? `${formatCount(emails.sent)} × ${formatCentsAsUsdAdaptive(winSpend.costPerEmailSentCents)}` : undefined}
-                href={`${v2Href(orgId, brandId, "billing")}#usage`}
-              >
-                {win.pending ? <Shimmer className="h-7 w-16" /> : <Figure value={winSpend ? formatCentsAsUsdAdaptive(winSpend.actualSpentCents) : "—"} />}
-                <Trend className="mt-auto pt-2" values={winSpend ? winSpend.daily.map((d) => d.actualSpentCents) : null} />
+              {/* The total over the window: charged plus held, setup included (owner 2026-10-03). */}
+              <StatTile label="Spent" href={`${v2Href(orgId, brandId, "billing")}#usage`}>
+                {win.pending ? <Shimmer className="h-7 w-16" /> : <Figure value={winSpend ? formatCentsAsUsdAdaptive(winSpend.totalSpentCents) : "—"} />}
+                <Trend className="mt-auto pt-2" values={winSpend ? winSpend.daily.map((d) => d.totalSpentCents) : null} />
               </StatTile>
             </div>
 

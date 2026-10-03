@@ -15,7 +15,10 @@ describe("Today: one window for the whole stat row", () => {
     expect(src).toContain("w.recipientsRepliesPositive.total");
     expect(src).toContain("w.recipientsClicked.total");
     expect(src).toContain("pct(emails.deliveryRatePct)");
-    expect(src).toContain("winSpend.actualSpentCents");
+    // Owner 2026-10-03: "spent il faut mettre le total". Charged plus held, no detail note.
+    expect(src).toContain("winSpend.totalSpentCents");
+    expect(src).not.toContain("winSpend.actualSpentCents");
+    expect(src).not.toContain("costPerEmailSentCents");
   });
 
   it("never sums a series in the browser, never mixes today with all time", () => {
@@ -45,9 +48,10 @@ describe("the window reader", () => {
     },
     spend: {
       actualSpentCents: 3707,
+      totalSpentCents: 5593,
       brandLevelActualSpentCents: 585,
       costPerEmailSentCents: 370.7,
-      daily: [{ date: "2026-10-03", actualSpentCents: 3707, brandLevelActualSpentCents: 585 }],
+      daily: [{ date: "2026-10-03", actualSpentCents: 3707, totalSpentCents: 5593 }],
     },
     recipientsRepliesPositive: { total: 0, daily: [] },
     recipientsClicked: { total: 0, daily: [] },

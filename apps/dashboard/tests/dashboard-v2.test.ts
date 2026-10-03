@@ -317,7 +317,7 @@ describe("Keel parity, second pass", () => {
     // setup work (features-service v0.179.41), so the tile never drops it again.
     const today = read(V2 + "today-page.tsx");
     expect(today).toContain('label="Spent"');
-    expect(today).toContain("formatCentsAsUsdAdaptive(winSpend.actualSpentCents)");
+    expect(today).toContain("formatCentsAsUsdAdaptive(winSpend.totalSpentCents)");
     expect(today).not.toContain("data.spend.totalSpentCents");
     // Missions keeps the campaign figure, labelled as such.
     expect(read(V2 + "missions-page.tsx")).toContain('label: "Spent on missions"');
