@@ -12,7 +12,7 @@ import { friendlyDate, friendlyTime, timeAgo } from "@/lib/friendly-datetime";
 import { cumulativeWindow, dailyWindow, utcDay } from "@/lib/v2/series";
 import { v2Href } from "@/lib/v2/routes";
 import { useDailyBudgetSplit } from "@/lib/v2/use-daily-budget-split";
-import { shownFigure } from "@/lib/maturity";
+import { shownReturn } from "@/lib/maturity";
 import { useStatBasis } from "@/lib/use-stat-basis";
 import { useClientClock } from "@/lib/use-client-clock";
 import { StatBasisSwitch } from "@/components/v2/stat-basis-switch";
@@ -106,7 +106,7 @@ export function TodayPage() {
   const { basis } = useStatBasis();
   // The brand's return is the MATURE half of the served pair, and it reads Learning
   // exactly where the producer says the brand is not mature (lib/maturity.ts).
-  const shownRoi = shownFigure(data?.costEconomics.maturity, (h) => h.roiMultiple, basis);
+  const shownRoi = shownReturn(data?.costEconomics.maturity, basis);
   const learning = shownRoi.learning;
   const interestedStanding = standings?.counts.sales_interest ?? null;
 
