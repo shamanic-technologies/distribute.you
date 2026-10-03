@@ -17,6 +17,8 @@ import { acquisitionChannelForFeatureSlug } from "@/lib/acquisition-channels";
 import { channelSlugLabel } from "@/lib/campaign-title";
 import { buildControlRows, parseDailyBudgetUsd } from "@/lib/campaign-controls";
 import { channelTotalCents } from "@/lib/campaign-budget";
+import { useDailyBudgetHidden } from "@/lib/use-daily-budget-hidden";
+import { planMissionBudgetUsd } from "@/lib/subscription-plan";
 import { useChannelMinimums } from "@/lib/use-channel-minimums";
 import {
   channelBudgetBelowMinimum,
@@ -100,7 +102,18 @@ export function AddMissionModal({
     return rows.find((r) => r.scope !== null) ?? null;
   }, [crew, offerId, campaignsQ.data, budgetsQ.data, channels, channelName]);
 
-  const typed = budget.trim() === "" ? null : parseDailyBudgetUsd(budget);
+  // A subscriber types no budget (owner 2026-10-03): the plan's fixed figure for this
+  // kind of mission is written, or nothing when the plan already funds one on the offer.
+  const budgetHidden = useDailyBudgetHidden();
+  const planUsd = crew
+    ? planMissionBudgetUsd(
+        { fromKey: crew.leg?.fromKey ?? null },
+        missions
+          .filter((m) => m.offerId === offerId && m.row.campaign.id !== row?.campaignId && (m.row.budgetCents ?? 0) > 0)
+          .map((m) => ({ fromKey: m.leg?.fromKey ?? null })),
+      )
+    : null;
+  const typed = budgetHidden ? planUsd : budget.trim() === "" ? null : parseDailyBudgetUsd(budget);
   const savedChannelCents = crew ? channelTotalCents(crew.featureSlug, budgetsQ.data) : 0;
   const minimumCents = channelMinimumCents(minimums, crew?.featureSlug);
   const belowFloor =
@@ -240,6 +253,14 @@ export function AddMissionModal({
             </select>
           )}
 
+          {budgetHidden ? (
+            crew && planUsd === null && (
+              <p className="k-fg2 mt-4 text-[12px] leading-[18px]">
+                Your plan already runs a mission like this on this offer.
+              </p>
+            )
+          ) : (
+          <>
           <label htmlFor="v2-add-mission-budget" className="k-label mt-4 block">
             {isEvent ? "Daily cap" : "Daily budget"}
           </label>
@@ -269,13 +290,15 @@ export function AddMissionModal({
               {channelBudgetFloorMessage(channelName, minimumCents, savedChannelCents)}
             </p>
           )}
+          </>
+          )}
           {!feederRunning && (
             <p className="mt-3 rounded-[8px] bg-[var(--bg-inset)] px-2.5 py-2 text-[12px] leading-[18px] text-[var(--fg-2)]">
               {crew?.crew.name} works the {crew?.leg?.fromLabel?.toLowerCase() ?? "leads"} another crew brings on this offer.
               Nothing brings them here yet, so it will wait until one does.
             </p>
           )}
-          {already && (
+          {already && !budgetHidden && (
             <p className="k-fg3 mt-3 text-[12px]">This mission is already running. Saving changes its {isEvent ? "cap" : "budget"}.</p>
           )}
 

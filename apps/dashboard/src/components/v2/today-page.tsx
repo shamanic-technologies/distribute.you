@@ -17,6 +17,7 @@ import { useStatBasis } from "@/lib/use-stat-basis";
 import { useClientClock } from "@/lib/use-client-clock";
 import { StatBasisSwitch } from "@/components/v2/stat-basis-switch";
 import { fmtDailyBudgetUsd } from "@/lib/campaign-budget";
+import { useDailyBudgetHidden } from "@/lib/use-daily-budget-hidden";
 import { CampaignControlsTrigger } from "@/components/campaigns/campaign-controls-trigger";
 import {
   BarSpark,
@@ -91,6 +92,7 @@ export function TodayPage() {
   // Daily crews only: an event crew (booking a meeting off a reply) spends against a
   // cap, and only when its step is reached, so it is not part of the daily budget.
   const { dailyCents: budgetCents } = useDailyBudgetSplit(brandId, { enabled: rev.enabled });
+  const budgetHidden = useDailyBudgetHidden();
 
   const spentToday = data?.spend ? data.spend.totalSpentTodayCents ?? data.spend.todaySpentCents ?? null : null;
   const running = missions.filter((m) => m.running);
@@ -249,9 +251,11 @@ export function TodayPage() {
               <StatTile label="Crew today" note={`${running.length} running`} href={v2Href(orgId, brandId, "crew")}>
                 {!runsSettled ? <Shimmer className="h-7 w-16" /> : <Figure value={formatCount(runsToday)} unit={runsToday === 1 ? "run" : "runs"} />}
                 <div className="mt-auto pt-2">
-                  <StackMeter parts={crewSpend} max={budgetCents} />
+                  {/* A plan's $50/day is fixed: a subscriber reads what was spent, never a budget. */}
+                  {budgetHidden ? null : <StackMeter parts={crewSpend} max={budgetCents} />}
                   <p className="k-mono k-fg3 mt-1.5 text-[11px]">
-                    {spentToday != null ? formatCentsAsUsdAdaptive(spentToday) : "—"} of {fmtDailyBudgetUsd(budgetCents)} budget
+                    {spentToday != null ? formatCentsAsUsdAdaptive(spentToday) : "—"}
+                    {budgetHidden ? " spent today" : ` of ${fmtDailyBudgetUsd(budgetCents)} budget`}
                   </p>
                 </div>
               </StatTile>

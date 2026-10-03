@@ -15,6 +15,7 @@ import {
   scopeTotalCents,
 } from "@/lib/campaign-controls";
 import { fmtDailyBudgetUsd } from "@/lib/campaign-budget";
+import { useDailyBudgetHidden } from "@/lib/use-daily-budget-hidden";
 import { CampaignControlsModal } from "@/components/campaigns/campaign-controls-modal";
 import { Skeleton } from "@/components/skeleton";
 
@@ -104,6 +105,7 @@ export function CampaignControlsTrigger({
 
   // Reveal on SETTLE (resolved OR errored) — a failed read shows the honest
   // answer rather than an eternal skeleton.
+  const budgetHidden = useDailyBudgetHidden();
   const settled =
     (campaignsQ.data !== undefined || campaignsQ.isError) &&
     (budgetsQ.data !== undefined || budgetsQ.isError);
@@ -134,7 +136,7 @@ export function CampaignControlsTrigger({
         role="button"
         tabIndex={0}
         aria-haspopup="dialog"
-        aria-label="Change what is running and what it may spend"
+        aria-label={budgetHidden ? "Pause or restart" : "Change what is running and what it may spend"}
         onClick={() => setOpen(true)}
         onKeyDown={(e) => {
           if (e.key === "Enter" || e.key === " ") {
@@ -144,10 +146,13 @@ export function CampaignControlsTrigger({
         }}
         className={`group -mx-1 flex cursor-pointer items-center justify-end gap-2.5 rounded-md px-1 py-0.5 hover:bg-gray-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-300 ${className}`}
       >
-        <span className="text-sm tabular-nums text-gray-600">
-          {fmtDailyBudgetUsd(totalCents)}
-          <span className="text-gray-400">{cap ? " cap / day" : " / day"}</span>
-        </span>
+        {/* A plan's $50/day is fixed, so a subscriber sees the status alone. */}
+        {!budgetHidden && (
+          <span className="text-sm tabular-nums text-gray-600">
+            {fmtDailyBudgetUsd(totalCents)}
+            <span className="text-gray-400">{cap ? " cap / day" : " / day"}</span>
+          </span>
+        )}
         <span
           className={`whitespace-nowrap rounded-full border px-2 py-0.5 text-[11px] uppercase tracking-wide ${
             hold ? PAYMENT_HOLD_STYLE : ROLLUP_STYLE[rollup]

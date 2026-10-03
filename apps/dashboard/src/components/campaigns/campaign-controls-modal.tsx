@@ -11,6 +11,7 @@ import {
   setCampaignStatus,
 } from "@/lib/api";
 import { useAuthQuery, useQueryClient } from "@/lib/use-auth-query";
+import { useDailyBudgetHidden } from "@/lib/use-daily-budget-hidden";
 import { invalidateCampaignMoney } from "@/lib/write-invalidation";
 import { useAcquisitionChannels } from "@/lib/use-acquisition-channels";
 import {
@@ -101,6 +102,9 @@ export function CampaignControlsModal({
   onClose: () => void;
 }) {
   const queryClient = useQueryClient();
+  // A plan's $50/day is fixed (owner 2026-10-03): a subscriber pauses and restarts here,
+  // the budget field and its notes are not rendered, so no budget write can leave.
+  const budgetHidden = useDailyBudgetHidden();
 
   // Both keys are byte-equal to the ones the Campaigns table, Offer Settings and
   // Campaign Settings already read, so opening this costs no new request.
@@ -350,6 +354,7 @@ export function CampaignControlsModal({
                 }`}
               />
             </button>
+            {!budgetHidden && (
             <div className="flex items-center gap-1 text-sm text-gray-600">
               <span className="text-gray-400">$</span>
               <input
@@ -363,26 +368,27 @@ export function CampaignControlsModal({
               />
               <span className="text-xs text-gray-400">/ day</span>
             </div>
+            )}
           </div>
         </div>
-        {!row.scope && (
+        {!budgetHidden && !row.scope && (
           <p className="mt-1.5 text-xs text-gray-500">
             This campaign names no leg, so it has no budget of its own. It can still be
             paused and restarted.
           </p>
         )}
-        {zeroed && (
+        {!budgetHidden && zeroed && (
           <p className="mt-1.5 text-xs text-gray-500">
             A daily budget of $0 pauses this campaign: it is held on the funding gate
             and never sends. Give it an amount to run it again.
           </p>
         )}
-        {invalid && (
+        {!budgetHidden && invalid && (
           <p className="mt-1.5 text-xs text-red-600">
             Enter a whole number of dollars, or leave it empty to stop funding it.
           </p>
         )}
-        {floorHit && key && row.scope && minimumCents !== null && (
+        {!budgetHidden && floorHit && key && row.scope && minimumCents !== null && (
           <p className="mt-1.5 text-xs text-red-600">
             {channelBudgetFloorMessage(
               row.scope.channelName,

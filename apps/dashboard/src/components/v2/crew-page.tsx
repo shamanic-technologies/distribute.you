@@ -6,6 +6,7 @@ import { useParams } from "next/navigation";
 import type { RunRow } from "@/lib/api";
 import { formatCount, formatCentsAsUsdAdaptive } from "@/lib/format-number";
 import { fmtDailyBudgetUsd } from "@/lib/campaign-budget";
+import { useDailyBudgetHidden } from "@/lib/use-daily-budget-hidden";
 import { shownFigure, type ShownFigure, type StatBasis } from "@/lib/maturity";
 import { useStatBasis } from "@/lib/use-stat-basis";
 import { useStaffMode } from "@/lib/use-staff-mode";
@@ -63,6 +64,8 @@ export function CrewPage() {
   const revenue = useBrandRevenue(brandId);
   // Daily crews only: an event crew's cap is spent only when its step is reached.
   const { dailyCents: ceiling, eventCapCents } = useDailyBudgetSplit(brandId, { enabled: revenue.enabled });
+  // A plan's $50/day is fixed (owner 2026-10-03): a subscriber reads spend, never a budget.
+  const budgetHidden = useDailyBudgetHidden();
   const { staffMode } = useStaffMode();
   const [adding, setAdding] = useState<string | null>(null);
   const runningCrews = crews.filter((c) => c.running > 0).length;
@@ -109,7 +112,9 @@ export function CrewPage() {
         <div className="flex flex-wrap items-end justify-between gap-3">
           <div className="min-w-0">
             <h1 className="text-[28px] font-medium leading-[34px] tracking-[-0.02em]">
-              {runsSettled && ceiling != null
+              {runsSettled && budgetHidden
+                ? `${formatCount(runsToday)} ${runsToday === 1 ? "run" : "runs"} today, ${formatCentsAsUsdAdaptive(spendToday)} spent`
+                : runsSettled && ceiling != null
                 ? `${formatCount(runsToday)} ${runsToday === 1 ? "run" : "runs"} today, ${formatCentsAsUsdAdaptive(spendToday)} of ${fmtDailyBudgetUsd(ceiling)} daily`
                 : "Your crew"}
             </h1>
@@ -118,7 +123,7 @@ export function CrewPage() {
                 <>
                   {crews.length} {crews.length === 1 ? "crew" : "crews"}
                   {runsSettled ? `, ${formatCount(runsToday)} ${runsToday === 1 ? "run" : "runs"} today` : ""}
-                  {eventCapCents != null && eventCapCents > 0 ? `, plus up to ${fmtDailyBudgetUsd(eventCapCents)} a day when replies come in` : ""}.
+                  {!budgetHidden && eventCapCents != null && eventCapCents > 0 ? `, plus up to ${fmtDailyBudgetUsd(eventCapCents)} a day when replies come in` : ""}.
                   {needsCall != null && needsCall > 0 ? (
                     <>
                       {" "}
@@ -236,6 +241,7 @@ function CrewCard({
         ? { offerId: offerIds[0], featureSlug: missions[0]?.row.campaign.featureSlug ?? null }
         : {};
   const ceiling = crewCeilingCents(missions);
+  const budgetHidden = useDailyBudgetHidden();
   const leg = missions[0]?.leg?.label ?? null;
   const results = missions.map((m) => missionResult(m, basis));
   const counted = results.filter((r) => r.count != null);
@@ -280,7 +286,7 @@ function CrewCard({
                         }}
                         className="k-hover flex w-full items-center rounded-[8px] px-2 py-1.5 text-left text-[13px]"
                       >
-                        {running ? "Pause or change budget" : "Restart or change budget"}
+                        {budgetHidden ? (running ? "Pause" : "Restart") : running ? "Pause or change budget" : "Restart or change budget"}
                       </button>
                       <Link href={workHref} className="k-hover flex items-center rounded-[8px] px-2 py-1.5 text-[13px]">
                         See its work
@@ -320,7 +326,9 @@ function CrewCard({
           <p className="k-fg2 text-[13px] leading-[20px]">
             {crew.trigger?.kind === "event"
               ? `Not working for any offer yet. Once on a mission, it wakes each time a ${crew.trigger.label.toLowerCase()} comes in and turns it into ${crew.trigger.outcome.toLowerCase()}.`
-              : `Not working for any offer yet. On a mission, it spends its daily budget bringing ${crew.trigger?.outcome.toLowerCase() ?? "results"} for that offer.`}
+              : budgetHidden
+                ? `Not working for any offer yet. On a mission, it brings ${crew.trigger?.outcome.toLowerCase() ?? "results"} for that offer.`
+                : `Not working for any offer yet. On a mission, it spends its daily budget bringing ${crew.trigger?.outcome.toLowerCase() ?? "results"} for that offer.`}
           </p>
           <div className="mt-auto w-full">
             <button
@@ -388,7 +396,7 @@ function CrewCard({
         <div className="border-r border-[var(--line-subtle)] p-3">
           <div className="flex items-baseline justify-between gap-2">
             <p className="k-label">Spend</p>
-            <p className="k-fg3 text-[11px]">of {fmtDailyBudgetUsd(ceiling)}{crew.trigger?.kind === "event" ? " cap" : ""}</p>
+            <p className="k-fg3 text-[11px]">{budgetHidden ? "today" : <>of {fmtDailyBudgetUsd(ceiling)}{crew.trigger?.kind === "event" ? " cap" : ""}</>}</p>
           </div>
           <div className="mt-1.5 flex items-center justify-between gap-2">
             <p className="text-[20px] font-medium leading-6 tabular-nums">{runsSettled ? formatCentsAsUsdAdaptive(spend) : "–"}</p>
@@ -442,7 +450,7 @@ function CrewCard({
                 <StateDot running={m.running} label="" />
                 <span className="min-w-0 flex-1 truncate text-[13px]">{m.offerName ?? "Offer"}</span>
                 <span className="k-fg2 shrink-0 text-[12px] tabular-nums">
-                  {r.count != null ? `${formatCount(r.count)} ${r.noun}` : fmtDailyBudgetUsd(m.row.budgetCents ?? 0) + " / day"}
+                  {r.count != null ? `${formatCount(r.count)} ${r.noun}` : budgetHidden ? "" : fmtDailyBudgetUsd(m.row.budgetCents ?? 0) + " / day"}
                 </span>
               </Link>
             </li>
@@ -462,8 +470,12 @@ function CrewCard({
           {running
             ? crew.trigger?.kind === "event"
               ? "Wakes each time its step is reached, and never spends more than its cap in a day."
-              : "Works on its own inside its daily budget. People who reply with interest wait for you in Work."
-            : "Paused. Nothing is sent until you restart it, and its budget is kept."}
+              : budgetHidden
+                ? "Works on its own every day. People who reply with interest wait for you in Work."
+                : "Works on its own inside its daily budget. People who reply with interest wait for you in Work."
+            : budgetHidden
+              ? "Paused. Nothing is sent until you restart it."
+              : "Paused. Nothing is sent until you restart it, and its budget is kept."}
         </p>
       </div>
         </>
