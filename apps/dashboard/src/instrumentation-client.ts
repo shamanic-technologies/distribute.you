@@ -45,9 +45,4 @@ if (posthogToken) {
   // the build env by the box's deploy script; absent in a local build.
   const release = process.env.NEXT_PUBLIC_RELEASE;
   if (release) posthog.register({ release });
-  // A positive automation fingerprint on every event: Playwright / Selenium set
-  // navigator.webdriver, a person's browser does not. The weekly brief reads it to keep
-  // our own QA walks out of human counts (daily-update ph_common.py), where a
-  // screen size or a time on page would only be a guess.
-  posthog.register({ webdriver: navigator.webdriver === true });
 }
