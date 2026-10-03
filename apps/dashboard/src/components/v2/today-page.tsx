@@ -97,7 +97,11 @@ export function TodayPage() {
   const budgetHidden = useDailyBudgetHidden();
   const selectedOfferId = useSelectedOfferIfAny()?.offerId ?? null;
 
-  const spentToday = data?.spend ? data.spend.totalSpentTodayCents ?? data.spend.todaySpentCents ?? null : null;
+  // "Spent" is what was actually taken from the credit, the same basis as the
+  // "Taken from credit" tile beside it. Open holds are money set aside for runs still
+  // working: they show on their own line, never inside "spent".
+  const spentToday = data?.spend?.actualSpentTodayCents ?? null;
+  const onHoldToday = data?.spend?.provisionedSpentTodayCents ?? null;
   const running = missions.filter((m) => m.running);
   const { basis } = useStatBasis();
   // The brand's return is the MATURE half of the served pair, and it reads Learning
@@ -259,8 +263,11 @@ export function TodayPage() {
                   {budgetHidden ? null : <StackMeter parts={crewSpend} max={budgetCents} />}
                   <p className="k-mono k-fg3 mt-1.5 text-[11px]">
                     {spentToday != null ? formatCentsAsUsdAdaptive(spentToday) : "—"}
-                    {budgetHidden ? " spent today" : ` of ${fmtDailyBudgetUsd(budgetCents)} budget`}
+                    {budgetHidden ? " spent today" : ` spent of ${fmtDailyBudgetUsd(budgetCents)} budget`}
                   </p>
+                  {onHoldToday != null && onHoldToday > 0 && (
+                    <p className="k-mono k-fg3 text-[11px]">{formatCentsAsUsdAdaptive(onHoldToday)} on hold</p>
+                  )}
                 </div>
               </StatTile>
               {/* Everything taken from the credit, setup included: the number billing debits.

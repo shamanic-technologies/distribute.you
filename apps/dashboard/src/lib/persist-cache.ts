@@ -192,6 +192,8 @@ export const PERSISTABLE_QUERY_ROOTS = new Set([
   // Offer Settings reads both of these on every visit, over the slow brand-service
   // path. Each key carries the offer, so two propositions never share an entry.
   "offerUserFields",
+  // The brand's user fields: the LinkedIn signal modal prefills "who to write to" from them.
+  "brandUserFields",
   // The offer's lifetime revenue.
   "offerEconomics",
   "offerSalesPath",
