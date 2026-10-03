@@ -217,7 +217,7 @@ export function StartShell({
         ) : (
           <span className="hidden items-center gap-2 rounded-full border border-brand-200 bg-brand-50 px-3 py-1 text-sm text-gray-900 sm:flex">
             <GiftIcon size={16} weight="duotone" className="text-brand-600" />
-            First $30 free
+            3-day free trial
           </span>
         )}
       </div>

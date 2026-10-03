@@ -18,6 +18,7 @@ import { seedTrialCredit } from "@/lib/billing-service";
 import { domainClaim } from "@/lib/brand-service";
 import { createAnonymousOrg, recordAcquisition } from "@/lib/client-service";
 import { firstTouchForHandover } from "@/lib/first-touch";
+import { readPosthogDistinctId, recordAnonOrgCreated } from "@/lib/anon-org-created-event";
 import { extractDomain } from "@/lib/extract-domain";
 
 /**
@@ -100,8 +101,19 @@ export async function POST(req: NextRequest) {
 
   let website = "";
   let noWebsite = false;
+  // Who is walking, as their browser states it: recorded on the PostHog event of
+  // the org this call creates (lib/anon-org-created-event.ts), never used to decide.
+  let webdriver: boolean | null = null;
+  let posthogDistinctId: string | null = null;
   try {
-    const body = (await req.json()) as { website?: unknown; noWebsite?: unknown };
+    const body = (await req.json()) as {
+      website?: unknown;
+      noWebsite?: unknown;
+      webdriver?: unknown;
+      posthogDistinctId?: unknown;
+    };
+    webdriver = typeof body.webdriver === "boolean" ? body.webdriver : null;
+    posthogDistinctId = readPosthogDistinctId(body.posthogDistinctId);
     website = typeof body.website === "string" ? body.website : "";
     // DECLARED, never inferred from an empty `website` — see the note on
     // StartInput. A blank field is a typo and keeps being refused as one.
@@ -198,15 +210,13 @@ export async function POST(req: NextRequest) {
       secret,
     );
 
-    // The org id rides back so the browser can record THIS org's creation in
-    // PostHog (lib/anon-session-client.ts `anonymous_org_created`): the weekly brief's
-    // onboarding-start count joins the DB row and the PostHog event on it, and
-    // the event's browser fingerprint (webdriver, headless screen) says whether a
-    // human made the org. The user agent is logged for the org a browser never
-    // reports (a scripted POST runs no PostHog).
-    console.log(
-      `[anon-session] created org ${orgId} ua=${JSON.stringify(req.headers.get("user-agent") ?? "")}`,
-    );
+    // One onboarding start, recorded in PostHog by the server that made it, so
+    // the weekly brief's count is the same population as client-service's
+    // anonymous orgs, joined on org_id (posthog-js sends nothing from an
+    // automated browser, so the browser cannot be the one to record it).
+    const userAgent = req.headers.get("user-agent") ?? "";
+    console.log(`[anon-session] created org ${orgId} ua=${JSON.stringify(userAgent)} webdriver=${webdriver}`);
+    await recordAnonOrgCreated({ orgId, domain, userAgent, webdriver, posthogDistinctId });
     const res = NextResponse.json({ started: true, created: true, orgId, website: decision.website, domain });
     const opts = ANON_COOKIE_OPTIONS(isSecure(req));
     res.cookies.set(ANON_SESSION_COOKIE, token, { ...opts, httpOnly: true });

@@ -3,6 +3,7 @@ import {
   buildClientLines,
   clientsMessage,
   parseActiveCustomers,
+  parseCustomerBoard,
   parseFleetOrgs,
   relativeDays,
   splitForTelegram,
@@ -91,6 +92,16 @@ describe("clients telegram message", () => {
     expect(text.indexOf("Big")).toBeLessThan(text.indexOf("Small"));
   });
 
+  it("names clients whose status billing could not resolve, never drops them", () => {
+    const board = parseCustomerBoard({
+      customers: [customer(), customer({ brandId: "u", brandName: "Mystery", status: "unknown" })],
+    });
+    expect(board.unknown.map((c) => c.brandName)).toEqual(["Mystery"]);
+    const text = clientsMessage([{ customer: board.active[0], billing: null, cash: null }], NOW, board.unknown);
+    expect(text.endsWith("⚠️ Status unreadable (billing did not answer): Mystery")).toBe(true);
+    expect(clientsMessage([], NOW, board.unknown)).toContain("Mystery");
+  });
+
   it("says so when nobody is active", () => {
     expect(clientsMessage([], NOW)).toBe("☀️ No active clients this morning.");
   });
@@ -121,7 +132,7 @@ describe("clients telegram reads", () => {
           : { credited_paid_cents: "52385.0000000000", credited_gifted_cents: "3700.0000000000" };
       return new Response(JSON.stringify(body), { status: 200 });
     });
-    const lines = await buildClientLines(
+    const { lines } = await buildClientLines(
       { apiUrl: "https://api.x", adminApiKey: "k", staffEmail: "staff@x", telegramBotToken: "t", telegramChatId: "c" },
       fetchFn as unknown as typeof fetch,
     );

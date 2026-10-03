@@ -89,18 +89,30 @@ export interface ClientLine {
   cash: OrgCash | null;
 }
 
-export function parseActiveCustomers(raw: unknown): ClientCustomer[] {
+export interface CustomerBoard {
+  active: ClientCustomer[];
+  /** status "unknown": billing was unreadable, so the producer could not say whether
+   *  they are active. Named in the message so a live client never silently vanishes. */
+  unknown: ClientCustomer[];
+}
+
+export function parseCustomerBoard(raw: unknown): CustomerBoard {
   const board = CustomerHealthSchema.parse(raw);
-  const out: ClientCustomer[] = [];
+  const out: CustomerBoard = { active: [], unknown: [] };
   for (const row of board.customers) {
     const parsed = CustomerSchema.safeParse(row);
     if (!parsed.success) {
       console.error("[dashboard-clients-telegram] unparseable customer row:", JSON.stringify(row).slice(0, 300), parsed.error.message);
       continue;
     }
-    if (parsed.data.status === "active") out.push(parsed.data);
+    if (parsed.data.status === "active") out.active.push(parsed.data);
+    if (parsed.data.status === "unknown") out.unknown.push(parsed.data);
   }
   return out;
+}
+
+export function parseActiveCustomers(raw: unknown): ClientCustomer[] {
+  return parseCustomerBoard(raw).active;
 }
 
 export function parseFleetOrgs(raw: unknown): Map<string, ClientFleetOrg> {
@@ -186,7 +198,7 @@ function investedLabel(cash: OrgCash | null): string {
 
 export function clientLine(line: ClientLine, now: Date): string {
   const c = line.customer;
-  const name = c.brandName ?? c.brandDomain ?? c.brandId;
+  const name = brandLabel(c);
   const parts = [
     `Daily ${usd(c.runningDailyBudgetUsd)}`,
     `Reactive ${usd(c.reactiveRunningDailyCapUsd)}`,
@@ -203,13 +215,20 @@ export function clientLine(line: ClientLine, now: Date): string {
   return `${name}\n${parts.join(" · ")}`;
 }
 
-export function clientsMessage(lines: ClientLine[], now: Date): string {
-  if (lines.length === 0) return "☀️ No active clients this morning.";
+function brandLabel(c: ClientCustomer): string {
+  return c.brandName ?? c.brandDomain ?? c.brandId;
+}
+
+export function clientsMessage(lines: ClientLine[], now: Date, unknown: ClientCustomer[] = []): string {
+  const unknownBlock = unknown.length
+    ? [`⚠️ Status unreadable (billing did not answer): ${unknown.map(brandLabel).join(", ")}`]
+    : [];
+  if (lines.length === 0) return ["☀️ No active clients this morning.", ...unknownBlock].join("\n\n");
   const sorted = [...lines].sort(
     (a, b) => b.customer.runningDailyBudgetUsd - a.customer.runningDailyBudgetUsd,
   );
   const header = `☀️ ${lines.length} active client${lines.length === 1 ? "" : "s"}`;
-  return [header, ...sorted.map((l) => clientLine(l, now))].join("\n\n");
+  return [header, ...sorted.map((l) => clientLine(l, now)), ...unknownBlock].join("\n\n");
 }
 
 /** Telegram caps a message at 4096 chars: split on client boundaries. */
@@ -248,14 +267,17 @@ async function getJson(fetchFn: FetchFn, url: string, headers: Record<string, st
   return JSON.parse(body);
 }
 
-export async function buildClientLines(config: ClientsTelegramConfig, fetchFn: FetchFn = fetch): Promise<ClientLine[]> {
+export async function buildClientLines(
+  config: ClientsTelegramConfig,
+  fetchFn: FetchFn = fetch,
+): Promise<{ lines: ClientLine[]; unknown: ClientCustomer[] }> {
   // Staff-gated platform reads: admin key + an allowlisted staff email, no org headers.
   const staffHeaders = { "X-API-Key": config.adminApiKey, "x-email": config.staffEmail };
   const [health, fleet] = await Promise.all([
     getJson(fetchFn, `${config.apiUrl}/v1/features/audit/customer-success`, staffHeaders, "customer-success"),
     getJson(fetchFn, `${config.apiUrl}/v1/billing/revenue/fleet`, staffHeaders, "billing fleet"),
   ]);
-  const customers = parseActiveCustomers(health);
+  const { active: customers, unknown } = parseCustomerBoard(health);
   const billingByOrg = parseFleetOrgs(fleet);
 
   // Cash is per ORG: read each org once, even when it runs several brands.
@@ -264,11 +286,12 @@ export async function buildClientLines(config: ClientsTelegramConfig, fetchFn: F
     await Promise.all(orgIds.map(async ([orgId, ext]) => [orgId, await fetchOrgCash(config, fetchFn, orgId, ext)] as const)),
   );
 
-  return customers.map((customer): ClientLine => {
+  const lines = customers.map((customer): ClientLine => {
     const billing = billingByOrg.get(customer.orgId) ?? null;
     if (!billing) console.error(`[dashboard-clients-telegram] no billing row for org ${customer.orgId} (${customer.brandName})`);
     return { customer, billing, cash: cashByOrg.get(customer.orgId) ?? null };
   });
+  return { lines, unknown };
 }
 
 async function fetchOrgCash(

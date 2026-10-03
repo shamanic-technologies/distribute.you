@@ -84,6 +84,7 @@ const STATUS_STYLE: Record<AccountStatus, { label: string; className: string }> 
   reactive_only: { label: "Reactive only", className: "bg-sky-50 text-sky-700" },
   paused: { label: "Paused", className: "bg-amber-50 text-amber-700" },
   inactive: { label: "Inactive", className: "bg-gray-100 text-gray-500" },
+  unknown: { label: "Unknown", className: "bg-orange-50 text-orange-700" },
 };
 
 function StatusCell({ row }: { row: AuditAccountRow }) {

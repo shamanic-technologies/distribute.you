@@ -2,13 +2,20 @@ import { describe, it, expect } from "vitest";
 import { readFileSync, readdirSync } from "node:fs";
 import { join } from "node:path";
 import { welcomeHeadline, welcomeDetail } from "../src/lib/welcome-offer-copy";
+import { SUBSCRIPTION_AMOUNT_OPTIONS_CENTS } from "../src/lib/subscription-plan";
 
 /**
  * The welcome credits are ONE promise stated on several surfaces, and the
  * statement has to be identical everywhere or the product contradicts itself.
  *
- * What is true: a new org receives $30 of free credit the moment its account is
- * created. There is no threshold, no second instalment and nothing to claim.
+ * Since 2026-10-03 the DEFAULT offer is the $99/month plan with a 3-day free trial
+ * (owner: "we stop talking about $1/day"). Dashboard signup surfaces must not promise
+ * the $30 or $1/day (block below); landing surfaces are no longer REQUIRED to name
+ * the $30, only forbidden to name a retired figure. The $30 below is the
+ * pay-as-you-go cohort's offer (a visitor whose `lp_variant` names another variant).
+ *
+ * What is true for that cohort: a new org receives $30 of free credit the moment its
+ * account is created. There is no threshold, no second instalment and nothing to claim.
  *
  * The offer used to be a MATCH — $5 up front and $395 more once cumulative
  * payments reached $400 — so most of what these guards used to enforce was about
@@ -98,6 +105,39 @@ function read(rel: string): string {
   return readFileSync(join(REPO, rel), "utf8");
 }
 
+/**
+ * The $99/month plan is the default offer (owner 2026-10-03: "we stop talking about
+ * $1/day"). Every signup-facing dashboard surface a visitor meets before choosing
+ * sells it, so none of them may promise the pay-as-you-go $30 or $1/day. The
+ * pay-as-you-go wall copy (`wallCopy({ subscription: false })`) is exempt: only a
+ * visitor whose `lp_variant` cookie names another variant ever reads it.
+ */
+describe("signup-facing surfaces sell the $99/month plan", () => {
+  const STATIC = [
+    "apps/dashboard/src/components/auth/auth-brand-panel.tsx",
+    "apps/dashboard/src/app/(authed)/sign-up/[[...sign-up]]/page.tsx",
+    "apps/dashboard/src/components/start/start-shell.tsx",
+    "apps/dashboard/src/components/start/start-picks.tsx",
+  ];
+  const RETIRED = [/\$30/, /\$1 ?\/ ?day/, /\$1 (a|per) day/, /from \$1\b/i];
+
+  for (const rel of STATIC) {
+    it(`${rel} promises no $30 and no $1/day`, () => {
+      const src = read(rel);
+      for (const pattern of RETIRED) expect(pattern.test(src), `${rel} still says ${pattern}`).toBe(false);
+    });
+  }
+
+  it("the welcome email sells the 3-day trial, in both bodies", () => {
+    const src = read("apps/dashboard/src/instrumentation.ts");
+    const start = src.indexOf('name: "welcome"');
+    const tpl = src.slice(start, src.indexOf('name: "goal_launched"'));
+    expect(start).toBeGreaterThan(-1);
+    for (const pattern of RETIRED) expect(pattern.test(tpl), `welcome still says ${pattern}`).toBe(false);
+    expect(tpl.split("Your first 3 days are free").length - 1).toBe(2);
+  });
+});
+
 describe("$400 welcome-credits promise", () => {
   for (const rel of SURFACES) {
     it(`${rel} makes no false claim about the gift`, () => {
@@ -107,16 +147,6 @@ describe("$400 welcome-credits promise", () => {
       }
     });
   }
-
-  it("every surface states the credits are already there", () => {
-    for (const rel of SURFACES) {
-      // The gift step builds its two sentences from figures rather than spelling
-      // them out, so its claim is checked against the RENDERED string below. The
-      // rest of the surfaces are static copy and are read as source.
-      if (COMPUTED_SURFACES.has(rel)) continue;
-      expect(read(rel), `${rel} must name the $30`).toMatch(/\$30/);
-    }
-  });
 
   it("the gift step's rendered copy states no threshold on the welcome credits", () => {
     // Asserted on the output, not the source: welcome-offer-copy.ts is alias-free
@@ -239,6 +269,14 @@ describe("every served landing page states the gift at one figure", () => {
   const CREDIT_FIGURE =
     /\$([\d,]+)\s*(?:in |of )?(?:free |welcome |matched |bonus )?credits?\b/gi;
   const REFERRAL_NEARBY = /referral/i;
+  // The $30 (pay-as-you-go cohort, still served until the landing drops it) and the
+  // $99/month plan's ladder: on the plan, the amount paid IS the campaign credit
+  // ("$99 of credit"). Any other figure is a retired offer ($400, $25, $5).
+  const ALLOWED_CREDIT_FIGURES = new Set<string>([
+    "30",
+    ...SUBSCRIPTION_AMOUNT_OPTIONS_CENTS.map((c) => String(c / 100)),
+    ...SUBSCRIPTION_AMOUNT_OPTIONS_CENTS.map((c) => (c / 100).toLocaleString("en-US")),
+  ]);
 
   function servedPages(dir: string): string[] {
     const out: string[] = [];
@@ -276,7 +314,7 @@ describe("every served landing page states the gift at one figure", () => {
     for (const m of text.matchAll(CREDIT_FIGURE)) {
       const context = text.slice(Math.max(0, m.index! - 60), m.index! + m[0].length + 20);
       if (REFERRAL_NEARBY.test(context)) continue;
-      if (m[1] !== "30") wrong.push(`$${m[1]} — "${context.trim()}"`);
+      if (!ALLOWED_CREDIT_FIGURES.has(m[1])) wrong.push(`$${m[1]} — "${context.trim()}"`);
     }
     return wrong;
   }
@@ -316,6 +354,11 @@ describe("every served landing page states the gift at one figure", () => {
       '  <span class="guide-callout-l">in free credits, granted at signup</span>\n' +
       "</div>";
     expect(wrongFigures(fixed)).toEqual([]);
+  });
+
+  it("passes the $99/month plan's credit, and still catches a retired figure beside it", () => {
+    expect(wrongFigures("<p>$99 of credit each month. $1,999 of credit on the top plan.</p>")).toEqual([]);
+    expect(wrongFigures("<p>$99 of credit, plus $25 in free credits.</p>")).toHaveLength(1);
   });
 
   it("leaves the referral credits alone — a different offer at a different amount", () => {

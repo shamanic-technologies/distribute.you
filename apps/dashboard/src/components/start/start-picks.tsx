@@ -231,8 +231,8 @@ export function StartPicks({
       },
       {
         icon: WalletIcon,
-        title: "You set the daily budget",
-        body: "You are charged what the campaign spent and nothing else. Stop it whenever you want.",
+        title: "Every dollar goes to outreach",
+        body: "Your monthly amount becomes campaign credit, spent on your outreach. Cancel anytime.",
       },
       {
         icon: ChartLineUpIcon,
@@ -251,7 +251,7 @@ export function StartPicks({
           <>
             Get <span className="text-brand-600">revenue in 24h</span>.
             <br />
-            From $1 per day.
+            From $99/month.
           </>
         }
         subtitle={
