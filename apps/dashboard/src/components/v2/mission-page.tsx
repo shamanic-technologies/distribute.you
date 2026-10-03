@@ -260,7 +260,8 @@ function took(run: RunRow): string | null {
 /** One run of this mission: what it did, its state, when, how long, what it cost. */
 function MissionRunCard({ run, href }: { run: RunRow; href: string }) {
   const st = runState(run);
-  const cost = Number(run.ownCostInUsdCents);
+  // A lead run has no own cost rows: what it cost is its whole subtree.
+  const cost = Number(run.totalCostInUsdCents);
   const duration = took(run);
   return (
     <Link href={href} className="k-hover block rounded-[10px] p-3 shadow-[inset_0_0_0_1px_var(--line-subtle)]">

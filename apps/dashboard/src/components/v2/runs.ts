@@ -5,6 +5,9 @@ import { useAuthQuery } from "@/lib/use-auth-query";
 import { POLL_INTERVAL } from "@/lib/query-options";
 import { getBrandRunsByCampaign, getRunOutcomes, listBrandRunLedger, type CampaignRunGroup, type RunOutcomeGroup, type RunRow } from "@/lib/api";
 import type { Mission } from "@/components/v2/use-missions";
+import { LEAD_RUN_TASK, isWorkRun } from "@/lib/v2/run-labels";
+
+export { LEAD_RUN_TASK, foldSteps, isWorkRun, runState, runTaskLabel, type RunState } from "@/lib/v2/run-labels";
 
 /**
  * runs-service, read the way Keel reads its agents: runs today, a week of daily run
@@ -52,21 +55,32 @@ export function useRunsWeek(brandId: string) {
 export const MAX_RUN_CAMPAIGN_IDS = 500;
 
 /**
- * The latest runs the brand's CREWS made, newest first. A brand's run ledger also
- * holds work no crew did (a CRM page read, a gateway request), so the read is
- * narrowed server-side to the campaigns the missions own: filtering the page here
- * would let 60 CRM reads fill the page and leave no crew run on it.
+ * The latest runs the brand's CREWS made, newest first: one row per lead worked, never
+ * the steps inside it (a single lead is ~15 child runs, mostly judgments). A brand's run
+ * ledger also holds work no crew did (a CRM page read, a gateway request), so the read is
+ * narrowed server-side to the campaigns the missions own and to lead runs: filtering the
+ * page here would let child steps fill it and leave no lead run on it.
  *
  * `campaignIds` is null while the missions are still resolving (the read waits),
  * and an empty list means the brand has no mission, so there is nothing to ask for.
  * Live rows come first, so a family past the cap drops ancestors, never a live row.
+ * The page asks 4x `limit` (cap 500) because the $0 gate runs are dropped after.
  */
 export function useRecentRuns(brandId: string, campaignIds: string[] | null, limit = 60) {
   const ids = campaignIds ? campaignIds.slice(0, MAX_RUN_CAMPAIGN_IDS) : null;
   const key = ids ? [...ids].sort().join(",") : null;
   return useAuthQuery(
-    ["v2RecentRuns", brandId, limit, key],
-    () => (ids && ids.length > 0 ? listBrandRunLedger(brandId, { limit, campaignIds: ids }) : Promise.resolve([])),
+    ["v2RecentRuns", brandId, limit, key, LEAD_RUN_TASK],
+    async () => {
+      if (!ids || ids.length === 0) return [];
+      const runs = await listBrandRunLedger(brandId, {
+        limit: Math.min(limit * 4, 500),
+        campaignIds: ids,
+        taskName: LEAD_RUN_TASK,
+        subtreeCost: true,
+      });
+      return runs.filter(isWorkRun).slice(0, limit);
+    },
     { enabled: !!brandId && ids !== null, refetchInterval: POLL_INTERVAL },
   );
 }
@@ -144,29 +158,6 @@ export function useCrewRuns(
     return out;
   }, [today.data, week.data, missionByCampaignId]);
   return { byCrew, settled: (today.data !== undefined || today.isError) && (week.data !== undefined || week.isError) };
-}
-
-/** A run's step in words: the task runs-service recorded, made readable. */
-export function runTaskLabel(run: RunRow): string {
-  const t = run.taskName;
-  const send = /^email-send-step-(\d+)$/.exec(t);
-  if (send) return send[1] === "1" ? "Sent the first email" : `Sent follow-up ${Number(send[1]) - 1}`;
-  if (t === "execute-workflow") return "Started a run";
-  if (/serve|buffer\/next|lead/i.test(t)) return "Found a lead";
-  if (/generate|content/i.test(t) || run.serviceName === "content-generation-service") return "Wrote an email";
-  if (/opportunit/i.test(t)) return "Looked for a press request";
-  if (/complete|chat/i.test(t) || run.serviceName === "chat-service") return "Thought it through";
-  if (/scrape|extract/i.test(t)) return "Read a website";
-  if (/enrich|apollo/i.test(t) || run.serviceName === "apollo-service") return "Enriched a contact";
-  return t.replace(/^(GET|POST|PUT|PATCH|DELETE)\s+/, "").replace(/[-_/]+/g, " ").trim();
-}
-
-export type RunState = "done" | "failed" | "running";
-
-export function runState(run: RunRow): RunState {
-  if (run.status === "failed" || run.status === "error") return "failed";
-  if (run.completedAt || run.status === "completed") return "done";
-  return "running";
 }
 
 export interface CrewOutcomes {
