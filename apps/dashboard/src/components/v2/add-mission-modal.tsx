@@ -19,6 +19,8 @@ import { buildControlRows, parseDailyBudgetUsd } from "@/lib/campaign-controls";
 import { channelTotalCents } from "@/lib/campaign-budget";
 import { useDailyBudgetHidden } from "@/lib/use-daily-budget-hidden";
 import { planMissionBudgetUsd } from "@/lib/subscription-plan";
+import { useOfferNeedsPlan } from "@/lib/use-plans";
+import { ChoosePlanPanel } from "@/components/v2/choose-plan";
 import { useChannelMinimums } from "@/lib/use-channel-minimums";
 import {
   channelBudgetBelowMinimum,
@@ -105,6 +107,8 @@ export function AddMissionModal({
   // A subscriber types no budget (owner 2026-10-03): the plan's fixed figure for this
   // kind of mission is written, or nothing when the plan already funds one on the offer.
   const budgetHidden = useDailyBudgetHidden();
+  // A plan is per brand x offer (owner 2026-10-03): an offer with none is sold one first.
+  const needsPlan = useOfferNeedsPlan(brandId, offerId);
   const planUsd = crew
     ? planMissionBudgetUsd(
         { fromKey: crew.leg?.fromKey ?? null },
@@ -198,7 +202,7 @@ export function AddMissionModal({
           className="overflow-y-auto px-4 py-4"
           onSubmit={(e) => {
             e.preventDefault();
-            if (submittable && !mutation.isPending) mutation.mutate();
+            if (submittable && !needsPlan && !mutation.isPending) mutation.mutate();
           }}
         >
           <div className="flex items-baseline justify-between gap-2">
@@ -308,6 +312,11 @@ export function AddMissionModal({
             </p>
           )}
 
+          {needsPlan && offerId ? (
+            <div className="mt-5 border-t border-[var(--line-subtle)] pt-4">
+              <ChoosePlanPanel brandId={brandId} offerId={offerId} onStarted={() => mutation.mutate()} />
+            </div>
+          ) : (
           <div className="mt-5 flex items-center justify-end gap-2">
             <button type="button" onClick={onClose} disabled={mutation.isPending} className="k-btn-ghost">
               Cancel
@@ -320,6 +329,7 @@ export function AddMissionModal({
               {mutation.isPending ? "Starting..." : already ? "Save" : "Start mission"}
             </button>
           </div>
+          )}
         </form>
       </div>
     </div>,
