@@ -12,16 +12,14 @@ import { SERVICE_IDENTITY } from "./service-identity";
  * - payment mode, card, auto top-up, next charge / prepaid run-out: billing-service's
  *   fleet revenue (`/v1/billing/revenue/fleet`), one row per ORG, so a multi-brand
  *   org repeats it on each brand.
- * - invested: the brand's `/revenue` read at `pricing=net` (what the org paid),
- *   because customer health serves committed spend GROSS and null for a brand with no
- *   saved economics.
+ * - invested: the CASH the org put in (owner's definition: money paid, never spend),
+ *   billing's `credited_paid_cents` on `/v1/billing/accounts` (every payment received
+ *   minus refunds, across acquirers), with gifted credit shown beside it. Per ORG.
  *
  * A field the producers could not serve prints `?`, never a zero.
  *
  * Alias-free on purpose (no runtime `@/` import) so it gets real unit tests.
  */
-
-export const CLIENTS_TELEGRAM_FEATURE_SLUG = "sales-cold-email-outreach";
 
 const num = z.coerce.number();
 
@@ -72,17 +70,23 @@ const FleetSchema = z.object({
   orgs: z.array(z.unknown()),
 });
 
-const RevenueSchema = z.object({
-  costEconomics: z.object({ committedCostUsd: num.nullish() }).nullish(),
+const AccountSchema = z.object({
+  credited_paid_cents: num,
+  credited_gifted_cents: num,
 });
 
 export type ClientCustomer = z.infer<typeof CustomerSchema>;
 export type ClientFleetOrg = z.infer<typeof FleetOrgSchema>;
 
+export interface OrgCash {
+  paidUsd: number;
+  giftedUsd: number;
+}
+
 export interface ClientLine {
   customer: ClientCustomer;
   billing: ClientFleetOrg | null;
-  investedUsd: number | null;
+  cash: OrgCash | null;
 }
 
 export function parseActiveCustomers(raw: unknown): ClientCustomer[] {
@@ -113,9 +117,9 @@ export function parseFleetOrgs(raw: unknown): Map<string, ClientFleetOrg> {
   return byOrg;
 }
 
-export function parseInvestedUsd(raw: unknown): number | null {
-  const parsed = RevenueSchema.parse(raw);
-  return parsed.costEconomics?.committedCostUsd ?? null;
+export function parseOrgCash(raw: unknown): OrgCash {
+  const parsed = AccountSchema.parse(raw);
+  return { paidUsd: parsed.credited_paid_cents / 100, giftedUsd: parsed.credited_gifted_cents / 100 };
 }
 
 function usd(value: number): string {
@@ -174,6 +178,12 @@ function cashLabel(b: ClientFleetOrg, now: Date): string {
   return "no charge scheduled";
 }
 
+function investedLabel(cash: OrgCash | null): string {
+  if (!cash) return "invested ?";
+  const gifted = cash.giftedUsd > 0 ? ` (+${usd(cash.giftedUsd)} free credit)` : "";
+  return `${usd(cash.paidUsd)} invested${gifted}`;
+}
+
 export function clientLine(line: ClientLine, now: Date): string {
   const c = line.customer;
   const name = c.brandName ?? c.brandDomain ?? c.brandId;
@@ -188,7 +198,7 @@ export function clientLine(line: ClientLine, now: Date): string {
   } else {
     parts.push("Billing ?");
   }
-  parts.push(line.investedUsd === null ? "invested ?" : `${usd(line.investedUsd)} invested`);
+  parts.push(investedLabel(line.cash));
   if (b) parts.push(cashLabel(b, now));
   return `${name}\n${parts.join(" · ")}`;
 }
@@ -248,36 +258,44 @@ export async function buildClientLines(config: ClientsTelegramConfig, fetchFn: F
   const customers = parseActiveCustomers(health);
   const billingByOrg = parseFleetOrgs(fleet);
 
-  return Promise.all(
-    customers.map(async (customer): Promise<ClientLine> => {
-      const billing = billingByOrg.get(customer.orgId) ?? null;
-      if (!billing) console.error(`[dashboard-clients-telegram] no billing row for org ${customer.orgId} (${customer.brandName})`);
-      return { customer, billing, investedUsd: await fetchInvested(config, fetchFn, customer) };
-    }),
+  // Cash is per ORG: read each org once, even when it runs several brands.
+  const orgIds = [...new Map(customers.map((c) => [c.orgId, c.orgExternalId])).entries()];
+  const cashByOrg = new Map(
+    await Promise.all(orgIds.map(async ([orgId, ext]) => [orgId, await fetchOrgCash(config, fetchFn, orgId, ext)] as const)),
   );
+
+  return customers.map((customer): ClientLine => {
+    const billing = billingByOrg.get(customer.orgId) ?? null;
+    if (!billing) console.error(`[dashboard-clients-telegram] no billing row for org ${customer.orgId} (${customer.brandName})`);
+    return { customer, billing, cash: cashByOrg.get(customer.orgId) ?? null };
+  });
 }
 
-async function fetchInvested(config: ClientsTelegramConfig, fetchFn: FetchFn, c: ClientCustomer): Promise<number | null> {
-  if (!c.orgExternalId) {
-    console.error(`[dashboard-clients-telegram] brand ${c.brandId} has no Clerk org id, invested unreadable`);
+async function fetchOrgCash(
+  config: ClientsTelegramConfig,
+  fetchFn: FetchFn,
+  orgId: string,
+  orgExternalId: string | null,
+): Promise<OrgCash | null> {
+  if (!orgExternalId) {
+    console.error(`[dashboard-clients-telegram] org ${orgId} has no Clerk org id, invested unreadable`);
     return null;
   }
-  const params = new URLSearchParams({ brandId: c.brandId, pricing: "net" });
   try {
     const raw = await getJson(
       fetchFn,
-      `${config.apiUrl}/v1/features/${CLIENTS_TELEGRAM_FEATURE_SLUG}/revenue?${params.toString()}`,
+      `${config.apiUrl}/v1/billing/accounts`,
       {
         "X-API-Key": config.adminApiKey,
-        "x-external-org-id": c.orgExternalId,
+        "x-external-org-id": orgExternalId,
         "x-external-user-id": SERVICE_IDENTITY.clientsTelegram,
       },
-      `revenue ${c.brandId}`,
+      `billing account ${orgId}`,
     );
-    return parseInvestedUsd(raw);
+    return parseOrgCash(raw);
   } catch (err) {
-    // One brand's slow /revenue must not cost the whole morning message: its line says "invested ?".
-    console.error(`[dashboard-clients-telegram] invested read failed for brand ${c.brandId}:`, err);
+    // One org's failed read must not cost the whole morning message: its line says "invested ?".
+    console.error(`[dashboard-clients-telegram] invested read failed for org ${orgId}:`, err);
     return null;
   }
 }
