@@ -18,7 +18,8 @@ import {
   talkHref,
   type CancelReason,
   type PauseMonths,
-  SUBSCRIPTION_LOSSES,
+  CANCEL_LOSS_STEPS,
+  lossStep,
   type CancelStep,
 } from "@/lib/cancel-plan";
 
@@ -46,10 +47,22 @@ function WarningMark() {
   );
 }
 
-function CrossMark() {
+/** The big red cross a loss screen opens with. */
+function LossMark() {
   return (
-    <svg width="14" height="14" viewBox="0 0 16 16" aria-hidden="true" className="mt-[3px] shrink-0 text-[var(--data-rose)]">
-      <path d="M4.5 4.5l7 7M11.5 4.5l-7 7" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
+    <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-[10px] bg-[var(--data-rose)] text-white">
+      <svg width="18" height="18" viewBox="0 0 16 16" aria-hidden="true">
+        <path d="M4 4l8 8M12 4l-8 8" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" />
+      </svg>
+    </span>
+  );
+}
+
+/** What staying keeps: a check in the "done" teal. */
+function KeepMark() {
+  return (
+    <svg width="14" height="14" viewBox="0 0 16 16" aria-hidden="true" className="mt-[3px] shrink-0 text-[var(--data-teal)]">
+      <path d="M3.5 8.5l3 3 6-7" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
     </svg>
   );
 }
@@ -71,7 +84,6 @@ export function CancelPlanFlow({
   canChangeAmount,
   canPause,
   trialing,
-  endsOn,
   pending,
   onCancel,
   onStay,
@@ -83,8 +95,6 @@ export function CancelPlanFlow({
   canPause: boolean;
   /** A trial starts paying the new amount today (card on file), not at the next charge. */
   trialing: boolean;
-  /** When sending stops if they cancel (end of the trial or of the paid month). */
-  endsOn: string | null;
   pending: "cancel" | "amount" | "pause" | null;
   onCancel: () => void;
   /** Resolves true once billing took the amount: the flow then celebrates. */
@@ -94,7 +104,8 @@ export function CancelPlanFlow({
 }) {
   const { brandId } = useParams<{ brandId: string }>();
   const counts = useBucketCounts(brandId).data?.counts;
-  const [step, setStep] = useState<CancelStep>("loss");
+  const [step, setStep] = useState<CancelStep>(CANCEL_LOSS_STEPS[0].id);
+  const loss = lossStep(step);
   const [reason, setReason] = useState<CancelReason | null>(null);
   const [months, setMonths] = useState<PauseMonths>(1);
   const [typed, setTyped] = useState(String(LOWEST_PLAN_CENTS / 100));
@@ -154,7 +165,6 @@ export function CancelPlanFlow({
 
   if (typeof document === "undefined") return null;
   const host = document.getElementById("v2-portal") ?? document.body;
-  const ends = endsOn ?? "the end of this period";
 
   const continueToCancel = (
     <button type="button" onClick={() => setStep(nextCancelStep(step))} disabled={busy} className="k-btn-ghost mr-auto text-[12px]">
@@ -186,28 +196,26 @@ export function CancelPlanFlow({
           </button>
         </div>
         <div className="px-4 pb-4 pt-4">
-          {step === "loss" && (
+          {loss && (
             <>
-              <div className={`flex items-start gap-3 rounded-[10px] p-3 ${ROSE_TINT}`}>
-                <WarningMark />
+              <div className={`flex items-start gap-3 rounded-[10px] p-4 ${ROSE_TINT}`}>
+                <LossMark />
                 <div className="min-w-0">
-                  <p className="text-[15px] font-semibold leading-6">You are about to lose your pipeline.</p>
-                  <p className="k-fg2 mt-0.5 text-[13px]">This is what we built for you so far.</p>
+                  <p className="text-[17px] font-semibold leading-6">{loss.loss}</p>
+                  <p className="k-fg2 mt-1 text-[13px]">{loss.detail}</p>
                 </div>
               </div>
-              <div className="k-inset mt-3 grid grid-cols-3 divide-x divide-[var(--line-subtle)] rounded-lg">
-                <LossFigure label="Contacted" value={counts?.contacted} />
-                <LossFigure label="Positive replies" value={counts?.positive_reply} />
-                <LossFigure label="Meetings" value={counts?.meeting_booked} />
-              </div>
-              <ul className="mt-3 space-y-1.5">
-                {SUBSCRIPTION_LOSSES.map((loss) => (
-                  <li key={loss} className="k-fg2 flex items-start gap-2.5 text-[13px] leading-5">
-                    <CrossMark />
-                    {loss}
-                  </li>
-                ))}
-              </ul>
+              {loss.id === "loss_outreach" && (
+                <div className="k-inset mt-3 grid grid-cols-3 divide-x divide-[var(--line-subtle)] rounded-lg">
+                  <LossFigure label="Contacted" value={counts?.contacted} />
+                  <LossFigure label="Positive replies" value={counts?.positive_reply} />
+                  <LossFigure label="Meetings" value={counts?.meeting_booked} />
+                </div>
+              )}
+              <p className="k-inset mt-3 flex items-start gap-2.5 rounded-lg px-3 py-2.5 text-[13px] font-medium leading-5">
+                <KeepMark />
+                {loss.keep}
+              </p>
             </>
           )}
 
@@ -342,8 +350,8 @@ export function CancelPlanFlow({
             <div className={`flex items-start gap-3 rounded-[10px] p-3 ${ROSE_TINT}`}>
               <WarningMark />
               <div className="min-w-0">
-                <p className="text-[15px] font-semibold leading-6">Your plan ends on {ends}.</p>
-                <p className="k-fg2 mt-0.5 text-[13px]">After that, sending stops and your replies go unanswered.</p>
+                <p className="text-[15px] font-semibold leading-6">Everything stops the moment you cancel.</p>
+                <p className="k-fg2 mt-0.5 text-[13px]">Your outreach, follow-ups and replies stop right away.</p>
               </div>
             </div>
           )}

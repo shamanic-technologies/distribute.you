@@ -3,7 +3,9 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import {
   CANCEL_REASONS,
+  CANCEL_LOSS_STEPS,
   CANCEL_STEPS,
+  lossStep,
   LOWEST_PLAN_CENTS,
   PAUSE_MONTHS,
   STAY_MIN_USD,
@@ -19,12 +21,32 @@ const PLAN = readFileSync(join(__dirname, "..", "src/components/v2/subscription-
 // Owner 2026-10-03: cancelling walks four screens built to make the customer stay,
 // and the way out stays one click away on each (online-cancel laws, Stripe disputes).
 describe("the cancel-plan flow", () => {
-  it("walks loss, reason, offer, confirm, and stops at confirm", () => {
-    expect(CANCEL_STEPS).toEqual(["loss", "reason", "offer", "confirm"]);
-    expect(nextCancelStep("loss")).toBe("reason");
+  // Owner 2026-10-03: one screen per loss, each a red cross, what stops now, and what staying keeps.
+  it("walks one screen per loss, then reason, offer, confirm, and stops at confirm", () => {
+    expect(CANCEL_STEPS).toEqual([
+      "loss_outreach",
+      "loss_follow_ups",
+      "loss_replies",
+      "loss_contacts",
+      "loss_history",
+      "reason",
+      "offer",
+      "confirm",
+    ]);
+    expect(nextCancelStep("loss_outreach")).toBe("loss_follow_ups");
+    expect(nextCancelStep("loss_history")).toBe("reason");
     expect(nextCancelStep("reason")).toBe("offer");
     expect(nextCancelStep("offer")).toBe("confirm");
     expect(nextCancelStep("confirm")).toBe("confirm");
+    for (const l of CANCEL_LOSS_STEPS) {
+      expect(l.loss, l.id).toMatch(/now|from now on|every email/);
+      expect(l.keep.startsWith("Stay, and"), l.id).toBe(true);
+      expect(lossStep(l.id)).toBe(l);
+    }
+    expect(lossStep("reason")).toBeNull();
+    expect(FLOW).toContain("<LossMark />");
+    expect(FLOW).toContain("<KeepMark />");
+    expect(FLOW).toContain("Everything stops the moment you cancel.");
   });
 
   // Owner 2026-10-03: even at $99, price is answered with "stay for less" from $29.

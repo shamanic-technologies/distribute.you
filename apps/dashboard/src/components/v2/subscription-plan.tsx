@@ -248,7 +248,6 @@ export function SubscriptionPlan() {
           canChangeAmount={!locked}
           canPause={sub.can_pause === true}
           trialing={startable}
-          endsOn={shortDate(trialing ? sub.trial_end : sub.current_period_end)}
           pending={busy === "cancel" || busy === "amount" || busy === "pause" ? busy : null}
           onCancel={() => void run("cancel", () => cancelSubscription())}
           onStay={(cents) =>
