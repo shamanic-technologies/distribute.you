@@ -51,7 +51,11 @@ const facts = {
   firstRunning: { ...first, name: longMonth(first.label) },
   cheapestMonth: { ...cheapest, name: longMonth(cheapest.label) },
   dearestMonth: { ...dearest, name: longMonth(dearest.label) },
+  // the website visit is measured only since its first month (self-sent emails with a link), not
+  // since the reply window opened: the prose says when it started, never "since April"
+  visitFrom: `${longMonth(visit.months[0].label)} ${String(snap.readOn).slice(0, 4)}`,
 };
+if (!(visit.interval.lo < visit.average.value && visit.average.value < visit.interval.hi)) throw new Error("the visit average sits outside its own interval");
 
 function get(path) {
   return path.split(".").reduce((o, k) => {
