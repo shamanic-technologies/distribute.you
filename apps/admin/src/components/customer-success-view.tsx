@@ -13,6 +13,7 @@ import {
 } from "@/lib/api";
 import { pollOptionsSlower } from "@/lib/query-options";
 import { Skeleton } from "@/components/skeleton";
+import { InfoTooltip } from "@/components/visibility/metric-info";
 
 // ── Formatters (render only; never compute a metric) ─────────────────────────
 
@@ -153,6 +154,7 @@ const STATUS_PILL: Record<AccountStatus, { label: string; className: string }> =
   reactive_only: { label: "Reactive only", className: "bg-sky-50 text-sky-700 border-sky-200" },
   paused: { label: "Paused", className: "bg-amber-50 text-amber-700 border-amber-200" },
   inactive: { label: "Inactive", className: "bg-gray-50 text-gray-500 border-gray-200" },
+  unknown: { label: "Unknown", className: "bg-orange-50 text-orange-700 border-orange-200" },
 };
 
 function statusLabel(status: AccountStatus): string {
@@ -532,7 +534,10 @@ function CustomerTable({ data }: { data: CustomerSuccessBoard }) {
                       {row.brandDomain && <div className="text-xs text-gray-400">{row.brandDomain}</div>}
                     </td>
                     <td className="py-2.5 px-3">
-                      <StatusPill status={row.status} />
+                      <span className="inline-flex items-center gap-1">
+                        <StatusPill status={row.status} />
+                        {row.status === "unknown" && row.statusUnknownReason && <InfoTooltip tip={row.statusUnknownReason} />}
+                      </span>
                     </td>
                     <td className="py-2.5 px-3 text-gray-700">{goalLabel(row.optimizationGoal)}</td>
                     <td className="py-2.5 px-3 text-right tabular-nums text-gray-900">{usd(row.currentEconomics.currentCacUsd)}</td>
