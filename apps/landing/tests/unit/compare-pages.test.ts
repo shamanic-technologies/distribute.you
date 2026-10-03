@@ -21,6 +21,10 @@ import { COMPARE_VERIFIED_LABEL, COMPETITORS, comparePaths, competitorBySlug, mo
  * homepage already lives by, then check that every list in the repo that names the
  * cluster (sitemap, llms.txt, the homepage footer) is read from or equal to that catalogue.
  */
+// A rendered page awaits the fleet read, which may take up to its own 8s timeout
+// (static-html.ts FLEET_READ_TIMEOUT_MS) when the API is slow or unreachable: past
+// vitest's 5s default.
+const FLEET_READ_BUDGET_MS = 20_000;
 const ROOT = path.resolve(__dirname, "../..");
 const read = (p: string) => readFileSync(path.join(ROOT, p), "utf8");
 
@@ -28,9 +32,9 @@ const prose = (html: string) =>
   html.replace(/<script[\s\S]*?<\/script>/g, "").replace(/<style[\s\S]*?<\/style>/g, "");
 
 describe("the competitor catalogue", () => {
-  it("names the competitors the owner picked, parcelLab for its search demand, and not Amplemarket", () => {
+  it("names the competitors the owner picked, parcelLab, PostBeyond and LeadRebel for their search demand, and not Amplemarket", () => {
     expect(COMPETITORS.map((c) => c.slug).sort()).toEqual(
-      ["11x", "aisdr", "apollo", "artisan", "clay", "explee", "gojiberry", "instantly", "lemlist", "parcellab", "salesforge", "smartlead"],
+      ["11x", "aisdr", "apollo", "artisan", "clay", "explee", "gojiberry", "instantly", "leadrebel", "lemlist", "parcellab", "postbeyond", "salesforge", "smartlead"],
     );
     expect(COMPETITORS.some((c) => /amplemarket/i.test(c.name))).toBe(false);
   });
@@ -41,7 +45,7 @@ describe("the competitor catalogue", () => {
       expect(new URL(c.sourceUrl).hostname.replace(/^www\./, ""), c.slug).toBe(c.domain);
       expect(c.verifiedOn, c.slug).toMatch(/^2026-(09|10)-\d\d$/);
       expect(c.prices.length, c.slug).toBeGreaterThan(0);
-      for (const p of c.prices) expect(p.price, `${c.slug} ${p.plan}`).toMatch(/\$|On request/);
+      for (const p of c.prices) expect(p.price, `${c.slug} ${p.plan}`).toMatch(/\$|€|On request/);
     }
   });
 
@@ -240,7 +244,7 @@ describe("served through the pipeline", () => {
     );
     expect(md.headers.get("content-type")).toContain("text/markdown");
     expect(await md.text()).toContain(`distribute.you vs ${c.name}`);
-  });
+  }, FLEET_READ_BUDGET_MS);
 });
 
 describe("the month a compare title shows", () => {
@@ -278,6 +282,17 @@ describe("an unknown slug", () => {
     });
   }
 
+  for (const [slug, name] of [["postbeyond", "PostBeyond"], ["leadrebel", "LeadRebel"]] as const) {
+    it(`/compare/${slug} is a real page`, async () => {
+      const { GET } = await import("@/app/compare/[slug]/route");
+      const res = await GET(new Request(`https://distribute.you/compare/${slug}`), {
+        params: Promise.resolve({ slug }),
+      });
+      expect(res.status).toBe(200);
+      expect(await res.text()).toContain(`${name} alternative: distribute.you vs ${name} pricing`);
+    }, FLEET_READ_BUDGET_MS);
+  }
+
   it("/compare/parcellab is a real page", async () => {
     const { GET } = await import("@/app/compare/[slug]/route");
     const res = await GET(new Request("https://distribute.you/compare/parcellab"), {
@@ -285,5 +300,5 @@ describe("an unknown slug", () => {
     });
     expect(res.status).toBe(200);
     expect(await res.text()).toContain("parcelLab alternative: distribute.you vs parcelLab pricing");
-  });
+  }, FLEET_READ_BUDGET_MS);
 });

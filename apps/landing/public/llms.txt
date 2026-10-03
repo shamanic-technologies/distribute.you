@@ -131,6 +131,8 @@ you run; we run the campaign.
 - [vs Artisan](https://distribute.you/compare/artisan)
 - [vs AiSDR](https://distribute.you/compare/aisdr)
 - [vs parcelLab](https://distribute.you/compare/parcellab)
+- [vs PostBeyond](https://distribute.you/compare/postbeyond)
+- [vs LeadRebel](https://distribute.you/compare/leadrebel)
 
 ## Rankings by audience
 
