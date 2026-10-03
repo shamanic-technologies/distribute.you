@@ -121,6 +121,14 @@ describe("the cancel-plan flow", () => {
     for (const f of ["counts?.contacted", "counts?.positive_reply", "counts?.meeting_booked"]) expect(FLOW).toContain(f);
   });
 
+  // billing#589: a cancel stops every send at once, and the read says so.
+  it("says sending has stopped after a cancel, from billing's own flag", () => {
+    expect(PLAN).toContain("data.sending_stopped");
+    expect(PLAN).toContain("Cancelled. All sending has stopped.");
+    expect(PLAN).not.toContain("Sending stops on");
+    expect(PLAN).toContain('code === "amount_below_minimum"');
+  });
+
   it("cancels through billing's cancel", () => {
     expect(PLAN).toContain('onCancel={() => void run("cancel", () => cancelSubscription())}');
     expect(PLAN).toContain("canChangeAmount={!locked}");

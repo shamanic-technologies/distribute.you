@@ -8218,6 +8218,9 @@ const SubscriptionReadSchema = z.object({
   org_id: z.string(),
   payment_mode: z.string().nullish(),
   subscription: SubscriptionSchema.nullable(),
+  // billing#589: a cancel (or a pause) stops every send at once; the read says so.
+  sending_stopped: z.boolean().nullish(),
+  sending_stopped_reason: z.string().nullish(),
   credits_remaining_cents: z.string().nullish(),
   trial_grant_cents: z.coerce.number().nullish(),
   expired_cents: z.string().nullish(),

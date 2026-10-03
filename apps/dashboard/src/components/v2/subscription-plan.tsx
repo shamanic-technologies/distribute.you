@@ -205,7 +205,9 @@ export function SubscriptionPlan() {
       <div className="k-line-subtle flex items-center gap-3 border-t px-4 py-2.5">
         <p className="k-fg3 min-w-0 flex-1 text-[12px]">
           {sub.cancel_at_period_end
-            ? `Cancelled. Sending stops on ${next.date ?? "the end of this period"}.`
+            ? data.sending_stopped
+              ? "Cancelled. All sending has stopped. Keep your plan to restart it."
+              : `Cancelled. Your plan ends on ${next.date ?? "the end of this period"}.`
             : sub.paused
               ? `Paused. Sending restarts on ${next.date ?? "the end of the pause"}.`
               : "Sending stops when the month's credit reaches $0."}
@@ -267,6 +269,8 @@ type PlanWrite = "amount" | "start" | "cancel" | "resume" | "pause" | "unpause";
 
 /** A refusal in one sentence, by billing's code. */
 function planRefusal(kind: PlanWrite, code: string | undefined): string {
+  if (code === "amount_below_minimum") return "Your plan can start at $29 a month.";
+  if (code === "amount_not_whole_dollars") return "Pick a whole dollar amount.";
   if (code === "subscription_paused") return "Your plan is paused. Restart it first.";
   if (kind === "pause") {
     if (code === "subscription_not_active") return "Your last payment failed. Update your card first.";
