@@ -70,7 +70,7 @@ describe("every dashboard surface that states a daily budget asks whether to hid
 
   it("the controls keep Pause/Activate and drop the budget figure", () => {
     const trigger = read("src/components/campaigns/campaign-controls-trigger.tsx");
-    expect(trigger).toContain("{!budgetHidden && (\n          <span className=\"text-sm tabular-nums text-gray-600\">");
+    expect(trigger).toContain("{!budgetHidden && (\n          <span className=\"k-fg2 text-[13px] tabular-nums\">");
   });
 
   it("a subscriber's new mission writes the plan's figure, never a typed one", () => {

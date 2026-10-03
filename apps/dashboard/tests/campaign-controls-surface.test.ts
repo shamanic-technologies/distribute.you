@@ -94,3 +94,21 @@ describe("the affordance survives a touch screen", () => {
     expect(trigger).not.toContain("opacity-0 group-hover:opacity-100");
   });
 });
+
+describe("the state reads, the pause hides (owner 2026-10-03)", () => {
+  it("shows the state as a clickable k-btn with a chevron, never a Pause button beside it", () => {
+    expect(trigger).toContain('aria-haspopup="menu"');
+    expect(trigger).toContain("k-btn whitespace-nowrap");
+    expect(trigger).toContain('d="M2.5 4l2.5 2.5L7.5 4"');
+  });
+
+  it("keeps Pause / Activate inside the menu the state opens", () => {
+    const menu = trigger.slice(trigger.indexOf('role="menu"'), trigger.indexOf("{error && ("));
+    expect(menu).toContain("{action}");
+    expect(trigger.indexOf("{action}")).toBeGreaterThan(trigger.indexOf('role="menu"'));
+  });
+
+  it("speaks v2 tokens only", () => {
+    expect(trigger).not.toMatch(/text-gray-|bg-gray-|text-red-|ring-brand-|rounded-full border px/);
+  });
+});

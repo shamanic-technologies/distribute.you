@@ -331,17 +331,6 @@ export const ROLLUP_LABEL: Record<ControlRollup, string> = {
 };
 
 /**
- * Each verdict's tint, from the closed set `html.dark` remaps. A colour outside
- * that set paints a bright block on the dark surface and is invisible in the
- * light default, so it looks correct until someone toggles the theme.
- */
-export const ROLLUP_STYLE: Record<ControlRollup, string> = {
-  none: "bg-gray-100 text-gray-600 border-gray-200",
-  paused: "bg-gray-100 text-gray-500 border-gray-200",
-  active: "bg-green-50 text-green-700 border-green-200",
-};
-
-/**
  * What this SCOPE may spend TODAY, in cents — its RUNNING campaigns' ceilings.
  *
  * A PAUSED campaign is deliberately not in it. Its ceiling still exists (that is
