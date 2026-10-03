@@ -234,6 +234,17 @@ export const LEVER_DRAFT_FIELDS = [
 
 export type LeverDraftKey = (typeof LEVER_DRAFT_FIELDS)[number]["key"];
 
+/**
+ * "Services sold" of the picked offer, drafted in the same site read as the levers and
+ * saved on the offer without a screen of its own: the offer page shows it, and it was
+ * left empty on every offer this flow created.
+ */
+export const SERVICES_DRAFT_FIELD = {
+  key: "services",
+  description:
+    "Services sold: what a buyer pays for in this offer, as the site names it (product, package or service). One to three short phrases, each under eight words. Facts from the site only.",
+} as const;
+
 /** What is given away to whoever replies, and what is never promised (brand-service #584 keys). */
 export const GIVE_DRAFT_FIELDS = [
   {
