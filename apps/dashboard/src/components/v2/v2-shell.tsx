@@ -16,6 +16,7 @@ import { companyHref } from "@/components/v2/companies-page";
 import { ScopePaymentDeclinedBand } from "@/components/billing/scope-payment-declined-band";
 import { useStaffMode } from "@/lib/use-staff-mode";
 import { SelectedOfferProvider, useSelectedOffer } from "@/components/v2/selected-offer";
+import { BRAND_WHY } from "@/lib/brand-why";
 
 /**
  * Keel's frame: a grey canvas, a one-level sidebar sitting ON it, and every page in one
@@ -128,6 +129,11 @@ const ICONS = {
   workflows: "M4 3.5a1.5 1.5 0 1 1 0 3 1.5 1.5 0 0 1 0-3Zm8 6a1.5 1.5 0 1 1 0 3 1.5 1.5 0 0 1 0-3ZM4 6.5v2a2 2 0 0 0 2 2h4.5",
 };
 
+/** The why, quiet, above the account menu on every v2 page (owner 2026-10-03). */
+function BrandWhyLine() {
+  return <p className="k-fg3 px-4 pb-1 pt-2 text-[12px]">{BRAND_WHY}</p>;
+}
+
 /**
  * The org's page before it has a brand (or while none is picked): no brand nav to draw,
  * but the frame still says where you are and who is signed in, so the person can switch
@@ -140,6 +146,7 @@ function V2OrgSidebar({ orgId }: { orgId: string }) {
         <TenantSwitcherV2 />
       </div>
       <div className="min-h-0 flex-1" />
+      <BrandWhyLine />
       <AccountMenuV2 orgId={orgId} brandId="" />
     </aside>
   );
@@ -335,6 +342,7 @@ function V2Sidebar() {
           </Group>
         )}
       </nav>
+      <BrandWhyLine />
       <AccountMenuV2 orgId={orgId} brandId={brandId} />
     </aside>
   );
