@@ -60,18 +60,28 @@ function get(path) {
   }, facts);
 }
 
+// The month the cutoff falls inside is IN PROGRESS: only part of its people count yet, so its bar
+// is a dotted outline and the caption says why. Only the last bar of a series may be one.
+for (const s of [reply.months, reply.running]) {
+  if (s.slice(0, -1).some((p) => p.partial)) throw new Error("a month in progress that is not the last bar");
+}
+const inProgress = (rows) =>
+  rows.some((r) => r.partial)
+    ? ` A dotted bar is a month still in progress: only people we first wrote to before ${day(snap.cutoff)} count in it so far.`
+    : "";
+
 // One horizontal bar per month, in calendar order (an ordinal cut keeps its order).
 function chart(kind) {
   const spec = {
     running: {
       title: "Cost per positive reply, average since April (lower is better)",
-      rows: reply.running.map((p) => ({ label: `Through ${longMonth(p.label)}`, value: p.value, display: p.display, note: p.note })),
-      caption: "Each bar divides everything spent since the first email by every positive reply since, up to that month.",
+      rows: reply.running.map((p) => ({ label: `Through ${longMonth(p.label)}`, value: p.value, display: p.display, note: p.note, partial: p.partial })),
+      caption: `Each bar divides everything spent since the first email by every positive reply since, up to that month.${inProgress(reply.running)}`,
     },
     months: {
       title: "Cost per positive reply, month by month (lower is better)",
-      rows: reply.months.map((p) => ({ label: longMonth(p.label), value: p.value, display: p.display, note: p.note })),
-      caption: "Each bar prices one month of emails on its own. A month with few positive replies swings a long way.",
+      rows: reply.months.map((p) => ({ label: longMonth(p.label), value: p.value, display: p.display, note: p.note, partial: p.partial })),
+      caption: `Each bar prices one month of emails on its own. A month with few positive replies swings a long way.${inProgress(reply.months)}`,
     },
   }[kind];
   if (!spec) throw new Error(`unknown chart: ${kind}`);
@@ -88,7 +98,12 @@ function chart(kind) {
     const w = Math.max(6, Math.round((r.value / max) * W));
     const lead = kind === "running" ? i === rows.length - 1 : false;
     out.push(`<text x="0" y="${y + 18}" font-size="14" fill="#475569">${esc(r.label)}</text>`);
-    out.push(`<rect x="${LEFT}" y="${y}" width="${w}" height="26" rx="5" fill="${lead ? BLUE : PALE}"/>`);
+    const fill = lead ? BLUE : PALE;
+    out.push(
+      r.partial
+        ? `<rect x="${LEFT + 0.75}" y="${y + 0.75}" width="${w - 1.5}" height="24.5" rx="5" fill="${fill}" fill-opacity="0.25" stroke="${BLUE}" stroke-width="1.5" stroke-dasharray="4 3"/>`
+        : `<rect x="${LEFT}" y="${y}" width="${w}" height="26" rx="5" fill="${fill}"/>`,
+    );
     out.push(`<text x="${LEFT + w + 10}" y="${y + 19}" font-size="16" font-weight="700" fill="#0f172a">${esc(r.display)}</text>`);
     out.push(`<text x="${LEFT}" y="${y + 39}" font-size="11" fill="#94a3b8">${esc(r.note)}</text>`);
   });

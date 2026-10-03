@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-10-02T20:52:25.495Z",
+  "generatedAt": "2026-10-03T05:18:06.477Z",
   "allOrgs": true,
   "costBasis": "user",
   "unpricedBilledUsd": 0,
@@ -8,7 +8,7 @@
     "from": "2026-04",
     "to": "2026-10"
   },
-  "readOn": "2026-10-02",
+  "readOn": "2026-10-03",
   "volume": {
     "emails": 125991,
     "orgs": 28,
@@ -37,11 +37,7 @@
       },
       {
         "label": "Sep",
-        "emails": 19811
-      },
-      {
-        "label": "Oct",
-        "emails": 111
+        "emails": 19922
       }
     ]
   },
@@ -147,10 +143,11 @@
           "points": [
             {
               "label": "Sep",
-              "value": 20.86,
+              "value": 20.97,
               "display": "$21",
-              "note": "1 positive reply · 373 emails",
-              "thin": false
+              "note": "1 positive reply · 375 emails · month in progress",
+              "thin": false,
+              "partial": true
             }
           ],
           "cumulative": {
@@ -158,17 +155,11 @@
             "points": [
               {
                 "label": "Sep",
-                "value": 33.39,
-                "display": "$33",
-                "note": "1 positive reply · 597 emails to date",
-                "thin": false
-              },
-              {
-                "label": "Oct",
                 "value": 33.5,
                 "display": "$34",
-                "note": "1 positive reply · 599 emails to date",
-                "thin": false
+                "note": "1 positive reply · 599 emails to date · month in progress",
+                "thin": false,
+                "partial": true
               }
             ]
           },
@@ -322,8 +313,9 @@
               "label": "Sep",
               "value": 0,
               "display": "0.00%",
-              "note": "0 positive replies · 3 emails",
-              "thin": true
+              "note": "0 positive replies · 3 emails · month in progress",
+              "thin": true,
+              "partial": true
             }
           ],
           "cumulative": {
@@ -340,8 +332,9 @@
                 "label": "Sep",
                 "value": 22.88,
                 "display": "0.23%",
-                "note": "1 positive reply · 437 emails to date",
-                "thin": false
+                "note": "1 positive reply · 437 emails to date · month in progress",
+                "thin": false,
+                "partial": true
               }
             ]
           },
@@ -419,10 +412,11 @@
             },
             {
               "label": "Sep",
-              "value": 518.58,
-              "display": "$519",
-              "note": "3 positive replies · 17,299 emails",
-              "thin": false
+              "value": 521.84,
+              "display": "$522",
+              "note": "3 positive replies · 17,407 emails · month in progress",
+              "thin": false,
+              "partial": true
             }
           ],
           "cumulative": {
@@ -465,17 +459,11 @@
               },
               {
                 "label": "Sep",
-                "value": 181,
-                "display": "$181",
-                "note": "38 positive replies · 96,508 emails to date",
-                "thin": false
-              },
-              {
-                "label": "Oct",
                 "value": 181.26,
                 "display": "$181",
-                "note": "38 positive replies · 96,616 emails to date",
-                "thin": false
+                "note": "38 positive replies · 96,616 emails to date · month in progress",
+                "thin": false,
+                "partial": true
               }
             ]
           },
@@ -894,8 +882,9 @@
                 "label": "Sep",
                 "value": 34.45,
                 "display": "$34",
-                "note": "1 positive reply · 325 emails to date",
-                "thin": false
+                "note": "1 positive reply · 325 emails to date · month in progress",
+                "thin": false,
+                "partial": true
               }
             ]
           },
@@ -1205,8 +1194,9 @@
               "label": "Sep",
               "value": 0,
               "display": "0.00%",
-              "note": "0 positive replies · 3 emails",
-              "thin": true
+              "note": "0 positive replies · 3 emails · month in progress",
+              "thin": true,
+              "partial": true
             }
           ],
           "cumulative": {
@@ -1230,8 +1220,9 @@
                 "label": "Sep",
                 "value": 30.77,
                 "display": "0.31%",
-                "note": "1 positive reply · 325 emails to date",
-                "thin": false
+                "note": "1 positive reply · 325 emails to date · month in progress",
+                "thin": false,
+                "partial": true
               }
             ]
           },
@@ -2029,8 +2020,9 @@
                 "label": "Sep",
                 "value": 36.36,
                 "display": "$36",
-                "note": "1 positive reply · 385 emails to date",
-                "thin": false
+                "note": "1 positive reply · 385 emails to date · month in progress",
+                "thin": false,
+                "partial": true
               }
             ]
           },
@@ -2395,8 +2387,9 @@
               "label": "Sep",
               "value": 0,
               "display": "0.00%",
-              "note": "0 positive replies · 3 emails",
-              "thin": true
+              "note": "0 positive replies · 3 emails · month in progress",
+              "thin": true,
+              "partial": true
             }
           ],
           "cumulative": {
@@ -2427,8 +2420,9 @@
                 "label": "Sep",
                 "value": 25.97,
                 "display": "0.26%",
-                "note": "1 positive reply · 385 emails to date",
-                "thin": false
+                "note": "1 positive reply · 385 emails to date · month in progress",
+                "thin": false,
+                "partial": true
               }
             ]
           },
@@ -2778,10 +2772,11 @@
             },
             {
               "label": "Sep",
-              "value": 5.84,
-              "display": "$5.84",
-              "note": "37 website visits · 2,479 emails with a link",
-              "thin": false
+              "value": 5.85,
+              "display": "$5.85",
+              "note": "37 website visits · 2,482 emails with a link · month in progress",
+              "thin": false,
+              "partial": true
             }
           ],
           "cumulative": {
@@ -2819,15 +2814,9 @@
                 "label": "Sep",
                 "value": 2.94,
                 "display": "$2.94",
-                "note": "380 website visits · 16,281 emails with a link to date",
-                "thin": false
-              },
-              {
-                "label": "Oct",
-                "value": 2.94,
-                "display": "$2.94",
-                "note": "380 website visits · 16,284 emails with a link to date",
-                "thin": false
+                "note": "380 website visits · 16,284 emails with a link to date · month in progress",
+                "thin": false,
+                "partial": true
               }
             ]
           },
@@ -4069,8 +4058,9 @@
                 "label": "Sep",
                 "value": 1.11,
                 "display": "$1.11",
-                "note": "77 website visits · 1,586 emails with a link to date",
-                "thin": false
+                "note": "77 website visits · 1,586 emails with a link to date · month in progress",
+                "thin": false,
+                "partial": true
               }
             ]
           },
@@ -4220,8 +4210,9 @@
               "label": "Sep",
               "value": 0,
               "display": "0.00%",
-              "note": "0 website visits · 1 emails with a link",
-              "thin": true
+              "note": "0 website visits · 1 emails with a link · month in progress",
+              "thin": true,
+              "partial": true
             }
           ],
           "cumulative": {
@@ -4252,8 +4243,9 @@
                 "label": "Sep",
                 "value": 48.55,
                 "display": "4.85%",
-                "note": "77 website visits · 1,586 emails with a link to date",
-                "thin": false
+                "note": "77 website visits · 1,586 emails with a link to date · month in progress",
+                "thin": false,
+                "partial": true
               }
             ]
           },

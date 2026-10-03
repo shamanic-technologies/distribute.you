@@ -30,6 +30,30 @@ describe("research.json is coherent", () => {
     expect(RESEARCH.volume.emails).toBeGreaterThan(0);
   });
 
+  it("draws no month after the cutoff's month, and that month as in progress", () => {
+    const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+    const legs = (RESEARCH as unknown as { maturation: { legs: Record<string, { cutoff: string }> } }).maturation.legs;
+    let partials = 0;
+    for (const s of RESEARCH.studies) {
+      const cutoff = legs[s.crew === "scout" ? "visit" : "reply"].cutoff;
+      const last = MONTHS[Number(cutoff.slice(5, 7)) - 1];
+      for (const c of s.charts.filter((x) => x.kind === "months")) {
+        for (const pts of [c.points, c.cumulative?.points ?? []]) {
+          for (const p of pts) {
+            expect(MONTHS.indexOf(p.label), `${s.id} ${p.label}`).toBeLessThanOrEqual(MONTHS.indexOf(last));
+            expect(Boolean(p.partial), `${s.id} ${p.label}`).toBe(p.label === last && cutoff.slice(8, 10) !== "01");
+            if (p.partial) partials++;
+          }
+        }
+      }
+    }
+    expect(partials).toBeGreaterThan(0);
+    // and the page draws it dotted, bar and line alike
+    const bits = read("components/v2/research-bits.tsx");
+    expect(bits).toContain('strokeDasharray={p.partial ? "3 3" : undefined}');
+    expect(bits).toContain('dataKey="pending" stroke={color} strokeWidth={1.5} strokeDasharray="3 3"');
+  });
+
   it("gives every study a unique id and a known crew", () => {
     const ids = RESEARCH.studies.map((s) => s.id);
     expect(new Set(ids).size).toBe(ids.length);
