@@ -3804,48 +3804,6 @@ export async function generateAudienceAvatar(
   return parsed.data;
 }
 
-/** The criterion of a LinkedIn signal audience: the people who recently reacted to or
- *  commented on these competitor company pages' posts (1-3
- *  `https://www.linkedin.com/company/<slug>/`), over a rolling window of days. */
-export interface LinkedInEngagementSignal {
-  type: "linkedin_engagement";
-  windowDays: number;
-  competitorPages: string[];
-}
-
-/**
- * POST /orgs/audiences/signal — create a LinkedIn signal audience (human-service, via
- * the gateway). `nlPrompt` is required: every engager is screened against it before an
- * email is paid for. No size exists for this kind until a serve walks it, so the list
- * omits `sizeCount` for it. Refusals (a malformed page, a name taken under this offer)
- * come back as the producer's named 4xx and surface through `ApiError.message`.
- * `brandId` also rides the query string: an identity value reaches the next hop as a
- * header only from the query or headers, never from the body alone.
- */
-export async function createSignalAudience(
-  input: {
-    brandId: string;
-    offerId?: string;
-    name?: string;
-    nlPrompt: string;
-    signal: LinkedInEngagementSignal;
-  },
-  token?: string,
-): Promise<{ audience: AudienceWire }> {
-  const query = new URLSearchParams({ brandId: input.brandId });
-  const raw = await apiCall<unknown>(`/orgs/audiences/signal?${query.toString()}`, {
-    token,
-    method: "POST",
-    body: input,
-  });
-  const parsed = AudienceResponseSchema.safeParse(raw);
-  if (!parsed.success) {
-    console.error("[dashboard] createSignalAudience: response shape mismatch", { issues: parsed.error.issues, raw });
-    throw new Error("[dashboard] createSignalAudience: invalid response shape");
-  }
-  return parsed.data;
-}
-
 const ListAudiencesResponseSchema = z.object({
   audiences: z.array(AudienceSchema),
   total: z.number(),
