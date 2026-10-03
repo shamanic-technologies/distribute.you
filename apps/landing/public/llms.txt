@@ -130,6 +130,7 @@ you run; we run the campaign.
 - [vs Clay](https://distribute.you/compare/clay)
 - [vs Artisan](https://distribute.you/compare/artisan)
 - [vs AiSDR](https://distribute.you/compare/aisdr)
+- [vs parcelLab](https://distribute.you/compare/parcellab)
 
 ## Rankings by audience
 

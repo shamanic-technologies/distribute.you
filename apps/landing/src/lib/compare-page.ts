@@ -214,7 +214,7 @@ ${liveBand()}
 }
 
 function categoryGroups(): { category: Category; items: Competitor[] }[] {
-  const order: Category[] = ["ai-sdr", "cold-email-tool", "data-platform"];
+  const order: Category[] = ["ai-sdr", "cold-email-tool", "data-platform", "post-purchase"];
   return order.map((category) => ({
     category,
     items: COMPETITORS.filter((c) => c.category === category),
