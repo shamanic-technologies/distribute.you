@@ -1,9 +1,6 @@
 #!/usr/bin/env bash
-# Pulls the cold-email fact tables the two data blog articles are derived from.
-#
-# Every figure in apps/landing/content/blog/{cost-per-click-cold-email,flash-vs-pro-llm-cold-email}
-# comes out of these dumps. Re-run this, then the two derive-*.mjs scripts, to reproduce
-# or to re-derive after a production data correction.
+# Pulls the cold-email fact tables the Research page and the data blog articles are derived from.
+# Re-run this, then derive.mjs, to reproduce or to re-derive after a production data correction.
 #
 #   ./extract.sh <window-start> <window-end-exclusive> <out-dir>
 #   ./extract.sh 2026-04-15 2026-09-12 /tmp/blog-data

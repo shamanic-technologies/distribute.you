@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-10-03T05:26:17.307Z",
+  "generatedAt": "2026-10-03T06:23:56.116Z",
   "allOrgs": true,
   "costBasis": "actual",
   "unpricedBilledUsd": 0,
@@ -10,10 +10,10 @@
   },
   "readOn": "2026-10-03",
   "volume": {
-    "emails": 125991,
-    "orgs": 28,
-    "workflows": 57,
-    "linkedEmails": 16284,
+    "emails": 128253,
+    "orgs": 29,
+    "workflows": 62,
+    "linkedEmails": 1181,
     "byMonth": [
       {
         "label": "Apr",
@@ -37,30 +37,30 @@
       },
       {
         "label": "Sep",
-        "emails": 19922
+        "emails": 22184
       }
     ]
   },
   "maturation": {
     "rule": "run_start",
     "days": 21,
-    "cutoff": "2026-09-11",
-    "windowEnd": "2026-10-02",
+    "cutoff": "2026-09-12",
+    "windowEnd": "2026-10-03",
     "legs": {
       "reply": {
         "durationDays": 21,
         "outcomesRequired": 1,
-        "cutoff": "2026-09-11"
+        "cutoff": "2026-09-12"
       },
       "visit": {
         "durationDays": 21,
         "outcomesRequired": 10,
-        "cutoff": "2026-09-11"
+        "cutoff": "2026-09-12"
       }
     },
-    "excludedEmails": 22115,
-    "noRunStart": 2346,
-    "note": "Only people we started writing to at least 21 days before the read (before Sep 11) count, with every positive reply and website visit they sent since. A figure needs 1 positive reply (10 website visits) behind it; below that it reads Learning."
+    "excludedEmails": 20443,
+    "noRunStart": 2349,
+    "note": "Only people we started writing to at least 21 days before the read (before Sep 12) count, with every positive reply and website visit they sent since. A figure needs 1 positive reply (10 website visits) behind it; below that it reads Learning. A website visit is a click our link-scanner check judged human, which only the emails we send ourselves can carry: website-visit figures leave out the emails sent through the provider, whose clicks are mostly scanners and cannot be screened."
   },
   "crews": [
     {
@@ -120,9 +120,9 @@
             {
               "key": "gemini-3.1-pro",
               "label": "Gemini 3.1 Pro",
-              "value": 59.92,
-              "display": "$60",
-              "note": "35 positive replies · 79,715 emails",
+              "value": 60.61,
+              "display": "$61",
+              "note": "35 positive replies · 81,177 emails",
               "thin": false
             },
             {
@@ -134,7 +134,7 @@
               "thin": false
             }
           ],
-          "note": "Only people we started writing to at least 21 days before the read (before Sep 11) count, with every positive reply and website visit they sent since. A figure needs 1 positive reply (10 website visits) behind it; below that it reads Learning."
+          "note": "Only people we started writing to at least 21 days before the read (before Sep 12) count, with every positive reply and website visit they sent since. A figure needs 1 positive reply (10 website visits) behind it; below that it reads Learning. A website visit is a click our link-scanner check judged human, which only the emails we send ourselves can carry: website-visit figures leave out the emails sent through the provider, whose clicks are mostly scanners and cannot be screened."
         },
         {
           "kind": "months",
@@ -163,12 +163,12 @@
               }
             ]
           },
-          "note": "Only people we started writing to at least 21 days before the read (before Sep 11) count, with every positive reply and website visit they sent since. A figure needs 1 positive reply (10 website visits) behind it; below that it reads Learning."
+          "note": "Only people we started writing to at least 21 days before the read (before Sep 12) count, with every positive reply and website visit they sent since. A figure needs 1 positive reply (10 website visits) behind it; below that it reads Learning. A website visit is a click our link-scanner check judged human, which only the emails we send ourselves can carry: website-visit figures leave out the emails sent through the provider, whose clicks are mostly scanners and cannot be screened."
         }
       ],
       "conclusion": [
         "GLM 5.2 Pro: 1 positive reply · 599 emails, $6.70 spent.",
-        "Same clients, same months, GLM 5.2 Pro against Gemini 3.1 Pro: 1 positive reply in 597 emails against 8 in 16,162, under 5 on one side, so no ratio.",
+        "Same clients, same months, GLM 5.2 Pro against Gemini 3.1 Pro: 1 positive reply in 597 emails against 8 in 17,418, under 5 on one side, so no ratio.",
         "Same clients, same months, GLM 5.2 Pro against DeepSeek V4 Pro: 1 positive reply in 599 emails against 1 in 5,050, under 5 on one side, so no ratio.",
         "Same clients, same months, GLM 5.2 Pro against DeepSeek V4 Flash: 0 positive replies in 22 emails against 0 in 343, under 5 on one side, so no ratio."
       ],
@@ -217,9 +217,9 @@
             {
               "key": "gemini-3.1-pro",
               "label": "Gemini 3.1 Pro",
-              "value": 4.4,
+              "value": 4.3,
               "display": "0.04%",
-              "note": "35 positive replies · 79,715 emails",
+              "note": "35 positive replies · 81,177 emails",
               "thin": false
             },
             {
@@ -295,7 +295,7 @@
               "thin": true
             }
           ],
-          "note": "Only people we started writing to at least 21 days before the read (before Sep 11) count, with every positive reply and website visit they sent since. A figure needs 1 positive reply (10 website visits) behind it; below that it reads Learning."
+          "note": "Only people we started writing to at least 21 days before the read (before Sep 12) count, with every positive reply and website visit they sent since. A figure needs 1 positive reply (10 website visits) behind it; below that it reads Learning. A website visit is a click our link-scanner check judged human, which only the emails we send ourselves can carry: website-visit figures leave out the emails sent through the provider, whose clicks are mostly scanners and cannot be screened."
         },
         {
           "kind": "months",
@@ -338,7 +338,7 @@
               }
             ]
           },
-          "note": "Only people we started writing to at least 21 days before the read (before Sep 11) count, with every positive reply and website visit they sent since. A figure needs 1 positive reply (10 website visits) behind it; below that it reads Learning."
+          "note": "Only people we started writing to at least 21 days before the read (before Sep 12) count, with every positive reply and website visit they sent since. A figure needs 1 positive reply (10 website visits) behind it; below that it reads Learning. A website visit is a click our link-scanner check judged human, which only the emails we send ourselves can carry: website-visit figures leave out the emails sent through the provider, whose clicks are mostly scanners and cannot be screened."
         }
       ],
       "conclusion": [
@@ -361,12 +361,12 @@
       "goal": "roi",
       "question": "What does a positive reply cost on average?",
       "status": "measured",
-      "headline": "$63 per positive reply on average since inception, across all our emails.",
+      "headline": "$64 per positive reply on average since inception, across all our emails.",
       "winner": null,
       "result": {
-        "display": "$63",
+        "display": "$64",
         "unit": "per positive reply, average since inception",
-        "sample": "38 positive replies · 96,616 emails to date"
+        "sample": "38 positive replies · 98,078 emails to date"
       },
       "crowned": true,
       "charts": [
@@ -398,23 +398,23 @@
             },
             {
               "label": "Jul",
-              "value": 54.02,
+              "value": 54.01,
               "display": "$54",
               "note": "11 positive replies · 22,501 emails",
               "thin": false
             },
             {
               "label": "Aug",
-              "value": 32.82,
+              "value": 32.81,
               "display": "$33",
               "note": "12 positive replies · 16,412 emails",
               "thin": false
             },
             {
               "label": "Sep",
-              "value": 109.09,
-              "display": "$109",
-              "note": "3 positive replies · 17,407 emails · month in progress",
+              "value": 117.24,
+              "display": "$117",
+              "note": "3 positive replies · 18,869 emails · month in progress",
               "thin": false,
               "partial": true
             }
@@ -459,15 +459,15 @@
               },
               {
                 "label": "Sep",
-                "value": 63.19,
-                "display": "$63",
-                "note": "38 positive replies · 96,616 emails to date · month in progress",
+                "value": 63.84,
+                "display": "$64",
+                "note": "38 positive replies · 98,078 emails to date · month in progress",
                 "thin": false,
                 "partial": true
               }
             ]
           },
-          "note": "Only people we started writing to at least 21 days before the read (before Sep 11) count, with every positive reply and website visit they sent since. A figure needs 1 positive reply (10 website visits) behind it; below that it reads Learning."
+          "note": "Only people we started writing to at least 21 days before the read (before Sep 12) count, with every positive reply and website visit they sent since. A figure needs 1 positive reply (10 website visits) behind it; below that it reads Learning. A website visit is a click our link-scanner check judged human, which only the emails we send ourselves can carry: website-visit figures leave out the emails sent through the provider, whose clicks are mostly scanners and cannot be screened."
         }
       ],
       "conclusion": [
@@ -475,7 +475,7 @@
       ],
       "verdict": {
         "kind": "conclusion",
-        "reason": "A measurement on 38 positive replies: 95% interval $46 to $89 per positive reply."
+        "reason": "A measurement on 38 positive replies: 95% interval $47 to $90 per positive reply."
       }
     },
     {
@@ -490,7 +490,7 @@
       "result": {
         "display": "$45",
         "unit": "per positive reply, first email only",
-        "sample": "18 positive replies · $810 spent"
+        "sample": "18 positive replies · $819 spent"
       },
       "crowned": false,
       "charts": [
@@ -501,34 +501,34 @@
           "points": [
             {
               "label": "First email only",
-              "value": 45,
+              "value": 45.49,
               "display": "$45",
-              "note": "18 positive replies · $810 spent",
+              "note": "18 positive replies · $819 spent",
               "thin": false
             },
             {
               "label": "+ 1 follow-up",
-              "value": 52.45,
-              "display": "$52",
-              "note": "30 positive replies · $1,574 spent",
+              "value": 53.01,
+              "display": "$53",
+              "note": "30 positive replies · $1,590 spent",
               "thin": false
             },
             {
               "label": "+ 2 follow-ups",
-              "value": 61.63,
+              "value": 62.29,
               "display": "$62",
-              "note": "37 positive replies · $2,280 spent",
+              "note": "37 positive replies · $2,305 spent",
               "thin": false
             },
             {
               "label": "+ 3 follow-ups",
-              "value": 61.63,
+              "value": 62.29,
               "display": "$62",
-              "note": "37 positive replies · $2,280 spent",
+              "note": "37 positive replies · $2,305 spent",
               "thin": false
             }
           ],
-          "note": "Only people we started writing to at least 21 days before the read (before Sep 11) count, with every positive reply and website visit they sent since. A figure needs 1 positive reply (10 website visits) behind it; below that it reads Learning."
+          "note": "Only people we started writing to at least 21 days before the read (before Sep 12) count, with every positive reply and website visit they sent since. A figure needs 1 positive reply (10 website visits) behind it; below that it reads Learning. A website visit is a click our link-scanner check judged human, which only the emails we send ourselves can carry: website-visit figures leave out the emails sent through the provider, whose clicks are mostly scanners and cannot be screened."
         },
         {
           "kind": "bars",
@@ -537,27 +537,27 @@
           "points": [
             {
               "label": "First email",
-              "value": 45,
+              "value": 45.49,
               "display": "$45",
-              "note": "18 positive replies · 32,742 emails",
+              "note": "18 positive replies · 33,267 emails",
               "thin": false
             },
             {
               "label": "Follow-up 1",
-              "value": 63.62,
+              "value": 64.28,
               "display": "$64",
-              "note": "12 positive replies · 30,913 emails",
+              "note": "12 positive replies · 31,390 emails",
               "thin": false
             },
             {
               "label": "Follow-up 2",
-              "value": 100.98,
-              "display": "$101",
-              "note": "7 positive replies · 28,682 emails",
+              "value": 102.08,
+              "display": "$102",
+              "note": "7 positive replies · 29,142 emails",
               "thin": false
             }
           ],
-          "note": "Only people we started writing to at least 21 days before the read (before Sep 11) count, with every positive reply and website visit they sent since. A figure needs 1 positive reply (10 website visits) behind it; below that it reads Learning."
+          "note": "Only people we started writing to at least 21 days before the read (before Sep 12) count, with every positive reply and website visit they sent since. A figure needs 1 positive reply (10 website visits) behind it; below that it reads Learning. A website visit is a click our link-scanner check judged human, which only the emails we send ourselves can carry: website-visit figures leave out the emails sent through the provider, whose clicks are mostly scanners and cannot be screened."
         }
       ],
       "conclusion": [
@@ -581,7 +581,7 @@
       "result": {
         "display": "0.11%",
         "unit": "of people got a positive reply, all follow-ups",
-        "sample": "37 positive replies from 32,742 people"
+        "sample": "37 positive replies from 33,267 people"
       },
       "crowned": true,
       "charts": [
@@ -592,34 +592,34 @@
           "points": [
             {
               "label": "First email only",
-              "value": 5.5,
+              "value": 5.4,
               "display": "0.05%",
-              "note": "18 positive replies from 32,742 people",
+              "note": "18 positive replies from 33,267 people",
               "thin": false
             },
             {
               "label": "+ 1 follow-up",
-              "value": 9.2,
+              "value": 9,
               "display": "0.09%",
-              "note": "30 positive replies from 32,742 people",
+              "note": "30 positive replies from 33,267 people",
               "thin": false
             },
             {
               "label": "+ 2 follow-ups",
-              "value": 11.3,
+              "value": 11.1,
               "display": "0.11%",
-              "note": "37 positive replies from 32,742 people",
+              "note": "37 positive replies from 33,267 people",
               "thin": false
             },
             {
               "label": "+ 3 follow-ups",
-              "value": 11.3,
+              "value": 11.1,
               "display": "0.11%",
-              "note": "37 positive replies from 32,742 people",
+              "note": "37 positive replies from 33,267 people",
               "thin": false
             }
           ],
-          "note": "Only people we started writing to at least 21 days before the read (before Sep 11) count, with every positive reply and website visit they sent since. A figure needs 1 positive reply (10 website visits) behind it; below that it reads Learning."
+          "note": "Only people we started writing to at least 21 days before the read (before Sep 12) count, with every positive reply and website visit they sent since. A figure needs 1 positive reply (10 website visits) behind it; below that it reads Learning. A website visit is a click our link-scanner check judged human, which only the emails we send ourselves can carry: website-visit figures leave out the emails sent through the provider, whose clicks are mostly scanners and cannot be screened."
         }
       ],
       "conclusion": [
@@ -640,12 +640,12 @@
       "goal": "roi",
       "question": "Should we track opens for the cheapest positive reply?",
       "status": "measured",
-      "headline": "Tracking off leads: 0.13% of people replied positively, against 0.10% (p 0.40). Noise so far.",
+      "headline": "Tracking off leads: 0.12% of people replied positively, against 0.10% (p 0.48). Noise so far.",
       "winner": "Tracking off",
       "result": {
-        "display": "0.13%",
+        "display": "0.12%",
         "unit": "with tracking off, 0.10% on",
-        "sample": "p 0.40, 48,259 people"
+        "sample": "p 0.48, 49,063 people"
       },
       "crowned": false,
       "charts": [
@@ -656,9 +656,9 @@
           "points": [
             {
               "label": "Tracking off",
-              "value": 0.13,
-              "display": "0.13%",
-              "note": "28 of 21,866 people",
+              "value": 0.12,
+              "display": "0.12%",
+              "note": "28 of 22,670 people",
               "thin": false
             },
             {
@@ -669,16 +669,16 @@
               "thin": false
             }
           ],
-          "note": "People we started writing to in the 21 days before the read are left out (from Sep 11 on), at least the 21 days every price here waits for replies and visits to arrive."
+          "note": "People we started writing to in the 21 days before the read are left out (from Sep 12 on), at least the 21 days every price here waits for replies and visits to arrive."
         }
       ],
       "conclusion": [
         "An email costs the same with or without the pixel, so the cheaper positive reply is the arm with more of them per person.",
-        "Tracking was on from 2026-02-10 to 2026-06-28 and off until 2026-09-10: two periods, not a split test, over 48,259 people."
+        "Tracking was on from 2026-02-10 to 2026-06-28 and off until 2026-09-11: two periods, not a split test, over 49,063 people."
       ],
       "verdict": {
         "kind": "noise",
-        "reason": "p 0.40: a gap chance alone produces often, and the two periods are not a split test."
+        "reason": "p 0.48: a gap chance alone produces often, and the two periods are not a split test."
       }
     },
     {
@@ -693,7 +693,7 @@
       "result": {
         "display": "0.40%",
         "unit": "with tracking off, 0.29% on",
-        "sample": "p 0.03, 48,259 people"
+        "sample": "p 0.03, 49,063 people"
       },
       "crowned": false,
       "charts": [
@@ -706,7 +706,7 @@
               "label": "Tracking off",
               "value": 0.4,
               "display": "0.40%",
-              "note": "88 of 21,866 people",
+              "note": "91 of 22,670 people",
               "thin": false
             },
             {
@@ -717,7 +717,7 @@
               "thin": false
             }
           ],
-          "note": "People we started writing to in the 21 days before the read are left out (from Sep 11 on), at least the 21 days every price here waits for replies and visits to arrive."
+          "note": "People we started writing to in the 21 days before the read are left out (from Sep 12 on), at least the 21 days every price here waits for replies and visits to arrive."
         },
         {
           "kind": "bars",
@@ -726,9 +726,9 @@
           "points": [
             {
               "label": "Tracking off",
-              "value": 9.13,
-              "display": "9.13%",
-              "note": "1,997 of 21,866 people",
+              "value": 9.1,
+              "display": "9.10%",
+              "note": "2,064 of 22,670 people",
               "thin": false
             },
             {
@@ -739,12 +739,12 @@
               "thin": false
             }
           ],
-          "note": "People we started writing to in the 21 days before the read are left out (from Sep 11 on), at least the 21 days every price here waits for replies and visits to arrive."
+          "note": "People we started writing to in the 21 days before the read are left out (from Sep 12 on), at least the 21 days every price here waits for replies and visits to arrive."
         }
       ],
       "conclusion": [
         "Auto-replies and out-of-office messages are not counted as replies.",
-        "Tracking was on from 2026-02-10 to 2026-06-28 and off until 2026-09-10: two periods, not a split test, over 48,259 people."
+        "Tracking was on from 2026-02-10 to 2026-06-28 and off until 2026-09-11: two periods, not a split test, over 49,063 people."
       ],
       "verdict": {
         "kind": "signal",
@@ -791,9 +791,9 @@
             {
               "key": "blind-discovery-email-v9",
               "label": "Blind discovery v9",
-              "value": 26.91,
+              "value": 27.44,
               "display": "$27",
-              "note": "5 positive replies · 7,466 emails",
+              "note": "5 positive replies · 7,671 emails",
               "thin": false
             },
             {
@@ -807,9 +807,9 @@
             {
               "key": "blind-discovery-email-v26",
               "label": "Blind discovery v26",
-              "value": 31.12,
-              "display": "$31",
-              "note": "14 positive replies · 21,061 emails",
+              "value": 32.67,
+              "display": "$33",
+              "note": "14 positive replies · 22,317 emails",
               "thin": false
             },
             {
@@ -853,7 +853,7 @@
               "thin": false
             }
           ],
-          "note": "Only people we started writing to at least 21 days before the read (before Sep 11) count, with every positive reply and website visit they sent since. A figure needs 1 positive reply (10 website visits) behind it; below that it reads Learning."
+          "note": "Only people we started writing to at least 21 days before the read (before Sep 12) count, with every positive reply and website visit they sent since. A figure needs 1 positive reply (10 website visits) behind it; below that it reads Learning. A website visit is a click our link-scanner check judged human, which only the emails we send ourselves can carry: website-visit figures leave out the emails sent through the provider, whose clicks are mostly scanners and cannot be screened."
         },
         {
           "kind": "months",
@@ -888,7 +888,7 @@
               }
             ]
           },
-          "note": "Only people we started writing to at least 21 days before the read (before Sep 11) count, with every positive reply and website visit they sent since. A figure needs 1 positive reply (10 website visits) behind it; below that it reads Learning."
+          "note": "Only people we started writing to at least 21 days before the read (before Sep 12) count, with every positive reply and website visit they sent since. A figure needs 1 positive reply (10 website visits) behind it; below that it reads Learning. A website visit is a click our link-scanner check judged human, which only the emails we send ourselves can carry: website-visit figures leave out the emails sent through the provider, whose clicks are mostly scanners and cannot be screened."
         }
       ],
       "conclusion": [
@@ -945,27 +945,27 @@
               "thin": false
             },
             {
-              "key": "blind-discovery-email-v9",
-              "label": "Blind discovery v9",
-              "value": 6.7,
-              "display": "0.07%",
-              "note": "5 positive replies · 7,466 emails",
-              "thin": false
-            },
-            {
-              "key": "blind-discovery-email-v26",
-              "label": "Blind discovery v26",
-              "value": 6.6,
-              "display": "0.07%",
-              "note": "14 positive replies · 21,061 emails",
-              "thin": false
-            },
-            {
               "key": "blind-discovery-email-v15",
               "label": "Blind discovery v15",
               "value": 6.5,
               "display": "0.07%",
               "note": "8 positive replies · 12,274 emails",
+              "thin": false
+            },
+            {
+              "key": "blind-discovery-email-v9",
+              "label": "Blind discovery v9",
+              "value": 6.5,
+              "display": "0.07%",
+              "note": "5 positive replies · 7,671 emails",
+              "thin": false
+            },
+            {
+              "key": "blind-discovery-email-v26",
+              "label": "Blind discovery v26",
+              "value": 6.3,
+              "display": "0.06%",
+              "note": "14 positive replies · 22,317 emails",
               "thin": false
             },
             {
@@ -1077,7 +1077,7 @@
               "label": "Blind discovery v10",
               "value": 0,
               "display": "0.00%",
-              "note": "0 positive replies · 881 emails",
+              "note": "0 positive replies · 882 emails",
               "thin": true
             },
             {
@@ -1169,7 +1169,7 @@
               "thin": true
             }
           ],
-          "note": "Only people we started writing to at least 21 days before the read (before Sep 11) count, with every positive reply and website visit they sent since. A figure needs 1 positive reply (10 website visits) behind it; below that it reads Learning."
+          "note": "Only people we started writing to at least 21 days before the read (before Sep 12) count, with every positive reply and website visit they sent since. A figure needs 1 positive reply (10 website visits) behind it; below that it reads Learning. A website visit is a click our link-scanner check judged human, which only the emails we send ourselves can carry: website-visit figures leave out the emails sent through the provider, whose clicks are mostly scanners and cannot be screened."
         },
         {
           "kind": "months",
@@ -1226,7 +1226,7 @@
               }
             ]
           },
-          "note": "Only people we started writing to at least 21 days before the read (before Sep 11) count, with every positive reply and website visit they sent since. A figure needs 1 positive reply (10 website visits) behind it; below that it reads Learning."
+          "note": "Only people we started writing to at least 21 days before the read (before Sep 12) count, with every positive reply and website visit they sent since. A figure needs 1 positive reply (10 website visits) behind it; below that it reads Learning. A website visit is a click our link-scanner check judged human, which only the emails we send ourselves can carry: website-visit figures leave out the emails sent through the provider, whose clicks are mostly scanners and cannot be screened."
         }
       ],
       "conclusion": [
@@ -1246,12 +1246,12 @@
       "goal": "rate",
       "question": "Does naming the client get more positive replies?",
       "status": "measured",
-      "headline": "Client not named leads: a 0.05% positive reply rate, against 0.02% with the client named (p 0.04). A signal to confirm, not yet a conclusion.",
+      "headline": "Client not named leads: a 0.05% positive reply rate, against 0.02% with the client named (p 0.05). Noise so far.",
       "winner": "Client not named",
       "result": {
         "display": "0.05%",
         "unit": "with the client not named, 0.02% named",
-        "sample": "p 0.04, 96,610 emails"
+        "sample": "p 0.05, 98,072 emails"
       },
       "crowned": false,
       "charts": [
@@ -1262,9 +1262,9 @@
           "points": [
             {
               "label": "Client not named",
-              "value": 5.04,
+              "value": 4.91,
               "display": "0.05%",
-              "note": "28 positive replies · 55,578 emails",
+              "note": "28 positive replies · 57,040 emails",
               "thin": false
             },
             {
@@ -1275,19 +1275,19 @@
               "thin": false
             }
           ],
-          "note": "Only people we started writing to at least 21 days before the read (before Sep 11) count, with every positive reply and website visit they sent since. A figure needs 1 positive reply (10 website visits) behind it; below that it reads Learning."
+          "note": "Only people we started writing to at least 21 days before the read (before Sep 12) count, with every positive reply and website visit they sent since. A figure needs 1 positive reply (10 website visits) behind it; below that it reads Learning. A website visit is a click our link-scanner check judged human, which only the emails we send ourselves can carry: website-visit figures leave out the emails sent through the provider, whose clicks are mostly scanners and cannot be screened."
         }
       ],
       "conclusion": [
-        "Client not named: 28 positive replies · 55,578 emails, $1,337 spent, over 16 template versions whose prompt tells the model never to name the client or give its website.",
+        "Client not named: 28 positive replies · 57,040 emails, $1,362 spent, over 16 template versions whose prompt tells the model never to name the client or give its website.",
         "Client named: 10 positive replies · 41,032 emails, $1,064 spent, over 15 template versions whose prompt tells the model to name the client, some with a link to its website.",
         "6 emails whose template was not recorded are left out.",
         "The two sides ran for different clients, audiences and months: this is not a split test.",
         "The p-value asks whether positive replies per email differ between the two sides."
       ],
       "verdict": {
-        "kind": "signal",
-        "reason": "Client not named against Client named, positive replies per email: p 0.049, but on the same clients in the same months it reads 1.57x (p 0.245): the gap may be the clients'."
+        "kind": "noise",
+        "reason": "Client not named against Client named, positive replies per email: p 0.069, a gap chance alone produces often."
       }
     },
     {
@@ -1297,10 +1297,10 @@
       "goal": "roi",
       "question": "Does naming the client get a cheaper positive reply?",
       "status": "measured",
-      "headline": "Client not named leads at $48 per positive reply, against $106 with the client named (p 0.03). A signal to confirm, not yet a conclusion.",
+      "headline": "Client not named leads at $49 per positive reply, against $106 with the client named (p 0.03). A signal to confirm, not yet a conclusion.",
       "winner": "Client not named",
       "result": {
-        "display": "$48",
+        "display": "$49",
         "unit": "per positive reply with the client not named, $106 named",
         "sample": "p 0.03, 38 positive replies"
       },
@@ -1313,9 +1313,9 @@
           "points": [
             {
               "label": "Client not named",
-              "value": 47.76,
-              "display": "$48",
-              "note": "28 positive replies · 55,578 emails",
+              "value": 48.63,
+              "display": "$49",
+              "note": "28 positive replies · 57,040 emails",
               "thin": false
             },
             {
@@ -1326,11 +1326,11 @@
               "thin": false
             }
           ],
-          "note": "Only people we started writing to at least 21 days before the read (before Sep 11) count, with every positive reply and website visit they sent since. A figure needs 1 positive reply (10 website visits) behind it; below that it reads Learning."
+          "note": "Only people we started writing to at least 21 days before the read (before Sep 12) count, with every positive reply and website visit they sent since. A figure needs 1 positive reply (10 website visits) behind it; below that it reads Learning. A website visit is a click our link-scanner check judged human, which only the emails we send ourselves can carry: website-visit figures leave out the emails sent through the provider, whose clicks are mostly scanners and cannot be screened."
         }
       ],
       "conclusion": [
-        "Client not named: 28 positive replies · 55,578 emails, $1,337 spent, over 16 template versions whose prompt tells the model never to name the client or give its website.",
+        "Client not named: 28 positive replies · 57,040 emails, $1,362 spent, over 16 template versions whose prompt tells the model never to name the client or give its website.",
         "Client named: 10 positive replies · 41,032 emails, $1,064 spent, over 15 template versions whose prompt tells the model to name the client, some with a link to its website.",
         "6 emails whose template was not recorded are left out.",
         "The two sides ran for different clients, audiences and months: this is not a split test.",
@@ -1349,12 +1349,12 @@
       "goal": "roi",
       "question": "Does the layout of the first email change what a positive reply costs?",
       "status": "measured",
-      "headline": "Double line breaks leads at $57 per positive reply. Noise so far.",
+      "headline": "Double line breaks leads at $58 per positive reply. Noise so far.",
       "winner": "Double line breaks",
       "result": {
-        "display": "$57",
+        "display": "$58",
         "unit": "per positive reply",
-        "sample": "35 positive replies · 77,439 emails"
+        "sample": "35 positive replies · 78,724 emails"
       },
       "crowned": false,
       "charts": [
@@ -1365,27 +1365,27 @@
           "points": [
             {
               "label": "Double line breaks",
-              "value": 57.39,
-              "display": "$57",
-              "note": "35 positive replies · 77,439 emails",
+              "value": 58.01,
+              "display": "$58",
+              "note": "35 positive replies · 78,724 emails",
               "thin": false
             },
             {
               "label": "One block",
-              "value": 128.53,
+              "value": 129.4,
               "display": "$129",
-              "note": "3 positive replies · 18,940 emails",
+              "note": "3 positive replies · 19,117 emails",
               "thin": false
             },
             {
               "label": "Single line breaks",
-              "value": 128.53,
+              "value": 129.4,
               "display": "None yet",
               "note": "0 positive replies · 231 emails, $6.82 spent",
               "thin": true
             }
           ],
-          "note": "Only people we started writing to at least 21 days before the read (before Sep 11) count, with every positive reply and website visit they sent since. A figure needs 1 positive reply (10 website visits) behind it; below that it reads Learning."
+          "note": "Only people we started writing to at least 21 days before the read (before Sep 12) count, with every positive reply and website visit they sent since. A figure needs 1 positive reply (10 website visits) behind it; below that it reads Learning. A website visit is a click our link-scanner check judged human, which only the emails we send ourselves can carry: website-visit figures leave out the emails sent through the provider, whose clicks are mostly scanners and cannot be screened."
         },
         {
           "kind": "bars",
@@ -1414,7 +1414,7 @@
               "thin": true
             }
           ],
-          "note": "Only people we started writing to at least 21 days before the read (before Sep 11) count, with every positive reply and website visit they sent since. A figure needs 1 positive reply (10 website visits) behind it; below that it reads Learning."
+          "note": "Only people we started writing to at least 21 days before the read (before Sep 12) count, with every positive reply and website visit they sent since. A figure needs 1 positive reply (10 website visits) behind it; below that it reads Learning. A website visit is a click our link-scanner check judged human, which only the emails we send ourselves can carry: website-visit figures leave out the emails sent through the provider, whose clicks are mostly scanners and cannot be screened."
         },
         {
           "kind": "bars",
@@ -1423,33 +1423,33 @@
           "points": [
             {
               "label": "Double line breaks",
-              "value": 55.58,
+              "value": 56.22,
               "display": "$56",
-              "note": "34 positive replies · 71,809 emails",
+              "note": "34 positive replies · 73,094 emails",
               "thin": false
             },
             {
               "label": "One block",
-              "value": 95.72,
-              "display": "$96",
-              "note": "3 positive replies · 13,587 emails",
+              "value": 96.59,
+              "display": "$97",
+              "note": "3 positive replies · 13,764 emails",
               "thin": false
             },
             {
               "label": "Single line breaks",
-              "value": 95.72,
+              "value": 96.59,
               "display": "None yet",
               "note": "0 positive replies · 228 emails, $6.77 spent",
               "thin": true
             }
           ],
-          "note": "Only people we started writing to at least 21 days before the read (before Sep 11) count, with every positive reply and website visit they sent since. A figure needs 1 positive reply (10 website visits) behind it; below that it reads Learning."
+          "note": "Only people we started writing to at least 21 days before the read (before Sep 12) count, with every positive reply and website visit they sent since. A figure needs 1 positive reply (10 website visits) behind it; below that it reads Learning. A website visit is a click our link-scanner check judged human, which only the emails we send ourselves can carry: website-visit figures leave out the emails sent through the provider, whose clicks are mostly scanners and cannot be screened."
         }
       ],
       "conclusion": [
-        "Double line breaks: 35 positive replies · 77,439 emails, $2,009 spent.",
+        "Double line breaks: 35 positive replies · 78,724 emails, $2,031 spent.",
         "Flash tier: Double line breaks is cheapest at $112 per positive reply (1 positive reply · 5,504 emails).",
-        "Pro tier: Double line breaks is cheapest at $56 per positive reply (34 positive replies · 71,809 emails).",
+        "Pro tier: Double line breaks is cheapest at $56 per positive reply (34 positive replies · 73,094 emails).",
         "Every email of a sequence is filed under how its first email looked, and the sequence's positive replies with it. Three layouts: one block (no line break at all), single line breaks (a new line with no empty line), double line breaks (an empty line between paragraphs). Classified by a regex on the text of the first email, no LLM involved.",
         "The model chose this on its own until Sep 28, 2026, when the templates started requiring a greeting and blank-line paragraphs. Every email here was written before, the last in Oct.",
         "6 emails whose first email text is not on record are left out.",
@@ -1458,7 +1458,7 @@
       ],
       "verdict": {
         "kind": "noise",
-        "reason": "Double line breaks against One block, positive replies per dollar: p 0.266, a gap chance alone produces often."
+        "reason": "Double line breaks against One block, positive replies per dollar: p 0.265, a gap chance alone produces often."
       }
     },
     {
@@ -1468,12 +1468,12 @@
       "goal": "roi",
       "question": "Does the way the first email opens change what a positive reply costs?",
       "status": "measured",
-      "headline": "Greeting + first name leads at $49 per positive reply. Noise so far.",
+      "headline": "Greeting + first name leads at $50 per positive reply. Noise so far.",
       "winner": "Greeting + first name",
       "result": {
-        "display": "$49",
+        "display": "$50",
         "unit": "per positive reply",
-        "sample": "21 positive replies · 40,762 emails"
+        "sample": "21 positive replies · 41,279 emails"
       },
       "crowned": false,
       "charts": [
@@ -1484,27 +1484,27 @@
           "points": [
             {
               "label": "Greeting + first name",
-              "value": 49.34,
-              "display": "$49",
-              "note": "21 positive replies · 40,762 emails",
+              "value": 49.75,
+              "display": "$50",
+              "note": "21 positive replies · 41,279 emails",
               "thin": false
             },
             {
               "label": "First name alone",
-              "value": 75.74,
-              "display": "$76",
-              "note": "14 positive replies · 42,752 emails",
+              "value": 76.86,
+              "display": "$77",
+              "note": "14 positive replies · 43,696 emails",
               "thin": false
             },
             {
               "label": "No greeting",
-              "value": 101.56,
+              "value": 101.57,
               "display": "$102",
-              "note": "3 positive replies · 13,096 emails",
+              "note": "3 positive replies · 13,097 emails",
               "thin": false
             }
           ],
-          "note": "Only people we started writing to at least 21 days before the read (before Sep 11) count, with every positive reply and website visit they sent since. A figure needs 1 positive reply (10 website visits) behind it; below that it reads Learning."
+          "note": "Only people we started writing to at least 21 days before the read (before Sep 12) count, with every positive reply and website visit they sent since. A figure needs 1 positive reply (10 website visits) behind it; below that it reads Learning. A website visit is a click our link-scanner check judged human, which only the emails we send ourselves can carry: website-visit figures leave out the emails sent through the provider, whose clicks are mostly scanners and cannot be screened."
         },
         {
           "kind": "bars",
@@ -1533,7 +1533,7 @@
               "thin": true
             }
           ],
-          "note": "Only people we started writing to at least 21 days before the read (before Sep 11) count, with every positive reply and website visit they sent since. A figure needs 1 positive reply (10 website visits) behind it; below that it reads Learning."
+          "note": "Only people we started writing to at least 21 days before the read (before Sep 12) count, with every positive reply and website visit they sent since. A figure needs 1 positive reply (10 website visits) behind it; below that it reads Learning. A website visit is a click our link-scanner check judged human, which only the emails we send ourselves can carry: website-visit figures leave out the emails sent through the provider, whose clicks are mostly scanners and cannot be screened."
         },
         {
           "kind": "bars",
@@ -1542,33 +1542,33 @@
           "points": [
             {
               "label": "Greeting + first name",
-              "value": 48.44,
-              "display": "$48",
-              "note": "21 positive replies · 40,091 emails",
+              "value": 48.86,
+              "display": "$49",
+              "note": "21 positive replies · 40,608 emails",
               "thin": false
             },
             {
               "label": "First name alone",
-              "value": 68.89,
-              "display": "$69",
-              "note": "14 positive replies · 37,406 emails",
+              "value": 70.02,
+              "display": "$70",
+              "note": "14 positive replies · 38,350 emails",
               "thin": false
             },
             {
               "label": "No greeting",
-              "value": 100.85,
+              "value": 100.86,
               "display": "$101",
-              "note": "2 positive replies · 8,127 emails",
+              "note": "2 positive replies · 8,128 emails",
               "thin": false
             }
           ],
-          "note": "Only people we started writing to at least 21 days before the read (before Sep 11) count, with every positive reply and website visit they sent since. A figure needs 1 positive reply (10 website visits) behind it; below that it reads Learning."
+          "note": "Only people we started writing to at least 21 days before the read (before Sep 12) count, with every positive reply and website visit they sent since. A figure needs 1 positive reply (10 website visits) behind it; below that it reads Learning. A website visit is a click our link-scanner check judged human, which only the emails we send ourselves can carry: website-visit figures leave out the emails sent through the provider, whose clicks are mostly scanners and cannot be screened."
         }
       ],
       "conclusion": [
-        "Greeting + first name: 21 positive replies · 40,762 emails, $1,036 spent.",
+        "Greeting + first name: 21 positive replies · 41,279 emails, $1,045 spent.",
         "Flash tier: No greeting is cheapest at $103 per positive reply (1 positive reply · 4,969 emails).",
-        "Pro tier: Greeting + first name is cheapest at $48 per positive reply (21 positive replies · 40,091 emails).",
+        "Pro tier: Greeting + first name is cheapest at $49 per positive reply (21 positive replies · 40,608 emails).",
         "Every email of a sequence is filed under how its first email looked, and the sequence's positive replies with it. A greeting word in any language we write in (Hi, Hallo, Bonjour...) counts as a greeting whatever follows; a first name followed by a comma, a colon or a dash, with no greeting word before it (\"Marie, most clinics...\"), counts as the first name alone. Classified by a regex on the text of the first email, no LLM involved.",
         "The model chose this on its own until Sep 28, 2026, when the templates started requiring a greeting and blank-line paragraphs. Every email here was written before, the last in Oct.",
         "6 emails whose first email text is not on record are left out.",
@@ -1577,7 +1577,7 @@
       ],
       "verdict": {
         "kind": "noise",
-        "reason": "Greeting + first name against First name alone, positive replies per dollar: p 0.239, a gap chance alone produces often."
+        "reason": "Greeting + first name against First name alone, positive replies per dollar: p 0.238, a gap chance alone produces often."
       }
     },
     {
@@ -1587,12 +1587,12 @@
       "goal": "roi",
       "question": "Do dashes in the first email change what a positive reply costs, and how often one comes?",
       "status": "measured",
-      "headline": "Em dash leads at $48 per positive reply. Noise so far.",
+      "headline": "Em dash leads at $49 per positive reply. Noise so far.",
       "winner": "Em dash",
       "result": {
-        "display": "$48",
+        "display": "$49",
         "unit": "per positive reply",
-        "sample": "14 positive replies · 27,735 emails"
+        "sample": "14 positive replies · 28,064 emails"
       },
       "crowned": false,
       "charts": [
@@ -1603,27 +1603,27 @@
           "points": [
             {
               "label": "Em dash",
-              "value": 48.15,
-              "display": "$48",
-              "note": "14 positive replies · 27,735 emails",
+              "value": 48.54,
+              "display": "$49",
+              "note": "14 positive replies · 28,064 emails",
               "thin": false
             },
             {
               "label": "No dash",
-              "value": 70.79,
-              "display": "$71",
-              "note": "24 positive replies · 67,829 emails",
+              "value": 71.58,
+              "display": "$72",
+              "note": "24 positive replies · 68,962 emails",
               "thin": false
             },
             {
               "label": "En dash",
-              "value": 70.79,
+              "value": 71.58,
               "display": "None yet",
               "note": "0 positive replies · 1,046 emails, $28 spent",
               "thin": true
             }
           ],
-          "note": "Only people we started writing to at least 21 days before the read (before Sep 11) count, with every positive reply and website visit they sent since. A figure needs 1 positive reply (10 website visits) behind it; below that it reads Learning."
+          "note": "Only people we started writing to at least 21 days before the read (before Sep 12) count, with every positive reply and website visit they sent since. A figure needs 1 positive reply (10 website visits) behind it; below that it reads Learning. A website visit is a click our link-scanner check judged human, which only the emails we send ourselves can carry: website-visit figures leave out the emails sent through the provider, whose clicks are mostly scanners and cannot be screened."
         },
         {
           "kind": "bars",
@@ -1634,14 +1634,14 @@
               "label": "Em dash",
               "value": 5,
               "display": "0.05%",
-              "note": "14 positive replies · 27,735 emails",
+              "note": "14 positive replies · 28,064 emails",
               "thin": false
             },
             {
               "label": "No dash",
               "value": 3.5,
               "display": "0.04%",
-              "note": "24 positive replies · 67,829 emails",
+              "note": "24 positive replies · 68,962 emails",
               "thin": false
             },
             {
@@ -1652,7 +1652,7 @@
               "thin": true
             }
           ],
-          "note": "Only people we started writing to at least 21 days before the read (before Sep 11) count, with every positive reply and website visit they sent since. A figure needs 1 positive reply (10 website visits) behind it; below that it reads Learning."
+          "note": "Only people we started writing to at least 21 days before the read (before Sep 12) count, with every positive reply and website visit they sent since. A figure needs 1 positive reply (10 website visits) behind it; below that it reads Learning. A website visit is a click our link-scanner check judged human, which only the emails we send ourselves can carry: website-visit figures leave out the emails sent through the provider, whose clicks are mostly scanners and cannot be screened."
         },
         {
           "kind": "bars",
@@ -1681,7 +1681,7 @@
               "thin": true
             }
           ],
-          "note": "Only people we started writing to at least 21 days before the read (before Sep 11) count, with every positive reply and website visit they sent since. A figure needs 1 positive reply (10 website visits) behind it; below that it reads Learning."
+          "note": "Only people we started writing to at least 21 days before the read (before Sep 12) count, with every positive reply and website visit they sent since. A figure needs 1 positive reply (10 website visits) behind it; below that it reads Learning. A website visit is a click our link-scanner check judged human, which only the emails we send ourselves can carry: website-visit figures leave out the emails sent through the provider, whose clicks are mostly scanners and cannot be screened."
         },
         {
           "kind": "bars",
@@ -1710,7 +1710,7 @@
               "thin": true
             }
           ],
-          "note": "Only people we started writing to at least 21 days before the read (before Sep 11) count, with every positive reply and website visit they sent since. A figure needs 1 positive reply (10 website visits) behind it; below that it reads Learning."
+          "note": "Only people we started writing to at least 21 days before the read (before Sep 12) count, with every positive reply and website visit they sent since. A figure needs 1 positive reply (10 website visits) behind it; below that it reads Learning. A website visit is a click our link-scanner check judged human, which only the emails we send ourselves can carry: website-visit figures leave out the emails sent through the provider, whose clicks are mostly scanners and cannot be screened."
         },
         {
           "kind": "bars",
@@ -1719,27 +1719,27 @@
           "points": [
             {
               "label": "Em dash",
-              "value": 43.79,
+              "value": 44.19,
               "display": "$44",
-              "note": "14 positive replies · 24,521 emails",
+              "note": "14 positive replies · 24,850 emails",
               "thin": false
             },
             {
               "label": "No dash",
-              "value": 67.06,
-              "display": "$67",
-              "note": "23 positive replies · 60,079 emails",
+              "value": 67.89,
+              "display": "$68",
+              "note": "23 positive replies · 61,212 emails",
               "thin": false
             },
             {
               "label": "En dash",
-              "value": 67.06,
+              "value": 67.89,
               "display": "None yet",
               "note": "0 positive replies · 1,024 emails, $28 spent",
               "thin": true
             }
           ],
-          "note": "Only people we started writing to at least 21 days before the read (before Sep 11) count, with every positive reply and website visit they sent since. A figure needs 1 positive reply (10 website visits) behind it; below that it reads Learning."
+          "note": "Only people we started writing to at least 21 days before the read (before Sep 12) count, with every positive reply and website visit they sent since. A figure needs 1 positive reply (10 website visits) behind it; below that it reads Learning. A website visit is a click our link-scanner check judged human, which only the emails we send ourselves can carry: website-visit figures leave out the emails sent through the provider, whose clicks are mostly scanners and cannot be screened."
         },
         {
           "kind": "bars",
@@ -1748,16 +1748,16 @@
           "points": [
             {
               "label": "Em dash",
-              "value": 5.7,
+              "value": 5.6,
               "display": "0.06%",
-              "note": "14 positive replies · 24,521 emails",
+              "note": "14 positive replies · 24,850 emails",
               "thin": false
             },
             {
               "label": "No dash",
               "value": 3.8,
               "display": "0.04%",
-              "note": "23 positive replies · 60,079 emails",
+              "note": "23 positive replies · 61,212 emails",
               "thin": false
             },
             {
@@ -1768,7 +1768,7 @@
               "thin": true
             }
           ],
-          "note": "Only people we started writing to at least 21 days before the read (before Sep 11) count, with every positive reply and website visit they sent since. A figure needs 1 positive reply (10 website visits) behind it; below that it reads Learning."
+          "note": "Only people we started writing to at least 21 days before the read (before Sep 12) count, with every positive reply and website visit they sent since. A figure needs 1 positive reply (10 website visits) behind it; below that it reads Learning. A website visit is a click our link-scanner check judged human, which only the emails we send ourselves can carry: website-visit figures leave out the emails sent through the provider, whose clicks are mostly scanners and cannot be screened."
         },
         {
           "kind": "bars",
@@ -1821,7 +1821,7 @@
               "label": "Gemini 3.1 Pro",
               "value": 26.1,
               "display": "26%",
-              "note": "20,836 with a dash · 79,715 emails",
+              "note": "21,165 with a dash · 81,177 emails",
               "thin": false
             },
             {
@@ -1860,17 +1860,17 @@
               "thin": false
             }
           ],
-          "note": "Only people we started writing to at least 21 days before the read (before Sep 11) count, with every positive reply and website visit they sent since. A figure needs 1 positive reply (10 website visits) behind it; below that it reads Learning."
+          "note": "Only people we started writing to at least 21 days before the read (before Sep 12) count, with every positive reply and website visit they sent since. A figure needs 1 positive reply (10 website visits) behind it; below that it reads Learning. A website visit is a click our link-scanner check judged human, which only the emails we send ourselves can carry: website-visit figures leave out the emails sent through the provider, whose clicks are mostly scanners and cannot be screened."
         }
       ],
       "conclusion": [
-        "Em dash: 14 positive replies · 27,735 emails, $674 spent, a 0.05% positive reply rate.",
+        "Em dash: 14 positive replies · 28,064 emails, $680 spent, a 0.05% positive reply rate.",
         "Flash tier: No dash is cheapest at $149 per positive reply (1 positive reply · 7,624 emails).",
-        "Pro tier: Em dash is cheapest at $44 per positive reply (14 positive replies · 24,521 emails).",
+        "Pro tier: Em dash is cheapest at $44 per positive reply (14 positive replies · 24,850 emails).",
         "Dashes are a model habit: GLM 5.2 Pro puts one in 100% of its first emails, Claude Fable 5.1 in 0%. Read each tier against the models writing its buckets.",
         "Flash tier: 55% of the em dash emails come from Gemini 3 Flash, 57% of the no-dash emails come from Gemini 3 Flash: one model writes most of both, so within this tier the gap is closer to a dash effect.",
-        "Pro tier: 81% of the em dash emails come from Gemini 3.1 Pro, 98% of the no-dash emails come from Gemini 3.1 Pro: one model writes most of both, so within this tier the gap is closer to a dash effect.",
-        "Three buckets on the first email's text: an em dash, an en dash, neither. A plain hyphen is not a dash. The 1,813 emails whose first email carries both (1.9%, under 2%) are counted with the em dash. Every email of a sequence is filed under its first email, and the sequence's positive replies with it. Classified by a character test on the text, no LLM involved.",
+        "Pro tier: 82% of the em dash emails come from Gemini 3.1 Pro, 98% of the no-dash emails come from Gemini 3.1 Pro: one model writes most of both, so within this tier the gap is closer to a dash effect.",
+        "Three buckets on the first email's text: an em dash, an en dash, neither. A plain hyphen is not a dash. The 1,813 emails whose first email carries both (1.8%, under 2%) are counted with the em dash. Every email of a sequence is filed under its first email, and the sequence's positive replies with it. Classified by a character test on the text, no LLM involved.",
         "Our templates never banned dashes until Sep 29, 2026, when every template started forbidding both. Every email here was generated before that date (the last in Oct).",
         "6 emails whose first email text is not on record are left out.",
         "Positive replies include 4 the client recorded in their CRM (a phone call, a LinkedIn message), as the dashboard counts them.",
@@ -1878,7 +1878,7 @@
       ],
       "verdict": {
         "kind": "noise",
-        "reason": "Em dash against No dash, positive replies per dollar: p 0.280, a gap chance alone produces often."
+        "reason": "Em dash against No dash, positive replies per dollar: p 0.279, a gap chance alone produces often."
       }
     },
     {
@@ -1937,17 +1937,17 @@
             {
               "key": "sales-cold-email-outreach-azalea",
               "label": "Gemini 3.1 Pro · Blind discovery v9",
-              "value": 27.82,
+              "value": 28.36,
               "display": "$28",
-              "note": "5 positive replies · 7,718 emails",
+              "note": "5 positive replies · 7,924 emails",
               "thin": false
             },
             {
               "key": "sales-cold-email-outreach-lithium",
               "label": "Gemini 3.1 Pro · Blind discovery v26",
-              "value": 36.75,
-              "display": "$37",
-              "note": "20 positive replies · 29,675 emails",
+              "value": 37.84,
+              "display": "$38",
+              "note": "20 positive replies · 30,931 emails",
               "thin": false
             },
             {
@@ -1991,7 +1991,7 @@
               "thin": false
             }
           ],
-          "note": "Only people we started writing to at least 21 days before the read (before Sep 11) count, with every positive reply and website visit they sent since. A figure needs 1 positive reply (10 website visits) behind it; below that it reads Learning."
+          "note": "Only people we started writing to at least 21 days before the read (before Sep 12) count, with every positive reply and website visit they sent since. A figure needs 1 positive reply (10 website visits) behind it; below that it reads Learning. A website visit is a click our link-scanner check judged human, which only the emails we send ourselves can carry: website-visit figures leave out the emails sent through the provider, whose clicks are mostly scanners and cannot be screened."
         },
         {
           "kind": "months",
@@ -2020,7 +2020,7 @@
               }
             ]
           },
-          "note": "Only people we started writing to at least 21 days before the read (before Sep 11) count, with every positive reply and website visit they sent since. A figure needs 1 positive reply (10 website visits) behind it; below that it reads Learning."
+          "note": "Only people we started writing to at least 21 days before the read (before Sep 12) count, with every positive reply and website visit they sent since. A figure needs 1 positive reply (10 website visits) behind it; below that it reads Learning. A website visit is a click our link-scanner check judged human, which only the emails we send ourselves can carry: website-visit figures leave out the emails sent through the provider, whose clicks are mostly scanners and cannot be screened."
         }
       ],
       "conclusion": [
@@ -2087,17 +2087,17 @@
             {
               "key": "sales-cold-email-outreach-lithium",
               "label": "Gemini 3.1 Pro · Blind discovery v26",
-              "value": 6.7,
+              "value": 6.5,
               "display": "0.07%",
-              "note": "20 positive replies · 29,675 emails",
+              "note": "20 positive replies · 30,931 emails",
               "thin": false
             },
             {
               "key": "sales-cold-email-outreach-azalea",
               "label": "Gemini 3.1 Pro · Blind discovery v9",
-              "value": 6.5,
-              "display": "0.07%",
-              "note": "5 positive replies · 7,718 emails",
+              "value": 6.3,
+              "display": "0.06%",
+              "note": "5 positive replies · 7,924 emails",
               "thin": false
             },
             {
@@ -2349,7 +2349,7 @@
               "thin": true
             }
           ],
-          "note": "Only people we started writing to at least 21 days before the read (before Sep 11) count, with every positive reply and website visit they sent since. A figure needs 1 positive reply (10 website visits) behind it; below that it reads Learning."
+          "note": "Only people we started writing to at least 21 days before the read (before Sep 12) count, with every positive reply and website visit they sent since. A figure needs 1 positive reply (10 website visits) behind it; below that it reads Learning. A website visit is a click our link-scanner check judged human, which only the emails we send ourselves can carry: website-visit figures leave out the emails sent through the provider, whose clicks are mostly scanners and cannot be screened."
         },
         {
           "kind": "months",
@@ -2420,7 +2420,7 @@
               }
             ]
           },
-          "note": "Only people we started writing to at least 21 days before the read (before Sep 11) count, with every positive reply and website visit they sent since. A figure needs 1 positive reply (10 website visits) behind it; below that it reads Learning."
+          "note": "Only people we started writing to at least 21 days before the read (before Sep 12) count, with every positive reply and website visit they sent since. A figure needs 1 positive reply (10 website visits) behind it; below that it reads Learning. A website visit is a click our link-scanner check judged human, which only the emails we send ourselves can carry: website-visit figures leave out the emails sent through the provider, whose clicks are mostly scanners and cannot be screened."
         }
       ],
       "conclusion": [
@@ -2440,12 +2440,12 @@
       "goal": "roi",
       "question": "Which LLM gets the cheapest website visit?",
       "status": "measured",
-      "headline": "Gemini 3.5 Flash leads at $0.48 per website visit. Noise so far.",
-      "winner": "Gemini 3.5 Flash",
+      "headline": "Gemini 3.5 Flash-Lite leads at $0.51 per website visit. Noise so far.",
+      "winner": "Gemini 3.5 Flash-Lite",
       "result": {
-        "display": "$0.48",
+        "display": "$0.51",
         "unit": "per website visit",
-        "sample": "62 website visits · 2,431 emails with a link"
+        "sample": "19 website visits · 751 emails with a link"
       },
       "crowned": false,
       "charts": [
@@ -2455,107 +2455,63 @@
           "lowerIsBetter": true,
           "points": [
             {
-              "key": "gemini-3.5-flash",
-              "label": "Gemini 3.5 Flash",
-              "value": 0.48,
-              "display": "$0.48",
-              "note": "62 website visits · 2,431 emails with a link",
-              "thin": false
-            },
-            {
-              "key": "gemini-3-flash",
-              "label": "Gemini 3 Flash",
-              "value": 0.54,
-              "display": "$0.54",
-              "note": "151 website visits · 4,713 emails with a link",
-              "thin": false
-            },
-            {
               "key": "gemini-3.5-flash-lite",
               "label": "Gemini 3.5 Flash-Lite",
-              "value": 1.05,
-              "display": "$1.05",
-              "note": "49 website visits · 3,314 emails with a link",
+              "value": 0.51,
+              "display": "$0.51",
+              "note": "19 website visits · 751 emails with a link",
               "thin": false
             },
             {
               "key": "gemini-3.1-pro",
               "label": "Gemini 3.1 Pro",
-              "value": 1.45,
-              "display": "$1.45",
-              "note": "114 website visits · 5,427 emails with a link",
-              "thin": false
-            },
-            {
-              "key": "gemini-3.6-flash",
-              "label": "Gemini 3.6 Flash",
-              "value": 2.11,
-              "display": "$2.11",
-              "note": "4 website visits · 276 emails with a link",
+              "value": 1.49,
+              "display": "$1.49",
+              "note": "4 website visits · 220 emails with a link",
               "thin": true
             }
           ],
-          "note": "Only people we started writing to at least 21 days before the read (before Sep 11) count, with every positive reply and website visit they sent since. A figure needs 1 positive reply (10 website visits) behind it; below that it reads Learning."
+          "note": "Only people we started writing to at least 21 days before the read (before Sep 12) count, with every positive reply and website visit they sent since. A figure needs 1 positive reply (10 website visits) behind it; below that it reads Learning. A website visit is a click our link-scanner check judged human, which only the emails we send ourselves can carry: website-visit figures leave out the emails sent through the provider, whose clicks are mostly scanners and cannot be screened."
         },
         {
           "kind": "months",
-          "title": "Gemini 3.5 Flash: cost per website visit by month",
+          "title": "Gemini 3.5 Flash-Lite: cost per website visit by month",
           "lowerIsBetter": true,
           "points": [
             {
-              "label": "Jun",
-              "value": 0.54,
-              "display": "$0.54",
-              "note": "26 website visits · 1,407 emails with a link",
-              "thin": false
-            },
-            {
-              "label": "Jul",
-              "value": 0.42,
-              "display": "$0.42",
-              "note": "36 website visits · 985 emails with a link",
-              "thin": false
+              "label": "Sep",
+              "value": 0.51,
+              "display": "$0.51",
+              "note": "19 website visits · 751 emails with a link · month in progress",
+              "thin": false,
+              "partial": true
             }
           ],
           "cumulative": {
-            "title": "Gemini 3.5 Flash: average since inception",
+            "title": "Gemini 3.5 Flash-Lite: average since inception",
             "points": [
               {
-                "label": "Jun",
-                "value": 0.54,
-                "display": "$0.54",
-                "note": "26 website visits · 1,407 emails with a link to date",
-                "thin": false
-              },
-              {
-                "label": "Jul",
-                "value": 0.47,
-                "display": "$0.47",
-                "note": "62 website visits · 2,392 emails with a link to date",
-                "thin": false
-              },
-              {
-                "label": "Aug",
-                "value": 0.48,
-                "display": "$0.48",
-                "note": "62 website visits · 2,431 emails with a link to date",
-                "thin": false
+                "label": "Sep",
+                "value": 0.51,
+                "display": "$0.51",
+                "note": "19 website visits · 751 emails with a link to date · month in progress",
+                "thin": false,
+                "partial": true
               }
             ]
           },
-          "note": "Only people we started writing to at least 21 days before the read (before Sep 11) count, with every positive reply and website visit they sent since. A figure needs 1 positive reply (10 website visits) behind it; below that it reads Learning."
+          "note": "Only people we started writing to at least 21 days before the read (before Sep 12) count, with every positive reply and website visit they sent since. A figure needs 1 positive reply (10 website visits) behind it; below that it reads Learning. A website visit is a click our link-scanner check judged human, which only the emails we send ourselves can carry: website-visit figures leave out the emails sent through the provider, whose clicks are mostly scanners and cannot be screened."
         }
       ],
       "conclusion": [
-        "Gemini 3.5 Flash: 62 website visits · 2,431 emails with a link, $30 spent.",
-        "Over time: $0.54 in Jun, $0.42 in Jul.",
-        "Same clients, same months, a website visit from Gemini 3.5 Flash costs 0.81x one from Gemini 3 Flash (95% interval 0.57x to 1.15x; 0.96x the website visits per email; 49 website visits in 1,554 emails with a link against 150 in 4,671).",
-        "Same clients, same months, a website visit from Gemini 3.5 Flash costs 0.42x one from Gemini 3.1 Pro (95% interval 0.28x to 0.65x; 1.47x the website visits per email; 49 website visits in 1,438 emails with a link against 54 in 2,288).",
-        "Same clients, same months, Gemini 3.5 Flash against Gemini 3.5 Flash-Lite: 2 website visits in 50 emails with a link against 4 in 224, under 5 on one side, so no ratio."
+        "Gemini 3.5 Flash-Lite: 19 website visits · 751 emails with a link, $9.64 spent.",
+        "Same clients, same months, Gemini 3.5 Flash-Lite against Gemini 3.1 Pro: 19 website visits in 751 emails with a link against 4 in 211, under 5 on one side, so no ratio.",
+        "Same clients, same months, Gemini 3.5 Flash-Lite against DeepSeek V4 Flash: 16 website visits in 726 emails with a link against 0 in 151, under 5 on one side, so no ratio.",
+        "Same clients, same months, Gemini 3.5 Flash-Lite against GLM 5.3 Flash: 18 website visits in 629 emails with a link against 0 in 33, under 5 on one side, so no ratio."
       ],
       "verdict": {
         "kind": "noise",
-        "reason": "Gemini 3.5 Flash against Gemini 3 Flash, website visits per dollar: p 0.394, a gap chance alone produces often."
+        "reason": "Gemini 3.5 Flash-Lite against Gemini 3.1 Pro, website visits per dollar: p 0.051, a gap chance alone produces often."
       }
     },
     {
@@ -2565,12 +2521,12 @@
       "goal": "rate",
       "question": "Which LLM gets the most website visits?",
       "status": "measured",
-      "headline": "Gemini 3 Flash leads with a 3.20% website visit rate. Noise so far.",
-      "winner": "Gemini 3 Flash",
+      "headline": "Gemini 3.5 Flash-Lite leads with a 2.53% website visit rate. Noise so far.",
+      "winner": "Gemini 3.5 Flash-Lite",
       "result": {
-        "display": "3.20%",
+        "display": "2.53%",
         "unit": "website visit rate",
-        "sample": "151 website visits · 4,713 emails with a link"
+        "sample": "19 website visits · 751 emails with a link"
       },
       "crowned": false,
       "charts": [
@@ -2580,59 +2536,19 @@
           "lowerIsBetter": false,
           "points": [
             {
-              "key": "gemini-3-flash",
-              "label": "Gemini 3 Flash",
-              "value": 32,
-              "display": "3.20%",
-              "note": "151 website visits · 4,713 emails with a link",
-              "thin": false
-            },
-            {
-              "key": "gemini-3.5-flash",
-              "label": "Gemini 3.5 Flash",
-              "value": 25.5,
-              "display": "2.55%",
-              "note": "62 website visits · 2,431 emails with a link",
+              "key": "gemini-3.5-flash-lite",
+              "label": "Gemini 3.5 Flash-Lite",
+              "value": 25.3,
+              "display": "2.53%",
+              "note": "19 website visits · 751 emails with a link",
               "thin": false
             },
             {
               "key": "gemini-3.1-pro",
               "label": "Gemini 3.1 Pro",
-              "value": 21,
-              "display": "2.10%",
-              "note": "114 website visits · 5,427 emails with a link",
-              "thin": false
-            },
-            {
-              "key": "gemini-3.5-flash-lite",
-              "label": "Gemini 3.5 Flash-Lite",
-              "value": 14.8,
-              "display": "1.48%",
-              "note": "49 website visits · 3,314 emails with a link",
-              "thin": false
-            },
-            {
-              "key": "gemini-3.6-flash",
-              "label": "Gemini 3.6 Flash",
-              "value": 14.5,
-              "display": "1.45%",
-              "note": "4 website visits · 276 emails with a link",
-              "thin": true
-            },
-            {
-              "key": "gemini-3.7-flash",
-              "label": "Gemini 3.7 Flash",
-              "value": 0,
-              "display": "0.00%",
-              "note": "0 website visits · 86 emails with a link",
-              "thin": true
-            },
-            {
-              "key": "glm-5.3-flash",
-              "label": "GLM 5.3 Flash",
-              "value": 0,
-              "display": "0.00%",
-              "note": "0 website visits · 24 emails with a link",
+              "value": 18.2,
+              "display": "1.82%",
+              "note": "4 website visits · 220 emails with a link",
               "thin": true
             },
             {
@@ -2640,79 +2556,68 @@
               "label": "DeepSeek V4 Flash",
               "value": 0,
               "display": "0.00%",
-              "note": "0 website visits · 13 emails with a link",
+              "note": "0 website visits · 151 emails with a link",
+              "thin": true
+            },
+            {
+              "key": "glm-5.3-flash",
+              "label": "GLM 5.3 Flash",
+              "value": 0,
+              "display": "0.00%",
+              "note": "0 website visits · 33 emails with a link",
+              "thin": true
+            },
+            {
+              "key": "gemini-3.8-flash",
+              "label": "Gemini 3.8 Flash",
+              "value": 0,
+              "display": "0.00%",
+              "note": "0 website visits · 26 emails with a link",
               "thin": true
             }
           ],
-          "note": "Only people we started writing to at least 21 days before the read (before Sep 11) count, with every positive reply and website visit they sent since. A figure needs 1 positive reply (10 website visits) behind it; below that it reads Learning."
+          "note": "Only people we started writing to at least 21 days before the read (before Sep 12) count, with every positive reply and website visit they sent since. A figure needs 1 positive reply (10 website visits) behind it; below that it reads Learning. A website visit is a click our link-scanner check judged human, which only the emails we send ourselves can carry: website-visit figures leave out the emails sent through the provider, whose clicks are mostly scanners and cannot be screened."
         },
         {
           "kind": "months",
-          "title": "Gemini 3 Flash: website visit rate by month",
+          "title": "Gemini 3.5 Flash-Lite: website visit rate by month",
           "lowerIsBetter": false,
           "points": [
             {
-              "label": "Jun",
-              "value": 33.5,
-              "display": "3.35%",
-              "note": "40 website visits · 1,195 emails with a link",
-              "thin": false
-            },
-            {
-              "label": "Jul",
-              "value": 32.4,
-              "display": "3.24%",
-              "note": "110 website visits · 3,394 emails with a link",
-              "thin": false
-            },
-            {
-              "label": "Aug",
-              "value": 8.1,
-              "display": "0.81%",
-              "note": "1 website visit · 124 emails with a link",
-              "thin": true
+              "label": "Sep",
+              "value": 25.3,
+              "display": "2.53%",
+              "note": "19 website visits · 751 emails with a link · month in progress",
+              "thin": false,
+              "partial": true
             }
           ],
           "cumulative": {
-            "title": "Gemini 3 Flash: average since inception",
+            "title": "Gemini 3.5 Flash-Lite: average since inception",
             "points": [
               {
-                "label": "Jun",
-                "value": 33.47,
-                "display": "3.35%",
-                "note": "40 website visits · 1,195 emails with a link to date",
-                "thin": false
-              },
-              {
-                "label": "Jul",
-                "value": 32.69,
-                "display": "3.27%",
-                "note": "150 website visits · 4,589 emails with a link to date",
-                "thin": false
-              },
-              {
-                "label": "Aug",
-                "value": 32.04,
-                "display": "3.20%",
-                "note": "151 website visits · 4,713 emails with a link to date",
-                "thin": false
+                "label": "Sep",
+                "value": 25.3,
+                "display": "2.53%",
+                "note": "19 website visits · 751 emails with a link to date · month in progress",
+                "thin": false,
+                "partial": true
               }
             ]
           },
-          "note": "Only people we started writing to at least 21 days before the read (before Sep 11) count, with every positive reply and website visit they sent since. A figure needs 1 positive reply (10 website visits) behind it; below that it reads Learning."
+          "note": "Only people we started writing to at least 21 days before the read (before Sep 12) count, with every positive reply and website visit they sent since. A figure needs 1 positive reply (10 website visits) behind it; below that it reads Learning. A website visit is a click our link-scanner check judged human, which only the emails we send ourselves can carry: website-visit figures leave out the emails sent through the provider, whose clicks are mostly scanners and cannot be screened."
         }
       ],
       "conclusion": [
-        "Gemini 3 Flash: 151 website visits · 4,713 emails with a link.",
-        "Over time: 3.35% in Jun, 0.81% in Aug.",
-        "Same clients, same months, Gemini 3 Flash gets 1.00x the website visits per email of Gemini 3.1 Pro (95% interval 0.69x to 1.45x; 130 website visits in 4,354 emails with a link against 94 in 3,772).",
-        "Same clients, same months, Gemini 3 Flash gets 1.04x the website visits per email of Gemini 3.5 Flash (95% interval 0.73x to 1.47x; 150 website visits in 4,671 emails with a link against 49 in 1,554).",
-        "Same clients, same months, Gemini 3 Flash gets 1.59x the website visits per email of Gemini 3.5 Flash-Lite (95% interval 0.59x to 4.25x; 11 website visits in 318 emails with a link against 21 in 1,141).",
+        "Gemini 3.5 Flash-Lite: 19 website visits · 751 emails with a link.",
+        "Same clients, same months, Gemini 3.5 Flash-Lite against Gemini 3.1 Pro: 19 website visits in 751 emails with a link against 4 in 211, under 5 on one side, so no ratio.",
+        "Same clients, same months, Gemini 3.5 Flash-Lite against DeepSeek V4 Flash: 16 website visits in 726 emails with a link against 0 in 151, under 5 on one side, so no ratio.",
+        "Same clients, same months, Gemini 3.5 Flash-Lite against GLM 5.3 Flash: 18 website visits in 629 emails with a link against 0 in 33, under 5 on one side, so no ratio.",
         "A LLM with fewer than 10 website visits is ranked where its value puts it and marked Learning."
       ],
       "verdict": {
         "kind": "noise",
-        "reason": "Gemini 3 Flash against Gemini 3.5 Flash, website visits per email: p 0.148, a gap chance alone produces often."
+        "reason": "Gemini 3.5 Flash-Lite against Gemini 3.1 Pro, website visits per email: p 0.803, a gap chance alone produces often."
       }
     },
     {
@@ -2722,12 +2627,12 @@
       "goal": "roi",
       "question": "What does a website visit cost on average?",
       "status": "measured",
-      "headline": "$0.89 per website visit on average since inception, across all our emails.",
+      "headline": "$0.78 per website visit on average since inception, across all our emails whose clicks are screened for bots.",
       "winner": null,
       "result": {
-        "display": "$0.89",
+        "display": "$0.78",
         "unit": "per website visit, average since inception",
-        "sample": "380 website visits · 16,284 emails with a link to date"
+        "sample": "23 website visits · 1,181 emails with a link to date"
       },
       "crowned": true,
       "charts": [
@@ -2737,38 +2642,10 @@
           "lowerIsBetter": true,
           "points": [
             {
-              "label": "May",
-              "value": 2.51,
-              "display": "$2.51",
-              "note": "3 website visits · 253 emails with a link",
-              "thin": true
-            },
-            {
-              "label": "Jun",
-              "value": 0.71,
-              "display": "$0.71",
-              "note": "86 website visits · 3,783 emails with a link",
-              "thin": false
-            },
-            {
-              "label": "Jul",
-              "value": 0.61,
-              "display": "$0.61",
-              "note": "189 website visits · 5,803 emails with a link",
-              "thin": false
-            },
-            {
-              "label": "Aug",
-              "value": 1.63,
-              "display": "$1.63",
-              "note": "65 website visits · 3,955 emails with a link",
-              "thin": false
-            },
-            {
               "label": "Sep",
-              "value": 1.32,
-              "display": "$1.32",
-              "note": "37 website visits · 2,482 emails with a link · month in progress",
+              "value": 0.76,
+              "display": "$0.76",
+              "note": "23 website visits · 1,172 emails with a link · month in progress",
               "thin": false,
               "partial": true
             }
@@ -2777,44 +2654,16 @@
             "title": "All our emails: average since inception",
             "points": [
               {
-                "label": "May",
-                "value": 2.62,
-                "display": "$2.62",
-                "note": "3 website visits · 261 emails with a link to date",
-                "thin": true
-              },
-              {
-                "label": "Jun",
+                "label": "Sep",
                 "value": 0.78,
                 "display": "$0.78",
-                "note": "89 website visits · 4,044 emails with a link to date",
-                "thin": false
-              },
-              {
-                "label": "Jul",
-                "value": 0.66,
-                "display": "$0.66",
-                "note": "278 website visits · 9,847 emails with a link to date",
-                "thin": false
-              },
-              {
-                "label": "Aug",
-                "value": 0.85,
-                "display": "$0.85",
-                "note": "343 website visits · 13,802 emails with a link to date",
-                "thin": false
-              },
-              {
-                "label": "Sep",
-                "value": 0.89,
-                "display": "$0.89",
-                "note": "380 website visits · 16,284 emails with a link to date · month in progress",
+                "note": "23 website visits · 1,181 emails with a link to date · month in progress",
                 "thin": false,
                 "partial": true
               }
             ]
           },
-          "note": "Only people we started writing to at least 21 days before the read (before Sep 11) count, with every positive reply and website visit they sent since. A figure needs 1 positive reply (10 website visits) behind it; below that it reads Learning."
+          "note": "Only people we started writing to at least 21 days before the read (before Sep 12) count, with every positive reply and website visit they sent since. A figure needs 1 positive reply (10 website visits) behind it; below that it reads Learning. A website visit is a click our link-scanner check judged human, which only the emails we send ourselves can carry: website-visit figures leave out the emails sent through the provider, whose clicks are mostly scanners and cannot be screened."
         }
       ],
       "conclusion": [
@@ -2822,7 +2671,7 @@
       ],
       "verdict": {
         "kind": "conclusion",
-        "reason": "A measurement on 380 website visits: 95% interval $0.81 to $0.99 per website visit."
+        "reason": "A measurement on 23 website visits: 95% interval $0.52 to $1.23 per website visit."
       }
     },
     {
@@ -2832,12 +2681,12 @@
       "goal": "roi",
       "question": "How many follow-ups give the cheapest website visit?",
       "status": "measured",
-      "headline": "First email only: $0.51 per website visit, the cheapest depth.",
+      "headline": "First email only: $0.42 per website visit, the cheapest depth.",
       "winner": "First email only",
       "result": {
-        "display": "$0.51",
+        "display": "$0.42",
         "unit": "per website visit, first email only",
-        "sample": "318 website visits · $162 spent"
+        "sample": "20 website visits · $8.39 spent"
       },
       "crowned": true,
       "charts": [
@@ -2848,27 +2697,27 @@
           "points": [
             {
               "label": "First email only",
-              "value": 0.51,
-              "display": "$0.51",
-              "note": "318 website visits · $162 spent",
+              "value": 0.42,
+              "display": "$0.42",
+              "note": "20 website visits · $8.39 spent",
               "thin": false
             },
             {
               "label": "+ 1 follow-up",
-              "value": 0.68,
-              "display": "$0.68",
-              "note": "363 website visits · $249 spent",
+              "value": 0.59,
+              "display": "$0.59",
+              "note": "23 website visits · $14 spent",
               "thin": false
             },
             {
               "label": "+ 2 follow-ups",
-              "value": 0.91,
-              "display": "$0.91",
-              "note": "368 website visits · $334 spent",
+              "value": 0.78,
+              "display": "$0.78",
+              "note": "23 website visits · $18 spent",
               "thin": false
             }
           ],
-          "note": "Only people we started writing to at least 21 days before the read (before Sep 11) count, with every positive reply and website visit they sent since. A figure needs 1 positive reply (10 website visits) behind it; below that it reads Learning."
+          "note": "Only people we started writing to at least 21 days before the read (before Sep 12) count, with every positive reply and website visit they sent since. A figure needs 1 positive reply (10 website visits) behind it; below that it reads Learning. A website visit is a click our link-scanner check judged human, which only the emails we send ourselves can carry: website-visit figures leave out the emails sent through the provider, whose clicks are mostly scanners and cannot be screened."
         },
         {
           "kind": "bars",
@@ -2877,27 +2726,20 @@
           "points": [
             {
               "label": "First email",
-              "value": 0.51,
-              "display": "$0.51",
-              "note": "318 website visits · 8,018 emails with a link",
+              "value": 0.42,
+              "display": "$0.42",
+              "note": "20 website visits · 548 emails with a link",
               "thin": false
             },
             {
               "label": "Follow-up 1",
-              "value": 1.93,
-              "display": "$1.93",
-              "note": "45 website visits · 4,037 emails with a link",
-              "thin": false
-            },
-            {
-              "label": "Follow-up 2",
-              "value": 17.01,
-              "display": "$17",
-              "note": "5 website visits · 3,899 emails with a link",
+              "value": 1.76,
+              "display": "$1.76",
+              "note": "3 website visits · 355 emails with a link",
               "thin": true
             }
           ],
-          "note": "Only people we started writing to at least 21 days before the read (before Sep 11) count, with every positive reply and website visit they sent since. A figure needs 1 positive reply (10 website visits) behind it; below that it reads Learning."
+          "note": "Only people we started writing to at least 21 days before the read (before Sep 12) count, with every positive reply and website visit they sent since. A figure needs 1 positive reply (10 website visits) behind it; below that it reads Learning. A website visit is a click our link-scanner check judged human, which only the emails we send ourselves can carry: website-visit figures leave out the emails sent through the provider, whose clicks are mostly scanners and cannot be screened."
         }
       ],
       "conclusion": [
@@ -2916,14 +2758,14 @@
       "goal": "rate",
       "question": "How many follow-ups get the most website visits?",
       "status": "measured",
-      "headline": "Website visits keep coming through 2 follow-ups: the last one adds 0.06 points.",
-      "winner": "+ 2 follow-ups",
+      "headline": "Website visits keep coming through 1 follow-up: the last one adds 0.55 points. Noise so far.",
+      "winner": "+ 1 follow-up",
       "result": {
-        "display": "4.59%",
+        "display": "4.20%",
         "unit": "of people got a website visit, all follow-ups",
-        "sample": "368 website visits from 8,018 people"
+        "sample": "23 website visits from 548 people"
       },
-      "crowned": true,
+      "crowned": false,
       "charts": [
         {
           "kind": "bars",
@@ -2932,37 +2774,37 @@
           "points": [
             {
               "label": "First email only",
-              "value": 39.7,
-              "display": "3.97%",
-              "note": "318 website visits from 8,018 people",
+              "value": 36.5,
+              "display": "3.65%",
+              "note": "20 website visits from 548 people",
               "thin": false
             },
             {
               "label": "+ 1 follow-up",
-              "value": 45.3,
-              "display": "4.53%",
-              "note": "363 website visits from 8,018 people",
+              "value": 42,
+              "display": "4.20%",
+              "note": "23 website visits from 548 people",
               "thin": false
             },
             {
               "label": "+ 2 follow-ups",
-              "value": 45.9,
-              "display": "4.59%",
-              "note": "368 website visits from 8,018 people",
+              "value": 42,
+              "display": "4.20%",
+              "note": "23 website visits from 548 people",
               "thin": false
             }
           ],
-          "note": "Only people we started writing to at least 21 days before the read (before Sep 11) count, with every positive reply and website visit they sent since. A figure needs 1 positive reply (10 website visits) behind it; below that it reads Learning."
+          "note": "Only people we started writing to at least 21 days before the read (before Sep 12) count, with every positive reply and website visit they sent since. A figure needs 1 positive reply (10 website visits) behind it; below that it reads Learning. A website visit is a click our link-scanner check judged human, which only the emails we send ourselves can carry: website-visit figures leave out the emails sent through the provider, whose clicks are mostly scanners and cannot be screened."
         }
       ],
       "conclusion": [
         "Counted per person reached, so a follow-up is judged on what it adds, not on how many emails it took.",
-        "+ 1 follow-up: +0.56 points.",
-        "+ 2 follow-ups: +0.06 points."
+        "+ 1 follow-up: +0.55 points.",
+        "+ 2 follow-ups: +0.00 points."
       ],
       "verdict": {
-        "kind": "conclusion",
-        "reason": "Follow-ups brought 50 of 368 website visits, on the same people the first email reached, and the last useful one (follow-up 2) brought 5 on its own."
+        "kind": "noise",
+        "reason": "Follow-ups brought 3 website visits in all: too few to say they add any."
       }
     },
     {
@@ -2971,46 +2813,18 @@
       "topic": "opens",
       "goal": "roi",
       "question": "Should we track opens for the cheapest website visit?",
-      "status": "measured",
-      "headline": "Tracking off leads: 1.81% of people visited the website, against 1.50% (p 0.008). A signal to confirm, not yet a conclusion.",
-      "winner": "Tracking off",
-      "result": {
-        "display": "1.81%",
-        "unit": "with tracking off, 1.50% on",
-        "sample": "p 0.008, 48,259 people"
-      },
+      "status": "not_enough_data",
+      "headline": "Cannot be measured on human visits.",
+      "winner": null,
       "crowned": false,
-      "charts": [
-        {
-          "kind": "bars",
-          "title": "People who visited the website (%, higher is better)",
-          "lowerIsBetter": false,
-          "points": [
-            {
-              "label": "Tracking off",
-              "value": 1.81,
-              "display": "1.81%",
-              "note": "395 of 21,866 people",
-              "thin": false
-            },
-            {
-              "label": "Tracking on",
-              "value": 1.5,
-              "display": "1.50%",
-              "note": "396 of 26,393 people",
-              "thin": false
-            }
-          ],
-          "note": "People we started writing to in the 21 days before the read are left out (from Sep 11 on), at least the 21 days every price here waits for replies and visits to arrive."
-        }
-      ],
+      "result": null,
+      "charts": [],
       "conclusion": [
-        "An email costs the same with or without the pixel, so the cheaper website visit is the arm with more of them per person.",
-        "Tracking was on from 2026-02-10 to 2026-06-28 and off until 2026-09-10: two periods, not a split test, over 48,259 people."
+        "The open pixel only ran on emails sent through the provider, whose clicks cannot be told apart from link scanners. A website visit is a human click, so this cannot be measured."
       ],
       "verdict": {
         "kind": "signal",
-        "reason": "p 0.008, but tracking was on and off in two different periods, not a split test: the calendar can move this as much as the pixel."
+        "reason": "p 0.02, but tracking was on and off in two different periods, not a split test: the calendar can move this as much as the pixel."
       }
     },
     {
@@ -3019,46 +2833,18 @@
       "topic": "opens",
       "goal": "rate",
       "question": "Should we track opens for the most website visits?",
-      "status": "measured",
-      "headline": "Tracking off leads: 1.81% of people visited the website, against 1.50% (p 0.008). A signal to confirm, not yet a conclusion.",
-      "winner": "Tracking off",
-      "result": {
-        "display": "1.81%",
-        "unit": "with tracking off, 1.50% on",
-        "sample": "p 0.008, 48,259 people"
-      },
+      "status": "not_enough_data",
+      "headline": "Cannot be measured on human visits.",
+      "winner": null,
       "crowned": false,
-      "charts": [
-        {
-          "kind": "bars",
-          "title": "People who visited the website (%, higher is better)",
-          "lowerIsBetter": false,
-          "points": [
-            {
-              "label": "Tracking off",
-              "value": 1.81,
-              "display": "1.81%",
-              "note": "395 of 21,866 people",
-              "thin": false
-            },
-            {
-              "label": "Tracking on",
-              "value": 1.5,
-              "display": "1.50%",
-              "note": "396 of 26,393 people",
-              "thin": false
-            }
-          ],
-          "note": "People we started writing to in the 21 days before the read are left out (from Sep 11 on), at least the 21 days every price here waits for replies and visits to arrive."
-        }
-      ],
+      "result": null,
+      "charts": [],
       "conclusion": [
-        "A visit is the first tracked click a person made.",
-        "Tracking was on from 2026-02-10 to 2026-06-28 and off until 2026-09-10: two periods, not a split test, over 48,259 people."
+        "The open pixel only ran on emails sent through the provider, whose clicks cannot be told apart from link scanners. A website visit is a human click, so this cannot be measured."
       ],
       "verdict": {
         "kind": "signal",
-        "reason": "p 0.008, but tracking was on and off in two different periods, not a split test: the calendar can move this as much as the pixel."
+        "reason": "p 0.02, but tracking was on and off in two different periods, not a split test: the calendar can move this as much as the pixel."
       }
     },
     {
@@ -3068,12 +2854,12 @@
       "goal": "roi",
       "question": "Which template gets the cheapest website visit?",
       "status": "measured",
-      "headline": "Cold email v19 leads at $0.52 per website visit. A signal to confirm, not yet a conclusion.",
-      "winner": "Cold email v19",
+      "headline": "Cold email v35 leads at $0.57 per website visit. Noise so far.",
+      "winner": "Cold email v35",
       "result": {
-        "display": "$0.52",
+        "display": "$0.57",
         "unit": "per website visit",
-        "sample": "163 website visits · 4,913 emails with a link"
+        "sample": "19 website visits · 885 emails with a link"
       },
       "crowned": false,
       "charts": [
@@ -3083,149 +2869,60 @@
           "lowerIsBetter": true,
           "points": [
             {
-              "key": "cold-email-v19",
-              "label": "Cold email v19",
-              "value": 0.52,
-              "display": "$0.52",
-              "note": "163 website visits · 4,913 emails with a link",
-              "thin": false
-            },
-            {
               "key": "cold-email-v35",
               "label": "Cold email v35",
-              "value": 0.88,
-              "display": "$0.88",
-              "note": "53 website visits · 3,369 emails with a link",
+              "value": 0.57,
+              "display": "$0.57",
+              "note": "19 website visits · 885 emails with a link",
               "thin": false
-            },
-            {
-              "key": "cold-email-v12",
-              "label": "Cold email v12",
-              "value": 0.89,
-              "display": "$0.89",
-              "note": "66 website visits · 3,119 emails with a link",
-              "thin": false
-            },
-            {
-              "key": "blind-discovery-email-v16",
-              "label": "Blind discovery v16",
-              "value": 1.01,
-              "display": "$1.01",
-              "note": "9 website visits · 531 emails with a link",
-              "thin": true
             },
             {
               "key": "cold-email-v31",
               "label": "Cold email v31",
-              "value": 1.43,
-              "display": "$1.43",
-              "note": "63 website visits · 2,772 emails with a link",
-              "thin": false
-            },
-            {
-              "key": "cold-email-v36",
-              "label": "Cold email v36",
-              "value": 1.56,
-              "display": "$1.56",
-              "note": "12 website visits · 609 emails with a link",
-              "thin": false
-            },
-            {
-              "key": "cold-email-v38",
-              "label": "Cold email v38",
-              "value": 1.87,
-              "display": "$1.87",
-              "note": "7 website visits · 354 emails with a link",
-              "thin": true
-            },
-            {
-              "key": "cold-email-v33",
-              "label": "Cold email v33",
-              "value": 2.49,
-              "display": "$2.49",
-              "note": "7 website visits · 598 emails with a link",
+              "value": 1.31,
+              "display": "$1.31",
+              "note": "4 website visits · 180 emails with a link",
               "thin": true
             }
           ],
-          "note": "Only people we started writing to at least 21 days before the read (before Sep 11) count, with every positive reply and website visit they sent since. A figure needs 1 positive reply (10 website visits) behind it; below that it reads Learning."
+          "note": "Only people we started writing to at least 21 days before the read (before Sep 12) count, with every positive reply and website visit they sent since. A figure needs 1 positive reply (10 website visits) behind it; below that it reads Learning. A website visit is a click our link-scanner check judged human, which only the emails we send ourselves can carry: website-visit figures leave out the emails sent through the provider, whose clicks are mostly scanners and cannot be screened."
         },
         {
           "kind": "months",
-          "title": "Cold email v19: cost per website visit by month",
+          "title": "Cold email v35: cost per website visit by month",
           "lowerIsBetter": true,
           "points": [
             {
-              "label": "May",
-              "value": 2.42,
-              "display": "$2.42",
-              "note": "3 website visits · 246 emails with a link",
-              "thin": true
-            },
-            {
-              "label": "Jun",
-              "value": 0.72,
-              "display": "$0.72",
-              "note": "62 website visits · 2,744 emails with a link",
-              "thin": false
-            },
-            {
-              "label": "Jul",
-              "value": 0.27,
-              "display": "$0.27",
-              "note": "97 website visits · 1,656 emails with a link",
-              "thin": false
-            },
-            {
-              "label": "Aug",
-              "value": 5.76,
-              "display": "$5.76",
-              "note": "1 website visit · 267 emails with a link",
-              "thin": true
+              "label": "Sep",
+              "value": 0.57,
+              "display": "$0.57",
+              "note": "19 website visits · 885 emails with a link · month in progress",
+              "thin": false,
+              "partial": true
             }
           ],
           "cumulative": {
-            "title": "Cold email v19: average since inception",
+            "title": "Cold email v35: average since inception",
             "points": [
               {
-                "label": "May",
-                "value": 2.42,
-                "display": "$2.42",
-                "note": "3 website visits · 246 emails with a link to date",
-                "thin": true
-              },
-              {
-                "label": "Jun",
-                "value": 0.8,
-                "display": "$0.80",
-                "note": "65 website visits · 2,990 emails with a link to date",
-                "thin": false
-              },
-              {
-                "label": "Jul",
-                "value": 0.48,
-                "display": "$0.48",
-                "note": "162 website visits · 4,646 emails with a link to date",
-                "thin": false
-              },
-              {
-                "label": "Aug",
-                "value": 0.52,
-                "display": "$0.52",
-                "note": "163 website visits · 4,913 emails with a link to date",
-                "thin": false
+                "label": "Sep",
+                "value": 0.57,
+                "display": "$0.57",
+                "note": "19 website visits · 885 emails with a link to date · month in progress",
+                "thin": false,
+                "partial": true
               }
             ]
           },
-          "note": "Only people we started writing to at least 21 days before the read (before Sep 11) count, with every positive reply and website visit they sent since. A figure needs 1 positive reply (10 website visits) behind it; below that it reads Learning."
+          "note": "Only people we started writing to at least 21 days before the read (before Sep 12) count, with every positive reply and website visit they sent since. A figure needs 1 positive reply (10 website visits) behind it; below that it reads Learning. A website visit is a click our link-scanner check judged human, which only the emails we send ourselves can carry: website-visit figures leave out the emails sent through the provider, whose clicks are mostly scanners and cannot be screened."
         }
       ],
       "conclusion": [
-        "Cold email v19: 163 website visits · 4,913 emails with a link, $84 spent.",
-        "Over time: $2.42 in May, $5.76 in Aug."
+        "Cold email v35: 19 website visits · 885 emails with a link, $11 spent."
       ],
       "verdict": {
-        "kind": "signal",
-        "reason": "Cold email v19 against Cold email v35, website visits per dollar: p < 0.001 (8 comparisons, so the bar is p < 0.006), but the two never ran for the same client in the same month, so the gap may be the clients'."
+        "kind": "noise",
+        "reason": "Cold email v35 against Cold email v31, website visits per dollar: p 0.180, a gap chance alone produces often."
       }
     },
     {
@@ -3235,12 +2932,12 @@
       "goal": "rate",
       "question": "Which template gets the most website visits?",
       "status": "measured",
-      "headline": "Cold email v19 leads with a 3.32% website visit rate. A signal to confirm, not yet a conclusion.",
-      "winner": "Cold email v19",
+      "headline": "Cold email v31 leads with a 2.22% website visit rate. Noise so far.",
+      "winner": "Cold email v31",
       "result": {
-        "display": "3.32%",
+        "display": "2.22%",
         "unit": "website visit rate",
-        "sample": "163 website visits · 4,913 emails with a link"
+        "sample": "4 website visits · 180 emails with a link"
       },
       "crowned": false,
       "charts": [
@@ -3250,158 +2947,108 @@
           "lowerIsBetter": false,
           "points": [
             {
-              "key": "cold-email-v19",
-              "label": "Cold email v19",
-              "value": 33.2,
-              "display": "3.32%",
-              "note": "163 website visits · 4,913 emails with a link",
-              "thin": false
-            },
-            {
               "key": "cold-email-v31",
               "label": "Cold email v31",
-              "value": 22.7,
-              "display": "2.27%",
-              "note": "63 website visits · 2,772 emails with a link",
-              "thin": false
-            },
-            {
-              "key": "cold-email-v12",
-              "label": "Cold email v12",
-              "value": 21.2,
-              "display": "2.12%",
-              "note": "66 website visits · 3,119 emails with a link",
-              "thin": false
-            },
-            {
-              "key": "cold-email-v38",
-              "label": "Cold email v38",
-              "value": 19.8,
-              "display": "1.98%",
-              "note": "7 website visits · 354 emails with a link",
-              "thin": true
-            },
-            {
-              "key": "cold-email-v36",
-              "label": "Cold email v36",
-              "value": 19.7,
-              "display": "1.97%",
-              "note": "12 website visits · 609 emails with a link",
-              "thin": false
-            },
-            {
-              "key": "blind-discovery-email-v16",
-              "label": "Blind discovery v16",
-              "value": 16.9,
-              "display": "1.69%",
-              "note": "9 website visits · 531 emails with a link",
+              "value": 22.2,
+              "display": "2.22%",
+              "note": "4 website visits · 180 emails with a link",
               "thin": true
             },
             {
               "key": "cold-email-v35",
               "label": "Cold email v35",
-              "value": 15.7,
-              "display": "1.57%",
-              "note": "53 website visits · 3,369 emails with a link",
+              "value": 21.5,
+              "display": "2.15%",
+              "note": "19 website visits · 885 emails with a link",
               "thin": false
             },
             {
               "key": "cold-email-v33",
               "label": "Cold email v33",
-              "value": 11.7,
-              "display": "1.17%",
-              "note": "7 website visits · 598 emails with a link",
+              "value": 0,
+              "display": "0.00%",
+              "note": "0 website visits · 40 emails with a link",
               "thin": true
             },
             {
-              "key": "cold-email-v16",
-              "label": "Cold email v16",
+              "key": "cold-email-v38",
+              "label": "Cold email v38",
               "value": 0,
               "display": "0.00%",
-              "note": "0 website visits · 19 emails with a link",
+              "note": "0 website visits · 40 emails with a link",
+              "thin": true
+            },
+            {
+              "key": "cold-email-v36",
+              "label": "Cold email v36",
+              "value": 0,
+              "display": "0.00%",
+              "note": "0 website visits · 26 emails with a link",
+              "thin": true
+            },
+            {
+              "key": "cold-email-v19",
+              "label": "Cold email v19",
+              "value": 0,
+              "display": "0.00%",
+              "note": "0 website visits · 10 emails with a link",
               "thin": true
             }
           ],
-          "note": "Only people we started writing to at least 21 days before the read (before Sep 11) count, with every positive reply and website visit they sent since. A figure needs 1 positive reply (10 website visits) behind it; below that it reads Learning."
+          "note": "Only people we started writing to at least 21 days before the read (before Sep 12) count, with every positive reply and website visit they sent since. A figure needs 1 positive reply (10 website visits) behind it; below that it reads Learning. A website visit is a click our link-scanner check judged human, which only the emails we send ourselves can carry: website-visit figures leave out the emails sent through the provider, whose clicks are mostly scanners and cannot be screened."
         },
         {
           "kind": "months",
-          "title": "Cold email v19: website visit rate by month",
+          "title": "Cold email v31: website visit rate by month",
           "lowerIsBetter": false,
           "points": [
             {
-              "label": "May",
-              "value": 12.2,
-              "display": "1.22%",
-              "note": "3 website visits · 246 emails with a link",
-              "thin": true
-            },
-            {
-              "label": "Jun",
-              "value": 22.6,
-              "display": "2.26%",
-              "note": "62 website visits · 2,744 emails with a link",
-              "thin": false
-            },
-            {
-              "label": "Jul",
-              "value": 58.6,
-              "display": "5.86%",
-              "note": "97 website visits · 1,656 emails with a link",
-              "thin": false
-            },
-            {
               "label": "Aug",
-              "value": 3.7,
-              "display": "0.37%",
-              "note": "1 website visit · 267 emails with a link",
+              "value": 0,
+              "display": "0.00%",
+              "note": "0 website visits · 9 emails with a link",
               "thin": true
+            },
+            {
+              "label": "Sep",
+              "value": 23.4,
+              "display": "2.34%",
+              "note": "4 website visits · 171 emails with a link · month in progress",
+              "thin": true,
+              "partial": true
             }
           ],
           "cumulative": {
-            "title": "Cold email v19: average since inception",
+            "title": "Cold email v31: average since inception",
             "points": [
               {
-                "label": "May",
-                "value": 12.2,
-                "display": "1.22%",
-                "note": "3 website visits · 246 emails with a link to date",
+                "label": "Aug",
+                "value": 0,
+                "display": "0.00%",
+                "note": "0 website visits · 9 emails with a link to date",
                 "thin": true
               },
               {
-                "label": "Jun",
-                "value": 21.74,
-                "display": "2.17%",
-                "note": "65 website visits · 2,990 emails with a link to date",
-                "thin": false
-              },
-              {
-                "label": "Jul",
-                "value": 34.87,
-                "display": "3.49%",
-                "note": "162 website visits · 4,646 emails with a link to date",
-                "thin": false
-              },
-              {
-                "label": "Aug",
-                "value": 33.18,
-                "display": "3.32%",
-                "note": "163 website visits · 4,913 emails with a link to date",
-                "thin": false
+                "label": "Sep",
+                "value": 22.22,
+                "display": "2.22%",
+                "note": "4 website visits · 180 emails with a link to date · month in progress",
+                "thin": true,
+                "partial": true
               }
             ]
           },
-          "note": "Only people we started writing to at least 21 days before the read (before Sep 11) count, with every positive reply and website visit they sent since. A figure needs 1 positive reply (10 website visits) behind it; below that it reads Learning."
+          "note": "Only people we started writing to at least 21 days before the read (before Sep 12) count, with every positive reply and website visit they sent since. A figure needs 1 positive reply (10 website visits) behind it; below that it reads Learning. A website visit is a click our link-scanner check judged human, which only the emails we send ourselves can carry: website-visit figures leave out the emails sent through the provider, whose clicks are mostly scanners and cannot be screened."
         }
       ],
       "conclusion": [
-        "Cold email v19: 163 website visits · 4,913 emails with a link.",
-        "Over time: 1.22% in May, 0.37% in Aug.",
+        "Cold email v31: 4 website visits · 180 emails with a link.",
+        "Over time: 0.00% in Aug, 2.34% in Sep.",
         "A template with fewer than 10 website visits is ranked where its value puts it and marked Learning."
       ],
       "verdict": {
-        "kind": "signal",
-        "reason": "Cold email v19 against Cold email v31, website visits per email: p 0.010, but not under the corrected bar (8 comparisons, so the bar is p < 0.006)."
+        "kind": "noise",
+        "reason": "Cold email v31 rests on 4 website visits; a lead needs at least 5 before chance stops dominating."
       }
     },
     {
@@ -3411,14 +3058,14 @@
       "goal": "roi",
       "question": "Does the layout of the first email change what a website visit costs?",
       "status": "measured",
-      "headline": "Double line breaks wins at $0.76 per website visit.",
-      "winner": "Double line breaks",
+      "headline": "One block leads at $0.65 per website visit. Noise so far.",
+      "winner": "One block",
       "result": {
-        "display": "$0.76",
+        "display": "$0.65",
         "unit": "per website visit",
-        "sample": "236 website visits · 9,141 emails with a link"
+        "sample": "16 website visits · 633 emails with a link"
       },
-      "crowned": true,
+      "crowned": false,
       "charts": [
         {
           "kind": "bars",
@@ -3426,28 +3073,28 @@
           "lowerIsBetter": true,
           "points": [
             {
-              "label": "Double line breaks",
-              "value": 0.76,
-              "display": "$0.76",
-              "note": "236 website visits · 9,141 emails with a link",
+              "label": "One block",
+              "value": 0.65,
+              "display": "$0.65",
+              "note": "16 website visits · 633 emails with a link",
               "thin": false
             },
             {
-              "label": "One block",
-              "value": 1.11,
-              "display": "$1.11",
-              "note": "144 website visits · 7,134 emails with a link",
-              "thin": false
+              "label": "Double line breaks",
+              "value": 1.05,
+              "display": "$1.05",
+              "note": "7 website visits · 542 emails with a link",
+              "thin": true
             },
             {
               "label": "Single line breaks",
-              "value": 1.11,
+              "value": 1.05,
               "display": "None yet",
-              "note": "0 website visits · 9 emails with a link, $0.26 spent",
+              "note": "0 website visits · 6 emails with a link, $0.10 spent",
               "thin": true
             }
           ],
-          "note": "Only people we started writing to at least 21 days before the read (before Sep 11) count, with every positive reply and website visit they sent since. A figure needs 1 positive reply (10 website visits) behind it; below that it reads Learning."
+          "note": "Only people we started writing to at least 21 days before the read (before Sep 12) count, with every positive reply and website visit they sent since. A figure needs 1 positive reply (10 website visits) behind it; below that it reads Learning. A website visit is a click our link-scanner check judged human, which only the emails we send ourselves can carry: website-visit figures leave out the emails sent through the provider, whose clicks are mostly scanners and cannot be screened."
         },
         {
           "kind": "bars",
@@ -3455,28 +3102,28 @@
           "lowerIsBetter": true,
           "points": [
             {
-              "label": "Double line breaks",
-              "value": 0.6,
-              "display": "$0.60",
-              "note": "185 website visits · 6,591 emails with a link",
+              "label": "One block",
+              "value": 0.48,
+              "display": "$0.48",
+              "note": "12 website visits · 470 emails with a link",
               "thin": false
             },
             {
-              "label": "One block",
-              "value": 0.77,
-              "display": "$0.77",
-              "note": "81 website visits · 4,260 emails with a link",
-              "thin": false
+              "label": "Double line breaks",
+              "value": 0.88,
+              "display": "$0.88",
+              "note": "7 website visits · 489 emails with a link",
+              "thin": true
             },
             {
               "label": "Single line breaks",
-              "value": 0.77,
+              "value": 0.88,
               "display": "None yet",
-              "note": "0 website visits · 6 emails with a link, $0.16 spent",
+              "note": "0 website visits · 2 emails with a link, $0.03 spent",
               "thin": true
             }
           ],
-          "note": "Only people we started writing to at least 21 days before the read (before Sep 11) count, with every positive reply and website visit they sent since. A figure needs 1 positive reply (10 website visits) behind it; below that it reads Learning."
+          "note": "Only people we started writing to at least 21 days before the read (before Sep 12) count, with every positive reply and website visit they sent since. A figure needs 1 positive reply (10 website visits) behind it; below that it reads Learning. A website visit is a click our link-scanner check judged human, which only the emails we send ourselves can carry: website-visit figures leave out the emails sent through the provider, whose clicks are mostly scanners and cannot be screened."
         },
         {
           "kind": "bars",
@@ -3484,41 +3131,41 @@
           "lowerIsBetter": true,
           "points": [
             {
-              "label": "Double line breaks",
-              "value": 1.35,
-              "display": "$1.35",
-              "note": "51 website visits · 2,550 emails with a link",
-              "thin": false
+              "label": "One block",
+              "value": 1.17,
+              "display": "$1.17",
+              "note": "4 website visits · 163 emails with a link",
+              "thin": true
             },
             {
-              "label": "One block",
-              "value": 1.53,
-              "display": "$1.53",
-              "note": "63 website visits · 2,874 emails with a link",
-              "thin": false
+              "label": "Double line breaks",
+              "value": 1.17,
+              "display": "None yet",
+              "note": "0 website visits · 53 emails with a link, $1.20 spent",
+              "thin": true
             },
             {
               "label": "Single line breaks",
-              "value": 1.53,
+              "value": 1.17,
               "display": "None yet",
-              "note": "0 website visits · 3 emails with a link, $0.10 spent",
+              "note": "0 website visits · 4 emails with a link, $0.07 spent",
               "thin": true
             }
           ],
-          "note": "Only people we started writing to at least 21 days before the read (before Sep 11) count, with every positive reply and website visit they sent since. A figure needs 1 positive reply (10 website visits) behind it; below that it reads Learning."
+          "note": "Only people we started writing to at least 21 days before the read (before Sep 12) count, with every positive reply and website visit they sent since. A figure needs 1 positive reply (10 website visits) behind it; below that it reads Learning. A website visit is a click our link-scanner check judged human, which only the emails we send ourselves can carry: website-visit figures leave out the emails sent through the provider, whose clicks are mostly scanners and cannot be screened."
         }
       ],
       "conclusion": [
-        "Double line breaks: 236 website visits · 9,141 emails with a link, $180 spent.",
-        "Flash tier: Double line breaks is cheapest at $0.60 per website visit (185 website visits · 6,591 emails with a link).",
-        "Pro tier: Double line breaks is cheapest at $1.35 per website visit (51 website visits · 2,550 emails with a link).",
+        "One block: 16 website visits · 633 emails with a link, $10 spent.",
+        "Flash tier: One block is cheapest at $0.48 per website visit (12 website visits · 470 emails with a link).",
+        "Pro tier: One block is cheapest at $1.17 per website visit (4 website visits · 163 emails with a link).",
         "Every email of a sequence is filed under how its first email looked, and the sequence's website visits with it. Three layouts: one block (no line break at all), single line breaks (a new line with no empty line), double line breaks (an empty line between paragraphs). Classified by a regex on the text of the first email, no LLM involved.",
         "The model chose this on its own until Sep 28, 2026, when the templates started requiring a greeting and blank-line paragraphs. Every email here was written before, the last in Oct.",
         "The buckets ran for different clients, audiences and months: this is not a split test."
       ],
       "verdict": {
-        "kind": "conclusion",
-        "reason": "Double line breaks against One block, website visits per dollar: p < 0.001 (2 comparisons, so the bar is p < 0.025), and it holds on the same clients in the same months (1.56x, p < 0.001)."
+        "kind": "noise",
+        "reason": "One block against Double line breaks, website visits per dollar: p 0.398, a gap chance alone produces often."
       }
     },
     {
@@ -3528,12 +3175,12 @@
       "goal": "roi",
       "question": "Does the way the first email opens change what a website visit costs?",
       "status": "measured",
-      "headline": "No greeting leads at $0.71 per website visit. Noise so far.",
-      "winner": "No greeting",
+      "headline": "Greeting + first name leads at $0.45 per website visit. A signal to confirm, not yet a conclusion.",
+      "winner": "Greeting + first name",
       "result": {
-        "display": "$0.71",
+        "display": "$0.45",
         "unit": "per website visit",
-        "sample": "192 website visits · 6,593 emails with a link"
+        "sample": "18 website visits · 629 emails with a link"
       },
       "crowned": false,
       "charts": [
@@ -3543,28 +3190,28 @@
           "lowerIsBetter": true,
           "points": [
             {
-              "label": "No greeting",
-              "value": 0.71,
-              "display": "$0.71",
-              "note": "192 website visits · 6,593 emails with a link",
-              "thin": false
-            },
-            {
               "label": "Greeting + first name",
-              "value": 0.96,
-              "display": "$0.96",
-              "note": "48 website visits · 3,136 emails with a link",
+              "value": 0.45,
+              "display": "$0.45",
+              "note": "18 website visits · 629 emails with a link",
               "thin": false
             },
             {
               "label": "First name alone",
-              "value": 1.12,
-              "display": "$1.12",
-              "note": "140 website visits · 6,555 emails with a link",
-              "thin": false
+              "value": 1.52,
+              "display": "$1.52",
+              "note": "5 website visits · 417 emails with a link",
+              "thin": true
+            },
+            {
+              "label": "No greeting",
+              "value": 1.52,
+              "display": "None yet",
+              "note": "0 website visits · 135 emails with a link, $2.20 spent",
+              "thin": true
             }
           ],
-          "note": "Only people we started writing to at least 21 days before the read (before Sep 11) count, with every positive reply and website visit they sent since. A figure needs 1 positive reply (10 website visits) behind it; below that it reads Learning."
+          "note": "Only people we started writing to at least 21 days before the read (before Sep 12) count, with every positive reply and website visit they sent since. A figure needs 1 positive reply (10 website visits) behind it; below that it reads Learning. A website visit is a click our link-scanner check judged human, which only the emails we send ourselves can carry: website-visit figures leave out the emails sent through the provider, whose clicks are mostly scanners and cannot be screened."
         },
         {
           "kind": "bars",
@@ -3572,28 +3219,28 @@
           "lowerIsBetter": true,
           "points": [
             {
-              "label": "No greeting",
-              "value": 0.56,
-              "display": "$0.56",
-              "note": "155 website visits · 4,878 emails with a link",
+              "label": "Greeting + first name",
+              "value": 0.45,
+              "display": "$0.45",
+              "note": "18 website visits · 629 emails with a link",
               "thin": false
             },
             {
               "label": "First name alone",
-              "value": 0.72,
-              "display": "$0.72",
-              "note": "70 website visits · 3,329 emails with a link",
-              "thin": false
+              "value": 2.68,
+              "display": "$2.68",
+              "note": "1 website visit · 249 emails with a link",
+              "thin": true
             },
             {
-              "label": "Greeting + first name",
-              "value": 0.9,
-              "display": "$0.90",
-              "note": "41 website visits · 2,650 emails with a link",
-              "thin": false
+              "label": "No greeting",
+              "value": 2.68,
+              "display": "None yet",
+              "note": "0 website visits · 83 emails with a link, $1.16 spent",
+              "thin": true
             }
           ],
-          "note": "Only people we started writing to at least 21 days before the read (before Sep 11) count, with every positive reply and website visit they sent since. A figure needs 1 positive reply (10 website visits) behind it; below that it reads Learning."
+          "note": "Only people we started writing to at least 21 days before the read (before Sep 12) count, with every positive reply and website visit they sent since. A figure needs 1 positive reply (10 website visits) behind it; below that it reads Learning. A website visit is a click our link-scanner check judged human, which only the emails we send ourselves can carry: website-visit figures leave out the emails sent through the provider, whose clicks are mostly scanners and cannot be screened."
         },
         {
           "kind": "bars",
@@ -3601,41 +3248,34 @@
           "lowerIsBetter": true,
           "points": [
             {
-              "label": "Greeting + first name",
-              "value": 1.31,
-              "display": "$1.31",
-              "note": "7 website visits · 486 emails with a link",
+              "label": "First name alone",
+              "value": 1.24,
+              "display": "$1.24",
+              "note": "4 website visits · 168 emails with a link",
               "thin": true
             },
             {
               "label": "No greeting",
-              "value": 1.35,
-              "display": "$1.35",
-              "note": "37 website visits · 1,715 emails with a link",
-              "thin": false
-            },
-            {
-              "label": "First name alone",
-              "value": 1.52,
-              "display": "$1.52",
-              "note": "70 website visits · 3,226 emails with a link",
-              "thin": false
+              "value": 1.24,
+              "display": "None yet",
+              "note": "0 website visits · 52 emails with a link, $1.03 spent",
+              "thin": true
             }
           ],
-          "note": "Only people we started writing to at least 21 days before the read (before Sep 11) count, with every positive reply and website visit they sent since. A figure needs 1 positive reply (10 website visits) behind it; below that it reads Learning."
+          "note": "Only people we started writing to at least 21 days before the read (before Sep 12) count, with every positive reply and website visit they sent since. A figure needs 1 positive reply (10 website visits) behind it; below that it reads Learning. A website visit is a click our link-scanner check judged human, which only the emails we send ourselves can carry: website-visit figures leave out the emails sent through the provider, whose clicks are mostly scanners and cannot be screened."
         }
       ],
       "conclusion": [
-        "No greeting: 192 website visits · 6,593 emails with a link, $137 spent.",
-        "Flash tier: No greeting is cheapest at $0.56 per website visit (155 website visits · 4,878 emails with a link).",
-        "Pro tier: Greeting + first name is cheapest at $1.31 per website visit (7 website visits · 486 emails with a link).",
+        "Greeting + first name: 18 website visits · 629 emails with a link, $8.07 spent.",
+        "Flash tier: Greeting + first name is cheapest at $0.45 per website visit (18 website visits · 629 emails with a link).",
+        "Pro tier: First name alone is cheapest at $1.24 per website visit (4 website visits · 168 emails with a link).",
         "Every email of a sequence is filed under how its first email looked, and the sequence's website visits with it. A greeting word in any language we write in (Hi, Hallo, Bonjour...) counts as a greeting whatever follows; a first name followed by a comma, a colon or a dash, with no greeting word before it (\"Marie, most clinics...\"), counts as the first name alone. Classified by a regex on the text of the first email, no LLM involved.",
         "The model chose this on its own until Sep 28, 2026, when the templates started requiring a greeting and blank-line paragraphs. Every email here was written before, the last in Oct.",
         "The buckets ran for different clients, audiences and months: this is not a split test."
       ],
       "verdict": {
-        "kind": "noise",
-        "reason": "No greeting against Greeting + first name, website visits per dollar: p 0.074, a gap chance alone produces often."
+        "kind": "signal",
+        "reason": "Greeting + first name against First name alone, website visits per dollar: p 0.011 (2 comparisons, so the bar is p < 0.025), but on the same clients in the same months it reads 2.21x (p 0.109): the gap may be the clients'."
       }
     },
     {
@@ -3645,12 +3285,12 @@
       "goal": "roi",
       "question": "Do dashes in the first email change what a website visit costs, and how often one comes?",
       "status": "measured",
-      "headline": "No dash leads at $0.88 per website visit. Noise so far.",
+      "headline": "No dash leads at $0.69 per website visit. Noise so far.",
       "winner": "No dash",
       "result": {
-        "display": "$0.88",
+        "display": "$0.69",
         "unit": "per website visit",
-        "sample": "359 website visits · 15,133 emails with a link"
+        "sample": "23 website visits · 1,000 emails with a link"
       },
       "crowned": false,
       "charts": [
@@ -3661,27 +3301,27 @@
           "points": [
             {
               "label": "No dash",
-              "value": 0.88,
-              "display": "$0.88",
-              "note": "359 website visits · 15,133 emails with a link",
+              "value": 0.69,
+              "display": "$0.69",
+              "note": "23 website visits · 1,000 emails with a link",
               "thin": false
-            },
-            {
-              "label": "En dash",
-              "value": 0.92,
-              "display": "$0.92",
-              "note": "1 website visit · 58 emails with a link",
-              "thin": true
             },
             {
               "label": "Em dash",
-              "value": 1.2,
-              "display": "$1.20",
-              "note": "20 website visits · 1,093 emails with a link",
-              "thin": false
+              "value": 0.69,
+              "display": "None yet",
+              "note": "0 website visits · 178 emails with a link, $1.93 spent",
+              "thin": true
+            },
+            {
+              "label": "En dash",
+              "value": 0.69,
+              "display": "None yet",
+              "note": "0 website visits · 3 emails with a link, $0.03 spent",
+              "thin": true
             }
           ],
-          "note": "Only people we started writing to at least 21 days before the read (before Sep 11) count, with every positive reply and website visit they sent since. A figure needs 1 positive reply (10 website visits) behind it; below that it reads Learning."
+          "note": "Only people we started writing to at least 21 days before the read (before Sep 12) count, with every positive reply and website visit they sent since. A figure needs 1 positive reply (10 website visits) behind it; below that it reads Learning. A website visit is a click our link-scanner check judged human, which only the emails we send ourselves can carry: website-visit figures leave out the emails sent through the provider, whose clicks are mostly scanners and cannot be screened."
         },
         {
           "kind": "bars",
@@ -3690,27 +3330,27 @@
           "points": [
             {
               "label": "No dash",
-              "value": 23.7,
-              "display": "2.37%",
-              "note": "359 website visits · 15,133 emails with a link",
+              "value": 23,
+              "display": "2.30%",
+              "note": "23 website visits · 1,000 emails with a link",
               "thin": false
             },
             {
               "label": "Em dash",
-              "value": 18.3,
-              "display": "1.83%",
-              "note": "20 website visits · 1,093 emails with a link",
-              "thin": false
+              "value": 0,
+              "display": "0.00%",
+              "note": "0 website visits · 178 emails with a link",
+              "thin": true
             },
             {
               "label": "En dash",
-              "value": 17.2,
-              "display": "1.72%",
-              "note": "1 website visit · 58 emails with a link",
+              "value": 0,
+              "display": "0.00%",
+              "note": "0 website visits · 3 emails with a link",
               "thin": true
             }
           ],
-          "note": "Only people we started writing to at least 21 days before the read (before Sep 11) count, with every positive reply and website visit they sent since. A figure needs 1 positive reply (10 website visits) behind it; below that it reads Learning."
+          "note": "Only people we started writing to at least 21 days before the read (before Sep 12) count, with every positive reply and website visit they sent since. A figure needs 1 positive reply (10 website visits) behind it; below that it reads Learning. A website visit is a click our link-scanner check judged human, which only the emails we send ourselves can carry: website-visit figures leave out the emails sent through the provider, whose clicks are mostly scanners and cannot be screened."
         },
         {
           "kind": "bars",
@@ -3719,27 +3359,27 @@
           "points": [
             {
               "label": "No dash",
-              "value": 0.65,
-              "display": "$0.65",
-              "note": "255 website visits · 10,385 emails with a link",
+              "value": 0.54,
+              "display": "$0.54",
+              "note": "19 website visits · 788 emails with a link",
               "thin": false
             },
             {
               "label": "Em dash",
-              "value": 0.74,
-              "display": "$0.74",
-              "note": "10 website visits · 415 emails with a link",
-              "thin": false
+              "value": 0.54,
+              "display": "None yet",
+              "note": "0 website visits · 170 emails with a link, $1.72 spent",
+              "thin": true
             },
             {
               "label": "En dash",
-              "value": 0.88,
-              "display": "$0.88",
-              "note": "1 website visit · 57 emails with a link",
+              "value": 0.54,
+              "display": "None yet",
+              "note": "0 website visits · 3 emails with a link, $0.03 spent",
               "thin": true
             }
           ],
-          "note": "Only people we started writing to at least 21 days before the read (before Sep 11) count, with every positive reply and website visit they sent since. A figure needs 1 positive reply (10 website visits) behind it; below that it reads Learning."
+          "note": "Only people we started writing to at least 21 days before the read (before Sep 12) count, with every positive reply and website visit they sent since. A figure needs 1 positive reply (10 website visits) behind it; below that it reads Learning. A website visit is a click our link-scanner check judged human, which only the emails we send ourselves can carry: website-visit figures leave out the emails sent through the provider, whose clicks are mostly scanners and cannot be screened."
         },
         {
           "kind": "bars",
@@ -3748,27 +3388,27 @@
           "points": [
             {
               "label": "No dash",
-              "value": 24.6,
-              "display": "2.46%",
-              "note": "255 website visits · 10,385 emails with a link",
+              "value": 24.1,
+              "display": "2.41%",
+              "note": "19 website visits · 788 emails with a link",
               "thin": false
             },
             {
               "label": "Em dash",
-              "value": 24.1,
-              "display": "2.41%",
-              "note": "10 website visits · 415 emails with a link",
-              "thin": false
+              "value": 0,
+              "display": "0.00%",
+              "note": "0 website visits · 170 emails with a link",
+              "thin": true
             },
             {
               "label": "En dash",
-              "value": 17.5,
-              "display": "1.75%",
-              "note": "1 website visit · 57 emails with a link",
+              "value": 0,
+              "display": "0.00%",
+              "note": "0 website visits · 3 emails with a link",
               "thin": true
             }
           ],
-          "note": "Only people we started writing to at least 21 days before the read (before Sep 11) count, with every positive reply and website visit they sent since. A figure needs 1 positive reply (10 website visits) behind it; below that it reads Learning."
+          "note": "Only people we started writing to at least 21 days before the read (before Sep 12) count, with every positive reply and website visit they sent since. A figure needs 1 positive reply (10 website visits) behind it; below that it reads Learning. A website visit is a click our link-scanner check judged human, which only the emails we send ourselves can carry: website-visit figures leave out the emails sent through the provider, whose clicks are mostly scanners and cannot be screened."
         },
         {
           "kind": "bars",
@@ -3777,27 +3417,20 @@
           "points": [
             {
               "label": "No dash",
-              "value": 1.43,
-              "display": "$1.43",
-              "note": "104 website visits · 4,748 emails with a link",
-              "thin": false
+              "value": 1.44,
+              "display": "$1.44",
+              "note": "4 website visits · 212 emails with a link",
+              "thin": true
             },
             {
               "label": "Em dash",
-              "value": 1.65,
-              "display": "$1.65",
-              "note": "10 website visits · 678 emails with a link",
-              "thin": false
-            },
-            {
-              "label": "En dash",
-              "value": 1.65,
+              "value": 1.44,
               "display": "None yet",
-              "note": "0 website visits · 1 emails with a link, $0.04 spent",
+              "note": "0 website visits · 8 emails with a link, $0.22 spent",
               "thin": true
             }
           ],
-          "note": "Only people we started writing to at least 21 days before the read (before Sep 11) count, with every positive reply and website visit they sent since. A figure needs 1 positive reply (10 website visits) behind it; below that it reads Learning."
+          "note": "Only people we started writing to at least 21 days before the read (before Sep 12) count, with every positive reply and website visit they sent since. A figure needs 1 positive reply (10 website visits) behind it; below that it reads Learning. A website visit is a click our link-scanner check judged human, which only the emails we send ourselves can carry: website-visit figures leave out the emails sent through the provider, whose clicks are mostly scanners and cannot be screened."
         },
         {
           "kind": "bars",
@@ -3806,27 +3439,20 @@
           "points": [
             {
               "label": "No dash",
-              "value": 21.9,
-              "display": "2.19%",
-              "note": "104 website visits · 4,748 emails with a link",
-              "thin": false
+              "value": 18.9,
+              "display": "1.89%",
+              "note": "4 website visits · 212 emails with a link",
+              "thin": true
             },
             {
               "label": "Em dash",
-              "value": 14.7,
-              "display": "1.47%",
-              "note": "10 website visits · 678 emails with a link",
-              "thin": false
-            },
-            {
-              "label": "En dash",
               "value": 0,
               "display": "0.00%",
-              "note": "0 website visits · 1 emails with a link",
+              "note": "0 website visits · 8 emails with a link",
               "thin": true
             }
           ],
-          "note": "Only people we started writing to at least 21 days before the read (before Sep 11) count, with every positive reply and website visit they sent since. A figure needs 1 positive reply (10 website visits) behind it; below that it reads Learning."
+          "note": "Only people we started writing to at least 21 days before the read (before Sep 12) count, with every positive reply and website visit they sent since. A figure needs 1 positive reply (10 website visits) behind it; below that it reads Learning. A website visit is a click our link-scanner check judged human, which only the emails we send ourselves can carry: website-visit figures leave out the emails sent through the provider, whose clicks are mostly scanners and cannot be screened."
         },
         {
           "kind": "bars",
@@ -3834,79 +3460,58 @@
           "lowerIsBetter": false,
           "points": [
             {
-              "label": "GLM 5.3 Flash",
-              "value": 87.5,
-              "display": "88%",
-              "note": "21 with a dash · 24 emails with a link",
+              "label": "DeepSeek V4 Flash",
+              "value": 94,
+              "display": "94%",
+              "note": "142 with a dash · 151 emails with a link",
               "thin": false
             },
             {
-              "label": "DeepSeek V4 Flash",
-              "value": 76.9,
-              "display": "77%",
-              "note": "10 with a dash · 13 emails with a link",
+              "label": "GLM 5.3 Flash",
+              "value": 90.9,
+              "display": "91%",
+              "note": "30 with a dash · 33 emails with a link",
+              "thin": false
+            },
+            {
+              "label": "Gemini 3.8 Flash",
+              "value": 3.8,
+              "display": "4%",
+              "note": "1 with a dash · 26 emails with a link",
               "thin": false
             },
             {
               "label": "Gemini 3.1 Pro",
-              "value": 12.5,
-              "display": "13%",
-              "note": "679 with a dash · 5,427 emails with a link",
-              "thin": false
-            },
-            {
-              "label": "Gemini 3.6 Flash",
-              "value": 9.1,
-              "display": "9%",
-              "note": "25 with a dash · 276 emails with a link",
-              "thin": false
-            },
-            {
-              "label": "Gemini 3 Flash",
-              "value": 6.4,
-              "display": "6%",
-              "note": "301 with a dash · 4,713 emails with a link",
-              "thin": false
-            },
-            {
-              "label": "Gemini 3.5 Flash",
-              "value": 4.6,
-              "display": "5%",
-              "note": "112 with a dash · 2,431 emails with a link",
+              "value": 3.6,
+              "display": "4%",
+              "note": "8 with a dash · 220 emails with a link",
               "thin": false
             },
             {
               "label": "Gemini 3.5 Flash-Lite",
-              "value": 0.1,
-              "display": "0%",
-              "note": "3 with a dash · 3,314 emails with a link",
-              "thin": false
-            },
-            {
-              "label": "Gemini 3.7 Flash",
               "value": 0,
               "display": "0%",
-              "note": "0 with a dash · 86 emails with a link",
+              "note": "0 with a dash · 751 emails with a link",
               "thin": false
             }
           ],
-          "note": "Only people we started writing to at least 21 days before the read (before Sep 11) count, with every positive reply and website visit they sent since. A figure needs 1 positive reply (10 website visits) behind it; below that it reads Learning."
+          "note": "Only people we started writing to at least 21 days before the read (before Sep 12) count, with every positive reply and website visit they sent since. A figure needs 1 positive reply (10 website visits) behind it; below that it reads Learning. A website visit is a click our link-scanner check judged human, which only the emails we send ourselves can carry: website-visit figures leave out the emails sent through the provider, whose clicks are mostly scanners and cannot be screened."
         }
       ],
       "conclusion": [
-        "No dash: 359 website visits · 15,133 emails with a link, $314 spent, a 2.37% website visit rate.",
-        "Flash tier: No dash is cheapest at $0.65 per website visit (255 website visits · 10,385 emails with a link).",
-        "Pro tier: No dash is cheapest at $1.43 per website visit (104 website visits · 4,748 emails with a link).",
-        "Dashes are a model habit: GLM 5.3 Flash puts one in 88% of its first emails, Gemini 3.7 Flash in 0%. Read each tier against the models writing its buckets.",
-        "Flash tier: 60% of the em dash emails come from Gemini 3 Flash, 42% of the no-dash emails come from Gemini 3 Flash: the same model leads both but does not write most of each, so within this tier dashes and models are mixed.",
+        "No dash: 23 website visits · 1,000 emails with a link, $16 spent, a 2.30% website visit rate.",
+        "Flash tier: No dash is cheapest at $0.54 per website visit (19 website visits · 788 emails with a link).",
+        "Pro tier: No dash is cheapest at $1.44 per website visit (4 website visits · 212 emails with a link).",
+        "Dashes are a model habit: DeepSeek V4 Flash puts one in 94% of its first emails, Gemini 3.5 Flash-Lite in 0%. Read each tier against the models writing its buckets.",
+        "Flash tier: 82% of the em dash emails come from DeepSeek V4 Flash, 95% of the no-dash emails come from Gemini 3.5 Flash-Lite: different models, so within this tier the gap is largely a model gap, not a dash effect.",
         "Pro tier: 100% of the em dash emails come from Gemini 3.1 Pro, 100% of the no-dash emails come from Gemini 3.1 Pro: one model writes most of both, so within this tier the gap is closer to a dash effect.",
-        "Three buckets on the first email's text: an em dash, an en dash, neither. A plain hyphen is not a dash. The 4 emails with a link whose first email carries both (0.0%, under 2%) are counted with the em dash. Every email of a sequence is filed under its first email, and the sequence's website visits with it. Classified by a character test on the text, no LLM involved.",
+        "Three buckets on the first email's text: an em dash, an en dash, neither. A plain hyphen is not a dash. The 0 emails with a link whose first email carries both (0.0%, under 2%) are counted with the em dash. Every email of a sequence is filed under its first email, and the sequence's website visits with it. Classified by a character test on the text, no LLM involved.",
         "Our templates never banned dashes until Sep 29, 2026, when every template started forbidding both. Every email here was generated before that date (the last in Oct).",
         "The buckets ran for different clients, audiences and months: this is not a split test."
       ],
       "verdict": {
         "kind": "noise",
-        "reason": "No dash against En dash, website visits per dollar: p 1.000, a gap chance alone produces often."
+        "reason": "No dash against Em dash, website visits per dollar: p 0.167, a gap chance alone produces often."
       }
     },
     {
@@ -3916,12 +3521,12 @@
       "goal": "roi",
       "question": "Which workflow gets the cheapest website visit?",
       "status": "measured",
-      "headline": "Gemini 3 Flash · Cold email v19 leads at $0.45 per website visit. Noise so far.",
-      "winner": "Gemini 3 Flash · Cold email v19",
+      "headline": "Gemini 3.5 Flash-Lite · Cold email v35 leads at $0.47 per website visit. Noise so far.",
+      "winner": "Gemini 3.5 Flash-Lite · Cold email v35",
       "result": {
-        "display": "$0.45",
+        "display": "$0.47",
         "unit": "per website visit",
-        "sample": "77 website visits · 1,586 emails with a link"
+        "sample": "19 website visits · 701 emails with a link"
       },
       "crowned": false,
       "charts": [
@@ -3931,143 +3536,60 @@
           "lowerIsBetter": true,
           "points": [
             {
-              "key": "sales-cold-email-outreach-osprey",
-              "label": "Gemini 3 Flash · Cold email v19",
-              "value": 0.45,
-              "display": "$0.45",
-              "note": "77 website visits · 1,586 emails with a link",
-              "thin": false
-            },
-            {
-              "key": "sales-cold-email-outreach-pelican",
-              "label": "Gemini 3.5 Flash · Cold email v19",
-              "value": 0.62,
-              "display": "$0.62",
-              "note": "66 website visits · 2,792 emails with a link",
-              "thin": false
-            },
-            {
               "key": "sales-cold-email-outreach-rampart",
-              "label": "Gemini 3 Flash · Cold email v35",
-              "value": 0.78,
-              "display": "$0.78",
-              "note": "114 website visits · 6,103 emails with a link",
-              "thin": false
-            },
-            {
-              "key": "sales-cold-email-outreach-dawn",
-              "label": "Gemini 3.5 Flash-Lite · Cold email v19",
-              "value": 1,
-              "display": "$1.00",
-              "note": "11 website visits · 475 emails with a link",
-              "thin": false
-            },
-            {
-              "key": "sales-cold-email-outreach-bronze-2",
-              "label": "Gemini 3.1 Pro · Blind discovery v16",
-              "value": 1.01,
-              "display": "$1.01",
-              "note": "9 website visits · 531 emails with a link",
-              "thin": true
-            },
-            {
-              "key": "sales-cold-email-outreach-legato",
-              "label": "Gemini 3.1 Pro · Cold email v19",
-              "value": 1.33,
-              "display": "$1.33",
-              "note": "35 website visits · 1,620 emails with a link",
+              "label": "Gemini 3.5 Flash-Lite · Cold email v35",
+              "value": 0.47,
+              "display": "$0.47",
+              "note": "19 website visits · 701 emails with a link",
               "thin": false
             },
             {
               "key": "sales-cold-email-outreach-permafrost",
               "label": "Gemini 3.1 Pro · Cold email v31",
-              "value": 1.46,
-              "display": "$1.46",
-              "note": "61 website visits · 2,656 emails with a link",
-              "thin": false
-            },
-            {
-              "key": "sales-cold-email-outreach-vector",
-              "label": "Gemini 3.1 Pro · Cold email v12",
-              "value": 2.6,
-              "display": "$2.60",
-              "note": "7 website visits · 484 emails with a link",
+              "value": 1.31,
+              "display": "$1.31",
+              "note": "4 website visits · 180 emails with a link",
               "thin": true
             }
           ],
-          "note": "Only people we started writing to at least 21 days before the read (before Sep 11) count, with every positive reply and website visit they sent since. A figure needs 1 positive reply (10 website visits) behind it; below that it reads Learning."
+          "note": "Only people we started writing to at least 21 days before the read (before Sep 12) count, with every positive reply and website visit they sent since. A figure needs 1 positive reply (10 website visits) behind it; below that it reads Learning. A website visit is a click our link-scanner check judged human, which only the emails we send ourselves can carry: website-visit figures leave out the emails sent through the provider, whose clicks are mostly scanners and cannot be screened."
         },
         {
           "kind": "months",
-          "title": "Gemini 3 Flash · Cold email v19: cost per website visit by month",
+          "title": "Gemini 3.5 Flash-Lite · Cold email v35: cost per website visit by month",
           "lowerIsBetter": true,
           "points": [
             {
-              "label": "Jun",
-              "value": 0.44,
-              "display": "$0.44",
-              "note": "24 website visits · 602 emails with a link",
-              "thin": false
-            },
-            {
-              "label": "Jul",
-              "value": 0.39,
-              "display": "$0.39",
-              "note": "51 website visits · 829 emails with a link",
-              "thin": false
-            },
-            {
-              "label": "Aug",
-              "value": 2.19,
-              "display": "$2.19",
-              "note": "2 website visits · 154 emails with a link",
-              "thin": true
+              "label": "Sep",
+              "value": 0.47,
+              "display": "$0.47",
+              "note": "19 website visits · 701 emails with a link · month in progress",
+              "thin": false,
+              "partial": true
             }
           ],
           "cumulative": {
-            "title": "Gemini 3 Flash · Cold email v19: average since inception",
+            "title": "Gemini 3.5 Flash-Lite · Cold email v35: average since inception",
             "points": [
               {
-                "label": "Jun",
-                "value": 0.44,
-                "display": "$0.44",
-                "note": "24 website visits · 602 emails with a link to date",
-                "thin": false
-              },
-              {
-                "label": "Jul",
-                "value": 0.41,
-                "display": "$0.41",
-                "note": "75 website visits · 1,431 emails with a link to date",
-                "thin": false
-              },
-              {
-                "label": "Aug",
-                "value": 0.45,
-                "display": "$0.45",
-                "note": "77 website visits · 1,585 emails with a link to date",
-                "thin": false
-              },
-              {
                 "label": "Sep",
-                "value": 0.45,
-                "display": "$0.45",
-                "note": "77 website visits · 1,586 emails with a link to date · month in progress",
+                "value": 0.47,
+                "display": "$0.47",
+                "note": "19 website visits · 701 emails with a link to date · month in progress",
                 "thin": false,
                 "partial": true
               }
             ]
           },
-          "note": "Only people we started writing to at least 21 days before the read (before Sep 11) count, with every positive reply and website visit they sent since. A figure needs 1 positive reply (10 website visits) behind it; below that it reads Learning."
+          "note": "Only people we started writing to at least 21 days before the read (before Sep 12) count, with every positive reply and website visit they sent since. A figure needs 1 positive reply (10 website visits) behind it; below that it reads Learning. A website visit is a click our link-scanner check judged human, which only the emails we send ourselves can carry: website-visit figures leave out the emails sent through the provider, whose clicks are mostly scanners and cannot be screened."
         }
       ],
       "conclusion": [
-        "Gemini 3 Flash · Cold email v19: 77 website visits · 1,586 emails with a link, $35 spent.",
-        "Over time: $0.44 in Jun, $2.19 in Aug."
+        "Gemini 3.5 Flash-Lite · Cold email v35: 19 website visits · 701 emails with a link, $8.98 spent."
       ],
       "verdict": {
         "kind": "noise",
-        "reason": "Gemini 3 Flash · Cold email v19 against Gemini 3.5 Flash · Cold email v19, website visits per dollar: p 0.078, a gap chance alone produces often."
+        "reason": "Gemini 3.5 Flash-Lite · Cold email v35 against Gemini 3.1 Pro · Cold email v31, website visits per dollar: p 0.081, a gap chance alone produces often."
       }
     },
     {
@@ -4077,12 +3599,12 @@
       "goal": "rate",
       "question": "Which workflow gets the most website visits?",
       "status": "measured",
-      "headline": "Gemini 3 Flash · Cold email v19 leads with a 4.85% website visit rate. A signal to confirm, not yet a conclusion.",
-      "winner": "Gemini 3 Flash · Cold email v19",
+      "headline": "Gemini 3.5 Flash-Lite · Cold email v35 leads with a 2.71% website visit rate. Noise so far.",
+      "winner": "Gemini 3.5 Flash-Lite · Cold email v35",
       "result": {
-        "display": "4.85%",
+        "display": "2.71%",
         "unit": "website visit rate",
-        "sample": "77 website visits · 1,586 emails with a link"
+        "sample": "19 website visits · 701 emails with a link"
       },
       "crowned": false,
       "charts": [
@@ -4092,75 +3614,19 @@
           "lowerIsBetter": false,
           "points": [
             {
-              "key": "sales-cold-email-outreach-osprey",
-              "label": "Gemini 3 Flash · Cold email v19",
-              "value": 48.5,
-              "display": "4.85%",
-              "note": "77 website visits · 1,586 emails with a link",
-              "thin": false
-            },
-            {
-              "key": "sales-cold-email-outreach-pelican",
-              "label": "Gemini 3.5 Flash · Cold email v19",
-              "value": 23.6,
-              "display": "2.36%",
-              "note": "66 website visits · 2,792 emails with a link",
-              "thin": false
-            },
-            {
-              "key": "sales-cold-email-outreach-dawn",
-              "label": "Gemini 3.5 Flash-Lite · Cold email v19",
-              "value": 23.2,
-              "display": "2.32%",
-              "note": "11 website visits · 475 emails with a link",
+              "key": "sales-cold-email-outreach-rampart",
+              "label": "Gemini 3.5 Flash-Lite · Cold email v35",
+              "value": 27.1,
+              "display": "2.71%",
+              "note": "19 website visits · 701 emails with a link",
               "thin": false
             },
             {
               "key": "sales-cold-email-outreach-permafrost",
               "label": "Gemini 3.1 Pro · Cold email v31",
-              "value": 23,
-              "display": "2.30%",
-              "note": "61 website visits · 2,656 emails with a link",
-              "thin": false
-            },
-            {
-              "key": "sales-cold-email-outreach-legato",
-              "label": "Gemini 3.1 Pro · Cold email v19",
-              "value": 21.6,
-              "display": "2.16%",
-              "note": "35 website visits · 1,620 emails with a link",
-              "thin": false
-            },
-            {
-              "key": "sales-cold-email-outreach-rampart",
-              "label": "Gemini 3 Flash · Cold email v35",
-              "value": 18.7,
-              "display": "1.87%",
-              "note": "114 website visits · 6,103 emails with a link",
-              "thin": false
-            },
-            {
-              "key": "sales-cold-email-outreach-bronze-2",
-              "label": "Gemini 3.1 Pro · Blind discovery v16",
-              "value": 16.9,
-              "display": "1.69%",
-              "note": "9 website visits · 531 emails with a link",
-              "thin": true
-            },
-            {
-              "key": "sales-cold-email-outreach-vector",
-              "label": "Gemini 3.1 Pro · Cold email v12",
-              "value": 14.5,
-              "display": "1.45%",
-              "note": "7 website visits · 484 emails with a link",
-              "thin": true
-            },
-            {
-              "key": "sales-cold-email-outreach-maelstrom",
-              "label": "GLM 5.3 Flash · Cold email v35",
-              "value": 0,
-              "display": "0.00%",
-              "note": "0 website visits · 24 emails with a link",
+              "value": 22.2,
+              "display": "2.22%",
+              "note": "4 website visits · 180 emails with a link",
               "thin": true
             },
             {
@@ -4168,92 +3634,89 @@
               "label": "DeepSeek V4 Flash · Cold email v35",
               "value": 0,
               "display": "0.00%",
-              "note": "0 website visits · 13 emails with a link",
+              "note": "0 website visits · 151 emails with a link",
+              "thin": true
+            },
+            {
+              "key": "sales-cold-email-outreach-legato",
+              "label": "Gemini 3.1 Pro · Cold email v38",
+              "value": 0,
+              "display": "0.00%",
+              "note": "0 website visits · 40 emails with a link",
+              "thin": true
+            },
+            {
+              "key": "sales-cold-email-outreach-osprey",
+              "label": "Gemini 3.5 Flash-Lite · Cold email v33",
+              "value": 0,
+              "display": "0.00%",
+              "note": "0 website visits · 40 emails with a link",
+              "thin": true
+            },
+            {
+              "key": "sales-cold-email-outreach-maelstrom",
+              "label": "GLM 5.3 Flash · Cold email v35",
+              "value": 0,
+              "display": "0.00%",
+              "note": "0 website visits · 33 emails with a link",
+              "thin": true
+            },
+            {
+              "key": "sales-cold-email-outreach-pelican",
+              "label": "Gemini 3.8 Flash · Cold email v36",
+              "value": 0,
+              "display": "0.00%",
+              "note": "0 website visits · 26 emails with a link",
+              "thin": true
+            },
+            {
+              "key": "sales-cold-email-outreach-dawn",
+              "label": "Gemini 3.5 Flash-Lite · Cold email v19",
+              "value": 0,
+              "display": "0.00%",
+              "note": "0 website visits · 10 emails with a link",
               "thin": true
             }
           ],
-          "note": "Only people we started writing to at least 21 days before the read (before Sep 11) count, with every positive reply and website visit they sent since. A figure needs 1 positive reply (10 website visits) behind it; below that it reads Learning."
+          "note": "Only people we started writing to at least 21 days before the read (before Sep 12) count, with every positive reply and website visit they sent since. A figure needs 1 positive reply (10 website visits) behind it; below that it reads Learning. A website visit is a click our link-scanner check judged human, which only the emails we send ourselves can carry: website-visit figures leave out the emails sent through the provider, whose clicks are mostly scanners and cannot be screened."
         },
         {
           "kind": "months",
-          "title": "Gemini 3 Flash · Cold email v19: website visit rate by month",
+          "title": "Gemini 3.5 Flash-Lite · Cold email v35: website visit rate by month",
           "lowerIsBetter": false,
           "points": [
             {
-              "label": "Jun",
-              "value": 39.9,
-              "display": "3.99%",
-              "note": "24 website visits · 602 emails with a link",
-              "thin": false
-            },
-            {
-              "label": "Jul",
-              "value": 61.5,
-              "display": "6.15%",
-              "note": "51 website visits · 829 emails with a link",
-              "thin": false
-            },
-            {
-              "label": "Aug",
-              "value": 13,
-              "display": "1.30%",
-              "note": "2 website visits · 154 emails with a link",
-              "thin": true
-            },
-            {
               "label": "Sep",
-              "value": 0,
-              "display": "0.00%",
-              "note": "0 website visits · 1 emails with a link · month in progress",
-              "thin": true,
+              "value": 27.1,
+              "display": "2.71%",
+              "note": "19 website visits · 701 emails with a link · month in progress",
+              "thin": false,
               "partial": true
             }
           ],
           "cumulative": {
-            "title": "Gemini 3 Flash · Cold email v19: average since inception",
+            "title": "Gemini 3.5 Flash-Lite · Cold email v35: average since inception",
             "points": [
               {
-                "label": "Jun",
-                "value": 39.87,
-                "display": "3.99%",
-                "note": "24 website visits · 602 emails with a link to date",
-                "thin": false
-              },
-              {
-                "label": "Jul",
-                "value": 52.41,
-                "display": "5.24%",
-                "note": "75 website visits · 1,431 emails with a link to date",
-                "thin": false
-              },
-              {
-                "label": "Aug",
-                "value": 48.58,
-                "display": "4.86%",
-                "note": "77 website visits · 1,585 emails with a link to date",
-                "thin": false
-              },
-              {
                 "label": "Sep",
-                "value": 48.55,
-                "display": "4.85%",
-                "note": "77 website visits · 1,586 emails with a link to date · month in progress",
+                "value": 27.1,
+                "display": "2.71%",
+                "note": "19 website visits · 701 emails with a link to date · month in progress",
                 "thin": false,
                 "partial": true
               }
             ]
           },
-          "note": "Only people we started writing to at least 21 days before the read (before Sep 11) count, with every positive reply and website visit they sent since. A figure needs 1 positive reply (10 website visits) behind it; below that it reads Learning."
+          "note": "Only people we started writing to at least 21 days before the read (before Sep 12) count, with every positive reply and website visit they sent since. A figure needs 1 positive reply (10 website visits) behind it; below that it reads Learning. A website visit is a click our link-scanner check judged human, which only the emails we send ourselves can carry: website-visit figures leave out the emails sent through the provider, whose clicks are mostly scanners and cannot be screened."
         }
       ],
       "conclusion": [
-        "Gemini 3 Flash · Cold email v19: 77 website visits · 1,586 emails with a link.",
-        "Over time: 3.99% in Jun, 0.00% in Sep.",
+        "Gemini 3.5 Flash-Lite · Cold email v35: 19 website visits · 701 emails with a link.",
         "A workflow with fewer than 10 website visits is ranked where its value puts it and marked Learning."
       ],
       "verdict": {
-        "kind": "signal",
-        "reason": "Gemini 3 Flash · Cold email v19 against Gemini 3.5 Flash · Cold email v19, website visits per email: p < 0.001 (9 comparisons, so the bar is p < 0.006), but the two never ran for the same client in the same month, so the gap may be the clients'."
+        "kind": "noise",
+        "reason": "Gemini 3.5 Flash-Lite · Cold email v35 against Gemini 3.1 Pro · Cold email v31, website visits per email: p 1.000, a gap chance alone produces often."
       }
     },
     {
@@ -4384,9 +3847,9 @@
       "models": 12
     },
     "scout": {
-      "workflows": 10,
-      "templates": 9,
-      "models": 8
+      "workflows": 8,
+      "templates": 6,
+      "models": 5
     },
     "pilot": {
       "workflows": 0,

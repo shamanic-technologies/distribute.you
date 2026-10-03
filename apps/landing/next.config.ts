@@ -64,7 +64,7 @@ const nextConfig: NextConfig = {
       { source: "/performance/:path*", destination: "/", permanent: true, missing: offLab },
       { source: "/use-cases", destination: "/", permanent: true, missing: offLab },
       { source: "/outcomes/:path*", destination: "/", permanent: true, missing: offLab },
-      { source: "/cold-email-cost-guide/:path*", destination: "/blog/cost-per-click-cold-email", permanent: true, missing: offLab },
+      { source: "/cold-email-cost-guide/:path*", destination: "/blog/cold-email-cost-per-positive-reply", permanent: true, missing: offLab },
       { source: "/cold-email-for-saas-founders/:path*", destination: "/", permanent: true, missing: offLab },
       { source: "/cold-email-vs-linkedin/:path*", destination: "/", permanent: true, missing: offLab },
       { source: "/developers/:path+", destination: "/developers", permanent: true, missing: offLab },
@@ -82,6 +82,11 @@ const nextConfig: NextConfig = {
       { source: "/blog/cold-email-open-tracking-pixel", destination: "/blog", permanent: true, missing: offLab },
       { source: "/blog/cold-email-open-tracking", destination: "/blog", permanent: true, missing: offLab },
       { source: "/blog/cold-email-response-rate", destination: "/blog", permanent: true, missing: offLab },
+      // Taken down on 2026-10-03: their click findings rested on the sending provider's click tracking,
+      // which no scanner check screens; on human visits alone none of them holds.
+      { source: "/blog/cost-per-click-cold-email", destination: "/blog", permanent: true, missing: offLab },
+      { source: "/blog/flash-vs-pro-llm-cold-email", destination: "/blog", permanent: true, missing: offLab },
+      { source: "/blog/cold-email-greeting", destination: "/blog", permanent: true, missing: offLab },
       // Articles taken down on 2026-10-03: their subject is a channel we do not run (positioning
       // 2026-09-24: a cold email agency).
       { source: "/blog/press-release-distribution-software", destination: "/blog", permanent: true, missing: offLab },
