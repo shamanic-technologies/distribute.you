@@ -47,6 +47,8 @@ import { EmptyNote, Shimmer, StateDot, TopBar, type Crumb } from "@/components/v
 import { MaturityBadge } from "@/components/maturity-badge";
 import { StaffOnly } from "@/components/v2/staff-only";
 import { useStaffMode } from "@/lib/use-staff-mode";
+import { useUser } from "@clerk/nextjs";
+import { useIsBetaUser } from "@/lib/use-beta-user";
 import type { Maturity } from "@/lib/feature-gates";
 
 /**
@@ -433,18 +435,34 @@ export function V2MissionWorkflowsPage() {
 
 type IntegrationView = "ai" | "raw" | "merged" | "conversations";
 
-function integrationTabs(orgId: string, brandId: string, active: IntegrationView) {
+/**
+ * A tab marked beta is RENDERED only for a beta user: a GA user never sees the badge or
+ * the link to a page that would only tell them it is not open. Left with "Your AI"
+ * alone, they get no tab bar at all.
+ */
+function integrationTabs(orgId: string, brandId: string, active: IntegrationView, isBeta: boolean): V2Tab[] | undefined {
   const base = `${v2Base(orgId, brandId)}/integrations`;
-  return [
+  const tabs: V2Tab[] = [
     { label: "Your AI", href: `${base}/ai`, active: active === "ai" },
     { label: "Your CRM", href: base, active: active === "raw", badge: "beta" as const },
     { label: "Merged with our leads", href: `${base}/merged`, active: active === "merged", badge: "beta" as const },
     { label: "Conversations", href: `${base}/conversations`, active: active === "conversations", badge: "beta" as const },
   ];
+  const visible = tabs.filter((t) => t.badge !== "beta" || isBeta);
+  return visible.length > 1 ? visible : undefined;
 }
 
 export function V2IntegrationsPage({ view }: { view: IntegrationView }) {
   const { orgId, brandId } = useIds();
+  const router = useRouter();
+  const { isLoaded } = useUser();
+  const isBeta = useIsBetaUser();
+  // A GA user on a beta tab's URL (the bare /integrations is the CRM tab) lands on the
+  // AI tab. Wait for Clerk: useIsBetaUser reads false until the user has loaded.
+  const gaOnBetaView = isLoaded && !isBeta && view !== "ai";
+  useEffect(() => {
+    if (gaOnBetaView) router.replace(`${v2Href(orgId, brandId, "integrations")}/ai`);
+  }, [gaOnBetaView, router, orgId, brandId]);
   return (
     <V2Page
       crumbs={[{ label: "Setup" }, { label: "Integrations" }]}
@@ -456,7 +474,7 @@ export function V2IntegrationsPage({ view }: { view: IntegrationView }) {
             ? "Everyone you are talking to, on every channel, in one thread."
             : "The CRM this brand already runs on, read here and set beside our leads."
       }
-      tabs={integrationTabs(orgId, brandId, view)}
+      tabs={integrationTabs(orgId, brandId, view, isBeta)}
       width="max-w-[1280px]"
     >
       {view === "ai" ? (

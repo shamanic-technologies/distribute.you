@@ -9,6 +9,7 @@ import { ORG_DESYNC_ERROR, ORG_DESYNC_STATUS } from "@/lib/org-desync";
 import { useAuthQuery } from "@/lib/use-auth-query";
 import {
   ApiError,
+  getBrand,
   getOfferUserFields,
   saveOfferUserFields,
   USER_FIELD_KEYS,
@@ -22,6 +23,7 @@ import {
   type ProfileFields,
 } from "@/components/brand-profile/field-editor";
 import { coerceTextField, OFFER_LEVERS } from "@/lib/strategy-model";
+import { buildOfferLLMPrompt } from "@/components/onboarding/llm-prompt";
 
 /**
  * List-kind levers edited as ONE textarea rather than a chip list. Both list levers
@@ -151,6 +153,37 @@ export function BrandOfferCard({ brandId, offerId }: { brandId: string; offerId:
     },
   });
 
+  // The business line of the prompt. Same key as the brand identity card, so it is
+  // already in cache on this page.
+  const { data: brandData } = useAuthQuery(["brand", brandId], () => getBrand(brandId), {
+    enabled: !!brandId,
+  });
+  const business = brandData?.brand.domain || brandData?.brand.name || null;
+  const [llmCopied, setLlmCopied] = useState(false);
+
+  // Copies what is ON SCREEN (unsaved edits included), the way the onboarding
+  // lever steps do: the reader asks their own LLM, then pastes back field by field.
+  const copyAllForLLM = () => {
+    if (!business) return;
+    const prompt = buildOfferLLMPrompt(
+      OFFER_LEVERS.map((lever) => {
+        const value = offerFields[lever.key];
+        return {
+          label: lever.label,
+          tip: lever.tip,
+          value: TEXTAREA_LIST_KEYS.has(lever.key)
+            ? linesToList(value).join("\n")
+            : coerceTextField(value),
+        };
+      }),
+      business,
+    );
+    void navigator.clipboard.writeText(prompt).then(() => {
+      setLlmCopied(true);
+      setTimeout(() => setLlmCopied(false), 2000);
+    });
+  };
+
   const setOfferText = (key: string, value: string) =>
     setOfferDraft((prev) => ({ ...(prev ?? offerBaseline), [key]: value }));
 
@@ -171,6 +204,14 @@ export function BrandOfferCard({ brandId, offerId }: { brandId: string; offerId:
             around these. Click any field to edit it.
           </p>
         </div>
+        <button
+          type="button"
+          onClick={copyAllForLLM}
+          disabled={profilePending || !business}
+          className="shrink-0 rounded-lg border border-gray-200 px-3 py-1.5 text-xs font-medium text-gray-600 transition hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-40"
+        >
+          {llmCopied ? "Copied!" : "Copy all for LLM"}
+        </button>
       </div>
 
       <div className="mt-4">

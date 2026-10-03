@@ -151,6 +151,9 @@ const REASON_SENTENCE: Record<string, string> = {
   prepaid_no_chargeable_card: "Prepaid, no chargeable card: spends what it holds",
   postpaid_no_chargeable_card: "Postpaid with no chargeable card: campaigns are stopped",
   prepaid_balance_spent: "Prepaid, balance spent",
+  postpaid_idle: "Postpaid, card on file, nothing spending",
+  prepaid_auto_topup_idle: "Prepaid, auto top-up on, nothing spending",
+  postpaid_charge_retries_exhausted: "Postpaid, card refused: retries exhausted",
 };
 
 export function classReasonSentence(reason: string): string {

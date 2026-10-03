@@ -28,6 +28,15 @@ describe("v2 Integrations pages", () => {
     expect(tabs.indexOf('label: "Your AI"')).toBeLessThan(tabs.indexOf('label: "Your CRM"'));
   });
 
+  it("renders a beta-badged tab only for a beta user, and sends GA off a beta tab's URL", () => {
+    const tabs = SETUP.slice(SETUP.indexOf("function integrationTabs("), SETUP.indexOf("export function V2IntegrationsPage("));
+    expect(tabs).toContain('tabs.filter((t) => t.badge !== "beta" || isBeta)');
+    const page = SETUP.slice(SETUP.indexOf("export function V2IntegrationsPage("), SETUP.indexOf("export function V2BrandSettingsPage("));
+    expect(page).toContain("integrationTabs(orgId, brandId, view, isBeta)");
+    expect(page).toContain('isLoaded && !isBeta && view !== "ai"');
+    expect(page).toContain("router.replace(");
+  });
+
   it("reuses the v1 readers on the v1 query keys, so caches dedupe and persist", () => {
     expect(RAW).toContain('["crmConnections", brandId], () => listCrmConnections(brandId)');
     expect(RAW).toContain('["crmContacts", brandId]');
