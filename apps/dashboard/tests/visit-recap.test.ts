@@ -1,6 +1,6 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
-import { countryLabel, formatDuration, sourceLine, stageOf, visitRecap, type VisitEvent } from "../src/lib/visit-recap";
+import { companyDomain, countryLabel, firmographicLines, formatDuration, sourceLine, stageOf, visitPerson, visitRecap, type VisitEvent } from "../src/lib/visit-recap";
 import { ENDED_VISITS_SQL, rowToEvent } from "../src/lib/visit-recap-job";
 
 const read = (p: string) => readFileSync(new URL(`../${p}`, import.meta.url), "utf8");
@@ -22,6 +22,8 @@ function ev(offsetS: number, partial: Partial<VisitEvent>): VisitEvent {
     utmTerm: null,
     gclid: null,
     website: null,
+    email: null,
+    personName: null,
     ...partial,
   };
 }
@@ -129,10 +131,12 @@ describe("visit recap (owner 2026-10-03: one readable Telegram per human visit)"
   });
 
   it("maps a PostHog row onto a visit event, empty strings as absent", () => {
-    const { sessionId, event } = rowToEvent(["s1", "2026-10-03T10:00:00Z", "$pageview", "distribute.you", "/", "", null, null, "FR", "$direct", null, null, null, null, "acme.com"]);
+    const { sessionId, event } = rowToEvent(["s1", "2026-10-03T10:00:00Z", "$pageview", "distribute.you", "/", "", null, null, "FR", "$direct", null, null, null, null, "acme.com", "jane@acme.com", "Jane Doe"]);
     expect(sessionId).toBe("s1");
     expect(event.currentUrl).toBeNull();
     expect(event.website).toBe("acme.com");
+    expect(event.email).toBe("jane@acme.com");
+    expect(event.personName).toBe("Jane Doe");
   });
 
   it("is started from instrumentation, in production only, and the old entry ping is gone", () => {
@@ -145,5 +149,51 @@ describe("visit recap (owner 2026-10-03: one readable Telegram per human visit)"
 
   it("v2 onboarding sends the typed website with its submit event", () => {
     expect(read("src/components/v2/get-started/get-started.tsx")).toContain('posthog.capture("get_started_website_submitted", { website:');
+  });
+});
+
+describe("visit recap firmographics (owner 2026-10-04: who is the company behind the visit)", () => {
+  const firmo = {
+    hqCountry: "US",
+    industry: "Marketing & advertising",
+    employeeRange: "51-200",
+    revenueRange: "$10M-$50M",
+    category: "B2B SaaS",
+    role: "Head of Growth",
+  };
+
+  it("reads the company domain from the typed website, else a signed-up email", () => {
+    expect(companyDomain("https://www.Acme.com/pricing", null)).toBe("acme.com");
+    expect(companyDomain("acme.io", "jane@other.com")).toBe("acme.io");
+    expect(companyDomain(null, "Jane@Acme.com")).toBe("acme.com");
+    expect(companyDomain("not a site", null)).toBeNull();
+    expect(companyDomain(null, null)).toBeNull();
+  });
+
+  it("finds the person and the domain across the visit's events", () => {
+    const person = visitPerson([ev(0, {}), ev(5, { website: "acme.com" }), ev(9, { email: "jane@acme.com", personName: "Jane Doe" })]);
+    expect(person).toEqual({ domain: "acme.com", email: "jane@acme.com", firstName: "Jane", lastName: "Doe" });
+    expect(visitPerson([ev(0, {})])).toBeNull();
+  });
+
+  it("renders HQ, category, industry, size, revenue and role on two lines", () => {
+    expect(firmographicLines(firmo)).toEqual([
+      "HQ 🇺🇸 United States · B2B SaaS · Marketing &amp; advertising",
+      "51-200 employees · $10M-$50M revenue · Head of Growth",
+    ]);
+  });
+
+  it("says unknown instead of guessing, and drops nothing silently", () => {
+    expect(firmographicLines({ hqCountry: null, industry: null, employeeRange: null, revenueRange: null, category: null, role: null })).toEqual([
+      "HQ unknown · Category unknown · Industry unknown",
+      "Size unknown · Revenue unknown · Role unknown",
+    ]);
+  });
+
+  it("puts the company block under the typed website", () => {
+    const text = visitRecap([ev(0, { website: "acme.com" })], firmo);
+    expect(text.indexOf("Typed acme.com")).toBeLessThan(text.indexOf("HQ 🇺🇸 United States"));
+    expect(text.indexOf("HQ 🇺🇸 United States")).toBeLessThan(text.indexOf("<b>Onboarding</b>"));
+    expect(visitRecap([ev(0, { website: "acme.com" })])).not.toContain("HQ ");
   });
 });

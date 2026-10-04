@@ -44,7 +44,7 @@ function visitEventsSql(sessionIds: string[]): string {
 select $session_id, timestamp, event, properties.$host, properties.$pathname, properties.$current_url,
   properties.$el_text, properties.title, properties.$geoip_country_code, properties.$referring_domain,
   properties.utm_source, properties.utm_medium, properties.utm_term, properties.gclid,
-  coalesce(properties.website, properties.domain)
+  coalesce(properties.website, properties.domain), person.properties.email, person.properties.name
 from events
 where timestamp > now() - interval 1 day and $session_id in (${ids})
   and event not in ('$web_vitals', '$exception', '$set', '$identify', 'landing_variant_viewed')
@@ -116,6 +116,8 @@ export function rowToEvent(row: unknown[]): { sessionId: string; event: VisitEve
       utmTerm: str(row[12]),
       gclid: str(row[13]),
       website: str(row[14]),
+      email: str(row[15]),
+      personName: str(row[16]),
     },
   };
 }
