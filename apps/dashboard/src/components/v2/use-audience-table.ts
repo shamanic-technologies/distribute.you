@@ -15,6 +15,7 @@ import {
   getBrandConversionToken,
   listAudiences,
   optimizationGoalForRuntimeGoal,
+  renameAudience,
   setAudienceStatus,
   type AudienceStatus,
   type AudienceWire,
@@ -168,17 +169,23 @@ export function useAudienceTable({
     mutationFn: (i: { id: string; status: AudienceStatus }) => setAudienceStatus(i.id, i.status),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["audiences", brandId] }),
   });
+  // An audience write answers with the row: put it in every status list first, then re-read.
+  const writeAudience = (res: { audience: AudienceWire }) => {
+    for (const status of VISIBLE_AUDIENCE_STATUSES) {
+      queryClient.setQueryData<{ audiences: AudienceWire[]; total: number }>(
+        ["audiences", brandId, status, offerId ?? "brand"],
+        (old) => (old ? { ...old, audiences: old.audiences.map((a) => (a.id === res.audience.id ? res.audience : a)) } : old),
+      );
+    }
+    return queryClient.invalidateQueries({ queryKey: ["audiences", brandId] });
+  };
   const avatarMut = useMutation({
     mutationFn: (id: string) => generateAudienceAvatar(id),
-    onSuccess: (res) => {
-      for (const status of VISIBLE_AUDIENCE_STATUSES) {
-        queryClient.setQueryData<{ audiences: AudienceWire[]; total: number }>(
-          ["audiences", brandId, status, offerId ?? "brand"],
-          (old) => (old ? { ...old, audiences: old.audiences.map((a) => (a.id === res.audience.id ? res.audience : a)) } : old),
-        );
-      }
-      queryClient.invalidateQueries({ queryKey: ["audiences", brandId] });
-    },
+    onSuccess: writeAudience,
+  });
+  const renameMut = useMutation({
+    mutationFn: (i: { id: string; name: string }) => renameAudience(i.id, i.name),
+    onSuccess: writeAudience,
   });
 
   // A campaign narrows to the audiences it targets; `null` inherits the offer's set.
@@ -234,5 +241,6 @@ export function useAudienceTable({
     legPair,
     statusMut,
     avatarMut,
+    renameMut,
   };
 }
