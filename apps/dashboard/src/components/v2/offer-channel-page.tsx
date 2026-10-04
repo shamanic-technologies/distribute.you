@@ -4,7 +4,8 @@ import Link from "next/link";
 import { useParams, useSearchParams } from "next/navigation";
 import { useAuthQuery } from "@/lib/use-auth-query";
 import { pollOptions } from "@/lib/query-options";
-import { getOfferUserFields } from "@/lib/api";
+import { getLeadBucketCounts, getOfferUserFields, listCampaignsByBrand } from "@/lib/api";
+import { legCampaignId } from "@/lib/v2/leg-campaign";
 import { formatCount } from "@/lib/format-number";
 import { SINCE_INCEPTION } from "@/lib/revenue-window";
 import { isColdEmailChannel } from "@/lib/offer-levers-home";
@@ -91,12 +92,18 @@ export function V2OfferChannelPage() {
   );
 }
 
+/** The two legs cold email works, each drawn as its own steps, stopping at its outcome. */
+const LEG_STEPS = [
+  { legKey: "start_to_website_visit", title: "Website visits", outcome: "Website visit", bucket: "website_visit" },
+  { legKey: "start_to_conversation", title: "Positive replies", outcome: "Positive reply", bucket: "positive_reply" },
+] as const;
+
 /**
  * What cold email did: its sending since inception (features-service, the same figures as
- * Today) and where the people it reached stand (lead-service's served bucket counts).
- * Every figure is served; a bar's length is only the count drawn against Contacted.
- * Delivered and Interested are lead-service's PEOPLE counts (`people`): a person can visit
- * AND reply, so the Interested total is its distinct count, never the two buckets added.
+ * Today) and, per leg, where the people it reached stand (lead-service's served bucket
+ * counts, read on the leg's campaign). Every figure is served; a bar's length is only the
+ * count drawn against Queued. People and Queued come first because one person gets
+ * several emails: People counts persons, Queued and Sent count emails (every step).
  */
 export function ColdEmailOverview({
   brandId,
@@ -111,14 +118,22 @@ export function ColdEmailOverview({
   const emails = win.data?.emails ?? null;
   const buckets = useBucketCounts(brandId);
   const counts = buckets.data?.counts ?? null;
-  const people = buckets.data?.people ?? null;
   const countsSettled = buckets.isFetchedAfterMount || buckets.data !== undefined;
+  const campaignsQ = useAuthQuery(["campaigns", brandId], () => listCampaignsByBrand(brandId), { enabled: !!brandId });
+  const campaigns = campaignsQ.data?.campaigns ?? null;
 
   return (
     <div className="space-y-8">
       <section>
         <SectionTitle right={<span>Since you started</span>}>Sending</SectionTitle>
-        <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
+        <div className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-6">
+          <StatTile label="People">
+            {!countsSettled ? <Shimmer className="h-7 w-16" /> : <Figure value={counts ? formatCount(counts.contacted) : "—"} unit="people" />}
+          </StatTile>
+          {/* Emails waiting to go out: no service serves it per offer yet (features-service request open). */}
+          <StatTile label="Queued">
+            <Figure value={<span className="k-fg4">{"—"}</span>} unit="emails" />
+          </StatTile>
           <StatTile label="Sent">
             {win.pending ? <Shimmer className="h-7 w-16" /> : <Figure value={emails ? formatCount(emails.sent) : "—"} unit="emails" />}
           </StatTile>
@@ -134,42 +149,74 @@ export function ColdEmailOverview({
         </div>
       </section>
 
-      {/* Where people stand: one card at 2/3, one vertical bar per step; the tabs' summaries at 1/3 (owner 2026-10-04). */}
+      {/* One steps card per leg at 2/3, the tabs' summaries at 1/3 (owner 2026-10-04). */}
       <div className="grid gap-x-3 gap-y-8 lg:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
-      <section>
-        <SectionTitle>People</SectionTitle>
-        <div className="k-card p-4">
-          {!countsSettled ? (
-            <Shimmer className="h-[200px] w-full rounded-[8px]" />
-          ) : !counts ? (
-            <EmptyNote>Could not read where people stand. Retrying.</EmptyNote>
-          ) : (
-            <>
-              <div className="flex items-end gap-3">
-                <StepBar label="Contacted" count={counts.contacted} of={counts.contacted} />
-                <StepBar label="Delivered" count={people?.delivered ?? null} of={counts.contacted} />
-                <InterestedBar total={people?.interested ?? null} visits={counts.website_visit} replies={counts.positive_reply} of={counts.contacted} />
-                <StepBar label="Meeting booked" count={counts.meeting_booked} of={counts.contacted} />
-                <StepBar label="Meeting attended" count={counts.meeting_attended} of={counts.contacted} />
-                <StepBar label="Paid client" count={counts.sale} of={counts.contacted} />
-              </div>
-              <div className="k-fg3 mt-4 flex gap-4 text-[12px] tabular-nums">
-                <span className="inline-flex items-center gap-1.5">
-                  <span className="h-2 w-2 rounded-full bg-[var(--data-teal)]" aria-hidden="true" />
-                  Website visit {formatCount(counts.website_visit)}
-                </span>
-                <span className="inline-flex items-center gap-1.5">
-                  <span className="h-2 w-2 rounded-full bg-[var(--accent)]" aria-hidden="true" />
-                  Positive reply {formatCount(counts.positive_reply)}
-                </span>
-              </div>
-            </>
-          )}
+        <div className="grid gap-x-3 gap-y-8 md:grid-cols-2">
+          {LEG_STEPS.map((leg) => (
+            <LegSteps
+              key={leg.legKey}
+              title={leg.title}
+              outcome={leg.outcome}
+              bucket={leg.bucket}
+              campaignsSettled={campaigns !== null || campaignsQ.isError}
+              campaignId={campaigns ? legCampaignId(campaigns, offerId, leg.legKey) : null}
+            />
+          ))}
         </div>
-      </section>
-      <TabSummaries brandId={brandId} offerId={offerId} contacted={counts?.contacted ?? null} replies={counts?.positive_reply ?? null} countsSettled={countsSettled} tabHref={tabHref} />
+        <TabSummaries
+          brandId={brandId}
+          offerId={offerId}
+          sent={emails?.sent ?? null}
+          sentPending={win.pending}
+          replies={counts?.positive_reply ?? null}
+          countsSettled={countsSettled}
+          tabHref={tabHref}
+        />
       </div>
     </div>
+  );
+}
+
+/** One leg's steps: Queued, Delivered, then the leg's outcome, read on the leg's campaign. */
+function LegSteps({
+  title,
+  outcome,
+  bucket,
+  campaignsSettled,
+  campaignId,
+}: {
+  title: string;
+  outcome: string;
+  bucket: "website_visit" | "positive_reply";
+  campaignsSettled: boolean;
+  campaignId: string | null;
+}) {
+  const q = useAuthQuery(["leadBucketCounts", `campaign:${campaignId}`, ""], () => getLeadBucketCounts({ campaignId: campaignId! }, {}), {
+    ...pollOptions,
+    enabled: !!campaignId,
+  });
+  const counts = q.data?.counts ?? null;
+  const settled = q.isFetchedAfterMount || q.data !== undefined;
+
+  return (
+    <section>
+      <SectionTitle>{title}</SectionTitle>
+      <div className="k-card p-4">
+        {!campaignsSettled || (campaignId && !settled) ? (
+          <Shimmer className="h-[200px] w-full rounded-[8px]" />
+        ) : !campaignId ? (
+          <EmptyNote>No campaign aims at this yet.</EmptyNote>
+        ) : !counts ? (
+          <EmptyNote>Could not read where people stand. Retrying.</EmptyNote>
+        ) : (
+          <div className="flex items-end gap-3">
+            <StepBar label="Queued" count={counts.contacted} of={counts.contacted} />
+            <StepBar label="Delivered" count={q.data?.people?.delivered ?? null} of={counts.contacted} />
+            <StepBar label={outcome} count={counts[bucket]} of={counts.contacted} />
+          </div>
+        )}
+      </div>
+    </section>
   );
 }
 
@@ -180,14 +227,16 @@ export function ColdEmailOverview({
 function TabSummaries({
   brandId,
   offerId,
-  contacted,
+  sent,
+  sentPending,
   replies,
   countsSettled,
   tabHref,
 }: {
   brandId: string;
   offerId: string;
-  contacted: number | null;
+  sent: number | null;
+  sentPending: boolean;
   replies: number | null;
   countsSettled: boolean;
   tabHref: (tab: V2ChannelTab) => string;
@@ -205,7 +254,7 @@ function TabSummaries({
       <SectionTitle>At a glance</SectionTitle>
       <div className="flex flex-col gap-3">
         <SummaryCard label="Inbox" href={tabHref("inbox")} loading={!countsSettled} value={replies} unit={replies === 1 ? "positive reply" : "positive replies"} />
-        <SummaryCard label="Sent" href={tabHref("sent")} loading={!countsSettled} value={contacted} unit={contacted === 1 ? "person emailed" : "people emailed"} />
+        <SummaryCard label="Sent" href={tabHref("sent")} loading={sentPending} value={sent} unit={sent === 1 ? "email sent" : "emails sent"} />
         <SummaryCard
           label="Targeting"
           href={tabHref("targeting")}
@@ -280,16 +329,6 @@ function StepBar({ label, count, of }: { label: string; count: number | null; of
   return (
     <BarColumn label={label} value={count}>
       <div className="w-full bg-[var(--accent)]" style={{ height: barHeight(count ?? 0, of) }} />
-    </BarColumn>
-  );
-}
-
-/** Interested: positive replies stacked on website visits, labelled with the distinct total lead-service serves. */
-function InterestedBar({ total, visits, replies, of }: { total: number | null; visits: number; replies: number; of: number }) {
-  return (
-    <BarColumn label="Interested" value={total}>
-      <div className="w-full bg-[var(--accent)]" style={{ height: barHeight(replies, of) }} />
-      <div className="w-full bg-[var(--data-teal)]" style={{ height: barHeight(visits, of) }} />
     </BarColumn>
   );
 }
