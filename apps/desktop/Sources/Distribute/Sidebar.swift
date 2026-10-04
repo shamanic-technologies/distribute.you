@@ -300,7 +300,7 @@ private struct TenantMenu: View {
                     }
                 }
             }
-            .frame(maxHeight: 224)
+            .frame(height: min(CGFloat(state.selectedOrg?.brands.count ?? 0) * 32, 224))
             MenuDivider()
             MenuRow(title: "New brand", lead: { PlusMark() }) { state.menu = nil; state.startNewBrand() }
             if state.selectedBrand != nil {
@@ -316,7 +316,7 @@ private struct TenantMenu: View {
                         }
                     }
                 }
-                .frame(maxHeight: 192)
+                .frame(height: min(CGFloat(state.offers.count) * 32, 192))
                 MenuDivider()
                 MenuRow(title: "New offer", lead: { PlusMark() }) { state.menu = nil; state.startNewOffer() }
             }
@@ -345,7 +345,7 @@ private struct TenantMenu: View {
                     }
                 }
             }
-            .frame(maxHeight: 192)
+            .frame(height: min(CGFloat(filteredOrgs.count) * 32, 192))
         }
     }
 
