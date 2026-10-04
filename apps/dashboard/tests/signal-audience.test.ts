@@ -43,7 +43,7 @@ describe("LinkedIn signal audience surface", () => {
   });
 
   it("the drawer shows the criterion, never its filters as Apollo pills", () => {
-    expect(table).toContain("audience.filters && !signal ? audienceFilterGroups(audience.filters) : []");
+    expect(table).toContain("audience.filters && !signal && !plain ? audienceFilterGroups(audience.filters) : []");
   });
 
   // Done for you (owner 2026-10-03): we find the competitors and their LinkedIn pages and

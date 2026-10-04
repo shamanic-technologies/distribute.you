@@ -469,6 +469,7 @@ export function V2AudiencesTable({
           statsLoading={t.statsLoading}
           basis={basis}
           paused={t.withheldPaused}
+          plain={plain}
           docked={docked}
           onClose={() => {
             setSelectedId(null);
@@ -630,6 +631,7 @@ function AudienceDrawer({
   statsLoading,
   basis,
   paused,
+  plain,
   docked,
   onClose,
   onFindSimilar,
@@ -644,6 +646,8 @@ function AudienceDrawer({
   statsLoading: boolean;
   basis: StatBasis;
   paused: boolean;
+  /** The offer's Targeting: the audience is its text, plus the channels working it. */
+  plain: boolean;
   docked: boolean;
   onClose: () => void;
   onFindSimilar: () => void;
@@ -671,7 +675,7 @@ function AudienceDrawer({
   const providerDomain = audience.provider ? PROVIDER_DOMAINS[audience.provider.toLowerCase()] ?? null : null;
   const signal = linkedInSignalOf(audience.filters);
   // A signal audience's filters hold its criterion, not Apollo filters: it gets its own section.
-  const groups = audience.filters && !signal ? audienceFilterGroups(audience.filters) : [];
+  const groups = audience.filters && !signal && !plain ? audienceFilterGroups(audience.filters) : [];
   const busy = (s: AudienceStatus) => pendingStatus === s;
   const StatusBtn = ({ label, to }: { label: string; to: AudienceStatus }) => (
     <button type="button" onClick={() => onSetStatus(to)} disabled={pendingStatus != null} className="k-btn disabled:opacity-60">
@@ -735,7 +739,28 @@ function AudienceDrawer({
           </div>
         )}
 
-        {signal && (
+        {plain && (
+          <section>
+            <p className="k-label mb-2">Who</p>
+            <p className="text-[13px] leading-5">{audience.description ?? <span className="k-fg4">—</span>}</p>
+          </section>
+        )}
+
+        {plain && (
+          <section>
+            <p className="k-label mb-2">Used by</p>
+            {/* Cold email is the one channel that works an offer's audiences today; its own
+                list's size is the served pool size. */}
+            <div className="flex items-center justify-between gap-3 text-[13px]">
+              <span>Cold email</span>
+              <span className="k-fg2 tabular-nums">
+                {audience.sizeCount != null ? `${formatCount(audience.sizeCount)} people` : <span className="k-fg4">—</span>}
+              </span>
+            </div>
+          </section>
+        )}
+
+        {signal && !plain && (
           <section>
             <p className="k-label mb-2">Targeting</p>
             <dl className="space-y-2">
@@ -792,6 +817,7 @@ function AudienceDrawer({
           </section>
         )}
 
+        {!plain && (
         <section>
           <p className="k-label mb-2">Details</p>
           <dl className="space-y-2 text-[13px]">
@@ -820,6 +846,7 @@ function AudienceDrawer({
             </div>
           </dl>
         </section>
+        )}
 
         <section className="flex items-center gap-3">
           <AudienceAvatar name={name} avatarUrl={audience.avatarUrl} size={56} />
