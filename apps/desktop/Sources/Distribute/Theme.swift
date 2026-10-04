@@ -183,7 +183,7 @@ struct KTabs<V: Hashable>: View {
     let selection: V
     let pick: (V) -> Void
     var body: some View {
-        HStack(spacing: 14) {
+        HStack(spacing: 12) {
             ForEach(options, id: \.0) { value, label in
                 Button { pick(value) } label: {
                     VStack(spacing: 6) {

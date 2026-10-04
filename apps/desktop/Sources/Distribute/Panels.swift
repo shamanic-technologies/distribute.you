@@ -101,7 +101,7 @@ private struct TodayPanel: View {
         LoadView(load: state.today) { d in
             if let win = d.window?.window {
                 KCard {
-                    Grid(alignment: .leading, horizontalSpacing: 0, verticalSpacing: 0) {
+                    Grid(alignment: .topLeading, horizontalSpacing: 0, verticalSpacing: 0) {
                         GridRow {
                             Tile(label: "Return", value: shownReturn(d.revenue?.costEconomics?.maturity))
                             Tile(label: "Pipeline", value: usd(d.revenue?.headline?.totalPipelineUsd))
@@ -196,16 +196,14 @@ private struct CompaniesPanel: View {
 // MARK: - People
 
 private let peopleBuckets: [(key: String, label: String)] = [
-    ("contacted", "Contacted"), ("website_visit", "Website visits"), ("positive_reply", "Positive replies"),
+    ("contacted", "Contacted"), ("website_visit", "Visits"), ("positive_reply", "Replies"),
     ("meeting_booked", "Meetings"), ("signup", "Signups"), ("sale", "Sales"),
 ]
 
 private struct PeoplePanel: View {
     @EnvironmentObject var state: AppState
     var body: some View {
-        KScroll(axis: .horizontal) {
-            KTabs(options: peopleBuckets.map { ($0.key, $0.label) }, selection: state.peopleBucket) { state.setPeopleBucket($0) }
-        }
+        KTabs(options: peopleBuckets.map { ($0.key, $0.label) }, selection: state.peopleBucket) { state.setPeopleBucket($0) }
         LoadView(load: state.people) { page in
             if page.leads.isEmpty { EmptyNote(text: "Nobody at this step yet.") }
             VStack(spacing: 2) {
@@ -294,7 +292,7 @@ private struct StepBars: View {
                 VStack(spacing: 6) {
                     Text(col.1.formatted()).font(.system(size: 12, weight: .semibold)).monospacedDigit().foregroundStyle(K.fg1)
                     RoundedRectangle(cornerRadius: 4)
-                        .fill(col.0 == "Close won" ? K.teal : col.0 == "Interested" ? K.run : K.accent.opacity(0.75))
+                        .fill(col.0 == "Close won" ? K.teal : col.0 == "Interested" ? K.run : col.0 == "Contacted" ? K.accent.opacity(0.75) : K.fg4.opacity(0.6))
                         .frame(height: max(4, 120 * CGFloat(col.1) / CGFloat(top)))
                     Text(col.0).font(.system(size: 11)).foregroundStyle(K.fg3).lineLimit(1).minimumScaleFactor(0.8)
                 }
