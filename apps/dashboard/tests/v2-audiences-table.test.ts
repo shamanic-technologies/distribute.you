@@ -119,7 +119,7 @@ describe("v2 audience table surface", () => {
 
   it("the offer's Targeting reads in plain words: each audience's sentence, no figure column", () => {
     const list = table.slice(table.indexOf("function PlainAudienceList("), table.indexOf("function SortTh("));
-    expect(list).toContain("a.description");
+    expect(list).toContain("<TargetText audience={a} />");
     expect(list).not.toContain("AudienceCell");
     expect(table).toContain("const columns = plain ? [] : t.columns;");
     expect(table).toContain("columns={columns}");
@@ -133,6 +133,14 @@ describe("v2 audience table surface", () => {
     expect(drawer).toContain("{signal && !plain && (");
     expect(drawer).toContain("{!plain && (\n        <section>\n          <p className=\"k-label mb-2\">Details</p>");
     expect(table).toContain("plain={plain}");
+  });
+
+  it("the audience text is the served targetText (what Jev judges), never description; Used by lists served channels", () => {
+    const text = table.slice(table.indexOf("function TargetText("), table.indexOf("const CHANNEL_WORD"));
+    expect(text).toContain("audience.targetText");
+    expect(text).not.toContain("description");
+    expect(table).toContain("audience.channels.map((c) =>");
+    expect(table).not.toContain("<span>Cold email</span>");
   });
 
   it("the offer's Targeting lists suggested audiences and leaves out LinkedIn signal ones", () => {

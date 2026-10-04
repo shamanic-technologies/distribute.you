@@ -4,7 +4,13 @@ import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { useSearchParams } from "next/navigation";
 import { PencilSimpleIcon } from "@phosphor-icons/react/dist/csr/PencilSimple";
-import { ApiError, type AudienceStatus, type AudienceWire, type FeatureAudienceStatsRow } from "@/lib/api";
+import {
+  ApiError,
+  type AudienceChannelWire,
+  type AudienceStatus,
+  type AudienceWire,
+  type FeatureAudienceStatsRow,
+} from "@/lib/api";
 import { formatCount } from "@/lib/format-number";
 import { formatRoi, roiIsGood } from "@/lib/format-roi";
 import { PROVIDER_DOMAINS } from "@/lib/api-registry";
@@ -236,7 +242,9 @@ export function V2AudiencesTable({
       k === "archived" ? a.status === "archived" : k === "suggested" ? a.status === "suggested" : a.status === "active" || a.status === "paused",
     ).length;
   const rows = sortAudiences(
-    needle ? inTab.filter((a) => `${a.name ?? ""} ${a.description ?? ""}`.toLowerCase().includes(needle)) : inTab,
+    needle
+      ? inTab.filter((a) => `${a.name ?? ""} ${a.targetText ?? ""} ${a.description ?? ""}`.toLowerCase().includes(needle))
+      : inTab,
     { sortCol, sortDir, tieBreakCol, statsFor: t.statsFor, basis },
   );
 
@@ -519,9 +527,54 @@ export function V2AudiencesTable({
   );
 }
 
+const MISSING_TEXT: Record<string, string> = {
+  not_written_yet: "Being written.",
+  no_customer_text: "No description yet.",
+};
+
+/** The audience's own text, the one Jev judges every lead against; never `description`. */
+function TargetText({ audience }: { audience: AudienceWire }) {
+  if (audience.targetText) return <>{audience.targetText}</>;
+  const why = audience.targetTextMissingReason ? MISSING_TEXT[audience.targetTextMissingReason] : null;
+  return <span className="k-fg4">{why ?? "—"}</span>;
+}
+
+const CHANNEL_WORD: Record<string, string> = { cold_email: "Cold email" };
+const LIST_WORD: Record<string, string> = {
+  apollo_search: "People search",
+  apollo_buying_signal: "Buying signal",
+  linkedin_engagement: "LinkedIn engagement",
+  crm_contacts: "Your contacts",
+  apify_search: "LinkedIn search",
+};
+const SIZE_UNKNOWN_WORD: Record<string, string> = {
+  not_built_yet: "Not built yet",
+  unknown_until_walked: "Counted as it runs",
+  not_counted: "Not counted",
+};
+
+/** One list a channel built from the audience's text, with that list's own size. */
+function ChannelLine({ c }: { c: AudienceChannelWire }) {
+  return (
+    <div className="flex items-center justify-between gap-3 text-[13px]">
+      <span className="min-w-0 truncate">
+        {CHANNEL_WORD[c.channel] ?? c.channel}
+        <span className="k-fg3"> · {LIST_WORD[c.list] ?? c.list}</span>
+      </span>
+      <span className="k-fg2 shrink-0 tabular-nums">
+        {c.size != null ? (
+          `${formatCount(c.size)} people`
+        ) : (
+          <span className="k-fg4">{(c.sizeUnknownReason && SIZE_UNKNOWN_WORD[c.sizeUnknownReason]) ?? "—"}</span>
+        )}
+      </span>
+    </div>
+  );
+}
+
 /**
  * The offer's audiences in plain words: each one's name, status and the one sentence
- * human-service serves for who it targets (`description`). No channel figure here.
+ * human-service serves for who it targets (`targetText`, what Jev judges). No channel figure here.
  */
 function PlainAudienceList({
   rows,
@@ -573,7 +626,7 @@ function PlainAudienceList({
                   <StateDot running={a.status === "active"} label={STATUS_WORD[a.status] ?? a.status} />
                 </span>
                 <span className="k-fg2 mt-0.5 block text-[13px] leading-5">
-                  {a.description ? a.description : <span className="k-fg4">—</span>}
+                  <TargetText audience={a} />
                 </span>
               </span>
             </button>
@@ -857,21 +910,24 @@ function AudienceDrawer({
         {plain && (
           <section>
             <p className="k-label mb-2">Who</p>
-            <p className="text-[13px] leading-5">{audience.description ?? <span className="k-fg4">—</span>}</p>
+            <p className="text-[13px] leading-5">
+              <TargetText audience={audience} />
+            </p>
           </section>
         )}
 
         {plain && (
           <section>
             <p className="k-label mb-2">Used by</p>
-            {/* Cold email is the one channel that works an offer's audiences today; its own
-                list's size is the served pool size. */}
-            <div className="flex items-center justify-between gap-3 text-[13px]">
-              <span>Cold email</span>
-              <span className="k-fg2 tabular-nums">
-                {audience.sizeCount != null ? `${formatCount(audience.sizeCount)} people` : <span className="k-fg4">—</span>}
-              </span>
-            </div>
+            {audience.channels && audience.channels.length > 0 ? (
+              <div className="space-y-1.5">
+                {audience.channels.map((c) => (
+                  <ChannelLine key={`${c.channel}-${c.list}-${c.audienceId}`} c={c} />
+                ))}
+              </div>
+            ) : (
+              <p className="k-fg4 text-[13px]">No channel yet.</p>
+            )}
           </section>
         )}
 
