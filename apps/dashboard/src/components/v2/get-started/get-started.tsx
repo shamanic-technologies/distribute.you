@@ -1252,7 +1252,7 @@ export function GetStarted() {
           data={salesPaths}
           loading={pathsState === "loading"}
           failed={pathsState === "failed"}
-          highlightPathKey={firstPath?.pathKey ?? null}
+          highlightKey={firstPath?.combinationKey ?? null}
           canContinue={plan.length > 0}
           onRetry={() => void loadPaths()}
           onStateRate={stateLegRate}
@@ -2036,7 +2036,7 @@ function PathsStage({
   data,
   loading,
   failed,
-  highlightPathKey,
+  highlightKey,
   canContinue,
   onRetry,
   onStateRate,
@@ -2047,7 +2047,7 @@ function PathsStage({
   data: OfferSalesPathsData | null;
   loading: boolean;
   failed: boolean;
-  highlightPathKey: string | null;
+  highlightKey: string | null;
   canContinue: boolean;
   onRetry: () => void;
   onStateRate: (leg: SalesPathLeg, ratePct: number | null) => Promise<void>;
@@ -2081,7 +2081,7 @@ function PathsStage({
             data={data ?? undefined}
             pending={(loading || state === "running") && !data}
             failed={failed}
-            highlightPathKey={highlightPathKey}
+            highlightKey={highlightKey}
             highlightLabel="Most profitable we run, launched first"
             gainHeadline
             intro=""

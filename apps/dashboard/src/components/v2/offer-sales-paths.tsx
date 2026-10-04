@@ -3,11 +3,12 @@
 import { useState } from "react";
 import { SectionTitle, Shimmer, EmptyNote, StateDot } from "@/components/v2/ui";
 import { formatRoi, roiIsGood } from "@/lib/format-roi";
+import { salesPathAvatarSrc } from "@/lib/sales-path-avatars";
 import { formatUsdAdaptive } from "@/lib/format-number";
 import { LEG_RATE_RULE, parseRateInput, roundLegRatePct } from "@/lib/brand-conversion-rates";
 import {
   formatRatePct,
-  pathTitle,
+  pathLinks,
   rateSourceLabel,
   roiUnavailableLabel,
   salesPathsEmptyReason,
@@ -28,12 +29,12 @@ export function OfferSalesPaths({
   data,
   pending,
   failed,
-  highlightPathKey = null,
+  highlightKey = null,
   highlightLabel = "What we launch first",
   intro = "Every way the ticked legs reach a paying client, best return first. Open one to see why.",
   bare = false,
   gainHeadline = false,
-  activePathKey,
+  activeKey,
   onStateRate,
   onStateLifetimeRevenue,
 }: {
@@ -41,7 +42,7 @@ export function OfferSalesPaths({
   pending: boolean;
   failed: boolean;
   /** The path framed as the one launched first (the onboarding states it). */
-  highlightPathKey?: string | null;
+  highlightKey?: string | null;
   highlightLabel?: string;
   intro?: string;
   /** No section title and no intro line (the onboarding states its own question). */
@@ -56,7 +57,7 @@ export function OfferSalesPaths({
    * list for its own framed card marked Active, every other row is marked Inactive. Null =
    * nothing runs, so every row is Inactive. The customer never picks it: the best return runs.
    */
-  activePathKey?: string | null;
+  activeKey?: string | null;
   /** When given, each leg between two steps takes a typed rate (whole percent) or null to clear it. */
   onStateRate?: (leg: SalesPathLeg, ratePct: number | null) => Promise<void>;
   /** When given, the lifetime revenue in a path's detail is editable (whole dollars). */
@@ -78,10 +79,10 @@ export function OfferSalesPaths({
         <EmptyNote>Could not read this offer&apos;s sales paths.</EmptyNote>
       ) : data && salesPathsEmptyReason(data.status) ? (
         <EmptyNote>{salesPathsEmptyReason(data.status)}</EmptyNote>
-      ) : activePathKey !== undefined ? (
+      ) : activeKey !== undefined ? (
         <StatusPaths
           paths={paths}
-          activePathKey={activePathKey}
+          activeKey={activeKey}
           open={open}
           setOpen={setOpen}
           onStateRate={onStateRate}
@@ -91,11 +92,11 @@ export function OfferSalesPaths({
         <ul className="k-card divide-y divide-[var(--line-subtle)] overflow-hidden">
           {paths.map((p) => (
             <PathRow
-              key={p.pathKey}
+              key={p.combinationKey}
               path={p}
-              open={open === p.pathKey}
-              onToggle={() => setOpen(open === p.pathKey ? null : p.pathKey)}
-              highlight={p.pathKey === highlightPathKey ? highlightLabel : null}
+              open={open === p.combinationKey}
+              onToggle={() => setOpen(open === p.combinationKey ? null : p.combinationKey)}
+              highlight={p.combinationKey === highlightKey ? highlightLabel : null}
               gainHeadline={gainHeadline}
               onStateRate={onStateRate}
               onStateLifetimeRevenue={onStateLifetimeRevenue}
@@ -113,27 +114,27 @@ export function OfferSalesPaths({
  */
 function StatusPaths({
   paths,
-  activePathKey,
+  activeKey,
   open,
   setOpen,
   onStateRate,
   onStateLifetimeRevenue,
 }: {
   paths: SalesPathRow[];
-  activePathKey: string | null;
+  activeKey: string | null;
   open: string | null;
   setOpen: (key: string | null) => void;
   onStateRate?: (leg: SalesPathLeg, ratePct: number | null) => Promise<void>;
   onStateLifetimeRevenue?: (usd: number) => Promise<void>;
 }) {
-  const active = paths.find((p) => p.pathKey === activePathKey) ?? null;
+  const active = paths.find((p) => p.combinationKey === activeKey) ?? null;
   const others = paths.filter((p) => p !== active);
   const row = (p: SalesPathRow, status: "active" | "inactive") => (
     <PathRow
-      key={p.pathKey}
+      key={p.combinationKey}
       path={p}
-      open={open === p.pathKey}
-      onToggle={() => setOpen(open === p.pathKey ? null : p.pathKey)}
+      open={open === p.combinationKey}
+      onToggle={() => setOpen(open === p.combinationKey ? null : p.combinationKey)}
       highlight={null}
       gainHeadline={false}
       status={status}
@@ -199,10 +200,12 @@ function PathRow({
         className="k-row flex w-full flex-wrap items-center gap-x-3 gap-y-1 px-4 py-3 text-left"
       >
         <span className="k-fg3 w-6 shrink-0 text-[12px] tabular-nums">#{path.rank}</span>
-        <span
-          className={`min-w-0 flex-1 ${status === "active" ? "k-fg text-[15px] font-semibold" : status === "inactive" ? "k-fg2 text-[13px]" : "text-[13px] font-medium"}`}
-        >
-          {pathTitle(path)}
+        <span className="flex w-36 shrink-0 items-center gap-2.5">
+          <PathAvatar name={path.name} size={status === "active" ? 40 : 28} />
+          <span className={`truncate ${status === "active" ? "k-fg text-[16px] font-semibold" : "k-fg text-[13px] font-semibold"}`}>{path.name}</span>
+        </span>
+        <span className={`min-w-0 flex-1 text-[13px] ${status === "inactive" ? "k-fg2" : ""}`}>
+          <PathLinks path={path} />
         </span>
         <span className="k-fg2 text-[12px] tabular-nums">
           {gainHeadline ? `${usd(path.lifetimeRevenueUsd)} per client won` : `${usd(path.costPerPayingClientUsd)} per paying client`}
@@ -217,6 +220,40 @@ function PathRow({
       </button>
       {open && <PathBreakdown path={path} onStateRate={onStateRate} onStateLifetimeRevenue={onStateLifetimeRevenue} />}
     </li>
+  );
+}
+
+/** The combination's face; a name nobody drew a face for yet shows its initial and says so. */
+function PathAvatar({ name, size }: { name: string; size: number }) {
+  const src = salesPathAvatarSrc(name);
+  if (!src) {
+    console.error(`[offer-sales-paths] no avatar drawn for sales path "${name}": add one under public/sales-path-avatars`);
+    return (
+      <span
+        aria-hidden
+        style={{ width: size, height: size }}
+        className="k-inset k-fg2 inline-flex shrink-0 items-center justify-center rounded-full text-[12px] font-semibold"
+      >
+        {name.slice(0, 1)}
+      </span>
+    );
+  }
+  // eslint-disable-next-line @next/next/no-img-element
+  return <img src={src} alt="" width={size} height={size} className="shrink-0 rounded-full" style={{ width: size, height: size }} />;
+}
+
+/** The path leg by leg: each channel of ours as a chip, then the step its leg lands on. */
+function PathLinks({ path }: { path: SalesPathRow }) {
+  const parts = pathLinks(path);
+  return (
+    <span className="inline-flex flex-wrap items-center gap-x-1.5 gap-y-1">
+      {parts.map((part, i) => (
+        <span key={i} className="inline-flex items-center gap-x-1.5">
+          {i > 0 && <span className="k-fg3">→</span>}
+          {part.kind === "channel" ? <span className="k-chip">{part.name}</span> : <span>{part.label}</span>}
+        </span>
+      ))}
+    </span>
   );
 }
 

@@ -4,6 +4,7 @@ import { join } from "node:path";
 import {
   formatRatePct,
   parseOfferSalesPaths,
+  pathLinks,
   pathTitle,
   rateSourceLabel,
   roiUnavailableLabel,
@@ -25,6 +26,8 @@ const body = {
     {
       rank: 1,
       pathKey: "p1",
+      combinationKey: "start_to_conversation@sales-cold-email-outreach",
+      name: "Victory",
       legKeys: ["start_to_conversation"],
       steps: [step("conversation", "Positive reply"), step("paid_client", "Paid client")],
       entryLegKey: "start_to_conversation",
@@ -59,6 +62,16 @@ describe("offer sales paths reader", () => {
     const parsed = parseOfferSalesPaths(body, "t");
     expect(parsed.paths[0].rank).toBe(1);
     expect(pathTitle(parsed.paths[0])).toBe("Positive reply → Paid client");
+  });
+  it("reads a path leg by leg: the channel working a leg, then the step it lands on", () => {
+    const parsed = parseOfferSalesPaths(body, "t");
+    const leg0 = parsed.paths[0].legs[0];
+    const human = { ...leg0, legKey: "conversation_to_paid_client", fromStep: step("conversation", "Positive reply"), toStep: step("paid_client", "Paid client"), workedBy: "human", channel: null };
+    expect(pathLinks({ ...parsed.paths[0], legs: [leg0, human] })).toEqual([
+      { kind: "channel", name: "Herald" },
+      { kind: "step", label: "Positive reply" },
+      { kind: "step", label: "Paid client" },
+    ]);
   });
   it("accepts a vocabulary it does not know yet", () => {
     expect(() => parseOfferSalesPaths({ ...body, status: "brand_new_status" }, "t")).not.toThrow();

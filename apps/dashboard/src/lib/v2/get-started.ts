@@ -108,6 +108,8 @@ export function initialSalesSteps(drafted: unknown, offered: readonly string[]):
 /** A path as this flow reads it: what features-service served, narrowed to what we use. */
 export interface PlanPath {
   pathKey: string;
+  /** The row's own identity (one per channel combination of the same legs). */
+  combinationKey: string;
   entryChannelSlug: string | null;
   legs: ReadonlyArray<{
     legKey: string;

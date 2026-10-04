@@ -74,7 +74,7 @@ export function V2OfferSalesPathPage() {
 
   // The path we run: the same pick as the onboarding and campaign-service's global budget
   // (best-ranked path a channel of ours enters). The customer never chooses it.
-  const activePathKey = useMemo(() => firstLaunchedPath(paths.data?.paths ?? [])?.pathKey ?? null, [paths.data]);
+  const activeKey = useMemo(() => firstLaunchedPath(paths.data?.paths ?? [])?.combinationKey ?? null, [paths.data]);
 
   const selection = draft ?? served;
   const settled = q.isFetchedAfterMount || q.data !== undefined;
@@ -94,7 +94,7 @@ export function V2OfferSalesPathPage() {
         data={paths.data}
         pending={paths.isPending && !paths.isError}
         failed={paths.isError}
-        activePathKey={activePathKey}
+        activeKey={activeKey}
         intro=""
       />
       <div className="mt-8">

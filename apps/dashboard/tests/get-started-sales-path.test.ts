@@ -33,11 +33,13 @@ const leg = (legKey: string, from: string | null, slug: string | null) => ({
 const PATHS_FIXTURE: PlanPath[] = [
   {
     pathKey: "human-entry",
+    combinationKey: "human-entry",
     entryChannelSlug: null,
     legs: [leg("start_to_meeting_booked", null, null), leg("meeting_booked_to_paid_client", "meeting_booked", null)],
   },
   {
     pathKey: "reply",
+    combinationKey: "reply",
     entryChannelSlug: "sales-cold-email-outreach",
     legs: [
       leg("start_to_conversation", null, "sales-cold-email-outreach"),
@@ -47,6 +49,7 @@ const PATHS_FIXTURE: PlanPath[] = [
   },
   {
     pathKey: "visit",
+    combinationKey: "visit",
     entryChannelSlug: "sales-cold-email-outreach",
     legs: [leg("start_to_website_visit", null, "sales-cold-email-outreach"), leg("website_visit_to_paid_client", "website_visit", null)],
   },
@@ -165,7 +168,7 @@ describe("the call sites", () => {
   });
 
   it("frames the path launched first and lets a rate be overwritten from its detail", () => {
-    expect(PAGE).toContain("highlightPathKey={firstPath?.pathKey ?? null}");
+    expect(PAGE).toContain("highlightKey={firstPath?.combinationKey ?? null}");
     expect(PAGE).toContain("await stateBrandLegRates(brandId, [{ fromStep: leg.fromStep.label, toStep: leg.toStep.label, ratePct }]);");
     expect(PATHS).toContain("onStateRate ? <RateEditor leg={leg} onStateRate={onStateRate} />");
   });
