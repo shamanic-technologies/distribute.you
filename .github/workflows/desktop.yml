@@ -29,6 +29,15 @@ jobs:
           name: Distribute
           path: apps/desktop/build/Distribute.zip
 
+      # Renders every panel over fixture data, so a look change can be reviewed from CI.
+      - name: Snapshot the window
+        run: apps/desktop/build/Distribute.app/Contents/MacOS/Distribute --snapshot apps/desktop/build/snapshots
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: snapshots
+          path: apps/desktop/build/snapshots
+
       - name: Publish desktop-latest
         if: github.ref == 'refs/heads/main'
         env:
