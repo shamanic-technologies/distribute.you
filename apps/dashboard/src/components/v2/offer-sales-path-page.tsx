@@ -4,7 +4,10 @@ import { useEffect, useMemo, useState } from "react";
 import { useParams } from "next/navigation";
 import { useQueryClient } from "@tanstack/react-query";
 import { useAuthQuery } from "@/lib/use-auth-query";
-import { getOfferSalesPath, getOfferSalesPaths, saveOfferSalesPath } from "@/lib/api";
+import { getOfferChannels, getOfferSalesPath, getOfferSalesPaths, saveOfferChannels, saveOfferSalesPath } from "@/lib/api";
+import { useSalesPathChannels } from "@/lib/use-sales-path-channels";
+import { acceptedChannels, toggleChannel } from "@/lib/offer-active-sales-paths";
+import { OfferChannelsPicker } from "@/components/v2/offer-channels-picker";
 import { useLegCatalogue } from "@/lib/use-leg-catalogue";
 import { useAcquisitionChannels } from "@/lib/use-acquisition-channels";
 import { v2OfferHref } from "@/lib/v2/routes";
@@ -48,6 +51,35 @@ export function V2OfferSalesPathPage() {
     enabled: !!offerId,
   });
   const [draft, setDraft] = useState<SalesPathSelection | null>(null);
+
+  // The channels the offer accepts (brand-service); the catalogue paths are filtered on them.
+  const eligible = useSalesPathChannels();
+  const offerChannels = useAuthQuery(["offerChannels", brandId, offerId], () => getOfferChannels(brandId, offerId), {
+    enabled: !!offerId,
+  });
+  const [channelDraft, setChannelDraft] = useState<ReadonlySet<string> | null>(null);
+  useEffect(() => setChannelDraft(null), [offerChannels.data]);
+  const accepted = useMemo(
+    () => channelDraft ?? (offerChannels.data ? acceptedChannels(offerChannels.data, SALES_PATH_CHANNEL_SLUGS) : null),
+    [channelDraft, offerChannels.data],
+  );
+  const onToggleChannel = (slug: string, on: boolean) => {
+    if (!accepted) return;
+    const next = toggleChannel(accepted, slug, on);
+    setChannelDraft(new Set(next));
+    setError(null);
+    saveOfferChannels(brandId, offerId, next)
+      .then((saved) => {
+        qc.setQueryData(["offerChannels", brandId, offerId], saved);
+        // A prefix: the catalogue list is filtered on the accepted channels.
+        return qc.invalidateQueries({ queryKey: ["offerSalesPaths", brandId, offerId] });
+      })
+      .catch((err) => {
+        console.error("[offer-sales-path] channels save failed", err);
+        setChannelDraft(null);
+        setError("Could not save this change. Try again.");
+      });
+  };
   const [error, setError] = useState<string | null>(null);
 
   const served = useMemo<SalesPathSelection | null>(
@@ -105,6 +137,22 @@ export function V2OfferSalesPathPage() {
         activeKey={activeKey}
         intro=""
       />
+      <div className="mt-8">
+        {!eligible.settled || !accepted ? (
+          offerChannels.isError || (eligible.settled && eligible.channels.length === 0) ? (
+            <EmptyNote>Could not read the channels.</EmptyNote>
+          ) : (
+            <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4">
+              <Shimmer className="h-[58px] rounded-[12px]" />
+              <Shimmer className="h-[58px] rounded-[12px]" />
+              <Shimmer className="h-[58px] rounded-[12px]" />
+              <Shimmer className="h-[58px] rounded-[12px]" />
+            </div>
+          )
+        ) : (
+          <OfferChannelsPicker channels={eligible.channels} accepted={accepted} onToggle={onToggleChannel} />
+        )}
+      </div>
       <div className="mt-8">
       {!settled || catalogue.legs.size === 0 ? (
         <div className="space-y-2">

@@ -1,4 +1,13 @@
 import { parseOfferSalesPaths, type OfferSalesPaths } from "./offer-sales-paths";
+import {
+  ActivateSalesPathResponseSchema,
+  OfferActiveSalesPathsSchema,
+  OfferChannelsSchema,
+  parseOrThrow,
+  type ActivateSalesPathResponse,
+  type OfferActiveSalesPaths,
+  type OfferChannels,
+} from "./offer-active-sales-paths";
 import { parseBrandSalesBudget, type BrandSalesBudget } from "./brand-sales-budget";
 import { browserHasAnonSession } from "./anon-session-cookie";
 import { offerArchiveRefusalSentence } from "./offer-archive";
@@ -2121,6 +2130,53 @@ export async function saveOfferSalesPath(
   return parseOfferSalesPath(raw, "saveOfferSalesPath");
 }
 
+/** GET /brands/:brandId/offers/:offerId/channels — the channels the offer accepts (brand-service). */
+export async function getOfferChannels(brandId: string, offerId: string): Promise<OfferChannels> {
+  const raw = await apiCall<unknown>(`/brands/${brandId}/offers/${offerId}/channels`);
+  return parseOrThrow(OfferChannelsSchema, raw, "getOfferChannels");
+}
+
+/** PUT /brands/:brandId/offers/:offerId/channels — replace the whole list of channels the offer accepts. */
+export async function saveOfferChannels(brandId: string, offerId: string, channelSlugs: string[]): Promise<OfferChannels> {
+  const raw = await apiCall<unknown>(`/brands/${brandId}/offers/${offerId}/channels`, {
+    method: "PUT",
+    body: { channelSlugs },
+  });
+  return parseOrThrow(OfferChannelsSchema, raw, "saveOfferChannels");
+}
+
+/** GET /brands/:brandId/offers/:offerId/active-sales-paths — the paths the customer activated (brand-service). */
+export async function getOfferActiveSalesPaths(brandId: string, offerId: string): Promise<OfferActiveSalesPaths> {
+  const raw = await apiCall<unknown>(`/brands/${brandId}/offers/${offerId}/active-sales-paths`);
+  return parseOrThrow(OfferActiveSalesPathsSchema, raw, "getOfferActiveSalesPaths");
+}
+
+/**
+ * POST /brands/:brandId/offers/:offerId/active-sales-paths — activate a path. Its entry already
+ * held by another active path is a 409 `SALES_PATH_ENTRY_TAKEN` (read the holder with
+ * `takenEntryHolder`) unless `replace` is true, which ends the holder atomically.
+ */
+export async function activateOfferSalesPath(
+  brandId: string,
+  offerId: string,
+  path: { combinationKey: string; entryChannelSlug: string; entryLegKey: string },
+  replace: boolean,
+): Promise<ActivateSalesPathResponse> {
+  const raw = await apiCall<unknown>(`/brands/${brandId}/offers/${offerId}/active-sales-paths`, {
+    method: "POST",
+    body: { ...path, replace },
+  });
+  return parseOrThrow(ActivateSalesPathResponseSchema, raw, "activateOfferSalesPath");
+}
+
+/** POST /brands/:brandId/offers/:offerId/active-sales-paths/deactivate — stop an active path. */
+export async function deactivateOfferSalesPath(brandId: string, offerId: string, combinationKey: string): Promise<void> {
+  await apiCall<unknown>(`/brands/${brandId}/offers/${offerId}/active-sales-paths/deactivate`, {
+    method: "POST",
+    body: { combinationKey },
+  });
+}
+
 /** GET /offers/:offerId/sales-paths — the offer's sales paths ranked by ROI (features-service). */
 export async function getOfferSalesPaths(
   brandId: string,
@@ -2956,6 +3012,12 @@ const PublicCatalogueSchema = z.object({
   channels: z.array(
     z.object({
       slug: z.string(),
+      name: z.string().optional(),
+      /** True when we run this channel today (features-service; absent on an older producer). */
+      managed: z.boolean().optional(),
+      /** True when the channel can appear in a sales path: the list an offer accepts channels from. */
+      salesPathEligible: z.boolean().optional(),
+      operatedBy: z.string().optional(),
       terms: z
         .object({ dailyOperatingCostCents: z.coerce.number().nullish() })
         .nullish(),
@@ -2968,6 +3030,10 @@ const PublicCatalogueSchema = z.object({
             // The crew's name (Herald, Scout, Pilot...), published per leg. Undeclared,
             // zod strips it and every crew reads by its channel's name instead.
             crewName: z.string().nullish(),
+            /** The minimum monthly budget of this (channel x leg) item, whole cents. */
+            minimumMonthlyBudgetCents: z.number().int().nullish(),
+            /** True when the leg starts from a step a lead reached (it reacts, never prospects). */
+            reactive: z.boolean().optional(),
           }),
         )
         .optional(),
