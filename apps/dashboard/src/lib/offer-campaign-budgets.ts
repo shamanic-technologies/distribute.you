@@ -25,8 +25,12 @@ const CampaignBudgetRowSchema = z
     legKey: z.string(),
     role: z.string().nullable(),
     period: CampaignPeriodSchema,
-    /** null = not set. In the row's period; a daily one may carry fractional cents (monthly / 30). */
+    /** null = not set. In the ORG's period (`period`), converted when stated in the other one. */
     budgetCents: z.number().nullable(),
+    /** The period the customer STATED it in; differs from `period` on a not-yet-restated row. null = not set. */
+    statedPeriod: CampaignPeriodSchema.nullable().optional(),
+    /** The stored daily ceiling campaign-service paces on (cents, decimal string). */
+    dailyBudgetCents: z.coerce.number().nullable().optional(),
     managed: z.boolean().nullable(),
     minimumCents: z.number().int().nullable(),
     capCents: z.number().int().nullable(),

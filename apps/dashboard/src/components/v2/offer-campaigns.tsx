@@ -284,6 +284,8 @@ function InlineBudget({
       )}
       {error ? (
         <span className="text-[11.5px] text-[var(--data-rose)]">{error}</span>
+      ) : row.statedPeriod && row.statedPeriod !== row.period && row.dailyBudgetCents != null && text === null ? (
+        <span className="k-fg3 text-[11.5px] tabular-nums">From your {money(row.dailyBudgetCents)}/day. Set it monthly.</span>
       ) : (
         hint && <span className="k-fg3 text-[11.5px] tabular-nums">{hint}{per(row.period)}</span>
       )}
