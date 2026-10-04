@@ -1,9 +1,8 @@
 "use client";
 
-import { useState } from "react";
 import { useParams, useSearchParams } from "next/navigation";
 import { formatCount } from "@/lib/format-number";
-import { TODAY_WINDOWS, type TodayWindow } from "@/lib/revenue-window";
+import { SINCE_INCEPTION } from "@/lib/revenue-window";
 import { isColdEmailChannel } from "@/lib/offer-levers-home";
 import { useAcquisitionChannels } from "@/lib/use-acquisition-channels";
 import { v2OfferChannelHref, v2OfferHref, type V2ChannelTab } from "@/lib/v2/routes";
@@ -84,15 +83,14 @@ export function V2OfferChannelPage() {
 }
 
 /**
- * What cold email did: its sending over the window (features-service, the same figures as
+ * What cold email did: its sending since inception (features-service, the same figures as
  * Today) and where the people it reached stand (lead-service's served bucket counts).
  * Every figure is served; a bar's length is only the count drawn against Contacted.
  * Delivered and Interested are lead-service's PEOPLE counts (`people`): a person can visit
  * AND reply, so the Interested total is its distinct count, never the two buckets added.
  */
 export function ColdEmailOverview({ brandId }: { brandId: string }) {
-  const [windowDays, setWindowDays] = useState<TodayWindow>(7);
-  const win = useBrandRevenueWindow(brandId, windowDays);
+  const win = useBrandRevenueWindow(brandId, SINCE_INCEPTION);
   const emails = win.data?.emails ?? null;
   const buckets = useBucketCounts(brandId);
   const counts = buckets.data?.counts ?? null;
@@ -102,25 +100,7 @@ export function ColdEmailOverview({ brandId }: { brandId: string }) {
   return (
     <div className="space-y-8">
       <section>
-        <SectionTitle
-          right={
-            <span className="inline-flex items-center gap-1.5" role="group" aria-label="Window">
-              {TODAY_WINDOWS.map((d) => (
-                <button
-                  key={d}
-                  type="button"
-                  aria-pressed={windowDays === d}
-                  onClick={() => setWindowDays(d)}
-                  className={windowDays === d ? "k-btn h-7 px-2 text-[12px]" : "k-btn-ghost h-7 px-2 text-[12px]"}
-                >
-                  {d} days
-                </button>
-              ))}
-            </span>
-          }
-        >
-          Sending
-        </SectionTitle>
+        <SectionTitle right={<span>Since you started</span>}>Sending</SectionTitle>
         <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
           <StatTile label="Sent">
             {win.pending ? <Shimmer className="h-7 w-16" /> : <Figure value={emails ? formatCount(emails.sent) : "—"} unit="emails" />}

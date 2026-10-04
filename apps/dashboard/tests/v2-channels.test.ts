@@ -66,7 +66,8 @@ describe("channel pages", () => {
     expect(page).toContain("<ColdEmailChannelSettings brandId={brandId} offerId={offerId} channelSlug={channelSlug} />");
   });
   it("the overview reads served figures and never sums Interested", () => {
-    expect(page).toContain("useBrandRevenueWindow(brandId, windowDays)");
+    expect(page).toContain("useBrandRevenueWindow(brandId, SINCE_INCEPTION)");
+    expect(page).not.toContain("TODAY_WINDOWS");
     expect(page).toContain("useBucketCounts(brandId)");
     expect(page).not.toMatch(/website_visit\s*\+/);
     expect(page).not.toMatch(/positive_reply\s*\+/);
