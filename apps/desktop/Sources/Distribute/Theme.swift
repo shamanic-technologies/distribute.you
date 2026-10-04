@@ -160,9 +160,9 @@ struct Logo: View {
     }
     private var initial: some View {
         Text(String(name.prefix(1)).uppercased())
-            .font(.system(size: size * 0.45, weight: .semibold)).foregroundStyle(tint(for: name))
+            .font(.system(size: size * 0.45, weight: .semibold)).foregroundStyle(nameTint(name))
             .frame(width: size, height: size)
-            .background(tint(for: name).opacity(0.14))
+            .background(nameTint(name).opacity(0.14))
     }
 }
 
@@ -186,13 +186,13 @@ struct Avatar: View {
     }
     private var initials: some View {
         let parts = name.split(separator: " ").prefix(2).compactMap(\.first).map(String.init).joined()
-        return Text(parts.uppercased()).font(.system(size: size * 0.38, weight: .semibold)).foregroundStyle(tint(for: name))
-            .frame(width: size, height: size).background(tint(for: name).opacity(0.14))
+        return Text(parts.uppercased()).font(.system(size: size * 0.38, weight: .semibold)).foregroundStyle(nameTint(name))
+            .frame(width: size, height: size).background(nameTint(name).opacity(0.14))
     }
 }
 
 /// A stable decorative tint per name, from the v2 data palette.
-func tint(for name: String) -> Color {
+func nameTint(_ name: String) -> Color {
     let palette = [K.violet, K.sky, K.amber, K.teal, K.rose, K.accent]
     let h = name.unicodeScalars.reduce(0) { ($0 &* 31 &+ Int($1.value)) & 0xFFFF }
     return palette[h % palette.count]
