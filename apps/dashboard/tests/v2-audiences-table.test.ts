@@ -125,6 +125,15 @@ describe("v2 audience table surface", () => {
     expect(table).toContain("columns={columns}");
   });
 
+  it("the offer's Targeting lists suggested audiences and leaves out LinkedIn signal ones", () => {
+    expect(table).toContain("useAudienceTable({ campaignId, offerId, includeSuggested: plain })");
+    expect(table).toContain("plain ? t.audiences.filter((a) => !linkedInSignalOf(a.filters)) : t.audiences");
+    expect(table).toContain('key: "suggested"');
+    expect(table).toContain('<StatusBtn label="Activate" to="active" />');
+    expect(hook).toContain('["audiences", brandId, "suggested", offerId ?? "brand"]');
+    expect(hook).toContain("{ enabled: includeSuggested, ...pollOptions }");
+  });
+
   it("uses Keel's records anatomy and a portalled drawer", () => {
     for (const s of ["RecordsTabs", "RecordsToolbar", "RecordsFooter", "useRowKeys", "k-row h-10", "k-popover", '"v2-portal"']) {
       expect(table).toContain(s);

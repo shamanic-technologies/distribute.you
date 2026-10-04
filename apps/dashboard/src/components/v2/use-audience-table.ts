@@ -30,7 +30,7 @@ import { isRunningStatus } from "@/lib/campaign-controls";
 import { useScopePaused } from "@/lib/use-scope-paused";
 import { audienceColumns, type AudienceSortCol } from "@/lib/audience-table-model";
 
-const VISIBLE_AUDIENCE_STATUSES = ["active", "paused", "archived"] as const;
+const VISIBLE_AUDIENCE_STATUSES = ["active", "paused", "archived", "suggested"] as const;
 
 /**
  * Everything v1's audience table READS and WRITES, for the v2 table to draw.
@@ -41,7 +41,16 @@ const VISIBLE_AUDIENCE_STATUSES = ["active", "paused", "archived"] as const;
  * v1's `CustomerAudiencesPage` wiring lifted out of its markup; nothing here computes a
  * figure the producer does not serve.
  */
-export function useAudienceTable({ campaignId, offerId: offerIdProp }: { campaignId?: string; offerId?: string }) {
+export function useAudienceTable({
+  campaignId,
+  offerId: offerIdProp,
+  includeSuggested = false,
+}: {
+  campaignId?: string;
+  offerId?: string;
+  /** Also list the audiences suggested at onboarding and never activated (the offer's Targeting). */
+  includeSuggested?: boolean;
+}) {
   const campaignScoped = Boolean(campaignId);
   const { campaign, featureSlug, settled: scopeSettled } = useScopedFeatureSlug(campaignId);
   const channels = useAcquisitionChannels();
@@ -70,6 +79,11 @@ export function useAudienceTable({ campaignId, offerId: offerIdProp }: { campaig
     ["audiences", brandId, "archived", offerId ?? "brand"],
     () => listAudiences(brandId, { status: "archived", offerId }),
     pollOptions,
+  );
+  const suggested = useAuthQuery(
+    ["audiences", brandId, "suggested", offerId ?? "brand"],
+    () => listAudiences(brandId, { status: "suggested", offerId }),
+    { enabled: includeSuggested, ...pollOptions },
   );
 
   const campaignLeg = useCampaignLeg(campaign);
@@ -170,13 +184,20 @@ export function useAudienceTable({ campaignId, offerId: offerIdProp }: { campaig
   // A campaign narrows to the audiences it targets; `null` inherits the offer's set.
   const campaignAudienceIds = campaign?.audienceIds ?? null;
   const audiences: AudienceWire[] = useMemo(() => {
-    const all = [...(active.data?.audiences ?? []), ...(paused.data?.audiences ?? []), ...(archived.data?.audiences ?? [])];
+    const all = [
+      ...(active.data?.audiences ?? []),
+      ...(paused.data?.audiences ?? []),
+      ...(archived.data?.audiences ?? []),
+      ...(includeSuggested ? suggested.data?.audiences ?? [] : []),
+    ];
     return campaignAudienceIds ? all.filter((a) => campaignAudienceIds.includes(a.id)) : all;
-  }, [active.data, paused.data, archived.data, campaignAudienceIds]);
+  }, [active.data, paused.data, archived.data, suggested.data, includeSuggested, campaignAudienceIds]);
 
   // Per-tab loading, keyed on a one-shot settle so a settled-empty tab never re-skeletons on a poll.
-  const activeTabRows = audiences.filter((a) => a.status !== "archived").length;
-  const archivedTabRows = audiences.length - activeTabRows;
+  const activeTabRows = audiences.filter((a) => a.status === "active" || a.status === "paused").length;
+  const archivedTabRows = audiences.filter((a) => a.status === "archived").length;
+  const suggestedTabRows = audiences.filter((a) => a.status === "suggested").length;
+  const suggestedTabLoading = includeSuggested && (suggested.isPending || (suggestedTabRows === 0 && !suggested.isFetchedAfterMount));
   const activeTabLoading =
     active.isPending || paused.isPending || (activeTabRows === 0 && !(active.isFetchedAfterMount && paused.isFetchedAfterMount));
   const archivedTabLoading = archived.isPending || (archivedTabRows === 0 && !archived.isFetchedAfterMount);
@@ -198,8 +219,10 @@ export function useAudienceTable({ campaignId, offerId: offerIdProp }: { campaig
     audiences,
     activeTabRows,
     archivedTabRows,
+    suggestedTabRows,
     activeTabLoading,
     archivedTabLoading,
+    suggestedTabLoading,
     listsPending,
     statsLoading,
     statsFor: (id: string) => statsByAudienceId.get(id),

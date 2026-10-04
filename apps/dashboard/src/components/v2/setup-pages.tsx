@@ -172,19 +172,6 @@ export function useOfferName(brandId: string, offerId: string | null) {
   return q.data?.offers.find((o) => o.offerId === offerId)?.name ?? null;
 }
 
-/** The offer's tabs, the same two for every signed-in user. Sales path and Channels have their own sidebar entries. */
-export function offerTabs(
-  orgId: string,
-  brandId: string,
-  offerId: string,
-  active: "settings" | "targeting",
-): V2Tab[] {
-  return [
-    { label: "Settings", href: v2OfferHref(orgId, brandId, offerId), active: active === "settings" },
-    { label: "Targeting", href: v2OfferHref(orgId, brandId, offerId, "targeting"), active: active === "targeting" },
-  ];
-}
-
 /**
  * One offer, in two columns. LEFT (the wider one): what the offer IS — its name and
  * mark, what a client won through it is worth, and what it promises (the Hormozi
@@ -201,7 +188,6 @@ export function V2OfferPage() {
     <V2Page
       crumbs={[{ label: name ?? " " }]}
       title={<OfferIdentityTitle brandId={brandId} offerId={offerId} />}
-      tabs={offerTabs(orgId, brandId, offerId, "settings")}
     >
       <OfferPlanBanner brandId={brandId} offerId={offerId} missions={missions} />
       <div className="space-y-8">
@@ -223,7 +209,6 @@ export function V2TargetingPage() {
     <V2Page
       crumbs={[{ label: name ?? " ", href: v2OfferHref(orgId, brandId, offerId) }, { label: "Targeting" }]}
       title={name ?? " "}
-      tabs={offerTabs(orgId, brandId, offerId, "targeting")}
       width="max-w-[1280px]"
     >
       <V2AudiencesTable offerId={offerId} plain />

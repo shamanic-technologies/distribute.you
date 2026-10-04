@@ -28,9 +28,9 @@ import { useStatBasis } from "@/lib/use-stat-basis";
 import { shownFigure, type MaturityPair, type StatBasis } from "@/lib/maturity";
 import { LEG_PAIR_NOUN } from "@/lib/campaign-leg-columns";
 
-type Tab = "active" | "archived";
+type Tab = "active" | "suggested" | "archived";
 
-const STATUS_WORD: Record<string, string> = { active: "Active", paused: "Paused", archived: "Archived" };
+const STATUS_WORD: Record<string, string> = { active: "Active", paused: "Paused", archived: "Archived", suggested: "Suggested" };
 
 function SparkleIcon() {
   return (
@@ -178,10 +178,13 @@ export function V2AudiencesTable({
   campaignId?: string;
   offerId?: string;
   /** The offer's own Targeting: who each audience is, in its served sentence, and no
-   *  channel figures (owner 2026-10-04). A channel's Targeting keeps the figures table. */
+   *  channel figures (owner 2026-10-04). A channel's Targeting keeps the figures table.
+   *  It also lists the audiences suggested at onboarding and never activated, and leaves
+   *  out LinkedIn signal audiences: those are a way to FIND people (who engaged with a
+   *  competitor's post), not a description of who the offer is sold to. */
   plain?: boolean;
 }) {
-  const t = useAudienceTable({ campaignId, offerId });
+  const t = useAudienceTable({ campaignId, offerId, includeSuggested: plain });
   const columns = plain ? [] : t.columns;
   const { basis } = useStatBasis();
   const searchParams = useSearchParams();
@@ -223,7 +226,14 @@ export function V2AudiencesTable({
 
   // A handful of rows, re-sorted each render so a poll's fresh stats reorder them.
   const needle = q.trim().toLowerCase();
-  const inTab = t.audiences.filter((a) => (tab === "archived" ? a.status === "archived" : a.status !== "archived"));
+  const listed = plain ? t.audiences.filter((a) => !linkedInSignalOf(a.filters)) : t.audiences;
+  const inTab = listed.filter((a) =>
+    tab === "archived" ? a.status === "archived" : tab === "suggested" ? a.status === "suggested" : a.status === "active" || a.status === "paused",
+  );
+  const tabCount = (k: Tab) =>
+    listed.filter((a) =>
+      k === "archived" ? a.status === "archived" : k === "suggested" ? a.status === "suggested" : a.status === "active" || a.status === "paused",
+    ).length;
   const rows = sortAudiences(
     needle ? inTab.filter((a) => `${a.name ?? ""} ${a.description ?? ""}`.toLowerCase().includes(needle)) : inTab,
     { sortCol, sortDir, tieBreakCol, statsFor: t.statsFor, basis },
@@ -244,7 +254,8 @@ export function V2AudiencesTable({
     searchRef,
   });
 
-  const tabLoading = tab === "archived" ? t.archivedTabLoading : t.activeTabLoading;
+  const tabLoading =
+    tab === "archived" ? t.archivedTabLoading : tab === "suggested" ? t.suggestedTabLoading : t.activeTabLoading;
   const colCount = columns.length + 2;
   const sortable: { col: AudienceSortCol; label: string }[] = [
     { col: "audience", label: "Audience" },
@@ -277,8 +288,17 @@ export function V2AudiencesTable({
       <div className="k-card overflow-hidden">
         <RecordsTabs
           tabs={[
-            { key: "active", label: "Active", count: t.activeTabLoading && t.activeTabRows === 0 ? null : t.activeTabRows },
-            { key: "archived", label: "Archived", count: t.archivedTabLoading && t.archivedTabRows === 0 ? null : t.archivedTabRows },
+            { key: "active", label: "Active", count: t.activeTabLoading && t.activeTabRows === 0 ? null : tabCount("active") },
+            ...(plain
+              ? [
+                  {
+                    key: "suggested",
+                    label: "Suggested",
+                    count: t.suggestedTabLoading && t.suggestedTabRows === 0 ? null : tabCount("suggested"),
+                  },
+                ]
+              : []),
+            { key: "archived", label: "Archived", count: t.archivedTabLoading && t.archivedTabRows === 0 ? null : tabCount("archived") },
           ]}
           active={tab}
           onPick={(k) => setTab(k as Tab)}
@@ -345,7 +365,15 @@ export function V2AudiencesTable({
           <PlainAudienceList
             rows={rows}
             loading={tabLoading}
-            emptyText={q ? "No audience matches." : tab === "archived" ? "No archived audiences." : "No audiences yet."}
+            emptyText={
+              q
+                ? "No audience matches."
+                : tab === "archived"
+                  ? "No archived audiences."
+                  : tab === "suggested"
+                    ? "No suggested audiences."
+                    : "No audiences yet."
+            }
             cursor={cursor}
             selectedId={selectedId}
             onHover={setCursor}
@@ -679,6 +707,7 @@ function AudienceDrawer({
         <div className="flex flex-wrap gap-2">
           {audience.status === "active" && <StatusBtn label="Pause" to="paused" />}
           {audience.status === "paused" && <StatusBtn label="Resume" to="active" />}
+          {audience.status === "suggested" && <StatusBtn label="Activate" to="active" />}
           {audience.status === "archived" ? <StatusBtn label="Restore" to="active" /> : <StatusBtn label="Archive" to="archived" />}
           <button type="button" onClick={onFindSimilar} className="k-btn">
             <SparkleIcon />
