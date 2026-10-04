@@ -3,7 +3,8 @@
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { useSearchParams } from "next/navigation";
-import type { AudienceStatus, AudienceWire, FeatureAudienceStatsRow } from "@/lib/api";
+import { PencilSimpleIcon } from "@phosphor-icons/react/dist/csr/PencilSimple";
+import { ApiError, type AudienceStatus, type AudienceWire, type FeatureAudienceStatsRow } from "@/lib/api";
 import { formatCount } from "@/lib/format-number";
 import { formatRoi, roiIsGood } from "@/lib/format-roi";
 import { PROVIDER_DOMAINS } from "@/lib/api-registry";
@@ -481,6 +482,7 @@ export function V2AudiencesTable({
           }}
           onRegenerateAvatar={() => t.avatarMut.mutate(selected.id)}
           avatarPending={t.avatarMut.isPending && t.avatarMut.variables === selected.id}
+          onRename={(name) => t.renameMut.mutateAsync({ id: selected.id, name })}
           onSetStatus={(status) => t.statusMut.mutate({ id: selected.id, status })}
           pendingStatus={
             t.statusMut.isPending && t.statusMut.variables?.id === selected.id ? t.statusMut.variables.status : null
@@ -618,6 +620,97 @@ function SortTh({
   );
 }
 
+/** The name's box, identical reading and editing, so nothing moves on click. */
+const AUDIENCE_NAME_BOX = "-mx-2 flex w-fit min-w-0 max-w-[calc(100%+16px)] items-center gap-2 rounded-[8px] border px-2 text-[16px] font-medium leading-6";
+
+/**
+ * The audience's NAME, edited where it is read (the offer title's pattern): a hover
+ * shows the pencil, a click turns the text into its field in the same box, blur/Enter
+ * saves, Esc drops it. The typed value stays on screen while it saves; a refusal
+ * reopens the field with the text kept. human-service owns uniqueness (per offer,
+ * case-insensitive) and answers a clash with a 409, which is the line shown.
+ */
+function AudienceNameTitle({ name, onRename }: { name: string; onRename: (name: string) => Promise<unknown> }) {
+  const [text, setText] = useState<string | null>(null);
+  const [pending, setPending] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  const commit = () => {
+    if (text === null) return;
+    const trimmed = text.trim();
+    setText(null);
+    setError(null);
+    if (trimmed.length === 0 || trimmed === name) return;
+    setPending(trimmed);
+    onRename(trimmed).then(
+      () => setPending(null),
+      (err: unknown) => {
+        console.error("[dashboard] audience rename failed", err);
+        setPending(null);
+        setText(trimmed);
+        setError(
+          err instanceof ApiError && err.status === 409
+            ? "Another audience already has this name."
+            : "Could not rename this audience. Try again.",
+        );
+      },
+    );
+  };
+
+  return (
+    <div className="min-w-0">
+      {/* Both states sit in the heading, so the field takes the title's own font. */}
+      <h2 className="flex min-w-0">
+        {text !== null ? (
+          <span className={`${AUDIENCE_NAME_BOX} border-[var(--accent)]`}>
+            <span className="inline-grid min-w-0">
+              <span aria-hidden className="invisible col-start-1 row-start-1 whitespace-pre">
+                {text || " "}{" "}
+              </span>
+              <input
+                autoFocus
+                size={1}
+                aria-label="Audience name"
+                value={text}
+                placeholder="Audience name"
+                onChange={(e) => {
+                  setText(e.target.value);
+                  setError(null);
+                }}
+                onBlur={commit}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") e.currentTarget.blur();
+                  if (e.key === "Escape") {
+                    // The drawer closes on Esc too: this Esc only drops the edit.
+                    e.stopPropagation();
+                    e.nativeEvent.stopImmediatePropagation();
+                    setText(null);
+                    setError(null);
+                  }
+                }}
+                className="col-start-1 row-start-1 w-full min-w-0 bg-transparent p-0 outline-none [font:inherit] [letter-spacing:inherit]"
+              />
+            </span>
+            <PencilSimpleIcon aria-hidden className="invisible h-4 w-4 shrink-0" />
+          </span>
+        ) : (
+          <button
+            type="button"
+            disabled={pending !== null}
+            onClick={() => setText(name)}
+            title="Rename"
+            className={`${AUDIENCE_NAME_BOX} k-hover group border-transparent text-left hover:border-[var(--line)]`}
+          >
+            <span className="truncate">{pending ?? (name || "Untitled")}</span>
+            <PencilSimpleIcon className="k-fg3 h-4 w-4 shrink-0 opacity-0 transition-opacity duration-150 group-hover:opacity-100 group-focus-visible:opacity-100" />
+          </button>
+        )}
+      </h2>
+      {error && <p className="mt-0.5 text-[12px] text-[var(--data-rose)]">{error}</p>}
+    </div>
+  );
+}
+
 /**
  * One audience, as a Keel drawer: portalled to the shell's layer (the sidebar drawer's
  * transform would trap `fixed`), Esc closes it, and the header is a label plus ×. It
@@ -637,6 +730,7 @@ function AudienceDrawer({
   onFindSimilar,
   onRegenerateAvatar,
   avatarPending,
+  onRename,
   onSetStatus,
   pendingStatus,
 }: {
@@ -653,6 +747,7 @@ function AudienceDrawer({
   onFindSimilar: () => void;
   onRegenerateAvatar: () => void;
   avatarPending: boolean;
+  onRename: (name: string) => Promise<unknown>;
   onSetStatus: (s: AudienceStatus) => void;
   pendingStatus: AudienceStatus | null;
 }) {
@@ -701,9 +796,29 @@ function AudienceDrawer({
       </div>
       <div className="k-scroll min-h-0 flex-1 space-y-5 overflow-y-auto p-4">
         <div className="flex min-w-0 items-center gap-3">
-          <AudienceAvatar name={name} avatarUrl={audience.avatarUrl} size={40} />
-          <div className="min-w-0">
-            <h2 className="truncate text-[16px] font-medium leading-6">{name}</h2>
+          <button
+            type="button"
+            onClick={onRegenerateAvatar}
+            disabled={avatarPending}
+            aria-label={audience.avatarUrl ? "Regenerate the audience image" : "Generate an audience image"}
+            title={audience.avatarUrl ? "Regenerate image" : "Generate image"}
+            className="group relative h-10 w-10 shrink-0 overflow-hidden rounded-full disabled:cursor-wait"
+          >
+            <AudienceAvatar name={name} avatarUrl={audience.avatarUrl} size={40} />
+            <span
+              className={`absolute inset-0 flex items-center justify-center bg-black/50 text-white transition-opacity duration-150 ${
+                avatarPending ? "opacity-100" : "opacity-0 group-hover:opacity-100 group-focus-visible:opacity-100"
+              }`}
+            >
+              {avatarPending ? (
+                <span className="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent" />
+              ) : (
+                <SparkleIcon />
+              )}
+            </span>
+          </button>
+          <div className="min-w-0 flex-1">
+            <AudienceNameTitle key={audience.id} name={audience.name} onRename={onRename} />
             <StateDot running={audience.status === "active"} label={STATUS_WORD[audience.status] ?? audience.status} />
           </div>
         </div>
@@ -847,16 +962,6 @@ function AudienceDrawer({
           </dl>
         </section>
         )}
-
-        <section className="flex items-center gap-3">
-          <AudienceAvatar name={name} avatarUrl={audience.avatarUrl} size={56} />
-          <div className="min-w-0">
-            <button type="button" onClick={onRegenerateAvatar} disabled={avatarPending} className="k-btn disabled:opacity-60">
-              {avatarPending ? "Generating..." : audience.avatarUrl ? "Regenerate image" : "Generate image"}
-            </button>
-            <p className="k-fg3 mt-1 text-[12px]">AI-generated from this audience&apos;s traits.</p>
-          </div>
-        </section>
       </div>
     </aside>,
     host,

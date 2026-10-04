@@ -175,3 +175,22 @@ describe("v2 audience table surface", () => {
     expect(table).toContain("...(t.offerId ? { offerId: t.offerId } : {})");
   });
 });
+
+describe("audience drawer title: name and image edited where they are read", () => {
+  const src = read("src/components/v2/audiences-table.tsx");
+  const hook = read("src/components/v2/use-audience-table.ts");
+
+  it("the header mark regenerates the image on click; no separate image block below", () => {
+    const header = src.slice(src.indexOf("function AudienceDrawer("));
+    expect(header).toContain("onClick={onRegenerateAvatar}");
+    expect(header).toContain('title={audience.avatarUrl ? "Regenerate image" : "Generate image"}');
+    expect(src).not.toContain("AI-generated from this audience");
+  });
+
+  it("the name is an inline rename wired to the PATCH, a 409 says the name is taken", () => {
+    expect(src).toContain("<AudienceNameTitle key={audience.id}");
+    expect(src).toContain("onRename={(name) => t.renameMut.mutateAsync({ id: selected.id, name })}");
+    expect(src).toContain("err.status === 409");
+    expect(hook).toContain("renameAudience(i.id, i.name)");
+  });
+});
