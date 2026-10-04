@@ -1,4 +1,5 @@
-import { visitRecap, type VisitEvent } from "./visit-recap";
+import { z } from "zod";
+import { firmographicLines, visitPerson, visitRecap, type VisitEvent } from "./visit-recap";
 
 /**
  * Every 5 minutes, finds the visits that reached onboarding and ended 30 to 40
@@ -44,7 +45,7 @@ function visitEventsSql(sessionIds: string[]): string {
 select $session_id, timestamp, event, properties.$host, properties.$pathname, properties.$current_url,
   properties.$el_text, properties.title, properties.$geoip_country_code, properties.$referring_domain,
   properties.utm_source, properties.utm_medium, properties.utm_term, properties.gclid,
-  coalesce(properties.website, properties.domain)
+  coalesce(properties.website, properties.domain), person.properties.email, person.properties.name
 from events
 where timestamp > now() - interval 1 day and $session_id in (${ids})
   and event not in ('$web_vitals', '$exception', '$set', '$identify', 'landing_variant_viewed')
@@ -53,6 +54,8 @@ limit 10000`;
 }
 
 interface Config {
+  apolloServiceUrl: string;
+  apolloServiceApiKey: string;
   posthogApiHost: string;
   posthogProjectId: string;
   posthogPersonalApiKey: string;
@@ -62,6 +65,8 @@ interface Config {
 
 function configFromEnv(): Config | null {
   const env = {
+    apolloServiceUrl: process.env.APOLLO_SERVICE_URL?.trim(),
+    apolloServiceApiKey: process.env.APOLLO_SERVICE_API_KEY?.trim(),
     posthogProjectId: process.env.POSTHOG_PROJECT_ID?.trim(),
     posthogPersonalApiKey: process.env.POSTHOG_PERSONAL_API_KEY?.trim(),
     telegramToken: process.env.TELEGRAM_BOT_TOKEN?.trim(),
@@ -73,6 +78,8 @@ function configFromEnv(): Config | null {
     return null;
   }
   return {
+    apolloServiceUrl: env.apolloServiceUrl!.replace(/\/$/, ""),
+    apolloServiceApiKey: env.apolloServiceApiKey!,
     posthogApiHost: (process.env.POSTHOG_API_HOST || DEFAULT_POSTHOG_API_HOST)
       .replace("https://eu.i.posthog.com", "https://eu.posthog.com")
       .replace(/\/$/, ""),
@@ -116,8 +123,73 @@ export function rowToEvent(row: unknown[]): { sessionId: string; event: VisitEve
       utmTerm: str(row[12]),
       gclid: str(row[13]),
       website: str(row[14]),
+      email: str(row[15]),
+      personName: str(row[16]),
     },
   };
+}
+
+const RangeSchema = z.object({ label: z.string() }).nullable();
+const FirmographicsResponseSchema = z.object({
+  domain: z.string(),
+  company: z
+    .object({
+      countryCode: z.string().nullable(),
+      industry: z.string().nullable(),
+      revenueRange: RangeSchema,
+      employeeRange: RangeSchema,
+      category: z.string().nullable(),
+    })
+    .nullable(),
+  noCompanyReason: z.string().nullable(),
+  person: z.object({ title: z.string().nullable() }).nullable(),
+});
+type FirmographicsResponse = z.infer<typeof FirmographicsResponseSchema>;
+
+/** The company block of a recap, from apollo-service's answer. */
+export function companyLines(res: FirmographicsResponse): string[] {
+  if (!res.company) {
+    return res.noCompanyReason === "personal_email_domain" ? [] : [`No company found for ${res.domain}`];
+  }
+  return firmographicLines({
+    hqCountry: res.company.countryCode,
+    industry: res.company.industry,
+    employeeRange: res.company.employeeRange?.label ?? null,
+    revenueRange: res.company.revenueRange?.label ?? null,
+    category: res.company.category,
+    role: res.person?.title ?? null,
+  });
+}
+
+/**
+ * Who the company behind the visit is (owner 2026-10-04): apollo-service's
+ * org-less, platform-billed read, cached per domain and per person. A failed
+ * lookup is stated in the recap, never hidden.
+ */
+async function lookupCompany(config: Config, events: VisitEvent[]): Promise<string[]> {
+  const person = visitPerson(events);
+  if (!person) return [];
+  const body: Record<string, string> = { domain: person.domain };
+  if (person.email) body.email = person.email;
+  if (person.firstName && person.lastName) {
+    body.firstName = person.firstName;
+    body.lastName = person.lastName;
+  }
+  try {
+    const res = await fetch(`${config.apolloServiceUrl}/internal/company-firmographics`, {
+      method: "POST",
+      headers: { "x-api-key": config.apolloServiceApiKey, "content-type": "application/json" },
+      body: JSON.stringify(body),
+      signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
+    });
+    if (!res.ok) throw new Error(`apollo-service ${res.status}: ${(await res.text()).slice(0, 300)}`);
+    const parsed = FirmographicsResponseSchema.safeParse(await res.json());
+    if (!parsed.success) throw new Error(`apollo-service answered an unexpected shape: ${parsed.error.message}`);
+    return companyLines(parsed.data);
+  } catch (err) {
+    console.error(`[dashboard/visit-recap] company lookup failed for ${person.domain}:`, err);
+    return [`Company lookup failed for ${person.domain}`];
+  }
 }
 
 async function sendTelegram(config: Config, text: string): Promise<void> {
@@ -154,7 +226,7 @@ async function tick(config: Config): Promise<void> {
         console.error(`[dashboard/visit-recap] visit listed as ended but its events came back empty`);
         continue;
       }
-      await sendTelegram(config, visitRecap(events));
+      await sendTelegram(config, visitRecap(events, await lookupCompany(config, events)));
       sent.set(id, now);
     }
     console.log(`[dashboard/visit-recap] sent ${ids.length} visit recap(s)`);
