@@ -2122,8 +2122,14 @@ export async function saveOfferSalesPath(
 }
 
 /** GET /offers/:offerId/sales-paths — the offer's sales paths ranked by ROI (features-service). */
-export async function getOfferSalesPaths(brandId: string, offerId: string): Promise<OfferSalesPaths> {
-  const raw = await apiCall<unknown>(`/offers/${offerId}/sales-paths?brandId=${encodeURIComponent(brandId)}`);
+export async function getOfferSalesPaths(
+  brandId: string,
+  offerId: string,
+  /** catalogue: every path x the owner's channel shortlist (Sales path page). Default: the ticked legs we fund. */
+  scope?: "catalogue",
+): Promise<OfferSalesPaths> {
+  const scopeQuery = scope ? `&scope=${scope}` : "";
+  const raw = await apiCall<unknown>(`/offers/${offerId}/sales-paths?brandId=${encodeURIComponent(brandId)}${scopeQuery}`);
   return parseOfferSalesPaths(raw, "getOfferSalesPaths");
 }
 

@@ -11,6 +11,7 @@ import { LEG_RATE_RULE, parseRateInput, roundLegRatePct } from "@/lib/brand-conv
 import {
   formatRatePct,
   pathLinks,
+  costSourceLabel,
   rateSourceLabel,
   roiUnavailableLabel,
   salesPathsEmptyReason,
@@ -110,6 +111,9 @@ export function OfferSalesPaths({
   );
 }
 
+/** Paths listed under the active one before "Show N more". */
+const OTHERS_SHOWN = 20;
+
 /**
  * The offer page's view: the path we run in its own green-framed card, marked Active,
  * then every other path in the served order, muted and marked Inactive.
@@ -129,8 +133,10 @@ function StatusPaths({
   onStateRate?: (leg: SalesPathLeg, ratePct: number | null) => Promise<void>;
   onStateLifetimeRevenue?: (usd: number) => Promise<void>;
 }) {
+  const [showAll, setShowAll] = useState(false);
   const active = paths.find((p) => p.combinationKey === activeKey) ?? null;
   const others = paths.filter((p) => p !== active);
+  const shown = showAll ? others : others.slice(0, OTHERS_SHOWN);
   const row = (p: SalesPathRow, status: "active" | "inactive") => (
     <PathRow
       key={p.combinationKey}
@@ -158,9 +164,19 @@ function StatusPaths({
       {others.length > 0 && (
         <div>
           <p className="k-label mb-2">{active ? "Other paths" : "Paths"}</p>
-          <ul className="k-card divide-y divide-[var(--line-subtle)] overflow-hidden">
-            {others.map((p) => row(p, "inactive"))}
-          </ul>
+          <div className="k-card overflow-hidden">
+            <ul className="divide-y divide-[var(--line-subtle)]">{shown.map((p) => row(p, "inactive"))}</ul>
+            {others.length > shown.length && (
+              <div className="k-fg3 k-line-subtle flex items-center justify-between border-t px-4 py-2.5 text-[12px] tabular-nums">
+                <span>
+                  {shown.length} of {others.length}
+                </span>
+                <button type="button" className="k-btn-ghost h-6 px-2 text-[12px]" onClick={() => setShowAll(true)}>
+                  Show {others.length - shown.length} more
+                </button>
+              </div>
+            )}
+          </div>
         </div>
       )}
     </div>
@@ -254,7 +270,11 @@ function PathLinks({ path }: { path: SalesPathRow }) {
         <span key={i} className="inline-flex items-center gap-x-1.5">
           {i > 0 && <span className="k-fg3">→</span>}
           {part.kind === "channel" ? (
-            <ChannelChip name={part.name} def={channels.find((c) => c.featureSlug === part.slug)} />
+            <ChannelChip
+              name={part.name}
+              def={channels.find((c) => c.featureSlug === part.slug)}
+              notRun={part.managed === false}
+            />
           ) : (
             <span>{part.label}</span>
           )}
@@ -264,11 +284,22 @@ function PathLinks({ path }: { path: SalesPathRow }) {
   );
 }
 
-/** A channel tag: its mark (once the channel list has answered), then its served name. */
-function ChannelChip({ name, def }: { name: string; def: Parameters<typeof AcquisitionChannelMark>[0]["def"] | undefined }) {
+/**
+ * A channel tag: its mark (once the channel list has answered), then its served name. A
+ * channel we do not run yet is drawn muted, its mark dimmed.
+ */
+function ChannelChip({
+  name,
+  def,
+  notRun,
+}: {
+  name: string;
+  def: Parameters<typeof AcquisitionChannelMark>[0]["def"] | undefined;
+  notRun: boolean;
+}) {
   return (
-    <span className="k-chip">
-      {def && <AcquisitionChannelMark def={def} size="xs" />}
+    <span className={`k-chip ${notRun ? "k-fg3" : ""}`} title={notRun ? "We don't run this channel yet" : undefined}>
+      {def && <AcquisitionChannelMark def={def} size="xs" dimmed={notRun} />}
       {name}
     </span>
   );
@@ -357,12 +388,14 @@ function LegLine({
         .filter(Boolean)
         .join(" · ")
     : null;
+  // A your-team-* channel (catalogue scope) is human AND priced on the team's time.
   const worker =
-    leg.workedBy === "human"
+    leg.workedBy === "human" && !leg.channel?.name
       ? "Your team"
       : leg.channel?.name
         ? `${leg.channel.name}${leg.costPerOutcomeUsd != null ? ` · ${usd(leg.costPerOutcomeUsd)} each` : ""}`
         : "No channel priced";
+  const costSource = costSourceLabel(leg.costSource);
   return (
     <tr className="border-t border-[var(--line-subtle)] align-top">
       <td className="py-1.5 pr-3">
@@ -375,8 +408,16 @@ function LegLine({
         <div>{leg.fromStep ? rateSourceLabel(leg.rateSource) : "Entry"}</div>
         {detail && <div className="k-fg3 text-[11px]">{detail}</div>}
       </td>
-      <td className="py-1.5 pr-3">{worker}</td>
-      <td className="py-1.5 text-right tabular-nums">{leg.workedBy === "human" ? "—" : usd(leg.costPerPayingClientUsd)}</td>
+      <td className="py-1.5 pr-3">
+        <div>{worker}</div>
+        {costSource && (
+          <div className="k-fg3 text-[11px]" title={leg.channel?.costBenchmarkSource ?? undefined}>
+            {costSource}
+            {leg.channel?.managed === false ? " · not run by us yet" : ""}
+          </div>
+        )}
+      </td>
+      <td className="py-1.5 text-right tabular-nums">{usd(leg.costPerPayingClientUsd)}</td>
     </tr>
   );
 }

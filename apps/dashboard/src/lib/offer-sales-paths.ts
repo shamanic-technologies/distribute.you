@@ -8,6 +8,11 @@ import { formatRatePct as formatLegRatePct } from "./brand-conversion-rates";
  * rate of each leg and where it came from, the channel chosen for it, the cost
  * per paying client and the ROI. Nothing here divides, sums or ranks.
  *
+ * Two scopes: the default (`ticked`) is what we fund and launch first; `catalogue` (the
+ * Sales path page) lists every path the catalogue allows x the owner's channel shortlist,
+ * with `ticked` per row/leg and `managed` per channel (we run it today or not), priced on
+ * a cited market benchmark where nothing is measured.
+ *
  * Vocabularies (status, rate source, channel choice) are read as plain STRINGS:
  * a producer vocabulary grows, and a closed enum here would throw the whole
  * section the day it does. The words for the ones we know live below.
@@ -51,11 +56,17 @@ const LegSchema = z
       .passthrough()
       .nullable(),
     workedBy: z.string(),
+    /** Whether the customer ticked the leg (features-service; absent before scope=catalogue shipped). */
+    ticked: z.boolean().optional(),
     channel: z
       .object({
         slug: z.string().nullable(),
         name: z.string().nullable(),
         trigger: z.string().nullable(),
+        /** True when we run this channel today. */
+        managed: z.boolean().optional(),
+        /** When the cost is a market benchmark: its cited source, in words. */
+        costBenchmarkSource: z.string().nullable().optional(),
         choice: z.string(),
         candidates: z.array(CandidateSchema),
       })
@@ -63,6 +74,8 @@ const LegSchema = z
       .nullable(),
     outcomesNeededPerPayingClient: z.number().nullable(),
     costPerOutcomeUsd: z.number().nullable(),
+    /** Which rung priced the leg: workflow, fleet_measured, default, benchmark. */
+    costSource: z.string().nullable().optional(),
     costPerPayingClientUsd: z.number().nullable(),
   })
   .passthrough();
@@ -80,6 +93,8 @@ const PathSchema = z
     steps: z.array(StepSchema),
     entryLegKey: z.string(),
     entryChannelSlug: z.string().nullable(),
+    /** Whether the customer ticked every leg of the path. */
+    ticked: z.boolean().optional(),
     legs: z.array(LegSchema),
     entryToPayingClientPct: z.number().nullable(),
     lifetimeRevenueUsd: z.number().nullable(),
@@ -94,6 +109,8 @@ export const OfferSalesPathsSchema = z
     offerId: z.string(),
     brandId: z.string(),
     status: z.string(),
+    /** Echo of `?scope=`: ticked (default) or catalogue. */
+    scope: z.string().optional(),
     statedAt: z.string().nullable(),
     selectedLegKeys: z.array(z.string()),
     unknownLegKeys: z.array(z.string()),
@@ -142,9 +159,29 @@ export function rateSourceLabel(source: string | null): string {
     case "fleet_median":
       return "Median of our clients";
     case "industry_default":
+    case "default":
       return "Industry benchmark";
     case null:
       return "—";
+    default:
+      return source;
+  }
+}
+
+/** Which rung priced a leg's cost. Null when the leg costs us nothing; an unknown rung is shown verbatim. */
+export function costSourceLabel(source: string | null | undefined): string | null {
+  switch (source) {
+    case null:
+    case undefined:
+      return null;
+    case "workflow":
+      return "Our best workflow";
+    case "fleet_measured":
+      return "Measured across our clients";
+    case "default":
+      return "Our estimate";
+    case "benchmark":
+      return "Market benchmark";
     default:
       return source;
   }
@@ -174,7 +211,9 @@ export function pathTitle(path: SalesPathRow): string {
 }
 
 /** One link of a path as the row draws it: a channel of ours working a leg (its slug draws its mark), or the step it lands on. */
-export type PathLink = { kind: "channel"; name: string; slug: string | null } | { kind: "step"; label: string };
+export type PathLink =
+  | { kind: "channel"; name: string; slug: string | null; managed: boolean | undefined }
+  | { kind: "step"; label: string };
 
 /**
  * A path read leg by leg: the channel that works each leg (only legs a channel of ours
@@ -184,7 +223,7 @@ export type PathLink = { kind: "channel"; name: string; slug: string | null } | 
 export function pathLinks(path: SalesPathRow): PathLink[] {
   const parts: PathLink[] = [];
   for (const leg of path.legs) {
-    if (leg.workedBy !== "human" && leg.channel?.name) parts.push({ kind: "channel", name: leg.channel.name, slug: leg.channel.slug });
+    if (leg.workedBy !== "human" && leg.channel?.name) parts.push({ kind: "channel", name: leg.channel.name, slug: leg.channel.slug, managed: leg.channel.managed });
     parts.push({ kind: "step", label: leg.toStep.label });
   }
   return parts;
