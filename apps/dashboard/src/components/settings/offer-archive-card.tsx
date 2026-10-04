@@ -18,7 +18,7 @@ import { useAuthQuery } from "@/lib/use-auth-query";
  * brand-service refuses the archive while a campaign on the offer is still running,
  * and that refusal is rendered as a sentence (`offerArchiveErrorMessage`).
  *
- * Reads the same by-id key as `OfferIdentityCard`, so it costs no request.
+ * Reads the same by-id key as `OfferIdentityTitle`, so it costs no request.
  */
 export function OfferArchiveCard({ brandId, offerId }: { brandId: string; offerId: string }) {
   const queryClient = useQueryClient();

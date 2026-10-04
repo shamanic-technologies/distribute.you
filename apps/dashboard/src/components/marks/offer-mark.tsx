@@ -42,11 +42,11 @@ export function OfferMark({
   size = "md",
   imageUrl,
 }: {
-  /** `lg` (64px) is the CHOOSING size: every surface that names an offer draws
-   *  the mark at 18-20px, which is too small to tell two generated images apart
-   *  while you are deciding whether to keep one. Offer Settings is the only
-   *  caller. */
-  size?: "sm" | "md" | "lg";
+  /** `title` (40px) is the offer page's title mark, where it is also the
+   *  regenerate button: every other surface draws it at 18-20px, too small to
+   *  tell two generated images apart. `lg` (64px) is unused since the identity
+   *  card left the page. */
+  size?: "sm" | "md" | "lg" | "title";
   /** The offer's generated image. Absent/null/undecodable ⟹ the glyph. */
   imageUrl?: string | null;
 }) {
@@ -56,8 +56,8 @@ export function OfferMark({
   // it is regenerated — which reads as the regeneration having done nothing.
   useEffect(() => setBroken(false), [imageUrl]);
   const tile =
-    size === "lg" ? "h-16 w-16 rounded-xl" : size === "sm" ? "h-[18px] w-[18px] rounded" : "h-5 w-5 rounded";
-  const glyph = size === "lg" ? "h-8 w-8" : size === "sm" ? "h-3 w-3" : "h-3.5 w-3.5";
+    size === "lg" ? "h-16 w-16 rounded-xl" : size === "title" ? "h-10 w-10 rounded-[10px]" : size === "sm" ? "h-[18px] w-[18px] rounded" : "h-5 w-5 rounded";
+  const glyph = size === "lg" ? "h-8 w-8" : size === "title" ? "h-5 w-5" : size === "sm" ? "h-3 w-3" : "h-3.5 w-3.5";
 
   if (imageUrl && !broken) {
     return (

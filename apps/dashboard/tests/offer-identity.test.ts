@@ -32,8 +32,8 @@ describe("OfferMark carries the offer's own image", () => {
   });
 });
 
-describe("Offer Settings states the offer's identity", () => {
-  const card = read("components/settings/offer-identity-card.tsx");
+describe("the offer page title edits the offer's identity in place", () => {
+  const card = read("components/v2/offer-identity-title.tsx");
 
   it("writes the name through the reader that had no caller at all before this", () => {
     expect(card).toContain("renameBrandOffer(brandId, offerId, value)");
@@ -60,17 +60,26 @@ describe("Offer Settings states the offer's identity", () => {
     expect(card).toContain("if (isInsufficientCredit(err)) return null;");
   });
 
-  it("RE-SEEDS the field when the payload changes, so the on-disk snapshot the cache restores first cannot win over the server", () => {
-    expect(card).toContain("seededFrom");
-    expect(card).toContain("offer === seededFrom.current");
+  it("is the offer page's title, and the old identity card is gone", () => {
+    const page = read("components/v2/setup-pages.tsx");
+    expect(page).toContain("title={<OfferIdentityTitle brandId={brandId} offerId={offerId} />}");
+    expect(page).not.toContain("OfferIdentityCard");
+    expect(() => read("components/settings/offer-identity-card.tsx")).toThrow();
   });
 
-  it("lets a field the user has TOUCHED outrank the server — a form that rewrites itself mid-edit is worse than a stale one", () => {
-    expect(card).toContain("if (touched) return;");
+  it("saves on blur/Enter, drops on Esc, and reopens with the text kept on a refusal", () => {
+    expect(card).toContain("onBlur={commit}");
+    expect(card).toContain('if (e.key === "Escape")');
+    expect(card).toContain("setText(value);");
   });
 
-  it("draws the mark at the size a person judges it by, not the 18px every other surface uses", () => {
-    expect(card).toContain('<OfferMark size="lg"');
+  it("regenerates the image from a click on the mark itself", () => {
+    expect(card).toContain("onClick={() => imageMut.mutate()}");
+    expect(card).toContain("generateOfferImage(brandId, offerId)");
+  });
+
+  it("draws the mark at title size, not the 18px every other surface uses", () => {
+    expect(card).toContain('<OfferMark size="title"');
   });
 
   it("writes the response into the cache rather than re-reading, on the key the top bar and the switcher share", () => {
