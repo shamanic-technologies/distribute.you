@@ -1,7 +1,7 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { companyDomain, countryLabel, firmographicLines, formatDuration, sourceLine, stageOf, visitPerson, visitRecap, type VisitEvent } from "../src/lib/visit-recap";
-import { ENDED_VISITS_SQL, rowToEvent } from "../src/lib/visit-recap-job";
+import { companyLines, ENDED_VISITS_SQL, rowToEvent } from "../src/lib/visit-recap-job";
 
 const read = (p: string) => readFileSync(new URL(`../${p}`, import.meta.url), "utf8");
 
@@ -191,9 +191,47 @@ describe("visit recap firmographics (owner 2026-10-04: who is the company behind
   });
 
   it("puts the company block under the typed website", () => {
-    const text = visitRecap([ev(0, { website: "acme.com" })], firmo);
+    const text = visitRecap([ev(0, { website: "acme.com" })], firmographicLines(firmo));
     expect(text.indexOf("Typed acme.com")).toBeLessThan(text.indexOf("HQ 🇺🇸 United States"));
     expect(text.indexOf("HQ 🇺🇸 United States")).toBeLessThan(text.indexOf("<b>Onboarding</b>"));
     expect(visitRecap([ev(0, { website: "acme.com" })])).not.toContain("HQ ");
+  });
+
+  const served = (over: Record<string, unknown> = {}) => ({
+    domain: "acme.com",
+    company: {
+      name: "Acme",
+      domain: "acme.com",
+      countryCode: "US",
+      countryName: "United States",
+      industry: "Marketing & advertising",
+      revenueRange: { label: "$10M-$50M", min: 10_000_000, max: 50_000_000 },
+      employeeRange: { label: "51-200", min: 51, max: 200 },
+      category: "B2B SaaS",
+      categoryConfidence: 0.9,
+      apolloOrganizationId: "o1",
+    },
+    noCompanyReason: null,
+    person: { title: "Head of Growth", seniority: "head" },
+    personMatched: true,
+    cached: { company: false, person: false },
+    ...over,
+  });
+
+  it("maps apollo-service's answer onto the two company lines", () => {
+    expect(companyLines(served())).toEqual(firmographicLines(firmo));
+  });
+
+  it("says so when Apollo knows no company, and stays quiet on a personal email domain", () => {
+    expect(companyLines(served({ company: null, noCompanyReason: "not_found", person: null, personMatched: null }))).toEqual(["No company found for acme.com"]);
+    expect(companyLines(served({ domain: "gmail.com", company: null, noCompanyReason: "personal_email_domain", person: null, personMatched: null }))).toEqual([]);
+  });
+
+  it("calls apollo-service directly with its own key, never Apollo", () => {
+    const job = read("src/lib/visit-recap-job.ts");
+    expect(job).toContain("/internal/company-firmographics");
+    expect(job).toContain("process.env.APOLLO_SERVICE_URL");
+    expect(job).toContain("process.env.APOLLO_SERVICE_API_KEY");
+    expect(job).not.toContain("api.apollo.io");
   });
 });

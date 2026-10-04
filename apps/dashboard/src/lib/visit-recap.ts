@@ -231,7 +231,7 @@ export function firmographicLines(f: Firmographics): string[] {
 }
 
 /** The Telegram message (parse_mode HTML) for one visit, events in time order. */
-export function visitRecap(events: VisitEvent[], firmographics: Firmographics | null = null): string {
+export function visitRecap(events: VisitEvent[], companyLines: string[] = []): string {
   const sorted = [...events].sort((a, b) => Date.parse(a.timestamp) - Date.parse(b.timestamp));
   const first = sorted.find((e) => e.event === "$pageview") ?? sorted[0];
   const time = new Map<Stage, number>();
@@ -272,7 +272,7 @@ export function visitRecap(events: VisitEvent[], firmographics: Firmographics | 
   const lines = [`${countryLabel(first.country)} · ${formatDuration(total)} · ${outcome}`];
   lines.push(escapeHtml(sourceLine(first)));
   if (website) lines.push(`Typed ${escapeHtml(website)}`);
-  if (firmographics) lines.push(...firmographicLines(firmographics));
+  lines.push(...companyLines);
 
   for (const stage of STAGES) {
     if (!reached.has(stage)) continue;
