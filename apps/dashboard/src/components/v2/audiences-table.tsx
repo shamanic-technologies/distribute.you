@@ -35,7 +35,7 @@ import { useStatBasis } from "@/lib/use-stat-basis";
 import { shownFigure, type MaturityPair, type StatBasis } from "@/lib/maturity";
 import { LEG_PAIR_NOUN } from "@/lib/campaign-leg-columns";
 
-type Tab = "active" | "suggested" | "archived";
+type Tab = "active" | "archived";
 
 const STATUS_WORD: Record<string, string> = { active: "Active", paused: "Paused", archived: "Archived", suggested: "Suggested" };
 
@@ -234,19 +234,23 @@ export function V2AudiencesTable({
   // A handful of rows, re-sorted each render so a poll's fresh stats reorder them.
   const needle = q.trim().toLowerCase();
   const listed = plain ? t.audiences.filter((a) => !linkedInSignalOf(a.filters)) : t.audiences;
-  const inTab = listed.filter((a) =>
-    tab === "archived" ? a.status === "archived" : tab === "suggested" ? a.status === "suggested" : a.status === "active" || a.status === "paused",
-  );
-  const tabCount = (k: Tab) =>
-    listed.filter((a) =>
-      k === "archived" ? a.status === "archived" : k === "suggested" ? a.status === "suggested" : a.status === "active" || a.status === "paused",
-    ).length;
-  const rows = sortAudiences(
+  // Suggested audiences share the Active tab (owner 2026-10-04), listed after the live
+  // ones under an inactive Suggested status; there is no Suggested tab.
+  const inTabOf = (k: Tab) => listed.filter((a) => (k === "archived" ? a.status === "archived" : a.status !== "archived"));
+  const inTab = inTabOf(tab);
+  const tabCount = (k: Tab) => inTabOf(k).length;
+  const sorted = sortAudiences(
     needle
       ? inTab.filter((a) => `${a.name ?? ""} ${a.targetText ?? ""} ${a.description ?? ""}`.toLowerCase().includes(needle))
       : inTab,
     { sortCol, sortDir, tieBreakCol, statsFor: t.statsFor, basis },
   );
+  const rows = [...sorted.filter((a) => a.status !== "suggested"), ...sorted.filter((a) => a.status === "suggested")];
+  // No Archived tab while nothing is archived, and no tab bar at all when Active is alone.
+  const showArchivedTab = tabCount("archived") > 0;
+  useEffect(() => {
+    if (tab === "archived" && !showArchivedTab && !t.archivedTabLoading) setTab("active");
+  }, [tab, showArchivedTab, t.archivedTabLoading]);
 
   const selected = selectedId ? t.audiences.find((a) => a.id === selectedId) ?? null : null;
   // A deep-linked id is kept until the lists land, then dropped if it names nothing.
@@ -263,8 +267,7 @@ export function V2AudiencesTable({
     searchRef,
   });
 
-  const tabLoading =
-    tab === "archived" ? t.archivedTabLoading : tab === "suggested" ? t.suggestedTabLoading : t.activeTabLoading;
+  const tabLoading = tab === "archived" ? t.archivedTabLoading : t.activeTabLoading || t.suggestedTabLoading;
   const colCount = columns.length + 2;
   const sortable: { col: AudienceSortCol; label: string }[] = [
     { col: "audience", label: "Audience" },
@@ -295,24 +298,21 @@ export function V2AudiencesTable({
           its Overview states, so this page and that one print one price for one mission. */}
       {t.campaignScoped && t.scopeLeg && t.legPair && <MissionPrice leg={t.scopeLeg} noun={LEG_PAIR_NOUN[t.legPair]} basis={basis} paused={t.withheldPaused} />}
       <div className="k-card overflow-hidden">
-        <RecordsTabs
-          tabs={[
-            { key: "active", label: "Active", count: t.activeTabLoading && t.activeTabRows === 0 ? null : tabCount("active") },
-            ...(plain
-              ? [
-                  {
-                    key: "suggested",
-                    label: "Suggested",
-                    count: t.suggestedTabLoading && t.suggestedTabRows === 0 ? null : tabCount("suggested"),
-                  },
-                ]
-              : []),
-            { key: "archived", label: "Archived", count: t.archivedTabLoading && t.archivedTabRows === 0 ? null : tabCount("archived") },
-          ]}
-          active={tab}
-          onPick={(k) => setTab(k as Tab)}
-          right={<span>Create or change audiences by chatting with the AI</span>}
-        />
+        {showArchivedTab && (
+          <RecordsTabs
+            tabs={[
+              {
+                key: "active",
+                label: "Active",
+                count: t.activeTabLoading && t.activeTabRows === 0 ? null : tabCount("active"),
+              },
+              { key: "archived", label: "Archived", count: tabCount("archived") },
+            ]}
+            active={tab}
+            onPick={(k) => setTab(k as Tab)}
+            right={<span>Create or change audiences by chatting with the AI</span>}
+          />
+        )}
         <RecordsToolbar
           search={q}
           onSearch={setQ}
@@ -379,9 +379,7 @@ export function V2AudiencesTable({
                 ? "No audience matches."
                 : tab === "archived"
                   ? "No archived audiences."
-                  : tab === "suggested"
-                    ? "No suggested audiences."
-                    : "No audiences yet."
+                  : "No audiences yet."
             }
             cursor={cursor}
             selectedId={selectedId}
@@ -532,9 +530,29 @@ const MISSING_TEXT: Record<string, string> = {
   no_customer_text: "No description yet.",
 };
 
+/**
+ * The served text cut for reading: its own line breaks, else one paragraph per sentence
+ * (owner 2026-10-04: a wall of words is unreadable). Display only, the words are untouched.
+ */
+function textParagraphs(text: string): string[] {
+  const blocks = text.split(/\n\s*\n|\n/).map((b) => b.trim()).filter(Boolean);
+  if (blocks.length > 1) return blocks;
+  return text.split(/(?<=[.!?])\s+(?=[A-Z(])/).map((b) => b.trim()).filter(Boolean);
+}
+
 /** The audience's own text, the one Jev judges every lead against; never `description`. */
 function TargetText({ audience }: { audience: AudienceWire }) {
-  if (audience.targetText) return <>{audience.targetText}</>;
+  if (audience.targetText) {
+    return (
+      <span className="block space-y-2.5">
+        {textParagraphs(audience.targetText).map((para, i) => (
+          <span key={i} className="block">
+            {para}
+          </span>
+        ))}
+      </span>
+    );
+  }
   const why = audience.targetTextMissingReason ? MISSING_TEXT[audience.targetTextMissingReason] : null;
   return <span className="k-fg4">{why ?? "—"}</span>;
 }
@@ -573,8 +591,9 @@ function ChannelLine({ c }: { c: AudienceChannelWire }) {
 }
 
 /**
- * The offer's audiences in plain words: each one's name, status and the one sentence
- * human-service serves for who it targets (`targetText`, what Jev judges). No channel figure here.
+ * The offer's audiences in plain words: each one's name, status and its short served
+ * `description`. The full `targetText` (what Jev judges) is the right panel's alone, so a
+ * row stays short (owner 2026-10-04). No channel figure here.
  */
 function PlainAudienceList({
   rows,
@@ -626,7 +645,7 @@ function PlainAudienceList({
                   <StateDot running={a.status === "active"} label={STATUS_WORD[a.status] ?? a.status} />
                 </span>
                 <span className="k-fg2 mt-0.5 block text-[13px] leading-5">
-                  <TargetText audience={a} />
+                  {a.description ? a.description : <span className="k-fg4">—</span>}
                 </span>
               </span>
             </button>
@@ -910,9 +929,9 @@ function AudienceDrawer({
         {plain && (
           <section>
             <p className="k-label mb-2">Who</p>
-            <p className="text-[13px] leading-5">
+            <div className="text-[13px] leading-5">
               <TargetText audience={audience} />
-            </p>
+            </div>
           </section>
         )}
 

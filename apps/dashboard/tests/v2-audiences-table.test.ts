@@ -119,7 +119,9 @@ describe("v2 audience table surface", () => {
 
   it("the offer's Targeting reads in plain words: each audience's sentence, no figure column", () => {
     const list = table.slice(table.indexOf("function PlainAudienceList("), table.indexOf("function SortTh("));
-    expect(list).toContain("<TargetText audience={a} />");
+    // The row keeps the short description; the full targetText is the panel's alone.
+    expect(list).toContain("{a.description ? a.description");
+    expect(list).not.toContain("<TargetText");
     expect(list).not.toContain("AudienceCell");
     expect(table).toContain("const columns = plain ? [] : t.columns;");
     expect(table).toContain("columns={columns}");
@@ -146,10 +148,28 @@ describe("v2 audience table surface", () => {
   it("the offer's Targeting lists suggested audiences and leaves out LinkedIn signal ones", () => {
     expect(table).toContain("useAudienceTable({ campaignId, offerId, includeSuggested: plain })");
     expect(table).toContain("plain ? t.audiences.filter((a) => !linkedInSignalOf(a.filters)) : t.audiences");
-    expect(table).toContain('key: "suggested"');
+    // Suggested rows share the Active tab, after the live ones; no Suggested tab.
+    expect(table).not.toContain('key: "suggested"');
+    expect(table).toContain('...sorted.filter((a) => a.status === "suggested")');
+    // No Archived tab at zero, and no tab bar when Active would stand alone.
+    expect(table).toContain("{showArchivedTab && (");
     expect(table).toContain('<StatusBtn label="Activate" to="active" />');
     expect(hook).toContain('["audiences", brandId, "suggested", offerId ?? "brand"]');
     expect(hook).toContain("{ enabled: includeSuggested, ...pollOptions }");
+  });
+
+  it("the panel's text reads as spaced paragraphs, never one wall of words", () => {
+    const text = table.slice(table.indexOf("function TargetText("), table.indexOf("const CHANNEL_WORD"));
+    expect(text).toContain("textParagraphs(audience.targetText).map(");
+    expect(text).toContain('className="block space-y-2.5"');
+  });
+
+  it("an out-of-credits AI chat offers Top up, or Upgrade plan on a subscription", () => {
+    const chat = readFileSync(resolve(__dirname, "../src/components/ai-edit/edit-with-ai-chat.tsx"), "utf8");
+    expect(chat).toContain("setCreditsShort(short);");
+    expect(chat).toContain('paymentModeOf(billingAccount) === "subscription"');
+    expect(chat).toContain('v2Href(orgId, brandId, "billing")');
+    expect(chat).toContain("onClick={() => showPaymentRequired(creditsShort)}");
   });
 
   it("uses Keel's records anatomy and a portalled drawer", () => {
