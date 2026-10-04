@@ -97,6 +97,11 @@ describe("counts", () => {
     expect(LeadBucketCountsSchema.safeParse(counts).success).toBe(true);
   });
 
+  it("keeps lead-service's people counts (delivered, interested)", () => {
+    const parsed = LeadBucketCountsSchema.parse({ ...counts, people: { delivered: 9, interested: 3 } });
+    expect(parsed.people).toEqual({ delivered: 9, interested: 3 });
+  });
+
   it("refuses a body missing a bucket rather than reading it as zero", () => {
     const { sale, ...rest } = counts.counts;
     expect(LeadBucketCountsSchema.safeParse({ total: 1, counts: rest }).success).toBe(false);

@@ -87,8 +87,8 @@ export function V2OfferChannelPage() {
  * What cold email did: its sending over the window (features-service, the same figures as
  * Today) and where the people it reached stand (lead-service's served bucket counts).
  * Every figure is served; a bar's length is only the count drawn against Contacted.
- * Interested is two served counts side by side: a person can visit AND reply, so no
- * total is drawn until lead-service serves one.
+ * Delivered and Interested are lead-service's PEOPLE counts (`people`): a person can visit
+ * AND reply, so the Interested total is its distinct count, never the two buckets added.
  */
 export function ColdEmailOverview({ brandId }: { brandId: string }) {
   const [windowDays, setWindowDays] = useState<TodayWindow>(7);
@@ -96,6 +96,7 @@ export function ColdEmailOverview({ brandId }: { brandId: string }) {
   const emails = win.data?.emails ?? null;
   const buckets = useBucketCounts(brandId);
   const counts = buckets.data?.counts ?? null;
+  const people = buckets.data?.people ?? null;
   const countsSettled = buckets.isFetchedAfterMount || buckets.data !== undefined;
 
   return (
@@ -150,7 +151,8 @@ export function ColdEmailOverview({ brandId }: { brandId: string }) {
           ) : (
             <>
               <StepRow label="Contacted" count={counts.contacted} of={counts.contacted} />
-              <InterestedRow visits={counts.website_visit} replies={counts.positive_reply} of={counts.contacted} />
+              <StepRow label="Delivered" count={people?.delivered ?? null} of={counts.contacted} />
+              <InterestedRow total={people?.interested ?? null} visits={counts.website_visit} replies={counts.positive_reply} of={counts.contacted} />
               <StepRow label="Meeting booked" count={counts.meeting_booked} of={counts.contacted} />
               <StepRow label="Meeting attended" count={counts.meeting_attended} of={counts.contacted} />
               <StepRow label="Paid client" count={counts.sale} of={counts.contacted} />
@@ -168,19 +170,23 @@ function barWidth(count: number, of: number): string {
   return `${Math.max(1, Math.min(100, (count * 100) / of))}%`;
 }
 
-function StepRow({ label, count, of }: { label: string; count: number; of: number }) {
+function StepRow({ label, count, of }: { label: string; count: number | null; of: number }) {
   return (
     <div className="grid grid-cols-[160px_minmax(0,1fr)_80px] items-center gap-4 px-4 py-3">
       <span className="text-[13px]">{label}</span>
       <span className="k-inset block h-2 overflow-hidden rounded-full">
-        <span className="block h-full rounded-full bg-[var(--accent)]" style={{ width: barWidth(count, of) }} />
+        <span className="block h-full rounded-full bg-[var(--accent)]" style={{ width: barWidth(count ?? 0, of) }} />
       </span>
-      <span className="text-right text-[13px] font-medium tabular-nums">{formatCount(count)}</span>
+      {count === null ? (
+        <span className="k-fg4 text-right text-[13px]">{"—"}</span>
+      ) : (
+        <span className="text-right text-[13px] font-medium tabular-nums">{formatCount(count)}</span>
+      )}
     </div>
   );
 }
 
-function InterestedRow({ visits, replies, of }: { visits: number; replies: number; of: number }) {
+function InterestedRow({ total, visits, replies, of }: { total: number | null; visits: number; replies: number; of: number }) {
   return (
     <div className="grid grid-cols-[160px_minmax(0,1fr)_80px] items-center gap-4 px-4 py-3">
       <span className="text-[13px]">Interested</span>
@@ -200,7 +206,11 @@ function InterestedRow({ visits, replies, of }: { visits: number; replies: numbe
           </span>
         </span>
       </span>
-      <span className="k-fg4 text-right text-[13px]">{"—"}</span>
+      {total === null ? (
+        <span className="k-fg4 text-right text-[13px]">{"—"}</span>
+      ) : (
+        <span className="text-right text-[13px] font-medium tabular-nums">{formatCount(total)}</span>
+      )}
     </div>
   );
 }
