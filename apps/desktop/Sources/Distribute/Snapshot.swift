@@ -12,7 +12,7 @@ enum Snapshot {
         guard let i = args.firstIndex(of: "--snapshot"), i + 1 < args.count else { return }
         let dir = URL(fileURLWithPath: args[i + 1], isDirectory: true)
         try? FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
-        for pane in [Pane.today, .companies, .people, .deals, .offer, .targeting, .channels] {
+        for pane in Pane.allCases {
             let state = fixtureState(pane: pane)
             let view = RootView().environmentObject(state).environment(\.isSnapshot, true).frame(width: 1320, height: 820)
             let renderer = ImageRenderer(content: view)

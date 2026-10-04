@@ -38,8 +38,15 @@ struct OfferData {
     let fields: [String: [String]]
 }
 
+/// A record opened from a panel row: its detail replaces the list, Back returns.
+enum Detail {
+    case person(LeadRow)
+    case company(RevenueOrg)
+}
+
 @MainActor
 final class AppState: ObservableObject {
+    @Published var detail: Detail?
     @Published var apiKey: String? = Keychain.read()
     @Published var me: Me?
     @Published var loadError: String?
@@ -51,6 +58,8 @@ final class AppState: ObservableObject {
     /// Whether the selected offer has a campaign: without one, money reads 404 by design.
     @Published var offerHasCampaign = false
     @Published var counts = SidebarCounts()
+    /// v2's "Top companies": the three worth most, on features-service's own figure.
+    @Published var topCompanies: [RevenueOrg] = []
     @Published var balance: Balance?
 
     @Published var pane: Pane? = .today
@@ -210,7 +219,11 @@ final class AppState: ObservableObject {
             c.deals = st.counts.contacted + st.counts.engaged + st.counts.sales_interest + st.counts.customer
             c.needsCall = nc.total
             if offerHasCampaign {
-                c.companies = try await api.offerRevenue(offerId: offer.offerId, brandId: brand.id).organizations.count
+                let orgs = try await api.offerRevenue(offerId: offer.offerId, brandId: brand.id).organizations
+                c.companies = orgs.count
+                topCompanies = Array(orgs.sorted { $0.expectedRevenueUsd > $1.expectedRevenueUsd }.prefix(3))
+            } else {
+                topCompanies = []
             }
             counts = c
         } catch {
@@ -221,18 +234,45 @@ final class AppState: ObservableObject {
     // MARK: panels
 
     func open(_ p: Pane) {
-        if p.opensDashboard {
-            NSWorkspace.shared.open(dashboardLink(for: p))
-            return
-        }
+        detail = nil
         pane = (pane == p) ? nil : p
         if let pane { Task { await load(pane) } }
+    }
+
+    func openPerson(_ lead: LeadRow) { detail = .person(lead) }
+
+    func openCompany(_ org: RevenueOrg) {
+        if pane != .companies { pane = .companies; Task { await load(.companies) } }
+        detail = .company(org)
+    }
+
+    /// A brand straight from its website, in the selected org (or the only one).
+    func addBrand(url: String) async throws {
+        guard let api, let org = selectedOrg ?? me?.organizations?.first else {
+            throw APIError(message: "No organization to add the brand to.")
+        }
+        let id = try await api.createBrand(orgId: org.id, url: url)
+        let fresh = try await api.me()
+        me = fresh
+        if let o = fresh.organizations?.first(where: { $0.id == org.id }), let b = o.brands.first(where: { $0.id == id }) {
+            selectedBrand = nil
+            select(brand: b, in: o)
+        }
+    }
+
+    /// The offer the person picked from the proposals becomes the selected one.
+    func offerCreated(_ offerId: String) async {
+        guard let api, let brand = selectedBrand else { return }
+        if let list = try? await api.offers(brandId: brand.id) {
+            offers = list
+            if let o = list.first(where: { $0.offerId == offerId }) { select(offer: o) }
+        }
     }
 
     func load(_ p: Pane) async {
         guard let api, let brand = selectedBrand else { return }
         guard let offer = selectedOffer else {
-            let none = "This brand has no offer yet. Add one on the dashboard."
+            let none = "This brand has no offer yet. Create it in Offer."
             switch p {
             case .today: today = .failed(none)
             case .companies: companies = .failed(none)
@@ -240,8 +280,7 @@ final class AppState: ObservableObject {
             case .deals: deals = .failed(none)
             case .offer: offerData = .failed(none)
             case .targeting: audiences = .failed(none)
-            case .channels: break
-            case .integrations, .settings: break
+            case .channels, .integrations, .settings, .billing: break
             }
             if p == .channels { await loadChannels(api: api, brandId: brand.id) }
             return
@@ -287,7 +326,7 @@ final class AppState: ObservableObject {
             }
         case .channels:
             await loadChannels(api: api, brandId: b)
-        case .integrations, .settings:
+            case .integrations, .settings, .billing:
             break
         }
     }
@@ -313,26 +352,6 @@ final class AppState: ObservableObject {
     func setPeopleBucket(_ bucket: String) {
         peopleBucket = bucket
         Task { await load(.people) }
-    }
-
-    /// The dashboard v2 page a pane mirrors (`apps/dashboard/src/lib/v2/routes.ts`).
-    func dashboardLink(for p: Pane?) -> URL {
-        guard let org = selectedOrg, let brand = selectedBrand else { return dashboardURL }
-        let base = "\(dashboardURL.absoluteString)/v2/orgs/\(org.id)/brands/\(brand.id)"
-        let offer = selectedOffer.map { "/offers/\($0.offerId)" } ?? "/offers"
-        let suffix: String
-        switch p {
-        case nil, .today?: suffix = ""
-        case .companies?: suffix = "/companies"
-        case .people?: suffix = "/people"
-        case .deals?: suffix = "/deals"
-        case .offer?: suffix = offer
-        case .targeting?: suffix = selectedOffer == nil ? "/targeting" : "\(offer)/targeting"
-        case .channels?: suffix = selectedOffer == nil ? "/channels" : "\(offer)/channels"
-        case .integrations?: suffix = "/integrations/ai"
-        case .settings?: suffix = "/settings"
-        }
-        return URL(string: base + suffix) ?? dashboardURL
     }
 
     func topUp(cents: Int) async {

@@ -114,18 +114,123 @@ struct Figure: View {
     }
 }
 
-/// Loading = shimmer rows at row height, never one big block.
+/// Loading = shimmer rows at row height, never one big block. The pulse is driven by a
+/// timeline and touches opacity only: a `withAnimation(.repeatForever)` started on appear
+/// leaks into the layout and made the whole panel bob up and down (owner 2026-10-04).
 struct ShimmerRows: View {
     var count = 4
-    @State private var phase = false
     var body: some View {
-        VStack(spacing: 8) {
-            ForEach(0..<count, id: \.self) { _ in
-                RoundedRectangle(cornerRadius: 6).fill(K.inset).frame(height: 28)
-                    .opacity(phase ? 0.55 : 1)
+        TimelineView(.animation) { ctx in
+            let t = ctx.date.timeIntervalSinceReferenceDate
+            let o = 0.7 + 0.3 * sin(t * 3)
+            VStack(spacing: 8) {
+                ForEach(0..<count, id: \.self) { _ in
+                    RoundedRectangle(cornerRadius: 6).fill(K.inset).frame(height: 28).opacity(o)
+                }
             }
         }
-        .onAppear { withAnimation(.easeInOut(duration: 0.9).repeatForever()) { phase = true } }
+    }
+}
+
+/// A brand or company mark: its logo from logo.dev (the dashboard's publishable token),
+/// else a soft tile with its initial.
+struct Logo: View {
+    let domain: String?
+    let name: String
+    var size: CGFloat = 24
+    var body: some View {
+        Group {
+            if let url = logoURL {
+                AsyncImage(url: url) { phase in
+                    if let img = phase.image { img.resizable().scaledToFit() } else { initial }
+                }
+            } else {
+                initial
+            }
+        }
+        .frame(width: size, height: size)
+        .background(RoundedRectangle(cornerRadius: size * 0.25).fill(K.raised))
+        .clipShape(RoundedRectangle(cornerRadius: size * 0.25))
+        .overlay(RoundedRectangle(cornerRadius: size * 0.25).strokeBorder(K.lineSubtle, lineWidth: 1))
+    }
+    private var logoURL: URL? {
+        guard let d = domain?.trimmingCharacters(in: .whitespaces), !d.isEmpty,
+              let enc = d.addingPercentEncoding(withAllowedCharacters: .urlHostAllowed) else { return nil }
+        return URL(string: "https://img.logo.dev/\(enc)?token=pk_J1iY4__HSfm9acHjR8FibA&size=\(Int(size * 2))&format=png")
+    }
+    private var initial: some View {
+        Text(String(name.prefix(1)).uppercased())
+            .font(.system(size: size * 0.45, weight: .semibold)).foregroundStyle(tint(for: name))
+            .frame(width: size, height: size)
+            .background(tint(for: name).opacity(0.14))
+    }
+}
+
+/// A person: their photo, else their initials on a soft tint.
+struct Avatar: View {
+    let url: String?
+    let name: String
+    var size: CGFloat = 28
+    var body: some View {
+        Group {
+            if let s = url, let u = URL(string: s) {
+                AsyncImage(url: u) { phase in
+                    if let img = phase.image { img.resizable().scaledToFill() } else { initials }
+                }
+            } else {
+                initials
+            }
+        }
+        .frame(width: size, height: size)
+        .clipShape(Circle())
+    }
+    private var initials: some View {
+        let parts = name.split(separator: " ").prefix(2).compactMap(\.first).map(String.init).joined()
+        return Text(parts.uppercased()).font(.system(size: size * 0.38, weight: .semibold)).foregroundStyle(tint(for: name))
+            .frame(width: size, height: size).background(tint(for: name).opacity(0.14))
+    }
+}
+
+/// A stable decorative tint per name, from the v2 data palette.
+func tint(for name: String) -> Color {
+    let palette = [K.violet, K.sky, K.amber, K.teal, K.rose, K.accent]
+    let h = name.unicodeScalars.reduce(0) { ($0 &* 31 &+ Int($1.value)) & 0xFFFF }
+    return palette[h % palette.count]
+}
+
+/// v2's SparkLine: a thin line over a soft fill, in the tile's colour.
+struct SparkLine: View {
+    let values: [Double]
+    var color: Color = K.accent
+    var body: some View {
+        GeometryReader { g in
+            let pts = points(in: g.size)
+            if pts.count > 1 {
+                ZStack {
+                    Path { p in
+                        p.move(to: CGPoint(x: pts[0].x, y: g.size.height))
+                        pts.forEach { p.addLine(to: $0) }
+                        p.addLine(to: CGPoint(x: pts.last!.x, y: g.size.height))
+                        p.closeSubpath()
+                    }
+                    .fill(LinearGradient(colors: [color.opacity(0.18), color.opacity(0)], startPoint: .top, endPoint: .bottom))
+                    Path { p in
+                        p.move(to: pts[0]); pts.dropFirst().forEach { p.addLine(to: $0) }
+                    }
+                    .stroke(color, style: StrokeStyle(lineWidth: 1.5, lineCap: .round, lineJoin: .round))
+                }
+            }
+        }
+        .frame(height: 28)
+    }
+    private func points(in size: CGSize) -> [CGPoint] {
+        guard values.count > 1 else { return [] }
+        let lo = values.min() ?? 0, hi = values.max() ?? 1
+        let span = hi - lo == 0 ? 1 : hi - lo
+        return values.enumerated().map { i, v in
+            CGPoint(x: size.width * CGFloat(i) / CGFloat(values.count - 1),
+                    y: size.height - 2 - (size.height - 4) * CGFloat((v - lo) / span))
+        }
     }
 }
 
