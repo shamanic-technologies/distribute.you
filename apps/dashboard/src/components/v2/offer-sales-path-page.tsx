@@ -15,9 +15,11 @@ import { OfferSalesPath } from "@/components/v2/offer-sales-path";
 import { OfferSalesPaths } from "@/components/v2/offer-sales-paths";
 import { BrandSalesBudgetCard } from "@/components/v2/brand-sales-budget-card";
 import { useDailyBudgetHidden } from "@/lib/use-daily-budget-hidden";
+import { firstLaunchedPath } from "@/lib/v2/get-started";
 
 /**
- * How an offer sells: the steps and legs the customer ticks, saved per offer
+ * How an offer sells, read from the top down: the path we run (Active, framed) above the
+ * other paths, then the legs, then the steps they are built from. The steps and legs the customer ticks, saved per offer
  * in brand-service, over features-service's catalogue. Every tick is saved at once;
  * the page holds what was just ticked until brand-service answers, then shows its answer.
  */
@@ -70,6 +72,10 @@ export function V2OfferSalesPathPage() {
       });
   };
 
+  // The path we run: the same pick as the onboarding and campaign-service's global budget
+  // (best-ranked path a channel of ours enters). The customer never chooses it.
+  const activePathKey = useMemo(() => firstLaunchedPath(paths.data?.paths ?? [])?.pathKey ?? null, [paths.data]);
+
   const selection = draft ?? served;
   const settled = q.isFetchedAfterMount || q.data !== undefined;
 
@@ -80,10 +86,18 @@ export function V2OfferSalesPathPage() {
         { label: "Sales path" },
       ]}
       title={name ?? " "}
-      sub="Tick the steps this offer sells through. The legs between them, and who works each one, follow."
+      sub="We always run the path with the best return. Tick legs and steps below to change the options."
       width="max-w-[1280px]"
     >
       {error && <p className="mb-4 text-[13px] text-[var(--data-rose)]">{error}</p>}
+      <OfferSalesPaths
+        data={paths.data}
+        pending={paths.isPending && !paths.isError}
+        failed={paths.isError}
+        activePathKey={activePathKey}
+        intro=""
+      />
+      <div className="mt-8">
       {!settled || catalogue.legs.size === 0 ? (
         <div className="space-y-2">
           <Shimmer className="h-12 rounded-[10px]" />
@@ -98,10 +112,11 @@ export function V2OfferSalesPathPage() {
           channelNames={channelNames}
           selection={selection ?? { steps: new Set(), legs: new Set() }}
           onChange={onChange}
+          legsFirst
         />
       )}
+      </div>
       <div className="mt-8 space-y-8">
-        <OfferSalesPaths data={paths.data} pending={paths.isPending && !paths.isError} failed={paths.isError} />
         {/* A plan's $50/day is fixed (owner 2026-10-03): no budget card for a subscriber. */}
         {budgetHidden ? null : <BrandSalesBudgetCard brandId={brandId} />}
       </div>
