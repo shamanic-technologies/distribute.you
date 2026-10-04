@@ -46,7 +46,7 @@ struct SidebarView: View {
         VStack(alignment: .leading, spacing: 0) {
             BrandSwitcher().padding(.horizontal, 8).padding(.top, 8)
             OfferSwitcher().padding(.horizontal, 8).padding(.top, 6)
-            ScrollView {
+            KScroll {
                 VStack(alignment: .leading, spacing: 1) {
                     NavRow(pane: .today, trailing: state.counts.needsCall.flatMap { $0 > 0 ? AnyView(Badge(n: $0)) : nil })
                     Button { recordsOpen.toggle() } label: {
@@ -150,7 +150,7 @@ private struct Badge: View {
 struct BrandSwitcher: View {
     @EnvironmentObject var state: AppState
     var body: some View {
-        Menu {
+        KMenu {
             ForEach(state.me?.organizations ?? []) { org in
                 if !org.brands.isEmpty {
                     Section(org.name ?? org.id) {
@@ -171,11 +171,7 @@ struct BrandSwitcher: View {
                 Image(systemName: "chevron.up.chevron.down").font(.system(size: 10)).foregroundStyle(K.fg3)
             }
             .padding(.horizontal, 8).frame(height: 40)
-            .background(RoundedRectangle(cornerRadius: 8).fill(K.raised))
-            .overlay(RoundedRectangle(cornerRadius: 8).strokeBorder(K.lineSubtle, lineWidth: 1))
         }
-        .menuStyle(.borderlessButton)
-        .menuIndicator(.hidden)
     }
 }
 
@@ -184,7 +180,7 @@ struct OfferSwitcher: View {
     @EnvironmentObject var state: AppState
     var body: some View {
         if !state.offers.isEmpty {
-            Menu {
+            KMenu {
                 ForEach(state.offers) { offer in
                     Button(offer.name) { state.select(offer: offer) }
                 }
@@ -197,7 +193,6 @@ struct OfferSwitcher: View {
                 }
                 .padding(.horizontal, 8).frame(height: 28)
             }
-            .menuStyle(.borderlessButton).menuIndicator(.hidden)
         }
     }
 }
@@ -227,13 +222,16 @@ private struct CreditsRow: View {
                 }
             }
             Spacer()
-            Menu("Top up") {
+            KMenu {
                 ForEach([50, 100, 250], id: \.self) { usd in
                     Button("$\(usd)") { Task { await state.topUp(cents: usd * 100) } }
                 }
+            } label: {
+                Text("Top up").font(K.meta).foregroundStyle(K.fg1).padding(.horizontal, 10).frame(height: 26)
+                    .background(RoundedRectangle(cornerRadius: 8).fill(K.raised))
+                    .overlay(RoundedRectangle(cornerRadius: 8).strokeBorder(K.line, lineWidth: 1))
             }
-            .menuStyle(.borderlessButton).fixedSize()
-            .font(K.meta)
+            .fixedSize()
         }
         .padding(10)
         .background(RoundedRectangle(cornerRadius: 10).fill(K.raised))
@@ -244,7 +242,7 @@ private struct CreditsRow: View {
 private struct AccountRow: View {
     @EnvironmentObject var state: AppState
     var body: some View {
-        Menu {
+        KMenu {
             Button("Open the dashboard") { NSWorkspace.shared.open(state.dashboardLink(for: nil)) }
             Divider()
             Button("Sign out") { state.signOut() }
@@ -258,6 +256,5 @@ private struct AccountRow: View {
             }
             .padding(.horizontal, 8).frame(height: 36)
         }
-        .menuStyle(.borderlessButton).menuIndicator(.hidden)
     }
 }

@@ -14,7 +14,7 @@ enum Snapshot {
         try? FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
         for pane in [Pane.today, .companies, .people, .deals, .offer, .targeting, .channels] {
             let state = fixtureState(pane: pane)
-            let view = RootView().environmentObject(state).frame(width: 1320, height: 820)
+            let view = RootView().environmentObject(state).environment(\.isSnapshot, true).frame(width: 1320, height: 820)
             let renderer = ImageRenderer(content: view)
             renderer.scale = 2
             guard let image = renderer.nsImage,

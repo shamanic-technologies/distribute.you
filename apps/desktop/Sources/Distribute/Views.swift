@@ -115,6 +115,7 @@ struct ClaudeMissingView: View {
 struct ChatView: View {
     @EnvironmentObject var state: AppState
     @FocusState private var focused: Bool
+    @Environment(\.isSnapshot) private var snapshot
 
     var body: some View {
         VStack(spacing: 0) {
@@ -129,7 +130,7 @@ struct ChatView: View {
             .padding(.horizontal, 16).frame(height: 48)
             Rectangle().fill(K.lineSubtle).frame(height: 1)
             ScrollViewReader { proxy in
-                ScrollView {
+                KScroll {
                     LazyVStack(alignment: .leading, spacing: 12) {
                         if state.selectedBrand == nil && state.me != nil { noBrandState }
                         else if state.chat.isEmpty { emptyState }
@@ -150,13 +151,18 @@ struct ChatView: View {
                 }
             }
             HStack(alignment: .bottom, spacing: 8) {
-                TextField("Ask about your results, or tell it what to change", text: $state.draft, axis: .vertical)
-                    .textFieldStyle(.plain)
-                    .font(.system(size: 14))
-                    .lineLimit(1...8)
-                    .focused($focused)
-                    .onSubmit(send)
-                    .padding(.vertical, 4)
+                if snapshot {
+                    Text("Ask about your results, or tell it what to change").font(.system(size: 14)).foregroundStyle(K.fg4)
+                        .frame(maxWidth: .infinity, alignment: .leading).padding(.vertical, 4)
+                } else {
+                    TextField("Ask about your results, or tell it what to change", text: $state.draft, axis: .vertical)
+                        .textFieldStyle(.plain)
+                        .font(.system(size: 14))
+                        .lineLimit(1...8)
+                        .focused($focused)
+                        .onSubmit(send)
+                        .padding(.vertical, 4)
+                }
                 if state.chatBusy {
                     Button("Stop") { state.stopChat() }.buttonStyle(KButtonStyle())
                 } else {

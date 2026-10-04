@@ -25,9 +25,10 @@ struct PanelView: View {
             }
             .padding(.horizontal, 12).frame(height: 48)
             Rectangle().fill(K.lineSubtle).frame(height: 1)
-            ScrollView {
+            KScroll {
                 VStack(alignment: .leading, spacing: 12) { content }
                     .padding(14)
+                    .frame(maxWidth: .infinity, alignment: .leading)
             }
         }
         .background(K.surface)
@@ -96,11 +97,7 @@ private struct SectionTitle: View {
 private struct TodayPanel: View {
     @EnvironmentObject var state: AppState
     var body: some View {
-        Picker("", selection: Binding(get: { state.windowDays }, set: { state.setWindow($0) })) {
-            Text("7 days").tag(7)
-            Text("30 days").tag(30)
-        }
-        .pickerStyle(.segmented).labelsHidden().frame(width: 160)
+        KTabs(options: [(7, "7 days"), (30, "30 days")], selection: state.windowDays) { state.setWindow($0) }
         LoadView(load: state.today) { d in
             if let win = d.window?.window {
                 KCard {
@@ -206,10 +203,9 @@ private let peopleBuckets: [(key: String, label: String)] = [
 private struct PeoplePanel: View {
     @EnvironmentObject var state: AppState
     var body: some View {
-        Picker("", selection: Binding(get: { state.peopleBucket }, set: { state.setPeopleBucket($0) })) {
-            ForEach(peopleBuckets, id: \.key) { Text($0.label).tag($0.key) }
+        KScroll(axis: .horizontal) {
+            KTabs(options: peopleBuckets.map { ($0.key, $0.label) }, selection: state.peopleBucket) { state.setPeopleBucket($0) }
         }
-        .labelsHidden().frame(width: 200)
         LoadView(load: state.people) { page in
             if page.leads.isEmpty { EmptyNote(text: "Nobody at this step yet.") }
             VStack(spacing: 2) {

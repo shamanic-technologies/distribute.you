@@ -138,3 +138,62 @@ struct EmptyNote: View {
             .frame(maxWidth: .infinity, alignment: .leading)
     }
 }
+
+// MARK: - Snapshot-safe containers
+// ImageRenderer (the CI snapshot) draws no AppKit-backed view: a ScrollView renders empty
+// and a Menu or TextField renders a placeholder. In a snapshot these swap for plain views.
+
+private struct SnapshotKey: EnvironmentKey { static let defaultValue = false }
+extension EnvironmentValues {
+    var isSnapshot: Bool {
+        get { self[SnapshotKey.self] }
+        set { self[SnapshotKey.self] = newValue }
+    }
+}
+
+struct KScroll<Content: View>: View {
+    var axis: Axis.Set = .vertical
+    @ViewBuilder var content: Content
+    @Environment(\.isSnapshot) private var snapshot
+    var body: some View {
+        if snapshot {
+            if axis == .horizontal { HStack(spacing: 0) { content } } else { VStack(spacing: 0) { content }.frame(maxHeight: .infinity, alignment: .top) }
+        } else {
+            ScrollView(axis, showsIndicators: false) { content }
+        }
+    }
+}
+
+struct KMenu<Label: View, Items: View>: View {
+    @ViewBuilder var items: Items
+    @ViewBuilder var label: Label
+    @Environment(\.isSnapshot) private var snapshot
+    var body: some View {
+        if snapshot {
+            label
+        } else {
+            Menu { items } label: { label }.menuStyle(.borderlessButton).menuIndicator(.hidden)
+        }
+    }
+}
+
+/// Keel's underline tabs (`k-tab`), used for a small choice like 7 / 30 days.
+struct KTabs<V: Hashable>: View {
+    let options: [(V, String)]
+    let selection: V
+    let pick: (V) -> Void
+    var body: some View {
+        HStack(spacing: 14) {
+            ForEach(options, id: \.0) { value, label in
+                Button { pick(value) } label: {
+                    VStack(spacing: 6) {
+                        Text(label).font(K.body).foregroundStyle(value == selection ? K.fg1 : K.fg3)
+                        Rectangle().fill(value == selection ? K.fg1 : Color.clear).frame(height: 1.5)
+                    }
+                    .fixedSize()
+                }
+                .buttonStyle(.plain)
+            }
+        }
+    }
+}
