@@ -38,9 +38,12 @@ export function OfferSalesPaths({
   bare = false,
   gainHeadline = false,
   activeKey,
+  table = false,
   onStateRate,
   onStateLifetimeRevenue,
 }: {
+  /** A plain table, ROI desc as served, no run status (the Sales path page: what runs lives in Campaigns). */
+  table?: boolean;
   data: OfferSalesPaths | undefined;
   pending: boolean;
   failed: boolean;
@@ -82,6 +85,8 @@ export function OfferSalesPaths({
         <EmptyNote>Could not read this offer&apos;s sales paths.</EmptyNote>
       ) : data && salesPathsEmptyReason(data.status) ? (
         <EmptyNote>{salesPathsEmptyReason(data.status)}</EmptyNote>
+      ) : table ? (
+        <PathsTable paths={paths} open={open} setOpen={setOpen} onStateRate={onStateRate} onStateLifetimeRevenue={onStateLifetimeRevenue} />
       ) : activeKey !== undefined ? (
         <StatusPaths
           paths={paths}
@@ -108,6 +113,93 @@ export function OfferSalesPaths({
         </ul>
       )}
     </section>
+  );
+}
+
+/** Paths shown before "Show N more". */
+const TABLE_SHOWN = 20;
+
+/** The Sales path page's view: a plain table in the served order; a row opens its breakdown. */
+function PathsTable({
+  paths,
+  open,
+  setOpen,
+  onStateRate,
+  onStateLifetimeRevenue,
+}: {
+  paths: SalesPathRow[];
+  open: string | null;
+  setOpen: (key: string | null) => void;
+  onStateRate?: (leg: SalesPathLeg, ratePct: number | null) => Promise<void>;
+  onStateLifetimeRevenue?: (usd: number) => Promise<void>;
+}) {
+  const [showAll, setShowAll] = useState(false);
+  const shown = showAll ? paths : paths.slice(0, TABLE_SHOWN);
+  return (
+    <div className="k-card overflow-hidden">
+      <div className="k-scroll overflow-x-auto">
+        <table className="w-full min-w-[760px] text-[13px]">
+          <thead>
+            <tr className="k-line-subtle border-b">
+              <th className="k-label w-10 px-3 py-2.5 pl-4 text-left font-normal">#</th>
+              <th className="k-label px-3 py-2.5 text-left font-normal">Name</th>
+              <th className="k-label px-3 py-2.5 text-left font-normal">Path</th>
+              <th className="k-label px-3 py-2.5 text-right font-normal">Cost per paying client</th>
+              <th className="k-label px-3 py-2.5 pr-4 text-right font-normal">ROI</th>
+            </tr>
+          </thead>
+          <tbody>
+            {shown.map((p) => {
+              const isOpen = open === p.combinationKey;
+              const unavailable = roiUnavailableLabel(p.roiUnavailableReason);
+              return [
+                <tr
+                  key={p.combinationKey}
+                  aria-expanded={isOpen}
+                  onClick={() => setOpen(isOpen ? null : p.combinationKey)}
+                  className={`k-row cursor-pointer ${isOpen ? "" : "k-line-subtle border-b"}`}
+                >
+                  <td className="k-fg3 px-3 py-2 pl-4 text-[12px] tabular-nums">{p.rank}</td>
+                  <td className="px-3 py-2">
+                    <span className="flex items-center gap-2.5">
+                      <PathAvatar name={p.name} size={28} />
+                      <span className="font-semibold">{p.name}</span>
+                    </span>
+                  </td>
+                  <td className="px-3 py-2">
+                    <PathLinks path={p} />
+                  </td>
+                  <td className="k-fg2 px-3 py-2 text-right tabular-nums">{usd(p.costPerPayingClientUsd)}</td>
+                  <td
+                    className={`px-3 py-2 pr-4 text-right font-semibold tabular-nums ${roiIsGood(p.roi) ? "text-[var(--run)]" : ""}`}
+                    title={unavailable ?? undefined}
+                  >
+                    {formatRoi(p.roi)}
+                  </td>
+                </tr>,
+                isOpen ? (
+                  <tr key={`${p.combinationKey}-detail`} className="k-line-subtle border-b">
+                    <td colSpan={5} className="p-0">
+                      <PathBreakdown path={p} onStateRate={onStateRate} onStateLifetimeRevenue={onStateLifetimeRevenue} />
+                    </td>
+                  </tr>
+                ) : null,
+              ];
+            })}
+          </tbody>
+        </table>
+      </div>
+      {paths.length > shown.length && (
+        <div className="k-fg3 flex items-center justify-between px-4 py-2.5 text-[12px] tabular-nums">
+          <span>
+            {shown.length} of {paths.length}
+          </span>
+          <button type="button" className="k-btn-ghost h-6 px-2 text-[12px]" onClick={() => setShowAll(true)}>
+            Show {paths.length - shown.length} more
+          </button>
+        </div>
+      )}
+    </div>
   );
 }
 
