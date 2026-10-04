@@ -72,4 +72,8 @@ describe("channel pages", () => {
     expect(page).not.toMatch(/positive_reply\s*\+/);
     expect(page).not.toMatch(/visits\s*\+\s*replies/);
   });
+  it("Delivered and the Interested total are lead-service's people counts", () => {
+    expect(page).toContain('<StepRow label="Delivered" count={people?.delivered ?? null} of={counts.contacted} />');
+    expect(page).toContain("total={people?.interested ?? null}");
+  });
 });
