@@ -95,6 +95,7 @@ describe("channel pages", () => {
     for (const gone of ["Meeting booked", "Meeting attended", "Paid client", 'label="Contacted"']) expect(page).not.toContain(gone);
   });
   it("stat cards open with People then Queued before Sent", () => {
+    expect(page).toContain("const queued = win.data?.queuedEmails ?? null;");
     expect(page.indexOf('<StatTile label="People">')).toBeGreaterThan(-1);
     expect(page.indexOf('<StatTile label="Queued">')).toBeGreaterThan(page.indexOf('<StatTile label="People">'));
     expect(page.indexOf('<StatTile label="Sent">')).toBeGreaterThan(page.indexOf('<StatTile label="Queued">'));

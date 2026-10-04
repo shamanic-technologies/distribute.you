@@ -40,6 +40,13 @@ export const RevenueWindowSchema = z.object({
       daily: z.array(z.object({ date: z.string(), actualSpentCents: z.number(), totalSpentCents: z.number() })),
     })
     .nullable(),
+  /**
+   * EMAILS (every step) of the scope's campaigns scheduled and not yet sent RIGHT NOW: a
+   * snapshot, the same whatever the window (features-service #1322). Null with a reason when
+   * unreadable, never 0. Optional until that release is served.
+   */
+  queuedEmails: z.number().int().nullable().optional(),
+  queuedEmailsUnavailableReason: z.enum(["sender_queue_unreadable", "stats_unreadable"]).nullable().optional(),
   recipientsRepliesPositive: z.object({ total: z.number(), daily: z.array(DayCount) }),
   recipientsClicked: z.object({ total: z.number(), daily: z.array(DayCount) }),
   /** Expected pipeline, the headline's own basis, as a cumulative curve. */
