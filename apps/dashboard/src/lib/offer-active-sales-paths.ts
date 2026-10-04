@@ -95,6 +95,36 @@ export function takenEntryHolder(err: unknown): ActiveSalesPath | null {
   return parsed.success ? parsed.data : null;
 }
 
+/** A channel an offer can accept, as the catalogue publishes it. */
+export interface SalesPathChannel {
+  slug: string;
+  name: string;
+  /** We run it today. */
+  managed: boolean;
+  /** The customer's own team works it (your-team-*). */
+  customerOperated: boolean;
+}
+
+/**
+ * The channels a sales path can use, in the producer's order: every catalogue channel
+ * features-service marks `salesPathEligible`. A channel missing a name or the flags is a
+ * producer gap, said out loud and left out rather than guessed.
+ */
+export function salesPathChannels(
+  channels: ReadonlyArray<{ slug: string; name?: string; managed?: boolean; salesPathEligible?: boolean; operatedBy?: string }>,
+): SalesPathChannel[] {
+  const out: SalesPathChannel[] = [];
+  for (const c of channels) {
+    if (c.salesPathEligible !== true) continue;
+    if (!c.name || c.managed === undefined) {
+      console.error("[offer-active-sales-paths] eligible channel served without name or managed flag", c);
+      continue;
+    }
+    out.push({ slug: c.slug, name: c.name, managed: c.managed, customerOperated: c.operatedBy === "customer" });
+  }
+  return out;
+}
+
 /** The channels an offer accepts, as a set. Never stated = the channels we run (features-service's reading). */
 export function acceptedChannels(data: OfferChannels, channelsWeRun: readonly string[]): ReadonlySet<string> {
   return new Set(data.stated && data.channelSlugs ? data.channelSlugs : channelsWeRun);

@@ -6,6 +6,7 @@ import {
   OfferActiveSalesPathsSchema,
   OfferChannelsSchema,
   parseOrThrow,
+  salesPathChannels,
   takenEntryHolder,
   toggleChannel,
 } from "../src/lib/offer-active-sales-paths";
@@ -32,6 +33,19 @@ describe("offer channels", () => {
     expect([...acceptedChannels(never, WE_RUN)]).toEqual(WE_RUN);
     const empty = parseOrThrow(OfferChannelsSchema, { offerId: "o1", stated: true, channelSlugs: [], statedAt: "x", statedByUserId: "u" }, "t");
     expect(acceptedChannels(empty, WE_RUN).size).toBe(0);
+  });
+  it("lists only the eligible channels, in served order, and skips one served without its flags", () => {
+    const list = salesPathChannels([
+      { slug: "sales-cold-email-outreach", name: "Sales Cold Email Outreach", managed: true, salesPathEligible: true, operatedBy: "platform" },
+      { slug: "seo-content", name: "SEO Content", managed: false, salesPathEligible: false, operatedBy: "platform" },
+      { slug: "meta-ads", name: "Meta Ads", managed: false, salesPathEligible: true, operatedBy: "platform" },
+      { slug: "your-team-closing-calls", name: "Your team closing calls", managed: false, salesPathEligible: true, operatedBy: "customer" },
+      { slug: "pr-cold-email-outreach", name: "PR" },
+      { slug: "broken", salesPathEligible: true },
+    ]);
+    expect(list.map((c) => c.slug)).toEqual(["sales-cold-email-outreach", "meta-ads", "your-team-closing-calls"]);
+    expect(list[2].customerOperated).toBe(true);
+    expect(list[1].managed).toBe(false);
   });
   it("a tick sends the full list back", () => {
     expect(toggleChannel(new Set(["a", "b"]), "c", true)).toEqual(["a", "b", "c"]);

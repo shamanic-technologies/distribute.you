@@ -3012,6 +3012,12 @@ const PublicCatalogueSchema = z.object({
   channels: z.array(
     z.object({
       slug: z.string(),
+      name: z.string().optional(),
+      /** True when we run this channel today (features-service; absent on an older producer). */
+      managed: z.boolean().optional(),
+      /** True when the channel can appear in a sales path: the list an offer accepts channels from. */
+      salesPathEligible: z.boolean().optional(),
+      operatedBy: z.string().optional(),
       terms: z
         .object({ dailyOperatingCostCents: z.coerce.number().nullish() })
         .nullish(),
@@ -3024,6 +3030,10 @@ const PublicCatalogueSchema = z.object({
             // The crew's name (Herald, Scout, Pilot...), published per leg. Undeclared,
             // zod strips it and every crew reads by its channel's name instead.
             crewName: z.string().nullish(),
+            /** The minimum monthly budget of this (channel x leg) item, whole cents. */
+            minimumMonthlyBudgetCents: z.number().int().nullish(),
+            /** True when the leg starts from a step a lead reached (it reacts, never prospects). */
+            reactive: z.boolean().optional(),
           }),
         )
         .optional(),
