@@ -160,8 +160,12 @@ private struct Badge: View {
 /// The tenant switcher: brand mark + name, every org's brands in the menu.
 struct BrandSwitcher: View {
     @EnvironmentObject var state: AppState
+    // The logo sits OUTSIDE the menu: a macOS Menu label draws images at their native
+    // size and ignores the frame, so a logo.dev PNG rendered huge (owner 2026-10-04).
     var body: some View {
-        KMenu {
+        HStack(spacing: 8) {
+            Logo(domain: state.selectedBrand?.domain, name: state.selectedBrand?.label ?? "?", size: 24)
+            KMenu {
             ForEach(state.me?.organizations ?? []) { org in
                 if !org.brands.isEmpty {
                     Section(org.name ?? org.id) {
@@ -173,7 +177,6 @@ struct BrandSwitcher: View {
             }
         } label: {
             HStack(spacing: 8) {
-                Logo(domain: state.selectedBrand?.domain, name: state.selectedBrand?.label ?? "?", size: 24)
                 VStack(alignment: .leading, spacing: 0) {
                     Text(state.selectedBrand?.label ?? "Choose a brand").font(.system(size: 13, weight: .medium)).foregroundStyle(K.fg1).lineLimit(1)
                     if let org = state.selectedOrg?.name { Text(org).font(K.meta).foregroundStyle(K.fg3).lineLimit(1) }
@@ -181,8 +184,10 @@ struct BrandSwitcher: View {
                 Spacer(minLength: 0)
                 Image(systemName: "chevron.up.chevron.down").font(.system(size: 10)).foregroundStyle(K.fg3)
             }
-            .padding(.horizontal, 8).frame(height: 40)
+            .frame(height: 40)
         }
+        }
+        .padding(.horizontal, 8)
     }
 }
 
