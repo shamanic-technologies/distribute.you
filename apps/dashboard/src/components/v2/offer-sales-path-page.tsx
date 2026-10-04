@@ -8,6 +8,8 @@ import { getOfferChannels, getOfferSalesPath, getOfferSalesPaths, saveOfferChann
 import { useSalesPathChannels } from "@/lib/use-sales-path-channels";
 import { acceptedChannels, toggleChannel } from "@/lib/offer-active-sales-paths";
 import { OfferChannelsPicker } from "@/components/v2/offer-channels-picker";
+import { OfferCampaigns } from "@/components/v2/offer-campaigns";
+import { campaignsOfPaths } from "@/lib/offer-campaign-budgets";
 import { useLegCatalogue } from "@/lib/use-leg-catalogue";
 import { useAcquisitionChannels } from "@/lib/use-acquisition-channels";
 import { v2OfferHref } from "@/lib/v2/routes";
@@ -107,6 +109,9 @@ export function V2OfferSalesPathPage() {
       });
   };
 
+  // Every channel x leg the listed paths use: what runs, and its budget, is set there.
+  const campaigns = useMemo(() => campaignsOfPaths(paths.data?.paths ?? []), [paths.data]);
+
   const selection = draft ?? served;
   const settled = q.isFetchedAfterMount || q.data !== undefined;
 
@@ -121,6 +126,15 @@ export function V2OfferSalesPathPage() {
       width="max-w-[1280px]"
     >
       {error && <p className="mb-4 text-[13px] text-[var(--data-rose)]">{error}</p>}
+      <div className="mb-8">
+        <OfferCampaigns
+          orgId={orgId}
+          brandId={brandId}
+          offerId={offerId}
+          campaigns={campaigns}
+          pending={paths.isPending && !paths.isError}
+        />
+      </div>
       <OfferSalesPaths
         data={paths.data}
         pending={paths.isPending && !paths.isError}

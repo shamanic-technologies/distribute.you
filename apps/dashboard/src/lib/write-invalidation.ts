@@ -67,6 +67,9 @@ export const CAMPAIGN_MONEY_ROOTS = [
   "brandDailyBudget",
   "brandSpendableBudget",
   "brandCampaignBudgets",
+  // The offer's per-campaign budgets (billing, the same ceiling rows the brand read lists).
+  "offerCampaignBudgets",
+  "brandSalesBudget",
 ] as const;
 
 /**
