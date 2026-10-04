@@ -18,7 +18,6 @@ import { OfferSalesPath } from "@/components/v2/offer-sales-path";
 import { OfferSalesPaths } from "@/components/v2/offer-sales-paths";
 import { BrandSalesBudgetCard } from "@/components/v2/brand-sales-budget-card";
 import { useDailyBudgetHidden } from "@/lib/use-daily-budget-hidden";
-import { firstLaunchedPath } from "@/lib/v2/get-started";
 
 /**
  * How an offer sells, read from the top down: the path we run (Active, framed) above the
@@ -39,17 +38,13 @@ export function V2OfferSalesPathPage() {
     enabled: !!offerId,
   });
   // The paths are features-service's answer over the SAVED selection, so they re-read
-  // after every save (below) rather than on a poll. The page LISTS the whole combinatory
-  // (every catalogue path x the owner's channel shortlist); the path we RUN stays the
-  // ticked read's pick, the one campaign-service funds and the onboarding launches.
+  // after every save (below) rather than on a poll. The page LISTS every path of the ticked
+  // legs x the accepted channels, as a plain table: what runs is stated by campaigns, not here.
   const paths = useAuthQuery(
     ["offerSalesPaths", brandId, offerId, "catalogue"],
     () => getOfferSalesPaths(brandId, offerId, "catalogue"),
     { enabled: !!offerId },
   );
-  const ticked = useAuthQuery(["offerSalesPaths", brandId, offerId], () => getOfferSalesPaths(brandId, offerId), {
-    enabled: !!offerId,
-  });
   const [draft, setDraft] = useState<SalesPathSelection | null>(null);
 
   // The channels the offer accepts (brand-service); the catalogue paths are filtered on them.
@@ -102,7 +97,7 @@ export function V2OfferSalesPathPage() {
     saveOfferSalesPath(brandId, offerId, [...next.steps], [...next.legs])
       .then((saved) => {
         qc.setQueryData(["offerSalesPath", brandId, offerId], saved);
-        // A prefix: re-reads both the ticked read and the catalogue list.
+        // A prefix: re-reads every sales paths read of this offer.
         return qc.invalidateQueries({ queryKey: ["offerSalesPaths", brandId, offerId] });
       })
       .catch((err) => {
@@ -111,10 +106,6 @@ export function V2OfferSalesPathPage() {
         setError("Could not save this change. Try again.");
       });
   };
-
-  // The path we run: the same pick as the onboarding and campaign-service's global budget
-  // (best-ranked path a channel of ours enters). The customer never chooses it.
-  const activeKey = useMemo(() => firstLaunchedPath(ticked.data?.paths ?? [])?.combinationKey ?? null, [ticked.data]);
 
   const selection = draft ?? served;
   const settled = q.isFetchedAfterMount || q.data !== undefined;
@@ -126,7 +117,7 @@ export function V2OfferSalesPathPage() {
         { label: "Sales path" },
       ]}
       title={name ?? " "}
-      sub="We run the best path you ticked, on the channels we run today."
+      sub="Every way this offer can sell, best return first."
       width="max-w-[1280px]"
     >
       {error && <p className="mb-4 text-[13px] text-[var(--data-rose)]">{error}</p>}
@@ -134,7 +125,7 @@ export function V2OfferSalesPathPage() {
         data={paths.data}
         pending={paths.isPending && !paths.isError}
         failed={paths.isError}
-        activeKey={activeKey}
+        table
         intro=""
       />
       <div className="mt-8">

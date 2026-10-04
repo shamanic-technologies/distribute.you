@@ -99,11 +99,12 @@ describe("offer sales paths, catalogue scope", () => {
   it("labels the producer's default rate as a benchmark", () => {
     expect(rateSourceLabel("default")).toBe("Industry benchmark");
   });
-  it("the Sales path page lists the catalogue but runs the ticked read's best path", () => {
+  it("the Sales path page lists the catalogue as a plain table, with no run status", () => {
     const src = readFileSync(join(__dirname, "../src/components/v2/offer-sales-path-page.tsx"), "utf8");
     expect(src).toContain('getOfferSalesPaths(brandId, offerId, "catalogue")');
     expect(src).toContain('["offerSalesPaths", brandId, offerId, "catalogue"]');
-    expect(src).toContain("firstLaunchedPath(ticked.data?.paths");
+    expect(src).toMatch(/<OfferSalesPaths[^>]*\btable\b/);
+    expect(src).not.toContain("activeKey");
   });
 });
 
