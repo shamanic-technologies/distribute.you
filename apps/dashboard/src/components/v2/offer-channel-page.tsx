@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect } from "react";
 import Link from "next/link";
 import { useParams, useSearchParams } from "next/navigation";
 import { useAuthQuery } from "@/lib/use-auth-query";
@@ -116,6 +117,10 @@ export function ColdEmailOverview({
 }) {
   const win = useBrandRevenueWindow(brandId, SINCE_INCEPTION);
   const emails = win.data?.emails ?? null;
+  const queued = win.data?.queuedEmails ?? null;
+  useEffect(() => {
+    if (win.data?.queuedEmails === null) console.error("[cold-email overview] queued emails unreadable", { reason: win.data.queuedEmailsUnavailableReason });
+  }, [win.data?.queuedEmails, win.data?.queuedEmailsUnavailableReason]);
   const buckets = useBucketCounts(brandId);
   const counts = buckets.data?.counts ?? null;
   const countsSettled = buckets.isFetchedAfterMount || buckets.data !== undefined;
@@ -136,9 +141,9 @@ export function ColdEmailOverview({
           <StatTile label="People">
             {!countsSettled ? <Shimmer className="h-7 w-16" /> : <Figure value={counts ? formatCount(counts.contacted) : "—"} unit="people" />}
           </StatTile>
-          {/* Emails waiting to go out: no service serves it per offer yet (features-service request open). */}
+          {/* Emails waiting to go out right now, served by features-service (a snapshot, not a window figure). */}
           <StatTile label="Queued">
-            <Figure value={<span className="k-fg4">{"—"}</span>} unit="emails" />
+            {win.pending ? <Shimmer className="h-7 w-16" /> : <Figure value={queued != null ? formatCount(queued) : "—"} unit="emails" />}
           </StatTile>
           <StatTile label="Sent">
             {win.pending ? <Shimmer className="h-7 w-16" /> : <Figure value={emails ? formatCount(emails.sent) : "—"} unit="emails" />}
