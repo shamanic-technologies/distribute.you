@@ -58,9 +58,9 @@ enum Snapshot {
         s.audiences = .loaded((decode(#"{"audiences":[{"id":"a1","name":"Founders in Paris","status":"active","nlPrompt":"Founders and CEOs of 10-50 person software companies in Paris","sizeCount":"1800","availableToContactPct":62},{"id":"a2","name":"Agencies in London","status":"paused","sizeCount":950,"availableToContactPct":30}]}"#) as AudienceList).audiences)
         s.rows = .loaded([])
         s.chat = [
-            .user(id: UUID(), text: "How is it going this week?"),
+            .user(id: UUID(), text: "How is it going?"),
             .tool(id: UUID(), label: "Used distribute_campaign_stats"),
-            .assistant(id: UUID(), text: "9 positive replies this week, 3 still waiting on you. **Acme** is the hottest: Ana replied and visited the site twice."),
+            .assistant(id: UUID(), text: "9 positive replies since you started, 3 still waiting on you.\n\n- **Acme**: Ana replied and visited the site twice.\n- **Globex**: Ben asked for pricing.\n\nThe London audience brings no reply yet. Pause it?\nACTION: Pause the audience \"Agencies in London\""),
         ]
         return s
     }
