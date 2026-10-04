@@ -4,7 +4,12 @@ import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent } fro
 import { useChat } from "@ai-sdk/react";
 import { DefaultChatTransport, isToolUIPart, type UIMessage } from "ai";
 import { useQueryClient } from "@tanstack/react-query";
-import { useBillingGuard } from "@/lib/billing-guard";
+import Link from "next/link";
+import { useParams } from "next/navigation";
+import { useBillingGuard, type PaymentRequiredInfo } from "@/lib/billing-guard";
+import { useAuthQuery } from "@/lib/use-auth-query";
+import { paymentModeOf } from "@/lib/payment-mode";
+import { v2Href } from "@/lib/v2/routes";
 import {
   SparklesIcon,
   XMarkIcon,
@@ -26,7 +31,7 @@ import {
   clearStoredSession,
   SESSION_NOT_FOUND_NOTICE,
 } from "@/lib/chat-session";
-import { getChatSessionHistory, ApiError } from "@/lib/api";
+import { getChatSessionHistory, getBillingAccount, ApiError, type BillingAccount } from "@/lib/api";
 import { historyToUIMessages } from "@/lib/chat-session-history";
 
 /**
@@ -110,6 +115,12 @@ export function EditWithAIChat({
   const isProgrammaticScrollRef = useRef(false);
   const [showScrollPill, setShowScrollPill] = useState(false);
   const [lastErrorInfo, setLastErrorInfo] = useState<{ code: string; message: string } | null>(null);
+  // The 402 this chat last hit: its banner offers the way out (top up, or upgrade a plan).
+  const [creditsShort, setCreditsShort] = useState<PaymentRequiredInfo | null>(null);
+  const { orgId } = useParams<{ orgId?: string }>();
+  // Same `["billingAccount"]` key as Billing: no new request.
+  const { data: billingAccount } = useAuthQuery<BillingAccount>(["billingAccount"], () => getBillingAccount());
+  const onPlan = paymentModeOf(billingAccount) === "subscription";
   const [sessionResetNotice, setSessionResetNotice] = useState(false);
   const [copied, setCopied] = useState(false);
   const chatKey = sessionVersion ? `${configKey}:${sessionVersion}:${brandId}` : `${configKey}:${brandId}`;
@@ -150,11 +161,13 @@ export function EditWithAIChat({
         if (typeof body.error === "string" && body.balance_cents === undefined) {
           try { billing = JSON.parse(body.error); } catch { /* */ }
         }
-        showPaymentRequired({
+        const short: PaymentRequiredInfo = {
           balance_cents: billing.balance_cents,
           required_cents: billing.required_cents,
           error: typeof billing.error === "string" ? billing.error : "Insufficient credits",
-        });
+        };
+        setCreditsShort(short);
+        showPaymentRequired(short);
         throw new Error(billing.error || "Insufficient credits");
       }
       return response;
@@ -202,6 +215,7 @@ export function EditWithAIChat({
           clearStoredSession(sessionStorageKey(chatKey));
           setSessionResetNotice(true);
           setLastErrorInfo(null);
+          setCreditsShort(null);
           return;
         }
         setLastErrorInfo(errInfo);
@@ -312,6 +326,7 @@ export function EditWithAIChat({
     if (lastErrorInfo?.code !== "rate_limited" || isStreaming) return;
     const timer = setTimeout(() => {
       setLastErrorInfo(null);
+      setCreditsShort(null);
       regenerate();
     }, 5000);
     return () => clearTimeout(timer);
@@ -338,6 +353,7 @@ export function EditWithAIChat({
       const value = text.trim();
       if (!value || isStreaming) return;
       setLastErrorInfo(null);
+      setCreditsShort(null);
       userHasScrolledRef.current = false;
       setShowScrollPill(false);
       sendMessage({ text: value });
@@ -370,6 +386,7 @@ export function EditWithAIChat({
 
   const retryLastMessage = useCallback(() => {
     setLastErrorInfo(null);
+    setCreditsShort(null);
     regenerate();
   }, [regenerate]);
 
@@ -377,6 +394,7 @@ export function EditWithAIChat({
     setMessages([introMessage]);
     sessionIdRef.current = null;
     setLastErrorInfo(null);
+    setCreditsShort(null);
     setSessionResetNotice(false);
     clearStoredSession(sessionStorageKey(chatKey));
   }, [chatKey, introMessage, setMessages]);
@@ -542,6 +560,25 @@ export function EditWithAIChat({
           {(lastErrorInfo || error) && !isStreaming && (
             <div className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-600 animate-in fade-in duration-150">
               <p>{lastErrorInfo?.message ?? error?.message ?? "Something went wrong."}</p>
+              {/* Out of credits: a plan upgrades on Billing, prepaid/postpaid tops up here. */}
+              {creditsShort && !lastErrorInfo && (onPlan ? (
+                orgId && (
+                  <Link
+                    href={v2Href(orgId, brandId, "billing")}
+                    className="mt-2 inline-flex items-center gap-1.5 px-2.5 py-1 text-[11px] font-medium bg-red-100 hover:bg-red-200 text-red-700 rounded-lg transition-colors"
+                  >
+                    Upgrade plan
+                  </Link>
+                )
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => showPaymentRequired(creditsShort)}
+                  className="mt-2 inline-flex items-center gap-1.5 px-2.5 py-1 text-[11px] font-medium bg-red-100 hover:bg-red-200 text-red-700 rounded-lg transition-colors"
+                >
+                  Top up
+                </button>
+              ))}
               {lastErrorInfo && RETRYABLE_CODES.has(lastErrorInfo.code) && (
                 <button
                   type="button"

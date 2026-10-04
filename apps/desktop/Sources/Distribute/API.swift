@@ -82,6 +82,7 @@ struct CheckoutSession: Decodable { let url: String }
 struct Offer: Decodable, Identifiable, Hashable {
     let offerId: String
     let name: String
+    var imageUrl: String? = nil
     var id: String { offerId }
 }
 struct OfferList: Decodable { let offers: [Offer] }

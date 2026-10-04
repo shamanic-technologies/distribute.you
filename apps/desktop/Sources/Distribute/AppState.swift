@@ -38,6 +38,8 @@ struct OfferData {
     let fields: [String: [String]]
 }
 
+enum SidebarMenu { case tenant, account }
+
 /// A record opened from a panel row: its detail replaces the list, Back returns.
 enum Detail {
     case person(LeadRow)
@@ -47,6 +49,16 @@ enum Detail {
 @MainActor
 final class AppState: ObservableObject {
     @Published var detail: Detail?
+    /// Which sidebar popover is open (the web's tenant switcher or account menu).
+    @Published var menu: SidebarMenu?
+    /// Bumped to put the cursor in the chat ("Search or ask…", ⌘K).
+    @Published var focusTick = 0
+    @Published var addingBrand = false
+    @Published var creatingOffer = false
+
+    func focusChat() { menu = nil; focusTick += 1 }
+    func startNewBrand() { addingBrand = true; focusChat() }
+    func startNewOffer() { creatingOffer = true; pane = .offer; detail = nil }
     @Published var apiKey: String? = Keychain.read()
     @Published var me: Me?
     @Published var loadError: String?
@@ -257,6 +269,7 @@ final class AppState: ObservableObject {
         let fresh = try await api.me()
         me = fresh
         if let o = fresh.organizations?.first(where: { $0.id == org.id }), let b = o.brands.first(where: { $0.id == id }) {
+            addingBrand = false
             selectedBrand = nil
             select(brand: b, in: o)
         }
@@ -267,7 +280,7 @@ final class AppState: ObservableObject {
         guard let api, let brand = selectedBrand else { return }
         if let list = try? await api.offers(brandId: brand.id) {
             offers = list
-            if let o = list.first(where: { $0.offerId == offerId }) { select(offer: o) }
+            if let o = list.first(where: { $0.offerId == offerId }) { creatingOffer = false; select(offer: o) }
         }
     }
 

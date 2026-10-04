@@ -138,6 +138,7 @@ struct Logo: View {
     let domain: String?
     let name: String
     var size: CGFloat = 24
+    var radius: CGFloat? = nil
     var body: some View {
         Group {
             if let url = logoURL {
@@ -149,9 +150,9 @@ struct Logo: View {
             }
         }
         .frame(width: size, height: size)
-        .background(RoundedRectangle(cornerRadius: size * 0.25).fill(K.raised))
-        .clipShape(RoundedRectangle(cornerRadius: size * 0.25))
-        .overlay(RoundedRectangle(cornerRadius: size * 0.25).strokeBorder(K.lineSubtle, lineWidth: 1))
+        .background(RoundedRectangle(cornerRadius: radius ?? size * 0.25).fill(K.raised))
+        .clipShape(RoundedRectangle(cornerRadius: radius ?? size * 0.25))
+        .overlay(RoundedRectangle(cornerRadius: radius ?? size * 0.25).strokeBorder(K.lineSubtle, lineWidth: 1))
     }
     private var logoURL: URL? {
         guard let d = domain?.trimmingCharacters(in: .whitespaces), !d.isEmpty,
