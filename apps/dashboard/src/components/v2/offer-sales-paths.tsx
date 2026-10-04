@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { SectionTitle, Shimmer, EmptyNote } from "@/components/v2/ui";
+import { SectionTitle, Shimmer, EmptyNote, StateDot } from "@/components/v2/ui";
 import { formatRoi, roiIsGood } from "@/lib/format-roi";
 import { formatUsdAdaptive } from "@/lib/format-number";
 import { LEG_RATE_RULE, parseRateInput, roundLegRatePct } from "@/lib/brand-conversion-rates";
@@ -33,6 +33,7 @@ export function OfferSalesPaths({
   intro = "Every way the ticked legs reach a paying client, best return first. Open one to see why.",
   bare = false,
   gainHeadline = false,
+  activePathKey,
   onStateRate,
   onStateLifetimeRevenue,
 }: {
@@ -50,6 +51,12 @@ export function OfferSalesPaths({
    * surface (the onboarding) talks gain, and the cost stays in the detail a row opens.
    */
   gainHeadline?: boolean;
+  /**
+   * The path we run (the offer page passes it; undefined = no status shown). It leaves the
+   * list for its own framed card marked Active, every other row is marked Inactive. Null =
+   * nothing runs, so every row is Inactive. The customer never picks it: the best return runs.
+   */
+  activePathKey?: string | null;
   /** When given, each leg between two steps takes a typed rate (whole percent) or null to clear it. */
   onStateRate?: (leg: SalesPathLeg, ratePct: number | null) => Promise<void>;
   /** When given, the lifetime revenue in a path's detail is editable (whole dollars). */
@@ -71,6 +78,15 @@ export function OfferSalesPaths({
         <EmptyNote>Could not read this offer&apos;s sales paths.</EmptyNote>
       ) : data && salesPathsEmptyReason(data.status) ? (
         <EmptyNote>{salesPathsEmptyReason(data.status)}</EmptyNote>
+      ) : activePathKey !== undefined ? (
+        <StatusPaths
+          paths={paths}
+          activePathKey={activePathKey}
+          open={open}
+          setOpen={setOpen}
+          onStateRate={onStateRate}
+          onStateLifetimeRevenue={onStateLifetimeRevenue}
+        />
       ) : (
         <ul className="k-card divide-y divide-[var(--line-subtle)] overflow-hidden">
           {paths.map((p) => (
@@ -91,12 +107,70 @@ export function OfferSalesPaths({
   );
 }
 
+/**
+ * The offer page's view: the path we run in its own green-framed card, marked Active,
+ * then every other path in the served order, muted and marked Inactive.
+ */
+function StatusPaths({
+  paths,
+  activePathKey,
+  open,
+  setOpen,
+  onStateRate,
+  onStateLifetimeRevenue,
+}: {
+  paths: SalesPathRow[];
+  activePathKey: string | null;
+  open: string | null;
+  setOpen: (key: string | null) => void;
+  onStateRate?: (leg: SalesPathLeg, ratePct: number | null) => Promise<void>;
+  onStateLifetimeRevenue?: (usd: number) => Promise<void>;
+}) {
+  const active = paths.find((p) => p.pathKey === activePathKey) ?? null;
+  const others = paths.filter((p) => p !== active);
+  const row = (p: SalesPathRow, status: "active" | "inactive") => (
+    <PathRow
+      key={p.pathKey}
+      path={p}
+      open={open === p.pathKey}
+      onToggle={() => setOpen(open === p.pathKey ? null : p.pathKey)}
+      highlight={null}
+      gainHeadline={false}
+      status={status}
+      onStateRate={onStateRate}
+      onStateLifetimeRevenue={onStateLifetimeRevenue}
+    />
+  );
+  return (
+    <div className="space-y-4">
+      {active && (
+        <div className="overflow-hidden rounded-[12px] bg-[color-mix(in_oklab,var(--run)_6%,var(--bg-raised))] shadow-[inset_0_0_0_2px_var(--run)]">
+          <div className="flex flex-wrap items-center gap-x-3 gap-y-1 px-4 pt-3">
+            <StateDot running label="Active" />
+            <span className="k-fg3 text-[12px]">Best return, so this is the one we run.</span>
+          </div>
+          <ul>{row(active, "active")}</ul>
+        </div>
+      )}
+      {others.length > 0 && (
+        <div>
+          <p className="k-label mb-2">{active ? "Other paths" : "Paths"}</p>
+          <ul className="k-card divide-y divide-[var(--line-subtle)] overflow-hidden">
+            {others.map((p) => row(p, "inactive"))}
+          </ul>
+        </div>
+      )}
+    </div>
+  );
+}
+
 function PathRow({
   path,
   open,
   onToggle,
   highlight,
   gainHeadline,
+  status,
   onStateRate,
   onStateLifetimeRevenue,
 }: {
@@ -105,6 +179,8 @@ function PathRow({
   onToggle: () => void;
   highlight: string | null;
   gainHeadline: boolean;
+  /** Offer page only: the run state, drawn as a dot plus a word. */
+  status?: "active" | "inactive";
   onStateRate?: (leg: SalesPathLeg, ratePct: number | null) => Promise<void>;
   onStateLifetimeRevenue?: (usd: number) => Promise<void>;
 }) {
@@ -123,16 +199,21 @@ function PathRow({
         className="k-row flex w-full flex-wrap items-center gap-x-3 gap-y-1 px-4 py-3 text-left"
       >
         <span className="k-fg3 w-6 shrink-0 text-[12px] tabular-nums">#{path.rank}</span>
-        <span className="min-w-0 flex-1 text-[13px] font-medium">{pathTitle(path)}</span>
+        <span
+          className={`min-w-0 flex-1 ${status === "active" ? "k-fg text-[15px] font-semibold" : status === "inactive" ? "k-fg2 text-[13px]" : "text-[13px] font-medium"}`}
+        >
+          {pathTitle(path)}
+        </span>
         <span className="k-fg2 text-[12px] tabular-nums">
           {gainHeadline ? `${usd(path.lifetimeRevenueUsd)} per client won` : `${usd(path.costPerPayingClientUsd)} per paying client`}
         </span>
         <span
-          className={`${gainHeadline ? "min-w-16" : "w-16"} text-right text-[13px] font-semibold tabular-nums ${roiIsGood(path.roi) ? "text-[var(--run)]" : ""}`}
+          className={`${gainHeadline || status === "active" ? "min-w-16" : "w-16"} text-right ${status === "active" ? "text-[18px]" : "text-[13px]"} font-semibold tabular-nums ${roiIsGood(path.roi) ? "text-[var(--run)]" : ""}`}
           title={unavailable ?? undefined}
         >
           {path.roi == null ? formatRoi(path.roi) : gainHeadline ? `${formatRoi(path.roi)} return` : `${formatRoi(path.roi)} ROI`}
         </span>
+        {status === "inactive" && <StateDot running={false} label="Inactive" />}
       </button>
       {open && <PathBreakdown path={path} onStateRate={onStateRate} onStateLifetimeRevenue={onStateLifetimeRevenue} />}
     </li>

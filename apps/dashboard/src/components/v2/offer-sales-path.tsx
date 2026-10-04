@@ -20,6 +20,7 @@ export function OfferSalesPath({
   bare = false,
   stepsIntro = "Every step a sale of this offer goes through. A paying client is always the last one.",
   legsIntro = "How a lead moves from one step to the next, and who moves it.",
+  legsFirst = false,
 }: {
   catalogue: LegCatalogue;
   /** The channels this surface offers, slug -> name. Any other channel is not shown. */
@@ -32,6 +33,8 @@ export function OfferSalesPath({
   bare?: boolean;
   stepsIntro?: string;
   legsIntro?: string;
+  /** Draw the legs above the steps (the offer page reads from the path down to its parts). */
+  legsFirst?: boolean;
 }) {
   const { legs, steps, channelsByLeg } = useMemo(() => offeredFromCatalogue(catalogue, channelNames.keys()), [catalogue, channelNames]);
 
@@ -44,9 +47,7 @@ export function OfferSalesPath({
       ? legs.filter((l) => (l.fromKey === null || selection.steps.has(l.fromKey)) && (l.toKey === "paid_client" || selection.steps.has(l.toKey)))
       : legs;
 
-  return (
-    <div className="space-y-8">
-      {part !== "legs" && (
+  const stepsSection = part !== "legs" && (
       <section>
         {!bare && <SectionTitle count={selection.steps.size}>Steps</SectionTitle>}
         {!bare && <p className="k-fg2 -mt-1 mb-3 text-[13px]">{stepsIntro}</p>}
@@ -78,9 +79,9 @@ export function OfferSalesPath({
           })}
         </div>
       </section>
-      )}
+  );
 
-      {part !== "steps" && (
+  const legsSection = part !== "steps" && (
       <section>
         {!bare && <SectionTitle count={selection.legs.size}>Legs</SectionTitle>}
         {!bare && <p className="k-fg2 -mt-1 mb-3 text-[13px]">{legsIntro}</p>}
@@ -122,7 +123,12 @@ export function OfferSalesPath({
           })}
         </ul>
       </section>
-      )}
+  );
+
+  return (
+    <div className="space-y-8">
+      {legsFirst ? legsSection : stepsSection}
+      {legsFirst ? stepsSection : legsSection}
     </div>
   );
 }

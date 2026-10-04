@@ -117,7 +117,7 @@ export function salesPathsEmptyReason(status: string): string | null {
       return null;
     case "not_stated":
     case "no_legs_selected":
-      return "Tick the legs this offer sells through above. Its sales paths appear here.";
+      return "Tick the legs this offer sells through. Its sales paths appear here.";
     case "no_complete_path":
       return "No ticked legs reach a paying client yet. Tick the legs that lead to one.";
     default:
