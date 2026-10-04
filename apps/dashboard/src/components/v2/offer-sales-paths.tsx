@@ -4,6 +4,8 @@ import { useState } from "react";
 import { SectionTitle, Shimmer, EmptyNote, StateDot } from "@/components/v2/ui";
 import { formatRoi, roiIsGood } from "@/lib/format-roi";
 import { salesPathAvatarSrc } from "@/lib/sales-path-avatars";
+import { useAcquisitionChannels } from "@/lib/use-acquisition-channels";
+import { AcquisitionChannelMark } from "@/components/marks/acquisition-channel-mark";
 import { formatUsdAdaptive } from "@/lib/format-number";
 import { LEG_RATE_RULE, parseRateInput, roundLegRatePct } from "@/lib/brand-conversion-rates";
 import {
@@ -242,17 +244,32 @@ function PathAvatar({ name, size }: { name: string; size: number }) {
   return <img src={src} alt="" width={size} height={size} className="shrink-0 rounded-full" style={{ width: size, height: size }} />;
 }
 
-/** The path leg by leg: each channel of ours as a chip, then the step its leg lands on. */
+/** The path leg by leg: each channel of ours as a chip with its mark (as on Channels), then the step its leg lands on. */
 function PathLinks({ path }: { path: SalesPathRow }) {
   const parts = pathLinks(path);
+  const channels = useAcquisitionChannels();
   return (
     <span className="inline-flex flex-wrap items-center gap-x-1.5 gap-y-1">
       {parts.map((part, i) => (
         <span key={i} className="inline-flex items-center gap-x-1.5">
           {i > 0 && <span className="k-fg3">→</span>}
-          {part.kind === "channel" ? <span className="k-chip">{part.name}</span> : <span>{part.label}</span>}
+          {part.kind === "channel" ? (
+            <ChannelChip name={part.name} def={channels.find((c) => c.featureSlug === part.slug)} />
+          ) : (
+            <span>{part.label}</span>
+          )}
         </span>
       ))}
+    </span>
+  );
+}
+
+/** A channel tag: its mark (once the channel list has answered), then its served name. */
+function ChannelChip({ name, def }: { name: string; def: Parameters<typeof AcquisitionChannelMark>[0]["def"] | undefined }) {
+  return (
+    <span className="k-chip">
+      {def && <AcquisitionChannelMark def={def} size="xs" />}
+      {name}
     </span>
   );
 }
