@@ -331,6 +331,9 @@ struct AddBrandView: View {
                 Button(busy ? "Adding…" : "Add brand", action: add).buttonStyle(KButtonStyle(strong: true)).disabled(url.isEmpty || busy)
             }
             if let error { EmptyNote(text: error, isError: true) }
+            if state.addingBrand && state.selectedBrand != nil {
+                Button("Cancel") { state.addingBrand = false }.buttonStyle(KButtonStyle(ghost: true))
+            }
         }
     }
 

@@ -25,6 +25,16 @@ enum Snapshot {
             }
             try? png.write(to: dir.appendingPathComponent("\(pane.rawValue).png"))
         }
+        // The sidebar's two popovers, open, for side-by-side review with the web.
+        for (name, menu) in [("menu-tenant", SidebarMenu.tenant), ("menu-account", .account)] {
+            let state = fixtureState(pane: .today)
+            state.menu = menu
+            let renderer = ImageRenderer(content: RootView().environmentObject(state).environment(\.isSnapshot, true).frame(width: 1320, height: 820))
+            renderer.scale = 2
+            if let tiff = renderer.nsImage?.tiffRepresentation, let png = NSBitmapImageRep(data: tiff)?.representation(using: .png, properties: [:]) {
+                try? png.write(to: dir.appendingPathComponent("\(name).png"))
+            }
+        }
         exit(0)
     }
 

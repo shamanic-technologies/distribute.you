@@ -23,6 +23,11 @@ struct RootView: View {
                         }
                     }
                     .background(K.raised)
+                    .overlay {
+                        if state.menu != nil {
+                            Color.black.opacity(0.001).onTapGesture { state.menu = nil }
+                        }
+                    }
                     .clipShape(RoundedRectangle(cornerRadius: 12))
                     .overlay(RoundedRectangle(cornerRadius: 12).strokeBorder(K.lineSubtle, lineWidth: 1))
                     .padding([.top, .bottom, .trailing], 8)
@@ -132,7 +137,7 @@ struct ChatView: View {
             ScrollViewReader { proxy in
                 KScroll {
                     LazyVStack(alignment: .leading, spacing: 12) {
-                        if state.selectedBrand == nil && state.me != nil { noBrandState }
+                        if (state.selectedBrand == nil && state.me != nil) || state.addingBrand { noBrandState }
                         else if state.chat.isEmpty { emptyState }
                         ForEach(state.chat) { item in
                             ChatBubble(item: item, isLast: item.id == state.chat.last?.id).id(item.id)
@@ -180,6 +185,7 @@ struct ChatView: View {
             .frame(maxWidth: 760)
         }
         .onChange(of: state.draft) { focused = true }
+        .onChange(of: state.focusTick) { focused = true }
     }
 
     private var emptyState: some View {

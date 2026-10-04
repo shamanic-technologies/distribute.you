@@ -349,7 +349,7 @@ private let leverLabels: [(String, String)] = [
 private struct OfferPanel: View {
     @EnvironmentObject var state: AppState
     var body: some View {
-        if state.selectedOffer == nil { CreateOfferView() }
+        if state.selectedOffer == nil || state.creatingOffer { CreateOfferView() }
         else { LoadView(load: state.offerData) { d in
             Text(state.selectedOffer?.name ?? "").font(.system(size: 18, weight: .semibold)).foregroundStyle(K.fg1)
             KCard { Figure(label: "Lifetime revenue per client", value: usd(d.lifetimeRevenueUsd)).padding(12) }
