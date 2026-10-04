@@ -216,7 +216,7 @@ export function V2OfferPage() {
   );
 }
 
-/** Who an offer is sold to: its audiences, the same table and writes as v1. */
+/** Who an offer is sold to, in plain words: each audience's sentence, no channel figure. */
 export function V2TargetingPage() {
   const { orgId, brandId, offerId } = useIds();
   const name = useOfferName(brandId, offerId);
@@ -228,7 +228,7 @@ export function V2TargetingPage() {
       tabs={offerTabs(orgId, brandId, offerId, "targeting")}
       width="max-w-[1280px]"
     >
-      <V2AudiencesTable offerId={offerId} />
+      <V2AudiencesTable offerId={offerId} plain />
     </V2Page>
   );
 }

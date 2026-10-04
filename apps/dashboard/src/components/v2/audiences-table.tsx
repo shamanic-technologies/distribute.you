@@ -170,8 +170,19 @@ function AudienceCell({
  * and a drawer for one audience. Reads and writes are v1's own (`useAudienceTable`), so
  * the two versions share one cache and cannot state one audience two ways.
  */
-export function V2AudiencesTable({ campaignId, offerId }: { campaignId?: string; offerId?: string }) {
+export function V2AudiencesTable({
+  campaignId,
+  offerId,
+  plain = false,
+}: {
+  campaignId?: string;
+  offerId?: string;
+  /** The offer's own Targeting: who each audience is, in its served sentence, and no
+   *  channel figures (owner 2026-10-04). A channel's Targeting keeps the figures table. */
+  plain?: boolean;
+}) {
   const t = useAudienceTable({ campaignId, offerId });
+  const columns = plain ? [] : t.columns;
   const { basis } = useStatBasis();
   const searchParams = useSearchParams();
   const [tab, setTab] = useState<Tab>("active");
@@ -180,9 +191,10 @@ export function V2AudiencesTable({ campaignId, offerId }: { campaignId?: string;
   const [selectedId, setSelectedId] = useState<string | null>(searchParams.get("audienceId"));
   const [aiOpen, setAiOpen] = useState(false);
   const [autoPrompt, setAutoPrompt] = useState<string | null>(null);
-  const [sortCol, setSortCol] = useState<AudienceSortCol>(t.defaultSortCol);
-  const [sortDir, setSortDir] = useState<"asc" | "desc">(t.defaultSortDir);
-  const [userSorted, setUserSorted] = useState(false);
+  const [sortCol, setSortCol] = useState<AudienceSortCol>(plain ? "audience" : t.defaultSortCol);
+  const [sortDir, setSortDir] = useState<"asc" | "desc">(plain ? "asc" : t.defaultSortDir);
+  // A plain list has no figure to sort on: it stays alphabetical.
+  const [userSorted, setUserSorted] = useState(plain);
   const searchRef = useRef<HTMLInputElement | null>(null);
 
   // The default sort follows the grain until the reader picks a column.
@@ -233,10 +245,10 @@ export function V2AudiencesTable({ campaignId, offerId }: { campaignId?: string;
   });
 
   const tabLoading = tab === "archived" ? t.archivedTabLoading : t.activeTabLoading;
-  const colCount = t.columns.length + 2;
+  const colCount = columns.length + 2;
   const sortable: { col: AudienceSortCol; label: string }[] = [
     { col: "audience", label: "Audience" },
-    ...t.columns.map((c) => ({ col: c.col, label: c.label })),
+    ...columns.map((c) => ({ col: c.col, label: c.label })),
   ];
   const sortLabel = sortable.find((s) => s.col === sortCol)?.label ?? "Audience";
   const docked = aiOpen && Boolean(selected);
@@ -251,12 +263,14 @@ export function V2AudiencesTable({ campaignId, offerId }: { campaignId?: string;
 
   return (
     <>
+      {!plain && (
       <p className="k-fg2 mb-3 text-[13px]">
         {t.campaignScoped
           ? "The figures count this mission only. The audiences belong to the offer, so pausing or archiving one here changes it for every mission."
           : "ROI, % CAC and $ CAC are projected from your conversion rates and lifetime revenue; $ Invested is what each audience has cost so far."}{" "}
         A price counts only outreach sent long enough ago for its answers to have arrived, and reads Learning until that outreach has produced enough outcomes.
       </p>
+      )}
       {/* THE MISSION'S OWN PRICE, off the envelope's scope maturity: the same served figure
           its Overview states, so this page and that one print one price for one mission. */}
       {t.campaignScoped && t.scopeLeg && t.legPair && <MissionPrice leg={t.scopeLeg} noun={LEG_PAIR_NOUN[t.legPair]} basis={basis} paused={t.withheldPaused} />}
@@ -277,6 +291,8 @@ export function V2AudiencesTable({ campaignId, offerId }: { campaignId?: string;
           inputRef={searchRef}
           right={
             <>
+              {!plain && (
+              <>
               <label className="k-btn relative h-7 pr-2 text-[12px]">
                 <span className="k-fg2">Sort</span>
                 <span>{sortLabel}</span>
@@ -309,6 +325,8 @@ export function V2AudiencesTable({ campaignId, offerId }: { campaignId?: string;
                   <path d="M6 9.5v-7M3 5l3-3 3 3" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" />
                 </svg>
               </button>
+              </>
+              )}
               <button
                 type="button"
                 onClick={() => {
@@ -323,13 +341,24 @@ export function V2AudiencesTable({ campaignId, offerId }: { campaignId?: string;
             </>
           }
         />
+        {plain ? (
+          <PlainAudienceList
+            rows={rows}
+            loading={tabLoading}
+            emptyText={q ? "No audience matches." : tab === "archived" ? "No archived audiences." : "No audiences yet."}
+            cursor={cursor}
+            selectedId={selectedId}
+            onHover={setCursor}
+            onOpen={setSelectedId}
+          />
+        ) : (
         <div className="k-scroll overflow-x-auto">
           <table className="w-full min-w-[760px] text-[13px]">
             <thead>
               <tr>
                 <SortTh col="audience" label="Audience" sortCol={sortCol} sortDir={sortDir} onSort={onSort} align="left" first />
                 <th className={REC_TH}>Status</th>
-                {t.columns.map((c) => (
+                {columns.map((c) => (
                   <SortTh key={c.col} col={c.col} label={c.label} sortCol={sortCol} sortDir={sortDir} onSort={onSort} />
                 ))}
               </tr>
@@ -374,7 +403,7 @@ export function V2AudiencesTable({ campaignId, offerId }: { campaignId?: string;
                       <td className="whitespace-nowrap px-3">
                         <StateDot running={a.status === "active"} label={STATUS_WORD[a.status] ?? a.status} />
                       </td>
-                      {t.columns.map((c) => (
+                      {columns.map((c) => (
                         <td key={c.col} className="whitespace-nowrap px-3 text-right tabular-nums last:pr-4">
                           <AudienceCell
                             column={c}
@@ -393,6 +422,7 @@ export function V2AudiencesTable({ campaignId, offerId }: { campaignId?: string;
             </tbody>
           </table>
         </div>
+        )}
         <RecordsFooter
           left={`${formatCount(rows.length)} ${rows.length === 1 ? "audience" : "audiences"} · sorted by ${sortLabel}`}
           right={
@@ -406,7 +436,7 @@ export function V2AudiencesTable({ campaignId, offerId }: { campaignId?: string;
       {selected && (
         <AudienceDrawer
           audience={selected}
-          columns={t.columns}
+          columns={columns}
           stats={t.statsFor(selected.id)}
           statsLoading={t.statsLoading}
           basis={basis}
@@ -455,6 +485,71 @@ export function V2AudiencesTable({ campaignId, offerId }: { campaignId?: string;
         panelClassName="k-popover fixed inset-y-2 right-2 z-[95] flex w-[min(28rem,calc(100vw-16px))] flex-col overflow-hidden"
       />
     </>
+  );
+}
+
+/**
+ * The offer's audiences in plain words: each one's name, status and the one sentence
+ * human-service serves for who it targets (`description`). No channel figure here.
+ */
+function PlainAudienceList({
+  rows,
+  loading,
+  emptyText,
+  cursor,
+  selectedId,
+  onHover,
+  onOpen,
+}: {
+  rows: AudienceWire[];
+  loading: boolean;
+  emptyText: string;
+  cursor: number;
+  selectedId: string | null;
+  onHover: (i: number) => void;
+  onOpen: (id: string) => void;
+}) {
+  if (rows.length === 0 && loading) {
+    return (
+      <ul>
+        {Array.from({ length: 4 }, (_, i) => (
+          <li key={i} className="k-line-subtle border-b px-4 py-3 last:border-b-0">
+            <Shimmer className="h-4 w-48" />
+            <Shimmer className="mt-2 h-3.5 w-full" />
+          </li>
+        ))}
+      </ul>
+    );
+  }
+  if (rows.length === 0) return <EmptyNote>{emptyText}</EmptyNote>;
+  return (
+    <ul>
+      {rows.map((a, i) => {
+        const name = a.name || "Untitled";
+        return (
+          <li key={a.id} className="k-line-subtle border-b last:border-b-0">
+            <button
+              type="button"
+              onClick={() => onOpen(a.id)}
+              onMouseEnter={() => onHover(i)}
+              aria-label={`Open ${name}`}
+              className={`k-row flex w-full items-start gap-3 px-4 py-3 text-left ${i === cursor || a.id === selectedId ? "k-selected" : ""}`}
+            >
+              <AudienceAvatar name={name} avatarUrl={a.avatarUrl} size={28} />
+              <span className="min-w-0 flex-1">
+                <span className="flex min-w-0 items-center justify-between gap-3">
+                  <span className="truncate text-[13px] font-medium">{name}</span>
+                  <StateDot running={a.status === "active"} label={STATUS_WORD[a.status] ?? a.status} />
+                </span>
+                <span className="k-fg2 mt-0.5 block text-[13px] leading-5">
+                  {a.description ? a.description : <span className="k-fg4">—</span>}
+                </span>
+              </span>
+            </button>
+          </li>
+        );
+      })}
+    </ul>
   );
 }
 

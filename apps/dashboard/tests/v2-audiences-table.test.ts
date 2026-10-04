@@ -114,7 +114,15 @@ describe("v2 audience table surface", () => {
   it("both v2 pages mount the v2 table, not v1's page", () => {
     expect(setup).not.toContain("<CustomerAudiencesPage");
     const targeting = setup.slice(setup.indexOf("export function V2TargetingPage("));
-    expect(targeting.slice(0, 1200)).toContain("<V2AudiencesTable offerId={offerId} />");
+    expect(targeting.slice(0, 1200)).toContain("<V2AudiencesTable offerId={offerId} plain />");
+  });
+
+  it("the offer's Targeting reads in plain words: each audience's sentence, no figure column", () => {
+    const list = table.slice(table.indexOf("function PlainAudienceList("), table.indexOf("function SortTh("));
+    expect(list).toContain("a.description");
+    expect(list).not.toContain("AudienceCell");
+    expect(table).toContain("const columns = plain ? [] : t.columns;");
+    expect(table).toContain("columns={columns}");
   });
 
   it("uses Keel's records anatomy and a portalled drawer", () => {
