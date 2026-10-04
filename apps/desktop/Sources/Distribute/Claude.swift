@@ -82,6 +82,9 @@ final class ClaudeSession {
             "-p", text,
             "--output-format", "stream-json", "--verbose", "--include-partial-messages",
             "--strict-mcp-config", "--mcp-config", mcpPath.path,
+            // The user's own ~/.claude (CLAUDE.md, hooks, plugins) must not steer the app's
+            // operator: only the app's prompt does. The login lives outside settings, so it still works.
+            "--setting-sources", "project",
             "--allowedTools", "mcp__distribute,Bash(curl:*),Bash(jq:*)",
             "--append-system-prompt", systemPrompt(context),
         ]
