@@ -360,8 +360,12 @@ export function persisterStorageKey(orgId: string | null | undefined): string {
  * `metrics.maturity` / `projection.maturity`, the offer outcomes' `maturity`, and the
  * fleet read's shape (`{ workflows, fleet }`). Components dereference them, so an older
  * snapshot would throw on first paint.
+ *
+ * "4": `offerSalesPaths` rows gained the REQUIRED `name` and `combinationKey` (one row per
+ * channel combination, #4973). The sales path page read `name.slice` on an older snapshot
+ * and crashed with `Cannot read properties of undefined (reading 'slice')`.
  */
-const PERSIST_CACHE_VERSION = "3";
+const PERSIST_CACHE_VERSION = "4";
 
 export function persistCacheVersion(): string {
   return PERSIST_CACHE_VERSION;
