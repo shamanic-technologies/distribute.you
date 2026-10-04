@@ -42,11 +42,15 @@ export const PEOPLE_TABS: { key: string; label: string; bucket: LeadBucket }[] =
  * whole population, and every count is served. A row opens the person in v1's lead
  * panel, which carries the conversation and every statement v2 does not rebuild.
  */
-export function PeoplePage() {
+export function PeoplePage({ bucket }: { bucket?: LeadBucket } = {}) {
   const { orgId, brandId } = useParams<{ orgId: string; brandId: string }>();
   const params = useSearchParams();
   const router = useRouter();
-  const tab = PEOPLE_TABS.find((t) => t.key === params.get("tab")) ?? PEOPLE_TABS[0];
+  // `bucket` set = the table embedded under another page's tab (a channel's Inbox / Sent):
+  // that one bucket, without People's own top bar and tabs.
+  const tab = bucket
+    ? { key: bucket, label: bucket, bucket }
+    : PEOPLE_TABS.find((t) => t.key === params.get("tab")) ?? PEOPLE_TABS[0];
   const [draft, setDraft] = useState(params.get("q") ?? "");
   const [search, setSearch] = useState(params.get("q") ?? "");
   const [page, setPage] = useState(0);
@@ -100,7 +104,8 @@ export function PeoplePage() {
 
   return (
     <>
-      <TopBar crumbs={[{ label: "Records" }, { label: "People" }]} />
+      {!bucket && <TopBar crumbs={[{ label: "Records" }, { label: "People" }]} />}
+      {!bucket && (
       <RecordsTabs
         tabs={PEOPLE_TABS.map((t) => ({ key: t.key, label: t.label, count: counts ? counts.counts[t.bucket] : null }))}
         active={tab.key}
@@ -122,6 +127,7 @@ export function PeoplePage() {
           ) : null
         }
       />
+      )}
       <RecordsToolbar
         search={draft}
         onSearch={setDraft}

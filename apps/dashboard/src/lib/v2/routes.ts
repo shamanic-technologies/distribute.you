@@ -13,6 +13,7 @@ export type V2Section =
   | "workflows"
   | "offers"
   | "targeting"
+  | "channels"
   | "integrations"
   | "settings"
   | "billing"
@@ -68,6 +69,7 @@ export function v2SectionOf(pathname: string): V2Section | null {
     "workflows",
     "offers",
     "targeting",
+    "channels",
     "integrations",
     "settings",
     "billing",
@@ -80,6 +82,8 @@ export function v2SectionOf(pathname: string): V2Section | null {
   ];
   // An offer's Targeting tab is Targeting, not Offers.
   if (s === "offers" && parts[7] === "targeting") return "targeting";
+  // An offer's Channels, and one channel's page under it, are Channels.
+  if (s === "offers" && parts[7] === "channels") return "channels";
   return (known as string[]).includes(s) ? (s as V2Section) : null;
 }
 
@@ -97,4 +101,13 @@ export function v2PersonHref(orgId: string, brandId: string, leadRowId: string):
 export function v2OfferHref(orgId: string, brandId: string, offerId: string, tab?: "targeting" | "sales-path" | "channels"): string {
   const base = `${v2Base(orgId, brandId)}/offers/${encodeURIComponent(offerId)}`;
   return tab ? `${base}/${tab}` : base;
+}
+
+/** The tabs of one channel's page under an offer's Channels. */
+export type V2ChannelTab = "overview" | "inbox" | "sent" | "targeting" | "settings";
+
+/** One channel's page under an offer's Channels (Overview when no tab is named). */
+export function v2OfferChannelHref(orgId: string, brandId: string, offerId: string, channelSlug: string, tab?: V2ChannelTab): string {
+  const base = `${v2OfferHref(orgId, brandId, offerId, "channels")}/${encodeURIComponent(channelSlug)}`;
+  return tab && tab !== "overview" ? `${base}?tab=${tab}` : base;
 }

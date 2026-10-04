@@ -137,7 +137,7 @@ export function V2OffersPage() {
   return <SelectedOfferRedirect title="Offer" />;
 }
 
-function SelectedOfferRedirect({ title, tab }: { title: string; tab?: "targeting" }) {
+function SelectedOfferRedirect({ title, tab }: { title: string; tab?: "targeting" | "channels" }) {
   const { orgId, brandId } = useIds();
   const router = useRouter();
   const { offerId, settled } = useSelectedOffer();
@@ -236,6 +236,11 @@ export function V2TargetingPage() {
 /** Targeting from the sidebar or an old link: the selected offer's Targeting. */
 export function V2TargetingIndexPage() {
   return <SelectedOfferRedirect title="Targeting" tab="targeting" />;
+}
+
+/** Channels from the sidebar before an offer is picked: the selected offer's Channels. */
+export function V2ChannelsIndexPage() {
+  return <SelectedOfferRedirect title="Channels" tab="channels" />;
 }
 
 // ─── Mission settings and workflows ─────────────────────────────────────────
