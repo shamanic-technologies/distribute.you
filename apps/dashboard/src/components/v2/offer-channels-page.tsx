@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import { useQueryClient } from "@tanstack/react-query";
 import { useAuthQuery } from "@/lib/use-auth-query";
 import { pollOptions } from "@/lib/query-options";
@@ -18,11 +18,12 @@ import {
 import { useLegCatalogue } from "@/lib/use-leg-catalogue";
 import { useAcquisitionChannels } from "@/lib/use-acquisition-channels";
 import { invalidateConversionRates } from "@/lib/write-invalidation";
-import { v2OfferHref } from "@/lib/v2/routes";
+import { v2OfferChannelHref, v2OfferHref } from "@/lib/v2/routes";
 import { SALES_PATH_CHANNEL_SLUGS } from "@/lib/offer-sales-path";
 import { isColdEmailChannel } from "@/lib/offer-levers-home";
 import { formatRatePct, LEG_RATE_RULE, rateSourceLabel, roundLegRatePct } from "@/lib/brand-conversion-rates";
 import {
+  channelRows,
   giveListLines,
   giveListsEqual,
   giveListsPayload,
@@ -33,7 +34,7 @@ import {
   type GiveLists,
 } from "@/lib/offer-channel-settings";
 import { AcquisitionChannelMark } from "@/components/marks/acquisition-channel-mark";
-import { EmptyNote, SectionTitle, Shimmer } from "@/components/v2/ui";
+import { EmptyNote, Shimmer } from "@/components/v2/ui";
 import { V2Page, offerTabs, useOfferName } from "@/components/v2/setup-pages";
 
 const GIVE_FIELDS = [
@@ -42,18 +43,131 @@ const GIVE_FIELDS = [
 ] as const;
 
 /**
- * An offer's channels: per leg its sales path validated, the brand's conversion
- * rate on that leg, the channels that can work it and each channel's own settings.
- * Cold email's settings are the offer's two give lists, on the offer's user-fields
- * (what content-generation reads on every email). Everything saves on its own when the
- * field is left: no Save button. Which channel works a leg is not stored anywhere yet,
- * so the channels are listed, not picked.
+ * An offer's channels: one row per channel that works a leg the offer's sales path has
+ * validated, with the legs it works. A row with its own page (cold email) opens it.
+ * Which channel works a leg is not stored anywhere yet, so the channels are listed,
+ * not picked.
  */
 export function V2OfferChannelsPage() {
   const { orgId, brandId, offerId } = useParams<{ orgId: string; brandId: string; offerId: string }>();
   const name = useOfferName(brandId, offerId);
   const catalogue = useLegCatalogue();
   const channels = useAcquisitionChannels();
+  const router = useRouter();
+
+  const path = useAuthQuery(["offerSalesPath", brandId, offerId], () => getOfferSalesPath(brandId, offerId), {
+    enabled: !!offerId,
+  });
+  const { sections, unknown } = useMemo(
+    () => validatedLegSections(catalogue, path.data?.legKeys ?? [], SALES_PATH_CHANNEL_SLUGS),
+    [catalogue, path.data],
+  );
+  useEffect(() => {
+    if (catalogue.legs.size > 0 && unknown.length > 0) {
+      console.error("[offer-channels] saved legs the catalogue does not list", { offerId, unknown });
+    }
+  }, [catalogue.legs.size, unknown, offerId]);
+  const rows = useMemo(() => channelRows(sections), [sections]);
+
+  const pathSettled = path.isFetchedAfterMount || path.data !== undefined;
+  const stepLabel = (step: string | null) => (step ? catalogue.steps.get(step)?.label ?? step : "Start");
+  const channelDef = (slug: string) => channels.find((c) => c.featureSlug === slug);
+
+  return (
+    <V2Page
+      crumbs={[
+        { label: name ?? " ", href: v2OfferHref(orgId, brandId, offerId) },
+        { label: "Channels" },
+      ]}
+      title={name ?? " "}
+      sub="The channels that work the steps you validated in Sales path."
+      tabs={offerTabs(orgId, brandId, offerId, "channels")}
+      width="max-w-[1280px]"
+    >
+      {!pathSettled || catalogue.legs.size === 0 ? (
+        <div className="space-y-2">
+          <Shimmer className="h-10 rounded-[10px]" />
+          <Shimmer className="h-10 rounded-[10px]" />
+        </div>
+      ) : path.isError && !path.data ? (
+        <EmptyNote>Could not read this offer&apos;s sales path.</EmptyNote>
+      ) : rows.length === 0 ? (
+        <div className="k-card">
+          <EmptyNote>
+            No step of your sales path is validated yet.{" "}
+            <Link href={v2OfferHref(orgId, brandId, offerId, "sales-path")} className="text-[var(--accent)] hover:underline">
+              Open the sales path
+            </Link>
+          </EmptyNote>
+        </div>
+      ) : (
+        <div className="k-card overflow-hidden">
+          <div className="k-scroll overflow-x-auto">
+            <table className="w-full text-[13px]">
+              <thead>
+                <tr className="k-line-subtle border-b">
+                  <th className="k-label px-3 py-2.5 text-left font-normal first:pl-4">Channel</th>
+                  <th className="k-label px-3 py-2.5 text-left font-normal">Works</th>
+                  <th className="k-label w-[140px] px-3 py-2.5 text-right font-normal last:pr-4"><span className="sr-only">Open</span></th>
+                </tr>
+              </thead>
+              <tbody>
+                {rows.map((row) => {
+                  const def = channelDef(row.slug);
+                  const href = isColdEmailChannel(row.slug) ? v2OfferChannelHref(orgId, brandId, offerId, row.slug) : null;
+                  const cells = (
+                    <>
+                      <td className="px-3 py-2 pl-4">
+                        <span className="flex min-w-0 items-center gap-2">
+                          {def && <AcquisitionChannelMark def={def} size="xs" />}
+                          <span className="truncate font-medium">{def?.name ?? row.slug}</span>
+                        </span>
+                      </td>
+                      <td className="k-fg2 px-3 py-2">
+                        {row.legs.map((l) => (
+                          <span key={l.legKey} className="mr-3 inline-block whitespace-nowrap">
+                            {stepLabel(l.fromKey)} <span className="k-fg3">→</span> {stepLabel(l.toKey)}
+                          </span>
+                        ))}
+                      </td>
+                      <td className="px-3 py-2 pr-4 text-right">
+                        {href ? (
+                          <span className="k-btn-ghost inline-flex h-6 w-6 items-center justify-center px-0" aria-hidden="true">
+                            <svg width="12" height="12" viewBox="0 0 12 12"><path d="M4.5 3l3 3-3 3" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" /></svg>
+                          </span>
+                        ) : (
+                          <span className="k-fg3 text-[12px]">No settings</span>
+                        )}
+                      </td>
+                    </>
+                  );
+                  return href ? (
+                    <tr key={row.slug} className="k-row h-10 cursor-pointer" onClick={() => router.push(href)}>
+                      {cells}
+                    </tr>
+                  ) : (
+                    <tr key={row.slug} className="k-row h-10">
+                      {cells}
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+    </V2Page>
+  );
+}
+
+/**
+ * Cold email's settings on one offer: what its emails may give and never give (the
+ * offer's two give lists, on its user-fields, what content-generation reads on every
+ * email) and the brand's conversion rate on each validated leg cold email works.
+ * Everything saves on its own when the field is left: no Save button.
+ */
+export function ColdEmailChannelSettings({ brandId, offerId, channelSlug }: { brandId: string; offerId: string; channelSlug: string }) {
+  const catalogue = useLegCatalogue();
   const qc = useQueryClient();
 
   const path = useAuthQuery(["offerSalesPath", brandId, offerId], () => getOfferSalesPath(brandId, offerId), {
@@ -70,15 +184,13 @@ export function V2OfferChannelsPage() {
     enabled: !!brandId,
   });
 
-  const { sections, unknown } = useMemo(
-    () => validatedLegSections(catalogue, path.data?.legKeys ?? [], SALES_PATH_CHANNEL_SLUGS),
-    [catalogue, path.data],
+  const legs = useMemo(
+    () =>
+      validatedLegSections(catalogue, path.data?.legKeys ?? [], SALES_PATH_CHANNEL_SLUGS).sections.filter(
+        (s) => s.channels.includes(channelSlug) && s.fromKey !== null,
+      ),
+    [catalogue, path.data, channelSlug],
   );
-  useEffect(() => {
-    if (catalogue.legs.size > 0 && unknown.length > 0) {
-      console.error("[offer-channels] saved legs the catalogue does not list", { offerId, unknown });
-    }
-  }, [catalogue.legs.size, unknown, offerId]);
 
   const served = useMemo<GiveLists | null>(() => giveListsFrom(fields.data?.fields), [fields.data]);
   const suggested = useMemo(() => {
@@ -110,110 +222,69 @@ export function V2OfferChannelsPage() {
   const fieldsSettled = fields.isFetchedAfterMount || fields.data !== undefined;
   const ratesSettled = rates.isFetchedAfterMount || rates.data !== undefined;
   const stepLabel = (step: string | null) => (step ? catalogue.steps.get(step)?.label ?? step : "Start");
-  const channelDef = (slug: string) => channels.find((c) => c.featureSlug === slug);
 
   return (
-    <V2Page
-      crumbs={[
-        { label: name ?? " ", href: v2OfferHref(orgId, brandId, offerId) },
-        { label: "Channels" },
-      ]}
-      title={name ?? " "}
-      sub="What each channel may and may not do, on every leg of this offer's sales path. Click a value to change it."
-      tabs={offerTabs(orgId, brandId, offerId, "channels")}
-      width="max-w-[1280px]"
-    >
-      {!pathSettled || catalogue.legs.size === 0 ? (
-        <div className="space-y-2">
-          <Shimmer className="h-10 rounded-[10px]" />
-          <Shimmer className="h-10 rounded-[10px]" />
-          <Shimmer className="h-10 rounded-[10px]" />
+    <div className="space-y-8">
+      <section className="grid gap-4 md:grid-cols-[220px_minmax(0,1fr)]">
+        <div>
+          <h2 className="text-[14px] font-medium">What emails may offer</h2>
+          <p className="k-fg3 mt-1 text-[12px]">Every email reads these two lists.</p>
+          {suggested && <span className="k-chip mt-2 inline-flex">Suggested, not saved</span>}
         </div>
-      ) : path.isError && !path.data ? (
-        <EmptyNote>Could not read this offer&apos;s sales path.</EmptyNote>
-      ) : sections.length === 0 ? (
-        <div className="k-card">
-          <EmptyNote>
-            No leg of this offer&apos;s sales path is validated yet.{" "}
-            <Link href={v2OfferHref(orgId, brandId, offerId, "sales-path")} className="text-[var(--accent)] hover:underline">
-              Open the sales path
-            </Link>
-          </EmptyNote>
+        <div className="k-card p-4">
+          {!fieldsSettled ? (
+            <div className="grid gap-3 sm:grid-cols-2">
+              <Shimmer className="h-[88px] rounded-[8px]" />
+              <Shimmer className="h-[88px] rounded-[8px]" />
+            </div>
+          ) : (fields.isError && !fields.data) || !served ? (
+            <p className="k-fg3 text-[13px]">Could not read this offer&apos;s give lists.</p>
+          ) : (
+            <div className="grid gap-3 sm:grid-cols-2">
+              {GIVE_FIELDS.map((g) => (
+                <InlineList key={g.key} id={`${channelSlug}-${g.key}`} label={g.label} lines={served[g.key]} onSave={(lines) => saveList(g.key, lines)} />
+              ))}
+            </div>
+          )}
         </div>
-      ) : (
-        <div className="space-y-8">
-          {sections.map((s) => {
-            const rate = s.fromKey === null ? undefined : legRateFor(rates.data?.legs ?? [], s.legKey);
-            return (
-              <section key={s.legKey}>
-                <SectionTitle
-                  count={s.channels.length}
-                  right={
-                    s.fromKey === null ? null : !ratesSettled ? (
-                      <Shimmer className="h-5 w-24 rounded-[6px]" />
-                    ) : rates.isError && !rates.data ? (
-                      <span>Could not read the conversion rate</span>
-                    ) : rate ? (
-                      <InlineRate key={`${rate.fromStep}|${rate.toStep}`} rate={rate} onSave={(v) => saveRate(rate, v)} />
-                    ) : (
-                      <MissingRate leg={s.legKey} />
-                    )
-                  }
-                >
-                  {stepLabel(s.fromKey)} <span className="k-fg3">→</span> {stepLabel(s.toKey)}
-                </SectionTitle>
-                <ul className="k-card divide-y divide-[var(--line-subtle)] overflow-hidden">
-                  {s.channels.length === 0 && (
-                    <li className="flex items-center gap-3 px-4 py-3">
-                      <span className="min-w-0 flex-1 text-[13px]">Your team</span>
-                      <span className="k-fg3 text-[12px]">No settings</span>
-                    </li>
+      </section>
+
+      <section className="grid gap-4 md:grid-cols-[220px_minmax(0,1fr)]">
+        <div>
+          <h2 className="text-[14px] font-medium">Conversion rates</h2>
+          <p className="k-fg3 mt-1 text-[12px]">Shared by every offer of this brand.</p>
+        </div>
+        {!pathSettled || catalogue.legs.size === 0 ? (
+          <Shimmer className="h-20 rounded-[12px]" />
+        ) : path.isError && !path.data ? (
+          <div className="k-card"><EmptyNote>Could not read this offer&apos;s sales path.</EmptyNote></div>
+        ) : legs.length === 0 ? (
+          <div className="k-card"><EmptyNote>No step after the first one is validated for cold email yet.</EmptyNote></div>
+        ) : (
+          <ul className="k-card divide-y divide-[var(--line-subtle)] overflow-hidden">
+            {legs.map((s) => {
+              const rate = legRateFor(rates.data?.legs ?? [], s.legKey);
+              return (
+                <li key={s.legKey} className="flex items-center gap-3 px-4 py-3">
+                  <span className="min-w-0 flex-1 truncate text-[13px]">
+                    {stepLabel(s.fromKey)} <span className="k-fg3">→</span> {stepLabel(s.toKey)}
+                  </span>
+                  {!ratesSettled ? (
+                    <Shimmer className="h-5 w-24 rounded-[6px]" />
+                  ) : rates.isError && !rates.data ? (
+                    <span className="k-fg3 text-[12px]">Could not read the conversion rate</span>
+                  ) : rate ? (
+                    <InlineRate key={`${rate.fromStep}|${rate.toStep}`} rate={rate} onSave={(v) => saveRate(rate, v)} />
+                  ) : (
+                    <MissingRate leg={s.legKey} />
                   )}
-                  {s.channels.map((slug) => {
-                    const def = channelDef(slug);
-                    const hasSettings = isColdEmailChannel(slug);
-                    return (
-                      <li key={slug} className="px-4 py-3">
-                        <div className="flex items-center gap-3">
-                          {def && <AcquisitionChannelMark def={def} size="xs" />}
-                          <span className="min-w-0 flex-1 truncate text-[13px] font-medium">{def?.name ?? slug}</span>
-                          {!hasSettings && <span className="k-fg3 text-[12px]">No settings</span>}
-                          {hasSettings && suggested && <span className="k-chip">Suggested, not saved</span>}
-                        </div>
-                        {hasSettings && (
-                          <div className="mt-3">
-                            {!fieldsSettled ? (
-                              <div className="grid gap-3 sm:grid-cols-2">
-                                <Shimmer className="h-[88px] rounded-[8px]" />
-                                <Shimmer className="h-[88px] rounded-[8px]" />
-                              </div>
-                            ) : (fields.isError && !fields.data) || !served ? (
-                              <p className="k-fg3 text-[13px]">Could not read this offer&apos;s give lists.</p>
-                            ) : (
-                              <div className="grid gap-3 sm:grid-cols-2">
-                                {GIVE_FIELDS.map((g) => (
-                                  <InlineList
-                                    key={g.key}
-                                    id={`${s.legKey}-${g.key}`}
-                                    label={g.label}
-                                    lines={served[g.key]}
-                                    onSave={(lines) => saveList(g.key, lines)}
-                                  />
-                                ))}
-                              </div>
-                            )}
-                          </div>
-                        )}
-                      </li>
-                    );
-                  })}
-                </ul>
-              </section>
-            );
-          })}
-        </div>
-      )}
-    </V2Page>
+                </li>
+              );
+            })}
+          </ul>
+        )}
+      </section>
+    </div>
   );
 }
 

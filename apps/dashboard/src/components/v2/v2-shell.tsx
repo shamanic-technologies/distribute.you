@@ -120,8 +120,7 @@ const ICONS = {
   work: "M2.5 3.5h11v9h-11zM6 3.5v9M10 3.5v9",
   crew: "M5.5 7a2 2 0 1 0 0-4 2 2 0 0 0 0 4Zm5 0a2 2 0 1 0 0-4 2 2 0 0 0 0 4ZM2 13c.4-2 1.8-3.5 3.5-3.5S8.6 11 9 13m-.5-3c.6-.4 1.2-.5 2-.5 1.7 0 3.1 1.5 3.5 3.5",
   missions: "M3 13.5V2.5m0 1h8l-1.5 2.5L11 8.5H3",
-  inbox: "M2.5 9h3l1 2h3l1-2h3M2.5 9l1.5-5.5h8L13.5 9v4h-11z",
-  sent: "M13.5 2.5 7 9M13.5 2.5 9.5 13.5 7 9 2.5 6.5Z",
+  channels: "M2.5 4.5h11v7h-11zM2.5 4.5 8 8.5l5.5-4",
   offer: "M8.5 2.5h5v5L7.5 13.5l-5-5Zm2.5 2.5h.01",
   target: "M8 13.5a5.5 5.5 0 1 0 0-11 5.5 5.5 0 0 0 0 11Zm0-3a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5Z",
   plug: "M6 2.5v3m4-3v3M4.5 5.5h7v2a3.5 3.5 0 0 1-7 0zM8 11v2.5",
@@ -155,7 +154,6 @@ function V2OrgSidebar({ orgId }: { orgId: string }) {
 function V2Sidebar() {
   const params = useParams<{ orgId?: string; brandId?: string }>();
   const pathname = usePathname() ?? "";
-  const search = useSearchParams();
   const orgId = params.orgId ?? "";
   const brandId = params.brandId ?? "";
   const section = v2SectionOf(pathname);
@@ -179,8 +177,6 @@ function V2Sidebar() {
     () => [...(revenue?.organizations ?? [])].sort((a, b) => b.expectedRevenueUsd - a.expectedRevenueUsd).slice(0, 3),
     [revenue],
   );
-  const tab = search.get("tab");
-
   return (
     <aside className="flex h-full w-[240px] max-w-[85vw] shrink-0 flex-col">
       <div className="space-y-2 px-2 pt-2">
@@ -232,7 +228,7 @@ function V2Sidebar() {
                 indent
                 href={v2Href(orgId, brandId, "people")}
                 label="People"
-                active={section === "people" && !tab}
+                active={section === "people"}
                 trailing={<Count n={buckets?.counts.contacted} />}
               />
               <NavItem
@@ -261,22 +257,6 @@ function V2Sidebar() {
           )}
         </div>
 
-        <Group title="Mailbox">
-          <NavItem
-            href={`${v2Href(orgId, brandId, "people")}?tab=positive-replies`}
-            label="Inbox"
-            icon={<I d={ICONS.inbox} />}
-            active={section === "people" && tab === "positive-replies"}
-            trailing={<Count n={buckets?.counts.positive_reply} />}
-          />
-          <NavItem
-            href={`${v2Href(orgId, brandId, "people")}?tab=contacted`}
-            label="Sent"
-            icon={<I d={ICONS.sent} />}
-            active={section === "people" && tab === "contacted"}
-          />
-        </Group>
-
         <Group title="Setup">
           {/* The selected offer's own page: there is no list of offers (owner 2026-10-03),
               the switcher at the top is where another one is picked. */}
@@ -284,13 +264,20 @@ function V2Sidebar() {
             href={offerId ? v2OfferHref(orgId, brandId, offerId) : v2Href(orgId, brandId, "offers")}
             label="Offer"
             icon={<I d={ICONS.offer} />}
-            active={section === "offers" && !pathname.endsWith("/targeting")}
+            active={section === "offers"}
           />
           <NavItem
             href={offerId ? v2OfferHref(orgId, brandId, offerId, "targeting") : v2Href(orgId, brandId, "targeting")}
             label="Targeting"
             icon={<I d={ICONS.target} />}
-            active={section === "targeting" || (section === "offers" && pathname.endsWith("/targeting"))}
+            active={section === "targeting"}
+          />
+          {/* The channels this offer runs, each opening its own page (owner 2026-10-04). */}
+          <NavItem
+            href={offerId ? v2OfferHref(orgId, brandId, offerId, "channels") : v2Href(orgId, brandId, "channels")}
+            label="Channels"
+            icon={<I d={ICONS.channels} />}
+            active={section === "channels"}
           />
           <NavItem href={`${v2Href(orgId, brandId, "integrations")}/ai`} label="Integrations" icon={<I d={ICONS.plug} />} active={section === "integrations"} />
           <NavItem href={v2Href(orgId, brandId, "settings")} label="Brand settings" icon={<I d={ICONS.settings} />} active={section === "settings"} />

@@ -54,6 +54,29 @@ export function validatedLegSections(
   return { sections, unknown };
 }
 
+/** One channel of the offer's Channels table, with every validated leg it works. */
+export interface ChannelRow {
+  slug: string;
+  legs: { legKey: string; fromKey: string | null; toKey: string }[];
+}
+
+/**
+ * The Channels table: one row per channel that works at least one validated leg, in
+ * the order the sections first name it; its legs in catalogue order. A leg only the
+ * brand's own team works (no channel) makes no row.
+ */
+export function channelRows(sections: readonly ChannelLegSection[]): ChannelRow[] {
+  const rows = new Map<string, ChannelRow>();
+  for (const s of sections) {
+    for (const slug of s.channels) {
+      const row = rows.get(slug) ?? { slug, legs: [] };
+      row.legs.push({ legKey: s.legKey, fromKey: s.fromKey, toKey: s.toKey });
+      rows.set(slug, row);
+    }
+  }
+  return [...rows.values()];
+}
+
 /** The two give lists, by their brand-service user-field keys. */
 export type GiveLists = { giveForFree: string[]; neverGive: string[] };
 
