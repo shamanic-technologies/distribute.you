@@ -25,6 +25,32 @@ export interface VisitEvent {
   gclid: string | null;
   /** The website the visitor typed: `domain` (v1 onboarding) or `website` (v2). */
   website: string | null;
+  /** The signed-up person (PostHog person properties, set by `posthog.identify`). */
+  email: string | null;
+  personName: string | null;
+}
+
+/**
+ * Who the company behind a visit is (owner 2026-10-04), as apollo-service serves
+ * it for the visit's domain. Every field is independently unknown.
+ */
+export interface Firmographics {
+  /** ISO-2 code of the headquarters country. */
+  hqCountry: string | null;
+  industry: string | null;
+  employeeRange: string | null;
+  revenueRange: string | null;
+  /** B2B SaaS | B2B Agency | B2C | Other. */
+  category: string | null;
+  /** The signed-up person's role at the company, only when matched. */
+  role: string | null;
+}
+
+export interface VisitPerson {
+  domain: string;
+  email: string | null;
+  firstName: string | null;
+  lastName: string | null;
 }
 
 export const STAGES = ["Landing", "Onboarding", "Signup", "Payment", "Dashboard"] as const;
@@ -169,8 +195,43 @@ function escapeHtml(s: string): string {
   return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 }
 
+const DOMAIN = /^[a-z0-9-]+(\.[a-z0-9-]+)+$/;
+
+/** `acme.com` from what the visitor typed, else from their signed-up email. */
+export function companyDomain(website: string | null, email: string | null): string | null {
+  const typed = website
+    ?.trim()
+    .toLowerCase()
+    .replace(/^[a-z]+:\/\//, "")
+    .replace(/^www\./, "")
+    .split(/[/?#]/)[0];
+  if (typed && DOMAIN.test(typed)) return typed;
+  const fromEmail = email?.trim().toLowerCase().split("@")[1];
+  return fromEmail && DOMAIN.test(fromEmail) ? fromEmail : null;
+}
+
+/** The company domain and the signed-up person behind a visit, if any. */
+export function visitPerson(events: VisitEvent[]): VisitPerson | null {
+  const website = events.find((e) => e.website)?.website ?? null;
+  const person = events.find((e) => e.email);
+  const email = person?.email ?? null;
+  const domain = companyDomain(website, email);
+  if (!domain) return null;
+  const [firstName, ...rest] = (person?.personName ?? "").trim().split(/\s+/);
+  return { domain, email, firstName: firstName || null, lastName: rest.join(" ") || null };
+}
+
+/** Two lines: HQ, category, industry / size, revenue, role. Unknown is said, never guessed. */
+export function firmographicLines(f: Firmographics): string[] {
+  const or = (v: string | null, unknown: string, suffix = "") => (v ? `${escapeHtml(v)}${suffix}` : unknown);
+  return [
+    [f.hqCountry ? `HQ ${countryLabel(f.hqCountry)}` : "HQ unknown", or(f.category, "Category unknown"), or(f.industry, "Industry unknown")].join(" · "),
+    [or(f.employeeRange, "Size unknown", " employees"), or(f.revenueRange, "Revenue unknown", " revenue"), or(f.role, "Role unknown")].join(" · "),
+  ];
+}
+
 /** The Telegram message (parse_mode HTML) for one visit, events in time order. */
-export function visitRecap(events: VisitEvent[]): string {
+export function visitRecap(events: VisitEvent[], companyLines: string[] = []): string {
   const sorted = [...events].sort((a, b) => Date.parse(a.timestamp) - Date.parse(b.timestamp));
   const first = sorted.find((e) => e.event === "$pageview") ?? sorted[0];
   const time = new Map<Stage, number>();
@@ -211,6 +272,7 @@ export function visitRecap(events: VisitEvent[]): string {
   const lines = [`${countryLabel(first.country)} · ${formatDuration(total)} · ${outcome}`];
   lines.push(escapeHtml(sourceLine(first)));
   if (website) lines.push(`Typed ${escapeHtml(website)}`);
+  lines.push(...companyLines);
 
   for (const stage of STAGES) {
     if (!reached.has(stage)) continue;
