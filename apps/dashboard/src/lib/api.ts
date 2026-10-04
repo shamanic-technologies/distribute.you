@@ -3579,11 +3579,29 @@ export interface AudienceWire {
   /** availableToContactCount / sizeCount * 100, integer 0–100 (the "Remaining"
    *  column). Backend-computed so Size and this % stay coherent. */
   availableToContactPct?: number;
+  /** THE text of this audience (human-service v0.49.2): who the customer wants for THIS
+   *  audience, shown as the audience and judged by Jev against every lead of every list
+   *  below. Null = see `targetTextMissingReason`. Optional for the decoupled rollout. */
+  targetText?: string | null;
+  targetTextOrigin?: "segment_target" | "audience_target" | null;
+  targetTextMissingReason?: "no_customer_text" | "not_written_yet" | null;
+  /** The lists a channel builds from `targetText`, each with its own size. */
+  channels?: AudienceChannelWire[];
   countedAt: string | null;
   createdByUserId: string | null;
   createdAt: string;
   updatedAt: string;
 }
+
+const AudienceChannelSchema = z.object({
+  channel: z.string(),
+  list: z.string(),
+  audienceId: z.string(),
+  signal: z.object({ type: z.string(), windowDays: z.coerce.number().nullable() }).nullable(),
+  size: z.coerce.number().nullable(),
+  sizeUnknownReason: z.string().nullable(),
+});
+export type AudienceChannelWire = z.infer<typeof AudienceChannelSchema>;
 
 const AudienceSchema = z.object({
   id: z.string(),
@@ -3605,6 +3623,10 @@ const AudienceSchema = z.object({
   sizeCount: z.coerce.number().optional(),
   availableToContactCount: z.coerce.number().optional(),
   availableToContactPct: z.coerce.number().optional(),
+  targetText: z.string().nullish(),
+  targetTextOrigin: z.enum(["segment_target", "audience_target"]).nullish(),
+  targetTextMissingReason: z.enum(["no_customer_text", "not_written_yet"]).nullish(),
+  channels: z.array(AudienceChannelSchema).optional(),
   countedAt: z.string().nullable(),
   createdByUserId: z.string().nullable(),
   createdAt: z.string(),
