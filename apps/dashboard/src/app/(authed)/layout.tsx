@@ -4,6 +4,7 @@ import { PostHogAuthTracker } from "@/components/posthog-auth-tracker";
 import { ConversionPing } from "@/components/conversion-ping";
 import { StaleBuildNotice } from "@/components/stale-build-notice";
 import { JoinClaimer } from "@/components/team/join-claimer";
+import { DesktopConnectResume } from "@/components/desktop-connect-resume";
 import { TenantIdentityProvider } from "@/components/tenant-identity-provider";
 import {
   TENANT_IDENTITY_COOKIE,
@@ -54,6 +55,7 @@ export default async function AuthedLayout({ children }: { children: React.React
         <ConversionPing />
         <StaleBuildNotice />
         <JoinClaimer />
+        <DesktopConnectResume />
         {children}
       </TenantIdentityProvider>
     </ClerkProvider>

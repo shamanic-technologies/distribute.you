@@ -20,7 +20,6 @@ export const DESKTOP_TOPPED_UP_PATH = "/desktop/topped-up";
 export const DESKTOP_DOWNLOAD_URL =
   "https://github.com/shamanic-technologies/distribute.you/releases/download/desktop-latest/Distribute.zip";
 export const DESKTOP_INSTALL_COMMAND = `curl -fsSL https://distribute.you${DESKTOP_INSTALL_PATH} | sh`;
-const API_KEYS_URL = "https://dashboard.distribute.you/api-keys";
 const CLAUDE_CODE_URL = "https://docs.anthropic.com/en/docs/claude-code/setup";
 
 const TITLE = "distribute for Mac (private beta)";
@@ -185,7 +184,7 @@ ${windowMock()}
 <div><h2>What you need</h2><ol>
 <li><span>A Mac with macOS 14 or later.</span></li>
 <li><span><a href="${CLAUDE_CODE_URL}">Claude Code</a>, logged in once in your terminal.</span></li>
-<li><span>A <a href="${API_KEYS_URL}">distribute API key</a>. Paste it when the app opens.</span></li>
+<li><span>A distribute account. Sign in with Google or email when the app opens.</span></li>
 </ol></div>
 <div><h2>What it costs</h2><p>The app is free during the beta. Campaigns spend prepaid credit. You top up from the app, when you want, and you can stop sending at any time.</p></div>
 <div><h2>What it does today</h2><p>Cold email is the channel we run. The chat reads your results and can pause sending, change a daily budget or stop a campaign. It asks before every change.</p></div>
