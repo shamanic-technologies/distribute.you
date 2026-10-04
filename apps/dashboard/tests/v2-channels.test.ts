@@ -86,7 +86,10 @@ describe("channel pages", () => {
   it("one steps card per leg, read on the leg's campaign, stopping at its outcome (owner 2026-10-04)", () => {
     expect(page).toContain('legKey: "start_to_website_visit", title: "Website visits", outcome: "Website visit"');
     expect(page).toContain('legKey: "start_to_conversation", title: "Positive replies", outcome: "Positive reply"');
-    expect(page).toContain("getLeadBucketCounts({ campaignId: campaignId! }, {})");
+    expect(page).toContain("getLeadBucketCounts({ campaignId }, {})");
+    // A leg no campaign aims at gets no card, never an empty note.
+    expect(page).toContain("return campaignId ? [{ ...leg, campaignId }] : [];");
+    expect(page).not.toContain("No campaign aims at this yet");
     expect(page).toContain('<StepBar label="Queued" count={counts.contacted} of={counts.contacted} />');
     expect(page).toContain("q.data?.people?.delivered ?? null");
     for (const gone of ["Meeting booked", "Meeting attended", "Paid client", 'label="Contacted"']) expect(page).not.toContain(gone);
