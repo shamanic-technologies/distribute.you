@@ -137,14 +137,20 @@ describe("email chrome carries the charter accent, not the retired green", () =>
   it("pins the three accent roles to the blue ramp", () => {
     expect(src).toContain('const EMAIL_ACCENT = "#2563EB"');
     expect(src).toContain('const EMAIL_ACCENT_TEXT = "#1A4FC3"');
-    expect(src).toContain('const EMAIL_DOT = "#3D80FF"');
+  });
+
+  it("heads every email with the official logo image, never the old text wordmark and dot", () => {
+    expect(src).toContain('const EMAIL_LOGO_URL = "https://distribute.you/brand/logo-full-on-light.png"');
+    expect(src).toContain('<img src="${EMAIL_LOGO_URL}" width="170" height="32" alt="distribute.you"');
+    expect(src).not.toContain("EMAIL_DOT");
+    expect(src).not.toContain("#3D80FF");
   });
 
   it("reads those constants at every call site rather than repeating a hex", () => {
     // A literal accent in a template body is what let the revert miss these in the
     // first place, so each accent hex may appear exactly once: its declaration.
     // Neutral literals (text, surface) are left alone — they never change with the charter.
-    for (const hex of ["#2563EB", "#1A4FC3", "#3D80FF"]) {
+    for (const hex of ["#2563EB", "#1A4FC3"]) {
       expect(src.split(hex).length - 1, `${hex} is repeated outside its constant`).toBe(1);
     }
   });
