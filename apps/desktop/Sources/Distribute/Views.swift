@@ -1,7 +1,6 @@
 import SwiftUI
 import AppKit
 
-let accent = Color(red: 0.16, green: 0.38, blue: 0.95)
 
 struct RootView: View {
     @EnvironmentObject var state: AppState
@@ -13,21 +12,26 @@ struct RootView: View {
             } else if state.cliChecked && state.cli == nil {
                 ClaudeMissingView()
             } else {
-                NavigationSplitView {
+                // v2's frame: the sidebar on the canvas, the work in one raised panel.
+                HStack(spacing: 0) {
                     SidebarView()
-                        .navigationSplitViewColumnWidth(min: 220, ideal: 250, max: 320)
-                } detail: {
                     HStack(spacing: 0) {
-                        ChatView()
-                        if state.showChannel {
-                            Divider()
-                            ChannelPanel().frame(width: 380)
+                        ChatView().frame(minWidth: 420)
+                        if let pane = state.pane, !pane.opensDashboard {
+                            Rectangle().fill(K.lineSubtle).frame(width: 1)
+                            PanelView(pane: pane).frame(width: 400)
                         }
                     }
+                    .background(K.raised)
+                    .clipShape(RoundedRectangle(cornerRadius: 12))
+                    .overlay(RoundedRectangle(cornerRadius: 12).strokeBorder(K.lineSubtle, lineWidth: 1))
+                    .padding([.top, .bottom, .trailing], 8)
                 }
+                .background(K.canvas)
             }
         }
-        .frame(minWidth: 900, minHeight: 600)
+        .frame(minWidth: 1080, minHeight: 640)
+        .environment(\.colorScheme, .light)
         .task { await state.boot() }
     }
 }
@@ -106,194 +110,6 @@ struct ClaudeMissingView: View {
     }
 }
 
-// MARK: - Sidebar
-
-struct SidebarView: View {
-    @EnvironmentObject var state: AppState
-
-    var body: some View {
-        List {
-            Section {
-                brandMenu
-            }
-            Section("Channels") {
-                Button {
-                    state.showChannel.toggle()
-                } label: {
-                    HStack {
-                        Image(systemName: "envelope")
-                        VStack(alignment: .leading, spacing: 2) {
-                            Text("Cold email")
-                            Text(campaignCount).font(.caption).foregroundStyle(.secondary)
-                        }
-                        Spacer()
-                        if state.showChannel { Image(systemName: "chevron.right").foregroundStyle(.secondary) }
-                    }
-                    .contentShape(Rectangle())
-                }
-                .buttonStyle(.plain)
-                .padding(.vertical, 2)
-            }
-            Section("Credits") {
-                CreditsView()
-            }
-        }
-        .listStyle(.sidebar)
-        .safeAreaInset(edge: .bottom) {
-            HStack {
-                if let email = state.me?.user?.email { Text(email).font(.caption).foregroundStyle(.secondary).lineLimit(1) }
-                Spacer()
-                Button("Sign out") { state.signOut() }.buttonStyle(.link).font(.caption)
-            }
-            .padding(10)
-        }
-    }
-
-    private var campaignCount: String {
-        state.rows.count == 1 ? "1 campaign" : "\(state.rows.count) campaigns"
-    }
-
-    private var brandMenu: some View {
-        Menu {
-            ForEach(state.me?.organizations ?? []) { org in
-                if !org.brands.isEmpty {
-                    Section(org.name ?? org.id) {
-                        ForEach(org.brands) { brand in
-                            Button(brand.label) { state.select(brand: brand, in: org) }
-                        }
-                    }
-                }
-            }
-        } label: {
-            Label(state.selectedBrand?.label ?? "Choose a brand", systemImage: "building.2")
-        }
-        .menuStyle(.borderlessButton)
-    }
-}
-
-struct CreditsView: View {
-    @EnvironmentObject var state: AppState
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            if let b = state.balance {
-                Text(dollars(cents: Double(b.balance_cents)))
-                    .font(.title3.weight(.semibold))
-                    .foregroundStyle(b.depleted ? .red : .primary)
-                if b.depleted { Text("Out of credit: sending is on hold.").font(.caption).foregroundStyle(.red) }
-            } else {
-                Text("…").foregroundStyle(.secondary)
-            }
-            Text("Top up").font(.caption).foregroundStyle(.secondary)
-            HStack(spacing: 6) {
-                ForEach([50, 100, 250], id: \.self) { usd in
-                    Button("$\(usd)") { Task { await state.topUp(cents: usd * 100) } }
-                }
-            }
-            .controlSize(.small)
-        }
-        .padding(.vertical, 4)
-    }
-}
-
-// MARK: - Channel panel
-
-struct ChannelPanel: View {
-    @EnvironmentObject var state: AppState
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 0) {
-            HStack {
-                Text("Cold email").font(.headline)
-                Spacer()
-                if state.channelLoading { ProgressView().controlSize(.small) }
-                Button { Task { await state.refreshChannel() } } label: { Image(systemName: "arrow.clockwise") }
-                    .buttonStyle(.borderless)
-                Button { state.showChannel = false } label: { Image(systemName: "xmark") }
-                    .buttonStyle(.borderless)
-            }
-            .padding(14)
-            Divider()
-            ScrollView {
-                VStack(alignment: .leading, spacing: 12) {
-                    if let err = state.channelError {
-                        Text(err).foregroundStyle(.red).font(.callout).textSelection(.enabled)
-                    }
-                    if state.rows.isEmpty && !state.channelLoading && state.channelError == nil {
-                        Text("No cold email campaign on this brand yet. Ask in the chat to start one.")
-                            .foregroundStyle(.secondary)
-                    }
-                    ForEach(state.rows) { CampaignCard(row: $0) }
-                }
-                .padding(14)
-            }
-        }
-        .background(Color(nsColor: .windowBackgroundColor))
-    }
-}
-
-struct CampaignCard: View {
-    @EnvironmentObject var state: AppState
-    let row: CampaignRow
-
-    var body: some View {
-        let o = row.figures?.outcomes
-        VStack(alignment: .leading, spacing: 10) {
-            HStack {
-                Text(row.campaign.name).font(.subheadline.weight(.semibold)).lineLimit(2)
-                Spacer()
-                Text(row.campaign.status.capitalized)
-                    .font(.caption2.weight(.medium))
-                    .padding(.horizontal, 6).padding(.vertical, 2)
-                    .background(statusColor.opacity(0.15), in: Capsule())
-                    .foregroundStyle(statusColor)
-            }
-            Grid(alignment: .leading, horizontalSpacing: 14, verticalSpacing: 6) {
-                GridRow {
-                    Stat(label: "Sent", value: count(o?.sending?.recipientsSent))
-                    Stat(label: "Clicks", value: count(o?.recipientsClicked))
-                    Stat(label: "Positive replies", value: count(o?.recipientsRepliesPositive))
-                }
-                GridRow {
-                    Stat(label: "Spent", value: row.figures?.costEconomics.committedCostUsd.map { dollars(cents: $0 * 100) } ?? "—")
-                    Stat(label: "Per positive reply", value: costPerPositiveReply(o))
-                    Stat(label: "Reply rate", value: o?.sending?.replyRatePct.map { String(format: "%.1f%%", $0) } ?? "—")
-                }
-            }
-            Button("Adjust in chat") {
-                state.draft = "About my campaign \"\(row.campaign.name)\" (id \(row.campaign.id)): "
-            }
-            .buttonStyle(.link)
-            .font(.caption)
-        }
-        .padding(12)
-        .background(Color.secondary.opacity(0.06), in: RoundedRectangle(cornerRadius: 10))
-        .overlay(RoundedRectangle(cornerRadius: 10).stroke(Color.secondary.opacity(0.15), lineWidth: 1))
-    }
-
-    private var statusColor: Color {
-        row.campaign.status == "ongoing" ? .green : .secondary
-    }
-
-    /// At zero positive replies the served cost is not a price yet: "Learning".
-    private func costPerPositiveReply(_ o: RevenueGroup.Outcomes?) -> String {
-        guard let o else { return "—" }
-        guard let replies = o.recipientsRepliesPositive, replies > 0, let cents = o.cpprCents else { return "Learning" }
-        return dollars(cents: cents)
-    }
-}
-
-struct Stat: View {
-    let label: String
-    let value: String
-    var body: some View {
-        VStack(alignment: .leading, spacing: 1) {
-            Text(value).font(.callout.weight(.semibold)).monospacedDigit()
-            Text(label).font(.caption2).foregroundStyle(.secondary)
-        }
-    }
-}
-
 // MARK: - Chat
 
 struct ChatView: View {
@@ -302,75 +118,92 @@ struct ChatView: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            HStack {
-                Text(state.selectedBrand?.label ?? "").font(.headline)
+            HStack(spacing: 8) {
+                Text("Chat").font(.system(size: 14, weight: .semibold)).foregroundStyle(K.fg1)
+                if let p = state.pane, !p.opensDashboard {
+                    Text("looking at \(p.title)").font(K.meta).foregroundStyle(K.fg3)
+                }
                 Spacer()
-                Button("New chat") { state.newChat() }.buttonStyle(.borderless).disabled(state.chatBusy)
+                Button("New chat") { state.newChat() }.buttonStyle(KButtonStyle(ghost: true)).disabled(state.chatBusy)
             }
-            .padding(14)
-            Divider()
+            .padding(.horizontal, 16).frame(height: 48)
+            Rectangle().fill(K.lineSubtle).frame(height: 1)
             ScrollViewReader { proxy in
                 ScrollView {
-                    LazyVStack(alignment: .leading, spacing: 10) {
+                    LazyVStack(alignment: .leading, spacing: 12) {
                         if state.selectedBrand == nil && state.me != nil { noBrandState }
                         else if state.chat.isEmpty { emptyState }
                         ForEach(state.chat) { item in
                             ChatBubble(item: item).id(item.id)
                         }
                         if state.chatBusy {
-                            HStack(spacing: 6) { ProgressView().controlSize(.small); Text("Working…").foregroundStyle(.secondary) }
+                            HStack(spacing: 6) { ProgressView().controlSize(.small); Text("Working…").font(K.body).foregroundStyle(K.fg3) }
                                 .id("busy")
                         }
                     }
-                    .padding(16)
+                    .padding(20)
+                    .frame(maxWidth: 760, alignment: .leading)
+                    .frame(maxWidth: .infinity)
                 }
                 .onChange(of: state.chat.count) {
                     withAnimation { proxy.scrollTo(state.chatBusy ? AnyHashable("busy") : AnyHashable(state.chat.last?.id), anchor: .bottom) }
                 }
             }
-            Divider()
             HStack(alignment: .bottom, spacing: 8) {
-                TextField("Ask about your results, or tell it what to change…", text: $state.draft, axis: .vertical)
+                TextField("Ask about your results, or tell it what to change", text: $state.draft, axis: .vertical)
                     .textFieldStyle(.plain)
-                    .lineLimit(1...6)
+                    .font(.system(size: 14))
+                    .lineLimit(1...8)
                     .focused($focused)
                     .onSubmit(send)
+                    .padding(.vertical, 4)
                 if state.chatBusy {
-                    Button("Stop") { state.stopChat() }
+                    Button("Stop") { state.stopChat() }.buttonStyle(KButtonStyle())
                 } else {
-                    Button("Send", action: send)
+                    Button(action: send) { Image(systemName: "arrow.up").font(.system(size: 12, weight: .semibold)) }
+                        .buttonStyle(KButtonStyle(strong: true))
                         .keyboardShortcut(.return, modifiers: .command)
                         .disabled(state.draft.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
                 }
             }
-            .padding(12)
+            .padding(10)
+            .background(RoundedRectangle(cornerRadius: 12).fill(K.raised))
+            .overlay(RoundedRectangle(cornerRadius: 12).strokeBorder(focused ? K.accent.opacity(0.5) : K.line, lineWidth: 1))
+            .shadow(color: .black.opacity(0.05), radius: 6, y: 2)
+            .padding(16)
+            .frame(maxWidth: 760)
         }
         .onChange(of: state.draft) { focused = true }
     }
 
     private var emptyState: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            Text("What should we look at?").font(.title3.weight(.semibold))
-            ForEach(["How is cold email doing this week?",
-                     "Which campaign gets the cheapest positive reply?",
-                     "Pause sending for this brand."], id: \.self) { s in
-                Button(s) { state.draft = s }.buttonStyle(.link)
+        VStack(alignment: .leading, spacing: 10) {
+            Text("What should we look at?").font(.system(size: 22, weight: .semibold)).foregroundStyle(K.fg1)
+            Text(state.selectedBrand.map { "\($0.label)\(state.selectedOffer.map { ", \($0.name)" } ?? "")" } ?? "")
+                .font(K.body).foregroundStyle(K.fg3)
+            VStack(alignment: .leading, spacing: 6) {
+                ForEach(["How is it going this week?",
+                         "Who replied with interest, and what do I answer?",
+                         "Which audience works best, and should we add one?",
+                         "Pause sending for this brand."], id: \.self) { s in
+                    Button(s) { state.draft = s }.buttonStyle(KButtonStyle())
+                }
             }
+            .padding(.top, 6)
         }
-        .padding(.vertical, 20)
+        .padding(.vertical, 24)
     }
 
     private var noBrandState: some View {
         VStack(alignment: .leading, spacing: 8) {
-            Text("Create your first brand").font(.title3.weight(.semibold))
-            Text("Add your website on the dashboard. It shows up here right after.")
-                .foregroundStyle(.secondary)
+            Text("Create your first brand").font(.system(size: 22, weight: .semibold)).foregroundStyle(K.fg1)
+            Text("Add your website on the dashboard. It shows up here right after.").font(K.body).foregroundStyle(K.fg3)
             HStack {
-                Link("Open the dashboard", destination: dashboardURL)
-                Button("Refresh") { Task { await state.boot() } }.buttonStyle(.link)
+                Button("Open the dashboard") { NSWorkspace.shared.open(dashboardURL) }.buttonStyle(KButtonStyle(strong: true))
+                Button("Refresh") { Task { await state.boot() } }.buttonStyle(KButtonStyle())
             }
         }
-        .padding(.vertical, 20)
+        .padding(.vertical, 24)
     }
 
     private func send() {
@@ -387,25 +220,24 @@ struct ChatBubble: View {
     var body: some View {
         switch item {
         case .user(_, let text):
-            HStack { Spacer(minLength: 60); Text(text).textSelection(.enabled).padding(10).background(accent.opacity(0.12), in: RoundedRectangle(cornerRadius: 10)) }
+            HStack {
+                Spacer(minLength: 80)
+                Text(text).font(.system(size: 14)).foregroundStyle(K.fg1).textSelection(.enabled)
+                    .padding(.horizontal, 12).padding(.vertical, 8)
+                    .background(RoundedRectangle(cornerRadius: 12).fill(K.accentSoft))
+            }
         case .assistant(_, let text):
             Text((try? AttributedString(markdown: text, options: .init(interpretedSyntax: .inlineOnlyPreservingWhitespace))) ?? AttributedString(text))
+                .font(.system(size: 14)).foregroundStyle(K.fg1).lineSpacing(3)
                 .textSelection(.enabled)
                 .frame(maxWidth: .infinity, alignment: .leading)
         case .tool(_, let label):
-            Label(label, systemImage: "wrench.and.screwdriver").font(.caption).foregroundStyle(.secondary).lineLimit(1)
+            HStack(spacing: 6) {
+                Circle().fill(K.fg4).frame(width: 5, height: 5)
+                Text(label).font(K.meta).foregroundStyle(K.fg3).lineLimit(1)
+            }
         case .error(_, let text):
-            Text(text).foregroundStyle(.red).font(.callout).textSelection(.enabled)
+            EmptyNote(text: text, isError: true)
         }
     }
-}
-
-func count(_ v: Double?) -> String {
-    guard let v else { return "—" }
-    return Int(v).formatted()
-}
-
-func dollars(cents: Double?) -> String {
-    guard let cents else { return "—" }
-    return (cents / 100).formatted(.currency(code: "USD"))
 }
