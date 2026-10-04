@@ -34,6 +34,10 @@ describe("channel routes", () => {
     expect(v2SectionOf("/v2/orgs/o/brands/b/channels")).toBe("channels");
     expect(v2SectionOf("/v2/orgs/o/brands/b/offers/f")).toBe("offers");
   });
+  it("the offer's Sales path is the Sales path section", () => {
+    expect(v2SectionOf("/v2/orgs/o/brands/b/offers/f/sales-path")).toBe("sales-path");
+    expect(v2SectionOf("/v2/orgs/o/brands/b/sales-path")).toBe("sales-path");
+  });
 });
 
 describe("sidebar", () => {
@@ -48,6 +52,12 @@ describe("sidebar", () => {
     expect(setup.indexOf('label="Targeting"')).toBeGreaterThan(-1);
     expect(setup.indexOf('label="Channels"')).toBeGreaterThan(setup.indexOf('label="Targeting"'));
     expect(setup).toContain('v2OfferHref(orgId, brandId, offerId, "channels")');
+  });
+  it("Setup opens with Sales path, above Offer (owner 2026-10-04)", () => {
+    const setup = shell.slice(shell.indexOf('<Group title="Setup">'), shell.indexOf('label="Integrations"'));
+    expect(setup.indexOf('label="Sales path"')).toBeGreaterThan(-1);
+    expect(setup.indexOf('label="Sales path"')).toBeLessThan(setup.indexOf('label="Offer"'));
+    expect(setup).toContain('v2OfferHref(orgId, brandId, offerId, "sales-path")');
   });
 });
 

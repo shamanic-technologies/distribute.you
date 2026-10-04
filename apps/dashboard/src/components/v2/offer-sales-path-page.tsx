@@ -10,7 +10,7 @@ import { useAcquisitionChannels } from "@/lib/use-acquisition-channels";
 import { v2OfferHref } from "@/lib/v2/routes";
 import { SALES_PATH_CHANNEL_SLUGS, type SalesPathSelection } from "@/lib/offer-sales-path";
 import { EmptyNote, Shimmer } from "@/components/v2/ui";
-import { V2Page, offerTabs, useOfferName } from "@/components/v2/setup-pages";
+import { V2Page, useOfferName } from "@/components/v2/setup-pages";
 import { OfferSalesPath } from "@/components/v2/offer-sales-path";
 import { OfferSalesPaths } from "@/components/v2/offer-sales-paths";
 import { BrandSalesBudgetCard } from "@/components/v2/brand-sales-budget-card";
@@ -81,7 +81,6 @@ export function V2OfferSalesPathPage() {
       ]}
       title={name ?? " "}
       sub="Tick the steps this offer sells through. The legs between them, and who works each one, follow."
-      tabs={offerTabs(orgId, brandId, offerId, "sales-path")}
       width="max-w-[1280px]"
     >
       {error && <p className="mb-4 text-[13px] text-[var(--data-rose)]">{error}</p>}
