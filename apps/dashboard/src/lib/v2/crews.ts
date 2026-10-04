@@ -8,10 +8,10 @@
  * which is exactly a campaign identity (offer x leg x channel) — so missions need
  * nothing new from any service.
  *
- * The NAME is features-service's: it publishes one per (channel, leg) on the public
- * catalogue (`crewName`), so this dashboard and the staff emails say the same one. The
- * LOOK (colour, glyph) is ours, keyed per (channel, landing step), else per channel. A
- * crew the producer names nothing reads by its channel's own words.
+ * Crew names (Herald, Scout, Pilot...) are RETIRED (owner 2026-10-04): the poetic names
+ * now name sales path combinations (features-service `name` on each sales path row), and
+ * the catalogue serves `crewName: null`, so a crew reads by its channel's own words. The
+ * LOOK (colour, glyph) is ours, keyed per (channel, landing step), else per channel.
  *
  * Alias-free so it carries real unit tests.
  */

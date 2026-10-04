@@ -70,7 +70,12 @@ const LegSchema = z
 const PathSchema = z
   .object({
     rank: z.number(),
+    /** The legs in order, shared by every channel combination over it. */
     pathKey: z.string(),
+    /** The row's own identity: the legs with the channel on each leg ours works. */
+    combinationKey: z.string(),
+    /** The combination's name, the same for every client and never changed (features-service). */
+    name: z.string(),
     legKeys: z.array(z.string()),
     steps: z.array(StepSchema),
     entryLegKey: z.string(),
@@ -166,6 +171,23 @@ export function roiUnavailableLabel(reason: string | null): string | null {
 /** The path read as one line: "Positive reply → Meeting booked → Paid client". */
 export function pathTitle(path: SalesPathRow): string {
   return path.steps.map((s) => s.label).join(" → ");
+}
+
+/** One link of a path as the row draws it: a channel of ours working a leg, or the step it lands on. */
+export type PathLink = { kind: "channel"; name: string } | { kind: "step"; label: string };
+
+/**
+ * A path read leg by leg: the channel that works each leg (only legs a channel of ours
+ * works carry one), then the step the leg lands on. "[Sales Cold Email Outreach] →
+ * Positive reply → [AI Booker] → Meeting booked → Paid client". Served names only.
+ */
+export function pathLinks(path: SalesPathRow): PathLink[] {
+  const parts: PathLink[] = [];
+  for (const leg of path.legs) {
+    if (leg.workedBy !== "human" && leg.channel?.name) parts.push({ kind: "channel", name: leg.channel.name });
+    parts.push({ kind: "step", label: leg.toStep.label });
+  }
+  return parts;
 }
 
 /** A percentage as the leg states it: whole, a decimal only below 1%. */
