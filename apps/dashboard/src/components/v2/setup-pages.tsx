@@ -137,7 +137,7 @@ export function V2OffersPage() {
   return <SelectedOfferRedirect title="Offer" />;
 }
 
-function SelectedOfferRedirect({ title, tab }: { title: string; tab?: "targeting" | "channels" }) {
+function SelectedOfferRedirect({ title, tab }: { title: string; tab?: "sales-path" | "targeting" | "channels" }) {
   const { orgId, brandId } = useIds();
   const router = useRouter();
   const { offerId, settled } = useSelectedOffer();
@@ -172,18 +172,16 @@ export function useOfferName(brandId: string, offerId: string | null) {
   return q.data?.offers.find((o) => o.offerId === offerId)?.name ?? null;
 }
 
-/** The offer's tabs, the same four for every signed-in user. */
+/** The offer's tabs, the same two for every signed-in user. Sales path and Channels have their own sidebar entries. */
 export function offerTabs(
   orgId: string,
   brandId: string,
   offerId: string,
-  active: "settings" | "targeting" | "sales-path" | "channels",
+  active: "settings" | "targeting",
 ): V2Tab[] {
   return [
     { label: "Settings", href: v2OfferHref(orgId, brandId, offerId), active: active === "settings" },
     { label: "Targeting", href: v2OfferHref(orgId, brandId, offerId, "targeting"), active: active === "targeting" },
-    { label: "Sales path", href: v2OfferHref(orgId, brandId, offerId, "sales-path"), active: active === "sales-path" },
-    { label: "Channels", href: v2OfferHref(orgId, brandId, offerId, "channels"), active: active === "channels" },
   ];
 }
 
@@ -216,7 +214,7 @@ export function V2OfferPage() {
   );
 }
 
-/** Who an offer is sold to: its audiences, the same table and writes as v1. */
+/** Who an offer is sold to, in plain words: each audience's sentence, no channel figure. */
 export function V2TargetingPage() {
   const { orgId, brandId, offerId } = useIds();
   const name = useOfferName(brandId, offerId);
@@ -228,7 +226,7 @@ export function V2TargetingPage() {
       tabs={offerTabs(orgId, brandId, offerId, "targeting")}
       width="max-w-[1280px]"
     >
-      <V2AudiencesTable offerId={offerId} />
+      <V2AudiencesTable offerId={offerId} plain />
     </V2Page>
   );
 }
@@ -236,6 +234,11 @@ export function V2TargetingPage() {
 /** Targeting from the sidebar or an old link: the selected offer's Targeting. */
 export function V2TargetingIndexPage() {
   return <SelectedOfferRedirect title="Targeting" tab="targeting" />;
+}
+
+/** Sales path from the sidebar before an offer is picked: the selected offer's Sales path. */
+export function V2SalesPathIndexPage() {
+  return <SelectedOfferRedirect title="Sales path" tab="sales-path" />;
 }
 
 /** Channels from the sidebar before an offer is picked: the selected offer's Channels. */

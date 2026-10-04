@@ -89,11 +89,14 @@ describe("Channels tab wiring", () => {
   const tabs = read("src/components/v2/setup-pages.tsx");
   const page = read("src/components/v2/offer-channels-page.tsx");
 
-  it("is GA beside Sales path: every signed-in user, no beta gate, no badge", () => {
+  it("Sales path and Channels are not offer tabs (the sidebar opens them), every signed-in user, no beta gate, no badge", () => {
     const start = tabs.indexOf("export function offerTabs(");
     const block = tabs.slice(start, tabs.indexOf("\n}\n", start));
-    expect(block).toContain('label: "Sales path"');
-    expect(block).toContain('label: "Channels"');
+    expect(block).toContain('label: "Targeting"');
+    expect(block).not.toContain('label: "Sales path"');
+    expect(block).not.toContain('label: "Channels"');
+    expect(page).not.toContain("offerTabs(");
+    expect(read("src/components/v2/offer-sales-path-page.tsx")).not.toContain("offerTabs(");
     expect(block).not.toContain("isBeta");
     expect(block).not.toContain("badge");
     for (const src of [page, read("src/components/v2/offer-sales-path-page.tsx")]) {
