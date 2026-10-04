@@ -36,8 +36,15 @@ export function V2OfferSalesPathPage() {
     enabled: !!offerId,
   });
   // The paths are features-service's answer over the SAVED selection, so they re-read
-  // after every save (below) rather than on a poll.
-  const paths = useAuthQuery(["offerSalesPaths", brandId, offerId], () => getOfferSalesPaths(brandId, offerId), {
+  // after every save (below) rather than on a poll. The page LISTS the whole combinatory
+  // (every catalogue path x the owner's channel shortlist); the path we RUN stays the
+  // ticked read's pick, the one campaign-service funds and the onboarding launches.
+  const paths = useAuthQuery(
+    ["offerSalesPaths", brandId, offerId, "catalogue"],
+    () => getOfferSalesPaths(brandId, offerId, "catalogue"),
+    { enabled: !!offerId },
+  );
+  const ticked = useAuthQuery(["offerSalesPaths", brandId, offerId], () => getOfferSalesPaths(brandId, offerId), {
     enabled: !!offerId,
   });
   const [draft, setDraft] = useState<SalesPathSelection | null>(null);
@@ -63,6 +70,7 @@ export function V2OfferSalesPathPage() {
     saveOfferSalesPath(brandId, offerId, [...next.steps], [...next.legs])
       .then((saved) => {
         qc.setQueryData(["offerSalesPath", brandId, offerId], saved);
+        // A prefix: re-reads both the ticked read and the catalogue list.
         return qc.invalidateQueries({ queryKey: ["offerSalesPaths", brandId, offerId] });
       })
       .catch((err) => {
@@ -74,7 +82,7 @@ export function V2OfferSalesPathPage() {
 
   // The path we run: the same pick as the onboarding and campaign-service's global budget
   // (best-ranked path a channel of ours enters). The customer never chooses it.
-  const activeKey = useMemo(() => firstLaunchedPath(paths.data?.paths ?? [])?.combinationKey ?? null, [paths.data]);
+  const activeKey = useMemo(() => firstLaunchedPath(ticked.data?.paths ?? [])?.combinationKey ?? null, [ticked.data]);
 
   const selection = draft ?? served;
   const settled = q.isFetchedAfterMount || q.data !== undefined;

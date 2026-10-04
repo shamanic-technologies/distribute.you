@@ -6,6 +6,7 @@ import {
   parseOfferSalesPaths,
   pathLinks,
   pathTitle,
+  costSourceLabel,
   rateSourceLabel,
   roiUnavailableLabel,
   salesPathsEmptyReason,
@@ -57,6 +58,54 @@ const body = {
   ],
 };
 
+describe("offer sales paths, catalogue scope", () => {
+  const leg = body.paths[0].legs[0];
+  const catalogue = {
+    ...body,
+    scope: "catalogue",
+    paths: [
+      {
+        ...body.paths[0],
+        combinationKey: "start_to_website_visit@google-ads",
+        ticked: false,
+        legs: [
+          {
+            ...leg,
+            ticked: false,
+            costSource: "benchmark",
+            channel: { ...leg.channel, slug: "google-ads", name: "Google Ads", managed: false, operatedBy: "platform", costBenchmarkSource: "WordStream 2024 B2B CPC", costSource: "benchmark" },
+          },
+        ],
+      },
+    ],
+  };
+  it("keeps ticked, managed, the cost rung and its cited source", () => {
+    const p = parseOfferSalesPaths(catalogue, "t");
+    expect(p.scope).toBe("catalogue");
+    expect(p.paths[0].ticked).toBe(false);
+    expect(p.paths[0].legs[0].ticked).toBe(false);
+    expect(p.paths[0].legs[0].costSource).toBe("benchmark");
+    expect(p.paths[0].legs[0].channel?.managed).toBe(false);
+    expect(p.paths[0].legs[0].channel?.costBenchmarkSource).toBe("WordStream 2024 B2B CPC");
+    expect(pathLinks(p.paths[0])[0]).toEqual({ kind: "channel", name: "Google Ads", slug: "google-ads", managed: false });
+  });
+  it("names every cost rung, and a leg with no cost has none", () => {
+    expect(costSourceLabel("benchmark")).toBe("Market benchmark");
+    expect(costSourceLabel("fleet_measured")).toBe("Measured across our clients");
+    expect(costSourceLabel(null)).toBeNull();
+    expect(costSourceLabel("next_rung")).toBe("next_rung");
+  });
+  it("labels the producer's default rate as a benchmark", () => {
+    expect(rateSourceLabel("default")).toBe("Industry benchmark");
+  });
+  it("the Sales path page lists the catalogue but runs the ticked read's best path", () => {
+    const src = readFileSync(join(__dirname, "../src/components/v2/offer-sales-path-page.tsx"), "utf8");
+    expect(src).toContain('getOfferSalesPaths(brandId, offerId, "catalogue")');
+    expect(src).toContain('["offerSalesPaths", brandId, offerId, "catalogue"]');
+    expect(src).toContain("firstLaunchedPath(ticked.data?.paths");
+  });
+});
+
 describe("offer sales paths reader", () => {
   it("parses the served body and keeps its order", () => {
     const parsed = parseOfferSalesPaths(body, "t");
@@ -68,7 +117,7 @@ describe("offer sales paths reader", () => {
     const leg0 = parsed.paths[0].legs[0];
     const human = { ...leg0, legKey: "conversation_to_paid_client", fromStep: step("conversation", "Positive reply"), toStep: step("paid_client", "Paid client"), workedBy: "human", channel: null };
     expect(pathLinks({ ...parsed.paths[0], legs: [leg0, human] })).toEqual([
-      { kind: "channel", name: "Herald", slug: "sales-cold-email-outreach" },
+      { kind: "channel", name: "Herald", slug: "sales-cold-email-outreach", managed: undefined },
       { kind: "step", label: "Positive reply" },
       { kind: "step", label: "Paid client" },
     ]);
