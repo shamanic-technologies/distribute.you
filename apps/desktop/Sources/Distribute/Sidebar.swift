@@ -4,7 +4,7 @@ import SwiftUI
 /// items, counts and look. A click opens that view's compact panel beside the chat
 /// instead of a page: the chat stays the product.
 enum Pane: String, Hashable, CaseIterable {
-    case today, companies, people, deals, offer, targeting, channels, integrations, settings
+    case today, companies, people, deals, offer, targeting, channels, integrations, settings, billing
 
     var title: String {
         switch self {
@@ -17,6 +17,7 @@ enum Pane: String, Hashable, CaseIterable {
         case .channels: return "Channels"
         case .integrations: return "Integrations"
         case .settings: return "Brand settings"
+        case .billing: return "Billing"
         }
     }
 
@@ -31,11 +32,9 @@ enum Pane: String, Hashable, CaseIterable {
         case .channels: return "envelope"
         case .integrations: return "powerplug"
         case .settings: return "gearshape"
+        case .billing: return "creditcard"
         }
     }
-
-    /// Pages too heavy for a panel open the dashboard itself.
-    var opensDashboard: Bool { self == .integrations || self == .settings }
 }
 
 struct SidebarView: View {
@@ -71,6 +70,21 @@ struct SidebarView: View {
                     NavRow(pane: .channels)
                     NavRow(pane: .integrations)
                     NavRow(pane: .settings)
+                    if !state.topCompanies.isEmpty {
+                        Text("Top companies").font(K.meta).foregroundStyle(K.fg3).padding(.horizontal, 8).padding(.top, 20).padding(.bottom, 4)
+                        ForEach(state.topCompanies) { o in
+                            let name = o.orgName ?? o.orgDomain ?? "Company"
+                            Button { state.openCompany(o) } label: {
+                                HStack(spacing: 8) {
+                                    Logo(domain: o.orgDomain, name: name, size: 16)
+                                    Text(name).font(K.body).foregroundStyle(K.fg2).lineLimit(1)
+                                    Spacer(minLength: 0)
+                                }
+                                .padding(.horizontal, 8).frame(height: 28).contentShape(Rectangle())
+                            }
+                            .buttonStyle(NavHoverStyle(active: false))
+                        }
+                    }
                 }
                 .padding(.horizontal, 8).padding(.top, 12)
             }
@@ -103,9 +117,6 @@ private struct NavRow<Trailing: View>: View {
                 }
                 Text(pane.title).font(K.body).foregroundStyle(active ? K.fg1 : K.fg2).lineLimit(1)
                 Spacer(minLength: 4)
-                if pane.opensDashboard {
-                    Image(systemName: "arrow.up.right").font(.system(size: 9)).foregroundStyle(K.fg4)
-                }
                 if let trailing { trailing }
             }
             .padding(.leading, indent ? 32 : 8).padding(.trailing, 6).frame(height: 28)
@@ -149,8 +160,12 @@ private struct Badge: View {
 /// The tenant switcher: brand mark + name, every org's brands in the menu.
 struct BrandSwitcher: View {
     @EnvironmentObject var state: AppState
+    // The logo sits OUTSIDE the menu: a macOS Menu label draws images at their native
+    // size and ignores the frame, so a logo.dev PNG rendered huge (owner 2026-10-04).
     var body: some View {
-        KMenu {
+        HStack(spacing: 8) {
+            Logo(domain: state.selectedBrand?.domain, name: state.selectedBrand?.label ?? "?", size: 24)
+            KMenu {
             ForEach(state.me?.organizations ?? []) { org in
                 if !org.brands.isEmpty {
                     Section(org.name ?? org.id) {
@@ -162,7 +177,6 @@ struct BrandSwitcher: View {
             }
         } label: {
             HStack(spacing: 8) {
-                BrandMark(name: state.selectedBrand?.label ?? "?")
                 VStack(alignment: .leading, spacing: 0) {
                     Text(state.selectedBrand?.label ?? "Choose a brand").font(.system(size: 13, weight: .medium)).foregroundStyle(K.fg1).lineLimit(1)
                     if let org = state.selectedOrg?.name { Text(org).font(K.meta).foregroundStyle(K.fg3).lineLimit(1) }
@@ -170,8 +184,10 @@ struct BrandSwitcher: View {
                 Spacer(minLength: 0)
                 Image(systemName: "chevron.up.chevron.down").font(.system(size: 10)).foregroundStyle(K.fg3)
             }
-            .padding(.horizontal, 8).frame(height: 40)
+            .frame(height: 40)
         }
+        }
+        .padding(.horizontal, 8)
     }
 }
 
@@ -213,7 +229,7 @@ private struct CreditsRow: View {
     var body: some View {
         HStack(spacing: 6) {
             VStack(alignment: .leading, spacing: 1) {
-                KLabel("Credit")
+                KLabel("Prepaid credit")
                 if let b = state.balance {
                     Text(dollars(cents: Double(b.balance_cents))).font(.system(size: 13, weight: .semibold)).monospacedDigit()
                         .foregroundStyle(b.depleted ? K.rose : K.fg1)
@@ -235,7 +251,9 @@ private struct CreditsRow: View {
         }
         .padding(10)
         .background(RoundedRectangle(cornerRadius: 10).fill(K.raised))
-        .overlay(RoundedRectangle(cornerRadius: 10).strokeBorder(K.lineSubtle, lineWidth: 1))
+        .overlay(RoundedRectangle(cornerRadius: 10).strokeBorder(state.pane == .billing ? K.accent.opacity(0.5) : K.lineSubtle, lineWidth: 1))
+        .contentShape(Rectangle())
+        .onTapGesture { state.open(.billing) }
     }
 }
 
@@ -243,7 +261,7 @@ private struct AccountRow: View {
     @EnvironmentObject var state: AppState
     var body: some View {
         KMenu {
-            Button("Open the dashboard") { NSWorkspace.shared.open(state.dashboardLink(for: nil)) }
+            Button("Billing") { state.open(.billing) }
             Divider()
             Button("Sign out") { state.signOut() }
         } label: {

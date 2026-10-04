@@ -12,7 +12,7 @@ enum Snapshot {
         guard let i = args.firstIndex(of: "--snapshot"), i + 1 < args.count else { return }
         let dir = URL(fileURLWithPath: args[i + 1], isDirectory: true)
         try? FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
-        for pane in [Pane.today, .companies, .people, .deals, .offer, .targeting, .channels] {
+        for pane in Pane.allCases {
             let state = fixtureState(pane: pane)
             let view = RootView().environmentObject(state).environment(\.isSnapshot, true).frame(width: 1320, height: 820)
             let renderer = ImageRenderer(content: view)
@@ -49,7 +49,7 @@ enum Snapshot {
         s.pane = pane
         let leads: LeadPage = decode(#"{"total":3,"leads":[{"id":"l1","email":"ana@acme.test","status":"served","contacted":true,"sent":true,"delivered":true,"clicked":true,"bounced":false,"unsubscribed":false,"replied":true,"firstRepliedAt":"2026-10-03T10:00:00Z","lead":{"firstName":"Ana","lastName":"Lopez","currentTitle":"Head of Growth","organization":{"name":"Acme"}}},{"id":"l2","email":"ben@globex.test","status":"served","contacted":true,"sent":true,"delivered":true,"clicked":false,"bounced":false,"unsubscribed":false,"replied":true,"firstRepliedAt":"2026-10-02T09:00:00Z","lead":{"firstName":"Ben","lastName":"Kim","currentTitle":"CEO","organization":{"name":"Globex"}}},{"id":"l3","email":"cy@initech.test","status":"served","contacted":true,"sent":true,"delivered":true,"clicked":true,"bounced":false,"unsubscribed":false,"replied":false,"firstClickedAt":"2026-10-01T09:00:00Z","lead":{"firstName":"Cy","lastName":"Ng","headline":"Founder","organization":{"name":"Initech"}}}]}"#)
         let revenue: OfferRevenue = decode(#"{"headline":{"totalPipelineUsd":48200},"costEconomics":{"maturity":{"isMature":false,"flash":{"roiMultiple":2.4}}},"organizations":[{"orgName":"Acme","orgDomain":"acme.test","tags":["reply","visit"],"expectedRevenueUsd":12000},{"orgName":"Globex","orgDomain":"globex.test","tags":["visit"],"expectedRevenueUsd":8000},{"orgName":"Initech","orgDomain":"initech.test","tags":["delivered"],"expectedRevenueUsd":2500}]}"#)
-        let window: RevenueWindow = decode(#"{"window":{"emails":{"sent":1240,"delivered":1190,"bounced":50,"deliveryRatePct":96},"spend":{"totalSpentCents":21400},"recipientsRepliesPositive":{"total":9},"recipientsClicked":{"total":38}}}"#)
+        let window: RevenueWindow = decode(#"{"window":{"emails":{"sent":1240,"delivered":1190,"bounced":50,"deliveryRatePct":96},"spend":{"totalSpentCents":21400,"daily":[{"totalSpentCents":2800},{"totalSpentCents":3100},{"totalSpentCents":3000},{"totalSpentCents":3200},{"totalSpentCents":2900},{"totalSpentCents":3300},{"totalSpentCents":3100}]},"recipientsRepliesPositive":{"total":9,"daily":[{"count":0},{"count":1},{"count":1},{"count":2},{"count":1},{"count":3},{"count":1}]},"recipientsClicked":{"total":38,"daily":[{"count":3},{"count":5},{"count":4},{"count":7},{"count":6},{"count":8},{"count":5}]},"expectedPipeline":{"daily":[{"cumulativePipelineUsd":30000},{"cumulativePipelineUsd":33000},{"cumulativePipelineUsd":36000},{"cumulativePipelineUsd":40000},{"cumulativePipelineUsd":43000},{"cumulativePipelineUsd":46000},{"cumulativePipelineUsd":48200}]}}}"#)
         s.today = .loaded(TodayData(revenue: revenue, window: window, needsCall: leads))
         s.companies = .loaded(revenue)
         s.people = .loaded(leads)

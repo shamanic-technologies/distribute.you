@@ -3807,6 +3807,29 @@ export async function setAudienceStatus(
 }
 
 /**
+ * PATCH /orgs/audiences/:audienceId — rename an audience. human-service keeps names
+ * unique per offer (per brand for an offer-less audience), case-insensitive, and
+ * answers a clash with a 409; the caller renders it.
+ */
+export async function renameAudience(
+  audienceId: string,
+  name: string,
+  token?: string,
+): Promise<{ audience: AudienceWire }> {
+  const raw = await apiCall<unknown>(`/orgs/audiences/${audienceId}`, {
+    token,
+    method: "PATCH",
+    body: { name },
+  });
+  const parsed = AudienceResponseSchema.safeParse(raw);
+  if (!parsed.success) {
+    console.error("[dashboard] renameAudience: response shape mismatch", { issues: parsed.error.issues, raw });
+    throw new Error("[dashboard] renameAudience: invalid response shape");
+  }
+  return parsed.data;
+}
+
+/**
  * POST /orgs/audiences/:audienceId/avatar — (re)generate the audience's avatar
  * image via chat-service (which owns the cost). Optional `prompt` steers the
  * image; omitted ⟹ derived from the audience's own descriptors. Returns the

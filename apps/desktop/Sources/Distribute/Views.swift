@@ -17,7 +17,7 @@ struct RootView: View {
                     SidebarView()
                     HStack(spacing: 0) {
                         ChatView().frame(minWidth: 420)
-                        if let pane = state.pane, !pane.opensDashboard {
+                        if let pane = state.pane {
                             Rectangle().fill(K.lineSubtle).frame(width: 1)
                             PanelView(pane: pane).frame(width: 400)
                         }
@@ -121,7 +121,7 @@ struct ChatView: View {
         VStack(spacing: 0) {
             HStack(spacing: 8) {
                 Text("Chat").font(.system(size: 14, weight: .semibold)).foregroundStyle(K.fg1)
-                if let p = state.pane, !p.opensDashboard {
+                if let p = state.pane {
                     Text("looking at \(p.title)").font(K.meta).foregroundStyle(K.fg3)
                 }
                 Spacer()
@@ -200,17 +200,7 @@ struct ChatView: View {
         .padding(.vertical, 24)
     }
 
-    private var noBrandState: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            Text("Create your first brand").font(.system(size: 22, weight: .semibold)).foregroundStyle(K.fg1)
-            Text("Add your website on the dashboard. It shows up here right after.").font(K.body).foregroundStyle(K.fg3)
-            HStack {
-                Button("Open the dashboard") { NSWorkspace.shared.open(dashboardURL) }.buttonStyle(KButtonStyle(strong: true))
-                Button("Refresh") { Task { await state.boot() } }.buttonStyle(KButtonStyle())
-            }
-        }
-        .padding(.vertical, 24)
-    }
+    private var noBrandState: some View { AddBrandView().padding(.vertical, 24) }
 
     private func send() {
         let text = state.draft.trimmingCharacters(in: .whitespacesAndNewlines)

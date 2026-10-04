@@ -117,14 +117,19 @@ struct OfferRevenue: Decodable {
 }
 
 struct RevenueWindow: Decodable {
-    struct Count: Decodable { let total: Int }
+    struct Day: Decodable { let count: Double? }
+    struct Count: Decodable { let total: Int; let daily: [Day]? }
     struct Emails: Decodable { let sent: Int; let delivered: Int; let bounced: Int; let deliveryRatePct: Double? }
-    struct Spend: Decodable { let totalSpentCents: Double }
+    struct SpendDay: Decodable { let totalSpentCents: Double? }
+    struct Spend: Decodable { let totalSpentCents: Double; let daily: [SpendDay]? }
+    struct PipeDay: Decodable { let cumulativePipelineUsd: Double? }
+    struct Pipeline: Decodable { let daily: [PipeDay]? }
     struct Body: Decodable {
         let emails: Emails?
         let spend: Spend?
         let recipientsRepliesPositive: Count?
         let recipientsClicked: Count?
+        let expectedPipeline: Pipeline?
     }
     let window: Body
 }
@@ -149,6 +154,8 @@ struct LeadRow: Decodable, Identifiable {
     let id: String
     let email: String
     let status: String
+    let standing: Standing?
+    struct Standing: Decodable { let state: String }
     let contacted, sent, delivered, clicked, bounced, unsubscribed, replied: Bool
     let servedAt, firstContactedAt, firstSentAt, firstDeliveredAt, firstClickedAt, firstRepliedAt, firstBouncedAt, firstUnsubscribedAt: String?
     let lead: Person?
@@ -157,8 +164,18 @@ struct LeadRow: Decodable, Identifiable {
         let lastName: String?
         let currentTitle: String?
         let headline: String?
+        let photoUrl: String?
+        let linkedinUrl: String?
         let organization: Org?
-        struct Org: Decodable { let name: String? }
+        struct Org: Decodable {
+            let name: String?
+            let primaryDomain: String?
+            let industry: String?
+            let estimatedNumEmployees: Int?
+            let city: String?
+            let country: String?
+            let shortDescription: String?
+        }
     }
 }
 struct LeadPage: Decodable { let leads: [LeadRow]; let total: Int? }
@@ -190,7 +207,80 @@ struct Audience: Decodable, Identifiable {
 }
 struct AudienceList: Decodable { let audiences: [Audience] }
 
-struct OfferEconomics: Decodable { let lifetimeRevenueUsd: Double? }
+struct OfferEconomics: Decodable { let lifetimeRevenueUsd: Double?; let bookingUrl: String? }
+
+struct LeadDetailEnvelope: Decodable { let leadDetail: LeadRow }
+
+struct LeadHistory: Decodable {
+    struct Source: Decodable { let source: String; let status: String }
+    struct Destination: Decodable { let state: String?; let href: String? }
+    struct Event: Decodable, Identifiable {
+        let id: String
+        let at: String?
+        let type: String
+        let evidence: String?
+        let direction: String?
+        let milestone: String?
+        let from: String?
+        let to: [String]?
+        let subject: String?
+        let bodyText: String?
+        let bodyStatus: String?
+        let kind: String?
+        let step: String?
+        let event: String?
+        let note: String?
+        let state: String?
+        let dueAt: String?
+        let stoppedReason: String?
+        let destination: Destination?
+    }
+    let events: [Event]
+    let sources: [Source]?
+}
+
+struct ApiKeyInfo: Decodable, Identifiable { let id: String; let keyPrefix: String; let name: String?; let createdAt: String; let lastUsedAt: String? }
+struct ApiKeyList: Decodable { let keys: [ApiKeyInfo] }
+struct NewApiKey: Decodable { let key: String }
+
+struct BrandInfo: Decodable { let id: String; let domain: String?; let name: String?; let url: String?; let clickDestinationUrl: String? }
+struct BrandEnvelope: Decodable { let brand: BrandInfo }
+
+struct SalesRep: Decodable { let salesRepEmail: String?; let salesRepPhone: String?; let salesRepFirstName: String?; let salesRepRole: String? }
+
+struct SalesBudget: Decodable {
+    let mode: String
+    let dailyBudgetCents: Double?
+    enum CodingKeys: String, CodingKey { case mode, dailyBudgetCents }
+    /// Served as a number or a numeric string.
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        mode = try c.decode(String.self, forKey: .mode)
+        if let d = try? c.decodeIfPresent(Double.self, forKey: .dailyBudgetCents) { dailyBudgetCents = d }
+        else if let s = try? c.decodeIfPresent(String.self, forKey: .dailyBudgetCents) { dailyBudgetCents = Double(s) }
+        else { dailyBudgetCents = nil }
+    }
+}
+
+struct ConversionToken: Decodable { let token: String; let ingestUrl: String; let status: String? }
+
+struct BillingAccount: Decodable {
+    let payment_mode: String?
+    let credited_cents: String
+    let balance_cents: String
+    let has_payment_method: Bool
+    let has_auto_topup: Bool
+    let auto_reload_supported: Bool?
+    let card_brand: String?
+    let card_last4: String?
+}
+struct Payment: Decodable, Identifiable { let id: String; let amount: Int; let currency: String; let status: String; let created: Double }
+struct PaymentList: Decodable { let data: [Payment] }
+
+struct CreatedBrand: Decodable { let brandId: String }
+struct OfferProposal: Decodable, Hashable { let name: String; let description: String; let icon: String? }
+struct OfferProposals: Decodable { let offers: [OfferProposal]; let mainOfferIndex: Int? }
+struct ConfirmedOffer: Decodable { let chosenOfferId: String }
 
 struct UserFields: Decodable {
     let fields: [String: Field]
@@ -254,8 +344,10 @@ struct DistributeAPI {
     func offerRevenue(offerId: String, brandId: String) async throws -> OfferRevenue {
         try await get("/offers/\(offerId)/revenue", query: ["brandId": brandId, "pricing": "net"])
     }
-    func offerWindow(offerId: String, brandId: String, days: Int) async throws -> RevenueWindow {
-        try await get("/offers/\(offerId)/revenue", query: ["brandId": brandId, "pricing": "net", "windowDays": String(days)])
+    /// Always SINCE INCEPTION (owner 2026-10-04: no 7 / 30 day window, anywhere); the
+    /// producer serves it as `?windowDays=all`, like dashboard v2's Today.
+    func offerSinceInception(offerId: String, brandId: String) async throws -> RevenueWindow {
+        try await get("/offers/\(offerId)/revenue", query: ["brandId": brandId, "pricing": "net", "windowDays": "all"])
     }
     func bucketCounts(brandId: String, offerId: String) async throws -> BucketCounts {
         try await get("/leads/bucket-counts", query: ["brandId": brandId, "offerId": offerId])
@@ -278,16 +370,81 @@ struct DistributeAPI {
         try await get("/brands/\(brandId)/offers/\(offerId)/user-fields", query: [:])
     }
 
+    func leadDetail(id: String, brandId: String) async throws -> LeadRow {
+        let e: LeadDetailEnvelope = try await get("/leads/\(id)", query: ["brandId": brandId]); return e.leadDetail
+    }
+    func leadHistory(id: String, brandId: String) async throws -> LeadHistory {
+        try await get("/leads/\(id)/history", query: ["brandId": brandId, "scope": "campaign"])
+    }
+    func companyPeople(brandId: String, offerId: String, orgName: String) async throws -> LeadPage {
+        try await leads(brandId: brandId, offerId: offerId, extra: ["limit": "50", "q": orgName])
+    }
+    func apiKeys() async throws -> [ApiKeyInfo] { let l: ApiKeyList = try await get("/api-keys", query: [:]); return l.keys }
+    func createApiKey(name: String) async throws -> String {
+        let k: NewApiKey = try await send("POST", "/api-keys", query: [:], body: ["name": name]); return k.key
+    }
+    func deleteApiKey(id: String) async throws { try await sendIgnoringBody("DELETE", "/api-keys/\(id)", query: [:], body: nil) }
+    func brand(id: String) async throws -> BrandInfo { let e: BrandEnvelope = try await get("/brands/\(id)", query: [:]); return e.brand }
+    func renameBrand(id: String, name: String) async throws { try await sendIgnoringBody("PATCH", "/brands/\(id)", query: [:], body: ["name": name]) }
+    func salesRep(brandId: String) async throws -> SalesRep { try await get("/brands/\(brandId)/sales-rep", query: [:]) }
+    func setSalesRep(brandId: String, email: String, phone: String?, firstName: String?, role: String?) async throws {
+        var body: [String: Any] = ["salesRepEmail": email]
+        body["salesRepPhone"] = phone ?? NSNull(); body["salesRepFirstName"] = firstName ?? NSNull(); body["salesRepRole"] = role ?? NSNull()
+        try await sendIgnoringBody("PUT", "/brands/\(brandId)/sales-rep", query: [:], body: body)
+    }
+    func setBookingUrl(brandId: String, offerId: String, url: String?) async throws {
+        try await sendIgnoringBody("PUT", "/brands/\(brandId)/offers/\(offerId)/economics", query: [:], body: ["bookingUrl": url ?? NSNull()])
+    }
+    func salesBudget(brandId: String) async throws -> SalesBudget { try await get("/brands/\(brandId)/sales-budget", query: [:]) }
+    func setSalesBudget(brandId: String, cents: Int) async throws {
+        try await sendIgnoringBody("PUT", "/brands/\(brandId)/sales-budget", query: [:], body: ["dailyBudgetCents": cents])
+    }
+    func conversionToken(brandId: String) async throws -> ConversionToken { try await get("/brands/\(brandId)/conversion-token", query: [:]) }
+    func billingAccount(orgId: String) async throws -> BillingAccount { try await get("/billing/accounts", query: ["orgId": orgId]) }
+    func payments(orgId: String) async throws -> [Payment] { let l: PaymentList = try await get("/billing/payments", query: ["orgId": orgId]); return l.data }
+    func setAutoTopUp(orgId: String, on: Bool) async throws {
+        if on {
+            try await sendIgnoringBody("PATCH", "/billing/accounts/auto_topup", query: ["orgId": orgId], body: ["topup_amount_cents": 5000, "topup_threshold_cents": 500])
+        } else {
+            try await sendIgnoringBody("DELETE", "/billing/accounts/auto_topup", query: ["orgId": orgId], body: nil)
+        }
+    }
+    func createBrand(orgId: String, url: String) async throws -> String {
+        let b: CreatedBrand = try await send("POST", "/brands", query: ["orgId": orgId], body: ["url": url]); return b.brandId
+    }
+    func proposeOffers(brandId: String, description: String) async throws -> OfferProposals {
+        try await send("POST", "/brands/\(brandId)/offers/proposals", query: ["brandId": brandId], body: ["description": description], timeout: 150)
+    }
+    func confirmOffer(brandId: String, offers: [OfferProposal], chosen: Int) async throws -> String {
+        let list = offers.map { ["name": $0.name, "description": $0.description, "icon": $0.icon ?? ""] }
+        let r: ConfirmedOffer = try await send("POST", "/brands/\(brandId)/offers/confirm", query: ["brandId": brandId], body: ["offers": list, "chosenIndex": chosen])
+        return r.chosenOfferId
+    }
+
     // MARK: transport
 
     private func get<T: Decodable>(_ path: String, query: [String: String]) async throws -> T {
         try await send("GET", path, query: query, body: nil)
     }
 
-    private func send<T: Decodable>(_ method: String, _ path: String, query: [String: String], body: [String: Any]?) async throws -> T {
+    private func sendIgnoringBody(_ method: String, _ path: String, query: [String: String], body: [String: Any]?) async throws {
+        _ = try await raw(method, path, query: query, body: body, timeout: 60)
+    }
+
+    private func send<T: Decodable>(_ method: String, _ path: String, query: [String: String], body: [String: Any]?, timeout: TimeInterval = 60) async throws -> T {
+        let data = try await raw(method, path, query: query, body: body, timeout: timeout)
+        do {
+            return try JSONDecoder().decode(T.self, from: data)
+        } catch {
+            throw APIError(message: "\(method) \(path): unexpected response shape (\(error))")
+        }
+    }
+
+    private func raw(_ method: String, _ path: String, query: [String: String], body: [String: Any]?, timeout: TimeInterval) async throws -> Data {
         var comps = URLComponents(url: apiBaseURL.appendingPathComponent(path), resolvingAgainstBaseURL: false)!
         if !query.isEmpty { comps.queryItems = query.map { URLQueryItem(name: $0.key, value: $0.value) } }
         var req = URLRequest(url: comps.url!)
+        req.timeoutInterval = timeout
         req.httpMethod = method
         req.setValue("Bearer \(apiKey)", forHTTPHeaderField: "Authorization")
         req.setValue("application/json", forHTTPHeaderField: "Accept")
@@ -301,10 +458,6 @@ struct DistributeAPI {
             let text = String(data: data, encoding: .utf8) ?? ""
             throw APIError(message: "\(method) \(path) failed (\(status)): \(text.prefix(300))")
         }
-        do {
-            return try JSONDecoder().decode(T.self, from: data)
-        } catch {
-            throw APIError(message: "\(method) \(path): unexpected response shape (\(error))")
-        }
+        return data
     }
 }
