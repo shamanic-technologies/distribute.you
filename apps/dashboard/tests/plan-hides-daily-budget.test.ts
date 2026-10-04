@@ -56,7 +56,6 @@ describe("every dashboard surface that states a daily budget asks whether to hid
     "src/components/v2/mission-page.tsx",
     "src/components/v2/missions-page.tsx",
     "src/components/v2/crew-page.tsx",
-    "src/components/v2/setup-pages.tsx",
     "src/components/v2/work-page.tsx",
     "src/components/v2/add-mission-modal.tsx",
     "src/components/v2/offer-sales-path-page.tsx",
