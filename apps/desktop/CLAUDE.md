@@ -1,0 +1,18 @@
+# apps/desktop (distribute for Mac, private beta)
+
+Native SwiftUI app, ~1.6 MB, no Electron/Tauri. Sidebar (brand picker, channels, credits), a chat in the middle, a channel panel on the right. Landing: `distribute.you/desktop` (`apps/landing/src/lib/pages/desktop.ts`), noindex, never linked from the main landing (owner 2026-10-04).
+
+## Product rules (owner-decided 2026-10-04)
+- **Desktop is 100% PREPAID with optional top-up**: the app is free; campaigns spend prepaid credit; the sidebar's Top up buttons open a hosted Stripe checkout (`POST /v1/billing/checkout-sessions`, return page `/desktop/topped-up`). Never the $99 monthly plan, never a free trial on this surface.
+- **Claude = the user's OWN Claude Code CLI**, launched as `claude -p --output-format stream-json --resume <id>`. Never a "Login with Claude" / OAuth token in our app (Anthropic forbids it for third parties without approval). The app never sees a Claude credential.
+- Only channels we RUN appear in the sidebar (cold email today).
+
+## How it talks to distribute
+- Reads (sidebar + panel) hit `https://api.distribute.you/v1` with the user's key (`Authorization: Bearer distrib.usr_…`, stored in the login Keychain): `/me`, `/billing/accounts/balance?orgId=`, `/campaigns?brandId=`, `/features/sales-cold-email-outreach/revenue?groupBy=campaignId&pricing=net`. Every figure is SERVED; the app formats, never computes a metric (cost per positive reply at zero replies reads `Learning`).
+- The chat gets the hosted MCP (`mcp.distribute.you/mcp`, read-only) via `--strict-mcp-config`, and WRITES through `curl` with `$DISTRIBUTE_API_KEY` (allowed tools: `mcp__distribute`, `Bash(curl:*)`, `Bash(jq:*)`). The system prompt (`Claude.swift`) lists the write routes and requires a yes before any change. Adding a write = a line in that prompt, or a write tool in the `mcp` repo.
+- A Mac app inherits a bare PATH: `ClaudeCLI.locate()` asks the user's login shell (`$SHELL -ilc`) for `PATH` and `command -v claude`.
+
+## Build and ship
+- **Built by CI only** (`.github/workflows/desktop.yml`, `macos-14` runner with Xcode): `scripts/build-app.sh` = `swiftc` per arch + `lipo` (universal), hand-written `Info.plist`, ad-hoc `codesign`, `ditto` zip. No `Package.swift`: the local Command Line Tools here have a broken SwiftPM manifest link and an SDK/compiler mismatch (`this SDK is not supported by the compiler`); a push to a branch is the compile check (download with `gh run download <id> -n Distribute`).
+- Every push to `main` touching `apps/desktop` re-uploads `Distribute.zip` to the `desktop-latest` pre-release (never marked Latest); the landing's button and `distribute.you/desktop/install.sh` point there.
+- Not notarized (no Apple Developer ID): `install.sh` installs via curl (no quarantine flag) and clears `com.apple.quarantine`; the browser download needs System Settings, Privacy and Security, Open Anyway.
