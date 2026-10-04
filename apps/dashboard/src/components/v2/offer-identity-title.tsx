@@ -118,29 +118,40 @@ export function OfferIdentityTitle({ brandId, offerId }: { brandId: string; offe
             )}
           </span>
         </button>
+        {/* ONE box for both states, so the field opens exactly where the text sat:
+            same border width, padding and font, and the input is sized by a hidden
+            copy of its own value in the same grid cell (the Hormozi card's pattern). */}
         {text !== null ? (
           <>
-            <input
-              autoFocus
-              aria-label="Offer name"
-              value={text}
-              onChange={(e) => {
-                setText(e.target.value);
-                setError(null);
-              }}
-              onBlur={commit}
-              onKeyDown={(e) => {
-                if (e.key === "Enter") e.currentTarget.blur();
-                if (e.key === "Escape") {
-                  setText(null);
-                  setError(null);
-                }
-              }}
-              /* No maxLength: the counter shows the overrun as a negative number. */
-              className={`min-w-0 flex-1 rounded-[8px] bg-transparent px-1.5 -mx-1.5 text-[24px] font-medium leading-[30px] tracking-[-0.02em] outline-none ring-1 ${
-                counter.over ? "ring-[var(--data-rose)]" : "ring-[var(--accent)]"
-              }`}
-            />
+            <span className={`${NAME_BOX} ${counter.over ? "border-[var(--data-rose)]" : "border-[var(--accent)]"}`}>
+              <span className="inline-grid min-w-0">
+                <span aria-hidden className="invisible col-start-1 row-start-1 whitespace-pre">
+                  {text || " "}{" "}
+                </span>
+                <input
+                  autoFocus
+                  size={1}
+                  aria-label="Offer name"
+                  value={text}
+                  placeholder={`Offer name, ${OFFER_NAME_RULES}`}
+                  onChange={(e) => {
+                    setText(e.target.value);
+                    setError(null);
+                  }}
+                  onBlur={commit}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") e.currentTarget.blur();
+                    if (e.key === "Escape") {
+                      setText(null);
+                      setError(null);
+                    }
+                  }}
+                  /* No maxLength: the counter shows the overrun as a negative number. */
+                  className="col-start-1 row-start-1 w-full min-w-0 bg-transparent p-0 outline-none [font:inherit] [letter-spacing:inherit]"
+                />
+              </span>
+              <PencilSimpleIcon aria-hidden className="invisible h-4 w-4 shrink-0" />
+            </span>
             <CharCounter value={text} max={OFFER_NAME_MAX_CHARS} normalize={normalizeOfferName} className="shrink-0" />
           </>
         ) : (
@@ -148,23 +159,20 @@ export function OfferIdentityTitle({ brandId, offerId }: { brandId: string; offe
             type="button"
             disabled={!offer || pending !== null}
             onClick={() => offer && setText(offer.name)}
-            className="k-hover group -mx-1.5 flex min-w-0 items-center gap-2 rounded-[8px] px-1.5 text-left"
+            className={`${NAME_BOX} k-hover group border-transparent text-left hover:border-[var(--line)]`}
           >
             <span className="truncate">{shown}</span>
             <PencilSimpleIcon className="k-fg3 h-4 w-4 shrink-0 opacity-0 transition-opacity duration-150 group-hover:opacity-100 group-focus-visible:opacity-100" />
           </button>
         )}
       </span>
-      {error ? (
-        <span className="text-[13px] font-normal leading-[20px] tracking-normal text-[var(--data-rose)]">{error}</span>
-      ) : text !== null ? (
-        <span className="k-fg3 text-[12px] font-normal leading-[18px] tracking-normal">
-          {`A name is ${OFFER_NAME_RULES}, unique on this brand.`}
-        </span>
-      ) : null}
+      {error && <span className="text-[13px] font-normal leading-[20px] tracking-normal text-[var(--data-rose)]">{error}</span>}
     </span>
   );
 }
+
+/** The name's box, identical reading and editing, so nothing moves on click. */
+const NAME_BOX = "-mx-2 flex min-w-0 items-center gap-2 rounded-[8px] border px-2";
 
 /**
  * A refusal from brand-service, as a sentence, through the module the create modal
