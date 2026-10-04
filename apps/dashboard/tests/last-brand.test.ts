@@ -3,7 +3,6 @@ import fs from "fs";
 import path from "path";
 import {
   lastBrandCookieName,
-  explicitHierarchyHref,
   matchBrandPath,
 } from "../src/lib/last-brand";
 
@@ -12,18 +11,6 @@ describe("lastBrandCookieName — org-scoped", () => {
     expect(lastBrandCookieName("org_abc")).toBe("last-brand-org_abc");
     expect(lastBrandCookieName("org_abc")).not.toBe(
       lastBrandCookieName("org_def"),
-    );
-  });
-});
-
-describe("explicit hierarchy intent — user-requested back navigation", () => {
-  it("marks hierarchy links with a query param that survives through root redirects", () => {
-    expect(explicitHierarchyHref("/")).toBe("/?view=overview");
-    expect(explicitHierarchyHref("/orgs/org_123")).toBe(
-      "/orgs/org_123?view=overview",
-    );
-    expect(explicitHierarchyHref("/orgs/org_123?tab=usage")).toBe(
-      "/orgs/org_123?tab=usage&view=overview",
     );
   });
 });
@@ -63,19 +50,5 @@ describe("proxy.ts wiring — edge read + write", () => {
     expect(proxy).toContain("matchBrandPath");
     expect(proxy).toContain("res.cookies.set");
     expect(proxy).toContain("httpOnly: true");
-  });
-});
-
-describe("hierarchy links — breadcrumb", () => {
-  const breadcrumb = fs.readFileSync(
-    path.join(__dirname, "../src/components/breadcrumb-nav.tsx"),
-    "utf-8",
-  );
-
-  it("marks breadcrumb parent links as explicit hierarchy navigation", () => {
-    // The breadcrumb serves the onboarding chrome.
-    // Org root link uses the per-tab URL org, not the shared active org (#1948).
-    expect(breadcrumb).toContain("explicitHierarchyHref(`/orgs/${orgId}`)");
-    expect(breadcrumb).toContain("explicitHierarchyHref(`/orgs/${orgId}/brands/${brandId}`)");
   });
 });

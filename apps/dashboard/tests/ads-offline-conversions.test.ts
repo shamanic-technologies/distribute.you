@@ -48,21 +48,9 @@ describe("both checkout trackers accept BOTH return shapes", () => {
   });
 });
 
-describe("the onboarding layout mounts both trackers", () => {
-  const layout = read("src/app/(authed)/onboarding/layout.tsx");
-
-  it("renders them, so the launch return is observed where it lands", () => {
-    expect(layout).toContain("<AdsPurchaseTracker />");
-    expect(layout).toContain("<DistributeSaleTracker />");
-  });
-
-  it("imports them from the shared components, never a second copy", () => {
-    expect(layout).toContain('from "@/components/ads-purchase-tracker"');
-    expect(layout).toContain('from "@/components/distribute-sale-tracker"');
-  });
-
-  it("the dashboard shell keeps its own mount, for the billing top-up return", () => {
-    // The v2 Billing page is where a top-up's Stripe return lands.
+describe("the dashboard shell mounts both trackers", () => {
+  it("renders them, so a Stripe return is observed where it lands", () => {
+    // Every v2 page (Billing top-up, plan checkout) returns under this shell.
     const dash = read("src/components/v2/v2-client-layout.tsx");
     expect(dash).toContain("<AdsPurchaseTracker />");
     expect(dash).toContain("<DistributeSaleTracker />");

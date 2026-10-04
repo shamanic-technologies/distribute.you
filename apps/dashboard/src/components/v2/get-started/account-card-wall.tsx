@@ -15,6 +15,8 @@
  *   1. account  — work email, then the emailed 6-digit code (no password to invent), or Google;
  *   2. claim    — the anonymous org they built is re-pointed at the account they just
  *                 made (`/api/anon/claim`, the same hinge `/onboarding/claim` runs);
+ *   2b. phone   — their phone number, required (owner 2026-10-04: every signup leaves
+ *                 one, even if they stop before the card), stored on the Clerk user;
  *   3. card     — the card form opens in the same column by itself, charging nothing:
  *                 the $30 free credit is spent first, then the card is charged at most
  *                 the daily budget;
@@ -38,6 +40,7 @@ import {
   createSubscriptionCheckout,
   getBillingAccount,
   getSubscription,
+  savePhoneNumber,
   setPaymentMode,
   startSubscription,
   type BillingAccount,
@@ -69,7 +72,10 @@ import {
   type PlanCampaign,
   wallCopy,
 } from "@/lib/v2/get-started";
-import { formatReturn, useStartCatalogue } from "@/components/start/start-picks";
+import { formatReturn, useStartCatalogue } from "./catalogue";
+import { requiredPhoneProblem } from "@/lib/phone-syntax";
+import type { PhoneValue } from "@/components/onboarding/phone-input";
+import { PhoneField, browserPhoneCountry } from "./phone-field";
 import { EMPTY_PROGRESS, launchFromPreview, pricingLegFor, recommendedBudgetForPreview, type LaunchProgress } from "./launch";
 import { CountUp, usePrefersReducedMotion } from "./motion";
 import { TrialSpots, TrialTimer } from "./urgency";
@@ -81,7 +87,7 @@ const CAPTCHA_PROMPT_DELAY_MS = 2500;
 const RESEND_COOLDOWN_SECONDS = 30;
 const SLIDE_MS = 6000;
 
-type Stage = "account" | "code" | "claim" | "card" | "launching";
+type Stage = "account" | "code" | "claim" | "phone" | "card" | "launching";
 
 /**
  * The instance requires a password on every account. Nobody types one here: the
@@ -175,6 +181,12 @@ export function AccountCardWall({
   const [error, setError] = useState<string | null>(null);
   const [cardSecret, setCardSecret] = useState<string | null>(null);
   const [account, setAccount] = useState<BillingAccount | null>(null);
+  const [phone, setPhone] = useState<PhoneValue>(() => {
+    const c = browserPhoneCountry(navigator.language);
+    return { countryCode: c.code, dialCode: c.dial, national: "" };
+  });
+  // The reason shows once they leave the field or press Continue, never mid-typing.
+  const [phoneProblemShown, setPhoneProblemShown] = useState(false);
 
   const claimed = useRef(false);
   const cardOpened = useRef(false);
@@ -234,7 +246,7 @@ export function AccountCardWall({
         posthog.capture("get_started_claimed");
         const acct = await getBillingAccount();
         setAccount(acct);
-        setStage("card");
+        setStage("phone");
         // Price the budget the way the "Add a brand" modal does, now that the brand
         // can hold an offer. Best effort: the field keeps the floor when no price exists.
         setPricing(true);
@@ -360,6 +372,26 @@ export function AccountCardWall({
     } catch (err) {
       console.error("[get-started] google sign up failed:", err);
       setError(clerkErrorMessage(err));
+      setBusy(false);
+    }
+  }
+
+  // ── Phone ──
+  async function submitPhone(e: React.FormEvent) {
+    e.preventDefault();
+    if (busy) return;
+    setPhoneProblemShown(true);
+    if (requiredPhoneProblem(phone)) return;
+    setBusy(true);
+    setError(null);
+    try {
+      await savePhoneNumber(phone);
+      posthog.capture("get_started_phone_saved", { country: phone.countryCode });
+      setStage("card");
+    } catch (err) {
+      console.error("[get-started] phone save failed:", err);
+      setError("We could not save your number. Try again.");
+    } finally {
       setBusy(false);
     }
   }
@@ -809,6 +841,29 @@ export function AccountCardWall({
               </div>
             )}
 
+            {stage === "phone" && (
+              <form className="mt-4 grid gap-3" onSubmit={(e) => void submitPhone(e)}>
+                <div>
+                  <p className="k-fg text-[13px] font-medium">Your phone number</p>
+                  <p className="k-fg2 text-[13px] leading-5">So we can reach you about your campaign.</p>
+                </div>
+                <PhoneField
+                  value={phone}
+                  onChange={(v) => {
+                    setPhone(v);
+                    setPhoneProblemShown(false);
+                    setError(null);
+                  }}
+                  onBlur={() => setPhoneProblemShown(phone.national.trim() !== "")}
+                  problem={phoneProblemShown ? requiredPhoneProblem(phone) : null}
+                  disabled={busy}
+                />
+                <button type="submit" className="k-btn-accent k-cta gs-glow w-full justify-center" disabled={busy}>
+                  {busy ? "Saving..." : "Continue"}
+                </button>
+              </form>
+            )}
+
             {stage === "card" && !cardSecret && (
               <div className="mt-4 grid gap-3">
                 <p className="k-fg text-[13px] font-medium">
@@ -903,7 +958,7 @@ function Consent({ brandName, checked, onChange }: { brandName: string; checked:
 }
 
 function Steps({ stage }: { stage: Stage }) {
-  const at = stage === "account" || stage === "code" || stage === "claim" ? 0 : stage === "card" ? 1 : 2;
+  const at = stage === "account" || stage === "code" || stage === "claim" || stage === "phone" ? 0 : stage === "card" ? 1 : 2;
   const items = ["Account", "Card", "Start"];
   return (
     <div>

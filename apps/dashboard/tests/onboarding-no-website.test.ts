@@ -3,64 +3,17 @@ import * as fs from "fs";
 import * as path from "path";
 
 /**
- * The beta "I have no website" onboarding path: a brand with no site the user
- * describes in a free-form block instead of a URL. It drops the click-destination
- * step and locks the goal to positive_replies. On the dashboard generally a brand
- * with no website (url == null) restricts its goal pickers the same way.
+ * The "I have no website" path: a brand with no site the user describes in a
+ * free-form block instead of a URL. The v1 wizard that first carried it is
+ * deleted; the v2 new-org modal is the live caller of the same API helper.
  *
- * Behavioural import isn't possible (Clerk/posthog/api pulls), so we assert the
- * load-bearing source, matching the repo's other onboarding guards.
+ * Behavioural import isn't possible (Clerk/posthog/api pulls through the `@`
+ * alias), so we assert the load-bearing source.
  */
 const read = (rel: string) =>
   fs.readFileSync(path.join(__dirname, "..", rel), "utf-8");
 
-describe("Onboarding — no-website path (beta)", () => {
-  const src = read("src/components/onboarding/onboarding.tsx");
-
-  it("bumps the state version to 8 and persists the no-website fields", () => {
-    expect(src).toContain("ONBOARDING_STATE_VERSION = 8");
-    expect(src).toContain("restored?.noWebsiteMode ??");
-    expect(src).toContain("restored?.brandName ??");
-    expect(src).toContain("restored?.brandContext ??");
-  });
-
-  it("accepts noWebsiteMode / brandName / brandContext in parseOnboardingState", () => {
-    expect(src).toContain('typeof p.noWebsiteMode !== "boolean"');
-    expect(src).toContain('typeof p.brandName !== "string"');
-    expect(src).toContain('typeof p.brandContext !== "string"');
-  });
-
-  it("shows a GA 'I have no website' button (no beta gate, no badge)", () => {
-    // GA: the button renders for everyone, ungated, with no MaturityBadge.
-    expect(src).toContain("I have no website");
-    expect(src).toContain("enterNoWebsiteMode");
-    expect(src).not.toMatch(/isBeta &&[\s\S]{0,400}I have no website/);
-    expect(src).not.toMatch(/I have no website[\s\S]{0,200}MaturityBadge level="beta"/);
-  });
-
-  it("swaps the URL input for a brand name + free-form context textarea", () => {
-    expect(src).toContain('id="ob-brand-name"');
-    expect(src).toContain('id="ob-brand-context"');
-    expect(src).toContain("maxLength={300000}");
-    expect(src).toContain("startAnalyzeNoWebsite");
-  });
-
-  it("creates the null-url brand + persists context BEFORE extraction", () => {
-    expect(src).toContain("createBrandWithoutWebsite(name, context)");
-    expect(src).toContain("createBrandNoWebsiteAndFetchServices");
-  });
-
-  it("asks for no click destination at all, for any brand", () => {
-    // A funnel owns its landing page now, so the standalone click-destination step
-    // is gone for EVERY brand — a no-website brand could never reach it anyway.
-    expect(src).not.toContain('if (step === "destination") {');
-    expect(src).toContain('setStep("audiences")');
-  });
-
-  it("locks the optimization goal to positive_replies in no-website mode", () => {
-    expect(src).toContain('if (noWebsiteMode && outcome !== "positive_replies") setOutcome("positive_replies")');
-  });
-
+describe("no-website brand creation", () => {
   it("isolates the create+context API calls behind one helper conformed to the deployed contract", () => {
     const api = read("src/lib/api.ts");
     expect(api).toContain("export async function createBrandWithoutWebsite");
@@ -68,5 +21,10 @@ describe("Onboarding — no-website path (beta)", () => {
     // PUT /brands/:id/business-context { content } before extraction.
     expect(api).toContain("/business-context");
     expect(api).toContain("body: { content: context }");
+  });
+
+  it("the v2 new-org modal calls it (a helper nothing calls is the feature absent)", () => {
+    const modal = read("src/components/v2/new-org-modal.tsx");
+    expect(modal).toContain("await createBrandWithoutWebsite(");
   });
 });

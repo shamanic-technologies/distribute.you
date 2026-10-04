@@ -3,7 +3,6 @@ import * as fs from "fs";
 import * as path from "path";
 import { coerceTextField, coerceListField } from "../src/lib/strategy-model";
 import { cloneFields, ALL_FIELDS } from "../src/components/brand-profile/field-editor";
-import { isListLeverKey } from "../src/components/onboarding/offer-levers";
 
 const read = (rel: string) => fs.readFileSync(path.resolve(__dirname, rel), "utf-8");
 
@@ -103,18 +102,9 @@ describe("the save path can no longer blank a lever it did not touch", () => {
   });
 });
 
-describe("isListLeverKey — the 7-key kind map used to seed onboarding", () => {
-  it("matches ALL_FIELDS' declared kind for every user field", () => {
-    for (const f of ALL_FIELDS) {
-      expect(isListLeverKey(f.key)).toBe(f.kind === "list");
-    }
-  });
-});
-
 describe("source guards", () => {
   const strategyPage = read("../src/components/settings/brand-offer-card.tsx");
   const fieldEditor = read("../src/components/brand-profile/field-editor.tsx");
-  const onboarding = read("../src/components/onboarding/onboarding.tsx");
 
   it("cloneFields coerces by kind rather than passing the raw value through", () => {
     expect(fieldEditor).toContain('f.kind === "list" ? coerceListField(v) : coerceTextField(v)');
@@ -126,17 +116,6 @@ describe("source guards", () => {
 
   it("the Brand Settings TextEditor coerces instead of dropping a non-string to ''", () => {
     expect(strategyPage).toContain("value={coerceTextField(value)}");
-  });
-
-  it("the onboarding offer step joins a text lever instead of comma-joining it raw", () => {
-    expect(onboarding).toContain("isList ? formatListLeverValue(raw) : coerceTextField(raw)");
-    expect(onboarding).not.toContain('raw.join(", ")');
-  });
-
-  it("onboarding normalises the seeded user-fields to each lever's kind", () => {
-    expect(onboarding).toContain(
-      "seeded[key] = isListLeverKey(key) ? coerceListField(v) : coerceTextField(v)",
-    );
   });
 
   it("coerceListField and coerceTextField stay mirror halves of the same guard", () => {

@@ -6,7 +6,8 @@ import * as path from "path";
 // every key the PUT carries and leaves an OMITTED key untouched, and a key with no
 // confirmed row falls back to the AI `suggested` prefill on the next read. Omitting
 // empty values therefore made a deletion impossible: the entry came back on the next
-// read. Both dashboard surfaces that write these fields are guarded here.
+// read. The Brand Settings offer card, the dashboard surface that writes these
+// fields, is guarded here (the v1 onboarding wizard that also wrote them is deleted).
 
 const read = (rel: string) => fs.readFileSync(path.resolve(__dirname, rel), "utf-8");
 
@@ -34,25 +35,6 @@ describe("Brand offer card — profileToUserFieldsPayload", () => {
     // Both list-kind levers (services, socialProof) are one-per-line textareas, so
     // the payload splits them by line; every other lever is text.
     expect(fn).toContain("TEXTAREA_LIST_KEYS.has(key) ? linesToList(v) : coerceTextField(v).trim()");
-  });
-});
-
-describe("onboarding — buildUserFieldsPayload", () => {
-  const fn = sliceFn(
-    read("../src/components/onboarding/onboarding.tsx"),
-    "function buildUserFieldsPayload",
-  );
-
-  it("gates on presence in the bag, not on a non-empty value", () => {
-    expect(fn).toContain("if (!(key in profile)) continue;");
-    expect(fn).not.toContain(DROPS_EMPTY);
-    expect(fn).toContain("out[key] =");
-  });
-
-  it("keeps the non-empty guard on services only", () => {
-    // services is the services step's own picked list; an empty one there is not a
-    // deletion, it is a step the user has not completed.
-    expect(fn).toContain("if (cleanServices.length) out.services = cleanServices;");
   });
 });
 

@@ -6,7 +6,7 @@ import * as path from "path";
 // every key the PUT carries and leaves an OMITTED key untouched, and a key with no
 // confirmed row falls back to the AI `suggested` prefill on the next read. So the old
 // "omit empty values" behaviour made a deletion impossible: the entry came straight
-// back on the next read, on all three surfaces that write these fields.
+// back on the next read.
 //
 // Source-substring guards rather than unit calls: these modules import through the
 // `@` alias, which vitest does not resolve here.
@@ -38,26 +38,6 @@ describe("admin Brand Settings — profileToPayload", () => {
   });
 });
 
-// The dashboard Strategy page carried a third copy of this builder. That page was
-// retired in #3284, so there are two copies left: this console's and onboarding's.
-// The block that read it was throwing ENOENT here since that merge — admin's suite is
-// not a CI gate, so nothing surfaced it.
-
-describe("dashboard onboarding — buildUserFieldsPayload", () => {
-  const fn = sliceFn(
-    read("../../dashboard/src/components/onboarding/onboarding.tsx"),
-    "function buildUserFieldsPayload",
-  );
-
-  it("gates on presence in the bag, not on a non-empty value", () => {
-    expect(fn).toContain("if (!(key in profile)) continue;");
-    expect(fn).not.toContain(DROPS_EMPTY);
-    expect(fn).toContain("out[key] =");
-  });
-
-  it("keeps the non-empty guard on services only", () => {
-    // services is the services step's own picked list; an empty one there is not a
-    // deletion, it is a step the user has not completed.
-    expect(fn).toContain("if (cleanServices.length) out.services = cleanServices;");
-  });
-});
+// The dashboard Strategy page (retired in #3284) and the dashboard v1 onboarding
+// wizard (deleted 2026-10-04) carried the other copies of this builder; this console's
+// is the one left here.

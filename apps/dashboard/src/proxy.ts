@@ -1,10 +1,6 @@
 import { clerkMiddleware, createRouteMatcher } from "@clerk/nextjs/server";
 import { NextResponse } from "next/server";
 import { lastBrandCookieName, matchBrandPath } from "@/lib/last-brand";
-import {
-  onboardingBrandCookieName,
-  onboardingResumeHref,
-} from "@/lib/onboarding-brand-cookie";
 import { v2PathForV1, stripV2Prefix } from "@/lib/ui-version";
 
 const isPublicRoute = createRouteMatcher([
@@ -26,17 +22,14 @@ const isPublicRoute = createRouteMatcher([
   // visitor picks the outcomes they want to buy, and only then makes an account. Behind the auth gate it
   // would be a screen nobody in the market can reach.
   "/start(.*)",
-  // The BUILD half, which now runs before signup too: a visitor walks their own
-  // services, audiences and offer, and sees what we assembled,
-  // before being asked for an account or a card. It spends against an anonymous
-  // org through `/api/anon/*`, which carries its own signed session and its own
-  // allowlist — this entry only decides that the SCREEN is reachable.
-  //
+  // The old onboarding URL: it only redirects now (to `/get-started` signed out, the
+  // org page signed in), and a signed-out visitor must reach that redirect.
   // EXACT, not a prefix: `/onboarding/claim` needs the account to exist and stays
   // behind the gate. A `(.*)` here would open it.
   "/onboarding",
-  // Onboarding v2, signed out like the build half above (it runs on the same
-  // anonymous session and allowlist). EXACT: nothing lives under it.
+  // The signup flow (owner 2026-10-04: the only one). It runs before signup on an
+  // anonymous org through `/api/anon/*`, which carries its own signed session and its
+  // own allowlist: this entry only decides that the SCREEN is reachable. EXACT.
   "/get-started",
   // distribute for Mac's browser sign-in. Public so the first-run gate cannot bounce
   // it to onboarding (DesktopConnectResume would bounce it back: a loop); the page
@@ -71,20 +64,13 @@ export default clerkMiddleware(
     const { userId, orgId, sessionClaims, sessionStatus } = await auth();
     const pathname = req.nextUrl.pathname;
 
-    // Where an unfinished onboarding resumes. The wizard's own progress lives in
-    // sessionStorage, so it is gone the moment the tab closes — but the brand it
-    // created is still in brand-service, and `/onboarding?brandId=` re-hydrates
-    // everything from there (services, offer) and lands on the picks. Without the brand id the flow can only start over at
-    // the welcome screen, which is what a user who left at the budget step used to
-    // get. Org-scoped cookie, so a brand abandoned under one org never resumes
-    // inside another (onboarding can create a brand-new org).
-    const onboardingHref = (): string => {
-      const inProgressBrand = orgId
-        ? req.cookies.get(onboardingBrandCookieName(orgId))?.value
-        : undefined;
-      if (inProgressBrand) return onboardingResumeHref(inProgressBrand);
-      return "/onboarding";
-    };
+    // Where an unfinished setup resumes: the org page, which offers the org's brand
+    // under "Finish setup" (the v2 setup modal, ending on "Choose your plan"), or
+    // "Add a brand" when it has none. It is exempt from this gate below, so no loop.
+    // No org at all (an active session normally has one; a pending one is handled
+    // above): `/get-started`, public, never an automatic redirect back here.
+    const onboardingHref = (): string =>
+      orgId ? `/v2/orgs/${encodeURIComponent(orgId)}` : "/get-started";
 
     // Clerk keeps users in a pending session when personal accounts are
     // disabled and an org still needs to be chosen. Let only pending sessions

@@ -1,7 +1,6 @@
 import type { Metadata } from "next";
 import { PartneroViaCapture } from "@/components/partnero-via-capture";
 import { InviteCapture } from "@/components/invite/invite-capture";
-import { LandingUrlCapture } from "@/components/landing-url-capture";
 import { BRAND_TINT_PRELOAD_SCRIPT } from "@/lib/brand-tint-preload";
 import { FIRST_TOUCH_CAPTURE_SCRIPT } from "@/lib/first-touch";
 import "./globals.css";
@@ -128,7 +127,6 @@ export default function RootLayout({
       <body className="antialiased">
         <PartneroViaCapture />
         <InviteCapture />
-        <LandingUrlCapture />
         {children}
       </body>
     </html>

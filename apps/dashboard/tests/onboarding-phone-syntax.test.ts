@@ -4,54 +4,17 @@ import { join } from "node:path";
 
 // The RULE lives in `src/lib/phone-syntax.ts` and has real unit tests of its own
 // (`phone-syntax.test.ts`). These pin the CALL SITES: a module perfectly able to
-// refuse an impossible number is the feature entirely absent if the step never
-// asks it, and a step that blocks Continue is a display decision that a caller
-// posting straight at the route goes around.
+// refuse an impossible number is the feature entirely absent if nothing asks it,
+// and a step that blocks Continue is a display decision that a caller posting
+// straight at the route goes around. The v1 onboarding phone STEP is deleted; the
+// v2 get-started phone stage carries its own guard.
 
 const root = join(__dirname, "..");
-const STEP = readFileSync(join(root, "src/components/onboarding/onboarding.tsx"), "utf8");
 const INPUT = readFileSync(join(root, "src/components/onboarding/phone-input.tsx"), "utf8");
 const ROUTE = readFileSync(
   join(root, "src/app/(authed)/api/onboarding/phone/route.ts"),
   "utf8",
 );
-
-describe("the onboarding step refuses a number that cannot be a number", () => {
-  it("asks the shared module, rather than carrying a rule of its own", () => {
-    expect(STEP).toContain('from "@/lib/phone-syntax"');
-    expect(STEP).toContain("phoneSyntaxProblem({ dialCode: phone.dialCode, national: phone.national })");
-  });
-
-  it("declares the problem ABOVE the handler that reads it", () => {
-    // An index compare, not a substring: declaration ORDER is the whole point
-    // and a `const` read by a consumer declared earlier throws at render time,
-    // which `tsc` cannot see.
-    const decl = STEP.indexOf("const phoneProblem = phoneSyntaxProblem(");
-    const consumer = STEP.indexOf("async function savePhoneAndContinue()");
-    expect(decl).toBeGreaterThan(-1);
-    expect(consumer).toBeGreaterThan(-1);
-    expect(decl).toBeLessThan(consumer);
-  });
-
-  it("does not advance while the number is impossible", () => {
-    const at = STEP.indexOf("async function savePhoneAndContinue()");
-    const body = STEP.slice(at, STEP.indexOf("setStep(\"funnelStats\");", at));
-    expect(body).toContain("if (phoneProblem)");
-    expect(body).toContain("setPhoneProblemRevealed(true)");
-    expect(body).toContain("return;");
-  });
-
-  it("greys Continue only while the reason is on screen", () => {
-    // A greyed primary button with no reason beside it reads as a dead control,
-    // so the disabled state is gated on the message being revealed.
-    expect(STEP).toContain("disabled={phoneProblemRevealed && phoneProblem !== null}");
-  });
-
-  it("reveals the problem on blur and hides it again on the next keystroke", () => {
-    expect(STEP).toContain("onBlur={() => setPhoneProblemRevealed(true)}");
-    expect(STEP).toContain("problem={phoneProblemRevealed ? phoneProblem : null}");
-  });
-});
 
 describe("the input renders the sentence it is handed and decides nothing", () => {
   it("carries no rule of its own", () => {

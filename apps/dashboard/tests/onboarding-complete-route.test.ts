@@ -15,9 +15,9 @@ const routePath = path.join(
   __dirname,
   "../src/app/(authed)/api/onboarding/complete/route.ts"
 );
-const onboardingPagePath = path.join(
+const newOrgModalPath = path.join(
   __dirname,
-  "../src/components/onboarding/onboarding.tsx"
+  "../src/components/v2/new-org-modal.tsx"
 );
 
 describe("onboarding-complete server route", () => {
@@ -44,12 +44,17 @@ describe("onboarding-complete server route", () => {
     expect(content).toContain("401");
     expect(content).toContain("400");
   });
+
+  it("no longer clears a v1 onboarding-brand resume cookie", () => {
+    expect(content).not.toContain("onboardingBrandCookieName");
+    expect(content).toContain("return NextResponse.json({ ok: true });");
+  });
 });
 
-describe("onboarding page marks onboarding complete on brand creation", () => {
-  const content = fs.readFileSync(onboardingPagePath, "utf-8");
+describe("the v2 setup marks onboarding complete", () => {
+  const content = fs.readFileSync(newOrgModalPath, "utf-8");
 
-  it("POSTs to /api/onboarding/complete after upsertBrand", () => {
+  it("POSTs to /api/onboarding/complete", () => {
     expect(content).toContain('"/api/onboarding/complete"');
     expect(content).toMatch(/method:\s*"POST"/);
   });

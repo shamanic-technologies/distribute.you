@@ -16,16 +16,10 @@ describe("Tenant switcher", () => {
 
   const hook = read("src/lib/use-tenant-switcher.ts");
 
-  it("breadcrumb-nav survives for the onboarding chrome", () => {
-    // `onboarding-top-chrome` renders it (guarded by onboarding-escape-chrome.test.ts).
-    expect(read("src/components/onboarding/onboarding-top-chrome.tsx")).toContain(
-      "BreadcrumbNav",
-    );
-  });
-
   it("tenant surfaces share ONE switch implementation", () => {
     expect(hook).toContain("export function useTenantSwitcher");
-    expect(read("src/components/breadcrumb-nav.tsx")).toContain("useTenantSwitcher()");
+    // The v2 sidebar's org switcher (the v1 breadcrumb that also did is deleted).
+    expect(read("src/components/v2/sidebar-menus.tsx")).toContain("useTenantSwitcher()");
     // God-mode (staff all-orgs list + join-then-setActive) lives in the hook.
     expect(hook).toContain("isAdminEmail");
     expect(hook).toContain("/api/admin/orgs/${clerkOrgId}/join");

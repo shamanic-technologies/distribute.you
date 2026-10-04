@@ -8,7 +8,7 @@ import { claimedSignUpCopy, claimedSignUpHref, refusalExits } from "../src/lib/c
  * of "Create your account" over a bare form. (#4296)
  */
 
-const ONBOARDING = readFileSync("src/components/onboarding/onboarding.tsx", "utf8");
+const GET_STARTED = readFileSync("src/components/v2/get-started/get-started.tsx", "utf8");
 const SIGN_UP = readFileSync("src/app/(authed)/sign-up/[[...sign-up]]/page.tsx", "utf8");
 const CLIENT = readFileSync("src/lib/anon-session-client.ts", "utf8");
 
@@ -77,24 +77,23 @@ describe("the reason crosses the wire and the redirect reads it", () => {
     expect(CLIENT).toContain("typeof body.reason === \"string\"");
   });
 
-  it("a refusal STAYS on the URL step and offers its exits inline, never a redirect", () => {
+  it("a refusal STAYS on the website field and offers its exits inline, never a redirect", () => {
     // The redirect to /sign-up stranded a visitor whose website was held: no way
     // back to the field to change it (owner 2026-09-19).
-    const at = ONBOARDING.indexOf("const outcome = await startAnonSession(brandUrl);");
+    const at = GET_STARTED.indexOf("const session = await startAnonSession(url);");
     expect(at).toBeGreaterThan(0);
-    const branch = ONBOARDING.slice(at, ONBOARDING.indexOf("} else if (reuseOrg) {", at));
-    expect(branch).toContain("refusalExits({");
-    expect(branch).toContain("reason: outcome.reason");
-    expect(branch).toContain('setStep("url");');
+    const branch = GET_STARTED.slice(at, GET_STARTED.indexOf("let id: string;", at));
+    expect(branch).toContain("setExits(refusalExits({ reason: session.reason");
+    expect(branch).toContain("setStarted(false);");
     expect(branch).not.toContain("window.location.href");
     expect(branch).not.toContain("claimedSignUpHref(");
-    // the URL step renders both exits under the error; editing the website clears them
-    const urlAt = ONBOARDING.indexOf('if (step === "url") {');
-    const urlStep = ONBOARDING.slice(urlAt, ONBOARDING.indexOf("\n  if (step === ", urlAt + 10));
-    expect(urlStep).toContain("data-url-refusal");
-    expect(urlStep).toContain("refusal.signIn.href");
-    expect(urlStep).toContain("refusal.signUp.href");
-    expect(urlStep).toContain("if (refusal) { setRefusal(null); setError(null); }");
+    // the Hero renders both exits under the error; editing the website clears them
+    const heroAt = GET_STARTED.indexOf("<Hero");
+    const hero = GET_STARTED.slice(heroAt, GET_STARTED.indexOf("/>", heroAt));
+    expect(hero).toContain("setExits(null);");
+    expect(hero).toContain("exits={exits}");
+    expect(GET_STARTED).toContain("exits.signIn.href");
+    expect(GET_STARTED).toContain("exits.signUp.href");
   });
 
   it("the sign-up page reads ?claimed= and renders the copy with a sign-in link", () => {
@@ -104,28 +103,5 @@ describe("the reason crosses the wire and the redirect reads it", () => {
     const at = SIGN_UP.indexOf("claimedCopy.lead");
     const block = SIGN_UP.slice(at, at + 400);
     expect(block).toContain('href="/sign-in"');
-  });
-});
-
-describe("every onboarding step can go back", () => {
-  const stepBlock = (step: string) => {
-    const at = ONBOARDING.indexOf(`if (step === "${step}") {`);
-    expect(at, step).toBeGreaterThan(0);
-    return ONBOARDING.slice(at, ONBOARDING.indexOf("\n  if (step === ", at + 10));
-  };
-
-  it.each([
-    ["url", 'setStep("returns")'],
-    ["services", 'setStep("url")'],
-    ["phone", 'setStep("celebrate")'],
-    ["consent", 'setStep("audiences")'],
-    // Reached from the LAST offer lever: it is the account gate a SIGNED-OUT
-    // visitor meets instead of the checkout, and the levers it recaps come
-    // before it, so Back returns to the screen it was reached from.
-    ["built", 'setStep("offer")'],
-  ])("%s has a Back button to %s", (step, target) => {
-    const block = stepBlock(step);
-    expect(block).toContain("<BackButton");
-    expect(block).toContain(target);
   });
 });

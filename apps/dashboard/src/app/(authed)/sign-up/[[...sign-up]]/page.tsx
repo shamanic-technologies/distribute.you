@@ -165,18 +165,11 @@ export default function SignUpPage() {
         sessionStorage.setItem("distribute_auth_intent", "signup");
         posthog.capture("signup_google_oauth_started", { provider: "google" });
         rememberAuthMethod("google");
-        // A website carried from the landing pricing CTA (?url=) prefills the
-        // onboarding brand. /onboarding is exempt from the first-run gate, so
-        // landing there directly (vs the default /orgs -> bare /onboarding bounce
-        // that drops the query) preserves the param through the OAuth round-trip.
-        const prefillUrl = (searchParams.get("url") || "").trim();
         // Same hinge as the email path: an anonymous session is claimed before
         // anything else reads, or the org they built looks lost.
         const redirectUrlComplete = browserHasAnonSession(document.cookie)
           ? "/onboarding/claim"
-          : prefillUrl
-            ? `/onboarding?url=${encodeURIComponent(prefillUrl)}`
-            : "/orgs";
+          : "/v2";
         await signUp.authenticateWithRedirect({
           strategy: "oauth_google",
           redirectUrl: "/sso-callback",
@@ -209,7 +202,7 @@ export default function SignUpPage() {
   };
 
   // The email/password verified session lands on the same destination as the
-  // Google path: prefilled onboarding when a landing ?url= is carried, else /orgs.
+  // Google path: the v2 org page, which runs the v2 setup for a new account.
   const redirectAfterSignUp = () => {
     // An anonymous session means this person has ALREADY built their setup, on
     // an org with no identity provider. It has to be re-pointed at the org they
@@ -218,10 +211,7 @@ export default function SignUpPage() {
       router.push("/onboarding/claim");
       return;
     }
-    const prefillUrl = (searchParams.get("url") || "").trim();
-    router.push(
-      prefillUrl ? `/onboarding?url=${encodeURIComponent(prefillUrl)}` : "/orgs"
-    );
+    router.push("/v2");
   };
 
   // A website somebody already holds: the signed-out setup was refused and sent
