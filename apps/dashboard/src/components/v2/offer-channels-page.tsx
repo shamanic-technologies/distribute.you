@@ -35,7 +35,7 @@ import {
 } from "@/lib/offer-channel-settings";
 import { AcquisitionChannelMark } from "@/components/marks/acquisition-channel-mark";
 import { EmptyNote, Shimmer } from "@/components/v2/ui";
-import { V2Page, offerTabs, useOfferName } from "@/components/v2/setup-pages";
+import { V2Page, useOfferName } from "@/components/v2/setup-pages";
 
 const GIVE_FIELDS = [
   { key: "giveForFree", label: "We give for free" },
@@ -81,7 +81,6 @@ export function V2OfferChannelsPage() {
       ]}
       title={name ?? " "}
       sub="The channels that work the steps you validated in Sales path."
-      tabs={offerTabs(orgId, brandId, offerId, "channels")}
       width="max-w-[1280px]"
     >
       {!pathSettled || catalogue.legs.size === 0 ? (

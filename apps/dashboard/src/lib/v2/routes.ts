@@ -11,6 +11,7 @@ export type V2Section =
   | "crew"
   | "missions"
   | "workflows"
+  | "sales-path"
   | "offers"
   | "targeting"
   | "channels"
@@ -67,6 +68,7 @@ export function v2SectionOf(pathname: string): V2Section | null {
     "crew",
     "missions",
     "workflows",
+    "sales-path",
     "offers",
     "targeting",
     "channels",
@@ -80,6 +82,8 @@ export function v2SectionOf(pathname: string): V2Section | null {
     "research",
     "monitoring",
   ];
+  // An offer's Sales path is its own section, opened from the sidebar.
+  if (s === "offers" && parts[7] === "sales-path") return "sales-path";
   // An offer's Targeting tab is Targeting, not Offers.
   if (s === "offers" && parts[7] === "targeting") return "targeting";
   // An offer's Channels, and one channel's page under it, are Channels.
