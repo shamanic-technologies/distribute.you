@@ -1914,7 +1914,7 @@ function OfferStage({
                   disabled={!!picked || busy != null}
                   aria-pressed={on}
                   style={stagger(i, 80)}
-                  className={`gs-in k-card flex items-start gap-3 p-3 text-left transition-[box-shadow,background-color,opacity] duration-150 active:scale-[0.99] ${on ? "bg-[var(--accent-soft)] ring-2 ring-[var(--accent)]" : locked ? "opacity-40" : "k-hover"}`}
+                  className={`gs-in k-card flex items-start gap-3 p-3 text-left transition-[box-shadow,background-color,opacity] duration-150 active:scale-[0.99] ${on ? "k-card-on" : locked ? "opacity-40" : "k-hover"}`}
                 >
                   <span className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-[var(--accent-soft)] text-[var(--accent)]">
                     <OfferIcon token={o.icon} />
@@ -2397,7 +2397,7 @@ function AudienceStage({
                   disabled={waitingForOffer || busy != null}
                   aria-pressed={on}
                   style={stagger(i, 70)}
-                  className={`gs-in k-card flex flex-col p-3 text-left transition-[box-shadow,background-color,opacity] duration-150 active:scale-[0.99] ${on ? "bg-[var(--accent-soft)] ring-2 ring-[var(--accent)]" : picked ? "opacity-40" : "k-hover"}`}
+                  className={`gs-in k-card flex flex-col p-3 text-left transition-[box-shadow,background-color,opacity] duration-150 active:scale-[0.99] ${on ? "k-card-on" : picked ? "opacity-40" : "k-hover"}`}
                 >
                   <span className="flex items-start gap-2">
                     <span className="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-[color-mix(in_oklab,var(--data-violet)_14%,transparent)] text-[var(--data-violet)]">

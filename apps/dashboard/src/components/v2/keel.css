@@ -69,6 +69,8 @@
 .v2-root .k-card { background: var(--bg-raised); border-radius: 12px; box-shadow: inset 0 0 0 1px var(--line-subtle); }
 .v2-root a.k-card, .v2-root button.k-card { transition: box-shadow 150ms; }
 .v2-root a.k-card:hover, .v2-root button.k-card:hover { box-shadow: inset 0 0 0 1px var(--line-strong); }
+/* A ticked selectable card: light accent fill + accent ring. Tailwind bg-/ring- utilities lose to .k-card (unlayered), so the state lives here. */
+.v2-root .k-card.k-card-on, .v2-root button.k-card.k-card-on:hover { background: var(--accent-soft); box-shadow: inset 0 0 0 2px var(--accent); }
 .v2-root .k-card-accent { background: var(--bg-raised); border-radius: 12px; box-shadow: inset 0 0 0 1px color-mix(in oklab, var(--accent) 45%, transparent); }
 .v2-root .k-popover { background: var(--bg-raised); border-radius: 12px; box-shadow: var(--elev-popover); }
 .v2-root .k-control { border-radius: 8px; }
