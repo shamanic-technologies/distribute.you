@@ -160,23 +160,13 @@ private struct Badge: View {
 /// The tenant switcher: brand mark + name, every org's brands in the menu.
 struct BrandSwitcher: View {
     @EnvironmentObject var state: AppState
-    // The logo sits OUTSIDE the menu: a macOS Menu label draws images at their native
-    // size and ignores the frame, so a logo.dev PNG rendered huge (owner 2026-10-04).
+    @State private var open = false
+    @State private var query = ""
+
     var body: some View {
-        HStack(spacing: 8) {
-            Logo(domain: state.selectedBrand?.domain, name: state.selectedBrand?.label ?? "?", size: 24)
-            KMenu {
-            ForEach(state.me?.organizations ?? []) { org in
-                if !org.brands.isEmpty {
-                    Section(org.name ?? org.id) {
-                        ForEach(org.brands) { brand in
-                            Button(brand.label) { state.select(brand: brand, in: org) }
-                        }
-                    }
-                }
-            }
-        } label: {
+        Button { open.toggle() } label: {
             HStack(spacing: 8) {
+                Logo(domain: state.selectedBrand?.domain, name: state.selectedBrand?.label ?? "?", size: 24)
                 VStack(alignment: .leading, spacing: 0) {
                     Text(state.selectedBrand?.label ?? "Choose a brand").font(.system(size: 13, weight: .medium)).foregroundStyle(K.fg1).lineLimit(1)
                     if let org = state.selectedOrg?.name { Text(org).font(K.meta).foregroundStyle(K.fg3).lineLimit(1) }
@@ -184,10 +174,58 @@ struct BrandSwitcher: View {
                 Spacer(minLength: 0)
                 Image(systemName: "chevron.up.chevron.down").font(.system(size: 10)).foregroundStyle(K.fg3)
             }
-            .frame(height: 40)
+            .padding(.horizontal, 8).frame(height: 40).contentShape(Rectangle())
         }
+        .buttonStyle(.plain)
+        .popover(isPresented: $open, arrowEdge: .bottom) { picker }
+    }
+
+    /// Every org the key can act in, its own first (`/me` order), with a search: a staff
+    /// account sees every org, far too many for a menu.
+    private var picker: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            HStack(spacing: 6) {
+                Image(systemName: "magnifyingglass").font(.system(size: 11)).foregroundStyle(K.fg3)
+                TextField("Search brands", text: $query).textFieldStyle(.plain).font(K.body)
+            }
+            .padding(10)
+            Rectangle().fill(K.lineSubtle).frame(height: 1)
+            ScrollView {
+                LazyVStack(alignment: .leading, spacing: 1) {
+                    ForEach(matches, id: \.brand.id) { m in
+                        Button {
+                            state.select(brand: m.brand, in: m.org)
+                            open = false
+                            query = ""
+                        } label: {
+                            HStack(spacing: 8) {
+                                Logo(domain: m.brand.domain, name: m.brand.label, size: 18)
+                                VStack(alignment: .leading, spacing: 0) {
+                                    Text(m.brand.label).font(K.body).foregroundStyle(K.fg1).lineLimit(1)
+                                    Text(m.org.name ?? "").font(.system(size: 11)).foregroundStyle(K.fg3).lineLimit(1)
+                                }
+                                Spacer(minLength: 0)
+                                if m.brand.id == state.selectedBrand?.id { Image(systemName: "checkmark").font(.system(size: 10, weight: .semibold)).foregroundStyle(K.accent) }
+                            }
+                            .padding(.horizontal, 10).frame(height: 36).contentShape(Rectangle())
+                        }
+                        .buttonStyle(NavHoverStyle(active: false))
+                    }
+                }
+                .padding(4)
+            }
+            .frame(height: 340)
         }
-        .padding(.horizontal, 8)
+        .frame(width: 300)
+    }
+
+    private var matches: [(org: MeOrg, brand: MeBrand)] {
+        let q = query.lowercased()
+        let all = (state.me?.organizations ?? []).flatMap { o in o.brands.map { (org: o, brand: $0) } }
+        guard !q.isEmpty else { return Array(all.prefix(200)) }
+        return all.filter {
+            $0.brand.label.lowercased().contains(q) || ($0.brand.domain ?? "").lowercased().contains(q) || ($0.org.name ?? "").lowercased().contains(q)
+        }
     }
 }
 

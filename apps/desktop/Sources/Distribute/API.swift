@@ -300,6 +300,9 @@ struct UserFields: Decodable {
 
 struct DistributeAPI {
     let apiKey: String
+    /// The organization every call acts in. A brand can sit in several orgs (a staff
+    /// user is in all of them): without it the gateway answers 400 `brand_in_several_orgs`.
+    var orgId: String? = nil
 
     func me() async throws -> Me {
         try await get("/me", query: [:])
@@ -447,6 +450,7 @@ struct DistributeAPI {
         req.timeoutInterval = timeout
         req.httpMethod = method
         req.setValue("Bearer \(apiKey)", forHTTPHeaderField: "Authorization")
+        if let orgId { req.setValue(orgId, forHTTPHeaderField: "x-org-id") }
         req.setValue("application/json", forHTTPHeaderField: "Accept")
         if let body {
             req.setValue("application/json", forHTTPHeaderField: "Content-Type")

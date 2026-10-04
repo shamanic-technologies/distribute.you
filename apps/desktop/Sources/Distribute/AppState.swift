@@ -78,10 +78,12 @@ final class AppState: ObservableObject {
     @Published var chatBusy = false
     @Published var draft = ""
     private let session = ClaudeSession()
+    /// The assistant bubble being written right now (streamed text).
+    private var streamingIndex: Int?
     private let browserLogin = BrowserLogin()
     @Published var signingIn = false
 
-    var api: DistributeAPI? { apiKey.map(DistributeAPI.init(apiKey:)) }
+    var api: DistributeAPI? { apiKey.map { DistributeAPI(apiKey: $0, orgId: selectedOrg?.id) } }
 
     // MARK: sign-in
 
@@ -183,6 +185,7 @@ final class AppState: ObservableObject {
             offers = list
             let remembered = UserDefaults.standard.string(forKey: "offer-\(brand.id)")
             selectedOffer = list.first(where: { $0.offerId == remembered }) ?? list.first
+            Notifier.shared.start(state: self)
         } catch {
             loadError = error.localizedDescription
         }
@@ -371,10 +374,30 @@ final class AppState: ObservableObject {
             apiKey: apiKey, orgId: org.id, brandId: brand.id, brandName: brand.label,
             offerId: selectedOffer?.offerId, offerName: selectedOffer?.name, looking: pane?.title
         )
+        streamingIndex = nil
         session.send(text, cli: cli, context: ctx, onItem: { [weak self] item in
-            self?.chat.append(item)
+            guard let self else { return }
+            self.streamingIndex = nil
+            self.chat.append(item)
+        }, onDelta: { [weak self] delta in
+            guard let self else { return }
+            if let i = self.streamingIndex, i < self.chat.count, case .assistant(let id, let t) = self.chat[i] {
+                self.chat[i] = .assistant(id: id, text: t + delta)
+            } else {
+                self.chat.append(.assistant(id: UUID(), text: delta))
+                self.streamingIndex = self.chat.count - 1
+            }
+        }, onText: { [weak self] full in
+            guard let self else { return }
+            if let i = self.streamingIndex, i < self.chat.count, case .assistant(let id, _) = self.chat[i] {
+                self.chat[i] = .assistant(id: id, text: full)
+            } else {
+                self.chat.append(.assistant(id: UUID(), text: full))
+            }
+            self.streamingIndex = nil
         }, onDone: { [weak self] in
             guard let self else { return }
+            self.streamingIndex = nil
             self.chatBusy = false
             // The chat may have changed a budget, an audience or sending: re-read what is on screen.
             Task { await self.refreshAll() }

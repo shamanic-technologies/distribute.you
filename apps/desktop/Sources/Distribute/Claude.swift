@@ -58,6 +58,8 @@ final class ClaudeSession {
         cli: ClaudeCLI.Located,
         context: SessionContext,
         onItem: @escaping (ChatItem) -> Void,
+        onDelta: @escaping (String) -> Void,
+        onText: @escaping (String) -> Void,
         onDone: @escaping () -> Void
     ) {
         let dir = Self.workDir()
@@ -78,8 +80,11 @@ final class ClaudeSession {
 
         var args = [
             "-p", text,
-            "--output-format", "stream-json", "--verbose",
+            "--output-format", "stream-json", "--verbose", "--include-partial-messages",
             "--strict-mcp-config", "--mcp-config", mcpPath.path,
+            // The user's own ~/.claude (CLAUDE.md, hooks, plugins) must not steer the app's
+            // operator: only the app's prompt does. The login lives outside settings, so it still works.
+            "--setting-sources", "project",
             "--allowedTools", "mcp__distribute,Bash(curl:*),Bash(jq:*)",
             "--append-system-prompt", systemPrompt(context),
         ]
@@ -113,7 +118,7 @@ final class ClaudeSession {
                     self.buffer.removeSubrange(self.buffer.startIndex...nl)
                     if let event = try? JSONSerialization.jsonObject(with: line) as? [String: Any] {
                         if event["type"] as? String == "result" { sawResult = true }
-                        self.handle(event, onItem: onItem)
+                        self.handle(event, onItem: onItem, onDelta: onDelta, onText: onText)
                     }
                 }
             }
@@ -145,15 +150,22 @@ final class ClaudeSession {
         sessionId = nil
     }
 
-    private func handle(_ event: [String: Any], onItem: (ChatItem) -> Void) {
+    private func handle(_ event: [String: Any], onItem: (ChatItem) -> Void, onDelta: (String) -> Void, onText: (String) -> Void) {
         if let sid = event["session_id"] as? String { sessionId = sid }
         switch event["type"] as? String {
+        case "stream_event":
+            // Text as it is written (`--include-partial-messages`); the full message follows.
+            if let ev = event["event"] as? [String: Any], ev["type"] as? String == "content_block_delta",
+               let delta = ev["delta"] as? [String: Any], delta["type"] as? String == "text_delta",
+               let t = delta["text"] as? String {
+                onDelta(t)
+            }
         case "assistant":
             let content = (event["message"] as? [String: Any])?["content"] as? [[String: Any]] ?? []
             for block in content {
                 switch block["type"] as? String {
                 case "text":
-                    if let t = block["text"] as? String, !t.isEmpty { onItem(.assistant(id: UUID(), text: t)) }
+                    if let t = block["text"] as? String, !t.isEmpty { onText(t) }
                 case "tool_use":
                     onItem(.tool(id: UUID(), label: Self.toolLabel(block)))
                 default: break
@@ -218,7 +230,7 @@ private func systemPrompt(_ c: SessionContext) -> String {
 
     How to act: the MCP is read-only. To change something, call the distribute API with curl:
       curl -sS -X <METHOD> "https://api.distribute.you/v1/<path>?brandId=$DISTRIBUTE_BRAND_ID" \\
-        -H "Authorization: Bearer $DISTRIBUTE_API_KEY" -H "Content-Type: application/json" -d '<json>'
+        -H "Authorization: Bearer $DISTRIBUTE_API_KEY" -H "x-org-id: $DISTRIBUTE_ORG_ID" -H "Content-Type: application/json" -d '<json>'
     Always reference the key as $DISTRIBUTE_API_KEY, never print it. Useful routes:
     - GET  /campaigns?brandId=...                       list campaigns
     - GET  /features/sales-cold-email-outreach/revenue?brandId=...&groupBy=campaignId&pricing=net   per-campaign results
@@ -240,7 +252,9 @@ private func systemPrompt(_ c: SessionContext) -> String {
     - GET  /orgs/audiences?brandId=...&offerId=...&status=active   targeting (audiences)
     The full reference is https://api.distribute.you/openapi.json if you need another route.
 
-    Rules: before ANY write (pause, budget, stop, create), state in one line what will change and wait for the user's yes. \
+    Rules: never write without the user's approval. Before ANY write (pause, budget, stop, create, rename, audience), \
+    end your message with ONE line exactly `ACTION: <what will change, in plain words>` and stop there: the app shows it \
+    as a card with Approve and Cancel. Run the write only after the user approves, then say in one line what changed. \
     Answer short and plain, figures first. Say "positive reply", never "lead" for a reply. Never show open rates. \
     Never invent numbers: quote what the API returned.
     """
