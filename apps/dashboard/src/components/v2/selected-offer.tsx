@@ -27,6 +27,11 @@ export interface SelectedOffer {
   settled: boolean;
   /** Null until the campaigns are read. */
   campaignIds: string[] | null;
+  /**
+   * Both reads behind the offer gate (offers, campaigns) have answered, or failed. Until
+   * then a page cannot tell "no offer yet" from "still loading", so it shows its skeleton.
+   */
+  scopeSettled: boolean;
   select: (offerId: string) => void;
 }
 
@@ -66,9 +71,10 @@ export function SelectedOfferProvider({ brandId, children }: { brandId: string; 
       offers,
       settled: offersQ.data !== undefined,
       campaignIds: campaigns && offerId ? campaigns.filter((c) => c.offerId === offerId).map((c) => c.id) : campaigns ? [] : null,
+      scopeSettled: (offersQ.data !== undefined || offersQ.isError) && (campaigns !== null || campaignsQ.isError),
       select,
     }),
-    [brandId, offerId, offers, offersQ.data, campaigns, select],
+    [brandId, offerId, offers, offersQ.data, offersQ.isError, campaigns, campaignsQ.isError, select],
   );
   return <SelectedOfferContext.Provider value={value}>{children}</SelectedOfferContext.Provider>;
 }
