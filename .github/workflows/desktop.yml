@@ -1,0 +1,42 @@
+name: Desktop app
+
+# Builds the Mac app (apps/desktop) on every push that touches it, so a branch
+# proves it compiles. On main it republishes the download behind the
+# `desktop-latest` pre-release, which distribute.you/desktop links to.
+on:
+  push:
+    paths:
+      - "apps/desktop/**"
+      - ".github/workflows/desktop.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: macos-14
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build Distribute.app
+        env:
+          DESKTOP_VERSION: "0.1.${{ github.run_number }}"
+        run: apps/desktop/scripts/build-app.sh
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Distribute
+          path: apps/desktop/build/Distribute.zip
+
+      - name: Publish desktop-latest
+        if: github.ref == 'refs/heads/main'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if ! gh release view desktop-latest >/dev/null 2>&1; then
+            gh release create desktop-latest --prerelease --latest=false \
+              --title "distribute desktop (private beta)" \
+              --notes "Mac app for the distribute.you private beta. Install: curl -fsSL https://distribute.you/desktop/install.sh | sh"
+          fi
+          gh release upload desktop-latest apps/desktop/build/Distribute.zip --clobber
