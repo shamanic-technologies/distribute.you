@@ -2,18 +2,14 @@ import { describe, it, expect } from "vitest";
 import * as fs from "fs";
 import * as path from "path";
 import { coerceListField } from "../src/lib/strategy-model";
-import {
-  formatListLeverValue,
-  isListLever,
-  parseListLeverInput,
-} from "../src/components/onboarding/offer-levers";
 
 const read = (rel: string) => fs.readFileSync(path.resolve(__dirname, rel), "utf-8");
 
 // Regression: socialProof is a list-kind offer lever. The post-payment offer step used
 // to write it back as the raw <textarea> string, clobbering the array; the Strategy page
 // then rendered `Array.isArray(value) ? value : []` → a string collapsed to [] → the
-// "Social proof shows empty" bug. Both parts are guarded here.
+// "Social proof shows empty" bug. The display heal and the Brand Settings editor are
+// guarded here (the v1 onboarding offer step and its lever helpers are deleted).
 
 describe("coerceListField — heals a legacy STRING socialProof on display", () => {
   it("passes an array through, trimming empties", () => {
@@ -41,34 +37,10 @@ describe("coerceListField — heals a legacy STRING socialProof on display", () 
   });
 });
 
-describe("offer-lever list handling — writes socialProof as a string[]", () => {
-  it("marks socialProof (and only it) a list lever", () => {
-    expect(isListLever("socialProof")).toBe(true);
-    expect(isListLever("dreamOutcome")).toBe(false);
-    expect(isListLever("riskReversal")).toBe(false);
-  });
-
-  it("parseListLeverInput splits textarea content into a trimmed, non-empty array", () => {
-    const arr = parseListLeverInput("115+ D2C brands analyzed\n  Specialized AI  \n\n");
-    expect(Array.isArray(arr)).toBe(true);
-    expect(arr).toEqual(["115+ D2C brands analyzed", "Specialized AI"]);
-  });
-
-  it("format→parse round-trips an array losslessly", () => {
-    const items = ["Case study A", "Testimonial B", "Notable client C"];
-    expect(parseListLeverInput(formatListLeverValue(items))).toEqual(items);
-  });
-});
-
 describe("source guards — the clobbering / collapsing patterns are gone", () => {
   it("Brand Settings offer editor splits list levers by line, never collapses a legacy string", () => {
     const src = read("../src/components/settings/brand-offer-card.tsx");
     expect(src).toContain("function linesToList(");
     expect(src).not.toMatch(/values=\{Array\.isArray\(value\) \? value : \[\]\}/);
-  });
-
-  it("onboarding offer step splits list levers instead of writing the raw string", () => {
-    const src = read("../src/components/onboarding/onboarding.tsx");
-    expect(src).toMatch(/isList \? parseListLeverInput\(e\.target\.value\) : e\.target\.value/);
   });
 });

@@ -30,8 +30,12 @@ describe("Multi-brand campaign support", () => {
   });
 
   it("callers of extractBrandFields pass brandIds array as first arg", () => {
-    const onboardingPageRel = "../src/components/onboarding/onboarding.tsx";
-    const onboardingPage = fs.readFileSync(path.join(__dirname, onboardingPageRel), "utf-8");
-    expect(onboardingPage).toContain("extractBrandFields([newBrandId]");
+    for (const [rel, call] of [
+      ["../src/components/v2/new-org-modal.tsx", "extractBrandFields([id]"],
+      ["../src/components/v2/get-started/get-started.tsx", "extractBrandFields([id]"],
+      ["../src/components/v2/get-started/launch.ts", "extractBrandFields([brandId]"],
+    ] as const) {
+      expect(fs.readFileSync(path.join(__dirname, rel), "utf-8"), rel).toContain(call);
+    }
   });
 });

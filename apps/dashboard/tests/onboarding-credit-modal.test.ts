@@ -3,15 +3,14 @@ import * as fs from "fs";
 import * as path from "path";
 
 // Guards the "insufficient credit → in-modal Embedded Checkout" flow:
-//  - the add-credit modal is mounted in the onboarding tree (apiCall auto-fires it on 402)
+//  - the add-credit modal is mounted in the v2 tree (apiCall auto-fires it on 402)
 //  - card capture is the in-page Stripe Embedded Checkout (no hosted-page redirect)
-//  - onboarding treats a 402 as recoverable (no destructive reset) and resumes the
-//    failed step on the `billing:resolved` event
+// The v1 onboarding layout and wizard that also mounted / listened to it are deleted.
 const read = (p: string) => fs.readFileSync(path.join(__dirname, p), "utf-8");
 
-describe("onboarding add-credit modal mount", () => {
-  const layout = read("../src/app/(authed)/onboarding/layout.tsx");
-  it("mounts BillingGuardProvider in the onboarding layout", () => {
+describe("add-credit modal mount", () => {
+  const layout = read("../src/components/v2/v2-client-layout.tsx");
+  it("mounts BillingGuardProvider in the v2 layout", () => {
     expect(layout).toContain('import { BillingGuardProvider } from "@/lib/billing-guard"');
     expect(layout).toContain("<BillingGuardProvider>");
   });
@@ -43,16 +42,5 @@ describe("billing-guard in-modal embedded checkout", () => {
   it("no longer redirects to a hosted Stripe Checkout page", () => {
     expect(guard).not.toContain("window.location.href = session.url");
     expect(guard).not.toContain("createCheckoutSession");
-  });
-});
-
-describe("onboarding 402 recovery", () => {
-  const ob = read("../src/components/onboarding/onboarding.tsx");
-  it("listens for billing:resolved and retries the failed step", () => {
-    expect(ob).toContain('addEventListener("billing:resolved"');
-    expect(ob).toContain("creditRetryRef");
-  });
-  it("treats a 402 as recoverable instead of resetting the step", () => {
-    expect(ob).toContain("isInsufficientCredit(err)");
   });
 });

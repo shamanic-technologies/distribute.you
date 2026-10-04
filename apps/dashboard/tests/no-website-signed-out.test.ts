@@ -25,10 +25,6 @@ import { anonCallAllowed } from "../src/lib/anon-proxy-allowlist";
  * inferred from an empty string. Same discipline as anonymity itself, which
  * client-service records at creation rather than reading off the shape of an id.
  */
-const src = fs.readFileSync(
-  path.join(__dirname, "..", "src/components/onboarding/onboarding.tsx"),
-  "utf-8",
-);
 const route = fs.readFileSync(
   path.join(__dirname, "..", "src/app/api/anon/session/route.ts"),
   "utf-8",
@@ -103,45 +99,9 @@ describe("the one write the no-website path makes is reachable", () => {
   });
 });
 
-describe("the services step names a source it actually read", () => {
-  it("does not interpolate an empty host into the sentence", () => {
-    // `hostname` is empty on the no-website path, so the unguarded form printed
-    // "We drafted these from ." — a bare full stop where the source belongs, on
-    // the one step whose whole job is to say where the list came from. Observed
-    // on a prod walk.
-    expect(src).toContain("We drafted these from what you told us.");
-    const at = src.indexOf("{servicesDrafted ? (");
-    const block = src.slice(at, src.indexOf("Tell us what you sell", at));
-    expect(block).toContain("hostname ? (");
-  });
-});
-
 describe("the call sites", () => {
-  it("the no-website path starts an anonymous session when signed out", () => {
-    // A resolver nothing calls is the fix entirely absent with the module
-    // perfectly correct.
-    expect(src).toContain('startAnonSession("", { noWebsite: true })');
-  });
-
-  it("it no longer reaches Clerk while signed out", () => {
-    // The Clerk branch must sit BEHIND the signed-out one, not before it — an
-    // index compare, because a `toContain` cannot see ordering and the ordering
-    // is the whole defect.
-    const fn = src.slice(src.indexOf("async function createBrandNoWebsiteAndFetchServices("));
-    const body = fn.slice(0, fn.indexOf("\n  async function", 1));
-    const anon = body.indexOf("startAnonSession");
-    const clerk = body.indexOf("createOrganization({ name })");
-    expect(anon).toBeGreaterThan(-1);
-    expect(clerk).toBeGreaterThan(-1);
-    expect(anon).toBeLessThan(clerk);
-  });
-
-  it("does not write the resume cookie with no org to scope it to", () => {
-    const fn = src.slice(src.indexOf("async function createBrandNoWebsiteAndFetchServices("));
-    const body = fn.slice(0, fn.indexOf("\n  async function", 1));
-    expect(body).toContain("if (targetOrgId) {");
-  });
-
+  // The v1 wizard that called the no-website path is deleted; the route still
+  // carries the declared flag for any caller.
   it("the route reads the declared flag and never infers it", () => {
     expect(route).toContain("body.noWebsite === true");
     expect(route).toContain("noWebsite ? null : extractDomain(website)");

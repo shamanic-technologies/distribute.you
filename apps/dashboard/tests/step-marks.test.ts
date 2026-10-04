@@ -79,6 +79,7 @@ describe("step marks — one tile per step, the same product-wide", () => {
   });
 
   it("is what every surface naming a step draws", () => {
-    expect(read("components/start/start-picks.tsx")).toContain("<StepMark stepKey={o.key}");
+    // The v2 Sales path draws it (the v1 /start picks that also did are deleted).
+    expect(read("components/v2/offer-sales-path.tsx")).toContain("<StepMark stepKey={s}");
   });
 });

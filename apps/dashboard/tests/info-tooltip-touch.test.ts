@@ -62,7 +62,6 @@ describe("InfoTooltip — usable with a thumb", () => {
     // Each of these shipped an InformationCircleIcon + `title=` + `cursor-help`,
     // i.e. an (i) that showed nothing at all on a touch device.
     const migrated = [
-      "src/components/onboarding/onboarding.tsx",
       "src/components/strategy/best-model-card.tsx",
       "src/components/settings/brand-offer-card.tsx",
     ];

@@ -33,8 +33,14 @@ describe("sign-up email/password flow", () => {
     expect(signUp).toMatch(/type="password"/);
   });
 
-  it("preserves the landing ?url= prefill on the email path", () => {
-    expect(signUp).toMatch(/\/onboarding\?url=/);
+  it("lands a verified email signup on v2 (or the claim), never the retired wizard", () => {
+    // The v1 /onboarding?url= prefill is gone with the wizard: a new account runs
+    // the v2 setup from its org page; an anonymous session is claimed first.
+    const at = signUp.indexOf("const redirectAfterSignUp = () => {");
+    const fn = signUp.slice(at, signUp.indexOf("\n  };", at));
+    expect(fn).toContain('router.push("/onboarding/claim");');
+    expect(fn).toContain('router.push("/v2");');
+    expect(signUp).not.toMatch(/\/onboarding\?url=/);
     expect(signUp).toMatch(/signup_email_verified/);
   });
 });

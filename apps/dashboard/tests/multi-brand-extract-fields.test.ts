@@ -43,10 +43,10 @@ describe("Multi-brand extract-fields response types", () => {
   });
 
   it("callers pass brandIds as array parameter", () => {
-    const onboardingPage = fs.readFileSync(
-      path.join(__dirname, "../src/components/onboarding/onboarding.tsx"),
+    const getStarted = fs.readFileSync(
+      path.join(__dirname, "../src/components/v2/get-started/get-started.tsx"),
       "utf-8",
     );
-    expect(onboardingPage).toContain("extractBrandFields([newBrandId]");
+    expect(getStarted).toContain("extractBrandFields([id]");
   });
 });

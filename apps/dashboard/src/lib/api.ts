@@ -3564,18 +3564,6 @@ export async function launchAudiencePortfolio(
   return parsed.data;
 }
 
-/** The ICP text the customer validated, saved on the brand as its `targetAudience` user-field. */
-export async function readBrandTargetAudience(brandId: string, token?: string): Promise<string> {
-  const { fields } = await getBrandUserFields(brandId, token);
-  const value = fields.targetAudience?.value;
-  const text = typeof value === "string" ? value.trim() : Array.isArray(value) ? value.join("\n").trim() : "";
-  if (!text) {
-    console.error("[dashboard] readBrandTargetAudience: the brand holds no targetAudience", { brandId });
-    throw new Error("We could not find who you sell to on this brand. Go back to that step and save it again.");
-  }
-  return text;
-}
-
 export interface AudienceWire {
   id: string;
   orgId: string;
@@ -4114,32 +4102,6 @@ export async function getBrandUserFields(
   if (!parsed.success) {
     console.error("[dashboard] getBrandUserFields: response shape mismatch", { issues: parsed.error.issues, raw });
     throw new Error("[dashboard] getBrandUserFields: invalid response shape");
-  }
-  return parsed.data;
-}
-
-/**
- * PUT /brands/:brandId/user-fields with the ONE key onboarding writes outside
- * the 7 offer fields: `targetAudience`, the customer's own words for who they
- * sell to. Same store the brand profile reads (it is a SALES_PROFILE_FIELDS
- * key), so whoever builds the audiences after payment finds it there. A
- * separate function rather than a widening of `saveBrandUserFields`: that one is
- * typed on the offer's 7 keys, and the guards around them pin the set.
- */
-export async function saveBrandTargetAudience(
-  brandId: string,
-  targetAudience: string,
-  token?: string,
-): Promise<{ fields: BrandUserFields }> {
-  const raw = await apiCall<unknown>(`/brands/${brandId}/user-fields`, {
-    token,
-    method: "PUT",
-    body: { fields: { targetAudience } },
-  });
-  const parsed = BrandUserFieldsResponseSchema.safeParse(raw);
-  if (!parsed.success) {
-    console.error("[dashboard] saveBrandTargetAudience: response shape mismatch", { issues: parsed.error.issues, raw });
-    throw new Error("[dashboard] saveBrandTargetAudience: invalid response shape");
   }
   return parsed.data;
 }

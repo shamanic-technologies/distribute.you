@@ -134,20 +134,6 @@ describe("Auth pages branding", () => {
   });
 });
 
-describe("Onboarding page should not reference mcpfactory", () => {
-  const onboardingPath = path.join(
-    __dirname,
-    "../src/components/onboarding/onboarding.tsx"
-  );
-  const content = fs.readFileSync(onboardingPath, "utf-8");
-
-  it("should use Clerk SDK for org creation and not reference mcpfactory", () => {
-    expect(content).toContain("createOrganization");
-    expect(content).toContain("@clerk/nextjs");
-    expect(content).not.toContain("mcpfactory");
-  });
-});
-
 describe("the dashboard wears the landing's charter", () => {
   const globals = fs.readFileSync(
     path.join(__dirname, "../src/app/globals.css"),
@@ -210,7 +196,6 @@ describe("brand name", () => {
     "src/components/auth/auth-brand-panel.tsx",
     "src/app/(authed)/forgot-password/[[...rest]]/page.tsx",
     "src/app/(authed)/session-tasks/choose-organization/page.tsx",
-    "src/components/onboarding/onboarding-top-chrome.tsx",
   ];
 
   it("spells the rendered wordmark in full on every page that draws one", () => {

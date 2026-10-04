@@ -7,30 +7,15 @@ const strip = (s: string) =>
   s.replace(/\/\*[\s\S]*?\*\//g, "").replace(/^\s*\/\/.*$/gm, "");
 
 /**
- * The FOUR lines that make the signed-out flow reachable.
+ * The lines that make the signed-out flow reachable.
  *
  * Everything else about this feature is bounded and tested on its own; these
  * are the ones that decide whether any of it runs at all, and each was a single
- * edit. Pinned together because they only make sense together: three of the
- * four with the fourth reverted is a funnel that dead-ends.
+ * edit. Pinned together because they only make sense together: one reverted is
+ * a funnel that dead-ends.
  */
 
 describe("the signed-out build half is reachable", () => {
-  it("the sell-first screens continue the wizard in place, never to signup", () => {
-    // They ARE the wizard's first steps now: the last CTA hands over to the
-    // wizard's own handler, no navigation, no cookie join, no reload.
-    const src = strip(read("src/components/start/start-picks.tsx"));
-    expect(src).toContain("<StartButton onClick={onContinue}>");
-    expect(src).not.toContain("window.location.href");
-    const wizard = strip(read("src/components/onboarding/onboarding.tsx"));
-    const at = wizard.indexOf("function continueAfterPicks()");
-    expect(at).toBeGreaterThan(-1);
-    const handler = wizard.slice(at, at + 400);
-    expect(handler).toContain('setStep("url")');
-    expect(handler).toContain("void startAnalyze()");
-    expect(handler).not.toContain("sign-up");
-  });
-
   it("the wizard is public — EXACTLY, so pay and build stay behind the gate", () => {
     const src = strip(read("src/proxy.ts"));
     // Bounded to the PUBLIC matcher: `"/onboarding(.*)"` legitimately appears
@@ -54,51 +39,15 @@ describe("the signed-out build half is reachable", () => {
     expect((src.match(/browserHasAnonSession/g) ?? []).length).toBeGreaterThanOrEqual(2);
   });
 
-  it("the claim returns to the wizard AT THE MONEY, carrying the brand", () => {
+  it("the claim hands over to v2, which resumes the brand at the plan step", () => {
     const src = strip(read("src/app/(authed)/onboarding/claim/page.tsx"));
-    expect(src).toContain("claimed=1");
-    expect(src).toContain("brandId=");
-    // Not the old pay screen: the wizard's own budget step is the charging basis.
+    // The v1 wizard is gone: the org page resumes the claimed brand in the v2
+    // setup modal, which ends on "Choose your plan".
+    expect(src).toContain('router.replace("/v2")');
+    expect(src).not.toContain("/onboarding?claimed=1");
     expect(src).not.toContain("/onboarding/pay");
   });
 
-  it("a claimed return lands on the budget step, not back on the summary", () => {
-    const src = strip(read("src/components/onboarding/onboarding.tsx"));
-    // Resuming at `built` would ask them to create an account they now have.
-    expect(src).toMatch(/claimed"\)\s*===\s*"1"\s*\?\s*"pricing"/);
-  });
-
-  it("the generic resume lands a claimed return on the budget step too", () => {
-    // The first frame picked `pricing` and then the generic resume replayed the
-    // loading screen and set the SNAPSHOT step (`built`), so every signup came
-    // back to the recap. Both must name the same target.
-    const src = strip(read("src/components/onboarding/onboarding.tsx"));
-    const at = src.indexOf("const resumeTargetRef = useRef");
-    const block = src.slice(at, src.indexOf("const resumeStartedRef", at));
-    expect(block).toMatch(/claimed"\)\s*===\s*"1"\s*\?\s*"pricing"/);
-  });
-
-  it("a failed checkout never reads the downstream body to the customer", () => {
-    const src = strip(read("src/components/onboarding/onboarding.tsx"));
-    const at = src.indexOf("async function beginCheckoutAndLaunch(");
-    const body = src.slice(at, src.indexOf("async function resumeCheckoutLaunch(", at));
-    expect(body).not.toContain("err.message");
-    expect(body).toContain("Nothing was charged");
-  });
-});
-
-describe("what must NOT come back", () => {
-  it("the offer step still terminates at the launch for a signed-IN user", () => {
-    // An existing org adding a brand, or a session that already paid, must not
-    // be routed into the summary-then-signup path.
-    const src = strip(read("src/components/onboarding/onboarding.tsx"));
-    expect(src).toContain("void finalizePostPaymentAndLaunch();");
-    // The signed-out branch now also STATES that the levers were answered, so the
-    // post-payment walk does not ask the same six screens again after the card.
-    expect(src).toMatch(
-      /if \(!user\) \{\s*setLeversStatedBeforeAccount\(true\);\s*setStep\("built"\);/,
-    );
-  });
 });
 
 describe("both cookies actually reach the browser", () => {
