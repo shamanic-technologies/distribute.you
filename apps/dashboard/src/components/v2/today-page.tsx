@@ -10,7 +10,7 @@ import { formatCount, formatUsdAdaptive, formatCentsAsUsdAdaptive } from "@/lib/
 import { formatRoi } from "@/lib/format-roi";
 import { friendlyDate, friendlyTime, timeAgo } from "@/lib/friendly-datetime";
 import { utcDay } from "@/lib/v2/series";
-import { TODAY_WINDOWS, type TodayWindow } from "@/lib/revenue-window";
+import { SINCE_INCEPTION } from "@/lib/revenue-window";
 import { v2Href } from "@/lib/v2/routes";
 import { shownReturn } from "@/lib/maturity";
 import { useStatBasis } from "@/lib/use-stat-basis";
@@ -87,10 +87,9 @@ export function TodayPage() {
   const today = utcDay(now);
   const brand = useBrandInfo(brandId).data?.brand ?? null;
   const rev = useBrandRevenue(brandId);
-  // One window for the whole stat row, Explee's: every figure and every bar on it covers
-  // the same last N UTC days, served whole by features-service (never summed here).
-  const [windowDays, setWindowDays] = useState<TodayWindow>(7);
-  const win = useBrandRevenueWindow(brandId, windowDays);
+  // One window for the whole stat row: since inception (owner 2026-10-04, no 7 / 30 day
+  // toggle), every figure and curve served whole by features-service (never summed here).
+  const win = useBrandRevenueWindow(brandId, SINCE_INCEPTION);
   const w = win.data ?? null;
   const data = rev.data;
   const standings = useStandingCounts(brandId).data;
@@ -229,19 +228,7 @@ export function TodayPage() {
           <>
             <div className="mb-3 flex items-center justify-between">
               <span className="k-label">Performance</span>
-              <span className="inline-flex items-center gap-1.5" role="group" aria-label="Window">
-                {TODAY_WINDOWS.map((d) => (
-                  <button
-                    key={d}
-                    type="button"
-                    aria-pressed={windowDays === d}
-                    onClick={() => setWindowDays(d)}
-                    className={windowDays === d ? "k-btn h-7 px-2 text-[12px]" : "k-btn-ghost h-7 px-2 text-[12px]"}
-                  >
-                    {d} days
-                  </button>
-                ))}
-              </span>
+              <span className="k-fg3 text-[12px]">Since you started</span>
             </div>
             <div className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-6">
               <StatTile label="Return" note="Break-even 1×">

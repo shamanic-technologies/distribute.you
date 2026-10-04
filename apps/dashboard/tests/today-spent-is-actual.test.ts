@@ -11,7 +11,9 @@ const src = readFileSync(join(__dirname, "../src/components/v2/today-page.tsx"),
 
 describe("Today: one window for the whole stat row", () => {
   it("reads every windowed tile off the served window block", () => {
-    expect(src).toContain("const win = useBrandRevenueWindow(brandId, windowDays);");
+    expect(src).toContain("const win = useBrandRevenueWindow(brandId, SINCE_INCEPTION);");
+    // Owner 2026-10-04: since inception, no 7 / 30 day toggle.
+    expect(src).not.toContain("TODAY_WINDOWS");
     expect(src).toContain("w.recipientsRepliesPositive.total");
     expect(src).toContain("w.recipientsClicked.total");
     expect(src).toContain("pct(emails.deliveryRatePct)");

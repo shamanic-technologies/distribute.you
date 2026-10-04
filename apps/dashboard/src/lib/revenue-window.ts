@@ -56,6 +56,9 @@ export type RevenueWindow = z.infer<typeof RevenueWindowSchema>;
 
 export const RevenueWindowResponseSchema = z.object({ window: RevenueWindowSchema });
 
-/** The windows the Today row offers, Explee's two. */
-export const TODAY_WINDOWS = [7, 30] as const;
-export type TodayWindow = (typeof TODAY_WINDOWS)[number];
+/**
+ * Every stat card states the figures SINCE INCEPTION (owner 2026-10-04: "on veut les chiffres
+ * since inception", no 7 / 30 day toggle). features-service serves it as `?windowDays=all`.
+ */
+export const SINCE_INCEPTION = "all" as const;
+export type RevenueWindowDays = number | typeof SINCE_INCEPTION;

@@ -18,6 +18,7 @@ import { useSelectedOffer } from "@/components/v2/selected-offer";
 import type { RevenueOverview } from "@/lib/revenue-view";
 import type { LeadHistoryEvent } from "@/lib/lead-history";
 import { pollOptions } from "@/lib/query-options";
+import type { RevenueWindowDays } from "@/lib/revenue-window";
 import { POLL_INTERVAL } from "@/lib/query-options";
 import { isRevenueFeature } from "@/lib/revenue-feature";
 import { useSoleFeatureSlug } from "@/lib/sole-feature";
@@ -73,7 +74,7 @@ export function useBrandRevenue(brandId: string) {
 }
 
 /** Today's stat row over the last `days` UTC days, same offer and gate as `useBrandRevenue`. */
-export function useBrandRevenueWindow(brandId: string, days: number) {
+export function useBrandRevenueWindow(brandId: string, days: RevenueWindowDays) {
   const featureSlug = useSoleFeatureSlug();
   const { offerId, campaignIds, scopeSettled } = useSelectedOffer();
   const enabled = isRevenueFeature(featureSlug) && !!offerId && (campaignIds?.length ?? 0) > 0;
