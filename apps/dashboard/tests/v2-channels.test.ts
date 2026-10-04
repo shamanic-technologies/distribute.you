@@ -73,7 +73,12 @@ describe("channel pages", () => {
     expect(page).not.toMatch(/visits\s*\+\s*replies/);
   });
   it("Delivered and the Interested total are lead-service's people counts", () => {
-    expect(page).toContain('<StepRow label="Delivered" count={people?.delivered ?? null} of={counts.contacted} />');
+    expect(page).toContain('<StepBar label="Delivered" count={people?.delivered ?? null} of={counts.contacted} />');
     expect(page).toContain("total={people?.interested ?? null}");
+  });
+  it("people steps are vertical bars in one card at most half the width", () => {
+    expect(page).toContain('<section className="lg:max-w-[50%]">');
+    expect(page).toContain("height: barHeight(");
+    expect(page).not.toContain("StepRow");
   });
 });
