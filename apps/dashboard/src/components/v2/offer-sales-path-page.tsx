@@ -94,7 +94,7 @@ export function V2OfferSalesPathPage() {
         { label: "Sales path" },
       ]}
       title={name ?? " "}
-      sub="We always run the path with the best return. Tick legs and steps below to change the options."
+      sub="We run the best path you ticked, on the channels we run today."
       width="max-w-[1280px]"
     >
       {error && <p className="mb-4 text-[13px] text-[var(--data-rose)]">{error}</p>}
