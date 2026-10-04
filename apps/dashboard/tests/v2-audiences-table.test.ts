@@ -125,6 +125,16 @@ describe("v2 audience table surface", () => {
     expect(table).toContain("columns={columns}");
   });
 
+  it("the offer's Targeting panel is the audience's text and the channels using it, no Apollo filter, provider or match count", () => {
+    const drawer = table.slice(table.indexOf("function AudienceDrawer("));
+    expect(drawer).toContain("!signal && !plain ? audienceFilterGroups(audience.filters)");
+    expect(drawer).toContain('<p className="k-label mb-2">Who</p>');
+    expect(drawer).toContain('<p className="k-label mb-2">Used by</p>');
+    expect(drawer).toContain("{signal && !plain && (");
+    expect(drawer).toContain("{!plain && (\n        <section>\n          <p className=\"k-label mb-2\">Details</p>");
+    expect(table).toContain("plain={plain}");
+  });
+
   it("the offer's Targeting lists suggested audiences and leaves out LinkedIn signal ones", () => {
     expect(table).toContain("useAudienceTable({ campaignId, offerId, includeSuggested: plain })");
     expect(table).toContain("plain ? t.audiences.filter((a) => !linkedInSignalOf(a.filters)) : t.audiences");
