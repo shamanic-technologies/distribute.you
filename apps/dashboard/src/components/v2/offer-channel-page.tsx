@@ -121,6 +121,12 @@ export function ColdEmailOverview({
   const countsSettled = buckets.isFetchedAfterMount || buckets.data !== undefined;
   const campaignsQ = useAuthQuery(["campaigns", brandId], () => listCampaignsByBrand(brandId), { enabled: !!brandId });
   const campaigns = campaignsQ.data?.campaigns ?? null;
+  const shownLegs = campaigns
+    ? LEG_STEPS.flatMap((leg) => {
+        const campaignId = legCampaignId(campaigns, offerId, leg.legKey);
+        return campaignId ? [{ ...leg, campaignId }] : [];
+      })
+    : [];
 
   return (
     <div className="space-y-8">
@@ -151,18 +157,16 @@ export function ColdEmailOverview({
 
       {/* One steps card per leg at 2/3, the tabs' summaries at 1/3 (owner 2026-10-04). */}
       <div className="grid gap-x-3 gap-y-8 lg:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
-        <div className="grid gap-x-3 gap-y-8 md:grid-cols-2">
-          {LEG_STEPS.map((leg) => (
-            <LegSteps
-              key={leg.legKey}
-              title={leg.title}
-              outcome={leg.outcome}
-              bucket={leg.bucket}
-              campaignsSettled={campaigns !== null || campaignsQ.isError}
-              campaignId={campaigns ? legCampaignId(campaigns, offerId, leg.legKey) : null}
-            />
-          ))}
-        </div>
+        {/* A leg no campaign aims at gets no card (owner 2026-10-04). */}
+        {campaigns === null && !campaignsQ.isError ? (
+          <Shimmer className="h-[240px] w-full rounded-[12px]" />
+        ) : (
+          <div className={`grid gap-x-3 gap-y-8 ${shownLegs.length > 1 ? "md:grid-cols-2" : ""}`}>
+            {shownLegs.map((leg) => (
+              <LegSteps key={leg.legKey} title={leg.title} outcome={leg.outcome} bucket={leg.bucket} campaignId={leg.campaignId} />
+            ))}
+          </div>
+        )}
         <TabSummaries
           brandId={brandId}
           offerId={offerId}
@@ -182,19 +186,14 @@ function LegSteps({
   title,
   outcome,
   bucket,
-  campaignsSettled,
   campaignId,
 }: {
   title: string;
   outcome: string;
   bucket: "website_visit" | "positive_reply";
-  campaignsSettled: boolean;
-  campaignId: string | null;
+  campaignId: string;
 }) {
-  const q = useAuthQuery(["leadBucketCounts", `campaign:${campaignId}`, ""], () => getLeadBucketCounts({ campaignId: campaignId! }, {}), {
-    ...pollOptions,
-    enabled: !!campaignId,
-  });
+  const q = useAuthQuery(["leadBucketCounts", `campaign:${campaignId}`, ""], () => getLeadBucketCounts({ campaignId }, {}), pollOptions);
   const counts = q.data?.counts ?? null;
   const settled = q.isFetchedAfterMount || q.data !== undefined;
 
@@ -202,10 +201,8 @@ function LegSteps({
     <section>
       <SectionTitle>{title}</SectionTitle>
       <div className="k-card p-4">
-        {!campaignsSettled || (campaignId && !settled) ? (
+        {!settled ? (
           <Shimmer className="h-[200px] w-full rounded-[8px]" />
-        ) : !campaignId ? (
-          <EmptyNote>No campaign aims at this yet.</EmptyNote>
         ) : !counts ? (
           <EmptyNote>Could not read where people stand. Retrying.</EmptyNote>
         ) : (

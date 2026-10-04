@@ -117,7 +117,7 @@ private struct SectionTitle: View {
 private struct TodayPanel: View {
     @EnvironmentObject var state: AppState
     var body: some View {
-        KTabs(options: [(7, "7 days"), (30, "30 days")], selection: state.windowDays) { state.setWindow($0) }
+        Text("Since you started").font(K.meta).foregroundStyle(K.fg3)
         LoadView(load: state.today) { d in
             if let win = d.window?.window {
                 KCard {
