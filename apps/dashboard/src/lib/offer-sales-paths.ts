@@ -173,8 +173,8 @@ export function pathTitle(path: SalesPathRow): string {
   return path.steps.map((s) => s.label).join(" → ");
 }
 
-/** One link of a path as the row draws it: a channel of ours working a leg, or the step it lands on. */
-export type PathLink = { kind: "channel"; name: string } | { kind: "step"; label: string };
+/** One link of a path as the row draws it: a channel of ours working a leg (its slug draws its mark), or the step it lands on. */
+export type PathLink = { kind: "channel"; name: string; slug: string | null } | { kind: "step"; label: string };
 
 /**
  * A path read leg by leg: the channel that works each leg (only legs a channel of ours
@@ -184,7 +184,7 @@ export type PathLink = { kind: "channel"; name: string } | { kind: "step"; label
 export function pathLinks(path: SalesPathRow): PathLink[] {
   const parts: PathLink[] = [];
   for (const leg of path.legs) {
-    if (leg.workedBy !== "human" && leg.channel?.name) parts.push({ kind: "channel", name: leg.channel.name });
+    if (leg.workedBy !== "human" && leg.channel?.name) parts.push({ kind: "channel", name: leg.channel.name, slug: leg.channel.slug });
     parts.push({ kind: "step", label: leg.toStep.label });
   }
   return parts;

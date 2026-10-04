@@ -68,7 +68,7 @@ describe("offer sales paths reader", () => {
     const leg0 = parsed.paths[0].legs[0];
     const human = { ...leg0, legKey: "conversation_to_paid_client", fromStep: step("conversation", "Positive reply"), toStep: step("paid_client", "Paid client"), workedBy: "human", channel: null };
     expect(pathLinks({ ...parsed.paths[0], legs: [leg0, human] })).toEqual([
-      { kind: "channel", name: "Herald" },
+      { kind: "channel", name: "Herald", slug: "sales-cold-email-outreach" },
       { kind: "step", label: "Positive reply" },
       { kind: "step", label: "Paid client" },
     ]);
