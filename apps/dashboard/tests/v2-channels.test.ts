@@ -77,8 +77,10 @@ describe("channel pages", () => {
     expect(page).toContain('<StepBar label="Delivered" count={people?.delivered ?? null} of={counts.contacted} />');
     expect(page).toContain("total={people?.interested ?? null}");
   });
-  it("people steps are vertical bars in one card at most half the width", () => {
-    expect(page).toContain('<section className="lg:max-w-[50%]">');
+  it("people steps are vertical bars in a 2/3 card, the tabs' summaries at 1/3 (owner 2026-10-04)", () => {
+    expect(page).toContain("lg:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]");
+    for (const tab of ["inbox", "sent", "targeting", "settings"]) expect(page).toContain(`href={tabHref("${tab}")}`);
+    expect(page).toContain("See more");
     expect(page).toContain("height: barHeight(");
     expect(page).not.toContain("StepRow");
   });

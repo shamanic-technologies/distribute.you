@@ -461,7 +461,7 @@ function MissingRate({ leg }: { leg: string }) {
 }
 
 /** The two lists as brand-service serves them; null until the read answers. */
-function giveListsFrom(f: BrandUserFields | undefined): GiveLists | null {
+export function giveListsFrom(f: BrandUserFields | undefined): GiveLists | null {
   if (!f) return null;
   return { giveForFree: giveListLines(f.giveForFree?.value), neverGive: giveListLines(f.neverGive?.value) };
 }

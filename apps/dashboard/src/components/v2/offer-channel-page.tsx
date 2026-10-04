@@ -1,6 +1,10 @@
 "use client";
 
+import Link from "next/link";
 import { useParams, useSearchParams } from "next/navigation";
+import { useAuthQuery } from "@/lib/use-auth-query";
+import { pollOptions } from "@/lib/query-options";
+import { getOfferUserFields } from "@/lib/api";
 import { formatCount } from "@/lib/format-number";
 import { SINCE_INCEPTION } from "@/lib/revenue-window";
 import { isColdEmailChannel } from "@/lib/offer-levers-home";
@@ -8,9 +12,10 @@ import { useAcquisitionChannels } from "@/lib/use-acquisition-channels";
 import { v2OfferChannelHref, v2OfferHref, type V2ChannelTab } from "@/lib/v2/routes";
 import { AcquisitionChannelMark } from "@/components/marks/acquisition-channel-mark";
 import { useBrandRevenueWindow, useBucketCounts } from "@/components/v2/data";
-import { ColdEmailChannelSettings } from "@/components/v2/offer-channels-page";
+import { ColdEmailChannelSettings, giveListsFrom } from "@/components/v2/offer-channels-page";
 import { PeoplePage } from "@/components/v2/people-page";
 import { V2AudiencesTable } from "@/components/v2/audiences-table";
+import { useAudienceTable } from "@/components/v2/use-audience-table";
 import { V2Page, useOfferName, type V2Tab } from "@/components/v2/setup-pages";
 import { EmptyNote, Figure, SectionTitle, Shimmer, StatTile } from "@/components/v2/ui";
 
@@ -64,7 +69,11 @@ export function V2OfferChannelPage() {
           <EmptyNote>This channel has no page yet.</EmptyNote>
         </div>
       ) : tab === "overview" ? (
-        <ColdEmailOverview brandId={brandId} />
+        <ColdEmailOverview
+          brandId={brandId}
+          offerId={offerId}
+          tabHref={(t) => v2OfferChannelHref(orgId, brandId, offerId, channelSlug, t)}
+        />
       ) : tab === "inbox" ? (
         <div className="k-card overflow-hidden">
           <PeoplePage bucket="positive_reply" />
@@ -89,7 +98,15 @@ export function V2OfferChannelPage() {
  * Delivered and Interested are lead-service's PEOPLE counts (`people`): a person can visit
  * AND reply, so the Interested total is its distinct count, never the two buckets added.
  */
-export function ColdEmailOverview({ brandId }: { brandId: string }) {
+export function ColdEmailOverview({
+  brandId,
+  offerId,
+  tabHref,
+}: {
+  brandId: string;
+  offerId: string;
+  tabHref: (tab: V2ChannelTab) => string;
+}) {
   const win = useBrandRevenueWindow(brandId, SINCE_INCEPTION);
   const emails = win.data?.emails ?? null;
   const buckets = useBucketCounts(brandId);
@@ -117,8 +134,9 @@ export function ColdEmailOverview({ brandId }: { brandId: string }) {
         </div>
       </section>
 
-      {/* Where people stand: one card, half the width at most, one vertical bar per step (owner 2026-10-04). */}
-      <section className="lg:max-w-[50%]">
+      {/* Where people stand: one card at 2/3, one vertical bar per step; the tabs' summaries at 1/3 (owner 2026-10-04). */}
+      <div className="grid gap-x-3 gap-y-8 lg:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
+      <section>
         <SectionTitle>People</SectionTitle>
         <div className="k-card p-4">
           {!countsSettled ? (
@@ -149,6 +167,91 @@ export function ColdEmailOverview({ brandId }: { brandId: string }) {
           )}
         </div>
       </section>
+      <TabSummaries brandId={brandId} offerId={offerId} contacted={counts?.contacted ?? null} replies={counts?.positive_reply ?? null} countsSettled={countsSettled} tabHref={tabHref} />
+      </div>
+    </div>
+  );
+}
+
+/**
+ * One short card per other tab (Inbox, Sent, Targeting, Settings): its served headline and
+ * a link to the tab. The reads are the tabs' own query keys, so opening a tab paints at once.
+ */
+function TabSummaries({
+  brandId,
+  offerId,
+  contacted,
+  replies,
+  countsSettled,
+  tabHref,
+}: {
+  brandId: string;
+  offerId: string;
+  contacted: number | null;
+  replies: number | null;
+  countsSettled: boolean;
+  tabHref: (tab: V2ChannelTab) => string;
+}) {
+  const audiences = useAudienceTable({ offerId });
+  const fields = useAuthQuery(["offerUserFields", brandId, offerId], () => getOfferUserFields(brandId, offerId), {
+    ...pollOptions,
+    enabled: !!brandId && !!offerId,
+  });
+  const give = giveListsFrom(fields.data?.fields);
+  const fieldsSettled = fields.isFetchedAfterMount || fields.data !== undefined;
+
+  return (
+    <section>
+      <SectionTitle>At a glance</SectionTitle>
+      <div className="flex flex-col gap-3">
+        <SummaryCard label="Inbox" href={tabHref("inbox")} loading={!countsSettled} value={replies} unit={replies === 1 ? "positive reply" : "positive replies"} />
+        <SummaryCard label="Sent" href={tabHref("sent")} loading={!countsSettled} value={contacted} unit={contacted === 1 ? "person emailed" : "people emailed"} />
+        <SummaryCard
+          label="Targeting"
+          href={tabHref("targeting")}
+          loading={audiences.activeTabLoading}
+          value={audiences.activeTabRows}
+          unit={audiences.activeTabRows === 1 ? "audience" : "audiences"}
+        />
+        <SummaryCard
+          label="Settings"
+          href={tabHref("settings")}
+          loading={!fieldsSettled}
+          value={give ? give.giveForFree.length : null}
+          unit="we give free"
+          sub={give ? `${give.neverGive.length} we never give` : null}
+        />
+      </div>
+    </section>
+  );
+}
+
+function SummaryCard({
+  label,
+  href,
+  loading,
+  value,
+  unit,
+  sub,
+}: {
+  label: string;
+  href: string;
+  loading: boolean;
+  value: number | null;
+  unit: string;
+  sub?: string | null;
+}) {
+  return (
+    <div className="k-card px-4 py-3">
+      <div className="flex items-center justify-between gap-2">
+        <span className="k-label">{label}</span>
+        <Link href={href} className="k-fg3 text-[12px] hover:text-[var(--fg-1)]">
+          See more →
+        </Link>
+      </div>
+      <div className="mt-1">
+        {loading ? <Shimmer className="h-7 w-24" /> : <Figure value={value === null ? <span className="k-fg4">{"—"}</span> : formatCount(value)} unit={unit} sub={sub} />}
+      </div>
     </div>
   );
 }
