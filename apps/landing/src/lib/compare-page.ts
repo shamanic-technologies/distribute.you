@@ -152,7 +152,7 @@ export function renderComparePage(c: Competitor): string {
 
 <section class="framed" id="pricing">
   <div class="wrap">
-    <div class="section-head"><span class="eyebrow">Pricing</span><h2>What ${esc(c.name)} charges, and what we charge</h2><p>${esc(c.name)} sells ${c.operatedBy === "you" ? "software you run" : "an agent you steer"}. Our plan starts at $99 a month after a 3-day free trial: every dollar becomes campaign credit, and we show what each positive reply cost.</p></div>
+    <div class="section-head"><span class="eyebrow">Pricing</span><h2>${esc(c.name)} pricing: what they charge, and what we charge</h2><p>${esc(c.name)} sells ${c.operatedBy === "you" ? "software you run" : "an agent you steer"}. Our plan starts at $99 a month after a 3-day free trial: every dollar becomes campaign credit, and we show what each positive reply cost.</p></div>
     <div class="cmp-cols">
       <div class="panel rv"><span class="c"></span>${prices}</div>
       <div class="plan rv">
