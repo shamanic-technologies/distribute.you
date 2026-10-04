@@ -58,6 +58,8 @@ const LegSchema = z
     workedBy: z.string(),
     /** Whether the customer ticked the leg (features-service; absent before scope=catalogue shipped). */
     ticked: z.boolean().optional(),
+    /** True when the leg starts from a step a lead reached: its campaign takes a MAX budget. */
+    reactive: z.boolean().optional(),
     channel: z
       .object({
         slug: z.string().nullable(),
@@ -65,6 +67,10 @@ const LegSchema = z
         trigger: z.string().nullable(),
         /** True when we run this channel today. */
         managed: z.boolean().optional(),
+        /** customer = the customer's own team works the leg (your-team-*). */
+        operatedBy: z.string().optional(),
+        /** The campaign's name (this channel on this leg), one word shared by every client. */
+        campaignName: z.string().nullable().optional(),
         /** When the cost is a market benchmark: its cited source, in words. */
         costBenchmarkSource: z.string().nullable().optional(),
         choice: z.string(),
