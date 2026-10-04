@@ -21,8 +21,8 @@ final class Notifier: NSObject, UNUserNotificationCenterDelegate {
             if !granted { NSLog("[desktop] notifications not allowed by the user") }
         }
         timer?.invalidate()
-        timer = Timer.scheduledTimer(withTimeInterval: 90, repeats: true) { [weak self] _ in
-            Task { @MainActor in await self?.check() }
+        timer = Timer.scheduledTimer(withTimeInterval: 90, repeats: true) { _ in
+            Task { @MainActor in await Notifier.shared.check() }
         }
         Task { await check() }
     }
