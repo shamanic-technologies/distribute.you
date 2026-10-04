@@ -60,7 +60,7 @@ export function OfferSalesPath({
                 type="button"
                 aria-pressed={on}
                 onClick={() => onChange(toggleStep(selection, s, !on, legs))}
-                className={`k-card flex items-center gap-2.5 p-3 text-left transition-[box-shadow,background-color] duration-150 active:scale-[0.99] ${on ? "bg-[var(--accent-soft)] ring-2 ring-[var(--accent)]" : "k-hover"}`}
+                className={`k-card flex items-center gap-2.5 p-3 text-left transition-[box-shadow,background-color] duration-150 active:scale-[0.99] ${on ? "k-card-on" : "k-hover"}`}
               >
                 <StepMark stepKey={s} size="xs" dimmed={!on} />
                 <span className="min-w-0 flex-1">
