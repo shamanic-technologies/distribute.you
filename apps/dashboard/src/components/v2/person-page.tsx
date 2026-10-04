@@ -21,8 +21,8 @@ import { CompanyMark, PersonAvatar, leadCompany, leadCompanyDomain, leadName, le
 /** Where a person stands, in the words the v2 pages use. lead-service decides it. */
 const STANDING_LABEL: Record<string, string> = {
   unresolved: "Not placed",
-  not_contacted: "Not contacted",
-  contacted: "Contacted",
+  not_contacted: "Not queued",
+  contacted: "Queued",
   engaged: "Engaged",
   sales_interest: "Interested",
   customer: "Won",
@@ -170,7 +170,7 @@ export function PersonPage() {
                         ) : null
                       }
                     />
-                    <Row k="First contacted" v={lead.firstContactedAt ? friendlyDate(lead.firstContactedAt) : null} />
+                    <Row k="First queued" v={lead.firstContactedAt ? friendlyDate(lead.firstContactedAt) : null} />
                     <Row k="Last activity" v={lastAt ? timeAgo(lastAt) : null} />
                     <Row
                       k="LinkedIn"

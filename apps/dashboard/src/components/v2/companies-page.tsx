@@ -20,7 +20,7 @@ import { CrewMark } from "@/components/v2/crew-mark";
  * reads verbatim rather than vanishing.
  */
 export const TAG_LABEL: Record<string, string> = {
-  contacted: "Contacted",
+  contacted: "Queued",
   sent: "Sent",
   delivered: "Delivered",
   visit: "Website visit",

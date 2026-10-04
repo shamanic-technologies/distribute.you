@@ -26,7 +26,7 @@ import { CompanyMark, PersonAvatar, leadCompany, leadCompanyDomain, leadName, pe
  */
 const V2_COLUMN_LABEL: Partial<Record<LeadBoardColumnKey, string>> = {
   // Everybody we wrote to who is still in play: the same standings v1 calls "Leads".
-  contacted: "Contacted",
+  contacted: "Queued",
   sales_interest: "Interested",
 };
 
@@ -107,7 +107,7 @@ export function DealsPage() {
                 <>
                   {contacted != null ? (
                     <>
-                      <span className="k-fg font-medium tabular-nums">{formatCount(contacted)}</span> contacted,{" "}
+                      <span className="k-fg font-medium tabular-nums">{formatCount(contacted)}</span> queued,{" "}
                     </>
                   ) : null}
                   <span className="k-fg font-medium tabular-nums">{formatCount(interested)}</span> interested (a website visit or a positive reply)

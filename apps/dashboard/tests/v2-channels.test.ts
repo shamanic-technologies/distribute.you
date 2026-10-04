@@ -83,9 +83,18 @@ describe("channel pages", () => {
     expect(page).not.toMatch(/positive_reply\s*\+/);
     expect(page).not.toMatch(/visits\s*\+\s*replies/);
   });
-  it("Delivered and the Interested total are lead-service's people counts", () => {
-    expect(page).toContain('<StepBar label="Delivered" count={people?.delivered ?? null} of={counts.contacted} />');
-    expect(page).toContain("total={people?.interested ?? null}");
+  it("one steps card per leg, read on the leg's campaign, stopping at its outcome (owner 2026-10-04)", () => {
+    expect(page).toContain('legKey: "start_to_website_visit", title: "Website visits", outcome: "Website visit"');
+    expect(page).toContain('legKey: "start_to_conversation", title: "Positive replies", outcome: "Positive reply"');
+    expect(page).toContain("getLeadBucketCounts({ campaignId: campaignId! }, {})");
+    expect(page).toContain('<StepBar label="Queued" count={counts.contacted} of={counts.contacted} />');
+    expect(page).toContain("q.data?.people?.delivered ?? null");
+    for (const gone of ["Meeting booked", "Meeting attended", "Paid client", 'label="Contacted"']) expect(page).not.toContain(gone);
+  });
+  it("stat cards open with People then Queued before Sent", () => {
+    expect(page.indexOf('<StatTile label="People">')).toBeGreaterThan(-1);
+    expect(page.indexOf('<StatTile label="Queued">')).toBeGreaterThan(page.indexOf('<StatTile label="People">'));
+    expect(page.indexOf('<StatTile label="Sent">')).toBeGreaterThan(page.indexOf('<StatTile label="Queued">'));
   });
   it("people steps are vertical bars in a 2/3 card, the tabs' summaries at 1/3 (owner 2026-10-04)", () => {
     expect(page).toContain("lg:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]");
