@@ -23,6 +23,11 @@ describe("the private-beta desktop page", () => {
     expect(home).not.toContain("/desktop");
   });
 
+  it("leads with the Terminal install: the browser download is blocked once by Gatekeeper", () => {
+    expect(page.indexOf(DESKTOP_INSTALL_COMMAND)).toBeLessThan(page.indexOf(`href="${DESKTOP_DOWNLOAD_URL}"`));
+    expect(text(page)).toMatch(/Open Anyway/);
+  });
+
   it("offers the download and the one-line install", () => {
     expect(page).toContain(`href="${DESKTOP_DOWNLOAD_URL}"`);
     expect(page).toContain(DESKTOP_INSTALL_COMMAND);
