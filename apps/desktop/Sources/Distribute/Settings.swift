@@ -122,14 +122,14 @@ struct SettingsPanel: View {
     var body: some View {
         if let error { EmptyNote(text: error, isError: true) }
         SettingsSection(title: "Brand", purpose: "The name we sign with.") {
-            LoadView(load: brand) { b in
+            LoadView(load: brand, rows: 1) { b in
                 EditLine(label: "Name", text: $name, saving: saving == "name") { await save("name") { try await $0.renameBrand(id: b.id, name: name) } }
                 InfoLine(label: "Website", value: b.url ?? b.domain)
                 InfoLine(label: "Clicks land on", value: b.clickDestinationUrl ?? b.url)
             }
         }
         SettingsSection(title: "Sales rep", purpose: "Who takes the call when someone is interested.") {
-            LoadView(load: rep) { _ in
+            LoadView(load: rep, rows: 1) { _ in
                 EditLine(label: "First name", text: $repName, saving: false) { await saveRep() }
                 EditLine(label: "Email", text: $repEmail, saving: saving == "rep") { await saveRep() }
                 EditLine(label: "Phone", text: $repPhone, saving: false) { await saveRep() }
@@ -137,7 +137,7 @@ struct SettingsPanel: View {
         }
         if let offer = state.selectedOffer {
             SettingsSection(title: "Booking link", purpose: "Where an interested person books a call for \(offer.name).") {
-                LoadView(load: econ) { _ in
+                LoadView(load: econ, rows: 1) { _ in
                     EditLine(label: "Booking URL", text: $booking, saving: saving == "booking") {
                         await save("booking") { try await $0.setBookingUrl(brandId: state.selectedBrand!.id, offerId: offer.offerId, url: booking.isEmpty ? nil : booking) }
                     }
@@ -145,7 +145,7 @@ struct SettingsPanel: View {
             }
         }
         SettingsSection(title: "Daily budget", purpose: "The most we spend per day, in whole dollars, from your prepaid credit.") {
-            LoadView(load: budget) { _ in
+            LoadView(load: budget, rows: 1) { _ in
                 EditLine(label: "Dollars per day", text: $daily, saving: saving == "budget") {
                     guard let usd = Int(daily.filter(\.isNumber)) else { error = "Type a whole number of dollars."; return }
                     await save("budget") { try await $0.setSalesBudget(brandId: state.selectedBrand!.id, cents: usd * 100) }
@@ -153,7 +153,7 @@ struct SettingsPanel: View {
             }
         }
         SettingsSection(title: "Conversion tracking", purpose: "Send us your signups and sales, so the return is measured.") {
-            LoadView(load: token) { t in
+            LoadView(load: token, rows: 1) { t in
                 InfoLine(label: "Status", value: (t.status ?? "not_set_up").replacingOccurrences(of: "_", with: " ").capitalized)
                 CopyLine(text: t.ingestUrl)
             }

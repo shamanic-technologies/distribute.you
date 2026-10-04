@@ -12,7 +12,7 @@ struct PanelView: View {
             HStack(spacing: 6) {
                 Image(systemName: pane.symbol).font(.system(size: 12)).foregroundStyle(K.fg3)
                 Text(pane.title).font(.system(size: 14, weight: .semibold)).foregroundStyle(K.fg1)
-                if let offer = state.selectedOffer, pane != .channels {
+                if let offer = state.selectedOffer, ![Pane.channels, .integrations, .settings, .billing].contains(pane) {
                     Text(offer.name).font(K.meta).foregroundStyle(K.fg3).lineLimit(1)
                 }
                 Spacer()
@@ -64,10 +64,11 @@ struct PanelView: View {
 /// Idle/loading = shimmer rows, failure = one plain sentence, else the content.
 struct LoadView<T, Content: View>: View {
     let load: Load<T>
+    var rows = 4
     @ViewBuilder let content: (T) -> Content
     var body: some View {
         switch load {
-        case .idle, .loading: ShimmerRows()
+        case .idle, .loading: ShimmerRows(count: rows)
         case .failed(let why): EmptyNote(text: why, isError: !why.hasPrefix("No ") && !why.hasPrefix("This brand"))
         case .loaded(let v): content(v)
         }
@@ -123,7 +124,7 @@ private struct TodayPanel: View {
                     Grid(alignment: .topLeading, horizontalSpacing: 0, verticalSpacing: 0) {
                         GridRow {
                             Tile(label: "Return", value: shownReturn(d.revenue?.costEconomics?.maturity),
-                                 note: d.revenue?.headline?.totalPipelineUsd.map { "\(usd($0)) pipeline" }, color: K.teal)
+                                 note: "on what you spent", color: K.teal)
                             Tile(label: "Pipeline", value: usd(d.revenue?.headline?.totalPipelineUsd), note: "expected",
                                  spark: win.expectedPipeline?.daily?.compactMap(\.cumulativePipelineUsd), color: K.teal)
                         }
