@@ -339,11 +339,6 @@ describe("the surface", () => {
     expect(body).toContain("shown.reason");
     expect(FLOW).toContain("<EmailBody mail={mail} />");
   });
-
-  it("leaves the current onboarding alone", () => {
-    const onboarding = read("src/components/onboarding/onboarding.tsx");
-    expect(onboarding).not.toContain("get-started");
-  });
 });
 
 describe("the wall", () => {

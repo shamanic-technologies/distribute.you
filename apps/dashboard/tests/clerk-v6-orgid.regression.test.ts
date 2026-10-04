@@ -32,16 +32,6 @@ describe("@clerk/nextjs v6 compatibility", () => {
     expect(content).toContain("<ClerkProvider dynamic>");
   });
 
-  it("onboarding should use full page reload after setActive", () => {
-    const onboardingPath = path.resolve(
-      __dirname,
-      "../src/components/onboarding/onboarding.tsx"
-    );
-    const content = fs.readFileSync(onboardingPath, "utf-8");
-    expect(content).toContain('window.location.href =');
-    expect(content).not.toContain('router.push("/")');
-  });
-
   it("API proxy should await auth() for orgId", () => {
     const proxyPath = path.resolve(
       __dirname,

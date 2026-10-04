@@ -16,8 +16,6 @@ describe("the why: Revenue made easy.", () => {
   const surfaces: [string, string][] = [
     ["get-started first screen (Hero)", "src/components/v2/get-started/get-started.tsx"],
     ["get-started last screen (wall)", "src/components/v2/get-started/account-card-wall.tsx"],
-    ["v1 onboarding first screen (welcome)", "src/components/start/start-picks.tsx"],
-    ["v1 onboarding confirmation (celebrate)", "src/components/onboarding/onboarding.tsx"],
     ["v2 shell sidebar", "src/components/v2/v2-shell.tsx"],
   ];
   for (const [label, file] of surfaces) {
@@ -31,14 +29,6 @@ describe("the why: Revenue made easy.", () => {
     const hero = src.slice(src.indexOf("function Hero("), src.indexOf("function Hero(") + 1200);
     expect(hero).toContain("{BRAND_WHY}");
     expect(hero).toContain("We find your next clients.");
-  });
-
-  it("sits on the celebrate step beside its title", () => {
-    const src = read("src/components/onboarding/onboarding.tsx");
-    const at = src.indexOf('if (step === "celebrate")');
-    const block = src.slice(at, src.indexOf('if (step === "phone")', at));
-    expect(block).toContain("{BRAND_WHY}");
-    expect(block).toContain("You're in. Welcome aboard.");
   });
 
   it("closes every customer email, HTML and plain text; staff/admin mails skip it", () => {

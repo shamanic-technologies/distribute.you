@@ -69,30 +69,6 @@
   }
 }
 
-/* ── Signed-out onboarding (/start, /onboarding/pay, /onboarding/build) ──
- * The landing's `enter` recipe (explee: rise 10px + fade, staggered per card)
- * and its `lp-delta-flash` pop on a value that just changed. Delay rides a CSS
- * variable set per card so a list of thirty reveals as a wave, not a blink.
- * Both stop under reduced motion. */
-@keyframes start-enter {
-  from { opacity: 0; transform: translateY(10px); }
-  to { opacity: 1; transform: translateY(0); }
-}
-@keyframes start-pop {
-  0% { transform: scale(1); }
-  40% { transform: scale(1.04); }
-  100% { transform: scale(1); }
-}
-.start-enter {
-  animation: start-enter 0.45s cubic-bezier(0.2, 0.7, 0.2, 1) both;
-  animation-delay: var(--enter-delay, 0ms);
-}
-.start-pop { animation: start-pop 0.35s ease-out; }
-@media (prefers-reduced-motion: reduce) {
-  .start-enter { animation: none; opacity: 1; transform: none; }
-  .start-pop { animation: none; }
-}
-
 /* ── Base ─────────────────────────────────────────────────────────── */
 :root {
   /* Light = the landing's default theme (served HTML forces data-theme=light).
@@ -199,45 +175,6 @@ html.dark body::before {
     background-color: var(--color-brand-700);
     color: #ffffff;
   }
-}
-
-/* A step whose Ctrl+C would hand over the question AND the field SAYS SO while
- * the selection is live, by painting its fields in the selection colour.
- *
- * Without this the surface lies: a drag-selection stops at the edge of a form
- * field, so the reader sees only the question lit, presses Ctrl+C, and silently
- * gets more than was on screen. A copy that hands over more than it showed is
- * worse than one that hands over too little, because nothing tells the reader it
- * happened. Owner, on the version that had the clipboard half without this half:
- * "il faut qu'on voie VISUELLEMENT que ca selectionne aussi l'input, sinon c'est
- * trompeur et pire".
- *
- * The attribute is set by `useStepCopy` off the SAME `copyStepIntent` that
- * decides whether to rewrite the clipboard, so what is lit is exactly what gets
- * copied. One predicate, so the two cannot drift.
- *
- * `[data-copy-value]` is for a value that is not a form control (the services
- * step's chips, whose text IS the answer). Colours come from the `--color-brand-*`
- * ramp, so this rotates with `:root[data-brand-tint]` exactly like `::selection`
- * above; the dark pair mirrors it for the same reason.
- *
- * ⚠️ Measured before settling on a tint: `setSelectionRange` on an UNFOCUSED
- * textarea paints nothing at all, and focusing it to make it paint would collapse
- * the page selection it is meant to extend. */
-/* ⚠️ UNLAYERED on purpose, like the `html.dark` remaps below. A `@layer base`
- * rule loses to any utility class, so the services step's chips kept their
- * `bg-blue-50` and were the one value on that step that did NOT light up
- * (measured: the textarea painted, the chips did not). Unlayered beats a layered
- * utility whatever its specificity. */
-[data-copy-included] :is(input, textarea),
-[data-copy-included] [data-copy-value] {
-  background-color: var(--color-brand-200);
-  color: var(--color-gray-900, #111827);
-}
-.dark [data-copy-included] :is(input, textarea),
-.dark [data-copy-included] [data-copy-value] {
-  background-color: var(--color-brand-700);
-  color: #ffffff;
 }
 
 @utility text-balance {

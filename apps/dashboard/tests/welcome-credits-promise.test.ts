@@ -1,7 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { readFileSync, readdirSync } from "node:fs";
 import { join } from "node:path";
-import { welcomeHeadline, welcomeDetail } from "../src/lib/welcome-offer-copy";
 import { SUBSCRIPTION_AMOUNT_OPTIONS_CENTS } from "../src/lib/subscription-plan";
 
 /**
@@ -23,12 +22,6 @@ import { SUBSCRIPTION_AMOUNT_OPTIONS_CENTS } from "../src/lib/subscription-plan"
  * why the assertions here INVERT rather than move: a surface that still tells a
  * new signup to reach some figure before their credits land is now describing a
  * retired offer.
- *
- * The gift reaches the buyer through TWO sides of one $30, never two gifts:
- * billing grants the $30, and the first checkout charges the daily budget MINUS
- * that $30 (`planFirstCharge`). A $50/day signup pays $20 and starts with $50 of
- * balance; a $30/day signup pays nothing and starts with $30. The gift is exactly
- * $30 in both, which is the invariant `onboarding-charge.test.ts` holds.
  *
  * Re-pricing is grandfather-safe by construction: an org's entitlement is FROZEN
  * on its billing account at creation, so orgs that signed up under the $400 or
@@ -54,11 +47,6 @@ import { SUBSCRIPTION_AMOUNT_OPTIONS_CENTS } from "../src/lib/subscription-plan"
 const REPO = join(__dirname, "..", "..", "..");
 
 const SURFACES = [
-  "apps/dashboard/src/components/onboarding/onboarding.tsx",
-  // The gift step's two sentences moved here when the referral launched, because
-  // a referred signup is owed BOTH offers and the step has to say so. See the
-  // referred-cohort block at the bottom of this file.
-  "apps/dashboard/src/lib/welcome-offer-copy.ts",
   "apps/dashboard/src/instrumentation.ts",
   "apps/landing/public/llms.txt",
   "apps/landing/src/lib/v2-shell.ts",
@@ -90,17 +78,6 @@ const FALSE_CLAIMS: [RegExp, string][] = [
   [/\$25 (in |of )?(free |welcome |matched )?credits/i, "the offer is $30, not the retired $25"],
 ];
 
-// Surfaces whose copy is BUILT from figures rather than written out, so the claim
-// lives in the rendered string and is asserted there instead of in the source.
-const COMPUTED_SURFACES = new Set<string>([
-  // Owns the sentences, but builds them from figures.
-  "apps/dashboard/src/lib/welcome-offer-copy.ts",
-  // Renders them. It no longer spells the promise out anywhere, so there is no
-  // literal to match — but it stays in SURFACES so the false-claim sweep still
-  // covers every other thing it says about the offer.
-  "apps/dashboard/src/components/onboarding/onboarding.tsx",
-]);
-
 function read(rel: string): string {
   return readFileSync(join(REPO, rel), "utf8");
 }
@@ -116,8 +93,6 @@ describe("signup-facing surfaces sell the $99/month plan", () => {
   const STATIC = [
     "apps/dashboard/src/components/auth/auth-brand-panel.tsx",
     "apps/dashboard/src/app/(authed)/sign-up/[[...sign-up]]/page.tsx",
-    "apps/dashboard/src/components/start/start-shell.tsx",
-    "apps/dashboard/src/components/start/start-picks.tsx",
   ];
   const RETIRED = [/\$30/, /\$1 ?\/ ?day/, /\$1 (a|per) day/, /from \$1\b/i];
 
@@ -147,75 +122,9 @@ describe("$400 welcome-credits promise", () => {
       }
     });
   }
-
-  it("the gift step's rendered copy states no threshold on the welcome credits", () => {
-    // Asserted on the output, not the source: welcome-offer-copy.ts is alias-free
-    // precisely so the real sentence can be tested instead of its ingredients.
-    // The plain signup states no threshold at all. The referred one states ONE, and
-    // it belongs to the referral credits — which is why the sentence names them.
-    expect(welcomeDetail(false)).not.toMatch(/payments reach/i);
-    expect(welcomeDetail(true)).toMatch(/referral credits land once your payments reach/i);
-  });
-
-  it("the onboarding gift step states the whole $30 already banked", () => {
-    // The whole gift, not a slice of it: there is no second instalment behind this
-    // sentence any more, so naming a smaller up-front figure would understate it.
-    expect(welcomeDetail(false)).toContain("$30 is in your account already.");
-    expect(welcomeDetail(true)).toContain("$30 is in your account already.");
-  });
-
-  it("the gift step makes no false claim once rendered", () => {
-    for (const sentence of [
-      welcomeHeadline(false),
-      welcomeHeadline(true),
-      welcomeDetail(false),
-      welcomeDetail(true),
-    ]) {
-      for (const [pattern, why] of FALSE_CLAIMS) {
-        expect(pattern.test(sentence), `"${sentence}" claims ${pattern} (${why})`).toBe(false);
-      }
-    }
-  });
 });
 
-/**
- * The REFERRED cohort states a different total, and that is not a contradiction.
- *
- * The guards above describe one promise made identically everywhere. A signup that
- * arrived through a referral link is owed TWO offers: $30 of welcome credits, given
- * at signup, and $500 of referral credits, still earned on payments. Their bars
- * STACK rather than overlap, so the referral one lands at the sum. Quoting the
- * welcome figure alone to that person understates what they get by $500, on the
- * screen where they decide to pay.
- *
- * The stacked figure is DERIVED from the two amounts and never written out: it is
- * billing's ladder, so a literal here would state a bar billing does not hold the
- * next time either offer is re-priced.
- *
- * It is shown only after the invite code has been VALIDATED against a real org, so
- * the larger figure is never promised on a code that resolves to nothing.
- */
-describe("referred-signup promise", () => {
-  const copy = read("apps/dashboard/src/lib/welcome-offer-copy.ts");
-
-  it("derives the stacked bar instead of hardcoding it", () => {
-    // Writing the sum as a literal is how the two drift apart the next time
-    // either offer is re-priced — which is exactly what this change is.
-    expect(copy).toContain("WELCOME_CREDIT_USD + REFERRAL_CREDIT_USD");
-    expect(copy).not.toContain("$900");
-    expect(copy).not.toContain("$530");
-  });
-
-  it("names the referral bar, since that half really is gated", () => {
-    expect(copy).toContain("referral credits land once your");
-  });
-
-  it("is gated on a validated code, never on the cookie alone", () => {
-    const src = read("apps/dashboard/src/components/onboarding/onboarding.tsx");
-    expect(src).toContain("validateInvite");
-    expect(src).toContain("if (cancelled || !res.valid) return;");
-  });
-
+describe("landing stylesheet version", () => {
   it("the homepage and every rendered page read the same stylesheet version", () => {
     // A `public/landing/v2/**` edit ships nothing visible unless every page that
     // links it bumps `?v=N`: the old query string is its own long-lived edge cache

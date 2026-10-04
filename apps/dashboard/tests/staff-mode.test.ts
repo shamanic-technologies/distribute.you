@@ -92,7 +92,7 @@ describe("nothing below a mission reaches a customer", () => {
   });
 
   it("customer copy never says workflow", () => {
-    for (const f of ["components/v2/new-org-modal.tsx", "components/v2/get-started/launch.ts", "components/settings/offer-campaigns-card.tsx", "components/onboarding/onboarding.tsx"]) {
+    for (const f of ["components/v2/new-org-modal.tsx", "components/v2/get-started/launch.ts", "components/settings/offer-campaigns-card.tsx"]) {
       const s = read(f);
       for (const retired of ["No workflow is ready", "has no workflow ready", "with our best workflow"]) expect(s).not.toContain(retired);
     }

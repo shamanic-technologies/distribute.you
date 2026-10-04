@@ -24,10 +24,10 @@ describe("Org switch cross-org isolation framework", () => {
   const invalidatorPath = "src/components/org-cache-invalidator.tsx";
   const layoutPath = "src/components/v2/v2-client-layout.tsx";
   const orgActivatorPath = "src/components/org-activator.tsx";
-  const breadcrumbPath = "src/components/breadcrumb-nav.tsx";
-  // Org identity + the switch handlers were extracted out of breadcrumb-nav into
-  // this shared hook so the pre-beta breadcrumb and the beta sidebar-top
-  // TenantSwitcher run ONE implementation. The race guards follow the code.
+  // The v2 sidebar's org switcher. The v1 breadcrumb that shared the hook is deleted.
+  const sidebarMenusPath = "src/components/v2/sidebar-menus.tsx";
+  // Org identity + the switch handlers live in this shared hook so every switcher
+  // runs ONE implementation. The race guards follow the code.
   const tenantSwitchPath = "src/lib/use-tenant-switcher.ts";
   const queryProviderPath = "src/lib/query-provider.tsx";
   const useAuthQueryPath = "src/lib/use-auth-query.ts";
@@ -66,7 +66,7 @@ describe("Org switch cross-org isolation framework", () => {
     // prefix, so the keyed remount resets memory AND the disk key space at once —
     // the invalidator and its `clearBreadcrumbCaches` were deleted as dead code.
     expect(fs.existsSync(path.join(__dirname, "..", invalidatorPath))).toBe(false);
-    for (const p of [layoutPath, tenantSwitchPath, breadcrumbPath, queryProviderPath]) {
+    for (const p of [layoutPath, tenantSwitchPath, sidebarMenusPath, queryProviderPath]) {
       expect(read(p), `${p} must not reference the deleted invalidator`).not.toContain(
         "OrgCacheInvalidator",
       );
@@ -180,8 +180,9 @@ describe("Org switch cross-org isolation framework", () => {
     expect(match, "getToken must sit between setActive and router.push").not.toBeNull();
   });
 
-  it("the breadcrumb reads the ONE tenant-switch hook", () => {
+  it("the sidebar org switcher reads the ONE tenant-switch hook", () => {
     // No second copy of the org/brand identity + switch logic to drift.
-    expect(read(breadcrumbPath)).toContain("@/lib/use-tenant-switcher");
+    expect(read(sidebarMenusPath)).toContain("@/lib/use-tenant-switcher");
+    expect(read(sidebarMenusPath)).toContain("t.handleOrgSwitch(");
   });
 });

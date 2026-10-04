@@ -18,11 +18,10 @@ const launch = read("src/components/v2/get-started/launch.ts");
 const wall = read("src/components/v2/get-started/account-card-wall.tsx");
 const flow = read("src/components/v2/get-started/get-started.tsx");
 const snapshot = read("src/lib/v2/get-started.ts");
-const onboarding = read("src/components/onboarding/onboarding.tsx");
 const modal = read("src/components/v2/new-org-modal.tsx");
 
 describe("launchAudiencePortfolio", () => {
-  const fn = api.slice(api.indexOf("export async function launchAudiencePortfolio("), api.indexOf("export async function readBrandTargetAudience("));
+  const fn = api.slice(api.indexOf("export async function launchAudiencePortfolio("), api.indexOf("export interface AudienceWire {"));
 
   it("posts brand, offer and the ICP text to the portfolio route", () => {
     expect(fn).toContain("`/orgs/audiences/portfolio`");
@@ -57,15 +56,6 @@ describe("/get-started launches the portfolio, not the one audience picked in th
     expect(flow).toContain("if (s.icp) icpRef.current = s.icp;");
     expect(flow).toContain("targetAudience={icpRef.current}");
     expect(wall).toContain("{ brandId, website, offer, targetAudience, budgetUsd, plan, answered }");
-  });
-});
-
-describe("v1 /onboarding launches the portfolio from the text saved on the brand", () => {
-  it("reads the brand's targetAudience and launches after the offer is named, before the campaigns", () => {
-    const at = onboarding.indexOf("await launchAudiencePortfolio(pending.brandId, launchOfferId, await readBrandTargetAudience(pending.brandId));");
-    expect(at).toBeGreaterThan(-1);
-    expect(at).toBeGreaterThan(onboarding.indexOf("if (!launchOfferId) {"));
-    expect(at).toBeLessThan(onboarding.indexOf("const launchCampaigns = await resolveLaunchCampaigns(pending);"));
   });
 });
 

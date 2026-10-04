@@ -161,13 +161,14 @@ describe("the verdict is READ off the body, never rebuilt", () => {
 
 describe("the modules the served verdict replaced stay gone", () => {
   it("the two modules it replaced are GONE, not merely unused", () => {
-    // A lib with no caller is a lib the next surface reaches for. Both are deleted.
-    for (const rel of ["lib/use-scope-learning-lead.ts", "lib/learning-progress.ts"]) {
+    // A lib with no caller is a lib the next surface reaches for. All are deleted,
+    // including the cheapest-across-workflows pick that chose the floor.
+    for (const rel of [
+      "lib/use-scope-learning-lead.ts",
+      "lib/learning-progress.ts",
+      "lib/workflow-projection-choice.ts",
+    ]) {
       expect(() => src(rel)).toThrow();
     }
-    // The cheapest-across-workflows pick is what chose the floor. It has no caller left.
-    const choice = src("lib/workflow-projection-choice.ts");
-    expect(choice).not.toContain("learningSignalUnitCostUsd");
-    expect(choice).not.toContain("workflowSignalUnitCost");
   });
 });

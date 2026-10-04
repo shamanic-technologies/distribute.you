@@ -50,8 +50,8 @@ describe("the stored logo wins over the crawl", () => {
     // A surface left on `domain` alone silently keeps drawing the crawl, and
     // nothing goes red — it simply disagrees with the sidebar beside it.
     for (const [file, marker] of [
-      ["src/components/breadcrumb-nav.tsx", "logoUrl={displayBrand.logoUrl}"],
-      ["src/components/breadcrumb-nav.tsx", "logoUrl={b.logoUrl}"],
+      ["src/components/v2/sidebar-menus.tsx", "logoUrl={t.displayBrand?.logoUrl}"],
+      ["src/components/v2/sidebar-menus.tsx", "logoUrl={b.logoUrl}"],
     ] as const) {
       expect(read(file), `${file} still draws the crawl`).toContain(marker);
     }

@@ -19,16 +19,10 @@ import { join } from "node:path";
  * de-prioritises it, and nothing INFERS degradation from counts or filter shapes —
  * the flag the backend sends is rendered, and nothing more.
  *
- * Source-substring guards: `onboarding.tsx` imports through the `@` alias, which
- * vitest does not resolve in this repo, so these read the source rather than calling
- * in. The card's slice is bound to the NEXT declaration rather than a measured
- * length, so it moves with the file instead of expiring on the next comment.
+ * Source-substring guards on the wire reader (`api.ts` imports through the `@`
+ * alias, which vitest does not resolve here).
  */
 
-const ONBOARDING = readFileSync(
-  join(__dirname, "../src/components/onboarding/onboarding.tsx"),
-  "utf8",
-);
 const API = readFileSync(join(__dirname, "../src/lib/api.ts"), "utf8");
 
 describe("degraded is read off the wire, optional", () => {
@@ -38,15 +32,5 @@ describe("degraded is read off the wire, optional", () => {
 
   it("parses it as OPTIONAL — an older human-service deploy does not send it, and absent means not degraded", () => {
     expect(API).toContain("degraded: z.boolean().optional(),");
-  });
-});
-
-describe("onboarding renders no audience card any more", () => {
-  // The onboarding audience step became a single target-audience box (the
-  // audiences are built by hand after payment), so the degraded badge has no
-  // onboarding surface. The flag still travels the wire for the audiences page.
-  it("carries no candidate card", () => {
-    expect(ONBOARDING).not.toContain("function AudienceCandidateCard(");
-    expect(ONBOARDING).not.toContain("candidate.degraded");
   });
 });

@@ -90,10 +90,4 @@ describe("onboarding asks no budget of a subscriber", () => {
     // No margin box anywhere since the one pot (owner 2026-10-03).
     expect(wall).not.toContain("marginOk");
   });
-
-  it("v1 /onboarding writes the plan's money and skips the budget step", () => {
-    const flow = read("src/components/onboarding/onboarding.tsx");
-    expect(flow).toContain('setCampaignBudgets(subscriptionBudgets(launchPairs));\n      setStep("bonus");');
-    expect(flow).toContain("if (subscriptionArm) return null;\n  const displayBudget = budgetForCharge();");
-  });
 });

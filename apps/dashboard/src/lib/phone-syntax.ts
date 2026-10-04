@@ -94,6 +94,17 @@ export function phoneSyntaxProblem({ dialCode, national }: PhoneParts): string |
 }
 
 /**
+ * The `/get-started` wall asks for the number before the card and does not let the
+ * person past without one (owner 2026-10-04: every signup leaves a number). Same
+ * syntax rule; only an empty number becomes a problem here.
+ */
+export function requiredPhoneProblem(parts: PhoneParts): string | null {
+  const digits = phoneDigits((parts.national ?? "").trim());
+  if (digits === "") return "Enter your phone number.";
+  return phoneSyntaxProblem(parts);
+}
+
+/**
  * The NANP's own shape: a 10-digit number as NPA (area code) then NXX (central
  * office) then four digits. Both NPA and NXX start 2 to 9, and neither may end
  * in 11, which is reserved for service codes like 911 and 411. Those are
