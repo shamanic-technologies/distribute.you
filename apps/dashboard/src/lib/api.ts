@@ -54,7 +54,7 @@ import type { PublishedChannelTerms } from "./channel-minimums";
 import { ORG_DESYNC_ERROR, ORG_DESYNC_STATUS } from "./org-desync";
 import { keepLastGoodFields } from "./keep-last-good";
 import type { RevenueOverview } from "./revenue-view";
-import { RevenueWindowResponseSchema, type RevenueWindow } from "./revenue-window";
+import { RevenueWindowResponseSchema, type RevenueWindow, type RevenueWindowDays } from "./revenue-window";
 import type {
   WorkflowCatalogueRow,
   WorkflowDynastyMembership,
@@ -4999,7 +4999,7 @@ export async function getOfferRevenue(
 export async function getOfferRevenueWindow(
   offerId: string,
   brandId: string,
-  days: number,
+  days: RevenueWindowDays,
   token?: string,
 ): Promise<RevenueWindow> {
   const query = new URLSearchParams({ brandId, pricing: "net", windowDays: String(days) });

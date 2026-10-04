@@ -34,6 +34,10 @@ describe("channel routes", () => {
     expect(v2SectionOf("/v2/orgs/o/brands/b/channels")).toBe("channels");
     expect(v2SectionOf("/v2/orgs/o/brands/b/offers/f")).toBe("offers");
   });
+  it("the offer's Sales path is the Sales path section", () => {
+    expect(v2SectionOf("/v2/orgs/o/brands/b/offers/f/sales-path")).toBe("sales-path");
+    expect(v2SectionOf("/v2/orgs/o/brands/b/sales-path")).toBe("sales-path");
+  });
 });
 
 describe("sidebar", () => {
@@ -48,6 +52,12 @@ describe("sidebar", () => {
     expect(setup.indexOf('label="Targeting"')).toBeGreaterThan(-1);
     expect(setup.indexOf('label="Channels"')).toBeGreaterThan(setup.indexOf('label="Targeting"'));
     expect(setup).toContain('v2OfferHref(orgId, brandId, offerId, "channels")');
+  });
+  it("Setup opens with Sales path, above Offer (owner 2026-10-04)", () => {
+    const setup = shell.slice(shell.indexOf('<Group title="Setup">'), shell.indexOf('label="Integrations"'));
+    expect(setup.indexOf('label="Sales path"')).toBeGreaterThan(-1);
+    expect(setup.indexOf('label="Sales path"')).toBeLessThan(setup.indexOf('label="Offer"'));
+    expect(setup).toContain('v2OfferHref(orgId, brandId, offerId, "sales-path")');
   });
 });
 
@@ -66,14 +76,22 @@ describe("channel pages", () => {
     expect(page).toContain("<ColdEmailChannelSettings brandId={brandId} offerId={offerId} channelSlug={channelSlug} />");
   });
   it("the overview reads served figures and never sums Interested", () => {
-    expect(page).toContain("useBrandRevenueWindow(brandId, windowDays)");
+    expect(page).toContain("useBrandRevenueWindow(brandId, SINCE_INCEPTION)");
+    expect(page).not.toContain("TODAY_WINDOWS");
     expect(page).toContain("useBucketCounts(brandId)");
     expect(page).not.toMatch(/website_visit\s*\+/);
     expect(page).not.toMatch(/positive_reply\s*\+/);
     expect(page).not.toMatch(/visits\s*\+\s*replies/);
   });
   it("Delivered and the Interested total are lead-service's people counts", () => {
-    expect(page).toContain('<StepRow label="Delivered" count={people?.delivered ?? null} of={counts.contacted} />');
+    expect(page).toContain('<StepBar label="Delivered" count={people?.delivered ?? null} of={counts.contacted} />');
     expect(page).toContain("total={people?.interested ?? null}");
+  });
+  it("people steps are vertical bars in a 2/3 card, the tabs' summaries at 1/3 (owner 2026-10-04)", () => {
+    expect(page).toContain("lg:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]");
+    for (const tab of ["inbox", "sent", "targeting", "settings"]) expect(page).toContain(`href={tabHref("${tab}")}`);
+    expect(page).toContain("See more");
+    expect(page).toContain("height: barHeight(");
+    expect(page).not.toContain("StepRow");
   });
 });

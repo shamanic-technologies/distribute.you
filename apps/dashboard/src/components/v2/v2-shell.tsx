@@ -121,6 +121,7 @@ const ICONS = {
   crew: "M5.5 7a2 2 0 1 0 0-4 2 2 0 0 0 0 4Zm5 0a2 2 0 1 0 0-4 2 2 0 0 0 0 4ZM2 13c.4-2 1.8-3.5 3.5-3.5S8.6 11 9 13m-.5-3c.6-.4 1.2-.5 2-.5 1.7 0 3.1 1.5 3.5 3.5",
   missions: "M3 13.5V2.5m0 1h8l-1.5 2.5L11 8.5H3",
   channels: "M2.5 4.5h11v7h-11zM2.5 4.5 8 8.5l5.5-4",
+  path: "M3.5 12.5a1.5 1.5 0 1 0 0-3 1.5 1.5 0 0 0 0 3Zm9-6a1.5 1.5 0 1 0 0-3 1.5 1.5 0 0 0 0 3ZM5 11h3.5a2 2 0 0 0 2-2V6.5",
   offer: "M8.5 2.5h5v5L7.5 13.5l-5-5Zm2.5 2.5h.01",
   target: "M8 13.5a5.5 5.5 0 1 0 0-11 5.5 5.5 0 0 0 0 11Zm0-3a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5Z",
   plug: "M6 2.5v3m4-3v3M4.5 5.5h7v2a3.5 3.5 0 0 1-7 0zM8 11v2.5",
@@ -258,6 +259,13 @@ function V2Sidebar() {
         </div>
 
         <Group title="Setup">
+          {/* The steps the selected offer sells through, its own page (owner 2026-10-04). */}
+          <NavItem
+            href={offerId ? v2OfferHref(orgId, brandId, offerId, "sales-path") : v2Href(orgId, brandId, "sales-path")}
+            label="Sales path"
+            icon={<I d={ICONS.path} />}
+            active={section === "sales-path"}
+          />
           {/* The selected offer's own page: there is no list of offers (owner 2026-10-03),
               the switcher at the top is where another one is picked. */}
           <NavItem
