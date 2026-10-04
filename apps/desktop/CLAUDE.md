@@ -1,6 +1,6 @@
 # apps/desktop (distribute for Mac, private beta)
 
-Native SwiftUI app, ~1.6 MB, no Electron/Tauri. Sidebar (brand picker, channels, credits), a chat in the middle, a channel panel on the right. Landing: `distribute.you/desktop` (`apps/landing/src/lib/pages/desktop.ts`), noindex, never linked from the main landing (owner 2026-10-04).
+Native SwiftUI app, ~2 MB, no Electron/Tauri. Dashboard v2's sidebar (brand + offer switchers, Today, Records, Setup, credit) on the canvas; the chat in the raised panel; a click on a sidebar item opens that page's compact native panel beside the chat (`Panels.swift`, same reads and fields as `components/v2`, mapped in `API.swift`). Integrations and Brand settings open the dashboard. Keel tokens live in `Theme.swift`. Landing: `distribute.you/desktop` (`apps/landing/src/lib/pages/desktop.ts`), noindex, never linked from the main landing (owner 2026-10-04).
 
 ## Product rules (owner-decided 2026-10-04)
 - **Desktop is 100% PREPAID with optional top-up**: the app is free; campaigns spend prepaid credit; the sidebar's Top up buttons open a hosted Stripe checkout (`POST /v1/billing/checkout-sessions`, return page `/desktop/topped-up`). Never the $99 monthly plan, never a free trial on this surface.
@@ -16,5 +16,6 @@ Native SwiftUI app, ~1.6 MB, no Electron/Tauri. Sidebar (brand picker, channels,
 
 ## Build and ship
 - **Built by CI only** (`.github/workflows/desktop.yml`, `macos-14` runner with Xcode): `scripts/build-app.sh` = `swiftc` per arch + `lipo` (universal), hand-written `Info.plist`, ad-hoc `codesign`, `ditto` zip. No `Package.swift`: the local Command Line Tools here have a broken SwiftPM manifest link and an SDK/compiler mismatch (`this SDK is not supported by the compiler`); a push to a branch is the compile check (download with `gh run download <id> -n Distribute`).
+- **Render check = the CI `snapshots` artifact** (`Distribute --snapshot <dir>`, `Snapshot.swift`, fixture data): one PNG per panel. ImageRenderer draws no AppKit-backed view, so scroll views, menus and text fields go through `KScroll` / `KMenu` / the `isSnapshot` swap; a new one that shows a yellow placeholder or an empty area needs the same.
 - Every push to `main` touching `apps/desktop` re-uploads `Distribute.zip` to the `desktop-latest` pre-release (never marked Latest); the landing's button and `distribute.you/desktop/install.sh` point there.
 - Not notarized (no Apple Developer ID): `install.sh` installs via curl (no quarantine flag) and clears `com.apple.quarantine`; the browser download needs System Settings, Privacy and Security, Open Anyway.
