@@ -45,17 +45,19 @@ html, body { background: var(--bg-canvas); }
 .hero { padding: 56px 0 40px; display: grid; grid-template-columns: minmax(0, 1fr); gap: 20px; max-width: 640px; }
 .hero h1 { font-size: 40px; line-height: 44px; font-weight: 600; letter-spacing: -0.03em; text-wrap: balance; }
 .hero p { font-size: 17px; line-height: 27px; color: var(--fg-2); text-wrap: pretty; }
-.actions { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; margin-top: 4px; }
-.cta { display: inline-flex; align-items: center; gap: 8px; height: 42px; padding: 0 18px; border-radius: 10px; text-decoration: none;
-  background: var(--bg-strong); color: #fafafa !important; font-size: 14px; font-weight: 500; transition: background 120ms, transform 120ms; }
-.cta:hover { background: var(--bg-strong-hover); }
-.cta:active { transform: scale(0.98); }
-.cta svg { width: 16px; height: 16px; }
 .cmd { display: inline-flex; align-items: center; gap: 10px; height: 42px; padding: 0 6px 0 14px; border-radius: 10px; background: var(--bg-raised);
   box-shadow: inset 0 0 0 1px var(--line), var(--elev-control); font-family: "Geist Mono", ui-monospace, monospace; font-size: 12.5px; color: var(--fg-1); max-width: 100%; }
 .cmd code { min-width: 0; overflow-x: auto; white-space: nowrap; }
 .copy { height: 30px; padding: 0 10px; border: 0; border-radius: 7px; background: var(--bg-inset); font: inherit; font-family: "Geist", sans-serif; font-size: 12px; color: var(--fg-2); cursor: pointer; }
 .copy:hover { color: var(--fg-1); background: var(--bg-hover); }
+.install { display: grid; grid-template-columns: minmax(0, 1fr); gap: 10px; margin-top: 4px; }
+.install__label { display: flex; align-items: center; gap: 8px; font-size: 14px !important; line-height: 20px !important; color: var(--fg-1) !important; font-weight: 500; }
+.install__label svg { width: 16px; height: 16px; }
+.install .cmd { height: 48px; width: fit-content; max-width: 100%; padding-left: 16px; font-size: 13px; }
+.install .copy { height: 36px; padding: 0 14px; background: var(--bg-strong); color: #fafafa; font-size: 13px; font-weight: 500; }
+.install .copy:hover { background: var(--bg-strong-hover); color: #fafafa; }
+.alt { font-size: 13px !important; line-height: 20px !important; color: var(--fg-3) !important; }
+.alt a { color: var(--fg-1); }
 .cta:focus-visible, .copy:focus-visible, .site a:focus-visible { outline: 2px solid color-mix(in oklab, var(--accent) 60%, transparent); outline-offset: 2px; }
 
 /* The one bold thing: the app itself, drawn. */
@@ -100,7 +102,7 @@ html, body { background: var(--bg-canvas); }
 
 @keyframes rise { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
 .window { animation: rise 640ms cubic-bezier(.23,1,.32,1) 120ms both; }
-@media (prefers-reduced-motion: reduce) { .window { animation: none; } .cta { transition: none; } }
+@media (prefers-reduced-motion: reduce) { .window { animation: none; } }
 </style>`;
 
 const APPLE = `<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M16.37 12.62c-.02-2.2 1.8-3.26 1.88-3.31-1.03-1.5-2.62-1.7-3.19-1.73-1.36-.14-2.65.8-3.34.8-.69 0-1.75-.78-2.88-.76-1.48.02-2.85.86-3.61 2.18-1.54 2.67-.39 6.62 1.11 8.79.73 1.06 1.61 2.25 2.75 2.2 1.1-.04 1.52-.71 2.85-.71 1.33 0 1.71.71 2.88.69 1.19-.02 1.94-1.08 2.67-2.14.84-1.23 1.19-2.42 1.21-2.48-.03-.01-2.31-.89-2.33-3.53zM14.17 6.15c.61-.74 1.02-1.76.91-2.78-.88.04-1.94.59-2.57 1.32-.56.65-1.06 1.69-.93 2.69.98.08 1.98-.5 2.59-1.23z"/></svg>`;
@@ -172,9 +174,10 @@ ${top()}
 <section class="hero">
 <h1>Run your cold email from a chat on your Mac.</h1>
 <p>Ask how it is going, and ask for changes. It uses your own Claude Code. Click a channel to see what it sent, what came back, and what each positive reply cost.</p>
-<div class="actions">
-<a class="cta" href="${DESKTOP_DOWNLOAD_URL}" data-track="desktop_download_clicked">${APPLE}Download for Mac</a>
+<div class="install">
+<p class="install__label">${APPLE}Install on your Mac: paste this in Terminal.</p>
 <span class="cmd"><code id="cmd">${DESKTOP_INSTALL_COMMAND}</code><button class="copy" type="button" data-copy="cmd">Copy</button></span>
+<p class="alt">Or <a href="${DESKTOP_DOWNLOAD_URL}" data-track="desktop_download_clicked">download the app</a>. macOS blocks it the first time. Open System Settings, then Privacy and Security, and click Open Anyway.</p>
 </div>
 </section>
 ${windowMock()}
@@ -187,7 +190,7 @@ ${windowMock()}
 <div><h2>What it costs</h2><p>The app is free during the beta. Campaigns spend prepaid credit. You top up from the app, when you want, and you can stop sending at any time.</p></div>
 <div><h2>What it does today</h2><p>Cold email is the channel we run. The chat reads your results and can pause sending, change a daily budget or stop a campaign. It asks before every change.</p></div>
 </section>
-<p class="note">The beta is not notarized by Apple yet. The terminal command installs it without a warning. If you use the download and macOS blocks it, open System Settings, then Privacy and Security, and click Open Anyway. Questions: ${CONTACT.email}.</p>
+<p class="note">The beta is not notarized by Apple yet, so the Terminal install is the smooth path. Questions: ${CONTACT.email}.</p>
 </main>
 ${legal()}
 </div>
