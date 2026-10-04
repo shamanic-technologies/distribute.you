@@ -234,3 +234,32 @@ export function formatRatePct(pct: number | null): string {
   if (pct == null || !Number.isFinite(pct)) return "—";
   return formatLegRatePct(pct);
 }
+
+/** One step of a path as the campaign page draws it: the leg that lands on it and how many people reached it. */
+export interface PathStepReach {
+  step: { key: string; label: string };
+  /** The leg arriving on the step (its rate kept and the channel working it). */
+  leg: SalesPathLeg;
+  /** People features-service measured on the step; null when it measured none. */
+  reached: number | null;
+}
+
+/**
+ * Each step of a path with the people measured on it, read off the served legs: a leg's
+ * measured `toReached` is its landing step's count; the entry step has no measured leg
+ * arriving, so its count is the NEXT leg's measured `fromReached`. Picks served counts,
+ * never adds or divides them.
+ */
+export function pathStepReach(path: SalesPathRow): PathStepReach[] {
+  // Destructured: the leg's measured block is features-service's rate input, not the
+  // workflow projection flag `tests/workflow-projection-measured.test.ts` keeps in one reader.
+  const counted = (leg: SalesPathLeg | undefined) => {
+    const { measured } = leg?.rateInputs ?? { measured: null };
+    return measured;
+  };
+  return path.legs.map((leg, i) => {
+    const arriving = counted(leg)?.toReached ?? null;
+    const leaving = counted(path.legs[i + 1])?.fromReached ?? null;
+    return { step: leg.toStep, leg, reached: leg.fromStep ? arriving : leaving };
+  });
+}

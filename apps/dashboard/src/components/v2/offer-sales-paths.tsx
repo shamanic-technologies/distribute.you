@@ -242,7 +242,7 @@ function PathRow({
 }
 
 /** The combination's face; a name nobody drew a face for yet shows its initial and says so. */
-function PathAvatar({ name, size }: { name: string; size: number }) {
+export function PathAvatar({ name, size }: { name: string; size: number }) {
   const src = salesPathAvatarSrc(name);
   if (!src) {
     console.error(`[offer-sales-paths] no avatar drawn for sales path "${name}": add one under public/sales-path-avatars`);
@@ -261,7 +261,7 @@ function PathAvatar({ name, size }: { name: string; size: number }) {
 }
 
 /** The path leg by leg: each channel of ours as a chip with its mark (as on Channels), then the step its leg lands on. */
-function PathLinks({ path }: { path: SalesPathRow }) {
+export function PathLinks({ path }: { path: SalesPathRow }) {
   const parts = pathLinks(path);
   const channels = useAcquisitionChannels();
   return (
@@ -288,7 +288,7 @@ function PathLinks({ path }: { path: SalesPathRow }) {
  * A channel tag: its mark (once the channel list has answered), then its served name. A
  * channel we do not run yet is drawn muted, its mark dimmed.
  */
-function ChannelChip({
+export function ChannelChip({
   name,
   def,
   notRun,
@@ -305,7 +305,7 @@ function ChannelChip({
   );
 }
 
-function PathBreakdown({
+export function PathBreakdown({
   path,
   onStateRate,
   onStateLifetimeRevenue,

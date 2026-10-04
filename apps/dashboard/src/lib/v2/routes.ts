@@ -11,6 +11,7 @@ export type V2Section =
   | "crew"
   | "missions"
   | "workflows"
+  | "campaigns"
   | "sales-path"
   | "offers"
   | "targeting"
@@ -82,6 +83,8 @@ export function v2SectionOf(pathname: string): V2Section | null {
     "research",
     "monitoring",
   ];
+  // An offer's running campaign (its active sales path) is Campaigns.
+  if (s === "offers" && parts[7] === "campaign") return "campaigns";
   // An offer's Sales path is its own section, opened from the sidebar.
   if (s === "offers" && parts[7] === "sales-path") return "sales-path";
   // An offer's Targeting tab is Targeting, not Offers.
@@ -102,7 +105,7 @@ export function v2PersonHref(orgId: string, brandId: string, leadRowId: string):
 }
 
 /** One offer in v2: its settings, with its Targeting beside it. */
-export function v2OfferHref(orgId: string, brandId: string, offerId: string, tab?: "targeting" | "sales-path" | "channels"): string {
+export function v2OfferHref(orgId: string, brandId: string, offerId: string, tab?: "targeting" | "sales-path" | "channels" | "campaign"): string {
   const base = `${v2Base(orgId, brandId)}/offers/${encodeURIComponent(offerId)}`;
   return tab ? `${base}/${tab}` : base;
 }
