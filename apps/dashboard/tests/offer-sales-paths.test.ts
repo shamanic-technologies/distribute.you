@@ -6,6 +6,7 @@ import {
   parseOfferSalesPaths,
   pathLinks,
   pathTitle,
+  pathStepReach,
   costSourceLabel,
   rateSourceLabel,
   roiUnavailableLabel,
@@ -178,5 +179,30 @@ describe("sales path page wiring", () => {
   it("draws the served order without sorting", () => {
     const comp = readFileSync(join(__dirname, "../src/components/v2/offer-sales-paths.tsx"), "utf8");
     expect(comp).not.toContain(".sort(");
+  });
+});
+
+describe("pathStepReach", () => {
+  const measured = (fromReached: number | null, toReached: number | null) => ({
+    measured: { basis: "our_leads", fromReached, toReached, ratePct: null, sufficient: true },
+    customerStatedPct: null,
+    fleetMedian: { ratePct: null, brandCount: 0 },
+    industryDefaultPct: null,
+  });
+  const base = parseOfferSalesPaths(body, "test").paths[0];
+  const entry = { ...base.legs[0], rateInputs: null };
+  const next = { ...base.legs[0], legKey: "conversation_to_paid_client", fromStep: step("conversation", "Positive reply"), toStep: step("paid_client", "Paid client"), rateInputs: measured(26, 6) };
+
+  it("reads the entry step off the next leg and each later step off the leg landing on it", () => {
+    const rows = pathStepReach({ ...base, legs: [entry, next] });
+    expect(rows.map((r) => [r.step.key, r.reached])).toEqual([
+      ["conversation", 26],
+      ["paid_client", 6],
+    ]);
+  });
+
+  it("states null when nothing was measured, never zero", () => {
+    const rows = pathStepReach({ ...base, legs: [entry, { ...next, rateInputs: null }] });
+    expect(rows.map((r) => r.reached)).toEqual([null, null]);
   });
 });

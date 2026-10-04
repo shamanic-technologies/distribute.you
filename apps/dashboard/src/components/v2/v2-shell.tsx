@@ -16,6 +16,8 @@ import { companyHref } from "@/components/v2/companies-page";
 import { ScopePaymentDeclinedBand } from "@/components/billing/scope-payment-declined-band";
 import { useStaffMode } from "@/lib/use-staff-mode";
 import { SelectedOfferProvider, useSelectedOffer } from "@/components/v2/selected-offer";
+import { useActiveSalesPath } from "@/components/v2/active-sales-path";
+import { PathAvatar } from "@/components/v2/offer-sales-paths";
 import { BRAND_WHY } from "@/lib/brand-why";
 
 /**
@@ -159,6 +161,7 @@ function V2Sidebar() {
   const brandId = params.brandId ?? "";
   const section = v2SectionOf(pathname);
   const { offerId } = useSelectedOffer();
+  const activePath = useActiveSalesPath(brandId, offerId).active;
   const { missions, crews } = useMissions(orgId, brandId);
   const activeCrews = crews.filter((c) => c.running > 0);
   const activeMissions = missions.filter((m) => m.running);
@@ -257,6 +260,22 @@ function V2Sidebar() {
             />
           )}
         </div>
+
+        {/* The campaign the selected offer runs: its active sales path only, with a live
+            dot. Nothing runs, no group (owner 2026-10-04). */}
+        {offerId && activePath && (
+          <Group title="Campaigns">
+            <NavItem
+              href={v2OfferHref(orgId, brandId, offerId, "campaign")}
+              label={activePath.name}
+              icon={<PathAvatar name={activePath.name} size={16} />}
+              active={section === "campaigns"}
+              trailing={
+                <span className="k-dot-pulse ml-auto mr-1 h-1.5 w-1.5 shrink-0 rounded-full bg-[var(--run)] text-[var(--run)]" aria-label="Active" />
+              }
+            />
+          </Group>
+        )}
 
         <Group title="Setup">
           {/* The steps the selected offer sells through, its own page (owner 2026-10-04). */}
