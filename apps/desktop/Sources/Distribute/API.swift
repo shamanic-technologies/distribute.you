@@ -77,6 +77,135 @@ struct RevenueByCampaign: Decodable { let groups: [RevenueGroup] }
 
 struct CheckoutSession: Decodable { let url: String }
 
+// MARK: - Dashboard v2 reads (same routes and fields as `apps/dashboard/src/components/v2`)
+
+struct Offer: Decodable, Identifiable, Hashable {
+    let offerId: String
+    let name: String
+    var id: String { offerId }
+}
+struct OfferList: Decodable { let offers: [Offer] }
+
+struct CampaignOffer: Decodable { let id: String; let offerId: String? }
+struct CampaignOfferList: Decodable { let campaigns: [CampaignOffer] }
+
+struct Maturity: Decodable {
+    struct Figures: Decodable { let roiMultiple: Double? }
+    let flash: Figures?
+    let mature: Figures?
+    let isMature: Bool?
+}
+
+struct RevenueOrg: Decodable, Identifiable {
+    let orgId: String?
+    let orgName: String?
+    let orgDomain: String?
+    let tags: [String]
+    let expectedRevenueUsd: Double
+    let mostAdvancedDate: String?
+    let topPerson: TopPerson?
+    struct TopPerson: Decodable { let firstName: String?; let lastName: String? }
+    var id: String { orgDomain ?? orgId ?? orgName ?? UUID().uuidString }
+}
+
+struct OfferRevenue: Decodable {
+    struct Headline: Decodable { let totalPipelineUsd: Double? }
+    struct Cost: Decodable { let maturity: Maturity? }
+    let headline: Headline?
+    let costEconomics: Cost?
+    let organizations: [RevenueOrg]
+}
+
+struct RevenueWindow: Decodable {
+    struct Count: Decodable { let total: Int }
+    struct Emails: Decodable { let sent: Int; let delivered: Int; let bounced: Int; let deliveryRatePct: Double? }
+    struct Spend: Decodable { let totalSpentCents: Double }
+    struct Body: Decodable {
+        let emails: Emails?
+        let spend: Spend?
+        let recipientsRepliesPositive: Count?
+        let recipientsClicked: Count?
+    }
+    let window: Body
+}
+
+struct BucketCounts: Decodable {
+    struct Counts: Decodable {
+        let contacted, website_visit, positive_reply, signup, meeting_booked, meeting_attended, sale: Int
+    }
+    struct People: Decodable { let delivered: Int; let interested: Int }
+    let counts: Counts
+    let people: People?
+}
+
+struct StandingCounts: Decodable {
+    struct Counts: Decodable {
+        let unresolved, contacted, engaged, sales_interest, customer, opted_out, disqualified: Int
+    }
+    let counts: Counts
+}
+
+struct LeadRow: Decodable, Identifiable {
+    let id: String
+    let email: String
+    let status: String
+    let contacted, sent, delivered, clicked, bounced, unsubscribed, replied: Bool
+    let servedAt, firstContactedAt, firstSentAt, firstDeliveredAt, firstClickedAt, firstRepliedAt, firstBouncedAt, firstUnsubscribedAt: String?
+    let lead: Person?
+    struct Person: Decodable {
+        let firstName: String?
+        let lastName: String?
+        let currentTitle: String?
+        let headline: String?
+        let organization: Org?
+        struct Org: Decodable { let name: String? }
+    }
+}
+struct LeadPage: Decodable { let leads: [LeadRow]; let total: Int? }
+
+struct Audience: Decodable, Identifiable {
+    let id: String
+    let name: String
+    let status: String
+    let nlPrompt: String?
+    let sizeCount: Double?
+    let availableToContactPct: Double?
+
+    enum CodingKeys: String, CodingKey { case id, name, status, nlPrompt, sizeCount, availableToContactPct }
+    /// The producer may send these counts as strings, as the dashboard's Zod coerces them.
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        id = try c.decode(String.self, forKey: .id)
+        name = try c.decode(String.self, forKey: .name)
+        status = try c.decode(String.self, forKey: .status)
+        nlPrompt = try c.decodeIfPresent(String.self, forKey: .nlPrompt)
+        sizeCount = Self.number(c, .sizeCount)
+        availableToContactPct = Self.number(c, .availableToContactPct)
+    }
+    private static func number(_ c: KeyedDecodingContainer<CodingKeys>, _ k: CodingKeys) -> Double? {
+        if let d = try? c.decodeIfPresent(Double.self, forKey: k) { return d }
+        if let s = try? c.decodeIfPresent(String.self, forKey: k) { return Double(s) }
+        return nil
+    }
+}
+struct AudienceList: Decodable { let audiences: [Audience] }
+
+struct OfferEconomics: Decodable { let lifetimeRevenueUsd: Double? }
+
+struct UserFields: Decodable {
+    let fields: [String: Field]
+    struct Field: Decodable {
+        let value: [String]
+        init(from decoder: Decoder) throws {
+            let c = try decoder.container(keyedBy: Keys.self)
+            if let s = try? c.decode(String.self, forKey: .value) { value = [s] }
+            else if let a = try? c.decode([String].self, forKey: .value) { value = a }
+            else { value = [] }
+        }
+        enum Keys: String, CodingKey { case value }
+    }
+}
+
 // MARK: - Client
 
 struct DistributeAPI {
@@ -114,6 +243,39 @@ struct DistributeAPI {
             throw APIError(message: "Checkout returned an invalid URL: \(session.url)")
         }
         return url
+    }
+
+    func offers(brandId: String) async throws -> [Offer] {
+        let l: OfferList = try await get("/brands/\(brandId)/offers", query: [:]); return l.offers
+    }
+    func campaignOffers(brandId: String) async throws -> [CampaignOffer] {
+        let l: CampaignOfferList = try await get("/campaigns", query: ["brandId": brandId]); return l.campaigns
+    }
+    func offerRevenue(offerId: String, brandId: String) async throws -> OfferRevenue {
+        try await get("/offers/\(offerId)/revenue", query: ["brandId": brandId, "pricing": "net"])
+    }
+    func offerWindow(offerId: String, brandId: String, days: Int) async throws -> RevenueWindow {
+        try await get("/offers/\(offerId)/revenue", query: ["brandId": brandId, "pricing": "net", "windowDays": String(days)])
+    }
+    func bucketCounts(brandId: String, offerId: String) async throws -> BucketCounts {
+        try await get("/leads/bucket-counts", query: ["brandId": brandId, "offerId": offerId])
+    }
+    func standingCounts(brandId: String, offerId: String) async throws -> StandingCounts {
+        try await get("/leads/standing-counts", query: ["brandId": brandId, "offerId": offerId])
+    }
+    func leads(brandId: String, offerId: String, extra: [String: String]) async throws -> LeadPage {
+        var q = ["brandId": brandId, "offerId": offerId, "view": "basic", "sort": "activity"]
+        q.merge(extra) { _, new in new }
+        return try await get("/leads", query: q)
+    }
+    func audiences(brandId: String, offerId: String, status: String) async throws -> [Audience] {
+        let l: AudienceList = try await get("/orgs/audiences", query: ["brandId": brandId, "offerId": offerId, "status": status]); return l.audiences
+    }
+    func offerEconomics(brandId: String, offerId: String) async throws -> OfferEconomics {
+        try await get("/brands/\(brandId)/offers/\(offerId)/economics", query: [:])
+    }
+    func offerUserFields(brandId: String, offerId: String) async throws -> UserFields {
+        try await get("/brands/\(brandId)/offers/\(offerId)/user-fields", query: [:])
     }
 
     // MARK: transport

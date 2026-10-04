@@ -190,6 +190,15 @@ struct SessionContext {
     let orgId: String
     let brandId: String
     let brandName: String
+    let offerId: String?
+    let offerName: String?
+    /// The panel open beside the chat, so "this one" has a referent.
+    let looking: String?
+}
+
+private func offerLine(_ c: SessionContext) -> String {
+    guard let name = c.offerName, let id = c.offerId else { return "none yet" }
+    return "\(name) (id \(id))"
 }
 
 /// Explains the GAME so the model adapts, rather than scripting replies per case.
@@ -201,6 +210,8 @@ private func systemPrompt(_ c: SessionContext) -> String {
 
     Context for this conversation:
     - Brand id: \(c.brandId) (env DISTRIBUTE_BRAND_ID). Organization id: \(c.orgId) (env DISTRIBUTE_ORG_ID).
+    - Selected offer: \(offerLine(c)). Every brand page reads this offer; send `offerId` on reads that take it.
+    - The user is looking at: \(c.looking ?? "the chat only"). "This", "these", "here" refer to it.
     - The account is PREPAID: campaigns spend credits, the user tops up from the app sidebar. Never suggest a subscription.
 
     How to read: use the distribute MCP tools first (brands, campaigns, campaign stats, status, ICP suggestion).
@@ -216,6 +227,10 @@ private func systemPrompt(_ c: SessionContext) -> String {
     - PATCH /brands/{brandId}/campaigns/daily-budget {"dailyBudgetCents": <int>}   daily budget for every campaign
     - POST /campaigns/{id}/stop                          stop one campaign
     - GET  /billing/accounts/balance?orgId=...           prepaid credit left
+    - GET  /offers/{offerId}/revenue?brandId=...&pricing=net[&windowDays=7]   pipeline, companies, the window's sends/replies/spend
+    - GET  /leads?brandId=...&offerId=...&view=basic&bucket=positive_reply&sort=activity   people by step
+    - GET  /leads/standing-counts?brandId=...&offerId=...    deals board totals
+    - GET  /orgs/audiences?brandId=...&offerId=...&status=active   targeting (audiences)
     The full reference is https://api.distribute.you/openapi.json if you need another route.
 
     Rules: before ANY write (pause, budget, stop, create), state in one line what will change and wait for the user's yes. \

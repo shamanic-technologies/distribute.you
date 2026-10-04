@@ -1,11 +1,12 @@
 # apps/desktop (distribute for Mac, private beta)
 
-Native SwiftUI app, ~1.6 MB, no Electron/Tauri. Sidebar (brand picker, channels, credits), a chat in the middle, a channel panel on the right. Landing: `distribute.you/desktop` (`apps/landing/src/lib/pages/desktop.ts`), noindex, never linked from the main landing (owner 2026-10-04).
+Native SwiftUI app, ~2 MB, no Electron/Tauri. Dashboard v2's sidebar (brand + offer switchers, Today, Records, Setup, credit) on the canvas; the chat in the raised panel; a click on a sidebar item opens that page's compact native panel beside the chat (`Panels.swift`, same reads and fields as `components/v2`, mapped in `API.swift`). Integrations and Brand settings open the dashboard. Keel tokens live in `Theme.swift`. Landing: `distribute.you/desktop` (`apps/landing/src/lib/pages/desktop.ts`), noindex, never linked from the main landing (owner 2026-10-04).
 
 ## Product rules (owner-decided 2026-10-04)
 - **Desktop is 100% PREPAID with optional top-up**: the app is free; campaigns spend prepaid credit; the sidebar's Top up buttons open a hosted Stripe checkout (`POST /v1/billing/checkout-sessions`, return page `/desktop/topped-up`). Never the $99 monthly plan, never a free trial on this surface.
 - **Claude = the user's OWN Claude Code CLI**, launched as `claude -p --output-format stream-json --resume <id>`. Never a "Login with Claude" / OAuth token in our app (Anthropic forbids it for third parties without approval). The app never sees a Claude credential.
 - Only channels we RUN appear in the sidebar (cold email today).
+- **The app is an AI-NATIVE ADAPTATION of dashboard v2, never a copy of it** (owner 2026-10-04: « pas exactement la même chose, une adaptation intelligente AI native »; an embedded web view of the dashboard was rejected). Same LOOK (Keel tokens, the v2 sidebar's structure and items), but the chat is the product: every view is a compact native read the chat can act on.
 
 ## How it talks to distribute
 - **Sign-in = the dashboard's own Google or email, in the browser** (owner 2026-10-04), loopback like `gh auth login`: `BrowserLogin.swift` listens on 127.0.0.1:<random>, opens `dashboard.distribute.you/desktop/connect?port=&state=`, the page (`apps/dashboard/src/lib/desktop-connect.ts`) mints a user key named "distribute for Mac" and navigates to `/callback?state=&key=`; only OUR state is accepted. The request survives sign-in hops in sessionStorage and `DesktopConnectResume` (authed layout) brings the tab back. Pasting a key stays as a secondary link.
@@ -15,5 +16,6 @@ Native SwiftUI app, ~1.6 MB, no Electron/Tauri. Sidebar (brand picker, channels,
 
 ## Build and ship
 - **Built by CI only** (`.github/workflows/desktop.yml`, `macos-14` runner with Xcode): `scripts/build-app.sh` = `swiftc` per arch + `lipo` (universal), hand-written `Info.plist`, ad-hoc `codesign`, `ditto` zip. No `Package.swift`: the local Command Line Tools here have a broken SwiftPM manifest link and an SDK/compiler mismatch (`this SDK is not supported by the compiler`); a push to a branch is the compile check (download with `gh run download <id> -n Distribute`).
+- **Render check = the CI `snapshots` artifact** (`Distribute --snapshot <dir>`, `Snapshot.swift`, fixture data): one PNG per panel. ImageRenderer draws no AppKit-backed view, so scroll views, menus and text fields go through `KScroll` / `KMenu` / the `isSnapshot` swap; a new one that shows a yellow placeholder or an empty area needs the same.
 - Every push to `main` touching `apps/desktop` re-uploads `Distribute.zip` to the `desktop-latest` pre-release (never marked Latest); the landing's button and `distribute.you/desktop/install.sh` point there.
 - Not notarized (no Apple Developer ID): `install.sh` installs via curl (no quarantine flag) and clears `com.apple.quarantine`; the browser download needs System Settings, Privacy and Security, Open Anyway.

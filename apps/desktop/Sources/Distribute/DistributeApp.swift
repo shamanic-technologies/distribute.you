@@ -4,6 +4,10 @@ import SwiftUI
 struct DistributeApp: App {
     @StateObject private var state = AppState()
 
+    init() {
+        Snapshot.runIfAsked()
+    }
+
     var body: some Scene {
         WindowGroup("distribute") {
             RootView().environmentObject(state)
