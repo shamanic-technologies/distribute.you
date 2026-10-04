@@ -58,7 +58,7 @@ export function useBrandInfo(brandId: string) {
  */
 export function useBrandRevenue(brandId: string) {
   const featureSlug = useSoleFeatureSlug();
-  const { offerId, campaignIds } = useSelectedOffer();
+  const { offerId, campaignIds, scopeSettled } = useSelectedOffer();
   const enabled = isRevenueFeature(featureSlug) && !!offerId && (campaignIds?.length ?? 0) > 0;
   const q = useAuthQuery(["brandRevenue", brandId, "offer", offerId], () => getOfferRevenue(offerId!, brandId), {
     enabled,
@@ -66,20 +66,22 @@ export function useBrandRevenue(brandId: string) {
     structuralSharing: (prev, next) =>
       keepLastGoodFeatureRevenue(prev as RevenueOverview | undefined, next as RevenueOverview),
   });
-  // Reveal on SETTLE: a failed read shows its dashes, never an eternal skeleton.
-  return { ...q, enabled, pending: q.data === undefined && !q.isError && enabled };
+  // Reveal on SETTLE: a failed read shows its dashes, never an eternal skeleton. While the
+  // offer and its campaigns load, `enabled` is false for want of data, not for want of an
+  // offer: that is pending too, or every reload flashes the page's no-data note.
+  return { ...q, enabled, pending: enabled ? q.data === undefined && !q.isError : !scopeSettled };
 }
 
 /** Today's stat row over the last `days` UTC days, same offer and gate as `useBrandRevenue`. */
 export function useBrandRevenueWindow(brandId: string, days: number) {
   const featureSlug = useSoleFeatureSlug();
-  const { offerId, campaignIds } = useSelectedOffer();
+  const { offerId, campaignIds, scopeSettled } = useSelectedOffer();
   const enabled = isRevenueFeature(featureSlug) && !!offerId && (campaignIds?.length ?? 0) > 0;
   const q = useAuthQuery(["brandRevenueWindow", brandId, "offer", offerId, days], () => getOfferRevenueWindow(offerId!, brandId, days), {
     enabled,
     ...pollOptions,
   });
-  return { ...q, pending: q.data === undefined && !q.isError && enabled };
+  return { ...q, pending: enabled ? q.data === undefined && !q.isError : !scopeSettled };
 }
 
 /**

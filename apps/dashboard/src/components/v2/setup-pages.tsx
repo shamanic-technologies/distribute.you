@@ -24,13 +24,9 @@ import { ArchivedOffers } from "@/components/v2/archived-offers";
 import { V2NewOfferModal } from "@/components/v2/new-offer-modal";
 import { OfferPlanBanner } from "@/components/v2/choose-plan";
 import { useSelectedOffer } from "@/components/v2/selected-offer";
-import { OfferIdentityCard } from "@/components/settings/offer-identity-card";
+import { OfferIdentityTitle } from "@/components/v2/offer-identity-title";
 import { OfferArchiveCard } from "@/components/settings/offer-archive-card";
 import { OfferLifetimeRevenue } from "@/components/settings/offer-campaigns-card";
-import { AddMissionModal } from "@/components/v2/add-mission-modal";
-import { CrewTriggerTag } from "@/components/v2/crew-trigger-tag";
-import { fmtDailyBudgetUsd } from "@/lib/campaign-budget";
-import { useDailyBudgetHidden } from "@/lib/use-daily-budget-hidden";
 import { BrandOfferCard } from "@/components/settings/brand-offer-card";
 import { CampaignSettingsCard } from "@/components/settings/campaign-settings-card";
 import { V2AudiencesTable } from "@/components/v2/audiences-table";
@@ -41,7 +37,7 @@ import { V2ConversationsView } from "@/components/v2/integrations-conversations"
 import { V2AiIntegrationView } from "@/components/v2/integrations-ai";
 import { Toast } from "@/components/toast";
 import { useMissions } from "@/components/v2/use-missions";
-import { crewTrigger, type CrewGlyph } from "@/lib/v2/crews";
+import { type CrewGlyph } from "@/lib/v2/crews";
 import { CrewMark } from "@/components/v2/crew-mark";
 import { EmptyNote, Shimmer, StateDot, TopBar, type Crumb } from "@/components/v2/ui";
 import { MaturityBadge } from "@/components/maturity-badge";
@@ -201,79 +197,21 @@ export function offerTabs(
 export function V2OfferPage() {
   const { orgId, brandId, offerId } = useIds();
   const name = useOfferName(brandId, offerId);
-  const { missions, crews, settled } = useMissions(orgId, brandId, { allOffers: true });
-  const [adding, setAdding] = useState(false);
-  const budgetHidden = useDailyBudgetHidden();
+  const { missions } = useMissions(orgId, brandId, { allOffers: true });
   if (!offerId) return null;
-  const mine = missions.filter((m) => m.offerId === offerId);
   return (
     <V2Page
       crumbs={[{ label: name ?? " " }]}
-      title={name ?? " "}
+      title={<OfferIdentityTitle brandId={brandId} offerId={offerId} />}
       tabs={offerTabs(orgId, brandId, offerId, "settings")}
-      width="max-w-[1280px]"
     >
       <OfferPlanBanner brandId={brandId} offerId={offerId} missions={missions} />
-      <div className="grid gap-6 lg:grid-cols-[minmax(0,7fr)_minmax(0,3fr)]">
-        <div className="min-w-0 space-y-8">
-          <OfferIdentityCard brandId={brandId} offerId={offerId} />
-          <OfferLifetimeRevenue brandId={brandId} offerId={offerId} />
-          <BrandOfferCard brandId={brandId} offerId={offerId} />
-          <OfferArchiveCard brandId={brandId} offerId={offerId} />
-          <ArchivedOffers brandId={brandId} />
-        </div>
-        <aside className="min-w-0">
-          <div className="k-card p-4">
-            <div className="flex items-center justify-between gap-2">
-              <p className="k-label">Missions{settled ? `  ${mine.length}` : ""}</p>
-              <button type="button" onClick={() => setAdding(true)} className="k-btn h-7">
-                + Add
-              </button>
-            </div>
-            {!settled ? (
-              <div className="mt-3 space-y-2">
-                <Shimmer className="h-12 rounded-[10px]" />
-                <Shimmer className="h-12 rounded-[10px]" />
-              </div>
-            ) : mine.length === 0 ? (
-              <p className="k-fg2 mt-3 text-[13px] leading-[20px]">
-                No crew works for this offer yet. Add a mission to put one to work.
-              </p>
-            ) : (
-              <ul className="mt-2 -mx-2">
-                {mine.map((m) => {
-                  const trigger = crewTrigger(m.leg);
-                  return (
-                    <li key={m.row.campaign.id}>
-                      <Link href={m.href} className="k-hover flex items-center gap-2.5 rounded-[8px] px-2 py-2">
-                        <CrewMark color={m.crew.color} glyph={m.crew.glyph} size={24} />
-                        <span className="min-w-0 flex-1">
-                          <span className="flex items-center justify-between gap-2">
-                            <span className="truncate text-[13px] font-medium">{m.crew.name}</span>
-                            <StateDot running={m.running} hold={m.paymentHold} />
-                          </span>
-                          <span className="k-fg2 flex items-center justify-between gap-2 text-[12px]">
-                            {trigger ? <CrewTriggerTag trigger={trigger} className="min-w-0" /> : <span className="truncate">{m.leg?.label ?? "—"}</span>}
-                            {budgetHidden ? null : (
-                              <span className="k-mono shrink-0 tabular-nums">
-                                {fmtDailyBudgetUsd(m.row.budgetCents ?? 0)}
-                                {trigger?.kind === "event" ? " cap" : ""}
-                              </span>
-                            )}
-                          </span>
-                        </span>
-                      </Link>
-                    </li>
-                  );
-                })}
-              </ul>
-            )}
-          </div>
-        </aside>
+      <div className="space-y-8">
+        <OfferLifetimeRevenue brandId={brandId} offerId={offerId} />
+        <BrandOfferCard brandId={brandId} offerId={offerId} />
+        <OfferArchiveCard brandId={brandId} offerId={offerId} />
+        <ArchivedOffers brandId={brandId} />
       </div>
-      {adding && (
-        <AddMissionModal brandId={brandId} crews={crews} missions={missions} initialOfferId={offerId} onClose={() => setAdding(false)} />
-      )}
     </V2Page>
   );
 }

@@ -221,7 +221,7 @@ export function TodayPage() {
           </p>
         </div>
 
-        {!rev.enabled ? (
+        {!rev.enabled && !rev.pending ? (
           <div className="k-card">
             <EmptyNote>This view isn&apos;t available yet.</EmptyNote>
           </div>

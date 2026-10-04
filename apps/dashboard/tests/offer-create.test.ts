@@ -81,16 +81,13 @@ describe("the create control", () => {
 });
 
 describe("renaming an offer", () => {
-  // The rename lives on the IDENTITY card now. `OfferNameCard` shipped rename-only
-  // from one workspace while another was building the offer's generated mark; a
-  // name and a mark answer ONE question — which offer is this — so two cards on one
-  // page was one screen asking it twice. The card that absorbed it keeps every
-  // invariant below.
-  const card = read("components/settings/offer-identity-card.tsx");
+  // The rename lives in the offer page's TITLE now: name and mark answer ONE
+  // question (which offer is this), edited where they are read.
+  const card = read("components/v2/offer-identity-title.tsx");
 
   it("is mounted on the offer's setup page, and there is exactly ONE rename surface", () => {
     const page = read("components/v2/setup-pages.tsx");
-    expect(page).toContain("<OfferIdentityCard");
+    expect(page).toContain("<OfferIdentityTitle");
     expect(page).not.toContain("OfferNameCard");
     expect(() => read("components/settings/offer-name-card.tsx")).toThrow();
   });

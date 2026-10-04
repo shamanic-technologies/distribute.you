@@ -46,14 +46,14 @@ describe("Missions page", () => {
 describe("Offer page", () => {
   const page = read("components/v2/setup-pages.tsx");
   const offer = page.slice(page.indexOf("export function V2OfferPage("), page.indexOf("/** Who an offer is sold to"));
-  it("is two columns: the offer on the left, its missions on the right", () => {
-    expect(offer).toContain("lg:grid-cols-[minmax(0,7fr)_minmax(0,3fr)]");
-    expect(offer.indexOf("<BrandOfferCard")).toBeLessThan(offer.indexOf("<aside"));
+  it("is one column: the missions list left the page, the offer's own cards stay", () => {
+    expect(offer).not.toContain("<aside");
+    expect(offer).not.toContain("<AddMissionModal");
     expect(offer).toContain("<OfferLifetimeRevenue brandId={brandId} offerId={offerId} />");
+    expect(offer).toContain("<BrandOfferCard brandId={brandId} offerId={offerId} />");
   });
   it("no longer lists the v1 per-channel toggles", () => {
     expect(offer).not.toContain("<OfferCampaignsCard");
-    expect(offer).toContain("initialOfferId={offerId}");
   });
 });
 
