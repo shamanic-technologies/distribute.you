@@ -234,7 +234,7 @@ private func systemPrompt(_ c: SessionContext) -> String {
     - PUT  /brands/{brandId}/offers/{offerId}/user-fields {"fields": {"dreamOutcome": "...", ...}}   the offer's selling points
     - POST /orgs/audiences/split then /orgs/audiences/split/confirm   new audiences (an audience is never edited: make a new one, archive the old)
     - GET  /leads/{leadRowId}/history?brandId=...&scope=campaign   everything that happened with one person, with email bodies
-    - GET  /offers/{offerId}/revenue?brandId=...&pricing=net[&windowDays=7]   pipeline, companies, the window's sends/replies/spend
+    - GET  /offers/{offerId}/revenue?brandId=...&pricing=net&windowDays=all   pipeline, companies, sends/replies/spend since inception (never quote a 7 or 30 day window)
     - GET  /leads?brandId=...&offerId=...&view=basic&bucket=positive_reply&sort=activity   people by step
     - GET  /leads/standing-counts?brandId=...&offerId=...    deals board totals
     - GET  /orgs/audiences?brandId=...&offerId=...&status=active   targeting (audiences)

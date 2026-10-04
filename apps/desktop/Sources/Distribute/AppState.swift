@@ -63,7 +63,6 @@ final class AppState: ObservableObject {
     @Published var balance: Balance?
 
     @Published var pane: Pane? = .today
-    @Published var windowDays = 7
     @Published var peopleBucket = "contacted"
     @Published var today: Load<TodayData> = .idle
     @Published var companies: Load<OfferRevenue> = .idle
@@ -296,7 +295,7 @@ final class AppState: ObservableObject {
                 async let needs = api.leads(brandId: b, offerId: o, extra: ["bucket": "positive_reply", "standing": "sales_interest", "limit": "5"])
                 guard offerHasCampaign else { return TodayData(revenue: nil, window: nil, needsCall: try await needs) }
                 async let rev = api.offerRevenue(offerId: o, brandId: b)
-                async let win = api.offerWindow(offerId: o, brandId: b, days: windowDays)
+                async let win = api.offerSinceInception(offerId: o, brandId: b)
                 return TodayData(revenue: try await rev, window: try await win, needsCall: try await needs)
             }
         case .companies:
@@ -342,11 +341,6 @@ final class AppState: ObservableObject {
         } catch {
             rows = .failed(error.localizedDescription)
         }
-    }
-
-    func setWindow(_ days: Int) {
-        windowDays = days
-        Task { await load(.today) }
     }
 
     func setPeopleBucket(_ bucket: String) {

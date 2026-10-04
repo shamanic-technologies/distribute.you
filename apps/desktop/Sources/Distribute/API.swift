@@ -344,8 +344,10 @@ struct DistributeAPI {
     func offerRevenue(offerId: String, brandId: String) async throws -> OfferRevenue {
         try await get("/offers/\(offerId)/revenue", query: ["brandId": brandId, "pricing": "net"])
     }
-    func offerWindow(offerId: String, brandId: String, days: Int) async throws -> RevenueWindow {
-        try await get("/offers/\(offerId)/revenue", query: ["brandId": brandId, "pricing": "net", "windowDays": String(days)])
+    /// Always SINCE INCEPTION (owner 2026-10-04: no 7 / 30 day window, anywhere); the
+    /// producer serves it as `?windowDays=all`, like dashboard v2's Today.
+    func offerSinceInception(offerId: String, brandId: String) async throws -> RevenueWindow {
+        try await get("/offers/\(offerId)/revenue", query: ["brandId": brandId, "pricing": "net", "windowDays": "all"])
     }
     func bucketCounts(brandId: String, offerId: String) async throws -> BucketCounts {
         try await get("/leads/bucket-counts", query: ["brandId": brandId, "offerId": offerId])
