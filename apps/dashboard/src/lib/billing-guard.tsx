@@ -17,7 +17,7 @@ import { paymentModeOf } from "@/lib/payment-mode";
 
 // API responses now ship cents as decimal strings (billing-service v2). FE-computed
 // budgets are still integer cents — accept both shapes everywhere they cross.
-interface PaymentRequiredInfo {
+export interface PaymentRequiredInfo {
   balance_cents?: string | number;
   required_cents?: string | number;
   error?: string;
