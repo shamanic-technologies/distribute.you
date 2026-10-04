@@ -137,25 +137,34 @@ export function ColdEmailOverview({ brandId }: { brandId: string }) {
         </div>
       </section>
 
-      <section>
+      {/* Where people stand: one card, half the width at most, one vertical bar per step (owner 2026-10-04). */}
+      <section className="lg:max-w-[50%]">
         <SectionTitle>People</SectionTitle>
-        <div className="k-card divide-y divide-[var(--line-subtle)] overflow-hidden">
+        <div className="k-card p-4">
           {!countsSettled ? (
-            Array.from({ length: 5 }, (_, i) => (
-              <div key={i} className="px-4 py-3">
-                <Shimmer className="h-5 w-full" />
-              </div>
-            ))
+            <Shimmer className="h-[200px] w-full rounded-[8px]" />
           ) : !counts ? (
             <EmptyNote>Could not read where people stand. Retrying.</EmptyNote>
           ) : (
             <>
-              <StepRow label="Contacted" count={counts.contacted} of={counts.contacted} />
-              <StepRow label="Delivered" count={people?.delivered ?? null} of={counts.contacted} />
-              <InterestedRow total={people?.interested ?? null} visits={counts.website_visit} replies={counts.positive_reply} of={counts.contacted} />
-              <StepRow label="Meeting booked" count={counts.meeting_booked} of={counts.contacted} />
-              <StepRow label="Meeting attended" count={counts.meeting_attended} of={counts.contacted} />
-              <StepRow label="Paid client" count={counts.sale} of={counts.contacted} />
+              <div className="flex items-end gap-3">
+                <StepBar label="Contacted" count={counts.contacted} of={counts.contacted} />
+                <StepBar label="Delivered" count={people?.delivered ?? null} of={counts.contacted} />
+                <InterestedBar total={people?.interested ?? null} visits={counts.website_visit} replies={counts.positive_reply} of={counts.contacted} />
+                <StepBar label="Meeting booked" count={counts.meeting_booked} of={counts.contacted} />
+                <StepBar label="Meeting attended" count={counts.meeting_attended} of={counts.contacted} />
+                <StepBar label="Paid client" count={counts.sale} of={counts.contacted} />
+              </div>
+              <div className="k-fg3 mt-4 flex gap-4 text-[12px] tabular-nums">
+                <span className="inline-flex items-center gap-1.5">
+                  <span className="h-2 w-2 rounded-full bg-[var(--data-teal)]" aria-hidden="true" />
+                  Website visit {formatCount(counts.website_visit)}
+                </span>
+                <span className="inline-flex items-center gap-1.5">
+                  <span className="h-2 w-2 rounded-full bg-[var(--accent)]" aria-hidden="true" />
+                  Positive reply {formatCount(counts.positive_reply)}
+                </span>
+              </div>
             </>
           )}
         </div>
@@ -164,53 +173,40 @@ export function ColdEmailOverview({ brandId }: { brandId: string }) {
   );
 }
 
-/** A bar's drawn length: the count against Contacted, never below a visible sliver. */
-function barWidth(count: number, of: number): string {
+/** A bar's drawn height: the count against Contacted, never below a visible sliver. */
+function barHeight(count: number, of: number): string {
   if (of <= 0 || count <= 0) return "0%";
-  return `${Math.max(1, Math.min(100, (count * 100) / of))}%`;
+  return `${Math.max(1.5, Math.min(100, (count * 100) / of))}%`;
 }
 
-function StepRow({ label, count, of }: { label: string; count: number | null; of: number }) {
+function BarColumn({ label, value, children }: { label: string; value: number | null; children: React.ReactNode }) {
   return (
-    <div className="grid grid-cols-[160px_minmax(0,1fr)_80px] items-center gap-4 px-4 py-3">
-      <span className="text-[13px]">{label}</span>
-      <span className="k-inset block h-2 overflow-hidden rounded-full">
-        <span className="block h-full rounded-full bg-[var(--accent)]" style={{ width: barWidth(count ?? 0, of) }} />
-      </span>
-      {count === null ? (
-        <span className="k-fg4 text-right text-[13px]">{"—"}</span>
+    <div className="flex min-w-0 flex-1 flex-col items-center gap-1.5">
+      {value === null ? (
+        <span className="k-fg4 text-[13px]">{"—"}</span>
       ) : (
-        <span className="text-right text-[13px] font-medium tabular-nums">{formatCount(count)}</span>
+        <span className="text-[13px] font-medium tabular-nums">{formatCount(value)}</span>
       )}
+      <div className="k-inset flex h-[140px] w-full max-w-[44px] flex-col justify-end overflow-hidden rounded-[6px]">{children}</div>
+      <span className="k-fg2 h-8 text-center text-[11px] leading-4">{label}</span>
     </div>
   );
 }
 
-function InterestedRow({ total, visits, replies, of }: { total: number | null; visits: number; replies: number; of: number }) {
+function StepBar({ label, count, of }: { label: string; count: number | null; of: number }) {
   return (
-    <div className="grid grid-cols-[160px_minmax(0,1fr)_80px] items-center gap-4 px-4 py-3">
-      <span className="text-[13px]">Interested</span>
-      <span className="space-y-1">
-        <span className="k-inset flex h-2 overflow-hidden rounded-full">
-          <span className="block h-full bg-[var(--data-teal)]" style={{ width: barWidth(visits, of) }} />
-          <span className="block h-full bg-[var(--accent)]" style={{ width: barWidth(replies, of) }} />
-        </span>
-        <span className="k-fg3 flex gap-4 text-[12px] tabular-nums">
-          <span className="inline-flex items-center gap-1.5">
-            <span className="h-2 w-2 rounded-full bg-[var(--data-teal)]" aria-hidden="true" />
-            Website visit {formatCount(visits)}
-          </span>
-          <span className="inline-flex items-center gap-1.5">
-            <span className="h-2 w-2 rounded-full bg-[var(--accent)]" aria-hidden="true" />
-            Positive reply {formatCount(replies)}
-          </span>
-        </span>
-      </span>
-      {total === null ? (
-        <span className="k-fg4 text-right text-[13px]">{"—"}</span>
-      ) : (
-        <span className="text-right text-[13px] font-medium tabular-nums">{formatCount(total)}</span>
-      )}
-    </div>
+    <BarColumn label={label} value={count}>
+      <div className="w-full bg-[var(--accent)]" style={{ height: barHeight(count ?? 0, of) }} />
+    </BarColumn>
+  );
+}
+
+/** Interested: positive replies stacked on website visits, labelled with the distinct total lead-service serves. */
+function InterestedBar({ total, visits, replies, of }: { total: number | null; visits: number; replies: number; of: number }) {
+  return (
+    <BarColumn label="Interested" value={total}>
+      <div className="w-full bg-[var(--accent)]" style={{ height: barHeight(replies, of) }} />
+      <div className="w-full bg-[var(--data-teal)]" style={{ height: barHeight(visits, of) }} />
+    </BarColumn>
   );
 }
