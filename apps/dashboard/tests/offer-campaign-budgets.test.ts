@@ -57,5 +57,7 @@ describe("offer campaigns", () => {
       pricing: null,
     });
     expect(v.items[0].budgetCents).toBeNull();
+    const daily = OfferCampaignBudgetsSchema.parse({ ...v, period: "day", items: [{ ...v.items[0], period: "day", budgetCents: 330.0000001 }] });
+    expect(daily.items[0].budgetCents).toBeCloseTo(330);
   });
 });

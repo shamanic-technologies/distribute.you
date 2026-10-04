@@ -25,8 +25,8 @@ const CampaignBudgetRowSchema = z
     legKey: z.string(),
     role: z.string().nullable(),
     period: CampaignPeriodSchema,
-    /** null = not set. */
-    budgetCents: z.number().int().nullable(),
+    /** null = not set. In the row's period; a daily one may carry fractional cents (monthly / 30). */
+    budgetCents: z.number().nullable(),
     managed: z.boolean().nullable(),
     minimumCents: z.number().int().nullable(),
     capCents: z.number().int().nullable(),
