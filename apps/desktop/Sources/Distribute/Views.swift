@@ -38,20 +38,34 @@ struct ConnectView: View {
     @EnvironmentObject var state: AppState
     @State private var key = ""
     @State private var busy = false
+    @State private var pasting = false
 
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
             Text("distribute").font(.system(size: 28, weight: .semibold))
             Text("Revenue made easy.").font(.title3).foregroundStyle(.secondary)
-            Text("Paste your distribute API key to connect your brands.")
-            SecureField("distrib.usr_…", text: $key)
-                .textFieldStyle(.roundedBorder)
-                .onSubmit(connect)
-            HStack {
-                Button(busy ? "Connecting…" : "Connect", action: connect)
+            Text("Sign in with Google or email to connect your brands.")
+            if state.signingIn {
+                HStack(spacing: 10) {
+                    ProgressView().controlSize(.small)
+                    Text("Finish signing in in your browser.").foregroundStyle(.secondary)
+                    Button("Cancel") { state.cancelBrowserSignIn() }.buttonStyle(.link)
+                }
+            } else {
+                Button("Continue in your browser") { state.signInWithBrowser() }
                     .keyboardShortcut(.defaultAction)
+                    .controlSize(.large)
+            }
+            if pasting {
+                SecureField("distrib.usr_…", text: $key)
+                    .textFieldStyle(.roundedBorder)
+                    .onSubmit(connect)
+                Button(busy ? "Connecting…" : "Connect", action: connect)
                     .disabled(key.isEmpty || busy)
-                Link("Get an API key", destination: dashboardURL.appendingPathComponent("api-keys"))
+            } else {
+                Button("Paste an API key instead") { pasting = true }
+                    .buttonStyle(.link)
+                    .font(.callout)
             }
             if let err = state.loadError {
                 Text(err).foregroundStyle(.red).font(.callout).textSelection(.enabled)
@@ -298,7 +312,8 @@ struct ChatView: View {
             ScrollViewReader { proxy in
                 ScrollView {
                     LazyVStack(alignment: .leading, spacing: 10) {
-                        if state.chat.isEmpty { emptyState }
+                        if state.selectedBrand == nil && state.me != nil { noBrandState }
+                        else if state.chat.isEmpty { emptyState }
                         ForEach(state.chat) { item in
                             ChatBubble(item: item).id(item.id)
                         }
@@ -340,6 +355,19 @@ struct ChatView: View {
                      "Which campaign gets the cheapest positive reply?",
                      "Pause sending for this brand."], id: \.self) { s in
                 Button(s) { state.draft = s }.buttonStyle(.link)
+            }
+        }
+        .padding(.vertical, 20)
+    }
+
+    private var noBrandState: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text("Create your first brand").font(.title3.weight(.semibold))
+            Text("Add your website on the dashboard. It shows up here right after.")
+                .foregroundStyle(.secondary)
+            HStack {
+                Link("Open the dashboard", destination: dashboardURL)
+                Button("Refresh") { Task { await state.boot() } }.buttonStyle(.link)
             }
         }
         .padding(.vertical, 20)

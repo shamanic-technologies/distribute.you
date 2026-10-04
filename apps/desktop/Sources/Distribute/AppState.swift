@@ -28,6 +28,33 @@ final class AppState: ObservableObject {
     @Published var chatBusy = false
     @Published var draft = ""
     private let session = ClaudeSession()
+    private let browserLogin = BrowserLogin()
+    @Published var signingIn = false
+
+    /// Google or email in the browser, on the dashboard's own sign-in; the key comes back by itself.
+    func signInWithBrowser() {
+        loadError = nil
+        signingIn = true
+        browserLogin.start { [weak self] result in
+            guard let self else { return }
+            switch result {
+            case .success(let key):
+                Task {
+                    await self.connect(key: key)
+                    self.signingIn = false
+                    NSApp.activate(ignoringOtherApps: true)
+                }
+            case .failure(let error):
+                self.signingIn = false
+                self.loadError = error.localizedDescription
+            }
+        }
+    }
+
+    func cancelBrowserSignIn() {
+        browserLogin.stop()
+        signingIn = false
+    }
 
     var api: DistributeAPI? { apiKey.map(DistributeAPI.init(apiKey:)) }
 

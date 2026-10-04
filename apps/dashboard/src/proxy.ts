@@ -38,6 +38,10 @@ const isPublicRoute = createRouteMatcher([
   // Onboarding v2, signed out like the build half above (it runs on the same
   // anonymous session and allowlist). EXACT: nothing lives under it.
   "/get-started",
+  // distribute for Mac's browser sign-in. Public so the first-run gate cannot bounce
+  // it to onboarding (DesktopConnectResume would bounce it back: a loop); the page
+  // sends a signed-out visitor to /sign-in itself. EXACT.
+  "/desktop/connect",
   "/api/public(.*)",
   "/api/anon(.*)",
   "/api/cron(.*)",
