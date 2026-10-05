@@ -23,10 +23,11 @@ describe("Crew page", () => {
 
 describe("the daily budget excludes event crews", () => {
   // Today states no daily budget since its crew tile became Delivered (2026-10-03).
-  it("on Today and Missions, in the top bar", () => {
-    const today = read("components/v2/today-page.tsx");
-    expect(today).toContain("<CampaignControlsTrigger brandId={brandId} offerId={selectedOfferId ?? undefined} dailyOnly />");
+  it("on Missions, in the top bar", () => {
     expect(read("components/v2/missions-page.tsx")).toContain("<CampaignControlsTrigger brandId={brandId} offerId={selectedOfferId ?? undefined} dailyOnly />");
+  });
+  it("Today carries no campaign on/off switch: cancelling lives in Billing (owner 2026-10-05)", () => {
+    expect(read("components/v2/today-page.tsx")).not.toContain("CampaignControlsTrigger");
   });
   it("an event mission's figure reads as a cap", () => {
     expect(read("components/v2/campaign-page.tsx")).toContain('cap={crewTrigger(mission.leg)?.kind === "event"}');
