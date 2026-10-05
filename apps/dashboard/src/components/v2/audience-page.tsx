@@ -94,8 +94,9 @@ function detailsOf(a: AudienceWire): string | null {
   return parts.length ? parts.join(" · ") : null;
 }
 
-/** Proactive = we keep paying to grow the list (active); Stale = it holds what it has. */
-const isProactive = (a: AudienceWire) => a.status === "active";
+/** Active = campaigns can still add people from it (paid on the campaign's budget); paused / archived add no one. */
+const isActive = (a: AudienceWire) => a.status === "active";
+const statusWord = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
 
 type Tab = "audiences" | "people" | "companies";
 const PAGE = 100;
@@ -268,7 +269,7 @@ function AudiencesTab({
     () =>
       [active.data, paused.data, archived.data]
         .flatMap((d) => d?.audiences ?? [])
-        .sort((a, b) => Number(isProactive(b)) - Number(isProactive(a)) || b.createdAt.localeCompare(a.createdAt)),
+        .sort((a, b) => Number(isActive(b)) - Number(isActive(a)) || b.createdAt.localeCompare(a.createdAt)),
     [active.data, paused.data, archived.data],
   );
   const truncated = reads.some((r) => r.data && r.data.total > r.data.audiences.length);
@@ -279,7 +280,7 @@ function AudiencesTab({
       [a.name, sourceOf(a)?.label, typeOf(a), detailsOf(a)].filter(Boolean).join(" ").toLowerCase().includes(needle),
     );
   }, [all, q]);
-  const proactive = all.filter(isProactive).length;
+  const countOf = (s: string) => all.filter((a) => a.status === s).length;
 
   useRowKeys({ count: rows.length, cursor, setCursor, onOpen: () => {}, searchRef });
 
@@ -287,7 +288,7 @@ function AudiencesTab({
     <>
       {all.length > 0 && (
         <p className="k-fg3 px-4 pt-3 text-[12px] md:px-6">
-          {proactive} proactive · {all.length - proactive} stale
+          {countOf("active")} active · {countOf("paused")} paused · {countOf("archived")} archived
         </p>
       )}
       <RecordsToolbar search={q} onSearch={setQ} placeholder="Search audiences" inputRef={searchRef} />
@@ -350,7 +351,7 @@ function AudiencesTab({
                       )}
                     </td>
                     <td className="whitespace-nowrap pr-4 md:pr-6">
-                      <StateDot running={isProactive(a)} label={isProactive(a) ? "Proactive" : "Stale"} />
+                      <StateDot running={isActive(a)} label={statusWord(a.status)} />
                     </td>
                   </tr>
                 );
@@ -364,7 +365,7 @@ function AudiencesTab({
           snapshotError
             ? `Held counts could not be loaded: ${snapshotError.message}`
             : settled
-              ? `${rows.length} of ${all.length} audiences${truncated ? " · first 200 per status shown" : ""} · People = held (revealed, screened or queued), Accepted = passed its target's Jev screen`
+              ? `${rows.length} of ${all.length} audiences${truncated ? " · first 200 per status shown" : ""} · People = held (revealed, screened or queued), Accepted = passed its target's Jev screen · Costs are counted in campaign spend`
               : "Loading audiences"
         }
       />
