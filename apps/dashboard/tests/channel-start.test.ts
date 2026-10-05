@@ -4,6 +4,7 @@ import { join } from "node:path";
 import {
   channelStartErrorMessage,
   channelStatusSummary,
+  fundedPairRefusalMessage,
   ladderStartRefusalMessage,
   startableWorkflowDynastySlug,
 } from "../src/lib/channel-start";
@@ -141,5 +142,33 @@ describe("createCampaignForPair", () => {
   });
   it("turns a refused ladder into the channel's own sentence", () => {
     expect(src).toContain("ladderStartRefusalMessage(err.status, channelName)");
+  });
+});
+
+describe("fundedPairRefusalMessage", () => {
+  it("passes campaign-service's own sentence through on a 409 with a reason", () => {
+    const body = { error: "Set this campaign's budget first.", reason: "not_funded" };
+    expect(fundedPairRefusalMessage(409, body)).toBe("Set this campaign's budget first.");
+    expect(fundedPairRefusalMessage(400, { ...body, reason: "leg_not_performed" })).toBe(body.error);
+  });
+  it("is null for an outage or a body with no reason", () => {
+    expect(fundedPairRefusalMessage(502, { error: "x", reason: "billing_unavailable" })).toBeNull();
+    expect(fundedPairRefusalMessage(409, { error: "x" })).toBeNull();
+    expect(fundedPairRefusalMessage(409, null)).toBeNull();
+  });
+});
+
+describe("offer campaigns: a reactive row starts as a funded pair", () => {
+  // AI Instant Call has no workflow (campaign-service #560): the workflow-ladder path can
+  // never start it, campaign-service's start-funded-pair does.
+  const src = read("components/v2/offer-campaigns.tsx");
+  it("routes a reactive row with no campaign to startReactiveCampaign", () => {
+    const at = src.indexOf("} else if (campaign.reactive) {");
+    expect(at).toBeGreaterThan(-1);
+    expect(src.slice(at, src.indexOf("} else {", at))).toContain("startReactiveCampaign(");
+  });
+  it("posts to start-funded-pair and turns its refusal into the row's sentence", () => {
+    expect(read("lib/api.ts")).toContain('"/campaigns/start-funded-pair"');
+    expect(read("lib/start-pair.ts")).toContain("fundedPairRefusalMessage(err.status, err.body)");
   });
 });

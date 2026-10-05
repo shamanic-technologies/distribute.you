@@ -156,6 +156,19 @@ export function ladderStartRefusalMessage(status: number | null, channelName: st
 }
 
 /**
+ * campaign-service's own sentence when it refused to start a funded pair (`not_funded`: set
+ * the budget first; `leg_not_performed`; ...), verbatim: it is written for a person and
+ * names the fix. Only a 400/409 carrying both a sentence and a machine `reason`; anything
+ * else is null and the caller keeps its own message.
+ */
+export function fundedPairRefusalMessage(status: number | null, body: Record<string, unknown> | null | undefined): string | null {
+  if (status !== 400 && status !== 409) return null;
+  if (!body || typeof body.reason !== "string" || typeof body.error !== "string") return null;
+  const sentence = body.error.trim();
+  return sentence ? sentence.slice(0, 400) : null;
+}
+
+/**
  * Whether a channel we are about to start has a workflow to run.
  *
  * features-service ranks the channel's workflows for the leg and names its own
