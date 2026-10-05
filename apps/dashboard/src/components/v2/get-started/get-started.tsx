@@ -807,6 +807,13 @@ export function GetStarted({ org }: { org?: OrgWalk } = {}) {
         });
         setPrebuilt(true);
       })
+      .catch(async (e) => {
+        // A resumed walk re-proposes the audiences an earlier visit already created
+        // (names are unique per offer): those are the ones meant, so they are adopted.
+        if (!(e instanceof ApiError && e.status === 409)) throw e;
+        await adoptExistingAudiences(brandId, offerId, segs);
+        setPrebuilt(true);
+      })
       .catch((e) => console.error("[get-started] audience prebuild failed:", e));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [brandId, offer?.offerId, audienceProposals]);
@@ -865,11 +872,19 @@ export function GetStarted({ org }: { org?: OrgWalk } = {}) {
         if (prebuild.current && !createdAudiences.current.has(seg.name)) await prebuild.current;
         let known = createdAudiences.current.get(seg.name);
         if (!known) {
-          const { audiences } = await confirmAudienceSegments(id, o.offerId, icpRef.current || seg.description, [seg]);
-          const made = audiences[0];
-          if (!made) throw new Error("no audience created");
-          known = { audienceId: made.id, name: seg.name, description: seg.description };
-          createdAudiences.current.set(seg.name, known);
+          try {
+            const { audiences } = await confirmAudienceSegments(id, o.offerId, icpRef.current || seg.description, [seg]);
+            const made = audiences[0];
+            if (!made) throw new Error("no audience created");
+            known = { audienceId: made.id, name: seg.name, description: seg.description };
+            createdAudiences.current.set(seg.name, known);
+          } catch (e) {
+            // Created by an earlier visit of this walk (a reload): adopted, never re-created.
+            if (!(e instanceof ApiError && e.status === 409)) throw e;
+            await adoptExistingAudiences(id, o.offerId, [seg]);
+            known = createdAudiences.current.get(seg.name);
+            if (!known) throw e;
+          }
         }
         chooseAudience(known);
         posthog.capture("get_started_audience_picked", { audiences: audienceProposals.length });
@@ -886,6 +901,15 @@ export function GetStarted({ org }: { org?: OrgWalk } = {}) {
         setAudienceBusy(null);
       }
     })();
+  }
+
+  /** The offer's audiences already created under these names (by an earlier visit), adopted as created. */
+  async function adoptExistingAudiences(id: string, offerId: string, segs: AudienceSegmentProposal[]) {
+    const { audiences } = await listAudiences(id, { offerId, limit: 100 });
+    for (const seg of segs) {
+      const row = audiences.find((a) => a.name === seg.name);
+      if (row) createdAudiences.current.set(seg.name, { audienceId: row.id, name: seg.name, description: seg.description });
+    }
   }
 
   function chooseAudience(next: GetStartedAudience) {

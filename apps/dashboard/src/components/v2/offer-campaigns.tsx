@@ -402,9 +402,12 @@ function BudgetModal({
 }) {
   const qc = useQueryClient();
   const [value, setValue] = useState(budget?.budgetCents ? String(Math.round(budget.budgetCents / 100)) : "");
+  // A prepaid / postpaid org states a budget per day or per month (owner 2026-10-05:
+  // "$90/month", burnt like a daily one, no pacing). Opens on the row's own period.
+  const [per, setPer] = useState<"day" | "month">(unit);
   const { mutate, isPending, error } = useMutation({
     mutationFn: (usd: number) =>
-      saveOfferCampaignBudget(brandId, offerId, { featureSlug: campaign.featureSlug, legKey: campaign.legKey, budgetCents: usd * 100 }),
+      saveOfferCampaignBudget(brandId, offerId, { featureSlug: campaign.featureSlug, legKey: campaign.legKey, budgetCents: usd * 100 }, per),
     onSuccess: (data) => {
       qc.setQueryData(["offerCampaignBudgets", brandId, offerId], data);
       invalidateCampaignMoney(qc);
@@ -423,21 +426,23 @@ function BudgetModal({
 
   const usd = parseWholeUsd(value);
   // A campaign with no budget yet has no row, so no floor or cap here: billing judges the write.
-  const minUsd = budget?.minimumCents ? Math.ceil(budget.minimumCents / 100) : null;
-  const maxUsd = budget?.capCents ? Math.floor(budget.capCents / 100) : null;
+  // The row's floor and cap are in ITS period; in the other one billing judges too.
+  const samePeriod = per === unit;
+  const minUsd = samePeriod && budget?.minimumCents ? Math.ceil(budget.minimumCents / 100) : null;
+  const maxUsd = samePeriod && budget?.capCents ? Math.floor(budget.capCents / 100) : null;
   const problem =
     value.trim() === ""
       ? null
       : usd === null
         ? "Type a whole number of dollars."
         : minUsd !== null && usd < minUsd
-          ? `This channel needs at least $${minUsd.toLocaleString("en-US")} a ${unit}.`
+          ? `This channel needs at least $${minUsd.toLocaleString("en-US")} a ${per}.`
           : maxUsd !== null && usd > maxUsd
-            ? `The most you can set here is $${maxUsd.toLocaleString("en-US")} a ${unit}.`
+            ? `The most you can set here is $${maxUsd.toLocaleString("en-US")} a ${per}.`
             : null;
   const submittable = usd !== null && problem === null;
   const status = error instanceof ApiError ? error.status : null;
-  const title = unit === "month" ? (campaign.reactive ? "Monthly max" : "Monthly budget") : campaign.reactive ? "Daily max" : "Daily budget";
+  const title = per === "month" ? (campaign.reactive ? "Monthly max" : "Monthly budget") : campaign.reactive ? "Daily max" : "Daily budget";
 
   if (typeof document === "undefined") return null;
   const host = document.getElementById("v2-portal") ?? document.body;
@@ -481,10 +486,23 @@ function BudgetModal({
               aria-invalid={problem !== null}
               className={`k-input w-[120px] px-2.5 tabular-nums ${problem ? "shadow-[inset_0_0_0_1px_var(--data-rose)]" : ""}`}
             />
-            <span className="k-fg2">/ {unit}</span>
+            <div role="radiogroup" aria-label="Budget period" className="flex items-center gap-1">
+              {(["day", "month"] as const).map((p) => (
+                <button
+                  key={p}
+                  type="button"
+                  role="radio"
+                  aria-checked={per === p}
+                  onClick={() => setPer(p)}
+                  className={per === p ? "k-btn-strong" : "k-btn-ghost"}
+                >
+                  / {p}
+                </button>
+              ))}
+            </div>
           </div>
           <p className={`mt-1.5 text-[12px] leading-[18px] ${problem ? "text-[var(--data-rose)]" : "k-fg3"}`}>
-            {problem ?? (campaign.reactive ? `We spend this much a ${unit} at most, only when leads reach this step.` : `We spend up to this much a ${unit} on this campaign.`)}
+            {problem ?? (campaign.reactive ? `We spend this much a ${per} at most, only when leads reach this step.` : `We spend up to this much a ${per} on this campaign.`)}
           </p>
           {error !== null && (
             <p role="alert" className="mt-3 text-[13px] text-[var(--data-rose)]">

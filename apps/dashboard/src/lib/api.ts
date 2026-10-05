@@ -3177,19 +3177,22 @@ export async function getOfferCampaignBudgets(brandId: string, offerId: string, 
 }
 
 /**
- * PUT /brands/:brandId/offers/:offerId/campaign-budgets — ONE campaign's budget, in the
- * org's period. billing refuses (400) an amount under the floor or over the cap.
+ * PUT /brands/:brandId/offers/:offerId/campaign-budgets — ONE campaign's budget, in
+ * `period` (absent = the org's period). A prepaid / postpaid org may state "month": a
+ * spend cap over the calendar month, burnt without pacing. billing refuses (400) an
+ * amount under the floor or over the cap, and "day" from a subscriber.
  */
 export async function saveOfferCampaignBudget(
   brandId: string,
   offerId: string,
   item: { featureSlug: string; legKey: string; budgetCents: number },
+  period?: "day" | "month",
   token?: string,
 ): Promise<OfferCampaignBudgets> {
   const raw = await apiCall<unknown>(`/brands/${brandId}/offers/${offerId}/campaign-budgets`, {
     token,
     method: "PUT",
-    body: { items: [item] },
+    body: { items: [item], ...(period ? { period } : {}) },
     headers: { "x-run-id": globalThis.crypto.randomUUID() },
   });
   return parseOfferCampaignBudgets(raw, "saveOfferCampaignBudget");

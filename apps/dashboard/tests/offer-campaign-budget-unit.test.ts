@@ -16,7 +16,12 @@ describe("offer Campaigns Budget cell unit", () => {
   });
 
   it("the modal speaks the same unit", () => {
-    expect(src).toContain('<span className="k-fg2">/ {unit}</span>');
     expect(src).toContain('"Monthly budget"');
+    expect(src).toContain("useState<\"day\" | \"month\">(unit)");
+  });
+
+  it("a prepaid / postpaid org picks day or month and the save sends it", () => {
+    expect(src).toContain('aria-label="Budget period"');
+    expect(src).toContain("budgetCents: usd * 100 }, per)");
   });
 });
