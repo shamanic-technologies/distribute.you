@@ -49,6 +49,10 @@ describe("v2 recent runs are crew runs", () => {
     expect(line).not.toContain("spent");
     // Name and status on the top line, the definition alone on one line below (owner 2026-10-05).
     expect(line).toContain("<CampaignLeg campaign={campaign} compact />");
+    // The stat row spans the full width whatever tiles remain (owner 2026-10-05).
+    expect(today).toContain("const statTiles = (4 + (showReplies ? 1 : 0) + (showVisits ? 1 : 0))");
+    expect(today).toContain("${STAT_GRID_COLS[statTiles]}");
+    expect(today).not.toContain("xl:grid-cols-6\">");
     // Meetings sits above Campaigns.
     expect(today.indexOf("{showMeetings && (")).toBeLessThan(today.indexOf(">Campaigns</SectionTitle>"));
     expect(src("components/v2/offer-campaigns.tsx")).toContain("<CampaignLeg campaign={campaign} />");

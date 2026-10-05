@@ -65,6 +65,12 @@ function Trend({ values, line = false, className = "" }: { values: number[] | nu
   return <BarSpark className={className} values={values} />;
 }
 const pct = (v: number) => `${v < 10 || v > 99 ? v.toFixed(1) : Math.round(v)}%`;
+/** One column per stat tile on a wide screen, so the row always spans the full width. */
+const STAT_GRID_COLS = {
+  4: "md:grid-cols-4",
+  5: "md:grid-cols-3 xl:grid-cols-5",
+  6: "md:grid-cols-3 xl:grid-cols-6",
+} as const;
 /** Meetings shown on Today, and how many are read to pick them by booking date. */
 const MEETINGS_SHOWN = 3;
 const MEETINGS_READ_LIMIT = 100;
@@ -111,6 +117,8 @@ export function TodayPage() {
   const showReplies = works("positive_reply");
   const showVisits = works("website_visit");
   const showMeetings = works("meeting_booked");
+  // Return, Pipeline, Delivered and Spent always; the two step tiles only when worked.
+  const statTiles = (4 + (showReplies ? 1 : 0) + (showVisits ? 1 : 0)) as 4 | 5 | 6;
 
   const emails = w?.emails ?? null;
   const winSpend = w?.spend ?? null;
@@ -233,7 +241,7 @@ export function TodayPage() {
               <span className="k-label">Performance</span>
               <span className="k-fg3 text-[12px]">Since you started</span>
             </div>
-            <div className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-6">
+            <div className={`grid grid-cols-2 gap-3 ${STAT_GRID_COLS[statTiles]}`}>
               <StatTile label="Return" note="Break-even 1×">
                 {rev.pending ? (
                   <Shimmer className="h-16 w-full" />
