@@ -1,11 +1,12 @@
 import {
+  ApiError,
   getFeature,
   getWorkflowProjectionLadder,
   prefillFeatureInputs,
   prefillToStringMap,
   startCampaign,
 } from "@/lib/api";
-import { ChannelStartRefusal, startableWorkflowDynastySlug } from "@/lib/channel-start";
+import { ChannelStartRefusal, ladderStartRefusalMessage, startableWorkflowDynastySlug } from "@/lib/channel-start";
 
 /**
  * CREATE the campaign for one (offer x leg x channel) that has none yet.
@@ -33,7 +34,13 @@ export async function createCampaignForPair({
   legLabel: string | null;
   brandName: string;
 }): Promise<void> {
-  const ladder = await getWorkflowProjectionLadder({ featureSlug, brandId, leg: legKey });
+  // The OFFER is named: features-service prices a leg on the offer's own terms, and a brand
+  // selling several offers is refused a read that names none.
+  const ladder = await getWorkflowProjectionLadder({ featureSlug, brandId, offerId, leg: legKey }).catch((err: unknown) => {
+    const refusal = err instanceof ApiError ? ladderStartRefusalMessage(err.status, channelName) : null;
+    if (refusal) throw new ChannelStartRefusal(refusal);
+    throw err;
+  });
   const workflowDynastySlug = startableWorkflowDynastySlug(ladder.recommendedWorkflowDynastySlug);
   if (!workflowDynastySlug) {
     throw new ChannelStartRefusal(`${channelName} is not ready for this outcome yet, so there is nothing to start.`);
