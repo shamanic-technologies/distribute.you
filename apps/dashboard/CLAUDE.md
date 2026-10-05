@@ -120,7 +120,7 @@ JWT is the sole authority; fail closed; remount on switch; the URL `/orgs/[id]` 
 - `min-h-*` never bounds an axis; a PERCENTAGE `max-h-full` against an indefinite parent pins nothing. 
 - Breadcrumb is visible at all widths (scrolls horizontally, `overflow-visible` while a dropdown is open). The split-panel `absolute inset-0` overlay is the intended mobile drawer. Subagent mobile audits over-report: confirm against the served string.
 - Measure fits by RENDERING (scrollWidth vs clientWidth, computed display, old markup beside new), at 360/412.
-- A hand-built probe page needs `<meta name="viewport">`; compile CSS through `@tailwindcss/postcss` against `globals.css`; wait for chart/CSS animations before measuring; a page-level component bundle needs next/navigation + next/link stubs, `window.process`, and a `pageerror` listener. Pick a FREE port (`lsof`), `__probe/` is TRACKED (use `__probe-<topic>/`).
+- A hand-built probe page needs `<meta name="viewport">`; compile CSS through `@tailwindcss/postcss` against `globals.css`; wait for chart/CSS animations before measuring; a page-level component bundle needs next/navigation + next/link stubs, `window.process`, and a `pageerror` listener. Pick a FREE port (`lsof`); never commit a probe dir (`__probe-<topic>/`, delete before staging).
 
 ## Misc rules worth keeping
 

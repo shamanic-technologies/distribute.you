@@ -435,7 +435,7 @@ export async function getReportRevenue(
 /** PROJECTED per-workflow ROI for the public report's brand-scoped workflow
  *  table. There is no realized per-workflow revenue stat — ROI is projected by
  *  features-service `workflow-projection` (cross-org workflow efficiency × the
- *  brand's saved sales-economics): ROI = 100 / cacPct, budget-invariant
+ *  offer's lifetime revenue and rates): ROI = 100 / cacPct, budget-invariant
  *  (budgetUsd:1 just populates `projection`). Keyed on `workflowDynastySlug`.
  *  Fail-soft: a cold/slow projection path degrades to "—" ROI rather than
  *  aborting the whole ISR prerender (CLAUDE.md build-time-prerender exception). */

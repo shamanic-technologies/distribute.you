@@ -210,7 +210,7 @@ async function RevenueSection({ orgId, brandId, featureSlug }: { orgId: string; 
       <div>
         <h2 className="font-display text-xl font-bold text-gray-800 mb-1">Revenue &amp; Conversions</h2>
         <p className="text-sm text-gray-500">
-          Expected pipeline revenue + conversions, computed from this brand&apos;s sales economics.
+          Expected pipeline revenue + conversions, computed from each offer&apos;s lifetime revenue and conversion rates.
         </p>
       </div>
       <ReportRevenueView data={data} />

@@ -1184,7 +1184,7 @@ function FeatureLevelSidebar({ orgId, brandId, featureSlug, pathname }: {
 
 // Feature Settings Level Sidebar — mirrors Brand Settings. Reached from the
 // "Feature Settings" entry at the bottom of FeatureLevelSidebar. The landing
-// (/settings, Sales Economics) is GA; Workflows is a staff-only (alpha) sub-page.
+// (/settings) is GA; Workflows is a staff-only (alpha) sub-page.
 function FeatureSettingsLevelSidebar({ orgId, brandId, featureSlug, pathname }: {
   orgId: string;
   brandId: string;

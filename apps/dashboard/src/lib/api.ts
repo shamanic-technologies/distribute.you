@@ -1772,16 +1772,7 @@ export async function getBrand(brandId: string, token?: string): Promise<{ brand
   }
 }
 
-// ── Brand sales conversion economics ──
-// Persisted per brand in brand-service via api-service /v1/brands/:id/sales-economics.
-// READ returns the saved set or null (unset → the page uses its hard-coded defaults).
-// WRITE is an idempotent full-set upsert that returns the saved row (never null).
-// Conversion rates are numeric percents (0–100, decimals allowed);
-// lifetimeRevenueUsd is whole US dollars.
-// businessModel (b2c | b2b | null) is part of the saved set: it picks which path
-// the revenue-overview pipeline applies. Both GET and PUT responses always include it.
-export type BrandBusinessModel = "b2c" | "b2b";
-
+// ── Brand optimization goal vocabulary ──
 // The single metric the brand wants to optimise for. Server default
 // "sales_meetings" when never set; GET/PUT responses always include a non-null value.
 // website_visits / positive_replies are the two beta single-step goals (visit→paid,
@@ -1895,19 +1886,6 @@ export function normalizeBrandOptimizationGoal(
   throw new Error(`Unmapped brand optimization goal: ${goal as string}`);
 }
 
-function serializeBrandOptimizationGoal(
-  goal: BrandOptimizationGoal,
-): "signups" | "booked_meetings" | "website_visits" | "positive_replies" | "form_submissions" | "website_purchase" | "combined_sales" {
-  if (goal === "signups") return "signups";
-  if (goal === "website_visits") return "website_visits";
-  if (goal === "positive_replies") return "positive_replies";
-  if (goal === "form_submissions") return "form_submissions";
-  // website_purchase serialises 1:1; sales → the combined-sales wire value.
-  if (goal === "website_purchase") return "website_purchase";
-  if (goal === "sales") return "combined_sales";
-  return "booked_meetings";
-}
-
 // Most surfaces only distinguish VISIT-driven (website click → outcome) from
 // REPLY-driven (positive reply → outcome) behaviour. signups + website_visits +
 // form_submissions + website_purchase are visit-driven; sales_meetings + positive_replies
@@ -1924,174 +1902,6 @@ export function isVisitDrivenGoal(goal: BrandOptimizationGoal): boolean {
     goal === "website_purchase" ||
     goal === "sales"
   );
-}
-
-export interface BrandSalesEconomics {
-  lifetimeRevenueUsd: number;
-  replyToMeetingPct: number;
-  visitToMeetingPct: number;
-  meetingToClosePct: number;
-  // Self-serve close decomposed into two steps. visitToClosePct is now DERIVED
-  // server-side (= visitToSignupPct × signupToPaidClientPct) and stays on the
-  // response for the projection engine — never sent on the PUT (see Input).
-  visitToSignupPct: number;
-  signupToPaidClientPct: number;
-  visitToClosePct: number;
-  // Single-step conversions for the beta website_visits / positive_replies goals.
-  visitToPaidClientPct: number;
-  replyToPaidClientPct: number;
-  // Two-step conversions for the beta form_submissions goal (visit → form submission → paid),
-  // the sibling of signups. brand-service serves them PRESENT-BUT-NULLABLE: a brand that never
-  // set form-submission rates gets `null` (not absent). Hence `number | null` — a bare `number`
-  // (or a non-nullable schema) makes the GET safeParse throw on every such brand.
-  visitToFormSubmissionPct?: number | null;
-  formSubmissionToPaidClientPct?: number | null;
-  businessModel: BrandBusinessModel | null;
-  // OPTIONAL because brand-service retired the goal from this payload (#434):
-  // the brand's legs are the only vocabulary for what a brand sells
-  // through. A consumer that needs a goal reads the arbitrated one, and a
-  // reader that requires this field here takes every econ surface down.
-  optimizationGoal?: BrandOptimizationGoal;
-  updatedAt: string;
-}
-
-// businessModel is a partial-update field on PUT: omit = leave unchanged, null = clear
-// (brand-service contract). The campaign form omits it (edits only the 5 metrics); the
-// Brand Settings editor sends it explicitly. Hence optional in the input, not required.
-// businessModel / optimizationGoal are partial-update fields on PUT:
-// omit = leave unchanged. Hence optional in the input.
-// visitToClosePct is derived server-side, never sent — omit it from the input.
-// visitToPaidClientPct / replyToPaidClientPct are partial-update too: omit = leave
-// unchanged (brand-service defaults 5 / 25). Only the beta settings card sends them.
-export type BrandSalesEconomicsInput = Omit<
-  BrandSalesEconomics,
-  | "updatedAt"
-  | "businessModel"
-  | "optimizationGoal"
-  | "visitToClosePct"
-  | "visitToPaidClientPct"
-  | "replyToPaidClientPct"
-  | "visitToFormSubmissionPct"
-  | "formSubmissionToPaidClientPct"
-> & {
-  businessModel?: BrandBusinessModel | null;
-  optimizationGoal?: BrandOptimizationGoal;
-  visitToPaidClientPct?: number;
-  replyToPaidClientPct?: number;
-  visitToFormSubmissionPct?: number;
-  formSubmissionToPaidClientPct?: number;
-};
-
-const BrandSalesEconomicsSchema = z.object({
-  lifetimeRevenueUsd: z.number(),
-  replyToMeetingPct: z.number(),
-  visitToMeetingPct: z.number(),
-  meetingToClosePct: z.number(),
-  visitToSignupPct: z.number(),
-  signupToPaidClientPct: z.number(),
-  visitToClosePct: z.number(),
-  visitToPaidClientPct: z.number(),
-  replyToPaidClientPct: z.number(),
-  // Present-but-NULLABLE on the wire: brand-service returns these in `required[]` but serves `null`
-  // for a brand that never set form-submission rates. `.nullable().optional()` tolerates BOTH null
-  // (the common case) and absent (older prod) — a bare `.optional()` rejects null → the whole GET
-  // safeParse throws, breaking every econ-reading surface. Consumers already `?? default`-guard.
-  visitToFormSubmissionPct: z.number().nullable().optional(),
-  formSubmissionToPaidClientPct: z.number().nullable().optional(),
-  businessModel: z.union([z.literal("b2c"), z.literal("b2b")]).nullable(),
-  // Both vocabularies: the snake spellings brand-service used to emit, and the
-  // canonical camelCase it migrated to. Accepting both is what let the producer
-  // flip its emission without breaking this app — see `CANONICAL_GOALS`.
-  // `whatsappConversation` is absent on purpose: this app has no local goal for
-  // it, so it must fail loud here rather than be mapped.
-  //
-  // `.optional()` because brand-service has RETIRED the goal from this payload
-  // (#434): the goal was the poorer word for what a brand sells through
-  // (two meeting paths collapsed onto one). Keeping it REQUIRED is what took every econ-reading
-  // surface down the day that promoted — the settings card rendered blank
-  // rates and a blank lifetime revenue on brands whose numbers were sitting
-  // untouched on the wire, and it read as lost data. Same retirement as the
-  // `goal` / `currentGoal` pair on the payload above; this one
-  // was the straggler. Delete it outright once no brand-service in any
-  // environment still sends it.
-  optimizationGoal: z.union([
-    z.literal("signups"),
-    z.literal("sales_meetings"),
-    z.literal("booked_meetings"),
-    z.literal("website_purchase"),
-    z.literal("combined_sales"),
-    z.literal("sales"),
-    z.literal("website_visits"),
-    z.literal("positive_replies"),
-    z.literal("form_submissions"),
-    z.literal("signup"),
-    z.literal("meetingBooked"),
-    z.literal("websitePurchase"),
-    z.literal("combinedSales"),
-    z.literal("websiteVisit"),
-    z.literal("positiveReply"),
-    z.literal("formSubmission"),
-  ]).transform(normalizeBrandOptimizationGoal).optional(),
-  updatedAt: z.string(),
-});
-
-// WRITE: the row was just persisted, so salesEconomics is always present. Per CLAUDE.md
-// #1221 the write response DTO is narrower than the read sibling — its own schema.
-const SaveBrandSalesEconomicsResponseSchema = z.object({
-  salesEconomics: BrandSalesEconomicsSchema,
-});
-
-/** PUT /brands/:brandId/sales-economics — idempotent upsert of the 5 metrics (+ optional businessModel). */
-export async function saveBrandSalesEconomics(
-  brandId: string,
-  input: BrandSalesEconomicsInput,
-  token?: string,
-): Promise<{ salesEconomics: BrandSalesEconomics }> {
-  const raw = await apiCall<unknown>(`/brands/${brandId}/sales-economics`, {
-    token,
-    method: "PUT",
-    body: {
-      lifetimeRevenueUsd: input.lifetimeRevenueUsd,
-      replyToMeetingPct: input.replyToMeetingPct,
-      visitToMeetingPct: input.visitToMeetingPct,
-      meetingToClosePct: input.meetingToClosePct,
-      // Self-serve close as two steps; brand-service derives visitToClosePct.
-      visitToSignupPct: input.visitToSignupPct,
-      signupToPaidClientPct: input.signupToPaidClientPct,
-      // Single-step conversions (partial-update): send only when the caller set them.
-      ...(input.visitToPaidClientPct !== undefined
-        ? { visitToPaidClientPct: input.visitToPaidClientPct }
-        : {}),
-      ...(input.replyToPaidClientPct !== undefined
-        ? { replyToPaidClientPct: input.replyToPaidClientPct }
-        : {}),
-      // Two-step form-submission conversions (partial-update): send only when set.
-      ...(input.visitToFormSubmissionPct !== undefined
-        ? { visitToFormSubmissionPct: input.visitToFormSubmissionPct }
-        : {}),
-      ...(input.formSubmissionToPaidClientPct !== undefined
-        ? { formSubmissionToPaidClientPct: input.formSubmissionToPaidClientPct }
-        : {}),
-      // Partial-update: send businessModel only when the caller set it (settings
-      // editor). Omitting it leaves the stored value unchanged; null clears it.
-      ...(input.businessModel !== undefined
-        ? { businessModel: input.businessModel }
-        : {}),
-      // Same partial-update semantics for the sales goal: omit = leave unchanged.
-      ...(input.optimizationGoal !== undefined
-        ? { optimizationGoal: serializeBrandOptimizationGoal(input.optimizationGoal) }
-        : {}),
-    },
-  });
-  const parsed = SaveBrandSalesEconomicsResponseSchema.safeParse(raw);
-  if (!parsed.success) {
-    console.error("[dashboard] saveBrandSalesEconomics: response shape mismatch", {
-      issues: parsed.error.issues,
-      raw,
-    });
-    throw new Error("[dashboard] saveBrandSalesEconomics: invalid response shape");
-  }
-  return parsed.data;
 }
 
 // ── Brand click-destination URL (where outreach clicks land) ──
@@ -3564,59 +3374,6 @@ export async function withdrawLeadCrmAttribution(
 // code-owned and pinned at boot by instrumentation.ts (WELCOME_GIFT_CENTS →
 // PATCH /v1/promo-codes/welcome). No dashboard read/write helper exists by design.
 
-// ── Effective sales economics (new-campaign prefill) ──
-// brand-service decides the default server-side: the brand's saved set when present
-// (source "user"), else the cross-brand average (source "cross-brand-average"), else
-// economics null (source null → empty table; caller keeps its hard-coded defaults).
-// Replaces the old client-side null→average fallback (two calls) with ONE call.
-export interface EffectiveSalesEconomics {
-  lifetimeRevenueUsd: number;
-  replyToMeetingPct: number;
-  visitToMeetingPct: number;
-  meetingToClosePct: number;
-  visitToSignupPct: number;
-  signupToPaidClientPct: number;
-  visitToClosePct: number;
-}
-
-export type SalesEconomicsSource = "user" | "cross-brand-average";
-
-// z.coerce.number per CLAUDE.md #1357: the cross-brand average is Postgres
-// ROUND(AVG(...)) `numeric`, serialized as a STRING ("40") on the wire — z.number()
-// would reject it. coerce parses string OR number, forward-compatible if cast later.
-const EffectiveSalesEconomicsSchema = z.object({
-  lifetimeRevenueUsd: z.coerce.number(),
-  replyToMeetingPct: z.coerce.number(),
-  visitToMeetingPct: z.coerce.number(),
-  meetingToClosePct: z.coerce.number(),
-  visitToSignupPct: z.coerce.number(),
-  signupToPaidClientPct: z.coerce.number(),
-  visitToClosePct: z.coerce.number(),
-});
-
-const GetSalesEconomicsEffectiveResponseSchema = z.object({
-  economics: EffectiveSalesEconomicsSchema.nullable(),
-  source: z.enum(["user", "cross-brand-average"]).nullable(),
-});
-
-/** GET /brands/:brandId/sales-economics-effective — the brand's saved set (source "user"),
- * else the cross-brand average (source "cross-brand-average"), else { economics: null, source: null }. */
-export async function getSalesEconomicsEffective(
-  brandId: string,
-  token?: string,
-): Promise<{ economics: EffectiveSalesEconomics | null; source: SalesEconomicsSource | null }> {
-  const raw = await apiCall<unknown>(`/brands/${brandId}/sales-economics-effective`, { token });
-  const parsed = GetSalesEconomicsEffectiveResponseSchema.safeParse(raw);
-  if (!parsed.success) {
-    console.error("[dashboard] getSalesEconomicsEffective: response shape mismatch", {
-      issues: parsed.error.issues,
-      raw,
-    });
-    throw new Error("[dashboard] getSalesEconomicsEffective: invalid response shape");
-  }
-  return parsed.data;
-}
-
 // ── Audiences (human-service via gateway /orgs/audiences/*) ──────────
 // A saved people-filter-set, brand-scoped, generated from a natural-language
 // prompt by human-service `/suggest` (apollo + apify candidates, dry-run
@@ -4250,7 +4007,7 @@ const SuggestBrandIcpResponseSchema = z.object({ icp: z.string() });
 
 /**
  * POST /brands/:brandId/icp/suggest — brand-service writes ONE short plain-language
- * ICP line for the brand (seeded from its profile + sales economics). Used to
+ * ICP line for the brand (seeded from its profile). Used to
  * pre-fill the onboarding audience-step prompt. `existingIcps` lets the caller ask
  * for an ICP distinct from / complementary to ones already chosen.
  */

@@ -4,7 +4,6 @@ import { useState, useMemo, useCallback, useRef, useEffect, Fragment } from "rea
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { useAuthQuery, useQueryClient } from "@/lib/use-auth-query";
-import { useMutation } from "@tanstack/react-query";
 import { useOrg } from "@/lib/org-context";
 import { useFeatures } from "@/lib/features-context";
 import {
@@ -15,10 +14,6 @@ import {
   sendCampaignEmail,
   getBrand,
   listBrands,
-  getSalesEconomicsEffective,
-  saveBrandSalesEconomics,
-  type SalesEconomicsSource,
-  type BrandSalesEconomicsInput,
   getWorkflowKeyStatus,
   prefillFeatureInputs,
   prefillToStringMap,
@@ -90,8 +85,8 @@ const BUDGET_TIERS: { key: Exclude<BudgetTier, "other">; label: string; closesPe
 /** Recommended budget is sized for this many closes per month (= the "recommended" tier). */
 const TARGET_CLOSES_PER_MONTH = 5;
 
-/** Conversion-economics defaults shown until the brand's saved set loads (or when none
- *  is saved yet). Persisted per brand in brand-service; see getBrandSalesEconomics. */
+/** Conversion-economics inputs that size the budget cards on this page. Page-local:
+ *  nothing is read from or saved to a brand (rates live on the offer now). */
 const SALES_ECON_DEFAULTS = { ltv: "4000", replyToMeeting: "40", meetingToClose: "25", visitToMeeting: "20", clickToClose: "5" };
 
 const DAYS_PER_MONTH = 30.4;
@@ -323,93 +318,16 @@ export default function FeatureCreateCampaignPage() {
   const [budgetTier, setBudgetTier] = useState<BudgetTier>("recommended");
   const [budgetCustom, setBudgetCustom] = useState("");
   const salesPrefilledRef = useRef(false);
-  // Provenance of the prefilled metrics, for the section-2 badge: "user" = brand's own
-  // saved set, "cross-brand-average" = estimate borrowed from other brands, null =
-  // hard-coded defaults (empty table). Flips to "user" on first manual edit.
-  const [econSource, setEconSource] = useState<SalesEconomicsSource | null>(null);
-
-  // ── Prefill the brand's sales economics (auto-upsert per brand, no Save button) ──
-  // ONE call: brand-service returns the effective set — the brand's saved values
-  // (source "user"), the cross-brand average when nothing is saved
-  // (source "cross-brand-average"), or { economics: null } for an empty table
-  // (source null → keep the hard-coded SALES_ECON_DEFAULTS). A debounced PUT mirrors
-  // every edit back to brand-service.
-  const { data: salesEconData } = useAuthQuery(
-    ["salesEconomicsEffective", brandId],
-    () => getSalesEconomicsEffective(brandId),
-    { enabled: isSalesFunnel },
-  );
-  const econHydrated = useRef(false);
-  useEffect(() => {
-    if (!isSalesFunnel || econHydrated.current || salesEconData === undefined) return;
-    const e = salesEconData.economics;
-    if (e) {
-      setEconLtv(String(e.lifetimeRevenueUsd));
-      setEconReplyToMeeting(String(e.replyToMeetingPct));
-      setEconVisitToMeeting(String(e.visitToMeetingPct));
-      setEconMeetingToClose(String(e.meetingToClosePct));
-      setEconClickToClose(String(e.visitToClosePct));
-      setEconSource(salesEconData.source);
-    }
-    // Mark hydrated even when economics is null (empty table → keep
-    // SALES_ECON_DEFAULTS, econSource stays null) so later background refetches
-    // never clobber edits.
-    econHydrated.current = true;
-  }, [isSalesFunnel, salesEconData]);
-
-  const { mutate: mutateSalesEcon } = useMutation({
-    mutationFn: (input: BrandSalesEconomicsInput) => saveBrandSalesEconomics(brandId, input),
-    onSuccess: (data) => {
-      queryClient.setQueryData(["brandSalesEconomics", brandId], data);
-      // No projection invalidate: the budget cards recompute client-side from the LIVE econ inputs
-      // (see econLive + projectFunnel), so they already reflect the edit instantly. The server
-      // projection only supplies the econ-INDEPENDENT unit costs + workflow pick, which this edit
-      // does not change — refetching it would just re-pay the cold Neon round-trip for nothing.
-    },
-    onError: (err) => console.error("[dashboard] saveBrandSalesEconomics failed", err),
-  });
-
-  const econSaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  // Update one metric input + schedule a debounced upsert of the full set. Hydration
-  // uses the raw setters (not this), so loading saved values never triggers a write.
+  // Update one metric input. Page-local: it only re-sizes the budget cards below.
   const updateEcon = (
     field: "ltv" | "replyToMeeting" | "visitToMeeting" | "meetingToClose" | "clickToClose",
     value: string,
   ) => {
-    const next = {
-      ltv: econLtv,
-      replyToMeeting: econReplyToMeeting,
-      visitToMeeting: econVisitToMeeting,
-      meetingToClose: econMeetingToClose,
-      clickToClose: econClickToClose,
-      [field]: value,
-    };
     if (field === "ltv") setEconLtv(value);
     else if (field === "replyToMeeting") setEconReplyToMeeting(value);
     else if (field === "visitToMeeting") setEconVisitToMeeting(value);
     else if (field === "meetingToClose") setEconMeetingToClose(value);
     else setEconClickToClose(value);
-    // User edited a value → these are now the brand's own numbers, not an estimate.
-    if (econSource !== "user") setEconSource("user");
-
-    if (!isSalesFunnel) return;
-    if (econSaveTimer.current) clearTimeout(econSaveTimer.current);
-    econSaveTimer.current = setTimeout(() => {
-      // brand-service requires the self-serve close as TWO steps (visit→signup ×
-      // signup→paid) and DERIVES visitToClosePct = their product. This legacy
-      // page only models the single visit→close rate, so encode it losslessly:
-      // visitToSignupPct = the entered rate, signupToPaidClientPct = 100 → the
-      // derived visitToClose equals the entered rate exactly. (The full goal-aware
-      // two-field editor lives in the Brand Settings sales-economics card.)
-      mutateSalesEcon({
-        lifetimeRevenueUsd: Math.round(parseFloat(next.ltv) || 0),
-        replyToMeetingPct: Math.round(parseFloat(next.replyToMeeting) || 0),
-        visitToMeetingPct: Math.round(parseFloat(next.visitToMeeting) || 0),
-        meetingToClosePct: Math.round(parseFloat(next.meetingToClose) || 0),
-        visitToSignupPct: Math.round(parseFloat(next.clickToClose) || 0),
-        signupToPaidClientPct: 100,
-      });
-    }, 700);
   };
 
   const sortedOutputs = useMemo(
@@ -569,8 +487,7 @@ export default function FeatureCreateCampaignPage() {
 
   // The brand's LIVE conversion economics (from the §2 inputs), as decimals — drives the
   // client-side funnel recompute below so the budget cards update INSTANTLY as the user edits,
-  // without a per-edit round-trip through the cold Neon path. On first paint these equal the
-  // brand's SAVED econ (hydrated above), so the recompute reproduces the server's numbers exactly.
+  // without a per-edit round-trip through the cold Neon path.
   const econLive = useMemo<FunnelEconomics>(
     () => ({
       ltv: parseFloat(econLtv) || 0,
@@ -673,15 +590,9 @@ export default function FeatureCreateCampaignPage() {
     return budgetPresets?.find((p) => p.key === budgetTier)?.daily ?? 0;
   }, [budgetTier, budgetCustom, budgetPresets]);
 
-  // Static-shell-first: hold the §2 conversion-metric inputs until their effective
-  // values resolve, so they don't flash SALES_ECON_DEFAULTS before saved/cross-brand
-  // values hydrate.
-  const econReady = !isSalesFunnel || salesEconData !== undefined;
   // The budget cards derive from the served projection (cost-per-close → recommendedBudget);
   // hold them only until the projection/workflows resolve so they don't flash the
-  // "no cost data" warning. Do not wait for the separate economics badge/input query:
-  // the server projection already uses the effective economics, and delaying on the
-  // badge makes the budget cards appear seconds late.
+  // "no cost data" warning.
   const projReady = !isSalesFunnel || projData !== undefined;
   const budgetReady = projReady && !workflowsLoading;
 
@@ -1480,84 +1391,52 @@ export default function FeatureCreateCampaignPage() {
                 <span className="w-5 h-5 inline-flex items-center justify-center text-[11px] font-bold text-white bg-brand-500 rounded-full">2</span>
                 <h2 className="font-display font-semibold text-gray-800">Your conversion metrics</h2>
               </div>
-              {isSalesFunnel && econReady && econSource === "cross-brand-average" && (
-                <span className="inline-flex items-center gap-1 rounded-full bg-amber-50 border border-amber-200 px-2.5 py-1 text-[11px] font-medium text-amber-700">
-                  <SparklesIcon className="w-3 h-3" />
-                  Estimated · based on similar brands
-                </span>
-              )}
-              {isSalesFunnel && econReady && econSource === "user" && (
-                <span className="inline-flex items-center gap-1 rounded-full bg-gray-50 border border-gray-200 px-2.5 py-1 text-[11px] font-medium text-gray-500">
-                  Your saved values
-                </span>
-              )}
             </div>
             <div className="p-5">
-              <p className="text-sm text-gray-500 mb-4">Reused across every sales campaign for this brand</p>
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                 <div>
                   <label className="block text-xs text-gray-500 mb-1"><InfoLabel label="Customer Lifetime Revenue" tip="Average total revenue (not gross margin) one customer brings over their lifetime." /></label>
-                  {econReady ? (
-                    <div className="relative">
+                  <div className="relative">
                       <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm">$</span>
                       <input type="number" min="0" step="100" value={econLtv} onChange={(e) => updateEcon("ltv", e.target.value)}
                         className="w-full pl-7 pr-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-300" />
                     </div>
-                  ) : (
-                    <Skeleton className="h-9 w-full rounded-lg" />
-                  )}
                 </div>
                 {salesObjective === "meeting-booked" ? (
                   <>
                     <div>
                       <label className="block text-xs text-gray-500 mb-1"><InfoLabel label="Positive reply → meeting" tip="Of leads who reply positively, the share you turn into a booked meeting." /></label>
-                      {econReady ? (
-                        <div className="relative">
+                      <div className="relative">
                           <input type="number" min="0" max="100" step="1" value={econReplyToMeeting} onChange={(e) => updateEcon("replyToMeeting", e.target.value)}
                             className="w-full pl-3 pr-7 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-300" />
                           <span className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm">%</span>
                         </div>
-                      ) : (
-                        <Skeleton className="h-9 w-full rounded-lg" />
-                      )}
                     </div>
                     <div>
                       <label className="block text-xs text-gray-500 mb-1"><InfoLabel label="Website visit → meeting" tip="Of leads who click through to your website, the share that book a meeting." /></label>
-                      {econReady ? (
-                        <div className="relative">
+                      <div className="relative">
                           <input type="number" min="0" max="100" step="1" value={econVisitToMeeting} onChange={(e) => updateEcon("visitToMeeting", e.target.value)}
                             className="w-full pl-3 pr-7 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-300" />
                           <span className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm">%</span>
                         </div>
-                      ) : (
-                        <Skeleton className="h-9 w-full rounded-lg" />
-                      )}
                     </div>
                     <div>
                       <label className="block text-xs text-gray-500 mb-1"><InfoLabel label="Meeting → close" tip="Of booked meetings, the share that become paying customers." /></label>
-                      {econReady ? (
-                        <div className="relative">
+                      <div className="relative">
                           <input type="number" min="0" max="100" step="1" value={econMeetingToClose} onChange={(e) => updateEcon("meetingToClose", e.target.value)}
                             className="w-full pl-3 pr-7 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-300" />
                           <span className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm">%</span>
                         </div>
-                      ) : (
-                        <Skeleton className="h-9 w-full rounded-lg" />
-                      )}
                     </div>
                   </>
                 ) : (
                   <div>
                     <label className="block text-xs text-gray-500 mb-1"><InfoLabel label="Website visit → close" tip="Of leads who visit your website, the share that buy without a meeting (self-serve)." /></label>
-                    {econReady ? (
-                      <div className="relative">
+                    <div className="relative">
                         <input type="number" min="0" max="100" step="1" value={econClickToClose} onChange={(e) => updateEcon("clickToClose", e.target.value)}
                           className="w-full pl-3 pr-7 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-300" />
                         <span className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm">%</span>
                       </div>
-                    ) : (
-                      <Skeleton className="h-9 w-full rounded-lg" />
-                    )}
                   </div>
                 )}
               </div>

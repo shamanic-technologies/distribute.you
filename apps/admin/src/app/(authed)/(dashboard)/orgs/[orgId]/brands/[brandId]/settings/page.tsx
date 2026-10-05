@@ -10,7 +10,6 @@ import {
   type BrandTransfer,
 } from "@/lib/api";
 import { useAuthQuery } from "@/lib/use-auth-query";
-import { BrandSalesEconomicsCard } from "@/components/settings/brand-sales-economics-card";
 import { BrandDailyBudgetCard } from "@/components/settings/brand-daily-budget-card";
 import { BrandUserFieldsCard } from "@/components/settings/brand-user-fields-card";
 import { SERVICES_FIELDS, LEVER_FIELDS } from "@/lib/user-fields-form";
@@ -81,12 +80,6 @@ export default function BrandSettingsPage() {
       <div className="mb-10">
         <h2 className="text-lg font-semibold text-gray-900 mb-3">Click Destination</h2>
         <BrandClickDestinationCard brandId={brandId} />
-      </div>
-
-      {/* Sales Economics */}
-      <div className="mb-10">
-        <h2 className="text-lg font-semibold text-gray-900 mb-3">Sales Economics</h2>
-        <BrandSalesEconomicsCard brandId={brandId} />
       </div>
 
       {/* Services sold */}

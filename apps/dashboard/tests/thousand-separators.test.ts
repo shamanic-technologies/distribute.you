@@ -92,8 +92,8 @@ describe("locale-aware numeric text helpers", () => {
   });
 });
 
-describe("sales economics surfaces use locale-aware text inputs", () => {
-  // The flat settings sales-economics card is gone; a funnel now owns the rates
+describe("offer economics surfaces use locale-aware text inputs", () => {
+  // The flat brand economics card is gone; a funnel now owns the rates
   // and the lifetime revenue, and its inputs carry the same helpers.
   it("offer settings take the lifetime revenue as a text input, never a number input", () => {
     const content = fs.readFileSync(

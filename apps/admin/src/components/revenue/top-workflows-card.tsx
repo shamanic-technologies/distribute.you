@@ -13,7 +13,7 @@ import { Skeleton } from "@/components/skeleton";
  *
  * ROI is PROJECTED, not realized: per-workflow realized revenue is not a stat
  * today, so we use features-service `workflow-projection` (cross-org workflow
- * efficiency × the brand's saved sales-economics). ROI = revenue ÷ budget =
+ * efficiency × the offer's lifetime revenue and rates). ROI = revenue ÷ budget =
  * 100 / cacPct, which is budget-invariant — so the ranking needs no budget choice
  * (we still pass budgetUsd:1 so the projection block is populated). objective is
  * deprecated/objective-agnostic backend-side; we pass meeting-booked for

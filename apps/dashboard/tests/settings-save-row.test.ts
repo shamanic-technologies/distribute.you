@@ -8,7 +8,7 @@ const ROW = read("../src/components/settings/settings-save-row.tsx");
 
 // Every card on brand Settings that can be saved. Hand-rolled copies of the same
 // row had drifted into a left-aligned button that was visible, and dead, before
-// anyone had touched the form. The click-destination and sales-economics cards
+// anyone had touched the form. The click-destination and brand economics cards
 // left this list with the flat brand-wide sections they belonged to: a funnel
 // now owns its own rates, lifetime revenue and landing page.
 const SAVEABLE_CARDS = ["brand-domain-card.tsx"];
