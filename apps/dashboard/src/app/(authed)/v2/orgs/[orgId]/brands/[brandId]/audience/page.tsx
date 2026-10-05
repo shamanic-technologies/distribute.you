@@ -1,11 +1,6 @@
-import { StaffOnly } from "@/components/v2/staff-only";
 import { AudiencePage } from "@/components/v2/audience-page";
 
-// Staff snapshot of the brand's source lists; see AudiencePage.
+// The brand's source lists and what each holds; see AudiencePage. GA (owner 2026-10-05).
 export default function Page() {
-  return (
-    <StaffOnly>
-      <AudiencePage />
-    </StaffOnly>
-  );
+  return <AudiencePage />;
 }

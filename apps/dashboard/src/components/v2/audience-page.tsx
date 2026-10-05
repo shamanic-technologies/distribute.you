@@ -3,12 +3,12 @@
 import { useMemo, useRef, useState } from "react";
 import { useParams } from "next/navigation";
 import {
-  getStaffAudienceSnapshot,
-  getStaffHeldCompanies,
-  getStaffHeldPeople,
-  getStaffSourcingCompanies,
-  getStaffSourcingInvestment,
-  getStaffSourcingPeople,
+  getAudienceSnapshot,
+  getHeldCompanies,
+  getHeldPeople,
+  getSourcingCompanies,
+  getSourcingInvestment,
+  getSourcingPeople,
   type InvestedMoney,
   listAudiences,
   type AudienceChannelWire,
@@ -19,6 +19,7 @@ import {
 import { formatCount, formatUsdAdaptive } from "@/lib/format-number";
 import { CompanyMark } from "@/components/v2/people-bits";
 import { useAuthQuery } from "@/lib/use-auth-query";
+import { useStaffMode } from "@/lib/use-staff-mode";
 import { audienceFilterGroups } from "@/lib/audience-filter-groups";
 import { linkedInSignalOf } from "@/lib/signal-audience";
 import { ProviderLogo } from "@/components/provider-logo";
@@ -26,12 +27,16 @@ import { RecordsFooter, RecordsTabs, RecordsToolbar, REC_TH, useRowKeys } from "
 import { EmptyNote, Shimmer, StateDot, TopBar } from "@/components/v2/ui";
 
 /**
- * Staff snapshot of the brand's audiences as human-service holds them: the LISTS we
- * source people from (Apollo cold filters, buying signals, LinkedIn engagers, CRM
- * uploads), across every offer of the brand. Read-only: it shows where we stand, it
- * spends nothing. People / companies HELD per list and the People / Companies tabs (each
- * row with the target audiences the Jev pre-pay screen accepted) are human-service's staff
- * snapshot through the gateway; every count is served, nothing is summed here.
+ * The brand's audiences as human-service holds them: the LISTS we source people from
+ * (Apollo cold filters, buying signals, LinkedIn engagers, CRM uploads), across every offer
+ * of the brand. Read-only: it shows where we stand, it spends nothing. People / companies
+ * HELD per list and the People / Companies tabs (each row with the target audiences the
+ * Jev pre-pay screen accepted) are human-service's snapshot through the gateway; every
+ * count is served, nothing is summed here.
+ *
+ * GA (owner 2026-10-05). A customer reads its own org's routes; staff mode reads the staff
+ * routes. What sourcing cost US (vendor $) and which provider a list comes from stay staff
+ * mode only: a customer sees the net $ it pays and the list's type.
  */
 
 /** Where a list's people come from, keyed on the served `channels[].list`. Display lookup only. */
@@ -110,13 +115,13 @@ const dash = <span className="k-fg4">{"—"}</span>;
 const n = (v: number | null | undefined) => (v == null ? dash : formatCount(v));
 
 /** Audiences as chips, each with its source logo. Empty = the dash. */
-function AudienceChips({ refs, accepted }: { refs: (SnapshotAudienceRef & { yesProbability?: number | null })[]; accepted?: boolean }) {
+function AudienceChips({ refs, accepted, staff }: { refs: (SnapshotAudienceRef & { yesProbability?: number | null })[]; accepted?: boolean; staff: boolean }) {
   if (refs.length === 0) return dash;
   return (
     <span className="flex min-w-0 flex-wrap gap-1">
       {refs.map((r) => {
-        const src = refSource(r);
-        const p = r.yesProbability != null ? ` · P(yes) ${r.yesProbability.toFixed(2)}` : "";
+        const src = staff ? refSource(r) : null;
+        const p = staff && r.yesProbability != null ? ` · P(yes) ${r.yesProbability.toFixed(2)}` : "";
         return (
           <span
             key={r.audienceId}
@@ -190,10 +195,11 @@ function Skeleton({ cols }: { cols: number }) {
 
 export function AudiencePage() {
   const { brandId } = useParams<{ brandId: string }>();
+  const { staffMode: staff } = useStaffMode();
   const [tab, setTab] = useState<Tab>("audiences");
-  const snapshot = useAuthQuery(["staffAudienceSnapshot", brandId], () => getStaffAudienceSnapshot(brandId));
+  const snapshot = useAuthQuery(["staffAudienceSnapshot", brandId, staff], () => getAudienceSnapshot(brandId, staff));
   const totals = snapshot.data?.totals ?? null;
-  const investment = useAuthQuery(["staffSourcingInvestment", brandId], () => getStaffSourcingInvestment(brandId));
+  const investment = useAuthQuery(["staffSourcingInvestment", brandId, staff], () => getSourcingInvestment(brandId, staff));
   const totalNet = investment.data?.total.netUsd;
   return (
     <>
@@ -223,6 +229,7 @@ export function AudiencePage() {
       {tab === "audiences" ? (
         <AudiencesTab
           brandId={brandId}
+          staff={staff}
           snapshot={snapshot.data ?? null}
           snapshotError={snapshot.data === undefined ? snapshot.error : null}
           invested={investment.data ? new Map(investment.data.audiences.map((a) => [a.audienceId, a.invested])) : null}
@@ -230,9 +237,9 @@ export function AudiencePage() {
           investedError={investment.data === undefined ? investment.error : null}
         />
       ) : tab === "people" ? (
-        <PeopleTab brandId={brandId} />
+        <PeopleTab brandId={brandId} staff={staff} />
       ) : (
-        <CompaniesTab brandId={brandId} />
+        <CompaniesTab brandId={brandId} staff={staff} />
       )}
     </>
   );
@@ -240,6 +247,7 @@ export function AudiencePage() {
 
 function AudiencesTab({
   brandId,
+  staff,
   snapshot,
   snapshotError,
   invested,
@@ -247,6 +255,7 @@ function AudiencesTab({
   investedError,
 }: {
   brandId: string;
+  staff: boolean;
   snapshot: BrandAudienceSnapshot | null;
   snapshotError: Error | null;
   /** features-service lists only audiences WITH sourcing spend: absent from a settled map = $0. */
@@ -277,12 +286,13 @@ function AudiencesTab({
     const needle = q.trim().toLowerCase();
     if (!needle) return all;
     return all.filter((a) =>
-      [a.name, sourceOf(a)?.label, typeOf(a), detailsOf(a)].filter(Boolean).join(" ").toLowerCase().includes(needle),
+      [a.name, staff ? sourceOf(a)?.label : null, typeOf(a), detailsOf(a)].filter(Boolean).join(" ").toLowerCase().includes(needle),
     );
-  }, [all, q]);
+  }, [all, q, staff]);
   const countOf = (s: string) => all.filter((a) => a.status === s).length;
 
   useRowKeys({ count: rows.length, cursor, setCursor, onOpen: () => {}, searchRef });
+  const cols = staff ? 8 : 7;
 
   return (
     <>
@@ -296,8 +306,8 @@ function AudiencesTab({
         <table className="w-full min-w-[900px] text-[13px]">
           <thead>
             <tr>
-              <th className={`${REC_TH} pl-4 md:pl-6`}>Source</th>
-              <th className={REC_TH}>Type</th>
+              {staff ? <th className={`${REC_TH} pl-4 md:pl-6`}>Source</th> : null}
+              <th className={staff ? REC_TH : `${REC_TH} pl-4 md:pl-6`}>Type</th>
               <th className={REC_TH}>Details</th>
               <th className={`${REC_TH} text-right`}>People</th>
               <th className={`${REC_TH} text-right`}>Companies</th>
@@ -308,30 +318,32 @@ function AudiencesTab({
           </thead>
           <tbody>
             {failed ? (
-              <tr><td colSpan={8}><EmptyNote>Audiences could not be loaded: {failed.message}</EmptyNote></td></tr>
+              <tr><td colSpan={cols}><EmptyNote>Audiences could not be loaded: {failed.message}</EmptyNote></td></tr>
             ) : !settled ? (
               Array.from({ length: 8 }, (_, i) => (
-                <tr key={i} className="k-row h-10"><td colSpan={8} className="px-4 md:px-6"><Shimmer className="h-4 w-full" /></td></tr>
+                <tr key={i} className="k-row h-10"><td colSpan={cols} className="px-4 md:px-6"><Shimmer className="h-4 w-full" /></td></tr>
               ))
             ) : rows.length === 0 ? (
-              <tr><td colSpan={8}><EmptyNote>{q ? "No audience matches." : "This brand has no audience yet."}</EmptyNote></td></tr>
+              <tr><td colSpan={cols}><EmptyNote>{q ? "No audience matches." : "This brand has no audience yet."}</EmptyNote></td></tr>
             ) : (
               rows.map((a, i) => {
-                const source = sourceOf(a);
+                const source = staff ? sourceOf(a) : null;
                 const type = typeOf(a);
                 const details = detailsOf(a);
                 const h = held.get(a.id);
                 return (
                   <tr key={a.id} onMouseEnter={() => setCursor(i)} className={`k-row h-12 ${i === cursor ? "k-selected" : ""}`}>
-                    <td className="whitespace-nowrap pl-4 md:pl-6">
-                      {source ? (
-                        <span className="flex items-center gap-2">
-                          <ProviderLogo domain={source.domain} size={16} className="rounded-[4px]" />
-                          {source.label}
-                        </span>
-                      ) : <span className="k-fg4">{"—"}</span>}
-                    </td>
-                    <td className="whitespace-nowrap px-3">{type ?? <span className="k-fg4">{"—"}</span>}</td>
+                    {staff ? (
+                      <td className="whitespace-nowrap pl-4 md:pl-6">
+                        {source ? (
+                          <span className="flex items-center gap-2">
+                            <ProviderLogo domain={source.domain} size={16} className="rounded-[4px]" />
+                            {source.label}
+                          </span>
+                        ) : <span className="k-fg4">{"—"}</span>}
+                      </td>
+                    ) : null}
+                    <td className={`whitespace-nowrap ${staff ? "px-3" : "pl-4 pr-3 md:pl-6"}`}>{type ?? <span className="k-fg4">{"—"}</span>}</td>
                     <td className="max-w-[560px] px-3 py-1.5">
                       <span className="block truncate font-medium" title={a.name}>{a.name}</span>
                       {details ? (
@@ -345,7 +357,7 @@ function AudiencesTab({
                       {investedError ? dash : (
                         <Invested
                           loading={investedLoading}
-                          vendor
+                          vendor={staff}
                           m={invested ? (invested.get(a.id) ?? { billedUsd: 0, netUsd: 0, vendorUsd: 0, unpricedBilledUsd: 0 }) : null}
                         />
                       )}
@@ -365,7 +377,7 @@ function AudiencesTab({
           snapshotError
             ? `Held counts could not be loaded: ${snapshotError.message}`
             : settled
-              ? `${rows.length} of ${all.length} audiences${truncated ? " · first 200 per status shown" : ""} · People = held (revealed, screened or queued), Accepted = passed its target's Jev screen · Costs are counted in campaign spend`
+              ? `${rows.length} of ${all.length} audiences${truncated ? " · first 200 per status shown" : ""} · People = held (revealed, screened or queued), Accepted = matched its target · Costs are counted in campaign spend`
               : "Loading audiences"
         }
       />
@@ -373,16 +385,16 @@ function AudiencesTab({
   );
 }
 
-function PeopleTab({ brandId }: { brandId: string }) {
+function PeopleTab({ brandId, staff }: { brandId: string; staff: boolean }) {
   const [offset, setOffset] = useState(0);
   const [acceptedOnly, setAcceptedOnly] = useState(false);
-  const q = useAuthQuery(["staffHeldPeople", brandId, offset, acceptedOnly], () =>
-    getStaffHeldPeople(brandId, { limit: PAGE, offset, acceptedOnly }),
+  const q = useAuthQuery(["staffHeldPeople", brandId, staff, offset, acceptedOnly], () =>
+    getHeldPeople(brandId, staff, { limit: PAGE, offset, acceptedOnly }),
   );
   const settled = q.isFetchedAfterMount || q.data !== undefined;
   const rows = q.data?.people ?? [];
   const ids = rows.flatMap((p) => (p.revealed && p.providerPersonId ? [p.providerPersonId] : []));
-  const cost = useAuthQuery(["staffSourcingPeople", brandId, ids], () => getStaffSourcingPeople(brandId, ids), { enabled: q.data !== undefined });
+  const cost = useAuthQuery(["staffSourcingPeople", brandId, staff, ids], () => getSourcingPeople(brandId, staff, ids), { enabled: q.data !== undefined });
   const costLoading = !(cost.isFetchedAfterMount || cost.data !== undefined);
   return (
     <>
@@ -422,8 +434,8 @@ function PeopleTab({ brandId }: { brandId: string }) {
                       </span>
                     ) : dash}
                   </td>
-                  <td className="max-w-[280px] px-3"><AudienceChips refs={p.sources} /></td>
-                  <td className="max-w-[320px] px-3"><AudienceChips refs={p.acceptedBy} accepted /></td>
+                  <td className="max-w-[280px] px-3"><AudienceChips refs={p.sources} staff={staff} /></td>
+                  <td className="max-w-[320px] px-3"><AudienceChips refs={p.acceptedBy} accepted staff={staff} /></td>
                   <td className="pr-4 text-right tabular-nums md:pr-6">
                     {/* Only a revealed person was paid for; a teaser cost nothing on its own. */}
                     {!p.revealed || !p.providerPersonId || cost.error ? dash : (
@@ -436,21 +448,21 @@ function PeopleTab({ brandId }: { brandId: string }) {
           </tbody>
         </table>
       </div>
-      <RecordsFooter left="Targeting = target audiences whose Jev screen accepted the person" right={<Pager total={q.data?.total ?? null} offset={offset} onOffset={setOffset} />} />
+      <RecordsFooter left="Targeting = target audiences the person matched" right={<Pager total={q.data?.total ?? null} offset={offset} onOffset={setOffset} />} />
     </>
   );
 }
 
-function CompaniesTab({ brandId }: { brandId: string }) {
+function CompaniesTab({ brandId, staff }: { brandId: string; staff: boolean }) {
   const [offset, setOffset] = useState(0);
   const [acceptedOnly, setAcceptedOnly] = useState(false);
-  const q = useAuthQuery(["staffHeldCompanies", brandId, offset, acceptedOnly], () =>
-    getStaffHeldCompanies(brandId, { limit: PAGE, offset, acceptedOnly }),
+  const q = useAuthQuery(["staffHeldCompanies", brandId, staff, offset, acceptedOnly], () =>
+    getHeldCompanies(brandId, staff, { limit: PAGE, offset, acceptedOnly }),
   );
   const settled = q.isFetchedAfterMount || q.data !== undefined;
   const rows = q.data?.companies ?? [];
   const keys = rows.map((c) => c.companyKey);
-  const cost = useAuthQuery(["staffSourcingCompanies", brandId, keys], () => getStaffSourcingCompanies(brandId, keys), {
+  const cost = useAuthQuery(["staffSourcingCompanies", brandId, staff, keys], () => getSourcingCompanies(brandId, staff, keys), {
     enabled: q.data !== undefined,
   });
   const costLoading = !(cost.isFetchedAfterMount || cost.data !== undefined);
@@ -488,8 +500,8 @@ function CompaniesTab({ brandId }: { brandId: string }) {
                   </td>
                   <td className="px-3 text-right tabular-nums">{formatCount(c.people.held)}</td>
                   <td className="px-3 text-right tabular-nums">{formatCount(c.people.accepted)}</td>
-                  <td className="max-w-[260px] px-3"><AudienceChips refs={c.sources} /></td>
-                  <td className="max-w-[320px] px-3"><AudienceChips refs={c.acceptedBy} accepted /></td>
+                  <td className="max-w-[260px] px-3"><AudienceChips refs={c.sources} staff={staff} /></td>
+                  <td className="max-w-[320px] px-3"><AudienceChips refs={c.acceptedBy} accepted staff={staff} /></td>
                   <td className="pr-4 text-right tabular-nums md:pr-6">
                     {cost.error ? dash : <Invested loading={costLoading} m={cost.data?.get(c.companyKey)} />}
                   </td>
@@ -499,7 +511,7 @@ function CompaniesTab({ brandId }: { brandId: string }) {
           </tbody>
         </table>
       </div>
-      <RecordsFooter left="Targeting = target audiences that accepted at least one person here" right={<Pager total={q.data?.total ?? null} offset={offset} onOffset={setOffset} />} />
+      <RecordsFooter left="Targeting = target audiences at least one person here matched" right={<Pager total={q.data?.total ?? null} offset={offset} onOffset={setOffset} />} />
     </>
   );
 }

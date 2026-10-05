@@ -60,13 +60,25 @@ describe("nothing below a mission reaches a customer", () => {
     expect(s.slice(at - 200, at)).toContain("{staffMode && (");
   });
 
-  it("Setup > Audience is staff mode only, below Campaigns, and its page sits behind StaffOnly", () => {
+  it("Setup > Audience is GA (owner 2026-10-05): below Campaigns, no staff gate on the entry or the page", () => {
     const s = read("components/v2/v2-shell.tsx");
     const at = s.indexOf('label="Audience"');
     expect(s.indexOf('label="Campaigns"')).toBeGreaterThan(-1);
     expect(at).toBeGreaterThan(s.indexOf('label="Campaigns"'));
-    expect(s.slice(at - 200, at)).toContain("{staffMode && (");
-    expect(read("app/(authed)/v2/orgs/[orgId]/brands/[brandId]/audience/page.tsx")).toContain("<StaffOnly>");
+    expect(s.slice(at - 200, at)).not.toContain("{staffMode && (");
+    expect(read("app/(authed)/v2/orgs/[orgId]/brands/[brandId]/audience/page.tsx")).not.toContain("<StaffOnly>");
+  });
+
+  it("Audience keeps vendor cost, provider and P(yes) for staff mode, and a customer reads its own org's routes", () => {
+    const s = read("components/v2/audience-page.tsx");
+    expect(s).toContain("const { staffMode: staff } = useStaffMode();");
+    expect(s).toContain("vendor={staff}");
+    expect(s).toContain("{staff ? <th className={`${REC_TH} pl-4 md:pl-6`}>Source</th> : null}");
+    expect(s).toContain("const src = staff ? refSource(r) : null;");
+    expect(s).toContain("staff && r.yesProbability != null");
+    const api = read("lib/api.ts");
+    expect(api).toContain("ORG_AUDIENCE_PATHS.snapshot(brandId)");
+    expect(api).toContain("ORG_AUDIENCE_PATHS.investment(brandId)");
   });
 
   it("the campaign Workflows tab is staff mode only, its body behind StaffOnly", () => {

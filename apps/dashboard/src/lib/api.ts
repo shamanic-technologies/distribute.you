@@ -1610,11 +1610,23 @@ const BrandHeldCompaniesSchema = z.object({
 });
 export type BrandHeldCompanies = z.infer<typeof BrandHeldCompaniesSchema>;
 
-const snapshotPath = (brandId: string) => `${STAFF_MONITORING_PATHS.brands}/${encodeURIComponent(brandId)}/audience-snapshot`;
+// Customer (org-scoped) twins of the staff audience reads: api-service, own org's brand only,
+// no vendor cost in the body.
+export const ORG_AUDIENCE_PATHS = {
+  snapshot: (brandId: string) => `/brands/${encodeURIComponent(brandId)}/audience-snapshot`,
+  investment: (brandId: string) => `/brands/${encodeURIComponent(brandId)}/sourcing-investment`,
+} as const;
 
-/** Every audience list of the brand (all orgs, all offers) with the people and companies it holds. */
-export async function getStaffAudienceSnapshot(brandId: string): Promise<BrandAudienceSnapshot> {
-  return parseStaff("getStaffAudienceSnapshot", BrandAudienceSnapshotSchema, await apiCall<unknown>(snapshotPath(brandId)));
+// The Audience page is GA (owner 2026-10-05): `staff` reads the staff route (every org of the
+// brand, vendor cost), otherwise the caller's own org route (net $ only, no vendor field).
+const snapshotPath = (brandId: string, staff: boolean) =>
+  staff
+    ? `${STAFF_MONITORING_PATHS.brands}/${encodeURIComponent(brandId)}/audience-snapshot`
+    : ORG_AUDIENCE_PATHS.snapshot(brandId);
+
+/** Every audience list of the brand (all offers) with the people and companies it holds. */
+export async function getAudienceSnapshot(brandId: string, staff: boolean): Promise<BrandAudienceSnapshot> {
+  return parseStaff("getAudienceSnapshot", BrandAudienceSnapshotSchema, await apiCall<unknown>(snapshotPath(brandId, staff)));
 }
 
 export interface SnapshotPage {
@@ -1626,16 +1638,16 @@ const pageQuery = (p: SnapshotPage) =>
   new URLSearchParams({ limit: String(p.limit), offset: String(p.offset), acceptedOnly: String(p.acceptedOnly) }).toString();
 
 /** One page of the people the brand holds, each with the lists that brought them and who accepted them. */
-export async function getStaffHeldPeople(brandId: string, page: SnapshotPage): Promise<BrandHeldPeople> {
-  return parseStaff("getStaffHeldPeople", BrandHeldPeopleSchema, await apiCall<unknown>(`${snapshotPath(brandId)}/people?${pageQuery(page)}`));
+export async function getHeldPeople(brandId: string, staff: boolean, page: SnapshotPage): Promise<BrandHeldPeople> {
+  return parseStaff("getHeldPeople", BrandHeldPeopleSchema, await apiCall<unknown>(`${snapshotPath(brandId, staff)}/people?${pageQuery(page)}`));
 }
 
 /** One page of the companies the brand holds people at. */
-export async function getStaffHeldCompanies(brandId: string, page: SnapshotPage): Promise<BrandHeldCompanies> {
-  return parseStaff("getStaffHeldCompanies", BrandHeldCompaniesSchema, await apiCall<unknown>(`${snapshotPath(brandId)}/companies?${pageQuery(page)}`));
+export async function getHeldCompanies(brandId: string, staff: boolean, page: SnapshotPage): Promise<BrandHeldCompanies> {
+  return parseStaff("getHeldCompanies", BrandHeldCompaniesSchema, await apiCall<unknown>(`${snapshotPath(brandId, staff)}/companies?${pageQuery(page)}`));
 }
 
-// --- Staff $ invested in sourcing (features-service, gateway /admin/brands/{id}/sourcing-investment) ---
+// --- $ invested in sourcing (features-service, gateway /admin/brands/{id}/sourcing-investment) ---
 // What sourcing the brand's people cost since inception (serves: Jev screens, reveals, email
 // finds and checks; list builds), per audience, per person, per company. Served figures only.
 
@@ -1644,7 +1656,8 @@ const InvestedMoneySchema = z.object({
   // What the org pays (after its usage discount). Optional until features-service serves it
   // everywhere; absent renders "—", never the billed figure (two different bases).
   netUsd: z.number().optional(),
-  vendorUsd: z.number().nullable(),
+  // Staff route only: the org route never serves what sourcing cost US.
+  vendorUsd: z.number().nullish(),
   unpricedBilledUsd: z.number(),
 });
 export type InvestedMoney = z.infer<typeof InvestedMoneySchema>;
@@ -1669,26 +1682,29 @@ const SourcingCompaniesSchema = z.object({
   companies: z.array(z.object({ companyKey: z.string(), invested: InvestedMoneySchema })),
 });
 
-const investmentPath = (brandId: string) => `${STAFF_MONITORING_PATHS.brands}/${encodeURIComponent(brandId)}/sourcing-investment`;
+const investmentPath = (brandId: string, staff: boolean) =>
+  staff
+    ? `${STAFF_MONITORING_PATHS.brands}/${encodeURIComponent(brandId)}/sourcing-investment`
+    : ORG_AUDIENCE_PATHS.investment(brandId);
 
 /** $ invested in sourcing the brand, in total and per audience. */
-export async function getStaffSourcingInvestment(brandId: string): Promise<SourcingInvestment> {
-  return parseStaff("getStaffSourcingInvestment", SourcingInvestmentSchema, await apiCall<unknown>(investmentPath(brandId)));
+export async function getSourcingInvestment(brandId: string, staff: boolean): Promise<SourcingInvestment> {
+  return parseStaff("getSourcingInvestment", SourcingInvestmentSchema, await apiCall<unknown>(investmentPath(brandId, staff)));
 }
 
 /** $ invested per person, keyed by provider person id (the join key onto the held people). Keys <= 500. */
-export async function getStaffSourcingPeople(brandId: string, apolloPersonIds: string[]): Promise<Map<string, InvestedMoney>> {
+export async function getSourcingPeople(brandId: string, staff: boolean, apolloPersonIds: string[]): Promise<Map<string, InvestedMoney>> {
   if (apolloPersonIds.length === 0) return new Map();
   const q = new URLSearchParams({ limit: String(apolloPersonIds.length), apolloPersonIds: apolloPersonIds.join(",") });
-  const body = parseStaff("getStaffSourcingPeople", SourcingPeopleSchema, await apiCall<unknown>(`${investmentPath(brandId)}/people?${q}`));
+  const body = parseStaff("getSourcingPeople", SourcingPeopleSchema, await apiCall<unknown>(`${investmentPath(brandId, staff)}/people?${q}`));
   return new Map(body.people.filter((p) => p.apolloPersonId).map((p) => [p.apolloPersonId as string, p.invested]));
 }
 
 /** $ invested per company, keyed by human-service's `companyKey` (the held-companies key). Keys <= 500. */
-export async function getStaffSourcingCompanies(brandId: string, companyKeys: string[]): Promise<Map<string, InvestedMoney>> {
+export async function getSourcingCompanies(brandId: string, staff: boolean, companyKeys: string[]): Promise<Map<string, InvestedMoney>> {
   if (companyKeys.length === 0) return new Map();
   const q = new URLSearchParams({ limit: String(companyKeys.length), companyKeys: companyKeys.join(",") });
-  const body = parseStaff("getStaffSourcingCompanies", SourcingCompaniesSchema, await apiCall<unknown>(`${investmentPath(brandId)}/companies?${q}`));
+  const body = parseStaff("getSourcingCompanies", SourcingCompaniesSchema, await apiCall<unknown>(`${investmentPath(brandId, staff)}/companies?${q}`));
   return new Map(body.companies.map((c) => [c.companyKey, c.invested]));
 }
 
