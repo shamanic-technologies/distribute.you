@@ -2143,6 +2143,18 @@ export async function saveOfferChannels(brandId: string, offerId: string, channe
   return parseOrThrow(OfferChannelsSchema, raw, "saveOfferChannels");
 }
 
+/**
+ * POST /offers/:offerId/reactive-defaults — after the customer saves the ticked paths:
+ * campaign-service turns ON every reactive campaign a ticked path uses that has none yet
+ * (a person-turned-off one stays off). brandId rides the query too (identity header rule).
+ */
+export async function applyReactiveDefaults(brandId: string, offerId: string): Promise<void> {
+  await apiCall<unknown>(`/offers/${offerId}/reactive-defaults?brandId=${encodeURIComponent(brandId)}`, {
+    method: "POST",
+    body: { brandId },
+  });
+}
+
 /** GET /brands/:brandId/offers/:offerId/selected-sales-paths — the sales paths the customer ticked (brand-service). */
 export async function getOfferSelectedSalesPaths(brandId: string, offerId: string): Promise<OfferSelectedSalesPaths> {
   const raw = await apiCall<unknown>(`/brands/${brandId}/offers/${offerId}/selected-sales-paths`);
