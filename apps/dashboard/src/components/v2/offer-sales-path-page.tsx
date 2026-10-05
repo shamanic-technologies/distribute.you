@@ -12,7 +12,9 @@ import {
   saveOfferChannels,
   saveOfferSalesPath,
   saveOfferSelectedSalesPaths,
+  applyReactiveDefaults,
 } from "@/lib/api";
+import { invalidateCampaignMoney } from "@/lib/write-invalidation";
 import { useSalesPathChannels } from "@/lib/use-sales-path-channels";
 import { acceptedChannels, selectedPathKeys, toggleChannel, togglePath } from "@/lib/offer-active-sales-paths";
 import { OfferChannelsPicker } from "@/components/v2/offer-channels-picker";
@@ -133,8 +135,12 @@ export function V2OfferSalesPathPage() {
     saveOfferSelectedSalesPaths(brandId, offerId, next)
       .then((saved) => {
         qc.setQueryData(["offerSelectedSalesPaths", brandId, offerId], saved);
-        // The campaigns and their ROI are features-service's answer over the ticked paths.
-        return qc.invalidateQueries({ queryKey: ["offerSalesPaths", brandId, offerId] });
+        // The reactive campaigns the ticked paths use turn on (campaign-service, owner 2026-10-05).
+        return applyReactiveDefaults(brandId, offerId).then(() => {
+          invalidateCampaignMoney(qc);
+          // The campaigns and their ROI are features-service's answer over the ticked paths.
+          return qc.invalidateQueries({ queryKey: ["offerSalesPaths", brandId, offerId] });
+        });
       })
       .catch((err) => {
         console.error("[offer-sales-path] path selection save failed", err);
