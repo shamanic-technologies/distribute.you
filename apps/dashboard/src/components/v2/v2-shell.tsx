@@ -123,6 +123,7 @@ const ICONS = {
   crew: "M5.5 7a2 2 0 1 0 0-4 2 2 0 0 0 0 4Zm5 0a2 2 0 1 0 0-4 2 2 0 0 0 0 4ZM2 13c.4-2 1.8-3.5 3.5-3.5S8.6 11 9 13m-.5-3c.6-.4 1.2-.5 2-.5 1.7 0 3.1 1.5 3.5 3.5",
   missions: "M3 13.5V2.5m0 1h8l-1.5 2.5L11 8.5H3",
   channels: "M2.5 4.5h11v7h-11zM2.5 4.5 8 8.5l5.5-4",
+  audience: "M2.5 4h11M2.5 8h11M2.5 12h7",
   path: "M3.5 12.5a1.5 1.5 0 1 0 0-3 1.5 1.5 0 0 0 0 3Zm9-6a1.5 1.5 0 1 0 0-3 1.5 1.5 0 0 0 0 3ZM5 11h3.5a2 2 0 0 0 2-2V6.5",
   offer: "M8.5 2.5h5v5L7.5 13.5l-5-5Zm2.5 2.5h.01",
   target: "M8 13.5a5.5 5.5 0 1 0 0-11 5.5 5.5 0 0 0 0 11Zm0-3a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5Z",
@@ -315,6 +316,10 @@ function V2Sidebar() {
             icon={<I d={ICONS.channels} />}
             active={section === "channels"}
           />
+          {/* Staff only: the lists we source people from, and what we hold in each. */}
+          {staffMode && (
+            <NavItem href={v2Href(orgId, brandId, "audience")} label="Audience" icon={<I d={ICONS.audience} />} active={section === "audience"} />
+          )}
           <NavItem href={`${v2Href(orgId, brandId, "integrations")}/ai`} label="Integrations" icon={<I d={ICONS.plug} />} active={section === "integrations"} />
           <NavItem href={v2Href(orgId, brandId, "settings")} label="Brand settings" icon={<I d={ICONS.settings} />} active={section === "settings"} />
         </Group>
