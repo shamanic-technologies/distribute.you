@@ -238,14 +238,33 @@ function CampaignStatus({
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const ref = useRef<HTMLDivElement>(null);
+  const menuRef = useRef<HTMLDivElement>(null);
+  // The table card clips (overflow-hidden + overflow-x-auto), so the menu is portalled and
+  // placed `fixed` against the button: below it, or above it when the viewport ends first.
+  const [menuAt, setMenuAt] = useState<{ top?: number; bottom?: number; right: number } | null>(null);
   useEffect(() => {
     if (!open) return;
     const close = (e: MouseEvent) => {
-      if (!ref.current?.contains(e.target as Node)) setOpen(false);
+      const t = e.target as Node;
+      if (!ref.current?.contains(t) && !menuRef.current?.contains(t)) setOpen(false);
     };
+    const dismiss = () => setOpen(false);
     document.addEventListener("mousedown", close);
-    return () => document.removeEventListener("mousedown", close);
+    document.addEventListener("scroll", dismiss, { capture: true, passive: true });
+    window.addEventListener("resize", dismiss);
+    return () => {
+      document.removeEventListener("mousedown", close);
+      document.removeEventListener("scroll", dismiss, { capture: true });
+      window.removeEventListener("resize", dismiss);
+    };
   }, [open]);
+  const openMenu = (button: HTMLButtonElement) => {
+    if (open) return setOpen(false);
+    const r = button.getBoundingClientRect();
+    const right = window.innerWidth - r.right;
+    setMenuAt(window.innerHeight - r.bottom < 140 ? { bottom: window.innerHeight - r.top + 4, right } : { top: r.bottom + 4, right });
+    setOpen(true);
+  };
 
   if (campaign.managed === false) {
     return (
@@ -293,7 +312,7 @@ function CampaignStatus({
         aria-haspopup="menu"
         aria-expanded={open}
         disabled={busy}
-        onClick={() => setOpen((o) => !o)}
+        onClick={(e) => openMenu(e.currentTarget)}
         className="k-btn gap-1.5"
       >
         <StateDot running={on} label={on ? "On" : "Off"} hold={on ? null : mission?.paymentHold ?? null} />
@@ -301,8 +320,8 @@ function CampaignStatus({
           <path d="M2.5 4l2.5 2.5L7.5 4" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" />
         </svg>
       </button>
-      {open && (
-        <div role="menu" className="k-popover absolute right-0 top-full z-50 mt-1 w-[240px] p-1 text-left">
+      {open && menuAt && createPortal(
+        <div ref={menuRef} role="menu" style={menuAt} className="k-popover fixed z-50 w-[240px] p-1 text-left">
           {switching && (
             <p className="k-fg2 px-2 pb-1 pt-1.5 text-[12px]">
               Your plan moves here from {replaces.name ?? replaces.channelName}, which turns off.
@@ -311,7 +330,8 @@ function CampaignStatus({
           <button type="button" role="menuitem" className="k-row w-full rounded-[6px] px-2 py-1.5 text-left text-[13px]" onClick={toggle}>
             {on ? "Turn off" : switching ? "Turn on instead" : "Turn on"}
           </button>
-        </div>
+        </div>,
+        document.getElementById("v2-portal") ?? document.body,
       )}
       {error && <span className="mt-1 max-w-[220px] text-[11.5px] text-[var(--data-rose)]">{error}</span>}
     </div>
