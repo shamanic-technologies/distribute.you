@@ -54,7 +54,6 @@ const RULES: Rule[] = [
   { method: "GET", segments: ["brands", ":brand", "user-fields"] },
   { method: "PUT", segments: ["brands", ":brand", "user-fields"] },
   { method: "GET", segments: ["brands", ":brand", "offers"] },
-  { method: "GET", segments: ["brands", ":brand", "sales-economics-effective"] },
   { method: "PUT", segments: ["brands", ":brand", "click-destination"] },
   // The no-website path's only source: there is no site to scrape, so the
   // pasted business context IS what the extraction reads. Without this the

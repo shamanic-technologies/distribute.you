@@ -117,7 +117,7 @@ describe("Context sidebar", () => {
 
   it("wires the featureSettings nav level to the EXISTING /settings + /workflows routes (not an orphan)", () => {
     const content = fs.readFileSync(sidebarPath, "utf-8");
-    // Feature Settings sub-level: GA landing (/settings, Sales Economics) +
+    // Feature Settings sub-level: GA landing (/settings) +
     // staff-only Workflows. Both are real routes (no removed/404 route, unlike
     // the prior dead `/settings` link this guard originally protected against).
     expect(content).toContain("featureSettings");

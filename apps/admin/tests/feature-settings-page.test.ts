@@ -2,9 +2,9 @@ import { describe, it, expect } from "vitest";
 import * as fs from "fs";
 import * as path from "path";
 
-// Feature Settings landing mirrors Brand Settings' "Sales Economics" section,
-// reusing the SAME brand-scoped BrandSalesEconomicsCard. GA — no alpha gate.
-describe("Feature Settings page (GA Sales Economics, mirrors Brand Settings)", () => {
+// Feature Settings landing. GA, no alpha gate. Lifetime revenue and rates live on
+// the offer now, so neither settings page edits brand-level economics.
+describe("Feature Settings page", () => {
   const pagePath = path.join(
     __dirname,
     "../src/app/(authed)/(dashboard)/orgs/[orgId]/brands/[brandId]/features/[featureSlug]/settings/page.tsx",
@@ -22,14 +22,12 @@ describe("Feature Settings page (GA Sales Economics, mirrors Brand Settings)", (
     expect(fs.readFileSync(pagePath, "utf-8")).toContain('"use client"');
   });
 
-  it("renders the SAME Sales Economics card as Brand Settings, keyed on the route brandId", () => {
-    const content = fs.readFileSync(pagePath, "utf-8");
-    expect(content).toContain("BrandSalesEconomicsCard");
-    expect(content).toContain("@/components/settings/brand-sales-economics-card");
-    expect(content).toContain("brandId={brandId}");
-    expect(content).toContain("Sales Economics");
-    // Brand Settings uses the same card — both surfaces share one component.
-    expect(fs.readFileSync(brandSettingsPath, "utf-8")).toContain("BrandSalesEconomicsCard");
+  it("renders no brand economics editor on either settings page (retired 2026-10-05)", () => {
+    for (const p of [pagePath, brandSettingsPath]) {
+      const content = fs.readFileSync(p, "utf-8");
+      expect(content).not.toContain("SalesEconomics");
+      expect(content).not.toContain("Sales Economics");
+    }
   });
 
   it("is GA — no feature-flag gate on the page", () => {

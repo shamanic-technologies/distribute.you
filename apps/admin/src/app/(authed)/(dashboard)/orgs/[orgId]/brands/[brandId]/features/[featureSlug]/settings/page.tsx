@@ -2,14 +2,11 @@
 
 import { useParams } from "next/navigation";
 import { useFeatures } from "@/lib/features-context";
-import { BrandSalesEconomicsCard } from "@/components/settings/brand-sales-economics-card";
 import { CrmSourceAudiencesCard } from "@/components/settings/crm-source-audiences-card";
 import { isCrmOutreachFeature } from "@/lib/crm-outreach-feature";
 
-// Feature Settings landing — mirrors the Brand Settings "Sales Economics"
-// section. The economics are brand-scoped (one set per brand, reused across the
-// brand's campaigns), so this renders the SAME BrandSalesEconomicsCard keyed on
-// the route's brandId — editing here edits the same data as Brand Settings.
+// Feature Settings landing. Lifetime revenue and conversion rates live on the
+// offer now (dashboard Sales path page), so nothing economic is edited here.
 export default function FeatureSettingsPage() {
   const params = useParams();
   const brandId = params.brandId as string;
@@ -23,16 +20,6 @@ export default function FeatureSettingsPage() {
     <div className="p-4 md:p-8 max-w-3xl">
       <h1 className="text-2xl font-semibold text-gray-900 mb-8">Feature Settings</h1>
 
-      {/* Sales Economics — same card + brand-scoped data as Brand Settings. */}
-      <div className="mb-10">
-        <h2 className="text-lg font-semibold text-gray-900 mb-3">Sales Economics</h2>
-        <p className="text-sm text-gray-500 mb-3">
-          Customer value + conversion funnel for {featureName}. Shared with this brand&apos;s
-          other settings and every sales campaign.
-        </p>
-        <BrandSalesEconomicsCard brandId={brandId} />
-      </div>
-
       {/* Audiences — CRM-outreach only: the people come from the brand's own
           imported CSVs, so the audiences ARE those files. Other features source
           their audiences from a provider search and have their own surface. */}
@@ -41,7 +28,7 @@ export default function FeatureSettingsPage() {
           <h2 className="text-lg font-semibold text-gray-900 mb-3">Audiences</h2>
           <p className="text-sm text-gray-500 mb-3">
             Which of this brand&apos;s imported CRM files are used as audiences for{" "}
-            {featureName}. Brand-scoped, like the economics above.
+            {featureName}. Brand-scoped.
           </p>
           <CrmSourceAudiencesCard brandId={brandId} />
         </div>

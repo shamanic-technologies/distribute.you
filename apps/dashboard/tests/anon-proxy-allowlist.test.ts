@@ -27,7 +27,6 @@ describe("what the signed-out wizard may call", () => {
       ["GET", `/brands/${BRAND}/user-fields`],
       ["PUT", `/brands/${BRAND}/user-fields`],
       ["GET", `/brands/${BRAND}/offers`],
-      ["GET", `/brands/${BRAND}/sales-economics-effective`],
       ["PUT", `/brands/${BRAND}/click-destination`],
       ["PUT", `/brands/${BRAND}/business-context`],
       ["POST", `/brands/${BRAND}/icp/suggest`],

@@ -3,8 +3,8 @@
 import Link from "next/link";
 
 /** Shown when the backend returns `totalPipelineUsd: null` — there's no pipeline
- *  to attribute yet (no campaign has run for this feature, or the brand hasn't
- *  saved sales economics). `setupHref` points at campaign creation — running a
+ *  to attribute yet (no campaign has run for this feature, or no offer states a
+ *  lifetime revenue). `setupHref` points at campaign creation — running a
  *  campaign is the first step before any metric can appear. */
 export function RevenueEmptyState({ setupHref }: { setupHref: string }) {
   return (
