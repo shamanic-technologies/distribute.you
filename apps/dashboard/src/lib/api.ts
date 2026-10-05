@@ -1635,6 +1635,63 @@ export async function getStaffHeldCompanies(brandId: string, page: SnapshotPage)
   return parseStaff("getStaffHeldCompanies", BrandHeldCompaniesSchema, await apiCall<unknown>(`${snapshotPath(brandId)}/companies?${pageQuery(page)}`));
 }
 
+// --- Staff $ invested in sourcing (features-service, gateway /admin/brands/{id}/sourcing-investment) ---
+// What sourcing the brand's people cost since inception (serves: Jev screens, reveals, email
+// finds and checks; list builds), per audience, per person, per company. Served figures only.
+
+const InvestedMoneySchema = z.object({
+  billedUsd: z.number(),
+  // What the org pays (after its usage discount). Optional until features-service serves it
+  // everywhere; absent renders "—", never the billed figure (two different bases).
+  netUsd: z.number().optional(),
+  vendorUsd: z.number().nullable(),
+  unpricedBilledUsd: z.number(),
+});
+export type InvestedMoney = z.infer<typeof InvestedMoneySchema>;
+const SourcingInvestmentSchema = z.object({
+  total: InvestedMoneySchema,
+  withoutAudience: InvestedMoneySchema,
+  audiences: z.array(
+    z.object({
+      audienceId: z.string(),
+      invested: InvestedMoneySchema,
+      serveCount: z.coerce.number(),
+      personCount: z.coerce.number(),
+      companyCount: z.coerce.number(),
+    }),
+  ),
+});
+export type SourcingInvestment = z.infer<typeof SourcingInvestmentSchema>;
+const SourcingPeopleSchema = z.object({
+  people: z.array(z.object({ apolloPersonId: z.string().nullable(), invested: InvestedMoneySchema })),
+});
+const SourcingCompaniesSchema = z.object({
+  companies: z.array(z.object({ companyDomain: z.string(), invested: InvestedMoneySchema })),
+});
+
+const investmentPath = (brandId: string) => `${STAFF_MONITORING_PATHS.brands}/${encodeURIComponent(brandId)}/sourcing-investment`;
+
+/** $ invested in sourcing the brand, in total and per audience. */
+export async function getStaffSourcingInvestment(brandId: string): Promise<SourcingInvestment> {
+  return parseStaff("getStaffSourcingInvestment", SourcingInvestmentSchema, await apiCall<unknown>(investmentPath(brandId)));
+}
+
+/** $ invested per person, keyed by provider person id (the join key onto the held people). Keys <= 500. */
+export async function getStaffSourcingPeople(brandId: string, apolloPersonIds: string[]): Promise<Map<string, InvestedMoney>> {
+  if (apolloPersonIds.length === 0) return new Map();
+  const q = new URLSearchParams({ limit: String(apolloPersonIds.length), apolloPersonIds: apolloPersonIds.join(",") });
+  const body = parseStaff("getStaffSourcingPeople", SourcingPeopleSchema, await apiCall<unknown>(`${investmentPath(brandId)}/people?${q}`));
+  return new Map(body.people.filter((p) => p.apolloPersonId).map((p) => [p.apolloPersonId as string, p.invested]));
+}
+
+/** $ invested per company, keyed by bare lowercased domain. Keys <= 500. */
+export async function getStaffSourcingCompanies(brandId: string, domains: string[]): Promise<Map<string, InvestedMoney>> {
+  if (domains.length === 0) return new Map();
+  const q = new URLSearchParams({ limit: String(domains.length), domains: domains.join(",") });
+  const body = parseStaff("getStaffSourcingCompanies", SourcingCompaniesSchema, await apiCall<unknown>(`${investmentPath(brandId)}/companies?${q}`));
+  return new Map(body.companies.map((c) => [c.companyDomain, c.invested]));
+}
+
 /** Every brand of every org (staff), to name the comparison's org and brand ids. */
 export async function getStaffBrands(): Promise<StaffBrand[]> {
   return parseStaff("getStaffBrands", StaffBrandsSchema, await apiCall<unknown>(STAFF_MONITORING_PATHS.brands)).brands;
