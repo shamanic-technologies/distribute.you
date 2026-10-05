@@ -1379,7 +1379,10 @@ export function GetStarted({ org }: { org?: OrgWalk } = {}) {
     competitors,
     offer: offer ?? (pendingOffer ? { offerId: "", ...pendingOffer } : null),
     audience: audience ?? (pendingAudience ? { audienceId: "", ...pendingAudience } : null),
-    audienceProposals,
+    // A resumed walk holds the picked audience but not the proposals (they are not saved):
+    // the rail still names it rather than "Audiences 0".
+    audienceProposals:
+      audienceProposals.length || !audience ? audienceProposals : [{ name: audience.name, description: audience.description, icon: "", iconConfidence: 0 }],
     audienceBusy,
     rows: audRows,
     written: writtenCount,
