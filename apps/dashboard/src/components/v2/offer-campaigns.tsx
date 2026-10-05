@@ -120,6 +120,31 @@ export function OfferCampaigns({
   );
 }
 
+/** A campaign's leg read in order: the step it starts from (reactive only), the channel, the step it lands on. */
+export function CampaignLeg({
+  campaign,
+  className = "",
+}: {
+  campaign: Pick<OfferCampaign, "featureSlug" | "channelName" | "managed" | "fromLabel" | "toLabel">;
+  className?: string;
+}) {
+  const channels = useAcquisitionChannels();
+  const def = channels.find((d) => d.featureSlug === campaign.featureSlug);
+  return (
+    <span className={`k-fg2 inline-flex flex-wrap items-center gap-1.5 ${className}`}>
+      {campaign.fromLabel && (
+        <>
+          <span>{campaign.fromLabel}</span>
+          <span className="k-fg3">→</span>
+        </>
+      )}
+      <ChannelChip name={campaign.channelName} def={def} notRun={campaign.managed === false} />
+      <span className="k-fg3">→</span>
+      <span>{campaign.toLabel}</span>
+    </span>
+  );
+}
+
 function CampaignRow({
   brandId,
   offerId,
@@ -144,8 +169,6 @@ function CampaignRow({
   budgetPending: boolean;
   budgetError: boolean;
 }) {
-  const channels = useAcquisitionChannels();
-  const def = channels.find((d) => d.featureSlug === campaign.featureSlug);
   const [pressed, setPressed] = useState<boolean | null>(null);
   useEffect(() => setPressed(null), [mission?.running]);
   useEffect(() => {
@@ -161,18 +184,7 @@ function CampaignRow({
         </span>
       </td>
       <td className="px-3 py-2">
-        {/* The leg read in order: the step it starts from (reactive only), the channel, the step it lands on. */}
-        <span className="k-fg2 inline-flex flex-wrap items-center gap-1.5">
-          {campaign.fromLabel && (
-            <>
-              <span>{campaign.fromLabel}</span>
-              <span className="k-fg3">→</span>
-            </>
-          )}
-          <ChannelChip name={campaign.channelName} def={def} notRun={campaign.managed === false} />
-          <span className="k-fg3">→</span>
-          <span>{campaign.toLabel}</span>
-        </span>
+        <CampaignLeg campaign={campaign} />
       </td>
       <td className="px-3 py-2">
         <span className="k-chip">{campaignTag(campaign)}</span>

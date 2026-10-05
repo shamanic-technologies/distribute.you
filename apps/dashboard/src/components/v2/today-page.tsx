@@ -35,6 +35,7 @@ import {
 import { useCrewRuns } from "@/components/v2/runs";
 import { useOngoingCampaigns, type OngoingCampaign } from "@/components/v2/ongoing-campaigns";
 import { PathAvatar } from "@/components/v2/offer-sales-paths";
+import { CampaignLeg } from "@/components/v2/offer-campaigns";
 import { STEP_KEY_FOR_LEAD_STAGE } from "@/lib/step-marks";
 import { CrewMark } from "@/components/v2/crew-mark";
 import { useMissions, type Mission } from "@/components/v2/use-missions";
@@ -508,21 +509,16 @@ function MeetingLine({ lead, at, mission, href }: { lead: Lead; at: string | nul
 }
 
 function CampaignLine({ c }: { c: OngoingCampaign }) {
-  const { m, name } = c;
-  const g = m.row.revenue;
+  const { m, name, campaign } = c;
   return (
     <Link href={m.href} className="k-hover flex items-center gap-3 px-4 py-3 first:rounded-t-[12px] last:rounded-b-[12px]">
       {name ? <PathAvatar name={name} size={20} /> : <CrewMark color={m.crew.color} glyph={m.crew.glyph} size={20} />}
       <div className="min-w-0 flex-1">
         <p className="truncate text-[13px] font-medium">{name ?? m.crew.name}</p>
-        <p className="k-fg3 truncate text-[12px]">{m.leg?.label ?? "—"}</p>
+        {/* The full definition, as the Sales path page reads it: [Channel] → outcome. */}
+        {campaign ? <CampaignLeg campaign={campaign} className="mt-1 text-[12px]" /> : <p className="k-fg4 text-[12px]">{"—"}</p>}
       </div>
-      <div className="shrink-0 text-right">
-        <StateDot running={m.running} hold={m.paymentHold} />
-        <p className="k-mono k-fg3 text-[11px]">
-          {g?.committedCostUsd != null ? formatUsdAdaptive(g.committedCostUsd) : "—"} spent
-        </p>
-      </div>
+      <StateDot running={m.running} hold={m.paymentHold} />
     </Link>
   );
 }
