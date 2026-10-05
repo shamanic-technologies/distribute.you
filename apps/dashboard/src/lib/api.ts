@@ -3076,6 +3076,68 @@ export async function saveCampaignBudget(
   return parsed.data;
 }
 
+// ── One offer's campaign budgets (billing-service, per offer) ──
+// Every campaign (channel x leg) of an offer with its type, its budget in the ORG's
+// period (day = prepaid / postpaid, month = subscriber), the same budget per day, and
+// the floor and cap a write must clear. api-service proxies it verbatim. Declared narrow.
+const OfferCampaignBudgetItemSchema = z.object({
+  featureSlug: z.string(),
+  legKey: z.string(),
+  role: z.enum(["proactive", "reactive"]).nullable(),
+  period: z.enum(["day", "month"]),
+  budgetCents: z.coerce.number().nullable(),
+  // Served as a numeric STRING (bigint column); null = not set.
+  dailyBudgetCents: z.coerce.number().nullable(),
+  managed: z.boolean().nullable(),
+  minimumCents: z.coerce.number().nullable(),
+  capCents: z.coerce.number().nullable(),
+  budgetable: z.boolean(),
+});
+
+export type OfferCampaignBudgetItem = z.infer<typeof OfferCampaignBudgetItemSchema>;
+
+const OfferCampaignBudgetsSchema = z.object({
+  offerId: z.string(),
+  period: z.enum(["day", "month"]),
+  items: z.array(OfferCampaignBudgetItemSchema),
+});
+
+export type OfferCampaignBudgets = z.infer<typeof OfferCampaignBudgetsSchema>;
+
+function parseOfferCampaignBudgets(raw: unknown, where: string): OfferCampaignBudgets {
+  const parsed = OfferCampaignBudgetsSchema.safeParse(raw);
+  if (!parsed.success) {
+    console.error(`[dashboard] ${where}: response shape mismatch`, { issues: parsed.error.issues, raw });
+    throw new Error(`[dashboard] ${where}: invalid response shape`);
+  }
+  return parsed.data;
+}
+
+/** GET /brands/:brandId/offers/:offerId/campaign-budgets — each campaign's budget. */
+export async function getOfferCampaignBudgets(brandId: string, offerId: string, token?: string): Promise<OfferCampaignBudgets> {
+  const raw = await apiCall<unknown>(`/brands/${brandId}/offers/${offerId}/campaign-budgets`, { token });
+  return parseOfferCampaignBudgets(raw, "getOfferCampaignBudgets");
+}
+
+/**
+ * PUT /brands/:brandId/offers/:offerId/campaign-budgets — ONE campaign's budget, in the
+ * org's period. billing refuses (400) an amount under the floor or over the cap.
+ */
+export async function saveOfferCampaignBudget(
+  brandId: string,
+  offerId: string,
+  item: { featureSlug: string; legKey: string; budgetCents: number },
+  token?: string,
+): Promise<OfferCampaignBudgets> {
+  const raw = await apiCall<unknown>(`/brands/${brandId}/offers/${offerId}/campaign-budgets`, {
+    token,
+    method: "PUT",
+    body: { items: [item] },
+    headers: { "x-run-id": globalThis.crypto.randomUUID() },
+  });
+  return parseOfferCampaignBudgets(raw, "saveOfferCampaignBudget");
+}
+
 /**
  * The platform's step, leg and channel catalogue, as features-service publishes it
  * (`GET /public/channels`, public, no auth, no org scope).
