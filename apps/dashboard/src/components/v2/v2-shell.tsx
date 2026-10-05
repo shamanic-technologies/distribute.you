@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useParams, usePathname, useSearchParams } from "next/navigation";
 import { AccountMenuV2, SearchTrigger, TenantSwitcherV2 } from "@/components/v2/sidebar-menus";
 import { useMissions } from "@/components/v2/use-missions";
+import { useOngoingCampaigns } from "@/components/v2/ongoing-campaigns";
 import { CrewMark } from "@/components/v2/crew-mark";
 import { V2NavContext } from "@/components/v2/nav-context";
 import { useBucketCounts, useBrandRevenue, useNeedsYourCall, useStandingCounts } from "@/components/v2/data";
@@ -16,11 +17,6 @@ import { companyHref } from "@/components/v2/companies-page";
 import { ScopePaymentDeclinedBand } from "@/components/billing/scope-payment-declined-band";
 import { useStaffMode } from "@/lib/use-staff-mode";
 import { SelectedOfferProvider, useSelectedOffer } from "@/components/v2/selected-offer";
-import { useLegCatalogue } from "@/lib/use-leg-catalogue";
-import { useAuthQuery } from "@/lib/use-auth-query";
-import { getOfferSalesPaths } from "@/lib/api";
-import { roiUnavailableLabel } from "@/lib/offer-sales-paths";
-import { campaignKey, campaignsOfOffer, sortCampaigns } from "@/lib/offer-campaigns";
 import { PathAvatar } from "@/components/v2/offer-sales-paths";
 import { BRAND_WHY } from "@/lib/brand-why";
 
@@ -166,27 +162,11 @@ function V2Sidebar() {
   const brandId = params.brandId ?? "";
   const section = v2SectionOf(pathname);
   const { offerId } = useSelectedOffer();
-  const legCatalogue = useLegCatalogue();
   const { missions, crews } = useMissions(orgId, brandId);
   const activeCrews = crews.filter((c) => c.running > 0);
   // The same read and the same order as the Sales path page's Campaigns section
-  // (proactive first, ROI high to low), so the two lists never disagree.
-  const salesPaths = useAuthQuery(
-    ["offerSalesPaths", brandId, offerId, "catalogue"],
-    () => getOfferSalesPaths(brandId, offerId as string, "catalogue"),
-    { enabled: !!brandId && !!offerId },
-  );
-  const campaignOrder = useMemo(() => {
-    const order = new Map<string, number>();
-    const listed = campaignsOfOffer(salesPaths.data?.campaigns ?? [], salesPaths.data?.paths ?? [], roiUnavailableLabel);
-    sortCampaigns(listed, () => true).forEach((c, i) => order.set(campaignKey(c.featureSlug, c.legKey), i));
-    return order;
-  }, [salesPaths.data]);
-  const activeMissions = missions
-    .filter((m) => m.running)
-    .map((m) => ({ m, at: campaignOrder.get(campaignKey(m.row.campaign.featureSlug ?? "", m.row.campaign.legKey ?? "")) ?? Number.MAX_SAFE_INTEGER }))
-    .sort((a, b) => a.at - b.at)
-    .map(({ m }) => m);
+  // (proactive first, ROI high to low), so the two lists never disagree. Today reads it too.
+  const { campaigns: activeMissions } = useOngoingCampaigns(orgId, brandId, offerId);
   const buckets = useBucketCounts(brandId).data;
   const standings = useStandingCounts(brandId).data;
   // Deals badge = the people still in play on the Deals board (Leads + Sales interest +
@@ -288,13 +268,10 @@ function V2Sidebar() {
             dot. Nothing on, no group (owner 2026-10-05). */}
         {offerId && activeMissions.length > 0 && (
           <Group title="Campaigns">
-            {activeMissions.map((m) => {
-              const c = m.row.campaign;
-              const name = legCatalogue.campaignNames.get(`${c.featureSlug}|${c.legKey}`) ?? null;
-              if (!name) console.error("[v2-shell] no campaignName served for a running campaign", { featureSlug: c.featureSlug, legKey: c.legKey });
+            {activeMissions.map(({ m, name }) => {
               return (
                 <NavItem
-                  key={c.id}
+                  key={m.row.campaign.id}
                   href={m.href}
                   label={name ?? m.crew.name}
                   icon={name ? <PathAvatar name={name} size={16} /> : <CrewMark color={m.crew.color} glyph={m.crew.glyph} size={16} />}
@@ -384,7 +361,7 @@ function V2Sidebar() {
 
         {staffMode && activeMissions.length > 0 && (
           <Group title="Missions">
-            {activeMissions.map((m) => (
+            {activeMissions.map(({ m }) => (
               <NavItem
                 key={m.row.campaign.id}
                 href={v2CampaignHref(orgId, brandId, m.row.campaign.id)}
