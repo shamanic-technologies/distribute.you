@@ -10,7 +10,8 @@ import { V2BrandPicker } from "@/components/v2/brand-picker";
  *
  * An org not set up yet (its first brand's setup stopped before the campaign launched)
  * never redirects to a brand: every brand page is behind the edge's first-run gate, which
- * would send the person to the old onboarding. The picker resumes the v2 modal instead.
+ * would send the person to the old onboarding. The picker resumes it in the brand walk
+ * (`/v2/orgs/:orgId/new-brand?brand=`) instead.
  */
 export default async function V2OrgPage({ params }: { params: Promise<{ orgId: string }> }) {
   const { orgId } = await params;

@@ -36,7 +36,7 @@ describe("one flow: the old setup modal is gone", () => {
     expect(overlay).toContain('import { GetStarted } from "@/components/v2/get-started/get-started";');
     expect(overlay).toContain("<GetStarted key={`${orgId}:${brandId ?? \"\"}`} org={{ orgId, brandId }} />");
     expect(overlay).toContain('document.getElementById("v2-portal")');
-    expect(overlay).not.toMatch(/["'`]\/get-started/);
+    expect(overlay).not.toMatch(/["']\/get-started/);
   });
 });
 

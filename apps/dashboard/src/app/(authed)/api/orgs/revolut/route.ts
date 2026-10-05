@@ -5,8 +5,8 @@ import { resolveIdentity } from "@/lib/client-service";
 
 /**
  * Declare that the org the request is scoped to pays through Revolut (owner-decided
- * 2026-09-27 for orgs set up in the v2 modal). Called by the modal right before its
- * payment step asks for a card or a top-up, with a token minted for the org, so
+ * 2026-09-27 for orgs set up from the dashboard). Called by the brand walk's "Choose your
+ * plan" (`org-launch.tsx`) right before it asks for a card, with a token minted for the org, so
  * `auth().orgId` is that org and never a value the client picked.
  *
  * An org that already holds a card elsewhere keeps paying there: billing answers 409,
