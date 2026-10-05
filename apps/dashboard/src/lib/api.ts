@@ -6810,6 +6810,33 @@ export async function getLeadBucketCounts(
 }
 
 /**
+ * What a campaign performing a CONVERSATION leg (AI Meeting Booking) did with the people
+ * handed to it, in PEOPLE, since inception (lead-service `GET /orgs/leads/conversation-counts`,
+ * sales-lead-service #680). Such a campaign holds nobody, so the campaign-scoped bucket counts
+ * read zero for it; this is its read. A partition: handed = ongoing + meetingsBooked + dropped.
+ */
+const ConversationCountsSchema = z.object({
+  campaignId: z.string(),
+  conversations: z.object({
+    handed: z.number(),
+    ongoing: z.number(),
+    meetingsBooked: z.number(),
+    dropped: z.number(),
+  }),
+});
+export type ConversationCounts = z.infer<typeof ConversationCountsSchema>["conversations"];
+
+export async function getConversationCounts(campaignId: string, token?: string): Promise<ConversationCounts> {
+  const raw = await apiCall<unknown>(`/leads/conversation-counts?campaignId=${encodeURIComponent(campaignId)}`, { token });
+  const parsed = ConversationCountsSchema.safeParse(raw);
+  if (!parsed.success) {
+    console.error("[dashboard] getConversationCounts: response shape mismatch", { issues: parsed.error.issues, raw });
+    throw new Error("[dashboard] getConversationCounts: invalid response shape");
+  }
+  return parsed.data.conversations;
+}
+
+/**
  * Every STANDING's population for a scope, without a single lead row.
  *
  * This is what lets the board's columns state their true size. A standing is a
