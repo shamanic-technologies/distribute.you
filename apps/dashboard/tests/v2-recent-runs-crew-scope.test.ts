@@ -43,6 +43,11 @@ describe("v2 recent runs are crew runs", () => {
     expect(today).toContain("{showReplies && (");
     expect(today).toContain("{showVisits && (");
     expect(today).toContain("{showMeetings && (");
+    // Each row states the campaign's full definition, the Sales path page's own leg, and no spend.
+    const line = today.slice(today.indexOf("function CampaignLine("));
+    expect(line).toContain("<CampaignLeg campaign={campaign}");
+    expect(line).not.toContain("spent");
+    expect(src("components/v2/offer-campaigns.tsx")).toContain("<CampaignLeg campaign={campaign} />");
     // The sidebar reads the same list.
     expect(src("components/v2/v2-shell.tsx")).toContain("useOngoingCampaigns(orgId, brandId, offerId)");
   });
