@@ -1,7 +1,7 @@
-"use client";
+import { redirect } from "next/navigation";
 
-import { V2OfferChannelsPage } from "@/components/v2/offer-channels-page";
-
-export default function Page() {
-  return <V2OfferChannelsPage />;
+/** The offer's Channels list became its Campaigns (owner 2026-10-05). Old links land there. */
+export default async function Page({ params }: { params: Promise<{ orgId: string; brandId: string; offerId: string }> }) {
+  const { orgId, brandId, offerId } = await params;
+  redirect(`/v2/orgs/${encodeURIComponent(orgId)}/brands/${encodeURIComponent(brandId)}/offers/${encodeURIComponent(offerId)}/campaigns`);
 }
