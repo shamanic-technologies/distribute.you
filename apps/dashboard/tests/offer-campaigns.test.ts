@@ -1,26 +1,35 @@
 import { describe, expect, it } from "vitest";
-import { campaignsOfPaths, campaignTag, sortCampaigns, type OfferCampaign } from "../src/lib/offer-campaigns";
+import { campaignsOfOffer, campaignTag, sortCampaigns, type OfferCampaign } from "../src/lib/offer-campaigns";
 
 const step = (label: string, key: string) => ({ key, label });
-const coldEmail = { slug: "sales-cold-email-outreach", name: "Sales Cold Email Outreach", managed: true, operatedBy: "platform", campaignName: "Jubilation" };
-const booking = { slug: "ai-meeting-booking", name: "AI Meeting Booking", managed: true, operatedBy: "platform", campaignName: "Prism" };
-const team = { slug: "your-team-closing-calls", name: "Your Team Closing Calls", managed: false, operatedBy: "customer", campaignName: "Rise" };
 
 describe("offer campaigns", () => {
-  it("lists each channel x leg once, in path order, without the customer's team", () => {
-    const list = campaignsOfPaths([
+  it("keeps the served campaigns a ticked path uses, run by a channel, with step labels from the paths", () => {
+    const served = (o: Partial<Parameters<typeof campaignsOfOffer>[0][number]>) => ({
+      channelSlug: "sales-cold-email-outreach", channelName: "Sales Cold Email Outreach", legKey: "start_to_conversation", campaignName: "Jubilation",
+      reactive: false, managed: true, operatedBy: "platform", selectedPathCount: 1, roi: 2.48, roiUnavailableReason: null, ...o,
+    });
+    const paths = [
       {
         legs: [
-          { legKey: "start_to_conversation", workedBy: "platform", reactive: false, fromStep: null, toStep: step("Positive reply", "conversation"), channel: coldEmail },
-          { legKey: "conversation_to_meeting_booked", workedBy: "platform", reactive: true, fromStep: step("Positive reply", "conversation"), toStep: step("Meeting booked", "meeting_booked"), channel: booking },
-          { legKey: "meeting_attended_to_paid_client", workedBy: "human", reactive: true, fromStep: step("Meeting attended", "meeting_attended"), toStep: step("Paid client", "paid_client"), channel: team },
+          { legKey: "start_to_conversation", fromStep: null, toStep: step("Positive reply", "conversation") },
+          { legKey: "conversation_to_meeting_booked", fromStep: step("Positive reply", "conversation"), toStep: step("Meeting booked", "meeting_booked") },
         ],
       },
-      { legs: [{ legKey: "start_to_conversation", workedBy: "platform", reactive: false, fromStep: null, toStep: step("Positive reply", "conversation"), channel: coldEmail }] },
-    ]);
-    expect(list.map((c) => [c.name, c.reactive])).toEqual([
-      ["Jubilation", false],
-      ["Prism", true],
+    ];
+    const list = campaignsOfOffer(
+      [
+        served({}),
+        served({ channelSlug: "ai-meeting-booking", channelName: "AI Meeting Booking", legKey: "conversation_to_meeting_booked", campaignName: "Prism", reactive: true }),
+        served({ legKey: "start_to_website_visit", campaignName: "Lumen", selectedPathCount: 0, roi: null, roiUnavailableReason: "not_on_a_selected_path" }),
+        served({ channelSlug: "your-team-closing-calls", operatedBy: "customer", campaignName: "Rise" }),
+      ],
+      paths,
+      (r) => r,
+    );
+    expect(list.map((c) => [c.name, c.reactive, c.fromLabel, c.toLabel, c.roi])).toEqual([
+      ["Jubilation", false, null, "Positive reply", 2.48],
+      ["Prism", true, "Positive reply", "Meeting booked", 2.48],
     ]);
   });
   it("tags a campaign by when it works", () => {

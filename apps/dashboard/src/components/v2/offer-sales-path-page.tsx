@@ -17,7 +17,8 @@ import { useSalesPathChannels } from "@/lib/use-sales-path-channels";
 import { acceptedChannels, selectedPathKeys, toggleChannel, togglePath } from "@/lib/offer-active-sales-paths";
 import { OfferChannelsPicker } from "@/components/v2/offer-channels-picker";
 import { OfferCampaigns } from "@/components/v2/offer-campaigns";
-import { campaignsOfPaths } from "@/lib/offer-campaigns";
+import { campaignsOfOffer } from "@/lib/offer-campaigns";
+import { roiUnavailableLabel } from "@/lib/offer-sales-paths";
 import { useLegCatalogue } from "@/lib/use-leg-catalogue";
 import { useAcquisitionChannels } from "@/lib/use-acquisition-channels";
 import { v2OfferHref } from "@/lib/v2/routes";
@@ -130,7 +131,11 @@ export function V2OfferSalesPathPage() {
     setPathDraft(new Set(next));
     setError(null);
     saveOfferSelectedSalesPaths(brandId, offerId, next)
-      .then((saved) => qc.setQueryData(["offerSelectedSalesPaths", brandId, offerId], saved))
+      .then((saved) => {
+        qc.setQueryData(["offerSelectedSalesPaths", brandId, offerId], saved);
+        // The campaigns and their ROI are features-service's answer over the ticked paths.
+        return qc.invalidateQueries({ queryKey: ["offerSalesPaths", brandId, offerId] });
+      })
       .catch((err) => {
         console.error("[offer-sales-path] path selection save failed", err);
         setPathDraft(null);
@@ -138,10 +143,11 @@ export function V2OfferSalesPathPage() {
       });
   };
 
-  // Every channel x leg the TICKED paths use (owner 2026-10-05): a campaign no ticked path uses is not listed.
+  // Every channel x leg the TICKED paths use (owner 2026-10-05), as features-service serves
+  // them with their ROI; a campaign no ticked path uses is not listed.
   const campaigns = useMemo(
-    () => campaignsOfPaths((paths.data?.paths ?? []).filter((p) => selectedPaths?.has(p.combinationKey))),
-    [paths.data, selectedPaths],
+    () => campaignsOfOffer(paths.data?.campaigns ?? [], paths.data?.paths ?? [], roiUnavailableLabel),
+    [paths.data],
   );
 
   const selection = draft ?? served;

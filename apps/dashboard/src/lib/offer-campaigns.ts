@@ -38,43 +38,53 @@ export function campaignTag(c: Pick<OfferCampaign, "reactive" | "fromKey" | "fro
   return `Reactive on ${stepPlural(c.fromKey, c.fromLabel ?? c.fromKey).toLowerCase()}`;
 }
 
-type PathLegLike = {
+type PathLegLike = { legKey: string; fromStep: { key: string; label: string } | null; toStep: { label: string } };
+type ServedCampaign = {
+  channelSlug: string;
+  channelName: string;
   legKey: string;
-  workedBy: string;
-  reactive?: boolean;
-  fromStep: { key: string; label: string } | null;
-  toStep: { label: string };
-  channel: { slug: string | null; name: string | null; managed?: boolean; operatedBy?: string; campaignName?: string | null } | null;
+  campaignName: string | null;
+  reactive: boolean;
+  managed: boolean;
+  operatedBy: string;
+  selectedPathCount: number;
+  roi: number | null;
+  roiUnavailableReason: string | null;
 };
 
 /**
- * Every campaign the paths use, once each, in the order the paths (ROI desc) first meet
- * them. A leg the customer's own team works is not a campaign of ours.
+ * The campaigns features-service serves, kept to those a TICKED path uses (owner
+ * 2026-10-05) and run by a channel (the customer's own team is not a campaign of ours).
+ * Step labels are looked up on the paths' legs (a display join, nothing computed).
  */
-export function campaignsOfPaths(paths: ReadonlyArray<{ legs: readonly PathLegLike[] }>): OfferCampaign[] {
-  const seen = new Set<string>();
+export function campaignsOfOffer(
+  served: readonly ServedCampaign[],
+  paths: ReadonlyArray<{ legs: readonly PathLegLike[] }>,
+  roiLabel: (reason: string | null) => string | null,
+): OfferCampaign[] {
+  const legs = new Map<string, PathLegLike>();
+  for (const p of paths) for (const l of p.legs) if (!legs.has(l.legKey)) legs.set(l.legKey, l);
   const out: OfferCampaign[] = [];
-  for (const p of paths) {
-    for (const leg of p.legs) {
-      const c = leg.channel;
-      if (!c?.slug || !c.name || leg.workedBy === "human" || c.operatedBy === "customer") continue;
-      const key = campaignKey(c.slug, leg.legKey);
-      if (seen.has(key)) continue;
-      seen.add(key);
-      out.push({
-        featureSlug: c.slug,
-        legKey: leg.legKey,
-        name: c.campaignName ?? null,
-        channelName: c.name,
-        managed: c.managed,
-        reactive: leg.reactive === true,
-        roi: null,
-        roiUnavailable: "Not served yet",
-        fromKey: leg.fromStep?.key ?? null,
-        fromLabel: leg.fromStep?.label ?? null,
-        toLabel: leg.toStep.label,
-      });
+  for (const c of served) {
+    if (c.selectedPathCount <= 0 || c.operatedBy === "customer") continue;
+    const leg = legs.get(c.legKey);
+    if (!leg) {
+      console.error("[offer-campaigns] a served campaign names a leg no listed path has", c);
+      continue;
     }
+    out.push({
+      featureSlug: c.channelSlug,
+      legKey: c.legKey,
+      name: c.campaignName,
+      channelName: c.channelName,
+      managed: c.managed,
+      reactive: c.reactive,
+      fromKey: leg.fromStep?.key ?? null,
+      fromLabel: leg.fromStep?.label ?? null,
+      toLabel: leg.toStep.label,
+      roi: c.roi,
+      roiUnavailable: roiLabel(c.roiUnavailableReason),
+    });
   }
   return out;
 }
