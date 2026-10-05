@@ -10,7 +10,8 @@ import { createCampaignForPair } from "@/lib/start-pair";
 import { invalidateCampaignMoney } from "@/lib/write-invalidation";
 import { useAcquisitionChannels } from "@/lib/use-acquisition-channels";
 import { useMissions, type Mission } from "@/components/v2/use-missions";
-import { ChannelChip, PathAvatar } from "@/components/v2/offer-sales-paths";
+import { EXPECTED_ROI_TIP } from "@/lib/offer-sales-paths";
+import { ChannelChip, ExpectedLabel, PathAvatar } from "@/components/v2/offer-sales-paths";
 import { EmptyNote, SectionTitle, Shimmer, StateDot } from "@/components/v2/ui";
 
 /**
@@ -69,7 +70,9 @@ export function OfferCampaigns({
                   <th className="k-label px-3 py-2.5 pl-4 text-left font-normal">Campaign</th>
                   <th className="k-label px-3 py-2.5 text-left font-normal">Works</th>
                   <th className="k-label px-3 py-2.5 text-left font-normal">Type</th>
-                  <th className="k-label px-3 py-2.5 text-right font-normal">ROI</th>
+                  <th className="k-label px-3 py-2.5 text-right font-normal">
+                    <ExpectedLabel tip={EXPECTED_ROI_TIP}>ROI</ExpectedLabel>
+                  </th>
                   <th className="k-label w-[150px] px-3 py-2.5 pr-4 text-right font-normal">Status</th>
                 </tr>
               </thead>
