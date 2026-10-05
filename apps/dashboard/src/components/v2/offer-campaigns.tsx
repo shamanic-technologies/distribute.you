@@ -464,11 +464,11 @@ function BudgetModal({
   }, [onClose, isPending]);
 
   const usd = parseWholeUsd(value);
-  // A campaign with no budget yet has no row, so no floor or cap here: billing judges the write.
-  // The row's floor and cap are in ITS period; in the other one billing judges too.
+  // A campaign with no budget yet has no row, so no floor here: billing judges the write.
+  // The row's floor is in ITS period; in the other one billing judges too. There is no
+  // maximum: a customer puts the number they want (owner 2026-10-05).
   const samePeriod = per === unit;
   const minUsd = samePeriod && budget?.minimumCents ? Math.ceil(budget.minimumCents / 100) : null;
-  const maxUsd = samePeriod && budget?.capCents ? Math.floor(budget.capCents / 100) : null;
   const problem =
     value.trim() === ""
       ? null
@@ -476,9 +476,7 @@ function BudgetModal({
         ? "Type a whole number of dollars."
         : minUsd !== null && usd < minUsd
           ? `This channel needs at least $${minUsd.toLocaleString("en-US")} a ${per}.`
-          : maxUsd !== null && usd > maxUsd
-            ? `The most you can set here is $${maxUsd.toLocaleString("en-US")} a ${per}.`
-            : null;
+          : null;
   const submittable = usd !== null && problem === null;
   const status = error instanceof ApiError ? error.status : null;
   const title = per === "month" ? (campaign.reactive ? "Monthly max" : "Monthly budget") : campaign.reactive ? "Daily max" : "Daily budget";
