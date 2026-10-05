@@ -225,7 +225,7 @@ export function V2OfferSalesPathPage() {
             </div>
           )
         ) : (
-          <OfferChannelsPicker channels={eligible.channels} accepted={accepted} onToggle={onToggleChannel} />
+          <OfferChannelsPicker channels={eligible.channels} accepted={accepted} onToggle={onToggleChannel} orgId={orgId} brandId={brandId} offerId={offerId} />
         )}
       </div>
       <div className="mt-8">
