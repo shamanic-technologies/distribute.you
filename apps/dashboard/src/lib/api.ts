@@ -1,6 +1,11 @@
 import { parseOfferSalesPaths, type OfferSalesPaths } from "./offer-sales-paths";
-import { OfferChannelsSchema, parseOrThrow, type OfferChannels } from "./offer-active-sales-paths";
-import { OfferCampaignBudgetsSchema, type OfferCampaignBudgets } from "./offer-campaign-budgets";
+import {
+  OfferChannelsSchema,
+  OfferSelectedSalesPathsSchema,
+  parseOrThrow,
+  type OfferChannels,
+  type OfferSelectedSalesPaths,
+} from "./offer-active-sales-paths";
 import { parseBrandSalesBudget, type BrandSalesBudget } from "./brand-sales-budget";
 import { browserHasAnonSession } from "./anon-session-cookie";
 import { offerArchiveRefusalSentence } from "./offer-archive";
@@ -2138,33 +2143,19 @@ export async function saveOfferChannels(brandId: string, offerId: string, channe
   return parseOrThrow(OfferChannelsSchema, raw, "saveOfferChannels");
 }
 
-/**
- * GET /brands/:brandId/offers/:offerId/campaign-budgets — the offer's per-campaign budgets
- * (billing-service): every stored one, plus a "not set" row for each `featureSlug:legKey`
- * in `campaigns` (`campaignsQuery`). Each row carries its minimum and (reactive) cap.
- */
-export async function getOfferCampaignBudgets(brandId: string, offerId: string, campaigns: string): Promise<OfferCampaignBudgets> {
-  const raw = await apiCall<unknown>(
-    `/brands/${brandId}/offers/${offerId}/campaign-budgets?campaigns=${encodeURIComponent(campaigns)}`,
-  );
-  return parseOrThrow(OfferCampaignBudgetsSchema, raw, "getOfferCampaignBudgets");
+/** GET /brands/:brandId/offers/:offerId/selected-sales-paths — the sales paths the customer ticked (brand-service). */
+export async function getOfferSelectedSalesPaths(brandId: string, offerId: string): Promise<OfferSelectedSalesPaths> {
+  const raw = await apiCall<unknown>(`/brands/${brandId}/offers/${offerId}/selected-sales-paths`);
+  return parseOrThrow(OfferSelectedSalesPathsSchema, raw, "getOfferSelectedSalesPaths");
 }
 
-/**
- * PUT /brands/:brandId/offers/:offerId/campaign-budgets — set one campaign's budget (a MAX
- * for a reactive one). billing applies every rule and refuses with a `code`
- * (`budgetRefusalCopy`); a write takes the brand off its single global budget.
- */
-export async function setOfferCampaignBudget(
-  brandId: string,
-  offerId: string,
-  item: { featureSlug: string; legKey: string; budgetCents: number },
-): Promise<OfferCampaignBudgets> {
-  const raw = await apiCall<unknown>(`/brands/${brandId}/offers/${offerId}/campaign-budgets`, {
+/** PUT /brands/:brandId/offers/:offerId/selected-sales-paths — replace the whole list of ticked paths. */
+export async function saveOfferSelectedSalesPaths(brandId: string, offerId: string, combinationKeys: string[]): Promise<OfferSelectedSalesPaths> {
+  const raw = await apiCall<unknown>(`/brands/${brandId}/offers/${offerId}/selected-sales-paths`, {
     method: "PUT",
-    body: { items: [item] },
+    body: { combinationKeys },
   });
-  return parseOrThrow(OfferCampaignBudgetsSchema, raw, "setOfferCampaignBudget");
+  return parseOrThrow(OfferSelectedSalesPathsSchema, raw, "saveOfferSelectedSalesPaths");
 }
 
 /** GET /offers/:offerId/sales-paths — the offer's sales paths ranked by ROI (features-service). */

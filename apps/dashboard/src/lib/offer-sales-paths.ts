@@ -110,6 +110,28 @@ const PathSchema = z
   })
   .passthrough();
 
+/** One CAMPAIGN (channel x leg) the listed paths use, with its served ROI (features-service). */
+const CampaignSchema = z
+  .object({
+    campaignKey: z.string(),
+    channelSlug: z.string(),
+    channelName: z.string(),
+    legKey: z.string(),
+    campaignName: z.string().nullable(),
+    reactive: z.boolean(),
+    managed: z.boolean(),
+    operatedBy: z.string(),
+    pathCount: z.number(),
+    /** How many of the offer's TICKED paths use it; 0 = not on a ticked path. */
+    selectedPathCount: z.number(),
+    /** The best ROI among the ticked paths that run it (null with a reason). */
+    roi: z.number().nullable(),
+    roiCombinationKey: z.string().nullable(),
+    roiUnavailableReason: z.string().nullable(),
+  })
+  .passthrough();
+export type SalesPathCampaign = z.infer<typeof CampaignSchema>;
+
 export const OfferSalesPathsSchema = z
   .object({
     offerId: z.string(),
@@ -122,6 +144,8 @@ export const OfferSalesPathsSchema = z
     unknownLegKeys: z.array(z.string()),
     lifetimeRevenueUsd: z.number().nullable(),
     paths: z.array(PathSchema),
+    /** Every campaign the listed paths use (features-service v0.179.59; absent before it). */
+    campaigns: z.array(CampaignSchema).optional(),
   })
   .passthrough();
 
@@ -206,6 +230,10 @@ export function roiUnavailableLabel(reason: string | null): string | null {
       return "State this offer's lifetime revenue";
     case "no_platform_cost":
       return "Nothing on this path is run by us";
+    case "not_on_a_selected_path":
+      return "No ticked path uses it";
+    case "selected_paths_unavailable":
+      return "Could not read your ticked paths";
     default:
       return reason;
   }

@@ -4,12 +4,21 @@ import { useEffect, useMemo, useState } from "react";
 import { useParams } from "next/navigation";
 import { useQueryClient } from "@tanstack/react-query";
 import { useAuthQuery } from "@/lib/use-auth-query";
-import { getOfferChannels, getOfferSalesPath, getOfferSalesPaths, saveOfferChannels, saveOfferSalesPath } from "@/lib/api";
+import {
+  getOfferChannels,
+  getOfferSalesPath,
+  getOfferSalesPaths,
+  getOfferSelectedSalesPaths,
+  saveOfferChannels,
+  saveOfferSalesPath,
+  saveOfferSelectedSalesPaths,
+} from "@/lib/api";
 import { useSalesPathChannels } from "@/lib/use-sales-path-channels";
-import { acceptedChannels, toggleChannel } from "@/lib/offer-active-sales-paths";
+import { acceptedChannels, selectedPathKeys, toggleChannel, togglePath } from "@/lib/offer-active-sales-paths";
 import { OfferChannelsPicker } from "@/components/v2/offer-channels-picker";
 import { OfferCampaigns } from "@/components/v2/offer-campaigns";
-import { campaignsOfPaths } from "@/lib/offer-campaign-budgets";
+import { campaignsOfOffer } from "@/lib/offer-campaigns";
+import { roiUnavailableLabel } from "@/lib/offer-sales-paths";
 import { useLegCatalogue } from "@/lib/use-leg-catalogue";
 import { useAcquisitionChannels } from "@/lib/use-acquisition-channels";
 import { v2OfferHref } from "@/lib/v2/routes";
@@ -18,8 +27,6 @@ import { EmptyNote, Shimmer } from "@/components/v2/ui";
 import { V2Page, useOfferName } from "@/components/v2/setup-pages";
 import { OfferSalesPath } from "@/components/v2/offer-sales-path";
 import { OfferSalesPaths } from "@/components/v2/offer-sales-paths";
-import { BrandSalesBudgetCard } from "@/components/v2/brand-sales-budget-card";
-import { useDailyBudgetHidden } from "@/lib/use-daily-budget-hidden";
 
 /**
  * How an offer sells, read from the top down: the path we run (Active, framed) above the
@@ -31,7 +38,6 @@ export function V2OfferSalesPathPage() {
   const p = useParams<{ orgId: string; brandId: string; offerId: string }>();
   const { orgId, brandId, offerId } = p;
   const name = useOfferName(brandId, offerId);
-  const budgetHidden = useDailyBudgetHidden();
   const catalogue = useLegCatalogue();
   const channels = useAcquisitionChannels();
   const qc = useQueryClient();
@@ -109,8 +115,40 @@ export function V2OfferSalesPathPage() {
       });
   };
 
-  // Every channel x leg the listed paths use: what runs, and its budget, is set there.
-  const campaigns = useMemo(() => campaignsOfPaths(paths.data?.paths ?? []), [paths.data]);
+  // The paths the customer ticked (brand-service); never stated = every path above 1x.
+  const selectedQ = useAuthQuery(["offerSelectedSalesPaths", brandId, offerId], () => getOfferSelectedSalesPaths(brandId, offerId), {
+    enabled: !!offerId,
+  });
+  const [pathDraft, setPathDraft] = useState<ReadonlySet<string> | null>(null);
+  useEffect(() => setPathDraft(null), [selectedQ.data]);
+  const selectedPaths = useMemo(
+    () => pathDraft ?? (selectedQ.data && paths.data ? selectedPathKeys(selectedQ.data, paths.data.paths) : null),
+    [pathDraft, selectedQ.data, paths.data],
+  );
+  const onTogglePath = (key: string, on: boolean) => {
+    if (!selectedPaths) return;
+    const next = togglePath(selectedPaths, key, on);
+    setPathDraft(new Set(next));
+    setError(null);
+    saveOfferSelectedSalesPaths(brandId, offerId, next)
+      .then((saved) => {
+        qc.setQueryData(["offerSelectedSalesPaths", brandId, offerId], saved);
+        // The campaigns and their ROI are features-service's answer over the ticked paths.
+        return qc.invalidateQueries({ queryKey: ["offerSalesPaths", brandId, offerId] });
+      })
+      .catch((err) => {
+        console.error("[offer-sales-path] path selection save failed", err);
+        setPathDraft(null);
+        setError("Could not save this change. Try again.");
+      });
+  };
+
+  // Every channel x leg the TICKED paths use (owner 2026-10-05), as features-service serves
+  // them with their ROI; a campaign no ticked path uses is not listed.
+  const campaigns = useMemo(
+    () => campaignsOfOffer(paths.data?.campaigns ?? [], paths.data?.paths ?? [], roiUnavailableLabel),
+    [paths.data],
+  );
 
   const selection = draft ?? served;
   const settled = q.isFetchedAfterMount || q.data !== undefined;
@@ -126,13 +164,16 @@ export function V2OfferSalesPathPage() {
       width="max-w-[1280px]"
     >
       {error && <p className="mb-4 text-[13px] text-[var(--data-rose)]">{error}</p>}
+      {selectedQ.isError && !selectedQ.data && (
+        <p className="mb-4 text-[13px] text-[var(--data-rose)]">Could not read which sales paths you ticked.</p>
+      )}
       <div className="mb-8">
         <OfferCampaigns
           orgId={orgId}
           brandId={brandId}
           offerId={offerId}
           campaigns={campaigns}
-          pending={paths.isPending && !paths.isError}
+          pending={(paths.isPending && !paths.isError) || (!selectedPaths && !selectedQ.isError)}
         />
       </div>
       <OfferSalesPaths
@@ -140,6 +181,8 @@ export function V2OfferSalesPathPage() {
         pending={paths.isPending && !paths.isError}
         failed={paths.isError}
         table
+        selected={selectedPaths ?? undefined}
+        onToggleSelected={selectedPaths ? onTogglePath : undefined}
         intro=""
       />
       <div className="mt-8">
@@ -176,10 +219,6 @@ export function V2OfferSalesPathPage() {
           legsFirst
         />
       )}
-      </div>
-      <div className="mt-8 space-y-8">
-        {/* A plan's $50/day is fixed (owner 2026-10-03): no budget card for a subscriber. */}
-        {budgetHidden ? null : <BrandSalesBudgetCard brandId={brandId} />}
       </div>
     </V2Page>
   );

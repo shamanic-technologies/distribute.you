@@ -170,9 +170,10 @@ describe("brand sales budget", () => {
 
 describe("sales path page wiring", () => {
   const page = readFileSync(join(__dirname, "../src/components/v2/offer-sales-path-page.tsx"), "utf8");
-  it("mounts the paths and the budget", () => {
+  it("mounts the campaigns and the paths, and no budget card (owner 2026-10-05)", () => {
+    expect(page).toContain("<OfferCampaigns");
     expect(page).toContain("<OfferSalesPaths");
-    expect(page).toContain("<BrandSalesBudgetCard");
+    expect(page).not.toContain("BrandSalesBudgetCard");
   });
   it("re-reads the paths after every save", () => {
     expect(page).toContain('queryKey: ["offerSalesPaths", brandId, offerId]');
