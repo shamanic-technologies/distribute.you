@@ -158,6 +158,7 @@ export const PERSISTABLE_QUERY_ROOTS = new Set([
   "brands",
   // Every campaign ceiling billing holds for a brand, per (offer, leg, channel).
   "brandCampaignBudgets",
+  "offerCampaignBudgets",
   "brandSalesRep",
   // What the brand may actually spend today (campaign status joined to its ceilings,
   // served by campaign-service). An unlisted root is default-OFF, so the header's

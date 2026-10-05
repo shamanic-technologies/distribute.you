@@ -67,6 +67,7 @@ export const CAMPAIGN_MONEY_ROOTS = [
   "brandDailyBudget",
   "brandSpendableBudget",
   "brandCampaignBudgets",
+  "offerCampaignBudgets",
   "brandSalesBudget",
 ] as const;
 
