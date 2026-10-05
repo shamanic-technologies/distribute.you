@@ -318,11 +318,15 @@ function CampaignStatus({
   );
 }
 
-/** "$50/day", "Up to $10/day" for a reactive one (a max), "Not set" when billing holds none. */
-function budgetLabel(campaign: OfferCampaign, cents: number | null): string {
+/**
+ * The budget in the unit it was stated in: "$50/day", "$90/month", "Up to $9/month" for a
+ * reactive one (a max), "Not set" when billing holds none. A subscriber's $99 plan reads
+ * as "$90/month" + "Up to $9/month", never as its /30 daily pace ("$3/day").
+ */
+function budgetLabel(campaign: OfferCampaign, cents: number | null, period: "day" | "month"): string {
   if (cents === null) return "Not set";
-  const perDay = `${fmtDailyBudgetUsd(cents)}/day`;
-  return campaign.reactive ? `Up to ${perDay}` : perDay;
+  const amount = `${fmtDailyBudgetUsd(cents)}/${period}`;
+  return campaign.reactive ? `Up to ${amount}` : amount;
 }
 
 /**
@@ -353,9 +357,10 @@ function CampaignBudget({
   if (error || period === null) return <span className="k-fg3 text-[12px]">Could not load</span>;
   if (campaign.managed === false) return <span className="k-fg4">—</span>;
 
-  // billing serves a row only for a campaign whose budget is set.
-  const cents = budget?.dailyBudgetCents ?? null;
-  const label = budgetLabel(campaign, cents);
+  // billing serves a row only for a campaign whose budget is set, in the period it was stated in.
+  const unit = budget?.period ?? period;
+  const label = budgetLabel(campaign, budget?.budgetCents ?? null, unit);
+  const cents = budget?.budgetCents ?? null;
   if (period !== "day" || (budget && !budget.budgetable)) {
     return <span className="tabular-nums">{label}</span>;
   }
@@ -367,7 +372,7 @@ function CampaignBudget({
           <path d="M2.5 4l2.5 2.5L7.5 4" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" />
         </svg>
       </button>
-      {open && <BudgetModal brandId={brandId} offerId={offerId} campaign={campaign} budget={budget} onClose={() => setOpen(false)} />}
+      {open && <BudgetModal brandId={brandId} offerId={offerId} campaign={campaign} budget={budget} unit={unit} onClose={() => setOpen(false)} />}
     </>
   );
 }
@@ -385,12 +390,14 @@ function BudgetModal({
   offerId,
   campaign,
   budget,
+  unit,
   onClose,
 }: {
   brandId: string;
   offerId: string;
   campaign: OfferCampaign;
   budget: OfferCampaignBudgetItem | null;
+  unit: "day" | "month";
   onClose: () => void;
 }) {
   const qc = useQueryClient();
@@ -424,13 +431,13 @@ function BudgetModal({
       : usd === null
         ? "Type a whole number of dollars."
         : minUsd !== null && usd < minUsd
-          ? `This channel needs at least $${minUsd.toLocaleString("en-US")} a day.`
+          ? `This channel needs at least $${minUsd.toLocaleString("en-US")} a ${unit}.`
           : maxUsd !== null && usd > maxUsd
-            ? `The most you can set here is $${maxUsd.toLocaleString("en-US")} a day.`
+            ? `The most you can set here is $${maxUsd.toLocaleString("en-US")} a ${unit}.`
             : null;
   const submittable = usd !== null && problem === null;
   const status = error instanceof ApiError ? error.status : null;
-  const title = campaign.reactive ? "Daily max" : "Daily budget";
+  const title = unit === "month" ? (campaign.reactive ? "Monthly max" : "Monthly budget") : campaign.reactive ? "Daily max" : "Daily budget";
 
   if (typeof document === "undefined") return null;
   const host = document.getElementById("v2-portal") ?? document.body;
@@ -474,10 +481,10 @@ function BudgetModal({
               aria-invalid={problem !== null}
               className={`k-input w-[120px] px-2.5 tabular-nums ${problem ? "shadow-[inset_0_0_0_1px_var(--data-rose)]" : ""}`}
             />
-            <span className="k-fg2">/ day</span>
+            <span className="k-fg2">/ {unit}</span>
           </div>
           <p className={`mt-1.5 text-[12px] leading-[18px] ${problem ? "text-[var(--data-rose)]" : "k-fg3"}`}>
-            {problem ?? (campaign.reactive ? "We spend this much a day at most, only when leads reach this step." : "We spend up to this much a day on this campaign.")}
+            {problem ?? (campaign.reactive ? `We spend this much a ${unit} at most, only when leads reach this step.` : `We spend up to this much a ${unit} on this campaign.`)}
           </p>
           {error !== null && (
             <p role="alert" className="mt-3 text-[13px] text-[var(--data-rose)]">
