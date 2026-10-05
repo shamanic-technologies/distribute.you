@@ -9,7 +9,7 @@ import { useSalesPathChannels } from "@/lib/use-sales-path-channels";
 import { acceptedChannels, toggleChannel } from "@/lib/offer-active-sales-paths";
 import { OfferChannelsPicker } from "@/components/v2/offer-channels-picker";
 import { OfferCampaigns } from "@/components/v2/offer-campaigns";
-import { campaignsOfPaths } from "@/lib/offer-campaign-budgets";
+import { campaignsOfPaths } from "@/lib/offer-campaigns";
 import { useLegCatalogue } from "@/lib/use-leg-catalogue";
 import { useAcquisitionChannels } from "@/lib/use-acquisition-channels";
 import { v2OfferHref } from "@/lib/v2/routes";
@@ -18,8 +18,6 @@ import { EmptyNote, Shimmer } from "@/components/v2/ui";
 import { V2Page, useOfferName } from "@/components/v2/setup-pages";
 import { OfferSalesPath } from "@/components/v2/offer-sales-path";
 import { OfferSalesPaths } from "@/components/v2/offer-sales-paths";
-import { BrandSalesBudgetCard } from "@/components/v2/brand-sales-budget-card";
-import { useDailyBudgetHidden } from "@/lib/use-daily-budget-hidden";
 
 /**
  * How an offer sells, read from the top down: the path we run (Active, framed) above the
@@ -31,7 +29,6 @@ export function V2OfferSalesPathPage() {
   const p = useParams<{ orgId: string; brandId: string; offerId: string }>();
   const { orgId, brandId, offerId } = p;
   const name = useOfferName(brandId, offerId);
-  const budgetHidden = useDailyBudgetHidden();
   const catalogue = useLegCatalogue();
   const channels = useAcquisitionChannels();
   const qc = useQueryClient();
@@ -176,10 +173,6 @@ export function V2OfferSalesPathPage() {
           legsFirst
         />
       )}
-      </div>
-      <div className="mt-8 space-y-8">
-        {/* A plan's $50/day is fixed (owner 2026-10-03): no budget card for a subscriber. */}
-        {budgetHidden ? null : <BrandSalesBudgetCard brandId={brandId} />}
       </div>
     </V2Page>
   );

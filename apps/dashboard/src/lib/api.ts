@@ -1,6 +1,5 @@
 import { parseOfferSalesPaths, type OfferSalesPaths } from "./offer-sales-paths";
 import { OfferChannelsSchema, parseOrThrow, type OfferChannels } from "./offer-active-sales-paths";
-import { OfferCampaignBudgetsSchema, type OfferCampaignBudgets } from "./offer-campaign-budgets";
 import { parseBrandSalesBudget, type BrandSalesBudget } from "./brand-sales-budget";
 import { browserHasAnonSession } from "./anon-session-cookie";
 import { offerArchiveRefusalSentence } from "./offer-archive";
@@ -2136,35 +2135,6 @@ export async function saveOfferChannels(brandId: string, offerId: string, channe
     body: { channelSlugs },
   });
   return parseOrThrow(OfferChannelsSchema, raw, "saveOfferChannels");
-}
-
-/**
- * GET /brands/:brandId/offers/:offerId/campaign-budgets — the offer's per-campaign budgets
- * (billing-service): every stored one, plus a "not set" row for each `featureSlug:legKey`
- * in `campaigns` (`campaignsQuery`). Each row carries its minimum and (reactive) cap.
- */
-export async function getOfferCampaignBudgets(brandId: string, offerId: string, campaigns: string): Promise<OfferCampaignBudgets> {
-  const raw = await apiCall<unknown>(
-    `/brands/${brandId}/offers/${offerId}/campaign-budgets?campaigns=${encodeURIComponent(campaigns)}`,
-  );
-  return parseOrThrow(OfferCampaignBudgetsSchema, raw, "getOfferCampaignBudgets");
-}
-
-/**
- * PUT /brands/:brandId/offers/:offerId/campaign-budgets — set one campaign's budget (a MAX
- * for a reactive one). billing applies every rule and refuses with a `code`
- * (`budgetRefusalCopy`); a write takes the brand off its single global budget.
- */
-export async function setOfferCampaignBudget(
-  brandId: string,
-  offerId: string,
-  item: { featureSlug: string; legKey: string; budgetCents: number },
-): Promise<OfferCampaignBudgets> {
-  const raw = await apiCall<unknown>(`/brands/${brandId}/offers/${offerId}/campaign-budgets`, {
-    method: "PUT",
-    body: { items: [item] },
-  });
-  return parseOrThrow(OfferCampaignBudgetsSchema, raw, "setOfferCampaignBudget");
 }
 
 /** GET /offers/:offerId/sales-paths — the offer's sales paths ranked by ROI (features-service). */
