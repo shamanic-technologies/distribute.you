@@ -20,7 +20,7 @@ describe("v2PathForV1: every v1 brand page has a v2 twin", () => {
     [`/orgs/${O}/brands/${B}/offers/of1/settings`, "", `${V}/offers/of1`],
     [`/orgs/${O}/brands/${B}/offers/of1/audiences`, "?audienceId=a", `${V}/offers/of1/targeting?audienceId=a`],
     [`/orgs/${O}/brands/${B}/offers/of1/audiences/leads`, "", `${V}/people`],
-    [`/orgs/${O}/brands/${B}/offers/of1/campaigns`, "", `${V}/missions`],
+    [`/orgs/${O}/brands/${B}/offers/of1/campaigns`, "", `${V}/campaigns`],
     [`/orgs/${O}/brands/${B}/offers/of1/campaigns/c1`, "", `${V}/campaigns/c1`],
     [`/orgs/${O}/brands/${B}/offers/of1/campaigns/c1/settings`, "", `${V}/campaigns/c1?tab=settings`],
     [`/orgs/${O}/brands/${B}/offers/of1/campaigns/c1/leads`, "", `${V}/campaigns/c1?tab=sent`],

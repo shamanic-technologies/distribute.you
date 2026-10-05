@@ -15,12 +15,12 @@ describe("dashboard v2 Workflows: staff mode only, no badge", () => {
     expect(page).toContain("!t.staff || staffMode");
   });
 
-  it("the sidebar entry sits under Missions, staff mode only and untagged", () => {
+  it("the sidebar entry sits under Crew, staff mode only and untagged", () => {
     const shell = read("src/components/v2/v2-shell.tsx");
-    const missions = shell.indexOf('label="Missions"');
+    const crew = shell.indexOf('label="Crew"');
     const entry = shell.indexOf('label="Workflows"');
-    expect(missions).toBeGreaterThan(-1);
-    expect(entry).toBeGreaterThan(missions);
+    expect(crew).toBeGreaterThan(-1);
+    expect(entry).toBeGreaterThan(crew);
     expect(shell).not.toContain("isBeta");
     expect(shell).not.toContain("MaturityBadge");
   });

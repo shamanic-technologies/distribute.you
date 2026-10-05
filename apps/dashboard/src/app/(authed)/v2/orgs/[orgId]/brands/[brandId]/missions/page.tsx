@@ -1,10 +1,7 @@
-import { StaffOnly } from "@/components/v2/staff-only";
-import { MissionsPage } from "@/components/v2/missions-page";
+import { redirect } from "next/navigation";
 
-export default function V2MissionsRoute() {
-  return (
-    <StaffOnly>
-      <MissionsPage />
-    </StaffOnly>
-  );
+/** The Missions list was deleted (owner 2026-10-05): old links land on Campaigns. */
+export default async function Page({ params }: { params: Promise<{ orgId: string; brandId: string }> }) {
+  const { orgId, brandId } = await params;
+  redirect(`/v2/orgs/${encodeURIComponent(orgId)}/brands/${encodeURIComponent(brandId)}/campaigns`);
 }

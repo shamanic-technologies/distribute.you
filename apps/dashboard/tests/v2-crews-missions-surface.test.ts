@@ -1,8 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 
-const read = (p: string) => readFileSync(join(__dirname, "../src", p), "utf8");
+const SRC = join(__dirname, "../src");
+const read = (p: string) => readFileSync(join(SRC, p), "utf8");
 
 describe("Crew page", () => {
   const page = read("components/v2/crew-page.tsx");
@@ -23,24 +24,18 @@ describe("Crew page", () => {
 
 describe("the daily budget excludes event crews", () => {
   // Today states no daily budget since its crew tile became Delivered (2026-10-03).
-  it("on Missions, in the top bar", () => {
-    expect(read("components/v2/missions-page.tsx")).toContain("<CampaignControlsTrigger brandId={brandId} offerId={selectedOfferId ?? undefined} dailyOnly />");
-  });
   it("Today carries no campaign on/off switch: cancelling lives in Billing (owner 2026-10-05)", () => {
     expect(read("components/v2/today-page.tsx")).not.toContain("CampaignControlsTrigger");
   });
   it("an event mission's figure reads as a cap", () => {
     expect(read("components/v2/campaign-page.tsx")).toContain('cap={crewTrigger(mission.leg)?.kind === "event"}');
-    expect(read("components/v2/missions-table.tsx")).toContain('cap={crewTrigger(m.leg)?.kind === "event"}');
   });
 });
 
 describe("Missions page", () => {
-  it("says plainly that a mission can be added", () => {
-    const page = read("components/v2/missions-page.tsx");
-    expect(page).toContain('className="k-btn-accent"');
-    expect(page).toContain("+ Add a mission");
-    expect(page).toContain("<AddMissionModal");
+  it("is deleted: old links land on Campaigns (owner 2026-10-05)", () => {
+    expect(existsSync(join(SRC, "components/v2/missions-page.tsx"))).toBe(false);
+    expect(read("app/(authed)/v2/orgs/[orgId]/brands/[brandId]/missions/page.tsx")).toContain("/campaigns`");
   });
 });
 

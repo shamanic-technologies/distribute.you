@@ -101,7 +101,7 @@ export function v2PathForV1(
   if (c === "audiences" && rest.length === 3) return withQuery(`${offer}/targeting`);
   if (c === "audiences" && d === "leads" && rest.length === 4) return withQuery(`${base}/people`);
   if (c !== "campaigns") return withQuery(base);
-  if (rest.length === 3) return withQuery(`${base}/missions`);
+  if (rest.length === 3) return withQuery(`${base}/campaigns`);
   const campaign = `${base}/campaigns/${enc(d)}`;
   const tab = (t: string, from?: URLSearchParams) => {
     const next = new URLSearchParams(from ?? q);

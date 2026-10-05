@@ -459,7 +459,7 @@ type PaletteItem = {
 };
 
 /** Keel's "G then letter" jumps. One home so the palette shows what the keys do.
- *  `staff` entries (Work, Crew, Missions) exist only in staff mode, like their pages. */
+ *  `staff` entries (Work, Crew) exist only in staff mode, like their pages. */
 export const GO_KEYS: { section: V2Section; label: string; key: string; staff?: true }[] = [
   { section: "today", label: "Today", key: "t" },
   { section: "companies", label: "Companies", key: "r" },
@@ -467,7 +467,6 @@ export const GO_KEYS: { section: V2Section; label: string; key: string; staff?: 
   { section: "deals", label: "Deals", key: "d" },
   { section: "work", label: "Work", key: "w", staff: true },
   { section: "crew", label: "Crew", key: "c", staff: true },
-  { section: "missions", label: "Missions", key: "m", staff: true },
 ];
 const SETUP: { section: V2Section; label: string }[] = [
   { section: "offers", label: "Offer" },

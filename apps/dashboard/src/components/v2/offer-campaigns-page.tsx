@@ -13,7 +13,7 @@ import { useRoutePrefetch } from "@/lib/use-route-prefetch";
 import { v2OfferHref } from "@/lib/v2/routes";
 import { budgetLabel } from "@/components/v2/offer-campaigns";
 import { PathAvatar } from "@/components/v2/offer-sales-paths";
-import { costPerResult, outcomeCount } from "@/components/v2/missions-table";
+import { costPerResult, outcomeCount } from "@/components/v2/mission-results";
 import { useMissions, type Mission } from "@/components/v2/use-missions";
 import { V2Page, useOfferName } from "@/components/v2/setup-pages";
 import { EmptyNote, Shimmer, StateDot } from "@/components/v2/ui";

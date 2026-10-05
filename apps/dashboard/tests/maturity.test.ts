@@ -45,7 +45,7 @@ describe("shownReturn — Learning gives way to a to-date return above 1x", () =
   });
 
   it("every brand-page return reads it", () => {
-    for (const p of ["components/v2/today-page.tsx", "components/v2/missions-table.tsx"]) {
+    for (const p of ["components/v2/today-page.tsx"]) {
       const src = read(p);
       expect(src).toContain("shownReturn(");
       expect(src).not.toContain("h.roiMultiple");
@@ -143,7 +143,6 @@ describe("the staff Mature / Flash switch", () => {
   it("rides the top bar of every v2 page that states a ratio", () => {
     for (const page of [
       "components/v2/today-page.tsx",
-      "components/v2/missions-page.tsx",
       "components/v2/campaign-page.tsx",
       "components/v2/crew-page.tsx",
       "components/v2/workflows-page.tsx",
@@ -207,8 +206,8 @@ describe("no browser-side Learning threshold, median or spend floor remains", ()
 });
 
 describe("every surface states the served mature figure", () => {
-  it("the v2 Missions list, a mission and its crew read the per-campaign pairs", () => {
-    expect(read("components/v2/missions-table.tsx")).toContain("outcomesMaturity");
+  it("a campaign and its crew read the per-campaign pairs", () => {
+    expect(read("components/v2/mission-results.ts")).toContain("outcomesMaturity");
     expect(read("components/v2/campaign-page.tsx")).toContain("shownFigure(");
     expect(read("components/v2/crew-page.tsx")).toContain("shownFigure(");
   });
