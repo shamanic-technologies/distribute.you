@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { stepPlural } from "./v2/crews";
 
 /**
  * An offer's CAMPAIGNS on the Sales path page (owner 2026-10-04): every (channel x leg)
@@ -59,15 +60,22 @@ export interface OfferCampaign {
   managed: boolean | undefined;
   /** Out of a step a lead reached: a MAX budget. */
   reactive: boolean;
+  fromKey: string | null;
   fromLabel: string | null;
   toLabel: string;
+}
+
+/** The tag over a campaign's budget: when it works ("Daily Proactive", "Reactive on positive replies"). */
+export function campaignTag(c: Pick<OfferCampaign, "reactive" | "fromKey" | "fromLabel">): string {
+  if (!c.reactive || !c.fromKey) return "Daily Proactive";
+  return `Reactive on ${stepPlural(c.fromKey, c.fromLabel ?? c.fromKey).toLowerCase()}`;
 }
 
 type PathLegLike = {
   legKey: string;
   workedBy: string;
   reactive?: boolean;
-  fromStep: { label: string } | null;
+  fromStep: { key: string; label: string } | null;
   toStep: { label: string };
   channel: { slug: string | null; name: string | null; managed?: boolean; operatedBy?: string; campaignName?: string | null } | null;
 };
@@ -93,6 +101,7 @@ export function campaignsOfPaths(paths: ReadonlyArray<{ legs: readonly PathLegLi
         channelName: c.name,
         managed: c.managed,
         reactive: leg.reactive === true,
+        fromKey: leg.fromStep?.key ?? null,
         fromLabel: leg.fromStep?.label ?? null,
         toLabel: leg.toStep.label,
       });
