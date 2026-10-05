@@ -19,7 +19,6 @@ import { useClientClock } from "@/lib/use-client-clock";
 import { StatBasisSwitch } from "@/components/v2/stat-basis-switch";
 import { OfferPlanBanner } from "@/components/v2/choose-plan";
 import { useSelectedOfferIfAny } from "@/components/v2/selected-offer";
-import { CampaignControlsTrigger } from "@/components/campaigns/campaign-controls-trigger";
 import {
   BarSpark,
   SparkLine,
@@ -169,12 +168,8 @@ export function TodayPage() {
     <>
       <TopBar
         crumbs={[{ label: "Today" }]}
-        actions={
-          <>
-            <StatBasisSwitch />
-            {rev.enabled && <CampaignControlsTrigger brandId={brandId} offerId={selectedOfferId ?? undefined} dailyOnly />}
-          </>
-        }
+        // No campaign on/off switch here: cancelling lives in Billing (owner 2026-10-05).
+        actions={<StatBasisSwitch />}
       />
       <div className="mx-auto max-w-[1280px] px-4 pb-16 pt-6 md:px-6">
         <OfferPlanBanner brandId={brandId} offerId={selectedOfferId} missions={missions} />
