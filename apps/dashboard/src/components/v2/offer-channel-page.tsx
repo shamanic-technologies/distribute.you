@@ -94,7 +94,7 @@ export function V2OfferChannelPage() {
 }
 
 /** The two legs cold email works, each drawn as its own steps, stopping at its outcome. */
-const LEG_STEPS = [
+export const LEG_STEPS = [
   { legKey: "start_to_website_visit", title: "Website visits", outcome: "Website visit", bucket: "website_visit" },
   { legKey: "start_to_conversation", title: "Positive replies", outcome: "Positive reply", bucket: "positive_reply" },
 ] as const;
@@ -187,15 +187,16 @@ export function ColdEmailOverview({
 }
 
 /** One leg's steps: Queued, Sent, Delivered, then the leg's outcome, read on the leg's campaign (people). */
-function LegSteps({
+export function LegSteps({
   title,
   outcome,
   bucket,
   campaignId,
 }: {
   title: string;
-  outcome: string;
-  bucket: "website_visit" | "positive_reply";
+  /** Null on a leg whose outcome lead-service counts no bucket for: the steps stop at Delivered. */
+  outcome: string | null;
+  bucket: "website_visit" | "positive_reply" | null;
   campaignId: string;
 }) {
   const q = useAuthQuery(["leadBucketCounts", `campaign:${campaignId}`, ""], () => getLeadBucketCounts({ campaignId }, {}), pollOptions);
@@ -215,7 +216,7 @@ function LegSteps({
             <StepBar label="Queued" count={counts.contacted} of={counts.contacted} />
             <StepBar label="Sent" count={q.data?.people?.sent ?? null} of={counts.contacted} />
             <StepBar label="Delivered" count={q.data?.people?.delivered ?? null} of={counts.contacted} />
-            <StepBar label={outcome} count={counts[bucket]} of={counts.contacted} />
+            {outcome && bucket && <StepBar label={outcome} count={counts[bucket]} of={counts.contacted} />}
           </div>
         )}
       </div>
@@ -278,13 +279,14 @@ function TabSummaries({
   );
 }
 
-function SummaryCard({
+export function SummaryCard({
   label,
   href,
   loading,
   value,
   unit,
   sub,
+  text,
 }: {
   label: string;
   href: string;
@@ -292,6 +294,8 @@ function SummaryCard({
   value: number | null;
   unit: string;
   sub?: string | null;
+  /** A figure that is not a count (a budget), already formatted; replaces `value`. */
+  text?: string | null;
 }) {
   return (
     <div className="k-card px-4 py-3">
@@ -302,7 +306,7 @@ function SummaryCard({
         </Link>
       </div>
       <div className="mt-1">
-        {loading ? <Shimmer className="h-7 w-24" /> : <Figure value={value === null ? <span className="k-fg4">{"—"}</span> : formatCount(value)} unit={unit} sub={sub} />}
+        {loading ? <Shimmer className="h-7 w-24" /> : <Figure value={text ?? (value === null ? <span className="k-fg4">{"—"}</span> : formatCount(value))} unit={unit} sub={sub} />}
       </div>
     </div>
   );

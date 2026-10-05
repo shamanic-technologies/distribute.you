@@ -8,7 +8,7 @@ import { useMissions } from "@/components/v2/use-missions";
 import { CrewMark } from "@/components/v2/crew-mark";
 import { V2NavContext } from "@/components/v2/nav-context";
 import { useBucketCounts, useBrandRevenue, useNeedsYourCall, useStandingCounts } from "@/components/v2/data";
-import { v2Href, v2MissionHref, v2OfferHref, v2SectionOf } from "@/lib/v2/routes";
+import { v2Href, v2CampaignHref, v2OfferHref, v2SectionOf } from "@/lib/v2/routes";
 import { formatCount } from "@/lib/format-number";
 import { boardColumnTotals } from "@/lib/leads-server-page";
 import { CompanyMark } from "@/components/v2/people-bits";
@@ -361,8 +361,8 @@ function V2Sidebar() {
             {activeMissions.map((m) => (
               <NavItem
                 key={m.row.campaign.id}
-                href={v2MissionHref(orgId, brandId, m.row.campaign.id)}
-                active={pathname.endsWith(`/missions/${m.row.campaign.id}`)}
+                href={v2CampaignHref(orgId, brandId, m.row.campaign.id)}
+                active={pathname.endsWith(`/campaigns/${m.row.campaign.id}`)}
                 label={m.offerName ? `${m.crew.name} · ${m.offerName}` : m.crew.name}
                 icon={<CrewMark color={m.crew.color} glyph={m.crew.glyph} />}
               />

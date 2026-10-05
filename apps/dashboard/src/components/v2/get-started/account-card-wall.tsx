@@ -60,7 +60,7 @@ import {
   sanitizeVerificationCode,
   VERIFICATION_CODE_LENGTH,
 } from "@/lib/clerk-error";
-import { v2MissionHref } from "@/lib/v2/routes";
+import { v2CampaignHref } from "@/lib/v2/routes";
 import {
   GET_STARTED_SNAPSHOT_KEY,
   hotLeadsForCredit,
@@ -586,7 +586,7 @@ export function AccountCardWall({
       } catch {
         // Nothing to clean up in a tab that never wrote one.
       }
-      window.location.assign(v2MissionHref(orgId, brandId, campaignId));
+      window.location.assign(v2CampaignHref(orgId, brandId, campaignId));
     } catch (e) {
       console.error("[get-started] launch failed:", e);
       setError(e instanceof Error ? e.message : "The launch stopped. Try again.");

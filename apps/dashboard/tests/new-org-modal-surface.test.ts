@@ -70,8 +70,8 @@ describe("the launch", () => {
     expect(done).toBeGreaterThan(c);
     expect(mint).toBeGreaterThan(done);
   });
-  it("ends on the new campaign's mission page", () => {
-    expect(launch).toContain("v2MissionHref(orgId!, id, campaignId)");
+  it("ends on the new campaign's page", () => {
+    expect(launch).toContain("v2CampaignHref(orgId!, id, campaignId)");
   });
 });
 

@@ -53,7 +53,7 @@ describe("every dashboard surface that states a daily budget asks whether to hid
   const surfaces = [
     "src/components/campaigns/campaign-controls-trigger.tsx",
     "src/components/settings/campaign-settings-card.tsx",
-    "src/components/v2/mission-page.tsx",
+    "src/components/v2/campaign-page.tsx",
     "src/components/v2/missions-page.tsx",
     "src/components/v2/crew-page.tsx",
     "src/components/v2/work-page.tsx",

@@ -1,0 +1,270 @@
+"use client";
+
+import { useParams, useSearchParams } from "next/navigation";
+import { useAuthQuery } from "@/lib/use-auth-query";
+import { pollOptions } from "@/lib/query-options";
+import { getLeadBucketCounts } from "@/lib/api";
+import { formatCentsAsUsdAdaptive, formatCount, formatUsdAdaptive } from "@/lib/format-number";
+import { fmtDailyBudgetUsd } from "@/lib/campaign-budget";
+import { shownFigure } from "@/lib/maturity";
+import { useStatBasis } from "@/lib/use-stat-basis";
+import { useStaffMode } from "@/lib/use-staff-mode";
+import { useDailyBudgetHidden } from "@/lib/use-daily-budget-hidden";
+import { isColdEmailChannel } from "@/lib/offer-levers-home";
+import { useLegCatalogue } from "@/lib/use-leg-catalogue";
+import { useAcquisitionChannels } from "@/lib/use-acquisition-channels";
+import { crewTrigger } from "@/lib/v2/crews";
+import { v2CampaignHref, v2OfferHref, type V2CampaignTab } from "@/lib/v2/routes";
+import { AcquisitionChannelMark } from "@/components/marks/acquisition-channel-mark";
+import { CampaignControlsTrigger } from "@/components/campaigns/campaign-controls-trigger";
+import { CampaignSettingsCard } from "@/components/settings/campaign-settings-card";
+import { BrandOfferCard } from "@/components/settings/brand-offer-card";
+import { CampaignWorkflowsPage } from "@/components/workflows/campaign-workflows-page";
+import { campaignHoldCopy, useMissionHold } from "@/components/v2/mission-hold";
+import { useMissions, type Mission } from "@/components/v2/use-missions";
+import { LEG_STEPS, LegSteps, SummaryCard } from "@/components/v2/offer-channel-page";
+import { PathAvatar } from "@/components/v2/offer-sales-paths";
+import { PeoplePage } from "@/components/v2/people-page";
+import { V2AudiencesTable } from "@/components/v2/audiences-table";
+import { useAudienceTable } from "@/components/v2/use-audience-table";
+import { StaffOnly } from "@/components/v2/staff-only";
+import { StatBasisSwitch } from "@/components/v2/stat-basis-switch";
+import { V2Page, type V2Tab } from "@/components/v2/setup-pages";
+import { EmptyNote, Figure, SectionTitle, Shimmer, StatTile } from "@/components/v2/ui";
+
+const CAMPAIGN_TABS: { key: V2CampaignTab; label: string; staff?: boolean }[] = [
+  { key: "overview", label: "Overview" },
+  { key: "inbox", label: "Inbox" },
+  { key: "sent", label: "Sent" },
+  { key: "targeting", label: "Targeting" },
+  { key: "settings", label: "Settings" },
+  { key: "workflows", label: "Workflows", staff: true },
+];
+
+/**
+ * One campaign (offer x leg x channel), opened from the sidebar's Campaigns. The channel
+ * page's anatomy and tabs, every read narrowed to this campaign: lead-service resolves its
+ * id to the whole campaign identity (its ancestors included), the audience table and the
+ * settings take it as their scope, and its money is the campaign row's own served group.
+ */
+export function V2CampaignPage() {
+  const { orgId, brandId, campaignId } = useParams<{ orgId: string; brandId: string; campaignId: string }>();
+  const params = useSearchParams();
+  const { staffMode } = useStaffMode();
+  const { settled, missionByCampaignId } = useMissions(orgId, brandId, { allOffers: true });
+  const mission = missionByCampaignId.get(campaignId) ?? null;
+  // The live row of the identity: a link naming an ancestor row still lands on today's campaign.
+  const id = mission?.row.campaign.id ?? campaignId;
+  const catalogue = useLegCatalogue();
+  const channels = useAcquisitionChannels();
+  const c = mission?.row.campaign ?? null;
+  const def = c ? channels.find((ch) => ch.featureSlug === c.featureSlug) : undefined;
+  const name = c ? (catalogue.campaignNames.get(`${c.featureSlug}|${c.legKey}`) ?? null) : null;
+  const shownName = name ?? mission?.crew.name ?? " ";
+  const hold = useMissionHold(id, mission?.running ?? false);
+
+  const visible = CAMPAIGN_TABS.filter((t) => !t.staff || staffMode);
+  const tab = visible.find((t) => t.key === params.get("tab"))?.key ?? "overview";
+  const tabHref = (t: V2CampaignTab) => v2CampaignHref(orgId, brandId, id, t);
+  const tabs: V2Tab[] = visible.map((t) => ({ label: t.label, href: tabHref(t.key), active: t.key === tab }));
+
+  if (settled && !mission) {
+    return (
+      <V2Page crumbs={[{ label: "Campaigns" }, { label: "Not found" }]}>
+        <div className="k-card">
+          <EmptyNote>This campaign does not exist on this brand.</EmptyNote>
+        </div>
+      </V2Page>
+    );
+  }
+
+  const offerId = mission?.offerId ?? null;
+  return (
+    <V2Page
+      crumbs={
+        offerId
+          ? [
+              { label: mission?.offerName ?? "Offer", href: v2OfferHref(orgId, brandId, offerId) },
+              { label: "Sales path", href: v2OfferHref(orgId, brandId, offerId, "sales-path") },
+              { label: shownName },
+            ]
+          : [{ label: "Campaigns" }, { label: " " }]
+      }
+      title={
+        mission ? (
+          <span className="flex min-w-0 items-center gap-2.5">
+            {name && <PathAvatar name={name} size={32} />}
+            <span className="truncate">{shownName}</span>
+          </span>
+        ) : (
+          <Shimmer className="h-8 w-56" />
+        )
+      }
+      sub={
+        mission ? (
+          <span className="flex flex-wrap items-center gap-2 text-[13px]">
+            {def && (
+              <span className="k-chip inline-flex items-center gap-1.5">
+                <AcquisitionChannelMark def={def} size="xs" />
+                {def.name}
+              </span>
+            )}
+            {mission.leg && <span className="k-fg2">{mission.leg.label}</span>}
+          </span>
+        ) : undefined
+      }
+      actions={
+        mission ? (
+          <>
+            <StatBasisSwitch />
+            <CampaignControlsTrigger
+              brandId={brandId}
+              campaignId={id}
+              totalCentsOverride={mission.row.budgetCents}
+              cap={crewTrigger(mission.leg)?.kind === "event"}
+            />
+          </>
+        ) : undefined
+      }
+      tabs={mission ? tabs : undefined}
+      width="max-w-[1280px]"
+    >
+      {hold && (
+        <div className="k-card mb-5 p-4 shadow-[inset_0_0_0_1px_color-mix(in_oklab,var(--data-amber)_35%,transparent)]">
+          <p className="text-[13px] font-medium">{campaignHoldCopy(hold).headline}</p>
+          <p className="k-fg2 mt-1 text-[13px]">{campaignHoldCopy(hold).body}</p>
+        </div>
+      )}
+      {!mission || !offerId ? (
+        <Shimmer className="h-[240px] w-full rounded-[12px]" />
+      ) : tab === "overview" ? (
+        <CampaignOverview brandId={brandId} offerId={offerId} campaignId={id} mission={mission} tabHref={tabHref} />
+      ) : tab === "inbox" ? (
+        <div className="k-card overflow-hidden">
+          <PeoplePage bucket="positive_reply" campaignId={id} />
+        </div>
+      ) : tab === "sent" ? (
+        <div className="k-card overflow-hidden">
+          <PeoplePage bucket="contacted" campaignId={id} />
+        </div>
+      ) : tab === "targeting" ? (
+        <V2AudiencesTable campaignId={id} offerId={offerId} />
+      ) : tab === "settings" ? (
+        <>
+          <CampaignSettingsCard brandId={brandId} offerId={offerId} campaignId={id} />
+          {isColdEmailChannel(c?.featureSlug) && (
+            <div className="mt-8">
+              <BrandOfferCard brandId={brandId} offerId={offerId} />
+            </div>
+          )}
+        </>
+      ) : (
+        <StaffOnly>
+          <div className="-mx-4 md:-mx-6">
+            <CampaignWorkflowsPage campaignId={id} panel="drawer" staffGated />
+          </div>
+        </StaffOnly>
+      )}
+    </V2Page>
+  );
+}
+
+/**
+ * What this campaign did, all served: where the people it reached stand (lead-service's
+ * bucket counts on the campaign, people not emails), what it spent and what one outcome
+ * cost (the campaign row's own revenue group, Learning where the producer says so). Then
+ * the leg's steps at 2/3 and the other tabs' headlines at 1/3, as the channel page.
+ */
+function CampaignOverview({
+  brandId,
+  offerId,
+  campaignId,
+  mission,
+  tabHref,
+}: {
+  brandId: string;
+  offerId: string;
+  campaignId: string;
+  mission: Mission;
+  tabHref: (tab: V2CampaignTab) => string;
+}) {
+  const { basis } = useStatBasis();
+  const budgetHidden = useDailyBudgetHidden();
+  const q = useAuthQuery(["leadBucketCounts", `campaign:${campaignId}`, ""], () => getLeadBucketCounts({ campaignId }, {}), pollOptions);
+  const counts = q.data?.counts ?? null;
+  const people = q.data?.people ?? null;
+  const settled = q.isFetchedAfterMount || q.data !== undefined;
+  const audiences = useAudienceTable({ campaignId, offerId });
+
+  const leg = LEG_STEPS.find((l) => l.legKey === mission.row.campaign.legKey) ?? null;
+  const g = mission.row.revenue ?? null;
+  const replyLed = leg?.bucket === "positive_reply";
+  const cost = shownFigure(g?.outcomesMaturity, (h) => (replyLed ? h.cpprCents : h.cpcCents), basis);
+  const cap = crewTrigger(mission.leg)?.kind === "event";
+
+  const count = (v: number | null | undefined) => (!settled ? <Shimmer className="h-7 w-16" /> : <Figure value={v != null ? formatCount(v) : "—"} unit="people" />);
+
+  return (
+    <div className="space-y-8">
+      <section>
+        <SectionTitle right={<span>Since it started</span>}>This campaign</SectionTitle>
+        <div className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-6">
+          <StatTile label="Queued">{count(counts?.contacted)}</StatTile>
+          <StatTile label="Sent">{count(people?.sent)}</StatTile>
+          <StatTile label="Delivered">{count(people?.delivered)}</StatTile>
+          <StatTile label={leg ? `${leg.outcome}s` : "Outcomes"}>{count(leg && counts ? counts[leg.bucket] : null)}</StatTile>
+          <StatTile label="Spent">
+            <Figure value={g?.committedCostUsd == null ? "—" : formatUsdAdaptive(g.committedCostUsd)} />
+          </StatTile>
+          <StatTile label={replyLed ? "Cost / reply" : "Cost / visit"}>
+            <Figure value={cost.learning ? "Learning" : cost.value == null ? "—" : formatCentsAsUsdAdaptive(cost.value)} />
+          </StatTile>
+        </div>
+      </section>
+
+      <div className="grid gap-x-3 gap-y-8 lg:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
+        <LegSteps
+          title={leg?.title ?? mission.leg?.label ?? "Steps"}
+          outcome={leg?.outcome ?? null}
+          bucket={leg?.bucket ?? null}
+          campaignId={campaignId}
+        />
+        <section>
+          <SectionTitle>At a glance</SectionTitle>
+          <div className="flex flex-col gap-3">
+            <SummaryCard
+              label="Inbox"
+              href={tabHref("inbox")}
+              loading={!settled}
+              value={counts?.positive_reply ?? null}
+              unit={counts?.positive_reply === 1 ? "positive reply" : "positive replies"}
+            />
+            <SummaryCard
+              label="Sent"
+              href={tabHref("sent")}
+              loading={!settled}
+              value={people?.sent ?? null}
+              unit={people?.sent === 1 ? "person emailed" : "people emailed"}
+            />
+            <SummaryCard
+              label="Targeting"
+              href={tabHref("targeting")}
+              loading={audiences.activeTabLoading}
+              value={audiences.activeTabRows}
+              unit={audiences.activeTabRows === 1 ? "audience" : "audiences"}
+            />
+            {/* A plan's budget is fixed, so a subscriber's Settings card states the switch alone. */}
+            <SummaryCard
+              label="Settings"
+              href={tabHref("settings")}
+              loading={false}
+              value={null}
+              text={budgetHidden ? (mission.running ? "On" : "Off") : fmtDailyBudgetUsd(mission.row.budgetCents)}
+              unit={budgetHidden ? "" : cap ? "cap / day" : "/ day"}
+            />
+          </div>
+        </section>
+      </div>
+    </div>
+  );
+}

@@ -42,7 +42,7 @@ export const PEOPLE_TABS: { key: string; label: string; bucket: LeadBucket }[] =
  * whole population, and every count is served. A row opens the person in v1's lead
  * panel, which carries the conversation and every statement v2 does not rebuild.
  */
-export function PeoplePage({ bucket }: { bucket?: LeadBucket } = {}) {
+export function PeoplePage({ bucket, campaignId }: { bucket?: LeadBucket; campaignId?: string } = {}) {
   const { orgId, brandId } = useParams<{ orgId: string; brandId: string }>();
   const params = useSearchParams();
   const router = useRouter();
@@ -67,7 +67,10 @@ export function PeoplePage({ bucket }: { bucket?: LeadBucket } = {}) {
   const wire = problem ? "" : (leadsSearchParam(search) ?? "");
   const counts = useBucketCounts(brandId).data;
   const { missionByCampaignId, crews } = useMissions(orgId, brandId);
-  const lead = useLeadScope(brandId);
+  const brandLead = useLeadScope(brandId);
+  // `campaignId` set = one campaign's page: lead-service resolves the id to the whole
+  // campaign identity (its ancestors included), the same scope its steps card reads.
+  const lead = campaignId ? { scope: { campaignId }, key: `campaign:${campaignId}` } : brandLead;
   const pageQ = useAuthQuery(
     ["leadsPage", lead.key, "v2-people", tab.bucket, wire, page],
     () =>
@@ -136,7 +139,7 @@ export function PeoplePage({ bucket }: { bucket?: LeadBucket } = {}) {
         inputRef={searchRef}
         right={
           <ExportButton
-            filename={`people-${brandId}.csv`}
+            filename={`people-${campaignId ?? brandId}.csv`}
             csv={() => fetchLeadsCsv(lead.scope, leadsExportQuery({ search: wire }))}
             disabled={counts?.counts.contacted === 0}
           />

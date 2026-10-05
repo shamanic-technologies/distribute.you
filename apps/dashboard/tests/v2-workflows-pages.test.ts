@@ -6,14 +6,13 @@ const ROOT = resolve(__dirname, "..");
 const read = (p: string) => readFileSync(resolve(ROOT, p), "utf8");
 
 describe("dashboard v2 Workflows: staff mode only, no badge", () => {
-  it("the mission Workflows tab is offered in staff mode only, untagged", () => {
-    const setup = read("src/components/v2/setup-pages.tsx");
-    const fn = setup.slice(setup.indexOf("export function missionTabs("), setup.indexOf("export function V2MissionSettingsPage("));
-    expect(fn).toContain('label: "Workflows"');
-    expect(fn).not.toContain("isBeta");
-    expect(fn).not.toContain("badge:");
-    expect(fn).toContain("...(staffMode ? [");
-    expect(read("src/components/v2/mission-page.tsx")).toContain('"overview", staffMode)');
+  it("the campaign Workflows tab is offered in staff mode only, untagged", () => {
+    const page = read("src/components/v2/campaign-page.tsx");
+    const tabs = page.slice(page.indexOf("const CAMPAIGN_TABS"), page.indexOf("];", page.indexOf("const CAMPAIGN_TABS")));
+    expect(tabs).toContain('label: "Workflows"');
+    expect(tabs).not.toContain("isBeta");
+    expect(tabs).not.toContain("badge:");
+    expect(page).toContain("!t.staff || staffMode");
   });
 
   it("the sidebar entry sits under Missions, staff mode only and untagged", () => {
