@@ -170,9 +170,10 @@ describe("call sites", () => {
   it("dashboard v2 states it on every mission and on every brand page", () => {
     expect(read("components/v2/use-missions.ts")).toContain("paymentHold: paymentHoldKind(c)");
     expect(read("components/v2/today-page.tsx")).toContain("hold={m.paymentHold}");
-    // The campaign page's status button names the hold itself (PAYMENT_HOLD_LABEL), the hold sentence below it.
+    // The campaign page's status button names the hold itself (PAYMENT_HOLD_LABEL). No hold
+    // banner under it (owner 2026-10-05: removed even when true, out of credit included).
     expect(read("components/v2/campaign-page.tsx")).toContain("<CampaignControlsTrigger");
-    expect(read("components/v2/campaign-page.tsx")).toContain("campaignHoldCopy(hold)");
+    expect(read("components/v2/campaign-page.tsx")).not.toContain("campaignHoldCopy(hold)");
     expect(read("components/v2/v2-shell.tsx")).toContain("<ScopePaymentDeclinedBand brandId={brandId} />");
   });
   it("every restart surface renders campaign-service's refusal", () => {

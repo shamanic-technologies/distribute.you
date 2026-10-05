@@ -220,3 +220,18 @@ describe("Sales path page: expected figures say so (owner 2026-10-05)", () => {
     expect(campaigns).toContain("<ExpectedLabel tip={EXPECTED_ROI_TIP}>ROI</ExpectedLabel>");
   });
 });
+
+describe("Sales path page: a row's detail edits its rates and lifetime revenue (owner 2026-10-05)", () => {
+  const page = readFileSync(join(__dirname, "../src/components/v2/offer-sales-path-page.tsx"), "utf8");
+  it("passes both editors to the table, as the onboarding does", () => {
+    const at = page.indexOf("<OfferSalesPaths");
+    const call = page.slice(at, page.indexOf("/>", at));
+    expect(call).toContain("onStateRate={onStateRate}");
+    expect(call).toContain("onStateLifetimeRevenue={onStateLifetimeRevenue}");
+  });
+  it("writes the brand's rate and the offer's lifetime revenue, then re-reads the paths", () => {
+    expect(page).toContain("stateBrandLegRates(brandId,");
+    expect(page).toContain("saveOfferLifetimeRevenue(brandId, offerId, usd)");
+    expect(page.split('qc.refetchQueries({ queryKey: ["offerSalesPaths", brandId, offerId] })').length).toBe(3);
+  });
+});
