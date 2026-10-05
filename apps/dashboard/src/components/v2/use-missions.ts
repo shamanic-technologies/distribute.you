@@ -16,7 +16,7 @@ import {
   type CampaignRow,
 } from "@/components/campaigns/campaigns-table";
 import { OFFERED_CREWS, crewFor, crewTrigger, type CrewIdentity, type CrewTrigger } from "@/lib/v2/crews";
-import { v2MissionHref } from "@/lib/v2/routes";
+import { v2CampaignHref } from "@/lib/v2/routes";
 import { paymentHoldKind, type PaymentHoldKind } from "@/lib/payment-declined";
 import { useSelectedOffer } from "@/components/v2/selected-offer";
 
@@ -32,7 +32,7 @@ export interface Mission {
    * Null when it is running or a person paused it. campaign-service's own reason.
    */
   paymentHold: PaymentHoldKind | null;
-  /** The v2 mission page. */
+  /** The v2 campaign page. */
   href: string;
 }
 
@@ -111,7 +111,7 @@ export function useMissions(orgId: string, brandId: string, { allOffers = false 
             offerName: offerNames.get(c.offerId) ?? null,
             running: isActiveStatus(c.status),
             paymentHold: paymentHoldKind(c),
-            href: v2MissionHref(orgId, brandId, c.id),
+            href: v2CampaignHref(orgId, brandId, c.id),
           },
         ];
       }),

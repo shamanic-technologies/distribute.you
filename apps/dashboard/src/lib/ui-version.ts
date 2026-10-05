@@ -102,16 +102,21 @@ export function v2PathForV1(
   if (c === "audiences" && d === "leads" && rest.length === 4) return withQuery(`${base}/people`);
   if (c !== "campaigns") return withQuery(base);
   if (rest.length === 3) return withQuery(`${base}/missions`);
-  const mission = `${base}/missions/${enc(d)}`;
-  if (rest.length === 4) return withQuery(mission);
-  if (e === "settings" && rest.length === 5) return withQuery(`${mission}/settings`);
-  if (e === "audiences" && rest.length === 5) return withQuery(`${mission}/audiences`);
-  if (e === "leads" && rest.length === 5) return withQuery(mission);
-  if (e === "workflows" && rest.length === 5) return withQuery(`${mission}/workflows`);
+  const campaign = `${base}/campaigns/${enc(d)}`;
+  const tab = (t: string, from?: URLSearchParams) => {
+    const next = new URLSearchParams(from ?? q);
+    next.set("tab", t);
+    return withQuery(campaign, next);
+  };
+  if (rest.length === 4) return withQuery(campaign);
+  if (e === "settings" && rest.length === 5) return tab("settings");
+  if (e === "audiences" && rest.length === 5) return tab("targeting");
+  if (e === "leads" && rest.length === 5) return tab("sent");
+  if (e === "workflows" && rest.length === 5) return tab("workflows");
   if (e === "workflows" && rest.length === 6) {
     const next = new URLSearchParams(q);
     next.set("workflow", decodeURIComponent(f));
-    return withQuery(`${mission}/workflows`, next);
+    return tab("workflows", next);
   }
   return withQuery(base);
 }

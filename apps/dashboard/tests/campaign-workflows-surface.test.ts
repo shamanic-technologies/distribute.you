@@ -370,7 +370,7 @@ describe("there is NO second sidebar of audiences beside the grid", () => {
 
   it("a v2 host opens the row panel as a full-height drawer pinned to the viewport", () => {
     expect(TABLE).toContain("variant={panel}");
-    expect(read("src/components/v2/setup-pages.tsx")).toContain('panel="drawer"');
+    expect(read("src/components/v2/campaign-page.tsx")).toContain('panel="drawer"');
     expect(PANEL).toContain('"fixed inset-y-0 right-0 z-40');
   });
 });

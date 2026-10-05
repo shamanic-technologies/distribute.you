@@ -29,7 +29,7 @@ describe("the daily budget excludes event crews", () => {
     expect(read("components/v2/missions-page.tsx")).toContain("<CampaignControlsTrigger brandId={brandId} offerId={selectedOfferId ?? undefined} dailyOnly />");
   });
   it("an event mission's figure reads as a cap", () => {
-    expect(read("components/v2/mission-page.tsx")).toContain('cap={crewTrigger(mission.leg)?.kind === "event"}');
+    expect(read("components/v2/campaign-page.tsx")).toContain('cap={crewTrigger(mission.leg)?.kind === "event"}');
     expect(read("components/v2/missions-table.tsx")).toContain('cap={crewTrigger(m.leg)?.kind === "event"}');
   });
 });
@@ -63,20 +63,15 @@ describe("one start from nothing", () => {
   });
 });
 
-describe("Mission page", () => {
-  const page = read("components/v2/mission-page.tsx");
-  it("states the work and what it brought in side by side, each scrolling on its own", () => {
-    expect(page).toContain('<div className="mt-6 grid gap-4 lg:grid-cols-2">');
-    expect(page.indexOf("The work")).toBeLessThan(page.indexOf("What it brought in</SectionTitle>"));
-    expect(page).toContain("lg:max-h-[calc(100svh-340px)]");
-    expect(page).toContain("lg:overflow-y-auto");
+describe("Campaign page (replaced the mission page, owner 2026-10-05)", () => {
+  const page = read("components/v2/campaign-page.tsx");
+  it("is the channel page's anatomy narrowed to one campaign", () => {
+    expect(page).toContain("<LegSteps");
+    expect(page).toContain('<PeoplePage bucket="positive_reply" campaignId={id} />');
+    expect(page).toContain('<PeoplePage bucket="contacted" campaignId={id} />');
+    expect(page).toContain("<V2AudiencesTable campaignId={id} offerId={offerId} />");
   });
-  it("reads the mission's runs across every stored row it owns", () => {
-    expect(page).toContain("useRecentRuns(brandId, runIds, 60)");
-    expect(page).toContain("m === mission && cid !== live");
-  });
-  it("keeps the facts, in a line under the title rather than a side column", () => {
-    expect(page).not.toContain("lg:grid-cols-[minmax(0,1fr)_320px]");
-    expect(page).toContain('k={isEvent ? "Daily cap" : "Daily budget"}');
+  it("reads where people stand on the campaign, never the brand", () => {
+    expect(page).toContain("getLeadBucketCounts({ campaignId }, {})");
   });
 });

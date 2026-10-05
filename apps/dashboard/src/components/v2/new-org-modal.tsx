@@ -65,7 +65,7 @@ import { ChoosePlanPanel } from "@/components/v2/choose-plan";
 import { SUBSCRIPTION_OUTBOUND_DAILY_USD } from "@/lib/subscription-plan";
 import { channelMinimumCents, channelMinimumsFromWire } from "@/lib/channel-minimums";
 import { websiteInputProblem } from "@/lib/website-input";
-import { v2MissionHref } from "@/lib/v2/routes";
+import { v2CampaignHref } from "@/lib/v2/routes";
 import {
   LEVER_QUESTIONS,
   NEW_ORG_CHANNEL_SLUG,
@@ -702,7 +702,7 @@ export function NewOrgModal({
       posthog.capture("new_org_modal_launched", { org_id: orgId, brand_id: id, leg: legKey, budget_usd: planFlow ? SUBSCRIPTION_OUTBOUND_DAILY_USD : budgetUsd, pay_mode: planFlow ? "plan" : payMode });
       setApiActiveOrgOverride(null);
       onClose();
-      router.push(v2MissionHref(orgId!, id, campaignId));
+      router.push(v2CampaignHref(orgId!, id, campaignId));
     });
   }
 
