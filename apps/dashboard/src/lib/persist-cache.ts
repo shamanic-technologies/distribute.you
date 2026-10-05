@@ -212,6 +212,8 @@ export const PERSISTABLE_QUERY_ROOTS = new Set([
   "leadsPage",
   "leadBucketCounts",
   "leadStandingCounts",
+  // A conversation campaign's four people counts (AI Meeting Booking). Four integers.
+  "conversationCounts",
   // Dashboard v2: runs-service's per-campaign roll-up over a window (the crew
   // cards' runs, spend and last-run) and the latest runs themselves (Work, a
   // mission's timeline). Small, persisted so the cards paint from disk.

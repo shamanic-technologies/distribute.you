@@ -28,4 +28,10 @@ describe("v2 campaign page: a campaign that answers conversations (AI Meeting Bo
     // Dropped is a card, not a step.
     expect(body).not.toMatch(/StepBar label="Dropped/);
   });
+
+  it("reads the four counts from lead-service on the acting campaign", () => {
+    const body = src.slice(src.indexOf("function ConversationOverview("));
+    expect(body).toContain("getConversationCounts(mission.row.campaign.id)");
+    expect(body).toContain("conv?.meetingsBooked");
+  });
 });
