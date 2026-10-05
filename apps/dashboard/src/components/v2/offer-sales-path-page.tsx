@@ -13,14 +13,16 @@ import {
   saveOfferSalesPath,
   saveOfferSelectedSalesPaths,
   applyReactiveDefaults,
+  stateBrandLegRates,
+  saveOfferLifetimeRevenue,
 } from "@/lib/api";
-import { invalidateCampaignMoney } from "@/lib/write-invalidation";
+import { invalidateCampaignMoney, invalidateConversionRates } from "@/lib/write-invalidation";
 import { useSalesPathChannels } from "@/lib/use-sales-path-channels";
 import { acceptedChannels, selectedPathKeys, toggleChannel, togglePath } from "@/lib/offer-active-sales-paths";
 import { OfferChannelsPicker } from "@/components/v2/offer-channels-picker";
 import { OfferCampaigns } from "@/components/v2/offer-campaigns";
 import { campaignsOfOffer } from "@/lib/offer-campaigns";
-import { roiUnavailableLabel } from "@/lib/offer-sales-paths";
+import { roiUnavailableLabel, type SalesPathLeg } from "@/lib/offer-sales-paths";
 import { useLegCatalogue } from "@/lib/use-leg-catalogue";
 import { useAcquisitionChannels } from "@/lib/use-acquisition-channels";
 import { v2OfferHref } from "@/lib/v2/routes";
@@ -149,6 +151,23 @@ export function V2OfferSalesPathPage() {
       });
   };
 
+  // A row's detail edits what its ROI is built from, as the onboarding does: a leg's rate
+  // is the BRAND's own (null clears it back to the median), the lifetime revenue is the
+  // offer's. Every money figure is priced off them, so all re-read, and the paths are
+  // awaited so the row shows the re-ranked answer, never a guessed one.
+  const onStateRate = async (leg: SalesPathLeg, ratePct: number | null) => {
+    if (!leg.fromStep) return;
+    await stateBrandLegRates(brandId, [{ fromStep: leg.fromStep.label, toStep: leg.toStep.label, ratePct }]);
+    invalidateConversionRates(qc);
+    await qc.refetchQueries({ queryKey: ["offerSalesPaths", brandId, offerId] });
+  };
+  const onStateLifetimeRevenue = async (usd: number) => {
+    const saved = await saveOfferLifetimeRevenue(brandId, offerId, usd);
+    qc.setQueryData(["offerEconomics", brandId, offerId], saved);
+    invalidateConversionRates(qc);
+    await qc.refetchQueries({ queryKey: ["offerSalesPaths", brandId, offerId] });
+  };
+
   // Every channel x leg the TICKED paths use (owner 2026-10-05), as features-service serves
   // them with their ROI; a campaign no ticked path uses is not listed.
   const campaigns = useMemo(
@@ -189,6 +208,8 @@ export function V2OfferSalesPathPage() {
         table
         selected={selectedPaths ?? undefined}
         onToggleSelected={selectedPaths ? onTogglePath : undefined}
+        onStateRate={onStateRate}
+        onStateLifetimeRevenue={onStateLifetimeRevenue}
         intro=""
       />
       <div className="mt-8">
