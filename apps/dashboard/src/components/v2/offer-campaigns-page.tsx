@@ -6,12 +6,15 @@ import { useParams, useRouter } from "next/navigation";
 import { useAuthQuery } from "@/lib/use-auth-query";
 import { getOfferCampaignBudgets, getOfferSalesPaths, type OfferCampaignBudgetItem } from "@/lib/api";
 import { formatCount, formatUsdAdaptive } from "@/lib/format-number";
-import { campaignKey } from "@/lib/offer-campaigns";
+import { formatRoi, roiIsGood } from "@/lib/format-roi";
+import { shownReturn } from "@/lib/maturity";
+import { campaignKey, campaignsOfOffer, type OfferCampaign } from "@/lib/offer-campaigns";
+import { roiUnavailableLabel } from "@/lib/offer-sales-paths";
 import { useLegCatalogue } from "@/lib/use-leg-catalogue";
 import { useStatBasis } from "@/lib/use-stat-basis";
 import { useRoutePrefetch } from "@/lib/use-route-prefetch";
 import { v2OfferHref } from "@/lib/v2/routes";
-import { budgetLabel } from "@/components/v2/offer-campaigns";
+import { CampaignLeg, budgetLabel } from "@/components/v2/offer-campaigns";
 import { PathAvatar } from "@/components/v2/offer-sales-paths";
 import { costPerResult, outcomeCount } from "@/components/v2/mission-results";
 import { useMissions, type Mission } from "@/components/v2/use-missions";
@@ -21,10 +24,11 @@ import { EmptyNote, Shimmer, StateDot } from "@/components/v2/ui";
 const TH = "k-label px-3 py-2.5 font-normal";
 
 /**
- * Every campaign this offer has run (owner 2026-10-05), running or stopped, read only:
- * status, budget, money in, value out, outcomes and what one outcome cost. Each figure is
- * a served field (campaign-service status, billing budget, features-service money per
- * campaign); nothing is computed here. Status and budget change on the Sales path page.
+ * Every campaign this offer has run (owner 2026-10-05), running or stopped, read only.
+ * Columns in the owner's order: name (as Today reads it, the leg on a second line), ROI,
+ * outcomes, value out, what one outcome cost, money in, status, budget. Each figure is a
+ * served field (features-service money per campaign, campaign-service status, billing
+ * budget); nothing is computed here. Status and budget change on the Sales path page.
  */
 export function V2OfferCampaignsPage() {
   const { orgId, brandId, offerId } = useParams<{ orgId: string; brandId: string; offerId: string }>();
@@ -49,6 +53,14 @@ export function V2OfferCampaignsPage() {
   const reactiveByKey = useMemo(() => {
     const m = new Map<string, boolean>();
     for (const c of pathsQ.data?.campaigns ?? []) m.set(campaignKey(c.channelSlug, c.legKey), c.reactive);
+    return m;
+  }, [pathsQ.data]);
+  // The leg line Today and the Sales path page draw ([Channel] → outcome), off the same read.
+  const legByKey = useMemo(() => {
+    const m = new Map<string, OfferCampaign>();
+    for (const c of campaignsOfOffer(pathsQ.data?.campaigns ?? [], pathsQ.data?.paths ?? [], roiUnavailableLabel)) {
+      m.set(campaignKey(c.featureSlug, c.legKey), c);
+    }
     return m;
   }, [pathsQ.data]);
   const budgetSettled = budgetsQ.isFetchedAfterMount || budgetsQ.data !== undefined;
@@ -83,30 +95,31 @@ export function V2OfferCampaignsPage() {
     >
       <div className="k-card overflow-hidden">
         <div className="k-scroll overflow-x-auto">
-          <table className="w-full min-w-[1020px] text-[13px]">
+          <table className="w-full min-w-[1100px] text-[13px]">
             <thead>
               <tr className="k-line-subtle border-b">
                 <th className={`${TH} pl-4 text-left`}>Campaign</th>
-                <th className={`${TH} text-left`}>Status</th>
-                <th className={`${TH} text-right`}>Budget</th>
-                <th className={`${TH} text-right`}>$ Invested</th>
-                <th className={`${TH} text-right`}>$ Value</th>
+                <th className={`${TH} text-right`}>ROI</th>
                 <th className={`${TH} text-right`}># Outcomes</th>
-                <th className={`${TH} pr-4 text-right`}>$ / Outcome</th>
+                <th className={`${TH} text-right`}>$ Value</th>
+                <th className={`${TH} text-right`}>$ / Outcome</th>
+                <th className={`${TH} text-right`}>$ Invested</th>
+                <th className={`${TH} text-left`}>Status</th>
+                <th className={`${TH} pr-4 text-right`}>Budget</th>
               </tr>
             </thead>
             <tbody>
               {!settled ? (
                 [0, 1, 2].map((i) => (
                   <tr key={i} className="k-row h-12">
-                    <td colSpan={7} className="px-4 py-3">
+                    <td colSpan={8} className="px-4 py-3">
                       <Shimmer className="h-6 w-full" />
                     </td>
                   </tr>
                 ))
               ) : rows.length === 0 ? (
                 <tr>
-                  <td colSpan={7}>
+                  <td colSpan={8}>
                     <EmptyNote>No campaign has run for this offer yet.</EmptyNote>
                   </td>
                 </tr>
@@ -117,6 +130,9 @@ export function V2OfferCampaignsPage() {
                   const campaignName = catalogue.campaignNames.get(`${c.featureSlug}|${c.legKey}`) ?? null;
                   const outcome = outcomeCount(m);
                   const cost = costPerResult(m, basis);
+                  // Learning unless mature, or already above 1x to date (lib/maturity.ts shownReturn).
+                  const roi = shownReturn(g?.economicsMaturity, basis);
+                  const leg = legByKey.get(campaignKey(c.featureSlug ?? "", c.legKey ?? ""));
                   return (
                     <tr
                       key={c.id}
@@ -129,19 +145,14 @@ export function V2OfferCampaignsPage() {
                           {campaignName && <PathAvatar name={campaignName} size={28} />}
                           <span className="min-w-0">
                             <span className="block truncate font-semibold">{campaignName ?? m.crew.name}</span>
-                            <span className="k-fg3 block truncate text-[12px]">{m.leg?.label ?? "—"}</span>
+                            <span className="mt-1 block overflow-hidden">
+                              {leg ? <CampaignLeg campaign={leg} compact /> : <span className="k-fg3 text-[12px]">{m.leg?.label ?? "—"}</span>}
+                            </span>
                           </span>
                         </span>
                       </td>
-                      <td className="px-3 py-2">
-                        <StateDot running={m.running} label={m.running ? "On" : "Off"} hold={m.running ? null : m.paymentHold} />
-                      </td>
-                      <td className="px-3 py-2 text-right tabular-nums">{budgetCell(m)}</td>
-                      <td className="px-3 py-2 text-right tabular-nums">
-                        {g?.committedCostUsd != null ? formatUsdAdaptive(g.committedCostUsd) : <span className="k-fg4">—</span>}
-                      </td>
-                      <td className="px-3 py-2 text-right tabular-nums">
-                        {g?.totalPipelineUsd != null ? formatUsdAdaptive(g.totalPipelineUsd) : <span className="k-fg4">—</span>}
+                      <td className={`px-3 py-2 text-right font-semibold tabular-nums ${roiIsGood(roi.value) ? "text-[var(--run)]" : ""}`}>
+                        {roi.learning ? <span className="k-chip font-normal">Learning</span> : roi.value != null ? formatRoi(roi.value) : <span className="k-fg4">—</span>}
                       </td>
                       <td className="px-3 py-2 text-right tabular-nums">
                         {outcome ? (
@@ -152,7 +163,10 @@ export function V2OfferCampaignsPage() {
                           <span className="k-fg4">—</span>
                         )}
                       </td>
-                      <td className="px-3 py-2 pr-4 text-right tabular-nums">
+                      <td className="px-3 py-2 text-right tabular-nums">
+                        {g?.totalPipelineUsd != null ? formatUsdAdaptive(g.totalPipelineUsd) : <span className="k-fg4">—</span>}
+                      </td>
+                      <td className="px-3 py-2 text-right tabular-nums">
                         {cost ? (
                           cost.unit ? (
                             cost.value
@@ -163,6 +177,13 @@ export function V2OfferCampaignsPage() {
                           <span className="k-fg4">—</span>
                         )}
                       </td>
+                      <td className="px-3 py-2 text-right tabular-nums">
+                        {g?.committedCostUsd != null ? formatUsdAdaptive(g.committedCostUsd) : <span className="k-fg4">—</span>}
+                      </td>
+                      <td className="px-3 py-2">
+                        <StateDot running={m.running} label={m.running ? "On" : "Off"} hold={m.running ? null : m.paymentHold} />
+                      </td>
+                      <td className="px-3 py-2 pr-4 text-right tabular-nums">{budgetCell(m)}</td>
                     </tr>
                   );
                 })
