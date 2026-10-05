@@ -121,7 +121,6 @@ const ICONS = {
   records: "M2.5 3.5h11v9h-11zM2.5 6.5h11M6 6.5v6",
   work: "M2.5 3.5h11v9h-11zM6 3.5v9M10 3.5v9",
   crew: "M5.5 7a2 2 0 1 0 0-4 2 2 0 0 0 0 4Zm5 0a2 2 0 1 0 0-4 2 2 0 0 0 0 4ZM2 13c.4-2 1.8-3.5 3.5-3.5S8.6 11 9 13m-.5-3c.6-.4 1.2-.5 2-.5 1.7 0 3.1 1.5 3.5 3.5",
-  missions: "M3 13.5V2.5m0 1h8l-1.5 2.5L11 8.5H3",
   channels: "M2.5 4.5h11v7h-11zM2.5 4.5 8 8.5l5.5-4",
   audience: "M2.5 4h11M2.5 8h11M2.5 12h7",
   path: "M3.5 12.5a1.5 1.5 0 1 0 0-3 1.5 1.5 0 0 0 0 3Zm9-6a1.5 1.5 0 1 0 0-3 1.5 1.5 0 0 0 0 3ZM5 11h3.5a2 2 0 0 0 2-2V6.5",
@@ -250,7 +249,6 @@ function V2Sidebar() {
             <>
               <NavItem href={v2Href(orgId, brandId, "work")} label="Work" icon={<I d={ICONS.work} />} active={section === "work"} />
               <NavItem href={v2Href(orgId, brandId, "crew")} label="Crew" icon={<I d={ICONS.crew} />} active={section === "crew"} />
-              <NavItem href={v2Href(orgId, brandId, "missions")} label="Missions" icon={<I d={ICONS.missions} />} active={section === "missions"} />
             </>
           )}
           {staffMode && (
@@ -323,7 +321,7 @@ function V2Sidebar() {
         </Group>
 
         {/* The sidebar lists only what is WORKING: a crew with a running mission, and
-            running missions. Everything else stays one click away on Crew / Missions.
+            running missions. Everything else stays one click away on Crew.
             Both groups are staff mode only, like the pages they open. */}
         {staffMode && activeCrews.length > 0 && (
           <Group title="Crew">

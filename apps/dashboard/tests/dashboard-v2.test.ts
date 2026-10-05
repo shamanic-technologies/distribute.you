@@ -83,8 +83,6 @@ const V2_FILES = [
   "src/components/v2/v2-client-layout.tsx",
   "src/components/v2/today-page.tsx",
   "src/components/v2/crew-page.tsx",
-  "src/components/v2/missions-page.tsx",
-  "src/components/v2/missions-table.tsx",
   "src/components/v2/archived-offers.tsx",
   "src/components/v2/selected-offer.tsx",
   "src/components/v2/new-offer-modal.tsx",
@@ -318,8 +316,6 @@ describe("Keel parity, second pass", () => {
     expect(today).toContain('label="Spent"');
     expect(today).toContain("formatCentsAsUsdAdaptive(winSpend.totalSpentCents)");
     expect(today).not.toContain("data.spend.totalSpentCents");
-    // Missions keeps the campaign figure, labelled as such.
-    expect(read(V2 + "missions-page.tsx")).toContain('label: "Spent on missions"');
   });
 
   it("Today states runs off runs-service and the meeting date off the served outcome", () => {
@@ -379,12 +375,7 @@ describe("sending block (features-service outcomes.sending)", () => {
   });
 
   it("the v2 surfaces print the served rates and divide nothing", () => {
-    const page = read("src/components/v2/missions-page.tsx");
-    expect(page).toContain("data.sending.deliveryRatePct");
-    expect(page).toContain("recipientsBounced");
-    const table = read("src/components/v2/missions-table.tsx");
-    expect(table).toContain("g?.sentCount");
-    expect(table).toContain("g?.replyRatePct");
+    expect(read("src/components/v2/today-page.tsx")).toContain("emails?.deliveryRatePct");
     expect(read("src/lib/api.ts")).toContain("replyRatePct: g.outcomes?.sending?.replyRatePct");
   });
 });

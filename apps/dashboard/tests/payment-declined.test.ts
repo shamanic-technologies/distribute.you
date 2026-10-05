@@ -169,7 +169,6 @@ describe("call sites", () => {
   });
   it("dashboard v2 states it on every mission and on every brand page", () => {
     expect(read("components/v2/use-missions.ts")).toContain("paymentHold: paymentHoldKind(c)");
-    expect(read("components/v2/missions-table.tsx")).toContain("hold={m.paymentHold}");
     expect(read("components/v2/today-page.tsx")).toContain("hold={m.paymentHold}");
     // The campaign page's status button names the hold itself (PAYMENT_HOLD_LABEL), the hold sentence below it.
     expect(read("components/v2/campaign-page.tsx")).toContain("<CampaignControlsTrigger");
