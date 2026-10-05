@@ -17,6 +17,10 @@ import { ScopePaymentDeclinedBand } from "@/components/billing/scope-payment-dec
 import { useStaffMode } from "@/lib/use-staff-mode";
 import { SelectedOfferProvider, useSelectedOffer } from "@/components/v2/selected-offer";
 import { useLegCatalogue } from "@/lib/use-leg-catalogue";
+import { useAuthQuery } from "@/lib/use-auth-query";
+import { getOfferSalesPaths } from "@/lib/api";
+import { roiUnavailableLabel } from "@/lib/offer-sales-paths";
+import { campaignKey, campaignsOfOffer, sortCampaigns } from "@/lib/offer-campaigns";
 import { PathAvatar } from "@/components/v2/offer-sales-paths";
 import { BRAND_WHY } from "@/lib/brand-why";
 
@@ -164,7 +168,24 @@ function V2Sidebar() {
   const legCatalogue = useLegCatalogue();
   const { missions, crews } = useMissions(orgId, brandId);
   const activeCrews = crews.filter((c) => c.running > 0);
-  const activeMissions = missions.filter((m) => m.running);
+  // The same read and the same order as the Sales path page's Campaigns section
+  // (proactive first, ROI high to low), so the two lists never disagree.
+  const salesPaths = useAuthQuery(
+    ["offerSalesPaths", brandId, offerId, "catalogue"],
+    () => getOfferSalesPaths(brandId, offerId as string, "catalogue"),
+    { enabled: !!brandId && !!offerId },
+  );
+  const campaignOrder = useMemo(() => {
+    const order = new Map<string, number>();
+    const listed = campaignsOfOffer(salesPaths.data?.campaigns ?? [], salesPaths.data?.paths ?? [], roiUnavailableLabel);
+    sortCampaigns(listed, () => true).forEach((c, i) => order.set(campaignKey(c.featureSlug, c.legKey), i));
+    return order;
+  }, [salesPaths.data]);
+  const activeMissions = missions
+    .filter((m) => m.running)
+    .map((m) => ({ m, at: campaignOrder.get(campaignKey(m.row.campaign.featureSlug ?? "", m.row.campaign.legKey ?? "")) ?? Number.MAX_SAFE_INTEGER }))
+    .sort((a, b) => a.at - b.at)
+    .map(({ m }) => m);
   const buckets = useBucketCounts(brandId).data;
   const standings = useStandingCounts(brandId).data;
   // Deals badge = the people still in play on the Deals board (Leads + Sales interest +
