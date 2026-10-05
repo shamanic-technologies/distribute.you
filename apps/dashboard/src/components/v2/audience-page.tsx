@@ -448,8 +448,8 @@ function CompaniesTab({ brandId }: { brandId: string }) {
   );
   const settled = q.isFetchedAfterMount || q.data !== undefined;
   const rows = q.data?.companies ?? [];
-  const domains = rows.flatMap((c) => (c.domain ? [c.domain.toLowerCase()] : []));
-  const cost = useAuthQuery(["staffSourcingCompanies", brandId, domains], () => getStaffSourcingCompanies(brandId, domains), {
+  const keys = rows.map((c) => c.companyKey);
+  const cost = useAuthQuery(["staffSourcingCompanies", brandId, keys], () => getStaffSourcingCompanies(brandId, keys), {
     enabled: q.data !== undefined,
   });
   const costLoading = !(cost.isFetchedAfterMount || cost.data !== undefined);
@@ -490,7 +490,7 @@ function CompaniesTab({ brandId }: { brandId: string }) {
                   <td className="max-w-[260px] px-3"><AudienceChips refs={c.sources} /></td>
                   <td className="max-w-[320px] px-3"><AudienceChips refs={c.acceptedBy} accepted /></td>
                   <td className="pr-4 text-right tabular-nums md:pr-6">
-                    {!c.domain || cost.error ? dash : <Invested loading={costLoading} m={cost.data?.get(c.domain.toLowerCase())} />}
+                    {cost.error ? dash : <Invested loading={costLoading} m={cost.data?.get(c.companyKey)} />}
                   </td>
                 </tr>
               ))
