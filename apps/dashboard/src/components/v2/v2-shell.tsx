@@ -312,10 +312,8 @@ function V2Sidebar() {
             icon={<I d={ICONS.channels} />}
             active={section === "campaigns"}
           />
-          {/* Staff only: the lists we source people from, and what we hold in each. */}
-          {staffMode && (
-            <NavItem href={v2Href(orgId, brandId, "audience")} label="Audience" icon={<I d={ICONS.audience} />} active={section === "audience"} />
-          )}
+          {/* The lists we source people from, and what we hold in each. */}
+          <NavItem href={v2Href(orgId, brandId, "audience")} label="Audience" icon={<I d={ICONS.audience} />} active={section === "audience"} />
           <NavItem href={`${v2Href(orgId, brandId, "integrations")}/ai`} label="Integrations" icon={<I d={ICONS.plug} />} active={section === "integrations"} />
           <NavItem href={v2Href(orgId, brandId, "settings")} label="Brand settings" icon={<I d={ICONS.settings} />} active={section === "settings"} />
         </Group>
