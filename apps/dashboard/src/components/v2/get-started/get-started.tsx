@@ -65,6 +65,8 @@ import {
   EMAIL_CAP,
   GET_STARTED_SNAPSHOT_KEY,
   GET_STARTED_STEPS,
+  firstOpenStepIndex,
+  snapshotResumable,
   GIVE_DRAFT_FIELDS,
   LEVER_DRAFT_FIELDS,
   SERVICES_DRAFT_FIELD,
@@ -261,16 +263,41 @@ export function GetStarted() {
 
   const ran = useRef(false);
 
-  // Back from the Google sign-up round trip (or a reload): the preview is restored
-  // from this tab's snapshot and the wall opens at the step it was on.
+  // Back from the Google sign-up round trip, a reload or a new tab: the walk is restored
+  // from the browser's snapshot (2026-10-05: a reload restarted it from scratch), and the
+  // wall opens at the step it was on after the round trip. A link naming ANOTHER website
+  // starts that one instead.
+  const resumed = useRef(false);
+  const pendingResume = useRef<GetStartedSnapshot | null>(null);
   useEffect(() => {
-    const snap = parseGetStartedSnapshot(sessionStorage.getItem(GET_STARTED_SNAPSHOT_KEY));
+    let raw: string | null = null;
+    try {
+      raw = localStorage.getItem(GET_STARTED_SNAPSHOT_KEY);
+    } catch (e) {
+      console.error("[get-started] snapshot read failed:", e);
+    }
+    const snap = parseGetStartedSnapshot(raw);
     if (!snap) return;
-    if (params.get("resume") !== "1" && !isSignedIn) return;
+    const roundTrip = params.get("resume") === "1";
+    const carried = params.get("url");
+    if (!roundTrip && carried && hostOf(websiteUrl(carried)) !== hostOf(snap.website)) return;
+    if (!roundTrip && !snapshotResumable(snap, Date.now())) return;
     applySnapshot(snap);
-    setWallOpen(params.get("resume") === "1");
+    setWallOpen(roundTrip);
+    if (!roundTrip) pendingResume.current = snap;
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // What was still being prepared is asked again only once Clerk says the visitor is
+  // signed OUT: a signed-in call would bill their active org (see `start`).
+  useEffect(() => {
+    const snap = pendingResume.current;
+    if (!snap || isSignedIn !== false) return;
+    pendingResume.current = null;
+    resumed.current = true;
+    resumePreparing(snap);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isSignedIn]);
 
   // The steps, the legs and each channel's floor, off the public catalogue: no session
   // needed. Asked again on a failure (a cold gateway), then stated with a retry: the
@@ -345,8 +372,7 @@ export function GetStarted() {
     if (s.icp) icpRef.current = s.icp;
     setStarted(true);
     ran.current = true;
-    setStageIdx(s.audience ? stepIndex("audience") : s.offer ? stepIndex("offer") : 0);
-    setSteps({
+    const restored: Record<GetStartedStepKey, StepState> = {
       company: "done",
       competitors: s.competitors.length ? "done" : "failed",
       offer: s.offer ? "done" : "failed",
@@ -357,18 +383,51 @@ export function GetStarted() {
       paths: s.pathsDone ? "done" : "failed",
       levers: s.answered ? "done" : "failed",
       gives: s.answered ? "done" : "failed",
-      companies: "failed",
+      companies: s.audience ? "running" : "failed",
       email: s.email ? "done" : "failed",
-    });
+    };
+    setSteps(restored);
+    setStageIdx(firstOpenStepIndex(GET_STARTED_STEPS.map((st) => restored[st.key])));
   }
+
+  /**
+   * A reload drops whatever was still being prepared: the offers and audiences to pick
+   * from, and the drafted answers of the question steps. Asked again for the steps not
+   * done (the brand, its offer and audience are already saved and are not re-created).
+   */
+  function resumePreparing(s: GetStartedSnapshot) {
+    if (!s.offer) void prepareOffers(s.brandId, [], s.overview);
+    if (!s.audience) {
+      if (s.icp) {
+        setStep("audience", "running");
+        proposeAudienceSegments(s.brandId, s.icp)
+          .then(({ segments }) => {
+            setAudienceProposals(segments.slice(0, 6));
+            setStep("audience", segments.length ? "choose" : "failed");
+          })
+          .catch((e) => {
+            console.error("[get-started] audience proposals failed on resume:", e);
+            setStep("audience", "failed");
+          });
+      } else void prepareAudiences(s.brandId);
+    }
+  }
+
+  // The question steps' drafts, read again once the catalogue is in (a resumed walk
+  // whose offer was picked but whose answers were not all given).
+  useEffect(() => {
+    if (!resumed.current || !brandId || !offer || answered || drafted !== "no" || offered.steps.length === 0) return;
+    void draftAnswers(brandId, offer.offerId);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [brandId, offer?.offerId, answered, drafted, offered]);
 
   function saveSnapshot(patch: Partial<GetStartedSnapshot>) {
     const base = snapRef.current;
     if (!base) return;
-    const next = { ...base, ...patch };
+    const next = { ...base, ...patch, savedAt: Date.now() };
     snapRef.current = next;
     try {
-      sessionStorage.setItem(GET_STARTED_SNAPSHOT_KEY, JSON.stringify(next));
+      localStorage.setItem(GET_STARTED_SNAPSHOT_KEY, JSON.stringify(next));
     } catch (e) {
       console.error("[get-started] snapshot write failed:", e);
     }

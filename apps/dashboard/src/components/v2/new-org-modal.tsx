@@ -85,6 +85,26 @@ import {
   type NewOrgStep,
 } from "@/lib/v2/new-org-wizard";
 import { OfferIcon } from "@/components/v2/new-org-icons";
+import { newOrgDraftKey, parseNewOrgDraft, resumeStep, serializeNewOrgDraft, type NewOrgDraft } from "@/lib/v2/new-org-draft";
+
+/**
+ * The draft this modal resumes: the org's saved progress, when it is for the brand being
+ * resumed (or, from "Add a brand", for the org's unfinished brand). Read once, on open.
+ */
+function readDraft(orgId: string | null | undefined, brandId: string | null | undefined): NewOrgDraft | null {
+  if (!orgId || typeof window === "undefined") return null;
+  let raw: string | null = null;
+  try {
+    raw = window.localStorage.getItem(newOrgDraftKey(orgId));
+  } catch (e) {
+    console.error("[new-org] draft read failed:", e);
+    return null;
+  }
+  const d = parseNewOrgDraft(raw, orgId, Date.now());
+  if (!d) return null;
+  if (brandId && d.brandId !== brandId) return null;
+  return d;
+}
 
 type Draft = Record<LeverKey, string>;
 const EMPTY_LEVERS: Draft = {
@@ -120,13 +140,7 @@ const STEP_TITLE: Record<NewOrgStep, string> = {
   launching: "Launching your campaign",
 };
 
-export function NewOrgModal({
-  open,
-  onClose,
-  existingOrgNames,
-  existingOrgId,
-  existingBrand,
-}: {
+type NewOrgModalProps = {
   open: boolean;
   onClose: () => void;
   existingOrgNames: readonly string[];
@@ -141,14 +155,51 @@ export function NewOrgModal({
    * Continue reads its site and carries on.
    */
   existingBrand?: { id: string; domain: string | null; name: string | null } | null;
-}) {
+};
+
+/**
+ * "Add a brand" reopens the org's unfinished brand where it was left. "Start a new brand"
+ * drops that saved progress and remounts the walk from the brand step (the unfinished
+ * brand stays on the org, like any brand).
+ */
+export function NewOrgModal(props: NewOrgModalProps) {
+  const [epoch, setEpoch] = useState(0);
+  return (
+    <NewOrgWalk
+      key={epoch}
+      {...props}
+      onStartOver={() => {
+        if (props.existingOrgId) {
+          try {
+            window.localStorage.removeItem(newOrgDraftKey(props.existingOrgId));
+          } catch (e) {
+            console.error("[new-org] draft clear failed:", e);
+          }
+        }
+        setEpoch((n) => n + 1);
+      }}
+    />
+  );
+}
+
+function NewOrgWalk({
+  open,
+  onClose,
+  existingOrgNames,
+  existingOrgId,
+  existingBrand,
+  onStartOver,
+}: NewOrgModalProps & { onStartOver: () => void }) {
   const router = useRouter();
   const { user } = useUser();
   const { session } = useSession();
   const { createOrganization, setActive } = useOrganizationList();
   const personName = user?.fullName ?? ([user?.firstName, user?.lastName].filter(Boolean).join(" ") || null);
 
-  const [step, setStep] = useState<NewOrgStep>(existingOrgId ? "brand" : "org");
+  // A reload, a closed modal or a new tab reopens where the person left (Steady Recruit,
+  // 2026-10-05: a reload restarted the walk and minted a second offer).
+  const [draft] = useState(() => readDraft(existingOrgId, existingBrand?.id));
+  const [step, setStep] = useState<NewOrgStep>(draft ? resumeStep(draft) : existingOrgId ? "brand" : "org");
   const [busy, setBusy] = useState(false);
   const [readingSite, setReadingSite] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -157,31 +208,31 @@ export function NewOrgModal({
   const [orgName, setOrgName] = useState("");
   const [orgId, setOrgId] = useState<string | null>(existingOrgId ?? null);
   // Brand
-  const [hasWebsite, setHasWebsite] = useState(existingBrand ? Boolean(existingBrand.domain) : true);
-  const [website, setWebsite] = useState(existingBrand?.domain ?? "");
-  const [brandName, setBrandName] = useState(existingBrand?.name ?? "");
-  const [brandId, setBrandId] = useState<string | null>(existingBrand?.id ?? null);
+  const [hasWebsite, setHasWebsite] = useState(draft ? draft.hasWebsite : existingBrand ? Boolean(existingBrand.domain) : true);
+  const [website, setWebsite] = useState(draft?.website ?? existingBrand?.domain ?? "");
+  const [brandName, setBrandName] = useState(draft?.brandName ?? existingBrand?.name ?? "");
+  const [brandId, setBrandId] = useState<string | null>(draft?.brandId ?? existingBrand?.id ?? null);
   // Offers
-  const [offerText, setOfferText] = useState("");
-  const [offerProposals, setOfferProposals] = useState<OfferProposal[]>([]);
-  const [pickedOfferIndex, setPickedOfferIndex] = useState(0);
-  const [offerId, setOfferId] = useState<string | null>(null);
+  const [offerText, setOfferText] = useState(draft?.offerText ?? "");
+  const [offerProposals, setOfferProposals] = useState<OfferProposal[]>((draft?.offerProposals as unknown as OfferProposal[]) ?? []);
+  const [pickedOfferIndex, setPickedOfferIndex] = useState(draft?.pickedOfferIndex ?? 0);
+  const [offerId, setOfferId] = useState<string | null>(draft?.offerId ?? null);
   // A resumed brand that already holds its offers (its setup stopped after they were
   // confirmed): picked from as they are, never proposed again.
-  const [existingOffers, setExistingOffers] = useState<{ offerId: string; name: string }[] | null>(null);
+  const [existingOffers, setExistingOffers] = useState<{ offerId: string; name: string }[] | null>(draft?.existingOffers ?? null);
   // The six offer questions, one screen each.
-  const [leverIndex, setLeverIndex] = useState(0);
+  const [leverIndex, setLeverIndex] = useState(draft?.leverIndex ?? 0);
   // Audiences
-  const [audienceText, setAudienceText] = useState("");
-  const [segments, setSegments] = useState<AudienceSegmentProposal[]>([]);
-  const [pickedSegments, setPickedSegments] = useState<Set<number>>(new Set());
+  const [audienceText, setAudienceText] = useState(draft?.audienceText ?? "");
+  const [segments, setSegments] = useState<AudienceSegmentProposal[]>((draft?.segments as unknown as AudienceSegmentProposal[]) ?? []);
+  const [pickedSegments, setPickedSegments] = useState<Set<number>>(new Set(draft?.pickedSegments ?? []));
   // Levers
-  const [levers, setLevers] = useState<Draft>(EMPTY_LEVERS);
+  const [levers, setLevers] = useState<Draft>(draft?.levers ?? EMPTY_LEVERS);
   // Leg + budget
-  const [legKey, setLegKey] = useState<NewOrgLegKey>("start_to_website_visit");
+  const [legKey, setLegKey] = useState<NewOrgLegKey>(draft?.legKey ?? "start_to_website_visit");
   const [legPrices, setLegPrices] = useState<Partial<Record<NewOrgLegKey, { usd: number | null; workflow: string | null }>>>({});
   const [floorUsd, setFloorUsd] = useState(1);
-  const [budget, setBudget] = useState("");
+  const [budget, setBudget] = useState(draft?.budget ?? "");
   // Payment
   const [account, setAccount] = useState<BillingAccount | null>(null);
   const [payMode, setPayMode] = useState<PaymentMode>("prepaid");
@@ -211,6 +262,39 @@ export function NewOrgModal({
     setApiActiveOrgOverride(open && orgId ? orgId : null);
     return () => setApiActiveOrgOverride(null);
   }, [open, orgId]);
+
+  // Every answer is kept for this org as soon as the brand exists, so nothing typed is
+  // lost to a reload or a closed modal. Cleared once the campaign is launched.
+  useEffect(() => {
+    if (!open || !orgId || !brandId || step === "org") return;
+    const d: NewOrgDraft = {
+      v: 1,
+      orgId,
+      brandId,
+      savedAt: Date.now(),
+      step,
+      hasWebsite,
+      website,
+      brandName,
+      offerText,
+      offerProposals: offerProposals as unknown as NewOrgDraft["offerProposals"],
+      pickedOfferIndex,
+      offerId,
+      existingOffers,
+      audienceText,
+      segments: segments as unknown as NewOrgDraft["segments"],
+      pickedSegments: [...pickedSegments],
+      levers,
+      leverIndex,
+      legKey,
+      budget,
+    };
+    try {
+      window.localStorage.setItem(newOrgDraftKey(orgId), serializeNewOrgDraft(d));
+    } catch (e) {
+      console.error("[new-org] draft write failed:", e);
+    }
+  }, [open, orgId, brandId, step, hasWebsite, website, brandName, offerText, offerProposals, pickedOfferIndex, offerId, existingOffers, audienceText, segments, pickedSegments, levers, leverIndex, legKey, budget]);
 
   // Esc closes, like every v2 dialog.
   useEffect(() => {
@@ -392,17 +476,19 @@ export function NewOrgModal({
     }
     void run(async () => {
       // A brand with no website is created on the next screen, from what it sells: that
-      // text is the only thing its fields can be read from.
-      if (hasWebsite) {
+      // text is the only thing its fields can be read from. A resumed one already exists.
+      if (hasWebsite || brandId) {
         let id = brandId;
         if (!id) {
           const url = /^https?:\/\//i.test(website.trim()) ? website.trim() : `https://${website.trim()}`;
           ({ brandId: id } = await upsertBrand(url));
           setBrandId(id);
         }
-        // A brand that already holds its offers is not asked what it sells again: a
-        // brand-scoped site read is refused for it (one answer per offer), and its offers
-        // are already named. It picks one of them; the levers are read for that offer.
+        // A brand that already holds its offers is not asked what it sells again, with
+        // or without a website (2026-10-05: a resumed no-website brand was proposed and
+        // confirmed a SECOND offer): a brand-scoped site read is refused for it (one
+        // answer per offer), and its offers are already named. It picks one of them; the
+        // levers are read for that offer.
         const { offers } = await listBrandOffers(id);
         if (offers.length > 0) {
           setExistingOffers(offers.map((o) => ({ offerId: o.offerId, name: o.name })));
@@ -417,6 +503,8 @@ export function NewOrgModal({
           }
           return;
         }
+        // A resumed no-website brand with no offer yet: its text is asked next.
+        if (!hasWebsite) return forward();
         // Wait for the site read so "What you sell" opens already drafted (owner-asked:
         // a loader here beats a field that fills in under the person's eyes).
         setReadingSite(true);
@@ -699,6 +787,11 @@ export function NewOrgModal({
       if (!setActive) throw new Error("Your session is still loading. Try again in a moment.");
       await setActive({ organization: orgId! });
       await session?.getToken({ skipCache: true });
+      try {
+        window.localStorage.removeItem(newOrgDraftKey(orgId!));
+      } catch (e) {
+        console.error("[new-org] draft clear failed:", e);
+      }
       posthog.capture("new_org_modal_launched", { org_id: orgId, brand_id: id, leg: legKey, budget_usd: planFlow ? SUBSCRIPTION_OUTBOUND_DAILY_USD : budgetUsd, pay_mode: planFlow ? "plan" : payMode });
       setApiActiveOrgOverride(null);
       onClose();
@@ -720,7 +813,12 @@ export function NewOrgModal({
           {existingOrgId && stepIndex >= 1 && (
             <span className="k-fg3 k-mono text-[12px] tabular-nums">{`${stepIndex} / 7`}</span>
           )}
-          <button type="button" aria-label="Close" className="k-btn-ghost ml-auto h-7 w-7 justify-center p-0" onClick={() => close()} disabled={step === "launching"}>
+          {draft && !existingBrand && step !== "launching" && (
+            <button type="button" className="k-btn-ghost ml-auto h-7 text-[12px]" onClick={onStartOver} disabled={busy}>
+              Start a new brand
+            </button>
+          )}
+          <button type="button" aria-label="Close" className={`k-btn-ghost ${draft && !existingBrand && step !== "launching" ? "" : "ml-auto "}h-7 w-7 justify-center p-0`} onClick={() => close()} disabled={step === "launching"}>
             ×
           </button>
         </div>

@@ -582,7 +582,7 @@ export function AccountCardWall({
       await session?.getToken({ skipCache: true });
       posthog.capture("get_started_launched", { budget_usd: budgetUsd, plan: subscription ? "subscription" : "pay_as_you_go" });
       try {
-        sessionStorage.removeItem(GET_STARTED_SNAPSHOT_KEY);
+        localStorage.removeItem(GET_STARTED_SNAPSHOT_KEY);
       } catch {
         // Nothing to clean up in a tab that never wrote one.
       }

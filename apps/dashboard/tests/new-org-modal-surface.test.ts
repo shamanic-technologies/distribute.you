@@ -148,7 +148,8 @@ describe("the brand step waits for the site read", () => {
     const wait = body.indexOf("await startPrefill(id)");
     expect(wait).toBeGreaterThan(-1);
     expect(body.indexOf("setReadingSite(true)")).toBeLessThan(wait);
-    expect(body.indexOf("forward()")).toBeGreaterThan(wait);
+    // The last forward (a resumed no-website brand forwards earlier, with no site to read).
+    expect(body.lastIndexOf("forward()")).toBeGreaterThan(wait);
     expect(modal).toContain("Reading your website to draft what you sell");
   });
 });
