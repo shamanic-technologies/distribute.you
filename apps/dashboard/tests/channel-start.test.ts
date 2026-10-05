@@ -1,7 +1,12 @@
 import { describe, expect, it } from "vitest";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
-import { channelStartErrorMessage, channelStatusSummary, startableWorkflowDynastySlug } from "../src/lib/channel-start";
+import {
+  channelStartErrorMessage,
+  channelStatusSummary,
+  ladderStartRefusalMessage,
+  startableWorkflowDynastySlug,
+} from "../src/lib/channel-start";
 
 const SRC = join(__dirname, "..", "src");
 const read = (p: string) => readFileSync(join(SRC, p), "utf8");
@@ -111,5 +116,30 @@ describe("the module stays unit-testable and free of em-dashes", () => {
   // Every string in here is copy a customer reads.
   it("ships no em-dash anywhere, comments included", () => {
     expect(read("lib/channel-start.ts")).not.toContain("—");
+  });
+});
+
+describe("ladderStartRefusalMessage", () => {
+  // AI Instant Call, 2026-10-05: no workflow to rank, the ladder 404s, and "try again in a
+  // moment" sent the customer to retry something that can never succeed.
+  it("says a channel with no workflow for the leg cannot be turned on, never to retry", () => {
+    const msg = ladderStartRefusalMessage(404, "AI Instant Call");
+    expect(msg).toContain("AI Instant Call");
+    expect(msg).not.toMatch(/try again/i);
+  });
+
+  it("leaves every other status to the caller", () => {
+    expect(ladderStartRefusalMessage(500, "AI Instant Call")).toBeNull();
+    expect(ladderStartRefusalMessage(null, "AI Instant Call")).toBeNull();
+  });
+});
+
+describe("createCampaignForPair", () => {
+  const src = read("lib/start-pair.ts");
+  it("names the offer on the ladder read", () => {
+    expect(src).toContain("getWorkflowProjectionLadder({ featureSlug, brandId, offerId, leg: legKey })");
+  });
+  it("turns a refused ladder into the channel's own sentence", () => {
+    expect(src).toContain("ladderStartRefusalMessage(err.status, channelName)");
   });
 });

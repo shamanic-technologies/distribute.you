@@ -142,6 +142,20 @@ export function channelStartErrorMessage(status: number | null, kind: "start" | 
 }
 
 /**
+ * What a refused workflow-ladder read means for a START, keyed on the STATUS.
+ *
+ * features-service answers 404 when it has no workflow to rank for this channel's leg on
+ * this offer (`leg_not_declared`: AI Instant Call, 2026-10-05, has no workflow at all).
+ * That is the channel not being startable, and retrying will never change it, so it gets
+ * the "not ready" sentence rather than "try again in a moment". Any other status is not
+ * ours to explain: null, and the caller rethrows it.
+ */
+export function ladderStartRefusalMessage(status: number | null, channelName: string): string | null {
+  if (status === 404) return `${channelName} cannot be turned on here yet. It has nothing to run for this outcome.`;
+  return null;
+}
+
+/**
  * Whether a channel we are about to start has a workflow to run.
  *
  * features-service ranks the channel's workflows for the leg and names its own
