@@ -6132,6 +6132,27 @@ export async function startCampaign(
   });
 }
 
+/**
+ * Start the campaign of an (offer x leg x channel) the customer already funded
+ * (campaign-service `POST /campaigns/start-funded-pair`, through the gateway). campaign-service
+ * picks the workflow itself, or none for a channel another service performs (AI Instant
+ * Call, campaign-service #560). 201 created, 200 the pair already had one (a stopped one is
+ * started). A refusal (`not_funded`, `leg_not_performed`, ...) carries a sentence for a person
+ * in `error` plus a `reason`.
+ */
+export async function startFundedPair(
+  params: { brandId: string; offerId: string; featureSlug: string; legKey: string },
+  token?: string,
+): Promise<{ campaign: RawCampaign }> {
+  return apiCall<{ campaign: RawCampaign }>("/campaigns/start-funded-pair", {
+    token,
+    method: "POST",
+    body: { brandId: params.brandId, offerId: params.offerId, featureSlug: params.featureSlug, legKey: params.legKey },
+    // The identity rides a header too: the gateway promotes it from headers/query only.
+    headers: { "x-brand-id": params.brandId, "x-feature-slug": params.featureSlug },
+  });
+}
+
 // Campaign sub-resources
 
 /** Snapshot of the lead's CURRENT employer organization (lead-service OrganizationView). */

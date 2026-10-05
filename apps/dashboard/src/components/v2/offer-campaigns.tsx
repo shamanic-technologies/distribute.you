@@ -16,7 +16,7 @@ import { fmtDailyBudgetUsd } from "@/lib/campaign-budget";
 import { formatRoi, roiIsGood } from "@/lib/format-roi";
 import { campaignKey, campaignTag, sortCampaigns, type OfferCampaign } from "@/lib/offer-campaigns";
 import { channelWriteErrorMessage } from "@/lib/channel-start";
-import { createCampaignForPair } from "@/lib/start-pair";
+import { createCampaignForPair, startReactiveCampaign } from "@/lib/start-pair";
 import { invalidateCampaignMoney } from "@/lib/write-invalidation";
 import { useAcquisitionChannels } from "@/lib/use-acquisition-channels";
 import { useMissions, type Mission } from "@/components/v2/use-missions";
@@ -300,6 +300,8 @@ function CampaignStatus({
     try {
       if (mission) {
         await setCampaignStatus(mission.row.campaign.id, next ? "activate" : "stop", { brandId, featureSlug: campaign.featureSlug });
+      } else if (campaign.reactive) {
+        await startReactiveCampaign({ brandId, offerId, featureSlug: campaign.featureSlug, legKey: campaign.legKey });
       } else {
         await createCampaignForPair({
           brandId,

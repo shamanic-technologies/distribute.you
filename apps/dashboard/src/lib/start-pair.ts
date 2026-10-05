@@ -5,8 +5,14 @@ import {
   prefillFeatureInputs,
   prefillToStringMap,
   startCampaign,
+  startFundedPair,
 } from "@/lib/api";
-import { ChannelStartRefusal, ladderStartRefusalMessage, startableWorkflowDynastySlug } from "@/lib/channel-start";
+import {
+  ChannelStartRefusal,
+  fundedPairRefusalMessage,
+  ladderStartRefusalMessage,
+  startableWorkflowDynastySlug,
+} from "@/lib/channel-start";
 
 /**
  * CREATE the campaign for one (offer x leg x channel) that has none yet.
@@ -63,5 +69,25 @@ export async function createCampaignForPair({
     workflowDynastySlug,
     offerId,
     legKey,
+  });
+}
+
+/**
+ * Turn on a REACTIVE campaign (it follows the leads earlier legs deliver: AI meeting
+ * booking, AI Instant Call) that has none yet. Its budget is set on its own row first, so it
+ * is a funded pair, and campaign-service starts it: it picks the workflow, or none for a
+ * channel another service performs (AI Instant Call has no workflow by design, so the
+ * dashboard's ladder read can never name one for it).
+ */
+export async function startReactiveCampaign(params: {
+  brandId: string;
+  offerId: string;
+  featureSlug: string;
+  legKey: string;
+}): Promise<void> {
+  await startFundedPair(params).catch((err: unknown) => {
+    const refusal = err instanceof ApiError ? fundedPairRefusalMessage(err.status, err.body) : null;
+    if (refusal) throw new ChannelStartRefusal(refusal);
+    throw err;
   });
 }
