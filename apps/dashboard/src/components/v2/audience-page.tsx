@@ -6,13 +6,17 @@ import {
   getStaffAudienceSnapshot,
   getStaffHeldCompanies,
   getStaffHeldPeople,
+  getStaffSourcingCompanies,
+  getStaffSourcingInvestment,
+  getStaffSourcingPeople,
+  type InvestedMoney,
   listAudiences,
   type AudienceChannelWire,
   type AudienceWire,
   type BrandAudienceSnapshot,
   type SnapshotAudienceRef,
 } from "@/lib/api";
-import { formatCount } from "@/lib/format-number";
+import { formatCount, formatUsdAdaptive } from "@/lib/format-number";
 import { CompanyMark } from "@/components/v2/people-bits";
 import { useAuthQuery } from "@/lib/use-auth-query";
 import { audienceFilterGroups } from "@/lib/audience-filter-groups";
@@ -155,6 +159,24 @@ function AcceptedToggle({ on, onChange }: { on: boolean; onChange: (v: boolean) 
   );
 }
 
+/**
+ * What sourcing cost, on the NET basis (what the org pays), as features-service serves it.
+ * `vendor` adds what it cost us from the providers under it. A failed read is the dash;
+ * an absent row is the caller's call (no spend vs not attributable).
+ */
+function Invested({ m, vendor, loading }: { m: InvestedMoney | null | undefined; vendor?: boolean; loading: boolean }) {
+  if (loading) return <Shimmer className="ml-auto h-3.5 w-12" />;
+  if (!m || m.netUsd == null) return dash;
+  return (
+    <span className="block">
+      <span className="font-medium">{formatUsdAdaptive(m.netUsd)}</span>
+      {vendor ? (
+        <span className="k-fg3 block text-[12px]">{m.vendorUsd != null ? `${formatUsdAdaptive(m.vendorUsd)} vendor` : "vendor unknown"}</span>
+      ) : null}
+    </span>
+  );
+}
+
 function Skeleton({ cols }: { cols: number }) {
   return (
     <>
@@ -170,6 +192,8 @@ export function AudiencePage() {
   const [tab, setTab] = useState<Tab>("audiences");
   const snapshot = useAuthQuery(["staffAudienceSnapshot", brandId], () => getStaffAudienceSnapshot(brandId));
   const totals = snapshot.data?.totals ?? null;
+  const investment = useAuthQuery(["staffSourcingInvestment", brandId], () => getStaffSourcingInvestment(brandId));
+  const totalNet = investment.data?.total.netUsd;
   return (
     <>
       <TopBar crumbs={[{ label: "Setup" }, { label: "Audience" }]} />
@@ -190,12 +214,20 @@ export function AudiencePage() {
           totals ? (
             <span className="tabular-nums">
               {formatCount(totals.people.accepted)} people accepted by a target · {formatCount(totals.companies.accepted)} companies
+              {totalNet != null ? ` · ${formatUsdAdaptive(totalNet)} invested` : ""}
             </span>
           ) : null
         }
       />
       {tab === "audiences" ? (
-        <AudiencesTab brandId={brandId} snapshot={snapshot.data ?? null} snapshotError={snapshot.data === undefined ? snapshot.error : null} />
+        <AudiencesTab
+          brandId={brandId}
+          snapshot={snapshot.data ?? null}
+          snapshotError={snapshot.data === undefined ? snapshot.error : null}
+          invested={investment.data ? new Map(investment.data.audiences.map((a) => [a.audienceId, a.invested])) : null}
+          investedLoading={!(investment.isFetchedAfterMount || investment.data !== undefined)}
+          investedError={investment.data === undefined ? investment.error : null}
+        />
       ) : tab === "people" ? (
         <PeopleTab brandId={brandId} />
       ) : (
@@ -209,10 +241,17 @@ function AudiencesTab({
   brandId,
   snapshot,
   snapshotError,
+  invested,
+  investedLoading,
+  investedError,
 }: {
   brandId: string;
   snapshot: BrandAudienceSnapshot | null;
   snapshotError: Error | null;
+  /** features-service lists only audiences WITH sourcing spend: absent from a settled map = $0. */
+  invested: Map<string, InvestedMoney> | null;
+  investedLoading: boolean;
+  investedError: Error | null;
 }) {
   const [q, setQ] = useState("");
   const [cursor, setCursor] = useState(-1);
@@ -262,18 +301,19 @@ function AudiencesTab({
               <th className={`${REC_TH} text-right`}>People</th>
               <th className={`${REC_TH} text-right`}>Companies</th>
               <th className={`${REC_TH} text-right`}>Accepted</th>
+              <th className={`${REC_TH} text-right`}>$ invested</th>
               <th className={`${REC_TH} pr-4 md:pr-6`}>Status</th>
             </tr>
           </thead>
           <tbody>
             {failed ? (
-              <tr><td colSpan={7}><EmptyNote>Audiences could not be loaded: {failed.message}</EmptyNote></td></tr>
+              <tr><td colSpan={8}><EmptyNote>Audiences could not be loaded: {failed.message}</EmptyNote></td></tr>
             ) : !settled ? (
               Array.from({ length: 8 }, (_, i) => (
-                <tr key={i} className="k-row h-10"><td colSpan={7} className="px-4 md:px-6"><Shimmer className="h-4 w-full" /></td></tr>
+                <tr key={i} className="k-row h-10"><td colSpan={8} className="px-4 md:px-6"><Shimmer className="h-4 w-full" /></td></tr>
               ))
             ) : rows.length === 0 ? (
-              <tr><td colSpan={7}><EmptyNote>{q ? "No audience matches." : "This brand has no audience yet."}</EmptyNote></td></tr>
+              <tr><td colSpan={8}><EmptyNote>{q ? "No audience matches." : "This brand has no audience yet."}</EmptyNote></td></tr>
             ) : (
               rows.map((a, i) => {
                 const source = sourceOf(a);
@@ -300,6 +340,15 @@ function AudiencesTab({
                     <td className="px-3 text-right tabular-nums">{snapshotError ? dash : n(h ? h.people.held : snapshot ? 0 : null)}</td>
                     <td className="px-3 text-right tabular-nums">{snapshotError ? dash : n(h ? h.companies.held : snapshot ? 0 : null)}</td>
                     <td className="px-3 text-right tabular-nums">{snapshotError ? dash : n(h ? h.people.accepted : snapshot ? 0 : null)}</td>
+                    <td className="px-3 text-right tabular-nums">
+                      {investedError ? dash : (
+                        <Invested
+                          loading={investedLoading}
+                          vendor
+                          m={invested ? (invested.get(a.id) ?? { billedUsd: 0, netUsd: 0, vendorUsd: 0, unpricedBilledUsd: 0 }) : null}
+                        />
+                      )}
+                    </td>
                     <td className="whitespace-nowrap pr-4 md:pr-6">
                       <StateDot running={isProactive(a)} label={isProactive(a) ? "Proactive" : "Stale"} />
                     </td>
@@ -331,6 +380,9 @@ function PeopleTab({ brandId }: { brandId: string }) {
   );
   const settled = q.isFetchedAfterMount || q.data !== undefined;
   const rows = q.data?.people ?? [];
+  const ids = rows.flatMap((p) => (p.revealed && p.providerPersonId ? [p.providerPersonId] : []));
+  const cost = useAuthQuery(["staffSourcingPeople", brandId, ids], () => getStaffSourcingPeople(brandId, ids), { enabled: q.data !== undefined });
+  const costLoading = !(cost.isFetchedAfterMount || cost.data !== undefined);
   return (
     <>
       <AcceptedToggle on={acceptedOnly} onChange={(v) => { setAcceptedOnly(v); setOffset(0); }} />
@@ -341,16 +393,17 @@ function PeopleTab({ brandId }: { brandId: string }) {
               <th className={`${REC_TH} pl-4 md:pl-6`}>Person</th>
               <th className={REC_TH}>Company</th>
               <th className={REC_TH}>Source</th>
-              <th className={`${REC_TH} pr-4 md:pr-6`}>Targeting</th>
+              <th className={REC_TH}>Targeting</th>
+              <th className={`${REC_TH} pr-4 text-right md:pr-6`}>$ invested</th>
             </tr>
           </thead>
           <tbody>
             {q.error && q.data === undefined ? (
-              <tr><td colSpan={4}><EmptyNote>People could not be loaded: {q.error.message}</EmptyNote></td></tr>
+              <tr><td colSpan={5}><EmptyNote>People could not be loaded: {q.error.message}</EmptyNote></td></tr>
             ) : !settled ? (
-              <Skeleton cols={4} />
+              <Skeleton cols={5} />
             ) : rows.length === 0 ? (
-              <tr><td colSpan={4}><EmptyNote>{acceptedOnly ? "No person accepted by a target yet." : "This brand holds no person yet."}</EmptyNote></td></tr>
+              <tr><td colSpan={5}><EmptyNote>{acceptedOnly ? "No person accepted by a target yet." : "This brand holds no person yet."}</EmptyNote></td></tr>
             ) : (
               rows.map((p) => (
                 <tr key={p.personKey} className="k-row h-12">
@@ -369,7 +422,13 @@ function PeopleTab({ brandId }: { brandId: string }) {
                     ) : dash}
                   </td>
                   <td className="max-w-[280px] px-3"><AudienceChips refs={p.sources} /></td>
-                  <td className="max-w-[320px] pr-4 md:pr-6"><AudienceChips refs={p.acceptedBy} accepted /></td>
+                  <td className="max-w-[320px] px-3"><AudienceChips refs={p.acceptedBy} accepted /></td>
+                  <td className="pr-4 text-right tabular-nums md:pr-6">
+                    {/* Only a revealed person was paid for; a teaser cost nothing on its own. */}
+                    {!p.revealed || !p.providerPersonId || cost.error ? dash : (
+                      <Invested loading={costLoading} m={cost.data?.get(p.providerPersonId)} />
+                    )}
+                  </td>
                 </tr>
               ))
             )}
@@ -389,6 +448,11 @@ function CompaniesTab({ brandId }: { brandId: string }) {
   );
   const settled = q.isFetchedAfterMount || q.data !== undefined;
   const rows = q.data?.companies ?? [];
+  const domains = rows.flatMap((c) => (c.domain ? [c.domain.toLowerCase()] : []));
+  const cost = useAuthQuery(["staffSourcingCompanies", brandId, domains], () => getStaffSourcingCompanies(brandId, domains), {
+    enabled: q.data !== undefined,
+  });
+  const costLoading = !(cost.isFetchedAfterMount || cost.data !== undefined);
   return (
     <>
       <AcceptedToggle on={acceptedOnly} onChange={(v) => { setAcceptedOnly(v); setOffset(0); }} />
@@ -400,16 +464,17 @@ function CompaniesTab({ brandId }: { brandId: string }) {
               <th className={`${REC_TH} text-right`}>People</th>
               <th className={`${REC_TH} text-right`}>Accepted</th>
               <th className={REC_TH}>Source</th>
-              <th className={`${REC_TH} pr-4 md:pr-6`}>Targeting</th>
+              <th className={REC_TH}>Targeting</th>
+              <th className={`${REC_TH} pr-4 text-right md:pr-6`}>$ invested</th>
             </tr>
           </thead>
           <tbody>
             {q.error && q.data === undefined ? (
-              <tr><td colSpan={5}><EmptyNote>Companies could not be loaded: {q.error.message}</EmptyNote></td></tr>
+              <tr><td colSpan={6}><EmptyNote>Companies could not be loaded: {q.error.message}</EmptyNote></td></tr>
             ) : !settled ? (
-              <Skeleton cols={5} />
+              <Skeleton cols={6} />
             ) : rows.length === 0 ? (
-              <tr><td colSpan={5}><EmptyNote>{acceptedOnly ? "No company accepted by a target yet." : "This brand holds no company yet."}</EmptyNote></td></tr>
+              <tr><td colSpan={6}><EmptyNote>{acceptedOnly ? "No company accepted by a target yet." : "This brand holds no company yet."}</EmptyNote></td></tr>
             ) : (
               rows.map((c) => (
                 <tr key={c.companyKey} className="k-row h-10">
@@ -423,7 +488,10 @@ function CompaniesTab({ brandId }: { brandId: string }) {
                   <td className="px-3 text-right tabular-nums">{formatCount(c.people.held)}</td>
                   <td className="px-3 text-right tabular-nums">{formatCount(c.people.accepted)}</td>
                   <td className="max-w-[260px] px-3"><AudienceChips refs={c.sources} /></td>
-                  <td className="max-w-[320px] pr-4 md:pr-6"><AudienceChips refs={c.acceptedBy} accepted /></td>
+                  <td className="max-w-[320px] px-3"><AudienceChips refs={c.acceptedBy} accepted /></td>
+                  <td className="pr-4 text-right tabular-nums md:pr-6">
+                    {!c.domain || cost.error ? dash : <Invested loading={costLoading} m={cost.data?.get(c.domain.toLowerCase())} />}
+                  </td>
                 </tr>
               ))
             )}
