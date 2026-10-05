@@ -7,7 +7,7 @@ import { redirect } from "next/navigation";
  *
  * Signed out: the visitor starts `/get-started`, query kept. Signed in: `/get-started`
  * refuses a signed-in walk (it would bill the active org), so the person goes to their
- * org page, which resumes an unfinished brand in the v2 setup modal and ends on
+ * org page, which resumes an unfinished brand in the brand walk and ends on
  * "Choose your plan".
  */
 export default async function OnboardingPage({

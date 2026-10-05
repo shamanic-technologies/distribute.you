@@ -33,6 +33,7 @@ export function pricingLegFor(entryLegKey: string | null | undefined): NewOrgLeg
 
 export interface LaunchInput {
   brandId: string;
+  /** The brand's site; empty for a brand with no website (created from what it sells, dashboard only). */
   website: string;
   /** The offer picked at step 3, already confirmed on the brand. */
   offer: { offerId: string; name: string };
@@ -184,7 +185,7 @@ export async function launchFromPreview(input: LaunchInput, progress: LaunchProg
     const { campaign } = await createCampaignWithoutBrandEnrichment({
       name: `${offerName} (${c.outcome}, ${c.label})`,
       workflowSlug,
-      brandUrls: [input.website],
+      ...(input.website ? { brandUrls: [input.website] } : { brandIds: [input.brandId] }),
       offerId,
       legKey: c.legKey,
       featureSlug: c.featureSlug,

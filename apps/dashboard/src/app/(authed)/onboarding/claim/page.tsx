@@ -40,7 +40,7 @@ export default function ClaimPage() {
           setFailed(true);
           return;
         }
-        // The org page resumes the brand they built in the v2 setup modal, which
+        // The org page resumes the brand they built in the brand walk, which
         // ends on "Choose your plan".
         router.replace("/v2");
       } catch (err) {

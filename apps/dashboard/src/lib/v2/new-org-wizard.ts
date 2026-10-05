@@ -1,8 +1,8 @@
 /**
- * The "New organization" modal of dashboard v2: the rules it decides on, kept
- * alias-free so they carry real unit tests. The modal itself
- * (`components/v2/new-org-modal.tsx`) renders and calls the api; nothing here
- * reads the network.
+ * Rules shared by the brand walk's launch (`components/v2/get-started/launch.ts`) and
+ * the "New organization" modal (`components/v2/new-organization-modal.tsx`): the
+ * channel and legs a new brand starts on, the org-name prefill, the six offer levers.
+ * Alias-free so they carry real unit tests; nothing here reads the network.
  */
 
 /** The two things a new brand can ask us for, and the acquisition channel that buys them. */
@@ -60,12 +60,6 @@ export function suggestOrgName(personName: string | null | undefined, existingOr
   return `${base} (${existingOrgNames.length + 1})`;
 }
 
-/** The brand name we prefill for a brand with no website: "Kevin Lourd's brand". */
-export function suggestNoWebsiteBrandName(personName: string | null | undefined): string {
-  const name = (personName ?? "").trim();
-  return name ? `${name}'s brand` : "My brand";
-}
-
 /**
  * The recommended daily budget, in WHOLE dollars (a daily budget is a whole-dollar
  * config value everywhere in the dashboard): enough to buy the leg's recommended
@@ -81,77 +75,6 @@ export function recommendedDailyBudgetUsd(
   if (costPerOutcomeUsd == null || !Number.isFinite(costPerOutcomeUsd) || costPerOutcomeUsd <= 0) return null;
   const raw = Math.ceil(leg.recommendedPerDay * costPerOutcomeUsd);
   return Math.max(raw, Math.ceil(channelFloorUsd));
-}
-
-/** Prepaid amounts offered, in cents. */
-export const PREPAID_PRESETS_CENTS = [5000, 20000, 50000] as const;
-export const PREPAID_MIN_CENTS = 100;
-
-export type PaymentMode = "prepaid" | "postpaid";
-
-/**
- * Parse the custom prepaid amount a person typed. Returns cents, or a sentence
- * saying what is wrong. A blank field is its own answer (nothing chosen yet),
- * never zero: `Number("")` is 0 and would read as a valid free amount.
- */
-export function parseCustomAmountCents(input: string): { cents: number } | { problem: string } | null {
-  const trimmed = input.trim().replace(/^\$/, "");
-  if (trimmed === "") return null;
-  const n = Number(trimmed);
-  if (!Number.isFinite(n)) return { problem: "Enter an amount in dollars." };
-  const cents = Math.round(n * 100);
-  if (cents < PREPAID_MIN_CENTS) return { problem: "The minimum is $1." };
-  return { cents };
-}
-
-/**
- * Whether the payment step may be skipped. Only while the org holds free credit it
- * can spend: an org whose first credit is still to come must fund its campaign,
- * or the campaign would be created and never run.
- */
-export function canSkipPayment(spendableFreeCreditCents: number | null): boolean {
-  return spendableFreeCreditCents != null && spendableFreeCreditCents > 0;
-}
-
-/** The modal's screens, in order. `offerPick` is skipped when one offer is detected. */
-export const NEW_ORG_STEPS = [
-  "org",
-  "brand",
-  "offerText",
-  "offerPick",
-  "audienceText",
-  "audiencePick",
-  "levers",
-  "leg",
-  "plan",
-  "budget",
-  "payment",
-  "launching",
-] as const;
-export type NewOrgStep = (typeof NEW_ORG_STEPS)[number];
-
-/**
- * `planFlow` (owner 2026-10-03): the brand ends on "Choose your plan" (a plan per brand x
- * offer, no trial, its $50/day fixed), so the budget and payment screens are never
- * shown. Off only for an org billing keeps on pay-as-you-go (`existing_paying_org`).
- */
-export function nextStep(step: NewOrgStep, ctx: { offerCount: number; planFlow: boolean }): NewOrgStep {
-  if (step === "plan") return step;
-  const i = NEW_ORG_STEPS.indexOf(step);
-  const next = NEW_ORG_STEPS[i + 1];
-  if (!next) return step;
-  if (next === "offerPick" && ctx.offerCount <= 1) return NEW_ORG_STEPS[i + 2];
-  if (next === "plan" && !ctx.planFlow) return NEW_ORG_STEPS[i + 2];
-  return next;
-}
-
-export function previousStep(step: NewOrgStep, ctx: { offerCount: number; planFlow: boolean }): NewOrgStep {
-  const i = NEW_ORG_STEPS.indexOf(step);
-  const prev = NEW_ORG_STEPS[i - 1];
-  if (!prev) return step;
-  if (prev === "offerPick" && ctx.offerCount <= 1) return NEW_ORG_STEPS[i - 2];
-  if (prev === "plan" && !ctx.planFlow) return NEW_ORG_STEPS[i - 2];
-  return prev;
 }
 
 export type LeverKey = "dreamOutcome" | "perceivedLikelihood" | "socialProof" | "riskReversal" | "urgency" | "scarcity";

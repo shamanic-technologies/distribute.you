@@ -63,7 +63,7 @@ export async function seedTrialCredit(orgId: string): Promise<void> {
 /**
  * Declare that an org pays through Revolut (billing relays stripe-service's pin, which
  * also creates the org's Revolut customer). Owner-decided 2026-09-27 for orgs set up in
- * the v2 modal. Idempotent. Returns `"pinned"`, or `"card_elsewhere"` when the org
+ * the dashboard. Idempotent. Returns `"pinned"`, or `"card_elsewhere"` when the org
  * already holds a chargeable card on another acquirer (billing's 409), in which case it
  * keeps paying where its card is. Any other failure throws.
  */

@@ -17,7 +17,7 @@ const apiProxyRoute = fs.readFileSync(
   "utf-8"
 );
 const newOrgModal = fs.readFileSync(
-  path.join(__dirname, "../src/components/v2/new-org-modal.tsx"),
+  path.join(__dirname, "../src/components/v2/get-started/org-launch.tsx"),
   "utf-8"
 );
 const signUpPage = fs.readFileSync(
@@ -78,7 +78,7 @@ describe("DIS-111 drops per-request currentUser() in the API proxy", () => {
   });
 });
 
-describe("DIS-111 the v2 setup refreshes the token after marking onboarding complete", () => {
+describe("DIS-111 the dashboard brand walk refreshes the token after marking onboarding complete", () => {
   it("re-mints the session token so the edge gate sees the fresh claim", () => {
     const at = newOrgModal.indexOf('"/api/onboarding/complete"');
     expect(at).toBeGreaterThan(-1);

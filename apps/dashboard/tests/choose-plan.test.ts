@@ -56,10 +56,12 @@ describe("where a plan is chosen", () => {
     expect(add).toContain("<ChoosePlanPanel brandId={brandId} offerId={offerId} onStarted={() => mutation.mutate()} />");
   });
 
-  it("Add a brand ends on the plan and never flips a plan org back to pay-as-you-go", () => {
-    const modal = read("src/components/v2/new-org-modal.tsx");
-    expect(modal).toContain('{step === "plan" && brandId && offerId && (');
-    expect(modal).toContain("if (!planFlow) await setPaymentMode(");
-    expect(modal).toContain("const dailyUsd = planFlow ? SUBSCRIPTION_OUTBOUND_DAILY_USD : budgetUsd;");
+  it("Add a brand ends on the plan and never writes a payment mode (a plan sets it; a pay-as-you-go org keeps its tag)", () => {
+    const end = read("src/components/v2/get-started/org-launch.tsx");
+    expect(end).toContain("<ChoosePlanPanel");
+    expect(end).toContain("onStarted={() => launch(SUBSCRIPTION_OUTBOUND_DAILY_USD, true)}");
+    expect(end).toContain('if (code !== "existing_paying_org") return false;');
+    expect(end).not.toContain("setPaymentMode(");
+    expect(end).not.toContain("startTrial");
   });
 });

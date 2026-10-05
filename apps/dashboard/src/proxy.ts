@@ -65,7 +65,7 @@ export default clerkMiddleware(
     const pathname = req.nextUrl.pathname;
 
     // Where an unfinished setup resumes: the org page, which offers the org's brand
-    // under "Finish setup" (the v2 setup modal, ending on "Choose your plan"), or
+    // under "Finish setup" (the brand walk, ending on "Choose your plan"), or
     // "Add a brand" when it has none. It is exempt from this gate below, so no loop.
     // No org at all (an active session normally has one; a pending one is handled
     // above): `/get-started`, public, never an automatic redirect back here.
@@ -107,17 +107,20 @@ export default clerkMiddleware(
     // Exempt: public/auth routes, the onboarding flow itself, all API routes.
     //
     // Exempt too: the bare ORG page (`/orgs/:id`, `/v2/orgs/:id`). An org with no
-    // brand yet (a New organization modal someone closed) lands on the v2 org page,
-    // which offers "Add a brand" and runs the same modal from the brand step. Sending
+    // brand yet (a new org whose brand walk was closed) lands on the v2 org page,
+    // which offers "Add a brand" (the brand walk). Sending
     // it to the full-page onboarding instead is what this replaces. Every other path
-    // of such an org is still gated.
+    // of such an org is still gated, except its brand walk (`/v2/orgs/:id/new-brand`):
+    // a new org's first brand is set up there, and only its launch marks the org set up.
     const v2OrgRoot = /^(\/v2)?\/orgs\/[^/]+\/?$/.test(pathname);
+    const v2BrandWalk = /^\/v2\/orgs\/[^/]+\/new-brand\/?$/.test(pathname);
     if (
       userId &&
       !isPublicRoute(req) &&
       !isOnboardingRoute(req) &&
       !isApiRoute(req) &&
       !v2OrgRoot &&
+      !v2BrandWalk &&
       sessionClaims?.orgMeta?.onboardingComplete !== true
     ) {
       return NextResponse.redirect(new URL(onboardingHref(), req.url));

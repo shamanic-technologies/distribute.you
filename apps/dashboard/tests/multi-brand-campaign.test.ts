@@ -31,7 +31,6 @@ describe("Multi-brand campaign support", () => {
 
   it("callers of extractBrandFields pass brandIds array as first arg", () => {
     for (const [rel, call] of [
-      ["../src/components/v2/new-org-modal.tsx", "extractBrandFields([id]"],
       ["../src/components/v2/get-started/get-started.tsx", "extractBrandFields([id]"],
       ["../src/components/v2/get-started/launch.ts", "extractBrandFields([brandId]"],
     ] as const) {

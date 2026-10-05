@@ -17,7 +17,7 @@ const routePath = path.join(
 );
 const newOrgModalPath = path.join(
   __dirname,
-  "../src/components/v2/new-org-modal.tsx"
+  "../src/components/v2/get-started/org-launch.tsx"
 );
 
 describe("onboarding-complete server route", () => {

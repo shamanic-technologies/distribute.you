@@ -18,7 +18,7 @@ const launch = read("src/components/v2/get-started/launch.ts");
 const wall = read("src/components/v2/get-started/account-card-wall.tsx");
 const flow = read("src/components/v2/get-started/get-started.tsx");
 const snapshot = read("src/lib/v2/get-started.ts");
-const modal = read("src/components/v2/new-org-modal.tsx");
+const orgLaunch = read("src/components/v2/get-started/org-launch.tsx");
 
 describe("launchAudiencePortfolio", () => {
   const fn = api.slice(api.indexOf("export async function launchAudiencePortfolio("), api.indexOf("export interface AudienceWire {"));
@@ -59,11 +59,10 @@ describe("/get-started launches the portfolio, not the one audience picked in th
   });
 });
 
-describe("the Add-a-brand modal launches the portfolio over the segments it confirmed", () => {
-  it("confirms the picked segments, then launches the portfolio on the same text", () => {
-    const confirm = modal.indexOf("await confirmAudienceSegments(id, chosenOffer, audienceText.trim()");
-    const portfolio = modal.indexOf("await launchAudiencePortfolio(id, chosenOffer, audienceText.trim());");
-    expect(confirm).toBeGreaterThan(-1);
-    expect(portfolio).toBeGreaterThan(confirm);
+describe("Add a brand from the dashboard launches the portfolio the same way", () => {
+  it("runs the walk's own launch on the same ICP text (one launch path)", () => {
+    expect(flow).toContain("targetAudience={icpRef.current}");
+    expect(orgLaunch).toContain("{ brandId, website, offer, targetAudience, budgetUsd, plan, answered }");
+    expect(orgLaunch).toContain("await launchFromPreview(");
   });
 });
