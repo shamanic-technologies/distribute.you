@@ -59,3 +59,13 @@ describe("/get-started resumes a walk after a reload or a new tab", () => {
     expect(gs).toContain("resumePreparing(");
   });
 });
+
+describe("a resumed walk adopts the audiences an earlier visit created", () => {
+  const gs = readFileSync("src/components/v2/get-started/get-started.tsx", "utf8");
+  it("the prebuild and the single pick both answer a 409 by adopting the offer's existing audiences by name", () => {
+    expect(gs).toContain("async function adoptExistingAudiences(");
+    expect(gs).toContain("await adoptExistingAudiences(brandId, offerId, segs);");
+    expect(gs).toContain("await adoptExistingAudiences(id, o.offerId, [seg]);");
+    expect(gs).toContain("listAudiences(id, { offerId, limit: 100 })");
+  });
+});
