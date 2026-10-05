@@ -65,6 +65,12 @@ function Trend({ values, line = false, className = "" }: { values: number[] | nu
   return <BarSpark className={className} values={values} />;
 }
 const pct = (v: number) => `${v < 10 || v > 99 ? v.toFixed(1) : Math.round(v)}%`;
+/** One column per stat tile on a wide screen, so the row always spans the full width. */
+const STAT_GRID_COLS = {
+  4: "md:grid-cols-4",
+  5: "md:grid-cols-3 xl:grid-cols-5",
+  6: "md:grid-cols-3 xl:grid-cols-6",
+} as const;
 /** Meetings shown on Today, and how many are read to pick them by booking date. */
 const MEETINGS_SHOWN = 3;
 const MEETINGS_READ_LIMIT = 100;
@@ -111,6 +117,8 @@ export function TodayPage() {
   const showReplies = works("positive_reply");
   const showVisits = works("website_visit");
   const showMeetings = works("meeting_booked");
+  // Return, Pipeline, Delivered and Spent always; the two step tiles only when worked.
+  const statTiles = (4 + (showReplies ? 1 : 0) + (showVisits ? 1 : 0)) as 4 | 5 | 6;
 
   const emails = w?.emails ?? null;
   const winSpend = w?.spend ?? null;
@@ -233,7 +241,7 @@ export function TodayPage() {
               <span className="k-label">Performance</span>
               <span className="k-fg3 text-[12px]">Since you started</span>
             </div>
-            <div className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-6">
+            <div className={`grid grid-cols-2 gap-3 ${STAT_GRID_COLS[statTiles]}`}>
               <StatTile label="Return" note="Break-even 1×">
                 {rev.pending ? (
                   <Shimmer className="h-16 w-full" />
@@ -331,19 +339,6 @@ export function TodayPage() {
               </section>
 
               <aside className="space-y-6">
-                {/* The offer's ON campaigns, named and ordered as the sidebar and the Sales path page. */}
-                <section>
-                  <SectionTitle count={ongoing.settled ? ongoing.campaigns.length : null}>Campaigns</SectionTitle>
-                  <div className="k-card divide-y divide-[var(--line-subtle)]">
-                    {!ongoing.settled ? (
-                      <div className="p-4"><Shimmer className="h-10 w-full" /></div>
-                    ) : ongoing.campaigns.length === 0 ? (
-                      <EmptyNote>No campaign is on.</EmptyNote>
-                    ) : (
-                      ongoing.campaigns.map((c) => <CampaignLine key={c.m.row.campaign.id} c={c} />)
-                    )}
-                  </div>
-                </section>
                 {showMeetings && (
                   <section>
                     <SectionTitle
@@ -377,6 +372,19 @@ export function TodayPage() {
                     </div>
                   </section>
                 )}
+                {/* The offer's ON campaigns, named and ordered as the sidebar and the Sales path page. */}
+                <section>
+                  <SectionTitle count={ongoing.settled ? ongoing.campaigns.length : null}>Campaigns</SectionTitle>
+                  <div className="k-card divide-y divide-[var(--line-subtle)]">
+                    {!ongoing.settled ? (
+                      <div className="p-4"><Shimmer className="h-10 w-full" /></div>
+                    ) : ongoing.campaigns.length === 0 ? (
+                      <EmptyNote>No campaign is on.</EmptyNote>
+                    ) : (
+                      ongoing.campaigns.map((c) => <CampaignLine key={c.m.row.campaign.id} c={c} />)
+                    )}
+                  </div>
+                </section>
               </aside>
             </div>
           </>
@@ -511,14 +519,16 @@ function MeetingLine({ lead, at, mission, href }: { lead: Lead; at: string | nul
 function CampaignLine({ c }: { c: OngoingCampaign }) {
   const { m, name, campaign } = c;
   return (
-    <Link href={m.href} className="k-hover flex items-center gap-3 px-4 py-3 first:rounded-t-[12px] last:rounded-b-[12px]">
-      {name ? <PathAvatar name={name} size={20} /> : <CrewMark color={m.crew.color} glyph={m.crew.glyph} size={20} />}
-      <div className="min-w-0 flex-1">
-        <p className="truncate text-[13px] font-medium">{name ?? m.crew.name}</p>
-        {/* The full definition, as the Sales path page reads it: [Channel] → outcome. */}
-        {campaign ? <CampaignLeg campaign={campaign} className="mt-1 text-[12px]" /> : <p className="k-fg4 text-[12px]">{"—"}</p>}
-      </div>
-      <StateDot running={m.running} hold={m.paymentHold} />
+    <Link href={m.href} className="k-hover block px-4 py-3 first:rounded-t-[12px] last:rounded-b-[12px]">
+      <span className="flex items-center gap-3">
+        {name ? <PathAvatar name={name} size={20} /> : <CrewMark color={m.crew.color} glyph={m.crew.glyph} size={20} />}
+        <span className="min-w-0 flex-1 truncate text-[13px] font-medium">{name ?? m.crew.name}</span>
+        <StateDot running={m.running} hold={m.paymentHold} />
+      </span>
+      {/* The full definition on its own line, as the Sales path page reads it: [Channel] → outcome. */}
+      <span className="mt-1.5 block overflow-hidden">
+        {campaign ? <CampaignLeg campaign={campaign} compact /> : <span className="k-fg4 text-[12px]">{"—"}</span>}
+      </span>
     </Link>
   );
 }
