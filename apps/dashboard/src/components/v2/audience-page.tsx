@@ -2,7 +2,18 @@
 
 import { useMemo, useRef, useState } from "react";
 import { useParams } from "next/navigation";
-import { listAudiences, type AudienceChannelWire, type AudienceWire } from "@/lib/api";
+import {
+  getStaffAudienceSnapshot,
+  getStaffHeldCompanies,
+  getStaffHeldPeople,
+  listAudiences,
+  type AudienceChannelWire,
+  type AudienceWire,
+  type BrandAudienceSnapshot,
+  type SnapshotAudienceRef,
+} from "@/lib/api";
+import { formatCount } from "@/lib/format-number";
+import { CompanyMark } from "@/components/v2/people-bits";
 import { useAuthQuery } from "@/lib/use-auth-query";
 import { audienceFilterGroups } from "@/lib/audience-filter-groups";
 import { linkedInSignalOf } from "@/lib/signal-audience";
@@ -14,9 +25,9 @@ import { EmptyNote, Shimmer, StateDot, TopBar } from "@/components/v2/ui";
  * Staff snapshot of the brand's audiences as human-service holds them: the LISTS we
  * source people from (Apollo cold filters, buying signals, LinkedIn engagers, CRM
  * uploads), across every offer of the brand. Read-only: it shows where we stand, it
- * spends nothing. People and companies stored per list, the People / Companies tabs and
- * "$ invested" are served by human-service and features-service; they land here as soon
- * as those reads are live in prod.
+ * spends nothing. People / companies HELD per list and the People / Companies tabs (each
+ * row with the target audiences the Jev pre-pay screen accepted) are human-service's staff
+ * snapshot through the gateway; every count is served, nothing is summed here.
  */
 
 /** Where a list's people come from, keyed on the served `channels[].list`. Display lookup only. */
@@ -82,12 +93,131 @@ function detailsOf(a: AudienceWire): string | null {
 /** Proactive = we keep paying to grow the list (active); Stale = it holds what it has. */
 const isProactive = (a: AudienceWire) => a.status === "active";
 
+type Tab = "audiences" | "people" | "companies";
+const PAGE = 100;
+
+/** The source of a snapshot audience ref, keyed on its served `list`. */
+function refSource(r: SnapshotAudienceRef): { label: string; domain: string | null } | null {
+  return r.list ? (SOURCE_OF_LIST[r.list] ?? { label: r.list, domain: null }) : null;
+}
+
+const dash = <span className="k-fg4">{"—"}</span>;
+const n = (v: number | null | undefined) => (v == null ? dash : formatCount(v));
+
+/** Audiences as chips, each with its source logo. Empty = the dash. */
+function AudienceChips({ refs, accepted }: { refs: (SnapshotAudienceRef & { yesProbability?: number | null })[]; accepted?: boolean }) {
+  if (refs.length === 0) return dash;
+  return (
+    <span className="flex min-w-0 flex-wrap gap-1">
+      {refs.map((r) => {
+        const src = refSource(r);
+        const p = r.yesProbability != null ? ` · P(yes) ${r.yesProbability.toFixed(2)}` : "";
+        return (
+          <span
+            key={r.audienceId}
+            title={`${r.name ?? r.audienceId}${p}`}
+            className={`k-chip max-w-[220px] gap-1 ${accepted ? "text-[var(--data-teal)]" : ""}`}
+          >
+            {src?.domain ? <ProviderLogo domain={src.domain} size={12} className="rounded-[3px]" /> : null}
+            <span className="truncate">{r.name ?? "Unnamed"}</span>
+          </span>
+        );
+      })}
+    </span>
+  );
+}
+
+function Pager({ total, offset, onOffset }: { total: number | null; offset: number; onOffset: (o: number) => void }) {
+  if (total == null) return null;
+  return (
+    <>
+      <span className="tabular-nums">
+        {total === 0 ? 0 : offset + 1}-{Math.min(offset + PAGE, total)} of {formatCount(total)}
+      </span>
+      <button type="button" className="k-btn-ghost h-6 px-1.5" disabled={offset === 0} onClick={() => onOffset(Math.max(0, offset - PAGE))}>
+        Prev
+      </button>
+      <button type="button" className="k-btn-ghost h-6 px-1.5" disabled={offset + PAGE >= total} onClick={() => onOffset(offset + PAGE)}>
+        Next
+      </button>
+    </>
+  );
+}
+
+function AcceptedToggle({ on, onChange }: { on: boolean; onChange: (v: boolean) => void }) {
+  return (
+    <div className="flex items-center gap-2 px-4 py-3 md:px-6">
+      <label className="k-btn h-7 cursor-pointer text-[12px]">
+        <input type="checkbox" checked={on} onChange={(e) => onChange(e.target.checked)} className="h-3.5 w-3.5 accent-[var(--accent)]" />
+        Accepted by a target only
+      </label>
+    </div>
+  );
+}
+
+function Skeleton({ cols }: { cols: number }) {
+  return (
+    <>
+      {Array.from({ length: 8 }, (_, i) => (
+        <tr key={i} className="k-row h-10"><td colSpan={cols} className="px-4 md:px-6"><Shimmer className="h-4 w-full" /></td></tr>
+      ))}
+    </>
+  );
+}
+
 export function AudiencePage() {
   const { brandId } = useParams<{ brandId: string }>();
+  const [tab, setTab] = useState<Tab>("audiences");
+  const snapshot = useAuthQuery(["staffAudienceSnapshot", brandId], () => getStaffAudienceSnapshot(brandId));
+  const totals = snapshot.data?.totals ?? null;
+  return (
+    <>
+      <TopBar crumbs={[{ label: "Setup" }, { label: "Audience" }]} />
+      <RecordsTabs
+        tabs={[
+          {
+            key: "audiences",
+            label: "Audiences",
+            // The lists the table shows: suggested (never activated) ones are not lists yet.
+            count: snapshot.data ? snapshot.data.audiences.filter((a) => a.status !== "suggested").length : null,
+          },
+          { key: "people", label: "People", count: totals?.people.held ?? null },
+          { key: "companies", label: "Companies", count: totals?.companies.held ?? null },
+        ]}
+        active={tab}
+        onPick={(k) => setTab(k as Tab)}
+        right={
+          totals ? (
+            <span className="tabular-nums">
+              {formatCount(totals.people.accepted)} people accepted by a target · {formatCount(totals.companies.accepted)} companies
+            </span>
+          ) : null
+        }
+      />
+      {tab === "audiences" ? (
+        <AudiencesTab brandId={brandId} snapshot={snapshot.data ?? null} snapshotError={snapshot.data === undefined ? snapshot.error : null} />
+      ) : tab === "people" ? (
+        <PeopleTab brandId={brandId} />
+      ) : (
+        <CompaniesTab brandId={brandId} />
+      )}
+    </>
+  );
+}
+
+function AudiencesTab({
+  brandId,
+  snapshot,
+  snapshotError,
+}: {
+  brandId: string;
+  snapshot: BrandAudienceSnapshot | null;
+  snapshotError: Error | null;
+}) {
   const [q, setQ] = useState("");
   const [cursor, setCursor] = useState(-1);
   const searchRef = useRef<HTMLInputElement | null>(null);
-
+  const held = useMemo(() => new Map((snapshot?.audiences ?? []).map((a) => [a.audienceId, a])), [snapshot]);
   const active = useAuthQuery(["audiences", brandId, "active", "brand", 200], () => listAudiences(brandId, { status: "active", limit: 200 }));
   const paused = useAuthQuery(["audiences", brandId, "paused", "brand", 200], () => listAudiences(brandId, { status: "paused", limit: 200 }));
   const archived = useAuthQuery(["audiences", brandId, "archived", "brand", 200], () => listAudiences(brandId, { status: "archived", limit: 200 }));
@@ -116,20 +246,11 @@ export function AudiencePage() {
 
   return (
     <>
-      <TopBar crumbs={[{ label: "Setup" }, { label: "Audience" }]} />
-      <RecordsTabs
-        tabs={[{ key: "audiences", label: "Audiences", count: settled ? all.length : null }]}
-        active="audiences"
-        onPick={() => {}}
-        right={
-          settled ? (
-            <span className="inline-flex items-center gap-1.5">
-              <span className={`h-1.5 w-1.5 rounded-full ${proactive ? "k-dot-pulse bg-[var(--run)] text-[var(--run)]" : "bg-[var(--fg-4)]"}`} />
-              {proactive} proactive · {all.length - proactive} stale
-            </span>
-          ) : null
-        }
-      />
+      {all.length > 0 && (
+        <p className="k-fg3 px-4 pt-3 text-[12px] md:px-6">
+          {proactive} proactive · {all.length - proactive} stale
+        </p>
+      )}
       <RecordsToolbar search={q} onSearch={setQ} placeholder="Search audiences" inputRef={searchRef} />
       <div className="k-scroll overflow-x-auto">
         <table className="w-full min-w-[900px] text-[13px]">
@@ -138,23 +259,27 @@ export function AudiencePage() {
               <th className={`${REC_TH} pl-4 md:pl-6`}>Source</th>
               <th className={REC_TH}>Type</th>
               <th className={REC_TH}>Details</th>
+              <th className={`${REC_TH} text-right`}>People</th>
+              <th className={`${REC_TH} text-right`}>Companies</th>
+              <th className={`${REC_TH} text-right`}>Accepted</th>
               <th className={`${REC_TH} pr-4 md:pr-6`}>Status</th>
             </tr>
           </thead>
           <tbody>
             {failed ? (
-              <tr><td colSpan={4}><EmptyNote>Audiences could not be loaded: {failed.message}</EmptyNote></td></tr>
+              <tr><td colSpan={7}><EmptyNote>Audiences could not be loaded: {failed.message}</EmptyNote></td></tr>
             ) : !settled ? (
               Array.from({ length: 8 }, (_, i) => (
-                <tr key={i} className="k-row h-10"><td colSpan={4} className="px-4 md:px-6"><Shimmer className="h-4 w-full" /></td></tr>
+                <tr key={i} className="k-row h-10"><td colSpan={7} className="px-4 md:px-6"><Shimmer className="h-4 w-full" /></td></tr>
               ))
             ) : rows.length === 0 ? (
-              <tr><td colSpan={4}><EmptyNote>{q ? "No audience matches." : "This brand has no audience yet."}</EmptyNote></td></tr>
+              <tr><td colSpan={7}><EmptyNote>{q ? "No audience matches." : "This brand has no audience yet."}</EmptyNote></td></tr>
             ) : (
               rows.map((a, i) => {
                 const source = sourceOf(a);
                 const type = typeOf(a);
                 const details = detailsOf(a);
+                const h = held.get(a.id);
                 return (
                   <tr key={a.id} onMouseEnter={() => setCursor(i)} className={`k-row h-12 ${i === cursor ? "k-selected" : ""}`}>
                     <td className="whitespace-nowrap pl-4 md:pl-6">
@@ -172,6 +297,9 @@ export function AudiencePage() {
                         <span className="k-fg3 block truncate text-[12px]" title={details}>{details}</span>
                       ) : null}
                     </td>
+                    <td className="px-3 text-right tabular-nums">{snapshotError ? dash : n(h ? h.people.held : snapshot ? 0 : null)}</td>
+                    <td className="px-3 text-right tabular-nums">{snapshotError ? dash : n(h ? h.companies.held : snapshot ? 0 : null)}</td>
+                    <td className="px-3 text-right tabular-nums">{snapshotError ? dash : n(h ? h.people.accepted : snapshot ? 0 : null)}</td>
                     <td className="whitespace-nowrap pr-4 md:pr-6">
                       <StateDot running={isProactive(a)} label={isProactive(a) ? "Proactive" : "Stale"} />
                     </td>
@@ -184,11 +312,125 @@ export function AudiencePage() {
       </div>
       <RecordsFooter
         left={
-          settled
-            ? `${rows.length} of ${all.length} audiences${truncated ? " · first 200 per status shown" : ""}`
-            : "Loading audiences"
+          snapshotError
+            ? `Held counts could not be loaded: ${snapshotError.message}`
+            : settled
+              ? `${rows.length} of ${all.length} audiences${truncated ? " · first 200 per status shown" : ""} · People = held (revealed, screened or queued), Accepted = passed its target's Jev screen`
+              : "Loading audiences"
         }
       />
+    </>
+  );
+}
+
+function PeopleTab({ brandId }: { brandId: string }) {
+  const [offset, setOffset] = useState(0);
+  const [acceptedOnly, setAcceptedOnly] = useState(false);
+  const q = useAuthQuery(["staffHeldPeople", brandId, offset, acceptedOnly], () =>
+    getStaffHeldPeople(brandId, { limit: PAGE, offset, acceptedOnly }),
+  );
+  const settled = q.isFetchedAfterMount || q.data !== undefined;
+  const rows = q.data?.people ?? [];
+  return (
+    <>
+      <AcceptedToggle on={acceptedOnly} onChange={(v) => { setAcceptedOnly(v); setOffset(0); }} />
+      <div className="k-scroll overflow-x-auto">
+        <table className="w-full min-w-[960px] text-[13px]">
+          <thead>
+            <tr>
+              <th className={`${REC_TH} pl-4 md:pl-6`}>Person</th>
+              <th className={REC_TH}>Company</th>
+              <th className={REC_TH}>Source</th>
+              <th className={`${REC_TH} pr-4 md:pr-6`}>Targeting</th>
+            </tr>
+          </thead>
+          <tbody>
+            {q.error && q.data === undefined ? (
+              <tr><td colSpan={4}><EmptyNote>People could not be loaded: {q.error.message}</EmptyNote></td></tr>
+            ) : !settled ? (
+              <Skeleton cols={4} />
+            ) : rows.length === 0 ? (
+              <tr><td colSpan={4}><EmptyNote>{acceptedOnly ? "No person accepted by a target yet." : "This brand holds no person yet."}</EmptyNote></td></tr>
+            ) : (
+              rows.map((p) => (
+                <tr key={p.personKey} className="k-row h-12">
+                  <td className="max-w-[260px] py-1.5 pl-4 md:pl-6">
+                    <span className="block truncate font-medium">{p.name ?? "Unnamed"}</span>
+                    <span className="k-fg3 block truncate text-[12px]">
+                      {[p.title, p.revealed ? "Revealed" : "Not revealed"].filter(Boolean).join(" · ")}
+                    </span>
+                  </td>
+                  <td className="max-w-[220px] px-3">
+                    {p.company ? (
+                      <span className="flex min-w-0 items-center gap-2">
+                        <CompanyMark name={p.company.name ?? p.company.domain ?? "?"} domain={p.company.domain} size={18} />
+                        <span className="truncate">{p.company.name ?? p.company.domain}</span>
+                      </span>
+                    ) : dash}
+                  </td>
+                  <td className="max-w-[280px] px-3"><AudienceChips refs={p.sources} /></td>
+                  <td className="max-w-[320px] pr-4 md:pr-6"><AudienceChips refs={p.acceptedBy} accepted /></td>
+                </tr>
+              ))
+            )}
+          </tbody>
+        </table>
+      </div>
+      <RecordsFooter left="Targeting = target audiences whose Jev screen accepted the person" right={<Pager total={q.data?.total ?? null} offset={offset} onOffset={setOffset} />} />
+    </>
+  );
+}
+
+function CompaniesTab({ brandId }: { brandId: string }) {
+  const [offset, setOffset] = useState(0);
+  const [acceptedOnly, setAcceptedOnly] = useState(false);
+  const q = useAuthQuery(["staffHeldCompanies", brandId, offset, acceptedOnly], () =>
+    getStaffHeldCompanies(brandId, { limit: PAGE, offset, acceptedOnly }),
+  );
+  const settled = q.isFetchedAfterMount || q.data !== undefined;
+  const rows = q.data?.companies ?? [];
+  return (
+    <>
+      <AcceptedToggle on={acceptedOnly} onChange={(v) => { setAcceptedOnly(v); setOffset(0); }} />
+      <div className="k-scroll overflow-x-auto">
+        <table className="w-full min-w-[960px] text-[13px]">
+          <thead>
+            <tr>
+              <th className={`${REC_TH} pl-4 md:pl-6`}>Company</th>
+              <th className={`${REC_TH} text-right`}>People</th>
+              <th className={`${REC_TH} text-right`}>Accepted</th>
+              <th className={REC_TH}>Source</th>
+              <th className={`${REC_TH} pr-4 md:pr-6`}>Targeting</th>
+            </tr>
+          </thead>
+          <tbody>
+            {q.error && q.data === undefined ? (
+              <tr><td colSpan={5}><EmptyNote>Companies could not be loaded: {q.error.message}</EmptyNote></td></tr>
+            ) : !settled ? (
+              <Skeleton cols={5} />
+            ) : rows.length === 0 ? (
+              <tr><td colSpan={5}><EmptyNote>{acceptedOnly ? "No company accepted by a target yet." : "This brand holds no company yet."}</EmptyNote></td></tr>
+            ) : (
+              rows.map((c) => (
+                <tr key={c.companyKey} className="k-row h-10">
+                  <td className="max-w-[280px] pl-4 md:pl-6">
+                    <span className="flex min-w-0 items-center gap-2">
+                      <CompanyMark name={c.name ?? c.domain ?? "?"} domain={c.domain} size={18} />
+                      <span className="truncate font-medium">{c.name ?? c.domain}</span>
+                      {c.name && c.domain ? <span className="k-fg3 truncate text-[12px]">{c.domain}</span> : null}
+                    </span>
+                  </td>
+                  <td className="px-3 text-right tabular-nums">{formatCount(c.people.held)}</td>
+                  <td className="px-3 text-right tabular-nums">{formatCount(c.people.accepted)}</td>
+                  <td className="max-w-[260px] px-3"><AudienceChips refs={c.sources} /></td>
+                  <td className="max-w-[320px] pr-4 md:pr-6"><AudienceChips refs={c.acceptedBy} accepted /></td>
+                </tr>
+              ))
+            )}
+          </tbody>
+        </table>
+      </div>
+      <RecordsFooter left="Targeting = target audiences that accepted at least one person here" right={<Pager total={q.data?.total ?? null} offset={offset} onOffset={setOffset} />} />
     </>
   );
 }

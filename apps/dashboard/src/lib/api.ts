@@ -1535,6 +1535,106 @@ export async function getStaffPriceComparison(args: { list1: PriceListRef; list2
   return parseStaff("getStaffPriceComparison", PriceComparisonSchema, await apiCall<unknown>(`${STAFF_MONITORING_PATHS.priceComparison}?${q.toString()}`));
 }
 
+// --- Staff Audience snapshot (human-service, gateway /admin/brands/{id}/audience-snapshot) ---
+// What a brand HOLDS per audience list, and which target audiences the Jev pre-pay
+// screen accepted. Staff-gated at the gateway; counts are human-service's, never summed here.
+
+const SnapshotListKindSchema = z.string().nullable();
+const SnapshotAudienceRefSchema = z.object({
+  audienceId: z.string(),
+  name: z.string().nullable(),
+  status: z.string().nullable(),
+  list: SnapshotListKindSchema,
+});
+const SnapshotCountsSchema = z.object({
+  people: z.object({
+    held: z.coerce.number(),
+    revealed: z.coerce.number(),
+    screened: z.coerce.number(),
+    accepted: z.coerce.number(),
+    rejected: z.coerce.number(),
+    waiting: z.coerce.number(),
+  }),
+  companies: z.object({ held: z.coerce.number(), revealed: z.coerce.number(), accepted: z.coerce.number() }),
+});
+const BrandAudienceSnapshotSchema = z.object({
+  brandId: z.string(),
+  acceptanceBar: z.number(),
+  totals: SnapshotCountsSchema,
+  audiences: z.array(
+    SnapshotAudienceRefSchema.extend({ orgId: z.string(), offerId: z.string().nullable(), targetText: z.string().nullable() }).merge(
+      SnapshotCountsSchema,
+    ),
+  ),
+});
+export type BrandAudienceSnapshot = z.infer<typeof BrandAudienceSnapshotSchema>;
+export type SnapshotAudienceRef = z.infer<typeof SnapshotAudienceRefSchema>;
+
+const SnapshotCompanyRefSchema = z.object({ companyKey: z.string(), name: z.string().nullable(), domain: z.string().nullable() });
+const BrandHeldPeopleSchema = z.object({
+  total: z.coerce.number(),
+  limit: z.coerce.number(),
+  offset: z.coerce.number(),
+  people: z.array(
+    z.object({
+      personKey: z.string(),
+      personId: z.string().nullable(),
+      providerPersonId: z.string().nullable(),
+      name: z.string().nullable(),
+      title: z.string().nullable(),
+      company: SnapshotCompanyRefSchema.nullable(),
+      revealed: z.boolean(),
+      sources: z.array(
+        SnapshotAudienceRefSchema.extend({
+          stage: z.enum(["revealed", "screened", "buffered"]),
+          verdict: z.enum(["accepted", "rejected"]).nullable(),
+          yesProbability: z.number().nullable(),
+        }),
+      ),
+      acceptedBy: z.array(SnapshotAudienceRefSchema.extend({ yesProbability: z.number().nullable() })),
+    }),
+  ),
+});
+export type BrandHeldPeople = z.infer<typeof BrandHeldPeopleSchema>;
+const BrandHeldCompaniesSchema = z.object({
+  total: z.coerce.number(),
+  limit: z.coerce.number(),
+  offset: z.coerce.number(),
+  companies: z.array(
+    SnapshotCompanyRefSchema.extend({
+      people: z.object({ held: z.coerce.number(), revealed: z.coerce.number(), accepted: z.coerce.number() }),
+      sources: z.array(SnapshotAudienceRefSchema.extend({ people: z.coerce.number(), accepted: z.coerce.number() })),
+      acceptedBy: z.array(SnapshotAudienceRefSchema.extend({ acceptedPeople: z.coerce.number() })),
+    }),
+  ),
+});
+export type BrandHeldCompanies = z.infer<typeof BrandHeldCompaniesSchema>;
+
+const snapshotPath = (brandId: string) => `${STAFF_MONITORING_PATHS.brands}/${encodeURIComponent(brandId)}/audience-snapshot`;
+
+/** Every audience list of the brand (all orgs, all offers) with the people and companies it holds. */
+export async function getStaffAudienceSnapshot(brandId: string): Promise<BrandAudienceSnapshot> {
+  return parseStaff("getStaffAudienceSnapshot", BrandAudienceSnapshotSchema, await apiCall<unknown>(snapshotPath(brandId)));
+}
+
+export interface SnapshotPage {
+  limit: number;
+  offset: number;
+  acceptedOnly: boolean;
+}
+const pageQuery = (p: SnapshotPage) =>
+  new URLSearchParams({ limit: String(p.limit), offset: String(p.offset), acceptedOnly: String(p.acceptedOnly) }).toString();
+
+/** One page of the people the brand holds, each with the lists that brought them and who accepted them. */
+export async function getStaffHeldPeople(brandId: string, page: SnapshotPage): Promise<BrandHeldPeople> {
+  return parseStaff("getStaffHeldPeople", BrandHeldPeopleSchema, await apiCall<unknown>(`${snapshotPath(brandId)}/people?${pageQuery(page)}`));
+}
+
+/** One page of the companies the brand holds people at. */
+export async function getStaffHeldCompanies(brandId: string, page: SnapshotPage): Promise<BrandHeldCompanies> {
+  return parseStaff("getStaffHeldCompanies", BrandHeldCompaniesSchema, await apiCall<unknown>(`${snapshotPath(brandId)}/companies?${pageQuery(page)}`));
+}
+
 /** Every brand of every org (staff), to name the comparison's org and brand ids. */
 export async function getStaffBrands(): Promise<StaffBrand[]> {
   return parseStaff("getStaffBrands", StaffBrandsSchema, await apiCall<unknown>(STAFF_MONITORING_PATHS.brands)).brands;
