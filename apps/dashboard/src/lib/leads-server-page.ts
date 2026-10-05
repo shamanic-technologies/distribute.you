@@ -163,9 +163,9 @@ export const LeadBucketCountsSchema = z.object({
     form_submission: z.number(),
     sale: z.number(),
   }),
-  // People, not emails (lead-service v0.82.25): contacted and not bounced; distinct people
-  // in website_visit OR positive_reply. Optional only for a body cached before it shipped.
-  people: z.object({ delivered: z.number(), interested: z.number() }).optional(),
+  // People, not emails (lead-service): sent at least one email; sent and not bounced; distinct
+  // people in website_visit OR positive_reply. Optional only for a body cached before it shipped.
+  people: z.object({ sent: z.number().optional(), delivered: z.number(), interested: z.number() }).optional(),
 });
 export type LeadBucketCounts = z.infer<typeof LeadBucketCountsSchema>;
 

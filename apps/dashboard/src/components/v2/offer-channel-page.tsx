@@ -186,7 +186,7 @@ export function ColdEmailOverview({
   );
 }
 
-/** One leg's steps: Queued, Delivered, then the leg's outcome, read on the leg's campaign. */
+/** One leg's steps: Queued, Sent, Delivered, then the leg's outcome, read on the leg's campaign (people). */
 function LegSteps({
   title,
   outcome,
@@ -213,6 +213,7 @@ function LegSteps({
         ) : (
           <div className="flex items-end gap-3">
             <StepBar label="Queued" count={counts.contacted} of={counts.contacted} />
+            <StepBar label="Sent" count={q.data?.people?.sent ?? null} of={counts.contacted} />
             <StepBar label="Delivered" count={q.data?.people?.delivered ?? null} of={counts.contacted} />
             <StepBar label={outcome} count={counts[bucket]} of={counts.contacted} />
           </div>
