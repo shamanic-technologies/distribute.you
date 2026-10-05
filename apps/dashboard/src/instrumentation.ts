@@ -1,4 +1,5 @@
 import { STAFF_DIGEST_TEMPLATE_DEF } from "@/lib/staff-digest";
+import { CHANNEL_REQUEST_TEMPLATE_DEF } from "@/lib/channel-request-email";
 import { BRAND_WHY } from "./lib/brand-why";
 const DASHBOARD_URL = "https://dashboard.distribute.you";
 const DOCS_URL = "https://docs.distribute.you";
@@ -244,6 +245,10 @@ export const EMAIL_TEMPLATES = [
   // `apps/admin/src/instrumentation.ts` would clobber this one on every admin
   // deploy and render the digest against an empty template.
   STAFF_DIGEST_TEMPLATE_DEF,
+
+  // "Contact us" on a channel we do not run yet (Sales path page). Sent to staff the
+  // moment the customer submits (`lib/channel-request-email.ts`), a pure envelope too.
+  CHANNEL_REQUEST_TEMPLATE_DEF,
 
   // ── Out-of-credit dunning (triggered by billing-service on depletion) ──
   // billing-service sends { eventType, recipientEmail, metadata: {} }: NO template

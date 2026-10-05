@@ -13,23 +13,24 @@ export function SelectCard({
   mark,
   title,
   sub,
-  comingSoon,
+  contactUs,
 }: {
   on: boolean;
   onClick: () => void;
   mark: ReactNode;
   title: string;
   sub?: string | null;
-  /** Not selectable yet: muted, no circle, a "Coming soon" chip. */
-  comingSoon?: boolean;
+  /** Not selectable yet: muted, no circle, a "Contact us" chip. A click calls `onClick`,
+   *  which opens the contact form instead of ticking the card. */
+  contactUs?: boolean;
 }) {
-  if (comingSoon) {
+  if (contactUs) {
     return (
-      <div aria-disabled className="k-card flex cursor-default items-center gap-2.5 p-3 text-left">
+      <button type="button" onClick={onClick} className="k-card k-hover flex items-center gap-2.5 p-3 text-left">
         {mark}
         <span className="k-fg3 min-w-0 flex-1 truncate text-[13px]">{title}</span>
-        <span className="k-chip shrink-0">Coming soon</span>
-      </div>
+        <span className="k-chip shrink-0">Contact us</span>
+      </button>
     );
   }
   return (
