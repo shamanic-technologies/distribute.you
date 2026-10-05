@@ -27,6 +27,7 @@ import { CompanyMark, PersonAvatar, leadCompany, leadCompanyDomain, leadName, pe
 import { companyHref } from "@/components/v2/companies-page";
 import { v2Base, v2Href, v2NewBrandHref, v2OfferHref, type V2Section } from "@/lib/v2/routes";
 import { useStaffMode } from "@/lib/use-staff-mode";
+import { showOrgSearch, switcherOrgs } from "@/lib/v2/org-switcher-list";
 
 /**
  * The three sidebar controls of v2, drawn the way Explee and Keel draw them:
@@ -115,14 +116,27 @@ export function TenantSwitcherV2() {
   const { staffMode } = useStaffMode();
   const allOrgs = staffMode;
   staffModeRef.current = staffMode;
-  const orgs = allOrgs
-    ? t.allOrgs.map((o) => ({ id: o.id, name: o.name, imageUrl: o.imageUrl, hasImage: o.hasImage }))
-    : t.memberships.map((m) => ({
-        id: m.organization.id,
-        name: m.organization.name,
-        imageUrl: m.organization.imageUrl,
-        hasImage: m.organization.hasImage,
-      }));
+  const memberOrgs = t.memberships.map((m) => ({
+    id: m.organization.id,
+    name: m.organization.name,
+    imageUrl: m.organization.imageUrl,
+    hasImage: m.organization.hasImage,
+  }));
+  // ONE Organizations block for staff and customers: same rows, the org you are on
+  // pinned first, and a search box only past a handful of orgs. Staff search the whole
+  // platform on the server; a customer's search filters their memberships here.
+  const orgs = switcherOrgs({
+    orgs: allOrgs
+      ? t.allOrgs.map((o) => ({ id: o.id, name: o.name, imageUrl: o.imageUrl, hasImage: o.hasImage }))
+      : memberOrgs,
+    query: t.orgSearch,
+    filterLocally: !allOrgs,
+    current: t.orgId && t.orgKnown
+      ? { id: t.orgId, name: t.displayOrgName, imageUrl: t.displayOrgImageUrl, hasImage: t.displayOrgHasImage }
+      : null,
+  });
+  const orgSearchShown = showOrgSearch(allOrgs ? t.allOrgsTotal : memberOrgs.length, t.orgSearch);
+  const staffOrgsLoading = allOrgs && t.orgsLoading && t.allOrgs.length === 0;
 
   return (
     <div ref={ref} className="relative">
@@ -239,19 +253,21 @@ export function TenantSwitcherV2() {
           <div className="my-1 h-px bg-[var(--line-subtle)]" />
           <MenuLabel>Organizations</MenuLabel>
           {t.switchError && <p className="px-2 py-1 text-[12px] text-[var(--data-rose)]">{t.switchError}</p>}
-          {allOrgs && (
+          {orgSearchShown && (
             <div className="px-1 pb-1">
               <input
                 value={t.orgSearch}
                 onChange={(e) => t.setOrgSearch(e.target.value)}
-                placeholder="Search all organizations…"
-                aria-label="Search all organizations"
+                placeholder="Search organizations…"
+                aria-label="Search organizations"
                 className="k-input w-full px-2"
               />
             </div>
           )}
           <div className="k-scroll max-h-48 overflow-y-auto">
-            {orgs.map((o) => (
+            {staffOrgsLoading && <p className="k-fg3 px-2 py-1.5 text-[12px]">Loading…</p>}
+            {!staffOrgsLoading && orgs.length === 0 && <p className="k-fg3 px-2 py-1.5 text-[12px]">No organization matches.</p>}
+            {!staffOrgsLoading && orgs.map((o) => (
               <button
                 key={o.id}
                 type="button"

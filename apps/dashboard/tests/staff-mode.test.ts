@@ -48,7 +48,8 @@ describe("staff mode is the ONE staff gate of the customer dashboard", () => {
 
   it("every org on the platform is listed in staff mode only", () => {
     const s = read("components/v2/sidebar-menus.tsx");
-    expect(s).toContain("const orgs = allOrgs");
+    expect(s).toContain("const allOrgs = staffMode;");
+    expect(s).toMatch(/orgs: allOrgs\s*\?\s*t\.allOrgs/);
     expect(s).not.toContain("const orgs = t.isStaff");
   });
 });
