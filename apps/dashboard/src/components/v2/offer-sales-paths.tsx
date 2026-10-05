@@ -39,11 +39,16 @@ export function OfferSalesPaths({
   gainHeadline = false,
   activeKey,
   table = false,
+  selected,
+  onToggleSelected,
   onStateRate,
   onStateLifetimeRevenue,
 }: {
   /** A plain table, ROI desc as served, no run status (the Sales path page: what runs lives in Campaigns). */
   table?: boolean;
+  /** Table only: the paths the customer ticked (combinationKey), and the tick. */
+  selected?: ReadonlySet<string>;
+  onToggleSelected?: (combinationKey: string, on: boolean) => void;
   data: OfferSalesPaths | undefined;
   pending: boolean;
   failed: boolean;
@@ -86,7 +91,15 @@ export function OfferSalesPaths({
       ) : data && salesPathsEmptyReason(data.status) ? (
         <EmptyNote>{salesPathsEmptyReason(data.status)}</EmptyNote>
       ) : table ? (
-        <PathsTable paths={paths} open={open} setOpen={setOpen} onStateRate={onStateRate} onStateLifetimeRevenue={onStateLifetimeRevenue} />
+        <PathsTable
+          paths={paths}
+          open={open}
+          setOpen={setOpen}
+          selected={selected}
+          onToggleSelected={onToggleSelected}
+          onStateRate={onStateRate}
+          onStateLifetimeRevenue={onStateLifetimeRevenue}
+        />
       ) : activeKey !== undefined ? (
         <StatusPaths
           paths={paths}
@@ -119,17 +132,24 @@ export function OfferSalesPaths({
 /** Paths shown before "Show N more". */
 const TABLE_SHOWN = 20;
 
-/** The Sales path page's view: a plain table in the served order; a row opens its breakdown. */
+/**
+ * The Sales path page's view: a table in the served order, each row ticked or not (the
+ * Legs checkbox), the ticked ones on the accent fill; a row opens its breakdown.
+ */
 function PathsTable({
   paths,
   open,
   setOpen,
+  selected,
+  onToggleSelected,
   onStateRate,
   onStateLifetimeRevenue,
 }: {
   paths: SalesPathRow[];
   open: string | null;
   setOpen: (key: string | null) => void;
+  selected?: ReadonlySet<string>;
+  onToggleSelected?: (combinationKey: string, on: boolean) => void;
   onStateRate?: (leg: SalesPathLeg, ratePct: number | null) => Promise<void>;
   onStateLifetimeRevenue?: (usd: number) => Promise<void>;
 }) {
@@ -141,7 +161,9 @@ function PathsTable({
         <table className="w-full min-w-[760px] text-[13px]">
           <thead>
             <tr className="k-line-subtle border-b">
-              <th className="k-label w-10 px-3 py-2.5 pl-4 text-left font-normal">#</th>
+              <th className="k-label w-10 px-3 py-2.5 pl-4 text-left font-normal">
+                <span className="sr-only">Selected</span>
+              </th>
               <th className="k-label px-3 py-2.5 text-left font-normal">Path</th>
               <th className="k-label px-3 py-2.5 text-right font-normal">Cost per paying client</th>
               <th className="k-label px-3 py-2.5 pr-4 text-right font-normal">ROI</th>
@@ -150,15 +172,35 @@ function PathsTable({
           <tbody>
             {shown.map((p) => {
               const isOpen = open === p.combinationKey;
+              const on = selected?.has(p.combinationKey) ?? false;
               const unavailable = roiUnavailableLabel(p.roiUnavailableReason);
               return [
                 <tr
                   key={p.combinationKey}
                   aria-expanded={isOpen}
                   onClick={() => setOpen(isOpen ? null : p.combinationKey)}
-                  className={`k-row cursor-pointer ${isOpen ? "" : "k-line-subtle border-b"}`}
+                  className={`k-row cursor-pointer ${on ? "bg-[var(--accent-soft)]" : ""} ${isOpen ? "" : "k-line-subtle border-b"}`}
                 >
-                  <td className="k-fg3 px-3 py-2 pl-4 text-[12px] tabular-nums">{p.rank}</td>
+                  <td className="px-3 py-2 pl-4">
+                    <button
+                      type="button"
+                      aria-pressed={on}
+                      aria-label={on ? "Untick this path" : "Tick this path"}
+                      disabled={!onToggleSelected}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onToggleSelected?.(p.combinationKey, !on);
+                      }}
+                      className="-m-1 inline-flex h-6 w-6 items-center justify-center"
+                    >
+                      <span
+                        aria-hidden
+                        className={`inline-flex h-4 w-4 items-center justify-center rounded-[4px] border text-[10px] text-white ${on ? "border-[var(--accent)] bg-[var(--accent)]" : "border-[var(--line-strong)]"}`}
+                      >
+                        {on ? "✓" : ""}
+                      </span>
+                    </button>
+                  </td>
                   <td className="px-3 py-2">
                     <PathLinks path={p} />
                   </td>

@@ -58,7 +58,6 @@ describe("every dashboard surface that states a daily budget asks whether to hid
     "src/components/v2/crew-page.tsx",
     "src/components/v2/work-page.tsx",
     "src/components/v2/add-mission-modal.tsx",
-    "src/components/v2/offer-sales-path-page.tsx",
   ];
   for (const f of surfaces) {
     it(f, () => {

@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { roiIsGood } from "./format-roi";
 
 /**
  * What the customer STATES about an offer's sales paths beyond its ticked legs
@@ -28,6 +29,38 @@ export function parseOrThrow<T>(schema: z.ZodType<T>, raw: unknown, where: strin
     throw new Error(`[${where}] invalid response shape`);
   }
   return parsed.data;
+}
+
+/**
+ * The sales paths the customer TICKED on the offer (brand-service
+ * `/brands/:id/offers/:offerId/selected-sales-paths`, features-service combinationKeys).
+ * Never stated = the paths returning more than they cost (ROI > 1x) are ticked.
+ */
+export const OfferSelectedSalesPathsSchema = z
+  .object({
+    offerId: z.string(),
+    stated: z.boolean(),
+    combinationKeys: z.array(z.string()).nullable(),
+    statedAt: z.string().nullable(),
+  })
+  .passthrough();
+export type OfferSelectedSalesPaths = z.infer<typeof OfferSelectedSalesPathsSchema>;
+
+/** The ticked paths: what the customer stated, else every path with a return above 1x. */
+export function selectedPathKeys(
+  data: OfferSelectedSalesPaths,
+  paths: ReadonlyArray<{ combinationKey: string; roi: number | null }>,
+): ReadonlySet<string> {
+  if (data.stated && data.combinationKeys) return new Set(data.combinationKeys);
+  return new Set(paths.filter((p) => roiIsGood(p.roi)).map((p) => p.combinationKey));
+}
+
+/** Tick or untick one path; the full list goes out (the producer replaces the whole list). */
+export function togglePath(current: ReadonlySet<string>, key: string, on: boolean): string[] {
+  const next = new Set(current);
+  if (on) next.add(key);
+  else next.delete(key);
+  return [...next];
 }
 
 /** A channel an offer can accept, as the catalogue publishes it. */
