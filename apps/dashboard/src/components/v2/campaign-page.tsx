@@ -19,7 +19,6 @@ import { AcquisitionChannelMark } from "@/components/marks/acquisition-channel-m
 import { CampaignControlsTrigger } from "@/components/campaigns/campaign-controls-trigger";
 import { CampaignSettingsCard } from "@/components/settings/campaign-settings-card";
 import { CampaignWorkflowsPage } from "@/components/workflows/campaign-workflows-page";
-import { campaignHoldCopy, useMissionHold } from "@/components/v2/mission-hold";
 import { useMissions, type Mission } from "@/components/v2/use-missions";
 import { LEG_STEPS, LegSteps, StepBar, SummaryCard } from "@/components/v2/offer-channel-page";
 import { ColdEmailChannelSettings } from "@/components/v2/offer-channels-page";
@@ -61,7 +60,6 @@ export function V2CampaignPage() {
   const def = c ? channels.find((ch) => ch.featureSlug === c.featureSlug) : undefined;
   const name = c ? (catalogue.campaignNames.get(`${c.featureSlug}|${c.legKey}`) ?? null) : null;
   const shownName = name ?? mission?.crew.name ?? " ";
-  const hold = useMissionHold(id, mission?.running ?? false);
 
   const visible = CAMPAIGN_TABS.filter((t) => !t.staff || staffMode);
   const tab = visible.find((t) => t.key === params.get("tab"))?.key ?? "overview";
@@ -85,7 +83,7 @@ export function V2CampaignPage() {
         offerId
           ? [
               { label: mission?.offerName ?? "Offer", href: v2OfferHref(orgId, brandId, offerId) },
-              { label: "Sales path", href: v2OfferHref(orgId, brandId, offerId, "sales-path") },
+              { label: "Campaigns", href: v2OfferHref(orgId, brandId, offerId, "campaigns") },
               { label: shownName },
             ]
           : [{ label: "Campaigns" }, { label: " " }]
@@ -142,12 +140,6 @@ export function V2CampaignPage() {
       tabs={mission ? tabs : undefined}
       width="max-w-[1280px]"
     >
-      {hold && (
-        <div className="k-card mb-5 p-4 shadow-[inset_0_0_0_1px_color-mix(in_oklab,var(--data-amber)_35%,transparent)]">
-          <p className="text-[13px] font-medium">{campaignHoldCopy(hold).headline}</p>
-          <p className="k-fg2 mt-1 text-[13px]">{campaignHoldCopy(hold).body}</p>
-        </div>
-      )}
       {!mission || !offerId ? (
         <Shimmer className="h-[240px] w-full rounded-[12px]" />
       ) : tab === "overview" && mission.leg?.fromKey ? (
