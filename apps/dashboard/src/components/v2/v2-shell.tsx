@@ -8,7 +8,7 @@ import { useMissions } from "@/components/v2/use-missions";
 import { CrewMark } from "@/components/v2/crew-mark";
 import { V2NavContext } from "@/components/v2/nav-context";
 import { useBucketCounts, useBrandRevenue, useNeedsYourCall, useStandingCounts } from "@/components/v2/data";
-import { v2Href, v2MissionHref, v2OfferHref, v2SectionOf } from "@/lib/v2/routes";
+import { v2Href, v2CampaignHref, v2OfferHref, v2SectionOf } from "@/lib/v2/routes";
 import { formatCount } from "@/lib/format-number";
 import { boardColumnTotals } from "@/lib/leads-server-page";
 import { CompanyMark } from "@/components/v2/people-bits";
@@ -17,6 +17,10 @@ import { ScopePaymentDeclinedBand } from "@/components/billing/scope-payment-dec
 import { useStaffMode } from "@/lib/use-staff-mode";
 import { SelectedOfferProvider, useSelectedOffer } from "@/components/v2/selected-offer";
 import { useLegCatalogue } from "@/lib/use-leg-catalogue";
+import { useAuthQuery } from "@/lib/use-auth-query";
+import { getOfferSalesPaths } from "@/lib/api";
+import { roiUnavailableLabel } from "@/lib/offer-sales-paths";
+import { campaignKey, campaignsOfOffer, sortCampaigns } from "@/lib/offer-campaigns";
 import { PathAvatar } from "@/components/v2/offer-sales-paths";
 import { BRAND_WHY } from "@/lib/brand-why";
 
@@ -165,7 +169,24 @@ function V2Sidebar() {
   const legCatalogue = useLegCatalogue();
   const { missions, crews } = useMissions(orgId, brandId);
   const activeCrews = crews.filter((c) => c.running > 0);
-  const activeMissions = missions.filter((m) => m.running);
+  // The same read and the same order as the Sales path page's Campaigns section
+  // (proactive first, ROI high to low), so the two lists never disagree.
+  const salesPaths = useAuthQuery(
+    ["offerSalesPaths", brandId, offerId, "catalogue"],
+    () => getOfferSalesPaths(brandId, offerId as string, "catalogue"),
+    { enabled: !!brandId && !!offerId },
+  );
+  const campaignOrder = useMemo(() => {
+    const order = new Map<string, number>();
+    const listed = campaignsOfOffer(salesPaths.data?.campaigns ?? [], salesPaths.data?.paths ?? [], roiUnavailableLabel);
+    sortCampaigns(listed, () => true).forEach((c, i) => order.set(campaignKey(c.featureSlug, c.legKey), i));
+    return order;
+  }, [salesPaths.data]);
+  const activeMissions = missions
+    .filter((m) => m.running)
+    .map((m) => ({ m, at: campaignOrder.get(campaignKey(m.row.campaign.featureSlug ?? "", m.row.campaign.legKey ?? "")) ?? Number.MAX_SAFE_INTEGER }))
+    .sort((a, b) => a.at - b.at)
+    .map(({ m }) => m);
   const buckets = useBucketCounts(brandId).data;
   const standings = useStandingCounts(brandId).data;
   // Deals badge = the people still in play on the Deals board (Leads + Sales interest +
@@ -366,8 +387,8 @@ function V2Sidebar() {
             {activeMissions.map((m) => (
               <NavItem
                 key={m.row.campaign.id}
-                href={v2MissionHref(orgId, brandId, m.row.campaign.id)}
-                active={pathname.endsWith(`/missions/${m.row.campaign.id}`)}
+                href={v2CampaignHref(orgId, brandId, m.row.campaign.id)}
+                active={pathname.endsWith(`/campaigns/${m.row.campaign.id}`)}
                 label={m.offerName ? `${m.crew.name} · ${m.offerName}` : m.crew.name}
                 icon={<CrewMark color={m.crew.color} glyph={m.crew.glyph} />}
               />

@@ -171,8 +171,9 @@ describe("call sites", () => {
     expect(read("components/v2/use-missions.ts")).toContain("paymentHold: paymentHoldKind(c)");
     expect(read("components/v2/missions-table.tsx")).toContain("hold={m.paymentHold}");
     expect(read("components/v2/today-page.tsx")).toContain("hold={m.paymentHold}");
-    expect(read("components/v2/mission-page.tsx")).toContain("hold={mission.paymentHold}");
-    expect(read("components/v2/setup-pages.tsx")).toContain("hold={mission.paymentHold}");
+    // The campaign page's status button names the hold itself (PAYMENT_HOLD_LABEL), the hold sentence below it.
+    expect(read("components/v2/campaign-page.tsx")).toContain("<CampaignControlsTrigger");
+    expect(read("components/v2/campaign-page.tsx")).toContain("campaignHoldCopy(hold)");
     expect(read("components/v2/v2-shell.tsx")).toContain("<ScopePaymentDeclinedBand brandId={brandId} />");
   });
   it("every restart surface renders campaign-service's refusal", () => {

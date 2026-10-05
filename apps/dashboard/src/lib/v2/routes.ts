@@ -10,6 +10,7 @@ export type V2Section =
   | "work"
   | "crew"
   | "missions"
+  | "campaigns"
   | "workflows"
   | "sales-path"
   | "offers"
@@ -35,8 +36,13 @@ export function v2Href(orgId: string, brandId: string, section: V2Section): stri
   return section === "today" ? base : `${base}/${section}`;
 }
 
-export function v2MissionHref(orgId: string, brandId: string, campaignId: string): string {
-  return `${v2Base(orgId, brandId)}/missions/${encodeURIComponent(campaignId)}`;
+/** The tabs of one campaign's page. Workflows is offered in staff mode only. */
+export type V2CampaignTab = "overview" | "inbox" | "sent" | "targeting" | "settings" | "workflows";
+
+/** One campaign (offer x leg x channel), Overview when no tab is named. */
+export function v2CampaignHref(orgId: string, brandId: string, campaignId: string, tab?: V2CampaignTab): string {
+  const base = `${v2Base(orgId, brandId)}/campaigns/${encodeURIComponent(campaignId)}`;
+  return tab && tab !== "overview" ? `${base}?tab=${tab}` : base;
 }
 
 /**
@@ -68,6 +74,7 @@ export function v2SectionOf(pathname: string): V2Section | null {
     "work",
     "crew",
     "missions",
+    "campaigns",
     "workflows",
     "sales-path",
     "offers",

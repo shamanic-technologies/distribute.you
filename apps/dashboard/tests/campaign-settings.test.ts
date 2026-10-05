@@ -15,7 +15,7 @@ describe("Campaign Settings — is it running, and what may it spend", () => {
   const card = read("components/settings/campaign-settings-card.tsx");
 
   it("is mounted on the v2 campaign setup page", () => {
-    expect(read("components/v2/setup-pages.tsx")).toContain("<CampaignSettingsCard");
+    expect(read("components/v2/campaign-page.tsx")).toContain("<CampaignSettingsCard");
   });
 
   it("carries a daily budget and nothing else", () => {

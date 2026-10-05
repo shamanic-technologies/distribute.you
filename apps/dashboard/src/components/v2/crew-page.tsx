@@ -304,7 +304,7 @@ function CrewCard({
                         </Link>
                       ))}
                       {staffMode && missions.length === 1 && (
-                        <Link href={`${missions[0].href}/workflows`} className="k-hover flex items-center rounded-[8px] px-2 py-1.5 text-[13px]">
+                        <Link href={`${missions[0].href}?tab=workflows`} className="k-hover flex items-center rounded-[8px] px-2 py-1.5 text-[13px]">
                           Workflows
                         </Link>
                       )}

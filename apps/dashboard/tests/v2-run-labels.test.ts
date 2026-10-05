@@ -63,12 +63,6 @@ describe("v2 run lists show one row per lead", () => {
     expect(fn).toContain(".filter(isWorkRun)");
   });
 
-  it("the mission run card prices a lead run by its subtree", () => {
-    const page = src("components/v2/mission-page.tsx");
-    const card = page.slice(page.indexOf("function MissionRunCard("), page.indexOf("function Fact("));
-    expect(card).toContain("Number(run.totalCostInUsdCents)");
-    expect(card).not.toContain("ownCostInUsdCents");
-  });
 
   it("the run page folds its steps and shows the service name to staff only", () => {
     const page = src("components/v2/run-page.tsx");

@@ -68,13 +68,11 @@ describe("nothing below a mission reaches a customer", () => {
     expect(read("app/(authed)/v2/orgs/[orgId]/brands/[brandId]/audience/page.tsx")).toContain("<StaffOnly>");
   });
 
-  it("the mission Workflows tab is staff mode only, and every caller states the mode", () => {
-    const s = read("components/v2/setup-pages.tsx");
-    expect(s).toContain('...(staffMode ? [{ label: "Workflows"');
-    const calls = [...s.matchAll(/missionTabs\(orgId, brandId, [^)]*\)/g)].map((m) => m[0]);
-    expect(calls.length).toBeGreaterThan(0);
-    for (const c of calls) expect(c).toContain("staffMode");
-    expect(read("components/v2/mission-page.tsx")).toContain('"overview", staffMode)');
+  it("the campaign Workflows tab is staff mode only, its body behind StaffOnly", () => {
+    const s = read("components/v2/campaign-page.tsx");
+    expect(s).toContain('{ key: "workflows", label: "Workflows", staff: true }');
+    expect(s).toContain("CAMPAIGN_TABS.filter((t) => !t.staff || staffMode)");
+    expect(s.slice(s.indexOf("<StaffOnly>"))).toContain("<CampaignWorkflowsPage");
   });
 
   it("the crew card's Workflows link is staff mode only", () => {
@@ -86,9 +84,8 @@ describe("nothing below a mission reaches a customer", () => {
     for (const p of ["workflows/page.tsx", "workflows/[workflowSlug]/page.tsx", "research/page.tsx", "research/[...path]/page.tsx"]) {
       expect(read(base + p)).toContain("<StaffOnly>");
     }
-    const s = read("components/v2/setup-pages.tsx");
-    const at = s.indexOf("export function V2MissionWorkflowsPage");
-    expect(s.slice(at, s.indexOf("// ─── Integrations", at))).toContain("<StaffOnly>");
+    const s = read("components/v2/campaign-page.tsx");
+    expect(s.slice(s.indexOf("<StaffOnly>"), s.indexOf("</StaffOnly>"))).toContain("<CampaignWorkflowsPage");
   });
 
   it("the run page names the workflow, version, model and template in staff mode only", () => {
@@ -110,9 +107,9 @@ describe("nothing below a mission reaches a customer", () => {
 describe("Work, Crew and Missions are staff mode only (owner 2026-10-03: a simpler dashboard for customers)", () => {
   const route = (p: string) => read(`app/(authed)/v2/orgs/[orgId]/brands/[brandId]/${p}/page.tsx`);
 
-  it("the pages sit behind StaffOnly, the mission detail page stays open (onboarding lands there)", () => {
+  it("the pages sit behind StaffOnly, the campaign page stays open (onboarding lands there)", () => {
     for (const p of ["work", "work/runs/[runId]", "crew", "missions"]) expect(route(p)).toContain("<StaffOnly>");
-    expect(route("missions/[campaignId]")).not.toContain("StaffOnly");
+    expect(route("campaigns/[campaignId]")).not.toContain("StaffOnly");
   });
 
   it("the sidebar entries and its Crew / Missions groups need staff mode", () => {
