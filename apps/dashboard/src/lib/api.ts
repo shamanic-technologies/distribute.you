@@ -1666,7 +1666,7 @@ const SourcingPeopleSchema = z.object({
   people: z.array(z.object({ apolloPersonId: z.string().nullable(), invested: InvestedMoneySchema })),
 });
 const SourcingCompaniesSchema = z.object({
-  companies: z.array(z.object({ companyDomain: z.string(), invested: InvestedMoneySchema })),
+  companies: z.array(z.object({ companyKey: z.string(), invested: InvestedMoneySchema })),
 });
 
 const investmentPath = (brandId: string) => `${STAFF_MONITORING_PATHS.brands}/${encodeURIComponent(brandId)}/sourcing-investment`;
@@ -1684,12 +1684,12 @@ export async function getStaffSourcingPeople(brandId: string, apolloPersonIds: s
   return new Map(body.people.filter((p) => p.apolloPersonId).map((p) => [p.apolloPersonId as string, p.invested]));
 }
 
-/** $ invested per company, keyed by bare lowercased domain. Keys <= 500. */
-export async function getStaffSourcingCompanies(brandId: string, domains: string[]): Promise<Map<string, InvestedMoney>> {
-  if (domains.length === 0) return new Map();
-  const q = new URLSearchParams({ limit: String(domains.length), domains: domains.join(",") });
+/** $ invested per company, keyed by human-service's `companyKey` (the held-companies key). Keys <= 500. */
+export async function getStaffSourcingCompanies(brandId: string, companyKeys: string[]): Promise<Map<string, InvestedMoney>> {
+  if (companyKeys.length === 0) return new Map();
+  const q = new URLSearchParams({ limit: String(companyKeys.length), companyKeys: companyKeys.join(",") });
   const body = parseStaff("getStaffSourcingCompanies", SourcingCompaniesSchema, await apiCall<unknown>(`${investmentPath(brandId)}/companies?${q}`));
-  return new Map(body.companies.map((c) => [c.companyDomain, c.invested]));
+  return new Map(body.companies.map((c) => [c.companyKey, c.invested]));
 }
 
 /** Every brand of every org (staff), to name the comparison's org and brand ids. */
