@@ -330,12 +330,12 @@ function V2Sidebar() {
             icon={<I d={ICONS.target} />}
             active={section === "targeting"}
           />
-          {/* The channels this offer runs, each opening its own page (owner 2026-10-04). */}
+          {/* Every campaign this offer has run, read only (owner 2026-10-05). */}
           <NavItem
-            href={offerId ? v2OfferHref(orgId, brandId, offerId, "channels") : v2Href(orgId, brandId, "channels")}
-            label="Channels"
+            href={offerId ? v2OfferHref(orgId, brandId, offerId, "campaigns") : v2Href(orgId, brandId, "campaigns")}
+            label="Campaigns"
             icon={<I d={ICONS.channels} />}
-            active={section === "channels"}
+            active={section === "campaigns"}
           />
           {/* Staff only: the lists we source people from, and what we hold in each. */}
           {staffMode && (
