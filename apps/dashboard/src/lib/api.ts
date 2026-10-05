@@ -2962,7 +2962,8 @@ export async function saveCampaignBudget(
 // ── One offer's campaign budgets (billing-service, per offer) ──
 // Every campaign (channel x leg) of an offer with its type, its budget in the ORG's
 // period (day = prepaid / postpaid, month = subscriber), the same budget per day, and
-// the floor and cap a write must clear. api-service proxies it verbatim. Declared narrow.
+// the floor a write must clear (no maximum: owner 2026-10-05). api-service proxies it
+// verbatim. Declared narrow.
 const OfferCampaignBudgetItemSchema = z.object({
   featureSlug: z.string(),
   legKey: z.string(),
@@ -2973,7 +2974,6 @@ const OfferCampaignBudgetItemSchema = z.object({
   dailyBudgetCents: z.coerce.number().nullable(),
   managed: z.boolean().nullable(),
   minimumCents: z.coerce.number().nullable(),
-  capCents: z.coerce.number().nullable(),
   budgetable: z.boolean(),
 });
 

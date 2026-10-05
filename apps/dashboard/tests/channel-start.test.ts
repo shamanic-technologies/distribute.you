@@ -172,3 +172,12 @@ describe("offer campaigns: a reactive row starts as a funded pair", () => {
     expect(read("lib/start-pair.ts")).toContain("fundedPairRefusalMessage(err.status, err.body)");
   });
 });
+
+describe("campaign budget modal: minimums only, no maximum (owner 2026-10-05)", () => {
+  it("never refuses a typed budget for being too high", () => {
+    const src = read("components/v2/offer-campaigns.tsx");
+    expect(src).not.toContain("The most you can set here");
+    expect(src).not.toContain("capCents");
+    expect(src).toContain("needs at least");
+  });
+});
