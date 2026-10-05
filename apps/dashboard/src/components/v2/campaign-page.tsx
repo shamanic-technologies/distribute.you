@@ -18,11 +18,11 @@ import { v2CampaignHref, v2OfferHref, type V2CampaignTab } from "@/lib/v2/routes
 import { AcquisitionChannelMark } from "@/components/marks/acquisition-channel-mark";
 import { CampaignControlsTrigger } from "@/components/campaigns/campaign-controls-trigger";
 import { CampaignSettingsCard } from "@/components/settings/campaign-settings-card";
-import { BrandOfferCard } from "@/components/settings/brand-offer-card";
 import { CampaignWorkflowsPage } from "@/components/workflows/campaign-workflows-page";
 import { campaignHoldCopy, useMissionHold } from "@/components/v2/mission-hold";
 import { useMissions, type Mission } from "@/components/v2/use-missions";
 import { LEG_STEPS, LegSteps, StepBar, SummaryCard } from "@/components/v2/offer-channel-page";
+import { ColdEmailChannelSettings } from "@/components/v2/offer-channels-page";
 import { PathAvatar } from "@/components/v2/offer-sales-paths";
 import { PeoplePage } from "@/components/v2/people-page";
 import { V2AudiencesTable } from "@/components/v2/audiences-table";
@@ -165,14 +165,13 @@ export function V2CampaignPage() {
       ) : tab === "targeting" ? (
         <V2AudiencesTable campaignId={id} offerId={offerId} />
       ) : tab === "settings" ? (
-        <>
-          <CampaignSettingsCard brandId={brandId} offerId={offerId} campaignId={id} />
-          {isColdEmailChannel(c?.featureSlug) && (
-            <div className="mt-8">
-              <BrandOfferCard brandId={brandId} offerId={offerId} />
-            </div>
+        <div className="space-y-8">
+          {/* The channel page's settings (give lists, rates per step), then this campaign's daily budget. */}
+          {c?.featureSlug && isColdEmailChannel(c.featureSlug) && (
+            <ColdEmailChannelSettings brandId={brandId} offerId={offerId} channelSlug={c.featureSlug} />
           )}
-        </>
+          <CampaignSettingsCard brandId={brandId} offerId={offerId} campaignId={id} />
+        </div>
       ) : (
         <StaffOnly>
           <div className="-mx-4 md:-mx-6">

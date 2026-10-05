@@ -74,4 +74,9 @@ describe("Campaign page (replaced the mission page, owner 2026-10-05)", () => {
   it("reads where people stand on the campaign, never the brand", () => {
     expect(page).toContain("getLeadBucketCounts({ campaignId }, {})");
   });
+  it("Settings is the channel page's settings plus the campaign's daily budget (owner 2026-10-05)", () => {
+    expect(page).toContain("<ColdEmailChannelSettings brandId={brandId} offerId={offerId} channelSlug={c.featureSlug} />");
+    expect(page).toContain("<CampaignSettingsCard brandId={brandId} offerId={offerId} campaignId={id} />");
+    expect(page).not.toContain("<BrandOfferCard");
+  });
 });
