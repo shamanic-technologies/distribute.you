@@ -32,8 +32,10 @@ import {
   TickGauge,
   TopBar,
 } from "@/components/v2/ui";
-import { missionCampaignIds, useCrewRuns, useRecentRuns, runState, runTaskLabel } from "@/components/v2/runs";
-import type { RunRow } from "@/lib/api";
+import { useCrewRuns } from "@/components/v2/runs";
+import { useOngoingCampaigns, type OngoingCampaign } from "@/components/v2/ongoing-campaigns";
+import { PathAvatar } from "@/components/v2/offer-sales-paths";
+import { STEP_KEY_FOR_LEAD_STAGE } from "@/lib/step-marks";
 import { CrewMark } from "@/components/v2/crew-mark";
 import { useMissions, type Mission } from "@/components/v2/use-missions";
 import {
@@ -93,14 +95,21 @@ export function TodayPage() {
   const data = rev.data;
   const standings = useStandingCounts(brandId).data;
   const buckets = useBucketCounts(brandId).data;
-  const { missions, settled: missionsSettled, missionByCampaignId } = useMissions(orgId, brandId);
+  const { missions, missionByCampaignId } = useMissions(orgId, brandId);
   const { byCrew, settled: runsSettled } = useCrewRuns(brandId, missionByCampaignId);
-  const recentRuns = useRecentRuns(brandId, missionsSettled ? missionCampaignIds(missions, missionByCampaignId) : null, 60);
   // Work, Crew and Missions pages are staff mode only: a customer gets the figures, no
   // link to them, and "needs your call" opens the Inbox instead of Work.
   const { staffMode } = useStaffMode();
   const callHref = staffMode ? v2Href(orgId, brandId, "work") : `${v2Href(orgId, brandId, "people")}?tab=positive-replies`;
   const selectedOfferId = useSelectedOfferIfAny()?.offerId ?? null;
+  // The offer's ON campaigns, and the steps their legs touch: a step no ON campaign
+  // works (owner 2026-10-05) is not stated here, so Today never shows a stage at zero
+  // that nothing aims at.
+  const ongoing = useOngoingCampaigns(orgId, brandId, selectedOfferId);
+  const works = (stage: string) => ongoing.settled && ongoing.steps.has(STEP_KEY_FOR_LEAD_STAGE[stage]);
+  const showReplies = works("positive_reply");
+  const showVisits = works("website_visit");
+  const showMeetings = works("meeting_booked");
 
   const emails = w?.emails ?? null;
   const winSpend = w?.spend ?? null;
@@ -121,8 +130,6 @@ export function TodayPage() {
   const needsCall = callQ.data?.total ?? null;
   const callLeads = callQ.data?.leads ?? [];
   const [cursor, setCursor] = useState(0);
-  const visits = useLatestInBucket(brandId, "website_visit", 8);
-  const replies = useLatestInBucket(brandId, "positive_reply", 8);
   // lead-service orders a bucket by activity only, so the meetings are read wide
   // and ordered here on the date each meeting was booked, newest first.
   const meetingsQ = useLatestInBucket(brandId, "meeting_booked", MEETINGS_READ_LIMIT);
@@ -248,14 +255,18 @@ export function TodayPage() {
                 {rev.pending ? <Shimmer className="h-7 w-20" /> : <Figure value={data?.totalPipelineUsd != null ? formatUsdAdaptive(data.totalPipelineUsd) : "—"} />}
                 <Trend className="mt-auto pt-2" line values={w?.expectedPipeline ? w.expectedPipeline.daily.map((d) => d.cumulativePipelineUsd) : null} />
               </StatTile>
-              <StatTile label="Positive replies" href={`${v2Href(orgId, brandId, "people")}?tab=positive-replies`}>
-                {win.pending ? <Shimmer className="h-7 w-12" /> : <Figure value={w ? formatCount(w.recipientsRepliesPositive.total) : "—"} />}
-                <Trend className="mt-auto pt-2" values={w ? w.recipientsRepliesPositive.daily.map((d) => d.count) : null} />
-              </StatTile>
-              <StatTile label="Website visits" href={`${v2Href(orgId, brandId, "people")}?tab=website-visits`}>
-                {win.pending ? <Shimmer className="h-7 w-12" /> : <Figure value={w ? formatCount(w.recipientsClicked.total) : "—"} />}
-                <Trend className="mt-auto pt-2" values={w ? w.recipientsClicked.daily.map((d) => d.count) : null} />
-              </StatTile>
+              {showReplies && (
+                <StatTile label="Positive replies" href={`${v2Href(orgId, brandId, "people")}?tab=positive-replies`}>
+                  {win.pending ? <Shimmer className="h-7 w-12" /> : <Figure value={w ? formatCount(w.recipientsRepliesPositive.total) : "—"} />}
+                  <Trend className="mt-auto pt-2" values={w ? w.recipientsRepliesPositive.daily.map((d) => d.count) : null} />
+                </StatTile>
+              )}
+              {showVisits && (
+                <StatTile label="Website visits" href={`${v2Href(orgId, brandId, "people")}?tab=website-visits`}>
+                  {win.pending ? <Shimmer className="h-7 w-12" /> : <Figure value={w ? formatCount(w.recipientsClicked.total) : "—"} />}
+                  <Trend className="mt-auto pt-2" values={w ? w.recipientsClicked.daily.map((d) => d.count) : null} />
+                </StatTile>
+              )}
               <StatTile label="Delivered" note={emails ? `${formatCount(emails.bounced)} bounced` : undefined}>
                 {win.pending ? <Shimmer className="h-7 w-16" /> : <Figure value={emails?.deliveryRatePct != null ? pct(emails.deliveryRatePct) : "—"} />}
                 <p className="k-fg3 mt-auto pt-2 text-[12px] tabular-nums">
@@ -319,91 +330,52 @@ export function TodayPage() {
               </section>
 
               <aside className="space-y-6">
+                {/* The offer's ON campaigns, named and ordered as the sidebar and the Sales path page. */}
                 <section>
-                  <SectionTitle
-                    count={buckets ? buckets.counts.meeting_booked : null}
-                    right={
-                      <Link href={`${v2Href(orgId, brandId, "people")}?tab=meetings`} className="hover:text-[var(--fg-1)]">
-                        All meetings →
-                      </Link>
-                    }
-                  >
-                    Meetings
-                  </SectionTitle>
-                  <div className="k-card">
-                    {latestMeetings === undefined ? (
-                      <div className="p-4"><Shimmer className="h-16 w-full" /></div>
-                    ) : latestMeetings.length === 0 ? (
-                      <EmptyNote>No meeting booked yet. Booked meetings land here.</EmptyNote>
-                    ) : (
-                      <ul className="divide-y divide-[var(--line-subtle)]">
-                        {latestMeetings.map((lead) => (
-                          <MeetingLine
-                            key={lead.id}
-                            lead={lead}
-                            at={meetingAt(lead)}
-                            mission={missionByCampaignId.get(lead.campaignId) ?? null}
-                            href={personHref(orgId, brandId, lead)}
-                          />
-                        ))}
-                      </ul>
-                    )}
-                  </div>
-                </section>
-                <section>
-                  <SectionTitle
-                    count={missionsSettled ? missions.length : null}
-                    right={
-                      staffMode ? (
-                        <Link href={v2Href(orgId, brandId, "missions")} className="hover:text-[var(--fg-1)]">
-                          All missions →
-                        </Link>
-                      ) : undefined
-                    }
-                  >
-                    Missions
-                  </SectionTitle>
+                  <SectionTitle count={ongoing.settled ? ongoing.campaigns.length : null}>Campaigns</SectionTitle>
                   <div className="k-card divide-y divide-[var(--line-subtle)]">
-                    {!missionsSettled ? (
+                    {!ongoing.settled ? (
                       <div className="p-4"><Shimmer className="h-10 w-full" /></div>
-                    ) : missions.length === 0 ? (
-                      <EmptyNote>No mission yet.</EmptyNote>
+                    ) : ongoing.campaigns.length === 0 ? (
+                      <EmptyNote>No campaign is on.</EmptyNote>
                     ) : (
-                      missions.slice(0, 5).map((m) => <MissionLine key={m.row.campaign.id} m={m} />)
+                      ongoing.campaigns.map((c) => <CampaignLine key={c.m.row.campaign.id} c={c} />)
                     )}
                   </div>
                 </section>
-                <section>
-                  <SectionTitle
-                    right={
-                      <span className="flex items-center gap-3">
-                        <span className="flex items-center gap-1.5">
-                          <span className="k-dot-pulse h-1.5 w-1.5 rounded-full bg-[var(--run)] text-[var(--run)]" />
-                          Live
-                        </span>
-                        {runsSettled &&
-                          (staffMode ? (
-                            <Link href={v2Href(orgId, brandId, "crew")} className="hover:text-[var(--fg-1)]">
-                              {formatCount(runsToday)} {runsToday === 1 ? "run" : "runs"} today
-                            </Link>
-                          ) : (
-                            <span>
-                              {formatCount(runsToday)} {runsToday === 1 ? "run" : "runs"} today
-                            </span>
+                {showMeetings && (
+                  <section>
+                    <SectionTitle
+                      count={buckets ? buckets.counts.meeting_booked : null}
+                      right={
+                        <Link href={`${v2Href(orgId, brandId, "people")}?tab=meetings`} className="hover:text-[var(--fg-1)]">
+                          All meetings →
+                        </Link>
+                      }
+                    >
+                      Meetings
+                    </SectionTitle>
+                    <div className="k-card">
+                      {latestMeetings === undefined ? (
+                        <div className="p-4"><Shimmer className="h-16 w-full" /></div>
+                      ) : latestMeetings.length === 0 ? (
+                        <EmptyNote>No meeting booked yet. Booked meetings land here.</EmptyNote>
+                      ) : (
+                        <ul className="divide-y divide-[var(--line-subtle)]">
+                          {latestMeetings.map((lead) => (
+                            <MeetingLine
+                              key={lead.id}
+                              lead={lead}
+                              at={meetingAt(lead)}
+                              mission={missionByCampaignId.get(lead.campaignId) ?? null}
+                              href={personHref(orgId, brandId, lead)}
+                            />
                           ))}
-                      </span>
-                    }
-                  >
-                    Crew activity
-                  </SectionTitle>
-                  <ActivityFeed
-                    visits={visits.data?.leads ?? null}
-                    replies={replies.data?.leads ?? null}
-                    runs={recentRuns.data ?? null}
-                    missionFor={(id) => (id ? missionByCampaignId.get(id) ?? null : null)}
-                    hrefFor={(lead) => personHref(orgId, brandId, lead)}
-                  />
-                </section>
+                        </ul>
+                      )}
+                    </div>
+                  </section>
+                )}
               </aside>
             </div>
           </>
@@ -535,16 +507,14 @@ function MeetingLine({ lead, at, mission, href }: { lead: Lead; at: string | nul
   );
 }
 
-function MissionLine({ m }: { m: Mission }) {
+function CampaignLine({ c }: { c: OngoingCampaign }) {
+  const { m, name } = c;
   const g = m.row.revenue;
   return (
     <Link href={m.href} className="k-hover flex items-center gap-3 px-4 py-3 first:rounded-t-[12px] last:rounded-b-[12px]">
-      <CrewMark color={m.crew.color} glyph={m.crew.glyph} size={20} />
+      {name ? <PathAvatar name={name} size={20} /> : <CrewMark color={m.crew.color} glyph={m.crew.glyph} size={20} />}
       <div className="min-w-0 flex-1">
-        <p className="truncate text-[13px]">
-          <span className="font-medium">{m.crew.name}</span>
-          {m.offerName && <span className="k-fg2"> · {m.offerName}</span>}
-        </p>
+        <p className="truncate text-[13px] font-medium">{name ?? m.crew.name}</p>
         <p className="k-fg3 truncate text-[12px]">{m.leg?.label ?? "—"}</p>
       </div>
       <div className="shrink-0 text-right">
@@ -554,103 +524,5 @@ function MissionLine({ m }: { m: Mission }) {
         </p>
       </div>
     </Link>
-  );
-}
-
-type FeedItem =
-  | { kind: "visit" | "reply"; lead: Lead; at: string; key: string }
-  | { kind: "run"; run: RunRow; at: string; key: string };
-
-function ActivityFeed({
-  visits,
-  replies,
-  runs,
-  missionFor,
-  hrefFor,
-}: {
-  visits: Lead[] | null;
-  replies: Lead[] | null;
-  runs: RunRow[] | null;
-  missionFor: (campaignId: string | null) => Mission | null;
-  hrefFor: (lead: Lead) => string;
-}) {
-  // A display merge of three served lists, ordered by the instant each one proves.
-  const items = useMemo(() => {
-    const out: FeedItem[] = [];
-    for (const l of visits ?? []) if (l.firstClickedAt) out.push({ kind: "visit", lead: l, at: l.firstClickedAt, key: `v-${l.id}` });
-    for (const l of replies ?? []) if (l.firstRepliedAt) out.push({ kind: "reply", lead: l, at: l.firstRepliedAt, key: `r-${l.id}` });
-    for (const r of runs ?? []) if (runState(r) !== "failed") out.push({ kind: "run", run: r, at: r.startedAt, key: `x-${r.id}` });
-    return out.sort((a, b) => b.at.localeCompare(a.at)).slice(0, 14);
-  }, [visits, replies, runs]);
-
-  if (!visits && !replies && !runs) return <Shimmer className="h-48 w-full rounded-xl" />;
-  const todayStart = new Date(new Date().setHours(0, 0, 0, 0)).toISOString();
-  const firstEarlier = items.findIndex((i) => i.at < todayStart);
-  return (
-    <div className="k-card max-h-[520px] overflow-y-auto k-scroll">
-      {items.length === 0 ? (
-        <EmptyNote>Nothing landed yet.</EmptyNote>
-      ) : (
-        <ul>
-          {items.map((item, idx) => {
-            const campaignId = item.kind === "run" ? item.run.campaignId : item.lead.campaignId;
-            const m = missionFor(campaignId);
-            const divider = idx === firstEarlier && idx > 0;
-            return (
-              <li key={item.key} className={idx > 0 && !divider ? "border-t border-[var(--line-subtle)]" : ""}>
-                {divider && (
-                  <p className="k-fg3 flex items-center gap-2 border-t border-[var(--line-subtle)] bg-[var(--bg-inset)] px-4 py-1.5 text-[11px]">
-                    Earlier
-                  </p>
-                )}
-                {item.kind === "run" ? (
-                  <Link href={m?.href ?? "#"} className="k-hover flex items-start gap-3 px-4 py-3">
-                    <CrewTile m={m} />
-                    <div className="min-w-0 flex-1">
-                      <p className="truncate text-[13px]">
-                        <span className="font-medium">{m?.crew.name ?? "Your crew"}</span>{" "}
-                        <span>{runTaskLabel(item.run).charAt(0).toLowerCase() + runTaskLabel(item.run).slice(1)}</span>
-                      </p>
-                      <p className="k-fg3 truncate text-[12px]">
-                        {[m?.offerName, runState(item.run) === "running" ? "running now" : null].filter(Boolean).join(" · ") || "—"}
-                      </p>
-                    </div>
-                    <span className="k-fg3 shrink-0 text-[12px]">{timeAgo(item.at)}</span>
-                  </Link>
-                ) : (
-                  <Link href={hrefFor(item.lead)} className="k-hover flex items-start gap-3 px-4 py-3">
-                    <CrewTile m={m} />
-                    <div className="min-w-0 flex-1">
-                      <p className="truncate text-[13px]">
-                        <span className="font-medium">{m?.crew.name ?? "Your crew"}</span>{" "}
-                        {item.kind === "reply" ? "got a positive reply" : "brought a website visit"}
-                      </p>
-                      <p className="k-fg3 flex min-w-0 items-center gap-1.5 truncate text-[12px]">
-                        {leadCompany(item.lead) && <CompanyMark name={leadCompany(item.lead) ?? ""} domain={leadCompanyDomain(item.lead)} size={14} />}
-                        <span className="truncate">{[leadName(item.lead), leadCompany(item.lead)].filter(Boolean).join(" · ")}</span>
-                      </p>
-                    </div>
-                    <span className="k-fg3 shrink-0 text-[12px]">{timeAgo(item.at)}</span>
-                  </Link>
-                )}
-              </li>
-            );
-          })}
-        </ul>
-      )}
-    </div>
-  );
-}
-
-/** Keel draws an agent's mark on a tinted square in activity rows. */
-function CrewTile({ m }: { m: Mission | null }) {
-  if (!m) return <span className="h-6 w-6 shrink-0" />;
-  return (
-    <span
-      className="inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-[7px]"
-      style={{ background: `color-mix(in oklab, ${m.crew.color} 14%, transparent)` }}
-    >
-      <CrewMark color={m.crew.color} glyph={m.crew.glyph} size={14} />
-    </span>
   );
 }
