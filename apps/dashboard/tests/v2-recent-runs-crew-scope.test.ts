@@ -26,9 +26,25 @@ describe("v2 recent runs are crew runs", () => {
     expect(fn).not.toMatch(/listBrandRunLedger\(brandId, \{ limit \}\)/);
   });
 
-  it("both surfaces pass the mission campaign ids", () => {
+  it("the Crew page passes the mission campaign ids", () => {
     expect(src("components/v2/crew-page.tsx")).toContain("useRecentRuns(brandId, settled ? missionCampaignIds(missions, missionByCampaignId) : null");
-    expect(src("components/v2/today-page.tsx")).toContain("useRecentRuns(brandId, missionsSettled ? missionCampaignIds(missions, missionByCampaignId) : null");
+  });
+
+  it("Today lists the ON campaigns, not Missions or Crew activity (owner 2026-10-05)", () => {
+    const today = src("components/v2/today-page.tsx");
+    expect(today).not.toContain("useRecentRuns(");
+    expect(today).not.toContain("Crew activity");
+    expect(today).toContain("useOngoingCampaigns(orgId, brandId, selectedOfferId)");
+    expect(today).toContain(">Campaigns</SectionTitle>");
+    // A step no ON campaign works is not stated on Today.
+    expect(today).toContain('const showReplies = works("positive_reply");');
+    expect(today).toContain('const showVisits = works("website_visit");');
+    expect(today).toContain('const showMeetings = works("meeting_booked");');
+    expect(today).toContain("{showReplies && (");
+    expect(today).toContain("{showVisits && (");
+    expect(today).toContain("{showMeetings && (");
+    // The sidebar reads the same list.
+    expect(src("components/v2/v2-shell.tsx")).toContain("useOngoingCampaigns(orgId, brandId, offerId)");
   });
 
   it("the crew hash pre-selects that crew's runs", () => {
