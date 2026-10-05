@@ -429,7 +429,7 @@ export function websiteUrl(website: string): string {
   return /^https?:\/\//i.test(raw) ? raw : `https://${raw}`;
 }
 
-// ── The snapshot that survives the Google sign-up redirect ────────────────────
+// ── The snapshot that survives the Google sign-up redirect, a reload, a new tab ──
 
 export const GET_STARTED_SNAPSHOT_KEY = "distribute:get-started:v1";
 
@@ -515,6 +515,22 @@ export interface GetStartedSnapshot {
   answered?: boolean;
   /** Who the brand sells to (the ICP text the audiences were split from); the launch builds every audience from it. Absent on an older snapshot. */
   icp?: string | null;
+  /** When it was last written (ms); a reload resumes only a snapshot younger than the anonymous session. */
+  savedAt?: number;
+}
+
+/** The anonymous session lives 24 h; a walk older than this cannot be resumed (its calls would be refused). */
+export const GET_STARTED_RESUME_MAX_AGE_MS = 23 * 60 * 60 * 1000;
+
+/** A plain reload or a new tab resumes the walk only while its anonymous session is alive. */
+export function snapshotResumable(s: GetStartedSnapshot, now: number): boolean {
+  return typeof s.savedAt === "number" && now - s.savedAt <= GET_STARTED_RESUME_MAX_AGE_MS;
+}
+
+/** Where a resumed walk lands: the first step not done (the last one when every step is). */
+export function firstOpenStepIndex(phases: readonly StepPhase[]): number {
+  const i = phases.findIndex((p) => p !== "done");
+  return i < 0 ? phases.length - 1 : i;
 }
 
 function parseOffer(v: unknown): GetStartedOffer | null {
@@ -566,6 +582,7 @@ export function parseGetStartedSnapshot(raw: string | null): GetStartedSnapshot 
       typeof s.lifetimeRevenueUsd === "number" && Number.isInteger(s.lifetimeRevenueUsd) && s.lifetimeRevenueUsd > 0 ? s.lifetimeRevenueUsd : null,
     answered: s.answered === true,
     icp: typeof s.icp === "string" && s.icp.trim() ? s.icp : null,
+    savedAt: typeof s.savedAt === "number" ? s.savedAt : undefined,
   };
 }
 
