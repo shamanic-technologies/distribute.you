@@ -60,6 +60,14 @@ describe("nothing below a mission reaches a customer", () => {
     expect(s.slice(at - 200, at)).toContain("{staffMode && (");
   });
 
+  it("Setup > Audience is staff mode only, below Channels, and its page sits behind StaffOnly", () => {
+    const s = read("components/v2/v2-shell.tsx");
+    const at = s.indexOf('label="Audience"');
+    expect(at).toBeGreaterThan(s.indexOf('label="Channels"'));
+    expect(s.slice(at - 200, at)).toContain("{staffMode && (");
+    expect(read("app/(authed)/v2/orgs/[orgId]/brands/[brandId]/audience/page.tsx")).toContain("<StaffOnly>");
+  });
+
   it("the campaign Workflows tab is staff mode only, its body behind StaffOnly", () => {
     const s = read("components/v2/campaign-page.tsx");
     expect(s).toContain('{ key: "workflows", label: "Workflows", staff: true }');
