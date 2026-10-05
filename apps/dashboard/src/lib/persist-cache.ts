@@ -158,6 +158,7 @@ export const PERSISTABLE_QUERY_ROOTS = new Set([
   "brands",
   // Every campaign ceiling billing holds for a brand, per (offer, leg, channel).
   "brandCampaignBudgets",
+  "offerCampaignBudgets",
   "brandSalesRep",
   // What the brand may actually spend today (campaign status joined to its ceilings,
   // served by campaign-service). An unlisted root is default-OFF, so the header's
@@ -212,6 +213,8 @@ export const PERSISTABLE_QUERY_ROOTS = new Set([
   "leadsPage",
   "leadBucketCounts",
   "leadStandingCounts",
+  // A conversation campaign's four people counts (AI Meeting Booking). Four integers.
+  "conversationCounts",
   // Dashboard v2: runs-service's per-campaign roll-up over a window (the crew
   // cards' runs, spend and last-run) and the latest runs themselves (Work, a
   // mission's timeline). Small, persisted so the cards paint from disk.

@@ -3,7 +3,7 @@
 import { useParams, useSearchParams } from "next/navigation";
 import { useAuthQuery } from "@/lib/use-auth-query";
 import { pollOptions } from "@/lib/query-options";
-import { getLeadBucketCounts } from "@/lib/api";
+import { getConversationCounts, getLeadBucketCounts } from "@/lib/api";
 import { formatCentsAsUsdAdaptive, formatCount, formatUsdAdaptive } from "@/lib/format-number";
 import { fmtDailyBudgetUsd } from "@/lib/campaign-budget";
 import { shownFigure } from "@/lib/maturity";
@@ -18,11 +18,11 @@ import { v2CampaignHref, v2OfferHref, type V2CampaignTab } from "@/lib/v2/routes
 import { AcquisitionChannelMark } from "@/components/marks/acquisition-channel-mark";
 import { CampaignControlsTrigger } from "@/components/campaigns/campaign-controls-trigger";
 import { CampaignSettingsCard } from "@/components/settings/campaign-settings-card";
-import { BrandOfferCard } from "@/components/settings/brand-offer-card";
 import { CampaignWorkflowsPage } from "@/components/workflows/campaign-workflows-page";
 import { campaignHoldCopy, useMissionHold } from "@/components/v2/mission-hold";
 import { useMissions, type Mission } from "@/components/v2/use-missions";
 import { LEG_STEPS, LegSteps, StepBar, SummaryCard } from "@/components/v2/offer-channel-page";
+import { ColdEmailChannelSettings } from "@/components/v2/offer-channels-page";
 import { PathAvatar } from "@/components/v2/offer-sales-paths";
 import { PeoplePage } from "@/components/v2/people-page";
 import { V2AudiencesTable } from "@/components/v2/audiences-table";
@@ -165,14 +165,13 @@ export function V2CampaignPage() {
       ) : tab === "targeting" ? (
         <V2AudiencesTable campaignId={id} offerId={offerId} />
       ) : tab === "settings" ? (
-        <>
-          <CampaignSettingsCard brandId={brandId} offerId={offerId} campaignId={id} />
-          {isColdEmailChannel(c?.featureSlug) && (
-            <div className="mt-8">
-              <BrandOfferCard brandId={brandId} offerId={offerId} />
-            </div>
+        <div className="space-y-8">
+          {/* The channel page's settings (give lists, rates per step), then this campaign's daily budget. */}
+          {c?.featureSlug && isColdEmailChannel(c.featureSlug) && (
+            <ColdEmailChannelSettings brandId={brandId} offerId={offerId} channelSlug={c.featureSlug} />
           )}
-        </>
+          <CampaignSettingsCard brandId={brandId} offerId={offerId} campaignId={id} />
+        </div>
       ) : (
         <StaffOnly>
           <div className="-mx-4 md:-mx-6">
@@ -284,14 +283,6 @@ function CampaignOverview({
   );
 }
 
-/** What a conversation campaign did with the people handed to it, all PEOPLE, since it started. */
-interface ConversationCounts {
-  handed: number;
-  ongoing: number;
-  booked: number;
-  dropped: number;
-}
-
 /**
  * A campaign that ANSWERS (a leg starting on a step, AI Meeting Booking: Positive reply →
  * Meeting booked) sends no cold email and holds nobody: the people it answers stay held by
@@ -299,17 +290,20 @@ interface ConversationCounts {
  * nothing here. Its own steps are the replies handed to it, the conversations still going,
  * the meetings booked; the conversations it dropped are a card, not a step.
  *
- * lead-service serves these four counts per acting campaign (requested 2026-10-05); until
- * the read lands every figure states `—`, never a number the browser made up.
+ * lead-service serves the four counts per ACTING campaign (`getConversationCounts`), a
+ * partition per person: handed = ongoing + booked + dropped.
  */
 function ConversationOverview({ mission, tabHref }: { mission: Mission; tabHref: (tab: V2CampaignTab) => string }) {
   const budgetHidden = useDailyBudgetHidden();
-  const conv = null as ConversationCounts | null;
+  const q = useAuthQuery(["conversationCounts", mission.row.campaign.id], () => getConversationCounts(mission.row.campaign.id), pollOptions);
+  const conv = q.data ?? null;
+  const settled = q.isFetchedAfterMount || q.data !== undefined;
   const g = mission.row.revenue ?? null;
   const cap = crewTrigger(mission.leg)?.kind === "event";
   const from = mission.leg?.fromLabel ?? "Positive reply";
   const to = mission.leg?.toLabel ?? "Meeting booked";
-  const count = (v: number | null | undefined) => <Figure value={v != null ? formatCount(v) : "—"} unit="people" />;
+  const count = (v: number | null | undefined) =>
+    !settled ? <Shimmer className="h-7 w-16" /> : <Figure value={v != null ? formatCount(v) : "—"} unit="people" />;
 
   return (
     <div className="space-y-8">
@@ -318,7 +312,7 @@ function ConversationOverview({ mission, tabHref }: { mission: Mission; tabHref:
         <div className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-5">
           <StatTile label={`${from}s`}>{count(conv?.handed)}</StatTile>
           <StatTile label="Ongoing conversations">{count(conv?.ongoing)}</StatTile>
-          <StatTile label={`${to}s`}>{count(conv?.booked)}</StatTile>
+          <StatTile label={`${to}s`}>{count(conv?.meetingsBooked)}</StatTile>
           <StatTile label="Dropped conversations">{count(conv?.dropped)}</StatTile>
           <StatTile label="Spent">
             <Figure value={g?.committedCostUsd == null ? "—" : formatUsdAdaptive(g.committedCostUsd)} />
@@ -330,13 +324,15 @@ function ConversationOverview({ mission, tabHref }: { mission: Mission; tabHref:
         <section>
           <SectionTitle>{mission.leg?.label ?? "Steps"}</SectionTitle>
           <div className="k-card p-4">
-            {!conv ? (
-              <EmptyNote>Counts for this campaign are on their way.</EmptyNote>
+            {!settled ? (
+              <Shimmer className="h-[200px] w-full rounded-[8px]" />
+            ) : !conv ? (
+              <EmptyNote>Could not read this campaign&apos;s conversations. Retrying.</EmptyNote>
             ) : (
               <div className="flex items-end gap-3">
                 <StepBar label={`${from}s`} count={conv.handed} of={conv.handed} />
                 <StepBar label="Ongoing conversations" count={conv.ongoing} of={conv.handed} />
-                <StepBar label={to} count={conv.booked} of={conv.handed} />
+                <StepBar label={to} count={conv.meetingsBooked} of={conv.handed} />
               </div>
             )}
           </div>
