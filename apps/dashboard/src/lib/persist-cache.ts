@@ -103,6 +103,10 @@ export const SENSITIVE_QUERY_ROOTS = new Set([
   "staffBasisSummary",
   "staffRealCostSeries",
   "staffPriceComparison",
+  // Staff Audience snapshot (what a brand holds per list, Jev acceptance).
+  "staffAudienceSnapshot",
+  "staffHeldPeople",
+  "staffHeldCompanies",
   "staffBrands",
   // One person's whole exchange (Integrations > Conversations): private message bodies
   // from the brand's own inboxes. Read live, never written to disk.
