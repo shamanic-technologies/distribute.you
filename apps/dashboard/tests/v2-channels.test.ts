@@ -92,6 +92,10 @@ describe("channel pages", () => {
     expect(page).not.toContain("No campaign aims at this yet");
     expect(page).toContain('<StepBar label="Queued" count={counts.contacted} of={counts.contacted} />');
     expect(page).toContain("q.data?.people?.delivered ?? null");
+    // Sent sits between Queued and Delivered (owner 2026-10-05), read off lead-service's people.sent.
+    expect(page).toContain('<StepBar label="Sent" count={q.data?.people?.sent ?? null} of={counts.contacted} />');
+    expect(page.indexOf('<StepBar label="Sent"')).toBeGreaterThan(page.indexOf('<StepBar label="Queued"'));
+    expect(page.indexOf('<StepBar label="Delivered"')).toBeGreaterThan(page.indexOf('<StepBar label="Sent"'));
     for (const gone of ["Meeting booked", "Meeting attended", "Paid client", 'label="Contacted"']) expect(page).not.toContain(gone);
   });
   it("stat cards open with People then Queued before Sent", () => {
