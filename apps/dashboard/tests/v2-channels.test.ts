@@ -70,6 +70,14 @@ describe("channel pages", () => {
     expect(list).toContain(".filter((m) => m.offerId === offerId)");
     expect(list).toContain("router.push(m.href)");
     for (const h of ["Status", "Budget", "$ Invested", "$ Value", "# Outcomes", "$ / Outcome"]) expect(list).toContain(`>${h}</th>`);
+    // Column order (owner 2026-10-05): name, ROI, # outcomes, $ value, $ / outcome, $ invested, status, budget.
+    const order = ["Campaign", "ROI", "# Outcomes", "$ Value", "$ / Outcome", "$ Invested", "Status", "Budget"].map((h) => list.indexOf(`>${h}</th>`));
+    expect(order.every((at, i) => at > -1 && (i === 0 || at > order[i - 1]))).toBe(true);
+    // ROI is the measured return: Learning unless mature or above 1x (shownReturn), never the expected figure.
+    expect(list).toContain("shownReturn(g?.economicsMaturity, basis)");
+    expect(list).not.toContain("EXPECTED_ROI_TIP");
+    // The name reads like Today: the leg on its own line under it.
+    expect(list).toContain("<CampaignLeg campaign={leg} compact />");
     // Status and budget are changed on the Sales path page only: no write here.
     for (const w of ["setCampaignStatus", "saveOfferCampaignBudget", "useMutation", "<button"]) expect(list).not.toContain(w);
     expect(list).toContain("Sales path page");
