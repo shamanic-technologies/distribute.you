@@ -332,7 +332,7 @@ function BarColumn({ label, value, children }: { label: string; value: number | 
   );
 }
 
-function StepBar({ label, count, of }: { label: string; count: number | null; of: number }) {
+export function StepBar({ label, count, of }: { label: string; count: number | null; of: number }) {
   return (
     <BarColumn label={label} value={count}>
       <div className="w-full bg-[var(--accent)]" style={{ height: barHeight(count ?? 0, of) }} />
