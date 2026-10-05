@@ -46,9 +46,9 @@ describe("staff mode is the ONE staff gate of the customer dashboard", () => {
     expect(s).toContain('...(staffMode ? [{ href: `${base}/research`');
   });
 
-  it("every org on the platform is listed in staff mode only", () => {
+  it("every org on the platform is listed for any staff reader, staff mode on or off", () => {
     const s = read("components/v2/sidebar-menus.tsx");
-    expect(s).toContain("const allOrgs = staffMode;");
+    expect(s).toContain("const allOrgs = t.isStaff;");
     expect(s).toMatch(/orgs: allOrgs\s*\?\s*t\.allOrgs/);
     expect(s).not.toContain("const orgs = t.isStaff");
   });

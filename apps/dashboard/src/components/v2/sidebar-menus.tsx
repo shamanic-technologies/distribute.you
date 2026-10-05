@@ -90,13 +90,13 @@ export function TenantSwitcherV2() {
   // The popover stays INSIDE the sidebar's width: the drawer wrapper is transformed
   // (a stacking context), so anything wider is painted under the main panel.
   const ref = useOutside(open, () => setOpen(false));
-  const staffModeRef = useRef(false);
+  const allOrgsRef = useRef(false);
   // Close once a switch LANDS (the org id changes), never before: the menu is the
   // only surface that shows a switch running.
   useEffect(() => setOpen(false), [t.orgId, t.brandId]);
   useEffect(() => {
     if (open) t.fetchBrands();
-    if (open && staffModeRef.current) {
+    if (open && allOrgsRef.current) {
       const timer = setTimeout(() => t.fetchOrgs(t.orgSearch), 250);
       return () => clearTimeout(timer);
     }
@@ -111,11 +111,11 @@ export function TenantSwitcherV2() {
   // The ONE offer every brand page reads (owner 2026-10-03). Null on org pages.
   const selected = useSelectedOfferIfAny();
   const offerName = selected?.offer?.name ?? null;
-  // Every org on the platform only in staff mode; with it off, a staff reader sees their
-  // own memberships, exactly as a customer does.
-  const { staffMode } = useStaffMode();
-  const allOrgs = staffMode;
-  staffModeRef.current = staffMode;
+  // Every org on the platform for any staff reader, staff mode on or off (owner
+  // 2026-10-05: staff in the GA view still switch to any org). Customers see their
+  // memberships.
+  const allOrgs = t.isStaff;
+  allOrgsRef.current = allOrgs;
   const memberOrgs = t.memberships.map((m) => ({
     id: m.organization.id,
     name: m.organization.name,
