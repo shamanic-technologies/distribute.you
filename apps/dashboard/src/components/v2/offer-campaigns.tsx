@@ -7,6 +7,7 @@ import { formatCentsAsUsdAdaptive } from "@/lib/format-number";
 import {
   budgetRefusalCopy,
   campaignKey,
+  campaignTag,
   campaignsQuery,
   parseBudgetText,
   type CampaignBudgetRow,
@@ -148,17 +149,17 @@ function CampaignRow({
         </span>
       </td>
       <td className="px-3 py-2">
-        <span className="inline-flex flex-wrap items-center gap-1.5">
+        {/* The leg read in order: the step it starts from (reactive only), the channel, the step it lands on. */}
+        <span className="k-fg2 inline-flex flex-wrap items-center gap-1.5">
+          {campaign.fromLabel && (
+            <>
+              <span>{campaign.fromLabel}</span>
+              <span className="k-fg3">→</span>
+            </>
+          )}
           <ChannelChip name={campaign.channelName} def={def} notRun={campaign.managed === false} />
-          <span className="k-fg2">
-            {campaign.fromLabel ? (
-              <>
-                {campaign.fromLabel} <span className="k-fg3">→</span> {campaign.toLabel}
-              </>
-            ) : (
-              campaign.toLabel
-            )}
-          </span>
+          <span className="k-fg3">→</span>
+          <span>{campaign.toLabel}</span>
         </span>
       </td>
       <td className="px-3 py-2 text-right">
@@ -231,16 +232,10 @@ function InlineBudget({
   };
 
   if (!row.budgetable) return <span className="k-fg4">—</span>;
-  const hint = campaign.reactive
-    ? row.capCents != null
-      ? `Up to ${money(row.capCents)}`
-      : "Up to half of your first-step budgets"
-    : row.minimumCents
-      ? `At least ${money(row.minimumCents)}`
-      : null;
 
   return (
-    <span className="inline-flex flex-col items-end gap-0.5">
+    <span className="inline-flex flex-col items-end gap-1">
+      <span className="k-chip">{campaignTag(campaign)}</span>
       {text !== null ? (
         <span className="inline-flex items-center gap-1">
           <span className="k-fg3">$</span>
@@ -282,13 +277,7 @@ function InlineBudget({
           )}
         </button>
       )}
-      {error ? (
-        <span className="text-[11.5px] text-[var(--data-rose)]">{error}</span>
-      ) : row.statedPeriod && row.statedPeriod !== row.period && row.dailyBudgetCents != null && text === null ? (
-        <span className="k-fg3 text-[11.5px] tabular-nums">From your {money(row.dailyBudgetCents)}/day. Set it monthly.</span>
-      ) : (
-        hint && <span className="k-fg3 text-[11.5px] tabular-nums">{hint}{per(row.period)}</span>
-      )}
+      {error && <span className="text-[11.5px] text-[var(--data-rose)]">{error}</span>}
     </span>
   );
 }

@@ -2,12 +2,13 @@ import { describe, expect, it } from "vitest";
 import {
   budgetRefusalCopy,
   campaignsOfPaths,
+  campaignTag,
   campaignsQuery,
   OfferCampaignBudgetsSchema,
   parseBudgetText,
 } from "../src/lib/offer-campaign-budgets";
 
-const step = (label: string) => ({ label });
+const step = (label: string, key = label.toLowerCase().replace(/ /g, "_")) => ({ key, label });
 const coldEmail = { slug: "sales-cold-email-outreach", name: "Sales Cold Email Outreach", managed: true, operatedBy: "platform", campaignName: "Jubilation" };
 const booking = { slug: "ai-meeting-booking", name: "AI Meeting Booking", managed: true, operatedBy: "platform", campaignName: "Prism" };
 const team = { slug: "your-team-closing-calls", name: "Your Team Closing Calls", managed: false, operatedBy: "customer", campaignName: "Rise" };
@@ -17,13 +18,13 @@ describe("offer campaigns", () => {
     const list = campaignsOfPaths([
       {
         legs: [
-          { legKey: "start_to_conversation", workedBy: "platform", reactive: false, fromStep: null, toStep: step("Positive reply"), channel: coldEmail },
-          { legKey: "conversation_to_meeting_booked", workedBy: "platform", reactive: true, fromStep: step("Positive reply"), toStep: step("Meeting booked"), channel: booking },
+          { legKey: "start_to_conversation", workedBy: "platform", reactive: false, fromStep: null, toStep: step("Positive reply", "conversation"), channel: coldEmail },
+          { legKey: "conversation_to_meeting_booked", workedBy: "platform", reactive: true, fromStep: step("Positive reply", "conversation"), toStep: step("Meeting booked"), channel: booking },
           { legKey: "meeting_attended_to_paid_client", workedBy: "human", reactive: true, fromStep: step("Meeting attended"), toStep: step("Paid client"), channel: team },
         ],
       },
       {
-        legs: [{ legKey: "start_to_conversation", workedBy: "platform", reactive: false, fromStep: null, toStep: step("Positive reply"), channel: coldEmail }],
+        legs: [{ legKey: "start_to_conversation", workedBy: "platform", reactive: false, fromStep: null, toStep: step("Positive reply", "conversation"), channel: coldEmail }],
       },
     ]);
     expect(list.map((c) => [c.name, c.reactive])).toEqual([
@@ -31,6 +32,10 @@ describe("offer campaigns", () => {
       ["Prism", true],
     ]);
     expect(campaignsQuery(list)).toBe("sales-cold-email-outreach:start_to_conversation,ai-meeting-booking:conversation_to_meeting_booked");
+  });
+  it("tags a campaign by when it works", () => {
+    expect(campaignTag({ reactive: false, fromKey: null, fromLabel: null })).toBe("Daily Proactive");
+    expect(campaignTag({ reactive: true, fromKey: "conversation", fromLabel: "Positive reply" })).toBe("Reactive on positive replies");
   });
   it("reads a typed amount as billing takes it", () => {
     expect(parseBudgetText("$1,500", "month")).toBe(150000);

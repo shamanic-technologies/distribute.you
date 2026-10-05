@@ -112,6 +112,11 @@ const OUTCOME_PLURAL: Record<string, string> = {
   paid_client: "Paid clients",
 };
 
+/** A step's name in the plural ("Positive replies"), as the trigger tags read it; the served label otherwise. */
+export function stepPlural(stepKey: string, label: string): string {
+  return OUTCOME_PLURAL[stepKey] ?? label;
+}
+
 export function crewTrigger(
   leg: { fromKey: string | null; fromLabel: string | null; toKey: string; toLabel: string } | null,
 ): CrewTrigger | null {
