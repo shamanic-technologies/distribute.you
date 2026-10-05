@@ -28,9 +28,10 @@ describe("channel routes", () => {
     expect(v2OfferChannelHref("o", "b", "f", "sales-cold-email-outreach", "overview")).toBe("/v2/orgs/o/brands/b/offers/f/channels/sales-cold-email-outreach");
     expect(v2OfferChannelHref("o", "b", "f", "sales-cold-email-outreach", "inbox")).toBe("/v2/orgs/o/brands/b/offers/f/channels/sales-cold-email-outreach?tab=inbox");
   });
-  it("the offer's Channels and a channel's page are the Channels section", () => {
-    expect(v2SectionOf("/v2/orgs/o/brands/b/offers/f/channels")).toBe("channels");
-    expect(v2SectionOf("/v2/orgs/o/brands/b/offers/f/channels/sales-cold-email-outreach")).toBe("channels");
+  it("the offer's Campaigns, and the older channel pages, are the Campaigns section", () => {
+    expect(v2SectionOf("/v2/orgs/o/brands/b/offers/f/campaigns")).toBe("campaigns");
+    expect(v2SectionOf("/v2/orgs/o/brands/b/offers/f/channels")).toBe("campaigns");
+    expect(v2SectionOf("/v2/orgs/o/brands/b/offers/f/channels/sales-cold-email-outreach")).toBe("campaigns");
     expect(v2SectionOf("/v2/orgs/o/brands/b/channels")).toBe("channels");
     expect(v2SectionOf("/v2/orgs/o/brands/b/offers/f")).toBe("offers");
   });
@@ -47,11 +48,12 @@ describe("sidebar", () => {
     expect(shell).not.toContain('label="Inbox"');
     expect(shell).not.toContain('label="Sent"');
   });
-  it("Setup lists Channels right under Targeting", () => {
+  it("Setup lists Campaigns right under Targeting, no Channels entry (owner 2026-10-05)", () => {
     const setup = shell.slice(shell.indexOf('<Group title="Setup">'), shell.indexOf('label="Integrations"'));
     expect(setup.indexOf('label="Targeting"')).toBeGreaterThan(-1);
-    expect(setup.indexOf('label="Channels"')).toBeGreaterThan(setup.indexOf('label="Targeting"'));
-    expect(setup).toContain('v2OfferHref(orgId, brandId, offerId, "channels")');
+    expect(setup.indexOf('label="Campaigns"')).toBeGreaterThan(setup.indexOf('label="Targeting"'));
+    expect(setup).toContain('v2OfferHref(orgId, brandId, offerId, "campaigns")');
+    expect(setup).not.toContain('label="Channels"');
   });
   it("Setup opens with Sales path, above Offer (owner 2026-10-04)", () => {
     const setup = shell.slice(shell.indexOf('<Group title="Setup">'), shell.indexOf('label="Integrations"'));
@@ -62,11 +64,15 @@ describe("sidebar", () => {
 });
 
 describe("channel pages", () => {
-  const list = read("src/components/v2/offer-channels-page.tsx");
+  const list = read("src/components/v2/offer-campaigns-page.tsx");
   const page = read("src/components/v2/offer-channel-page.tsx");
-  it("the Channels table opens cold email's own page", () => {
-    expect(list).toContain("channelRows(sections)");
-    expect(list).toContain("isColdEmailChannel(row.slug) ? v2OfferChannelHref(orgId, brandId, offerId, row.slug) : null");
+  it("Campaigns lists every campaign the offer ran, read only, each opening its page (owner 2026-10-05)", () => {
+    expect(list).toContain(".filter((m) => m.offerId === offerId)");
+    expect(list).toContain("router.push(m.href)");
+    for (const h of ["Status", "Budget", "$ Invested", "$ Value", "# Outcomes", "$ / Outcome"]) expect(list).toContain(`>${h}</th>`);
+    // Status and budget are changed on the Sales path page only: no write here.
+    for (const w of ["setCampaignStatus", "saveOfferCampaignBudget", "useMutation", "<button"]) expect(list).not.toContain(w);
+    expect(list).toContain("Sales path page");
   });
   it("cold email's page carries Overview, Inbox, Sent, Targeting and Settings", () => {
     for (const label of ["Overview", "Inbox", "Sent", "Targeting", "Settings"]) expect(page).toContain(`label: "${label}"`);

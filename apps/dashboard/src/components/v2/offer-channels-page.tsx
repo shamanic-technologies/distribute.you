@@ -1,8 +1,6 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import Link from "next/link";
-import { useParams, useRouter } from "next/navigation";
 import { useQueryClient } from "@tanstack/react-query";
 import { useAuthQuery } from "@/lib/use-auth-query";
 import { pollOptions } from "@/lib/query-options";
@@ -16,14 +14,10 @@ import {
   type BrandUserFields,
 } from "@/lib/api";
 import { useLegCatalogue } from "@/lib/use-leg-catalogue";
-import { useAcquisitionChannels } from "@/lib/use-acquisition-channels";
 import { invalidateConversionRates } from "@/lib/write-invalidation";
-import { v2OfferChannelHref, v2OfferHref } from "@/lib/v2/routes";
 import { SALES_PATH_CHANNEL_SLUGS } from "@/lib/offer-sales-path";
-import { isColdEmailChannel } from "@/lib/offer-levers-home";
 import { formatRatePct, LEG_RATE_RULE, rateSourceLabel, roundLegRatePct } from "@/lib/brand-conversion-rates";
 import {
-  channelRows,
   giveListLines,
   giveListsEqual,
   giveListsPayload,
@@ -33,131 +27,12 @@ import {
   validatedLegSections,
   type GiveLists,
 } from "@/lib/offer-channel-settings";
-import { AcquisitionChannelMark } from "@/components/marks/acquisition-channel-mark";
 import { EmptyNote, Shimmer } from "@/components/v2/ui";
-import { V2Page, useOfferName } from "@/components/v2/setup-pages";
 
 const GIVE_FIELDS = [
   { key: "giveForFree", label: "We give for free" },
   { key: "neverGive", label: "We never give" },
 ] as const;
-
-/**
- * An offer's channels: one row per channel that works a leg the offer's sales path has
- * validated, with the legs it works. A row with its own page (cold email) opens it.
- * Which channel works a leg is not stored anywhere yet, so the channels are listed,
- * not picked.
- */
-export function V2OfferChannelsPage() {
-  const { orgId, brandId, offerId } = useParams<{ orgId: string; brandId: string; offerId: string }>();
-  const name = useOfferName(brandId, offerId);
-  const catalogue = useLegCatalogue();
-  const channels = useAcquisitionChannels();
-  const router = useRouter();
-
-  const path = useAuthQuery(["offerSalesPath", brandId, offerId], () => getOfferSalesPath(brandId, offerId), {
-    enabled: !!offerId,
-  });
-  const { sections, unknown } = useMemo(
-    () => validatedLegSections(catalogue, path.data?.legKeys ?? [], SALES_PATH_CHANNEL_SLUGS),
-    [catalogue, path.data],
-  );
-  useEffect(() => {
-    if (catalogue.legs.size > 0 && unknown.length > 0) {
-      console.error("[offer-channels] saved legs the catalogue does not list", { offerId, unknown });
-    }
-  }, [catalogue.legs.size, unknown, offerId]);
-  const rows = useMemo(() => channelRows(sections), [sections]);
-
-  const pathSettled = path.isFetchedAfterMount || path.data !== undefined;
-  const stepLabel = (step: string | null) => (step ? catalogue.steps.get(step)?.label ?? step : "Start");
-  const channelDef = (slug: string) => channels.find((c) => c.featureSlug === slug);
-
-  return (
-    <V2Page
-      crumbs={[
-        { label: name ?? " ", href: v2OfferHref(orgId, brandId, offerId) },
-        { label: "Channels" },
-      ]}
-      title={name ?? " "}
-      sub="The channels that work the steps you validated in Sales path."
-      width="max-w-[1280px]"
-    >
-      {!pathSettled || catalogue.legs.size === 0 ? (
-        <div className="space-y-2">
-          <Shimmer className="h-10 rounded-[10px]" />
-          <Shimmer className="h-10 rounded-[10px]" />
-        </div>
-      ) : path.isError && !path.data ? (
-        <EmptyNote>Could not read this offer&apos;s sales path.</EmptyNote>
-      ) : rows.length === 0 ? (
-        <div className="k-card">
-          <EmptyNote>
-            No step of your sales path is validated yet.{" "}
-            <Link href={v2OfferHref(orgId, brandId, offerId, "sales-path")} className="text-[var(--accent)] hover:underline">
-              Open the sales path
-            </Link>
-          </EmptyNote>
-        </div>
-      ) : (
-        <div className="k-card overflow-hidden">
-          <div className="k-scroll overflow-x-auto">
-            <table className="w-full text-[13px]">
-              <thead>
-                <tr className="k-line-subtle border-b">
-                  <th className="k-label px-3 py-2.5 text-left font-normal first:pl-4">Channel</th>
-                  <th className="k-label px-3 py-2.5 text-left font-normal">Works</th>
-                  <th className="k-label w-[140px] px-3 py-2.5 text-right font-normal last:pr-4"><span className="sr-only">Open</span></th>
-                </tr>
-              </thead>
-              <tbody>
-                {rows.map((row) => {
-                  const def = channelDef(row.slug);
-                  const href = isColdEmailChannel(row.slug) ? v2OfferChannelHref(orgId, brandId, offerId, row.slug) : null;
-                  const cells = (
-                    <>
-                      <td className="px-3 py-2 pl-4">
-                        <span className="flex min-w-0 items-center gap-2">
-                          {def && <AcquisitionChannelMark def={def} size="xs" />}
-                          <span className="truncate font-medium">{def?.name ?? row.slug}</span>
-                        </span>
-                      </td>
-                      <td className="k-fg2 px-3 py-2">
-                        {row.legs.map((l) => (
-                          <span key={l.legKey} className="mr-3 inline-block whitespace-nowrap">
-                            {stepLabel(l.fromKey)} <span className="k-fg3">→</span> {stepLabel(l.toKey)}
-                          </span>
-                        ))}
-                      </td>
-                      <td className="px-3 py-2 pr-4 text-right">
-                        {href ? (
-                          <span className="k-btn-ghost inline-flex h-6 w-6 items-center justify-center px-0" aria-hidden="true">
-                            <svg width="12" height="12" viewBox="0 0 12 12"><path d="M4.5 3l3 3-3 3" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" /></svg>
-                          </span>
-                        ) : (
-                          <span className="k-fg3 text-[12px]">No settings</span>
-                        )}
-                      </td>
-                    </>
-                  );
-                  return href ? (
-                    <tr key={row.slug} className="k-row h-10 cursor-pointer" onClick={() => router.push(href)}>
-                      {cells}
-                    </tr>
-                  ) : (
-                    <tr key={row.slug} className="k-row h-10">
-                      {cells}
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
-        </div>
-      )}
-    </V2Page>
-  );
-}
 
 /**
  * Cold email's settings on one offer: what its emails may give and never give (the

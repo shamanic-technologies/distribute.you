@@ -128,7 +128,7 @@ export function V2OffersPage() {
   return <SelectedOfferRedirect title="Offer" />;
 }
 
-function SelectedOfferRedirect({ title, tab }: { title: string; tab?: "sales-path" | "targeting" | "channels" }) {
+function SelectedOfferRedirect({ title, tab }: { title: string; tab?: "sales-path" | "targeting" | "campaigns" }) {
   const { orgId, brandId } = useIds();
   const router = useRouter();
   const { offerId, settled } = useSelectedOffer();
@@ -218,8 +218,8 @@ export function V2SalesPathIndexPage() {
 }
 
 /** Channels from the sidebar before an offer is picked: the selected offer's Channels. */
-export function V2ChannelsIndexPage() {
-  return <SelectedOfferRedirect title="Channels" tab="channels" />;
+export function V2CampaignsIndexPage() {
+  return <SelectedOfferRedirect title="Campaigns" tab="campaigns" />;
 }
 
 // ─── Integrations and brand settings ────────────────────────────────────────

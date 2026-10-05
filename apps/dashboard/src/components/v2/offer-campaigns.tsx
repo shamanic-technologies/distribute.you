@@ -323,7 +323,7 @@ function CampaignStatus({
  * reactive one (a max), "Not set" when billing holds none. A subscriber's $99 plan reads
  * as "$90/month" + "Up to $9/month", never as its /30 daily pace ("$3/day").
  */
-function budgetLabel(campaign: OfferCampaign, cents: number | null, period: "day" | "month"): string {
+export function budgetLabel(campaign: Pick<OfferCampaign, "reactive">, cents: number | null, period: "day" | "month"): string {
   if (cents === null) return "Not set";
   const amount = `${fmtDailyBudgetUsd(cents)}/${period}`;
   return campaign.reactive ? `Up to ${amount}` : amount;
