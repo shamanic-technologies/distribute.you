@@ -13,13 +13,25 @@ export function SelectCard({
   mark,
   title,
   sub,
+  comingSoon,
 }: {
   on: boolean;
   onClick: () => void;
   mark: ReactNode;
   title: string;
   sub?: string | null;
+  /** Not selectable yet: muted, no circle, a "Coming soon" chip. */
+  comingSoon?: boolean;
 }) {
+  if (comingSoon) {
+    return (
+      <div aria-disabled className="k-card flex cursor-default items-center gap-2.5 p-3 text-left">
+        {mark}
+        <span className="k-fg3 min-w-0 flex-1 truncate text-[13px]">{title}</span>
+        <span className="k-chip shrink-0">Coming soon</span>
+      </div>
+    );
+  }
   return (
     <button
       type="button"
