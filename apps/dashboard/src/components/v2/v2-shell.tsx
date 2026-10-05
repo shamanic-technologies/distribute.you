@@ -16,7 +16,7 @@ import { companyHref } from "@/components/v2/companies-page";
 import { ScopePaymentDeclinedBand } from "@/components/billing/scope-payment-declined-band";
 import { useStaffMode } from "@/lib/use-staff-mode";
 import { SelectedOfferProvider, useSelectedOffer } from "@/components/v2/selected-offer";
-import { useActiveSalesPath } from "@/components/v2/active-sales-path";
+import { useLegCatalogue } from "@/lib/use-leg-catalogue";
 import { PathAvatar } from "@/components/v2/offer-sales-paths";
 import { BRAND_WHY } from "@/lib/brand-why";
 
@@ -161,7 +161,7 @@ function V2Sidebar() {
   const brandId = params.brandId ?? "";
   const section = v2SectionOf(pathname);
   const { offerId } = useSelectedOffer();
-  const activePath = useActiveSalesPath(brandId, offerId).active;
+  const legCatalogue = useLegCatalogue();
   const { missions, crews } = useMissions(orgId, brandId);
   const activeCrews = crews.filter((c) => c.running > 0);
   const activeMissions = missions.filter((m) => m.running);
@@ -261,19 +261,28 @@ function V2Sidebar() {
           )}
         </div>
 
-        {/* The campaign the selected offer runs: its active sales path only, with a live
-            dot. Nothing runs, no group (owner 2026-10-04). */}
-        {offerId && activePath && (
+        {/* The selected offer's campaigns that are ON (proactive or reactive), as the Sales
+            path page's Campaigns section names them, each opening its own page with a live
+            dot. Nothing on, no group (owner 2026-10-05). */}
+        {offerId && activeMissions.length > 0 && (
           <Group title="Campaigns">
-            <NavItem
-              href={v2OfferHref(orgId, brandId, offerId, "campaign")}
-              label={activePath.name}
-              icon={<PathAvatar name={activePath.name} size={16} />}
-              active={section === "campaigns"}
-              trailing={
-                <span className="k-dot-pulse ml-auto mr-1 h-1.5 w-1.5 shrink-0 rounded-full bg-[var(--run)] text-[var(--run)]" aria-label="Active" />
-              }
-            />
+            {activeMissions.map((m) => {
+              const c = m.row.campaign;
+              const name = legCatalogue.campaignNames.get(`${c.featureSlug}|${c.legKey}`) ?? null;
+              if (!name) console.error("[v2-shell] no campaignName served for a running campaign", { featureSlug: c.featureSlug, legKey: c.legKey });
+              return (
+                <NavItem
+                  key={c.id}
+                  href={m.href}
+                  label={name ?? m.crew.name}
+                  icon={name ? <PathAvatar name={name} size={16} /> : <CrewMark color={m.crew.color} glyph={m.crew.glyph} size={16} />}
+                  active={pathname.startsWith(m.href)}
+                  trailing={
+                    <span className="k-dot-pulse ml-auto mr-1 h-1.5 w-1.5 shrink-0 rounded-full bg-[var(--run)] text-[var(--run)]" aria-label="On" />
+                  }
+                />
+              );
+            })}
           </Group>
         )}
 
