@@ -151,6 +151,9 @@ export function useTenantSwitcher() {
 
   const [allOrgs, setAllOrgs] = useState<TenantOrgOption[]>([]);
   const [orgSearch, setOrgSearch] = useState("");
+  // Every org on the platform, counted on an EMPTY search: decides whether the
+  // switcher shows its search box (a filtered total would hide it mid-search).
+  const [allOrgsTotal, setAllOrgsTotal] = useState(0);
   const [orgsLoading, setOrgsLoading] = useState(false);
   // The org the user just clicked, held from the click until the navigation is
   // under way. A switch costs two or three Clerk round-trips before anything can
@@ -243,6 +246,7 @@ export function useTenantSwitcher() {
       if (res.ok) {
         const data = await res.json();
         setAllOrgs(data.organizations || []);
+        if (!q.trim()) setAllOrgsTotal(data.totalCount);
       }
     } catch (err) {
       console.error("Failed to fetch orgs:", err);
@@ -530,6 +534,7 @@ export function useTenantSwitcher() {
     isStaff,
     memberships: userMemberships?.data ?? [],
     allOrgs,
+    allOrgsTotal,
     orgsLoading,
     orgSearch,
     setOrgSearch,
