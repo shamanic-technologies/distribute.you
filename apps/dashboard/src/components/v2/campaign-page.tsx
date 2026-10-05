@@ -22,7 +22,7 @@ import { BrandOfferCard } from "@/components/settings/brand-offer-card";
 import { CampaignWorkflowsPage } from "@/components/workflows/campaign-workflows-page";
 import { campaignHoldCopy, useMissionHold } from "@/components/v2/mission-hold";
 import { useMissions, type Mission } from "@/components/v2/use-missions";
-import { LEG_STEPS, LegSteps, SummaryCard } from "@/components/v2/offer-channel-page";
+import { LEG_STEPS, LegSteps, StepBar, SummaryCard } from "@/components/v2/offer-channel-page";
 import { PathAvatar } from "@/components/v2/offer-sales-paths";
 import { PeoplePage } from "@/components/v2/people-page";
 import { V2AudiencesTable } from "@/components/v2/audiences-table";
@@ -103,13 +103,26 @@ export function V2CampaignPage() {
       sub={
         mission ? (
           <span className="flex flex-wrap items-center gap-2 text-[13px]">
+            {/* The leg read as a path, the channel standing on the arrow it performs:
+                "Positive reply → [AI Meeting Booking] → Meeting booked"; an entry leg starts at the channel. */}
+            {mission.leg?.fromLabel && (
+              <>
+                <span className="k-fg2">{mission.leg.fromLabel}</span>
+                <span className="k-fg3">→</span>
+              </>
+            )}
             {def && (
               <span className="k-chip inline-flex items-center gap-1.5">
                 <AcquisitionChannelMark def={def} size="xs" />
                 {def.name}
               </span>
             )}
-            {mission.leg && <span className="k-fg2">{mission.leg.label}</span>}
+            {mission.leg && (
+              <>
+                <span className="k-fg3">→</span>
+                <span className="k-fg2">{mission.leg.toLabel}</span>
+              </>
+            )}
           </span>
         ) : undefined
       }
@@ -137,6 +150,8 @@ export function V2CampaignPage() {
       )}
       {!mission || !offerId ? (
         <Shimmer className="h-[240px] w-full rounded-[12px]" />
+      ) : tab === "overview" && mission.leg?.fromKey ? (
+        <ConversationOverview mission={mission} tabHref={tabHref} />
       ) : tab === "overview" ? (
         <CampaignOverview brandId={brandId} offerId={offerId} campaignId={id} mission={mission} tabHref={tabHref} />
       ) : tab === "inbox" ? (
@@ -254,6 +269,81 @@ function CampaignOverview({
               unit={audiences.activeTabRows === 1 ? "audience" : "audiences"}
             />
             {/* A plan's budget is fixed, so a subscriber's Settings card states the switch alone. */}
+            <SummaryCard
+              label="Settings"
+              href={tabHref("settings")}
+              loading={false}
+              value={null}
+              text={budgetHidden ? (mission.running ? "On" : "Off") : fmtDailyBudgetUsd(mission.row.budgetCents)}
+              unit={budgetHidden ? "" : cap ? "cap / day" : "/ day"}
+            />
+          </div>
+        </section>
+      </div>
+    </div>
+  );
+}
+
+/** What a conversation campaign did with the people handed to it, all PEOPLE, since it started. */
+interface ConversationCounts {
+  handed: number;
+  ongoing: number;
+  booked: number;
+  dropped: number;
+}
+
+/**
+ * A campaign that ANSWERS (a leg starting on a step, AI Meeting Booking: Positive reply →
+ * Meeting booked) sends no cold email and holds nobody: the people it answers stay held by
+ * the campaign that reached them. So the cold-email steps (Queued, Sent, Delivered) mean
+ * nothing here. Its own steps are the replies handed to it, the conversations still going,
+ * the meetings booked; the conversations it dropped are a card, not a step.
+ *
+ * lead-service serves these four counts per acting campaign (requested 2026-10-05); until
+ * the read lands every figure states `—`, never a number the browser made up.
+ */
+function ConversationOverview({ mission, tabHref }: { mission: Mission; tabHref: (tab: V2CampaignTab) => string }) {
+  const budgetHidden = useDailyBudgetHidden();
+  const conv = null as ConversationCounts | null;
+  const g = mission.row.revenue ?? null;
+  const cap = crewTrigger(mission.leg)?.kind === "event";
+  const from = mission.leg?.fromLabel ?? "Positive reply";
+  const to = mission.leg?.toLabel ?? "Meeting booked";
+  const count = (v: number | null | undefined) => <Figure value={v != null ? formatCount(v) : "—"} unit="people" />;
+
+  return (
+    <div className="space-y-8">
+      <section>
+        <SectionTitle right={<span>Since it started</span>}>This campaign</SectionTitle>
+        <div className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-5">
+          <StatTile label={`${from}s`}>{count(conv?.handed)}</StatTile>
+          <StatTile label="Ongoing conversations">{count(conv?.ongoing)}</StatTile>
+          <StatTile label={`${to}s`}>{count(conv?.booked)}</StatTile>
+          <StatTile label="Dropped conversations">{count(conv?.dropped)}</StatTile>
+          <StatTile label="Spent">
+            <Figure value={g?.committedCostUsd == null ? "—" : formatUsdAdaptive(g.committedCostUsd)} />
+          </StatTile>
+        </div>
+      </section>
+
+      <div className="grid gap-x-3 gap-y-8 lg:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
+        <section>
+          <SectionTitle>{mission.leg?.label ?? "Steps"}</SectionTitle>
+          <div className="k-card p-4">
+            {!conv ? (
+              <EmptyNote>Counts for this campaign are on their way.</EmptyNote>
+            ) : (
+              <div className="flex items-end gap-3">
+                <StepBar label={`${from}s`} count={conv.handed} of={conv.handed} />
+                <StepBar label="Ongoing conversations" count={conv.ongoing} of={conv.handed} />
+                <StepBar label={to} count={conv.booked} of={conv.handed} />
+              </div>
+            )}
+          </div>
+        </section>
+        <section>
+          <SectionTitle>At a glance</SectionTitle>
+          <div className="flex flex-col gap-3">
             <SummaryCard
               label="Settings"
               href={tabHref("settings")}
