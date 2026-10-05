@@ -1,17 +1,20 @@
 "use client";
 
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 import { SectionTitle, Shimmer, EmptyNote, StateDot } from "@/components/v2/ui";
 import { formatRoi, roiIsGood } from "@/lib/format-roi";
 import { salesPathAvatarSrc } from "@/lib/sales-path-avatars";
 import { useAcquisitionChannels } from "@/lib/use-acquisition-channels";
 import { AcquisitionChannelMark } from "@/components/marks/acquisition-channel-mark";
 import { formatUsdAdaptive } from "@/lib/format-number";
+import { InfoTooltip } from "@/components/visibility/metric-info";
 import { LEG_RATE_RULE, parseRateInput, roundLegRatePct } from "@/lib/brand-conversion-rates";
 import {
   formatRatePct,
   pathLinks,
   costSourceLabel,
+  EXPECTED_COST_PER_CLIENT_TIP,
+  EXPECTED_ROI_TIP,
   rateSourceLabel,
   roiUnavailableLabel,
   salesPathsEmptyReason,
@@ -129,6 +132,16 @@ export function OfferSalesPaths({
   );
 }
 
+/** A column label whose figures are expected values, with the (i) saying so. */
+export function ExpectedLabel({ tip, children }: { tip: string; children: ReactNode }) {
+  return (
+    <span className="inline-flex items-center gap-1">
+      {children}
+      <InfoTooltip tip={tip} placement="bottom" />
+    </span>
+  );
+}
+
 /** Paths shown before "Show N more". */
 const TABLE_SHOWN = 20;
 
@@ -165,8 +178,12 @@ function PathsTable({
                 <span className="sr-only">Selected</span>
               </th>
               <th className="k-label px-3 py-2.5 text-left font-normal">Path</th>
-              <th className="k-label px-3 py-2.5 text-right font-normal">Cost per paying client</th>
-              <th className="k-label px-3 py-2.5 pr-4 text-right font-normal">ROI</th>
+              <th className="k-label px-3 py-2.5 text-right font-normal">
+                <ExpectedLabel tip={EXPECTED_COST_PER_CLIENT_TIP}>Cost per paying client</ExpectedLabel>
+              </th>
+              <th className="k-label px-3 py-2.5 pr-4 text-right font-normal">
+                <ExpectedLabel tip={EXPECTED_ROI_TIP}>ROI</ExpectedLabel>
+              </th>
             </tr>
           </thead>
           <tbody>
@@ -452,7 +469,9 @@ export function PathBreakdown({
               <th className="py-1.5 pr-3 font-medium">Rate kept</th>
               <th className="py-1.5 pr-3 font-medium">Source</th>
               <th className="py-1.5 pr-3 font-medium">Worked by</th>
-              <th className="py-1.5 text-right font-medium">Cost per paying client</th>
+              <th className="py-1.5 text-right font-medium">
+                <ExpectedLabel tip={EXPECTED_COST_PER_CLIENT_TIP}>Cost per paying client</ExpectedLabel>
+              </th>
             </tr>
           </thead>
           <tbody>

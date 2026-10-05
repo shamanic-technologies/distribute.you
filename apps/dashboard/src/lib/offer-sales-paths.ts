@@ -132,6 +132,15 @@ const CampaignSchema = z
   .passthrough();
 export type SalesPathCampaign = z.infer<typeof CampaignSchema>;
 
+/**
+ * The (i) beside a column whose figure is EXPECTED, worked out from rates rather than
+ * measured (owner 2026-10-05: say so on every such column of the Sales path page).
+ */
+export const EXPECTED_ROI_TIP =
+  "Expected, not measured yet. Worked out from each step's rate and what one client is worth.";
+export const EXPECTED_COST_PER_CLIENT_TIP =
+  "Expected, not measured yet. What one paying client should cost on this path, from each step's rate.";
+
 export const OfferSalesPathsSchema = z
   .object({
     offerId: z.string(),
