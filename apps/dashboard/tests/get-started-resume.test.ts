@@ -46,8 +46,10 @@ describe("/get-started resumes a walk after a reload or a new tab", () => {
     const gs = readFileSync("src/components/v2/get-started/get-started.tsx", "utf8");
     const wall = readFileSync("src/components/v2/get-started/account-card-wall.tsx", "utf8");
     expect(gs).not.toMatch(/sessionStorage\.(get|set)Item\(GET_STARTED_SNAPSHOT_KEY/);
-    expect(gs).toContain("localStorage.getItem(GET_STARTED_SNAPSHOT_KEY)");
-    expect(gs).toContain("localStorage.setItem(GET_STARTED_SNAPSHOT_KEY");
+    // Signed out: the one global key. From the dashboard: one key per org.
+    expect(gs).toContain("const snapshotKey = org ? getStartedOrgSnapshotKey(org.orgId) : GET_STARTED_SNAPSHOT_KEY;");
+    expect(gs).toContain("localStorage.getItem(snapshotKey)");
+    expect(gs).toContain("localStorage.setItem(snapshotKey");
     expect(wall).toContain("localStorage.removeItem(GET_STARTED_SNAPSHOT_KEY)");
   });
 

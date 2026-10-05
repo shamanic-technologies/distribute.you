@@ -31,6 +31,15 @@ export function v2Base(orgId: string, brandId: string): string {
   return `/v2/orgs/${encodeURIComponent(orgId)}/brands/${encodeURIComponent(brandId)}`;
 }
 
+/**
+ * The brand walk (the `/get-started` screens, signed in) for this org: "Add a brand",
+ * "New brand", and "Finish setup" on an unfinished brand (`brandId`).
+ */
+export function v2NewBrandHref(orgId: string, brandId?: string | null): string {
+  const base = `/v2/orgs/${encodeURIComponent(orgId)}/new-brand`;
+  return brandId ? `${base}?brand=${encodeURIComponent(brandId)}` : base;
+}
+
 export function v2Href(orgId: string, brandId: string, section: V2Section): string {
   const base = v2Base(orgId, brandId);
   return section === "today" ? base : `${base}/${section}`;

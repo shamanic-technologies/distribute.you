@@ -16,7 +16,12 @@
  *
  * Every read runs on the ANONYMOUS org (`/api/anon/v1`, a closed allowlist bound to
  * this session's brand), so nothing here spends on anybody else, and nothing is sent.
- * Rules live in `lib/v2/get-started.ts`. The current `/onboarding` is untouched.
+ * Rules live in `lib/v2/get-started.ts`.
+ *
+ * The SAME walk is the dashboard's "Add a brand" / "New brand" / "Finish setup"
+ * (`org`, on `/v2/orgs/:orgId/new-brand`): every call names that org explicitly
+ * (`setApiActiveOrgOverride`), no anonymous session, no account or phone wall; the
+ * brand lands in that org and the walk ends on "Choose your plan" (`OrgLaunch`).
  */
 
 import { createContext, useContext, useEffect, useMemo, useRef, useState } from "react";
@@ -29,17 +34,21 @@ import {
   checkAudienceCompanyEmail,
   confirmAudienceSegments,
   confirmBrandOffers,
+  createBrandWithoutWebsite,
   extractBrandFields,
+  getBrand,
   getAudienceCompanies,
   getOfferSalesPaths,
   getPublicCatalogueSignedOut,
   listAudiences,
+  listBrandOffers,
   previewColdEmail,
   proposeAudienceSegments,
   proposeBrandOffers,
   saveOfferLifetimeRevenue,
   saveOfferSalesPath,
   saveOfferUserFields,
+  setApiActiveOrgOverride,
   stateBrandLegRates,
   suggestBrandIcp,
   upsertBrand,
@@ -63,8 +72,10 @@ import {
   COMPANY_FIELDS,
   COMPETITOR_FIELDS,
   EMAIL_CAP,
+  GET_STARTED_ORG_RESUME_MAX_AGE_MS,
   GET_STARTED_SNAPSHOT_KEY,
   GET_STARTED_STEPS,
+  getStartedOrgSnapshotKey,
   firstOpenStepIndex,
   snapshotResumable,
   GIVE_DRAFT_FIELDS,
@@ -119,6 +130,8 @@ import { CountUp, Typewriter, formatElapsed, stagger, useElapsed } from "./motio
 import { BrandLogo } from "@/components/brand-logo";
 import { pricingLegFor, recommendedBudgetForPreview } from "./launch";
 import { AccountCardWall } from "./account-card-wall";
+import { OrgLaunch } from "./org-launch";
+import { v2NewBrandHref } from "@/lib/v2/routes";
 import { SUBSCRIPTION_MONTHLY_CENTS, isSubscriptionArm, pickedPlanCents } from "@/lib/subscription-plan";
 import { JournalRail, JournalStrip, type JournalData } from "./journal";
 import { stepViewName, withStageTransition } from "./view-transition";
@@ -149,9 +162,26 @@ const NEXT_PAGE = 30;
 
 const rowKey = (audienceId: string, index: number) => `${audienceId}:${index}`;
 
-export function GetStarted() {
+/**
+ * The walk run from the dashboard, on a real org the person is a member of. `brandId`
+ * is set by "Finish setup" (an unfinished brand of that org, resumed).
+ */
+export interface OrgWalk {
+  orgId: string;
+  brandId: string | null;
+}
+
+export function GetStarted({ org }: { org?: OrgWalk } = {}) {
   const params = useSearchParams();
   const { isSignedIn } = useAuth();
+  // From the dashboard, every call names the org it acts on: never an anonymous
+  // session, never whichever org the session happens to be on. Set before any read.
+  useEffect(() => {
+    if (!org) return;
+    setApiActiveOrgOverride(org.orgId);
+    return () => setApiActiveOrgOverride(null);
+  }, [org?.orgId]);
+  const snapshotKey = org ? getStartedOrgSnapshotKey(org.orgId) : GET_STARTED_SNAPSHOT_KEY;
   // The landing's $99/month arm sells the plan's free trial instead of the $30 (`wallCopy`).
   const [wall] = useState(() =>
     typeof document !== "undefined" && isSubscriptionArm(document.cookie)
@@ -181,6 +211,9 @@ export function GetStarted() {
 
   // Step 3: the offers read off the site; the ONE picked is confirmed on the brand.
   const [offerProposals, setOfferProposals] = useState<OfferProposal[]>([]);
+  // From the dashboard, a brand that already holds offers (a resumed setup, a brand the
+  // org had) picks one of THEM: never proposed and confirmed a second one.
+  const existingOffers = useRef<{ offerId: string; name: string }[] | null>(null);
   const [offerMain, setOfferMain] = useState(0);
   const [offer, setOffer] = useState<GetStartedOffer | null>(null);
   const [offerBusy, setOfferBusy] = useState<number | null>(null);
@@ -272,11 +305,22 @@ export function GetStarted() {
   useEffect(() => {
     let raw: string | null = null;
     try {
-      raw = localStorage.getItem(GET_STARTED_SNAPSHOT_KEY);
+      raw = localStorage.getItem(snapshotKey);
     } catch (e) {
       console.error("[get-started] snapshot read failed:", e);
     }
     const snap = parseGetStartedSnapshot(raw);
+    if (org) {
+      // The org's own walk: resumed at once (it bills the org it names, on purpose).
+      // "Finish setup" names its brand: another brand's snapshot is not that one.
+      const fits = !!snap && (!org.brandId || snap.brandId === org.brandId) && snapshotResumable(snap, Date.now(), GET_STARTED_ORG_RESUME_MAX_AGE_MS);
+      if (snap && fits) {
+        applySnapshot(snap);
+        resumed.current = true;
+        resumePreparing(snap);
+      } else if (org.brandId) void startExisting(org.brandId);
+      return;
+    }
     if (!snap) return;
     const roundTrip = params.get("resume") === "1";
     const carried = params.get("url");
@@ -343,7 +387,7 @@ export function GetStarted() {
 
   // A website carried from a link starts the walk at once, like Explee's hero.
   useEffect(() => {
-    if (ran.current || started || isSignedIn) return;
+    if (ran.current || started || (isSignedIn && !org)) return;
     const carried = params.get("url");
     if (carried && !websiteInputProblem(carried) && params.get("resume") !== "1") void start(carried);
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -427,7 +471,7 @@ export function GetStarted() {
     const next = { ...base, ...patch, savedAt: Date.now() };
     snapRef.current = next;
     try {
-      localStorage.setItem(GET_STARTED_SNAPSHOT_KEY, JSON.stringify(next));
+      localStorage.setItem(snapshotKey, JSON.stringify(next));
     } catch (e) {
       console.error("[get-started] snapshot write failed:", e);
     }
@@ -439,8 +483,24 @@ export function GetStarted() {
 
   /** The offers the site describes; the brand-service split runs off step 1's read. */
   async function prepareOffers(id: string, lines: string[], ov: string) {
-    const text = offerSourceText(lines, ov);
     setStep("offer", "running");
+    if (org) {
+      try {
+        const { offers } = await listBrandOffers(id);
+        if (offers.length > 0) {
+          existingOffers.current = offers.map((o) => ({ offerId: o.offerId, name: o.name }));
+          setOfferProposals(offers.map((o) => ({ name: o.name, description: "", icon: "" })));
+          setOfferMain(0);
+          setStep("offer", "choose");
+          return;
+        }
+      } catch (e) {
+        console.error("[get-started] brand offers read failed:", e);
+        setStep("offer", "failed");
+        return;
+      }
+    }
+    const text = offerSourceText(lines, ov);
     if (!text) {
       setStep("offer", "failed");
       return;
@@ -509,8 +569,9 @@ export function GetStarted() {
     advance("offer");
     posthog.capture("get_started_offer_picked", { offers: offerProposals.length });
     const id = brandId;
+    const held = existingOffers.current?.find((o) => o.name === picked.name) ?? null;
     const p = (async () => {
-      const { chosenOfferId } = await confirmBrandOffers(id, [picked], 0);
+      const { chosenOfferId } = held ? { chosenOfferId: held.offerId } : await confirmBrandOffers(id, [picked], 0);
       const next = { offerId: chosenOfferId, name: picked.name, description: picked.description };
       setOffer(next);
       saveSnapshot({ offer: next });
@@ -1101,8 +1162,9 @@ export function GetStarted() {
     // A signed-in visitor would build this walk inside the org they are signed in
     // to: the Clerk session outranks the anonymous one on every call, so the brand
     // lands in their active org (a customer's, for staff). Adding a brand from an
-    // account is the dashboard's job. The session route refuses it too.
-    if (isSignedIn) {
+    // account is the dashboard's job (`org`, which names its org). The session route
+    // refuses it too.
+    if (isSignedIn && !org) {
       setInputError(SIGNED_IN_WALK_MESSAGE);
       setExits({ signIn: null, signUp: { href: "/v2", label: "Open your dashboard" } });
       return;
@@ -1113,16 +1175,20 @@ export function GetStarted() {
     setStarted(true);
     setStep("company", "running");
     const url = websiteUrl(raw);
-    // `website` feeds the owner's Telegram visit recap (lib/visit-recap.ts).
-    posthog.capture("get_started_website_submitted", { website: raw.trim().replace(/^https?:\/\//i, "").replace(/\/$/, "") });
-    const session = await startAnonSession(url);
-    if (!session.started) {
-      ran.current = false;
-      setStarted(false);
-      setSteps(initialSteps());
-      setInputError(session.message);
-      setExits(refusalExits({ reason: session.reason, domain: hostOf(url), brandUrl: url }));
-      return;
+    // `website` feeds the owner's Telegram visit recap (lib/visit-recap.ts): a brand
+    // added from the dashboard is not a visit.
+    if (org) posthog.capture("brand_walk_website_submitted", { org_id: org.orgId });
+    else posthog.capture("get_started_website_submitted", { website: raw.trim().replace(/^https?:\/\//i, "").replace(/\/$/, "") });
+    if (!org) {
+      const session = await startAnonSession(url);
+      if (!session.started) {
+        ran.current = false;
+        setStarted(false);
+        setSteps(initialSteps());
+        setInputError(session.message);
+        setExits(refusalExits({ reason: session.reason, domain: hostOf(url), brandUrl: url }));
+        return;
+      }
     }
 
     let id: string;
@@ -1142,8 +1208,69 @@ export function GetStarted() {
       setInputError("We could not read this website. Check it and try again.");
       return;
     }
+    await walkBrand(id, createdName, hostOf(url), url);
+  }
 
-    const host = hostOf(url);
+  /** Dashboard only: a brand with no website, created from what it sells (its own words). */
+  async function startWithoutWebsite(name: string, text: string) {
+    if (ran.current || !org) return;
+    if (!name.trim()) return setInputError("Give your brand a name.");
+    if (!text.trim()) return setInputError("Tell us what you sell.");
+    ran.current = true;
+    setInputError(null);
+    setStarted(true);
+    setStep("company", "running");
+    posthog.capture("brand_walk_no_website", { org_id: org.orgId });
+    let id: string;
+    try {
+      ({ brandId: id } = await createBrandWithoutWebsite(name.trim(), text.trim()));
+    } catch (e) {
+      console.error("[get-started] no-website brand create failed:", e);
+      ran.current = false;
+      setStarted(false);
+      setSteps(initialSteps());
+      setInputError("We could not create this brand. Try again.");
+      return;
+    }
+    setBrandId(id);
+    setBrandName(name.trim());
+    setDomain(null);
+    setWebsite("");
+    await walkBrand(id, name.trim(), null, "", text.trim());
+  }
+
+  /** "Finish setup": an unfinished brand of this org, walked from what it already holds. */
+  async function startExisting(id: string) {
+    if (ran.current) return;
+    ran.current = true;
+    setStarted(true);
+    setStep("company", "running");
+    let b: { name: string | null; domain: string | null };
+    try {
+      const got = await getBrand(id);
+      if (!got) throw new Error(`brand ${id} not found in this org`);
+      b = got.brand;
+    } catch (e) {
+      console.error("[get-started] unfinished brand read failed:", e);
+      ran.current = false;
+      setStarted(false);
+      setSteps(initialSteps());
+      setInputError("We could not open this brand. Type its website to start again.");
+      return;
+    }
+    const url = b.domain ? websiteUrl(b.domain) : "";
+    setBrandId(id);
+    setBrandName(b.name);
+    setDomain(b.domain);
+    setWebsite(url);
+    await walkBrand(id, b.name, b.domain, url);
+  }
+
+  /**
+   * From a brand that exists (just created, or an unfinished one resumed): the reads that
+   * fill the walk. A brand with no website has only its own words to read (`ownWords`).
+   */
+  async function walkBrand(id: string, createdName: string | null, host: string | null, url: string, ownWords: string | null = null) {
     snapRef.current = {
       version: 2,
       website: url,
@@ -1165,6 +1292,15 @@ export function GetStarted() {
     // ideal customer + audience split run in parallel. The anonymous org holds $30,
     // enough for both reads' holds at once.
     const siteRead = (async () => {
+      if (!url) {
+        const ov = (ownWords ?? "").trim();
+        setOverview(ov);
+        setStep("company", ov ? "done" : "failed");
+        setStep("competitors", "failed");
+        saveSnapshot({ overview: ov });
+        offerSource.current = { lines: [], ov };
+        return;
+      }
       try {
         const r = await extractBrandFields([id], [...COMPANY_FIELDS, ...COMPETITOR_FIELDS, ...OFFER_FIELDS], {
           mode: "suggest",
@@ -1172,7 +1308,7 @@ export function GetStarted() {
         });
         const ov = valueText(r.fields.companyOverview?.value);
         const fs = valueLines(r.fields.companyFacts?.value).slice(0, 4);
-        const list = parseCompetitors(r.fields.competitorsWithDomains?.value, host);
+        const list = parseCompetitors(r.fields.competitorsWithDomains?.value, host ?? "");
         const lines = valueLines(r.fields.offerLines?.value);
         setOverview(ov);
         setFacts(fs);
@@ -1188,8 +1324,8 @@ export function GetStarted() {
       }
     })();
     await siteRead;
-    // The ideal customer is drafted from what the read stored, so it waits for it (an
-    // empty profile is refused); the offer split and the audience split then run together.
+    // The ideal customer is drafted from what the read stored (an empty profile is
+    // refused), so it waits for it; the offer split and the audience split then run together.
     await Promise.all([prepareOffers(id, offerSource.current.lines, offerSource.current.ov), prepareAudiences(id)]);
     posthog.capture("get_started_preview_ready");
   }
@@ -1199,9 +1335,13 @@ export function GetStarted() {
   const canLaunch = started && !!brandId && !!offer && !!audience && steps.paths === "done" && plan.length > 0 && answered;
   const current = useMemo(() => GET_STARTED_STEPS.findIndex((s) => steps[s.key] === "running"), [steps]);
 
+  const orgBar = org ? <OrgBar orgId={org.orgId} snapshotKey={snapshotKey} started={started} /> : null;
+
   if (!started) {
     return (
       <Hero
+        top={orgBar}
+        onWithoutWebsite={org ? (name, text) => void startWithoutWebsite(name, text) : null}
         website={website}
         onWebsite={(v) => {
           setWebsite(v);
@@ -1396,6 +1536,7 @@ export function GetStarted() {
 
   return (
     <div className="k-canvas min-h-[100dvh] lg:flex lg:h-[100dvh] lg:flex-col">
+      {orgBar}
       {canLaunch && (
         <div className="gs-down sticky top-0 z-20 border-b border-[var(--line-subtle)] bg-[var(--bg-raised)] lg:static">
           <div className="flex items-center gap-3 px-4 py-3 sm:gap-4 sm:px-6">
@@ -1403,10 +1544,19 @@ export function GetStarted() {
               $
             </span>
             <div className="min-w-0 flex-1">
-              <p className="k-fg text-[14px] font-medium">
-                <CountUp value={wall.creditUsd} format={(n) => `$${Math.round(n)}`} ms={700} /> {wall.bannerTitle}
-              </p>
-              <p className="k-fg3 hidden text-[12px] sm:block">No charge today. We write and send the emails, you get the replies.</p>
+              {org ? (
+                <>
+                  <p className="k-fg text-[14px] font-medium">Your brand is ready to launch.</p>
+                  <p className="k-fg3 hidden text-[12px] sm:block">Choose your plan. We write and send the emails, you get the replies.</p>
+                </>
+              ) : (
+                <>
+                  <p className="k-fg text-[14px] font-medium">
+                    <CountUp value={wall.creditUsd} format={(n) => `$${Math.round(n)}`} ms={700} /> {wall.bannerTitle}
+                  </p>
+                  <p className="k-fg3 hidden text-[12px] sm:block">No charge today. We write and send the emails, you get the replies.</p>
+                </>
+              )}
             </div>
             <button
               type="button"
@@ -1416,7 +1566,7 @@ export function GetStarted() {
                 setWallOpen(true);
               }}
             >
-              Start outreach
+              {org ? "Choose your plan" : "Start outreach"}
             </button>
           </div>
         </div>
@@ -1455,7 +1605,7 @@ export function GetStarted() {
                     setWallOpen(true);
                   }}
                 >
-                  {wall.bannerCta}
+                  {org ? "Choose your plan" : wall.bannerCta}
                 </button>
               </div>
             )}
@@ -1463,7 +1613,23 @@ export function GetStarted() {
         </main>
       </div>
 
-      {wallOpen && brandId && offer && audience && plan.length > 0 && (
+      {wallOpen && brandId && offer && audience && plan.length > 0 && org && (
+        <OrgLaunch
+          orgId={org.orgId}
+          brandId={brandId}
+          website={website.trim() ? websiteUrl(website) : ""}
+          offer={offer}
+          targetAudience={icpRef.current}
+          note={wallNote}
+          floorUsd={planFloorUsd(plan, floorCents, floorUsd)}
+          recommendedUsd={recommendedUsd}
+          plan={plan}
+          answered={answered}
+          snapshotKey={snapshotKey}
+          onClose={() => setWallOpen(false)}
+        />
+      )}
+      {wallOpen && brandId && offer && audience && plan.length > 0 && !org && (
         <AccountCardWall
           brandId={brandId}
           website={websiteUrl(website)}
@@ -1545,20 +1711,31 @@ type RowEmailState = "none" | "writing" | "written" | "failed";
 // ── Pieces ──────────────────────────────────────────────────────────────────
 
 function Hero({
+  top,
+  onWithoutWebsite,
   website,
   onWebsite,
   onSubmit,
   error,
   exits,
 }: {
+  /** The dashboard's bar (where the walk was opened from), above the hero. */
+  top: React.ReactNode;
+  /** Dashboard only: a brand with no website starts from its name and what it sells. */
+  onWithoutWebsite: ((name: string, text: string) => void) | null;
   website: string;
   onWebsite: (v: string) => void;
   onSubmit: () => void;
   error: string | null;
   exits: RefusalExits | null;
 }) {
+  const [noSite, setNoSite] = useState(false);
+  const [name, setName] = useState("");
+  const [sells, setSells] = useState("");
+  const inOrg = !!onWithoutWebsite;
   return (
-    <div className="k-canvas flex min-h-[100dvh] items-center justify-center px-6">
+    <div className="k-canvas relative flex min-h-[100dvh] items-center justify-center px-6">
+      {top && <div className="absolute inset-x-0 top-0">{top}</div>}
       <div className="w-full max-w-[560px]">
         <p className="k-label gs-in">distribute.you</p>
         <p className="gs-in k-fg2 mt-1 text-[13px] font-medium">{BRAND_WHY}</p>
@@ -1566,8 +1743,31 @@ function Hero({
           We find your next clients.
         </h1>
         <p className="gs-in k-fg2 mt-2 text-[14px] leading-6" style={{ animationDelay: "120ms" }}>
-          Type your website. See 100 of them in a minute. No account needed.
+          {inOrg ? "Type its website. See 100 of them in a minute." : "Type your website. See 100 of them in a minute. No account needed."}
         </p>
+        {noSite && onWithoutWebsite ? (
+          <form
+            className="gs-in k-card mt-6 space-y-2 p-3"
+            onSubmit={(e) => {
+              e.preventDefault();
+              onWithoutWebsite(name, sells);
+            }}
+          >
+            <input className="k-input w-full px-3 text-[14px]" placeholder="Brand name" value={name} onChange={(e) => setName(e.target.value)} autoFocus aria-label="Brand name" />
+            <textarea
+              className="k-input min-h-[96px] w-full resize-y px-3 py-2 text-[14px] leading-5"
+              placeholder="What a customer buys from you, in a few sentences."
+              value={sells}
+              onChange={(e) => setSells(e.target.value)}
+              aria-label="What you sell"
+            />
+            <div className="flex justify-end">
+              <button type="submit" className="k-btn-accent h-9 px-4">
+                Start
+              </button>
+            </div>
+          </form>
+        ) : (
         <form
           className="gs-in k-card mt-6 flex items-center gap-2 p-2"
           style={{ animationDelay: "180ms" }}
@@ -1589,6 +1789,12 @@ function Hero({
             Start
           </button>
         </form>
+        )}
+        {onWithoutWebsite && (
+          <button type="button" className="k-btn-ghost -ml-2 mt-2 h-7 text-[12px]" onClick={() => setNoSite((v) => !v)}>
+            {noSite ? "This brand has a website" : "This brand has no website"}
+          </button>
+        )}
         <ol className="gs-in mt-5 grid grid-cols-3 gap-2" style={{ animationDelay: "240ms" }} aria-label="What you will see">
           {["Your company", "100 companies", "Your first emails"].map((label, i) => (
             <li key={label} className="k-fg3 flex items-center gap-2 text-[12px]">
@@ -1619,6 +1825,37 @@ function Hero({
           </p>
         )}
       </div>
+    </div>
+  );
+}
+
+/**
+ * The dashboard's frame around the walk: the way back to the org, and "Start a new
+ * brand" (drops this org's saved walk; the unfinished brand stays on the org).
+ */
+function OrgBar({ orgId, snapshotKey, started }: { orgId: string; snapshotKey: string; started: boolean }) {
+  return (
+    <div className="flex h-11 shrink-0 items-center gap-2 border-b border-[var(--line-subtle)] bg-[var(--bg-raised)] px-4">
+      <span className="k-label">Add a brand</span>
+      {started && (
+        <button
+          type="button"
+          className="k-btn-ghost ml-auto h-7 text-[12px]"
+          onClick={() => {
+            try {
+              localStorage.removeItem(snapshotKey);
+            } catch (e) {
+              console.error("[get-started] snapshot clear failed:", e);
+            }
+            window.location.assign(v2NewBrandHref(orgId));
+          }}
+        >
+          Start a new brand
+        </button>
+      )}
+      <a href={`/v2/orgs/${encodeURIComponent(orgId)}`} aria-label="Close" className={`k-btn-ghost ${started ? "" : "ml-auto "}h-7 w-7 justify-center p-0`}>
+        ×
+      </a>
     </div>
   );
 }

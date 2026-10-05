@@ -5,7 +5,8 @@ import * as path from "path";
 /**
  * The "I have no website" path: a brand with no site the user describes in a
  * free-form block instead of a URL. The v1 wizard that first carried it is
- * deleted; the v2 new-org modal is the live caller of the same API helper.
+ * deleted; the brand walk run from the dashboard (Add a brand, "This brand has no
+ * website") is the live caller of the same API helper.
  *
  * Behavioural import isn't possible (Clerk/posthog/api pulls through the `@`
  * alias), so we assert the load-bearing source.
@@ -23,8 +24,9 @@ describe("no-website brand creation", () => {
     expect(api).toContain("body: { content: context }");
   });
 
-  it("the v2 new-org modal calls it (a helper nothing calls is the feature absent)", () => {
-    const modal = read("src/components/v2/new-org-modal.tsx");
-    expect(modal).toContain("await createBrandWithoutWebsite(");
+  it("the dashboard's brand walk calls it (a helper nothing calls is the feature absent)", () => {
+    const walk = read("src/components/v2/get-started/get-started.tsx");
+    expect(walk).toContain("await createBrandWithoutWebsite(");
+    expect(walk).toContain("onWithoutWebsite={org ? (name, text) => void startWithoutWebsite(name, text) : null}");
   });
 });

@@ -17,7 +17,7 @@ import { supportWhatsAppHref } from "@/components/support/support-button";
 import { REFERRAL_CREDIT_USD } from "@/lib/invite-link";
 import { CrewMark } from "@/components/v2/crew-mark";
 import { OPEN_PALETTE_EVENT } from "@/components/v2/ui";
-import { NewOrgModal } from "@/components/v2/new-org-modal";
+import { NewOrganizationModal } from "@/components/v2/new-organization-modal";
 import { V2NewOfferModal } from "@/components/v2/new-offer-modal";
 import { OfferMark } from "@/components/marks/offer-mark";
 import { useSelectedOfferIfAny } from "@/components/v2/selected-offer";
@@ -25,7 +25,7 @@ import { useMissions } from "@/components/v2/use-missions";
 import { useLeadScope, useBrandRevenue, useBucketCounts, useNeedsYourCall } from "@/components/v2/data";
 import { CompanyMark, PersonAvatar, leadCompany, leadCompanyDomain, leadName, personHref } from "@/components/v2/people-bits";
 import { companyHref } from "@/components/v2/companies-page";
-import { v2Base, v2Href, v2OfferHref, type V2Section } from "@/lib/v2/routes";
+import { v2Base, v2Href, v2NewBrandHref, v2OfferHref, type V2Section } from "@/lib/v2/routes";
 import { useStaffMode } from "@/lib/use-staff-mode";
 
 /**
@@ -102,10 +102,9 @@ export function TenantSwitcherV2() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, t.orgSearch]);
 
-  // "New organization" opens the setup modal over this page, never the full-page onboarding.
-  // One modal, two entries: a new org (from the org step) or a new brand in this org
-  // (from the brand step). Unmounted on close, so a reopened one starts from zero.
-  const [setupFor, setSetupFor] = useState<null | "org" | "brand">(null);
+  // "New organization" names + creates the org over this page, then lands on its brand
+  // walk; "New brand" opens that same walk on this org (`v2NewBrandHref`).
+  const [newOrg, setNewOrg] = useState(false);
   const [newOffer, setNewOffer] = useState(false);
   const name = t.displayBrand?.name || t.displayBrand?.domain || t.displayOrgName || "Brand";
   // The ONE offer every brand page reads (owner 2026-10-03). Null on org pages.
@@ -127,14 +126,7 @@ export function TenantSwitcherV2() {
 
   return (
     <div ref={ref} className="relative">
-      {setupFor && (
-        <NewOrgModal
-          open
-          onClose={() => setSetupFor(null)}
-          existingOrgNames={t.memberships.map((m) => m.organization.name)}
-          existingOrgId={setupFor === "brand" ? t.orgId : null}
-        />
-      )}
+      {newOrg && <NewOrganizationModal onClose={() => setNewOrg(false)} existingOrgNames={t.memberships.map((m) => m.organization.name)} />}
       {newOffer && selected && t.orgId && (
         <V2NewOfferModal brandId={selected.brandId} orgId={t.orgId} onClose={() => setNewOffer(false)} />
       )}
@@ -192,7 +184,7 @@ export function TenantSwitcherV2() {
             disabled={!t.orgId}
             onClick={() => {
               setOpen(false);
-              setSetupFor("brand");
+              if (t.orgId) router.push(v2NewBrandHref(t.orgId));
             }}
           >
             <Plus />
@@ -282,7 +274,7 @@ export function TenantSwitcherV2() {
             className={itemCls}
             onClick={() => {
               setOpen(false);
-              setSetupFor("org");
+              setNewOrg(true);
             }}
           >
             <Plus />

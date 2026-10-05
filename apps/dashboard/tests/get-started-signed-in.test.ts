@@ -41,9 +41,11 @@ describe("get-started refuses to start a walk for a signed-in visitor", () => {
   const start = PAGE.slice(PAGE.indexOf("async function start(raw: string)"));
 
   it("checks the session before the anonymous session or the brand create", () => {
-    const guard = start.indexOf("if (isSignedIn)");
+    // `org` is the dashboard's walk, which names its org explicitly (never the public URL).
+    const guard = start.indexOf("if (isSignedIn && !org)");
     expect(guard).toBeGreaterThan(-1);
     expect(guard).toBeLessThan(start.indexOf("startAnonSession(url)"));
+    expect(start).toContain("if (!org) {\n      const session = await startAnonSession(url);");
     expect(guard).toBeLessThan(start.indexOf("upsertBrand(url)"));
   });
 

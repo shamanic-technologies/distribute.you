@@ -523,8 +523,19 @@ export interface GetStartedSnapshot {
 export const GET_STARTED_RESUME_MAX_AGE_MS = 23 * 60 * 60 * 1000;
 
 /** A plain reload or a new tab resumes the walk only while its anonymous session is alive. */
-export function snapshotResumable(s: GetStartedSnapshot, now: number): boolean {
-  return typeof s.savedAt === "number" && now - s.savedAt <= GET_STARTED_RESUME_MAX_AGE_MS;
+export function snapshotResumable(s: GetStartedSnapshot, now: number, maxAgeMs: number = GET_STARTED_RESUME_MAX_AGE_MS): boolean {
+  return typeof s.savedAt === "number" && now - s.savedAt <= maxAgeMs;
+}
+
+/**
+ * The same walk run from the dashboard ("Add a brand", "New brand", "Finish setup") keeps
+ * its snapshot PER ORG: the brand lives in that org, so nothing ties it to a session's
+ * life, and two orgs never share one. Kept 30 days, like any unfinished brand.
+ */
+export const GET_STARTED_ORG_RESUME_MAX_AGE_MS = 30 * 24 * 60 * 60 * 1000;
+
+export function getStartedOrgSnapshotKey(orgId: string): string {
+  return `distribute:get-started:org:v1:${orgId}`;
 }
 
 /** Where a resumed walk lands: the first step not done (the last one when every step is). */

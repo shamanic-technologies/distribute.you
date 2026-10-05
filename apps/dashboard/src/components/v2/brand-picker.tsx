@@ -1,20 +1,19 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { listBrands } from "@/lib/api";
 import { useAuthQuery } from "@/lib/use-auth-query";
 import { BrandLogo } from "@/components/brand-logo";
-import { v2Base } from "@/lib/v2/routes";
+import { v2Base, v2NewBrandHref } from "@/lib/v2/routes";
 import { Shimmer, TopBar } from "@/components/v2/ui";
-import { NewOrgModal } from "@/components/v2/new-org-modal";
 import { StorefrontIcon } from "@phosphor-icons/react/dist/csr/Storefront";
 
 /**
  * The v2 org page: an org with no remembered brand picks one. An org with NO brand at
- * all (a New organization modal someone closed) gets one big way forward, "Add a
- * brand", which runs the same modal from the brand step. A set-up org with exactly ONE
+ * all (a new org whose brand walk was closed) gets one big way forward, "Add a brand",
+ * which opens the brand walk (`/get-started`'s screens, signed in, on this org). A set-up org with exactly ONE
  * brand has nothing to pick: it goes straight to that brand's page. The edge lets a v2 user reach
  * this page even while the org is not set up, instead of the full-page onboarding.
  * The `["brands"]` key v1 polls.
@@ -22,21 +21,15 @@ import { StorefrontIcon } from "@phosphor-icons/react/dist/csr/Storefront";
 export function V2BrandPicker({ orgId, setUp }: { orgId: string; setUp: boolean }) {
   const q = useAuthQuery(["brands"], () => listBrands());
   const brands = q.data?.brands ?? null;
-  const [adding, setAdding] = useState(false);
   const router = useRouter();
   // One brand in a set-up org: nothing to pick, open it (replace, so Back skips this page).
   const onlyId = setUp && brands !== null && brands.length === 1 ? brands[0].id : null;
   useEffect(() => {
     if (onlyId) router.replace(v2Base(orgId, onlyId));
   }, [onlyId, orgId, router]);
-  // An org not set up yet: its brand pages are behind the edge's first-run gate (the old
-  // onboarding), so a brand is RESUMED in the v2 modal rather than opened.
-  const [resuming, setResuming] = useState<{ id: string; domain: string | null; name: string | null } | null>(null);
-  const modal = adding ? (
-    <NewOrgModal open onClose={() => setAdding(false)} existingOrgNames={[]} existingOrgId={orgId} />
-  ) : resuming ? (
-    <NewOrgModal open onClose={() => setResuming(null)} existingOrgNames={[]} existingOrgId={orgId} existingBrand={resuming} />
-  ) : null;
+  // An org not set up yet: its brand pages are behind the edge's first-run gate, so a
+  // brand is RESUMED in the brand walk ("Finish setup") rather than opened.
+  const addBrand = () => router.push(v2NewBrandHref(orgId));
 
   if (brands !== null && brands.length === 0) {
     return (
@@ -54,11 +47,10 @@ export function V2BrandPicker({ orgId, setUp }: { orgId: string; setUp: boolean 
           <p className="k-fg2 mt-2 text-[14px] leading-[22px]">
             Tell us what you sell and who you sell to. We set up your first campaign in a few minutes.
           </p>
-          <button type="button" className="k-btn-accent mt-6 h-9 px-4 text-[14px]" onClick={() => setAdding(true)}>
+          <button type="button" className="k-btn-accent mt-6 h-9 px-4 text-[14px]" onClick={addBrand}>
             Add a brand
           </button>
         </div>
-        {modal}
       </>
     );
   }
@@ -68,7 +60,7 @@ export function V2BrandPicker({ orgId, setUp }: { orgId: string; setUp: boolean 
       <TopBar
         crumbs={[{ label: "Brands" }]}
         actions={
-          <button type="button" className="k-btn" onClick={() => setAdding(true)}>
+          <button type="button" className="k-btn" onClick={addBrand}>
             Add a brand
           </button>
         }
@@ -92,20 +84,14 @@ export function V2BrandPicker({ orgId, setUp }: { orgId: string; setUp: boolean 
                   {inner}
                 </Link>
               ) : (
-                <button
-                  key={b.id}
-                  type="button"
-                  onClick={() => setResuming({ id: b.id, domain: b.domain ?? null, name: b.name ?? null })}
-                  className="k-hover flex w-full items-center gap-3 px-4 py-3 text-left text-[13px]"
-                >
+                <Link key={b.id} href={v2NewBrandHref(orgId, b.id)} className="k-hover flex items-center gap-3 px-4 py-3 text-[13px]">
                   {inner}
-                </button>
+                </Link>
               );
             })
           )}
         </div>
       </div>
-      {modal}
     </>
   );
 }

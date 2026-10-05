@@ -2,13 +2,8 @@ import { describe, expect, it } from "vitest";
 import {
   LEVER_QUESTIONS,
   NEW_ORG_LEGS,
-  canSkipPayment,
   newOrgLeg,
-  nextStep,
-  parseCustomAmountCents,
-  previousStep,
   recommendedDailyBudgetUsd,
-  suggestNoWebsiteBrandName,
   suggestOrgName,
 } from "../src/lib/v2/new-org-wizard";
 
@@ -22,13 +17,6 @@ describe("suggestOrgName", () => {
   });
   it("falls back to a neutral name when the person has none", () => {
     expect(suggestOrgName("  ", [])).toBe("My organization");
-  });
-});
-
-describe("suggestNoWebsiteBrandName", () => {
-  it("is the person's name, possessive", () => {
-    expect(suggestNoWebsiteBrandName("Kevin Lourd")).toBe("Kevin Lourd's brand");
-    expect(suggestNoWebsiteBrandName(null)).toBe("My brand");
   });
 });
 
@@ -47,49 +35,6 @@ describe("recommendedDailyBudgetUsd", () => {
   it("recommends nothing without a price", () => {
     expect(recommendedDailyBudgetUsd(visits, null, 1)).toBeNull();
     expect(recommendedDailyBudgetUsd(visits, 0, 1)).toBeNull();
-  });
-});
-
-describe("parseCustomAmountCents", () => {
-  it("a blank field is no answer, never zero", () => {
-    expect(parseCustomAmountCents("")).toBeNull();
-    expect(parseCustomAmountCents("  ")).toBeNull();
-  });
-  it("reads dollars, with or without a sign", () => {
-    expect(parseCustomAmountCents("$75")).toEqual({ cents: 7500 });
-    expect(parseCustomAmountCents("12.5")).toEqual({ cents: 1250 });
-  });
-  it("refuses under $1 and non-numbers", () => {
-    expect(parseCustomAmountCents("0.5")).toEqual({ problem: "The minimum is $1." });
-    expect(parseCustomAmountCents("abc")).toEqual({ problem: "Enter an amount in dollars." });
-  });
-});
-
-describe("canSkipPayment", () => {
-  it("only with spendable free credit", () => {
-    expect(canSkipPayment(3000)).toBe(true);
-    expect(canSkipPayment(0)).toBe(false);
-    expect(canSkipPayment(null)).toBe(false);
-  });
-});
-
-describe("step order", () => {
-  it("skips the offer pick when one offer was detected, both ways", () => {
-    expect(nextStep("offerText", { offerCount: 1, planFlow: true })).toBe("audienceText");
-    expect(previousStep("audienceText", { offerCount: 1, planFlow: true })).toBe("offerText");
-  });
-  it("shows the offer pick when several were detected", () => {
-    expect(nextStep("offerText", { offerCount: 3, planFlow: true })).toBe("offerPick");
-    expect(previousStep("audienceText", { offerCount: 3, planFlow: true })).toBe("offerPick");
-  });
-  it("ends on Choose your plan: no budget or payment screen (owner 2026-10-03)", () => {
-    expect(nextStep("leg", { offerCount: 1, planFlow: true })).toBe("plan");
-    expect(nextStep("plan", { offerCount: 1, planFlow: true })).toBe("plan");
-    expect(previousStep("plan", { offerCount: 1, planFlow: true })).toBe("leg");
-  });
-  it("keeps the budget and payment screens for an org billing keeps on pay-as-you-go", () => {
-    expect(nextStep("leg", { offerCount: 1, planFlow: false })).toBe("budget");
-    expect(previousStep("budget", { offerCount: 1, planFlow: false })).toBe("leg");
   });
 });
 
