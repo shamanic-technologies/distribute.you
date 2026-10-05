@@ -47,6 +47,8 @@ export interface LegCatalogue {
   legsByChannel: ReadonlyMap<string, readonly string[]>;
   /** The crew name the producer gives a (channel, leg), keyed `slug|legKey`. Absent = unnamed. */
   crewNames: ReadonlyMap<string, string>;
+  /** The CAMPAIGN name (features-service `campaignName`) of a (channel, leg), keyed `slug|legKey`. Absent = unnamed. */
+  campaignNames: ReadonlyMap<string, string>;
 }
 
 export const EMPTY_LEG_CATALOGUE: LegCatalogue = {
@@ -54,6 +56,7 @@ export const EMPTY_LEG_CATALOGUE: LegCatalogue = {
   legs: new Map(),
   legsByChannel: new Map(),
   crewNames: new Map(),
+  campaignNames: new Map(),
 };
 
 /** The public catalogue body, read structurally: a row missing what this module needs
@@ -72,6 +75,7 @@ export interface PublicCatalogueWire {
       from?: { key?: unknown; label?: unknown } | null;
       to?: { key?: unknown; label?: unknown } | null;
       crewName?: unknown;
+      campaignName?: unknown;
     }> | null;
   }> | null;
 }
@@ -123,6 +127,7 @@ export function legCatalogueFromWire(body: PublicCatalogueWire | null | undefine
 
   const legsByChannel = new Map<string, string[]>();
   const crewNames = new Map<string, string>();
+  const campaignNames = new Map<string, string>();
   for (const channel of body.channels ?? []) {
     const slug = str(channel?.slug);
     if (!slug) continue;
@@ -134,10 +139,12 @@ export function legCatalogueFromWire(body: PublicCatalogueWire | null | undefine
       if (!keys.includes(legKey)) keys.push(legKey);
       const crew = str(t?.crewName);
       if (crew) crewNames.set(`${slug}|${legKey}`, crew);
+      const campaign = str(t?.campaignName);
+      if (campaign) campaignNames.set(`${slug}|${legKey}`, campaign);
     }
     legsByChannel.set(slug, keys);
   }
-  return { steps, legs, legsByChannel, crewNames };
+  return { steps, legs, legsByChannel, crewNames, campaignNames };
 }
 
 /**
