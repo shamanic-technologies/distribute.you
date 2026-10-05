@@ -142,7 +142,6 @@ function PathsTable({
           <thead>
             <tr className="k-line-subtle border-b">
               <th className="k-label w-10 px-3 py-2.5 pl-4 text-left font-normal">#</th>
-              <th className="k-label px-3 py-2.5 text-left font-normal">Name</th>
               <th className="k-label px-3 py-2.5 text-left font-normal">Path</th>
               <th className="k-label px-3 py-2.5 text-right font-normal">Cost per paying client</th>
               <th className="k-label px-3 py-2.5 pr-4 text-right font-normal">ROI</th>
@@ -161,12 +160,6 @@ function PathsTable({
                 >
                   <td className="k-fg3 px-3 py-2 pl-4 text-[12px] tabular-nums">{p.rank}</td>
                   <td className="px-3 py-2">
-                    <span className="flex items-center gap-2.5">
-                      <PathAvatar name={p.name} size={28} />
-                      <span className="font-semibold">{p.name}</span>
-                    </span>
-                  </td>
-                  <td className="px-3 py-2">
                     <PathLinks path={p} />
                   </td>
                   <td className="k-fg2 px-3 py-2 text-right tabular-nums">{usd(p.costPerPayingClientUsd)}</td>
@@ -179,7 +172,7 @@ function PathsTable({
                 </tr>,
                 isOpen ? (
                   <tr key={`${p.combinationKey}-detail`} className="k-line-subtle border-b">
-                    <td colSpan={5} className="p-0">
+                    <td colSpan={4} className="p-0">
                       <PathBreakdown path={p} onStateRate={onStateRate} onStateLifetimeRevenue={onStateLifetimeRevenue} />
                     </td>
                   </tr>

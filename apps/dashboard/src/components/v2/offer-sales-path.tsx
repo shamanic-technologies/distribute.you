@@ -3,6 +3,7 @@
 import { useMemo } from "react";
 import { StepMark } from "@/components/marks/step-mark";
 import { SectionTitle } from "@/components/v2/ui";
+import { SelectCard } from "@/components/v2/select-card";
 import type { LegCatalogue } from "@/lib/legs";
 import { offeredFromCatalogue, toggleLeg, toggleStep, type SalesPathSelection } from "@/lib/offer-sales-path";
 
@@ -55,26 +56,14 @@ export function OfferSalesPath({
           {steps.map((s) => {
             const on = selection.steps.has(s);
             return (
-              <button
+              <SelectCard
                 key={s}
-                type="button"
-                aria-pressed={on}
+                on={on}
                 onClick={() => onChange(toggleStep(selection, s, !on, legs))}
-                className={`k-card flex items-center gap-2.5 p-3 text-left transition-[box-shadow,background-color] duration-150 active:scale-[0.99] ${on ? "k-card-on" : "k-hover"}`}
-              >
-                <StepMark stepKey={s} size="xs" dimmed={!on} />
-                <span className="min-w-0 flex-1">
-                  <span className={`block truncate text-[13px] ${on ? "k-fg font-semibold" : "k-fg3"}`}>{label(s)}</span>
-                  {catalogue.steps.get(s)?.description && (
-                    <span className="k-fg3 block truncate text-[11.5px]">{catalogue.steps.get(s)?.description}</span>
-                  )}
-                </span>
-                {on ? (
-                  <span aria-hidden className="inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-[var(--accent)] text-[11px] text-white">✓</span>
-                ) : (
-                  <span aria-hidden className="h-5 w-5 shrink-0 rounded-full border border-[var(--line-strong)]" />
-                )}
-              </button>
+                mark={<StepMark stepKey={s} size="xs" dimmed={!on} />}
+                title={label(s)}
+                sub={catalogue.steps.get(s)?.description}
+              />
             );
           })}
         </div>
