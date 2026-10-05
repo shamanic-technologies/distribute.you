@@ -4,9 +4,17 @@ import { useEffect, useMemo, useState } from "react";
 import { useParams } from "next/navigation";
 import { useQueryClient } from "@tanstack/react-query";
 import { useAuthQuery } from "@/lib/use-auth-query";
-import { getOfferChannels, getOfferSalesPath, getOfferSalesPaths, saveOfferChannels, saveOfferSalesPath } from "@/lib/api";
+import {
+  getOfferChannels,
+  getOfferSalesPath,
+  getOfferSalesPaths,
+  getOfferSelectedSalesPaths,
+  saveOfferChannels,
+  saveOfferSalesPath,
+  saveOfferSelectedSalesPaths,
+} from "@/lib/api";
 import { useSalesPathChannels } from "@/lib/use-sales-path-channels";
-import { acceptedChannels, toggleChannel } from "@/lib/offer-active-sales-paths";
+import { acceptedChannels, selectedPathKeys, toggleChannel, togglePath } from "@/lib/offer-active-sales-paths";
 import { OfferChannelsPicker } from "@/components/v2/offer-channels-picker";
 import { OfferCampaigns } from "@/components/v2/offer-campaigns";
 import { campaignsOfPaths } from "@/lib/offer-campaigns";
@@ -106,8 +114,35 @@ export function V2OfferSalesPathPage() {
       });
   };
 
-  // Every channel x leg the listed paths use: what runs, and its budget, is set there.
-  const campaigns = useMemo(() => campaignsOfPaths(paths.data?.paths ?? []), [paths.data]);
+  // The paths the customer ticked (brand-service); never stated = every path above 1x.
+  const selectedQ = useAuthQuery(["offerSelectedSalesPaths", brandId, offerId], () => getOfferSelectedSalesPaths(brandId, offerId), {
+    enabled: !!offerId,
+  });
+  const [pathDraft, setPathDraft] = useState<ReadonlySet<string> | null>(null);
+  useEffect(() => setPathDraft(null), [selectedQ.data]);
+  const selectedPaths = useMemo(
+    () => pathDraft ?? (selectedQ.data && paths.data ? selectedPathKeys(selectedQ.data, paths.data.paths) : null),
+    [pathDraft, selectedQ.data, paths.data],
+  );
+  const onTogglePath = (key: string, on: boolean) => {
+    if (!selectedPaths) return;
+    const next = togglePath(selectedPaths, key, on);
+    setPathDraft(new Set(next));
+    setError(null);
+    saveOfferSelectedSalesPaths(brandId, offerId, next)
+      .then((saved) => qc.setQueryData(["offerSelectedSalesPaths", brandId, offerId], saved))
+      .catch((err) => {
+        console.error("[offer-sales-path] path selection save failed", err);
+        setPathDraft(null);
+        setError("Could not save this change. Try again.");
+      });
+  };
+
+  // Every channel x leg the TICKED paths use (owner 2026-10-05): a campaign no ticked path uses is not listed.
+  const campaigns = useMemo(
+    () => campaignsOfPaths((paths.data?.paths ?? []).filter((p) => selectedPaths?.has(p.combinationKey))),
+    [paths.data, selectedPaths],
+  );
 
   const selection = draft ?? served;
   const settled = q.isFetchedAfterMount || q.data !== undefined;
@@ -123,13 +158,16 @@ export function V2OfferSalesPathPage() {
       width="max-w-[1280px]"
     >
       {error && <p className="mb-4 text-[13px] text-[var(--data-rose)]">{error}</p>}
+      {selectedQ.isError && !selectedQ.data && (
+        <p className="mb-4 text-[13px] text-[var(--data-rose)]">Could not read which sales paths you ticked.</p>
+      )}
       <div className="mb-8">
         <OfferCampaigns
           orgId={orgId}
           brandId={brandId}
           offerId={offerId}
           campaigns={campaigns}
-          pending={paths.isPending && !paths.isError}
+          pending={(paths.isPending && !paths.isError) || (!selectedPaths && !selectedQ.isError)}
         />
       </div>
       <OfferSalesPaths
@@ -137,6 +175,8 @@ export function V2OfferSalesPathPage() {
         pending={paths.isPending && !paths.isError}
         failed={paths.isError}
         table
+        selected={selectedPaths ?? undefined}
+        onToggleSelected={selectedPaths ? onTogglePath : undefined}
         intro=""
       />
       <div className="mt-8">

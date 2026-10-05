@@ -197,6 +197,7 @@ export const PERSISTABLE_QUERY_ROOTS = new Set([
   "offerSalesPath",
   "offerSalesPaths",
   "offerChannels",
+  "offerSelectedSalesPaths",
   "brandSalesBudget",
   // ONE page of a scope's leads, and every bucket's count. These are what the Leads page
   // reads now, and the point of them is that each entry is SMALL enough to be written:
