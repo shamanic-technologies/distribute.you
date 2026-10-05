@@ -124,21 +124,26 @@ export function OfferCampaigns({
 export function CampaignLeg({
   campaign,
   className = "",
+  compact = false,
 }: {
   campaign: Pick<OfferCampaign, "featureSlug" | "channelName" | "managed" | "fromLabel" | "toLabel">;
   className?: string;
+  /** One line, 11px, no wrap (Today's Campaigns card). */
+  compact?: boolean;
 }) {
   const channels = useAcquisitionChannels();
   const def = channels.find((d) => d.featureSlug === campaign.featureSlug);
   return (
-    <span className={`k-fg2 inline-flex flex-wrap items-center gap-1.5 ${className}`}>
+    <span
+      className={`k-fg2 inline-flex items-center ${compact ? "gap-1 whitespace-nowrap text-[11px]" : "flex-wrap gap-1.5"} ${className}`}
+    >
       {campaign.fromLabel && (
         <>
           <span>{campaign.fromLabel}</span>
           <span className="k-fg3">→</span>
         </>
       )}
-      <ChannelChip name={campaign.channelName} def={def} notRun={campaign.managed === false} />
+      <ChannelChip name={campaign.channelName} def={def} notRun={campaign.managed === false} compact={compact} />
       <span className="k-fg3">→</span>
       <span>{campaign.toLabel}</span>
     </span>

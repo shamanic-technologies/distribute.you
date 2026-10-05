@@ -436,13 +436,20 @@ export function ChannelChip({
   name,
   def,
   notRun,
+  compact = false,
 }: {
   name: string;
   def: Parameters<typeof AcquisitionChannelMark>[0]["def"] | undefined;
   notRun: boolean;
+  /** 11px on an 18px chip, for a line that must hold on one row (keel.css is unlayered, so a Tailwind size would lose). */
+  compact?: boolean;
 }) {
   return (
-    <span className={`k-chip ${notRun ? "k-fg3" : ""}`} title={notRun ? "We don't run this channel yet" : undefined}>
+    <span
+      className={`k-chip ${notRun ? "k-fg3" : ""}`}
+      style={compact ? { fontSize: 11, height: 18, gap: 4, padding: "0 5px" } : undefined}
+      title={notRun ? "We don't run this channel yet" : undefined}
+    >
       {def && <AcquisitionChannelMark def={def} size="xs" dimmed={notRun} />}
       {name}
     </span>
