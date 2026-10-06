@@ -32,6 +32,7 @@ import { BRAND_WHY } from "@/lib/brand-why";
 import {
   ApiError,
   confirmAudienceSegments,
+  estimateAudienceSegments,
   confirmBrandOffers,
   createBrandWithoutWebsite,
   extractBrandFields,
@@ -234,14 +235,12 @@ export function GetStarted({ org }: { org?: OrgWalk } = {}) {
   const [audienceError, setAudienceError] = useState<string | null>(null);
   const createdAudiences = useRef(new Map<string, GetStartedAudience>());
   const [pendingAudience, setPendingAudience] = useState<{ name: string; description: string } | null>(null);
-  // Each proposed audience's market size (human-service's people count, ~45 s after it is created).
+  // Each proposed audience's approximate market size, estimated WITHOUT creating it
+  // (owner 2026-10-06: creating every proposal cost ~$2.25 a visitor; only the picked
+  // one is created, by `pickAudience`).
   const [audienceCounts, setAudienceCounts] = useState<Record<string, number>>({});
-  const [prebuilt, setPrebuilt] = useState(false);
-  // Every proposed audience is created in ONE confirm as soon as the offer is picked:
-  // human-service then builds each one's people search (~90 s) while the visitor reads
-  // the proposals, so the picked one's companies are ready sooner. The launch sends
-  // only the picked one (the others go back to suggested).
-  const prebuild = useRef<Promise<void> | null>(null);
+  const [estimating, setEstimating] = useState(false);
+  const estimated = useRef(false);
   const [building, setBuilding] = useState<Record<string, boolean>>({});
   // Step 5: the first companies of the picked audience (PREVIEW_COMPANIES).
   const [rows, setRows] = useState<Record<string, AudienceCompanyRow[]>>({});
@@ -893,58 +892,22 @@ export function GetStarted({ org }: { org?: OrgWalk } = {}) {
   }
 
   useEffect(() => {
-    if (!brandId || !offer || audienceProposals.length === 0 || prebuild.current) return;
-    const segs = audienceProposals;
-    const offerId = offer.offerId;
-    prebuild.current = confirmAudienceSegments(brandId, offerId, icpRef.current || segs[0].description, segs)
-      .then(({ audiences }) => {
-        segs.forEach((seg, i) => {
-          const made = audiences.find((a) => a.name === seg.name) ?? audiences[i];
-          if (made) createdAudiences.current.set(seg.name, { audienceId: made.id, name: seg.name, description: seg.description });
-        });
-        setPrebuilt(true);
-      })
-      .catch(async (e) => {
-        // A resumed walk re-proposes the audiences an earlier visit already created
-        // (names are unique per offer): those are the ones meant, so they are adopted.
-        if (!(e instanceof ApiError && e.status === 409)) throw e;
-        await adoptExistingAudiences(brandId, offerId, segs);
-        setPrebuilt(true);
-      })
-      .catch((e) => console.error("[get-started] audience prebuild failed:", e));
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [brandId, offer?.offerId, audienceProposals]);
-
-  /** Step 4: the ONE audience picked (created with the others above), then its companies load. */
-  // Each audience's market size, read once human-service has counted it (~45 s after
-  // the prebuild created it): asked every 3 s until every created audience has one.
-  useEffect(() => {
-    if (!brandId || !offer || !prebuilt) return;
-    let stop = false;
-    let tries = 0;
-    const tick = async () => {
-      if (stop) return;
-      tries += 1;
-      try {
-        const { audiences } = await listAudiences(brandId, { offerId: offer.offerId });
+    if (!brandId || !offer || audienceProposals.length === 0 || estimated.current) return;
+    estimated.current = true;
+    setEstimating(true);
+    estimateAudienceSegments(brandId, offer.offerId, audienceProposals)
+      .then(({ estimates }) => {
         const counts: Record<string, number> = {};
-        for (const [name, a] of createdAudiences.current) {
-          const row = audiences.find((x) => x.id === a.audienceId);
-          if (row && row.apolloCount != null) counts[name] = row.apolloCount;
+        for (const e of estimates) {
+          if (e.estimatedPeople != null) counts[e.name] = e.estimatedPeople;
+          else console.error("[get-started] audience estimate unavailable:", e.name, e.unavailableReason);
         }
         setAudienceCounts(counts);
-        if (Object.keys(counts).length >= createdAudiences.current.size) return;
-      } catch (e) {
-        console.error("[get-started] audience counts read failed:", e);
-      }
-      if (tries < 60 && !stop) setTimeout(() => void tick(), 3000);
-    };
-    void tick();
-    return () => {
-      stop = true;
-    };
+      })
+      .catch((e) => console.error("[get-started] audience estimate failed:", e))
+      .finally(() => setEstimating(false));
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [brandId, offer?.offerId, prebuilt]);
+  }, [brandId, offer?.offerId, audienceProposals]);
 
   /** Step 4: the ONE audience picked moves the walk on at once; it is created (or found) behind it. */
   function pickAudience(i: number) {
@@ -963,10 +926,6 @@ export function GetStarted({ org }: { org?: OrgWalk } = {}) {
     void (async () => {
       try {
         const o = await ensureOffer();
-        // The batch that creates every proposed audience starts once the offer lands:
-        // wait for it to start rather than create this one a second time.
-        for (let t = 0; t < 30 && !prebuild.current; t += 1) await new Promise((r) => setTimeout(r, 100));
-        if (prebuild.current && !createdAudiences.current.has(seg.name)) await prebuild.current;
         let known = createdAudiences.current.get(seg.name);
         if (!known) {
           try {
@@ -1532,7 +1491,7 @@ export function GetStarted({ org }: { org?: OrgWalk } = {}) {
           busy={audienceBusy}
           error={audienceError}
           counts={audienceCounts}
-          counting={prebuilt || !!offerPromise.current}
+          counting={estimating || (!estimated.current && !!offerPromise.current)}
           waitingForOffer={!offer && !pendingOffer}
           onPick={(i) => void pickAudience(i)}
           onRetry={() => brandId && void prepareAudiences(brandId)}

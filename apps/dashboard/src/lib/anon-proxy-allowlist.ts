@@ -96,6 +96,9 @@ const RULES: Rule[] = [
   // brand, which `anonBodyRefusal` binds to the session.
   { method: "POST", segments: ["orgs", "audiences", "split"] },
   { method: "POST", segments: ["orgs", "audiences", "split", "confirm"] },
+  // Each proposed audience's approximate size, WITHOUT creating it (owner 2026-10-06:
+  // only the picked one is created). Body names the brand, bound like the split.
+  { method: "POST", segments: ["orgs", "audiences", "split", "estimate"] },
   // Step 5: up to 100 companies of the picked audience with one person each (names and
   // titles, last names masked, never an address), built page by page; and one row's
   // person found and verified live (the first 10 rows, billed to this anonymous org,
@@ -240,6 +243,7 @@ export function anonBodyRefusal({
       path === "/orgs/audiences/suggest" ||
       path === "/orgs/audiences/split" ||
       path === "/orgs/audiences/split/confirm" ||
+      path === "/orgs/audiences/split/estimate" ||
       path === "/content/preview-email" ||
       path === "/content/preview-email/prepare");
   if (!bound) return null;

@@ -261,11 +261,12 @@ describe("the surface", () => {
     expect(FLOW).toContain("confirmAudienceSegments(id, o.offerId, icpRef.current || seg.description, [seg])");
   });
 
-  it("creates every proposed audience once the offer is picked, so their searches build while the visitor reads", () => {
-    expect(FLOW).toContain("prebuild.current = confirmAudienceSegments(brandId, offerId, icpRef.current || segs[0].description, segs)");
-    // A pick made while that confirm is in flight waits for it rather than creating the audience twice.
+  it("estimates every proposed audience without creating it, and creates only the picked one (owner 2026-10-06)", () => {
+    expect(FLOW).toContain("estimateAudienceSegments(brandId, offer.offerId, audienceProposals)");
+    // Creating every proposal cost ~$2.25 a visitor: the only confirm is the pick's, one segment.
+    expect(FLOW.match(/confirmAudienceSegments\(/g)?.length).toBe(1);
     const pick = FLOW.slice(FLOW.indexOf("function pickAudience("), FLOW.indexOf("function chooseAudience("));
-    expect(pick).toContain("await prebuild.current;");
+    expect(pick).toContain("confirmAudienceSegments(id, o.offerId, icpRef.current || seg.description, [seg])");
     // The wait for the search to build is shown, and bounded.
     expect(FLOW).toContain('page.reason === "not_built_yet" && waits < 80');
     expect(FLOW).toContain("<BuildingNote building={building} />");
