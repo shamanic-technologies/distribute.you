@@ -244,15 +244,24 @@ describe("the surface", () => {
     expect(FLOW).not.toMatch(/revealEmail|enrich\(|emailAddress/);
   });
 
-  it("prepares the offer and the audience proposals in the background, in parallel, before the stage reaches them", () => {
+  it("prepares the offers after the site read, and the audiences for the offer PICKED (owner 2026-10-06)", () => {
     const start = FLOW.slice(FLOW.indexOf("async function start("), FLOW.indexOf("const canLaunch"));
     expect(start).toContain("...OFFER_FIELDS");
-    // The ICP is drafted from what the read stored (an empty profile is refused), so the
-    // audience read starts after the site read, in parallel with the offer split.
-    expect(start.indexOf("await siteRead;")).toBeLessThan(start.indexOf("prepareAudiences(id)"));
-    expect(start).toContain("await Promise.all([prepareOffers(id, offerSource.current.lines, offerSource.current.ov), prepareAudiences(id)])");
+    expect(start.indexOf("await siteRead;")).toBeLessThan(start.indexOf("await prepareOffers(id, offerSource.current.lines, offerSource.current.ov)"));
+    // The audiences described the brand's OTHER offer when drafted beside the offer split.
+    expect(start).not.toContain("prepareAudiences(");
+    const pick = FLOW.slice(FLOW.indexOf("function pickOffer("), FLOW.indexOf("async function draftAnswers("));
+    expect(pick).toContain("void prepareAudiences(id, chosenOfferId);");
+    const prep = FLOW.slice(FLOW.indexOf("async function prepareAudiences("), FLOW.indexOf("function advance("));
+    expect(prep).toContain("suggestBrandIcp(id, undefined, undefined, offerId)");
     expect(FLOW).toContain("proposeBrandOffers(");
     expect(FLOW).toContain("proposeAudienceSegments(");
+  });
+
+  it("never says the preview is ready when the site could not be read (owner 2026-10-06)", () => {
+    expect(FLOW).toContain('readFailed={steps.company === "failed"}');
+    const live = FLOW.slice(FLOW.indexOf("function LiveStatus("));
+    expect(live.indexOf("We could not read")).toBeLessThan(live.indexOf('"Your preview is ready."'));
   });
 
   it("confirms exactly the ONE offer and the ONE audience picked", () => {
