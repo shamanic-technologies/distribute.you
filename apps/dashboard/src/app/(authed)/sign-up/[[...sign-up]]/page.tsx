@@ -402,7 +402,7 @@ export default function SignUpPage() {
                   {claimedCopy.tail}
                 </>
               ) : (
-                "3-day free trial, then from $99 a month. Cancel anytime."
+                "The platform is free. You choose how much goes to your outreach."
               )}
             </p>
           </div>

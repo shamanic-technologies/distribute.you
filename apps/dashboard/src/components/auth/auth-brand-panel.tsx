@@ -2,7 +2,6 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { GiftIcon } from "@heroicons/react/24/outline";
 
 /**
  * The left column of /sign-up and /sign-in.
@@ -15,8 +14,8 @@ import { GiftIcon } from "@heroicons/react/24/outline";
  *
  * Every string here is the SERVED landing's own: the headline, the offer pill and
  * the proof line, verbatim from `apps/landing/public/landing/index-v2.html` as the
- * $99/month plan serves it (the price swaps in `apps/landing/src/lib/pages/subscription.ts`,
- * the default offer since 2026-10-03). A visitor reads them on `/`, clicks through, and reads the same
+ * prepaid offer serves it (owner 2026-10-06: the platform is free, no trial, no
+ * monthly plan). A visitor reads them on `/`, clicks through, and reads the same
  * sentences on the signup screen rather than a second, older pitch.
  *
  * Colour rides the `brand-*` ramp, never a literal hex or oklch: a customer's
@@ -53,14 +52,11 @@ export function AuthBrandPanel() {
       </Link>
 
       <div className="relative z-10">
-        <p className="inline-flex items-center gap-2 rounded-full border border-brand-200 bg-brand-50 px-4 py-1.5 text-sm text-gray-900">
-          <GiftIcon className="h-4 w-4 shrink-0 text-brand-600" />
-          3-day free trial, cancel anytime
-        </p>
-        <h2 className="mt-6 font-display text-4xl leading-none tracking-[-0.04em] text-gray-900 xl:text-5xl">
+        <p className="text-sm font-medium text-brand-600">Revenue made easy.</p>
+        <h2 className="mt-4 font-display text-4xl leading-none tracking-[-0.04em] text-gray-900 xl:text-5xl">
           Get <span className="text-brand-600">revenue in 24h</span>
           <br />
-          From $99/month
+          The platform is free
         </h2>
         <p className="mt-5 max-w-md text-lg leading-snug text-gray-500">
           We A/B test the templates, the AI models and the audiences on every

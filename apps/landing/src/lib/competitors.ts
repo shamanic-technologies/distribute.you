@@ -258,7 +258,7 @@ export const COMPETITORS: readonly Competitor[] = [
     whereWeWin: [
       "Nobody on your side has to run sequences or warm mailboxes.",
       "Your own domain never sends cold email.",
-      "One monthly plan that becomes campaign credit, not a seat per person on the team.",
+      "The platform is free. You pay for outreach, not a seat per person.",
     ],
     chooseThemIf: [
       "You have a sales team that needs a shared database and a dialer.",
