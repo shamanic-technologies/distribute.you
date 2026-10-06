@@ -154,7 +154,7 @@ describe("the rules the page decides on", () => {
     expect(parseGetStartedSnapshot(JSON.stringify({ ...snap, offer: { name: "x" } }))?.offer).toBeNull();
   });
 
-  it("asks for ONE offer and ONE audience, the offer questions, then 100 companies and the emails", () => {
+  it("asks for ONE offer and ONE audience, the offer questions, then the companies and the emails", () => {
     expect(GET_STARTED_STEPS.map((s) => s.key)).toEqual([
       "company",
       "competitors",
@@ -179,11 +179,11 @@ describe("the rules the page decides on", () => {
     expect(offerSourceText([], "")).toBe("");
   });
 
-  it("writes the first emails ahead and caps the free ones", () => {
-    expect(PREWRITTEN_EMAILS).toBe(3);
-    expect(EMAIL_CAP).toBe(10);
-    expect(canWriteAnother(9)).toBe(true);
-    expect(canWriteAnother(10)).toBe(false);
+  it("writes ONE email ahead and caps the free ones at the five preview companies (owner 2026-10-06)", () => {
+    expect(PREWRITTEN_EMAILS).toBe(1);
+    expect(EMAIL_CAP).toBe(5);
+    expect(canWriteAnother(4)).toBe(true);
+    expect(canWriteAnother(5)).toBe(false);
   });
 
 
@@ -271,13 +271,14 @@ describe("the surface", () => {
     expect(FLOW).toContain("<BuildingNote building={building} />");
   });
 
-  it("loads the 100 companies page by page and writes the first emails ahead, the rest on click, capped", () => {
+  it("loads ONE page of five companies, never more, and writes the first email ahead, the rest on click, capped", () => {
     const load = FLOW.slice(FLOW.indexOf("async function loadCompanies("), FLOW.indexOf("// ── Step 6: the emails"));
-    // A small first page (fast), the rest only as far as the visitor scrolls (each company costs a credit).
-    expect(load).toContain("offset === 0 ? FIRST_PAGE : NEXT_PAGE");
-    expect(load).toContain("while (offset < (wanted.current.get(id) ?? FIRST_PAGE))");
-    expect(FLOW).toContain("<MoreSentinel onMore={onMore}");
-    expect(load).toContain("offset = page.nextOffset");
+    // Each company costs a credit and visitors do not scroll: five, then stop (owner 2026-10-06).
+    expect(FLOW).toContain("const PREVIEW_COMPANIES = 5;");
+    expect(load).toContain("const limit = PREVIEW_COMPANIES - offset;");
+    expect(load).toContain("offset + got.length >= PREVIEW_COMPANIES");
+    expect(FLOW).not.toContain("MoreSentinel");
+    expect(FLOW).not.toContain("NEXT_PAGE");
     expect(load).toContain("prewrite(aud, got)");
     expect(FLOW).toContain(".slice(0, PREWRITTEN_EMAILS)");
     expect(FLOW).toContain("if (!canWriteAnother(requested.current.size)) return;");
@@ -285,14 +286,9 @@ describe("the surface", () => {
     expect(open).toContain("setWallOpen(true)");
   });
 
-  it("checks one row's person live, one row at a time, and shows no address at all", () => {
-    const q = FLOW.slice(FLOW.indexOf("function queueCheck("), FLOW.indexOf("function openRow("));
-    expect(q).toContain("index >= 10");
-    expect(q).toContain("checkQueue.current = checkQueue.current.then(");
-    expect(q).toContain("checkAudienceCompanyEmail(audienceId, index)");
-    const cell = FLOW.slice(FLOW.indexOf("function RowCheck("), FLOW.indexOf("function EmailsStage("));
-    expect(cell).not.toContain("check.maskedEmail");
-    expect(cell).toContain("motion-reduce:animate-none");
+  it("runs no billed email check before payment (owner 2026-10-06)", () => {
+    expect(FLOW).not.toContain("checkAudienceCompanyEmail");
+    expect(FLOW).not.toContain("queueCheck");
   });
 
   it("asks a timed-out email again, but never retries a refusal", () => {
