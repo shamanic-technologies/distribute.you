@@ -82,10 +82,10 @@ describe("every dashboard surface that states a daily budget asks whether to hid
 });
 
 describe("the onboarding wall asks no daily budget", () => {
-  it("budgets are set per campaign at the campaigns step; the wall asks credit only (owner 2026-10-06)", () => {
+  it("the plan sets the campaigns' money: the wall asks no budget and writes none", () => {
     const wall = read("src/components/v2/get-started/account-card-wall.tsx");
     expect(wall).not.toContain("budgetRow");
-    expect(wall).not.toContain("subscription");
+    expect(wall).toContain("writeBudgets: false");
     expect(wall).not.toContain("marginOk");
   });
 });
