@@ -298,9 +298,9 @@ export function leversLLMPrompt(offerName: string, answers: Partial<Record<Lever
     .trim();
 }
 
-/** Emails written before the account exists: the first rows are written ahead, the rest on click, up to the cap. */
-export const PREWRITTEN_EMAILS = 3;
-export const EMAIL_CAP = 10;
+/** Emails written before the account exists: the first row's is written ahead, the rest on click, one per preview company. */
+export const PREWRITTEN_EMAILS = 1;
+export const EMAIL_CAP = 5;
 
 /** Whether one more email may be written before the wall. */
 export function canWriteAnother(requested: number, cap = EMAIL_CAP): boolean {

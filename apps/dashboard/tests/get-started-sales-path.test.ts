@@ -196,7 +196,8 @@ describe("the payment wall, simplified", () => {
     expect(PAGE).not.toContain("[r.person.firstName, r.person.lastNameObfuscated]");
     expect(PAGE).not.toContain("found via");
     expect(PAGE).not.toContain("maskedEmail ??");
-    expect(PAGE).toContain('"Email found and verified"');
+    // The live email check is gone before payment (owner 2026-10-06), so is its label.
+    expect(PAGE).not.toContain("RowCheck");
   });
 });
 
