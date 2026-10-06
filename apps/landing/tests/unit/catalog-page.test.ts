@@ -24,6 +24,9 @@ const row = (p: Partial<PlatformPrice>): PlatformPrice => ({
   unit: "email",
   pricingBasis: "marked-up",
   status: "current",
+  lastUsedOn: "2026-10-05",
+  usageReadAt: "2026-10-06T08:47:04.668Z",
+  bundle: null,
   ...p,
 });
 
@@ -61,6 +64,27 @@ describe("catalog price list", () => {
     expect(parsePlatformPrices([row({})])).toHaveLength(1);
     expect(() => parsePlatformPrices([{ ...row({}), status: undefined }])).toThrow();
     expect(() => parsePlatformPrices([{ ...row({}), status: "paused" }])).toThrow();
+    expect(() => parsePlatformPrices([{ ...row({}), usageReadAt: undefined }])).toThrow();
+    expect(() => parsePlatformPrices([{ ...row({}), lastUsedOn: undefined }])).toThrow();
+  });
+
+  it("an email sent is ONE line at the served bundle price, never the halves", () => {
+    const bundle = { name: "email-sent", unit: "email", members: ["instantly-account-email-sent", "instantly-domain-email-sent"], pricePerUnitInUsdCents: "5.9772000000" };
+    const rows = [
+      row({ name: "instantly-account-email-sent", type: "Email send (per account)", pricePerUnitInUsdCents: "2.9886", bundle }),
+      row({ name: "instantly-domain-email-sent", type: "Email send (per domain)", pricePerUnitInUsdCents: "2.9886", bundle }),
+    ];
+    const sending = catalogSections(rows).find((s) => s.key === "sending");
+    expect(sending?.rows).toEqual([{ tool: "Instantly", domain: "instantly.ai", what: "Email sent", price: "$0.0598 / email" }]);
+    const lost = catalogSections([row({ bundle: { ...bundle, pricePerUnitInUsdCents: null } })]).find((s) => s.key === "sending");
+    expect(lost?.rows[0].price).toBe("No price");
+  });
+
+  it("hides a line unused for 30+ days, measured from the usage read, not from today", () => {
+    expect(catalogGroup(row({ lastUsedOn: null }))).toBeNull();
+    expect(catalogGroup(row({ lastUsedOn: "2026-09-05", usageReadAt: "2026-10-06T08:00:00Z" }))).toBeNull();
+    expect(catalogGroup(row({ lastUsedOn: "2026-09-07", usageReadAt: "2026-10-06T08:00:00Z" }))).toBe("sending");
+    expect(catalogGroup(row({ lastUsedOn: "2026-01-02", usageReadAt: "2026-01-03T00:00:00Z" }))).toBe("sending");
   });
 
   it("Postmark sits under the emails we send you, never under cold email sending", () => {
