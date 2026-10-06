@@ -179,15 +179,16 @@ const SECTIONS: SectionDef[] = [
         </p>
         <p>
           <strong>The welcome offer is a total, not a top-up.</strong> The
-          advertised welcome amount (currently $100 until October 31, 2026: $30 credited when the
-          account is created, and $70 more once the account has paid $100 of
-          credit) is the most free credit an account can ever
+          advertised welcome amount (currently $100, credited once the account
+          has paid its first $100 of credit) is the most free credit an account can ever
           receive under that offer, counting every free credit that account has
           already been given under it. Promotional or discount codes, support
           and goodwill grants, and any other credit granted under the welcome
           offer count against that same total and reduce what is left of it. No
           combination of them entitles an account to more than the advertised
-          welcome amount.
+          welcome amount. The onboarding credit added when an account is
+          created is not a welcome credit: it is an advance on the
+          account&apos;s first payment, and that payment is credited net of it.
         </p>
         <p>
           <strong>Referral credits are separate and additional.</strong> The

@@ -99,7 +99,7 @@ https://distribute.you/developers
 - Pricing model: the platform is free. The client chooses how much goes to the
   outreach, and each action is billed at a public catalogue price, prepaid as
   credit. Automatic reload is optional. No subscription, no seat, no setup fee,
-  pause or cancel anytime. Until October 31, 2026, we match a new client's first $100.
+  pause or cancel anytime. We match a new client's first $100.
 - Open source: workflows at https://github.com/shamanic-technologies
 
 ## Key pages

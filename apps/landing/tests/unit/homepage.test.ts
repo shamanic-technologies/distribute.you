@@ -143,9 +143,10 @@ describe("the offer the page states", () => {
     expect(html).toContain("Get revenue in 24h");
     expect(html).toContain("The platform is free");
     expect(html).toContain('href="/catalog"');
-    const banner = html.match(/<!--promo:until=2026-11-01-->([\s\S]*?)<!--\/promo-->/);
-    expect(banner?.[1]).toContain("we match your first $100");
-    const outside = html.replace(/<!--promo:[\s\S]*?<!--\/promo-->/g, "");
+    const banner = html.match(/<a class="promo-bar"[\s\S]*?<\/a>/);
+    expect(banner?.[0]).toContain("we match your first $100");
+    expect(banner?.[0]).toContain("<span data-promo-until>");
+    const outside = html.replace(/<a class="promo-bar"[\s\S]*?<\/a>/, "");
     for (const gone of ["match your first", "$100 free", "from $100", "first top-up"]) expect(outside, gone).not.toContain(gone);
     for (const gone of ["$99", "/month", "free trial", "3-day", "Monthly plan", "$1/day", "From $1<", "$30 free", "Start free with $30", "Pay as you go"]) {
       expect(html, gone).not.toContain(gone);
