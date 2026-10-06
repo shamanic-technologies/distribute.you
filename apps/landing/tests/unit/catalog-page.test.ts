@@ -33,7 +33,7 @@ const FIXTURE: PlatformPrice[] = [
   row({ name: "cloudflare-r2-class-b-operation", provider: "cloudflare", type: "R2 Class B operation", unit: "operation", pricePerUnitInUsdCents: "0.0000720000" }),
   row({ name: "meta-ads-spend", provider: "meta-ads", type: "Meta Ads platform spend", unit: "USD cent", pricingBasis: "pass-through" }),
   row({ name: "x-post-create", provider: "x", type: "X API v2 post create", unit: "post" }),
-  row({ name: "google-search-query", provider: "google", type: "Search query (grounding)", unit: "query", pricePerUnitInUsdCents: "2.8" }),
+  row({ name: "a-current-search-query", provider: "google", type: "Search query (grounding)", unit: "query", pricePerUnitInUsdCents: "2.8" }),
 ];
 
 describe("catalog price list", () => {
@@ -48,6 +48,15 @@ describe("catalog price list", () => {
     expect(catalogGroup(FIXTURE[5])).toBeNull();
     expect(catalogGroup(FIXTURE[6])).toBeNull();
     expect(catalogGroup(FIXTURE[7])).toBe("research");
+  });
+
+  it("a retired tool is not listed as one we run (the single-line Instantly send)", () => {
+    expect(catalogGroup(row({ name: "instantly-email-send", pricePerUnitInUsdCents: "5.9772" }))).toBeNull();
+    expect(catalogGroup(row({ name: "instantly-account-email-sent" }))).toBe("sending");
+  });
+
+  it("Postmark sits under the emails we send you, never under cold email sending", () => {
+    expect(catalogGroup(row({ name: "postmark-email-send", provider: "postmark" }))).toBe("notifications");
   });
 
   it("an unknown provider is listed under Other tools and logged, never dropped", () => {

@@ -31,8 +31,9 @@ export const CATALOG_GROUPS = [
   { key: "leads", title: "Lead data", note: "Finding the right people and checking their email." },
   { key: "research", title: "Web research", note: "Reading each prospect's site and news before writing." },
   { key: "ai", title: "AI writing", note: "Writing and checking each email. Priced per million tokens." },
-  { key: "sending", title: "Sending", note: "Each email and follow-up, sent from our own inboxes." },
+  { key: "sending", title: "Sending", note: "Each email and follow-up, sent from our own inboxes. Every email carries both lines: the inbox and the sending domain." },
   { key: "calls", title: "Calls and messages", note: "Calling or texting a prospect who asked for it." },
+  { key: "notifications", title: "Emails we send you", note: "Replies forwarded to you, alerts and digests about your campaigns." },
   { key: "storage", title: "Storage", note: "Keeping files and pages we generate." },
   { key: "other", title: "Other tools", note: "Tools added to the catalogue since this page was last sorted." },
 ] as const;
@@ -47,7 +48,9 @@ const PROVIDER_GROUP: Record<string, CatalogGroupKey> = {
   "scrape-do": "research",
   "serper-dev": "research",
   instantly: "sending",
-  postmark: "sending",
+  // Postmark carries our own mail to clients (reply forwards, alerts, digests), never
+  // a cold email: runs-service 2026-10-06, every postmark run is a transactional-email job.
+  postmark: "notifications",
   twilio: "calls",
   cloudflare: "storage",
 };
@@ -59,6 +62,50 @@ const PROVIDER_GROUP: Record<string, CatalogGroupKey> = {
  * Media spend and payment fees are excluded by their basis, not listed here.
  */
 const NOT_AN_EMAIL_TOOL = new Set(["x", "featured", "treg"]);
+
+/**
+ * TEMPORARY: cost names the public catalogue still serves as current although no
+ * service has emitted them in 45+ days (runs-service \`runs_costs\`, read 2026-10-06):
+ * replaced tools (Apollo, the single-line Instantly send at twice the price), retired
+ * models. Listed, they read as tools we run today. The catalogue does not say which
+ * names are current; that belongs to costs-service (bug report sent 2026-10-06). Delete
+ * this list once the served list tells current from retired.
+ */
+const RETIRED = new Set([
+  "anthropic-opus-4.5-tokens-input",
+  "anthropic-opus-4.5-tokens-output",
+  "anthropic-web-search",
+  "apify-ahrefs-result",
+  "apify-microworlds-lead",
+  "apify-pipelinelabs-actor-start",
+  "apify-pipelinelabs-lead",
+  "apollo-enrichment-credit",
+  "apollo-person-match-credit",
+  "apollo-search-credit",
+  "deepseek-v4-flash-tokens-input",
+  "deepseek-v4-flash-tokens-output",
+  "deepseek-v4-pro-tokens-input",
+  "deepseek-v4-pro-tokens-output",
+  "featured-api-pitch-submit",
+  "firecrawl-extract-token",
+  "gemini-3-flash-tokens-input",
+  "gemini-3-flash-tokens-output",
+  "google-embedding-001-tokens-input",
+  "google-flash-3-tokens-input",
+  "google-flash-3-tokens-output",
+  "google-flash-3.5-tokens-input",
+  "google-flash-3.5-tokens-output",
+  "google-flash-3.6-tokens-input",
+  "google-flash-3.6-tokens-output",
+  "google-search-query",
+  "instantly-email-send",
+  "moonshot-kimi-k2.6-tokens-cached-input",
+  "scrape-do-render-credit",
+  "scrape-do-render-super-credit",
+  "scrape-do-scrape-credit",
+  "serper-dev-query",
+  "serper-dev-search-query",
+]);
 
 const PROVIDER_NAME: Record<string, string> = {
   anthropic: "Anthropic",
@@ -92,6 +139,7 @@ export function catalogGroup(p: PlatformPrice): CatalogGroupKey | null {
   // Media spend and payment fees are a dollar for a dollar, not a tool we run.
   if (p.pricingBasis === "pass-through") return null;
   if (NOT_AN_EMAIL_TOOL.has(p.provider)) return null;
+  if (RETIRED.has(p.name)) return null;
   if (p.unit === TOKEN_UNIT) return "ai";
   if (p.unit === "search" || p.unit === "query") return "research";
   const group = PROVIDER_GROUP[p.provider];
