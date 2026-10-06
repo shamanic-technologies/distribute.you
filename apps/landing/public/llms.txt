@@ -105,6 +105,7 @@ https://distribute.you/developers
 
 - [Home](https://distribute.you/): what we sell, how it works, live cost per outcome
 - [Pricing](https://distribute.you/#pricing): the Pro plan from $99 a month with a 3-day free trial, or the fully managed plan; the live unit costs are at https://api.distribute.you/v1/costs/platform-prices
+- [Catalog](https://distribute.you/catalog): why we bill per tool used rather than per email sent, and the live unit price of every tool behind an email
 - [About](https://distribute.you/about): the agency model, how billing works, what is guaranteed
 - [Developers](https://distribute.you/developers): the API and its OpenAPI document, how a key
   authenticates, the MCP server, the CLI, and the machine-readable files on this domain
