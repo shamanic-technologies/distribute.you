@@ -22,7 +22,7 @@ import {
  * here double-counts against the figures above it.
  *
  * A customer can hold several at once: the welcome remainder, plus a $500 promise
- * for each referral that converts. Rows arrive cheapest-bar-first from billing and
+ * for each referral, earned on the referred org's own payments. Rows arrive cheapest-bar-first from billing and
  * are rendered in that order, so the next one to land reads first.
  *
  * Every number is served (amount, remaining, progress). Nothing is computed here.
@@ -55,7 +55,7 @@ function PromiseRow({ promise }: { promise: FreeCreditPromise }) {
           <PromiseMark promise={promise} />
           <div className="min-w-0">
             <p className="truncate text-sm font-medium text-gray-800">{promiseTitle(promise)}</p>
-            <p className="text-xs text-gray-500">{promiseSubtitle(remaining)}</p>
+            <p className="text-xs text-gray-500">{promiseSubtitle(remaining, promise)}</p>
           </div>
         </div>
         <span className="whitespace-nowrap text-sm font-semibold text-gray-500">
@@ -98,8 +98,8 @@ export function ComingCreditsCard() {
         <h2 className="text-lg font-medium text-gray-900">On the way</h2>
       </div>
       <p className="mb-4 text-xs text-gray-500">
-        Free credits you have earned but not received yet. They land as your payments reach each
-        amount, and are not part of your balance until they do.
+        Free credits on their way to you. Each one says what has to be paid first. They are not
+        part of your balance until they land.
       </p>
 
       {isPending && promises.length === 0 ? (

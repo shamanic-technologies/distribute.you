@@ -31,9 +31,17 @@ export function isEarnedByReferral(p: PromiseView): boolean {
   return !!p.referredOrgId;
 }
 
-/** A promise the invitee holds because they signed up through someone's link. */
-export function isFromBeingReferred(p: PromiseView): boolean {
-  return !p.referredOrgId && !!p.referrerOrgId;
+/**
+ * Who has to pay for a referral promise to land, in words.
+ *
+ * A referral promise is held by the REFERRER and earned on the REFERRED org's
+ * payments (billing v0.81.61; owner rule 2026-10-06). The referred org gets no
+ * referral credit at all. So the sentence must name them, never "your payments":
+ * the referrer pays nothing for it.
+ */
+function referralPayer(p: PromiseView): string {
+  const name = (p.referredOrgName ?? "").trim();
+  return name || "your referral";
 }
 
 /**
@@ -49,7 +57,6 @@ export function promiseTitle(p: PromiseView): string {
     const name = (p.referredOrgName ?? "").trim();
     return name ? `Referral credits from ${name}` : "Referral credits";
   }
-  if (isFromBeingReferred(p)) return "Referral credits";
   return "Welcome credits";
 }
 
@@ -61,7 +68,12 @@ export function promiseTitle(p: PromiseView): string {
  * to do subtraction against a number they do not have on screen. `remaining` is
  * served, never computed here.
  */
-export function promiseSubtitle(remainingLabel: string | null): string {
+export function promiseSubtitle(remainingLabel: string | null, p: PromiseView = {}): string {
+  if (isEarnedByReferral(p)) {
+    const who = referralPayer(p);
+    if (!remainingLabel) return `Lands once ${who} has paid us more.`;
+    return `Lands once ${who} has paid ${remainingLabel} more.`;
+  }
   if (!remainingLabel) return "Unlocks with your next payments.";
   return `Unlocks after ${remainingLabel} more in payments.`;
 }
@@ -83,7 +95,13 @@ export function promiseSubtitle(remainingLabel: string | null): string {
 export function promiseUnlockLine(
   amountLabel: string,
   remainingLabel: string | null,
+  p: PromiseView = {},
 ): string {
+  if (isEarnedByReferral(p)) {
+    const who = referralPayer(p);
+    if (!remainingLabel) return `Get ${amountLabel} free credits once ${who} has paid us more.`;
+    return `Get ${amountLabel} free credits once ${who} has paid ${remainingLabel} more.`;
+  }
   // "free credits" is load-bearing, not decoration: without it the sentence puts
   // two dollar figures side by side and the first one reads as something else the
   // customer owes, rather than as the gift the second one buys.

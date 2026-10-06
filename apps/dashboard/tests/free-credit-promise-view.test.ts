@@ -1,7 +1,6 @@
 import { describe, it, expect } from "vitest";
 import {
   isEarnedByReferral,
-  isFromBeingReferred,
   promiseTitle,
   promiseSubtitle,
   promiseProgressLabel,
@@ -15,17 +14,14 @@ import {
 describe("which kind of promise a row is", () => {
   it("reads a referral the org EARNED off the referred org id", () => {
     expect(isEarnedByReferral({ referredOrgId: "org-a" })).toBe(true);
-    expect(isFromBeingReferred({ referredOrgId: "org-a" })).toBe(false);
   });
 
-  it("reads the invitee's own promise off the referrer id", () => {
-    expect(isFromBeingReferred({ referrerOrgId: "org-b" })).toBe(true);
+  it("a referrer id alone is not a referral credit (the referred org gets none)", () => {
     expect(isEarnedByReferral({ referrerOrgId: "org-b" })).toBe(false);
   });
 
   it("treats a promise with neither as the welcome one", () => {
     expect(isEarnedByReferral({})).toBe(false);
-    expect(isFromBeingReferred({})).toBe(false);
     expect(promiseTitle({})).toBe("Welcome credits");
   });
 });
@@ -52,10 +48,9 @@ describe("promiseTitle", () => {
     );
   });
 
-  it("does not name anyone on the invitee's own referral promise", () => {
-    // The invitee is earning it themselves; naming their referrer there would
-    // describe the wrong relationship.
-    expect(promiseTitle({ referrerOrgId: "org-b" })).toBe("Referral credits");
+  it("never titles a row as a referral credit for the referred org", () => {
+    // Owner rule 2026-10-06: the referred org gets no referral credit.
+    expect(promiseTitle({ referrerOrgId: "org-b" })).toBe("Welcome credits");
   });
 });
 
@@ -66,6 +61,26 @@ describe("promiseSubtitle", () => {
 
   it("degrades to a plain sentence when there is no figure", () => {
     expect(promiseSubtitle(null)).toBe("Unlocks with your next payments.");
+  });
+
+  it("keeps the welcome row on the org's own payments", () => {
+    expect(promiseSubtitle("$70.00", {})).toBe("Unlocks after $70.00 more in payments.");
+  });
+
+  it("names the REFERRED org's payments on a referral row, never the referrer's", () => {
+    // The referrer pays nothing: the promise lands on the referred org's payments.
+    const s = promiseSubtitle("$300.00", { referredOrgId: "org-a", referredOrgName: "Acme" });
+    expect(s).toBe("Lands once Acme has paid $300.00 more.");
+    expect(s).not.toContain("in payments");
+  });
+
+  it("says 'your referral' when the referred org has no name", () => {
+    expect(promiseSubtitle("$300.00", { referredOrgId: "org-a" })).toBe(
+      "Lands once your referral has paid $300.00 more.",
+    );
+    expect(promiseSubtitle(null, { referredOrgId: "org-a", referredOrgName: "Acme" })).toBe(
+      "Lands once Acme has paid us more.",
+    );
   });
 });
 
@@ -116,6 +131,15 @@ describe("promiseUnlockLine", () => {
     // Without "free credits" the first amount reads as something else the
     // customer owes rather than as the gift the second one buys.
     expect(promiseUnlockLine("$347", "$376")).toContain("free credits");
+  });
+
+  it("names the referred org's payments on a referral row", () => {
+    expect(promiseUnlockLine("$500", "$300", { referredOrgId: "org-a", referredOrgName: "Acme" })).toBe(
+      "Get $500 free credits once Acme has paid $300 more.",
+    );
+    expect(promiseUnlockLine("$500", "$300", { referredOrgId: "org-a" })).toBe(
+      "Get $500 free credits once your referral has paid $300 more.",
+    );
   });
 
   it("uses no em-dash", () => {
@@ -169,6 +193,15 @@ describe("promiseProgressSentence", () => {
     expect(promiseProgressSentence(null)).toBeNull();
     expect(promiseProgressSentence(undefined)).toBeNull();
     expect(promiseProgressSentence(Number.NaN)).toBeNull();
+  });
+
+  it("names the referred org's payments on a referral row", () => {
+    expect(promiseUnlockLine("$500", "$300", { referredOrgId: "org-a", referredOrgName: "Acme" })).toBe(
+      "Get $500 free credits once Acme has paid $300 more.",
+    );
+    expect(promiseUnlockLine("$500", "$300", { referredOrgId: "org-a" })).toBe(
+      "Get $500 free credits once your referral has paid $300 more.",
+    );
   });
 
   it("uses no em-dash", () => {

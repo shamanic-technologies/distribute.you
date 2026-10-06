@@ -232,13 +232,14 @@ const SECTIONS: SectionDef[] = [
         </p>
         <p>
           <strong>Referral credits are separate and additional.</strong> The
-          referral offer (currently $500 for each side of a referral) is its own
-          offer with its own total, and it does not count against the welcome
-          amount. Unlike the welcome credits, referral credits are earned: each
-          side receives its amount once the referred account&apos;s cumulative
-          successful payments reach the referral amount. An account may earn the
-          referral amount any number of times, once for each separate person it
-          refers who reaches that threshold.
+          referral offer (currently $500, credited to the account that refers)
+          is its own offer with its own total, and it does not count against
+          the welcome amount. Referral credits are earned: the referring account
+          receives its amount once the referred account&apos;s cumulative
+          successful payments reach the referral amount. The referred account
+          receives no referral credit. An account may earn the referral amount
+          any number of times, once for each separate account it refers that
+          reaches that threshold.
         </p>
         <p>
           <strong>Which offer applies to you.</strong> Payments means money
