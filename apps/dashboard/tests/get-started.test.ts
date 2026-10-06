@@ -18,6 +18,7 @@ import {
   campaignPlanProblem,
   matchNote,
   parseCampaignBudget,
+  wallCopy,
   parseGetStartedSnapshot,
   parseReloadThresholdUsd,
   parseTopupUsd,
@@ -105,6 +106,21 @@ describe("the rules the page decides on", () => {
     expect(campaignPlan(served, floor, 4).find((c) => c.on && !c.reactive)?.budgetUsd).toBe(10);
     expect(campaignPlanProblem(moved, floor)).toBeNull();
     expect(campaignPlanProblem(setPlannedOn(moved, "cold:start_to_visit", false), floor)).toBe("Turn on one campaign that finds new leads.");
+  });
+
+  it("stops promising the match to new signups on November 1, 2026 (owner 2026-10-06)", () => {
+    const before = Date.parse("2026-10-31T23:59:59Z");
+    const after = Date.parse("2026-11-01T00:00:00Z");
+    expect(wallCopy(before).formTitle).toBe("Claim your $100 match");
+    expect(JSON.stringify(wallCopy(after))).not.toContain("match");
+    expect(matchNote(null, before)).toBe("We match your first $100.");
+    expect(matchNote(null, after)).toBe("");
+    // An org billing created under the match keeps reading its own figures.
+    const held = { free_credit_offer: "match_100", free_credit_received_cents: "3000", free_credit_pending_cents: "7000", free_credit_remaining_to_pay_cents: "4000" };
+    // Created after the end: billing reads 0 everywhere, the line says nothing.
+    const none = { free_credit_offer: "match_100", free_credit_received_cents: "0.0000000000", free_credit_pending_cents: "0.0000000000", free_credit_remaining_to_pay_cents: "0.0000000000" };
+    expect(matchNote(none, after)).toBe("");
+    expect(matchNote(held, after)).toBe("We match your first $100. $30 is already in your account. $70 more lands once you have paid $40.");
   });
 
   it("states the match in billing's figures, never a guessed split", () => {
