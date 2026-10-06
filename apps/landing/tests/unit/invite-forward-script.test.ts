@@ -2,15 +2,10 @@ import { describe, it, expect } from "vitest";
 import { INVITE_FORWARD_SCRIPT } from "../../src/lib/static-html";
 
 /**
- * The referral code's journey across the subdomain gap, plus the banner that
- * tells the visitor what the link is worth.
- *
- * Behaviour was verified by reproduction (headless Chromium against a throwaway
- * page loading this exact string): with `?invite=acme` the banner is the body's
- * first child and a dashboard-bound link picks up `?invite=acme` on click; with
- * no code there is no banner and the link is untouched; with a malformed code
- * there is no banner. These guards pin the parts of that which are cheap to
- * assert statically.
+ * The referral code's journey across the subdomain gap: with `?invite=acme` a
+ * dashboard-bound link picks up `?invite=acme` on click; with no code the link is
+ * untouched. These guards pin the parts of that which are cheap to assert
+ * statically.
  */
 
 describe("INVITE_FORWARD_SCRIPT", () => {
@@ -40,25 +35,10 @@ describe("INVITE_FORWARD_SCRIPT", () => {
     expect(INVITE_FORWARD_SCRIPT).toContain("if(!u.searchParams.get('invite'))");
   });
 
-  it("announces the real total, not the plain welcome figure", () => {
-    // The link lands on a page that otherwise states the plain welcome figure while
-    // this visitor is being offered both, which reads as the referrer's pitch being
-    // contradicted by the first page their friend sees.
-    expect(INVITE_FORWARD_SCRIPT).toContain("$530 in free credits instead of $30");
-    // The welcome half is GIVEN, so the banner may not gate it on a payment; only
-    // the referral half names a bar, and that bar is the stacked sum.
-    expect(INVITE_FORWARD_SCRIPT).toContain("lands the moment you sign up");
-    // The bar is the referral's OWN amount: billing drops a granted promise out of
-    // the ladder, so it does not stack on the $30.
-    expect(INVITE_FORWARD_SCRIPT).toContain("payments reach $500");
-    expect(INVITE_FORWARD_SCRIPT).not.toContain("payments reach $400");
-  });
-
-  it("shows the banner at most once", () => {
-    expect(INVITE_FORWARD_SCRIPT).toContain("getElementById('dy-invite-banner')");
-  });
-
-  it("uses no em-dash in the customer-facing sentence", () => {
-    expect(INVITE_FORWARD_SCRIPT).not.toContain("—");
+  it("injects no banner: a referred visitor sees the ordinary page", () => {
+    // Owner 2026-10-06: the "You were invited" banner is removed completely.
+    expect(INVITE_FORWARD_SCRIPT).not.toContain("dy-invite-banner");
+    expect(INVITE_FORWARD_SCRIPT).not.toContain("createElement");
+    expect(INVITE_FORWARD_SCRIPT).not.toContain("free credits");
   });
 });
