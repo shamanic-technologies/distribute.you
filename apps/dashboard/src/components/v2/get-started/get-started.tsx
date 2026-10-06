@@ -5,7 +5,7 @@
  *
  * Explee's order: a website, then real output one step at a time: the company read
  * and its competitors (steps 1 and 2), the ONE offer to sell (3) and the ONE audience
- * to write to (4), picked from proposals, then up to 100 companies of that audience
+ * to write to (4), picked from proposals, then the first companies of that audience
  * with the right person at each (5) and the first emails (6). The account and the
  * card are asked on ONE screen at the end (the wall).
  *
@@ -31,7 +31,6 @@ import posthog from "posthog-js";
 import { BRAND_WHY } from "@/lib/brand-why";
 import {
   ApiError,
-  checkAudienceCompanyEmail,
   confirmAudienceSegments,
   confirmBrandOffers,
   createBrandWithoutWebsite,
@@ -57,7 +56,6 @@ import {
   upsertBrand,
   type AudienceCompanyRow,
   type AudienceSegmentProposal,
-  type CompanyRowEmailCheck,
   type OfferProposal,
   type PreviewEmail,
 } from "@/lib/api";
@@ -166,12 +164,11 @@ const DEFAULT_HOLD_MS = 12_000;
 const SIGNED_IN_WALK_MESSAGE = "You are signed in. Add this brand from your dashboard instead.";
 
 /**
- * The 100 companies are built page by page, and each company not already cached costs
- * the anonymous org an Apollo credit (~12 cents). So the first page is small (it lands
- * in about 3 s) and the rest is built only as the visitor scrolls to it.
+ * Each company not already cached costs the anonymous org an Apollo credit (~12 cents),
+ * and visitors do not scroll past the first rows (owner 2026-10-06). So the preview is
+ * ONE page of five, never more, before payment.
  */
-const FIRST_PAGE = 10;
-const NEXT_PAGE = 30;
+const PREVIEW_COMPANIES = 5;
 
 const rowKey = (audienceId: string, index: number) => `${audienceId}:${index}`;
 
@@ -246,7 +243,7 @@ export function GetStarted({ org }: { org?: OrgWalk } = {}) {
   // only the picked one (the others go back to suggested).
   const prebuild = useRef<Promise<void> | null>(null);
   const [building, setBuilding] = useState<Record<string, boolean>>({});
-  // Step 5: up to 100 companies per picked audience, page by page.
+  // Step 5: the first companies of the picked audience (PREVIEW_COMPANIES).
   const [rows, setRows] = useState<Record<string, AudienceCompanyRow[]>>({});
   const [rowsDone, setRowsDone] = useState<Record<string, boolean>>({});
   const [rowsNote, setRowsNote] = useState<Record<string, string>>({});
@@ -261,10 +258,6 @@ export function GetStarted({ org }: { org?: OrgWalk } = {}) {
   const [emailErrors, setEmailErrors] = useState<Record<string, string>>({});
   const requested = useRef(new Set<string>());
   const [selectedRow, setSelectedRow] = useState(0);
-  // The row's person, found and verified live (the first 10 rows only).
-  const [checks, setChecks] = useState<Record<string, CompanyRowEmailCheck>>({});
-  const checkQueue = useRef<Promise<void>>(Promise.resolve());
-  const checkAsked = useRef(new Set<string>());
   // The first email waits on a full read of the site (up to ~2 minutes on a big one).
   // Start that read the moment the brand exists, so step 6 only waits for the model.
   const warmed = useRef(new Set<string>());
@@ -1035,10 +1028,10 @@ export function GetStarted({ org }: { org?: OrgWalk } = {}) {
   const writtenKeys = useRef(new Set<string>());
   const firstEmailFor = (audienceId: string) => [...writtenKeys.current].some((k) => k.startsWith(`${audienceId}:`));
 
-  // ── Step 5: the companies, page by page ──────────────────────────────────
+  // ── Step 5: the companies ──────────────────────────────────
 
   useEffect(() => {
-    if (audience) wantRows(audience, FIRST_PAGE);
+    if (audience) wantRows(audience, PREVIEW_COMPANIES);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [audience?.audienceId]);
 
@@ -1058,8 +1051,8 @@ export function GetStarted({ org }: { org?: OrgWalk } = {}) {
     let waits = 0;
     let first = offset === 0;
     try {
-      while (offset < (wanted.current.get(id) ?? FIRST_PAGE)) {
-        const limit = Math.min(offset === 0 ? FIRST_PAGE : NEXT_PAGE, 100 - offset);
+      while (offset < (wanted.current.get(id) ?? PREVIEW_COMPANIES)) {
+        const limit = PREVIEW_COMPANIES - offset;
         const page = await getAudienceCompanies(id, { offset, limit });
         // human-service is still building this audience's people search (~90 s after
         // it was created): asked again every 3 s, for up to 4 minutes, with the wait shown.
@@ -1091,7 +1084,7 @@ export function GetStarted({ org }: { org?: OrgWalk } = {}) {
             else pendingPrewrite.current = { aud, rows: got };
           }
         }
-        if (page.done || page.nextOffset == null || got.length === 0) {
+        if (page.done || page.nextOffset == null || got.length === 0 || offset + got.length >= PREVIEW_COMPANIES) {
           setRowsDone((cur) => ({ ...cur, [id]: true }));
           break;
         }
@@ -1121,7 +1114,7 @@ export function GetStarted({ org }: { org?: OrgWalk } = {}) {
 
   // ── Step 6: the emails ───────────────────────────────────────────────────
 
-  /** The first rows' emails, written ahead: the first alone (it reads the site), then the next ones together. */
+  /** The first row's email, written ahead (PREWRITTEN_EMAILS); the others only on click. */
   function prewrite(aud: GetStartedAudience, first: AudienceCompanyRow[]) {
     const writable = first.filter(rowWritable).slice(0, PREWRITTEN_EMAILS);
     if (writable.length === 0) {
@@ -1130,10 +1123,8 @@ export function GetStarted({ org }: { org?: OrgWalk } = {}) {
     }
     setStep("email", "running");
     void (async () => {
-      await writeEmail(aud, writable[0]);
-      await Promise.all(writable.slice(1).map((r) => writeEmail(aud, r)));
+      for (const r of writable) await writeEmail(aud, r);
     })();
-    for (const r of writable) queueCheck(aud.audienceId, r.index);
   }
 
   /** Writes one row's email (content-generation, billed to this anonymous org). The same person returns the stored email. */
@@ -1186,27 +1177,6 @@ export function GetStarted({ org }: { org?: OrgWalk } = {}) {
     }
   }
 
-  /** One row's person, found and verified live, one row at a time (a billed reveal, ~6s). */
-  function queueCheck(audienceId: string, index: number) {
-    const key = rowKey(audienceId, index);
-    if (index >= 10 || checkAsked.current.has(key)) return;
-    checkAsked.current.add(key);
-    setChecks((cur) => ({ ...cur, [key]: { index, status: "checking", finder: null, verifier: null, verdict: null, deliverable: null, maskedEmail: null, checkedAt: null } }));
-    checkQueue.current = checkQueue.current.then(async () => {
-      try {
-        const got = await checkAudienceCompanyEmail(audienceId, index);
-        setChecks((cur) => ({ ...cur, [key]: got }));
-      } catch (e) {
-        console.error("[get-started] email check failed:", e);
-        setChecks((cur) => {
-          const next = { ...cur };
-          delete next[key];
-          return next;
-        });
-      }
-    });
-  }
-
   /** A row clicked: its email on the stage, written now when it is not yet (up to the cap). */
   function openRow(index: number) {
     if (!audience) return;
@@ -1224,10 +1194,7 @@ export function GetStarted({ org }: { org?: OrgWalk } = {}) {
       setStageIdx(stepIndex("email"));
       setFocus(null);
     });
-    if (!have && rowWritable(row)) {
-      void writeEmail(audience, row);
-      queueCheck(audience.audienceId, index);
-    }
+    if (!have && rowWritable(row)) void writeEmail(audience, row);
   }
 
   // ── The stage ────────────────────────────────────────────────────────────
@@ -1694,7 +1661,6 @@ export function GetStarted({ org }: { org?: OrgWalk } = {}) {
           done={audience ? !!rowsDone[audience.audienceId] : false}
           loadingMore={audience ? !!loadingMore[audience.audienceId] : false}
           building={audience ? !!building[audience.audienceId] : false}
-          onMore={() => audience && wantRows(audience, (rowCount.current.get(audience.audienceId) ?? 0) + NEXT_PAGE)}
           note={audience ? rowsNote[audience.audienceId] ?? null : null}
           emailState={(i) => (audience ? emailStateFor(rowKey(audience.audienceId, i)) : "none")}
           onOpen={openRow}
@@ -1708,7 +1674,6 @@ export function GetStarted({ org }: { org?: OrgWalk } = {}) {
         mail={selectedKey ? emails[selectedKey] : undefined}
         error={selectedKey ? emailErrors[selectedKey] ?? null : null}
         emailState={(i) => (audience ? emailStateFor(rowKey(audience.audienceId, i)) : "none")}
-        check={(i) => (audience ? checks[rowKey(audience.audienceId, i)] : undefined)}
         written={requested.current.size}
         onOpen={openRow}
       />
@@ -1927,7 +1892,7 @@ function Hero({
           We find your next clients.
         </h1>
         <p className="gs-in k-fg2 mt-2 text-[14px] leading-6" style={{ animationDelay: "120ms" }}>
-          {inOrg ? "Type its website. See 100 of them in a minute." : "Type your website. See 100 of them in a minute. No account needed."}
+          {inOrg ? "Type its website. See 5 of them in a minute." : "Type your website. See 5 of them in a minute. No account needed."}
         </p>
         {noSite && onWithoutWebsite ? (
           <form
@@ -1980,7 +1945,7 @@ function Hero({
           </button>
         )}
         <ol className="gs-in mt-5 grid grid-cols-3 gap-2" style={{ animationDelay: "240ms" }} aria-label="What you will see">
-          {["Your company", "100 companies", "Your first emails"].map((label, i) => (
+          {["Your company", "5 companies", "Your first emails"].map((label, i) => (
             <li key={label} className="k-fg3 flex items-center gap-2 text-[12px]">
               <span className="inline-flex h-4 w-4 shrink-0 items-center justify-center rounded-full border border-[var(--line-strong)] text-[10px] tabular-nums">{i + 1}</span>
               {label}
@@ -3208,7 +3173,6 @@ function CompaniesStage({
   done,
   loadingMore,
   building,
-  onMore,
   note,
   emailState,
   onOpen,
@@ -3219,7 +3183,6 @@ function CompaniesStage({
   done: boolean;
   loadingMore: boolean;
   building: boolean;
-  onMore: () => void;
   note: string | null;
   emailState: (index: number) => RowEmailState;
   onOpen: (index: number) => void;
@@ -3268,7 +3231,7 @@ function CompaniesStage({
                     <tr
                       key={r.index}
                       className="gs-in k-row cursor-pointer border-b border-[var(--line-subtle)] last:border-0"
-                      style={stagger(i % NEXT_PAGE, 30)}
+                      style={stagger(i, 30)}
                       onClick={() => onOpen(r.index)}
                       onKeyDown={(e) => {
                         if (e.key === "Enter" || e.key === " ") {
@@ -3332,17 +3295,11 @@ function CompaniesStage({
               </tbody>
             </table>
           </div>
-          {!done && <MoreSentinel onMore={onMore} busy={loadingMore} />}
           <div className="flex flex-wrap items-center gap-x-3 gap-y-1 border-t border-[var(--line-subtle)] px-4 py-2.5">
             <p className="k-fg3 min-w-0 flex-1 text-[12px] tabular-nums">
-              {done ? `${rows.length} companies, one person each.` : `${rows.length} of up to 100 companies so far.`} Click a row to read the email we would send. Last names stay masked until your account is set up.
+              {done ? `${rows.length} companies, one person each.` : `${rows.length} companies so far.`} Click a row to read the email we would send. Last names stay masked until your account is set up.
               {note && done ? ` ${note}` : ""}
             </p>
-            {!done && (
-              <button type="button" className="k-btn-ghost h-6 px-2 text-[12px]" disabled={loadingMore} onClick={onMore}>
-                {loadingMore ? "Finding more" : "Show more"}
-              </button>
-            )}
           </div>
         </div>
       )}
@@ -3373,47 +3330,6 @@ function BuildingNote({ building }: { building: boolean }) {
   );
 }
 
-/**
- * Builds the next page when the bottom of the table scrolls into view: the rest of
- * the 100 is built only as the visitor reaches it, so an Apollo credit is only spent
- * on a company somebody looks at.
- */
-function MoreSentinel({ onMore, busy }: { onMore: () => void; busy: boolean }) {
-  const ref = useRef<HTMLDivElement | null>(null);
-  const cb = useRef(onMore);
-  cb.current = onMore;
-  useEffect(() => {
-    const el = ref.current;
-    if (!el || busy || typeof IntersectionObserver === "undefined") return;
-    const io = new IntersectionObserver((entries) => {
-      if (entries.some((e) => e.isIntersecting)) cb.current();
-    }, { rootMargin: "200px" });
-    io.observe(el);
-    return () => io.disconnect();
-  }, [busy]);
-  return <div ref={ref} aria-hidden="true" className="h-px" />;
-}
-
-/** One row's person, found and verified live, in plain words. */
-function RowCheck({ check }: { check: CompanyRowEmailCheck | undefined }) {
-  if (!check) return null;
-  if (check.status === "checking" || check.status === "pending")
-    return (
-      <span className="k-fg3 inline-flex items-center gap-1.5 text-[11.5px]">
-        <span aria-hidden className="inline-block h-2.5 w-2.5 animate-spin rounded-full border-2 border-current border-t-transparent motion-reduce:animate-none" />
-        Finding and verifying the email
-      </span>
-    );
-  // No address, no vendor names: the visitor only needs to know we reach this person.
-  if (check.status === "found")
-    return (
-      <span className="gs-pop block text-[11.5px]" style={{ color: check.deliverable ? "var(--run)" : undefined }}>
-        {check.deliverable ? "Email found and verified" : "Email found"}
-      </span>
-    );
-  return <span className="gs-in k-fg3 block text-[11.5px]">No email found</span>;
-}
-
 /** Step 6: the people on the left, the selected one's email on the right (Explee's layout). */
 function EmailsStage({
   state,
@@ -3422,7 +3338,6 @@ function EmailsStage({
   mail,
   error,
   emailState,
-  check,
   written,
   onOpen,
 }: {
@@ -3432,7 +3347,6 @@ function EmailsStage({
   mail: PreviewEmail | undefined;
   error: string | null;
   emailState: (index: number) => RowEmailState;
-  check: (index: number) => CompanyRowEmailCheck | undefined;
   written: number;
   onOpen: (index: number) => void;
 }) {
@@ -3471,9 +3385,6 @@ function EmailsStage({
                       <span className="k-fg block truncate text-[13px] font-medium">{name}</span>
                       <span className="k-fg3 block truncate text-[12px]">
                         {[r.person.title, r.company.domain ?? r.company.name].filter(Boolean).join(" · ")}
-                      </span>
-                      <span className="mt-1 block">
-                        <RowCheck check={check(r.index)} />
                       </span>
                     </span>
                     <span className="flex h-5 w-3 shrink-0 items-center justify-center">
