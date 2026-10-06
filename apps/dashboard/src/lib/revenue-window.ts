@@ -35,6 +35,8 @@ export const RevenueWindowSchema = z.object({
       actualSpentCents: z.number(),
       /** Committed: actual plus the holds still open. The figure the Spent tile states. */
       totalSpentCents: z.number(),
+      /** The holds still open (follow-ups reserved, not sent yet), served. Optional until read everywhere. */
+      provisionedSpentCents: z.number().optional(),
       brandLevelActualSpentCents: z.number(),
       costPerEmailSentCents: z.number().nullable(),
       daily: z.array(z.object({ date: z.string(), actualSpentCents: z.number(), totalSpentCents: z.number() })),

@@ -28,6 +28,13 @@ describe("campaign page stat cards", () => {
     expect(overview).toContain("note={<InfoTooltip tip={CAMPAIGN_ROI_TIP}");
   });
 
+  it("Queued, Sent and Delivered count emails off the campaign window", () => {
+    expect(overview).toContain('<StatTile label="Queued">{emailCount(queued)}</StatTile>');
+    expect(overview).toContain('<StatTile label="Sent">{emailCount(emails?.sent)}</StatTile>');
+    expect(overview).toContain('<StatTile label="Delivered">{emailCount(emails?.delivered)}</StatTile>');
+    expect(overview).toContain('unit={v === 1 ? "email" : "emails"}');
+  });
+
   it("one person is a person", () => {
     expect(overview).toContain('unit={v === 1 ? "person" : "people"}');
   });

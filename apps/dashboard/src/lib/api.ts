@@ -5086,6 +5086,33 @@ export async function getOfferRevenueWindow(
 }
 
 /**
+ * ONE campaign's `window` block (features-service `/features/:slug/revenue?campaignId=&windowDays=`,
+ * #1363): the offer window's figures over the campaign identity alone, its own spend only. The
+ * campaign page's cards read their email counts and the provisioned follow-ups from it.
+ */
+export async function getCampaignRevenueWindow(
+  featureSlug: string,
+  brandId: string,
+  campaignId: string,
+  days: RevenueWindowDays,
+  token?: string,
+): Promise<RevenueWindow> {
+  const query = new URLSearchParams({ brandId, campaignId, pricing: "net", windowDays: String(days) });
+  const raw = await apiCall<unknown>(`/features/${encodeURIComponent(featureSlug)}/revenue?${query.toString()}`, { token });
+  const parsed = RevenueWindowResponseSchema.safeParse(raw);
+  if (!parsed.success) {
+    console.error("[dashboard] getCampaignRevenueWindow: response shape mismatch", {
+      featureSlug,
+      campaignId,
+      days,
+      issues: parsed.error.issues,
+    });
+    throw new Error("[dashboard] getCampaignRevenueWindow: invalid response shape");
+  }
+  return parsed.data.window;
+}
+
+/**
  * `structuralSharing` merge for the `["featureRevenue", ...]` query. The
  * server-computed `spend` block (cost card) and the actual series
  * (`outreachContacted`, `clicked`, `repliedPositive`, `meetingsBooked`,
