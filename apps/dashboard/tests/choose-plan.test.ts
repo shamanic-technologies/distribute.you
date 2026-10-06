@@ -56,12 +56,9 @@ describe("where a plan is chosen", () => {
     expect(add).toContain("<ChoosePlanPanel brandId={brandId} offerId={offerId} onStarted={() => mutation.mutate()} />");
   });
 
-  it("Add a brand ends on the plan and never writes a payment mode (a plan sets it; a pay-as-you-go org keeps its tag)", () => {
+  it("Add a brand ends on prepaid credit, never on a plan (owner 2026-10-06)", () => {
     const end = read("src/components/v2/get-started/org-launch.tsx");
-    expect(end).toContain("<ChoosePlanPanel");
-    expect(end).toContain("onStarted={() => launch(SUBSCRIPTION_OUTBOUND_DAILY_USD, true)}");
-    expect(end).toContain('if (code !== "existing_paying_org") return false;');
-    expect(end).not.toContain("setPaymentMode(");
+    expect(end).not.toContain("ChoosePlanPanel");
     expect(end).not.toContain("startTrial");
   });
 });

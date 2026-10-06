@@ -282,10 +282,14 @@ export function TodayPage() {
                   {emails ? `${formatCount(emails.delivered)} of ${formatCount(emails.sent)} emails` : "\u00a0"}
                 </p>
               </StatTile>
-              {/* The total over the window: charged plus held, setup included (owner 2026-10-03). */}
+              {/* Spent = billed, setup included. The total with follow-ups reserved and not sent yet
+                  stands under it on its own line, never under the Spent label (2026-10-06, Legistai). */}
               <StatTile label="Spent" href={`${v2Href(orgId, brandId, "billing")}#usage`}>
-                {win.pending ? <Shimmer className="h-7 w-16" /> : <Figure value={winSpend ? formatCentsAsUsdAdaptive(winSpend.totalSpentCents) : "—"} />}
-                <Trend className="mt-auto pt-2" values={winSpend ? winSpend.daily.map((d) => d.totalSpentCents) : null} />
+                {win.pending ? <Shimmer className="h-7 w-16" /> : <Figure value={winSpend ? formatCentsAsUsdAdaptive(winSpend.actualSpentCents) : "—"} />}
+                {winSpend && winSpend.totalSpentCents > winSpend.actualSpentCents && (
+                  <p className="k-fg3 mt-1 text-[12px] leading-4">{formatCentsAsUsdAdaptive(winSpend.totalSpentCents)} with follow-ups reserved</p>
+                )}
+                <Trend className="mt-auto pt-2" values={winSpend ? winSpend.daily.map((d) => d.actualSpentCents) : null} />
               </StatTile>
             </div>
 

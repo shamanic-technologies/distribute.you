@@ -123,12 +123,15 @@ describe("resume after a reload or a quit, per org", () => {
   });
 });
 
-describe("the end: Choose your plan, then the walk's own launch", () => {
-  const launch = end.slice(end.indexOf("async function launch("), end.indexOf("function submitBudget("));
-  it("the dashboard walk opens Choose your plan, never the account/phone/card wall", () => {
+describe("the end: prepaid credit (owner 2026-10-06), then the walk's own launch", () => {
+  const launch = end.slice(end.indexOf("async function launch("), end.indexOf("  return (\n"));
+  it("the dashboard walk opens its credit step, never the account/phone/card wall nor a plan", () => {
     expect(walk).toContain("<OrgLaunch");
-    expect(walk).toContain("plan.length > 0 && !org && (\n        <AccountCardWall");
-    expect(end).toContain("<ChoosePlanPanel");
+    expect(walk).toContain("launchCampaigns.length > 0 && !org && (\n        <AccountCardWall");
+    expect(end).not.toContain("ChoosePlanPanel");
+    expect(end).toContain("<PrepaidTopup");
+    // An org that already pays launches on what it has; one with no card adds credit first.
+    expect(end).toContain('setStage(a.has_payment_method ? "ready" : "credit");');
   });
   it("launches through launchFromPreview, then marks the org set up with a token minted FOR it", () => {
     const l = launch.indexOf("await launchFromPreview(");
@@ -149,8 +152,10 @@ describe("the end: Choose your plan, then the walk's own launch", () => {
     expect(launch).toContain("window.location.assign(v2CampaignHref(orgId, brandId, campaignId))");
   });
   it("declares Revolut before the first card form, on the org it acts on", () => {
-    expect(end).toContain("beforeCard={declareRevolut}");
-    const dec = end.slice(end.indexOf("async function declareRevolut("), end.indexOf("async function launch("));
+    const pay = end.slice(end.indexOf("async function pay("), end.indexOf("async function afterPaid("));
+    expect(pay.indexOf("await declareRevolut();")).toBeGreaterThan(-1);
+    expect(pay.indexOf("await declareRevolut();")).toBeLessThan(pay.indexOf("await payTopup("));
+    const dec = end.slice(end.indexOf("async function declareRevolut("), end.indexOf("async function pay("));
     expect(dec).toContain('"/api/orgs/revolut"');
     expect(dec).toContain("organizationId: orgId");
   });

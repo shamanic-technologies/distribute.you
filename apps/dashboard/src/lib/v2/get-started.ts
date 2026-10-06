@@ -11,11 +11,12 @@
 
 /**
  * The live steps. 1 and 2 are read off the site; 3 and 4 are PICKS (one offer, one
- * audience) whose proposals are prepared in the background; 5 to 8 are QUESTIONS the
- * visitor answers about the offer (what they want to buy, what a client is worth, the
- * six offer points, what they give away and never give), each prefilled from the site;
- * 9 is the audience's companies with one person each; 10 is the first emails, written
- * only once 5 to 8 are answered, since they are written from those answers.
+ * audience) whose proposals are prepared in the background; then what a client is worth
+ * and the offer's sales path, as the dashboard's Sales path page builds it (owner
+ * 2026-10-06): its steps, the legs between them, the channels, the paths ticked, then the
+ * campaigns those paths use with a budget each; then the six offer points and what is
+ * given away; then the audience's companies with one person each, and the first emails,
+ * written only once the questions are answered, since they are written from the answers.
  */
 import { COUNTRIES } from "../../components/onboarding/phone-countries";
 
@@ -27,7 +28,9 @@ export const GET_STARTED_STEPS = [
   { key: "value", label: "What a client is worth" },
   { key: "salesSteps", label: "Your sales steps" },
   { key: "legs", label: "How leads move" },
-  { key: "paths", label: "Your most profitable opportunity" },
+  { key: "channels", label: "Your channels" },
+  { key: "paths", label: "Your sales paths" },
+  { key: "campaigns", label: "Your campaigns" },
   { key: "levers", label: "Sharpen your offer" },
   { key: "gives", label: "What you give away" },
   { key: "companies", label: "Find 100 companies" },
@@ -105,89 +108,92 @@ export function initialSalesSteps(drafted: unknown, offered: readonly string[]):
   return offered.filter((k) => keys.has(k));
 }
 
-/** A path as this flow reads it: what features-service served, narrowed to what we use. */
-export interface PlanPath {
-  pathKey: string;
-  /** The row's own identity (one per channel combination of the same legs). */
-  combinationKey: string;
-  entryChannelSlug: string | null;
-  legs: ReadonlyArray<{
-    legKey: string;
-    fromStep: { key: string } | null;
-    /** The step the leg reaches: names the campaign working it. */
-    toStep: { label: string };
-    workedBy: string;
-    channel: { slug: string | null; name: string | null } | null;
-  }>;
-}
-
-/**
- * The path we launch first: the best-ranked one whose entry leg a channel of ours runs.
- * campaign-service's global budget goes to exactly that one (a path no channel of ours
- * enters buys nothing it can run), so the highlight and the money agree.
- */
-export function firstLaunchedPath<P extends PlanPath>(paths: readonly P[]): P | null {
-  return paths.find((p) => !!p.entryChannelSlug) ?? null;
-}
-
-/** One campaign the launch creates: a channel on one leg. `reactive` = set off by a step, not by the daily budget. */
-export interface PlanCampaign {
+/** A campaign the sales paths use, as the campaigns step reads it off features-service. */
+export interface PlanSource {
   featureSlug: string;
   legKey: string;
-  label: string;
-  /** The step the leg reaches ("Website visit"): two legs of one channel are told apart by it. */
-  outcome: string;
+  /** Out of a step a lead reached (its budget is a max), not run by the daily budget. */
   reactive: boolean;
-  /** On the path launched first: its campaign must be created or the launch fails. */
-  required: boolean;
+  /** We run this channel today. */
+  managed: boolean | undefined;
+  roi: number | null;
+}
+
+/** One campaign as the visitor sets it at the campaigns step; the launch starts the ones on. */
+export interface PlannedCampaign {
+  featureSlug: string;
+  legKey: string;
+  reactive: boolean;
+  on: boolean;
+  /** Whole dollars a day: the budget of a proactive one, the max of a reactive one. */
+  budgetUsd: number;
+}
+
+/** The identity billing and campaign-service share for one campaign of an offer. */
+export function plannedKey(c: { featureSlug: string; legKey: string }): string {
+  return `${c.featureSlug}:${c.legKey}`;
 }
 
 /**
- * Every campaign the launch creates: each leg a channel of ours works, on every path,
- * the path launched first first. The global budget then decides which runs; a path
- * whose campaigns do not exist could never take the money when a better one cannot.
+ * The campaigns step as it opens (owner 2026-10-06, the dashboard's Campaigns rules): the
+ * proactive campaign with the best return is on (one proactive at a time, the others off),
+ * every reactive one is on (it only spends when leads reach its step). A proactive budget
+ * starts on the recommended one, a reactive max on its channel's floor; neither is under
+ * the floor. What the visitor already set survives a re-read. A channel we do not run is
+ * left out: nothing of it can start.
  */
-export function launchPlan(paths: readonly PlanPath[]): PlanCampaign[] {
-  const first = firstLaunchedPath(paths);
-  const ordered = first ? [first, ...paths.filter((p) => p !== first)] : [...paths];
-  const out: PlanCampaign[] = [];
-  const seen = new Set<string>();
-  for (const p of ordered) {
-    if (!p.entryChannelSlug) continue;
-    for (const l of p.legs) {
-      const slug = l.channel?.slug;
-      if (l.workedBy !== "platform" || !slug) continue;
-      const key = `${slug}|${l.legKey}`;
-      if (seen.has(key)) continue;
-      seen.add(key);
-      out.push({
-        featureSlug: slug,
-        legKey: l.legKey,
-        label: SALES_PATH_CHANNEL_LABEL[slug] ?? l.channel?.name ?? slug,
-        outcome: l.toStep.label,
-        reactive: l.fromStep !== null,
-        required: p === first,
-      });
-    }
-  }
-  return out;
+export function campaignPlan(
+  served: readonly PlanSource[],
+  floorUsd: (featureSlug: string) => number,
+  recommendedUsd: number | null,
+  previous: readonly PlannedCampaign[] = [],
+): PlannedCampaign[] {
+  const held = new Map(previous.map((c) => [plannedKey(c), c]));
+  const roi = (c: PlanSource) => (c.roi == null || !Number.isFinite(c.roi) ? -Infinity : c.roi);
+  const runnable = served.filter((c) => c.managed !== false);
+  const best = runnable.filter((c) => !c.reactive).sort((a, b) => roi(b) - roi(a))[0] ?? null;
+  const keptProactiveOn = runnable.some((c) => !c.reactive && held.get(plannedKey(c))?.on);
+  const out = runnable.map((c) => {
+    const kept = held.get(plannedKey(c));
+    if (kept) return { ...kept, reactive: c.reactive };
+    const floor = floorUsd(c.featureSlug);
+    return {
+      featureSlug: c.featureSlug,
+      legKey: c.legKey,
+      reactive: c.reactive,
+      on: c.reactive ? true : !keptProactiveOn && c === best,
+      budgetUsd: c.reactive ? floor : Math.max(recommendedUsd ?? floor, floor),
+    };
+  });
+  return out.sort((a, b) => Number(a.reactive) - Number(b.reactive));
 }
 
-/**
- * The smallest daily budget the plan can run on: every campaign, lead-finding or reply,
- * must clear its channel's floor at the full budget (billing refuses a ceiling under the
- * floor). ONE pot per brand (owner 2026-10-03): the daily budget pays every step of the sales path,
- * replies to leads first, and every campaign's own ceiling is that budget.
- */
-export function planFloorUsd(plan: readonly PlanCampaign[], floorCentsBySlug: ReadonlyMap<string, number>, fallbackUsd: number): number {
-  let floor = fallbackUsd;
-  for (const c of plan) {
-    const cents = floorCentsBySlug.get(c.featureSlug);
-    if (cents == null) continue;
-    const need = Math.ceil(cents / 100);
-    if (need > floor) floor = need;
-  }
-  return floor;
+/** Turn one campaign on or off. A proactive one turned on takes the place of the one that was on. */
+export function setPlannedOn(plan: readonly PlannedCampaign[], key: string, on: boolean): PlannedCampaign[] {
+  const target = plan.find((c) => plannedKey(c) === key);
+  if (!target) return [...plan];
+  return plan.map((c) => {
+    if (plannedKey(c) === key) return { ...c, on };
+    if (on && !target.reactive && !c.reactive) return { ...c, on: false };
+    return c;
+  });
+}
+
+/** A typed campaign budget: whole dollars a day, at least the channel's floor. */
+export function parseCampaignBudget(input: string, floorUsd: number): { usd: number } | { problem: string } {
+  const t = input.trim().replace(/^\$/, "").replace(/,/g, "");
+  if (!/^\d+$/.test(t) || Number(t) < 1) return { problem: "Whole dollars a day." };
+  const n = Number(t);
+  if (n < floorUsd) return { problem: `At least $${Math.ceil(floorUsd)} a day.` };
+  return { usd: n };
+}
+
+/** Why the campaigns cannot start yet, or null: one proactive campaign on, every budget at its floor. */
+export function campaignPlanProblem(plan: readonly PlannedCampaign[], floorUsd: (featureSlug: string) => number): string | null {
+  if (!plan.some((c) => c.on && !c.reactive)) return "Turn on one campaign that finds new leads.";
+  const low = plan.find((c) => c.on && c.budgetUsd < floorUsd(c.featureSlug));
+  if (low) return `A budget is under its minimum of $${Math.ceil(floorUsd(low.featureSlug))} a day.`;
+  return null;
 }
 
 /** What a client is worth, drafted off the site. A key of our own: it prefills nothing stored. */
@@ -501,14 +507,20 @@ export interface GetStartedSnapshot {
   competitors: Competitor[];
   offer: GetStartedOffer | null;
   audience: GetStartedAudience | null;
-  /** Whole dollars a day, or null when none was chosen. */
-  budgetUsd: number | null;
   /** An email written during the preview, so the wall still shows it after the Google round trip. */
   email: GetStartedEmail | null;
   /** The steps and legs ticked for the offer (saved on it); null until ticked. Absent on an older snapshot. */
   salesPath?: { steps: string[]; legs: string[] } | null;
-  /** The ranked paths were seen and accepted. */
+  /** The channels ticked for the offer (saved on it); null until ticked. */
+  channels?: string[] | null;
+  /** The paths ticked (features-service combinationKeys, saved on the offer); null until ticked. */
+  selectedPaths?: string[] | null;
+  /** The ranked paths were seen and the ticked ones saved. */
   pathsDone?: boolean;
+  /** The campaigns as set at the campaigns step; null until set. */
+  campaigns?: PlannedCampaign[] | null;
+  /** The campaigns step was confirmed. */
+  campaignsDone?: boolean;
   /** What one client is worth, whole dollars; null until answered. */
   lifetimeRevenueUsd?: number | null;
   /** Whether the offer points and the give lists were answered (and saved on the offer). */
@@ -585,16 +597,32 @@ export function parseGetStartedSnapshot(raw: string | null): GetStartedSnapshot 
     competitors,
     offer: parseOffer(s.offer),
     audience: parseAudience(s.audience),
-    budgetUsd: typeof s.budgetUsd === "number" && Number.isInteger(s.budgetUsd) && s.budgetUsd > 0 ? s.budgetUsd : null,
     email: parseSnapshotEmail(s.email),
     salesPath: parseSalesPath(s.salesPath),
+    channels: Array.isArray(s.channels) ? s.channels.filter((c): c is string => typeof c === "string" && c.length > 0) : null,
+    selectedPaths: Array.isArray(s.selectedPaths) ? s.selectedPaths.filter((c): c is string => typeof c === "string" && c.length > 0) : null,
     pathsDone: s.pathsDone === true,
+    campaigns: parsePlannedCampaigns(s.campaigns),
+    campaignsDone: s.campaignsDone === true,
     lifetimeRevenueUsd:
       typeof s.lifetimeRevenueUsd === "number" && Number.isInteger(s.lifetimeRevenueUsd) && s.lifetimeRevenueUsd > 0 ? s.lifetimeRevenueUsd : null,
     answered: s.answered === true,
     icp: typeof s.icp === "string" && s.icp.trim() ? s.icp : null,
     savedAt: typeof s.savedAt === "number" ? s.savedAt : undefined,
   };
+}
+
+function parsePlannedCampaigns(v: unknown): PlannedCampaign[] | null {
+  if (!Array.isArray(v)) return null;
+  const out: PlannedCampaign[] = [];
+  for (const x of v) {
+    if (!x || typeof x !== "object") continue;
+    const c = x as Record<string, unknown>;
+    if (typeof c.featureSlug !== "string" || typeof c.legKey !== "string") continue;
+    if (typeof c.budgetUsd !== "number" || !Number.isInteger(c.budgetUsd) || c.budgetUsd < 1) continue;
+    out.push({ featureSlug: c.featureSlug, legKey: c.legKey, reactive: c.reactive === true, on: c.on === true, budgetUsd: c.budgetUsd });
+  }
+  return out.length > 0 ? out : null;
 }
 
 function parseSalesPath(v: unknown): { steps: string[]; legs: string[] } | null {
@@ -628,29 +656,41 @@ function parseSnapshotEmail(v: unknown): GetStartedEmail | null {
 
 // ── The wall ──────────────────────────────────────────────────────────────────
 
-/** The free credit every new account starts on, in dollars. */
-export const WALL_FREE_CREDIT_USD = 30;
+/**
+ * The offer (owner 2026-10-06): prepaid credit, no free trial. We match the first $100 a
+ * new org pays: billing grants part of it when the org is created and the rest once $100
+ * is paid (its own doctrine and figures, read off the account where shown).
+ */
+export const MATCH_USD = 100;
 
 /**
- * What the free credit buys, as a whole count of hot leads: the credit divided by
- * the price the fleet's clients pay for one (a SERVED median, the homepage's figure).
- * Null when no price is held or it buys none: the block is then left out rather than
- * stating a number we do not have.
+ * The match runs until October 31, 2026 (owner 2026-10-06: a temporary offer, the landing
+ * drops its banner the same day, billing stops granting it to orgs created from then).
+ * Before the account exists nothing can be read off billing, so the wall's words follow
+ * this date; once it exists, the line under the credit reads billing's own figures.
  */
-export function hotLeadsForCredit(medianCostUsd: number | null | undefined, creditUsd = WALL_FREE_CREDIT_USD): number | null {
+export const MATCH_ENDS_AT_MS = Date.parse("2026-11-01T00:00:00Z");
+
+/** Whether the match is still offered to a new signup at `now`. */
+export function matchOffered(now: number): boolean {
+  return now < MATCH_ENDS_AT_MS;
+}
+
+/**
+ * What a credit buys, as a whole count of hot leads: the credit divided by the price
+ * the fleet's clients pay for one (a SERVED median, the homepage's figure). Null when no
+ * price is held or it buys none: the block is then left out rather than stating a
+ * number we do not have.
+ */
+export function hotLeadsForCredit(medianCostUsd: number | null | undefined, creditUsd = MATCH_USD): number | null {
   if (typeof medianCostUsd !== "number" || !Number.isFinite(medianCostUsd) || medianCostUsd <= 0) return null;
   const n = Math.floor(creditUsd / medianCostUsd);
   return n >= 1 ? n : null;
 }
 
-/**
- * The words of the wall, per arm. The landing's `subscription` arm (`lp_variant`,
- * `lib/subscription-plan.ts`) walks the same `/get-started` but buys the monthly plan:
- * a 3-day free trial that starts with the plan's credit, then the monthly amount.
- * Every other visitor claims the $30 free credit and pays as the campaign spends.
- */
+/** The words of the wall. */
 export interface WallCopy {
-  /** The credit the visitor starts on, in dollars (what the left panel counts). */
+  /** The match, in dollars (what the left panel counts). */
   creditUsd: number;
   creditLine: string;
   bannerTitle: string;
@@ -666,60 +706,115 @@ export interface WallCopy {
   cardCta: string;
 }
 
-export function wallCopy(arm: { subscription: false } | { subscription: true; monthlyCents: number; creditCents: number }): WallCopy {
-  if (!arm.subscription) {
-    const c = WALL_FREE_CREDIT_USD;
+export function wallCopy(now: number = Date.now()): WallCopy {
+  const m = MATCH_USD;
+  if (!matchOffered(now)) {
     return {
-      creditUsd: c,
-      creditLine: "free credit",
-      bannerTitle: "of free credit to start",
-      bannerCta: `Start outreach with $${c} free`,
-      timerLabel: `Time left to claim your $${c} free trial`,
-      timerExtendedLabel: `We're giving you more time to lock in your $${c}`,
-      formTitle: `Claim your $${c} and start`,
-      formSub: "One minute. No charge today.",
-      emailCta: `Claim my $${c} and start`,
-      codeCta: `Unlock my $${c}`,
-      cardTitle: "You will not be charged yet",
-      cardNote: `The card only confirms you are real. Once your $${c} runs out, it pays what the campaign spends, never more than your daily budget.`,
-      cardCta: "Add card and start",
+      creditUsd: MIN_TOPUP_USD,
+      creditLine: "of credit to start",
+      bannerTitle: "of credit to start",
+      bannerCta: "Start outreach",
+      timerLabel: "Time left to launch today",
+      timerExtendedLabel: "We're giving you more time to launch",
+      formTitle: "Start your outreach",
+      formSub: "One minute. You add credit at the end.",
+      emailCta: "Continue with Email",
+      codeCta: "Continue",
+      cardTitle: "Add credit",
+      cardNote: "Your campaigns spend this credit.",
+      cardCta: "Add credit and launch",
     };
   }
-  const credit = Math.round(arm.creditCents / 100);
-  const monthly = `$${Math.round(arm.monthlyCents / 100).toLocaleString("en-US")}`;
   return {
-    creditUsd: credit,
-    creditLine: "of credit, free for 3 days",
-    bannerTitle: "of credit, free for 3 days",
-    bannerCta: "Start my free trial",
-    timerLabel: "Time left to claim your free trial",
-    timerExtendedLabel: "We're giving you more time to start your free trial",
-    formTitle: "Start your 3-day free trial",
-    formSub: "One minute. Nothing charged for 3 days.",
-    emailCta: "Start my free trial",
-    codeCta: "Start my free trial",
-    cardTitle: "Nothing charged for 3 days",
-    cardNote: `Your campaign starts with $${credit} of credit when you add your card. After 3 days, ${monthly} a month. Cancel anytime.`,
-    cardCta: "Add card and start my trial",
+    creditUsd: m,
+    creditLine: "matched on your first payment",
+    bannerTitle: "matched on your first payment",
+    bannerCta: `Get my $${m} match`,
+    timerLabel: `Time left to claim your $${m} match`,
+    timerExtendedLabel: `We're giving you more time to claim your $${m}`,
+    formTitle: `Claim your $${m} match`,
+    formSub: "One minute. You add credit at the end.",
+    emailCta: "Continue with Email",
+    codeCta: "Continue",
+    cardTitle: "Add credit",
+    cardNote: `Your campaigns spend this credit. We match your first $${m}.`,
+    cardCta: "Add credit and launch",
   };
+}
+
+/** The billing account fields the match line reads (billing-service's own figures). */
+export interface MatchFigures {
+  free_credit_offer?: string;
+  free_credit_entitlement_cents?: number;
+  free_credit_received_cents?: string;
+  free_credit_pending_cents?: string;
+  free_credit_remaining_to_pay_cents?: string;
+}
+
+const wholeUsd = (cents: string | number | undefined): number | null => {
+  const n = Number(cents);
+  return cents === undefined || !Number.isFinite(n) ? null : Math.floor(n / 100);
+};
+
+/**
+ * The match in plain words, in billing's figures for this org: what is already in the
+ * account, what lands next and what earns it. No account read yet reads the offer only,
+ * never a guessed split; an org created before the offer reads nothing.
+ */
+export function matchNote(account: MatchFigures | null | undefined, now: number = Date.now()): string {
+  const offer = `We match your first $${MATCH_USD}.`;
+  if (!account) return matchOffered(now) ? offer : "";
+  // An org created before the offer keeps its own welcome: nothing to promise it here.
+  if (account.free_credit_offer !== "match_100") return "";
+  const received = wholeUsd(account.free_credit_received_cents);
+  const pending = wholeUsd(account.free_credit_pending_cents);
+  const toPay = wholeUsd(account.free_credit_remaining_to_pay_cents);
+  if (received === null || pending === null || toPay === null) {
+    console.error("[get-started] match_100 account served without its figures", account);
+    return offer;
+  }
+  // An org created after the match ended reads 0 everywhere: nothing to promise.
+  if (pending === 0) return received > 0 ? `Your $${received} match is in your account.` : "";
+  return `${offer} $${received} is already in your account. $${pending} more lands once you have paid $${toPay}.`;
+}
+
+/** billing's refusal of a top-up or reload under its minimum, in words. */
+export function topupRefusal(code: string | undefined): string | null {
+  if (code === "topup_below_minimum") return `Credit starts at $${MIN_TOPUP_USD}.`;
+  if (code === "topup_threshold_below_minimum") return `A reload starts under $${MIN_RELOAD_THRESHOLD_USD} at the lowest.`;
+  return null;
+}
+
+/** The first credit a new org adds, and the amounts an automatic reload adds (owner 2026-10-06). */
+export const TOPUP_CHOICES_USD = [100, 250, 500, 1000] as const;
+export const RELOAD_CHOICES_USD = [100, 250, 500] as const;
+/** No credit added under $100 (billing refuses it too). */
+export const MIN_TOPUP_USD = 100;
+/** An automatic reload fires when the credit falls under this, never under $5. */
+export const MIN_RELOAD_THRESHOLD_USD = 5;
+export const DEFAULT_RELOAD_THRESHOLD_USD = 10;
+
+/** A typed credit amount: whole dollars, at least $100. */
+export function parseTopupUsd(input: string): { usd: number } | { problem: string } {
+  const t = input.trim().replace(/^\$/, "").replace(/,/g, "");
+  if (!/^\d+$/.test(t)) return { problem: "Whole dollars." };
+  const n = Number(t);
+  if (n < MIN_TOPUP_USD) return { problem: `At least $${MIN_TOPUP_USD}.` };
+  return { usd: n };
+}
+
+/** A typed reload threshold: whole dollars, at least $5. */
+export function parseReloadThresholdUsd(input: string): { usd: number } | { problem: string } {
+  const t = input.trim().replace(/^\$/, "").replace(/,/g, "");
+  if (!/^\d+$/.test(t)) return { problem: "Whole dollars." };
+  const n = Number(t);
+  if (n < MIN_RELOAD_THRESHOLD_USD) return { problem: `At least $${MIN_RELOAD_THRESHOLD_USD}.` };
+  return { usd: n };
 }
 
 /** The next slide of a carousel, wrapping. */
 export function nextSlide(i: number, count: number): number {
   return count > 0 ? (i + 1) % count : 0;
-}
-
-/**
- * The daily budget a person typed, as whole dollars, or the reason it cannot be
- * used. A daily budget is a whole-dollar value everywhere in the dashboard.
- */
-export function parseDailyBudget(input: string, floorUsd: number): { usd: number } | { problem: string } {
-  const t = input.trim().replace(/^\$/, "");
-  if (!t) return { problem: "Enter a daily budget." };
-  const n = Number(t);
-  if (!Number.isInteger(n) || n < 1) return { problem: "Enter a whole number of dollars a day." };
-  if (n < floorUsd) return { problem: `Cold email runs from $${Math.ceil(floorUsd)} a day.` };
-  return { usd: n };
 }
 
 // ── Step 6: each row's person, found and verified live ──────────────────────────
@@ -814,7 +909,9 @@ export const REOPENABLE_STEPS: ReadonlySet<GetStartedStepKey> = new Set<GetStart
   "value",
   "salesSteps",
   "legs",
+  "channels",
   "paths",
+  "campaigns",
   "levers",
   "gives",
 ]);

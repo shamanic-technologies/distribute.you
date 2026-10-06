@@ -103,8 +103,12 @@ describe("offer sales paths, catalogue scope", () => {
     const src = readFileSync(join(__dirname, "../src/components/v2/offer-sales-path-page.tsx"), "utf8");
     expect(src).toContain('getOfferSalesPaths(brandId, offerId, "catalogue")');
     expect(src).toContain('["offerSalesPaths", brandId, offerId, "catalogue"]');
-    expect(src).toMatch(/<OfferSalesPaths[^>]*\btable\b/);
-    expect(src).not.toContain("activeKey");
+    expect(src).toContain("<OfferSalesPaths");
+    // One view only (the table): no run status, no names or faces (they live on Campaigns).
+    const comp = readFileSync(join(__dirname, "../src/components/v2/offer-sales-paths.tsx"), "utf8");
+    expect(comp).not.toContain("activeKey");
+    expect(comp).not.toContain("function PathRow(");
+    expect(comp).not.toContain("<PathAvatar name={path.name}");
   });
 });
 
@@ -213,7 +217,7 @@ describe("Sales path page: expected figures say so (owner 2026-10-05)", () => {
   const read = (rel: string) => readFileSync(join(__dirname, "..", rel), "utf8");
   it("every expected-value column header carries the (i)", () => {
     const paths = read("src/components/v2/offer-sales-paths.tsx");
-    expect(paths).toContain("<ExpectedLabel tip={EXPECTED_ROI_TIP}>ROI</ExpectedLabel>");
+    expect(paths).toContain('<ExpectedLabel tip={EXPECTED_ROI_TIP}>{gainHeadline ? "Return" : "ROI"}</ExpectedLabel>');
     expect(paths.split("<ExpectedLabel tip={EXPECTED_COST_PER_CLIENT_TIP}>Cost per paying client</ExpectedLabel>").length).toBe(3);
     expect(paths).toContain("<InfoTooltip tip={tip}");
     const campaigns = read("src/components/v2/offer-campaigns.tsx");

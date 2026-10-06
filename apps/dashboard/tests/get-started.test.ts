@@ -14,8 +14,15 @@ import {
   nextSlide,
   offerSourceText,
   parseCompetitors,
-  parseDailyBudget,
+  campaignPlan,
+  campaignPlanProblem,
+  matchNote,
+  parseCampaignBudget,
+  wallCopy,
   parseGetStartedSnapshot,
+  parseReloadThresholdUsd,
+  parseTopupUsd,
+  setPlannedOn,
   stageDwellMs,
   stageMove,
   valueLines,
@@ -60,11 +67,68 @@ describe("the rules the page decides on", () => {
     expect(hostOf("")).toBeNull();
   });
 
-  it("refuses a budget under the channel floor or not in whole dollars", () => {
-    expect(parseDailyBudget("", 1)).toEqual({ problem: "Enter a daily budget." });
-    expect(parseDailyBudget("2.5", 1)).toEqual({ problem: "Enter a whole number of dollars a day." });
-    expect(parseDailyBudget("3", 5)).toEqual({ problem: "Cold email runs from $5 a day." });
-    expect(parseDailyBudget("$12", 1)).toEqual({ usd: 12 });
+  it("refuses a campaign budget under its channel floor or not in whole dollars", () => {
+    expect(parseCampaignBudget("", 1)).toEqual({ problem: "Whole dollars a day." });
+    expect(parseCampaignBudget("2.5", 1)).toEqual({ problem: "Whole dollars a day." });
+    expect(parseCampaignBudget("3", 5)).toEqual({ problem: "At least $5 a day." });
+    expect(parseCampaignBudget("$12", 1)).toEqual({ usd: 12 });
+  });
+
+  it("adds credit from $100 and reloads under $5 at the lowest (owner 2026-10-06)", () => {
+    expect(parseTopupUsd("99")).toEqual({ problem: "At least $100." });
+    expect(parseTopupUsd("$1,000")).toEqual({ usd: 1000 });
+    expect(parseTopupUsd("100.5")).toEqual({ problem: "Whole dollars." });
+    expect(parseReloadThresholdUsd("4")).toEqual({ problem: "At least $5." });
+    expect(parseReloadThresholdUsd("5")).toEqual({ usd: 5 });
+  });
+
+  it("opens the campaigns on the best proactive one and every reactive one, and keeps what was set", () => {
+    const served = [
+      { featureSlug: "cold", legKey: "start_to_visit", reactive: false, managed: true, roi: 1.2 },
+      { featureSlug: "cold", legKey: "start_to_reply", reactive: false, managed: true, roi: 2.4 },
+      { featureSlug: "booking", legKey: "reply_to_meeting", reactive: true, managed: true, roi: 3 },
+      { featureSlug: "ads", legKey: "start_to_visit", reactive: false, managed: false, roi: 9 },
+    ];
+    const floor = (slug: string) => (slug === "cold" ? 10 : 3);
+    const plan = campaignPlan(served, floor, 25);
+    expect(plan.map((c) => [c.legKey, c.on, c.budgetUsd])).toEqual([
+      ["start_to_visit", false, 25],
+      ["start_to_reply", true, 25],
+      ["reply_to_meeting", true, 3],
+    ]);
+    // One proactive at a time: turning another on turns the first off.
+    const moved = setPlannedOn(plan, "cold:start_to_visit", true);
+    expect(moved.filter((c) => c.on && !c.reactive).map((c) => c.legKey)).toEqual(["start_to_visit"]);
+    expect(moved.find((c) => c.reactive)?.on).toBe(true);
+    // A re-read keeps the visitor's choices.
+    expect(campaignPlan(served, floor, 99, moved)).toEqual(moved);
+    // A recommendation under the floor is lifted to it.
+    expect(campaignPlan(served, floor, 4).find((c) => c.on && !c.reactive)?.budgetUsd).toBe(10);
+    expect(campaignPlanProblem(moved, floor)).toBeNull();
+    expect(campaignPlanProblem(setPlannedOn(moved, "cold:start_to_visit", false), floor)).toBe("Turn on one campaign that finds new leads.");
+  });
+
+  it("stops promising the match to new signups on November 1, 2026 (owner 2026-10-06)", () => {
+    const before = Date.parse("2026-10-31T23:59:59Z");
+    const after = Date.parse("2026-11-01T00:00:00Z");
+    expect(wallCopy(before).formTitle).toBe("Claim your $100 match");
+    expect(JSON.stringify(wallCopy(after))).not.toContain("match");
+    expect(matchNote(null, before)).toBe("We match your first $100.");
+    expect(matchNote(null, after)).toBe("");
+    // An org billing created under the match keeps reading its own figures.
+    const held = { free_credit_offer: "match_100", free_credit_received_cents: "3000", free_credit_pending_cents: "7000", free_credit_remaining_to_pay_cents: "4000" };
+    // Created after the end: billing reads 0 everywhere, the line says nothing.
+    const none = { free_credit_offer: "match_100", free_credit_received_cents: "0.0000000000", free_credit_pending_cents: "0.0000000000", free_credit_remaining_to_pay_cents: "0.0000000000" };
+    expect(matchNote(none, after)).toBe("");
+    expect(matchNote(held, after)).toBe("We match your first $100. $30 is already in your account. $70 more lands once you have paid $40.");
+  });
+
+  it("states the match in billing's figures, never a guessed split", () => {
+    expect(matchNote(null)).toBe("We match your first $100.");
+    expect(matchNote({ free_credit_offer: "legacy" })).toBe("");
+    const fresh = { free_credit_offer: "match_100", free_credit_received_cents: "3000.0000000000", free_credit_pending_cents: "7000.0000000000", free_credit_remaining_to_pay_cents: "10000.0000000000" };
+    expect(matchNote(fresh)).toBe("We match your first $100. $30 is already in your account. $70 more lands once you have paid $100.");
+    expect(matchNote({ ...fresh, free_credit_received_cents: "10000", free_credit_pending_cents: "0", free_credit_remaining_to_pay_cents: "0" })).toBe("Your $100 match is in your account.");
   });
 
   it("restores a snapshot, and starts over on anything malformed or older", () => {
@@ -79,15 +143,26 @@ describe("the rules the page decides on", () => {
       competitors: [{ name: "Beta", domain: "beta.com" }],
       offer: { offerId: "o1", name: "Anvils", description: "Heavy anvils" },
       audience: { audienceId: "a1", name: "Coyotes", description: "Desert hunters" },
-      budgetUsd: 10,
       email: null,
     };
     // The answers to steps 5 to 8 are absent on an older snapshot and read as not given.
-    expect(parseGetStartedSnapshot(JSON.stringify(snap))).toEqual({ ...snap, salesPath: null, pathsDone: false, lifetimeRevenueUsd: null, answered: false, icp: null });
+    expect(parseGetStartedSnapshot(JSON.stringify(snap))).toEqual({
+      ...snap,
+      salesPath: null,
+      channels: null,
+      selectedPaths: null,
+      pathsDone: false,
+      campaigns: null,
+      campaignsDone: false,
+      lifetimeRevenueUsd: null,
+      answered: false,
+      icp: null,
+    });
     expect(parseGetStartedSnapshot("{nope")).toBeNull();
     // A snapshot from before the offer and audience steps starts over.
     expect(parseGetStartedSnapshot(JSON.stringify({ ...snap, version: 1 }))).toBeNull();
-    expect(parseGetStartedSnapshot(JSON.stringify({ ...snap, budgetUsd: 2.5 }))?.budgetUsd).toBeNull();
+    const campaigns = [{ featureSlug: "cold", legKey: "l", reactive: false, on: true, budgetUsd: 20 }, { featureSlug: "x", legKey: "l", reactive: true, on: true, budgetUsd: 2.5 }];
+    expect(parseGetStartedSnapshot(JSON.stringify({ ...snap, campaigns }))?.campaigns).toEqual([campaigns[0]]);
     expect(parseGetStartedSnapshot(JSON.stringify({ ...snap, offer: { name: "x" } }))?.offer).toBeNull();
   });
 
@@ -100,7 +175,9 @@ describe("the rules the page decides on", () => {
       "value",
       "salesSteps",
       "legs",
+      "channels",
       "paths",
+      "campaigns",
       "levers",
       "gives",
       "companies",
@@ -236,7 +313,7 @@ describe("the surface", () => {
   });
 
   it("asks the account and the card on one screen", () => {
-    expect(WALL).toContain("createEmbeddedCardSetup(");
+    expect(WALL).toContain("<PrepaidTopup");
     expect(WALL).toContain("signUp.create(");
     expect(WALL).toContain('id="clerk-captcha"');
   });
@@ -285,8 +362,8 @@ describe("the surface", () => {
   it("prices the budget on the picked offer, and launches that offer and that audience with the levers prefilled", () => {
     expect(LAUNCH).toContain("export async function recommendedBudgetForPreview(");
     expect(LAUNCH).toContain("recommendedDailyBudgetUsd(newOrgLeg(legKey)");
-    expect(WALL).toContain("recommendedBudgetForPreview(brandId, offer.offerId, floorUsd, pricingLeg)");
-    expect(WALL).toContain("{ brandId, website, offer, targetAudience, budgetUsd, plan, answered }");
+    expect(FLOW).toContain("recommendedBudgetForPreview(brandId, offer.offerId, floorFor(NEW_ORG_CHANNEL_SLUG), leg)");
+    expect(WALL).toContain("{ brandId, website, offer, targetAudience, campaigns, answered }");
     // No re-pick at launch: the offer is the one confirmed at step 3.
     expect(LAUNCH).not.toContain("proposeBrandOffers");
     // The six levers are read off the site for that offer and saved on it.
@@ -294,8 +371,6 @@ describe("the surface", () => {
     expect(LAUNCH).toContain("saveOfferUserFields(brandId, offerId, fields)");
     // The campaign's inputs are read after the levers land.
     expect(LAUNCH.indexOf("await levers;\n    const prefill")).toBeGreaterThan(0);
-    // A default never blocks a price that lands later.
-    expect(WALL).toContain("if (budgetTouched.current) onBudget(");
   });
 
   it("carries Explee's countdown and spots strips on the wall (owner-decided, copied for now)", () => {
@@ -342,9 +417,10 @@ describe("the surface", () => {
 });
 
 describe("the wall", () => {
-  it("prices the $30 off a served median, or states nothing", () => {
-    expect(hotLeadsForCredit(4.2)).toBe(7);
-    expect(hotLeadsForCredit(40)).toBeNull();
+  it("prices the match off a served median, or states nothing", () => {
+    expect(hotLeadsForCredit(4.2, 30)).toBe(7);
+    expect(hotLeadsForCredit(4.2)).toBe(23);
+    expect(hotLeadsForCredit(400)).toBeNull();
     expect(hotLeadsForCredit(null)).toBeNull();
     expect(hotLeadsForCredit(0)).toBeNull();
     expect(hotLeadsForCredit(Number.NaN)).toBeNull();
@@ -370,13 +446,14 @@ describe("the wall", () => {
     expect(wall).not.toContain("<EmailCard");
     expect(wall).not.toContain("proofCardsFor(");
     expect(wall).toContain("<Testimonials />");
-    // The $30 figure is the served median divided, or absent.
+    // The match figure is the served median divided, or absent.
     expect(wall).toContain("hotLeadsForCredit(proof?.hotLeads?.medianCostUsd, copy.creditUsd)");
     // Email code, no password to type.
     expect(wall).not.toContain('type="password"');
     expect(wall).toContain('strategy: "email_code"');
-    // The card form opens by itself once the account exists.
-    expect(wall).toContain("cardOpened.current = true;");
+    // The credit is paid in the page (Revolut widget or Stripe's embedded form), never twice.
+    expect(wall).toContain("await payTopup(");
+    expect(wall).toContain("if (paid) {");
     // The stage's view transitions stand down while the wall is up: their snapshots
     // paint in the top layer, above the wall.
     expect(wall).toContain("document.documentElement.classList.add(WALL_OPEN_CLASS)");

@@ -80,6 +80,13 @@ const RULES: Rule[] = [
   { method: "GET", segments: ["brands", ":brand", "leg-rates"] },
   { method: "PUT", segments: ["brands", ":brand", "leg-rates"] },
   { method: "GET", segments: ["offers", ":seg", "sales-paths"], queryBrand: "brandId" },
+  // Then, as on the Sales path page: the channels the offer accepts and the paths the
+  // visitor ticks (brand-service, saved on the offer). Path-bound to this session's brand.
+  // Nothing here starts a send or sets money: that waits for the account and the card.
+  { method: "GET", segments: ["brands", ":brand", "offers", ":seg", "channels"] },
+  { method: "PUT", segments: ["brands", ":brand", "offers", ":seg", "channels"] },
+  { method: "GET", segments: ["brands", ":brand", "offers", ":seg", "selected-sales-paths"] },
+  { method: "PUT", segments: ["brands", ":brand", "offers", ":seg", "selected-sales-paths"] },
 
   // ── The audiences we assemble for it ─────────────────────────────────
   { method: "GET", segments: ["orgs", "audiences"] },

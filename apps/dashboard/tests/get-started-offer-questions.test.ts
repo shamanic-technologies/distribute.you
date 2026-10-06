@@ -16,7 +16,7 @@ const LAUNCH = readFileSync(resolve(__dirname, "../src/components/v2/get-started
 const API = readFileSync(resolve(__dirname, "../src/lib/api.ts"), "utf-8");
 
 describe("onboarding v2: the offer questions come after the audience, before the companies", () => {
-  it("orders offer, audience, value, sales steps, legs, paths, levers, gives, companies, email", () => {
+  it("orders offer, audience, value, sales steps, legs, channels, paths, campaigns, levers, gives, companies, email", () => {
     expect(GET_STARTED_STEPS.map((s) => s.key)).toEqual([
       "company",
       "competitors",
@@ -25,7 +25,9 @@ describe("onboarding v2: the offer questions come after the audience, before the
       "value",
       "salesSteps",
       "legs",
+      "channels",
       "paths",
+      "campaigns",
       "levers",
       "gives",
       "companies",
@@ -98,8 +100,8 @@ describe("the page's call sites", () => {
     expect(keys).not.toContain("neverGive");
   });
 
-  it("launches every campaign the ranked paths need, and skips re-drafting answered levers", () => {
-    expect(LAUNCH).toContain("for (const c of input.plan)");
+  it("starts the campaigns turned on, the proactive one first, and skips re-drafting answered levers", () => {
+    expect(LAUNCH).toContain("for (const c of [...proactive, ...on.filter((x) => x.reactive)])");
     expect(LAUNCH).toContain("if (input.answered) progress.levers = true;");
   });
 });
