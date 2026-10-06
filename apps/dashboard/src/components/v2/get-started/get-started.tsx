@@ -21,7 +21,7 @@
  * The SAME walk is the dashboard's "Add a brand" / "New brand" / "Finish setup"
  * (`org`, on `/v2/orgs/:orgId/new-brand`): every call names that org explicitly
  * (`setApiActiveOrgOverride`), no anonymous session, no account or phone wall; the
- * brand lands in that org and the walk ends on "Choose your plan" (`OrgLaunch`).
+ * brand lands in that org and the walk ends on its credit step (`OrgLaunch`).
  */
 
 import { createContext, useContext, useEffect, useMemo, useRef, useState } from "react";
@@ -45,8 +45,10 @@ import {
   previewColdEmail,
   proposeAudienceSegments,
   proposeBrandOffers,
+  saveOfferChannels,
   saveOfferLifetimeRevenue,
   saveOfferSalesPath,
+  saveOfferSelectedSalesPaths,
   saveOfferUserFields,
   setApiActiveOrgOverride,
   stateBrandLegRates,
@@ -65,9 +67,16 @@ import { channelMinimumCents, channelMinimumsFromWire } from "@/lib/channel-mini
 import { NEW_ORG_CHANNEL_SLUG } from "@/lib/v2/new-org-wizard";
 import { EMPTY_LEG_CATALOGUE, legCatalogueFromWire, type LegCatalogue } from "@/lib/legs";
 import { SALES_PATH_CHANNEL_SLUGS, offeredFromCatalogue, selectionFromSteps, type SalesPathSelection } from "@/lib/offer-sales-path";
-import type { OfferSalesPaths as OfferSalesPathsData, SalesPathLeg } from "@/lib/offer-sales-paths";
+import { roiUnavailableLabel, type OfferSalesPaths as OfferSalesPathsData, type SalesPathLeg } from "@/lib/offer-sales-paths";
+import { salesPathChannels, selectedPathKeys, type SalesPathChannel } from "@/lib/offer-active-sales-paths";
+import { campaignsOfOffer, campaignTag, type OfferCampaign } from "@/lib/offer-campaigns";
+import { formatRoi, roiIsGood } from "@/lib/format-roi";
 import { OfferSalesPath } from "@/components/v2/offer-sales-path";
-import { OfferSalesPaths } from "@/components/v2/offer-sales-paths";
+import { OfferSalesPaths, PathAvatar } from "@/components/v2/offer-sales-paths";
+import { CampaignLeg } from "@/components/v2/offer-campaigns";
+import { SelectCard } from "@/components/v2/select-card";
+import { AcquisitionChannelMark } from "@/components/marks/acquisition-channel-mark";
+import { channelMarkForSlug } from "@/lib/acquisition-channels";
 import {
   COMPANY_FIELDS,
   COMPETITOR_FIELDS,
@@ -88,10 +97,12 @@ import {
   VALUE_FIELDS,
   leadCountLabel,
   previousStep,
-  firstLaunchedPath,
-  launchPlan,
+  campaignPlan,
+  campaignPlanProblem,
+  parseCampaignBudget,
+  plannedKey,
+  setPlannedOn,
   initialSalesSteps,
-  planFloorUsd,
   salesStepsDraftField,
   answerLines,
   leversLLMPrompt,
@@ -121,18 +132,18 @@ import {
   type GiveDraftKey,
   type LeverDraftKey,
   type GetStartedStepKey,
+  type PlannedCampaign,
   type StepPhase,
   wallCopy,
 } from "@/lib/v2/get-started";
-import { Initials, Shimmer } from "@/components/v2/ui";
+import { Initials, Shimmer, StateDot } from "@/components/v2/ui";
 import { OfferIcon } from "@/components/v2/new-org-icons";
 import { CountUp, Typewriter, formatElapsed, stagger, useElapsed } from "./motion";
 import { BrandLogo } from "@/components/brand-logo";
-import { pricingLegFor, recommendedBudgetForPreview } from "./launch";
+import { pricingLegFor, recommendedBudgetForPreview, type LaunchCampaign } from "./launch";
 import { AccountCardWall } from "./account-card-wall";
 import { OrgLaunch } from "./org-launch";
 import { v2NewBrandHref } from "@/lib/v2/routes";
-import { SUBSCRIPTION_MONTHLY_CENTS, isSubscriptionArm, pickedPlanCents } from "@/lib/subscription-plan";
 import { JournalRail, JournalStrip, type JournalData } from "./journal";
 import { stepViewName, withStageTransition } from "./view-transition";
 
@@ -182,12 +193,7 @@ export function GetStarted({ org }: { org?: OrgWalk } = {}) {
     return () => setApiActiveOrgOverride(null);
   }, [org?.orgId]);
   const snapshotKey = org ? getStartedOrgSnapshotKey(org.orgId) : GET_STARTED_SNAPSHOT_KEY;
-  // The landing's $99/month arm sells the plan's free trial instead of the $30 (`wallCopy`).
-  const [wall] = useState(() =>
-    typeof document !== "undefined" && isSubscriptionArm(document.cookie)
-      ? wallCopy({ subscription: true, monthlyCents: pickedPlanCents(document.cookie), creditCents: SUBSCRIPTION_MONTHLY_CENTS })
-      : wallCopy({ subscription: false }),
-  );
+  const wall = wallCopy();
 
   const [website, setWebsite] = useState(params.get("url") ?? "");
   const [inputError, setInputError] = useState<string | null>(null);
@@ -201,11 +207,9 @@ export function GetStarted({ org }: { org?: OrgWalk } = {}) {
   const [facts, setFacts] = useState<string[]>([]);
   const [competitors, setCompetitors] = useState<Competitor[]>([]);
   const [steps, setSteps] = useState<Record<GetStartedStepKey, StepState>>(() => initialSteps());
-  const [floorUsd, setFloorUsd] = useState(1);
   // The step and leg catalogue, and each channel's floor, off the public catalogue.
   const [catalogue, setCatalogue] = useState<LegCatalogue>(EMPTY_LEG_CATALOGUE);
   const [floorCents, setFloorCents] = useState<Map<string, number>>(new Map());
-  const [recommendedUsd, setRecommendedUsd] = useState<number | null>(null);
   const [wallOpen, setWallOpen] = useState(false);
   const [wallNote, setWallNote] = useState<string | null>(null);
 
@@ -273,6 +277,14 @@ export function GetStarted({ org }: { org?: OrgWalk } = {}) {
   const [pathsState, setPathsState] = useState<"idle" | "loading" | "failed">("idle");
   // The paths are read off the SAVED legs, so only once a save has landed.
   const [legsSaved, setLegsSaved] = useState(false);
+  // As on the Sales path page: the channels the offer accepts (the ones we run, off the
+  // catalogue), the paths ticked (never ticked = the ones returning more than they cost),
+  // and the campaigns those paths use, each on or off with its budget. The first two are
+  // saved on the offer as their step is confirmed; the campaigns start at the launch.
+  const [pathChannels, setPathChannels] = useState<SalesPathChannel[]>([]);
+  const [accepted, setAccepted] = useState<ReadonlySet<string> | null>(null);
+  const [pickedPaths, setPickedPaths] = useState<ReadonlySet<string> | null>(null);
+  const [campaignRows, setCampaignRows] = useState<PlannedCampaign[]>([]);
   const [levers, setLevers] = useState<Record<LeverDraftKey, string>>(() => emptyRecord(LEVER_DRAFT_FIELDS));
   const [gives, setGives] = useState<Record<GiveDraftKey, string>>(() => emptyRecord(GIVE_DRAFT_FIELDS));
   const [drafted, setDrafted] = useState<"no" | "running" | "done" | "failed">("no");
@@ -284,7 +296,6 @@ export function GetStarted({ org }: { org?: OrgWalk } = {}) {
   // The first companies' emails, held until the answers exist.
   const pendingPrewrite = useRef<{ aud: GetStartedAudience; rows: AudienceCompanyRow[] } | null>(null);
 
-  const [restoredBudget, setRestoredBudget] = useState<number | null>(null);
   const [restoredEmail, setRestoredEmail] = useState<GetStartedEmail | null>(null);
   // The stage shows ONE step: the one the walk is on (`stageIdx`), or one the person
   // opened from the rail or the stepper (`focus`, cleared when the walk moves on).
@@ -353,14 +364,16 @@ export function GetStarted({ org }: { org?: OrgWalk } = {}) {
       try {
         const cat = await getPublicCatalogueSignedOut();
         const mins = channelMinimumsFromWire(cat.channels);
-        const cents = channelMinimumCents(mins, NEW_ORG_CHANNEL_SLUG);
-        if (cents != null) setFloorUsd(cents / 100);
         const floors = new Map<string, number>();
-        for (const slug of SALES_PATH_CHANNEL_SLUGS) {
-          const c = channelMinimumCents(mins, slug);
-          if (c != null) floors.set(slug, c);
+        for (const ch of cat.channels) {
+          const c = channelMinimumCents(mins, ch.slug);
+          if (c != null) floors.set(ch.slug, c);
         }
         setFloorCents(floors);
+        // The channels step lists only the ones we run (owner 2026-10-06: no "coming soon").
+        const runnable = salesPathChannels(cat.channels).filter((c) => c.managed && !c.customerOperated);
+        setPathChannels(runnable);
+        setAccepted((cur) => cur ?? new Set(runnable.map((c) => c.slug)));
         setCatalogue(legCatalogueFromWire(cat));
         return;
       } catch (e) {
@@ -404,13 +417,15 @@ export function GetStarted({ org }: { org?: OrgWalk } = {}) {
     setCompetitors(s.competitors);
     setOffer(s.offer);
     setAudience(s.audience);
-    setRestoredBudget(s.budgetUsd);
     if (s.email) setRestoredEmail(s.email);
     if (s.salesPath) {
       selectionTouched.current = true;
       setLegsSaved(true);
       setSelection({ steps: new Set(s.salesPath.steps), legs: new Set(s.salesPath.legs) });
     }
+    if (s.channels) setAccepted(new Set(s.channels));
+    if (s.selectedPaths) setPickedPaths(new Set(s.selectedPaths));
+    if (s.campaigns) setCampaignRows(s.campaigns);
     if (s.lifetimeRevenueUsd != null) setValueInput(String(s.lifetimeRevenueUsd));
     setAnswered(!!s.answered);
     if (s.icp) icpRef.current = s.icp;
@@ -424,7 +439,9 @@ export function GetStarted({ org }: { org?: OrgWalk } = {}) {
       value: s.lifetimeRevenueUsd != null ? "done" : "failed",
       salesSteps: s.salesPath ? "done" : "failed",
       legs: s.salesPath ? "done" : "failed",
+      channels: s.channels ? "done" : "failed",
       paths: s.pathsDone ? "done" : "failed",
+      campaigns: s.campaignsDone ? "done" : "failed",
       levers: s.answered ? "done" : "failed",
       gives: s.answered ? "done" : "failed",
       companies: s.audience ? "running" : "failed",
@@ -647,12 +664,17 @@ export function GetStarted({ org }: { org?: OrgWalk } = {}) {
       open("value", cur.audience === "done", true);
       open("salesSteps", cur.value === "done", true);
       open("legs", cur.salesSteps === "done", false);
-      if (next.paths !== "done" && cur.legs === "done") next.paths = salesPaths ? "choose" : pathsState === "failed" ? "failed" : "running";
-      open("levers", cur.paths === "done", true);
+      open("channels", cur.legs === "done", false);
+      // The paths and the campaigns are features-service's answer over what was saved: each
+      // waits for its re-read after the step before it is confirmed.
+      const ranked = salesPaths ? "choose" : pathsState === "failed" ? "failed" : "running";
+      if (next.paths !== "done" && cur.channels === "done") next.paths = ranked;
+      if (next.campaigns !== "done" && cur.paths === "done") next.campaigns = ranked;
+      open("levers", cur.campaigns === "done", true);
       open("gives", cur.levers === "done", true);
       return JSON.stringify(next) === JSON.stringify(cur) ? cur : next;
     });
-  }, [drafted, steps.audience, steps.value, steps.salesSteps, steps.legs, steps.paths, steps.levers, salesPaths, pathsState]);
+  }, [drafted, steps.audience, steps.value, steps.salesSteps, steps.legs, steps.channels, steps.paths, steps.campaigns, steps.levers, salesPaths, pathsState]);
 
   /** Saves the ticked steps and legs on the offer (brand-service replaces the whole selection). */
   async function saveSelection(next: SalesPathSelection, done: GetStartedStepKey) {
@@ -677,24 +699,43 @@ export function GetStarted({ org }: { org?: OrgWalk } = {}) {
     }
   }
 
-  /** The paths the saved legs make, ranked by features-service on expected ROI. */
+  /**
+   * Every path the saved legs and channels make, ranked by features-service on expected
+   * ROI, with the campaigns the ticked paths use (the Sales path page's read). The campaigns
+   * step opens on the best proactive one, its budget priced the way the "Add a brand"
+   * modal prices one; what the visitor already set is kept.
+   */
   async function loadPaths() {
     if (!brandId || !offer) return;
     setPathsState("loading");
     try {
-      const data = await getOfferSalesPaths(brandId, offer.offerId);
+      const data = await getOfferSalesPaths(brandId, offer.offerId, "catalogue");
+      setPickedPaths((cur) => cur ?? selectedPathKeys({ offerId: offer.offerId, stated: false, combinationKeys: null, statedAt: null }, data.paths));
+      const served = campaignsOfOffer(data.campaigns ?? [], data.paths, roiUnavailableLabel);
+      const best = [...served].filter((c) => !c.reactive && c.managed !== false).sort((a, b) => (b.roi ?? -Infinity) - (a.roi ?? -Infinity))[0];
+      const leg = best && best.featureSlug === NEW_ORG_CHANNEL_SLUG ? pricingLegFor(best.legKey) : null;
+      const recommended = leg
+        ? await recommendedBudgetForPreview(brandId, offer.offerId, floorFor(NEW_ORG_CHANNEL_SLUG), leg).catch((e) => {
+            console.error("[get-started] price read failed:", e);
+            return null;
+          })
+        : null;
+      setCampaignRows((cur) => campaignPlan(served, floorFor, recommended, cur));
       setSalesPaths(data);
       setPathsState("idle");
-      const first = firstLaunchedPath(data.paths);
-      const leg = pricingLegFor(first?.entryLegKey);
-      if (leg)
-        recommendedBudgetForPreview(brandId, offer.offerId, floorUsd, leg)
-          .then(setRecommendedUsd)
-          .catch((e) => console.error("[get-started] price read failed:", e));
     } catch (e) {
       console.error("[get-started] sales paths read failed:", e);
       setPathsState("failed");
     }
+  }
+
+  /**
+   * A channel's smallest daily budget, whole dollars (billing refuses less). A channel the
+   * catalogue publishes no floor for asks a whole dollar, and billing judges the write.
+   */
+  function floorFor(featureSlug: string): number {
+    const cents = floorCents.get(featureSlug);
+    return cents == null ? 1 : Math.ceil(cents / 100);
   }
 
   // The paths are read once the legs are saved (and again on a restored walk).
@@ -721,11 +762,61 @@ export function GetStarted({ org }: { org?: OrgWalk } = {}) {
     await loadPaths();
   }
 
-  /** Step: the ranked paths seen; the one launched first is where the money goes. */
-  function confirmPaths() {
+  /** Step: the channels the offer accepts, saved on it; the paths are re-ranked off them. */
+  async function confirmChannels() {
+    if (!brandId || !accepted) return;
+    setAnswerError(null);
+    advance("channels");
+    try {
+      const o = await ensureOffer();
+      await saveOfferChannels(brandId, o.offerId, [...accepted]);
+      saveSnapshot({ channels: [...accepted] });
+      posthog.capture("get_started_channels_ticked", { channels: accepted.size });
+      // Other channels make other paths: the ticks start again from the ranking.
+      setPickedPaths(null);
+      setSalesPaths(null);
+      setPathsState("idle");
+    } catch (e) {
+      console.error("[get-started] channels save failed:", e);
+      reopen("channels", "We could not save this. Try again.");
+    }
+  }
+
+  /** Step: the paths ticked, saved on the offer; the campaigns they use are read again. */
+  async function confirmPaths() {
+    if (!brandId || !pickedPaths) return;
+    setAnswerError(null);
     advance("paths");
-    saveSnapshot({ pathsDone: true });
-    posthog.capture("get_started_paths_seen", { paths: salesPaths?.paths.length ?? 0 });
+    try {
+      const o = await ensureOffer();
+      await saveOfferSelectedSalesPaths(brandId, o.offerId, [...pickedPaths]);
+      saveSnapshot({ pathsDone: true, selectedPaths: [...pickedPaths] });
+      posthog.capture("get_started_paths_seen", { paths: salesPaths?.paths.length ?? 0, ticked: pickedPaths.size });
+      setSalesPaths(null);
+      setPathsState("idle");
+    } catch (e) {
+      console.error("[get-started] sales paths save failed:", e);
+      reopen("paths", "We could not save this. Try again.");
+    }
+  }
+
+  /** Step: the campaigns set; they start once the credit is added. */
+  function confirmCampaigns() {
+    const problem = campaignPlanProblem(campaignRows, floorFor);
+    if (problem) {
+      setAnswerError(problem);
+      return;
+    }
+    setAnswerError(null);
+    advance("campaigns");
+    saveSnapshot({ campaigns: campaignRows, campaignsDone: true });
+    posthog.capture("get_started_campaigns_set", { on: campaignRows.filter((c) => c.on).length });
+  }
+
+  function changeCampaigns(next: PlannedCampaign[]) {
+    setCampaignRows(next);
+    setAnswerError(null);
+    saveSnapshot({ campaigns: next });
   }
 
   /** Step 6: what one client is worth, saved on the offer. */
@@ -1306,7 +1397,6 @@ export function GetStarted({ org }: { org?: OrgWalk } = {}) {
       competitors: [],
       offer: null,
       audience: null,
-      budgetUsd: null,
       email: null,
     };
     saveSnapshot({});
@@ -1354,9 +1444,22 @@ export function GetStarted({ org }: { org?: OrgWalk } = {}) {
     posthog.capture("get_started_preview_ready");
   }
 
-  const plan = useMemo(() => launchPlan(salesPaths?.paths ?? []), [salesPaths]);
-  const firstPath = useMemo(() => firstLaunchedPath(salesPaths?.paths ?? []), [salesPaths]);
-  const canLaunch = started && !!brandId && !!offer && !!audience && steps.paths === "done" && plan.length > 0 && answered;
+  // The campaigns as features-service names them (the step draws them, the launch names them).
+  const servedCampaigns = useMemo(
+    () => new Map(campaignsOfOffer(salesPaths?.campaigns ?? [], salesPaths?.paths ?? [], roiUnavailableLabel).map((c) => [plannedKey(c), c])),
+    [salesPaths],
+  );
+  const launchCampaigns = useMemo<LaunchCampaign[]>(
+    () =>
+      campaignRows.flatMap((c) => {
+        const served = servedCampaigns.get(plannedKey(c));
+        if (!served) return [];
+        return [{ ...c, label: SALES_PATH_CHANNEL_LABEL[c.featureSlug] ?? served.channelName, outcome: served.toLabel }];
+      }),
+    [campaignRows, servedCampaigns],
+  );
+  const canLaunch =
+    started && !!brandId && !!offer && !!audience && steps.campaigns === "done" && launchCampaigns.some((c) => c.on && !c.reactive) && answered;
   const current = useMemo(() => GET_STARTED_STEPS.findIndex((s) => steps[s.key] === "running"), [steps]);
 
   const orgBar = org ? <OrgBar orgId={org.orgId} snapshotKey={snapshotKey} started={started} /> : null;
@@ -1389,7 +1492,9 @@ export function GetStarted({ org }: { org?: OrgWalk } = {}) {
     value: "Tell us what one client is worth.",
     salesSteps: "Tick the steps your sales go through today.",
     legs: "Tick how your leads move from one step to the next.",
-    paths: "See where we put your money first.",
+    channels: "Tick the channels we may use.",
+    paths: "Tick the sales paths to run.",
+    campaigns: "Turn on your campaigns and set their budgets.",
     levers: "Check your offer, then continue.",
     gives: "Say what you give away, then we write the emails.",
   };
@@ -1412,7 +1517,9 @@ export function GetStarted({ org }: { org?: OrgWalk } = {}) {
     written: writtenCount,
     stepCount: selection.steps.size,
     legCount: selection.legs.size,
-    firstPathLabel: firstPath ? firstPath.steps.map((x) => x.label).join(" → ") : null,
+    channelCount: accepted?.size ?? 0,
+    pathCount: pickedPaths?.size ?? 0,
+    campaignCount: campaignRows.filter((c) => c.on).length,
     lifetimeRevenue: valueInput,
     leverCount: LEVER_DRAFT_FIELDS.filter((f) => answerLines(levers[f.key]).length > 0).length,
     giveCount: answerLines(gives.giveForFree).length,
@@ -1471,6 +1578,25 @@ export function GetStarted({ org }: { org?: OrgWalk } = {}) {
           onContinue={() => void saveSelection(selection, key)}
         />
       );
+    if (key === "channels")
+      return (
+        <ChannelsStage
+          state={steps.channels}
+          channels={pathChannels}
+          accepted={accepted}
+          onToggle={(slug, on) => {
+            setAccepted((cur) => {
+              const next = new Set(cur ?? []);
+              if (on) next.add(slug);
+              else next.delete(slug);
+              return next;
+            });
+            setAnswerError(null);
+          }}
+          error={steps.channels === "choose" ? answerError : null}
+          onContinue={() => void confirmChannels()}
+        />
+      );
     if (key === "paths")
       return (
         <PathsStage
@@ -1478,12 +1604,34 @@ export function GetStarted({ org }: { org?: OrgWalk } = {}) {
           data={salesPaths}
           loading={pathsState === "loading"}
           failed={pathsState === "failed"}
-          highlightKey={firstPath?.combinationKey ?? null}
-          canContinue={plan.length > 0}
+          selected={pickedPaths}
+          onToggle={(k, on) =>
+            setPickedPaths((cur) => {
+              const next = new Set(cur ?? []);
+              if (on) next.add(k);
+              else next.delete(k);
+              return next;
+            })
+          }
+          error={steps.paths === "choose" ? answerError : null}
           onRetry={() => void loadPaths()}
           onStateRate={stateLegRate}
           onStateLifetimeRevenue={stateLifetimeRevenue}
-          onContinue={confirmPaths}
+          onContinue={() => void confirmPaths()}
+        />
+      );
+    if (key === "campaigns")
+      return (
+        <CampaignsStage
+          state={steps.campaigns}
+          rows={campaignRows}
+          served={servedCampaigns}
+          failed={pathsState === "failed"}
+          floorFor={floorFor}
+          onChange={changeCampaigns}
+          error={steps.campaigns === "choose" ? answerError : null}
+          onRetry={() => void loadPaths()}
+          onContinue={confirmCampaigns}
         />
       );
     if (key === "value")
@@ -1574,14 +1722,14 @@ export function GetStarted({ org }: { org?: OrgWalk } = {}) {
               {org ? (
                 <>
                   <p className="k-fg text-[14px] font-medium">Your brand is ready to launch.</p>
-                  <p className="k-fg3 hidden text-[12px] sm:block">Choose your plan. We write and send the emails, you get the replies.</p>
+                  <p className="k-fg3 hidden text-[12px] sm:block">We write and send the emails, you get the replies.</p>
                 </>
               ) : (
                 <>
                   <p className="k-fg text-[14px] font-medium">
                     <CountUp value={wall.creditUsd} format={(n) => `$${Math.round(n)}`} ms={700} /> {wall.bannerTitle}
                   </p>
-                  <p className="k-fg3 hidden text-[12px] sm:block">No charge today. We write and send the emails, you get the replies.</p>
+                  <p className="k-fg3 hidden text-[12px] sm:block">We write and send the emails, you get the replies.</p>
                 </>
               )}
             </div>
@@ -1593,7 +1741,7 @@ export function GetStarted({ org }: { org?: OrgWalk } = {}) {
                 setWallOpen(true);
               }}
             >
-              {org ? "Choose your plan" : "Start outreach"}
+              {org ? "Launch" : "Start outreach"}
             </button>
           </div>
         </div>
@@ -1632,7 +1780,7 @@ export function GetStarted({ org }: { org?: OrgWalk } = {}) {
                     setWallOpen(true);
                   }}
                 >
-                  {org ? "Choose your plan" : wall.bannerCta}
+                  {org ? "Launch" : wall.bannerCta}
                 </button>
               </div>
             )}
@@ -1640,7 +1788,7 @@ export function GetStarted({ org }: { org?: OrgWalk } = {}) {
         </main>
       </div>
 
-      {wallOpen && brandId && offer && audience && plan.length > 0 && org && (
+      {wallOpen && brandId && offer && audience && launchCampaigns.length > 0 && org && (
         <OrgLaunch
           orgId={org.orgId}
           brandId={brandId}
@@ -1648,15 +1796,13 @@ export function GetStarted({ org }: { org?: OrgWalk } = {}) {
           offer={offer}
           targetAudience={icpRef.current}
           note={wallNote}
-          floorUsd={planFloorUsd(plan, floorCents, floorUsd)}
-          recommendedUsd={recommendedUsd}
-          plan={plan}
+          campaigns={launchCampaigns}
           answered={answered}
           snapshotKey={snapshotKey}
           onClose={() => setWallOpen(false)}
         />
       )}
-      {wallOpen && brandId && offer && audience && plan.length > 0 && !org && (
+      {wallOpen && brandId && offer && audience && launchCampaigns.length > 0 && !org && (
         <AccountCardWall
           brandId={brandId}
           website={websiteUrl(website)}
@@ -1666,13 +1812,8 @@ export function GetStarted({ org }: { org?: OrgWalk } = {}) {
           targetAudience={icpRef.current}
           note={wallNote}
           email={(selectedKey ? emails[selectedKey] : undefined) ?? firstWritten(emails, audience.audienceId) ?? restoredEmail}
-          floorUsd={planFloorUsd(plan, floorCents, floorUsd)}
-          recommendedUsd={restoredBudget ?? recommendedUsd}
-          budgetChosen={restoredBudget != null}
-          plan={plan}
-          entryLegKey={firstPath?.entryLegKey ?? null}
+          campaigns={launchCampaigns}
           answered={answered}
-          onBudget={(usd) => saveSnapshot({ budgetUsd: usd })}
           onClose={() => setWallOpen(false)}
         />
       )}
@@ -1689,7 +1830,9 @@ function initialSteps(): Record<GetStartedStepKey, StepState> {
     value: "waiting",
     salesSteps: "waiting",
     legs: "waiting",
+    channels: "waiting",
     paths: "waiting",
+    campaigns: "waiting",
     levers: "waiting",
     gives: "waiting",
     companies: "waiting",
@@ -1997,7 +2140,9 @@ const STATUS: Record<GetStartedStepKey, (domain: string | null) => string> = {
   value: () => "Estimating what a client is worth to you",
   salesSteps: () => "Reading how your sales work today",
   legs: () => "Saving your sales steps",
+  channels: () => "Saving your sales steps",
   paths: () => "Ranking every way your sales can run",
+  campaigns: () => "Reading the campaigns your sales paths use",
   levers: () => "Drafting your offer from your site",
   gives: () => "Drafting what you could give away",
   companies: () => "Finding companies that match, with the right person at each",
@@ -2353,14 +2498,81 @@ function SalesPathStage({
   );
 }
 
-/** Every path the ticked legs make, ranked by expected ROI; the one launched first is framed. */
-function PathsStage({
+/** The channels the offer accepts: only the ones we run (owner 2026-10-06), as on the Sales path page. */
+export function ChannelsStage({
+  state,
+  channels,
+  accepted,
+  onToggle,
+  error,
+  onContinue,
+}: {
+  state: StepState;
+  channels: readonly SalesPathChannel[];
+  accepted: ReadonlySet<string> | null;
+  onToggle: (slug: string, on: boolean) => void;
+  error: string | null;
+  onContinue: () => void;
+}) {
+  const done = state === "done";
+  const ticked = channels.filter((c) => accepted?.has(c.slug));
+  return (
+    <StepCard
+      index={stepIndex("channels") + 1}
+      title="Your channels"
+      state={state}
+      meta={<StateWord state={state} doneLabel={ticked.length === 1 ? "1 channel" : `${ticked.length} channels`} />}
+      footer={
+        !done && state === "choose" ? (
+          <button type="button" className="k-btn-accent h-9 px-4" onClick={onContinue} disabled={ticked.length === 0}>
+            Continue
+          </button>
+        ) : null
+      }
+    >
+      {state === "waiting" || state === "running" || channels.length === 0 || !accepted ? (
+        <OptionSkeleton />
+      ) : done ? (
+        <ul className="flex flex-wrap gap-1.5">
+          {ticked.map((c) => (
+            <li key={c.slug} className="k-chip">
+              {c.name}
+            </li>
+          ))}
+        </ul>
+      ) : (
+        <>
+          <p className="k-fg2 mb-3 text-[13px]">Which channels may we use?</p>
+          <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
+            {channels.map((c) => {
+              const on = accepted.has(c.slug);
+              return (
+                <SelectCard
+                  key={c.slug}
+                  on={on}
+                  onClick={() => onToggle(c.slug, !on)}
+                  mark={<AcquisitionChannelMark def={{ mark: channelMarkForSlug(c.slug) }} size="xs" dimmed={!on} />}
+                  title={c.name}
+                />
+              );
+            })}
+          </div>
+          {error && <p className="mt-2 text-[12px] text-[var(--data-rose)]">{error}</p>}
+        </>
+      )}
+    </StepCard>
+  );
+}
+
+/** Every path the ticked legs and channels make, best return first, ticked as on the Sales path page. */
+export function PathsStage({
   state,
   data,
   loading,
   failed,
-  highlightKey,
-  canContinue,
+  selected,
+  onToggle,
+  error,
   onRetry,
   onStateRate,
   onStateLifetimeRevenue,
@@ -2370,25 +2582,27 @@ function PathsStage({
   data: OfferSalesPathsData | null;
   loading: boolean;
   failed: boolean;
-  highlightKey: string | null;
-  canContinue: boolean;
+  selected: ReadonlySet<string> | null;
+  onToggle: (combinationKey: string, on: boolean) => void;
+  error: string | null;
   onRetry: () => void;
   onStateRate: (leg: SalesPathLeg, ratePct: number | null) => Promise<void>;
   onStateLifetimeRevenue: (usd: number) => Promise<void>;
   onContinue: () => void;
 }) {
   const done = state === "done";
+  const count = selected?.size ?? 0;
   return (
     <StepCard
       index={stepIndex("paths") + 1}
-      title="Your most profitable opportunity"
+      title="Your sales paths"
       state={state}
-      meta={<StateWord state={state} />}
+      meta={<StateWord state={state} doneLabel={count === 1 ? "1 path" : `${count} paths`} />}
       footer={
-        !done && state !== "waiting" ? (
+        !done && state === "choose" ? (
           <>
-            {data && !canContinue && <span className="k-fg3 text-[12px]">None of these paths starts with a way we run. Go back and tick one.</span>}
-            <button type="button" className="k-btn-accent h-9 px-4" onClick={onContinue} disabled={!canContinue}>
+            {data && count === 0 && <span className="k-fg3 text-[12px]">Tick at least one path.</span>}
+            <button type="button" className="k-btn-accent h-9 px-4" onClick={onContinue} disabled={count === 0}>
               Continue
             </button>
           </>
@@ -2399,22 +2613,21 @@ function PathsStage({
         <OptionSkeleton />
       ) : (
         <>
-          <p className="k-fg2 mb-3 text-[13px] leading-5">We start with the framed path, the most profitable one we run for you.</p>
+          <p className="k-fg2 mb-3 text-[13px] leading-5">Which ways to a paying client should we run? Best return first.</p>
           <OfferSalesPaths
             data={data ?? undefined}
             pending={(loading || state === "running") && !data}
             failed={failed}
-            highlightKey={highlightKey}
-            highlightLabel="Most profitable we run, launched first"
             gainHeadline
             intro=""
             bare
+            selected={selected ?? undefined}
+            onToggleSelected={done ? undefined : onToggle}
             onStateRate={done ? undefined : onStateRate}
             onStateLifetimeRevenue={done ? undefined : onStateLifetimeRevenue}
           />
-          <p className="k-fg3 mt-3 text-[12px] leading-5">
-            Ranked by return, from your conversion rates. It moves as your results come in.
-          </p>
+          <p className="k-fg3 mt-3 text-[12px] leading-5">Ranked from your conversion rates. It moves as your results come in.</p>
+          {error && <p className="mt-2 text-[12px] text-[var(--data-rose)]">{error}</p>}
           {failed && (
             <button type="button" className="k-btn mt-2 h-8 px-3" onClick={onRetry}>
               Try again
@@ -2423,6 +2636,166 @@ function PathsStage({
         </>
       )}
     </StepCard>
+  );
+}
+
+/**
+ * The campaigns the ticked paths use, as on the Campaigns table (owner 2026-10-06): each
+ * with its name and face, its leg, its type and its return, on or off, and its daily
+ * budget (a max for a reactive one). One proactive campaign at a time. Nothing starts
+ * here: the ones on start once the credit is added.
+ */
+export function CampaignsStage({
+  state,
+  rows,
+  served,
+  failed,
+  floorFor,
+  onChange,
+  error,
+  onRetry,
+  onContinue,
+}: {
+  state: StepState;
+  rows: readonly PlannedCampaign[];
+  served: ReadonlyMap<string, OfferCampaign>;
+  failed: boolean;
+  floorFor: (featureSlug: string) => number;
+  onChange: (next: PlannedCampaign[]) => void;
+  error: string | null;
+  onRetry: () => void;
+  onContinue: () => void;
+}) {
+  const done = state === "done";
+  const shown = rows.filter((c) => served.has(plannedKey(c)));
+  const on = shown.filter((c) => c.on);
+  return (
+    <StepCard
+      index={stepIndex("campaigns") + 1}
+      title="Your campaigns"
+      state={state}
+      meta={<StateWord state={state} doneLabel={on.length === 1 ? "1 campaign on" : `${on.length} campaigns on`} />}
+      footer={
+        !done && state === "choose" ? (
+          <button type="button" className="k-btn-accent h-9 px-4" onClick={onContinue}>
+            Continue
+          </button>
+        ) : null
+      }
+    >
+      {state === "waiting" || state === "running" ? (
+        <OptionSkeleton />
+      ) : failed && shown.length === 0 ? (
+        <div className="flex flex-wrap items-center gap-3">
+          <p className="k-fg2 text-[13px]">We could not load your campaigns just now.</p>
+          <button type="button" className="k-btn h-8 px-3" onClick={onRetry}>
+            Try again
+          </button>
+        </div>
+      ) : shown.length === 0 ? (
+        <p className="k-fg2 text-[13px]">None of the ticked paths has a campaign we run. Go back and tick another path.</p>
+      ) : (
+        <>
+          {!done && <p className="k-fg2 mb-3 text-[13px] leading-5">One campaign finds new leads. The others answer the leads it brings.</p>}
+          <ul className="k-card divide-y divide-[var(--line-subtle)] overflow-hidden">
+            {shown.map((c) => {
+              const key = plannedKey(c);
+              const def = served.get(key) as OfferCampaign;
+              return (
+                <li
+                  key={key}
+                  className={`grid gap-x-3 gap-y-2 px-4 py-3 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center ${c.on ? "bg-[color-mix(in_oklab,var(--run)_9%,transparent)]" : ""}`}
+                >
+                  <div className="min-w-0">
+                    <span className="flex items-center gap-2.5">
+                      {def.name && <PathAvatar name={def.name} size={28} />}
+                      <span className="font-semibold">{def.name ?? def.channelName}</span>
+                      <span className="k-chip">{campaignTag(def)}</span>
+                    </span>
+                    <CampaignLeg campaign={def} className="mt-1.5 text-[12.5px]" />
+                  </div>
+                  <div className="flex flex-wrap items-center gap-2 sm:justify-end">
+                    <span
+                      className={`text-[13px] font-semibold tabular-nums ${roiIsGood(def.roi) ? "text-[var(--run)]" : ""}`}
+                      title={def.roiUnavailable ?? undefined}
+                    >
+                      {def.roi == null ? formatRoi(def.roi) : `${formatRoi(def.roi)} return`}
+                    </span>
+                    {done ? (
+                      <span className="k-fg2 text-[12.5px] tabular-nums">
+                        {c.on ? `${c.reactive ? "Up to " : ""}$${c.budgetUsd}/day` : "Off"}
+                      </span>
+                    ) : (
+                      <>
+                        <button
+                          type="button"
+                          aria-pressed={c.on}
+                          className="k-btn gap-1.5"
+                          onClick={() => onChange(setPlannedOn(rows, key, !c.on))}
+                          title={c.on ? "Turn off" : "Turn on"}
+                        >
+                          <StateDot running={c.on} label={c.on ? "On" : "Off"} />
+                        </button>
+                        <CampaignBudgetField
+                          key={`${key}:${c.budgetUsd}`}
+                          reactive={c.reactive}
+                          usd={c.budgetUsd}
+                          floorUsd={floorFor(c.featureSlug)}
+                          disabled={!c.on}
+                          onBudget={(usd) => onChange(rows.map((r) => (plannedKey(r) === key ? { ...r, budgetUsd: usd } : r)))}
+                        />
+                      </>
+                    )}
+                  </div>
+                </li>
+              );
+            })}
+          </ul>
+          {error && <p className="mt-2 text-[12px] text-[var(--data-rose)]">{error}</p>}
+        </>
+      )}
+    </StepCard>
+  );
+}
+
+/** A campaign's daily budget, typed in place; a value under the channel's floor says so and is not kept. */
+function CampaignBudgetField({
+  reactive,
+  usd,
+  floorUsd,
+  disabled,
+  onBudget,
+}: {
+  reactive: boolean;
+  usd: number;
+  floorUsd: number;
+  disabled: boolean;
+  onBudget: (usd: number) => void;
+}) {
+  const [text, setText] = useState(String(usd));
+  const parsed = parseCampaignBudget(text, floorUsd);
+  const problem = "problem" in parsed ? parsed.problem : null;
+  return (
+    <span className="inline-flex flex-wrap items-center gap-1.5 text-[12.5px]">
+      <span className="k-fg2">{reactive ? "Up to $" : "$"}</span>
+      <input
+        className={`k-input w-16 px-2 text-right tabular-nums ${problem ? "shadow-[inset_0_0_0_1px_var(--data-rose)]" : ""}`}
+        inputMode="numeric"
+        value={text}
+        disabled={disabled}
+        aria-label={reactive ? "Daily max in dollars" : "Daily budget in dollars"}
+        aria-invalid={problem !== null}
+        onChange={(e) => setText(e.target.value)}
+        onBlur={() => {
+          if ("usd" in parsed && parsed.usd !== usd) onBudget(parsed.usd);
+        }}
+        onKeyDown={(e) => {
+          if (e.key === "Enter" && "usd" in parsed && parsed.usd !== usd) onBudget(parsed.usd);
+        }}
+      />
+      <span className="k-fg3">/day</span>
+      {problem && <span className="w-full text-right text-[11.5px] text-[var(--data-rose)]">{problem}</span>}
+    </span>
   );
 }
 

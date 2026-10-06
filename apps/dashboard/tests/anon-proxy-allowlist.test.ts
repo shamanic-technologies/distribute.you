@@ -267,6 +267,14 @@ describe("the sales path steps of /get-started", () => {
     expect(allow("GET", `/brands/${BRAND}/leg-rates`).allowed).toBe(true);
     expect(allow("PUT", `/brands/${BRAND}/leg-rates`).allowed).toBe(true);
     expect(allow("GET", `/offers/${OFFER}/sales-paths?brandId=${BRAND}`).allowed).toBe(true);
+    expect(allow("GET", `/brands/${BRAND}/offers/${OFFER}/channels`).allowed).toBe(true);
+    expect(allow("PUT", `/brands/${BRAND}/offers/${OFFER}/channels`).allowed).toBe(true);
+    expect(allow("GET", `/brands/${BRAND}/offers/${OFFER}/selected-sales-paths`).allowed).toBe(true);
+    expect(allow("PUT", `/brands/${BRAND}/offers/${OFFER}/selected-sales-paths`).allowed).toBe(true);
+    expect(allow("PUT", `/brands/${OTHER}/offers/${OFFER}/channels`).refusal).toBe("wrong-brand");
+    expect(allow("PUT", `/brands/${OTHER}/offers/${OFFER}/selected-sales-paths`).refusal).toBe("wrong-brand");
+    // No campaign budget and no campaign start before the account exists.
+    expect(allow("PUT", `/brands/${BRAND}/offers/${OFFER}/campaign-budgets`).allowed).toBe(false);
   });
 
   it("refuses them on another brand, the query-bound read included", () => {

@@ -1,17 +1,8 @@
 import { describe, expect, it } from "vitest";
 import { readFileSync } from "fs";
 import { resolve } from "path";
-import {
-  firstLaunchedPath,
-  launchPlan,
-  initialSalesSteps,
-  parseDraftedSteps,
-  planFloorUsd,
-  salesStepsDraftField,
-  type PlanPath,
-} from "../src/lib/v2/get-started";
+import { initialSalesSteps, parseDraftedSteps, salesStepsDraftField } from "../src/lib/v2/get-started";
 import { selectionFromSteps, type PathLeg } from "../src/lib/offer-sales-path";
-import { parseOfferSalesPaths } from "../src/lib/offer-sales-paths";
 
 const read = (p: string) => readFileSync(resolve(__dirname, "..", p), "utf-8");
 const PAGE = read("src/components/v2/get-started/get-started.tsx");
@@ -20,40 +11,6 @@ const WALL = read("src/components/v2/get-started/account-card-wall.tsx");
 const KEEL = read("src/components/v2/keel.css");
 const PATHS = read("src/components/v2/offer-sales-paths.tsx");
 
-const leg = (legKey: string, from: string | null, slug: string | null) => ({
-  legKey,
-  fromStep: from ? { key: from } : null,
-  toStep: { label: legKey.split("_to_")[1] },
-  workedBy: slug ? "platform" : "human",
-  channel: slug ? { slug, name: null } : null,
-});
-
-// Two paths as features-service ranks them: a reply path through meeting booking first,
-// a visit path second, and a path entered by nothing we run (it buys nothing).
-const PATHS_FIXTURE: PlanPath[] = [
-  {
-    pathKey: "human-entry",
-    combinationKey: "human-entry",
-    entryChannelSlug: null,
-    legs: [leg("start_to_meeting_booked", null, null), leg("meeting_booked_to_paid_client", "meeting_booked", null)],
-  },
-  {
-    pathKey: "reply",
-    combinationKey: "reply",
-    entryChannelSlug: "sales-cold-email-outreach",
-    legs: [
-      leg("start_to_conversation", null, "sales-cold-email-outreach"),
-      leg("conversation_to_meeting_booked", "conversation", "ai-meeting-booking"),
-      leg("meeting_booked_to_paid_client", "meeting_booked", null),
-    ],
-  },
-  {
-    pathKey: "visit",
-    combinationKey: "visit",
-    entryChannelSlug: "sales-cold-email-outreach",
-    legs: [leg("start_to_website_visit", null, "sales-cold-email-outreach"), leg("website_visit_to_paid_client", "website_visit", null)],
-  },
-];
 
 describe("the steps are drafted off the site, from the catalogue only", () => {
   it("asks for keys from the list it names, never the positive reply (no site shows it)", () => {
@@ -108,74 +65,44 @@ describe("the steps are drafted off the site, from the catalogue only", () => {
   });
 });
 
-describe("what we launch", () => {
-  it("frames the best path a channel of ours enters, never one entered by nothing we run", () => {
-    expect(firstLaunchedPath(PATHS_FIXTURE)?.pathKey).toBe("reply");
-  });
-
-  it("creates every leg a channel of ours works, the framed path first, once each", () => {
-    expect(launchPlan(PATHS_FIXTURE)).toEqual([
-      { featureSlug: "sales-cold-email-outreach", legKey: "start_to_conversation", label: "Cold email", outcome: "conversation", reactive: false, required: true },
-      { featureSlug: "ai-meeting-booking", legKey: "conversation_to_meeting_booked", label: "Meeting booking", outcome: "meeting_booked", reactive: true, required: true },
-      { featureSlug: "sales-cold-email-outreach", legKey: "start_to_website_visit", label: "Cold email", outcome: "website_visit", reactive: false, required: false },
-    ]);
+describe("what we launch (owner 2026-10-06: the campaigns step, one budget each)", () => {
+  it("writes each campaign's own daily budget before it starts, and states no global budget", () => {
+    const budget = LAUNCH.indexOf("await saveOfferCampaignBudget(input.brandId, offerId,");
+    expect(budget).toBeGreaterThan(0);
+    expect(budget).toBeLessThan(LAUNCH.indexOf("await startReactiveCampaign("));
+    expect(budget).toBeLessThan(LAUNCH.indexOf("createCampaignWithoutBrandEnrichment({"));
+    expect(LAUNCH).toContain("budgetCents: c.budgetUsd * 100 }, \"day\")");
+    expect(LAUNCH).not.toContain("setBrandSalesBudget");
   });
 
   // Prod 2026-10-02: a visit path and a reply path both entered by cold email named both
   // campaigns "<offer> (Cold email)", and campaign-service refused the second (409, name
   // taken), so every launch with two paths stopped on the wall.
-  it("names every campaign of the plan apart, even one channel on two legs", () => {
-    const plan = launchPlan(PATHS_FIXTURE);
-    const names = plan.map((c) => `${c.outcome}, ${c.label}`);
-    expect(new Set(names).size).toBe(plan.length);
+  it("names every campaign apart, even one channel on two legs", () => {
     expect(LAUNCH).toContain("name: `${offerName} (${c.outcome}, ${c.label})`");
   });
 
-  it("reads the production body through the real parser", () => {
-    const data = parseOfferSalesPaths(JSON.parse(read("tests/fixtures/offer-sales-paths.prod.json")), "test");
-    expect(launchPlan(data.paths)).toEqual([
-      { featureSlug: "sales-cold-email-outreach", legKey: "start_to_website_visit", label: "Cold email", outcome: "Website visit", reactive: false, required: true },
-    ]);
-  });
-});
-
-describe("one pot for every step of the sales path (owner 2026-10-03)", () => {
-  it("lifts the smallest budget so every campaign clears its channel's floor at the full budget", () => {
-    const plan = launchPlan(PATHS_FIXTURE);
-    const floors = new Map([
-      ["sales-cold-email-outreach", 100],
-      ["ai-meeting-booking", 300],
-    ]);
-    // The meeting booking draws on the same pot: its $3 floor is the plan's floor.
-    expect(planFloorUsd(plan, floors, 1)).toBe(3);
-    expect(planFloorUsd(plan.filter((c) => !c.reactive), floors, 1)).toBe(1);
+  it("starts exactly one proactive campaign, and refuses a launch without one", () => {
+    expect(LAUNCH).toContain("if (proactive.length !== 1) {");
   });
 });
 
 describe("the call sites", () => {
-  it("states the ONE daily budget as the brand's global budget before creating the campaigns", () => {
-    const at = LAUNCH.indexOf("await setBrandSalesBudget(input.brandId, input.budgetUsd * 100)");
-    expect(at).toBeGreaterThan(0);
-    expect(at).toBeLessThan(LAUNCH.indexOf("createCampaignWithoutBrandEnrichment({"));
-    expect(LAUNCH).toContain("{ offerId, legKey: c.legKey, featureSlug: c.featureSlug }, input.budgetUsd * 100);");
-    expect(LAUNCH).not.toContain("replyCeilingUsd");
-  });
-
-  it("states one budget for every step of the sales path on the payment wall, with no reply margin box", () => {
-    expect(WALL).toContain("One budget a day for every step of your sales. Replies to your leads come first.");
-    expect(WALL).not.toContain("marginOk");
-    expect(WALL).not.toContain("+50%");
-  });
-
-  it("frames the path launched first and lets a rate be overwritten from its detail", () => {
-    expect(PAGE).toContain("highlightKey={firstPath?.combinationKey ?? null}");
+  it("lets a rate be overwritten from a path's detail, and ticks paths as on the Sales path page", () => {
     expect(PAGE).toContain("await stateBrandLegRates(brandId, [{ fromStep: leg.fromStep.label, toStep: leg.toStep.label, ratePct }]);");
     expect(PATHS).toContain("onStateRate ? <RateEditor leg={leg} onStateRate={onStateRate} />");
+    expect(PAGE).toContain("onToggleSelected={done ? undefined : onToggle}");
+    expect(PAGE).toContain("await saveOfferSelectedSalesPaths(brandId, o.offerId, [...pickedPaths]);");
+    expect(PAGE).toContain("await saveOfferChannels(brandId, o.offerId, [...accepted]);");
   });
 
-  it("prices the wall's floor on every channel of the plan", () => {
-    expect(PAGE).toContain("floorUsd={planFloorUsd(plan, floorCents, floorUsd)}");
-    expect(PAGE).toContain("plan={plan}");
+  it("lists only the channels we run (no coming soon, owner 2026-10-06)", () => {
+    expect(PAGE).toContain("salesPathChannels(cat.channels).filter((c) => c.managed && !c.customerOperated)");
+  });
+
+  it("hands the wall the campaigns as set, never a single budget", () => {
+    expect(PAGE).toContain("campaigns={launchCampaigns}");
+    expect(PAGE).not.toContain("planFloorUsd");
   });
 
   it("asks nothing about visits or meetings any more", () => {
@@ -215,8 +142,8 @@ describe("a click moves on at once, and Back goes one step back", () => {
     expect(PAGE).toContain("if (row && row.apolloCount != null) counts[name] = row.apolloCount;");
   });
 
-  it("names the multiple as ROI, and lets the lifetime revenue be changed from a path's detail", () => {
-    expect(PATHS).toContain("`${formatRoi(path.roi)} ROI`");
+  it("names the multiple as a return here, and lets the lifetime revenue be changed from a path's detail", () => {
+    expect(PATHS).toContain('{gainHeadline ? "Return" : "ROI"}');
     expect(PATHS).toContain("<LifetimeRevenueEditor value={path.lifetimeRevenueUsd} onSave={onStateLifetimeRevenue} />");
     expect(PAGE).toContain("onStateLifetimeRevenue={stateLifetimeRevenue}");
   });
@@ -251,12 +178,12 @@ describe("the payment wall, simplified", () => {
     expect(PAGE).toContain("if (wallOpen) return;\n    const mv = stageMove(phases, stageIdx);");
   });
 
-  it("asks Google OR email, with the email field right above its button, and asks the budget with the card", () => {
+  it("asks Google OR email, with the email field right above its button, and no budget on the wall", () => {
     const form = WALL.slice(WALL.indexOf('{stage === "account" ? ('), WALL.indexOf("</form>", WALL.indexOf('{stage === "account" ? (')));
     expect(form.indexOf("Continue with Google")).toBeLessThan(form.indexOf("Continue with Email"));
     expect(form.indexOf('placeholder="you@company.com"')).toBeLessThan(form.indexOf("copy.emailCta}"));
-    expect(form).not.toContain("{budgetRow}");
-    expect(WALL).toContain('if (!checkReady("account")) return;');
+    expect(WALL).not.toContain("budgetRow");
+    expect(WALL).toContain("if (!checkReady()) return;");
   });
 
   it("carries real testimonials with five stars, from people the homepage names", () => {
@@ -315,11 +242,11 @@ describe("batch: wall, urgency, Back in the card, purchase rule", () => {
 });
 
 describe("gain, never cost, on the selling screens (owner 2026-10-01)", () => {
-  it("titles the paths step with the gain and headlines rows by return", () => {
-    expect(PAGE).toContain('title="Your most profitable opportunity"');
+  it("headlines the paths by return, the cost only in a row's detail", () => {
     expect(PAGE).not.toContain("Where your money goes");
     expect(PAGE).toContain("gainHeadline");
-    expect(PATHS).toContain("per client won");
+    // The table drops its cost column on the selling screen.
+    expect(PATHS).toContain("{!gainHeadline && (");
     expect(WALL).not.toContain("per hot lead");
   });
 
