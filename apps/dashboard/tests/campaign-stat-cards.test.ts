@@ -35,6 +35,10 @@ describe("campaign page stat cards", () => {
     expect(overview).toContain('unit={v === 1 ? "email" : "emails"}');
   });
 
+  it("states the 8 cards on one row on desktop", () => {
+    expect(overview).toContain('grid grid-cols-2 gap-3 md:grid-cols-4 xl:grid-cols-8');
+  });
+
   it("one person is a person", () => {
     expect(overview).toContain('unit={v === 1 ? "person" : "people"}');
   });

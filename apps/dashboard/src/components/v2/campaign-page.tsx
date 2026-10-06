@@ -3,8 +3,8 @@
 import { useParams, useSearchParams } from "next/navigation";
 import { useAuthQuery } from "@/lib/use-auth-query";
 import { pollOptions } from "@/lib/query-options";
-import { getCampaignRevenueWindow, getConversationCounts, getLeadBucketCounts } from "@/lib/api";
-import { SINCE_INCEPTION, type RevenueWindow } from "@/lib/revenue-window";
+import { getConversationCounts, getLeadBucketCounts } from "@/lib/api";
+import { type RevenueWindow } from "@/lib/revenue-window";
 import { formatCentsAsUsdAdaptive, formatCount } from "@/lib/format-number";
 import { fmtDailyBudgetUsd } from "@/lib/campaign-budget";
 import { shownFigure, shownReturn } from "@/lib/maturity";
@@ -23,7 +23,7 @@ import { CampaignControlsTrigger } from "@/components/campaigns/campaign-control
 import { CampaignSettingsCard } from "@/components/settings/campaign-settings-card";
 import { CampaignWorkflowsPage } from "@/components/workflows/campaign-workflows-page";
 import { useMissions, type Mission } from "@/components/v2/use-missions";
-import { LEG_STEPS, LegSteps, StepBar, SummaryCard } from "@/components/v2/offer-channel-page";
+import { LEG_STEPS, LegSteps, StepBar, SummaryCard, useCampaignWindow } from "@/components/v2/offer-channel-page";
 import { ColdEmailChannelSettings } from "@/components/v2/offer-channels-page";
 import { PathAvatar } from "@/components/v2/offer-sales-paths";
 import { PeoplePage } from "@/components/v2/people-page";
@@ -179,21 +179,6 @@ export function V2CampaignPage() {
 }
 
 /**
- * One campaign's figures since it started, from features-service's campaign window (its own
- * spend only, its email counts, the follow-ups provisioned). Every figure is served.
- */
-function useCampaignWindow(brandId: string, mission: Mission) {
-  const c = mission.row.campaign;
-  const slug = c.featureSlug ?? "";
-  const q = useAuthQuery(
-    ["campaignRevenueWindow", c.id, slug, SINCE_INCEPTION],
-    () => getCampaignRevenueWindow(slug, brandId, c.id, SINCE_INCEPTION),
-    { ...pollOptions, enabled: !!slug },
-  );
-  return { data: q.data ?? null, pending: q.data === undefined && !q.isError };
-}
-
-/**
  * "Spent" is what was billed (cost status actual). The follow-ups RESERVED when a first
  * email went out and not sent yet stand on their own line, as the served provisioned
  * figure (2026-10-06: a client read "$67 spent" over 185 emails, part of it follow-ups
@@ -255,7 +240,7 @@ function CampaignOverview({
   const cap = crewTrigger(mission.leg)?.kind === "event";
 
   const roi = shownReturn(g?.economicsMaturity, basis);
-  const win = useCampaignWindow(brandId, mission);
+  const win = useCampaignWindow(brandId, mission.row.campaign.id, mission.row.campaign.featureSlug ?? null);
   const emails = win.data?.emails ?? null;
   const queued = win.data?.queuedEmails ?? null;
   // Emails, every step of a sequence (owner 2026-10-06: "emails, not sequences").
@@ -271,8 +256,8 @@ function CampaignOverview({
     <div className="space-y-8">
       <section>
         <SectionTitle right={<span>Since it started</span>}>This campaign</SectionTitle>
-        {/* Owner's order (2026-10-06): ROI, Contacted, Queued, Sent, Delivered, outcome, Spent, cost per outcome. */}
-        <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
+        {/* Owner's order (2026-10-06), ONE row on desktop: ROI, Contacted, Queued, Sent, Delivered, outcome, Spent, cost per outcome. */}
+        <div className="grid grid-cols-2 gap-3 md:grid-cols-4 xl:grid-cols-8">
           <StatTile label="ROI" note={<InfoTooltip tip={CAMPAIGN_ROI_TIP} placement="bottom" />}>
             <Figure value={roi.learning ? "Learning" : roi.value == null ? "—" : formatRoi(roi.value)} />
           </StatTile>
@@ -290,6 +275,8 @@ function CampaignOverview({
 
       <div className="grid gap-x-3 gap-y-8 lg:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
         <LegSteps
+          brandId={brandId}
+          featureSlug={mission.row.campaign.featureSlug ?? null}
           title={leg?.title ?? mission.leg?.label ?? "Steps"}
           outcome={leg?.outcome ?? null}
           bucket={leg?.bucket ?? null}
@@ -355,7 +342,7 @@ function ConversationOverview({
   tabHref: (tab: V2CampaignTab) => string;
 }) {
   const budgetHidden = useDailyBudgetHidden();
-  const win = useCampaignWindow(brandId, mission);
+  const win = useCampaignWindow(brandId, mission.row.campaign.id, mission.row.campaign.featureSlug ?? null);
   const q = useAuthQuery(["conversationCounts", mission.row.campaign.id], () => getConversationCounts(mission.row.campaign.id), pollOptions);
   const conv = q.data ?? null;
   const settled = q.isFetchedAfterMount || q.data !== undefined;

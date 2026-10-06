@@ -131,7 +131,7 @@ export function StatTile({
   const body = (
     <>
       <div className="flex items-baseline justify-between gap-2">
-        <span className="k-label truncate">{label}</span>
+        <span className="k-label line-clamp-2 min-w-0">{label}</span>
         {note != null && <span className="k-fg3 shrink-0 truncate text-[12px]">{note}</span>}
       </div>
       <div className="mt-2 flex min-h-0 flex-1 flex-col">{children}</div>
@@ -149,8 +149,9 @@ export function StatTile({
 
 /** A big figure with an optional unit/sub beside it. */
 export function Figure({ value, unit, sub }: { value: React.ReactNode; unit?: string; sub?: React.ReactNode }) {
+  // Wraps: in a narrow tile (8 on one row, campaign page) the unit drops under the figure.
   return (
-    <div className="flex items-baseline gap-1.5">
+    <div className="flex flex-wrap items-baseline gap-x-1.5">
       <span className="text-[22px] font-medium leading-7 tracking-[-0.02em] tabular-nums">{value}</span>
       {unit && <span className="k-fg2 text-[13px]">{unit}</span>}
       {sub != null && <span className="k-fg3 ml-1 truncate text-[12px]">{sub}</span>}

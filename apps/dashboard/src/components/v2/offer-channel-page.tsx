@@ -5,10 +5,10 @@ import Link from "next/link";
 import { useParams, useSearchParams } from "next/navigation";
 import { useAuthQuery } from "@/lib/use-auth-query";
 import { pollOptions } from "@/lib/query-options";
-import { getLeadBucketCounts, getOfferUserFields, listCampaignsByBrand } from "@/lib/api";
+import { getCampaignRevenueWindow, getLeadBucketCounts, getOfferUserFields, listCampaignsByBrand } from "@/lib/api";
 import { legCampaignId } from "@/lib/v2/leg-campaign";
 import { formatCount } from "@/lib/format-number";
-import { SINCE_INCEPTION } from "@/lib/revenue-window";
+import { SINCE_INCEPTION, type RevenueWindow } from "@/lib/revenue-window";
 import { isColdEmailChannel } from "@/lib/offer-levers-home";
 import { useAcquisitionChannels } from "@/lib/use-acquisition-channels";
 import { v2OfferChannelHref, v2OfferHref, type V2ChannelTab } from "@/lib/v2/routes";
@@ -74,6 +74,7 @@ export function V2OfferChannelPage() {
         <ColdEmailOverview
           brandId={brandId}
           offerId={offerId}
+          channelSlug={channelSlug}
           tabHref={(t) => v2OfferChannelHref(orgId, brandId, offerId, channelSlug, t)}
         />
       ) : tab === "inbox" ? (
@@ -109,10 +110,12 @@ export const LEG_STEPS = [
 export function ColdEmailOverview({
   brandId,
   offerId,
+  channelSlug,
   tabHref,
 }: {
   brandId: string;
   offerId: string;
+  channelSlug: string;
   tabHref: (tab: V2ChannelTab) => string;
 }) {
   const win = useBrandRevenueWindow(brandId, SINCE_INCEPTION);
@@ -168,7 +171,15 @@ export function ColdEmailOverview({
         ) : (
           <div className={`grid gap-x-3 gap-y-8 ${shownLegs.length > 1 ? "md:grid-cols-2" : ""}`}>
             {shownLegs.map((leg) => (
-              <LegSteps key={leg.legKey} title={leg.title} outcome={leg.outcome} bucket={leg.bucket} campaignId={leg.campaignId} />
+              <LegSteps
+                key={leg.legKey}
+                brandId={brandId}
+                featureSlug={channelSlug}
+                title={leg.title}
+                outcome={leg.outcome}
+                bucket={leg.bucket}
+                campaignId={leg.campaignId}
+              />
             ))}
           </div>
         )}
@@ -187,12 +198,38 @@ export function ColdEmailOverview({
 }
 
 /** One leg's steps: Queued, Sent, Delivered, then the leg's outcome, read on the leg's campaign (people). */
+/**
+ * One campaign's figures since it started, from features-service's campaign window (its own
+ * spend, its email counts, the follow-ups provisioned). Every figure is served. The campaign
+ * page's cards and the steps bars read the same key.
+ */
+export function useCampaignWindow(brandId: string, campaignId: string, featureSlug: string | null) {
+  const slug = featureSlug ?? "";
+  const q = useAuthQuery(
+    ["campaignRevenueWindow", campaignId, slug, SINCE_INCEPTION],
+    () => getCampaignRevenueWindow(slug, brandId, campaignId, SINCE_INCEPTION),
+    { ...pollOptions, enabled: !!slug },
+  );
+  return { data: (q.data ?? null) as RevenueWindow | null, pending: q.data === undefined && !q.isError };
+}
+
+/**
+ * A leg's steps as bars. Queued, Sent and Delivered count EMAILS, every step of a sequence
+ * (owner 2026-10-06: "the bar charts must reflect the emails not the contacts"), off the
+ * campaign window; the outcome is lead-service's count of people. Queued is the emails
+ * waiting RIGHT NOW (a snapshot, not a total above Sent), so the bars share the tallest as
+ * their scale rather than Queued's.
+ */
 export function LegSteps({
+  brandId,
+  featureSlug,
   title,
   outcome,
   bucket,
   campaignId,
 }: {
+  brandId: string;
+  featureSlug: string | null;
   title: string;
   /** Null on a leg whose outcome lead-service counts no bucket for: the steps stop at Delivered. */
   outcome: string | null;
@@ -202,21 +239,27 @@ export function LegSteps({
   const q = useAuthQuery(["leadBucketCounts", `campaign:${campaignId}`, ""], () => getLeadBucketCounts({ campaignId }, {}), pollOptions);
   const counts = q.data?.counts ?? null;
   const settled = q.isFetchedAfterMount || q.data !== undefined;
+  const win = useCampaignWindow(brandId, campaignId, featureSlug);
+  const queued = win.data?.queuedEmails ?? null;
+  const sent = win.data?.emails?.sent ?? null;
+  const delivered = win.data?.emails?.delivered ?? null;
+  const outcomes = outcome && bucket && counts ? counts[bucket] : null;
+  const scale = Math.max(queued ?? 0, sent ?? 0, delivered ?? 0, outcomes ?? 0);
 
   return (
     <section>
       <SectionTitle>{title}</SectionTitle>
       <div className="k-card p-4">
-        {!settled ? (
+        {!settled || win.pending ? (
           <Shimmer className="h-[200px] w-full rounded-[8px]" />
-        ) : !counts ? (
-          <EmptyNote>Could not read where people stand. Retrying.</EmptyNote>
+        ) : !counts && !win.data ? (
+          <EmptyNote>Could not read this campaign&apos;s emails. Retrying.</EmptyNote>
         ) : (
           <div className="flex items-end gap-3">
-            <StepBar label="Queued" count={counts.contacted} of={counts.contacted} />
-            <StepBar label="Sent" count={q.data?.people?.sent ?? null} of={counts.contacted} />
-            <StepBar label="Delivered" count={q.data?.people?.delivered ?? null} of={counts.contacted} />
-            {outcome && bucket && <StepBar label={outcome} count={counts[bucket]} of={counts.contacted} />}
+            <StepBar label="Queued" count={queued} of={scale} />
+            <StepBar label="Sent" count={sent} of={scale} />
+            <StepBar label="Delivered" count={delivered} of={scale} />
+            {outcome && bucket && <StepBar label={outcome} count={outcomes} of={scale} />}
           </div>
         )}
       </div>

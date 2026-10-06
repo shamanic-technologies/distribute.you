@@ -11,6 +11,7 @@ const read = (p: string) => readFileSync(join(__dirname, "..", p), "utf8");
 const api = read("src/lib/api.ts");
 const win = read("src/lib/revenue-window.ts");
 const page = read("src/components/v2/campaign-page.tsx");
+const channel = read("src/components/v2/offer-channel-page.tsx");
 const table = read("src/components/v2/offer-campaigns-page.tsx");
 
 describe("campaign money: Spent is billed, provisioned follow-ups stated apart", () => {
@@ -18,7 +19,7 @@ describe("campaign money: Spent is billed, provisioned follow-ups stated apart",
     const reader = api.slice(api.indexOf("export async function getCampaignRevenueWindow("), api.indexOf("export function keepLastGoodFeatureRevenue("));
     expect(reader).toContain('new URLSearchParams({ brandId, campaignId, pricing: "net", windowDays: String(days) })');
     expect(win).toContain("provisionedSpentCents: z.number().optional(),");
-    expect(page).toContain("getCampaignRevenueWindow(slug, brandId, c.id, SINCE_INCEPTION)");
+    expect(channel).toContain("getCampaignRevenueWindow(slug, brandId, campaignId, SINCE_INCEPTION)");
   });
 
   it("the Spent tile states actual, the provisioned follow-ups on their own line", () => {
