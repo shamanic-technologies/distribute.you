@@ -55,7 +55,7 @@ describe("/get-started launches the portfolio, not the one audience picked in th
     expect(flow).toContain("saveSnapshot({ icp });");
     expect(flow).toContain("if (s.icp) icpRef.current = s.icp;");
     expect(flow).toContain("targetAudience={icpRef.current}");
-    expect(wall).toContain("{ brandId, website, offer, targetAudience, campaigns, answered, writeBudgets: false }");
+    expect(wall).toContain("{ brandId, website, offer, targetAudience, campaigns, answered }");
   });
 });
 

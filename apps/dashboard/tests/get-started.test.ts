@@ -16,10 +16,11 @@ import {
   parseCompetitors,
   campaignPlan,
   campaignPlanProblem,
+  matchNote,
   parseCampaignBudget,
   wallCopy,
   parseGetStartedSnapshot,
-  overageWarning,
+  parseReloadThresholdUsd,
   parseTopupUsd,
   setPlannedOn,
   stageDwellMs,
@@ -73,6 +74,14 @@ describe("the rules the page decides on", () => {
     expect(parseCampaignBudget("$12", 1)).toEqual({ usd: 12 });
   });
 
+  it("adds credit from $100 and reloads under $5 at the lowest (owner 2026-10-06)", () => {
+    expect(parseTopupUsd("99")).toEqual({ problem: "At least $100." });
+    expect(parseTopupUsd("$1,000")).toEqual({ usd: 1000 });
+    expect(parseTopupUsd("100.5")).toEqual({ problem: "Whole dollars." });
+    expect(parseReloadThresholdUsd("4")).toEqual({ problem: "At least $5." });
+    expect(parseReloadThresholdUsd("5")).toEqual({ usd: 5 });
+  });
+
   it("opens the campaigns on the best proactive one and every reactive one, and keeps what was set", () => {
     const served = [
       { featureSlug: "cold", legKey: "start_to_visit", reactive: false, managed: true, roi: 1.2 },
@@ -99,27 +108,27 @@ describe("the rules the page decides on", () => {
     expect(campaignPlanProblem(setPlannedOn(moved, "cold:start_to_visit", false), floor)).toBe("Turn on one campaign that finds new leads.");
   });
 
-  it("sells the $99/month plan with a 3-day free trial, and no match (owner 2026-10-06)", () => {
-    const copy = wallCopy();
-    expect(copy.formTitle).toBe("Start your 3-day free trial");
-    expect(copy.creditUsd).toBe(99);
-    expect(JSON.stringify(copy)).not.toContain("match");
-    // The amount picked on the landing carries to the wall.
-    expect(wallCopy(299).cardNote).toBe("Your campaigns start with $299 of credit. After 3 days, $299 a month. Cancel anytime.");
+  it("stops promising the match to new signups on November 1, 2026 (owner 2026-10-06)", () => {
+    const before = Date.parse("2026-10-31T23:59:59Z");
+    const after = Date.parse("2026-11-01T00:00:00Z");
+    expect(wallCopy(before).formTitle).toBe("Claim your $100 match");
+    expect(JSON.stringify(wallCopy(after))).not.toContain("match");
+    expect(matchNote(null, before)).toBe("We match your first $100.");
+    expect(matchNote(null, after)).toBe("");
+    // An org billing created under the match keeps reading its own figures.
+    const held = { free_credit_offer: "match_100", free_credit_received_cents: "3000", free_credit_pending_cents: "7000", free_credit_remaining_to_pay_cents: "4000" };
+    // Created after the end: billing reads 0 everywhere, the line says nothing.
+    const none = { free_credit_offer: "match_100", free_credit_received_cents: "0.0000000000", free_credit_pending_cents: "0.0000000000", free_credit_remaining_to_pay_cents: "0.0000000000" };
+    expect(matchNote(none, after)).toBe("");
+    expect(matchNote(held, after)).toBe("We match your first $100. $30 is already in your account. $70 more lands once you have paid $40.");
   });
 
-  it("warns before a start with no top-up only when the campaigns outspend the plan", () => {
-    const plan = [
-      { featureSlug: "cold", legKey: "a", reactive: false, on: true, budgetUsd: 5 },
-      { featureSlug: "booking", legKey: "b", reactive: true, on: true, budgetUsd: 2 },
-      { featureSlug: "cold", legKey: "c", reactive: false, on: false, budgetUsd: 50 },
-    ];
-    // $7 a day = $210 a month, $99 lasts 14 days.
-    expect(overageWarning(plan, false)).toEqual({ monthlyUsd: 210, days: 14 });
-    expect(overageWarning(plan, true)).toBeNull();
-    expect(overageWarning([{ ...plan[0], budgetUsd: 3 }], false)).toBeNull();
-    expect(parseTopupUsd("49")).toEqual({ problem: "At least $50." });
-    expect(parseTopupUsd("$200")).toEqual({ usd: 200 });
+  it("states the match in billing's figures, never a guessed split", () => {
+    expect(matchNote(null)).toBe("We match your first $100.");
+    expect(matchNote({ free_credit_offer: "legacy" })).toBe("");
+    const fresh = { free_credit_offer: "match_100", free_credit_received_cents: "3000.0000000000", free_credit_pending_cents: "7000.0000000000", free_credit_remaining_to_pay_cents: "10000.0000000000" };
+    expect(matchNote(fresh)).toBe("We match your first $100. $30 is already in your account. $70 more lands once you have paid $100.");
+    expect(matchNote({ ...fresh, free_credit_received_cents: "10000", free_credit_pending_cents: "0", free_credit_remaining_to_pay_cents: "0" })).toBe("Your $100 match is in your account.");
   });
 
   it("restores a snapshot, and starts over on anything malformed or older", () => {
@@ -304,7 +313,7 @@ describe("the surface", () => {
   });
 
   it("asks the account and the card on one screen", () => {
-    expect(WALL).toContain("createSubscriptionCheckout(");
+    expect(WALL).toContain("<PrepaidTopup");
     expect(WALL).toContain("signUp.create(");
     expect(WALL).toContain('id="clerk-captcha"');
   });
@@ -354,7 +363,7 @@ describe("the surface", () => {
     expect(LAUNCH).toContain("export async function recommendedBudgetForPreview(");
     expect(LAUNCH).toContain("recommendedDailyBudgetUsd(newOrgLeg(legKey)");
     expect(FLOW).toContain("recommendedBudgetForPreview(brandId, offer.offerId, floorFor(NEW_ORG_CHANNEL_SLUG), leg)");
-    expect(WALL).toContain("{ brandId, website, offer, targetAudience, campaigns, answered, writeBudgets: false }");
+    expect(WALL).toContain("{ brandId, website, offer, targetAudience, campaigns, answered }");
     // No re-pick at launch: the offer is the one confirmed at step 3.
     expect(LAUNCH).not.toContain("proposeBrandOffers");
     // The six levers are read off the site for that offer and saved on it.
@@ -442,9 +451,9 @@ describe("the wall", () => {
     // Email code, no password to type.
     expect(wall).not.toContain('type="password"');
     expect(wall).toContain('strategy: "email_code"');
-    // The card is saved in the page, and the plan is never started twice.
-    expect(wall).toContain("await startSubscription();");
-    expect(wall).toContain("if (planStarted.current) {");
+    // The credit is paid in the page (Revolut widget or Stripe's embedded form), never twice.
+    expect(wall).toContain("await payTopup(");
+    expect(wall).toContain("if (paid) {");
     // The stage's view transitions stand down while the wall is up: their snapshots
     // paint in the top layer, above the wall.
     expect(wall).toContain("document.documentElement.classList.add(WALL_OPEN_CLASS)");
