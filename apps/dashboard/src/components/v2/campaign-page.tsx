@@ -3,8 +3,9 @@
 import { useParams, useSearchParams } from "next/navigation";
 import { useAuthQuery } from "@/lib/use-auth-query";
 import { pollOptions } from "@/lib/query-options";
-import { getConversationCounts, getLeadBucketCounts } from "@/lib/api";
-import { formatCentsAsUsdAdaptive, formatCount, formatUsdAdaptive } from "@/lib/format-number";
+import { getCampaignRevenueWindow, getConversationCounts, getLeadBucketCounts } from "@/lib/api";
+import { SINCE_INCEPTION, type RevenueWindow } from "@/lib/revenue-window";
+import { formatCentsAsUsdAdaptive, formatCount } from "@/lib/format-number";
 import { fmtDailyBudgetUsd } from "@/lib/campaign-budget";
 import { shownFigure, shownReturn } from "@/lib/maturity";
 import { formatRoi } from "@/lib/format-roi";
@@ -145,7 +146,7 @@ export function V2CampaignPage() {
       {!mission || !offerId ? (
         <Shimmer className="h-[240px] w-full rounded-[12px]" />
       ) : tab === "overview" && mission.leg?.fromKey ? (
-        <ConversationOverview mission={mission} tabHref={tabHref} />
+        <ConversationOverview brandId={brandId} mission={mission} tabHref={tabHref} />
       ) : tab === "overview" ? (
         <CampaignOverview brandId={brandId} offerId={offerId} campaignId={id} mission={mission} tabHref={tabHref} />
       ) : tab === "inbox" ? (
@@ -178,18 +179,41 @@ export function V2CampaignPage() {
 }
 
 /**
- * "Spent" is what was billed (cost status actual). The campaign's committed figure also
- * counts the follow-ups RESERVED when a first email went out and not sent yet, so it
- * stands on its own line under the figure, never under the "Spent" label (2026-10-06: a
- * client read "$67 spent" over 185 emails, part of it follow-ups still to go). Both
- * figures are served; the browser subtracts nothing.
+ * One campaign's figures since it started, from features-service's campaign window (its own
+ * spend only, its email counts, the follow-ups provisioned). Every figure is served.
  */
-export function SpentTile({ actualUsd, committedUsd }: { actualUsd: number | null; committedUsd: number | null }) {
-  const reserved = actualUsd != null && committedUsd != null && committedUsd > actualUsd;
+function useCampaignWindow(brandId: string, mission: Mission) {
+  const c = mission.row.campaign;
+  const slug = c.featureSlug ?? "";
+  const q = useAuthQuery(
+    ["campaignRevenueWindow", c.id, slug, SINCE_INCEPTION],
+    () => getCampaignRevenueWindow(slug, brandId, c.id, SINCE_INCEPTION),
+    { ...pollOptions, enabled: !!slug },
+  );
+  return { data: q.data ?? null, pending: q.data === undefined && !q.isError };
+}
+
+/**
+ * "Spent" is what was billed (cost status actual). The follow-ups RESERVED when a first
+ * email went out and not sent yet stand on their own line, as the served provisioned
+ * figure (2026-10-06: a client read "$67 spent" over 185 emails, part of it follow-ups
+ * still to go; owner: "+$22 provisioned for follow-ups"). The browser subtracts nothing.
+ */
+export function SpentTile({ win }: { win: { data: RevenueWindow | null; pending: boolean } }) {
+  const spend = win.data?.spend ?? null;
+  const provisioned = spend?.provisionedSpentCents ?? null;
   return (
     <StatTile label="Spent">
-      <Figure value={actualUsd == null ? "—" : formatUsdAdaptive(actualUsd)} />
-      {reserved && <p className="k-fg3 mt-1 text-[12px] leading-4">{formatUsdAdaptive(committedUsd)} with follow-ups reserved</p>}
+      {win.pending ? (
+        <Shimmer className="h-7 w-16" />
+      ) : (
+        <>
+          <Figure value={spend ? formatCentsAsUsdAdaptive(spend.actualSpentCents) : "—"} />
+          {provisioned != null && provisioned > 0 && (
+            <p className="k-fg3 mt-1 text-[12px] leading-4">+{formatCentsAsUsdAdaptive(provisioned)} provisioned for follow-ups</p>
+          )}
+        </>
+      )}
     </StatTile>
   );
 }
@@ -231,6 +255,12 @@ function CampaignOverview({
   const cap = crewTrigger(mission.leg)?.kind === "event";
 
   const roi = shownReturn(g?.economicsMaturity, basis);
+  const win = useCampaignWindow(brandId, mission);
+  const emails = win.data?.emails ?? null;
+  const queued = win.data?.queuedEmails ?? null;
+  // Emails, every step of a sequence (owner 2026-10-06: "emails, not sequences").
+  const emailCount = (v: number | null | undefined) =>
+    win.pending ? <Shimmer className="h-7 w-16" /> : <Figure value={v != null ? formatCount(v) : "—"} unit={v === 1 ? "email" : "emails"} />;
   const outcomes = leg && counts ? counts[leg.bucket] : null;
 
   // A person is "person", several are "people" (owner 2026-10-06: "1 people").
@@ -247,11 +277,11 @@ function CampaignOverview({
             <Figure value={roi.learning ? "Learning" : roi.value == null ? "—" : formatRoi(roi.value)} />
           </StatTile>
           <StatTile label="Contacted">{count(counts?.contacted)}</StatTile>
-          <StatTile label="Queued">{count(counts?.contacted)}</StatTile>
-          <StatTile label="Sent">{count(people?.sent)}</StatTile>
-          <StatTile label="Delivered">{count(people?.delivered)}</StatTile>
+          <StatTile label="Queued">{emailCount(queued)}</StatTile>
+          <StatTile label="Sent">{emailCount(emails?.sent)}</StatTile>
+          <StatTile label="Delivered">{emailCount(emails?.delivered)}</StatTile>
           <StatTile label={leg ? (outcomes === 1 ? leg.outcome : `${leg.outcome.replace(/y$/, "ie")}s`) : "Outcomes"}>{count(outcomes)}</StatTile>
-          <SpentTile actualUsd={g?.actualCostUsd ?? null} committedUsd={g?.committedCostUsd ?? null} />
+          <SpentTile win={win} />
           <StatTile label={replyLed ? "Cost / reply" : "Cost / visit"}>
             <Figure value={cost.learning ? "Learning" : cost.value == null ? "—" : formatCentsAsUsdAdaptive(cost.value)} />
           </StatTile>
@@ -315,12 +345,20 @@ function CampaignOverview({
  * lead-service serves the four counts per ACTING campaign (`getConversationCounts`), a
  * partition per person: handed = ongoing + booked + dropped.
  */
-function ConversationOverview({ mission, tabHref }: { mission: Mission; tabHref: (tab: V2CampaignTab) => string }) {
+function ConversationOverview({
+  brandId,
+  mission,
+  tabHref,
+}: {
+  brandId: string;
+  mission: Mission;
+  tabHref: (tab: V2CampaignTab) => string;
+}) {
   const budgetHidden = useDailyBudgetHidden();
+  const win = useCampaignWindow(brandId, mission);
   const q = useAuthQuery(["conversationCounts", mission.row.campaign.id], () => getConversationCounts(mission.row.campaign.id), pollOptions);
   const conv = q.data ?? null;
   const settled = q.isFetchedAfterMount || q.data !== undefined;
-  const g = mission.row.revenue ?? null;
   const cap = crewTrigger(mission.leg)?.kind === "event";
   const from = mission.leg?.fromLabel ?? "Positive reply";
   const to = mission.leg?.toLabel ?? "Meeting booked";
@@ -336,7 +374,7 @@ function ConversationOverview({ mission, tabHref }: { mission: Mission; tabHref:
           <StatTile label="Ongoing conversations">{count(conv?.ongoing)}</StatTile>
           <StatTile label={`${to}s`}>{count(conv?.meetingsBooked)}</StatTile>
           <StatTile label="Dropped conversations">{count(conv?.dropped)}</StatTile>
-          <SpentTile actualUsd={g?.actualCostUsd ?? null} committedUsd={g?.committedCostUsd ?? null} />
+          <SpentTile win={win} />
         </div>
       </section>
 

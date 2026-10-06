@@ -244,6 +244,8 @@ export const PERSISTABLE_QUERY_ROOTS = new Set([
   "brandRevenue",
   // The same read over Today's chosen window (`?windowDays=`), its own answer.
   "brandRevenueWindow",
+  // One campaign's window (its email counts and provisioned follow-ups), the campaign page's cards.
+  "campaignRevenueWindow",
   // What the contacted-but-not-engaged leads are worth (v2 Deals), a separate figure.
   "contactedValue",
   "dealsValue",
