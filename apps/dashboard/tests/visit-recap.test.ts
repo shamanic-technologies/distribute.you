@@ -24,6 +24,7 @@ function ev(offsetS: number, partial: Partial<VisitEvent>): VisitEvent {
     website: null,
     email: null,
     personName: null,
+    topupUsd: null,
     ...partial,
   };
 }
@@ -105,6 +106,28 @@ describe("visit recap (owner 2026-10-03: one readable Telegram per human visit)"
     );
   });
 
+  it("a visitor who opened the card form and left reached payment, unpaid (owner 2026-10-06, WHITE)", () => {
+    const text = visitRecap([
+      ev(0, {}),
+      click(20, "Continue with Google"),
+      ev(60, { event: "get_started_signup_verified" }),
+      ev(90, { event: "get_started_topup_opened", topupUsd: 100 }),
+      ev(150, {}),
+    ]);
+    expect(text.split("\n")[0]).toBe("🇫🇷 France · 2 min 30 · <b>Opened the $100 checkout, did not pay ❌</b>");
+    expect(text).toContain("<b>Payment ✗ · $100 checkout opened</b>");
+    expect(text).toContain("Not reached: landing, dashboard");
+    expect(text).not.toContain("Left at signup");
+
+    const paid = visitRecap([
+      ev(0, {}),
+      ev(30, { event: "get_started_topup_opened", topupUsd: 250 }),
+      ev(90, { event: "get_started_card_saved" }),
+    ]);
+    expect(paid.split("\n")[0]).toContain("<b>Paid $250 ✅</b>");
+    expect(paid).toContain("<b>Payment ✓ · $250 checkout opened</b>");
+  });
+
   it("names the stage a visitor left at, and puts Stripe time under Payment", () => {
     const left = visitRecap([ev(0, landing), ev(20, {}), click(40, "Start")]);
     expect(left.split("\n")[0]).toBe("🇫🇷 France · 40 s · <b>Left at onboarding ❌</b>");
@@ -131,8 +154,9 @@ describe("visit recap (owner 2026-10-03: one readable Telegram per human visit)"
   });
 
   it("maps a PostHog row onto a visit event, empty strings as absent", () => {
-    const { sessionId, event } = rowToEvent(["s1", "2026-10-03T10:00:00Z", "$pageview", "distribute.you", "/", "", null, null, "FR", "$direct", null, null, null, null, "acme.com", "jane@acme.com", "Jane Doe"]);
+    const { sessionId, event } = rowToEvent(["s1", "2026-10-03T10:00:00Z", "$pageview", "distribute.you", "/", "", null, null, "FR", "$direct", null, null, null, null, "acme.com", "jane@acme.com", "Jane Doe", 100]);
     expect(sessionId).toBe("s1");
+    expect(event.topupUsd).toBe(100);
     expect(event.currentUrl).toBeNull();
     expect(event.website).toBe("acme.com");
     expect(event.email).toBe("jane@acme.com");

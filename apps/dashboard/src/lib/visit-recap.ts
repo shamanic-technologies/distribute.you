@@ -28,6 +28,8 @@ export interface VisitEvent {
   /** The signed-up person (PostHog person properties, set by `posthog.identify`). */
   email: string | null;
   personName: string | null;
+  /** The credit amount a `get_started_topup_opened` event opened the card form for. */
+  topupUsd: number | null;
 }
 
 /**
@@ -67,6 +69,9 @@ const SIGNUP_DONE = new Set([
   "get_started_signup_verified",
 ]);
 const PAYMENT_DONE = new Set(["get_started_card_saved", "get_started_launched"]);
+// The card form opened for a top-up (Revolut pays inside the page, no return URL):
+// the visitor reached payment, which is not having paid.
+const CHECKOUT_OPENED = "get_started_topup_opened";
 
 function queryParam(url: string | null, key: string): string | null {
   if (!url) return null;
@@ -89,7 +94,7 @@ function stripeReturn(e: VisitEvent): "paid" | "cancelled" | null {
 /** Which stage an event belongs to. */
 export function stageOf(e: VisitEvent): Stage {
   if (e.host === LANDING_HOST || e.host === `www.${LANDING_HOST}`) return "Landing";
-  if (PAYMENT_DONE.has(e.event) || stripeReturn(e)) return "Payment";
+  if (PAYMENT_DONE.has(e.event) || e.event === CHECKOUT_OPENED || stripeReturn(e)) return "Payment";
   const path = e.pathname ?? "";
   if (path.startsWith("/sign-in") || path.startsWith("/sign-up") || SIGNUP_EVENT.test(e.event)) return "Signup";
   if (ONBOARDING_PATHS.has(path)) return "Onboarding";
@@ -132,7 +137,7 @@ function pageLabel(e: VisitEvent): string {
   const stage = stageOf(e);
   if (stage === "Onboarding") return "onboarding";
   if (stage === "Signup") return "the sign-in page";
-  if (stage === "Payment") return "the page back from Stripe";
+  if (stage === "Payment") return "the payment step";
   if (stage !== "Landing") return "the dashboard";
   const title = e.title?.replace(/\s*[|·-]\s*distribute\.you.*$/i, "").trim();
   if (!title) return e.pathname;
@@ -263,11 +268,17 @@ export function visitRecap(events: VisitEvent[], companyLines: string[] = []): s
 
   const total = Date.parse(sorted[sorted.length - 1].timestamp) - Date.parse(sorted[0].timestamp);
   const furthest = [...STAGES].reverse().find((s) => reached.has(s)) ?? "Landing";
+  const opened = sorted.filter((e) => e.event === CHECKOUT_OPENED);
+  const checkoutOpened = opened.length > 0;
+  const checkoutUsd = opened.map((e) => e.topupUsd).filter((v): v is number => v != null).pop() ?? null;
+  const checkout = checkoutUsd != null ? `$${checkoutUsd.toLocaleString("en-US")} checkout` : "checkout";
   const outcome = paid
-    ? "<b>Paid ✅</b>"
+    ? `<b>Paid${checkoutUsd != null ? ` $${checkoutUsd.toLocaleString("en-US")}` : ""} ✅</b>`
     : furthest === "Dashboard"
       ? "<b>Reached the dashboard</b>"
-      : `<b>Left at ${furthest.toLowerCase()} ❌</b>`;
+      : checkoutOpened
+        ? `<b>Opened the ${checkout}, did not pay ❌</b>`
+        : `<b>Left at ${furthest.toLowerCase()} ❌</b>`;
 
   const lines = [`${countryLabel(first.country)} · ${formatDuration(total)} · ${outcome}`];
   lines.push(escapeHtml(sourceLine(first)));
@@ -276,7 +287,12 @@ export function visitRecap(events: VisitEvent[], companyLines: string[] = []): s
 
   for (const stage of STAGES) {
     if (!reached.has(stage)) continue;
-    const label = stage === "Signup" && signedUp ? "Signup ✓" : stage;
+    const label =
+      stage === "Signup" && signedUp
+        ? "Signup ✓"
+        : stage === "Payment" && checkoutOpened
+          ? `Payment ${paid ? "✓" : "✗"} · ${checkout} opened`
+          : stage;
     lines.push("", `<b>${label}</b> · ${formatDuration(time.get(stage) ?? 0)}`);
     const list = clicks.get(stage);
     if (list?.length) lines.push(escapeHtml(clickList(list)));

@@ -47,6 +47,7 @@ import {
 import { v2CampaignHref } from "@/lib/v2/routes";
 import {
   GET_STARTED_SNAPSHOT_KEY,
+  dailySpendUsd,
   matchNote,
   nextSlide,
   type GetStartedEmail,
@@ -73,6 +74,7 @@ const RESEND_COOLDOWN_SECONDS = 30;
 const SLIDE_MS = 6000;
 /** Set on the way back from Google when Clerk signed an EXISTING account in. */
 const RETURNING_PARAM = "returning";
+const CONSENT_KEY_PREFIX = "get-started-consent:";
 
 type Stage = "account" | "code" | "claim" | "phone" | "card" | "launching";
 
@@ -134,7 +136,27 @@ export function AccountCardWall({
   const [email, setEmail] = useState("");
   const [emailOpen, setEmailOpen] = useState(false);
   const [code, setCode] = useState("");
-  const [consent, setConsent] = useState(false);
+  // The consent is asked once (owner 2026-10-06): ticked before the Google round trip,
+  // it survives the round trip (the wall mounts again) and is not asked at the credit step.
+  const consentKey = `${CONSENT_KEY_PREFIX}${brandId}`;
+  const [consentBefore] = useState(() => {
+    try {
+      return localStorage.getItem(consentKey) === "1";
+    } catch {
+      return false;
+    }
+  });
+  const [consent, setConsentState] = useState(consentBefore);
+  const consentGiven = useRef(consentBefore);
+  function setConsent(v: boolean) {
+    setConsentState(v);
+    try {
+      if (v) localStorage.setItem(consentKey, "1");
+      else localStorage.removeItem(consentKey);
+    } catch (e) {
+      console.error("[get-started] consent not remembered:", e);
+    }
+  }
   const [busy, setBusy] = useState(false);
   // The claim has its own flag: the code form's `finally` clears `busy` while the
   // claim this sign-in started is still in flight.
@@ -260,6 +282,7 @@ export function AccountCardWall({
       setError(`Tick the box to let us email on behalf of ${brandName}.`);
       return false;
     }
+    consentGiven.current = true;
     return true;
   }
 
@@ -776,13 +799,13 @@ export function AccountCardWall({
 
             {stage === "card" && !cardSecret && (
               <div className="mt-4 grid gap-3">
-                <Consent brandName={brandName} checked={consent} onChange={setConsent} />
+                {!consentGiven.current && <Consent brandName={brandName} checked={consent} onChange={setConsent} />}
                 {paid ? (
                   <button type="button" className="k-cta k-btn-accent gs-glow w-full justify-center" onClick={() => void afterPaid(paid)} disabled={busy}>
                     {busy ? "Checking your payment..." : "Check my payment and launch"}
                   </button>
                 ) : (
-                  <PrepaidTopup busy={busy} matchNote={matchNote(account)} cta={(usd) => `Add $${usd.toLocaleString("en-US")} and launch`} onPay={(c) => void pay(c)} />
+                  <PrepaidTopup busy={busy} matchNote={matchNote(account)} dailyUsd={dailySpendUsd(campaigns)} onEditCampaigns={onClose} cta={(usd) => `Add $${usd.toLocaleString("en-US")} and launch`} onPay={(c) => void pay(c)} />
                 )}
               </div>
             )}

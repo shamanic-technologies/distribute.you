@@ -808,6 +808,26 @@ export const MIN_TOPUP_USD = 100;
 export const MIN_RELOAD_THRESHOLD_USD = 5;
 export const DEFAULT_RELOAD_THRESHOLD_USD = 10;
 
+/**
+ * Turning the automatic reload off asks first when the credit would run out within
+ * this many days (owner 2026-10-06: $24/day on $100 of credit stopped in about 4 days).
+ */
+export const RELOAD_OFF_WARNING_DAYS = 30;
+
+/** What the campaigns the visitor switched on spend a day: proactive budgets only (a reactive max is a cap, not daily money). */
+export function dailySpendUsd(campaigns: readonly { on: boolean; reactive: boolean; budgetUsd: number }[]): number {
+  return campaigns.reduce((sum, c) => (c.on && !c.reactive ? sum + c.budgetUsd : sum), 0);
+}
+
+/**
+ * How many whole days the credit the visitor is adding lasts at the daily budget THEY
+ * typed (their own two inputs, no served figure involved), or null when nothing spends daily.
+ */
+export function creditRunwayDays(creditUsd: number, dailyUsd: number): number | null {
+  if (!(dailyUsd > 0) || !(creditUsd > 0)) return null;
+  return Math.floor(creditUsd / dailyUsd);
+}
+
 /** A typed credit amount: whole dollars, at least $100. */
 export function parseTopupUsd(input: string): { usd: number } | { problem: string } {
   const t = input.trim().replace(/^\$/, "").replace(/,/g, "");
