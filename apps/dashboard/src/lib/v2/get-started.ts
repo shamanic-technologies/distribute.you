@@ -657,24 +657,11 @@ function parseSnapshotEmail(v: unknown): GetStartedEmail | null {
 // ── The wall ──────────────────────────────────────────────────────────────────
 
 /**
- * The offer (owner 2026-10-06): prepaid credit, no free trial. We match the first $100 a
- * new org pays: billing grants part of it when the org is created and the rest once $100
- * is paid (its own doctrine and figures, read off the account where shown).
+ * The offer (owner 2026-10-06): prepaid credit, no free trial, and we match the first $100
+ * a new org pays, with no end date. The $30 an org holds at creation is an ADVANCE on what
+ * it prepays (it runs the setup steps), never a gift: no copy calls it free.
  */
 export const MATCH_USD = 100;
-
-/**
- * The match runs until October 31, 2026 (owner 2026-10-06: a temporary offer, the landing
- * drops its banner the same day, billing stops granting it to orgs created from then).
- * Before the account exists nothing can be read off billing, so the wall's words follow
- * this date; once it exists, the line under the credit reads billing's own figures.
- */
-export const MATCH_ENDS_AT_MS = Date.parse("2026-11-01T00:00:00Z");
-
-/** Whether the match is still offered to a new signup at `now`. */
-export function matchOffered(now: number): boolean {
-  return now < MATCH_ENDS_AT_MS;
-}
 
 /**
  * What a credit buys, as a whole count of hot leads: the credit divided by the price
@@ -706,25 +693,8 @@ export interface WallCopy {
   cardCta: string;
 }
 
-export function wallCopy(now: number = Date.now()): WallCopy {
+export function wallCopy(): WallCopy {
   const m = MATCH_USD;
-  if (!matchOffered(now)) {
-    return {
-      creditUsd: MIN_TOPUP_USD,
-      creditLine: "of credit to start",
-      bannerTitle: "of credit to start",
-      bannerCta: "Start outreach",
-      timerLabel: "Time left to launch today",
-      timerExtendedLabel: "We're giving you more time to launch",
-      formTitle: "Start your outreach",
-      formSub: "One minute. You add credit at the end.",
-      emailCta: "Continue with Email",
-      codeCta: "Continue",
-      cardTitle: "Add credit",
-      cardNote: "Your campaigns spend this credit.",
-      cardCta: "Add credit and launch",
-    };
-  }
   return {
     creditUsd: m,
     creditLine: "matched on your first payment",
@@ -757,25 +727,21 @@ const wholeUsd = (cents: string | number | undefined): number | null => {
 };
 
 /**
- * The match in plain words, in billing's figures for this org: what is already in the
- * account, what lands next and what earns it. No account read yet reads the offer only,
- * never a guessed split; an org created before the offer reads nothing.
+ * The match in plain words. Never splits it into what the org already holds: the $30 at
+ * creation is an advance it pays back, not part of the match (owner 2026-10-06). Said
+ * while billing still owes it (or before the account exists); an org created before the
+ * offer, or already matched, reads nothing.
  */
-export function matchNote(account: MatchFigures | null | undefined, now: number = Date.now()): string {
+export function matchNote(account: MatchFigures | null | undefined): string {
   const offer = `We match your first $${MATCH_USD}.`;
-  if (!account) return matchOffered(now) ? offer : "";
-  // An org created before the offer keeps its own welcome: nothing to promise it here.
+  if (!account) return offer;
   if (account.free_credit_offer !== "match_100") return "";
-  const received = wholeUsd(account.free_credit_received_cents);
   const pending = wholeUsd(account.free_credit_pending_cents);
-  const toPay = wholeUsd(account.free_credit_remaining_to_pay_cents);
-  if (received === null || pending === null || toPay === null) {
-    console.error("[get-started] match_100 account served without its figures", account);
+  if (pending === null) {
+    console.error("[get-started] match_100 account served without its pending figure", account);
     return offer;
   }
-  // An org created after the match ended reads 0 everywhere: nothing to promise.
-  if (pending === 0) return received > 0 ? `Your $${received} match is in your account.` : "";
-  return `${offer} $${received} is already in your account. $${pending} more lands once you have paid $${toPay}.`;
+  return pending > 0 ? offer : "";
 }
 
 /** billing's refusal of a top-up or reload under its minimum, in words. */
