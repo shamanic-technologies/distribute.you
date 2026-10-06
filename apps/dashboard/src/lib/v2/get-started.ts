@@ -19,6 +19,7 @@
  * written only once the questions are answered, since they are written from the answers.
  */
 import { COUNTRIES } from "../../components/onboarding/phone-countries";
+import { SUBSCRIPTION_MONTHLY_CENTS } from "../subscription-plan";
 
 export const GET_STARTED_STEPS = [
   { key: "company", label: "Read your company" },
@@ -657,24 +658,13 @@ function parseSnapshotEmail(v: unknown): GetStartedEmail | null {
 // ── The wall ──────────────────────────────────────────────────────────────────
 
 /**
- * The offer (owner 2026-10-06): prepaid credit, no free trial. We match the first $100 a
- * new org pays: billing grants part of it when the org is created and the rest once $100
- * is paid (its own doctrine and figures, read off the account where shown).
+ * The offer (owner 2026-10-06, afternoon): the $99/month plan with a 3-day free trial,
+ * card required. The plan's money is campaign credit, spent by the budget the customer
+ * sets on each campaign; what goes beyond it is prepaid credit, added by an OPTIONAL
+ * automatic top-up when the credit goes below $0. No top-up = the campaigns stop when the
+ * credit is gone and resume with the next month's.
  */
-export const MATCH_USD = 100;
-
-/**
- * The match runs until October 31, 2026 (owner 2026-10-06: a temporary offer, the landing
- * drops its banner the same day, billing stops granting it to orgs created from then).
- * Before the account exists nothing can be read off billing, so the wall's words follow
- * this date; once it exists, the line under the credit reads billing's own figures.
- */
-export const MATCH_ENDS_AT_MS = Date.parse("2026-11-01T00:00:00Z");
-
-/** Whether the match is still offered to a new signup at `now`. */
-export function matchOffered(now: number): boolean {
-  return now < MATCH_ENDS_AT_MS;
-}
+export const PLAN_MONTHLY_USD = Math.round(SUBSCRIPTION_MONTHLY_CENTS / 100);
 
 /**
  * What a credit buys, as a whole count of hot leads: the credit divided by the price
@@ -682,7 +672,7 @@ export function matchOffered(now: number): boolean {
  * price is held or it buys none: the block is then left out rather than stating a
  * number we do not have.
  */
-export function hotLeadsForCredit(medianCostUsd: number | null | undefined, creditUsd = MATCH_USD): number | null {
+export function hotLeadsForCredit(medianCostUsd: number | null | undefined, creditUsd = PLAN_MONTHLY_USD): number | null {
   if (typeof medianCostUsd !== "number" || !Number.isFinite(medianCostUsd) || medianCostUsd <= 0) return null;
   const n = Math.floor(creditUsd / medianCostUsd);
   return n >= 1 ? n : null;
@@ -690,7 +680,7 @@ export function hotLeadsForCredit(medianCostUsd: number | null | undefined, cred
 
 /** The words of the wall. */
 export interface WallCopy {
-  /** The match, in dollars (what the left panel counts). */
+  /** The plan's credit, in dollars (what the left panel counts). */
   creditUsd: number;
   creditLine: string;
   bannerTitle: string;
@@ -706,95 +696,31 @@ export interface WallCopy {
   cardCta: string;
 }
 
-export function wallCopy(now: number = Date.now()): WallCopy {
-  const m = MATCH_USD;
-  if (!matchOffered(now)) {
-    return {
-      creditUsd: MIN_TOPUP_USD,
-      creditLine: "of credit to start",
-      bannerTitle: "of credit to start",
-      bannerCta: "Start outreach",
-      timerLabel: "Time left to launch today",
-      timerExtendedLabel: "We're giving you more time to launch",
-      formTitle: "Start your outreach",
-      formSub: "One minute. You add credit at the end.",
-      emailCta: "Continue with Email",
-      codeCta: "Continue",
-      cardTitle: "Add credit",
-      cardNote: "Your campaigns spend this credit.",
-      cardCta: "Add credit and launch",
-    };
-  }
+export function wallCopy(): WallCopy {
+  const plan = `$${PLAN_MONTHLY_USD}`;
   return {
-    creditUsd: m,
-    creditLine: "matched on your first payment",
-    bannerTitle: "matched on your first payment",
-    bannerCta: `Get my $${m} match`,
-    timerLabel: `Time left to claim your $${m} match`,
-    timerExtendedLabel: `We're giving you more time to claim your $${m}`,
-    formTitle: `Claim your $${m} match`,
-    formSub: "One minute. You add credit at the end.",
-    emailCta: "Continue with Email",
-    codeCta: "Continue",
-    cardTitle: "Add credit",
-    cardNote: `Your campaigns spend this credit. We match your first $${m}.`,
-    cardCta: "Add credit and launch",
+    creditUsd: PLAN_MONTHLY_USD,
+    creditLine: "of credit, free for 3 days",
+    bannerTitle: "of credit, free for 3 days",
+    bannerCta: "Start my free trial",
+    timerLabel: "Time left to claim your free trial",
+    timerExtendedLabel: "We're giving you more time to start your free trial",
+    formTitle: "Start your 3-day free trial",
+    formSub: "One minute. Nothing charged for 3 days.",
+    emailCta: "Start my free trial",
+    codeCta: "Start my free trial",
+    cardTitle: "Nothing charged for 3 days",
+    cardNote: `Your campaigns start with ${plan} of credit. After 3 days, ${plan} a month. Cancel anytime.`,
+    cardCta: "Start my free trial",
   };
 }
 
-/** The billing account fields the match line reads (billing-service's own figures). */
-export interface MatchFigures {
-  free_credit_offer?: string;
-  free_credit_entitlement_cents?: number;
-  free_credit_received_cents?: string;
-  free_credit_pending_cents?: string;
-  free_credit_remaining_to_pay_cents?: string;
-}
+/** What an automatic top-up adds once the credit goes below $0 (owner 2026-10-06). */
+export const TOPUP_CHOICES_USD = [50, 200, 500] as const;
+/** The smallest top-up, checked here: billing does not refuse it (owner: front, not backend). */
+export const MIN_TOPUP_USD = 50;
 
-const wholeUsd = (cents: string | number | undefined): number | null => {
-  const n = Number(cents);
-  return cents === undefined || !Number.isFinite(n) ? null : Math.floor(n / 100);
-};
-
-/**
- * The match in plain words, in billing's figures for this org: what is already in the
- * account, what lands next and what earns it. No account read yet reads the offer only,
- * never a guessed split; an org created before the offer reads nothing.
- */
-export function matchNote(account: MatchFigures | null | undefined, now: number = Date.now()): string {
-  const offer = `We match your first $${MATCH_USD}.`;
-  if (!account) return matchOffered(now) ? offer : "";
-  // An org created before the offer keeps its own welcome: nothing to promise it here.
-  if (account.free_credit_offer !== "match_100") return "";
-  const received = wholeUsd(account.free_credit_received_cents);
-  const pending = wholeUsd(account.free_credit_pending_cents);
-  const toPay = wholeUsd(account.free_credit_remaining_to_pay_cents);
-  if (received === null || pending === null || toPay === null) {
-    console.error("[get-started] match_100 account served without its figures", account);
-    return offer;
-  }
-  // An org created after the match ended reads 0 everywhere: nothing to promise.
-  if (pending === 0) return received > 0 ? `Your $${received} match is in your account.` : "";
-  return `${offer} $${received} is already in your account. $${pending} more lands once you have paid $${toPay}.`;
-}
-
-/** billing's refusal of a top-up or reload under its minimum, in words. */
-export function topupRefusal(code: string | undefined): string | null {
-  if (code === "topup_below_minimum") return `Credit starts at $${MIN_TOPUP_USD}.`;
-  if (code === "topup_threshold_below_minimum") return `A reload starts under $${MIN_RELOAD_THRESHOLD_USD} at the lowest.`;
-  return null;
-}
-
-/** The first credit a new org adds, and the amounts an automatic reload adds (owner 2026-10-06). */
-export const TOPUP_CHOICES_USD = [100, 250, 500, 1000] as const;
-export const RELOAD_CHOICES_USD = [100, 250, 500] as const;
-/** No credit added under $100 (billing refuses it too). */
-export const MIN_TOPUP_USD = 100;
-/** An automatic reload fires when the credit falls under this, never under $5. */
-export const MIN_RELOAD_THRESHOLD_USD = 5;
-export const DEFAULT_RELOAD_THRESHOLD_USD = 10;
-
-/** A typed credit amount: whole dollars, at least $100. */
+/** A typed top-up: whole dollars, at least $50. */
 export function parseTopupUsd(input: string): { usd: number } | { problem: string } {
   const t = input.trim().replace(/^\$/, "").replace(/,/g, "");
   if (!/^\d+$/.test(t)) return { problem: "Whole dollars." };
@@ -803,13 +729,31 @@ export function parseTopupUsd(input: string): { usd: number } | { problem: strin
   return { usd: n };
 }
 
-/** A typed reload threshold: whole dollars, at least $5. */
-export function parseReloadThresholdUsd(input: string): { usd: number } | { problem: string } {
-  const t = input.trim().replace(/^\$/, "").replace(/,/g, "");
-  if (!/^\d+$/.test(t)) return { problem: "Whole dollars." };
-  const n = Number(t);
-  if (n < MIN_RELOAD_THRESHOLD_USD) return { problem: `At least $${MIN_RELOAD_THRESHOLD_USD}.` };
-  return { usd: n };
+/**
+ * What the campaigns turned on can spend in a day, whole dollars: the proactive budget
+ * plus every reactive max (a reactive one spends only when leads reach its step, so this
+ * is an upper bound and is said as "up to"). The visitor's own figures, added up.
+ */
+export function plannedDailyUsd(plan: readonly PlannedCampaign[]): number {
+  return plan.filter((c) => c.on).reduce((sum, c) => sum + c.budgetUsd, 0);
+}
+
+/**
+ * The warning before a trial starts with no top-up (owner 2026-10-06): when the campaigns
+ * turned on can spend more in a month than the plan holds, how many days the plan's
+ * credit lasts at that pace. Null when no warning is due (a top-up is on, or the plan
+ * covers the month).
+ */
+export function overageWarning(
+  plan: readonly PlannedCampaign[],
+  topupOn: boolean,
+  planUsd: number = PLAN_MONTHLY_USD,
+): { monthlyUsd: number; days: number } | null {
+  if (topupOn) return null;
+  const daily = plannedDailyUsd(plan);
+  const monthlyUsd = daily * 30;
+  if (daily <= 0 || monthlyUsd <= planUsd) return null;
+  return { monthlyUsd, days: Math.max(1, Math.floor(planUsd / daily)) };
 }
 
 /** The next slide of a carousel, wrapping. */

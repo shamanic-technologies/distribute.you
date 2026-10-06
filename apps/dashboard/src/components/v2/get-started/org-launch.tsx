@@ -2,10 +2,9 @@
 
 /**
  * The end of the brand walk run from the dashboard (`GetStarted` with `org`): where the
- * signed-out walk opens the account and credit wall, this opens the credit step (owner
- * 2026-10-06: prepaid, no plan, no trial). An org that already holds a card launches on
- * the account it has; one with no card adds prepaid credit first (`PrepaidTopup`, at
- * least $100, optional automatic reload). Then the SAME launch as the signed-out walk
+ * signed-out walk opens the account and card wall, this opens "Choose your plan" (a plan
+ * per brand x offer, NO trial: the 3 days are the first signup's only, owner 2026-10-03).
+ * An org that already holds a card launches on the account it has. Then the SAME launch as the signed-out walk
  * (`launchFromPreview`: the campaigns turned on at the campaigns step, each on its own
  * budget), the org marked set up with a token minted FOR it, and only THEN made active
  * (the edge first-run gate would bounce a not-yet-set-up org), and the person lands on
@@ -14,18 +13,15 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useOrganizationList, useSession, useUser } from "@clerk/nextjs";
-import { EmbeddedCheckout, EmbeddedCheckoutProvider } from "@stripe/react-stripe-js";
 import posthog from "posthog-js";
 import { getBillingAccount, setApiActiveOrgOverride, type BillingAccount } from "@/lib/api";
-import { getStripe } from "@/lib/stripe";
 import { defaultSalesRepToAccountEmail } from "@/lib/sales-rep-default";
 import { v2CampaignHref } from "@/lib/v2/routes";
-import { matchNote, type GetStartedOffer } from "@/lib/v2/get-started";
+import type { GetStartedOffer } from "@/lib/v2/get-started";
+import { ChoosePlanPanel } from "@/components/v2/choose-plan";
 import { EMPTY_PROGRESS, launchFromPreview, type LaunchCampaign, type LaunchProgress } from "./launch";
-import { PrepaidTopup, type TopupChoice } from "./prepaid-topup";
-import { payTopup, settleTopup } from "./pay-topup";
 
-type Stage = "reading" | "credit" | "ready" | "launching";
+type Stage = "reading" | "plan" | "ready" | "launching";
 
 export function OrgLaunch({
   orgId,
@@ -56,14 +52,12 @@ export function OrgLaunch({
   const { session } = useSession();
   const { setActive } = useOrganizationList();
   const email = user?.primaryEmailAddress?.emailAddress ?? null;
+  const personName = user?.fullName ?? null;
 
   const [stage, setStage] = useState<Stage>("reading");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [account, setAccount] = useState<BillingAccount | null>(null);
-  const [cardSecret, setCardSecret] = useState<string | null>(null);
-  const [paid, setPaid] = useState<{ creditedBefore: number; reload: TopupChoice["reload"] } | null>(null);
-  const pending = useRef<{ creditedBefore: number; reload: TopupChoice["reload"] } | null>(null);
   // "Try again" replays the launch: every write that landed on an earlier attempt is skipped.
   const progress = useRef<LaunchProgress>({ ...EMPTY_PROGRESS, budgets: {}, started: {}, campaignIds: {} });
 
@@ -80,7 +74,7 @@ export function OrgLaunch({
     getBillingAccount()
       .then((a) => {
         setAccount(a);
-        setStage(a.has_payment_method ? "ready" : "credit");
+        setStage(a.has_payment_method ? "ready" : "plan");
       })
       .catch((e) => {
         console.error("[brand-walk] billing account read failed:", e);
@@ -100,60 +94,17 @@ export function OrgLaunch({
     revolutDeclared.current = true;
   }
 
-  async function pay(choice: TopupChoice) {
-    if (busy) return;
-    setBusy(true);
-    setError(null);
-    try {
-      await declareRevolut();
-      const opened = await payTopup({
-        amountUsd: choice.topupUsd,
-        // Only an org created under the offer starts prepaid; an older one keeps its mode.
-        setPrepaid: account?.free_credit_offer === "match_100",
-        name: user?.fullName ?? undefined,
-        email: email ?? undefined,
-        onPaid: (creditedBefore) => void afterPaid({ creditedBefore, reload: choice.reload }),
-        onCancel: () => setBusy(false),
-        onError: (message) => {
-          setError(message);
-          setBusy(false);
-        },
-      });
-      if (opened.clientSecret) {
-        pending.current = { creditedBefore: opened.creditedBefore, reload: choice.reload };
-        setCardSecret(opened.clientSecret);
-        setBusy(false);
-      }
-    } catch (e) {
-      console.error("[brand-walk] top-up failed to open:", e);
-      setError(e instanceof Error ? e.message : "We could not open the card form.");
-      setBusy(false);
-    }
-  }
-
-  async function afterPaid(p: { creditedBefore: number; reload: TopupChoice["reload"] }) {
-    setCardSecret(null);
-    setPaid(p);
-    setBusy(true);
-    setError(null);
-    const settled = await settleTopup(p.creditedBefore, p.reload);
-    if (!settled.ok) {
-      setError(settled.message);
-      setBusy(false);
-      return;
-    }
-    setAccount(settled.account);
-    void launch();
-  }
-
-  async function launch() {
+  // The launch on a plan writes no budget: "Try again" replays it the same way.
+  const launchedOnPlan = useRef(false);
+  async function launch(onPlan = false) {
+    launchedOnPlan.current = onPlan;
     setStage("launching");
     setBusy(true);
     setError(null);
     try {
       const campaignId = await launchFromPreview(
         // A plan subscriber's budgets follow its plan (billing refuses a daily one).
-        { brandId, website, offer, targetAudience, campaigns, answered, writeBudgets: account?.payment_mode !== "subscription" },
+        { brandId, website, offer, targetAudience, campaigns, answered, writeBudgets: !onPlan && account?.payment_mode !== "subscription" },
         progress.current,
       );
       await defaultSalesRepToAccountEmail(brandId, email);
@@ -185,7 +136,7 @@ export function OrgLaunch({
     <div className="fixed inset-0 z-[70] flex items-start justify-center bg-[#1010121f] px-3 pt-[8vh]">
       <div role="dialog" aria-modal="true" aria-label="Launch" className="k-popover flex max-h-[84vh] w-full max-w-[560px] flex-col overflow-hidden">
         <div className="flex h-11 shrink-0 items-center gap-2 border-b border-[var(--line-subtle)] px-4">
-          <span className="k-label">{stage === "launching" ? "Launching" : stage === "credit" ? "Add credit" : "Launch"}</span>
+          <span className="k-label">{stage === "launching" ? "Launching" : stage === "plan" ? "Choose your plan" : "Launch"}</span>
           <button type="button" aria-label="Close" className="k-btn-ghost ml-auto h-7 w-7 justify-center p-0" onClick={onClose} disabled={stage === "launching" && busy}>
             ×
           </button>
@@ -204,29 +155,21 @@ export function OrgLaunch({
             </div>
           )}
 
-          {stage === "credit" && !cardSecret && (
-            paid ? (
-              <button type="button" className="k-cta k-btn-accent w-full justify-center" onClick={() => void afterPaid(paid)} disabled={busy}>
-                {busy ? "Checking your payment..." : "Check my payment and launch"}
-              </button>
-            ) : (
-              <PrepaidTopup busy={busy} matchNote={matchNote(account)} cta={(usd) => `Add $${usd.toLocaleString("en-US")} and launch`} onPay={(c) => void pay(c)} />
-            )
-          )}
-
-          {stage === "credit" && cardSecret && (
-            <EmbeddedCheckoutProvider
-              stripe={getStripe()}
-              options={{
-                clientSecret: cardSecret,
-                onComplete: () => {
-                  const held = pending.current;
-                  if (held) void afterPaid(held);
-                },
+          {stage === "plan" && (
+            <ChoosePlanPanel
+              brandId={brandId}
+              offerId={offer.offerId}
+              beforeCard={declareRevolut}
+              personName={personName}
+              email={email}
+              onStarted={() => launch(true)}
+              onRefused={(code) => {
+                // billing keeps this org on what it pays with: it launches on that.
+                if (code !== "existing_paying_org") return false;
+                setStage("ready");
+                return true;
               }}
-            >
-              <EmbeddedCheckout />
-            </EmbeddedCheckoutProvider>
+            />
           )}
 
           {stage === "launching" && (
@@ -240,7 +183,7 @@ export function OrgLaunch({
           )}
           {stage === "launching" && error && (
             <div className="mt-4 flex justify-end">
-              <button type="button" className="k-btn-strong" disabled={busy} onClick={() => void launch()}>
+              <button type="button" className="k-btn-strong" disabled={busy} onClick={() => void launch(launchedOnPlan.current)}>
                 Try again
               </button>
             </div>
