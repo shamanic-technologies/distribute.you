@@ -664,6 +664,19 @@ function parseSnapshotEmail(v: unknown): GetStartedEmail | null {
 export const MATCH_USD = 100;
 
 /**
+ * The match runs until October 31, 2026 (owner 2026-10-06: a temporary offer, the landing
+ * drops its banner the same day, billing stops granting it to orgs created from then).
+ * Before the account exists nothing can be read off billing, so the wall's words follow
+ * this date; once it exists, the line under the credit reads billing's own figures.
+ */
+export const MATCH_ENDS_AT_MS = Date.parse("2026-11-01T00:00:00Z");
+
+/** Whether the match is still offered to a new signup at `now`. */
+export function matchOffered(now: number): boolean {
+  return now < MATCH_ENDS_AT_MS;
+}
+
+/**
  * What a credit buys, as a whole count of hot leads: the credit divided by the price
  * the fleet's clients pay for one (a SERVED median, the homepage's figure). Null when no
  * price is held or it buys none: the block is then left out rather than stating a
@@ -693,8 +706,25 @@ export interface WallCopy {
   cardCta: string;
 }
 
-export function wallCopy(): WallCopy {
+export function wallCopy(now: number = Date.now()): WallCopy {
   const m = MATCH_USD;
+  if (!matchOffered(now)) {
+    return {
+      creditUsd: MIN_TOPUP_USD,
+      creditLine: "of credit to start",
+      bannerTitle: "of credit to start",
+      bannerCta: "Start outreach",
+      timerLabel: "Time left to launch today",
+      timerExtendedLabel: "We're giving you more time to launch",
+      formTitle: "Start your outreach",
+      formSub: "One minute. You add credit at the end.",
+      emailCta: "Continue with Email",
+      codeCta: "Continue",
+      cardTitle: "Add credit",
+      cardNote: "Your campaigns spend this credit.",
+      cardCta: "Add credit and launch",
+    };
+  }
   return {
     creditUsd: m,
     creditLine: "matched on your first payment",
@@ -731,9 +761,9 @@ const wholeUsd = (cents: string | number | undefined): number | null => {
  * account, what lands next and what earns it. No account read yet reads the offer only,
  * never a guessed split; an org created before the offer reads nothing.
  */
-export function matchNote(account: MatchFigures | null | undefined): string {
+export function matchNote(account: MatchFigures | null | undefined, now: number = Date.now()): string {
   const offer = `We match your first $${MATCH_USD}.`;
-  if (!account) return offer;
+  if (!account) return matchOffered(now) ? offer : "";
   // An org created before the offer keeps its own welcome: nothing to promise it here.
   if (account.free_credit_offer !== "match_100") return "";
   const received = wholeUsd(account.free_credit_received_cents);
@@ -743,7 +773,8 @@ export function matchNote(account: MatchFigures | null | undefined): string {
     console.error("[get-started] match_100 account served without its figures", account);
     return offer;
   }
-  if (pending === 0) return `Your $${received} match is in your account.`;
+  // An org created after the match ended reads 0 everywhere: nothing to promise.
+  if (pending === 0) return received > 0 ? `Your $${received} match is in your account.` : "";
   return `${offer} $${received} is already in your account. $${pending} more lands once you have paid $${toPay}.`;
 }
 
