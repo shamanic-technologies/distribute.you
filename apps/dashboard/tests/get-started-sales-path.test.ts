@@ -137,9 +137,9 @@ describe("a click moves on at once, and Back goes one step back", () => {
     expect(PAGE).not.toContain("We ticked what we read on your site");
   });
 
-  it("shows each audience's market size, big, from human-service's count", () => {
+  it("shows each audience's market size, big, from human-service's estimate", () => {
     expect(PAGE).toContain("<AudienceSize count={a.estimatedLeadCount ?? counts[a.name]}");
-    expect(PAGE).toContain("if (row && row.apolloCount != null) counts[name] = row.apolloCount;");
+    expect(PAGE).toContain("if (e.estimatedPeople != null) counts[e.name] = e.estimatedPeople;");
   });
 
   it("names the multiple as a return here, and lets the lifetime revenue be changed from a path's detail", () => {

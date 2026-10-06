@@ -3539,6 +3539,45 @@ export async function confirmAudienceSegments(
   return parsed.data;
 }
 
+const SegmentEstimateSchema = z.object({
+  estimates: z.array(
+    z.object({
+      name: z.string(),
+      // People with a verified email matching a quick filter draft: an order of
+      // magnitude for a card, never the created audience's own count.
+      estimatedPeople: z.number().int().nullable(),
+      unavailableReason: z.string().nullable(),
+    }),
+  ),
+});
+
+/**
+ * human-service's approximate people count per proposed segment, WITHOUT creating any
+ * audience (~$0.004 a segment, ~6 s). One entry per segment, in request order.
+ */
+export async function estimateAudienceSegments(
+  brandId: string,
+  offerId: string,
+  segments: ReadonlyArray<Pick<AudienceSegmentProposal, "name" | "description">>,
+  token?: string,
+): Promise<z.infer<typeof SegmentEstimateSchema>> {
+  const raw = await apiCall<unknown>(`/orgs/audiences/split/estimate`, {
+    token,
+    method: "POST",
+    body: {
+      brandId,
+      offerId,
+      segments: segments.map((s) => ({ name: s.name, description: s.description })),
+    },
+  });
+  const parsed = SegmentEstimateSchema.safeParse(raw);
+  if (!parsed.success) {
+    console.error("[dashboard] estimateAudienceSegments: response shape mismatch", { issues: parsed.error.issues, raw });
+    throw new Error("[dashboard] estimateAudienceSegments: invalid response shape");
+  }
+  return parsed.data;
+}
+
 const PortfolioAudienceSchema = z
   .object({
     id: z.string(),

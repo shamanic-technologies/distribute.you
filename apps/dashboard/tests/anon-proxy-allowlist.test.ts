@@ -250,7 +250,8 @@ describe("onboarding v2 steps 3 to 5: offer, audience, 100 companies", () => {
     expect(allow("POST", "/orgs/audiences/split").allowed).toBe(true);
     expect(allow("POST", "/orgs/audiences/split/confirm").allowed).toBe(true);
     const b = (brandId: string) => JSON.stringify({ brandId, targetAudience: "x" });
-    for (const endpoint of ["/orgs/audiences/split", "/orgs/audiences/split/confirm"]) {
+    expect(allow("POST", "/orgs/audiences/split/estimate").allowed).toBe(true);
+    for (const endpoint of ["/orgs/audiences/split", "/orgs/audiences/split/confirm", "/orgs/audiences/split/estimate"]) {
       expect(anonBodyRefusal({ method: "POST", endpoint, body: b(BRAND), brandId: BRAND })).toBeNull();
       expect(anonBodyRefusal({ method: "POST", endpoint, body: b(OTHER), brandId: BRAND })).toBe("wrong-brand");
       expect(anonBodyRefusal({ method: "POST", endpoint, body: undefined, brandId: BRAND })).toBe("not-allowlisted");
