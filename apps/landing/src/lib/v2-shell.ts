@@ -107,10 +107,10 @@ export function ctaBox(): string {
       <form class="launch" action="${SIGN_UP}" method="get">
         <div class="launch-field">
           <input name="url" type="text" autocomplete="off" placeholder="https://yourwebsite.com">
-          <button class="btn btn-accent" type="submit"><span>Get started</span><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M5 12h14M13 6l6 6-6 6"/></svg></button>
+          <button class="btn btn-accent" type="submit"><span>Start free</span><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M5 12h14M13 6l6 6-6 6"/></svg></button>
         </div>
       </form>
-      <div class="fine">We match your first $100 · Live in 2 minutes · Cancel anytime</div>
+      <div class="fine">Free platform · Live in 2 minutes · Cancel anytime</div>
     </div>
   </div>
 </section>`;

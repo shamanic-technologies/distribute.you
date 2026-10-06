@@ -85,10 +85,10 @@ const jsonLd = {
   offers: [
     {
       "@type": "Offer",
-      name: "Prepaid credit",
-      price: "100",
+      name: "Free platform",
+      price: "0",
       priceCurrency: "USD",
-      description: "Add credit from $100. We match your first $100. Every dollar becomes campaign credit. Pause or cancel anytime.",
+      description: "The platform is free. You choose how much goes to your outreach, billed at public catalogue prices. Pause or cancel anytime.",
     },
   ],
   provider: {
@@ -133,7 +133,7 @@ const howToJsonLd = {
       "@type": "HowToStep",
       position: 2,
       name: "Confirm what we found",
-      text: "Check the offer, the audiences and the sales funnel, then add credit, from $100. We match your first $100.",
+      text: "Check the offer, the audiences and the sales funnel, then choose how much goes to your outreach. The platform is free.",
     },
     {
       "@type": "HowToStep",

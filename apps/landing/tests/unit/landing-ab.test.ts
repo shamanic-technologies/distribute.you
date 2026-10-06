@@ -112,9 +112,9 @@ describe("GET / with the test on", () => {
 
   it("serves a forced subscription arm the same prepaid homepage, never the monthly plan", async () => {
     const { res, html } = await get({ qs: "?variant=subscription" });
-    // Owner 2026-10-06: prepaid credit, first $100 matched. A stale `?variant=` link
+    // Owner 2026-10-06: a free platform, outreach at catalogue prices. A stale `?variant=` link
     // still lands on a page, and that page sells the current offer.
-    expect(html).toContain("Get <span class=\"accent\">revenue in 24h</span><br>We match your first $100");
+    expect(html).toContain("Get <span class=\"accent\">revenue in 24h</span><br>The platform is free");
     const copy = html.replace(/<script[\s\S]*?<\/script>/g, "");
     for (const gone of ["$99", "/month", "free trial", "3-day", "From $1<", "$1/day", "Pay as you go"]) expect(copy, gone).not.toContain(gone);
     expect(html).not.toContain("\u2014");
@@ -135,7 +135,7 @@ describe("GET / with the test on", () => {
 
   it("gives a crawler the homepage, untagged, with no cookie", async () => {
     const { res, html } = await get({ ua: "Googlebot/2.1", qs: "?variant=instinct" });
-    expect(html).toContain("We match your first $100");
+    expect(html).toContain("The platform is free");
     expect(html).not.toContain("$1/day");
     expect(html).not.toContain("Text distribute.you to get started");
     expect(html).not.toContain("landing_variant_viewed");

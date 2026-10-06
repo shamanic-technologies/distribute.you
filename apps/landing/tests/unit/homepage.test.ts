@@ -135,12 +135,18 @@ describe("homepage copy discipline", () => {
 });
 
 describe("the offer the page states", () => {
-  it("leads with revenue and the $100 match, sold as prepaid credit", () => {
-    // Owner 2026-10-06: prepaid credit from $100, first $100 matched. The $99/month plan
-    // and its 3-day free trial are retired, and so is $1/day.
+  it("leads with revenue and a free platform, the $100 match only in the banner", () => {
+    // Owner 2026-10-06: the platform is free, the outreach is billed at catalogue prices.
+    // The $99/month plan, its trial and $1/day are retired. The first-$100 match is a
+    // time-boxed banner, never the tagline or the pricing section, and the minimum
+    // top-up is never stated (not a selling point).
     expect(html).toContain("Get revenue in 24h");
-    expect(html).toContain("We match your first $100");
-    expect(html).toContain("Add credit from $100");
+    expect(html).toContain("The platform is free");
+    expect(html).toContain('href="/catalog"');
+    const banner = html.match(/<!--promo:until=2026-11-01-->([\s\S]*?)<!--\/promo-->/);
+    expect(banner?.[1]).toContain("we match your first $100");
+    const outside = html.replace(/<!--promo:[\s\S]*?<!--\/promo-->/g, "");
+    for (const gone of ["match your first", "$100 free", "from $100", "first top-up"]) expect(outside, gone).not.toContain(gone);
     for (const gone of ["$99", "/month", "free trial", "3-day", "Monthly plan", "$1/day", "From $1<", "$30 free", "Start free with $30", "Pay as you go"]) {
       expect(html, gone).not.toContain(gone);
     }

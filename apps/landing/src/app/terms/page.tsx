@@ -179,7 +179,7 @@ const SECTIONS: SectionDef[] = [
         </p>
         <p>
           <strong>The welcome offer is a total, not a top-up.</strong> The
-          advertised welcome amount (currently $100: $30 credited when the
+          advertised welcome amount (currently $100 until October 31, 2026: $30 credited when the
           account is created, and $70 more once the account has paid $100 of
           credit) is the most free credit an account can ever
           receive under that offer, counting every free credit that account has

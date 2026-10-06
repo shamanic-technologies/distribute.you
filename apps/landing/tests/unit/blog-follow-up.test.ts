@@ -105,7 +105,7 @@ describe("the cold email follow-up article", () => {
     expect(html + meta.title + meta.excerpt).not.toContain("—");
     expect(prose).not.toMatch(/\bour cost\b|\bat cost\b|guarantee|meetings? booked/i);
     expect(prose).toContain("what it cost you");
-    expect(prose).toContain("We match your first $100.");
+    expect(prose).toContain("The platform is free.");
     expect(html).toContain('href="https://distribute.you"');
     expect(html).toContain('href="https://github.com/shamanic-technologies/distribute.you/tree/main/apps/landing/scripts/blog-data/followups"');
     expect(meta.source).toBe("manual");
