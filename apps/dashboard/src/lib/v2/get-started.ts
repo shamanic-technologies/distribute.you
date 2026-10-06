@@ -696,10 +696,11 @@ export interface WallCopy {
   cardCta: string;
 }
 
-export function wallCopy(): WallCopy {
-  const plan = `$${PLAN_MONTHLY_USD}`;
+/** `monthlyUsd` = the amount the visitor picked on the landing (`lp_plan`), $99 when none. */
+export function wallCopy(monthlyUsd: number = PLAN_MONTHLY_USD): WallCopy {
+  const plan = `$${monthlyUsd.toLocaleString("en-US")}`;
   return {
-    creditUsd: PLAN_MONTHLY_USD,
+    creditUsd: monthlyUsd,
     creditLine: "of credit, free for 3 days",
     bannerTitle: "of credit, free for 3 days",
     bannerCta: "Start my free trial",

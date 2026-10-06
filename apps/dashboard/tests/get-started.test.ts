@@ -104,6 +104,8 @@ describe("the rules the page decides on", () => {
     expect(copy.formTitle).toBe("Start your 3-day free trial");
     expect(copy.creditUsd).toBe(99);
     expect(JSON.stringify(copy)).not.toContain("match");
+    // The amount picked on the landing carries to the wall.
+    expect(wallCopy(299).cardNote).toBe("Your campaigns start with $299 of credit. After 3 days, $299 a month. Cancel anytime.");
   });
 
   it("warns before a start with no top-up only when the campaigns outspend the plan", () => {

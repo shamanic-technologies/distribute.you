@@ -43,7 +43,7 @@ import {
   type BillingAccount,
   type CardSetup,
 } from "@/lib/api";
-import { SUBSCRIPTION_MONTHLY_CENTS, subscriptionCheckoutRefusal } from "@/lib/subscription-plan";
+import { pickedPlanCents, subscriptionCheckoutRefusal } from "@/lib/subscription-plan";
 import { getStripe } from "@/lib/stripe";
 import {
   authFailureProps,
@@ -126,7 +126,9 @@ export function AccountCardWall({
   const { isLoaded: signUpLoaded, signUp, setActive } = useSignUp();
   const { catalogue } = useStartCatalogue();
 
-  const copy = wallCopy();
+  // The monthly amount the visitor picked on the landing (`lp_plan`), $99 when none.
+  const [monthlyCents] = useState(() => pickedPlanCents(document.cookie));
+  const copy = wallCopy(Math.round(monthlyCents / 100));
 
   const [stage, setStage] = useState<Stage>("account");
   const [email, setEmail] = useState("");
@@ -349,7 +351,7 @@ export function AccountCardWall({
     setError(null);
     try {
       await declareRevolut();
-      const checkout = await createSubscriptionCheckout({ monthly_amount_cents: SUBSCRIPTION_MONTHLY_CENTS, ui_mode: "embedded" });
+      const checkout = await createSubscriptionCheckout({ monthly_amount_cents: monthlyCents, ui_mode: "embedded" });
       const setup: CardSetup | null = checkout.card_setup;
       if (!checkout.card_required || !setup) {
         void afterTrialCardSaved();
