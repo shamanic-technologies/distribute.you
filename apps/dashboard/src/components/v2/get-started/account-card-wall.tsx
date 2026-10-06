@@ -1,11 +1,11 @@
 "use client";
 
 /**
- * The one wall of `/get-started`: the account and the card, on ONE screen, opened as a
+ * The one wall of `/get-started`: the account and the credit, on ONE screen, opened as a
  * layer OVER the results the founder just watched (blurred behind it), the way Explee
  * opens its paywall. The product stays in view while they pay.
  *
- * Left: the plan's credit, what it buys (a SERVED fleet price, or nothing), the email we
+ * Left: the $100 match, what it buys (a SERVED fleet price, or nothing), the email we
  * wrote kept sharp ("this one goes out when you start"), and a rotating card per named
  * client who agreed to be shown. Right: the countdown and spots strips (owner-decided,
  * copied from Explee), then the form.
@@ -17,9 +17,9 @@
  *                 made (`/api/anon/claim`, the same hinge `/onboarding/claim` runs);
  *   2b. phone   — their phone number, required (owner 2026-10-04: every signup leaves
  *                 one, even if they stop before the card), stored on the Clerk user;
- *   3. card     — the $99/month plan with a 3-day free trial (owner 2026-10-06): the
- *                 card saved in the same column (Revolut widget or Stripe's embedded
- *                 form), then billing's plan started; the plan sets the campaigns' money;
+ *   3. card     — prepaid credit (owner 2026-10-06, no free trial): an amount of at
+ *                 least $100 and an optional automatic reload, paid in the same column
+ *                 (Revolut widget or Stripe's embedded form); we match the first $100;
  *   4. launch   — the campaigns turned on at the campaigns step start, each on its own
  *                 budget (`launch.ts`), and the page lands on the proactive one.
  */
@@ -33,17 +33,7 @@ import { useAuth, useSession, useUser } from "@clerk/nextjs";
 import { useSignUp } from "@clerk/nextjs/legacy";
 import { EmbeddedCheckout, EmbeddedCheckoutProvider } from "@stripe/react-stripe-js";
 import posthog from "posthog-js";
-import {
-  ApiError,
-  createSubscriptionCheckout,
-  getBillingAccount,
-  getSubscription,
-  savePhoneNumber,
-  startSubscription,
-  type BillingAccount,
-  type CardSetup,
-} from "@/lib/api";
-import { pickedPlanCents, subscriptionCheckoutRefusal } from "@/lib/subscription-plan";
+import { getBillingAccount, savePhoneNumber, type BillingAccount } from "@/lib/api";
 import { getStripe } from "@/lib/stripe";
 import {
   authFailureProps,
@@ -55,6 +45,7 @@ import { v2CampaignHref } from "@/lib/v2/routes";
 import {
   GET_STARTED_SNAPSHOT_KEY,
   hotLeadsForCredit,
+  matchNote,
   nextSlide,
   type GetStartedEmail,
   type GetStartedAudience,
@@ -66,6 +57,8 @@ import { requiredPhoneProblem } from "@/lib/phone-syntax";
 import type { PhoneValue } from "@/components/onboarding/phone-input";
 import { PhoneField, browserPhoneCountry } from "./phone-field";
 import { EMPTY_PROGRESS, launchFromPreview, type LaunchCampaign, type LaunchProgress } from "./launch";
+import { PrepaidTopup, type TopupChoice } from "./prepaid-topup";
+import { payTopup, settleTopup } from "./pay-topup";
 import { CountUp, usePrefersReducedMotion } from "./motion";
 import { TrialSpots, TrialTimer } from "./urgency";
 import { WALL_OPEN_CLASS } from "./view-transition";
@@ -126,9 +119,7 @@ export function AccountCardWall({
   const { isLoaded: signUpLoaded, signUp, setActive } = useSignUp();
   const { catalogue } = useStartCatalogue();
 
-  // The monthly amount the visitor picked on the landing (`lp_plan`), $99 when none.
-  const [monthlyCents] = useState(() => pickedPlanCents(document.cookie));
-  const copy = wallCopy(Math.round(monthlyCents / 100));
+  const copy = wallCopy();
 
   const [stage, setStage] = useState<Stage>("account");
   const [email, setEmail] = useState("");
@@ -154,8 +145,10 @@ export function AccountCardWall({
 
   const claimed = useRef(false);
   const progress = useRef<LaunchProgress>({ ...EMPTY_PROGRESS, budgets: {}, started: {}, campaignIds: {} });
-  // The plan already started (a retry after a failed launch must not start it twice).
-  const planStarted = useRef(false);
+  // A payment the form reported: pressing the button again re-checks it, never pays twice.
+  const [paid, setPaid] = useState<{ creditedBefore: number; reload: TopupChoice["reload"] } | null>(null);
+  // Stripe's embedded form reports through its provider: what it was opened for waits here.
+  const pendingReload = useRef<{ creditedBefore: number; reload: TopupChoice["reload"] } | null>(null);
 
   // Esc closes while nothing is in flight.
   useEffect(() => {
@@ -327,7 +320,7 @@ export function AccountCardWall({
     }
   }
 
-  // ── Card and plan ──
+  // ── Credit ──
   async function declareRevolut() {
     const token = await session?.getToken({ skipCache: true });
     if (!token) throw new Error("Your session expired. Sign in again to finish.");
@@ -335,93 +328,57 @@ export function AccountCardWall({
     if (!res.ok) throw new Error("We could not prepare the card form. Try again.");
   }
 
-  function startTrial() {
+  async function pay(choice: TopupChoice) {
     if (busy || !checkReady()) return;
-    if (planStarted.current) {
-      void afterTrialCardSaved();
+    if (paid) {
+      void afterPaid(paid);
       return;
     }
-    void openTrialCheckout();
-  }
-
-  // The card is saved through the ordinary card setup billing answers (Revolut widget by
-  // default, Stripe's embedded form when the org's card lives there), then the plan starts.
-  async function openTrialCheckout() {
     setBusy(true);
     setError(null);
     try {
       await declareRevolut();
-      const checkout = await createSubscriptionCheckout({ monthly_amount_cents: monthlyCents, ui_mode: "embedded" });
-      const setup: CardSetup | null = checkout.card_setup;
-      if (!checkout.card_required || !setup) {
-        void afterTrialCardSaved();
-        return;
-      }
-      if (setup.mode === "embedded_checkout") {
-        setCardSecret(setup.client_secret);
+      const started = await payTopup({
+        amountUsd: choice.topupUsd,
+        // The account this wall just created is new: prepaid is its first mode.
+        setPrepaid: true,
+        name: user?.fullName ?? undefined,
+        email: user?.primaryEmailAddress?.emailAddress ?? undefined,
+        onPaid: (creditedBefore) => void afterPaid({ creditedBefore, reload: choice.reload }),
+        onCancel: () => setBusy(false),
+        onError: (message) => {
+          setError(message);
+          setBusy(false);
+        },
+      });
+      posthog.capture("get_started_topup_opened", { topup_usd: choice.topupUsd, reload: choice.reload !== null });
+      if (started.clientSecret) {
+        pendingReload.current = { creditedBefore: started.creditedBefore, reload: choice.reload };
+        setCardSecret(started.clientSecret);
         setBusy(false);
-        return;
       }
-      if (setup.mode === "embedded_widget") {
-        const { openCardWidget } = await import("@/lib/card-setup-widget");
-        await openCardWidget({
-          token: setup.token,
-          environment: setup.environment,
-          savePaymentMethodFor: setup.save_payment_method_for,
-          name: setup.customer_name ?? user?.fullName ?? undefined,
-          email: setup.customer_email ?? user?.primaryEmailAddress?.emailAddress ?? undefined,
-          onSuccess: () => void afterTrialCardSaved(),
-          onCancel: () => setBusy(false),
-          onError: (message) => {
-            setError(message);
-            setBusy(false);
-          },
-        });
-        return;
-      }
-      console.error("[get-started] subscription checkout answered a hosted page to an in-page request", setup);
-      throw new Error("[get-started] subscription checkout: no in-page card form");
     } catch (e) {
-      console.error("[get-started] subscription checkout failed:", e);
-      setError(subscriptionCheckoutRefusal(e instanceof ApiError && e.status === 409 ? e.body?.code : undefined));
+      console.error("[get-started] top-up failed to open:", e);
+      setError(e instanceof Error ? e.message : "We could not open the card form.");
       setBusy(false);
     }
   }
 
-  // Open the plan. The saved card reaches billing through the provider's webhook a
-  // moment after the form reports it, so `card_required` is retried, not shown.
-  async function afterTrialCardSaved() {
+  // The credit reaches billing through the provider's webhook a moment after the form
+  // reports the payment; then the automatic reload is armed when asked, then the launch.
+  async function afterPaid(p: { creditedBefore: number; reload: TopupChoice["reload"] }) {
     setCardSecret(null);
+    setPaid(p);
     setBusy(true);
     setError(null);
-    try {
-      if (!planStarted.current) {
-        let started = false;
-        for (let i = 0; i < 12 && !started; i++) {
-          try {
-            await startSubscription();
-            started = true;
-          } catch (err) {
-            const code = err instanceof ApiError && err.status === 409 ? err.body?.code : undefined;
-            if (code === "subscription_exists") started = true;
-            else if (code !== "card_required") throw err;
-            else await new Promise((r) => setTimeout(r, 1000));
-          }
-        }
-        if (!started) throw new Error("[get-started] the card was not confirmed in time");
-        const read = await getSubscription();
-        if (read.payment_mode !== "subscription" || !read.subscription) {
-          throw new Error("[get-started] subscription did not start");
-        }
-        planStarted.current = true;
-      }
-    } catch (e) {
-      console.error("[get-started] subscription start failed:", e);
-      setError("Your card is saved, but your trial could not start yet. Wait a few seconds and press the button again.");
+    const settled = await settleTopup(p.creditedBefore, p.reload);
+    if (!settled.ok) {
+      setError(settled.message);
       setBusy(false);
       return;
     }
-    posthog.capture("get_started_card_saved", { plan: "subscription" });
+    setAccount(settled.account);
+    posthog.capture("get_started_card_saved", { plan: "prepaid" });
     void launch();
   }
 
@@ -433,8 +390,7 @@ export function AccountCardWall({
     setError(null);
     try {
       const campaignId = await launchFromPreview(
-        // The plan sets each campaign's money (billing derives it from the ON campaigns).
-        { brandId, website, offer, targetAudience, campaigns, answered, writeBudgets: false },
+        { brandId, website, offer, targetAudience, campaigns, answered },
         progress.current,
       );
       await defaultSalesRepToAccountEmail(brandId, user?.primaryEmailAddress?.emailAddress);
@@ -489,7 +445,7 @@ export function AccountCardWall({
         aria-label="Start outreach"
         className="mx-auto grid w-full max-w-[1040px] gap-3 px-3 pb-10 pt-14 md:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] md:px-6 md:pt-[6vh]"
       >
-        {/* The plan's credit, and what it buys. */}
+        {/* The match, and what it buys. */}
         <section className="gs-panel k-popover p-5 md:col-start-1">
           {note && <p className="k-fg2 mb-3 rounded-lg bg-[var(--accent-soft)] px-3 py-2 text-[13px] leading-5">{note}</p>}
           <p className="k-fg text-[22px] font-semibold leading-7 tracking-tight">
@@ -696,12 +652,14 @@ export function AccountCardWall({
 
             {stage === "card" && !cardSecret && (
               <div className="mt-4 grid gap-3">
-                <p className="k-fg text-[13px] font-medium">{copy.cardTitle}</p>
-                <p className="k-fg2 -mt-2 text-[13px] leading-5">{copy.cardNote}</p>
                 <Consent brandName={brandName} checked={consent} onChange={setConsent} />
-                <button type="button" className="k-cta k-btn-accent gs-glow w-full justify-center" onClick={() => startTrial()} disabled={busy}>
-                  {busy ? "Opening the card form..." : copy.cardCta}
-                </button>
+                {paid ? (
+                  <button type="button" className="k-cta k-btn-accent gs-glow w-full justify-center" onClick={() => void afterPaid(paid)} disabled={busy}>
+                    {busy ? "Checking your payment..." : "Check my payment and launch"}
+                  </button>
+                ) : (
+                  <PrepaidTopup busy={busy} matchNote={matchNote(account)} cta={(usd) => `Add $${usd.toLocaleString("en-US")} and launch`} onPay={(c) => void pay(c)} />
+                )}
               </div>
             )}
 
@@ -712,7 +670,10 @@ export function AccountCardWall({
                   stripe={getStripe()}
                   options={{
                     clientSecret: cardSecret,
-                    onComplete: () => void afterTrialCardSaved(),
+                    onComplete: () => {
+                      const held = pendingReload.current;
+                      if (held) void afterPaid(held);
+                    },
                   }}
                 >
                   <EmbeddedCheckout />
@@ -740,7 +701,6 @@ export function AccountCardWall({
         {/* What our clients say, kept sharp while the rest is blurred. */}
         <Testimonials />
       </div>
-
     </div>,
     document.body,
   );
@@ -788,7 +748,7 @@ function Consent({ brandName, checked, onChange }: { brandName: string; checked:
 
 function Steps({ stage }: { stage: Stage }) {
   const at = stage === "account" || stage === "code" || stage === "claim" || stage === "phone" ? 0 : stage === "card" ? 1 : 2;
-  const items = ["Account", "Card", "Start"];
+  const items = ["Account", "Credit", "Start"];
   return (
     <div>
       <ol className="flex items-center gap-2" aria-label="Setup">

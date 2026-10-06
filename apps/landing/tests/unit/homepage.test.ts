@@ -135,22 +135,27 @@ describe("homepage copy discipline", () => {
 });
 
 describe("the offer the page states", () => {
-  it("leads with revenue and the $99/month plan, with a 3-day free trial", () => {
-    // Owner 2026-10-03: the $99/month plan is the default offer; $1/day is no longer sold.
+  it("leads with revenue and a free platform, the $100 match only in the banner", () => {
+    // Owner 2026-10-06: the platform is free, the outreach is billed at catalogue prices.
+    // The $99/month plan, its trial and $1/day are retired. The first-$100 match is a
+    // time-boxed banner, never the tagline or the pricing section, and the minimum
+    // top-up is never stated (not a selling point).
     expect(html).toContain("Get revenue in 24h");
-    expect(html).toContain("From $99/month");
-    expect(html).toContain("3-day free trial");
-    expect(html).toContain("Start my free trial");
-    for (const gone of ["$1/day", "From $1<", "$30 free", "Start free with $30", "No subscription", "Pay as you go"]) {
+    expect(html).toContain("The platform is free");
+    expect(html).toContain('href="/catalog"');
+    const banner = html.match(/<!--promo:until=2026-11-01-->([\s\S]*?)<!--\/promo-->/);
+    expect(banner?.[1]).toContain("we match your first $100");
+    const outside = html.replace(/<!--promo:[\s\S]*?<!--\/promo-->/g, "");
+    for (const gone of ["match your first", "$100 free", "from $100", "first top-up"]) expect(outside, gone).not.toContain(gone);
+    for (const gone of ["$99", "/month", "free trial", "3-day", "Monthly plan", "$1/day", "From $1<", "$30 free", "Start free with $30", "Pay as you go"]) {
       expect(html, gone).not.toContain(gone);
     }
     // The stats band splits "$" and the figure into two spans, so "$1/day" alone missed it.
     expect(html).not.toMatch(/per day/i);
   });
 
-  it("says nothing about the $400 credit match", () => {
-    // Owner-decided: the match is a gamification lever for the dashboard, not a landing
-    // promise. "Start free" and "$30 free" are what converts.
+  it("says nothing about the old $400 credit match", () => {
+    // The $400 match is retired. The match the page sells is the first $100 (2026-10-06).
     expect(html).not.toContain("$400");
   });
 
