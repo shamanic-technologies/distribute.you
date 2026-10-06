@@ -307,7 +307,8 @@ export function TenantSwitcherV2() {
 /**
  * Explee's user menu, in its order and its words: the email on top, then Team, API
  * Keys, Billing, Refer a friend (with what it earns), Help, then Sign out. Each item
- * opens a v2 page with our data; Help opens the support chat the FAB opens.
+ * opens a v2 page with our data; Help opens the support chat the FAB opens. Price catalog
+ * (owner 2026-10-06) opens the public unit-price page in a new tab, marked as leaving.
  *
  * Explee's Notifications, Feedback and Theme are left out: we store no notification
  * preferences, have nowhere to send a feedback note, and v2 has no dark theme, so each
@@ -317,6 +318,8 @@ const MENU_ICON = {
   team: "M6 7.5a2.25 2.25 0 1 0 0-4.5 2.25 2.25 0 0 0 0 4.5Zm-4 5.5c.4-2 2-3.2 4-3.2s3.6 1.2 4 3.2M10.5 3.2a2.2 2.2 0 0 1 0 4.1M12 9.9c1.2.4 2 1.4 2.2 3.1",
   key: "M6 9.5a3 3 0 1 1 2.6-1.5l4.9 4.9-1.2 1.2-1-1-1 1-1-1 1-1-2.1-2.1A3 3 0 0 1 6 9.5Z",
   billing: "M3.5 2.5h9v11l-1.5-1-1.5 1-1.5-1-1.5 1-1.5-1-1.5 1zM6 5.5h4M6 8h4",
+  tag: "M2.5 2.5h5l6 6-5 5-6-6zM5.3 5.3h.01",
+  external: "M9.5 2.5h4v4M13.5 2.5 7.5 8.5M11.5 9.5v4h-9v-9h4",
   monitoring: "M2.5 13.5h11M4 11V8M7 11V4.5M10 11V6.5M13 11V9",
   research: "M6 2.5h4M6.5 2.5v4L3 12.3a.9.9 0 0 0 .8 1.2h8.4a.9.9 0 0 0 .8-1.2L9.5 6.5v-4M4.8 9.5h6.4",
   gift: "M2.5 6h11v2.5h-11zM3.5 8.5v5h9v-5M8 6v7.5M8 6c-1-2.5-4-2.5-4-.8C4 6 6 6 8 6Zm0 0c1-2.5 4-2.5 4-.8C12 6 10 6 8 6Z",
@@ -324,6 +327,9 @@ const MENU_ICON = {
   out: "M9.5 3.5h3v9h-3M6.5 5 3.5 8l3 3M3.5 8h7",
   staff: "M8 2 3 4v4c0 3 2.2 5.2 5 6 2.8-.8 5-3 5-6V4L8 2ZM6 8l1.5 1.5L10.5 6.5",
 };
+/** The public unit-price page on the landing (`apps/landing` `/catalog`). */
+const PRICE_CATALOG_URL = "https://distribute.you/catalog";
+
 function MI({ d }: { d: string }) {
   return (
     <svg width="16" height="16" viewBox="0 0 16 16" fill="none" className="k-fg2 shrink-0" aria-hidden="true">
@@ -356,11 +362,13 @@ export function AccountMenuV2({ orgId, brandId }: { orgId: string; brandId: stri
   const close = () => setOpen(false);
   // Every account page lives under a brand; an org with no brand yet (its first brand
   // not added) gets the menu without them: who is signed in, help, sign out.
-  const links: { href: string; label: string; icon: string; pill?: string; prefetch?: boolean }[] = brandId
+  const links: { href: string; label: string; icon: string; pill?: string; prefetch?: boolean; external?: boolean }[] = brandId
     ? [
         { href: `${base}/team`, label: "Team", icon: MENU_ICON.team },
         { href: `${base}/api-keys`, label: "API Keys", icon: MENU_ICON.key },
         { href: `${base}/billing`, label: "Billing", icon: MENU_ICON.billing },
+        // What each tool behind an email costs: the public page, so it leaves the app.
+        { href: PRICE_CATALOG_URL, label: "Price catalog", icon: MENU_ICON.tag, external: true },
         // Monitoring states our fleet-wide cost, price and margin: staff mode only, like Research.
         ...(staffMode ? [{ href: `${base}/monitoring`, label: "Monitoring", icon: MENU_ICON.monitoring, prefetch: true }] : []),
         // Research compares workflows, models and templates: below a mission, so staff mode only.
@@ -387,7 +395,16 @@ export function AccountMenuV2({ orgId, brandId }: { orgId: string; brandId: stri
             <span className="k-fg3 block truncate px-2 py-1.5 text-[13px]">{email || name}</span>
           )}
           <div className="my-1 h-px bg-[var(--line-subtle)]" />
-          {links.map((l) => (
+          {links.map((l) =>
+            l.external ? (
+              <a key={l.href} href={l.href} target="_blank" rel="noopener noreferrer" role="menuitem" className={itemCls} onClick={close}>
+                <MI d={l.icon} />
+                <span className="min-w-0 truncate">{l.label}</span>
+                <svg width="12" height="12" viewBox="0 0 16 16" fill="none" className="k-fg3 ml-auto shrink-0" aria-label="Opens the public page in a new tab">
+                  <path d={MENU_ICON.external} stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
+                </svg>
+              </a>
+            ) : (
             <Link key={l.href} href={l.href} role="menuitem" className={itemCls} onClick={close} prefetch={l.prefetch ? true : undefined}>
               <MI d={l.icon} />
               <span className="min-w-0 truncate">{l.label}</span>
@@ -397,7 +414,8 @@ export function AccountMenuV2({ orgId, brandId }: { orgId: string; brandId: stri
                 </span>
               )}
             </Link>
-          ))}
+            ),
+          )}
           <a
             href={supportWhatsAppHref(email, organization?.name ?? "")}
             target="_blank"
