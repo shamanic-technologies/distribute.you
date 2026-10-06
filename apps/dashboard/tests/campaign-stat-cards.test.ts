@@ -26,6 +26,8 @@ describe("campaign page stat cards", () => {
   it("reads the served return with its (i), never a recomputation", () => {
     expect(overview).toContain("shownReturn(g?.economicsMaturity, basis)");
     expect(overview).toContain("note={<InfoTooltip tip={CAMPAIGN_ROI_TIP}");
+    // Green above break-even like every other ROI (owner 2026-10-06).
+    expect(overview).toContain('roiIsGood(roi.value) ? "text-[var(--run)]" : ""');
   });
 
   it("Queued, Sent and Delivered count emails off the campaign window", () => {

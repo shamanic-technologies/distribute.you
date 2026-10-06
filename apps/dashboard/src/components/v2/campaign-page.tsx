@@ -8,7 +8,7 @@ import { type RevenueWindow } from "@/lib/revenue-window";
 import { formatCentsAsUsdAdaptive, formatCount } from "@/lib/format-number";
 import { fmtDailyBudgetUsd } from "@/lib/campaign-budget";
 import { shownFigure, shownReturn } from "@/lib/maturity";
-import { formatRoi } from "@/lib/format-roi";
+import { formatRoi, roiIsGood } from "@/lib/format-roi";
 import { InfoTooltip } from "@/components/visibility/metric-info";
 import { useStatBasis } from "@/lib/use-stat-basis";
 import { useStaffMode } from "@/lib/use-staff-mode";
@@ -259,7 +259,18 @@ function CampaignOverview({
         {/* Owner's order (2026-10-06), ONE row on desktop: ROI, Contacted, Queued, Sent, Delivered, outcome, Spent, cost per outcome. */}
         <div className="grid grid-cols-2 gap-3 md:grid-cols-4 xl:grid-cols-8">
           <StatTile label="ROI" note={<InfoTooltip tip={CAMPAIGN_ROI_TIP} placement="bottom" />}>
-            <Figure value={roi.learning ? "Learning" : roi.value == null ? "—" : formatRoi(roi.value)} />
+            {/* Green above break-even, as every ROI in the dashboard (lib/format-roi.ts roiIsGood). */}
+            <Figure
+              value={
+                roi.learning ? (
+                  "Learning"
+                ) : roi.value == null ? (
+                  "—"
+                ) : (
+                  <span className={roiIsGood(roi.value) ? "text-[var(--run)]" : ""}>{formatRoi(roi.value)}</span>
+                )
+              }
+            />
           </StatTile>
           <StatTile label="Contacted">{count(counts?.contacted)}</StatTile>
           <StatTile label="Queued">{emailCount(queued)}</StatTile>
