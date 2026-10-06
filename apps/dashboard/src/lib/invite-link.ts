@@ -34,7 +34,7 @@ export const INVITE_PARAM = "invite";
 /** First-party cookie on the dashboard domain, holding the code until it is claimed. */
 export const INVITE_COOKIE = "distribute_invite";
 
-/** Free credits each side of a converting referral earns, in whole dollars. */
+/** Free credits the REFERRER earns once the referred org has paid this much, in whole dollars. The referred org gets none. */
 export const REFERRAL_CREDIT_USD = 500;
 
 /** 90 days. The window covers a slow signup without keeping a dead code forever. */

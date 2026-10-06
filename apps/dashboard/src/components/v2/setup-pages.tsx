@@ -322,8 +322,8 @@ export function V2ReferralPage() {
   return (
     <V2Page
       crumbs={[{ label: "Account" }, { label: "Refer a friend" }]}
-      title={`Give $${REFERRAL_CREDIT_USD}, get $${REFERRAL_CREDIT_USD}`}
-      sub={`Whoever signs up through your link gets $${REFERRAL_CREDIT_USD} in free credits, which unlock as their payments reach that amount. The moment theirs unlock, $${REFERRAL_CREDIT_USD} opens for you too. There is no limit.`}
+      title={`Get $${REFERRAL_CREDIT_USD} for each referral`}
+      sub={`Share your link. Once someone who signs up through it has paid us $${REFERRAL_CREDIT_USD}, you get $${REFERRAL_CREDIT_USD} in free credits. There is no limit.`}
       width="max-w-[760px]"
     >
       <div className="k-card p-4">
@@ -361,7 +361,7 @@ export function V2ReferralPage() {
               return (
                 <li key={p.id}>
                   <div className="flex items-baseline justify-between gap-3 text-[13px]">
-                    <span>{promiseUnlockLine(formatBillingCentsWhole(p.amountCents), remaining)}</span>
+                    <span>{promiseUnlockLine(formatBillingCentsWhole(p.amountCents), remaining, p)}</span>
                     <span className="font-medium tabular-nums">{formatBillingCentsWhole(p.amountCents)}</span>
                   </div>
                   {width !== null && (

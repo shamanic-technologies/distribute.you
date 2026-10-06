@@ -180,7 +180,9 @@ describe("the copy behind the footer states the current positioning", () => {
     const terms = read("src/app/terms/page.tsx");
     expect(terms).toContain("(currently $100, credited once the account");
     expect(terms).toContain("it is an advance on the");
-    expect(terms).toContain("(currently $500 for each side of a referral)");
+    expect(terms).toContain("(currently $500, credited to the account that refers)");
+    expect(terms).toContain("The referred account\n          receives no referral credit.");
+    expect(terms).not.toContain("each side");
     expect(terms).toContain("is an acquisition agency delivered as a service");
     expect(terms).toContain('const LAST_UPDATED = "October 6, 2026"');
   });
