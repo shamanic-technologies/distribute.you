@@ -13,6 +13,8 @@
  * The form walks four states in place, never navigating away (the Google button is the
  * one exception, and it comes straight back here with `?resume=1`):
  *   1. account  — work email, then the emailed 6-digit code (no password to invent), or Google;
+ *                 an email or Google account that ALREADY exists signs in instead, and the
+ *                 brand gets a NEW org of its own (`returning`), never the org they last used;
  *   2. claim    — the anonymous org they built is re-pointed at the account they just
  *                 made (`/api/anon/claim`, the same hinge `/onboarding/claim` runs);
  *   2b. phone   — their phone number, required (owner 2026-10-04: every signup leaves
@@ -29,14 +31,15 @@ import { useEffect, useRef, useState } from "react";
 import { BRAND_WHY } from "@/lib/brand-why";
 import { EnvelopeIcon } from "@heroicons/react/24/outline";
 import { createPortal } from "react-dom";
-import { useAuth, useSession, useUser } from "@clerk/nextjs";
-import { useSignUp } from "@clerk/nextjs/legacy";
+import { useAuth, useOrganizationList, useSession, useUser } from "@clerk/nextjs";
+import { useSignIn, useSignUp } from "@clerk/nextjs/legacy";
 import { EmbeddedCheckout, EmbeddedCheckoutProvider } from "@stripe/react-stripe-js";
 import posthog from "posthog-js";
 import { getBillingAccount, savePhoneNumber, type BillingAccount } from "@/lib/api";
 import { getStripe } from "@/lib/stripe";
 import {
   authFailureProps,
+  clerkErrorCode,
   clerkErrorMessage,
   sanitizeVerificationCode,
   VERIFICATION_CODE_LENGTH,
@@ -69,6 +72,8 @@ const EMAIL_SHAPE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const CAPTCHA_PROMPT_DELAY_MS = 2500;
 const RESEND_COOLDOWN_SECONDS = 30;
 const SLIDE_MS = 6000;
+/** Set on the way back from Google when Clerk signed an EXISTING account in. */
+const RETURNING_PARAM = "returning";
 
 type Stage = "account" | "code" | "claim" | "phone" | "card" | "launching";
 
@@ -121,6 +126,8 @@ export function AccountCardWall({
   const { session } = useSession();
   const { user } = useUser();
   const { isLoaded: signUpLoaded, signUp, setActive } = useSignUp();
+  const { isLoaded: signInLoaded, signIn, setActive: setSignInActive } = useSignIn();
+  const { createOrganization, setActive: setActiveOrg } = useOrganizationList();
 
   const copy = wallCopy();
 
@@ -147,6 +154,19 @@ export function AccountCardWall({
   const [phoneProblemShown, setPhoneProblemShown] = useState(false);
 
   const claimed = useRef(false);
+  // The account already existed (Google came back through the sign-in branch, or the
+  // email was taken and they proved it with a code). Their session sits on the org they
+  // last used, and claiming into THAT org would be refused (it is somebody's) or, worse,
+  // mix this brand into another company. So the brand gets a fresh org first.
+  const [returning, setReturning] = useState(
+    () => new URLSearchParams(window.location.search).get(RETURNING_PARAM) === "1",
+  );
+  // The email code proves a sign-IN rather than a sign-up when the email was taken.
+  const [codeFor, setCodeFor] = useState<"signup" | "signin">("signup");
+  const [signInEmailId, setSignInEmailId] = useState<string | null>(null);
+  const [secondFactor, setSecondFactor] = useState(false);
+  // The org made for a returning account: the claim waits until the session is on it.
+  const freshOrg = useRef<"creating" | string | null>(null);
   const progress = useRef<LaunchProgress>({ ...EMPTY_PROGRESS, budgets: {}, started: {}, campaignIds: {} });
   // A payment the form reported: pressing the button again re-checks it, never pays twice.
   const [paid, setPaid] = useState<{ creditedBefore: number; reload: TopupChoice["reload"] } | null>(null);
@@ -184,7 +204,32 @@ export function AccountCardWall({
   // Once signed in, claim the anonymous org. Clerk needs both the user and the org it
   // auto-creates at signup before the claim can name the org to point at.
   useEffect(() => {
-    if (!authLoaded || !isSignedIn || !orgId || claimed.current) return;
+    if (!authLoaded || !isSignedIn || claimed.current) return;
+    if (returning) {
+      if (freshOrg.current === null) {
+        freshOrg.current = "creating";
+        setStage("claim");
+        void (async () => {
+          setClaiming(true);
+          setError(null);
+          try {
+            if (!createOrganization || !setActiveOrg) throw new Error("Your session is still loading. Try again in a moment.");
+            const org = await createOrganization({ name: brandName });
+            posthog.capture("get_started_returning_org_created", { org_id: org.id });
+            await setActiveOrg({ organization: org.id });
+            freshOrg.current = org.id;
+          } catch (e) {
+            console.error("[get-started] new org for a returning account failed:", e);
+            freshOrg.current = null;
+            setClaiming(false);
+            setError(e instanceof Error ? e.message : "We could not set up a new organization. Try again.");
+          }
+        })();
+        return;
+      }
+      // Still creating, or Clerk has not moved the session onto the new org yet.
+      if (orgId !== freshOrg.current) return;
+    } else if (!orgId) return;
     claimed.current = true;
     setStage("claim");
     void (async () => {
@@ -209,7 +254,7 @@ export function AccountCardWall({
       }
     })();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [authLoaded, isSignedIn, orgId, session]);
+  }, [authLoaded, isSignedIn, orgId, session, returning, createOrganization, setActiveOrg]);
 
   function checkReady(): boolean {
     if (!consent) {
@@ -236,6 +281,13 @@ export function AccountCardWall({
       setStage("code");
       setResendIn(RESEND_COOLDOWN_SECONDS);
     } catch (err) {
+      if (clerkErrorCode(err) === "form_identifier_exists") {
+        // They already have an account: prove it with a code and keep going here.
+        clearTimeout(waiting);
+        setCaptchaWaiting(false);
+        await startSignInCode();
+        return;
+      }
       posthog.capture("get_started_signup_failed", authFailureProps(err, { stage: "create" }));
       console.error("[get-started] sign up failed:", err);
       setError(clerkErrorMessage(err));
@@ -246,8 +298,73 @@ export function AccountCardWall({
     }
   }
 
+  /** An existing account: a sign-in code to the same address, same screen. */
+  async function startSignInCode() {
+    if (!signInLoaded || !signIn) {
+      setError("Your session is still loading. Try again in a moment.");
+      return;
+    }
+    try {
+      posthog.capture("get_started_signin_email_started");
+      const created = await signIn.create({ identifier: email.trim() });
+      const factor = created.supportedFirstFactors?.find(
+        (f): f is Extract<typeof f, { strategy: "email_code" }> => f.strategy === "email_code",
+      );
+      if (!factor) throw new Error("This account cannot get a sign-in code. Use the Google button.");
+      await signIn.prepareFirstFactor({ strategy: "email_code", emailAddressId: factor.emailAddressId });
+      setSignInEmailId(factor.emailAddressId);
+      setSecondFactor(false);
+      setCodeFor("signin");
+      setNotice("You already have an account. We sent a sign-in code.");
+      setStage("code");
+      setResendIn(RESEND_COOLDOWN_SECONDS);
+    } catch (err) {
+      posthog.capture("get_started_signin_failed", authFailureProps(err, { stage: "create" }));
+      console.error("[get-started] sign in failed:", err);
+      setError(err instanceof Error && !("errors" in (err as object)) ? err.message : clerkErrorMessage(err));
+    }
+  }
+
+  async function submitSignInCode() {
+    if (!signIn || !setSignInActive) return;
+    const result = secondFactor
+      ? await signIn.attemptSecondFactor({ strategy: "email_code", code })
+      : await signIn.attemptFirstFactor({ strategy: "email_code", code });
+    if (result.status === "needs_second_factor") {
+      await signIn.prepareSecondFactor({ strategy: "email_code" });
+      setSecondFactor(true);
+      setCode("");
+      setResendIn(RESEND_COOLDOWN_SECONDS);
+      setNotice(`One more code sent to ${email.trim()}.`);
+      return;
+    }
+    if (result.status !== "complete") {
+      posthog.capture("get_started_signin_incomplete", { status: result.status ?? "unknown" });
+      throw new Error(`We could not sign you in (${result.status}). Use the Google button or try again.`);
+    }
+    setReturning(true);
+    await setSignInActive({ session: result.createdSessionId });
+    posthog.capture("get_started_signin_verified");
+  }
+
   async function submitCode(e: React.FormEvent) {
     e.preventDefault();
+    if (codeFor === "signin") {
+      if (busy) return;
+      setBusy(true);
+      setError(null);
+      setNotice(null);
+      try {
+        await submitSignInCode();
+      } catch (err) {
+        posthog.capture("get_started_signin_failed", authFailureProps(err, { stage: "verify" }));
+        console.error("[get-started] sign-in code failed:", err);
+        setError(err instanceof Error && !("errors" in (err as object)) ? err.message : clerkErrorMessage(err));
+      } finally {
+        setBusy(false);
+      }
+      return;
+    }
     if (!signUpLoaded || !signUp || busy) return;
     setBusy(true);
     setError(null);
@@ -271,10 +388,16 @@ export function AccountCardWall({
   }
 
   async function resendCode() {
-    if (!signUpLoaded || !signUp || busy || resendIn > 0) return;
+    if (busy || resendIn > 0) return;
+    if (codeFor === "signup" && (!signUpLoaded || !signUp)) return;
+    if (codeFor === "signin" && !signIn) return;
     setError(null);
     try {
-      await signUp.prepareEmailAddressVerification({ strategy: "email_code" });
+      if (codeFor === "signin" && signIn) {
+        if (secondFactor) await signIn.prepareSecondFactor({ strategy: "email_code" });
+        else if (signInEmailId) await signIn.prepareFirstFactor({ strategy: "email_code", emailAddressId: signInEmailId });
+        else throw new Error("Start again with your email.");
+      } else await signUp!.prepareEmailAddressVerification({ strategy: "email_code" });
       setResendIn(RESEND_COOLDOWN_SECONDS);
       setCode("");
       setNotice(`New code sent to ${email.trim()}. Only the newest one works.`);
@@ -291,9 +414,12 @@ export function AccountCardWall({
     setError(null);
     try {
       posthog.capture("get_started_signup_google_started");
+      // Its own callback: an EXISTING Google account comes back through Clerk's sign-in
+      // branch, which ignores `redirectUrlComplete` and used to land on the dashboard,
+      // leaving the walk unclaimed and unpaid.
       await signUp.authenticateWithRedirect({
         strategy: "oauth_google",
-        redirectUrl: "/sso-callback",
+        redirectUrl: "/sso-callback/get-started",
         redirectUrlComplete: "/get-started?resume=1",
       });
     } catch (err) {
@@ -560,12 +686,8 @@ export function AccountCardWall({
                       </p>
                     )}
                     <Consent brandName={brandName} checked={consent} onChange={setConsent} />
-                    <p className="k-fg3 text-[12px]">
-                      Already have an account?{" "}
-                      <a className="k-accent-text underline" href="/sign-in">
-                        Sign in
-                      </a>
-                    </p>
+                    {/* No link to /sign-in: it lands on the dashboard and leaves this walk behind. */}
+                    <p className="k-fg3 text-[12px]">Already have an account? Use it above. This brand gets its own organization.</p>
                   </form>
                 ) : (
                   <form className="mt-4 grid gap-3" onSubmit={(e) => void submitCode(e)}>
@@ -598,6 +720,8 @@ export function AccountCardWall({
                         className="k-btn-ghost h-6 px-1.5"
                         onClick={() => {
                           setStage("account");
+                          setCodeFor("signup");
+                          setSecondFactor(false);
                           setCode("");
                           setError(null);
                           setNotice(null);
