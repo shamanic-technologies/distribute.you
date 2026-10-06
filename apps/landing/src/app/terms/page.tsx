@@ -9,7 +9,7 @@ import { Section } from "@/components/section";
 export const revalidate = 86400;
 
 const TERMS_URL = `${PROD_URLS.landing}/terms`;
-const LAST_UPDATED = "October 6, 2026";
+const LAST_UPDATED = "September 8, 2026";
 const COMPANY = "BLOOMING GENERATION";
 const COMPANY_SIREN = "882102775";
 const SERVICE = "distribute.you";
@@ -179,9 +179,8 @@ const SECTIONS: SectionDef[] = [
         </p>
         <p>
           <strong>The welcome offer is a total, not a top-up.</strong> The
-          advertised welcome amount (currently $100 until October 31, 2026: $30 credited when the
-          account is created, and $70 more once the account has paid $100 of
-          credit) is the most free credit an account can ever
+          advertised welcome amount (currently $30) is credited when the
+          account is created and is the most free credit an account can ever
           receive under that offer, counting every free credit that account has
           already been given under it. Promotional or discount codes, support
           and goodwill grants, and any other credit granted under the welcome
