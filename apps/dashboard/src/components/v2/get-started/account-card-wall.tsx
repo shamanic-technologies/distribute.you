@@ -52,10 +52,11 @@ import {
   nextSlide,
   type GetStartedEmail,
   type GetStartedAudience,
+  type CampaignOutlook,
   type GetStartedOffer,
   wallCopy,
 } from "@/lib/v2/get-started";
-import { formatReturn, useStartCatalogue } from "./catalogue";
+import { formatRoi, roiIsGood } from "@/lib/format-roi";
 import { requiredPhoneProblem } from "@/lib/phone-syntax";
 import type { PhoneValue } from "@/components/onboarding/phone-input";
 import { PhoneField, browserPhoneCountry } from "./phone-field";
@@ -96,6 +97,7 @@ export function AccountCardWall({
   note = null,
   email: writtenEmail,
   campaigns,
+  outlook,
   answered,
   onClose,
 }: {
@@ -114,6 +116,8 @@ export function AccountCardWall({
   email: GetStartedEmail | null;
   /** The campaigns as set at the campaigns step: the ones on start, each on its budget. */
   campaigns: LaunchCampaign[];
+  /** The served figures of the proactive campaign that is on: what the match buys is read off it. */
+  outlook: CampaignOutlook | null;
   /** The offer points and give lists were answered in the preview (and saved). */
   answered: boolean;
   onClose: () => void;
@@ -124,7 +128,6 @@ export function AccountCardWall({
   const { isLoaded: signUpLoaded, signUp, setActive } = useSignUp();
   const { isLoaded: signInLoaded, signIn, setActive: setSignInActive } = useSignIn();
   const { createOrganization, setActive: setActiveOrg } = useOrganizationList();
-  const { catalogue } = useStartCatalogue();
 
   const copy = wallCopy();
 
@@ -540,9 +543,9 @@ export function AccountCardWall({
     }
   }
 
-  const proof = catalogue?.proof ?? null;
-  const hotLeads = hotLeadsForCredit(proof?.hotLeads?.medianCostUsd, copy.creditUsd);
-  const medianReturn = proof?.medianReturnPerDollar ?? null;
+  // What the match buys is the CHOSEN campaign's own served figures, never the fleet median.
+  const outcomes = hotLeadsForCredit(outlook?.costPerOutcomeUsd, copy.creditUsd);
+  const expectedRoi = outlook?.roi ?? null;
 
   const urgency =
     stage !== "launching" ? (
@@ -589,26 +592,24 @@ export function AccountCardWall({
               </li>
             ))}
           </ul>
-          {(hotLeads != null || medianReturn != null) && (
+          {outlook && (outcomes != null || expectedRoi != null) && (
             <>
               <p className="k-fg mt-4 text-[13px] font-medium">{`Here is what your $${copy.creditUsd} gets you`}</p>
               <div className="mt-2 grid grid-cols-2 gap-2">
-                {hotLeads != null && (
-                  <BuysTile label="Hot leads" note="Replies or visits">
-                    <CountUp value={hotLeads} format={(n) => String(Math.round(n))} ms={900} />
+                {outcomes != null && (
+                  <BuysTile label={outlook.outcome} note="Expected">
+                    <CountUp value={outcomes} format={(n) => String(Math.round(n))} ms={900} />
                   </BuysTile>
                 )}
-                {medianReturn != null && (
-                  <BuysTile label="Median ROI" note="Of our clients">
-                    <CountUp value={medianReturn} format={(n) => formatReturn(n)} ms={900} />
+                {expectedRoi != null && (
+                  <BuysTile label="ROI" note="Expected">
+                    <span className={roiIsGood(expectedRoi) ? "text-[var(--run)]" : undefined}>
+                      <CountUp value={expectedRoi} format={(n) => formatRoi(n)} ms={900} />
+                    </span>
                   </BuysTile>
                 )}
               </div>
-              {hotLeads != null && proof?.hotLeads && (
-                <p className="k-fg3 mt-2 text-[12px] leading-5">
-                  From what our clients get at the median. An estimate, not a promise.
-                </p>
-              )}
+              <p className="k-fg3 mt-2 text-[12px] leading-5">From the campaign you chose. An estimate, not a promise.</p>
             </>
           )}
         </section>
