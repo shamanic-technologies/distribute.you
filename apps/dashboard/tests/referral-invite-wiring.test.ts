@@ -49,7 +49,7 @@ describe("the code's journey", () => {
   });
 
   it("survives a failed claim instead of being dropped", () => {
-    // A dropped code costs two orgs $500 each and nothing on screen says so, so
+    // A dropped code costs the referrer $500 and nothing on screen says so, so
     // the cookie is cleared ONLY on success or on a rejection that can never
     // change its answer. Everything else retries on the next page load.
     expect(claimer).toContain("isTerminalClaimRejection");
