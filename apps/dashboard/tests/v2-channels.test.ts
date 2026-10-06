@@ -104,10 +104,12 @@ describe("channel pages", () => {
     // A leg no campaign aims at gets no card, never an empty note.
     expect(page).toContain("return campaignId ? [{ ...leg, campaignId }] : [];");
     expect(page).not.toContain("No campaign aims at this yet");
-    expect(page).toContain('<StepBar label="Queued" count={counts.contacted} of={counts.contacted} />');
-    expect(page).toContain("q.data?.people?.delivered ?? null");
-    // Sent sits between Queued and Delivered (owner 2026-10-05), read off lead-service's people.sent.
-    expect(page).toContain('<StepBar label="Sent" count={q.data?.people?.sent ?? null} of={counts.contacted} />');
+    expect(page).toContain('<StepBar label="Queued" count={queued} of={scale} />');
+    expect(page).toContain('<StepBar label="Delivered" count={delivered} of={scale} />');
+    // Sent sits between Queued and Delivered (owner 2026-10-05).
+    expect(page).toContain('<StepBar label="Sent" count={sent} of={scale} />');
+    // Emails, not people (owner 2026-10-06): the bars read the campaign window.
+    expect(page).toContain("const sent = win.data?.emails?.sent ?? null;");
     expect(page.indexOf('<StepBar label="Sent"')).toBeGreaterThan(page.indexOf('<StepBar label="Queued"'));
     expect(page.indexOf('<StepBar label="Delivered"')).toBeGreaterThan(page.indexOf('<StepBar label="Sent"'));
     for (const gone of ["Meeting booked", "Meeting attended", "Paid client", 'label="Contacted"']) expect(page).not.toContain(gone);
