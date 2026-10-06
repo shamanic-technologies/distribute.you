@@ -4,7 +4,7 @@ export const SITE_NAME = "distribute.you";
 export const SITE_URL = PROD_URLS.landing;
 export const SITE_TITLE = "distribute.you: done-for-you revenue automation";
 export const SITE_DESCRIPTION =
-  "Revenue made easy. Paste your website and start a 3-day free trial. We find the buyers, write and A/B test the cold emails, send them from domains we own, answer interested leads until the meeting is booked, and show you what each one cost. From $99 a month.";
+  "Revenue made easy. Paste your website. We find the buyers, write and A/B test the cold emails, send them from domains we own, answer interested leads until the meeting is booked, and show you what each one cost. The platform is free.";
 export const TWITTER_HANDLE = "@distribute_you";
 
 export const BRAND_LOGO_PATH = "/landing/logo/logo-distribute-blue.svg";

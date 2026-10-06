@@ -19,27 +19,29 @@ const q = (s = "") => new URLSearchParams(s);
 const HOMEPAGE_SRC = readFileSync(path.join(__dirname, "../../public/landing/index-v2.html"), "utf8");
 
 describe("the split rule", () => {
-  it("draws every first-time human onto the $99 plan arm", () => {
-    expect(VARIANT_WEIGHTS).toEqual({ control: 0, subscription: 1, instinct: 0, assistant: 0, concierge: 0 });
+  it("draws every first-time human onto control: the subscription arm is retired", () => {
+    // Owner 2026-10-06: new customers buy prepaid credit, so no first visit gets the
+    // `subscription` cookie the dashboard read as "sell the monthly plan".
+    expect(VARIANT_WEIGHTS).toEqual({ control: 1, subscription: 0, instinct: 0, assistant: 0, concierge: 0 });
     const counts: Record<string, number> = {};
     for (let i = 0; i < 10000; i++) counts[drawVariant(i / 10000)] = (counts[drawVariant(i / 10000)] ?? 0) + 1;
-    expect(counts).toEqual({ subscription: 10000 });
+    expect(counts).toEqual({ control: 10000 });
     expect(decideVariant({ cookieHeader: null, userAgent: CHROME, query: q(), random: 0.12, enabled: true })).toEqual({
-      variant: "subscription", setCookie: true, inTest: true,
+      variant: "control", setCookie: true, inTest: true,
     });
   });
 
   it("keeps a returning visitor on a live arm their cookie names, and does not rewrite it", () => {
     const d = decideVariant({
-      cookieHeader: `a=1; ${VARIANT_COOKIE}=subscription; b=2`, userAgent: CHROME, query: q(), random: 0.1, enabled: true,
+      cookieHeader: `a=1; ${VARIANT_COOKIE}=control; b=2`, userAgent: CHROME, query: q(), random: 0.1, enabled: true,
     });
-    expect(d).toEqual({ variant: "subscription", setCookie: false, inTest: true });
+    expect(d).toEqual({ variant: "control", setCookie: false, inTest: true });
   });
 
-  it("redraws a visitor whose cookie names a retired arm, or nothing", () => {
-    for (const v of ["control", "instinct", "assistant", "concierge", "junk"]) {
+  it("redraws a visitor whose cookie names a retired arm (subscription included), or nothing", () => {
+    for (const v of ["subscription", "instinct", "assistant", "concierge", "junk"]) {
       const d = decideVariant({ cookieHeader: `${VARIANT_COOKIE}=${v}`, userAgent: CHROME, query: q(), random: 0.05, enabled: true });
-      expect(d, v).toEqual({ variant: "subscription", setCookie: true, inTest: true });
+      expect(d, v).toEqual({ variant: "control", setCookie: true, inTest: true });
     }
   });
 
@@ -108,32 +110,21 @@ describe("GET / with the test on", () => {
     expect(res.headers.get("cache-control")).toBe("private, no-store");
   });
 
-  it("serves the subscription arm the homepage sold at $99/month with a 3-day trial", async () => {
+  it("serves a forced subscription arm the same prepaid homepage, never the monthly plan", async () => {
     const { res, html } = await get({ qs: "?variant=subscription" });
-    // Owner 2026-10-01: the visitor picks the monthly amount, never a bare "+$100";
-    // billing charges the pick (billing#568), the dashboard reads it from lp_plan.
-    expect(html).toContain("Get <span class=\"accent\">revenue in 24h</span><br>From $99/month");
-    expect(html).toContain('<select data-plan-amount aria-label="Monthly amount">');
-    for (const v of ["9900", "19900", "29900", "49900", "99900", "199900"]) expect(html).toContain(`<option value="${v}">`);
-    expect(html).toContain("lp_plan=");
-    expect(html).not.toContain("Add $100");
-    expect(html).toContain("3-day free trial");
-    expect(html).toContain("Start my free trial");
-    // The page's own copy, scripts aside: the site-wide Organization JSON-LD is
-    // injected for every page.
+    // Owner 2026-10-06: a free platform, outreach at catalogue prices. A stale `?variant=` link
+    // still lands on a page, and that page sells the current offer.
+    expect(html).toContain("Get <span class=\"accent\">revenue in 24h</span><br>The platform is free");
     const copy = html.replace(/<script[\s\S]*?<\/script>/g, "");
-    for (const gone of ["$30", "From $1<", "$1/day", "No subscription", "Pay as you go"]) expect(copy, gone).not.toContain(gone);
+    for (const gone of ["$99", "/month", "free trial", "3-day", "From $1<", "$1/day", "Pay as you go"]) expect(copy, gone).not.toContain(gone);
     expect(html).not.toContain("\u2014");
-    expect(html).toContain('lp_variant:"subscription"');
     expect(res.headers.get("set-cookie")).toContain("lp_variant=subscription");
   });
 
-  it("carries the amount picker in the homepage itself, from billing's ladder", () => {
-    // Owner 2026-10-01: the visitor picks the monthly amount, never a bare "+$100".
-    // Owner 2026-10-03: the $99/month plan is the homepage, for every visitor and crawler.
-    expect(HOMEPAGE_SRC).toContain('<select data-plan-amount aria-label="Monthly amount">');
-    for (const v of ["9900", "19900", "29900", "49900", "99900", "199900"]) expect(HOMEPAGE_SRC).toContain(`<option value="${v}">`);
-    expect(HOMEPAGE_SRC).toContain("lp_plan=");
+  it("carries no monthly amount picker and writes no lp_plan cookie", () => {
+    // The picker fed the dashboard's monthly plan through `lp_plan`; prepaid has no plan.
+    expect(HOMEPAGE_SRC).not.toContain("data-plan-amount");
+    expect(HOMEPAGE_SRC).not.toContain("lp_plan=");
   });
 
   it("serves the homepage to the control arm when forced, tagged", async () => {
@@ -144,7 +135,7 @@ describe("GET / with the test on", () => {
 
   it("gives a crawler the homepage, untagged, with no cookie", async () => {
     const { res, html } = await get({ ua: "Googlebot/2.1", qs: "?variant=instinct" });
-    expect(html).toContain("From $99/month");
+    expect(html).toContain("The platform is free");
     expect(html).not.toContain("$1/day");
     expect(html).not.toContain("Text distribute.you to get started");
     expect(html).not.toContain("landing_variant_viewed");

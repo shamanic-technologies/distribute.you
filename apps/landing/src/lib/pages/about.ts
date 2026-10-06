@@ -45,7 +45,7 @@ export function renderAboutPage(): string {
         id: "pay",
         h2: "How you pay",
         tint: true,
-        html: `<p>You pick a monthly amount, from $99, after a 3-day free trial. Every dollar becomes campaign credit, spent on your outreach, and nothing else is charged. No seat, no setup fee, no term. Our margin sits inside that credit, so the price you see is the price you pay us. A bigger amount reaches more leads, you can change it any time, and you can cancel anytime.</p>
+        html: `<p>The platform is free. You choose how much goes to your outreach, and each action is billed at a public catalogue price, prepaid as credit. Nothing else is charged. No subscription, no seat, no setup fee, no term. Our margin sits inside the catalogue prices, so the price you see is the price you pay us. A bigger budget reaches more leads. Automatic reload is optional, and you can pause or cancel anytime.</p>
 <p>Published market rates for the alternatives are the reason this is worth reading twice. An outsourced agency runs $1,500 to $5,000 a month plus $80 to $200 per qualified reply. An in-house SDR runs $4,000 to $7,000 a month plus $50 to $120, and takes three to six months to ramp. A booked meeting bought on the open market runs about $700.</p>`,
       },
       {
