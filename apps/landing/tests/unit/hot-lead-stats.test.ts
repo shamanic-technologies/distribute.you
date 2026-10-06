@@ -231,7 +231,7 @@ describe("the hero proof row on the homepage", () => {
 
   it("bumps the asset cache-busters, or the edge keeps serving the old css and js", () => {
     expect(html).toContain('href="/landing/v2/styles.css?v=17"');
-    expect(html).toContain('src="/landing/v2/main.js?v=8"');
+    expect(html).toContain('src="/landing/v2/main.js?v=9"');
   });
 });
 
@@ -258,7 +258,7 @@ describe("the live nudge", () => {
   });
 
   it("stands down for a hidden tab and for reduced motion", () => {
-    expect(js).toContain("if (!hotEl || document.hidden) return;");
+    expect(js).toContain("if (!hotEl || document.hidden) return true;");
     expect(js).toContain("if (hotEl && !reduced) hotSchedule();");
   });
 

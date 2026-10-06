@@ -208,10 +208,35 @@
 
   /* Live showcase cards (explee): counters seeded from the last read of each brand's
      ongoing campaign, then nudged in-session. A tick paints the number green and floats a
-     "+N" above it (lp-delta-flash). Contacted moves often, the deeper steps rarely. */
+     "+N" above it (lp-delta-flash). Contacted moves often, the deeper steps rarely.
+
+     A NUDGE NEVER TAKES A FIGURE PAST THE REAL ONE (owner 2026-10-06). The server renders
+     each real count; on load we step it back a little and the nudges climb back up to it
+     and stop there. `data-max` keeps the real figure, `data-steps` what is on screen. A
+     step at 0 stays 0, and a card whose every step is back at its real figure leaves the
+     rotation. */
   var STATUSES = ["Sending", "Writing emails", "Reading replies", "Finding leads", "Following up"];
   var liveCards = Array.prototype.slice.call(document.querySelectorAll("[data-live]"));
   function fmtInt(n) { return n.toLocaleString("en-US"); }
+  /* How far below the real figure a counter starts: a tenth of it, at most 40 contacts or
+     3 hot leads; a deeper step (a positive reply, a meeting) gives back one, and only from 3
+     up so a client with one or two never reads as none. */
+  function heldBack(real, idx) {
+    if (idx === 0) return real - Math.min(40, Math.floor(real / 10));
+    return real >= 3 ? real - 1 : real;
+  }
+  if (!reduced) {
+    liveCards.forEach(function (card) {
+      var real = card.getAttribute("data-steps").split(",").map(Number);
+      var shown = real.map(heldBack);
+      card.setAttribute("data-max", real.join(","));
+      card.setAttribute("data-steps", shown.join(","));
+      shown.forEach(function (value, idx) {
+        var el = card.querySelector('[data-n="' + idx + '"]');
+        if (el) el.textContent = fmtInt(value);
+      });
+    });
+  }
   /* The one nudge: repaint the number green and float a "+N" above it. Shared by the
      showcase cards and the hero proof row so the two cannot drift apart. */
   function bump(el, add, value) {
@@ -228,10 +253,19 @@
     if (!liveCards.length || document.hidden) return;
     var card = liveCards[Math.floor(Math.random() * liveCards.length)];
     var steps = card.getAttribute("data-steps").split(",").map(Number);
+    var max = card.getAttribute("data-max").split(",").map(Number);
     var r = Math.random();
     var idx = r < 0.82 ? 0 : r < 0.97 ? 1 : 2;
-    if (idx >= steps.length) idx = 0;
-    var add = idx === 0 ? 1 + Math.floor(Math.random() * 6) : 1;
+    if (idx >= steps.length || steps[idx] >= max[idx]) idx = 0;
+    if (steps[idx] >= max[idx]) {
+      idx = -1;
+      for (var i = 0; i < steps.length; i++) if (steps[i] < max[i]) { idx = i; break; }
+    }
+    if (idx < 0) {
+      liveCards.splice(liveCards.indexOf(card), 1);
+      return;
+    }
+    var add = Math.min(max[idx] - steps[idx], idx === 0 ? 1 + Math.floor(Math.random() * 6) : 1);
     steps[idx] += add;
     card.setAttribute("data-steps", steps.join(","));
     var el = card.querySelector('[data-n="' + idx + '"]');
@@ -246,7 +280,7 @@
     if (st && Math.random() < 0.5) st.textContent = STATUSES[Math.floor(Math.random() * STATUSES.length)];
   }
   function schedule() {
-    setTimeout(function () { tick(); schedule(); }, 2500 + Math.random() * 5500);
+    setTimeout(function () { tick(); if (liveCards.length) schedule(); }, 2500 + Math.random() * 5500);
   }
   if (liveCards.length && !reduced) schedule();
 
@@ -255,14 +289,23 @@
      does not move a median anyway. Slower than the cards: a hot lead is rarer than a
      contact. */
   var hotEl = document.querySelector("[data-hot-leads]");
+  /* Same ceiling as the cards: the served count is the most it ever reads. */
+  var hotMax = hotEl ? Number(hotEl.getAttribute("data-n")) : 0;
+  if (hotEl && !reduced) {
+    var hotStart = hotMax - Math.min(3, Math.floor(hotMax / 10));
+    hotEl.setAttribute("data-n", String(hotStart));
+    hotEl.textContent = fmtInt(hotStart);
+  }
   function hotTick() {
-    if (!hotEl || document.hidden) return;
+    if (!hotEl || document.hidden) return true;
     var next = Number(hotEl.getAttribute("data-n")) + 1;
+    if (next > hotMax) return false;
     hotEl.setAttribute("data-n", String(next));
     bump(hotEl, 1, next);
+    return true;
   }
   function hotSchedule() {
-    setTimeout(function () { hotTick(); hotSchedule(); }, 8000 + Math.random() * 12000);
+    setTimeout(function () { if (hotTick()) hotSchedule(); }, 8000 + Math.random() * 12000);
   }
   if (hotEl && !reduced) hotSchedule();
 
