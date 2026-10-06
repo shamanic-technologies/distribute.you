@@ -179,6 +179,9 @@ export function V2OfferCampaignsPage() {
                       </td>
                       <td className="px-3 py-2 text-right tabular-nums">
                         {g?.committedCostUsd != null ? formatUsdAdaptive(g.committedCostUsd) : <span className="k-fg4">—</span>}
+                        {g?.actualCostUsd != null && g.committedCostUsd != null && g.committedCostUsd > g.actualCostUsd && (
+                          <span className="k-fg3 block text-[12px]">{formatUsdAdaptive(g.actualCostUsd)} spent</span>
+                        )}
                       </td>
                       <td className="px-3 py-2">
                         <StateDot running={m.running} label={m.running ? "On" : "Off"} hold={m.running ? null : m.paymentHold} />

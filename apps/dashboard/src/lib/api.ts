@@ -5121,13 +5121,16 @@ const CampaignRevenueCostEconomicsSchema = z.object({
   // exact number ROI and %CAC divide by, so a row cannot contradict its own return.
   // `.optional()` for rollout tolerance only; it is required on the wire today.
   //
-  // The billed-only sibling is deliberately NOT read here and NOT used as a fallback:
-  // actual means actual and committed means committed, so rendering billed spend under
-  // a committed label would reprint the very contradiction this replaced. Absent →
-  // null → the cell reads "—".
+  // The billed-only sibling is NEVER a fallback for it: actual means actual and
+  // committed means committed. Absent → null → the cell reads "—".
   // Nullable too: on the staff ACTUAL-cost read a group whose spend has no known vendor
   // cost states null (never the billed figure).
   committedCostUsd: z.number().nullish(),
+  // BILLED-only spend (status actual): what a customer reads as "Spent". Committed also
+  // counts the follow-ups RESERVED when the first email went out and not sent yet, so
+  // "Spent" over committed told a client $67 for 185 emails (2026-10-06, Legistai). The
+  // surface states both served figures, it never subtracts one from the other.
+  actualCostUsd: z.number().nullish(),
   costOfAcquisitionPct: z.number().nullable(),
   roiMultiple: z.number().nullable(),
   expectedConversions: z.number().nullish(),
@@ -5194,6 +5197,9 @@ export interface CampaignRevenueGroup {
   /** COMMITTED spend for this campaign — the number ROI and %CAC divide by. Null means
    *  "we have no figure", never "it cost nothing", so the cell reads "—" rather than $0. */
   committedCostUsd: number | null;
+  /** BILLED-only spend (cost status actual): the "Spent" figure. Committed minus this is
+   *  money reserved for follow-ups not sent yet; never subtract it here, it is not served. */
+  actualCostUsd: number | null;
   costOfAcquisitionPct: number | null;
   roiMultiple: number | null;
   expectedConversions: number | null;
@@ -5242,6 +5248,7 @@ export async function getFeatureRevenueByCampaign(
     campaignId: g.campaignId,
     totalPipelineUsd: g.headline.totalPipelineUsd,
     committedCostUsd: g.costEconomics.committedCostUsd ?? null,
+    actualCostUsd: g.costEconomics.actualCostUsd ?? null,
     costOfAcquisitionPct: g.costEconomics.costOfAcquisitionPct,
     roiMultiple: g.costEconomics.roiMultiple,
     expectedConversions: g.costEconomics.expectedConversions ?? null,
