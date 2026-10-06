@@ -47,7 +47,6 @@ import {
 import { v2CampaignHref } from "@/lib/v2/routes";
 import {
   GET_STARTED_SNAPSHOT_KEY,
-  hotLeadsForCredit,
   matchNote,
   nextSlide,
   type GetStartedEmail,
@@ -544,7 +543,7 @@ export function AccountCardWall({
   }
 
   // What the match buys is the CHOSEN campaign's own served figures, never the fleet median.
-  const outcomes = hotLeadsForCredit(outlook?.costPerOutcomeUsd, copy.creditUsd);
+  const outcomes = outlook?.outcomes ?? null;
   const expectedRoi = outlook?.roi ?? null;
 
   const urgency =

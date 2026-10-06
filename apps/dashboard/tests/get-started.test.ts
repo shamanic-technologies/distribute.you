@@ -10,7 +10,6 @@ import {
   canWriteAnother,
   compactCount,
   hostOf,
-  hotLeadsForCredit,
   nextSlide,
   offerSourceText,
   parseCompetitors,
@@ -402,46 +401,30 @@ describe("the surface", () => {
 });
 
 describe("the wall", () => {
-  it("prices the match off a served median, or states nothing", () => {
-    expect(hotLeadsForCredit(4.2, 30)).toBe(7);
-    expect(hotLeadsForCredit(4.2)).toBe(23);
-    expect(hotLeadsForCredit(400)).toBeNull();
-    expect(hotLeadsForCredit(null)).toBeNull();
-    expect(hotLeadsForCredit(0)).toBeNull();
-    expect(hotLeadsForCredit(Number.NaN)).toBeNull();
-  });
-
   it("reads the wall's figures off the proactive campaign that is on", () => {
     const plan = [
       { featureSlug: "cold-email", legKey: "contacted->visit", reactive: false, on: false },
       { featureSlug: "cold-email", legKey: "contacted->conversation", reactive: false, on: true },
       { featureSlug: "ai-booking", legKey: "conversation->meeting", reactive: true, on: true },
     ];
+    const bought = (outcomes: number | null, combinationKey: string | null, creditUsd = 100) => ({ creditUsd, combinationKey, outcomes });
     const campaigns = [
-      { channelSlug: "cold-email", legKey: "contacted->visit", roi: 9, roiCombinationKey: "p1" },
-      { channelSlug: "cold-email", legKey: "contacted->conversation", roi: 2.4, roiCombinationKey: "p2" },
+      { channelSlug: "cold-email", legKey: "contacted->visit", roi: 9, outcomesForCredit: bought(41, "p1") },
+      { channelSlug: "cold-email", legKey: "contacted->conversation", roi: 2.4, outcomesForCredit: bought(4, "p2") },
     ];
-    const leg = (legKey: string, key: string, label: string, slug: string, cost: number | null) => ({
-      legKey,
-      toStep: { key, label },
-      channel: { slug },
-      costPerOutcomeUsd: cost,
-    });
+    const leg = (legKey: string, key: string, label: string) => ({ legKey, toStep: { key, label } });
     const paths = [
-      { combinationKey: "p1", ticked: true, legs: [leg("contacted->visit", "website_visit", "Website visit", "cold-email", 3)] },
-      { combinationKey: "p3", ticked: true, legs: [leg("contacted->conversation", "conversation", "Positive reply", "cold-email", 99)] },
-      { combinationKey: "p2", ticked: true, legs: [leg("contacted->conversation", "conversation", "Positive reply", "cold-email", 25)] },
+      { combinationKey: "p1", legs: [leg("contacted->visit", "website_visit", "Website visit")] },
+      { combinationKey: "p2", legs: [leg("contacted->conversation", "conversation", "Positive reply")] },
     ];
-    expect(chosenCampaignOutlook(plan, campaigns, paths)).toEqual({ outcome: "Positive replies", costPerOutcomeUsd: 25, roi: 2.4 });
-    expect(hotLeadsForCredit(25)).toBe(4);
+    // The served count, never one worked out here.
+    expect(chosenCampaignOutlook(plan, campaigns, paths)).toEqual({ outcome: "Positive replies", outcomes: 4, roi: 2.4 });
     // Nothing proactive on: nothing to read.
     expect(chosenCampaignOutlook(plan.map((c) => ({ ...c, on: c.reactive })), campaigns, paths)).toBeNull();
-    // No ROI path named: the leg on a ticked path prices it.
-    expect(chosenCampaignOutlook(plan, [{ ...campaigns[1], roi: null, roiCombinationKey: null }], paths)).toEqual({
-      outcome: "Positive replies",
-      costPerOutcomeUsd: 99,
-      roi: null,
-    });
+    // Not priced, zero, an older producer, or a count for another credit: no count stated.
+    for (const outcomesForCredit of [bought(null, null), bought(0, "p2"), undefined, bought(8, "p2", 200)]) {
+      expect(chosenCampaignOutlook(plan, [{ ...campaigns[1], outcomesForCredit }], paths)?.outcomes).toBeNull();
+    }
   });
 
   it("turns the client carousel with a wrap", () => {
@@ -465,7 +448,8 @@ describe("the wall", () => {
     expect(wall).not.toContain("proofCardsFor(");
     expect(wall).toContain("<Testimonials />");
     // What the match buys is the CHOSEN campaign's served figures, never the fleet median.
-    expect(wall).toContain("hotLeadsForCredit(outlook?.costPerOutcomeUsd, copy.creditUsd)");
+    expect(wall).toContain("const outcomes = outlook?.outcomes ?? null;");
+    expect(wall).not.toContain("hotLeadsForCredit");
     expect(wall).not.toContain("medianCostUsd");
     expect(wall).not.toContain("medianReturnPerDollar");
     const page = fs.readFileSync(path.resolve(__dirname, "../src/components/v2/get-started/get-started.tsx"), "utf8");

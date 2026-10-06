@@ -128,6 +128,17 @@ const CampaignSchema = z
     roi: z.number().nullable(),
     roiCombinationKey: z.string().nullable(),
     roiUnavailableReason: z.string().nullable(),
+    /** What a credit buys of this campaign's outcome, on its ROI's basis (features-service v0.179.72; absent before it). */
+    outcomesForCredit: z
+      .object({
+        creditUsd: z.number(),
+        combinationKey: z.string().nullable(),
+        costPerOutcomeUsd: z.number().nullable(),
+        outcomes: z.number().nullable(),
+        unavailableReason: z.string().nullable(),
+      })
+      .passthrough()
+      .optional(),
   })
   .passthrough();
 export type SalesPathCampaign = z.infer<typeof CampaignSchema>;
