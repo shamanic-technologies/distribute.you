@@ -108,6 +108,10 @@ const RULES: Rule[] = [
   // It WRITES and never sends: nothing it creates can go out. Its body names the
   // brand, which `anonBodyRefusal` binds to the session.
   { method: "POST", segments: ["content", "preview-email"] },
+  // Its warm-up, sent as soon as the brand exists: content-generation reads the site the
+  // preview will need in the background (the same read, billed to this anonymous org,
+  // moved earlier), so step 6 only waits for the model. Writes nothing.
+  { method: "POST", segments: ["content", "preview-email", "prepare"] },
 
   // ── What the projection screen reads. All reads. ─────────────────────
   { method: "GET", segments: ["features", ":seg"] },
@@ -236,7 +240,8 @@ export function anonBodyRefusal({
       path === "/orgs/audiences/suggest" ||
       path === "/orgs/audiences/split" ||
       path === "/orgs/audiences/split/confirm" ||
-      path === "/content/preview-email");
+      path === "/content/preview-email" ||
+      path === "/content/preview-email/prepare");
   if (!bound) return null;
 
   const owned = typeof brandId === "string" ? brandId : "";
