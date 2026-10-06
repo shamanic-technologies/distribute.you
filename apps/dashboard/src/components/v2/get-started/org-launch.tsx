@@ -20,7 +20,7 @@ import { getBillingAccount, setApiActiveOrgOverride, type BillingAccount } from 
 import { getStripe } from "@/lib/stripe";
 import { defaultSalesRepToAccountEmail } from "@/lib/sales-rep-default";
 import { v2CampaignHref } from "@/lib/v2/routes";
-import { matchNote, type GetStartedOffer } from "@/lib/v2/get-started";
+import { dailySpendUsd, matchNote, type GetStartedOffer } from "@/lib/v2/get-started";
 import { EMPTY_PROGRESS, launchFromPreview, type LaunchCampaign, type LaunchProgress } from "./launch";
 import { PrepaidTopup, type TopupChoice } from "./prepaid-topup";
 import { payTopup, settleTopup } from "./pay-topup";
@@ -210,7 +210,7 @@ export function OrgLaunch({
                 {busy ? "Checking your payment..." : "Check my payment and launch"}
               </button>
             ) : (
-              <PrepaidTopup busy={busy} matchNote={matchNote(account)} cta={(usd) => `Add $${usd.toLocaleString("en-US")} and launch`} onPay={(c) => void pay(c)} />
+              <PrepaidTopup busy={busy} matchNote={matchNote(account)} dailyUsd={dailySpendUsd(campaigns)} onEditCampaigns={onClose} cta={(usd) => `Add $${usd.toLocaleString("en-US")} and launch`} onPay={(c) => void pay(c)} />
             )
           )}
 

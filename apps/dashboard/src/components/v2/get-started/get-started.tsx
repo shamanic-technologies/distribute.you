@@ -1739,6 +1739,23 @@ export function GetStarted({ org }: { org?: OrgWalk } = {}) {
           onClose={() => setWallOpen(false)}
         />
       )}
+      {/* Back from Google (`resume=1`): the wall waits on the sales paths read to name
+          the campaigns. Until then a plain veil, never the email preview behind it
+          (owner 2026-10-06: "it sends me back to the email check"). A failed
+          read drops the veil: the page states it with its retry. */}
+      {wallOpen && !org && brandId && offer && audience && launchCampaigns.length === 0 && !catalogueFailed && pathsState !== "failed" && (
+        <div
+          role="status"
+          className="v2-root gs-scrim fixed inset-0 z-[60] flex items-center justify-center bg-[color-mix(in_oklab,var(--bg-canvas)_35%,transparent)] backdrop-blur-[6px]"
+        >
+          <div className="k-popover grid w-[280px] gap-2 p-5">
+            <p className="k-fg2 text-[13px]">Setting up your account...</p>
+            <span className="block h-1 overflow-hidden rounded-full bg-[var(--data-track)]" aria-hidden="true">
+              <span className="k-indeterminate block h-full w-1/3 rounded-full bg-[var(--accent)]" />
+            </span>
+          </div>
+        </div>
+      )}
       {wallOpen && brandId && offer && audience && launchCampaigns.length > 0 && !org && (
         <AccountCardWall
           brandId={brandId}
