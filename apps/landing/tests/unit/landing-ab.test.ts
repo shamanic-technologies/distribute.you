@@ -119,8 +119,8 @@ describe("GET / with the test on", () => {
     expect(html).not.toContain("Add $100");
     expect(html).toContain("3-day free trial");
     expect(html).toContain("Start my free trial");
-    // The page's own copy, scripts aside: the site-wide Organization JSON-LD and the
-    // invite banner (shown only to a referred visitor) are injected for every page.
+    // The page's own copy, scripts aside: the site-wide Organization JSON-LD is
+    // injected for every page.
     const copy = html.replace(/<script[\s\S]*?<\/script>/g, "");
     for (const gone of ["$30", "From $1<", "$1/day", "No subscription", "Pay as you go"]) expect(copy, gone).not.toContain(gone);
     expect(html).not.toContain("\u2014");
