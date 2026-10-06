@@ -4,7 +4,7 @@ import { renderedResponse } from "@/lib/static-html";
 import { renderAssistantPage } from "@/lib/pages/assistant";
 import { renderConciergePage } from "@/lib/pages/concierge";
 import { renderInstinctPage } from "@/lib/pages/instinct";
-import { applyPromoBanners } from "@/lib/promo-banner";
+import { withPromoUntil } from "@/lib/promo-banner";
 import {
   AB_TEST_ENABLED,
   decideVariant,
@@ -37,9 +37,9 @@ export async function GET(request: Request) {
 
   // `index-v2.html` is the one homepage: a free platform, outreach billed at catalogue
   // prices (owner 2026-10-06), so `subscription`, `control` and crawlers all get it.
-  // Its time-boxed banner drops out on its end date (`lib/promo-banner.ts`).
+  // Its offer banner is dated the last day of the current month (`lib/promo-banner.ts`).
   const homepage = () =>
-    applyPromoBanners(readFileSync(join(process.cwd(), "public/landing", "index-v2.html"), "utf8"), new Date());
+    withPromoUntil(readFileSync(join(process.cwd(), "public/landing", "index-v2.html"), "utf8"), new Date());
   const page =
     decision.variant === "assistant"
       ? renderAssistantPage(undefined, { at: "homepage" })

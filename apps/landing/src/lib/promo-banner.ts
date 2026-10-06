@@ -1,18 +1,24 @@
 /**
- * Time-boxed promotions on a served page. A promo is wrapped in
- * `<!--promo:until=YYYY-MM-DD-->…<!--/promo-->` and is removed from the response from
- * that day on (00:00 UTC), so an expired offer is never promised, with no deploy.
- * Owner 2026-10-06: "we match your first $100" runs until October 31, 2026 as a
- * banner only, never in the tagline or the pricing section.
+ * The homepage's offer banner states a deadline that always reads as the last day of the
+ * current month (owner 2026-10-06: "the $100 matching is ongoing for now. Always put the
+ * last day of the month, whatever today's date"). The offer itself has no end date in
+ * billing; the date is urgency, rewritten on every request so it never goes stale.
  *
  * Alias-free and pure so it carries real unit tests.
  */
-const PROMO = /<!--promo:until=(\d{4}-\d{2}-\d{2})-->([\s\S]*?)<!--\/promo-->\n?/g;
+const UNTIL = /<span data-promo-until>[^<]*<\/span>/g;
 
-export function applyPromoBanners(html: string, now: Date): string {
-  return html.replace(PROMO, (block, until: string) => {
-    const end = Date.parse(`${until}T00:00:00Z`);
-    if (Number.isNaN(end)) throw new Error(`[landing] promo with an unreadable end date: ${until}`);
-    return now.getTime() >= end ? "" : block;
-  });
+const MONTHS = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+
+/** "October 31": the last day of `now`'s month, in UTC. */
+export function lastDayOfMonthLabel(now: Date): string {
+  const y = now.getUTCFullYear();
+  const m = now.getUTCMonth();
+  return `${MONTHS[m]} ${new Date(Date.UTC(y, m + 1, 0)).getUTCDate()}`;
+}
+
+export function withPromoUntil(html: string, now: Date): string {
+  if (!UNTIL.test(html)) throw new Error("[landing] the offer banner has no <span data-promo-until> to date");
+  UNTIL.lastIndex = 0;
+  return html.replace(UNTIL, `<span data-promo-until>${lastDayOfMonthLabel(now)}</span>`);
 }
