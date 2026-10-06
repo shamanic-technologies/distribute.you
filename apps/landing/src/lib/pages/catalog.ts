@@ -26,7 +26,16 @@ export type PlatformPrice = {
   pricingBasis: string;
   /** costs-service v0.76.0: "retired" rows stay served for history. */
   status: "current" | "retired";
+  /** costs-service v0.77.0: last day (UTC) the name was billed, null = never. */
+  lastUsedOn: string | null;
+  /** When that usage was last read; the same on every row. */
+  usageReadAt: string;
+  /** Names billed together for one unit (an email sent = inbox line + domain line). */
+  bundle: { name: string; unit: string; members: string[]; pricePerUnitInUsdCents: string | null } | null;
 };
+
+/** Owner 2026-10-06: a line nobody used in 30 days is not shown. */
+export const IDLE_DAYS = 30;
 
 /** The served list, read strictly: a row whose `status` is not one we know fails the read. */
 export function parsePlatformPrices(body: unknown): PlatformPrice[] {
@@ -34,6 +43,15 @@ export function parsePlatformPrices(body: unknown): PlatformPrice[] {
   for (const row of body as PlatformPrice[]) {
     if (row?.status !== "current" && row?.status !== "retired") {
       throw new Error(`row ${row?.name} has status ${JSON.stringify(row?.status)}`);
+    }
+    if (typeof row.usageReadAt !== "string" || Number.isNaN(Date.parse(row.usageReadAt))) {
+      throw new Error(`row ${row.name} has usageReadAt ${JSON.stringify(row.usageReadAt)}`);
+    }
+    if (row.lastUsedOn !== null && typeof row.lastUsedOn !== "string") {
+      throw new Error(`row ${row.name} has lastUsedOn ${JSON.stringify(row.lastUsedOn)}`);
+    }
+    if (row.bundle !== null && typeof row.bundle?.name !== "string") {
+      throw new Error(`row ${row.name} has bundle ${JSON.stringify(row.bundle)}`);
     }
   }
   return body as PlatformPrice[];
@@ -44,7 +62,7 @@ export const CATALOG_GROUPS = [
   { key: "leads", title: "Lead data", note: "Finding the right people and checking their email." },
   { key: "research", title: "Web research", note: "Reading each prospect's site and news before writing." },
   { key: "ai", title: "AI writing", note: "Writing and checking each email. Priced per million tokens." },
-  { key: "sending", title: "Sending", note: "Each email and follow-up, sent from our own inboxes. Every email carries both lines: the inbox and the sending domain." },
+  { key: "sending", title: "Sending", note: "Each email and follow-up, sent from our own inboxes." },
   { key: "calls", title: "Calls and messages", note: "Calling or texting a prospect who asked for it." },
   { key: "notifications", title: "Emails we send you", note: "Replies forwarded to you, alerts and digests about your campaigns." },
   { key: "storage", title: "Storage", note: "Keeping files and pages we generate." },
@@ -103,6 +121,15 @@ export function providerName(p: PlatformPrice): string {
   return PROVIDER_NAME[p.provider] ?? p.providerDomain ?? p.provider;
 }
 
+/**
+ * Billed in the last IDLE_DAYS, measured from when usage was READ, never from today:
+ * a stuck daily read must not hide lines we run.
+ */
+export function usedRecently(p: PlatformPrice): boolean {
+  if (p.lastUsedOn === null) return false;
+  return Date.parse(p.usageReadAt) - Date.parse(p.lastUsedOn) <= IDLE_DAYS * 86_400_000;
+}
+
 /** Which section a row sits in, or null when the row is not a tool behind an email. */
 export function catalogGroup(p: PlatformPrice): CatalogGroupKey | null {
   // Media spend and payment fees are a dollar for a dollar, not a tool we run.
@@ -110,6 +137,7 @@ export function catalogGroup(p: PlatformPrice): CatalogGroupKey | null {
   if (NOT_AN_EMAIL_TOOL.has(p.provider)) return null;
   // A replaced tool stays in the served list for history; it is not one we run.
   if (p.status !== "current") return null;
+  if (!usedRecently(p)) return null;
   if (p.unit === TOKEN_UNIT) return "ai";
   if (p.unit === "search" || p.unit === "query") return "research";
   const group = PROVIDER_GROUP[p.provider];
@@ -150,10 +178,21 @@ export function catalogSections(prices: PlatformPrice[]) {
   for (const p of prices) {
     const group = catalogGroup(p);
     if (!group) continue;
-    // A unit we never charge for is not a price (Apollo's search credit, Instantly's
-    // contact upload): listed, it reads as a second, free version of a paid line.
-    if (unitPriceUsd(p) === 0) continue;
-    const row = { tool: providerName(p), domain: p.providerDomain ?? null, what: p.type, price: formatPrice(p) };
+    let row: Row;
+    if (p.bundle) {
+      // One unit billed as several names: one line at the served bundle price, never
+      // the members added up here. A bundle that lost its price says so.
+      const b = p.bundle;
+      const what = b.name.charAt(0).toUpperCase() + b.name.slice(1).replaceAll("-", " ");
+      const price =
+        b.pricePerUnitInUsdCents === null ? "No price" : formatPrice({ ...p, pricePerUnitInUsdCents: b.pricePerUnitInUsdCents, unit: b.unit });
+      row = { tool: providerName(p), domain: p.providerDomain ?? null, what, price };
+    } else {
+      // A unit we never charge for is not a price (Instantly's contact upload): listed,
+      // it reads as a second, free version of a paid line.
+      if (unitPriceUsd(p) === 0) continue;
+      row = { tool: providerName(p), domain: p.providerDomain ?? null, what: p.type, price: formatPrice(p) };
+    }
     const key = `${group}|${row.tool}|${row.what}|${row.price}`;
     if (seen.has(key)) continue;
     seen.add(key);
