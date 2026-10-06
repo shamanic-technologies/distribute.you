@@ -6,7 +6,9 @@ import { pollOptions } from "@/lib/query-options";
 import { getConversationCounts, getLeadBucketCounts } from "@/lib/api";
 import { formatCentsAsUsdAdaptive, formatCount, formatUsdAdaptive } from "@/lib/format-number";
 import { fmtDailyBudgetUsd } from "@/lib/campaign-budget";
-import { shownFigure } from "@/lib/maturity";
+import { shownFigure, shownReturn } from "@/lib/maturity";
+import { formatRoi } from "@/lib/format-roi";
+import { InfoTooltip } from "@/components/visibility/metric-info";
 import { useStatBasis } from "@/lib/use-stat-basis";
 import { useStaffMode } from "@/lib/use-staff-mode";
 import { useDailyBudgetHidden } from "@/lib/use-daily-budget-hidden";
@@ -192,6 +194,9 @@ export function SpentTile({ actualUsd, committedUsd }: { actualUsd: number | nul
   );
 }
 
+/** The campaign's ROI is an expected value (its pipeline over what it cost), so it says so. */
+const CAMPAIGN_ROI_TIP = "Expected, not measured yet. What the people this campaign reached should be worth, divided by what it cost.";
+
 /**
  * What this campaign did, all served: where the people it reached stand (lead-service's
  * bucket counts on the campaign, people not emails), what it spent and what one outcome
@@ -225,17 +230,27 @@ function CampaignOverview({
   const cost = shownFigure(g?.outcomesMaturity, (h) => (replyLed ? h.cpprCents : h.cpcCents), basis);
   const cap = crewTrigger(mission.leg)?.kind === "event";
 
-  const count = (v: number | null | undefined) => (!settled ? <Shimmer className="h-7 w-16" /> : <Figure value={v != null ? formatCount(v) : "—"} unit="people" />);
+  const roi = shownReturn(g?.economicsMaturity, basis);
+  const outcomes = leg && counts ? counts[leg.bucket] : null;
+
+  // A person is "person", several are "people" (owner 2026-10-06: "1 people").
+  const count = (v: number | null | undefined) =>
+    !settled ? <Shimmer className="h-7 w-16" /> : <Figure value={v != null ? formatCount(v) : "—"} unit={v === 1 ? "person" : "people"} />;
 
   return (
     <div className="space-y-8">
       <section>
         <SectionTitle right={<span>Since it started</span>}>This campaign</SectionTitle>
-        <div className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-6">
+        {/* Owner's order (2026-10-06): ROI, Contacted, Queued, Sent, Delivered, outcome, Spent, cost per outcome. */}
+        <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
+          <StatTile label="ROI" note={<InfoTooltip tip={CAMPAIGN_ROI_TIP} placement="bottom" />}>
+            <Figure value={roi.learning ? "Learning" : roi.value == null ? "—" : formatRoi(roi.value)} />
+          </StatTile>
+          <StatTile label="Contacted">{count(counts?.contacted)}</StatTile>
           <StatTile label="Queued">{count(counts?.contacted)}</StatTile>
           <StatTile label="Sent">{count(people?.sent)}</StatTile>
           <StatTile label="Delivered">{count(people?.delivered)}</StatTile>
-          <StatTile label={leg ? `${leg.outcome}s` : "Outcomes"}>{count(leg && counts ? counts[leg.bucket] : null)}</StatTile>
+          <StatTile label={leg ? (outcomes === 1 ? leg.outcome : `${leg.outcome.replace(/y$/, "ie")}s`) : "Outcomes"}>{count(outcomes)}</StatTile>
           <SpentTile actualUsd={g?.actualCostUsd ?? null} committedUsd={g?.committedCostUsd ?? null} />
           <StatTile label={replyLed ? "Cost / reply" : "Cost / visit"}>
             <Figure value={cost.learning ? "Learning" : cost.value == null ? "—" : formatCentsAsUsdAdaptive(cost.value)} />
