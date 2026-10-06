@@ -85,7 +85,7 @@ export function TrialSpots() {
               <span key={left} className="gs-pop inline-block tabular-nums text-[var(--data-amber)]">
                 {left}
               </span>{" "}
-              trial spots left this hour
+              spots left this hour
             </span>
           </div>
           <div className="mt-2.5 flex gap-1" aria-hidden="true">

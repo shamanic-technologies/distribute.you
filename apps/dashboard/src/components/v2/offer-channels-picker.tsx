@@ -47,6 +47,8 @@ export function OfferChannelsPicker({
               onClick={() => (c.managed ? onToggle(c.slug, !on) : setContact(c))}
               mark={<AcquisitionChannelMark def={{ mark: channelMarkForSlug(c.slug) }} size="xs" dimmed={!on} />}
               title={c.name}
+              sub={c.shortDescription}
+              wrapSub
               contactUs={!c.managed}
             />
           );
