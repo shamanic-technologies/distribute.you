@@ -4079,6 +4079,8 @@ export async function suggestBrandIcp(
   brandId: string,
   existingIcps?: string[],
   token?: string,
+  /** The offer to prospect for: who to contact follows from what is sold (brand-service). */
+  offerId?: string,
 ): Promise<{ icp: string }> {
   // Same hang class as suggestAudiences — the prewarm awaits this FIRST, so a
   // hung ICP call stalls the audience prewarm before suggestAudiences even runs.
@@ -4086,7 +4088,10 @@ export async function suggestBrandIcp(
     apiCall<unknown>(`/brands/${brandId}/icp/suggest`, {
       token,
       method: "POST",
-      body: existingIcps && existingIcps.length > 0 ? { existingIcps } : {},
+      body: {
+        ...(existingIcps && existingIcps.length > 0 ? { existingIcps } : {}),
+        ...(offerId ? { offerId } : {}),
+      },
     }),
     SUGGEST_TIMEOUT_MS,
     "suggestBrandIcp",

@@ -464,7 +464,8 @@ export function GetStarted({ org }: { org?: OrgWalk } = {}) {
   function resumePreparing(s: GetStartedSnapshot) {
     if (!s.offer) void prepareOffers(s.brandId, [], s.overview);
     if (!s.audience) {
-      if (s.icp) {
+      // The ideal customer is the picked offer's: without a pick, `pickOffer` drafts it.
+      if (s.icp && s.offer) {
         setStep("audience", "running");
         proposeAudienceSegments(s.brandId, s.icp)
           .then(({ segments }) => {
@@ -475,7 +476,7 @@ export function GetStarted({ org }: { org?: OrgWalk } = {}) {
             console.error("[get-started] audience proposals failed on resume:", e);
             setStep("audience", "failed");
           });
-      } else void prepareAudiences(s.brandId);
+      } else if (s.offer) void prepareAudiences(s.brandId, s.offer.offerId);
     }
   }
 
@@ -538,11 +539,14 @@ export function GetStarted({ org }: { org?: OrgWalk } = {}) {
     }
   }
 
-  /** Who to write to: the brand's ideal customer, split into at most 6 audiences in words. */
-  async function prepareAudiences(id: string) {
+  /**
+   * Who to write to for the offer PICKED at step 3 (owner 2026-10-06: the audiences
+   * described the brand's other offer): its ideal customer, split into at most 6 audiences.
+   */
+  async function prepareAudiences(id: string, offerId: string) {
     setStep("audience", "running");
     try {
-      const { icp } = await suggestBrandIcp(id);
+      const { icp } = await suggestBrandIcp(id, undefined, undefined, offerId);
       icpRef.current = icp;
       saveSnapshot({ icp });
       const { segments } = await proposeAudienceSegments(id, icp);
@@ -588,6 +592,8 @@ export function GetStarted({ org }: { org?: OrgWalk } = {}) {
     if (!picked) return;
     setOfferError(null);
     setPendingOffer({ name: picked.name, description: picked.description });
+    // The audiences are drafted for THIS offer, once it is saved: the step says so meanwhile.
+    setStep("audience", "running");
     advance("offer");
     posthog.capture("get_started_offer_picked", { offers: offerProposals.length });
     const id = brandId;
@@ -598,6 +604,7 @@ export function GetStarted({ org }: { org?: OrgWalk } = {}) {
       setOffer(next);
       saveSnapshot({ offer: next });
       void draftAnswers(id, chosenOfferId);
+      void prepareAudiences(id, chosenOfferId);
       return next;
     })();
     offerPromise.current = p;
@@ -1377,9 +1384,9 @@ export function GetStarted({ org }: { org?: OrgWalk } = {}) {
       }
     })();
     await siteRead;
-    // The ideal customer is drafted from what the read stored (an empty profile is
-    // refused), so it waits for it; the offer split and the audience split then run together.
-    await Promise.all([prepareOffers(id, offerSource.current.lines, offerSource.current.ov), prepareAudiences(id)]);
+    // The offers are drafted from what the read stored; the audiences wait for the
+    // offer picked out of them (`pickOffer`), so they describe who buys THAT offer.
+    await prepareOffers(id, offerSource.current.lines, offerSource.current.ov);
     posthog.capture("get_started_preview_ready");
   }
 
@@ -1494,7 +1501,7 @@ export function GetStarted({ org }: { org?: OrgWalk } = {}) {
           counting={estimating || (!estimated.current && !!offerPromise.current)}
           waitingForOffer={!offer && !pendingOffer}
           onPick={(i) => void pickAudience(i)}
-          onRetry={() => brandId && void prepareAudiences(brandId)}
+          onRetry={() => brandId && offer && void prepareAudiences(brandId, offer.offerId)}
         />
       );
     if (key === "salesSteps" || key === "legs")
@@ -1689,7 +1696,7 @@ export function GetStarted({ org }: { org?: OrgWalk } = {}) {
         <main className="k-scroll lg:min-h-0 lg:overflow-y-auto">
           <div className="mx-auto max-w-[1040px] px-4 py-6 sm:px-6 sm:py-8">
             <Stepper steps={steps} staged={stagedKey} onOpen={openStep} nextLit={steps.email === "done"} />
-            <LiveStatus current={current} domain={domain} pick={pick} />
+            <LiveStatus current={current} domain={domain} pick={pick} readFailed={steps.company === "failed"} />
             <div className="mt-4">
               <JournalStrip {...journal} />
             </div>
@@ -2108,20 +2115,38 @@ const STATUS: Record<GetStartedStepKey, (domain: string | null) => string> = {
  * What is being worked on right now, and for how long, or the pick the stage is
  * waiting on. Every line names a real step.
  */
-function LiveStatus({ current, domain, pick }: { current: number; domain: string | null; pick: string | null }) {
+function LiveStatus({
+  current,
+  domain,
+  pick,
+  readFailed,
+}: {
+  current: number;
+  domain: string | null;
+  pick: string | null;
+  /** The site read failed: nothing below was drafted from it, so nothing is "ready" (owner 2026-10-06). */
+  readFailed: boolean;
+}) {
   const key = pick ? null : current >= 0 ? GET_STARTED_STEPS[current].key : null;
   const secs = useElapsed(key);
   return (
     <p key={pick ? `pick:${pick}` : key ?? "ready"} className="gs-in mt-4 flex min-h-5 items-center gap-2 text-[13px]">
       {pick ? (
         <span className="gs-pop h-1.5 w-1.5 shrink-0 rounded-full bg-[var(--accent)]" />
+      ) : !key && readFailed ? (
+        <span className="gs-pop h-1.5 w-1.5 shrink-0 rounded-full bg-[var(--data-rose)]" />
       ) : key ? (
         <span className="k-dot-pulse h-1.5 w-1.5 shrink-0 rounded-full bg-[var(--run)] text-[var(--run)]" />
       ) : (
         <span className="gs-pop h-1.5 w-1.5 shrink-0 rounded-full bg-[var(--data-teal)]" />
       )}
       <span className="k-fg2 min-w-0" aria-live="polite">
-        {pick ?? (key ? STATUS[key](domain) : "Your preview is ready.")}
+        {pick ??
+          (key
+            ? STATUS[key](domain)
+            : readFailed
+              ? `We could not read ${domain ?? "your site"}. Check the address and try again.`
+              : "Your preview is ready.")}
       </span>
       {key && (
         <span className="k-mono k-fg3 text-[12px] tabular-nums" aria-hidden="true">
