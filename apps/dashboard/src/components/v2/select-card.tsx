@@ -13,6 +13,7 @@ export function SelectCard({
   mark,
   title,
   sub,
+  wrapSub,
   contactUs,
 }: {
   on: boolean;
@@ -20,6 +21,8 @@ export function SelectCard({
   mark: ReactNode;
   title: string;
   sub?: string | null;
+  /** The sub line is a sentence to read in full (a channel caption): wrap it, never truncate. */
+  wrapSub?: boolean;
   /** Not selectable yet: muted, no circle, a "Contact us" chip. A click calls `onClick`,
    *  which opens the contact form instead of ticking the card. */
   contactUs?: boolean;
@@ -28,7 +31,10 @@ export function SelectCard({
     return (
       <button type="button" onClick={onClick} className="k-card k-hover flex items-center gap-2.5 p-3 text-left">
         {mark}
-        <span className="k-fg3 min-w-0 flex-1 truncate text-[13px]">{title}</span>
+        <span className="min-w-0 flex-1">
+          <span className="k-fg3 block truncate text-[13px]">{title}</span>
+          {sub && <span className={`k-fg3 block text-[11.5px] ${wrapSub ? "leading-4" : "truncate"}`}>{sub}</span>}
+        </span>
         <span className="k-chip shrink-0">Contact us</span>
       </button>
     );
@@ -43,7 +49,7 @@ export function SelectCard({
       {mark}
       <span className="min-w-0 flex-1">
         <span className={`block truncate text-[13px] ${on ? "k-fg font-semibold" : "k-fg3"}`}>{title}</span>
-        {sub && <span className="k-fg3 block truncate text-[11.5px]">{sub}</span>}
+        {sub && <span className={`k-fg3 block text-[11.5px] ${wrapSub ? "leading-4" : "truncate"}`}>{sub}</span>}
       </span>
       {on ? (
         <span aria-hidden className="inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-[var(--accent)] text-[11px] text-white">✓</span>

@@ -71,6 +71,8 @@ export interface SalesPathChannel {
   managed: boolean;
   /** The customer's own team works it (your-team-*). */
   customerOperated: boolean;
+  /** The one-line caption printed under the name on a channel card. */
+  shortDescription: string | null;
 }
 
 /**
@@ -79,7 +81,7 @@ export interface SalesPathChannel {
  * producer gap, said out loud and left out rather than guessed.
  */
 export function salesPathChannels(
-  channels: ReadonlyArray<{ slug: string; name?: string; managed?: boolean; salesPathEligible?: boolean; operatedBy?: string }>,
+  channels: ReadonlyArray<{ slug: string; name?: string; managed?: boolean; salesPathEligible?: boolean; operatedBy?: string; shortDescription?: string }>,
 ): SalesPathChannel[] {
   const out: SalesPathChannel[] = [];
   for (const c of channels) {
@@ -88,7 +90,16 @@ export function salesPathChannels(
       console.error("[offer-active-sales-paths] eligible channel served without name or managed flag", c);
       continue;
     }
-    out.push({ slug: c.slug, name: c.name, managed: c.managed, customerOperated: c.operatedBy === "customer" });
+    if (!c.shortDescription) {
+      console.error("[offer-active-sales-paths] eligible channel served without shortDescription", c.slug);
+    }
+    out.push({
+      slug: c.slug,
+      name: c.name,
+      managed: c.managed,
+      customerOperated: c.operatedBy === "customer",
+      shortDescription: c.shortDescription ?? null,
+    });
   }
   return out;
 }
