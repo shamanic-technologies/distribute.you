@@ -1,11 +1,11 @@
 /**
  * The referral link, and the code's journey from a landing click to a claim.
  *
- * The offer: an org shares its link, and when someone signs up through it and
- * converts, BOTH sides earn $500 in free credits. The credits are not a gift on
- * signup. They unlock exactly the way the welcome credits do, once cumulative
- * payments reach the bar billing-service froze for that org, and the inviter's
- * $500 only opens once the invitee has actually earned theirs.
+ * The offer (owner 2026-10-06): an org shares its link, and once the org that
+ * signed up through it has paid $500, the REFERRER gets $500 in free credits.
+ * The referrer pays nothing for it; the referred org receives no referral
+ * credit at all. billing-service holds the promise on the referrer's side and
+ * measures it on the referred org's payments.
  *
  * The code itself is the inviter org's slug, owned by client-service. Nothing
  * here mints, validates or interprets it.
@@ -21,7 +21,7 @@
  *
  * The cookie is cleared ONLY when the claim has actually been recorded, or when
  * the code is definitively rejected. That is deliberate: a claim that never
- * lands leaves two orgs owed $500 they will never see, so the intent has to
+ * lands leaves the referrer owed $500 they will never see, so the intent has to
  * survive a failed request, a closed tab, and a gateway that is not fixed yet.
  *
  * This module is alias-free on purpose so it carries real unit tests rather than
@@ -100,7 +100,7 @@ export function inviteCookieClear(): string {
  *
  * Keeping it is the default, because the common failures are transient (a cold
  * service, an offline tab) or temporary (a gateway leg that is not deployed
- * yet), and dropping the code on those silently costs two orgs $500 each.
+ * yet), and dropping the code on those silently costs the referrer $500.
  *
  * A 4xx that names the code itself is different: it will answer the same way
  * forever, so retrying it on every page load is noise. Only 404 (no such code)
@@ -109,7 +109,7 @@ export function inviteCookieClear(): string {
  * 409 is deliberately NOT terminal. Re-claiming the same pair is idempotent
  * downstream and answers 200, so the only 409 that exists is "this inviter has
  * hit their invite cap" — and that cap is being lifted. Dropping the code on it
- * would permanently cost the two orgs $500 each for signing up during the gap.
+ * would permanently cost the referrer $500 for a signup during the gap.
  * 401/403 are not terminal either: they mean the session has not settled yet.
  */
 export function isTerminalClaimRejection(status: number): boolean {

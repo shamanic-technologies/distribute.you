@@ -20,7 +20,7 @@ import {
  *
  * ## Why it retries across page loads instead of firing once
  *
- * A claim that never lands leaves two orgs owed $500 each and nothing on screen
+ * A claim that never lands leaves the referrer owed $500 and nothing on screen
  * says so, so this keeps the code until the claim is actually recorded. One
  * attempt per mount (never a loop), and the cookie is cleared only on success or
  * on a rejection that will answer the same way forever. Everything else, cold
