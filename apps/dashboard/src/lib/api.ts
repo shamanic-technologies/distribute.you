@@ -3855,6 +3855,29 @@ export async function previewColdEmail(
 }
 
 
+// content-generation-service `POST /preview-email/prepare` (v0.35.15): starts, in the
+// background, the brand-intel read the first preview needs (a full site read, up to
+// ~2 minutes on a big site), so the preview written later only waits for the model.
+// 202 at once; idempotent per brand; billed to the calling org as the preview's own read.
+const PreviewEmailPrepareSchema = z.object({
+  brandId: z.string(),
+  status: z.string(),
+});
+
+export async function prepareColdEmailPreviews(brandId: string, token?: string): Promise<void> {
+  const raw = await apiCall<unknown>(`/content/preview-email/prepare`, {
+    token,
+    method: "POST",
+    body: { brandId },
+    headers: { "x-run-id": globalThis.crypto.randomUUID() },
+  });
+  const parsed = PreviewEmailPrepareSchema.safeParse(raw);
+  if (!parsed.success) {
+    console.error("[dashboard] prepareColdEmailPreviews: response shape mismatch", { issues: parsed.error.issues, raw });
+    throw new Error("[dashboard] prepareColdEmailPreviews: invalid response shape");
+  }
+}
+
 /**
  * PATCH /orgs/audiences/:audienceId/status — change an audience's lifecycle status
  * (mutates only status). Used to ACTIVATE a suggested candidate ("suggested" →

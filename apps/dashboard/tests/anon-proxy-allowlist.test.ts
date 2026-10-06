@@ -148,7 +148,7 @@ describe("the file itself", () => {
     // the signed-out onboarding v2 and creates nothing that can be sent.
     const rules = src
       .slice(src.indexOf("const RULES"), src.indexOf("export interface AllowInput"))
-      .replace('"preview-email"', "")
+      .replaceAll('"preview-email"', "")
       // The reviewed email CHECK of one row of the 100 companies (step 5 of
       // /get-started): it reveals and verifies an address on this anonymous org and
       // returns only its masked domain. Nothing is sent.
@@ -204,6 +204,13 @@ describe("the onboarding v2 preview reads", () => {
     expect(allow("POST", "/orgs/audiences/9b1c/preview/email-checks/next").allowed).toBe(false);
     // No body, so nothing for the body binding to refuse.
     expect(anonBodyRefusal({ method: "POST", endpoint: "/orgs/audiences/9b1c/preview/companies/0/email-check", body: undefined, brandId: BRAND })).toBeNull();
+  });
+
+  it("permits the preview warm-up and binds its brand to the session", () => {
+    expect(allow("POST", "/content/preview-email/prepare").allowed).toBe(true);
+    const b = (brandId: string) => JSON.stringify({ brandId });
+    expect(anonBodyRefusal({ method: "POST", endpoint: "/content/preview-email/prepare", body: b(BRAND), brandId: BRAND })).toBeNull();
+    expect(anonBodyRefusal({ method: "POST", endpoint: "/content/preview-email/prepare", body: b(OTHER), brandId: BRAND })).toBe("wrong-brand");
   });
 
   it("binds the preview email's brand to the session", () => {

@@ -43,6 +43,7 @@ import {
   listAudiences,
   listBrandOffers,
   previewColdEmail,
+  prepareColdEmailPreviews,
   proposeAudienceSegments,
   proposeBrandOffers,
   saveOfferChannels,
@@ -263,6 +264,17 @@ export function GetStarted({ org }: { org?: OrgWalk } = {}) {
   const [checks, setChecks] = useState<Record<string, CompanyRowEmailCheck>>({});
   const checkQueue = useRef<Promise<void>>(Promise.resolve());
   const checkAsked = useRef(new Set<string>());
+  // The first email waits on a full read of the site (up to ~2 minutes on a big one).
+  // Start that read the moment the brand exists, so step 6 only waits for the model.
+  const warmed = useRef(new Set<string>());
+  useEffect(() => {
+    if (!brandId || warmed.current.has(brandId)) return;
+    warmed.current.add(brandId);
+    prepareColdEmailPreviews(brandId).catch((e) => {
+      // The first email then makes the read itself, as it did before the warm-up.
+      console.error("[get-started] email warm-up failed:", e);
+    });
+  }, [brandId]);
 
   // Steps 5 to 8: questions about the offer, each prefilled from ONE site read made as
   // soon as the offer is picked. The first emails wait for the answers: they are
