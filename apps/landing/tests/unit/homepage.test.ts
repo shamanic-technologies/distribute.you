@@ -35,7 +35,7 @@ describe("the homepage is self-contained", () => {
     // way (rather than the `css/` + `js/` form `staticHtml` rewrites) is what stops
     // `main.js` and `styles.css` colliding with the previous homepage's files.
     expect(html).toContain('href="/landing/v2/styles.css?v=17"');
-    expect(html).toContain('src="/landing/v2/main.js?v=8"');
+    expect(html).toContain('src="/landing/v2/main.js?v=9"');
     expect(html).not.toContain("/landing/css/");
     expect(html).not.toContain("/landing/js/");
     // Nothing may reference the lab's own root paths: those resolved on `lab-distribute`
