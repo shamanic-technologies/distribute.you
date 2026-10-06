@@ -176,6 +176,23 @@ export function V2CampaignPage() {
 }
 
 /**
+ * "Spent" is what was billed (cost status actual). The campaign's committed figure also
+ * counts the follow-ups RESERVED when a first email went out and not sent yet, so it
+ * stands on its own line under the figure, never under the "Spent" label (2026-10-06: a
+ * client read "$67 spent" over 185 emails, part of it follow-ups still to go). Both
+ * figures are served; the browser subtracts nothing.
+ */
+export function SpentTile({ actualUsd, committedUsd }: { actualUsd: number | null; committedUsd: number | null }) {
+  const reserved = actualUsd != null && committedUsd != null && committedUsd > actualUsd;
+  return (
+    <StatTile label="Spent">
+      <Figure value={actualUsd == null ? "—" : formatUsdAdaptive(actualUsd)} />
+      {reserved && <p className="k-fg3 mt-1 text-[12px] leading-4">{formatUsdAdaptive(committedUsd)} with follow-ups reserved</p>}
+    </StatTile>
+  );
+}
+
+/**
  * What this campaign did, all served: where the people it reached stand (lead-service's
  * bucket counts on the campaign, people not emails), what it spent and what one outcome
  * cost (the campaign row's own revenue group, Learning where the producer says so). Then
@@ -219,9 +236,7 @@ function CampaignOverview({
           <StatTile label="Sent">{count(people?.sent)}</StatTile>
           <StatTile label="Delivered">{count(people?.delivered)}</StatTile>
           <StatTile label={leg ? `${leg.outcome}s` : "Outcomes"}>{count(leg && counts ? counts[leg.bucket] : null)}</StatTile>
-          <StatTile label="Spent">
-            <Figure value={g?.committedCostUsd == null ? "—" : formatUsdAdaptive(g.committedCostUsd)} />
-          </StatTile>
+          <SpentTile actualUsd={g?.actualCostUsd ?? null} committedUsd={g?.committedCostUsd ?? null} />
           <StatTile label={replyLed ? "Cost / reply" : "Cost / visit"}>
             <Figure value={cost.learning ? "Learning" : cost.value == null ? "—" : formatCentsAsUsdAdaptive(cost.value)} />
           </StatTile>
@@ -306,9 +321,7 @@ function ConversationOverview({ mission, tabHref }: { mission: Mission; tabHref:
           <StatTile label="Ongoing conversations">{count(conv?.ongoing)}</StatTile>
           <StatTile label={`${to}s`}>{count(conv?.meetingsBooked)}</StatTile>
           <StatTile label="Dropped conversations">{count(conv?.dropped)}</StatTile>
-          <StatTile label="Spent">
-            <Figure value={g?.committedCostUsd == null ? "—" : formatUsdAdaptive(g.committedCostUsd)} />
-          </StatTile>
+          <SpentTile actualUsd={g?.actualCostUsd ?? null} committedUsd={g?.committedCostUsd ?? null} />
         </div>
       </section>
 

@@ -17,9 +17,12 @@ describe("Today: one window for the whole stat row", () => {
     expect(src).toContain("w.recipientsRepliesPositive.total");
     expect(src).toContain("w.recipientsClicked.total");
     expect(src).toContain("pct(emails.deliveryRatePct)");
-    // Owner 2026-10-03: "spent il faut mettre le total". Charged plus held, no detail note.
-    expect(src).toContain("winSpend.totalSpentCents");
-    expect(src).not.toContain("winSpend.actualSpentCents");
+    // 2026-10-06 (Legistai read "$67 spent" over 185 emails): "Spent" is the BILLED figure;
+    // the total with follow-ups reserved and not sent yet is served beside it on its own
+    // line. Supersedes 2026-10-03 "spent il faut mettre le total" under the Spent label.
+    expect(src).toContain("formatCentsAsUsdAdaptive(winSpend.actualSpentCents)");
+    expect(src).toContain("formatCentsAsUsdAdaptive(winSpend.totalSpentCents)} with follow-ups reserved");
+    expect(src).toContain("winSpend.daily.map((d) => d.actualSpentCents)");
     expect(src).not.toContain("costPerEmailSentCents");
   });
 
