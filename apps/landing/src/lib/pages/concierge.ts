@@ -33,7 +33,7 @@ const TELEGRAM_HREF = `https://t.me/${CONTACT.telegram}`;
 
 const TITLE = "distribute.you: your AI sales assistant. Just message it.";
 const DESCRIPTION =
-  "Message your AI sales assistant by email, WhatsApp, Telegram or chat. It finds your buyers, writes and tests the cold emails and books the meetings. No app, no setup. The platform is free.";
+  "Message your AI sales assistant by email, WhatsApp, Telegram or chat. It finds your buyers, writes and tests the cold emails and books the meetings. No app, no setup. 3-day free trial.";
 
 const I = {
   chat: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12a8 8 0 0 1-11.6 7.1L4 20l1-4.6A8 8 0 1 1 21 12z"/></svg>`,
@@ -238,7 +238,7 @@ export function renderConciergePage(
     <h1>Your AI sales assistant.<br><span class="accent">Just message it.</span></h1>
     <p class="cc-sub">Tell it what you sell. It finds your buyers, writes and tests the cold emails, books the meetings and reports back, right where you already talk. No app, no setup.</p>
     ${ctas("hero")}
-    <div class="cc-fine">Free platform · It answers instantly, day and night · Cancel anytime</div>
+    <div class="cc-fine">3-day free trial · It answers instantly, day and night · Cancel anytime</div>
     <div class="cc-proof">__HOT_LEAD_ROW__</div>
   </div>
 </section>
@@ -285,7 +285,7 @@ ${faq}
 <section class="framed tint" id="talk">
   <div class="wrap cc-close">
     <h2>Say hi. It answers now.</h2>
-    <p>The platform is free. You choose how much goes to your outreach, billed at public catalogue prices. You get a checkout link in the conversation when you are ready.</p>
+    <p>From $99 a month, and every dollar becomes campaign credit. You get a checkout link in the conversation when you are ready.</p>
     ${ctas("close")}
   </div>
 </section>

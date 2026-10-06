@@ -85,10 +85,10 @@ const jsonLd = {
   offers: [
     {
       "@type": "Offer",
-      name: "Free platform",
-      price: "0",
+      name: "Monthly plan",
+      price: "99",
       priceCurrency: "USD",
-      description: "The platform is free. You choose how much goes to your outreach, billed at public catalogue prices. Pause or cancel anytime.",
+      description: "3-day free trial, then from $99 a month. Every dollar becomes campaign credit. Cancel anytime.",
     },
   ],
   provider: {
@@ -121,7 +121,7 @@ const howToJsonLd = {
   "@context": "https://schema.org",
   "@type": "HowTo",
   name: "How to get sales meetings with distribute.you",
-  description: "Paste your website, confirm what we found, and add credit. distribute.you finds the buyers, runs the outreach from its own domains, answers interested leads until the meeting is booked, and shows what each one cost.",
+  description: "Paste your website, confirm what we found, and set a daily budget. distribute.you finds the buyers, runs the outreach from its own domains, answers interested leads until the meeting is booked, and shows what each one cost.",
   step: [
     {
       "@type": "HowToStep",
@@ -133,7 +133,7 @@ const howToJsonLd = {
       "@type": "HowToStep",
       position: 2,
       name: "Confirm what we found",
-      text: "Check the offer, the audiences and the sales funnel, then choose how much goes to your outreach. The platform is free.",
+      text: "Check the offer, the audiences and the sales funnel, then start your plan at $99 a month. The first 3 days are free.",
     },
     {
       "@type": "HowToStep",

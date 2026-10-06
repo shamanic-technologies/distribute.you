@@ -67,8 +67,9 @@ describe("the best-for catalogue", () => {
       }
       expect(src, c.slug).not.toContain(c.sourceUrl);
     }
-    // No dollar figure in the judgement: our offer is a free platform at catalogue prices.
-    expect(read("src/lib/best-for.ts")).not.toMatch(/\$\d/);
+    // The only dollar figures in the judgement are the homepage's own offer.
+    const dollars = [...read("src/lib/best-for.ts").matchAll(/\$\d+(?:,\d{3})*/g)].map((m) => m[0]);
+    for (const d of dollars) expect(["$99"], d).toContain(d);
   });
 });
 
