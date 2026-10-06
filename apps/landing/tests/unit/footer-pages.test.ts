@@ -188,6 +188,7 @@ describe("the copy behind the footer states the current positioning", () => {
   it("the terms state the billing the product runs: catalogue prices, prepaid credit, no refund but the managed guarantee", () => {
     const terms = read("src/app/terms/page.tsx");
     expect(terms).toContain("our public catalogue price, our margin included");
+    expect(terms).toContain("change any catalogue price at any time, without notice");
     expect(terms).toContain("<strong>Prepaid credit.</strong>");
     expect(terms).toContain("we reserve the cost of its follow-ups");
     expect(terms).toContain("Prepaid credit is valid for twelve");

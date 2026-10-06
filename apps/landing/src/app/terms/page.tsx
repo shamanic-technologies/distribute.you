@@ -148,10 +148,11 @@ const SECTIONS: SectionDef[] = [
           self-serve plan.
         </p>
         <p>
-          <strong>Prices.</strong> Catalogue prices are in USD and follow our
-          providers&apos; rates, so they can change at any time. A new price
-          applies to units used after the change, never to units already
-          used. The price that governs a unit is the catalogue price at the
+          <strong>Prices are dynamic.</strong> Catalogue prices are in USD
+          and move with our providers&apos; rates and our own pricing. We may
+          change any catalogue price at any time, without notice, and by
+          using the Service you agree to this. A new price applies to units
+          used after the change, never to units already used. The price that governs a unit is the catalogue price at the
           moment that unit is used, as shown in your dashboard.
         </p>
         <p>
