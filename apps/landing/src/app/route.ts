@@ -34,8 +34,8 @@ export async function GET(request: Request) {
     random: Math.random(),
   });
 
-  // `index-v2.html` IS the $99/month plan since 2026-10-03 (owner: the default offer,
-  // "$1/day" is no longer sold), so `subscription`, `control` and crawlers share it.
+  // `index-v2.html` is the one homepage: prepaid credit with the first $100 matched
+  // (owner 2026-10-06), so `subscription`, `control` and crawlers all get it.
   const homepage = () => readFileSync(join(process.cwd(), "public/landing", "index-v2.html"), "utf8");
   const page =
     decision.variant === "assistant"

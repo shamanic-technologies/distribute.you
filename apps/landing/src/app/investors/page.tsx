@@ -248,7 +248,7 @@ export default function InvestorsPage() {
                     <li>An agency sending on their behalf, from domains it owns</li>
                     <li>Interested replies answered and handed over with the meeting</li>
                     <li>Our margin inside the budget, the cost per outcome shown</li>
-                    <li>One plan from $99 a month, 3-day free trial, cancel anytime</li>
+                    <li>Prepaid credit from $100, first $100 matched, cancel anytime</li>
                     <li>Every brand, offer, channel and audience in one dashboard, ranked by return</li>
                   </ul>
                 </div>

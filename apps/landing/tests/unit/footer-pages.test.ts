@@ -149,7 +149,8 @@ describe("the copy behind the footer states the current positioning", () => {
   ];
   // Each is a claim the homepage no longer makes, with the reason it is retired.
   const RETIRED: [RegExp, string][] = [
-    [/\$400/, "the welcome offer is $30 at signup"],
+    [/\$400/, "the welcome offer is the first $100 matched"],
+    [/free trial|3-day|\$99/i, "the $99/month plan and its trial are retired (2026-10-06): prepaid credit, first $100 matched"],
     [/first \$400 spent matched/i, "nothing is matched any more"],
     [/bring-your-own-keys|BYOK/i, "customers do not bring keys; we run every vendor"],
     [/cold email outreach done for you/i, "cold email is the channel, not what is sold"],
@@ -177,10 +178,10 @@ describe("the copy behind the footer states the current positioning", () => {
 
   it("the terms state the current offer and describe an agency", () => {
     const terms = read("src/app/terms/page.tsx");
-    expect(terms).toContain("(currently $30)");
+    expect(terms).toContain("(currently $100: $30 credited when the");
     expect(terms).toContain("(currently $500 for each side of a referral)");
     expect(terms).toContain("is an acquisition agency delivered as a service");
-    expect(terms).toContain('const LAST_UPDATED = "September 8, 2026"');
+    expect(terms).toContain('const LAST_UPDATED = "October 6, 2026"');
   });
 });
 

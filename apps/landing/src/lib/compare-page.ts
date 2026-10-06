@@ -94,7 +94,7 @@ export function comparePageTitle(c: Competitor, now: Date = new Date()): string 
 }
 
 export function comparePageDescription(c: Competitor): string {
-  return `Looking at ${c.name} alternatives? distribute.you runs your cold email from $99 a month, from our own domains. Compare price and cost per positive reply.`;
+  return `Looking at ${c.name} alternatives? distribute.you runs your cold email and matches your first $100. Compare price and cost per positive reply.`;
 }
 
 export function renderComparePage(c: Competitor): string {
@@ -152,14 +152,14 @@ export function renderComparePage(c: Competitor): string {
 
 <section class="framed" id="pricing">
   <div class="wrap">
-    <div class="section-head"><span class="eyebrow">Pricing</span><h2>${esc(c.name)} pricing: what they charge, and what we charge</h2><p>${esc(c.name)} sells ${c.operatedBy === "you" ? "software you run" : "an agent you steer"}. Our plan starts at $99 a month after a 3-day free trial: every dollar becomes campaign credit, and we show what each positive reply cost.</p></div>
+    <div class="section-head"><span class="eyebrow">Pricing</span><h2>${esc(c.name)} pricing: what they charge, and what we charge</h2><p>${esc(c.name)} sells ${c.operatedBy === "you" ? "software you run" : "an agent you steer"}. You add prepaid credit from $100 and we match your first $100. Every dollar becomes campaign credit, and we show what each positive reply cost.</p></div>
     <div class="cmp-cols">
       <div class="panel rv"><span class="c"></span>${prices}</div>
       <div class="plan rv">
         <span class="plan-tag">distribute.you</span>
-        <div class="plan-price">$99<small>/month and up</small></div>
-        <p class="plan-desc">3-day free trial, then from $99 a month. Every dollar becomes campaign credit. Cancel anytime.</p>
-        <a class="btn btn-accent" href="${SIGN_UP}">Start my free trial</a>
+        <div class="plan-price">$100<small>first top-up, matched</small></div>
+        <p class="plan-desc">We match your first $100. Every dollar becomes campaign credit. Pause or cancel anytime.</p>
+        <a class="btn btn-accent" href="${SIGN_UP}">Get started</a>
         <div class="plan-included">Included in the plan</div>
         <ul><li><i></i>Buyers found and qualified from your website</li><li><i></i>Emails written and sent from our domains</li><li><i></i>Every reply read, the interested ones answered</li><li><i></i>Cost per positive reply on your dashboard</li></ul>
         <div class="plan-foot">Our margin sits inside the plan. What a meeting costs you is measured on your account.</div>
@@ -285,7 +285,7 @@ export function renderAlternativesPage(): string {
 ${liveBand()}`;
   return shell({
     title: `Alternatives to ${COMPETITORS.slice(0, 4).map((c) => c.name).join(", ")} and ${COMPETITORS.length - 4} more (${monthLabel(new Date())})`,
-    description: `Weighing ${COMPETITORS.map((c) => c.name).join(", ")}? distribute.you runs the outbound for you from domains we own, from $99 a month, and publishes what a positive reply costs.`,
+    description: `Weighing ${COMPETITORS.map((c) => c.name).join(", ")}? distribute.you runs the outbound for you from domains we own, matches your first $100, and publishes what a positive reply costs.`,
     path: "/alternatives",
     body,
     jsonLd: [breadcrumb([{ name: "Alternatives", path: "/alternatives" }])],

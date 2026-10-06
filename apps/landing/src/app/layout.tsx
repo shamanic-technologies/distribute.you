@@ -85,10 +85,10 @@ const jsonLd = {
   offers: [
     {
       "@type": "Offer",
-      name: "Monthly plan",
-      price: "99",
+      name: "Prepaid credit",
+      price: "100",
       priceCurrency: "USD",
-      description: "3-day free trial, then from $99 a month. Every dollar becomes campaign credit. Cancel anytime.",
+      description: "Add credit from $100. We match your first $100. Every dollar becomes campaign credit. Pause or cancel anytime.",
     },
   ],
   provider: {
@@ -121,7 +121,7 @@ const howToJsonLd = {
   "@context": "https://schema.org",
   "@type": "HowTo",
   name: "How to get sales meetings with distribute.you",
-  description: "Paste your website, confirm what we found, and set a daily budget. distribute.you finds the buyers, runs the outreach from its own domains, answers interested leads until the meeting is booked, and shows what each one cost.",
+  description: "Paste your website, confirm what we found, and add credit. distribute.you finds the buyers, runs the outreach from its own domains, answers interested leads until the meeting is booked, and shows what each one cost.",
   step: [
     {
       "@type": "HowToStep",
@@ -133,7 +133,7 @@ const howToJsonLd = {
       "@type": "HowToStep",
       position: 2,
       name: "Confirm what we found",
-      text: "Check the offer, the audiences and the sales funnel, then pick your monthly amount, from $99. The first 3 days are free.",
+      text: "Check the offer, the audiences and the sales funnel, then add credit, from $100. We match your first $100.",
     },
     {
       "@type": "HowToStep",

@@ -135,22 +135,21 @@ describe("homepage copy discipline", () => {
 });
 
 describe("the offer the page states", () => {
-  it("leads with revenue and the $99/month plan, with a 3-day free trial", () => {
-    // Owner 2026-10-03: the $99/month plan is the default offer; $1/day is no longer sold.
+  it("leads with revenue and the $100 match, sold as prepaid credit", () => {
+    // Owner 2026-10-06: prepaid credit from $100, first $100 matched. The $99/month plan
+    // and its 3-day free trial are retired, and so is $1/day.
     expect(html).toContain("Get revenue in 24h");
-    expect(html).toContain("From $99/month");
-    expect(html).toContain("3-day free trial");
-    expect(html).toContain("Start my free trial");
-    for (const gone of ["$1/day", "From $1<", "$30 free", "Start free with $30", "No subscription", "Pay as you go"]) {
+    expect(html).toContain("We match your first $100");
+    expect(html).toContain("Add credit from $100");
+    for (const gone of ["$99", "/month", "free trial", "3-day", "Monthly plan", "$1/day", "From $1<", "$30 free", "Start free with $30", "Pay as you go"]) {
       expect(html, gone).not.toContain(gone);
     }
     // The stats band splits "$" and the figure into two spans, so "$1/day" alone missed it.
     expect(html).not.toMatch(/per day/i);
   });
 
-  it("says nothing about the $400 credit match", () => {
-    // Owner-decided: the match is a gamification lever for the dashboard, not a landing
-    // promise. "Start free" and "$30 free" are what converts.
+  it("says nothing about the old $400 credit match", () => {
+    // The $400 match is retired. The match the page sells is the first $100 (2026-10-06).
     expect(html).not.toContain("$400");
   });
 

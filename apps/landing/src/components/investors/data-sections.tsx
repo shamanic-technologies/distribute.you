@@ -74,11 +74,11 @@ export async function CompanyOverviewSection() {
         offers, channels and audiences against each other and ranks them by return.
       </p>
       <p>
-        The business model is a{" "}
-        <strong className="text-gray-900">monthly plan from $99</strong>, after a
-        3-day free trial. Every dollar becomes campaign credit, with our margin inside
-        it. No seat, no setup fee, cancel anytime. Revenue grows with the amount each
-        customer picks.
+        The business model is{" "}
+        <strong className="text-gray-900">prepaid credit from $100</strong>, and we
+        match each new customer&apos;s first $100. Every dollar becomes campaign credit,
+        with our margin inside it. No seat, no setup fee, cancel anytime. Revenue grows
+        with the credit each customer adds.
       </p>
       <p>
         The platform runs{" "}

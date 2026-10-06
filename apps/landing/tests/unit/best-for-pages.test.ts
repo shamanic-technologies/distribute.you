@@ -69,7 +69,7 @@ describe("the best-for catalogue", () => {
     }
     // The only dollar figures in the judgement are the homepage's own offer.
     const dollars = [...read("src/lib/best-for.ts").matchAll(/\$\d+(?:,\d{3})*/g)].map((m) => m[0]);
-    for (const d of dollars) expect(["$99"], d).toContain(d);
+    for (const d of dollars) expect(["$100"], d).toContain(d);
   });
 });
 
