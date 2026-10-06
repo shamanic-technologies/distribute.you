@@ -87,7 +87,7 @@ export function footer(): string {
         <a class="brand" href="/"><img src="/landing/v2/assets/logo-mark.svg" alt="" width="26" height="26">distribute.you</a>
         <p class="tag">${WHY}</p>
       </div>
-      <div><h4>Product</h4><ul><li><a href="/#how">How it works</a></li><li><a href="/#features">Features</a></li><li><a href="/#pricing">Pricing</a></li><li><a href="/#faq">FAQ</a></li></ul></div>
+      <div><h4>Product</h4><ul><li><a href="/#how">How it works</a></li><li><a href="/#features">Features</a></li><li><a href="/#pricing">Pricing</a></li><li><a href="/catalog">Catalog</a></li><li><a href="/#faq">FAQ</a></li></ul></div>
       ${compareFooterColumn()}
       <div><h4>Company</h4><ul><li><a href="/about">About</a></li><li><a href="/investors">Investors</a></li><li><a href="/contact">Contact</a></li><li><a href="/blog">Blog</a></li></ul></div>
       <div><h4>Legal</h4><ul><li><a href="/terms">Terms</a></li><li><a href="/privacy">Privacy</a></li><li><a href="/developers">Developers</a></li></ul></div>
