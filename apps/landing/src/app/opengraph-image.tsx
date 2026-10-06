@@ -55,7 +55,7 @@ export default async function OG() {
               maxWidth: 1000,
             }}
           >
-            The cold email agency: paste your website, we find your buyers, run the campaign and book your meetings. The platform is free.
+            The cold email agency: paste your website, we find your buyers, run the campaign and book your meetings. From $99 a month.
           </div>
         </div>
         <div

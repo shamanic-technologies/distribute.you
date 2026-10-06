@@ -75,10 +75,10 @@ export async function CompanyOverviewSection() {
       </p>
       <p>
         The business model is a{" "}
-        <strong className="text-gray-900">free platform</strong> with the outreach
-        billed at public catalogue prices, prepaid as credit, with our margin inside
-        them. No subscription, no seat, no setup fee, cancel anytime. Revenue grows
-        with the outreach each customer chooses to run.
+        <strong className="text-gray-900">monthly plan from $99</strong>, after a
+        3-day free trial. Every dollar becomes campaign credit, with our margin inside
+        it. No seat, no setup fee, cancel anytime. Revenue grows with the amount each
+        customer picks.
       </p>
       <p>
         The platform runs{" "}

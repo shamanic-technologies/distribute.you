@@ -96,16 +96,15 @@ https://distribute.you/developers
 - What we sell: Autonomous Sales Meetings Acquisition
 - ICP: The Serial Builder. 16 to 40 years old, solo CEO founder, ships 3 or more
   products a year, wants the founder reachable.
-- Pricing model: the platform is free. The client chooses how much goes to the
-  outreach, and each action is billed at a public catalogue price, prepaid as
-  credit. Automatic reload is optional. No subscription, no seat, no setup fee,
-  pause or cancel anytime. Until October 31, 2026, we match a new client's first $100.
+- Pricing model: a monthly plan from $99, after a 3-day free trial (card required).
+  Every dollar becomes campaign credit, spent on the outreach. Pick a bigger amount
+  to reach more leads. No seat, no setup fee, cancel anytime.
 - Open source: workflows at https://github.com/shamanic-technologies
 
 ## Key pages
 
 - [Home](https://distribute.you/): what we sell, how it works, live cost per outcome
-- [Pricing](https://distribute.you/#pricing): the free platform with outreach billed at catalogue prices, or the fully managed plan
+- [Pricing](https://distribute.you/#pricing): the Pro plan from $99 a month with a 3-day free trial, or the fully managed plan; the live unit costs are at https://api.distribute.you/v1/costs/platform-prices
 - [Catalog](https://distribute.you/catalog): why we bill per tool used rather than per email sent, and the live unit price of every tool behind an email
 - [About](https://distribute.you/about): the agency model, how billing works, what is guaranteed
 - [Developers](https://distribute.you/developers): the API and its OpenAPI document, how a key

@@ -30,7 +30,7 @@ describe("the why", () => {
     const whyAt = html.indexOf('<span class="eyebrow why-eyebrow">Revenue made easy.</span>');
     expect(whyAt).toBeGreaterThan(-1);
     expect(whyAt).toBeLessThan(h1At);
-    expect(html).toContain("<h1>Get <span class=\"accent\">revenue in 24h</span><br>The platform is free");
+    expect(html).toContain("<h1>Get <span class=\"accent\">revenue in 24h</span><br>From $99/month");
     // Footer tag, closing CTA box and the meta description.
     expect(html).toContain('<p class="tag">Revenue made easy.</p>');
     expect(html).toContain('<p class="why">Revenue made easy.</p>');
