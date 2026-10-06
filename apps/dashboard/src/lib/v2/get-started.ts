@@ -19,6 +19,7 @@
  * written only once the questions are answered, since they are written from the answers.
  */
 import { COUNTRIES } from "../../components/onboarding/phone-countries";
+import { stepPlural } from "./crews";
 
 export const GET_STARTED_STEPS = [
   { key: "company", label: "Read your company" },
@@ -664,15 +665,62 @@ function parseSnapshotEmail(v: unknown): GetStartedEmail | null {
 export const MATCH_USD = 100;
 
 /**
- * What a credit buys, as a whole count of hot leads: the credit divided by the price
- * the fleet's clients pay for one (a SERVED median, the homepage's figure). Null when no
- * price is held or it buys none: the block is then left out rather than stating a
- * number we do not have.
+ * What a credit buys, as a whole count of outcomes: the credit divided by the served
+ * price of one (the chosen campaign's cost per outcome on the wall). Null when no price
+ * is held or it buys none: the block is then left out rather than stating a number we
+ * do not have.
  */
 export function hotLeadsForCredit(medianCostUsd: number | null | undefined, creditUsd = MATCH_USD): number | null {
   if (typeof medianCostUsd !== "number" || !Number.isFinite(medianCostUsd) || medianCostUsd <= 0) return null;
   const n = Math.floor(creditUsd / medianCostUsd);
   return n >= 1 ? n : null;
+}
+
+/** The served figures of the proactive campaign the visitor turned on, for the wall. */
+export interface CampaignOutlook {
+  /** The step the campaign reaches, in the plural ("Positive replies"). */
+  outcome: string;
+  /** What one such outcome costs on this campaign (features-service, the leg's served price). */
+  costPerOutcomeUsd: number | null;
+  /** The campaign's expected ROI (features-service), the figure the campaigns step shows. */
+  roi: number | null;
+}
+
+type OutlookStep = { key: string; label: string };
+type OutlookLeg = { legKey: string; toStep: OutlookStep; channel: { slug: string | null } | null; costPerOutcomeUsd: number | null };
+
+/**
+ * The wall's figures come from the campaign the visitor chose at the campaigns step
+ * (owner 2026-10-06: "take the campaigns they chose"), never the fleet median: the
+ * proactive one that is on, its served ROI, and the cost per outcome of its leg on
+ * the path that ROI was read on (the same leg on any ticked path otherwise). Null when
+ * no proactive campaign is on.
+ */
+export function chosenCampaignOutlook(
+  plan: ReadonlyArray<{ featureSlug: string; legKey: string; reactive: boolean; on: boolean }>,
+  campaigns: ReadonlyArray<{ channelSlug: string; legKey: string; roi: number | null; roiCombinationKey: string | null }>,
+  paths: ReadonlyArray<{ combinationKey: string; ticked?: boolean; legs: readonly OutlookLeg[] }>,
+): CampaignOutlook | null {
+  const chosen = plan.find((c) => c.on && !c.reactive);
+  if (!chosen) return null;
+  const served = campaigns.find((c) => c.channelSlug === chosen.featureSlug && c.legKey === chosen.legKey) ?? null;
+  const legOn = (p: (typeof paths)[number]) =>
+    p.legs.find((l) => l.legKey === chosen.legKey && l.channel?.slug === chosen.featureSlug) ?? null;
+  const roiPath = served?.roiCombinationKey ? paths.find((p) => p.combinationKey === served.roiCombinationKey) : undefined;
+  const leg =
+    (roiPath && legOn(roiPath)) ??
+    paths.filter((p) => p.ticked !== false).map(legOn).find((l) => l !== null) ??
+    paths.map(legOn).find((l) => l !== null) ??
+    null;
+  if (!leg) {
+    console.error("[get-started] the chosen campaign is on no served path", chosen);
+    return null;
+  }
+  return {
+    outcome: stepPlural(leg.toStep.key, leg.toStep.label),
+    costPerOutcomeUsd: leg.costPerOutcomeUsd,
+    roi: served?.roi ?? null,
+  };
 }
 
 /** The words of the wall. */

@@ -99,6 +99,7 @@ import {
   previousStep,
   campaignPlan,
   campaignPlanProblem,
+  chosenCampaignOutlook,
   parseCampaignBudget,
   plannedKey,
   setPlannedOn,
@@ -1813,6 +1814,7 @@ export function GetStarted({ org }: { org?: OrgWalk } = {}) {
           note={wallNote}
           email={(selectedKey ? emails[selectedKey] : undefined) ?? firstWritten(emails, audience.audienceId) ?? restoredEmail}
           campaigns={launchCampaigns}
+          outlook={chosenCampaignOutlook(campaignRows, salesPaths?.campaigns ?? [], salesPaths?.paths ?? [])}
           answered={answered}
           onClose={() => setWallOpen(false)}
         />
