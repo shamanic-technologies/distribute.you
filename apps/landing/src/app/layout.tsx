@@ -133,7 +133,7 @@ const howToJsonLd = {
       "@type": "HowToStep",
       position: 2,
       name: "Confirm what we found",
-      text: "Check the offer, the audiences and the sales funnel, then start your plan at $99 a month. The first 3 days are free.",
+      text: "Check the offer, the audiences and the sales funnel, then pick your monthly amount, from $99. The first 3 days are free.",
     },
     {
       "@type": "HowToStep",

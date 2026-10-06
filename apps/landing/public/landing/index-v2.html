@@ -23,6 +23,12 @@
 <link href="https://fonts.googleapis.com/css2?family=Fustat:wght@300;400;500&family=Inter:wght@400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="/landing/v2/styles.css?v=17">
 <style>
+.plan-amount { position: relative; display: flex; align-items: center; gap: 10px; height: 44px; margin: 14px 0 4px; padding: 0 14px; border-radius: 10px; background: #fff; border: 1px solid var(--hair-2); font-size: 15px; cursor: pointer; }
+.plan-amount:hover { border-color: #bbb; }
+.plan-amount:focus-within { border-color: var(--accent, #2563eb); }
+.plan-amount-k { color: var(--muted); }
+.plan-amount-v { margin-left: auto; display: inline-flex; align-items: center; gap: 8px; color: var(--text); font-variant-numeric: tabular-nums; }
+.plan-amount select { position: absolute; inset: 0; width: 100%; opacity: 0; cursor: pointer; font-size: 16px; }
 </style></head>
 <body>
 
@@ -489,14 +495,19 @@
     <div class="section-head center rv">
       <span class="eyebrow">Pricing</span>
       <h2 style="margin-top:16px">One plan. Start free.</h2>
-      <p>3 days free. Then $99 a month. Cancel anytime.</p>
+      <p>3 days free. Then pick your monthly amount, from $99. Cancel anytime.</p>
     </div>
 
     <div class="plans">
       <article class="plan featured rv">
         <span class="plan-tag"><i></i>Pro</span>
-        <div class="plan-price">$99<small>/month</small></div>
-        <p class="plan-desc">3-day free trial, card required</p>
+        <div class="plan-price"><span data-plan-price>$99</span><small>/month</small></div>
+        <p class="plan-desc">3-day free trial, then this each month</p>
+        <label class="plan-amount">
+          <span class="plan-amount-k">Monthly amount</span>
+          <span class="plan-amount-v"><span data-plan-label>$99 / month</span><svg width="12" height="12" viewBox="0 0 12 12" aria-hidden="true"><path d="M3 4.5l3 3 3-3" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+          <select data-plan-amount aria-label="Monthly amount"><option value="9900">$99 / month</option><option value="19900">$199 / month</option><option value="29900">$299 / month</option><option value="49900">$499 / month</option><option value="99900">$999 / month</option><option value="199900">$1,999 / month</option></select>
+        </label>
         <a class="btn btn-accent btn-lg" href="https://dashboard.distribute.you/start">Start my free trial</a>
         <div class="plan-included">What's included</div>
         <ul>
@@ -504,6 +515,7 @@
           <li><i></i>Every dollar becomes campaign credit, spent on your outreach</li>
           <li><i></i>Spend beyond your plan is billed as prepaid credit</li>
           <li><i></i>Automatic top-up if you want it</li>
+          <li><i></i>A bigger amount reaches more leads. Change it any time</li>
           <li><i></i>Cancel anytime</li>
           <li><i></i>Cold email outreach from our own warmed domains</li>
           <li><i></i>We answer interested leads until the meeting is booked</li>
@@ -544,7 +556,7 @@
       </div>
       <div class="faq-item">
         <button class="faq-q" type="button" aria-expanded="false">How much does it cost?<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg></button>
-        <div class="faq-a"><p>Your plan is $99 a month, after a 3-day free trial. A card is required to start. Every dollar becomes campaign credit: we spend it on your outreach and show what each reply and meeting cost you on your dashboard. Spend beyond your plan is billed as prepaid credit, at the prices on our <a href="/catalog">catalog</a>. Automatic top-up is optional. No seat, no setup fee, cancel anytime.</p></div>
+        <div class="faq-a"><p>Your plan starts at $99 a month, after a 3-day free trial. Every dollar becomes campaign credit: we spend it on your outreach and show what each reply and meeting cost you on your dashboard. A bigger amount reaches more leads, and you can change it any time from your Billing page. Spend beyond your plan is billed as prepaid credit, at the prices on our <a href="/catalog">catalog</a>. Automatic top-up is optional. No seat, no setup fee, cancel anytime.</p></div>
       </div>
       <div class="faq-item">
         <button class="faq-q" type="button" aria-expanded="false">Whose mailboxes send the emails? Is my reputation at risk?<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg></button>
@@ -556,7 +568,7 @@
       </div>
       <div class="faq-item">
         <button class="faq-q" type="button" aria-expanded="false">How much control do I have?<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg></button>
-        <div class="faq-a"><p>You confirm the offer, the audiences and the emails before anything leaves, and you can pause everything in one click. Your credit is a hard cap: when it runs out, sending stops, unless you turned on automatic top-up. Most clients look once a week.</p></div>
+        <div class="faq-a"><p>You confirm the offer, the audiences and the emails before anything leaves, and you can pause everything in one click. Your monthly amount is a hard cap: when the credit runs out, sending stops, unless you turned on automatic top-up. Most clients look once a week.</p></div>
       </div>
       <div class="faq-item">
         <button class="faq-q" type="button" aria-expanded="false">Can I bring my own leads?<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg></button>
@@ -618,5 +630,11 @@
 </footer>
 
 <script src="/landing/v2/main.js?v=8" defer></script>
-</body>
+<script>(function(){var s=document.querySelector("[data-plan-amount]");if(!s)return;
+var f=function(c){return "$"+(c/100).toLocaleString("en-US")};
+var m=document.cookie.match(/(?:^|; )lp_plan=(d+)/);if(m&&s.querySelector('option[value="'+m[1]+'"]'))s.value=m[1];
+var paint=function(){var c=Number(s.value);document.querySelectorAll("[data-plan-price]").forEach(function(e){e.textContent=f(c)});
+document.querySelectorAll("[data-plan-label]").forEach(function(e){e.textContent=f(c)+" / month"});
+document.cookie="lp_plan="+c+"; Path=/; Max-Age=7776000; Domain=.distribute.you; SameSite=Lax; Secure";};
+s.addEventListener("change",function(){paint();if(window.posthog)posthog.capture("plan_amount_picked",{amount_cents:Number(s.value)})});paint();})();</script></body>
 </html>

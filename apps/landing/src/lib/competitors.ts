@@ -73,7 +73,7 @@ export type Competitor = {
 export const DISTRIBUTE_ROW = {
   entryPrice: "From $99/month, 3-day free trial",
   pricingModel:
-    "A $99 monthly plan: every dollar becomes campaign credit, spent on your outreach. Spend beyond it is billed as prepaid credit. No seat, no setup fee, cancel anytime.",
+    "A monthly plan from $99: every dollar becomes campaign credit, spent on your outreach. Spend beyond your plan is billed as prepaid credit. No seat, no setup fee, cancel anytime.",
   operatedBy: "Our agency runs it end to end",
   sendingDomains: "Domains and mailboxes we own and warm. Your domain never sends cold email.",
   leads: "We find and qualify the buyers from your website. Bring your own list as an extra audience if you like.",
@@ -81,7 +81,7 @@ export const DISTRIBUTE_ROW = {
   channels: "Cold email, every campaign A/B tested and measured.",
   costPerMeeting: "Yes. What a hot lead and a meeting cost you is on your dashboard, and the fleet's median cost per hot lead is published on this page.",
   freeTier: "3-day free trial: your campaign starts sending on day one, nothing charged before day 3.",
-  contract: "None. Cancel anytime; your credit is a hard cap.",
+  contract: "None. Cancel anytime; your monthly amount is a hard cap.",
 } as const;
 
 export const COMPETITORS: readonly Competitor[] = [
@@ -271,7 +271,7 @@ export const COMPETITORS: readonly Competitor[] = [
     faq: [
       { q: "Does distribute.you use Apollo data?", a: "We source contacts from several providers and pay for them inside your budget. You never buy credits or manage a database." },
       { q: "Can my team use Apollo for the CRM and still run distribute.you?", a: "Yes. The interested replies we forward can be logged in whatever CRM you keep." },
-      { q: "Why is Apollo priced per user and distribute.you per month?", a: "Apollo sells software seats. distribute.you sells a campaign: your monthly plan becomes campaign credit, so the number of people on your side changes nothing." },
+      { q: "Why is Apollo priced per user and distribute.you per month?", a: "Apollo sells software seats. distribute.you sells a campaign: your monthly amount becomes campaign credit, so the number of people on your side changes nothing." },
     ],
   },
   {
@@ -601,7 +601,7 @@ export const COMPETITORS: readonly Competitor[] = [
     faq: [
       { q: "AiSDR's Solo plan is $250 a month. What does distribute.you cost for the same?", a: "From $99 a month, with no fixed contact count: every dollar becomes campaign credit, and the dashboard shows what each positive reply cost." },
       { q: "Do both handle infrastructure?", a: "Yes. AiSDR sets up and warms domains inside your plan. distribute.you sends from domains we own and warm, so nothing is set up in your name at all." },
-      { q: "Is there a commitment with distribute.you?", a: "No. Cancel anytime, and your credit is a hard cap." },
+      { q: "Is there a commitment with distribute.you?", a: "No. Cancel anytime, and your monthly amount is a hard cap." },
     ],
   },
   {

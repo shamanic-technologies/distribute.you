@@ -110,9 +110,12 @@ describe("GET / with the test on", () => {
 
   it("serves the subscription arm the homepage sold at $99/month with a 3-day trial", async () => {
     const { res, html } = await get({ qs: "?variant=subscription" });
-    // Owner 2026-10-06 (afternoon): one $99 plan, spend beyond it billed as prepaid credit.
+    // Owner 2026-10-01: the visitor picks the monthly amount, never a bare "+$100";
+    // billing charges the pick (billing#568), the dashboard reads it from lp_plan.
     expect(html).toContain("Get <span class=\"accent\">revenue in 24h</span><br>From $99/month");
-    expect(html).toContain("Spend beyond your plan is billed as prepaid credit");
+    expect(html).toContain('<select data-plan-amount aria-label="Monthly amount">');
+    for (const v of ["9900", "19900", "29900", "49900", "99900", "199900"]) expect(html).toContain(`<option value="${v}">`);
+    expect(html).toContain("lp_plan=");
     expect(html).not.toContain("Add $100");
     expect(html).toContain("3-day free trial");
     expect(html).toContain("Start my free trial");
@@ -125,13 +128,14 @@ describe("GET / with the test on", () => {
     expect(res.headers.get("set-cookie")).toContain("lp_variant=subscription");
   });
 
-  it("sells one $99 plan: no amount picker, no lp_plan cookie, no match", () => {
-    // Owner 2026-10-06 (afternoon): $99/month after a 3-day trial; spend beyond the plan
-    // is prepaid credit with an optional automatic top-up. The onboarding reads a fixed $99.
-    expect(HOMEPAGE_SRC).not.toContain("data-plan-amount");
-    expect(HOMEPAGE_SRC).not.toContain("lp_plan");
-    expect(HOMEPAGE_SRC).toContain("Automatic top-up if you want it");
-    for (const gone of ["$100 match", "match your first", "October 31"]) expect(HOMEPAGE_SRC, gone).not.toContain(gone);
+  it("carries the amount picker in the homepage itself, from billing's ladder", () => {
+    // Owner 2026-10-01: the visitor picks the monthly amount, never a bare "+$100".
+    // Owner 2026-10-03: the $99/month plan is the homepage, for every visitor and crawler.
+    expect(HOMEPAGE_SRC).toContain('<select data-plan-amount aria-label="Monthly amount">');
+    for (const v of ["9900", "19900", "29900", "49900", "99900", "199900"]) expect(HOMEPAGE_SRC).toContain(`<option value="${v}">`);
+    expect(HOMEPAGE_SRC).toContain("lp_plan=");
+    // Owner 2026-10-06 (afternoon): spend beyond the plan is prepaid credit, top-up optional.
+    expect(HOMEPAGE_SRC).toContain("Spend beyond your plan is billed as prepaid credit");
   });
 
   it("serves the homepage to the control arm when forced, tagged", async () => {
