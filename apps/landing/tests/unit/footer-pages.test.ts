@@ -184,6 +184,38 @@ describe("the copy behind the footer states the current positioning", () => {
     expect(terms).toContain("is an acquisition agency delivered as a service");
     expect(terms).toContain('const LAST_UPDATED = "October 6, 2026"');
   });
+
+  it("the terms state the billing the product runs: catalogue prices, prepaid credit, no refund but the managed guarantee", () => {
+    const terms = read("src/app/terms/page.tsx");
+    expect(terms).toContain("our public catalogue price, our margin included");
+    expect(terms).toContain("change any catalogue price at any time, without notice");
+    expect(terms).toContain("<strong>Prepaid credit.</strong>");
+    expect(terms).toContain("we reserve the cost of its follow-ups");
+    expect(terms).toContain("Prepaid credit is valid for twelve");
+    expect(terms).toContain("expires at the end of each monthly period");
+    expect(terms).toContain("Payments are final and are not");
+    expect(terms).toContain("we refund 100% of the campaign budget you paid");
+    expect(terms).toContain("governed by French law");
+    // Post-paid thresholds as the default, a separate platform fee and Delaware law are retired.
+    expect(terms).not.toMatch(/operates on post-paid billing|platform fee|Delaware/);
+  });
+
+  it("the homepage FAQ states the managed guarantee of the plan card", () => {
+    const home = read("public/landing/index-v2.html");
+    expect(home).toContain("<b>100% refunded</b> if not satisfied with the outcome after 60 days. Service fees excluded.");
+    expect(home).toContain("refunded in full if you are not satisfied with the outcome after 60 days");
+    expect(home).not.toContain("6 meetings after 3 months");
+  });
+
+  it("the privacy policy names the company, the processors and the rights", () => {
+    const privacy = read("src/app/privacy/page.tsx");
+    expect(privacy).toContain('const LAST_UPDATED = "October 6, 2026"');
+    expect(privacy).toContain("SIREN 882102775");
+    for (const p of ["Clerk", "Stripe", "Revolut", "Twilio", "Postmark", "Instantly", "Apollo", "Hetzner", "PostHog"]) {
+      expect(privacy).toContain(p);
+    }
+    expect(privacy).toContain("CNIL");
+  });
 });
 
 describe("the orphaned pages are gone, everywhere they were listed", () => {

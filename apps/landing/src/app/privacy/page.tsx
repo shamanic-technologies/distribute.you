@@ -8,7 +8,7 @@ import { Section } from "@/components/section";
 export const revalidate = 86400;
 
 const PRIVACY_URL = `${PROD_URLS.landing}/privacy`;
-const LAST_UPDATED = "June 9, 2026";
+const LAST_UPDATED = "October 6, 2026";
 const SUPPORT_EMAIL = "support@distribute.you";
 
 export const metadata: Metadata = {
@@ -44,38 +44,76 @@ export const metadata: Metadata = {
 
 const SECTIONS = [
   {
-    title: "Information we collect",
+    title: "Who we are",
     body: [
-      "We collect account details you provide, such as name, email, company, billing settings, and product URLs.",
-      "We process outreach inputs and campaign data needed to run the service, including prompts, lead lists, message drafts, delivery events, replies, and performance metrics.",
+      "distribute.you is run by BLOOMING GENERATION, a SASU registered in France under SIREN 882102775, with its registered office at 285 rue de l\u2019\u00c9glise, 46140 Douelle, France. We decide how the data about our clients is used. For data about the prospects we contact for a client, the client decides and we act on its instructions, as set out in our Terms.",
     ],
   },
   {
-    title: "How we use information",
+    title: "Data about you",
     body: [
-      "We use this information to operate distribute.you, generate and send outreach on your behalf, measure campaign performance, prevent abuse, provide support, and improve the product.",
-      "We may publish aggregated or public performance data as described in our Terms, but we do not sell personal information.",
+      "Account: your name and work email, or your Google sign-in. Sign-in is handled by Clerk.",
+      "Phone number: asked at sign-up. We use it to reach you, and for AI Instant Call, to ring your sales rep when a prospect asks to talk.",
+      "Your business: your website, what you sell, your sales path and its rates, the lifetime revenue of a client, your campaigns and their budgets.",
+      "Payments: your credit, reload settings and payment history. Card details are handled by Stripe or Revolut; we never see your full card number.",
+      "Messages: what you send us by email, WhatsApp or the request forms in the dashboard.",
+      "Accounts you choose to connect, such as Google (read only), GoHighLevel, or a WhatsApp or Discord account linked in read-only mode to bring your leads' messages into your dashboard.",
+      "Usage: pages you visit, clicks, device and browser details, and recordings of your sessions on our site and dashboard (see Cookies and tracking).",
     ],
   },
   {
-    title: "Third-party providers",
+    title: "Data about your prospects",
     body: [
-      "distribute.you relies on infrastructure and API providers for AI inference, lead enrichment, email delivery, analytics, payments, hosting, and observability.",
-      "Provider access is limited to the information needed to deliver the service and is governed by their own terms and policies.",
+      "To run your campaigns we process data about the people we contact for you: name, job title, company, LinkedIn profile, location, work email, and phone number when a prospect asks to be called. It comes from lead data providers such as Apollo, from public web pages, and from lists you upload.",
+      "We check that email addresses are valid, record the emails we send, link clicks (not opens), unsubscribes and replies. AI reads each reply, answers it on your behalf, and we forward the interested ones to you.",
     ],
   },
   {
-    title: "Retention and security",
+    title: "Why we use it",
     body: [
-      "We keep information for as long as needed to operate the service, comply with legal obligations, resolve disputes, and maintain accurate campaign records.",
-      "We use technical and organizational safeguards appropriate to the type of data we process, but no internet service can guarantee perfect security.",
+      "To provide the service you signed up for: find buyers, write and send outreach, answer replies, connect calls, bill you, and support you.",
+      "For our legitimate interests: measure and improve the product, prevent abuse, keep our sending infrastructure healthy, and publish performance data as described in our Terms.",
+      "To meet our legal obligations, such as keeping billing records.",
+      "We do not sell personal information.",
     ],
   },
   {
-    title: "Your choices",
+    title: "Cookies and tracking",
     body: [
-      "You can request access, correction, export, or deletion of your personal information by contacting support.",
-      "Some records may be retained when required for security, billing, compliance, dispute resolution, or legitimate business records.",
+      "Our site and dashboard use Google Analytics and Google Ads (to measure visits and ad results), PostHog, hosted in the EU (product analytics and session recordings), Ahrefs Web Analytics (site visits), and Partnero (affiliate referrals). We also set a first-visit cookie to know where you came from, and Clerk sets the cookies that keep you signed in.",
+      "Our team receives internal notifications about sign-up visits through Telegram, which can include your name and email.",
+      "You can block or delete cookies in your browser settings. Blocking sign-in cookies stops the dashboard from working.",
+    ],
+  },
+  {
+    title: "Who we share it with",
+    body: [
+      "We share data only with the providers that run the service for us, each limited to what its job needs:",
+      "AI: Anthropic, Google, OpenAI, DeepSeek, Z.ai, TypeSafe, Moonshot. Lead data and email checks: Apollo, Explee, Apify. Web research: Scrape.do, Firecrawl, Treg.",
+      "Inboxes and sending: Google Workspace, Gandi, Mailforge, Instantly. Our own emails to you: Postmark. Calls: Twilio.",
+      "Payments: Stripe, Revolut. Sign-in: Clerk. Hosting: Hetzner (Germany) and Cloudflare. Error tracking: Sentry. Analytics: Google, PostHog, Ahrefs, Partnero. Internal notifications: Telegram.",
+      "Some of these providers are outside the European Union, mostly in the United States. For those transfers we rely on the safeguards each provider offers, such as standard contractual clauses.",
+    ],
+  },
+  {
+    title: "How long we keep it",
+    body: [
+      "We keep your data while your account is open, and after that until you ask us to delete it. Billing records are kept as long as accounting law requires.",
+      "Database backups are kept for 7 days. Technical logs of each run are kept for 30 days.",
+    ],
+  },
+  {
+    title: "Your rights",
+    body: [
+      "You can ask to access, correct, export or delete your personal data, to restrict or object to its use, by emailing support. Our team handles each request by hand, within one month.",
+      "Some records may be kept when the law requires it, or for security, billing or dispute resolution.",
+      "If you think we got something wrong, you can complain to the CNIL, the French data protection authority (cnil.fr).",
+    ],
+  },
+  {
+    title: "Security",
+    body: [
+      "We use technical and organizational safeguards suited to the data we handle, but no internet service can guarantee perfect security.",
     ],
   },
 ];
