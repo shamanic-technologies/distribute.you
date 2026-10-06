@@ -1,6 +1,6 @@
 import { URLS } from "@distribute/content";
 import { renderedResponse } from "@/lib/static-html";
-import { renderCatalogPage, type PlatformPrice } from "@/lib/pages/catalog";
+import { parsePlatformPrices, renderCatalogPage, type PlatformPrice } from "@/lib/pages/catalog";
 
 export const revalidate = 3600;
 
@@ -18,9 +18,7 @@ async function fetchPlatformPrices(): Promise<PlatformPrice[] | null> {
       signal: AbortSignal.timeout(8_000),
     });
     if (!res.ok) throw new Error(`status ${res.status}`);
-    const body: unknown = await res.json();
-    if (!Array.isArray(body)) throw new Error("body is not an array");
-    return body as PlatformPrice[];
+    return parsePlatformPrices(await res.json());
   } catch (err) {
     console.error("[landing] /catalog: /v1/costs/platform-prices read failed", err);
     return null;

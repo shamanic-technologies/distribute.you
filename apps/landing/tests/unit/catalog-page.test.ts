@@ -6,6 +6,7 @@ import {
   catalogGroup,
   catalogSections,
   formatPrice,
+  parsePlatformPrices,
   renderCatalogPage,
   type PlatformPrice,
 } from "../../src/lib/pages/catalog";
@@ -22,6 +23,7 @@ const row = (p: Partial<PlatformPrice>): PlatformPrice => ({
   type: "Email send",
   unit: "email",
   pricingBasis: "marked-up",
+  status: "current",
   ...p,
 });
 
@@ -51,8 +53,14 @@ describe("catalog price list", () => {
   });
 
   it("a retired tool is not listed as one we run (the single-line Instantly send)", () => {
-    expect(catalogGroup(row({ name: "instantly-email-send", pricePerUnitInUsdCents: "5.9772" }))).toBeNull();
+    expect(catalogGroup(row({ name: "instantly-email-send", pricePerUnitInUsdCents: "5.9772", status: "retired" }))).toBeNull();
     expect(catalogGroup(row({ name: "instantly-account-email-sent" }))).toBe("sending");
+  });
+
+  it("reads status strictly: an unknown or missing status fails the read", () => {
+    expect(parsePlatformPrices([row({})])).toHaveLength(1);
+    expect(() => parsePlatformPrices([{ ...row({}), status: undefined }])).toThrow();
+    expect(() => parsePlatformPrices([{ ...row({}), status: "paused" }])).toThrow();
   });
 
   it("Postmark sits under the emails we send you, never under cold email sending", () => {
@@ -123,9 +131,9 @@ describe("catalog is reachable", () => {
   const read = (p: string) => readFileSync(path.join(ROOT, p), "utf8");
 
   it("every footer and the sitemap link it", () => {
-    expect(read("public/landing/index-v2.html")).toContain('<a href="/catalog">Catalog</a>');
-    expect(read("src/lib/v2-shell.ts")).toContain('<a href="/catalog">Catalog</a>');
-    expect(read("src/components/footer.tsx")).toContain('{ label: "Catalog", href: "/catalog" }');
+    expect(read("public/landing/index-v2.html")).toContain('<a href="/catalog">Price catalog</a>');
+    expect(read("src/lib/v2-shell.ts")).toContain('<a href="/catalog">Price catalog</a>');
+    expect(read("src/components/footer.tsx")).toContain('{ label: "Price catalog", href: "/catalog" }');
     expect(read("src/app/sitemap.ts")).toContain('path: "/catalog"');
   });
 });

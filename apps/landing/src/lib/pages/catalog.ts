@@ -24,7 +24,20 @@ export type PlatformPrice = {
   type: string;
   unit: string;
   pricingBasis: string;
+  /** costs-service v0.76.0: "retired" rows stay served for history. */
+  status: "current" | "retired";
 };
+
+/** The served list, read strictly: a row whose `status` is not one we know fails the read. */
+export function parsePlatformPrices(body: unknown): PlatformPrice[] {
+  if (!Array.isArray(body)) throw new Error("body is not an array");
+  for (const row of body as PlatformPrice[]) {
+    if (row?.status !== "current" && row?.status !== "retired") {
+      throw new Error(`row ${row?.name} has status ${JSON.stringify(row?.status)}`);
+    }
+  }
+  return body as PlatformPrice[];
+}
 
 /** The sections of the price list, in the order an email uses them. */
 export const CATALOG_GROUPS = [
@@ -63,50 +76,6 @@ const PROVIDER_GROUP: Record<string, CatalogGroupKey> = {
  */
 const NOT_AN_EMAIL_TOOL = new Set(["x", "featured", "treg"]);
 
-/**
- * TEMPORARY: cost names the public catalogue still serves as current although no
- * service has emitted them in 45+ days (runs-service \`runs_costs\`, read 2026-10-06):
- * replaced tools (Apollo, the single-line Instantly send at twice the price), retired
- * models. Listed, they read as tools we run today. The catalogue does not say which
- * names are current; that belongs to costs-service (bug report sent 2026-10-06). Delete
- * this list once the served list tells current from retired.
- */
-const RETIRED = new Set([
-  "anthropic-opus-4.5-tokens-input",
-  "anthropic-opus-4.5-tokens-output",
-  "anthropic-web-search",
-  "apify-ahrefs-result",
-  "apify-microworlds-lead",
-  "apify-pipelinelabs-actor-start",
-  "apify-pipelinelabs-lead",
-  "apollo-enrichment-credit",
-  "apollo-person-match-credit",
-  "apollo-search-credit",
-  "deepseek-v4-flash-tokens-input",
-  "deepseek-v4-flash-tokens-output",
-  "deepseek-v4-pro-tokens-input",
-  "deepseek-v4-pro-tokens-output",
-  "featured-api-pitch-submit",
-  "firecrawl-extract-token",
-  "gemini-3-flash-tokens-input",
-  "gemini-3-flash-tokens-output",
-  "google-embedding-001-tokens-input",
-  "google-flash-3-tokens-input",
-  "google-flash-3-tokens-output",
-  "google-flash-3.5-tokens-input",
-  "google-flash-3.5-tokens-output",
-  "google-flash-3.6-tokens-input",
-  "google-flash-3.6-tokens-output",
-  "google-search-query",
-  "instantly-email-send",
-  "moonshot-kimi-k2.6-tokens-cached-input",
-  "scrape-do-render-credit",
-  "scrape-do-render-super-credit",
-  "scrape-do-scrape-credit",
-  "serper-dev-query",
-  "serper-dev-search-query",
-]);
-
 const PROVIDER_NAME: Record<string, string> = {
   anthropic: "Anthropic",
   google: "Google",
@@ -139,7 +108,8 @@ export function catalogGroup(p: PlatformPrice): CatalogGroupKey | null {
   // Media spend and payment fees are a dollar for a dollar, not a tool we run.
   if (p.pricingBasis === "pass-through") return null;
   if (NOT_AN_EMAIL_TOOL.has(p.provider)) return null;
-  if (RETIRED.has(p.name)) return null;
+  // A replaced tool stays in the served list for history; it is not one we run.
+  if (p.status !== "current") return null;
   if (p.unit === TOKEN_UNIT) return "ai";
   if (p.unit === "search" || p.unit === "query") return "research";
   const group = PROVIDER_GROUP[p.provider];
@@ -248,23 +218,23 @@ const DESCRIPTION =
 /** `prices` is null when the live read failed: the page says so instead of listing nothing. */
 export function renderCatalogPage(prices: PlatformPrice[] | null): string {
   const html = docPage({
-    title: "Catalog: what your cold emails cost | distribute.you",
+    title: "Price catalog: what your cold emails cost | distribute.you",
     description: DESCRIPTION,
     path: "/catalog",
-    eyebrow: "Catalog",
+    eyebrow: "Price catalog",
     h1: "What your emails cost",
     lead: "Every tool behind your emails, billed at public catalogue prices. Our margin is included.",
     jsonLd: [
       {
         "@context": "https://schema.org",
         "@type": "WebPage",
-        name: "distribute.you catalog",
+        name: "distribute.you price catalog",
         url: `${SITE}/catalog`,
         description: DESCRIPTION,
       },
       breadcrumb([
         { name: "distribute.you", path: "/" },
-        { name: "Catalog", path: "/catalog" },
+        { name: "Price catalog", path: "/catalog" },
       ]),
     ],
     sections: [

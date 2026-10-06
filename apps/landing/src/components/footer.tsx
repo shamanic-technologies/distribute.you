@@ -20,7 +20,7 @@ const PRODUCT = [
   { label: "How it works", href: "/#how" },
   { label: "Features", href: "/#features" },
   { label: "Pricing", href: "/#pricing" },
-  { label: "Catalog", href: "/catalog" },
+  { label: "Price catalog", href: "/catalog" },
   { label: "FAQ", href: "/#faq" },
 ];
 
