@@ -90,6 +90,8 @@
   display: inline-flex; align-items: center; gap: 6px; height: 28px; padding: 0 10px;
   border-radius: 8px; background: var(--accent); color: #fff; font-size: 13px; font-weight: 500;
 }
+/* A disabled accent button must LOOK disabled: unstyled, "Continue" with nothing ticked read as clickable. */
+.v2-root .k-btn-accent:disabled { opacity: 0.45; cursor: not-allowed; }
 .v2-root .k-btn-ghost {
   display: inline-flex; align-items: center; gap: 6px; height: 28px; padding: 0 8px;
   border-radius: 8px; color: var(--fg-2); font-size: 13px;
