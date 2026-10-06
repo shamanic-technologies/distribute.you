@@ -2445,6 +2445,8 @@ function ValueStage({
   onContinue: () => void;
 }) {
   const done = state === "done";
+  // The lifetime revenue is mandatory: no valid amount, no way forward.
+  const hasValue = !("problem" in parseLifetimeRevenue(value));
   return (
     <StepCard
       index={stepIndex("value") + 1}
@@ -2453,7 +2455,7 @@ function ValueStage({
       meta={<StateWord state={state} />}
       footer={
         !done && state === "choose" ? (
-          <button type="button" className="k-btn-accent h-9 px-4" onClick={onContinue} disabled={busy}>
+          <button type="button" className="k-btn-accent h-9 px-4" onClick={onContinue} disabled={busy || !hasValue}>
             {busy ? "Saving..." : "Continue"}
           </button>
         ) : null
@@ -2472,7 +2474,7 @@ function ValueStage({
               value={value}
               onChange={(e) => onValue(e.target.value)}
               onKeyDown={(e) => {
-                if (e.key === "Enter" && !done) onContinue();
+                if (e.key === "Enter" && !done && hasValue) onContinue();
               }}
               disabled={done || busy}
               aria-label="Lifetime revenue of one client, in dollars"
