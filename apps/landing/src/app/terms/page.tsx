@@ -18,7 +18,7 @@ const SUPPORT_EMAIL = "support@distribute.you";
 export const metadata: Metadata = {
   title: "Terms of Service",
   description:
-    "Terms of Service for distribute.you: pricing, credits, outreach on your behalf, public performance data, and acceptable use.",
+    "Terms of Service for distribute.you: catalogue pricing, prepaid credit, outreach on your behalf, public performance data, and acceptable use.",
   alternates: { canonical: TERMS_URL },
   openGraph: {
     title: "Terms of Service | distribute.you",
@@ -114,11 +114,13 @@ const SECTIONS: SectionDef[] = [
       <>
         <p>
           {SERVICE} is an acquisition agency delivered as a service. You
-          provide a website and a daily budget; we find the buyers, write
-          and send the outreach from domains we own, qualify and answer the
-          replies, and report what each outcome cost you. Cold email is the
-          channel we run today. Other acquisition channels may be added over
-          time and are governed by these same Terms.
+          provide a website and choose a daily budget for each campaign; we
+          find the buyers, write and send the outreach from domains we own,
+          qualify and answer the replies, and report what each outcome cost
+          you. Cold email is the channel we run. When a prospect asks to
+          talk, our AI Instant Call can ring your sales rep and connect the
+          call to the prospect. Any channel we add later is governed by
+          these same Terms.
         </p>
         <p>
           The Service depends on AI providers, data providers, email
@@ -130,52 +132,89 @@ const SECTIONS: SectionDef[] = [
   },
   {
     id: "pricing",
-    title: "4. Pricing, Billing, and Payment Thresholds",
+    title: "4. Pricing, Credit, and Payment",
     body: (
       <>
         <p>
-          <strong>Variable, pay-as-you-go pricing.</strong> {SERVICE} charges
-          you only for what you use, calculated from per-unit costs of the
-          underlying providers (AI inference, lead data, email sending,
-          warmed-inbox infrastructure, etc.) plus our platform fee. Unit
-          prices change whenever an upstream provider rate changes, and we
-          may adjust our platform fee at any time.
+          <strong>The platform is free.</strong> You pay for the work done on
+          your campaigns. Each tool behind your emails (lead data, research,
+          AI writing, email checks, sending, calls) is billed by the unit at
+          our public catalogue price, our margin included. The catalogue is
+          published at{" "}
+          <a href="/catalog" className="text-brand-400 underline">
+            distribute.you/catalog
+          </a>
+          . There is no subscription, no seat, and no setup fee on the
+          self-serve plan.
         </p>
         <p>
-          <strong>The pricing page is informational.</strong> Pricing displayed
-          on our marketing pages, blog, documentation, social posts, partner
-          materials, or any other communication is provided for transparency
-          and convenience only and may be inaccurate, outdated, or incomplete.
-          It does not constitute a binding offer or a guarantee of price. The
-          authoritative price for any unit of consumption is the price shown
-          live in your dashboard at the moment that unit is consumed and the
-          price actually charged to your payment method. By using the
-          Service you accept that the live dashboard price (and the
-          corresponding charge) is the only price that governs.
+          <strong>Prices.</strong> Catalogue prices are in USD and follow our
+          providers&apos; rates, so they can change at any time. A new price
+          applies to units used after the change, never to units already
+          used. The price that governs a unit is the catalogue price at the
+          moment that unit is used, as shown in your dashboard.
         </p>
         <p>
-          <strong>Billing.</strong> The Service operates on post-paid billing.
-          You add a payment method and set a daily budget; we run outreach on
-          your behalf and you pay for consumption after it occurs, not in
-          advance. Accrued usage is denominated in USD cents.
+          <strong>Prepaid credit.</strong> You add credit before outreach
+          starts, through our payment processors (Stripe or Revolut). The
+          work on your campaigns draws on that credit. When it runs out,
+          sending stops, unless you turned on automatic reload. Accounts that
+          our team has set up to be billed after use are charged when their
+          unpaid usage reaches a threshold, or at the end of the month,
+          whichever comes first.
         </p>
         <p>
-          <strong>Payment thresholds.</strong> We charge your saved payment
-          method (via our payment processor, Stripe) whenever your accrued
-          unpaid usage reaches a billing threshold, or at the end of each
-          billing month if the threshold has not been reached, whichever comes
-          first. Thresholds start small and may increase over time as your
-          account builds payment history. By adding a payment method you
-          authorize these recurring charges of variable amounts without further
-          confirmation. You can adjust your daily budget or pause anytime in the
-          dashboard; pausing stops future usage but does not waive amounts
-          already accrued.
+          <strong>Reserved follow-ups.</strong> When the first email of a
+          sequence goes out, we reserve the cost of its follow-ups on your
+          credit. Each follow-up is billed at its real cost when it is sent,
+          and the reserve is released when it is not. Your dashboard shows
+          billed spend and reserved amounts apart.
+        </p>
+        <p>
+          <strong>Automatic reload.</strong> Automatic reload is optional and
+          off unless you turn it on. When your credit falls under the
+          threshold you chose, we charge your saved payment method the reload
+          amount you chose. By turning it on you authorize these charges
+          without further confirmation. You can turn it off at any time in
+          Billing.
+        </p>
+        <p>
+          <strong>Campaign budgets.</strong> You set a daily budget for each
+          campaign. Each channel has a minimum daily budget, and there is no
+          maximum. Turning a campaign off stops its spend; amounts already
+          used or reserved stay due.
+        </p>
+        <p>
+          <strong>Credit validity.</strong> Prepaid credit is valid for twelve
+          (12) months after the purchase that added it. Credit bought through
+          a subscription expires at the end of each monthly period. Free
+          credit (welcome, referral, promotional, goodwill) is valid for
+          twelve (12) months after it is granted. Credit left unused after
+          that date expires and is lost.
+        </p>
+        <p>
+          <strong>No refunds.</strong> Payments are final and are not
+          refunded, whatever the payment method or plan: prepaid credit,
+          automatic reload, subscription, or service fees. Unused or expired
+          credit is not refunded. The only exception is the managed plan
+          guarantee below.
+        </p>
+        <p>
+          <strong>Managed plan.</strong> On the managed plan we run your
+          outreach for you. It is priced from $1,000 a month plus 10% of the
+          campaign budget (the service fees), with no time commitment. If you
+          are not satisfied with the outcome after 60 days, tell us at{" "}
+          <a href={`mailto:${SUPPORT_EMAIL}`} className="text-brand-400 underline">
+            {SUPPORT_EMAIL}
+          </a>{" "}
+          and we refund 100% of the campaign budget you paid. Service fees
+          are not refunded.
         </p>
         <p>
           <strong>Welcome credits and promotions.</strong> Welcome credits,
           referral credits, and promotional credits are granted at our sole
           discretion, offset charges rather than paying out in cash, have no
-          cash value, may expire, and may be revoked for abuse.
+          cash value, expire as set out above, and may be revoked for abuse.
         </p>
         <p>
           <strong>The welcome offer is a total, not a top-up.</strong> The
@@ -233,18 +272,20 @@ const SECTIONS: SectionDef[] = [
           <strong>Authorization.</strong> By using the Service you authorize
           {" "}{SERVICE} and its affiliates to send cold email, replies,
           follow-ups, and other outreach on your behalf, referencing
-          your brand, product, founders, and content.
+          your brand, product, founders, and content. You also authorize us
+          to call the phone number you give us for your sales rep when a
+          prospect asks to talk, and to connect that call to the
+          prospect.
         </p>
         <p>
           <strong>Our infrastructure.</strong> Outreach is sent from sending
-          infrastructure owned, operated, or contracted by us or our
-          affiliated marketing agency, including but not limited to: email
-          inboxes on domains we or our agency own; email accounts that we
-          pre-warm and maintain; shared and dedicated IP pools; and
-          third-party sending platforms such as Postmark, Instantly, Apollo,
-          and equivalents. Messages are sent from email addresses and domains
-          that we own, not from your own brand domain, and replies are routed
-          through our infrastructure before being forwarded to you.
+          infrastructure owned, operated, or contracted by us, including
+          inboxes on domains we own, hosted by mailbox providers such as
+          Google Workspace, Gandi, and Mailforge, and sending platforms such
+          as Instantly. Messages are sent from email addresses and domains
+          that we own, not from your own brand domain. Replies land in our
+          inboxes first: we read them, answer them on your behalf (including
+          with AI), and forward the interested ones to you.
         </p>
         <p>
           <strong>Shared deliverability risk.</strong> Because some
@@ -298,10 +339,9 @@ const SECTIONS: SectionDef[] = [
         <p>
           <strong>Public leaderboards.</strong> {SERVICE} publishes campaign
           performance data on public-facing surfaces, including our marketing
-          pages, public leaderboards (e.g. /performance), blog
-          posts, social media, investor decks, partner materials, and machine
-          -readable feeds (sitemap, JSON-LD, API endpoints such as
-          /v1/public/features/ranked). Published data may include, without
+          pages, public leaderboards, blog posts, social media, investor
+          decks, partner materials, and machine-readable feeds (sitemap,
+          JSON-LD, public API endpoints). Published data may include, without
           limitation: your brand name, brand domain, brand logo; campaign
           counts; emails sent, clicked, and replied; positive-reply
           counts and rates; cost-per-action metrics in aggregate or per
@@ -367,8 +407,10 @@ const SECTIONS: SectionDef[] = [
       <>
         <p>
           The Service relies on third-party providers, including without
-          limitation Anthropic, OpenAI, Google, Apollo, Postmark, Instantly,
-          Stripe, Revolut, Clerk, Cloudflare, Hetzner, and others. We are not
+          limitation Anthropic, Google, OpenAI, DeepSeek, Z.ai, TypeSafe,
+          Apollo, Instantly, Twilio, Postmark, Stripe, Revolut, Clerk,
+          Cloudflare, Hetzner, and others. Our Privacy Policy lists them with
+          what each one does. We are not
           responsible for the availability,
           accuracy, or behavior of third-party services. Outages, rate limits,
           API changes, deprecations, and policy changes at any provider may
@@ -575,8 +617,10 @@ const SECTIONS: SectionDef[] = [
           after a reasonable retention period.
         </p>
         <p>
-          You may stop using the Service at any time by pausing or ceasing
-          usage; you remain responsible for amounts already accrued. Sections that by their nature should
+          You may stop using the Service at any time by turning off your
+          campaigns; you remain responsible for amounts already used or
+          reserved. Unused credit is not refunded and expires as set out in
+          Section 4. Sections that by their nature should
           survive termination (Sections 4&ndash;6, 10&ndash;16, 19&ndash;20)
           will survive.
         </p>
@@ -604,12 +648,11 @@ const SECTIONS: SectionDef[] = [
     body: (
       <>
         <p>
-          These Terms are governed by the laws of the State of Delaware,
-          United States, excluding its conflict-of-laws rules. Each party
-          submits to the exclusive jurisdiction of the state and federal
-          courts located in Delaware for any dispute that is not subject to
-          arbitration, and waives any objection to venue. Where required by
-          law, your local consumer-protection rights are unaffected.
+          These Terms are governed by French law. Any dispute that cannot be
+          settled amicably is subject to the exclusive jurisdiction of the
+          competent courts of the place of our registered office in France.
+          Where required by law, your local consumer-protection rights are
+          unaffected.
         </p>
       </>
     ),
@@ -667,7 +710,7 @@ export default function TermsPage() {
             </p>
             <p className="dy-body mt-6 text-base">
               These Terms govern your use of {SERVICE}. Please read them
-              carefully. Sections 4 (Pricing &amp; Billing), 5 (Outreach
+              carefully. Sections 4 (Pricing &amp; Credit), 5 (Outreach
               on Your Behalf), and 6 (Public Performance Data) describe how
               the platform actually works and what you are agreeing to.
             </p>
