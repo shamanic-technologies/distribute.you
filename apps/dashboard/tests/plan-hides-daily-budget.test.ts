@@ -81,11 +81,11 @@ describe("every dashboard surface that states a daily budget asks whether to hid
   });
 });
 
-describe("onboarding asks no budget of a subscriber", () => {
-  it("the /get-started wall shows no budget row and no margin box on the plan", () => {
+describe("the onboarding wall asks no daily budget", () => {
+  it("budgets are set per campaign at the campaigns step; the wall asks credit only (owner 2026-10-06)", () => {
     const wall = read("src/components/v2/get-started/account-card-wall.tsx");
-    expect(wall).toContain('{!subscription && <div className="k-inset rounded-lg p-3">{budgetRow}</div>}');
-    // No margin box anywhere since the one pot (owner 2026-10-03).
+    expect(wall).not.toContain("budgetRow");
+    expect(wall).not.toContain("subscription");
     expect(wall).not.toContain("marginOk");
   });
 });

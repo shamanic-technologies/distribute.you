@@ -36,13 +36,13 @@ describe("browserPhoneCountry", () => {
 
 describe("the wall asks for the phone between the account and the card", () => {
   it("the claim lands on the phone stage, not the card", () => {
-    const claim = wall.slice(wall.indexOf('fetch("/api/anon/claim"'), wall.indexOf("// Price the budget"));
+    const claim = wall.slice(wall.indexOf('fetch("/api/anon/claim"'), wall.indexOf("// ── Phone ──"));
     expect(claim).toContain('setStage("phone")');
     expect(claim).not.toContain('setStage("card")');
   });
 
   it("the phone stage saves through the route, then opens the card", () => {
-    const submit = wall.slice(wall.indexOf("async function submitPhone("), wall.indexOf("// ── Card ──"));
+    const submit = wall.slice(wall.indexOf("async function submitPhone("), wall.indexOf("// ── Credit ──"));
     expect(submit.indexOf("requiredPhoneProblem(phone)")).toBeGreaterThan(-1);
     expect(submit.indexOf("requiredPhoneProblem(phone)")).toBeLessThan(submit.indexOf("await savePhoneNumber(phone)"));
     expect(submit.indexOf("await savePhoneNumber(phone)")).toBeLessThan(submit.indexOf('setStage("card")'));

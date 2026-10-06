@@ -1,7 +1,7 @@
 /**
- * What `/get-started` does once the account exists and the card is saved: turn the
- * preview the founder just watched into a running campaign, with no further
- * question. Explee's "Claim $30 credits & send".
+ * What `/get-started` does once the account exists and the credit is added: turn the
+ * preview the founder just watched into running campaigns, the ones they turned on at
+ * the campaigns step with the budget they set on each, with no further question.
  *
  * It reuses the calls the v2 "Add a brand" modal launches with (same channel, same
  * leg vocabulary, same write order), so the campaign it creates is the same kind
@@ -15,18 +15,18 @@ import {
   extractBrandFields,
   getWorkflowProjectionLadder,
   prefillFeatureInputs,
-  saveCampaignBudget,
+  saveOfferCampaignBudget,
   saveOfferUserFields,
-  setBrandSalesBudget,
   type UserFieldKey,
   type UserFieldValue,
 } from "@/lib/api";
 import { LEVER_QUESTIONS, NEW_ORG_CHANNEL_SLUG, newOrgLeg, recommendedDailyBudgetUsd, type NewOrgLegKey } from "@/lib/v2/new-org-wizard";
-import type { PlanCampaign } from "@/lib/v2/get-started";
+import { plannedKey, type PlannedCampaign } from "@/lib/v2/get-started";
+import { startReactiveCampaign } from "@/lib/start-pair";
 
 export const GET_STARTED_LEG: NewOrgLegKey = "start_to_website_visit";
 
-/** The cold-email entry leg that prices the recommended budget, when the path launched first starts with one. */
+/** The cold-email entry leg that prices the recommended budget, when the best proactive campaign works one. */
 export function pricingLegFor(entryLegKey: string | null | undefined): NewOrgLegKey | null {
   return entryLegKey === "start_to_website_visit" || entryLegKey === "start_to_conversation" ? entryLegKey : null;
 }
@@ -39,25 +39,32 @@ export interface LaunchInput {
   offer: { offerId: string; name: string };
   /** Who the customer sells to (the ICP text): every launched audience is derived from it. */
   targetAudience: string;
-  /** The ONE daily budget (whole dollars): billing's global budget, spent on the best path first. */
-  budgetUsd: number;
-  /** Every campaign the ranked paths need, the path launched first first (`launchPlan`). */
-  plan: PlanCampaign[];
+  /** The campaigns turned on at the campaigns step, each with its daily budget (whole dollars). */
+  campaigns: LaunchCampaign[];
+  /** Write each campaign's daily budget (false for a plan subscriber: its plan sets them). */
+  writeBudgets?: boolean;
   /** The offer points were answered in the preview and saved on the offer already. */
   answered: boolean;
+}
+
+/** One campaign to start, with the words its name is made of. */
+export interface LaunchCampaign extends PlannedCampaign {
+  /** The channel's name ("Cold email"). */
+  label: string;
+  /** The step the leg reaches ("Website visit"): two legs of one channel are told apart by it. */
+  outcome: string;
 }
 
 export interface LaunchProgress {
   levers: boolean;
   audiences: boolean;
-  /** The brand's global sales budget stated. */
-  salesBudget: boolean;
-  /** Per campaign (keyed `featureSlug|legKey`): its budget written, and its id once created. */
+  /** Per campaign (`plannedKey`): its budget written, and the campaign started (a proactive one's id). */
   budgets: Record<string, boolean>;
+  started: Record<string, boolean>;
   campaignIds: Record<string, string>;
 }
 
-export const EMPTY_PROGRESS: LaunchProgress = { levers: false, audiences: false, salesBudget: false, budgets: {}, campaignIds: {} };
+export const EMPTY_PROGRESS: LaunchProgress = { levers: false, audiences: false, budgets: {}, started: {}, campaignIds: {} };
 
 /**
  * The daily budget the v2 "Add a brand" modal would recommend for this offer:
@@ -115,14 +122,14 @@ async function prefillOfferLevers(brandId: string, offerId: string): Promise<voi
 }
 
 /**
- * Runs the launch on the offer and audience the visitor picked (no re-pick): the ONE
- * daily budget stated as the brand's global sales budget (campaign-service spends it on
- * the best-ROI path first), then one campaign per (channel, leg) the ranked paths need.
- * Every campaign's own ceiling is the whole budget: the global one is the ONE pot of every
- * step of the sales path, replies to leads served first (owner 2026-10-03). A campaign of the path
- * launched first must be created or the launch fails; one of a later path that has
- * nothing ready to run is skipped and logged. Mutates `progress` as each write lands so
- * a retry resumes. Returns the first campaign's id (where the mission page opens).
+ * Runs the launch on the offer and audience the visitor picked (no re-pick): each campaign
+ * turned on at the campaigns step gets its own daily budget (billing, per offer), then
+ * starts: the proactive one is created on the workflow features-service recommends for its
+ * leg, a reactive one is started by campaign-service as a funded pair. Exactly one proactive
+ * campaign is on (the step refuses otherwise) and it must start or the launch fails; a
+ * reactive one that cannot start yet is logged and skipped. Mutates `progress` as each
+ * write lands so a retry resumes. Returns the proactive campaign's id (where the mission
+ * page opens).
  */
 export async function launchFromPreview(input: LaunchInput, progress: LaunchProgress): Promise<string> {
   const { offerId, name: offerName } = input.offer;
@@ -149,30 +156,37 @@ export async function launchFromPreview(input: LaunchInput, progress: LaunchProg
     progress.audiences = true;
   }
 
-  if (input.plan.length === 0) throw new Error("No sales path can be launched yet. Go back and tick the steps your sales go through.");
-  if (!progress.salesBudget) {
-    await setBrandSalesBudget(input.brandId, input.budgetUsd * 100);
-    progress.salesBudget = true;
+  const on = input.campaigns.filter((c) => c.on);
+  const proactive = on.filter((c) => !c.reactive);
+  if (proactive.length !== 1) {
+    console.error("[get-started] launch: expected exactly one proactive campaign on", { brandId: input.brandId, offerId, on });
+    throw new Error("Turn on one campaign that finds new leads, then try again.");
   }
 
-  const ids: string[] = [];
-  for (const c of input.plan) {
-    const key = `${c.featureSlug}|${c.legKey}`;
-    if (progress.campaignIds[key]) {
-      ids.push(progress.campaignIds[key]);
-      continue;
-    }
-    const ladder = await getWorkflowProjectionLadder({ featureSlug: c.featureSlug, brandId: input.brandId, offerId, leg: c.legKey });
-    const workflowSlug = ladder.recommendedWorkflowDynastySlug;
-    if (!workflowSlug) {
-      if (c.required) throw new Error(`Nothing is ready to run for ${c.label.toLowerCase()} yet, so the campaign cannot start.`);
-      console.warn(`[get-started] launch: no workflow ready for ${key}, campaign skipped (a later path)`);
-      continue;
-    }
-    if (!progress.budgets[key]) {
-      await saveCampaignBudget(input.brandId, { offerId, legKey: c.legKey, featureSlug: c.featureSlug }, input.budgetUsd * 100);
+  // The proactive one first: the reactive ones follow the leads it brings.
+  let firstId: string | null = progress.campaignIds[plannedKey(proactive[0])] ?? null;
+  for (const c of [...proactive, ...on.filter((x) => x.reactive)]) {
+    const key = plannedKey(c);
+    if (progress.started[key]) continue;
+    if (input.writeBudgets !== false && !progress.budgets[key]) {
+      await saveOfferCampaignBudget(input.brandId, offerId, { featureSlug: c.featureSlug, legKey: c.legKey, budgetCents: c.budgetUsd * 100 }, "day");
       progress.budgets[key] = true;
     }
+
+    if (c.reactive) {
+      try {
+        await startReactiveCampaign({ brandId: input.brandId, offerId, featureSlug: c.featureSlug, legKey: c.legKey });
+      } catch (err) {
+        console.warn(`[get-started] launch: reactive campaign ${key} did not start, skipped`, err);
+        continue;
+      }
+      progress.started[key] = true;
+      continue;
+    }
+
+    const ladder = await getWorkflowProjectionLadder({ featureSlug: c.featureSlug, brandId: input.brandId, offerId, leg: c.legKey });
+    const workflowSlug = ladder.recommendedWorkflowDynastySlug;
+    if (!workflowSlug) throw new Error(`Nothing is ready to run for ${c.label.toLowerCase()} yet, so the campaign cannot start.`);
 
     await levers;
     const prefill = await prefillFeatureInputs(c.featureSlug, [input.brandId], offerId);
@@ -192,8 +206,10 @@ export async function launchFromPreview(input: LaunchInput, progress: LaunchProg
       featureInputs,
     });
     progress.campaignIds[key] = campaign.id;
-    ids.push(campaign.id);
+    progress.started[key] = true;
+    firstId = campaign.id;
   }
   await levers;
-  return ids[0];
+  if (!firstId) throw new Error("The campaign did not start. Try again.");
+  return firstId;
 }

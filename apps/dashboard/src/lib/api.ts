@@ -8297,6 +8297,20 @@ export interface BillingAccount {
    * Not recomputed here.
    */
   free_credit_spendable_cents?: string;
+  /**
+   * The free-credit offer this org was created under (billing-service, 2026-10-06):
+   * "match_100" = we match the first $100 paid (part at creation, the rest once paid),
+   * "legacy" = an older org's welcome. Optional until every billing deploy states it.
+   */
+  free_credit_offer?: "match_100" | "legacy";
+  free_credit_entitlement_cents?: number;
+  /** Decimal cents received so far toward the offer. */
+  free_credit_received_cents?: string;
+  /** Decimal cents still to come; "0" once granted. */
+  free_credit_pending_cents?: string;
+  free_credit_paid_trigger_cents?: number;
+  /** Decimal cents the org still has to pay to earn what is pending. */
+  free_credit_remaining_to_pay_cents?: string;
   created_at: string;
   updated_at: string;
 }

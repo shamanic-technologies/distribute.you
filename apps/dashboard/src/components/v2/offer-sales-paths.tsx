@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, type ReactNode } from "react";
-import { SectionTitle, Shimmer, EmptyNote, StateDot } from "@/components/v2/ui";
+import { SectionTitle, Shimmer, EmptyNote } from "@/components/v2/ui";
 import { formatRoi, roiIsGood } from "@/lib/format-roi";
 import { salesPathAvatarSrc } from "@/lib/sales-path-avatars";
 import { useAcquisitionChannels } from "@/lib/use-acquisition-channels";
@@ -35,43 +35,28 @@ export function OfferSalesPaths({
   data,
   pending,
   failed,
-  highlightKey = null,
-  highlightLabel = "What we launch first",
   intro = "Every way the ticked legs reach a paying client, best return first. Open one to see why.",
   bare = false,
   gainHeadline = false,
-  activeKey,
-  table = false,
   selected,
   onToggleSelected,
   onStateRate,
   onStateLifetimeRevenue,
 }: {
-  /** A plain table, ROI desc as served, no run status (the Sales path page: what runs lives in Campaigns). */
-  table?: boolean;
-  /** Table only: the paths the customer ticked (combinationKey), and the tick. */
+  /** The paths the customer ticked (combinationKey), and the tick. */
   selected?: ReadonlySet<string>;
   onToggleSelected?: (combinationKey: string, on: boolean) => void;
   data: OfferSalesPaths | undefined;
   pending: boolean;
   failed: boolean;
-  /** The path framed as the one launched first (the onboarding states it). */
-  highlightKey?: string | null;
-  highlightLabel?: string;
   intro?: string;
   /** No section title and no intro line (the onboarding states its own question). */
   bare?: boolean;
   /**
-   * A row headlines the gain (return and lifetime revenue), never a cost: a selling
-   * surface (the onboarding) talks gain, and the cost stays in the detail a row opens.
+   * The table headlines the gain (the return), never a cost: a selling surface (the
+   * onboarding) talks gain, and the cost stays in the detail a row opens.
    */
   gainHeadline?: boolean;
-  /**
-   * The path we run (the offer page passes it; undefined = no status shown). It leaves the
-   * list for its own framed card marked Active, every other row is marked Inactive. Null =
-   * nothing runs, so every row is Inactive. The customer never picks it: the best return runs.
-   */
-  activeKey?: string | null;
   /** When given, each leg between two steps takes a typed rate (whole percent) or null to clear it. */
   onStateRate?: (leg: SalesPathLeg, ratePct: number | null) => Promise<void>;
   /** When given, the lifetime revenue in a path's detail is editable (whole dollars). */
@@ -93,45 +78,21 @@ export function OfferSalesPaths({
         <EmptyNote>Could not read this offer&apos;s sales paths.</EmptyNote>
       ) : data && salesPathsEmptyReason(data.status) ? (
         <EmptyNote>{salesPathsEmptyReason(data.status)}</EmptyNote>
-      ) : table ? (
+      ) : (
         <PathsTable
           paths={paths}
           open={open}
           setOpen={setOpen}
+          gainHeadline={gainHeadline}
           selected={selected}
           onToggleSelected={onToggleSelected}
           onStateRate={onStateRate}
           onStateLifetimeRevenue={onStateLifetimeRevenue}
         />
-      ) : activeKey !== undefined ? (
-        <StatusPaths
-          paths={paths}
-          activeKey={activeKey}
-          open={open}
-          setOpen={setOpen}
-          onStateRate={onStateRate}
-          onStateLifetimeRevenue={onStateLifetimeRevenue}
-        />
-      ) : (
-        <ul className="k-card divide-y divide-[var(--line-subtle)] overflow-hidden">
-          {paths.map((p) => (
-            <PathRow
-              key={p.combinationKey}
-              path={p}
-              open={open === p.combinationKey}
-              onToggle={() => setOpen(open === p.combinationKey ? null : p.combinationKey)}
-              highlight={p.combinationKey === highlightKey ? highlightLabel : null}
-              gainHeadline={gainHeadline}
-              onStateRate={onStateRate}
-              onStateLifetimeRevenue={onStateLifetimeRevenue}
-            />
-          ))}
-        </ul>
       )}
     </section>
   );
 }
-
 /** A column label whose figures are expected values, with the (i) saying so. */
 export function ExpectedLabel({ tip, children }: { tip: string; children: ReactNode }) {
   return (
@@ -153,6 +114,7 @@ function PathsTable({
   paths,
   open,
   setOpen,
+  gainHeadline,
   selected,
   onToggleSelected,
   onStateRate,
@@ -161,6 +123,7 @@ function PathsTable({
   paths: SalesPathRow[];
   open: string | null;
   setOpen: (key: string | null) => void;
+  gainHeadline: boolean;
   selected?: ReadonlySet<string>;
   onToggleSelected?: (combinationKey: string, on: boolean) => void;
   onStateRate?: (leg: SalesPathLeg, ratePct: number | null) => Promise<void>;
@@ -168,21 +131,26 @@ function PathsTable({
 }) {
   const [showAll, setShowAll] = useState(false);
   const shown = showAll ? paths : paths.slice(0, TABLE_SHOWN);
+  // A phone reads the path and its return: the cost column waits for a wider screen
+  // (it stays in the detail a row opens), and the path wraps instead of scrolling.
+  const cols = gainHeadline ? 3 : 4;
   return (
     <div className="k-card overflow-hidden">
       <div className="k-scroll overflow-x-auto">
-        <table className="w-full min-w-[760px] text-[13px]">
+        <table className="w-full text-[13px] sm:min-w-[640px]">
           <thead>
             <tr className="k-line-subtle border-b">
               <th className="k-label w-10 px-3 py-2.5 pl-4 text-left font-normal">
                 <span className="sr-only">Selected</span>
               </th>
               <th className="k-label px-3 py-2.5 text-left font-normal">Path</th>
-              <th className="k-label px-3 py-2.5 text-right font-normal">
-                <ExpectedLabel tip={EXPECTED_COST_PER_CLIENT_TIP}>Cost per paying client</ExpectedLabel>
-              </th>
+              {!gainHeadline && (
+                <th className="k-label hidden px-3 py-2.5 text-right font-normal sm:table-cell">
+                  <ExpectedLabel tip={EXPECTED_COST_PER_CLIENT_TIP}>Cost per paying client</ExpectedLabel>
+                </th>
+              )}
               <th className="k-label px-3 py-2.5 pr-4 text-right font-normal">
-                <ExpectedLabel tip={EXPECTED_ROI_TIP}>ROI</ExpectedLabel>
+                <ExpectedLabel tip={EXPECTED_ROI_TIP}>{gainHeadline ? "Return" : "ROI"}</ExpectedLabel>
               </th>
             </tr>
           </thead>
@@ -221,9 +189,11 @@ function PathsTable({
                   <td className="px-3 py-2">
                     <PathLinks path={p} />
                   </td>
-                  <td className="k-fg2 px-3 py-2 text-right tabular-nums">{usd(p.costPerPayingClientUsd)}</td>
+                  {!gainHeadline && (
+                    <td className="k-fg2 hidden px-3 py-2 text-right tabular-nums sm:table-cell">{usd(p.costPerPayingClientUsd)}</td>
+                  )}
                   <td
-                    className={`px-3 py-2 pr-4 text-right font-semibold tabular-nums ${roiIsGood(p.roi) ? "text-[var(--run)]" : ""}`}
+                    className={`whitespace-nowrap px-3 py-2 pr-4 text-right align-top font-semibold tabular-nums ${roiIsGood(p.roi) ? "text-[var(--run)]" : ""}`}
                     title={unavailable ?? undefined}
                   >
                     {formatRoi(p.roi)}
@@ -231,7 +201,7 @@ function PathsTable({
                 </tr>,
                 isOpen ? (
                   <tr key={`${p.combinationKey}-detail`} className="k-line-subtle border-b">
-                    <td colSpan={4} className="p-0">
+                    <td colSpan={cols} className="p-0">
                       <PathBreakdown path={p} onStateRate={onStateRate} onStateLifetimeRevenue={onStateLifetimeRevenue} />
                     </td>
                   </tr>
@@ -252,136 +222,6 @@ function PathsTable({
         </div>
       )}
     </div>
-  );
-}
-
-/** Paths listed under the active one before "Show N more". */
-const OTHERS_SHOWN = 20;
-
-/**
- * The offer page's view: the path we run in its own green-framed card, marked Active,
- * then every other path in the served order, muted and marked Inactive.
- */
-function StatusPaths({
-  paths,
-  activeKey,
-  open,
-  setOpen,
-  onStateRate,
-  onStateLifetimeRevenue,
-}: {
-  paths: SalesPathRow[];
-  activeKey: string | null;
-  open: string | null;
-  setOpen: (key: string | null) => void;
-  onStateRate?: (leg: SalesPathLeg, ratePct: number | null) => Promise<void>;
-  onStateLifetimeRevenue?: (usd: number) => Promise<void>;
-}) {
-  const [showAll, setShowAll] = useState(false);
-  const active = paths.find((p) => p.combinationKey === activeKey) ?? null;
-  const others = paths.filter((p) => p !== active);
-  const shown = showAll ? others : others.slice(0, OTHERS_SHOWN);
-  const row = (p: SalesPathRow, status: "active" | "inactive") => (
-    <PathRow
-      key={p.combinationKey}
-      path={p}
-      open={open === p.combinationKey}
-      onToggle={() => setOpen(open === p.combinationKey ? null : p.combinationKey)}
-      highlight={null}
-      gainHeadline={false}
-      status={status}
-      onStateRate={onStateRate}
-      onStateLifetimeRevenue={onStateLifetimeRevenue}
-    />
-  );
-  return (
-    <div className="space-y-4">
-      {active && (
-        <div className="overflow-hidden rounded-[12px] bg-[color-mix(in_oklab,var(--run)_6%,var(--bg-raised))] shadow-[inset_0_0_0_2px_var(--run)]">
-          <div className="flex flex-wrap items-center gap-x-3 gap-y-1 px-4 pt-3">
-            <StateDot running label="Active" />
-            <span className="k-fg3 text-[12px]">Best return, so this is the one we run.</span>
-          </div>
-          <ul>{row(active, "active")}</ul>
-        </div>
-      )}
-      {others.length > 0 && (
-        <div>
-          <p className="k-label mb-2">{active ? "Other paths" : "Paths"}</p>
-          <div className="k-card overflow-hidden">
-            <ul className="divide-y divide-[var(--line-subtle)]">{shown.map((p) => row(p, "inactive"))}</ul>
-            {others.length > shown.length && (
-              <div className="k-fg3 k-line-subtle flex items-center justify-between border-t px-4 py-2.5 text-[12px] tabular-nums">
-                <span>
-                  {shown.length} of {others.length}
-                </span>
-                <button type="button" className="k-btn-ghost h-6 px-2 text-[12px]" onClick={() => setShowAll(true)}>
-                  Show {others.length - shown.length} more
-                </button>
-              </div>
-            )}
-          </div>
-        </div>
-      )}
-    </div>
-  );
-}
-
-function PathRow({
-  path,
-  open,
-  onToggle,
-  highlight,
-  gainHeadline,
-  status,
-  onStateRate,
-  onStateLifetimeRevenue,
-}: {
-  path: SalesPathRow;
-  open: boolean;
-  onToggle: () => void;
-  highlight: string | null;
-  gainHeadline: boolean;
-  /** Offer page only: the run state, drawn as a dot plus a word. */
-  status?: "active" | "inactive";
-  onStateRate?: (leg: SalesPathLeg, ratePct: number | null) => Promise<void>;
-  onStateLifetimeRevenue?: (usd: number) => Promise<void>;
-}) {
-  const unavailable = roiUnavailableLabel(path.roiUnavailableReason);
-  return (
-    // The frame sits inside the list with a margin and its own radius, so all four
-    // corners show (an inset ring on a square row is clipped by the list's rounding).
-    <li className={highlight ? "m-1.5 rounded-[8px] bg-[var(--accent-soft)] ring-2 ring-[var(--accent)]" : undefined}>
-      {highlight && (
-        <p className="k-accent-text px-4 pt-2.5 text-[11.5px] font-semibold uppercase tracking-wide">{highlight}</p>
-      )}
-      <button
-        type="button"
-        aria-expanded={open}
-        onClick={onToggle}
-        className="k-row flex w-full flex-wrap items-center gap-x-3 gap-y-1 px-4 py-3 text-left"
-      >
-        <span className="k-fg3 w-6 shrink-0 text-[12px] tabular-nums">#{path.rank}</span>
-        <span className="flex w-36 shrink-0 items-center gap-2.5">
-          <PathAvatar name={path.name} size={status === "active" ? 40 : 28} />
-          <span className={`truncate ${status === "active" ? "k-fg text-[16px] font-semibold" : "k-fg text-[13px] font-semibold"}`}>{path.name}</span>
-        </span>
-        <span className={`min-w-0 flex-1 text-[13px] ${status === "inactive" ? "k-fg2" : ""}`}>
-          <PathLinks path={path} />
-        </span>
-        <span className="k-fg2 text-[12px] tabular-nums">
-          {gainHeadline ? `${usd(path.lifetimeRevenueUsd)} per client won` : `${usd(path.costPerPayingClientUsd)} per paying client`}
-        </span>
-        <span
-          className={`${gainHeadline || status === "active" ? "min-w-16" : "w-16"} text-right ${status === "active" ? "text-[18px]" : "text-[13px]"} font-semibold tabular-nums ${roiIsGood(path.roi) ? "text-[var(--run)]" : ""}`}
-          title={unavailable ?? undefined}
-        >
-          {path.roi == null ? formatRoi(path.roi) : gainHeadline ? `${formatRoi(path.roi)} return` : `${formatRoi(path.roi)} ROI`}
-        </span>
-        {status === "inactive" && <StateDot running={false} label="Inactive" />}
-      </button>
-      {open && <PathBreakdown path={path} onStateRate={onStateRate} onStateLifetimeRevenue={onStateLifetimeRevenue} />}
-    </li>
   );
 }
 

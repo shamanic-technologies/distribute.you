@@ -205,7 +205,6 @@ export function V2OfferSalesPathPage() {
         data={paths.data}
         pending={paths.isPending && !paths.isError}
         failed={paths.isError}
-        table
         selected={selectedPaths ?? undefined}
         onToggleSelected={selectedPaths ? onTogglePath : undefined}
         onStateRate={onStateRate}
