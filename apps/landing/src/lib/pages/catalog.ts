@@ -61,7 +61,7 @@ export function parsePlatformPrices(body: unknown): PlatformPrice[] {
 export const CATALOG_GROUPS = [
   { key: "leads", title: "Lead data", note: "Finding the right people and checking their email." },
   { key: "research", title: "Web research", note: "Reading each prospect's site and news before writing." },
-  { key: "ai", title: "AI writing", note: "Writing and checking each email. Priced per million tokens." },
+  { key: "ai", title: "AI writing & intelligence", note: "Writing emails, qualifying leads, finding your audience, answering you in chat. Priced per million tokens." },
   { key: "sending", title: "Sending", note: "Each email and follow-up, sent from our own inboxes." },
   { key: "calls", title: "Calls and messages", note: "Calling or texting a prospect who asked for it." },
   { key: "notifications", title: "Emails we send you", note: "Replies forwarded to you, alerts and digests about your campaigns." },
@@ -295,7 +295,7 @@ export function renderCatalogPage(prices: PlatformPrice[] | null): string {
         id: "pays-for",
         h2: "What you pay for",
         tint: true,
-        html: `<p>Each email uses a few tools: lead data, research, AI writing, sending. You pay for each tool by the unit, our margin included. Nothing else.</p>
+        html: `<p>Your campaigns use a few tools: lead data, research, AI, sending. You pay for each tool by the unit, our margin included. Nothing else.</p>
 <p>Follow-ups are reserved when the first email goes out, so you see their cost before they are sent.</p>`,
       },
       {
