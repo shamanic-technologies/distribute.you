@@ -2555,6 +2555,8 @@ export function ChannelsStage({
                   onClick={() => onToggle(c.slug, !on)}
                   mark={<AcquisitionChannelMark def={{ mark: channelMarkForSlug(c.slug) }} size="xs" dimmed={!on} />}
                   title={c.name}
+                  sub={c.shortDescription}
+                  wrapSub
                 />
               );
             })}
