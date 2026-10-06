@@ -100,6 +100,7 @@ import {
   previousStep,
   campaignPlan,
   campaignPlanProblem,
+  chosenCampaignOutlook,
   parseCampaignBudget,
   plannedKey,
   setPlannedOn,
@@ -1825,6 +1826,7 @@ export function GetStarted({ org }: { org?: OrgWalk } = {}) {
           note={wallNote}
           email={(selectedKey ? emails[selectedKey] : undefined) ?? firstWritten(emails, audience.audienceId) ?? restoredEmail}
           campaigns={launchCampaigns}
+          outlook={chosenCampaignOutlook(campaignRows, salesPaths?.campaigns ?? [], salesPaths?.paths ?? [])}
           answered={answered}
           onClose={() => setWallOpen(false)}
         />
@@ -2565,6 +2567,8 @@ export function ChannelsStage({
                   onClick={() => onToggle(c.slug, !on)}
                   mark={<AcquisitionChannelMark def={{ mark: channelMarkForSlug(c.slug) }} size="xs" dimmed={!on} />}
                   title={c.name}
+                  sub={c.shortDescription}
+                  wrapSub
                 />
               );
             })}

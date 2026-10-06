@@ -51,11 +51,13 @@ describe("Auth pages branding", () => {
   });
 
   it("states the served landing's headline, offer and proof line", () => {
-    // Verbatim from the landing as the $99/month plan serves it (the default offer
-    // since 2026-10-03, swaps in apps/landing/src/lib/pages/subscription.ts).
+    // Verbatim from the served landing hero (owner 2026-10-06: prepaid, the
+    // platform is free, no trial and no monthly plan for new customers).
     expect(panel).toContain("revenue in 24h");
-    expect(panel).toContain("From $99/month");
-    expect(panel).toContain("3-day free trial, cancel anytime");
+    expect(panel).toContain("Revenue made easy.");
+    expect(panel).toContain("The platform is free");
+    expect(panel).not.toContain("$99");
+    expect(panel).not.toMatch(/free trial/i);
     expect(panel).not.toContain("$1/day");
     expect(panel).not.toContain("$30");
     expect(panel).toContain(
@@ -103,7 +105,7 @@ describe("Auth pages branding", () => {
     // :root[data-brand-tint] re-declares the brand-* ramp at the customer's own
     // hue, so an arbitrary hex or oklch is the one control that stays our blue.
     expect(panel).toContain("text-brand-600");
-    expect(panel).toContain("bg-brand-50");
+    expect(panel).toContain("bg-brand-100");
     expect(/#[0-9a-fA-F]{6}/.test(panel)).toBe(false);
     expect(panel).not.toContain("oklch(");
   });

@@ -3058,6 +3058,8 @@ const PublicCatalogueSchema = z.object({
       managed: z.boolean().optional(),
       /** True when the channel can appear in a sales path: the list an offer accepts channels from. */
       salesPathEligible: z.boolean().optional(),
+      /** One-line card caption under the channel's name (features-service, 2026-10-06). */
+      shortDescription: z.string().optional(),
       operatedBy: z.string().optional(),
       terms: z
         .object({ dailyOperatingCostCents: z.coerce.number().nullish() })

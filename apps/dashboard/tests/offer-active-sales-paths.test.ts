@@ -20,7 +20,7 @@ describe("offer channels", () => {
   });
   it("lists only the eligible channels, in served order, and skips one served without its flags", () => {
     const list = salesPathChannels([
-      { slug: "sales-cold-email-outreach", name: "Sales Cold Email Outreach", managed: true, salesPathEligible: true, operatedBy: "platform" },
+      { slug: "sales-cold-email-outreach", name: "Sales Cold Email Outreach", managed: true, salesPathEligible: true, operatedBy: "platform", shortDescription: "We find your buyers and email them for you." },
       { slug: "seo-content", name: "SEO Content", managed: false, salesPathEligible: false, operatedBy: "platform" },
       { slug: "meta-ads", name: "Meta Ads", managed: false, salesPathEligible: true, operatedBy: "platform" },
       { slug: "your-team-closing-calls", name: "Your team closing calls", managed: false, salesPathEligible: true, operatedBy: "customer" },
@@ -30,6 +30,8 @@ describe("offer channels", () => {
     expect(list.map((c) => c.slug)).toEqual(["sales-cold-email-outreach", "meta-ads", "your-team-closing-calls"]);
     expect(list[2].customerOperated).toBe(true);
     expect(list[1].managed).toBe(false);
+    expect(list[0].shortDescription).toBe("We find your buyers and email them for you.");
+    expect(list[1].shortDescription).toBeNull();
   });
   it("a tick sends the full list back", () => {
     expect(toggleChannel(new Set(["a", "b"]), "c", true)).toEqual(["a", "b", "c"]);

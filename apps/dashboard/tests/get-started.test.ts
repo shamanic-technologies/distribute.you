@@ -16,6 +16,7 @@ import {
   parseCompetitors,
   campaignPlan,
   campaignPlanProblem,
+  chosenCampaignOutlook,
   matchNote,
   parseCampaignBudget,
   wallCopy,
@@ -413,6 +414,39 @@ describe("the wall", () => {
     expect(hotLeadsForCredit(Number.NaN)).toBeNull();
   });
 
+  it("reads the wall's figures off the proactive campaign that is on", () => {
+    const plan = [
+      { featureSlug: "cold-email", legKey: "contacted->visit", reactive: false, on: false },
+      { featureSlug: "cold-email", legKey: "contacted->conversation", reactive: false, on: true },
+      { featureSlug: "ai-booking", legKey: "conversation->meeting", reactive: true, on: true },
+    ];
+    const campaigns = [
+      { channelSlug: "cold-email", legKey: "contacted->visit", roi: 9, roiCombinationKey: "p1" },
+      { channelSlug: "cold-email", legKey: "contacted->conversation", roi: 2.4, roiCombinationKey: "p2" },
+    ];
+    const leg = (legKey: string, key: string, label: string, slug: string, cost: number | null) => ({
+      legKey,
+      toStep: { key, label },
+      channel: { slug },
+      costPerOutcomeUsd: cost,
+    });
+    const paths = [
+      { combinationKey: "p1", ticked: true, legs: [leg("contacted->visit", "website_visit", "Website visit", "cold-email", 3)] },
+      { combinationKey: "p3", ticked: true, legs: [leg("contacted->conversation", "conversation", "Positive reply", "cold-email", 99)] },
+      { combinationKey: "p2", ticked: true, legs: [leg("contacted->conversation", "conversation", "Positive reply", "cold-email", 25)] },
+    ];
+    expect(chosenCampaignOutlook(plan, campaigns, paths)).toEqual({ outcome: "Positive replies", costPerOutcomeUsd: 25, roi: 2.4 });
+    expect(hotLeadsForCredit(25)).toBe(4);
+    // Nothing proactive on: nothing to read.
+    expect(chosenCampaignOutlook(plan.map((c) => ({ ...c, on: c.reactive })), campaigns, paths)).toBeNull();
+    // No ROI path named: the leg on a ticked path prices it.
+    expect(chosenCampaignOutlook(plan, [{ ...campaigns[1], roi: null, roiCombinationKey: null }], paths)).toEqual({
+      outcome: "Positive replies",
+      costPerOutcomeUsd: 99,
+      roi: null,
+    });
+  });
+
   it("turns the client carousel with a wrap", () => {
     expect(nextSlide(0, 3)).toBe(1);
     expect(nextSlide(2, 3)).toBe(0);
@@ -433,8 +467,13 @@ describe("the wall", () => {
     expect(wall).not.toContain("<EmailCard");
     expect(wall).not.toContain("proofCardsFor(");
     expect(wall).toContain("<Testimonials />");
-    // The match figure is the served median divided, or absent.
-    expect(wall).toContain("hotLeadsForCredit(proof?.hotLeads?.medianCostUsd, copy.creditUsd)");
+    // What the match buys is the CHOSEN campaign's served figures, never the fleet median.
+    expect(wall).toContain("hotLeadsForCredit(outlook?.costPerOutcomeUsd, copy.creditUsd)");
+    expect(wall).not.toContain("medianCostUsd");
+    expect(wall).not.toContain("medianReturnPerDollar");
+    const page = fs.readFileSync(path.resolve(__dirname, "../src/components/v2/get-started/get-started.tsx"), "utf8");
+    const wallTag = page.slice(page.indexOf("<AccountCardWall"), page.indexOf("onClose={() => setWallOpen(false)}", page.indexOf("<AccountCardWall")));
+    expect(wallTag).toContain("outlook={chosenCampaignOutlook(campaignRows,");
     // Email code, no password to type.
     expect(wall).not.toContain('type="password"');
     expect(wall).toContain('strategy: "email_code"');

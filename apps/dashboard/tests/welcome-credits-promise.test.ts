@@ -83,18 +83,19 @@ function read(rel: string): string {
 }
 
 /**
- * The $99/month plan is the default offer (owner 2026-10-03: "we stop talking about
- * $1/day"). Every signup-facing dashboard surface a visitor meets before choosing
- * sells it, so none of them may promise the pay-as-you-go $30 or $1/day. The
+ * Prepaid credit is the offer (owner 2026-10-06: the platform is free, no free trial,
+ * the monthly plan retired for new customers). Every signup-facing dashboard surface
+ * a visitor meets before choosing says so: none may promise the plan, the trial, the
+ * $30 or $1/day. The
  * pay-as-you-go wall copy (`wallCopy({ subscription: false })`) is exempt: only a
  * visitor whose `lp_variant` cookie names another variant ever reads it.
  */
-describe("signup-facing surfaces sell the $99/month plan", () => {
+describe("signup-facing surfaces sell the prepaid offer", () => {
   const STATIC = [
     "apps/dashboard/src/components/auth/auth-brand-panel.tsx",
     "apps/dashboard/src/app/(authed)/sign-up/[[...sign-up]]/page.tsx",
   ];
-  const RETIRED = [/\$30/, /\$1 ?\/ ?day/, /\$1 (a|per) day/, /from \$1\b/i];
+  const RETIRED = [/\$30/, /\$1 ?\/ ?day/, /\$1 (a|per) day/, /from \$1\b/i, /\$99/, /free trial/i, /3 days are free/i];
 
   for (const rel of STATIC) {
     it(`${rel} promises no $30 and no $1/day`, () => {
@@ -103,13 +104,13 @@ describe("signup-facing surfaces sell the $99/month plan", () => {
     });
   }
 
-  it("the welcome email sells the 3-day trial, in both bodies", () => {
+  it("the welcome email says the platform is free, in both bodies", () => {
     const src = read("apps/dashboard/src/instrumentation.ts");
     const start = src.indexOf('name: "welcome"');
     const tpl = src.slice(start, src.indexOf('name: "goal_launched"'));
     expect(start).toBeGreaterThan(-1);
     for (const pattern of RETIRED) expect(pattern.test(tpl), `welcome still says ${pattern}`).toBe(false);
-    expect(tpl.split("Your first 3 days are free").length - 1).toBe(2);
+    expect(tpl.split("The platform is free.").length - 1).toBe(2);
   });
 });
 
