@@ -125,14 +125,11 @@ describe("Work and Crew are staff mode only (owner 2026-10-03: a simpler dashboa
     expect(route("campaigns/[campaignId]")).not.toContain("StaffOnly");
   });
 
-  it("the sidebar entries and its Crew / Missions groups need staff mode", () => {
+  it("the sidebar carries no Work / Crew entry nor Crew / Missions group (owner 2026-10-07)", () => {
     const shell = read("components/v2/v2-shell.tsx");
-    const at = shell.indexOf("{staffMode && (\n            <>");
-    expect(at).toBeGreaterThan(-1);
-    const block = shell.slice(at, shell.indexOf("</>", at));
-    for (const s of ['"work"', '"crew"']) expect(block).toContain(`v2Href(orgId, brandId, ${s})`);
-    expect(shell).toContain("{staffMode && activeCrews.length > 0 && (");
-    expect(shell).toContain("{staffMode && activeMissions.length > 0 && (");
+    for (const s of ['v2Href(orgId, brandId, "work")', 'v2Href(orgId, brandId, "crew")', 'title="Crew"', 'title="Missions"', "useMissions"]) {
+      expect(shell).not.toContain(s);
+    }
   });
 
   it("the G-keys and the palette skip them outside staff mode", () => {
