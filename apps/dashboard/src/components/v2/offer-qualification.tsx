@@ -14,6 +14,7 @@ import {
   type QualificationMode,
 } from "@/lib/api";
 import {
+  COST_PER_LEAD_TIP,
   FILTER_SCOPE_LINE,
   ROLE_HINT,
   ROLE_LABEL,
@@ -23,13 +24,14 @@ import {
   sortCriteria,
 } from "@/lib/v2/qualification";
 import { EmptyNote, SectionTitle, Shimmer, StateDot } from "@/components/v2/ui";
+import { ExpectedLabel } from "@/components/v2/offer-sales-paths";
 
 const criteriaKey = (brandId: string, offerId: string) => ["offerQualificationCriteria", brandId, offerId] as const;
 
 /**
  * Targeting > Qualification (owner 2026-10-07): the checks this OFFER runs on the companies of
  * its prospects, for every audience of it. Per check: the question, its role (Filter skips a
- * company that fails it, Mention in email hands the proof to the writer), on/off, the served
+ * company that fails it is skipped, Bonus is a plus, never required), on/off, the served
  * cost per lead and the served pass rate. AI suggestions arrive as checks turned off.
  */
 export function OfferQualification({ brandId, offerId }: { brandId: string; offerId: string }) {
@@ -95,7 +97,9 @@ export function OfferQualification({ brandId, offerId }: { brandId: string; offe
                 <tr className="k-line-subtle border-b">
                   <th className="k-label px-3 py-2.5 pl-4 text-left font-normal">Check</th>
                   <th className="k-label w-[190px] px-3 py-2.5 text-left font-normal">Role</th>
-                  <th className="k-label w-[120px] whitespace-nowrap px-3 py-2.5 text-right font-normal">Cost per lead</th>
+                  <th className="k-label w-[120px] whitespace-nowrap px-3 py-2.5 text-right font-normal">
+                    <ExpectedLabel tip={COST_PER_LEAD_TIP}>Cost per lead</ExpectedLabel>
+                  </th>
                   <th className="k-label w-[110px] px-3 py-2.5 text-right font-normal">Pass rate</th>
                   <th className="k-label w-[140px] px-3 py-2.5 text-right font-normal">Status</th>
                   <th className="w-[44px] px-3 py-2.5 pr-4" aria-label="More" />
