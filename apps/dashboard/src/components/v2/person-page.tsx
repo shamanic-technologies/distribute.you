@@ -14,6 +14,8 @@ import { useStaffMode } from "@/lib/use-staff-mode";
 import { LeadHistoryTimeline } from "@/components/audiences/lead-history-timeline";
 import { CrmAttributionCard } from "@/components/crm/crm-attribution-card";
 import { SendingScheduleCard } from "@/components/v2/sending-schedule-card";
+import { LeadChecks } from "@/components/v2/lead-checks";
+import { useSelectedOffer } from "@/components/v2/selected-offer";
 import { CloseWonForm } from "@/components/leads/close-won-form";
 import { EmptyNote, Shimmer, TopBar } from "@/components/v2/ui";
 import { CompanyMark, PersonAvatar, leadCompany, leadCompanyDomain, leadName, leadTitle } from "@/components/v2/people-bits";
@@ -48,6 +50,8 @@ export function PersonPage() {
   const { orgId, brandId, leadRowId } = useParams<{ orgId: string; brandId: string; leadRowId: string }>();
   // A run opens the staff-only Work run page: a customer reads the step, with no link.
   const { staffMode } = useStaffMode();
+  // The Checks read the selected offer's criteria: wait for the offers, never a brand-wide read first.
+  const { offerId, settled: offerSettled } = useSelectedOffer();
   const leadQ = useAuthQuery(["leadDetail", leadRowId, brandId], () => getLeadDetail(leadRowId, brandId), pollOptions);
   const historyQ = useAuthQuery(
     ["leadHistory", leadRowId, brandId, "campaign"],
@@ -133,7 +137,8 @@ export function PersonPage() {
             ) : null}
 
             <div className="mt-6 grid gap-4 lg:grid-cols-[minmax(0,1fr)_320px]">
-              <div className="min-w-0">
+              <div className="min-w-0 space-y-6">
+                {lead.leadId && offerSettled ? <LeadChecks leadId={lead.leadId} brandId={brandId} offerId={offerId} /> : null}
                 {historyQ.data ? (
                   <LeadHistoryTimeline
                     history={historyQ.data}

@@ -3078,6 +3078,126 @@ export async function saveOfferCampaignBudget(
 }
 
 /**
+ * QUALIFICATION (lead-service, through the gateway): the checks an OFFER runs on the
+ * companies of its prospects, for every audience of the offer (owner 2026-10-07). A
+ * `must_pass` check is a FILTER (a company failing it is not served); a `mention` one hands
+ * its proof to the email writer and drops nobody. Cost per lead (`estimate.perRowUsd`) and
+ * pass rate (`passRate.passRate`) are SERVED: rendered, never computed here.
+ */
+export const QUALIFICATION_MODES = ["mention", "must_pass"] as const;
+export type QualificationMode = (typeof QUALIFICATION_MODES)[number];
+
+const QualificationCriterionSchema = z.object({
+  id: z.string(),
+  offerId: z.string(),
+  question: z.string(),
+  why: z.string().nullish(),
+  mode: z.enum(QUALIFICATION_MODES),
+  enabled: z.boolean(),
+  origin: z.string(),
+  source: z.string(),
+  availability: z.string(),
+  estimate: z.object({ perRowUsd: z.coerce.number() }),
+  passRate: z.object({
+    checked: z.coerce.number(),
+    yes: z.coerce.number(),
+    no: z.coerce.number(),
+    unavailable: z.coerce.number(),
+    passRate: z.coerce.number().nullable(),
+  }),
+  createdAt: z.string(),
+});
+
+export type QualificationCriterion = z.infer<typeof QualificationCriterionSchema>;
+
+const QualificationCriteriaSchema = z.object({ criteria: z.array(QualificationCriterionSchema) });
+const QualificationCriterionResponseSchema = z.object({ criterion: QualificationCriterionSchema });
+
+function parseQualification<T>(schema: z.ZodType<T>, raw: unknown, where: string): T {
+  const parsed = schema.safeParse(raw);
+  if (!parsed.success) {
+    console.error(`[dashboard] ${where}: response shape mismatch`, { issues: parsed.error.issues, raw });
+    throw new Error(`[dashboard] ${where}: invalid response shape`);
+  }
+  return parsed.data;
+}
+
+function qualificationBase(brandId: string, offerId: string): string {
+  return `/brands/${encodeURIComponent(brandId)}/offers/${encodeURIComponent(offerId)}/qualification`;
+}
+
+/** GET …/qualification/criteria — every live criterion of the offer, on or off. */
+export async function listOfferQualificationCriteria(brandId: string, offerId: string): Promise<QualificationCriterion[]> {
+  const raw = await apiCall<unknown>(`${qualificationBase(brandId, offerId)}/criteria`);
+  return parseQualification(QualificationCriteriaSchema, raw, "listOfferQualificationCriteria").criteria;
+}
+
+/** PATCH …/qualification/criteria/:id — turn a criterion on or off, or change its role. */
+export async function updateOfferQualificationCriterion(
+  brandId: string,
+  offerId: string,
+  criterionId: string,
+  patch: { enabled?: boolean; mode?: QualificationMode },
+): Promise<QualificationCriterion> {
+  const raw = await apiCall<unknown>(`${qualificationBase(brandId, offerId)}/criteria/${encodeURIComponent(criterionId)}`, {
+    method: "PATCH",
+    body: patch,
+  });
+  return parseQualification(QualificationCriterionResponseSchema, raw, "updateOfferQualificationCriterion").criterion;
+}
+
+/** DELETE …/qualification/criteria/:id — archive a criterion (it leaves the list). */
+export async function archiveOfferQualificationCriterion(brandId: string, offerId: string, criterionId: string): Promise<void> {
+  const raw = await apiCall<unknown>(`${qualificationBase(brandId, offerId)}/criteria/${encodeURIComponent(criterionId)}`, {
+    method: "DELETE",
+  });
+  parseQualification(z.object({ archived: z.literal(true) }), raw, "archiveOfferQualificationCriterion");
+}
+
+/**
+ * POST …/qualification/suggestions — AI suggests checks for the offer, written as criteria
+ * turned OFF. It SPENDS on the org (a 402 opens the billing guard like every other spend).
+ */
+export async function suggestOfferQualificationCriteria(brandId: string, offerId: string): Promise<QualificationCriterion[]> {
+  const raw = await apiCall<unknown>(`${qualificationBase(brandId, offerId)}/suggestions`, { method: "POST", body: {} });
+  return parseQualification(QualificationCriteriaSchema, raw, "suggestOfferQualificationCriteria").criteria;
+}
+
+export const LEAD_CHECK_VERDICTS = ["yes", "no", "unavailable", "not_checked"] as const;
+
+const LeadQualificationSchema = z.object({
+  domain: z.string().nullable(),
+  checks: z.array(
+    z.object({
+      criterionId: z.string(),
+      offerId: z.string(),
+      question: z.string(),
+      mode: z.enum(QUALIFICATION_MODES),
+      source: z.string(),
+      verdict: z.enum(LEAD_CHECK_VERDICTS),
+      evidence: z.string().nullable(),
+      screenshotUrl: z.string().nullable(),
+      reason: z.string().nullable(),
+      checkedAt: z.string().nullable(),
+    }),
+  ),
+});
+
+export type LeadQualification = z.infer<typeof LeadQualificationSchema>;
+export type LeadCheck = LeadQualification["checks"][number];
+
+/**
+ * GET /leads/:leadId/qualification — what the offer's ENABLED checks say about one person's
+ * company. `leadId` is the PERSON (`Lead.leadId`), not the lead row id the people pages route on.
+ */
+export async function getLeadQualification(leadId: string, brandId: string, offerId: string | null): Promise<LeadQualification> {
+  const q = new URLSearchParams({ brandId });
+  if (offerId) q.set("offerId", offerId);
+  const raw = await apiCall<unknown>(`/leads/${encodeURIComponent(leadId)}/qualification?${q.toString()}`);
+  return parseQualification(LeadQualificationSchema, raw, "getLeadQualification");
+}
+
+/**
  * The platform's step, leg and channel catalogue, as features-service publishes it
  * (`GET /public/channels`, public, no auth, no org scope).
  *
