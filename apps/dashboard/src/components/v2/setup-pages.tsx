@@ -27,6 +27,7 @@ import { OfferLifetimeRevenue } from "@/components/settings/offer-campaigns-card
 import { BrandOfferCard } from "@/components/settings/brand-offer-card";
 import { V2AudiencesTable } from "@/components/v2/audiences-table";
 import { OfferQualification } from "@/components/v2/offer-qualification";
+import { OfferRevenueSteps } from "@/components/v2/offer-revenue-steps";
 import { V2CrmRawView } from "@/components/v2/integrations-crm";
 import { V2CrmMergedView } from "@/components/v2/integrations-merged";
 import { V2ConversationsView } from "@/components/v2/integrations-conversations";
@@ -181,23 +182,39 @@ export function useOfferName(brandId: string, offerId: string | null) {
  * crew with its budget, and the way to add one. A mission's own page is where its
  * budget and status are changed.
  */
-export function V2OfferPage() {
+/**
+ * The offer page: Overview (the offer itself) and Revenue Steps (the legs and steps its
+ * sales paths are built from, moved off the Outbound page, owner 2026-10-07).
+ */
+export function V2OfferPage({ view = "overview" }: { view?: "overview" | "revenue-steps" }) {
   const { orgId, brandId, offerId } = useIds();
   const name = useOfferName(brandId, offerId);
   const { missions } = useMissions(orgId, brandId, { allOffers: true });
   if (!offerId) return null;
+  const base = v2OfferHref(orgId, brandId, offerId);
+  const tabs: V2Tab[] = [
+    { label: "Overview", href: base, active: view === "overview" },
+    { label: "Revenue Steps", href: v2OfferHref(orgId, brandId, offerId, "revenue-steps"), active: view === "revenue-steps" },
+  ];
   return (
     <V2Page
-      crumbs={[{ label: name ?? " " }]}
+      crumbs={view === "overview" ? [{ label: name ?? " " }] : [{ label: name ?? " ", href: base }, { label: "Revenue Steps" }]}
       title={<OfferIdentityTitle brandId={brandId} offerId={offerId} />}
+      tabs={tabs}
     >
-      <OfferPlanBanner brandId={brandId} offerId={offerId} missions={missions} />
-      <div className="space-y-8">
-        <OfferLifetimeRevenue brandId={brandId} offerId={offerId} />
-        <BrandOfferCard brandId={brandId} offerId={offerId} />
-        <OfferArchiveCard brandId={brandId} offerId={offerId} />
-        <ArchivedOffers brandId={brandId} />
-      </div>
+      {view === "revenue-steps" ? (
+        <OfferRevenueSteps brandId={brandId} offerId={offerId} />
+      ) : (
+        <>
+          <OfferPlanBanner brandId={brandId} offerId={offerId} missions={missions} />
+          <div className="space-y-8">
+            <OfferLifetimeRevenue brandId={brandId} offerId={offerId} />
+            <BrandOfferCard brandId={brandId} offerId={offerId} />
+            <OfferArchiveCard brandId={brandId} offerId={offerId} />
+            <ArchivedOffers brandId={brandId} />
+          </div>
+        </>
+      )}
     </V2Page>
   );
 }
