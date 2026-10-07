@@ -1,10 +1,12 @@
 import { z } from "zod";
-import { firmographicLines, visitPerson, visitRecap, type VisitEvent } from "./visit-recap";
+import { firmographicLines, RETURNING_LOOKBACK_DAYS, visitPerson, visitRecap, type ReturningVisit, type VisitEvent } from "./visit-recap";
 
 /**
- * Every 5 minutes, finds the visits that reached onboarding and ended 30 to 40
- * minutes ago (PostHog closes a session after 30 idle minutes), and sends the
- * owner one Telegram recap per visit (`visit-recap.ts` builds the text).
+ * Every 5 minutes, finds the visits that ended 30 to 40 minutes ago (PostHog
+ * closes a session after 30 idle minutes) and either reached onboarding or came
+ * from someone who had visited before (another session of the same PostHog
+ * person in the last 90 days, on any surface), and sends the owner one Telegram
+ * recap per visit (`visit-recap.ts` builds the text).
  *
  * Humans only: PostHog runs in the browser, so a scanner that runs no JavaScript
  * never appears, and the visits the morning brief already treats as machines or
@@ -28,16 +30,47 @@ const HEADLESS =
 const SCANNER =
   `(empty(${EMAIL}) and properties.$os = 'Mac OS X' and properties.$browser = 'Chrome' and properties.$screen_width = 1680)`;
 
+// One row per ended human visit: its id, how many earlier visits the same person
+// made, when the last one ended. A visit with no earlier one is sent only when it
+// reached onboarding; one whose last visit ended under 30 minutes earlier is the
+// same sitting (a second tab), not a return.
 export const ENDED_VISITS_SQL = `
-select $session_id
-from events
-where timestamp > now() - interval 1 day and $session_id != ''
-group by $session_id
-having max(timestamp) between now() - interval 40 minute and now() - interval 30 minute
-  and countIf(event = '$pageview' and properties.$host = 'dashboard.distribute.you' and properties.$pathname in ('/get-started', '/onboarding')) > 0
-  and countIf(${INTERNAL} or ${HEADLESS} or ${SCANNER}) = 0
-order by max(timestamp)
+select e.sid,
+  countIf(p.sid != e.sid and p.started < e.started) as prior_visits,
+  maxIf(p.ended_at, p.sid != e.sid and p.started < e.started) as last_seen,
+  any(e.onboarding) as onboarding,
+  any(e.ended_at) as ended,
+  any(e.started) as visit_started
+from (
+  select $session_id as sid, any(person_id) as pid, min(timestamp) as started, max(timestamp) as ended_at,
+    countIf(event = '$pageview' and properties.$host = 'dashboard.distribute.you' and properties.$pathname in ('/get-started', '/onboarding')) as onboarding
+  from events
+  where timestamp > now() - interval 1 day and $session_id != ''
+  group by sid
+  having ended_at between now() - interval 40 minute and now() - interval 30 minute
+    and countIf(${INTERNAL} or ${HEADLESS} or ${SCANNER}) = 0
+) as e
+left join (
+  select person_id as pid, $session_id as sid, min(timestamp) as started, max(timestamp) as ended_at
+  from events
+  where timestamp > now() - interval ${RETURNING_LOOKBACK_DAYS} day and $session_id != ''
+  group by pid, sid
+) as p on p.pid = e.pid
+group by e.sid
+having onboarding > 0 or (prior_visits > 0 and last_seen < visit_started - interval 30 minute)
+order by ended
 limit ${MAX_VISITS_PER_TICK}`;
+
+/** An ended visit, and its earlier visits when the visitor is coming back. */
+export function rowToVisit(row: unknown[]): { sessionId: string; returning: ReturningVisit | null } {
+  const priorVisits = Number(row[1]);
+  if (!Number.isFinite(priorVisits)) throw new Error(`ended visit row has no prior visit count: ${JSON.stringify(row)}`);
+  if (priorVisits === 0) return { sessionId: String(row[0]), returning: null };
+  if (typeof row[2] !== "string" || Number.isNaN(Date.parse(row[2]))) {
+    throw new Error(`returning visit row has no last-seen time: ${JSON.stringify(row)}`);
+  }
+  return { sessionId: String(row[0]), returning: { priorVisits, lastSeenAt: row[2] } };
+}
 
 function visitEventsSql(sessionIds: string[]): string {
   const ids = sessionIds.map((id) => `'${id.replace(/[^A-Za-z0-9-]/g, "")}'`).join(", ");
@@ -149,7 +182,7 @@ const FirmographicsResponseSchema = z.object({
 type FirmographicsResponse = z.infer<typeof FirmographicsResponseSchema>;
 
 /** The company block of a recap, from apollo-service's answer. */
-export function companyLines(res: FirmographicsResponse): string[] {
+export function companyLines(res: FirmographicsResponse, email: string | null = null): string[] {
   if (!res.company) {
     return res.noCompanyReason === "personal_email_domain" ? [] : [`No company found for ${res.domain}`];
   }
@@ -160,7 +193,7 @@ export function companyLines(res: FirmographicsResponse): string[] {
     revenueRange: res.company.revenueRange?.label ?? null,
     category: res.company.category,
     role: res.person?.title ?? null,
-  });
+  }, email);
 }
 
 /**
@@ -187,7 +220,7 @@ async function lookupCompany(config: Config, events: VisitEvent[]): Promise<stri
     if (!res.ok) throw new Error(`apollo-service ${res.status}: ${(await res.text()).slice(0, 300)}`);
     const parsed = FirmographicsResponseSchema.safeParse(await res.json());
     if (!parsed.success) throw new Error(`apollo-service answered an unexpected shape: ${parsed.error.message}`);
-    return companyLines(parsed.data);
+    return companyLines(parsed.data, person.email);
   } catch (err) {
     console.error(`[dashboard/visit-recap] company lookup failed for ${person.domain}:`, err);
     return [`Company lookup failed for ${person.domain}`];
@@ -214,21 +247,22 @@ async function tick(config: Config): Promise<void> {
     const now = Date.now();
     for (const [id, at] of sent) if (now - at > 2 * 60 * 60 * 1000) sent.delete(id);
 
-    const ids = (await hogql(config, ENDED_VISITS_SQL)).map((r) => String(r[0])).filter((id) => !sent.has(id));
-    if (!ids.length) return;
+    const visits = (await hogql(config, ENDED_VISITS_SQL)).map(rowToVisit).filter((v) => !sent.has(v.sessionId));
+    if (!visits.length) return;
+    const ids = visits.map((v) => v.sessionId);
 
     const bySession = new Map<string, VisitEvent[]>();
     for (const row of await hogql(config, visitEventsSql(ids))) {
       const { sessionId, event } = rowToEvent(row);
       bySession.set(sessionId, [...(bySession.get(sessionId) ?? []), event]);
     }
-    for (const id of ids) {
+    for (const { sessionId: id, returning } of visits) {
       const events = bySession.get(id);
       if (!events?.length) {
         console.error(`[dashboard/visit-recap] visit listed as ended but its events came back empty`);
         continue;
       }
-      await sendTelegram(config, visitRecap(events, await lookupCompany(config, events)));
+      await sendTelegram(config, visitRecap(events, await lookupCompany(config, events), returning));
       sent.set(id, now);
     }
     console.log(`[dashboard/visit-recap] sent ${ids.length} visit recap(s)`);
