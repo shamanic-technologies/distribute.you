@@ -1,8 +1,10 @@
 "use client";
 
 import { useEffect, useRef } from "react";
-import { useAuth } from "@clerk/nextjs";
+import { useAuth, useUser } from "@clerk/nextjs";
 import { sendAuthNotification } from "@/lib/api";
+import { isStaffEmail, STAFF_BROWSER_KEY } from "@/lib/owner-ping";
+import { pingOwner } from "@/lib/owner-ping-client";
 
 const INTENT_KEY = "distribute_auth_intent";
 const SIGNIN_TRACKED_KEY = "distribute_signin_tracked";
@@ -16,7 +18,19 @@ const PROMO_KEY = "distribute_promo_code";
  */
 export function AuthEventTracker() {
   const { isSignedIn } = useAuth();
+  const { user } = useUser();
   const hasFired = useRef(false);
+
+  // A browser a staff account signed in on: the owner's own later visits send him no ping.
+  const email = user?.primaryEmailAddress?.emailAddress;
+  useEffect(() => {
+    if (!isStaffEmail(email)) return;
+    try {
+      localStorage.setItem(STAFF_BROWSER_KEY, "1");
+    } catch {
+      // No storage: nothing to remember.
+    }
+  }, [email]);
 
   useEffect(() => {
     if (!isSignedIn || hasFired.current) return;
@@ -29,6 +43,7 @@ export function AuthEventTracker() {
       const promoCode = sessionStorage.getItem(PROMO_KEY);
       if (promoCode) sessionStorage.removeItem(PROMO_KEY);
       sendAuthNotification("signup_notification", undefined, promoCode ? { promoCode } : undefined).catch(() => {});
+      pingOwner({ event: "signed_up" });
       // User-facing welcome email — routed to the new user server-side (not in ADMIN_NOTIFICATION_EVENTS),
       // once-only deduped on {orgId}:welcome:{userId}.
       sendAuthNotification("welcome").catch(() => {});

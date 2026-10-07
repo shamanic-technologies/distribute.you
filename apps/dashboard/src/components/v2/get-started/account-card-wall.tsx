@@ -63,6 +63,8 @@ import { PhoneField, browserPhoneCountry } from "./phone-field";
 import { EMPTY_PROGRESS, launchFromPreview, type LaunchCampaign, type LaunchProgress } from "./launch";
 import { PrepaidTopup, type TopupChoice } from "./prepaid-topup";
 import { payTopup, settleTopup } from "./pay-topup";
+import { pingOwner } from "@/lib/owner-ping-client";
+import { hostOf as pingHostOf, websiteUrl as pingWebsiteUrl } from "@/lib/v2/get-started";
 import { CountUp, usePrefersReducedMotion } from "./motion";
 import { TrialSpots, TrialTimer } from "./urgency";
 import { WALL_OPEN_CLASS } from "./view-transition";
@@ -529,6 +531,7 @@ export function AccountCardWall({
       return;
     }
     setAccount(settled.account);
+    pingOwner({ event: "paid", domain: website ? pingHostOf(pingWebsiteUrl(website)) : null, amountUsd: (Number(settled.account.credited_cents) - p.creditedBefore) / 100 });
     posthog.capture("get_started_card_saved", { plan: "prepaid" });
     void launch();
   }
@@ -556,6 +559,7 @@ export function AccountCardWall({
       } catch {
         // Nothing to clean up in a tab that never wrote one.
       }
+      pingOwner({ event: "launched", domain: website ? pingHostOf(pingWebsiteUrl(website)) : null });
       window.location.assign(v2CampaignHref(orgId, brandId, campaignId));
     } catch (e) {
       console.error("[get-started] launch failed:", e);
