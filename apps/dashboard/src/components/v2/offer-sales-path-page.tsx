@@ -47,7 +47,8 @@ export function V2OfferSalesPathPage() {
   const catalogue = useLegCatalogue();
   const channels = useAcquisitionChannels();
   const qc = useQueryClient();
-  // Sourcing apart from outreach (owner 2026-10-07) shows in staff mode first.
+  // Sourcing apart from outreach (owner 2026-10-07) shows in staff mode first; staff
+  // may also tick a channel we do not run yet (LinkedIn Posting).
   const { staffMode } = useStaffMode();
 
   const q = useAuthQuery(["offerSalesPath", brandId, offerId], () => getOfferSalesPath(brandId, offerId), {
@@ -233,7 +234,7 @@ export function V2OfferSalesPathPage() {
             </div>
           )
         ) : (
-          <OfferChannelsPicker channels={eligible.channels} accepted={accepted} onToggle={onToggleChannel} orgId={orgId} brandId={brandId} offerId={offerId} />
+          <OfferChannelsPicker channels={eligible.channels} accepted={accepted} onToggle={onToggleChannel} orgId={orgId} brandId={brandId} offerId={offerId} staffMode={staffMode} />
         )}
       </div>
       <div className="mt-8">

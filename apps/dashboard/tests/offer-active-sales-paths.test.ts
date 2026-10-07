@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   acceptedChannels,
+  channelSelectable,
   OfferChannelsSchema,
   parseOrThrow,
   salesPathChannels,
@@ -56,5 +57,24 @@ describe("ticked sales paths", () => {
   it("a tick sends the full list back", () => {
     expect(togglePath(new Set(["a"]), "c", true)).toEqual(["a", "c"]);
     expect(togglePath(new Set(["a", "c"]), "a", false)).toEqual(["c"]);
+  });
+});
+
+describe("staff-activable channels", () => {
+  it("LinkedIn Posting ticks only in staff mode; a managed channel always ticks; others never", () => {
+    const li = { slug: "organic-linkedin-publishing", managed: false };
+    expect(channelSelectable(li, false)).toBe(false);
+    expect(channelSelectable(li, true)).toBe(true);
+    expect(channelSelectable({ slug: "sales-cold-email-outreach", managed: true }, false)).toBe(true);
+    expect(channelSelectable({ slug: "google-ads", managed: false }, true)).toBe(false);
+  });
+
+  it("the picker gates the card on the staff-aware rule, and the page passes staff mode", async () => {
+    const { readFileSync } = await import("node:fs");
+    const picker = readFileSync("src/components/v2/offer-channels-picker.tsx", "utf8");
+    expect(picker).toContain("channelSelectable(c, staffMode)");
+    expect(picker).toContain("contactUs={!selectable}");
+    const page = readFileSync("src/components/v2/offer-sales-path-page.tsx", "utf8");
+    expect(page).toContain("staffMode={staffMode}");
   });
 });

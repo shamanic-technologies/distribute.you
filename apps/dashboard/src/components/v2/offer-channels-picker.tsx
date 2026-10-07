@@ -5,7 +5,7 @@ import { SectionTitle } from "@/components/v2/ui";
 import { SelectCard } from "@/components/v2/select-card";
 import { AcquisitionChannelMark } from "@/components/marks/acquisition-channel-mark";
 import { channelMarkForSlug } from "@/lib/acquisition-channels";
-import type { SalesPathChannel } from "@/lib/offer-active-sales-paths";
+import { channelSelectable, type SalesPathChannel } from "@/lib/offer-active-sales-paths";
 import { ChannelContactModal } from "@/components/v2/channel-contact-modal";
 
 /**
@@ -14,7 +14,8 @@ import { ChannelContactModal } from "@/components/v2/channel-contact-modal";
  * a Step (`SelectCard`): on = accent fill + check + full-weight name, off = plain and muted. The sales
  * paths above are filtered on the ticked channels by features-service. Your-team channels
  * are not shown; a channel we do not run yet is a "Contact us" card: a click opens a form
- * (what they want, the budget they have in mind) that emails staff right away.
+ * (what they want, the budget they have in mind) that emails staff right away. In staff
+ * mode a few of those (`STAFF_ACTIVABLE_CHANNEL_SLUGS`, LinkedIn Posting) tick like the others.
  */
 export function OfferChannelsPicker({
   channels,
@@ -23,6 +24,7 @@ export function OfferChannelsPicker({
   orgId,
   brandId,
   offerId,
+  staffMode,
 }: {
   channels: readonly SalesPathChannel[];
   accepted: ReadonlySet<string>;
@@ -30,26 +32,28 @@ export function OfferChannelsPicker({
   orgId: string;
   brandId: string;
   offerId: string;
+  staffMode: boolean;
 }) {
   const shown = channels.filter((c) => !c.customerOperated);
   const [contact, setContact] = useState<SalesPathChannel | null>(null);
   return (
     <section>
-      <SectionTitle count={shown.filter((c) => c.managed && accepted.has(c.slug)).length}>Channels</SectionTitle>
+      <SectionTitle count={shown.filter((c) => channelSelectable(c, staffMode) && accepted.has(c.slug)).length}>Channels</SectionTitle>
       <p className="k-fg2 -mt-1 mb-3 text-[13px]">The channels your sales paths may use.</p>
       <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4">
         {shown.map((c) => {
-          const on = c.managed && accepted.has(c.slug);
+          const selectable = channelSelectable(c, staffMode);
+          const on = selectable && accepted.has(c.slug);
           return (
             <SelectCard
               key={c.slug}
               on={on}
-              onClick={() => (c.managed ? onToggle(c.slug, !on) : setContact(c))}
+              onClick={() => (selectable ? onToggle(c.slug, !on) : setContact(c))}
               mark={<AcquisitionChannelMark def={{ mark: channelMarkForSlug(c.slug) }} size="xs" dimmed={!on} />}
               title={c.name}
               sub={c.shortDescription}
               wrapSub
-              contactUs={!c.managed}
+              contactUs={!selectable}
             />
           );
         })}
