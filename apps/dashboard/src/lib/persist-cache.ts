@@ -256,6 +256,8 @@ export const PERSISTABLE_QUERY_ROOTS = new Set([
   "brandRevenueWindow",
   // One campaign's window (its email counts and provisioned follow-ups), the campaign page's cards.
   "campaignRevenueWindow",
+  // One campaign's return curve (`roiHistory` alone, parsed down), the campaign page's line chart.
+  "campaignRoiHistory",
   // What the contacted-but-not-engaged leads are worth (v2 Deals), a separate figure.
   "contactedValue",
   "dealsValue",

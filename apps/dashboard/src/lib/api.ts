@@ -62,7 +62,7 @@ import {
 import type { PublishedChannelTerms } from "./channel-minimums";
 import { ORG_DESYNC_ERROR, ORG_DESYNC_STATUS } from "./org-desync";
 import { keepLastGoodFields } from "./keep-last-good";
-import type { RevenueOverview } from "./revenue-view";
+import type { RevenueOverview, RoiHistory } from "./revenue-view";
 import { RevenueWindowResponseSchema, type RevenueWindow, type RevenueWindowDays } from "./revenue-window";
 import type {
   WorkflowCatalogueRow,
@@ -72,7 +72,7 @@ import type {
 } from "./campaign-workflow-rows";
 import type { LeadStanding } from "./lead-standing";
 import type { LeadConversation } from "./lead-conversation";
-import { EconomicsMaturitySchema, ScopeMaturitySchema, parseFeatureRevenue } from "./revenue-parse";
+import { EconomicsMaturitySchema, RoiHistorySchema, ScopeMaturitySchema, parseFeatureRevenue } from "./revenue-parse";
 import { maturityPairSchema, type MaturityPair } from "./maturity";
 import type { EconomicsFigures, OutcomeFigures, ScopeMaturity } from "./revenue-view";
 import { LeadHistorySchema, type LeadHistory } from "./lead-history";
@@ -5317,6 +5317,29 @@ export async function getOfferRevenueWindow(
     throw new Error("[dashboard] getOfferRevenueWindow: invalid response shape");
   }
   return parsed.data.window;
+}
+
+/**
+ * ONE campaign's return curve (features-service `/features/:slug/revenue?campaignId=`, its
+ * `roiHistory`): cumulative committed spend and realized pipeline per UTC day since the
+ * campaign identity's first day, net. The producer pins its last `roiMultiple` to the body's
+ * `costEconomics.roiMultiple`, the figure the campaign's ROI tile reads, so the line ends on
+ * the tile. Null when the producer could not build the curve (it is fail-soft there).
+ */
+export async function getCampaignRoiHistory(
+  featureSlug: string,
+  brandId: string,
+  campaignId: string,
+  token?: string,
+): Promise<RoiHistory | null> {
+  const query = new URLSearchParams({ brandId, campaignId, pricing: "net" });
+  const raw = await apiCall<unknown>(`/features/${encodeURIComponent(featureSlug)}/revenue?${query.toString()}`, { token });
+  const parsed = z.object({ roiHistory: RoiHistorySchema.nullish() }).safeParse(raw);
+  if (!parsed.success) {
+    console.error("[dashboard] getCampaignRoiHistory: response shape mismatch", { featureSlug, campaignId, issues: parsed.error.issues });
+    throw new Error("[dashboard] getCampaignRoiHistory: invalid response shape");
+  }
+  return parsed.data.roiHistory ?? null;
 }
 
 /**

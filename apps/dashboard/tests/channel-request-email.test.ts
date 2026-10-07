@@ -52,7 +52,9 @@ describe("channel request email", () => {
 
   it("the Channels picker opens the contact form for a channel we do not run", () => {
     const src = readFileSync(join(__dirname, "../src/components/v2/offer-channels-picker.tsx"), "utf8");
-    expect(src).toContain("contactUs={!c.managed}");
+    // A channel we do not run is a Contact us card, unless staff mode makes it tickable.
+    expect(src).toContain("contactUs={!selectable}");
+    expect(src).toContain("channelSelectable(c, staffMode)");
     expect(src).toContain("setContact(c)");
     expect(src).toContain("<ChannelContactModal");
   });

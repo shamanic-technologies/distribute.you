@@ -29,6 +29,7 @@ import { v2OfferHref } from "@/lib/v2/routes";
 import { SALES_PATH_CHANNEL_SLUGS, type SalesPathSelection } from "@/lib/offer-sales-path";
 import { EmptyNote, Shimmer } from "@/components/v2/ui";
 import { V2Page, useOfferName } from "@/components/v2/setup-pages";
+import { useStaffMode } from "@/lib/use-staff-mode";
 import { OfferSalesPath } from "@/components/v2/offer-sales-path";
 import { OfferSalesPaths } from "@/components/v2/offer-sales-paths";
 
@@ -45,7 +46,9 @@ export function V2OfferSalesPathPage() {
   const catalogue = useLegCatalogue();
   const channels = useAcquisitionChannels();
   const qc = useQueryClient();
-  // Sourcing apart from outreach (owner 2026-10-07) shows in staff mode first.
+  // Sourcing apart from outreach (owner 2026-10-07) shows in staff mode first; staff
+  // may also tick a channel we do not run yet (LinkedIn Posting).
+  const { staffMode } = useStaffMode();
 
   const q = useAuthQuery(["offerSalesPath", brandId, offerId], () => getOfferSalesPath(brandId, offerId), {
     enabled: !!offerId,
@@ -184,7 +187,7 @@ export function V2OfferSalesPathPage() {
     <V2Page
       crumbs={[
         { label: name ?? " ", href: v2OfferHref(orgId, brandId, offerId) },
-        { label: "Sales path" },
+        { label: "Outbound" },
       ]}
       title={name ?? " "}
       sub="Every way this offer can sell, best return first."
@@ -226,7 +229,7 @@ export function V2OfferSalesPathPage() {
             </div>
           )
         ) : (
-          <OfferChannelsPicker channels={eligible.channels} accepted={accepted} onToggle={onToggleChannel} orgId={orgId} brandId={brandId} offerId={offerId} />
+          <OfferChannelsPicker channels={eligible.channels} accepted={accepted} onToggle={onToggleChannel} orgId={orgId} brandId={brandId} offerId={offerId} staffMode={staffMode} />
         )}
       </div>
       <div className="mt-8">

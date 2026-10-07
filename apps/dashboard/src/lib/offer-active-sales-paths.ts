@@ -104,6 +104,17 @@ export function salesPathChannels(
   return out;
 }
 
+/**
+ * Channels we do not run yet that staff may tick in staff mode (owner 2026-10-07: LinkedIn
+ * Posting, "Contact us on GA, activable on Staff mode"). A customer keeps the Contact us card.
+ */
+export const STAFF_ACTIVABLE_CHANNEL_SLUGS: ReadonlySet<string> = new Set(["organic-linkedin-publishing"]);
+
+/** Whether this card ticks on a click (else it opens the contact form). */
+export function channelSelectable(c: Pick<SalesPathChannel, "slug" | "managed">, staffMode: boolean): boolean {
+  return c.managed || (staffMode && STAFF_ACTIVABLE_CHANNEL_SLUGS.has(c.slug));
+}
+
 /** The channels an offer accepts, as a set. Never stated = the channels we run (features-service's reading). */
 export function acceptedChannels(data: OfferChannels, channelsWeRun: readonly string[]): ReadonlySet<string> {
   return new Set(data.stated && data.channelSlugs ? data.channelSlugs : channelsWeRun);

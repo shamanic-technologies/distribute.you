@@ -262,43 +262,62 @@ function V2Sidebar() {
           )}
         </div>
 
-        {/* The selected offer's campaigns that are ON (proactive or reactive), as the Sales
-            path page's Campaigns section names them, each opening its own page with a live
-            dot. Nothing on, no group (owner 2026-10-05). */}
-        {offerId && activeMissions.length > 0 && (
-          <Group title="Campaigns">
-            {activeMissions.map(({ m, name }) => {
-              return (
-                <NavItem
-                  key={m.row.campaign.id}
-                  href={m.href}
-                  label={name ?? m.crew.name}
-                  icon={name ? <PathAvatar name={name} size={16} /> : <CrewMark color={m.crew.color} glyph={m.crew.glyph} size={16} />}
-                  active={pathname.startsWith(m.href)}
-                  trailing={
-                    <span className="k-dot-pulse ml-auto mr-1 h-1.5 w-1.5 shrink-0 rounded-full bg-[var(--run)] text-[var(--run)]" aria-label="On" />
-                  }
-                />
-              );
-            })}
-          </Group>
-        )}
-
-        <Group title="Setup">
-          {/* The steps the selected offer sells through, its own page (owner 2026-10-04). */}
-          <NavItem
-            href={offerId ? v2OfferHref(orgId, brandId, offerId, "sales-path") : v2Href(orgId, brandId, "sales-path")}
-            label="Sales path"
-            icon={<I d={ICONS.path} />}
-            active={section === "sales-path"}
-          />
-          {/* Where the selected offer's leads are found: one campaign per source (owner 2026-10-07). */}
+        {/* Sourcing (owner 2026-10-07): the button opens the offer's Sourcing page, its source
+            campaigns that are ON sit under it with a live dot, as Outbound does for its own. */}
+        <div className="mt-5 space-y-px">
           <NavItem
             href={offerId ? v2OfferHref(orgId, brandId, offerId, "sourcing") : v2Href(orgId, brandId, "sourcing")}
             label="Sourcing"
             icon={<I d={ICONS.audience} />}
             active={section === "sourcing"}
           />
+          {offerId &&
+            activeMissions
+              .filter(({ campaign }) => campaign?.kind === "source")
+              .map(({ m, name }) => (
+                <NavItem
+                  key={m.row.campaign.id}
+                  href={m.href}
+                  label={name ?? m.crew.name}
+                  icon={name ? <PathAvatar name={name} size={16} /> : <CrewMark color={m.crew.color} glyph={m.crew.glyph} size={16} />}
+                  active={pathname.startsWith(m.href)}
+                  indent
+                  trailing={
+                    <span className="k-dot-pulse ml-auto mr-1 h-1.5 w-1.5 shrink-0 rounded-full bg-[var(--run)] text-[var(--run)]" aria-label="On" />
+                  }
+                />
+              ))}
+        </div>
+
+        {/* Outbound (owner 2026-10-07): the button opens the Sales path page, the
+            selected offer's campaigns that are ON sit under it with a live dot, named
+            as that page's Campaigns section names them. */}
+        <div className="mt-5 space-y-px">
+          <NavItem
+            href={offerId ? v2OfferHref(orgId, brandId, offerId, "sales-path") : v2Href(orgId, brandId, "sales-path")}
+            label="Outbound"
+            icon={<I d={ICONS.path} />}
+            active={section === "sales-path"}
+          />
+          {offerId &&
+            activeMissions
+              .filter(({ campaign }) => campaign?.kind !== "source")
+              .map(({ m, name }) => (
+              <NavItem
+                key={m.row.campaign.id}
+                href={m.href}
+                label={name ?? m.crew.name}
+                icon={name ? <PathAvatar name={name} size={16} /> : <CrewMark color={m.crew.color} glyph={m.crew.glyph} size={16} />}
+                active={pathname.startsWith(m.href)}
+                indent
+                trailing={
+                  <span className="k-dot-pulse ml-auto mr-1 h-1.5 w-1.5 shrink-0 rounded-full bg-[var(--run)] text-[var(--run)]" aria-label="On" />
+                }
+              />
+            ))}
+        </div>
+
+        <Group title="Setup">
           {/* The selected offer's own page: there is no list of offers (owner 2026-10-03),
               the switcher at the top is where another one is picked. */}
           <NavItem
