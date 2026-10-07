@@ -4,7 +4,6 @@ import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useParams, usePathname, useSearchParams } from "next/navigation";
 import { AccountMenuV2, SearchTrigger, TenantSwitcherV2 } from "@/components/v2/sidebar-menus";
-import { useMissions } from "@/components/v2/use-missions";
 import { useOngoingCampaigns } from "@/components/v2/ongoing-campaigns";
 import { CrewMark } from "@/components/v2/crew-mark";
 import { V2NavContext } from "@/components/v2/nav-context";
@@ -119,8 +118,6 @@ const I = ({ d }: { d: string }) => (
 const ICONS = {
   today: "M2.5 12.5h11M4 12.5V9m3 3.5V6.5m3 6V8m3 4.5v-6M8 2.5l.7 1.4 1.5.2-1.1 1 .3 1.5L8 5.9l-1.4.7.3-1.5-1.1-1 1.5-.2Z",
   records: "M2.5 3.5h11v9h-11zM2.5 6.5h11M6 6.5v6",
-  work: "M2.5 3.5h11v9h-11zM6 3.5v9M10 3.5v9",
-  crew: "M5.5 7a2 2 0 1 0 0-4 2 2 0 0 0 0 4Zm5 0a2 2 0 1 0 0-4 2 2 0 0 0 0 4ZM2 13c.4-2 1.8-3.5 3.5-3.5S8.6 11 9 13m-.5-3c.6-.4 1.2-.5 2-.5 1.7 0 3.1 1.5 3.5 3.5",
   channels: "M2.5 4.5h11v7h-11zM2.5 4.5 8 8.5l5.5-4",
   audience: "M2.5 4h11M2.5 8h11M2.5 12h7",
   path: "M3.5 12.5a1.5 1.5 0 1 0 0-3 1.5 1.5 0 0 0 0 3Zm9-6a1.5 1.5 0 1 0 0-3 1.5 1.5 0 0 0 0 3ZM5 11h3.5a2 2 0 0 0 2-2V6.5",
@@ -162,8 +159,6 @@ function V2Sidebar() {
   const brandId = params.brandId ?? "";
   const section = v2SectionOf(pathname);
   const { offerId } = useSelectedOffer();
-  const { missions, crews } = useMissions(orgId, brandId);
-  const activeCrews = crews.filter((c) => c.running > 0);
   // The same read and the same order as the Sales path page's Campaigns section
   // (proactive first, ROI high to low), so the two lists never disagree. Today reads it too.
   const { campaigns: activeMissions } = useOngoingCampaigns(orgId, brandId, offerId);
@@ -244,12 +239,6 @@ function V2Sidebar() {
                 active={section === "deals"}
                 trailing={<Count n={dealsInPlay} />}
               />
-            </>
-          )}
-          {staffMode && (
-            <>
-              <NavItem href={v2Href(orgId, brandId, "work")} label="Work" icon={<I d={ICONS.work} />} active={section === "work"} />
-              <NavItem href={v2Href(orgId, brandId, "crew")} label="Crew" icon={<I d={ICONS.crew} />} active={section === "crew"} />
             </>
           )}
           {staffMode && (
@@ -348,25 +337,6 @@ function V2Sidebar() {
           </Group>
         )}
 
-        {/* The sidebar lists only what is WORKING: a crew with a running mission, and
-            running missions. Everything else stays one click away on Crew.
-            Both groups are staff mode only, like the pages they open. */}
-        {staffMode && activeCrews.length > 0 && (
-          <Group title="Crew">
-            {activeCrews.map((c) => (
-              <NavItem
-                key={c.crew.key}
-                href={`${v2Href(orgId, brandId, "crew")}#${encodeURIComponent(c.crew.key)}`}
-                label={c.crew.name}
-                icon={<CrewMark color={c.crew.color} glyph={c.crew.glyph} />}
-                trailing={
-                  <span className="k-dot-pulse ml-auto mr-1 h-1.5 w-1.5 shrink-0 rounded-full bg-[var(--run)] text-[var(--run)]" aria-label="Running" />
-                }
-              />
-            ))}
-          </Group>
-        )}
-
         {topCompanies.length > 0 && (
           <Group title="Top companies">
             {topCompanies.map((o) => {
@@ -385,19 +355,6 @@ function V2Sidebar() {
           </Group>
         )}
 
-        {staffMode && activeMissions.length > 0 && (
-          <Group title="Missions">
-            {activeMissions.map(({ m }) => (
-              <NavItem
-                key={m.row.campaign.id}
-                href={v2CampaignHref(orgId, brandId, m.row.campaign.id)}
-                active={pathname.endsWith(`/campaigns/${m.row.campaign.id}`)}
-                label={m.offerName ? `${m.crew.name} · ${m.offerName}` : m.crew.name}
-                icon={<CrewMark color={m.crew.color} glyph={m.crew.glyph} />}
-              />
-            ))}
-          </Group>
-        )}
       </nav>
       <BrandWhyLine />
       <AccountMenuV2 orgId={orgId} brandId={brandId} />
