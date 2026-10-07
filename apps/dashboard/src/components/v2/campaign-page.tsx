@@ -21,6 +21,7 @@ import { v2CampaignHref, v2OfferHref, type V2CampaignTab } from "@/lib/v2/routes
 import { AcquisitionChannelMark } from "@/components/marks/acquisition-channel-mark";
 import { CampaignControlsTrigger } from "@/components/campaigns/campaign-controls-trigger";
 import { CampaignSettingsCard } from "@/components/settings/campaign-settings-card";
+import { CampaignRoiChart } from "@/components/v2/campaign-roi-chart";
 import { CampaignWorkflowsPage } from "@/components/workflows/campaign-workflows-page";
 import { useMissions, type Mission } from "@/components/v2/use-missions";
 import { LEG_STEPS, LegSteps, StepBar, SummaryCard, useCampaignWindow } from "@/components/v2/offer-channel-page";
@@ -291,6 +292,8 @@ function CampaignOverview({
         </div>
       </section>
 
+      <CampaignRoiChart brandId={brandId} campaignId={campaignId} featureSlug={mission.row.campaign.featureSlug ?? null} />
+
       <div className="grid gap-x-3 gap-y-8 lg:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
         <LegSteps
           brandId={brandId}
@@ -382,6 +385,8 @@ function ConversationOverview({
           <SpentTile win={win} />
         </div>
       </section>
+
+      <CampaignRoiChart brandId={brandId} campaignId={mission.row.campaign.id} featureSlug={mission.row.campaign.featureSlug ?? null} />
 
       <div className="grid gap-x-3 gap-y-8 lg:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
         <section>
