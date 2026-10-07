@@ -51,7 +51,7 @@ export interface PostView {
   /** A plain repost: "<page> reposted this", drawn above the original's card. */
   header: string | null;
   /** A quote: the original post, drawn inside the card. */
-  original: Omit<PostView, "original" | "comments" | "reactions" | "commentsCount" | "repostsCount" | "header"> | null;
+  original: Omit<PostView, "original" | "comments" | "reactions" | "commentsCount" | "repostsCount" | "header" | "commentsStatus"> | null;
   reactions: { total: number; byKind: Partial<Record<ReactionKind, number>> } | null;
   commentsCount: number | null;
   repostsCount: number | null;
@@ -215,7 +215,7 @@ function reactions(r: Body["reactions"]): PostView["reactions"] {
   return { total: r.total, byKind };
 }
 
-function body(b: Body): Omit<PostView, "original" | "comments" | "reactions" | "commentsCount" | "repostsCount" | "header"> {
+function body(b: Body): Omit<PostView, "original" | "comments" | "reactions" | "commentsCount" | "repostsCount" | "header" | "commentsStatus"> {
   return {
     id: b.id,
     url: b.url ?? `https://www.linkedin.com/feed/update/urn:li:activity:${b.id}/`,
