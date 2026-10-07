@@ -28,6 +28,7 @@ import { createContext, useContext, useEffect, useMemo, useRef, useState } from 
 import { useSearchParams } from "next/navigation";
 import { useAuth } from "@clerk/nextjs";
 import posthog from "posthog-js";
+import { pingOwner } from "@/lib/owner-ping-client";
 import { BRAND_WHY } from "@/lib/brand-why";
 import {
   ApiError,
@@ -1191,6 +1192,27 @@ export function GetStarted({ org }: { org?: OrgWalk } = {}) {
     return () => clearTimeout(t);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [phaseKey, stageIdx, wallOpen]);
+
+  // One short Telegram line to the owner at each step of the walk (lib/owner-ping.ts):
+  // the site entered, each step the stage reaches, the payment wall. Once per step per
+  // page load; a reload resumes and says so again, which is news too.
+  const pinged = useRef(new Set<string>());
+  const pingHost = domain ?? (website ? hostOf(websiteUrl(website)) : null);
+  useEffect(() => {
+    if (!started) return;
+    const once = (key: string, send: () => void) => {
+      if (pinged.current.has(key)) return;
+      pinged.current.add(key);
+      send();
+    };
+    once("started", () => pingOwner({ event: "started", domain: pingHost }));
+    const st = GET_STARTED_STEPS[stageIdx];
+    once(`step:${st.key}`, () =>
+      pingOwner({ event: "step", domain: pingHost, step: { label: st.label, index: stageIdx + 1, total: GET_STARTED_STEPS.length } }),
+    );
+    if (wallOpen) once("wall", () => pingOwner({ event: "wall", domain: pingHost }));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [started, stageIdx, wallOpen]);
 
   /** Back: a question step before this one is reopened to be answered again; any other is shown. */
   function goBack(from: GetStartedStepKey) {
