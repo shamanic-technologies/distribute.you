@@ -251,13 +251,13 @@ function V2Sidebar() {
           )}
         </div>
 
-        {/* Outbound (owner 2026-10-07): a section like Setup, Sales path first, then the
+        {/* Outbound (owner 2026-10-07): a section like Setup, its page (the Sales path page, named Outbound) first, then the
             selected offer's campaigns that are ON with a live dot, named as that page's
             Campaigns section names them. Same left edge as every other entry. */}
         <Group title="Outbound">
           <NavItem
             href={offerId ? v2OfferHref(orgId, brandId, offerId, "sales-path") : v2Href(orgId, brandId, "sales-path")}
-            label="Sales path"
+            label="Outbound"
             icon={<I d={ICONS.path} />}
             active={section === "sales-path"}
           />

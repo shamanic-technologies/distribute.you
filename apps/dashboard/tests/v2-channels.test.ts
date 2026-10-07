@@ -55,11 +55,12 @@ describe("sidebar", () => {
     expect(setup).toContain('v2OfferHref(orgId, brandId, offerId, "campaigns")');
     expect(setup).not.toContain('label="Channels"');
   });
-  it("Outbound is a section like Setup: Sales path, then the ON campaigns, no indent (owner 2026-10-07)", () => {
+  it("Outbound is a section like Setup: its Outbound page, then the ON campaigns, no indent (owner 2026-10-07)", () => {
     const outbound = shell.slice(shell.indexOf('<Group title="Outbound">'), shell.indexOf('<Group title="Setup">'));
     expect(shell.indexOf('<Group title="Outbound">')).toBeGreaterThan(-1);
-    expect(outbound.indexOf('label="Sales path"')).toBeGreaterThan(-1);
-    expect(outbound.indexOf('label="Sales path"')).toBeLessThan(outbound.indexOf("activeMissions"));
+    expect(outbound.indexOf('label="Outbound"')).toBeGreaterThan(-1);
+    expect(outbound.indexOf('label="Outbound"')).toBeLessThan(outbound.indexOf("activeMissions"));
+    expect(shell).not.toContain('label="Sales path"');
     expect(outbound).toContain('v2OfferHref(orgId, brandId, offerId, "sales-path")');
     expect(outbound).toContain("bg-[var(--run)]");
     expect(outbound).not.toContain("indent");
