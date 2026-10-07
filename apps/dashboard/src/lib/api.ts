@@ -18,6 +18,7 @@ import {
   type PersonTimeline,
 } from "./people-conversations";
 import { z } from "zod";
+import { LinkedinFeedResponseSchema, toLinkedinFeedPage, type LinkedinFeedPage } from "./v2/linkedin-post-view";
 import {
   CostMarginSchema,
   CurrentPricesSchema,
@@ -1461,6 +1462,18 @@ function parseStaff<T>(name: string, schema: z.ZodType<T>, raw: unknown): T {
     throw new Error(`[dashboard] ${name}: invalid response shape`);
   }
   return parsed.data;
+}
+
+/** The staff Posting reads (social-service, through the gateway's staff gate). */
+export const STAFF_SOCIAL_PATHS = {
+  brandLinkedinPosts: (brandId: string) => `/social/brands/${encodeURIComponent(brandId)}/linkedin-posts`,
+} as const;
+
+/** One page of a brand's own LinkedIn company page posts, newest first (`cursor` = the previous page's `nextCursor`). */
+export async function getBrandLinkedinPosts(brandId: string, cursor: string | null): Promise<LinkedinFeedPage> {
+  const qs = cursor ? `?cursor=${encodeURIComponent(cursor)}` : "";
+  const raw = await apiCall<unknown>(`${STAFF_SOCIAL_PATHS.brandLinkedinPosts(brandId)}${qs}`);
+  return toLinkedinFeedPage(parseStaff("getBrandLinkedinPosts", LinkedinFeedResponseSchema, raw));
 }
 
 export async function getStaffCostMargin(): Promise<CostMargin> {

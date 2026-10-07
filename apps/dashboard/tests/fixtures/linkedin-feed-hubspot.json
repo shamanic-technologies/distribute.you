@@ -1,0 +1,375 @@
+{
+ "brandId": "6278d1e5-193d-47fc-bb5a-f82b715c45b1",
+ "status": "ready",
+ "reason": null,
+ "linkedinPage": {
+  "url": "https://www.linkedin.com/company/hubspot/",
+  "foundOnUrl": "https://hubspot.com"
+ },
+ "sync": {
+  "id": "aed6198f-f9c7-4cfc-9984-b095cac651d4",
+  "status": "completed",
+  "startedAt": "2026-10-07T09:19:59.346Z",
+  "finishedAt": "2026-10-07T09:20:16.914Z",
+  "pagesFetched": 6,
+  "postsSeen": 267,
+  "postsOnPage": 267,
+  "completeHistory": true,
+  "error": null,
+  "fetchedAt": "2026-10-07T09:20:16.914Z",
+  "refreshing": false,
+  "lastAttempt": {
+   "id": "aed6198f-f9c7-4cfc-9984-b095cac651d4",
+   "status": "completed",
+   "startedAt": "2026-10-07T09:19:59.346Z",
+   "finishedAt": "2026-10-07T09:20:16.914Z",
+   "pagesFetched": 6,
+   "postsSeen": 267,
+   "postsOnPage": 267,
+   "completeHistory": true,
+   "error": null
+  }
+ },
+ "total": 267,
+ "posts": [
+  {
+   "id": "7511811320833347585",
+   "url": "https://www.linkedin.com/posts/hubspot_our-customers-dont-need-more-tools-they-activity-7511811320833347585-mrZ2",
+   "kind": "post",
+   "text": "Our customers don't need more tools. They need the tools they have to do the work.\n\nThat's the idea Duncan Lennox, HubSpot's Chief Product & Technology Officer, brought to the UNBOUND 2026 stage. \n\nWe announced a self-updating CRM, brand-new Breeze Assistant and Marketing Studio, and more. All designed to help you build more demand, close more deals, and delight more customers. \n\nLink in the comments.",
+   "media": {
+    "video": {
+     "videoUrl": "https://dms.licdn.com/playlist/vid/v2/D4E10AQGQ_Z1y8mxlAw/mp4-720p-30fp-crf28/B4EaD9QiX0GQBo-/0/1790955376037?e=1791972000&v=beta&t=CsttLnRryCiZ69Abnbc1zZke3_wzirNF6JJw0qReurk",
+     "thumbnailUrl": "https://dms.licdn.com/playlist/vid/v2/D4E10AQGQ_Z1y8mxlAw/thumbnail-scale_720_1280/B4EaD9QiX2JoAA-/0/1790955368554?e=1791972000&v=beta&t=5Ue-ljpTAcWn1tQiYjpk6ClbIODQ8vvT-rltuAzu38Q"
+    },
+    "images": [],
+    "article": null,
+    "document": null
+   },
+   "author": {
+    "url": "https://www.linkedin.com/company/hubspot/",
+    "info": "1,762,400 followers",
+    "name": "HubSpot",
+    "type": "company",
+    "avatarUrl": "https://media.licdn.com/dms/image/v2/C4D0BAQF8H-SLmMDZlA/company-logo_400_400/company-logo_400_400/0/1646683330132/hubspot_logo?e=1793232000&v=beta&t=djgg6qOuiKghnlzjliRig3c19LoS4t3wPIlWVGdKzGQ"
+   },
+   "header": null,
+   "postedAt": "2026-10-02T15:36:21.592Z",
+   "repostOf": null,
+   "shareUrn": "urn:li:ugcPost:7511811319776473088",
+   "reactions": {
+    "total": 127,
+    "byType": {
+     "like": 111,
+     "love": 7,
+     "funny": 0,
+     "support": 1,
+     "celebrate": 5,
+     "insightful": 3
+    },
+    "otherTypes": [],
+    "hiddenByAuthor": false
+   },
+   "activityAt": "2026-10-02T15:36:21.592Z",
+   "repostedAt": null,
+   "repostsCount": 10,
+   "commentsCount": 18,
+   "textAttributes": [
+    {
+     "url": "https://www.linkedin.com/in/lennox",
+     "type": "PROFILE_MENTION",
+     "start": 100,
+     "length": 13
+    }
+   ],
+   "comments": {
+    "status": "fetched",
+    "items": [
+     {
+      "url": "https://www.linkedin.com/feed/update/urn:li:ugcPost:7511811319776473088?commentUrn=urn%3Ali%3Acomment%3A%28ugcPost%3A7511811319776473088%2C7512009944716443648%29&dashCommentUrn=urn%3Ali%3Afsd_comment%3A%287512009944716443648%2Curn%3Ali%3AugcPost%3A7511811319776473088%29",
+      "urn": "urn:li:comment:(ugcPost:7511811319776473088,7512009944716443648)",
+      "text": "Practical automation wins when it removes friction without hiding the human context behind the customer relationship\u2014an important balance for teams scaling their go-to-market systems.",
+      "author": {
+       "url": "https://www.linkedin.com/company/vardhanai/posts",
+       "name": "Vardhan AI",
+       "headline": "45 followers",
+       "avatarUrl": "https://media.licdn.com/dms/image/v2/D560BAQGw_C-E0Q58_g/company-logo_400_400/B56Z84mul6IUAU-/0/1783361104603/vardhanai_logo?e=1793232000&v=beta&t=NFcus7aaysjfyHbLO0GEzlbkCkl20RIC6RMufVxvqWs"
+      },
+      "pinned": false,
+      "createdAt": "2026-10-03T04:45:37.216Z",
+      "repliesCount": 0,
+      "reactionCount": 0
+     },
+     {
+      "url": "https://www.linkedin.com/feed/update/urn:li:ugcPost:7511811319776473088?commentUrn=urn%3Ali%3Acomment%3A%28ugcPost%3A7511811319776473088%2C7513392526696017920%29&dashCommentUrn=urn%3Ali%3Afsd_comment%3A%287513392526696017920%2Curn%3Ali%3AugcPost%3A7511811319776473088%29",
+      "urn": "urn:li:comment:(ugcPost:7511811319776473088,7513392526696017920)",
+      "text": "",
+      "author": {
+       "url": "https://www.linkedin.com/company/revpartners/posts",
+       "name": "RevPartners",
+       "headline": "14,249 followers",
+       "avatarUrl": "https://media.licdn.com/dms/image/v2/D4E0BAQHKzOt7YNnClA/company-logo_400_400/B4EZ6yFc.VJEAU-/0/1781104234952/revpartners_logo?e=1793232000&v=beta&t=99lin2EExPMvfXbFNBOwhQUvI7bDQDjl16NROsvVOGA"
+      },
+      "pinned": false,
+      "createdAt": "2026-10-07T00:19:30.448Z",
+      "repliesCount": 0,
+      "reactionCount": 0
+     }
+    ],
+    "hasMore": true,
+    "fetchedAt": "2026-10-07T09:20:18.328Z",
+    "error": null
+   },
+   "firstSeenAt": "2026-10-07T09:20:01.680Z"
+  },
+  {
+   "id": "7508265365584470016",
+   "url": "https://www.linkedin.com/posts/dapta-ai_ai-agentesia-datos-ugcPost-7508240521107095552-FEw0",
+   "kind": "repost",
+   "text": "\"Hay conversaciones que simplemente no pasan por Zoom. \ud83d\udc40\n\nJunto a HubSpot reunimos a un grupo de founders, l\u00edderes de ventas y personas que est\u00e1n construyendo empresas para hacer algo simple: sentarnos en una misma mesa y conversar.\n\nSin presentaciones. Sin pitches. Sin una agenda llena de charlas.\n\nSolo buena comida y conversaciones sobre ventas, IA, crecimiento y tambi\u00e9n esos problemas que normalmente no terminan en un post de LinkedIn.\n\nEn Dapta queremos seguir creando este tipo de espacios: m\u00e1s peque\u00f1os, m\u00e1s cercanos y donde las conexiones puedan surgir de forma natural. \ud83e\udd1d\n\nGracias a HubSpot y a todos los que hicieron parte de esta mesa. \ud83d\ude80\n\n\n#AI #AgentesIA #Datos #Tecnolog\u00eda #tech #ai #inteligenciaartificial #startups #aitools #automation #chatgpt #anthropic #dapta #aitools #daptaai\n\"",
+   "media": {
+    "video": {
+     "videoUrl": "https://dms.licdn.com/playlist/vid/v2/D5605AQEA32iRRSrgew/mp4-720p-30fp-crf28/B56aDKhDpmJIB8-/0/1790104068251?e=1791972000&v=beta&t=1qchaiIKp5XT-zZU9loJQEXWZWjPrBnRq60bgPq4E5Y",
+     "thumbnailUrl": "https://dms.licdn.com/playlist/vid/v2/D5605AQEA32iRRSrgew/thumbnail-shrink_720_1280/B56aDKhDpmJIAk-/0/1790104060871?e=1791972000&v=beta&t=U5rTaBsWWeb6Sq868FRSI8WalksXsrnRRJ-Vk-nYQ0w"
+    },
+    "images": [],
+    "article": null,
+    "document": null
+   },
+   "author": {
+    "url": "https://www.linkedin.com/company/dapta-ai/",
+    "info": "17,198 followers",
+    "name": "Dapta",
+    "type": "company",
+    "avatarUrl": "https://media.licdn.com/dms/image/v2/C4E0BAQEwAWVz1sWUCw/company-logo_400_400/company-logo_400_400/0/1674444797199/daptatech_logo?e=1793232000&v=beta&t=MsP7fAe4N5vTD0PUO36oJwGARNZwlqPm5dGSDUs0vBE"
+   },
+   "header": "HubSpot reposted this",
+   "postedAt": "2026-09-22T20:45:59.980Z",
+   "repostOf": null,
+   "shareUrn": "urn:li:ugcPost:7508240521107095552",
+   "reactions": {
+    "total": 116,
+    "byType": {
+     "like": 87,
+     "love": 10,
+     "funny": 0,
+     "support": 2,
+     "celebrate": 17,
+     "insightful": 0
+    },
+    "otherTypes": [],
+    "hiddenByAuthor": false
+   },
+   "activityAt": "2026-09-22T20:45:59.980Z",
+   "repostedAt": "2026-09-22T20:45:59.980Z",
+   "repostsCount": 9,
+   "commentsCount": 5,
+   "textAttributes": [
+    {
+     "url": "https://www.linkedin.com/company/hubspot/",
+     "type": "COMPANY_NAME",
+     "start": 595,
+     "length": 7
+    }
+   ],
+   "comments": {
+    "status": "fetched",
+    "items": [
+     {
+      "url": "https://www.linkedin.com/feed/update/urn:li:ugcPost:7508240521107095552?commentUrn=urn%3Ali%3Acomment%3A%28ugcPost%3A7508240521107095552%2C7508270966964236290%29&dashCommentUrn=urn%3Ali%3Afsd_comment%3A%287508270966964236290%2Curn%3Ali%3AugcPost%3A7508240521107095552%29",
+      "urn": "urn:li:comment:(ugcPost:7508240521107095552,7508270966964236290)",
+      "text": "Por un marketing lleno de colaboraciones entre marcas!!!!!! Gracias equipo Dapta por compartir este proyecto! \ud83e\udd18 ",
+      "author": {
+       "url": "https://www.linkedin.com/in/julievib",
+       "name": "Julie Villarreal",
+       "headline": "La de los eventos en HubSpot \ud83d\udc78\ud83c\udffc | Te ense\u00f1o a hacer eventos cool que si convierten | Tambi\u00e9n hablo de IA | Tambi\u00e9n hablo de Marketing",
+       "avatarUrl": "https://media.licdn.com/dms/image/v2/D5603AQGEoYU_kCoe9w/profile-displayphoto-shrink_800_800/profile-displayphoto-shrink_800_800/0/1724878647296?e=1793232000&v=beta&t=-Nfc4s4LKsSjuHGMC7dIOTR2v7yjxjFeYiICO3fwo-8"
+      },
+      "pinned": false,
+      "createdAt": "2026-09-22T21:08:15.454Z",
+      "repliesCount": 0,
+      "reactionCount": 2
+     },
+     {
+      "url": "https://www.linkedin.com/feed/update/urn:li:ugcPost:7508240521107095552?commentUrn=urn%3Ali%3Acomment%3A%28ugcPost%3A7508240521107095552%2C7508311781598031872%29&dashCommentUrn=urn%3Ali%3Afsd_comment%3A%287508311781598031872%2Curn%3Ali%3AugcPost%3A7508240521107095552%29",
+      "urn": "urn:li:comment:(ugcPost:7508240521107095552,7508311781598031872)",
+      "text": "Cuando en Per\u00fa? \ud83c\uddf5\ud83c\uddea \ud83d\udc40\u2728",
+      "author": {
+       "url": "https://www.linkedin.com/in/lissetdh",
+       "name": "Lisset D\u00e1vila Huerta",
+       "headline": "Marketing Manager Per\u00fa",
+       "avatarUrl": "https://media.licdn.com/dms/image/v2/D4D03AQEmz435NlcPHQ/profile-displayphoto-shrink_800_800/profile-displayphoto-shrink_800_800/0/1683587050510?e=1793232000&v=beta&t=JVLqlLzgOU7RTNKCON8WwcGTsxyb_KBMFnQ7fzx3FvY"
+      },
+      "pinned": false,
+      "createdAt": "2026-09-22T23:50:26.420Z",
+      "repliesCount": 0,
+      "reactionCount": 0
+     }
+    ],
+    "hasMore": true,
+    "fetchedAt": "2026-10-07T09:20:21.085Z",
+    "error": null
+   },
+   "firstSeenAt": "2026-10-07T09:20:01.730Z"
+  },
+  {
+   "id": "7508199655307124736",
+   "url": "https://www.linkedin.com/posts/hubspot_loop-outlearn-outmarket-outgrow-pre-order-activity-7508199655307124736-TMLu",
+   "kind": "quote",
+   "text": "It\u2019s officially launch day for Loop! We\u2019ve had a front-row seat as Kipp Bodnar and Kieran Flanagan wrote the book on what comes next in marketing, and we couldn\u2019t be prouder.\n\nCongratulations, Kipp, Kieran, and the rest of the team involved in bringing this fantastic, marketing resource to life!",
+   "media": {
+    "video": null,
+    "images": [],
+    "article": null,
+    "document": null
+   },
+   "author": {
+    "url": "https://www.linkedin.com/company/hubspot/",
+    "info": "1,762,400 followers",
+    "name": "HubSpot",
+    "type": "company",
+    "avatarUrl": "https://media.licdn.com/dms/image/v2/C4D0BAQF8H-SLmMDZlA/company-logo_400_400/company-logo_400_400/0/1646683330132/hubspot_logo?e=1793232000&v=beta&t=djgg6qOuiKghnlzjliRig3c19LoS4t3wPIlWVGdKzGQ"
+   },
+   "header": null,
+   "postedAt": "2026-09-22T16:24:53.429Z",
+   "repostOf": {
+    "id": "7508124481979240448",
+    "url": "https://www.linkedin.com/posts/kippbodnar_loop-outlearn-outmarket-outgrow-pre-order-activity-7508124481979240448-ms4u",
+    "text": "It\u2019s launch day. \ud83d\ude80\ud83d\ude80\ud83d\ude80\n\nLoop: Outlearn. Outmarket. Outgrow. is officially out. \u267e\ufe0f\n\nI helped scale the marketing playbook AI is now breaking.  \n\nWe had to rebuild our own. Today that rebuild becomes a book.\ud83d\udcd6 \n\nFor 15+ years at HubSpot, the job was clear: create useful content, get discovered, earn trust, turn trust into customers.\n\nThen buyers started getting answers without visiting websites. AI made content cheap. Almost everyone\u2019s response to less attention was produce more \u2014 including companies already producing too much.\n\nWhen you\u2019ve gotten good at something, it\u2019s easy to confuse \u201cthis worked\u201d with \u201cthis will keep working.\u201d\n\nSo Kieran Flanagan and I wrote Loop \u2014 a practical way forward for marketers who need next week to look different.\n\nThe idea: your marketing should get smarter every time you run it.\n\nA customer objection improves your next ad. That ad sharpens your positioning. That positioning makes the next conversation better. Every cycle raises the floor for the next one.\n\nThat\u2019s the system:\n\n\u2022 Express \u2014 your point of view and why you\u2019re worth choosing  \n\u2022 Tailor \u2014 make that story relevant to the person buying  \n\u2022 Amplify \u2014 show up where people actually discover, evaluate, and decide  \n\u2022 Evolve \u2014 feed what you learn back into everything next\n\nWe tested it inside HubSpot. The book brings the framework, the tools, and a plan to run it with your team.\n\nAI gives your competitors the same tools you have. Your advantage is what you understand about your customers \u2014 and how fast you turn that into better marketing.\n\nTo the HubSpot team, the Marketing Against the Grain community, and everyone who challenged these ideas along the way: thank you. You made this book better.\n\nIf you own growth and you\u2019re asking what your team should do differently next Monday \u2014 start here. Loop is live.\n\nGet your copy: https://lnkd.in/d9_MTk5u\n\nOutlearn. Outmarket. Outgrow.",
+    "media": {
+     "video": null,
+     "images": [],
+     "article": {
+      "link": "https://www.hubspot.com/loop-marketing-book",
+      "title": "Loop: Outlearn. Outmarket. Outgrow. | Pre-Order Now",
+      "imageUrl": "https://media.licdn.com/dms/image/sync/v2/D5627AQFLEhbheTFMxQ/articleshare-shrink_1280_800/B56aECckg6HYBA-/0/1791042408470?e=1791972000&v=beta&t=ri5R2gyi7_xPd1juau8KiJFUwTAL109pBZV8BZPaDB8",
+      "subtitle": "hubspot.com",
+      "description": null
+     },
+     "document": null
+    },
+    "author": {
+     "url": "https://www.linkedin.com/in/kippbodnar",
+     "info": "CMO at HubSpot",
+     "name": "Kipp Bodnar",
+     "type": "profile",
+     "avatarUrl": "https://media.licdn.com/dms/image/v2/C5603AQEQVx2oRMkmFQ/profile-displayphoto-shrink_800_800/profile-displayphoto-shrink_800_800/0/1654870727286?e=1793232000&v=beta&t=MzTlq89jvriqb6SR5kbM1VnQ9gBSLq13HFJz5l4hY9g"
+    },
+    "postedAt": "2026-09-22T11:26:10.711Z",
+    "shareUrn": "urn:li:share:7508124479374381056",
+    "reactions": {
+     "total": 331,
+     "byType": {
+      "like": 229,
+      "love": 19,
+      "funny": 0,
+      "support": 0,
+      "celebrate": 80,
+      "insightful": 3
+     },
+     "otherTypes": [],
+     "hiddenByAuthor": false
+    },
+    "repostsCount": 11,
+    "commentsCount": 62,
+    "textAttributes": []
+   },
+   "shareUrn": "urn:li:share:7508199654589784065",
+   "reactions": {
+    "total": 44,
+    "byType": {
+     "like": 35,
+     "love": 4,
+     "funny": 0,
+     "support": 0,
+     "celebrate": 4,
+     "insightful": 1
+    },
+    "otherTypes": [],
+    "hiddenByAuthor": false
+   },
+   "activityAt": "2026-09-22T16:24:53.429Z",
+   "repostedAt": null,
+   "repostsCount": 2,
+   "commentsCount": 11,
+   "textAttributes": [
+    {
+     "url": "https://www.linkedin.com/in/kippbodnar",
+     "type": "PROFILE_MENTION",
+     "start": 67,
+     "length": 11
+    },
+    {
+     "url": "https://www.linkedin.com/in/kieranjflanagan",
+     "type": "PROFILE_MENTION",
+     "start": 83,
+     "length": 15
+    }
+   ],
+   "comments": {
+    "status": "failed",
+    "items": null,
+    "hasMore": null,
+    "fetchedAt": null,
+    "error": "post comments answered no comments list: {\"output\":{\"comments\":null,\"count\":null},\"raw\":null,\"_treg\":{\"served_by\":null,\"outcome\":\"miss\",\"tried\":[{\"endpoint_id\":\"fetchinio.linkedin.post.comments\",\"provider\":\"fetchinio\",\"outcome\":\"miss\",\"status\":200,\"charged_micro\":1500}],\"charged_micro\":1500,\"dropped\":[{\"endpoint_id\":\"justoneapi.x.linkedin-"
+   },
+   "firstSeenAt": "2026-10-07T09:20:01.736Z"
+  },
+  {
+   "id": "7511424909198258177",
+   "url": "https://www.linkedin.com/posts/hubspot_the-marketing-team-the-second-the-calendar-activity-7511424909198258177-YqFG",
+   "kind": "post",
+   "text": "the marketing team the second the calendar says October",
+   "media": {
+    "video": null,
+    "images": [
+     {
+      "url": "https://media.licdn.com/dms/image/v2/D4E10AQE7kMbq5AXkDg/image-shrink_1280/B4EaD3xGrkHwAc-/0/1790863240266?e=1791972000&v=beta&t=XFcnmzJGBclRBdnNAzY-hHbr9IulhQQSFbvFSL1K2Ik",
+      "width": 1280,
+      "height": 789
+     }
+    ],
+    "article": null,
+    "document": null
+   },
+   "author": {
+    "url": "https://www.linkedin.com/company/hubspot/",
+    "info": "1,762,400 followers",
+    "name": "HubSpot",
+    "type": "company",
+    "avatarUrl": "https://media.licdn.com/dms/image/v2/C4D0BAQF8H-SLmMDZlA/company-logo_400_400/company-logo_400_400/0/1646683330132/hubspot_logo?e=1793232000&v=beta&t=djgg6qOuiKghnlzjliRig3c19LoS4t3wPIlWVGdKzGQ"
+   },
+   "header": null,
+   "postedAt": "2026-10-01T14:00:53.879Z",
+   "repostOf": null,
+   "shareUrn": "urn:li:share:7511424850767486976",
+   "reactions": {
+    "total": 3973,
+    "byType": {
+     "like": 2507,
+     "love": 296,
+     "funny": 1089,
+     "support": 11,
+     "celebrate": 66,
+     "insightful": 4
+    },
+    "otherTypes": [],
+    "hiddenByAuthor": false
+   },
+   "activityAt": "2026-10-01T14:00:53.879Z",
+   "repostedAt": null,
+   "repostsCount": 225,
+   "commentsCount": 161,
+   "textAttributes": [],
+   "comments": {
+    "status": "failed",
+    "items": null,
+    "hasMore": null,
+    "fetchedAt": null,
+    "error": "post comments answered no comments list: {\"output\":{\"comments\":null,\"count\":null},\"raw\":null,\"_treg\":{\"served_by\":null,\"outcome\":\"miss\",\"tried\":[{\"endpoint_id\":\"fetchinio.linkedin.post.comments\",\"provider\":\"fetchinio\",\"outcome\":\"miss\",\"status\":200,\"charged_micro\":1500}],\"charged_micro\":1500,\"dropped\":[{\"endpoint_id\":\"justoneapi.x.linkedin-"
+   },
+   "firstSeenAt": "2026-10-07T09:20:01.690Z"
+  }
+ ],
+ "nextCursor": "50"
+}
