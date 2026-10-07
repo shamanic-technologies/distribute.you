@@ -150,6 +150,8 @@ export const LinkedinFeedResponseSchema = z.object({
   status: z.string(),
   reason: z.string().nullable(),
   linkedinPage: z.object({ url: z.string() }).nullable().optional(),
+  /** The person read (`/social/me/linkedin-posts`) names a profile where the brand read names a page. */
+  linkedinProfile: z.object({ url: z.string() }).nullable().optional(),
   sync: z.object({ refreshing: z.boolean().optional() }).passthrough().nullable(),
   total: z.number(),
   posts: z.array(
@@ -237,7 +239,7 @@ export function toLinkedinFeedPage(r: LinkedinFeedResponse): LinkedinFeedPage {
   return {
     status: feedStatus(r.status),
     reason: r.reason,
-    sourceUrl: r.linkedinPage?.url ?? null,
+    sourceUrl: r.linkedinPage?.url ?? r.linkedinProfile?.url ?? null,
     refreshing: r.sync?.refreshing === true,
     total: r.total,
     nextCursor: r.nextCursor,

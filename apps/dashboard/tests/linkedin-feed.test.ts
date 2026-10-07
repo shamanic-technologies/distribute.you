@@ -44,6 +44,12 @@ describe("LinkedIn feed reader", () => {
     expect(toLinkedinFeedPage(LinkedinFeedResponseSchema.parse({ ...base, status: "no_linkedin_profile" })).status).toBe("none");
     expect(toLinkedinFeedPage(LinkedinFeedResponseSchema.parse({ ...base, status: "linkedin_page_unresolved" })).status).toBe("undecided");
   });
+
+  it("links the person's profile on the person read", () => {
+    const base = { status: "ready", reason: null, sync: null, total: 0, posts: [], nextCursor: null };
+    const page = toLinkedinFeedPage(LinkedinFeedResponseSchema.parse({ ...base, linkedinProfile: { url: "https://www.linkedin.com/in/x" } }));
+    expect(page.sourceUrl).toBe("https://www.linkedin.com/in/x");
+  });
 });
 
 describe("LinkedIn's own way of printing a post", () => {
