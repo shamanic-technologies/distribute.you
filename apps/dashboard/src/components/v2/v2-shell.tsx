@@ -281,7 +281,6 @@ function V2Sidebar() {
                   label={name ?? m.crew.name}
                   icon={name ? <PathAvatar name={name} size={16} /> : <CrewMark color={m.crew.color} glyph={m.crew.glyph} size={16} />}
                   active={pathname.startsWith(m.href)}
-                  indent
                   trailing={
                     <span className="k-dot-pulse ml-auto mr-1 h-1.5 w-1.5 shrink-0 rounded-full bg-[var(--run)] text-[var(--run)]" aria-label="On" />
                   }
@@ -289,13 +288,13 @@ function V2Sidebar() {
               ))}
         </div>
 
-        {/* Outbound (owner 2026-10-07): the button opens the Sales path page, the
-            selected offer's campaigns that are ON sit under it with a live dot, named
-            as that page's Campaigns section names them. */}
-        <div className="mt-5 space-y-px">
+        {/* Outbound (owner 2026-10-07): a section like Setup, Sales path first, then the
+            selected offer's campaigns that are ON with a live dot, named as that page's
+            Campaigns section names them. Same left edge as every other entry. */}
+        <Group title="Outbound">
           <NavItem
             href={offerId ? v2OfferHref(orgId, brandId, offerId, "sales-path") : v2Href(orgId, brandId, "sales-path")}
-            label="Outbound"
+            label="Sales path"
             icon={<I d={ICONS.path} />}
             active={section === "sales-path"}
           />
@@ -309,13 +308,12 @@ function V2Sidebar() {
                 label={name ?? m.crew.name}
                 icon={name ? <PathAvatar name={name} size={16} /> : <CrewMark color={m.crew.color} glyph={m.crew.glyph} size={16} />}
                 active={pathname.startsWith(m.href)}
-                indent
                 trailing={
                   <span className="k-dot-pulse ml-auto mr-1 h-1.5 w-1.5 shrink-0 rounded-full bg-[var(--run)] text-[var(--run)]" aria-label="On" />
                 }
               />
             ))}
-        </div>
+        </Group>
 
         <Group title="Setup">
           {/* The selected offer's own page: there is no list of offers (owner 2026-10-03),

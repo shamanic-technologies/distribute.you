@@ -55,14 +55,15 @@ describe("sidebar", () => {
     expect(setup).toContain('v2OfferHref(orgId, brandId, offerId, "campaigns")');
     expect(setup).not.toContain('label="Channels"');
   });
-  it("Outbound opens the Sales path page, ON campaigns listed under it, above Setup (owner 2026-10-07)", () => {
-    const outbound = shell.slice(shell.indexOf("{/* Outbound (owner 2026-10-07)"), shell.indexOf('<Group title="Setup">'));
-    expect(outbound).toContain('label="Outbound"');
+  it("Outbound is a section like Setup: Sales path, then the ON campaigns, no indent (owner 2026-10-07)", () => {
+    const outbound = shell.slice(shell.indexOf('<Group title="Outbound">'), shell.indexOf('<Group title="Setup">'));
+    expect(shell.indexOf('<Group title="Outbound">')).toBeGreaterThan(-1);
+    expect(outbound.indexOf('label="Sales path"')).toBeGreaterThan(-1);
+    expect(outbound.indexOf('label="Sales path"')).toBeLessThan(outbound.indexOf("activeMissions"));
     expect(outbound).toContain('v2OfferHref(orgId, brandId, offerId, "sales-path")');
-    expect(outbound).toContain('.filter(({ campaign }) => campaign?.kind !== "source")');
     expect(outbound).toContain("bg-[var(--run)]");
+    expect(outbound).not.toContain("indent");
     expect(shell).not.toContain('title="Campaigns"');
-    expect(shell).not.toContain('label="Sales path"');
   });
 
   it("Sourcing opens the offer's Sourcing page, its ON source campaigns under it, above Outbound (owner 2026-10-07)", () => {
