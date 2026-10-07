@@ -1467,6 +1467,7 @@ function parseStaff<T>(name: string, schema: z.ZodType<T>, raw: unknown): T {
 /** The staff Posting reads (social-service, through the gateway's staff gate). */
 export const STAFF_SOCIAL_PATHS = {
   brandLinkedinPosts: (brandId: string) => `/social/brands/${encodeURIComponent(brandId)}/linkedin-posts`,
+  myLinkedinPosts: "/social/me/linkedin-posts",
 } as const;
 
 /** One page of a brand's own LinkedIn company page posts, newest first (`cursor` = the previous page's `nextCursor`). */
@@ -1474,6 +1475,13 @@ export async function getBrandLinkedinPosts(brandId: string, cursor: string | nu
   const qs = cursor ? `?cursor=${encodeURIComponent(cursor)}` : "";
   const raw = await apiCall<unknown>(`${STAFF_SOCIAL_PATHS.brandLinkedinPosts(brandId)}${qs}`);
   return toLinkedinFeedPage(parseStaff("getBrandLinkedinPosts", LinkedinFeedResponseSchema, raw));
+}
+
+/** One page of the signed-in person's own LinkedIn profile posts (the gateway names the user, never the browser). */
+export async function getMyLinkedinPosts(cursor: string | null): Promise<LinkedinFeedPage> {
+  const qs = cursor ? `?cursor=${encodeURIComponent(cursor)}` : "";
+  const raw = await apiCall<unknown>(`${STAFF_SOCIAL_PATHS.myLinkedinPosts}${qs}`);
+  return toLinkedinFeedPage(parseStaff("getMyLinkedinPosts", LinkedinFeedResponseSchema, raw));
 }
 
 export async function getStaffCostMargin(): Promise<CostMargin> {

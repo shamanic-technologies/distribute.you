@@ -113,6 +113,8 @@ export const SENSITIVE_QUERY_ROOTS = new Set([
   "staffBrands",
   // Staff Posting > Posts: a brand's LinkedIn posts, read live.
   "staffBrandLinkedinPosts",
+  // The signed-in staff member's own LinkedIn posts (Profile page).
+  "staffMyLinkedinPosts",
   // One person's whole exchange (Integrations > Conversations): private message bodies
   // from the brand's own inboxes. Read live, never written to disk.
   "personTimeline",
