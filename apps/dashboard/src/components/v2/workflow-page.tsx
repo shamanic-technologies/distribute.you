@@ -561,7 +561,10 @@ function OverTime({ featureSlug, legKey, dynasty }: { featureSlug: string; legKe
   const failed = src.data === undefined && src.isFetchedAfterMount;
   const daily: { date: string; cumulativeSpendUsd: number | null; cumulativePipelineUsd: number; roiMultiple: number | null }[] =
     actual ? (actualQ.data?.daily ?? []) : (q.data ?? []);
+  // A real time axis: the producer omits days with no spend and no outcome, so a category
+  // axis squeezed a quiet month into one step.
   const points = daily.map((d) => ({
+    t: Date.parse(`${d.date}T00:00:00Z`),
     date: d.date,
     spend: d.cumulativeSpendUsd,
     value: d.cumulativePipelineUsd,
@@ -635,7 +638,7 @@ function ChartCard({
   note: string;
   pending: boolean;
   failed: boolean;
-  data: { date: string; spend: number | null; value: number; roi: number | null }[];
+  data: { t: number; date: string; spend: number | null; value: number; roi: number | null }[];
   dataKey: "spend" | "value" | "roi";
   format: (v: number) => string;
 }) {
@@ -660,12 +663,15 @@ function ChartCard({
           <ResponsiveContainer width="100%" height="100%">
             <LineChart data={data} margin={{ top: 4, right: 4, bottom: 0, left: 0 }}>
               <XAxis
-                dataKey="date"
+                dataKey="t"
+                type="number"
+                scale="time"
+                domain={["dataMin", "dataMax"]}
                 tick={{ fontSize: 11, fill: "var(--fg-3)" }}
                 tickLine={false}
                 axisLine={false}
                 minTickGap={40}
-                tickFormatter={(d: string) => d.slice(5)}
+                tickFormatter={(t: number) => new Date(t).toISOString().slice(5, 10)}
               />
               <YAxis
                 tick={{ fontSize: 11, fill: "var(--fg-3)" }}
@@ -680,13 +686,13 @@ function ChartCard({
                 content={({ active, payload, label }) =>
                   active && payload?.length ? (
                     <div className="k-popover px-2.5 py-1.5 text-[12px]">
-                      <p className="k-fg3 k-mono">{String(label)}</p>
+                      <p className="k-fg3 k-mono">{new Date(Number(label)).toISOString().slice(0, 10)}</p>
                       <p className="font-medium tabular-nums">{format(Number(payload[0].value))}</p>
                     </div>
                   ) : null
                 }
               />
-              <Line type="linear" dataKey={dataKey} stroke="var(--accent)" strokeWidth={1.5} dot={false} isAnimationActive={false} />
+              <Line type="stepAfter" dataKey={dataKey} stroke="var(--accent)" strokeWidth={1.5} dot={false} isAnimationActive={false} />
             </LineChart>
           </ResponsiveContainer>
         )}
