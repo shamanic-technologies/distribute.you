@@ -55,11 +55,14 @@ describe("sidebar", () => {
     expect(setup).toContain('v2OfferHref(orgId, brandId, offerId, "campaigns")');
     expect(setup).not.toContain('label="Channels"');
   });
-  it("Setup opens with Sales path, above Offer (owner 2026-10-04)", () => {
-    const setup = shell.slice(shell.indexOf('<Group title="Setup">'), shell.indexOf('label="Integrations"'));
-    expect(setup.indexOf('label="Sales path"')).toBeGreaterThan(-1);
-    expect(setup.indexOf('label="Sales path"')).toBeLessThan(setup.indexOf('label="Offer"'));
-    expect(setup).toContain('v2OfferHref(orgId, brandId, offerId, "sales-path")');
+  it("Outbound opens the Sales path page, ON campaigns listed under it, above Setup (owner 2026-10-07)", () => {
+    const outbound = shell.slice(shell.indexOf("{/* Outbound (owner 2026-10-07)"), shell.indexOf('<Group title="Setup">'));
+    expect(outbound).toContain('label="Outbound"');
+    expect(outbound).toContain('v2OfferHref(orgId, brandId, offerId, "sales-path")');
+    expect(outbound).toContain("activeMissions.map(");
+    expect(outbound).toContain("bg-[var(--run)]");
+    expect(shell).not.toContain('title="Campaigns"');
+    expect(shell).not.toContain('label="Sales path"');
   });
 });
 

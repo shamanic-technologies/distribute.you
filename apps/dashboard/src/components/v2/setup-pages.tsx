@@ -229,7 +229,7 @@ export function V2TargetingIndexPage() {
 
 /** Sales path from the sidebar before an offer is picked: the selected offer's Sales path. */
 export function V2SalesPathIndexPage() {
-  return <SelectedOfferRedirect title="Sales path" tab="sales-path" />;
+  return <SelectedOfferRedirect title="Outbound" tab="sales-path" />;
 }
 
 /** Channels from the sidebar before an offer is picked: the selected offer's Channels. */
