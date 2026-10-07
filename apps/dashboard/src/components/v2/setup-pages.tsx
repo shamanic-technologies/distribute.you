@@ -26,6 +26,7 @@ import { OfferArchiveCard } from "@/components/settings/offer-archive-card";
 import { OfferLifetimeRevenue } from "@/components/settings/offer-campaigns-card";
 import { BrandOfferCard } from "@/components/settings/brand-offer-card";
 import { V2AudiencesTable } from "@/components/v2/audiences-table";
+import { OfferQualification } from "@/components/v2/offer-qualification";
 import { V2CrmRawView } from "@/components/v2/integrations-crm";
 import { V2CrmMergedView } from "@/components/v2/integrations-merged";
 import { V2ConversationsView } from "@/components/v2/integrations-conversations";
@@ -192,17 +193,31 @@ export function V2OfferPage() {
 }
 
 /** Who an offer is sold to, in plain words: each audience's sentence, no channel figure. */
-export function V2TargetingPage() {
+/**
+ * The offer's Targeting: who it reaches (Audiences) and the checks every company of every
+ * audience goes through before we write to it (Qualification, owner 2026-10-07).
+ */
+export function V2TargetingPage({ view = "audiences" }: { view?: "audiences" | "qualification" }) {
   const { orgId, brandId, offerId } = useIds();
   const name = useOfferName(brandId, offerId);
   if (!offerId) return null;
+  const base = v2OfferHref(orgId, brandId, offerId, "targeting");
+  const tabs: V2Tab[] = [
+    { label: "Audiences", href: base, active: view === "audiences" },
+    { label: "Qualification", href: `${base}/qualification`, active: view === "qualification" },
+  ];
   return (
     <V2Page
       crumbs={[{ label: name ?? " ", href: v2OfferHref(orgId, brandId, offerId) }, { label: "Targeting" }]}
       title={name ?? " "}
+      tabs={tabs}
       width="max-w-[1280px]"
     >
-      <V2AudiencesTable offerId={offerId} plain />
+      {view === "qualification" ? (
+        <OfferQualification brandId={brandId} offerId={offerId} />
+      ) : (
+        <V2AudiencesTable offerId={offerId} plain />
+      )}
     </V2Page>
   );
 }
