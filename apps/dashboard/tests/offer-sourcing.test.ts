@@ -83,8 +83,10 @@ describe("offer sourcing reader parses the real prod body", () => {
     expect(() => parseOfferSourcing({ ...body, origins: "nope" })).toThrow(/invalid response shape/);
   });
 
-  it("Campaigns labels a null source like the Sourcing table", () => {
-    expect(campaigns).toContain('const name = s.name ?? "Earlier leads";');
-    expect(section).toContain('name: "Earlier leads"');
+  it("an unidentified source is never a chip nor a row (owner 2026-10-07)", () => {
+    expect(campaigns).toContain("if (s.name && !names.includes(s.name)) names.push(s.name);");
+    expect(campaigns).not.toContain("Earlier leads");
+    expect(section).not.toContain("Earlier leads");
+    expect(section).not.toContain("data.unattributed");
   });
 });

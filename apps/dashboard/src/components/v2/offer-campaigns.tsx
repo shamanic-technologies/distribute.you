@@ -77,11 +77,8 @@ export function OfferCampaigns({
       if (!c.legKey) continue;
       const key = campaignKey(c.featureSlug, c.legKey);
       const names = m.get(key) ?? [];
-      for (const s of c.sources) {
-        // A null source = leads served before the source was recorded (same label as the Sourcing table).
-        const name = s.name ?? "Earlier leads";
-        if (!names.includes(name)) names.push(name);
-      }
+      // A source with no name is one features-service could not identify: not a source, never a chip (owner 2026-10-07).
+      for (const s of c.sources) if (s.name && !names.includes(s.name)) names.push(s.name);
       m.set(key, names);
     }
     return m;

@@ -115,10 +115,10 @@ type Row = Omit<SourcingOrigin, "slug" | "family" | "live" | "description" | "pr
 /**
  * The table's rows: the origins we run or ran for this offer (a retired one only while it
  * holds history), each one a choice whether this offer used it yet or not (owner 2026-10-07:
- * no "Not used yet" chip), used ones first, then the leads served
- * before a source was recorded, when there are any.
+ * no "Not used yet" chip), used ones first. Leads no source can be proven for are not a
+ * source: no row (owner 2026-10-07, "WTF is earlier leads without any tick").
  */
-export function sourcingRows(data: Pick<OfferSourcing, "origins" | "unattributed">): Row[] {
+export function sourcingRows(data: Pick<OfferSourcing, "origins">): Row[] {
   const origins = data.origins.filter((o) => o.live || o.used);
   const rows: Row[] = [...origins.filter((o) => o.used), ...origins.filter((o) => !o.used)].map((o) => ({
     ...o,
@@ -126,17 +126,6 @@ export function sourcingRows(data: Pick<OfferSourcing, "origins" | "unattributed
     providerDomain: o.provider?.domain ?? null,
     selectable: originSelectable(o),
   }));
-  if (data.unattributed && data.unattributed.leadsServed > 0) {
-    rows.push({
-      ...data.unattributed,
-      key: "unattributed",
-      providerDomain: null,
-      name: "Earlier leads",
-      description: "Found before we recorded the source.",
-      used: true,
-      selectable: false,
-    });
-  }
   return rows;
 }
 
