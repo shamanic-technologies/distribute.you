@@ -120,7 +120,8 @@ const ICONS = {
   records: "M2.5 3.5h11v9h-11zM2.5 6.5h11M6 6.5v6",
   channels: "M2.5 4.5h11v7h-11zM2.5 4.5 8 8.5l5.5-4",
   audience: "M2.5 4h11M2.5 8h11M2.5 12h7",
-  path: "M3.5 12.5a1.5 1.5 0 1 0 0-3 1.5 1.5 0 0 0 0 3Zm9-6a1.5 1.5 0 1 0 0-3 1.5 1.5 0 0 0 0 3ZM5 11h3.5a2 2 0 0 0 2-2V6.5",
+  // A paper plane: Outbound sends (owner 2026-10-07; the envelope is Channels).
+  outbound: "M13.5 2.5 2.5 6.8l4.3 1.9 1.9 4.3Zm0 0L6.8 8.7",
   offer: "M8.5 2.5h5v5L7.5 13.5l-5-5Zm2.5 2.5h.01",
   target: "M8 13.5a5.5 5.5 0 1 0 0-11 5.5 5.5 0 0 0 0 11Zm0-3a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5Z",
   plug: "M6 2.5v3m4-3v3M4.5 5.5h7v2a3.5 3.5 0 0 1-7 0zM8 11v2.5",
@@ -258,7 +259,7 @@ function V2Sidebar() {
           <NavItem
             href={offerId ? v2OfferHref(orgId, brandId, offerId, "sales-path") : v2Href(orgId, brandId, "sales-path")}
             label="Outbound"
-            icon={<I d={ICONS.path} />}
+            icon={<I d={ICONS.outbound} />}
             active={section === "sales-path"}
           />
           {offerId &&
