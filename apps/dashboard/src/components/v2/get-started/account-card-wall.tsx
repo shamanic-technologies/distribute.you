@@ -35,7 +35,7 @@ import { useAuth, useOrganizationList, useSession, useUser } from "@clerk/nextjs
 import { useSignIn, useSignUp } from "@clerk/nextjs/legacy";
 import { EmbeddedCheckout, EmbeddedCheckoutProvider } from "@stripe/react-stripe-js";
 import posthog from "posthog-js";
-import { getBillingAccount, savePhoneNumber, type BillingAccount } from "@/lib/api";
+import { getBillingAccount, sendAuthNotification, savePhoneNumber, type BillingAccount } from "@/lib/api";
 import { getStripe } from "@/lib/stripe";
 import {
   authFailureProps,
@@ -531,6 +531,9 @@ export function AccountCardWall({
       return;
     }
     setAccount(settled.account);
+    // The first-payment email (owner 2026-10-07): transactional-email sends it once per
+    // org and user, so a later top-up through here never sends it again.
+    sendAuthNotification("first_payment").catch((e) => console.error("[get-started] first_payment email failed:", e));
     pingOwner({ event: "paid", domain: website ? pingHostOf(pingWebsiteUrl(website)) : null, amountUsd: (Number(settled.account.credited_cents) - p.creditedBefore) / 100 });
     posthog.capture("get_started_card_saved", { plan: "prepaid" });
     void launch();

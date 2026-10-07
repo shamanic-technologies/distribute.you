@@ -3,7 +3,6 @@ import { CHANNEL_REQUEST_TEMPLATE_DEF } from "@/lib/channel-request-email";
 import { BRAND_WHY } from "./lib/brand-why";
 const DASHBOARD_URL = "https://dashboard.distribute.you";
 const DOCS_URL = "https://docs.distribute.you";
-const HOW_IT_WORKS_URL = "https://distribute.you/how-it-works";
 
 // Landing green charter (#2595/#2605 — signal GREEN, OKLCH hue 158; the served
 // index-v1 landing's --green is #45e38e). OKLCH brand ramp converted to hex
@@ -149,34 +148,51 @@ export const EMAIL_TEMPLATES = [
       </ul>`),
     textBody: "You're on the list!\n\nThanks for joining the distribute.you waitlist. We'll notify you as soon as we're ready to launch.\n\nIn the meantime, you can:\n- Read the documentation: https://docs.distribute.you\n- Star us on GitHub: https://github.com/shamanic-technologies/distribute.you" + TEXT_SIGNOFF,
   },
-  // Email 1 — sent at SIGNUP (before onboarding, so no brand/goal exists yet).
-  // Short "why distribute" value-prop, goal-agnostic. The goal-specific
-  // "your <outcome> is on the way" note is the SECOND email (goal_launched below),
-  // fired after the user pays and launches.
+  // Sent at SIGNUP (owner 2026-10-07): short, the WHY first, ONE button. What we do
+  // comes in `first_payment`, once the customer has paid.
   {
     name: "welcome",
-    subject: "Welcome to distribute.you",
+    subject: "Revenue made easy. Starts here.",
     htmlBody: emailLayout(`
-      <h1 style="color:${EMAIL_TEXT};font-size:24px;font-weight:700;letter-spacing:-0.02em;line-height:1.25;margin:0 0 20px;">Welcome to distribute.you.</h1>
+      <h1 style="color:${EMAIL_TEXT};font-size:24px;font-weight:700;letter-spacing:-0.02em;line-height:1.25;margin:0 0 20px;">Revenue made easy.</h1>
       <p style="color:${EMAIL_SUB};font-size:16px;line-height:1.65;margin:0 0 18px;">
-        Cold outreach that lands takes domains, warmup, list-building, writing, and an inbox someone babysits every day. Do it wrong and you torch your own domain's reputation.
-      </p>
-      <p style="color:${EMAIL_SUB};font-size:16px;line-height:1.65;margin:0 0 18px;">
-        So we run all of it for you. You drop a URL. We find the decision-makers at the companies you want, write the emails, and send them from our own domains, on your behalf. Your domain never touches cold outreach.
-      </p>
-      <p style="color:${EMAIL_SUB};font-size:16px;line-height:1.65;margin:0 0 18px;">
-        Only interested prospects come back to you. You close.
+        You run your business. We bring you new clients.
       </p>
       <p style="color:${EMAIL_SUB};font-size:16px;line-height:1.65;margin:0 0 28px;">
-        The platform is free. You choose how much goes to your outreach, and your dashboard shows what each reply cost you.
+        Add your website and pick who to reach. Your first emails are ready in a few minutes.
+      </p>
+      <p style="margin:0;">
+        <a href="${DASHBOARD_URL}" style="display:inline-block;background:${EMAIL_ACCENT};color:#ffffff;padding:13px 28px;border-radius:10px;text-decoration:none;font-size:16px;font-weight:600;">Set up my first campaign</a>
+      </p>`),
+    textBody: `Revenue made easy.\n\nYou run your business. We bring you new clients.\n\nAdd your website and pick who to reach. Your first emails are ready in a few minutes.\n\nSet up my first campaign: ${DASHBOARD_URL}${TEXT_SIGNOFF}`,
+  },
+  // Sent ONCE, when the customer's first prepaid payment is confirmed (owner
+  // 2026-10-07): the WHY, then what we do and what they do. transactional-email
+  // dedupes it once per org and user, so a later top-up never sends it again.
+  {
+    name: "first_payment",
+    subject: "Your outreach is funded.",
+    htmlBody: emailLayout(`
+      <h1 style="color:${EMAIL_TEXT};font-size:24px;font-weight:700;letter-spacing:-0.02em;line-height:1.25;margin:0 0 20px;">Your outreach is funded.</h1>
+      <p style="color:${EMAIL_SUB};font-size:16px;line-height:1.65;margin:0 0 18px;">
+        Thanks for your trust. From now on, finding clients is our job, not yours.
+      </p>
+      <p style="color:${EMAIL_SUB};font-size:16px;line-height:1.65;margin:0 0 8px;">What we do:</p>
+      <ul style="color:${EMAIL_SUB};font-size:16px;line-height:1.65;margin:0 0 18px;padding-left:20px;">
+        <li>We find the decision-makers at the companies you picked.</li>
+        <li>We write each email for that person and send it from our own domains.</li>
+        <li>When someone replies with interest, we pass them to you.</li>
+      </ul>
+      <p style="color:${EMAIL_SUB};font-size:16px;line-height:1.65;margin:0 0 18px;">
+        What you do: talk to them and close.
+      </p>
+      <p style="color:${EMAIL_SUB};font-size:16px;line-height:1.65;margin:0 0 28px;">
+        Your dashboard shows every email sent and what each positive reply cost you.
       </p>
       <p style="margin:0;">
         <a href="${DASHBOARD_URL}" style="display:inline-block;background:${EMAIL_ACCENT};color:#ffffff;padding:13px 28px;border-radius:10px;text-decoration:none;font-size:16px;font-weight:600;">Open your dashboard</a>
-      </p>
-      <p style="color:${EMAIL_MUTED};font-size:14px;line-height:1.6;margin:20px 0 0;">
-        New to this? <a href="${HOW_IT_WORKS_URL}" style="color:${EMAIL_ACCENT_TEXT};">See how it works.</a>
       </p>`),
-    textBody: `Welcome to distribute.you.\n\nCold outreach that lands takes domains, warmup, list-building, writing, and an inbox someone babysits every day. Do it wrong and you torch your own domain's reputation.\n\nSo we run all of it for you. You drop a URL. We find the decision-makers at the companies you want, write the emails, and send them from our own domains, on your behalf. Your domain never touches cold outreach.\n\nOnly interested prospects come back to you. You close.\n\nThe platform is free. You choose how much goes to your outreach, and your dashboard shows what each reply cost you.\n\nOpen your dashboard: ${DASHBOARD_URL}\n\nNew to this? See how it works: ${HOW_IT_WORKS_URL}${TEXT_SIGNOFF}`,
+    textBody: `Your outreach is funded.\n\nThanks for your trust. From now on, finding clients is our job, not yours.\n\nWhat we do:\n- We find the decision-makers at the companies you picked.\n- We write each email for that person and send it from our own domains.\n- When someone replies with interest, we pass them to you.\n\nWhat you do: talk to them and close.\n\nYour dashboard shows every email sent and what each positive reply cost you.\n\nOpen your dashboard: ${DASHBOARD_URL}${TEXT_SIGNOFF}`,
   },
   // Email 2 — sent AFTER the user pays and launches (completeLaunchAfterCheckout).
   // {{outcomeNoun}} is the plural of the brand's chosen optimization goal (clicks /

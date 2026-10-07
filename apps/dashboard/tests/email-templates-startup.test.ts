@@ -43,6 +43,7 @@ describe("Email template deployment at startup", () => {
     "campaign_stopped",
     "waitlist",
     "welcome",
+    "first_payment",
     "goal_launched",
     "signup_notification",
     "signin_notification",
@@ -59,7 +60,7 @@ describe("Email template deployment at startup", () => {
     });
   }
 
-  it("should deploy exactly 18 templates", () => {
+  it("should deploy exactly 19 templates", () => {
     const arrMatch = content.match(/EMAIL_TEMPLATES\s*=\s*\[([\s\S]*?)\n\];/);
     expect(arrMatch).toBeTruthy();
     const arr = arrMatch![1];
@@ -69,16 +70,16 @@ describe("Email template deployment at startup", () => {
     // sender is gone is dead config, and it fails SILENTLY, since the stored row
     // survives whether or not anyone still writes it.
     //
-    // 10 are declared inline. The six out-of-credit dunning mails come from
+    // 11 are declared inline. The six out-of-credit dunning mails come from
     // `dunningTemplates()` (three steps, each with a `-blocked` twin). The staff
     // digest is imported from the module that SENDS it; that module re-registers
     // it before every send, because a boot-time registration is not a guarantee
     // that the write ever reached the template store. The channel "Contact us"
     // request is imported the same way, from the module that sends it.
-    expect(arr.match(/name: "/g)).toHaveLength(10);
+    expect(arr.match(/name: "/g)).toHaveLength(11);
     expect(arr).toContain("...dunningTemplates()");
-    expect(EMAIL_TEMPLATES).toHaveLength(18);
-    expect(new Set(EMAIL_TEMPLATES.map((t) => t.name)).size).toBe(18);
+    expect(EMAIL_TEMPLATES).toHaveLength(19);
+    expect(new Set(EMAIL_TEMPLATES.map((t) => t.name)).size).toBe(19);
     expect(arr).toContain("STAFF_DIGEST_TEMPLATE_DEF");
     expect(arr).toContain("CHANNEL_REQUEST_TEMPLATE_DEF");
     expect(content).toContain('from "@/lib/staff-digest"');
