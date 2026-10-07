@@ -64,6 +64,18 @@ function Trend({ values, line = false, className = "" }: { values: number[] | nu
   if (line || (values && values.length > 14)) return <SparkLine className={`h-8 ${className}`} values={values} />;
   return <BarSpark className={className} values={values} />;
 }
+/**
+ * The outcome tiles draw the served running total (owner 2026-10-07: "compounded over time"),
+ * so the curve ends on the printed figure. A day missing it is a producer gap: no curve, logged.
+ */
+function cumulative(daily: { date: string; cumulativeCount?: number }[]): number[] | null {
+  const out = daily.map((d) => d.cumulativeCount);
+  if (out.some((v) => v == null)) {
+    console.error("[dashboard] today-page: window series without cumulativeCount", { days: daily.length });
+    return null;
+  }
+  return out as number[];
+}
 const pct = (v: number) => `${v < 10 || v > 99 ? v.toFixed(1) : Math.round(v)}%`;
 /** One column per stat tile on a wide screen, so the row always spans the full width. */
 const STAT_GRID_COLS = {
@@ -267,13 +279,13 @@ export function TodayPage() {
               {showReplies && (
                 <StatTile label="Positive replies" href={`${v2Href(orgId, brandId, "people")}?tab=positive-replies`}>
                   {win.pending ? <Shimmer className="h-7 w-12" /> : <Figure value={w ? formatCount(w.recipientsRepliesPositive.total) : "—"} />}
-                  <Trend className="mt-auto pt-2" values={w ? w.recipientsRepliesPositive.daily.map((d) => d.count) : null} />
+                  <Trend className="mt-auto pt-2" line values={w ? cumulative(w.recipientsRepliesPositive.daily) : null} />
                 </StatTile>
               )}
               {showVisits && (
                 <StatTile label="Website visits" href={`${v2Href(orgId, brandId, "people")}?tab=website-visits`}>
                   {win.pending ? <Shimmer className="h-7 w-12" /> : <Figure value={w ? formatCount(w.recipientsClicked.total) : "—"} />}
-                  <Trend className="mt-auto pt-2" values={w ? w.recipientsClicked.daily.map((d) => d.count) : null} />
+                  <Trend className="mt-auto pt-2" line values={w ? cumulative(w.recipientsClicked.daily) : null} />
                 </StatTile>
               )}
               <StatTile label="Delivered" note={emails ? `${formatCount(emails.bounced)} bounced` : undefined}>
