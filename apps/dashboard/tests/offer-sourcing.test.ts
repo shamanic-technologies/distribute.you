@@ -32,6 +32,12 @@ describe("Sourcing section", () => {
     expect(thead).not.toMatch(/Leads|\$ \/ Lead|Positive replies|\$ \/ Positive reply/);
   });
 
+  it("an origin not used yet is a plain choice: no chip, no greyed row (owner 2026-10-07)", () => {
+    const code = section.replace(/\/\*[\s\S]*?\*\//g, "");
+    expect(code).not.toContain("Not used yet");
+    expect(code).not.toContain('"k-fg3"}`}');
+  });
+
   it("each live row is a checkbox the customer ticks, saved to brand-service, ROI > 1 by default", () => {
     expect(section).toContain("selectedSourcingSlugs(savedQ.data, q.data.origins)");
     expect(section).toContain("saveOfferSelectedSourcing(brandId, offerId, next)");
