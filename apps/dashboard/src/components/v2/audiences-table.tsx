@@ -39,7 +39,7 @@ type Tab = "active" | "archived";
 
 const STATUS_WORD: Record<string, string> = { active: "Active", paused: "Paused", archived: "Archived", suggested: "Suggested" };
 
-function SparkleIcon() {
+export function SparkleIcon() {
   return (
     <svg width="14" height="14" viewBox="0 0 16 16" fill="none" aria-hidden="true">
       <path

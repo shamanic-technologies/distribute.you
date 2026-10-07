@@ -3182,15 +3182,6 @@ export async function archiveOfferQualificationCriterion(brandId: string, offerI
   parseQualification(z.object({ archived: z.literal(true) }), raw, "archiveOfferQualificationCriterion");
 }
 
-/**
- * POST …/qualification/suggestions — AI suggests checks for the offer, written as criteria
- * turned OFF. It SPENDS on the org (a 402 opens the billing guard like every other spend).
- */
-export async function suggestOfferQualificationCriteria(brandId: string, offerId: string): Promise<QualificationCriterion[]> {
-  const raw = await apiCall<unknown>(`${qualificationBase(brandId, offerId)}/suggestions`, { method: "POST", body: {} });
-  return parseQualification(QualificationCriteriaSchema, raw, "suggestOfferQualificationCriteria").criteria;
-}
-
 export const LEAD_CHECK_VERDICTS = ["yes", "no", "unavailable", "not_checked"] as const;
 
 const LeadQualificationSchema = z.object({

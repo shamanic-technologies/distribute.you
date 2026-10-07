@@ -6,9 +6,7 @@ import { useMutation } from "@tanstack/react-query";
 import { useAuthQuery, useQueryClient } from "@/lib/use-auth-query";
 import {
   archiveOfferQualificationCriterion,
-  isInsufficientCredit,
   listOfferQualificationCriteria,
-  suggestOfferQualificationCriteria,
   updateOfferQualificationCriterion,
   type QualificationCriterion,
   type QualificationMode,
@@ -25,53 +23,41 @@ import {
 } from "@/lib/v2/qualification";
 import { EmptyNote, SectionTitle, Shimmer, StateDot } from "@/components/v2/ui";
 import { ExpectedLabel } from "@/components/v2/offer-sales-paths";
+import { SparkleIcon } from "@/components/v2/audiences-table";
+import { EditWithAIChat } from "@/components/ai-edit/edit-with-ai-chat";
+
+/** chat-service's editor chat for an offer's checks. */
+const QUALIFICATION_CHAT_KEY = "qualification-editor" as const;
 
 const criteriaKey = (brandId: string, offerId: string) => ["offerQualificationCriteria", brandId, offerId] as const;
 
 /**
  * Targeting > Qualification (owner 2026-10-07): the checks this OFFER runs on the companies of
- * its prospects, for every audience of it. Per check: the question, its role (Filter skips a
- * company that fails it is skipped, Bonus is a plus, never required), on/off, the served
- * cost per lead and the served pass rate. AI suggestions arrive as checks turned off.
+ * its prospects, for every audience of it. Per check: the question, its role (Hard filter: a
+ * company that fails is skipped; Bonus: a plus, never required), on/off, the served cost per
+ * lead and the served pass rate. The AI chat suggests checks (they arrive turned off).
  */
 export function OfferQualification({ brandId, offerId }: { brandId: string; offerId: string }) {
-  const qc = useQueryClient();
   const q = useAuthQuery(criteriaKey(brandId, offerId), () => listOfferQualificationCriteria(brandId, offerId));
-  const [suggestError, setSuggestError] = useState<string | null>(null);
-  // A run that wrote no new check (all dropped, or already asked) says so, never a silent tab.
-  const [nothingNew, setNothingNew] = useState(false);
-  const suggest = useMutation({
-    mutationFn: () => suggestOfferQualificationCriteria(brandId, offerId),
-    onMutate: () => {
-      setSuggestError(null);
-      setNothingNew(false);
-    },
-    onSuccess: (written) => {
-      setNothingNew(written.length === 0);
-      return qc.refetchQueries({ queryKey: criteriaKey(brandId, offerId) });
-    },
-    onError: (err) => {
-      console.error("[offer-qualification] suggestions failed", { brandId, offerId, err });
-      // A 402 opens the billing guard (apiCall); anything else is ours to say.
-      if (!isInsufficientCredit(err)) setSuggestError("We could not suggest checks right now. Try again.");
-    },
-  });
+  // The checks are suggested, created, turned on/off and archived through the AI chat (owner
+  // 2026-10-07: "comme avec la création d'audiences"). A check's wording is never edited (it may
+  // already have run): the chat archives it and creates a new one.
+  const [aiOpen, setAiOpen] = useState(false);
 
   const rows = q.data ? sortCriteria(q.data) : null;
-  const suggestButton = (
-    <button type="button" className="k-btn" disabled={suggest.isPending} onClick={() => suggest.mutate()}>
-      {suggest.isPending ? "Suggesting…" : "Suggest checks"}
+  const aiButton = (
+    <button type="button" className="k-btn-strong" onClick={() => setAiOpen(true)}>
+      <SparkleIcon />
+      Edit with AI
     </button>
   );
 
   return (
     <section>
-      <SectionTitle count={rows ? rows.length : null} right={rows && rows.length > 0 ? suggestButton : undefined}>
+      <SectionTitle count={rows ? rows.length : null} right={rows && rows.length > 0 ? aiButton : undefined}>
         Checks
       </SectionTitle>
       <p className="k-fg2 -mt-1 mb-3 text-[13px]">We check each company before we write to it, on every audience of this offer.</p>
-      {suggestError && <p className="mb-3 text-[12px] text-[var(--data-rose)]">{suggestError}</p>}
-      {nothingNew && <p className="k-fg2 mb-3 text-[12px]">Nothing new to suggest for this offer.</p>}
       {!rows ? (
         q.isError && q.isFetchedAfterMount ? (
           <div className="k-card">
@@ -86,8 +72,8 @@ export function OfferQualification({ brandId, offerId }: { brandId: string; offe
         )
       ) : rows.length === 0 ? (
         <div className="k-card flex flex-col items-center gap-3 px-4 py-8">
-          <p className="k-fg3 text-center text-[13px]">No checks yet. We can suggest some from your offer.</p>
-          {suggestButton}
+          <p className="k-fg3 text-center text-[13px]">No checks yet. Ask the AI to suggest some from your offer.</p>
+          {aiButton}
         </div>
       ) : (
         <div className="k-card overflow-hidden">
@@ -114,6 +100,23 @@ export function OfferQualification({ brandId, offerId }: { brandId: string; offe
           </div>
         </div>
       )}
+      <EditWithAIChat
+        open={aiOpen}
+        onClose={() => setAiOpen(false)}
+        title="Edit checks with AI"
+        intro="Hi, I can suggest checks for this offer, create one from your words, turn one on or off, make it a Hard filter or a Bonus, or archive it. What would you like to do?"
+        suggestions={[
+          "Suggest checks for this offer",
+          "Skip companies whose site is slow on mobile",
+          "Archive the checks I never turned on",
+        ]}
+        configKey={QUALIFICATION_CHAT_KEY}
+        brandId={brandId}
+        context={{ offerId }}
+        sessionVersion={offerId}
+        invalidateKeys={[[...criteriaKey(brandId, offerId)]]}
+        panelClassName="k-popover fixed inset-y-2 right-2 z-[95] flex w-[min(28rem,calc(100vw-16px))] flex-col overflow-hidden"
+      />
     </section>
   );
 }
