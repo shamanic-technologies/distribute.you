@@ -73,6 +73,10 @@ describe("Sourcing page wiring (owner 2026-10-07: off the Sales path page, its o
     expect(setup).toContain("<AudienceLists />");
   });
 
+  it("a source campaign starts as a funded pair (no workflow), never through the workflow picker", () => {
+    expect(table).toContain('} else if (campaign.reactive || campaign.kind === "source") {');
+  });
+
   it("a source never takes or gives the proactive plan", () => {
     expect(table).toContain('const activeProactive = sorted.find((c) => c.kind === "outreach" && !c.reactive && running(c)) ?? null;');
     expect(table).toContain('replaces={c.kind === "outreach" && !c.reactive && activeProactive');

@@ -336,7 +336,8 @@ function CampaignStatus({
     try {
       if (mission) {
         await setCampaignStatus(mission.row.campaign.id, next ? "activate" : "stop", { brandId, featureSlug: campaign.featureSlug });
-      } else if (campaign.reactive) {
+      } else if (campaign.reactive || campaign.kind === "source") {
+        // A source campaign runs no workflow: campaign-service starts it as a funded pair (v0.75.2).
         await startReactiveCampaign({ brandId, offerId, featureSlug: campaign.featureSlug, legKey: campaign.legKey });
       } else {
         await createCampaignForPair({
