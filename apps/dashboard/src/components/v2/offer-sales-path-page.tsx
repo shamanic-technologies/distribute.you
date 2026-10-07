@@ -187,7 +187,7 @@ export function V2OfferSalesPathPage() {
     <V2Page
       crumbs={[
         { label: name ?? " ", href: v2OfferHref(orgId, brandId, offerId) },
-        { label: "Sales path" },
+        { label: "Outbound" },
       ]}
       title={name ?? " "}
       sub="Every way this offer can sell, best return first."
