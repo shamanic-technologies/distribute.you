@@ -131,6 +131,8 @@ export const SENSITIVE_QUERY_ROOTS = new Set([
  * SENSITIVE_QUERY_ROOTS; a future UNKNOWN root is default-OFF until listed here.
  */
 export const PERSISTABLE_QUERY_ROOTS = new Set([
+  // The brand's own LinkedIn company page (Brand settings).
+  "brandLinkedinPage",
   // The platform step, leg and channel catalogue — no org, no auth, one answer for
   // every tenant.
   "publicCatalogue",
