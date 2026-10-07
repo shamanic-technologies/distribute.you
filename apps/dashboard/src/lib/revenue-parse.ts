@@ -276,7 +276,7 @@ const ConversionRateHistorySchema = z.object({
   ).optional(),
 });
 
-const RoiHistorySchema = z.object({
+export const RoiHistorySchema = z.object({
   daily: z.array(
     z.object({
       date: z.string(),
