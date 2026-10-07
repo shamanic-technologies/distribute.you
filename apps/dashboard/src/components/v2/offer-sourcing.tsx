@@ -111,7 +111,8 @@ type Row = Omit<SourcingOrigin, "slug" | "family" | "live" | "description"> & {
 
 /**
  * The table's rows: the origins we run or ran for this offer (a retired one only while it
- * holds history), in the producer's order with the used ones first, then the leads served
+ * holds history), each one a choice whether this offer used it yet or not (owner 2026-10-07:
+ * no "Not used yet" chip), used ones first, then the leads served
  * before a source was recorded, when there are any.
  */
 export function sourcingRows(data: Pick<OfferSourcing, "origins" | "unattributed">): Row[] {
@@ -139,7 +140,7 @@ function SourcingRow({ row, on, onToggle }: { row: Row; on: boolean; onToggle?: 
   return (
     <tr
       onClick={onToggle ? () => onToggle(!on) : undefined}
-      className={`k-row k-line-subtle h-12 border-b last:border-b-0 ${onToggle ? "cursor-pointer" : ""} ${on ? "bg-[var(--accent-soft)]" : ""} ${row.used || on ? "" : "k-fg3"}`}
+      className={`k-row k-line-subtle h-12 border-b last:border-b-0 ${onToggle ? "cursor-pointer" : ""} ${on ? "bg-[var(--accent-soft)]" : ""}`}
     >
       <td className="px-3 py-2 pl-4">
         {row.selectable && (
@@ -164,10 +165,7 @@ function SourcingRow({ row, on, onToggle }: { row: Row; on: boolean; onToggle?: 
         )}
       </td>
       <td className="px-3 py-2">
-        <span className="flex items-center gap-2">
-          <span className={row.used || on ? "font-semibold" : ""}>{row.name}</span>
-          {!row.used && <span className="k-chip k-fg3">Not used yet</span>}
-        </span>
+        <span className="font-semibold">{row.name}</span>
         {row.description && <span className="k-fg3 block text-[12px] leading-[18px]">{row.description}</span>}
       </td>
       <td
