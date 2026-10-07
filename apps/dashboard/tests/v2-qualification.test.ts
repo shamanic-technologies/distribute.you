@@ -67,10 +67,12 @@ describe("qualification surfaces", () => {
     expect(table).toContain("<ExpectedLabel tip={COST_PER_LEAD_TIP}>Cost per lead</ExpectedLabel>");
   });
 
-  it("a suggest run that writes nothing says so", () => {
+  it("checks are managed through the AI chat, scoped to the offer, refreshing the list", () => {
     const table = src("src/components/v2/offer-qualification.tsx");
-    expect(table).toContain("setNothingNew(written.length === 0)");
-    expect(table).toContain("Nothing new to suggest for this offer.");
+    expect(table).toContain("configKey={QUALIFICATION_CHAT_KEY}");
+    expect(table).toContain("context={{ offerId }}");
+    expect(table).toContain("invalidateKeys={[[...criteriaKey(brandId, offerId)]]}");
+    expect(table).not.toContain("suggestOfferQualificationCriteria");
   });
 
   it("the person page reads the checks by the PERSON id, on the selected offer", () => {

@@ -88,7 +88,7 @@ export function EditWithAIChat({
   title: string;
   intro: string;
   suggestions: string[];
-  configKey: "brand-profile-editor" | "audience-editor";
+  configKey: "brand-profile-editor" | "audience-editor" | "qualification-editor";
   brandId: string;
   context?: EditChatContext;
   /** Optional storage namespace bump to avoid replaying stale backend sessions after config/context changes. */
