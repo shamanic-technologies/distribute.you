@@ -61,13 +61,12 @@ describe("nothing below a mission reaches a customer", () => {
     expect(s.slice(at - 200, at)).toContain("{staffMode && (");
   });
 
-  it("Setup > Audience is GA (owner 2026-10-05): below Campaigns, no staff gate on the entry or the page", () => {
-    const s = read("components/v2/v2-shell.tsx");
-    const at = s.indexOf('label="Audience"');
-    expect(s.indexOf('label="Campaigns"')).toBeGreaterThan(-1);
-    expect(at).toBeGreaterThan(s.indexOf('label="Campaigns"'));
-    expect(s.slice(at - 200, at)).not.toContain("{staffMode && (");
-    expect(read("app/(authed)/v2/orgs/[orgId]/brands/[brandId]/audience/page.tsx")).not.toContain("<StaffOnly>");
+  it("Audience lists are GA (owner 2026-10-05), now Targeting's Lists tab (owner 2026-10-07): no staff gate on the tab or the page", () => {
+    const s = read("components/v2/setup-pages.tsx");
+    const at = s.indexOf('{ label: "Lists"');
+    expect(at).toBeGreaterThan(-1);
+    expect(s.slice(at - 200, at)).not.toContain("staffMode");
+    expect(read("app/(authed)/v2/orgs/[orgId]/brands/[brandId]/offers/[offerId]/targeting/lists/page.tsx")).not.toContain("<StaffOnly>");
   });
 
   it("Audience keeps vendor cost, provider and P(yes) for staff mode, and a customer reads its own org's routes", () => {

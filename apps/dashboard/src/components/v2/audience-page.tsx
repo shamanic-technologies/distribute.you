@@ -24,7 +24,7 @@ import { audienceFilterGroups } from "@/lib/audience-filter-groups";
 import { linkedInSignalOf } from "@/lib/signal-audience";
 import { ProviderLogo } from "@/components/provider-logo";
 import { RecordsFooter, RecordsTabs, RecordsToolbar, REC_TH, useRowKeys } from "@/components/v2/records";
-import { EmptyNote, Shimmer, StateDot, TopBar } from "@/components/v2/ui";
+import { EmptyNote, Shimmer, StateDot } from "@/components/v2/ui";
 
 /**
  * The brand's audiences as human-service holds them: the LISTS we source people from
@@ -34,7 +34,8 @@ import { EmptyNote, Shimmer, StateDot, TopBar } from "@/components/v2/ui";
  * Jev pre-pay screen accepted) are human-service's snapshot through the gateway; every
  * count is served, nothing is summed here.
  *
- * GA (owner 2026-10-05). A customer reads its own org's routes; staff mode reads the staff
+ * Lives as the Lists tab of the offer's Targeting page (owner 2026-10-07; was the brand
+ * Audience page). GA (owner 2026-10-05). A customer reads its own org's routes; staff mode reads the staff
  * routes. What sourcing cost US (vendor $) and which provider a list comes from stay staff
  * mode only: a customer sees the net $ it pays and the list's type.
  */
@@ -193,7 +194,7 @@ function Skeleton({ cols }: { cols: number }) {
   );
 }
 
-export function AudiencePage() {
+export function AudienceLists() {
   const { brandId } = useParams<{ brandId: string }>();
   const { staffMode: staff } = useStaffMode();
   const [tab, setTab] = useState<Tab>("audiences");
@@ -203,7 +204,6 @@ export function AudiencePage() {
   const totalNet = investment.data?.total.netUsd;
   return (
     <>
-      <TopBar crumbs={[{ label: "Setup" }, { label: "Audience" }]} />
       <RecordsTabs
         tabs={[
           {

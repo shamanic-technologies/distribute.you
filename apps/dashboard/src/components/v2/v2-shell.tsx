@@ -262,6 +262,33 @@ function V2Sidebar() {
           )}
         </div>
 
+        {/* Sourcing (owner 2026-10-07): the button opens the offer's Sourcing page, its source
+            campaigns that are ON sit under it with a live dot, as Outbound does for its own. */}
+        <div className="mt-5 space-y-px">
+          <NavItem
+            href={offerId ? v2OfferHref(orgId, brandId, offerId, "sourcing") : v2Href(orgId, brandId, "sourcing")}
+            label="Sourcing"
+            icon={<I d={ICONS.audience} />}
+            active={section === "sourcing"}
+          />
+          {offerId &&
+            activeMissions
+              .filter(({ campaign }) => campaign?.kind === "source")
+              .map(({ m, name }) => (
+                <NavItem
+                  key={m.row.campaign.id}
+                  href={m.href}
+                  label={name ?? m.crew.name}
+                  icon={name ? <PathAvatar name={name} size={16} /> : <CrewMark color={m.crew.color} glyph={m.crew.glyph} size={16} />}
+                  active={pathname.startsWith(m.href)}
+                  indent
+                  trailing={
+                    <span className="k-dot-pulse ml-auto mr-1 h-1.5 w-1.5 shrink-0 rounded-full bg-[var(--run)] text-[var(--run)]" aria-label="On" />
+                  }
+                />
+              ))}
+        </div>
+
         {/* Outbound (owner 2026-10-07): the button opens the Sales path page, the
             selected offer's campaigns that are ON sit under it with a live dot, named
             as that page's Campaigns section names them. */}
@@ -273,7 +300,9 @@ function V2Sidebar() {
             active={section === "sales-path"}
           />
           {offerId &&
-            activeMissions.map(({ m, name }) => (
+            activeMissions
+              .filter(({ campaign }) => campaign?.kind !== "source")
+              .map(({ m, name }) => (
               <NavItem
                 key={m.row.campaign.id}
                 href={m.href}
@@ -310,8 +339,6 @@ function V2Sidebar() {
             icon={<I d={ICONS.channels} />}
             active={section === "campaigns"}
           />
-          {/* The lists we source people from, and what we hold in each. */}
-          <NavItem href={v2Href(orgId, brandId, "audience")} label="Audience" icon={<I d={ICONS.audience} />} active={section === "audience"} />
           <NavItem href={`${v2Href(orgId, brandId, "integrations")}/ai`} label="Integrations" icon={<I d={ICONS.plug} />} active={section === "integrations"} />
           <NavItem href={v2Href(orgId, brandId, "settings")} label="Brand settings" icon={<I d={ICONS.settings} />} active={section === "settings"} />
         </Group>

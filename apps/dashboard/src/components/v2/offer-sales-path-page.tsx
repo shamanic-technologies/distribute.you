@@ -29,10 +29,9 @@ import { v2OfferHref } from "@/lib/v2/routes";
 import { SALES_PATH_CHANNEL_SLUGS, type SalesPathSelection } from "@/lib/offer-sales-path";
 import { EmptyNote, Shimmer } from "@/components/v2/ui";
 import { V2Page, useOfferName } from "@/components/v2/setup-pages";
+import { useStaffMode } from "@/lib/use-staff-mode";
 import { OfferSalesPath } from "@/components/v2/offer-sales-path";
 import { OfferSalesPaths } from "@/components/v2/offer-sales-paths";
-import { OfferSourcingSection } from "@/components/v2/offer-sourcing";
-import { useStaffMode } from "@/lib/use-staff-mode";
 
 /**
  * How an offer sells, read from the top down: the path we run (Active, framed) above the
@@ -174,7 +173,8 @@ export function V2OfferSalesPathPage() {
   };
 
   // Every channel x leg the TICKED paths use (owner 2026-10-05), as features-service serves
-  // them with their ROI; a campaign no ticked path uses is not listed.
+  // them with their ROI; a campaign no ticked path uses is not listed. The SOURCE campaigns
+  // live on the offer's Sourcing page (owner 2026-10-07: keep this page simple).
   const campaigns = useMemo(
     () => campaignsOfOffer(paths.data?.campaigns ?? [], paths.data?.paths ?? [], roiUnavailableLabel),
     [paths.data],
@@ -206,11 +206,6 @@ export function V2OfferSalesPathPage() {
           pending={(paths.isPending && !paths.isError) || (!selectedPaths && !selectedQ.isError)}
         />
       </div>
-      {staffMode && (
-        <div className="mb-8">
-          <OfferSourcingSection brandId={brandId} offerId={offerId} />
-        </div>
-      )}
       <OfferSalesPaths
         data={paths.data}
         pending={paths.isPending && !paths.isError}

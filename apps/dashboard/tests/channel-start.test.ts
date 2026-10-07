@@ -162,8 +162,8 @@ describe("offer campaigns: a reactive row starts as a funded pair", () => {
   // AI Instant Call has no workflow (campaign-service #560): the workflow-ladder path can
   // never start it, campaign-service's start-funded-pair does.
   const src = read("components/v2/offer-campaigns.tsx");
-  it("routes a reactive row with no campaign to startReactiveCampaign", () => {
-    const at = src.indexOf("} else if (campaign.reactive) {");
+  it("routes a reactive or source row with no campaign to startReactiveCampaign", () => {
+    const at = src.indexOf("} else if (campaign.reactive || campaign.kind === \"source\") {");
     expect(at).toBeGreaterThan(-1);
     expect(src.slice(at, src.indexOf("} else {", at))).toContain("startReactiveCampaign(");
   });

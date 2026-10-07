@@ -59,10 +59,20 @@ describe("sidebar", () => {
     const outbound = shell.slice(shell.indexOf("{/* Outbound (owner 2026-10-07)"), shell.indexOf('<Group title="Setup">'));
     expect(outbound).toContain('label="Outbound"');
     expect(outbound).toContain('v2OfferHref(orgId, brandId, offerId, "sales-path")');
-    expect(outbound).toContain("activeMissions.map(");
+    expect(outbound).toContain('.filter(({ campaign }) => campaign?.kind !== "source")');
     expect(outbound).toContain("bg-[var(--run)]");
     expect(shell).not.toContain('title="Campaigns"');
     expect(shell).not.toContain('label="Sales path"');
+  });
+
+  it("Sourcing opens the offer's Sourcing page, its ON source campaigns under it, above Outbound (owner 2026-10-07)", () => {
+    const at = shell.indexOf("{/* Sourcing (owner 2026-10-07)");
+    expect(at).toBeGreaterThan(-1);
+    expect(at).toBeLessThan(shell.indexOf("{/* Outbound (owner 2026-10-07)"));
+    const sourcing = shell.slice(at, shell.indexOf("{/* Outbound (owner 2026-10-07)"));
+    expect(sourcing).toContain('label="Sourcing"');
+    expect(sourcing).toContain('v2OfferHref(orgId, brandId, offerId, "sourcing")');
+    expect(sourcing).toContain('.filter(({ campaign }) => campaign?.kind === "source")');
   });
 });
 

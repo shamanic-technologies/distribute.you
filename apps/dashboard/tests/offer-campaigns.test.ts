@@ -38,7 +38,7 @@ describe("offer campaigns", () => {
   });
   it("sorts on first, then proactive, then ROI high to low, unmeasured last", () => {
     const c = (name: string, reactive: boolean, roi: number | null): OfferCampaign => ({
-      featureSlug: name, legKey: "l", name, channelName: name, managed: true, reactive, fromKey: null, fromLabel: null, toLabel: "x", roi, roiUnavailable: null,
+      kind: "outreach", featureSlug: name, legKey: "l", name, channelName: name, managed: true, reactive, fromKey: null, fromLabel: null, fedByLabel: null, toLabel: "x", roi, roiUnavailable: null, providerDomain: null,
     });
     const list = [c("offLow", false, 0.5), c("onReactive", true, 9), c("onProactive", false, 1), c("offNull", false, null), c("offHigh", false, 3)];
     const on = new Set(["onReactive", "onProactive"]);

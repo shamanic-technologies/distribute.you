@@ -37,10 +37,6 @@ describe("workflow-projection / audience-stats pricing basis", () => {
     expect(readerBody("getWorkflowProjectionLadder")).toContain('query.set("pricing", "net")');
   });
 
-  it("getOfferSourcing requests net pricing", () => {
-    expect(readerBody("getOfferSourcing")).toContain('query.set("pricing", "net")');
-  });
-
   it("getCampaignRoiHistory requests net pricing", () => {
     expect(readerBody("getCampaignRoiHistory")).toContain('pricing: "net"');
   });
