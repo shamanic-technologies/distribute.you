@@ -1,7 +1,8 @@
 /**
  * One Telegram message per human visit that reached onboarding, sent once the
  * visit is over (owner 2026-10-03: the old "someone opened onboarding" ping told
- * him nothing). The message reads at a glance: country flag, how long, how far
+ * him nothing), and per visit of anyone coming BACK, on any surface (owner
+ * 2026-10-07: what they did, their role, their company). The message reads at a glance: country flag, how long, how far
  * they got (landing, onboarding, signup, payment, dashboard), time on each stage
  * and the buttons/links they clicked there. No URL, no id.
  *
@@ -47,6 +48,16 @@ export interface Firmographics {
   /** The signed-up person's role at the company, only when matched. */
   role: string | null;
 }
+
+/** This visitor's earlier visits (PostHog sessions of the same person, 90-day lookback). */
+export interface ReturningVisit {
+  priorVisits: number;
+  /** When the most recent earlier visit ended. */
+  lastSeenAt: string;
+}
+
+/** How far back the job counts earlier visits. */
+export const RETURNING_LOOKBACK_DAYS = 90;
 
 export interface VisitPerson {
   domain: string;
@@ -226,17 +237,64 @@ export function visitPerson(events: VisitEvent[]): VisitPerson | null {
   return { domain, email, firstName: firstName || null, lastName: rest.join(" ") || null };
 }
 
-/** Two lines: HQ, category, industry / size, revenue, role. Unknown is said, never guessed. */
-export function firmographicLines(f: Firmographics): string[] {
+const ROLE_HINTS: [RegExp, string][] = [
+  [/^(ceo|founder|cofounder|co-founder|owner|president)$/, "Founder / CEO"],
+  [/^(cto|tech|engineering|dev|developer)$/, "Tech lead"],
+  [/^(cmo|marketing|growth)$/, "Marketing"],
+  [/^(sales|bizdev|bd|partnerships?)$/, "Sales"],
+  [/^(hr|people|talent|recruiting|jobs|careers)$/, "HR / recruiting"],
+  [/^(ops|operations|coo)$/, "Operations"],
+];
+
+/**
+ * The job title when Apollo did not match the person (owner 2026-10-07: "find it
+ * in Apollo, or guess it"). Always worded as a guess: from the email's local part
+ * (`ceo@`, `sales@`), else a company of 10 people or fewer is most likely run by
+ * the founder who signed up.
+ */
+export function guessRole(email: string | null, employeeRange: string | null): string | null {
+  const local = email?.trim().toLowerCase().split("@")[0];
+  const hint = local ? ROLE_HINTS.find(([re]) => re.test(local))?.[1] : undefined;
+  if (hint) return `${hint} (guess, from the email)`;
+  const max = employeeRange?.match(/(\d[\d,]*)\s*$/)?.[1];
+  if (max && Number(max.replace(/,/g, "")) <= 10) return "Founder (guess, 10 people or fewer)";
+  return null;
+}
+
+/** Two lines: HQ, category, industry / size, revenue, role. Unknown is said; a guessed role says it is a guess. */
+export function firmographicLines(f: Firmographics, email: string | null = null): string[] {
   const or = (v: string | null, unknown: string, suffix = "") => (v ? `${escapeHtml(v)}${suffix}` : unknown);
+  const role = f.role ? escapeHtml(f.role) : (guessRole(email, f.employeeRange) ?? "Role unknown");
   return [
     [f.hqCountry ? `HQ ${countryLabel(f.hqCountry)}` : "HQ unknown", or(f.category, "Category unknown"), or(f.industry, "Industry unknown")].join(" · "),
-    [or(f.employeeRange, "Size unknown", " employees"), or(f.revenueRange, "Revenue unknown", " revenue"), or(f.role, "Role unknown")].join(" · "),
+    [or(f.employeeRange, "Size unknown", " employees"), or(f.revenueRange, "Revenue unknown", " revenue"), role].join(" · "),
   ];
 }
 
+/** "12 min ago", "3 h ago", "2 days ago". */
+export function formatAgo(ms: number): string {
+  const min = Math.max(0, Math.round(ms / 60_000));
+  if (min < 60) return `${min} min ago`;
+  const h = Math.round(min / 60);
+  if (h < 48) return `${h} h ago`;
+  return `${Math.round(h / 24)} days ago`;
+}
+
+/**
+ * The two lines that open a returning visitor's recap: that they are back (how
+ * many visits, last seen when), then who they are, or that they never signed up.
+ */
+export function returningLines(r: ReturningVisit, events: VisitEvent[]): string[] {
+  const start = Math.min(...events.map((e) => Date.parse(e.timestamp)));
+  const back = `🔁 <b>Back</b> · visit ${r.priorVisits + 1} in ${RETURNING_LOOKBACK_DAYS} days · last seen ${formatAgo(start - Date.parse(r.lastSeenAt))}`;
+  const person = events.find((e) => e.email);
+  if (!person?.email) return [back, "Not signed up"];
+  const name = person.personName?.trim();
+  return [back, escapeHtml(name ? `${name} · ${person.email}` : person.email)];
+}
+
 /** The Telegram message (parse_mode HTML) for one visit, events in time order. */
-export function visitRecap(events: VisitEvent[], companyLines: string[] = []): string {
+export function visitRecap(events: VisitEvent[], companyLines: string[] = [], returning: ReturningVisit | null = null): string {
   const sorted = [...events].sort((a, b) => Date.parse(a.timestamp) - Date.parse(b.timestamp));
   const first = sorted.find((e) => e.event === "$pageview") ?? sorted[0];
   const time = new Map<Stage, number>();
@@ -280,7 +338,8 @@ export function visitRecap(events: VisitEvent[], companyLines: string[] = []): s
         ? `<b>Opened the ${checkout}, did not pay ❌</b>`
         : `<b>Left at ${furthest.toLowerCase()} ❌</b>`;
 
-  const lines = [`${countryLabel(first.country)} · ${formatDuration(total)} · ${outcome}`];
+  const lines = returning ? returningLines(returning, sorted) : [];
+  lines.push(`${countryLabel(first.country)} · ${formatDuration(total)} · ${outcome}`);
   lines.push(escapeHtml(sourceLine(first)));
   if (website) lines.push(`Typed ${escapeHtml(website)}`);
   lines.push(...companyLines);

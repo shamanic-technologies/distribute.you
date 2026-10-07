@@ -1,7 +1,7 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
-import { companyDomain, countryLabel, firmographicLines, formatDuration, sourceLine, stageOf, visitPerson, visitRecap, type VisitEvent } from "../src/lib/visit-recap";
-import { companyLines, ENDED_VISITS_SQL, rowToEvent } from "../src/lib/visit-recap-job";
+import { companyDomain, countryLabel, firmographicLines, formatAgo, formatDuration, guessRole, sourceLine, stageOf, visitPerson, visitRecap, type VisitEvent } from "../src/lib/visit-recap";
+import { companyLines, ENDED_VISITS_SQL, rowToEvent, rowToVisit } from "../src/lib/visit-recap-job";
 
 const read = (p: string) => readFileSync(new URL(`../${p}`, import.meta.url), "utf8");
 
@@ -257,5 +257,62 @@ describe("visit recap firmographics (owner 2026-10-04: who is the company behind
     expect(job).toContain("process.env.APOLLO_SERVICE_URL");
     expect(job).toContain("process.env.APOLLO_SERVICE_API_KEY");
     expect(job).not.toContain("api.apollo.io");
+  });
+});
+
+describe("returning visitor recap (owner 2026-10-07: tell me when someone comes back, anywhere)", () => {
+  const dash = { pathname: "/v2/orgs/x" };
+
+  it("sends a visit with no onboarding when the same person visited before, over 90 days", () => {
+    expect(ENDED_VISITS_SQL).toContain("having onboarding > 0 or (prior_visits > 0 and last_seen < visit_started - interval 30 minute)");
+    expect(ENDED_VISITS_SQL).toContain("p.sid != e.sid and p.started < e.started");
+    expect(ENDED_VISITS_SQL).toContain("on p.pid = e.pid");
+    expect(ENDED_VISITS_SQL).toContain("interval 90 day");
+    expect(ENDED_VISITS_SQL).toContain("kevin.lourd@gmail.com");
+  });
+
+  it("reads the earlier visits off the row, and fails loud on a broken one", () => {
+    expect(rowToVisit(["s1", 0, null, 1, "x"])).toEqual({ sessionId: "s1", returning: null });
+    expect(rowToVisit(["s2", 3, "2026-10-01T10:00:00Z", 0, "x"])).toEqual({ sessionId: "s2", returning: { priorVisits: 3, lastSeenAt: "2026-10-01T10:00:00Z" } });
+    expect(() => rowToVisit(["s3", 2, null, 0, "x"])).toThrow(/last-seen/);
+    expect(() => rowToVisit(["s4", "n/a", null, 0, "x"])).toThrow(/prior visit count/);
+  });
+
+  it("opens with who came back, then the usual recap", () => {
+    const text = visitRecap(
+      [ev(0, { ...dash, email: "jane@acme.com", personName: "Jane Doe" }), click(30, "Deals", dash), ev(90, dash)],
+      ["HQ 🇺🇸 United States · B2B SaaS · Software", "11-50 employees · $1M-$10M revenue · Head of Growth"],
+      { priorVisits: 3, lastSeenAt: new Date(T0 - 2 * 86_400_000).toISOString() },
+    );
+    expect(text.split("\n").slice(0, 5)).toEqual([
+      "🔁 <b>Back</b> · visit 4 in 90 days · last seen 2 days ago",
+      "Jane Doe · jane@acme.com",
+      "🇫🇷 France · 1 min 30 · <b>Reached the dashboard</b>",
+      "Came direct, landed on the dashboard",
+      "HQ 🇺🇸 United States · B2B SaaS · Software",
+    ]);
+  });
+
+  it("says an anonymous returner never signed up, and a first visit gets no Back line", () => {
+    const anon = visitRecap([ev(0, { host: "distribute.you", pathname: "/" })], [], { priorVisits: 1, lastSeenAt: new Date(T0 - 3 * 3_600_000).toISOString() });
+    expect(anon.split("\n").slice(0, 2)).toEqual(["🔁 <b>Back</b> · visit 2 in 90 days · last seen 3 h ago", "Not signed up"]);
+    expect(visitRecap([ev(0, {})])).not.toContain("Back");
+  });
+
+  it("prints how long ago in words", () => {
+    expect(formatAgo(12 * 60_000)).toBe("12 min ago");
+    expect(formatAgo(5 * 3_600_000)).toBe("5 h ago");
+    expect(formatAgo(3 * 86_400_000)).toBe("3 days ago");
+  });
+
+  it("guesses the role when Apollo has no title, and says it is a guess (owner: find it in Apollo, or guess it)", () => {
+    expect(guessRole("ceo@acme.com", "51-200")).toBe("Founder / CEO (guess, from the email)");
+    expect(guessRole("sales@acme.com", null)).toBe("Sales (guess, from the email)");
+    expect(guessRole("jane@acme.com", "1-10")).toBe("Founder (guess, 10 people or fewer)");
+    expect(guessRole("jane@acme.com", "51-200")).toBeNull();
+    expect(guessRole(null, "10,001+")).toBeNull();
+    const lines = firmographicLines({ hqCountry: "US", industry: null, employeeRange: "1-10", revenueRange: null, category: null, role: null }, "jane@acme.com");
+    expect(lines[1]).toBe("1-10 employees · Revenue unknown · Founder (guess, 10 people or fewer)");
+    expect(firmographicLines({ hqCountry: null, industry: null, employeeRange: "1-10", revenueRange: null, category: null, role: "CTO" }, "ceo@acme.com")[1]).toContain("CTO");
   });
 });
