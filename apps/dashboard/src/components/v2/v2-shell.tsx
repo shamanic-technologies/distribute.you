@@ -128,6 +128,7 @@ const ICONS = {
   target: "M8 13.5a5.5 5.5 0 1 0 0-11 5.5 5.5 0 0 0 0 11Zm0-3a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5Z",
   plug: "M6 2.5v3m4-3v3M4.5 5.5h7v2a3.5 3.5 0 0 1-7 0zM8 11v2.5",
   settings: "M8 10a2 2 0 1 0 0-4 2 2 0 0 0 0 4Zm5.2-1.1.9.6-1 1.8-1.1-.3a4.5 4.5 0 0 1-1.3.8l-.2 1.2H7.5l-.2-1.2a4.5 4.5 0 0 1-1.3-.8l-1.1.3-1-1.8.9-.6a4.5 4.5 0 0 1 0-1.8l-.9-.6 1-1.8 1.1.3c.4-.3.8-.6 1.3-.8l.2-1.2h2l.2 1.2c.5.2.9.5 1.3.8l1.1-.3 1 1.8-.9.6a4.5 4.5 0 0 1 0 1.8Z",
+  posts: "M2.5 3.5h11v9h-11zM5 6.5h6M5 9.5h4",
   workflows: "M4 3.5a1.5 1.5 0 1 1 0 3 1.5 1.5 0 0 1 0-3Zm8 6a1.5 1.5 0 1 1 0 3 1.5 1.5 0 0 1 0-3ZM4 6.5v2a2 2 0 0 0 2 2h4.5",
 };
 
@@ -317,6 +318,13 @@ function V2Sidebar() {
           <NavItem href={`${v2Href(orgId, brandId, "integrations")}/ai`} label="Integrations" icon={<I d={ICONS.plug} />} active={section === "integrations"} />
           <NavItem href={v2Href(orgId, brandId, "settings")} label="Brand settings" icon={<I d={ICONS.settings} />} active={section === "settings"} />
         </Group>
+
+        {/* What the brand publishes on LinkedIn, the first page of Posting: staff mode only. */}
+        {staffMode && (
+          <Group title="Posting">
+            <NavItem href={v2Href(orgId, brandId, "posts")} label="Posts" icon={<I d={ICONS.posts} />} active={section === "posts"} />
+          </Group>
+        )}
 
         {/* The sidebar lists only what is WORKING: a crew with a running mission, and
             running missions. Everything else stays one click away on Crew.
