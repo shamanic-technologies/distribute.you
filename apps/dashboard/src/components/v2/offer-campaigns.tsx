@@ -8,7 +8,6 @@ import {
   ApiError,
   getBrand,
   getOfferCampaignBudgets,
-  getOfferSourcing,
   saveOfferCampaignBudget,
   setCampaignStatus,
   type OfferCampaignBudgetItem,
@@ -65,27 +64,7 @@ export function OfferCampaigns({
     for (const i of budgetsQ.data?.items ?? []) m.set(campaignKey(i.featureSlug, i.legKey), i);
     return m;
   }, [budgetsQ.data]);
-  // Staff mode: each campaign reads "[source] -> [channel] -> outcome" (owner 2026-10-07),
-  // the sources being the ones features-service recorded for the campaign's leads.
   const { staffMode } = useStaffMode();
-  const sourcingQ = useAuthQuery(["offerSourcing", brandId, offerId], () => getOfferSourcing(brandId, offerId), {
-    enabled: staffMode && !!offerId,
-  });
-  const sourcesByKey = useMemo(() => {
-    const m = new Map<string, string[]>();
-    for (const c of sourcingQ.data?.campaigns ?? []) {
-      if (!c.legKey) continue;
-      const key = campaignKey(c.featureSlug, c.legKey);
-      const names = m.get(key) ?? [];
-      for (const s of c.sources) {
-        // A null source = leads served before the source was recorded (same label as the Sourcing table).
-        const name = s.name ?? "Earlier leads";
-        if (!names.includes(name)) names.push(name);
-      }
-      m.set(key, names);
-    }
-    return m;
-  }, [sourcingQ.data]);
 
   return (
     <section>
@@ -131,7 +110,6 @@ export function OfferCampaigns({
                       budgetPeriod={budgetsQ.data?.period ?? null}
                       budgetPending={!budgetsQ.isFetchedAfterMount && !budgetsQ.data}
                       budgetError={budgetsQ.isError && !budgetsQ.data}
-                      sources={staffMode ? sourcesByKey.get(key) ?? [] : []}
                       showSplit={staffMode}
                     />
                   );
@@ -194,7 +172,6 @@ function CampaignRow({
   budgetPeriod,
   budgetPending,
   budgetError,
-  sources,
   showSplit,
 }: {
   brandId: string;
@@ -209,7 +186,6 @@ function CampaignRow({
   budgetPeriod: "day" | "month" | null;
   budgetPending: boolean;
   budgetError: boolean;
-  sources: readonly string[];
   /** Staff mode: the outreach / sourcing split under the budget. */
   showSplit: boolean;
 }) {
@@ -228,7 +204,7 @@ function CampaignRow({
         </span>
       </td>
       <td className="px-3 py-2">
-        <CampaignLeg campaign={campaign} sources={sources} />
+        <CampaignLeg campaign={campaign} />
       </td>
       <td className="px-3 py-2">
         <span className="k-chip">{campaignTag(campaign)}</span>

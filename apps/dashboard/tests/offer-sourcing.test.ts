@@ -50,10 +50,10 @@ describe("Sourcing section", () => {
   });
 });
 
-describe("Campaigns read source then channel (staff mode)", () => {
-  it("passes the campaign's sources to its leg at the call site", () => {
-    expect(campaigns).toContain("<CampaignLeg campaign={campaign} sources={sources} />");
-    expect(campaigns).toContain("sources={staffMode ? sourcesByKey.get(key) ?? [] : []}");
+describe("Campaigns keep their own path, no source prefix (owner 2026-10-07: Jubilation should not have changed)", () => {
+  it("passes no sources to a campaign leg", () => {
+    expect(campaigns).toContain("<CampaignLeg campaign={campaign} />");
+    expect(campaigns).not.toContain("getOfferSourcing");
   });
 
   it("shows billing's outreach / sourcing split, never summed here", () => {
@@ -83,8 +83,9 @@ describe("offer sourcing reader parses the real prod body", () => {
     expect(() => parseOfferSourcing({ ...body, origins: "nope" })).toThrow(/invalid response shape/);
   });
 
-  it("Campaigns labels a null source like the Sourcing table", () => {
-    expect(campaigns).toContain('const name = s.name ?? "Earlier leads";');
-    expect(section).toContain('name: "Earlier leads"');
+  it("an unidentified source is never a row (owner 2026-10-07)", () => {
+    expect(campaigns).not.toContain("Earlier leads");
+    expect(section).not.toContain("Earlier leads");
+    expect(section).not.toContain("data.unattributed");
   });
 });
