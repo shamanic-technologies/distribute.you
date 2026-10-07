@@ -13,10 +13,10 @@ const section = read("src/components/v2/offer-sourcing.tsx");
 const campaigns = read("src/components/v2/offer-campaigns.tsx");
 
 describe("Sourcing section", () => {
-  it("renders above Campaigns, in staff mode only", () => {
+  it("renders BELOW Campaigns (owner 2026-10-07), in staff mode only", () => {
     const at = page.indexOf("<OfferSourcingSection");
     expect(at).toBeGreaterThan(-1);
-    expect(at).toBeLessThan(page.indexOf("<OfferCampaigns"));
+    expect(at).toBeGreaterThan(page.indexOf("<OfferCampaigns"));
     expect(page.slice(page.lastIndexOf("{staffMode && (", at), at)).toContain("staffMode");
   });
 
@@ -42,5 +42,29 @@ describe("Campaigns read source then channel (staff mode)", () => {
     expect(body).toContain("budget?.split");
     expect(campaigns).toContain("<BudgetSplitLine budget={budget} />");
     expect(body).not.toMatch(/outreachDailyBudgetCents \+|\+ d\.sourcingCeilingCents/);
+  });
+});
+
+describe("offer sourcing reader parses the real prod body", () => {
+  // features-service, offer d5ecba00 (brand 75d7e3e8), 2026-10-07: campaigns carry a
+  // `{slug:null,name:null}` source for leads served before audiences were tagged. The old
+  // reader required strings and the whole section read "Could not read where your leads come from".
+  const body = JSON.parse(read("tests/fixtures/offer-sourcing.prod.json"));
+
+  it("accepts the null-named campaign source", async () => {
+    const { parseOfferSourcing } = await import("../src/lib/offer-sourcing-schema");
+    const parsed = parseOfferSourcing(body);
+    expect(parsed.origins.length).toBeGreaterThan(0);
+    expect(parsed.campaigns.some((c) => c.sources.some((s) => s.name === null))).toBe(true);
+  });
+
+  it("still throws loud on a rotten body", async () => {
+    const { parseOfferSourcing } = await import("../src/lib/offer-sourcing-schema");
+    expect(() => parseOfferSourcing({ ...body, origins: "nope" })).toThrow(/invalid response shape/);
+  });
+
+  it("Campaigns labels a null source like the Sourcing table", () => {
+    expect(campaigns).toContain('const name = s.name ?? "Earlier leads";');
+    expect(section).toContain('name: "Earlier leads"');
   });
 });
