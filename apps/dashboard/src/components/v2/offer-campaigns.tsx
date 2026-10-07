@@ -7,7 +7,6 @@ import { useAuthQuery, useQueryClient } from "@/lib/use-auth-query";
 import {
   ApiError,
   getBrand,
-  getCampaignBudgetSplit,
   getOfferCampaignBudgets,
   getOfferSourcing,
   saveOfferCampaignBudget,
@@ -258,7 +257,7 @@ function CampaignRow({
           error={budgetError}
         />
         {showSplit && !campaign.reactive && campaign.managed !== false && (
-          <BudgetSplitLine brandId={brandId} offerId={offerId} campaign={campaign} />
+          <BudgetSplitLine budget={budget} />
         )}
       </td>
     </tr>
@@ -397,20 +396,14 @@ function CampaignStatus({
 }
 
 /**
- * billing's split of a campaign's daily budget (v0.82.0): outreach a fixed amount, sourcing
- * on demand up to its ceiling. Nothing when the budget is not split.
+ * billing's split of a campaign's daily budget: outreach a fixed amount, sourcing on demand
+ * up to its ceiling. Nothing when the budget is not split.
  */
-function BudgetSplitLine({ brandId, offerId, campaign }: { brandId: string; offerId: string; campaign: OfferCampaign }) {
-  const q = useAuthQuery(
-    ["campaignBudgetSplit", brandId, offerId, campaign.featureSlug, campaign.legKey],
-    () => getCampaignBudgetSplit(brandId, { offerId, featureSlug: campaign.featureSlug, legKey: campaign.legKey }),
-  );
-  if (q.isError && !q.data) return <span className="k-fg3 mt-0.5 block text-[11.5px]">Could not read the split</span>;
-  const d = q.data;
-  if (!d || !d.split || d.outreachDailyBudgetCents === null || d.sourcingCeilingCents === null) return null;
+function BudgetSplitLine({ budget }: { budget: OfferCampaignBudgetItem | null }) {
+  if (!budget?.split || budget.outreachDailyBudgetCents === null || budget.sourcingCeilingCents === null) return null;
   return (
     <span className="k-fg3 mt-0.5 block whitespace-nowrap text-[11.5px] tabular-nums">
-      Outreach {fmtDailyBudgetUsd(d.outreachDailyBudgetCents)} + sourcing up to {fmtDailyBudgetUsd(d.sourcingCeilingCents)}
+      Outreach {fmtDailyBudgetUsd(budget.outreachDailyBudgetCents)} + sourcing up to {fmtDailyBudgetUsd(budget.sourcingCeilingCents)}
     </span>
   );
 }

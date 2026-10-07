@@ -2238,35 +2238,6 @@ export async function getOfferSourcing(brandId: string, offerId: string): Promis
   return parsed.data;
 }
 
-// ONE campaign's budget split (billing v0.82.0): outreach is a fixed daily amount, sourcing
-// spends on demand up to its ceiling, and the two sum to the daily budget. billing's figures,
-// never summed here. Cents arrive as decimal strings.
-const CampaignBudgetSplitSchema = z.object({
-  featureSlug: z.string(),
-  legKey: z.string(),
-  dailyBudgetCents: z.coerce.number().nullable(),
-  outreachDailyBudgetCents: z.coerce.number().nullable(),
-  sourcingCeilingCents: z.coerce.number().nullable(),
-  split: z.boolean(),
-});
-
-export type CampaignBudgetSplit = z.infer<typeof CampaignBudgetSplitSchema>;
-
-/** GET /brands/:brandId/campaign-budget — one campaign's outreach budget and sourcing ceiling. */
-export async function getCampaignBudgetSplit(
-  brandId: string,
-  campaign: { offerId: string; legKey: string; featureSlug: string },
-): Promise<CampaignBudgetSplit> {
-  const query = new URLSearchParams(campaign);
-  const raw = await apiCall<unknown>(`/brands/${brandId}/campaign-budget?${query.toString()}`);
-  const parsed = CampaignBudgetSplitSchema.safeParse(raw);
-  if (!parsed.success) {
-    console.error("[dashboard] getCampaignBudgetSplit: response shape mismatch", { issues: parsed.error.issues, raw });
-    throw new Error("[dashboard] getCampaignBudgetSplit: invalid response shape");
-  }
-  return parsed.data;
-}
-
 /** GET /brands/:brandId/sales-budget — the brand's daily sales budget mode (billing-service). */
 export async function getBrandSalesBudget(brandId: string): Promise<BrandSalesBudget> {
   const raw = await apiCall<unknown>(`/brands/${brandId}/sales-budget`);
@@ -3077,6 +3048,11 @@ const OfferCampaignBudgetItemSchema = z.object({
   managed: z.boolean().nullable(),
   minimumCents: z.coerce.number().nullable(),
   budgetable: z.boolean(),
+  // The split of the DAILY budget (billing v0.83.0): outreach a fixed amount, sourcing on
+  // demand up to its ceiling. null / null / false when the budget is not split.
+  outreachDailyBudgetCents: z.coerce.number().nullable(),
+  sourcingCeilingCents: z.coerce.number().nullable(),
+  split: z.boolean(),
 });
 
 export type OfferCampaignBudgetItem = z.infer<typeof OfferCampaignBudgetItemSchema>;

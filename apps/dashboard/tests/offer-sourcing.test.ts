@@ -39,7 +39,8 @@ describe("Campaigns read source then channel (staff mode)", () => {
   it("shows billing's outreach / sourcing split, never summed here", () => {
     const at = campaigns.indexOf("function BudgetSplitLine(");
     const body = campaigns.slice(at, campaigns.indexOf("export function budgetLabel(", at));
-    expect(body).toContain("getCampaignBudgetSplit(");
+    expect(body).toContain("budget?.split");
+    expect(campaigns).toContain("<BudgetSplitLine budget={budget} />");
     expect(body).not.toMatch(/outreachDailyBudgetCents \+|\+ d\.sourcingCeilingCents/);
   });
 });
