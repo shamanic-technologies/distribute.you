@@ -206,9 +206,8 @@ export const PERSISTABLE_QUERY_ROOTS = new Set([
   "offerEconomics",
   "offerSalesPath",
   "offerSalesPaths",
-  // Where the offer's leads come from, and one campaign's outreach / sourcing split.
+  // Where the offer's leads come from.
   "offerSourcing",
-  "campaignBudgetSplit",
   "offerChannels",
   "offerSelectedSalesPaths",
   "brandSalesBudget",
@@ -383,8 +382,11 @@ export function persisterStorageKey(orgId: string | null | undefined): string {
  * "4": `offerSalesPaths` rows gained the REQUIRED `name` and `combinationKey` (one row per
  * channel combination, #4973). The sales path page read `name.slice` on an older snapshot
  * and crashed with `Cannot read properties of undefined (reading 'slice')`.
+ *
+ * "5": `offerCampaignBudgets` items gained the REQUIRED `split`, `outreachDailyBudgetCents`
+ * and `sourcingCeilingCents` (billing v0.83.0). An older snapshot would hide every split.
  */
-const PERSIST_CACHE_VERSION = "4";
+const PERSIST_CACHE_VERSION = "5";
 
 export function persistCacheVersion(): string {
   return PERSIST_CACHE_VERSION;
