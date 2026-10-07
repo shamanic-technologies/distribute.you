@@ -20,6 +20,7 @@ import {
   type PersonTimeline,
 } from "./people-conversations";
 import { z } from "zod";
+import { BrandLinkedinPageSchema, type BrandLinkedinPage } from "./v2/brand-linkedin-page";
 import { LinkedinFeedResponseSchema, toLinkedinFeedPage, type LinkedinFeedPage } from "./v2/linkedin-post-view";
 import {
   CostMarginSchema,
@@ -2679,6 +2680,33 @@ export async function uploadOrgImage(
     throw new Error("[dashboard] uploadOrgImage: invalid response shape");
   }
   return { url: parsed.data.url };
+}
+
+/** The brand's own LinkedIn company page (brand-service, through the gateway; read never spends). */
+export const BRAND_LINKEDIN_PAGE_PATH = (brandId: string) => `/brands/${encodeURIComponent(brandId)}/linkedin-page`;
+
+export async function getBrandLinkedinPage(brandId: string): Promise<BrandLinkedinPage> {
+  return parseBrandLinkedinPage("getBrandLinkedinPage", await apiCall<unknown>(BRAND_LINKEDIN_PAGE_PATH(brandId)));
+}
+
+/** A person's page wins over every automatic source. Refusals throw ApiError 400 with `body.reason`. */
+export async function setBrandLinkedinPage(brandId: string, linkedinUrl: string): Promise<BrandLinkedinPage> {
+  const raw = await apiCall<unknown>(BRAND_LINKEDIN_PAGE_PATH(brandId), { method: "PUT", body: { linkedinUrl } });
+  return parseBrandLinkedinPage("setBrandLinkedinPage", raw);
+}
+
+/** Back to automatic discovery. */
+export async function clearBrandLinkedinPage(brandId: string): Promise<BrandLinkedinPage> {
+  return parseBrandLinkedinPage("clearBrandLinkedinPage", await apiCall<unknown>(BRAND_LINKEDIN_PAGE_PATH(brandId), { method: "DELETE" }));
+}
+
+function parseBrandLinkedinPage(name: string, raw: unknown): BrandLinkedinPage {
+  const parsed = BrandLinkedinPageSchema.safeParse(raw);
+  if (!parsed.success) {
+    console.error(`[dashboard] ${name}: response shape mismatch`, { issues: parsed.error.issues, raw });
+    throw new Error(`[dashboard] ${name}: invalid response shape`);
+  }
+  return parsed.data;
 }
 
 export async function attachBrandWebsite(

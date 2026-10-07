@@ -17,6 +17,7 @@ import {
   CONVERSION_TRACKING_BLURB,
 } from "@/components/settings/brand-conversion-tracking-card";
 import { TopBar } from "@/components/v2/ui";
+import { BrandLinkedinPageRow } from "@/components/v2/brand-linkedin-page-row";
 
 /**
  * Brand settings, laid out the way every settings page of a Linear-grade product is:
@@ -62,6 +63,12 @@ export function V2BrandSettingsPage() {
           },
         ]
       : []),
+    {
+      id: "linkedin-page",
+      title: "LinkedIn page",
+      description: "Your company page on LinkedIn. Click it to change it.",
+      body: <BrandLinkedinPageRow brandId={brandId} />,
+    },
     {
       id: "sales-rep",
       title: "Sales rep",
