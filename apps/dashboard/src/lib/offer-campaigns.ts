@@ -14,6 +14,8 @@ import { stepPlural } from "./v2/crews";
 
 /** One campaign the offer's sales paths use, as the page lists it. */
 export interface OfferCampaign {
+  /** A SOURCE campaign finds leads ("[Apollo Cold Filters] -> Lead found"); an outreach one works them. */
+  kind: "source" | "outreach";
   featureSlug: string;
   legKey: string;
   /** features-service `campaignName`; null when the producer names none. */
@@ -30,6 +32,10 @@ export interface OfferCampaign {
   roi: number | null;
   /** Why there is no ROI, in the producer's words; null when there is one. */
   roiUnavailable: string | null;
+  /** Fed by the offer's source campaigns: the step it then starts on ("Lead found"), shown on the Sales path page only. */
+  fedByLabel: string | null;
+  /** A source campaign's provider domain (its logo.dev mark); null otherwise or no single vendor. */
+  providerDomain: string | null;
 }
 
 /** The tag over a campaign's budget: when it works ("Daily Proactive", "Reactive on positive replies"). */
@@ -48,6 +54,20 @@ type ServedCampaign = {
   managed: boolean;
   operatedBy: string;
   selectedPathCount: number;
+  roi: number | null;
+  roiUnavailableReason: string | null;
+  fedBy?: { step: { key: string; label: string } } | null;
+};
+
+type ServedSourceCampaign = {
+  channelSlug: string;
+  channelName: string;
+  legKey: string;
+  campaignName: string | null;
+  managed: boolean;
+  toStep: { key: string; label: string };
+  provider: { domain: string } | null;
+  live: boolean;
   roi: number | null;
   roiUnavailableReason: string | null;
 };
@@ -73,6 +93,7 @@ export function campaignsOfOffer(
       continue;
     }
     out.push({
+      kind: "outreach",
       featureSlug: c.channelSlug,
       legKey: c.legKey,
       name: c.campaignName,
@@ -81,12 +102,43 @@ export function campaignsOfOffer(
       reactive: c.reactive,
       fromKey: leg.fromStep?.key ?? null,
       fromLabel: leg.fromStep?.label ?? null,
+      fedByLabel: c.fedBy?.step.label ?? null,
       toLabel: leg.toStep.label,
       roi: c.roi,
       roiUnavailable: roiLabel(c.roiUnavailableReason),
+      providerDomain: null,
     });
   }
   return out;
+}
+
+/**
+ * The offer's SOURCE campaigns (owner 2026-10-07): one per live origin, "[Apollo Cold
+ * Filters] -> Lead found", proactive, each with its own on/off and budget. A retired origin
+ * is served only while it holds history and is never offered.
+ */
+export function sourceCampaignsOfOffer(
+  served: readonly ServedSourceCampaign[],
+  roiLabel: (reason: string | null) => string | null,
+): OfferCampaign[] {
+  return served
+    .filter((c) => c.live)
+    .map((c) => ({
+      kind: "source" as const,
+      featureSlug: c.channelSlug,
+      legKey: c.legKey,
+      name: c.campaignName,
+      channelName: c.channelName,
+      managed: c.managed,
+      reactive: false,
+      fromKey: null,
+      fromLabel: null,
+      fedByLabel: null,
+      toLabel: c.toStep.label,
+      roi: c.roi,
+      roiUnavailable: roiLabel(c.roiUnavailableReason),
+      providerDomain: c.provider?.domain ?? null,
+    }));
 }
 
 /** The identity billing and campaign-service share for one campaign of an offer. */

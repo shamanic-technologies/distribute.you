@@ -7,8 +7,6 @@ import {
   type OfferSelectedSalesPaths,
 } from "./offer-active-sales-paths";
 import { parseBrandSalesBudget, type BrandSalesBudget } from "./brand-sales-budget";
-import { parseOfferSourcing, type OfferSourcing, type SourcingOrigin } from "./offer-sourcing-schema";
-import { OfferSelectedSourcingSchema, type StatedSourcing } from "./offer-sourcing-selection";
 import { browserHasAnonSession } from "./anon-session-cookie";
 import { offerArchiveRefusalSentence } from "./offer-archive";
 import { CrmAttributionSchema, type CrmAttribution } from "./crm-attribution";
@@ -2162,21 +2160,6 @@ export async function applyReactiveDefaults(brandId: string, offerId: string): P
   });
 }
 
-/** GET /brands/:brandId/offers/:offerId/selected-sourcing-origins — the sourcing origins the customer ticked (brand-service). */
-export async function getOfferSelectedSourcing(brandId: string, offerId: string): Promise<StatedSourcing> {
-  const raw = await apiCall<unknown>(`/brands/${brandId}/offers/${offerId}/selected-sourcing-origins`);
-  return parseOrThrow(OfferSelectedSourcingSchema, raw, "getOfferSelectedSourcing");
-}
-
-/** PUT /brands/:brandId/offers/:offerId/selected-sourcing-origins — replace the whole list of ticked origins. */
-export async function saveOfferSelectedSourcing(brandId: string, offerId: string, originSlugs: string[]): Promise<StatedSourcing> {
-  const raw = await apiCall<unknown>(`/brands/${brandId}/offers/${offerId}/selected-sourcing-origins`, {
-    method: "PUT",
-    body: { originSlugs },
-  });
-  return parseOrThrow(OfferSelectedSourcingSchema, raw, "saveOfferSelectedSourcing");
-}
-
 /** GET /brands/:brandId/offers/:offerId/selected-sales-paths — the sales paths the customer ticked (brand-service). */
 export async function getOfferSelectedSalesPaths(brandId: string, offerId: string): Promise<OfferSelectedSalesPaths> {
   const raw = await apiCall<unknown>(`/brands/${brandId}/offers/${offerId}/selected-sales-paths`);
@@ -2202,16 +2185,6 @@ export async function getOfferSalesPaths(
   const scopeQuery = scope ? `&scope=${scope}` : "";
   const raw = await apiCall<unknown>(`/offers/${offerId}/sales-paths?brandId=${encodeURIComponent(brandId)}${scopeQuery}`);
   return parseOfferSalesPaths(raw, "getOfferSalesPaths");
-}
-
-export type { OfferSourcing, SourcingOrigin };
-
-/** GET /offers/:offerId/sourcing — each sourcing origin of the offer with its cost and return (net). */
-export async function getOfferSourcing(brandId: string, offerId: string): Promise<OfferSourcing> {
-  const query = new URLSearchParams({ brandId });
-  query.set("pricing", "net");
-  const raw = await apiCall<unknown>(`/offers/${offerId}/sourcing?${query.toString()}`);
-  return parseOfferSourcing(raw);
 }
 
 /** GET /brands/:brandId/sales-budget — the brand's daily sales budget mode (billing-service). */

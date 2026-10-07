@@ -21,7 +21,7 @@ import { useSalesPathChannels } from "@/lib/use-sales-path-channels";
 import { acceptedChannels, selectedPathKeys, toggleChannel, togglePath } from "@/lib/offer-active-sales-paths";
 import { OfferChannelsPicker } from "@/components/v2/offer-channels-picker";
 import { OfferCampaigns } from "@/components/v2/offer-campaigns";
-import { campaignsOfOffer } from "@/lib/offer-campaigns";
+import { campaignsOfOffer, sourceCampaignsOfOffer } from "@/lib/offer-campaigns";
 import { roiUnavailableLabel, type SalesPathLeg } from "@/lib/offer-sales-paths";
 import { useLegCatalogue } from "@/lib/use-leg-catalogue";
 import { useAcquisitionChannels } from "@/lib/use-acquisition-channels";
@@ -31,8 +31,6 @@ import { EmptyNote, Shimmer } from "@/components/v2/ui";
 import { V2Page, useOfferName } from "@/components/v2/setup-pages";
 import { OfferSalesPath } from "@/components/v2/offer-sales-path";
 import { OfferSalesPaths } from "@/components/v2/offer-sales-paths";
-import { OfferSourcingSection } from "@/components/v2/offer-sourcing";
-import { useStaffMode } from "@/lib/use-staff-mode";
 
 /**
  * How an offer sells, read from the top down: the path we run (Active, framed) above the
@@ -48,7 +46,6 @@ export function V2OfferSalesPathPage() {
   const channels = useAcquisitionChannels();
   const qc = useQueryClient();
   // Sourcing apart from outreach (owner 2026-10-07) shows in staff mode first.
-  const { staffMode } = useStaffMode();
 
   const q = useAuthQuery(["offerSalesPath", brandId, offerId], () => getOfferSalesPath(brandId, offerId), {
     enabled: !!offerId,
@@ -173,9 +170,13 @@ export function V2OfferSalesPathPage() {
   };
 
   // Every channel x leg the TICKED paths use (owner 2026-10-05), as features-service serves
-  // them with their ROI; a campaign no ticked path uses is not listed.
+  // them with their ROI; a campaign no ticked path uses is not listed. The SOURCE campaigns
+  // (owner 2026-10-07: "[Apollo Cold Filters] -> Lead found") list first, each its own row.
   const campaigns = useMemo(
-    () => campaignsOfOffer(paths.data?.campaigns ?? [], paths.data?.paths ?? [], roiUnavailableLabel),
+    () => [
+      ...sourceCampaignsOfOffer(paths.data?.sourceCampaigns ?? [], roiUnavailableLabel),
+      ...campaignsOfOffer(paths.data?.campaigns ?? [], paths.data?.paths ?? [], roiUnavailableLabel),
+    ],
     [paths.data],
   );
 
@@ -205,11 +206,6 @@ export function V2OfferSalesPathPage() {
           pending={(paths.isPending && !paths.isError) || (!selectedPaths && !selectedQ.isError)}
         />
       </div>
-      {staffMode && (
-        <div className="mb-8">
-          <OfferSourcingSection brandId={brandId} offerId={offerId} />
-        </div>
-      )}
       <OfferSalesPaths
         data={paths.data}
         pending={paths.isPending && !paths.isError}

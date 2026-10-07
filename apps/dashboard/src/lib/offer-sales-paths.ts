@@ -128,6 +128,11 @@ const CampaignSchema = z
     roi: z.number().nullable(),
     roiCombinationKey: z.string().nullable(),
     roiUnavailableReason: z.string().nullable(),
+    /** An outreach campaign fed by the offer's source campaigns: it starts on "Lead found" (features-service v0.179.79). */
+    fedBy: z
+      .object({ step: z.object({ key: z.string(), label: z.string() }).passthrough() })
+      .passthrough()
+      .nullish(),
     /** What a credit buys of this campaign's outcome, on its ROI's basis (features-service v0.179.72; absent before it). */
     outcomesForCredit: z
       .object({
@@ -142,6 +147,32 @@ const CampaignSchema = z
   })
   .passthrough();
 export type SalesPathCampaign = z.infer<typeof CampaignSchema>;
+
+/**
+ * One SOURCE campaign (owner 2026-10-07): where the offer's leads are found, its own
+ * campaign "[Apollo Cold Filters] -> Lead found" with a name, an on/off and a budget.
+ * Keyed `(channelSlug = origin slug, legKey = "start_to_lead_found")` like any campaign.
+ * features-service v0.179.79 `sourceCampaigns[]`.
+ */
+const SourceCampaignSchema = z
+  .object({
+    campaignKey: z.string(),
+    channelSlug: z.string(),
+    channelName: z.string(),
+    legKey: z.string(),
+    campaignName: z.string().nullable(),
+    reactive: z.boolean(),
+    managed: z.boolean(),
+    operatedBy: z.string(),
+    toStep: z.object({ key: z.string(), label: z.string() }).passthrough(),
+    /** Whose data it is: the logo.dev mark is drawn off `domain`; null = no single vendor. */
+    provider: z.object({ name: z.string(), domain: z.string() }).nullable(),
+    live: z.boolean(),
+    roi: z.number().nullable(),
+    roiUnavailableReason: z.string().nullable(),
+  })
+  .passthrough();
+export type SalesPathSourceCampaign = z.infer<typeof SourceCampaignSchema>;
 
 /**
  * The (i) beside a column whose figure is EXPECTED, worked out from rates rather than
@@ -166,6 +197,8 @@ export const OfferSalesPathsSchema = z
     paths: z.array(PathSchema),
     /** Every campaign the listed paths use (features-service v0.179.59; absent before it). */
     campaigns: z.array(CampaignSchema).optional(),
+    /** Every source campaign of the offer (features-service v0.179.79; absent before it). */
+    sourceCampaigns: z.array(SourceCampaignSchema).optional(),
   })
   .passthrough();
 

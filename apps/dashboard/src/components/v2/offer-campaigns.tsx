@@ -24,6 +24,7 @@ import { useMissions, type Mission } from "@/components/v2/use-missions";
 import { EXPECTED_ROI_TIP } from "@/lib/offer-sales-paths";
 import { ChannelChip, ExpectedLabel, PathAvatar } from "@/components/v2/offer-sales-paths";
 import { EmptyNote, SectionTitle, Shimmer, StateDot } from "@/components/v2/ui";
+import { ProviderLogo } from "@/components/provider-logo";
 
 /**
  * The offer's CAMPAIGNS (owner 2026-10-05): every channel x leg its sales paths use, with
@@ -57,7 +58,8 @@ export function OfferCampaigns({
   const running = (c: OfferCampaign) => missionByKey.get(campaignKey(c.featureSlug, c.legKey))?.running ?? false;
   const sorted = useMemo(() => sortCampaigns(campaigns, running), [campaigns, missionByKey]); // eslint-disable-line react-hooks/exhaustive-deps
   // The proactive campaign that is on now: turning another one on moves the plan to it.
-  const activeProactive = sorted.find((c) => !c.reactive && running(c)) ?? null;
+  // A SOURCE campaign runs beside the others (owner 2026-10-07): it neither takes nor gives the plan.
+  const activeProactive = sorted.find((c) => c.kind === "outreach" && !c.reactive && running(c)) ?? null;
   const budgetsQ = useAuthQuery(["offerCampaignBudgets", brandId, offerId], () => getOfferCampaignBudgets(brandId, offerId));
   const budgetByKey = useMemo(() => {
     const m = new Map<string, OfferCampaignBudgetItem>();
@@ -105,7 +107,7 @@ export function OfferCampaigns({
                       offerId={offerId}
                       campaign={c}
                       mission={missionByKey.get(key) ?? null}
-                      replaces={!c.reactive && activeProactive && activeProactive !== c ? activeProactive : null}
+                      replaces={c.kind === "outreach" && !c.reactive && activeProactive && activeProactive !== c ? activeProactive : null}
                       budget={budgetByKey.get(key) ?? null}
                       budgetPeriod={budgetsQ.data?.period ?? null}
                       budgetPending={!budgetsQ.isFetchedAfterMount && !budgetsQ.data}
@@ -127,10 +129,14 @@ export function OfferCampaigns({
 export function CampaignLeg({
   campaign,
   sources = [],
+  showFedBy = false,
   className = "",
   compact = false,
 }: {
-  campaign: Pick<OfferCampaign, "featureSlug" | "channelName" | "managed" | "fromLabel" | "toLabel">;
+  campaign: Pick<OfferCampaign, "featureSlug" | "channelName" | "managed" | "fromLabel" | "toLabel"> &
+    Partial<Pick<OfferCampaign, "kind" | "fedByLabel" | "providerDomain">>;
+  /** Sales path page: an outreach campaign fed by the source campaigns reads "Lead found -> ...". */
+  showFedBy?: boolean;
   /** Where the leads come from, read before the channel: "[Apollo Cold Filters] → [Channel] → …". */
   sources?: readonly string[];
   className?: string;
@@ -139,6 +145,7 @@ export function CampaignLeg({
 }) {
   const channels = useAcquisitionChannels();
   const def = channels.find((d) => d.featureSlug === campaign.featureSlug);
+  const fromLabel = campaign.fromLabel ?? (showFedBy ? campaign.fedByLabel ?? null : null);
   return (
     <span
       className={`k-fg2 inline-flex items-center ${compact ? "gap-1 whitespace-nowrap text-[11px]" : "flex-wrap gap-1.5"} ${className}`}
@@ -149,13 +156,20 @@ export function CampaignLeg({
           <span className="k-fg3">→</span>
         </span>
       ))}
-      {campaign.fromLabel && (
+      {fromLabel && (
         <>
-          <span>{campaign.fromLabel}</span>
+          <span>{fromLabel}</span>
           <span className="k-fg3">→</span>
         </>
       )}
-      <ChannelChip name={campaign.channelName} def={def} notRun={campaign.managed === false} compact={compact} />
+      {campaign.kind === "source" ? (
+        <span className="k-chip">
+          <ProviderLogo domain={campaign.providerDomain ?? null} size={14} className="shrink-0 rounded-[3px]" />
+          {campaign.channelName}
+        </span>
+      ) : (
+        <ChannelChip name={campaign.channelName} def={def} notRun={campaign.managed === false} compact={compact} />
+      )}
       <span className="k-fg3">→</span>
       <span>{campaign.toLabel}</span>
     </span>
@@ -204,7 +218,7 @@ function CampaignRow({
         </span>
       </td>
       <td className="px-3 py-2">
-        <CampaignLeg campaign={campaign} />
+        <CampaignLeg campaign={campaign} showFedBy />
       </td>
       <td className="px-3 py-2">
         <span className="k-chip">{campaignTag(campaign)}</span>

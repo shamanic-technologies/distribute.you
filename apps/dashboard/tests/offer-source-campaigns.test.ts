@@ -1,0 +1,69 @@
+import { describe, it, expect } from "vitest";
+import * as fs from "fs";
+import * as path from "path";
+import { parseOfferSalesPaths } from "../src/lib/offer-sales-paths";
+import { campaignsOfOffer, sourceCampaignsOfOffer } from "../src/lib/offer-campaigns";
+
+/**
+ * SOURCE campaigns (owner 2026-10-07): each lead source is its own campaign
+ * "<Name> [Apollo Cold Filters] -> Lead found [On | Off] [Up to $X/day]"; the outreach
+ * campaign it feeds reads "Lead found -> [Sales Cold Email] -> Positive reply".
+ * Fixture: features-service v0.179.79, offer d5ecba00 (brand 75d7e3e8), real prod body.
+ */
+const read = (p: string) => fs.readFileSync(path.join(__dirname, "..", p), "utf-8");
+const body = parseOfferSalesPaths(JSON.parse(read("tests/fixtures/offer-sales-paths-sources.prod.json")), "test");
+const label = (r: string | null) => r;
+
+describe("source campaigns read from the real prod body", () => {
+  const sources = sourceCampaignsOfOffer(body.sourceCampaigns ?? [], label);
+
+  it("one row per live source, named, with its provider mark and its served ROI", () => {
+    expect(sources.map((s) => [s.name, s.channelName])).toEqual([
+      ["Solstice", "Apollo Cold Filters"],
+      ["Sovereign", "Apollo Buying Signals"],
+      ["Sparkle", "LinkedIn Engagement Signals"],
+      ["Spire", "Your CRM Contacts"],
+    ]);
+    expect(sources.every((s) => s.kind === "source" && !s.reactive && s.toLabel === "Lead found")).toBe(true);
+    expect(sources[0]!.providerDomain).toBe("apollo.io");
+    expect(sources[3]!.providerDomain).toBeNull();
+    expect(sources[0]!.roi).toBeCloseTo(0.298, 2);
+  });
+
+  it("Jubilation keeps its own leg and reads as fed by Lead found", () => {
+    const outreach = campaignsOfOffer(body.campaigns ?? [], body.paths, label);
+    const jub = outreach.find((c) => c.name === "Jubilation")!;
+    expect(jub.kind).toBe("outreach");
+    expect(jub.legKey).toBe("start_to_conversation");
+    expect(jub.fromLabel).toBeNull();
+    expect(jub.fedByLabel).toBe("Lead found");
+  });
+
+  it("a retired source is never offered", () => {
+    const retired = sourceCampaignsOfOffer(
+      [{ ...body.sourceCampaigns![0]!, live: false }],
+      label,
+    );
+    expect(retired).toEqual([]);
+  });
+});
+
+describe("Sales path page wiring", () => {
+  const page = read("src/components/v2/offer-sales-path-page.tsx");
+  const table = read("src/components/v2/offer-campaigns.tsx");
+
+  it("lists source campaigns in the Campaigns table; the Sourcing section is gone", () => {
+    expect(page).toContain("...sourceCampaignsOfOffer(paths.data?.sourceCampaigns ?? [], roiUnavailableLabel),");
+    expect(page).not.toContain("OfferSourcingSection");
+  });
+
+  it("a source never takes or gives the proactive plan", () => {
+    expect(table).toContain('const activeProactive = sorted.find((c) => c.kind === "outreach" && !c.reactive && running(c)) ?? null;');
+    expect(table).toContain('replaces={c.kind === "outreach" && !c.reactive && activeProactive');
+  });
+
+  it("a source reads [logo name] -> Lead found; an outreach row shows its fed-by step on this page", () => {
+    expect(table).toContain('<ProviderLogo domain={campaign.providerDomain ?? null}');
+    expect(table).toContain("<CampaignLeg campaign={campaign} showFedBy />");
+  });
+});
