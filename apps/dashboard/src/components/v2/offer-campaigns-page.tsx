@@ -197,7 +197,7 @@ export function V2OfferCampaignsPage() {
         <div className="k-fg3 k-line-subtle border-t px-4 py-2.5 text-[12px]">
           Status and budget change on the{" "}
           <Link href={salesPathHref} className="text-[var(--accent)] hover:underline">
-            Sales path page
+            Outbound page
           </Link>
           .
         </div>
