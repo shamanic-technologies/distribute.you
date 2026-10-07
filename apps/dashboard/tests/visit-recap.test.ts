@@ -264,7 +264,7 @@ describe("returning visitor recap (owner 2026-10-07: tell me when someone comes 
   const dash = { pathname: "/v2/orgs/x" };
 
   it("sends a visit with no onboarding when the same person visited before, over 90 days", () => {
-    expect(ENDED_VISITS_SQL).toContain("having onboarding > 0 or (prior_visits > 0 and last_seen < visit_started - interval 30 minute)");
+    expect(ENDED_VISITS_SQL).toContain("and (onboarding > 0 or (prior_visits > 0 and last_seen < visit_started - interval 30 minute))");
     expect(ENDED_VISITS_SQL).toContain("p.sid != e.sid and p.started < e.started");
     expect(ENDED_VISITS_SQL).toContain("on p.pid = e.pid");
     expect(ENDED_VISITS_SQL).toContain("interval 90 day");
@@ -314,5 +314,19 @@ describe("returning visitor recap (owner 2026-10-07: tell me when someone comes 
     const lines = firmographicLines({ hqCountry: "US", industry: null, employeeRange: "1-10", revenueRange: null, category: null, role: null }, "jane@acme.com");
     expect(lines[1]).toBe("1-10 employees · Revenue unknown · Founder (guess, 10 people or fewer)");
     expect(firmographicLines({ hqCountry: null, industry: null, employeeRange: "1-10", revenueRange: null, category: null, role: "CTO" }, "ceo@acme.com")[1]).toContain("CTO");
+  });
+});
+
+describe("who did it, and never the owner (owner 2026-10-07)", () => {
+  it("names the person on every recap that knows them, returning or not", () => {
+    const text = visitRecap([ev(0, { email: "jane@acme.com", personName: "Jane Doe" })]);
+    expect(text.split("\n")[0]).toBe("Jane Doe · jane@acme.com");
+    expect(visitRecap([ev(0, { email: "jane@acme.com" })]).split("\n")[0]).toBe("jane@acme.com");
+    expect(visitRecap([ev(0, {})]).split("\n")[0]).toMatch(/^🇫🇷 France/);
+  });
+
+  it("drops the owner by name too, and a person who was the owner in any session", () => {
+    expect(ENDED_VISITS_SQL).toContain("lower(coalesce(person.properties.name, '')) = 'kevin lourd'");
+    expect(ENDED_VISITS_SQL).toContain("having sum(p.staff) = 0");
   });
 });

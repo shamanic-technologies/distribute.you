@@ -24,7 +24,8 @@ const FETCH_TIMEOUT_MS = 60_000;
 const MAX_VISITS_PER_TICK = 20;
 
 const EMAIL = "lower(coalesce(person.properties.email, ''))";
-const INTERNAL = `(${EMAIL} in ('kevin.lourd@gmail.com', 'kevin@pressbeat.io') or ${EMAIL} like '%@distribute.you' or ${EMAIL} like 'kevin.lourd+%')`;
+// The owner never gets a recap of himself (owner 2026-10-07), by email or by name.
+const INTERNAL = `(${EMAIL} in ('kevin.lourd@gmail.com', 'kevin@pressbeat.io') or ${EMAIL} like '%@distribute.you' or ${EMAIL} like 'kevin.lourd+%' or lower(coalesce(person.properties.name, '')) = 'kevin lourd')`;
 const HEADLESS =
   "(properties.$os in ('Windows', 'Mac OS X', 'Linux', 'Chrome OS') and properties.$screen_width = properties.$viewport_width and properties.$screen_height = properties.$viewport_height)";
 const SCANNER =
@@ -33,7 +34,8 @@ const SCANNER =
 // One row per ended human visit: its id, how many earlier visits the same person
 // made, when the last one ended. A visit with no earlier one is sent only when it
 // reached onboarding; one whose last visit ended under 30 minutes earlier is the
-// same sitting (a second tab), not a return.
+// same sitting (a second tab), not a return. A visit made before logging in carries
+// no email at the time, so a person who was staff in ANY of their sessions is dropped.
 export const ENDED_VISITS_SQL = `
 select e.sid,
   countIf(p.sid != e.sid and p.started < e.started) as prior_visits,
@@ -51,13 +53,15 @@ from (
     and countIf(${INTERNAL} or ${HEADLESS} or ${SCANNER}) = 0
 ) as e
 left join (
-  select person_id as pid, $session_id as sid, min(timestamp) as started, max(timestamp) as ended_at
+  select person_id as pid, $session_id as sid, min(timestamp) as started, max(timestamp) as ended_at,
+    countIf(${INTERNAL}) as staff
   from events
   where timestamp > now() - interval ${RETURNING_LOOKBACK_DAYS} day and $session_id != ''
   group by pid, sid
 ) as p on p.pid = e.pid
 group by e.sid
-having onboarding > 0 or (prior_visits > 0 and last_seen < visit_started - interval 30 minute)
+having sum(p.staff) = 0
+  and (onboarding > 0 or (prior_visits > 0 and last_seen < visit_started - interval 30 minute))
 order by ended
 limit ${MAX_VISITS_PER_TICK}`;
 

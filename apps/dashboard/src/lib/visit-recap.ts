@@ -280,17 +280,28 @@ export function formatAgo(ms: number): string {
   return `${Math.round(h / 24)} days ago`;
 }
 
+/** Who did it (owner 2026-10-07): "Jane Doe · jane@acme.com" when the visit carries a name or an email. */
+export function whoLine(events: VisitEvent[]): string | null {
+  const name = events.find((e) => e.personName?.trim())?.personName?.trim();
+  const email = events.find((e) => e.email)?.email;
+  const who = [name, email].filter(Boolean).join(" · ");
+  return who ? escapeHtml(who) : null;
+}
+
 /**
- * The two lines that open a returning visitor's recap: that they are back (how
- * many visits, last seen when), then who they are, or that they never signed up.
+ * The lines that open a recap: that the visitor is back (how many visits, last
+ * seen when), then who they are; a returner with no name or email never signed up.
  */
-export function returningLines(r: ReturningVisit, events: VisitEvent[]): string[] {
-  const start = Math.min(...events.map((e) => Date.parse(e.timestamp)));
-  const back = `🔁 <b>Back</b> · visit ${r.priorVisits + 1} in ${RETURNING_LOOKBACK_DAYS} days · last seen ${formatAgo(start - Date.parse(r.lastSeenAt))}`;
-  const person = events.find((e) => e.email);
-  if (!person?.email) return [back, "Not signed up"];
-  const name = person.personName?.trim();
-  return [back, escapeHtml(name ? `${name} · ${person.email}` : person.email)];
+export function openingLines(r: ReturningVisit | null, events: VisitEvent[]): string[] {
+  const lines: string[] = [];
+  if (r) {
+    const start = Math.min(...events.map((e) => Date.parse(e.timestamp)));
+    lines.push(`🔁 <b>Back</b> · visit ${r.priorVisits + 1} in ${RETURNING_LOOKBACK_DAYS} days · last seen ${formatAgo(start - Date.parse(r.lastSeenAt))}`);
+  }
+  const who = whoLine(events);
+  if (who) lines.push(who);
+  else if (r) lines.push("Not signed up");
+  return lines;
 }
 
 /** The Telegram message (parse_mode HTML) for one visit, events in time order. */
@@ -338,7 +349,7 @@ export function visitRecap(events: VisitEvent[], companyLines: string[] = [], re
         ? `<b>Opened the ${checkout}, did not pay ❌</b>`
         : `<b>Left at ${furthest.toLowerCase()} ❌</b>`;
 
-  const lines = returning ? returningLines(returning, sorted) : [];
+  const lines = openingLines(returning, sorted);
   lines.push(`${countryLabel(first.country)} · ${formatDuration(total)} · ${outcome}`);
   lines.push(escapeHtml(sourceLine(first)));
   if (website) lines.push(`Typed ${escapeHtml(website)}`);
