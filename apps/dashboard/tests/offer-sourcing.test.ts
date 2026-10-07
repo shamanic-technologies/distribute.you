@@ -25,8 +25,17 @@ describe("Sourcing section", () => {
     expect(section).not.toMatch(/\.reduce\(|\/ row\.|sourcingCostUsd \//);
   });
 
-  it("a source with no positive reply yet reads Learning, never a cost", () => {
-    expect(section).toContain('row.positiveReplies === 0 ? <span className="k-fg3">Learning</span>');
+  it("shows ROI only (owner: leads, $/lead, replies, $/reply dropped)", () => {
+    const thead = section.slice(section.indexOf("<thead>"), section.indexOf("</thead>"));
+    expect(thead).toContain(">Source</th>");
+    expect(thead).toContain(">ROI</th>");
+    expect(thead).not.toMatch(/Leads|\$ \/ Lead|Positive replies|\$ \/ Positive reply/);
+  });
+
+  it("each live row is a checkbox the customer ticks, saved to brand-service, ROI > 1 by default", () => {
+    expect(section).toContain("selectedSourcingSlugs(savedQ.data, q.data.origins)");
+    expect(section).toContain("saveOfferSelectedSourcing(brandId, offerId, next)");
+    expect(section).toContain("aria-pressed={on}");
   });
 });
 
