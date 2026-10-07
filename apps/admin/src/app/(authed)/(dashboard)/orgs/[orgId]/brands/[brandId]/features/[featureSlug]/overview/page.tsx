@@ -8,6 +8,7 @@ import { pollOptions, pollOptionsSlow } from "@/lib/query-options";
 import { RevenueOverviewSection } from "@/components/revenue/revenue-overview-section";
 import { RevenueEmptyState } from "@/components/revenue/revenue-empty-state";
 import { useCoordinatedReveal } from "@/lib/use-coordinated-reveal";
+import { useFeatureCostSlugs } from "@/lib/use-sourcing-origins";
 
 /** Revenue-centric overview for a feature — its own page + sidebar entry (above
  *  Campaigns), revenue features only (sales-cold-email today). GA. */
@@ -31,11 +32,15 @@ export default function FeatureOverviewPage() {
   // Campaigns donut (which polls) stayed live → the two showed different %s. Both
   // polling means both observers refetch the shared cache entry together → always
   // identical. (`total` = actual + provisioned, so provisioned holds churn live.)
-  const { data: costData, isError: costIsError } = useAuthQuery(
-    ["brandCostBreakdown", { brandId, featureSlug }],
-    () => getBrandCostBreakdown(brandId, { featureSlug }),
-    { enabled, ...pollOptions },
+  // The channel's cost INCLUDES the sourcing origins it sources from (lead-finding spend is
+  // relabelled to the origin's slug, 2026-10-07): same total before and after the relabel.
+  const { slugs: costSlugs, isError: costSlugsIsError } = useFeatureCostSlugs(featureSlug);
+  const { data: costData, isError: costReadIsError } = useAuthQuery(
+    ["brandCostBreakdown", { brandId, featureSlugs: costSlugs }],
+    () => getBrandCostBreakdown(brandId, { featureSlugs: costSlugs }),
+    { enabled: enabled && costSlugs !== undefined, ...pollOptions },
   );
+  const costIsError = costReadIsError || costSlugsIsError;
 
   // Per-card reveal (NOT one page-wide barrier): the revenue data (headline /
   // chart / CAC / ROI / conversions) comes from features-service `/revenue`, the

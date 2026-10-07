@@ -15,6 +15,7 @@ import {
 import { isRevenueFeature } from "@/lib/revenue-feature";
 import { useFeatures } from "@/lib/features-context";
 import { useCoordinatedReveal } from "@/lib/use-coordinated-reveal";
+import { useFeatureCostSlugs } from "@/lib/use-sourcing-origins";
 import { useStopCampaign, useIsStoppingCampaign } from "@/lib/use-stop-campaign";
 import { FunnelMetrics } from "@/components/campaign/funnel-metrics";
 import { ReplyBreakdown } from "@/components/campaign/reply-breakdown";
@@ -160,10 +161,13 @@ function GenericFeaturePage({
     return map;
   }, [campaignStatsData]);
 
+  // Same key + slugs as the Overview page (shared cache): the channel's cost INCLUDES the
+  // sourcing origins it sources from, so the relabel to origin slugs moves no total.
+  const { slugs: costSlugs } = useFeatureCostSlugs(featureSlug);
   const { data: brandCostData } = useAuthQuery(
-    ["brandCostBreakdown", { brandId, featureSlug }],
-    () => getBrandCostBreakdown(brandId, { featureSlug }),
-    pollOptions,
+    ["brandCostBreakdown", { brandId, featureSlugs: costSlugs }],
+    () => getBrandCostBreakdown(brandId, { featureSlugs: costSlugs }),
+    { enabled: costSlugs !== undefined, ...pollOptions },
   );
   const brandCostBreakdown = brandCostData?.costs ?? [];
 

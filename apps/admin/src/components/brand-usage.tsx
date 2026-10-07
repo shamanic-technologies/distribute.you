@@ -1,9 +1,11 @@
 "use client";
 
-import { useMemo } from "react";
+import { useEffect, useMemo } from "react";
 import { useAuthQuery } from "@/lib/use-auth-query";
 import { POLL_INTERVAL } from "@/lib/query-options";
-import { getBrandCostsByFeature, getBrandCostBreakdown, type FeatureCostGroup, type CostByName } from "@/lib/api";
+import { getBrandCostsByFeature, getBrandCostBreakdown } from "@/lib/api";
+import { useSourcingOrigins } from "@/lib/use-sourcing-origins";
+import { foldSourcingUnderChannels } from "@/lib/sourcing-scope";
 import { useFeatures } from "@/lib/features-context";
 import { Skeleton } from "@/components/skeleton";
 
@@ -33,11 +35,14 @@ function formatCostName(name: string): string {
 }
 
 interface Segment {
+  key: string;
   name: string;
   cents: number;
   percentage: number;
   color: string;
-  costBreakdown?: { name: string; cents: number }[];
+  /** Under a channel that sources leads: its outreach half + each sourcing origin, so staff
+   *  tell lead finding apart from outreach while the channel total stays what it was. */
+  split?: { label: string; cents: number }[];
 }
 
 export function BrandUsageSection({ brandId, pending: pendingProp = false }: { brandId: string; pending?: boolean }) {
@@ -55,18 +60,40 @@ export function BrandUsageSection({ brandId, pending: pendingProp = false }: { b
     { refetchInterval: POLL_INTERVAL },
   );
 
-  const isPending = featureGroupsLoading || totalCostLoading;
+  // Lead-finding spend is relabelled from the outreach channel to its sourcing origin's slug
+  // (2026-10-07). Fold each origin back under the channel it sources for, as a sub-row.
+  const { data: sourcing, isPending: sourcingLoading, isError: sourcingIsError } = useSourcingOrigins();
+  useEffect(() => {
+    if (sourcingIsError) console.error("[admin] brand usage: sourcing-origins catalogue failed, sourcing rows shown unfolded", { brandId });
+  }, [sourcingIsError, brandId]);
+
+  const isPending = featureGroupsLoading || totalCostLoading || (sourcingLoading && !sourcingIsError);
   const hasData = !!(featureGroupsData || totalCostData);
 
   const segments: Segment[] = useMemo(() => {
-    const groups = featureGroupsData?.groups ?? [];
-    const entries = groups
-      .map((g) => ({
-        slug: g.featureSlug,
-        name: g.featureSlug
-          ? (getFeature(g.featureSlug)?.name ?? g.featureSlug)
-          : "Other",
-        cents: parseFloat(g.totalCostInUsdCents) || 0,
+    const groups = (featureGroupsData?.groups ?? []).map((g) => ({
+      featureSlug: g.featureSlug,
+      cents: parseFloat(g.totalCostInUsdCents) || 0,
+    }));
+    const origins = sourcing?.origins ?? [];
+    const originName = (slug: string) => origins.find((o) => o.slug === slug)?.name ?? getFeature(slug)?.name ?? slug;
+    const rows = foldSourcingUnderChannels(
+      groups,
+      sourcing?.originsByChannel ?? {},
+      new Set(origins.map((o) => o.slug)),
+    );
+    const entries = rows
+      .map((r) => ({
+        slug: r.slug,
+        name: r.slug === null ? "Other" : r.isSourcing ? `Sourcing: ${originName(r.slug)}` : (getFeature(r.slug)?.name ?? r.slug),
+        cents: r.cents,
+        split:
+          r.sourcing.length > 0
+            ? [
+                { label: "Outreach", cents: r.ownCents },
+                ...r.sourcing.map((o) => ({ label: `Sourcing: ${originName(o.slug)}`, cents: o.cents })),
+              ].filter((x) => x.cents > 0)
+            : undefined,
       }))
       .filter((e) => e.cents > 0)
       .sort((a, b) => {
@@ -79,12 +106,14 @@ export function BrandUsageSection({ brandId, pending: pendingProp = false }: { b
     const total = entries.reduce((sum, e) => sum + e.cents, 0);
 
     return entries.map((entry, i) => ({
+      key: entry.slug ?? "other",
       name: entry.name,
       cents: entry.cents,
+      split: entry.split,
       percentage: total > 0 ? (entry.cents / total) * 100 : 0,
       color: entry.slug === null ? "#9ca3af" : COLORS[i % COLORS.length], // gray for "Other"
     }));
-  }, [featureGroupsData, getFeature]);
+  }, [featureGroupsData, getFeature, sourcing]);
 
   const totalCostBreakdown: { name: string; cents: number }[] = useMemo(() => {
     const costs = totalCostData?.costs ?? [];
@@ -151,20 +180,33 @@ export function BrandUsageSection({ brandId, pending: pendingProp = false }: { b
                   </div>
                 ))
               : segments.map((seg) => (
-                  <div key={seg.name} className="flex items-center gap-2">
-                    <span
-                      className="w-3 h-3 rounded-full flex-shrink-0"
-                      style={{ backgroundColor: seg.color }}
-                    />
-                    <span className="text-sm text-gray-700 flex-1 truncate">
-                      {seg.name}
-                    </span>
-                    <span className="text-sm font-medium text-gray-800 flex-shrink-0">
-                      {formatUsdCents(seg.cents)}
-                    </span>
-                    <span className="text-xs text-gray-500 w-10 text-right flex-shrink-0">
-                      {seg.percentage.toFixed(0)}%
-                    </span>
+                  <div key={seg.key}>
+                    <div className="flex items-center gap-2">
+                      <span
+                        className="w-3 h-3 rounded-full flex-shrink-0"
+                        style={{ backgroundColor: seg.color }}
+                      />
+                      <span className="text-sm text-gray-700 flex-1 truncate" title={seg.name}>
+                        {seg.name}
+                      </span>
+                      <span className="text-sm font-medium text-gray-800 flex-shrink-0">
+                        {formatUsdCents(seg.cents)}
+                      </span>
+                      <span className="text-xs text-gray-500 w-10 text-right flex-shrink-0">
+                        {seg.percentage.toFixed(0)}%
+                      </span>
+                    </div>
+                    {seg.split?.map((part) => (
+                      <div key={part.label} className="flex items-center gap-2 pl-5 mt-1">
+                        <span className="text-xs text-gray-500 flex-1 truncate" title={part.label}>
+                          {part.label}
+                        </span>
+                        <span className="text-xs text-gray-600 flex-shrink-0">
+                          {formatUsdCents(part.cents)}
+                        </span>
+                        <span className="w-10 flex-shrink-0" />
+                      </div>
+                    ))}
                   </div>
                 ))}
           </div>
