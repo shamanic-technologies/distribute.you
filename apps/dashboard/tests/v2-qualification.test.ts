@@ -58,6 +58,12 @@ describe("qualification surfaces", () => {
     expect(table).not.toMatch(/passRate\.yes\s*\//);
   });
 
+  it("a suggest run that writes nothing says so", () => {
+    const table = src("src/components/v2/offer-qualification.tsx");
+    expect(table).toContain("setNothingNew(written.length === 0)");
+    expect(table).toContain("Nothing new to suggest for this offer.");
+  });
+
   it("the person page reads the checks by the PERSON id, on the selected offer", () => {
     const person = src("src/components/v2/person-page.tsx");
     expect(person).toContain("<LeadChecks ");

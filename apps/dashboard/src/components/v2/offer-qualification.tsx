@@ -36,10 +36,18 @@ export function OfferQualification({ brandId, offerId }: { brandId: string; offe
   const qc = useQueryClient();
   const q = useAuthQuery(criteriaKey(brandId, offerId), () => listOfferQualificationCriteria(brandId, offerId));
   const [suggestError, setSuggestError] = useState<string | null>(null);
+  // A run that wrote no new check (all dropped, or already asked) says so, never a silent tab.
+  const [nothingNew, setNothingNew] = useState(false);
   const suggest = useMutation({
     mutationFn: () => suggestOfferQualificationCriteria(brandId, offerId),
-    onMutate: () => setSuggestError(null),
-    onSuccess: () => qc.refetchQueries({ queryKey: criteriaKey(brandId, offerId) }),
+    onMutate: () => {
+      setSuggestError(null);
+      setNothingNew(false);
+    },
+    onSuccess: (written) => {
+      setNothingNew(written.length === 0);
+      return qc.refetchQueries({ queryKey: criteriaKey(brandId, offerId) });
+    },
     onError: (err) => {
       console.error("[offer-qualification] suggestions failed", { brandId, offerId, err });
       // A 402 opens the billing guard (apiCall); anything else is ours to say.
@@ -61,6 +69,7 @@ export function OfferQualification({ brandId, offerId }: { brandId: string; offe
       </SectionTitle>
       <p className="k-fg2 -mt-1 mb-3 text-[13px]">We check each company before we write to it, on every audience of this offer.</p>
       {suggestError && <p className="mb-3 text-[12px] text-[var(--data-rose)]">{suggestError}</p>}
+      {nothingNew && <p className="k-fg2 mb-3 text-[12px]">Nothing new to suggest for this offer.</p>}
       {!rows ? (
         q.isError && q.isFetchedAfterMount ? (
           <div className="k-card">
