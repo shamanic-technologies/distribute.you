@@ -582,6 +582,10 @@ export function CommandPalette({ orgId, brandId, open, onClose }: { orgId: strin
     for (const s of SETUP) {
       if (!term || matches(s.label, term)) out.push({ key: `setup-${s.section}`, group: "Setup", text: s.label, label: s.label, href: v2Href(orgId, brandId, s.section) });
     }
+    // Posting > Posts, staff mode only like its sidebar group.
+    if (staffMode && (!term || matches("Posts LinkedIn", term))) {
+      out.push({ key: "posting-posts", group: "Posting", text: "Posts", label: "Posts", href: v2Href(orgId, brandId, "posts") });
+    }
     if (term && staffMode) {
       for (const m of missions) {
         const label = m.offerName ? `${m.crew.name} · ${m.offerName}` : m.crew.name;
