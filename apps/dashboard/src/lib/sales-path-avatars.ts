@@ -17,6 +17,8 @@ export const SALES_PATH_AVATAR_NAMES: ReadonlySet<string> = new Set([
   // Campaign names (one channel on one leg, features-service campaignName), same pool and look.
   "Nova", "Oasis", "Opulence", "Ovation", "Paragon", "Plenty", "Prism", "Prodigy",
   "Rapture", "Regal", "Rise", "Rhapsody", "Riches", "Soar",
+  // LinkedIn Posting campaigns (2026-10-07).
+  "Sterling", "Sunrise",
 ]);
 
 /** The face's URL, or null when nobody drew one for this name yet. */
