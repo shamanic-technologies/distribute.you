@@ -74,7 +74,7 @@ function CheckRow({ check: c }: { check: LeadCheck }) {
           aria-label="Open the screenshot"
         >
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={c.screenshotUrl} alt="" loading="lazy" className="block h-auto w-full" />
+          <img src={c.screenshotUrl} alt="" loading="lazy" className="block h-[120px] w-full object-cover object-top" />
         </a>
       )}
     </div>
