@@ -5,7 +5,12 @@ import { z } from "zod";
  * every Today stat over the SAME last N UTC days, each total served beside its own
  * zero-filled daily values. The browser renders it; it never sums a series itself.
  */
-const DayCount = z.object({ date: z.string(), count: z.number() });
+const DayCount = z.object({
+  date: z.string(),
+  count: z.number(),
+  /** Running total since the window start, served (the last day IS `total`). Optional until read everywhere. */
+  cumulativeCount: z.number().optional(),
+});
 
 export const RevenueWindowSchema = z.object({
   days: z.number(),
