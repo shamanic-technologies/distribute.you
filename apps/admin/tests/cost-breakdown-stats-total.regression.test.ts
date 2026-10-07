@@ -57,8 +57,9 @@ describe("Brand page uses runs-service cost breakdown (no Other category)", () =
     expect(content).toContain("getBrandCostBreakdown");
   });
 
-  it("should scope cost breakdown to the feature slug", () => {
-    expect(content).toContain("getBrandCostBreakdown(brandId, { featureSlug })");
+  it("should scope cost breakdown to the feature slug + its sourcing origins", () => {
+    expect(content).toContain("useFeatureCostSlugs(featureSlug)");
+    expect(content).toContain("getBrandCostBreakdown(brandId, { featureSlugs: costSlugs })");
   });
 });
 
@@ -76,5 +77,9 @@ describe("getBrandCostBreakdown supports featureSlug filter", () => {
 
   it("should append featureSlug to the query string", () => {
     expect(apiContent).toContain('query.set("featureSlug"');
+  });
+
+  it("should send several slugs as one featureSlugs filter (runs-service IN)", () => {
+    expect(apiContent).toContain('query.set("featureSlugs", opts.featureSlugs.join(","))');
   });
 });

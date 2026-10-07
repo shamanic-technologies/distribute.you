@@ -467,9 +467,18 @@ export interface CostStatsGroup {
   runCount: number;
 }
 
-export async function getBrandCostBreakdown(brandId: string, opts?: { featureSlug?: string }, token?: string): Promise<{ costs: CostByName[] }> {
+/**
+ * `featureSlugs` = one channel's cost INCLUDING its sourcing origins (`lib/sourcing-scope.ts`
+ * `featureSlugsWithSourcing`); runs-service filters `feature_slug IN (...)`, each run counted once.
+ */
+export async function getBrandCostBreakdown(
+  brandId: string,
+  opts?: { featureSlug?: string; featureSlugs?: readonly string[] },
+  token?: string,
+): Promise<{ costs: CostByName[] }> {
   const query = new URLSearchParams({ brandId, groupBy: "costName" });
-  if (opts?.featureSlug) query.set("featureSlug", opts.featureSlug);
+  if (opts?.featureSlugs && opts.featureSlugs.length > 0) query.set("featureSlugs", opts.featureSlugs.join(","));
+  else if (opts?.featureSlug) query.set("featureSlug", opts.featureSlug);
   const result = await apiCall<{ groups: CostStatsGroup[] }>(`/runs/stats/costs?${query}`, { token });
   const costs: CostByName[] = result.groups.map((g) => ({
     costName: g.dimensions.costName ?? "Unknown",
@@ -501,6 +510,27 @@ export async function getBrandCostsByFeature(brandId: string, token?: string): P
       runCount: g.runCount,
     })),
   };
+}
+
+// GET /v1/public/sourcing-origins (features-service, public): where a lead comes from, and which
+// origins each outreach channel sources from (`originsByChannel`, the SAME map features-service's
+// spend reads filter on). Staff cost views fold origin-slug spend under its channel with it.
+const SourcingOriginsSchema = z.object({
+  origins: z.array(z.object({ slug: z.string(), name: z.string() })),
+  originsByChannel: z.record(z.string(), z.array(z.string())),
+});
+
+/** Plain JSON on purpose: the admin query cache persists to localStorage (no Set/Map). */
+export type SourcingOriginsCatalogue = z.infer<typeof SourcingOriginsSchema>;
+
+export async function getSourcingOrigins(): Promise<SourcingOriginsCatalogue> {
+  const raw = await apiCall<unknown>(`/public/sourcing-origins`);
+  const parsed = SourcingOriginsSchema.safeParse(raw);
+  if (!parsed.success) {
+    console.error("[admin] getSourcingOrigins: invalid response shape", parsed.error.issues);
+    throw new Error("[admin] getSourcingOrigins: invalid response shape");
+  }
+  return parsed.data;
 }
 
 export interface BrandCostGroup {
