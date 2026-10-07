@@ -12,6 +12,8 @@ import {
   type BrandLinkedinPage,
 } from "@/lib/v2/brand-linkedin-page";
 import { Shimmer } from "@/components/v2/ui";
+import { LinkedinLogoIcon } from "@phosphor-icons/react/dist/csr/LinkedinLogo";
+import { PencilSimpleIcon } from "@phosphor-icons/react/dist/csr/PencilSimple";
 
 /**
  * The brand's LinkedIn company page in Brand settings (owner 2026-10-07): the page we hold
@@ -68,48 +70,71 @@ function PageField({ brandId }: { brandId: string }) {
 
   const source = pending === undefined ? linkedinPageSourceLabel(page) : null;
   return (
-    <div className="space-y-1">
-      {text !== null ? (
-        <input
-          autoFocus
-          type="url"
-          aria-label="LinkedIn company page"
-          value={text}
-          onChange={(e) => setText(e.target.value)}
-          onBlur={commit}
-          onKeyDown={(e) => {
-            if (e.key === "Enter") e.currentTarget.blur();
-            if (e.key === "Escape") {
-              setText(null);
-              setError(null);
-            }
-          }}
-          placeholder="linkedin.com/company/your-brand"
-          className="k-input w-full max-w-[420px] text-[13px]"
-        />
-      ) : (
-        <button
-          type="button"
-          onClick={() => setText(page.linkedinUrl ?? "")}
-          className="k-hover -mx-1.5 flex h-7 max-w-full items-center rounded-[6px] px-1.5 text-left text-[13px]"
-        >
-          {shown ? <span className="k-fg truncate">{shortLinkedinUrl(shown)}</span> : <span className="k-fg3">{linkedinPageEmptyLabel(page)}</span>}
-        </button>
-      )}
-      {error ? (
-        <p className="text-[12px] text-[var(--data-rose)]">{error}</p>
-      ) : (
-        text === null && (
-          <p className="k-fg3 flex items-center gap-2 text-[12px]">
+    <div className="flex min-w-0 items-start gap-5">
+      <LinkedinLogoIcon weight="fill" aria-hidden className="mt-[3px] h-6 w-6 shrink-0 text-[#0A66C2]" />
+      <div className="flex min-w-0 flex-1 flex-col gap-1">
+        {/* ONE box for both states, so the field opens exactly where the text sat: same
+            border width, padding and font, the input sized by a hidden copy of its value
+            in the same grid cell (offer-identity-title.tsx's pattern). */}
+        {text !== null ? (
+          <span className={`${URL_BOX} border-[var(--accent)]`}>
+            <span className="inline-grid min-w-0">
+              <span aria-hidden className="invisible col-start-1 row-start-1 whitespace-pre">
+                {text || "linkedin.com/company/your-brand"}{" "}
+              </span>
+              <input
+                autoFocus
+                size={1}
+                aria-label="LinkedIn company page"
+                value={text}
+                placeholder="linkedin.com/company/your-brand"
+                onChange={(e) => {
+                  setText(e.target.value);
+                  setError(null);
+                }}
+                onBlur={commit}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") e.currentTarget.blur();
+                  if (e.key === "Escape") {
+                    setText(null);
+                    setError(null);
+                  }
+                }}
+                className="col-start-1 row-start-1 w-full min-w-0 border-0 bg-transparent p-0 shadow-none outline-none [font:inherit] [letter-spacing:inherit] focus:ring-0"
+                /* Inline: the embed layer sets every input to 13px, which would shrink the text on click. */
+                style={{ font: "inherit", letterSpacing: "inherit", backgroundColor: "transparent", border: 0, borderRadius: 0 }}
+              />
+            </span>
+            <PencilSimpleIcon aria-hidden className="invisible h-4 w-4 shrink-0" />
+          </span>
+        ) : (
+          <button
+            type="button"
+            disabled={pending !== undefined}
+            onClick={() => setText(page.linkedinUrl ? shortLinkedinUrl(page.linkedinUrl) : "")}
+            className={`${URL_BOX} k-hover group border-transparent text-left hover:border-[var(--line)]`}
+          >
+            {shown ? <span className="k-fg truncate">{shortLinkedinUrl(shown)}</span> : <span className="k-fg3 truncate">{linkedinPageEmptyLabel(page)}</span>}
+            <PencilSimpleIcon className="k-fg3 h-4 w-4 shrink-0 opacity-0 transition-opacity duration-150 group-hover:opacity-100 group-focus-visible:opacity-100" />
+          </button>
+        )}
+        {error ? (
+          <p className="text-[12px] leading-[18px] text-[var(--data-rose)]">{error}</p>
+        ) : (
+          <p className="k-fg3 flex min-h-[18px] items-center gap-1.5 text-[12px] leading-[18px]">
             {source && <span>{source}</span>}
+            {source && shown && <span aria-hidden>·</span>}
             {shown && (
               <a href={shown} target="_blank" rel="noopener noreferrer" className="hover:text-[var(--accent)] hover:underline">
                 Open on LinkedIn
               </a>
             )}
           </p>
-        )
-      )}
+        )}
+      </div>
     </div>
   );
 }
+
+/** The page's box, identical reading and editing, so nothing moves on click. */
+const URL_BOX = "-mx-2 flex h-8 w-fit max-w-full min-w-0 items-center gap-2 rounded-[8px] border px-2 text-[14px]";
