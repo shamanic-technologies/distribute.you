@@ -14,6 +14,9 @@ const read = (p: string) => fs.readFileSync(path.join(__dirname, "..", p), "utf-
 const body = parseOfferSalesPaths(JSON.parse(read("tests/fixtures/offer-sales-paths-sources.prod.json")), "test");
 const label = (r: string | null) => r;
 
+import { campaignTag } from "../src/lib/offer-campaigns";
+import { salesPathAvatarSrc } from "../src/lib/sales-path-avatars";
+
 describe("source campaigns read from the real prod body", () => {
   const sources = sourceCampaignsOfOffer(body.sourceCampaigns ?? [], label);
 
@@ -24,7 +27,8 @@ describe("source campaigns read from the real prod body", () => {
       ["Sparkle", "LinkedIn Engagement Signals"],
       ["Spire", "Your CRM Contacts"],
     ]);
-    expect(sources.every((s) => s.kind === "source" && !s.reactive && s.toLabel === "Lead found")).toBe(true);
+    // Reactive (owner 2026-10-07): a source finds leads as its outreach needs them; budget "Up to $X/day".
+    expect(sources.every((s) => s.kind === "source" && s.reactive && s.toLabel === "Lead found")).toBe(true);
     expect(sources[0]!.providerDomain).toBe("apollo.io");
     expect(sources[3]!.providerDomain).toBeNull();
     expect(sources[0]!.roi).toBeCloseTo(0.298, 2);
@@ -37,6 +41,14 @@ describe("source campaigns read from the real prod body", () => {
     expect(jub.legKey).toBe("start_to_conversation");
     expect(jub.fromLabel).toBeNull();
     expect(jub.fedByLabel).toBe("Lead found");
+  });
+
+  it("a source reads Reactive on outreach and has a face (owner 2026-10-07)", () => {
+    for (const s of sources) {
+      expect(campaignTag(s)).toBe("Reactive on outreach");
+      expect(salesPathAvatarSrc(s.name!)).not.toBeNull();
+      expect(fs.existsSync(path.join(__dirname, "..", "public", salesPathAvatarSrc(s.name!)!))).toBe(true);
+    }
   });
 
   it("a retired source is never offered", () => {

@@ -39,7 +39,9 @@ export interface OfferCampaign {
 }
 
 /** The tag over a campaign's budget: when it works ("Daily Proactive", "Reactive on positive replies"). */
-export function campaignTag(c: Pick<OfferCampaign, "reactive" | "fromKey" | "fromLabel">): string {
+export function campaignTag(c: Pick<OfferCampaign, "reactive" | "fromKey" | "fromLabel"> & Partial<Pick<OfferCampaign, "kind">>): string {
+  // A source finds leads when the outreach it feeds needs them (owner 2026-10-07: reactive, a max).
+  if (c.kind === "source") return "Reactive on outreach";
   if (!c.reactive || !c.fromKey) return "Daily Proactive";
   return `Reactive on ${stepPlural(c.fromKey, c.fromLabel ?? c.fromKey).toLowerCase()}`;
 }
@@ -130,7 +132,8 @@ export function sourceCampaignsOfOffer(
       name: c.campaignName,
       channelName: c.channelName,
       managed: c.managed,
-      reactive: false,
+      // Reactive (owner 2026-10-07): it finds leads as its outreach needs them, its budget a max ("Up to $X/day").
+      reactive: true,
       fromKey: null,
       fromLabel: null,
       fedByLabel: null,

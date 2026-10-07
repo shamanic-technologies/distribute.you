@@ -67,14 +67,18 @@ describe("sidebar", () => {
     expect(shell).not.toContain('title="Campaigns"');
   });
 
-  it("Sourcing opens the offer's Sourcing page, its ON source campaigns under it, above Outbound (owner 2026-10-07)", () => {
-    const at = shell.indexOf("{/* Sourcing (owner 2026-10-07)");
-    expect(at).toBeGreaterThan(-1);
-    expect(at).toBeLessThan(shell.indexOf("{/* Outbound (owner 2026-10-07)"));
-    const sourcing = shell.slice(at, shell.indexOf("{/* Outbound (owner 2026-10-07)"));
-    expect(sourcing).toContain('label="Sourcing"');
-    expect(sourcing).toContain('v2OfferHref(orgId, brandId, offerId, "sourcing")');
-    expect(sourcing).toContain('.filter(({ campaign }) => campaign?.kind === "source")');
+  it("Sidebar order (owner 2026-10-07): Outbound, Posting, then a Sourcing section (its page, then ON source campaigns), then Setup", () => {
+    const outbound = shell.indexOf('<Group title="Outbound">');
+    const posting = shell.indexOf('<Group title="Posting">');
+    const sourcing = shell.indexOf('<Group title="Sourcing">');
+    const setup = shell.indexOf('<Group title="Setup">');
+    expect(outbound).toBeGreaterThan(-1);
+    expect(posting).toBeGreaterThan(outbound);
+    expect(sourcing).toBeGreaterThan(posting);
+    expect(setup).toBeGreaterThan(sourcing);
+    const block = shell.slice(sourcing, setup);
+    expect(block).toContain('v2OfferHref(orgId, brandId, offerId, "sourcing")');
+    expect(block).toContain('.filter(({ campaign }) => campaign?.kind === "source")');
   });
 });
 

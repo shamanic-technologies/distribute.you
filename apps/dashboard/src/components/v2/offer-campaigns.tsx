@@ -589,7 +589,12 @@ function BudgetModal({
             </div>
           </div>
           <p className={`mt-1.5 text-[12px] leading-[18px] ${problem ? "text-[var(--data-rose)]" : "k-fg3"}`}>
-            {problem ?? (campaign.reactive ? `We spend this much a ${per} at most, only when leads reach this step.` : `We spend up to this much a ${per} on this campaign.`)}
+            {problem ??
+              (campaign.kind === "source"
+                ? `We spend this much a ${per} at most, only when your outreach needs new leads.`
+                : campaign.reactive
+                  ? `We spend this much a ${per} at most, only when leads reach this step.`
+                  : `We spend up to this much a ${per} on this campaign.`)}
           </p>
           {error !== null && (
             <p role="alert" className="mt-3 text-[13px] text-[var(--data-rose)]">

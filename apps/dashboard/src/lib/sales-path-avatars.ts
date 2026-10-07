@@ -19,6 +19,8 @@ export const SALES_PATH_AVATAR_NAMES: ReadonlySet<string> = new Set([
   "Rapture", "Regal", "Rise", "Rhapsody", "Riches", "Soar",
   // LinkedIn Posting campaigns (2026-10-07).
   "Sterling", "Sunrise",
+  // Source campaigns (owner 2026-10-07): Apollo Cold Filters, Apollo Buying Signals, LinkedIn Engagement Signals, Your CRM Contacts.
+  "Solstice", "Sovereign", "Sparkle", "Spire",
 ]);
 
 /** The face's URL, or null when nobody drew one for this name yet. */
