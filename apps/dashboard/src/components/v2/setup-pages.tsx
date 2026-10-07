@@ -38,6 +38,7 @@ import { MaturityBadge } from "@/components/maturity-badge";
 import { useUser } from "@clerk/nextjs";
 import { useIsBetaUser } from "@/lib/use-beta-user";
 import type { Maturity } from "@/lib/feature-gates";
+import { AudienceLists } from "@/components/v2/audience-page";
 
 /**
  * The v2 Setup pages and the account pages behind the user menu.
@@ -129,14 +130,23 @@ export function V2OffersPage() {
   return <SelectedOfferRedirect title="Offer" />;
 }
 
-function SelectedOfferRedirect({ title, tab }: { title: string; tab?: "sales-path" | "targeting" | "campaigns" }) {
+function SelectedOfferRedirect({
+  title,
+  tab,
+  subPath = "",
+}: {
+  title: string;
+  tab?: "sales-path" | "sourcing" | "targeting" | "campaigns";
+  /** Below the tab: `/lists` opens Targeting's Lists tab. */
+  subPath?: string;
+}) {
   const { orgId, brandId } = useIds();
   const router = useRouter();
   const { offerId, settled } = useSelectedOffer();
   const [creating, setCreating] = useState(false);
   useEffect(() => {
-    if (offerId) router.replace(v2OfferHref(orgId, brandId, offerId, tab));
-  }, [offerId, orgId, brandId, tab, router]);
+    if (offerId) router.replace(`${v2OfferHref(orgId, brandId, offerId, tab)}${subPath}`);
+  }, [offerId, orgId, brandId, tab, subPath, router]);
   return (
     <V2Page crumbs={[{ label: title }]} title={title}>
       {!settled || offerId ? (
@@ -197,7 +207,7 @@ export function V2OfferPage() {
  * The offer's Targeting: who it reaches (Audiences) and the checks every company of every
  * audience goes through before we write to it (Qualification, owner 2026-10-07).
  */
-export function V2TargetingPage({ view = "audiences" }: { view?: "audiences" | "qualification" }) {
+export function V2TargetingPage({ view = "audiences" }: { view?: "audiences" | "qualification" | "lists" }) {
   const { orgId, brandId, offerId } = useIds();
   const name = useOfferName(brandId, offerId);
   if (!offerId) return null;
@@ -205,6 +215,8 @@ export function V2TargetingPage({ view = "audiences" }: { view?: "audiences" | "
   const tabs: V2Tab[] = [
     { label: "Audiences", href: base, active: view === "audiences" },
     { label: "Qualification", href: `${base}/qualification`, active: view === "qualification" },
+    // The brand's source lists and who they hold (was the Audience page, owner 2026-10-07).
+    { label: "Lists", href: `${base}/lists`, active: view === "lists" },
   ];
   return (
     <V2Page
@@ -215,6 +227,8 @@ export function V2TargetingPage({ view = "audiences" }: { view?: "audiences" | "
     >
       {view === "qualification" ? (
         <OfferQualification brandId={brandId} offerId={offerId} />
+      ) : view === "lists" ? (
+        <AudienceLists />
       ) : (
         <V2AudiencesTable offerId={offerId} plain />
       )}
@@ -225,6 +239,16 @@ export function V2TargetingPage({ view = "audiences" }: { view?: "audiences" | "
 /** Targeting from the sidebar or an old link: the selected offer's Targeting. */
 export function V2TargetingIndexPage() {
   return <SelectedOfferRedirect title="Targeting" tab="targeting" />;
+}
+
+/** Sourcing from the sidebar before an offer is picked: the selected offer's Sourcing. */
+export function V2SourcingIndexPage() {
+  return <SelectedOfferRedirect title="Sourcing" tab="sourcing" />;
+}
+
+/** The old brand Audience page (links, bookmarks): the selected offer's Targeting, Lists tab. */
+export function V2AudienceIndexPage() {
+  return <SelectedOfferRedirect title="Lists" tab="targeting" subPath="/lists" />;
 }
 
 /** Sales path from the sidebar before an offer is picked: the selected offer's Sales path. */

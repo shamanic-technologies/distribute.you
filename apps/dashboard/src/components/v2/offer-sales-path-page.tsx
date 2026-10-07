@@ -21,7 +21,7 @@ import { useSalesPathChannels } from "@/lib/use-sales-path-channels";
 import { acceptedChannels, selectedPathKeys, toggleChannel, togglePath } from "@/lib/offer-active-sales-paths";
 import { OfferChannelsPicker } from "@/components/v2/offer-channels-picker";
 import { OfferCampaigns } from "@/components/v2/offer-campaigns";
-import { campaignsOfOffer, sourceCampaignsOfOffer } from "@/lib/offer-campaigns";
+import { campaignsOfOffer } from "@/lib/offer-campaigns";
 import { roiUnavailableLabel, type SalesPathLeg } from "@/lib/offer-sales-paths";
 import { useLegCatalogue } from "@/lib/use-leg-catalogue";
 import { useAcquisitionChannels } from "@/lib/use-acquisition-channels";
@@ -171,12 +171,9 @@ export function V2OfferSalesPathPage() {
 
   // Every channel x leg the TICKED paths use (owner 2026-10-05), as features-service serves
   // them with their ROI; a campaign no ticked path uses is not listed. The SOURCE campaigns
-  // (owner 2026-10-07: "[Apollo Cold Filters] -> Lead found") list first, each its own row.
+  // live on the offer's Sourcing page (owner 2026-10-07: keep this page simple).
   const campaigns = useMemo(
-    () => [
-      ...sourceCampaignsOfOffer(paths.data?.sourceCampaigns ?? [], roiUnavailableLabel),
-      ...campaignsOfOffer(paths.data?.campaigns ?? [], paths.data?.paths ?? [], roiUnavailableLabel),
-    ],
+    () => campaignsOfOffer(paths.data?.campaigns ?? [], paths.data?.paths ?? [], roiUnavailableLabel),
     [paths.data],
   );
 

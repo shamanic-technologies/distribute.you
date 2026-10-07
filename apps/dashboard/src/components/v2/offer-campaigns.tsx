@@ -39,12 +39,16 @@ export function OfferCampaigns({
   offerId,
   campaigns,
   pending,
+  title = "Campaigns",
+  sub = "One proactive campaign at a time. Reactive ones follow its leads.",
 }: {
   orgId: string;
   brandId: string;
   offerId: string;
   campaigns: readonly OfferCampaign[];
   pending: boolean;
+  title?: string;
+  sub?: string;
 }) {
   const { missions } = useMissions(orgId, brandId, { allOffers: true });
   const missionByKey = useMemo(() => {
@@ -70,8 +74,8 @@ export function OfferCampaigns({
 
   return (
     <section>
-      <SectionTitle count={pending ? null : campaigns.length}>Campaigns</SectionTitle>
-      <p className="k-fg2 -mt-1 mb-3 text-[13px]">One proactive campaign at a time. Reactive ones follow its leads.</p>
+      <SectionTitle count={pending ? null : campaigns.length}>{title}</SectionTitle>
+      <p className="k-fg2 -mt-1 mb-3 text-[13px]">{sub}</p>
       {pending ? (
         <div className="space-y-2">
           <Shimmer className="h-10 rounded-[10px]" />

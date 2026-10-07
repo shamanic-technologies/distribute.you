@@ -292,6 +292,13 @@ function V2Sidebar() {
             icon={<I d={ICONS.path} />}
             active={section === "sales-path"}
           />
+          {/* Where the selected offer's leads are found: one campaign per source (owner 2026-10-07). */}
+          <NavItem
+            href={offerId ? v2OfferHref(orgId, brandId, offerId, "sourcing") : v2Href(orgId, brandId, "sourcing")}
+            label="Sourcing"
+            icon={<I d={ICONS.audience} />}
+            active={section === "sourcing"}
+          />
           {/* The selected offer's own page: there is no list of offers (owner 2026-10-03),
               the switcher at the top is where another one is picked. */}
           <NavItem
@@ -313,8 +320,6 @@ function V2Sidebar() {
             icon={<I d={ICONS.channels} />}
             active={section === "campaigns"}
           />
-          {/* The lists we source people from, and what we hold in each. */}
-          <NavItem href={v2Href(orgId, brandId, "audience")} label="Audience" icon={<I d={ICONS.audience} />} active={section === "audience"} />
           <NavItem href={`${v2Href(orgId, brandId, "integrations")}/ai`} label="Integrations" icon={<I d={ICONS.plug} />} active={section === "integrations"} />
           <NavItem href={v2Href(orgId, brandId, "settings")} label="Brand settings" icon={<I d={ICONS.settings} />} active={section === "settings"} />
         </Group>

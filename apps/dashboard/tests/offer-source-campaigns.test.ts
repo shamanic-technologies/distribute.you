@@ -48,13 +48,29 @@ describe("source campaigns read from the real prod body", () => {
   });
 });
 
-describe("Sales path page wiring", () => {
-  const page = read("src/components/v2/offer-sales-path-page.tsx");
+describe("Sourcing page wiring (owner 2026-10-07: off the Sales path page, its own sidebar entry)", () => {
+  const salesPath = read("src/components/v2/offer-sales-path-page.tsx");
+  const sourcing = read("src/components/v2/offer-sourcing-page.tsx");
   const table = read("src/components/v2/offer-campaigns.tsx");
+  const shell = read("src/components/v2/v2-shell.tsx");
+  const setup = read("src/components/v2/setup-pages.tsx");
 
-  it("lists source campaigns in the Campaigns table; the Sourcing section is gone", () => {
-    expect(page).toContain("...sourceCampaignsOfOffer(paths.data?.sourceCampaigns ?? [], roiUnavailableLabel),");
-    expect(page).not.toContain("OfferSourcingSection");
+  it("the Sales path page lists no source campaign and no Sourcing section", () => {
+    expect(salesPath).not.toContain("sourceCampaignsOfOffer");
+    expect(salesPath).not.toContain("OfferSourcingSection");
+  });
+
+  it("the Sourcing page lists the source campaigns off the same sales-paths read", () => {
+    expect(sourcing).toContain("sourceCampaignsOfOffer(paths.data?.sourceCampaigns ?? [], roiUnavailableLabel)");
+    expect(sourcing).toContain('["offerSalesPaths", brandId, offerId, "catalogue"]');
+    expect(sourcing).toContain("<OfferCampaigns");
+  });
+
+  it("the sidebar opens Sourcing; the brand Audience entry is gone (now Targeting's Lists tab)", () => {
+    expect(shell).toContain('v2OfferHref(orgId, brandId, offerId, "sourcing")');
+    expect(shell).not.toContain('v2Href(orgId, brandId, "audience")');
+    expect(setup).toContain('{ label: "Lists", href: `${base}/lists`, active: view === "lists" }');
+    expect(setup).toContain("<AudienceLists />");
   });
 
   it("a source never takes or gives the proactive plan", () => {
@@ -62,8 +78,8 @@ describe("Sales path page wiring", () => {
     expect(table).toContain('replaces={c.kind === "outreach" && !c.reactive && activeProactive');
   });
 
-  it("a source reads [logo name] -> Lead found; an outreach row shows its fed-by step on this page", () => {
-    expect(table).toContain('<ProviderLogo domain={campaign.providerDomain ?? null}');
+  it("a source reads [logo name] -> Lead found; an outreach row shows its fed-by step", () => {
+    expect(table).toContain("<ProviderLogo domain={campaign.providerDomain ?? null}");
     expect(table).toContain("<CampaignLeg campaign={campaign} showFedBy />");
   });
 });

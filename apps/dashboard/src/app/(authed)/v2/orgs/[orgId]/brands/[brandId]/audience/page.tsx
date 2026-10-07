@@ -1,6 +1,8 @@
-import { AudiencePage } from "@/components/v2/audience-page";
+"use client";
 
-// The brand's source lists and what each holds; see AudiencePage. GA (owner 2026-10-05).
+import { V2AudienceIndexPage } from "@/components/v2/setup-pages";
+
+// The brand Audience page moved into the selected offer's Targeting, its Lists tab (owner 2026-10-07).
 export default function Page() {
-  return <AudiencePage />;
+  return <V2AudienceIndexPage />;
 }

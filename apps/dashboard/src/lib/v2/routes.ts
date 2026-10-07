@@ -12,6 +12,7 @@ export type V2Section =
   | "campaigns"
   | "workflows"
   | "sales-path"
+  | "sourcing"
   | "offers"
   | "targeting"
   | "channels"
@@ -85,6 +86,7 @@ export function v2SectionOf(pathname: string): V2Section | null {
     "campaigns",
     "workflows",
     "sales-path",
+    "sourcing",
     "offers",
     "targeting",
     "channels",
@@ -102,6 +104,8 @@ export function v2SectionOf(pathname: string): V2Section | null {
   ];
   // An offer's Sales path is its own section, opened from the sidebar.
   if (s === "offers" && parts[7] === "sales-path") return "sales-path";
+  // An offer's Sourcing (its source campaigns, owner 2026-10-07) is its own section too.
+  if (s === "offers" && parts[7] === "sourcing") return "sourcing";
   // An offer's Targeting tab is Targeting, not Offers.
   if (s === "offers" && parts[7] === "targeting") return "targeting";
   // An offer's Campaigns, and the older channel pages under it, are Campaigns.
@@ -120,7 +124,7 @@ export function v2PersonHref(orgId: string, brandId: string, leadRowId: string):
 }
 
 /** One offer in v2: its settings, with its Targeting beside it. */
-export function v2OfferHref(orgId: string, brandId: string, offerId: string, tab?: "targeting" | "sales-path" | "campaigns" | "channels"): string {
+export function v2OfferHref(orgId: string, brandId: string, offerId: string, tab?: "targeting" | "sales-path" | "sourcing" | "campaigns" | "channels"): string {
   const base = `${v2Base(orgId, brandId)}/offers/${encodeURIComponent(offerId)}`;
   return tab ? `${base}/${tab}` : base;
 }
