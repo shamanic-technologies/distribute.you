@@ -58,6 +58,15 @@ describe("qualification surfaces", () => {
     expect(table).not.toMatch(/passRate\.yes\s*\//);
   });
 
+  it("roles read Hard filter / Bonus, and Cost per lead says it is an estimate", () => {
+    const words = src("src/lib/v2/qualification.ts");
+    expect(words).toContain('must_pass: "Hard filter"');
+    expect(words).toContain('mention: "Bonus"');
+    expect(words).not.toContain("Mention in email");
+    const table = src("src/components/v2/offer-qualification.tsx");
+    expect(table).toContain("<ExpectedLabel tip={COST_PER_LEAD_TIP}>Cost per lead</ExpectedLabel>");
+  });
+
   it("a suggest run that writes nothing says so", () => {
     const table = src("src/components/v2/offer-qualification.tsx");
     expect(table).toContain("setNothingNew(written.length === 0)");

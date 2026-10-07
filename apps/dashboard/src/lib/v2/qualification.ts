@@ -7,17 +7,24 @@
 export type QualificationModeWord = "mention" | "must_pass";
 export type LeadCheckVerdictWord = "yes" | "no" | "unavailable" | "not_checked";
 
-/** The role a check plays, in the client's words (owner 2026-10-07). */
+/**
+ * The role a check plays (owner 2026-10-07): a HARD FILTER (a company that fails is skipped)
+ * or a BONUS (a plus, never required). Either way the result is context for the writer, which
+ * is never obliged to cite it: each template decides.
+ */
 export const ROLE_LABEL: Record<QualificationModeWord, string> = {
-  must_pass: "Filter",
-  mention: "Mention in email",
+  must_pass: "Hard filter",
+  mention: "Bonus",
 };
 
 /** One line under each role in its menu. */
 export const ROLE_HINT: Record<QualificationModeWord, string> = {
-  must_pass: "Skip companies that fail it.",
-  mention: "Cite the proof in the email. Nobody is skipped.",
+  must_pass: "Companies that fail are skipped.",
+  mention: "A plus, never required.",
 };
+
+/** The (i) on Cost per lead: the served figure is an estimate. */
+export const COST_PER_LEAD_TIP = "An estimate. It changes over time and from one lead to another.";
 
 /** Said where a Filter is turned on: it moves who is reached on every audience of the offer. */
 export const FILTER_SCOPE_LINE = "Companies that fail are skipped on every audience of this offer, from now on.";
