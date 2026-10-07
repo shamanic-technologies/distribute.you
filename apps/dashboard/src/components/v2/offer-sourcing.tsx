@@ -12,7 +12,7 @@ import { EmptyNote, SectionTitle, Shimmer } from "@/components/v2/ui";
  * Where the offer's leads come from (owner 2026-10-07): every sourcing origin, used or
  * not, with what finding a lead cost and what those leads returned. features-service
  * serves every figure (sourcing + outreach = the campaign total, to the cent); nothing
- * is computed here. Sits above Campaigns on the Sales path page.
+ * is computed here. Sits BELOW Campaigns on the Sales path page (owner 2026-10-07).
  */
 export function OfferSourcingSection({ brandId, offerId }: { brandId: string; offerId: string }) {
   const q = useAuthQuery(["offerSourcing", brandId, offerId], () => getOfferSourcing(brandId, offerId), {

@@ -196,11 +196,6 @@ export function V2OfferSalesPathPage() {
       {selectedQ.isError && !selectedQ.data && (
         <p className="mb-4 text-[13px] text-[var(--data-rose)]">Could not read which sales paths you ticked.</p>
       )}
-      {staffMode && (
-        <div className="mb-8">
-          <OfferSourcingSection brandId={brandId} offerId={offerId} />
-        </div>
-      )}
       <div className="mb-8">
         <OfferCampaigns
           orgId={orgId}
@@ -210,6 +205,11 @@ export function V2OfferSalesPathPage() {
           pending={(paths.isPending && !paths.isError) || (!selectedPaths && !selectedQ.isError)}
         />
       </div>
+      {staffMode && (
+        <div className="mb-8">
+          <OfferSourcingSection brandId={brandId} offerId={offerId} />
+        </div>
+      )}
       <OfferSalesPaths
         data={paths.data}
         pending={paths.isPending && !paths.isError}
