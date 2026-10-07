@@ -24,6 +24,8 @@ import { dailySpendUsd, matchNote, type GetStartedOffer } from "@/lib/v2/get-sta
 import { EMPTY_PROGRESS, launchFromPreview, type LaunchCampaign, type LaunchProgress } from "./launch";
 import { PrepaidTopup, type TopupChoice } from "./prepaid-topup";
 import { payTopup, settleTopup } from "./pay-topup";
+import { pingOwner } from "@/lib/owner-ping-client";
+import { hostOf as pingHostOf, websiteUrl as pingWebsiteUrl } from "@/lib/v2/get-started";
 
 type Stage = "reading" | "credit" | "ready" | "launching";
 
@@ -146,6 +148,7 @@ export function OrgLaunch({
     // The first-payment email (owner 2026-10-07): transactional-email sends it once per
     // org and user, so a later top-up through here never sends it again.
     sendAuthNotification("first_payment").catch((e) => console.error("[get-started] first_payment email failed:", e));
+    pingOwner({ event: "paid", domain: website ? pingHostOf(pingWebsiteUrl(website)) : null, amountUsd: (Number(settled.account.credited_cents) - p.creditedBefore) / 100 });
     void launch();
   }
 
@@ -176,6 +179,7 @@ export function OrgLaunch({
       }
       posthog.capture("brand_walk_launched", { org_id: orgId, brand_id: brandId, campaigns: campaigns.filter((c) => c.on).length });
       setApiActiveOrgOverride(null);
+      pingOwner({ event: "launched", domain: website ? pingHostOf(pingWebsiteUrl(website)) : null });
       window.location.assign(v2CampaignHref(orgId, brandId, campaignId));
     } catch (e) {
       console.error("[brand-walk] launch failed:", e);
