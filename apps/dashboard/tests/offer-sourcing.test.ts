@@ -38,6 +38,11 @@ describe("Sourcing section", () => {
     expect(code).not.toContain('"k-fg3"}`}');
   });
 
+  it("each origin shows its provider's logo.dev mark off the SERVED domain", () => {
+    expect(section).toContain("providerDomain: o.provider?.domain ?? null,");
+    expect(section).toContain("<ProviderLogo domain={row.providerDomain}");
+  });
+
   it("each live row is a checkbox the customer ticks, saved to brand-service, ROI > 1 by default", () => {
     expect(section).toContain("selectedSourcingSlugs(savedQ.data, q.data.origins)");
     expect(section).toContain("saveOfferSelectedSourcing(brandId, offerId, next)");

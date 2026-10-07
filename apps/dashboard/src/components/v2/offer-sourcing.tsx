@@ -15,6 +15,7 @@ import { formatRoi, roiIsGood } from "@/lib/format-roi";
 import { roiUnavailableLabel } from "@/lib/offer-sales-paths";
 import { originSelectable, selectedSourcingSlugs, toggleSourcing } from "@/lib/offer-sourcing-selection";
 import { EmptyNote, SectionTitle, Shimmer } from "@/components/v2/ui";
+import { ProviderLogo } from "@/components/provider-logo";
 
 /**
  * Where the offer's leads come from (owner 2026-10-07): every sourcing origin, used or
@@ -102,8 +103,10 @@ export function OfferSourcingSection({ brandId, offerId }: { brandId: string; of
   );
 }
 
-type Row = Omit<SourcingOrigin, "slug" | "family" | "live" | "description"> & {
+type Row = Omit<SourcingOrigin, "slug" | "family" | "live" | "description" | "provider"> & {
   key: string;
+  /** The provider's domain for its logo.dev mark; null = no single vendor, no mark. */
+  providerDomain: string | null;
   description: string | null;
   /** A live origin can be ticked; a retired one and the earlier-leads row are read only. */
   selectable: boolean;
@@ -120,12 +123,14 @@ export function sourcingRows(data: Pick<OfferSourcing, "origins" | "unattributed
   const rows: Row[] = [...origins.filter((o) => o.used), ...origins.filter((o) => !o.used)].map((o) => ({
     ...o,
     key: o.slug,
+    providerDomain: o.provider?.domain ?? null,
     selectable: originSelectable(o),
   }));
   if (data.unattributed && data.unattributed.leadsServed > 0) {
     rows.push({
       ...data.unattributed,
       key: "unattributed",
+      providerDomain: null,
       name: "Earlier leads",
       description: "Found before we recorded the source.",
       used: true,
@@ -165,7 +170,10 @@ function SourcingRow({ row, on, onToggle }: { row: Row; on: boolean; onToggle?: 
         )}
       </td>
       <td className="px-3 py-2">
-        <span className="font-semibold">{row.name}</span>
+        <span className="flex items-center gap-2">
+          <ProviderLogo domain={row.providerDomain} size={16} className="shrink-0 rounded-[4px]" />
+          <span className="font-semibold">{row.name}</span>
+        </span>
         {row.description && <span className="k-fg3 block text-[12px] leading-[18px]">{row.description}</span>}
       </td>
       <td

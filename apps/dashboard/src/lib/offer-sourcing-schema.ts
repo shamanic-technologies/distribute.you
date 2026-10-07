@@ -22,6 +22,10 @@ const SourcingFiguresSchema = z.object({
 
 const SourcingOriginSchema = SourcingFiguresSchema.extend({
   slug: z.string(),
+  // Whose data the origin is (features-service v0.179.78): the logo.dev mark is drawn off
+  // `domain`, never a name. null = no single vendor (the customer's own CRM contacts).
+  // `.nullish()` while the release rolls out: an older body omits it.
+  provider: z.object({ name: z.string(), domain: z.string() }).nullish(),
   name: z.string(),
   family: z.string(),
   description: z.string().nullable(),
