@@ -104,13 +104,15 @@ describe("signup-facing surfaces sell the prepaid offer", () => {
     });
   }
 
-  it("the welcome email says the platform is free, in both bodies", () => {
+  // The signup welcome is short and names no price (owner 2026-10-07); the welcome and
+  // the first-payment email still never promise a retired offer.
+  it("the welcome and first-payment emails promise no retired offer", () => {
     const src = read("apps/dashboard/src/instrumentation.ts");
     const start = src.indexOf('name: "welcome"');
     const tpl = src.slice(start, src.indexOf('name: "goal_launched"'));
     expect(start).toBeGreaterThan(-1);
+    expect(tpl).toContain('name: "first_payment"');
     for (const pattern of RETIRED) expect(pattern.test(tpl), `welcome still says ${pattern}`).toBe(false);
-    expect(tpl.split("The platform is free.").length - 1).toBe(2);
   });
 });
 

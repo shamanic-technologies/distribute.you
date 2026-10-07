@@ -16,7 +16,7 @@ import { useEffect, useRef, useState } from "react";
 import { useOrganizationList, useSession, useUser } from "@clerk/nextjs";
 import { EmbeddedCheckout, EmbeddedCheckoutProvider } from "@stripe/react-stripe-js";
 import posthog from "posthog-js";
-import { getBillingAccount, setApiActiveOrgOverride, type BillingAccount } from "@/lib/api";
+import { getBillingAccount, sendAuthNotification, setApiActiveOrgOverride, type BillingAccount } from "@/lib/api";
 import { getStripe } from "@/lib/stripe";
 import { defaultSalesRepToAccountEmail } from "@/lib/sales-rep-default";
 import { v2CampaignHref } from "@/lib/v2/routes";
@@ -143,6 +143,9 @@ export function OrgLaunch({
       return;
     }
     setAccount(settled.account);
+    // The first-payment email (owner 2026-10-07): transactional-email sends it once per
+    // org and user, so a later top-up through here never sends it again.
+    sendAuthNotification("first_payment").catch((e) => console.error("[get-started] first_payment email failed:", e));
     void launch();
   }
 

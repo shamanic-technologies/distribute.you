@@ -34,7 +34,7 @@ describe("the why: Revenue made easy.", () => {
   it("closes every customer email, HTML and plain text; staff/admin mails skip it", () => {
     const internal = new Set(["signup_notification", "signin_notification", "user_active", "staff-daily-digest"]);
     const customer = EMAIL_TEMPLATES.filter((t) => !internal.has(t.name) && t.htmlBody.includes("<!DOCTYPE html>"));
-    expect(customer.length).toBe(13);
+    expect(customer.length).toBe(14);
     for (const t of customer) {
       expect(t.htmlBody, t.name).toContain(BRAND_WHY);
       expect(t.textBody, t.name).toContain(BRAND_WHY);
