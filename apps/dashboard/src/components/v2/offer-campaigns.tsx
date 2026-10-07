@@ -7,7 +7,9 @@ import { useAuthQuery, useQueryClient } from "@/lib/use-auth-query";
 import {
   ApiError,
   getBrand,
+  getCampaignBudgetSplit,
   getOfferCampaignBudgets,
+  getOfferSourcing,
   saveOfferCampaignBudget,
   setCampaignStatus,
   type OfferCampaignBudgetItem,
@@ -19,6 +21,7 @@ import { channelWriteErrorMessage } from "@/lib/channel-start";
 import { createCampaignForPair, startReactiveCampaign } from "@/lib/start-pair";
 import { invalidateCampaignMoney } from "@/lib/write-invalidation";
 import { useAcquisitionChannels } from "@/lib/use-acquisition-channels";
+import { useStaffMode } from "@/lib/use-staff-mode";
 import { useMissions, type Mission } from "@/components/v2/use-missions";
 import { EXPECTED_ROI_TIP } from "@/lib/offer-sales-paths";
 import { ChannelChip, ExpectedLabel, PathAvatar } from "@/components/v2/offer-sales-paths";
@@ -63,6 +66,23 @@ export function OfferCampaigns({
     for (const i of budgetsQ.data?.items ?? []) m.set(campaignKey(i.featureSlug, i.legKey), i);
     return m;
   }, [budgetsQ.data]);
+  // Staff mode: each campaign reads "[source] -> [channel] -> outcome" (owner 2026-10-07),
+  // the sources being the ones features-service recorded for the campaign's leads.
+  const { staffMode } = useStaffMode();
+  const sourcingQ = useAuthQuery(["offerSourcing", brandId, offerId], () => getOfferSourcing(brandId, offerId), {
+    enabled: staffMode && !!offerId,
+  });
+  const sourcesByKey = useMemo(() => {
+    const m = new Map<string, string[]>();
+    for (const c of sourcingQ.data?.campaigns ?? []) {
+      if (!c.legKey) continue;
+      const key = campaignKey(c.featureSlug, c.legKey);
+      const names = m.get(key) ?? [];
+      for (const s of c.sources) if (!names.includes(s.name)) names.push(s.name);
+      m.set(key, names);
+    }
+    return m;
+  }, [sourcingQ.data]);
 
   return (
     <section>
@@ -108,6 +128,8 @@ export function OfferCampaigns({
                       budgetPeriod={budgetsQ.data?.period ?? null}
                       budgetPending={!budgetsQ.isFetchedAfterMount && !budgetsQ.data}
                       budgetError={budgetsQ.isError && !budgetsQ.data}
+                      sources={staffMode ? sourcesByKey.get(key) ?? [] : []}
+                      showSplit={staffMode}
                     />
                   );
                 })}
@@ -123,10 +145,13 @@ export function OfferCampaigns({
 /** A campaign's leg read in order: the step it starts from (reactive only), the channel, the step it lands on. */
 export function CampaignLeg({
   campaign,
+  sources = [],
   className = "",
   compact = false,
 }: {
   campaign: Pick<OfferCampaign, "featureSlug" | "channelName" | "managed" | "fromLabel" | "toLabel">;
+  /** Where the leads come from, read before the channel: "[Apollo Cold Filters] → [Channel] → …". */
+  sources?: readonly string[];
   className?: string;
   /** One line, 11px, no wrap (Today's Campaigns card). */
   compact?: boolean;
@@ -137,6 +162,12 @@ export function CampaignLeg({
     <span
       className={`k-fg2 inline-flex items-center ${compact ? "gap-1 whitespace-nowrap text-[11px]" : "flex-wrap gap-1.5"} ${className}`}
     >
+      {sources.map((name) => (
+        <span key={name} className="contents">
+          <span className="k-chip">{name}</span>
+          <span className="k-fg3">→</span>
+        </span>
+      ))}
       {campaign.fromLabel && (
         <>
           <span>{campaign.fromLabel}</span>
@@ -160,6 +191,8 @@ function CampaignRow({
   budgetPeriod,
   budgetPending,
   budgetError,
+  sources,
+  showSplit,
 }: {
   brandId: string;
   offerId: string;
@@ -173,6 +206,9 @@ function CampaignRow({
   budgetPeriod: "day" | "month" | null;
   budgetPending: boolean;
   budgetError: boolean;
+  sources: readonly string[];
+  /** Staff mode: the outreach / sourcing split under the budget. */
+  showSplit: boolean;
 }) {
   const [pressed, setPressed] = useState<boolean | null>(null);
   useEffect(() => setPressed(null), [mission?.running]);
@@ -189,7 +225,7 @@ function CampaignRow({
         </span>
       </td>
       <td className="px-3 py-2">
-        <CampaignLeg campaign={campaign} />
+        <CampaignLeg campaign={campaign} sources={sources} />
       </td>
       <td className="px-3 py-2">
         <span className="k-chip">{campaignTag(campaign)}</span>
@@ -221,6 +257,9 @@ function CampaignRow({
           pending={budgetPending}
           error={budgetError}
         />
+        {showSplit && !campaign.reactive && campaign.managed !== false && (
+          <BudgetSplitLine brandId={brandId} offerId={offerId} campaign={campaign} />
+        )}
       </td>
     </tr>
   );
@@ -354,6 +393,25 @@ function CampaignStatus({
       )}
       {error && <span className="mt-1 max-w-[220px] text-[11.5px] text-[var(--data-rose)]">{error}</span>}
     </div>
+  );
+}
+
+/**
+ * billing's split of a campaign's daily budget (v0.82.0): outreach a fixed amount, sourcing
+ * on demand up to its ceiling. Nothing when the budget is not split.
+ */
+function BudgetSplitLine({ brandId, offerId, campaign }: { brandId: string; offerId: string; campaign: OfferCampaign }) {
+  const q = useAuthQuery(
+    ["campaignBudgetSplit", brandId, offerId, campaign.featureSlug, campaign.legKey],
+    () => getCampaignBudgetSplit(brandId, { offerId, featureSlug: campaign.featureSlug, legKey: campaign.legKey }),
+  );
+  if (q.isError && !q.data) return <span className="k-fg3 mt-0.5 block text-[11.5px]">Could not read the split</span>;
+  const d = q.data;
+  if (!d || !d.split || d.outreachDailyBudgetCents === null || d.sourcingCeilingCents === null) return null;
+  return (
+    <span className="k-fg3 mt-0.5 block whitespace-nowrap text-[11.5px] tabular-nums">
+      Outreach {fmtDailyBudgetUsd(d.outreachDailyBudgetCents)} + sourcing up to {fmtDailyBudgetUsd(d.sourcingCeilingCents)}
+    </span>
   );
 }
 

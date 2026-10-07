@@ -254,6 +254,8 @@ export function roiUnavailableLabel(reason: string | null): string | null {
       return "No ticked path uses it";
     case "selected_paths_unavailable":
       return "Could not read your ticked paths";
+    case "no_positive_reply_value":
+      return "State what a positive reply is worth";
     default:
       return reason;
   }

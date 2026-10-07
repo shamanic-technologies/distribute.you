@@ -206,6 +206,9 @@ export const PERSISTABLE_QUERY_ROOTS = new Set([
   "offerEconomics",
   "offerSalesPath",
   "offerSalesPaths",
+  // Where the offer's leads come from, and one campaign's outreach / sourcing split.
+  "offerSourcing",
+  "campaignBudgetSplit",
   "offerChannels",
   "offerSelectedSalesPaths",
   "brandSalesBudget",

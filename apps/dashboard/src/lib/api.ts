@@ -2178,6 +2178,95 @@ export async function getOfferSalesPaths(
   return parseOfferSalesPaths(raw, "getOfferSalesPaths");
 }
 
+// ── Where an offer's leads come from (features-service, per offer) ──
+// A campaign reads "[sourcing origin] -> [channel] -> outcome" (owner 2026-10-07): finding a
+// lead (screen, reveal, verify) is the SOURCING half of its cost, emailing it the OUTREACH
+// half; sourcing + outreach = the campaign's total, to the cent (features-service #1376).
+// Every catalogue origin is listed, used or not. Since inception, net.
+const SourcingFiguresSchema = z.object({
+  serveCount: z.coerce.number(),
+  leadsServed: z.coerce.number(),
+  sourcingCostUsd: z.coerce.number(),
+  costPerLeadUsd: z.coerce.number().nullable(),
+  positiveReplies: z.coerce.number(),
+  sourcingCostPerPositiveReplyUsd: z.coerce.number().nullable(),
+  outreachCostUsd: z.coerce.number(),
+  endToEndCostUsd: z.coerce.number(),
+  endToEndCostPerPositiveReplyUsd: z.coerce.number().nullable(),
+  roi: z.coerce.number().nullable(),
+  roiUnavailableReason: z.string().nullable(),
+});
+
+const SourcingOriginSchema = SourcingFiguresSchema.extend({
+  slug: z.string(),
+  name: z.string(),
+  family: z.string(),
+  description: z.string().nullable(),
+  live: z.boolean(),
+  used: z.boolean(),
+});
+
+export type SourcingOrigin = z.infer<typeof SourcingOriginSchema>;
+
+const SourcingCampaignSchema = z.object({
+  campaignId: z.string(),
+  featureSlug: z.string(),
+  legKey: z.string().nullable(),
+  sources: z.array(z.object({ slug: z.string(), name: z.string() })),
+});
+
+const OfferSourcingSchema = z.object({
+  offerId: z.string(),
+  origins: z.array(SourcingOriginSchema),
+  // Serves recorded before audiences were tagged: no origin, never spread over one.
+  unattributed: SourcingFiguresSchema.nullable(),
+  campaigns: z.array(SourcingCampaignSchema),
+});
+
+export type OfferSourcing = z.infer<typeof OfferSourcingSchema>;
+
+/** GET /offers/:offerId/sourcing — each sourcing origin of the offer with its cost and return (net). */
+export async function getOfferSourcing(brandId: string, offerId: string): Promise<OfferSourcing> {
+  const query = new URLSearchParams({ brandId });
+  query.set("pricing", "net");
+  const raw = await apiCall<unknown>(`/offers/${offerId}/sourcing?${query.toString()}`);
+  const parsed = OfferSourcingSchema.safeParse(raw);
+  if (!parsed.success) {
+    console.error("[dashboard] getOfferSourcing: response shape mismatch", { issues: parsed.error.issues, raw });
+    throw new Error("[dashboard] getOfferSourcing: invalid response shape");
+  }
+  return parsed.data;
+}
+
+// ONE campaign's budget split (billing v0.82.0): outreach is a fixed daily amount, sourcing
+// spends on demand up to its ceiling, and the two sum to the daily budget. billing's figures,
+// never summed here. Cents arrive as decimal strings.
+const CampaignBudgetSplitSchema = z.object({
+  featureSlug: z.string(),
+  legKey: z.string(),
+  dailyBudgetCents: z.coerce.number().nullable(),
+  outreachDailyBudgetCents: z.coerce.number().nullable(),
+  sourcingCeilingCents: z.coerce.number().nullable(),
+  split: z.boolean(),
+});
+
+export type CampaignBudgetSplit = z.infer<typeof CampaignBudgetSplitSchema>;
+
+/** GET /brands/:brandId/campaign-budget — one campaign's outreach budget and sourcing ceiling. */
+export async function getCampaignBudgetSplit(
+  brandId: string,
+  campaign: { offerId: string; legKey: string; featureSlug: string },
+): Promise<CampaignBudgetSplit> {
+  const query = new URLSearchParams(campaign);
+  const raw = await apiCall<unknown>(`/brands/${brandId}/campaign-budget?${query.toString()}`);
+  const parsed = CampaignBudgetSplitSchema.safeParse(raw);
+  if (!parsed.success) {
+    console.error("[dashboard] getCampaignBudgetSplit: response shape mismatch", { issues: parsed.error.issues, raw });
+    throw new Error("[dashboard] getCampaignBudgetSplit: invalid response shape");
+  }
+  return parsed.data;
+}
+
 /** GET /brands/:brandId/sales-budget — the brand's daily sales budget mode (billing-service). */
 export async function getBrandSalesBudget(brandId: string): Promise<BrandSalesBudget> {
   const raw = await apiCall<unknown>(`/brands/${brandId}/sales-budget`);

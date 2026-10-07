@@ -31,6 +31,8 @@ import { EmptyNote, Shimmer } from "@/components/v2/ui";
 import { V2Page, useOfferName } from "@/components/v2/setup-pages";
 import { OfferSalesPath } from "@/components/v2/offer-sales-path";
 import { OfferSalesPaths } from "@/components/v2/offer-sales-paths";
+import { OfferSourcingSection } from "@/components/v2/offer-sourcing";
+import { useStaffMode } from "@/lib/use-staff-mode";
 
 /**
  * How an offer sells, read from the top down: the path we run (Active, framed) above the
@@ -45,6 +47,8 @@ export function V2OfferSalesPathPage() {
   const catalogue = useLegCatalogue();
   const channels = useAcquisitionChannels();
   const qc = useQueryClient();
+  // Sourcing apart from outreach (owner 2026-10-07) shows in staff mode first.
+  const { staffMode } = useStaffMode();
 
   const q = useAuthQuery(["offerSalesPath", brandId, offerId], () => getOfferSalesPath(brandId, offerId), {
     enabled: !!offerId,
@@ -191,6 +195,11 @@ export function V2OfferSalesPathPage() {
       {error && <p className="mb-4 text-[13px] text-[var(--data-rose)]">{error}</p>}
       {selectedQ.isError && !selectedQ.data && (
         <p className="mb-4 text-[13px] text-[var(--data-rose)]">Could not read which sales paths you ticked.</p>
+      )}
+      {staffMode && (
+        <div className="mb-8">
+          <OfferSourcingSection brandId={brandId} offerId={offerId} />
+        </div>
       )}
       <div className="mb-8">
         <OfferCampaigns

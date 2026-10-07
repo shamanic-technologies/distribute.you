@@ -55,7 +55,7 @@ describe("v2 recent runs are crew runs", () => {
     expect(today).not.toContain("xl:grid-cols-6\">");
     // Meetings sits above Campaigns.
     expect(today.indexOf("{showMeetings && (")).toBeLessThan(today.indexOf(">Campaigns</SectionTitle>"));
-    expect(src("components/v2/offer-campaigns.tsx")).toContain("<CampaignLeg campaign={campaign} />");
+    expect(src("components/v2/offer-campaigns.tsx")).toContain("<CampaignLeg campaign={campaign} sources={sources} />");
     // The sidebar reads the same list.
     expect(src("components/v2/v2-shell.tsx")).toContain("useOngoingCampaigns(orgId, brandId, offerId)");
   });
