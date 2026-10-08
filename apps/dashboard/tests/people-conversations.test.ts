@@ -195,3 +195,23 @@ describe("where a record came from", () => {
     expect(personCompanyDomain(["jo@gmail.com"])).toBeNull();
   });
 });
+
+describe("search (crm-service q, #56)", () => {
+  it("asks crm-service, keyed on the query, never filters in the browser", () => {
+    const api = read("lib/api.ts");
+    expect(api).toContain('if (opts.q) qs.set("q", opts.q);');
+    const view = read("components/v2/integrations-conversations.tsx");
+    expect(view).toContain('["people", brandId, page, q]');
+    expect(view).toContain("offset: page * PEOPLE_PAGE_SIZE, q }");
+    expect(view).not.toContain("people.filter(");
+  });
+  it("keeps why each person matched", () => {
+    const parsed = PeopleListSchema.parse({
+      ...list,
+      search: { q: "deck", messageIndex: { units: 1, indexed: 1, failed: 0, messages: 3, lastIndexedAt: null }, tookMs: 12 },
+      people: [{ ...person, matches: [{ field: "message", source: "gmail", at: null, direction: "inbound", subject: "Re: hi", excerpt: "send the deck", ref: {} }], messageMatches: 2 }],
+    });
+    expect(parsed.people[0].matches?.[0].excerpt).toBe("send the deck");
+    expect(parsed.people[0].messageMatches).toBe(2);
+  });
+});

@@ -57,6 +57,24 @@ export const PersonSchema = z.object({
   state: z.string(),
   stateSource: z.string(),
   presences: z.array(PersonPresenceSchema),
+  /**
+   * Search only (crm-service `q`): why the person matched. Identity fields carry `value`;
+   * a message carries its subject and an excerpt around the query.
+   */
+  matches: z
+    .array(
+      z.object({
+        field: z.string(),
+        value: z.string().optional(),
+        source: z.string().optional(),
+        at: z.string().nullish(),
+        direction: z.string().nullish(),
+        subject: z.string().nullish(),
+        excerpt: z.string().optional(),
+      }),
+    )
+    .optional(),
+  messageMatches: z.coerce.number().optional(),
 });
 
 export const PeopleListSchema = z.object({
