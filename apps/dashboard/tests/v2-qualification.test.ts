@@ -46,7 +46,7 @@ describe("qualification formatting", () => {
 describe("qualification surfaces", () => {
   it("Targeting carries an Audiences and a Qualification tab", () => {
     const pages = src("src/components/v2/setup-pages.tsx");
-    expect(pages).toContain('label: "Audiences"');
+    expect(pages).toContain('label: "Client Profiles"');
     expect(pages).toContain('label: "Qualification"');
     expect(pages).toContain("<OfferQualification ");
   });

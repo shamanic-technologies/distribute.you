@@ -35,7 +35,7 @@ import { useStatBasis } from "@/lib/use-stat-basis";
 import { shownFigure, type MaturityPair, type StatBasis } from "@/lib/maturity";
 import { LEG_PAIR_NOUN } from "@/lib/campaign-leg-columns";
 
-type Tab = "active" | "archived";
+type Tab = "active" | "suggested" | "archived";
 
 const STATUS_WORD: Record<string, string> = { active: "Active", paused: "Paused", archived: "Archived", suggested: "Suggested" };
 
@@ -234,9 +234,9 @@ export function V2AudiencesTable({
   // A handful of rows, re-sorted each render so a poll's fresh stats reorder them.
   const needle = q.trim().toLowerCase();
   const listed = plain ? t.audiences.filter((a) => !linkedInSignalOf(a.filters)) : t.audiences;
-  // Suggested audiences share the Active tab (owner 2026-10-04), listed after the live
-  // ones under an inactive Suggested status; there is no Suggested tab.
-  const inTabOf = (k: Tab) => listed.filter((a) => (k === "archived" ? a.status === "archived" : a.status !== "archived"));
+  // Suggested audiences (onboarding picks never activated) have their own tab (owner 2026-10-08).
+  const tabOf = (a: AudienceWire): Tab => (a.status === "archived" ? "archived" : a.status === "suggested" ? "suggested" : "active");
+  const inTabOf = (k: Tab) => listed.filter((a) => tabOf(a) === k);
   const inTab = inTabOf(tab);
   const tabCount = (k: Tab) => inTabOf(k).length;
   const sorted = sortAudiences(
@@ -245,9 +245,11 @@ export function V2AudiencesTable({
       : inTab,
     { sortCol, sortDir, tieBreakCol, statsFor: t.statsFor, basis },
   );
-  const rows = [...sorted.filter((a) => a.status !== "suggested"), ...sorted.filter((a) => a.status === "suggested")];
-  // No Archived tab while nothing is archived, and no tab bar at all when Active is alone.
-  const showArchivedTab = tabCount("archived") > 0;
+  const rows = sorted;
+  // The offer's Targeting always shows Active | Suggested | Archived (owner 2026-10-08). A
+  // channel's table has no suggested rows: no Archived tab while nothing is archived, and
+  // no tab bar at all when Active is alone.
+  const showArchivedTab = plain || tabCount("archived") > 0;
   useEffect(() => {
     if (tab === "archived" && !showArchivedTab && !t.archivedTabLoading) setTab("active");
   }, [tab, showArchivedTab, t.archivedTabLoading]);
@@ -267,7 +269,7 @@ export function V2AudiencesTable({
     searchRef,
   });
 
-  const tabLoading = tab === "archived" ? t.archivedTabLoading : t.activeTabLoading || t.suggestedTabLoading;
+  const tabLoading = tab === "archived" ? t.archivedTabLoading : tab === "suggested" ? t.suggestedTabLoading : t.activeTabLoading;
   const colCount = columns.length + 2;
   const sortable: { col: AudienceSortCol; label: string }[] = [
     { col: "audience", label: "Audience" },
@@ -306,7 +308,10 @@ export function V2AudiencesTable({
                 label: "Active",
                 count: t.activeTabLoading && t.activeTabRows === 0 ? null : tabCount("active"),
               },
-              { key: "archived", label: "Archived", count: tabCount("archived") },
+              ...(plain
+                ? [{ key: "suggested", label: "Suggested", count: t.suggestedTabLoading ? null : tabCount("suggested") }]
+                : []),
+              { key: "archived", label: "Archived", count: t.archivedTabLoading ? null : tabCount("archived") },
             ]}
             active={tab}
             onPick={(k) => setTab(k as Tab)}
@@ -411,7 +416,7 @@ export function V2AudiencesTable({
                 <tr>
                   <td colSpan={colCount}>
                     <EmptyNote>
-                      {q ? "No audience matches." : tab === "archived" ? "No archived audiences." : "No audiences yet."}
+                      {q ? "No audience matches." : tab === "archived" ? "No archived audiences." : tab === "suggested" ? "No suggested audiences." : "No audiences yet."}
                     </EmptyNote>
                   </td>
                 </tr>
