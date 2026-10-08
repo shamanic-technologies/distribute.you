@@ -55,4 +55,10 @@ describe("step panel wiring", () => {
     const contacted = panel.slice(panel.indexOf("function ContactedBody("), panel.indexOf("const CONTACTED_STEP"));
     expect(contacted).toContain("<ConversionHistoryCard");
   });
+
+  it("the chart's figure says what it counts (owner: \"dou vient ce 38%\")", () => {
+    const card = panel.slice(panel.indexOf("function ConversionHistoryCard("), panel.indexOf("const CONTACTED_STEP"));
+    expect(card).toContain("{wentOnWords(lastPoint)}");
+    expect(panel).toContain("went on to ${p.aboveLabel");
+  });
 });
