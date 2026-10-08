@@ -5258,6 +5258,16 @@ const ExclusiveLostPersonSchema = LostStepPersonSchema.extend({
   pipelineUsd: z.coerce.number().nullable(),
   countedWithColleague: z.boolean(),
 });
+// The sliced row's "% Conversion" (owner 2026-10-08, features-service #1429): the row above
+// over (this row + the row above). Null on the deepest row. Optional until served.
+const ConversionFromRowAboveSchema = z
+  .object({
+    rowAbove: OutcomeStepRefSchema,
+    rowAbovePeople: z.coerce.number(),
+    rowPeople: z.coerce.number(),
+    ratePct: z.coerce.number().nullable(),
+  })
+  .nullish();
 const ExclusiveLadderSchema = z.object({
   contacted: z.object({
     count: z.coerce.number(),
@@ -5283,6 +5293,7 @@ const ExclusiveLadderSchema = z.object({
       })
       .nullable(),
     people: z.object({ limit: z.coerce.number(), leads: z.array(ExclusivePersonSchema) }),
+    conversionFromRowAbove: ConversionFromRowAboveSchema,
   }),
   rows: z.array(
     z.object({
@@ -5304,6 +5315,7 @@ const ExclusiveLadderSchema = z.object({
       hot: z
         .object({ limit: z.coerce.number(), count: z.coerce.number(), leads: z.array(ExclusivePersonSchema) })
         .nullish(),
+      conversionFromRowAbove: ConversionFromRowAboveSchema,
     }),
   ),
   total: z.object({
