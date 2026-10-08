@@ -460,9 +460,12 @@ export function TodayPage() {
                   >Campaigns</SectionTitle>
                   {/* Billing's own totals, ON campaigns only: what goes to proactive outreach,
                       and the most the reactive ones may spend, per reaction (owner 2026-10-08). */}
-                  {budgetsQ.data?.totals && (
+                  {budgetsQ.data?.totals ? (
                     <BudgetTotals totals={budgetsQ.data.totals} />
-                  )}
+                  ) : budgetsQ.data?.totals === null ? (
+                    // Billing could not tell which campaigns are on: unknown, never $0.
+                    <p className="k-fg3 mb-3 text-[12px]">Totals are not readable right now.</p>
+                  ) : null}
                   <div className="k-card divide-y divide-[var(--line-subtle)]">
                     {!ongoing.settled ? (
                       <div className="p-4"><Shimmer className="h-10 w-full" /></div>

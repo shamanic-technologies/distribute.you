@@ -3058,6 +3058,7 @@ const OfferCampaignBudgetsSchema = z.object({
       }),
     })
     .nullish(),
+  totalsUnavailableReason: z.string().nullish(),
 });
 
 export type OfferCampaignBudgets = z.infer<typeof OfferCampaignBudgetsSchema>;
