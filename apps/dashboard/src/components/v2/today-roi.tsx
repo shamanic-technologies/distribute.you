@@ -116,7 +116,7 @@ export function OfferOutcomesTable({
   const ladder = pipeline
     ? [...pipeline.ladder].reverse().filter((s) => s.recipientsReached != null && (s.recipientsReached > 0 || s.valuePerOutcomeUsd != null))
     : null;
-  const cols = 6;
+  const cols = 7;
   // THE PIPELINE SLICED (owner 2026-10-08: "il faut les exclure, pour que la somme des
   // lignes fasse le total pipeline"): every person on ONE row, the furthest step we
   // brought them to; the rows and the contacted row add up to the served total.
@@ -136,6 +136,7 @@ export function OfferOutcomesTable({
               <tr className="k-line-subtle border-b">
                 <th className="k-label px-2 py-2.5 sm:px-3 pl-4 text-left font-normal">Step</th>
                 <th className="k-label px-2 py-2.5 sm:px-3 text-right font-normal">All</th>
+                <th className="k-label px-2 py-2.5 sm:px-3 text-right font-normal">Hot</th>
                 <th className="k-label px-2 py-2.5 sm:px-3 text-right font-normal">Lost</th>
                 <th className="k-label hidden whitespace-nowrap px-2 py-2.5 text-right font-normal sm:table-cell sm:px-3">Conversion</th>
                 <th className="k-label whitespace-nowrap px-2 py-2.5 sm:px-3 text-right font-normal">
@@ -174,6 +175,7 @@ export function OfferOutcomesTable({
                   <tr className="k-line-subtle border-t">
                     <td className="px-2 py-2.5 pl-4 font-semibold sm:px-3">Total</td>
                     <td className="px-2 py-2.5 text-right font-semibold tabular-nums sm:px-3">{formatCount(ex.total.people)}</td>
+                    <td className="px-2 py-2.5 text-right font-semibold tabular-nums sm:px-3">{ex.total.hot ? formatCount(ex.total.hot.count) : dash}</td>
                     <td />
                     <td className="hidden sm:table-cell" />
                     <td />
@@ -242,6 +244,7 @@ function LadderLine({ s, onOpen }: { s: OfferLadderStep; onOpen: () => void }) {
     >
       <td className="px-2 py-2 pl-4 font-medium sm:px-3">{s.step.label}</td>
       <td className="px-2 py-2 text-right tabular-nums sm:px-3">{s.pricedRecipientsReached != null ? formatCount(s.pricedRecipientsReached) : dash}</td>
+      <td className="px-2 py-2 text-right tabular-nums sm:px-3">{dash}</td>
       <td className="px-2 py-2 text-right tabular-nums sm:px-3">{s.people ? formatCount(s.people.lost.count) : dash}</td>
       {/* From the step before, on the people we brought: the same basis as All. */}
       <td className="hidden px-2 py-2 text-right tabular-nums sm:table-cell sm:px-3">
@@ -265,6 +268,8 @@ function SliceLine({ r, conversionPct, onOpen }: { r: ExclusiveRow; conversionPc
     <tr {...openable(onOpen, r.step.label)}>
       <td className="px-2 py-2 pl-4 font-medium sm:px-3">{r.step.label}</td>
       <td className="px-2 py-2 text-right tabular-nums sm:px-3">{r.pricedPeople != null ? formatCount(r.pricedPeople) : dash}</td>
+      {/* Of the row's people, the hot leads (features-service, per row). */}
+      <td className="px-2 py-2 text-right tabular-nums sm:px-3">{r.hot ? formatCount(r.hot.count) : dash}</td>
       {/* Of the row's people, those who went cold or were ruled out (features-service, per row). */}
       <td className="px-2 py-2 text-right tabular-nums sm:px-3">{r.people ? formatCount(r.people.lost.count) : dash}</td>
       <td className="hidden px-2 py-2 text-right tabular-nums sm:table-cell sm:px-3">{conversionPct != null ? pct(conversionPct) : dash}</td>
@@ -291,6 +296,7 @@ function ContactedLine({
     <tr {...(onOpen ? openable(onOpen, label) : { className: "k-line-subtle border-b last:border-0" })}>
       <td className="px-2 py-2 sm:px-3 pl-4 font-medium">{label}</td>
       <td className="px-2 py-2 sm:px-3 text-right tabular-nums">{count != null ? formatCount(count) : dash}</td>
+      <td className="px-2 py-2 text-right sm:px-3">{dash}</td>
       <td className="px-2 py-2 text-right sm:px-3">{dash}</td>
       <td className="hidden px-2 py-2 text-right sm:table-cell sm:px-3">{dash}</td>
       <td className="px-2 py-2 sm:px-3 text-right tabular-nums">{eachUsd != null ? formatUsdAdaptive(eachUsd) : dash}</td>

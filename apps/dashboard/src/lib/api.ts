@@ -5299,6 +5299,11 @@ const ExclusiveLadderSchema = z.object({
           notOurs: z.object({ count: z.coerce.number(), leads: z.array(ExclusivePersonSchema) }),
         })
         .nullable(),
+      // The row's people who are hot leads (features-service #1424). Null = offer unpriced.
+      // Optional until served.
+      hot: z
+        .object({ limit: z.coerce.number(), count: z.coerce.number(), leads: z.array(ExclusivePersonSchema) })
+        .nullish(),
     }),
   ),
   total: z.object({
@@ -5307,6 +5312,15 @@ const ExclusiveLadderSchema = z.object({
     headlinePipelineUsd: z.coerce.number().nullable(),
     gapUsd: z.coerce.number().nullable(),
     gapReason: z.string().nullable(),
+    // Where the hot leads stand on the sliced ladder (#1424): onRows + onContactedRow + onNoRow = count.
+    hot: z
+      .object({
+        count: z.coerce.number(),
+        onRows: z.coerce.number(),
+        onContactedRow: z.coerce.number(),
+        onNoRow: z.coerce.number(),
+      })
+      .nullish(),
   }),
 });
 

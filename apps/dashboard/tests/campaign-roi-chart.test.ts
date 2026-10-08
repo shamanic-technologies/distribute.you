@@ -164,6 +164,9 @@ describe("Pipeline by step: one row per person, a served Total", () => {
     expect(roi).toContain('font-normal">All</th>');
     expect(roi).not.toContain('font-normal">People</th>');
     expect(roi).toContain("r.people ? formatCount(r.people.lost.count) : dash");
+    expect(roi).toContain('font-normal">Hot</th>');
+    expect(roi).toContain("r.hot ? formatCount(r.hot.count) : dash");
+    expect(roi).toContain("ex.total.hot ? formatCount(ex.total.hot.count) : dash");
   });
 });
 
