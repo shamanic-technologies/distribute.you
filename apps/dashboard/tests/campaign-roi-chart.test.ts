@@ -65,11 +65,24 @@ describe("Today's return and pipeline by step", () => {
     expect(roi).toContain("pipeline?.coldLeads");
   });
 
-  it("explains each step's value with the served legs and prints the served totals", () => {
-    expect(roi).toContain("<ValueWhy why={s.valueExplanation} />");
+  it("states only the people we brought, and opens each row in the right panel (owner 2026-10-08)", () => {
+    expect(roi).toContain("s.pricedRecipientsReached");
     expect(roi).toContain("s.pricedValueUsd");
-    expect(roi).toContain("conv?.ratePct");
-    expect(roi).not.toMatch(/probabilityPct\s*\*|lifetimeRevenueUsd\s*\*/);
+    expect(roi).toContain("onOpen={() => onOpenStep(s.step.key)}");
+    expect(roi).toContain("{...openable(() => onOpenLead(l), leadName(l))}");
+    // The calculation left the table for the panel.
+    expect(roi).not.toContain("valueExplanation");
+    expect(today).toContain("<TodayPanel brandId={brandId} pipeline={pipeline} target={panel}");
+  });
+
+  it("the panel explains the served legs and edits each rate at brand level", () => {
+    const panel = fs.readFileSync(path.join(__dirname, "../src/components/v2/today-roi-panel.tsx"), "utf-8");
+    expect(panel).toContain("why.legs.map(");
+    expect(panel).toContain("legRateFor(rates.data?.legs ?? [], l.legKey)");
+    expect(panel).toContain("<InlineRate");
+    expect(panel).toContain("await stateBrandLegRates(brandId,");
+    expect(panel).toContain("invalidateConversionRates(qc);");
+    expect(panel).not.toMatch(/probabilityPct\s*\*|lifetimeRevenueUsd\s*\*|recipientsReached\s*-/);
   });
 
   it("reads the offer's outcomes and prints the served figures only", () => {

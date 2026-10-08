@@ -259,7 +259,16 @@ function InlineList({
  * Leaving the field (or Enter) saves the brand's own rate; empty clears it, and the
  * leg falls back to the median. Shared by every offer of the brand (the hover title).
  */
-function InlineRate({ rate, onSave }: { rate: EffectiveLegRate; onSave: (ratePct: number | null) => Promise<void> }) {
+/** `bare`: the rate alone, for a surface that already states the leg and its source (Today's panel). */
+export function InlineRate({
+  rate,
+  onSave,
+  bare = false,
+}: {
+  rate: EffectiveLegRate;
+  onSave: (ratePct: number | null) => Promise<void>;
+  bare?: boolean;
+}) {
   const [text, setText] = useState<string | null>(null);
   const [pending, setPending] = useState<number | null | undefined>(undefined);
   const [error, setError] = useState<string | null>(null);
@@ -289,8 +298,8 @@ function InlineRate({ rate, onSave }: { rate: EffectiveLegRate; onSave: (ratePct
   return (
     <span className="inline-flex items-center gap-2">
       {error && <span className="text-[var(--data-rose)]">{error}</span>}
-      <span className="k-label">Conversion rate</span>
-      {text === null && pending === undefined && <span className="k-fg3">{rateSourceLabel(rate)}</span>}
+      {!bare && <span className="k-label">Conversion rate</span>}
+      {!bare && text === null && pending === undefined && <span className="k-fg3">{rateSourceLabel(rate)}</span>}
       {text !== null ? (
         <input
           autoFocus
