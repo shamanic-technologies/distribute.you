@@ -62,7 +62,9 @@ describe("Today's return and pipeline by step", () => {
     expect(today).toContain("<LostLeads pipeline={pipeline}");
     expect(roi).toContain("pipeline?.customersWon");
     expect(roi).toContain("pipeline?.hotLeads");
-    expect(roi).toContain("pipeline?.coldLeads");
+    // Lost = went cold or ruled out (owner 2026-10-08), the same list as Unibox's Lost filter.
+    expect(roi).toContain("pipeline?.lostLeads");
+    expect(roi).not.toContain("pipeline?.coldLeads");
   });
 
   it("states only the people we brought, and opens each row in the right panel (owner 2026-10-08)", () => {
