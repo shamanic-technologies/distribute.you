@@ -3,7 +3,7 @@
 import { useMemo } from "react";
 import { useAuthQuery } from "@/lib/use-auth-query";
 import { POLL_INTERVAL } from "@/lib/query-options";
-import { getBrandRunsByCampaign, getRunOutcomes, listBrandRunLedger, type CampaignRunGroup, type RunOutcomeGroup, type RunRow } from "@/lib/api";
+import { getBrandRunsByCampaign, getBrandRunsByCampaignPerDay, getRunOutcomes, listBrandRunLedger, type CampaignRunGroup, type RunOutcomeGroup, type RunRow } from "@/lib/api";
 import type { Mission } from "@/components/v2/use-missions";
 import { LEAD_RUN_TASK, isWorkRun } from "@/lib/v2/run-labels";
 
@@ -33,20 +33,26 @@ export function useRunsToday(brandId: string) {
   );
 }
 
-/** The last 7 local days, oldest first, one served roll-up per day. */
+/** A local day as runs-service names its bucket: `YYYY-MM-DD` in the browser's timezone. */
+export function localDayKey(daysAgo = 0, now = new Date()): string {
+  const d = new Date(now.getFullYear(), now.getMonth(), now.getDate() - daysAgo);
+  const p = (n: number) => String(n).padStart(2, "0");
+  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`;
+}
+
+/**
+ * The last 7 local days, oldest first, one served roll-up per day, in ONE read: runs-service
+ * buckets by local day in the browser's timezone (it used to be seven parallel reads).
+ */
 export function useRunsWeek(brandId: string) {
   const today = localDayStart(0);
+  const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
   return useAuthQuery(
-    ["v2RunsWeek", brandId, today],
-    () =>
-      Promise.all(
-        Array.from({ length: 7 }, (_, i) => 6 - i).map((ago) =>
-          getBrandRunsByCampaign(brandId, {
-            startedAfter: localDayStart(ago),
-            startedBefore: ago === 0 ? undefined : localDayStart(ago - 1),
-          }),
-        ),
-      ),
+    ["v2RunsWeek", brandId, today, timezone],
+    async () => {
+      const byDay = await getBrandRunsByCampaignPerDay(brandId, { startedAfter: localDayStart(6), timezone });
+      return Array.from({ length: 7 }, (_, i) => byDay.get(localDayKey(6 - i)) ?? []);
+    },
     { enabled: !!brandId, refetchInterval: 60_000 },
   );
 }

@@ -10785,6 +10785,51 @@ export async function getBrandRunsByCampaign(
   }));
 }
 
+/**
+ * The same per-campaign roll-up as `getBrandRunsByCampaign`, for every LOCAL day of a
+ * range in ONE read (runs-service `/stats/costs/timeseries`, interval=day). Each bucket
+ * equals `getBrandRunsByCampaign` over that local day (pinned by runs-service CI); days
+ * with no run are absent. Replaces seven parallel per-day reads.
+ */
+const CampaignRunDaySchema = z.object({
+  period: z.string(),
+  campaignId: z.string().nullish(),
+  totalCostInUsdCents: z.string(),
+  runCount: z.number(),
+  maxStartedAt: z.string().nullish(),
+});
+
+export async function getBrandRunsByCampaignPerDay(
+  brandId: string,
+  window: { startedAfter: string; timezone: string },
+): Promise<Map<string, CampaignRunGroup[]>> {
+  const query = new URLSearchParams({
+    brandId,
+    groupBy: "campaignId",
+    interval: "day",
+    tz: window.timezone,
+    startedAfter: window.startedAfter,
+  });
+  const raw = await apiCall<unknown>(`/runs/stats/costs/timeseries?${query}`);
+  const parsed = z.object({ buckets: z.array(CampaignRunDaySchema) }).safeParse(raw);
+  if (!parsed.success) {
+    console.error("[dashboard] getBrandRunsByCampaignPerDay: invalid response shape", parsed.error.issues);
+    throw new Error("[dashboard] getBrandRunsByCampaignPerDay: invalid response shape");
+  }
+  const byDay = new Map<string, CampaignRunGroup[]>();
+  for (const b of parsed.data.buckets) {
+    const day = byDay.get(b.period) ?? [];
+    day.push({
+      campaignId: b.campaignId ?? null,
+      runCount: b.runCount,
+      totalCostInUsdCents: Number(b.totalCostInUsdCents),
+      maxStartedAt: b.maxStartedAt ?? null,
+    });
+    byDay.set(b.period, day);
+  }
+  return byDay;
+}
+
 const RunRowSchema = z.object({
   id: z.string(),
   campaignId: z.string().nullable(),
