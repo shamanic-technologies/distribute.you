@@ -22,6 +22,7 @@ import { CompanyMark } from "@/components/v2/people-bits";
 import { parseFrom, personCompanyDomain, personSourceMarks, sourceMark, type SourceMark } from "@/lib/conversation-sources";
 import { RecordsToolbar, useRowKeys } from "@/components/v2/records";
 import { timelineTag, type TimelineIcon, type TimelineTag, type TimelineTone } from "@/lib/timeline-tags";
+import { LEAD_FAMILIES, familyFilter, familyLook, type FamilyFilter } from "@/lib/lead-families";
 
 // The publishable logo.dev token the dashboard already ships (company-logo.tsx).
 const LOGO_DEV_TOKEN = "pk_J1iY4__HSfm9acHjR8FibA";
@@ -64,18 +65,35 @@ export function V2ConversationsView({ brandId }: { brandId: string }) {
     return () => clearTimeout(t);
   }, [search]);
 
+  // Filter buttons (owner 2026-10-08): Hot leads by default, All once nobody is hot. The
+  // families and their counts are crm-service's (features-service's verdict); the hot
+  // count is remembered so the default can step back to All.
+  const [hotCount, setHotCount] = useState<number | null>(null);
+  const family = familyFilter(params.get("family"), hotCount);
+  const pickFamily = (f: FamilyFilter) => {
+    const next = new URLSearchParams(params.toString());
+    next.set("family", f);
+    router.replace(`?${next.toString()}`, { scroll: false });
+  };
+
   // The first rows load at once, the next ones as the end of the list scrolls into view
   // (owner 2026-10-08: no pages to click through).
   const gate = useOrgQueryGate();
   const listQ = useInfiniteQuery({
-    queryKey: ["people", brandId, "scroll", q],
-    queryFn: ({ pageParam }) => listPeople(brandId, { limit: PEOPLE_PAGE_SIZE, offset: pageParam, q }),
+    queryKey: ["people", brandId, "scroll", q, family],
+    queryFn: ({ pageParam }) =>
+      listPeople(brandId, { limit: PEOPLE_PAGE_SIZE, offset: pageParam, q, family: family === "all" ? undefined : family }),
     initialPageParam: 0,
     getNextPageParam: (last) => last.nextOffset ?? undefined,
     enabled: gate && !!brandId,
     refetchInterval: POLL_INTERVAL,
   });
   const list = listQ.data?.pages[0] ?? null;
+  const families = list?.families ?? null;
+  const servedHot = families && families.status !== "failed" ? families.counts.hot : null;
+  useEffect(() => {
+    if (servedHot !== null) setHotCount(servedHot);
+  }, [servedHot]);
   const people = listQ.data ? listQ.data.pages.flatMap((p) => p.people) : null;
   const scrollBox = useRef<HTMLDivElement | null>(null);
   const sentinel = useRef<HTMLLIElement | null>(null);
@@ -124,13 +142,14 @@ export function V2ConversationsView({ brandId }: { brandId: string }) {
   // first result. A person already in the URL (a click, a shared link) is kept.
   const first = listQ.isPlaceholderData ? null : (people?.[0] ?? null);
   const openedForQ = useRef<string | null>(null);
+  const listedFor = `${family}|${q}`;
   useEffect(() => {
     if (!first) return;
-    const newSearch = openedForQ.current !== null && openedForQ.current !== q;
-    openedForQ.current = q;
+    const newSearch = openedForQ.current !== null && openedForQ.current !== listedFor;
+    openedForQ.current = listedFor;
     if (!openKey || newSearch) open(first);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [first?.personKey, openKey, q]);
+  }, [first?.personKey, openKey, listedFor]);
   useRowKeys({
     count: people?.length ?? 0,
     cursor,
@@ -141,7 +160,9 @@ export function V2ConversationsView({ brandId }: { brandId: string }) {
 
   // Answered once (success or failure): a poll on a failed read must not repaint a skeleton.
   if (!listQ.isFetchedAfterMount && !list) return <ListShimmer />;
-  if (!list) {
+  // A filtered read that fails keeps the page and its buttons (All still works); the
+  // unfiltered list failing is the whole page failing.
+  if (!list && family === "all") {
     return (
       <div className="k-card">
         <EmptyNote>We could not load your conversations. Retrying.</EmptyNote>
@@ -149,19 +170,26 @@ export function V2ConversationsView({ brandId }: { brandId: string }) {
     );
   }
 
-  const building = list.scope.status === "building" || list.scope.status === "pending";
+  const building = list ? list.scope.status === "building" || list.scope.status === "pending" : false;
+  const familyLabel = LEAD_FAMILIES.find((f) => f.key === family)?.label.toLowerCase() ?? "people";
 
   return (
     <div className="space-y-4 lg:flex lg:min-h-0 lg:flex-1 lg:flex-col">
       {/* The search runs the whole width, above both cards (owner 2026-10-08). */}
-      <div className="shrink-0 [&>div]:p-0 md:[&>div]:p-0 [&_label]:max-w-none">
-        <RecordsToolbar search={search} onSearch={setSearch} placeholder="Search people and messages" inputRef={searchRef} />
+      <div className="shrink-0 [&>div]:p-0 md:[&>div]:p-0 [&_label]:w-auto [&_label]:min-w-[240px] [&_label]:max-w-none [&_label]:flex-1">
+        <RecordsToolbar
+          search={search}
+          onSearch={setSearch}
+          placeholder="Search people and messages"
+          inputRef={searchRef}
+          right={<FamilyButtons value={family} families={families} onPick={pickFamily} />}
+        />
       </div>
       <div className="grid gap-4 lg:min-h-0 lg:flex-1 lg:grid-cols-[380px_minmax(0,1fr)] lg:grid-rows-[minmax(0,1fr)]">
         <section className="k-card flex max-h-[calc(100vh-220px)] min-h-[420px] flex-col overflow-hidden lg:max-h-none">
           <header className="k-line-subtle flex h-10 shrink-0 items-center justify-between border-b px-4">
             <span className="k-label">People</span>
-            <span className="k-fg3 text-[12px] tabular-nums">{formatCount(list.total)}</span>
+            <span className="k-fg3 text-[12px] tabular-nums">{list ? formatCount(list.total) : "—"}</span>
           </header>
           <div ref={scrollBox} className="k-scroll min-h-0 flex-1 overflow-y-auto">
             {people && people.length > 0 ? (
@@ -186,8 +214,12 @@ export function V2ConversationsView({ brandId }: { brandId: string }) {
                   </li>
                 )}
               </ul>
+            ) : !list ? (
+              <EmptyNote>We could not sort people into Hot, Won, Lost and Cold right now. All still lists everyone.</EmptyNote>
             ) : q ? (
               <EmptyNote>No conversation matches &ldquo;{q}&rdquo;.</EmptyNote>
+            ) : family !== "all" ? (
+              <EmptyNote>No {familyLabel} in your conversations.</EmptyNote>
             ) : building ? (
               <EmptyNote>We are gathering your conversations for the first time. This takes a few minutes.</EmptyNote>
             ) : (
@@ -207,7 +239,9 @@ export function V2ConversationsView({ brandId }: { brandId: string }) {
         </section>
       </div>
 
-      <SourcesStrip sources={list.sources} lastBuiltAt={list.scope.lastBuiltAt} lastError={list.scope.status === "error" ? list.scope.lastError : null} />
+      {list && (
+        <SourcesStrip sources={list.sources} lastBuiltAt={list.scope.lastBuiltAt} lastError={list.scope.status === "error" ? list.scope.lastError : null} />
+      )}
     </div>
   );
 }
@@ -244,7 +278,7 @@ function PersonRow({
             )}
           </span>
           <span className="mt-1 flex flex-wrap items-center gap-1.5">
-            <span className="k-chip">{stateLabel(person.state)}</span>
+            <PersonTag label={stateLabel(person.state)} family={person.family} />
             {personSourceMarks(person.presences).map((m) => (
               <SourceLogo key={m.key} mark={m} size={14} />
             ))}
@@ -348,7 +382,57 @@ const ICON_PATH: Record<TimelineIcon, string> = {
   money: "M8 2.5v11 M10.8 5.2C10.3 4.5 9.3 4 8 4 6.6 4 5.5 4.8 5.5 6s1 1.6 2.5 2 2.5.8 2.5 2-1.1 2-2.5 2c-1.3 0-2.3-.5-2.8-1.2",
   lost: "M4.5 4.5l7 7 M11.5 4.5l-7 7",
   dot: "M8 6.5a1.5 1.5 0 1 0 0 3 1.5 1.5 0 0 0 0-3z",
+  flame: "M8 14c-2.5 0-4.5-1.8-4.5-4.3C3.5 6.5 7 5.5 7 2c2.6 1.5 5.5 4.3 5.5 7.7C12.5 12.2 10.5 14 8 14z M8 14c-1.1 0-2-.9-2-2.1 0-1.5 2-2.4 2-3.9 1.2.8 2 1.9 2 3.9 0 1.2-.9 2.1-2 2.1z",
+  check: "M3.5 8.5l3 3 6-7",
+  snow: "M8 2v12 M2.8 5l10.4 6 M2.8 11l10.4-6 M6.5 2.8 8 4l1.5-1.2 M6.5 13.2 8 12l1.5 1.2",
 };
+
+/** A person's tag: their state in their family's colour and icon (no family = plain). */
+function PersonTag({ label, family }: { label: string; family: string | null | undefined }) {
+  const look = familyLook(family);
+  if (!look) return <span className="k-chip">{label}</span>;
+  return <TagChip tag={{ label, ...look }} />;
+}
+
+/** Beside the search: one button per lead family with its served count, then All. */
+function FamilyButtons({
+  value,
+  families,
+  onPick,
+}: {
+  value: FamilyFilter;
+  families: { status: string; counts: Record<"won" | "hot" | "lost" | "cold", number> } | null;
+  onPick: (f: FamilyFilter) => void;
+}) {
+  const counts = families && families.status !== "failed" ? families.counts : null;
+  return (
+    <div role="group" aria-label="Filter by lead family" className="flex flex-wrap items-center gap-1.5">
+      {LEAD_FAMILIES.map((f) => {
+        const on = value === f.key;
+        const color = TONE_COLOR[f.tone];
+        return (
+          <button
+            key={f.key}
+            type="button"
+            aria-pressed={on}
+            onClick={() => onPick(f.key)}
+            className="k-btn gap-1.5"
+            style={on ? { color, background: `color-mix(in srgb, ${color} 14%, transparent)`, boxShadow: `inset 0 0 0 1px color-mix(in srgb, ${color} 40%, transparent)` } : undefined}
+          >
+            <svg width="12" height="12" viewBox="0 0 16 16" fill="none" aria-hidden="true" style={{ color }}>
+              <path d={ICON_PATH[f.icon]} stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
+            {f.label}
+            <span className={`tabular-nums ${on ? "" : "k-fg3"}`}>{counts ? formatCount(counts[f.key]) : "—"}</span>
+          </button>
+        );
+      })}
+      <button type="button" aria-pressed={value === "all"} onClick={() => onPick("all")} className={`k-btn ${value === "all" ? "k-selected" : ""}`}>
+        All
+      </button>
+    </div>
+  );
+}
 
 /** A timeline item's tag: what happened, in its family's colour, with an icon. */
 function TagChip({ tag }: { tag: TimelineTag }) {

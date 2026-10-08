@@ -13,7 +13,7 @@
  */
 
 export type TimelineTone = "won" | "hot" | "lost" | "reply" | "neutral";
-export type TimelineIcon = "sent" | "reply" | "visit" | "meeting" | "money" | "lost" | "dot";
+export type TimelineIcon = "sent" | "reply" | "visit" | "meeting" | "money" | "lost" | "dot" | "flame" | "check" | "snow";
 
 export interface TimelineTag {
   label: string;
