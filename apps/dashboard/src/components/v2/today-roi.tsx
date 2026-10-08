@@ -141,7 +141,10 @@ export function OfferOutcomesTable({
 }) {
   // Served shallow to deep; the page reads from the step closest to a sale. A step the
   // producer does not count (a hand-off nobody measures) says nothing to the customer.
-  const ladder = pipeline ? [...pipeline.ladder].reverse().filter((s) => s.recipientsReached != null) : null;
+  // A step nobody reached and nothing prices (a signup the offer does not use) is noise.
+  const ladder = pipeline
+    ? [...pipeline.ladder].reverse().filter((s) => s.recipientsReached != null && (s.recipientsReached > 0 || s.valuePerOutcomeUsd != null))
+    : null;
   const legacy = rows ? [...rows].reverse().filter((r) => r.unmeasuredReason !== "step_not_counted") : [];
   const cols = ladder ? 5 : 4;
   return (
@@ -384,7 +387,7 @@ export function LostLeads({ pipeline, answered }: { pipeline: OfferPipeline | nu
             </table>
             {afterDays != null && (
               <p className="k-fg3 k-line-subtle border-t px-4 py-2.5 text-[12px]">
-                A lead counts as lost after {formatCount(afterDays)} days with no next step. It goes back to the chance of anyone we contact.
+                A lead counts as lost after {formatCount(afterDays)} days with no next step. It is valued at what it is worth now.
               </p>
             )}
           </>
