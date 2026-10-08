@@ -40,11 +40,31 @@ export function maturityPairSchema<S extends z.ZodTypeAny>(inner: S) {
 }
 
 /**
- * Which half of a pair a reader is shown. Every customer reads `mature`; a staff reader
- * can flip to `flash` to see today's raw figure (lib/use-stat-basis.ts). It is a VIEW
- * preference, never a second rule: flash is exactly what the producer served as flash.
+ * Which half of a pair a reader is shown: the one `autoStatBasis` picks for every customer
+ * (the higher return, owner 2026-10-08); a staff reader can pin `mature` or `flash`
+ * (lib/use-stat-basis.ts). Flash is exactly what the producer served as flash.
  */
 export type StatBasis = "mature" | "flash";
+
+/** What the reader asked for: a fixed half, or `auto` (every customer, and staff by default). */
+export type StatBasisChoice = StatBasis | "auto";
+
+/**
+ * The `auto` basis (owner 2026-10-08): the whole dashboard reads the half whose RETURN is
+ * the higher one, judged on the selected offer's return pair. Mature where it states the
+ * higher (or equal) return; Flash where flash is higher. A mature half still Learning has
+ * no return to compare, so flash wins only above break-even, the same bar `shownReturn`
+ * already uses. No pair yet = mature.
+ */
+export function autoStatBasis<T extends { roiMultiple: number | null }>(
+  pair: MaturityPair<T> | null | undefined,
+): StatBasis {
+  const flash = pair?.flash?.roiMultiple ?? null;
+  if (flash == null || !Number.isFinite(flash)) return "mature";
+  const mature = pair?.isMature === false ? null : pair?.mature?.roiMultiple ?? null;
+  if (mature == null || !Number.isFinite(mature)) return flash > 1 ? "flash" : "mature";
+  return flash > mature ? "flash" : "mature";
+}
 
 /** What a surface prints for one ratio: the value on the reader's basis, and whether it is Learning. */
 export interface ShownFigure {
