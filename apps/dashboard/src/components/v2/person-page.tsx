@@ -3,6 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
+import { leadSourceTags } from "@/lib/source-overlap";
 import { getLeadDetail, getLeadHistory, getLeadConsolidatedStatus, leadDateForStatus, type Lead } from "@/lib/api";
 import { useAuthQuery } from "@/lib/use-auth-query";
 import { pollOptions } from "@/lib/query-options";
@@ -175,6 +176,22 @@ export function PersonPage() {
                         ) : null
                       }
                     />
+                    {lead.sources ? (
+                      <Row
+                        k="Found by"
+                        v={
+                          leadSourceTags(lead.sources).length > 0 ? (
+                            <span className="inline-flex flex-wrap justify-end gap-1">
+                              {leadSourceTags(lead.sources).map((t) => (
+                                <span key={t.slug} className="k-chip">
+                                  {t.name}
+                                </span>
+                              ))}
+                            </span>
+                          ) : null
+                        }
+                      />
+                    ) : null}
                     <Row k="First queued" v={lead.firstContactedAt ? friendlyDate(lead.firstContactedAt) : null} />
                     <Row k="Last activity" v={lastAt ? timeAgo(lastAt) : null} />
                     <Row

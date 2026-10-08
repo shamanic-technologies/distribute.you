@@ -6873,6 +6873,13 @@ export interface Lead {
    */
   offer?: { id: string; name: string | null } | null;
   /**
+   * EVERY source that found this person for the lead's brand (lead-service v0.x, owner
+   * 2026-10-08: "It must be tagged both"), one entry per audience, the serving one first.
+   * `origin` is the sourcing origin's customer name; null when the audience states no list
+   * kind (never guessed). Optional: absent on a payload written before it shipped.
+   */
+  sources?: LeadSource[];
+  /**
    * WHERE THIS PERSON STANDS on the campaign they were served under, decided by
    * lead-service (v0.64.0) and by nobody else.
    *
@@ -7062,6 +7069,15 @@ export function leadDateForStatus(lead: Lead, status: LeadConsolidatedStatus): s
 // Per #1213/#1221: a 200 with a non-leads body (proxy redirect, shape rot, a
 // missing-booleans partial) now throws → React Query keeps the last-good data
 // (keepPreviousData) instead of overwriting the table with a bad success.
+const LeadSourceSchema = z
+  .object({
+    audienceId: z.string(),
+    origin: z.object({ slug: z.string(), name: z.string() }).passthrough().nullable(),
+    servedLead: z.boolean(),
+  })
+  .passthrough();
+export type LeadSource = z.infer<typeof LeadSourceSchema>;
+
 const LeadDeliverySchema = z
   .object({
     id: z.string(),
@@ -7101,6 +7117,8 @@ const LeadDeliverySchema = z
       .object({ causedByOutreach: z.boolean().nullable() })
       .passthrough()
       .nullish(),
+    // Declared: the lead page's "Found by" row renders off it.
+    sources: z.array(LeadSourceSchema).optional(),
   })
   .passthrough();
 
