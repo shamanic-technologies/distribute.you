@@ -38,6 +38,18 @@ export interface OwnerPing {
   step?: { label: string; index: number; total: number } | null;
   amountUsd?: number | null;
   country?: string | null;
+  /** `who` has an account but walked this signed out: a returning person, not a new lead. */
+  signedOut?: boolean;
+}
+
+/**
+ * The Clerk user a signed-out browser still carries as its PostHog distinct id
+ * (`posthog.identify(userId)` at sign-in survives sign-out), or nothing. A signed-out
+ * walk by someone with an account read as "Visitor (no account yet)" and opened a
+ * second org nobody tied to the first (savoir.ltd, 2026-10-08).
+ */
+export function clerkUserIdFromDistinctId(raw: unknown): string | null {
+  return typeof raw === "string" && /^user_[A-Za-z0-9]{20,40}$/.test(raw) ? raw : null;
 }
 
 const ICON: Record<OwnerPingEvent, string> = {
@@ -70,7 +82,7 @@ function what(p: OwnerPing): string {
 
 /** The one line the owner reads: icon, who, site, what happened, country. */
 export function formatOwnerPing(p: OwnerPing): string {
-  const parts = [p.who ?? "Visitor (no account yet)"];
+  const parts = [p.who ? (p.signedOut ? `${p.who} (has an account, signed out)` : p.who) : "Visitor (no account yet)"];
   if (p.domain) parts.push(p.domain);
   parts.push(what(p));
   if (p.country) parts.push(p.country);

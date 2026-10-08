@@ -1,7 +1,7 @@
-import { auth, currentUser } from "@clerk/nextjs/server";
+import { auth, clerkClient, currentUser } from "@clerk/nextjs/server";
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
-import { formatOwnerPing, isStaffEmail, OWNER_PING_EVENTS } from "@/lib/owner-ping";
+import { clerkUserIdFromDistinctId, formatOwnerPing, isStaffEmail, OWNER_PING_EVENTS } from "@/lib/owner-ping";
 
 export const dynamic = "force-dynamic";
 
@@ -12,6 +12,10 @@ export const dynamic = "force-dynamic";
  * is never taken from the body: a signed-in caller is named from Clerk, anyone else
  * is "Visitor". The body only says what happened, from a closed list, so a stranger
  * calling this can at worst send the owner a bounded number of plain step lines.
+ *
+ * One exception: a signed-out browser's PostHog distinct id, when it is a Clerk user
+ * id (that browser signed in before), is looked up in Clerk and named as "signed
+ * out". Clerk ids are unguessable and the line only reaches the owner.
  */
 
 const BodySchema = z.object({
@@ -29,6 +33,7 @@ const BodySchema = z.object({
     })
     .nullish(),
   amountUsd: z.number().positive().max(1_000_000).nullish(),
+  posthogDistinctId: z.string().max(200).nullish(),
 });
 
 // A stranger replaying this cannot flood the owner: 40 lines per IP per 10 minutes
@@ -55,25 +60,37 @@ export async function POST(req: NextRequest) {
 
   const parsed = BodySchema.safeParse(await req.json().catch(() => null));
   if (!parsed.success) return NextResponse.json({ error: "Invalid ping" }, { status: 400 });
-  const body = parsed.data;
+  const { posthogDistinctId, ...body } = parsed.data;
 
   const ip = req.headers.get("cf-connecting-ip") ?? req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ?? "unknown";
   if (overLimit(ip)) return NextResponse.json({ error: "Too many" }, { status: 429 });
 
   let who: string | null = null;
+  let signedOut = false;
   const { userId } = await auth();
+  const knownUserId = userId ? null : clerkUserIdFromDistinctId(posthogDistinctId);
+  let user: Awaited<ReturnType<typeof currentUser>> = null;
   if (userId) {
-    const user = await currentUser();
-    const email = user?.primaryEmailAddress?.emailAddress ?? null;
+    user = await currentUser();
+  } else if (knownUserId) {
+    try {
+      user = await (await clerkClient()).users.getUser(knownUserId);
+      signedOut = true;
+    } catch (e) {
+      console.error(`[dashboard/owner-ping] no Clerk user for distinct id ${knownUserId}:`, e);
+    }
+  }
+  if (user) {
+    const email = user.primaryEmailAddress?.emailAddress ?? null;
     // The owner never gets a line about himself.
     if (isStaffEmail(email)) return new NextResponse(null, { status: 204 });
-    const name = [user?.firstName, user?.lastName].filter(Boolean).join(" ");
+    const name = [user.firstName, user.lastName].filter(Boolean).join(" ");
     who = [name, email].filter(Boolean).join(" · ") || null;
   }
 
   let text: string;
   try {
-    text = formatOwnerPing({ ...body, who, country: req.headers.get("cf-ipcountry") });
+    text = formatOwnerPing({ ...body, who, signedOut, country: req.headers.get("cf-ipcountry") });
   } catch (e) {
     console.error("[dashboard/owner-ping] unformattable ping:", body, e);
     return NextResponse.json({ error: "Invalid ping" }, { status: 400 });
