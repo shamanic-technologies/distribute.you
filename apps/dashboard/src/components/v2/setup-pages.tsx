@@ -30,7 +30,6 @@ import { OfferQualification } from "@/components/v2/offer-qualification";
 import { OfferRevenueSteps } from "@/components/v2/offer-revenue-steps";
 import { V2CrmRawView } from "@/components/v2/integrations-crm";
 import { V2CrmMergedView } from "@/components/v2/integrations-merged";
-import { V2ConversationsView } from "@/components/v2/integrations-conversations";
 import { V2AiIntegrationView } from "@/components/v2/integrations-ai";
 import { Toast } from "@/components/toast";
 import { useMissions } from "@/components/v2/use-missions";
@@ -280,7 +279,7 @@ export function V2CampaignsIndexPage() {
 
 // ─── Integrations and brand settings ────────────────────────────────────────
 
-type IntegrationView = "ai" | "raw" | "merged" | "conversations";
+type IntegrationView = "ai" | "raw" | "merged";
 
 /**
  * A tab marked beta is RENDERED only for a beta user: a GA user never sees the badge or
@@ -293,7 +292,6 @@ function integrationTabs(orgId: string, brandId: string, active: IntegrationView
     { label: "Your AI", href: `${base}/ai`, active: active === "ai" },
     { label: "Your CRM", href: base, active: active === "raw", badge: "beta" as const },
     { label: "Merged with our leads", href: `${base}/merged`, active: active === "merged", badge: "beta" as const },
-    { label: "Conversations", href: `${base}/conversations`, active: active === "conversations", badge: "beta" as const },
   ];
   const visible = tabs.filter((t) => t.badge !== "beta" || isBeta);
   return visible.length > 1 ? visible : undefined;
@@ -317,9 +315,7 @@ export function V2IntegrationsPage({ view }: { view: IntegrationView }) {
       sub={
         view === "ai"
           ? "Run distribute.you from the AI you already use. One line sets it up."
-          : view === "conversations"
-            ? "Everyone you are talking to, on every channel, in one thread."
-            : "The CRM this brand already runs on, read here and set beside our leads."
+          : "The CRM this brand already runs on, read here and set beside our leads."
       }
       tabs={integrationTabs(orgId, brandId, view, isBeta)}
       width="max-w-[1280px]"
@@ -328,8 +324,6 @@ export function V2IntegrationsPage({ view }: { view: IntegrationView }) {
         <V2AiIntegrationView orgId={orgId} brandId={brandId} />
       ) : view === "raw" ? (
         <V2CrmRawView orgId={orgId} brandId={brandId} />
-      ) : view === "conversations" ? (
-        <V2ConversationsView brandId={brandId} />
       ) : (
         <V2CrmMergedView brandId={brandId} />
       )}

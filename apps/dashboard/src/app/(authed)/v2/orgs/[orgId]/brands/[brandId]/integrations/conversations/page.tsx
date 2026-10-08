@@ -1,7 +1,7 @@
-"use client";
+import { redirect } from "next/navigation";
 
-import { V2IntegrationsPage } from "@/components/v2/setup-pages";
-
-export default function Page() {
-  return <V2IntegrationsPage view="conversations" />;
+// Integrations > Conversations moved to Records > Unibox (owner 2026-10-08).
+export default async function Page({ params }: { params: Promise<{ orgId: string; brandId: string }> }) {
+  const { orgId, brandId } = await params;
+  redirect(`/v2/orgs/${encodeURIComponent(orgId)}/brands/${encodeURIComponent(brandId)}/unibox`);
 }

@@ -80,9 +80,9 @@ const GOHIGHLEVEL: IntegrationDef = {
   docsUrl: "https://marketplace.gohighlevel.com/docs/Authorization/PrivateIntegrationsToken/",
 };
 
-/** Conversations, the merged thread both sources below feed. Lives in v2 only. */
+/** Unibox (Records), the merged thread both sources below feed. Lives in v2 only. */
 const conversationsHref = (orgId: string, brandId: string) =>
-  `/v2/orgs/${orgId}/brands/${brandId}/integrations/conversations`;
+  `/v2/orgs/${orgId}/brands/${brandId}/unibox`;
 
 /**
  * PostHog authenticates with a Personal API key and reads ONE project, in the
@@ -95,7 +95,7 @@ const POSTHOG: IntegrationDef = {
   name: "PostHog",
   domain: "posthog.com",
   blurb: "See who visited your site and what they did there, in each person's thread.",
-  surfaceLabel: "conversations",
+  surfaceLabel: "Unibox",
   surfaceHref: conversationsHref,
   fields: [
     {
@@ -136,7 +136,7 @@ const STRIPE: IntegrationDef = {
   name: "Stripe",
   domain: "stripe.com",
   blurb: "See what each person paid you, in their thread.",
-  surfaceLabel: "conversations",
+  surfaceLabel: "Unibox",
   surfaceHref: conversationsHref,
   fields: [
     {

@@ -4,16 +4,12 @@ import { useEffect, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { getPersonTimeline, listPeople } from "@/lib/api";
 import { useAuthQuery } from "@/lib/use-auth-query";
-import { useIsBetaUser } from "@/lib/use-beta-user";
 import { POLL_INTERVAL } from "@/lib/query-options";
 import { formatCount } from "@/lib/format-number";
 import { friendlyDateTime, timeAgo } from "@/lib/friendly-datetime";
 import {
   PEOPLE_PAGE_SIZE,
-  channelLabel,
-  personChannels,
   personName,
-  sourceLabel,
   sourceLine,
   stateLabel,
   timelineSourceNote,
@@ -21,7 +17,12 @@ import {
   type PersonTimelineItem,
 } from "@/lib/people-conversations";
 import { EmptyNote, Initials, Shimmer } from "@/components/v2/ui";
+import { CompanyMark } from "@/components/v2/people-bits";
+import { personCompanyDomain, personSourceMarks, sourceMark, type SourceMark } from "@/lib/conversation-sources";
 import { useRowKeys } from "@/components/v2/records";
+
+// The publishable logo.dev token the dashboard already ships (company-logo.tsx).
+const LOGO_DEV_TOKEN = "pk_J1iY4__HSfm9acHjR8FibA";
 
 /** The thread reads every source live on each call, so it refreshes slower than the list. */
 const TIMELINE_POLL = 60_000;
@@ -37,7 +38,6 @@ const FOLD_AT = 600;
  * writes back to any of those tools.
  */
 export function V2ConversationsView({ brandId }: { brandId: string }) {
-  const isBeta = useIsBetaUser();
   const params = useSearchParams();
   const router = useRouter();
   const [page, setPage] = useState(0);
@@ -48,7 +48,7 @@ export function V2ConversationsView({ brandId }: { brandId: string }) {
   const listQ = useAuthQuery(
     ["people", brandId, page],
     () => listPeople(brandId, { limit: PEOPLE_PAGE_SIZE, offset: page * PEOPLE_PAGE_SIZE }),
-    { enabled: isBeta, refetchInterval: POLL_INTERVAL },
+    { refetchInterval: POLL_INTERVAL },
   );
   const list = listQ.data ?? null;
   const people = list?.people ?? null;
@@ -65,14 +65,6 @@ export function V2ConversationsView({ brandId }: { brandId: string }) {
     onOpen: (i) => people?.[i] && open(people[i]),
     searchRef,
   });
-
-  if (!isBeta) {
-    return (
-      <div className="k-card">
-        <EmptyNote>This page is still in beta and is not open on your account yet.</EmptyNote>
-      </div>
-    );
-  }
 
   // Answered once (success or failure): a poll on a failed read must not repaint a skeleton.
   if (!listQ.isFetchedAfterMount && !list) return <ListShimmer />;
@@ -169,7 +161,7 @@ function PersonRow({
         aria-current={selected ? "true" : undefined}
         className={`k-row k-line-subtle flex w-full items-start gap-3 border-b px-4 py-2.5 text-left ${selected || cursor ? "k-selected" : ""}`}
       >
-        <Initials name={name} size={28} round />
+        <PersonMark name={name} emails={person.emails} size={28} />
         <span className="min-w-0 flex-1">
           <span className="flex items-center gap-2">
             <span className="truncate text-[13px] font-medium">{name}</span>
@@ -179,10 +171,8 @@ function PersonRow({
           </span>
           <span className="mt-1 flex flex-wrap items-center gap-1.5">
             <span className="k-chip">{stateLabel(person.state)}</span>
-            {personChannels(person).map((c) => (
-              <span key={c} className="k-fg3 text-[12px]">
-                {channelLabel(c)}
-              </span>
+            {personSourceMarks(person.presences).map((m) => (
+              <SourceLogo key={m.key} mark={m} size={14} />
             ))}
             {person.company && <span className="k-fg3 truncate text-[12px]">· {person.company}</span>}
           </span>
@@ -221,7 +211,7 @@ function Thread({ brandId, personKey }: { brandId: string; personKey: string }) 
     <>
       <header className="k-line-subtle shrink-0 border-b px-4 py-3">
         <div className="flex items-center gap-3">
-          <Initials name={name} size={32} round />
+          <PersonMark name={name} emails={person.emails} size={32} />
           <div className="min-w-0">
             <h2 className="truncate text-[14px] font-semibold">{name}</h2>
             <p className="k-fg3 truncate text-[12px]">
@@ -250,28 +240,24 @@ function Thread({ brandId, personKey }: { brandId: string; personKey: string }) 
 }
 
 function ThreadItem({ item }: { item: PersonTimelineItem }) {
-  const meta = [
-    channelLabel(item.channel),
-    item.source !== "matrix" && item.channel !== "email" ? sourceLabel(item.source) : null,
-    item.at ? friendlyDateTime(item.at) : "No date",
-  ]
-    .filter(Boolean)
-    .join(" · ");
+  // Where it came from, as a mark and its name: our own sends and visits read as Distribute.
+  const mark = sourceMark(item.source, item.channel);
+  const meta = [mark.name, item.at ? friendlyDateTime(item.at) : "No date"].join(" · ");
 
   if (item.kind === "event") {
     return (
       <div className="k-fg2 flex items-center gap-2 text-[12px]">
-        <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-[var(--data-teal)]" aria-hidden="true" />
+        <SourceLogo mark={mark} size={14} />
         <span className="font-medium">{item.event ? stateLabel(item.event.step) : (item.subject ?? "Event")}</span>
         <span className="k-fg3">{meta}</span>
       </div>
     );
   }
 
-  return <Message item={item} meta={meta} />;
+  return <Message item={item} mark={mark} meta={meta} />;
 }
 
-function Message({ item, meta }: { item: PersonTimelineItem; meta: string }) {
+function Message({ item, mark, meta }: { item: PersonTimelineItem; mark: SourceMark; meta: string }) {
   const [open, setOpen] = useState(false);
   const [showOriginal, setShowOriginal] = useState(false);
   const outbound = item.direction === "outbound";
@@ -283,6 +269,7 @@ function Message({ item, meta }: { item: PersonTimelineItem; meta: string }) {
   return (
     <article className={`max-w-[85%] rounded-lg px-3 py-2 ${outbound ? "k-inset ml-auto" : "k-panel"}`}>
       <p className="k-fg3 flex min-w-0 items-center gap-2 text-[12px]">
+        <SourceLogo mark={mark} size={14} />
         <span className="truncate">
           {item.from ?? (outbound ? "You" : "Them")} · {meta}
         </span>
@@ -309,6 +296,30 @@ function Message({ item, meta }: { item: PersonTimelineItem; meta: string }) {
         </div>
       )}
     </article>
+  );
+}
+
+/** A person: their company's logo when a work address names it, else initials. */
+function PersonMark({ name, emails, size }: { name: string; emails: string[]; size: number }) {
+  const domain = personCompanyDomain(emails);
+  return domain ? <CompanyMark name={name} domain={domain} size={size} /> : <Initials name={name} size={size} round />;
+}
+
+/** Where a record came from, as its logo; the name rides the tooltip and the meta line. */
+function SourceLogo({ mark, size }: { mark: SourceMark; size: number }) {
+  const [broken, setBroken] = useState(false);
+  const src = mark.src ?? (mark.domain ? `https://img.logo.dev/${encodeURIComponent(mark.domain)}?token=${LOGO_DEV_TOKEN}&size=${size * 2}&fallback=404` : null);
+  if (!src || broken) return <Initials name={mark.name} size={size} />;
+  return (
+    // eslint-disable-next-line @next/next/no-img-element
+    <img
+      src={src}
+      alt={mark.name}
+      title={mark.name}
+      onError={() => setBroken(true)}
+      className="shrink-0 rounded-[4px] bg-white object-contain"
+      style={{ width: size, height: size }}
+    />
   );
 }
 
