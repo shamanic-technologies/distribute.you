@@ -138,29 +138,36 @@ export function conversationSourceWord(source: string): string {
 }
 
 /**
- * Lays lead-service's labels onto another thread (the Unibox's crm-service thread). A thread
- * item takes the label of the stored fact recorded at the SAME instant (both read the same
- * provider record: a reply carries its own received time). A thread item no fact matches keeps
- * its own tag; a fact no thread item matches is returned in `unmatched` so it is still shown.
- * Pure: a join on the instant, never a judgement on the content.
+ * Lays lead-service's labels onto another thread (the Unibox's crm-service thread). A sent cold
+ * email carries `outreachFact.subjectKey`, lead-service's id for that same email: it takes that
+ * fact's label (Initial email, Followup), whatever the two clocks say. Any other thread item
+ * takes the label of the fact recorded at the SAME instant (a reply carries its own received
+ * time in both reads). A thread item no fact matches keeps its own tag; a fact no thread item
+ * matches is returned in `unmatched` so it is still shown. Pure: a join, never a judgement.
  */
-export function joinConversationLabels<T extends { at: string | null }>(
-  thread: T[],
-  facts: ConversationItem[],
-): { labels: (TimelineTag | null)[]; unmatched: ConversationItem[] } {
-  const byInstant = new Map<number, ConversationItem>();
-  for (const f of facts) {
-    if (!f.occurredAt) continue;
-    const t = Date.parse(f.occurredAt);
-    if (!Number.isNaN(t) && !byInstant.has(t)) byInstant.set(t, f);
-  }
+export function joinConversationLabels<
+  T extends { at: string | null; outreachFact?: { subjectKey: string } | null },
+>(thread: T[], facts: ConversationItem[]): { labels: (TimelineTag | null)[]; unmatched: ConversationItem[] } {
+  const byId = new Map(facts.map((f) => [f.id, f]));
   const used = new Set<string>();
-  const labels = thread.map((item) => {
-    if (!item.at) return null;
-    const f = byInstant.get(Date.parse(item.at));
+  const labels: (TimelineTag | null)[] = thread.map((item) => {
+    const f = item.outreachFact ? byId.get(item.outreachFact.subjectKey) : undefined;
     if (!f || used.has(f.id)) return null;
     used.add(f.id);
     return conversationItemTag(f.label);
+  });
+  const byInstant = new Map<number, ConversationItem>();
+  for (const f of facts) {
+    if (!f.occurredAt || used.has(f.id)) continue;
+    const t = Date.parse(f.occurredAt);
+    if (!Number.isNaN(t) && !byInstant.has(t)) byInstant.set(t, f);
+  }
+  thread.forEach((item, i) => {
+    if (labels[i] || item.outreachFact || !item.at) return;
+    const f = byInstant.get(Date.parse(item.at));
+    if (!f || used.has(f.id)) return;
+    used.add(f.id);
+    labels[i] = conversationItemTag(f.label);
   });
   return { labels, unmatched: facts.filter((f) => !used.has(f.id)) };
 }

@@ -9,7 +9,7 @@ import {
   lastWordTag,
   liveItems,
 } from "../src/lib/conversation-timeline";
-import { personLeadRowId } from "../src/lib/people-conversations";
+import { PersonTimelineItemSchema, personLeadRowId } from "../src/lib/people-conversations";
 
 // Christina Kennedy, as lead-service served her on 2026-10-08 (brand 75d7e3e8, offer d5ecba00).
 const christina = {
@@ -78,6 +78,45 @@ describe("a conversation's stored timeline, named not derived (owner 2026-10-08)
     const { labels, unmatched } = joinConversationLabels(thread, [christina.items[0], extra]);
     expect(labels.map((l) => l?.label ?? null)).toEqual([null, "Not interested", null]);
     expect(unmatched.map((f) => f.id)).toEqual(["manual:m1"]);
+  });
+  it("pairs a sent email with its fact on identity, not time (lanou.abigail, 2026-10-08)", () => {
+    // The thread stamps the email at its send time, lead-service at the event time: 61 s apart.
+    const fact = (id: string, label: string, occurredAt: string) => ({
+      ...christina.items[0],
+      id,
+      label,
+      source: "outreach",
+      occurredAt,
+      detail: {},
+    });
+    const initial = fact("ievt:7b960983-3437-41ea-9b11-d761a95e975f", "initial_email", "2026-09-30T13:06:45.241Z");
+    const followup = fact("ievt:f2bc3a15-2643-4ed0-a571-a2f65c35cdb8", "followup", "2026-10-08T13:06:09.210Z");
+    const visit = fact("ievt:e6cdf03a", "website_visit", "2026-10-08T13:09:25.301Z");
+    const thread = [
+      { at: "2026-09-30T13:05:44.000Z", outreachFact: { subjectKey: initial.id } },
+      { at: "2026-10-08T13:05:10.000Z", outreachFact: { subjectKey: followup.id } },
+      { at: "2026-10-08T13:09:25.301Z", outreachFact: null },
+    ];
+    const { labels, unmatched } = joinConversationLabels(thread, [initial, followup, visit]);
+    expect(labels.map((l) => l?.label ?? null)).toEqual(["Initial email", "Followup", "Website visit"]);
+    expect(unmatched).toEqual([]);
+  });
+  it("never time-pairs an email that names a fact the conversation does not hold", () => {
+    const initial = { ...christina.items[0], id: "ievt:a", label: "initial_email", occurredAt: "2026-09-30T13:05:44.000Z" };
+    const { labels, unmatched } = joinConversationLabels(
+      [{ at: "2026-09-30T13:05:44.000Z", outreachFact: { subjectKey: "ievt:other" } }],
+      [initial],
+    );
+    expect(labels).toEqual([null]);
+    expect(unmatched.map((f) => f.id)).toEqual(["ievt:a"]);
+  });
+  it("reads the sent email's identity off crm-service's thread item", () => {
+    const item = PersonTimelineItemSchema.parse({
+      at: "2026-09-30T13:05:44.000Z", source: "instantly", channel: "email", kind: "message", direction: "outbound",
+      subject: "s", text: "t", from: "julia@veriskube.com", to: ["lanou.abigail@mayo.edu"], event: null,
+      outreachFact: { subjectKey: "ievt:7b960983-3437-41ea-9b11-d761a95e975f", step: 1, position: "first" },
+    });
+    expect(item.outreachFact?.subjectKey).toBe("ievt:7b960983-3437-41ea-9b11-d761a95e975f");
   });
   it("finds the lead row only when lead-service decided the person's state", () => {
     expect(personLeadRowId({ stateSource: "lead_service", stateDetail: { leadCampaignId: "0c718f70" } })).toBe("0c718f70");

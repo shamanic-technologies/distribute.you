@@ -376,8 +376,8 @@ type ThreadRow =
   | { fact: ConversationItem; item: null; tag: null; at: string | null };
 
 /**
- * The thread, each item carrying lead-service's label where a stored fact was recorded at the
- * same instant; a stored fact no message or event matches (a statement made by hand, a fact
+ * The thread, each item carrying lead-service's label: a sent email by the fact it names, any
+ * other item by the fact recorded at the same instant; a stored fact no message or event matches (a statement made by hand, a fact
  * from their CRM) is still shown, in its place in time.
  */
 function threadRows(items: PersonTimelineItem[], facts: ConversationItem[]): ThreadRow[] {

@@ -148,6 +148,19 @@ export const PersonTimelineItemSchema = z.object({
       dateBasis: z.string(),
     })
     .nullable(),
+  /**
+   * A sent cold email's identity (crm-service, forwarded from instantly-service): `subjectKey`
+   * equals lead-service's fact id for that email, so the Unibox pairs the email with its
+   * "Initial email" / "Followup" label on identity, never on time. Null on inbound mail and
+   * non-Instantly items; optional until every stored thread is re-read.
+   */
+  outreachFact: z
+    .object({
+      subjectKey: z.string(),
+      step: z.coerce.number().nullable(),
+      position: z.string(),
+    })
+    .nullish(),
 });
 
 export const PersonTimelineSchema = z.object({
