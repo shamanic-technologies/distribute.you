@@ -19,13 +19,16 @@ import {
 import { EmptyNote, Initials, Shimmer } from "@/components/v2/ui";
 import { CompanyMark } from "@/components/v2/people-bits";
 import { personCompanyDomain, personSourceMarks, sourceMark, type SourceMark } from "@/lib/conversation-sources";
-import { useRowKeys } from "@/components/v2/records";
+import { RecordsToolbar, useRowKeys } from "@/components/v2/records";
 
 // The publishable logo.dev token the dashboard already ships (company-logo.tsx).
 const LOGO_DEV_TOKEN = "pk_J1iY4__HSfm9acHjR8FibA";
 
 /** The thread reads every source live on each call, so it refreshes slower than the list. */
 const TIMELINE_POLL = 60_000;
+
+/** How long the typing pauses before the search is asked. */
+const SEARCH_DEBOUNCE_MS = 300;
 
 /** A message longer than this opens folded, so one long email does not bury the thread. */
 const FOLD_AT = 600;
@@ -44,10 +47,21 @@ export function V2ConversationsView({ brandId }: { brandId: string }) {
   const [cursor, setCursor] = useState(-1);
   const searchRef = useRef<HTMLInputElement | null>(null);
   const openKey = params.get("person");
+  // The search runs at crm-service (names, addresses, companies AND message text across
+  // every page), asked once the typing pauses; a new query starts from page one.
+  const [search, setSearch] = useState("");
+  const [q, setQ] = useState("");
+  useEffect(() => {
+    const t = setTimeout(() => {
+      setQ(search.trim());
+      setPage(0);
+    }, SEARCH_DEBOUNCE_MS);
+    return () => clearTimeout(t);
+  }, [search]);
 
   const listQ = useAuthQuery(
-    ["people", brandId, page],
-    () => listPeople(brandId, { limit: PEOPLE_PAGE_SIZE, offset: page * PEOPLE_PAGE_SIZE }),
+    ["people", brandId, page, q],
+    () => listPeople(brandId, { limit: PEOPLE_PAGE_SIZE, offset: page * PEOPLE_PAGE_SIZE, q }),
     { refetchInterval: POLL_INTERVAL },
   );
   const list = listQ.data ?? null;
@@ -87,6 +101,9 @@ export function V2ConversationsView({ brandId }: { brandId: string }) {
             <span className="k-label">People</span>
             <span className="k-fg3 text-[12px] tabular-nums">{formatCount(list.total)}</span>
           </header>
+          <div className="k-line-subtle shrink-0 border-b [&>div]:px-3 [&>div]:py-2 md:[&>div]:px-3 [&_label]:max-w-none">
+            <RecordsToolbar search={search} onSearch={setSearch} placeholder="Search people and messages" inputRef={searchRef} />
+          </div>
           <div className="k-scroll min-h-0 flex-1 overflow-y-auto">
             {people && people.length > 0 ? (
               <ul>
@@ -101,6 +118,8 @@ export function V2ConversationsView({ brandId }: { brandId: string }) {
                   />
                 ))}
               </ul>
+            ) : q ? (
+              <EmptyNote>No conversation matches &ldquo;{q}&rdquo;.</EmptyNote>
             ) : building ? (
               <EmptyNote>We are gathering your conversations for the first time. This takes a few minutes.</EmptyNote>
             ) : (
@@ -176,6 +195,7 @@ function PersonRow({
             ))}
             {person.company && <span className="k-fg3 truncate text-[12px]">· {person.company}</span>}
           </span>
+          <MatchLine person={person} />
         </span>
       </button>
     </li>
@@ -296,6 +316,20 @@ function Message({ item, mark, meta }: { item: PersonTimelineItem; mark: SourceM
         </div>
       )}
     </article>
+  );
+}
+
+/** Under a search: why this person matched, the newest matching message first. */
+function MatchLine({ person }: { person: Person }) {
+  const matches = person.matches ?? [];
+  const message = matches.find((m) => m.field === "message" && m.excerpt);
+  const identity = matches.find((m) => m.field !== "message" && m.field !== "name" && m.value);
+  if (!message && !identity) return null;
+  const more = (person.messageMatches ?? 0) > 1 ? ` · ${formatCount(person.messageMatches!)} messages` : "";
+  return (
+    <span className="k-fg2 mt-1 line-clamp-2 block text-[12px] leading-[18px]">
+      {message ? `${message.direction === "outbound" ? "You: " : ""}${message.excerpt}${more}` : identity!.value}
+    </span>
   );
 }
 
