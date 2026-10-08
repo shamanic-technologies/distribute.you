@@ -94,7 +94,7 @@ export function V2CampaignPage() {
         offerId
           ? [
               { label: mission?.offerName ?? "Offer", href: v2OfferHref(orgId, brandId, offerId) },
-              { label: "Campaigns", href: v2OfferHref(orgId, brandId, offerId, "campaigns") },
+              { label: "Outbound", href: v2OfferHref(orgId, brandId, offerId, "sales-path") },
               { label: shownName },
             ]
           : [{ label: "Campaigns" }, { label: " " }]

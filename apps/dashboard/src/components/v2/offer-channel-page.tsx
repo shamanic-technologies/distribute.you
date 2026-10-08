@@ -54,7 +54,7 @@ export function V2OfferChannelPage() {
     <V2Page
       crumbs={[
         { label: name ?? " ", href: v2OfferHref(orgId, brandId, offerId) },
-        { label: "Campaigns", href: v2OfferHref(orgId, brandId, offerId, "campaigns") },
+        { label: "Outbound", href: v2OfferHref(orgId, brandId, offerId, "sales-path") },
         { label: channelName },
       ]}
       title={

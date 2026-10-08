@@ -1,4 +1,4 @@
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { channelRows } from "../src/lib/offer-channel-settings";
@@ -28,10 +28,10 @@ describe("channel routes", () => {
     expect(v2OfferChannelHref("o", "b", "f", "sales-cold-email-outreach", "overview")).toBe("/v2/orgs/o/brands/b/offers/f/channels/sales-cold-email-outreach");
     expect(v2OfferChannelHref("o", "b", "f", "sales-cold-email-outreach", "inbox")).toBe("/v2/orgs/o/brands/b/offers/f/channels/sales-cold-email-outreach?tab=inbox");
   });
-  it("the offer's Campaigns, and the older channel pages, are the Campaigns section", () => {
-    expect(v2SectionOf("/v2/orgs/o/brands/b/offers/f/campaigns")).toBe("campaigns");
-    expect(v2SectionOf("/v2/orgs/o/brands/b/offers/f/channels")).toBe("campaigns");
-    expect(v2SectionOf("/v2/orgs/o/brands/b/offers/f/channels/sales-cold-email-outreach")).toBe("campaigns");
+  it("the offer's old Campaigns URL and the channel pages belong to Outbound (owner 2026-10-08)", () => {
+    expect(v2SectionOf("/v2/orgs/o/brands/b/offers/f/campaigns")).toBe("sales-path");
+    expect(v2SectionOf("/v2/orgs/o/brands/b/offers/f/channels")).toBe("sales-path");
+    expect(v2SectionOf("/v2/orgs/o/brands/b/offers/f/channels/sales-cold-email-outreach")).toBe("sales-path");
     expect(v2SectionOf("/v2/orgs/o/brands/b/channels")).toBe("channels");
     expect(v2SectionOf("/v2/orgs/o/brands/b/offers/f")).toBe("offers");
   });
@@ -48,11 +48,10 @@ describe("sidebar", () => {
     expect(shell).not.toContain('label="Inbox"');
     expect(shell).not.toContain('label="Sent"');
   });
-  it("Setup lists Campaigns right under Targeting, no Channels entry (owner 2026-10-05)", () => {
+  it("Setup has no Campaigns or Channels entry: campaigns live on Outbound (owner 2026-10-08)", () => {
     const setup = shell.slice(shell.indexOf('<Group title="Setup">'), shell.indexOf('label="Integrations"'));
     expect(setup.indexOf('label="Targeting"')).toBeGreaterThan(-1);
-    expect(setup.indexOf('label="Campaigns"')).toBeGreaterThan(setup.indexOf('label="Targeting"'));
-    expect(setup).toContain('v2OfferHref(orgId, brandId, offerId, "campaigns")');
+    expect(setup).not.toContain('label="Campaigns"');
     expect(setup).not.toContain('label="Channels"');
   });
   it("Outbound is a section like Setup: its Outbound page, then the ON campaigns, no indent (owner 2026-10-07)", () => {
@@ -83,23 +82,28 @@ describe("sidebar", () => {
 });
 
 describe("channel pages", () => {
-  const list = read("src/components/v2/offer-campaigns-page.tsx");
+  const table = read("src/components/v2/offer-campaigns.tsx");
+  const outbound = read("src/components/v2/offer-sales-path-page.tsx");
   const page = read("src/components/v2/offer-channel-page.tsx");
-  it("Campaigns lists every campaign the offer ran, read only, each opening its page (owner 2026-10-05)", () => {
-    expect(list).toContain(".filter((m) => m.offerId === offerId)");
-    expect(list).toContain("router.push(m.href)");
-    for (const h of ["Status", "Budget", "$ Invested", "$ Value", "# Outcomes", "$ / Outcome"]) expect(list).toContain(`>${h}</th>`);
-    // Column order (owner 2026-10-05): name, ROI, # outcomes, $ value, $ / outcome, $ invested, status, budget.
-    const order = ["Campaign", "ROI", "# Outcomes", "$ Value", "$ / Outcome", "$ Invested", "Status", "Budget"].map((h) => list.indexOf(`>${h}</th>`));
+  it("the Campaigns page folded into Outbound: every campaign the offer ran, each opening its page (owner 2026-10-08)", () => {
+    // The old URL redirects; the page component is gone.
+    expect(existsSync(join(__dirname, "..", "src/components/v2/offer-campaigns-page.tsx"))).toBe(false);
+    expect(read("src/app/(authed)/v2/orgs/[orgId]/brands/[brandId]/offers/[offerId]/campaigns/page.tsx")).toContain("/sales-path`);");
+    // Outbound lists ticked-path campaigns AND every one that ran, with their results.
+    expect(outbound).toContain("roiUnavailableLabel, (k) => ran.has(k))");
+    expect(outbound).toMatch(/<OfferCampaigns[\s\S]*?\bresults\b[\s\S]*?\/>/);
+    const results = table.slice(table.indexOf("{results ? (\n                  <tr"), table.indexOf(") : (\n                  <tr"));
+    // Column order (owner 2026-10-05): name, type, ROI, # outcomes, $ value, $ / outcome, $ invested, status, budget.
+    const order = ["Campaign", "Type", "ROI", "# Outcomes", "$ Value", "$ / Outcome", "$ Invested", "Status", "Budget"].map((h) => results.indexOf(`>${h}</th>`));
     expect(order.every((at, i) => at > -1 && (i === 0 || at > order[i - 1]))).toBe(true);
-    // ROI is the measured return: Learning unless mature or above 1x (shownReturn), never the expected figure.
-    expect(list).toContain("shownReturn(g?.economicsMaturity, basis)");
-    expect(list).not.toContain("EXPECTED_ROI_TIP");
-    // The name reads like Today: the leg on its own line under it.
-    expect(list).toContain("<CampaignLeg campaign={leg} compact />");
-    // Status and budget are changed on the Sales path page only: no write here.
-    for (const w of ["setCampaignStatus", "saveOfferCampaignBudget", "useMutation", "<button"]) expect(list).not.toContain(w);
-    expect(list).toContain("Sales path page");
+    // ROI is the campaign's measured return (its campaign page's tile), never the path forecast.
+    const cells = table.slice(table.indexOf("function CampaignResultCells("), table.indexOf("function UnlistedRow("));
+    expect(cells).toContain("shownReturn(g?.economicsMaturity, basis)");
+    expect(cells).not.toContain("campaign.roi");
+    expect(results).not.toContain("EXPECTED_ROI_TIP");
+    // A row opens its campaign page; the status and budget cells never do.
+    expect(table).toContain("go: () => router.push(mission.href)");
+    expect(table.match(/onClick=\{stop\}/g)?.length).toBe(2);
   });
   it("cold email's page carries Overview, Inbox, Sent, Targeting and Settings", () => {
     for (const label of ["Overview", "Inbox", "Sent", "Targeting", "Settings"]) expect(page).toContain(`label: "${label}"`);

@@ -19,7 +19,8 @@ import { useSalesPathChannels } from "@/lib/use-sales-path-channels";
 import { acceptedChannels, selectedPathKeys, toggleChannel, togglePath } from "@/lib/offer-active-sales-paths";
 import { OfferChannelsPicker } from "@/components/v2/offer-channels-picker";
 import { OfferCampaigns } from "@/components/v2/offer-campaigns";
-import { campaignsOfOffer } from "@/lib/offer-campaigns";
+import { campaignKey, campaignsOfOffer } from "@/lib/offer-campaigns";
+import { useMissions } from "@/components/v2/use-missions";
 import { roiUnavailableLabel, type SalesPathLeg } from "@/lib/offer-sales-paths";
 import { v2OfferHref } from "@/lib/v2/routes";
 import { SALES_PATH_CHANNEL_SLUGS } from "@/lib/offer-sales-path";
@@ -130,11 +131,26 @@ export function V2OfferSalesPathPage() {
     await qc.refetchQueries({ queryKey: ["offerSalesPaths", brandId, offerId] });
   };
 
-  // Every channel x leg the TICKED paths use (owner 2026-10-05), as features-service serves
-  // them with their ROI; a campaign no ticked path uses is not listed. The SOURCE campaigns
-  // live on the offer's Sourcing page (owner 2026-10-07: keep this page simple).
+  // Every channel x leg the TICKED paths use (owner 2026-10-05), plus every campaign the
+  // offer has run (owner 2026-10-08: the old Campaigns page folds in here, each row opening
+  // its campaign page). The SOURCE campaigns live on the offer's Sourcing page (owner
+  // 2026-10-07: keep this page simple).
+  const { missions } = useMissions(orgId, brandId, { allOffers: true });
+  const ran = useMemo(
+    () =>
+      new Set(
+        missions
+          .filter((m) => m.offerId === offerId)
+          .map((m) => campaignKey(m.row.campaign.featureSlug ?? "", m.row.campaign.legKey ?? "")),
+      ),
+    [missions, offerId],
+  );
   const campaigns = useMemo(
-    () => campaignsOfOffer(paths.data?.campaigns ?? [], paths.data?.paths ?? [], roiUnavailableLabel),
+    () => campaignsOfOffer(paths.data?.campaigns ?? [], paths.data?.paths ?? [], roiUnavailableLabel, (k) => ran.has(k)),
+    [paths.data, ran],
+  );
+  const sources = useMemo(
+    () => new Set((paths.data?.sourceCampaigns ?? []).map((c) => campaignKey(c.channelSlug, c.legKey))),
     [paths.data],
   );
 
@@ -159,6 +175,8 @@ export function V2OfferSalesPathPage() {
           offerId={offerId}
           campaigns={campaigns}
           pending={(paths.isPending && !paths.isError) || (!selectedPaths && !selectedQ.isError)}
+          results
+          listedElsewhere={sources}
         />
       </div>
       <OfferSalesPaths

@@ -110,8 +110,8 @@ export function v2SectionOf(pathname: string): V2Section | null {
   if (s === "offers" && parts[7] === "sourcing") return "sourcing";
   // An offer's Targeting tab is Targeting, not Offers.
   if (s === "offers" && parts[7] === "targeting") return "targeting";
-  // An offer's Campaigns, and the older channel pages under it, are Campaigns.
-  if (s === "offers" && (parts[7] === "campaigns" || parts[7] === "channels")) return "campaigns";
+  // An offer's old Campaigns URL and the channel pages under it belong to its Outbound page (owner 2026-10-08).
+  if (s === "offers" && (parts[7] === "campaigns" || parts[7] === "channels")) return "sales-path";
   return (known as string[]).includes(s) ? (s as V2Section) : null;
 }
 
@@ -126,7 +126,7 @@ export function v2PersonHref(orgId: string, brandId: string, leadRowId: string):
 }
 
 /** One offer in v2: its settings, with its Targeting beside it. */
-export function v2OfferHref(orgId: string, brandId: string, offerId: string, tab?: "targeting" | "sales-path" | "sourcing" | "campaigns" | "channels" | "revenue-steps"): string {
+export function v2OfferHref(orgId: string, brandId: string, offerId: string, tab?: "targeting" | "sales-path" | "sourcing" | "channels" | "revenue-steps"): string {
   const base = `${v2Base(orgId, brandId)}/offers/${encodeURIComponent(offerId)}`;
   return tab ? `${base}/${tab}` : base;
 }
