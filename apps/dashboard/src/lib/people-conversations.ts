@@ -232,6 +232,17 @@ export function stateLabel(state: string): string {
   return wordsOf(state);
 }
 
+/**
+ * The status a reader sees: lead-service's tag, and nothing for anyone lead-service does
+ * not hold (owner 2026-10-08: "Deal open" is not a status lead-service has). crm-service
+ * still decides a CRM-only person's state from their deal, Stripe or thread; that word
+ * is not shown as a status. The source logos say where the person came from.
+ */
+export function personStatusLabel(person: Pick<Person, "state" | "stateSource">): string | null {
+  if (person.stateSource !== "lead_service") return null;
+  return stateLabel(person.state);
+}
+
 /** Who to call the person: their name, else their first address or number. */
 export function personName(p: Pick<Person, "displayName" | "emails" | "phones" | "personKey">): string {
   return p.displayName?.trim() || p.emails[0] || p.phones[0] || p.personKey;

@@ -45,10 +45,14 @@ describe("Unibox lead families (owner 2026-10-08)", () => {
 describe("Unibox family buttons are wired (owner 2026-10-08)", () => {
   const src = readFileSync(new URL("../src/components/v2/integrations-conversations.tsx", import.meta.url), "utf8");
   it("asks crm-service for one family and puts the buttons beside the search", () => {
-    expect(src).toContain('family: family === "all" ? undefined : family');
-    expect(src).toContain('queryKey: ["people", brandId, "scroll", q, family]');
+    expect(src).toContain('family: f === "all" ? undefined : f');
+    expect(src).toContain('queryKey: ["people", brandId, "scroll", q, f]');
+    expect(src).toContain("...listQuery(family),");
     expect(src).toContain("right={<FamilyButtons value={family} families={families} onPick={pickFamily} />}");
-    expect(src).toContain("<PersonTag label={stateLabel(person.state)} family={person.family} />");
+    expect(src).toContain("{status && <PersonTag label={status} family={person.family} />}");
+  });
+  it("every other family's first page loads with the page, so a button answers from memory", () => {
+    expect(src).toContain("prefetchInfiniteQuery({ ...listQuery(f), staleTime: POLL_INTERVAL })");
   });
   it("sends the family to the gateway", () => {
     const api = readFileSync(new URL("../src/lib/api.ts", import.meta.url), "utf8");

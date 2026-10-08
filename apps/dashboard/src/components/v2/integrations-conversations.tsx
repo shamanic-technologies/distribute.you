@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useInfiniteQuery, useQueryClient } from "@tanstack/react-query";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useSearchParams } from "next/navigation";
 import { getLeadTimeline, getPersonTimeline, listPeople } from "@/lib/api";
 import { ownQueryData } from "@/lib/own-query-data";
 import { useAuthQuery, useOrgQueryGate } from "@/lib/use-auth-query";
@@ -13,8 +13,8 @@ import {
   PEOPLE_PAGE_SIZE,
   personLeadRowId,
   personName,
+  personStatusLabel,
   sourceLine,
-  stateLabel,
   timelineSourceNote,
   type Person,
   type PersonTimelineItem,
@@ -40,6 +40,8 @@ const TIMELINE_POLL = 60_000;
 const PRELOAD_TOP = 8;
 
 const timelineKey = (brandId: string, personKey: string) => ["personTimeline", brandId, personKey] as const;
+const factsKey = (leadRowId: string | null, brandId: string, offerId: string | null) =>
+  ["leadTimeline", leadRowId, brandId, offerId] as const;
 
 /** How long the typing pauses before the search is asked. */
 const SEARCH_DEBOUNCE_MS = 300;
@@ -56,7 +58,14 @@ const FOLD_AT = 600;
  */
 export function V2ConversationsView({ brandId }: { brandId: string }) {
   const params = useSearchParams();
-  const router = useRouter();
+  // A click (a person, a family button) only rewrites the URL: no Next navigation, so no
+  // round trip to the page server before the screen changes (owner 2026-10-08: "tout est
+  // trop lent"). Next keeps useSearchParams in step with the native history call.
+  const setParam = (key: string, value: string) => {
+    const next = new URLSearchParams(window.location.search);
+    next.set(key, value);
+    window.history.replaceState(window.history.state, "", `?${next.toString()}`);
+  };
   const [cursor, setCursor] = useState(-1);
   const searchRef = useRef<HTMLInputElement | null>(null);
   const openKey = params.get("person");
@@ -74,21 +83,20 @@ export function V2ConversationsView({ brandId }: { brandId: string }) {
   // Filter buttons (owner 2026-10-08): All by default. The families and their counts are
   // crm-service's (features-service's verdict).
   const family = familyFilter(params.get("family"));
-  const pickFamily = (f: FamilyFilter) => {
-    const next = new URLSearchParams(params.toString());
-    next.set("family", f);
-    router.replace(`?${next.toString()}`, { scroll: false });
-  };
+  const pickFamily = (f: FamilyFilter) => setParam("family", f);
 
   // The first rows load at once, the next ones as the end of the list scrolls into view
   // (owner 2026-10-08: no pages to click through).
   const gate = useOrgQueryGate();
-  const listQ = useInfiniteQuery({
-    queryKey: ["people", brandId, "scroll", q, family],
-    queryFn: ({ pageParam }) =>
-      listPeople(brandId, { limit: PEOPLE_PAGE_SIZE, offset: pageParam, q, family: family === "all" ? undefined : family }),
+  const listQuery = (f: FamilyFilter) => ({
+    queryKey: ["people", brandId, "scroll", q, f],
+    queryFn: ({ pageParam }: { pageParam: number }) =>
+      listPeople(brandId, { limit: PEOPLE_PAGE_SIZE, offset: pageParam, q, family: f === "all" ? undefined : f }),
     initialPageParam: 0,
-    getNextPageParam: (last) => last.nextOffset ?? undefined,
+    getNextPageParam: (last: { nextOffset?: number | null }) => last.nextOffset ?? undefined,
+  });
+  const listQ = useInfiniteQuery({
+    ...listQuery(family),
     enabled: gate && !!brandId,
     refetchInterval: POLL_INTERVAL,
   });
@@ -114,30 +122,51 @@ export function V2ConversationsView({ brandId }: { brandId: string }) {
   // A thread opens from memory: the top rows' threads load with the list, any other row's
   // as the pointer reaches it. Same key and read as the Thread itself.
   const queryClient = useQueryClient();
-  const preload = (personKey: string) =>
+  // The other family buttons answer from memory: their first page loads with the page
+  // (the plain list only; a search asks per family on click).
+  const listLoaded = Boolean(list);
+  useEffect(() => {
+    if (!gate || !brandId || !listLoaded || q) return;
+    for (const f of [...LEAD_FAMILIES.map((x) => x.key), "all" as const]) {
+      if (f !== family) void queryClient.prefetchInfiniteQuery({ ...listQuery(f), staleTime: POLL_INTERVAL });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [gate, brandId, q, listLoaded]);
+  // The lead-service facts load WITH the thread, keyed on the list row's lead (same key
+  // and read as the Thread), never after it.
+  const selected = useSelectedOfferIfAny();
+  const offerId = selected?.offerId ?? null;
+  const offerSettled = selected ? selected.settled : true;
+  const preload = (p: Person) => {
     void queryClient.prefetchQuery({
-      queryKey: timelineKey(brandId, personKey),
-      queryFn: () => getPersonTimeline(brandId, personKey),
+      queryKey: timelineKey(brandId, p.personKey),
+      queryFn: () => getPersonTimeline(brandId, p.personKey),
       staleTime: TIMELINE_POLL,
     });
-  const topKeys = (people ?? []).slice(0, PRELOAD_TOP).map((p) => p.personKey).join("|");
+    const leadRowId = personLeadRowId(p);
+    if (leadRowId && offerSettled) {
+      void queryClient.prefetchQuery({
+        queryKey: factsKey(leadRowId, brandId, offerId),
+        queryFn: () => getLeadTimeline(leadRowId, { brandId, offerId }),
+        staleTime: TIMELINE_POLL,
+      });
+    }
+  };
+  const top = (people ?? []).slice(0, PRELOAD_TOP);
+  const topKeys = top.map((p) => p.personKey).join("|");
   useEffect(() => {
     if (!gate || !topKeys) return;
-    for (const k of topKeys.split("|")) preload(k);
+    for (const p of top) preload(p);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [gate, brandId, topKeys]);
+  }, [gate, brandId, topKeys, offerId, offerSettled]);
   // J/K moves the cursor: the row it lands on loads too.
-  const cursorKey = cursor >= 0 ? (people?.[cursor]?.personKey ?? null) : null;
+  const cursorPerson = cursor >= 0 ? (people?.[cursor] ?? null) : null;
   useEffect(() => {
-    if (gate && cursorKey) preload(cursorKey);
+    if (gate && cursorPerson) preload(cursorPerson);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [gate, cursorKey]);
+  }, [gate, cursorPerson?.personKey]);
 
-  const open = (p: Person) => {
-    const next = new URLSearchParams(params.toString());
-    next.set("person", p.personKey);
-    router.replace(`?${next.toString()}`, { scroll: false });
-  };
+  const open = (p: Person) => setParam("person", p.personKey);
   // The Unibox opens on the person on top (owner 2026-10-08), and a new search on its
   // first result. A person already in the URL (a click, a shared link) is kept.
   const first = listQ.isPlaceholderData ? null : (people?.[0] ?? null);
@@ -203,7 +232,7 @@ export function V2ConversationsView({ brandId }: { brandId: string }) {
                     onOpen={() => open(p)}
                     onHover={() => {
                       setCursor(i);
-                      preload(p.personKey);
+                      preload(p);
                     }}
                   />
                 ))}
@@ -230,7 +259,7 @@ export function V2ConversationsView({ brandId }: { brandId: string }) {
 
         <section className="k-card flex max-h-[calc(100vh-220px)] min-h-[420px] flex-col overflow-hidden lg:max-h-none">
           {openKey ? (
-            <Thread brandId={brandId} personKey={openKey} />
+            <Thread brandId={brandId} personKey={openKey} listed={people?.find((p) => p.personKey === openKey) ?? null} />
           ) : (
             <div className="flex flex-1 items-center justify-center">
               <EmptyNote>Pick a person to read the whole conversation, every channel in one thread.</EmptyNote>
@@ -260,6 +289,7 @@ function PersonRow({
   onHover: () => void;
 }) {
   const name = personName(person);
+  const status = personStatusLabel(person);
   return (
     <li>
       <button
@@ -278,7 +308,7 @@ function PersonRow({
             )}
           </span>
           <span className="mt-1 flex flex-wrap items-center gap-1.5">
-            <PersonTag label={stateLabel(person.state)} family={person.family} />
+            {status && <PersonTag label={status} family={person.family} />}
             {personSourceMarks(person.presences).map((m) => (
               <SourceLogo key={m.key} mark={m} size={14} />
             ))}
@@ -291,7 +321,7 @@ function PersonRow({
   );
 }
 
-function Thread({ brandId, personKey }: { brandId: string; personKey: string }) {
+function Thread({ brandId, personKey, listed }: { brandId: string; personKey: string; listed: Person | null }) {
   const q = useAuthQuery(timelineKey(brandId, personKey), () => getPersonTimeline(brandId, personKey), {
     refetchInterval: TIMELINE_POLL,
   });
@@ -302,9 +332,10 @@ function Thread({ brandId, personKey }: { brandId: string; personKey: string }) 
   const offerSettled = selected ? selected.settled : true;
   // Only THIS person's data: the app-wide placeholder would hand a re-keyed query the last person's.
   const data = ownQueryData(q);
-  const leadRowId = data ? personLeadRowId(data.person) : null;
+  // The list row already names the lead row, so the facts start with the thread, not after it.
+  const leadRowId = data ? personLeadRowId(data.person) : listed ? personLeadRowId(listed) : null;
   const factsQ = useAuthQuery(
-    ["leadTimeline", leadRowId, brandId, offerId],
+    factsKey(leadRowId, brandId, offerId),
     () => getLeadTimeline(leadRowId!, { brandId, offerId }),
     { enabled: Boolean(leadRowId) && offerSettled, refetchInterval: TIMELINE_POLL },
   );
@@ -331,6 +362,7 @@ function Thread({ brandId, personKey }: { brandId: string; personKey: string }) 
   const { person, items, sources } = data;
   const notes = sources.map(timelineSourceNote).filter((n): n is string => n !== null);
   const name = personName(person);
+  const status = personStatusLabel(person);
   return (
     <>
       <header className="k-line-subtle shrink-0 border-b px-4 py-3">
@@ -342,7 +374,7 @@ function Thread({ brandId, personKey }: { brandId: string; personKey: string }) 
               {[...person.emails, ...person.phones].join(" · ") || "—"}
             </p>
           </div>
-          <span className="k-chip ml-auto shrink-0">{stateLabel(person.state)}</span>
+          {status && <span className="k-chip ml-auto shrink-0">{status}</span>}
         </div>
         {facts ? (
           <div className="mt-2">
