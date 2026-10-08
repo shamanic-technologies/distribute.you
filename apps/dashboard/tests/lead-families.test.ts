@@ -7,13 +7,12 @@ describe("Unibox lead families (owner 2026-10-08)", () => {
   it("lists Hot first, then Won, Lost, Cold, with the owner's labels", () => {
     expect(LEAD_FAMILIES.map((f) => f.label)).toEqual(["Hot leads", "Won clients", "Lost leads", "Cold leads"]);
   });
-  it("opens on Hot leads, steps back to All once nobody is hot, keeps an explicit pick", () => {
-    expect(familyFilter(null, null)).toBe("hot");
-    expect(familyFilter(null, 4)).toBe("hot");
-    expect(familyFilter(null, 0)).toBe("all");
-    expect(familyFilter("won", 0)).toBe("won");
-    expect(familyFilter("all", 9)).toBe("all");
-    expect(familyFilter("bogus", 3)).toBe("hot");
+  it("opens on All, keeps an explicit pick", () => {
+    expect(familyFilter(null)).toBe("all");
+    expect(familyFilter("hot")).toBe("hot");
+    expect(familyFilter("won")).toBe("won");
+    expect(familyFilter("all")).toBe("all");
+    expect(familyFilter("bogus")).toBe("all");
     expect(isLeadFamily("cold")).toBe(true);
     expect(isLeadFamily("in_conversation")).toBe(false);
   });

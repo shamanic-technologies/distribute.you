@@ -71,11 +71,9 @@ export function V2ConversationsView({ brandId }: { brandId: string }) {
     return () => clearTimeout(t);
   }, [search]);
 
-  // Filter buttons (owner 2026-10-08): Hot leads by default, All once nobody is hot. The
-  // families and their counts are crm-service's (features-service's verdict); the hot
-  // count is remembered so the default can step back to All.
-  const [hotCount, setHotCount] = useState<number | null>(null);
-  const family = familyFilter(params.get("family"), hotCount);
+  // Filter buttons (owner 2026-10-08): All by default. The families and their counts are
+  // crm-service's (features-service's verdict).
+  const family = familyFilter(params.get("family"));
   const pickFamily = (f: FamilyFilter) => {
     const next = new URLSearchParams(params.toString());
     next.set("family", f);
@@ -96,10 +94,6 @@ export function V2ConversationsView({ brandId }: { brandId: string }) {
   });
   const list = listQ.data?.pages[0] ?? null;
   const families = list?.families ?? null;
-  const servedHot = families && families.status !== "failed" ? families.counts.hot : null;
-  useEffect(() => {
-    if (servedHot !== null) setHotCount(servedHot);
-  }, [servedHot]);
   const people = listQ.data ? listQ.data.pages.flatMap((p) => p.people) : null;
   const scrollBox = useRef<HTMLDivElement | null>(null);
   const sentinel = useRef<HTMLLIElement | null>(null);
