@@ -56,6 +56,7 @@ import {
   useOfferContactedValue,
 } from "@/components/v2/data";
 import { EarnedStrip, HotLeads, LostLeads, OfferOutcomesTable } from "@/components/v2/today-roi";
+import { TodayPanel, type TodayPanelTarget } from "@/components/v2/today-roi-panel";
 import { RoiHistoryCard } from "@/components/v2/campaign-roi-chart";
 import {
   CompanyMark,
@@ -126,6 +127,8 @@ export function TodayPage() {
   // Not served before features-service v0.179.81: the sections then say they cannot read it.
   const pipeline = outcomesQ.data?.pipeline ?? null;
   const contactedQ = useOfferContactedValue(brandId);
+  // The right panel: one step, or one lead (owner 2026-10-08).
+  const [panel, setPanel] = useState<TodayPanelTarget | null>(null);
   const buckets = useBucketCounts(brandId).data;
   const { missions, missionByCampaignId } = useMissions(orgId, brandId);
   const { byCrew, settled: runsSettled } = useCrewRuns(brandId, missionByCampaignId);
@@ -348,6 +351,7 @@ export function TodayPage() {
                 contacted={contactedQ.data ? { perLeadUsd: contactedQ.data.perLeadExpectedValueUsd, totalUsd: contactedQ.data.totalExpectedValueUsd } : null}
                 answered={outcomesAnswered}
                 failed={outcomesQ.data === undefined && outcomesQ.isFetchedAfterMount && outcomesQ.isError}
+                onOpenStep={(stepKey) => setPanel({ kind: "step", stepKey })}
               />
               <RoiHistoryCard
                 // The curve whose last point IS the return the Return tile states.
@@ -361,8 +365,8 @@ export function TodayPage() {
               />
             </div>
             <div className="mt-6 grid grid-cols-1 gap-6 lg:grid-cols-2">
-              <HotLeads pipeline={pipeline} answered={outcomesAnswered} />
-              <LostLeads pipeline={pipeline} answered={outcomesAnswered} />
+              <HotLeads pipeline={pipeline} answered={outcomesAnswered} onOpenLead={(lead) => setPanel({ kind: "lead", lead, group: "hot" })} />
+              <LostLeads pipeline={pipeline} answered={outcomesAnswered} onOpenLead={(lead) => setPanel({ kind: "lead", lead, group: "lost" })} />
             </div>
 
             <div className="mt-8 grid gap-6 lg:grid-cols-[minmax(0,1fr)_380px]">
@@ -487,6 +491,7 @@ export function TodayPage() {
           </>
         )}
       </div>
+      {panel && <TodayPanel brandId={brandId} pipeline={pipeline} target={panel} onClose={() => setPanel(null)} />}
     </>
   );
 }
