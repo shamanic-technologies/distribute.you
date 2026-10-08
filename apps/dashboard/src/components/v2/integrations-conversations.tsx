@@ -151,9 +151,9 @@ export function V2ConversationsView({ brandId }: { brandId: string }) {
   const building = list.scope.status === "building" || list.scope.status === "pending";
 
   return (
-    <div className="space-y-4">
-      <div className="grid gap-4 lg:grid-cols-[380px_minmax(0,1fr)]">
-        <section className="k-card flex max-h-[calc(100vh-220px)] min-h-[420px] flex-col overflow-hidden">
+    <div className="space-y-4 lg:flex lg:min-h-0 lg:flex-1 lg:flex-col">
+      <div className="grid gap-4 lg:min-h-0 lg:flex-1 lg:grid-cols-[380px_minmax(0,1fr)] lg:grid-rows-[minmax(0,1fr)]">
+        <section className="k-card flex max-h-[calc(100vh-220px)] min-h-[420px] flex-col overflow-hidden lg:max-h-none">
           <header className="k-line-subtle flex h-10 shrink-0 items-center justify-between border-b px-4">
             <span className="k-label">People</span>
             <span className="k-fg3 text-[12px] tabular-nums">{formatCount(list.total)}</span>
@@ -194,7 +194,7 @@ export function V2ConversationsView({ brandId }: { brandId: string }) {
           </div>
         </section>
 
-        <section className="k-card flex max-h-[calc(100vh-220px)] min-h-[420px] flex-col overflow-hidden">
+        <section className="k-card flex max-h-[calc(100vh-220px)] min-h-[420px] flex-col overflow-hidden lg:max-h-none">
           {openKey ? (
             <Thread brandId={brandId} personKey={openKey} />
           ) : (
