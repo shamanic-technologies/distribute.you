@@ -155,7 +155,6 @@ export function OfferOutcomesTable({
                     eachUsd={contacted?.perLeadUsd ?? null}
                     totalUsd={contacted?.totalUsd ?? null}
                   />
-                  <ContactedLine label="Companies contacted" count={pipeline?.companiesContacted ?? null} eachUsd={null} totalUsd={null} />
                 </>
               ) : (
                 <tr>

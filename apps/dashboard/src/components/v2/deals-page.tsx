@@ -202,8 +202,8 @@ function DealColumn({
   );
   const all = total === 0 ? [] : (q.data?.leads ?? null);
   // What the contacted, not-yet-engaged people are worth in expectation. features-service
-  // prices them (a separate figure, not in the pipeline or the ROI); this column only
-  // shows it, joined to its cards by lead id.
+  // prices them, and that value COUNTS in the offer's pipeline and ROI (features-service
+  // lib/contacted-value.ts); this column only shows it, joined to its cards by lead id.
   const valued = column === "contacted";
   const valueIds = valued && all ? all.map((l) => l.leadId).filter((id): id is string => !!id) : [];
   const { offerId } = useSelectedOffer();
@@ -255,7 +255,8 @@ function DealColumn({
             const value = served && lead.leadId ? served.byLead.get(lead.leadId) ?? null : null;
             const expected = valued && lead.leadId ? valueByLead.get(lead.leadId) ?? null : null;
             // Keel's forecast tag under the amount: which figure the amount is. A contacted
-            // lead's value is NOT in the pipeline, so it says "Expected", never "Pipeline".
+            // lead's value is a chance of engaging (it counts in the pipeline total), so the
+            // card says "Expected".
             const valueTag =
               expected != null
                 ? "Expected"
