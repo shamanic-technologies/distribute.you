@@ -50,6 +50,7 @@ export function StageStatementForm({
   tone,
   needsValue,
   defaultValueUsd,
+  defaultCostUsd = null,
   busy,
   disabled = false,
   onSubmit,
@@ -73,6 +74,8 @@ export function StageStatementForm({
    * render would rewrite an amount somebody is in the middle of typing.
    */
   defaultValueUsd?: number | null;
+  /** The cost somebody already stated, when editing their statement. A stated $0 shows as 0. */
+  defaultCostUsd?: number | null;
   busy: boolean;
   /**
    * A question the CALLER still needs answered before this statement can be sent — the
@@ -87,7 +90,7 @@ export function StageStatementForm({
   const [rawValue, setRawValue] = useState(() =>
     defaultValueUsd != null && defaultValueUsd > 0 ? String(defaultValueUsd) : "",
   );
-  const [rawCost, setRawCost] = useState("");
+  const [rawCost, setRawCost] = useState(() => (defaultCostUsd != null ? String(defaultCostUsd) : ""));
   const valueCents = saleValueCentsFrom(rawValue);
   const costCents = stepCostCentsFrom(rawCost);
   // Both questions have to be answered before anything is sent. `costCents == null` is

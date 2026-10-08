@@ -208,14 +208,19 @@ describe("Today panel: a paid client edits its value and status", () => {
     expect(api).toContain("export async function getLeadStepStatements(");
     expect(api).toContain("`/leads/${leadRowId}/step-statements/${step}`, { token, method: \"DELETE\" }");
   });
-  it("a restatement re-sends what it read, so the win keeps its date and note", () => {
-    const save = panel.slice(panel.indexOf("const saveValue = async"), panel.indexOf('setDone("Value saved.")'));
-    expect(save).toContain("costCents: sale.costCents");
-    expect(save).toContain("causedByOutreach: sale.causedByOutreach");
-    expect(save).toContain("occurredAt: sale.at");
-    expect(save).toContain("note: sale.note");
+  it("a client sits in the same Update this lead row, its own answers prefilled", () => {
+    const client = panel.slice(panel.indexOf("function ClientStatus("), panel.indexOf("export function LeadCard("));
+    expect(client).toContain('<p className="k-label mb-2">Update this lead</p>');
+    expect(client).toContain("Mark as won");
+    expect(client).toContain("Won&apos;t happen");
+    expect(client).toContain("prefillCause={sale.causedByOutreach}");
+    expect(client).toContain("occurredAt: sale.at");
+    expect(client).not.toContain("InlineMoney");
+    expect(client).not.toContain('role="menu"');
   });
-  it("Not a client withdraws the sale", () => {
-    expect(panel).toContain('withdraw.mutate({ leadRowId: rowId, step: "sale" }');
+  it("Won't happen takes the win back, then states the never", () => {
+    const client = panel.slice(panel.indexOf("function ClientStatus("), panel.indexOf("export function LeadCard("));
+    expect(client.indexOf('withdraw.mutateAsync({ leadRowId: rowId, step: "sale" })')).toBeGreaterThan(0);
+    expect(client.indexOf('kind: "never", costCents')).toBeGreaterThan(client.indexOf('withdraw.mutateAsync({ leadRowId: rowId, step: "sale" })'));
   });
 });

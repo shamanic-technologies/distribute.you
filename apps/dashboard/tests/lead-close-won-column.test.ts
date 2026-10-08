@@ -24,7 +24,9 @@ describe("the close-won form", () => {
     // form exists to stop. Two named buttons rather than a checkbox: an unticked box
     // reads as "not ours" without anybody choosing it.
     expect(FORM).toContain("Caused by us?");
-    expect(FORM).toContain("useState<boolean | null>(null)");
+    // Opens unanswered; only an answer somebody ALREADY stated (editing their win) is shown back.
+    expect(FORM).toContain("prefillCause = null,");
+    expect(FORM).toContain("useState<boolean | null>(prefillCause)");
     expect(FORM).toContain("disabled={cause === null}");
     expect(FORM).toContain("if (cause === null) return;");
   });
