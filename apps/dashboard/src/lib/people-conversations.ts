@@ -84,6 +84,18 @@ export const PersonTimelineItemSchema = z.object({
   text: z.string().nullable(),
   from: z.string().nullable(),
   to: z.array(z.string()),
+  /**
+   * Gmail only (null elsewhere): google-service's verdict on `text`. `cleaned` false =
+   * `text` is not the sender's words alone (judge pending/failed, snippet); `original` is
+   * the full body verbatim. Optional until every cached timeline carries it.
+   */
+  textClean: z
+    .object({
+      status: z.string(),
+      cleaned: z.boolean(),
+      original: z.string().nullable(),
+    })
+    .nullish(),
   event: z
     .object({
       step: z.string(),

@@ -273,25 +273,40 @@ function ThreadItem({ item }: { item: PersonTimelineItem }) {
 
 function Message({ item, meta }: { item: PersonTimelineItem; meta: string }) {
   const [open, setOpen] = useState(false);
+  const [showOriginal, setShowOriginal] = useState(false);
   const outbound = item.direction === "outbound";
-  const long = (item.text?.length ?? 0) > FOLD_AT;
+  const notCleaned = item.textClean != null && !item.textClean.cleaned;
+  const original = item.textClean?.original ?? null;
+  const hasOriginal = original != null && original !== item.text;
+  const body = showOriginal && hasOriginal ? original : item.text;
+  const long = (body?.length ?? 0) > FOLD_AT;
   return (
     <article className={`max-w-[85%] rounded-lg px-3 py-2 ${outbound ? "k-inset ml-auto" : "k-panel"}`}>
-      <p className="k-fg3 truncate text-[12px]">
-        {item.from ?? (outbound ? "You" : "Them")} · {meta}
+      <p className="k-fg3 flex min-w-0 items-center gap-2 text-[12px]">
+        <span className="truncate">
+          {item.from ?? (outbound ? "You" : "Them")} · {meta}
+        </span>
+        {notCleaned && <span className="k-chip shrink-0">Not cleaned</span>}
       </p>
       {item.subject && <p className="mt-1 text-[13px] font-medium">{item.subject}</p>}
-      {item.text ? (
-        <>
-          <p className={`mt-1 whitespace-pre-wrap break-words text-[13px] leading-5 ${long && !open ? "line-clamp-[10]" : ""}`}>{item.text}</p>
+      {body ? (
+        <p className={`mt-1 whitespace-pre-wrap break-words text-[13px] leading-5 ${long && !open ? "line-clamp-[10]" : ""}`}>{body}</p>
+      ) : (
+        <p className="k-fg4 mt-1 text-[13px]">—</p>
+      )}
+      {(long || hasOriginal) && (
+        <div className="mt-1 flex gap-1">
           {long && (
-            <button type="button" className="k-btn-ghost mt-1 h-6 px-1.5 text-[12px]" onClick={() => setOpen((o) => !o)}>
+            <button type="button" className="k-btn-ghost h-6 px-1.5 text-[12px]" onClick={() => setOpen((o) => !o)}>
               {open ? "Show less" : "Show all"}
             </button>
           )}
-        </>
-      ) : (
-        <p className="k-fg4 mt-1 text-[13px]">—</p>
+          {hasOriginal && (
+            <button type="button" className="k-btn-ghost h-6 px-1.5 text-[12px]" onClick={() => setShowOriginal((o) => !o)}>
+              {showOriginal ? "Show what they wrote" : "Show original"}
+            </button>
+          )}
+        </div>
       )}
     </article>
   );
