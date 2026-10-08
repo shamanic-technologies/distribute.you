@@ -8,6 +8,7 @@ import {
   personName,
   sourceLabel,
   sourceLine,
+  personStatusLabel,
   stateLabel,
   timelineSourceNote,
 } from "../src/lib/people-conversations";
@@ -85,6 +86,13 @@ describe("labels only re-case the producer's words", () => {
   it("re-cases the served state", () => {
     expect(stateLabel("sales_interest")).toBe("Sales interest");
     expect(stateLabel("deal_won")).toBe("Deal won");
+  });
+  it("shows a status only when lead-service decided it (owner 2026-10-08: no Deal open)", () => {
+    expect(personStatusLabel({ state: "sales_interest", stateSource: "lead_service" })).toBe("Sales interest");
+    expect(personStatusLabel({ state: "deal_open", stateSource: "gohighlevel" })).toBeNull();
+    expect(personStatusLabel({ state: "paid", stateSource: "stripe" })).toBeNull();
+    expect(personStatusLabel({ state: "replied", stateSource: "instantly" })).toBeNull();
+    expect(personStatusLabel({ state: "in_conversation", stateSource: "none" })).toBeNull();
   });
   it("reads an unknown source as its own id", () => {
     expect(sourceLabel("hubspot")).toBe("Hubspot");
@@ -208,7 +216,7 @@ describe("search (crm-service q, #56)", () => {
     expect(api).toContain('if (opts.q) qs.set("q", opts.q);');
     const view = read("components/v2/integrations-conversations.tsx");
     // The family filter rides the same key and read (lead-families.test.ts).
-    expect(view).toContain('queryKey: ["people", brandId, "scroll", q, family]');
+    expect(view).toContain('queryKey: ["people", brandId, "scroll", q, f]');
     expect(view).toContain("offset: pageParam, q, family:");
     expect(view).not.toContain("people.filter(");
   });
@@ -246,7 +254,7 @@ describe("who wrote a message", () => {
 describe("the list scrolls, never pages (owner 2026-10-08)", () => {
   it("loads the next rows as the end comes into view", () => {
     const view = read("components/v2/integrations-conversations.tsx");
-    expect(view).toContain("getNextPageParam: (last) => last.nextOffset ?? undefined");
+    expect(view).toContain("getNextPageParam: (last: { nextOffset?: number | null }) => last.nextOffset ?? undefined");
     expect(view).toContain("new IntersectionObserver(");
     expect(view).not.toContain("Previous");
   });
@@ -255,9 +263,21 @@ describe("the list scrolls, never pages (owner 2026-10-08)", () => {
 describe("a thread opens from memory (owner 2026-10-08: instant)", () => {
   it("preloads the top rows and the row under the pointer, on the Thread's own key", () => {
     const view = read("components/v2/integrations-conversations.tsx");
-    expect(view).toContain("queryKey: timelineKey(brandId, personKey)");
+    expect(view).toContain("queryKey: timelineKey(brandId, p.personKey)");
     expect(view).toContain("useAuthQuery(timelineKey(brandId, personKey)");
-    expect(view).toContain("preload(p.personKey);");
+    expect(view).toContain("preload(p);");
     expect(view).toContain(".slice(0, PRELOAD_TOP)");
+  });
+  it("preloads the lead-service facts with the thread, on the Thread's own facts key", () => {
+    const view = read("components/v2/integrations-conversations.tsx");
+    expect(view).toContain("queryKey: factsKey(leadRowId, brandId, offerId)");
+    expect(view).toContain("factsKey(leadRowId, brandId, offerId),\n    () => getLeadTimeline");
+    // The Thread does not wait for its own timeline to learn the lead row.
+    expect(view).toContain(": listed ? personLeadRowId(listed) : null;");
+  });
+  it("a click rewrites the URL without a Next navigation (owner 2026-10-08: too slow)", () => {
+    const view = read("components/v2/integrations-conversations.tsx");
+    expect(view).toContain("window.history.replaceState(");
+    expect(view).not.toContain("router.replace(");
   });
 });
