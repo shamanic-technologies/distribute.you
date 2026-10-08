@@ -3,13 +3,14 @@
 import { useEffect, useRef, useState } from "react";
 import { useInfiniteQuery, useQueryClient } from "@tanstack/react-query";
 import { useRouter, useSearchParams } from "next/navigation";
-import { getPersonTimeline, listPeople } from "@/lib/api";
+import { getLeadTimeline, getPersonTimeline, listPeople } from "@/lib/api";
 import { useAuthQuery, useOrgQueryGate } from "@/lib/use-auth-query";
 import { POLL_INTERVAL } from "@/lib/query-options";
 import { formatCount } from "@/lib/format-number";
 import { friendlyDateTime, timeAgo } from "@/lib/friendly-datetime";
 import {
   PEOPLE_PAGE_SIZE,
+  personLeadRowId,
   personName,
   sourceLine,
   stateLabel,
@@ -21,7 +22,11 @@ import { EmptyNote, Initials, Shimmer } from "@/components/v2/ui";
 import { CompanyMark } from "@/components/v2/people-bits";
 import { parseFrom, personCompanyDomain, personSourceMarks, sourceMark, type SourceMark } from "@/lib/conversation-sources";
 import { RecordsToolbar, useRowKeys } from "@/components/v2/records";
-import { timelineTag, type TimelineIcon, type TimelineTag, type TimelineTone } from "@/lib/timeline-tags";
+import { timelineTag, type TimelineTag } from "@/lib/timeline-tags";
+import { conversationItemTag, conversationSourceWord, joinConversationLabels, liveItems, type ConversationItem } from "@/lib/conversation-timeline";
+import { ConversationTags } from "@/components/v2/conversation-timeline";
+import { useSelectedOfferIfAny } from "@/components/v2/selected-offer";
+import { ICON_PATH, TONE_COLOR, TagChip } from "@/components/v2/tag-chip";
 import { LEAD_FAMILIES, familyFilter, familyLook, type FamilyFilter } from "@/lib/lead-families";
 
 // The publishable logo.dev token the dashboard already ships (company-logo.tsx).
@@ -295,6 +300,17 @@ function Thread({ brandId, personKey }: { brandId: string; personKey: string }) 
   const q = useAuthQuery(timelineKey(brandId, personKey), () => getPersonTimeline(brandId, personKey), {
     refetchInterval: TIMELINE_POLL,
   });
+  // The conversation at the selected offer: lead-service's labelled facts and its tags, keyed
+  // on the lead row whose standing decided this person's state (none = not one of our leads).
+  const selected = useSelectedOfferIfAny();
+  const offerId = selected?.offerId ?? null;
+  const offerSettled = selected ? selected.settled : true;
+  const leadRowId = q.data ? personLeadRowId(q.data.person) : null;
+  const factsQ = useAuthQuery(
+    ["leadTimeline", leadRowId, brandId, offerId],
+    () => getLeadTimeline(leadRowId!, { brandId, offerId }),
+    { enabled: Boolean(leadRowId) && offerSettled, refetchInterval: TIMELINE_POLL },
+  );
   // Oldest first, so the latest exchange is at the bottom: open there, as any inbox does.
   const scrollRef = useRef<HTMLDivElement | null>(null);
   const itemCount = q.data?.items.length ?? 0;
@@ -329,12 +345,19 @@ function Thread({ brandId, personKey }: { brandId: string; personKey: string }) 
           </div>
           <span className="k-chip ml-auto shrink-0">{stateLabel(person.state)}</span>
         </div>
+        {factsQ.data ? (
+          <div className="mt-2">
+            <ConversationTags tags={factsQ.data.tags} />
+          </div>
+        ) : null}
       </header>
       <div ref={scrollRef} className="k-scroll min-h-0 flex-1 space-y-3 overflow-y-auto p-4">
         {items.length === 0 ? (
           <EmptyNote>No message or event with this person on any connected source.</EmptyNote>
         ) : (
-          items.map((it, i) => <ThreadItem key={i} item={it} />)
+          threadRows(items, factsQ.data ? liveItems(factsQ.data) : []).map((row, i) =>
+            row.fact ? <FactRow key={row.fact.id} fact={row.fact} /> : <ThreadItem key={i} item={row.item} tag={row.tag} />,
+          )
         )}
       </div>
       {notes.length > 0 && (
@@ -348,7 +371,38 @@ function Thread({ brandId, personKey }: { brandId: string; personKey: string }) 
   );
 }
 
-function ThreadItem({ item }: { item: PersonTimelineItem }) {
+type ThreadRow =
+  | { fact: null; item: PersonTimelineItem; tag: TimelineTag | null; at: string | null }
+  | { fact: ConversationItem; item: null; tag: null; at: string | null };
+
+/**
+ * The thread, each item carrying lead-service's label where a stored fact was recorded at the
+ * same instant; a stored fact no message or event matches (a statement made by hand, a fact
+ * from their CRM) is still shown, in its place in time.
+ */
+function threadRows(items: PersonTimelineItem[], facts: ConversationItem[]): ThreadRow[] {
+  const { labels, unmatched } = joinConversationLabels(items, facts);
+  const rows: ThreadRow[] = items.map((item, i) => ({ fact: null, item, tag: labels[i], at: item.at }));
+  for (const fact of unmatched) {
+    const t = fact.occurredAt ? Date.parse(fact.occurredAt) : Number.POSITIVE_INFINITY;
+    const at = rows.findIndex((r) => (r.at ? Date.parse(r.at) : Number.POSITIVE_INFINITY) > t);
+    rows.splice(at === -1 ? rows.length : at, 0, { fact, item: null, tag: null, at: fact.occurredAt });
+  }
+  return rows;
+}
+
+function FactRow({ fact }: { fact: ConversationItem }) {
+  const meta = [conversationSourceWord(fact.source), fact.occurredAt ? friendlyDateTime(fact.occurredAt) : "No date"].join(" · ");
+  return (
+    <div className="k-fg2 flex items-center gap-2 text-[12px]">
+      <TagChip tag={conversationItemTag(fact.label)} />
+      <span className="k-fg3">{meta}</span>
+      {fact.attributable === false ? <span className="k-fg3">· Not ours</span> : null}
+    </div>
+  );
+}
+
+function ThreadItem({ item, tag }: { item: PersonTimelineItem; tag: TimelineTag | null }) {
   // Where it came from, as a mark and its name: our own sends and visits read as Distribute.
   const mark = sourceMark(item.source, item.channel);
   const meta = [mark.name, item.at ? friendlyDateTime(item.at) : "No date"].join(" · ");
@@ -356,36 +410,15 @@ function ThreadItem({ item }: { item: PersonTimelineItem }) {
   if (item.kind === "event") {
     return (
       <div className="k-fg2 flex items-center gap-2 text-[12px]">
-        <TagChip tag={timelineTag(item)} />
+        <TagChip tag={tag ?? timelineTag(item)} />
         <SourceLogo mark={mark} size={14} />
         <span className="k-fg3">{meta}</span>
       </div>
     );
   }
 
-  return <Message item={item} mark={mark} meta={meta} />;
+  return <Message item={item} mark={mark} meta={meta} tag={tag ?? timelineTag(item)} />;
 }
-
-const TONE_COLOR: Record<TimelineTone, string> = {
-  won: "var(--run)",
-  hot: "var(--data-amber)",
-  lost: "var(--data-rose)",
-  reply: "var(--data-teal)",
-  neutral: "var(--fg-3)",
-};
-
-const ICON_PATH: Record<TimelineIcon, string> = {
-  sent: "M2.5 8 13.5 2.5 10 13.5 7.5 9z M7.5 9l6-6.5",
-  reply: "M6.5 4 3 7.5 6.5 11 M3 7.5h6a4 4 0 0 1 4 4v1",
-  visit: "M8 2.5a5.5 5.5 0 1 0 0 11 5.5 5.5 0 0 0 0-11z M2.5 8h11 M8 2.5c1.6 1.6 2.3 3.4 2.3 5.5S9.6 11.9 8 13.5C6.4 11.9 5.7 10.1 5.7 8S6.4 4.1 8 2.5z",
-  meeting: "M3 4h10v9H3z M3 7h10 M5.5 2.5v3 M10.5 2.5v3",
-  money: "M8 2.5v11 M10.8 5.2C10.3 4.5 9.3 4 8 4 6.6 4 5.5 4.8 5.5 6s1 1.6 2.5 2 2.5.8 2.5 2-1.1 2-2.5 2c-1.3 0-2.3-.5-2.8-1.2",
-  lost: "M4.5 4.5l7 7 M11.5 4.5l-7 7",
-  dot: "M8 6.5a1.5 1.5 0 1 0 0 3 1.5 1.5 0 0 0 0-3z",
-  flame: "M8 14c-2.5 0-4.5-1.8-4.5-4.3C3.5 6.5 7 5.5 7 2c2.6 1.5 5.5 4.3 5.5 7.7C12.5 12.2 10.5 14 8 14z M8 14c-1.1 0-2-.9-2-2.1 0-1.5 2-2.4 2-3.9 1.2.8 2 1.9 2 3.9 0 1.2-.9 2.1-2 2.1z",
-  check: "M3.5 8.5l3 3 6-7",
-  snow: "M8 2v12 M2.8 5l10.4 6 M2.8 11l10.4-6 M6.5 2.8 8 4l1.5-1.2 M6.5 13.2 8 12l1.5 1.2",
-};
 
 /** A person's tag: their state in their family's colour and icon (no family = plain). */
 function PersonTag({ label, family }: { label: string; family: string | null | undefined }) {
@@ -434,23 +467,7 @@ function FamilyButtons({
   );
 }
 
-/** A timeline item's tag: what happened, in its family's colour, with an icon. */
-function TagChip({ tag }: { tag: TimelineTag }) {
-  const color = TONE_COLOR[tag.tone];
-  return (
-    <span
-      className="inline-flex h-5 shrink-0 items-center gap-1 rounded-md px-1.5 text-[11.5px] font-medium"
-      style={{ color, background: `color-mix(in srgb, ${color} 12%, transparent)` }}
-    >
-      <svg width="11" height="11" viewBox="0 0 16 16" fill="none" aria-hidden="true">
-        <path d={ICON_PATH[tag.icon]} stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-      </svg>
-      {tag.label}
-    </span>
-  );
-}
-
-function Message({ item, mark, meta }: { item: PersonTimelineItem; mark: SourceMark; meta: string }) {
+function Message({ item, mark, meta, tag }: { item: PersonTimelineItem; mark: SourceMark; meta: string; tag: TimelineTag }) {
   // The mark up front is WHO wrote it: the person's company logo (initials without one)
   // on their side, the source's mark on ours. Where it came from rides the meta line.
   const sender = parseFrom(item.from);
@@ -476,7 +493,7 @@ function Message({ item, mark, meta }: { item: PersonTimelineItem; mark: SourceM
           {meta}
         </span>
         <span className="ml-auto shrink-0">
-          <TagChip tag={timelineTag(item)} />
+          <TagChip tag={tag} />
         </span>
         {notCleaned && <span className="k-chip shrink-0">Not cleaned</span>}
       </p>

@@ -4,7 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { leadSourceTags } from "@/lib/source-overlap";
-import { getLeadDetail, getLeadHistory, getLeadConsolidatedStatus, leadDateForStatus, type Lead } from "@/lib/api";
+import { getLeadDetail, getLeadHistory, getLeadTimeline, getLeadConsolidatedStatus, leadDateForStatus, type Lead } from "@/lib/api";
 import { useAuthQuery } from "@/lib/use-auth-query";
 import { pollOptions } from "@/lib/query-options";
 import { friendlyDate, timeAgo } from "@/lib/friendly-datetime";
@@ -17,6 +17,7 @@ import { LeadHistoryTimeline } from "@/components/audiences/lead-history-timelin
 import { CrmAttributionCard } from "@/components/crm/crm-attribution-card";
 import { SendingScheduleCard } from "@/components/v2/sending-schedule-card";
 import { LeadChecks } from "@/components/v2/lead-checks";
+import { ConversationTimelineCard } from "@/components/v2/conversation-timeline";
 import { useSelectedOffer } from "@/components/v2/selected-offer";
 import { CloseWonForm } from "@/components/leads/close-won-form";
 import { EmptyNote, Shimmer, TopBar } from "@/components/v2/ui";
@@ -47,6 +48,13 @@ export function PersonPage() {
     ["leadHistory", leadRowId, brandId, "campaign"],
     () => getLeadHistory(leadRowId, { brandId, scope: "campaign" }),
     { enabled: Boolean(leadRowId) },
+  );
+  // The conversation (this person x the selected offer x the brand): lead-service's stored,
+  // labelled timeline and its tags. Asked once the offer is known, never brand-wide first.
+  const timelineQ = useAuthQuery(
+    ["leadTimeline", leadRowId, brandId, offerId],
+    () => getLeadTimeline(leadRowId, { brandId, offerId }),
+    { ...pollOptions, enabled: Boolean(leadRowId) && offerSettled },
   );
   const [closing, setClosing] = useState(false);
   const setStep = useSetAnyLeadStepStatement();
@@ -130,6 +138,10 @@ export function PersonPage() {
 
             <div className="mt-6 grid gap-4 lg:grid-cols-[minmax(0,1fr)_320px]">
               <div className="min-w-0 space-y-6">
+                <ConversationTimelineCard
+                  timeline={timelineQ.data ?? null}
+                  failed={timelineQ.isFetchedAfterMount && !timelineQ.data && timelineQ.isError}
+                />
                 {lead.leadId && offerSettled ? <LeadChecks leadId={lead.leadId} brandId={brandId} offerId={offerId} /> : null}
                 {historyQ.data ? (
                   <LeadHistoryTimeline

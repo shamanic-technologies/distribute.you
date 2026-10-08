@@ -235,6 +235,7 @@ export const PERSISTABLE_QUERY_ROOTS = new Set([
   "v2RunsWeek",
   "v2RecentRuns",
   "leadHistory",
+  "leadTimeline",
   "leadDetail",
   // When we may email one lead (instantly-service): small and stable, so the person
   // page paints it from disk.

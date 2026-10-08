@@ -1,4 +1,5 @@
 import { parseOfferSalesPaths, type OfferSalesPaths } from "./offer-sales-paths";
+import { ConversationTimelineSchema, type ConversationTimeline } from "./conversation-timeline";
 import {
   OfferChannelsSchema,
   OfferSelectedSalesPathsSchema,
@@ -7510,6 +7511,27 @@ export async function getLeadHistory(
       raw,
     });
     throw new Error("[dashboard] getLeadHistory: invalid response shape");
+  }
+  return parsed.data;
+}
+
+/**
+ * One conversation's stored timeline: lead-service `GET /orgs/leads/{id}/timeline` through the
+ * gateway. `leadRowId` is the list row's id; `offerId` narrows to one offer (plus brand-level
+ * facts). Every label and tag is lead-service's; `conversation-timeline.ts` only names them.
+ */
+export async function getLeadTimeline(
+  leadRowId: string,
+  params: { brandId: string; offerId?: string | null },
+  token?: string,
+): Promise<ConversationTimeline> {
+  const qs = new URLSearchParams({ brandId: params.brandId });
+  if (params.offerId) qs.set("offerId", params.offerId);
+  const raw = await apiCall<unknown>(`/leads/${encodeURIComponent(leadRowId)}/timeline?${qs.toString()}`, { token });
+  const parsed = ConversationTimelineSchema.safeParse(raw);
+  if (!parsed.success) {
+    console.error("[dashboard] getLeadTimeline: response shape mismatch", { issues: parsed.error.issues, raw });
+    throw new Error("[dashboard] getLeadTimeline: invalid response shape");
   }
   return parsed.data;
 }

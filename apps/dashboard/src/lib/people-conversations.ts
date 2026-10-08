@@ -56,6 +56,11 @@ export const PersonSchema = z.object({
   lastActivityAt: z.string().nullable(),
   state: z.string(),
   stateSource: z.string(),
+  /**
+   * What decided `state`, verbatim. With `stateSource` lead_service it names the lead row
+   * (`leadCampaignId`) whose standing it is: the key of that conversation's stored timeline.
+   */
+  stateDetail: z.record(z.string(), z.unknown()).nullish(),
   presences: z.array(PersonPresenceSchema),
   /**
    * Search only (crm-service `q`): why the person matched. Identity fields carry `value`;
@@ -200,6 +205,13 @@ export function sourceLabel(source: string): string {
 
 export function channelLabel(channel: string): string {
   return CHANNEL_LABEL[channel] ?? wordsOf(channel);
+}
+
+/** The lead row whose standing decided the person's state, when lead-service decided it. */
+export function personLeadRowId(person: Pick<Person, "stateSource" | "stateDetail">): string | null {
+  if (person.stateSource !== "lead_service") return null;
+  const id = person.stateDetail?.leadCampaignId;
+  return typeof id === "string" && id ? id : null;
 }
 
 /** The person's ONE state, crm-service's word, only re-cased. */
