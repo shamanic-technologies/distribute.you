@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { useMutation } from "@tanstack/react-query";
+import { useRouter } from "next/navigation";
 import { useAuthQuery, useQueryClient } from "@/lib/use-auth-query";
 import {
   ApiError,
@@ -14,6 +15,12 @@ import {
 } from "@/lib/api";
 import { fmtDailyBudgetUsd } from "@/lib/campaign-budget";
 import { formatRoi, roiIsGood } from "@/lib/format-roi";
+import { formatCount, formatUsdAdaptive } from "@/lib/format-number";
+import { shownReturn, type StatBasis } from "@/lib/maturity";
+import { useStatBasis } from "@/lib/use-stat-basis";
+import { useRoutePrefetch } from "@/lib/use-route-prefetch";
+import { useLegCatalogue } from "@/lib/use-leg-catalogue";
+import { costPerResult, outcomeCount } from "@/components/v2/mission-results";
 import { campaignKey, campaignTag, sortCampaigns, type OfferCampaign } from "@/lib/offer-campaigns";
 import { channelWriteErrorMessage } from "@/lib/channel-start";
 import { createCampaignForPair, startReactiveCampaign } from "@/lib/start-pair";
@@ -41,6 +48,8 @@ export function OfferCampaigns({
   pending,
   title = "Campaigns",
   sub = "One proactive campaign at a time. Reactive ones follow its leads.",
+  results = false,
+  listedElsewhere,
 }: {
   orgId: string;
   brandId: string;
@@ -49,7 +58,21 @@ export function OfferCampaigns({
   pending: boolean;
   title?: string;
   sub?: string;
+  /**
+   * Sales path page (owner 2026-10-08, the old Campaigns page folded in): each campaign's
+   * own results (ROI, outcomes, value, cost per outcome, invested), read off the SAME
+   * features-service row its campaign page reads, and a row opens that page. The ROI is
+   * the campaign's measured return, never the path forecast (that one stays on the paths
+   * table): the two read 0.89x vs 1.32x for one campaign under one label.
+   */
+  results?: boolean;
+  /** Campaigns another page lists (the Sourcing page's sources): never an unlisted row here. */
+  listedElsewhere?: ReadonlySet<string>;
 }) {
+  const router = useRouter();
+  const prefetch = useRoutePrefetch();
+  const { basis } = useStatBasis();
+  const catalogue = useLegCatalogue();
   const { missions } = useMissions(orgId, brandId, { allOffers: true });
   const missionByKey = useMemo(() => {
     const m = new Map<string, Mission>();
@@ -60,7 +83,21 @@ export function OfferCampaigns({
     return m;
   }, [missions, offerId]);
   const running = (c: OfferCampaign) => missionByKey.get(campaignKey(c.featureSlug, c.legKey))?.running ?? false;
-  const sorted = useMemo(() => sortCampaigns(campaigns, running), [campaigns, missionByKey]); // eslint-disable-line react-hooks/exhaustive-deps
+  const measuredRoi = (c: OfferCampaign) => {
+    const m = missionByKey.get(campaignKey(c.featureSlug, c.legKey));
+    return m ? shownReturn(m.row.revenue?.economicsMaturity, basis).value : null;
+  };
+  const sorted = useMemo(
+    () => sortCampaigns(campaigns, running, results ? measuredRoi : undefined),
+    [campaigns, missionByKey, results, basis], // eslint-disable-line react-hooks/exhaustive-deps
+  );
+  // A campaign the offer ran that features-service no longer lists (its channel or leg
+  // left the offer): still one of the offer's campaigns, read only, opening its page.
+  const unlisted = useMemo(() => {
+    if (!results) return [];
+    const listed = new Set(campaigns.map((c) => campaignKey(c.featureSlug, c.legKey)));
+    return [...missionByKey.entries()].filter(([k]) => !listed.has(k) && !listedElsewhere?.has(k)).map(([, m]) => m);
+  }, [results, campaigns, missionByKey, listedElsewhere]);
   // The proactive campaign that is on now: turning another one on moves the plan to it.
   // A SOURCE campaign runs beside the others (owner 2026-10-07): it neither takes nor gives the plan.
   const activeProactive = sorted.find((c) => c.kind === "outreach" && !c.reactive && running(c)) ?? null;
@@ -74,43 +111,65 @@ export function OfferCampaigns({
 
   return (
     <section>
-      <SectionTitle count={pending ? null : campaigns.length}>{title}</SectionTitle>
+      <SectionTitle count={pending ? null : campaigns.length + unlisted.length}>{title}</SectionTitle>
       <p className="k-fg2 -mt-1 mb-3 text-[13px]">{sub}</p>
       {pending ? (
         <div className="space-y-2">
           <Shimmer className="h-10 rounded-[10px]" />
           <Shimmer className="h-10 rounded-[10px]" />
         </div>
-      ) : campaigns.length === 0 ? (
+      ) : campaigns.length + unlisted.length === 0 ? (
         <div className="k-card">
           <EmptyNote>No campaign yet. Tick the legs and channels this offer sells through.</EmptyNote>
         </div>
       ) : (
         <div className="k-card overflow-hidden">
           <div className="k-scroll overflow-x-auto">
-            <table className="w-full min-w-[880px] text-[13px]">
+            <table className={`w-full text-[13px] ${results ? "min-w-[1180px]" : "min-w-[880px]"}`}>
               <thead>
-                <tr className="k-line-subtle border-b">
-                  <th className="k-label px-3 py-2.5 pl-4 text-left font-normal">Campaign</th>
-                  <th className="k-label px-3 py-2.5 text-left font-normal">Works</th>
-                  <th className="k-label px-3 py-2.5 text-left font-normal">Type</th>
-                  <th className="k-label px-3 py-2.5 text-right font-normal">
-                    <ExpectedLabel tip={EXPECTED_ROI_TIP}>ROI</ExpectedLabel>
-                  </th>
-                  <th className="k-label w-[150px] px-3 py-2.5 text-right font-normal">Status</th>
-                  <th className="k-label w-[170px] px-3 py-2.5 pr-4 text-right font-normal">Budget</th>
-                </tr>
+                {results ? (
+                  <tr className="k-line-subtle border-b">
+                    <th className="k-label px-3 py-2.5 pl-4 text-left font-normal">Campaign</th>
+                    <th className="k-label px-3 py-2.5 text-left font-normal">Type</th>
+                    <th className="k-label px-3 py-2.5 text-right font-normal">ROI</th>
+                    <th className="k-label px-3 py-2.5 text-right font-normal"># Outcomes</th>
+                    <th className="k-label px-3 py-2.5 text-right font-normal">$ Value</th>
+                    <th className="k-label px-3 py-2.5 text-right font-normal">$ / Outcome</th>
+                    <th className="k-label px-3 py-2.5 text-right font-normal">$ Invested</th>
+                    <th className="k-label w-[130px] px-3 py-2.5 text-right font-normal">Status</th>
+                    <th className="k-label w-[160px] px-3 py-2.5 pr-4 text-right font-normal">Budget</th>
+                  </tr>
+                ) : (
+                  <tr className="k-line-subtle border-b">
+                    <th className="k-label px-3 py-2.5 pl-4 text-left font-normal">Campaign</th>
+                    <th className="k-label px-3 py-2.5 text-left font-normal">Works</th>
+                    <th className="k-label px-3 py-2.5 text-left font-normal">Type</th>
+                    <th className="k-label px-3 py-2.5 text-right font-normal">
+                      <ExpectedLabel tip={EXPECTED_ROI_TIP}>ROI</ExpectedLabel>
+                    </th>
+                    <th className="k-label w-[150px] px-3 py-2.5 text-right font-normal">Status</th>
+                    <th className="k-label w-[170px] px-3 py-2.5 pr-4 text-right font-normal">Budget</th>
+                  </tr>
+                )}
               </thead>
               <tbody>
                 {sorted.map((c) => {
                   const key = campaignKey(c.featureSlug, c.legKey);
+                  const mission = missionByKey.get(key) ?? null;
                   return (
                     <CampaignRow
                       key={key}
+                      results={results}
+                      basis={basis}
+                      onOpen={
+                        results && mission
+                          ? { go: () => router.push(mission.href), warm: () => prefetch(mission.href) }
+                          : null
+                      }
                       brandId={brandId}
                       offerId={offerId}
                       campaign={c}
-                      mission={missionByKey.get(key) ?? null}
+                      mission={mission}
                       replaces={c.kind === "outreach" && !c.reactive && activeProactive && activeProactive !== c ? activeProactive : null}
                       budget={budgetByKey.get(key) ?? null}
                       budgetPeriod={budgetsQ.data?.period ?? null}
@@ -120,6 +179,16 @@ export function OfferCampaigns({
                     />
                   );
                 })}
+                {unlisted.map((m) => (
+                  <UnlistedRow
+                    key={m.row.campaign.id}
+                    mission={m}
+                    name={catalogue.campaignNames.get(`${m.row.campaign.featureSlug}|${m.row.campaign.legKey}`) ?? null}
+                    basis={basis}
+                    onOpen={() => router.push(m.href)}
+                    onWarm={() => prefetch(m.href)}
+                  />
+                ))}
               </tbody>
             </table>
           </div>
@@ -181,6 +250,9 @@ export function CampaignLeg({
 }
 
 function CampaignRow({
+  results,
+  basis,
+  onOpen,
   brandId,
   offerId,
   campaign,
@@ -192,6 +264,11 @@ function CampaignRow({
   budgetError,
   showSplit,
 }: {
+  /** Sales path page: the campaign's own results columns, the leg under its name. */
+  results: boolean;
+  basis: StatBasis;
+  /** The row opens the campaign's page; null when it has none yet (never ran). */
+  onOpen: { go: () => void; warm: () => void } | null;
   brandId: string;
   offerId: string;
   campaign: OfferCampaign;
@@ -213,27 +290,50 @@ function CampaignRow({
     if (!campaign.name) console.error("[offer-campaigns] features-service served no campaignName", campaign);
   }, [campaign]);
   const on = pressed ?? mission?.running ?? false;
+  // The status and budget controls (and their portalled menu / modal, whose events bubble
+  // through React's tree) never open the campaign page.
+  const stop = (e: React.SyntheticEvent) => e.stopPropagation();
   return (
-    <tr className={`k-row k-line-subtle h-12 border-b last:border-b-0 ${on ? "bg-[color-mix(in_oklab,var(--run)_9%,transparent)]" : ""}`}>
+    <tr
+      className={`k-row k-line-subtle h-12 border-b last:border-b-0 ${onOpen ? "cursor-pointer" : ""} ${on ? "bg-[color-mix(in_oklab,var(--run)_9%,transparent)]" : ""}`}
+      onClick={onOpen?.go}
+      onMouseEnter={onOpen?.warm}
+      onFocus={onOpen?.warm}
+    >
       <td className="px-3 py-2 pl-4">
-        <span className="flex items-center gap-2.5">
+        <span className="flex min-w-0 items-center gap-2.5">
           {campaign.name && <PathAvatar name={campaign.name} size={28} />}
-          <span className="font-semibold">{campaign.name ?? campaign.channelName}</span>
+          {results ? (
+            <span className="min-w-0">
+              <span className="block truncate font-semibold">{campaign.name ?? campaign.channelName}</span>
+              <span className="mt-1 block overflow-hidden">
+                <CampaignLeg campaign={campaign} showFedBy compact />
+              </span>
+            </span>
+          ) : (
+            <span className="font-semibold">{campaign.name ?? campaign.channelName}</span>
+          )}
         </span>
       </td>
-      <td className="px-3 py-2">
-        <CampaignLeg campaign={campaign} showFedBy />
-      </td>
+      {!results && (
+        <td className="px-3 py-2">
+          <CampaignLeg campaign={campaign} showFedBy />
+        </td>
+      )}
       <td className="px-3 py-2">
         <span className="k-chip">{campaignTag(campaign)}</span>
       </td>
-      <td
-        className={`px-3 py-2 text-right font-semibold tabular-nums ${roiIsGood(campaign.roi) ? "text-[var(--run)]" : ""}`}
-        title={campaign.roiUnavailable ?? undefined}
-      >
-        {formatRoi(campaign.roi)}
-      </td>
-      <td className="px-3 py-2 text-right">
+      {results ? (
+        <CampaignResultCells mission={mission} basis={basis} />
+      ) : (
+        <td
+          className={`px-3 py-2 text-right font-semibold tabular-nums ${roiIsGood(campaign.roi) ? "text-[var(--run)]" : ""}`}
+          title={campaign.roiUnavailable ?? undefined}
+        >
+          {formatRoi(campaign.roi)}
+        </td>
+      )}
+      <td className="px-3 py-2 text-right" onClick={stop}>
         <CampaignStatus
           brandId={brandId}
           offerId={offerId}
@@ -244,7 +344,7 @@ function CampaignRow({
           replaces={replaces}
         />
       </td>
-      <td className="px-3 py-2 pr-4 text-right">
+      <td className="px-3 py-2 pr-4 text-right" onClick={stop}>
         <CampaignBudget
           brandId={brandId}
           offerId={offerId}
@@ -258,6 +358,83 @@ function CampaignRow({
           <BudgetSplitLine budget={budget} />
         )}
       </td>
+    </tr>
+  );
+}
+
+const DASH = <span className="k-fg4">—</span>;
+
+/**
+ * A campaign's own results, as its campaign page states them (owner 2026-10-08): ROI,
+ * outcomes, value, cost per outcome, money in. Every figure is a served field of the
+ * campaign's features-service row (the missions read); nothing is computed here. A
+ * campaign that never ran has none of them yet.
+ */
+function CampaignResultCells({ mission, basis }: { mission: Mission | null; basis: StatBasis }) {
+  const g = mission?.row.revenue;
+  // Learning unless mature, or already above 1x to date (lib/maturity.ts shownReturn): the campaign page's ROI tile.
+  const roi = shownReturn(g?.economicsMaturity, basis);
+  const outcome = mission ? outcomeCount(mission) : null;
+  const cost = mission ? costPerResult(mission, basis) : null;
+  return (
+    <>
+      <td className={`px-3 py-2 text-right font-semibold tabular-nums ${roiIsGood(roi.value) ? "text-[var(--run)]" : ""}`}>
+        {!mission ? DASH : roi.learning ? <span className="k-chip font-normal">Learning</span> : roi.value != null ? formatRoi(roi.value) : DASH}
+      </td>
+      <td className="px-3 py-2 text-right tabular-nums">
+        {outcome ? (
+          <>
+            {formatCount(outcome.count)} <span className="k-fg3 text-[12px]">{outcome.unit}</span>
+          </>
+        ) : (
+          DASH
+        )}
+      </td>
+      <td className="px-3 py-2 text-right tabular-nums">{g?.totalPipelineUsd != null ? formatUsdAdaptive(g.totalPipelineUsd) : DASH}</td>
+      <td className="px-3 py-2 text-right tabular-nums">
+        {cost ? cost.unit ? cost.value : <span className="k-chip">{cost.value}</span> : DASH}
+      </td>
+      <td className="px-3 py-2 text-right tabular-nums">
+        {g?.committedCostUsd != null ? formatUsdAdaptive(g.committedCostUsd) : DASH}
+        {g?.actualCostUsd != null && g.committedCostUsd != null && g.committedCostUsd > g.actualCostUsd && (
+          <span className="k-fg3 block text-[12px]">{formatUsdAdaptive(g.actualCostUsd)} spent</span>
+        )}
+      </td>
+    </>
+  );
+}
+
+/** A campaign the offer ran whose channel or leg it no longer lists: its results, read only. */
+function UnlistedRow({
+  mission,
+  name,
+  basis,
+  onOpen,
+  onWarm,
+}: {
+  mission: Mission;
+  name: string | null;
+  basis: StatBasis;
+  onOpen: () => void;
+  onWarm: () => void;
+}) {
+  return (
+    <tr className="k-row k-line-subtle h-12 cursor-pointer border-b last:border-b-0" onClick={onOpen} onMouseEnter={onWarm} onFocus={onWarm}>
+      <td className="px-3 py-2 pl-4">
+        <span className="flex min-w-0 items-center gap-2.5">
+          {name && <PathAvatar name={name} size={28} />}
+          <span className="min-w-0">
+            <span className="block truncate font-semibold">{name ?? mission.crew.name}</span>
+            <span className="k-fg3 mt-1 block text-[11px]">{mission.leg?.label ?? "—"}</span>
+          </span>
+        </span>
+      </td>
+      <td className="px-3 py-2">{DASH}</td>
+      <CampaignResultCells mission={mission} basis={basis} />
+      <td className="px-3 py-2 text-right">
+        <StateDot running={mission.running} label={mission.running ? "On" : "Off"} hold={mission.running ? null : mission.paymentHold} />
+      </td>
+      <td className="px-3 py-2 pr-4 text-right">{DASH}</td>
     </tr>
   );
 }

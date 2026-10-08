@@ -12,7 +12,7 @@ const api = read("src/lib/api.ts");
 const win = read("src/lib/revenue-window.ts");
 const page = read("src/components/v2/campaign-page.tsx");
 const channel = read("src/components/v2/offer-channel-page.tsx");
-const table = read("src/components/v2/offer-campaigns-page.tsx");
+const table = read("src/components/v2/offer-campaigns.tsx");
 
 describe("campaign money: Spent is billed, provisioned follow-ups stated apart", () => {
   it("reads the campaign window, net, since inception", () => {
@@ -32,7 +32,7 @@ describe("campaign money: Spent is billed, provisioned follow-ups stated apart",
     expect(page.match(/<SpentTile win=\{win\} \/>/g)?.length).toBe(2);
   });
 
-  it("the campaigns table keeps $ Invested (committed) and states the billed part under it", () => {
+  it("the Outbound campaigns table keeps $ Invested (committed) and states the billed part under it", () => {
     expect(table).toContain("{formatUsdAdaptive(g.actualCostUsd)} spent");
   });
 });

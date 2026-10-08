@@ -136,7 +136,7 @@ function SelectedOfferRedirect({
   subPath = "",
 }: {
   title: string;
-  tab?: "sales-path" | "sourcing" | "targeting" | "campaigns";
+  tab?: "sales-path" | "sourcing" | "targeting";
   /** Below the tab: `/lists` opens Targeting's Lists tab. */
   subPath?: string;
 }) {
@@ -272,9 +272,9 @@ export function V2SalesPathIndexPage() {
   return <SelectedOfferRedirect title="Outbound" tab="sales-path" />;
 }
 
-/** Channels from the sidebar before an offer is picked: the selected offer's Channels. */
+/** The old brand Campaigns URL: the selected offer's Outbound page, where its campaigns live (owner 2026-10-08). */
 export function V2CampaignsIndexPage() {
-  return <SelectedOfferRedirect title="Campaigns" tab="campaigns" />;
+  return <SelectedOfferRedirect title="Outbound" tab="sales-path" />;
 }
 
 // ─── Integrations and brand settings ────────────────────────────────────────

@@ -77,18 +77,22 @@ type ServedSourceCampaign = {
 /**
  * The campaigns features-service serves, kept to those a TICKED path uses (owner
  * 2026-10-05) and run by a channel (the customer's own team is not a campaign of ours).
+ * `alsoKeep` keeps an unticked one that has history (owner 2026-10-08: the Sales path
+ * table lists every campaign the offer has run, so a campaign with results never vanishes).
  * Step labels are looked up on the paths' legs (a display join, nothing computed).
  */
 export function campaignsOfOffer(
   served: readonly ServedCampaign[],
   paths: ReadonlyArray<{ legs: readonly PathLegLike[] }>,
   roiLabel: (reason: string | null) => string | null,
+  alsoKeep: (key: string) => boolean = () => false,
 ): OfferCampaign[] {
   const legs = new Map<string, PathLegLike>();
   for (const p of paths) for (const l of p.legs) if (!legs.has(l.legKey)) legs.set(l.legKey, l);
   const out: OfferCampaign[] = [];
   for (const c of served) {
-    if (c.selectedPathCount <= 0 || c.operatedBy === "customer") continue;
+    if (c.operatedBy === "customer") continue;
+    if (c.selectedPathCount <= 0 && !alsoKeep(campaignKey(c.channelSlug, c.legKey))) continue;
     const leg = legs.get(c.legKey);
     if (!leg) {
       console.error("[offer-campaigns] a served campaign names a leg no listed path has", c);
@@ -151,10 +155,19 @@ export function campaignKey(featureSlug: string, legKey: string): string {
 
 /**
  * The table's order (owner 2026-10-05): campaigns that are on first, then proactive before
- * reactive, then ROI high to low (an unmeasured ROI last). Orders served figures; computes none.
+ * reactive, then ROI high to low (an unmeasured ROI last). `roiOf` names which served ROI
+ * orders it (the Sales path table orders on each campaign's measured return). Orders
+ * served figures; computes none.
  */
-export function sortCampaigns(campaigns: readonly OfferCampaign[], on: (c: OfferCampaign) => boolean): OfferCampaign[] {
-  const roi = (c: OfferCampaign) => (c.roi == null || !Number.isFinite(c.roi) ? -Infinity : c.roi);
+export function sortCampaigns(
+  campaigns: readonly OfferCampaign[],
+  on: (c: OfferCampaign) => boolean,
+  roiOf: (c: OfferCampaign) => number | null = (c) => c.roi,
+): OfferCampaign[] {
+  const roi = (c: OfferCampaign) => {
+    const v = roiOf(c);
+    return v == null || !Number.isFinite(v) ? -Infinity : v;
+  };
   return [...campaigns].sort(
     (a, b) => Number(on(b)) - Number(on(a)) || Number(a.reactive) - Number(b.reactive) || roi(b) - roi(a),
   );
