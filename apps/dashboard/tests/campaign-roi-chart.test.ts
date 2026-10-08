@@ -38,3 +38,32 @@ describe("campaign ROI chart", () => {
     expect(chart).not.toMatch(/cumulativePipelineUsd\s*\//);
   });
 });
+
+/**
+ * Owner 2026-10-08: Today is the offer's ROI page. It draws the offer's own served
+ * `roiHistory` with the same card as the campaign page, and the offer's pipeline by step
+ * from features-service `/offers/:offerId/outcomes` (never summed or divided here).
+ */
+describe("Today's return and pipeline by step", () => {
+  const today = fs.readFileSync(path.join(__dirname, "../src/components/v2/today-page.tsx"), "utf-8");
+  const roi = fs.readFileSync(path.join(__dirname, "../src/components/v2/today-roi.tsx"), "utf-8");
+
+  it("draws the offer's served roiHistory on the shared card", () => {
+    expect(today).toContain("<RoiHistoryCard");
+    expect(today).toContain("history={data?.roiHistory ?? null}");
+  });
+
+  it("reads the offer's outcomes and prints the served figures only", () => {
+    expect(today).toContain("const outcomesQ = useOfferOutcomes(brandId);");
+    expect(today).toContain("<OfferOutcomesTable");
+    expect(roi).toContain("row.valuePerOutcomeUsd");
+    expect(roi).toContain("row.valueUsd");
+    expect(roi).not.toMatch(/recipientsReached\s*\*|valueUsd\s*\//);
+    expect(roi).not.toContain("reduce(");
+  });
+
+  it("links the rates to where the customer changes them", () => {
+    expect(roi).toContain('v2OfferHref(orgId, brandId, offerId, "sales-path")');
+    expect(roi).toContain("Wrong number? Change it");
+  });
+});

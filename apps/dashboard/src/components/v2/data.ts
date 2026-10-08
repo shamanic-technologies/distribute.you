@@ -6,6 +6,7 @@ import {
   getBrand,
   getOfferRevenue,
   getOfferRevenueWindow,
+  getOfferOutcomes,
   getLeadBucketCounts,
   getLeadHistory,
   getLeadStandingCounts,
@@ -71,6 +72,18 @@ export function useBrandRevenue(brandId: string) {
   // offer and its campaigns load, `enabled` is false for want of data, not for want of an
   // offer: that is pending too, or every reload flashes the page's no-data note.
   return { ...q, enabled, pending: enabled ? q.data === undefined && !q.isError : !scopeSettled };
+}
+
+/** The selected offer's outcomes, one row per step (features-service), same gate as `useBrandRevenue`. */
+export function useOfferOutcomes(brandId: string) {
+  const featureSlug = useSoleFeatureSlug();
+  const { offerId, campaignIds, scopeSettled } = useSelectedOffer();
+  const enabled = isRevenueFeature(featureSlug) && !!offerId && (campaignIds?.length ?? 0) > 0;
+  const q = useAuthQuery(["offerStepOutcomes", brandId, offerId], () => getOfferOutcomes(offerId!, brandId), {
+    enabled,
+    ...pollOptions,
+  });
+  return { ...q, pending: enabled ? q.data === undefined && !q.isError : !scopeSettled };
 }
 
 /** Today's stat row over the last `days` UTC days, same offer and gate as `useBrandRevenue`. */

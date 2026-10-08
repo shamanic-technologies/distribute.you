@@ -252,6 +252,9 @@ export const PERSISTABLE_QUERY_ROOTS = new Set([
   // across every channel it covers, so it is a DIFFERENT answer from the per-feature
   // entry above and gets its own root.
   "brandRevenue",
+  // One offer's outcomes, step by step (Today). Not v1's dead "offerOutcomes" root:
+  // a snapshot of that old shape may still sit on disk and skips Zod when restored.
+  "offerStepOutcomes",
   // The same read over Today's chosen window (`?windowDays=`), its own answer.
   "brandRevenueWindow",
   // One campaign's window (its email counts and provisioned follow-ups), the campaign page's cards.
