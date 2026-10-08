@@ -29,7 +29,8 @@ const dash = <span className="k-fg4">—</span>;
 export function EarnedStrip({ pipeline, answered }: { pipeline: OfferPipeline | null; answered: boolean }) {
   const won = pipeline?.customersWon ?? null;
   const hot = pipeline?.hotLeads ?? null;
-  const cold = pipeline?.coldLeads ?? null;
+  // Lost = went cold or ruled out (owner 2026-10-08, one verdict with the lead families).
+  const cold = pipeline?.lostLeads ?? null;
   const coldApplies = pipeline?.coldRule?.applies ?? null;
   const cell = (label: string, figure: React.ReactNode, note: React.ReactNode) => (
     <div className="min-w-0 p-4">
@@ -61,8 +62,8 @@ export function EarnedStrip({ pipeline, answered }: { pipeline: OfferPipeline | 
       )}
       {cell(
         "Lost leads",
-        coldApplies === false ? dash : cold ? formatCount(cold.count) : dash,
-        coldApplies === false
+        coldApplies === false && !cold?.count ? dash : cold ? formatCount(cold.count) : dash,
+        coldApplies === false && !cold?.count
           ? "Connect your CRM to spot them"
           : cold
             ? cold.valueUsd != null
@@ -221,6 +222,15 @@ function ContactedLine({ label, count, eachUsd, totalUsd }: { label: string; cou
   );
 }
 
+/** Why a lead is lost, in one line: gone quiet after a step, or ruled out by a person. */
+export function lostWhy(l: ColdPipelineLead): string {
+  if (l.lostReason === "went_cold" && l.coldAtStep) {
+    return `No ${l.coldAtStep.label.toLowerCase()}${l.stalledSince ? ` since ${friendlyDate(l.stalledSince)}` : ""}`;
+  }
+  if (l.lostReason === "ruled_out") return `Ruled out at ${l.step.label.toLowerCase()}`;
+  return "Considered lost";
+}
+
 /** A table row that opens the Today panel: click, Enter or Space. */
 function openable(open: () => void, label: string) {
   return {
@@ -322,18 +332,18 @@ export function LostLeads({
   answered: boolean;
   onOpenLead: (lead: ColdPipelineLead) => void;
 }) {
-  const cold = pipeline?.coldLeads ?? null;
+  const cold = pipeline?.lostLeads ?? null;
   const applies = pipeline?.coldRule?.applies ?? null;
   const afterDays = pipeline?.coldRule?.afterDays ?? null;
   return (
     <section>
-      <SectionTitle count={applies === false ? null : cold ? cold.count : null} right={cold?.valueUsd != null ? <span>Now worth {formatUsdAdaptive(cold.valueUsd)}</span> : null}>
+      <SectionTitle count={applies === false && !cold?.count ? null : cold ? cold.count : null} right={cold?.valueUsd != null ? <span>Now worth {formatUsdAdaptive(cold.valueUsd)}</span> : null}>
         Lost leads
       </SectionTitle>
       <div className="k-card overflow-hidden">
         {!answered ? (
           <div className="p-4"><Shimmer className="h-16 w-full" /></div>
-        ) : applies === false ? (
+        ) : applies === false && !cold?.count ? (
           <EmptyNote>Connect your CRM and we spot the meetings that never happened.</EmptyNote>
         ) : !cold ? (
           <EmptyNote>Could not read who went cold. Retrying.</EmptyNote>
@@ -352,10 +362,10 @@ export function LostLeads({
               <tbody>
                 {cold.leads.map((l: ColdPipelineLead) => (
                   <tr key={l.leadId} {...openable(() => onOpenLead(l), leadName(l))}>
-                    <PersonCell lead={l} extra={`Stopped at ${l.step.label.toLowerCase()} on ${friendlyDate(l.stalledSince)}`} />
+                    <PersonCell lead={l} extra={lostWhy(l)} />
                     <td className="hidden px-3 py-2 sm:table-cell">
                       <span className="k-fg2 block truncate">{l.step.label}</span>
-                      <span className="k-fg3 block text-[12px] leading-4">No {l.coldAtStep.label.toLowerCase()} since {friendlyDate(l.stalledSince)}</span>
+                      <span className="k-fg3 block text-[12px] leading-4">{lostWhy(l)}</span>
                     </td>
                     <td className="px-3 py-2 pr-4 text-right tabular-nums">
                       <span className="block font-medium">{l.valueUsd != null ? formatUsdAdaptive(l.valueUsd) : "—"}</span>

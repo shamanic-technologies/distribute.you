@@ -50,7 +50,7 @@ function sourceWords(leg: StepValueExplanation["legs"][number]): string {
   return "Source unknown";
 }
 
-const isCold = (l: PipelineLead | ColdPipelineLead): l is ColdPipelineLead => "coldAtStep" in l;
+const isCold = (l: PipelineLead | ColdPipelineLead): l is ColdPipelineLead => "lostReason" in l;
 type CardPerson = Pick<PipelineLead, "firstName" | "lastName" | "title" | "orgName" | "orgDomain" | "valueUsd" | "probabilityPct">;
 const leadName = (l: CardPerson) => [l.firstName, l.lastName].filter(Boolean).join(" ") || l.orgName || "Unknown";
 
@@ -183,8 +183,9 @@ function LeadBody({ lead, step, brandId }: { lead: PipelineLead | ColdPipelineLe
         <section>
           <p className="k-label mb-2">Why we consider it lost</p>
           <p className="k-fg2 text-[13px]">
-            Reached {lead.step.label.toLowerCase()} on {friendlyDate(lead.stalledSince)}. No {lead.coldAtStep.label.toLowerCase()} since, so it
-            counts as lost from {friendlyDate(lead.coldSince)}.
+            {lead.lostReason === "went_cold" && lead.coldAtStep
+              ? `Reached ${lead.step.label.toLowerCase()}${lead.stalledSince ? ` on ${friendlyDate(lead.stalledSince)}` : ""}. No ${lead.coldAtStep.label.toLowerCase()} since, so it counts as lost${lead.coldSince ? ` from ${friendlyDate(lead.coldSince)}` : ""}.`
+              : `Ruled out at ${lead.step.label.toLowerCase()}: someone said the next step will not happen.`}
           </p>
         </section>
       )}
