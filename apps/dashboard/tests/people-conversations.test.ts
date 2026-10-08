@@ -122,6 +122,20 @@ describe("timeline", () => {
     const notes = PersonTimelineSchema.parse(timeline).sources.map(timelineSourceNote);
     expect(notes).toEqual([null, null, "GoHighLevel is not connected.", "Messaging apps could not be read: timeout."]);
   });
+  it("keeps google-service's clean verdict and the original body (crm-service #51)", () => {
+    const withClean = {
+      ...timeline,
+      items: [
+        { ...timeline.items[0], text: "Yes, send the deck.", textClean: { status: "cleaned", cleaned: true, original: "Yes, send the deck.\n\nOn Mon, Kevin wrote:\n> Hi" } },
+        { ...timeline.items[0], textClean: { status: "judge_failed", cleaned: false, original: "Hello Alice" } },
+        { ...timeline.items[1], textClean: null },
+      ],
+    };
+    const items = PersonTimelineSchema.parse(withClean).items;
+    expect(items[0].textClean).toEqual(withClean.items[0].textClean);
+    expect(items[1].textClean?.cleaned).toBe(false);
+    expect(items[2].textClean).toBeNull();
+  });
 });
 
 describe("wiring", () => {
