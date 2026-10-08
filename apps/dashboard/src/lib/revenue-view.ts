@@ -429,6 +429,8 @@ export interface RoiHistory {
   /** Pipeline counted in the headline whose outcome carries no timestamp, so it sits on
    *  no day. `datedPipelineUsd + undatedPipelineUsd === totalPipelineUsd`. */
   undatedPipelineUsd: number;
+  /** The same curve with no maturity cut: its last point is the FLASH return. */
+  flash?: Omit<RoiHistory, "flash">;
 }
 
 /** Everything the overview + conversions pages render at a feature, offer or brand grain. */

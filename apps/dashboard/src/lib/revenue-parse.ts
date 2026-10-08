@@ -287,6 +287,23 @@ export const RoiHistorySchema = z.object({
   ),
   datedPipelineUsd: z.coerce.number(),
   undatedPipelineUsd: z.coerce.number(),
+  // The flash twin (features-service v0.179.81): the same fold over every dollar and every
+  // dated lead, no maturity cut. Its last point is the flash return, so a page whose
+  // headline shows the flash return draws this curve under it.
+  flash: z
+    .object({
+      daily: z.array(
+        z.object({
+          date: z.string(),
+          cumulativeSpendUsd: z.coerce.number(),
+          cumulativePipelineUsd: z.coerce.number(),
+          roiMultiple: z.coerce.number().nullable(),
+        }),
+      ),
+      datedPipelineUsd: z.coerce.number(),
+      undatedPipelineUsd: z.coerce.number(),
+    })
+    .optional(),
 });
 // Server-computed signal aggregate. `.optional()` on the response fields decouples
 // backend rollout; `z.coerce.number()` because Postgres numeric/bigint can

@@ -3039,6 +3039,28 @@ const OfferCampaignBudgetsSchema = z.object({
   offerId: z.string(),
   period: z.enum(["day", "month"]),
   items: z.array(OfferCampaignBudgetItemSchema),
+  // What the offer is committed to now, ON campaigns only (billing v0.83.2): proactive
+  // spend and reactive ceilings, served summed. null = campaign-service could not say
+  // which campaigns are on. Optional until deployed.
+  totals: z
+    .object({
+      period: z.enum(["day", "month"]),
+      proactive: z.object({ budgetCents: z.coerce.number(), campaigns: z.coerce.number() }),
+      reactive: z.object({
+        maxBudgetCents: z.coerce.number(),
+        campaigns: z.coerce.number(),
+        byTrigger: z.array(
+          z.object({
+            triggerKey: z.string().nullable(),
+            triggerLabel: z.string().nullable(),
+            maxBudgetCents: z.coerce.number(),
+            campaigns: z.coerce.number(),
+          }),
+        ),
+      }),
+    })
+    .nullish(),
+  totalsUnavailableReason: z.string().nullish(),
 });
 
 export type OfferCampaignBudgets = z.infer<typeof OfferCampaignBudgetsSchema>;
@@ -5155,21 +5177,121 @@ export async function getOfferContactedValue(offerId: string, brandId: string, l
 // what reaching it is worth (P(paid client | step) x lifetime revenue, best path) and
 // the priced total. Rows do not add across steps (a person who replied then booked is
 // in both). Declared narrow: the Today page reads these four figures only.
+const OutcomeStepRefSchema = z.object({ key: z.string(), label: z.string() });
+
+// WHY a step is worth what it is (features-service v0.179.81): lifetime revenue x the
+// chance to become a paying client, that chance being the product of the legs listed,
+// each with its rate's source. Reconciled to the cent by the producer; null otherwise.
+const StepValueExplanationSchema = z.object({
+  lifetimeRevenueUsd: z.coerce.number(),
+  probabilityPct: z.coerce.number(),
+  legs: z.array(
+    z.object({
+      fromStep: OutcomeStepRefSchema,
+      toStep: OutcomeStepRefSchema,
+      ratePct: z.coerce.number(),
+      source: z.enum(["measured", "manual", "median", "default"]).nullable(),
+      measured: z
+        .object({
+          basis: z.enum(["crm", "our_leads"]),
+          fromReached: z.coerce.number().nullable(),
+          toReached: z.coerce.number().nullable(),
+        })
+        .nullable(),
+    }),
+  ),
+});
+
+const StepConversionSchema = z.object({
+  previousSteps: z.array(z.string()),
+  previousReached: z.coerce.number(),
+  reachedFromPrevious: z.coerce.number(),
+  ratePct: z.coerce.number().nullable(),
+});
+
 const OfferOutcomeRowSchema = z.object({
-  step: z.object({ key: z.string(), label: z.string() }),
+  step: OutcomeStepRefSchema,
   recipientsReached: z.coerce.number().nullable(),
   valuePerOutcomeUsd: z.coerce.number().nullable(),
   valueUsd: z.coerce.number().nullable(),
   unmeasuredReason: z.string().nullable(),
+  valueExplanation: StepValueExplanationSchema.nullish(),
+  conversionFromPrevious: StepConversionSchema.nullish(),
+});
+
+const PipelineLeadSchema = z.object({
+  leadId: z.string(),
+  firstName: z.string().nullable(),
+  lastName: z.string().nullable(),
+  title: z.string().nullable(),
+  orgName: z.string().nullable(),
+  orgDomain: z.string().nullable(),
+  step: OutcomeStepRefSchema,
+  valueUsd: z.coerce.number().nullable(),
+  probabilityPct: z.coerce.number().nullable(),
+});
+
+// What working with us earned the offer, every step a lead climbs (not only the steps a
+// leg of ours lands on), customers won on our outreach, and the hot and cold leads.
+const OfferPipelineSchema = z.object({
+  peopleContacted: z.coerce.number(),
+  companiesContacted: z.coerce.number(),
+  ladder: z.array(
+    z.object({
+      step: OutcomeStepRefSchema,
+      recipientsReached: z.coerce.number().nullable(),
+      pricedRecipientsReached: z.coerce.number().nullable(),
+      valuePerOutcomeUsd: z.coerce.number().nullable(),
+      valueExplanation: StepValueExplanationSchema.nullable(),
+      conversionFromPrevious: StepConversionSchema.nullable(),
+      wentCold: z.object({ count: z.coerce.number(), valueUsd: z.coerce.number().nullable() }).nullable(),
+      // The step's priced pipeline (features-service #1399): priced people x value each.
+      // Null when the step is not counted or not priced. Optional until served.
+      pricedValueUsd: z.coerce.number().nullish(),
+    }),
+  ),
+  customersWon: z
+    .object({
+      count: z.coerce.number(),
+      valueUsd: z.coerce.number().nullable(),
+      otherCausesLeadCount: z.coerce.number(),
+    })
+    .nullable(),
+  coldRule: z.object({ applies: z.boolean(), afterDays: z.coerce.number().nullable() }).nullable(),
+  coldLeads: z
+    .object({
+      count: z.coerce.number(),
+      valueUsd: z.coerce.number().nullable(),
+      leads: z.array(
+        PipelineLeadSchema.extend({ coldAtStep: OutcomeStepRefSchema, coldSince: z.string(), stalledSince: z.string() }),
+      ),
+    })
+    .nullable(),
+  hotLeads: z
+    .object({
+      limit: z.coerce.number(),
+      totalCount: z.coerce.number(),
+      totalValueUsd: z.coerce.number(),
+      leads: z.array(PipelineLeadSchema),
+    })
+    .nullable(),
+  leadValuesUnpricedReason: z.string().nullable(),
 });
 
 const OfferOutcomesSchema = z.object({
   offerId: z.string(),
   outcomes: z.array(OfferOutcomeRowSchema),
+  // Not served before features-service v0.179.81; the page says so rather than guess.
+  pipeline: OfferPipelineSchema.optional(),
 });
 
 export type OfferOutcomeRow = z.infer<typeof OfferOutcomeRowSchema>;
 export type OfferOutcomes = z.infer<typeof OfferOutcomesSchema>;
+export type OfferPipeline = z.infer<typeof OfferPipelineSchema>;
+export type OfferLadderStep = OfferPipeline["ladder"][number];
+export type StepValueExplanation = z.infer<typeof StepValueExplanationSchema>;
+export type PipelineLead = z.infer<typeof PipelineLeadSchema>;
+export type ColdPipelineLead = NonNullable<OfferPipeline["coldLeads"]>["leads"][number];
 
 /** GET /offers/:offerId/outcomes — what the offer's people are worth, step by step. */
 export async function getOfferOutcomes(offerId: string, brandId: string): Promise<OfferOutcomes> {
