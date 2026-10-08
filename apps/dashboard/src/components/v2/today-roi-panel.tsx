@@ -16,6 +16,8 @@ import {
   type StepPerson,
   type LostStepPerson,
   type StepValueExplanation,
+  type ExclusiveLadder,
+  type ExclusiveRow,
 } from "@/lib/api";
 import { useSetAnyLeadStepStatement } from "@/lib/use-lead-step-statements";
 import { StageStatementForm } from "@/components/leads/lead-stage-section";
@@ -31,6 +33,7 @@ import { EmptyNote, Initials, Shimmer } from "@/components/v2/ui";
 /** What the Today panel shows: one step of the pipeline, or one lead. */
 export type TodayPanelTarget =
   | { kind: "step"; stepKey: string }
+  | { kind: "contacted" }
   | { kind: "lead"; lead: PipelineLead | ColdPipelineLead; group: "hot" | "lost" };
 
 const pct = (v: number) => `${v < 10 ? v.toFixed(1) : Math.round(v)}%`;
@@ -83,17 +86,19 @@ export function TodayPanel({
   useEffect(() => setHost(document.getElementById("v2-portal")), []);
   if (!host) return null;
 
-  const stepKey = target.kind === "step" ? target.stepKey : target.lead.step.key;
-  const step = pipeline?.ladder.find((s) => s.step.key === stepKey) ?? null;
+  const stepKey = target.kind === "step" ? target.stepKey : target.kind === "lead" ? target.lead.step.key : null;
+  const step = stepKey ? pipeline?.ladder.find((s) => s.step.key === stepKey) ?? null : null;
+  // The same step on the one-row-per-person reading: its people and its slice (#1416).
+  const slice = stepKey ? pipeline?.exclusiveLadder?.rows.find((r) => r.step.key === stepKey) ?? null : null;
 
   return createPortal(
     <aside
       role="dialog"
-      aria-label={target.kind === "step" ? `${step?.step.label ?? "Step"} details` : `${leadName(target.lead)} details`}
+      aria-label={target.kind === "step" ? `${step?.step.label ?? "Step"} details` : target.kind === "contacted" ? "People contacted details" : `${leadName(target.lead)} details`}
       className="k-popover fixed inset-y-2 right-2 z-[80] flex w-[min(480px,calc(100vw-16px))] flex-col overflow-hidden"
     >
       <div className="k-line-subtle flex h-11 shrink-0 items-center justify-between border-b px-4">
-        <span className="k-label">{target.kind === "step" ? "Step" : target.group === "hot" ? "Hot lead" : "Lost lead"}</span>
+        <span className="k-label">{target.kind === "step" ? "Step" : target.kind === "contacted" ? "People contacted" : target.group === "hot" ? "Hot lead" : "Lost lead"}</span>
         <button type="button" onClick={onClose} aria-label="Close" className="k-btn-ghost h-7 w-7 justify-center px-0">
           <svg width="12" height="12" viewBox="0 0 12 12" aria-hidden="true">
             <path d="M3 3l6 6M9 3l-6 6" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" />
@@ -102,7 +107,9 @@ export function TodayPanel({
       </div>
       <div className="k-scroll min-h-0 flex-1 space-y-6 overflow-y-auto p-4">
         {target.kind === "step" ? (
-          <StepBody step={step} brandId={brandId} />
+          <StepBody step={step} slice={slice} brandId={brandId} />
+        ) : target.kind === "contacted" ? (
+          <ContactedBody contacted={pipeline?.exclusiveLadder?.contacted ?? null} />
         ) : (
           <LeadBody lead={target.lead} step={step} brandId={brandId} />
         )}
@@ -112,15 +119,19 @@ export function TodayPanel({
   );
 }
 
-function StepBody({ step, brandId }: { step: OfferLadderStep | null; brandId: string }) {
+function StepBody({ step, slice, brandId }: { step: OfferLadderStep | null; slice: ExclusiveRow | null; brandId: string }) {
   if (!step) return <EmptyNote>This step is not readable right now.</EmptyNote>;
   const cold = step.wentCold;
+  // One row per person: the people whose furthest step is this one, never the ones who went further.
+  const people = slice?.people ?? step.people ?? null;
   return (
     <>
       <div>
         <h2 className="text-[20px] font-medium leading-7 tracking-[-0.01em]">{step.step.label}</h2>
         <p className="k-fg2 mt-1 text-[13px] tabular-nums">
-          {step.pricedRecipientsReached != null ? `${formatCount(step.pricedRecipientsReached)} thanks to us` : "\u00a0"}
+          {(slice?.pricedPeople ?? step.pricedRecipientsReached) != null
+            ? `${formatCount((slice?.pricedPeople ?? step.pricedRecipientsReached) as number)} thanks to us${step.step.key === "paid_client" ? "" : ", not further yet"}`
+            : "\u00a0"}
         </p>
       </div>
       <div className="k-card grid grid-cols-2 divide-x divide-[var(--line-subtle)]">
@@ -130,14 +141,16 @@ function StepBody({ step, brandId }: { step: OfferLadderStep | null; brandId: st
         </div>
         <div className="p-3">
           <p className="k-label">Pipeline</p>
-          <p className="mt-1 text-[20px] font-medium tabular-nums">{step.pricedValueUsd != null ? formatUsdAdaptive(step.pricedValueUsd) : "—"}</p>
+          <p className="mt-1 text-[20px] font-medium tabular-nums">
+            {slice ? (slice.pipelineUsd != null ? formatUsdAdaptive(slice.pipelineUsd) : "—") : step.pricedValueUsd != null ? formatUsdAdaptive(step.pricedValueUsd) : "—"}
+          </p>
         </div>
       </div>
       <WhySection why={step.valueExplanation} brandId={brandId} />
-      {step.people ? (
+      {people ? (
         <>
-          <PeopleGroup title="Thanks to us" count={step.people.ours.count}>
-            {step.people.ours.leads.map((l) => (
+          <PeopleGroup title="Thanks to us" count={people.ours.count}>
+            {people.ours.leads.map((l) => (
               <LeadCard
                 key={l.leadId}
                 lead={l}
@@ -146,16 +159,16 @@ function StepBody({ step, brandId }: { step: OfferLadderStep | null; brandId: st
               />
             ))}
           </PeopleGroup>
-          {step.people.lost.count > 0 && (
-            <PeopleGroup title="Thanks to us, considered lost" count={step.people.lost.count}>
-              {step.people.lost.leads.map((l) => (
+          {people.lost.count > 0 && (
+            <PeopleGroup title="Thanks to us, considered lost" count={people.lost.count}>
+              {people.lost.leads.map((l) => (
                 <LeadCard key={l.leadId} lead={l} size="lost" meta={lostWords(l)} />
               ))}
             </PeopleGroup>
           )}
-          {step.people.notOurs.count > 0 && (
-            <PeopleGroup title="Not from us" sub="Your CRM or another source" count={step.people.notOurs.count}>
-              {step.people.notOurs.leads.map((l) => (
+          {people.notOurs.count > 0 && (
+            <PeopleGroup title="Not from us" sub="Your CRM or another source" count={people.notOurs.count}>
+              {people.notOurs.leads.map((l) => (
                 <LeadCard key={l.leadId} lead={l} size="compact" meta={l.reachedAt ? friendlyDate(l.reachedAt) : null} />
               ))}
             </PeopleGroup>
@@ -191,6 +204,69 @@ function LeadBody({ lead, step, brandId }: { lead: PipelineLead | ColdPipelineLe
       )}
       <WhySection why={step?.valueExplanation ?? null} brandId={brandId} />
       <LeadStatus lead={lead} lifetimeRevenueUsd={step?.valueExplanation?.lifetimeRevenueUsd ?? null} />
+    </>
+  );
+}
+
+/**
+ * People contacted who have done nothing yet (owner 2026-10-08): how one is priced (the
+ * chance of reaching each entry step from contact, times that step's value, as served),
+ * who counts at zero and why, and the people.
+ */
+function ContactedBody({ contacted }: { contacted: ExclusiveLadder["contacted"] | null }) {
+  if (!contacted) return <EmptyNote>Not readable right now.</EmptyNote>;
+  const why = contacted.explanation;
+  const zero = [
+    contacted.expiredCount > 0 ? `${formatCount(contacted.expiredCount)} with no email in ${why?.expiryDays ?? 30} days` : null,
+    contacted.cannotConvertCount > 0 ? `${formatCount(contacted.cannotConvertCount)} bounced or unsubscribed` : null,
+    contacted.unpricedCount > 0 ? `${formatCount(contacted.unpricedCount)} with no rate yet` : null,
+  ].filter(Boolean);
+  return (
+    <>
+      <div>
+        <h2 className="text-[20px] font-medium leading-7 tracking-[-0.01em]">People contacted</h2>
+        <p className="k-fg2 mt-1 text-[13px] tabular-nums">{formatCount(contacted.count)} contacted, no step reached yet</p>
+      </div>
+      <div className="k-card grid grid-cols-2 divide-x divide-[var(--line-subtle)]">
+        <div className="p-3">
+          <p className="k-label">Worth each</p>
+          <p className="mt-1 text-[20px] font-medium tabular-nums">{contacted.valuePerPersonUsd != null ? formatUsdAdaptive(contacted.valuePerPersonUsd) : "—"}</p>
+        </div>
+        <div className="p-3">
+          <p className="k-label">Pipeline</p>
+          <p className="mt-1 text-[20px] font-medium tabular-nums">{contacted.pipelineUsd != null ? formatUsdAdaptive(contacted.pipelineUsd) : "—"}</p>
+        </div>
+      </div>
+      {why && (
+        <section>
+          <p className="k-label mb-2">How we price it</p>
+          <p className="k-fg2 text-[13px]">Each person we email has a chance to take a first step. That chance, times what the step is worth:</p>
+          <ul className="k-card mt-3 divide-y divide-[var(--line-subtle)]">
+            {why.routes.map((r) => (
+              <li key={r.legKey} className="flex items-center gap-3 px-3 py-2.5 text-[13px]">
+                <span className="min-w-0 flex-1 truncate">Contacted <span className="k-fg3">→</span> {r.step.label}</span>
+                <span className="shrink-0 tabular-nums">
+                  {pct(r.entryRatePct)} <span className="k-fg3">×</span> {formatUsdAdaptive(r.valueAtStepUsd)}
+                </span>
+              </li>
+            ))}
+          </ul>
+          <p className="k-fg3 mt-2 text-[12px]">
+            Measured on what each campaign spent per person and what one {why.routes.length > 1 ? "step" : why.routes[0]?.step.label.toLowerCase() ?? "step"} costs. A person counts for {why.expiryDays} days after our last email.
+          </p>
+        </section>
+      )}
+      {zero.length > 0 && (
+        <section>
+          <p className="k-label mb-2">Counted at $0</p>
+          <p className="k-fg2 text-[13px]">{zero.join(" · ")}</p>
+        </section>
+      )}
+      <PeopleGroup title="Most valuable" count={contacted.valuedCount}>
+        {contacted.people.leads.map((l) => (
+          <LeadCard key={l.leadId} lead={l} size="compact" meta={l.countedWithColleague ? "Company already counted with a colleague" : l.reachedAt ? `Contacted ${friendlyDate(l.reachedAt)}` : null} />
+        ))}
+      </PeopleGroup>
     </>
   );
 }
