@@ -21,6 +21,7 @@ import { EmptyNote, Initials, Shimmer } from "@/components/v2/ui";
 import { CompanyMark } from "@/components/v2/people-bits";
 import { parseFrom, personCompanyDomain, personSourceMarks, sourceMark, type SourceMark } from "@/lib/conversation-sources";
 import { RecordsToolbar, useRowKeys } from "@/components/v2/records";
+import { timelineTag, type TimelineIcon, type TimelineTag, type TimelineTone } from "@/lib/timeline-tags";
 
 // The publishable logo.dev token the dashboard already ships (company-logo.tsx).
 const LOGO_DEV_TOKEN = "pk_J1iY4__HSfm9acHjR8FibA";
@@ -152,15 +153,16 @@ export function V2ConversationsView({ brandId }: { brandId: string }) {
 
   return (
     <div className="space-y-4 lg:flex lg:min-h-0 lg:flex-1 lg:flex-col">
+      {/* The search runs the whole width, above both cards (owner 2026-10-08). */}
+      <div className="shrink-0 [&>div]:p-0 md:[&>div]:p-0 [&_label]:max-w-none">
+        <RecordsToolbar search={search} onSearch={setSearch} placeholder="Search people and messages" inputRef={searchRef} />
+      </div>
       <div className="grid gap-4 lg:min-h-0 lg:flex-1 lg:grid-cols-[380px_minmax(0,1fr)] lg:grid-rows-[minmax(0,1fr)]">
         <section className="k-card flex max-h-[calc(100vh-220px)] min-h-[420px] flex-col overflow-hidden lg:max-h-none">
           <header className="k-line-subtle flex h-10 shrink-0 items-center justify-between border-b px-4">
             <span className="k-label">People</span>
             <span className="k-fg3 text-[12px] tabular-nums">{formatCount(list.total)}</span>
           </header>
-          <div className="k-line-subtle shrink-0 border-b [&>div]:px-3 [&>div]:py-2 md:[&>div]:px-3 [&_label]:max-w-none">
-            <RecordsToolbar search={search} onSearch={setSearch} placeholder="Search people and messages" inputRef={searchRef} />
-          </div>
           <div ref={scrollBox} className="k-scroll min-h-0 flex-1 overflow-y-auto">
             {people && people.length > 0 ? (
               <ul>
@@ -320,14 +322,48 @@ function ThreadItem({ item }: { item: PersonTimelineItem }) {
   if (item.kind === "event") {
     return (
       <div className="k-fg2 flex items-center gap-2 text-[12px]">
+        <TagChip tag={timelineTag(item)} />
         <SourceLogo mark={mark} size={14} />
-        <span className="font-medium">{item.event ? stateLabel(item.event.step) : (item.subject ?? "Event")}</span>
         <span className="k-fg3">{meta}</span>
       </div>
     );
   }
 
   return <Message item={item} mark={mark} meta={meta} />;
+}
+
+const TONE_COLOR: Record<TimelineTone, string> = {
+  won: "var(--run)",
+  hot: "var(--data-amber)",
+  lost: "var(--data-rose)",
+  reply: "var(--data-teal)",
+  neutral: "var(--fg-3)",
+};
+
+const ICON_PATH: Record<TimelineIcon, string> = {
+  sent: "M2.5 8 13.5 2.5 10 13.5 7.5 9z M7.5 9l6-6.5",
+  reply: "M6.5 4 3 7.5 6.5 11 M3 7.5h6a4 4 0 0 1 4 4v1",
+  visit: "M8 2.5a5.5 5.5 0 1 0 0 11 5.5 5.5 0 0 0 0-11z M2.5 8h11 M8 2.5c1.6 1.6 2.3 3.4 2.3 5.5S9.6 11.9 8 13.5C6.4 11.9 5.7 10.1 5.7 8S6.4 4.1 8 2.5z",
+  meeting: "M3 4h10v9H3z M3 7h10 M5.5 2.5v3 M10.5 2.5v3",
+  money: "M8 2.5v11 M10.8 5.2C10.3 4.5 9.3 4 8 4 6.6 4 5.5 4.8 5.5 6s1 1.6 2.5 2 2.5.8 2.5 2-1.1 2-2.5 2c-1.3 0-2.3-.5-2.8-1.2",
+  lost: "M4.5 4.5l7 7 M11.5 4.5l-7 7",
+  dot: "M8 6.5a1.5 1.5 0 1 0 0 3 1.5 1.5 0 0 0 0-3z",
+};
+
+/** A timeline item's tag: what happened, in its family's colour, with an icon. */
+function TagChip({ tag }: { tag: TimelineTag }) {
+  const color = TONE_COLOR[tag.tone];
+  return (
+    <span
+      className="inline-flex h-5 shrink-0 items-center gap-1 rounded-md px-1.5 text-[11.5px] font-medium"
+      style={{ color, background: `color-mix(in srgb, ${color} 12%, transparent)` }}
+    >
+      <svg width="11" height="11" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+        <path d={ICON_PATH[tag.icon]} stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+      </svg>
+      {tag.label}
+    </span>
+  );
 }
 
 function Message({ item, mark, meta }: { item: PersonTimelineItem; mark: SourceMark; meta: string }) {
@@ -354,6 +390,9 @@ function Message({ item, mark, meta }: { item: PersonTimelineItem; mark: SourceM
         <span className="flex shrink-0 items-center gap-1">
           ·{!outbound && <SourceLogo mark={mark} size={12} />}
           {meta}
+        </span>
+        <span className="ml-auto shrink-0">
+          <TagChip tag={timelineTag(item)} />
         </span>
         {notCleaned && <span className="k-chip shrink-0">Not cleaned</span>}
       </p>
