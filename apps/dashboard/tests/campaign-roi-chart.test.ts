@@ -88,8 +88,8 @@ describe("Today's return and pipeline by step", () => {
   it("reads the offer's outcomes and prints the served figures only", () => {
     expect(today).toContain("const outcomesQ = useOfferOutcomes(brandId);");
     expect(today).toContain("<OfferOutcomesTable");
-    expect(roi).toContain("row.valuePerOutcomeUsd");
-    expect(roi).toContain("row.valueUsd");
+    expect(roi).toContain("s.valuePerOutcomeUsd");
+    expect(roi).toContain("s.pricedValueUsd");
     expect(roi).not.toMatch(/recipientsReached\s*\*|valueUsd\s*\//);
     expect(roi).not.toContain("reduce(");
   });
@@ -108,5 +108,31 @@ describe("Today's budget totals are billing's", () => {
     expect(today).toContain("totals.reactive.maxBudgetCents");
     expect(today).toContain("totals.reactive.byTrigger.map(");
     expect(today).not.toMatch(/items\.reduce\(/);
+  });
+});
+
+/**
+ * Owner 2026-10-08: a step's panel shows who stands on it in three groups (ours, ours
+ * lost, not ours), served by features-service; a lead's panel changes its status with
+ * lead-service's per-lead step statements, cost asked, keyed on the campaign row id.
+ */
+describe("Today panel: people by group and the lead status change", () => {
+  const panel = fs.readFileSync(path.join(__dirname, "../src/components/v2/today-roi-panel.tsx"), "utf-8");
+  const roi = fs.readFileSync(path.join(__dirname, "../src/components/v2/today-roi.tsx"), "utf-8");
+  it("renders the three served groups, the ours ones as the big cards", () => {
+    const ours = panel.slice(panel.indexOf("step.people.ours.leads.map("), panel.indexOf("step.people.lost.count > 0"));
+    expect(ours).toContain('size="hero"');
+    expect(panel).toContain('<LeadCard key={l.leadId} lead={l} size="lost"');
+    expect(panel).toContain('<LeadCard key={l.leadId} lead={l} size="compact"');
+  });
+  it("writes a status through the step statement on the served row id, cost asked", () => {
+    expect(panel).toContain("const rowId = lead.campaignLeadId ?? null;");
+    expect(panel).toContain("useSetAnyLeadStepStatement()");
+    expect(panel).toContain("<StageStatementForm");
+    expect(panel).toContain("<CloseWonForm");
+  });
+  it("reads conversion on the priced basis, beside the priced People count", () => {
+    expect(roi).toContain("s.pricedConversionFromPrevious?.ratePct");
+    expect(roi).not.toContain("conversionFromPrevious?.ratePct != null ? pct(conv");
   });
 });

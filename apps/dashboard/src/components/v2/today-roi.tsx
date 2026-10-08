@@ -111,8 +111,7 @@ export function OfferOutcomesTable({
   const ladder = pipeline
     ? [...pipeline.ladder].reverse().filter((s) => s.recipientsReached != null && (s.recipientsReached > 0 || s.valuePerOutcomeUsd != null))
     : null;
-  const legacy = rows ? [...rows].reverse().filter((r) => r.unmeasuredReason !== "step_not_counted") : [];
-  const cols = 4;
+  const cols = 5;
   return (
     <section>
       <SectionTitle right={<span>Since you started</span>}>Pipeline by step</SectionTitle>
@@ -123,6 +122,7 @@ export function OfferOutcomesTable({
               <tr className="k-line-subtle border-b">
                 <th className="k-label px-2 py-2.5 sm:px-3 pl-4 text-left font-normal">Step</th>
                 <th className="k-label px-2 py-2.5 sm:px-3 text-right font-normal">People</th>
+                <th className="k-label hidden whitespace-nowrap px-2 py-2.5 text-right font-normal sm:table-cell sm:px-3">Conversion</th>
                 <th className="k-label whitespace-nowrap px-2 py-2.5 sm:px-3 text-right font-normal">
                   <ExpectedLabel tip={WORTH_EACH_TIP}>Worth each</ExpectedLabel>
                 </th>
@@ -157,14 +157,12 @@ export function OfferOutcomesTable({
                   />
                   <ContactedLine label="Companies contacted" count={pipeline?.companiesContacted ?? null} eachUsd={null} totalUsd={null} />
                 </>
-              ) : legacy.length === 0 ? (
+              ) : (
                 <tr>
                   <td colSpan={cols}>
-                    <EmptyNote>No step to show yet. Each step lands here once a campaign works it.</EmptyNote>
+                    <EmptyNote>Could not read your pipeline. Retrying.</EmptyNote>
                   </td>
                 </tr>
-              ) : (
-                legacy.map((r) => <OutcomeLine key={r.step.key} row={r} />)
               )}
             </tbody>
           </table>
@@ -202,6 +200,10 @@ function LadderLine({ s, onOpen }: { s: OfferLadderStep; onOpen: () => void }) {
     >
       <td className="px-2 py-2 pl-4 font-medium sm:px-3">{s.step.label}</td>
       <td className="px-2 py-2 text-right tabular-nums sm:px-3">{s.pricedRecipientsReached != null ? formatCount(s.pricedRecipientsReached) : dash}</td>
+      {/* From the step before, on the people we brought: the same basis as People. */}
+      <td className="hidden px-2 py-2 text-right tabular-nums sm:table-cell sm:px-3">
+        {s.pricedConversionFromPrevious?.ratePct != null ? pct(s.pricedConversionFromPrevious.ratePct) : dash}
+      </td>
       <td className="px-2 py-2 text-right tabular-nums sm:px-3">{s.valuePerOutcomeUsd != null ? formatUsdAdaptive(s.valuePerOutcomeUsd) : dash}</td>
       <td className="px-2 py-2 pr-4 text-right font-medium tabular-nums sm:px-3">{s.pricedValueUsd != null ? formatUsdAdaptive(s.pricedValueUsd) : dash}</td>
     </tr>
@@ -213,19 +215,9 @@ function ContactedLine({ label, count, eachUsd, totalUsd }: { label: string; cou
     <tr className="k-line-subtle border-b last:border-0">
       <td className="px-2 py-2 sm:px-3 pl-4 font-medium">{label}</td>
       <td className="px-2 py-2 sm:px-3 text-right tabular-nums">{count != null ? formatCount(count) : dash}</td>
+      <td className="hidden px-2 py-2 text-right sm:table-cell sm:px-3">{dash}</td>
       <td className="px-2 py-2 sm:px-3 text-right tabular-nums">{eachUsd != null ? formatUsdAdaptive(eachUsd) : dash}</td>
       <td className="px-2 py-2 sm:px-3 pr-4 text-right font-medium tabular-nums">{totalUsd != null ? formatUsdAdaptive(totalUsd) : dash}</td>
-    </tr>
-  );
-}
-
-function OutcomeLine({ row }: { row: OfferOutcomeRow }) {
-  return (
-    <tr className="k-row k-line-subtle border-b last:border-0">
-      <td className="px-3 py-2 pl-4 font-medium">{row.step.label}</td>
-      <td className="px-3 py-2 text-right tabular-nums">{row.recipientsReached != null ? formatCount(row.recipientsReached) : dash}</td>
-      <td className="px-3 py-2 text-right tabular-nums">{row.valuePerOutcomeUsd != null ? formatUsdAdaptive(row.valuePerOutcomeUsd) : dash}</td>
-      <td className="px-3 py-2 pr-4 text-right font-medium tabular-nums">{row.valueUsd != null ? formatUsdAdaptive(row.valueUsd) : dash}</td>
     </tr>
   );
 }
