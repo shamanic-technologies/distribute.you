@@ -213,6 +213,6 @@ export function sourceLine(s: PeopleSourceRead): { tone: "ok" | "off" | "failed"
 export function timelineSourceNote(s: PersonTimeline["sources"][number]): string | null {
   const name = sourceLabel(s.source);
   if (s.status === "failed") return `${name} could not be read${s.error ? `: ${s.error}` : ""}.`;
-  if (s.status === "not_connected") return `${name} is not connected.`;
+  // A source the brand never connected says nothing under a thread (owner 2026-10-08).
   return null;
 }

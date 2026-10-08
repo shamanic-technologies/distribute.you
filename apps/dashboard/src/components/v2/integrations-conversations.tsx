@@ -1,9 +1,10 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { useInfiniteQuery, useQueryClient } from "@tanstack/react-query";
 import { useRouter, useSearchParams } from "next/navigation";
 import { getPersonTimeline, listPeople } from "@/lib/api";
-import { useAuthQuery } from "@/lib/use-auth-query";
+import { useAuthQuery, useOrgQueryGate } from "@/lib/use-auth-query";
 import { POLL_INTERVAL } from "@/lib/query-options";
 import { formatCount } from "@/lib/format-number";
 import { friendlyDateTime, timeAgo } from "@/lib/friendly-datetime";
@@ -18,7 +19,7 @@ import {
 } from "@/lib/people-conversations";
 import { EmptyNote, Initials, Shimmer } from "@/components/v2/ui";
 import { CompanyMark } from "@/components/v2/people-bits";
-import { personCompanyDomain, personSourceMarks, sourceMark, type SourceMark } from "@/lib/conversation-sources";
+import { parseFrom, personCompanyDomain, personSourceMarks, sourceMark, type SourceMark } from "@/lib/conversation-sources";
 import { RecordsToolbar, useRowKeys } from "@/components/v2/records";
 
 // The publishable logo.dev token the dashboard already ships (company-logo.tsx).
@@ -26,6 +27,11 @@ const LOGO_DEV_TOKEN = "pk_J1iY4__HSfm9acHjR8FibA";
 
 /** The thread reads every source live on each call, so it refreshes slower than the list. */
 const TIMELINE_POLL = 60_000;
+
+/** How many threads, from the top of the list, load before anyone clicks. */
+const PRELOAD_TOP = 8;
+
+const timelineKey = (brandId: string, personKey: string) => ["personTimeline", brandId, personKey] as const;
 
 /** How long the typing pauses before the search is asked. */
 const SEARCH_DEBOUNCE_MS = 300;
@@ -43,35 +49,87 @@ const FOLD_AT = 600;
 export function V2ConversationsView({ brandId }: { brandId: string }) {
   const params = useSearchParams();
   const router = useRouter();
-  const [page, setPage] = useState(0);
   const [cursor, setCursor] = useState(-1);
   const searchRef = useRef<HTMLInputElement | null>(null);
   const openKey = params.get("person");
   // The search runs at crm-service (names, addresses, companies AND message text across
-  // every page), asked once the typing pauses; a new query starts from page one.
+  // every page), asked once the typing pauses.
   const [search, setSearch] = useState("");
   const [q, setQ] = useState("");
   useEffect(() => {
     const t = setTimeout(() => {
       setQ(search.trim());
-      setPage(0);
     }, SEARCH_DEBOUNCE_MS);
     return () => clearTimeout(t);
   }, [search]);
 
-  const listQ = useAuthQuery(
-    ["people", brandId, page, q],
-    () => listPeople(brandId, { limit: PEOPLE_PAGE_SIZE, offset: page * PEOPLE_PAGE_SIZE, q }),
-    { refetchInterval: POLL_INTERVAL },
-  );
-  const list = listQ.data ?? null;
-  const people = list?.people ?? null;
+  // The first rows load at once, the next ones as the end of the list scrolls into view
+  // (owner 2026-10-08: no pages to click through).
+  const gate = useOrgQueryGate();
+  const listQ = useInfiniteQuery({
+    queryKey: ["people", brandId, "scroll", q],
+    queryFn: ({ pageParam }) => listPeople(brandId, { limit: PEOPLE_PAGE_SIZE, offset: pageParam, q }),
+    initialPageParam: 0,
+    getNextPageParam: (last) => last.nextOffset ?? undefined,
+    enabled: gate && !!brandId,
+    refetchInterval: POLL_INTERVAL,
+  });
+  const list = listQ.data?.pages[0] ?? null;
+  const people = listQ.data ? listQ.data.pages.flatMap((p) => p.people) : null;
+  const scrollBox = useRef<HTMLDivElement | null>(null);
+  const sentinel = useRef<HTMLLIElement | null>(null);
+  const { hasNextPage, isFetchingNextPage, fetchNextPage } = listQ;
+  useEffect(() => {
+    const el = sentinel.current;
+    if (!el || !hasNextPage) return;
+    const io = new IntersectionObserver(
+      (entries) => {
+        if (entries.some((e) => e.isIntersecting) && !isFetchingNextPage) void fetchNextPage();
+      },
+      { root: scrollBox.current, rootMargin: "600px 0px" },
+    );
+    io.observe(el);
+    return () => io.disconnect();
+  }, [hasNextPage, isFetchingNextPage, fetchNextPage, people?.length]);
+
+  // A thread opens from memory: the top rows' threads load with the list, any other row's
+  // as the pointer reaches it. Same key and read as the Thread itself.
+  const queryClient = useQueryClient();
+  const preload = (personKey: string) =>
+    void queryClient.prefetchQuery({
+      queryKey: timelineKey(brandId, personKey),
+      queryFn: () => getPersonTimeline(brandId, personKey),
+      staleTime: TIMELINE_POLL,
+    });
+  const topKeys = (people ?? []).slice(0, PRELOAD_TOP).map((p) => p.personKey).join("|");
+  useEffect(() => {
+    if (!gate || !topKeys) return;
+    for (const k of topKeys.split("|")) preload(k);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [gate, brandId, topKeys]);
+  // J/K moves the cursor: the row it lands on loads too.
+  const cursorKey = cursor >= 0 ? (people?.[cursor]?.personKey ?? null) : null;
+  useEffect(() => {
+    if (gate && cursorKey) preload(cursorKey);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [gate, cursorKey]);
 
   const open = (p: Person) => {
     const next = new URLSearchParams(params.toString());
     next.set("person", p.personKey);
     router.replace(`?${next.toString()}`, { scroll: false });
   };
+  // The Unibox opens on the person on top (owner 2026-10-08), and a new search on its
+  // first result. A person already in the URL (a click, a shared link) is kept.
+  const first = listQ.isPlaceholderData ? null : (people?.[0] ?? null);
+  const openedForQ = useRef<string | null>(null);
+  useEffect(() => {
+    if (!first) return;
+    const newSearch = openedForQ.current !== null && openedForQ.current !== q;
+    openedForQ.current = q;
+    if (!openKey || newSearch) open(first);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [first?.personKey, openKey, q]);
   useRowKeys({
     count: people?.length ?? 0,
     cursor,
@@ -91,7 +149,6 @@ export function V2ConversationsView({ brandId }: { brandId: string }) {
   }
 
   const building = list.scope.status === "building" || list.scope.status === "pending";
-  const pages = Math.max(1, Math.ceil(list.total / PEOPLE_PAGE_SIZE));
 
   return (
     <div className="space-y-4">
@@ -104,7 +161,7 @@ export function V2ConversationsView({ brandId }: { brandId: string }) {
           <div className="k-line-subtle shrink-0 border-b [&>div]:px-3 [&>div]:py-2 md:[&>div]:px-3 [&_label]:max-w-none">
             <RecordsToolbar search={search} onSearch={setSearch} placeholder="Search people and messages" inputRef={searchRef} />
           </div>
-          <div className="k-scroll min-h-0 flex-1 overflow-y-auto">
+          <div ref={scrollBox} className="k-scroll min-h-0 flex-1 overflow-y-auto">
             {people && people.length > 0 ? (
               <ul>
                 {people.map((p, i) => (
@@ -114,9 +171,18 @@ export function V2ConversationsView({ brandId }: { brandId: string }) {
                     selected={p.personKey === openKey}
                     cursor={i === cursor}
                     onOpen={() => open(p)}
-                    onHover={() => setCursor(i)}
+                    onHover={() => {
+                      setCursor(i);
+                      preload(p.personKey);
+                    }}
                   />
                 ))}
+                {hasNextPage && (
+                  <li ref={sentinel} className="space-y-2 px-4 py-3" aria-label="Loading more people">
+                    <Shimmer className="h-9 w-full" />
+                    <Shimmer className="h-9 w-full" />
+                  </li>
+                )}
               </ul>
             ) : q ? (
               <EmptyNote>No conversation matches &ldquo;{q}&rdquo;.</EmptyNote>
@@ -126,19 +192,6 @@ export function V2ConversationsView({ brandId }: { brandId: string }) {
               <EmptyNote>Nobody in conversation yet. Connect a source below to see your people here.</EmptyNote>
             )}
           </div>
-          <footer className="k-fg3 k-line-subtle flex h-10 shrink-0 items-center justify-between border-t px-4 text-[12px] tabular-nums">
-            <span>
-              Page {page + 1} of {pages}
-            </span>
-            <span className="flex items-center gap-1.5">
-              <button type="button" className="k-btn h-6 px-2 text-[12px]" disabled={page === 0} onClick={() => setPage((p) => p - 1)}>
-                Previous
-              </button>
-              <button type="button" className="k-btn h-6 px-2 text-[12px]" disabled={list.nextOffset == null} onClick={() => setPage((p) => p + 1)}>
-                Next
-              </button>
-            </span>
-          </footer>
         </section>
 
         <section className="k-card flex max-h-[calc(100vh-220px)] min-h-[420px] flex-col overflow-hidden">
@@ -203,7 +256,7 @@ function PersonRow({
 }
 
 function Thread({ brandId, personKey }: { brandId: string; personKey: string }) {
-  const q = useAuthQuery(["personTimeline", brandId, personKey], () => getPersonTimeline(brandId, personKey), {
+  const q = useAuthQuery(timelineKey(brandId, personKey), () => getPersonTimeline(brandId, personKey), {
     refetchInterval: TIMELINE_POLL,
   });
   // Oldest first, so the latest exchange is at the bottom: open there, as any inbox does.
@@ -278,6 +331,9 @@ function ThreadItem({ item }: { item: PersonTimelineItem }) {
 }
 
 function Message({ item, mark, meta }: { item: PersonTimelineItem; mark: SourceMark; meta: string }) {
+  // The mark up front is WHO wrote it: the person's company logo (initials without one)
+  // on their side, the source's mark on ours. Where it came from rides the meta line.
+  const sender = parseFrom(item.from);
   const [open, setOpen] = useState(false);
   const [showOriginal, setShowOriginal] = useState(false);
   const outbound = item.direction === "outbound";
@@ -289,9 +345,15 @@ function Message({ item, mark, meta }: { item: PersonTimelineItem; mark: SourceM
   return (
     <article className={`max-w-[85%] rounded-lg px-3 py-2 ${outbound ? "k-inset ml-auto" : "k-panel"}`}>
       <p className="k-fg3 flex min-w-0 items-center gap-2 text-[12px]">
-        <SourceLogo mark={mark} size={14} />
-        <span className="truncate">
-          {item.from ?? (outbound ? "You" : "Them")} · {meta}
+        {outbound ? (
+          <SourceLogo mark={mark} size={16} />
+        ) : (
+          <PersonMark name={sender.name ?? sender.email ?? "Them"} emails={sender.email ? [sender.email] : []} size={16} />
+        )}
+        <span className="truncate">{sender.name ?? sender.email ?? (outbound ? "You" : "Them")}</span>
+        <span className="flex shrink-0 items-center gap-1">
+          ·{!outbound && <SourceLogo mark={mark} size={12} />}
+          {meta}
         </span>
         {notCleaned && <span className="k-chip shrink-0">Not cleaned</span>}
       </p>
