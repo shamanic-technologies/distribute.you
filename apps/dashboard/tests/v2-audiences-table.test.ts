@@ -148,9 +148,10 @@ describe("v2 audience table surface", () => {
   it("the offer's Targeting lists suggested audiences and leaves out LinkedIn signal ones", () => {
     expect(table).toContain("useAudienceTable({ campaignId, offerId, includeSuggested: plain })");
     expect(table).toContain("plain ? t.audiences.filter((a) => !linkedInSignalOf(a.filters)) : t.audiences");
-    // Suggested rows share the Active tab, after the live ones; no Suggested tab.
-    expect(table).not.toContain('key: "suggested"');
-    expect(table).toContain('...sorted.filter((a) => a.status === "suggested")');
+    // Suggested rows have their own tab on the offer's Targeting (owner 2026-10-08).
+    expect(table).toContain('key: "suggested", label: "Suggested"');
+    expect(table).toContain('a.status === "suggested" ? "suggested" : "active"');
+    expect(table).toContain("const showArchivedTab = plain || tabCount(\"archived\") > 0;");
     // No Archived tab at zero, and no tab bar when Active would stand alone.
     expect(table).toContain("{showArchivedTab && (");
     expect(table).toContain('<StatusBtn label="Activate" to="active" />');

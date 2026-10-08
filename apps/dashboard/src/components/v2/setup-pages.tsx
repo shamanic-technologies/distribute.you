@@ -220,7 +220,7 @@ export function V2OfferPage({ view = "overview" }: { view?: "overview" | "revenu
 
 /** Who an offer is sold to, in plain words: each audience's sentence, no channel figure. */
 /**
- * The offer's Targeting: who it reaches (Audiences) and the checks every company of every
+ * The offer's Targeting: who it reaches (Client Profiles) and the checks every company of every
  * audience goes through before we write to it (Qualification, owner 2026-10-07).
  */
 export function V2TargetingPage({ view = "audiences" }: { view?: "audiences" | "qualification" | "lists" }) {
@@ -229,7 +229,7 @@ export function V2TargetingPage({ view = "audiences" }: { view?: "audiences" | "
   if (!offerId) return null;
   const base = v2OfferHref(orgId, brandId, offerId, "targeting");
   const tabs: V2Tab[] = [
-    { label: "Audiences", href: base, active: view === "audiences" },
+    { label: "Client Profiles", href: base, active: view === "audiences" },
     { label: "Qualification", href: `${base}/qualification`, active: view === "qualification" },
     // The brand's source lists and who they hold (was the Audience page, owner 2026-10-07).
     { label: "Lists", href: `${base}/lists`, active: view === "lists" },
