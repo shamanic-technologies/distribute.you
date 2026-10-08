@@ -368,6 +368,15 @@ function ContactedBody({
   );
 }
 
+/**
+ * What a % Conversion point counts, in words (owner 2026-10-08, "dou vient ce 38%"):
+ * the row above's people out of this row's plus theirs, served counts only.
+ */
+function wentOnWords(p: { row: number; above: number | null; aboveLabel: string | null }): string {
+  const above = p.above ?? 0;
+  return `${formatCount(above)} of ${formatCount(above + p.row)} went on to ${p.aboveLabel ?? "the next step"}`;
+}
+
 /** The dated % Conversion as the panel reads it: the open step's and the contacted row's. */
 type HistoryRead = {
   answered: boolean;
@@ -388,9 +397,11 @@ function ConversionHistoryCard({ history, answered, failed }: { history: Convers
     rate: p.ratePct,
     row: p.rowPeople,
     above: p.rowAbovePeople,
+    aboveLabel: p.rowAbove?.label ?? null,
   }));
   const rated = points.filter((p) => p.rate != null);
-  const last = rated.length ? (rated[rated.length - 1].rate as number) : null;
+  const lastPoint = rated.length ? rated[rated.length - 1] : null;
+  const last = lastPoint ? (lastPoint.rate as number) : null;
   const axis = percentAxis(Math.max(0, ...rated.map((p) => p.rate as number)));
   return (
     <section>
@@ -399,6 +410,7 @@ function ConversionHistoryCard({ history, answered, failed }: { history: Convers
         <div className="text-[20px] font-medium leading-7 tabular-nums">
           {!answered && !failed ? <Shimmer className="h-7 w-16" /> : last == null ? <span className="k-fg4">—</span> : pct(last)}
         </div>
+        {lastPoint && <p className="k-fg2 mt-0.5 text-[13px] tabular-nums">{wentOnWords(lastPoint)}</p>}
         <p className="k-fg3 mt-0.5 text-[12px]">
           {history ? `Each day since your first email, ${friendlyDate(history.startsOn)}.` : "Each day since your first email."}
         </p>
@@ -445,11 +457,7 @@ function ConversionHistoryCard({ history, answered, failed }: { history: Convers
                       <div className="k-popover px-2.5 py-1.5 text-[12px]">
                         <p className="k-fg3 k-mono">{new Date(Number(label)).toISOString().slice(0, 10)}</p>
                         <p className="font-medium tabular-nums">{d.rate != null ? pct(d.rate) : "—"}</p>
-                        {d.above != null && (
-                          <p className="k-fg3 tabular-nums">
-                            {formatCount(d.above)} of {formatCount(d.above + d.row)}
-                          </p>
-                        )}
+                        {d.above != null && <p className="k-fg3 tabular-nums">{wentOnWords(d)}</p>}
                       </div>
                     ) : null;
                   }}
