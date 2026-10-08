@@ -1,12 +1,13 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { useQueryClient } from "@tanstack/react-query";
 import { useAuthQuery } from "@/lib/use-auth-query";
 import { pollOptions } from "@/lib/query-options";
 import {
   getBrandConversionRates,
+  getLeadStepStatements,
   stateBrandLegRates,
   type ColdPipelineLead,
   type EffectiveLegRate,
@@ -19,7 +20,7 @@ import {
   type ExclusiveLadder,
   type ExclusiveRow,
 } from "@/lib/api";
-import { useSetAnyLeadStepStatement } from "@/lib/use-lead-step-statements";
+import { leadStepStatementsQueryKey, useSetAnyLeadStepStatement, useWithdrawLeadStepStatement } from "@/lib/use-lead-step-statements";
 import { StageStatementForm } from "@/components/leads/lead-stage-section";
 import { CloseWonForm } from "@/components/leads/close-won-form";
 import { invalidateConversionRates } from "@/lib/write-invalidation";
@@ -28,7 +29,7 @@ import { formatCount, formatUsdAdaptive } from "@/lib/format-number";
 import { friendlyDate } from "@/lib/friendly-datetime";
 import { InlineRate } from "@/components/v2/offer-channels-page";
 import { CompanyMark } from "@/components/v2/people-bits";
-import { EmptyNote, Initials, Shimmer } from "@/components/v2/ui";
+import { EmptyNote, Initials, Shimmer, StateDot } from "@/components/v2/ui";
 
 /** What the Today panel shows: one step of the pipeline, or one lead. */
 export type TodayPanelTarget =
@@ -255,7 +256,11 @@ function LeadBody({
         </section>
       )}
       <WhySection why={step?.valueExplanation ?? null} brandId={brandId} />
-      <LeadStatus lead={lead} lifetimeRevenueUsd={step?.valueExplanation?.lifetimeRevenueUsd ?? null} />
+      {lead.step.key === "paid_client" ? (
+        <ClientStatus lead={lead} />
+      ) : (
+        <LeadStatus lead={lead} lifetimeRevenueUsd={step?.valueExplanation?.lifetimeRevenueUsd ?? null} />
+      )}
     </>
   );
 }
@@ -449,6 +454,227 @@ function LeadStatus({ lead, lifetimeRevenueUsd }: { lead: PipelineLead | ColdPip
   );
 }
 
+/** Who said the person is a client, when it is not a person (only a person's word is editable here). */
+const CLIENT_SOURCE_WORDS: Record<string, string> = {
+  crm: "From your CRM: change it there.",
+  tracker: "Reported by your website tracking.",
+  reply: "They said in a reply they already buy from you.",
+};
+
+/**
+ * A paid client (owner 2026-10-08): change what the client is worth, or say it is not a
+ * client after all. lead-service's own statement on the sale step: restating replaces it
+ * (date, cost, cause and note re-sent as read), withdrawing takes it back. Only a win a
+ * PERSON stated is editable; a CRM, tracker or reply win is read-only by the producer's rule.
+ */
+function ClientStatus({ lead }: { lead: PipelineLead | ColdPipelineLead }) {
+  const rowId = lead.campaignLeadId ?? null;
+  const statements = useAuthQuery(leadStepStatementsQueryKey(rowId ?? ""), () => getLeadStepStatements(rowId as string), {
+    enabled: !!rowId,
+  });
+  const setStep = useSetAnyLeadStepStatement();
+  const withdraw = useWithdrawLeadStepStatement();
+  const [done, setDone] = useState<string | null>(null);
+  if (!rowId) {
+    return (
+      <section>
+        <p className="k-label mb-2">Client</p>
+        <p className="k-fg3 text-[13px]">This client cannot be updated from here.</p>
+      </section>
+    );
+  }
+  const sale = statements.data?.steps.find((s) => s.step === "sale") ?? null;
+  const editable = sale?.state === "outcome" && sale.origin === "stated" && sale.source === "manual";
+
+  const saveValue = async (valueCents: number) => {
+    if (!sale || sale.costCents === null) throw new Error("no stated cost to restate with");
+    await setStep.mutateAsync({
+      leadRowId: rowId,
+      step: "sale",
+      kind: "outcome",
+      valueCents,
+      costCents: sale.costCents,
+      ...(sale.causedByOutreach !== null ? { causedByOutreach: sale.causedByOutreach } : {}),
+      ...(sale.note !== null ? { note: sale.note } : {}),
+      ...(sale.at !== null ? { occurredAt: sale.at } : {}),
+    });
+    setDone("Value saved.");
+  };
+
+  return (
+    <section>
+      <p className="k-label mb-2">Client</p>
+      {statements.data === undefined && !statements.isError ? (
+        <Shimmer className="h-[84px] w-full" />
+      ) : !sale ? (
+        <p className="k-fg3 text-[13px]">Could not read this client. Retrying.</p>
+      ) : sale.state !== "outcome" ? (
+        <p className="k-fg2 text-[13px]">Not a client any more.</p>
+      ) : (
+        <ul className="k-card divide-y divide-[var(--line-subtle)]">
+          <li className="flex items-center justify-between gap-3 px-3 py-2.5">
+            <span className="text-[13px]">Lifetime value</span>
+            {editable && sale.costCents !== null ? (
+              <InlineMoney cents={sale.valueCents} onSave={saveValue} />
+            ) : (
+              <span className="text-[13px] font-medium tabular-nums">{sale.valueCents !== null ? formatUsdAdaptive(sale.valueCents / 100) : <span className="k-fg4">—</span>}</span>
+            )}
+          </li>
+          <li className="flex items-center justify-between gap-3 px-3 py-2.5">
+            <span className="text-[13px]">Status</span>
+            {editable ? (
+              <ClientStatusMenu
+                busy={withdraw.isPending}
+                onNotClient={() =>
+                  withdraw.mutate({ leadRowId: rowId, step: "sale" }, { onSuccess: () => setDone("Not a client any more.") })
+                }
+              />
+            ) : (
+              <StateDot running label="Paid client" />
+            )}
+          </li>
+        </ul>
+      )}
+      {sale && sale.state === "outcome" && !editable && sale.source && CLIENT_SOURCE_WORDS[sale.source] && (
+        <p className="k-fg3 mt-2 text-[12px]">{CLIENT_SOURCE_WORDS[sale.source]}</p>
+      )}
+      {editable && sale?.costCents === null && <p className="k-fg3 mt-2 text-[12px]">Stated before costs were asked: mark it again to change its value.</p>}
+      {withdraw.isError && <p className="mt-2 text-[12px] text-[var(--data-rose)]">We could not change this. Try again.</p>}
+      {done && <p className="k-fg2 mt-2 text-[12px]">{done} The figures update in a few seconds.</p>}
+    </section>
+  );
+}
+
+/** A dollar amount read as text; a click opens it in place, leaving the field saves, Esc drops it. */
+function InlineMoney({ cents, onSave }: { cents: number | null; onSave: (cents: number) => Promise<void> }) {
+  const [text, setText] = useState<string | null>(null);
+  const [pending, setPending] = useState<number | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const shown = pending ?? cents;
+  // The saved value stays on screen until the re-read serves it, never the old one between.
+  useEffect(() => {
+    if (pending !== null && cents === pending) setPending(null);
+  }, [cents, pending]);
+  const commit = async () => {
+    if (text === null) return;
+    const usd = Number(text.replace(/[$,\s]/g, ""));
+    if (!text.trim() || !Number.isFinite(usd) || usd <= 0) {
+      setError("Enter an amount in dollars.");
+      return;
+    }
+    const next = Math.round(usd * 100);
+    setText(null);
+    setError(null);
+    if (next === cents) return;
+    setPending(next);
+    try {
+      await onSave(next);
+    } catch (err) {
+      console.error("[today-panel] client value save failed", { cents, next, err });
+      setPending(null);
+      setText(String(usd));
+      setError("Not saved. Try again.");
+    }
+  };
+  return (
+    <span className="inline-flex items-center gap-2">
+      {error && <span className="text-[12px] text-[var(--data-rose)]">{error}</span>}
+      {text !== null ? (
+        <input
+          autoFocus
+          inputMode="decimal"
+          aria-label="Lifetime value, dollars"
+          value={text}
+          size={Math.max(text.length, 3)}
+          onChange={(e) => setText(e.target.value)}
+          onBlur={commit}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") e.currentTarget.blur();
+            if (e.key === "Escape") {
+              e.stopPropagation();
+              setText(null);
+              setError(null);
+            }
+          }}
+          style={{ font: "inherit" }}
+          className="h-6 rounded-[6px] bg-transparent px-1.5 text-right text-[13px] font-medium tabular-nums outline-none ring-1 ring-[var(--accent)]"
+        />
+      ) : (
+        <button
+          type="button"
+          title="Change what this client is worth"
+          onClick={() => setText(shown !== null ? String(shown / 100) : "")}
+          className="k-hover h-6 rounded-[6px] px-1.5 text-[13px] font-medium tabular-nums"
+        >
+          {shown !== null ? formatUsdAdaptive(shown / 100) : <span className="k-fg4">—</span>}
+        </button>
+      )}
+    </span>
+  );
+}
+
+/** "Paid client" as a status button; its one-item menu says it is not a client after all. */
+function ClientStatusMenu({ busy, onNotClient }: { busy: boolean; onNotClient: () => void }) {
+  const [open, setOpen] = useState(false);
+  const [at, setAt] = useState<{ top: number; right: number } | null>(null);
+  const ref = useRef<HTMLButtonElement>(null);
+  const menuRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (!open) return;
+    const close = (e: MouseEvent) => {
+      const t = e.target as Node;
+      if (!ref.current?.contains(t) && !menuRef.current?.contains(t)) setOpen(false);
+    };
+    const dismiss = () => setOpen(false);
+    document.addEventListener("mousedown", close);
+    document.addEventListener("scroll", dismiss, { capture: true, passive: true });
+    return () => {
+      document.removeEventListener("mousedown", close);
+      document.removeEventListener("scroll", dismiss, { capture: true });
+    };
+  }, [open]);
+  return (
+    <>
+      <button
+        ref={ref}
+        type="button"
+        aria-haspopup="menu"
+        aria-expanded={open}
+        disabled={busy}
+        onClick={(e) => {
+          if (open) return setOpen(false);
+          const r = e.currentTarget.getBoundingClientRect();
+          setAt({ top: r.bottom + 4, right: window.innerWidth - r.right });
+          setOpen(true);
+        }}
+        className="k-btn gap-1.5"
+      >
+        <StateDot running label="Paid client" />
+        <svg width="10" height="10" viewBox="0 0 10 10" aria-hidden className="k-fg3">
+          <path d="M2.5 4l2.5 2.5L7.5 4" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" />
+        </svg>
+      </button>
+      {open && at &&
+        createPortal(
+          <div ref={menuRef} role="menu" style={at} className="k-popover fixed z-[90] w-[200px] p-1 text-left">
+            <button
+              type="button"
+              role="menuitem"
+              className="k-row w-full rounded-[6px] px-2 py-1.5 text-left text-[13px]"
+              onClick={() => {
+                setOpen(false);
+                onNotClient();
+              }}
+            >
+              Not a client
+            </button>
+          </div>,
+          document.getElementById("v2-portal") ?? document.body,
+        )}
+    </>
+  );
+}
+
 /**
  * The lead's card. `hero` = reached it thanks to us and still alive (the most spacious),
  * `lost` = ours but gone quiet, `compact` = not from us.
@@ -476,7 +702,7 @@ export function LeadCard({
       {lead.orgName ? <CompanyMark name={lead.orgName} domain={lead.orgDomain} size={mark} /> : <Initials name={leadName(lead)} size={mark} round />}
       <div className="min-w-0 flex-1">
         <p className={`truncate font-medium ${size === "hero" ? "text-[16px]" : "text-[13px]"}`}>{leadName(lead)}</p>
-        {sub && <p className="k-fg2 truncate text-[12px]">{sub}</p>}
+        {sub && <p className={`k-fg2 text-[12px] ${size === "hero" ? "break-words" : "truncate"}`}>{sub}</p>}
         {meta && <p className="k-fg3 truncate text-[12px]">{meta}</p>}
       </div>
       <div className="shrink-0 text-right">

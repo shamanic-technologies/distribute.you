@@ -1,5 +1,5 @@
 import { useMutation } from "@tanstack/react-query";
-import { setLeadStepStatement, type LeadStepName } from "./api";
+import { setLeadStepStatement, withdrawLeadStepStatement, type LeadStepName } from "./api";
 import { useQueryClient } from "./use-auth-query";
 import { invalidateLeadOutcome } from "./write-invalidation";
 
@@ -42,6 +42,10 @@ export function useSetAnyLeadStepStatement() {
       // which reads as "nobody was asked" — a real third answer, so a caller with no
       // way to ask leaves it out rather than guessing either way.
       causedByOutreach?: boolean;
+      // A restatement REPLACES the statement: a caller correcting one value re-sends the
+      // date and note it read, or the win moves to today and loses its note.
+      note?: string;
+      occurredAt?: string;
     }
   >({
     mutationFn: ({ leadRowId, ...body }) => setLeadStepStatement(leadRowId, body),
@@ -55,3 +59,15 @@ export function useSetAnyLeadStepStatement() {
   });
 }
 
+
+/** Take back a person's statement on one step ("not a client after all"); same re-reads as a write. */
+export function useWithdrawLeadStepStatement() {
+  const queryClient = useQueryClient();
+  return useMutation<void, Error, { leadRowId: string; step: LeadStepName }>({
+    mutationFn: ({ leadRowId, step }) => withdrawLeadStepStatement(leadRowId, step),
+    onSuccess: (_data, variables) => {
+      queryClient.invalidateQueries({ queryKey: leadStepStatementsQueryKey(variables.leadRowId) });
+      invalidateLeadOutcome(queryClient);
+    },
+  });
+}
