@@ -43,22 +43,12 @@ describe("step panel wiring", () => {
     expect(panel).toContain(">Kept<");
   });
 
-  it("the reader keeps candidates and the dated conversion (optional until served)", () => {
+  it("the reader keeps candidates (optional until served)", () => {
     expect(api).toContain("candidates: z.array(RateCandidateSchema).optional()");
-    expect(api).toContain("conversionHistory: ConversionHistorySchema");
-    expect(api).toContain('query.set("conversionHistory", "true")');
   });
 
-  it("the step and contacted panels draw the % Conversion over time", () => {
-    const step = panel.slice(panel.indexOf("function StepBody("), panel.indexOf("function LeadBody("));
-    expect(step).toContain("<ConversionHistoryCard");
-    const contacted = panel.slice(panel.indexOf("function ContactedBody("), panel.indexOf("const CONTACTED_STEP"));
-    expect(contacted).toContain("<ConversionHistoryCard");
-  });
-
-  it("the chart's figure says what it counts (owner: \"dou vient ce 38%\")", () => {
-    const card = panel.slice(panel.indexOf("function ConversionHistoryCard("), panel.indexOf("const CONTACTED_STEP"));
-    expect(card).toContain("{wentOnWords(lastPoint)}");
-    expect(panel).toContain("went on to ${p.aboveLabel");
+  it("the panel draws no % Conversion over time chart (owner 2026-10-08: removed)", () => {
+    expect(panel).not.toContain("ConversionHistoryCard");
+    expect(api).not.toContain('query.set("conversionHistory"');
   });
 });

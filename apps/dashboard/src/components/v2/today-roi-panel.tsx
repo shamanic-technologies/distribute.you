@@ -3,7 +3,6 @@
 import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import { useQueryClient } from "@tanstack/react-query";
-import { Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { useAuthQuery } from "@/lib/use-auth-query";
 import { pollOptions } from "@/lib/query-options";
 import {
@@ -20,11 +19,8 @@ import {
   type StepValueExplanation,
   type ExclusiveLadder,
   type ExclusiveRow,
-  type ConversionHistory,
 } from "@/lib/api";
 import { candidateLines } from "@/lib/rate-candidates";
-import { percentAxis, percentTick } from "@/lib/percent-axis";
-import { useOfferConversionHistory } from "@/components/v2/data";
 import { leadStepStatementsQueryKey, useSetAnyLeadStepStatement, useWithdrawLeadStepStatement } from "@/lib/use-lead-step-statements";
 import { StageStatementForm } from "@/components/leads/lead-stage-section";
 import { CloseWonForm } from "@/components/leads/close-won-form";
@@ -105,8 +101,6 @@ export function TodayPanel({
   const [host, setHost] = useState<HTMLElement | null>(null);
   useEffect(() => setHost(document.getElementById("v2-portal")), []);
   useEffect(() => setPerson(null), [target]);
-  // The dated % Conversion of every row, read while the panel is open (owner 2026-10-08).
-  const historyQ = useOfferConversionHistory(brandId, true);
   if (!host) return null;
 
   const shown: TodayPanelTarget = person ? { kind: "lead", lead: person.lead, group: person.group } : target;
@@ -114,14 +108,7 @@ export function TodayPanel({
   const step = stepKey ? pipeline?.ladder.find((s) => s.step.key === stepKey) ?? null : null;
   // The same step on the one-row-per-person reading: its people and its slice (#1416).
   const slice = stepKey ? pipeline?.exclusiveLadder?.rows.find((r) => r.step.key === stepKey) ?? null : null;
-  // Answered once stays answered: a failed poll must not repaint a skeleton.
-  const historyLadder = historyQ.data?.pipeline?.exclusiveLadder ?? null;
-  const history: HistoryRead = {
-    answered: historyQ.data !== undefined,
-    failed: historyQ.data === undefined && historyQ.isFetchedAfterMount && historyQ.isError,
-    step: stepKey ? historyLadder?.rows.find((r) => r.step.key === stepKey)?.conversionHistory ?? null : null,
-    contacted: historyLadder?.contacted.conversionHistory ?? null,
-  };
+
 
   return createPortal(
     <aside
@@ -148,9 +135,9 @@ export function TodayPanel({
       </div>
       <div className="k-scroll min-h-0 flex-1 space-y-6 overflow-y-auto p-4">
         {shown.kind === "step" ? (
-          <StepBody step={step} slice={slice} brandId={brandId} history={history} onOpenPerson={setPerson} />
+          <StepBody step={step} slice={slice} brandId={brandId} onOpenPerson={setPerson} />
         ) : shown.kind === "contacted" ? (
-          <ContactedBody contacted={pipeline?.exclusiveLadder?.contacted ?? null} history={history} onOpenPerson={setPerson} />
+          <ContactedBody contacted={pipeline?.exclusiveLadder?.contacted ?? null} onOpenPerson={setPerson} />
         ) : (
           <LeadBody key={shown.lead.leadId} lead={shown.lead} step={step} brandId={brandId} meta={person?.meta} />
         )}
@@ -164,13 +151,11 @@ function StepBody({
   step,
   slice,
   brandId,
-  history,
   onOpenPerson,
 }: {
   step: OfferLadderStep | null;
   slice: ExclusiveRow | null;
   brandId: string;
-  history: HistoryRead;
   onOpenPerson: (p: OpenPerson) => void;
 }) {
   if (!step) return <EmptyNote>This step is not readable right now.</EmptyNote>;
@@ -199,9 +184,6 @@ function StepBody({
           </p>
         </div>
       </div>
-      {slice?.conversionFromRowAbove && (
-        <ConversionHistoryCard history={history.step} answered={history.answered} failed={history.failed} />
-      )}
       <WhySection why={step.valueExplanation} brandId={brandId} />
       {people ? (
         <>
@@ -292,11 +274,9 @@ function LeadBody({
  */
 function ContactedBody({
   contacted,
-  history,
   onOpenPerson,
 }: {
   contacted: ExclusiveLadder["contacted"] | null;
-  history: HistoryRead;
   onOpenPerson: (p: OpenPerson) => void;
 }) {
   if (!contacted) return <EmptyNote>Not readable right now.</EmptyNote>;
@@ -322,9 +302,6 @@ function ContactedBody({
           <p className="mt-1 text-[20px] font-medium tabular-nums">{contacted.pipelineUsd != null ? formatUsdAdaptive(contacted.pipelineUsd) : "—"}</p>
         </div>
       </div>
-      {contacted.conversionFromRowAbove && (
-        <ConversionHistoryCard history={history.contacted} answered={history.answered} failed={history.failed} />
-      )}
       {why && (
         <section>
           <p className="k-label mb-2">How we price it</p>
@@ -365,110 +342,6 @@ function ContactedBody({
         })}
       </PeopleGroup>
     </>
-  );
-}
-
-/**
- * What a % Conversion point counts, in words (owner 2026-10-08, "dou vient ce 38%"):
- * the row above's people out of this row's plus theirs, served counts only.
- */
-function wentOnWords(p: { row: number; above: number | null; aboveLabel: string | null }): string {
-  const above = p.above ?? 0;
-  return `${formatCount(above)} of ${formatCount(above + p.row)} went on to ${p.aboveLabel ?? "the next step"}`;
-}
-
-/** The dated % Conversion as the panel reads it: the open step's and the contacted row's. */
-type HistoryRead = {
-  answered: boolean;
-  failed: boolean;
-  step: ConversionHistory | null;
-  contacted: ConversionHistory | null;
-};
-
-/**
- * The row's % Conversion, one point per day since the offer's first email (owner
- * 2026-10-08: "so we see the dynamics"). Served whole by features-service on the same
- * rule as the table's column, so the last point is the figure in the table. A day with
- * no rate (nobody on either row) is a gap in the line, never 0. Nothing is divided here.
- */
-function ConversionHistoryCard({ history, answered, failed }: { history: ConversionHistory | null; answered: boolean; failed: boolean }) {
-  const points = (history?.points ?? []).map((p) => ({
-    t: Date.parse(`${p.date}T00:00:00Z`),
-    rate: p.ratePct,
-    row: p.rowPeople,
-    above: p.rowAbovePeople,
-    aboveLabel: p.rowAbove?.label ?? null,
-  }));
-  const rated = points.filter((p) => p.rate != null);
-  const lastPoint = rated.length ? rated[rated.length - 1] : null;
-  const last = lastPoint ? (lastPoint.rate as number) : null;
-  const axis = percentAxis(Math.max(0, ...rated.map((p) => p.rate as number)));
-  return (
-    <section>
-      <p className="k-label mb-2">% Conversion over time</p>
-      <div className="k-card px-4 pb-3 pt-3">
-        <div className="text-[20px] font-medium leading-7 tabular-nums">
-          {!answered && !failed ? <Shimmer className="h-7 w-16" /> : last == null ? <span className="k-fg4">—</span> : pct(last)}
-        </div>
-        {lastPoint && <p className="k-fg2 mt-0.5 text-[13px] tabular-nums">{wentOnWords(lastPoint)}</p>}
-        <p className="k-fg3 mt-0.5 text-[12px]">
-          {history ? `Each day since your first email, ${friendlyDate(history.startsOn)}.` : "Each day since your first email."}
-        </p>
-        {history && history.undatedPeople > 0 && (
-          <p className="k-fg3 text-[12px]">
-            {formatCount(history.undatedPeople)} {history.undatedPeople === 1 ? "person has" : "people have"} no date, so only today counts them.
-          </p>
-        )}
-        <div className="mt-3 h-[140px]">
-          {!answered && !failed ? (
-            <Shimmer className="h-full w-full rounded-[8px]" />
-          ) : failed ? (
-            <EmptyNote>Could not read the history. Retrying.</EmptyNote>
-          ) : rated.length === 0 ? (
-            <EmptyNote>No history to show yet.</EmptyNote>
-          ) : (
-            <ResponsiveContainer width="100%" height="100%">
-              <LineChart data={points} margin={{ top: 4, right: 4, bottom: 0, left: 0 }}>
-                <XAxis
-                  dataKey="t"
-                  type="number"
-                  scale="time"
-                  domain={["dataMin", "dataMax"]}
-                  tick={{ fontSize: 11, fill: "var(--fg-3)" }}
-                  tickLine={false}
-                  axisLine={false}
-                  minTickGap={40}
-                  tickFormatter={(t: number) => new Date(t).toISOString().slice(5, 10)}
-                />
-                <YAxis
-                  tick={{ fontSize: 11, fill: "var(--fg-3)" }}
-                  tickLine={false}
-                  axisLine={false}
-                  width={40}
-                  domain={[0, axis.top]}
-                  ticks={axis.ticks}
-                  tickFormatter={percentTick}
-                />
-                <Tooltip
-                  cursor={{ stroke: "var(--line-strong)", strokeWidth: 1 }}
-                  content={({ active, payload, label }) => {
-                    const d = active && payload?.length ? (payload[0].payload as (typeof points)[number]) : null;
-                    return d ? (
-                      <div className="k-popover px-2.5 py-1.5 text-[12px]">
-                        <p className="k-fg3 k-mono">{new Date(Number(label)).toISOString().slice(0, 10)}</p>
-                        <p className="font-medium tabular-nums">{d.rate != null ? pct(d.rate) : "—"}</p>
-                        {d.above != null && <p className="k-fg3 tabular-nums">{wentOnWords(d)}</p>}
-                      </div>
-                    ) : null;
-                  }}
-                />
-                <Line type="linear" dataKey="rate" stroke="var(--accent)" strokeWidth={1.5} dot={false} isAnimationActive={false} />
-              </LineChart>
-            </ResponsiveContainer>
-          )}
-        </div>
-      </div>
-    </section>
   );
 }
 
