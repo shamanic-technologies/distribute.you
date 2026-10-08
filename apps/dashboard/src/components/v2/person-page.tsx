@@ -8,6 +8,7 @@ import { getLeadDetail, getLeadHistory, getLeadConsolidatedStatus, leadDateForSt
 import { useAuthQuery } from "@/lib/use-auth-query";
 import { pollOptions } from "@/lib/query-options";
 import { friendlyDate, timeAgo } from "@/lib/friendly-datetime";
+import { standingTagLabel } from "@/lib/lead-standing";
 import { leadWentCold, wentColdReason, WENT_COLD_LABEL } from "@/lib/lead-cold";
 import { useSetAnyLeadStepStatement } from "@/lib/use-lead-step-statements";
 import { v2Href, v2RunHref } from "@/lib/v2/routes";
@@ -20,18 +21,6 @@ import { useSelectedOffer } from "@/components/v2/selected-offer";
 import { CloseWonForm } from "@/components/leads/close-won-form";
 import { EmptyNote, Shimmer, TopBar } from "@/components/v2/ui";
 import { CompanyMark, PersonAvatar, leadCompany, leadCompanyDomain, leadName, leadTitle } from "@/components/v2/people-bits";
-
-/** Where a person stands, in the words the v2 pages use. lead-service decides it. */
-const STANDING_LABEL: Record<string, string> = {
-  unresolved: "Not placed",
-  not_contacted: "Not queued",
-  contacted: "Queued",
-  engaged: "Engaged",
-  sales_interest: "Interested",
-  customer: "Won",
-  opted_out: "Opted out",
-  disqualified: "Disqualified",
-};
 
 function standingState(lead: Lead): string | null {
   const s = (lead as unknown as { standing?: { state?: unknown } }).standing;
@@ -68,6 +57,8 @@ export function PersonPage() {
   const domain = lead ? leadCompanyDomain(lead) : null;
   const title = lead ? leadTitle(lead) : null;
   const state = lead ? standingState(lead) : null;
+  // The conversation's label is lead-service's TAG (a no reads "Not interested"), never the state.
+  const tagLabel = lead ? standingTagLabel((lead as unknown as { standing?: unknown }).standing) : null;
   const cold = lead ? leadWentCold((lead as unknown as { standing?: unknown }).standing) : null;
   const lastAt = lead ? leadDateForStatus(lead, getLeadConsolidatedStatus(lead)) : null;
   const linkedin = lead?.lead?.linkedinUrl ?? null;
@@ -98,7 +89,7 @@ export function PersonPage() {
                 </div>
               </div>
               <div className="flex flex-wrap items-center gap-2">
-                {state ? <span className="k-chip">{STANDING_LABEL[state] ?? state}</span> : null}
+                {tagLabel ? <span className="k-chip">{tagLabel}</span> : null}
                 {lead.email ? (
                   <a href={`mailto:${lead.email}`} className="k-btn">
                     Email

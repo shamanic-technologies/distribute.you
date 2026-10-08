@@ -120,4 +120,42 @@ export interface LeadStanding {
   deepestStep: string | null;
   /** When the deciding statement was made, when a statement decided the state. */
   at: string | null;
+  /**
+   * The conversation's LABEL, lead-service's own (owner 2026-10-08): `state`, except a
+   * reached visit reads `website_visit` and a latest real reply that is a no reads
+   * `not_interested`. Optional: a payload written before lead-service v0.83 carries none.
+   */
+  tag?: string | null;
+}
+
+/**
+ * What a reader sees for where a conversation stands. Each word NAMES a value lead-service
+ * serves; nothing is decided here. An unknown word keeps the producer's, re-cased.
+ */
+const STANDING_TAG_LABEL: Record<string, string> = {
+  unresolved: "Not placed",
+  not_contacted: "Not queued",
+  contacted: "Queued",
+  engaged: "Engaged",
+  sales_interest: "Interested",
+  website_visit: "Website visit",
+  not_interested: "Not interested",
+  customer: "Won",
+  opted_out: "Opted out",
+  disqualified: "Disqualified",
+};
+
+/**
+ * The label of a served standing: its `tag` (the conversation's label), else its `state`
+ * on a payload that predates the tag. Null when nothing is served.
+ */
+export function standingTagLabel(standing: unknown): string | null {
+  if (!standing || typeof standing !== "object") return null;
+  const s = standing as { tag?: unknown; state?: unknown };
+  const word = typeof s.tag === "string" && s.tag ? s.tag : typeof s.state === "string" ? s.state : null;
+  if (!word) return null;
+  const known = STANDING_TAG_LABEL[word];
+  if (known) return known;
+  const w = word.replace(/[_-]+/g, " ").trim();
+  return w.charAt(0).toUpperCase() + w.slice(1);
 }
