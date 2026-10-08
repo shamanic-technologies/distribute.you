@@ -13,8 +13,13 @@ import {
   type OfferLadderStep,
   type OfferPipeline,
   type PipelineLead,
+  type StepPerson,
+  type LostStepPerson,
   type StepValueExplanation,
 } from "@/lib/api";
+import { useSetAnyLeadStepStatement } from "@/lib/use-lead-step-statements";
+import { StageStatementForm } from "@/components/leads/lead-stage-section";
+import { CloseWonForm } from "@/components/leads/close-won-form";
 import { invalidateConversionRates } from "@/lib/write-invalidation";
 import { legRateFor } from "@/lib/offer-channel-settings";
 import { formatCount, formatUsdAdaptive } from "@/lib/format-number";
@@ -46,7 +51,8 @@ function sourceWords(leg: StepValueExplanation["legs"][number]): string {
 }
 
 const isCold = (l: PipelineLead | ColdPipelineLead): l is ColdPipelineLead => "coldAtStep" in l;
-const leadName = (l: PipelineLead) => [l.firstName, l.lastName].filter(Boolean).join(" ") || l.orgName || "Unknown";
+type CardPerson = Pick<PipelineLead, "firstName" | "lastName" | "title" | "orgName" | "orgDomain" | "valueUsd" | "probabilityPct">;
+const leadName = (l: CardPerson) => [l.firstName, l.lastName].filter(Boolean).join(" ") || l.orgName || "Unknown";
 
 /**
  * The Today right panel (owner 2026-10-08): click a step or a lead, read why it is worth
@@ -128,7 +134,34 @@ function StepBody({ step, brandId }: { step: OfferLadderStep | null; brandId: st
         </div>
       </div>
       <WhySection why={step.valueExplanation} brandId={brandId} />
-      {cold && cold.count > 0 && (
+      {step.people ? (
+        <>
+          <PeopleGroup title="Thanks to us" count={step.people.ours.count}>
+            {step.people.ours.leads.map((l) => (
+              <LeadCard
+                key={l.leadId}
+                lead={l}
+                size="hero"
+                meta={l.reachedAt ? `${step.step.key === "paid_client" ? "Won" : `Reached ${step.step.label.toLowerCase()}`} ${friendlyDate(l.reachedAt)}` : null}
+              />
+            ))}
+          </PeopleGroup>
+          {step.people.lost.count > 0 && (
+            <PeopleGroup title="Thanks to us, considered lost" count={step.people.lost.count}>
+              {step.people.lost.leads.map((l) => (
+                <LeadCard key={l.leadId} lead={l} size="lost" meta={lostWords(l)} />
+              ))}
+            </PeopleGroup>
+          )}
+          {step.people.notOurs.count > 0 && (
+            <PeopleGroup title="Not from us" sub="Your CRM or another source" count={step.people.notOurs.count}>
+              {step.people.notOurs.leads.map((l) => (
+                <LeadCard key={l.leadId} lead={l} size="compact" meta={l.reachedAt ? friendlyDate(l.reachedAt) : null} />
+              ))}
+            </PeopleGroup>
+          )}
+        </>
+      ) : cold && cold.count > 0 ? (
         <section>
           <p className="k-label mb-2">Considered lost</p>
           <p className="k-fg2 text-[13px]">
@@ -136,7 +169,7 @@ function StepBody({ step, brandId }: { step: OfferLadderStep | null; brandId: st
             {cold.valueUsd != null ? `. Worth ${formatUsdAdaptive(cold.valueUsd)} now.` : "."}
           </p>
         </section>
-      )}
+      ) : null}
     </>
   );
 }
@@ -145,7 +178,7 @@ function LeadBody({ lead, step, brandId }: { lead: PipelineLead | ColdPipelineLe
   const cold = isCold(lead);
   return (
     <>
-      <LeadCard lead={lead} size="hero" />
+      <LeadCard lead={lead} size="hero" meta={`Reached ${lead.step.label.toLowerCase()}`} />
       {cold && (
         <section>
           <p className="k-label mb-2">Why we consider it lost</p>
@@ -156,7 +189,122 @@ function LeadBody({ lead, step, brandId }: { lead: PipelineLead | ColdPipelineLe
         </section>
       )}
       <WhySection why={step?.valueExplanation ?? null} brandId={brandId} />
+      <LeadStatus lead={lead} lifetimeRevenueUsd={step?.valueExplanation?.lifetimeRevenueUsd ?? null} />
     </>
+  );
+}
+
+function lostWords(l: LostStepPerson): string {
+  if (l.lostReason === "went_cold" && l.coldAtStep) {
+    return `No ${l.coldAtStep.label.toLowerCase()}${l.lostSince ? ` since ${friendlyDate(l.lostSince)}` : ""}`;
+  }
+  if (l.lostReason === "ruled_out") return "Marked as not going ahead";
+  return "Considered lost";
+}
+
+function PeopleGroup({ title, sub, count, children }: { title: string; sub?: string; count: number; children: React.ReactNode }) {
+  const shown = Array.isArray(children) ? children.length : 0;
+  return (
+    <section>
+      <p className="mb-2 flex items-baseline gap-2">
+        <span className="k-label">{title}</span>
+        <span className="k-fg3 text-[12px] tabular-nums">{formatCount(count)}</span>
+        {sub && <span className="k-fg3 text-[12px]">· {sub}</span>}
+      </p>
+      {count === 0 ? (
+        <p className="k-fg3 text-[13px]">Nobody yet.</p>
+      ) : (
+        <div className="space-y-2">{children}</div>
+      )}
+      {count > shown && shown > 0 && <p className="k-fg3 mt-2 text-[12px] tabular-nums">And {formatCount(count - shown)} more.</p>}
+    </section>
+  );
+}
+
+/** The steps a person can still be stated at, after the one they reached, in order. */
+const STATEMENT_STEPS: { key: "meeting_booked" | "meeting_attended" | "sale"; label: string; ladder: string }[] = [
+  { key: "meeting_booked", label: "Meeting booked", ladder: "meeting_booked" },
+  { key: "meeting_attended", label: "Meeting attended", ladder: "meeting_attended" },
+  { key: "sale", label: "Paid client", ladder: "paid_client" },
+];
+const LADDER_ORDER = ["website_visit", "conversation", "signup", "form_submitted", "meeting_booked", "meeting_attended", "paid_client"];
+
+/**
+ * Change what happened to this lead (owner 2026-10-08), with lead-service's per-lead step
+ * statements: the person page's write, its cost question and its close-won form.
+ */
+function LeadStatus({ lead, lifetimeRevenueUsd }: { lead: PipelineLead | ColdPipelineLead; lifetimeRevenueUsd: number | null }) {
+  const setStep = useSetAnyLeadStepStatement();
+  const [open, setOpen] = useState<{ key: string; kind: "outcome" | "never" } | null>(null);
+  const [done, setDone] = useState<string | null>(null);
+  const rowId = lead.campaignLeadId ?? null;
+  const at = LADDER_ORDER.indexOf(lead.step.key);
+  const next = STATEMENT_STEPS.filter((s) => LADDER_ORDER.indexOf(s.ladder) > at);
+  if (next.length === 0) return null;
+  return (
+    <section>
+      <p className="k-label mb-2">Update this lead</p>
+      {!rowId ? (
+        <p className="k-fg3 text-[13px]">This lead cannot be updated from here.</p>
+      ) : (
+        <ul className="k-card divide-y divide-[var(--line-subtle)]">
+          {next.map((s) => (
+            <li key={s.key} className="px-3 py-2.5">
+              <div className="flex items-center justify-between gap-2">
+                <span className="text-[13px]">{s.label}</span>
+                <span className="flex gap-1.5">
+                  {s.key === "sale" ? (
+                    <button type="button" className="k-btn-strong" onClick={() => setOpen({ key: s.key, kind: "outcome" })}>
+                      Mark as won
+                    </button>
+                  ) : (
+                    <button type="button" className="k-btn" onClick={() => setOpen({ key: s.key, kind: "outcome" })}>
+                      Happened
+                    </button>
+                  )}
+                  <button type="button" className="k-btn-ghost" onClick={() => setOpen({ key: s.key, kind: "never" })}>
+                    Won&apos;t happen
+                  </button>
+                </span>
+              </div>
+              {open?.key === s.key && (
+                <div className="v2-embed mt-2">
+                  {s.key === "sale" && open.kind === "outcome" ? (
+                    <CloseWonForm
+                      prefillUsd={lifetimeRevenueUsd}
+                      busy={setStep.isPending}
+                      onCancel={() => setOpen(null)}
+                      onSubmit={(input) =>
+                        setStep.mutate(
+                          { leadRowId: rowId, step: "sale", kind: "outcome", ...input },
+                          { onSuccess: () => { setOpen(null); setDone(`${s.label}: recorded.`); } },
+                        )
+                      }
+                    />
+                  ) : (
+                    <StageStatementForm
+                      label={s.label}
+                      tone={open.kind}
+                      needsValue={false}
+                      busy={setStep.isPending}
+                      onCancel={() => setOpen(null)}
+                      onSubmit={({ costCents }) =>
+                        setStep.mutate(
+                          { leadRowId: rowId, step: s.key, kind: open.kind, costCents },
+                          { onSuccess: () => { setOpen(null); setDone(`${s.label}: ${open.kind === "outcome" ? "recorded" : "marked as not happening"}.`); } },
+                        )
+                      }
+                    />
+                  )}
+                </div>
+              )}
+            </li>
+          ))}
+        </ul>
+      )}
+      {setStep.isError && <p className="mt-2 text-[12px] text-[var(--data-rose)]">We could not record this. Try again.</p>}
+      {done && <p className="k-fg2 mt-2 text-[12px]">{done} The figures update in a few seconds.</p>}
+    </section>
   );
 }
 
@@ -164,7 +312,7 @@ function LeadBody({ lead, step, brandId }: { lead: PipelineLead | ColdPipelineLe
  * The lead's card. `hero` = reached it thanks to us and still alive (the most spacious),
  * `lost` = ours but gone quiet, `compact` = not from us.
  */
-export function LeadCard({ lead, size }: { lead: PipelineLead | ColdPipelineLead; size: "hero" | "lost" | "compact" }) {
+export function LeadCard({ lead, size, meta }: { lead: CardPerson; size: "hero" | "lost" | "compact"; meta: string | null }) {
   const mark = size === "hero" ? 40 : size === "lost" ? 28 : 20;
   const sub = [lead.title, lead.orgName].filter(Boolean).join(" · ");
   return (
@@ -173,10 +321,10 @@ export function LeadCard({ lead, size }: { lead: PipelineLead | ColdPipelineLead
       <div className="min-w-0 flex-1">
         <p className={`truncate font-medium ${size === "hero" ? "text-[16px]" : "text-[13px]"}`}>{leadName(lead)}</p>
         {sub && <p className="k-fg2 truncate text-[12px]">{sub}</p>}
-        <p className="k-fg3 truncate text-[12px]">Reached {lead.step.label.toLowerCase()}</p>
+        {meta && <p className="k-fg3 truncate text-[12px]">{meta}</p>}
       </div>
       <div className="shrink-0 text-right">
-        <p className={`font-medium tabular-nums ${size === "hero" ? "text-[20px]" : "text-[13px]"}`}>
+        <p className={`font-medium tabular-nums ${size === "hero" ? "text-[20px] text-[var(--run)]" : "text-[13px]"}`}>
           {lead.valueUsd != null ? formatUsdAdaptive(lead.valueUsd) : "—"}
         </p>
         {lead.probabilityPct != null && <p className="k-fg3 text-[12px] tabular-nums">{pct(lead.probabilityPct)} chance</p>}

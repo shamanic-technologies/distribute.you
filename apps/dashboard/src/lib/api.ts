@@ -5223,6 +5223,9 @@ const OfferOutcomeRowSchema = z.object({
 
 const PipelineLeadSchema = z.object({
   leadId: z.string(),
+  // The person's leads_campaigns row: the id lead-service's step-statement write takes
+  // (features-service #1404). Null when lead-service stated none. Optional until served.
+  campaignLeadId: z.string().nullish(),
   firstName: z.string().nullable(),
   lastName: z.string().nullable(),
   title: z.string().nullable(),
@@ -5231,6 +5234,16 @@ const PipelineLeadSchema = z.object({
   step: OutcomeStepRefSchema,
   valueUsd: z.coerce.number().nullable(),
   probabilityPct: z.coerce.number().nullable(),
+});
+
+// One person at a step: identity, when they reached it, what they are worth now.
+const StepPersonSchema = PipelineLeadSchema.omit({ step: true }).extend({
+  reachedAt: z.string().nullable(),
+});
+const LostStepPersonSchema = StepPersonSchema.extend({
+  lostReason: z.string(),
+  lostSince: z.string().nullable(),
+  coldAtStep: OutcomeStepRefSchema.nullable(),
 });
 
 // What working with us earned the offer, every step a lead climbs (not only the steps a
@@ -5247,6 +5260,18 @@ const OfferPipelineSchema = z.object({
       valueExplanation: StepValueExplanationSchema.nullable(),
       conversionFromPrevious: StepConversionSchema.nullable(),
       wentCold: z.object({ count: z.coerce.number(), valueUsd: z.coerce.number().nullable() }).nullable(),
+      // Conversion measured on the people WE brought, beside the priced People count (#1404).
+      pricedConversionFromPrevious: StepConversionSchema.nullish(),
+      // Who stands on the step, three disjoint groups (#1404): ours alive, ours lost, not ours.
+      // ours + lost = pricedRecipientsReached; + notOurs = recipientsReached. Null = not counted.
+      people: z
+        .object({
+          limit: z.coerce.number(),
+          ours: z.object({ count: z.coerce.number(), leads: z.array(StepPersonSchema) }),
+          lost: z.object({ count: z.coerce.number(), leads: z.array(LostStepPersonSchema) }),
+          notOurs: z.object({ count: z.coerce.number(), leads: z.array(StepPersonSchema) }),
+        })
+        .nullish(),
       // The step's priced pipeline (features-service #1399): priced people x value each.
       // Null when the step is not counted or not priced. Optional until served.
       pricedValueUsd: z.coerce.number().nullish(),
@@ -5294,6 +5319,8 @@ export type OfferLadderStep = OfferPipeline["ladder"][number];
 export type StepValueExplanation = z.infer<typeof StepValueExplanationSchema>;
 export type PipelineLead = z.infer<typeof PipelineLeadSchema>;
 export type ColdPipelineLead = NonNullable<OfferPipeline["coldLeads"]>["leads"][number];
+export type StepPerson = z.infer<typeof StepPersonSchema>;
+export type LostStepPerson = z.infer<typeof LostStepPersonSchema>;
 
 /** GET /offers/:offerId/outcomes — what the offer's people are worth, step by step. */
 export async function getOfferOutcomes(offerId: string, brandId: string): Promise<OfferOutcomes> {
