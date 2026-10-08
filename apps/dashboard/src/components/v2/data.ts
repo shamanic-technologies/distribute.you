@@ -7,6 +7,7 @@ import {
   getOfferRevenue,
   getOfferRevenueWindow,
   getOfferOutcomes,
+  getOfferContactedValue,
   getLeadBucketCounts,
   getLeadHistory,
   getLeadStandingCounts,
@@ -84,6 +85,18 @@ export function useOfferOutcomes(brandId: string) {
     ...pollOptions,
   });
   return { ...q, pending: enabled ? q.data === undefined && !q.isError : !scopeSettled };
+}
+
+/**
+ * What the selected offer's contacted people are worth (features-service contacted-value,
+ * the Deals board's Contacted column read without lead ids): per person and in all.
+ */
+export function useOfferContactedValue(brandId: string) {
+  const { offerId } = useSelectedOffer();
+  return useAuthQuery(["contactedValue", brandId, "offer", offerId, ""], () => getOfferContactedValue(offerId!, brandId, []), {
+    enabled: !!offerId,
+    ...pollOptions,
+  });
 }
 
 /** Today's stat row over the last `days` UTC days, same offer and gate as `useBrandRevenue`. */

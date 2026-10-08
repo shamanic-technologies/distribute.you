@@ -12,7 +12,7 @@ import { friendlyDate, friendlyTime, timeAgo } from "@/lib/friendly-datetime";
 import { utcDay } from "@/lib/v2/series";
 import { SINCE_INCEPTION } from "@/lib/revenue-window";
 import { v2Href, v2OfferHref } from "@/lib/v2/routes";
-import { shownReturn } from "@/lib/maturity";
+import { shownReturn, shownReturnHalf } from "@/lib/maturity";
 import { useStatBasis } from "@/lib/use-stat-basis";
 import { useStaffMode } from "@/lib/use-staff-mode";
 import { useClientClock } from "@/lib/use-client-clock";
@@ -38,7 +38,8 @@ import { PathAvatar } from "@/components/v2/offer-sales-paths";
 import { CampaignLeg, budgetLabel } from "@/components/v2/offer-campaigns";
 import { campaignKey, campaignTag } from "@/lib/offer-campaigns";
 import { useAuthQuery } from "@/lib/use-auth-query";
-import { getOfferCampaignBudgets } from "@/lib/api";
+import { getOfferCampaignBudgets, type OfferCampaignBudgets } from "@/lib/api";
+import { fmtDailyBudgetUsd } from "@/lib/campaign-budget";
 import { STEP_KEY_FOR_LEAD_STAGE } from "@/lib/step-marks";
 import { CrewMark } from "@/components/v2/crew-mark";
 import { useMissions, type Mission } from "@/components/v2/use-missions";
@@ -52,8 +53,9 @@ import {
   useTheirLastWords,
   useStandingCounts,
   useOfferOutcomes,
+  useOfferContactedValue,
 } from "@/components/v2/data";
-import { OfferOutcomesTable } from "@/components/v2/today-roi";
+import { EarnedStrip, HotLeads, LostLeads, OfferOutcomesTable } from "@/components/v2/today-roi";
 import { RoiHistoryCard } from "@/components/v2/campaign-roi-chart";
 import {
   CompanyMark,
@@ -120,6 +122,10 @@ export function TodayPage() {
   const data = rev.data;
   const standings = useStandingCounts(brandId).data;
   const outcomesQ = useOfferOutcomes(brandId);
+  const outcomesAnswered = outcomesQ.data !== undefined;
+  // Not served before features-service v0.179.81: the sections then say they cannot read it.
+  const pipeline = outcomesQ.data?.pipeline ?? null;
+  const contactedQ = useOfferContactedValue(brandId);
   const buckets = useBucketCounts(brandId).data;
   const { missions, missionByCampaignId } = useMissions(orgId, brandId);
   const { byCrew, settled: runsSettled } = useCrewRuns(brandId, missionByCampaignId);
@@ -159,6 +165,8 @@ export function TodayPage() {
   // exactly where the producer says the brand is not mature (lib/maturity.ts).
   const shownRoi = shownReturn(data?.costEconomics.maturity, basis);
   const learning = shownRoi.learning;
+  const roiHalf = shownReturnHalf(data?.costEconomics.maturity, basis);
+  const roiCurve = !data?.roiHistory ? null : roiHalf === "flash" ? data.roiHistory.flash ?? null : data.roiHistory;
   const interestedStanding = standings?.counts.sales_interest ?? null;
 
   // Runs today, per crew: runs-service's own roll-up filed under each crew.
@@ -325,18 +333,25 @@ export function TodayPage() {
               </StatTile>
             </div>
 
-            {/* What working with us earned, step by step, and the return to date (owner 2026-10-08). */}
-            <div className="mt-8 grid grid-cols-1 gap-6 lg:grid-cols-2">
+            {/* What working with us earned: customers won, hot and lost leads, the pipeline
+                step by step and why, the return to date (owner 2026-10-08). */}
+            <div className="mt-8">
+              <EarnedStrip pipeline={pipeline} answered={outcomesAnswered} />
+            </div>
+            <div className="mt-6 grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,3fr)_minmax(0,2fr)]">
               <OfferOutcomesTable
                 orgId={orgId}
                 brandId={brandId}
                 offerId={selectedOfferId}
                 rows={outcomesQ.data?.outcomes ?? null}
-                answered={outcomesQ.data !== undefined}
+                pipeline={pipeline}
+                contacted={contactedQ.data ? { perLeadUsd: contactedQ.data.perLeadExpectedValueUsd, totalUsd: contactedQ.data.totalExpectedValueUsd } : null}
+                answered={outcomesAnswered}
                 failed={outcomesQ.data === undefined && outcomesQ.isFetchedAfterMount && outcomesQ.isError}
               />
               <RoiHistoryCard
-                history={data?.roiHistory ?? null}
+                // The curve whose last point IS the return the Return tile states.
+                history={roiCurve}
                 answered={data !== undefined}
                 failed={data === undefined && rev.isError}
                 right="Since you started"
@@ -344,6 +359,10 @@ export function TodayPage() {
                 failedCopy="Could not read your return. Retrying."
                 emptyCopy="No return to show yet: nothing has been spent."
               />
+            </div>
+            <div className="mt-6 grid grid-cols-1 gap-6 lg:grid-cols-2">
+              <HotLeads pipeline={pipeline} answered={outcomesAnswered} />
+              <LostLeads pipeline={pipeline} answered={outcomesAnswered} />
             </div>
 
             <div className="mt-8 grid gap-6 lg:grid-cols-[minmax(0,1fr)_380px]">
@@ -439,6 +458,11 @@ export function TodayPage() {
                       </Link>
                     ) : null}
                   >Campaigns</SectionTitle>
+                  {/* Billing's own totals, ON campaigns only: what goes to proactive outreach,
+                      and the most the reactive ones may spend, per reaction (owner 2026-10-08). */}
+                  {budgetsQ.data?.totals && (
+                    <BudgetTotals totals={budgetsQ.data.totals} />
+                  )}
                   <div className="k-card divide-y divide-[var(--line-subtle)]">
                     {!ongoing.settled ? (
                       <div className="p-4"><Shimmer className="h-10 w-full" /></div>
@@ -583,6 +607,37 @@ function MeetingLine({ lead, at, mission, href }: { lead: Lead; at: string | nul
         </div>
       </Link>
     </li>
+  );
+}
+
+function BudgetTotals({ totals }: { totals: NonNullable<OfferCampaignBudgets["totals"]> }) {
+  const per = `/${totals.period}`;
+  return (
+    <div className="k-card mb-3 grid grid-cols-2 divide-x divide-[var(--line-subtle)]">
+      <div className="min-w-0 p-3">
+        <p className="k-label">Proactive</p>
+        <p className="mt-1 text-[17px] font-medium tabular-nums">
+          {fmtDailyBudgetUsd(totals.proactive.budgetCents)}
+          <span className="k-fg3 text-[12px] font-normal">{per}</span>
+        </p>
+        <p className="k-fg3 text-[12px]">
+          {formatCount(totals.proactive.campaigns)} {totals.proactive.campaigns === 1 ? "campaign" : "campaigns"}
+        </p>
+      </div>
+      <div className="min-w-0 p-3">
+        <p className="k-label">Reactive, at most</p>
+        <p className="mt-1 text-[17px] font-medium tabular-nums">
+          {fmtDailyBudgetUsd(totals.reactive.maxBudgetCents)}
+          <span className="k-fg3 text-[12px] font-normal">{per}</span>
+        </p>
+        {totals.reactive.byTrigger.map((t) => (
+          <p key={t.triggerKey ?? "none"} className="k-fg3 truncate text-[12px] tabular-nums">
+            On {(t.triggerLabel ?? "other steps").toLowerCase()}: {fmtDailyBudgetUsd(t.maxBudgetCents)}
+            {per}
+          </p>
+        ))}
+      </div>
+    </div>
   );
 }
 
