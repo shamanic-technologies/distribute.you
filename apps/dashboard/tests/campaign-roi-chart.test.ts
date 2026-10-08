@@ -166,3 +166,21 @@ describe("Pipeline by step: one row per person, a served Total", () => {
     expect(roi).toContain("r.people ? formatCount(r.people.lost.count) : dash");
   });
 });
+
+/**
+ * Owner 2026-10-08: a person card in a step's panel opens that person's lead view, like a
+ * Hot leads row, with a back arrow top left returning to the list.
+ */
+describe("Today panel: a step's person opens its lead view, with a way back", () => {
+  const panel = fs.readFileSync(path.join(__dirname, "../src/components/v2/today-roi-panel.tsx"), "utf-8");
+  it("every list card opens the person", () => {
+    expect(panel).toContain('onOpen={() => onOpenPerson({ lead: asLead(l, step.step), group: "hot", meta })}');
+    expect(panel).toContain('onOpenPerson({ lead: asLostLead(l, step.step), group: "lost"');
+    expect(panel).toContain("asLead(l, CONTACTED_STEP)");
+  });
+  it("the header carries a back arrow while a person is open, Esc goes back first", () => {
+    expect(panel).toContain('onClick={() => setPerson(null)} aria-label="Back"');
+    expect(panel).toContain("if (person) setPerson(null);");
+    expect(panel).toContain("useEffect(() => setPerson(null), [target]);");
+  });
+});

@@ -54,6 +54,16 @@ function sourceWords(leg: StepValueExplanation["legs"][number]): string {
 }
 
 const isCold = (l: PipelineLead | ColdPipelineLead): l is ColdPipelineLead => "lostReason" in l;
+/** A person opened from a step's list: the lead view, then back to the list (owner 2026-10-08). */
+type OpenPerson = { lead: PipelineLead | ColdPipelineLead; group: "hot" | "lost"; meta: string | null };
+/** A step's person as the lead view reads it: the step they stand on, lost dates under the lead names. */
+const asLead = (l: StepPerson, step: PipelineLead["step"]): PipelineLead => ({ ...l, step });
+const asLostLead = (l: LostStepPerson, step: PipelineLead["step"]): ColdPipelineLead => ({
+  ...l,
+  step,
+  coldSince: l.lostSince,
+  stalledSince: l.reachedAt,
+});
 type CardPerson = Pick<PipelineLead, "firstName" | "lastName" | "title" | "orgName" | "orgDomain" | "valueUsd" | "probabilityPct">;
 const leadName = (l: CardPerson) => [l.firstName, l.lastName].filter(Boolean).join(" ") || l.orgName || "Unknown";
 
@@ -74,19 +84,25 @@ export function TodayPanel({
   target: TodayPanelTarget;
   onClose: () => void;
 }) {
+  // A person opened from the step's list; the arrow top left goes back to the list.
+  const [person, setPerson] = useState<OpenPerson | null>(null);
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") onClose();
+      if (e.key !== "Escape") return;
+      if (person) setPerson(null);
+      else onClose();
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [onClose]);
+  }, [onClose, person]);
   // Read after mount: the shell's #v2-portal is not committed on a first paint.
   const [host, setHost] = useState<HTMLElement | null>(null);
   useEffect(() => setHost(document.getElementById("v2-portal")), []);
+  useEffect(() => setPerson(null), [target]);
   if (!host) return null;
 
-  const stepKey = target.kind === "step" ? target.stepKey : target.kind === "lead" ? target.lead.step.key : null;
+  const shown: TodayPanelTarget = person ? { kind: "lead", lead: person.lead, group: person.group } : target;
+  const stepKey = shown.kind === "step" ? shown.stepKey : shown.kind === "lead" ? shown.lead.step.key : null;
   const step = stepKey ? pipeline?.ladder.find((s) => s.step.key === stepKey) ?? null : null;
   // The same step on the one-row-per-person reading: its people and its slice (#1416).
   const slice = stepKey ? pipeline?.exclusiveLadder?.rows.find((r) => r.step.key === stepKey) ?? null : null;
@@ -94,11 +110,20 @@ export function TodayPanel({
   return createPortal(
     <aside
       role="dialog"
-      aria-label={target.kind === "step" ? `${step?.step.label ?? "Step"} details` : target.kind === "contacted" ? "People contacted details" : `${leadName(target.lead)} details`}
+      aria-label={shown.kind === "step" ? `${step?.step.label ?? "Step"} details` : shown.kind === "contacted" ? "People contacted details" : `${leadName(shown.lead)} details`}
       className="k-popover fixed inset-y-2 right-2 z-[80] flex w-[min(480px,calc(100vw-16px))] flex-col overflow-hidden"
     >
       <div className="k-line-subtle flex h-11 shrink-0 items-center justify-between border-b px-4">
-        <span className="k-label">{target.kind === "step" ? "Step" : target.kind === "contacted" ? "People contacted" : target.group === "hot" ? "Hot lead" : "Lost lead"}</span>
+        <span className="flex min-w-0 items-center gap-1.5">
+          {person && (
+            <button type="button" onClick={() => setPerson(null)} aria-label="Back" className="k-btn-ghost -ml-2 h-7 w-7 justify-center px-0">
+              <svg width="14" height="14" viewBox="0 0 14 14" aria-hidden="true">
+                <path d="M11 7H3M6.5 3.5L3 7l3.5 3.5" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+            </button>
+          )}
+          <span className="k-label">{shown.kind === "step" ? "Step" : shown.kind === "contacted" ? "People contacted" : shown.group === "lost" ? "Lost lead" : person ? "Lead" : "Hot lead"}</span>
+        </span>
         <button type="button" onClick={onClose} aria-label="Close" className="k-btn-ghost h-7 w-7 justify-center px-0">
           <svg width="12" height="12" viewBox="0 0 12 12" aria-hidden="true">
             <path d="M3 3l6 6M9 3l-6 6" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" />
@@ -106,12 +131,12 @@ export function TodayPanel({
         </button>
       </div>
       <div className="k-scroll min-h-0 flex-1 space-y-6 overflow-y-auto p-4">
-        {target.kind === "step" ? (
-          <StepBody step={step} slice={slice} brandId={brandId} />
-        ) : target.kind === "contacted" ? (
-          <ContactedBody contacted={pipeline?.exclusiveLadder?.contacted ?? null} />
+        {shown.kind === "step" ? (
+          <StepBody step={step} slice={slice} brandId={brandId} onOpenPerson={setPerson} />
+        ) : shown.kind === "contacted" ? (
+          <ContactedBody contacted={pipeline?.exclusiveLadder?.contacted ?? null} onOpenPerson={setPerson} />
         ) : (
-          <LeadBody lead={target.lead} step={step} brandId={brandId} />
+          <LeadBody key={shown.lead.leadId} lead={shown.lead} step={step} brandId={brandId} meta={person?.meta} />
         )}
       </div>
     </aside>,
@@ -119,7 +144,17 @@ export function TodayPanel({
   );
 }
 
-function StepBody({ step, slice, brandId }: { step: OfferLadderStep | null; slice: ExclusiveRow | null; brandId: string }) {
+function StepBody({
+  step,
+  slice,
+  brandId,
+  onOpenPerson,
+}: {
+  step: OfferLadderStep | null;
+  slice: ExclusiveRow | null;
+  brandId: string;
+  onOpenPerson: (p: OpenPerson) => void;
+}) {
   if (!step) return <EmptyNote>This step is not readable right now.</EmptyNote>;
   const cold = step.wentCold;
   // One row per person: the people whose furthest step is this one, never the ones who went further.
@@ -150,26 +185,32 @@ function StepBody({ step, slice, brandId }: { step: OfferLadderStep | null; slic
       {people ? (
         <>
           <PeopleGroup title="Thanks to us" count={people.ours.count}>
-            {people.ours.leads.map((l) => (
-              <LeadCard
-                key={l.leadId}
-                lead={l}
-                size="hero"
-                meta={l.reachedAt ? `${step.step.key === "paid_client" ? "Won" : `Reached ${step.step.label.toLowerCase()}`} ${friendlyDate(l.reachedAt)}` : null}
-              />
-            ))}
+            {people.ours.leads.map((l) => {
+              const meta = l.reachedAt ? `${step.step.key === "paid_client" ? "Won" : `Reached ${step.step.label.toLowerCase()}`} ${friendlyDate(l.reachedAt)}` : null;
+              return (
+                <LeadCard
+                  key={l.leadId}
+                  lead={l}
+                  size="hero"
+                  meta={meta}
+                  onOpen={() => onOpenPerson({ lead: asLead(l, step.step), group: "hot", meta })}
+                />
+              );
+            })}
           </PeopleGroup>
           {people.lost.count > 0 && (
             <PeopleGroup title="Thanks to us, considered lost" count={people.lost.count}>
               {people.lost.leads.map((l) => (
-                <LeadCard key={l.leadId} lead={l} size="lost" meta={lostWords(l)} />
+                <LeadCard key={l.leadId} lead={l} size="lost" meta={lostWords(l)} onOpen={() => onOpenPerson({ lead: asLostLead(l, step.step), group: "lost", meta: lostWords(l) })} />
               ))}
             </PeopleGroup>
           )}
           {people.notOurs.count > 0 && (
             <PeopleGroup title="Not from us" sub="Your CRM or another source" count={people.notOurs.count}>
               {people.notOurs.leads.map((l) => (
-                <LeadCard key={l.leadId} lead={l} size="compact" meta={l.reachedAt ? friendlyDate(l.reachedAt) : null} />
+                <LeadCard key={l.leadId} lead={l} size="compact" meta={l.reachedAt ? friendlyDate(l.reachedAt) : null}
+                  onOpen={() => onOpenPerson({ lead: asLead(l, step.step), group: "hot", meta: l.reachedAt ? `Reached ${step.step.label.toLowerCase()} ${friendlyDate(l.reachedAt)}` : null })}
+                />
               ))}
             </PeopleGroup>
           )}
@@ -187,11 +228,22 @@ function StepBody({ step, slice, brandId }: { step: OfferLadderStep | null; slic
   );
 }
 
-function LeadBody({ lead, step, brandId }: { lead: PipelineLead | ColdPipelineLead; step: OfferLadderStep | null; brandId: string }) {
+function LeadBody({
+  lead,
+  step,
+  brandId,
+  meta,
+}: {
+  lead: PipelineLead | ColdPipelineLead;
+  step: OfferLadderStep | null;
+  brandId: string;
+  /** The card's line as the list showed it; a lead from Hot/Lost leads reads its step. */
+  meta?: string | null;
+}) {
   const cold = isCold(lead);
   return (
     <>
-      <LeadCard lead={lead} size="hero" meta={`Reached ${lead.step.label.toLowerCase()}`} />
+      <LeadCard lead={lead} size="hero" meta={meta !== undefined ? meta : `Reached ${lead.step.label.toLowerCase()}`} />
       {cold && (
         <section>
           <p className="k-label mb-2">Why we consider it lost</p>
@@ -213,7 +265,7 @@ function LeadBody({ lead, step, brandId }: { lead: PipelineLead | ColdPipelineLe
  * chance of reaching each entry step from contact, times that step's value, as served),
  * who counts at zero and why, and the people.
  */
-function ContactedBody({ contacted }: { contacted: ExclusiveLadder["contacted"] | null }) {
+function ContactedBody({ contacted, onOpenPerson }: { contacted: ExclusiveLadder["contacted"] | null; onOpenPerson: (p: OpenPerson) => void }) {
   if (!contacted) return <EmptyNote>Not readable right now.</EmptyNote>;
   const why = contacted.explanation;
   const zero = [
@@ -263,13 +315,25 @@ function ContactedBody({ contacted }: { contacted: ExclusiveLadder["contacted"] 
         </section>
       )}
       <PeopleGroup title="Most valuable" count={contacted.valuedCount}>
-        {contacted.people.leads.map((l) => (
-          <LeadCard key={l.leadId} lead={l} size="compact" meta={l.countedWithColleague ? "Company already counted with a colleague" : l.reachedAt ? `Contacted ${friendlyDate(l.reachedAt)}` : null} />
-        ))}
+        {contacted.people.leads.map((l) => {
+          const meta = l.countedWithColleague ? "Company already counted with a colleague" : l.reachedAt ? `Contacted ${friendlyDate(l.reachedAt)}` : null;
+          return (
+            <LeadCard
+              key={l.leadId}
+              lead={l}
+              size="compact"
+              meta={meta}
+              onOpen={() => onOpenPerson({ lead: asLead(l, CONTACTED_STEP), group: "hot", meta })}
+            />
+          );
+        })}
       </PeopleGroup>
     </>
   );
 }
+
+/** Contacted is not a ladder step: the lead view reads no step value, every next step stays open. */
+const CONTACTED_STEP: PipelineLead["step"] = { key: "contacted", label: "Contacted" };
 
 function lostWords(l: LostStepPerson): string {
   if (l.lostReason === "went_cold" && l.coldAtStep) {
@@ -389,11 +453,26 @@ function LeadStatus({ lead, lifetimeRevenueUsd }: { lead: PipelineLead | ColdPip
  * The lead's card. `hero` = reached it thanks to us and still alive (the most spacious),
  * `lost` = ours but gone quiet, `compact` = not from us.
  */
-export function LeadCard({ lead, size, meta }: { lead: CardPerson; size: "hero" | "lost" | "compact"; meta: string | null }) {
+export function LeadCard({
+  lead,
+  size,
+  meta,
+  onOpen,
+}: {
+  lead: CardPerson;
+  size: "hero" | "lost" | "compact";
+  meta: string | null;
+  /** Set: the card is a button opening the lead in the panel. */
+  onOpen?: () => void;
+}) {
   const mark = size === "hero" ? 40 : size === "lost" ? 28 : 20;
   const sub = [lead.title, lead.orgName].filter(Boolean).join(" · ");
+  const Tag = onOpen ? "button" : "div";
   return (
-    <div className={`k-card flex min-w-0 items-center gap-3 ${size === "hero" ? "p-5" : size === "lost" ? "p-4" : "px-3 py-2.5"}`}>
+    <Tag
+      {...(onOpen ? { type: "button" as const, onClick: onOpen, "aria-label": `Open ${leadName(lead)}` } : {})}
+      className={`k-card flex w-full min-w-0 items-center gap-3 text-left ${onOpen ? "cursor-pointer" : ""} ${size === "hero" ? "p-5" : size === "lost" ? "p-4" : "px-3 py-2.5"}`}
+    >
       {lead.orgName ? <CompanyMark name={lead.orgName} domain={lead.orgDomain} size={mark} /> : <Initials name={leadName(lead)} size={mark} round />}
       <div className="min-w-0 flex-1">
         <p className={`truncate font-medium ${size === "hero" ? "text-[16px]" : "text-[13px]"}`}>{leadName(lead)}</p>
@@ -406,7 +485,7 @@ export function LeadCard({ lead, size, meta }: { lead: CardPerson; size: "hero" 
         </p>
         {lead.probabilityPct != null && <p className="k-fg3 text-[12px] tabular-nums">{pct(lead.probabilityPct)} chance</p>}
       </div>
-    </div>
+    </Tag>
   );
 }
 
