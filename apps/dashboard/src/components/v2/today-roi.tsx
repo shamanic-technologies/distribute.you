@@ -124,8 +124,6 @@ export function OfferOutcomesTable({
   const exRows = ex
     ? [...ex.rows].reverse().filter((r) => (r.pricedPeople ?? 0) > 0 || (r.people?.notOurs.count ?? 0) > 0)
     : null;
-  // Step to step is cumulative by nature: the conversion column keeps the ladder's.
-  const conversionOf = (key: string) => pipeline?.ladder.find((s) => s.step.key === key)?.pricedConversionFromPrevious?.ratePct ?? null;
   return (
     <section>
       <SectionTitle right={<span>Since you started</span>}>Pipeline by step</SectionTitle>
@@ -138,7 +136,7 @@ export function OfferOutcomesTable({
                 <th className="k-label px-2 py-2.5 sm:px-3 text-right font-normal">All</th>
                 <th className="k-label px-2 py-2.5 sm:px-3 text-right font-normal">Hot</th>
                 <th className="k-label px-2 py-2.5 sm:px-3 text-right font-normal">Lost</th>
-                <th className="k-label hidden whitespace-nowrap px-2 py-2.5 text-right font-normal sm:table-cell sm:px-3">Conversion</th>
+                <th className="k-label hidden whitespace-nowrap px-2 py-2.5 text-right font-normal sm:table-cell sm:px-3">% Conversion</th>
                 <th className="k-label whitespace-nowrap px-2 py-2.5 sm:px-3 text-right font-normal">
                   <ExpectedLabel tip={WORTH_EACH_TIP}>Worth each</ExpectedLabel>
                 </th>
@@ -163,13 +161,14 @@ export function OfferOutcomesTable({
               ) : ex && exRows ? (
                 <>
                   {exRows.map((r) => (
-                    <SliceLine key={r.step.key} r={r} conversionPct={conversionOf(r.step.key)} onOpen={() => onOpenStep(r.step.key)} />
+                    <SliceLine key={r.step.key} r={r} onOpen={() => onOpenStep(r.step.key)} />
                   ))}
                   <ContactedLine
                     label="People contacted"
                     count={ex.contacted.count}
                     eachUsd={ex.contacted.valuePerPersonUsd}
                     totalUsd={ex.contacted.pipelineUsd}
+                    conversionPct={ex.contacted.conversionFromRowAbove?.ratePct ?? null}
                     onOpen={onOpenContacted}
                   />
                   <tr className="k-line-subtle border-t">
@@ -263,7 +262,9 @@ const GAP_WORDS: Record<string, string> = {
 };
 
 /** One slice of the pipeline: the people whose furthest step we brought them to is this one. */
-function SliceLine({ r, conversionPct, onOpen }: { r: ExclusiveRow; conversionPct: number | null; onOpen: () => void }) {
+function SliceLine({ r, onOpen }: { r: ExclusiveRow; onOpen: () => void }) {
+  // Owner 2026-10-08: the row above / (this row + the row above), served per row.
+  const conversionPct = r.conversionFromRowAbove?.ratePct ?? null;
   return (
     <tr {...openable(onOpen, r.step.label)}>
       <td className="px-2 py-2 pl-4 font-medium sm:px-3">{r.step.label}</td>
@@ -284,12 +285,14 @@ function ContactedLine({
   count,
   eachUsd,
   totalUsd,
+  conversionPct = null,
   onOpen,
 }: {
   label: string;
   count: number | null;
   eachUsd: number | null;
   totalUsd: number | null;
+  conversionPct?: number | null;
   onOpen?: () => void;
 }) {
   return (
@@ -298,7 +301,7 @@ function ContactedLine({
       <td className="px-2 py-2 sm:px-3 text-right tabular-nums">{count != null ? formatCount(count) : dash}</td>
       <td className="px-2 py-2 text-right sm:px-3">{dash}</td>
       <td className="px-2 py-2 text-right sm:px-3">{dash}</td>
-      <td className="hidden px-2 py-2 text-right sm:table-cell sm:px-3">{dash}</td>
+      <td className="hidden px-2 py-2 text-right tabular-nums sm:table-cell sm:px-3">{conversionPct != null ? pct(conversionPct) : dash}</td>
       <td className="px-2 py-2 sm:px-3 text-right tabular-nums">{eachUsd != null ? formatUsdAdaptive(eachUsd) : dash}</td>
       <td className="px-2 py-2 sm:px-3 pr-4 text-right font-medium tabular-nums">{totalUsd != null ? formatUsdAdaptive(totalUsd) : dash}</td>
     </tr>

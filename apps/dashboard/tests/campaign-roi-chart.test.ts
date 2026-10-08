@@ -168,6 +168,12 @@ describe("Pipeline by step: one row per person, a served Total", () => {
     expect(roi).toContain("r.hot ? formatCount(r.hot.count) : dash");
     expect(roi).toContain("ex.total.hot ? formatCount(ex.total.hot.count) : dash");
   });
+  it("% Conversion = the row above / (row + row above), served per row (owner 2026-10-08)", () => {
+    expect(roi).toContain('sm:px-3">% Conversion</th>');
+    expect(roi).toContain("r.conversionFromRowAbove?.ratePct ?? null");
+    expect(roi).toContain("conversionPct={ex.contacted.conversionFromRowAbove?.ratePct ?? null}");
+    expect(roi).not.toContain("const conversionOf");
+  });
 });
 
 /**
