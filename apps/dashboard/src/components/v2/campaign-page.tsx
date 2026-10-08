@@ -292,7 +292,12 @@ function CampaignOverview({
         </div>
       </section>
 
-      <CampaignRoiChart brandId={brandId} campaignId={campaignId} featureSlug={mission.row.campaign.featureSlug ?? null} />
+      <CampaignRoiChart
+        brandId={brandId}
+        campaignId={campaignId}
+        featureSlug={mission.row.campaign.featureSlug ?? null}
+        economics={g?.economicsMaturity}
+      />
 
       <div className="grid gap-x-3 gap-y-8 lg:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
         <LegSteps
@@ -386,7 +391,12 @@ function ConversationOverview({
         </div>
       </section>
 
-      <CampaignRoiChart brandId={brandId} campaignId={mission.row.campaign.id} featureSlug={mission.row.campaign.featureSlug ?? null} />
+      <CampaignRoiChart
+        brandId={brandId}
+        campaignId={mission.row.campaign.id}
+        featureSlug={mission.row.campaign.featureSlug ?? null}
+        economics={mission.row.revenue?.economicsMaturity}
+      />
 
       <div className="grid gap-x-3 gap-y-8 lg:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
         <section>
