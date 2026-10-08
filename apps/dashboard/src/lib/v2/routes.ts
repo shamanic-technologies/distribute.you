@@ -7,6 +7,7 @@ export type V2Section =
   | "companies"
   | "people"
   | "deals"
+  | "unibox"
   | "work"
   | "crew"
   | "campaigns"
@@ -81,6 +82,7 @@ export function v2SectionOf(pathname: string): V2Section | null {
     "companies",
     "people",
     "deals",
+    "unibox",
     "work",
     "crew",
     "campaigns",

@@ -146,20 +146,52 @@ describe("wiring", () => {
     expect(api).toContain("PeopleListSchema.safeParse(raw)");
     expect(api).toContain("PersonTimelineSchema.safeParse(raw)");
   });
-  it("is beta-gated on the page body", () => {
-    const view = read("components/v2/integrations-conversations.tsx");
-    expect(view).toContain("const isBeta = useIsBetaUser();");
-    expect(view).toContain("enabled: isBeta");
+  it("is the Unibox, staff mode only, under Records (owner 2026-10-08)", () => {
+    const page = read("app/(authed)/v2/orgs/[orgId]/brands/[brandId]/unibox/page.tsx");
+    expect(page).toContain("<StaffOnly>");
+    expect(page).toContain("<UniboxPage />");
+    expect(read("components/v2/unibox-page.tsx")).toContain("<V2ConversationsView brandId={brandId} />");
+    const shell = read("components/v2/v2-shell.tsx");
+    const at = shell.indexOf('href={v2Href(orgId, brandId, "unibox")}');
+    expect(at).toBeGreaterThan(shell.indexOf('href={v2Href(orgId, brandId, "deals")}'));
+    expect(at).toBeLessThan(shell.indexOf('href={v2Href(orgId, brandId, "workflows")}'));
+    expect(shell.slice(at - 80, at)).toContain("{staffMode && (");
   });
-  it("is a beta tab of Integrations, and the page renders the view", () => {
-    const setup = read("components/v2/setup-pages.tsx");
-    expect(setup).toContain('{ label: "Conversations", href: `${base}/conversations`, active: active === "conversations", badge: "beta" as const }');
-    expect(setup).toContain("<V2ConversationsView brandId={brandId} />");
-    const page = read("app/(authed)/v2/orgs/[orgId]/brands/[brandId]/integrations/conversations/page.tsx");
-    expect(page).toContain('<V2IntegrationsPage view="conversations" />');
+  it("is no longer a tab of Integrations; its old URL redirects to the Unibox", () => {
+    expect(read("components/v2/setup-pages.tsx")).not.toContain("V2ConversationsView");
+    const old = read("app/(authed)/v2/orgs/[orgId]/brands/[brandId]/integrations/conversations/page.tsx");
+    expect(old).toContain("redirect(");
+    expect(old).toContain("/unibox`");
   });
   it("never writes back to a source", () => {
     const view = read("components/v2/integrations-conversations.tsx");
     for (const banned of ["useMutation", "apiCall", "fetch("]) expect(view).not.toContain(banned);
+  });
+});
+
+describe("where a record came from", () => {
+  it("names our own sends and visits Distribute, every other source by its vendor", async () => {
+    const { sourceMark } = await import("../src/lib/conversation-sources");
+    expect(sourceMark("instantly", "email").name).toBe("Distribute");
+    expect(sourceMark("posthog", "web").name).toBe("Distribute");
+    expect(sourceMark("gmail", "email").domain).toBe("gmail.com");
+    expect(sourceMark("matrix", "whatsapp").domain).toBe("whatsapp.com");
+    expect(sourceMark("matrix", "linkedin").domain).toBe("linkedin.com");
+    expect(sourceMark("stripe", "payment").domain).toBe("stripe.com");
+    expect(sourceMark("brand_new_source", "email")).toMatchObject({ domain: null, src: null });
+  });
+  it("lists each mark once per person", async () => {
+    const { personSourceMarks } = await import("../src/lib/conversation-sources");
+    const marks = personSourceMarks([
+      { source: "instantly", channel: "email" },
+      { source: "posthog", channel: "web" },
+      { source: "gmail", channel: "email" },
+    ]);
+    expect(marks.map((m) => m.name)).toEqual(["Distribute", "Gmail"]);
+  });
+  it("finds a company logo only behind a work address", async () => {
+    const { personCompanyDomain } = await import("../src/lib/conversation-sources");
+    expect(personCompanyDomain(["jo@gmail.com", "jo@acme.io"])).toBe("acme.io");
+    expect(personCompanyDomain(["jo@gmail.com"])).toBeNull();
   });
 });

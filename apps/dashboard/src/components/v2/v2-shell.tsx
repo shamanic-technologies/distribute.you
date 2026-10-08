@@ -127,6 +127,8 @@ const ICONS = {
   plug: "M6 2.5v3m4-3v3M4.5 5.5h7v2a3.5 3.5 0 0 1-7 0zM8 11v2.5",
   settings: "M8 10a2 2 0 1 0 0-4 2 2 0 0 0 0 4Zm5.2-1.1.9.6-1 1.8-1.1-.3a4.5 4.5 0 0 1-1.3.8l-.2 1.2H7.5l-.2-1.2a4.5 4.5 0 0 1-1.3-.8l-1.1.3-1-1.8.9-.6a4.5 4.5 0 0 1 0-1.8l-.9-.6 1-1.8 1.1.3c.4-.3.8-.6 1.3-.8l.2-1.2h2l.2 1.2c.5.2.9.5 1.3.8l1.1-.3 1 1.8-.9.6a4.5 4.5 0 0 1 0 1.8Z",
   posts: "M2.5 3.5h11v9h-11zM5 6.5h6M5 9.5h4",
+  // An inbox tray: every conversation in one place.
+  unibox: "M2.5 8.5 4 3.5h8l1.5 5v4h-11zM2.5 8.5h3.5l.8 1.5h2.4l.8-1.5h3.5",
   workflows: "M4 3.5a1.5 1.5 0 1 1 0 3 1.5 1.5 0 0 1 0-3Zm8 6a1.5 1.5 0 1 1 0 3 1.5 1.5 0 0 1 0-3ZM4 6.5v2a2 2 0 0 0 2 2h4.5",
 };
 
@@ -241,6 +243,15 @@ function V2Sidebar() {
                 trailing={<Count n={dealsInPlay} />}
               />
             </>
+          )}
+          {/* Unibox (owner 2026-10-08): every conversation in one place, right under Records, staff mode only. */}
+          {staffMode && (
+            <NavItem
+              href={v2Href(orgId, brandId, "unibox")}
+              label="Unibox"
+              icon={<I d={ICONS.unibox} />}
+              active={section === "unibox"}
+            />
           )}
           {staffMode && (
             <NavItem

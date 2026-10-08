@@ -25,9 +25,9 @@ describe("PostHog and Stripe are integrations a brand can connect", () => {
     expect(def.fields[0].label).toBe("Restricted key");
   });
 
-  it("links both to Conversations, GoHighLevel to its CRM", () => {
-    expect(integrationFor("posthog")!.surfaceHref("o", "b")).toBe("/v2/orgs/o/brands/b/integrations/conversations");
-    expect(integrationFor("stripe")!.surfaceHref("o", "b")).toBe("/v2/orgs/o/brands/b/integrations/conversations");
+  it("links both to the Unibox, GoHighLevel to its CRM", () => {
+    expect(integrationFor("posthog")!.surfaceHref("o", "b")).toBe("/v2/orgs/o/brands/b/unibox");
+    expect(integrationFor("stripe")!.surfaceHref("o", "b")).toBe("/v2/orgs/o/brands/b/unibox");
     expect(integrationFor("gohighlevel")!.surfaceHref("o", "b")).toBe("/orgs/o/brands/b/crm");
   });
 });
