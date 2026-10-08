@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { useInfiniteQuery, useQueryClient } from "@tanstack/react-query";
 import { useRouter, useSearchParams } from "next/navigation";
 import { getLeadTimeline, getPersonTimeline, listPeople } from "@/lib/api";
+import { ownQueryData } from "@/lib/own-query-data";
 import { useAuthQuery, useOrgQueryGate } from "@/lib/use-auth-query";
 import { POLL_INTERVAL } from "@/lib/query-options";
 import { formatCount } from "@/lib/format-number";
@@ -305,20 +306,24 @@ function Thread({ brandId, personKey }: { brandId: string; personKey: string }) 
   const selected = useSelectedOfferIfAny();
   const offerId = selected?.offerId ?? null;
   const offerSettled = selected ? selected.settled : true;
-  const leadRowId = q.data ? personLeadRowId(q.data.person) : null;
+  // Only THIS person's data: the app-wide placeholder would hand a re-keyed query the last person's.
+  const data = ownQueryData(q);
+  const leadRowId = data ? personLeadRowId(data.person) : null;
   const factsQ = useAuthQuery(
     ["leadTimeline", leadRowId, brandId, offerId],
     () => getLeadTimeline(leadRowId!, { brandId, offerId }),
     { enabled: Boolean(leadRowId) && offerSettled, refetchInterval: TIMELINE_POLL },
   );
+  // No lead row (a CRM-only person) means no lead-service facts, never the previous person's.
+  const facts = leadRowId ? ownQueryData(factsQ) : undefined;
   // Oldest first, so the latest exchange is at the bottom: open there, as any inbox does.
   const scrollRef = useRef<HTMLDivElement | null>(null);
-  const itemCount = q.data?.items.length ?? 0;
+  const itemCount = data?.items.length ?? 0;
   useEffect(() => {
     const el = scrollRef.current;
     if (el) el.scrollTop = el.scrollHeight;
   }, [personKey, itemCount]);
-  if (!q.isFetchedAfterMount && !q.data) {
+  if (!q.isFetchedAfterMount && !data) {
     return (
       <div className="space-y-3 p-4">
         {Array.from({ length: 5 }, (_, i) => (
@@ -327,9 +332,9 @@ function Thread({ brandId, personKey }: { brandId: string; personKey: string }) 
       </div>
     );
   }
-  if (!q.data) return <EmptyNote>We could not load this conversation. Retrying.</EmptyNote>;
+  if (!data) return <EmptyNote>We could not load this conversation. Retrying.</EmptyNote>;
 
-  const { person, items, sources } = q.data;
+  const { person, items, sources } = data;
   const notes = sources.map(timelineSourceNote).filter((n): n is string => n !== null);
   const name = personName(person);
   return (
@@ -345,9 +350,9 @@ function Thread({ brandId, personKey }: { brandId: string; personKey: string }) 
           </div>
           <span className="k-chip ml-auto shrink-0">{stateLabel(person.state)}</span>
         </div>
-        {factsQ.data ? (
+        {facts ? (
           <div className="mt-2">
-            <ConversationTags tags={factsQ.data.tags} />
+            <ConversationTags tags={facts.tags} />
           </div>
         ) : null}
       </header>
@@ -355,7 +360,7 @@ function Thread({ brandId, personKey }: { brandId: string; personKey: string }) 
         {items.length === 0 ? (
           <EmptyNote>No message or event with this person on any connected source.</EmptyNote>
         ) : (
-          threadRows(items, factsQ.data ? liveItems(factsQ.data) : []).map((row, i) =>
+          threadRows(items, facts ? liveItems(facts) : []).map((row, i) =>
             row.fact ? <FactRow key={row.fact.id} fact={row.fact} /> : <ThreadItem key={i} item={row.item} tag={row.tag} />,
           )
         )}
