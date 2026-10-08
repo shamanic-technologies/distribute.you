@@ -118,9 +118,9 @@ describe("timeline", () => {
   it("parses the served shape", () => {
     expect(PersonTimelineSchema.safeParse(timeline).success).toBe(true);
   });
-  it("explains only the sources that could not answer", () => {
+  it("explains only the sources that failed, never one left unconnected", () => {
     const notes = PersonTimelineSchema.parse(timeline).sources.map(timelineSourceNote);
-    expect(notes).toEqual([null, null, "GoHighLevel is not connected.", "Messaging apps could not be read: timeout."]);
+    expect(notes).toEqual([null, null, null, "Messaging apps could not be read: timeout."]);
   });
   it("keeps google-service's clean verdict and the original body (crm-service #51)", () => {
     const withClean = {
@@ -201,8 +201,8 @@ describe("search (crm-service q, #56)", () => {
     const api = read("lib/api.ts");
     expect(api).toContain('if (opts.q) qs.set("q", opts.q);');
     const view = read("components/v2/integrations-conversations.tsx");
-    expect(view).toContain('["people", brandId, page, q]');
-    expect(view).toContain("offset: page * PEOPLE_PAGE_SIZE, q }");
+    expect(view).toContain('queryKey: ["people", brandId, "scroll", q]');
+    expect(view).toContain("offset: pageParam, q }");
     expect(view).not.toContain("people.filter(");
   });
   it("keeps why each person matched", () => {
@@ -213,5 +213,44 @@ describe("search (crm-service q, #56)", () => {
     });
     expect(parsed.people[0].matches?.[0].excerpt).toBe("send the deck");
     expect(parsed.people[0].messageMatches).toBe(2);
+  });
+});
+
+describe("who wrote a message", () => {
+  it("reads the name and address of a from header", async () => {
+    const { parseFrom } = await import("../src/lib/conversation-sources");
+    expect(parseFrom('"Christina Kennedy" <Christina@WellConnectedChiro.com>')).toEqual({ name: "Christina Kennedy", email: "christina@wellconnectedchiro.com" });
+    expect(parseFrom("bria@ariacoreco.com")).toEqual({ name: null, email: "bria@ariacoreco.com" });
+    expect(parseFrom(null)).toEqual({ name: null, email: null });
+  });
+  it("puts the sender's mark up front on their side, the source's on ours", () => {
+    const view = read("components/v2/integrations-conversations.tsx");
+    const msg = view.slice(view.indexOf("function Message("), view.indexOf("function SourcesStrip("));
+    expect(msg).toContain("<PersonMark name={sender.name ?? sender.email");
+    expect(msg.indexOf("{outbound ? (")).toBeLessThan(msg.indexOf("<PersonMark"));
+  });
+  it("opens the person on top when none is picked", () => {
+    const view = read("components/v2/integrations-conversations.tsx");
+    expect(view).toContain("if (!openKey || newSearch) open(first);");
+    expect(view).toContain("listQ.isPlaceholderData ? null : (people?.[0] ?? null)");
+  });
+});
+
+describe("the list scrolls, never pages (owner 2026-10-08)", () => {
+  it("loads the next rows as the end comes into view", () => {
+    const view = read("components/v2/integrations-conversations.tsx");
+    expect(view).toContain("getNextPageParam: (last) => last.nextOffset ?? undefined");
+    expect(view).toContain("new IntersectionObserver(");
+    expect(view).not.toContain("Previous");
+  });
+});
+
+describe("a thread opens from memory (owner 2026-10-08: instant)", () => {
+  it("preloads the top rows and the row under the pointer, on the Thread's own key", () => {
+    const view = read("components/v2/integrations-conversations.tsx");
+    expect(view).toContain("queryKey: timelineKey(brandId, personKey)");
+    expect(view).toContain("useAuthQuery(timelineKey(brandId, personKey)");
+    expect(view).toContain("preload(p.personKey);");
+    expect(view).toContain(".slice(0, PRELOAD_TOP)");
   });
 });

@@ -65,6 +65,18 @@ export function personSourceMarks(presences: { source: string; channel: string }
   return [...seen.values()];
 }
 
+/**
+ * Who a message's `from` names: `"Christina Kennedy" <christina@acme.com>` reads as its
+ * name and address; a bare address has no name. Pure formatting of the served string.
+ */
+export function parseFrom(from: string | null): { name: string | null; email: string | null } {
+  if (!from) return { name: null, email: null };
+  const m = from.match(/^\s*"?([^"<]*?)"?\s*<([^>]+)>\s*$/);
+  if (m) return { name: m[1].trim() || null, email: m[2].trim().toLowerCase() };
+  const bare = from.trim();
+  return bare.includes("@") ? { name: null, email: bare.toLowerCase() } : { name: bare || null, email: null };
+}
+
 /** The company domain behind a person's first work address; a free mailbox has none. */
 export function personCompanyDomain(emails: string[]): string | null {
   for (const e of emails) {
