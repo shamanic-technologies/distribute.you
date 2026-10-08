@@ -7,6 +7,7 @@ import type {
   OfferOutcomeRow,
   OfferPipeline,
   PipelineLead,
+  ExclusiveRow,
 } from "@/lib/api";
 import { formatCount, formatUsdAdaptive } from "@/lib/format-number";
 import { friendlyDate } from "@/lib/friendly-datetime";
@@ -92,6 +93,7 @@ export function OfferOutcomesTable({
   answered,
   failed,
   onOpenStep,
+  onOpenContacted,
 }: {
   orgId: string;
   brandId: string;
@@ -104,6 +106,8 @@ export function OfferOutcomesTable({
   failed: boolean;
   /** Opens the step's right panel: why it is worth that, the rates, the people. */
   onOpenStep: (stepKey: string) => void;
+  /** Opens the contacted people's panel: how one is priced, and who. */
+  onOpenContacted: () => void;
 }) {
   // Served shallow to deep; the page reads from the step closest to a sale. A step the
   // producer does not count (a hand-off nobody measures) says nothing to the customer.
@@ -113,6 +117,15 @@ export function OfferOutcomesTable({
     ? [...pipeline.ladder].reverse().filter((s) => s.recipientsReached != null && (s.recipientsReached > 0 || s.valuePerOutcomeUsd != null))
     : null;
   const cols = 5;
+  // THE PIPELINE SLICED (owner 2026-10-08: "il faut les exclure, pour que la somme des
+  // lignes fasse le total pipeline"): every person on ONE row, the furthest step we
+  // brought them to; the rows and the contacted row add up to the served total.
+  const ex = pipeline?.exclusiveLadder ?? null;
+  const exRows = ex
+    ? [...ex.rows].reverse().filter((r) => (r.pricedPeople ?? 0) > 0 || (r.people?.notOurs.count ?? 0) > 0)
+    : null;
+  // Step to step is cumulative by nature: the conversion column keeps the ladder's.
+  const conversionOf = (key: string) => pipeline?.ladder.find((s) => s.step.key === key)?.pricedConversionFromPrevious?.ratePct ?? null;
   return (
     <section>
       <SectionTitle right={<span>Since you started</span>}>Pipeline by step</SectionTitle>
@@ -145,6 +158,28 @@ export function OfferOutcomesTable({
                     <EmptyNote>Could not read your pipeline. Retrying.</EmptyNote>
                   </td>
                 </tr>
+              ) : ex && exRows ? (
+                <>
+                  {exRows.map((r) => (
+                    <SliceLine key={r.step.key} r={r} conversionPct={conversionOf(r.step.key)} onOpen={() => onOpenStep(r.step.key)} />
+                  ))}
+                  <ContactedLine
+                    label="People contacted"
+                    count={ex.contacted.count}
+                    eachUsd={ex.contacted.valuePerPersonUsd}
+                    totalUsd={ex.contacted.pipelineUsd}
+                    onOpen={onOpenContacted}
+                  />
+                  <tr className="k-line-subtle border-t">
+                    <td className="px-2 py-2.5 pl-4 font-semibold sm:px-3">Total</td>
+                    <td className="px-2 py-2.5 text-right font-semibold tabular-nums sm:px-3">{formatCount(ex.total.people)}</td>
+                    <td className="hidden sm:table-cell" />
+                    <td />
+                    <td className="px-2 py-2.5 pr-4 text-right font-semibold tabular-nums sm:px-3">
+                      {ex.total.pipelineUsd != null ? formatUsdAdaptive(ex.total.pipelineUsd) : dash}
+                    </td>
+                  </tr>
+                </>
               ) : ladder ? (
                 <>
                   {ladder.map((s) => (
@@ -168,7 +203,12 @@ export function OfferOutcomesTable({
           </table>
         </div>
         <p className="k-fg3 k-line-subtle border-t px-4 py-2.5 text-[12px]">
-          Each value comes from your rate at each step and what one client is worth.{" "}
+          {ex && ex.total.gapUsd != null && Math.abs(ex.total.gapUsd) >= 0.5 && ex.total.headlinePipelineUsd != null ? (
+            <span className="block">
+              The Pipeline figure at the top reads {formatUsdAdaptive(ex.total.headlinePipelineUsd)}: {GAP_WORDS[ex.total.gapReason ?? ""] ?? "it counts a slightly different set of people"}.
+            </span>
+          ) : null}
+          Each person is on one row only. Each value comes from your rate at each step and what one client is worth.{" "}
           {offerId ? (
             <Link href={v2OfferHref(orgId, brandId, offerId, "sales-path")} className="whitespace-nowrap text-[var(--accent)] hover:underline">
               Wrong number? Change it
@@ -210,9 +250,40 @@ function LadderLine({ s, onOpen }: { s: OfferLadderStep; onOpen: () => void }) {
   );
 }
 
-function ContactedLine({ label, count, eachUsd, totalUsd }: { label: string; count: number | null; eachUsd: number | null; totalUsd: number | null }) {
+const GAP_WORDS: Record<string, string> = {
+  population_differs: "it counts a slightly different set of people",
+  headline_unreadable: "we could not check it against this total",
+  unpriced: "this offer has no value per client yet",
+};
+
+/** One slice of the pipeline: the people whose furthest step we brought them to is this one. */
+function SliceLine({ r, conversionPct, onOpen }: { r: ExclusiveRow; conversionPct: number | null; onOpen: () => void }) {
   return (
-    <tr className="k-line-subtle border-b last:border-0">
+    <tr {...openable(onOpen, r.step.label)}>
+      <td className="px-2 py-2 pl-4 font-medium sm:px-3">{r.step.label}</td>
+      <td className="px-2 py-2 text-right tabular-nums sm:px-3">{r.pricedPeople != null ? formatCount(r.pricedPeople) : dash}</td>
+      <td className="hidden px-2 py-2 text-right tabular-nums sm:table-cell sm:px-3">{conversionPct != null ? pct(conversionPct) : dash}</td>
+      <td className="px-2 py-2 text-right tabular-nums sm:px-3">{r.valuePerOutcomeUsd != null ? formatUsdAdaptive(r.valuePerOutcomeUsd) : dash}</td>
+      <td className="px-2 py-2 pr-4 text-right font-medium tabular-nums sm:px-3">{r.pipelineUsd != null ? formatUsdAdaptive(r.pipelineUsd) : dash}</td>
+    </tr>
+  );
+}
+
+function ContactedLine({
+  label,
+  count,
+  eachUsd,
+  totalUsd,
+  onOpen,
+}: {
+  label: string;
+  count: number | null;
+  eachUsd: number | null;
+  totalUsd: number | null;
+  onOpen?: () => void;
+}) {
+  return (
+    <tr {...(onOpen ? openable(onOpen, label) : { className: "k-line-subtle border-b last:border-0" })}>
       <td className="px-2 py-2 sm:px-3 pl-4 font-medium">{label}</td>
       <td className="px-2 py-2 sm:px-3 text-right tabular-nums">{count != null ? formatCount(count) : dash}</td>
       <td className="hidden px-2 py-2 text-right sm:table-cell sm:px-3">{dash}</td>

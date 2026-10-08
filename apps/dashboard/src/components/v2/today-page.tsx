@@ -352,6 +352,7 @@ export function TodayPage() {
                 answered={outcomesAnswered}
                 failed={outcomesQ.data === undefined && outcomesQ.isFetchedAfterMount && outcomesQ.isError}
                 onOpenStep={(stepKey) => setPanel({ kind: "step", stepKey })}
+                onOpenContacted={() => setPanel({ kind: "contacted" })}
               />
               <RoiHistoryCard
                 // The curve whose last point IS the return the Return tile states.

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { bucketLabel, orderedBuckets, sourceLeadRows } from "../src/lib/source-overlap";
+import { bucketLabel, leadSourceTags, orderedBuckets, sourceLeadRows } from "../src/lib/source-overlap";
 
 describe("source overlap (a lead carries every source that found it)", () => {
   it("lists live sources, most leads first, an unread count last", () => {
@@ -21,5 +21,21 @@ describe("source overlap (a lead carries every source that found it)", () => {
 
   it("labels buckets in plain words", () => {
     expect([0, 1, 2, 3].map(bucketLabel)).toEqual(["No source found", "1 source", "2 sources", "3+ sources"]);
+  });
+});
+
+describe("lead source tags", () => {
+  it("one tag per origin, the serving origin first, an unnamed origin dropped", () => {
+    const o = (slug: string, name: string) => ({ slug, name });
+    const tags = leadSourceTags([
+      { origin: o("li", "LinkedIn Engagement Signals"), servedLead: false },
+      { origin: o("cold", "Apollo Cold Filters"), servedLead: false },
+      { origin: o("cold", "Apollo Cold Filters"), servedLead: true },
+      { origin: null, servedLead: false },
+    ]);
+    expect(tags).toEqual([
+      { slug: "cold", name: "Apollo Cold Filters", served: true },
+      { slug: "li", name: "LinkedIn Engagement Signals", served: false },
+    ]);
   });
 });

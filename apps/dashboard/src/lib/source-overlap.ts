@@ -65,3 +65,26 @@ export function orderedBuckets<B extends ServedBucket>(buckets: readonly B[]): B
   const rank = (n: number) => (n <= 0 ? 99 : n);
   return buckets.filter((b) => b.sourceCount > 0 || b.leads > 0).sort((a, b) => rank(a.sourceCount) - rank(b.sourceCount));
 }
+
+export interface ServedLeadSource {
+  origin: { slug: string; name: string } | null;
+  servedLead: boolean;
+}
+
+/**
+ * The lead page's "Found by" tags: one per sourcing origin (two Apollo Cold Filters
+ * audiences are one tag), the origin that served the lead first. An entry naming no
+ * origin cannot be tagged and is reported, never guessed.
+ */
+export function leadSourceTags(sources: readonly ServedLeadSource[]): { slug: string; name: string; served: boolean }[] {
+  const bySlug = new Map<string, { slug: string; name: string; served: boolean }>();
+  for (const s of sources) {
+    if (!s.origin) {
+      console.error("[source-overlap] lead source names no origin", s);
+      continue;
+    }
+    const prev = bySlug.get(s.origin.slug);
+    bySlug.set(s.origin.slug, { slug: s.origin.slug, name: s.origin.name, served: (prev?.served ?? false) || s.servedLead });
+  }
+  return [...bySlug.values()].sort((a, b) => Number(b.served) - Number(a.served) || a.name.localeCompare(b.name));
+}

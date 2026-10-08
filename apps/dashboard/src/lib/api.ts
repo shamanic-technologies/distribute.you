@@ -5248,6 +5248,68 @@ const LostStepPersonSchema = StepPersonSchema.extend({
   coldAtStep: OutcomeStepRefSchema.nullable(),
 });
 
+// The pipeline sliced (features-service #1416): every person on ONE row, rows add to the
+// total. A colleague whose company another member already carries adds 0.
+const ExclusivePersonSchema = StepPersonSchema.extend({
+  pipelineUsd: z.coerce.number().nullable(),
+  countedWithColleague: z.boolean(),
+});
+const ExclusiveLostPersonSchema = LostStepPersonSchema.extend({
+  pipelineUsd: z.coerce.number().nullable(),
+  countedWithColleague: z.boolean(),
+});
+const ExclusiveLadderSchema = z.object({
+  contacted: z.object({
+    count: z.coerce.number(),
+    valuedCount: z.coerce.number(),
+    expiredCount: z.coerce.number(),
+    cannotConvertCount: z.coerce.number(),
+    unpricedCount: z.coerce.number(),
+    valuePerPersonUsd: z.coerce.number().nullable(),
+    pipelineUsd: z.coerce.number().nullable(),
+    countedWithColleagueUsd: z.coerce.number().nullable(),
+    explanation: z
+      .object({
+        routes: z.array(
+          z.object({
+            signal: z.string(),
+            step: OutcomeStepRefSchema,
+            legKey: z.string(),
+            entryRatePct: z.coerce.number(),
+            valueAtStepUsd: z.coerce.number(),
+          }),
+        ),
+        expiryDays: z.coerce.number(),
+      })
+      .nullable(),
+    people: z.object({ limit: z.coerce.number(), leads: z.array(ExclusivePersonSchema) }),
+  }),
+  rows: z.array(
+    z.object({
+      step: OutcomeStepRefSchema,
+      pricedPeople: z.coerce.number().nullable(),
+      valuePerOutcomeUsd: z.coerce.number().nullable(),
+      pipelineUsd: z.coerce.number().nullable(),
+      countedWithColleagueUsd: z.coerce.number().nullable(),
+      people: z
+        .object({
+          limit: z.coerce.number(),
+          ours: z.object({ count: z.coerce.number(), leads: z.array(ExclusivePersonSchema) }),
+          lost: z.object({ count: z.coerce.number(), leads: z.array(ExclusiveLostPersonSchema) }),
+          notOurs: z.object({ count: z.coerce.number(), leads: z.array(ExclusivePersonSchema) }),
+        })
+        .nullable(),
+    }),
+  ),
+  total: z.object({
+    people: z.coerce.number(),
+    pipelineUsd: z.coerce.number().nullable(),
+    headlinePipelineUsd: z.coerce.number().nullable(),
+    gapUsd: z.coerce.number().nullable(),
+    gapReason: z.string().nullable(),
+  }),
+});
+
 // What working with us earned the offer, every step a lead climbs (not only the steps a
 // leg of ours lands on), customers won on our outreach, and the hot and cold leads.
 const OfferPipelineSchema = z.object({
@@ -5324,6 +5386,8 @@ const OfferPipelineSchema = z.object({
     })
     .nullable(),
   leadValuesUnpricedReason: z.string().nullable(),
+  // Optional until features-service #1416 is served.
+  exclusiveLadder: ExclusiveLadderSchema.optional(),
 });
 
 const OfferOutcomesSchema = z.object({
@@ -5342,6 +5406,9 @@ export type PipelineLead = z.infer<typeof PipelineLeadSchema>;
 /** A lost lead (went cold, or ruled out): the Lost leads list and its panel. */
 export type ColdPipelineLead = NonNullable<NonNullable<OfferPipeline["lostLeads"]>>["leads"][number];
 export type StepPerson = z.infer<typeof StepPersonSchema>;
+export type ExclusiveLadder = z.infer<typeof ExclusiveLadderSchema>;
+export type ExclusiveRow = ExclusiveLadder["rows"][number];
+export type ExclusivePerson = z.infer<typeof ExclusivePersonSchema>;
 export type LostStepPerson = z.infer<typeof LostStepPersonSchema>;
 
 /** GET /offers/:offerId/outcomes — what the offer's people are worth, step by step. */
@@ -6806,6 +6873,13 @@ export interface Lead {
    */
   offer?: { id: string; name: string | null } | null;
   /**
+   * EVERY source that found this person for the lead's brand (lead-service v0.x, owner
+   * 2026-10-08: "It must be tagged both"), one entry per audience, the serving one first.
+   * `origin` is the sourcing origin's customer name; null when the audience states no list
+   * kind (never guessed). Optional: absent on a payload written before it shipped.
+   */
+  sources?: LeadSource[];
+  /**
    * WHERE THIS PERSON STANDS on the campaign they were served under, decided by
    * lead-service (v0.64.0) and by nobody else.
    *
@@ -6995,6 +7069,15 @@ export function leadDateForStatus(lead: Lead, status: LeadConsolidatedStatus): s
 // Per #1213/#1221: a 200 with a non-leads body (proxy redirect, shape rot, a
 // missing-booleans partial) now throws → React Query keeps the last-good data
 // (keepPreviousData) instead of overwriting the table with a bad success.
+const LeadSourceSchema = z
+  .object({
+    audienceId: z.string(),
+    origin: z.object({ slug: z.string(), name: z.string() }).passthrough().nullable(),
+    servedLead: z.boolean(),
+  })
+  .passthrough();
+export type LeadSource = z.infer<typeof LeadSourceSchema>;
+
 const LeadDeliverySchema = z
   .object({
     id: z.string(),
@@ -7034,6 +7117,8 @@ const LeadDeliverySchema = z
       .object({ causedByOutreach: z.boolean().nullable() })
       .passthrough()
       .nullish(),
+    // Declared: the lead page's "Found by" row renders off it.
+    sources: z.array(LeadSourceSchema).optional(),
   })
   .passthrough();
 

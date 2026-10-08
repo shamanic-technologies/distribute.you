@@ -122,7 +122,8 @@ describe("Today panel: people by group and the lead status change", () => {
   const panel = fs.readFileSync(path.join(__dirname, "../src/components/v2/today-roi-panel.tsx"), "utf-8");
   const roi = fs.readFileSync(path.join(__dirname, "../src/components/v2/today-roi.tsx"), "utf-8");
   it("renders the three served groups, the ours ones as the big cards", () => {
-    const ours = panel.slice(panel.indexOf("step.people.ours.leads.map("), panel.indexOf("step.people.lost.count > 0"));
+    const ours = panel.slice(panel.indexOf("{people.ours.leads.map("), panel.indexOf("{people.lost.count > 0"));
+    expect(ours.length).toBeGreaterThan(0);
     expect(ours).toContain('size="hero"');
     expect(panel).toContain('<LeadCard key={l.leadId} lead={l} size="lost"');
     expect(panel).toContain('<LeadCard key={l.leadId} lead={l} size="compact"');
@@ -136,5 +137,28 @@ describe("Today panel: people by group and the lead status change", () => {
   it("reads conversion on the priced basis, beside the priced People count", () => {
     expect(roi).toContain("s.pricedConversionFromPrevious?.ratePct");
     expect(roi).not.toContain("conversionFromPrevious?.ratePct != null ? pct(conv");
+  });
+});
+
+/**
+ * Owner 2026-10-08: "il faut les exclure, pour que la somme des lignes fasse le total
+ * pipeline", plus a Total row and a People contacted panel. Every figure is served by
+ * features-service's exclusive ladder; the browser sums nothing.
+ */
+describe("Pipeline by step: one row per person, a served Total", () => {
+  const roi = fs.readFileSync(path.join(__dirname, "../src/components/v2/today-roi.tsx"), "utf-8");
+  const panel = fs.readFileSync(path.join(__dirname, "../src/components/v2/today-roi-panel.tsx"), "utf-8");
+  it("reads the exclusive rows and the served total", () => {
+    expect(roi).toContain("const ex = pipeline?.exclusiveLadder ?? null;");
+    expect(roi).toContain("r.pipelineUsd");
+    expect(roi).toContain("ex.total.pipelineUsd");
+    expect(roi).not.toMatch(/pipelineUsd\s*\+|\.reduce\(/);
+    expect(roi).not.toContain('label="Companies contacted"');
+  });
+  it("the contacted row opens its own panel, priced as served", () => {
+    expect(roi).toContain("onOpen={onOpenContacted}");
+    expect(panel).toContain("why.routes.map(");
+    expect(panel).toContain("r.entryRatePct");
+    expect(panel).toContain("const people = slice?.people ?? step.people ?? null;");
   });
 });
