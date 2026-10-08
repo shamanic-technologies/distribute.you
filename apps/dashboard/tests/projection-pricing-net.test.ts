@@ -93,7 +93,7 @@ describe("every Overview money reader asks for net pricing", () => {
  * offer grain: the revenue body, and the Deals board's two values beside it.
  */
 describe("every v2 offer-grain money reader asks for net pricing", () => {
-  for (const reader of ["getOfferRevenue", "getOfferDealsValue", "getOfferContactedValue"]) {
+  for (const reader of ["getOfferRevenue", "getOfferDealsValue", "getOfferContactedValue", "getOfferOutcomes"]) {
     it(`${reader} requests net pricing`, () => {
       expect(readerBody(reader)).toContain('new URLSearchParams({ brandId, pricing: "net" })');
     });

@@ -5148,6 +5148,39 @@ export async function getOfferContactedValue(offerId: string, brandId: string, l
   return parsed.data;
 }
 
+// ── One offer's outcomes (features-service `GET /offers/:offerId/outcomes`) ──
+// One row per step a channel of ours lands a leg on: distinct people who reached it,
+// what reaching it is worth (P(paid client | step) x lifetime revenue, best path) and
+// the priced total. Rows do not add across steps (a person who replied then booked is
+// in both). Declared narrow: the Today page reads these four figures only.
+const OfferOutcomeRowSchema = z.object({
+  step: z.object({ key: z.string(), label: z.string() }),
+  recipientsReached: z.coerce.number().nullable(),
+  valuePerOutcomeUsd: z.coerce.number().nullable(),
+  valueUsd: z.coerce.number().nullable(),
+  unmeasuredReason: z.string().nullable(),
+});
+
+const OfferOutcomesSchema = z.object({
+  offerId: z.string(),
+  outcomes: z.array(OfferOutcomeRowSchema),
+});
+
+export type OfferOutcomeRow = z.infer<typeof OfferOutcomeRowSchema>;
+export type OfferOutcomes = z.infer<typeof OfferOutcomesSchema>;
+
+/** GET /offers/:offerId/outcomes — what the offer's people are worth, step by step. */
+export async function getOfferOutcomes(offerId: string, brandId: string): Promise<OfferOutcomes> {
+  const query = new URLSearchParams({ brandId, pricing: "net" });
+  const raw = await apiCall<unknown>(`/offers/${encodeURIComponent(offerId)}/outcomes?${query.toString()}`);
+  const parsed = OfferOutcomesSchema.safeParse(raw);
+  if (!parsed.success) {
+    console.error("[getOfferOutcomes] response shape mismatch", parsed.error.issues, raw);
+    throw new Error("getOfferOutcomes: invalid response shape");
+  }
+  return parsed.data;
+}
+
 export async function getContactedValue(brandId: string, leadIds: string[]): Promise<ContactedValue> {
   const query = new URLSearchParams();
   if (leadIds.length > 0) query.set("leadIds", leadIds.slice(0, 1000).join(","));

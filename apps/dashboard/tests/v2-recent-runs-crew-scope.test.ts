@@ -43,10 +43,13 @@ describe("v2 recent runs are crew runs", () => {
     expect(today).toContain("{showReplies && (");
     expect(today).toContain("{showVisits && (");
     expect(today).toContain("{showMeetings && (");
-    // Each row states the campaign's full definition, the Sales path page's own leg, and no spend.
+    // Each row states the campaign's full definition, the Sales path page's own leg, then its
+    // type, budget and what it spent (owner 2026-10-08, reversing 10-05's "no spend": "combien
+    // on dépense en proactive ... et en réactif, avec le split des max budgets").
     const line = today.slice(today.indexOf("function CampaignLine("));
     expect(line).toContain("<CampaignLeg campaign={campaign}");
-    expect(line).not.toContain("spent");
+    expect(line).toContain("campaignTag(campaign)");
+    expect(line).toContain("m.row.revenue?.committedCostUsd");
     // Name and status on the top line, the definition alone on one line below (owner 2026-10-05).
     expect(line).toContain("<CampaignLeg campaign={campaign} compact />");
     // The stat row spans the full width whatever tiles remain (owner 2026-10-05).

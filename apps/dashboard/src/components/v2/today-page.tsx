@@ -11,7 +11,7 @@ import { formatRoi } from "@/lib/format-roi";
 import { friendlyDate, friendlyTime, timeAgo } from "@/lib/friendly-datetime";
 import { utcDay } from "@/lib/v2/series";
 import { SINCE_INCEPTION } from "@/lib/revenue-window";
-import { v2Href } from "@/lib/v2/routes";
+import { v2Href, v2OfferHref } from "@/lib/v2/routes";
 import { shownReturn } from "@/lib/maturity";
 import { useStatBasis } from "@/lib/use-stat-basis";
 import { useStaffMode } from "@/lib/use-staff-mode";
@@ -35,7 +35,10 @@ import {
 import { useCrewRuns } from "@/components/v2/runs";
 import { useOngoingCampaigns, type OngoingCampaign } from "@/components/v2/ongoing-campaigns";
 import { PathAvatar } from "@/components/v2/offer-sales-paths";
-import { CampaignLeg } from "@/components/v2/offer-campaigns";
+import { CampaignLeg, budgetLabel } from "@/components/v2/offer-campaigns";
+import { campaignKey, campaignTag } from "@/lib/offer-campaigns";
+import { useAuthQuery } from "@/lib/use-auth-query";
+import { getOfferCampaignBudgets } from "@/lib/api";
 import { STEP_KEY_FOR_LEAD_STAGE } from "@/lib/step-marks";
 import { CrewMark } from "@/components/v2/crew-mark";
 import { useMissions, type Mission } from "@/components/v2/use-missions";
@@ -48,7 +51,10 @@ import {
   useLatestInBucket,
   useTheirLastWords,
   useStandingCounts,
+  useOfferOutcomes,
 } from "@/components/v2/data";
+import { OfferOutcomesTable } from "@/components/v2/today-roi";
+import { RoiHistoryCard } from "@/components/v2/campaign-roi-chart";
 import {
   CompanyMark,
   PersonAvatar,
@@ -113,6 +119,7 @@ export function TodayPage() {
   const w = win.data ?? null;
   const data = rev.data;
   const standings = useStandingCounts(brandId).data;
+  const outcomesQ = useOfferOutcomes(brandId);
   const buckets = useBucketCounts(brandId).data;
   const { missions, missionByCampaignId } = useMissions(orgId, brandId);
   const { byCrew, settled: runsSettled } = useCrewRuns(brandId, missionByCampaignId);
@@ -125,6 +132,19 @@ export function TodayPage() {
   // works (owner 2026-10-05) is not stated here, so Today never shows a stage at zero
   // that nothing aims at.
   const ongoing = useOngoingCampaigns(orgId, brandId, selectedOfferId);
+  // Each ON campaign's budget, billing's own figure in the period it was stated in: what
+  // goes to proactive outreach, and the most each reactive one may spend (owner 2026-10-08).
+  const budgetsQ = useAuthQuery(
+    ["offerCampaignBudgets", brandId, selectedOfferId],
+    () => getOfferCampaignBudgets(brandId, selectedOfferId as string),
+    { enabled: !!selectedOfferId },
+  );
+  const budgetOf = (c: OngoingCampaign): string | null => {
+    if (!budgetsQ.data) return null;
+    const rc = c.m.row.campaign;
+    const item = budgetsQ.data.items.find((i) => campaignKey(i.featureSlug, i.legKey) === campaignKey(rc.featureSlug ?? "", rc.legKey ?? ""));
+    return budgetLabel({ reactive: c.campaign?.reactive ?? false }, item?.budgetCents ?? null, item?.period ?? budgetsQ.data.period);
+  };
   const works = (stage: string) => ongoing.settled && ongoing.steps.has(STEP_KEY_FOR_LEAD_STAGE[stage]);
   const showReplies = works("positive_reply");
   const showVisits = works("website_visit");
@@ -305,6 +325,27 @@ export function TodayPage() {
               </StatTile>
             </div>
 
+            {/* What working with us earned, step by step, and the return to date (owner 2026-10-08). */}
+            <div className="mt-8 grid grid-cols-1 gap-6 lg:grid-cols-2">
+              <OfferOutcomesTable
+                orgId={orgId}
+                brandId={brandId}
+                offerId={selectedOfferId}
+                rows={outcomesQ.data?.outcomes ?? null}
+                answered={outcomesQ.data !== undefined}
+                failed={outcomesQ.data === undefined && outcomesQ.isFetchedAfterMount && outcomesQ.isError}
+              />
+              <RoiHistoryCard
+                history={data?.roiHistory ?? null}
+                answered={data !== undefined}
+                failed={data === undefined && rev.isError}
+                right="Since you started"
+                sub="What the people we reached are worth, divided by what it cost, to date."
+                failedCopy="Could not read your return. Retrying."
+                emptyCopy="No return to show yet: nothing has been spent."
+              />
+            </div>
+
             <div className="mt-8 grid gap-6 lg:grid-cols-[minmax(0,1fr)_380px]">
               <section>
                 <SectionTitle
@@ -390,14 +431,27 @@ export function TodayPage() {
                 )}
                 {/* The offer's ON campaigns, named and ordered as the sidebar and the Sales path page. */}
                 <section>
-                  <SectionTitle count={ongoing.settled ? ongoing.campaigns.length : null}>Campaigns</SectionTitle>
+                  <SectionTitle
+                    count={ongoing.settled ? ongoing.campaigns.length : null}
+                    right={selectedOfferId ? (
+                      <Link href={v2OfferHref(orgId, brandId, selectedOfferId, "sales-path")} className="hover:text-[var(--fg-1)]">
+                        Budgets →
+                      </Link>
+                    ) : null}
+                  >Campaigns</SectionTitle>
                   <div className="k-card divide-y divide-[var(--line-subtle)]">
                     {!ongoing.settled ? (
                       <div className="p-4"><Shimmer className="h-10 w-full" /></div>
                     ) : ongoing.campaigns.length === 0 ? (
                       <EmptyNote>No campaign is on.</EmptyNote>
                     ) : (
-                      ongoing.campaigns.map((c) => <CampaignLine key={c.m.row.campaign.id} c={c} />)
+                      ongoing.campaigns.map((c) => (
+                        <CampaignLine
+                          key={c.m.row.campaign.id}
+                          c={c}
+                          budget={budgetOf(c)}
+                        />
+                      ))
                     )}
                   </div>
                 </section>
@@ -532,8 +586,9 @@ function MeetingLine({ lead, at, mission, href }: { lead: Lead; at: string | nul
   );
 }
 
-function CampaignLine({ c }: { c: OngoingCampaign }) {
+function CampaignLine({ c, budget }: { c: OngoingCampaign; budget: string | null }) {
   const { m, name, campaign } = c;
+  const invested = m.row.revenue?.committedCostUsd ?? null;
   return (
     <Link href={m.href} className="k-hover block px-4 py-3 first:rounded-t-[12px] last:rounded-b-[12px]">
       <span className="flex items-center gap-3">
@@ -544,6 +599,14 @@ function CampaignLine({ c }: { c: OngoingCampaign }) {
       {/* The full definition on its own line, as the Sales path page reads it: [Channel] → outcome. */}
       <span className="mt-1.5 block overflow-hidden">
         {campaign ? <CampaignLeg campaign={campaign} compact /> : <span className="k-fg4 text-[12px]">{"—"}</span>}
+      </span>
+      {/* Its type and budget, then what it has spent so far. */}
+      <span className="k-fg3 mt-1.5 flex items-center justify-between gap-2 text-[12px] tabular-nums">
+        <span className="truncate">
+          {campaign ? `${campaignTag(campaign)} · ` : ""}
+          {budget ?? "—"}
+        </span>
+        <span className="shrink-0">{invested != null ? `${formatUsdAdaptive(invested)} spent` : "—"}</span>
       </span>
     </Link>
   );

@@ -18,7 +18,8 @@ describe("a v2 page never flashes its no-data note while the offer loads", () =>
   it("the revenue reads stay pending until the gate has settled", () => {
     const src = read("components/v2/data.ts");
     const pending = src.match(/pending: enabled \? q\.data === undefined && !q\.isError : !scopeSettled/g) ?? [];
-    expect(pending.length).toBe(2);
+    // Revenue, the revenue window, and the offer's outcomes (Today's pipeline by step).
+    expect(pending.length).toBe(3);
   });
 
   it("Today shows the note only once the gate settled with no offer", () => {

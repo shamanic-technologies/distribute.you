@@ -4,6 +4,7 @@ import { Line, LineChart, ReferenceLine, ResponsiveContainer, Tooltip, XAxis, YA
 import { useAuthQuery } from "@/lib/use-auth-query";
 import { pollOptions } from "@/lib/query-options";
 import { getCampaignRoiHistory } from "@/lib/api";
+import type { RoiHistory } from "@/lib/revenue-view";
 import { formatRoi, roiIsGood } from "@/lib/format-roi";
 import { formatUsdAdaptive } from "@/lib/format-number";
 import { EmptyNote, SectionTitle, Shimmer } from "@/components/v2/ui";
@@ -35,8 +36,40 @@ export function CampaignRoiChart({
   );
   // Answered once stays answered: a failed poll must not repaint a skeleton.
   const answered = q.data !== undefined;
-  const failed = !answered && q.isFetchedAfterMount && q.isError;
-  const history = q.data ?? null;
+  return (
+    <RoiHistoryCard
+      history={q.data ?? null}
+      answered={answered}
+      failed={!answered && q.isFetchedAfterMount && q.isError}
+      right="Measured, since it started"
+      sub="What the people it reached are worth, divided by what it cost, to date."
+      failedCopy="Could not read this campaign's return. Retrying."
+      emptyCopy="No return to show yet: this campaign has not spent anything."
+    />
+  );
+}
+
+/**
+ * The return-over-time card, for any grain that serves a `roiHistory` (a campaign, the
+ * offer on Today). Draws the served daily `roiMultiple` on a time axis; divides nothing.
+ */
+export function RoiHistoryCard({
+  history,
+  answered,
+  failed,
+  right,
+  sub,
+  failedCopy,
+  emptyCopy,
+}: {
+  history: RoiHistory | null;
+  answered: boolean;
+  failed: boolean;
+  right: string;
+  sub: string;
+  failedCopy: string;
+  emptyCopy: string;
+}) {
   const points = (history?.daily ?? [])
     .filter((d) => d.roiMultiple != null)
     // A real time axis: days with no point are absent on the wire, and a category axis
@@ -47,7 +80,7 @@ export function CampaignRoiChart({
 
   return (
     <section>
-      <SectionTitle right={<span>Measured, since it started</span>}>Return over time</SectionTitle>
+      <SectionTitle right={<span>{right}</span>}>Return over time</SectionTitle>
       <div className="k-card px-4 pb-3 pt-3">
         <div className="text-[22px] font-medium leading-7 tracking-[-0.02em] tabular-nums">
           {!answered && !failed ? (
@@ -58,7 +91,7 @@ export function CampaignRoiChart({
             <span className={roiIsGood(last) ? "text-[var(--run)]" : ""}>{formatRoi(last)}</span>
           )}
         </div>
-        <p className="k-fg3 mt-0.5 text-[12px]">What the people it reached are worth, divided by what it cost, to date.</p>
+        <p className="k-fg3 mt-0.5 text-[12px]">{sub}</p>
         {undated > 0 && (
           <p className="k-fg3 text-[12px]">{formatUsdAdaptive(undated)} of value has no date, so it is not on the line.</p>
         )}
@@ -66,9 +99,9 @@ export function CampaignRoiChart({
           {!answered && !failed ? (
             <Shimmer className="h-full w-full rounded-[8px]" />
           ) : failed ? (
-            <EmptyNote>Could not read this campaign&apos;s return. Retrying.</EmptyNote>
+            <EmptyNote>{failedCopy}</EmptyNote>
           ) : points.length === 0 ? (
-            <EmptyNote>No return to show yet: this campaign has not spent anything.</EmptyNote>
+            <EmptyNote>{emptyCopy}</EmptyNote>
           ) : (
             <ResponsiveContainer width="100%" height="100%">
               <LineChart data={points} margin={{ top: 4, right: 4, bottom: 0, left: 0 }}>
