@@ -5189,6 +5189,8 @@ const StepValueExplanationSchema = z.object({
     z.object({
       fromStep: OutcomeStepRefSchema,
       toStep: OutcomeStepRefSchema,
+      // The catalogue leg identity: joins this leg to the brand's editable rate.
+      legKey: z.string(),
       ratePct: z.coerce.number(),
       source: z.enum(["measured", "manual", "median", "default"]).nullable(),
       measured: z

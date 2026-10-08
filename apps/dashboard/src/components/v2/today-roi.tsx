@@ -7,7 +7,6 @@ import type {
   OfferOutcomeRow,
   OfferPipeline,
   PipelineLead,
-  StepValueExplanation,
 } from "@/lib/api";
 import { formatCount, formatUsdAdaptive } from "@/lib/format-number";
 import { friendlyDate } from "@/lib/friendly-datetime";
@@ -21,43 +20,6 @@ export const WORTH_EACH_TIP =
 
 const pct = (v: number) => `${v < 10 ? v.toFixed(1) : Math.round(v)}%`;
 const dash = <span className="k-fg4">—</span>;
-
-/** Where a leg rate comes from, in the customer's words. */
-function sourceWords(leg: StepValueExplanation["legs"][number]): string {
-  if (leg.source === "measured") {
-    // The counts the producer measured the rate on (another field than the projection's flag).
-    const { measured: m } = leg;
-    const where = m?.basis === "crm" ? "in your CRM" : "on our leads";
-    return m && m.fromReached != null && m.toReached != null
-      ? `measured ${where}, ${formatCount(m.toReached)} of ${formatCount(m.fromReached)}`
-      : `measured ${where}`;
-  }
-  if (leg.source === "manual") return "set by you";
-  if (leg.source === "median") return "median of our clients";
-  if (leg.source === "default") return "industry average";
-  return "source unknown";
-}
-
-/**
- * The calculation behind "worth each", as features-service serves it: lifetime revenue x
- * the chance to become a client, the chance being the legs multiplied (owner 2026-10-08:
- * "LTR $2,500, avec une probabilité de 65% car dans votre CRM..."). Formatting only.
- */
-export function ValueWhy({ why }: { why: StepValueExplanation }) {
-  return (
-    <span className="k-fg3 block text-[12px] leading-[18px]">
-      {formatUsdAdaptive(why.lifetimeRevenueUsd)} per client × {pct(why.probabilityPct)} chance to become one
-      {why.legs.length > 0 ? ": " : "."}
-      {why.legs.map((l, i) => (
-        <span key={`${l.fromStep.key}-${l.toStep.key}`}>
-          {i > 0 ? ", then " : ""}
-          {l.fromStep.label} to {l.toStep.label.toLowerCase()} {pct(l.ratePct)} ({sourceWords(l)})
-        </span>
-      ))}
-      {why.legs.length > 0 ? "." : ""}
-    </span>
-  );
-}
 
 /**
  * The headline of what working with us earned (owner 2026-10-08): customers won on OUR
@@ -128,6 +90,7 @@ export function OfferOutcomesTable({
   contacted,
   answered,
   failed,
+  onOpenStep,
 }: {
   orgId: string;
   brandId: string;
@@ -138,15 +101,18 @@ export function OfferOutcomesTable({
   contacted: { perLeadUsd: number | null; totalUsd: number | null } | null;
   answered: boolean;
   failed: boolean;
+  /** Opens the step's right panel: why it is worth that, the rates, the people. */
+  onOpenStep: (stepKey: string) => void;
 }) {
   // Served shallow to deep; the page reads from the step closest to a sale. A step the
   // producer does not count (a hand-off nobody measures) says nothing to the customer.
   // A step nobody reached and nothing prices (a signup the offer does not use) is noise.
+  // A step reached only through other sources stays: its panel shows who (owner 2026-10-08).
   const ladder = pipeline
     ? [...pipeline.ladder].reverse().filter((s) => s.recipientsReached != null && (s.recipientsReached > 0 || s.valuePerOutcomeUsd != null))
     : null;
   const legacy = rows ? [...rows].reverse().filter((r) => r.unmeasuredReason !== "step_not_counted") : [];
-  const cols = ladder ? 5 : 4;
+  const cols = 4;
   return (
     <section>
       <SectionTitle right={<span>Since you started</span>}>Pipeline by step</SectionTitle>
@@ -157,7 +123,6 @@ export function OfferOutcomesTable({
               <tr className="k-line-subtle border-b">
                 <th className="k-label px-2 py-2.5 sm:px-3 pl-4 text-left font-normal">Step</th>
                 <th className="k-label px-2 py-2.5 sm:px-3 text-right font-normal">People</th>
-                {ladder && <th className="k-label hidden whitespace-nowrap px-2 py-2.5 sm:px-3 text-right font-normal sm:table-cell">Conversion</th>}
                 <th className="k-label whitespace-nowrap px-2 py-2.5 sm:px-3 text-right font-normal">
                   <ExpectedLabel tip={WORTH_EACH_TIP}>Worth each</ExpectedLabel>
                 </th>
@@ -182,7 +147,7 @@ export function OfferOutcomesTable({
               ) : ladder ? (
                 <>
                   {ladder.map((s) => (
-                    <LadderLine key={s.step.key} s={s} />
+                    <LadderLine key={s.step.key} s={s} onOpen={() => onOpenStep(s.step.key)} />
                   ))}
                   <ContactedLine
                     label="People contacted"
@@ -217,36 +182,29 @@ export function OfferOutcomesTable({
   );
 }
 
-function LadderLine({ s }: { s: OfferLadderStep }) {
-  const conv = s.conversionFromPrevious;
-  const cold = s.wentCold;
-  const why = s.valueExplanation != null || (cold != null && cold.count > 0);
+/**
+ * One step: the people WE brought there (owner 2026-10-08: "only those attributable to
+ * us"), what one is worth, the step's pipeline. The calculation lives in the panel.
+ */
+function LadderLine({ s, onOpen }: { s: OfferLadderStep; onOpen: () => void }) {
   return (
-    <>
-    <tr className={`k-line-subtle align-top ${why ? "" : "border-b"}`}>
-      <td className="px-2 pb-1 pl-4 sm:px-3 pt-2 font-medium">{s.step.label}</td>
-      <td className="px-2 py-2 sm:px-3 text-right tabular-nums">{s.recipientsReached != null ? formatCount(s.recipientsReached) : dash}</td>
-      <td className="hidden px-2 py-2 sm:px-3 text-right tabular-nums sm:table-cell">
-        {conv?.ratePct != null ? pct(conv.ratePct) : dash}
-      </td>
-      <td className="px-2 py-2 sm:px-3 text-right tabular-nums">{s.valuePerOutcomeUsd != null ? formatUsdAdaptive(s.valuePerOutcomeUsd) : dash}</td>
-      <td className="px-2 py-2 sm:px-3 pr-4 text-right font-medium tabular-nums">{s.pricedValueUsd != null ? formatUsdAdaptive(s.pricedValueUsd) : dash}</td>
+    <tr
+      className="k-row k-line-subtle cursor-pointer border-b last:border-0"
+      onClick={onOpen}
+      onKeyDown={(e) => {
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          onOpen();
+        }
+      }}
+      tabIndex={0}
+      aria-label={`Open ${s.step.label}`}
+    >
+      <td className="px-2 py-2 pl-4 font-medium sm:px-3">{s.step.label}</td>
+      <td className="px-2 py-2 text-right tabular-nums sm:px-3">{s.pricedRecipientsReached != null ? formatCount(s.pricedRecipientsReached) : dash}</td>
+      <td className="px-2 py-2 text-right tabular-nums sm:px-3">{s.valuePerOutcomeUsd != null ? formatUsdAdaptive(s.valuePerOutcomeUsd) : dash}</td>
+      <td className="px-2 py-2 pr-4 text-right font-medium tabular-nums sm:px-3">{s.pricedValueUsd != null ? formatUsdAdaptive(s.pricedValueUsd) : dash}</td>
     </tr>
-    {/* The calculation, on its own full-width line so it reads on a phone too. */}
-    {why && (
-      <tr className="k-line-subtle border-b">
-        <td colSpan={5} className="px-4 pb-2.5 pt-0">
-          {s.valueExplanation && <ValueWhy why={s.valueExplanation} />}
-          {cold && cold.count > 0 && (
-            <span className="k-fg3 block text-[12px] leading-[18px]">
-              {formatCount(cold.count)} went cold, counted as lost
-              {cold.valueUsd != null ? `: now worth ${formatUsdAdaptive(cold.valueUsd)} in all` : ""}.
-            </span>
-          )}
-        </td>
-      </tr>
-    )}
-    </>
   );
 }
 
@@ -255,7 +213,6 @@ function ContactedLine({ label, count, eachUsd, totalUsd }: { label: string; cou
     <tr className="k-line-subtle border-b last:border-0">
       <td className="px-2 py-2 sm:px-3 pl-4 font-medium">{label}</td>
       <td className="px-2 py-2 sm:px-3 text-right tabular-nums">{count != null ? formatCount(count) : dash}</td>
-      <td className="hidden px-2 py-2 sm:px-3 text-right sm:table-cell">{dash}</td>
       <td className="px-2 py-2 sm:px-3 text-right tabular-nums">{eachUsd != null ? formatUsdAdaptive(eachUsd) : dash}</td>
       <td className="px-2 py-2 sm:px-3 pr-4 text-right font-medium tabular-nums">{totalUsd != null ? formatUsdAdaptive(totalUsd) : dash}</td>
     </tr>
@@ -271,6 +228,22 @@ function OutcomeLine({ row }: { row: OfferOutcomeRow }) {
       <td className="px-3 py-2 pr-4 text-right font-medium tabular-nums">{row.valueUsd != null ? formatUsdAdaptive(row.valueUsd) : dash}</td>
     </tr>
   );
+}
+
+/** A table row that opens the Today panel: click, Enter or Space. */
+function openable(open: () => void, label: string) {
+  return {
+    className: "k-row k-line-subtle cursor-pointer border-b last:border-0",
+    onClick: open,
+    onKeyDown: (e: React.KeyboardEvent) => {
+      if (e.key === "Enter" || e.key === " ") {
+        e.preventDefault();
+        open();
+      }
+    },
+    tabIndex: 0,
+    "aria-label": `Open ${label}`,
+  };
 }
 
 function leadName(l: PipelineLead): string {
@@ -293,7 +266,15 @@ function PersonCell({ lead, extra }: { lead: PipelineLead; extra?: React.ReactNo
 }
 
 /** The leads we think will convert, highest expected value first (features-service's ranking). */
-export function HotLeads({ pipeline, answered }: { pipeline: OfferPipeline | null; answered: boolean }) {
+export function HotLeads({
+  pipeline,
+  answered,
+  onOpenLead,
+}: {
+  pipeline: OfferPipeline | null;
+  answered: boolean;
+  onOpenLead: (lead: PipelineLead) => void;
+}) {
   const hot = pipeline?.hotLeads ?? null;
   return (
     <section>
@@ -320,7 +301,7 @@ export function HotLeads({ pipeline, answered }: { pipeline: OfferPipeline | nul
             </thead>
             <tbody>
               {hot.leads.map((l) => (
-                <tr key={l.leadId} className="k-line-subtle border-b last:border-0">
+                <tr key={l.leadId} {...openable(() => onOpenLead(l), leadName(l))}>
                   <PersonCell lead={l} extra={l.step.label} />
                   <td className="k-fg2 hidden truncate px-3 py-2 sm:table-cell">{l.step.label}</td>
                   <td className="px-3 py-2 pr-4 text-right tabular-nums">
@@ -341,7 +322,15 @@ export function HotLeads({ pipeline, answered }: { pipeline: OfferPipeline | nul
  * Leads that showed interest and went cold (lead-service's rule, CRM brands only), priced
  * as the pipeline prices them now (owner 2026-10-08: "back to base conversion rate").
  */
-export function LostLeads({ pipeline, answered }: { pipeline: OfferPipeline | null; answered: boolean }) {
+export function LostLeads({
+  pipeline,
+  answered,
+  onOpenLead,
+}: {
+  pipeline: OfferPipeline | null;
+  answered: boolean;
+  onOpenLead: (lead: ColdPipelineLead) => void;
+}) {
   const cold = pipeline?.coldLeads ?? null;
   const applies = pipeline?.coldRule?.applies ?? null;
   const afterDays = pipeline?.coldRule?.afterDays ?? null;
@@ -371,7 +360,7 @@ export function LostLeads({ pipeline, answered }: { pipeline: OfferPipeline | nu
               </thead>
               <tbody>
                 {cold.leads.map((l: ColdPipelineLead) => (
-                  <tr key={l.leadId} className="k-line-subtle border-b last:border-0">
+                  <tr key={l.leadId} {...openable(() => onOpenLead(l), leadName(l))}>
                     <PersonCell lead={l} extra={`Stopped at ${l.step.label.toLowerCase()} on ${friendlyDate(l.stalledSince)}`} />
                     <td className="hidden px-3 py-2 sm:table-cell">
                       <span className="k-fg2 block truncate">{l.step.label}</span>
