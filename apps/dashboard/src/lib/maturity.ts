@@ -92,6 +92,22 @@ export function shownReturn<T extends { roiMultiple: number | null }>(
   return toDate != null && Number.isFinite(toDate) && toDate > 1 ? { value: toDate, learning: false } : shown;
 }
 
+/**
+ * Which half of the pair `shownReturn` states: the curve drawn under a return must be the
+ * one whose last point IS that return (the mature curve under a flash figure read 1.3x
+ * beside 1.6x). Null = no figure is shown (Learning, or no pair).
+ */
+export function shownReturnHalf<T extends { roiMultiple: number | null }>(
+  pair: MaturityPair<T> | null | undefined,
+  basis: StatBasis,
+): "flash" | "mature" | null {
+  if (!pair) return null;
+  if (basis === "flash") return "flash";
+  if (pair.isMature !== false) return "mature";
+  const toDate = pair.flash?.roiMultiple ?? null;
+  return toDate != null && Number.isFinite(toDate) && toDate > 1 ? "flash" : null;
+}
+
 /** Whether the producer said this scope is not mature. Null ("cannot judge") is not Learning. */
 export function pairIsLearning(pair: { isMature: boolean | null } | null | undefined): boolean {
   return pair?.isMature === false;

@@ -48,9 +48,28 @@ describe("Today's return and pipeline by step", () => {
   const today = fs.readFileSync(path.join(__dirname, "../src/components/v2/today-page.tsx"), "utf-8");
   const roi = fs.readFileSync(path.join(__dirname, "../src/components/v2/today-roi.tsx"), "utf-8");
 
-  it("draws the offer's served roiHistory on the shared card", () => {
+  it("draws the offer's served curve on the shared card, on the headline's basis", () => {
     expect(today).toContain("<RoiHistoryCard");
-    expect(today).toContain("history={data?.roiHistory ?? null}");
+    expect(today).toContain("history={roiCurve}");
+    expect(today).toContain("const roiHalf = shownReturnHalf(data?.costEconomics.maturity, basis);");
+    expect(today).toContain('roiHalf === "flash" ? data.roiHistory.flash ?? null : data.roiHistory');
+  });
+
+  it("states customers won on our outreach, hot and lost leads, from the served pipeline", () => {
+    expect(today).toContain("const pipeline = outcomesQ.data?.pipeline ?? null;");
+    expect(today).toContain("<EarnedStrip pipeline={pipeline}");
+    expect(today).toContain("<HotLeads pipeline={pipeline}");
+    expect(today).toContain("<LostLeads pipeline={pipeline}");
+    expect(roi).toContain("pipeline?.customersWon");
+    expect(roi).toContain("pipeline?.hotLeads");
+    expect(roi).toContain("pipeline?.coldLeads");
+  });
+
+  it("explains each step's value with the served legs and prints the served totals", () => {
+    expect(roi).toContain("<ValueWhy why={s.valueExplanation} />");
+    expect(roi).toContain("s.pricedValueUsd");
+    expect(roi).toContain("conv?.ratePct");
+    expect(roi).not.toMatch(/probabilityPct\s*\*|lifetimeRevenueUsd\s*\*/);
   });
 
   it("reads the offer's outcomes and prints the served figures only", () => {
@@ -65,5 +84,16 @@ describe("Today's return and pipeline by step", () => {
   it("links the rates to where the customer changes them", () => {
     expect(roi).toContain('v2OfferHref(orgId, brandId, offerId, "sales-path")');
     expect(roi).toContain("Wrong number? Change it");
+  });
+});
+
+describe("Today's budget totals are billing's", () => {
+  const today = fs.readFileSync(path.join(__dirname, "../src/components/v2/today-page.tsx"), "utf-8");
+  it("renders the served proactive and reactive totals, sums nothing", () => {
+    expect(today).toContain("<BudgetTotals totals={budgetsQ.data.totals} />");
+    expect(today).toContain("totals.proactive.budgetCents");
+    expect(today).toContain("totals.reactive.maxBudgetCents");
+    expect(today).toContain("totals.reactive.byTrigger.map(");
+    expect(today).not.toMatch(/items\.reduce\(/);
   });
 });
