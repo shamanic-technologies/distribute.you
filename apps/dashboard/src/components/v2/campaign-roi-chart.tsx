@@ -4,7 +4,9 @@ import { Line, LineChart, ReferenceLine, ResponsiveContainer, Tooltip, XAxis, YA
 import { useAuthQuery } from "@/lib/use-auth-query";
 import { pollOptions } from "@/lib/query-options";
 import { getCampaignRoiHistory } from "@/lib/api";
-import type { RoiHistory } from "@/lib/revenue-view";
+import type { EconomicsFigures, RoiHistory } from "@/lib/revenue-view";
+import { shownReturnHalf, type MaturityPair } from "@/lib/maturity";
+import { useStatBasis } from "@/lib/use-stat-basis";
 import { formatRoi, roiIsGood } from "@/lib/format-roi";
 import { formatUsdAdaptive } from "@/lib/format-number";
 import { EmptyNote, SectionTitle, Shimmer } from "@/components/v2/ui";
@@ -18,17 +20,24 @@ import { EmptyNote, SectionTitle, Shimmer } from "@/components/v2/ui";
  *
  * A day whose cumulative spend is still 0 has no return (null, never 0) and is dropped.
  * Pipeline whose outcome carries no date sits on no day; the card says how much.
+ *
+ * The curve is the half of the ROI tile above it (`economics`, the campaign's return
+ * pair): the flash curve under a flash return, the mature one otherwise, so the line ends
+ * on the tile (it read 1.3x under a 1.6x tile when the chart ignored the basis).
  */
 export function CampaignRoiChart({
   brandId,
   campaignId,
   featureSlug,
+  economics,
 }: {
   brandId: string;
   campaignId: string;
   featureSlug: string | null;
+  economics: MaturityPair<EconomicsFigures> | null | undefined;
 }) {
   const slug = featureSlug ?? "";
+  const { basis } = useStatBasis();
   const q = useAuthQuery(
     ["campaignRoiHistory", campaignId, slug],
     () => getCampaignRoiHistory(slug, brandId, campaignId),
@@ -36,9 +45,11 @@ export function CampaignRoiChart({
   );
   // Answered once stays answered: a failed poll must not repaint a skeleton.
   const answered = q.data !== undefined;
+  const half = shownReturnHalf(economics, basis);
+  const history = !q.data ? null : half === "flash" ? q.data.flash ?? null : q.data;
   return (
     <RoiHistoryCard
-      history={q.data ?? null}
+      history={history}
       answered={answered}
       failed={!answered && q.isFetchedAfterMount && q.isError}
       right="Measured, since it started"

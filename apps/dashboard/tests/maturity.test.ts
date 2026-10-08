@@ -4,6 +4,7 @@ import { join } from "node:path";
 import {
   MATURITY_LEARNING_NOTE,
   PAUSED_NOTE,
+  autoStatBasis,
   maturityPairSchema,
   pairIsLearning,
   shownFigure,
@@ -116,28 +117,64 @@ describe("shownFigure — one ratio, read off the served pair", () => {
   });
 });
 
-describe("the staff Mature / Flash switch", () => {
-  it("reads flash only when the cookie says flash", () => {
-    expect(statBasisFromCookie(null)).toBe("mature");
-    expect(statBasisFromCookie("a=1")).toBe("mature");
+// Owner 2026-10-08: "passer tout le user dashboard en mature ou flash automatiquement en
+// fonction du chiffre le plus grand de ROI".
+describe("autoStatBasis — the half with the higher return", () => {
+  type R = { roiMultiple: number | null };
+  const pair = (p: Partial<MaturityPair<R>>): MaturityPair<R> => ({ flash: null, mature: null, isMature: null, ...p });
+
+  it("flash above mature: flash (1.6x vs 1.3x)", () => {
+    expect(autoStatBasis(pair({ flash: { roiMultiple: 1.6 }, mature: { roiMultiple: 1.3 }, isMature: true }))).toBe("flash");
+  });
+  it("mature above or equal to flash: mature", () => {
+    expect(autoStatBasis(pair({ flash: { roiMultiple: 1.1 }, mature: { roiMultiple: 1.3 }, isMature: true }))).toBe("mature");
+    expect(autoStatBasis(pair({ flash: { roiMultiple: 1.3 }, mature: { roiMultiple: 1.3 }, isMature: true }))).toBe("mature");
+  });
+  it("mature still Learning: flash only above break-even", () => {
+    expect(autoStatBasis(pair({ flash: { roiMultiple: 2.4 }, mature: { roiMultiple: 3 }, isMature: false }))).toBe("flash");
+    expect(autoStatBasis(pair({ flash: { roiMultiple: 0.8 }, isMature: false }))).toBe("mature");
+  });
+  it("no pair or no flash return: mature", () => {
+    expect(autoStatBasis(null)).toBe("mature");
+    expect(autoStatBasis(pair({ mature: { roiMultiple: 1.3 }, isMature: true }))).toBe("mature");
+  });
+});
+
+describe("the staff Auto / Mature / Flash switch", () => {
+  it("reads a pinned half only when the cookie names one, auto otherwise", () => {
+    expect(statBasisFromCookie(null)).toBe("auto");
+    expect(statBasisFromCookie("a=1")).toBe("auto");
     expect(statBasisFromCookie(`a=1; ${STAT_BASIS_COOKIE}=flash`)).toBe("flash");
-    expect(statBasisFromCookie(`${STAT_BASIS_COOKIE}=anything`)).toBe("mature");
+    expect(statBasisFromCookie(`a=1; ${STAT_BASIS_COOKIE}=mature`)).toBe("mature");
+    expect(statBasisFromCookie(`${STAT_BASIS_COOKIE}=anything`)).toBe("auto");
   });
 
   it("round-trips through its own assignment", () => {
     expect(statBasisFromCookie(statBasisCookieAssignment("flash").split(";")[0])).toBe("flash");
+    expect(statBasisFromCookie(statBasisCookieAssignment("auto").split(";")[0])).toBe("auto");
     expect(statBasisCookieAssignment("mature")).toContain("path=/");
   });
 
-  it("forces every reader outside staff mode to the mature half, whatever the cookie says", () => {
+  it("forces every reader outside staff mode to auto, whatever the cookie says", () => {
     const hook = read("lib/use-stat-basis.ts");
-    expect(hook).toContain('const basis: StatBasis = isStaff ? stored : "mature";');
-    expect(hook).toContain('const readServer = (): StatBasis => "mature";');
+    expect(hook).toContain('const choice: StatBasisChoice = isStaff ? stored : "auto";');
+    expect(hook).toContain('const basis: StatBasis = choice === "auto" ? autoStatBasis(pair) : choice;');
+    expect(hook).toContain('const readServer = (): StatBasisChoice => "auto";');
+    expect(hook).toContain("useOfferReturnPairIfAny()");
     const sw = read("components/v2/stat-basis-switch.tsx");
     expect(sw).toContain("if (!isStaff) return null;");
     // Staff mode is what says which world you are in; the switch carries no tag.
     expect(sw).not.toContain('level="staff"');
     expect(hook).toContain("useStaffMode()");
+  });
+
+  it("the campaign's return curve is the half of its ROI tile (1.3x curve under a 1.6x tile)", () => {
+    const chart = read("components/v2/campaign-roi-chart.tsx");
+    expect(chart).toContain("const half = shownReturnHalf(economics, basis);");
+    expect(chart).toContain('half === "flash" ? q.data.flash ?? null : q.data');
+    const page = read("components/v2/campaign-page.tsx");
+    expect(page).toContain("economics={g?.economicsMaturity}");
+    expect(page).toContain("economics={mission.row.revenue?.economicsMaturity}");
   });
 
   it("rides the top bar of every v2 page that states a ratio", () => {

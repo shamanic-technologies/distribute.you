@@ -16,7 +16,7 @@ import {
   listLeadsPage,
   type LeadScope,
 } from "@/lib/api";
-import { useSelectedOffer } from "@/components/v2/selected-offer";
+import { useSelectedOffer, useSelectedOfferIfAny } from "@/components/v2/selected-offer";
 import type { RevenueOverview } from "@/lib/revenue-view";
 import type { LeadHistoryEvent } from "@/lib/lead-history";
 import { pollOptions } from "@/lib/query-options";
@@ -60,19 +60,35 @@ export function useBrandInfo(brandId: string) {
  * 404 rather than an empty body, so `enabled` is false and pages show their no-data state.
  */
 export function useBrandRevenue(brandId: string) {
-  const featureSlug = useSoleFeatureSlug();
   const { offerId, campaignIds, scopeSettled } = useSelectedOffer();
-  const enabled = isRevenueFeature(featureSlug) && !!offerId && (campaignIds?.length ?? 0) > 0;
+  const { q, enabled } = useOfferRevenueQuery(brandId, offerId, campaignIds);
+  // Reveal on SETTLE: a failed read shows its dashes, never an eternal skeleton. While the
+  // offer and its campaigns load, `enabled` is false for want of data, not for want of an
+  // offer: that is pending too, or every reload flashes the page's no-data note.
+  return { ...q, enabled, pending: enabled ? q.data === undefined && !q.isError : !scopeSettled };
+}
+
+/** The ONE query behind the offer's money: `useBrandRevenue` and the auto basis share its cache. */
+function useOfferRevenueQuery(brandId: string, offerId: string | null, campaignIds: string[] | null) {
+  const featureSlug = useSoleFeatureSlug();
+  const enabled = isRevenueFeature(featureSlug) && !!brandId && !!offerId && (campaignIds?.length ?? 0) > 0;
   const q = useAuthQuery(["brandRevenue", brandId, "offer", offerId], () => getOfferRevenue(offerId!, brandId), {
     enabled,
     ...pollOptions,
     structuralSharing: (prev, next) =>
       keepLastGoodFeatureRevenue(prev as RevenueOverview | undefined, next as RevenueOverview),
   });
-  // Reveal on SETTLE: a failed read shows its dashes, never an eternal skeleton. While the
-  // offer and its campaigns load, `enabled` is false for want of data, not for want of an
-  // offer: that is pending too, or every reload flashes the page's no-data note.
-  return { ...q, enabled, pending: enabled ? q.data === undefined && !q.isError : !scopeSettled };
+  return { q, enabled };
+}
+
+/**
+ * The selected offer's return pair, the one figure that picks Mature or Flash for the
+ * whole dashboard (lib/use-stat-basis.ts). Null outside a brand page (no offer open).
+ */
+export function useOfferReturnPairIfAny(): RevenueOverview["costEconomics"]["maturity"] | null {
+  const sel = useSelectedOfferIfAny();
+  const { q } = useOfferRevenueQuery(sel?.brandId ?? "", sel?.offerId ?? null, sel?.campaignIds ?? null);
+  return q.data?.costEconomics.maturity ?? null;
 }
 
 /** The selected offer's outcomes, one row per step (features-service), same gate as `useBrandRevenue`. */
