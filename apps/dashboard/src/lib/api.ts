@@ -5248,6 +5248,68 @@ const LostStepPersonSchema = StepPersonSchema.extend({
   coldAtStep: OutcomeStepRefSchema.nullable(),
 });
 
+// The pipeline sliced (features-service #1416): every person on ONE row, rows add to the
+// total. A colleague whose company another member already carries adds 0.
+const ExclusivePersonSchema = StepPersonSchema.extend({
+  pipelineUsd: z.coerce.number().nullable(),
+  countedWithColleague: z.boolean(),
+});
+const ExclusiveLostPersonSchema = LostStepPersonSchema.extend({
+  pipelineUsd: z.coerce.number().nullable(),
+  countedWithColleague: z.boolean(),
+});
+const ExclusiveLadderSchema = z.object({
+  contacted: z.object({
+    count: z.coerce.number(),
+    valuedCount: z.coerce.number(),
+    expiredCount: z.coerce.number(),
+    cannotConvertCount: z.coerce.number(),
+    unpricedCount: z.coerce.number(),
+    valuePerPersonUsd: z.coerce.number().nullable(),
+    pipelineUsd: z.coerce.number().nullable(),
+    countedWithColleagueUsd: z.coerce.number().nullable(),
+    explanation: z
+      .object({
+        routes: z.array(
+          z.object({
+            signal: z.string(),
+            step: OutcomeStepRefSchema,
+            legKey: z.string(),
+            entryRatePct: z.coerce.number(),
+            valueAtStepUsd: z.coerce.number(),
+          }),
+        ),
+        expiryDays: z.coerce.number(),
+      })
+      .nullable(),
+    people: z.object({ limit: z.coerce.number(), leads: z.array(ExclusivePersonSchema) }),
+  }),
+  rows: z.array(
+    z.object({
+      step: OutcomeStepRefSchema,
+      pricedPeople: z.coerce.number().nullable(),
+      valuePerOutcomeUsd: z.coerce.number().nullable(),
+      pipelineUsd: z.coerce.number().nullable(),
+      countedWithColleagueUsd: z.coerce.number().nullable(),
+      people: z
+        .object({
+          limit: z.coerce.number(),
+          ours: z.object({ count: z.coerce.number(), leads: z.array(ExclusivePersonSchema) }),
+          lost: z.object({ count: z.coerce.number(), leads: z.array(ExclusiveLostPersonSchema) }),
+          notOurs: z.object({ count: z.coerce.number(), leads: z.array(ExclusivePersonSchema) }),
+        })
+        .nullable(),
+    }),
+  ),
+  total: z.object({
+    people: z.coerce.number(),
+    pipelineUsd: z.coerce.number().nullable(),
+    headlinePipelineUsd: z.coerce.number().nullable(),
+    gapUsd: z.coerce.number().nullable(),
+    gapReason: z.string().nullable(),
+  }),
+});
+
 // What working with us earned the offer, every step a lead climbs (not only the steps a
 // leg of ours lands on), customers won on our outreach, and the hot and cold leads.
 const OfferPipelineSchema = z.object({
@@ -5324,6 +5386,8 @@ const OfferPipelineSchema = z.object({
     })
     .nullable(),
   leadValuesUnpricedReason: z.string().nullable(),
+  // Optional until features-service #1416 is served.
+  exclusiveLadder: ExclusiveLadderSchema.optional(),
 });
 
 const OfferOutcomesSchema = z.object({
@@ -5342,6 +5406,9 @@ export type PipelineLead = z.infer<typeof PipelineLeadSchema>;
 /** A lost lead (went cold, or ruled out): the Lost leads list and its panel. */
 export type ColdPipelineLead = NonNullable<NonNullable<OfferPipeline["lostLeads"]>>["leads"][number];
 export type StepPerson = z.infer<typeof StepPersonSchema>;
+export type ExclusiveLadder = z.infer<typeof ExclusiveLadderSchema>;
+export type ExclusiveRow = ExclusiveLadder["rows"][number];
+export type ExclusivePerson = z.infer<typeof ExclusivePersonSchema>;
 export type LostStepPerson = z.infer<typeof LostStepPersonSchema>;
 
 /** GET /offers/:offerId/outcomes — what the offer's people are worth, step by step. */
