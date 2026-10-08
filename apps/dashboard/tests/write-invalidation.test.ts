@@ -150,8 +150,9 @@ describe("call sites", () => {
   });
 
   it("the lead-outcome mutation invalidates the whole set", () => {
-    // The row-scoped statement (`useSetAnyLeadStepStatement`), the one write left.
+    // The row-scoped statement (`useSetAnyLeadStepStatement`) and its withdrawal
+    // (`useWithdrawLeadStepStatement`, "not a client"): both move the same money.
     const src = read("lib/use-lead-step-statements.ts");
-    expect((src.match(/invalidateLeadOutcome\(queryClient\)/g) ?? []).length).toBe(1);
+    expect((src.match(/invalidateLeadOutcome\(queryClient\)/g) ?? []).length).toBe(2);
   });
 });

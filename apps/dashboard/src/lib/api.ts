@@ -3451,6 +3451,47 @@ export async function setLeadStepStatement(
   });
 }
 
+// What is known about each step of one lead (lead-service `GET /orgs/leads/{id}/step-statements`
+// via the gateway). Declared narrow: the Today lead panel reads the sale step only, to edit
+// a client's value or take the win back. `source` says who said so: only `manual` (a
+// person) can be restated or withdrawn; crm/tracker/reply are 409s by the producer's rule.
+const LeadStepStatementStepSchema = z.object({
+  step: z.string(),
+  state: z.enum(["outcome", "never", "pending"]),
+  origin: z.enum(["stated", "implied"]).nullable(),
+  source: z.enum(["tracker", "manual", "crm", "reply"]).nullable(),
+  valueCents: z.coerce.number().nullable(),
+  causedByOutreach: z.boolean().nullable(),
+  costCents: z.coerce.number().nullable(),
+  note: z.string().nullable(),
+  at: z.string().nullable(),
+});
+const LeadStepStatementsSchema = z.object({
+  leadCampaignId: z.string(),
+  steps: z.array(LeadStepStatementStepSchema),
+});
+export type LeadStepStatements = z.infer<typeof LeadStepStatementsSchema>;
+export type LeadStepStatementStep = z.infer<typeof LeadStepStatementStepSchema>;
+
+export async function getLeadStepStatements(leadRowId: string, token?: string): Promise<LeadStepStatements> {
+  const raw = await apiCall<unknown>(`/leads/${leadRowId}/step-statements`, { token });
+  const parsed = LeadStepStatementsSchema.safeParse(raw);
+  if (!parsed.success) {
+    console.error("[dashboard] getLeadStepStatements: response shape mismatch", { leadRowId, issues: parsed.error.issues, raw });
+    throw new Error("[dashboard] getLeadStepStatements: invalid response shape");
+  }
+  return parsed.data;
+}
+
+/**
+ * Take back a statement a person made on one step (lead-service withdraws, deletes
+ * nothing). Withdrawing a `sale` outcome is "not a client after all": the counts drop it
+ * on the next read and the step reads as before.
+ */
+export async function withdrawLeadStepStatement(leadRowId: string, step: LeadStepName, token?: string): Promise<void> {
+  await apiCall<unknown>(`/leads/${leadRowId}/step-statements/${step}`, { token, method: "DELETE" });
+}
+
 /**
  * Say the next follow-up to this person is owed NOW.
  *

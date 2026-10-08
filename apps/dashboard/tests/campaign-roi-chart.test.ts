@@ -193,3 +193,29 @@ describe("Today panel: a step's person opens its lead view, with a way back", ()
     expect(panel).toContain("useEffect(() => setPerson(null), [target]);");
   });
 });
+
+/**
+ * Owner 2026-10-08: a paid client's lead view edits the client's value and its status.
+ * lead-service's sale statement: restated with its date, cost, cause and note as read,
+ * or withdrawn. Only a win a person stated is editable.
+ */
+describe("Today panel: a paid client edits its value and status", () => {
+  const panel = fs.readFileSync(path.join(__dirname, "../src/components/v2/today-roi-panel.tsx"), "utf-8");
+  const api = fs.readFileSync(path.join(__dirname, "../src/lib/api.ts"), "utf-8");
+  it("reads the sale statement and edits only a person's own", () => {
+    expect(panel).toContain('lead.step.key === "paid_client" ? (\n        <ClientStatus lead={lead} />');
+    expect(panel).toContain('const editable = sale?.state === "outcome" && sale.origin === "stated" && sale.source === "manual";');
+    expect(api).toContain("export async function getLeadStepStatements(");
+    expect(api).toContain("`/leads/${leadRowId}/step-statements/${step}`, { token, method: \"DELETE\" }");
+  });
+  it("a restatement re-sends what it read, so the win keeps its date and note", () => {
+    const save = panel.slice(panel.indexOf("const saveValue = async"), panel.indexOf('setDone("Value saved.")'));
+    expect(save).toContain("costCents: sale.costCents");
+    expect(save).toContain("causedByOutreach: sale.causedByOutreach");
+    expect(save).toContain("occurredAt: sale.at");
+    expect(save).toContain("note: sale.note");
+  });
+  it("Not a client withdraws the sale", () => {
+    expect(panel).toContain('withdraw.mutate({ leadRowId: rowId, step: "sale" }');
+  });
+});
