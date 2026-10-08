@@ -4,6 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { leadSourceTags } from "@/lib/source-overlap";
+import { ownQueryData } from "@/lib/own-query-data";
 import { getLeadDetail, getLeadHistory, getLeadTimeline, getLeadConsolidatedStatus, leadDateForStatus, type Lead } from "@/lib/api";
 import { useAuthQuery } from "@/lib/use-auth-query";
 import { pollOptions } from "@/lib/query-options";
@@ -59,7 +60,10 @@ export function PersonPage() {
   const [closing, setClosing] = useState(false);
   const setStep = useSetAnyLeadStepStatement();
 
-  const lead = leadQ.data ?? null;
+  // Only THIS lead's reads: keepPreviousData would show the previous person's while these load.
+  const lead = ownQueryData(leadQ) ?? null;
+  const timeline = ownQueryData(timelineQ) ?? null;
+  const history = ownQueryData(historyQ);
   const name = lead ? leadName(lead) : "";
   const company = lead ? leadCompany(lead) : null;
   const domain = lead ? leadCompanyDomain(lead) : null;
@@ -139,13 +143,13 @@ export function PersonPage() {
             <div className="mt-6 grid gap-4 lg:grid-cols-[minmax(0,1fr)_320px]">
               <div className="min-w-0 space-y-6">
                 <ConversationTimelineCard
-                  timeline={timelineQ.data ?? null}
-                  failed={timelineQ.isFetchedAfterMount && !timelineQ.data && timelineQ.isError}
+                  timeline={timeline}
+                  failed={timelineQ.isFetchedAfterMount && !timeline && timelineQ.isError}
                 />
                 {lead.leadId && offerSettled ? <LeadChecks leadId={lead.leadId} brandId={brandId} offerId={offerId} /> : null}
-                {historyQ.data ? (
+                {history ? (
                   <LeadHistoryTimeline
-                    history={historyQ.data}
+                    history={history}
                     heading="Conversation and activity"
                     showNextFollowup
                     runHref={staffMode ? (runId) => `${v2RunHref(orgId, brandId, runId)}?person=${encodeURIComponent(leadRowId)}` : undefined}
