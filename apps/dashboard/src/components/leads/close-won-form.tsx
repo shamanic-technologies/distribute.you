@@ -23,12 +23,20 @@ export const CAUSE_TIP =
 
 export function CloseWonForm({
   prefillUsd,
+  prefillCause = null,
+  prefillCostUsd = null,
   busy,
   onSubmit,
   onCancel,
 }: {
   /** The offer's own stated lifetime revenue, in whole dollars. */
   prefillUsd: number | null;
+  /**
+   * Editing a win somebody ALREADY stated: their own answers, shown back so they change
+   * one without re-answering the rest. Still a prefill (what was said), never a guess.
+   */
+  prefillCause?: boolean | null;
+  prefillCostUsd?: number | null;
   busy: boolean;
   onSubmit: (input: {
     costCents: number;
@@ -41,7 +49,7 @@ export function CloseWonForm({
   // picked yet, and the submit stays disabled — the whole point of the question is that
   // the answer is STATED, so defaulting one here would put words in their mouth and
   // record them as if somebody had said them.
-  const [cause, setCause] = useState<boolean | null>(null);
+  const [cause, setCause] = useState<boolean | null>(prefillCause);
 
   // Every press inside this form stops whatever it is mounted in from reacting: the
   // table's row opens the detail panel and the board's card is draggable, and a form
@@ -84,6 +92,7 @@ export function CloseWonForm({
         // prefill is what it opens with, not what it sends.
         needsValue
         defaultValueUsd={prefillUsd}
+        defaultCostUsd={prefillCostUsd}
         busy={busy}
         // Held back until the cause is answered. The form's own submit already refuses
         // a blank amount; this is the same rule for the same reason.
