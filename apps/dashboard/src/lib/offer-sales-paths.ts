@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { formatRatePct as formatLegRatePct } from "./brand-conversion-rates";
+import { maturityPairSchema } from "./maturity";
 
 /**
  * An offer's SALES PATHS (beta): features-service links the legs the customer
@@ -170,6 +171,10 @@ const SourceCampaignSchema = z
     live: z.boolean(),
     roi: z.number().nullable(),
     roiUnavailableReason: z.string().nullable(),
+    /** Leads CARRYING this source: a lead two sources found counts in both (features-service v0.179.88). */
+    leadsFound: z.number().nullable().optional(),
+    /** Of `leadsFound`, the leads another source found too. */
+    leadsAlsoFoundByAnotherSource: z.number().nullable().optional(),
   })
   .passthrough();
 export type SalesPathSourceCampaign = z.infer<typeof SourceCampaignSchema>;
@@ -182,6 +187,36 @@ export const EXPECTED_ROI_TIP =
   "Expected, not measured yet. Worked out from each step's rate and what one client is worth.";
 export const EXPECTED_COST_PER_CLIENT_TIP =
   "Expected, not measured yet. What one paying client should cost on this path, from each step's rate.";
+
+const ReplyFiguresSchema = z
+  .object({
+    leads: z.number(),
+    positiveReplies: z.number(),
+    /** 100 x positiveReplies / leads; null at 0 leads. */
+    positiveReplyRatePct: z.number().nullable(),
+  })
+  .passthrough();
+
+/**
+ * The offer's leads by how many sources found each one (owner 2026-10-08: a lead carries
+ * EVERY source that found it, several signals = higher interest). Each lead counted once
+ * here; `sourceCount` 0 = no source proven, 3 = three or more. features-service v0.179.88.
+ */
+const SourceOverlapSchema = z
+  .object({
+    leadTotal: z.number(),
+    positiveReplyTotal: z.number(),
+    multiSourceLeads: z.number(),
+    buckets: z.array(
+      ReplyFiguresSchema.extend({
+        sourceCount: z.number(),
+        label: z.string(),
+        maturity: maturityPairSchema(ReplyFiguresSchema),
+      }).passthrough(),
+    ),
+  })
+  .passthrough();
+export type SourceOverlap = z.infer<typeof SourceOverlapSchema>;
 
 export const OfferSalesPathsSchema = z
   .object({
@@ -199,6 +234,9 @@ export const OfferSalesPathsSchema = z
     campaigns: z.array(CampaignSchema).optional(),
     /** Every source campaign of the offer (features-service v0.179.79; absent before it). */
     sourceCampaigns: z.array(SourceCampaignSchema).optional(),
+    /** Null with a reason when human-service's memberships were unreadable; absent before v0.179.88. */
+    sourceOverlap: SourceOverlapSchema.nullable().optional(),
+    sourceOverlapUnavailableReason: z.string().nullable().optional(),
   })
   .passthrough();
 
