@@ -56,6 +56,13 @@ const SORTS: Record<SortKey, { label: string; compare: (a: ConversionOrg, b: Con
   name: { label: "Name", compare: (a, b) => (a.orgName ?? a.orgDomain ?? "").localeCompare(b.orgName ?? b.orgDomain ?? "") },
 };
 
+/**
+ * Rows drawn per step. A brand engaged with a few hundred companies drew every row at
+ * once (about 8,000 DOM nodes), so each click on Companies spent ~0.6 s rendering before
+ * the page even switched. The rest arrives as the reader scrolls toward the end.
+ */
+const ROWS_STEP = 60;
+
 /** "2m ago" for when a read last landed, ticking once a minute. */
 function useAgo(at: number | undefined): string | null {
   const [now, setNow] = useState(() => Date.now());
@@ -116,6 +123,24 @@ export function CompaniesPage() {
       .filter((o) => (needle ? `${o.orgName ?? ""} ${o.orgDomain ?? ""}`.toLowerCase().includes(needle) : true))
       .sort(SORTS[sort].compare);
   }, [all, q, tagOf, sort]);
+  // How many of `orgs` are drawn. Back to one step whenever the filter or order changes;
+  // the keyboard cursor and the end-of-list sentinel extend it.
+  const [shown, setShown] = useState(ROWS_STEP);
+  useEffect(() => setShown(ROWS_STEP), [q, tagOf, sort]);
+  useEffect(() => {
+    if (cursor >= shown) setShown(cursor + ROWS_STEP);
+  }, [cursor, shown]);
+  const sentinel = useRef<HTMLTableRowElement | null>(null);
+  const hasMore = orgs.length > shown;
+  useEffect(() => {
+    const el = sentinel.current;
+    if (!el || !hasMore) return;
+    const io = new IntersectionObserver((entries) => {
+      if (entries.some((e) => e.isIntersecting)) setShown((n) => n + ROWS_STEP);
+    }, { rootMargin: "600px 0px" });
+    io.observe(el);
+    return () => io.disconnect();
+  }, [hasMore, shown]);
   const rowKey = (o: (typeof orgs)[number], i: number) => o.orgId ?? o.orgDomain ?? `${o.orgName}-${i}`;
   const allSelected = orgs.length > 0 && orgs.every((o, i) => selected.has(rowKey(o, i)));
   const toggle = (k: string) =>
@@ -260,7 +285,7 @@ export function CompaniesPage() {
             ) : !revenue.enabled || orgs.length === 0 ? (
               <tr><td colSpan={8}><EmptyNote>{q || tagOf ? "No company matches." : "No company has engaged yet."}</EmptyNote></td></tr>
             ) : (
-              orgs.map((o, i) => {
+              orgs.slice(0, shown).map((o, i) => {
                 const name = o.orgName ?? o.orgDomain ?? "Unknown company";
                 const person = o.topPerson ? `${o.topPerson.firstName ?? ""} ${o.topPerson.lastName ?? ""}`.trim() : "";
                 const stage = companyStage(o);
@@ -335,6 +360,11 @@ export function CompaniesPage() {
                   </tr>
                 );
               })
+            )}
+            {!revenue.pending && hasMore && (
+              <tr ref={sentinel} className="k-row h-10" aria-label="Loading more companies">
+                <td colSpan={8} className="px-4 md:px-6"><Shimmer className="h-4 w-full" /></td>
+              </tr>
             )}
           </tbody>
         </table>
