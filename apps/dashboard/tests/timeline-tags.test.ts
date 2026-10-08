@@ -32,6 +32,7 @@ describe("Unibox search runs the whole width, above both cards (owner 2026-10-08
     const grid = src.indexOf("lg:grid-cols-[380px_minmax(0,1fr)] lg:grid-rows");
     expect(search).toBeGreaterThan(0);
     expect(search).toBeLessThan(grid);
-    expect(src).toContain("<TagChip tag={timelineTag(item)} />");
+    // lead-service's label wins where a stored fact matches; the display lookup is the fallback.
+    expect(src).toContain("<TagChip tag={tag ?? timelineTag(item)} />");
   });
 });
