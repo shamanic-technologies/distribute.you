@@ -5225,6 +5225,16 @@ const OutcomeStepRefSchema = z.object({ key: z.string(), label: z.string() });
 // WHY a step is worth what it is (features-service v0.179.81): lifetime revenue x the
 // chance to become a paying client, that chance being the product of the legs listed,
 // each with its rate's source. Reconciled to the cent by the producer; null otherwise.
+// Every rate features-service weighed for a leg, in its precedence order, exactly one kept
+// (owner 2026-10-08, step panel). Optional until features-service #1432 is served.
+const RateCandidateSchema = z.object({
+  basis: z.enum(["crm", "our_leads", "manual", "median", "default"]),
+  ratePct: z.coerce.number(),
+  fromReached: z.coerce.number().nullable(),
+  toReached: z.coerce.number().nullable(),
+  kept: z.boolean(),
+  notKeptReason: z.string().nullable(),
+});
 const StepValueExplanationSchema = z.object({
   lifetimeRevenueUsd: z.coerce.number(),
   probabilityPct: z.coerce.number(),
@@ -5243,6 +5253,7 @@ const StepValueExplanationSchema = z.object({
           toReached: z.coerce.number().nullable(),
         })
         .nullable(),
+      candidates: z.array(RateCandidateSchema).optional(),
     }),
   ),
 });
@@ -5309,6 +5320,25 @@ const ConversionFromRowAboveSchema = z
     ratePct: z.coerce.number().nullable(),
   })
   .nullish();
+// The same % Conversion per UTC day since the offer's first delivery (owner 2026-10-08, the
+// step panel chart). Served only on `?conversionHistory=true`; its last point IS today's
+// conversionFromRowAbove. Optional until features-service #1432 is served.
+const ConversionHistorySchema = z
+  .object({
+    startsOn: z.string(),
+    endsOn: z.string(),
+    undatedPeople: z.coerce.number(),
+    points: z.array(
+      z.object({
+        date: z.string(),
+        ratePct: z.coerce.number().nullable(),
+        rowPeople: z.coerce.number(),
+        rowAbove: OutcomeStepRefSchema.nullable(),
+        rowAbovePeople: z.coerce.number().nullable(),
+      }),
+    ),
+  })
+  .nullish();
 const ExclusiveLadderSchema = z.object({
   contacted: z.object({
     count: z.coerce.number(),
@@ -5335,6 +5365,7 @@ const ExclusiveLadderSchema = z.object({
       .nullable(),
     people: z.object({ limit: z.coerce.number(), leads: z.array(ExclusivePersonSchema) }),
     conversionFromRowAbove: ConversionFromRowAboveSchema,
+    conversionHistory: ConversionHistorySchema,
   }),
   rows: z.array(
     z.object({
@@ -5357,6 +5388,7 @@ const ExclusiveLadderSchema = z.object({
         .object({ limit: z.coerce.number(), count: z.coerce.number(), leads: z.array(ExclusivePersonSchema) })
         .nullish(),
       conversionFromRowAbove: ConversionFromRowAboveSchema,
+      conversionHistory: ConversionHistorySchema,
     }),
   ),
   total: z.object({
@@ -5475,12 +5507,19 @@ export type ColdPipelineLead = NonNullable<NonNullable<OfferPipeline["lostLeads"
 export type StepPerson = z.infer<typeof StepPersonSchema>;
 export type ExclusiveLadder = z.infer<typeof ExclusiveLadderSchema>;
 export type ExclusiveRow = ExclusiveLadder["rows"][number];
+export type ConversionHistory = NonNullable<ExclusiveRow["conversionHistory"]>;
 export type ExclusivePerson = z.infer<typeof ExclusivePersonSchema>;
 export type LostStepPerson = z.infer<typeof LostStepPersonSchema>;
 
 /** GET /offers/:offerId/outcomes — what the offer's people are worth, step by step. */
-export async function getOfferOutcomes(offerId: string, brandId: string): Promise<OfferOutcomes> {
+export async function getOfferOutcomes(
+  offerId: string,
+  brandId: string,
+  opts: { conversionHistory?: boolean } = {},
+): Promise<OfferOutcomes> {
   const query = new URLSearchParams({ brandId, pricing: "net" });
+  // The dated % Conversion is a heavier read: only the step panel asks for it.
+  if (opts.conversionHistory) query.set("conversionHistory", "true");
   const raw = await apiCall<unknown>(`/offers/${encodeURIComponent(offerId)}/outcomes?${query.toString()}`);
   const parsed = OfferOutcomesSchema.safeParse(raw);
   if (!parsed.success) {

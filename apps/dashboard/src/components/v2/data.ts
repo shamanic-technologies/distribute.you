@@ -88,6 +88,22 @@ export function useOfferOutcomes(brandId: string) {
 }
 
 /**
+ * The same outcomes read WITH the dated sliced % Conversion (features-service
+ * `?conversionHistory=true`), for the Today step panel's chart. Its own key: the page's
+ * read stays light, and this one runs only while a panel is open.
+ */
+export function useOfferConversionHistory(brandId: string, open: boolean) {
+  const featureSlug = useSoleFeatureSlug();
+  const { offerId, campaignIds } = useSelectedOffer();
+  const enabled = open && isRevenueFeature(featureSlug) && !!offerId && (campaignIds?.length ?? 0) > 0;
+  return useAuthQuery(
+    ["offerStepOutcomes", brandId, offerId, "conversionHistory"],
+    () => getOfferOutcomes(offerId!, brandId, { conversionHistory: true }),
+    { enabled, ...pollOptions },
+  );
+}
+
+/**
  * What the selected offer's contacted people are worth (features-service contacted-value,
  * the Deals board's Contacted column read without lead ids): per person and in all.
  */
