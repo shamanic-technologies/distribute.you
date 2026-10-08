@@ -207,8 +207,9 @@ describe("search (crm-service q, #56)", () => {
     const api = read("lib/api.ts");
     expect(api).toContain('if (opts.q) qs.set("q", opts.q);');
     const view = read("components/v2/integrations-conversations.tsx");
-    expect(view).toContain('queryKey: ["people", brandId, "scroll", q]');
-    expect(view).toContain("offset: pageParam, q }");
+    // The family filter rides the same key and read (lead-families.test.ts).
+    expect(view).toContain('queryKey: ["people", brandId, "scroll", q, family]');
+    expect(view).toContain("offset: pageParam, q, family:");
     expect(view).not.toContain("people.filter(");
   });
   it("keeps why each person matched", () => {

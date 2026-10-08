@@ -598,12 +598,14 @@ export async function listCrmConnections(
  */
 export async function listPeople(
   brandId: string,
-  opts: { limit: number; offset: number; q?: string },
+  opts: { limit: number; offset: number; q?: string; family?: string },
   token?: string,
 ): Promise<PeopleList> {
   const qs = new URLSearchParams({ brandId, limit: String(opts.limit), offset: String(opts.offset) });
   // crm-service searches name, email, phone, company and message text; blank = the plain list.
   if (opts.q) qs.set("q", opts.q);
+  // One lead family only (won | hot | lost | cold); absent = everyone.
+  if (opts.family) qs.set("family", opts.family);
   const raw = await apiCall<unknown>(`/orgs/people?${qs.toString()}`, { token });
   const parsed = PeopleListSchema.safeParse(raw);
   if (!parsed.success) {

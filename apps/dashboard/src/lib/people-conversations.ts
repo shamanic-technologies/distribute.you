@@ -75,6 +75,12 @@ export const PersonSchema = z.object({
     )
     .optional(),
   messageMatches: z.coerce.number().optional(),
+  /**
+   * The person's lead family (features-service's verdict, joined by crm-service): won |
+   * hot | lost | cold, null when they are not one of our leads. Parsed as a string.
+   */
+  family: z.string().nullish(),
+  familyLostReason: z.string().nullish(),
 });
 
 export const PeopleListSchema = z.object({
@@ -90,6 +96,23 @@ export const PeopleListSchema = z.object({
   offset: z.coerce.number(),
   nextOffset: z.coerce.number().nullable(),
   people: z.array(PersonSchema),
+  /**
+   * The lead families over this list's population (search applied, family filter NOT
+   * applied: each count is what its button returns). `status` "failed" carries `error`.
+   */
+  families: z
+    .object({
+      status: z.string(),
+      error: z.string().nullable(),
+      filter: z.string().nullable(),
+      counts: z.object({
+        won: z.coerce.number(),
+        hot: z.coerce.number(),
+        lost: z.coerce.number(),
+        cold: z.coerce.number(),
+      }),
+    })
+    .optional(),
 });
 
 export const PersonTimelineItemSchema = z.object({
