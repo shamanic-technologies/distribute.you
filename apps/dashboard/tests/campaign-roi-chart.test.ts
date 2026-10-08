@@ -160,5 +160,9 @@ describe("Pipeline by step: one row per person, a served Total", () => {
     expect(panel).toContain("why.routes.map(");
     expect(panel).toContain("r.entryRatePct");
     expect(panel).toContain("const people = slice?.people ?? step.people ?? null;");
+  });  it("All, then Lost per row, served by the row (owner 2026-10-08)", () => {
+    expect(roi).toContain('font-normal">All</th>');
+    expect(roi).not.toContain('font-normal">People</th>');
+    expect(roi).toContain("r.people ? formatCount(r.people.lost.count) : dash");
   });
 });
