@@ -30,13 +30,9 @@ export function isLeadFamily(v: string | null | undefined): v is LeadFamily {
   return LEAD_FAMILIES.some((f) => f.key === v);
 }
 
-/**
- * The filter the Unibox shows: the one in the URL, else Hot leads (owner's default), and
- * All once the served counts say nobody is hot.
- */
-export function familyFilter(param: string | null, hotCount: number | null): FamilyFilter {
-  if (param === "all" || isLeadFamily(param)) return param;
-  return hotCount === 0 ? "all" : "hot";
+/** The filter the Unibox shows: the one in the URL, else All (owner 2026-10-08). */
+export function familyFilter(param: string | null): FamilyFilter {
+  return isLeadFamily(param) ? param : "all";
 }
 
 /** A person's tag look: their family's tone and icon; no family = the plain neutral tag. */
