@@ -146,6 +146,12 @@ describe("wiring", () => {
     expect(api).toContain("PeopleListSchema.safeParse(raw)");
     expect(api).toContain("PersonTimelineSchema.safeParse(raw)");
   });
+  it("fills the panel on desktop: only the list and the thread scroll, never the page (owner 2026-10-08)", () => {
+    expect(read("components/v2/unibox-page.tsx")).toContain("lg:flex lg:h-full lg:flex-col");
+    const view = read("components/v2/integrations-conversations.tsx");
+    expect(view).toContain("lg:grid-rows-[minmax(0,1fr)]");
+    expect(view.match(/min-h-\[420px\] flex-col overflow-hidden lg:max-h-none/g)?.length).toBe(2);
+  });
   it("is the Unibox, staff mode only, under Records (owner 2026-10-08)", () => {
     const page = read("app/(authed)/v2/orgs/[orgId]/brands/[brandId]/unibox/page.tsx");
     expect(page).toContain("<StaffOnly>");
