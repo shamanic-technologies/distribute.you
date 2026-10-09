@@ -139,6 +139,7 @@ import {
   wallCopy,
 } from "@/lib/v2/get-started";
 import { Initials, Shimmer, StateDot } from "@/components/v2/ui";
+import { EditableAnswer } from "@/components/v2/editable-answer";
 import { OfferIcon } from "@/components/v2/new-org-icons";
 import { CountUp, Typewriter, formatElapsed, stagger, useElapsed } from "./motion";
 import { BrandLogo } from "@/components/brand-logo";
@@ -2862,61 +2863,6 @@ function ValueStage({
         </>
       )}
     </StepCard>
-  );
-}
-
-/**
- * A short answer shown as bullets; a click turns it into a text area, leaving it turns
- * it back. The text is the source: one line per bullet.
- */
-function EditableAnswer({
-  value,
-  onValue,
-  disabled,
-  placeholder,
-  label,
-}: {
-  value: string;
-  onValue: (v: string) => void;
-  disabled: boolean;
-  placeholder: string;
-  label: string;
-}) {
-  const [editing, setEditing] = useState(false);
-  const lines = answerLines(value);
-  if (editing && !disabled)
-    return (
-      <textarea
-        autoFocus
-        className="k-input min-h-[96px] w-full resize-y px-2 py-1.5 text-[13px] leading-5"
-        value={value}
-        onChange={(e) => onValue(e.target.value)}
-        onBlur={() => setEditing(false)}
-        aria-label={label}
-        placeholder={placeholder}
-      />
-    );
-  return (
-    <button
-      type="button"
-      onClick={() => setEditing(true)}
-      disabled={disabled}
-      className={`w-full rounded-lg px-2 py-1.5 text-left ${disabled ? "" : "k-hover cursor-text"}`}
-      aria-label={`Edit: ${label}`}
-    >
-      {lines.length ? (
-        <ul className="grid gap-1">
-          {lines.map((l, i) => (
-            <li key={i} className="k-fg2 flex gap-2 text-[13px] leading-5">
-              <span className="mt-2 h-1 w-1 shrink-0 rounded-full bg-[var(--accent)]" aria-hidden="true" />
-              {l}
-            </li>
-          ))}
-        </ul>
-      ) : (
-        <span className="k-fg4 text-[13px]">{placeholder}</span>
-      )}
-    </button>
   );
 }
 

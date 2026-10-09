@@ -20,7 +20,7 @@ describe("lifetime revenue is required to move on", () => {
   it("disables Continue and Enter while the amount is not valid", () => {
     const src = fs.readFileSync(path.resolve(__dirname, "../src/components/v2/get-started/get-started.tsx"), "utf8");
     const at = src.indexOf("function ValueStage(");
-    const stage = src.slice(at, src.indexOf("function EditableAnswer(", at));
+    const stage = src.slice(at, src.indexOf("function LeversStage(", at));
     expect(stage).toContain('const hasValue = !("problem" in parseLifetimeRevenue(value));');
     expect(stage).toContain("disabled={busy || !hasValue}");
     expect(stage).toContain('e.key === "Enter" && !done && hasValue');
