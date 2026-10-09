@@ -25,7 +25,8 @@ export type RateCandidate = {
 
 export type CandidateLine = { key: RateCandidateBasis; text: string; kept: boolean };
 
-const pct = (v: number) => `${v < 10 ? v.toFixed(1) : Math.round(v)}%`;
+// A rate that rounds to 0.0% but is not zero reads "<0.1%", never a false 0.0%.
+const pct = (v: number) => (v > 0 && v < 0.05 ? "<0.1%" : `${v < 10 ? v.toFixed(1) : Math.round(v)}%`);
 const count = (n: number) => n.toLocaleString("en-US");
 
 const MEASURED_WHERE: Partial<Record<RateCandidateBasis, string>> = {

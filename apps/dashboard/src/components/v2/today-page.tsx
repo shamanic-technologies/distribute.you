@@ -85,7 +85,8 @@ function cumulative(daily: { date: string; cumulativeCount?: number }[]): number
   }
   return out as number[];
 }
-const pct = (v: number) => `${v < 10 || v > 99 ? v.toFixed(1) : Math.round(v)}%`;
+// A rate that rounds to 0.0% but is not zero reads "<0.1%", never a false 0.0%.
+const pct = (v: number) => (v > 0 && v < 0.05 ? "<0.1%" : `${v < 10 || v > 99 ? v.toFixed(1) : Math.round(v)}%`);
 /** One column per stat tile on a wide screen, so the row always spans the full width. */
 const STAT_GRID_COLS = {
   4: "md:grid-cols-4",

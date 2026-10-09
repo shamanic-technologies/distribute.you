@@ -38,7 +38,8 @@ export type TodayPanelTarget =
   | { kind: "contacted" }
   | { kind: "lead"; lead: PipelineLead | ColdPipelineLead; group: "hot" | "lost" };
 
-const pct = (v: number) => `${v < 10 ? v.toFixed(1) : Math.round(v)}%`;
+// A chance that rounds to 0.0% but is not zero reads "<0.1%", never a false 0.0%.
+const pct = (v: number) => (v > 0 && v < 0.05 ? "<0.1%" : `${v < 10 ? v.toFixed(1) : Math.round(v)}%`);
 
 /** Where a served leg rate comes from, in the customer's words. */
 function sourceWords(leg: StepValueExplanation["legs"][number]): string {
