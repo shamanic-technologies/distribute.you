@@ -84,6 +84,9 @@ describe("copilot wiring", () => {
     expect(widget).toContain("useState(true)");
     expect(widget).toContain("fixed bottom-4 right-4 z-40");
     expect(widget).toContain("setOpen((o) => !o)");
+    // Open, the bubble says "lower it" (owner 2026-10-09: no cross).
+    expect(widget).toContain("<CaretDownIcon");
+    expect(widget).not.toContain("XIcon");
     // Closed = hidden, never unmounted: an answer keeps streaming.
     expect(widget).toContain("inert={!open}");
   });

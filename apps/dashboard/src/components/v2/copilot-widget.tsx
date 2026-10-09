@@ -2,12 +2,12 @@
 
 import { useState } from "react";
 import { ChatCircleDotsIcon } from "@phosphor-icons/react/dist/csr/ChatCircleDots";
-import { XIcon } from "@phosphor-icons/react/dist/csr/X";
+import { CaretDownIcon } from "@phosphor-icons/react/dist/csr/CaretDown";
 import { CopilotChat } from "@/components/v2/copilot-chat";
 
 /**
  * The staff Copilot as a widget (owner 2026-10-09): a bubble bottom right that floats above
- * the page. It opens on every load; a click on the bubble closes it, another
+ * the page. It opens on every load; a click on the bubble (a caret down while open: it lowers, never a cross) closes it, another
  * click reopens it. The chat stays mounted while closed, so an answer keeps streaming.
  */
 export function CopilotWidget({ orgId, brandId }: { orgId: string; brandId: string }) {
@@ -30,7 +30,7 @@ export function CopilotWidget({ orgId, brandId }: { orgId: string; brandId: stri
         aria-expanded={open}
         className="fixed bottom-4 right-4 z-40 flex h-12 w-12 items-center justify-center rounded-full bg-[var(--accent)] text-white shadow-[var(--elev-popover)] transition-transform duration-150 ease-out hover:scale-105 active:scale-95"
       >
-        {open ? <XIcon size={20} weight="bold" /> : <ChatCircleDotsIcon size={22} weight="fill" />}
+        {open ? <CaretDownIcon size={22} weight="bold" /> : <ChatCircleDotsIcon size={22} weight="fill" />}
       </button>
     </>
   );
