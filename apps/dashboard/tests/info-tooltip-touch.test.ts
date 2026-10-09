@@ -63,7 +63,6 @@ describe("InfoTooltip — usable with a thumb", () => {
     // i.e. an (i) that showed nothing at all on a touch device.
     const migrated = [
       "src/components/strategy/best-model-card.tsx",
-      "src/components/settings/brand-offer-card.tsx",
     ];
     for (const rel of migrated) {
       const body = fs.readFileSync(path.join(root, rel), "utf-8");

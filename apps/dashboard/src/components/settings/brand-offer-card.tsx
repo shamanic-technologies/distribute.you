@@ -2,8 +2,8 @@
 
 import { useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { Skeleton } from "@/components/skeleton";
-import { MetricLabel } from "@/components/visibility/metric-info";
+import { Shimmer } from "@/components/v2/ui";
+import { EditableAnswer } from "@/components/v2/editable-answer";
 import { pollOptions } from "@/lib/query-options";
 import { ORG_DESYNC_ERROR, ORG_DESYNC_STATUS } from "@/lib/org-desync";
 import { useAuthQuery } from "@/lib/use-auth-query";
@@ -19,7 +19,6 @@ import {
   ALL_FIELDS,
   cloneFields,
   fieldsEqual,
-  TextEditor,
   type ProfileFields,
 } from "@/components/brand-profile/field-editor";
 import { coerceTextField, OFFER_LEVERS } from "@/lib/strategy-model";
@@ -135,11 +134,13 @@ export function BrandOfferCard({ brandId, offerId }: { brandId: string; offerId:
   const saveOfferMut = useMutation({
     mutationFn: (fields: ProfileFields) =>
       saveOfferUserFields(brandId, offerId, profileToUserFieldsPayload(fields)),
-    onSuccess: (res) => {
+    onSuccess: (res, sent) => {
       // The response IS the read this card polls: write it, so the saved values
       // show at once instead of the pre-save copy until the next poll.
       queryClient.setQueryData(["offerUserFields", brandId, offerId], res);
-      setOfferDraft(null);
+      // Drop the draft only if nothing was typed since this save left: a point edited
+      // while the save was in flight keeps its text and saves on its own blur.
+      setOfferDraft((cur) => (cur === sent ? null : cur));
       // setQueryData never reaches the on-disk cache (only a query-function run is
       // persisted), so a reload right after Save painted the PRE-save copy from disk.
       // Re-read through the query function so the disk copy is the saved one; the
@@ -187,120 +188,86 @@ export function BrandOfferCard({ brandId, offerId }: { brandId: string; offerId:
   const setOfferText = (key: string, value: string) =>
     setOfferDraft((prev) => ({ ...(prev ?? offerBaseline), [key]: value }));
 
+  // Autosave: leaving a point saves the whole bag (v2 has no Save button on an
+  // inline value, owner 2026-10-01).
   const saveOffer = () => {
     if (!offerDirty || saveOfferMut.isPending) return;
     saveOfferMut.mutate(offerFields);
   };
 
   return (
-    <section className="bg-white rounded-xl border border-gray-200 p-5 md:p-6">
+    <section>
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
-          <h2 className="text-sm font-semibold text-gray-800">
-            What we use to optimize your conversion
-          </h2>
-          <p className="mt-0.5 text-xs text-gray-500">
-            Your offer through the Alex Hormozi value equation. We write the emails
-            around these. Click any field to edit it.
-          </p>
+          <h2 className="k-fg text-[14px] font-medium">Your offer, in seven points</h2>
+          <p className="k-fg3 mt-0.5 text-[12px]">We write every email around these. Click a point to edit it.</p>
         </div>
-        <button
-          type="button"
-          onClick={copyAllForLLM}
-          disabled={profilePending || !business}
-          className="shrink-0 rounded-lg border border-gray-200 px-3 py-1.5 text-xs font-medium text-gray-600 transition hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-40"
-        >
-          {llmCopied ? "Copied!" : "Copy all for LLM"}
-        </button>
+        <div className="flex shrink-0 items-center gap-2">
+          {saveOfferMut.isPending ? <span className="k-fg3 text-[12px]">Saving...</span> : null}
+          <button
+            type="button"
+            onClick={copyAllForLLM}
+            disabled={profilePending || !business}
+            className="k-btn-ghost h-7 px-2 text-[12px]"
+          >
+            {llmCopied ? "Copied" : "Copy all for LLM"}
+          </button>
+        </div>
       </div>
 
-      <div className="mt-4">
-        <div className="mb-4 flex items-center gap-3 rounded-lg border border-gray-200 bg-gray-50 px-4 py-3">
-          <img
-            src="/alex-hormozi.png"
-            alt="Alex Hormozi"
-            className="h-9 w-9 shrink-0 rounded-full border border-gray-300 object-cover"
-          />
-          <p className="text-xs text-gray-500">
-            The stronger and clearer these are, the better each email converts. Anything
-            marked not set is worth filling in.
-          </p>
+      {saveOfferMut.isError ? (
+        <p role="alert" className="mt-2 text-[12px] text-[var(--data-rose)]">
+          {saveErrorMessage(saveOfferMut.error)}
+        </p>
+      ) : null}
+
+      {profilePending ? (
+        <div className="mt-3 grid gap-2 sm:grid-cols-2">
+          {[0, 1, 2, 3].map((i) => (
+            <div key={i} className="k-card p-3">
+              <Shimmer className="h-4 w-1/3 rounded-md" />
+              <Shimmer className="mt-2 h-3 w-2/3 rounded-md" />
+              <Shimmer className="mt-3 h-10 w-full rounded-md" />
+            </div>
+          ))}
         </div>
-
-        {profilePending ? (
-          <div className="space-y-2">
-            {[0, 1, 2, 3].map((i) => (
-              <Skeleton key={i} className="h-12 w-full" />
-            ))}
-          </div>
-        ) : (
-          <>
-            <ul className="divide-y divide-gray-100 overflow-hidden rounded-lg border border-gray-200">
-              {OFFER_LEVERS.map((lever) => {
-                // Placeholder comes from the shared user-field set; the two list levers
-                // (services, socialProof) are edited as one-item-per-line textareas.
-                const def = ALL_FIELDS.find((f) => f.key === lever.key);
-                const placeholder = def?.placeholder ?? "";
-                const value = offerFields[lever.key];
-                return (
-                  <li key={lever.key} className="px-4 py-3">
-                    <p className="mb-1 flex items-center gap-2 text-[11px] font-semibold uppercase tracking-wide text-gray-400">
-                      <MetricLabel text={lever.label} tip={lever.tip} placement="top" />
-                    </p>
-                    {TEXTAREA_LIST_KEYS.has(lever.key) ? (
-                      <TextEditor
-                        value={
-                          Array.isArray(value) ? linesToList(value).join("\n") : (value ?? "")
-                        }
-                        placeholder={TEXTAREA_LIST_PLACEHOLDER[lever.key] ?? placeholder}
-                        onText={(v) => setOfferText(lever.key, v)}
-                      />
-                    ) : (
-                      <TextEditor
-                        value={coerceTextField(value)}
-                        placeholder={placeholder}
-                        onText={(v) => setOfferText(lever.key, v)}
-                      />
-                    )}
-                  </li>
-                );
-              })}
-            </ul>
-
-            {saveOfferMut.isError ? (
-              <p role="alert" className="mt-4 text-right text-sm text-red-600">
-                {saveErrorMessage(saveOfferMut.error)}
-              </p>
-            ) : null}
-            {offerDirty ? (
-              <div className="mt-2 flex items-center justify-end gap-2">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setOfferDraft(null);
-                    saveOfferMut.reset();
-                  }}
-                  className="rounded-lg px-3 py-2 text-sm text-gray-500 hover:text-gray-700"
-                >
-                  Discard
-                </button>
-                <button
-                  type="button"
-                  onClick={saveOffer}
-                  disabled={saveOfferMut.isPending}
-                  className={`rounded-lg bg-brand-600 px-4 py-2 text-sm font-medium text-white transition ${
-                    saveOfferMut.isPending
-                      ? "cursor-wait"
-                      : "hover:bg-brand-700 disabled:opacity-40 disabled:cursor-not-allowed"
-                  }`}
-                >
-                  {saveOfferMut.isPending ? "Saving…" : "Save changes"}
-                </button>
+      ) : (
+        <div className="mt-3 grid gap-2 sm:grid-cols-2">
+          {OFFER_LEVERS.map((lever) => {
+            // The two list levers (services, socialProof) are stored as a list, one item
+            // per line; the others are text, where each line is one bullet too.
+            const def = ALL_FIELDS.find((f) => f.key === lever.key);
+            const value = offerFields[lever.key];
+            return (
+              <div key={lever.key} className="k-card p-3">
+                <p className="k-fg text-[13px] font-medium">{lever.label}</p>
+                <p className="k-fg3 mt-0.5 text-[12px]">{lever.tip}</p>
+                <div className="mt-2">
+                  {TEXTAREA_LIST_KEYS.has(lever.key) ? (
+                    <EditableAnswer
+                      value={Array.isArray(value) ? linesToList(value).join("\n") : (value ?? "")}
+                      placeholder={TEXTAREA_LIST_PLACEHOLDER[lever.key] ?? def?.placeholder ?? ""}
+                      onValue={(v) => setOfferText(lever.key, v)}
+                      onDone={saveOffer}
+                      disabled={false}
+                      label={lever.label}
+                    />
+                  ) : (
+                    <EditableAnswer
+                      value={coerceTextField(value)}
+                      placeholder={def?.placeholder ?? "Click to answer"}
+                      onValue={(v) => setOfferText(lever.key, v)}
+                      onDone={saveOffer}
+                      disabled={false}
+                      label={lever.label}
+                    />
+                  )}
+                </div>
               </div>
-            ) : null}
-          </>
-        )}
-      </div>
+            );
+          })}
+        </div>
+      )}
     </section>
   );
 }
