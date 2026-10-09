@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Shimmer } from "@/components/v2/ui";
 import { EditableAnswer } from "@/components/v2/editable-answer";
+import { V2NewOfferModal } from "@/components/v2/new-offer-modal";
 import { pollOptions } from "@/lib/query-options";
 import { ORG_DESYNC_ERROR, ORG_DESYNC_STATUS } from "@/lib/org-desync";
 import { useAuthQuery } from "@/lib/use-auth-query";
@@ -111,8 +112,9 @@ function profileToUserFieldsPayload(fields: ProfileFields): Partial<Record<UserF
  * $200 self-serve plan and a $20k contract has two different answers to every one
  * of these, and the brand-scoped routes have exactly one place to put them.
  */
-export function BrandOfferCard({ brandId, offerId }: { brandId: string; offerId: string }) {
+export function BrandOfferCard({ orgId, brandId, offerId }: { orgId: string; brandId: string; offerId: string }) {
   const queryClient = useQueryClient();
+  const [creatingOffer, setCreatingOffer] = useState(false);
   // Offer-fields inline edit: null = follow the saved baseline, an object = working edits.
   const [offerDraft, setOfferDraft] = useState<ProfileFields | null>(null);
 
@@ -199,7 +201,7 @@ export function BrandOfferCard({ brandId, offerId }: { brandId: string; offerId:
     <section>
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
-          <h2 className="k-fg text-[14px] font-medium">Your offer, in seven points</h2>
+          <h2 className="k-fg text-[14px] font-medium">Your offer</h2>
           <p className="k-fg3 mt-0.5 text-[12px]">We write every email around these. Click a point to edit it.</p>
         </div>
         <div className="flex shrink-0 items-center gap-2">
@@ -222,28 +224,38 @@ export function BrandOfferCard({ brandId, offerId }: { brandId: string; offerId:
       ) : null}
 
       {profilePending ? (
-        <div className="mt-3 grid gap-2 sm:grid-cols-2">
-          {[0, 1, 2, 3].map((i) => (
-            <div key={i} className="k-card p-3">
+        <div className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-2">
+          {[0, 1, 2, 3, 4, 5].map((i) => (
+            <div key={i} className={`k-card p-3 ${i === 0 ? "sm:col-span-2" : ""}`}>
               <Shimmer className="h-4 w-1/3 rounded-md" />
               <Shimmer className="mt-2 h-3 w-2/3 rounded-md" />
-              <Shimmer className="mt-3 h-10 w-full rounded-md" />
+              <Shimmer className="mt-3 h-7 w-full rounded-md" />
             </div>
           ))}
         </div>
       ) : (
-        <div className="mt-3 grid gap-2 sm:grid-cols-2">
+        <div className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-2">
           {OFFER_LEVERS.map((lever) => {
-            // The two list levers (services, socialProof) are stored as a list, one item
-            // per line; the others are text, where each line is one bullet too.
+            // Each text lever reads as bullets, one per line. `services` is ONE line
+            // across the top (owner 2026-10-10: one service per offer, another service
+            // is another offer); a list stored before that reads joined on one line.
             const def = ALL_FIELDS.find((f) => f.key === lever.key);
             const value = offerFields[lever.key];
+            const single = lever.key === "services";
             return (
-              <div key={lever.key} className="k-card p-3">
+              <div key={lever.key} className={`k-card min-w-0 p-3 ${single ? "sm:col-span-2" : ""}`}>
                 <p className="k-fg text-[13px] font-medium">{lever.label}</p>
                 <p className="k-fg3 mt-0.5 text-[12px]">{lever.tip}</p>
                 <div className="mt-2">
-                  {TEXTAREA_LIST_KEYS.has(lever.key) ? (
+                  {single ? (
+                    <OneLineAnswer
+                      value={Array.isArray(value) ? linesToList(value).join(", ") : (value ?? "")}
+                      placeholder="The one service or product this offer sells"
+                      onValue={(v) => setOfferText(lever.key, v)}
+                      onDone={saveOffer}
+                      label={lever.label}
+                    />
+                  ) : TEXTAREA_LIST_KEYS.has(lever.key) ? (
                     <EditableAnswer
                       value={Array.isArray(value) ? linesToList(value).join("\n") : (value ?? "")}
                       placeholder={TEXTAREA_LIST_PLACEHOLDER[lever.key] ?? def?.placeholder ?? ""}
@@ -263,11 +275,79 @@ export function BrandOfferCard({ brandId, offerId }: { brandId: string; offerId:
                     />
                   )}
                 </div>
+                {single ? (
+                  <p className="k-fg3 mt-2 px-2 text-[12px]">
+                    One service per offer. Selling another?{" "}
+                    <button type="button" className="text-[var(--accent)] hover:underline" onClick={() => setCreatingOffer(true)}>
+                      Create a new offer
+                    </button>
+                  </p>
+                ) : null}
               </div>
             );
           })}
         </div>
       )}
+      {creatingOffer && <V2NewOfferModal brandId={brandId} orgId={orgId} onClose={() => setCreatingOffer(false)} />}
     </section>
+  );
+}
+
+/**
+ * A one-line answer: reads as text, a click opens it as an input in the same box,
+ * Enter or leaving it saves, Esc puts back what it opened with.
+ */
+function OneLineAnswer({
+  value,
+  onValue,
+  onDone,
+  placeholder,
+  label,
+}: {
+  value: string;
+  onValue: (v: string) => void;
+  onDone: () => void;
+  placeholder: string;
+  label: string;
+}) {
+  const [editing, setEditing] = useState(false);
+  const [opened, setOpened] = useState(value);
+  if (editing)
+    return (
+      <input
+        autoFocus
+        className="k-input w-full px-2"
+        style={{ font: "inherit", fontSize: 13 }}
+        value={value}
+        onChange={(e) => onValue(e.target.value.replace(/[\r\n]+/g, " "))}
+        onKeyDown={(e) => {
+          if (e.key === "Enter") e.currentTarget.blur();
+          if (e.key === "Escape") {
+            e.stopPropagation();
+            onValue(opened);
+            setEditing(false);
+          }
+        }}
+        onBlur={() => {
+          if (!editing) return;
+          setEditing(false);
+          onDone();
+        }}
+        aria-label={label}
+        placeholder={placeholder}
+      />
+    );
+  return (
+    <button
+      type="button"
+      onClick={() => {
+        setOpened(value);
+        setEditing(true);
+      }}
+      className="k-hover flex h-7 w-full cursor-text items-center rounded-lg px-2 text-left text-[13px]"
+      aria-label={`Edit: ${label}`}
+    >
+      {value.trim() ? <span className="k-fg min-w-0 truncate">{value}</span> : <span className="k-fg4">{placeholder}</span>}
+    </button>
   );
 }

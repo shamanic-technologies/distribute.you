@@ -651,7 +651,8 @@ export function GetStarted({ org }: { org?: OrgWalk } = {}) {
       setGives((cur) => fillBlank(cur, GIVE_DRAFT_FIELDS, (k) => valueLines(r.fields[k]?.value).join("\n")));
       setDrafted("done");
       // No screen asks for it: saved as drafted so the offer page shows what is sold.
-      const services = valueLines(r.fields.services?.value);
+      // One service per offer (owner 2026-10-10): another service is another offer.
+      const services = valueLines(r.fields.services?.value).slice(0, 1);
       if (services.length > 0) {
         saveOfferUserFields(id, offerId, { services }).catch((e) =>
           console.error("[get-started] offer services save failed:", { brandId: id, offerId, e }),

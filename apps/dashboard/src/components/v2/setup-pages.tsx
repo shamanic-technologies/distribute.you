@@ -209,7 +209,7 @@ export function V2OfferPage({ view = "overview" }: { view?: "overview" | "revenu
           <OfferPlanBanner brandId={brandId} offerId={offerId} missions={missions} />
           <div className="space-y-8">
             <OfferLifetimeRevenue brandId={brandId} offerId={offerId} />
-            <BrandOfferCard brandId={brandId} offerId={offerId} />
+            <BrandOfferCard orgId={orgId} brandId={brandId} offerId={offerId} />
             <OfferArchiveCard brandId={brandId} offerId={offerId} />
             <ArchivedOffers brandId={brandId} />
           </div>

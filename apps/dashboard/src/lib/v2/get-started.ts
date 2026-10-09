@@ -251,7 +251,7 @@ export type LeverDraftKey = (typeof LEVER_DRAFT_FIELDS)[number]["key"];
 export const SERVICES_DRAFT_FIELD = {
   key: "services",
   description:
-    "Services sold: what a buyer pays for in this offer, as the site names it (product, package or service). One to three short phrases, each under eight words. Facts from the site only.",
+    "Service sold: the ONE thing a buyer pays for in this offer, as the site names it (product, package or service). One short phrase, under ten words. Facts from the site only.",
 } as const;
 
 /** What is given away to whoever replies, and what is never promised (brand-service #584 keys). */

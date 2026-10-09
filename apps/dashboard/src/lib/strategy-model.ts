@@ -186,7 +186,7 @@ export interface OfferLever {
 }
 
 export const OFFER_LEVERS: OfferLever[] = [
-  { key: "services", label: "Services sold", tip: "What you actually deliver to the client." },
+  { key: "services", label: "Service sold", tip: "What you actually deliver to the client." },
   {
     key: "dreamOutcome",
     label: "Dream outcome",

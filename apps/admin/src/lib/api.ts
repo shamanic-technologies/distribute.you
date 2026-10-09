@@ -840,7 +840,7 @@ export const SALES_PROFILE_FIELDS: ExtractFieldDef[] = [
  * onboarding, on the customer Strategy page, and in this console.
  */
 export const USER_PROFILE_FIELDS: ExtractFieldDef[] = [
-  { key: "services", description: "The distinct paid services or products the brand explicitly sells to customers — exclude internal process steps, delivery sub-tasks and capabilities. Said differently, what package / product / service customers will pay for when they think about it. If one offering, list one. If different offerings appear in the content provided, list all. List each as a short phrase." },
+  { key: "services", description: "The ONE paid service or product this offer sells, as a single short phrase (under ten words). Exclude internal process steps, delivery sub-tasks and capabilities. If the content names several offerings, return only the main one: each other offering is its own offer." },
   { key: "dreamOutcome", description: "Dream outcome: the specific end result or transformation the customer most wants from this brand — the core promise every outreach email is written around. Make it concrete and worth wanting." },
   { key: "perceivedLikelihood", description: "Perceived likelihood of success: proof the outcome is achievable — track record, data, guarantees, named results and outcomes" },
   { key: "socialProof", description: "Social proof: case studies, testimonials, and results" },

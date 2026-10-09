@@ -119,7 +119,8 @@ async function prefillOfferLevers(brandId: string, offerId: string): Promise<voi
     if (lines.length === 0) continue;
     fields[q.key] = q.list ? lines : lines.join("\n");
   }
-  const services = valueLinesOf(read.fields.services?.value);
+  // One service per offer (owner 2026-10-10): another service is another offer.
+  const services = valueLinesOf(read.fields.services?.value).slice(0, 1);
   if (services.length > 0) fields.services = services;
   if (Object.keys(fields).length > 0) await saveOfferUserFields(brandId, offerId, fields);
 }
