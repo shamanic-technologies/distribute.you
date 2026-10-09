@@ -67,7 +67,7 @@ import { websiteInputProblem } from "@/lib/website-input";
 import { channelMinimumCents, channelMinimumsFromWire } from "@/lib/channel-minimums";
 import { NEW_ORG_CHANNEL_SLUG } from "@/lib/v2/new-org-wizard";
 import { EMPTY_LEG_CATALOGUE, legCatalogueFromWire, type LegCatalogue } from "@/lib/legs";
-import { SALES_PATH_CHANNEL_SLUGS, offeredFromCatalogue, selectionFromSteps, type SalesPathSelection } from "@/lib/offer-sales-path";
+import { SALES_PATH_CHANNEL_SLUGS, offeredFromCatalogue, salesPathLegsWire, selectionFromSteps, type SalesPathSelection } from "@/lib/offer-sales-path";
 import { roiUnavailableLabel, type OfferSalesPaths as OfferSalesPathsData, type SalesPathLeg } from "@/lib/offer-sales-paths";
 import { salesPathChannels, selectedPathKeys, type SalesPathChannel } from "@/lib/offer-active-sales-paths";
 import { campaignsOfOffer, campaignTag, type OfferCampaign } from "@/lib/offer-campaigns";
@@ -696,7 +696,7 @@ export function GetStarted({ org }: { org?: OrgWalk } = {}) {
     advance(done);
     try {
       const o = await ensureOffer();
-      await saveOfferSalesPath(brandId, o.offerId, [...next.steps], [...next.legs]);
+      await saveOfferSalesPath(brandId, o.offerId, [...next.steps], salesPathLegsWire(next.legs, offered.channelsByLeg, offered.legs));
       saveSnapshot({ salesPath: { steps: [...next.steps], legs: [...next.legs] } });
       posthog.capture(done === "salesSteps" ? "get_started_steps_ticked" : "get_started_legs_ticked", {
         steps: next.steps.size,

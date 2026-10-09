@@ -2137,7 +2137,9 @@ const OfferSalesPathSchema = z.object({
   offerId: z.string(),
   stated: z.boolean(),
   steps: z.array(z.string()).nullable(),
-  legKeys: z.array(z.string()).nullable(),
+  // Each ticked leg WITH the channel that performs it (brand-service #636); the bare
+  // `legKeys` beside it is a deprecated compatibility field, not read here.
+  legs: z.array(z.object({ legKey: z.string(), featureSlug: z.string().nullable() })).nullable(),
   statedAt: z.string().nullable(),
 });
 export type OfferSalesPath = z.infer<typeof OfferSalesPathSchema>;
@@ -2157,16 +2159,16 @@ export async function getOfferSalesPath(brandId: string, offerId: string): Promi
   return parseOfferSalesPath(raw, "getOfferSalesPath");
 }
 
-/** PUT /brands/:brandId/offers/:offerId/sales-path — replaces the whole selection. */
+/** PUT /brands/:brandId/offers/:offerId/sales-path — replaces the whole selection, each leg with its channel. */
 export async function saveOfferSalesPath(
   brandId: string,
   offerId: string,
   steps: string[],
-  legKeys: string[],
+  legs: ReadonlyArray<{ legKey: string; featureSlug: string | null }>,
 ): Promise<OfferSalesPath> {
   const raw = await apiCall<unknown>(`/brands/${brandId}/offers/${offerId}/sales-path`, {
     method: "PUT",
-    body: { steps, legKeys },
+    body: { steps, legs },
   });
   return parseOfferSalesPath(raw, "saveOfferSalesPath");
 }

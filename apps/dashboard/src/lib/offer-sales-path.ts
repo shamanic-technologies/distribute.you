@@ -138,6 +138,47 @@ export function offeredFromCatalogue(
   return { legs: offered, steps: offeredSteps(offered, [...catalogue.steps.keys()]), channelsByLeg: byLeg };
 }
 
+/** One leg of an offer's sales path as brand-service stores it: the leg and the channel that performs it. */
+export interface SalesPathLegWire {
+  legKey: string;
+  /** features-service feature slug; null only on a leg no channel of ours performs (the brand's team). */
+  featureSlug: string | null;
+}
+
+/**
+ * The ticked legs as brand-service stores them (#636, owner 2026-10-09): ONE entry per
+ * (leg, channel that performs it), so an offer selling through Google Ads AND cold email
+ * keeps "Website visit" for each. `channelsByLeg` is the surface's own channels per leg
+ * (`offeredFromCatalogue`). A leg no channel performs is the brand's team (`featureSlug:
+ * null`); an ENTRY leg with no channel cannot be stored (brand-service refuses it), so it
+ * throws here rather than reach the wire.
+ */
+export function salesPathLegsWire(
+  legKeys: Iterable<string>,
+  channelsByLeg: ReadonlyMap<string, readonly string[]>,
+  legs: readonly PathLeg[],
+): SalesPathLegWire[] {
+  const out: SalesPathLegWire[] = [];
+  for (const legKey of legKeys) {
+    const channels = channelsByLeg.get(legKey) ?? [];
+    if (channels.length === 0) {
+      const leg = legs.find((l) => l.legKey === legKey);
+      if (!leg || isProactiveFrom(leg.fromKey)) {
+        throw new Error(`[offer-sales-path] entry leg ${legKey} has no channel of ours to perform it`);
+      }
+      out.push({ legKey, featureSlug: null });
+      continue;
+    }
+    for (const featureSlug of channels) out.push({ legKey, featureSlug });
+  }
+  return out;
+}
+
+/** The ticked leg keys of a stored sales path (one per leg, whatever channels perform it). */
+export function legKeysOfStored(legs: readonly SalesPathLegWire[] | null | undefined): Set<string> {
+  return new Set((legs ?? []).map((l) => l.legKey));
+}
+
 /** A selection built by ticking steps one by one (the legs between ticked steps follow). */
 export function selectionFromSteps(stepKeys: readonly string[], legs: readonly PathLeg[]): SalesPathSelection {
   let sel: SalesPathSelection = { steps: new Set(), legs: new Set() };
