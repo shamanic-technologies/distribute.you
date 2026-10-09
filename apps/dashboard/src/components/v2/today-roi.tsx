@@ -19,7 +19,8 @@ import { EmptyNote, Initials, SectionTitle, Shimmer } from "@/components/v2/ui";
 export const WORTH_EACH_TIP =
   "Expected, not measured yet. The chance one person at this step becomes a paying client, times what one client is worth to you.";
 
-const pct = (v: number) => `${v < 10 ? v.toFixed(1) : Math.round(v)}%`;
+// A chance that rounds to 0.0% but is not zero reads "<0.1%", never a false 0.0%.
+const pct = (v: number) => (v > 0 && v < 0.05 ? "<0.1%" : `${v < 10 ? v.toFixed(1) : Math.round(v)}%`);
 const dash = <span className="k-fg4">—</span>;
 
 /**

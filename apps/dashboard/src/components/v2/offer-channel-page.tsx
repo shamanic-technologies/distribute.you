@@ -29,7 +29,8 @@ const CHANNEL_TABS: { key: V2ChannelTab; label: string }[] = [
   { key: "settings", label: "Settings" },
 ];
 
-const pct = (v: number) => `${v < 10 || v > 99 ? v.toFixed(1) : Math.round(v)}%`;
+// A rate that rounds to 0.0% but is not zero reads "<0.1%", never a false 0.0%.
+const pct = (v: number) => (v > 0 && v < 0.05 ? "<0.1%" : `${v < 10 || v > 99 ? v.toFixed(1) : Math.round(v)}%`);
 
 /**
  * One channel of an offer, opened from the offer's Channels table. Cold email is the only
