@@ -1090,6 +1090,33 @@ const ChatHistoryToolCallSchema = z.object({
   args: z.record(z.string(), z.unknown()),
   result: z.unknown().optional(),
 });
+const ChatChoiceVisualSchema = z.discriminatedUnion("type", [
+  z.object({ type: z.literal("icon"), icon: z.string() }),
+  z.object({ type: z.literal("image"), imageUrl: z.string() }),
+  z.object({ type: z.literal("number"), value: z.union([z.number(), z.string()]), unit: z.string().optional() }),
+  z.object({ type: z.literal("chart"), series: z.array(z.number()), unit: z.string().optional() }),
+]);
+export const ChatChoicesRecordSchema = z.object({
+  question: z.string().nullish(),
+  choices: z.array(
+    z.object({
+      label: z.string(),
+      value: z.string(),
+      description: z.string().optional(),
+      visual: ChatChoiceVisualSchema.optional(),
+    }),
+  ),
+  allowFreeText: z.boolean().optional(),
+});
+export const ChatOpenPageRecordSchema = z.object({
+  page: z.string(),
+  brandId: z.string().optional(),
+  offerId: z.string().optional(),
+  campaignId: z.string().optional(),
+  audienceId: z.string().optional(),
+  leadId: z.string().optional(),
+  title: z.string().optional(),
+});
 const ChatHistoryMessageSchema = z.object({
   id: z.string(),
   role: z.enum(["user", "assistant", "tool"]),
@@ -1099,6 +1126,9 @@ const ChatHistoryMessageSchema = z.object({
   // The choices chat-service parsed off the turn (served since the buttons protocol); the
   // Copilot re-draws them after a reload.
   buttons: z.array(z.object({ label: z.string(), value: z.string() })).nullish(),
+  // chat-service `present_choices` / `open_page` records (2026-10-09), re-drawn by the Copilot.
+  choices: ChatChoicesRecordSchema.nullish(),
+  openPages: z.array(ChatOpenPageRecordSchema).nullish(),
 });
 const ChatSessionHistorySchema = z.object({
   sessionId: z.string(),

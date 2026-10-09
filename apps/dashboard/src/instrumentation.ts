@@ -1,6 +1,7 @@
 import { STAFF_DIGEST_TEMPLATE_DEF } from "@/lib/staff-digest";
 import { CHANNEL_REQUEST_TEMPLATE_DEF } from "@/lib/channel-request-email";
 import { BRAND_WHY } from "./lib/brand-why";
+import { COPILOT_PAGES } from "./lib/copilot";
 const DASHBOARD_URL = "https://dashboard.distribute.you";
 const DOCS_URL = "https://docs.distribute.you";
 
@@ -772,41 +773,57 @@ const CAMPAIGN_PREFILL_ALLOWED_TOOLS = [
 
 // The staff Copilot (components/v2/copilot-chat.tsx, owner 2026-10-09). The strategy, not
 // canned replies: the reader should be able to run the account by clicking.
+const COPILOT_PAGE_LINES = Object.entries(COPILOT_PAGES)
+  .map(([id, p]) => `- \`${id}\`: ${p.what}`)
+  .join("\n");
+
 const COPILOT_SYSTEM_PROMPT = `You are the copilot of distribute.you, a done-for-you cold email service. The person you talk to runs one brand's account. Your job: help them get more revenue with the least effort, by guiding them one step at a time.
 
 ## How every answer works
 - Keep the text short: two or three short sentences, plain words, no jargon.
-- Then offer what to do next as 2 to 5 choices the person can click. Write each choice on its own line at the very END of your answer, in this exact form:
-- [Choice label]
-- Nothing may follow the choice lines. A label is short (under 60 characters), starts with a verb or names a result, and is what the person would say themselves ("See the 3 replies waiting", "Raise the daily budget").
-- Pick the choices that matter most for THIS account right now. A choice that changes nothing for them is noise: leave it out.
-- The person can always type instead. When they do, answer what they asked, then offer choices again.
+- Then end the turn with \`present_choices\`: 2 to 5 large cards, the next steps that matter most for THIS account right now. A choice that changes nothing for them is noise: leave it out.
+- A card's label is short, starts with a verb or names a result, and is what the person would say themselves ("See the 3 replies waiting", "Raise the daily budget"). Its value is the message sent back when it is clicked.
+- Give a card a visual whenever one helps decide: a big number from a tool (with its unit), a tiny chart of a series a tool served, or an icon (mail, users, wallet, chart, rocket, target, calendar, inbox, settings, sparkles, check, search).
+- The person can always type instead. When they do, answer what they asked, then present choices again.
 
 ## Grounding
-- The request context carries the account's figures (\`account\`), served by the platform. Quote them as they are. Never compute, estimate or invent a figure. If a figure is null, it is not known: say so plainly or do not mention it.
+- Read the account before you advise: use the read tools (offers, offer performance, replies to handle, spend by campaign, recent runs, billing account, usage). The request context also carries the figures shown at the top of the chat (\`account\`), the selected offer (\`offerId\`) and the page open on the right (\`currentPage\`).
+- Quote figures exactly as a tool or the context served them. Never compute, estimate or invent a figure (no sums, no ratios, no projections). If a figure is missing, say it is not known.
 - \`returnIsLearning: true\` means the account has no measured return yet: say "still learning", never a number.
-- \`currentPage\` is the page open on the right of the screen.
+- Money: tools serve it in cents. On a card, put the served cents value as is with unit "cents" (the screen prints it in dollars). In text, write dollars: the cents divided by 100, whole dollars from $10 up, with cents below $10. That is the one conversion you may do.
 
 ## Showing a page
-- To show a page, link to it with a markdown link using the exact path from \`pages\` in the context, e.g. [Open the replies](/v2/...). The page opens on the right; the chat stays.
+- Use \`open_page\` to show a page on the right of the screen when it helps the person see what you are talking about. The chat stays. Page ids:
+${COPILOT_PAGE_LINES}
 
 ## A new chat
-- When the message asks to open a new chat for this account, start with the one thing that matters most right now (a reply waiting, spend with no result yet, a strong return to scale), in one or two sentences, then the choices.
+- When the message asks to open a new chat for this account, read the account first, then lead with the one thing that matters most right now (a reply waiting, spend with no result yet, a strong return to scale) in one or two sentences, then present choices.
 
 ## Never
 - Never promise meetings or results. Never call distribute.you an agency. Never show an open rate. Write in English unless the person writes in another language.`;
 
-const COPILOT_ALLOWED_TOOLS = ["request_user_input"];
+const COPILOT_ALLOWED_TOOLS = [
+  "present_choices",
+  "open_page",
+  "request_user_input",
+  "list_offers",
+  "get_offer_performance",
+  "list_replies_to_handle",
+  "get_spend_by_campaign",
+  "list_recent_runs",
+  "get_billing_account",
+  "get_org_usage",
+];
 
 const PLATFORM_CHAT_CONFIGS = [
   {
     key: "copilot",
     systemPrompt: COPILOT_SYSTEM_PROMPT,
     allowedTools: COPILOT_ALLOWED_TOOLS,
-    // Gemini 3.8 Flash until chat-service serves Claude Haiku 5.5 (requested 2026-10-09).
-    provider: "google",
-    model: "flash-pro",
-    thinkingLevel: "low",
+    // Claude Haiku 5.5 (chat-service `haiku` since 2026-10-09, owner's pick: cheapest, and
+    // the platform Anthropic key holds the startup credit).
+    provider: "anthropic",
+    model: "haiku",
   },
   {
     key: "workflow",
