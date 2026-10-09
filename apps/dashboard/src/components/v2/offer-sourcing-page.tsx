@@ -9,6 +9,7 @@ import { roiUnavailableLabel } from "@/lib/offer-sales-paths";
 import { v2OfferHref } from "@/lib/v2/routes";
 import { OfferCampaigns } from "@/components/v2/offer-campaigns";
 import { OfferSourceOverlap } from "@/components/v2/offer-source-overlap";
+import { OfferSourceLists } from "@/components/v2/offer-source-lists";
 import { V2Page, useOfferName } from "@/components/v2/setup-pages";
 
 /**
@@ -50,6 +51,7 @@ export function V2OfferSourcingPage() {
         openRows
         sub="Each source finds leads for your campaigns. Turn one on and set its budget."
       />
+      <OfferSourceLists brandId={brandId} offerId={offerId} />
       <OfferSourceOverlap
         sources={paths.data?.sourceCampaigns ?? []}
         overlap={paths.data?.sourceOverlap}
