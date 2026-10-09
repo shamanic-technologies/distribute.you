@@ -113,8 +113,8 @@ describe("v2 audience table surface", () => {
 
   it("both v2 pages mount the v2 table, not v1's page", () => {
     expect(setup).not.toContain("<CustomerAudiencesPage");
-    const targeting = setup.slice(setup.indexOf("export function V2TargetingPage("));
-    expect(targeting.slice(0, 1200)).toContain("<V2AudiencesTable offerId={offerId} plain />");
+    const targeting = setup.slice(setup.indexOf("export function V2TargetingPage("), setup.indexOf("export function V2TargetingIndexPage("));
+    expect(targeting).toContain("<V2AudiencesTable offerId={offerId} plain />");
   });
 
   it("the offer's Targeting reads in plain words: each audience's sentence, no figure column", () => {
@@ -145,9 +145,9 @@ describe("v2 audience table surface", () => {
     expect(table).not.toContain("<span>Cold email</span>");
   });
 
-  it("the offer's Targeting lists suggested audiences and leaves out LinkedIn signal ones", () => {
+  it("the offer's Targeting lists suggested audiences and leaves out every buying-signal one", () => {
     expect(table).toContain("useAudienceTable({ campaignId, offerId, includeSuggested: plain })");
-    expect(table).toContain("plain ? t.audiences.filter((a) => !linkedInSignalOf(a.filters)) : t.audiences");
+    expect(table).toContain("plain ? t.audiences.filter((a) => !hasBuyingSignal(a.filters)) : t.audiences");
     // Suggested rows have their own tab on the offer's Targeting (owner 2026-10-08).
     expect(table).toContain('key: "suggested", label: "Suggested"');
     expect(table).toContain('a.status === "suggested" ? "suggested" : "active"');

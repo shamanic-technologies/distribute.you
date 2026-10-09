@@ -27,6 +27,7 @@ import { OfferLifetimeRevenue } from "@/components/settings/offer-campaigns-card
 import { BrandOfferCard } from "@/components/settings/brand-offer-card";
 import { V2AudiencesTable } from "@/components/v2/audiences-table";
 import { OfferQualification } from "@/components/v2/offer-qualification";
+import { OfferSourcesTab } from "@/components/v2/offer-sources-tab";
 import { OfferRevenueSteps } from "@/components/v2/offer-revenue-steps";
 import { V2CrmRawView } from "@/components/v2/integrations-crm";
 import { V2CrmMergedView } from "@/components/v2/integrations-merged";
@@ -223,13 +224,28 @@ export function V2OfferPage({ view = "overview" }: { view?: "overview" | "revenu
  * The offer's Targeting: who it reaches (Client Profiles) and the checks every company of every
  * audience goes through before we write to it (Qualification, owner 2026-10-07).
  */
-export function V2TargetingPage({ view = "audiences" }: { view?: "audiences" | "qualification" | "lists" }) {
+type TargetingView = "audiences" | "sources" | "qualification" | "lists";
+
+/**
+ * Targeting reads in four steps (owner 2026-10-09): WHO we write to, WHERE we find them,
+ * which companies pass, and the lists that result. Sources is read only; its toggle and
+ * budget live on the Sourcing page.
+ */
+const TARGETING_SUB: Record<TargetingView, string> = {
+  audiences: "The people we write to.",
+  sources: "Where we find them. Every source looks for every profile.",
+  qualification: "What a company must pass before we write.",
+  lists: "Who each source found, for each profile.",
+};
+
+export function V2TargetingPage({ view = "audiences" }: { view?: TargetingView }) {
   const { orgId, brandId, offerId } = useIds();
   const name = useOfferName(brandId, offerId);
   if (!offerId) return null;
   const base = v2OfferHref(orgId, brandId, offerId, "targeting");
   const tabs: V2Tab[] = [
-    { label: "Client Profiles", href: base, active: view === "audiences" },
+    { label: "Client profiles", href: base, active: view === "audiences" },
+    { label: "Sources", href: `${base}/sources`, active: view === "sources" },
     { label: "Qualification", href: `${base}/qualification`, active: view === "qualification" },
     // The brand's source lists and who they hold (was the Audience page, owner 2026-10-07).
     { label: "Lists", href: `${base}/lists`, active: view === "lists" },
@@ -241,7 +257,10 @@ export function V2TargetingPage({ view = "audiences" }: { view?: "audiences" | "
       tabs={tabs}
       width="max-w-[1280px]"
     >
-      {view === "qualification" ? (
+      <p className="k-fg2 -mt-1 mb-4 text-[13px]">{TARGETING_SUB[view]}</p>
+      {view === "sources" ? (
+        <OfferSourcesTab orgId={orgId} brandId={brandId} offerId={offerId} />
+      ) : view === "qualification" ? (
         <OfferQualification brandId={brandId} offerId={offerId} />
       ) : view === "lists" ? (
         <AudienceLists />

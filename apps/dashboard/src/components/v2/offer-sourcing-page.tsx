@@ -47,6 +47,7 @@ export function V2OfferSourcingPage() {
         campaigns={campaigns}
         pending={paths.isPending && !paths.isError}
         title="Sources"
+        openRows
         sub="Each source finds leads for your campaigns. Turn one on and set its budget."
       />
       <OfferSourceOverlap
