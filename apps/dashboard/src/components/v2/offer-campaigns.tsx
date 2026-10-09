@@ -20,9 +20,10 @@ import { shownReturn, type StatBasis } from "@/lib/maturity";
 import { useStatBasis } from "@/lib/use-stat-basis";
 import { useRoutePrefetch } from "@/lib/use-route-prefetch";
 import { useLegCatalogue } from "@/lib/use-leg-catalogue";
-import { campaignNameFor } from "@/lib/legs";
+import { campaignNameFor, type LegCatalogue } from "@/lib/legs";
 import { costPerResult, outcomeCount } from "@/components/v2/mission-results";
-import { campaignKey, campaignTag, sortCampaigns, type OfferCampaign } from "@/lib/offer-campaigns";
+import { campaignKey, sortCampaigns, type OfferCampaign } from "@/lib/offer-campaigns";
+import { CampaignModeChip } from "@/components/v2/campaign-mode";
 import { channelWriteErrorMessage } from "@/lib/channel-start";
 import { createCampaignForPair, startReactiveCampaign } from "@/lib/start-pair";
 import { invalidateCampaignMoney } from "@/lib/write-invalidation";
@@ -165,6 +166,7 @@ export function OfferCampaigns({
                       key={key}
                       results={results}
                       basis={basis}
+                      catalogue={catalogue}
                       onOpen={
                         (results || openRows) && mission
                           ? { go: () => router.push(mission.href), warm: () => prefetch(mission.href) }
@@ -256,6 +258,7 @@ export function CampaignLeg({
 function CampaignRow({
   results,
   basis,
+  catalogue,
   onOpen,
   brandId,
   offerId,
@@ -271,6 +274,8 @@ function CampaignRow({
   /** Sales path page: the campaign's own results columns, the leg under its name. */
   results: boolean;
   basis: StatBasis;
+  /** features-service's catalogue: the campaign's mode and the trigger of a reactive one. */
+  catalogue: LegCatalogue;
   /** The row opens the campaign's page; null when it has none yet (never ran). */
   onOpen: { go: () => void; warm: () => void } | null;
   brandId: string;
@@ -325,7 +330,7 @@ function CampaignRow({
         </td>
       )}
       <td className="px-3 py-2">
-        <span className="k-chip">{campaignTag(campaign)}</span>
+        <CampaignModeChip catalogue={catalogue} featureSlug={campaign.featureSlug} legKey={campaign.legKey} reactive={campaign.reactive} />
       </td>
       {results ? (
         <CampaignResultCells mission={mission} basis={basis} />

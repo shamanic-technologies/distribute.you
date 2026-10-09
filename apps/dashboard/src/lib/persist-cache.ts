@@ -397,8 +397,11 @@ export function persisterStorageKey(orgId: string | null | undefined): string {
  *
  * "5": `offerCampaignBudgets` items gained the REQUIRED `split`, `outreachDailyBudgetCents`
  * and `sourcingCeilingCents` (billing v0.83.0). An older snapshot would hide every split.
+ *
+ * "6": `offerSalesPath` gained the REQUIRED `legs` (each leg with its channel, brand-service
+ * #636) and its reader no longer reads `legKeys`: an older snapshot would show no leg ticked.
  */
-const PERSIST_CACHE_VERSION = "5";
+const PERSIST_CACHE_VERSION = "6";
 
 export function persistCacheVersion(): string {
   return PERSIST_CACHE_VERSION;

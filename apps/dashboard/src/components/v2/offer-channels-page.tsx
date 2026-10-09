@@ -15,7 +15,7 @@ import {
 } from "@/lib/api";
 import { useLegCatalogue } from "@/lib/use-leg-catalogue";
 import { invalidateConversionRates } from "@/lib/write-invalidation";
-import { SALES_PATH_CHANNEL_SLUGS } from "@/lib/offer-sales-path";
+import { SALES_PATH_CHANNEL_SLUGS, legKeysOfStored } from "@/lib/offer-sales-path";
 import { formatRatePct, LEG_RATE_RULE, rateSourceLabel, roundLegRatePct } from "@/lib/brand-conversion-rates";
 import {
   giveListLines,
@@ -61,7 +61,7 @@ export function ColdEmailChannelSettings({ brandId, offerId, channelSlug }: { br
 
   const legs = useMemo(
     () =>
-      validatedLegSections(catalogue, path.data?.legKeys ?? [], SALES_PATH_CHANNEL_SLUGS).sections.filter(
+      validatedLegSections(catalogue, [...legKeysOfStored(path.data?.legs)], SALES_PATH_CHANNEL_SLUGS).sections.filter(
         (s) => s.channels.includes(channelSlug) && !isProactiveFrom(s.fromKey),
       ),
     [catalogue, path.data, channelSlug],

@@ -18,7 +18,10 @@ describe("Revenue Steps tab (owner 2026-10-07: Legs and Steps moved off Outbound
 
   it("the tab mounts the legs and steps and saves them, then re-reads the paths", () => {
     expect(tab).toContain("<OfferSalesPath");
-    expect(tab).toContain("saveOfferSalesPath(brandId, offerId, [...next.steps], [...next.legs])");
+    expect(tab).toContain("saveOfferSalesPath(brandId, offerId, [...next.steps], salesPathLegsWire(next.legs, offered.channelsByLeg, offered.legs))");
+    // Readers take the legs with their channel, never the deprecated bare list.
+    expect(tab).toContain("legKeysOfStored(q.data.legs)");
+    expect(tab).not.toContain("legKeys ??");
     expect(tab).toContain('queryKey: ["offerSalesPaths", brandId, offerId]');
   });
 

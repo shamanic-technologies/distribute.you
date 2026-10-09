@@ -49,6 +49,22 @@ export interface LegDef {
   label: string;
 }
 
+/**
+ * One TRIGGER type (features-service `triggers[]`, owner 2026-10-09): the event that runs a
+ * REACTIVE leg (a campaign asking for a lead, a positive reply received...). The producer
+ * owns the list, its words and its icon token (a Phosphor name); nothing here lists them.
+ */
+export interface TriggerDef {
+  id: string;
+  label: string;
+  description: string | null;
+  /** Phosphor icon name (kebab-case), as served. */
+  icon: string | null;
+}
+
+/** How a (channel, leg) runs: on its own budget, or on demand when its trigger fires. */
+export type LegMode = { mode: "proactive" } | { mode: "reactive"; triggerId: string | null };
+
 /** The catalogue, keyed for lookup. */
 export interface LegCatalogue {
   steps: ReadonlyMap<string, StepDef>;
@@ -59,6 +75,10 @@ export interface LegCatalogue {
   crewNames: ReadonlyMap<string, string>;
   /** The CAMPAIGN name (features-service `campaignName`) of a (channel, leg), keyed `featureLegId(slug, legKey)` (canonical spelling). Absent = unnamed. */
   campaignNames: ReadonlyMap<string, string>;
+  /** Proactive or reactive (and its trigger) per (channel, leg), keyed `featureLegId(slug, legKey)`. Absent = not served. */
+  modes: ReadonlyMap<string, LegMode>;
+  /** Every trigger type, by id, in the producer's order. */
+  triggers: ReadonlyMap<string, TriggerDef>;
 }
 
 export const EMPTY_LEG_CATALOGUE: LegCatalogue = {
@@ -67,6 +87,8 @@ export const EMPTY_LEG_CATALOGUE: LegCatalogue = {
   legsByChannel: new Map(),
   crewNames: new Map(),
   campaignNames: new Map(),
+  modes: new Map(),
+  triggers: new Map(),
 };
 
 /** The public catalogue body, read structurally: a row missing what this module needs
@@ -89,8 +111,11 @@ export interface PublicCatalogueWire {
       to?: { key?: unknown; label?: unknown } | null;
       crewName?: unknown;
       campaignName?: unknown;
+      mode?: unknown;
+      triggerId?: unknown;
     }> | null;
   }> | null;
+  triggers?: Array<{ id?: unknown; label?: unknown; description?: unknown; icon?: unknown }> | null;
 }
 
 function str(v: unknown): string | null {
@@ -142,6 +167,7 @@ export function legCatalogueFromWire(body: PublicCatalogueWire | null | undefine
   const crewNames = new Map<string, string>();
   const campaignNames = new Map<string, string>();
   const channelTypes = new Map<string, string>();
+  const modes = new Map<string, LegMode>();
   for (const channel of body.channels ?? []) {
     const slug = str(channel?.slug);
     if (!slug) continue;
@@ -158,12 +184,20 @@ export function legCatalogueFromWire(body: PublicCatalogueWire | null | undefine
       if (crew) crewNames.set(featureLegId(slug, legKey), crew);
       const campaign = str(t?.campaignName);
       if (campaign) campaignNames.set(featureLegId(slug, legKey), campaign);
+      if (t?.mode === "proactive") modes.set(featureLegId(slug, legKey), { mode: "proactive" });
+      else if (t?.mode === "reactive") modes.set(featureLegId(slug, legKey), { mode: "reactive", triggerId: str(t?.triggerId) });
     }
     legsByChannel.set(slug, keys);
   }
   const drift = outboundRenameDrift(body.legKeyCorrespondence, channelTypes.size > 0 ? channelTypes : null);
   if (drift.length > 0) console.error("[legs] the outbound leg rename drifted from features-service", drift);
-  return { steps, legs, legsByChannel, crewNames, campaignNames };
+  const triggers = new Map<string, TriggerDef>();
+  for (const t of body.triggers ?? []) {
+    const id = str(t?.id);
+    const label = str(t?.label);
+    if (id && label && !triggers.has(id)) triggers.set(id, { id, label, description: str(t?.description), icon: str(t?.icon) });
+  }
+  return { steps, legs, legsByChannel, crewNames, campaignNames, modes, triggers };
 }
 
 /**
@@ -191,6 +225,24 @@ export function campaignNameFor(
 ): string | null {
   if (!featureSlug || !legKey) return null;
   return catalogue.campaignNames.get(featureLegId(featureSlug, legKey)) ?? null;
+}
+
+/**
+ * How a campaign (channel x leg) runs, as features-service states it: proactive, or reactive
+ * with the trigger that asks for it. Null when the catalogue states no mode for it (not read
+ * yet, or a producer older than the mode); the trigger is null when it names none or one
+ * `triggers[]` does not carry.
+ */
+export function campaignModeFor(
+  catalogue: LegCatalogue,
+  featureSlug: string | null | undefined,
+  legKey: string | null | undefined,
+): { mode: "proactive" } | { mode: "reactive"; trigger: TriggerDef | null } | null {
+  if (!featureSlug || !legKey) return null;
+  const m = catalogue.modes.get(featureLegId(featureSlug, canonicalLegKey(featureSlug, legKey)));
+  if (!m) return null;
+  if (m.mode === "proactive") return m;
+  return { mode: "reactive", trigger: m.triggerId ? catalogue.triggers.get(m.triggerId) ?? null : null };
 }
 
 /** The leg a key names, or null for no key or one the catalogue does not carry. */

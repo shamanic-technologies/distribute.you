@@ -6,7 +6,13 @@ import { useAuthQuery } from "@/lib/use-auth-query";
 import { getOfferSalesPath, saveOfferSalesPath } from "@/lib/api";
 import { useLegCatalogue } from "@/lib/use-leg-catalogue";
 import { useAcquisitionChannels } from "@/lib/use-acquisition-channels";
-import { SALES_PATH_CHANNEL_SLUGS, type SalesPathSelection } from "@/lib/offer-sales-path";
+import {
+  SALES_PATH_CHANNEL_SLUGS,
+  legKeysOfStored,
+  offeredFromCatalogue,
+  salesPathLegsWire,
+  type SalesPathSelection,
+} from "@/lib/offer-sales-path";
 import { EmptyNote, Shimmer } from "@/components/v2/ui";
 import { OfferSalesPath } from "@/components/v2/offer-sales-path";
 
@@ -28,7 +34,7 @@ export function OfferRevenueSteps({ brandId, offerId }: { brandId: string; offer
   const [error, setError] = useState<string | null>(null);
 
   const served = useMemo<SalesPathSelection | null>(
-    () => (q.data ? { steps: new Set(q.data.steps ?? []), legs: new Set(q.data.legKeys ?? []) } : null),
+    () => (q.data ? { steps: new Set(q.data.steps ?? []), legs: legKeysOfStored(q.data.legs) } : null),
     [q.data],
   );
   useEffect(() => setDraft(null), [served]);
@@ -41,10 +47,13 @@ export function OfferRevenueSteps({ brandId, offerId }: { brandId: string; offer
     return names;
   }, [channels]);
 
+  const offered = useMemo(() => offeredFromCatalogue(catalogue, SALES_PATH_CHANNEL_SLUGS), [catalogue]);
+
   const onChange = (next: SalesPathSelection) => {
     setDraft(next);
     setError(null);
-    saveOfferSalesPath(brandId, offerId, [...next.steps], [...next.legs])
+    Promise.resolve()
+      .then(() => saveOfferSalesPath(brandId, offerId, [...next.steps], salesPathLegsWire(next.legs, offered.channelsByLeg, offered.legs)))
       .then((saved) => {
         qc.setQueryData(["offerSalesPath", brandId, offerId], saved);
         // A prefix: re-reads every sales paths read of this offer (the Outbound page).
