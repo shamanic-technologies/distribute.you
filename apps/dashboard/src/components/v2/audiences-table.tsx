@@ -607,8 +607,8 @@ function ChannelLine({ c }: { c: AudienceChannelWire }) {
 
 type ProfileReach = ProfileReachOf<AudienceWire, SourcingOrigin>;
 
-/** The sources reaching a profile, one chip each: the source, then the list's signal. A list
- *  that is not live reads muted with its status. */
+/** The sources reaching a profile, one chip each: the provider logo, the source, then the
+ *  list's signal. A list that is not live reads muted with its status. */
 function ReachLine({ reach }: { reach: ProfileReach[] | null }) {
   if (!reach) return <Shimmer className="mt-1.5 h-4 w-56" />;
   const shown = reach.filter((r) => r.origin);
@@ -620,7 +620,6 @@ function ReachLine({ reach }: { reach: ProfileReach[] | null }) {
         const live = r.list.status === "active";
         return (
           <span key={r.list.id} className={`k-chip gap-1.5 ${live ? "" : "k-fg3"}`}>
-            <span className={`h-1.5 w-1.5 shrink-0 rounded-full ${live ? "bg-[var(--run)]" : "border border-[var(--fg-3)]"}`} />
             {r.origin?.provider ? <ProviderLogo domain={r.origin.provider.domain} size={12} className="rounded-[3px]" /> : null}
             {r.origin?.name}
             {r.signal ? <span className="k-fg3">· {r.signal}</span> : null}
