@@ -3,39 +3,19 @@ import { readFileSync } from "fs";
 import { join } from "path";
 import {
   COPILOT_OPENER,
-  PANEL_PCT_DEFAULT,
-  PANEL_PCT_MAX,
-  PANEL_PCT_MIN,
   choicesByTurn,
-  clampPanelPct,
   copilotPageHref,
   copilotSessionStorageKey,
   isOpener,
   isThisBrandsSession,
   openPagesByTurn,
   isPanelLink,
-  parseStoredPanelPct,
 } from "../src/lib/copilot";
 
 const src = (f: string) => readFileSync(join(__dirname, "..", f), "utf-8");
 
 describe("copilot rules", () => {
-  it("keeps the page panel inside its bounds, a third by default", () => {
-    expect(PANEL_PCT_DEFAULT).toBe(33);
-    expect(clampPanelPct(5)).toBe(PANEL_PCT_MIN);
-    expect(clampPanelPct(95)).toBe(PANEL_PCT_MAX);
-    expect(clampPanelPct(40.4)).toBe(40);
-    expect(clampPanelPct(Number.NaN)).toBe(PANEL_PCT_DEFAULT);
-  });
-
-  it("reads a stored width, and the default when nothing usable is stored", () => {
-    expect(parseStoredPanelPct(null)).toBe(PANEL_PCT_DEFAULT);
-    expect(parseStoredPanelPct("")).toBe(PANEL_PCT_DEFAULT);
-    expect(parseStoredPanelPct("abc")).toBe(PANEL_PCT_DEFAULT);
-    expect(parseStoredPanelPct("50")).toBe(50);
-  });
-
-  it("opens only dashboard links in the panel", () => {
+  it("opens only dashboard links under the widget", () => {
     expect(isPanelLink("/v2/orgs/o/brands/b/people")).toBe(true);
     expect(isPanelLink("https://example.com")).toBe(false);
     expect(isPanelLink("mailto:a@b.c")).toBe(false);
@@ -96,7 +76,16 @@ describe("copilot wiring", () => {
 
   it("is staff mode only, on a brand page", () => {
     expect(shell).toContain("const copilot = staffMode && hasBrand");
-    expect(shell).toContain("<CopilotFrame orgId=");
+    expect(shell).toContain("{copilot && <CopilotWidget orgId=");
+  });
+
+  it("floats bottom right above the page, open on load, the bubble toggles it", () => {
+    const widget = src("src/components/v2/copilot-widget.tsx");
+    expect(widget).toContain("useState(true)");
+    expect(widget).toContain("fixed bottom-4 right-4 z-40");
+    expect(widget).toContain("setOpen((o) => !o)");
+    // Closed = hidden, never unmounted: an answer keeps streaming.
+    expect(widget).toContain("inert={!open}");
   });
 
   it("talks to the copilot config and sends the account figures as context", () => {
