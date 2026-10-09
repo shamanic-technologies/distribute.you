@@ -15,7 +15,7 @@ import { formatCount } from "@/lib/format-number";
 import { formatRoi, roiIsGood } from "@/lib/format-roi";
 import { PROVIDER_DOMAINS } from "@/lib/api-registry";
 import { audienceFilterGroups } from "@/lib/audience-filter-groups";
-import { companyPageSlug, linkedInSignalOf, type LinkedInSignal } from "@/lib/signal-audience";
+import { companyPageSlug, hasBuyingSignal, linkedInSignalOf, type LinkedInSignal } from "@/lib/signal-audience";
 import {
   audienceCount,
   audienceFigure,
@@ -233,7 +233,8 @@ export function V2AudiencesTable({
 
   // A handful of rows, re-sorted each render so a poll's fresh stats reorder them.
   const needle = q.trim().toLowerCase();
-  const listed = plain ? t.audiences.filter((a) => !linkedInSignalOf(a.filters)) : t.audiences;
+  // Client profiles are WHO we write to: a buying-signal list of any type is a source, left out (owner 2026-10-09).
+  const listed = plain ? t.audiences.filter((a) => !hasBuyingSignal(a.filters)) : t.audiences;
   // Suggested audiences (onboarding picks never activated) have their own tab (owner 2026-10-08).
   const tabOf = (a: AudienceWire): Tab => (a.status === "archived" ? "archived" : a.status === "suggested" ? "suggested" : "active");
   const inTabOf = (k: Tab) => listed.filter((a) => tabOf(a) === k);

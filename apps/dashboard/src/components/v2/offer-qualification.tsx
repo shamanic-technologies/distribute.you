@@ -57,7 +57,6 @@ export function OfferQualification({ brandId, offerId }: { brandId: string; offe
       <SectionTitle count={rows ? rows.length : null} right={rows && rows.length > 0 ? aiButton : undefined}>
         Checks
       </SectionTitle>
-      <p className="k-fg2 -mt-1 mb-3 text-[13px]">We check each company before we write to it, on every audience of this offer.</p>
       {!rows ? (
         q.isError && q.isFetchedAfterMount ? (
           <div className="k-card">

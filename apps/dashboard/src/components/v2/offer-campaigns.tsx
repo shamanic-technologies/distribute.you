@@ -49,6 +49,7 @@ export function OfferCampaigns({
   title = "Campaigns",
   sub = "One proactive campaign at a time. Reactive ones follow its leads.",
   results = false,
+  openRows = false,
   listedElsewhere,
 }: {
   orgId: string;
@@ -66,6 +67,8 @@ export function OfferCampaigns({
    * table): the two read 0.89x vs 1.32x for one campaign under one label.
    */
   results?: boolean;
+  /** Sourcing page (owner 2026-10-09): a row opens its campaign's page too, when it has one. */
+  openRows?: boolean;
   /** Campaigns another page lists (the Sourcing page's sources): never an unlisted row here. */
   listedElsewhere?: ReadonlySet<string>;
 }) {
@@ -162,7 +165,7 @@ export function OfferCampaigns({
                       results={results}
                       basis={basis}
                       onOpen={
-                        results && mission
+                        (results || openRows) && mission
                           ? { go: () => router.push(mission.href), warm: () => prefetch(mission.href) }
                           : null
                       }

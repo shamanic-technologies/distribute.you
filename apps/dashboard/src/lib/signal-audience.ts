@@ -37,3 +37,14 @@ export function linkedInSignalOf(filters: Record<string, unknown> | null | undef
     : [];
   return { windowDays: typeof s.window_days === "number" ? s.window_days : null, competitorPages: pages };
 }
+
+/**
+ * Whether an audience carries a buying signal of ANY type (hiring, job change, funding,
+ * LinkedIn engagement): a way to FIND people, not a profile of who they are (owner
+ * 2026-10-09). human-service serves no kind field for it; `filters.buying_signal` is the
+ * one marker every signal audience carries (`source` is null on most of them).
+ */
+export function hasBuyingSignal(filters: Record<string, unknown> | null | undefined): boolean {
+  const signal = filters?.buying_signal;
+  return !!signal && typeof signal === "object" && !Array.isArray(signal);
+}
