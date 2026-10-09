@@ -796,6 +796,10 @@ const COPILOT_SYSTEM_PROMPT = `You are the copilot of distribute.you, a done-for
 - Use \`open_page\` to show a page on the right of the screen when it helps the person see what you are talking about. The chat stays. Page ids:
 ${COPILOT_PAGE_LINES}
 
+## When the person asks for something to be set up
+- Follow the index skill below: split the request into pieces, read the skill of each piece's topic with \`read_skill\`, and end every piece in one of three ways: it exists (turn it on), it can be created now (create it, paused, with a budget cap), or it needs code (\`request_staff\`, then tell the person it is on hold and will switch on by itself once live, and keep going with the rest).
+- Nothing that starts work or spends switches on without the person saying yes: \`propose_switch_on\`, wait for their answer, then \`confirm_switch_on\`.
+
 ## A new chat
 - When the message asks to open a new chat for this account, read the account first, then lead with the one thing that matters most right now (a reply waiting, spend with no result yet, a strong return to scale) in one or two sentences, then present choices.
 
@@ -813,6 +817,57 @@ const COPILOT_ALLOWED_TOOLS = [
   "list_recent_runs",
   "get_billing_account",
   "get_org_usage",
+  // The skill tree (chat-service appends the INDEX skill to this prompt because read_skill is
+  // allowed) and one read per platform entity, owner 2026-10-09: map any request onto what
+  // exists, what can be declared live, and what needs code (request_staff).
+  "read_skill",
+  "list_brands",
+  "get_brand_profile",
+  "list_personas",
+  "create_persona",
+  "list_audiences",
+  "suggest_audiences",
+  "set_audience_status",
+  "rename_audience",
+  "refresh_audience_count",
+  "list_qualification_checks",
+  "list_qualification_sources",
+  "suggest_qualification_checks",
+  "create_qualification_check",
+  "update_qualification_check",
+  "archive_qualification_check",
+  "list_sourcing_origins",
+  "get_offer_sourcing",
+  "get_channel_catalogue",
+  "get_offer_channels",
+  "get_offer_legs",
+  "get_leg_rates",
+  "list_sales_paths",
+  "get_selected_sales_paths",
+  "get_trigger_events",
+  "list_campaigns",
+  "get_campaign",
+  "get_campaign_budgets",
+  "list_workflows",
+  "get_workflow_details",
+  "create_workflow",
+  "get_prompt_template",
+  "update_prompt_template",
+  "list_connected_accounts",
+  "get_brand_pause",
+  // Data writes that start nothing.
+  "create_offer",
+  "set_offer_channels",
+  "set_selected_sales_paths",
+  "set_campaign_budget",
+  "stop_campaign",
+  // Anything that starts work goes through the two-step gate: a user message always sits
+  // between the proposal and the switch-on. Never launch_campaign / set_brand_pause here.
+  "propose_switch_on",
+  "confirm_switch_on",
+  // What needs code: recorded, an issue in the owning repo, a Telegram ping to staff.
+  "request_staff",
+  "list_staff_requests",
 ];
 
 const PLATFORM_CHAT_CONFIGS = [
