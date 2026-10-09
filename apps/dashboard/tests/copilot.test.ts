@@ -107,6 +107,13 @@ describe("copilot wiring", () => {
     }
   });
 
+  it("prints a cents figure in dollars, never the raw integer", () => {
+    const cards = src("src/components/v2/copilot-cards.tsx");
+    expect(cards).toContain('unit?.toLowerCase() === "cents"');
+    expect(cards).toContain("formatCentsAsUsdAdaptive(n)");
+    expect(src("src/instrumentation.ts")).toContain('with unit "cents"');
+  });
+
   it("the proxy forwards the cards and the page events", () => {
     const route = src("src/app/(authed)/api/v1/chat/route.ts");
     expect(route).toContain('case "choices"');

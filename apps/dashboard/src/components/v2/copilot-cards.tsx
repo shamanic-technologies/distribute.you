@@ -17,6 +17,7 @@ import { MagnifyingGlassIcon } from "@phosphor-icons/react/dist/csr/MagnifyingGl
 import { CurrencyDollarIcon } from "@phosphor-icons/react/dist/csr/CurrencyDollar";
 import { ArrowBendUpLeftIcon } from "@phosphor-icons/react/dist/csr/ArrowBendUpLeft";
 import { SparkLine } from "@/components/v2/ui";
+import { formatCentsAsUsdAdaptive } from "@/lib/format-number";
 import type { CopilotChoice, CopilotChoices, CopilotVisual } from "@/lib/copilot";
 
 /**
@@ -66,6 +67,20 @@ function Mark({ visual }: { visual: CopilotVisual }) {
   );
 }
 
+/**
+ * A served money figure arrives in cents (the prompt asks for unit "cents"): printed the way
+ * every dashboard page prints money, never the raw integer (chat-service probe 2026-10-09 put
+ * "-4562.3548513207 cents balance" on a card).
+ */
+function figureOf(value: number | string, unit: string | undefined): { value: string; unit?: string } {
+  if (unit?.toLowerCase() === "cents") {
+    const n = Number(value);
+    if (Number.isFinite(n)) return { value: formatCentsAsUsdAdaptive(n) };
+    console.error("[copilot] a cents figure that is not a number", value);
+  }
+  return { value: String(value), unit };
+}
+
 function Card({ c, onPick, disabled }: { c: CopilotChoice; onPick: (c: CopilotChoice) => void; disabled: boolean }) {
   const v = c.visual;
   const figure = v?.type === "number" || v?.type === "chart";
@@ -76,16 +91,19 @@ function Card({ c, onPick, disabled }: { c: CopilotChoice; onPick: (c: CopilotCh
       onClick={() => onPick(c)}
       className="k-card group flex min-h-[72px] w-full flex-col gap-2 px-4 py-3 text-left transition-[transform,background-color] duration-150 ease-out hover:bg-[var(--bg-hover)] active:scale-[0.98] disabled:opacity-50"
     >
-      {v?.type === "number" && (
-        <span className="flex items-baseline gap-1.5">
-          <span className="text-[26px] font-medium leading-8 tracking-[-0.02em] tabular-nums">{v.value}</span>
-          {v.unit && <span className="k-fg2 text-[13px]">{v.unit}</span>}
-        </span>
-      )}
+      {v?.type === "number" && (() => {
+        const f = figureOf(v.value, v.unit);
+        return (
+          <span className="flex items-baseline gap-1.5">
+            <span className="text-[26px] font-medium leading-8 tracking-[-0.02em] tabular-nums">{f.value}</span>
+            {f.unit && <span className="k-fg2 text-[13px]">{f.unit}</span>}
+          </span>
+        );
+      })()}
       {v?.type === "chart" && (
         <span className="flex items-end gap-2">
           <SparkLine values={v.series} className="h-9" />
-          {v.unit && <span className="k-fg3 shrink-0 text-[12px]">{v.unit}</span>}
+          {v.unit && <span className="k-fg3 shrink-0 text-[12px]">{v.unit.toLowerCase() === "cents" ? "$" : v.unit}</span>}
         </span>
       )}
       <span className="flex w-full items-center gap-3">
