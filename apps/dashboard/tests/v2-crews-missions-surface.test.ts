@@ -46,7 +46,7 @@ describe("Offer page", () => {
     expect(offer).not.toContain("<aside");
     expect(offer).not.toContain("<AddMissionModal");
     expect(offer).toContain("<OfferLifetimeRevenue brandId={brandId} offerId={offerId} />");
-    expect(offer).toContain("<BrandOfferCard brandId={brandId} offerId={offerId} />");
+    expect(offer).toContain("<BrandOfferCard orgId={orgId} brandId={brandId} offerId={offerId} />");
   });
   it("no longer lists the v1 per-channel toggles", () => {
     expect(offer).not.toContain("<OfferCampaignsCard");
