@@ -106,7 +106,7 @@ describe("profiles x sources are wired on the three pages", () => {
   it("Lists names each list's profile and source, archived behind a toggle", () => {
     const src = read("src/components/v2/audience-page.tsx");
     expect(src).toContain("const profile = profileOf(a, byId);");
-    expect(src).toContain("const source = sourceName(a);");
+    expect(src).toContain("const source = origin?.name ?? null;");
     expect(src).toContain('all.filter((a) => a.status !== "archived")');
   });
   it("Sourcing lists one entry per profile under each source", () => {

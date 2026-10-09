@@ -491,7 +491,7 @@ export function V2AudiencesTable({
           paused={t.withheldPaused}
           plain={plain}
           lists={plain ? listsOfProfile(selected.id, p.audiences) : []}
-          sourceOf={(a) => originOf(a, p.origins)?.name ?? null}
+          sourceOf={(a) => originOf(a, p.origins)}
           docked={docked}
           onClose={() => {
             setSelectedId(null);
@@ -621,6 +621,7 @@ function ReachLine({ reach }: { reach: ProfileReach[] | null }) {
         return (
           <span key={r.list.id} className={`k-chip gap-1.5 ${live ? "" : "k-fg3"}`}>
             <span className={`h-1.5 w-1.5 shrink-0 rounded-full ${live ? "bg-[var(--run)]" : "border border-[var(--fg-3)]"}`} />
+            {r.origin?.provider ? <ProviderLogo domain={r.origin.provider.domain} size={12} className="rounded-[3px]" /> : null}
             {r.origin?.name}
             {r.signal ? <span className="k-fg3">· {r.signal}</span> : null}
             {live ? null : <span className="k-fg3">· {STATUS_WORD[r.list.status] ?? r.list.status}</span>}
@@ -632,13 +633,16 @@ function ReachLine({ reach }: { reach: ProfileReach[] | null }) {
 }
 
 /** One list of a profile in its drawer: name, source and signal, status (held by the profile). */
-function ProfileListLine({ list, source, held }: { list: AudienceWire; source: string | null; held: boolean }) {
+function ProfileListLine({ list, source, held }: { list: AudienceWire; source: SourcingOrigin | null; held: boolean }) {
   const signal = signalLabelOf(list);
   return (
     <li className="flex items-center justify-between gap-3 text-[13px]">
       <span className="min-w-0">
         <span className="block truncate">{list.name}</span>
-        <span className="k-fg3 block truncate text-[12px]">{[source, signal].filter(Boolean).join(" · ") || "—"}</span>
+        <span className="k-fg3 flex min-w-0 items-center gap-1.5 text-[12px]">
+          {source?.provider ? <ProviderLogo domain={source.provider.domain} size={12} className="shrink-0 rounded-[3px]" /> : null}
+          <span className="truncate">{[source?.name, signal].filter(Boolean).join(" · ") || "—"}</span>
+        </span>
       </span>
       <span className="shrink-0">
         <StateDot running={list.status === "active"} label={held ? "Paused with profile" : STATUS_WORD[list.status] ?? list.status} />
@@ -879,7 +883,7 @@ function AudienceDrawer({
   plain: boolean;
   /** The lists built for this profile (each one source), live ones first. */
   lists: AudienceWire[];
-  sourceOf: (a: AudienceWire) => string | null;
+  sourceOf: (a: AudienceWire) => SourcingOrigin | null;
   docked: boolean;
   onClose: () => void;
   onFindSimilar: () => void;
