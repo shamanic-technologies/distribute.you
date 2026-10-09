@@ -16,6 +16,7 @@ import {
 import { pairIsLearning } from "@/lib/maturity";
 import { campaignBudgetCents } from "@/lib/campaign-budget";
 import { acquisitionChannelForFeatureSlug } from "@/lib/acquisition-channels";
+import { canonicalLegKey } from "@/lib/outbound-leg-key";
 
 /**
  * The brand's campaigns as rows (`useCampaignRows`), read by the v2 missions.
@@ -211,7 +212,7 @@ export function useCampaignRows(brandId: string, featureSlug: string, offerId?: 
   const listedCampaigns = useMemo(() => {
     const byIdentity = new Map<string, Campaign>();
     for (const c of featureCampaigns) {
-      const key = `${c.offerId ?? ""}|${c.legKey ?? ""}|${c.featureSlug ?? ""}`;
+      const key = `${c.offerId ?? ""}|${canonicalLegKey(c.featureSlug, c.legKey) ?? ""}|${c.featureSlug ?? ""}`;
       const held = byIdentity.get(key);
       if (!held) {
         byIdentity.set(key, c);

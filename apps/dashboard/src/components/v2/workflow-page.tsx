@@ -50,6 +50,7 @@ import { useStaffMode } from "@/lib/use-staff-mode";
 import { useCostBasis } from "@/lib/v2/use-cost-basis";
 import { ActualCostNote, CostBasisSwitch } from "@/components/v2/cost-basis-switch";
 import { v2Href, v2WorkflowHref } from "@/lib/v2/routes";
+import { sameLegKey } from "@/lib/outbound-leg-key";
 
 /** How many of a dynasty's most recent versions the run history reads. */
 const RUN_VERSIONS = 4;
@@ -90,7 +91,7 @@ export function V2WorkflowPage() {
 
   // The mission the ranking is asked through. A link naming it wins; an older link naming
   // only the crew resolves when the brand runs a single mission for that crew.
-  const crewSpecs = specs.filter((s) => s.featureSlug === featureSlug && s.legKey === legKey);
+  const crewSpecs = specs.filter((s) => s.featureSlug === featureSlug && sameLegKey(s.legKey, legKey));
   const linked = missionRaw ? missionByCampaignId.get(missionRaw) ?? null : null;
   const spec: MissionSpec | null = linked
     ? (specs.find((s) => s.campaignId === linked.row.campaign.id) ?? null)

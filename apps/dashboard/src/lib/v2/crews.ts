@@ -1,3 +1,5 @@
+import { isProactiveFrom, OUTBOUND_LEG_TO_CONVERSATION, OUTBOUND_LEG_TO_WEBSITE_VISIT } from "../outbound-leg-key";
+
 /**
  * The CREW vocabulary of dashboard v2.
  *
@@ -80,8 +82,8 @@ export interface OfferedCrew {
 }
 
 export const OFFERED_CREWS: readonly OfferedCrew[] = [
-  { featureSlug: "sales-cold-email-outreach", legKey: "start_to_conversation" },
-  { featureSlug: "sales-cold-email-outreach", legKey: "start_to_website_visit" },
+  { featureSlug: "sales-cold-email-outreach", legKey: OUTBOUND_LEG_TO_CONVERSATION },
+  { featureSlug: "sales-cold-email-outreach", legKey: OUTBOUND_LEG_TO_WEBSITE_VISIT },
   { featureSlug: "ai-meeting-booking", legKey: "conversation_to_meeting_booked" },
 ];
 
@@ -122,8 +124,9 @@ export function crewTrigger(
 ): CrewTrigger | null {
   if (!leg) return null;
   const outcome = OUTCOME_PLURAL[leg.toKey] ?? leg.toLabel;
-  if (leg.fromKey === null) return { kind: "daily", label: "Daily", outcome };
-  return { kind: "event", label: leg.fromLabel ?? leg.fromKey, outcome };
+  if (isProactiveFrom(leg.fromKey)) return { kind: "daily", label: "Daily", outcome };
+  // Not proactive, so it starts on a named step.
+  return { kind: "event", label: leg.fromLabel ?? (leg.fromKey as string), outcome };
 }
 
 /** The initial drawn in a crew's avatar tile. */

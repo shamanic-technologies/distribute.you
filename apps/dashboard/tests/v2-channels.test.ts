@@ -121,8 +121,8 @@ describe("channel pages", () => {
     expect(page).not.toMatch(/visits\s*\+\s*replies/);
   });
   it("one steps card per leg, read on the leg's campaign, stopping at its outcome (owner 2026-10-04)", () => {
-    expect(page).toContain('legKey: "start_to_website_visit", title: "Website visits", outcome: "Website visit"');
-    expect(page).toContain('legKey: "start_to_conversation", title: "Positive replies", outcome: "Positive reply"');
+    expect(page).toContain('legKey: OUTBOUND_LEG_TO_WEBSITE_VISIT, title: "Website visits", outcome: "Website visit"');
+    expect(page).toContain('legKey: OUTBOUND_LEG_TO_CONVERSATION, title: "Positive replies", outcome: "Positive reply"');
     expect(page).toContain("getLeadBucketCounts({ campaignId }, {})");
     // A leg no campaign aims at gets no card, never an empty note.
     expect(page).toContain("return campaignId ? [{ ...leg, campaignId }] : [];");

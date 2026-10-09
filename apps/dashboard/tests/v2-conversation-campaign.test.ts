@@ -15,7 +15,7 @@ describe("v2 campaign page: a campaign that answers conversations (AI Meeting Bo
   });
 
   it("opens the conversation overview for a leg that starts on a step", () => {
-    expect(src).toContain('tab === "overview" && mission.leg?.fromKey ? (');
+    expect(src).toContain('tab === "overview" && mission.leg && !isProactiveFrom(mission.leg.fromKey) ? (');
     expect(src).toContain("<ConversationOverview");
   });
 

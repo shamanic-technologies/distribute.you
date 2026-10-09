@@ -1,7 +1,7 @@
 /**
  * How an offer sells: the STEPS a sale goes through and the LEGS between them,
- * as the customer ticks them on the offer page (beta). Pure rules only, no imports,
- * so they carry real unit tests.
+ * as the customer ticks them on the offer page (beta). Pure rules only, relative
+ * imports only, so they carry real unit tests.
  *
  * The step and leg vocabulary is features-service's (the public catalogue); this
  * module only decides how a tick on one card moves the others:
@@ -17,6 +17,8 @@
  * steps is offered whether or not a channel performs it, because a person (the
  * brand's sales rep) can.
  */
+
+import { isProactiveFrom } from "./outbound-leg-key";
 
 export const TERMINAL_STEP = "paid_client";
 
@@ -49,7 +51,7 @@ export function offeredLegs(
   legs: readonly PathLeg[],
   channelsByLeg: ReadonlyMap<string, readonly string[]>,
 ): PathLeg[] {
-  return legs.filter((l) => l.fromKey !== null || (channelsByLeg.get(l.legKey)?.length ?? 0) > 0);
+  return legs.filter((l) => !isProactiveFrom(l.fromKey) || (channelsByLeg.get(l.legKey)?.length ?? 0) > 0);
 }
 
 /** The steps offered as cards: every step an offered leg touches, except the paying client. */

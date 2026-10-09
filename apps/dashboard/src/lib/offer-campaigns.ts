@@ -1,3 +1,4 @@
+import { canonicalLegKey, legKeyTwin } from "./outbound-leg-key";
 import { stepPlural } from "./v2/crews";
 
 /**
@@ -89,11 +90,13 @@ export function campaignsOfOffer(
 ): OfferCampaign[] {
   const legs = new Map<string, PathLegLike>();
   for (const p of paths) for (const l of p.legs) if (!legs.has(l.legKey)) legs.set(l.legKey, l);
+  // Either spelling of an outbound leg names the same leg while the backends migrate.
+  const legOf = (key: string) => legs.get(key) ?? legs.get(legKeyTwin(key) ?? "");
   const out: OfferCampaign[] = [];
   for (const c of served) {
     if (c.operatedBy === "customer") continue;
     if (c.selectedPathCount <= 0 && !alsoKeep(campaignKey(c.channelSlug, c.legKey))) continue;
-    const leg = legs.get(c.legKey);
+    const leg = legOf(c.legKey);
     if (!leg) {
       console.error("[offer-campaigns] a served campaign names a leg no listed path has", c);
       continue;
@@ -148,9 +151,11 @@ export function sourceCampaignsOfOffer(
     }));
 }
 
-/** The identity billing and campaign-service share for one campaign of an offer. */
+/** The identity billing and campaign-service share for one campaign of an offer. The leg is
+ *  canonical (`canonicalLegKey`), so a service already on the new outbound spelling and one
+ *  still on the legacy one give the same key. */
 export function campaignKey(featureSlug: string, legKey: string): string {
-  return `${featureSlug}:${legKey}`;
+  return `${featureSlug}:${canonicalLegKey(featureSlug, legKey)}`;
 }
 
 /**

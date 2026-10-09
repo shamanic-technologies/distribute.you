@@ -9,6 +9,7 @@ import { useLegCatalogue } from "@/lib/use-leg-catalogue";
 import { acquisitionChannelForFeatureSlug } from "@/lib/acquisition-channels";
 import { channelSlugLabel } from "@/lib/campaign-title";
 import { crewNameFor, legFor, type LegDef } from "@/lib/legs";
+import { canonicalLegKey } from "@/lib/outbound-leg-key";
 import {
   ALL_OFFERS,
   isActiveStatus,
@@ -128,7 +129,7 @@ export function useMissions(orgId: string, brandId: string, { allOffers = false 
   });
   const missionByCampaignId = useMemo(() => {
     const identity = (c: { offerId?: string | null; legKey?: string | null; featureSlug?: string | null }) =>
-      `${c.offerId ?? ""}|${c.legKey ?? ""}|${c.featureSlug ?? ""}`;
+      `${c.offerId ?? ""}|${canonicalLegKey(c.featureSlug, c.legKey) ?? ""}|${c.featureSlug ?? ""}`;
     const byIdentity = new Map<string, Mission>();
     for (const m of missions) byIdentity.set(identity(m.row.campaign), m);
     const out = new Map<string, Mission>();

@@ -30,6 +30,7 @@ import { goalForLeg, stepsFor } from "@/lib/goal-steps";
 import { isRunningStatus } from "@/lib/campaign-controls";
 import { useScopePaused } from "@/lib/use-scope-paused";
 import { audienceColumns, type AudienceSortCol } from "@/lib/audience-table-model";
+import { sameLegKey } from "@/lib/outbound-leg-key";
 
 const VISIBLE_AUDIENCE_STATUSES = ["active", "paused", "archived", "suggested"] as const;
 
@@ -236,7 +237,7 @@ export function useAudienceTable({
     // The CAMPAIGN's own leg figures off the envelope's scope maturity: the price its
     // Overview states, so the two pages cannot print two prices for one campaign.
     scopeLeg: campaignScoped
-      ? stats.data?.maturity?.legs.find((l) => l.legKey != null && l.legKey === campaign?.legKey) ?? null
+      ? stats.data?.maturity?.legs.find((l) => l.legKey != null && sameLegKey(l.legKey, campaign?.legKey)) ?? null
       : null,
     legPair,
     statusMut,

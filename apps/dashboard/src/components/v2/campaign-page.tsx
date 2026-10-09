@@ -15,6 +15,8 @@ import { useStaffMode } from "@/lib/use-staff-mode";
 import { useDailyBudgetHidden } from "@/lib/use-daily-budget-hidden";
 import { isColdEmailChannel } from "@/lib/offer-levers-home";
 import { useLegCatalogue } from "@/lib/use-leg-catalogue";
+import { campaignNameFor } from "@/lib/legs";
+import { isProactiveFrom, sameLegKey } from "@/lib/outbound-leg-key";
 import { useAcquisitionChannels } from "@/lib/use-acquisition-channels";
 import { crewTrigger } from "@/lib/v2/crews";
 import { v2CampaignHref, v2OfferHref, type V2CampaignTab } from "@/lib/v2/routes";
@@ -69,7 +71,7 @@ export function V2CampaignPage() {
   const channels = useAcquisitionChannels();
   const c = mission?.row.campaign ?? null;
   const def = c ? channels.find((ch) => ch.featureSlug === c.featureSlug) : undefined;
-  const name = c ? (catalogue.campaignNames.get(`${c.featureSlug}|${c.legKey}`) ?? null) : null;
+  const name = c ? (campaignNameFor(catalogue, c.featureSlug, c.legKey)) : null;
   const shownName = name ?? mission?.crew.name ?? " ";
 
   const visible = CAMPAIGN_TABS.filter((t) => !t.staff || staffMode);
@@ -153,7 +155,7 @@ export function V2CampaignPage() {
     >
       {!mission || !offerId ? (
         <Shimmer className="h-[240px] w-full rounded-[12px]" />
-      ) : tab === "overview" && mission.leg?.fromKey ? (
+      ) : tab === "overview" && mission.leg && !isProactiveFrom(mission.leg.fromKey) ? (
         <ConversationOverview brandId={brandId} mission={mission} tabHref={tabHref} />
       ) : tab === "overview" ? (
         <CampaignOverview brandId={brandId} offerId={offerId} campaignId={id} mission={mission} tabHref={tabHref} />
@@ -241,7 +243,7 @@ function CampaignOverview({
   const settled = q.isFetchedAfterMount || q.data !== undefined;
   const audiences = useAudienceTable({ campaignId, offerId });
 
-  const leg = LEG_STEPS.find((l) => l.legKey === mission.row.campaign.legKey) ?? null;
+  const leg = LEG_STEPS.find((l) => sameLegKey(l.legKey, mission.row.campaign.legKey)) ?? null;
   const g = mission.row.revenue ?? null;
   const replyLed = leg?.bucket === "positive_reply";
   const cost = shownFigure(g?.outcomesMaturity, (h) => (replyLed ? h.cpprCents : h.cpcCents), basis);

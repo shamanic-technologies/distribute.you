@@ -28,6 +28,7 @@ import {
   type GiveLists,
 } from "@/lib/offer-channel-settings";
 import { EmptyNote, Shimmer } from "@/components/v2/ui";
+import { isProactiveFrom } from "@/lib/outbound-leg-key";
 
 const GIVE_FIELDS = [
   { key: "giveForFree", label: "We give for free" },
@@ -61,7 +62,7 @@ export function ColdEmailChannelSettings({ brandId, offerId, channelSlug }: { br
   const legs = useMemo(
     () =>
       validatedLegSections(catalogue, path.data?.legKeys ?? [], SALES_PATH_CHANNEL_SLUGS).sections.filter(
-        (s) => s.channels.includes(channelSlug) && s.fromKey !== null,
+        (s) => s.channels.includes(channelSlug) && !isProactiveFrom(s.fromKey),
       ),
     [catalogue, path.data, channelSlug],
   );

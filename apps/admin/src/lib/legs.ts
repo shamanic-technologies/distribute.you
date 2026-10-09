@@ -18,7 +18,12 @@
 // that splits it re-couples itself to a spelling the producer owns. So a leg is always
 // LOOKED UP in the catalogue served beside it, never taken apart.
 //
-// Alias-free on purpose (no runtime import at all) so it carries REAL unit tests.
+// An outbound leg has two spellings while the backends migrate (`outbound-leg-key.ts`,
+// byte-equal twin of the dashboard's): `legFor` finds a leg under either.
+//
+// Alias-free on purpose (relative imports only) so it carries REAL unit tests.
+
+import { legKeyTwin } from "./outbound-leg-key";
 
 /** One step, as the producer names it: its token and the words a customer reads. */
 export interface StepDef {
@@ -133,7 +138,8 @@ export function legCatalogueFromWire(body: PublicCatalogueWire | null | undefine
 /** The leg a key names, or null for no key or one the catalogue does not carry. */
 export function legFor(catalogue: LegCatalogue, legKey: string | null | undefined): LegDef | null {
   if (!legKey) return null;
-  return catalogue.legs.get(legKey) ?? null;
+  const twin = legKeyTwin(legKey);
+  return catalogue.legs.get(legKey) ?? (twin ? catalogue.legs.get(twin) : undefined) ?? null;
 }
 
 /** The legs a channel performs, resolved. Empty for a channel the catalogue misses. */
