@@ -20,7 +20,7 @@ import { HIDDEN_TAGS, TAG_LABEL, companyHref, companyKey, companyStage } from "@
 
 /** The steps a company moves through, in order, in features-service's own tags. */
 const FLOW: { tag: string; label: string }[] = [
-  { tag: "contacted", label: "Queued" },
+  { tag: "contacted", label: "Contacted" },
   { tag: "visit", label: "Visited" },
   { tag: "reply", label: "Interested" },
   { tag: "meeting", label: "Meeting" },
