@@ -477,9 +477,10 @@ export function useBillingController() {
   async function handleRemoveCard() {
     setRemovePending(true);
     setError(null);
+    let removal: Awaited<ReturnType<typeof import("@/lib/api").removePaymentMethod>>;
     try {
       const { removePaymentMethod } = await import("@/lib/api");
-      await removePaymentMethod();
+      removal = await removePaymentMethod();
     } catch (err) {
       // The thrown error carries the whole downstream body verbatim, so it is
       // logged and never rendered: that is how a JSON blob reaches a customer.
@@ -513,6 +514,15 @@ export function useBillingController() {
       // customer — the next poll corrects the page — but never swallow silently.
       console.error("[billing] post-removal refetch failed:", err);
     });
+
+    // A 200 that removed nothing while this page showed a card is NOT a removal:
+    // the acquirer answering did not hold the card (2026-10-09, a Revolut card
+    // left on file twice with "detached 0"). Say so instead of letting the card
+    // silently reappear, which reads as a dead button.
+    if (removal.removed === 0 && removal.already_removed === 0 && account?.has_payment_method) {
+      console.error("[billing] card removal removed nothing while a card is on file:", removal);
+      setError("We could not remove your card. Please try again later.");
+    }
 
     setRemovePending(false);
     setRemoveConfirmOpen(false);
