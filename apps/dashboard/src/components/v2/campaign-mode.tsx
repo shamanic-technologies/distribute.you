@@ -33,6 +33,11 @@ const TRIGGER_ICONS: Record<string, Icon> = {
   "clipboard-text": ClipboardTextIcon,
 };
 
+/** A trigger's served icon token drawn as its Phosphor glyph; null for no token or one not mapped here (the caller logs). */
+export function triggerGlyph(icon: string | null | undefined): Icon | null {
+  return icon ? TRIGGER_ICONS[icon] ?? null : null;
+}
+
 /**
  * How a campaign runs (owner 2026-10-09): "Proactive" (it works against its budget), or
  * "Reactive · <icon> <trigger>" (it runs when its trigger fires: a campaign asking for a
