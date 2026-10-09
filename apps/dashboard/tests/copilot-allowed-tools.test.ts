@@ -20,6 +20,10 @@ describe("Copilot allowed tools", () => {
     }
   });
 
+  it("declares channels, legs, trigger types and sales paths live", () => {
+    for (const t of ["declare_channel", "declare_leg", "declare_trigger_type", "declare_sales_path", "list_trigger_types"]) expect(tools).toContain(t);
+  });
+
   it("switches work on only through the two-step gate", () => {
     expect(tools).toContain("propose_switch_on");
     expect(tools).toContain("confirm_switch_on");

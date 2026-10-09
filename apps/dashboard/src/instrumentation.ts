@@ -861,6 +861,16 @@ const COPILOT_ALLOWED_TOOLS = [
   "set_selected_sales_paths",
   "set_campaign_budget",
   "stop_campaign",
+  // Declarations (features-service, staff-only, unpublished until staff publishes): a channel,
+  // a leg, a trigger type, a sales path created live, never via a PR (owner 2026-10-09).
+  "list_declared_channels",
+  "list_declared_legs",
+  "list_trigger_types",
+  "list_declared_sales_paths",
+  "declare_channel",
+  "declare_leg",
+  "declare_trigger_type",
+  "declare_sales_path",
   // Anything that starts work goes through the two-step gate: a user message always sits
   // between the proposal and the switch-on. Never launch_campaign / set_brand_pause here.
   "propose_switch_on",
