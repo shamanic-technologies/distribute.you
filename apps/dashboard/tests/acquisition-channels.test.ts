@@ -19,6 +19,7 @@ const FEATURES: ChannelSource[] = [
     name: "Sales Cold Email Outreach",
     description: "Find leads matching your ICP and email them.",
     displayOrder: 1,
+    channelType: "outbound",
     acquisitionChannel: { operatedBy: "platform", stepTransitions: [{ from: null, to: "conversation" }] },
   },
   {
@@ -26,6 +27,7 @@ const FEATURES: ChannelSource[] = [
     name: "Google Ads",
     description: "Buy the searches your buyers already run.",
     displayOrder: 20,
+    channelType: "paid",
     acquisitionChannel: { operatedBy: "platform", stepTransitions: [{ from: null, to: "website_visit" }] },
   },
   {
@@ -33,14 +35,24 @@ const FEATURES: ChannelSource[] = [
     name: "Cold Call Outreach",
     description: "Reach buyers by phone, one call at a time.",
     displayOrder: 13,
+    channelType: "outbound",
     acquisitionChannel: { operatedBy: "platform", stepTransitions: [{ from: null, to: "conversation" }] },
   },
   {
-    slug: "pr-cold-email-outreach",
-    name: "PR Cold Email Outreach",
-    description: "Pitch journalists.",
+    slug: "vc-cold-email-outreach",
+    name: "VC Cold Email Outreach",
+    description: "Pitch investors.",
     displayOrder: 5,
+    channelType: "fundraising",
     acquisitionChannel: null,
+  },
+  {
+    slug: "sourcing-apollo-cold-filters",
+    name: "Apollo Cold Filters",
+    description: "Find people matching your ICP.",
+    displayOrder: 30,
+    channelType: "sourcing",
+    acquisitionChannel: { operatedBy: "platform", stepTransitions: [{ from: null, to: "lead_found" }] },
   },
 ];
 
@@ -72,20 +84,37 @@ describe("the catalogue is READ, never restated", () => {
       "sales-cold-email-outreach",
       "cold-call-outreach",
       "google-ads",
+      "sourcing-apollo-cold-filters",
     ]);
   });
 });
 
 describe("what makes a feature a channel", () => {
-  // The producer states what is a channel: every feature that is not one (PR,
-  // hiring, VC, press kits) answers `acquisitionChannel: null`.
-  it("drops a feature whose channel blob is null", () => {
+  // Owner 2026-10-09: every channel is the same kind of thing; a surface groups or
+  // excludes them by the producer's channelType, never by whether a channel block exists.
+  it("drops the non-selling types (fundraising, hiring, tool)", () => {
     const slugs = acquisitionChannelsFromFeatures(FEATURES).map((c) => c.featureSlug);
-    expect(slugs).not.toContain("pr-cold-email-outreach");
+    expect(slugs).not.toContain("vc-cold-email-outreach");
+    for (const t of ["fundraising", "hiring", "tool"]) {
+      expect(acquisitionChannelsFromFeatures([{ slug: t, name: t, description: "d", channelType: t }])).toEqual([]);
+    }
   });
 
-  // A feature that states nothing about being a channel is not one.
-  it("drops a feature that states no channel blob at all", () => {
+  // The Solstice bug: a sourcing campaign was dropped from the offer's campaigns, so
+  // it read Off while it ran, because sourcing features carried no channel block.
+  it("keeps a sourcing channel and states its type", () => {
+    const sourcing = acquisitionChannelsFromFeatures(FEATURES).find((c) => c.featureSlug === "sourcing-apollo-cold-filters");
+    expect(sourcing?.channelType).toBe("sourcing");
+    expect(acquisitionChannelsFromFeatures([{ slug: "s", name: "S", description: "d", channelType: "sourcing" }])).toHaveLength(1);
+  });
+
+  it("keeps a selling type whatever its channel block says", () => {
+    const pr: ChannelSource[] = [{ slug: "pr-cold-email-outreach", name: "PR", description: "d", channelType: "pr", acquisitionChannel: null }];
+    expect(acquisitionChannelsFromFeatures(pr).map((c) => c.featureSlug)).toEqual(["pr-cold-email-outreach"]);
+  });
+
+  // A feature stating no type is a producer defect: dropped, and said out loud.
+  it("drops a feature that states no channelType", () => {
     const quiet: ChannelSource[] = [{ slug: "x-ads", name: "X Ads", description: "d" }];
     expect(acquisitionChannelsFromFeatures(quiet)).toEqual([]);
   });
@@ -221,6 +250,7 @@ describe("a channel carries the leg it performs and who runs it", () => {
         name: "Sales Cold Email Outreach",
         description: "",
         displayOrder: 1,
+        channelType: "outbound",
         acquisitionChannel: {
           operatedBy: "platform",
           stepTransitions: [{ from: null, to: "conversation" }],
@@ -231,6 +261,7 @@ describe("a channel carries the leg it performs and who runs it", () => {
         name: "Founder Led Closing",
         description: "",
         displayOrder: 2,
+        channelType: "conversion",
         acquisitionChannel: {
           operatedBy: "customer",
           stepTransitions: [{ from: "meeting_attended", to: "paid_client" }],
@@ -247,7 +278,7 @@ describe("a channel carries the leg it performs and who runs it", () => {
     // The field shipped after this reader existed. A row without it is a channel we know
     // less about, never an error and never a fabricated operator.
     const [channel] = acquisitionChannelsFromFeatures([
-      { slug: "x", name: "X", description: "", acquisitionChannel: {} },
+      { slug: "x", name: "X", description: "", channelType: "paid", acquisitionChannel: {} },
     ]);
     expect(channel.operatedBy).toBeNull();
     expect(channel.legs).toEqual([]);

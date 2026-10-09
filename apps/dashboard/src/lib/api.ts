@@ -4792,10 +4792,12 @@ export interface Feature {
   byokProvider?: string | null;
   workflowSlug?: string | null;
   /**
-   * What this feature states about being an acquisition channel. NULL for a feature
-   * that is not one (PR, hiring, VC). `listFeatures` runs no Zod, so declaring it here
-   * is enough for it to arrive.
+   * WHAT KIND of channel this feature is (features-service, every feature): `sourcing`,
+   * `outbound`, `conversion`, `paid`, `earned`, `pr`, `fundraising`, `hiring`, `tool`.
+   * `listFeatures` runs no Zod, so declaring it here is enough for it to arrive.
    */
+  channelType?: string;
+  /** What this feature states about running as a channel: its legs, who operates it. */
   acquisitionChannel?: {
     operatedBy?: string;
     family?: string;

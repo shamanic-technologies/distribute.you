@@ -86,6 +86,8 @@ export type AcquisitionChannelDef = {
   summary: string;
   /** Its tile, or null for a channel this app has not drawn yet. */
   mark: AcquisitionChannelMark | null;
+  /** The producer's typology (`sourcing`, `outbound`, `conversion`, `paid`, `earned`, `pr`). */
+  channelType: string;
   /**
    * WHO puts the hours in. `platform` is us; `customer` is the brand's own team,
    * and the legs we do not automate are
@@ -116,10 +118,11 @@ export interface ChannelSource {
   description: string;
   displayOrder?: number;
   /**
-   * What the feature states about being a channel. NULL (or absent) is the producer
-   * saying this feature is not one — PR, hiring, VC, press kits — which is exactly
-   * the predicate this module filters on.
+   * WHAT KIND of channel the feature is, the ONE typology features-service states on
+   * every feature (owner 2026-10-09). The predicate this module filters on.
    */
+  channelType?: string;
+  /** What the feature states about running as a channel: its legs, who operates it. */
   acquisitionChannel?: {
     operatedBy?: string;
     family?: string;
@@ -231,10 +234,18 @@ export function channelMarkForSlug(
 }
 
 /**
+ * The channel types that are NOT a channel a brand sells through (owner 2026-10-09:
+ * a surface excludes channels BY TYPE): investor and accelerator outreach, hiring,
+ * and the internal tools. Every other type is one, sourcing included.
+ */
+export const NON_SELLING_CHANNEL_TYPES: readonly string[] = ["fundraising", "hiring", "tool"];
+
+/**
  * Every channel the environment sells, built from the features it serves.
  *
- * A feature is a channel when it states what it is as one (`acquisitionChannel`).
- * That predicate is the producer's own statement rather than a list
+ * A feature is a channel when its `channelType` is a selling type. That predicate
+ * is the producer's own statement (never whether it carries a channel block, never a
+ * slug list): sourcing channels are channels like any other. It is a statement rather than a list
  * kept here, which is the whole point: a channel published upstream is offerable
  * the moment it is published, and one retired upstream stops being offered
  * without an edit here.
@@ -247,12 +258,19 @@ export function acquisitionChannelsFromFeatures(
   features: ChannelSource[],
 ): AcquisitionChannelDef[] {
   return features
-    .filter((f) => f.acquisitionChannel != null)
+    .filter((f): f is ChannelSource & { channelType: string } => {
+      if (!f.channelType) {
+        console.error("[dashboard] features-service served a feature with no channelType", { slug: f.slug });
+        return false;
+      }
+      return !NON_SELLING_CHANNEL_TYPES.includes(f.channelType);
+    })
     .map((f) => ({
       featureSlug: f.slug,
       name: f.name,
       summary: f.description,
       mark: channelMarkForSlug(f.slug),
+      channelType: f.channelType,
       operatedBy: f.acquisitionChannel?.operatedBy ?? null,
       legs: (f.acquisitionChannel?.stepTransitions ?? [])
         .filter((t): t is { from?: string | null; to: string } => typeof t?.to === "string")
