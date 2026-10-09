@@ -3,6 +3,7 @@
 import { useMemo } from "react";
 import { useMissions, type Mission } from "@/components/v2/use-missions";
 import { useLegCatalogue } from "@/lib/use-leg-catalogue";
+import { campaignNameFor } from "@/lib/legs";
 import { useAuthQuery } from "@/lib/use-auth-query";
 import { getOfferSalesPaths } from "@/lib/api";
 import { roiUnavailableLabel } from "@/lib/offer-sales-paths";
@@ -50,7 +51,7 @@ export function useOngoingCampaigns(orgId: string, brandId: string, offerId: str
         const c = m.row.campaign;
         const campaign = byKey.get(campaignKey(c.featureSlug ?? "", c.legKey ?? "")) ?? null;
         // A source campaign's name is served on the offer's sales-paths read, not in the leg catalogue.
-        const name = legCatalogue.campaignNames.get(`${c.featureSlug}|${c.legKey}`) ?? (campaign?.kind === "source" ? campaign.name : null);
+        const name = campaignNameFor(legCatalogue, c.featureSlug, c.legKey) ?? (campaign?.kind === "source" ? campaign.name : null);
         if (!name) console.error("[v2] no campaignName served for a running campaign", { featureSlug: c.featureSlug, legKey: c.legKey });
         if (salesPaths.data && !campaign) console.error("[v2] a running campaign is missing from the offer's Sales path campaigns", { featureSlug: c.featureSlug, legKey: c.legKey });
         return { m, name, campaign };

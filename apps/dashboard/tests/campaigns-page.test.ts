@@ -69,7 +69,7 @@ describe("Campaign rows (useCampaignRows)", () => {
   it("states one row per identity — the live campaign, else the latest paused one", () => {
     expect(table).toContain("const listedCampaigns = useMemo(");
     expect(table).toContain(
-      "const key = `${c.offerId ?? \"\"}|${c.legKey ?? \"\"}|${c.featureSlug ?? \"\"}`",
+      "const key = `${c.offerId ?? \"\"}|${canonicalLegKey(c.featureSlug, c.legKey) ?? \"\"}|${c.featureSlug ?? \"\"}`",
     );
     // A live row wins its identity outright; between two dead ones, the latest.
     expect(table).toContain("if (isActiveStatus(held.status)) continue;");

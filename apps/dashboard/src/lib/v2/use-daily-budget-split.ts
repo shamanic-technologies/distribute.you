@@ -7,6 +7,7 @@ import { useLegCatalogue } from "@/lib/use-leg-catalogue";
 import { legFor } from "@/lib/legs";
 import { splitDailyBudget } from "@/lib/v2/budget-split";
 import { useSelectedOffer } from "@/components/v2/selected-offer";
+import { isProactiveFrom } from "@/lib/outbound-leg-key";
 
 /**
  * The brand's running daily budget SPLIT by how its crews work: what daily crews may
@@ -44,7 +45,7 @@ export function useDailyBudgetSplit(
       spendableQ.data,
       (id) => {
         const leg = legFor(catalogue, legKeyById.get(id) ?? null);
-        return leg !== null && leg.fromKey !== null;
+        return leg !== null && !isProactiveFrom(leg.fromKey);
       },
       (id) => offerById.get(id) === offerId,
     );

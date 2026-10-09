@@ -19,6 +19,7 @@ import {
   acquisitionChannelForFeatureSlug,
   type AcquisitionChannelDef,
 } from "./acquisition-channels";
+import { canonicalLegKey } from "./outbound-leg-key";
 
 /** The fields this module reads off a campaign-service campaign. */
 export interface CampaignBudgetRow {
@@ -87,11 +88,13 @@ function ceilingRows(
   const otherOfferNamed = budgets.campaigns.some(
     (c) => c.offerId !== null && c.offerId !== scope.offerId,
   );
-  const otherLegNamed = onChannel.some((c) => c.legKey !== null && c.legKey !== scope.legKey);
+  // Leg keys compared canonical: billing and the campaign row may spell an outbound leg apart mid-migration.
+  const leg = canonicalLegKey(scope.featureSlug, scope.legKey);
+  const otherLegNamed = onChannel.some((c) => c.legKey !== null && canonicalLegKey(c.featureSlug, c.legKey) !== leg);
   return onChannel.filter(
     (c) =>
       (c.offerId === scope.offerId || (c.offerId === null && !otherOfferNamed)) &&
-      (c.legKey === scope.legKey || (c.legKey === null && !otherLegNamed)),
+      (canonicalLegKey(c.featureSlug, c.legKey) === leg || (c.legKey === null && !otherLegNamed)),
   );
 }
 

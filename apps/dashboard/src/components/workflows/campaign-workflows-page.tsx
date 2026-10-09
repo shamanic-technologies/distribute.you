@@ -120,6 +120,7 @@ import { useCallback, useMemo } from "react";
 import { useParams, usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useAuthQuery } from "@/lib/use-auth-query";
 import { pollOptions } from "@/lib/query-options";
+import { sameLegKey } from "@/lib/outbound-leg-key";
 import { Skeleton } from "@/components/skeleton";
 import { InfoTooltip } from "@/components/visibility/metric-info";
 import { MaturityBadge } from "@/components/maturity-badge";
@@ -425,7 +426,7 @@ export function CampaignWorkflowsPage({
   // the Overview cannot print two costs per outcome for one campaign. Every cell below is
   // a workflow's or an audience's share of it.
   const campaignPrice = shownFigure(
-    audienceStatsQ.data?.maturity?.legs.find((l) => l.legKey != null && l.legKey === legKey),
+    audienceStatsQ.data?.maturity?.legs.find((l) => l.legKey != null && sameLegKey(l.legKey, legKey)),
     (h) => h.costPerOutcomeUsd,
     basis,
   );

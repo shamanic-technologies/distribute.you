@@ -23,12 +23,15 @@ import {
 import { LEVER_QUESTIONS, NEW_ORG_CHANNEL_SLUG, newOrgLeg, recommendedDailyBudgetUsd, type NewOrgLegKey } from "@/lib/v2/new-org-wizard";
 import { plannedKey, type PlannedCampaign } from "@/lib/v2/get-started";
 import { startReactiveCampaign } from "@/lib/start-pair";
+import { canonicalLegKey, OUTBOUND_LEG_TO_CONVERSATION, OUTBOUND_LEG_TO_WEBSITE_VISIT } from "@/lib/outbound-leg-key";
 
-export const GET_STARTED_LEG: NewOrgLegKey = "start_to_website_visit";
+export const GET_STARTED_LEG: NewOrgLegKey = OUTBOUND_LEG_TO_WEBSITE_VISIT;
 
-/** The cold-email entry leg that prices the recommended budget, when the best proactive campaign works one. */
+/** The cold-email entry leg that prices the recommended budget, when the best proactive campaign works one.
+ *  Either spelling of the outbound leg is read (features-service may serve the legacy one), the new one returned. */
 export function pricingLegFor(entryLegKey: string | null | undefined): NewOrgLegKey | null {
-  return entryLegKey === "start_to_website_visit" || entryLegKey === "start_to_conversation" ? entryLegKey : null;
+  const key = canonicalLegKey(NEW_ORG_CHANNEL_SLUG, entryLegKey);
+  return key === OUTBOUND_LEG_TO_WEBSITE_VISIT || key === OUTBOUND_LEG_TO_CONVERSATION ? key : null;
 }
 
 export interface LaunchInput {
@@ -168,14 +171,16 @@ export async function launchFromPreview(input: LaunchInput, progress: LaunchProg
   for (const c of [...proactive, ...on.filter((x) => x.reactive)]) {
     const key = plannedKey(c);
     if (progress.started[key]) continue;
+    // Every write spells an outbound leg the NEW way (owner 2026-10-09; every backend accepts both).
+    const legKey = canonicalLegKey(c.featureSlug, c.legKey);
     if (input.writeBudgets !== false && !progress.budgets[key]) {
-      await saveOfferCampaignBudget(input.brandId, offerId, { featureSlug: c.featureSlug, legKey: c.legKey, budgetCents: c.budgetUsd * 100 }, "day");
+      await saveOfferCampaignBudget(input.brandId, offerId, { featureSlug: c.featureSlug, legKey, budgetCents: c.budgetUsd * 100 }, "day");
       progress.budgets[key] = true;
     }
 
     if (c.reactive) {
       try {
-        await startReactiveCampaign({ brandId: input.brandId, offerId, featureSlug: c.featureSlug, legKey: c.legKey });
+        await startReactiveCampaign({ brandId: input.brandId, offerId, featureSlug: c.featureSlug, legKey });
       } catch (err) {
         console.warn(`[get-started] launch: reactive campaign ${key} did not start, skipped`, err);
         continue;
@@ -184,7 +189,7 @@ export async function launchFromPreview(input: LaunchInput, progress: LaunchProg
       continue;
     }
 
-    const ladder = await getWorkflowProjectionLadder({ featureSlug: c.featureSlug, brandId: input.brandId, offerId, leg: c.legKey });
+    const ladder = await getWorkflowProjectionLadder({ featureSlug: c.featureSlug, brandId: input.brandId, offerId, leg: legKey });
     const workflowSlug = ladder.recommendedWorkflowDynastySlug;
     if (!workflowSlug) throw new Error(`Nothing is ready to run for ${c.label.toLowerCase()} yet, so the campaign cannot start.`);
 
@@ -201,7 +206,7 @@ export async function launchFromPreview(input: LaunchInput, progress: LaunchProg
       workflowSlug,
       ...(input.website ? { brandUrls: [input.website] } : { brandIds: [input.brandId] }),
       offerId,
-      legKey: c.legKey,
+      legKey,
       featureSlug: c.featureSlug,
       featureInputs,
     });

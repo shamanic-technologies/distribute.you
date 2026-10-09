@@ -6,6 +6,7 @@ import { SectionTitle } from "@/components/v2/ui";
 import { SelectCard } from "@/components/v2/select-card";
 import type { LegCatalogue } from "@/lib/legs";
 import { offeredFromCatalogue, toggleLeg, toggleStep, type SalesPathSelection } from "@/lib/offer-sales-path";
+import { isProactiveFrom } from "@/lib/outbound-leg-key";
 
 /**
  * How an offer sells (beta): the steps it goes through, the legs between them, and
@@ -45,7 +46,7 @@ export function OfferSalesPath({
   // nobody ticked is not a way their sales move.
   const shownLegs =
     part === "legs"
-      ? legs.filter((l) => (l.fromKey === null || selection.steps.has(l.fromKey)) && (l.toKey === "paid_client" || selection.steps.has(l.toKey)))
+      ? legs.filter((l) => (isProactiveFrom(l.fromKey) || selection.steps.has(l.fromKey as string)) && (l.toKey === "paid_client" || selection.steps.has(l.toKey)))
       : legs;
 
   const stepsSection = part !== "legs" && (
