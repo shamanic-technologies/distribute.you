@@ -94,6 +94,12 @@ export async function POST(req: NextRequest) {
     console.warn("[chat-proxy] currentUser() failed, continuing without user details:", err);
   }
 
+  // The Copilot's brand rides a header so chat-service records it on the session (its
+  // latest-session read is per org: the page keeps only this brand's conversation).
+  if (configKey === "copilot" && typeof context?.brandId === "string") {
+    headers["x-brand-id"] = context.brandId;
+  }
+
   const backendPayload: Record<string, unknown> = { message, configKey };
   if (sessionId) backendPayload.sessionId = sessionId;
   if (context) backendPayload.context = context;
