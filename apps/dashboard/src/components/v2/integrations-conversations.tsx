@@ -519,6 +519,9 @@ function Message({ item, mark, meta, tag }: { item: PersonTimelineItem; mark: So
           <PersonMark name={sender.name ?? sender.email ?? "Them"} emails={sender.email ? [sender.email] : []} size={16} />
         )}
         <span className="truncate">{sender.name ?? sender.email ?? (outbound ? "You" : "Them")}</span>
+        {/* The address it was written FROM, on every message: a person can write from
+            several mailboxes (work, personal), and a name alone hides which one (owner 2026-10-09). */}
+        {sender.name && sender.email && <span className="k-mono min-w-0 truncate text-[11.5px]">{sender.email}</span>}
         <span className="flex shrink-0 items-center gap-1">
           ·{!outbound && <SourceLogo mark={mark} size={12} />}
           {meta}

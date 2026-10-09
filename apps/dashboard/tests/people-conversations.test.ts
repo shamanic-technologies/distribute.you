@@ -244,6 +244,14 @@ describe("who wrote a message", () => {
     expect(msg).toContain("<PersonMark name={sender.name ?? sender.email");
     expect(msg.indexOf("{outbound ? (")).toBeLessThan(msg.indexOf("<PersonMark"));
   });
+  it("shows the address every message was written from, beside the name", () => {
+    // A person writes from several mailboxes (Twin Health, then her own practice):
+    // the name alone hid which one (owner 2026-10-09).
+    const view = read("components/v2/integrations-conversations.tsx");
+    const msg = view.slice(view.indexOf("function Message("), view.indexOf("function MatchLine("));
+    expect(msg).toContain("{sender.name && sender.email && <span");
+    expect(msg).toContain("{sender.email}</span>");
+  });
   it("opens the person on top when none is picked", () => {
     const view = read("components/v2/integrations-conversations.tsx");
     expect(view).toContain("if (!openKey || newSearch) open(first);");
