@@ -154,6 +154,7 @@ describe("Platform config registration at startup", () => {
       expect(content).toContain('key: "press-kit"');
       expect(content).toContain('key: "feature"');
       expect(content).toContain('key: "campaign-prefill"');
+      expect(content).toContain('key: "copilot"');
       expect(content).not.toContain('key: "persona-editor"');
       expect(content).not.toContain('key: "brand-profile-editor"');
     });

@@ -1096,6 +1096,9 @@ const ChatHistoryMessageSchema = z.object({
   content: z.string(),
   contentBlocks: z.array(z.unknown()).nullable(),
   toolCalls: z.array(ChatHistoryToolCallSchema).nullable(),
+  // The choices chat-service parsed off the turn (served since the buttons protocol); the
+  // Copilot re-draws them after a reload.
+  buttons: z.array(z.object({ label: z.string(), value: z.string() })).nullish(),
 });
 const ChatSessionHistorySchema = z.object({
   sessionId: z.string(),
