@@ -11,6 +11,7 @@ import {
   copilotPageHref,
   copilotSessionStorageKey,
   isOpener,
+  isThisBrandsSession,
   openPagesByTurn,
   isPanelLink,
   parseStoredPanelPct,
@@ -75,6 +76,13 @@ describe("copilot rules", () => {
     expect(copilotPageHref("o", "b", { page: "https://evil.example" })).toBeNull();
   });
 
+  it("shows the latest session only when it was opened for this brand", () => {
+    expect(isThisBrandsSession({ brandIds: ["b1"] }, "b1")).toBe(true);
+    expect(isThisBrandsSession({ brandIds: ["b2"] }, "b1")).toBe(false);
+    expect(isThisBrandsSession({ brandIds: null }, "b1")).toBe(false);
+    expect(isThisBrandsSession(null, "b1")).toBe(false);
+  });
+
   it("never prints the opener", () => {
     expect(isOpener(COPILOT_OPENER)).toBe(true);
     expect(isOpener(` ${COPILOT_OPENER}\n`)).toBe(true);
@@ -127,8 +135,15 @@ describe("copilot wiring", () => {
     expect(chat).toContain("routerRef.current.push(href)");
   });
 
+  it("reads the user's latest conversation, and the proxy records the brand on it", () => {
+    expect(chat).toContain("getLatestChatSession(COPILOT_CONFIG_KEY)");
+    expect(chat).toContain("isThisBrandsSession(latest, brandId)");
+    const route = src("src/app/(authed)/api/v1/chat/route.ts");
+    expect(route).toContain('headers["x-brand-id"] = context.brandId');
+  });
+
   it("restores the stored conversation and offers a new one", () => {
-    expect(chat).toContain("getChatSessionHistory(sid)");
+    expect(chat).toContain("getChatSessionHistory(localSid)");
     expect(chat).toContain("New chat");
   });
 });

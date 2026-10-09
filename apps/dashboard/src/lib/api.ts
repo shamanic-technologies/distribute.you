@@ -1132,9 +1132,32 @@ const ChatHistoryMessageSchema = z.object({
 });
 const ChatSessionHistorySchema = z.object({
   sessionId: z.string(),
+  // The brand(s) the session was opened for (chat-service records `x-brand-id`), null when none.
+  brandIds: z.array(z.string()).nullish(),
   messages: z.array(ChatHistoryMessageSchema),
 });
 export type ChatSessionHistory = z.infer<typeof ChatSessionHistorySchema>;
+
+/**
+ * The signed-in user's most recent session for a chat config (any device), or null when they
+ * have none yet (404, a first visit). Gateway `GET /v1/chat/sessions/latest` (api-service
+ * v0.112.75) over chat-service `/sessions/latest`.
+ */
+export async function getLatestChatSession(configKey: string, token?: string): Promise<ChatSessionHistory | null> {
+  let raw: unknown;
+  try {
+    raw = await apiCall<unknown>(`/chat/sessions/latest?configKey=${encodeURIComponent(configKey)}`, { token });
+  } catch (err) {
+    if (err instanceof ApiError && err.status === 404) return null;
+    throw err;
+  }
+  const parsed = ChatSessionHistorySchema.safeParse(raw);
+  if (!parsed.success) {
+    console.error("getLatestChatSession: response shape mismatch", parsed.error, raw);
+    throw new Error("Invalid chat session history response shape");
+  }
+  return parsed.data;
+}
 
 export async function getChatSessionHistory(
   sessionId: string,

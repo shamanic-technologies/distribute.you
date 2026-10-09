@@ -7,7 +7,14 @@ import { useChat } from "@ai-sdk/react";
 import { DefaultChatTransport, isToolUIPart, type UIMessage } from "ai";
 import Markdown from "react-markdown";
 import remarkGfm from "remark-gfm";
-import { ApiError, ChatChoicesRecordSchema, ChatOpenPageRecordSchema, getChatSessionHistory } from "@/lib/api";
+import {
+  ApiError,
+  ChatChoicesRecordSchema,
+  ChatOpenPageRecordSchema,
+  getChatSessionHistory,
+  getLatestChatSession,
+  type ChatSessionHistory,
+} from "@/lib/api";
 import { historyToUIMessages } from "@/lib/chat-session-history";
 import { isSessionNotFoundError } from "@/lib/chat-session";
 import {
@@ -18,6 +25,7 @@ import {
   copilotSessionStorageKey,
   isOpener,
   isPanelLink,
+  isThisBrandsSession,
   openPagesByTurn,
   type CopilotChoices,
   type CopilotOpenPage,
@@ -281,23 +289,32 @@ export function CopilotChat({ orgId, brandId }: { orgId: string; brandId: string
   });
   const busy = status === "streaming" || status === "submitted";
 
-  // A reload shows the last conversation; none stored (or gone) opens a new one.
+  // A reload shows the last conversation: the user's latest one for this brand on any device,
+  // else the one this browser kept (sessions from before chat-service recorded the brand);
+  // none opens a new chat.
   useEffect(() => {
     let cancelled = false;
-    const sid = loadSessionId(storageKey);
-    sessionIdRef.current = sid;
+    const localSid = loadSessionId(storageKey);
     setPhase("loading");
-    if (!sid) {
-      setMessages([]);
-      setHistoryChoices(new Map());
-      setHistoryPages(new Map());
-      setOpenerWanted(true);
-      setPhase("ready");
-      return;
-    }
-    getChatSessionHistory(sid)
+    const load = async (): Promise<ChatSessionHistory | null> => {
+      const latest = await getLatestChatSession(COPILOT_CONFIG_KEY);
+      if (isThisBrandsSession(latest, brandId)) return latest;
+      return localSid ? getChatSessionHistory(localSid) : null;
+    };
+    load()
       .then((h) => {
         if (cancelled) return;
+        if (!h) {
+          sessionIdRef.current = null;
+          setMessages([]);
+          setHistoryChoices(new Map());
+          setHistoryPages(new Map());
+          setOpenerWanted(true);
+          setPhase("ready");
+          return;
+        }
+        sessionIdRef.current = h.sessionId;
+        saveSessionId(storageKey, h.sessionId);
         setMessages(historyToUIMessages(h.messages));
         setHistoryChoices(choicesByTurn(h.messages));
         setHistoryPages(openPagesByTurn(h.messages));
@@ -306,7 +323,7 @@ export function CopilotChat({ orgId, brandId }: { orgId: string; brandId: string
       .catch((err) => {
         if (cancelled) return;
         if (!(err instanceof ApiError && (err.status === 404 || err.status === 403))) {
-          console.error("[copilot] could not load the stored conversation", { sessionId: sid, err });
+          console.error("[copilot] could not load the last conversation", { localSid, err });
         }
         sessionIdRef.current = null;
         saveSessionId(storageKey, null);
@@ -319,7 +336,7 @@ export function CopilotChat({ orgId, brandId }: { orgId: string; brandId: string
     return () => {
       cancelled = true;
     };
-  }, [storageKey, setMessages]);
+  }, [storageKey, brandId, setMessages]);
 
   // A new chat opens on the model's read of the account, once the figures are in.
   useEffect(() => {

@@ -143,6 +143,14 @@ export function copilotPageHref(orgId: string, brandId: string, rec: CopilotOpen
   return v2CampaignHref(orgId, brandId, rec.campaignId);
 }
 
+/**
+ * The latest session chat-service holds for the user is per org, not per brand: it is this
+ * chat's conversation only when it was opened for this brand (the proxy sends `x-brand-id`).
+ */
+export function isThisBrandsSession(session: { brandIds?: string[] | null } | null, brandId: string): boolean {
+  return Boolean(session?.brandIds?.includes(brandId));
+}
+
 /** The opener is the user's turn on paper only: it never prints. */
 export function isOpener(text: string | null | undefined): boolean {
   return (text ?? "").trim() === COPILOT_OPENER;
