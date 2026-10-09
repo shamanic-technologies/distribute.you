@@ -24,6 +24,7 @@ import { campaignNameFor, type LegCatalogue } from "@/lib/legs";
 import { costPerResult, outcomeCount } from "@/components/v2/mission-results";
 import { campaignKey, sortCampaigns, type OfferCampaign } from "@/lib/offer-campaigns";
 import { CampaignModeChip } from "@/components/v2/campaign-mode";
+import { TriggerEventLines } from "@/components/v2/trigger-event-lines";
 import { channelWriteErrorMessage } from "@/lib/channel-start";
 import { createCampaignForPair, startReactiveCampaign } from "@/lib/start-pair";
 import { invalidateCampaignMoney } from "@/lib/write-invalidation";
@@ -113,6 +114,11 @@ export function OfferCampaigns({
     return m;
   }, [budgetsQ.data]);
   const { staffMode } = useStaffMode();
+  // The triggers under the rows are the ones these campaigns wait on (an ON one always shows).
+  const triggerCampaigns = useMemo(
+    () => campaigns.map((c) => ({ featureSlug: c.featureSlug, legKey: c.legKey, on: running(c) })),
+    [campaigns, missionByKey], // eslint-disable-line react-hooks/exhaustive-deps
+  );
 
   return (
     <section>
@@ -198,6 +204,7 @@ export function OfferCampaigns({
               </tbody>
             </table>
           </div>
+          <TriggerEventLines brandId={brandId} offerId={offerId} campaigns={triggerCampaigns} catalogue={catalogue} />
         </div>
       )}
     </section>

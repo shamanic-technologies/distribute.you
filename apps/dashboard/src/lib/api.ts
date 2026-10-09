@@ -3164,6 +3164,48 @@ export async function saveOfferCampaignBudget(
 }
 
 /**
+ * TRIGGER EVENTS (campaign-service, through the gateway, owner 2026-10-09): per trigger
+ * type, how many times it fired on this offer, how many runs it started, how many it
+ * skipped and why. A type with no event is ABSENT (the page joins the catalogue to show
+ * it at zero). `recordedSince` = when recording began; before it, nothing was recorded.
+ */
+const OfferTriggerEventsSummarySchema = z.object({
+  recordedSince: z.string().nullable(),
+  triggers: z.array(
+    z.object({
+      triggerId: z.string().nullable(),
+      events: z.number(),
+      ran: z.number(),
+      skipped: z.number(),
+      pending: z.number(),
+      skippedByReason: z.array(z.object({ reason: z.string(), count: z.number() })),
+      lastOccurredAt: z.string().nullable(),
+    }),
+  ),
+});
+
+export type OfferTriggerEventsSummary = z.infer<typeof OfferTriggerEventsSummarySchema>;
+
+/**
+ * Since recording began (owner 2026-10-09: stats are since inception, never a 7 or 30 day
+ * window). campaign-service requires a window start, so the read names the epoch: every
+ * event it ever recorded for the offer.
+ */
+export const TRIGGER_EVENTS_SINCE_INCEPTION = "1970-01-01T00:00:00.000Z";
+
+/** GET /offers/:offerId/trigger-events/summary — every trigger's counts on this offer since recording began. */
+export async function getOfferTriggerEventsSummary(brandId: string, offerId: string, token?: string): Promise<OfferTriggerEventsSummary> {
+  const qs = new URLSearchParams({ brandId, from: TRIGGER_EVENTS_SINCE_INCEPTION });
+  const raw = await apiCall<unknown>(`/offers/${offerId}/trigger-events/summary?${qs}`, { token });
+  const parsed = OfferTriggerEventsSummarySchema.safeParse(raw);
+  if (!parsed.success) {
+    console.error("[dashboard] getOfferTriggerEventsSummary: response shape mismatch", { issues: parsed.error.issues, raw });
+    throw new Error("[dashboard] getOfferTriggerEventsSummary: invalid response shape");
+  }
+  return parsed.data;
+}
+
+/**
  * QUALIFICATION (lead-service, through the gateway): the checks an OFFER runs on the
  * companies of its prospects, for every audience of the offer (owner 2026-10-07). A
  * `must_pass` check is a FILTER (a company failing it is not served); a `mention` one hands
