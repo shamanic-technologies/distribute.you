@@ -207,7 +207,7 @@ export function CancelPlanFlow({
               </div>
               {loss.id === "loss_outreach" && (
                 <div className="k-inset mt-3 grid grid-cols-3 divide-x divide-[var(--line-subtle)] rounded-lg">
-                  <LossFigure label="Queued" value={counts?.contacted} />
+                  <LossFigure label="Contacted" value={counts?.contacted} />
                   <LossFigure label="Positive replies" value={counts?.positive_reply} />
                   <LossFigure label="Meetings" value={counts?.meeting_booked} />
                 </div>

@@ -266,10 +266,10 @@ describe("v2 step 3: honest counts, green running, modals outside the bar", () =
 
 describe("v2 Deals states who we contacted", () => {
   const src = read("src/components/v2/deals-page.tsx");
-  it("names the in-play column Queued (owner 2026-10-04) and counts it in the heading", () => {
-    expect(src).toContain('contacted: "Queued"');
+  it("names the in-play column Contacted (owner 2026-10-09) and counts it in the heading", () => {
+    expect(src).toContain('contacted: "Contacted"');
     expect(src).toContain("const contacted = totals?.contacted ?? null;");
-    expect(src).toContain("{formatCount(contacted)}</span> queued");
+    expect(src).toContain("{formatCount(contacted)}</span> contacted");
   });
 });
 

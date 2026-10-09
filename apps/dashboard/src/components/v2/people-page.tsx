@@ -28,7 +28,7 @@ import {
 
 /** The tabs People offers, each one of lead-service's own engagement buckets. */
 export const PEOPLE_TABS: { key: string; label: string; bucket: LeadBucket }[] = [
-  { key: "contacted", label: "Queued", bucket: "contacted" },
+  { key: "contacted", label: "Contacted", bucket: "contacted" },
   { key: "website-visits", label: "Website visits", bucket: "website_visit" },
   { key: "positive-replies", label: "Positive replies", bucket: "positive_reply" },
   { key: "meetings", label: "Meeting booked", bucket: "meeting_booked" },
