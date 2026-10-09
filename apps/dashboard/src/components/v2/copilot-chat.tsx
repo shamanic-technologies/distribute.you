@@ -7,19 +7,22 @@ import { useChat } from "@ai-sdk/react";
 import { DefaultChatTransport, isToolUIPart, type UIMessage } from "ai";
 import Markdown from "react-markdown";
 import remarkGfm from "remark-gfm";
-import { ApiError, getChatSessionHistory } from "@/lib/api";
+import { ApiError, ChatChoicesRecordSchema, ChatOpenPageRecordSchema, getChatSessionHistory } from "@/lib/api";
 import { historyToUIMessages } from "@/lib/chat-session-history";
 import { isSessionNotFoundError } from "@/lib/chat-session";
 import {
   COPILOT_CONFIG_KEY,
   COPILOT_OPENER,
   choicesByTurn,
+  copilotPageHref,
   copilotSessionStorageKey,
   isOpener,
   isPanelLink,
-  type CopilotChoice,
+  openPagesByTurn,
+  type CopilotChoices,
+  type CopilotOpenPage,
 } from "@/lib/copilot";
-import { v2Href, type V2Section } from "@/lib/v2/routes";
+import { v2Href } from "@/lib/v2/routes";
 import { formatCount, formatCentsAsUsdAdaptive } from "@/lib/format-number";
 import { formatRoi, roiIsGood } from "@/lib/format-roi";
 import { shownReturn } from "@/lib/maturity";
@@ -27,6 +30,8 @@ import { useStatBasis } from "@/lib/use-stat-basis";
 import { SINCE_INCEPTION } from "@/lib/revenue-window";
 import { useBrandInfo, useBrandRevenue, useBrandRevenueWindow, useNeedsYourCall } from "@/components/v2/data";
 import { Figure, Shimmer } from "@/components/v2/ui";
+import { ChoiceCards, OpenedPage } from "@/components/v2/copilot-cards";
+import { useSelectedOfferIfAny } from "@/components/v2/selected-offer";
 
 /**
  * The staff Copilot (owner 2026-10-09): Conductor's middle column. A reload shows the last
@@ -35,9 +40,6 @@ import { Figure, Shimmer } from "@/components/v2/ui";
  * choices to click, the box below stays for anything else. A dashboard link the model
  * writes opens in the right panel, the chat stays where it is.
  */
-
-// The pages the model may open, by name: it links to them, the panel shows them.
-const PAGES: V2Section[] = ["today", "people", "unibox", "deals", "campaigns", "offers", "targeting", "channels", "billing", "settings"];
 
 function loadSessionId(key: string): string | null {
   try {
@@ -140,27 +142,6 @@ function AccountCard({
   );
 }
 
-function ChoiceCards({ choices, onPick, disabled }: { choices: CopilotChoice[]; onPick: (c: CopilotChoice) => void; disabled: boolean }) {
-  return (
-    <div className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-2">
-      {choices.map((c) => (
-        <button
-          key={`${c.label}|${c.value}`}
-          type="button"
-          disabled={disabled}
-          onClick={() => onPick(c)}
-          className="k-card group flex min-h-[64px] items-center gap-3 px-4 py-3 text-left transition-[transform,background-color] duration-150 ease-out hover:bg-[var(--bg-hover)] active:scale-[0.98] disabled:opacity-50"
-        >
-          <span className="min-w-0 flex-1 text-[14px] leading-5">{c.label}</span>
-          <span aria-hidden="true" className="k-fg3 shrink-0 transition-transform duration-150 group-hover:translate-x-0.5">
-            →
-          </span>
-        </button>
-      ))}
-    </div>
-  );
-}
-
 function textOf(m: UIMessage): string {
   return m.parts
     .filter((p): p is { type: "text"; text: string } => p.type === "text")
@@ -168,12 +149,31 @@ function textOf(m: UIMessage): string {
     .join("");
 }
 
-/** The choices of one live turn (the proxy's `data-buttons` part), or none. */
-function liveChoices(m: UIMessage): CopilotChoice[] | null {
-  for (const p of m.parts as Array<{ type: string; data?: { buttons?: CopilotChoice[] } }>) {
-    if (p.type === "data-buttons" && p.data?.buttons?.length) return p.data.buttons;
+/** The cards of one live turn: rich `choices` (present_choices), else plain `buttons`. */
+function liveChoices(m: UIMessage): CopilotChoices | null {
+  for (const p of m.parts as Array<{ type: string; data?: unknown }>) {
+    if (p.type === "data-choices") {
+      const r = ChatChoicesRecordSchema.safeParse(p.data);
+      if (r.success && r.data.choices.length > 0) return r.data;
+      console.error("[copilot] a choices event the dashboard cannot read", p.data);
+    }
+  }
+  for (const p of m.parts as Array<{ type: string; data?: { buttons?: { label: string; value: string }[] } }>) {
+    if (p.type === "data-buttons" && p.data?.buttons?.length) return { choices: p.data.buttons };
   }
   return null;
+}
+
+/** The pages one live turn opened. */
+function livePages(m: UIMessage): CopilotOpenPage[] {
+  const out: CopilotOpenPage[] = [];
+  for (const p of m.parts as Array<{ type: string; data?: unknown }>) {
+    if (p.type !== "data-open-page") continue;
+    const r = ChatOpenPageRecordSchema.safeParse(p.data);
+    if (r.success) out.push(r.data);
+    else console.error("[copilot] an open_page event the dashboard cannot read", p.data);
+  }
+  return out;
 }
 
 const md = {
@@ -199,7 +199,9 @@ export function CopilotChat({ orgId, brandId }: { orgId: string; brandId: string
   const pathname = usePathname();
   const storageKey = copilotSessionStorageKey(orgId, brandId);
   const sessionIdRef = useRef<string | null>(null);
-  const [historyChoices, setHistoryChoices] = useState<Map<string, CopilotChoice[]>>(new Map());
+  const [historyChoices, setHistoryChoices] = useState<Map<string, CopilotChoices>>(new Map());
+  const [historyPages, setHistoryPages] = useState<Map<string, CopilotOpenPage[]>>(new Map());
+  const offerId = useSelectedOfferIfAny()?.offerId ?? null;
   // Loading the stored conversation, then either showing it or opening a new one.
   const [phase, setPhase] = useState<"loading" | "ready">("loading");
   const [openerWanted, setOpenerWanted] = useState(false);
@@ -215,16 +217,26 @@ export function CopilotChat({ orgId, brandId }: { orgId: string; brandId: string
       surface: "staff-copilot",
       orgId,
       brandId,
+      offerId,
       currentPage: pathname,
-      pages: Object.fromEntries(PAGES.map((s) => [s, v2Href(orgId, brandId, s)])),
       account: figures,
     }),
-    [orgId, brandId, pathname, figures],
+    [orgId, brandId, offerId, pathname, figures],
   );
   const contextRef = useRef(context);
   useEffect(() => {
     contextRef.current = context;
   }, [context]);
+
+  // onData is bound once by useChat: it reads these through refs.
+  const routerRef = useRef(router);
+  const orgIdRef = useRef(orgId);
+  const brandIdRef = useRef(brandId);
+  useEffect(() => {
+    routerRef.current = router;
+    orgIdRef.current = orgId;
+    brandIdRef.current = brandId;
+  }, [router, orgId, brandId]);
 
   const transport = useMemo(
     () =>
@@ -258,6 +270,13 @@ export function CopilotChat({ orgId, brandId }: { orgId: string; brandId: string
         sessionIdRef.current = null;
         saveSessionId(storageKey, null);
       }
+      // The model asked to show a page: it opens on the right, the chat stays.
+      if (data.type === "data-open-page") {
+        const r = ChatOpenPageRecordSchema.safeParse(data.data);
+        if (!r.success) return;
+        const href = copilotPageHref(orgIdRef.current, brandIdRef.current, r.data);
+        if (href) routerRef.current.push(href);
+      }
     },
   });
   const busy = status === "streaming" || status === "submitted";
@@ -271,6 +290,7 @@ export function CopilotChat({ orgId, brandId }: { orgId: string; brandId: string
     if (!sid) {
       setMessages([]);
       setHistoryChoices(new Map());
+      setHistoryPages(new Map());
       setOpenerWanted(true);
       setPhase("ready");
       return;
@@ -280,6 +300,7 @@ export function CopilotChat({ orgId, brandId }: { orgId: string; brandId: string
         if (cancelled) return;
         setMessages(historyToUIMessages(h.messages));
         setHistoryChoices(choicesByTurn(h.messages));
+        setHistoryPages(openPagesByTurn(h.messages));
         setPhase("ready");
       })
       .catch((err) => {
@@ -291,6 +312,7 @@ export function CopilotChat({ orgId, brandId }: { orgId: string; brandId: string
         saveSessionId(storageKey, null);
         setMessages([]);
         setHistoryChoices(new Map());
+        setHistoryPages(new Map());
         setOpenerWanted(true);
         setPhase("ready");
       });
@@ -312,6 +334,7 @@ export function CopilotChat({ orgId, brandId }: { orgId: string; brandId: string
     saveSessionId(storageKey, null);
     setMessages([]);
     setHistoryChoices(new Map());
+    setHistoryPages(new Map());
     setOpenerWanted(true);
   }, [stop, storageKey, setMessages]);
 
@@ -395,6 +418,8 @@ export function CopilotChat({ orgId, brandId }: { orgId: string; brandId: string
                 {m.parts.map((p, i) => {
                   if (p.type === "text") return <Markdown key={i} remarkPlugins={[remarkGfm]} components={md}>{p.text}</Markdown>;
                   if (isToolUIPart(p)) {
+                    // The cards and the opened page draw themselves; no "read" line for them.
+                    if (p.type === "tool-present_choices" || p.type === "tool-open_page") return null;
                     const name = p.type.replace(/^tool-/, "").replace(/_/g, " ");
                     const done = p.state === "output-available";
                     return (
@@ -406,9 +431,13 @@ export function CopilotChat({ orgId, brandId }: { orgId: string; brandId: string
                   }
                   return null;
                 })}
+                {[...livePages(m), ...(historyPages.get(m.id) ?? [])].map((pg, i) => {
+                  const href = copilotPageHref(orgId, brandId, pg);
+                  return href ? <OpenedPage key={`p${i}`} href={href} label={pg.title ?? pg.page} /> : null;
+                })}
                 {m.id === lastAssistantId && !busy && (() => {
-                  const choices = liveChoices(m) ?? historyChoices.get(m.id) ?? null;
-                  return choices ? <ChoiceCards choices={choices} disabled={busy} onPick={(c) => submit(c.value)} /> : null;
+                  const set = liveChoices(m) ?? historyChoices.get(m.id) ?? null;
+                  return set ? <ChoiceCards set={set} disabled={busy} onPick={(c) => submit(c.value)} /> : null;
                 })()}
               </div>
             ),

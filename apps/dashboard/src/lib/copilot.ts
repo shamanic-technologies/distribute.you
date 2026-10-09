@@ -3,6 +3,8 @@
  * right (owner 2026-10-09, Conductor's layout). Pure rules only, alias-free, so they unit-test.
  */
 
+import { v2CampaignHref, v2Href, type V2Section } from "./v2/routes";
+
 /** The chat-service config this surface talks to (registered at boot, instrumentation.ts). */
 export const COPILOT_CONFIG_KEY = "copilot";
 
@@ -46,25 +48,99 @@ export function isPanelLink(href: string | null | undefined): href is string {
   return typeof href === "string" && href.startsWith("/v2/");
 }
 
+/** A card's optional visual, as chat-service's `present_choices` serves it. */
+export type CopilotVisual =
+  | { type: "icon"; icon: string }
+  | { type: "image"; imageUrl: string }
+  | { type: "number"; value: number | string; unit?: string }
+  | { type: "chart"; series: number[]; unit?: string };
+
 export interface CopilotChoice {
   label: string;
   value: string;
+  description?: string;
+  visual?: CopilotVisual;
 }
 
-/** One stored turn, the fields the choices are read from (chat-service session history). */
+/** One `choices` event (or a plain `buttons` one, read as cards with no visual). */
+export interface CopilotChoices {
+  question?: string | null;
+  choices: CopilotChoice[];
+}
+
+/** An `open_page` event: a page id the client resolves, never a URL. */
+export interface CopilotOpenPage {
+  page: string;
+  brandId?: string;
+  offerId?: string;
+  campaignId?: string;
+  audienceId?: string;
+  leadId?: string;
+  title?: string;
+}
+
+/** One stored turn, the fields the cards and pages are read from (chat-service session history). */
 export interface CopilotHistoryTurn {
   id: string;
   role: string;
-  buttons?: CopilotChoice[] | null;
+  buttons?: { label: string; value: string }[] | null;
+  choices?: CopilotChoices | null;
+  openPages?: CopilotOpenPage[] | null;
 }
 
-/** The choices chat-service stored on each assistant turn, by turn id. */
-export function choicesByTurn(turns: CopilotHistoryTurn[]): Map<string, CopilotChoice[]> {
-  const out = new Map<string, CopilotChoice[]>();
+/** The cards chat-service stored on each assistant turn, by turn id (rich choices win over plain buttons). */
+export function choicesByTurn(turns: CopilotHistoryTurn[]): Map<string, CopilotChoices> {
+  const out = new Map<string, CopilotChoices>();
   for (const t of turns) {
-    if (t.role === "assistant" && t.buttons && t.buttons.length > 0) out.set(t.id, t.buttons);
+    if (t.role !== "assistant") continue;
+    if (t.choices && t.choices.choices.length > 0) out.set(t.id, t.choices);
+    else if (t.buttons && t.buttons.length > 0) out.set(t.id, { choices: t.buttons });
   }
   return out;
+}
+
+/** The pages each stored assistant turn opened, by turn id. */
+export function openPagesByTurn(turns: CopilotHistoryTurn[]): Map<string, CopilotOpenPage[]> {
+  const out = new Map<string, CopilotOpenPage[]>();
+  for (const t of turns) {
+    if (t.role === "assistant" && t.openPages && t.openPages.length > 0) out.set(t.id, t.openPages);
+  }
+  return out;
+}
+
+/**
+ * The pages the model may open, by id: the list its system prompt carries (instrumentation.ts
+ * reads it, so the two cannot drift). `campaign` needs a `campaignId`.
+ */
+export const COPILOT_PAGES: Record<string, { section: V2Section | null; what: string }> = {
+  today: { section: "today", what: "the account's figures since it started" },
+  people: { section: "people", what: "every person reached, with who replied" },
+  unibox: { section: "unibox", what: "every conversation, hot leads first" },
+  deals: { section: "deals", what: "the people moving toward a sale" },
+  outbound: { section: "sales-path", what: "the campaigns, their return, status and budget" },
+  sourcing: { section: "sourcing", what: "how new people are found" },
+  targeting: { section: "targeting", what: "who we write to" },
+  offer: { section: "offers", what: "what the brand sells" },
+  billing: { section: "billing", what: "balance, payments and spend" },
+  integrations: { section: "integrations", what: "connected tools" },
+  settings: { section: "settings", what: "brand settings" },
+  campaign: { section: null, what: "one campaign's page (needs campaignId)" },
+};
+
+/** The URL a page id opens, or null with the reason logged (an unknown id, a missing id). */
+export function copilotPageHref(orgId: string, brandId: string, rec: CopilotOpenPage): string | null {
+  const def = COPILOT_PAGES[rec.page];
+  if (!def) {
+    console.error("[copilot] open_page named a page the dashboard does not know", rec);
+    return null;
+  }
+  // The panel shows the brand the chat is about: a brand id the model names is not followed.
+  if (def.section) return v2Href(orgId, brandId, def.section);
+  if (!rec.campaignId) {
+    console.error("[copilot] open_page campaign without a campaignId", rec);
+    return null;
+  }
+  return v2CampaignHref(orgId, brandId, rec.campaignId);
 }
 
 /** The opener is the user's turn on paper only: it never prints. */

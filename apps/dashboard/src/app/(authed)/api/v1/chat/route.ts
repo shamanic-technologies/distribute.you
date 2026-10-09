@@ -306,6 +306,20 @@ export async function POST(req: NextRequest) {
             break;
           }
 
+          // chat-service `present_choices` / `open_page` (2026-10-09): forwarded whole, the
+          // Copilot reads them (components/v2/copilot-chat.tsx).
+          case "choices": {
+            const { type: _t, ...choices } = event;
+            writer.write({ type: "data-choices" as `data-${string}`, data: choices } as never);
+            break;
+          }
+
+          case "open_page": {
+            const { type: _t, ...page } = event;
+            writer.write({ type: "data-open-page" as `data-${string}`, data: page } as never);
+            break;
+          }
+
           case "error": {
             const errorCode = event.code as string | undefined;
             if (errorCode) {
