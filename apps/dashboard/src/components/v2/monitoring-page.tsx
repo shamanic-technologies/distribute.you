@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useEffect } from "react";
 import { useParams, usePathname, useRouter } from "next/navigation";
 import { useAuthQuery } from "@/lib/use-auth-query";
-import { getStaffCostMargin, getStaffCurrentPrices, getStaffEmailSendPrice, getStaffEmailsSent, getStaffPriceVersions, getStaffRealCosts, getStaffSubscriptionCosts } from "@/lib/api";
+import { getStaffCostMargin, getStaffCurrentPrices, getStaffSkills, getStaffEmailSendPrice, getStaffEmailsSent, getStaffPriceVersions, getStaffRealCosts, getStaffSubscriptionCosts } from "@/lib/api";
 import { formatCentsAsUsd } from "@/lib/format-number";
 import { v2Href } from "@/lib/v2/routes";
 import { EmptyNote, Figure, SectionTitle, Shimmer, StatTile, TopBar } from "@/components/v2/ui";
@@ -20,6 +20,8 @@ import { ReceiptIcon } from "@phosphor-icons/react/dist/csr/Receipt";
 import { TagIcon } from "@phosphor-icons/react/dist/csr/Tag";
 import { TrendUpIcon } from "@phosphor-icons/react/dist/csr/TrendUp";
 import { EnvelopeSimpleIcon } from "@phosphor-icons/react/dist/csr/EnvelopeSimple";
+import { ChatCircleIcon } from "@phosphor-icons/react/dist/csr/ChatCircle";
+import { SkillsView } from "@/components/v2/monitoring-skills";
 import {
   costItemNames,
   parseMonitoringPath,
@@ -59,6 +61,9 @@ function useEmailSendPrice() {
 function useLatestRealCosts() {
   return useAuthQuery(["staffRealCosts", null], () => getStaffRealCosts(null), ONCE);
 }
+function useSkills() {
+  return useAuthQuery(["staffSkills"], getStaffSkills, { staleTime: 30_000, retry: false });
+}
 function useSubscriptionCosts() {
   return useAuthQuery(["staffSubscriptionCosts"], getStaffSubscriptionCosts, ONCE);
 }
@@ -74,7 +79,7 @@ const centsPerEmail = (c: number | null) => (c == null ? null : `${c.toLocaleStr
 
 // ─── Shell ─────────────────────────────────────────────────────────────────
 
-type SectionKey = "cost" | "price" | "margin" | "emails";
+type SectionKey = "cost" | "price" | "margin" | "emails" | "chat";
 
 /** Each section wears one colour and one mark, the way Research's topics do. */
 const SECTION_LOOK: Record<SectionKey, { name: string; color: string; Icon: typeof ReceiptIcon; sub: string }> = {
@@ -82,6 +87,7 @@ const SECTION_LOOK: Record<SectionKey, { name: string; color: string; Icon: type
   price: { name: "Price", color: "var(--data-sky)", Icon: TagIcon, sub: "What we charge our users" },
   margin: { name: "Margin", color: "var(--data-teal)", Icon: TrendUpIcon, sub: "Billed minus what the vendors charged" },
   emails: { name: "Emails", color: "var(--data-violet)", Icon: EnvelopeSimpleIcon, sub: "Every email we sent" },
+  chat: { name: "Chat", color: "var(--data-amber)", Icon: ChatCircleIcon, sub: "What the Copilot knows" },
 };
 
 const PAGE: Record<MonitoringPage, { section: SectionKey; title: string; question: string }> = {
@@ -95,6 +101,7 @@ const PAGE: Record<MonitoringPage, { section: SectionKey; title: string; questio
   margin: { section: "margin", title: "Margin", question: "How much margin have we made since inception?" },
   "margin/pricing-comparison": { section: "margin", title: "Pricing comparison", question: "What would a client have paid, and our margin, under two price lists?" },
   emails: { section: "emails", title: "Emails", question: "How many emails have we sent since inception?" },
+  "chat/skills": { section: "chat", title: "Skills", question: "What does the Copilot read before it acts?" },
 };
 
 /** A section's mark: a soft tile in its colour, drawn like Research's topic mark. */
@@ -157,7 +164,9 @@ export function V2Monitoring() {
           <h1 className="text-[24px] font-medium leading-[30px] tracking-[-0.02em]">{meta.question}</h1>
         </div>
       </div>
-      <p className="k-fg3 mt-2 text-[13px]">Every org pooled, since the first cost row. Read live from production.</p>
+      <p className="k-fg3 mt-2 text-[13px]">
+        {meta.section === "chat" ? "Read live from production. Your edits save as you type and reach the Copilot on its next message." : "Every org pooled, since the first cost row. Read live from production."}
+      </p>
       <div className="mt-6">
         {view.page === "cost/providers" && <ProvidersPage />}
         {view.page === "cost/spend" && <SpendPage />}
@@ -169,6 +178,7 @@ export function V2Monitoring() {
         {view.page === "margin/pricing-comparison" && <PricingComparisonView />}
         {view.page === "margin" && <MarginPage />}
         {view.page === "emails" && <EmailsPage />}
+        {view.page === "chat/skills" && <SkillsView />}
       </div>
     </Frame>
   );
@@ -236,6 +246,7 @@ function Hub({ base }: { base: string }) {
   const sendPrice = useEmailSendPrice();
   const subs = useSubscriptionCosts();
   const real = useLatestRealCosts();
+  const skills = useSkills();
   const rc = real.data;
   const sp = sendPrice.data;
   const m = margin.data;
@@ -368,6 +379,18 @@ function Hub({ base }: { base: string }) {
           cells={[
             { label: "Emails sent", value: emails.data?.emails.toLocaleString("en-US"), note: "follow-ups included" },
             { label: "People emailed", value: emails.data?.people.toLocaleString("en-US"), note: "at least one email" },
+          ]}
+        />
+      </Section>
+
+      <Section section="chat" count={1}>
+        <Card
+          href={href("chat/skills")}
+          page="chat/skills"
+          error={skills.isError}
+          cells={[
+            { label: "Skills", value: skills.data?.length, note: "in the Copilot's tree" },
+            { label: "Edited by a person", value: skills.data?.filter((x) => x.updatedBy !== "seed").length, note: "the rest are as seeded" },
           ]}
         />
       </Section>

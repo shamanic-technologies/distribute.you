@@ -103,6 +103,9 @@ export const SENSITIVE_QUERY_ROOTS = new Set([
   "staffBasisSummary",
   "staffRealCostSeries",
   "staffPriceComparison",
+  // Staff Monitoring > Chat > Skills (the Copilot skill tree, edited live).
+  "staffSkills",
+  "staffSkill",
   // Staff Audience snapshot (what a brand holds per list, Jev acceptance).
   "staffAudienceSnapshot",
   "staffHeldPeople",
