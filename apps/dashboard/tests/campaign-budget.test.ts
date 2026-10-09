@@ -18,6 +18,7 @@ const CHANNELS = acquisitionChannelsFromFeatures([
     name: "Sales Cold Email Outreach",
     description: "We email your buyers from our own domains, on your behalf.",
     displayOrder: 1,
+    channelType: "outbound",
     acquisitionChannel: { operatedBy: "platform", stepTransitions: [{ from: null, to: "conversation" }] },
   },
   {
@@ -25,6 +26,7 @@ const CHANNELS = acquisitionChannelsFromFeatures([
     name: "Google Ads",
     description: "Buy the searches your buyers already run.",
     displayOrder: 20,
+    channelType: "paid",
     acquisitionChannel: { operatedBy: "platform", stepTransitions: [{ from: null, to: "website_visit" }] },
   },
 ]);
