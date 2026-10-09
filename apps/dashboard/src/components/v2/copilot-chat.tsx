@@ -42,11 +42,11 @@ import { ChoiceCards, OpenedPage } from "@/components/v2/copilot-cards";
 import { useSelectedOfferIfAny } from "@/components/v2/selected-offer";
 
 /**
- * The staff Copilot (owner 2026-10-09): Conductor's middle column. A reload shows the last
+ * The staff Copilot (owner 2026-10-09), drawn inside the bottom-right widget. A reload shows the last
  * conversation; "New chat" starts over with the account's figures (Today's own reads, so
  * the numbers match the page) and the model's first choices. Every answer ends on large
  * choices to click, the box below stays for anything else. A dashboard link the model
- * writes opens in the right panel, the chat stays where it is.
+ * writes opens under the widget, the chat stays where it is.
  */
 
 function loadSessionId(key: string): string | null {
@@ -137,7 +137,7 @@ function AccountCard({
           Since you started →
         </Link>
       </div>
-      <div className="grid grid-cols-2 divide-[var(--line-subtle)] sm:grid-cols-4 sm:divide-x">
+      <div className="grid grid-cols-2 divide-[var(--line-subtle)] @2xl:grid-cols-4 @2xl:divide-x">
         {cells.map((c) => (
           <div key={c.label} className="min-w-0 px-4 pb-3.5 pt-2">
             <span className="k-fg3 text-[12px]">{c.label}</span>
@@ -278,7 +278,7 @@ export function CopilotChat({ orgId, brandId }: { orgId: string; brandId: string
         sessionIdRef.current = null;
         saveSessionId(storageKey, null);
       }
-      // The model asked to show a page: it opens on the right, the chat stays.
+      // The model asked to show a page: it opens under the widget, the chat stays.
       if (data.type === "data-open-page") {
         const r = ChatOpenPageRecordSchema.safeParse(data.data);
         if (!r.success) return;
@@ -391,7 +391,7 @@ export function CopilotChat({ orgId, brandId }: { orgId: string; brandId: string
   const lastAssistantId = [...shown].reverse().find((m) => m.role === "assistant")?.id ?? null;
 
   return (
-    <section className="flex h-full min-w-0 flex-col" aria-label="Copilot">
+    <section className="@container flex h-full min-w-0 flex-col" aria-label="Copilot">
       <div className="flex h-12 shrink-0 items-center justify-between px-4">
         <span className="k-fg2 text-[13px]">Copilot</span>
         <button type="button" onClick={newChat} className="k-btn-ghost gap-1.5" title="Start a new chat">
@@ -405,7 +405,7 @@ export function CopilotChat({ orgId, brandId }: { orgId: string; brandId: string
       <div
         ref={scrollRef}
         className="k-scroll min-h-0 flex-1 overflow-y-auto"
-        // A dashboard link the model wrote opens in the panel; the chat keeps its place.
+        // A dashboard link the model wrote opens under the widget; the chat keeps its place.
         onClickCapture={(e) => {
           const a = (e.target as HTMLElement).closest("a");
           const href = a?.getAttribute("href");

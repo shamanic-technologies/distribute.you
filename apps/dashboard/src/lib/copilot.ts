@@ -1,6 +1,6 @@
 /**
- * The staff Copilot: a chat in the middle of the v2 frame, the page it talks about on the
- * right (owner 2026-10-09, Conductor's layout). Pure rules only, alias-free, so they unit-test.
+ * The staff Copilot: a chat widget floating bottom right above the page it talks about
+ * (owner 2026-10-09). Pure rules only, alias-free, so they unit-test.
  */
 
 import { v2CampaignHref, v2Href, type V2Section } from "./v2/routes";
@@ -20,28 +20,7 @@ export function copilotSessionStorageKey(orgId: string, brandId: string): string
 }
 
 /**
- * The page panel's share of the space right of the sidebar, in percent. Conductor's split
- * measured on the owner's screenshot (2026-10-09): sidebar ~15%, chat ~57%, panel ~28% of
- * the window, so the panel takes about a third of what the sidebar leaves.
- */
-export const PANEL_PCT_DEFAULT = 33;
-export const PANEL_PCT_MIN = 25;
-export const PANEL_PCT_MAX = 65;
-export const PANEL_PCT_STORAGE_KEY = "copilot-panel-pct";
-
-export function clampPanelPct(pct: number): number {
-  if (!Number.isFinite(pct)) return PANEL_PCT_DEFAULT;
-  return Math.min(PANEL_PCT_MAX, Math.max(PANEL_PCT_MIN, Math.round(pct)));
-}
-
-/** A stored width, or the default when nothing (or garbage) is stored. */
-export function parseStoredPanelPct(raw: string | null): number {
-  if (raw == null || raw.trim() === "") return PANEL_PCT_DEFAULT;
-  return clampPanelPct(Number(raw));
-}
-
-/**
- * A link the model wrote that opens a dashboard page: it opens in the right panel (client
+ * A link the model wrote that opens a dashboard page: it opens under the widget (client
  * navigation), the chat stays. Anything else (another site, a mail link) opens as a link.
  */
 export function isPanelLink(href: string | null | undefined): href is string {

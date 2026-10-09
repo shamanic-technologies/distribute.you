@@ -132,7 +132,7 @@ export function ChoiceCards({
   return (
     <div className="mt-4">
       {set.question && <p className="k-fg2 mb-2 text-[13px]">{set.question}</p>}
-      <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+      <div className="grid grid-cols-1 gap-2 @md:grid-cols-2">
         {set.choices.map((c) => (
           <Card key={`${c.label}|${c.value}`} c={c} onPick={onPick} disabled={disabled} />
         ))}
