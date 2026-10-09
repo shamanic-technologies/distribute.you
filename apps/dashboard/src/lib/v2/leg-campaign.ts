@@ -1,3 +1,5 @@
+import { sameLegKey } from "../outbound-leg-key";
+
 /**
  * The campaign whose numbers a leg's steps card reads on an offer: the live one, else the most
  * recently created. lead-service resolves a campaignId to the whole campaign identity
@@ -9,7 +11,7 @@ export function legCampaignId(
   offerId: string,
   legKey: string,
 ): string | null {
-  const ofLeg = campaigns.filter((c) => c.offerId === offerId && c.legKey === legKey);
+  const ofLeg = campaigns.filter((c) => c.offerId === offerId && sameLegKey(c.legKey, legKey));
   if (ofLeg.length === 0) return null;
   const live = ofLeg.find((c) => c.status === "ongoing");
   if (live) return live.id;

@@ -3242,6 +3242,9 @@ const PublicCatalogueSchema = z.object({
       }),
     )
     .optional(),
+  // The outbound leg rename (features-service, 2026-10-09); `lib/legs.ts` checks it against
+  // the locked copy in `lib/outbound-leg-key.ts`. Optional for an older producer.
+  legKeyCorrespondence: z.array(z.object({ legacyLegKey: z.string(), legKey: z.string() })).optional(),
   channels: z.array(
     z.object({
       slug: z.string(),
@@ -3252,6 +3255,8 @@ const PublicCatalogueSchema = z.object({
       salesPathEligible: z.boolean().optional(),
       /** One-line card caption under the channel's name (features-service, 2026-10-06). */
       shortDescription: z.string().optional(),
+      /** `outbound`, `sourcing`, `ads`... (features-service); read only to check the rename's outbound list. */
+      channelType: z.string().optional(),
       operatedBy: z.string().optional(),
       terms: z
         .object({ dailyOperatingCostCents: z.coerce.number().nullish() })

@@ -15,6 +15,7 @@
  */
 
 import { isLegRatePct } from "./brand-conversion-rates";
+import { legKeyTwin, sameLegKey } from "./outbound-leg-key";
 
 export interface ChannelLegSection {
   legKey: string;
@@ -47,10 +48,11 @@ export function validatedLegSections(
   }
   const sections: ChannelLegSection[] = [];
   for (const leg of catalogue.legs.values()) {
-    if (!saved.has(leg.legKey)) continue;
+    // brand-service and the catalogue may spell an outbound leg apart while they migrate.
+    if (!saved.has(leg.legKey) && !saved.has(legKeyTwin(leg.legKey) ?? "")) continue;
     sections.push({ legKey: leg.legKey, fromKey: leg.fromKey, toKey: leg.toKey, channels: byLeg.get(leg.legKey) ?? [] });
   }
-  const unknown = savedLegKeys.filter((k) => !catalogue.legs.has(k));
+  const unknown = savedLegKeys.filter((k) => !catalogue.legs.has(k) && !catalogue.legs.has(legKeyTwin(k) ?? ""));
   return { sections, unknown };
 }
 
@@ -119,7 +121,7 @@ export function giveListsPayload(lists: GiveLists): { giveForFree: string[]; nev
  * and are only sent back verbatim on a write. `undefined` = no row (its bug, never guessed).
  */
 export function legRateFor<R extends { legKey?: string | null }>(rates: readonly R[], legKey: string): R | undefined {
-  return rates.find((r) => r.legKey === legKey);
+  return rates.find((r) => sameLegKey(r.legKey, legKey));
 }
 
 /** What the user typed in a rate field: empty clears it, else a percentage in (0, 100]. */

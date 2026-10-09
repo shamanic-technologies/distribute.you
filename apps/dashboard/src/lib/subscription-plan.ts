@@ -15,6 +15,8 @@
  * Alias-free on purpose, so it carries real unit tests.
  */
 
+import { isProactiveFrom } from "./outbound-leg-key";
+
 export const SUBSCRIPTION_ARM = "subscription";
 export const SUBSCRIPTION_MONTHLY_CENTS = 9900;
 export const SUBSCRIPTION_TRIAL_DAYS = 3;
@@ -68,8 +70,8 @@ export interface PlanPair {
  */
 export function subscriptionBudgets(pairs: readonly PlanPair[]): Record<string, string> {
   const out: Record<string, string> = {};
-  const entry = pairs.find((p) => p.fromKey === null);
-  const reactive = pairs.find((p) => p.fromKey !== null);
+  const entry = pairs.find((p) => isProactiveFrom(p.fromKey));
+  const reactive = pairs.find((p) => !isProactiveFrom(p.fromKey));
   for (const p of pairs) out[p.key] = "0";
   if (entry) out[entry.key] = String(SUBSCRIPTION_OUTBOUND_DAILY_USD);
   if (reactive) out[reactive.key] = String(SUBSCRIPTION_REACTIVE_DAILY_USD);
@@ -88,8 +90,8 @@ export function planMissionBudgetUsd(
   pair: { fromKey: string | null },
   fundedOnOffer: readonly { fromKey: string | null }[],
 ): number | null {
-  const entry = pair.fromKey === null;
-  if (fundedOnOffer.some((p) => (p.fromKey === null) === entry)) return null;
+  const entry = isProactiveFrom(pair.fromKey);
+  if (fundedOnOffer.some((p) => isProactiveFrom(p.fromKey) === entry)) return null;
   return entry ? SUBSCRIPTION_OUTBOUND_DAILY_USD : SUBSCRIPTION_REACTIVE_DAILY_USD;
 }
 

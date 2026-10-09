@@ -20,6 +20,7 @@ import { shownReturn, type StatBasis } from "@/lib/maturity";
 import { useStatBasis } from "@/lib/use-stat-basis";
 import { useRoutePrefetch } from "@/lib/use-route-prefetch";
 import { useLegCatalogue } from "@/lib/use-leg-catalogue";
+import { campaignNameFor } from "@/lib/legs";
 import { costPerResult, outcomeCount } from "@/components/v2/mission-results";
 import { campaignKey, campaignTag, sortCampaigns, type OfferCampaign } from "@/lib/offer-campaigns";
 import { channelWriteErrorMessage } from "@/lib/channel-start";
@@ -183,7 +184,7 @@ export function OfferCampaigns({
                   <UnlistedRow
                     key={m.row.campaign.id}
                     mission={m}
-                    name={catalogue.campaignNames.get(`${m.row.campaign.featureSlug}|${m.row.campaign.legKey}`) ?? null}
+                    name={campaignNameFor(catalogue, m.row.campaign.featureSlug, m.row.campaign.legKey)}
                     basis={basis}
                     onOpen={() => router.push(m.href)}
                     onWarm={() => prefetch(m.href)}

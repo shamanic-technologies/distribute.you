@@ -22,6 +22,7 @@
 // (vitest does not resolve the "@" alias).
 
 import { paymentHoldKindForStopReason, type PaymentHoldKind } from "./payment-hold-reason";
+import { canonicalLegKey } from "./outbound-leg-key";
 import {
   acquisitionChannelForFeatureSlug,
   type AcquisitionChannelDef,
@@ -205,14 +206,14 @@ export function buildControlRows(
     if (acquisitionChannelForFeatureSlug(c.featureSlug, channels) === null) return false;
     if (filter.featureSlug && c.featureSlug !== filter.featureSlug) return false;
     if (filter.offerId && c.offerId !== filter.offerId) return false;
-    if (filter.legKey && c.legKey !== filter.legKey) return false;
+    if (filter.legKey && canonicalLegKey(c.featureSlug, c.legKey) !== canonicalLegKey(c.featureSlug, filter.legKey)) return false;
     return true;
   });
 
   const groups = new Map<string, ControlCampaign[]>();
   for (const c of scoped) {
     const rowId = c.legKey && c.featureSlug
-      ? `${c.legKey}|${c.featureSlug}|${c.offerId ?? ""}`
+      ? `${canonicalLegKey(c.featureSlug, c.legKey)}|${c.featureSlug}|${c.offerId ?? ""}`
       : `campaign:${c.id}`;
     const bucket = groups.get(rowId);
     if (bucket) bucket.push(c);
@@ -227,8 +228,8 @@ export function buildControlRows(
     if (filter.campaignId) break;
     if (filter.featureSlug && o.featureSlug !== filter.featureSlug) continue;
     if (filter.offerId && o.offerId !== filter.offerId) continue;
-    if (filter.legKey && o.legKey !== filter.legKey) continue;
-    const rowId = `${o.legKey}|${o.featureSlug}|${o.offerId ?? ""}`;
+    if (filter.legKey && canonicalLegKey(o.featureSlug, o.legKey) !== canonicalLegKey(o.featureSlug, filter.legKey)) continue;
+    const rowId = `${canonicalLegKey(o.featureSlug, o.legKey)}|${o.featureSlug}|${o.offerId ?? ""}`;
     if (groups.has(rowId)) continue;
     const scope: CampaignBudgetScope = {
       offerId: o.offerId,

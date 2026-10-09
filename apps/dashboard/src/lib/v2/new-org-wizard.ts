@@ -5,10 +5,13 @@
  * Alias-free so they carry real unit tests; nothing here reads the network.
  */
 
+import { OUTBOUND_LEG_TO_CONVERSATION, OUTBOUND_LEG_TO_WEBSITE_VISIT } from "../outbound-leg-key";
+
 /** The two things a new brand can ask us for, and the acquisition channel that buys them. */
 export const NEW_ORG_CHANNEL_SLUG = "sales-cold-email-outreach";
 
-export type NewOrgLegKey = "start_to_website_visit" | "start_to_conversation";
+// The NEW outbound spelling (owner 2026-10-09); every backend accepts it.
+export type NewOrgLegKey = typeof OUTBOUND_LEG_TO_WEBSITE_VISIT | typeof OUTBOUND_LEG_TO_CONVERSATION;
 
 export interface NewOrgLeg {
   key: NewOrgLegKey;
@@ -23,14 +26,14 @@ export interface NewOrgLeg {
 
 export const NEW_ORG_LEGS: readonly NewOrgLeg[] = [
   {
-    key: "start_to_website_visit",
+    key: OUTBOUND_LEG_TO_WEBSITE_VISIT,
     label: "Website visits",
     unit: "website visit",
     unitPlural: "website visits",
     recommendedPerDay: 10,
   },
   {
-    key: "start_to_conversation",
+    key: OUTBOUND_LEG_TO_CONVERSATION,
     label: "Positive replies",
     unit: "positive reply",
     unitPlural: "positive replies",

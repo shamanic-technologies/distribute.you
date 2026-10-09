@@ -19,6 +19,7 @@
  * written only once the questions are answered, since they are written from the answers.
  */
 import { COUNTRIES } from "../../components/onboarding/phone-countries";
+import { canonicalLegKey, sameLegKey } from "../outbound-leg-key";
 import { stepPlural } from "./crews";
 
 export const GET_STARTED_STEPS = [
@@ -132,7 +133,7 @@ export interface PlannedCampaign {
 
 /** The identity billing and campaign-service share for one campaign of an offer. */
 export function plannedKey(c: { featureSlug: string; legKey: string }): string {
-  return `${c.featureSlug}:${c.legKey}`;
+  return `${c.featureSlug}:${canonicalLegKey(c.featureSlug, c.legKey)}`;
 }
 
 /**
@@ -699,7 +700,7 @@ export function chosenCampaignOutlook(
 ): CampaignOutlook | null {
   const chosen = plan.find((c) => c.on && !c.reactive);
   if (!chosen) return null;
-  const served = campaigns.find((c) => c.channelSlug === chosen.featureSlug && c.legKey === chosen.legKey);
+  const served = campaigns.find((c) => c.channelSlug === chosen.featureSlug && sameLegKey(c.legKey, chosen.legKey));
   if (!served) {
     console.error("[get-started] the chosen campaign is not served", chosen);
     return null;
@@ -710,8 +711,8 @@ export function chosenCampaignOutlook(
   }
   const forCredit = bought && bought.creditUsd === creditUsd ? bought : null;
   const legOf = (key: string | null | undefined) =>
-    paths.find((p) => p.combinationKey === key)?.legs.find((l) => l.legKey === chosen.legKey) ?? null;
-  const leg = legOf(forCredit?.combinationKey) ?? paths.map((p) => p.legs.find((l) => l.legKey === chosen.legKey) ?? null).find((l) => l) ?? null;
+    paths.find((p) => p.combinationKey === key)?.legs.find((l) => sameLegKey(l.legKey, chosen.legKey)) ?? null;
+  const leg = legOf(forCredit?.combinationKey) ?? paths.map((p) => p.legs.find((l) => sameLegKey(l.legKey, chosen.legKey)) ?? null).find((l) => l) ?? null;
   if (!leg) {
     console.error("[get-started] the chosen campaign is on no served path", chosen);
     return null;

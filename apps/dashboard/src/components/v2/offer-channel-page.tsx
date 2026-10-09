@@ -10,6 +10,7 @@ import { legCampaignId } from "@/lib/v2/leg-campaign";
 import { formatCount } from "@/lib/format-number";
 import { SINCE_INCEPTION, type RevenueWindow } from "@/lib/revenue-window";
 import { isColdEmailChannel } from "@/lib/offer-levers-home";
+import { OUTBOUND_LEG_TO_CONVERSATION, OUTBOUND_LEG_TO_WEBSITE_VISIT } from "@/lib/outbound-leg-key";
 import { useAcquisitionChannels } from "@/lib/use-acquisition-channels";
 import { v2OfferChannelHref, v2OfferHref, type V2ChannelTab } from "@/lib/v2/routes";
 import { AcquisitionChannelMark } from "@/components/marks/acquisition-channel-mark";
@@ -97,8 +98,8 @@ export function V2OfferChannelPage() {
 
 /** The two legs cold email works, each drawn as its own steps, stopping at its outcome. */
 export const LEG_STEPS = [
-  { legKey: "start_to_website_visit", title: "Website visits", outcome: "Website visit", bucket: "website_visit" },
-  { legKey: "start_to_conversation", title: "Positive replies", outcome: "Positive reply", bucket: "positive_reply" },
+  { legKey: OUTBOUND_LEG_TO_WEBSITE_VISIT, title: "Website visits", outcome: "Website visit", bucket: "website_visit" },
+  { legKey: OUTBOUND_LEG_TO_CONVERSATION, title: "Positive replies", outcome: "Positive reply", bucket: "positive_reply" },
 ] as const;
 
 /**

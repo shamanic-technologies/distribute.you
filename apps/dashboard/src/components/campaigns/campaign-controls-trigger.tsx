@@ -10,6 +10,7 @@ import { fmtDailyBudgetUsd } from "@/lib/campaign-budget";
 import { useDailyBudgetHidden } from "@/lib/use-daily-budget-hidden";
 import { useScopeToggle } from "@/lib/use-scope-toggle";
 import { Shimmer } from "@/components/v2/ui";
+import { isProactiveFrom } from "@/lib/outbound-leg-key";
 
 /**
  * Is this running, and how hard — stated at whatever grain the page is on, and
@@ -126,7 +127,7 @@ export function CampaignControlsTrigger({
     totalCentsOverride !== undefined
       ? totalCentsOverride
       : scopeTotalCents(
-          dailyOnly ? rows.filter((r) => (legFor(catalogue, r.legKey)?.fromKey ?? null) === null) : rows,
+          dailyOnly ? rows.filter((r) => isProactiveFrom(legFor(catalogue, r.legKey)?.fromKey)) : rows,
         );
 
   const running = rollup === "active";

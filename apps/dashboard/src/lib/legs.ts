@@ -18,7 +18,17 @@
 // that splits it re-couples itself to a spelling the producer owns. So a leg is always
 // LOOKED UP in the catalogue served beside it, never taken apart.
 //
-// Alias-free on purpose (no runtime import at all) so it carries REAL unit tests.
+// ── THE OUTBOUND LEG RENAME (wave 2) ───────────────────────────────────────────────────
+//
+// An outbound leg has two spellings while the backends migrate one by one
+// (`start_to_conversation` = `lead_found_to_conversation`, see `outbound-leg-key.ts`).
+// Every (channel, leg) map here is keyed on the CANONICAL spelling, and `legFor` finds a
+// leg under either spelling, so a key read from a service that has migrated and one read
+// from a service that has not name the same leg.
+//
+// Alias-free on purpose (relative imports only) so it carries REAL unit tests.
+
+import { canonicalLegKey, featureLegId, legKeyTwin, outboundRenameDrift } from "./outbound-leg-key";
 
 /** One step, as the producer names it: its token and the words a customer reads. */
 export interface StepDef {
@@ -47,7 +57,7 @@ export interface LegCatalogue {
   legsByChannel: ReadonlyMap<string, readonly string[]>;
   /** The crew name the producer gives a (channel, leg), keyed `slug|legKey`. Absent = unnamed. */
   crewNames: ReadonlyMap<string, string>;
-  /** The CAMPAIGN name (features-service `campaignName`) of a (channel, leg), keyed `slug|legKey`. Absent = unnamed. */
+  /** The CAMPAIGN name (features-service `campaignName`) of a (channel, leg), keyed `featureLegId(slug, legKey)` (canonical spelling). Absent = unnamed. */
   campaignNames: ReadonlyMap<string, string>;
 }
 
@@ -68,8 +78,11 @@ export interface PublicCatalogueWire {
     fromStep?: { key?: unknown; label?: unknown } | null;
     toStep?: { key?: unknown; label?: unknown } | null;
   }> | null;
+  /** The outbound rename, legacy <-> new (features-service, checked against the locked copy). */
+  legKeyCorrespondence?: Array<{ legacyLegKey?: unknown; legKey?: unknown }> | null;
   channels?: Array<{
     slug?: unknown;
+    channelType?: unknown;
     stepTransitions?: Array<{
       legKey?: unknown;
       from?: { key?: unknown; label?: unknown } | null;
@@ -128,22 +141,28 @@ export function legCatalogueFromWire(body: PublicCatalogueWire | null | undefine
   const legsByChannel = new Map<string, string[]>();
   const crewNames = new Map<string, string>();
   const campaignNames = new Map<string, string>();
+  const channelTypes = new Map<string, string>();
   for (const channel of body.channels ?? []) {
     const slug = str(channel?.slug);
     if (!slug) continue;
+    const type = str(channel?.channelType);
+    if (type) channelTypes.set(slug, type);
     const keys: string[] = [];
     for (const t of channel?.stepTransitions ?? []) {
-      const legKey = str(t?.legKey);
-      if (!legKey) continue;
-      addLeg(legKey, t?.from, t?.to);
+      const servedKey = str(t?.legKey);
+      if (!servedKey) continue;
+      addLeg(servedKey, t?.from, t?.to);
+      const legKey = canonicalLegKey(slug, servedKey);
       if (!keys.includes(legKey)) keys.push(legKey);
       const crew = str(t?.crewName);
-      if (crew) crewNames.set(`${slug}|${legKey}`, crew);
+      if (crew) crewNames.set(featureLegId(slug, legKey), crew);
       const campaign = str(t?.campaignName);
-      if (campaign) campaignNames.set(`${slug}|${legKey}`, campaign);
+      if (campaign) campaignNames.set(featureLegId(slug, legKey), campaign);
     }
     legsByChannel.set(slug, keys);
   }
+  const drift = outboundRenameDrift(body.legKeyCorrespondence, channelTypes.size > 0 ? channelTypes : null);
+  if (drift.length > 0) console.error("[legs] the outbound leg rename drifted from features-service", drift);
   return { steps, legs, legsByChannel, crewNames, campaignNames };
 }
 
@@ -161,13 +180,24 @@ export function crewNameFor(
   // An older campaign row stating no leg still has a crew when its channel performs one leg.
   const key = legKey ?? (catalogue.legsByChannel.get(featureSlug)?.length === 1 ? catalogue.legsByChannel.get(featureSlug)![0] : null);
   if (!key) return null;
-  return catalogue.crewNames.get(`${featureSlug}|${key}`) ?? null;
+  return catalogue.crewNames.get(featureLegId(featureSlug, key)) ?? null;
+}
+
+/** The campaign name features-service gives a (channel, leg), or null when it names none. */
+export function campaignNameFor(
+  catalogue: LegCatalogue,
+  featureSlug: string | null | undefined,
+  legKey: string | null | undefined,
+): string | null {
+  if (!featureSlug || !legKey) return null;
+  return catalogue.campaignNames.get(featureLegId(featureSlug, legKey)) ?? null;
 }
 
 /** The leg a key names, or null for no key or one the catalogue does not carry. */
 export function legFor(catalogue: LegCatalogue, legKey: string | null | undefined): LegDef | null {
   if (!legKey) return null;
-  return catalogue.legs.get(legKey) ?? null;
+  const twin = legKeyTwin(legKey);
+  return catalogue.legs.get(legKey) ?? (twin ? catalogue.legs.get(twin) : undefined) ?? null;
 }
 
 /**

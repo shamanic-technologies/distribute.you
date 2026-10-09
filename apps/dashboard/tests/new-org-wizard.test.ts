@@ -21,8 +21,8 @@ describe("suggestOrgName", () => {
 });
 
 describe("recommendedDailyBudgetUsd", () => {
-  const visits = newOrgLeg("start_to_website_visit");
-  const replies = newOrgLeg("start_to_conversation");
+  const visits = newOrgLeg("lead_found_to_website_visit");
+  const replies = newOrgLeg("lead_found_to_conversation");
   it("buys 10 website visits a day, rounded up to a whole dollar", () => {
     expect(recommendedDailyBudgetUsd(visits, 2.54, 1)).toBe(26);
   });
@@ -40,7 +40,7 @@ describe("recommendedDailyBudgetUsd", () => {
 
 describe("vocabularies", () => {
   it("offers exactly the two legs asked for", () => {
-    expect(NEW_ORG_LEGS.map((l) => l.key)).toEqual(["start_to_website_visit", "start_to_conversation"]);
+    expect(NEW_ORG_LEGS.map((l) => l.key)).toEqual(["lead_found_to_website_visit", "lead_found_to_conversation"]);
   });
   it("asks the six offer levers the brand-service user-fields store", () => {
     // The six non-services keys of USER_FIELD_KEYS in lib/api.ts (brand-service user-fields).
