@@ -550,7 +550,7 @@ export type MonitoringView =
   | { view: "moved"; page: MonitoringPage }
   | { view: "missing"; rest: string };
 
-export const MONITORING_PAGES = ["cost/providers", "cost/spend", "cost/subscriptions", "cost/email-sending", "price/billed", "price/new-pricing", "price/pricing-basis", "margin", "margin/pricing-comparison", "emails"] as const;
+export const MONITORING_PAGES = ["cost/providers", "cost/spend", "cost/subscriptions", "cost/email-sending", "price/billed", "price/new-pricing", "price/pricing-basis", "margin", "margin/pricing-comparison", "emails", "chat/skills"] as const;
 export type MonitoringPage = (typeof MONITORING_PAGES)[number];
 
 /** Retired URLs (owner 2026-10-01): links already shared keep landing on the page that absorbed them. */

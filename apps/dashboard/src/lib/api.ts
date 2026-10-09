@@ -1515,6 +1515,8 @@ export const STAFF_MONITORING_PATHS = {
   realCosts: "/costs/real-costs",
   priceComparison: "/costs/price-comparison",
   brands: "/admin/brands",
+  // The Copilot skill tree (chat-service), staff-only through the gateway.
+  skills: "/chat/skills",
 } as const;
 
 function parseStaff<T>(name: string, schema: z.ZodType<T>, raw: unknown): T {
@@ -1544,6 +1546,37 @@ export async function getMyLinkedinPosts(cursor: string | null): Promise<Linkedi
   const qs = cursor ? `?cursor=${encodeURIComponent(cursor)}` : "";
   const raw = await apiCall<unknown>(`${STAFF_SOCIAL_PATHS.myLinkedinPosts}${qs}`);
   return toLinkedinFeedPage(parseStaff("getMyLinkedinPosts", LinkedinFeedResponseSchema, raw));
+}
+
+// ─── Copilot skill tree (chat-service `/internal/skills`, owner 2026-10-09) ────────────────
+
+const SkillSummarySchema = z.object({
+  slug: z.string(),
+  parentSlug: z.string().nullable(),
+  title: z.string(),
+  description: z.string(),
+  position: z.number(),
+  version: z.number(),
+  updatedBy: z.string(),
+  updatedAt: z.string(),
+});
+const SkillSchema = SkillSummarySchema.extend({ content: z.string(), createdAt: z.string() });
+export type StaffSkill = z.infer<typeof SkillSchema>;
+const SkillListSchema = z.object({ skills: z.array(SkillSummarySchema) });
+const SkillWriteSchema = z.object({ skill: SkillSchema, created: z.boolean(), versionAdded: z.boolean() });
+
+export async function getStaffSkills(): Promise<z.infer<typeof SkillSummarySchema>[]> {
+  return parseStaff("getStaffSkills", SkillListSchema, await apiCall<unknown>(STAFF_MONITORING_PATHS.skills)).skills;
+}
+
+export async function getStaffSkill(slug: string): Promise<StaffSkill> {
+  return parseStaff("getStaffSkill", SkillSchema, await apiCall<unknown>(`${STAFF_MONITORING_PATHS.skills}/${encodeURIComponent(slug)}`));
+}
+
+/** Autosave: the full markdown body. The gateway stamps who edited it from the session. */
+export async function saveStaffSkill(slug: string, content: string): Promise<StaffSkill> {
+  const raw = await apiCall<unknown>(`${STAFF_MONITORING_PATHS.skills}/${encodeURIComponent(slug)}`, { method: "PUT", body: { content } });
+  return parseStaff("saveStaffSkill", SkillWriteSchema, raw).skill;
 }
 
 export async function getStaffCostMargin(): Promise<CostMargin> {
