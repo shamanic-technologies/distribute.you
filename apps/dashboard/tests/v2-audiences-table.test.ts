@@ -145,9 +145,9 @@ describe("v2 audience table surface", () => {
     expect(table).not.toContain("<span>Cold email</span>");
   });
 
-  it("the offer's Targeting lists suggested audiences and leaves out every buying-signal one", () => {
+  it("the offer's Targeting lists suggested audiences and leaves out every list (profiles only)", () => {
     expect(table).toContain("useAudienceTable({ campaignId, offerId, includeSuggested: plain })");
-    expect(table).toContain("plain ? t.audiences.filter((a) => !hasBuyingSignal(a.filters)) : t.audiences");
+    expect(table).toContain("plain ? t.audiences.filter(isClientProfile) : t.audiences");
     // Suggested rows have their own tab on the offer's Targeting (owner 2026-10-08).
     expect(table).toContain('key: "suggested", label: "Suggested"');
     expect(table).toContain('a.status === "suggested" ? "suggested" : "active"');

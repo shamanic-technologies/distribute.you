@@ -4043,6 +4043,9 @@ const AudienceSchema = z.object({
   offerId: z.string().nullable(),
   status: AudienceStatusSchema,
   source: z.string().nullable(),
+  // human-service v0.50.0: the client profile a source list was built for; null on a
+  // profile itself and on every other audience. nullish: a pre-rollout body omits it.
+  profileAudienceId: z.string().nullish(),
   filters: z.record(z.string(), z.unknown()).nullable(),
   avatarUrl: z.string().nullable(),
   apolloCount: z.number().nullable(),
@@ -4326,6 +4329,32 @@ export async function generateAudienceAvatar(
     throw new Error("[dashboard] generateAudienceAvatar: invalid response shape");
   }
   return parsed.data;
+}
+
+// features-service `GET /public/sourcing-origins` (gateway `/v1/public/sourcing-origins`):
+// every source a lead can come from, and the human-service list kinds (`channels[].list`)
+// each one is. The Targeting and Sourcing pages join a list to its source on it.
+const SourcingOriginSchema = z.object({
+  slug: z.string(),
+  name: z.string(),
+  description: z.string(),
+  family: z.string(),
+  provider: z.object({ name: z.string(), domain: z.string() }).nullable(),
+  audienceLists: z.array(z.string()),
+  live: z.boolean(),
+  displayOrder: z.coerce.number(),
+  sourceCampaignKey: z.string(),
+});
+export type SourcingOrigin = z.infer<typeof SourcingOriginSchema>;
+
+export async function getSourcingOrigins(): Promise<SourcingOrigin[]> {
+  const raw = await apiCall<unknown>(`/public/sourcing-origins`);
+  const parsed = z.object({ origins: z.array(SourcingOriginSchema) }).safeParse(raw);
+  if (!parsed.success) {
+    console.error("[dashboard] getSourcingOrigins: response shape mismatch", { issues: parsed.error.issues, raw });
+    throw new Error("[dashboard] getSourcingOrigins: invalid response shape");
+  }
+  return parsed.data.origins;
 }
 
 const ListAudiencesResponseSchema = z.object({

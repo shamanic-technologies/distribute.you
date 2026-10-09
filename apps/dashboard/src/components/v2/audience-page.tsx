@@ -4,6 +4,7 @@ import { useMemo, useRef, useState } from "react";
 import { useParams } from "next/navigation";
 import {
   getAudienceSnapshot,
+  getSourcingOrigins,
   getHeldCompanies,
   getHeldPeople,
   getSourcingCompanies,
@@ -22,6 +23,8 @@ import { useAuthQuery } from "@/lib/use-auth-query";
 import { useStaffMode } from "@/lib/use-staff-mode";
 import { audienceFilterGroups } from "@/lib/audience-filter-groups";
 import { linkedInSignalOf } from "@/lib/signal-audience";
+import { heldByProfile, originOf, profileOf, signalLabelOf } from "@/lib/profile-lists";
+import { AudienceAvatar } from "@/components/audiences/audience-avatar";
 import { ProviderLogo } from "@/components/provider-logo";
 import { RecordsFooter, RecordsTabs, RecordsToolbar, REC_TH, useRowKeys } from "@/components/v2/records";
 import { EmptyNote, Shimmer, StateDot } from "@/components/v2/ui";
@@ -35,7 +38,11 @@ import { EmptyNote, Shimmer, StateDot } from "@/components/v2/ui";
  * count is served, nothing is summed here.
  *
  * Lives as the Lists tab of the offer's Targeting page (owner 2026-10-07; was the brand
- * Audience page). GA (owner 2026-10-05). A customer reads its own org's routes; staff mode reads the staff
+ * Audience page). Every list reads as PROFILE x SOURCE (owner 2026-10-09, human-service
+ * v0.50.0): the client profile it was built for (`profileAudienceId`; a profile's own cold
+ * list is the profile) and the source it belongs to (features-service `/public/sourcing-origins`
+ * by list kind). A list paused because its profile is says so. Archived lists sit behind a
+ * toggle: an old whole-target list is not a live one. GA (owner 2026-10-05). A customer reads its own org's routes; staff mode reads the staff
  * routes. What sourcing cost US (vendor $) and which provider a list comes from stay staff
  * mode only: a customer sees the net $ it pays and the list's type.
  */
@@ -208,7 +215,7 @@ export function AudienceLists() {
         tabs={[
           {
             key: "audiences",
-            label: "Audiences",
+            label: "Lists",
             // The lists the table shows: suggested (never activated) ones are not lists yet.
             count: snapshot.data ? snapshot.data.audiences.filter((a) => a.status !== "suggested").length : null,
           },
@@ -265,7 +272,9 @@ function AudiencesTab({
 }) {
   const [q, setQ] = useState("");
   const [cursor, setCursor] = useState(-1);
+  const [showArchived, setShowArchived] = useState(false);
   const searchRef = useRef<HTMLInputElement | null>(null);
+  const origins = useAuthQuery(["sourcingOrigins"], () => getSourcingOrigins());
   const held = useMemo(() => new Map((snapshot?.audiences ?? []).map((a) => [a.audienceId, a])), [snapshot]);
   const active = useAuthQuery(["audiences", brandId, "active", "brand", 200], () => listAudiences(brandId, { status: "active", limit: 200 }));
   const paused = useAuthQuery(["audiences", brandId, "paused", "brand", 200], () => listAudiences(brandId, { status: "paused", limit: 200 }));
@@ -282,17 +291,25 @@ function AudiencesTab({
     [active.data, paused.data, archived.data],
   );
   const truncated = reads.some((r) => r.data && r.data.total > r.data.audiences.length);
+  const byId = useMemo(() => new Map(all.map((a) => [a.id, a])), [all]);
+  const originList = origins.data ?? [];
+  const sourceName = (a: AudienceWire) => originOf(a, originList)?.name ?? null;
   const rows = useMemo(() => {
     const needle = q.trim().toLowerCase();
-    if (!needle) return all;
-    return all.filter((a) =>
-      [a.name, staff ? sourceOf(a)?.label : null, typeOf(a), detailsOf(a)].filter(Boolean).join(" ").toLowerCase().includes(needle),
+    const shown = showArchived ? all : all.filter((a) => a.status !== "archived");
+    if (!needle) return shown;
+    return shown.filter((a) =>
+      [a.name, originOf(a, origins.data ?? [])?.name, profileOf(a, byId)?.name, typeOf(a), detailsOf(a)]
+        .filter(Boolean)
+        .join(" ")
+        .toLowerCase()
+        .includes(needle),
     );
-  }, [all, q, staff]);
+  }, [all, q, showArchived, origins.data, byId]);
   const countOf = (s: string) => all.filter((a) => a.status === s).length;
 
   useRowKeys({ count: rows.length, cursor, setCursor, onOpen: () => {}, searchRef });
-  const cols = staff ? 8 : 7;
+  const cols = 8;
 
   return (
     <>
@@ -301,14 +318,32 @@ function AudiencesTab({
           {countOf("active")} active · {countOf("paused")} paused · {countOf("archived")} archived
         </p>
       )}
-      <RecordsToolbar search={q} onSearch={setQ} placeholder="Search audiences" inputRef={searchRef} />
+      <RecordsToolbar
+        search={q}
+        onSearch={setQ}
+        placeholder="Search lists"
+        inputRef={searchRef}
+        right={
+          countOf("archived") > 0 ? (
+            <label className="k-btn h-7 cursor-pointer text-[12px]">
+              <input
+                type="checkbox"
+                checked={showArchived}
+                onChange={(e) => setShowArchived(e.target.checked)}
+                className="h-3.5 w-3.5 accent-[var(--accent)]"
+              />
+              Show archived ({countOf("archived")})
+            </label>
+          ) : null
+        }
+      />
       <div className="k-scroll overflow-x-auto">
         <table className="w-full min-w-[900px] text-[13px]">
           <thead>
             <tr>
-              {staff ? <th className={`${REC_TH} pl-4 md:pl-6`}>Source</th> : null}
-              <th className={staff ? REC_TH : `${REC_TH} pl-4 md:pl-6`}>Type</th>
-              <th className={REC_TH}>Details</th>
+              <th className={`${REC_TH} pl-4 md:pl-6`}>List</th>
+              <th className={REC_TH}>Profile</th>
+              <th className={REC_TH}>Source</th>
               <th className={`${REC_TH} text-right`}>People</th>
               <th className={`${REC_TH} text-right`}>Companies</th>
               <th className={`${REC_TH} text-right`}>Accepted</th>
@@ -324,31 +359,48 @@ function AudiencesTab({
                 <tr key={i} className="k-row h-10"><td colSpan={cols} className="px-4 md:px-6"><Shimmer className="h-4 w-full" /></td></tr>
               ))
             ) : rows.length === 0 ? (
-              <tr><td colSpan={cols}><EmptyNote>{q ? "No audience matches." : "This brand has no audience yet."}</EmptyNote></td></tr>
+              <tr><td colSpan={cols}><EmptyNote>{q ? "No list matches." : "No list yet."}</EmptyNote></td></tr>
             ) : (
               rows.map((a, i) => {
-                const source = staff ? sourceOf(a) : null;
-                const type = typeOf(a);
+                const vendor = staff ? sourceOf(a) : null;
+                const source = sourceName(a);
+                const signal = signalLabelOf(a);
                 const details = detailsOf(a);
+                const profile = profileOf(a, byId);
+                const heldBy = heldByProfile(a, profile);
                 const h = held.get(a.id);
                 return (
                   <tr key={a.id} onMouseEnter={() => setCursor(i)} className={`k-row h-12 ${i === cursor ? "k-selected" : ""}`}>
-                    {staff ? (
-                      <td className="whitespace-nowrap pl-4 md:pl-6">
-                        {source ? (
-                          <span className="flex items-center gap-2">
-                            <ProviderLogo domain={source.domain} size={16} className="rounded-[4px]" />
-                            {source.label}
-                          </span>
-                        ) : <span className="k-fg4">{"—"}</span>}
-                      </td>
-                    ) : null}
-                    <td className={`whitespace-nowrap ${staff ? "px-3" : "pl-4 pr-3 md:pl-6"}`}>{type ?? <span className="k-fg4">{"—"}</span>}</td>
-                    <td className="max-w-[560px] px-3 py-1.5">
-                      <span className="block truncate font-medium" title={a.name}>{a.name}</span>
+                    <td className="max-w-[420px] py-1.5 pl-4 pr-3 md:pl-6">
+                      <span className="block max-w-[360px] truncate font-medium" title={a.name}>{a.name}</span>
                       {details ? (
-                        <span className="k-fg3 block truncate text-[12px]" title={details}>{details}</span>
+                        <span className="k-fg3 block max-w-[360px] truncate text-[12px]" title={details}>{details}</span>
                       ) : null}
+                    </td>
+                    <td className="max-w-[220px] px-3">
+                      {profile ? (
+                        <span className="flex min-w-0 items-center gap-2">
+                          <AudienceAvatar name={profile.name} avatarUrl={profile.avatarUrl} size={18} />
+                          <span className="truncate">{profile.name}</span>
+                        </span>
+                      ) : (
+                        dash
+                      )}
+                    </td>
+                    <td className="whitespace-nowrap px-3">
+                      {source ? (
+                        <span className="block">
+                          <span className="flex items-center gap-2">
+                            {vendor?.domain ? <ProviderLogo domain={vendor.domain} size={14} className="rounded-[3px]" /> : null}
+                            {source}
+                          </span>
+                          {signal ? <span className="k-fg3 block text-[12px]">{signal}</span> : null}
+                        </span>
+                      ) : origins.data === undefined && !origins.isError ? (
+                        <Shimmer className="h-3.5 w-24" />
+                      ) : (
+                        typeOf(a) ?? dash
+                      )}
                     </td>
                     <td className="px-3 text-right tabular-nums">{snapshotError ? dash : n(h ? h.people.held : snapshot ? 0 : null)}</td>
                     <td className="px-3 text-right tabular-nums">{snapshotError ? dash : n(h ? h.companies.held : snapshot ? 0 : null)}</td>
@@ -362,8 +414,9 @@ function AudiencesTab({
                         />
                       )}
                     </td>
-                    <td className="whitespace-nowrap pr-4 md:pr-6">
+                    <td className="min-w-[120px] whitespace-nowrap pr-4 md:pr-6">
                       <StateDot running={isActive(a)} label={statusWord(a.status)} />
+                      {heldBy ? <span className="k-fg3 block text-[12px]">Profile {profile?.status}</span> : null}
                     </td>
                   </tr>
                 );
@@ -377,7 +430,7 @@ function AudiencesTab({
           snapshotError
             ? `Held counts could not be loaded: ${snapshotError.message}`
             : settled
-              ? `${rows.length} of ${all.length} audiences${truncated ? " · first 200 per status shown" : ""} · People = held (revealed, screened or queued), Accepted = matched its target · Costs are counted in campaign spend`
+              ? `${rows.length} of ${all.length} lists${truncated ? " · first 200 per status shown" : ""} · People = held (revealed, screened or queued), Accepted = matched its target · Costs are counted in campaign spend`
               : "Loading audiences"
         }
       />

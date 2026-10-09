@@ -10,12 +10,13 @@ import {
   type AudienceStatus,
   type AudienceWire,
   type FeatureAudienceStatsRow,
+  type SourcingOrigin,
 } from "@/lib/api";
 import { formatCount } from "@/lib/format-number";
 import { formatRoi, roiIsGood } from "@/lib/format-roi";
 import { PROVIDER_DOMAINS } from "@/lib/api-registry";
 import { audienceFilterGroups } from "@/lib/audience-filter-groups";
-import { companyPageSlug, hasBuyingSignal, linkedInSignalOf, type LinkedInSignal } from "@/lib/signal-audience";
+import { companyPageSlug, linkedInSignalOf, type LinkedInSignal } from "@/lib/signal-audience";
 import {
   audienceCount,
   audienceFigure,
@@ -31,6 +32,8 @@ import { EditWithAIChat } from "@/components/ai-edit/edit-with-ai-chat";
 import { EmptyNote, Shimmer, StateDot } from "@/components/v2/ui";
 import { RecordsFooter, RecordsTabs, RecordsToolbar, REC_TH, useRowKeys } from "@/components/v2/records";
 import { useAudienceTable } from "@/components/v2/use-audience-table";
+import { useProfileLists } from "@/components/v2/use-profile-lists";
+import { heldByProfile, isClientProfile, listsOfProfile, originOf, reachOfProfile, signalLabelOf, type ProfileReach as ProfileReachOf } from "@/lib/profile-lists";
 import { useStatBasis } from "@/lib/use-stat-basis";
 import { shownFigure, type MaturityPair, type StatBasis } from "@/lib/maturity";
 import { LEG_PAIR_NOUN } from "@/lib/campaign-leg-columns";
@@ -192,6 +195,8 @@ export function V2AudiencesTable({
   plain?: boolean;
 }) {
   const t = useAudienceTable({ campaignId, offerId, includeSuggested: plain });
+  // Profiles x sources (owner 2026-10-09): the same audience reads, plus the served sources.
+  const p = useProfileLists(t.brandId, t.offerId);
   const columns = plain ? [] : t.columns;
   const { basis } = useStatBasis();
   const searchParams = useSearchParams();
@@ -233,8 +238,9 @@ export function V2AudiencesTable({
 
   // A handful of rows, re-sorted each render so a poll's fresh stats reorder them.
   const needle = q.trim().toLowerCase();
-  // Client profiles are WHO we write to: a buying-signal list of any type is a source, left out (owner 2026-10-09).
-  const listed = plain ? t.audiences.filter((a) => !hasBuyingSignal(a.filters)) : t.audiences;
+  // Client profiles are WHO we write to (owner 2026-10-09): a list built for a profile
+  // (`profileAudienceId`) or a buying-signal list of any type is a source, left out.
+  const listed = plain ? t.audiences.filter(isClientProfile) : t.audiences;
   // Suggested audiences (onboarding picks never activated) have their own tab (owner 2026-10-08).
   const tabOf = (a: AudienceWire): Tab => (a.status === "archived" ? "archived" : a.status === "suggested" ? "suggested" : "active");
   const inTabOf = (k: Tab) => listed.filter((a) => tabOf(a) === k);
@@ -391,6 +397,7 @@ export function V2AudiencesTable({
             selectedId={selectedId}
             onHover={setCursor}
             onOpen={setSelectedId}
+            reachOf={(a) => (p.originsSettled ? reachOfProfile(a, p.audiences, p.origins) : null)}
           />
         ) : (
         <div className="k-scroll overflow-x-auto">
@@ -483,6 +490,8 @@ export function V2AudiencesTable({
           basis={basis}
           paused={t.withheldPaused}
           plain={plain}
+          lists={plain ? listsOfProfile(selected.id, p.audiences) : []}
+          sourceOf={(a) => originOf(a, p.origins)?.name ?? null}
           docked={docked}
           onClose={() => {
             setSelectedId(null);
@@ -596,6 +605,48 @@ function ChannelLine({ c }: { c: AudienceChannelWire }) {
   );
 }
 
+type ProfileReach = ProfileReachOf<AudienceWire, SourcingOrigin>;
+
+/** The sources reaching a profile, one chip each: the source, then the list's signal. A list
+ *  that is not live reads muted with its status. */
+function ReachLine({ reach }: { reach: ProfileReach[] | null }) {
+  if (!reach) return <Shimmer className="mt-1.5 h-4 w-56" />;
+  const shown = reach.filter((r) => r.origin);
+  if (shown.length === 0) return null;
+  return (
+    <span className="mt-1.5 flex min-w-0 flex-wrap items-center gap-1">
+      <span className="k-fg3 mr-0.5 text-[12px]">Reached by</span>
+      {shown.map((r) => {
+        const live = r.list.status === "active";
+        return (
+          <span key={r.list.id} className={`k-chip gap-1.5 ${live ? "" : "k-fg3"}`}>
+            <span className={`h-1.5 w-1.5 shrink-0 rounded-full ${live ? "bg-[var(--run)]" : "border border-[var(--fg-3)]"}`} />
+            {r.origin?.name}
+            {r.signal ? <span className="k-fg3">· {r.signal}</span> : null}
+            {live ? null : <span className="k-fg3">· {STATUS_WORD[r.list.status] ?? r.list.status}</span>}
+          </span>
+        );
+      })}
+    </span>
+  );
+}
+
+/** One list of a profile in its drawer: name, source and signal, status (held by the profile). */
+function ProfileListLine({ list, source, held }: { list: AudienceWire; source: string | null; held: boolean }) {
+  const signal = signalLabelOf(list);
+  return (
+    <li className="flex items-center justify-between gap-3 text-[13px]">
+      <span className="min-w-0">
+        <span className="block truncate">{list.name}</span>
+        <span className="k-fg3 block truncate text-[12px]">{[source, signal].filter(Boolean).join(" · ") || "—"}</span>
+      </span>
+      <span className="shrink-0">
+        <StateDot running={list.status === "active"} label={held ? "Paused with profile" : STATUS_WORD[list.status] ?? list.status} />
+      </span>
+    </li>
+  );
+}
+
 /**
  * The offer's audiences in plain words: each one's name, status and its short served
  * `description`. The full `targetText` (what Jev judges) is the right panel's alone, so a
@@ -609,6 +660,7 @@ function PlainAudienceList({
   selectedId,
   onHover,
   onOpen,
+  reachOf,
 }: {
   rows: AudienceWire[];
   loading: boolean;
@@ -617,6 +669,8 @@ function PlainAudienceList({
   selectedId: string | null;
   onHover: (i: number) => void;
   onOpen: (id: string) => void;
+  /** The sources reaching a profile (its own list, then each list built for it); null while unread. */
+  reachOf: (a: AudienceWire) => ProfileReach[] | null;
 }) {
   if (rows.length === 0 && loading) {
     return (
@@ -653,6 +707,7 @@ function PlainAudienceList({
                 <span className="k-fg2 mt-0.5 block text-[13px] leading-5">
                   {a.description ? a.description : <span className="k-fg4">—</span>}
                 </span>
+                <ReachLine reach={reachOf(a)} />
               </span>
             </button>
           </li>
@@ -803,6 +858,8 @@ function AudienceDrawer({
   basis,
   paused,
   plain,
+  lists,
+  sourceOf,
   docked,
   onClose,
   onFindSimilar,
@@ -820,6 +877,9 @@ function AudienceDrawer({
   paused: boolean;
   /** The offer's Targeting: the audience is its text, plus the channels working it. */
   plain: boolean;
+  /** The lists built for this profile (each one source), live ones first. */
+  lists: AudienceWire[];
+  sourceOf: (a: AudienceWire) => string | null;
   docked: boolean;
   onClose: () => void;
   onFindSimilar: () => void;
@@ -938,6 +998,22 @@ function AudienceDrawer({
             <div className="text-[13px] leading-5">
               <TargetText audience={audience} />
             </div>
+          </section>
+        )}
+
+        {plain && (
+          <section>
+            <p className="k-label mb-1">Lists</p>
+            <p className="k-fg3 mb-2 text-[12px]">Pausing this profile pauses its lists.</p>
+            {lists.length > 0 ? (
+              <ul className="space-y-1.5">
+                {lists.map((l) => (
+                  <ProfileListLine key={l.id} list={l} source={sourceOf(l)} held={heldByProfile(l, audience)} />
+                ))}
+              </ul>
+            ) : (
+              <p className="k-fg4 text-[13px]">No list built for this profile yet.</p>
+            )}
           </section>
         )}
 

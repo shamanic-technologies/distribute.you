@@ -274,6 +274,8 @@ export const PERSISTABLE_QUERY_ROOTS = new Set([
   "featureAudienceStats",
   // Audiences.
   "audiences",
+  // The sources a lead can come from, and the list kinds each one is (a profile's lists).
+  "sourcingOrigins",
   // The WORKFLOWS a campaign's channel can run, and what each one did — at each of
   // the grains the page offers. Six roots, each a different question: the channel's
   // catalogue (workflow-service), this campaign's money per workflow, the brand's,
