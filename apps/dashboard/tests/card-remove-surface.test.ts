@@ -95,6 +95,15 @@ describe("the billing page offers a way to remove the card", () => {
     expect(body).not.toContain("err instanceof Error ? err.message");
   });
 
+  // A removal answered by an acquirer that never held the card returns 200 with
+  // nothing removed; the card reappears and the button reads dead (2026-10-09).
+  it("says so when the removal removed nothing while a card was on file", () => {
+    const at = PAGE.indexOf("async function handleRemoveCard(");
+    const body = PAGE.slice(at, PAGE.indexOf("async function handleTopup(", at));
+    expect(body).toContain("removal.removed === 0 && removal.already_removed === 0 && account?.has_payment_method");
+    expect(body).toContain('setError("We could not remove your card. Please try again later.")');
+  });
+
   // Two surfaces stating one amount is how they come to disagree about it.
   it("derives the consequence once", () => {
     expect(PAGE.split("cardRemoveConsequence(").length - 1).toBe(1);
