@@ -43,8 +43,9 @@ import { EmptyNote, Shimmer, StateDot } from "@/components/v2/ui";
  * list is the profile) and the source it belongs to (features-service `/public/sourcing-origins`
  * by list kind). A list paused because its profile is says so. Archived lists sit behind a
  * toggle: an old whole-target list is not a live one. GA (owner 2026-10-05). A customer reads its own org's routes; staff mode reads the staff
- * routes. What sourcing cost US (vendor $) and which provider a list comes from stay staff
- * mode only: a customer sees the net $ it pays and the list's type.
+ * routes. What sourcing cost US (vendor $) stays staff mode only: a customer sees the net $
+ * it pays. Every source carries its provider's logo (owner 2026-10-09), off the served
+ * `origins[].provider.domain`.
  */
 
 /** Where a list's people come from, keyed on the served `channels[].list`. Display lookup only. */
@@ -73,12 +74,6 @@ const TYPE_OF_LIST: Record<string, string> = {
 
 function listOf(a: AudienceWire): AudienceChannelWire | null {
   return a.channels?.[0] ?? null;
-}
-
-function sourceOf(a: AudienceWire): { label: string; domain: string | null } | null {
-  const list = listOf(a);
-  if (list) return SOURCE_OF_LIST[list.list] ?? { label: list.list, domain: null };
-  return a.provider ? { label: a.provider, domain: null } : null;
 }
 
 function typeOf(a: AudienceWire): string | null {
@@ -293,7 +288,7 @@ function AudiencesTab({
   const truncated = reads.some((r) => r.data && r.data.total > r.data.audiences.length);
   const byId = useMemo(() => new Map(all.map((a) => [a.id, a])), [all]);
   const originList = origins.data ?? [];
-  const sourceName = (a: AudienceWire) => originOf(a, originList)?.name ?? null;
+  const sourceOfList = (a: AudienceWire) => originOf(a, originList);
   const rows = useMemo(() => {
     const needle = q.trim().toLowerCase();
     const shown = showArchived ? all : all.filter((a) => a.status !== "archived");
@@ -362,8 +357,8 @@ function AudiencesTab({
               <tr><td colSpan={cols}><EmptyNote>{q ? "No list matches." : "No list yet."}</EmptyNote></td></tr>
             ) : (
               rows.map((a, i) => {
-                const vendor = staff ? sourceOf(a) : null;
-                const source = sourceName(a);
+                const origin = sourceOfList(a);
+                const source = origin?.name ?? null;
                 const signal = signalLabelOf(a);
                 const details = detailsOf(a);
                 const profile = profileOf(a, byId);
@@ -391,7 +386,7 @@ function AudiencesTab({
                       {source ? (
                         <span className="block">
                           <span className="flex items-center gap-2">
-                            {vendor?.domain ? <ProviderLogo domain={vendor.domain} size={14} className="rounded-[3px]" /> : null}
+                            {origin?.provider ? <ProviderLogo domain={origin.provider.domain} size={14} className="rounded-[3px]" /> : null}
                             {source}
                           </span>
                           {signal ? <span className="k-fg3 block text-[12px]">{signal}</span> : null}

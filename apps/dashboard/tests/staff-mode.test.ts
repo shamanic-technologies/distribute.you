@@ -73,8 +73,8 @@ describe("nothing below a mission reaches a customer", () => {
     const s = read("components/v2/audience-page.tsx");
     expect(s).toContain("const { staffMode: staff } = useStaffMode();");
     expect(s).toContain("vendor={staff}");
-    // The source NAME is the Sourcing page's own (GA); the vendor logo stays staff mode.
-    expect(s).toContain("const vendor = staff ? sourceOf(a) : null;");
+    // Every source carries its provider's logo for everyone (owner 2026-10-09); vendor $ stays staff.
+    expect(s).toContain("origin?.provider ? <ProviderLogo domain={origin.provider.domain}");
     expect(s).toContain("const src = staff ? refSource(r) : null;");
     expect(s).toContain("staff && r.yesProbability != null");
     const api = read("lib/api.ts");
