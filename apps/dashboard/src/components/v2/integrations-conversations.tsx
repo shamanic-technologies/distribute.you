@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type RefObject } from "react";
 import { useInfiniteQuery, useQueryClient } from "@tanstack/react-query";
 import { useSearchParams } from "next/navigation";
 import { getLeadTimeline, getPersonTimeline, listPeople } from "@/lib/api";
@@ -23,7 +23,8 @@ import {
 import { EmptyNote, Initials, Shimmer } from "@/components/v2/ui";
 import { CompanyMark } from "@/components/v2/people-bits";
 import { parseFrom, personCompanyDomain, personSourceMarks, sourceMark, type SourceMark } from "@/lib/conversation-sources";
-import { RecordsToolbar, useRowKeys } from "@/components/v2/records";
+import { RecordsToolbar } from "@/components/v2/records";
+import { THREAD_SCROLL_STEP, uniboxKeyAction, type UniboxPane } from "@/lib/unibox-keys";
 import { timelineTag, type TimelineTag } from "@/lib/timeline-tags";
 import { conversationItemTag, conversationSourceWord, joinConversationLabels, liveItems, type ConversationItem } from "@/lib/conversation-timeline";
 import { ConversationTags } from "@/components/v2/conversation-timeline";
@@ -183,13 +184,58 @@ export function V2ConversationsView({ brandId }: { brandId: string }) {
     if (!openKey || newSearch) open(first);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [first?.personKey, openKey, listedFor]);
-  useRowKeys({
-    count: people?.length ?? 0,
-    cursor,
-    setCursor,
-    onOpen: (i) => people?.[i] && open(people[i]),
-    searchRef,
-  });
+  // The keyboard (owner 2026-10-10): Up/Down open the previous/next person, Right/Left
+  // move between the list and the thread, and inside the thread Up/Down scroll it.
+  const [pane, setPane] = useState<UniboxPane>("list");
+  const threadScroll = useRef<HTMLDivElement | null>(null);
+  const openIndex = people && openKey ? people.findIndex((p) => p.personKey === openKey) : -1;
+  // The neighbours load too, so the next press opens from memory.
+  const prevPerson = openIndex > 0 ? (people?.[openIndex - 1] ?? null) : null;
+  const nextPerson = openIndex >= 0 ? (people?.[openIndex + 1] ?? null) : null;
+  useEffect(() => {
+    if (!gate) return;
+    if (prevPerson) preload(prevPerson);
+    if (nextPerson) preload(nextPerson);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [gate, prevPerson?.personKey, nextPerson?.personKey]);
+  const keys = useRef({ people, openIndex, pane, hasOpen: Boolean(openKey) });
+  keys.current = { people, openIndex, pane, hasOpen: Boolean(openKey) };
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      const t = e.target as HTMLElement | null;
+      const s = keys.current;
+      const action = uniboxKeyAction({
+        key: e.key,
+        typing: Boolean(t && (t.tagName === "INPUT" || t.tagName === "TEXTAREA" || t.isContentEditable)),
+        inSearch: t === searchRef.current,
+        modified: e.metaKey || e.ctrlKey || e.altKey,
+        pane: s.pane,
+        hasOpen: s.hasOpen,
+        openIndex: s.openIndex,
+        count: s.people?.length ?? 0,
+      });
+      if (!action) return;
+      e.preventDefault();
+      if (action.type === "search") {
+        searchRef.current?.focus();
+      } else if (action.type === "pane") {
+        setPane(action.pane);
+      } else if (action.type === "scroll") {
+        threadScroll.current?.scrollBy({ top: action.direction * THREAD_SCROLL_STEP });
+      } else {
+        const p = s.people?.[action.index];
+        if (!p) return;
+        searchRef.current?.blur();
+        setPane("list");
+        setCursor(action.index);
+        open(p);
+        scrollBox.current?.querySelector(`[data-row="${action.index}"]`)?.scrollIntoView({ block: "nearest" });
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // Answered once (success or failure): a poll on a failed read must not repaint a skeleton.
   if (!listQ.isFetchedAfterMount && !list) return <ListShimmer />;
@@ -230,10 +276,14 @@ export function V2ConversationsView({ brandId }: { brandId: string }) {
                 {people.map((p, i) => (
                   <PersonRow
                     key={p.personKey}
+                    index={i}
                     person={p}
                     selected={p.personKey === openKey}
                     cursor={i === cursor}
-                    onOpen={() => open(p)}
+                    onOpen={() => {
+                      setPane("list");
+                      open(p);
+                    }}
                     onHover={() => {
                       setCursor(i);
                       preload(p);
@@ -261,9 +311,19 @@ export function V2ConversationsView({ brandId }: { brandId: string }) {
           </div>
         </section>
 
-        <section className="k-card flex max-h-[calc(100vh-220px)] min-h-[420px] flex-col overflow-hidden lg:max-h-none">
+        {/* The thread pane takes Up/Down once the reader moves into it (Right, or a click). */}
+        <section
+          onMouseDown={() => setPane("thread")}
+          style={pane === "thread" ? { boxShadow: "inset 0 0 0 1px var(--accent)" } : undefined}
+          className="k-card flex max-h-[calc(100vh-220px)] min-h-[420px] flex-col overflow-hidden lg:max-h-none"
+        >
           {openKey ? (
-            <Thread brandId={brandId} personKey={openKey} listed={people?.find((p) => p.personKey === openKey) ?? null} />
+            <Thread
+              brandId={brandId}
+              personKey={openKey}
+              listed={people?.find((p) => p.personKey === openKey) ?? null}
+              scrollRef={threadScroll}
+            />
           ) : (
             <div className="flex flex-1 items-center justify-center">
               <EmptyNote>Pick a person to read the whole conversation, every channel in one thread.</EmptyNote>
@@ -280,12 +340,14 @@ export function V2ConversationsView({ brandId }: { brandId: string }) {
 }
 
 function PersonRow({
+  index,
   person,
   selected,
   cursor,
   onOpen,
   onHover,
 }: {
+  index: number;
   person: Person;
   selected: boolean;
   cursor: boolean;
@@ -295,7 +357,7 @@ function PersonRow({
   const name = personName(person);
   const status = personStatusLabel(person);
   return (
-    <li>
+    <li data-row={index}>
       <button
         type="button"
         onClick={onOpen}
@@ -326,7 +388,17 @@ function PersonRow({
   );
 }
 
-function Thread({ brandId, personKey, listed }: { brandId: string; personKey: string; listed: Person | null }) {
+function Thread({
+  brandId,
+  personKey,
+  listed,
+  scrollRef,
+}: {
+  brandId: string;
+  personKey: string;
+  listed: Person | null;
+  scrollRef: RefObject<HTMLDivElement | null>;
+}) {
   const q = useAuthQuery(timelineKey(brandId, personKey), () => getPersonTimeline(brandId, personKey), {
     refetchInterval: TIMELINE_POLL,
   });
@@ -347,7 +419,6 @@ function Thread({ brandId, personKey, listed }: { brandId: string; personKey: st
   // No lead row (a CRM-only person) means no lead-service facts, never the previous person's.
   const facts = leadRowId ? ownQueryData(factsQ) : undefined;
   // Oldest first, so the latest exchange is at the bottom: open there, as any inbox does.
-  const scrollRef = useRef<HTMLDivElement | null>(null);
   const itemCount = data?.items.length ?? 0;
   useEffect(() => {
     const el = scrollRef.current;
