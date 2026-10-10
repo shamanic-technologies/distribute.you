@@ -582,8 +582,8 @@ export function CommandPalette({ orgId, brandId, open, onClose }: { orgId: strin
     for (const s of SETUP) {
       if (!term || matches(s.label, term)) out.push({ key: `setup-${s.section}`, group: "Setup", text: s.label, label: s.label, href: v2Href(orgId, brandId, s.section) });
     }
-    // Records > Unibox, staff mode only like its sidebar entry.
-    if (staffMode && (!term || matches("Unibox conversations inbox", term))) {
+    // Records > Unibox, GA like its sidebar entry (owner 2026-10-10).
+    if (!term || matches("Unibox conversations inbox", term)) {
       out.push({ key: "records-unibox", group: "Go to", text: "Unibox", label: "Unibox", href: v2Href(orgId, brandId, "unibox") });
     }
     // Posting > Posts, staff mode only like its sidebar group.

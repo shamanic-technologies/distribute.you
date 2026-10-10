@@ -162,16 +162,16 @@ describe("wiring", () => {
     expect(view).toContain("lg:grid-rows-[minmax(0,1fr)]");
     expect(view.match(/min-h-\[420px\] flex-col overflow-hidden lg:max-h-none/g)?.length).toBe(2);
   });
-  it("is the Unibox, staff mode only, under Records (owner 2026-10-08)", () => {
+  it("is the Unibox under Records, GA since 2026-10-10 (unibox-ga.test.ts)", () => {
     const page = read("app/(authed)/v2/orgs/[orgId]/brands/[brandId]/unibox/page.tsx");
-    expect(page).toContain("<StaffOnly>");
+    expect(page).not.toContain("<StaffOnly>");
     expect(page).toContain("<UniboxPage />");
     expect(read("components/v2/unibox-page.tsx")).toContain("<V2ConversationsView brandId={brandId} />");
     const shell = read("components/v2/v2-shell.tsx");
     const at = shell.indexOf('href={v2Href(orgId, brandId, "unibox")}');
     expect(at).toBeGreaterThan(shell.indexOf('href={v2Href(orgId, brandId, "deals")}'));
     expect(at).toBeLessThan(shell.indexOf('href={v2Href(orgId, brandId, "workflows")}'));
-    expect(shell.slice(at - 80, at)).toContain("{staffMode && (");
+    expect(shell.slice(at - 80, at)).not.toContain("staffMode &&");
   });
   it("is no longer a tab of Integrations; its old URL redirects to the Unibox", () => {
     expect(read("components/v2/setup-pages.tsx")).not.toContain("V2ConversationsView");
