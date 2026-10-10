@@ -195,10 +195,12 @@ export function parseWholeAmount(v: string): number | null {
 /**
  * The face of a campaign's name: features-service draws it from the NAME alone
  * (`GET /public/catalogue/faces/:name.svg`, `faceOf` = the URL-encoded name), served
- * through the gateway's public route. A pure display lookup.
+ * through the dashboard's PUBLIC route (`/api/public/faces`), so a signed-out visitor
+ * (the signup's campaign step) sees it too: `/api/v1/*` answers them with the sign-in
+ * page (prod 2026-10-10: a broken image on the signup). A pure display lookup.
  */
 export function funnelCampaignFaceSrc(name: string): string {
-  return `/api/v1/public/catalogue/faces/${encodeURIComponent(name)}.svg`;
+  return `/api/public/faces/${encodeURIComponent(name)}.svg`;
 }
 
 // ─── The funnel's TYPE words (owner 2026-10-10) ─────────────────────────────────────────────

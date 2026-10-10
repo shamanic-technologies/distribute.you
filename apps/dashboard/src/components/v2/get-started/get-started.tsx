@@ -75,7 +75,6 @@ import {
   type SignupPeriod,
 } from "@/lib/v2/signup-campaign";
 import { FunnelFace } from "@/components/v2/funnel-campaigns";
-import { formatRoi, roiIsGood } from "@/lib/format-roi";
 import { SelectCard } from "@/components/v2/select-card";
 import {
   COMPANY_FIELDS,
@@ -2265,11 +2264,7 @@ export function CampaignStage({
             <div className="min-w-0">
               <p className="k-fg text-[16px] font-semibold leading-6">{main.name}</p>
               {lineOf(SIGNUP_PROACTIVE_CHANNEL) && <p className="k-fg2 text-[13px] leading-5">{lineOf(SIGNUP_PROACTIVE_CHANNEL)}</p>}
-              <p className="k-fg3 mt-0.5 text-[12px] tabular-nums">
-                {est}
-                {est && main.roi != null ? " · " : ""}
-                {main.roi != null && <span className={roiIsGood(main.roi) ? "text-[var(--run)]" : undefined}>{`${formatRoi(main.roi)} return`}</span>}
-              </p>
+              {est && <p className="k-fg3 mt-0.5 text-[12px] tabular-nums">{est}</p>}
             </div>
           </div>
           <div className="k-inset grid grid-cols-[minmax(0,1fr)] gap-2.5 rounded-[10px] p-3">
