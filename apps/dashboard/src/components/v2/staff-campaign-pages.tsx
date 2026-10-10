@@ -210,8 +210,21 @@ function CapCell({ label, cap, kind }: { label: string; cap: SalesFunnelCaps["ma
   );
 }
 
-/** A unit's pipe and picked workflow, named by the catalogue. */
-function UnitRow({ unit, orgId, brandId }: { unit: SalesFunnelCampaign["units"][number]; orgId: string; brandId: string }) {
+/**
+ * A unit's pipe and picked workflow, named by the catalogue. Its "Campaign" link opens the
+ * customer page of the funnel campaign it belongs to (a unit runs and pauses only with it).
+ */
+function UnitRow({
+  unit,
+  funnelCampaignId,
+  orgId,
+  brandId,
+}: {
+  unit: SalesFunnelCampaign["units"][number];
+  funnelCampaignId: string;
+  orgId: string;
+  brandId: string;
+}) {
   const pipe = useStaffCatalogueObject("pipes", unit.pipeId);
   const wf = useStaffCatalogueObject("workflows", unit.workflowSlug, unit.workflowSlug ? unit.pipeId : null);
   const p = pipe.data;
@@ -240,7 +253,7 @@ function UnitRow({ unit, orgId, brandId }: { unit: SalesFunnelCampaign["units"][
         )}
       </td>
       <td className={`${TD} text-right`}>
-        <Link href={v2CampaignHref(orgId, brandId, unit.campaignId)} className="k-fg2 whitespace-nowrap text-[12px] hover:text-[var(--fg-1)]">
+        <Link href={v2CampaignHref(orgId, brandId, funnelCampaignId)} className="k-fg2 whitespace-nowrap text-[12px] hover:text-[var(--fg-1)]">
           Campaign →
         </Link>
       </td>
@@ -339,7 +352,7 @@ export function StaffFunnelCampaignPage({ id }: { id: string }) {
                         </thead>
                         <tbody>
                           {c.units.map((u) => (
-                            <UnitRow key={u.campaignId} unit={u} orgId={orgId} brandId={brandId} />
+                            <UnitRow key={u.campaignId} unit={u} funnelCampaignId={c.id} orgId={orgId} brandId={brandId} />
                           ))}
                         </tbody>
                       </table>
