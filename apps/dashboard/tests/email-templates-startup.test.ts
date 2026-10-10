@@ -74,14 +74,14 @@ describe("Email template deployment at startup", () => {
     // `dunningTemplates()` (three steps, each with a `-blocked` twin). The staff
     // digest is imported from the module that SENDS it; that module re-registers
     // it before every send, because a boot-time registration is not a guarantee
-    // that the write ever reached the template store. The channel "Contact us"
-    // request is imported the same way, from the module that sends it.
+    // that the write ever reached the template store. (The channel "Contact us"
+    // request and its template are deleted with the channel picker, 2026-10-10.)
     expect(arr.match(/name: "/g)).toHaveLength(11);
     expect(arr).toContain("...dunningTemplates()");
-    expect(EMAIL_TEMPLATES).toHaveLength(19);
-    expect(new Set(EMAIL_TEMPLATES.map((t) => t.name)).size).toBe(19);
+    expect(EMAIL_TEMPLATES).toHaveLength(18);
+    expect(new Set(EMAIL_TEMPLATES.map((t) => t.name)).size).toBe(18);
     expect(arr).toContain("STAFF_DIGEST_TEMPLATE_DEF");
-    expect(arr).toContain("CHANNEL_REQUEST_TEMPLATE_DEF");
+    expect(arr).not.toContain("CHANNEL_REQUEST_TEMPLATE_DEF");
     expect(content).toContain('from "@/lib/staff-digest"');
   });
 
