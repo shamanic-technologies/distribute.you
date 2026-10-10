@@ -12,6 +12,7 @@ import {
   isPanelLink,
   readCreditsRequired,
   addCreditsHref,
+  creditsRequiredByTurn,
 } from "../src/lib/copilot";
 
 const src = (f: string) => readFileSync(join(__dirname, "..", f), "utf-8");
@@ -76,8 +77,9 @@ describe("copilot wiring", () => {
   const shell = src("src/components/v2/v2-shell.tsx");
   const chat = src("src/components/v2/copilot-chat.tsx");
 
-  it("is staff mode only, on a brand page", () => {
-    expect(shell).toContain("const copilot = staffMode && hasBrand");
+  it("is GA: every signed-in customer on a brand page, staff mode or not", () => {
+    expect(shell).toContain("const copilot = hasBrand && Boolean(params.orgId);");
+    expect(shell).not.toContain("const copilot = staffMode");
     expect(shell).toContain("{copilot && <CopilotPanel orgId=");
   });
 
@@ -171,5 +173,24 @@ describe("out of credits (owner 2026-10-10)", () => {
     const chat = src("src/components/v2/copilot-chat.tsx");
     expect(chat).toContain("<AddCreditsButton href={href} label={credits.label} />");
     expect(chat).toContain('p.type === "data-credits-required"');
+  });
+});
+
+describe("Add credits survives a reload (owner 2026-10-10)", () => {
+  it("re-reads the stored action of assistant turns only", () => {
+    const credits = { message: "You're out of credits. Add credits to keep going.", action: "add_credits" as const, label: "Add credits" };
+    const m = creditsRequiredByTurn([
+      { id: "u", role: "user", creditsRequired: credits },
+      { id: "a1", role: "assistant", creditsRequired: credits },
+      { id: "a2", role: "assistant", creditsRequired: null },
+    ]);
+    expect([...m.keys()]).toEqual(["a1"]);
+  });
+
+  it("the chat draws the button from the live event OR the stored turn, and the history reader keeps the field", () => {
+    const chat = src("src/components/v2/copilot-chat.tsx");
+    expect(chat).toContain("liveCreditsRequired(m) ?? historyCredits.get(m.id) ?? null");
+    expect(chat).toContain("setHistoryCredits(creditsRequiredByTurn(h.messages))");
+    expect(src("src/lib/api.ts")).toContain('creditsRequired: z.object({ message: z.string(), action: z.literal("add_credits"), label: z.string() }).nullish()');
   });
 });

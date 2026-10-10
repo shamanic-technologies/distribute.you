@@ -37,10 +37,9 @@ export function V2Shell({ children }: { children: React.ReactNode }) {
   const hasBrand = Boolean(brandId);
   // A navigation closes the drawer, wherever it was started from.
   useEffect(() => setOpen(false), [pathname, search]);
-  // Staff mode on a brand: the Copilot is a right panel beside the page, hidden and shown
-  // again from the top bar (owner 2026-10-10). Customers never see it.
-  const { staffMode } = useStaffMode();
-  const copilot = staffMode && hasBrand && Boolean(params.orgId);
+  // On a brand: the Copilot is a right panel beside the page, hidden and shown again from
+  // the top bar (owner 2026-10-10). GA: every signed-in customer, staff mode or not.
+  const copilot = hasBrand && Boolean(params.orgId);
   const dock = useCopilotDockState(copilot);
 
   const page = (

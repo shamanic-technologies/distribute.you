@@ -1228,6 +1228,8 @@ const ChatHistoryMessageSchema = z.object({
   // chat-service `present_choices` / `open_page` records (2026-10-09), re-drawn by the Copilot.
   choices: ChatChoicesRecordSchema.nullish(),
   openPages: z.array(ChatOpenPageRecordSchema).nullish(),
+  // chat-service out-of-credits turn (2026-10-10): the "Add credits" action, re-drawn after a reload.
+  creditsRequired: z.object({ message: z.string(), action: z.literal("add_credits"), label: z.string() }).nullish(),
 });
 const ChatSessionHistorySchema = z.object({
   sessionId: z.string(),

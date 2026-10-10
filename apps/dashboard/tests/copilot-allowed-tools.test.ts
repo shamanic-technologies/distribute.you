@@ -2,7 +2,7 @@ import { describe, it, expect } from "vitest";
 import * as fs from "fs";
 import * as path from "path";
 
-// The staff Copilot maps any request onto the platform through the chat-service skill tree
+// The Copilot maps any request onto the platform through the chat-service skill tree
 // (owner 2026-10-09): read_skill, one read per entity, the two-step switch-on gate and the
 // staff escalation. Nothing that creates AND starts work in one call.
 const src = fs.readFileSync(path.resolve(__dirname, "../src/instrumentation.ts"), "utf-8");
@@ -45,6 +45,11 @@ describe("Copilot allowed tools", () => {
     for (const t of ["discover_services", "discover_service_endpoints", "discover_endpoint", "test_endpoint", "request_skill_upgrade", "contact_human"]) {
       expect(tools).toContain(t);
     }
+  });
+
+  it("never writes the offer's old ticked list: a campaign IS a funnel campaign (owner 2026-10-10)", () => {
+    for (const t of ["set_selected_sales_paths", "get_selected_sales_paths"]) expect(tools).not.toContain(t);
+    expect(tools).toContain("create_funnel_campaign");
   });
 
   it("lists each tool once", () => {

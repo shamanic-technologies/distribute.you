@@ -108,6 +108,7 @@ import {
   salesStepsDraftField,
   answerLines,
   leversLLMPrompt,
+  givesLLMPrompt,
   parseLifetimeRevenue,
   parseUsdEstimate,
   stepIndex,
@@ -1635,6 +1636,7 @@ export function GetStarted({ org }: { org?: OrgWalk } = {}) {
       return (
         <GivesStage
           state={steps.gives}
+          offerName={offer?.name ?? ""}
           values={gives}
           onValue={(k, v) => setGives((cur) => ({ ...cur, [k]: v }))}
           busy={answerBusy}
@@ -2944,6 +2946,7 @@ function LeversStage({
 /** Step 8: what the brand gives away to a prospect who replies, and what it never promises. */
 function GivesStage({
   state,
+  offerName,
   values,
   onValue,
   busy,
@@ -2951,19 +2954,38 @@ function GivesStage({
   onContinue,
 }: {
   state: StepState;
+  offerName: string;
   values: Record<GiveDraftKey, string>;
   onValue: (k: GiveDraftKey, v: string) => void;
   busy: boolean;
   error: string | null;
   onContinue: () => void;
 }) {
+  const [copied, setCopied] = useState(false);
   const done = state === "done";
+  async function copyAll() {
+    try {
+      await navigator.clipboard.writeText(givesLLMPrompt(offerName, values));
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1500);
+    } catch (e) {
+      console.error("[get-started] copy failed:", e);
+    }
+  }
   return (
     <StepCard
       index={stepIndex("gives") + 1}
       title="What you give away"
       state={state}
-      meta={<StateWord state={state} />}
+      meta={
+        state === "choose" || done ? (
+          <button type="button" className="k-btn-ghost h-7 px-2 text-[12px]" onClick={() => void copyAll()}>
+            {copied ? "Copied" : "Copy all for LLM"}
+          </button>
+        ) : (
+          <StateWord state={state} />
+        )
+      }
       footer={
         !done && state === "choose" ? (
           <>
