@@ -837,8 +837,6 @@ const COPILOT_ALLOWED_TOOLS = [
   "list_sales_paths",
   "get_trigger_events",
   "list_campaigns",
-  "get_campaign",
-  "get_campaign_budgets",
   "list_workflows",
   "get_workflow_details",
   "create_workflow",
