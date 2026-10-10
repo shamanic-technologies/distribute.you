@@ -23,8 +23,11 @@ import {
   formatCapUsd,
   funnelCampaignFaceSrc,
   isOngoingFunnelCampaign as isFunnelCampaignOn,
-  maxBudgetLabel,
-  maxVolumeLabel,
+  capWords,
+  funnelTypeOf,
+  statedBudget,
+  statedVolume,
+  volumeUnitWords,
   parseWholeAmount,
   type CapPeriod,
   type MaxBudget,
@@ -44,7 +47,8 @@ import { useLegCatalogue } from "@/lib/use-leg-catalogue";
 import { legFor } from "@/lib/legs";
 import { v2CampaignHref, v2Href } from "@/lib/v2/routes";
 import { useMissions, type Mission } from "@/components/v2/use-missions";
-import { CampaignLeg, CampaignResultCells } from "@/components/v2/offer-campaigns";
+import { CampaignResultCells } from "@/components/v2/offer-campaigns";
+import { ChannelChip } from "@/components/v2/offer-sales-paths";
 import { V2Page } from "@/components/v2/setup-pages";
 import { EmptyNote, Figure, Meter, SectionTitle, Shimmer, StateDot } from "@/components/v2/ui";
 
@@ -52,7 +56,8 @@ import { EmptyNote, Figure, Meter, SectionTitle, Shimmer, StateDot } from "@/com
  * CAMPAIGNS THAT ARE SALES FUNNELS (owner 2026-10-10). A campaign has a name and a face, ONE
  * status for the whole of it (campaign-service), a MAX BUDGET and a MAX VOLUME each stated per
  * day / week / month or in total (billing), and its results. The customer never reads funnel,
- * pipe or leg: the parts it runs read as steps ("Lead found → [Cold email] → Website visit").
+ * pipe or leg, and no leg arrows (owner 2026-10-10): a part reads as what it brings in and
+ * the channel doing it ("Website visit [Cold email]").
  * Every figure is served (billing's consumption, features-service's per-campaign results).
  */
 
@@ -187,14 +192,18 @@ export function FunnelCampaignStatus({ campaign }: { campaign: SalesFunnelCampai
 
 // ─── Limits: max budget + max volume (billing) ──────────────────────────────────────────
 
-/** The limits as a button ("Up to $50/week"), opening the editor. "Set a max budget" when none. */
+/**
+ * The limits as a button in the campaign type's words ("Max $50/week" Proactive, "Up to $50/week"
+ * Reactive), opening the editor. "Set a budget" when none.
+ */
 export function FunnelLimitsButton({ campaign, caps }: { campaign: SalesFunnelCampaign; caps: SalesFunnelCaps | null }) {
   const [open, setOpen] = useState(false);
   const budget = caps?.maxBudget ?? null;
+  const type = funnelTypeOf(caps);
   return (
     <>
       <button type="button" aria-haspopup="dialog" onClick={() => setOpen(true)} className="k-btn gap-1.5 tabular-nums">
-        <span className={budget ? "" : "k-fg3"}>{budget ? `Up to ${maxBudgetLabel(budget)}` : "No max budget"}</span>
+        <span className={budget ? "" : "k-fg3"}>{budget ? statedBudget(type, budget) : "Set a budget"}</span>
         <Chevron />
       </button>
       {open && <FunnelLimitsModal campaign={campaign} caps={caps} onClose={() => setOpen(false)} />}
@@ -244,6 +253,10 @@ export function FunnelLimitsModal({
   onClose: () => void;
 }) {
   const qc = useQueryClient();
+  // Proactive: "Max budget" / "Max volume". Reactive: "Up to $X" / "Up to N <unit>" (owner 2026-10-10).
+  const type = funnelTypeOf(caps);
+  const words = capWords(type);
+  const upTo = type === "reactive";
   const statedUsd = centsToUsd(caps?.maxBudget?.amountCents);
   const [budget, setBudget] = useState(statedUsd !== null ? String(Math.round(statedUsd)) : "");
   const [budgetPer, setBudgetPer] = useState<CapPeriod>(caps?.maxBudget ? asCapPeriod(caps.maxBudget.period) : "weekly");
@@ -305,10 +318,10 @@ export function FunnelLimitsModal({
           }}
         >
           <label htmlFor="v2-funnel-budget" className="k-label block">
-            Max budget
+            {words.budget}
           </label>
           <div className="mt-1.5 flex items-center gap-2">
-            <span className="k-fg2">$</span>
+            <span className="k-fg2">{upTo ? "Up to $" : "$"}</span>
             <input
               id="v2-funnel-budget"
               autoFocus
@@ -320,15 +333,16 @@ export function FunnelLimitsModal({
               className={`k-input w-[120px] px-2.5 tabular-nums ${budgetProblem ? "shadow-[inset_0_0_0_1px_var(--data-rose)]" : ""}`}
             />
           </div>
-          <PeriodPicker value={budgetPer} onChange={setBudgetPer} label="Max budget period" />
+          <PeriodPicker value={budgetPer} onChange={setBudgetPer} label={`${words.budget} period`} />
           <p className={`mt-1.5 text-[12px] leading-[18px] ${budgetProblem ? "text-[var(--data-rose)]" : "k-fg3"}`}>
-            {budgetProblem ?? "We stop reaching new people once it is spent."}
+            {budgetProblem ?? (upTo ? "The most this campaign spends." : "We stop reaching new people once it is spent.")}
           </p>
 
           <label htmlFor="v2-funnel-volume" className="k-label mt-5 block">
-            Max volume
+            {words.volume}
           </label>
           <div className="mt-1.5 flex items-center gap-2">
+            {upTo && <span className="k-fg2">Up to</span>}
             <input
               id="v2-funnel-volume"
               inputMode="numeric"
@@ -338,14 +352,14 @@ export function FunnelLimitsModal({
               aria-invalid={volumeProblem !== null}
               className={`k-input w-[120px] px-2.5 tabular-nums ${volumeProblem ? "shadow-[inset_0_0_0_1px_var(--data-rose)]" : ""}`}
             />
-            <span className="k-fg2">new people</span>
+            <span className="k-fg2">{volumeUnitWords(caps?.maxVolume?.unit ?? null, type, 2)}</span>
           </div>
-          <PeriodPicker value={volumePer} onChange={setVolumePer} label="Max volume period" />
+          <PeriodPicker value={volumePer} onChange={setVolumePer} label={`${words.volume} period`} />
           <p className={`mt-1.5 text-[12px] leading-[18px] ${volumeProblem ? "text-[var(--data-rose)]" : "k-fg3"}`}>
             {volumeProblem ?? "Leave it empty for no limit."}
           </p>
 
-          <p className="k-fg2 mt-5 text-[12px] leading-[18px]">Replies still get answered once a limit is reached.</p>
+          {!upTo && <p className="k-fg2 mt-5 text-[12px] leading-[18px]">Replies still get answered once a limit is reached.</p>}
           {error !== null && (
             <p role="alert" className="mt-3 text-[13px] text-[var(--data-rose)]">
               {status === 400 ? "These limits are not allowed." : "We could not save your limits. Try again in a moment."}
@@ -380,11 +394,14 @@ function SpentCell({ budget }: { budget: MaxBudget }) {
   );
 }
 
-function ContactedCell({ volume }: { volume: MaxVolume }) {
+function ContactedCell({ volume, type }: { volume: MaxVolume; type: ReturnType<typeof funnelTypeOf> }) {
   if (volume.consumed === null) return <span className="k-fg3 text-[12px]">{capUnavailableSentence(volume.consumedUnavailableReason)}</span>;
   return (
     <span className="tabular-nums">
-      {formatCount(volume.consumed)} <span className="k-fg3 text-[12px]">{capWindowWords(volume.period)}</span>
+      {formatCount(volume.consumed)}{" "}
+      <span className="k-fg3 text-[12px]">
+        {volumeUnitWords(volume.unit, type, volume.consumed)} {capWindowWords(volume.period)}
+      </span>
     </span>
   );
 }
@@ -402,14 +419,17 @@ export function FunnelCampaignsSection({ orgId, brandId, offerId }: { orgId: str
   if (settled && !q.data && q.isError) {
     return <p className="mb-6 text-[13px] text-[var(--data-rose)]">Could not read this offer&apos;s campaigns.</p>;
   }
-  if (settled && campaigns.length === 0) return null;
   return (
     <section className="mb-8">
       <SectionTitle count={settled ? campaigns.length : null}>Campaigns</SectionTitle>
-      <p className="k-fg2 -mt-1 mb-3 text-[13px]">Each one runs within its max budget and max volume.</p>
+      <p className="k-fg2 -mt-1 mb-3 text-[13px]">Each one runs within its limits.</p>
       {!settled ? (
         <div className="space-y-2">
           <Shimmer className="h-12 rounded-[10px]" />
+        </div>
+      ) : campaigns.length === 0 ? (
+        <div className="k-card">
+          <EmptyNote>No campaign yet.</EmptyNote>
         </div>
       ) : (
         <div className="k-card overflow-hidden">
@@ -419,9 +439,9 @@ export function FunnelCampaignsSection({ orgId, brandId, offerId }: { orgId: str
                 <tr className="k-line-subtle border-b">
                   <th className="k-label px-3 py-2.5 pl-4 text-left font-normal">Campaign</th>
                   <th className="k-label px-3 py-2.5 text-right font-normal">Spent</th>
-                  <th className="k-label px-3 py-2.5 text-right font-normal">New people</th>
+                  <th className="k-label px-3 py-2.5 text-right font-normal">Volume</th>
                   <th className="k-label w-[130px] px-3 py-2.5 text-right font-normal">Status</th>
-                  <th className="k-label w-[200px] px-3 py-2.5 pr-4 text-right font-normal">Max budget</th>
+                  <th className="k-label w-[200px] px-3 py-2.5 pr-4 text-right font-normal">Budget</th>
                 </tr>
               </thead>
               <tbody>
@@ -465,7 +485,7 @@ function FunnelCampaignRow({ orgId, campaign }: { orgId: string; campaign: Sales
         </span>
       </td>
       <td className="px-3 py-2 text-right">{capsCell(c?.maxBudget ? <SpentCell budget={c.maxBudget} /> : DASH)}</td>
-      <td className="px-3 py-2 text-right">{capsCell(c?.maxVolume ? <ContactedCell volume={c.maxVolume} /> : DASH)}</td>
+      <td className="px-3 py-2 text-right">{capsCell(c?.maxVolume ? <ContactedCell volume={c.maxVolume} type={funnelTypeOf(c)} /> : DASH)}</td>
       <td className="px-3 py-2 text-right" onClick={stop}>
         <FunnelCampaignStatus campaign={campaign} />
       </td>
@@ -492,7 +512,7 @@ export function FunnelCampaignLine({ orgId, campaign }: { orgId: string; campaig
         <StateDot running={isFunnelCampaignOn(campaign)} hold={isFunnelCampaignOn(campaign) ? null : paymentHoldKind(campaign)} />
       </span>
       <span className="k-fg3 mt-1.5 flex items-center justify-between gap-2 text-[12px] tabular-nums">
-        <span className="truncate">{!settledCaps ? " " : b ? `Up to ${maxBudgetLabel(b)}` : "Not funded yet"}</span>
+        <span className="truncate">{!settledCaps ? " " : b ? statedBudget(funnelTypeOf(caps.data ?? null), b) : "Not funded yet"}</span>
         <span className="shrink-0">
           {b && b.consumedCents !== null ? `${formatCapUsd(b.consumedCents)} spent ${capWindowWords(b.period)}` : "—"}
         </span>
@@ -555,7 +575,7 @@ function LimitCell({
             <Figure value={consumed} unit={`${unit} ${window ?? ""}`.trim()} />
           </div>
           <Meter value={consumedValue} max={max} className="mt-2" />
-          {reached && <p className="mt-1.5 text-[12px] text-[var(--data-rose)]">Reached. No new people until it resets.</p>}
+          {reached && <p className="mt-1.5 text-[12px] text-[var(--data-rose)]">Reached for this period.</p>}
         </>
       )}
     </div>
@@ -581,7 +601,7 @@ function FunnelResults({
   return (
     <section>
       <SectionTitle count={units.length}>Results</SectionTitle>
-      <p className="k-fg2 -mt-1 mb-3 text-[13px]">What each step of this campaign brought in, since it started.</p>
+      <p className="k-fg2 -mt-1 mb-3 text-[13px]">What this campaign brought in, since it started.</p>
       {units.length === 0 ? (
         <div className="k-card">
           <EmptyNote>Nothing runs in this campaign yet.</EmptyNote>
@@ -592,7 +612,7 @@ function FunnelResults({
             <table className="w-full min-w-[860px] text-[13px]">
               <thead>
                 <tr className="k-line-subtle border-b">
-                  <th className="k-label px-3 py-2.5 pl-4 text-left font-normal">Step</th>
+                  <th className="k-label px-3 py-2.5 pl-4 text-left font-normal">Brings in</th>
                   <th className="k-label px-3 py-2.5 text-right font-normal">ROI</th>
                   <th className="k-label px-3 py-2.5 text-right font-normal"># Outcomes</th>
                   <th className="k-label px-3 py-2.5 text-right font-normal">$ Value</th>
@@ -619,15 +639,10 @@ function FunnelResults({
                         {!settled ? (
                           <Shimmer className="h-4 w-48 rounded" />
                         ) : (
-                          <CampaignLeg
-                            campaign={{
-                              featureSlug: u.featureSlug,
-                              channelName: def?.name ?? u.featureSlug,
-                              managed: true,
-                              fromLabel: leg?.fromLabel ?? null,
-                              toLabel: leg?.toLabel ?? "—",
-                            }}
-                          />
+                          <span className="flex min-w-0 flex-wrap items-center gap-2">
+                            <span className="font-medium">{leg?.toLabel ?? "—"}</span>
+                            <ChannelChip name={def?.name ?? u.featureSlug} def={def} notRun={false} />
+                          </span>
                         )}
                       </td>
                       {/* Each step runs and pauses with the campaign, so it states no status of its own. */}
@@ -658,6 +673,9 @@ export function FunnelCampaignPage({ campaign }: { campaign: SalesFunnelCampaign
   const notFunded = capsSettled && c !== null && c.maxBudget === null;
   const b = c?.maxBudget ?? null;
   const v = c?.maxVolume ?? null;
+  // The campaign's type picks the words (owner 2026-10-10): Proactive "Max budget", Reactive "Up to $X".
+  const type = funnelTypeOf(c);
+  const words = capWords(type);
   return (
     <V2Page
       crumbs={[{ label: "Campaigns", href: v2Href(orgId, campaign.brandId, "campaigns") }, { label: campaign.salesFunnelName }]}
@@ -684,10 +702,10 @@ export function FunnelCampaignPage({ campaign }: { campaign: SalesFunnelCampaign
           >
             <div className="min-w-0 flex-1">
               <p className="text-[14px] font-medium">Not funded yet</p>
-              <p className="k-fg2 text-[13px]">Set a max budget so this campaign can run.</p>
+              <p className="k-fg2 text-[13px]">Set a budget so this campaign can run.</p>
             </div>
             <button type="button" className="k-btn-accent" onClick={() => setEditing(true)}>
-              Set a max budget
+              Set a budget
             </button>
           </div>
         )}
@@ -703,8 +721,8 @@ export function FunnelCampaignPage({ campaign }: { campaign: SalesFunnelCampaign
           ) : (
             <div className="k-card grid grid-cols-1 divide-y divide-[var(--line-subtle)] md:grid-cols-2 md:divide-x md:divide-y-0">
               <LimitCell
-                label="Max budget"
-                stated={b ? maxBudgetLabel(b) : null}
+                label={words.budget}
+                stated={b ? statedBudget(type, b) : null}
                 consumed={b && b.consumedCents !== null ? formatCapUsd(b.consumedCents) : null}
                 consumedValue={b ? centsToUsd(b.consumedCents) : null}
                 max={b ? centsToUsd(b.amountCents) : null}
@@ -715,15 +733,15 @@ export function FunnelCampaignPage({ campaign }: { campaign: SalesFunnelCampaign
                 onSet={() => setEditing(true)}
               />
               <LimitCell
-                label="Max volume"
-                stated={v ? maxVolumeLabel(v) : null}
+                label={words.volume}
+                stated={v ? statedVolume(type, v) : null}
                 consumed={v && v.consumed !== null ? formatCount(v.consumed) : null}
                 consumedValue={v?.consumed ?? null}
                 max={v ? v.count : null}
                 reached={v?.reached ?? null}
                 unavailable={v ? capUnavailableSentence(v.consumedUnavailableReason) : null}
                 window={v ? capWindowWords(v.period) : null}
-                unit={v?.consumed === 1 ? "new person" : "new people"}
+                unit={volumeUnitWords(v?.unit ?? null, type, v?.consumed ?? 2)}
                 onSet={() => setEditing(true)}
               />
             </div>
