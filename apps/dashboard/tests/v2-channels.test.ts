@@ -65,14 +65,14 @@ describe("sidebar", () => {
       '<Group title="Setup">',
       'label="Offer"',
       'label="Brand"',
-      '<Group title="Staff">',
+      "{staffMode && <StaffObjectSections",
     ].map(at);
     expect(order.every((x, i) => x > -1 && (i === 0 || x > order[i - 1]))).toBe(true);
   });
   it("no campaign categories, no Top companies, nothing else in Setup", () => {
     for (const t of ["Outbound", "Posting", "Sourcing", "Top companies"]) expect(shell).not.toContain(`<Group title="${t}">`);
     expect(shell).not.toContain(".filter(({ campaign })");
-    const setup = shell.slice(at('<Group title="Setup">'), at('<Group title="Staff">'));
+    const setup = shell.slice(at('<Group title="Setup">'), at("{staffMode && <StaffObjectSections"));
     expect(setup.match(/<NavItem/g)?.length).toBe(2);
     for (const l of ["Targeting", "Integrations", "Brand settings"]) expect(setup).not.toContain(`label="${l}"`);
   });
@@ -90,14 +90,19 @@ describe("sidebar", () => {
     expect(block).toContain("outcomes.map(({ outcome })");
     expect(block).not.toContain("indent");
   });
-  it("Workflows, Sales path, Channels, Sourcing and Posts sit in the staff block only", () => {
-    const gaNav = shell.slice(0, at('<Group title="Staff">'));
-    const staff = shell.slice(at('{staffMode && (\n          <Group title="Staff">'), at("</nav>"));
-    expect(at('{staffMode && (\n          <Group title="Staff">')).toBeGreaterThan(-1);
-    for (const l of ["Workflows", "Sales path", "Channels", "Sourcing", "Posts"]) {
-      expect(gaNav).not.toContain(`label="${l}"`);
-      expect(staff).toContain(`label="${l}"`);
-    }
+  it("staff mode adds one section per business object below the GA nav, nothing else (owner 2026-10-10)", () => {
+    const sidebar = shell.slice(at("function V2Sidebar() {"));
+    const gaNav = sidebar.slice(0, sidebar.indexOf("{staffMode && <StaffObjectSections"));
+    expect(sidebar).toContain("{staffMode && <StaffObjectSections orgId={orgId} brandId={brandId} offerId={offerId} pathname={pathname} />}");
+    // The old Staff block is gone: its pages are reached from the object overviews.
+    expect(shell).not.toContain('<Group title="Staff">');
+    for (const l of ["Workflows", "Sales path", "Channels", "Sourcing", "Posts"]) expect(gaNav).not.toContain(`label="${l}"`);
+    const sections = shell.slice(at("function StaffObjectSections("));
+    expect(sections).toContain("CATALOGUE_OBJECTS.map((object)");
+    expect(sections).toContain("<Group key={object} title={CATALOGUE_OBJECT_LABELS[object].title}>");
+    expect(sections).toContain('<Group title="Workflows">');
+    expect(sections.indexOf('label="Overview"')).toBeLessThan(sections.indexOf("(ongoing[object]"));
+    expect(sections).not.toContain("indent");
   });
 });
 

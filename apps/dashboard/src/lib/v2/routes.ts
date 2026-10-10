@@ -28,7 +28,8 @@ export type V2Section =
   | "referral"
   | "research"
   | "monitoring"
-  | "posts";
+  | "posts"
+  | "catalogue";
 
 export function v2Base(orgId: string, brandId: string): string {
   return `/v2/orgs/${encodeURIComponent(orgId)}/brands/${encodeURIComponent(brandId)}`;
@@ -73,6 +74,15 @@ export function v2WorkflowHref(
   return `${v2Base(orgId, brandId)}/workflows/${encodeURIComponent(dynastySlug)}?crew=${encodeURIComponent(crew)}${m}`;
 }
 
+/**
+ * A staff catalogue object's overview (`/catalogue/<object>`), or one object's page. The id
+ * travels as ONE encoded segment (a pipe id carries `|`, a sales path `+`, a funnel `@`).
+ */
+export function v2CatalogueHref(orgId: string, brandId: string, object: string, id?: string | null): string {
+  const base = `${v2Base(orgId, brandId)}/catalogue/${object}`;
+  return id ? `${base}/${encodeURIComponent(id)}` : base;
+}
+
 /** The Outcomes overview, or one outcome's page (a producer step key: `conversation`, `lead_found`). */
 export function v2OutcomeHref(orgId: string, brandId: string, stepKey?: string): string {
   const base = `${v2Base(orgId, brandId)}/outcomes`;
@@ -111,6 +121,7 @@ export function v2SectionOf(pathname: string): V2Section | null {
     "research",
     "monitoring",
     "posts",
+    "catalogue",
   ];
   // An offer's Sales path is its own section, opened from the sidebar.
   if (s === "offers" && parts[7] === "sales-path") return "sales-path";

@@ -8,7 +8,10 @@ import { useOngoingCampaigns } from "@/components/v2/ongoing-campaigns";
 import { CrewMark } from "@/components/v2/crew-mark";
 import { V2NavContext } from "@/components/v2/nav-context";
 import { useBucketCounts, useBrandRevenue, useNeedsYourCall, useStandingCounts } from "@/components/v2/data";
-import { v2Href, v2OfferHref, v2OutcomeHref, v2SectionOf } from "@/lib/v2/routes";
+import { v2CatalogueHref, v2Href, v2OfferHref, v2OutcomeHref, v2SectionOf, v2WorkflowHref } from "@/lib/v2/routes";
+import { CATALOGUE_OBJECTS, CATALOGUE_OBJECT_LABELS } from "@/lib/staff-catalogue";
+import { useOngoingCatalogue } from "@/components/v2/staff-catalogue-data";
+import { CatalogueMark } from "@/components/v2/catalogue-mark";
 import { formatCount } from "@/lib/format-number";
 import { boardColumnTotals } from "@/lib/leads-server-page";
 import { ScopePaymentDeclinedBand } from "@/components/billing/scope-payment-declined-band";
@@ -190,7 +193,7 @@ function V2Sidebar() {
   const revenue = useBrandRevenue(brandId).data;
   const needsCall = useNeedsYourCall(brandId, 5).data?.total ?? null;
   const [recordsOpen, setRecordsOpen] = useState(true);
-  // Workflows, Sales path, Channels, Sourcing and Posts are staff surfaces: a customer never sees them, staff mode does.
+  // The business-object sections are staff surfaces: a customer never sees them, staff mode does.
   const { staffMode } = useStaffMode();
   return (
     <aside className="flex h-full w-[240px] max-w-[85vw] shrink-0 flex-col">
@@ -331,33 +334,70 @@ function V2Sidebar() {
           />
         </Group>
 
-        {/* Staff mode only, below the client's nav: the pages a client never sees. */}
-        {staffMode && (
-          <Group title="Staff">
-            <NavItem href={v2Href(orgId, brandId, "workflows")} label="Workflows" icon={<I d={ICONS.workflows} />} active={section === "workflows"} />
-            <NavItem
-              href={offerId ? v2OfferHref(orgId, brandId, offerId, "sales-path") : v2Href(orgId, brandId, "sales-path")}
-              label="Sales path"
-              icon={<I d={ICONS.outbound} />}
-              active={section === "sales-path"}
-            />
-            <NavItem
-              href={`${offerId ? v2OfferHref(orgId, brandId, offerId, "sales-path") : v2Href(orgId, brandId, "sales-path")}#channels`}
-              label="Channels"
-              icon={<I d={ICONS.channels} />}
-            />
-            <NavItem
-              href={offerId ? v2OfferHref(orgId, brandId, offerId, "sourcing") : v2Href(orgId, brandId, "sourcing")}
-              label="Sourcing"
-              icon={<I d={ICONS.audience} />}
-              active={section === "sourcing"}
-            />
-            <NavItem href={v2Href(orgId, brandId, "posts")} label="Posts" icon={<I d={ICONS.posts} />} active={section === "posts"} />
-          </Group>
-        )}
+        {/* Staff mode only, below the client's nav (owner 2026-10-10): one section per business
+            object, each its Overview then the ONGOING ones (used by a running campaign of this
+            offer), each opening its own page. Campaigns is the section above. */}
+        {staffMode && <StaffObjectSections orgId={orgId} brandId={brandId} offerId={offerId} pathname={pathname} />}
       </nav>
       <BrandWhyLine />
       <AccountMenuV2 orgId={orgId} brandId={brandId} />
     </aside>
+  );
+}
+
+/**
+ * The staff sections (owner 2026-10-10): Steps, Sales Paths, Channels, Pipes, Sales Funnels,
+ * Workflows. Each = its Overview + every ONGOING one with its served mark and name.
+ * Mounted only in staff mode, so a customer makes none of these reads.
+ */
+function StaffObjectSections({ orgId, brandId, offerId, pathname }: { orgId: string; brandId: string; offerId: string | null; pathname: string }) {
+  const ongoing = useOngoingCatalogue(orgId, brandId, offerId, true);
+  return (
+    <>
+      {CATALOGUE_OBJECTS.map((object) => {
+        const overview = v2CatalogueHref(orgId, brandId, object);
+        return (
+          <Group key={object} title={CATALOGUE_OBJECT_LABELS[object].title}>
+            <NavItem href={overview} label="Overview" icon={<I d={ICONS.overview} />} active={pathname === overview} />
+            {offerId &&
+              (ongoing[object] as Array<{ id: string; name: string; icon?: string; color?: string; face?: string | { svgPath: string } }>).map((o) => {
+                const href = v2CatalogueHref(orgId, brandId, object, o.id);
+                const face = typeof o.face === "string" ? o.face : o.face?.svgPath;
+                return (
+                  <NavItem
+                    key={o.id}
+                    href={href}
+                    label={o.name}
+                    icon={<CatalogueMark icon={o.icon} color={o.color} face={face} name={o.name} size={16} />}
+                    active={pathname === href}
+                  />
+                );
+              })}
+          </Group>
+        );
+      })}
+      <Group title="Workflows">
+        <NavItem
+          href={v2Href(orgId, brandId, "workflows")}
+          label="Overview"
+          icon={<I d={ICONS.overview} />}
+          active={/\/workflows\/?$/.test(pathname)}
+        />
+        {offerId &&
+          ongoing.workflows.map((w) => {
+            const href = v2WorkflowHref(orgId, brandId, w.slug, w.crew, w.campaignId);
+            const name = w.detail?.name ?? w.slug;
+            return (
+              <NavItem
+                key={`${w.campaignId}:${w.slug}`}
+                href={href}
+                label={name}
+                icon={<CatalogueMark icon={w.detail?.icon ?? "flow-arrow"} color={w.detail?.color} name={name} size={16} />}
+                active={pathname.endsWith(`/workflows/${encodeURIComponent(w.slug)}`)}
+              />
+            );
+          })}
+      </Group>
+    </>
   );
 }
