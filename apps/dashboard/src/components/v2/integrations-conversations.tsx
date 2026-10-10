@@ -14,6 +14,7 @@ import {
   personLeadRowId,
   personName,
   personStatusLabel,
+  possibleLeadHint,
   sourceLine,
   timelineSourceNote,
   type Person,
@@ -318,6 +319,7 @@ function PersonRow({
             {person.company && <span className="k-fg3 truncate text-[12px]">· {person.company}</span>}
           </span>
           <MatchLine person={person} />
+          <PossibleLeadLine person={person} />
         </span>
       </button>
     </li>
@@ -376,6 +378,7 @@ function Thread({ brandId, personKey, listed }: { brandId: string; personKey: st
             <p className="k-fg3 truncate text-[12px]">
               {[...person.emails, ...person.phones].join(" · ") || "—"}
             </p>
+            <PossibleLeadLine person={person} />
           </div>
           {status && <span className="k-chip ml-auto shrink-0">{status}</span>}
         </div>
@@ -568,6 +571,18 @@ function MatchLine({ person }: { person: Person }) {
   return (
     <span className="k-fg2 mt-1 line-clamp-2 block text-[12px] leading-[18px]">
       {message ? `${message.direction === "outbound" ? "You: " : ""}${message.excerpt}${more}` : identity!.value}
+    </span>
+  );
+}
+
+/** A guessed pairing with one of our leads, stated as a hint (the lead keeps its own row). */
+function PossibleLeadLine({ person }: { person: Person }) {
+  const hint = possibleLeadHint(person);
+  if (!hint) return null;
+  return (
+    <span className="k-fg2 mt-1 flex min-w-0 items-center gap-1.5 text-[12px] leading-[18px]">
+      <span aria-hidden className="h-1.5 w-1.5 shrink-0 rounded-full bg-[var(--data-amber)]" />
+      <span className="truncate" title={hint}>{hint}</span>
     </span>
   );
 }
