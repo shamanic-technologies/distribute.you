@@ -838,7 +838,6 @@ const COPILOT_ALLOWED_TOOLS = [
   "archive_qualification_check",
   "list_sourcing_origins",
   "get_offer_sourcing",
-  "get_channel_catalogue",
   "get_offer_channels",
   "get_offer_legs",
   "get_leg_rates",
@@ -875,8 +874,37 @@ const COPILOT_ALLOWED_TOOLS = [
   // between the proposal and the switch-on. Never launch_campaign / set_brand_pause here.
   "propose_switch_on",
   "confirm_switch_on",
-  // What needs code: recorded, an issue in the owning repo, a Telegram ping to staff.
+  // Chat first (owner 2026-10-10): the agent catalogue walk, one small page per level
+  // (Steps -> Sales Paths -> Channels -> Pipes -> Sales Funnels -> Workflows), creates as data.
+  // Replaces get_channel_catalogue (one 30k-token read).
+  "find_steps",
+  "find_sales_paths",
+  "find_channels",
+  "find_pipes",
+  "find_sales_funnels",
+  "find_workflows",
+  "create_step",
+  "create_pipe",
+  "create_sales_path",
+  "create_sales_funnel",
+  // A campaign is one sales funnel for one offer: created stopped, max budget + max volume
+  // asked from the user, started only through propose_switch_on / confirm_switch_on.
+  "list_funnel_campaigns",
+  "get_funnel_caps",
+  "set_funnel_caps",
+  "create_funnel_campaign",
+  "stop_funnel_campaign",
+  // Infra by depth (api-registry): services, endpoints with cost and duration, one doc,
+  // a read-only test run as this org.
+  "discover_services",
+  "discover_service_endpoints",
+  "discover_endpoint",
+  "test_endpoint",
+  // Requests: bug / feature (issue + Telegram), skill or doc upgrade (issue + Telegram),
+  // contact a human (Telegram to the founder now).
   "request_staff",
+  "request_skill_upgrade",
+  "contact_human",
   "list_staff_requests",
 ];
 
