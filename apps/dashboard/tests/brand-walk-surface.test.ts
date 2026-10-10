@@ -78,7 +78,7 @@ describe("the walk acts on the org it names, explicitly", () => {
     expect(fn).toContain("return () => setApiActiveOrgOverride(null);");
     // Declared before the snapshot read and the funnels read (effects run in order).
     expect(set).toBeLessThan(fn.indexOf("localStorage.getItem(snapshotKey)"));
-    expect(set).toBeLessThan(fn.indexOf("void loadFunnels();"));
+    expect(set).toBeLessThan(fn.indexOf("void loadFunnels(brandId, offer.offerId);"));
   });
   it("never starts an anonymous session from the dashboard", () => {
     const start = walk.slice(walk.indexOf("async function start(raw: string)"));

@@ -19,7 +19,7 @@
  * written only once the questions are answered, since they are written from the answers.
  */
 import { COUNTRIES } from "../../components/onboarding/phone-countries";
-import { parseSignupDraft, type SignupCampaignDraft } from "./signup-campaign";
+import { parseSignupDraft, parseSignupFunnels, type SignupCampaignDraft, type SignupFunnel } from "./signup-campaign";
 
 export const GET_STARTED_STEPS = [
   { key: "company", label: "Read your company" },
@@ -383,6 +383,8 @@ export interface GetStartedSnapshot {
   campaign?: SignupCampaignDraft | null;
   /** The "Your campaign" step was confirmed (Launch clicked). */
   campaignDone?: boolean;
+  /** The funnels the step read, priced for this offer; the wall reopens on them after the Google round trip. */
+  funnels?: { proactive: SignupFunnel | null; reactive: SignupFunnel | null } | null;
   /** What one client is worth, whole dollars; null until answered. */
   lifetimeRevenueUsd?: number | null;
   /** Whether the offer points and the give lists were answered (and saved on the offer). */
@@ -462,6 +464,7 @@ export function parseGetStartedSnapshot(raw: string | null): GetStartedSnapshot 
     email: parseSnapshotEmail(s.email),
     campaign: parseSignupDraft(s.campaign),
     campaignDone: s.campaignDone === true,
+    funnels: parseSignupFunnels(s.funnels),
     lifetimeRevenueUsd:
       typeof s.lifetimeRevenueUsd === "number" && Number.isInteger(s.lifetimeRevenueUsd) && s.lifetimeRevenueUsd > 0 ? s.lifetimeRevenueUsd : null,
     answered: s.answered === true,
@@ -505,18 +508,23 @@ export interface CampaignOutlook {
   outcome: string;
   /** Whole outcomes the credit buys (features-service `outcomesForCredit.outcomes`); null = not priced. */
   outcomes: number | null;
-  /** The campaign's expected ROI (features-service), the figure the campaigns step shows. */
+  /** The campaign's ROI for THIS offer (features-service), the figure the campaign step shows. */
   roi: number | null;
+  /** The served word for the figure ("Estimated", "Measured"): the wall labels it as served. */
+  basis: string;
 }
 
 /**
  * The wall's figure comes from the campaign the visitor chose (owner 2026-10-06: "take the
- * campaigns they chose"), never the fleet median: the picked funnel's served return, as
- * features-service states it on the catalogue row. Null when it serves none.
+ * campaigns they chose"), never the fleet median: the picked funnel's return priced for THIS offer
+ * (its own client value, owner 2026-10-10), labelled as served. Null when it serves none or while
+ * it is learning (no figure).
  */
-export function chosenFunnelOutlook(funnel: { roi: number | null } | null): CampaignOutlook | null {
+export function chosenFunnelOutlook(funnel: { roi: number | null; status: string | null } | null): CampaignOutlook | null {
   if (!funnel || funnel.roi == null) return null;
-  return { outcome: "Paying clients", outcomes: null, roi: funnel.roi };
+  const basis = funnel.status === "measured" ? "Measured" : funnel.status === "estimated" ? "Estimated" : null;
+  if (!basis) return null;
+  return { outcome: "Paying clients", outcomes: null, roi: funnel.roi, basis };
 }
 
 /** The words of the wall. */

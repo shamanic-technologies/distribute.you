@@ -283,6 +283,13 @@ describe("the sales path steps of /get-started are gone (owner 2026-10-10: one c
     ] as const) expect(allow(m, p).allowed, `${m} ${p}`).toBe(false);
   });
 
+  it("reads the funnels priced for its OWN offer only, the brand bound by the query", () => {
+    expect(allow("GET", `/offers/${OFFER}/sales-funnels?brandId=${BRAND}&containsChannels=sales-cold-email-outreach&limit=25`).allowed).toBe(true);
+    expect(allow("GET", `/offers/${OFFER}/sales-funnels?brandId=${OTHER}`).refusal).toBe("wrong-brand");
+    expect(allow("GET", `/offers/${OFFER}/sales-funnels`).refusal).toBe("wrong-brand");
+    expect(allow("POST", `/offers/${OFFER}/sales-funnels?brandId=${BRAND}`).allowed).toBe(false);
+  });
+
   it("starts no campaign and writes no caps before the account exists", () => {
     expect(allow("PUT", `/brands/${BRAND}/offers/${OFFER}/campaign-budgets`).allowed).toBe(false);
     expect(allow("POST", `/sales-funnel-campaigns`).allowed).toBe(false);

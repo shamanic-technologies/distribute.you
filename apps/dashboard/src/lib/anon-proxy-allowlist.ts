@@ -71,10 +71,12 @@ const RULES: Rule[] = [
   // refuses an offer that is not the brand's.
   { method: "PUT", segments: ["brands", ":brand", "offers", ":seg", "economics"] },
   { method: "PUT", segments: ["brands", ":brand", "offers", ":seg", "user-fields"] },
+  // The last step: the funnels we run, priced for the session's own offer (features-service
+  // through the gateway). Read only; the brand rides the QUERY, bound to the session below.
+  { method: "GET", segments: ["offers", ":seg", "sales-funnels"], queryBrand: "brandId" },
   // The sales path steps (steps, legs, leg rates, ranked paths, channels, ticked paths) are
   // GONE (owner 2026-10-10): the signed-out session reads and writes none of them. The last
-  // step reads public routes only (`/api/public/sales-funnels`); its writes wait for the
-  // account and the card.
+  // step only READS (the funnels above); its writes wait for the account and the card.
 
   // ── The audiences we assemble for it ─────────────────────────────────
   { method: "GET", segments: ["orgs", "audiences"] },
