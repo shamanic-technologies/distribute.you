@@ -71,6 +71,10 @@ export const CAMPAIGN_MONEY_ROOTS = [
   "brandCampaignBudgets",
   "offerCampaignBudgets",
   "brandSalesBudget",
+  // A campaign that is a sales funnel: its status and its caps (and their consumption).
+  "salesFunnelCampaigns",
+  "salesFunnelCampaign",
+  "salesFunnelCaps",
 ] as const;
 
 /**

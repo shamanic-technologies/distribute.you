@@ -69,7 +69,8 @@ describe("Campaign rows (useCampaignRows)", () => {
   it("states one row per identity — the live campaign, else the latest paused one", () => {
     expect(table).toContain("const listedCampaigns = useMemo(");
     expect(table).toContain(
-      "const key = `${c.offerId ?? \"\"}|${canonicalLegKey(c.featureSlug, c.legKey) ?? \"\"}|${c.featureSlug ?? \"\"}`",
+      // A part of a sales-funnel campaign (owner 2026-10-10) is its own identity: empty on every older row.
+      "const key = `${c.offerId ?? \"\"}|${canonicalLegKey(c.featureSlug, c.legKey) ?? \"\"}|${c.featureSlug ?? \"\"}|${c.salesFunnelCampaignId ?? \"\"}`",
     );
     // A live row wins its identity outright; between two dead ones, the latest.
     expect(table).toContain("if (isActiveStatus(held.status)) continue;");

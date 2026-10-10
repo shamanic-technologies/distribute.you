@@ -212,7 +212,9 @@ export function useCampaignRows(brandId: string, featureSlug: string, offerId?: 
   const listedCampaigns = useMemo(() => {
     const byIdentity = new Map<string, Campaign>();
     for (const c of featureCampaigns) {
-      const key = `${c.offerId ?? ""}|${canonicalLegKey(c.featureSlug, c.legKey) ?? ""}|${c.featureSlug ?? ""}`;
+      // A part of a sales-funnel campaign is its own identity (campaign-service's uniqueness
+      // includes the funnel), never folded into the pre-funnel campaign of the same leg.
+      const key = `${c.offerId ?? ""}|${canonicalLegKey(c.featureSlug, c.legKey) ?? ""}|${c.featureSlug ?? ""}|${c.salesFunnelCampaignId ?? ""}`;
       const held = byIdentity.get(key);
       if (!held) {
         byIdentity.set(key, c);

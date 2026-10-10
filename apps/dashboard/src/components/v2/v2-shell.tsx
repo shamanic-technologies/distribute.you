@@ -8,7 +8,7 @@ import { useOngoingCampaigns } from "@/components/v2/ongoing-campaigns";
 import { CrewMark } from "@/components/v2/crew-mark";
 import { V2NavContext } from "@/components/v2/nav-context";
 import { useBucketCounts, useBrandRevenue, useNeedsYourCall, useStandingCounts } from "@/components/v2/data";
-import { v2CatalogueHref, v2Href, v2OfferHref, v2OutcomeHref, v2SectionOf, v2WorkflowHref } from "@/lib/v2/routes";
+import { v2CampaignHref, v2CatalogueHref, v2Href, v2OfferHref, v2OutcomeHref, v2SectionOf, v2WorkflowHref } from "@/lib/v2/routes";
 import { CATALOGUE_OBJECTS, CATALOGUE_OBJECT_LABELS } from "@/lib/staff-catalogue";
 import { useOngoingCatalogue } from "@/components/v2/staff-catalogue-data";
 import { CatalogueMark } from "@/components/v2/catalogue-mark";
@@ -18,6 +18,8 @@ import { ScopePaymentDeclinedBand } from "@/components/billing/scope-payment-dec
 import { useStaffMode } from "@/lib/use-staff-mode";
 import { SelectedOfferProvider, useSelectedOffer } from "@/components/v2/selected-offer";
 import { PathAvatar } from "@/components/v2/offer-sales-paths";
+import { FunnelFace, useFunnelCampaigns } from "@/components/v2/funnel-campaigns";
+import { isOngoingFunnelCampaign } from "@/lib/sales-funnel-campaigns";
 import { BRAND_WHY } from "@/lib/brand-why";
 import { CopilotPanel } from "@/components/v2/copilot-panel";
 import { CopilotDockContext, useCopilotDockState } from "@/components/v2/copilot-dock";
@@ -184,6 +186,9 @@ function V2Sidebar() {
   // The same read and the same order as the Sales path page's Campaigns section
   // (proactive first, ROI high to low), so the two lists never disagree. Today reads it too.
   const { campaigns: ongoing, outcomes } = useOngoingCampaigns(orgId, brandId, offerId);
+  // Campaigns that are sales funnels (owner 2026-10-10): the ON ones, by name and face. Their
+  // parts are not campaigns of their own here.
+  const funnelCampaigns = useFunnelCampaigns(brandId, offerId, { enabled: !!offerId }).data ?? [];
   const buckets = useBucketCounts(brandId).data;
   const standings = useStandingCounts(brandId).data;
   // Deals badge = the people still in play on the Deals board (Leads + Sales interest +
@@ -278,7 +283,25 @@ function V2Sidebar() {
             active={section === "campaigns" && /\/campaigns\/?$/.test(pathname)}
           />
           {offerId &&
-            ongoing.map(({ m, name }) => (
+            funnelCampaigns.filter(isOngoingFunnelCampaign).map((c) => {
+              const href = v2CampaignHref(orgId, brandId, c.id);
+              return (
+                <NavItem
+                  key={c.id}
+                  href={href}
+                  label={c.salesFunnelName}
+                  icon={<FunnelFace name={c.salesFunnelName} size={16} />}
+                  active={pathname.startsWith(href)}
+                  trailing={
+                    <span className="k-dot-pulse ml-auto mr-1 h-1.5 w-1.5 shrink-0 rounded-full bg-[var(--run)] text-[var(--run)]" aria-label="On" />
+                  }
+                />
+              );
+            })}
+          {offerId &&
+            ongoing
+              .filter(({ m }) => !m.row.campaign.salesFunnelCampaignId)
+              .map(({ m, name }) => (
               <NavItem
                 key={m.row.campaign.id}
                 href={m.href}

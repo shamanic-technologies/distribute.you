@@ -21,6 +21,7 @@ import {
   SalesFunnelCapsSchema,
   type SalesFunnelCampaign,
   type SalesFunnelCaps,
+  type SalesFunnelCapsInput,
 } from "./sales-funnel-campaigns";
 import { browserHasAnonSession } from "./anon-session-cookie";
 import { offerArchiveRefusalSentence } from "./offer-archive";
@@ -1358,6 +1359,12 @@ export interface Campaign {
    * string: the vocabulary is campaign-service's and may grow.
    */
   stopReason?: string | null;
+  /**
+   * The campaign (a sales funnel, owner 2026-10-10) this row is one PART of; null on every
+   * campaign started before them. A part runs and pauses only with its campaign
+   * (campaign-service answers 409 `sales_funnel_unit` to a status write on it).
+   */
+  salesFunnelCampaignId?: string | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -1666,9 +1673,10 @@ export async function getStaffCatalogueObject<K extends CatalogueReadObject>(
 // ─── Sales funnel campaigns (campaign-service) + their caps (billing-service), owner 2026-10-10 ───
 // Org-scoped reads through the gateway (api-service #1166). Shapes: lib/sales-funnel-campaigns.ts.
 
-/** The org's funnel campaigns for one brand x offer, each with its units (newest first). */
-export async function listSalesFunnelCampaigns(brandId: string, offerId: string): Promise<SalesFunnelCampaign[]> {
-  const qs = new URLSearchParams({ brandId, offerId });
+/** The org's funnel campaigns for one brand x offer (or the whole brand, offerId null), each with its units (newest first). */
+export async function listSalesFunnelCampaigns(brandId: string, offerId: string | null): Promise<SalesFunnelCampaign[]> {
+  const qs = new URLSearchParams({ brandId });
+  if (offerId) qs.set("offerId", offerId);
   const raw = await apiCall<unknown>(`/sales-funnel-campaigns?${qs.toString()}`);
   return parseStaff("listSalesFunnelCampaigns", SalesFunnelCampaignListSchema, raw).salesFunnelCampaigns;
 }
@@ -7029,6 +7037,46 @@ export async function setCampaignStatus(
       "x-feature-slug": identity.featureSlug,
     },
   });
+}
+
+/**
+ * Run or pause the WHOLE campaign: every part moves with it in one transaction. ⚠️ `activate`
+ * makes its parts due at once (the scheduler then spends within the caps), and meets the
+ * payment hold (409 `payment_declined` / `no_payment_method`).
+ */
+export async function setSalesFunnelCampaignStatus(
+  id: string,
+  status: "activate" | "stop",
+  brandId: string,
+  token?: string,
+): Promise<SalesFunnelCampaign> {
+  const raw = await apiCall<unknown>(`/sales-funnel-campaigns/${encodeURIComponent(id)}`, {
+    token,
+    method: "PATCH",
+    body: { status },
+    headers: { "x-run-id": globalThis.crypto.randomUUID(), "x-brand-id": brandId },
+  });
+  return parseStaff("setSalesFunnelCampaignStatus", SalesFunnelCampaignOneSchema, raw).salesFunnelCampaign;
+}
+
+function salesFunnelCapsPath(brandId: string, offerId: string, salesFunnelId: string): string {
+  return `/brands/${encodeURIComponent(brandId)}/offers/${encodeURIComponent(offerId)}/sales-funnels/${encodeURIComponent(salesFunnelId)}/caps`;
+}
+
+/** States both caps at once (null clears one). Charges nothing; answers the read's shape. */
+export async function saveSalesFunnelCaps(
+  brandId: string,
+  offerId: string,
+  salesFunnelId: string,
+  caps: SalesFunnelCapsInput,
+  token?: string,
+): Promise<SalesFunnelCaps> {
+  const raw = await apiCall<unknown>(salesFunnelCapsPath(brandId, offerId, salesFunnelId), {
+    token,
+    method: "PUT",
+    body: { maxBudget: caps.maxBudget, maxVolume: caps.maxVolume },
+  });
+  return parseStaff("saveSalesFunnelCaps", SalesFunnelCapsSchema, raw);
 }
 
 /**
