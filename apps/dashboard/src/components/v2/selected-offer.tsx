@@ -3,7 +3,7 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
 import { useParams } from "next/navigation";
 import { useAuthQuery } from "@/lib/use-auth-query";
-import { listBrandOffers, listCampaignsByBrand, type Offer } from "@/lib/api";
+import { listBrandOffers, listCampaignsByBrand, listSalesFunnelCampaigns, type Offer } from "@/lib/api";
 import { pickSelectedOffer, readSelectedOfferCookie, selectedOfferCookie } from "@/lib/v2/selected-offer";
 
 /**
@@ -41,13 +41,22 @@ export function SelectedOfferProvider({ brandId, children }: { brandId: string; 
   const params = useParams<{ offerId?: string; campaignId?: string }>();
   const offersQ = useAuthQuery(["brandOffers", brandId], () => listBrandOffers(brandId), { enabled: !!brandId });
   const campaignsQ = useAuthQuery(["campaigns", brandId], () => listCampaignsByBrand(brandId), { enabled: !!brandId });
+  // A campaign that is a sales funnel (owner 2026-10-10) names its offer too: same key as its page's read.
+  const funnelsQ = useAuthQuery(["salesFunnelCampaigns", brandId, "all"], () => listSalesFunnelCampaigns(brandId, null), {
+    enabled: !!brandId && !!params.campaignId,
+  });
   const [stored, setStored] = useState<string | null>(null);
   useEffect(() => setStored(readSelectedOfferCookie(document.cookie, brandId)), [brandId]);
 
   const campaigns = campaignsQ.data?.campaigns ?? null;
   // A mission's page names its offer through its campaign: reading it selects that offer.
   const fromUrl =
-    params.offerId ?? (params.campaignId ? campaigns?.find((c) => c.id === params.campaignId)?.offerId ?? null : null);
+    params.offerId ??
+    (params.campaignId
+      ? campaigns?.find((c) => c.id === params.campaignId)?.offerId ??
+        funnelsQ.data?.find((f) => f.id === params.campaignId)?.offerId ??
+        null
+      : null);
   const offers = useMemo(() => offersQ.data?.offers ?? [], [offersQ.data]);
   const offerId = offersQ.data ? pickSelectedOffer(offers, { fromUrl, stored }) : (fromUrl ?? null);
 

@@ -86,3 +86,113 @@ export function producerWord(s: string): string {
 export function isOngoingFunnelCampaign(c: Pick<SalesFunnelCampaign, "status">): boolean {
   return c.status === "ongoing";
 }
+
+// ─── GA display (owner 2026-10-10): the campaign page, the Overview section, the sidebar ──────────
+
+/** The PUT body: both keys always (object states the cap, null clears it). */
+export const CAP_PERIODS = ["daily", "weekly", "monthly", "one_off"] as const;
+export type CapPeriod = (typeof CAP_PERIODS)[number];
+
+export interface SalesFunnelCapsInput {
+  maxBudget: { amountCents: number; period: CapPeriod } | null;
+  maxVolume: { count: number; period: CapPeriod } | null;
+}
+
+export type MaxBudget = NonNullable<SalesFunnelCaps["maxBudget"]>;
+export type MaxVolume = NonNullable<SalesFunnelCaps["maxVolume"]>;
+
+/** billing's period vocabulary narrowed for the editor; an unknown token is logged and read as weekly. */
+export function asCapPeriod(p: string): CapPeriod {
+  if ((CAP_PERIODS as readonly string[]).includes(p)) return p as CapPeriod;
+  console.error("[sales-funnel-campaigns] unknown cap period", { period: p });
+  return "weekly";
+}
+
+/** How a period reads after an amount: "$50/week", "200 people/month", "$300 in total". */
+export function capPeriodSuffix(period: string): string {
+  switch (period) {
+    case "daily":
+      return "/day";
+    case "weekly":
+      return "/week";
+    case "monthly":
+      return "/month";
+    case "one_off":
+      return " in total";
+    default:
+      console.error("[sales-funnel-campaigns] unknown cap period", { period });
+      return "";
+  }
+}
+
+/** The window a consumed figure covers, for a sentence: "this week", "so far". */
+export function capWindowWords(period: string): string {
+  switch (period) {
+    case "daily":
+      return "today";
+    case "weekly":
+      return "this week";
+    case "monthly":
+      return "this month";
+    case "one_off":
+      return "so far";
+    default:
+      return "";
+  }
+}
+
+/** The period's name in the cap editor. */
+export const CAP_PERIOD_LABEL: Record<CapPeriod, string> = {
+  daily: "Per day",
+  weekly: "Per week",
+  monthly: "Per month",
+  one_off: "In total",
+};
+
+/** Whole dollars from a served cents string, no cents: a cap is a promise amount. "—" logged when unreadable. */
+export function formatCapUsd(cents: string | null): string {
+  const usd = centsToUsd(cents);
+  return usd === null ? "—" : `$${Math.round(usd).toLocaleString("en-US")}`;
+}
+
+export function maxBudgetLabel(b: Pick<MaxBudget, "amountCents" | "period">): string {
+  return `${formatCapUsd(b.amountCents)}${capPeriodSuffix(b.period)}`;
+}
+
+/** The volume unit is billing's `first_contacts`: a new person contacted. */
+export function maxVolumeLabel(v: Pick<MaxVolume, "count" | "period">): string {
+  return `${v.count.toLocaleString("en-US")} ${v.count === 1 ? "person" : "people"}${capPeriodSuffix(v.period)}`;
+}
+
+/**
+ * Why a consumed figure is missing, in one plain line. billing names the reason; a reason we
+ * have no sentence for still says something true and logs the token.
+ */
+export function capUnavailableSentence(reason: string | null): string {
+  switch (reason) {
+    case "volume_not_measured_on_channel":
+      return "Not counted on this channel yet.";
+    case "no_proactive_pipe":
+      return "This campaign contacts nobody first.";
+    default:
+      if (reason) console.error("[sales-funnel-campaigns] no sentence for consumedUnavailableReason", { reason });
+      return "Could not count this right now.";
+  }
+}
+
+/** Whole positive dollars typed in a field, or null. */
+export function parseWholeAmount(v: string): number | null {
+  const t = v.trim().replace(/^\$/, "").replace(/,/g, "");
+  if (!/^\d+$/.test(t)) return null;
+  const n = Number(t);
+  return n > 0 ? n : null;
+}
+
+/**
+ * The face of a campaign's name: features-service draws it from the NAME alone
+ * (`GET /public/catalogue/faces/:name.svg`, `faceOf` = the URL-encoded name), served
+ * through the gateway's public route. A pure display lookup.
+ */
+export function funnelCampaignFaceSrc(name: string): string {
+  return `/api/v1/public/catalogue/faces/${encodeURIComponent(name)}.svg`;
+}

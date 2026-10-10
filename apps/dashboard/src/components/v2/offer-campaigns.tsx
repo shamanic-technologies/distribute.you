@@ -84,6 +84,8 @@ export function OfferCampaigns({
     const m = new Map<string, Mission>();
     for (const x of missions) {
       const c = x.row.campaign;
+      // A part of a sales-funnel campaign is listed under that campaign, never as one of these rows.
+      if (c.salesFunnelCampaignId) continue;
       if (c.offerId === offerId && c.featureSlug && c.legKey) m.set(campaignKey(c.featureSlug, c.legKey), x);
     }
     return m;
@@ -386,7 +388,7 @@ const DASH = <span className="k-fg4">—</span>;
  * campaign's features-service row (the missions read); nothing is computed here. A
  * campaign that never ran has none of them yet.
  */
-function CampaignResultCells({ mission, basis }: { mission: Mission | null; basis: StatBasis }) {
+export function CampaignResultCells({ mission, basis }: { mission: Mission | null; basis: StatBasis }) {
   const g = mission?.row.revenue;
   // Learning unless mature, or already above 1x to date (lib/maturity.ts shownReturn): the campaign page's ROI tile.
   const roi = shownReturn(g?.economicsMaturity, basis);
