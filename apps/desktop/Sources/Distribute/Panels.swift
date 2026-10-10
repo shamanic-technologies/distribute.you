@@ -103,7 +103,7 @@ struct AskRow<Content: View>: View {
     }
 }
 
-private struct SectionTitle: View {
+struct SectionTitle: View {
     let title: String
     var count: Int?
     var body: some View {
@@ -414,21 +414,21 @@ struct AudienceRows: View {
     }
 }
 
-// MARK: - Campaign figures
+// MARK: - Campaign part figures
 
-struct CampaignCard: View {
-    @EnvironmentObject var state: AppState
-    let row: CampaignRow
+/// One part of a campaign: what it brings in and the channel doing it, with its served figures.
+/// No status of its own: it runs and pauses with its campaign.
+struct PartCard: View {
+    let names: (bringsIn: String?, channel: String?)
+    let figures: RevenueGroup?
 
     var body: some View {
-        let o = row.figures?.outcomes
+        let o = figures?.outcomes
         KCard {
             VStack(alignment: .leading, spacing: 10) {
-                HStack {
-                    Text(row.campaign.name).font(.system(size: 13, weight: .semibold)).foregroundStyle(K.fg1).lineLimit(2)
-                    Spacer()
-                    StateDot(word: isActiveStatus(row.campaign.status) ? "Running" : row.campaign.status.capitalized,
-                             color: isActiveStatus(row.campaign.status) ? K.run : K.fg4)
+                VStack(alignment: .leading, spacing: 1) {
+                    Text(names.bringsIn ?? "—").font(.system(size: 13, weight: .semibold)).foregroundStyle(K.fg1).lineLimit(1)
+                    if let ch = names.channel { Text(ch).font(K.meta).foregroundStyle(K.fg3).lineLimit(1) }
                 }
                 Grid(alignment: .leading, horizontalSpacing: 12, verticalSpacing: 10) {
                     GridRow {
@@ -437,15 +437,11 @@ struct CampaignCard: View {
                         Figure(label: "Positive replies", value: count(o?.recipientsRepliesPositive))
                     }
                     GridRow {
-                        Figure(label: "Spent", value: row.figures?.costEconomics.committedCostUsd.map { dollars(cents: $0 * 100) } ?? "—")
+                        Figure(label: "Spent", value: figures?.costEconomics.committedCostUsd.map { dollars(cents: $0 * 100) } ?? "—")
                         Figure(label: "Per reply", value: costPerPositiveReply(o))
                         Figure(label: "Reply rate", value: o?.sending?.replyRatePct.map { String(format: "%.1f%%", $0) } ?? "—")
                     }
                 }
-                Button("Ask about this campaign") {
-                    state.ask("About my campaign \"\(row.campaign.name)\" (id \(row.campaign.id)): ")
-                }
-                .buttonStyle(.plain).font(K.meta).foregroundStyle(K.accent)
             }
             .padding(12)
         }

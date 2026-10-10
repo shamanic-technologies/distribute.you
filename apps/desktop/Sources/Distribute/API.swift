@@ -262,20 +262,6 @@ struct BrandEnvelope: Decodable { let brand: BrandInfo }
 
 struct SalesRep: Decodable { let salesRepEmail: String?; let salesRepPhone: String?; let salesRepFirstName: String?; let salesRepRole: String? }
 
-struct SalesBudget: Decodable {
-    let mode: String
-    let dailyBudgetCents: Double?
-    enum CodingKeys: String, CodingKey { case mode, dailyBudgetCents }
-    /// Served as a number or a numeric string.
-    init(from decoder: Decoder) throws {
-        let c = try decoder.container(keyedBy: CodingKeys.self)
-        mode = try c.decode(String.self, forKey: .mode)
-        if let d = try? c.decodeIfPresent(Double.self, forKey: .dailyBudgetCents) { dailyBudgetCents = d }
-        else if let s = try? c.decodeIfPresent(String.self, forKey: .dailyBudgetCents) { dailyBudgetCents = Double(s) }
-        else { dailyBudgetCents = nil }
-    }
-}
-
 struct ConversionToken: Decodable { let token: String; let ingestUrl: String; let status: String? }
 
 struct BillingAccount: Decodable {
@@ -343,9 +329,17 @@ struct DistributeAPI {
     /// The platform's steps, legs and campaign names (`GET /public/channels`).
     func publicCatalogue() async throws -> PublicCatalogue { try await get("/public/channels", query: [:]) }
 
-    /// The offer's campaigns as the Sales path page lists them (`?scope=catalogue`, like the web sidebar).
-    func offerSalesPaths(brandId: String, offerId: String) async throws -> OfferSalesPaths {
-        try await get("/offers/\(offerId)/sales-paths", query: ["brandId": brandId, "scope": "catalogue"])
+    /// The offer's campaigns, as the customer launched them (campaign-service, newest first).
+    func funnelCampaigns(brandId: String, offerId: String) async throws -> [FunnelCampaign] {
+        let l: FunnelCampaignList = try await get("/sales-funnel-campaigns", query: ["brandId": brandId, "offerId": offerId])
+        return l.salesFunnelCampaigns
+    }
+
+    /// One campaign's max budget and max volume, with what the current period used (billing-service).
+    func funnelCaps(_ c: FunnelCampaign) async throws -> FunnelCaps {
+        // The id carries `@` and `+`, both legal in a path: sent as is (`appendingPathComponent` would
+        // re-encode a pre-encoded `%`, and billing refuses the result).
+        try await get("/brands/\(c.brandId)/offers/\(c.offerId)/sales-funnels/\(c.salesFunnelId)/caps", query: [:])
     }
 
     /// The Unibox list: crm-service's people, one per person on every channel.
@@ -428,10 +422,6 @@ struct DistributeAPI {
     }
     func setBookingUrl(brandId: String, offerId: String, url: String?) async throws {
         try await sendIgnoringBody("PUT", "/brands/\(brandId)/offers/\(offerId)/economics", query: [:], body: ["bookingUrl": url ?? NSNull()])
-    }
-    func salesBudget(brandId: String) async throws -> SalesBudget { try await get("/brands/\(brandId)/sales-budget", query: [:]) }
-    func setSalesBudget(brandId: String, cents: Int) async throws {
-        try await sendIgnoringBody("PUT", "/brands/\(brandId)/sales-budget", query: [:], body: ["dailyBudgetCents": cents])
     }
     func conversionToken(brandId: String) async throws -> ConversionToken { try await get("/brands/\(brandId)/conversion-token", query: [:]) }
     func billingAccount(orgId: String) async throws -> BillingAccount { try await get("/billing/accounts", query: ["orgId": orgId]) }
