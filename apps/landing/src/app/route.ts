@@ -35,13 +35,19 @@ export async function GET(request: Request) {
     random: Math.random(),
   });
 
-  // `index-v2.html` is the one homepage: a free platform, outreach billed at catalogue
-  // prices (owner 2026-10-06), so `subscription`, `control` and crawlers all get it.
-  // Its offer banner is dated the last day of the current month (`lib/promo-banner.ts`).
+  // `index-v2.html` is the prepaid homepage: a free platform, outreach billed at
+  // catalogue prices (owner 2026-10-06), served to `control` and crawlers. Its offer
+  // banner is dated the last day of the current month (`lib/promo-banner.ts`).
+  // `index-v2-subscription.html` is the same page sold as the $99/month plan with a
+  // 3-day free trial (owner 2026-10-10 A/B), with no banner: the match is prepaid-only.
   const homepage = () =>
     withPromoUntil(readFileSync(join(process.cwd(), "public/landing", "index-v2.html"), "utf8"), new Date());
+  const subscriptionHomepage = () =>
+    readFileSync(join(process.cwd(), "public/landing", "index-v2-subscription.html"), "utf8");
   const page =
-    decision.variant === "assistant"
+    decision.variant === "subscription"
+      ? subscriptionHomepage()
+      : decision.variant === "assistant"
       ? renderAssistantPage(undefined, { at: "homepage" })
       : decision.variant === "concierge"
         ? renderConciergePage(undefined, { at: "homepage" })
