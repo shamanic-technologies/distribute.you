@@ -28,11 +28,11 @@ export async function GET(req: Request) {
       telegramBotToken: requireEnv("TELEGRAM_BOT_TOKEN"),
       telegramChatId: requireEnv("TELEGRAM_OWNER_CHAT_ID"),
     };
-    const { lines, unknown } = await buildClientLines(config);
-    const text = clientsMessage(lines, new Date(), unknown);
+    const { lines, unknown, idle } = await buildClientLines(config);
+    const text = clientsMessage(lines, new Date(), unknown, idle);
     await sendTelegram(config, text);
-    console.log(`[dashboard-clients-telegram] sent ${lines.length} active clients, ${unknown.length} unknown`);
-    return NextResponse.json({ ok: true, clients: lines.length, unknown: unknown.length, text });
+    console.log(`[dashboard-clients-telegram] sent ${lines.length} active clients, ${idle.length} paying idle, ${unknown.length} unknown`);
+    return NextResponse.json({ ok: true, clients: lines.length, idle: idle.length, unknown: unknown.length, text });
   } catch (err) {
     console.error("[dashboard-clients-telegram] cron failed:", err);
     return NextResponse.json(
