@@ -91,8 +91,7 @@ describe("v2 Integrations pages", () => {
     expect(page).toContain("<V2AiIntegrationView orgId={orgId} brandId={brandId} />");
     const card = read("src/components/settings/brand-integrations-card.tsx");
     expect(card).not.toContain("if (!isBeta) return null;");
-    // The conversation rows wait for the business-only filter: beta until then.
-    expect(card).toContain("withConversations={isBeta}");
-    expect(card).toContain("if (withConversations) {");
+    // GA for every row, conversation rows included (the business-only filter is live).
+    expect(card).not.toContain("useIsBetaUser");
   });
 });
