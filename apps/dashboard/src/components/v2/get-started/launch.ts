@@ -1,38 +1,26 @@
 /**
  * What `/get-started` does once the account exists and the credit is added: turn the
- * preview the founder just watched into running campaigns, the ones they turned on at
- * the campaigns step with the budget they set on each, with no further question.
+ * preview the founder just watched into ONE running campaign (owner 2026-10-10: a campaign
+ * IS a sales funnel), with the caps they set at the "Your campaign" step, plus the optional
+ * meeting-booking one, with no further question.
  *
- * It reuses the calls the v2 "Add a brand" modal launches with (same channel, same
- * leg vocabulary, same write order), so the campaign it creates is the same kind
- * of campaign. Every write is done ONCE: a retry skips what already landed.
+ * Order per funnel: billing's caps FIRST (a funnel with no max budget is held unfunded), then
+ * campaign-service starts the funnel campaign. Every write is done ONCE: a retry skips what
+ * already landed, and campaign-service hands an existing funnel campaign back, never a second.
  */
 
 import {
   USER_PROFILE_FIELDS,
-  createCampaignWithoutBrandEnrichment,
   launchAudiencePortfolio,
   extractBrandFields,
-  getWorkflowProjectionLadder,
-  prefillFeatureInputs,
-  saveOfferCampaignBudget,
   saveOfferUserFields,
+  saveSalesFunnelCaps,
+  startSalesFunnelCampaign,
   type UserFieldKey,
   type UserFieldValue,
 } from "@/lib/api";
-import { LEVER_QUESTIONS, NEW_ORG_CHANNEL_SLUG, newOrgLeg, recommendedDailyBudgetUsd, type NewOrgLegKey } from "@/lib/v2/new-org-wizard";
-import { plannedKey, type PlannedCampaign } from "@/lib/v2/get-started";
-import { startReactiveCampaign } from "@/lib/start-pair";
-import { canonicalLegKey, OUTBOUND_LEG_TO_CONVERSATION, OUTBOUND_LEG_TO_WEBSITE_VISIT } from "@/lib/outbound-leg-key";
-
-export const GET_STARTED_LEG: NewOrgLegKey = OUTBOUND_LEG_TO_WEBSITE_VISIT;
-
-/** The cold-email entry leg that prices the recommended budget, when the best proactive campaign works one.
- *  Either spelling of the outbound leg is read (features-service may serve the legacy one), the new one returned. */
-export function pricingLegFor(entryLegKey: string | null | undefined): NewOrgLegKey | null {
-  const key = canonicalLegKey(NEW_ORG_CHANNEL_SLUG, entryLegKey);
-  return key === OUTBOUND_LEG_TO_WEBSITE_VISIT || key === OUTBOUND_LEG_TO_CONVERSATION ? key : null;
-}
+import { LEVER_QUESTIONS } from "@/lib/v2/new-org-wizard";
+import type { SignupLaunchFunnel, SignupLaunchPlan } from "@/lib/v2/signup-campaign";
 
 export interface LaunchInput {
   brandId: string;
@@ -42,55 +30,22 @@ export interface LaunchInput {
   offer: { offerId: string; name: string };
   /** Who the customer sells to (the ICP text): every launched audience is derived from it. */
   targetAudience: string;
-  /** The campaigns turned on at the campaigns step, each with its daily budget (whole dollars). */
-  campaigns: LaunchCampaign[];
-  /** Write each campaign's daily budget (false for a plan subscriber: its plan sets them). */
-  writeBudgets?: boolean;
+  /** The campaign set at the "Your campaign" step: the proactive funnel and, if ticked, the reactive one. */
+  plan: SignupLaunchPlan;
   /** The offer points were answered in the preview and saved on the offer already. */
   answered: boolean;
-}
-
-/** One campaign to start, with the words its name is made of. */
-export interface LaunchCampaign extends PlannedCampaign {
-  /** The channel's name ("Cold email"). */
-  label: string;
-  /** The step the leg reaches ("Website visit"): two legs of one channel are told apart by it. */
-  outcome: string;
 }
 
 export interface LaunchProgress {
   levers: boolean;
   audiences: boolean;
-  /** Per campaign (`plannedKey`): its budget written, and the campaign started (a proactive one's id). */
-  budgets: Record<string, boolean>;
+  /** Per sales funnel id: its caps written, and its funnel campaign started (with its id). */
+  caps: Record<string, boolean>;
   started: Record<string, boolean>;
   campaignIds: Record<string, string>;
 }
 
-export const EMPTY_PROGRESS: LaunchProgress = { levers: false, audiences: false, budgets: {}, started: {}, campaignIds: {} };
-
-/**
- * The daily budget the v2 "Add a brand" modal would recommend for this offer:
- * features-service's recommended workflow on this leg, its campaign-grain cost per
- * outcome, turned into a daily figure by the leg's own rule, never under the channel
- * floor. `null` when no price is held yet.
- */
-export async function recommendedBudgetForPreview(
-  brandId: string,
-  offerId: string,
-  floorUsd: number,
-  legKey: NewOrgLegKey = GET_STARTED_LEG,
-): Promise<number | null> {
-  const ladder = await getWorkflowProjectionLadder({
-    featureSlug: NEW_ORG_CHANNEL_SLUG,
-    brandId,
-    offerId,
-    leg: legKey,
-  });
-  const rec = ladder.recommendedWorkflowDynastySlug;
-  const row = ladder.rows.find((r) => r.audienceId === null && r.workflow.workflowDynastySlug === rec);
-  return recommendedDailyBudgetUsd(newOrgLeg(legKey), row?.resolved.costPerOutcomeUsd ?? null, floorUsd);
-}
+export const EMPTY_PROGRESS: LaunchProgress = { levers: false, audiences: false, caps: {}, started: {}, campaignIds: {} };
 
 /** A drafted value as clean lines; "unknown" is the read's word for nothing found. */
 function valueLinesOf(v: unknown): string[] {
@@ -125,21 +80,32 @@ async function prefillOfferLevers(brandId: string, offerId: string): Promise<voi
   if (Object.keys(fields).length > 0) await saveOfferUserFields(brandId, offerId, fields);
 }
 
+/** Caps first, then the start: both skipped on a retry once they landed. Returns the funnel campaign id. */
+async function launchFunnel(brandId: string, offerId: string, f: SignupLaunchFunnel, progress: LaunchProgress): Promise<string> {
+  if (!progress.caps[f.salesFunnelId]) {
+    await saveSalesFunnelCaps(brandId, offerId, f.salesFunnelId, f.caps);
+    progress.caps[f.salesFunnelId] = true;
+  }
+  const known = progress.campaignIds[f.salesFunnelId];
+  if (known && progress.started[f.salesFunnelId]) return known;
+  const campaign = await startSalesFunnelCampaign({ brandId, offerId, salesFunnelId: f.salesFunnelId });
+  progress.campaignIds[f.salesFunnelId] = campaign.id;
+  progress.started[f.salesFunnelId] = true;
+  return campaign.id;
+}
+
 /**
- * Runs the launch on the offer and audience the visitor picked (no re-pick): each campaign
- * turned on at the campaigns step gets its own daily budget (billing, per offer), then
- * starts: the proactive one is created on the workflow features-service recommends for its
- * leg, a reactive one is started by campaign-service as a funded pair. Exactly one proactive
- * campaign is on (the step refuses otherwise) and it must start or the launch fails; a
- * reactive one that cannot start yet is logged and skipped. Mutates `progress` as each
- * write lands so a retry resumes. Returns the proactive campaign's id (where the mission
- * page opens).
+ * Runs the launch on the offer and audience the visitor picked (no re-pick): the levers, the
+ * audience portfolio, then the proactive funnel campaign (it must start or the launch fails),
+ * then the meeting-booking one when ticked (a refusal there is stated in the console and does not
+ * undo the outreach that started). Mutates `progress` as each write lands so a retry resumes.
+ * Returns the proactive funnel campaign's id (where the campaign page opens).
  */
 export async function launchFromPreview(input: LaunchInput, progress: LaunchProgress): Promise<string> {
-  const { offerId, name: offerName } = input.offer;
+  const { offerId } = input.offer;
 
   // Levers answered in the preview are already saved on the offer; otherwise they are
-  // drafted and saved now, before the campaign inputs are prefilled from the offer.
+  // drafted and saved now, before the emails are written from the offer.
   if (input.answered) progress.levers = true;
   const levers = progress.levers
     ? Promise.resolve()
@@ -160,62 +126,16 @@ export async function launchFromPreview(input: LaunchInput, progress: LaunchProg
     progress.audiences = true;
   }
 
-  const on = input.campaigns.filter((c) => c.on);
-  const proactive = on.filter((c) => !c.reactive);
-  if (proactive.length !== 1) {
-    console.error("[get-started] launch: expected exactly one proactive campaign on", { brandId: input.brandId, offerId, on });
-    throw new Error("Turn on one campaign that finds new leads, then try again.");
-  }
-
-  // The proactive one first: the reactive ones follow the leads it brings.
-  let firstId: string | null = progress.campaignIds[plannedKey(proactive[0])] ?? null;
-  for (const c of [...proactive, ...on.filter((x) => x.reactive)]) {
-    const key = plannedKey(c);
-    if (progress.started[key]) continue;
-    // Every write spells an outbound leg the NEW way (owner 2026-10-09; every backend accepts both).
-    const legKey = canonicalLegKey(c.featureSlug, c.legKey);
-    if (input.writeBudgets !== false && !progress.budgets[key]) {
-      await saveOfferCampaignBudget(input.brandId, offerId, { featureSlug: c.featureSlug, legKey, budgetCents: c.budgetUsd * 100 }, "day");
-      progress.budgets[key] = true;
-    }
-
-    if (c.reactive) {
-      try {
-        await startReactiveCampaign({ brandId: input.brandId, offerId, featureSlug: c.featureSlug, legKey });
-      } catch (err) {
-        console.warn(`[get-started] launch: reactive campaign ${key} did not start, skipped`, err);
-        continue;
-      }
-      progress.started[key] = true;
-      continue;
-    }
-
-    const ladder = await getWorkflowProjectionLadder({ featureSlug: c.featureSlug, brandId: input.brandId, offerId, leg: legKey });
-    const workflowSlug = ladder.recommendedWorkflowDynastySlug;
-    if (!workflowSlug) throw new Error(`Nothing is ready to run for ${c.label.toLowerCase()} yet, so the campaign cannot start.`);
-
-    await levers;
-    const prefill = await prefillFeatureInputs(c.featureSlug, [input.brandId], offerId);
-    const featureInputs: Record<string, string> = {};
-    for (const [k, v] of Object.entries(prefill.prefilled)) if (typeof v === "string" && v.trim()) featureInputs[k] = v;
-
-    // A campaign name is unique per org, and one channel works several legs (cold email
-    // finds website visits AND positive replies): the leg's outcome tells them apart,
-    // the way the "Add a brand" modal names its campaigns.
-    const { campaign } = await createCampaignWithoutBrandEnrichment({
-      name: `${offerName} (${c.outcome}, ${c.label})`,
-      workflowSlug,
-      ...(input.website ? { brandUrls: [input.website] } : { brandIds: [input.brandId] }),
-      offerId,
-      legKey,
-      featureSlug: c.featureSlug,
-      featureInputs,
-    });
-    progress.campaignIds[key] = campaign.id;
-    progress.started[key] = true;
-    firstId = campaign.id;
-  }
+  // The emails are written from the offer points: they land before anything starts.
   await levers;
-  if (!firstId) throw new Error("The campaign did not start. Try again.");
+  const firstId = await launchFunnel(input.brandId, offerId, input.plan.proactive, progress);
+  const reactive = input.plan.reactive;
+  if (reactive && !progress.started[reactive.salesFunnelId]) {
+    try {
+      await launchFunnel(input.brandId, offerId, reactive, progress);
+    } catch (err) {
+      console.error(`[get-started] launch: meeting booking ${reactive.name} did not start`, { brandId: input.brandId, offerId, err });
+    }
+  }
   return firstId;
 }

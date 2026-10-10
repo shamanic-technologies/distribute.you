@@ -19,7 +19,7 @@ import { campaignNameFor } from "@/lib/legs";
 import { isProactiveFrom, sameLegKey } from "@/lib/outbound-leg-key";
 import { useAcquisitionChannels } from "@/lib/use-acquisition-channels";
 import { crewTrigger } from "@/lib/v2/crews";
-import { v2CampaignHref, v2OfferHref, type V2CampaignTab } from "@/lib/v2/routes";
+import { v2CampaignHref, v2Href, v2OfferHref, type V2CampaignTab } from "@/lib/v2/routes";
 import { AcquisitionChannelMark } from "@/components/marks/acquisition-channel-mark";
 import { CampaignControlsTrigger } from "@/components/campaigns/campaign-controls-trigger";
 import { CampaignSettingsCard } from "@/components/settings/campaign-settings-card";
@@ -123,7 +123,11 @@ export function V2CampaignPage({ funnelListSettled = true }: { funnelListSettled
         offerId
           ? [
               { label: mission?.offerName ?? "Offer", href: v2OfferHref(orgId, brandId, offerId) },
-              { label: "Outbound", href: v2OfferHref(orgId, brandId, offerId, "sales-path") },
+              // The campaign this part runs in (its max budget and volume), else the Campaigns
+              // overview: never the staff Sales path page (owner 2026-10-10).
+              partOfId
+                ? { label: partOf.campaign?.salesFunnelName ?? "Campaign", href: v2CampaignHref(orgId, brandId, partOfId) }
+                : { label: "Campaigns", href: v2Href(orgId, brandId, "campaigns") },
               { label: shownName },
             ]
           : [{ label: "Campaigns" }, { label: " " }]

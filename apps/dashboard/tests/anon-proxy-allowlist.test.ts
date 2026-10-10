@@ -267,30 +267,26 @@ describe("onboarding v2 steps 3 to 5: offer, audience, 100 companies", () => {
   });
 });
 
-describe("the sales path steps of /get-started", () => {
+describe("the sales path steps of /get-started are gone (owner 2026-10-10: one campaign at the end)", () => {
   const OFFER = "7b5c063d-e33f-4440-87fb-1f1e6aa4e850";
-  it("permits the steps and legs, the leg rates and the ranked paths, on the session's brand", () => {
-    expect(allow("GET", `/brands/${BRAND}/offers/${OFFER}/sales-path`).allowed).toBe(true);
-    expect(allow("PUT", `/brands/${BRAND}/offers/${OFFER}/sales-path`).allowed).toBe(true);
-    expect(allow("GET", `/brands/${BRAND}/leg-rates`).allowed).toBe(true);
-    expect(allow("PUT", `/brands/${BRAND}/leg-rates`).allowed).toBe(true);
-    expect(allow("GET", `/offers/${OFFER}/sales-paths?brandId=${BRAND}`).allowed).toBe(true);
-    expect(allow("GET", `/brands/${BRAND}/offers/${OFFER}/channels`).allowed).toBe(true);
-    expect(allow("PUT", `/brands/${BRAND}/offers/${OFFER}/channels`).allowed).toBe(true);
-    expect(allow("GET", `/brands/${BRAND}/offers/${OFFER}/selected-sales-paths`).allowed).toBe(true);
-    expect(allow("PUT", `/brands/${BRAND}/offers/${OFFER}/selected-sales-paths`).allowed).toBe(true);
-    expect(allow("PUT", `/brands/${OTHER}/offers/${OFFER}/channels`).refusal).toBe("wrong-brand");
-    expect(allow("PUT", `/brands/${OTHER}/offers/${OFFER}/selected-sales-paths`).refusal).toBe("wrong-brand");
-    // No campaign budget and no campaign start before the account exists.
-    expect(allow("PUT", `/brands/${BRAND}/offers/${OFFER}/campaign-budgets`).allowed).toBe(false);
+  it("refuses the steps and legs, the leg rates, the ranked paths, the channels and the ticked paths", () => {
+    for (const [m, p] of [
+      ["GET", `/brands/${BRAND}/offers/${OFFER}/sales-path`],
+      ["PUT", `/brands/${BRAND}/offers/${OFFER}/sales-path`],
+      ["GET", `/brands/${BRAND}/leg-rates`],
+      ["PUT", `/brands/${BRAND}/leg-rates`],
+      ["GET", `/offers/${OFFER}/sales-paths?brandId=${BRAND}`],
+      ["GET", `/brands/${BRAND}/offers/${OFFER}/channels`],
+      ["PUT", `/brands/${BRAND}/offers/${OFFER}/channels`],
+      ["GET", `/brands/${BRAND}/offers/${OFFER}/selected-sales-paths`],
+      ["PUT", `/brands/${BRAND}/offers/${OFFER}/selected-sales-paths`],
+    ] as const) expect(allow(m, p).allowed, `${m} ${p}`).toBe(false);
   });
 
-  it("refuses them on another brand, the query-bound read included", () => {
-    expect(allow("PUT", `/brands/${OTHER}/offers/${OFFER}/sales-path`).refusal).toBe("wrong-brand");
-    expect(allow("PUT", `/brands/${OTHER}/leg-rates`).refusal).toBe("wrong-brand");
-    expect(allow("GET", `/offers/${OFFER}/sales-paths?brandId=${OTHER}`).refusal).toBe("wrong-brand");
-    expect(allow("GET", `/offers/${OFFER}/sales-paths`).refusal).toBe("wrong-brand");
-    expect(allow("GET", `/offers/${OFFER}/sales-paths?brandId=${BRAND}`, "").allowed).toBe(false);
+  it("starts no campaign and writes no caps before the account exists", () => {
+    expect(allow("PUT", `/brands/${BRAND}/offers/${OFFER}/campaign-budgets`).allowed).toBe(false);
+    expect(allow("POST", `/sales-funnel-campaigns`).allowed).toBe(false);
+    expect(allow("PUT", `/brands/${BRAND}/offers/${OFFER}/sales-funnels/x/caps`).allowed).toBe(false);
   });
 
   it("never lets the anonymous session state the global budget (that is set after the account exists)", () => {

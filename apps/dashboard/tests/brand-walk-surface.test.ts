@@ -76,9 +76,9 @@ describe("the walk acts on the org it names, explicitly", () => {
     const set = fn.indexOf("setApiActiveOrgOverride(org.orgId);");
     expect(set).toBeGreaterThan(-1);
     expect(fn).toContain("return () => setApiActiveOrgOverride(null);");
-    // Declared before the snapshot read and the catalogue read (effects run in order).
+    // Declared before the snapshot read and the funnels read (effects run in order).
     expect(set).toBeLessThan(fn.indexOf("localStorage.getItem(snapshotKey)"));
-    expect(set).toBeLessThan(fn.indexOf("void loadCatalogue();"));
+    expect(set).toBeLessThan(fn.indexOf("void loadFunnels();"));
   });
   it("never starts an anonymous session from the dashboard", () => {
     const start = walk.slice(walk.indexOf("async function start(raw: string)"));
@@ -127,7 +127,7 @@ describe("the end: prepaid credit (owner 2026-10-06), then the walk's own launch
   const launch = end.slice(end.indexOf("async function launch("), end.indexOf("  return (\n"));
   it("the dashboard walk opens its credit step, never the account/phone/card wall nor a plan", () => {
     expect(walk).toContain("<OrgLaunch");
-    expect(walk).toContain("launchCampaigns.length > 0 && !org && (\n        <AccountCardWall");
+    expect(walk).toContain("launchPlan && !org && (\n        <AccountCardWall");
     expect(end).not.toContain("ChoosePlanPanel");
     expect(end).toContain("<PrepaidTopup");
     // An org that already pays launches on what it has; one with no card adds credit first.

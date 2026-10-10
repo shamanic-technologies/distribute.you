@@ -13,16 +13,12 @@ import {
   nextSlide,
   offerSourceText,
   parseCompetitors,
-  campaignPlan,
-  campaignPlanProblem,
-  chosenCampaignOutlook,
+  chosenFunnelOutlook,
   matchNote,
-  parseCampaignBudget,
   wallCopy,
   parseGetStartedSnapshot,
   parseReloadThresholdUsd,
   parseTopupUsd,
-  setPlannedOn,
   stageDwellMs,
   stageMove,
   valueLines,
@@ -67,45 +63,12 @@ describe("the rules the page decides on", () => {
     expect(hostOf("")).toBeNull();
   });
 
-  it("refuses a campaign budget under its channel floor or not in whole dollars", () => {
-    expect(parseCampaignBudget("", 1)).toEqual({ problem: "Whole dollars a day." });
-    expect(parseCampaignBudget("2.5", 1)).toEqual({ problem: "Whole dollars a day." });
-    expect(parseCampaignBudget("3", 5)).toEqual({ problem: "At least $5 a day." });
-    expect(parseCampaignBudget("$12", 1)).toEqual({ usd: 12 });
-  });
-
   it("adds credit from $100 and reloads under $5 at the lowest (owner 2026-10-06)", () => {
     expect(parseTopupUsd("99")).toEqual({ problem: "At least $100." });
     expect(parseTopupUsd("$1,000")).toEqual({ usd: 1000 });
     expect(parseTopupUsd("100.5")).toEqual({ problem: "Whole dollars." });
     expect(parseReloadThresholdUsd("4")).toEqual({ problem: "At least $5." });
     expect(parseReloadThresholdUsd("5")).toEqual({ usd: 5 });
-  });
-
-  it("opens the campaigns on the best proactive one and every reactive one, and keeps what was set", () => {
-    const served = [
-      { featureSlug: "cold", legKey: "start_to_visit", reactive: false, managed: true, roi: 1.2 },
-      { featureSlug: "cold", legKey: "start_to_reply", reactive: false, managed: true, roi: 2.4 },
-      { featureSlug: "booking", legKey: "reply_to_meeting", reactive: true, managed: true, roi: 3 },
-      { featureSlug: "ads", legKey: "start_to_visit", reactive: false, managed: false, roi: 9 },
-    ];
-    const floor = (slug: string) => (slug === "cold" ? 10 : 3);
-    const plan = campaignPlan(served, floor, 25);
-    expect(plan.map((c) => [c.legKey, c.on, c.budgetUsd])).toEqual([
-      ["start_to_visit", false, 25],
-      ["start_to_reply", true, 25],
-      ["reply_to_meeting", true, 3],
-    ]);
-    // One proactive at a time: turning another on turns the first off.
-    const moved = setPlannedOn(plan, "cold:start_to_visit", true);
-    expect(moved.filter((c) => c.on && !c.reactive).map((c) => c.legKey)).toEqual(["start_to_visit"]);
-    expect(moved.find((c) => c.reactive)?.on).toBe(true);
-    // A re-read keeps the visitor's choices.
-    expect(campaignPlan(served, floor, 99, moved)).toEqual(moved);
-    // A recommendation under the floor is lifted to it.
-    expect(campaignPlan(served, floor, 4).find((c) => c.on && !c.reactive)?.budgetUsd).toBe(10);
-    expect(campaignPlanProblem(moved, floor)).toBeNull();
-    expect(campaignPlanProblem(setPlannedOn(moved, "cold:start_to_visit", false), floor)).toBe("Turn on one campaign that finds new leads.");
   });
 
   it("states the match with no end date, and never calls the $30 advance free (owner 2026-10-06)", () => {
@@ -135,12 +98,8 @@ describe("the rules the page decides on", () => {
     // The answers to steps 5 to 8 are absent on an older snapshot and read as not given.
     expect(parseGetStartedSnapshot(JSON.stringify(snap))).toEqual({
       ...snap,
-      salesPath: null,
-      channels: null,
-      selectedPaths: null,
-      pathsDone: false,
-      campaigns: null,
-      campaignsDone: false,
+      campaign: null,
+      campaignDone: false,
       lifetimeRevenueUsd: null,
       answered: false,
       icp: null,
@@ -148,8 +107,11 @@ describe("the rules the page decides on", () => {
     expect(parseGetStartedSnapshot("{nope")).toBeNull();
     // A snapshot from before the offer and audience steps starts over.
     expect(parseGetStartedSnapshot(JSON.stringify({ ...snap, version: 1 }))).toBeNull();
-    const campaigns = [{ featureSlug: "cold", legKey: "l", reactive: false, on: true, budgetUsd: 20 }, { featureSlug: "x", legKey: "l", reactive: true, on: true, budgetUsd: 2.5 }];
-    expect(parseGetStartedSnapshot(JSON.stringify({ ...snap, campaigns }))?.campaigns).toEqual([campaigns[0]]);
+    // The campaign step as typed survives; a period it does not know reads as the default.
+    const campaign = { budget: "35", budgetPeriod: "weekly", volume: "", volumePeriod: "yearly", reactiveOn: true, reactiveBudget: "10", reactivePeriod: "weekly" };
+    expect(parseGetStartedSnapshot(JSON.stringify({ ...snap, campaign, campaignDone: true }))).toMatchObject({ campaign: { ...campaign, volumePeriod: "monthly" }, campaignDone: true });
+    // An older snapshot's sales path fields are dropped.
+    expect(parseGetStartedSnapshot(JSON.stringify({ ...snap, salesPath: { steps: [], legs: [] }, campaigns: [] }))).not.toHaveProperty("salesPath");
     expect(parseGetStartedSnapshot(JSON.stringify({ ...snap, offer: { name: "x" } }))?.offer).toBeNull();
   });
 
@@ -160,15 +122,11 @@ describe("the rules the page decides on", () => {
       "offer",
       "audience",
       "value",
-      "salesSteps",
-      "legs",
-      "channels",
-      "paths",
-      "campaigns",
       "levers",
       "gives",
       "companies",
       "email",
+      "campaign",
     ]);
   });
 
@@ -352,18 +310,15 @@ describe("the surface", () => {
     expect(motion).toContain("aria-label={text}");
   });
 
-  it("prices the budget on the picked offer, and launches that offer and that audience with the levers prefilled", () => {
-    expect(LAUNCH).toContain("export async function recommendedBudgetForPreview(");
-    expect(LAUNCH).toContain("recommendedDailyBudgetUsd(newOrgLeg(legKey)");
-    expect(FLOW).toContain("recommendedBudgetForPreview(brandId, offer.offerId, floorFor(NEW_ORG_CHANNEL_SLUG), leg)");
-    expect(WALL).toContain("{ brandId, website, offer, targetAudience, campaigns, answered }");
+  it("launches that offer and that audience on the campaign set, with the levers prefilled", () => {
+    expect(WALL).toContain("{ brandId, website, offer, targetAudience, plan, answered }");
     // No re-pick at launch: the offer is the one confirmed at step 3.
     expect(LAUNCH).not.toContain("proposeBrandOffers");
     // The six levers are read off the site for that offer and saved on it.
     expect(LAUNCH).toContain('extractBrandFields([brandId], leverFields, { mode: "suggest", urlStrategy: "landing", offerId })');
     expect(LAUNCH).toContain("saveOfferUserFields(brandId, offerId, fields)");
-    // The campaign's inputs are read after the levers land.
-    expect(LAUNCH.indexOf("await levers;\n    const prefill")).toBeGreaterThan(0);
+    // The campaign starts after the levers land (its emails are written from them).
+    expect(LAUNCH.indexOf("await levers;\n  const firstId = await launchFunnel(")).toBeGreaterThan(0);
   });
 
   it("carries Explee's countdown and spots strips on the wall (owner-decided, copied for now)", () => {
@@ -410,30 +365,11 @@ describe("the surface", () => {
 });
 
 describe("the wall", () => {
-  it("reads the wall's figures off the proactive campaign that is on", () => {
-    const plan = [
-      { featureSlug: "cold-email", legKey: "contacted->visit", reactive: false, on: false },
-      { featureSlug: "cold-email", legKey: "contacted->conversation", reactive: false, on: true },
-      { featureSlug: "ai-booking", legKey: "conversation->meeting", reactive: true, on: true },
-    ];
-    const bought = (outcomes: number | null, combinationKey: string | null, creditUsd = 100) => ({ creditUsd, combinationKey, outcomes });
-    const campaigns = [
-      { channelSlug: "cold-email", legKey: "contacted->visit", roi: 9, outcomesForCredit: bought(41, "p1") },
-      { channelSlug: "cold-email", legKey: "contacted->conversation", roi: 2.4, outcomesForCredit: bought(4, "p2") },
-    ];
-    const leg = (legKey: string, key: string, label: string) => ({ legKey, toStep: { key, label } });
-    const paths = [
-      { combinationKey: "p1", legs: [leg("contacted->visit", "website_visit", "Website visit")] },
-      { combinationKey: "p2", legs: [leg("contacted->conversation", "conversation", "Positive reply")] },
-    ];
-    // The served count, never one worked out here.
-    expect(chosenCampaignOutlook(plan, campaigns, paths)).toEqual({ outcome: "Positive replies", outcomes: 4, roi: 2.4 });
-    // Nothing proactive on: nothing to read.
-    expect(chosenCampaignOutlook(plan.map((c) => ({ ...c, on: c.reactive })), campaigns, paths)).toBeNull();
-    // Not priced, zero, an older producer, or a count for another credit: no count stated.
-    for (const outcomesForCredit of [bought(null, null), bought(0, "p2"), undefined, bought(8, "p2", 200)]) {
-      expect(chosenCampaignOutlook(plan, [{ ...campaigns[1], outcomesForCredit }], paths)?.outcomes).toBeNull();
-    }
+  it("reads the wall's figure off the campaign chosen, as served", () => {
+    expect(chosenFunnelOutlook({ roi: 17.42 })).toEqual({ outcome: "Paying clients", outcomes: null, roi: 17.42 });
+    // Nothing served: nothing stated.
+    expect(chosenFunnelOutlook({ roi: null })).toBeNull();
+    expect(chosenFunnelOutlook(null)).toBeNull();
   });
 
   it("turns the client carousel with a wrap", () => {
@@ -463,7 +399,7 @@ describe("the wall", () => {
     expect(wall).not.toContain("medianReturnPerDollar");
     const page = fs.readFileSync(path.resolve(__dirname, "../src/components/v2/get-started/get-started.tsx"), "utf8");
     const wallTag = page.slice(page.indexOf("<AccountCardWall"), page.indexOf("onClose={() => setWallOpen(false)}", page.indexOf("<AccountCardWall")));
-    expect(wallTag).toContain("outlook={chosenCampaignOutlook(campaignRows,");
+    expect(wallTag).toContain("outlook={chosenFunnelOutlook(funnels?.proactive ?? null)}");
     // Email code, no password to type.
     expect(wall).not.toContain('type="password"');
     expect(wall).toContain('strategy: "email_code"');

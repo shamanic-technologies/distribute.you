@@ -106,7 +106,7 @@ export const COPILOT_PAGES: Record<string, { section: V2Section | null; what: st
   people: { section: "people", what: "every person reached, with who replied" },
   unibox: { section: "unibox", what: "every conversation, hot leads first" },
   deals: { section: "deals", what: "the people moving toward a sale" },
-  outbound: { section: "sales-path", what: "the campaigns, their return, status and budget" },
+  campaigns: { section: "campaigns", what: "the campaigns, their status, max budget and max volume" },
   sourcing: { section: "sourcing", what: "how new people are found" },
   targeting: { section: "targeting", what: "who we write to" },
   offer: { section: "offers", what: "what the brand sells" },

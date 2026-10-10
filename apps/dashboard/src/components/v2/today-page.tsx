@@ -11,7 +11,7 @@ import { formatRoi } from "@/lib/format-roi";
 import { friendlyDate, friendlyTime, timeAgo } from "@/lib/friendly-datetime";
 import { utcDay } from "@/lib/v2/series";
 import { SINCE_INCEPTION } from "@/lib/revenue-window";
-import { v2Href, v2OfferHref } from "@/lib/v2/routes";
+import { v2CampaignHref, v2Href } from "@/lib/v2/routes";
 import { shownReturn, shownReturnHalf } from "@/lib/maturity";
 import { useStatBasis } from "@/lib/use-stat-basis";
 import { useStaffMode } from "@/lib/use-staff-mode";
@@ -455,12 +455,21 @@ export function TodayPage() {
                     </div>
                   </section>
                 )}
-                {/* The offer's ON campaigns, named and ordered as the sidebar and the Sales path page. */}
+                {/* The offer's ON campaigns, named and ordered as the sidebar. Budgets opens the
+                    campaign's own page (its max budget and volume, owner 2026-10-10), or the
+                    Campaigns overview when the offer runs several. */}
                 <section>
                   <SectionTitle
                     count={ongoing.settled ? ongoing.campaigns.length + ongoing.funnelCampaigns.length : null}
                     right={selectedOfferId ? (
-                      <Link href={v2OfferHref(orgId, brandId, selectedOfferId, "sales-path")} className="hover:text-[var(--fg-1)]">
+                      <Link
+                        href={
+                          ongoing.funnelCampaigns.length === 1
+                            ? v2CampaignHref(orgId, brandId, ongoing.funnelCampaigns[0].id)
+                            : v2Href(orgId, brandId, "campaigns")
+                        }
+                        className="hover:text-[var(--fg-1)]"
+                      >
                         Budgets →
                       </Link>
                     ) : null}

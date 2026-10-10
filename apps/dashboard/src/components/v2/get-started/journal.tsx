@@ -42,11 +42,8 @@ export interface JournalData {
   rows: AudienceCompanyRow[];
   written: number;
   /** The questions, as the rail states them once answered. */
-  stepCount: number;
-  legCount: number;
-  channelCount: number;
-  pathCount: number;
-  campaignCount: number;
+  /** The campaign set at the last step ("Epiphany, $20 a day"), or null until set. */
+  campaignLine: string | null;
   lifetimeRevenue: string;
   leverCount: number;
   giveCount: number;
@@ -131,11 +128,7 @@ function RailEntry({ d, k }: { d: JournalData; k: GetStartedStepKey }) {
       </div>
     ) : null;
   if (k === "audience") return <AudiencePicker d={d} />;
-  if (k === "salesSteps") return <p className="k-fg2 text-[12px] tabular-nums">{d.stepCount === 1 ? "1 sales step" : `${d.stepCount} sales steps`}</p>;
-  if (k === "legs") return <p className="k-fg2 text-[12px] tabular-nums">{d.legCount === 1 ? "1 way leads move" : `${d.legCount} ways leads move`}</p>;
-  if (k === "channels") return <p className="k-fg2 text-[12px] tabular-nums">{d.channelCount === 1 ? "1 channel" : `${d.channelCount} channels`}</p>;
-  if (k === "paths") return <p className="k-fg2 text-[12px] tabular-nums">{d.pathCount === 1 ? "1 sales path" : `${d.pathCount} sales paths`}</p>;
-  if (k === "campaigns") return <p className="k-fg2 text-[12px] tabular-nums">{d.campaignCount === 1 ? "1 campaign on" : `${d.campaignCount} campaigns on`}</p>;
+  if (k === "campaign") return d.campaignLine ? <p className="k-fg2 truncate text-[12px] tabular-nums">{d.campaignLine}</p> : null;
   if (k === "value") return d.lifetimeRevenue ? <p className="k-fg2 text-[12px] tabular-nums">{`$${d.lifetimeRevenue} per client`}</p> : null;
   if (k === "levers") return <p className="k-fg2 text-[12px] tabular-nums">{`${d.leverCount} of 6 offer points`}</p>;
   if (k === "gives") return <p className="k-fg2 text-[12px] tabular-nums">{d.giveCount === 1 ? "1 thing to give away" : `${d.giveCount} things to give away`}</p>;

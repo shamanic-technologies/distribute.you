@@ -6,8 +6,8 @@
  * 2026-10-06: prepaid, no plan, no trial). An org that already holds a card launches on
  * the account it has; one with no card adds prepaid credit first (`PrepaidTopup`, at
  * least $100, optional automatic reload). Then the SAME launch as the signed-out walk
- * (`launchFromPreview`: the campaigns turned on at the campaigns step, each on its own
- * budget), the org marked set up with a token minted FOR it, and only THEN made active
+ * (`launchFromPreview`: the funnel campaign set at the "Your campaign" step, its caps
+ * first), the org marked set up with a token minted FOR it, and only THEN made active
  * (the edge first-run gate would bounce a not-yet-set-up org), and the person lands on
  * the campaign.
  */
@@ -20,8 +20,9 @@ import { getBillingAccount, sendAuthNotification, setApiActiveOrgOverride, type 
 import { getStripe } from "@/lib/stripe";
 import { defaultSalesRepToAccountEmail } from "@/lib/sales-rep-default";
 import { v2CampaignHref } from "@/lib/v2/routes";
-import { dailySpendUsd, matchNote, type GetStartedOffer } from "@/lib/v2/get-started";
-import { EMPTY_PROGRESS, launchFromPreview, type LaunchCampaign, type LaunchProgress } from "./launch";
+import { matchNote, type GetStartedOffer } from "@/lib/v2/get-started";
+import type { SignupLaunchPlan } from "@/lib/v2/signup-campaign";
+import { EMPTY_PROGRESS, launchFromPreview, type LaunchProgress } from "./launch";
 import { PrepaidTopup, type TopupChoice } from "./prepaid-topup";
 import { payTopup, settleTopup } from "./pay-topup";
 import { pingOwner } from "@/lib/owner-ping-client";
@@ -36,7 +37,8 @@ export function OrgLaunch({
   offer,
   targetAudience,
   note,
-  campaigns,
+  plan,
+  dailyUsd,
   answered,
   snapshotKey,
   onClose,
@@ -48,8 +50,10 @@ export function OrgLaunch({
   offer: GetStartedOffer;
   targetAudience: string;
   note: string | null;
-  /** The campaigns as set at the campaigns step: the ones on start, each on its budget. */
-  campaigns: LaunchCampaign[];
+  /** The campaign set at the "Your campaign" step (the funnels and their caps). */
+  plan: SignupLaunchPlan;
+  /** The outreach budget's daily pace, for the reload warning. */
+  dailyUsd: number;
   answered: boolean;
   snapshotKey: string;
   onClose: () => void;
@@ -67,7 +71,7 @@ export function OrgLaunch({
   const [paid, setPaid] = useState<{ creditedBefore: number; reload: TopupChoice["reload"] } | null>(null);
   const pending = useRef<{ creditedBefore: number; reload: TopupChoice["reload"] } | null>(null);
   // "Try again" replays the launch: every write that landed on an earlier attempt is skipped.
-  const progress = useRef<LaunchProgress>({ ...EMPTY_PROGRESS, budgets: {}, started: {}, campaignIds: {} });
+  const progress = useRef<LaunchProgress>({ ...EMPTY_PROGRESS, caps: {}, started: {}, campaignIds: {} });
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -158,8 +162,7 @@ export function OrgLaunch({
     setError(null);
     try {
       const campaignId = await launchFromPreview(
-        // A plan subscriber's budgets follow its plan (billing refuses a daily one).
-        { brandId, website, offer, targetAudience, campaigns, answered, writeBudgets: account?.payment_mode !== "subscription" },
+        { brandId, website, offer, targetAudience, plan, answered },
         progress.current,
       );
       await defaultSalesRepToAccountEmail(brandId, email);
@@ -177,7 +180,7 @@ export function OrgLaunch({
       } catch (e) {
         console.error("[brand-walk] snapshot clear failed:", e);
       }
-      posthog.capture("brand_walk_launched", { org_id: orgId, brand_id: brandId, campaigns: campaigns.filter((c) => c.on).length });
+      posthog.capture("brand_walk_launched", { org_id: orgId, brand_id: brandId, campaigns: plan.reactive ? 2 : 1 });
       setApiActiveOrgOverride(null);
       pingOwner({ event: "launched", domain: website ? pingHostOf(pingWebsiteUrl(website)) : null });
       window.location.assign(v2CampaignHref(orgId, brandId, campaignId));
@@ -217,7 +220,7 @@ export function OrgLaunch({
                 {busy ? "Checking your payment..." : "Check my payment and launch"}
               </button>
             ) : (
-              <PrepaidTopup busy={busy} matchNote={matchNote(account)} dailyUsd={dailySpendUsd(campaigns)} onEditCampaigns={onClose} cta={(usd) => `Add $${usd.toLocaleString("en-US")} and launch`} onPay={(c) => void pay(c)} />
+              <PrepaidTopup busy={busy} matchNote={matchNote(account)} dailyUsd={dailyUsd} onEditCampaigns={onClose} cta={(usd) => `Add $${usd.toLocaleString("en-US")} and launch`} onPay={(c) => void pay(c)} />
             )
           )}
 

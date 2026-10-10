@@ -16,7 +16,6 @@ import { buildControlRows, type ControlCampaign } from "../src/lib/campaign-cont
 import { acquisitionChannelsFromFeatures } from "../src/lib/acquisition-channels";
 import { legCampaignId } from "../src/lib/v2/leg-campaign";
 import { legRateFor, validatedLegSections } from "../src/lib/offer-channel-settings";
-import { plannedKey } from "../src/lib/v2/get-started";
 import { NEW_ORG_LEGS } from "../src/lib/v2/new-org-wizard";
 import { OFFERED_CREWS, crewTrigger } from "../src/lib/v2/crews";
 
@@ -144,7 +143,6 @@ describe("offer campaigns, budgets and controls join either spelling", () => {
   }
   it("keeps a non-outbound campaign apart from the new spelling", () => {
     expect(campaignKey(ADS, LEGACY_VISIT)).not.toBe(campaignKey(ADS, NEW_VISIT));
-    expect(plannedKey({ featureSlug: COLD, legKey: LEGACY_VISIT })).toBe(plannedKey({ featureSlug: COLD, legKey: NEW_VISIT }));
   });
 });
 
@@ -153,13 +151,10 @@ describe("what the dashboard writes", () => {
     expect(NEW_ORG_LEGS.map((l) => l.key)).toEqual([NEW_VISIT, NEW_REPLY]);
     expect(OFFERED_CREWS.filter((c) => c.featureSlug === COLD).map((c) => c.legKey)).toEqual([NEW_REPLY, NEW_VISIT]);
   });
-  it("the get-started launch sends the canonical spelling on every write", () => {
+  it("the get-started launch writes no leg key at all: it starts a sales funnel by its id (owner 2026-10-10)", () => {
     const src = readFileSync(join(__dirname, "..", "src", "components", "v2", "get-started", "launch.ts"), "utf8");
-    expect(src).toContain("const legKey = canonicalLegKey(c.featureSlug, c.legKey);");
-    expect(src).toContain("{ featureSlug: c.featureSlug, legKey, budgetCents: c.budgetUsd * 100 }");
-    expect(src).toContain("startReactiveCampaign({ brandId: input.brandId, offerId, featureSlug: c.featureSlug, legKey })");
-    expect(src).toContain("leg: legKey })");
-    expect(src).not.toContain("legKey: c.legKey");
+    expect(src).not.toContain("legKey");
+    expect(src).toContain("startSalesFunnelCampaign({ brandId, offerId, salesFunnelId: f.salesFunnelId })");
   });
   it("a renamed outbound leg still works daily once it starts on a found lead", () => {
     expect(crewTrigger({ fromKey: "lead_found", fromLabel: "Lead found", toKey: "conversation", toLabel: "Positive reply" })?.kind).toBe("daily");
