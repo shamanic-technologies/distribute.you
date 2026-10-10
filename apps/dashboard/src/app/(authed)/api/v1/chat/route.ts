@@ -326,6 +326,14 @@ export async function POST(req: NextRequest) {
             break;
           }
 
+          // chat-service `credits_required` (owner 2026-10-10): out of credits, the model was not
+          // called; the text came as tokens, the Copilot draws the "Add credits" button.
+          case "credits_required": {
+            const { type: _t, ...credits } = event;
+            writer.write({ type: "data-credits-required" as `data-${string}`, data: credits } as never);
+            break;
+          }
+
           case "error": {
             const errorCode = event.code as string | undefined;
             if (errorCode) {

@@ -141,6 +141,15 @@ export function ChoiceCards({
   );
 }
 
+/** Out of credits (chat-service `credits_required`): the one action left, opening the top-up. */
+export function AddCreditsButton({ href, label }: { href: string; label: string }) {
+  return (
+    <Link href={href} className="k-btn k-btn-accent mt-3 inline-flex">
+      {label}
+    </Link>
+  );
+}
+
 /** A page the model opened on the right, kept in the thread so the reader can reopen it. */
 export function OpenedPage({ href, label }: { href: string; label: string }) {
   return (

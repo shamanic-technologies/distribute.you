@@ -10,6 +10,8 @@ import {
   isThisBrandsSession,
   openPagesByTurn,
   isPanelLink,
+  readCreditsRequired,
+  addCreditsHref,
 } from "../src/lib/copilot";
 
 const src = (f: string) => readFileSync(join(__dirname, "..", f), "utf-8");
@@ -143,5 +145,31 @@ describe("copilot wiring", () => {
   it("restores the stored conversation and offers a new one", () => {
     expect(chat).toContain("getChatSessionHistory(localSid)");
     expect(chat).toContain("New chat");
+  });
+});
+
+describe("out of credits (owner 2026-10-10)", () => {
+  it("reads chat-service's credits_required event and refuses anything else", () => {
+    expect(readCreditsRequired({ message: "You're out of credits. Add credits to keep going.", action: "add_credits", label: "Add credits" })).toEqual({
+      message: "You're out of credits. Add credits to keep going.",
+      action: "add_credits",
+      label: "Add credits",
+    });
+    expect(readCreditsRequired({ action: "other", label: "x", message: "y" })).toBeNull();
+    expect(readCreditsRequired(null)).toBeNull();
+  });
+
+  it("the button opens the Billing page, where the top-up lives", () => {
+    expect(addCreditsHref("o1", "b1")).toBe(copilotPageHref("o1", "b1", { page: "billing" }));
+    expect(addCreditsHref("o1", "b1")).toContain("billing");
+  });
+
+  it("the proxy forwards the event and the chat draws the button", () => {
+    const route = src("src/app/(authed)/api/v1/chat/route.ts");
+    expect(route).toContain('case "credits_required": {');
+    expect(route).toContain("data-credits-required");
+    const chat = src("src/components/v2/copilot-chat.tsx");
+    expect(chat).toContain("<AddCreditsButton href={href} label={credits.label} />");
+    expect(chat).toContain('p.type === "data-credits-required"');
   });
 });

@@ -130,6 +130,31 @@ export function isThisBrandsSession(session: { brandIds?: string[] | null } | nu
   return Boolean(session?.brandIds?.includes(brandId));
 }
 
+/**
+ * chat-service's `credits_required` event (owner 2026-10-10): billing refused the turn for lack of
+ * credits, the model was not called, the text says so. The dashboard draws the button that opens
+ * the credit top-up (the Billing page). Null when the data is not that event.
+ */
+export interface CopilotCreditsRequired {
+  message: string;
+  action: "add_credits";
+  label: string;
+}
+
+export function readCreditsRequired(data: unknown): CopilotCreditsRequired | null {
+  const d = data as Partial<CopilotCreditsRequired> | null | undefined;
+  if (!d || d.action !== "add_credits" || typeof d.label !== "string" || typeof d.message !== "string") {
+    console.error("[copilot] a credits_required event the dashboard cannot read", data);
+    return null;
+  }
+  return { message: d.message, action: "add_credits", label: d.label };
+}
+
+/** Where "Add credits" goes: the Billing page, where the top-up lives. */
+export function addCreditsHref(orgId: string, brandId: string): string | null {
+  return copilotPageHref(orgId, brandId, { page: "billing" });
+}
+
 /** The opener is the user's turn on paper only: it never prints. */
 export function isOpener(text: string | null | undefined): boolean {
   return (text ?? "").trim() === COPILOT_OPENER;
