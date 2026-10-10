@@ -10,6 +10,7 @@ import {
   sourceLine,
   personStatusLabel,
   possibleLeadHint,
+  possibleLeadRuledLine,
   stateLabel,
   timelineSourceNote,
 } from "../src/lib/people-conversations";
@@ -321,8 +322,27 @@ describe("a guessed pairing with a lead is a hint, never a merge (crm-service v0
     expect(possibleLeadHint({ possibleLeads: [brice] })).not.toMatch(/[\u2014\u2013]/);
   });
 
-  it("shows the hint on the list row AND in the thread header, never merging rows", () => {
+  it("shows the hint on the list row AND, with its rulings, in the thread header, never merging rows", () => {
     const src = read("components/v2/integrations-conversations.tsx");
-    expect(src.match(/<PossibleLeadLine person=\{person\} \/>/g)?.length).toBe(2);
+    expect(src.match(/<PossibleLeadLine person=\{person\} \/>/g)?.length).toBe(1);
+    expect(src).toContain("<PossibleLeadRulings brandId={brandId} person={person} />");
+  });
+
+  it("a ruling goes to lead-service's existing rulings writer, keyed on the served lead id", () => {
+    const src = read("components/v2/integrations-conversations.tsx");
+    const body = src.slice(src.indexOf("function PossibleLeadRuling("), src.indexOf("/** A person: their company's logo"));
+    expect(body).toContain("setCrmPairingRuling({ brandId, crmContactId: lead.crmContactId, leadId, ruling })");
+    // No id served, no buttons: the hint alone, never a guessed key.
+    expect(body).toContain("leadId && !ruled ?");
+  });
+
+  it("parses the lead id when crm-service serves it", () => {
+    const parsed = PeopleListSchema.parse({ ...list, people: [{ ...person, possibleLeads: [{ ...brice, leadId: "22222222-2222-4222-8222-222222222222" }] }] });
+    expect(parsed.people[0].possibleLeads?.[0].leadId).toBe("22222222-2222-4222-8222-222222222222");
+  });
+
+  it("a stated ruling reads as what was marked, no dash", () => {
+    expect(possibleLeadRuledLine("Brice Jackson (drjackson@mabnr.com)", "accepted")).toBe("Marked as the same as Brice Jackson (drjackson@mabnr.com)");
+    expect(possibleLeadRuledLine("Brice Jackson", "rejected")).toBe("Marked as not the same as Brice Jackson");
   });
 });
