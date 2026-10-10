@@ -1,9 +1,13 @@
 import SwiftUI
 
 // The sidebar's Campaigns and Outcomes (owner 2026-10-10), ported from dashboard v2's
-// `components/v2/ongoing-campaigns.ts` and `lib/v2/outcomes.ts`: every ON campaign of the
-// selected offer (any kind, named and ordered as the web lists it), and one outcome per
-// step those campaigns land on. Same served reads; nothing is counted here.
+// `components/v2/ongoing-campaigns.ts`, `funnel-campaigns.tsx` and `lib/v2/outcomes.ts`.
+//
+// A CAMPAIGN is what the customer launched (owner 2026-10-10): one brand, one offer, run or
+// paused as one, with a max budget and a max volume (campaign-service `/sales-funnel-campaigns`,
+// billing's caps). Inside, it runs one PART per channel step. A part is never listed, counted or
+// named as a campaign (owner rule 2026-10-11): it reads as what it brings in and the channel doing
+// it ("Positive reply, Sales Cold Email Outreach"). Same served reads; nothing is counted here.
 
 // MARK: - Wire shapes
 
@@ -11,37 +15,90 @@ import SwiftUI
 struct PublicCatalogue: Decodable {
     struct Step: Decodable { let key: String?; let label: String? }
     struct Leg: Decodable { let legKey: String?; let fromStep: Step?; let toStep: Step? }
-    struct Transition: Decodable { let legKey: String?; let from: Step?; let to: Step?; let campaignName: String?; let crewName: String? }
+    struct Transition: Decodable { let legKey: String?; let from: Step?; let to: Step? }
     struct Channel: Decodable { let slug: String?; let name: String?; let stepTransitions: [Transition]? }
     let steps: [Step]?
     let legs: [Leg]?
     let channels: [Channel]?
 }
 
-/// `GET /offers/:id/sales-paths?scope=catalogue`: the offer's campaigns, as the Sales path page lists them.
-struct OfferSalesPaths: Decodable {
-    struct Step: Decodable { let key: String; let label: String }
-    struct Outreach: Decodable {
-        let channelSlug: String
-        let channelName: String?
+/// `GET /sales-funnel-campaigns?brandId=&offerId=`: the campaigns the customer launched, newest
+/// first, each with its parts (one `/campaigns` row per channel step, never shown as a campaign).
+struct FunnelCampaign: Decodable, Identifiable {
+    struct Part: Decodable, Identifiable {
+        let campaignId: String
+        let featureSlug: String
         let legKey: String
-        let campaignName: String?
-        let reactive: Bool
-        let operatedBy: String?
-        let selectedPathCount: Double
-        let roi: Double?
+        var id: String { campaignId }
     }
-    struct Source: Decodable {
-        let channelSlug: String
-        let channelName: String?
-        let legKey: String
-        let campaignName: String?
-        let toStep: Step
-        let live: Bool
-        let roi: Double?
+    let id: String
+    let brandId: String
+    let offerId: String
+    let salesFunnelId: String
+    let salesFunnelName: String
+    let status: String
+    let units: [Part]
+    var name: String { salesFunnelName }
+    /// ONE status for the whole campaign (campaign-service): `ongoing` is On.
+    var isOn: Bool { status == "ongoing" }
+}
+struct FunnelCampaignList: Decodable { let salesFunnelCampaigns: [FunnelCampaign] }
+
+/// billing's limits for one campaign and what the current period used (`.../sales-funnels/:id/caps`).
+struct FunnelCaps: Decodable {
+    struct Budget: Decodable {
+        let amountCents: String
+        let period: String
+        let consumedCents: String?
+        let reached: Bool?
     }
-    let campaigns: [Outreach]?
-    let sourceCampaigns: [Source]?
+    struct Volume: Decodable {
+        let count: Int
+        let period: String
+        let unit: String
+        let consumed: Int?
+        let reached: Bool?
+    }
+    let salesFunnelType: String?
+    let maxBudget: Budget?
+    let maxVolume: Volume?
+
+    /// `lib/sales-funnel-campaigns.ts` capWords: "Max" for a Proactive campaign, "Up to" for a Reactive one.
+    private var prefix: String { salesFunnelType == "proactive" ? "Max " : salesFunnelType == "reactive" ? "Up to " : "" }
+    /// "Max $50/day", "Up to $10/week". Nil when no budget is set.
+    var budgetWords: String? {
+        guard let b = maxBudget, let cents = Double(b.amountCents) else { return nil }
+        return "\(prefix)\(usd(cents / 100))\(capPeriodSuffix(b.period))"
+    }
+    /// "Max 200 new people/month", "Up to 50 leads handled/week". Nil when no volume is set.
+    var volumeWords: String? {
+        guard let v = maxVolume else { return nil }
+        let unit: String
+        switch v.unit {
+        case "first_contacts": unit = v.count == 1 ? "new person" : "new people"
+        case "prospects_handled": unit = v.count == 1 ? "lead handled" : "leads handled"
+        default: unit = v.unit.replacingOccurrences(of: "_", with: " ")
+        }
+        return "\(prefix)\(v.count.formatted()) \(unit)\(capPeriodSuffix(v.period))"
+    }
+    /// "Max $50/day · Max 200 new people/month", or "No budget set" (it then spends nothing).
+    var limitsLine: String {
+        let parts = [budgetWords, volumeWords].compactMap { $0 }
+        return parts.isEmpty ? "No budget set" : parts.joined(separator: " · ")
+    }
+    /// "$12.40 spent today", read off billing's consumed figure. Nil when not served.
+    var spentWords: String? {
+        guard let b = maxBudget, let c = b.consumedCents.flatMap(Double.init) else { return nil }
+        return "\(dollars(cents: c)) spent \(capWindowWords(b.period))"
+    }
+}
+
+func capPeriodSuffix(_ period: String) -> String {
+    ["daily": "/day", "weekly": "/week", "monthly": "/month", "one_off": " in total"][period] ?? ""
+}
+
+func capWindowWords(_ period: String) -> String {
+    ["daily": "today", "weekly": "this week", "monthly": "this month", "one_off": "so far"][period] ?? ""
 }
 
 /// crm-service's people, one per person on every channel (the Unibox list).
@@ -112,8 +169,6 @@ struct LegDef { let fromKey: String?; let toKey: String; let toLabel: String }
 
 struct LegCatalogue {
     var legs: [String: LegDef] = [:]
-    var campaignNames: [String: String] = [:]
-    var crewNames: [String: String] = [:]
     var channelNames: [String: String] = [:]
 
     init() {}
@@ -128,13 +183,7 @@ struct LegCatalogue {
         for c in body.channels ?? [] {
             guard let slug = c.slug else { continue }
             if let n = c.name { channelNames[slug] = n }
-            for t in c.stepTransitions ?? [] {
-                guard let served = t.legKey else { continue }
-                add(served, t.from, t.to)
-                let id = campaignKey(slug, served)
-                if let n = t.campaignName { campaignNames[id] = n }
-                if let n = t.crewName { crewNames[id] = n }
-            }
+            for t in c.stepTransitions ?? [] { add(t.legKey, t.from, t.to) }
         }
     }
 
@@ -185,91 +234,48 @@ func outcomeOf(featureSlug: String?, toKey: String?, toLabel: String? = nil) -> 
 
 // MARK: - ON campaigns (`components/v2/ongoing-campaigns.ts`)
 
+/// One ON campaign of the selected offer, with the steps its parts land on.
 struct OnCampaign: Identifiable {
-    let campaign: Campaign
-    /// features-service's campaign name; nil when none is served (the crew/channel name shows).
-    let name: String?
-    let fallbackName: String
-    let leg: LegDef?
-    let outcome: Outcome?
+    let campaign: FunnelCampaign
     var id: String { campaign.id }
-    var label: String { name ?? fallbackName }
+    var label: String { campaign.name }
 }
 
 struct OutcomeEntry: Identifiable {
     let outcome: Outcome
+    /// The campaigns whose parts produce it, each listed once (never a part).
     var campaigns: [OnCampaign]
     var id: String { outcome.key }
 }
 
-/// One row of Campaigns > Overview: every campaign of the offer, the running ones first.
-struct OfferCampaignRow: Identifiable {
-    let key: String
-    let name: String?
-    let channelName: String?
-    let reactive: Bool
-    let roi: Double?
-    var running: OnCampaign?
-    var id: String { key }
+/// What a part brings in (the step it lands on) and the channel doing it, from the catalogue.
+func funnelPartNames(_ part: FunnelCampaign.Part, catalogue: LegCatalogue) -> (bringsIn: String?, channel: String?) {
+    let leg = catalogue.leg(part.legKey)
+    let names = (bringsIn: leg?.toLabel, channel: catalogue.channelNames[part.featureSlug])
+    if names.bringsIn == nil || names.channel == nil { NSLog("[desktop] a campaign part is not in the catalogue \(part.featureSlug) \(part.legKey)") }
+    return names
 }
 
-private let activeStatuses: Set<String> = ["active", "running", "ongoing", "live"]
-func isActiveStatus(_ s: String) -> Bool { activeStatuses.contains(s.lowercased()) }
-
-/// The offer's campaigns, listed and ordered as the web's Sales path Campaigns section:
-/// proactive before reactive, ROI high to low.
-func offerCampaignRows(_ paths: OfferSalesPaths?) -> [OfferCampaignRow] {
-    guard let paths else { return [] }
-    var out: [OfferCampaignRow] = []
-    for c in paths.campaigns ?? [] where c.operatedBy != "customer" && c.selectedPathCount > 0 {
-        out.append(OfferCampaignRow(key: campaignKey(c.channelSlug, c.legKey), name: c.campaignName, channelName: c.channelName, reactive: c.reactive, roi: c.roi))
-    }
-    for c in paths.sourceCampaigns ?? [] where c.live {
-        out.append(OfferCampaignRow(key: campaignKey(c.channelSlug, c.legKey), name: c.campaignName, channelName: c.channelName, reactive: true, roi: c.roi))
-    }
-    func roi(_ r: OfferCampaignRow) -> Double { r.roi.flatMap { $0.isFinite ? $0 : nil } ?? -.infinity }
-    // A stable sort: equal rows keep the producer's order.
-    return out.enumerated().sorted { a, b in
-        if a.element.reactive != b.element.reactive { return !a.element.reactive }
-        if roi(a.element) != roi(b.element) { return roi(a.element) > roi(b.element) }
-        return a.offset < b.offset
-    }.map(\.element)
-}
-
-/// The selected offer's ON campaigns, one per identity (offer x leg x channel), in the
-/// Sales path order, each with the step it lands on; then one outcome per step.
-func joinOnCampaigns(campaigns: [Campaign], offerId: String, catalogue: LegCatalogue, paths: OfferSalesPaths?) -> (campaigns: [OnCampaign], outcomes: [OutcomeEntry]) {
-    let rows = offerCampaignRows(paths)
-    var order: [String: Int] = [:]
-    for (i, r) in rows.enumerated() where order[r.key] == nil { order[r.key] = i }
-    var sourceByKey: [String: OfferSalesPaths.Source] = [:]
-    for s in paths?.sourceCampaigns ?? [] { sourceByKey[campaignKey(s.channelSlug, s.legKey)] = s }
-
-    var seen = Set<String>()
-    var on: [(Int, OnCampaign)] = []
-    for c in campaigns where c.offerId == offerId && isActiveStatus(c.status) {
-        guard let slug = c.featureSlug else { continue }
-        let key = campaignKey(slug, c.legKey ?? "")
-        guard seen.insert(key).inserted else { continue }
-        let source = sourceByKey[key]
-        let leg = catalogue.leg(c.legKey)
-        let name = catalogue.campaignNames[key] ?? source?.campaignName
-        if name == nil { NSLog("[desktop] no campaignName served for a running campaign \(slug) \(c.legKey ?? "-")") }
-        // A source campaign's leg is not in the leg catalogue: it lands on Lead found.
-        let toKey = leg?.toKey ?? (source != nil ? leadFoundStep : nil)
-        let outcome = outcomeOf(featureSlug: slug, toKey: toKey, toLabel: leg?.toLabel ?? source?.toStep.label)
-        if outcome == nil { NSLog("[desktop] a running campaign produces no known step \(slug) \(c.legKey ?? "-")") }
-        let fallback = catalogue.crewNames[key] ?? catalogue.channelNames[slug] ?? source?.channelName ?? slug
-        on.append((order[key] ?? Int.max, OnCampaign(campaign: c, name: name, fallbackName: fallback, leg: leg, outcome: outcome)))
-    }
-    let sorted = on.enumerated().sorted { a, b in a.element.0 != b.element.0 ? a.element.0 < b.element.0 : a.offset < b.offset }.map(\.element.1)
+/// The selected offer's ON campaigns, as served (newest first), and one outcome per step their
+/// parts land on, each naming the campaigns that produce it once.
+func joinOnCampaigns(funnels: [FunnelCampaign], offerId: String, catalogue: LegCatalogue) -> (campaigns: [OnCampaign], outcomes: [OutcomeEntry]) {
+    let on = funnels.filter { $0.offerId == offerId && $0.isOn }.map { OnCampaign(campaign: $0) }
     var outcomes: [OutcomeEntry] = []
-    for c in sorted {
-        guard let o = c.outcome else { continue }
-        if let i = outcomes.firstIndex(where: { $0.outcome.key == o.key }) { outcomes[i].campaigns.append(c) }
-        else { outcomes.append(OutcomeEntry(outcome: o, campaigns: [c])) }
+    for c in on {
+        for part in c.campaign.units {
+            let leg = catalogue.leg(part.legKey)
+            guard let o = outcomeOf(featureSlug: part.featureSlug, toKey: leg?.toKey, toLabel: leg?.toLabel) else {
+                NSLog("[desktop] a campaign part produces no known step \(part.featureSlug) \(part.legKey)")
+                continue
+            }
+            if let i = outcomes.firstIndex(where: { $0.outcome.key == o.key }) {
+                if !outcomes[i].campaigns.contains(where: { $0.id == c.id }) { outcomes[i].campaigns.append(c) }
+            } else {
+                outcomes.append(OutcomeEntry(outcome: o, campaigns: [c]))
+            }
+        }
     }
-    return (sorted, outcomes)
+    return (on, outcomes)
 }
 
 // MARK: - Faces
@@ -334,26 +340,21 @@ struct CampaignsOverviewPanel: View {
     @EnvironmentObject var state: AppState
     var body: some View {
         Text("Every campaign of this offer, the ones running first.").font(K.meta).foregroundStyle(K.fg3)
-        LoadView(load: state.salesPaths) { paths in
-            let rows = offerCampaignRows(paths).map { r -> OfferCampaignRow in
-                var r = r; r.running = state.onCampaigns.first { campaignKey($0.campaign.featureSlug ?? "", $0.campaign.legKey ?? "") == r.key }; return r
-            }
-            let ordered = rows.filter { $0.running != nil } + rows.filter { $0.running == nil }
+        LoadView(load: state.offerCampaigns) { list in
+            let ordered = list.filter(\.isOn) + list.filter { !$0.isOn }
             if ordered.isEmpty { EmptyNote(text: "No campaign for this offer yet. Ask the chat to start one.") }
             VStack(spacing: 2) {
-                ForEach(ordered) { r in
-                    let label = r.name ?? r.channelName ?? r.key
-                    AskRow(question: "About my campaign \"\(label)\": how is it doing, and what should I change? ", open: r.running.map { on in { state.open(.campaign(on.id)) } }) {
-                        CampaignFace(name: label, size: 24)
+                ForEach(ordered) { c in
+                    AskRow(question: "About my campaign \"\(c.name)\": how is it doing, and what should I change? ", open: { state.open(.campaign(c.id)) }) {
+                        CampaignFace(name: c.name, size: 24)
                         VStack(alignment: .leading, spacing: 1) {
-                            Text(label).font(K.body).foregroundStyle(K.fg1).lineLimit(1)
-                            if let ch = r.channelName { Text(ch).font(K.meta).foregroundStyle(K.fg3).lineLimit(1) }
+                            Text(c.name).font(K.body).foregroundStyle(K.fg1).lineLimit(1)
+                            if let caps = state.campaignCaps[c.id] {
+                                Text(caps.limitsLine).font(K.meta).foregroundStyle(K.fg3).lineLimit(1)
+                            }
                         }
                         Spacer(minLength: 6)
-                        VStack(alignment: .trailing, spacing: 1) {
-                            StateDot(word: r.running != nil ? "On" : "Off", color: r.running != nil ? K.run : K.fg4)
-                            Text(r.roi.map { String(format: "%.1f× ROI", $0) } ?? "ROI —").font(K.meta).monospacedDigit().foregroundStyle(K.fg3)
-                        }
+                        StateDot(word: c.isOn ? "On" : "Off", color: c.isOn ? K.run : K.fg4)
                     }
                 }
             }
@@ -361,31 +362,45 @@ struct CampaignsOverviewPanel: View {
     }
 }
 
-/// One ON campaign: its face, the step it lands on, and its served figures.
+/// One campaign: its face, ONE status, its limits with what the period used, then its results
+/// part by part (each named by what it brings in and its channel, never as a campaign).
 struct CampaignPanel: View {
     @EnvironmentObject var state: AppState
     let id: String
     var body: some View {
-        if let c = state.onCampaigns.first(where: { $0.id == id }) {
+        if let c = state.offerCampaigns.value?.first(where: { $0.id == id }) {
             HStack(spacing: 10) {
-                CampaignFace(name: c.label, size: 36)
+                CampaignFace(name: c.name, size: 36)
                 VStack(alignment: .leading, spacing: 2) {
-                    Text(c.label).font(.system(size: 18, weight: .semibold)).foregroundStyle(K.fg1)
-                    HStack(spacing: 8) {
-                        StateDot(word: "On", color: K.run)
-                        if let o = c.outcome { Text("Produces \(o.label.lowercased())").font(K.meta).foregroundStyle(K.fg3) }
-                    }
+                    Text(c.name).font(.system(size: 18, weight: .semibold)).foregroundStyle(K.fg1)
+                    StateDot(word: c.isOn ? "On" : "Off", color: c.isOn ? K.run : K.fg4)
                 }
             }
+            KCard {
+                VStack(alignment: .leading, spacing: 6) {
+                    if let caps = state.campaignCaps[c.id] {
+                        Text(caps.budgetWords ?? "No budget set: this campaign spends nothing.").font(K.body).foregroundStyle(K.fg1)
+                        if let s = caps.spentWords { Text(s).font(K.meta).foregroundStyle(K.fg3) }
+                        if let v = caps.volumeWords { Text(v).font(K.body).foregroundStyle(K.fg1) }
+                    } else {
+                        Text("Budget not available right now.").font(K.meta).foregroundStyle(K.fg3)
+                    }
+                    Button("Change the budget") { state.ask("Change the budget of my campaign \"\(c.name)\" (id \(c.id)) to ") }
+                        .buttonStyle(.plain).font(K.meta).foregroundStyle(K.accent)
+                }
+                .padding(12)
+            }
+            SectionTitle(title: "Results", count: c.units.count)
+            if c.units.isEmpty { EmptyNote(text: "Nothing runs in this campaign yet.") }
             LoadView(load: state.campaignFigures) { figures in
-                CampaignCard(row: CampaignRow(campaign: c.campaign, figures: figures))
+                ForEach(c.units) { part in
+                    PartCard(names: state.partNames(part), figures: figures[part.campaignId])
+                }
             }
-            if let o = c.outcome {
-                Button("See \(o.label.lowercased())") { state.open(.outcome(o.key)) }
-                    .buttonStyle(.plain).font(K.body).foregroundStyle(K.accent)
-            }
+            Button("Ask about this campaign") { state.ask("About my campaign \"\(c.name)\" (id \(c.id)): ") }
+                .buttonStyle(.plain).font(K.body).foregroundStyle(K.accent)
         } else {
-            EmptyNote(text: "This campaign is not running on this offer any more.")
+            EmptyNote(text: "This campaign is not on this offer any more.")
         }
     }
 }
