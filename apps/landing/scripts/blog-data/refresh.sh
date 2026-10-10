@@ -27,8 +27,9 @@ CUTOFF="$(date -u -d "$TODAY - 21 days" +%F)"
 
 # Node exists only inside containers on the box. Same absolute paths inside and out, so every
 # script's own paths (and research.mjs calling node on derive-pixel.mjs) resolve unchanged.
+# `-e COST_BASIS` forwards the cost basis when set (the actual-cost twin); unset stays unset.
 node() {
-  docker run --rm -i --memory 2500m --memory-swap 2500m --cpu-shares 256 \
+  docker run --rm -i --memory 2500m --memory-swap 2500m --cpu-shares 256 -e COST_BASIS \
     -v "$REPO:$REPO" -v "$DATA:$DATA" -w "$PWD" node:20-slim node "$@"
 }
 export -f node
@@ -50,6 +51,7 @@ mv "$DATA/research.json" "$LIB/research.json"
 echo "== derive (actual vendor cost, staff twin)"
 COST_BASIS=actual node --max-old-space-size=1536 "$BD/derive.mjs" "$DATA" > "$DATA/facts-actual.json"
 node "$BD/research.mjs" "$DATA/facts-actual.json" "$LIB/actual" > "$DATA/ra.json"
+grep -q '"costBasis": "actual"' "$DATA/ra.json" || { echo "the actual-cost twin came out on another basis" >&2; exit 1; }
 mv "$DATA/ra.json" "$LIB/actual/research.json"
 rm -f "$LIB/actual/research-templates.json"
 
