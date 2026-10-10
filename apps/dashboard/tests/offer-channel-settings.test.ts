@@ -100,8 +100,9 @@ describe("Channels tab wiring", () => {
     }
   });
 
-  it("reads the legs off the saved sales path and the give lists off the offer user-fields", () => {
-    expect(page).toContain('["offerSalesPath", brandId, offerId]');
+  it("reads the legs off the offer's sales funnel campaigns and the give lists off the offer user-fields", () => {
+    expect(page).toContain('["salesFunnelCampaigns", brandId, offerId]');
+    expect(page).not.toContain("getOfferSalesPath");
     expect(page).toContain('["offerUserFields", brandId, offerId]');
     expect(page).toContain("saveOfferUserFields(brandId, offerId, giveListsPayload(next))");
     expect(page).toContain("SALES_PATH_CHANNEL_SLUGS");

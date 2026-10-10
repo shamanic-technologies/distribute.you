@@ -69,12 +69,16 @@ describe("staff-activable channels", () => {
     expect(channelSelectable({ slug: "google-ads", managed: false }, true)).toBe(false);
   });
 
-  it("the picker gates the card on the staff-aware rule, and the page passes staff mode", async () => {
+  it("the picker gates the card on the staff-aware rule", async () => {
     const { readFileSync } = await import("node:fs");
     const picker = readFileSync("src/components/v2/offer-channels-picker.tsx", "utf8");
     expect(picker).toContain("channelSelectable(c, staffMode)");
     expect(picker).toContain("contactUs={!selectable}");
+  });
+
+  it("the staff Sales path page writes no per-offer channel or ticked path any more (owner 2026-10-10)", async () => {
+    const { readFileSync } = await import("node:fs");
     const page = readFileSync("src/components/v2/offer-sales-path-page.tsx", "utf8");
-    expect(page).toContain("staffMode={staffMode}");
+    for (const gone of ["saveOfferChannels", "saveOfferSelectedSalesPaths", "applyReactiveDefaults", "getOfferChannels", "getOfferSelectedSalesPaths"]) expect(page).not.toContain(gone);
   });
 });

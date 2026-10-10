@@ -6,8 +6,8 @@ import { useAuthQuery } from "@/lib/use-auth-query";
 import { pollOptions } from "@/lib/query-options";
 import {
   getBrandConversionRates,
-  getOfferSalesPath,
   getOfferUserFields,
+  listSalesFunnelCampaigns,
   saveOfferUserFields,
   stateBrandLegRates,
   type EffectiveLegRate,
@@ -15,7 +15,7 @@ import {
 } from "@/lib/api";
 import { useLegCatalogue } from "@/lib/use-leg-catalogue";
 import { invalidateConversionRates } from "@/lib/write-invalidation";
-import { SALES_PATH_CHANNEL_SLUGS, legKeysOfStored } from "@/lib/offer-sales-path";
+import { SALES_PATH_CHANNEL_SLUGS } from "@/lib/offer-sales-path";
 import { formatRatePct, LEG_RATE_RULE, rateSourceLabel, roundLegRatePct } from "@/lib/brand-conversion-rates";
 import {
   giveListLines,
@@ -45,8 +45,11 @@ export function ColdEmailChannelSettings({ brandId, offerId, channelSlug }: { br
   const catalogue = useLegCatalogue();
   const qc = useQueryClient();
 
-  const path = useAuthQuery(["offerSalesPath", brandId, offerId], () => getOfferSalesPath(brandId, offerId), {
-    enabled: !!offerId,
+  // The legs this offer sells through: its campaigns' parts, each campaign a sales funnel (owner
+  // 2026-10-10; brand-service's per-offer ticked legs are retired).
+  const path = useAuthQuery(["salesFunnelCampaigns", brandId, offerId], () => listSalesFunnelCampaigns(brandId, offerId), {
+    ...pollOptions,
+    enabled: !!brandId && !!offerId,
   });
   const fields = useAuthQuery(["offerUserFields", brandId, offerId], () => getOfferUserFields(brandId, offerId), {
     ...pollOptions,
@@ -61,7 +64,7 @@ export function ColdEmailChannelSettings({ brandId, offerId, channelSlug }: { br
 
   const legs = useMemo(
     () =>
-      validatedLegSections(catalogue, [...legKeysOfStored(path.data?.legs)], SALES_PATH_CHANNEL_SLUGS).sections.filter(
+      validatedLegSections(catalogue, [...new Set((path.data ?? []).flatMap((c) => c.units.map((u) => u.legKey)))], SALES_PATH_CHANNEL_SLUGS).sections.filter(
         (s) => s.channels.includes(channelSlug) && !isProactiveFrom(s.fromKey),
       ),
     [catalogue, path.data, channelSlug],
@@ -132,7 +135,7 @@ export function ColdEmailChannelSettings({ brandId, offerId, channelSlug }: { br
         {!pathSettled || catalogue.legs.size === 0 ? (
           <Shimmer className="h-20 rounded-[12px]" />
         ) : path.isError && !path.data ? (
-          <div className="k-card"><EmptyNote>Could not read this offer&apos;s sales path.</EmptyNote></div>
+          <div className="k-card"><EmptyNote>Could not read this offer&apos;s campaigns.</EmptyNote></div>
         ) : legs.length === 0 ? (
           <div className="k-card"><EmptyNote>No step after the first one is validated for cold email yet.</EmptyNote></div>
         ) : (
