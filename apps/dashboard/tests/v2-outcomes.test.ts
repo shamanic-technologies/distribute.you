@@ -22,12 +22,14 @@ describe("outcomes (owner 2026-10-10): one per step a running campaign lands on"
   it("a source finds leads, a publishing channel posts, anything else is not listed yet", () => {
     expect(outcomeOf("sourcing-apollo-cold-filters", "lead_found")).toEqual({ key: "lead_found", label: "Leads found", items: { kind: "leads-found" } });
     expect(outcomeOf("organic-linkedin-publishing", null)).toMatchObject({ key: "posts", label: "Posts", items: { kind: "posts" } });
-    // A step no service lists people for: named with its served label, never guessed.
+    // AI Instant Call's booking calls: lead-service's own bucket (v0.83.31).
     expect(outcomeOf("ai-instant-call", "booking_call", "Booking call")).toEqual({
       key: "booking_call",
-      label: "Booking call",
-      items: { kind: "unavailable" },
+      label: "Booking calls",
+      items: { kind: "people", bucket: "booking_call" },
     });
+    // A step no service lists people for: named with its served label, never guessed.
+    expect(outcomeOf("x", "some_new_step", "Some new step")).toEqual({ key: "some_new_step", label: "Some new step", items: { kind: "unavailable" } });
     expect(outcomeOf("x", null)).toBeNull();
   });
 

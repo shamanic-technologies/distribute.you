@@ -110,7 +110,7 @@ export function PeoplePage({ bucket, campaignId }: { bucket?: LeadBucket; campai
       {!bucket && <TopBar crumbs={[{ label: "Records" }, { label: "People" }]} />}
       {!bucket && (
       <RecordsTabs
-        tabs={PEOPLE_TABS.map((t) => ({ key: t.key, label: t.label, count: counts ? counts.counts[t.bucket] : null }))}
+        tabs={PEOPLE_TABS.map((t) => ({ key: t.key, label: t.label, count: counts ? (counts.counts[t.bucket] ?? null) : null }))}
         active={tab.key}
         onPick={go}
         right={

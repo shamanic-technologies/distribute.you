@@ -38,6 +38,7 @@ const BUCKET_FOR_STEP: Record<string, LeadBucket> = {
   signup: "signup",
   form_submitted: "form_submission",
   paid_client: "sale",
+  booking_call: "booking_call",
 };
 
 const PLURAL: Record<string, string> = {
@@ -49,6 +50,7 @@ const PLURAL: Record<string, string> = {
   signup: "Signups",
   form_submitted: "Form submissions",
   paid_client: "Paid clients",
+  booking_call: "Booking calls",
   posts: "Posts",
 };
 
