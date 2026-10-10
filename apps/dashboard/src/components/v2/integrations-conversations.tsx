@@ -12,6 +12,7 @@ import { formatCount } from "@/lib/format-number";
 import { friendlyDateTime, timeAgo } from "@/lib/friendly-datetime";
 import {
   PEOPLE_PAGE_SIZE,
+  personRef,
   personLeadRowId,
   personName,
   personStatusLabel,
@@ -45,7 +46,7 @@ const TIMELINE_POLL = 60_000;
 /** How many threads, from the top of the list, load before anyone clicks. */
 const PRELOAD_TOP = 8;
 
-const timelineKey = (brandId: string, personKey: string) => ["personTimeline", brandId, personKey] as const;
+const timelineKey = (brandId: string, ref: string) => ["personTimeline", brandId, ref] as const;
 const factsKey = (leadRowId: string | null, brandId: string, offerId: string | null) =>
   ["leadTimeline", leadRowId, brandId, offerId] as const;
 
@@ -148,8 +149,8 @@ export function V2ConversationsView({ brandId }: { brandId: string }) {
   const offerSettled = selected ? selected.settled : true;
   const preload = (p: Person) => {
     void queryClient.prefetchQuery({
-      queryKey: timelineKey(brandId, p.personKey),
-      queryFn: () => getPersonTimeline(brandId, p.personKey),
+      queryKey: timelineKey(brandId, personRef(p)),
+      queryFn: () => getPersonTimeline(brandId, personRef(p)),
       staleTime: TIMELINE_POLL,
     });
     const leadRowId = personLeadRowId(p);
@@ -162,7 +163,7 @@ export function V2ConversationsView({ brandId }: { brandId: string }) {
     }
   };
   const top = (people ?? []).slice(0, PRELOAD_TOP);
-  const topKeys = top.map((p) => p.personKey).join("|");
+  const topKeys = top.map(personRef).join("|");
   useEffect(() => {
     if (!gate || !topKeys) return;
     for (const p of top) preload(p);
@@ -173,9 +174,10 @@ export function V2ConversationsView({ brandId }: { brandId: string }) {
   useEffect(() => {
     if (gate && cursorPerson) preload(cursorPerson);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [gate, cursorPerson?.personKey]);
+  }, [gate, cursorPerson ? personRef(cursorPerson) : null]);
 
-  const open = (p: Person) => setParam("person", p.personKey);
+  // The URL names the person by crm-service's opaque id, never their email (owner 2026-10-10).
+  const open = (p: Person) => setParam("person", personRef(p));
   // The Unibox opens on the person on top (owner 2026-10-08), and a new search on its
   // first result. A person already in the URL (a click, a shared link) is kept.
   const first = listQ.isPlaceholderData ? null : (people?.[0] ?? null);
@@ -187,12 +189,12 @@ export function V2ConversationsView({ brandId }: { brandId: string }) {
     openedForQ.current = listedFor;
     if (!openKey || newSearch) open(first);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [first?.personKey, openKey, listedFor]);
+  }, [first ? personRef(first) : null, openKey, listedFor]);
   // The keyboard (owner 2026-10-10): Up/Down open the previous/next person, Right/Left
   // move between the list and the thread, and inside the thread Up/Down scroll it.
   const [pane, setPane] = useState<UniboxPane>("list");
   const threadScroll = useRef<HTMLDivElement | null>(null);
-  const openIndex = people && openKey ? people.findIndex((p) => p.personKey === openKey) : -1;
+  const openIndex = people && openKey ? people.findIndex((p) => personRef(p) === openKey) : -1;
   // The neighbours load too, so the next press opens from memory.
   const prevPerson = openIndex > 0 ? (people?.[openIndex - 1] ?? null) : null;
   const nextPerson = openIndex >= 0 ? (people?.[openIndex + 1] ?? null) : null;
@@ -201,7 +203,7 @@ export function V2ConversationsView({ brandId }: { brandId: string }) {
     if (prevPerson) preload(prevPerson);
     if (nextPerson) preload(nextPerson);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [gate, prevPerson?.personKey, nextPerson?.personKey]);
+  }, [gate, prevPerson ? personRef(prevPerson) : null, nextPerson ? personRef(nextPerson) : null]);
   const keys = useRef({ people, openIndex, pane, hasOpen: Boolean(openKey) });
   keys.current = { people, openIndex, pane, hasOpen: Boolean(openKey) };
   useEffect(() => {
@@ -282,7 +284,7 @@ export function V2ConversationsView({ brandId }: { brandId: string }) {
                     key={p.personKey}
                     index={i}
                     person={p}
-                    selected={p.personKey === openKey}
+                    selected={personRef(p) === openKey}
                     cursor={i === cursor}
                     onOpen={() => {
                       setPane("list");
@@ -324,8 +326,8 @@ export function V2ConversationsView({ brandId }: { brandId: string }) {
           {openKey ? (
             <Thread
               brandId={brandId}
-              personKey={openKey}
-              listed={people?.find((p) => p.personKey === openKey) ?? null}
+              personRef={openKey}
+              listed={people?.find((p) => personRef(p) === openKey) ?? null}
               scrollRef={threadScroll}
             />
           ) : (
@@ -394,16 +396,16 @@ function PersonRow({
 
 function Thread({
   brandId,
-  personKey,
+  personRef: ref,
   listed,
   scrollRef,
 }: {
   brandId: string;
-  personKey: string;
+  personRef: string;
   listed: Person | null;
   scrollRef: RefObject<HTMLDivElement | null>;
 }) {
-  const q = useAuthQuery(timelineKey(brandId, personKey), () => getPersonTimeline(brandId, personKey), {
+  const q = useAuthQuery(timelineKey(brandId, ref), () => getPersonTimeline(brandId, ref), {
     refetchInterval: TIMELINE_POLL,
   });
   // The conversation at the selected offer: lead-service's labelled facts and its tags, keyed
@@ -427,7 +429,7 @@ function Thread({
   useEffect(() => {
     const el = scrollRef.current;
     if (el) el.scrollTop = el.scrollHeight;
-  }, [personKey, itemCount]);
+  }, [ref, itemCount]);
   if (!q.isFetchedAfterMount && !data) {
     return (
       <div className="space-y-3 p-4">
@@ -703,7 +705,7 @@ function PossibleLeadRuling({ brandId, person, lead }: { brandId: string; person
     try {
       await Promise.all([
         queryClient.refetchQueries({ queryKey: ["people", brandId] }),
-        queryClient.refetchQueries({ queryKey: timelineKey(brandId, person.personKey) }),
+        queryClient.refetchQueries({ queryKey: timelineKey(brandId, personRef(person)) }),
       ]);
     } catch (err) {
       console.error("[v2 unibox] re-read after ruling failed", err);

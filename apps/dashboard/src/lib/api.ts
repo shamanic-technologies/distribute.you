@@ -15,6 +15,7 @@ import { SendingScheduleResponseSchema, type SendingSchedule } from "./sending-s
 import {
   PeopleListSchema,
   PersonTimelineSchema,
+  personRefQuery,
   type PeopleList,
   type PersonTimeline,
 } from "./people-conversations";
@@ -616,9 +617,13 @@ export async function listPeople(
   return parsed.data;
 }
 
-/** One person's whole exchange, every channel merged, oldest first (read live from each source). */
-export async function getPersonTimeline(brandId: string, personKey: string, token?: string): Promise<PersonTimeline> {
-  const qs = new URLSearchParams({ brandId, personKey });
+/**
+ * One person's whole exchange, every channel merged, oldest first (read live from each
+ * source). `ref` is what the Unibox URL holds: crm-service's `personId`, or an identity
+ * key on a row built before ids existed (`personRefQuery` decides which).
+ */
+export async function getPersonTimeline(brandId: string, ref: string, token?: string): Promise<PersonTimeline> {
+  const qs = new URLSearchParams({ brandId, ...personRefQuery(ref) });
   const raw = await apiCall<unknown>(`/orgs/people/timeline?${qs.toString()}`, { token });
   const parsed = PersonTimelineSchema.safeParse(raw);
   if (!parsed.success) {

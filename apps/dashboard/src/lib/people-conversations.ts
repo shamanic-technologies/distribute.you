@@ -46,6 +46,13 @@ export const PersonPresenceSchema = z.object({
 
 export const PersonSchema = z.object({
   personKey: z.string(),
+  /**
+   * crm-service's opaque id for the person (v0.26.0): random, no personal data, stable
+   * across rebuilds, a merged person's retired id still opens them. Null only on a row
+   * built before that deploy (filled on the next build). This, never the email/phone key,
+   * goes in the page URL (owner 2026-10-10).
+   */
+  personId: z.string().nullish(),
   identityKeys: z.array(z.string()),
   displayName: z.string().nullable(),
   company: z.string().nullable(),
@@ -201,6 +208,22 @@ export type Person = z.infer<typeof PersonSchema>;
 export type PeopleList = z.infer<typeof PeopleListSchema>;
 export type PersonTimeline = z.infer<typeof PersonTimelineSchema>;
 export type PersonTimelineItem = z.infer<typeof PersonTimelineItemSchema>;
+
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+/**
+ * What the Unibox URL names a person by: crm-service's opaque `personId`. A row built
+ * before crm-service minted ids has none yet and keeps its identity key until the next
+ * build, as do links shared before (owner 2026-10-10: no email in the URL).
+ */
+export function personRef(p: Pick<Person, "personId" | "personKey">): string {
+  return p.personId ?? p.personKey;
+}
+
+/** The thread read's query for a URL value: an id is a `personId`, anything else a `personKey`. */
+export function personRefQuery(ref: string): { personId: string } | { personKey: string } {
+  return UUID.test(ref) ? { personId: ref } : { personKey: ref };
+}
 
 /** How many people one page of the people read holds. */
 export const PEOPLE_PAGE_SIZE = 100;
