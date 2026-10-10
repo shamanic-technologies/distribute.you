@@ -183,3 +183,21 @@ export function missingFields(
     return !(values[f.key] ?? "").trim();
   });
 }
+
+/**
+ * The key-service provider name for one more Stripe account (owner 2026-10-10: several
+ * Stripe accounts per brand). The first is `stripe`; each further one gets its own
+ * `stripe-<n>`, so every account's key is stored and resolved apart.
+ */
+export function nextStripeProvider(used: Iterable<string>): string {
+  const taken = new Set(used);
+  if (!taken.has("stripe")) return "stripe";
+  for (let n = 2; ; n++) {
+    if (!taken.has(`stripe-${n}`)) return `stripe-${n}`;
+  }
+}
+
+/** A key-service provider name that holds a Stripe account's key. */
+export function isStripeProvider(provider: string): boolean {
+  return /^stripe(-[a-z0-9][a-z0-9_-]{0,47})?$/.test(provider);
+}
