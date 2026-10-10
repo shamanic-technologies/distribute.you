@@ -102,12 +102,12 @@ describe("copilot wiring", () => {
     expect(chat).toContain("account: figures");
   });
 
-  it("runs on Claude Haiku 5.5 with the card, page and account-read tools", () => {
+  it("runs on Claude Sonnet 5.5 with the card, page and account-read tools", () => {
     const boot = src("src/instrumentation.ts");
     const at = boot.indexOf('key: "copilot"');
     const cfg = boot.slice(at, boot.indexOf("},", at));
     expect(cfg).toContain('provider: "anthropic"');
-    expect(cfg).toContain('model: "haiku"');
+    expect(cfg).toContain('model: "sonnet"');
     for (const t of ["present_choices", "open_page", "list_replies_to_handle", "get_offer_performance"]) {
       expect(boot).toContain(`"${t}"`);
     }
