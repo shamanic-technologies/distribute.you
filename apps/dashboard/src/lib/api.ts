@@ -10231,6 +10231,38 @@ export async function declareRevolutDefault(): Promise<"pinned" | "card_elsewher
   return body.result === "card_elsewhere" ? "card_elsewhere" : "pinned";
 }
 
+const PaymentHoldNowSchema = z.object({
+  state: z.string(),
+  blockedReason: z.string().nullable(),
+  paymentMode: z.string(),
+});
+export type PaymentHoldNow = z.infer<typeof PaymentHoldNowSchema>;
+
+/**
+ * Billing's CURRENT payment outlook for the org this tab is on (`state`,
+ * `blockedReason`), through our own `/api/orgs/payment-hold` (billing serves it on
+ * `/internal` only). Read before any surface tells the customer to add a card: a
+ * campaign's stop reason is history. THROWS when billing cannot be read, so the
+ * caller shows that it could not check, never a guess.
+ */
+export async function getPaymentHoldNow(): Promise<PaymentHoldNow> {
+  const token = await getTabSessionToken();
+  const res = await fetch("/api/orgs/payment-hold", {
+    headers: token ? { Authorization: `Bearer ${token}` } : {},
+  });
+  if (!res.ok) {
+    console.error(`[dashboard] payment hold read failed: ${res.status}`);
+    throw new Error("We could not check your billing status.");
+  }
+  const raw: unknown = await res.json();
+  const parsed = PaymentHoldNowSchema.safeParse(raw);
+  if (!parsed.success) {
+    console.error("[dashboard] payment hold read: response shape mismatch", { issues: parsed.error.issues, raw });
+    throw new Error("We could not check your billing status.");
+  }
+  return parsed.data;
+}
+
 export async function createPortalSession(
   returnUrl: string,
   token?: string

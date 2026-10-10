@@ -5,7 +5,7 @@ import {
   PAYMENT_HOLD_LABEL,
   paymentHoldKind,
 } from "@/lib/payment-declined";
-import { PaymentDeclinedNotice } from "@/components/billing/payment-declined-notice";
+import { PaymentHoldNotice } from "@/components/billing/payment-declined-notice";
 import { useEffect, useRef, useState } from "react";
 import { useMutation } from "@tanstack/react-query";
 import {
@@ -155,8 +155,9 @@ export function CampaignSettingsCard({
   // pill and the controls modal read. A second list of running-words is how two
   // surfaces come to disagree about whether one campaign is live.
   const savedRunning = campaign ? isRunningStatus(campaign.status) : false;
-  // Stopped by billing over payment (declined card, or no card) rather than by a person: a restart is
-  // refused until the payment is fixed, so the card says so up front.
+  // Stopped over payment (declined card, or no card) rather than by a person. The status word
+  // states that history; the notice that tells the customer to act asks billing whether the org
+  // is held NOW (`PaymentHoldNotice`), since a stop reason outlives the hold.
   const paymentHold = campaign ? paymentHoldKind(campaign) : null;
 
   // SEEDED from the queries and RE-SEEDED whenever the payload is a different
@@ -330,7 +331,7 @@ export function CampaignSettingsCard({
 
   return (
     <div className="space-y-4">
-      {paymentHold && <PaymentDeclinedNotice kind={paymentHold} />}
+      {campaign && <PaymentHoldNotice campaigns={[campaign]} />}
       <section className="rounded-xl border border-gray-200 bg-white p-5">
         <div className="flex items-start justify-between gap-4">
           <div className="min-w-0">

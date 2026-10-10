@@ -47,6 +47,11 @@ describe("Copilot allowed tools", () => {
     }
   });
 
+  it("never writes the offer's old ticked list: a campaign IS a funnel campaign (owner 2026-10-10)", () => {
+    for (const t of ["set_selected_sales_paths", "get_selected_sales_paths"]) expect(tools).not.toContain(t);
+    expect(tools).toContain("create_funnel_campaign");
+  });
+
   it("lists each tool once", () => {
     expect(new Set(tools).size).toBe(tools.length);
   });

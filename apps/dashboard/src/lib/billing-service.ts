@@ -163,3 +163,37 @@ export async function settleWelcomeOnSignup(
     return false;
   }
 }
+
+/**
+ * Billing's CURRENT verdict on whether this org can be charged (the payment outlook),
+ * the read campaign-service itself stops campaigns and refuses starts on. Only the
+ * fields a "paused over payment" surface needs leave this module. Pure read on
+ * billing's side. THROWS on any failure: a caller that cannot read the hold has no
+ * honest default (a guess either way tells the customer something false).
+ */
+export async function getPaymentOutlook(orgId: string): Promise<{
+  state: string;
+  blockedReason: string | null;
+  paymentMode: string;
+}> {
+  if (!BILLING_SERVICE_URL || !BILLING_SERVICE_API_KEY) {
+    throw new Error("[billing-service] BILLING_SERVICE_URL / BILLING_SERVICE_API_KEY not set");
+  }
+  const res = await fetch(
+    `${BILLING_SERVICE_URL}/internal/accounts/by-org/${encodeURIComponent(orgId)}/payment-outlook`,
+    {
+      headers: { "x-api-key": BILLING_SERVICE_API_KEY },
+      signal: AbortSignal.timeout(TIMEOUT_MS),
+    },
+  );
+  if (!res.ok) throw new Error(`[billing-service] payment-outlook failed: ${res.status}`);
+  const body = (await res.json()) as { state?: unknown; blockedReason?: unknown; paymentMode?: unknown };
+  if (typeof body.state !== "string" || typeof body.paymentMode !== "string") {
+    throw new Error("[billing-service] payment-outlook: invalid response shape");
+  }
+  return {
+    state: body.state,
+    blockedReason: typeof body.blockedReason === "string" ? body.blockedReason : null,
+    paymentMode: body.paymentMode,
+  };
+}
