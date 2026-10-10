@@ -2,17 +2,22 @@ import { describe, it, expect } from "vitest";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import {
+  SalesFunnelCampaignListSchema,
+  SalesFunnelCapsSchema,
   capPeriodSuffix,
   capUnavailableSentence,
   capWindowWords,
+  centsToUsd,
+  formatCapUsd,
   funnelCampaignFaceSrc,
-  isFunnelCampaignOn,
+  isOngoingFunnelCampaign,
   maxBudgetLabel,
   maxVolumeLabel,
-  parseSalesFunnelCampaigns,
-  parseSalesFunnelCaps,
   parseWholeAmount,
 } from "../src/lib/sales-funnel-campaigns";
+
+const parseSalesFunnelCampaigns = (raw: unknown) => SalesFunnelCampaignListSchema.parse(raw).salesFunnelCampaigns;
+const parseSalesFunnelCaps = (raw: unknown) => SalesFunnelCapsSchema.parse(raw);
 
 const src = (p: string) => readFileSync(join(__dirname, "..", p), "utf8");
 
@@ -86,33 +91,34 @@ describe("sales funnel campaigns: readers", () => {
     const [c] = parseSalesFunnelCampaigns(LIST);
     expect(c.salesFunnelName).toBe("Epiphany");
     expect(c.units[0].campaignId).toBe("71a76c3d-4b60-4212-a8dc-fb849395c9da");
-    expect(isFunnelCampaignOn(c)).toBe(false);
-    expect(isFunnelCampaignOn({ status: "ongoing" })).toBe(true);
+    expect(isOngoingFunnelCampaign(c)).toBe(false);
+    expect(isOngoingFunnelCampaign({ status: "ongoing" })).toBe(true);
   });
 
   it("fails loud on a missing required field", () => {
     const broken = { salesFunnelCampaigns: [{ ...LIST.salesFunnelCampaigns[0], salesFunnelName: undefined }] };
-    expect(() => parseSalesFunnelCampaigns(broken)).toThrow(/invalid response shape/);
+    expect(() => parseSalesFunnelCampaigns(broken)).toThrow();
   });
 
-  it("coerces billing's string cents and keeps an unmeasured consumption null, never 0", () => {
-    const caps = parseSalesFunnelCaps(CAPS, "test");
-    expect(caps.maxBudget?.amountCents).toBe(5000);
-    expect(caps.maxBudget?.consumedCents).toBe(0);
+  it("reads billing's string cents and keeps an unmeasured consumption null, never 0", () => {
+    const caps = parseSalesFunnelCaps(CAPS);
+    expect(centsToUsd(caps.maxBudget?.amountCents)).toBe(50);
+    expect(formatCapUsd("5000.0000000000")).toBe("$50");
+    expect(centsToUsd(caps.maxBudget?.consumedCents)).toBe(0);
     expect(caps.maxVolume?.consumed).toBeNull();
     expect(caps.maxVolume?.consumedUnavailableReason).toBe("volume_not_measured_on_channel");
   });
 
   it("accepts a funnel with no cap stated", () => {
-    const caps = parseSalesFunnelCaps({ ...CAPS, stated: false, updatedAt: null, maxBudget: null, maxVolume: null }, "test");
+    const caps = parseSalesFunnelCaps({ ...CAPS, stated: false, updatedAt: null, maxBudget: null, maxVolume: null });
     expect(caps.maxBudget).toBeNull();
   });
 });
 
 describe("sales funnel campaigns: display", () => {
   it("states a cap in the period it was stated in", () => {
-    expect(maxBudgetLabel({ amountCents: 5000, period: "weekly" })).toBe("$50/week");
-    expect(maxBudgetLabel({ amountCents: 30000, period: "one_off" })).toBe("$300 in total");
+    expect(maxBudgetLabel({ amountCents: "5000", period: "weekly" })).toBe("$50/week");
+    expect(maxBudgetLabel({ amountCents: "30000.0000000000", period: "one_off" })).toBe("$300 in total");
     expect(maxVolumeLabel({ count: 200, period: "monthly" })).toBe("200 people/month");
     expect(maxVolumeLabel({ count: 1, period: "daily" })).toBe("1 person/day");
     expect(capPeriodSuffix("daily")).toBe("/day");
@@ -166,7 +172,7 @@ describe("sales funnel campaigns: wiring", () => {
   it("Campaigns lists funnel campaigns: the overview section and the sidebar's ON ones", () => {
     expect(src("src/components/v2/campaigns-overview-page.tsx")).toContain("<FunnelCampaignsSection orgId={orgId} brandId={brandId} offerId={offerId} />");
     const shell = src("src/components/v2/v2-shell.tsx");
-    expect(shell).toContain("funnelCampaigns.filter(isFunnelCampaignOn)");
+    expect(shell).toContain("funnelCampaigns.filter(isOngoingFunnelCampaign)");
     expect(shell).toContain(".filter(({ m }) => !m.row.campaign.salesFunnelCampaignId)");
   });
 });

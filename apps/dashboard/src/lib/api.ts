@@ -1,12 +1,4 @@
 import { parseOfferSalesPaths, type OfferSalesPaths } from "./offer-sales-paths";
-import {
-  parseSalesFunnelCampaign,
-  parseSalesFunnelCampaigns,
-  parseSalesFunnelCaps,
-  type SalesFunnelCampaign,
-  type SalesFunnelCaps,
-  type SalesFunnelCapsInput,
-} from "./sales-funnel-campaigns";
 import { ConversationTimelineSchema, type ConversationTimeline } from "./conversation-timeline";
 import {
   OfferChannelsSchema,
@@ -23,6 +15,14 @@ import {
   type CataloguePage,
   type CatalogueReadObject,
 } from "./staff-catalogue";
+import {
+  SalesFunnelCampaignListSchema,
+  SalesFunnelCampaignOneSchema,
+  SalesFunnelCapsSchema,
+  type SalesFunnelCampaign,
+  type SalesFunnelCaps,
+  type SalesFunnelCapsInput,
+} from "./sales-funnel-campaigns";
 import { browserHasAnonSession } from "./anon-session-cookie";
 import { offerArchiveRefusalSentence } from "./offer-archive";
 import { CrmAttributionSchema, type CrmAttribution } from "./crm-attribution";
@@ -1668,6 +1668,31 @@ export async function getStaffCatalogueObject<K extends CatalogueReadObject>(
   const q = qs.toString();
   const raw = await apiCall<unknown>(`${STAFF_CATALOGUE_PATHS.one(object, id)}${q ? `?${q}` : ""}`);
   return parseStaff(`getStaffCatalogueObject(${object})`, CATALOGUE_DETAIL_SCHEMAS[object] as z.ZodType<CatalogueDetailByObject[K]>, raw);
+}
+
+// ─── Sales funnel campaigns (campaign-service) + their caps (billing-service), owner 2026-10-10 ───
+// Org-scoped reads through the gateway (api-service #1166). Shapes: lib/sales-funnel-campaigns.ts.
+
+/** The org's funnel campaigns for one brand x offer (or the whole brand, offerId null), each with its units (newest first). */
+export async function listSalesFunnelCampaigns(brandId: string, offerId: string | null): Promise<SalesFunnelCampaign[]> {
+  const qs = new URLSearchParams({ brandId });
+  if (offerId) qs.set("offerId", offerId);
+  const raw = await apiCall<unknown>(`/sales-funnel-campaigns?${qs.toString()}`);
+  return parseStaff("listSalesFunnelCampaigns", SalesFunnelCampaignListSchema, raw).salesFunnelCampaigns;
+}
+
+/** One funnel campaign with its units. */
+export async function getSalesFunnelCampaign(id: string): Promise<SalesFunnelCampaign> {
+  const raw = await apiCall<unknown>(`/sales-funnel-campaigns/${encodeURIComponent(id)}`);
+  return parseStaff("getSalesFunnelCampaign", SalesFunnelCampaignOneSchema, raw).salesFunnelCampaign;
+}
+
+/** A funnel's max budget + max volume and what it consumed in the current window (billing-service). */
+export async function getSalesFunnelCaps(brandId: string, offerId: string, salesFunnelId: string): Promise<SalesFunnelCaps> {
+  const raw = await apiCall<unknown>(
+    `/brands/${encodeURIComponent(brandId)}/offers/${encodeURIComponent(offerId)}/sales-funnels/${encodeURIComponent(salesFunnelId)}/caps`,
+  );
+  return parseStaff("getSalesFunnelCaps", SalesFunnelCapsSchema, raw);
 }
 
 // ─── Copilot skill tree (chat-service `/internal/skills`, owner 2026-10-09) ────────────────
@@ -7015,26 +7040,6 @@ export async function setCampaignStatus(
 }
 
 /**
- * CAMPAIGNS AS SALES FUNNELS (owner 2026-10-10, campaign-service `/sales-funnel-campaigns`
- * through the gateway): brand x offer x sales funnel, each owning one ordinary campaign per
- * part. Listed newest first; the filters are campaign-service's exact matches.
- */
-export async function listSalesFunnelCampaigns(
-  scope: { brandId: string; offerId?: string | null },
-  token?: string,
-): Promise<SalesFunnelCampaign[]> {
-  const q = new URLSearchParams({ brandId: scope.brandId });
-  if (scope.offerId) q.set("offerId", scope.offerId);
-  const raw = await apiCall<unknown>(`/sales-funnel-campaigns?${q.toString()}`, { token });
-  return parseSalesFunnelCampaigns(raw);
-}
-
-export async function getSalesFunnelCampaign(id: string, token?: string): Promise<SalesFunnelCampaign> {
-  const raw = await apiCall<unknown>(`/sales-funnel-campaigns/${encodeURIComponent(id)}`, { token });
-  return parseSalesFunnelCampaign(raw, "getSalesFunnelCampaign");
-}
-
-/**
  * Run or pause the WHOLE campaign: every part moves with it in one transaction. ⚠️ `activate`
  * makes its parts due at once (the scheduler then spends within the caps), and meets the
  * payment hold (409 `payment_declined` / `no_payment_method`).
@@ -7051,20 +7056,11 @@ export async function setSalesFunnelCampaignStatus(
     body: { status },
     headers: { "x-run-id": globalThis.crypto.randomUUID(), "x-brand-id": brandId },
   });
-  return parseSalesFunnelCampaign(raw, "setSalesFunnelCampaignStatus");
+  return parseStaff("setSalesFunnelCampaignStatus", SalesFunnelCampaignOneSchema, raw).salesFunnelCampaign;
 }
 
 function salesFunnelCapsPath(brandId: string, offerId: string, salesFunnelId: string): string {
-  return `/brands/${brandId}/offers/${offerId}/sales-funnels/${encodeURIComponent(salesFunnelId)}/caps`;
-}
-
-/**
- * billing's MAX BUDGET + MAX VOLUME of a campaign and what it consumed in the current period
- * (`reached` is billing's stop verdict; a consumption it cannot measure is null + a reason).
- */
-export async function getSalesFunnelCaps(brandId: string, offerId: string, salesFunnelId: string, token?: string): Promise<SalesFunnelCaps> {
-  const raw = await apiCall<unknown>(salesFunnelCapsPath(brandId, offerId, salesFunnelId), { token });
-  return parseSalesFunnelCaps(raw, "getSalesFunnelCaps");
+  return `/brands/${encodeURIComponent(brandId)}/offers/${encodeURIComponent(offerId)}/sales-funnels/${encodeURIComponent(salesFunnelId)}/caps`;
 }
 
 /** States both caps at once (null clears one). Charges nothing; answers the read's shape. */
@@ -7080,7 +7076,7 @@ export async function saveSalesFunnelCaps(
     method: "PUT",
     body: { maxBudget: caps.maxBudget, maxVolume: caps.maxVolume },
   });
-  return parseSalesFunnelCaps(raw, "saveSalesFunnelCaps");
+  return parseStaff("saveSalesFunnelCaps", SalesFunnelCapsSchema, raw);
 }
 
 /**

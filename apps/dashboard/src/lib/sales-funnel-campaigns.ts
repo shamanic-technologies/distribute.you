@@ -1,125 +1,115 @@
+/**
+ * SALES FUNNEL CAMPAIGNS (owner 2026-10-10): a campaign is brand x offer x sales funnel, run or paused
+ * as one; its UNITS are its pipes (one per leg x channel, each a campaign-service campaign with its own
+ * workflow). campaign-service serves them (`/sales-funnel-campaigns`), billing-service serves each
+ * funnel's caps (`/brands/:b/offers/:o/sales-funnels/:id/caps`), both through the gateway.
+ *
+ * Shapes only, as served; nothing is computed here. Alias-free so it carries real unit tests.
+ */
 import { z } from "zod";
 
-/**
- * A campaign IS a sales funnel (owner 2026-10-10): brand x offer x sales funnel, run or paused
- * as ONE (campaign-service `/sales-funnel-campaigns`), its money a MAX BUDGET and a MAX VOLUME
- * (billing `/brands/:b/offers/:o/sales-funnels/:f/caps`). The customer reads a name, a face, a
- * status, its caps and its results; the words funnel / pipe / leg never reach the screen.
- *
- * Alias-free (real unit tests): schemas, parsers and pure display helpers only.
- */
-
-/** One part the campaign runs (an ordinary campaign row), campaign-service's own fields. */
-const SalesFunnelUnitSchema = z.object({
-  campaignId: z.string(),
-  featureSlug: z.string(),
-  legKey: z.string(),
-  status: z.string(),
-  workflowSlug: z.string().nullable(),
-  name: z.string(),
-});
-
-export const SalesFunnelCampaignSchema = z.object({
-  id: z.string(),
-  brandId: z.string(),
-  offerId: z.string(),
-  salesFunnelId: z.string(),
-  salesFunnelName: z.string(),
-  status: z.string(),
-  stopReason: z.string().nullable(),
-  createdAt: z.string(),
-  updatedAt: z.string(),
-  units: z.array(SalesFunnelUnitSchema),
-});
-
-export type SalesFunnelCampaign = z.infer<typeof SalesFunnelCampaignSchema>;
+export const SalesFunnelUnitSchema = z
+  .object({
+    campaignId: z.string(),
+    pipeId: z.string(),
+    featureSlug: z.string(),
+    legKey: z.string(),
+    status: z.string(),
+    workflowSlug: z.string().nullable(),
+    name: z.string(),
+  })
+  .passthrough();
 export type SalesFunnelUnit = z.infer<typeof SalesFunnelUnitSchema>;
 
-const ListSchema = z.object({ salesFunnelCampaigns: z.array(SalesFunnelCampaignSchema) });
-const OneSchema = z.object({ salesFunnelCampaign: SalesFunnelCampaignSchema });
+export const SalesFunnelCampaignSchema = z
+  .object({
+    id: z.string(),
+    brandId: z.string(),
+    offerId: z.string(),
+    salesFunnelId: z.string(),
+    salesFunnelName: z.string(),
+    status: z.string(),
+    stopReason: z.string().nullable(),
+    createdAt: z.string(),
+    updatedAt: z.string(),
+    units: z.array(SalesFunnelUnitSchema),
+  })
+  .passthrough();
+export type SalesFunnelCampaign = z.infer<typeof SalesFunnelCampaignSchema>;
 
-function parse<T>(schema: z.ZodType<T>, raw: unknown, where: string): T {
-  const parsed = schema.safeParse(raw);
-  if (!parsed.success) {
-    console.error(`[dashboard] ${where}: response shape mismatch`, { issues: parsed.error.issues, raw });
-    throw new Error(`[dashboard] ${where}: invalid response shape`);
-  }
-  return parsed.data;
-}
+export const SalesFunnelCampaignListSchema = z.object({ salesFunnelCampaigns: z.array(SalesFunnelCampaignSchema) }).passthrough();
+export const SalesFunnelCampaignOneSchema = z.object({ salesFunnelCampaign: SalesFunnelCampaignSchema }).passthrough();
 
-export const parseSalesFunnelCampaigns = (raw: unknown) => parse(ListSchema, raw, "listSalesFunnelCampaigns").salesFunnelCampaigns;
-export const parseSalesFunnelCampaign = (raw: unknown, where: string) => parse(OneSchema, raw, where).salesFunnelCampaign;
-
-/** campaign-service's status vocabulary: `ongoing` runs, anything else does not. */
-export const isFunnelCampaignOn = (c: Pick<SalesFunnelCampaign, "status">) => c.status === "ongoing";
-
-/**
- * The face of a campaign's name: features-service draws it from the NAME alone
- * (`GET /public/catalogue/faces/:name.svg`, `faceOf` = the URL-encoded name), served
- * through the gateway's public route. A pure display lookup.
- */
-export function funnelCampaignFaceSrc(name: string): string {
-  return `/api/v1/public/catalogue/faces/${encodeURIComponent(name)}.svg`;
-}
-
-// ─── Caps (billing) ─────────────────────────────────────────────────────────────────────
-
-export const CAP_PERIODS = ["one_off", "daily", "weekly", "monthly"] as const;
-export type CapPeriod = (typeof CAP_PERIODS)[number];
-
-const PeriodSchema = z.enum(CAP_PERIODS);
-// Amounts arrive as strings (bigint columns): coerce, but keep null as null.
-const cents = z.coerce.number();
-
-const MaxBudgetSchema = z.object({
-  amountCents: cents,
-  period: PeriodSchema,
+const CapWindow = {
+  period: z.string(),
   periodStart: z.string(),
   periodEnd: z.string().nullable(),
-  consumedCents: cents.nullable(),
-  remainingCents: cents.nullable(),
   reached: z.boolean().nullable(),
   consumedUnavailableReason: z.string().nullable(),
   consumedUnavailableDetail: z.string().nullable(),
-});
+};
 
-const MaxVolumeSchema = z.object({
-  count: z.coerce.number(),
-  period: PeriodSchema,
-  unit: z.string(),
-  periodStart: z.string(),
-  periodEnd: z.string().nullable(),
-  consumed: z.coerce.number().nullable(),
-  remaining: z.coerce.number().nullable(),
-  reached: z.boolean().nullable(),
-  consumedUnavailableReason: z.string().nullable(),
-  consumedUnavailableDetail: z.string().nullable(),
-});
-
-export const SalesFunnelCapsSchema = z.object({
-  brandId: z.string(),
-  offerId: z.string(),
-  salesFunnelId: z.string(),
-  stated: z.boolean(),
-  updatedAt: z.string().nullable(),
-  maxBudget: MaxBudgetSchema.nullable(),
-  maxVolume: MaxVolumeSchema.nullable(),
-});
-
+export const SalesFunnelCapsSchema = z
+  .object({
+    salesFunnelId: z.string(),
+    stated: z.boolean(),
+    updatedAt: z.string().nullable(),
+    maxBudget: z
+      .object({ amountCents: z.string(), consumedCents: z.string().nullable(), remainingCents: z.string().nullable(), ...CapWindow })
+      .passthrough()
+      .nullable(),
+    maxVolume: z
+      .object({ count: z.number(), unit: z.string(), consumed: z.number().nullable(), remaining: z.number().nullable(), ...CapWindow })
+      .passthrough()
+      .nullable(),
+  })
+  .passthrough();
 export type SalesFunnelCaps = z.infer<typeof SalesFunnelCapsSchema>;
-export type MaxBudget = z.infer<typeof MaxBudgetSchema>;
-export type MaxVolume = z.infer<typeof MaxVolumeSchema>;
 
-export const parseSalesFunnelCaps = (raw: unknown, where: string) => parse(SalesFunnelCapsSchema, raw, where);
+/** A served cents string ("12500" or "12500.5") as dollars, for display only. Null for a non-number (logged). */
+export function centsToUsd(cents: string | null | undefined): number | null {
+  if (cents == null) return null;
+  const n = Number(cents);
+  if (!Number.isFinite(n)) {
+    console.error("[sales-funnel-campaigns] unreadable cents", { cents });
+    return null;
+  }
+  return n / 100;
+}
+
+/** The producer's word for a status or reason, capitalised (never renamed). */
+export function producerWord(s: string): string {
+  return s.charAt(0).toUpperCase() + s.slice(1).replace(/_/g, " ");
+}
+
+/** A funnel campaign is ONGOING while campaign-service says so (`ongoing`). */
+export function isOngoingFunnelCampaign(c: Pick<SalesFunnelCampaign, "status">): boolean {
+  return c.status === "ongoing";
+}
+
+// ─── GA display (owner 2026-10-10): the campaign page, the Overview section, the sidebar ──────────
 
 /** The PUT body: both keys always (object states the cap, null clears it). */
+export const CAP_PERIODS = ["daily", "weekly", "monthly", "one_off"] as const;
+export type CapPeriod = (typeof CAP_PERIODS)[number];
+
 export interface SalesFunnelCapsInput {
   maxBudget: { amountCents: number; period: CapPeriod } | null;
   maxVolume: { count: number; period: CapPeriod } | null;
 }
 
+export type MaxBudget = NonNullable<SalesFunnelCaps["maxBudget"]>;
+export type MaxVolume = NonNullable<SalesFunnelCaps["maxVolume"]>;
+
+/** billing's period vocabulary narrowed for the editor; an unknown token is logged and read as weekly. */
+export function asCapPeriod(p: string): CapPeriod {
+  if ((CAP_PERIODS as readonly string[]).includes(p)) return p as CapPeriod;
+  console.error("[sales-funnel-campaigns] unknown cap period", { period: p });
+  return "weekly";
+}
+
 /** How a period reads after an amount: "$50/week", "200 people/month", "$300 in total". */
-export function capPeriodSuffix(period: CapPeriod): string {
+export function capPeriodSuffix(period: string): string {
   switch (period) {
     case "daily":
       return "/day";
@@ -129,11 +119,14 @@ export function capPeriodSuffix(period: CapPeriod): string {
       return "/month";
     case "one_off":
       return " in total";
+    default:
+      console.error("[sales-funnel-campaigns] unknown cap period", { period });
+      return "";
   }
 }
 
 /** The window a consumed figure covers, for a sentence: "this week", "so far". */
-export function capWindowWords(period: CapPeriod): string {
+export function capWindowWords(period: string): string {
   switch (period) {
     case "daily":
       return "today";
@@ -143,6 +136,8 @@ export function capWindowWords(period: CapPeriod): string {
       return "this month";
     case "one_off":
       return "so far";
+    default:
+      return "";
   }
 }
 
@@ -154,9 +149,10 @@ export const CAP_PERIOD_LABEL: Record<CapPeriod, string> = {
   one_off: "In total",
 };
 
-/** Whole dollars, no cents: a cap is a promise amount. */
-export function formatCapUsd(amountCents: number): string {
-  return `$${Math.round(amountCents / 100).toLocaleString("en-US")}`;
+/** Whole dollars from a served cents string, no cents: a cap is a promise amount. "—" logged when unreadable. */
+export function formatCapUsd(cents: string | null): string {
+  const usd = centsToUsd(cents);
+  return usd === null ? "—" : `$${Math.round(usd).toLocaleString("en-US")}`;
 }
 
 export function maxBudgetLabel(b: Pick<MaxBudget, "amountCents" | "period">): string {
@@ -179,7 +175,7 @@ export function capUnavailableSentence(reason: string | null): string {
     case "no_proactive_pipe":
       return "This campaign contacts nobody first.";
     default:
-      if (reason) console.error("[sales-funnel-caps] no sentence for consumedUnavailableReason", { reason });
+      if (reason) console.error("[sales-funnel-campaigns] no sentence for consumedUnavailableReason", { reason });
       return "Could not count this right now.";
   }
 }
@@ -190,4 +186,13 @@ export function parseWholeAmount(v: string): number | null {
   if (!/^\d+$/.test(t)) return null;
   const n = Number(t);
   return n > 0 ? n : null;
+}
+
+/**
+ * The face of a campaign's name: features-service draws it from the NAME alone
+ * (`GET /public/catalogue/faces/:name.svg`, `faceOf` = the URL-encoded name), served
+ * through the gateway's public route. A pure display lookup.
+ */
+export function funnelCampaignFaceSrc(name: string): string {
+  return `/api/v1/public/catalogue/faces/${encodeURIComponent(name)}.svg`;
 }

@@ -117,6 +117,10 @@ export const SENSITIVE_QUERY_ROOTS = new Set([
   // Staff catalogue sections (fleet economics of every business object).
   "staffCatalogueList",
   "staffCatalogueObject",
+  // Staff Campaigns section: sales funnel campaigns, units and caps (read live, staff detail).
+  "salesFunnelCampaigns",
+  "salesFunnelCampaign",
+  "salesFunnelCaps",
   // Staff Posting > Posts: a brand's LinkedIn posts, read live.
   "staffBrandLinkedinPosts",
   // The signed-in staff member's own LinkedIn posts (Profile page).
@@ -174,10 +178,6 @@ export const PERSISTABLE_QUERY_ROOTS = new Set([
   // Every campaign ceiling billing holds for a brand, per (offer, leg, channel).
   "brandCampaignBudgets",
   "offerCampaignBudgets",
-  // Campaigns as sales funnels (campaign-service) and their max budget / max volume (billing).
-  "salesFunnelCampaigns",
-  "salesFunnelCampaign",
-  "salesFunnelCaps",
   // Per trigger, how often it fired on an offer, ran, was skipped (campaign-service), under
   // the campaign rows of the Sales path and Sourcing pages.
   "offerTriggerEventsSummary",

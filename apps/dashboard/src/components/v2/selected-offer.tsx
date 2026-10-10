@@ -42,7 +42,7 @@ export function SelectedOfferProvider({ brandId, children }: { brandId: string; 
   const offersQ = useAuthQuery(["brandOffers", brandId], () => listBrandOffers(brandId), { enabled: !!brandId });
   const campaignsQ = useAuthQuery(["campaigns", brandId], () => listCampaignsByBrand(brandId), { enabled: !!brandId });
   // A campaign that is a sales funnel (owner 2026-10-10) names its offer too: same key as its page's read.
-  const funnelsQ = useAuthQuery(["salesFunnelCampaigns", brandId, "all"], () => listSalesFunnelCampaigns({ brandId }), {
+  const funnelsQ = useAuthQuery(["salesFunnelCampaigns", brandId, "all"], () => listSalesFunnelCampaigns(brandId, null), {
     enabled: !!brandId && !!params.campaignId,
   });
   const [stored, setStored] = useState<string | null>(null);

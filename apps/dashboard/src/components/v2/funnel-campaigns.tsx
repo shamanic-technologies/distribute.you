@@ -18,9 +18,11 @@ import {
   CAP_PERIOD_LABEL,
   capUnavailableSentence,
   capWindowWords,
+  asCapPeriod,
+  centsToUsd,
   formatCapUsd,
   funnelCampaignFaceSrc,
-  isFunnelCampaignOn,
+  isOngoingFunnelCampaign as isFunnelCampaignOn,
   maxBudgetLabel,
   maxVolumeLabel,
   parseWholeAmount,
@@ -60,7 +62,7 @@ const DASH = <span className="k-fg4">—</span>;
 export function useFunnelCampaigns(brandId: string, offerId: string | null, { enabled = true }: { enabled?: boolean } = {}) {
   return useAuthQuery(
     ["salesFunnelCampaigns", brandId, offerId ?? "all"],
-    () => listSalesFunnelCampaigns({ brandId, offerId }),
+    () => listSalesFunnelCampaigns(brandId, offerId),
     { enabled: enabled && !!brandId, ...pollOptions },
   );
 }
@@ -242,10 +244,11 @@ export function FunnelLimitsModal({
   onClose: () => void;
 }) {
   const qc = useQueryClient();
-  const [budget, setBudget] = useState(caps?.maxBudget ? String(Math.round(caps.maxBudget.amountCents / 100)) : "");
-  const [budgetPer, setBudgetPer] = useState<CapPeriod>(caps?.maxBudget?.period ?? "weekly");
+  const statedUsd = centsToUsd(caps?.maxBudget?.amountCents);
+  const [budget, setBudget] = useState(statedUsd !== null ? String(Math.round(statedUsd)) : "");
+  const [budgetPer, setBudgetPer] = useState<CapPeriod>(caps?.maxBudget ? asCapPeriod(caps.maxBudget.period) : "weekly");
   const [volume, setVolume] = useState(caps?.maxVolume ? String(caps.maxVolume.count) : "");
-  const [volumePer, setVolumePer] = useState<CapPeriod>(caps?.maxVolume?.period ?? "monthly");
+  const [volumePer, setVolumePer] = useState<CapPeriod>(caps?.maxVolume ? asCapPeriod(caps.maxVolume.period) : "monthly");
   const { mutate, isPending, error } = useMutation({
     mutationFn: (input: { usd: number; people: number | null }) =>
       saveSalesFunnelCaps(campaign.brandId, campaign.offerId, campaign.salesFunnelId, {
@@ -678,8 +681,8 @@ export function FunnelCampaignPage({ campaign }: { campaign: SalesFunnelCampaign
                 label="Max budget"
                 stated={b ? maxBudgetLabel(b) : null}
                 consumed={b && b.consumedCents !== null ? formatCapUsd(b.consumedCents) : null}
-                consumedValue={b && b.consumedCents !== null ? b.consumedCents / 100 : null}
-                max={b ? Math.round(b.amountCents / 100) : null}
+                consumedValue={b ? centsToUsd(b.consumedCents) : null}
+                max={b ? centsToUsd(b.amountCents) : null}
                 reached={b?.reached ?? null}
                 unavailable={b ? capUnavailableSentence(b.consumedUnavailableReason) : null}
                 window={b ? capWindowWords(b.period) : null}

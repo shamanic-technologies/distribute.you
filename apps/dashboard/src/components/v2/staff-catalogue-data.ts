@@ -3,7 +3,9 @@
 import { useMemo } from "react";
 import { useQueries } from "@tanstack/react-query";
 import { useAuthQuery, useOrgQueryGate } from "@/lib/use-auth-query";
-import { getOfferSalesPaths, getStaffCatalogueObject, getWorkflowRankLadder, listStaffCatalogue } from "@/lib/api";
+import { getOfferSalesPaths, getStaffCatalogueObject, getWorkflowRankLadder, listSalesFunnelCampaigns, listStaffCatalogue } from "@/lib/api";
+import { isOngoingFunnelCampaign, type SalesFunnelCampaign } from "@/lib/sales-funnel-campaigns";
+import { pollOptions } from "@/lib/query-options";
 import {
   ongoingChannelsAndSteps,
   ongoingFunnelIds,
@@ -72,6 +74,20 @@ function useObjects<K extends CatalogueObject>(object: K, ids: string[], enabled
   return { data, settled };
 }
 
+/** The selected offer's SALES FUNNEL campaigns (campaign-service), each with its units. */
+export function useFunnelCampaigns(brandId: string, offerId: string | null, enabled = true) {
+  return useAuthQuery(["salesFunnelCampaigns", brandId, offerId], () => listSalesFunnelCampaigns(brandId, offerId as string), {
+    ...pollOptions,
+    enabled: enabled && !!brandId && !!offerId,
+  });
+}
+
+/** An ongoing funnel campaign with its funnel's served face (catalogue). */
+export interface OngoingFunnelCampaign {
+  campaign: SalesFunnelCampaign;
+  face: string | null;
+}
+
 /** A workflow an ON campaign runs: the producer's money pick for that campaign, on its pipe. */
 export interface OngoingWorkflow {
   slug: string;
@@ -89,6 +105,8 @@ export interface OngoingCatalogue {
   pipes: CatalogueDetailByObject["pipes"][];
   "sales-funnels": CatalogueDetailByObject["sales-funnels"][];
   workflows: OngoingWorkflow[];
+  /** The offer's ongoing SALES FUNNEL campaigns (campaign-service status), each with its funnel's face. */
+  campaigns: OngoingFunnelCampaign[];
   /** The ON campaigns each pipe id is, for a page that names them. */
   campaignsByPipe: Map<string, OngoingCampaign[]>;
   /** Every read answered once (a failure counts as answered: it is logged, never a blink). */
@@ -174,6 +192,13 @@ export function useOngoingCatalogue(orgId: string, brandId: string, offerId: str
     detail: workflowDetails[i]?.data ?? null,
   }));
 
+  const funnelCampaigns = useFunnelCampaigns(brandId, offerId, enabled);
+  const ongoingFunnelCampaigns = useMemo(() => (funnelCampaigns.data ?? []).filter(isOngoingFunnelCampaign), [funnelCampaigns.data]);
+  const campaignFunnels = useObjects("sales-funnels", [...new Set(ongoingFunnelCampaigns.map((c) => c.salesFunnelId))], enabled);
+  const faceByFunnel = new Map(campaignFunnels.data.map((f) => [f.id, f.face.svgPath] as const));
+  const campaignsOut: OngoingFunnelCampaign[] = ongoingFunnelCampaigns.map((c) => ({ campaign: c, face: faceByFunnel.get(c.salesFunnelId) ?? null }));
+  const funnelCampaignsSettled = !offerId || funnelCampaigns.data !== undefined || funnelCampaigns.isFetchedAfterMount;
+
   const laddersSettled = ladders.every((r) => r.data !== undefined || r.isFetchedAfterMount || r.isError);
   const offerSettled = !offerId || salesPaths.data !== undefined || salesPaths.isError;
   return {
@@ -183,7 +208,8 @@ export function useOngoingCatalogue(orgId: string, brandId: string, offerId: str
     pipes: pipes.data,
     "sales-funnels": funnels.data,
     workflows,
+    campaigns: campaignsOut,
     campaignsByPipe,
-    settled: campaignsSettled && offerSettled && pipes.settled && channels.settled && steps.settled && funnels.settled && paths.settled && laddersSettled,
+    settled: funnelCampaignsSettled && campaignsSettled && offerSettled && pipes.settled && channels.settled && steps.settled && funnels.settled && paths.settled && laddersSettled,
   };
 }
