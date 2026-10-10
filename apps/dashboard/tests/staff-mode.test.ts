@@ -55,10 +55,11 @@ describe("staff mode is the ONE staff gate of the customer dashboard", () => {
 });
 
 describe("nothing below a mission reaches a customer", () => {
-  it("the sidebar Workflows entry is staff mode only", () => {
+  it("the sidebar Workflows section (with every business-object section) is staff mode only", () => {
     const s = read("components/v2/v2-shell.tsx");
-    const at = s.indexOf('label="Workflows"');
-    expect(s.slice(at - 200, at)).toContain("{staffMode && (");
+    expect(s).toContain("{staffMode && <StaffObjectSections");
+    const at = s.indexOf('<Group title="Workflows">');
+    expect(at).toBeGreaterThan(s.indexOf("function StaffObjectSections("));
   });
 
   it("Audience lists are GA (owner 2026-10-05), now Targeting's Lists tab (owner 2026-10-07): no staff gate on the tab or the page", () => {
