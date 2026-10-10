@@ -158,7 +158,7 @@ export function V2OfferSalesPathPage() {
     <V2Page
       crumbs={[
         { label: name ?? " ", href: v2OfferHref(orgId, brandId, offerId) },
-        { label: "Outbound" },
+        { label: "Sales path" },
       ]}
       title={name ?? " "}
       sub="Every way this offer can sell, best return first."
@@ -189,7 +189,7 @@ export function V2OfferSalesPathPage() {
         onStateLifetimeRevenue={onStateLifetimeRevenue}
         intro=""
       />
-      <div className="mt-8">
+      <div id="channels" className="mt-8 scroll-mt-14">
         {!eligible.settled || !accepted ? (
           offerChannels.isError || (eligible.settled && eligible.channels.length === 0) ? (
             <EmptyNote>Could not read the channels.</EmptyNote>

@@ -10,8 +10,9 @@ describe("Revenue Steps tab (owner 2026-10-07: Legs and Steps moved off Outbound
   const tab = read("src/components/v2/offer-revenue-steps.tsx");
 
   it("the offer page has Overview and Revenue Steps tabs", () => {
-    expect(setup).toContain('{ label: "Overview", href: base, active: view === "overview" }');
+    expect(setup).toContain('{ label: "Overview", href: v2OfferHref(orgId, brandId, offerId), active: active === "overview" }');
     expect(setup).toContain('label: "Revenue Steps", href: v2OfferHref(orgId, brandId, offerId, "revenue-steps")');
+    expect(setup).toContain("tabs={offerTabs(orgId, brandId, offerId, view)}");
     expect(setup).toContain("<OfferRevenueSteps brandId={brandId} offerId={offerId} />");
     expect(read("src/app/(authed)/v2/orgs/[orgId]/brands/[brandId]/offers/[offerId]/revenue-steps/page.tsx")).toContain('<V2OfferPage view="revenue-steps" />');
   });

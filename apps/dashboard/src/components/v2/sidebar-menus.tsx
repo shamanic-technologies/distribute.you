@@ -506,7 +506,7 @@ const SETUP: { section: V2Section; label: string }[] = [
   { section: "offers", label: "Offer" },
   { section: "targeting", label: "Targeting" },
   { section: "integrations", label: "Integrations" },
-  { section: "settings", label: "Brand settings" },
+  { section: "settings", label: "Brand" },
   { section: "billing", label: "Billing" },
   { section: "team", label: "Team" },
   { section: "api-keys", label: "API Keys" },
@@ -582,13 +582,17 @@ export function CommandPalette({ orgId, brandId, open, onClose }: { orgId: strin
     for (const s of SETUP) {
       if (!term || matches(s.label, term)) out.push({ key: `setup-${s.section}`, group: "Setup", text: s.label, label: s.label, href: v2Href(orgId, brandId, s.section) });
     }
-    // Records > Unibox, GA like its sidebar entry (owner 2026-10-10).
-    if (!term || matches("Unibox conversations inbox", term)) {
-      out.push({ key: "records-unibox", group: "Go to", text: "Unibox", label: "Unibox", href: v2Href(orgId, brandId, "unibox") });
+    // Unibox, Campaigns and Outcomes, GA like their sidebar entries (owner 2026-10-10).
+    for (const g of [
+      { section: "unibox" as const, label: "Unibox", words: "Unibox conversations inbox" },
+      { section: "campaigns" as const, label: "Campaigns", words: "Campaigns overview" },
+      { section: "outcomes" as const, label: "Outcomes", words: "Outcomes overview results" },
+    ]) {
+      if (!term || matches(g.words, term)) out.push({ key: `go-${g.section}`, group: "Go to", text: g.label, label: g.label, href: v2Href(orgId, brandId, g.section) });
     }
-    // Posting > Posts, staff mode only like its sidebar group.
+    // Posts, staff mode only like its sidebar entry.
     if (staffMode && (!term || matches("Posts LinkedIn", term))) {
-      out.push({ key: "posting-posts", group: "Posting", text: "Posts", label: "Posts", href: v2Href(orgId, brandId, "posts") });
+      out.push({ key: "staff-posts", group: "Staff", text: "Posts", label: "Posts", href: v2Href(orgId, brandId, "posts") });
     }
     if (term && staffMode) {
       for (const m of missions) {

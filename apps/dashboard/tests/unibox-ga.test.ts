@@ -19,8 +19,9 @@ describe("the Unibox is GA", () => {
     // The 80 characters before the entry: no staff gate opening on it.
     expect(shell.slice(at - 80, at)).not.toContain("staffMode &&");
     const menus = read("components/v2/sidebar-menus.tsx");
-    expect(menus).toContain('matches("Unibox conversations inbox", term)');
-    expect(menus).not.toContain('staffMode && (!term || matches("Unibox');
+    const row = menus.indexOf('words: "Unibox conversations inbox"');
+    expect(row).toBeGreaterThan(0);
+    expect(menus.slice(row - 200, row)).not.toContain("staffMode");
   });
 
   it("our internal 'Not cleaned' chip stays staff only", () => {

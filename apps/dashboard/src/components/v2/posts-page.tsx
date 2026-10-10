@@ -7,7 +7,7 @@ import { getBrandLinkedinPosts } from "@/lib/api";
 import { formatCount } from "@/lib/format-number";
 
 /**
- * Posting > Posts (staff mode, owner 2026-10-07): the brand's own LinkedIn company page
+ * Outcomes > Posts (staff mode, owner 2026-10-07; under Outcomes since 2026-10-10): the brand's own LinkedIn company page
  * posts, newest first, drawn like LinkedIn's feed. Which page is the brand's comes from
  * brand-service, the posts from social-service (staff gateway route): nothing is guessed here.
  */
@@ -18,7 +18,7 @@ export function PostsPage() {
   const answered = feed.data !== undefined || feed.isError;
   return (
     <div>
-      <TopBar crumbs={[{ label: "Posting" }, { label: "Posts" }]} />
+      <TopBar crumbs={[{ label: "Outcomes" }, { label: "Posts" }]} />
       <div className="mx-auto max-w-[1280px] px-4 pb-16 pt-6 md:px-6">
         <div className="mx-auto max-w-[555px]">
           <h1 className="text-[28px] font-semibold leading-[34px] tracking-[-0.01em]">

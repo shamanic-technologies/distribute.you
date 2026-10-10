@@ -183,6 +183,18 @@ export function useOfferName(brandId: string, offerId: string | null) {
  * budget and status are changed.
  */
 /**
+ * The offer's tabs: the offer itself, who it targets (Targeting moved inside the offer,
+ * owner 2026-10-10), and the steps its campaigns are built from.
+ */
+function offerTabs(orgId: string, brandId: string, offerId: string, active: "overview" | "targeting" | "revenue-steps"): V2Tab[] {
+  return [
+    { label: "Overview", href: v2OfferHref(orgId, brandId, offerId), active: active === "overview" },
+    { label: "Targeting", href: v2OfferHref(orgId, brandId, offerId, "targeting"), active: active === "targeting" },
+    { label: "Revenue Steps", href: v2OfferHref(orgId, brandId, offerId, "revenue-steps"), active: active === "revenue-steps" },
+  ];
+}
+
+/**
  * The offer page: Overview (the offer itself) and Revenue Steps (the legs and steps its
  * sales paths are built from, moved off the Outbound page, owner 2026-10-07).
  */
@@ -192,15 +204,11 @@ export function V2OfferPage({ view = "overview" }: { view?: "overview" | "revenu
   const { missions } = useMissions(orgId, brandId, { allOffers: true });
   if (!offerId) return null;
   const base = v2OfferHref(orgId, brandId, offerId);
-  const tabs: V2Tab[] = [
-    { label: "Overview", href: base, active: view === "overview" },
-    { label: "Revenue Steps", href: v2OfferHref(orgId, brandId, offerId, "revenue-steps"), active: view === "revenue-steps" },
-  ];
   return (
     <V2Page
       crumbs={view === "overview" ? [{ label: name ?? " " }] : [{ label: name ?? " ", href: base }, { label: "Revenue Steps" }]}
       title={<OfferIdentityTitle brandId={brandId} offerId={offerId} />}
-      tabs={tabs}
+      tabs={offerTabs(orgId, brandId, offerId, view)}
     >
       {view === "revenue-steps" ? (
         <OfferRevenueSteps brandId={brandId} offerId={offerId} />
@@ -243,7 +251,7 @@ export function V2TargetingPage({ view = "audiences" }: { view?: TargetingView }
   const name = useOfferName(brandId, offerId);
   if (!offerId) return null;
   const base = v2OfferHref(orgId, brandId, offerId, "targeting");
-  const tabs: V2Tab[] = [
+  const views: V2Tab[] = [
     { label: "Client profiles", href: base, active: view === "audiences" },
     { label: "Sources", href: `${base}/sources`, active: view === "sources" },
     { label: "Qualification", href: `${base}/qualification`, active: view === "qualification" },
@@ -253,11 +261,24 @@ export function V2TargetingPage({ view = "audiences" }: { view?: TargetingView }
   return (
     <V2Page
       crumbs={[{ label: name ?? " ", href: v2OfferHref(orgId, brandId, offerId) }, { label: "Targeting" }]}
-      title={name ?? " "}
-      tabs={tabs}
+      title={<OfferIdentityTitle brandId={brandId} offerId={offerId} />}
+      tabs={offerTabs(orgId, brandId, offerId, "targeting")}
       width="max-w-[1280px]"
     >
-      <p className="k-fg2 -mt-1 mb-4 text-[13px]">{TARGETING_SUB[view]}</p>
+      {/* Targeting's own four views, under the offer's tabs. */}
+      <nav className="mb-3 flex flex-wrap gap-1" aria-label="Targeting">
+        {views.map((t) => (
+          <Link
+            key={t.href}
+            href={t.href}
+            aria-current={t.active ? "page" : undefined}
+            className={`flex h-7 items-center rounded-[8px] px-2.5 text-[13px] ${t.active ? "bg-[var(--bg-selected)] text-[var(--fg-1)]" : "k-fg2 hover:bg-[var(--bg-hover)]"}`}
+          >
+            {t.label}
+          </Link>
+        ))}
+      </nav>
+      <p className="k-fg2 mb-4 text-[13px]">{TARGETING_SUB[view]}</p>
       {view === "sources" ? (
         <OfferSourcesTab orgId={orgId} brandId={brandId} offerId={offerId} />
       ) : view === "qualification" ? (
@@ -288,12 +309,12 @@ export function V2AudienceIndexPage() {
 
 /** Sales path from the sidebar before an offer is picked: the selected offer's Sales path. */
 export function V2SalesPathIndexPage() {
-  return <SelectedOfferRedirect title="Outbound" tab="sales-path" />;
+  return <SelectedOfferRedirect title="Sales path" tab="sales-path" />;
 }
 
-/** The old brand Campaigns URL: the selected offer's Outbound page, where its campaigns live (owner 2026-10-08). */
-export function V2CampaignsIndexPage() {
-  return <SelectedOfferRedirect title="Outbound" tab="sales-path" />;
+/** The brand Channels URL (staff): the selected offer's Sales path page, which holds the channels. */
+export function V2ChannelsIndexPage() {
+  return <SelectedOfferRedirect title="Sales path" tab="sales-path" />;
 }
 
 // ─── Integrations and brand settings ────────────────────────────────────────
@@ -316,6 +337,17 @@ function integrationTabs(orgId: string, brandId: string, active: IntegrationView
   return visible.length > 1 ? visible : undefined;
 }
 
+/**
+ * The Brand page's tabs (owner 2026-10-10): its settings and its integrations, one entry
+ * in the sidebar.
+ */
+export function brandTabs(orgId: string, brandId: string, active: "settings" | "integrations"): V2Tab[] {
+  return [
+    { label: "Settings", href: v2Href(orgId, brandId, "settings"), active: active === "settings" },
+    { label: "Integrations", href: `${v2Href(orgId, brandId, "integrations")}/ai`, active: active === "integrations" },
+  ];
+}
+
 export function V2IntegrationsPage({ view }: { view: IntegrationView }) {
   const { orgId, brandId } = useIds();
   const router = useRouter();
@@ -327,18 +359,34 @@ export function V2IntegrationsPage({ view }: { view: IntegrationView }) {
   useEffect(() => {
     if (gaOnBetaView) router.replace(`${v2Href(orgId, brandId, "integrations")}/ai`);
   }, [gaOnBetaView, router, orgId, brandId]);
+  const views = integrationTabs(orgId, brandId, view, isBeta);
   return (
     <V2Page
-      crumbs={[{ label: "Setup" }, { label: "Integrations" }]}
-      title="Integrations"
-      sub={
-        view === "ai"
-          ? "Run distribute.you from the AI you already use. One line sets it up."
-          : "The CRM this brand already runs on, read here and set beside our leads."
-      }
-      tabs={integrationTabs(orgId, brandId, view, isBeta)}
+      crumbs={[{ label: "Brand", href: v2Href(orgId, brandId, "settings") }, { label: "Integrations" }]}
+      title="Brand"
+      tabs={brandTabs(orgId, brandId, "integrations")}
       width="max-w-[1280px]"
     >
+      {views && (
+        <nav className="mb-3 flex flex-wrap gap-1" aria-label="Integrations">
+          {views.map((t) => (
+            <Link
+              key={t.href}
+              href={t.href}
+              aria-current={t.active ? "page" : undefined}
+              className={`flex h-7 items-center gap-1.5 rounded-[8px] px-2.5 text-[13px] ${t.active ? "bg-[var(--bg-selected)] text-[var(--fg-1)]" : "k-fg2 hover:bg-[var(--bg-hover)]"}`}
+            >
+              {t.label}
+              {t.badge && <MaturityBadge level={t.badge} />}
+            </Link>
+          ))}
+        </nav>
+      )}
+      <p className="k-fg2 mb-4 text-[13px]">
+        {view === "ai"
+          ? "Run distribute.you from the AI you already use. One line sets it up."
+          : "The CRM this brand already runs on, read here and set beside our leads."}
+      </p>
       {view === "ai" ? (
         <V2AiIntegrationView orgId={orgId} brandId={brandId} />
       ) : view === "raw" ? (

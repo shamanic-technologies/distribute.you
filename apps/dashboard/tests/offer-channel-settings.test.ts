@@ -89,8 +89,9 @@ describe("Channels tab wiring", () => {
   const tabs = read("src/components/v2/setup-pages.tsx");
   const page = read("src/components/v2/offer-channels-page.tsx");
 
-  it("the offer has no tabs: Sales path, Channels and Targeting each open from the sidebar, no beta gate", () => {
-    expect(tabs).not.toContain("offerTabs(");
+  it("Targeting is a tab of the offer (owner 2026-10-10); Sales path and Channels are not, no beta gate", () => {
+    expect(tabs).toContain('{ label: "Targeting", href: v2OfferHref(orgId, brandId, offerId, "targeting")');
+    expect(tabs).toContain('tabs={offerTabs(orgId, brandId, offerId, "targeting")}');
     expect(page).not.toContain("offerTabs(");
     expect(read("src/components/v2/offer-sales-path-page.tsx")).not.toContain("offerTabs(");
     for (const src of [page, read("src/components/v2/offer-sales-path-page.tsx")]) {

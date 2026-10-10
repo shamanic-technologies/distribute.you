@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
+import { V2TabLink, brandTabs } from "@/components/v2/setup-pages";
 import { useAuthQuery } from "@/lib/use-auth-query";
 import { getBrand } from "@/lib/api";
 import { useIsBetaUser } from "@/lib/use-beta-user";
@@ -38,7 +39,7 @@ interface Section {
 }
 
 export function V2BrandSettingsPage() {
-  const { brandId } = useParams<{ brandId: string }>();
+  const { orgId, brandId } = useParams<{ orgId: string; brandId: string }>();
   const isBeta = useIsBetaUser();
   // Same key the domain card reads, so this costs no request. The website section
   // only exists while the brand has none: once set, it cannot change here.
@@ -111,12 +112,18 @@ export function V2BrandSettingsPage() {
 
   return (
     <>
-      <TopBar crumbs={[{ label: "Setup" }, { label: "Brand settings" }]} />
+      <TopBar crumbs={[{ label: "Brand" }, { label: "Settings" }]} />
       <div className="mx-auto max-w-[1100px] px-4 pb-16 pt-6 md:px-6">
-        <div className="mb-6">
-          <h1 className="text-[24px] font-medium leading-[30px] tracking-[-0.02em]">Brand settings</h1>
+        <div className="mb-5">
+          <h1 className="text-[24px] font-medium leading-[30px] tracking-[-0.02em]">Brand</h1>
           <p className="k-fg2 mt-1 text-[14px]">Who you are, who answers your leads, and how we measure what they turn into.</p>
         </div>
+        {/* Brand = its settings and its integrations (owner 2026-10-10). */}
+        <nav className="k-line-subtle mb-6 flex gap-5 border-b" aria-label="Sections">
+          {brandTabs(orgId, brandId, "settings").map((t) => (
+            <V2TabLink key={t.href} tab={t} />
+          ))}
+        </nav>
 
         <div className="lg:grid lg:grid-cols-[168px_minmax(0,1fr)] lg:gap-10">
           <nav aria-label="Settings sections" className="hidden lg:block">

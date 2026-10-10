@@ -48,36 +48,56 @@ describe("sidebar", () => {
     expect(shell).not.toContain('label="Inbox"');
     expect(shell).not.toContain('label="Sent"');
   });
-  it("Setup has no Campaigns or Channels entry: campaigns live on Outbound (owner 2026-10-08)", () => {
-    const setup = shell.slice(shell.indexOf('<Group title="Setup">'), shell.indexOf('label="Integrations"'));
-    expect(setup.indexOf('label="Targeting"')).toBeGreaterThan(-1);
-    expect(setup).not.toContain('label="Campaigns"');
-    expect(setup).not.toContain('label="Channels"');
+  // The owner's sketch (2026-10-10), token for token: Today, Records (Companies, People,
+  // Deals), Unibox, Campaigns (Overview + ON campaigns), Outcomes (Overview + one per step),
+  // Setup (Offer, Brand). No category header for campaigns; staff pages under the GA nav.
+  const at = (needle: string) => shell.indexOf(needle);
+  it("reads the sketch in order", () => {
+    const order = [
+      'label="Today"',
+      ">Records</span>",
+      'label="Companies"',
+      'label="People"',
+      'label="Deals"',
+      'label="Unibox"',
+      '<Group title="Campaigns">',
+      '<Group title="Outcomes">',
+      '<Group title="Setup">',
+      'label="Offer"',
+      'label="Brand"',
+      '<Group title="Staff">',
+    ].map(at);
+    expect(order.every((x, i) => x > -1 && (i === 0 || x > order[i - 1]))).toBe(true);
   });
-  it("Outbound is a section like Setup: its Outbound page, then the ON campaigns, no indent (owner 2026-10-07)", () => {
-    const outbound = shell.slice(shell.indexOf('<Group title="Outbound">'), shell.indexOf('<Group title="Setup">'));
-    expect(shell.indexOf('<Group title="Outbound">')).toBeGreaterThan(-1);
-    expect(outbound.indexOf('label="Outbound"')).toBeGreaterThan(-1);
-    expect(outbound.indexOf('label="Outbound"')).toBeLessThan(outbound.indexOf("activeMissions"));
-    expect(shell).not.toContain('label="Sales path"');
-    expect(outbound).toContain('v2OfferHref(orgId, brandId, offerId, "sales-path")');
-    expect(outbound).toContain("bg-[var(--run)]");
-    expect(outbound).not.toContain("indent");
-    expect(shell).not.toContain('title="Campaigns"');
+  it("no campaign categories, no Top companies, nothing else in Setup", () => {
+    for (const t of ["Outbound", "Posting", "Sourcing", "Top companies"]) expect(shell).not.toContain(`<Group title="${t}">`);
+    expect(shell).not.toContain(".filter(({ campaign })");
+    const setup = shell.slice(at('<Group title="Setup">'), at('<Group title="Staff">'));
+    expect(setup.match(/<NavItem/g)?.length).toBe(2);
+    for (const l of ["Targeting", "Integrations", "Brand settings"]) expect(setup).not.toContain(`label="${l}"`);
   });
-
-  it("Sidebar order (owner 2026-10-07): Outbound, Posting, then a Sourcing section (its page, then ON source campaigns), then Setup", () => {
-    const outbound = shell.indexOf('<Group title="Outbound">');
-    const posting = shell.indexOf('<Group title="Posting">');
-    const sourcing = shell.indexOf('<Group title="Sourcing">');
-    const setup = shell.indexOf('<Group title="Setup">');
-    expect(outbound).toBeGreaterThan(-1);
-    expect(posting).toBeGreaterThan(outbound);
-    expect(sourcing).toBeGreaterThan(posting);
-    expect(setup).toBeGreaterThan(sourcing);
-    const block = shell.slice(sourcing, setup);
-    expect(block).toContain('v2OfferHref(orgId, brandId, offerId, "sourcing")');
-    expect(block).toContain('.filter(({ campaign }) => campaign?.kind === "source")');
+  it("Campaigns: its Overview, then every ON campaign with its face and a live dot, no indent", () => {
+    const block = shell.slice(at('<Group title="Campaigns">'), at('<Group title="Outcomes">'));
+    expect(block.indexOf('label="Overview"')).toBeLessThan(block.indexOf("ongoing.map("));
+    expect(block).toContain('v2Href(orgId, brandId, "campaigns")');
+    expect(block).toContain("<PathAvatar name={name} size={16} />");
+    expect(block).toContain("bg-[var(--run)]");
+    expect(block).not.toContain("indent");
+  });
+  it("Outcomes: its Overview, then one entry per step the ON campaigns produce", () => {
+    const block = shell.slice(at('<Group title="Outcomes">'), at('<Group title="Setup">'));
+    expect(block).toContain("v2OutcomeHref(orgId, brandId)");
+    expect(block).toContain("outcomes.map(({ outcome })");
+    expect(block).not.toContain("indent");
+  });
+  it("Workflows, Sales path, Channels, Sourcing and Posts sit in the staff block only", () => {
+    const gaNav = shell.slice(0, at('<Group title="Staff">'));
+    const staff = shell.slice(at('{staffMode && (\n          <Group title="Staff">'), at("</nav>"));
+    expect(at('{staffMode && (\n          <Group title="Staff">')).toBeGreaterThan(-1);
+    for (const l of ["Workflows", "Sales path", "Channels", "Sourcing", "Posts"]) {
+      expect(gaNav).not.toContain(`label="${l}"`);
+      expect(staff).toContain(`label="${l}"`);
+    }
   });
 });
 
