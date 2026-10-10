@@ -76,19 +76,25 @@ describe("copilot wiring", () => {
 
   it("is staff mode only, on a brand page", () => {
     expect(shell).toContain("const copilot = staffMode && hasBrand");
-    expect(shell).toContain("{copilot && <CopilotWidget orgId=");
+    expect(shell).toContain("{copilot && <CopilotPanel orgId=");
   });
 
-  it("floats bottom right above the page, open on load, the bubble toggles it", () => {
-    const widget = src("src/components/v2/copilot-widget.tsx");
-    expect(widget).toContain("useState(true)");
-    expect(widget).toContain("fixed bottom-4 right-4 z-40");
-    expect(widget).toContain("setOpen((o) => !o)");
-    // Open, the bubble says "lower it" (owner 2026-10-09: no cross).
-    expect(widget).toContain("<CaretDownIcon");
-    expect(widget).not.toContain("XIcon");
-    // Closed = hidden, never unmounted: an answer keeps streaming.
-    expect(widget).toContain("inert={!open}");
+  it("is a right panel beside the page, shown by default, hidden by its arrow, back from the top bar", () => {
+    const panel = src("src/components/v2/copilot-panel.tsx");
+    const dock = src("src/components/v2/copilot-dock.tsx");
+    const ui = src("src/components/v2/ui.tsx");
+    // Beside the page on desktop (owner 2026-10-10), not floating over it.
+    expect(panel).toContain("lg:static");
+    expect(panel).toContain("lg:w-[400px] lg:shrink-0");
+    expect(dock).toContain("useState(true)");
+    expect(panel).toContain("onClick={() => setOpen(false)}");
+    expect(dock).toContain("onClick={() => setOpen(true)}");
+    expect(ui).toContain("<CopilotShowButton />");
+    // The choice survives a reload.
+    expect(dock).toContain("localStorage.setItem(STORAGE_KEY");
+    // Hidden = not displayed, never unmounted: an answer keeps streaming.
+    expect(panel).toContain("inert={!open}");
+    expect(shell).not.toContain("{copilot && open");
   });
 
   it("talks to the copilot config and sends the account figures as context", () => {
