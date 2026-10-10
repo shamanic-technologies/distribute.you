@@ -5,20 +5,42 @@ import SwiftUI
 /// nav, `sidebar-menus.tsx` for the tenant switcher, the search box and the account
 /// menu, the web's own icon paths (`SVGPath.swift`). A click opens that page's compact
 /// panel beside the chat instead of navigating: the chat stays the product.
-enum Pane: String, Hashable, CaseIterable {
-    case today, companies, people, deals, offer, targeting, channels, integrations, settings, billing
+enum Pane: Hashable {
+    case today, companies, people, deals, unibox
+    case campaigns, campaign(String)
+    case outcomes, outcome(String)
+    case offer, settings, integrations, billing
 
+    /// Every panel once, for the CI snapshot (a campaign and an outcome from the fixture).
+    static let snapshotCases: [Pane] = [
+        .today, .companies, .people, .deals, .unibox, .campaigns, .campaign("c1"), .outcomes, .outcome("conversation"),
+        .offer, .settings, .integrations, .billing,
+    ]
+
+    /// The snapshot file name.
+    var slug: String {
+        switch self {
+        case .campaign(let id): return "campaign-\(id)"
+        case .outcome(let key): return "outcome-\(key)"
+        default: return String(describing: self)
+        }
+    }
+
+    /// The static title; a campaign or an outcome is titled from data (`AppState.title(of:)`).
     var title: String {
         switch self {
         case .today: return "Today"
         case .companies: return "Companies"
         case .people: return "People"
         case .deals: return "Deals"
+        case .unibox: return "Unibox"
+        case .campaigns: return "Campaigns"
+        case .campaign: return "Campaign"
+        case .outcomes: return "Outcomes"
+        case .outcome: return "Outcome"
         case .offer: return "Offer"
-        case .targeting: return "Targeting"
-        case .channels: return "Channels"
+        case .settings: return "Brand"
         case .integrations: return "Integrations"
-        case .settings: return "Brand settings"
         case .billing: return "Billing"
         }
     }
@@ -29,11 +51,12 @@ enum Pane: String, Hashable, CaseIterable {
         case .companies: return "building.2"
         case .people: return "person.2"
         case .deals: return "rectangle.split.3x1"
+        case .unibox: return "tray"
+        case .campaigns, .campaign: return "square.grid.2x2"
+        case .outcomes, .outcome: return "flag"
         case .offer: return "tag"
-        case .targeting: return "scope"
-        case .channels: return "envelope"
-        case .integrations: return "powerplug"
         case .settings: return "gearshape"
+        case .integrations: return "powerplug"
         case .billing: return "creditcard"
         }
     }
@@ -70,27 +93,33 @@ struct SidebarView: View {
                         NavRow(pane: .people, indent: true, trailing: CountText(n: state.counts.people))
                         NavRow(pane: .deals, indent: true, trailing: CountText(n: state.counts.deals))
                     }
-                    GroupTitle("Setup")
-                    NavRow(pane: .offer, icon: V2Icon.offer)
-                    NavRow(pane: .targeting, icon: V2Icon.target)
-                    NavRow(pane: .channels, icon: V2Icon.channels)
-                    NavRow(pane: .integrations, icon: V2Icon.plug)
-                    NavRow(pane: .settings, icon: V2Icon.settings)
-                    if !state.topCompanies.isEmpty {
-                        GroupTitle("Top companies")
-                        ForEach(state.topCompanies) { o in
-                            let name = o.orgName ?? o.orgDomain ?? "Company"
-                            Button { state.openCompany(o) } label: {
-                                HStack(spacing: 8) {
-                                    Logo(domain: o.orgDomain, name: name, size: 16)
-                                    Text(name).font(K.body).foregroundStyle(K.fg2).lineLimit(1)
-                                    Spacer(minLength: 0)
-                                }
-                                .padding(.horizontal, 8).frame(height: 28).contentShape(Rectangle())
-                            }
-                            .buttonStyle(NavHoverStyle(active: false))
+                    // Unibox (owner 2026-10-08): every conversation in one place, right under Records.
+                    NavRow(pane: .unibox, icon: V2Icon.unibox)
+
+                    // Campaigns (owner 2026-10-10): the Overview, then EVERY campaign of the offer
+                    // that is ON, whatever it does, with its name and face. No category headers.
+                    GroupTitle("Campaigns")
+                    NavRow(pane: .campaigns, label: "Overview", icon: V2Icon.overview)
+                    if state.selectedOffer != nil {
+                        ForEach(state.onCampaigns) { c in
+                            NavRow(pane: .campaign(c.id), label: c.label, face: c.label, trailing: LiveDot().padding(.trailing, 2))
                         }
                     }
+
+                    // Outcomes (owner 2026-10-10): what the running campaigns produce, one entry per step.
+                    GroupTitle("Outcomes")
+                    NavRow(pane: .outcomes, label: "Overview", icon: V2Icon.overview)
+                    if state.selectedOffer != nil {
+                        ForEach(state.outcomes) { o in
+                            NavRow(pane: .outcome(o.outcome.key), label: o.outcome.label, icon: V2Icon.outcome, trailing: CountText(n: outcomeCount(o.outcome)))
+                        }
+                    }
+
+                    GroupTitle("Setup")
+                    // The selected offer's own page, its Targeting inside (owner 2026-10-10).
+                    NavRow(pane: .offer, icon: V2Icon.offer)
+                    // The brand's settings, its Integrations inside (owner 2026-10-10).
+                    NavRow(pane: .settings, icon: V2Icon.settings, alsoActive: [.integrations])
                 }
                 .padding(.horizontal, 8).padding(.top, 12).padding(.bottom, 12)
             }
@@ -113,6 +142,11 @@ struct SidebarView: View {
             }
         }
     }
+
+    private func outcomeCount(_ o: Outcome) -> Int? {
+        guard case .people(let bucket) = o.items else { return nil }
+        return state.bucketCounts?.count(bucket)
+    }
 }
 
 private struct GroupTitle: View {
@@ -126,20 +160,24 @@ private struct GroupTitle: View {
 private struct NavRow<Trailing: View>: View {
     @EnvironmentObject var state: AppState
     let pane: Pane
+    var label: String?
     var icon: String?
+    /// A campaign's face instead of an icon.
+    var face: String?
     var indent = false
+    var alsoActive: [Pane] = []
     var trailing: Trailing?
 
-    init(pane: Pane, icon: String? = nil, indent: Bool = false, trailing: Trailing? = nil) {
-        self.pane = pane; self.icon = icon; self.indent = indent; self.trailing = trailing
+    init(pane: Pane, label: String? = nil, icon: String? = nil, face: String? = nil, indent: Bool = false, alsoActive: [Pane] = [], trailing: Trailing? = nil) {
+        self.pane = pane; self.label = label; self.icon = icon; self.face = face; self.indent = indent; self.alsoActive = alsoActive; self.trailing = trailing
     }
 
     var body: some View {
-        let active = state.pane == pane
+        let active = state.pane == pane || state.pane.map { alsoActive.contains($0) } == true
         Button { state.open(pane) } label: {
             HStack(spacing: 8) {
-                if let icon { SVGIcon(d: icon) }
-                Text(pane.title).font(K.body).foregroundStyle(active ? K.fg1 : K.fg2).lineLimit(1)
+                if let face { CampaignFace(name: face, size: 16) } else if let icon { SVGIcon(d: icon) }
+                Text(label ?? pane.title).font(K.body).foregroundStyle(active ? K.fg1 : K.fg2).lineLimit(1)
                 Spacer(minLength: 4)
                 if let trailing { trailing }
             }
@@ -152,7 +190,9 @@ private struct NavRow<Trailing: View>: View {
 }
 
 extension NavRow where Trailing == EmptyView {
-    init(pane: Pane, icon: String? = nil, indent: Bool = false) { self.init(pane: pane, icon: icon, indent: indent, trailing: nil) }
+    init(pane: Pane, label: String? = nil, icon: String? = nil, face: String? = nil, indent: Bool = false, alsoActive: [Pane] = []) {
+        self.init(pane: pane, label: label, icon: icon, face: face, indent: indent, alsoActive: alsoActive, trailing: nil)
+    }
 }
 
 struct NavHoverStyle: ButtonStyle {

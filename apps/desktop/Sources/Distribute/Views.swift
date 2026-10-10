@@ -127,7 +127,7 @@ struct ChatView: View {
             HStack(spacing: 8) {
                 Text("Chat").font(.system(size: 14, weight: .semibold)).foregroundStyle(K.fg1)
                 if let p = state.pane {
-                    Text("looking at \(p.title)").font(K.meta).foregroundStyle(K.fg3)
+                    Text("looking at \(state.title(of: p))").font(K.meta).foregroundStyle(K.fg3)
                 }
                 Spacer()
                 Button("New chat") { state.newChat() }.buttonStyle(KButtonStyle(ghost: true)).disabled(state.chatBusy)

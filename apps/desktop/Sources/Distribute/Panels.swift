@@ -11,8 +11,8 @@ struct PanelView: View {
         VStack(alignment: .leading, spacing: 0) {
             HStack(spacing: 6) {
                 Image(systemName: pane.symbol).font(.system(size: 12)).foregroundStyle(K.fg3)
-                Text(pane.title).font(.system(size: 14, weight: .semibold)).foregroundStyle(K.fg1)
-                if let offer = state.selectedOffer, ![Pane.channels, .integrations, .settings, .billing].contains(pane) {
+                Text(state.title(of: pane)).font(.system(size: 14, weight: .semibold)).foregroundStyle(K.fg1).lineLimit(1)
+                if let offer = state.selectedOffer, ![Pane.unibox, .integrations, .settings, .billing].contains(pane) {
                     Text(offer.name).font(K.meta).foregroundStyle(K.fg3).lineLimit(1)
                 }
                 Spacer()
@@ -27,12 +27,13 @@ struct PanelView: View {
                 VStack(alignment: .leading, spacing: 12) {
                     if let detail = state.detail {
                         Button { state.detail = nil } label: {
-                            HStack(spacing: 4) { Image(systemName: "chevron.left"); Text(pane.title) }.font(K.meta).foregroundStyle(K.fg3)
+                            HStack(spacing: 4) { Image(systemName: "chevron.left"); Text(state.title(of: pane)) }.font(K.meta).foregroundStyle(K.fg3)
                         }
                         .buttonStyle(.plain)
                         switch detail {
                         case .person(let lead): PersonDetail(row: lead)
                         case .company(let org): CompanyDetail(org: org)
+                        case .conversation(let person): ConversationDetail(person: person)
                         }
                     } else {
                         content
@@ -51,11 +52,13 @@ struct PanelView: View {
         case .companies: CompaniesPanel()
         case .people: PeoplePanel()
         case .deals: DealsPanel()
+        case .unibox: UniboxPanel()
+        case .campaigns: CampaignsOverviewPanel()
+        case .campaign(let id): CampaignPanel(id: id)
+        case .outcomes: OutcomesOverviewPanel()
+        case .outcome(let key): OutcomePanel(key: key)
         case .offer: OfferPanel()
-        case .targeting: TargetingPanel()
-        case .channels: ChannelsPanel()
-        case .integrations: IntegrationsPanel()
-        case .settings: SettingsPanel()
+        case .settings, .integrations: BrandPanel(tab: pane)
         case .billing: BillingPanel()
         }
     }
@@ -275,7 +278,7 @@ func leadStatus(_ l: LeadRow) -> (word: String, date: String?) {
     return (l.status.capitalized, nil)
 }
 
-private struct PersonLine: View {
+struct PersonLine: View {
     let lead: LeadRow
     var body: some View {
         let st = leadStatus(lead)
@@ -365,13 +368,26 @@ private struct OfferPanel: View {
                     Spacer(minLength: 0)
                 }
             }
+            // Targeting lives inside the Offer (owner 2026-10-10).
+            SectionTitle(title: "Targeting")
+            AudienceRows()
         } }
     }
 }
 
-// MARK: - Targeting
+/// Brand: its settings, its Integrations inside (owner 2026-10-10).
+private struct BrandPanel: View {
+    @EnvironmentObject var state: AppState
+    let tab: Pane
+    var body: some View {
+        KTabs(options: [(Pane.settings, "Settings"), (Pane.integrations, "Integrations")], selection: tab) { state.pane = $0 }
+        if tab == .integrations { IntegrationsPanel() } else { SettingsPanel() }
+    }
+}
 
-private struct TargetingPanel: View {
+// MARK: - Targeting (inside the Offer; also the Leads found outcome's lists)
+
+struct AudienceRows: View {
     @EnvironmentObject var state: AppState
     var body: some View {
         LoadView(load: state.audiences) { list in
@@ -398,21 +414,7 @@ private struct TargetingPanel: View {
     }
 }
 
-// MARK: - Channels
-
-private struct ChannelsPanel: View {
-    @EnvironmentObject var state: AppState
-    var body: some View {
-        HStack(spacing: 8) {
-            Image(systemName: "envelope").foregroundStyle(K.fg3)
-            Text("Cold email").font(.system(size: 13, weight: .semibold))
-        }
-        LoadView(load: state.rows) { rows in
-            if rows.isEmpty { EmptyNote(text: "No cold email campaign on this brand yet. Ask the chat to start one.") }
-            ForEach(rows) { CampaignCard(row: $0) }
-        }
-    }
-}
+// MARK: - Campaign figures
 
 struct CampaignCard: View {
     @EnvironmentObject var state: AppState
@@ -425,8 +427,8 @@ struct CampaignCard: View {
                 HStack {
                     Text(row.campaign.name).font(.system(size: 13, weight: .semibold)).foregroundStyle(K.fg1).lineLimit(2)
                     Spacer()
-                    StateDot(word: row.campaign.status == "ongoing" ? "Running" : row.campaign.status.capitalized,
-                             color: row.campaign.status == "ongoing" ? K.run : K.fg4)
+                    StateDot(word: isActiveStatus(row.campaign.status) ? "Running" : row.campaign.status.capitalized,
+                             color: isActiveStatus(row.campaign.status) ? K.run : K.fg4)
                 }
                 Grid(alignment: .leading, horizontalSpacing: 12, verticalSpacing: 10) {
                     GridRow {

@@ -161,6 +161,12 @@ enum V2Icon {
     static let gift = "M2.5 6h11v2.5h-11zM3.5 8.5v5h9v-5M8 6v7.5M8 6c-1-2.5-4-2.5-4-.8C4 6 6 6 8 6Zm0 0c1-2.5 4-2.5 4-.8C12 6 10 6 8 6Z"
     static let help = "M8 14A6 6 0 1 0 8 2a6 6 0 0 0 0 12ZM6.3 6.3a1.8 1.8 0 1 1 2.4 1.7c-.4.2-.7.5-.7 1v.5M8 11.3v.2"
     static let out = "M9.5 3.5h3v9h-3M6.5 5 3.5 8l3 3M3.5 8h7"
+    /// An inbox tray: every conversation in one place.
+    static let unibox = "M2.5 8.5 4 3.5h8l1.5 5v4h-11zM2.5 8.5h3.5l.8 1.5h2.4l.8-1.5h3.5"
+    /// A grid of four: the Overview of a section.
+    static let overview = "M2.5 2.5h4.5v4.5h-4.5zM9 2.5h4.5v4.5H9zM2.5 9h4.5v4.5h-4.5zM9 9h4.5v4.5H9z"
+    /// A flag on its pole: a step reached.
+    static let outcome = "M3.5 13.5v-11M3.5 3h8l-1.5 2.5 1.5 2.5h-8"
     static let search = "M7 12a5 5 0 1 0 0-10 5 5 0 0 0 0 10Zm6.5 1.5-3-3"
     /// 14-unit viewBox in the web.
     static let plus = "M7 2.5v9M2.5 7h9"

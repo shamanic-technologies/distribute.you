@@ -12,7 +12,7 @@ enum Snapshot {
         guard let i = args.firstIndex(of: "--snapshot"), i + 1 < args.count else { return }
         let dir = URL(fileURLWithPath: args[i + 1], isDirectory: true)
         try? FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
-        for pane in Pane.allCases {
+        for pane in Pane.snapshotCases {
             let state = fixtureState(pane: pane)
             let view = RootView().environmentObject(state).environment(\.isSnapshot, true).frame(width: 1320, height: 820)
             let renderer = ImageRenderer(content: view)
@@ -20,10 +20,10 @@ enum Snapshot {
             guard let image = renderer.nsImage,
                   let tiff = image.tiffRepresentation,
                   let png = NSBitmapImageRep(data: tiff)?.representation(using: .png, properties: [:]) else {
-                FileHandle.standardError.write(Data("[desktop] snapshot \(pane.rawValue) failed\n".utf8))
+                FileHandle.standardError.write(Data("[desktop] snapshot \(pane.slug) failed\n".utf8))
                 exit(1)
             }
-            try? png.write(to: dir.appendingPathComponent("\(pane.rawValue).png"))
+            try? png.write(to: dir.appendingPathComponent("\(pane.slug).png"))
         }
         // The sidebar's two popovers, open, for side-by-side review with the web.
         for (name, menu) in [("menu-tenant", SidebarMenu.tenant), ("menu-account", .account)] {
@@ -66,7 +66,17 @@ enum Snapshot {
         s.deals = .loaded(DealsData(standing: decode(#"{"counts":{"unresolved":0,"contacted":40,"engaged":8,"sales_interest":6,"customer":3,"opted_out":4,"disqualified":2}}"#), pipelineUsd: 48200))
         s.offerData = .loaded(OfferData(lifetimeRevenueUsd: 4000, fields: ["services": ["Audit", "Roadmap"], "dreamOutcome": ["Twice the pipeline in 90 days"]]))
         s.audiences = .loaded((decode(#"{"audiences":[{"id":"a1","name":"Founders in Paris","status":"active","nlPrompt":"Founders and CEOs of 10-50 person software companies in Paris","sizeCount":"1800","availableToContactPct":62},{"id":"a2","name":"Agencies in London","status":"paused","sizeCount":950,"availableToContactPct":30}]}"#) as AudienceList).audiences)
-        s.rows = .loaded([])
+        let campaigns: [Campaign] = (decode(#"{"campaigns":[{"id":"c1","name":"Cold email","status":"ongoing","featureSlug":"sales-cold-email-outreach","offerId":"f1","legKey":"lead_found_to_conversation"},{"id":"c2","name":"Apollo","status":"ongoing","featureSlug":"apollo-cold-filters","offerId":"f1","legKey":"start_to_lead_found"},{"id":"c3","name":"Visits","status":"stopped","featureSlug":"sales-cold-email-outreach","offerId":"f1","legKey":"lead_found_to_website_visit"}]}"#) as CampaignList).campaigns
+        let catalogue: PublicCatalogue = decode(#"{"steps":[{"key":"conversation","label":"Positive reply"},{"key":"website_visit","label":"Website visit"}],"channels":[{"slug":"sales-cold-email-outreach","name":"Cold email","stepTransitions":[{"legKey":"lead_found_to_conversation","from":{"key":"lead_found","label":"Lead found"},"to":{"key":"conversation","label":"Positive reply"},"campaignName":"Soar"},{"legKey":"lead_found_to_website_visit","from":{"key":"lead_found","label":"Lead found"},"to":{"key":"website_visit","label":"Website visit"},"campaignName":"Nova"}]}]}"#)
+        let paths: OfferSalesPaths = decode(#"{"campaigns":[{"channelSlug":"sales-cold-email-outreach","channelName":"Cold email","legKey":"lead_found_to_conversation","campaignName":"Soar","reactive":false,"operatedBy":"platform","selectedPathCount":1,"roi":3.1},{"channelSlug":"sales-cold-email-outreach","channelName":"Cold email","legKey":"lead_found_to_website_visit","campaignName":"Nova","reactive":false,"operatedBy":"platform","selectedPathCount":1,"roi":null}],"sourceCampaigns":[{"channelSlug":"apollo-cold-filters","channelName":"Apollo Cold Filters","legKey":"start_to_lead_found","campaignName":"Solstice","toStep":{"key":"lead_found","label":"Lead found"},"live":true,"roi":null}]}"#)
+        let joined = joinOnCampaigns(campaigns: campaigns, offerId: "f1", catalogue: LegCatalogue(catalogue), paths: paths)
+        s.onCampaigns = joined.campaigns
+        s.outcomes = joined.outcomes
+        s.salesPaths = .loaded(paths)
+        s.bucketCounts = (decode(#"{"counts":{"contacted":1280,"website_visit":38,"positive_reply":9,"signup":0,"meeting_booked":2,"meeting_attended":1,"sale":0}}"#) as BucketCounts).counts
+        s.campaignFigures = .loaded(decode(#"{"campaignId":"c1","costEconomics":{"committedCostUsd":214},"outcomes":{"recipientsRepliesPositive":9,"recipientsClicked":38,"cpprCents":2378,"sending":{"recipientsSent":1240,"replyRatePct":2.1}}}"#) as RevenueGroup)
+        s.outcomePeople = .loaded(leads)
+        s.unibox = .loaded(decode(#"{"total":2,"people":[{"personKey":"email:ana@acme.test","personId":"0b6f1c9e-1d2a-4c8e-9f00-aa11bb22cc33","displayName":"Ana Lopez","company":"Acme","emails":["ana@acme.test"],"sources":["instantly","gmail"],"lastActivityAt":"2026-10-03T10:00:00Z","state":"sales_interest"},{"personKey":"email:ben@globex.test","displayName":"Ben Kim","company":"Globex","emails":["ben@globex.test"],"sources":["instantly"],"lastActivityAt":"2026-10-02T09:00:00Z","state":"contacted"}]}"#))
         s.chat = [
             .user(id: UUID(), text: "How is it going?"),
             .tool(id: UUID(), label: "Used distribute_campaign_stats"),
