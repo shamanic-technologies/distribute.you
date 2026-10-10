@@ -119,7 +119,8 @@ export interface OngoingCatalogue {
  * read of that object; this only joins ids (`lib/staff-catalogue.ts`).
  */
 export function useOngoingCatalogue(orgId: string, brandId: string, offerId: string | null, enabled: boolean): OngoingCatalogue {
-  const { campaigns, settled: campaignsSettled } = useOngoingCampaigns(orgId, brandId, offerId);
+  // What actually runs: the parts of sales-funnel campaigns are pipes too.
+  const { running: campaigns, settled: campaignsSettled } = useOngoingCampaigns(orgId, brandId, offerId);
   // The same read (and key) the ongoing campaigns already make: the offer's paths, ticked or not.
   const salesPaths = useAuthQuery(
     ["offerSalesPaths", brandId, offerId, "catalogue"],

@@ -63,14 +63,9 @@ export function V2CampaignRoute() {
   const { brandId, campaignId } = useParams<{ brandId: string; campaignId: string }>();
   const funnel = useFunnelCampaignById(brandId, campaignId);
   if (funnel.campaign) return <FunnelCampaignPage campaign={funnel.campaign} />;
-  if (!funnel.settled) {
-    return (
-      <V2Page crumbs={[{ label: "Campaigns" }, { label: " " }]} title={<Shimmer className="h-8 w-56" />} width="max-w-[1280px]">
-        <Shimmer className="h-[240px] w-full rounded-[12px]" />
-      </V2Page>
-    );
-  }
-  return <V2CampaignPage />;
+  // Never WAITS on the funnel list (owner 2026-10-10: a campaign page must not block on it):
+  // the campaign page starts its own reads at once; only its "not found" waits for the list.
+  return <V2CampaignPage funnelListSettled={funnel.settled} />;
 }
 
 /**
@@ -79,7 +74,7 @@ export function V2CampaignRoute() {
  * id to the whole campaign identity (its ancestors included), the audience table and the
  * settings take it as their scope, and its money is the campaign row's own served group.
  */
-export function V2CampaignPage() {
+export function V2CampaignPage({ funnelListSettled = true }: { funnelListSettled?: boolean } = {}) {
   const { orgId, brandId, campaignId } = useParams<{ orgId: string; brandId: string; campaignId: string }>();
   const params = useSearchParams();
   const { staffMode } = useStaffMode();
@@ -103,6 +98,14 @@ export function V2CampaignPage() {
   const tabHref = (t: V2CampaignTab) => v2CampaignHref(orgId, brandId, id, t);
   const tabs: V2Tab[] = visible.map((t) => ({ label: t.label, href: tabHref(t.key), active: t.key === tab }));
 
+  if (settled && !mission && !funnelListSettled) {
+    // The id may be a sales-funnel campaign whose list has not answered yet: no "not found" flash.
+    return (
+      <V2Page crumbs={[{ label: "Campaigns" }, { label: " " }]} title={<Shimmer className="h-8 w-56" />} width="max-w-[1280px]">
+        <Shimmer className="h-[240px] w-full rounded-[12px]" />
+      </V2Page>
+    );
+  }
   if (settled && !mission) {
     return (
       <V2Page crumbs={[{ label: "Campaigns" }, { label: "Not found" }]}>

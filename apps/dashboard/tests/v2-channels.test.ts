@@ -78,7 +78,7 @@ describe("sidebar", () => {
   });
   it("Campaigns: its Overview, then every ON campaign with its face and a live dot, no indent", () => {
     const block = shell.slice(at('<Group title="Campaigns">'), at('<Group title="Outcomes">'));
-    expect(block.indexOf('label="Overview"')).toBeLessThan(block.indexOf("ongoing\n"));
+    expect(block.indexOf('label="Overview"')).toBeLessThan(block.indexOf("ongoing.map("));
     // Campaigns that are sales funnels (owner 2026-10-10) are listed too, by name and face.
     expect(block).toContain("<FunnelFace name={c.salesFunnelName} size={16} />");
     expect(block).toContain('v2Href(orgId, brandId, "campaigns")');

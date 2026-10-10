@@ -18,8 +18,7 @@ import { ScopePaymentDeclinedBand } from "@/components/billing/scope-payment-dec
 import { useStaffMode } from "@/lib/use-staff-mode";
 import { SelectedOfferProvider, useSelectedOffer } from "@/components/v2/selected-offer";
 import { PathAvatar } from "@/components/v2/offer-sales-paths";
-import { FunnelFace, useFunnelCampaigns } from "@/components/v2/funnel-campaigns";
-import { isOngoingFunnelCampaign } from "@/lib/sales-funnel-campaigns";
+import { FunnelFace } from "@/components/v2/funnel-campaigns";
 import { BRAND_WHY } from "@/lib/brand-why";
 import { CopilotPanel } from "@/components/v2/copilot-panel";
 import { CopilotDockContext, useCopilotDockState } from "@/components/v2/copilot-dock";
@@ -185,10 +184,9 @@ function V2Sidebar() {
   const { offerId } = useSelectedOffer();
   // The same read and the same order as the Sales path page's Campaigns section
   // (proactive first, ROI high to low), so the two lists never disagree. Today reads it too.
-  const { campaigns: ongoing, outcomes } = useOngoingCampaigns(orgId, brandId, offerId);
-  // Campaigns that are sales funnels (owner 2026-10-10): the ON ones, by name and face. Their
-  // parts are not campaigns of their own here.
-  const funnelCampaigns = useFunnelCampaigns(brandId, offerId, { enabled: !!offerId }).data ?? [];
+  // Campaigns that are sales funnels (owner 2026-10-10) come with it, the ON ones listed once by
+  // name and face; their parts are never campaigns of their own (`ongoing` holds none).
+  const { campaigns: ongoing, funnelCampaigns, outcomes } = useOngoingCampaigns(orgId, brandId, offerId);
   const buckets = useBucketCounts(brandId).data;
   const standings = useStandingCounts(brandId).data;
   // Deals badge = the people still in play on the Deals board (Leads + Sales interest +
@@ -283,7 +281,7 @@ function V2Sidebar() {
             active={section === "campaigns" && /\/campaigns\/?$/.test(pathname)}
           />
           {offerId &&
-            funnelCampaigns.filter(isOngoingFunnelCampaign).map((c) => {
+            funnelCampaigns.map((c) => {
               const href = v2CampaignHref(orgId, brandId, c.id);
               return (
                 <NavItem
@@ -299,9 +297,7 @@ function V2Sidebar() {
               );
             })}
           {offerId &&
-            ongoing
-              .filter(({ m }) => !m.row.campaign.salesFunnelCampaignId)
-              .map(({ m, name }) => (
+            ongoing.map(({ m, name }) => (
               <NavItem
                 key={m.row.campaign.id}
                 href={m.href}
