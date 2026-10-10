@@ -336,7 +336,7 @@ function V2Sidebar() {
 
         {/* Staff mode only, below the client's nav (owner 2026-10-10): one section per business
             object, each its Overview then the ONGOING ones (used by a running campaign of this
-            offer), each opening its own page. Campaigns is the section above. */}
+            offer), each opening its own page. Campaigns comes last: the sales funnel campaigns with their staff detail. */}
         {staffMode && <StaffObjectSections orgId={orgId} brandId={brandId} offerId={offerId} pathname={pathname} />}
       </nav>
       <BrandWhyLine />
@@ -394,6 +394,29 @@ function StaffObjectSections({ orgId, brandId, offerId, pathname }: { orgId: str
                 label={name}
                 icon={<CatalogueMark icon={w.detail?.icon ?? "flow-arrow"} color={w.detail?.color} name={name} size={16} />}
                 active={pathname.endsWith(`/workflows/${encodeURIComponent(w.slug)}`)}
+              />
+            );
+          })}
+      </Group>
+      {/* Campaigns (owner 2026-10-10): the offer's SALES FUNNEL campaigns, staff detail (units, workflows, caps). */}
+      <Group title="Campaigns">
+        <NavItem
+          href={v2CatalogueHref(orgId, brandId, "campaigns")}
+          label="Overview"
+          icon={<I d={ICONS.overview} />}
+          active={pathname === v2CatalogueHref(orgId, brandId, "campaigns")}
+        />
+        {offerId &&
+          ongoing.campaigns.map(({ campaign, face }) => {
+            const href = v2CatalogueHref(orgId, brandId, "campaigns", campaign.id);
+            return (
+              <NavItem
+                key={campaign.id}
+                href={href}
+                label={campaign.salesFunnelName}
+                icon={<CatalogueMark face={face} name={campaign.salesFunnelName} size={16} />}
+                active={pathname === href}
+                trailing={<span className="k-dot-pulse ml-auto mr-1 h-1.5 w-1.5 shrink-0 rounded-full bg-[var(--run)] text-[var(--run)]" aria-label="On" />}
               />
             );
           })}
