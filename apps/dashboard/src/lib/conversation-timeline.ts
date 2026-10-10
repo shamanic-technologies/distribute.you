@@ -94,6 +94,28 @@ const LAST_WORD_LOOK: Record<string, Look> = {
   reply: { label: "Replied", tone: "reply", icon: "reply" },
 };
 
+/**
+ * A person's lead-service standing as its tag look, in the SAME colours the thread uses for
+ * that fact (owner 2026-10-10: Contacted stays grey, Website visit amber, an opt-out red),
+ * never their family's single colour. The label is the caller's (the served word re-cased).
+ */
+const STANDING_LOOK: Record<string, Omit<Look, "label">> = {
+  contacted: { tone: "neutral", icon: "sent" },
+  not_contacted: { tone: "neutral", icon: "dot" },
+  unresolved: { tone: "neutral", icon: "dot" },
+  engaged: { tone: "reply", icon: "reply" },
+  website_visit: { tone: "hot", icon: "visit" },
+  sales_interest: { tone: "hot", icon: "flame" },
+  customer: { tone: "won", icon: "money" },
+  opted_out: { tone: "lost", icon: "lost" },
+  not_interested: { tone: "lost", icon: "lost" },
+  disqualified: { tone: "lost", icon: "lost" },
+};
+
+export function standingTag(state: string, label: string): TimelineTag {
+  return { label, ...(STANDING_LOOK[state] ?? { tone: "neutral", icon: "dot" }) };
+}
+
 /** The conversation's last word (the latest thing a PERSON said), as a tag. */
 export function lastWordTag(lastWord: string): TimelineTag {
   return LAST_WORD_LOOK[lastWord] ?? { label: words(lastWord), tone: "neutral", icon: "dot" };
