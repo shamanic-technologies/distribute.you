@@ -19,7 +19,6 @@ import {
   setBrandKey,
 } from "@/lib/api";
 import { useAuthQuery, useQueryClient } from "@/lib/use-auth-query";
-import { useIsBetaUser } from "@/lib/use-beta-user";
 import { CompanyLogo } from "@/components/company-logo";
 import { MessagingLinkRows } from "@/components/settings/messaging-link-rows";
 import {
@@ -40,9 +39,10 @@ import {
 /**
  * The third-party accounts a brand has connected.
  *
- * GA for the CRM, PostHog and Stripe rows (owner 2026-10-10). The CONVERSATION rows
- * (Gmail, WhatsApp, Telegram, LinkedIn) stay beta until crm-service keeps only the
- * conversations about the brand: an owner's own inbox is full of personal threads.
+ * GA, every row (owner 2026-10-10). The CONVERSATION rows (Gmail, WhatsApp, Telegram,
+ * LinkedIn) read an owner's own inbox, full of personal threads: crm-service judges each
+ * conversation (personal, another business, this brand and its offers) and shows only
+ * the brand's.
  *
  * CONNECTING IS TWO WRITES, and it is worth knowing why rather than folding them:
  * the credential goes to key-service (the fleet's credential store, which owns
@@ -53,8 +53,7 @@ import {
  * without a successful connect is inert, and reconnecting overwrites it.
  */
 export function BrandIntegrationsCard({ brandId, bare = false }: { brandId: string; bare?: boolean }) {
-  const isBeta = useIsBetaUser();
-  return <IntegrationsSection brandId={brandId} bare={bare} withConversations={isBeta} />;
+  return <IntegrationsSection brandId={brandId} bare={bare} />;
 }
 
 /** What every connection reads as on this card, whichever service row it is. */
@@ -105,15 +104,7 @@ const CONNECTION_IO: Record<
 };
 
 /** `bare` renders the rows alone, for a host that draws the heading and the card. */
-function IntegrationsSection({
-  brandId,
-  bare,
-  withConversations,
-}: {
-  brandId: string;
-  bare: boolean;
-  withConversations: boolean;
-}) {
+function IntegrationsSection({ brandId, bare }: { brandId: string; bare: boolean }) {
   const queryClient = useQueryClient();
   const params = useParams<{ orgId?: string }>();
   const orgId = params?.orgId ?? null;
@@ -134,11 +125,9 @@ function IntegrationsSection({
     />
   ));
 
-  if (withConversations) {
-    // Gmail first: the mailbox is where most conversations already are.
-    rows.unshift(<GmailRow key="gmail" orgId={orgId} />);
-    rows.push(<MessagingLinkRows key="messaging" brandId={brandId} />);
-  }
+  // Gmail first: the mailbox is where most conversations already are.
+  rows.unshift(<GmailRow key="gmail" orgId={orgId} />);
+  rows.push(<MessagingLinkRows key="messaging" brandId={brandId} />);
 
   if (bare) return <div className="divide-y divide-gray-100">{rows}</div>;
   return (
