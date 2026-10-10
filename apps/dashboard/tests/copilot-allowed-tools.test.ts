@@ -15,7 +15,7 @@ describe("Copilot allowed tools", () => {
   });
 
   it("has one read per platform entity", () => {
-    for (const t of ["get_channel_catalogue", "get_offer_legs", "list_sales_paths", "get_trigger_events", "list_sourcing_origins", "get_campaign", "list_connected_accounts"]) {
+    for (const t of ["get_offer_legs", "list_sales_paths", "get_trigger_events", "list_sourcing_origins", "get_campaign", "list_connected_accounts"]) {
       expect(tools).toContain(t);
     }
   });
@@ -28,6 +28,23 @@ describe("Copilot allowed tools", () => {
     expect(tools).toContain("propose_switch_on");
     expect(tools).toContain("confirm_switch_on");
     for (const t of ["launch_campaign", "set_brand_pause", "set_daily_budget"]) expect(tools).not.toContain(t);
+  });
+
+  it("walks the agent catalogue on small pages, never the one huge catalogue read (owner 2026-10-10)", () => {
+    for (const t of ["find_steps", "find_sales_paths", "find_channels", "find_pipes", "find_sales_funnels", "find_workflows", "create_step", "create_pipe", "create_sales_path", "create_sales_funnel"]) {
+      expect(tools).toContain(t);
+    }
+    expect(tools).not.toContain("get_channel_catalogue");
+  });
+
+  it("runs a sales funnel as one campaign with caps, started only through the gate", () => {
+    for (const t of ["list_funnel_campaigns", "get_funnel_caps", "set_funnel_caps", "create_funnel_campaign", "stop_funnel_campaign"]) expect(tools).toContain(t);
+  });
+
+  it("explores the infra by depth and files every kind of request", () => {
+    for (const t of ["discover_services", "discover_service_endpoints", "discover_endpoint", "test_endpoint", "request_skill_upgrade", "contact_human"]) {
+      expect(tools).toContain(t);
+    }
   });
 
   it("lists each tool once", () => {

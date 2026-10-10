@@ -773,6 +773,23 @@ export async function disconnectGoogleAccount(email: string, token?: string): Pr
 // `brandId` rides the query string on every call (the gateway reads identity from
 // query / headers only, never a body).
 
+/** A login step the app asks the customer to answer (LinkedIn: email and password, then a code). */
+const MatrixLinkInputSchema = z.object({
+  type: z.string(),
+  stepId: z.string(),
+  instructions: z.string().nullable(),
+  fields: z.array(
+    z.object({
+      id: z.string(),
+      type: z.string().nullable(),
+      name: z.string().nullable(),
+      description: z.string().nullable(),
+      pattern: z.string().nullable(),
+      options: z.array(z.string()).nullable(),
+    }),
+  ),
+});
+
 const MatrixLinkSchema = z.object({
   // Plain strings: crm-service owns these vocabularies and adds channels.
   channel: z.string(),
@@ -786,14 +803,27 @@ const MatrixLinkSchema = z.object({
   account: z.object({ id: z.string(), name: z.string().nullable() }).nullable(),
   bridgeState: z.object({ state: z.string().nullable(), reason: z.string().nullable() }).nullable(),
   error: z.object({ code: z.string(), message: z.string() }).nullable(),
+  // Several accounts per channel (crm-service 2026-10-10). Optional until it is live
+  // everywhere: an older crm-service answers without them.
+  linkId: z.string().nullish(),
+  input: MatrixLinkInputSchema.nullish(),
+  needsRelink: z.boolean().optional(),
+  linkedAccounts: z.number().optional(),
 });
 
 export type MatrixLink = z.infer<typeof MatrixLinkSchema>;
+export type MatrixLinkInput = z.infer<typeof MatrixLinkInputSchema>;
 
-/** Every messaging channel's link for this brand, with the CURRENT code while waiting. */
-export async function listMatrixLinks(brandId: string, token?: string): Promise<{ links: MatrixLink[] }> {
+/**
+ * Every messaging channel's tile for this brand (`links`, one per channel: what it
+ * offers), and every account linked or being linked on it (`accounts`).
+ */
+export async function listMatrixLinks(
+  brandId: string,
+  token?: string,
+): Promise<{ links: MatrixLink[]; accounts: MatrixLink[] }> {
   const raw = await apiCall<unknown>(`/orgs/matrix/links?brandId=${encodeURIComponent(brandId)}`, { token });
-  const parsed = z.object({ links: z.array(MatrixLinkSchema) }).safeParse(raw);
+  const parsed = z.object({ links: z.array(MatrixLinkSchema), accounts: z.array(MatrixLinkSchema) }).safeParse(raw);
   if (!parsed.success) {
     console.error("[api] listMatrixLinks response shape mismatch", parsed.error.flatten());
     throw new Error("listMatrixLinks returned an unexpected shape");
@@ -801,18 +831,28 @@ export async function listMatrixLinks(brandId: string, token?: string): Promise<
   return parsed.data;
 }
 
-/** Start linking `channel`: answers with the first QR, or the pairing code for `phoneNumber`. */
+/**
+ * Link one more account on `channel` (or, with `linkId`, link that account again):
+ * answers with the first QR, the pairing code for `phoneNumber`, or the first form
+ * to fill (`input`).
+ */
 export async function startMatrixLink(
   brandId: string,
   channel: string,
-  method: "qr" | "phone",
-  phoneNumber?: string,
+  method: string,
+  opts: { phoneNumber?: string; linkId?: string } = {},
   token?: string,
 ): Promise<{ link: MatrixLink }> {
   const raw = await apiCall<unknown>(`/orgs/matrix/links?brandId=${encodeURIComponent(brandId)}`, {
     token,
     method: "POST",
-    body: { brandId, channel, method, ...(phoneNumber ? { phoneNumber } : {}) },
+    body: {
+      brandId,
+      channel,
+      method,
+      ...(opts.phoneNumber ? { phoneNumber: opts.phoneNumber } : {}),
+      ...(opts.linkId ? { linkId: opts.linkId } : {}),
+    },
   });
   const parsed = z.object({ link: MatrixLinkSchema }).safeParse(raw);
   if (!parsed.success) {
@@ -822,10 +862,31 @@ export async function startMatrixLink(
   return parsed.data;
 }
 
-/** Unlink: logs the bridge out, stops syncing, drops what was mirrored. */
-export async function unlinkMatrixLink(brandId: string, channel: string, token?: string): Promise<unknown> {
+/** Answer the form `link.input` shows. The values go to the app, crm-service never stores them. */
+export async function answerMatrixLink(
+  brandId: string,
+  channel: string,
+  linkId: string,
+  input: Record<string, string>,
+  token?: string,
+): Promise<{ link: MatrixLink }> {
+  const raw = await apiCall<unknown>(`/orgs/matrix/links?brandId=${encodeURIComponent(brandId)}`, {
+    token,
+    method: "POST",
+    body: { brandId, channel, linkId, input },
+  });
+  const parsed = z.object({ link: MatrixLinkSchema }).safeParse(raw);
+  if (!parsed.success) {
+    console.error("[api] answerMatrixLink response shape mismatch", parsed.error.flatten());
+    throw new Error("answerMatrixLink returned an unexpected shape");
+  }
+  return parsed.data;
+}
+
+/** Unlink ONE account: logs the bridge out, stops syncing, drops what was mirrored. */
+export async function unlinkMatrixLink(brandId: string, channel: string, linkId: string | null, token?: string): Promise<unknown> {
   return apiCall<unknown>(
-    `/orgs/matrix/links/${encodeURIComponent(channel)}?brandId=${encodeURIComponent(brandId)}`,
+    `/orgs/matrix/links/${encodeURIComponent(channel)}?brandId=${encodeURIComponent(brandId)}${linkId ? `&linkId=${encodeURIComponent(linkId)}` : ""}`,
     { token, method: "DELETE" },
   );
 }
@@ -849,6 +910,10 @@ const SourceConnectionSchema = z.object({
   lastSyncedAt: z.string().nullable(),
   lastError: z.string().nullable(),
   createdAt: z.string(),
+  // Several Stripe accounts per brand (crm-service 2026-10-10): the key-service
+  // provider holding this account's key, and the account it reads.
+  credentialProvider: z.string().optional(),
+  account: z.object({ id: z.string(), name: z.string().nullable() }).nullish(),
 });
 
 export type SourceConnection = z.infer<typeof SourceConnectionSchema>;

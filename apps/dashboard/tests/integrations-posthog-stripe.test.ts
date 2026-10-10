@@ -1,7 +1,7 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
-import { INTEGRATIONS, integrationFor, missingFields } from "../src/lib/integrations";
+import { INTEGRATIONS, integrationFor, isStripeProvider, missingFields, nextStripeProvider } from "../src/lib/integrations";
 
 const SRC = join(__dirname, "..", "src");
 const read = (rel: string) => readFileSync(join(SRC, rel), "utf8");
@@ -39,7 +39,7 @@ describe("wiring", () => {
     expect(card).toContain('root: "posthogConnections"');
     expect(card).toContain('root: "stripeConnections"');
     expect(card).toContain("useAuthQuery([io.root, brandId], () => io.list(brandId))");
-    expect(card).toContain("return await io.connect(brandId, values);");
+    expect(card).toContain("return await io.connect(brandId, values, provider);");
     expect(card).toContain("await io.disconnect(connection, brandId);");
   });
 
@@ -48,5 +48,17 @@ describe("wiring", () => {
     const at = api.indexOf("export async function listSourceConnections(");
     const block = api.slice(at, api.indexOf("// The three groups are crm-service's own grouping"));
     expect(block.match(/\?brandId=\$\{encodeURIComponent\(brandId\)\}/g)?.length).toBe(3);
+  });
+
+  it("several Stripe accounts, each key under its own provider (owner 2026-10-10)", () => {
+    expect(nextStripeProvider([])).toBe("stripe");
+    expect(nextStripeProvider(["stripe", "posthog"])).toBe("stripe-2");
+    expect(nextStripeProvider(["stripe", "stripe-2"])).toBe("stripe-3");
+    expect(isStripeProvider("stripe-2")).toBe(true);
+    expect(isStripeProvider("posthog")).toBe(false);
+    const card = read("components/settings/brand-integrations-card.tsx");
+    expect(card).toContain('connectSource("stripe", brandId, { credentialProvider: provider })');
+    expect(card).toContain("await setBrandKey(brandId, provider, typedSecret);");
+    expect(card).toContain("await deleteBrandKey(brandId, provider)");
   });
 });
