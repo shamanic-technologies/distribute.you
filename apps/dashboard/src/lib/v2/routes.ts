@@ -11,6 +11,7 @@ export type V2Section =
   | "work"
   | "crew"
   | "campaigns"
+  | "outcomes"
   | "workflows"
   | "sales-path"
   | "sourcing"
@@ -72,6 +73,12 @@ export function v2WorkflowHref(
   return `${v2Base(orgId, brandId)}/workflows/${encodeURIComponent(dynastySlug)}?crew=${encodeURIComponent(crew)}${m}`;
 }
 
+/** The Outcomes overview, or one outcome's page (a producer step key: `conversation`, `lead_found`). */
+export function v2OutcomeHref(orgId: string, brandId: string, stepKey?: string): string {
+  const base = `${v2Base(orgId, brandId)}/outcomes`;
+  return stepKey ? `${base}/${encodeURIComponent(stepKey)}` : base;
+}
+
 /** Which section a v2 pathname is on. */
 export function v2SectionOf(pathname: string): V2Section | null {
   const parts = pathname.split("/").filter(Boolean);
@@ -86,6 +93,7 @@ export function v2SectionOf(pathname: string): V2Section | null {
     "work",
     "crew",
     "campaigns",
+    "outcomes",
     "workflows",
     "sales-path",
     "sourcing",

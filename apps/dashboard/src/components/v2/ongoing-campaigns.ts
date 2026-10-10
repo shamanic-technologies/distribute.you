@@ -9,6 +9,14 @@ import { getOfferSalesPaths } from "@/lib/api";
 import { roiUnavailableLabel } from "@/lib/offer-sales-paths";
 import { campaignKey, campaignsOfOffer, sortCampaigns, sourceCampaignsOfOffer, type OfferCampaign } from "@/lib/offer-campaigns";
 import { canonicalStepKey } from "@/lib/step-marks";
+import { LEAD_FOUND_STEP } from "@/lib/outbound-leg-key";
+import { outcomeOf, type Outcome } from "@/lib/v2/outcomes";
+
+/** One step the ON campaigns produce, with the campaigns that produce it. */
+export interface OngoingOutcome {
+  outcome: Outcome;
+  campaigns: OngoingCampaign[];
+}
 
 export interface OngoingCampaign {
   m: Mission;
@@ -66,7 +74,24 @@ export function useOngoingCampaigns(orgId: string, brandId: string, offerId: str
     }
     return out;
   }, [campaigns]);
+  // Outcomes (owner 2026-10-10): one per step an ON campaign lands on, in campaign order.
+  // A source campaign's leg is not in the leg catalogue: it lands on Lead found.
+  const outcomes = useMemo<OngoingOutcome[]>(() => {
+    const byKey = new Map<string, OngoingOutcome>();
+    for (const c of campaigns) {
+      const toKey = c.m.leg?.toKey ?? (c.campaign?.kind === "source" ? LEAD_FOUND_STEP : null);
+      const outcome = outcomeOf(c.m.row.campaign.featureSlug, toKey, c.m.leg?.toLabel ?? c.campaign?.toLabel);
+      if (!outcome) {
+        console.error("[v2] a running campaign produces no known step", { featureSlug: c.m.row.campaign.featureSlug, legKey: c.m.row.campaign.legKey });
+        continue;
+      }
+      const hit = byKey.get(outcome.key);
+      if (hit) hit.campaigns.push(c);
+      else byKey.set(outcome.key, { outcome, campaigns: [c] });
+    }
+    return [...byKey.values()];
+  }, [campaigns]);
   // Settled once the missions AND the offer's campaign list (names, legs) have answered.
   const catalogueSettled = !offerId || salesPaths.data !== undefined || salesPaths.isError;
-  return { campaigns, steps, settled: settled && catalogueSettled };
+  return { campaigns, outcomes, steps, settled: settled && catalogueSettled };
 }

@@ -42,7 +42,8 @@ describe("the AI tab", () => {
   it("is mounted by the Integrations page and is where the nav lands", () => {
     expect(SETUP).toContain("<V2AiIntegrationView orgId={orgId} brandId={brandId} />");
     expect(read("src/app/(authed)/v2/orgs/[orgId]/brands/[brandId]/integrations/ai/page.tsx")).toContain('view="ai"');
-    expect(read("src/components/v2/v2-shell.tsx")).toContain('`${v2Href(orgId, brandId, "integrations")}/ai`');
+    // The Brand page's Integrations tab lands on it (owner 2026-10-10: Integrations moved inside Brand).
+    expect(SETUP).toContain('{ label: "Integrations", href: `${v2Href(orgId, brandId, "integrations")}/ai`');
   });
 
   it("reuses the API Keys query key and the one key writer", () => {

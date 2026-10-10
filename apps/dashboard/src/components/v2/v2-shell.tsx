@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useParams, usePathname, useSearchParams } from "next/navigation";
 import { AccountMenuV2, SearchTrigger, TenantSwitcherV2 } from "@/components/v2/sidebar-menus";
@@ -8,11 +8,9 @@ import { useOngoingCampaigns } from "@/components/v2/ongoing-campaigns";
 import { CrewMark } from "@/components/v2/crew-mark";
 import { V2NavContext } from "@/components/v2/nav-context";
 import { useBucketCounts, useBrandRevenue, useNeedsYourCall, useStandingCounts } from "@/components/v2/data";
-import { v2Href, v2CampaignHref, v2OfferHref, v2SectionOf } from "@/lib/v2/routes";
+import { v2Href, v2OfferHref, v2OutcomeHref, v2SectionOf } from "@/lib/v2/routes";
 import { formatCount } from "@/lib/format-number";
 import { boardColumnTotals } from "@/lib/leads-server-page";
-import { CompanyMark } from "@/components/v2/people-bits";
-import { companyHref } from "@/components/v2/companies-page";
 import { ScopePaymentDeclinedBand } from "@/components/billing/scope-payment-declined-band";
 import { useStaffMode } from "@/lib/use-staff-mode";
 import { SelectedOfferProvider, useSelectedOffer } from "@/components/v2/selected-offer";
@@ -139,6 +137,10 @@ const ICONS = {
   posts: "M2.5 3.5h11v9h-11zM5 6.5h6M5 9.5h4",
   // An inbox tray: every conversation in one place.
   unibox: "M2.5 8.5 4 3.5h8l1.5 5v4h-11zM2.5 8.5h3.5l.8 1.5h2.4l.8-1.5h3.5",
+  // A grid of four: the Overview of a section.
+  overview: "M2.5 2.5h4.5v4.5h-4.5zM9 2.5h4.5v4.5H9zM2.5 9h4.5v4.5h-4.5zM9 9h4.5v4.5H9z",
+  // A flag on its pole: a step reached.
+  outcome: "M3.5 13.5v-11M3.5 3h8l-1.5 2.5 1.5 2.5h-8",
   workflows: "M4 3.5a1.5 1.5 0 1 1 0 3 1.5 1.5 0 0 1 0-3Zm8 6a1.5 1.5 0 1 1 0 3 1.5 1.5 0 0 1 0-3ZM4 6.5v2a2 2 0 0 0 2 2h4.5",
 };
 
@@ -174,7 +176,7 @@ function V2Sidebar() {
   const { offerId } = useSelectedOffer();
   // The same read and the same order as the Sales path page's Campaigns section
   // (proactive first, ROI high to low), so the two lists never disagree. Today reads it too.
-  const { campaigns: activeMissions } = useOngoingCampaigns(orgId, brandId, offerId);
+  const { campaigns: ongoing, outcomes } = useOngoingCampaigns(orgId, brandId, offerId);
   const buckets = useBucketCounts(brandId).data;
   const standings = useStandingCounts(brandId).data;
   // Deals badge = the people still in play on the Deals board (Leads + Sales interest +
@@ -184,13 +186,8 @@ function V2Sidebar() {
   const revenue = useBrandRevenue(brandId).data;
   const needsCall = useNeedsYourCall(brandId, 5).data?.total ?? null;
   const [recordsOpen, setRecordsOpen] = useState(true);
-  // Work, Crew, Missions and Workflows are staff surfaces: a customer never sees them, staff mode does.
+  // Workflows, Sales path, Channels, Sourcing and Posts are staff surfaces: a customer never sees them, staff mode does.
   const { staffMode } = useStaffMode();
-  // Keel's Favorites: the three companies worth most, on features-service's own figure.
-  const topCompanies = useMemo(
-    () => [...(revenue?.organizations ?? [])].sort((a, b) => b.expectedRevenueUsd - a.expectedRevenueUsd).slice(0, 3),
-    [revenue],
-  );
   return (
     <aside className="flex h-full w-[240px] max-w-[85vw] shrink-0 flex-col">
       <div className="space-y-2 px-2 pt-2">
@@ -261,30 +258,20 @@ function V2Sidebar() {
             icon={<I d={ICONS.unibox} />}
             active={section === "unibox"}
           />
-          {staffMode && (
-            <NavItem
-              href={v2Href(orgId, brandId, "workflows")}
-              label="Workflows"
-              icon={<I d={ICONS.workflows} />}
-              active={section === "workflows"}
-            />
-          )}
         </div>
 
-        {/* Outbound (owner 2026-10-07): a section like Setup, its page (the Sales path page, named Outbound) first, then the
-            selected offer's campaigns that are ON with a live dot, named as that page's
-            Campaigns section names them. Same left edge as every other entry. */}
-        <Group title="Outbound">
+        {/* Campaigns (owner 2026-10-10): the Overview, then EVERY campaign of the offer that
+            is ON, whatever it does (finds leads, writes, answers), with its name and face.
+            No category headers. Same left edge as every other entry. */}
+        <Group title="Campaigns">
           <NavItem
-            href={offerId ? v2OfferHref(orgId, brandId, offerId, "sales-path") : v2Href(orgId, brandId, "sales-path")}
-            label="Outbound"
-            icon={<I d={ICONS.outbound} />}
-            active={section === "sales-path"}
+            href={v2Href(orgId, brandId, "campaigns")}
+            label="Overview"
+            icon={<I d={ICONS.overview} />}
+            active={section === "campaigns" && /\/campaigns\/?$/.test(pathname)}
           />
           {offerId &&
-            activeMissions
-              .filter(({ campaign }) => campaign?.kind !== "source")
-              .map(({ m, name }) => (
+            ongoing.map(({ m, name }) => (
               <NavItem
                 key={m.row.campaign.id}
                 href={m.href}
@@ -298,76 +285,72 @@ function V2Sidebar() {
             ))}
         </Group>
 
-        {/* What the brand publishes on LinkedIn, the first page of Posting: staff mode only. */}
-        {staffMode && (
-          <Group title="Posting">
-            <NavItem href={v2Href(orgId, brandId, "posts")} label="Posts" icon={<I d={ICONS.posts} />} active={section === "posts"} />
-          </Group>
-        )}
-
-        {/* Sourcing (owner 2026-10-07): a section below Outbound and Posting, the offer's Sourcing
-            page first, then its source campaigns that are ON with a live dot. */}
-        <Group title="Sourcing">
+        {/* Outcomes (owner 2026-10-10): what the running campaigns produce, one entry per step. */}
+        <Group title="Outcomes">
           <NavItem
-            href={offerId ? v2OfferHref(orgId, brandId, offerId, "sourcing") : v2Href(orgId, brandId, "sourcing")}
-            label="Sourcing"
-            icon={<I d={ICONS.audience} />}
-            active={section === "sourcing"}
+            href={v2OutcomeHref(orgId, brandId)}
+            label="Overview"
+            icon={<I d={ICONS.overview} />}
+            active={section === "outcomes" && /\/outcomes\/?$/.test(pathname)}
           />
           {offerId &&
-            activeMissions
-              .filter(({ campaign }) => campaign?.kind === "source")
-              .map(({ m, name }) => (
+            outcomes.map(({ outcome }) => {
+              const href = v2OutcomeHref(orgId, brandId, outcome.key);
+              return (
                 <NavItem
-                  key={m.row.campaign.id}
-                  href={m.href}
-                  label={name ?? m.crew.name}
-                  icon={name ? <PathAvatar name={name} size={16} /> : <CrewMark color={m.crew.color} glyph={m.crew.glyph} size={16} />}
-                  active={pathname.startsWith(m.href)}
-                  trailing={
-                    <span className="k-dot-pulse ml-auto mr-1 h-1.5 w-1.5 shrink-0 rounded-full bg-[var(--run)] text-[var(--run)]" aria-label="On" />
-                  }
+                  key={outcome.key}
+                  href={href}
+                  label={outcome.label}
+                  icon={<I d={ICONS.outcome} />}
+                  active={pathname === href}
+                  trailing={<Count n={outcome.items.kind === "people" ? buckets?.counts[outcome.items.bucket] : null} />}
                 />
-              ))}
+              );
+            })}
         </Group>
 
         <Group title="Setup">
-          {/* The selected offer's own page: there is no list of offers (owner 2026-10-03),
-              the switcher at the top is where another one is picked. */}
+          {/* The selected offer's own page, its Targeting inside (owner 2026-10-10): there is
+              no list of offers, the switcher at the top is where another one is picked. */}
           <NavItem
             href={offerId ? v2OfferHref(orgId, brandId, offerId) : v2Href(orgId, brandId, "offers")}
             label="Offer"
             icon={<I d={ICONS.offer} />}
-            active={section === "offers"}
+            active={section === "offers" || section === "targeting"}
           />
+          {/* The brand's settings, its Integrations inside (owner 2026-10-10). */}
           <NavItem
-            href={offerId ? v2OfferHref(orgId, brandId, offerId, "targeting") : v2Href(orgId, brandId, "targeting")}
-            label="Targeting"
-            icon={<I d={ICONS.target} />}
-            active={section === "targeting"}
+            href={v2Href(orgId, brandId, "settings")}
+            label="Brand"
+            icon={<I d={ICONS.settings} />}
+            active={section === "settings" || section === "integrations"}
           />
-          <NavItem href={`${v2Href(orgId, brandId, "integrations")}/ai`} label="Integrations" icon={<I d={ICONS.plug} />} active={section === "integrations"} />
-          <NavItem href={v2Href(orgId, brandId, "settings")} label="Brand settings" icon={<I d={ICONS.settings} />} active={section === "settings"} />
         </Group>
 
-        {topCompanies.length > 0 && (
-          <Group title="Top companies">
-            {topCompanies.map((o) => {
-              const href = companyHref(orgId, brandId, o);
-              const name = o.orgName ?? o.orgDomain ?? "Company";
-              return href ? (
-                <NavItem
-                  key={href}
-                  href={href}
-                  label={name}
-                  active={decodeURIComponent(pathname).endsWith(`/companies/${o.orgDomain ?? o.orgId}`)}
-                  icon={<CompanyMark name={name} domain={o.orgDomain ?? null} size={16} />}
-                />
-              ) : null;
-            })}
+        {/* Staff mode only, below the client's nav: the pages a client never sees. */}
+        {staffMode && (
+          <Group title="Staff">
+            <NavItem href={v2Href(orgId, brandId, "workflows")} label="Workflows" icon={<I d={ICONS.workflows} />} active={section === "workflows"} />
+            <NavItem
+              href={offerId ? v2OfferHref(orgId, brandId, offerId, "sales-path") : v2Href(orgId, brandId, "sales-path")}
+              label="Sales path"
+              icon={<I d={ICONS.outbound} />}
+              active={section === "sales-path"}
+            />
+            <NavItem
+              href={`${offerId ? v2OfferHref(orgId, brandId, offerId, "sales-path") : v2Href(orgId, brandId, "sales-path")}#channels`}
+              label="Channels"
+              icon={<I d={ICONS.channels} />}
+            />
+            <NavItem
+              href={offerId ? v2OfferHref(orgId, brandId, offerId, "sourcing") : v2Href(orgId, brandId, "sourcing")}
+              label="Sourcing"
+              icon={<I d={ICONS.audience} />}
+              active={section === "sourcing"}
+            />
+            <NavItem href={v2Href(orgId, brandId, "posts")} label="Posts" icon={<I d={ICONS.posts} />} active={section === "posts"} />
           </Group>
         )}
-
       </nav>
       <BrandWhyLine />
       <AccountMenuV2 orgId={orgId} brandId={brandId} />

@@ -1,7 +1,7 @@
 "use client";
 
-import { V2CampaignsIndexPage } from "@/components/v2/setup-pages";
+import { CampaignsOverviewPage } from "@/components/v2/campaigns-overview-page";
 
 export default function Page() {
-  return <V2CampaignsIndexPage />;
+  return <CampaignsOverviewPage />;
 }
