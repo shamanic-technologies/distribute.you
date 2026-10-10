@@ -1,22 +1,29 @@
 #!/usr/bin/env bash
 # The nightly Research refresh: re-reads production, recomputes every study (and its verdict:
-# conclusion / signal / noise, verdict.mjs), and opens a PR to main with auto-merge armed.
+# conclusion / signal / noise, verdict.mjs), and publishes the snapshot to main once CI is green.
 # Runs ON the Hetzner box from /root/distribute/research-refresh-cron.sh, in a dedicated clone of
 # this repo; never by hand on a laptop (the refresh-research skill is the manual path).
 #
-#   GITHUB_TOKEN=... ./refresh.sh <data-dir>
+#   ./refresh.sh compute <data-dir>                   # extract + derive + commit on the branch
+#   GITHUB_TOKEN=... ./refresh.sh publish <data-dir>  # push the branch, wait for CI, push to main
 #
-# No LLM anywhere: SQL, then plain JavaScript statistics. The dashboard CI (dashboard tests +
-# build) gates the merge, so a snapshot that breaks a research guard never reaches the page.
+# Two phases because only `compute` needs the box's memory: the cron holds the deploy lock for it
+# and releases it before `publish` waits on CI.
 #
-# MEMORY: the box has ~3 GB free at rest and the OOM killer picks postgres. derive.mjs fits a
-# 1 GB heap since its CSV reader stores flat strings (measured 2026-10-10, output byte-equal to an
-# 8 GB heap), so node runs in a container capped at 2.5 GB: a run that outgrows it dies alone
-# (exit 137, mailed), postgres untouched.
+# No LLM anywhere: SQL, then plain JavaScript statistics.
+#
+# WHY NO PR: neither token on the box may open one (fine-grained PATs without pull-request write,
+# and Actions may not create PRs on this repo). So the gate is run by hand: the branch push
+# triggers test.yml, and main only receives the commit once build, test-dashboard and lint are
+# green on it. The commit body carries what changed (research-diff.mjs).
+#
+# MEMORY: the box has ~3 GB free at rest and the OOM killer picks postgres. derive.mjs peaks at
+# 1.2 GB (measured 2026-10-10, output byte-equal to an 8 GB heap), so node runs in a container
+# capped at 2.5 GB: a run that outgrows it dies alone (exit 137, mailed), postgres untouched.
 set -euo pipefail
 
-DATA="${1:?data directory}"
-: "${GITHUB_TOKEN:?GITHUB_TOKEN (push + PR on distribute.you)}"
+PHASE="${1:?compute | publish}"
+DATA="${2:?data directory}"
 REPO="$(git -C "$(dirname "$0")" rev-parse --show-toplevel)"
 BD="$REPO/apps/landing/scripts/blog-data"
 LIB="$REPO/apps/dashboard/src/lib/research"
@@ -35,8 +42,47 @@ node() {
 export -f node
 export REPO DATA
 
-rm -rf "$DATA" && mkdir -p "$DATA"
 cd "$REPO"
+
+if [ "$PHASE" = publish ]; then
+  : "${GITHUB_TOKEN:?GITHUB_TOKEN (push on distribute.you)}"
+  [ -f "$DATA/committed" ] || { echo "== nothing to publish"; exit 0; }
+  REMOTE="https://x-access-token:${GITHUB_TOKEN}@github.com/${GH_REPO}.git"
+  SHA="$(git rev-parse HEAD)"
+  git push -q -f "$REMOTE" "HEAD:refs/heads/$BRANCH"
+  echo "== pushed $SHA to $BRANCH, waiting for CI"
+  python3 - "$GH_REPO" "$SHA" <<'PY'
+import json, os, sys, time, urllib.request
+repo, sha = sys.argv[1:3]
+need = {"build", "test-dashboard", "lint"}
+def runs():
+    req = urllib.request.Request(f"https://api.github.com/repos/{repo}/commits/{sha}/check-runs?per_page=100",
+        headers={"Authorization": f"Bearer {os.environ['GITHUB_TOKEN']}", "Accept": "application/vnd.github+json"})
+    with urllib.request.urlopen(req) as r:
+        return {c["name"]: c for c in json.load(r)["check_runs"]}
+deadline = time.time() + 45 * 60
+while time.time() < deadline:
+    seen = runs()
+    bad = [n for n in need if n in seen and seen[n]["status"] == "completed" and seen[n]["conclusion"] != "success"]
+    if bad:
+        raise SystemExit(f"CI failed on {sha}: {', '.join(bad)} ({seen[bad[0]]['html_url']})")
+    if all(n in seen and seen[n]["conclusion"] == "success" for n in need):
+        print(f"== CI green on {sha}")
+        sys.exit(0)
+    time.sleep(30)
+raise SystemExit(f"CI did not finish on {sha} within 45 minutes")
+PY
+  # main may have moved during CI: the snapshot files are ours alone, so replay the commit on top.
+  git fetch -q "$REMOTE" main
+  git rebase -q FETCH_HEAD
+  git push -q "$REMOTE" "HEAD:refs/heads/main"
+  echo "== published $(git rev-parse HEAD) to main"
+  rm -f "$DATA/committed"
+  exit 0
+fi
+[ "$PHASE" = compute ] || { echo "unknown phase $PHASE" >&2; exit 1; }
+
+rm -rf "$DATA" && mkdir -p "$DATA"
 cp "$LIB/research.json" "$DATA/old-research.json"
 
 echo "== extract $TODAY (rule cutoff $CUTOFF)"
@@ -77,30 +123,5 @@ git checkout -q -B "$BRANCH"
 git add -- "${FILES[@]}"
 git -c user.email=box@distribute.you -c user.name="distribute box" \
   commit -q -m "chore(research): nightly refresh to $TODAY" -m "$(cat "$DATA/diff.md")"
-# One branch for every night: a PR still waiting on CI is updated in place, never duplicated.
-git push -q -f "https://x-access-token:${GITHUB_TOKEN}@github.com/${GH_REPO}.git" "HEAD:refs/heads/$BRANCH"
-
-# Open (or reuse) the PR and arm auto-merge. python3 is on the box; jq and gh are not.
-python3 - "$GH_REPO" "$BRANCH" "$TODAY" "$DATA/diff.md" <<'PY'
-import json, os, sys, urllib.request
-repo, branch, today, diff_path = sys.argv[1:5]
-token = os.environ["GITHUB_TOKEN"]
-def call(method, url, body=None):
-    req = urllib.request.Request(url, method=method, data=json.dumps(body).encode() if body else None,
-        headers={"Authorization": f"Bearer {token}", "Accept": "application/vnd.github+json"})
-    with urllib.request.urlopen(req) as r:
-        return json.load(r)
-owner = repo.split("/")[0]
-body = open(diff_path).read() + "\n\nAutomated nightly refresh (apps/landing/scripts/blog-data/refresh.sh on the box). No LLM: SQL and statistics only.\n"
-title = f"chore(research): nightly refresh to {today}"
-open_prs = call("GET", f"https://api.github.com/repos/{repo}/pulls?state=open&head={owner}:{branch}")
-if open_prs:
-    pr = call("PATCH", f"https://api.github.com/repos/{repo}/pulls/{open_prs[0]['number']}", {"title": title, "body": body})
-else:
-    pr = call("POST", f"https://api.github.com/repos/{repo}/pulls", {"title": title, "head": branch, "base": "main", "body": body})
-q = "mutation($id:ID!){enablePullRequestAutoMerge(input:{pullRequestId:$id,mergeMethod:SQUASH}){pullRequest{number}}}"
-res = call("POST", "https://api.github.com/graphql", {"query": q, "variables": {"id": pr["node_id"]}})
-if res.get("errors"):
-    raise SystemExit(f"PR #{pr['number']} opened but auto-merge not armed: {res['errors']}")
-print(f"== PR #{pr['number']} auto-merge armed: {pr['html_url']}")
-PY
+touch "$DATA/committed"
+echo "== committed $(git rev-parse HEAD) on $BRANCH"

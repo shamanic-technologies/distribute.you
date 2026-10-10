@@ -39,10 +39,11 @@ catalogue's last-runs lists are per crew too. The articles keep the fleet-wide, 
 population on purpose: the leg scope lives only in the `research` block.
 
 **It refreshes itself every night** (2026-10-10): `/root/distribute/research-refresh-cron.sh` on the
-box runs `refresh.sh` (below, with `BLOG_DATA_LOCAL=1`: no ssh, node in a 2.5 GB container) in a
-dedicated clone, then opens `research/nightly-refresh` to main with auto-merge armed; the PR body
-(`research-diff.mjs`) lists every study whose verdict or winner moved. CI gates the merge; a failed
-run mails the owner. No LLM in it. By hand:
+box runs `refresh.sh compute` (below, with `BLOG_DATA_LOCAL=1`: no ssh, node in a 2.5 GB container)
+in a dedicated clone, then `refresh.sh publish`: pushes `research/nightly-refresh`, waits for
+test.yml to go green on it, and only then pushes the commit to main (no token on the box may open
+a PR). The commit body (`research-diff.mjs`) lists every study whose verdict or winner moved. A
+failed run mails the owner. No LLM in it. By hand:
 
 ```sh
 apps/landing/scripts/blog-data/extract.sh 2026-04-15 <today> /tmp/research-data
