@@ -7,7 +7,6 @@ import { useAuthQuery } from "@/lib/use-auth-query";
 import { getBrand } from "@/lib/api";
 import { useIsBetaUser } from "@/lib/use-beta-user";
 import { MaturityBadge } from "@/components/maturity-badge";
-import { BrandIdentityCard } from "@/components/settings/brand-identity-card";
 import { BrandDomainCard } from "@/components/settings/brand-domain-card";
 import { BrandSalesRepCard, SALES_REP_BLURB } from "@/components/settings/brand-sales-rep-card";
 import { BrandBookingLinkCard, BOOKING_LINK_BLURB } from "@/components/settings/brand-booking-link-card";
@@ -19,6 +18,7 @@ import {
 } from "@/components/settings/brand-conversion-tracking-card";
 import { TopBar } from "@/components/v2/ui";
 import { BrandLinkedinPageRow } from "@/components/v2/brand-linkedin-page-row";
+import { BrandIdentityTitle } from "@/components/v2/brand-identity-title";
 
 /**
  * Brand settings, laid out the way every settings page of a Linear-grade product is:
@@ -47,12 +47,6 @@ export function V2BrandSettingsPage() {
   const needsWebsite = !brandPending && (brandData?.brand?.domain ?? null) === null;
 
   const sections: Section[] = [
-    {
-      id: "identity",
-      title: "Identity",
-      description: "Your brand's name and logo, as your team sees them across the dashboard.",
-      body: <BrandIdentityCard brandId={brandId} />,
-    },
     ...(needsWebsite
       ? [
           {
@@ -115,7 +109,10 @@ export function V2BrandSettingsPage() {
       <TopBar crumbs={[{ label: "Brand" }, { label: "Settings" }]} />
       <div className="mx-auto max-w-[1100px] px-4 pb-16 pt-6 md:px-6">
         <div className="mb-5">
-          <h1 className="text-[24px] font-medium leading-[30px] tracking-[-0.02em]">Brand</h1>
+          {/* The brand's name and logo ARE the title, edited in place (owner 2026-10-10). */}
+          <h1 className="text-[24px] font-medium leading-[30px] tracking-[-0.02em]">
+            <BrandIdentityTitle brandId={brandId} />
+          </h1>
           <p className="k-fg2 mt-1 text-[14px]">Who you are, who answers your leads, and how we measure what they turn into.</p>
         </div>
         {/* Brand = its settings and its integrations (owner 2026-10-10). */}
