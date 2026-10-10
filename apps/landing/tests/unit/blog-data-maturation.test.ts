@@ -104,9 +104,13 @@ describe("the Research page compares workflow dynasties, never single versions",
 
 describe("the Research page computes every figure over ONE leg of ONE channel", () => {
   const src = readFileSync(join(__dirname, "../../scripts/blog-data/derive.mjs"), "utf8");
-  it("Herald reads the start_to_conversation leg only, Scout the start_to_website_visit leg's link-carrying emails", () => {
-    expect(src).toContain('const HERALD_LEG = "start_to_conversation";');
-    expect(src).toContain('const SCOUT_LEG = "start_to_website_visit";');
+  it("Herald reads the lead_found_to_conversation leg only, Scout the lead_found_to_website_visit leg's link-carrying emails", () => {
+    const legKey = readFileSync(join(__dirname, "../../scripts/blog-data/leg-key.mjs"), "utf8");
+    expect(legKey).toContain('export const HERALD_LEG = "lead_found_to_conversation";');
+    expect(legKey).toContain('export const SCOUT_LEG = "lead_found_to_website_visit";');
+    // a campaign stored before the 2026-10-09 rename is the same leg (both spellings, one identity)
+    expect(legKey).toContain("start_to_conversation: HERALD_LEG, start_to_website_visit: SCOUT_LEG");
+    expect(src).toContain("c.platform_campaign_id, canonicalLeg(c.leg_key)]");
     expect(src).toContain("const herald = priced.filter((r) => r.leg === HERALD_LEG);");
     // ROI is marginal: a follow-up carries only its own sending, the first email everything bought
     // once per person (owner 2026-10-03: "compare the extra cost to send a followup N versus the extra gain")

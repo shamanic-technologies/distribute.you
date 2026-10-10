@@ -12,7 +12,9 @@ OUT="${2:?output file}"
 BOX="${BLOG_DATA_BOX:-root@167.233.196.79}"
 KEY="${BLOG_DATA_KEY:-$HOME/.ssh/oracle-distribute}"
 HERE="$(cd "$(dirname "$0")" && pwd)"
-ssh -i "$KEY" "$BOX" "docker exec -i distribute-postgres-1 psql -U postgres -d instantly_service -At -v ON_ERROR_STOP=1 -v cutoff=$CUTOFF" < "$HERE/pixel.sql" > "$OUT.tmp"
+PSQL="docker exec -i distribute-postgres-1 psql -U postgres -d instantly_service -At -v ON_ERROR_STOP=1 -v cutoff=$CUTOFF"
+# BLOG_DATA_LOCAL=1: already on the box (the nightly refresh, refresh.sh), no ssh to itself.
+if [ -n "${BLOG_DATA_LOCAL:-}" ]; then $PSQL < "$HERE/pixel.sql" > "$OUT.tmp"; else ssh -i "$KEY" "$BOX" "$PSQL" < "$HERE/pixel.sql" > "$OUT.tmp"; fi
 node -e 'const fs=require("fs");const j=JSON.parse(fs.readFileSync(process.argv[1],"utf8"));fs.writeFileSync(process.argv[1],JSON.stringify(j,null,1)+"\n")' "$OUT.tmp"
 mv "$OUT.tmp" "$OUT"
 echo "$OUT: $(wc -c < "$OUT") bytes"
