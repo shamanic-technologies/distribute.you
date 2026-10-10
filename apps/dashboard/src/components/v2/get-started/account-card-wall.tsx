@@ -22,8 +22,8 @@
  *   3. card     — prepaid credit (owner 2026-10-06, no free trial): an amount of at
  *                 least $100 and an optional automatic reload, paid in the same column
  *                 (Revolut widget or Stripe's embedded form); we match the first $100;
- *   4. launch   — the campaigns turned on at the campaigns step start, each on its own
- *                 budget (`launch.ts`), and the page lands on the proactive one.
+ *   4. launch   — the campaign set at the "Your campaign" step starts, its caps first
+ *                 (`launch.ts`), and the page lands on it.
  */
 
 import { defaultSalesRepToAccountEmail } from "@/lib/sales-rep-default";
@@ -47,7 +47,6 @@ import {
 import { v2CampaignHref } from "@/lib/v2/routes";
 import {
   GET_STARTED_SNAPSHOT_KEY,
-  dailySpendUsd,
   matchNote,
   nextSlide,
   type GetStartedEmail,
@@ -60,7 +59,8 @@ import { formatRoi, roiIsGood } from "@/lib/format-roi";
 import { requiredPhoneProblem } from "@/lib/phone-syntax";
 import type { PhoneValue } from "@/components/onboarding/phone-input";
 import { PhoneField, browserPhoneCountry } from "./phone-field";
-import { EMPTY_PROGRESS, launchFromPreview, type LaunchCampaign, type LaunchProgress } from "./launch";
+import { EMPTY_PROGRESS, launchFromPreview, type LaunchProgress } from "./launch";
+import type { SignupLaunchPlan } from "@/lib/v2/signup-campaign";
 import { PrepaidTopup, type TopupChoice } from "./prepaid-topup";
 import { payTopup, settleTopup } from "./pay-topup";
 import { pingOwner } from "@/lib/owner-ping-client";
@@ -99,7 +99,8 @@ export function AccountCardWall({
   targetAudience,
   note = null,
   email: writtenEmail,
-  campaigns,
+  plan,
+  dailyUsd,
   outlook,
   answered,
   onClose,
@@ -117,9 +118,11 @@ export function AccountCardWall({
   note?: string | null;
   /** The email the preview wrote, or null when none was written. */
   email: GetStartedEmail | null;
-  /** The campaigns as set at the campaigns step: the ones on start, each on its budget. */
-  campaigns: LaunchCampaign[];
-  /** The served figures of the proactive campaign that is on: what the match buys is read off it. */
+  /** The campaign set at the "Your campaign" step (the funnels and their caps). */
+  plan: SignupLaunchPlan;
+  /** The outreach budget's daily pace, for the reload warning. */
+  dailyUsd: number;
+  /** The served figures of the campaign picked: what the match buys is read off it. */
   outlook: CampaignOutlook | null;
   /** The offer points and give lists were answered in the preview (and saved). */
   answered: boolean;
@@ -190,7 +193,7 @@ export function AccountCardWall({
   const [secondFactor, setSecondFactor] = useState(false);
   // The org made for a returning account: the claim waits until the session is on it.
   const freshOrg = useRef<"creating" | string | null>(null);
-  const progress = useRef<LaunchProgress>({ ...EMPTY_PROGRESS, budgets: {}, started: {}, campaignIds: {} });
+  const progress = useRef<LaunchProgress>({ ...EMPTY_PROGRESS, caps: {}, started: {}, campaignIds: {} });
   // A payment the form reported: pressing the button again re-checks it, never pays twice.
   const [paid, setPaid] = useState<{ creditedBefore: number; reload: TopupChoice["reload"] } | null>(null);
   // Stripe's embedded form reports through its provider: what it was opened for waits here.
@@ -547,7 +550,7 @@ export function AccountCardWall({
     setError(null);
     try {
       const campaignId = await launchFromPreview(
-        { brandId, website, offer, targetAudience, campaigns, answered },
+        { brandId, website, offer, targetAudience, plan, answered },
         progress.current,
       );
       await defaultSalesRepToAccountEmail(brandId, user?.primaryEmailAddress?.emailAddress);
@@ -556,7 +559,7 @@ export function AccountCardWall({
       const res = await fetch("/api/onboarding/complete", { method: "POST", headers: { Authorization: `Bearer ${token}` } });
       if (!res.ok) throw new Error("We could not finish setting up your account. Try again.");
       await session?.getToken({ skipCache: true });
-      posthog.capture("get_started_launched", { campaigns: campaigns.filter((c) => c.on).length, plan: "prepaid" });
+      posthog.capture("get_started_launched", { campaigns: plan.reactive ? 2 : 1, plan: "prepaid" });
       try {
         localStorage.removeItem(GET_STARTED_SNAPSHOT_KEY);
       } catch {
@@ -812,7 +815,7 @@ export function AccountCardWall({
                     {busy ? "Checking your payment..." : "Check my payment and launch"}
                   </button>
                 ) : (
-                  <PrepaidTopup busy={busy} matchNote={matchNote(account)} dailyUsd={dailySpendUsd(campaigns)} onEditCampaigns={onClose} cta={(usd) => `Add $${usd.toLocaleString("en-US")} and launch`} onPay={(c) => void pay(c)} />
+                  <PrepaidTopup busy={busy} matchNote={matchNote(account)} dailyUsd={dailyUsd} onEditCampaigns={onClose} cta={(usd) => `Add $${usd.toLocaleString("en-US")} and launch`} onPay={(c) => void pay(c)} />
                 )}
               </div>
             )}

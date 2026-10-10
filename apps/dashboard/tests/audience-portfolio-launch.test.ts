@@ -55,14 +55,14 @@ describe("/get-started launches the portfolio, not the one audience picked in th
     expect(flow).toContain("saveSnapshot({ icp });");
     expect(flow).toContain("if (s.icp) icpRef.current = s.icp;");
     expect(flow).toContain("targetAudience={icpRef.current}");
-    expect(wall).toContain("{ brandId, website, offer, targetAudience, campaigns, answered }");
+    expect(wall).toContain("{ brandId, website, offer, targetAudience, plan, answered }");
   });
 });
 
 describe("Add a brand from the dashboard launches the portfolio the same way", () => {
   it("runs the walk's own launch on the same ICP text (one launch path)", () => {
     expect(flow).toContain("targetAudience={icpRef.current}");
-    expect(orgLaunch).toContain("{ brandId, website, offer, targetAudience, campaigns, answered, writeBudgets:");
+    expect(orgLaunch).toContain("{ brandId, website, offer, targetAudience, plan, answered }");
     expect(orgLaunch).toContain("await launchFromPreview(");
   });
 });

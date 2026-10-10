@@ -77,7 +77,7 @@ describe("every write of an offer's sales path sends legs with their channel", (
     expect(fn).not.toContain("legKeys");
   });
   it("both callers build the legs with salesPathLegsWire", () => {
-    for (const f of ["src/components/v2/offer-revenue-steps.tsx", "src/components/v2/get-started/get-started.tsx"]) {
+    for (const f of ["src/components/v2/offer-revenue-steps.tsx"]) {
       expect(read(f)).toContain("salesPathLegsWire(next.legs, offered.channelsByLeg, offered.legs)");
     }
   });

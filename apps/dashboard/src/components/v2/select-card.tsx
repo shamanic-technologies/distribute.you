@@ -14,6 +14,7 @@ export function SelectCard({
   title,
   sub,
   wrapSub,
+  wrapTitle,
   contactUs,
 }: {
   on: boolean;
@@ -23,6 +24,8 @@ export function SelectCard({
   sub?: string | null;
   /** The sub line is a sentence to read in full (a channel caption): wrap it, never truncate. */
   wrapSub?: boolean;
+  /** The title is a sentence to read in full (a phone must not cut it): wrap it. */
+  wrapTitle?: boolean;
   /** Not selectable yet: muted, no circle, a "Contact us" chip. A click calls `onClick`,
    *  which opens the contact form instead of ticking the card. */
   contactUs?: boolean;
@@ -48,7 +51,7 @@ export function SelectCard({
     >
       {mark}
       <span className="min-w-0 flex-1">
-        <span className={`block truncate text-[13px] ${on ? "k-fg font-semibold" : "k-fg3"}`}>{title}</span>
+        <span className={`block text-[13px] ${wrapTitle ? "leading-5" : "truncate"} ${on ? "k-fg font-semibold" : "k-fg3"}`}>{title}</span>
         {sub && <span className={`k-fg3 block text-[11.5px] ${wrapSub ? "leading-4" : "truncate"}`}>{sub}</span>}
       </span>
       {on ? (

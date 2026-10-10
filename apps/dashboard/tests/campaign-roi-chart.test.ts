@@ -96,8 +96,9 @@ describe("Today's return and pipeline by step", () => {
     expect(roi).not.toContain("reduce(");
   });
 
-  it("links the rates to where the customer changes them", () => {
-    expect(roi).toContain('v2OfferHref(orgId, brandId, offerId, "sales-path")');
+  it("links the rates to where the customer changes them: the Offer page, never the staff Sales path page", () => {
+    expect(roi).toContain("v2OfferHref(orgId, brandId, offerId)}");
+    expect(roi).not.toContain('"sales-path"');
     expect(roi).toContain("Wrong number? Change it");
   });
 });

@@ -19,8 +19,7 @@
  * written only once the questions are answered, since they are written from the answers.
  */
 import { COUNTRIES } from "../../components/onboarding/phone-countries";
-import { canonicalLegKey, sameLegKey } from "../outbound-leg-key";
-import { stepPlural } from "./crews";
+import { parseSignupDraft, type SignupCampaignDraft } from "./signup-campaign";
 
 export const GET_STARTED_STEPS = [
   { key: "company", label: "Read your company" },
@@ -28,15 +27,12 @@ export const GET_STARTED_STEPS = [
   { key: "offer", label: "Pick your offer" },
   { key: "audience", label: "Pick who to write to" },
   { key: "value", label: "What a client is worth" },
-  { key: "salesSteps", label: "Your sales steps" },
-  { key: "legs", label: "How leads move" },
-  { key: "channels", label: "Your channels" },
-  { key: "paths", label: "Your sales paths" },
-  { key: "campaigns", label: "Your campaigns" },
   { key: "levers", label: "Sharpen your offer" },
   { key: "gives", label: "What you give away" },
   { key: "companies", label: "Find 100 companies" },
   { key: "email", label: "Write the first emails" },
+  // The END of signup (owner sketch 2026-10-10): ONE campaign, its caps, then the wall.
+  { key: "campaign", label: "Your campaign" },
 ] as const;
 
 export type GetStartedStepKey = (typeof GET_STARTED_STEPS)[number]["key"];
@@ -51,151 +47,6 @@ export const STEPS_NOT_LIVE: ReadonlySet<GetStartedStepKey> = new Set<GetStarted
 /** Index of a step in `GET_STARTED_STEPS`. */
 export function stepIndex(key: GetStartedStepKey): number {
   return GET_STARTED_STEPS.findIndex((s) => s.key === key);
-}
-
-/**
- * The sales path (owner-decided 2026-10-01): we know the visitor wants sales, so the
- * question is what they let us do. They tick the STEPS their sales go through today
- * (drafted off the site), then the LEGS between them, and features-service ranks every
- * path those legs make by expected ROI (`GET /offers/:offerId/sales-paths`). One daily
- * budget then goes to the best path first (billing's global mode, spent by
- * campaign-service): nothing here ranks, divides or splits money.
- */
-
-/** The channels we run, with the words a visitor reads for each. */
-export const SALES_PATH_CHANNEL_LABEL: Readonly<Record<string, string>> = {
-  "sales-cold-email-outreach": "Cold email",
-  "ai-meeting-booking": "Meeting booking",
-  "ai-instant-call": "Instant call",
-};
-
-/**
- * The step every offer is ticked on, whatever the site says (owner 2026-10-03): a
- * positive reply to our cold email is the base of every sales meeting, and no website
- * can show it, so asking the site read about it dropped it on 8 drafts of 11 (Legistai
- * launched on website visits only while the reply path was ~40% cheaper per client).
- */
-export const ALWAYS_TICKED_STEP = "conversation";
-
-/** The site read that drafts the steps: ONE field, answered with step keys from the catalogue. */
-export function salesStepsDraftField(steps: ReadonlyArray<{ key: string; label: string }>): { key: "salesSteps"; description: string } {
-  const list = steps
-    .filter((s) => s.key !== ALWAYS_TICKED_STEP)
-    .map((s) => `${s.key} (${s.label})`)
-    .join(", ");
-  return {
-    key: "salesSteps",
-    description:
-      "Which of these steps does this company's sales process go through today, judging from its website (how a prospect becomes a paying client: do they book a demo or a call, sign up for a trial, fill a form, buy online, talk to a sales rep)? " +
-      "Tick purchase ONLY when the site sells online with a checkout and no sales conversation (an online shop); a payment after a signup, a trial or a call is NOT a purchase. " +
-      `Answer ONLY with keys from this list, one per line, no other words: ${list}.`,
-  };
-}
-
-/** The drafted steps, kept only when the catalogue offers them, in catalogue order. */
-export function parseDraftedSteps(value: unknown, offered: readonly string[]): string[] {
-  const raw = Array.isArray(value) ? value.map(String) : typeof value === "string" ? value.split(/[\n,]/) : [];
-  const said = new Set(
-    raw
-      .map((x) => x.trim().replace(/^[-*\s]+/, "").split(/[\s(]/)[0])
-      .filter(Boolean),
-  );
-  return offered.filter((k) => said.has(k));
-}
-
-/** The steps the screen opens ticked on: the drafted ones plus the positive reply, in catalogue order. */
-export function initialSalesSteps(drafted: unknown, offered: readonly string[]): string[] {
-  const keys = new Set(parseDraftedSteps(drafted, offered));
-  keys.add(ALWAYS_TICKED_STEP);
-  return offered.filter((k) => keys.has(k));
-}
-
-/** A campaign the sales paths use, as the campaigns step reads it off features-service. */
-export interface PlanSource {
-  featureSlug: string;
-  legKey: string;
-  /** Out of a step a lead reached (its budget is a max), not run by the daily budget. */
-  reactive: boolean;
-  /** We run this channel today. */
-  managed: boolean | undefined;
-  roi: number | null;
-}
-
-/** One campaign as the visitor sets it at the campaigns step; the launch starts the ones on. */
-export interface PlannedCampaign {
-  featureSlug: string;
-  legKey: string;
-  reactive: boolean;
-  on: boolean;
-  /** Whole dollars a day: the budget of a proactive one, the max of a reactive one. */
-  budgetUsd: number;
-}
-
-/** The identity billing and campaign-service share for one campaign of an offer. */
-export function plannedKey(c: { featureSlug: string; legKey: string }): string {
-  return `${c.featureSlug}:${canonicalLegKey(c.featureSlug, c.legKey)}`;
-}
-
-/**
- * The campaigns step as it opens (owner 2026-10-06, the dashboard's Campaigns rules): the
- * proactive campaign with the best return is on (one proactive at a time, the others off),
- * every reactive one is on (it only spends when leads reach its step). A proactive budget
- * starts on the recommended one, a reactive max on its channel's floor; neither is under
- * the floor. What the visitor already set survives a re-read. A channel we do not run is
- * left out: nothing of it can start.
- */
-export function campaignPlan(
-  served: readonly PlanSource[],
-  floorUsd: (featureSlug: string) => number,
-  recommendedUsd: number | null,
-  previous: readonly PlannedCampaign[] = [],
-): PlannedCampaign[] {
-  const held = new Map(previous.map((c) => [plannedKey(c), c]));
-  const roi = (c: PlanSource) => (c.roi == null || !Number.isFinite(c.roi) ? -Infinity : c.roi);
-  const runnable = served.filter((c) => c.managed !== false);
-  const best = runnable.filter((c) => !c.reactive).sort((a, b) => roi(b) - roi(a))[0] ?? null;
-  const keptProactiveOn = runnable.some((c) => !c.reactive && held.get(plannedKey(c))?.on);
-  const out = runnable.map((c) => {
-    const kept = held.get(plannedKey(c));
-    if (kept) return { ...kept, reactive: c.reactive };
-    const floor = floorUsd(c.featureSlug);
-    return {
-      featureSlug: c.featureSlug,
-      legKey: c.legKey,
-      reactive: c.reactive,
-      on: c.reactive ? true : !keptProactiveOn && c === best,
-      budgetUsd: c.reactive ? floor : Math.max(recommendedUsd ?? floor, floor),
-    };
-  });
-  return out.sort((a, b) => Number(a.reactive) - Number(b.reactive));
-}
-
-/** Turn one campaign on or off. A proactive one turned on takes the place of the one that was on. */
-export function setPlannedOn(plan: readonly PlannedCampaign[], key: string, on: boolean): PlannedCampaign[] {
-  const target = plan.find((c) => plannedKey(c) === key);
-  if (!target) return [...plan];
-  return plan.map((c) => {
-    if (plannedKey(c) === key) return { ...c, on };
-    if (on && !target.reactive && !c.reactive) return { ...c, on: false };
-    return c;
-  });
-}
-
-/** A typed campaign budget: whole dollars a day, at least the channel's floor. */
-export function parseCampaignBudget(input: string, floorUsd: number): { usd: number } | { problem: string } {
-  const t = input.trim().replace(/^\$/, "").replace(/,/g, "");
-  if (!/^\d+$/.test(t) || Number(t) < 1) return { problem: "Whole dollars a day." };
-  const n = Number(t);
-  if (n < floorUsd) return { problem: `At least $${Math.ceil(floorUsd)} a day.` };
-  return { usd: n };
-}
-
-/** Why the campaigns cannot start yet, or null: one proactive campaign on, every budget at its floor. */
-export function campaignPlanProblem(plan: readonly PlannedCampaign[], floorUsd: (featureSlug: string) => number): string | null {
-  if (!plan.some((c) => c.on && !c.reactive)) return "Turn on one campaign that finds new leads.";
-  const low = plan.find((c) => c.on && c.budgetUsd < floorUsd(c.featureSlug));
-  if (low) return `A budget is under its minimum of $${Math.ceil(floorUsd(low.featureSlug))} a day.`;
-  return null;
 }
 
 /** What a client is worth, drafted off the site. A key of our own: it prefills nothing stored. */
@@ -528,18 +379,10 @@ export interface GetStartedSnapshot {
   audience: GetStartedAudience | null;
   /** An email written during the preview, so the wall still shows it after the Google round trip. */
   email: GetStartedEmail | null;
-  /** The steps and legs ticked for the offer (saved on it); null until ticked. Absent on an older snapshot. */
-  salesPath?: { steps: string[]; legs: string[] } | null;
-  /** The channels ticked for the offer (saved on it); null until ticked. */
-  channels?: string[] | null;
-  /** The paths ticked (features-service combinationKeys, saved on the offer); null until ticked. */
-  selectedPaths?: string[] | null;
-  /** The ranked paths were seen and the ticked ones saved. */
-  pathsDone?: boolean;
-  /** The campaigns as set at the campaigns step; null until set. */
-  campaigns?: PlannedCampaign[] | null;
-  /** The campaigns step was confirmed. */
-  campaignsDone?: boolean;
+  /** The "Your campaign" step as typed (caps and the meeting-booking tick); null until touched. */
+  campaign?: SignupCampaignDraft | null;
+  /** The "Your campaign" step was confirmed (Launch clicked). */
+  campaignDone?: boolean;
   /** What one client is worth, whole dollars; null until answered. */
   lifetimeRevenueUsd?: number | null;
   /** Whether the offer points and the give lists were answered (and saved on the offer). */
@@ -617,40 +460,14 @@ export function parseGetStartedSnapshot(raw: string | null): GetStartedSnapshot 
     offer: parseOffer(s.offer),
     audience: parseAudience(s.audience),
     email: parseSnapshotEmail(s.email),
-    salesPath: parseSalesPath(s.salesPath),
-    channels: Array.isArray(s.channels) ? s.channels.filter((c): c is string => typeof c === "string" && c.length > 0) : null,
-    selectedPaths: Array.isArray(s.selectedPaths) ? s.selectedPaths.filter((c): c is string => typeof c === "string" && c.length > 0) : null,
-    pathsDone: s.pathsDone === true,
-    campaigns: parsePlannedCampaigns(s.campaigns),
-    campaignsDone: s.campaignsDone === true,
+    campaign: parseSignupDraft(s.campaign),
+    campaignDone: s.campaignDone === true,
     lifetimeRevenueUsd:
       typeof s.lifetimeRevenueUsd === "number" && Number.isInteger(s.lifetimeRevenueUsd) && s.lifetimeRevenueUsd > 0 ? s.lifetimeRevenueUsd : null,
     answered: s.answered === true,
     icp: typeof s.icp === "string" && s.icp.trim() ? s.icp : null,
     savedAt: typeof s.savedAt === "number" ? s.savedAt : undefined,
   };
-}
-
-function parsePlannedCampaigns(v: unknown): PlannedCampaign[] | null {
-  if (!Array.isArray(v)) return null;
-  const out: PlannedCampaign[] = [];
-  for (const x of v) {
-    if (!x || typeof x !== "object") continue;
-    const c = x as Record<string, unknown>;
-    if (typeof c.featureSlug !== "string" || typeof c.legKey !== "string") continue;
-    if (typeof c.budgetUsd !== "number" || !Number.isInteger(c.budgetUsd) || c.budgetUsd < 1) continue;
-    out.push({ featureSlug: c.featureSlug, legKey: c.legKey, reactive: c.reactive === true, on: c.on === true, budgetUsd: c.budgetUsd });
-  }
-  return out.length > 0 ? out : null;
-}
-
-function parseSalesPath(v: unknown): { steps: string[]; legs: string[] } | null {
-  if (!v || typeof v !== "object") return null;
-  const o = v as Record<string, unknown>;
-  const strs = (x: unknown) => (Array.isArray(x) ? x.filter((y): y is string => typeof y === "string" && y.length > 0) : null);
-  const steps = strs(o.steps);
-  const legs = strs(o.legs);
-  return steps && legs ? { steps, legs } : null;
 }
 
 function parseSnapshotEmail(v: unknown): GetStartedEmail | null {
@@ -692,53 +509,14 @@ export interface CampaignOutlook {
   roi: number | null;
 }
 
-type OutlookStep = { key: string; label: string };
-type OutlookLeg = { legKey: string; toStep: OutlookStep };
-type OutlookCampaign = {
-  channelSlug: string;
-  legKey: string;
-  roi: number | null;
-  outcomesForCredit?: { creditUsd: number; combinationKey: string | null; outcomes: number | null } | undefined;
-};
-
 /**
- * The wall's figures come from the campaign the visitor chose at the campaigns step
- * (owner 2026-10-06: "take the campaigns they chose"), never the fleet median: the
- * proactive one that is on, its served ROI and the served count of its outcome the
- * credit buys (features-service works it out; nothing is divided here). The outcome's
- * name is its leg's step on the path that count was read on. Null when no proactive
- * campaign is on or the producer serves nothing for it.
+ * The wall's figure comes from the campaign the visitor chose (owner 2026-10-06: "take the
+ * campaigns they chose"), never the fleet median: the picked funnel's served return, as
+ * features-service states it on the catalogue row. Null when it serves none.
  */
-export function chosenCampaignOutlook(
-  plan: ReadonlyArray<{ featureSlug: string; legKey: string; reactive: boolean; on: boolean }>,
-  campaigns: readonly OutlookCampaign[],
-  paths: ReadonlyArray<{ combinationKey: string; legs: readonly OutlookLeg[] }>,
-  creditUsd: number = MATCH_USD,
-): CampaignOutlook | null {
-  const chosen = plan.find((c) => c.on && !c.reactive);
-  if (!chosen) return null;
-  const served = campaigns.find((c) => c.channelSlug === chosen.featureSlug && sameLegKey(c.legKey, chosen.legKey));
-  if (!served) {
-    console.error("[get-started] the chosen campaign is not served", chosen);
-    return null;
-  }
-  const bought = served.outcomesForCredit ?? null;
-  if (bought && bought.creditUsd !== creditUsd) {
-    console.error("[get-started] outcomes served for another credit", { served: bought.creditUsd, creditUsd });
-  }
-  const forCredit = bought && bought.creditUsd === creditUsd ? bought : null;
-  const legOf = (key: string | null | undefined) =>
-    paths.find((p) => p.combinationKey === key)?.legs.find((l) => sameLegKey(l.legKey, chosen.legKey)) ?? null;
-  const leg = legOf(forCredit?.combinationKey) ?? paths.map((p) => p.legs.find((l) => sameLegKey(l.legKey, chosen.legKey)) ?? null).find((l) => l) ?? null;
-  if (!leg) {
-    console.error("[get-started] the chosen campaign is on no served path", chosen);
-    return null;
-  }
-  return {
-    outcome: stepPlural(leg.toStep.key, leg.toStep.label),
-    outcomes: forCredit?.outcomes != null && forCredit.outcomes >= 1 ? forCredit.outcomes : null,
-    roi: served.roi,
-  };
+export function chosenFunnelOutlook(funnel: { roi: number | null } | null): CampaignOutlook | null {
+  if (!funnel || funnel.roi == null) return null;
+  return { outcome: "Paying clients", outcomes: null, roi: funnel.roi };
 }
 
 /** The words of the wall. */
@@ -831,11 +609,6 @@ export const DEFAULT_RELOAD_THRESHOLD_USD = 10;
  * this many days (owner 2026-10-06: $24/day on $100 of credit stopped in about 4 days).
  */
 export const RELOAD_OFF_WARNING_DAYS = 30;
-
-/** What the campaigns the visitor switched on spend a day: proactive budgets only (a reactive max is a cap, not daily money). */
-export function dailySpendUsd(campaigns: readonly { on: boolean; reactive: boolean; budgetUsd: number }[]): number {
-  return campaigns.reduce((sum, c) => (c.on && !c.reactive ? sum + c.budgetUsd : sum), 0);
-}
 
 /**
  * How many whole days the credit the visitor is adding lasts at the daily budget THEY
@@ -959,11 +732,6 @@ export function previousStep(key: GetStartedStepKey): GetStartedStepKey | null {
 /** The question steps: going back reopens them to be answered again. Others are only shown. */
 export const REOPENABLE_STEPS: ReadonlySet<GetStartedStepKey> = new Set<GetStartedStepKey>([
   "value",
-  "salesSteps",
-  "legs",
-  "channels",
-  "paths",
-  "campaigns",
   "levers",
   "gives",
 ]);

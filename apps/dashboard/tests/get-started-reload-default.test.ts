@@ -1,18 +1,14 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
-import { creditRunwayDays, dailySpendUsd, RELOAD_OFF_WARNING_DAYS } from "../src/lib/v2/get-started";
+import { creditRunwayDays, RELOAD_OFF_WARNING_DAYS } from "../src/lib/v2/get-started";
+import { dailyPaceUsd } from "../src/lib/v2/signup-campaign";
 
 const read = (p: string) => readFileSync(new URL(`../${p}`, import.meta.url), "utf8");
 
 describe("onboarding credit step: automatic reload on by default, a warning before turning it off (owner 2026-10-06)", () => {
-  it("counts only switched-on proactive budgets as daily spend", () => {
-    expect(
-      dailySpendUsd([
-        { on: true, reactive: false, budgetUsd: 24 },
-        { on: true, reactive: true, budgetUsd: 10 },
-        { on: false, reactive: false, budgetUsd: 50 },
-      ]),
-    ).toBe(24);
+  it("counts the outreach max budget at its daily pace (the meeting budget only spends on replies)", () => {
+    expect(dailyPaceUsd({ budget: "24", budgetPeriod: "daily" })).toBe(24);
+    expect(dailyPaceUsd({ budget: "168", budgetPeriod: "weekly" })).toBe(24);
   });
 
   it("says how many whole days the credit lasts, null when nothing spends daily", () => {
@@ -36,8 +32,10 @@ describe("onboarding credit step: automatic reload on by default, a warning befo
       const src = read(f);
       const at = src.indexOf("<PrepaidTopup");
       expect(at).toBeGreaterThan(-1);
-      expect(src.slice(at, src.indexOf("/>", at))).toContain("dailyUsd={dailySpendUsd(campaigns)}");
+      expect(src.slice(at, src.indexOf("/>", at))).toContain("dailyUsd={dailyUsd}");
     }
+    const gs = read("src/components/v2/get-started/get-started.tsx");
+    expect(gs.match(/dailyUsd=\{dailyPaceUsd\(campaignDraft\)\}/g)?.length).toBe(2);
   });
 
   it("asks the email consent once: remembered across the Google round trip, not asked again at the credit step", () => {
@@ -50,7 +48,7 @@ describe("onboarding credit step: automatic reload on by default, a warning befo
 
   it("back from Google, a veil covers the page until the wall can open: never the email preview", () => {
     const gs = read("src/components/v2/get-started/get-started.tsx");
-    const veil = gs.indexOf("launchCampaigns.length === 0 && !catalogueFailed && pathsState !== \"failed\"");
+    const veil = gs.indexOf("!launchPlan && funnelsState !== \"failed\"");
     expect(veil).toBeGreaterThan(-1);
     expect(veil).toBeLessThan(gs.indexOf("<AccountCardWall"));
     expect(gs.slice(veil, gs.indexOf("<AccountCardWall"))).toContain("Setting up your account...");

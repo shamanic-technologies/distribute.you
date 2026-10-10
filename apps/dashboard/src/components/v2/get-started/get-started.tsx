@@ -6,8 +6,9 @@
  * Explee's order: a website, then real output one step at a time: the company read
  * and its competitors (steps 1 and 2), the ONE offer to sell (3) and the ONE audience
  * to write to (4), picked from proposals, then the first companies of that audience
- * with the right person at each (5) and the first emails (6). The account and the
- * card are asked on ONE screen at the end (the wall).
+ * with the right person at each (5) and the first emails (6). Then the END (owner sketch
+ * 2026-10-10): "Your campaign", ONE sales funnel with its caps (and, ticked, the one that
+ * books meetings on replies). Its Launch opens the account and the card on ONE screen (the wall).
  *
  * Steps 3 and 4 do not wait for the visitor: the moment the website is known, the
  * offer proposals (read off the site) and the audience proposals (from the brand's
@@ -39,21 +40,17 @@ import {
   extractBrandFields,
   getBrand,
   getAudienceCompanies,
-  getOfferSalesPaths,
   getPublicCatalogueSignedOut,
+  getSignupFunnelPages,
   listAudiences,
   listBrandOffers,
   previewColdEmail,
   prepareColdEmailPreviews,
   proposeAudienceSegments,
   proposeBrandOffers,
-  saveOfferChannels,
   saveOfferLifetimeRevenue,
-  saveOfferSalesPath,
-  saveOfferSelectedSalesPaths,
   saveOfferUserFields,
   setApiActiveOrgOverride,
-  stateBrandLegRates,
   suggestBrandIcp,
   upsertBrand,
   type AudienceCompanyRow,
@@ -64,20 +61,22 @@ import {
 import { startAnonSession } from "@/lib/anon-session-client";
 import { refusalExits, type RefusalExits } from "@/lib/claimed-signup";
 import { websiteInputProblem } from "@/lib/website-input";
-import { channelMinimumCents, channelMinimumsFromWire } from "@/lib/channel-minimums";
-import { NEW_ORG_CHANNEL_SLUG } from "@/lib/v2/new-org-wizard";
-import { EMPTY_LEG_CATALOGUE, legCatalogueFromWire, type LegCatalogue } from "@/lib/legs";
-import { SALES_PATH_CHANNEL_SLUGS, offeredFromCatalogue, salesPathLegsWire, selectionFromSteps, type SalesPathSelection } from "@/lib/offer-sales-path";
-import { roiUnavailableLabel, type OfferSalesPaths as OfferSalesPathsData, type SalesPathLeg } from "@/lib/offer-sales-paths";
-import { salesPathChannels, selectedPathKeys, type SalesPathChannel } from "@/lib/offer-active-sales-paths";
-import { campaignsOfOffer, campaignTag, type OfferCampaign } from "@/lib/offer-campaigns";
+import {
+  DEFAULT_SIGNUP_DRAFT,
+  SIGNUP_PERIODS,
+  SIGNUP_PROACTIVE_CHANNEL,
+  SIGNUP_REACTIVE_CHANNEL,
+  dailyPaceUsd,
+  estimatedLine,
+  signupFunnelsFrom,
+  signupLaunchPlan,
+  type SignupCampaignDraft,
+  type SignupFunnel,
+  type SignupPeriod,
+} from "@/lib/v2/signup-campaign";
+import { FunnelFace } from "@/components/v2/funnel-campaigns";
 import { formatRoi, roiIsGood } from "@/lib/format-roi";
-import { OfferSalesPath } from "@/components/v2/offer-sales-path";
-import { OfferSalesPaths, PathAvatar } from "@/components/v2/offer-sales-paths";
-import { CampaignLeg } from "@/components/v2/offer-campaigns";
 import { SelectCard } from "@/components/v2/select-card";
-import { AcquisitionChannelMark } from "@/components/marks/acquisition-channel-mark";
-import { channelMarkForSlug } from "@/lib/acquisition-channels";
 import {
   COMPANY_FIELDS,
   COMPETITOR_FIELDS,
@@ -94,18 +93,10 @@ import {
   NEXT_STEPS,
   OFFER_FIELDS,
   REOPENABLE_STEPS,
-  SALES_PATH_CHANNEL_LABEL,
   VALUE_FIELDS,
   leadCountLabel,
   previousStep,
-  campaignPlan,
-  campaignPlanProblem,
-  chosenCampaignOutlook,
-  parseCampaignBudget,
-  plannedKey,
-  setPlannedOn,
-  initialSalesSteps,
-  salesStepsDraftField,
+  chosenFunnelOutlook,
   answerLines,
   leversLLMPrompt,
   givesLLMPrompt,
@@ -135,16 +126,14 @@ import {
   type GiveDraftKey,
   type LeverDraftKey,
   type GetStartedStepKey,
-  type PlannedCampaign,
   type StepPhase,
   wallCopy,
 } from "@/lib/v2/get-started";
-import { Initials, Shimmer, StateDot } from "@/components/v2/ui";
+import { Initials, Shimmer } from "@/components/v2/ui";
 import { EditableAnswer } from "@/components/v2/editable-answer";
 import { OfferIcon } from "@/components/v2/new-org-icons";
 import { CountUp, Typewriter, formatElapsed, stagger, useElapsed } from "./motion";
 import { BrandLogo } from "@/components/brand-logo";
-import { pricingLegFor, recommendedBudgetForPreview, type LaunchCampaign } from "./launch";
 import { AccountCardWall } from "./account-card-wall";
 import { OrgLaunch } from "./org-launch";
 import { v2NewBrandHref } from "@/lib/v2/routes";
@@ -210,9 +199,8 @@ export function GetStarted({ org }: { org?: OrgWalk } = {}) {
   const [facts, setFacts] = useState<string[]>([]);
   const [competitors, setCompetitors] = useState<Competitor[]>([]);
   const [steps, setSteps] = useState<Record<GetStartedStepKey, StepState>>(() => initialSteps());
-  // The step and leg catalogue, and each channel's floor, off the public catalogue.
-  const [catalogue, setCatalogue] = useState<LegCatalogue>(EMPTY_LEG_CATALOGUE);
-  const [floorCents, setFloorCents] = useState<Map<string, number>>(new Map());
+  // Each channel's own one-line description (public catalogue): the line under the campaign's name.
+  const [channelLines, setChannelLines] = useState<Map<string, string>>(new Map());
   const [wallOpen, setWallOpen] = useState(false);
   const [wallNote, setWallNote] = useState<string | null>(null);
 
@@ -276,23 +264,11 @@ export function GetStarted({ org }: { org?: OrgWalk } = {}) {
   // soon as the offer is picked. The first emails wait for the answers: they are
   // written from them.
   const [valueInput, setValueInput] = useState("");
-  // The sales path: the steps their sales go through (drafted off the site), the legs
-  // between them, both saved on the offer; then the paths features-service ranks.
-  const [selection, setSelection] = useState<SalesPathSelection>({ steps: new Set(), legs: new Set() });
-  const selectionTouched = useRef(false);
-  const draftedSteps = useRef<string[] | null>(null);
-  const [salesPaths, setSalesPaths] = useState<OfferSalesPathsData | null>(null);
-  const [pathsState, setPathsState] = useState<"idle" | "loading" | "failed">("idle");
-  // The paths are read off the SAVED legs, so only once a save has landed.
-  const [legsSaved, setLegsSaved] = useState(false);
-  // As on the Sales path page: the channels the offer accepts (the ones we run, off the
-  // catalogue), the paths ticked (never ticked = the ones returning more than they cost),
-  // and the campaigns those paths use, each on or off with its budget. The first two are
-  // saved on the offer as their step is confirmed; the campaigns start at the launch.
-  const [pathChannels, setPathChannels] = useState<SalesPathChannel[]>([]);
-  const [accepted, setAccepted] = useState<ReadonlySet<string> | null>(null);
-  const [pickedPaths, setPickedPaths] = useState<ReadonlySet<string> | null>(null);
-  const [campaignRows, setCampaignRows] = useState<PlannedCampaign[]>([]);
+  // The END (owner sketch 2026-10-10): the funnels features-service proposes (the best proactive
+  // one on cold email, the meeting-booking one), and the caps as typed.
+  const [funnels, setFunnels] = useState<{ proactive: SignupFunnel | null; reactive: SignupFunnel | null } | null>(null);
+  const [funnelsState, setFunnelsState] = useState<"idle" | "loading" | "failed">("idle");
+  const [campaignDraft, setCampaignDraft] = useState<SignupCampaignDraft>(DEFAULT_SIGNUP_DRAFT);
   const [levers, setLevers] = useState<Record<LeverDraftKey, string>>(() => emptyRecord(LEVER_DRAFT_FIELDS));
   const [gives, setGives] = useState<Record<GiveDraftKey, string>>(() => emptyRecord(GIVE_DRAFT_FIELDS));
   const [drafted, setDrafted] = useState<"no" | "running" | "done" | "failed">("no");
@@ -362,49 +338,34 @@ export function GetStarted({ org }: { org?: OrgWalk } = {}) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isSignedIn]);
 
-  // The steps, the legs and each channel's floor, off the public catalogue: no session
-  // needed. Asked again on a failure (a cold gateway), then stated with a retry: the
-  // sales path screens cannot be drawn without it.
-  const [catalogueFailed, setCatalogueFailed] = useState(false);
-  async function loadCatalogue(attempts = 3) {
-    setCatalogueFailed(false);
+  // Each channel's one-line description, off the public catalogue: no session needed. A failed
+  // read leaves the campaign without its line (logged), never a line of our own.
+  useEffect(() => {
+    getPublicCatalogueSignedOut()
+      .then((cat) => setChannelLines(new Map(cat.channels.flatMap((c) => (c.shortDescription ? [[c.slug, c.shortDescription] as const] : [])))))
+      .catch((e) => console.error("[get-started] catalogue read failed:", e));
+  }, []);
+
+  // The funnels the campaign step proposes (features-service, runnable only), read once. Asked
+  // again on a failure (a cold gateway), then stated with a retry.
+  async function loadFunnels(attempts = 3) {
+    setFunnelsState("loading");
     for (let i = 0; i < attempts; i += 1) {
       try {
-        const cat = await getPublicCatalogueSignedOut();
-        const mins = channelMinimumsFromWire(cat.channels);
-        const floors = new Map<string, number>();
-        for (const ch of cat.channels) {
-          const c = channelMinimumCents(mins, ch.slug);
-          if (c != null) floors.set(ch.slug, c);
-        }
-        setFloorCents(floors);
-        // The channels step lists only the ones we run (owner 2026-10-06: no "coming soon").
-        const runnable = salesPathChannels(cat.channels).filter((c) => c.managed && !c.customerOperated);
-        setPathChannels(runnable);
-        setAccepted((cur) => cur ?? new Set(runnable.map((c) => c.slug)));
-        setCatalogue(legCatalogueFromWire(cat));
+        setFunnels(signupFunnelsFrom(await getSignupFunnelPages()));
+        setFunnelsState("idle");
         return;
       } catch (e) {
-        console.error(`[get-started] catalogue read failed (attempt ${i + 1}):`, e);
+        console.error(`[get-started] funnels read failed (attempt ${i + 1}):`, e);
         if (i < attempts - 1) await new Promise((r) => setTimeout(r, 1500 * (i + 1)));
       }
     }
-    setCatalogueFailed(true);
+    setFunnelsState("failed");
   }
   useEffect(() => {
-    void loadCatalogue();
+    void loadFunnels();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
-
-  const offered = useMemo(() => offeredFromCatalogue(catalogue, SALES_PATH_CHANNEL_SLUGS), [catalogue]);
-
-  // The drafted steps, plus the positive reply every offer gets, tick the screen once
-  // both the draft and the catalogue are in, unless the visitor already ticked something.
-  useEffect(() => {
-    if (selectionTouched.current || !draftedSteps.current || offered.legs.length === 0) return;
-    const keys = initialSalesSteps(draftedSteps.current, offered.steps);
-    if (keys.length > 0) setSelection(selectionFromSteps(keys, offered.legs));
-  }, [offered, drafted]);
 
   // A website carried from a link starts the walk at once, like Explee's hero.
   useEffect(() => {
@@ -426,14 +387,7 @@ export function GetStarted({ org }: { org?: OrgWalk } = {}) {
     setOffer(s.offer);
     setAudience(s.audience);
     if (s.email) setRestoredEmail(s.email);
-    if (s.salesPath) {
-      selectionTouched.current = true;
-      setLegsSaved(true);
-      setSelection({ steps: new Set(s.salesPath.steps), legs: new Set(s.salesPath.legs) });
-    }
-    if (s.channels) setAccepted(new Set(s.channels));
-    if (s.selectedPaths) setPickedPaths(new Set(s.selectedPaths));
-    if (s.campaigns) setCampaignRows(s.campaigns);
+    if (s.campaign) setCampaignDraft(s.campaign);
     if (s.lifetimeRevenueUsd != null) setValueInput(String(s.lifetimeRevenueUsd));
     setAnswered(!!s.answered);
     if (s.icp) icpRef.current = s.icp;
@@ -445,15 +399,12 @@ export function GetStarted({ org }: { org?: OrgWalk } = {}) {
       offer: s.offer ? "done" : "failed",
       audience: s.audience ? "done" : "failed",
       value: s.lifetimeRevenueUsd != null ? "done" : "failed",
-      salesSteps: s.salesPath ? "done" : "failed",
-      legs: s.salesPath ? "done" : "failed",
-      channels: s.channels ? "done" : "failed",
-      paths: s.pathsDone ? "done" : "failed",
-      campaigns: s.campaignsDone ? "done" : "failed",
       levers: s.answered ? "done" : "failed",
       gives: s.answered ? "done" : "failed",
       companies: s.audience ? "running" : "failed",
       email: s.email ? "done" : "failed",
+      // Opened again from the email step (or straight away when it was confirmed).
+      campaign: s.campaignDone ? "done" : s.answered && s.audience ? "choose" : "waiting",
     };
     setSteps(restored);
     setStageIdx(firstOpenStepIndex(GET_STARTED_STEPS.map((st) => restored[st.key])));
@@ -486,10 +437,10 @@ export function GetStarted({ org }: { org?: OrgWalk } = {}) {
   // The question steps' drafts, read again once the catalogue is in (a resumed walk
   // whose offer was picked but whose answers were not all given).
   useEffect(() => {
-    if (!resumed.current || !brandId || !offer || answered || drafted !== "no" || offered.steps.length === 0) return;
+    if (!resumed.current || !brandId || !offer || answered || drafted !== "no") return;
     void draftAnswers(brandId, offer.offerId);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [brandId, offer?.offerId, answered, drafted, offered]);
+  }, [brandId, offer?.offerId, answered, drafted]);
 
   function saveSnapshot(patch: Partial<GetStartedSnapshot>) {
     const base = snapRef.current;
@@ -632,20 +583,8 @@ export function GetStarted({ org }: { org?: OrgWalk } = {}) {
   async function draftAnswers(id: string, offerId: string) {
     setDrafted("running");
     try {
-      const stepsField = offered.steps.length
-        ? [
-            salesStepsDraftField(
-              offered.steps.map((k) => {
-                const st = catalogue.steps.get(k);
-                return { key: k, label: st?.description ? `${st.label}: ${st.description}` : st?.label ?? k };
-              }),
-            ),
-          ]
-        : [];
-      const fields = [...VALUE_FIELDS, ...stepsField, ...LEVER_DRAFT_FIELDS, ...GIVE_DRAFT_FIELDS, SERVICES_DRAFT_FIELD].map((f) => ({ key: f.key, description: f.description }));
+      const fields = [...VALUE_FIELDS, ...LEVER_DRAFT_FIELDS, ...GIVE_DRAFT_FIELDS, SERVICES_DRAFT_FIELD].map((f) => ({ key: f.key, description: f.description }));
       const r = await extractBrandFields([id], fields, { mode: "suggest", urlStrategy: "landing", offerId });
-      const said = r.fields.salesSteps?.value;
-      draftedSteps.current = Array.isArray(said) ? said.map(String) : typeof said === "string" ? said.split("\n") : [];
       const usd = parseUsdEstimate(r.fields.clientLifetimeRevenueUsd?.value);
       setValueInput((cur) => cur || (usd != null ? String(usd) : ""));
       setLevers((cur) => fillBlank(cur, LEVER_DRAFT_FIELDS, (k) => valueLines(r.fields[k]?.value).join("\n")));
@@ -661,8 +600,6 @@ export function GetStarted({ org }: { org?: OrgWalk } = {}) {
       }
     } catch (e) {
       console.error("[get-started] answer drafts failed:", e);
-      // No draft, but the positive reply is still ticked (it never came from the site).
-      draftedSteps.current = [];
       setDrafted("failed");
     }
   }
@@ -678,161 +615,43 @@ export function GetStarted({ org }: { org?: OrgWalk } = {}) {
         next[k] = needsDraft && !ready ? "running" : "choose";
       };
       open("value", cur.audience === "done", true);
-      open("salesSteps", cur.value === "done", true);
-      open("legs", cur.salesSteps === "done", false);
-      open("channels", cur.legs === "done", false);
-      // The paths and the campaigns are features-service's answer over what was saved: each
-      // waits for its re-read after the step before it is confirmed.
-      const ranked = salesPaths ? "choose" : pathsState === "failed" ? "failed" : "running";
-      if (next.paths !== "done" && cur.channels === "done") next.paths = ranked;
-      if (next.campaigns !== "done" && cur.paths === "done") next.campaigns = ranked;
-      open("levers", cur.campaigns === "done", true);
+      open("levers", cur.value === "done", true);
       open("gives", cur.levers === "done", true);
       return JSON.stringify(next) === JSON.stringify(cur) ? cur : next;
     });
-  }, [drafted, steps.audience, steps.value, steps.salesSteps, steps.legs, steps.channels, steps.paths, steps.campaigns, steps.levers, salesPaths, pathsState]);
-
-  /** Saves the ticked steps and legs on the offer (brand-service replaces the whole selection). */
-  async function saveSelection(next: SalesPathSelection, done: GetStartedStepKey) {
-    if (!brandId) return;
-    setAnswerError(null);
-    advance(done);
-    try {
-      const o = await ensureOffer();
-      await saveOfferSalesPath(brandId, o.offerId, [...next.steps], salesPathLegsWire(next.legs, offered.channelsByLeg, offered.legs));
-      saveSnapshot({ salesPath: { steps: [...next.steps], legs: [...next.legs] } });
-      posthog.capture(done === "salesSteps" ? "get_started_steps_ticked" : "get_started_legs_ticked", {
-        steps: next.steps.size,
-        legs: next.legs.size,
-      });
-      // The paths are re-ranked off what was just saved.
-      setSalesPaths(null);
-      setPathsState("idle");
-      if (done === "legs") setLegsSaved(true);
-    } catch (e) {
-      console.error("[get-started] sales path save failed:", e);
-      reopen(done, "We could not save this. Try again.");
-    }
-  }
+  }, [drafted, steps.audience, steps.value, steps.levers]);
 
   /**
-   * Every path the saved legs and channels make, ranked by features-service on expected
-   * ROI, with the campaigns the ticked paths use (the Sales path page's read). The campaigns
-   * step opens on the best proactive one, its budget priced the way the "Add a brand"
-   * modal prices one; what the visitor already set is kept.
+   * The END: the campaign step on the stage (from the email step's button, or the banner). It
+   * waits on nothing the visitor did: the funnels are read on load.
    */
-  async function loadPaths() {
-    if (!brandId || !offer) return;
-    setPathsState("loading");
-    try {
-      const data = await getOfferSalesPaths(brandId, offer.offerId, "catalogue");
-      setPickedPaths((cur) => cur ?? selectedPathKeys({ offerId: offer.offerId, stated: false, combinationKeys: null, statedAt: null }, data.paths));
-      const served = campaignsOfOffer(data.campaigns ?? [], data.paths, roiUnavailableLabel);
-      const best = [...served].filter((c) => !c.reactive && c.managed !== false).sort((a, b) => (b.roi ?? -Infinity) - (a.roi ?? -Infinity))[0];
-      const leg = best && best.featureSlug === NEW_ORG_CHANNEL_SLUG ? pricingLegFor(best.legKey) : null;
-      const recommended = leg
-        ? await recommendedBudgetForPreview(brandId, offer.offerId, floorFor(NEW_ORG_CHANNEL_SLUG), leg).catch((e) => {
-            console.error("[get-started] price read failed:", e);
-            return null;
-          })
-        : null;
-      setCampaignRows((cur) => campaignPlan(served, floorFor, recommended, cur));
-      setSalesPaths(data);
-      setPathsState("idle");
-    } catch (e) {
-      console.error("[get-started] sales paths read failed:", e);
-      setPathsState("failed");
-    }
+  function openCampaign() {
+    withStageTransition(() => {
+      setSteps((cur) => (cur.campaign === "done" ? cur : { ...cur, campaign: "choose" }));
+      setFocus(null);
+      setStageIdx(stepIndex("campaign"));
+    });
   }
 
-  /**
-   * A channel's smallest daily budget, whole dollars (billing refuses less). A channel the
-   * catalogue publishes no floor for asks a whole dollar, and billing judges the write.
-   */
-  function floorFor(featureSlug: string): number {
-    const cents = floorCents.get(featureSlug);
-    return cents == null ? 1 : Math.ceil(cents / 100);
-  }
-
-  // The paths are read once the legs are saved (and again on a restored walk).
-  useEffect(() => {
-    if (brandId && offer && legsSaved && !salesPaths && pathsState === "idle") void loadPaths();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [brandId, offer?.offerId, legsSaved, salesPaths, pathsState]);
-
-  /** A rate overwritten from a path's detail: the brand's own rate for the leg, then the paths re-ranked. */
-  async function stateLegRate(leg: SalesPathLeg, ratePct: number | null) {
-    if (!brandId || !leg.fromStep) return;
-    await stateBrandLegRates(brandId, [{ fromStep: leg.fromStep.label, toStep: leg.toStep.label, ratePct }]);
-    posthog.capture("get_started_rate_stated", { leg: leg.legKey, cleared: ratePct == null });
-    await loadPaths();
-  }
-
-  /** What a client is worth, changed from a path's detail: saved on the offer, then the paths re-ranked. */
-  async function stateLifetimeRevenue(usd: number) {
-    if (!brandId) return;
-    const o = await ensureOffer();
-    await saveOfferLifetimeRevenue(brandId, o.offerId, usd);
-    setValueInput(String(usd));
-    saveSnapshot({ lifetimeRevenueUsd: usd });
-    await loadPaths();
-  }
-
-  /** Step: the channels the offer accepts, saved on it; the paths are re-ranked off them. */
-  async function confirmChannels() {
-    if (!brandId || !accepted) return;
+  function changeCampaign(next: SignupCampaignDraft) {
+    setCampaignDraft(next);
     setAnswerError(null);
-    advance("channels");
-    try {
-      const o = await ensureOffer();
-      await saveOfferChannels(brandId, o.offerId, [...accepted]);
-      saveSnapshot({ channels: [...accepted] });
-      posthog.capture("get_started_channels_ticked", { channels: accepted.size });
-      // Other channels make other paths: the ticks start again from the ranking.
-      setPickedPaths(null);
-      setSalesPaths(null);
-      setPathsState("idle");
-    } catch (e) {
-      console.error("[get-started] channels save failed:", e);
-      reopen("channels", "We could not save this. Try again.");
-    }
+    saveSnapshot({ campaign: next });
   }
 
-  /** Step: the paths ticked, saved on the offer; the campaigns they use are read again. */
-  async function confirmPaths() {
-    if (!brandId || !pickedPaths) return;
-    setAnswerError(null);
-    advance("paths");
-    try {
-      const o = await ensureOffer();
-      await saveOfferSelectedSalesPaths(brandId, o.offerId, [...pickedPaths]);
-      saveSnapshot({ pathsDone: true, selectedPaths: [...pickedPaths] });
-      posthog.capture("get_started_paths_seen", { paths: salesPaths?.paths.length ?? 0, ticked: pickedPaths.size });
-      setSalesPaths(null);
-      setPathsState("idle");
-    } catch (e) {
-      console.error("[get-started] sales paths save failed:", e);
-      reopen("paths", "We could not save this. Try again.");
-    }
-  }
-
-  /** Step: the campaigns set; they start once the credit is added. */
-  function confirmCampaigns() {
-    const problem = campaignPlanProblem(campaignRows, floorFor);
-    if (problem) {
-      setAnswerError(problem);
+  /** Launch: the caps are checked here, written at the launch (after the card), then the wall. */
+  function confirmCampaign() {
+    const r = signupLaunchPlan(campaignDraft, funnels ?? { proactive: null, reactive: null });
+    if ("problem" in r) {
+      setAnswerError(r.problem);
       return;
     }
     setAnswerError(null);
-    advance("campaigns");
-    saveSnapshot({ campaigns: campaignRows, campaignsDone: true });
-    posthog.capture("get_started_campaigns_set", { on: campaignRows.filter((c) => c.on).length });
-  }
-
-  function changeCampaigns(next: PlannedCampaign[]) {
-    setCampaignRows(next);
-    setAnswerError(null);
-    saveSnapshot({ campaigns: next });
+    setStep("campaign", "done");
+    saveSnapshot({ campaign: campaignDraft, campaignDone: true });
+    posthog.capture("get_started_campaign_set", { funnel: r.plan.proactive.name, meetings: !!r.plan.reactive });
+    setWallNote(null);
+    setWallOpen(true);
   }
 
   /** Step 6: what one client is worth, saved on the offer. */
@@ -1415,22 +1234,14 @@ export function GetStarted({ org }: { org?: OrgWalk } = {}) {
     posthog.capture("get_started_preview_ready");
   }
 
-  // The campaigns as features-service names them (the step draws them, the launch names them).
-  const servedCampaigns = useMemo(
-    () => new Map(campaignsOfOffer(salesPaths?.campaigns ?? [], salesPaths?.paths ?? [], roiUnavailableLabel).map((c) => [plannedKey(c), c])),
-    [salesPaths],
-  );
-  const launchCampaigns = useMemo<LaunchCampaign[]>(
-    () =>
-      campaignRows.flatMap((c) => {
-        const served = servedCampaigns.get(plannedKey(c));
-        if (!served) return [];
-        return [{ ...c, label: SALES_PATH_CHANNEL_LABEL[c.featureSlug] ?? served.channelName, outcome: served.toLabel }];
-      }),
-    [campaignRows, servedCampaigns],
-  );
-  const canLaunch =
-    started && !!brandId && !!offer && !!audience && steps.campaigns === "done" && launchCampaigns.some((c) => c.on && !c.reactive) && answered;
+  // The campaign step opens once the preview is complete (offer, audience, answers); its Launch
+  // opens the wall on the plan it checked.
+  const readyForCampaign = started && !!brandId && !!offer && !!audience && answered;
+  const launchPlan = useMemo(() => {
+    const r = signupLaunchPlan(campaignDraft, funnels ?? { proactive: null, reactive: null });
+    return "plan" in r ? r.plan : null;
+  }, [campaignDraft, funnels]);
+  const canLaunch = readyForCampaign && steps.campaign === "done" && !!launchPlan;
   const current = useMemo(() => GET_STARTED_STEPS.findIndex((s) => steps[s.key] === "running"), [steps]);
 
   const orgBar = org ? <OrgBar orgId={org.orgId} snapshotKey={snapshotKey} started={started} /> : null;
@@ -1461,13 +1272,9 @@ export function GetStarted({ org }: { org?: OrgWalk } = {}) {
     offer: "Pick the offer to sell first.",
     audience: "Pick who to write to first.",
     value: "Tell us what one client is worth.",
-    salesSteps: "Tick the steps your sales go through today.",
-    legs: "Tick how your leads move from one step to the next.",
-    channels: "Tick the channels we may use.",
-    paths: "Tick the sales paths to run.",
-    campaigns: "Turn on your campaigns and set their budgets.",
     levers: "Check your offer, then continue.",
     gives: "Say what you give away, then we write the emails.",
+    campaign: "Set your budget, then launch.",
   };
   const pick = steps[stagedKey] === "choose" ? PICK_LINES[stagedKey] ?? null : null;
   const journal: JournalData = {
@@ -1486,11 +1293,10 @@ export function GetStarted({ org }: { org?: OrgWalk } = {}) {
     audienceBusy,
     rows: audRows,
     written: writtenCount,
-    stepCount: selection.steps.size,
-    legCount: selection.legs.size,
-    channelCount: accepted?.size ?? 0,
-    pathCount: pickedPaths?.size ?? 0,
-    campaignCount: campaignRows.filter((c) => c.on).length,
+    campaignLine:
+      steps.campaign === "done" && funnels?.proactive
+        ? `${funnels.proactive.name}, $${campaignDraft.budget.trim()} a ${SIGNUP_PERIODS.find((p) => p.key === campaignDraft.budgetPeriod)?.label ?? "day"}`
+        : null,
     lifetimeRevenue: valueInput,
     leverCount: LEVER_DRAFT_FIELDS.filter((f) => answerLines(levers[f.key]).length > 0).length,
     giveCount: answerLines(gives.giveForFree).length,
@@ -1529,80 +1335,19 @@ export function GetStarted({ org }: { org?: OrgWalk } = {}) {
           onRetry={() => brandId && offer && void prepareAudiences(brandId, offer.offerId)}
         />
       );
-    if (key === "salesSteps" || key === "legs")
+    if (key === "campaign")
       return (
-        <SalesPathStage
-          part={key === "salesSteps" ? "steps" : "legs"}
-          state={steps[key]}
-          catalogue={catalogue}
-          catalogueFailed={catalogueFailed}
-          onRetryCatalogue={() => void loadCatalogue()}
-          selection={selection}
-          drafted={key === "salesSteps" && !!draftedSteps.current?.length}
-          onChange={(next) => {
-            selectionTouched.current = true;
-            setSelection(next);
-            setAnswerError(null);
-          }}
-          busy={answerBusy}
-          error={steps[key] === "choose" ? answerError : null}
-          onContinue={() => void saveSelection(selection, key)}
-        />
-      );
-    if (key === "channels")
-      return (
-        <ChannelsStage
-          state={steps.channels}
-          channels={pathChannels}
-          accepted={accepted}
-          onToggle={(slug, on) => {
-            setAccepted((cur) => {
-              const next = new Set(cur ?? []);
-              if (on) next.add(slug);
-              else next.delete(slug);
-              return next;
-            });
-            setAnswerError(null);
-          }}
-          error={steps.channels === "choose" ? answerError : null}
-          onContinue={() => void confirmChannels()}
-        />
-      );
-    if (key === "paths")
-      return (
-        <PathsStage
-          state={steps.paths}
-          data={salesPaths}
-          loading={pathsState === "loading"}
-          failed={pathsState === "failed"}
-          selected={pickedPaths}
-          onToggle={(k, on) =>
-            setPickedPaths((cur) => {
-              const next = new Set(cur ?? []);
-              if (on) next.add(k);
-              else next.delete(k);
-              return next;
-            })
-          }
-          error={steps.paths === "choose" ? answerError : null}
-          onRetry={() => void loadPaths()}
-          onStateRate={stateLegRate}
-          onStateLifetimeRevenue={stateLifetimeRevenue}
-          onContinue={() => void confirmPaths()}
-        />
-      );
-    if (key === "campaigns")
-      return (
-        <CampaignsStage
-          state={steps.campaigns}
-          rows={campaignRows}
-          served={servedCampaigns}
-          failed={pathsState === "failed"}
-          floorFor={floorFor}
-          onChange={changeCampaigns}
-          error={steps.campaigns === "choose" ? answerError : null}
-          onRetry={() => void loadPaths()}
-          onContinue={confirmCampaigns}
+        <CampaignStage
+          state={steps.campaign}
+          funnels={funnels}
+          failed={funnelsState === "failed"}
+          loading={funnelsState === "loading"}
+          lineOf={(slug) => channelLines.get(slug) ?? null}
+          draft={campaignDraft}
+          onChange={changeCampaign}
+          error={steps.campaign === "choose" ? answerError : null}
+          onRetry={() => void loadFunnels()}
+          onLaunch={confirmCampaign}
         />
       );
     if (key === "value")
@@ -1682,7 +1427,7 @@ export function GetStarted({ org }: { org?: OrgWalk } = {}) {
   return (
     <div className="k-canvas min-h-[100dvh] lg:flex lg:h-[100dvh] lg:flex-col">
       {orgBar}
-      {canLaunch && (
+      {readyForCampaign && (
         <div className="gs-down sticky top-0 z-20 border-b border-[var(--line-subtle)] bg-[var(--bg-raised)] lg:static">
           <div className="flex items-center gap-3 px-4 py-3 sm:gap-4 sm:px-6">
             <span className="gs-pop hidden sm:inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-[var(--accent-soft)] text-[16px]" style={{ animationDelay: "200ms" }} aria-hidden="true">
@@ -1707,6 +1452,7 @@ export function GetStarted({ org }: { org?: OrgWalk } = {}) {
               type="button"
               className="k-btn-accent gs-glow h-8 px-3"
               onClick={() => {
+                if (!canLaunch) return openCampaign();
                 setWallNote(null);
                 setWallOpen(true);
               }}
@@ -1740,17 +1486,10 @@ export function GetStarted({ org }: { org?: OrgWalk } = {}) {
               <BackContext.Provider value={previousStep(stagedKey) ? () => goBack(stagedKey) : null}>{stageFor(stagedKey)}</BackContext.Provider>
             </div>
 
-            {canLaunch && stagedKey === "email" && (
+            {readyForCampaign && stagedKey === "email" && (
               <div className="gs-in mt-6 flex justify-end" style={{ animationDelay: "200ms" }}>
-                <button
-                  type="button"
-                  className="k-btn-accent h-9 px-4"
-                  onClick={() => {
-                    setWallNote(null);
-                    setWallOpen(true);
-                  }}
-                >
-                  {org ? "Launch" : wall.bannerCta}
+                <button type="button" className="k-btn-accent h-9 px-4" onClick={openCampaign}>
+                  Set up my campaign
                 </button>
               </div>
             )}
@@ -1758,7 +1497,7 @@ export function GetStarted({ org }: { org?: OrgWalk } = {}) {
         </main>
       </div>
 
-      {wallOpen && brandId && offer && audience && launchCampaigns.length > 0 && org && (
+      {wallOpen && brandId && offer && audience && launchPlan && org && (
         <OrgLaunch
           orgId={org.orgId}
           brandId={brandId}
@@ -1766,17 +1505,18 @@ export function GetStarted({ org }: { org?: OrgWalk } = {}) {
           offer={offer}
           targetAudience={icpRef.current}
           note={wallNote}
-          campaigns={launchCampaigns}
+          plan={launchPlan}
+          dailyUsd={dailyPaceUsd(campaignDraft)}
           answered={answered}
           snapshotKey={snapshotKey}
           onClose={() => setWallOpen(false)}
         />
       )}
-      {/* Back from Google (`resume=1`): the wall waits on the sales paths read to name
-          the campaigns. Until then a plain veil, never the email preview behind it
-          (owner 2026-10-06: "it sends me back to the email check"). A failed
-          read drops the veil: the page states it with its retry. */}
-      {wallOpen && !org && brandId && offer && audience && launchCampaigns.length === 0 && !catalogueFailed && pathsState !== "failed" && (
+      {/* Back from Google (`resume=1`): the wall waits on the funnels read to name the
+          campaign. Until then a plain veil, never the email preview behind it (owner
+          2026-10-06: "it sends me back to the email check"). A failed read drops the
+          veil: the page states it with its retry. */}
+      {wallOpen && !org && brandId && offer && audience && !launchPlan && funnelsState !== "failed" && (
         <div
           role="status"
           className="v2-root gs-scrim fixed inset-0 z-[60] flex items-center justify-center bg-[color-mix(in_oklab,var(--bg-canvas)_35%,transparent)] backdrop-blur-[6px]"
@@ -1789,7 +1529,7 @@ export function GetStarted({ org }: { org?: OrgWalk } = {}) {
           </div>
         </div>
       )}
-      {wallOpen && brandId && offer && audience && launchCampaigns.length > 0 && !org && (
+      {wallOpen && brandId && offer && audience && launchPlan && !org && (
         <AccountCardWall
           brandId={brandId}
           website={websiteUrl(website)}
@@ -1799,8 +1539,9 @@ export function GetStarted({ org }: { org?: OrgWalk } = {}) {
           targetAudience={icpRef.current}
           note={wallNote}
           email={(selectedKey ? emails[selectedKey] : undefined) ?? firstWritten(emails, audience.audienceId) ?? restoredEmail}
-          campaigns={launchCampaigns}
-          outlook={chosenCampaignOutlook(campaignRows, salesPaths?.campaigns ?? [], salesPaths?.paths ?? [])}
+          plan={launchPlan}
+          dailyUsd={dailyPaceUsd(campaignDraft)}
+          outlook={chosenFunnelOutlook(funnels?.proactive ?? null)}
           answered={answered}
           onClose={() => setWallOpen(false)}
         />
@@ -1816,15 +1557,11 @@ function initialSteps(): Record<GetStartedStepKey, StepState> {
     offer: "waiting",
     audience: "waiting",
     value: "waiting",
-    salesSteps: "waiting",
-    legs: "waiting",
-    channels: "waiting",
-    paths: "waiting",
-    campaigns: "waiting",
     levers: "waiting",
     gives: "waiting",
     companies: "waiting",
     email: "waiting",
+    campaign: "waiting",
   };
 }
 
@@ -2126,15 +1863,11 @@ const STATUS: Record<GetStartedStepKey, (domain: string | null) => string> = {
   offer: () => "Reading what you sell",
   audience: () => "Working out who to write to",
   value: () => "Estimating what a client is worth to you",
-  salesSteps: () => "Reading how your sales work today",
-  legs: () => "Saving your sales steps",
-  channels: () => "Saving your sales steps",
-  paths: () => "Ranking every way your sales can run",
-  campaigns: () => "Reading the campaigns your sales paths use",
   levers: () => "Drafting your offer from your site",
   gives: () => "Drafting what you could give away",
   companies: () => "Finding companies that match, with the right person at each",
   email: () => "Writing your first emails. The first one takes about a minute and a half.",
+  campaign: () => "Picking the campaign with the best return",
 };
 
 /**
@@ -2412,398 +2145,190 @@ function OfferStage({
   );
 }
 
-/** The step and leg screens of the sales path: the shared picker, one part per screen. */
-function SalesPathStage({
-  part,
-  state,
-  catalogue,
-  catalogueFailed,
-  onRetryCatalogue,
-  selection,
-  drafted,
-  onChange,
-  busy,
-  error,
-  onContinue,
+/** One amount and its period, as the sketch draws it: "[$ 20 ] per [day v]". */
+function CapField({
+  prefix,
+  value,
+  period,
+  onValue,
+  onPeriod,
+  placeholder,
+  unit,
+  label,
+  disabled,
 }: {
-  part: "steps" | "legs";
-  state: StepState;
-  catalogue: LegCatalogue;
-  catalogueFailed: boolean;
-  onRetryCatalogue: () => void;
-  selection: SalesPathSelection;
-  drafted: boolean;
-  onChange: (next: SalesPathSelection) => void;
-  busy: boolean;
-  error: string | null;
-  onContinue: () => void;
+  prefix?: string;
+  value: string;
+  period: SignupPeriod;
+  onValue: (v: string) => void;
+  onPeriod: (p: SignupPeriod) => void;
+  placeholder?: string;
+  /** The words between the amount and "per" ("new people"). */
+  unit?: string;
+  label: string;
+  disabled: boolean;
 }) {
-  const done = state === "done";
-  const key = part === "steps" ? "salesSteps" : "legs";
-  const channelNames = useMemo(() => new Map(SALES_PATH_CHANNEL_SLUGS.map((s) => [s, SALES_PATH_CHANNEL_LABEL[s] ?? s])), []);
-  const empty = part === "steps" ? selection.steps.size === 0 : selection.legs.size === 0;
-  const label = (k: string | null) => (k ? catalogue.steps.get(k)?.label ?? k : "Start");
   return (
-    <StepCard
-      index={stepIndex(key) + 1}
-      title={part === "steps" ? "Your sales steps" : "How leads move"}
-      state={state}
-      footer={
-        !done && state === "choose" && catalogue.legs.size > 0 ? (
-          <button type="button" className="k-btn-accent h-9 px-4" onClick={onContinue} disabled={busy || empty}>
-            {busy ? "Saving..." : "Continue"}
-          </button>
-        ) : null
-      }
-      meta={<StateWord state={state} doneLabel={part === "steps" ? `${selection.steps.size} steps` : `${selection.legs.size} ways`} />}
-    >
-      {catalogueFailed && catalogue.legs.size === 0 && state !== "waiting" ? (
-        <div className="flex flex-wrap items-center gap-3">
-          <p className="k-fg2 text-[13px]">We could not load the sales steps just now.</p>
-          <button type="button" className="k-btn h-8 px-3" onClick={onRetryCatalogue}>
-            Try again
-          </button>
-        </div>
-      ) : state === "waiting" || state === "running" || catalogue.legs.size === 0 ? (
-        <OptionSkeleton />
-      ) : done ? (
-        <ul className="flex flex-wrap gap-1.5">
-          {part === "steps"
-            ? [...selection.steps].map((s) => (
-                <li key={s} className="k-chip">
-                  {label(s)}
-                </li>
-              ))
-            : [...catalogue.legs.values()]
-                .filter((l) => selection.legs.has(l.legKey))
-                .map((l) => (
-                  <li key={l.legKey} className="k-chip">
-                    {label(l.fromKey)} → {label(l.toKey)}
-                  </li>
-                ))}
-        </ul>
-      ) : (
-        <>
-          <p className="k-fg2 mb-3 text-[13px]">
-            {part === "steps"
-              ? "Which steps do your sales go through today?"
-              : "How do leads move from one step to the next?"}
-          </p>
-          <OfferSalesPath
-            catalogue={catalogue}
-            channelNames={channelNames}
-            selection={selection}
-            onChange={onChange}
-            part={part}
-            bare
-          />
-          {error && <p className="mt-2 text-[12px] text-[var(--data-rose)]">{error}</p>}
-        </>
-      )}
-    </StepCard>
-  );
-}
-
-/** The channels the offer accepts: only the ones we run (owner 2026-10-06), as on the Sales path page. */
-export function ChannelsStage({
-  state,
-  channels,
-  accepted,
-  onToggle,
-  error,
-  onContinue,
-}: {
-  state: StepState;
-  channels: readonly SalesPathChannel[];
-  accepted: ReadonlySet<string> | null;
-  onToggle: (slug: string, on: boolean) => void;
-  error: string | null;
-  onContinue: () => void;
-}) {
-  const done = state === "done";
-  const ticked = channels.filter((c) => accepted?.has(c.slug));
-  return (
-    <StepCard
-      index={stepIndex("channels") + 1}
-      title="Your channels"
-      state={state}
-      meta={<StateWord state={state} doneLabel={ticked.length === 1 ? "1 channel" : `${ticked.length} channels`} />}
-      footer={
-        !done && state === "choose" ? (
-          <button type="button" className="k-btn-accent h-9 px-4" onClick={onContinue} disabled={ticked.length === 0}>
-            Continue
-          </button>
-        ) : null
-      }
-    >
-      {state === "waiting" || state === "running" || channels.length === 0 || !accepted ? (
-        <OptionSkeleton />
-      ) : done ? (
-        <ul className="flex flex-wrap gap-1.5">
-          {ticked.map((c) => (
-            <li key={c.slug} className="k-chip">
-              {c.name}
-            </li>
-          ))}
-        </ul>
-      ) : (
-        <>
-          <p className="k-fg2 mb-3 text-[13px]">Which channels may we use?</p>
-          <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
-            {channels.map((c) => {
-              const on = accepted.has(c.slug);
-              return (
-                <SelectCard
-                  key={c.slug}
-                  on={on}
-                  onClick={() => onToggle(c.slug, !on)}
-                  mark={<AcquisitionChannelMark def={{ mark: channelMarkForSlug(c.slug) }} size="xs" dimmed={!on} />}
-                  title={c.name}
-                  sub={c.shortDescription}
-                  wrapSub
-                />
-              );
-            })}
-          </div>
-          {error && <p className="mt-2 text-[12px] text-[var(--data-rose)]">{error}</p>}
-        </>
-      )}
-    </StepCard>
-  );
-}
-
-/** Every path the ticked legs and channels make, best return first, ticked as on the Sales path page. */
-export function PathsStage({
-  state,
-  data,
-  loading,
-  failed,
-  selected,
-  onToggle,
-  error,
-  onRetry,
-  onStateRate,
-  onStateLifetimeRevenue,
-  onContinue,
-}: {
-  state: StepState;
-  data: OfferSalesPathsData | null;
-  loading: boolean;
-  failed: boolean;
-  selected: ReadonlySet<string> | null;
-  onToggle: (combinationKey: string, on: boolean) => void;
-  error: string | null;
-  onRetry: () => void;
-  onStateRate: (leg: SalesPathLeg, ratePct: number | null) => Promise<void>;
-  onStateLifetimeRevenue: (usd: number) => Promise<void>;
-  onContinue: () => void;
-}) {
-  const done = state === "done";
-  const count = selected?.size ?? 0;
-  return (
-    <StepCard
-      index={stepIndex("paths") + 1}
-      title="Your sales paths"
-      state={state}
-      meta={<StateWord state={state} doneLabel={count === 1 ? "1 path" : `${count} paths`} />}
-      footer={
-        !done && state === "choose" ? (
-          <>
-            {data && count === 0 && <span className="k-fg3 text-[12px]">Tick at least one path.</span>}
-            <button type="button" className="k-btn-accent h-9 px-4" onClick={onContinue} disabled={count === 0}>
-              Continue
-            </button>
-          </>
-        ) : null
-      }
-    >
-      {state === "waiting" ? (
-        <OptionSkeleton />
-      ) : (
-        <>
-          <p className="k-fg2 mb-3 text-[13px] leading-5">Which ways to a paying client should we run? Best return first.</p>
-          <OfferSalesPaths
-            data={data ?? undefined}
-            pending={(loading || state === "running") && !data}
-            failed={failed}
-            gainHeadline
-            intro=""
-            bare
-            selected={selected ?? undefined}
-            onToggleSelected={done ? undefined : onToggle}
-            onStateRate={done ? undefined : onStateRate}
-            onStateLifetimeRevenue={done ? undefined : onStateLifetimeRevenue}
-          />
-          <p className="k-fg3 mt-3 text-[12px] leading-5">Ranked from your conversion rates. It moves as your results come in.</p>
-          {error && <p className="mt-2 text-[12px] text-[var(--data-rose)]">{error}</p>}
-          {failed && (
-            <button type="button" className="k-btn mt-2 h-8 px-3" onClick={onRetry}>
-              Try again
-            </button>
-          )}
-        </>
-      )}
-    </StepCard>
+    <span className="inline-flex flex-wrap items-center gap-1.5 text-[13px]">
+      {prefix && <span className="k-fg2">{prefix}</span>}
+      <input
+        className="k-input w-24 text-right tabular-nums"
+        style={{ font: "inherit", paddingRight: 8 }}
+        inputMode="numeric"
+        value={value}
+        placeholder={placeholder}
+        disabled={disabled}
+        aria-label={label}
+        onChange={(e) => onValue(e.target.value)}
+      />
+      {unit && <span className="k-fg2">{unit}</span>}
+      <span className="k-fg2">per</span>
+      <select
+        className="k-input w-auto pr-6"
+        style={{ font: "inherit" }}
+        value={period}
+        disabled={disabled}
+        aria-label={`${label}: period`}
+        onChange={(e) => onPeriod(e.target.value as SignupPeriod)}
+      >
+        {SIGNUP_PERIODS.map((p) => (
+          <option key={p.key} value={p.key}>
+            {p.label}
+          </option>
+        ))}
+      </select>
+    </span>
   );
 }
 
 /**
- * The campaigns the ticked paths use, as on the Campaigns table (owner 2026-10-06): each
- * with its name and face, its leg, its type and its return, on or off, and its daily
- * budget (a max for a reactive one). One proactive campaign at a time. Nothing starts
- * here: the ones on start once the credit is added.
+ * The END of signup (owner sketch 2026-10-10): ONE campaign, the best proactive one
+ * features-service runs for cold email, its max budget and optional max volume; a tick adds the
+ * campaign that books meetings when someone replies, with its own "up to". Launch opens the wall.
  */
-export function CampaignsStage({
+export function CampaignStage({
   state,
-  rows,
-  served,
+  funnels,
   failed,
-  floorFor,
+  loading,
+  lineOf,
+  draft,
   onChange,
   error,
   onRetry,
-  onContinue,
+  onLaunch,
 }: {
   state: StepState;
-  rows: readonly PlannedCampaign[];
-  served: ReadonlyMap<string, OfferCampaign>;
+  funnels: { proactive: SignupFunnel | null; reactive: SignupFunnel | null } | null;
   failed: boolean;
-  floorFor: (featureSlug: string) => number;
-  onChange: (next: PlannedCampaign[]) => void;
+  loading: boolean;
+  /** A channel's own one-line description (public catalogue), or null. */
+  lineOf: (channelSlug: string) => string | null;
+  draft: SignupCampaignDraft;
+  onChange: (next: SignupCampaignDraft) => void;
   error: string | null;
   onRetry: () => void;
-  onContinue: () => void;
+  onLaunch: () => void;
 }) {
   const done = state === "done";
-  const shown = rows.filter((c) => served.has(plannedKey(c)));
-  const on = shown.filter((c) => c.on);
+  const main = funnels?.proactive ?? null;
+  const meet = funnels?.reactive ?? null;
+  const est = main ? estimatedLine(main) : null;
+  const set = (patch: Partial<SignupCampaignDraft>) => onChange({ ...draft, ...patch });
   return (
     <StepCard
-      index={stepIndex("campaigns") + 1}
-      title="Your campaigns"
+      index={stepIndex("campaign") + 1}
+      title="Your campaign"
       state={state}
-      meta={<StateWord state={state} doneLabel={on.length === 1 ? "1 campaign on" : `${on.length} campaigns on`} />}
+      meta={<StateWord state={state} />}
       footer={
-        !done && state === "choose" ? (
-          <button type="button" className="k-btn-accent h-9 px-4" onClick={onContinue}>
-            Continue
+        main && !done ? (
+          <button type="button" className="k-btn-accent k-cta gs-glow justify-center px-8" onClick={onLaunch}>
+            Launch
           </button>
         ) : null
       }
     >
-      {state === "waiting" || state === "running" ? (
+      {state === "waiting" || (loading && !main) ? (
         <OptionSkeleton />
-      ) : failed && shown.length === 0 ? (
+      ) : !main ? (
         <div className="flex flex-wrap items-center gap-3">
-          <p className="k-fg2 text-[13px]">We could not load your campaigns just now.</p>
+          <p className="k-fg2 text-[13px]">{failed ? "We could not load your campaign just now." : "No campaign can run right now."}</p>
           <button type="button" className="k-btn h-8 px-3" onClick={onRetry}>
             Try again
           </button>
         </div>
-      ) : shown.length === 0 ? (
-        <p className="k-fg2 text-[13px]">None of the ticked paths has a campaign we run. Go back and tick another path.</p>
       ) : (
-        <>
-          {!done && <p className="k-fg2 mb-3 text-[13px] leading-5">One campaign finds new leads. The others answer the leads it brings.</p>}
-          <ul className="k-card divide-y divide-[var(--line-subtle)] overflow-hidden">
-            {shown.map((c) => {
-              const key = plannedKey(c);
-              const def = served.get(key) as OfferCampaign;
-              return (
-                <li
-                  key={key}
-                  className={`grid gap-x-3 gap-y-2 px-4 py-3 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center ${c.on ? "bg-[color-mix(in_oklab,var(--run)_9%,transparent)]" : ""}`}
-                >
-                  <div className="min-w-0">
-                    <span className="flex items-center gap-2.5">
-                      {def.name && <PathAvatar name={def.name} size={28} />}
-                      <span className="font-semibold">{def.name ?? def.channelName}</span>
-                      <span className="k-chip">{campaignTag(def)}</span>
-                    </span>
-                    <CampaignLeg campaign={def} className="mt-1.5 text-[12.5px]" />
-                  </div>
-                  <div className="flex flex-wrap items-center gap-2 sm:justify-end">
-                    <span
-                      className={`text-[13px] font-semibold tabular-nums ${roiIsGood(def.roi) ? "text-[var(--run)]" : ""}`}
-                      title={def.roiUnavailable ?? undefined}
-                    >
-                      {def.roi == null ? formatRoi(def.roi) : `${formatRoi(def.roi)} return`}
-                    </span>
-                    {done ? (
-                      <span className="k-fg2 text-[12.5px] tabular-nums">
-                        {c.on ? `${c.reactive ? "Up to " : ""}$${c.budgetUsd}/day` : "Off"}
-                      </span>
-                    ) : (
-                      <>
-                        <button
-                          type="button"
-                          aria-pressed={c.on}
-                          className="k-btn gap-1.5"
-                          onClick={() => onChange(setPlannedOn(rows, key, !c.on))}
-                          title={c.on ? "Turn off" : "Turn on"}
-                        >
-                          <StateDot running={c.on} label={c.on ? "On" : "Off"} />
-                        </button>
-                        <CampaignBudgetField
-                          key={`${key}:${c.budgetUsd}`}
-                          reactive={c.reactive}
-                          usd={c.budgetUsd}
-                          floorUsd={floorFor(c.featureSlug)}
-                          disabled={!c.on}
-                          onBudget={(usd) => onChange(rows.map((r) => (plannedKey(r) === key ? { ...r, budgetUsd: usd } : r)))}
-                        />
-                      </>
-                    )}
-                  </div>
-                </li>
-              );
-            })}
-          </ul>
-          {error && <p className="mt-2 text-[12px] text-[var(--data-rose)]">{error}</p>}
-        </>
+        <div className="grid grid-cols-[minmax(0,1fr)] gap-4">
+          <div className="flex items-start gap-3">
+            <FunnelFace name={main.name} size={44} />
+            <div className="min-w-0">
+              <p className="k-fg text-[16px] font-semibold leading-6">{main.name}</p>
+              {lineOf(SIGNUP_PROACTIVE_CHANNEL) && <p className="k-fg2 text-[13px] leading-5">{lineOf(SIGNUP_PROACTIVE_CHANNEL)}</p>}
+              <p className="k-fg3 mt-0.5 text-[12px] tabular-nums">
+                {est}
+                {est && main.roi != null ? " · " : ""}
+                {main.roi != null && <span className={roiIsGood(main.roi) ? "text-[var(--run)]" : undefined}>{`${formatRoi(main.roi)} return`}</span>}
+              </p>
+            </div>
+          </div>
+          <div className="k-inset grid grid-cols-[minmax(0,1fr)] gap-2.5 rounded-[10px] p-3">
+            <div className="grid items-center gap-1.5 sm:grid-cols-[112px_minmax(0,1fr)]">
+              <span className="k-label">Max budget</span>
+              <CapField
+                prefix="$"
+                value={draft.budget}
+                period={draft.budgetPeriod}
+                onValue={(v) => set({ budget: v })}
+                onPeriod={(p) => set({ budgetPeriod: p })}
+                label="Max budget in dollars"
+                disabled={done}
+              />
+            </div>
+            <div className="grid items-center gap-1.5 sm:grid-cols-[112px_minmax(0,1fr)]">
+              <span className="k-label">Max volume</span>
+              <CapField
+                value={draft.volume}
+                period={draft.volumePeriod}
+                onValue={(v) => set({ volume: v })}
+                onPeriod={(p) => set({ volumePeriod: p })}
+                placeholder="optional"
+                unit="new people"
+                label="Max new people"
+                disabled={done}
+              />
+            </div>
+          </div>
+          {meet && (
+            <div className="grid grid-cols-[minmax(0,1fr)] gap-2">
+              <SelectCard
+                on={draft.reactiveOn}
+                onClick={() => !done && set({ reactiveOn: !draft.reactiveOn })}
+                mark={<FunnelFace name={meet.name} size={28} />}
+                title="Also let our AI book meetings when someone replies"
+                sub={[meet.name, lineOf(SIGNUP_REACTIVE_CHANNEL)].filter(Boolean).join(" · ")}
+                wrapSub
+                wrapTitle
+              />
+              {draft.reactiveOn && (
+                <div className="gs-in flex flex-wrap items-center gap-2 pl-1">
+                  <CapField
+                    prefix="Up to $"
+                    value={draft.reactiveBudget}
+                    period={draft.reactivePeriod}
+                    onValue={(v) => set({ reactiveBudget: v })}
+                    onPeriod={(p) => set({ reactivePeriod: p })}
+                    label="Meeting booking budget in dollars"
+                    disabled={done}
+                  />
+                </div>
+              )}
+            </div>
+          )}
+          {error && <p className="text-[12px] text-[var(--data-rose)]">{error}</p>}
+        </div>
       )}
     </StepCard>
-  );
-}
-
-/** A campaign's daily budget, typed in place; a value under the channel's floor says so and is not kept. */
-function CampaignBudgetField({
-  reactive,
-  usd,
-  floorUsd,
-  disabled,
-  onBudget,
-}: {
-  reactive: boolean;
-  usd: number;
-  floorUsd: number;
-  disabled: boolean;
-  onBudget: (usd: number) => void;
-}) {
-  const [text, setText] = useState(String(usd));
-  const parsed = parseCampaignBudget(text, floorUsd);
-  const problem = "problem" in parsed ? parsed.problem : null;
-  return (
-    <span className="inline-flex flex-wrap items-center gap-1.5 text-[12.5px]">
-      <span className="k-fg2">{reactive ? "Up to $" : "$"}</span>
-      <input
-        className={`k-input w-16 px-2 text-right tabular-nums ${problem ? "shadow-[inset_0_0_0_1px_var(--data-rose)]" : ""}`}
-        inputMode="numeric"
-        value={text}
-        disabled={disabled}
-        aria-label={reactive ? "Daily max in dollars" : "Daily budget in dollars"}
-        aria-invalid={problem !== null}
-        onChange={(e) => setText(e.target.value)}
-        onBlur={() => {
-          if ("usd" in parsed && parsed.usd !== usd) onBudget(parsed.usd);
-        }}
-        onKeyDown={(e) => {
-          if (e.key === "Enter" && "usd" in parsed && parsed.usd !== usd) onBudget(parsed.usd);
-        }}
-      />
-      <span className="k-fg3">/day</span>
-      {problem && <span className="w-full text-right text-[11.5px] text-[var(--data-rose)]">{problem}</span>}
-    </span>
   );
 }
 

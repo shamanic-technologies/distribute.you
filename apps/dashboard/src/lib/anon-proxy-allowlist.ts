@@ -71,22 +71,10 @@ const RULES: Rule[] = [
   // refuses an offer that is not the brand's.
   { method: "PUT", segments: ["brands", ":brand", "offers", ":seg", "economics"] },
   { method: "PUT", segments: ["brands", ":brand", "offers", ":seg", "user-fields"] },
-  // The sales path steps of /get-started: the steps and legs ticked for the offer
-  // (brand-service), the brand's conversion rate per leg, read and overwritten from the
-  // paths' detail (brand-service), and the paths those legs make, ranked by expected ROI
-  // (features-service). The ranking names the brand in its QUERY, bound below.
-  { method: "GET", segments: ["brands", ":brand", "offers", ":seg", "sales-path"] },
-  { method: "PUT", segments: ["brands", ":brand", "offers", ":seg", "sales-path"] },
-  { method: "GET", segments: ["brands", ":brand", "leg-rates"] },
-  { method: "PUT", segments: ["brands", ":brand", "leg-rates"] },
-  { method: "GET", segments: ["offers", ":seg", "sales-paths"], queryBrand: "brandId" },
-  // Then, as on the Sales path page: the channels the offer accepts and the paths the
-  // visitor ticks (brand-service, saved on the offer). Path-bound to this session's brand.
-  // Nothing here starts a send or sets money: that waits for the account and the card.
-  { method: "GET", segments: ["brands", ":brand", "offers", ":seg", "channels"] },
-  { method: "PUT", segments: ["brands", ":brand", "offers", ":seg", "channels"] },
-  { method: "GET", segments: ["brands", ":brand", "offers", ":seg", "selected-sales-paths"] },
-  { method: "PUT", segments: ["brands", ":brand", "offers", ":seg", "selected-sales-paths"] },
+  // The sales path steps (steps, legs, leg rates, ranked paths, channels, ticked paths) are
+  // GONE (owner 2026-10-10): the signed-out session reads and writes none of them. The last
+  // step reads public routes only (`/api/public/sales-funnels`); its writes wait for the
+  // account and the card.
 
   // ── The audiences we assemble for it ─────────────────────────────────
   { method: "GET", segments: ["orgs", "audiences"] },

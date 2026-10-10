@@ -53,7 +53,9 @@ describe("copilot rules", () => {
   it("resolves a page id to this brand's page, never a URL the model wrote", () => {
     expect(copilotPageHref("o", "b", { page: "billing" })).toBe("/v2/orgs/o/brands/b/billing");
     expect(copilotPageHref("o", "b", { page: "today" })).toBe("/v2/orgs/o/brands/b");
-    expect(copilotPageHref("o", "b", { page: "outbound", brandId: "other" })).toBe("/v2/orgs/o/brands/b/sales-path");
+    expect(copilotPageHref("o", "b", { page: "campaigns", brandId: "other" })).toBe("/v2/orgs/o/brands/b/campaigns");
+    // The staff Sales path page is never a page the Copilot opens for a client (owner 2026-10-10).
+    expect(copilotPageHref("o", "b", { page: "outbound" })).toBeNull();
     expect(copilotPageHref("o", "b", { page: "campaign", campaignId: "c1" })).toBe("/v2/orgs/o/brands/b/campaigns/c1");
     expect(copilotPageHref("o", "b", { page: "campaign" })).toBeNull();
     expect(copilotPageHref("o", "b", { page: "https://evil.example" })).toBeNull();

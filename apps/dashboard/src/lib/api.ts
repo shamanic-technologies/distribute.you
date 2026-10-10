@@ -7096,6 +7096,36 @@ export async function saveSalesFunnelCaps(
 }
 
 /**
+ * Launch a sales funnel as ONE campaign, started (campaign-service `POST /sales-funnel-campaigns`
+ * through the gateway). A campaign that exists for (brand x offer x funnel) is handed back, started,
+ * never created twice, so a retry is safe. Meets the payment hold like every start (409
+ * `payment_declined` / `no_payment_method`); a funnel with no max budget is held unfunded, so its
+ * caps are written FIRST (`saveSalesFunnelCaps`).
+ */
+export async function startSalesFunnelCampaign(
+  input: { brandId: string; offerId: string; salesFunnelId: string },
+  token?: string,
+): Promise<SalesFunnelCampaign> {
+  const raw = await apiCall<unknown>(`/sales-funnel-campaigns`, {
+    token,
+    method: "POST",
+    body: { brandId: input.brandId, offerId: input.offerId, salesFunnelId: input.salesFunnelId, status: "ongoing" },
+    headers: { "x-run-id": globalThis.crypto.randomUUID(), "x-brand-id": input.brandId },
+  });
+  return parseStaff("startSalesFunnelCampaign", SalesFunnelCampaignOneSchema, raw).salesFunnelCampaign;
+}
+
+/**
+ * The funnels the signup's campaign step proposes, read signed out (`/api/public/sales-funnels`:
+ * features-service's runnable funnels on cold email and on AI meeting booking, verbatim).
+ */
+export async function getSignupFunnelPages(): Promise<unknown> {
+  const res = await fetch("/api/public/sales-funnels");
+  if (!res.ok) throw new Error(`[dashboard] getSignupFunnelPages: ${res.status}`);
+  return res.json();
+}
+
+/**
  * POST /campaigns — START one campaign: an acquisition channel performing one LEG for
  * one offer.
  *

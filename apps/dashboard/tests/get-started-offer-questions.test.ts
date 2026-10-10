@@ -17,24 +17,20 @@ const LAUNCH = readFileSync(resolve(__dirname, "../src/components/v2/get-started
 const API = readFileSync(resolve(__dirname, "../src/lib/api.ts"), "utf-8");
 
 describe("onboarding v2: the offer questions come after the audience, before the companies", () => {
-  it("orders offer, audience, value, sales steps, legs, channels, paths, campaigns, levers, gives, companies, email", () => {
+  it("orders offer, audience, value, levers, gives, companies, email, then the campaign (owner 2026-10-10)", () => {
     expect(GET_STARTED_STEPS.map((s) => s.key)).toEqual([
       "company",
       "competitors",
       "offer",
       "audience",
       "value",
-      "salesSteps",
-      "legs",
-      "channels",
-      "paths",
-      "campaigns",
       "levers",
       "gives",
       "companies",
       "email",
+      "campaign",
     ]);
-    expect(stepIndex("email")).toBe(GET_STARTED_STEPS.length - 1);
+    expect(stepIndex("campaign")).toBe(GET_STARTED_STEPS.length - 1);
   });
 
 });
@@ -81,13 +77,11 @@ describe("answers as bullets", () => {
 describe("snapshot", () => {
   it("restores the answers and tolerates an older snapshot without them", () => {
     const base = { version: 2, website: "https://a.com", brandId: "b1" };
-    expect(parseGetStartedSnapshot(JSON.stringify(base))?.salesPath).toBeNull();
-    const s = parseGetStartedSnapshot(
-      JSON.stringify({ ...base, salesPath: { steps: ["conversation"], legs: ["start_to_conversation"] }, pathsDone: true, lifetimeRevenueUsd: 900, answered: true }),
-    );
-    expect(s).toMatchObject({ salesPath: { steps: ["conversation"], legs: ["start_to_conversation"] }, pathsDone: true, lifetimeRevenueUsd: 900, answered: true });
-    // A retired "what you want" answer is ignored, never read as a path.
-    expect(parseGetStartedSnapshot(JSON.stringify({ ...base, outcome: "meetings" }))?.salesPath).toBeNull();
+    expect(parseGetStartedSnapshot(JSON.stringify(base))?.campaign).toBeNull();
+    const s = parseGetStartedSnapshot(JSON.stringify({ ...base, lifetimeRevenueUsd: 900, answered: true }));
+    expect(s).toMatchObject({ lifetimeRevenueUsd: 900, answered: true, campaignDone: false });
+    // A retired sales path answer is ignored.
+    expect(parseGetStartedSnapshot(JSON.stringify({ ...base, salesPath: { steps: ["conversation"], legs: [] } }))).not.toHaveProperty("salesPath");
   });
 });
 
@@ -109,8 +103,8 @@ describe("the page's call sites", () => {
     expect(keys).not.toContain("neverGive");
   });
 
-  it("starts the campaigns turned on, the proactive one first, and skips re-drafting answered levers", () => {
-    expect(LAUNCH).toContain("for (const c of [...proactive, ...on.filter((x) => x.reactive)])");
+  it("starts the proactive campaign first, then the meeting one, and skips re-drafting answered levers", () => {
+    expect(LAUNCH.indexOf("input.plan.proactive, progress")).toBeLessThan(LAUNCH.indexOf("launchFunnel(input.brandId, offerId, reactive, progress)"));
     expect(LAUNCH).toContain("if (input.answered) progress.levers = true;");
   });
 });

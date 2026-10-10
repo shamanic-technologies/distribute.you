@@ -12,7 +12,7 @@ import { SINCE_INCEPTION, type RevenueWindow } from "@/lib/revenue-window";
 import { isColdEmailChannel } from "@/lib/offer-levers-home";
 import { OUTBOUND_LEG_TO_CONVERSATION, OUTBOUND_LEG_TO_WEBSITE_VISIT } from "@/lib/outbound-leg-key";
 import { useAcquisitionChannels } from "@/lib/use-acquisition-channels";
-import { v2OfferChannelHref, v2OfferHref, type V2ChannelTab } from "@/lib/v2/routes";
+import { v2Href, v2OfferChannelHref, v2OfferHref, type V2ChannelTab } from "@/lib/v2/routes";
 import { AcquisitionChannelMark } from "@/components/marks/acquisition-channel-mark";
 import { useBrandRevenueWindow, useBucketCounts } from "@/components/v2/data";
 import { ColdEmailChannelSettings, giveListsFrom } from "@/components/v2/offer-channels-page";
@@ -56,7 +56,7 @@ export function V2OfferChannelPage() {
     <V2Page
       crumbs={[
         { label: name ?? " ", href: v2OfferHref(orgId, brandId, offerId) },
-        { label: "Outbound", href: v2OfferHref(orgId, brandId, offerId, "sales-path") },
+        { label: "Campaigns", href: v2Href(orgId, brandId, "campaigns") },
         { label: channelName },
       ]}
       title={

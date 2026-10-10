@@ -214,7 +214,7 @@ export function OfferOutcomesTable({
           ) : null}
           Each person is on one row only. Each value comes from your rate at each step and what one client is worth.{" "}
           {offerId ? (
-            <Link href={v2OfferHref(orgId, brandId, offerId, "sales-path")} className="whitespace-nowrap text-[var(--accent)] hover:underline">
+            <Link href={v2OfferHref(orgId, brandId, offerId)} className="whitespace-nowrap text-[var(--accent)] hover:underline">
               Wrong number? Change it
             </Link>
           ) : null}
