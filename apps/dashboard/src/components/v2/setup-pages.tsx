@@ -22,6 +22,7 @@ import { V2NewOfferModal } from "@/components/v2/new-offer-modal";
 import { OfferPlanBanner } from "@/components/v2/choose-plan";
 import { useSelectedOffer } from "@/components/v2/selected-offer";
 import { OfferIdentityTitle } from "@/components/v2/offer-identity-title";
+import { BrandIdentityTitle } from "@/components/v2/brand-identity-title";
 import { OfferArchiveCard } from "@/components/settings/offer-archive-card";
 import { OfferLifetimeRevenue } from "@/components/settings/offer-campaigns-card";
 import { BrandOfferCard } from "@/components/settings/brand-offer-card";
@@ -364,7 +365,7 @@ export function V2IntegrationsPage({ view }: { view: IntegrationView }) {
   return (
     <V2Page
       crumbs={[{ label: "Brand", href: v2Href(orgId, brandId, "settings") }, { label: "Integrations" }]}
-      title="Brand"
+      title={<BrandIdentityTitle brandId={brandId} />}
       tabs={brandTabs(orgId, brandId, "integrations")}
       width="max-w-[1280px]"
     >

@@ -4,8 +4,9 @@ import { join } from "path";
 
 const read = (p: string) => readFileSync(join(__dirname, "..", p), "utf-8");
 
-const CARD = read("src/components/settings/brand-identity-card.tsx");
+const CARD = read("src/components/v2/brand-identity-title.tsx");
 const PAGE = read("src/components/v2/brand-settings-page.tsx");
+const SETUP = read("src/components/v2/setup-pages.tsx");
 const LOGO = read("src/components/brand-logo.tsx");
 const FAVICON = read("src/components/brand-favicon.tsx");
 const SWITCHER = read("src/lib/use-tenant-switcher.ts");
@@ -83,9 +84,12 @@ describe("the stored logo is in the server-read cookie", () => {
   });
 });
 
-describe("the identity card", () => {
-  it("is mounted on Brand Settings", () => {
-    expect(PAGE).toContain("<BrandIdentityCard brandId={brandId} />");
+describe("the identity title", () => {
+  it("IS the Brand page title, on both tabs, and no Identity card restates it", () => {
+    // Owner 2026-10-10: logo + name in the title, edited in place.
+    expect(PAGE).toContain("<BrandIdentityTitle brandId={brandId} />");
+    expect(SETUP).toContain("title={<BrandIdentityTitle brandId={brandId} />}");
+    expect(PAGE).not.toContain('id: "identity"');
   });
 
   it("does NOT edit the domain — that is the brand's key and keeps its own card", () => {
@@ -97,25 +101,19 @@ describe("the identity card", () => {
   it("clears the logo with null, which is NOT the same as omitting the field", () => {
     // Omitted leaves what is stored; null is the instruction that puts the brand
     // back on the logo found from its website.
-    expect(CARD).toContain("setLogoUrl(null)");
+    expect(CARD).toContain("identityMut.mutate({ logoUrl: null })");
     expect(API).toContain('if ("logoUrl" in patch) body.logoUrl = patch.logoUrl;');
   });
 
   it("sends only what MOVED, so saving a name cannot overwrite a logo", () => {
-    expect(CARD).toContain("logoUrl !== savedLogo ? { logoUrl } : {}");
-    expect(CARD).toContain("name.trim() !== savedName.trim() ? { name: name.trim() } : {}");
+    expect(CARD).toContain("identityMut.mutate({ name: trimmed })");
+    expect(CARD).toContain("identityMut.mutate({ logoUrl: url })");
   });
 
-  it("arms Save on a LIVE compare, so typing a change and undoing it disarms it", () => {
-    expect(CARD).toContain("const dirty =");
-    // A sticky boolean latch stays true forever once touched.
-    expect(CARD).not.toContain("const [dirty, setDirty]");
-  });
-
-  it("re-seeds from a payload IDENTITY change, never a once-per-mount latch", () => {
-    // A latch seeds from the DISK snapshot and ignores the fresher server answer
-    // that lands a beat later — which is how a saved value renders blank.
-    expect(CARD).toContain("seededFrom.current === brand");
+  it("has no Save button: blur/Enter saves, Esc drops it", () => {
+    expect(CARD).not.toContain("SettingsSaveRow");
+    expect(CARD).toContain("onBlur={commit}");
+    expect(CARD).toContain('e.key === "Escape"');
   });
 
   it("refuses a file BEFORE uploading it, and the URL AFTER", () => {
@@ -134,7 +132,7 @@ describe("the identity card", () => {
 
   it("writes the answer into the shared brand cache so every mark moves with it", () => {
     // That key is what the sidebar mark, the tab favicon and the scope cards read.
-    expect(CARD).toContain('queryClient.setQueryData(\n        ["brand", brandId]');
+    expect(CARD).toContain('queryClient.setQueryData(["brand", brandId]');
     // The dropdown reads a DIFFERENT key carrying the same two fields; without
     // this the brand renames everywhere except in the list you renamed it from.
     expect(CARD).toContain('queryKey: ["brands"]');

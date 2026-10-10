@@ -8,6 +8,13 @@ import {
   type OfferSelectedSalesPaths,
 } from "./offer-active-sales-paths";
 import { parseBrandSalesBudget, type BrandSalesBudget } from "./brand-sales-budget";
+import {
+  CATALOGUE_DETAIL_SCHEMAS,
+  CataloguePageSchema,
+  type CatalogueDetailByObject,
+  type CataloguePage,
+  type CatalogueReadObject,
+} from "./staff-catalogue";
 import { browserHasAnonSession } from "./anon-session-cookie";
 import { offerArchiveRefusalSentence } from "./offer-archive";
 import { CrmAttributionSchema, type CrmAttribution } from "./crm-attribution";
@@ -1551,6 +1558,37 @@ export async function getMyLinkedinPosts(cursor: string | null): Promise<Linkedi
   const qs = cursor ? `?cursor=${encodeURIComponent(cursor)}` : "";
   const raw = await apiCall<unknown>(`${STAFF_SOCIAL_PATHS.myLinkedinPosts}${qs}`);
   return toLinkedinFeedPage(parseStaff("getMyLinkedinPosts", LinkedinFeedResponseSchema, raw));
+}
+
+// ─── Staff catalogue (features-service `/internal/catalogue/*`, owner 2026-10-10) ──────────
+// The business objects (steps, sales paths, channels, pipes, sales funnels, workflows) the
+// Staff sections read: a staff-only gateway route (`requireStaff`), fleet-wide, no identity.
+// Shapes and the ongoing join: lib/staff-catalogue.ts.
+
+export const STAFF_CATALOGUE_PATHS = {
+  list: (object: CatalogueReadObject) => `/catalogue/${object}`,
+  one: (object: CatalogueReadObject, id: string) => `/catalogue/${object}/${encodeURIComponent(id)}`,
+} as const;
+
+/** One page of an object's rows (`limit` 1..25, `q`, and the object's own filters, e.g. `pipe` for workflows). */
+export async function listStaffCatalogue(object: CatalogueReadObject, query: Record<string, string | undefined> = {}): Promise<CataloguePage> {
+  const qs = new URLSearchParams();
+  for (const [k, v] of Object.entries(query)) if (v) qs.set(k, v);
+  const q = qs.toString();
+  return parseStaff(`listStaffCatalogue(${object})`, CataloguePageSchema, await apiCall<unknown>(`${STAFF_CATALOGUE_PATHS.list(object)}${q ? `?${q}` : ""}`));
+}
+
+/** One object by id (a workflow also names its `pipe`). */
+export async function getStaffCatalogueObject<K extends CatalogueReadObject>(
+  object: K,
+  id: string,
+  query: Record<string, string | undefined> = {},
+): Promise<CatalogueDetailByObject[K]> {
+  const qs = new URLSearchParams();
+  for (const [k, v] of Object.entries(query)) if (v) qs.set(k, v);
+  const q = qs.toString();
+  const raw = await apiCall<unknown>(`${STAFF_CATALOGUE_PATHS.one(object, id)}${q ? `?${q}` : ""}`);
+  return parseStaff(`getStaffCatalogueObject(${object})`, CATALOGUE_DETAIL_SCHEMAS[object] as z.ZodType<CatalogueDetailByObject[K]>, raw);
 }
 
 // ─── Copilot skill tree (chat-service `/internal/skills`, owner 2026-10-09) ────────────────
