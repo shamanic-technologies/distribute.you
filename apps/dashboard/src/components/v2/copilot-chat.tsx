@@ -27,6 +27,7 @@ import {
   isPanelLink,
   isThisBrandsSession,
   openPagesByTurn,
+  creditsRequiredByTurn,
   addCreditsHref,
   readCreditsRequired,
   type CopilotChoices,
@@ -220,6 +221,7 @@ export function CopilotChat({ orgId, brandId, headerAction }: { orgId: string; b
   const sessionIdRef = useRef<string | null>(null);
   const [historyChoices, setHistoryChoices] = useState<Map<string, CopilotChoices>>(new Map());
   const [historyPages, setHistoryPages] = useState<Map<string, CopilotOpenPage[]>>(new Map());
+  const [historyCredits, setHistoryCredits] = useState<Map<string, CopilotCreditsRequired>>(new Map());
   const offerId = useSelectedOfferIfAny()?.offerId ?? null;
   // Loading the stored conversation, then either showing it or opening a new one.
   const [phase, setPhase] = useState<"loading" | "ready">("loading");
@@ -320,6 +322,7 @@ export function CopilotChat({ orgId, brandId, headerAction }: { orgId: string; b
           setMessages([]);
           setHistoryChoices(new Map());
           setHistoryPages(new Map());
+          setHistoryCredits(new Map());
           setOpenerWanted(true);
           setPhase("ready");
           return;
@@ -329,6 +332,7 @@ export function CopilotChat({ orgId, brandId, headerAction }: { orgId: string; b
         setMessages(historyToUIMessages(h.messages));
         setHistoryChoices(choicesByTurn(h.messages));
         setHistoryPages(openPagesByTurn(h.messages));
+        setHistoryCredits(creditsRequiredByTurn(h.messages));
         setPhase("ready");
       })
       .catch((err) => {
@@ -341,6 +345,7 @@ export function CopilotChat({ orgId, brandId, headerAction }: { orgId: string; b
         setMessages([]);
         setHistoryChoices(new Map());
         setHistoryPages(new Map());
+        setHistoryCredits(new Map());
         setOpenerWanted(true);
         setPhase("ready");
       });
@@ -363,6 +368,7 @@ export function CopilotChat({ orgId, brandId, headerAction }: { orgId: string; b
     setMessages([]);
     setHistoryChoices(new Map());
     setHistoryPages(new Map());
+    setHistoryCredits(new Map());
     setOpenerWanted(true);
   }, [stop, storageKey, setMessages]);
 
@@ -467,7 +473,7 @@ export function CopilotChat({ orgId, brandId, headerAction }: { orgId: string; b
                   return href ? <OpenedPage key={`p${i}`} href={href} label={pg.title ?? pg.page} /> : null;
                 })}
                 {(() => {
-                  const credits = liveCreditsRequired(m);
+                  const credits = liveCreditsRequired(m) ?? historyCredits.get(m.id) ?? null;
                   const href = credits ? addCreditsHref(orgId, brandId) : null;
                   return credits && href ? <AddCreditsButton href={href} label={credits.label} /> : null;
                 })()}
