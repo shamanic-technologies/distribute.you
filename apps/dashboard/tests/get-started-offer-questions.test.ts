@@ -5,6 +5,7 @@ import {
   GET_STARTED_STEPS,
   answerLines,
   leversLLMPrompt,
+  givesLLMPrompt,
   parseGetStartedSnapshot,
   parseLifetimeRevenue,
   parseUsdEstimate,
@@ -66,6 +67,14 @@ describe("answers as bullets", () => {
     expect(p).toContain('I sell "Cold email"');
     expect(p).toContain("Dream outcome: What does your customer get, in their words?\n- More meetings");
     expect(p).toContain("Why now: Why should they start this week?\n- (not answered yet)");
+  });
+
+  it("copies what we give for free and never promise for an LLM", () => {
+    const p = givesLLMPrompt("Cold email", { giveForFree: "- A free audit" });
+    expect(p).toContain('I sell "Cold email"');
+    expect(p).toContain("What we can give for free: What could you give, for free, to someone who replies?\n- A free audit");
+    expect(p).toContain("What we will never give: What should an email never promise?\n- (not answered yet)");
+    expect(PAGE).toContain("givesLLMPrompt(offerName, values)");
   });
 });
 
