@@ -19,7 +19,8 @@ import { useStaffMode } from "@/lib/use-staff-mode";
 import { SelectedOfferProvider, useSelectedOffer } from "@/components/v2/selected-offer";
 import { PathAvatar } from "@/components/v2/offer-sales-paths";
 import { BRAND_WHY } from "@/lib/brand-why";
-import { CopilotWidget } from "@/components/v2/copilot-widget";
+import { CopilotPanel } from "@/components/v2/copilot-panel";
+import { CopilotDockContext, useCopilotDockState } from "@/components/v2/copilot-dock";
 
 /**
  * Keel's frame: a grey canvas, a one-level sidebar sitting ON it, and every page in one
@@ -35,10 +36,11 @@ export function V2Shell({ children }: { children: React.ReactNode }) {
   const hasBrand = Boolean(brandId);
   // A navigation closes the drawer, wherever it was started from.
   useEffect(() => setOpen(false), [pathname, search]);
-  // Staff mode on a brand: the Copilot widget floats bottom right above the page
-  // (owner 2026-10-09). Customers never see it.
+  // Staff mode on a brand: the Copilot is a right panel beside the page, hidden and shown
+  // again from the top bar (owner 2026-10-10). Customers never see it.
   const { staffMode } = useStaffMode();
   const copilot = staffMode && hasBrand && Boolean(params.orgId);
+  const dock = useCopilotDockState(copilot);
 
   const page = (
     <>
@@ -55,6 +57,7 @@ export function V2Shell({ children }: { children: React.ReactNode }) {
 
   const shell = (
     <V2NavContext.Provider value={() => setOpen(true)}>
+      <CopilotDockContext.Provider value={dock}>
       <div className="v2-root flex h-[100dvh] w-full overflow-hidden">
         {open && <div className="fixed inset-0 z-40 bg-[#10101247] lg:hidden" onClick={() => setOpen(false)} />}
         <div
@@ -65,11 +68,12 @@ export function V2Shell({ children }: { children: React.ReactNode }) {
           {hasBrand ? <V2Sidebar /> : params.orgId ? <V2OrgSidebar orgId={params.orgId} /> : null}
         </div>
         <main className="k-panel k-scroll relative my-2 ml-2 mr-2 min-w-0 flex-1 overflow-y-auto lg:ml-0">{page}</main>
-        {copilot && <CopilotWidget orgId={params.orgId!} brandId={brandId!} />}
+        {copilot && <CopilotPanel orgId={params.orgId!} brandId={brandId!} />}
         {/* Overlays the sidebar opens (the ⌘K palette) render here, outside the drawer,
             whose transform would otherwise trap their fixed positioning. */}
         <div id="v2-portal" />
       </div>
+      </CopilotDockContext.Provider>
     </V2NavContext.Provider>
   );
   // Every brand page reads ONE offer, the one the sidebar's switcher picked.

@@ -42,11 +42,11 @@ import { ChoiceCards, OpenedPage } from "@/components/v2/copilot-cards";
 import { useSelectedOfferIfAny } from "@/components/v2/selected-offer";
 
 /**
- * The staff Copilot (owner 2026-10-09), drawn inside the bottom-right widget. A reload shows the last
+ * The staff Copilot (owner 2026-10-09), drawn inside the right panel. A reload shows the last
  * conversation; "New chat" starts over with the account's figures (Today's own reads, so
  * the numbers match the page) and the model's first choices. Every answer ends on large
  * choices to click, the box below stays for anything else. A dashboard link the model
- * writes opens under the widget, the chat stays where it is.
+ * writes opens beside the panel, the chat stays where it is.
  */
 
 function loadSessionId(key: string): string | null {
@@ -202,7 +202,7 @@ const md = {
     ),
 };
 
-export function CopilotChat({ orgId, brandId }: { orgId: string; brandId: string }) {
+export function CopilotChat({ orgId, brandId, headerAction }: { orgId: string; brandId: string; headerAction?: React.ReactNode }) {
   const router = useRouter();
   const pathname = usePathname();
   const storageKey = copilotSessionStorageKey(orgId, brandId);
@@ -394,18 +394,21 @@ export function CopilotChat({ orgId, brandId }: { orgId: string; brandId: string
     <section className="@container flex h-full min-w-0 flex-col" aria-label="Copilot">
       <div className="flex h-12 shrink-0 items-center justify-between px-4">
         <span className="k-fg2 text-[13px]">Copilot</span>
-        <button type="button" onClick={newChat} className="k-btn-ghost gap-1.5" title="Start a new chat">
+        <div className="flex items-center gap-1">
+          <button type="button" onClick={newChat} className="k-btn-ghost gap-1.5" title="Start a new chat">
           <svg width="14" height="14" viewBox="0 0 16 16" fill="none" aria-hidden="true">
             <path d="M8 3.5v9M3.5 8h9" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
           </svg>
           New chat
-        </button>
+          </button>
+          {headerAction}
+        </div>
       </div>
 
       <div
         ref={scrollRef}
         className="k-scroll min-h-0 flex-1 overflow-y-auto"
-        // A dashboard link the model wrote opens under the widget; the chat keeps its place.
+        // A dashboard link the model wrote opens beside the panel; the chat keeps its place.
         onClickCapture={(e) => {
           const a = (e.target as HTMLElement).closest("a");
           const href = a?.getAttribute("href");
