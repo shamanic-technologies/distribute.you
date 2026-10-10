@@ -1,12 +1,5 @@
 import { parseOfferSalesPaths, type OfferSalesPaths } from "./offer-sales-paths";
 import { ConversationTimelineSchema, type ConversationTimeline } from "./conversation-timeline";
-import {
-  OfferChannelsSchema,
-  OfferSelectedSalesPathsSchema,
-  parseOrThrow,
-  type OfferChannels,
-  type OfferSelectedSalesPaths,
-} from "./offer-active-sales-paths";
 import { parseBrandSalesBudget, type BrandSalesBudget } from "./brand-sales-budget";
 import {
   CATALOGUE_DETAIL_SCHEMAS,
@@ -2346,93 +2339,11 @@ export async function saveOfferBookingUrl(
   return parseOfferEconomics(raw, "saveOfferBookingUrl");
 }
 
-// ─── How an offer sells (brand-service, 2026-09-29, beta) ────────────────────
+// ─── How an offer sells ───────────────────────────────────────────────────────
 //
-// The steps and legs the customer ticked for ONE offer, stored as
-// features-service's own keys. `stated: false` = never stated (both lists null),
-// distinct from a stated empty selection.
-
-const OfferSalesPathSchema = z.object({
-  offerId: z.string(),
-  stated: z.boolean(),
-  steps: z.array(z.string()).nullable(),
-  // Each ticked leg WITH the channel that performs it (brand-service #636); the bare
-  // `legKeys` beside it is a deprecated compatibility field, not read here.
-  legs: z.array(z.object({ legKey: z.string(), featureSlug: z.string().nullable() })).nullable(),
-  statedAt: z.string().nullable(),
-});
-export type OfferSalesPath = z.infer<typeof OfferSalesPathSchema>;
-
-function parseOfferSalesPath(raw: unknown, where: string): OfferSalesPath {
-  const parsed = OfferSalesPathSchema.safeParse(raw);
-  if (!parsed.success) {
-    console.error(`[${where}] invalid response shape`, parsed.error.issues, raw);
-    throw new Error(`[${where}] invalid response shape`);
-  }
-  return parsed.data;
-}
-
-/** GET /brands/:brandId/offers/:offerId/sales-path — the offer's ticked steps and legs. */
-export async function getOfferSalesPath(brandId: string, offerId: string): Promise<OfferSalesPath> {
-  const raw = await apiCall<unknown>(`/brands/${brandId}/offers/${offerId}/sales-path`);
-  return parseOfferSalesPath(raw, "getOfferSalesPath");
-}
-
-/** PUT /brands/:brandId/offers/:offerId/sales-path — replaces the whole selection, each leg with its channel. */
-export async function saveOfferSalesPath(
-  brandId: string,
-  offerId: string,
-  steps: string[],
-  legs: ReadonlyArray<{ legKey: string; featureSlug: string | null }>,
-): Promise<OfferSalesPath> {
-  const raw = await apiCall<unknown>(`/brands/${brandId}/offers/${offerId}/sales-path`, {
-    method: "PUT",
-    body: { steps, legs },
-  });
-  return parseOfferSalesPath(raw, "saveOfferSalesPath");
-}
-
-/** GET /brands/:brandId/offers/:offerId/channels — the channels the offer accepts (brand-service). */
-export async function getOfferChannels(brandId: string, offerId: string): Promise<OfferChannels> {
-  const raw = await apiCall<unknown>(`/brands/${brandId}/offers/${offerId}/channels`);
-  return parseOrThrow(OfferChannelsSchema, raw, "getOfferChannels");
-}
-
-/** PUT /brands/:brandId/offers/:offerId/channels — replace the whole list of channels the offer accepts. */
-export async function saveOfferChannels(brandId: string, offerId: string, channelSlugs: string[]): Promise<OfferChannels> {
-  const raw = await apiCall<unknown>(`/brands/${brandId}/offers/${offerId}/channels`, {
-    method: "PUT",
-    body: { channelSlugs },
-  });
-  return parseOrThrow(OfferChannelsSchema, raw, "saveOfferChannels");
-}
-
-/**
- * POST /offers/:offerId/reactive-defaults — after the customer saves the ticked paths:
- * campaign-service turns ON every reactive campaign a ticked path uses that has none yet
- * (a person-turned-off one stays off). brandId rides the query too (identity header rule).
- */
-export async function applyReactiveDefaults(brandId: string, offerId: string): Promise<void> {
-  await apiCall<unknown>(`/offers/${offerId}/reactive-defaults?brandId=${encodeURIComponent(brandId)}`, {
-    method: "POST",
-    body: { brandId },
-  });
-}
-
-/** GET /brands/:brandId/offers/:offerId/selected-sales-paths — the sales paths the customer ticked (brand-service). */
-export async function getOfferSelectedSalesPaths(brandId: string, offerId: string): Promise<OfferSelectedSalesPaths> {
-  const raw = await apiCall<unknown>(`/brands/${brandId}/offers/${offerId}/selected-sales-paths`);
-  return parseOrThrow(OfferSelectedSalesPathsSchema, raw, "getOfferSelectedSalesPaths");
-}
-
-/** PUT /brands/:brandId/offers/:offerId/selected-sales-paths — replace the whole list of ticked paths. */
-export async function saveOfferSelectedSalesPaths(brandId: string, offerId: string, combinationKeys: string[]): Promise<OfferSelectedSalesPaths> {
-  const raw = await apiCall<unknown>(`/brands/${brandId}/offers/${offerId}/selected-sales-paths`, {
-    method: "PUT",
-    body: { combinationKeys },
-  });
-  return parseOrThrow(OfferSelectedSalesPathsSchema, raw, "saveOfferSelectedSalesPaths");
-}
+// brand-service's per-offer ticked steps/legs, accepted channels and ticked paths are RETIRED
+// (owner 2026-10-10: a campaign IS a sales funnel); features-service lists the paths off the
+// offer's funnel campaigns.
 
 /** GET /offers/:offerId/sales-paths — the offer's sales paths ranked by ROI (features-service). */
 export async function getOfferSalesPaths(

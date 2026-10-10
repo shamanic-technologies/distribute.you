@@ -29,7 +29,6 @@ import { BrandOfferCard } from "@/components/settings/brand-offer-card";
 import { V2AudiencesTable } from "@/components/v2/audiences-table";
 import { OfferQualification } from "@/components/v2/offer-qualification";
 import { OfferSourcesTab } from "@/components/v2/offer-sources-tab";
-import { OfferRevenueSteps } from "@/components/v2/offer-revenue-steps";
 import { V2CrmRawView } from "@/components/v2/integrations-crm";
 import { V2CrmMergedView } from "@/components/v2/integrations-merged";
 import { V2AiIntegrationView } from "@/components/v2/integrations-ai";
@@ -185,46 +184,36 @@ export function useOfferName(brandId: string, offerId: string | null) {
  * budget and status are changed.
  */
 /**
- * The offer's tabs: the offer itself, who it targets (Targeting moved inside the offer,
- * owner 2026-10-10), and the steps its campaigns are built from.
+ * The offer's tabs: the offer itself and who it targets (Targeting moved inside the offer,
+ * owner 2026-10-10). Revenue Steps (the ticked steps and legs) is retired with brand-service's
+ * per-offer sales path: an offer sells through its campaigns, each a sales funnel.
  */
-function offerTabs(orgId: string, brandId: string, offerId: string, active: "overview" | "targeting" | "revenue-steps"): V2Tab[] {
+function offerTabs(orgId: string, brandId: string, offerId: string, active: "overview" | "targeting"): V2Tab[] {
   return [
     { label: "Overview", href: v2OfferHref(orgId, brandId, offerId), active: active === "overview" },
     { label: "Targeting", href: v2OfferHref(orgId, brandId, offerId, "targeting"), active: active === "targeting" },
-    { label: "Revenue Steps", href: v2OfferHref(orgId, brandId, offerId, "revenue-steps"), active: active === "revenue-steps" },
   ];
 }
 
-/**
- * The offer page: Overview (the offer itself) and Revenue Steps (the legs and steps its
- * sales paths are built from, moved off the Outbound page, owner 2026-10-07).
- */
-export function V2OfferPage({ view = "overview" }: { view?: "overview" | "revenue-steps" }) {
+/** The offer page: the offer itself, with what one client is worth (the "Wrong number? Change it" target). */
+export function V2OfferPage() {
   const { orgId, brandId, offerId } = useIds();
   const name = useOfferName(brandId, offerId);
   const { missions } = useMissions(orgId, brandId, { allOffers: true });
   if (!offerId) return null;
-  const base = v2OfferHref(orgId, brandId, offerId);
   return (
     <V2Page
-      crumbs={view === "overview" ? [{ label: name ?? " " }] : [{ label: name ?? " ", href: base }, { label: "Revenue Steps" }]}
+      crumbs={[{ label: name ?? " " }]}
       title={<OfferIdentityTitle brandId={brandId} offerId={offerId} />}
-      tabs={offerTabs(orgId, brandId, offerId, view)}
+      tabs={offerTabs(orgId, brandId, offerId, "overview")}
     >
-      {view === "revenue-steps" ? (
-        <OfferRevenueSteps brandId={brandId} offerId={offerId} />
-      ) : (
-        <>
-          <OfferPlanBanner brandId={brandId} offerId={offerId} missions={missions} />
-          <div className="space-y-8">
-            <OfferLifetimeRevenue brandId={brandId} offerId={offerId} />
-            <BrandOfferCard orgId={orgId} brandId={brandId} offerId={offerId} />
-            <OfferArchiveCard brandId={brandId} offerId={offerId} />
-            <ArchivedOffers brandId={brandId} />
-          </div>
-        </>
-      )}
+      <OfferPlanBanner brandId={brandId} offerId={offerId} missions={missions} />
+      <div className="space-y-8">
+        <OfferLifetimeRevenue brandId={brandId} offerId={offerId} />
+        <BrandOfferCard orgId={orgId} brandId={brandId} offerId={offerId} />
+        <OfferArchiveCard brandId={brandId} offerId={offerId} />
+        <ArchivedOffers brandId={brandId} />
+      </div>
     </V2Page>
   );
 }

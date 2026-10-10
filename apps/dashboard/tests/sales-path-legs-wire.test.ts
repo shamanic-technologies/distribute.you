@@ -67,18 +67,9 @@ describe("salesPathLegsWire", () => {
   });
 });
 
-describe("every write of an offer's sales path sends legs with their channel", () => {
-  const read = (f: string) => readFileSync(join(__dirname, "..", f), "utf8");
-  it("the api helper puts `legs`, never the deprecated bare `legKeys`", () => {
-    const api = read("src/lib/api.ts");
-    const at = api.indexOf("export async function saveOfferSalesPath(");
-    const fn = api.slice(at, api.indexOf("export async function getOfferChannels("));
-    expect(fn).toContain("body: { steps, legs }");
-    expect(fn).not.toContain("legKeys");
-  });
-  it("both callers build the legs with salesPathLegsWire", () => {
-    for (const f of ["src/components/v2/offer-revenue-steps.tsx"]) {
-      expect(read(f)).toContain("salesPathLegsWire(next.legs, offered.channelsByLeg, offered.legs)");
-    }
+describe("no dashboard surface writes an offer's sales path any more (owner 2026-10-10)", () => {
+  it("the api client carries no brand-service sales path, channels or ticked paths call", () => {
+    const api = readFileSync(join(__dirname, "..", "src/lib/api.ts"), "utf8");
+    for (const gone of ["/sales-path`", "offers/${offerId}/channels", "/selected-sales-paths", "/reactive-defaults"]) expect(api, gone).not.toContain(gone);
   });
 });
