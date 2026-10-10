@@ -42,49 +42,48 @@ import { YoutubeLogoIcon } from "@phosphor-icons/react/dist/csr/YoutubeLogo";
 import { catalogueFaceSrc } from "@/lib/staff-catalogue";
 
 /**
- * The served icon NAME of a catalogue object, drawn. features-service says Phosphor; a few
- * channels serve another set's name for the same picture (`mail`, `share-2`, `mic`), so both
- * spellings are listed. A pure display lookup: per-icon imports, never the ~190KB barrel.
+ * The served icon NAME of a catalogue object, drawn. features-service serves Phosphor names only
+ * (v0.179.116); this lists the ones it serves today. A pure display lookup: per-icon imports, never
+ * the ~190KB barrel. A name not listed is logged once and drawn as a plain circle.
  */
 const CATALOGUE_ICONS: Record<string, Icon> = {
   "address-book": AddressBookIcon,
-  "at-sign": AtIcon,
-  award: MedalIcon,
+  at: AtIcon,
   bell: BellIcon,
   bird: BirdIcon,
   "calendar-check": CalendarCheckIcon,
   "calendar-plus": CalendarPlusIcon,
+  "chat-circle": ChatCircleIcon,
   "chat-circle-text": ChatCircleTextIcon,
+  "chat-text": ChatTextIcon,
   "currency-dollar": CurrencyDollarIcon,
   "cursor-click": CursorClickIcon,
   envelope: EnvelopeIcon,
-  facebook: FacebookLogoIcon,
+  "facebook-logo": FacebookLogoIcon,
   "file-text": FileTextIcon,
-  filter: FunnelIcon,
   "flow-arrow": FlowArrowIcon,
+  funnel: FunnelIcon,
   handshake: HandshakeIcon,
-  "help-circle": QuestionIcon,
-  instagram: InstagramLogoIcon,
-  linkedin: LinkedinLogoIcon,
-  list: ListBulletsIcon,
-  mail: EnvelopeIcon,
+  "instagram-logo": InstagramLogoIcon,
+  "linkedin-logo": LinkedinLogoIcon,
+  "list-bullets": ListBulletsIcon,
+  "magnifying-glass": MagnifyingGlassIcon,
+  medal: MedalIcon,
   megaphone: MegaphoneIcon,
-  "message-circle": ChatCircleIcon,
-  "message-square": ChatTextIcon,
-  mic: MicrophoneIcon,
+  microphone: MicrophoneIcon,
   "note-pencil": NotePencilIcon,
   phone: PhoneIcon,
   "phone-call": PhoneCallIcon,
-  radar: TargetIcon,
-  search: MagnifyingGlassIcon,
-  "share-2": ShareNetworkIcon,
+  question: QuestionIcon,
+  "share-network": ShareNetworkIcon,
   "shopping-cart": ShoppingCartIcon,
+  target: TargetIcon,
   "user-check": UserCheckIcon,
   "user-focus": UserFocusIcon,
   "user-plus": UserPlusIcon,
   users: UsersIcon,
   waves: WavesIcon,
-  youtube: YoutubeLogoIcon,
+  "youtube-logo": YoutubeLogoIcon,
 };
 
 const warned = new Set<string>();

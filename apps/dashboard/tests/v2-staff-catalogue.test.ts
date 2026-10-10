@@ -175,3 +175,54 @@ describe("staff only", () => {
     expect(pages).toContain("roiIsGood(v)");
   });
 });
+
+describe("staff Campaigns section (owner 2026-10-10): sales funnel campaigns with their staff detail", () => {
+  it("parses campaign-service's funnel campaign and billing's caps as served", async () => {
+    const { SalesFunnelCampaignListSchema, SalesFunnelCapsSchema, centsToUsd, isOngoingFunnelCampaign, producerWord } = await import("../src/lib/sales-funnel-campaigns");
+    const list = SalesFunnelCampaignListSchema.parse({
+      salesFunnelCampaigns: [
+        {
+          id: "a5a5f05c-17f2-458a-a886-e620f5dff10d", orgId: "o", brandId: "b", offerId: "f", createdByUserId: null,
+          salesFunnelId: "lead_found_to_website_visit@sales-cold-email-outreach+website_visit_to_purchase+purchase_to_paid_client",
+          salesFunnelName: "Lumen", status: "stopped", stopReason: "manual", createdAt: "2026-10-10T10:37:24Z", updatedAt: "2026-10-10T10:40:00Z",
+          units: [{ campaignId: "c1", pipeId: "sales-cold-email-outreach|lead_found_to_website_visit", featureSlug: "sales-cold-email-outreach", legKey: "lead_found_to_website_visit", status: "stopped", workflowSlug: null, name: "Lumen" }],
+        },
+      ],
+    });
+    expect(isOngoingFunnelCampaign(list.salesFunnelCampaigns[0])).toBe(false);
+    expect(producerWord("manual")).toBe("Manual");
+    const caps = SalesFunnelCapsSchema.parse({
+      orgId: "o", brandId: "b", offerId: "f", salesFunnelId: "x", stated: true, updatedAt: null, salesFunnelName: "Lumen", pipes: null, sources: null,
+      maxBudget: { amountCents: "10000", period: "daily", periodStart: "2026-10-10T00:00:00Z", periodEnd: null, consumedCents: null, remainingCents: null, reached: null, consumedUnavailableReason: "runs_service_unavailable", consumedUnavailableDetail: "x" },
+      maxVolume: null,
+    });
+    expect(centsToUsd(caps.maxBudget!.amountCents)).toBe(100);
+    expect(centsToUsd(caps.maxBudget!.consumedCents)).toBeNull();
+  });
+  it("the section is the last staff section: Overview, then each ONGOING funnel campaign with its face", () => {
+    const shell = read("src/components/v2/v2-shell.tsx");
+    const sections = shell.slice(shell.indexOf("function StaffObjectSections("));
+    const at = sections.indexOf('<Group title="Campaigns">');
+    expect(at).toBeGreaterThan(sections.indexOf('<Group title="Workflows">'));
+    expect(sections.slice(at)).toContain('v2CatalogueHref(orgId, brandId, "campaigns")');
+    expect(sections.slice(at)).toContain("ongoing.campaigns.map(({ campaign, face })");
+  });
+  it("its pages sit behind <StaffOnly> and show the staff-only detail (units, workflow picked, funnel id, caps, stop reason)", () => {
+    const base = "src/app/(authed)/v2/orgs/[orgId]/brands/[brandId]/catalogue/[object]";
+    expect(read(`${base}/page.tsx`)).toMatch(/<StaffOnly>\s*<StaffCampaignsOverviewPage \/>/);
+    expect(read(`${base}/[id]/page.tsx`)).toMatch(/<StaffOnly>\s*<StaffFunnelCampaignPage/);
+    const page = read("src/components/v2/staff-campaign-pages.tsx");
+    for (const s of [">Workflow picked<", 'label="Funnel id"', ">Caps read<", 'label="Stop reason"', ">Units<"]) expect(page).toContain(s);
+    // Reuse: a unit opens the GA campaign page, never a staff copy of it.
+    expect(page).toContain("v2CampaignHref(orgId, brandId, unit.campaignId)");
+  });
+});
+
+describe("catalogue icons: Phosphor names only (features-service v0.179.116)", () => {
+  it("no other set's spelling is mapped any more", () => {
+    const mark = read("src/components/v2/catalogue-mark.tsx");
+    const map = mark.slice(mark.indexOf("const CATALOGUE_ICONS"), mark.indexOf("const warned"));
+    for (const k of ['  mail:', '"share-2"', "  mic:", '"message-square"', "  linkedin:", '"help-circle"', "  search:"]) expect(map).not.toContain(k);
+    expect(map).toContain("envelope: EnvelopeIcon");
+  });
+});

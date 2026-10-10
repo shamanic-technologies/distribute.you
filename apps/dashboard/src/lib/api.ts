@@ -15,6 +15,13 @@ import {
   type CataloguePage,
   type CatalogueReadObject,
 } from "./staff-catalogue";
+import {
+  SalesFunnelCampaignListSchema,
+  SalesFunnelCampaignOneSchema,
+  SalesFunnelCapsSchema,
+  type SalesFunnelCampaign,
+  type SalesFunnelCaps,
+} from "./sales-funnel-campaigns";
 import { browserHasAnonSession } from "./anon-session-cookie";
 import { offerArchiveRefusalSentence } from "./offer-archive";
 import { CrmAttributionSchema, type CrmAttribution } from "./crm-attribution";
@@ -1589,6 +1596,30 @@ export async function getStaffCatalogueObject<K extends CatalogueReadObject>(
   const q = qs.toString();
   const raw = await apiCall<unknown>(`${STAFF_CATALOGUE_PATHS.one(object, id)}${q ? `?${q}` : ""}`);
   return parseStaff(`getStaffCatalogueObject(${object})`, CATALOGUE_DETAIL_SCHEMAS[object] as z.ZodType<CatalogueDetailByObject[K]>, raw);
+}
+
+// ─── Sales funnel campaigns (campaign-service) + their caps (billing-service), owner 2026-10-10 ───
+// Org-scoped reads through the gateway (api-service #1166). Shapes: lib/sales-funnel-campaigns.ts.
+
+/** The org's funnel campaigns for one brand x offer, each with its units (newest first). */
+export async function listSalesFunnelCampaigns(brandId: string, offerId: string): Promise<SalesFunnelCampaign[]> {
+  const qs = new URLSearchParams({ brandId, offerId });
+  const raw = await apiCall<unknown>(`/sales-funnel-campaigns?${qs.toString()}`);
+  return parseStaff("listSalesFunnelCampaigns", SalesFunnelCampaignListSchema, raw).salesFunnelCampaigns;
+}
+
+/** One funnel campaign with its units. */
+export async function getSalesFunnelCampaign(id: string): Promise<SalesFunnelCampaign> {
+  const raw = await apiCall<unknown>(`/sales-funnel-campaigns/${encodeURIComponent(id)}`);
+  return parseStaff("getSalesFunnelCampaign", SalesFunnelCampaignOneSchema, raw).salesFunnelCampaign;
+}
+
+/** A funnel's max budget + max volume and what it consumed in the current window (billing-service). */
+export async function getSalesFunnelCaps(brandId: string, offerId: string, salesFunnelId: string): Promise<SalesFunnelCaps> {
+  const raw = await apiCall<unknown>(
+    `/brands/${encodeURIComponent(brandId)}/offers/${encodeURIComponent(offerId)}/sales-funnels/${encodeURIComponent(salesFunnelId)}/caps`,
+  );
+  return parseStaff("getSalesFunnelCaps", SalesFunnelCapsSchema, raw);
 }
 
 // ─── Copilot skill tree (chat-service `/internal/skills`, owner 2026-10-09) ────────────────

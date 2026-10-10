@@ -52,7 +52,7 @@ function Roi({ v }: { v: number | null | undefined }) {
   );
 }
 
-function OngoingDot() {
+export function OngoingDot() {
   return <span className="k-dot-pulse h-1.5 w-1.5 shrink-0 rounded-full bg-[var(--run)] text-[var(--run)]" aria-label="Ongoing" title="Ongoing" />;
 }
 
@@ -155,7 +155,7 @@ function CatalogueTable({
   );
 }
 
-function TableSkeleton({ rows = 4 }: { rows?: number }) {
+export function TableSkeleton({ rows = 4 }: { rows?: number }) {
   return (
     <div className="k-card overflow-hidden">
       {Array.from({ length: rows }, (_, i) => (
@@ -313,7 +313,7 @@ export function CatalogueOverviewPage({ object }: { object: CatalogueObject }) {
 }
 
 /** Many objects of one kind by id (a page's related objects), in order. */
-function useRelated<K extends CatalogueObject>(object: K, ids: string[]) {
+export function useRelated<K extends CatalogueObject>(object: K, ids: string[]) {
   const gate = useOrgQueryGate();
   const results = useQueries({
     queries: ids.map((id) => ({
@@ -330,7 +330,7 @@ function useRelated<K extends CatalogueObject>(object: K, ids: string[]) {
   };
 }
 
-function Fact({ label, children }: { label: string; children: React.ReactNode }) {
+export function Fact({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <div className="py-1.5">
       <dt className="k-label">{label}</dt>
@@ -339,7 +339,7 @@ function Fact({ label, children }: { label: string; children: React.ReactNode })
   );
 }
 
-function Kpi({ label, children }: { label: string; children: React.ReactNode }) {
+export function Kpi({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <div className="min-w-0 px-4 py-3">
       <p className="k-label">{label}</p>
