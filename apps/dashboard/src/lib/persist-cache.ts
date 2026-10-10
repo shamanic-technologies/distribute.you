@@ -163,6 +163,9 @@ export const PERSISTABLE_QUERY_ROOTS = new Set([
   // The Billing page Usage section: billed spend by category.
   "orgUsage",
   "billingPayments",
+  // Billing's current payment hold (outlook state + reason), behind the "paused over
+  // payment" notice. Read only while a scope was stopped over payment.
+  "paymentHoldNow",
   // The org's own referral code, behind the sidebar's invite link. Tiny, and it
   // never changes, so an unlisted root would cold-fetch on every single load.
   "inviteStatus",

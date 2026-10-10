@@ -12,6 +12,12 @@
 // or there is no card. Every surface that states a campaign's status reads this
 // module for the last two, so the words and the colour are stated once.
 //
+// A stop reason is HISTORY (why that campaign stopped, then); the hold is billing's
+// CURRENT state. A status pill may state the history. A notice telling the customer
+// to act ("add a card") speaks only while billing blocks the org NOW
+// (`billingHoldKind`): an org that moved to prepaid or added a card keeps the old
+// reason on its stopped campaigns and must not be told to add a card (2026-10-10).
+//
 // Alias-free on purpose (only relative imports), so it carries real unit tests.
 
 import { isRunningStatus } from "./campaign-controls";
@@ -55,17 +61,56 @@ export function paymentHoldKind(c: StatusWithReason): PaymentHoldKind | null {
 }
 
 /**
+ * billing's payment outlook, the two fields that say whether the org is held NOW.
+ * Served by the dashboard's own `/api/orgs/payment-hold` (billing's
+ * `GET /internal/accounts/by-org/:orgId/payment-outlook`).
+ */
+export interface BillingHoldOutlook {
+  state: string;
+  blockedReason: string | null;
+}
+
+/**
+ * Is the org held over payment RIGHT NOW, and which way? Billing's verdict, read,
+ * never re-derived: `charge_blocked` is the state campaign-service stops campaigns
+ * and refuses starts on. billing's own reason picks the words: no chargeable card is
+ * "add a card", every other block (declined, unusable, retries exhausted, card
+ * country unsupported) is "fix billing". Any other state (a prepaid org is never
+ * blocked) is null.
+ */
+export function billingHoldKind(outlook: BillingHoldOutlook): PaymentHoldKind | null {
+  if (outlook.state !== "charge_blocked") return null;
+  return outlook.blockedReason === "no_chargeable_card" ? "no_payment_method" : "declined";
+}
+
+/**
+ * Was this scope stopped over payment, by the campaigns' own record? Nothing in it
+ * runs, and at least one campaign carries a payment stop reason. HISTORY only: a stop
+ * reason stays on the campaign after the org added a card or moved to prepaid, so this
+ * alone never tells the customer to act. It says whether billing is worth asking.
+ */
+export function scopeStoppedOverPayment(campaigns: readonly StatusWithReason[]): boolean {
+  if (campaigns.some((c) => isRunningStatus(c.status))) return false;
+  return campaigns.some((c) => paymentHoldKind(c) !== null);
+}
+
+/**
  * Does this scope need the "fix your payment" notice, and which one?
  *
- * Only while NOTHING in it runs. A start is refused for as long as billing holds
- * the org, so a single running campaign proves the hold has cleared; the rest were
- * left stopped by the customer's own choice (or not restarted yet) and a notice
- * saying otherwise would then be false. A declined card outranks a missing one: it
- * also owes money, so it is the fuller instruction.
+ * Both have to hold. Billing blocks the org NOW (`billingHold`, from
+ * `billingHoldKind`), and the scope was stopped over payment with NOTHING running (a
+ * start is refused while billing holds the org, so one running campaign proves the
+ * hold cleared, and a scope with no payment stop has nothing to say "paused" about).
+ * The kind is billing's, never the campaign's old reason: a campaign stopped for
+ * having no card, in an org whose card is now declined, needs "fix billing".
  */
-export function scopePaymentHold(campaigns: readonly StatusWithReason[]): PaymentHoldKind | null {
-  if (campaigns.some((c) => isRunningStatus(c.status))) return null;
-  return strongestPaymentHold(campaigns.map(paymentHoldKind));
+export function scopePaymentHold(
+  campaigns: readonly StatusWithReason[],
+  billingHold: PaymentHoldKind | null,
+): PaymentHoldKind | null {
+  if (!billingHold) return null;
+  if (!scopeStoppedOverPayment(campaigns)) return null;
+  return billingHold;
 }
 
 /**

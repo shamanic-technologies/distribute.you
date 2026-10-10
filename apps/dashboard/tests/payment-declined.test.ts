@@ -7,7 +7,9 @@ import {
   PAYMENT_HOLD_LABEL,
   PAYMENT_HOLD_NOTE,
   PAYMENT_HOLD_TITLE,
+  billingHoldKind,
   scopePaymentHold,
+  scopeStoppedOverPayment,
   strongestPaymentHold,
 } from "../src/lib/payment-declined";
 import { buildControlRows } from "../src/lib/campaign-controls";
@@ -52,34 +54,63 @@ describe("strongestPaymentHold", () => {
   });
 });
 
-describe("scopePaymentHold", () => {
-  it("fires when a campaign is stopped over the declined payment and nothing runs", () => {
-    expect(
-      scopePaymentHold([
-        { status: "stopped", stopReason: "payment_declined" },
-        { status: "stopped", stopReason: "manual" },
-      ]),
-    ).toBe("declined");
+describe("billingHoldKind", () => {
+  it("reads billing's current verdict: only charge_blocked holds, billing's reason picks the words", () => {
+    expect(billingHoldKind({ state: "charge_blocked", blockedReason: "no_chargeable_card" })).toBe("no_payment_method");
+    expect(billingHoldKind({ state: "charge_blocked", blockedReason: "card_declined" })).toBe("declined");
+    expect(billingHoldKind({ state: "charge_blocked", blockedReason: "retries_exhausted" })).toBe("declined");
+    // A prepaid org is never blocked by billing (the 2026-10-10 org read no_autopay).
+    expect(billingHoldKind({ state: "no_autopay", blockedReason: null })).toBeNull();
+    expect(billingHoldKind({ state: "will_charge", blockedReason: null })).toBeNull();
+    expect(billingHoldKind({ state: "idle", blockedReason: null })).toBeNull();
   });
-  it("names the missing card when that is the reason", () => {
+});
+
+describe("scopePaymentHold", () => {
+  it("fires when billing blocks the org NOW and the scope was stopped over payment with nothing running", () => {
     expect(
-      scopePaymentHold([
-        { status: "stopped", stopReason: "no_payment_method" },
-        { status: "stopped", stopReason: "manual" },
-      ]),
+      scopePaymentHold(
+        [
+          { status: "stopped", stopReason: "payment_declined" },
+          { status: "stopped", stopReason: "manual" },
+        ],
+        "declined",
+      ),
+    ).toBe("declined");
+    expect(
+      scopePaymentHold(
+        [
+          { status: "stopped", stopReason: "no_payment_method" },
+          { status: "stopped", stopReason: "manual" },
+        ],
+        "no_payment_method",
+      ),
     ).toBe("no_payment_method");
   });
-  it("stays silent once anything runs: a start is refused while held, so the hold cleared", () => {
-    expect(
-      scopePaymentHold([
-        { status: "stopped", stopReason: "payment_declined" },
-        { status: "ongoing", stopReason: null },
-      ]),
-    ).toBeNull();
+  it("words the notice from billing's current reason, not the campaign's old one", () => {
+    expect(scopePaymentHold([{ status: "stopped", stopReason: "no_payment_method" }], "declined")).toBe("declined");
   });
-  it("stays silent for a healthy org whose campaign a person paused", () => {
-    expect(scopePaymentHold([{ status: "stopped", stopReason: "manual" }])).toBeNull();
-    expect(scopePaymentHold([])).toBeNull();
+  it("stays silent when billing does not block the org, whatever an old stop reason says (prepaid with credit, 2026-10-10)", () => {
+    const campaigns = [
+      { status: "stopped", stopReason: "manual" },
+      { status: "stopped", stopReason: "manual" },
+      { status: "stopped", stopReason: "no_payment_method" },
+    ];
+    expect(scopeStoppedOverPayment(campaigns)).toBe(true);
+    expect(scopePaymentHold(campaigns, billingHoldKind({ state: "no_autopay", blockedReason: null }))).toBeNull();
+  });
+  it("stays silent once anything runs: a start is refused while held, so the hold cleared", () => {
+    const campaigns = [
+      { status: "stopped", stopReason: "payment_declined" },
+      { status: "ongoing", stopReason: null },
+    ];
+    expect(scopeStoppedOverPayment(campaigns)).toBe(false);
+    expect(scopePaymentHold(campaigns, "declined")).toBeNull();
+  });
+  it("stays silent for a scope a person paused, even while billing blocks the org", () => {
+    expect(scopePaymentHold([{ status: "stopped", stopReason: "manual" }], "no_payment_method")).toBeNull();
+    expect(scopePaymentHold([], "no_payment_method")).toBeNull();
+    expect(scopeStoppedOverPayment([])).toBe(false);
   });
 });
 
@@ -180,6 +211,27 @@ describe("call sites", () => {
     expect(read("lib/use-scope-toggle.ts")).toContain("campaignStartRefusalMessage(err.status, err.body)");
     expect(read("components/settings/campaign-settings-card.tsx")).toContain("campaignStartRefusalMessage(err.status, err.body)");
     expect(read("lib/channel-start.ts")).toContain("campaignStartRefusalMessage(");
+  });
+  it("the notice that tells the customer to act gates on billing's CURRENT hold, on v2 and v1", () => {
+    const notice = read("components/billing/payment-declined-notice.tsx");
+    expect(notice).toContain('useAuthQuery(["paymentHoldNow"], getPaymentHoldNow');
+    expect(notice).toContain("scopePaymentHold(campaigns, billingHoldKind(hold.data))");
+    // The bare kind-taking notice is not exported: no surface can skip billing.
+    expect(notice).not.toContain("export function PaymentDeclinedNotice");
+    expect(read("components/billing/scope-payment-declined-band.tsx")).toContain("<PaymentHoldNotice campaigns={campaigns} />");
+    expect(read("components/settings/campaign-settings-card.tsx")).toContain("<PaymentHoldNotice campaigns={[campaign]} />");
+    // The route reads billing's outlook, not a campaign's stop reason.
+    expect(read("app/(authed)/api/orgs/payment-hold/route.ts")).toContain("getPaymentOutlook(identity.orgId)");
+    expect(read("lib/billing-service.ts")).toContain("/payment-outlook");
+  });
+  it("billing unreadable says so, never a guessed Add a card", () => {
+    const notice = read("components/billing/payment-declined-notice.tsx");
+    const at = notice.indexOf("if (!hold.data) {");
+    const end = notice.indexOf("const kind = scopePaymentHold(", at);
+    expect(at).toBeGreaterThan(-1);
+    const branch = notice.slice(at, end);
+    expect(branch).toContain("We could not check your billing status.");
+    expect(branch).not.toContain("Add a card");
   });
   it("the notice links to Billing", () => {
     expect(read("components/billing/payment-declined-notice.tsx")).toContain("/billing");
