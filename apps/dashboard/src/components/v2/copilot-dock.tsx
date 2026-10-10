@@ -4,14 +4,14 @@ import { createContext, useCallback, useContext, useEffect, useState } from "rea
 import { ChatCircleDotsIcon } from "@phosphor-icons/react/dist/csr/ChatCircleDots";
 
 /**
- * Whether the staff Copilot panel is shown (owner 2026-10-10: a right panel, always on, a
+ * Whether the Copilot panel is shown (owner 2026-10-10: a right panel, always on, a
  * button hides it, a button in the top bar brings it back). The choice survives a reload.
  * Kept apart from the panel so the top bar can read it without importing the chat.
  */
 const STORAGE_KEY = "v2.copilot.open";
 
 interface CopilotDock {
-  /** Staff mode on a brand page: the panel exists. */
+  /** On a brand page: the panel exists. */
   available: boolean;
   open: boolean;
   setOpen: (open: boolean) => void;

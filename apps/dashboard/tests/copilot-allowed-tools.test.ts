@@ -2,7 +2,7 @@ import { describe, it, expect } from "vitest";
 import * as fs from "fs";
 import * as path from "path";
 
-// The staff Copilot maps any request onto the platform through the chat-service skill tree
+// The Copilot maps any request onto the platform through the chat-service skill tree
 // (owner 2026-10-09): read_skill, one read per entity, the two-step switch-on gate and the
 // staff escalation. Nothing that creates AND starts work in one call.
 const src = fs.readFileSync(path.resolve(__dirname, "../src/instrumentation.ts"), "utf-8");
