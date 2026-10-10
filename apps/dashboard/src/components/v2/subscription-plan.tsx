@@ -86,7 +86,7 @@ export function SubscriptionPlan() {
       console.error(`[billing v2] plan ${kind} failed:`, err);
       const raw = err instanceof ApiError ? err.body?.code : undefined;
       const code = typeof raw === "string" ? raw : undefined;
-      setError(planRefusal(kind, code));
+      setError(planRefusal(kind, code, data?.subscription?.status === "trialing"));
     }
     setBusy(null);
     // The stay-for-less answer celebrates inside the flow, so a success keeps it open.
@@ -125,6 +125,10 @@ export function SubscriptionPlan() {
   // Owner 2026-10-03: a trial is never a lock. The customer can start paying now, at the
   // amount on the plan or another one, after a modal that says the card is charged today.
   const startable = trialing && sub.can_start_now === true;
+  // Owner 2026-10-10: on an active plan a HIGHER amount is charged today, lands as credit
+  // at once and restarts the month (billing#712, same start-now write). A lower amount
+  // still applies from the next charge. The out-of-credits email links here.
+  const upgradable = sub.status === "active" && sub.can_start_now === true && changed && amount > sub.monthly_amount_cents;
   // billing says whether the amount can move now (not while a cancel is pending).
   const locked = startable ? false : sub.can_change_amount != null ? !sub.can_change_amount : trialing;
 
@@ -161,7 +165,7 @@ export function SubscriptionPlan() {
                 ? "Start now and your credit lands today."
                 : locked
                   ? "You can change it again once your plan is active."
-                  : "Each dollar becomes credit for your outreach. A new amount applies from your next charge."}
+                  : "A higher amount is charged today and becomes credit now. A lower one applies from your next charge."}
             </p>
           </div>
           <label className={`k-btn relative h-7 text-[12px] ${locked ? "opacity-50" : ""}`}>
@@ -188,7 +192,12 @@ export function SubscriptionPlan() {
               Start my plan now
             </button>
           )}
-          {!startable && changed && (
+          {upgradable && (
+            <button type="button" className="k-btn-accent h-7" disabled={busy !== null} onClick={() => setChargeOpen(true)}>
+              Upgrade now
+            </button>
+          )}
+          {!startable && !upgradable && changed && (
             <button
               type="button"
               className={`k-btn-accent h-7 ${busy === "amount" ? "cursor-wait" : ""}`}
@@ -238,6 +247,7 @@ export function SubscriptionPlan() {
       {chargeOpen && (
         <ChargeNowDialog
           amount={monthlyUsd(amount)}
+          trialing={startable}
           pending={busy === "start"}
           onConfirm={() => void run("start", () => startSubscriptionNow(amount))}
           onKeep={() => setChargeOpen(false)}
@@ -268,7 +278,7 @@ export function SubscriptionPlan() {
 type PlanWrite = "amount" | "start" | "cancel" | "resume" | "pause" | "unpause";
 
 /** A refusal in one sentence, by billing's code. */
-function planRefusal(kind: PlanWrite, code: string | undefined): string {
+function planRefusal(kind: PlanWrite, code: string | undefined, trialing: boolean): string {
   if (code === "amount_below_minimum") return "Your plan can start at $29 a month.";
   if (code === "amount_not_whole_dollars") return "Pick a whole dollar amount.";
   if (code === "subscription_paused") return "Your plan is paused. Restart it first.";
@@ -278,9 +288,17 @@ function planRefusal(kind: PlanWrite, code: string | undefined): string {
     return "We could not pause your plan. Please try again.";
   }
   if (kind === "start") {
-    if (code === "first_charge_declined") return "Your card was declined. Nothing was charged. Your free trial goes on.";
+    if (code === "first_charge_declined")
+      return trialing
+        ? "Your card was declined. Nothing was charged. Your free trial goes on."
+        : "Your card was declined. Nothing was charged. Your plan stays as it is.";
+    if (code === "amount_not_upgrade") return "Pick a higher amount to upgrade now.";
+    if (code === "start_now_in_progress") return "Your payment is already on its way.";
+    if (code === "subscription_cancel_pending") return "Your plan is set to end. Keep it first.";
     if (code === "card_required") return "Add a card to start your plan.";
-    return "We could not start your plan. Nothing was charged. Please try again.";
+    return trialing
+      ? "We could not start your plan. Nothing was charged. Please try again."
+      : "We could not upgrade your plan. Nothing was charged. Please try again.";
   }
   return "We could not change your plan. Please try again.";
 }
@@ -291,11 +309,14 @@ function planRefusal(kind: PlanWrite, code: string | undefined): string {
  */
 export function ChargeNowDialog({
   amount,
+  trialing,
   pending,
   onConfirm,
   onKeep,
 }: {
   amount: string;
+  /** A trial starting now, or an active plan upgrading (owner 2026-10-10). */
+  trialing: boolean;
   pending: boolean;
   onConfirm: () => void;
   onKeep: () => void;
@@ -324,7 +345,7 @@ export function ChargeNowDialog({
       >
         <div className="flex h-11 shrink-0 items-center gap-2 border-b border-[var(--line-subtle)] px-4">
           <span id="v2-charge-title" className="k-label">
-            Start my plan now
+            {trialing ? "Start my plan now" : "Upgrade my plan"}
           </span>
           <button
             type="button"
@@ -340,7 +361,7 @@ export function ChargeNowDialog({
           <p className="text-[13px] font-medium">We charge {amount} to your card today.</p>
           <ul className="k-inset mt-3 divide-y divide-[var(--line-subtle)] rounded-lg">
             {[
-              "Your free trial ends now.",
+              trialing ? "Your free trial ends now." : "Your new plan starts today.",
               `Your ${amount} becomes credit right away.`,
               "Your next charge is in one month.",
             ].map((line) => (
@@ -351,7 +372,7 @@ export function ChargeNowDialog({
           </ul>
           <div className="mt-5 flex items-center justify-end gap-2">
             <button type="button" onClick={onKeep} disabled={pending} className="k-btn-ghost">
-              Keep my free trial
+              {trialing ? "Keep my free trial" : "Keep my current plan"}
             </button>
             <button type="button" onClick={onConfirm} disabled={pending} className={`k-btn-accent ${pending ? "cursor-wait" : ""}`}>
               {pending ? "Charging..." : `Pay ${amount} now`}
