@@ -132,8 +132,8 @@ describe("sales funnel campaigns: display", () => {
   });
 
   it("draws the face from the name through the gateway's public route", () => {
-    expect(funnelCampaignFaceSrc("Epiphany")).toBe("/api/v1/public/catalogue/faces/Epiphany.svg");
-    expect(funnelCampaignFaceSrc("New Dawn")).toBe("/api/v1/public/catalogue/faces/New%20Dawn.svg");
+    expect(funnelCampaignFaceSrc("Epiphany")).toBe("/api/public/faces/Epiphany.svg");
+    expect(funnelCampaignFaceSrc("New Dawn")).toBe("/api/public/faces/New%20Dawn.svg");
   });
 
   it("says why a consumption is missing in plain words", () => {
