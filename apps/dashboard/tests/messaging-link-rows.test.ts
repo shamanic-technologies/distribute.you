@@ -51,11 +51,21 @@ describe("messaging apps link self-serve from Integrations", () => {
     expect(accountsOfChannel({ accounts: [{ channel: "whatsapp", n: 1 }, { channel: "linkedin", n: 2 }, { channel: "whatsapp", n: 3 }] }, "whatsapp").map((a) => a.n)).toEqual([1, 3]);
   });
 
-  it("LinkedIn logs in with its own form; cookies are never offered to a customer", () => {
+  it("LinkedIn starts with its own form; cookies are never a START method", () => {
     expect(startMethods(["password", "cookies"])).toEqual(["password"]);
     expect(startMethods(["phone", "qr"])).toEqual(["qr", "phone"]);
     const rows = read("components/settings/messaging-link-rows.tsx");
-    expect(rows).toContain("answerMatrixLink(brandId, link.channel, linkId, values)");
+    expect(rows).toContain("answerMatrixLink(brandId, link.channel, linkId, input)");
+    expect(rows).toContain("answer.mutate(values)");
     expect(rows).toContain('link.input?.type === "user_input"');
+  });
+
+  it("a cookies step (LinkedIn's login, 2026-10-10) shows a paste box instead of a dead 'Waiting for you'", () => {
+    const rows = read("components/settings/messaging-link-rows.tsx");
+    expect(rows).toContain('link.input?.type === "cookies" && link.input.cookies ? link.input.cookies : null');
+    expect(rows).toContain("{waiting && !form && !session ? (");
+    expect(rows).toContain("sessionValues(session.fields, parsePastedHeaders(pasted))");
+    expect(rows).toContain("answer.mutate(read.values)");
+    expect(read("lib/api.ts")).toContain("sources: z.array(z.object({ type: z.string(), name: z.string() })),");
   });
 });

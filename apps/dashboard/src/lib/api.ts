@@ -789,6 +789,20 @@ const MatrixLinkInputSchema = z.object({
       options: z.array(z.string()).nullable(),
     }),
   ),
+  // A 'cookies' step (LinkedIn): where to log in and which browser values to read.
+  cookies: z
+    .object({
+      url: z.string().nullable(),
+      fields: z.array(
+        z.object({
+          id: z.string(),
+          required: z.boolean(),
+          sources: z.array(z.object({ type: z.string(), name: z.string() })),
+          pattern: z.string().nullable(),
+        }),
+      ),
+    })
+    .nullish(),
 });
 
 const MatrixLinkSchema = z.object({
