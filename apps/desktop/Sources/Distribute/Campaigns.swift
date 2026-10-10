@@ -388,6 +388,7 @@ struct CampaignPanel: View {
                     Button("Change the budget") { state.ask("Change the budget of my campaign \"\(c.name)\" (id \(c.id)) to ") }
                         .buttonStyle(.plain).font(K.meta).foregroundStyle(K.accent)
                 }
+                .frame(maxWidth: .infinity, alignment: .leading)
                 .padding(12)
             }
             SectionTitle(title: "Results", count: c.units.count)
