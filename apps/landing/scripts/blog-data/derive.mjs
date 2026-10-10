@@ -278,11 +278,15 @@ function hourBucket(h) {
 }
 const WEEKDAY = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
 
+// One formatter per timezone: a new Intl.DateTimeFormat per email holds native (ICU) memory the
+// garbage collector does not see, ~1.5 GB over 160k emails, which the box's 2.5 GB cap killed.
+const tzHour = new Map();
 function localHour(sentAt, tz) {
   if (!tz) return null;
   try {
     const d = new Date(`${sentAt.replace(" ", "T")}Z`);
-    const h = new Intl.DateTimeFormat("en-US", { timeZone: tz, hour: "numeric", hour12: false }).format(d);
+    if (!tzHour.has(tz)) tzHour.set(tz, new Intl.DateTimeFormat("en-US", { timeZone: tz, hour: "numeric", hour12: false }));
+    const h = tzHour.get(tz).format(d);
     const n = Number(h);
     return Number.isFinite(n) ? n % 24 : null;
   } catch { return null; }
