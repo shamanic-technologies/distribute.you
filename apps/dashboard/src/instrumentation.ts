@@ -885,10 +885,10 @@ const PLATFORM_CHAT_CONFIGS = [
     key: "copilot",
     systemPrompt: COPILOT_SYSTEM_PROMPT,
     allowedTools: COPILOT_ALLOWED_TOOLS,
-    // Claude Haiku 5.5 (chat-service `haiku` since 2026-10-09, owner's pick: cheapest, and
-    // the platform Anthropic key holds the startup credit).
+    // Claude Sonnet 5.5 (chat-service `sonnet`, owner's pick 2026-10-10 over Haiku 5.5; the
+    // platform Anthropic key holds the startup credit).
     provider: "anthropic",
-    model: "haiku",
+    model: "sonnet",
   },
   {
     key: "workflow",
