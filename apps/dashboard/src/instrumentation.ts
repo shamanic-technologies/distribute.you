@@ -838,8 +838,6 @@ const COPILOT_ALLOWED_TOOLS = [
   "archive_qualification_check",
   "list_sourcing_origins",
   "get_offer_sourcing",
-  "get_offer_channels",
-  "get_offer_legs",
   "get_leg_rates",
   "list_sales_paths",
   "get_trigger_events",
@@ -855,7 +853,6 @@ const COPILOT_ALLOWED_TOOLS = [
   "get_brand_pause",
   // Data writes that start nothing.
   "create_offer",
-  "set_offer_channels",
   "set_campaign_budget",
   "stop_campaign",
   // Declarations (features-service, staff-only, unpublished until staff publishes): a channel,

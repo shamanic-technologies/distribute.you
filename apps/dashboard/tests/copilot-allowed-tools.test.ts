@@ -15,7 +15,7 @@ describe("Copilot allowed tools", () => {
   });
 
   it("has one read per platform entity", () => {
-    for (const t of ["get_offer_legs", "list_sales_paths", "get_trigger_events", "list_sourcing_origins", "get_campaign", "list_connected_accounts"]) {
+    for (const t of ["list_sales_paths", "get_trigger_events", "list_sourcing_origins", "get_campaign", "list_connected_accounts"]) {
       expect(tools).toContain(t);
     }
   });
@@ -50,6 +50,10 @@ describe("Copilot allowed tools", () => {
   it("never writes the offer's old ticked list: a campaign IS a funnel campaign (owner 2026-10-10)", () => {
     for (const t of ["set_selected_sales_paths", "get_selected_sales_paths"]) expect(tools).not.toContain(t);
     expect(tools).toContain("create_funnel_campaign");
+  });
+
+  it("never reads or writes the offer's old legs and accepted channels: brand-service retires them (2026-10-10)", () => {
+    for (const t of ["get_offer_legs", "get_offer_channels", "set_offer_channels"]) expect(tools).not.toContain(t);
   });
 
   it("lists each tool once", () => {
