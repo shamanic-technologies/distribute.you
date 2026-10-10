@@ -9,6 +9,9 @@ import { SERVICE_IDENTITY } from "./service-identity";
  * - who is active, daily + reactive budgets, audiences: features-service customer
  *   health (`/v1/features/audit/customer-success`, the admin Customer success board).
  *   "active" is the producer's verdict, never re-graded.
+ * - paying but idle: a brand the board does not call active, in an org billing classes
+ *   as recurring revenue (`revenueClass: "recurring"`, e.g. a $99/month subscriber who
+ *   stopped every campaign). Listed in its own block so a paying client never vanishes.
  * - payment mode, card, auto top-up, next charge / prepaid run-out: billing-service's
  *   fleet revenue (`/v1/billing/revenue/fleet`), one row per ORG, so a multi-brand
  *   org repeats it on each brand.
@@ -52,6 +55,7 @@ const CashEventSchema = z.object({
 const FleetOrgSchema = z.object({
   orgId: z.string(),
   paymentMode: z.string(),
+  revenueClass: z.string(),
   chargeableCard: z.boolean(),
   autoTopupEnabled: z.boolean(),
   cashState: z.string().nullish(),
@@ -94,11 +98,14 @@ export interface CustomerBoard {
   /** status "unknown": billing was unreadable, so the producer could not say whether
    *  they are active. Named in the message so a live client never silently vanishes. */
   unknown: ClientCustomer[];
+  /** every other status (inactive, paused, no_payment_method...): candidates for the
+   *  "paying, nothing running" block once billing says the org pays recurring revenue. */
+  notActive: ClientCustomer[];
 }
 
 export function parseCustomerBoard(raw: unknown): CustomerBoard {
   const board = CustomerHealthSchema.parse(raw);
-  const out: CustomerBoard = { active: [], unknown: [] };
+  const out: CustomerBoard = { active: [], unknown: [], notActive: [] };
   for (const row of board.customers) {
     const parsed = CustomerSchema.safeParse(row);
     if (!parsed.success) {
@@ -106,7 +113,8 @@ export function parseCustomerBoard(raw: unknown): CustomerBoard {
       continue;
     }
     if (parsed.data.status === "active") out.active.push(parsed.data);
-    if (parsed.data.status === "unknown") out.unknown.push(parsed.data);
+    else if (parsed.data.status === "unknown") out.unknown.push(parsed.data);
+    else out.notActive.push(parsed.data);
   }
   return out;
 }
@@ -215,20 +223,45 @@ export function clientLine(line: ClientLine, now: Date): string {
   return `${name}\n${parts.join(" · ")}`;
 }
 
+const IDLE_STATUS_LABEL: Record<string, string> = {
+  inactive: "No campaign running",
+  paused: "Paused",
+};
+
+/** A paying org's brand with nothing running: why it is idle, then the money side. */
+export function idleClientLine(line: ClientLine, now: Date): string {
+  const c = line.customer;
+  const parts = [IDLE_STATUS_LABEL[c.status] ?? `Status ${c.status}`];
+  const b = line.billing;
+  if (b) parts.push(paymentModeLabel(b), `Card ${dot(b.chargeableCard)}`);
+  else parts.push("Billing ?");
+  parts.push(investedLabel(line.cash));
+  if (b) parts.push(cashLabel(b, now));
+  return `${brandLabel(c)}\n${parts.join(" · ")}`;
+}
+
 function brandLabel(c: ClientCustomer): string {
   return c.brandName ?? c.brandDomain ?? c.brandId;
 }
 
-export function clientsMessage(lines: ClientLine[], now: Date, unknown: ClientCustomer[] = []): string {
+export function clientsMessage(
+  lines: ClientLine[],
+  now: Date,
+  unknown: ClientCustomer[] = [],
+  idle: ClientLine[] = [],
+): string {
+  const idleBlock = idle.length
+    ? [`💤 ${idle.length} paying, nothing running`, ...idle.map((l) => idleClientLine(l, now))]
+    : [];
   const unknownBlock = unknown.length
     ? [`⚠️ Status unreadable (billing did not answer): ${unknown.map(brandLabel).join(", ")}`]
     : [];
-  if (lines.length === 0) return ["☀️ No active clients this morning.", ...unknownBlock].join("\n\n");
+  if (lines.length === 0) return ["☀️ No active clients this morning.", ...idleBlock, ...unknownBlock].join("\n\n");
   const sorted = [...lines].sort(
     (a, b) => b.customer.runningDailyBudgetUsd - a.customer.runningDailyBudgetUsd,
   );
   const header = `☀️ ${lines.length} active client${lines.length === 1 ? "" : "s"}`;
-  return [header, ...sorted.map((l) => clientLine(l, now)), ...unknownBlock].join("\n\n");
+  return [header, ...sorted.map((l) => clientLine(l, now)), ...idleBlock, ...unknownBlock].join("\n\n");
 }
 
 /** Telegram caps a message at 4096 chars: split on client boundaries. */
@@ -270,18 +303,25 @@ async function getJson(fetchFn: FetchFn, url: string, headers: Record<string, st
 export async function buildClientLines(
   config: ClientsTelegramConfig,
   fetchFn: FetchFn = fetch,
-): Promise<{ lines: ClientLine[]; unknown: ClientCustomer[] }> {
+): Promise<{ lines: ClientLine[]; unknown: ClientCustomer[]; idle: ClientLine[] }> {
   // Staff-gated platform reads: admin key + an allowlisted staff email, no org headers.
   const staffHeaders = { "X-API-Key": config.adminApiKey, "x-email": config.staffEmail };
   const [health, fleet] = await Promise.all([
     getJson(fetchFn, `${config.apiUrl}/v1/features/audit/customer-success`, staffHeaders, "customer-success"),
     getJson(fetchFn, `${config.apiUrl}/v1/billing/revenue/fleet`, staffHeaders, "billing fleet"),
   ]);
-  const { active: customers, unknown } = parseCustomerBoard(health);
+  const { active: customers, unknown, notActive } = parseCustomerBoard(health);
   const billingByOrg = parseFleetOrgs(fleet);
 
+  // Paying but idle: billing's recurring verdict on the org, and no brand of that org
+  // already on an active line (the org's money is shown there).
+  const activeOrgs = new Set(customers.map((c) => c.orgId));
+  const idleCustomers = notActive.filter(
+    (c) => !activeOrgs.has(c.orgId) && billingByOrg.get(c.orgId)?.revenueClass === "recurring",
+  );
+
   // Cash is per ORG: read each org once, even when it runs several brands.
-  const orgIds = [...new Map(customers.map((c) => [c.orgId, c.orgExternalId])).entries()];
+  const orgIds = [...new Map([...customers, ...idleCustomers].map((c) => [c.orgId, c.orgExternalId])).entries()];
   const cashByOrg = new Map(
     await Promise.all(orgIds.map(async ([orgId, ext]) => [orgId, await fetchOrgCash(config, fetchFn, orgId, ext)] as const)),
   );
@@ -291,7 +331,12 @@ export async function buildClientLines(
     if (!billing) console.error(`[dashboard-clients-telegram] no billing row for org ${customer.orgId} (${customer.brandName})`);
     return { customer, billing, cash: cashByOrg.get(customer.orgId) ?? null };
   });
-  return { lines, unknown };
+  const idle = idleCustomers.map((customer): ClientLine => ({
+    customer,
+    billing: billingByOrg.get(customer.orgId) ?? null,
+    cash: cashByOrg.get(customer.orgId) ?? null,
+  }));
+  return { lines, unknown, idle };
 }
 
 async function fetchOrgCash(

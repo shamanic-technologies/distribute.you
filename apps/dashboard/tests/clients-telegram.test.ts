@@ -11,6 +11,19 @@ import {
 
 const NOW = new Date("2026-10-03T05:00:00.000Z");
 
+// Legistai on 2026-10-10: $99/month subscriber, every campaign stopped by the client.
+const SUBSCRIPTION = {
+  orgId: "org-s",
+  paymentMode: "subscription",
+  revenueClass: "recurring",
+  chargeableCard: true,
+  autoTopupEnabled: false,
+  cashState: "will_charge",
+  cashBlockedReason: null,
+  cashEvents: [{ at: "2026-11-06T08:20:33.580Z", trigger: "subscription_renewal", expectedAmountCents: "9900" }],
+  oneOff: null,
+};
+
 // Shapes copied from the prod reads on 2026-10-03 (trimmed to what the message uses).
 function customer(over: Record<string, unknown> = {}) {
   return {
@@ -31,6 +44,7 @@ function customer(over: Record<string, unknown> = {}) {
 const POSTPAID = {
   orgId: "org-a",
   paymentMode: "postpaid",
+  revenueClass: "recurring",
   chargeableCard: true,
   autoTopupEnabled: true,
   cashState: "will_charge",
@@ -42,6 +56,7 @@ const POSTPAID = {
 const PREPAID = {
   orgId: "org-b",
   paymentMode: "prepaid",
+  revenueClass: "one_off",
   chargeableCard: false,
   autoTopupEnabled: false,
   cashState: "no_autopay",
@@ -102,6 +117,18 @@ describe("clients telegram message", () => {
     expect(clientsMessage([], NOW, board.unknown)).toContain("Mystery");
   });
 
+  it("lists a paying brand with nothing running in its own block", () => {
+    const board = parseCustomerBoard({
+      customers: [customer({ orgId: "org-s", brandName: "Legistai", status: "inactive", runningDailyBudgetUsd: 0 })],
+    });
+    expect(board.active).toEqual([]);
+    const billing = parseFleetOrgs({ orgs: [SUBSCRIPTION] }).get("org-s")!;
+    const text = clientsMessage([], NOW, [], [{ customer: board.notActive[0], billing, cash: { paidUsd: 99, giftedUsd: 104 } }]);
+    expect(text).toBe(
+      "☀️ No active clients this morning.\n\n💤 1 paying, nothing running\n\nLegistai\nNo campaign running · Subscription · Card 🟢 · $99 invested (+$104 free credit) · next charge $99 in 34 days",
+    );
+  });
+
   it("says so when nobody is active", () => {
     expect(clientsMessage([], NOW)).toBe("☀️ No active clients this morning.");
   });
@@ -143,6 +170,31 @@ describe("clients telegram reads", () => {
     expect(acct).toHaveLength(1);
     expect(acct[0].headers["x-external-org-id"]).toBe("org_A");
     expect(acct[0].headers["x-external-user-id"]).toBe("system-clients-telegram");
+  });
+
+  it("keeps only recurring-revenue orgs as paying idle, never one already on an active line", async () => {
+    const fetchFn = vi.fn(async (url: string) => {
+      const body = url.includes("customer-success")
+        ? {
+            customers: [
+              customer(),
+              customer({ brandId: "a-idle", brandName: "Shock second brand", status: "inactive" }),
+              customer({ orgId: "org-s", orgExternalId: "org_S", brandId: "s", brandName: "Legistai", status: "inactive" }),
+              customer({ orgId: "org-b", orgExternalId: "org_B", brandId: "b", brandName: "Trial", status: "paused" }),
+            ],
+          }
+        : url.includes("revenue/fleet")
+          ? { orgs: [POSTPAID, SUBSCRIPTION, PREPAID] }
+          : { credited_paid_cents: "9900", credited_gifted_cents: "0" };
+      return new Response(JSON.stringify(body), { status: 200 });
+    });
+    const { lines, idle } = await buildClientLines(
+      { apiUrl: "https://api.x", adminApiKey: "k", staffEmail: "s", telegramBotToken: "t", telegramChatId: "c" },
+      fetchFn as unknown as typeof fetch,
+    );
+    expect(lines.map((l) => l.customer.brandName)).toEqual(["Shockwavecenters"]);
+    expect(idle.map((l) => l.customer.brandName)).toEqual(["Legistai"]);
+    expect(idle[0].cash).toEqual({ paidUsd: 99, giftedUsd: 0 });
   });
 
   it("fails loud when a staff read fails", async () => {
