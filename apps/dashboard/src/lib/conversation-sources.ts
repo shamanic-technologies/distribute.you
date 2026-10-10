@@ -40,6 +40,8 @@ const SOURCE_MARK: Record<string, SourceMark> = {
   posthog: DISTRIBUTE,
   stripe: vendor("stripe", "Stripe", "stripe.com"),
   gohighlevel: vendor("gohighlevel", "GoHighLevel", "gohighlevel.com"),
+  // A contact list the client uploaded (crm-service's "added to CRM" event for an import).
+  csv: { key: "csv", name: "CSV import", domain: null, src: null },
   linkedin: CHANNEL_MARK.linkedin,
   x: CHANNEL_MARK.x,
   twitter: CHANNEL_MARK.x,

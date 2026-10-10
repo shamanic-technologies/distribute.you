@@ -273,8 +273,9 @@ describe("the list scrolls, never pages (owner 2026-10-08)", () => {
 describe("a thread opens from memory (owner 2026-10-08: instant)", () => {
   it("preloads the top rows and the row under the pointer, on the Thread's own key", () => {
     const view = read("components/v2/integrations-conversations.tsx");
-    expect(view).toContain("queryKey: timelineKey(brandId, p.personKey)");
-    expect(view).toContain("useAuthQuery(timelineKey(brandId, personKey)");
+    // Same key both sides: the URL's person ref (crm-service personId, owner 2026-10-10).
+    expect(view).toContain("queryKey: timelineKey(brandId, personRef(p))");
+    expect(view).toContain("useAuthQuery(timelineKey(brandId, ref)");
     expect(view).toContain("preload(p);");
     expect(view).toContain(".slice(0, PRELOAD_TOP)");
   });

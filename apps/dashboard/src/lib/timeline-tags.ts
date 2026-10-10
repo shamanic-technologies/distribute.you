@@ -41,6 +41,10 @@ const STEP_TAGS: Record<string, Omit<TimelineTag, "label"> & { label?: string }>
   subscription_started: { tone: "won", icon: "money" },
   refund: { tone: "lost", icon: "money" },
   subscription_canceled: { tone: "lost", icon: "lost" },
+  // How the person entered a source, dated by it (crm-service v0.26.0): a thread is never empty.
+  added_to_crm: { tone: "neutral", icon: "check", label: "Added to CRM" },
+  signup: { tone: "hot", icon: "check", label: "Signed up" },
+  became_customer: { tone: "won", icon: "money", label: "Became a customer" },
 };
 
 function words(s: string): string {
