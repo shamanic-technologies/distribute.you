@@ -61,11 +61,14 @@ export function V2ConversationsView({ brandId }: { brandId: string }) {
   const params = useSearchParams();
   // A click (a person, a family button) only rewrites the URL: no Next navigation, so no
   // round trip to the page server before the screen changes (owner 2026-10-08: "tout est
-  // trop lent"). Next keeps useSearchParams in step with the native history call.
+  // trop lent"). Next keeps useSearchParams in step with the native history call, but
+  // only when the state passed is NOT its own: handed the current entry's state, Next
+  // reads the call as one of its own and skips the sync, so the URL changed and the
+  // panel stayed on "Pick a person" (prod 2026-10-10). Pass null; Next copies its state.
   const setParam = (key: string, value: string) => {
     const next = new URLSearchParams(window.location.search);
     next.set(key, value);
-    window.history.replaceState(window.history.state, "", `?${next.toString()}`);
+    window.history.replaceState(null, "", `?${next.toString()}`);
   };
   const [cursor, setCursor] = useState(-1);
   const searchRef = useRef<HTMLInputElement | null>(null);
