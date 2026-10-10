@@ -68,6 +68,7 @@ import {
   SIGNUP_REACTIVE_CHANNEL,
   dailyPaceUsd,
   estimatedLine,
+  isLearning,
   signupFunnelsFrom,
   signupLaunchPlan,
   type SignupCampaignDraft,
@@ -352,13 +353,17 @@ export function GetStarted({ org }: { org?: OrgWalk } = {}) {
       .catch((e) => console.error("[get-started] catalogue read failed:", e));
   }, []);
 
-  // The funnels the campaign step proposes (features-service, runnable only), read once. Asked
-  // again on a failure (a cold gateway), then stated with a retry.
-  async function loadFunnels(attempts = 3) {
+  // The funnels the campaign step proposes (features-service, runnable only), PRICED FOR THIS OFFER
+  // (owner 2026-10-10: its own client value, never the fleet's). Read once the preview is answered
+  // and again when the step opens (the value may have changed); kept in the snapshot so the wall
+  // reopens on them after the Google round trip. Asked again on a failure, then stated with a retry.
+  async function loadFunnels(id: string, offerId: string, attempts = 3) {
     setFunnelsState("loading");
     for (let i = 0; i < attempts; i += 1) {
       try {
-        setFunnels(signupFunnelsFrom(await getSignupFunnelPages()));
+        const next = signupFunnelsFrom(await getSignupFunnelPages(id, offerId));
+        setFunnels(next);
+        saveSnapshot({ funnels: next });
         setFunnelsState("idle");
         return;
       } catch (e) {
@@ -368,10 +373,14 @@ export function GetStarted({ org }: { org?: OrgWalk } = {}) {
     }
     setFunnelsState("failed");
   }
+  // Signed out the read rides the anonymous session; signed in (back from Google, before the claim)
+  // the offer is not the session's yet: the snapshot's picks stand in.
+  const canReadFunnels = !!org || isSignedIn === false;
   useEffect(() => {
-    void loadFunnels();
+    if (!brandId || !offer || !answered || !canReadFunnels) return;
+    void loadFunnels(brandId, offer.offerId);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [brandId, offer?.offerId, answered, canReadFunnels]);
 
   // A website carried from a link starts the walk at once, like Explee's hero.
   useEffect(() => {
@@ -394,6 +403,7 @@ export function GetStarted({ org }: { org?: OrgWalk } = {}) {
     setAudience(s.audience);
     if (s.email) setRestoredEmail(s.email);
     if (s.campaign) setCampaignDraft(s.campaign);
+    if (s.funnels) setFunnels(s.funnels);
     if (s.lifetimeRevenueUsd != null) setValueInput(String(s.lifetimeRevenueUsd));
     setAnswered(!!s.answered);
     if (s.icp) icpRef.current = s.icp;
@@ -632,6 +642,7 @@ export function GetStarted({ org }: { org?: OrgWalk } = {}) {
    * waits on nothing the visitor did: the funnels are read on load.
    */
   function openCampaign() {
+    if (brandId && offer && canReadFunnels && funnelsState !== "loading") void loadFunnels(brandId, offer.offerId);
     withStageTransition(() => {
       setSteps((cur) => (cur.campaign === "done" ? cur : { ...cur, campaign: "choose" }));
       setFocus(null);
@@ -1352,7 +1363,7 @@ export function GetStarted({ org }: { org?: OrgWalk } = {}) {
           draft={campaignDraft}
           onChange={changeCampaign}
           error={steps.campaign === "choose" ? answerError : null}
-          onRetry={() => void loadFunnels()}
+          onRetry={() => brandId && offer && void loadFunnels(brandId, offer.offerId)}
           onLaunch={confirmCampaign}
         />
       );
@@ -2271,7 +2282,11 @@ export function CampaignStage({
             <div className="min-w-0">
               <p className="k-fg text-[16px] font-semibold leading-6">{main.name}</p>
               {lineOf(SIGNUP_PROACTIVE_CHANNEL) && <p className="k-fg2 text-[13px] leading-5">{lineOf(SIGNUP_PROACTIVE_CHANNEL)}</p>}
-              {est && <p className="k-fg3 mt-0.5 text-[12px] tabular-nums">{est}</p>}
+              {isLearning(main) ? (
+                <span className="k-chip mt-1 inline-flex">Learning</span>
+              ) : (
+                est && <p className="k-fg3 mt-0.5 text-[12px] tabular-nums">{est}</p>
+              )}
             </div>
           </div>
           <div className="k-inset grid grid-cols-[minmax(0,1fr)] gap-2.5 rounded-[10px] p-3">
@@ -2308,7 +2323,7 @@ export function CampaignStage({
                 onClick={() => !done && set({ reactiveOn: !draft.reactiveOn })}
                 mark={<FunnelFace name={meet.name} size={28} />}
                 title="Also let our AI book meetings when someone replies"
-                sub={[meet.name, lineOf(SIGNUP_REACTIVE_CHANNEL)].filter(Boolean).join(" · ")}
+                sub={[meet.name, isLearning(meet) ? "Learning" : estimatedLine(meet), lineOf(SIGNUP_REACTIVE_CHANNEL)].filter(Boolean).join(" · ")}
                 wrapSub
                 wrapTitle
               />

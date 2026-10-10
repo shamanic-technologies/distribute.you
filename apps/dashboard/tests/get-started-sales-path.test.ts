@@ -5,6 +5,8 @@ import {
   DEFAULT_SIGNUP_DRAFT,
   dailyPaceUsd,
   estimatedLine,
+  isLearning,
+  parseSignupFunnels,
   signupFunnelsFrom,
   signupLaunchPlan,
 } from "../src/lib/v2/signup-campaign";
@@ -22,26 +24,31 @@ const PAGES = {
   proactive: {
     rows: [
       row({ id: "mixed@x", name: "Mixed", type: "proactive", mixed: true, runnable: false }),
-      row({ id: "best@cold", name: "Epiphany", type: "proactive", costUsd: 143.48, costPer: "per paying client", roi: 17.42 }),
+      row({ id: "best@cold", name: "Epiphany", type: "proactive", costUsd: 143.48, costPer: "per paying client", roi: 17.42, status: "estimated" }),
       row({ id: "second@cold", name: "Zenith", type: "proactive", costUsd: 2748.69, costPer: "per paying client", roi: 0.91 }),
     ],
   },
-  reactive: { rows: [row({ id: "meet@ai", name: "Motivate", type: "reactive" })] },
+  reactive: { rows: [row({ id: "meet@ai", name: "Motivate", type: "reactive", status: "learning" })] },
 };
 
 describe("Your campaign: features-service's funnels, picked as served", () => {
   it("takes the first runnable proactive funnel (the producer ranks ROI first) and the reactive one", () => {
     const f = signupFunnelsFrom(PAGES);
-    expect(f.proactive).toMatchObject({ salesFunnelId: "best@cold", name: "Epiphany", roi: 17.42 });
+    expect(f.proactive).toMatchObject({ salesFunnelId: "best@cold", name: "Epiphany", roi: 17.42, status: "estimated" });
     expect(f.reactive).toMatchObject({ salesFunnelId: "meet@ai", name: "Motivate" });
     expect(signupFunnelsFrom({ proactive: { rows: [] }, reactive: { rows: [] } })).toEqual({ proactive: null, reactive: null });
     expect(() => signupFunnelsFrom({ proactive: {} })).toThrow();
   });
 
   it("states the served cost with its unit, and nothing when none is served", () => {
-    expect(estimatedLine({ costUsd: 143.48, costPer: "per paying client" })).toBe("Estimated: $143 per paying client");
-    expect(estimatedLine({ costUsd: 42.5, costPer: "per meeting booked" })).toBe("Estimated: $42.50 per meeting booked");
-    expect(estimatedLine({ costUsd: null, costPer: null })).toBeNull();
+    // Labelled as served, with THIS offer's return (features-service prices it on the offer's own client value).
+    expect(estimatedLine({ costUsd: 143.48, costPer: "per paying client", roi: 4.25, status: "estimated" })).toBe("Estimated: $143 per paying client · 4.3x return");
+    expect(estimatedLine({ costUsd: 42.5, costPer: "per meeting booked", roi: 12.4, status: "measured" })).toBe("Measured: $42.50 per meeting booked · 12x return");
+    expect(estimatedLine({ costUsd: 42.5, costPer: "per meeting booked", roi: null, status: "estimated" })).toBe("Estimated: $42.50 per meeting booked");
+    expect(estimatedLine({ costUsd: null, costPer: null, roi: null, status: "estimated" })).toBeNull();
+    // A learning funnel states no figure (the step shows the Learning chip).
+    expect(estimatedLine({ costUsd: 9, costPer: "per meeting booked", roi: 3, status: "learning" })).toBeNull();
+    expect(isLearning({ status: "learning" })).toBe(true);
   });
 
   it("opens on $20 a day, no volume cap, meetings off at up to $10 a week (the sketch)", () => {
@@ -64,6 +71,18 @@ describe("Your campaign: features-service's funnels, picked as served", () => {
     expect(signupLaunchPlan({ ...DEFAULT_SIGNUP_DRAFT, volume: "lots" }, funnels)).toHaveProperty("problem");
     expect(signupLaunchPlan({ ...DEFAULT_SIGNUP_DRAFT, reactiveOn: true, reactiveBudget: "0" }, funnels)).toHaveProperty("problem");
     expect(signupLaunchPlan(DEFAULT_SIGNUP_DRAFT, { proactive: null, reactive: null })).toHaveProperty("problem");
+  });
+
+  it("reads the funnels priced for THIS offer, signed out on the anonymous session, and keeps them for the wall", () => {
+    const api = read("src/lib/api.ts");
+    expect(api).toContain("/offers/${encodeURIComponent(offerId)}/sales-funnels?brandId=${encodeURIComponent(brandId)}");
+    expect(api).not.toContain('fetch("/api/public/sales-funnels")');
+    expect(PAGE).toContain("saveSnapshot({ funnels: next });");
+    expect(PAGE).toContain("if (s.funnels) setFunnels(s.funnels);");
+    expect(PAGE).toContain('<span className="k-chip mt-1 inline-flex">Learning</span>');
+    const f = signupFunnelsFrom(PAGES);
+    expect(parseSignupFunnels(JSON.parse(JSON.stringify(f)))).toEqual(f);
+    expect(parseSignupFunnels({ proactive: { name: "x" } })).toBeNull();
   });
 
   it("paces the reload warning on the budget typed: a day x1, a week /7, a month /30", () => {
