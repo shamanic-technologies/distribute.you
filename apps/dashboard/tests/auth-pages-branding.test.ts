@@ -51,13 +51,13 @@ describe("Auth pages branding", () => {
   });
 
   it("states the served landing's headline, offer and proof line", () => {
-    // Verbatim from the served landing hero (owner 2026-10-06: prepaid, the
-    // platform is free, no trial and no monthly plan for new customers).
+    // Verbatim from the served landing hero: prepaid (owner 2026-10-06, the platform
+    // is free), or the $99/month homepage for the A/B arm only (owner 2026-10-10).
     expect(panel).toContain("revenue in 24h");
     expect(panel).toContain("Revenue made easy.");
-    expect(panel).toContain("The platform is free");
-    expect(panel).not.toContain("$99");
-    expect(panel).not.toMatch(/free trial/i);
+    expect(panel).toContain('{plan ? "From $99/month" : "The platform is free"}');
+    expect(panel).toContain('{plan && <p className="mt-4 text-sm font-medium text-gray-900">3-day free trial, cancel anytime</p>}');
+    expect(panel).toContain("const plan = useSubscriptionArm();");
     expect(panel).not.toContain("$1/day");
     expect(panel).not.toContain("$30");
     expect(panel).toContain(

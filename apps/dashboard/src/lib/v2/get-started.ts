@@ -537,7 +537,33 @@ export interface WallCopy {
   cardCta: string;
 }
 
-export function wallCopy(): WallCopy {
+/** The credit a plan's 3-day trial starts with (billing's `subscription_trial` grant). */
+export const PLAN_TRIAL_CREDIT_USD = 99;
+
+/**
+ * The wall's words. `planMonthlyUsd` = null for the prepaid offer (the default); a number
+ * for a visitor the homepage A/B test put in the $99/month arm (owner 2026-10-10): the
+ * monthly amount they picked on the landing (`lp_plan`), $99 when none.
+ */
+export function wallCopy(planMonthlyUsd: number | null = null): WallCopy {
+  if (planMonthlyUsd !== null) {
+    const plan = `$${planMonthlyUsd.toLocaleString("en-US")}`;
+    return {
+      creditUsd: PLAN_TRIAL_CREDIT_USD,
+      creditLine: "of credit, free for 3 days",
+      bannerTitle: "of credit, free for 3 days",
+      bannerCta: "Start my free trial",
+      timerLabel: "Time left to claim your free trial",
+      timerExtendedLabel: "We're giving you more time to start your free trial",
+      formTitle: "Start your 3-day free trial",
+      formSub: "One minute. Nothing charged for 3 days.",
+      emailCta: "Continue with Email",
+      codeCta: "Continue",
+      cardTitle: "Nothing charged for 3 days",
+      cardNote: `Your campaigns start with $${PLAN_TRIAL_CREDIT_USD} of credit. Then ${plan} a month. Cancel anytime.`,
+      cardCta: "Start my free trial",
+    };
+  }
   const m = MATCH_USD;
   return {
     creditUsd: m,

@@ -133,6 +133,7 @@ import { EditableAnswer } from "@/components/v2/editable-answer";
 import { OfferIcon } from "@/components/v2/new-org-icons";
 import { CountUp, Typewriter, formatElapsed, stagger, useElapsed } from "./motion";
 import { BrandLogo } from "@/components/brand-logo";
+import { isSubscriptionArm, pickedPlanCents } from "@/lib/subscription-plan";
 import { AccountCardWall } from "./account-card-wall";
 import { OrgLaunch } from "./org-launch";
 import { v2NewBrandHref } from "@/lib/v2/routes";
@@ -184,7 +185,13 @@ export function GetStarted({ org }: { org?: OrgWalk } = {}) {
     return () => setApiActiveOrgOverride(null);
   }, [org?.orgId]);
   const snapshotKey = org ? getStartedOrgSnapshotKey(org.orgId) : GET_STARTED_SNAPSHOT_KEY;
-  const wall = wallCopy();
+  // The homepage A/B arm (owner 2026-10-10), read after mount: the cookie is not on the
+  // server render, and reading it there would mismatch the first frame.
+  const [planMonthlyUsd, setPlanMonthlyUsd] = useState<number | null>(null);
+  useEffect(() => {
+    if (isSubscriptionArm(document.cookie)) setPlanMonthlyUsd(Math.round(pickedPlanCents(document.cookie) / 100));
+  }, []);
+  const wall = wallCopy(planMonthlyUsd);
 
   const [website, setWebsite] = useState(params.get("url") ?? "");
   const [inputError, setInputError] = useState<string | null>(null);

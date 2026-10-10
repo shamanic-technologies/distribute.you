@@ -5,6 +5,7 @@ import {
   SUBSCRIPTION_OUTBOUND_DAILY_USD,
   SUBSCRIPTION_REACTIVE_DAILY_USD,
   isSubscriptionArm,
+  lpVariant,
   monthlyUsd,
   pickedPlanCents,
   planAmountOptions,
@@ -19,21 +20,23 @@ const API = read("src/lib/api.ts");
 const CANCEL_LIB = read("src/lib/cancel-plan.ts");
 
 describe("who is in the $99/month arm", () => {
-  it("is everyone with no lp_variant cookie: the plan is the default offer", () => {
-    expect(isSubscriptionArm(null)).toBe(true);
-    expect(isSubscriptionArm(undefined)).toBe(true);
-    expect(isSubscriptionArm("")).toBe(true);
-    expect(isSubscriptionArm("a=1; b=2")).toBe(true);
-    expect(isSubscriptionArm("x_lp_variant=control")).toBe(true);
-    expect(isSubscriptionArm("lp_variant=")).toBe(true);
+  it("is only a visitor the homepage A/B test put in the subscription arm", () => {
+    expect(isSubscriptionArm("lp_variant=subscription")).toBe(true);
     expect(isSubscriptionArm("a=1; lp_variant=subscription; b=2")).toBe(true);
+    expect(lpVariant("a=1; lp_variant=subscription; b=2")).toBe("subscription");
   });
 
-  it("keeps pay-as-you-go only for a cookie that names another variant", () => {
+  it("keeps everyone else on prepaid: no cookie, an empty one, any other variant", () => {
+    for (const c of [null, undefined, "", "a=1; b=2", "x_lp_variant=subscription", "lp_variant="]) {
+      expect(isSubscriptionArm(c)).toBe(false);
+    }
     for (const v of ["control", "instinct", "assistant", "concierge"]) {
       expect(isSubscriptionArm(`lp_variant=${v}`)).toBe(false);
       expect(isSubscriptionArm(`a=1; lp_variant=${v}; b=2`)).toBe(false);
     }
+    expect(lpVariant(null)).toBe(null);
+    expect(lpVariant("lp_variant=")).toBe(null);
+    expect(lpVariant("lp_variant=control")).toBe("control");
   });
 });
 
