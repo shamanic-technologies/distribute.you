@@ -3,7 +3,8 @@
 import { useEffect, useRef, useState } from "react";
 import { useInfiniteQuery, useQueryClient } from "@tanstack/react-query";
 import { useSearchParams } from "next/navigation";
-import { getLeadTimeline, getPersonTimeline, listPeople } from "@/lib/api";
+import { ApiError, getLeadTimeline, getPersonTimeline, listPeople, setCrmPairingRuling } from "@/lib/api";
+import { rulingErrorMessage } from "@/lib/crm-pairings";
 import { ownQueryData } from "@/lib/own-query-data";
 import { useAuthQuery, useOrgQueryGate } from "@/lib/use-auth-query";
 import { POLL_INTERVAL } from "@/lib/query-options";
@@ -15,6 +16,9 @@ import {
   personName,
   personStatusLabel,
   possibleLeadHint,
+  possibleLeadName,
+  possibleLeadRuledLine,
+  type PossibleLead,
   sourceLine,
   timelineSourceNote,
   type Person,
@@ -378,7 +382,7 @@ function Thread({ brandId, personKey, listed }: { brandId: string; personKey: st
             <p className="k-fg3 truncate text-[12px]">
               {[...person.emails, ...person.phones].join(" · ") || "—"}
             </p>
-            <PossibleLeadLine person={person} />
+            <PossibleLeadRulings brandId={brandId} person={person} />
           </div>
           {status && <span className="k-chip ml-auto shrink-0">{status}</span>}
         </div>
@@ -584,6 +588,75 @@ function PossibleLeadLine({ person }: { person: Person }) {
       <span aria-hidden className="h-1.5 w-1.5 shrink-0 rounded-full bg-[var(--data-amber)]" />
       <span className="truncate" title={hint}>{hint}</span>
     </span>
+  );
+}
+
+/**
+ * The thread header's guessed pairings, one line each, with the two rulings the Integrations
+ * pairing drawer already sends (lead-service owns them). crm-service re-reads the pairing on
+ * its own cadence, so the stated ruling holds on the line until the served person moves.
+ */
+function PossibleLeadRulings({ brandId, person }: { brandId: string; person: Person }) {
+  const leads = person.possibleLeads ?? [];
+  if (leads.length === 0) return null;
+  return (
+    <div className="mt-1 space-y-1">
+      {leads.map((l) => (
+        <PossibleLeadRuling key={`${person.personKey}|${l.crmContactId}|${l.leadId ?? l.email}`} brandId={brandId} person={person} lead={l} />
+      ))}
+    </div>
+  );
+}
+
+function PossibleLeadRuling({ brandId, person, lead }: { brandId: string; person: Person; lead: PossibleLead }) {
+  const queryClient = useQueryClient();
+  const [pending, setPending] = useState<"accepted" | "rejected" | null>(null);
+  const [ruled, setRuled] = useState<"accepted" | "rejected" | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const name = possibleLeadName(lead);
+  if (!name) return null;
+  const leadId = lead.leadId ?? null;
+  const rule = async (ruling: "accepted" | "rejected") => {
+    if (!leadId) return;
+    setPending(ruling);
+    setError(null);
+    try {
+      await setCrmPairingRuling({ brandId, crmContactId: lead.crmContactId, leadId, ruling });
+    } catch (err) {
+      console.error("[v2 unibox] ruling write failed", err);
+      setError(rulingErrorMessage(err instanceof ApiError ? err.status : null, "rule"));
+      setPending(null);
+      return;
+    }
+    setRuled(ruling);
+    try {
+      await Promise.all([
+        queryClient.refetchQueries({ queryKey: ["people", brandId] }),
+        queryClient.refetchQueries({ queryKey: timelineKey(brandId, person.personKey) }),
+      ]);
+    } catch (err) {
+      console.error("[v2 unibox] re-read after ruling failed", err);
+    }
+    setPending(null);
+  };
+  return (
+    <div className="k-fg2 flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1 text-[12px] leading-[18px]">
+      <span aria-hidden className="h-1.5 w-1.5 shrink-0 rounded-full bg-[var(--data-amber)]" />
+      <span className="min-w-0 truncate" title={name}>
+        {ruled ? possibleLeadRuledLine(name, ruled) : `Maybe the same as ${name}, to confirm`}
+      </span>
+      {leadId && !ruled ? (
+        <span className="flex shrink-0 gap-1">
+          <button type="button" disabled={pending != null} onClick={() => rule("accepted")} className="k-btn disabled:cursor-wait">
+            {pending === "accepted" ? "Saving..." : "Same person"}
+          </button>
+          <button type="button" disabled={pending != null} onClick={() => rule("rejected")} className="k-btn-ghost disabled:cursor-wait">
+            {pending === "rejected" ? "Saving..." : "Not the same"}
+          </button>
+        </span>
+      ) : null}
+      {error ? <span className="text-[var(--data-rose)]">{error}</span> : null}
+    </div>
   );
 }
 

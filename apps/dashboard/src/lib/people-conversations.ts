@@ -98,6 +98,8 @@ export const PersonSchema = z.object({
         email: z.string().nullable(),
         fullName: z.string().nullable(),
         company: z.string().nullable(),
+        /** The lead's id at lead-service: the key its rulings take. Optional until crm-service serves it. */
+        leadId: z.string().nullish(),
       }),
     )
     .optional(),
@@ -269,16 +271,24 @@ export function personName(p: Pick<Person, "displayName" | "emails" | "phones" |
  * its own row; nothing here decides who is a lead. Null when there is no guessed pairing.
  */
 export function possibleLeadHint(p: Pick<Person, "possibleLeads">): string | null {
-  const names = (p.possibleLeads ?? [])
-    .map((l) => {
-      const name = l.fullName?.trim();
-      const email = l.email?.trim();
-      if (name && email) return `${name} (${email})`;
-      return name || email || null;
-    })
-    .filter((x): x is string => x !== null);
+  const names = (p.possibleLeads ?? []).map(possibleLeadName).filter((x): x is string => x !== null);
   if (names.length === 0) return null;
   return `Maybe the same as ${names.join(" or ")}, to confirm`;
+}
+
+export type PossibleLead = NonNullable<Person["possibleLeads"]>[number];
+
+/** One guessed lead as a reader names it: "Brice Jackson (drjackson@mabnr.com)". */
+export function possibleLeadName(l: Pick<PossibleLead, "fullName" | "email">): string | null {
+  const name = l.fullName?.trim();
+  const email = l.email?.trim();
+  if (name && email) return `${name} (${email})`;
+  return name || email || null;
+}
+
+/** What a ruling just made says until crm-service re-reads the pairing. */
+export function possibleLeadRuledLine(name: string, ruling: "accepted" | "rejected"): string {
+  return ruling === "accepted" ? `Marked as the same as ${name}` : `Marked as not the same as ${name}`;
 }
 
 /** The distinct channels a person was reached on, in the order their records list them. */
