@@ -110,15 +110,28 @@ describe("GET / with the test on", () => {
     expect(res.headers.get("cache-control")).toBe("private, no-store");
   });
 
-  it("serves a forced subscription arm the same prepaid homepage, never the monthly plan", async () => {
+  it("serves the subscription arm the $99/month plan with a 3-day trial, no prepaid banner", async () => {
+    // Owner 2026-10-10: A/B the prepaid homepage against the $99/month plan sold before
+    // 2026-10-06. Same page, offer copy only; the $100 match banner is prepaid-only.
     const { res, html } = await get({ qs: "?variant=subscription" });
-    // Owner 2026-10-06: a free platform, outreach at catalogue prices. A stale `?variant=` link
-    // still lands on a page, and that page sells the current offer.
-    expect(html).toContain("Get <span class=\"accent\">revenue in 24h</span><br>The platform is free");
-    const copy = html.replace(/<script[\s\S]*?<\/script>/g, "");
-    for (const gone of ["$99", "/month", "free trial", "3-day", "From $1<", "$1/day", "Pay as you go"]) expect(copy, gone).not.toContain(gone);
+    expect(html).toContain("From $99/month");
+    expect(html).toContain("3-day free trial");
+    expect(html).toContain("data-plan-amount");
+    expect(html).not.toContain("promo-bar");
+    // Visible copy only: the site-wide Organization JSON-LD is not offer copy.
+    expect(html.replace(/<script[\s\S]*?<\/script>/g, "")).not.toContain("The platform is free");
     expect(html).not.toContain("\u2014");
+    expect(html).toContain('lp_variant:"subscription"');
     expect(res.headers.get("set-cookie")).toContain("lp_variant=subscription");
+  });
+
+  it("keeps the subscription page in step with the prepaid one outside the offer", () => {
+    // Built from the prepaid page; a later homepage edit must land on both.
+    const sub = readFileSync(path.join(__dirname, "../../public/landing/index-v2-subscription.html"), "utf8");
+    for (const shared of ['<a href="/catalog">Price catalog</a>', "main.js?v=", "Get <span class=\"accent\">revenue in 24h</span>"]) {
+      expect(sub, shared).toContain(shared);
+    }
+    expect(sub).toContain("lp_plan=(\\d+)");
   });
 
   it("carries no monthly amount picker and writes no lp_plan cookie", () => {
