@@ -36,10 +36,61 @@ export function CampaignsOverviewPage() {
       ) : (
         <>
           <FunnelCampaignsSection orgId={orgId} brandId={brandId} offerId={offerId} />
-          {staffMode && <StaffPipeCampaigns orgId={orgId} brandId={brandId} offerId={offerId} />}
+          {staffMode ? (
+            <StaffPipeCampaigns orgId={orgId} brandId={brandId} offerId={offerId} />
+          ) : (
+            <UnconvertedRunningCampaigns orgId={orgId} brandId={brandId} offerId={offerId} />
+          )}
         </>
       )}
     </V2Page>
+  );
+}
+
+/**
+ * A customer never loses a RUNNING campaign from view (owner 2026-10-10): an old-style campaign
+ * that is ON and not yet part of a funnel campaign (campaign-service's conversion has not reached
+ * it) stays listed here, and only it. Renders nothing once every running campaign is converted.
+ */
+function UnconvertedRunningCampaigns({ orgId, brandId, offerId }: { orgId: string; brandId: string; offerId: string }) {
+  const { missions } = useMissions(orgId, brandId, { allOffers: true });
+  const { running, other } = useMemo(() => {
+    const run = new Set<string>();
+    const all = new Set<string>();
+    for (const m of missions) {
+      if (m.offerId !== offerId) continue;
+      const k = campaignKey(m.row.campaign.featureSlug ?? "", m.row.campaign.legKey ?? "");
+      all.add(k);
+      if (m.running) run.add(k);
+    }
+    return { running: run, other: new Set([...all].filter((k) => !run.has(k))) };
+  }, [missions, offerId]);
+  const paths = useAuthQuery(
+    ["offerSalesPaths", brandId, offerId, "catalogue"],
+    () => getOfferSalesPaths(brandId, offerId, "catalogue"),
+    { enabled: running.size > 0 },
+  );
+  const campaigns = useMemo(
+    () =>
+      [
+        ...campaignsOfOffer(paths.data?.campaigns ?? [], paths.data?.paths ?? [], roiUnavailableLabel, (k) => running.has(k)),
+        ...sourceCampaignsOfOffer(paths.data?.sourceCampaigns ?? [], roiUnavailableLabel),
+      ].filter((c) => running.has(campaignKey(c.featureSlug, c.legKey))),
+    [paths.data, running],
+  );
+  if (running.size === 0) return null;
+  return (
+    <OfferCampaigns
+      orgId={orgId}
+      brandId={brandId}
+      offerId={offerId}
+      campaigns={campaigns}
+      pending={paths.isPending && !paths.isError}
+      title="More campaigns"
+      sub="These keep running as they are."
+      results
+      listedElsewhere={other}
+    />
   );
 }
 

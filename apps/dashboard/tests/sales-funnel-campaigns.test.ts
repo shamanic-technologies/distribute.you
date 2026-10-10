@@ -241,8 +241,11 @@ describe("sales funnel campaigns: the type picks the words (owner 2026-10-10)", 
 
   it("a customer's Campaigns page lists ONLY funnel campaigns; the pipe table is staff mode", () => {
     const overview = src("src/components/v2/campaigns-overview-page.tsx");
-    expect(overview).toContain("{staffMode && <StaffPipeCampaigns orgId={orgId} brandId={brandId} offerId={offerId} />}");
-    const page = overview.slice(overview.indexOf("export function CampaignsOverviewPage()"), overview.indexOf("function StaffPipeCampaigns("));
+    expect(overview).toContain("<StaffPipeCampaigns orgId={orgId} brandId={brandId} offerId={offerId} />");
+    // Until campaign-service has converted it, a RUNNING old-style campaign stays in view, and only it.
+    expect(overview).toContain("<UnconvertedRunningCampaigns orgId={orgId} brandId={brandId} offerId={offerId} />");
+    expect(overview).toContain("if (running.size === 0) return null;");
+    const page = overview.slice(overview.indexOf("export function CampaignsOverviewPage()"), overview.indexOf("function UnconvertedRunningCampaigns("));
     expect(page).not.toContain("<OfferCampaigns");
     // The funnel page's results read what a part brings in, no leg arrows.
     const funnel = src("src/components/v2/funnel-campaigns.tsx");
