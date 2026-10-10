@@ -16,8 +16,10 @@ import { SERVICE_IDENTITY } from "./service-identity";
  *   fleet revenue (`/v1/billing/revenue/fleet`), one row per ORG, so a multi-brand
  *   org repeats it on each brand.
  * - invested: the CASH the org put in (owner's definition: money paid, never spend),
- *   billing's `credited_paid_cents` on `/v1/billing/accounts` (every payment received
- *   minus refunds, across acquirers), with gifted credit shown beside it. Per ORG.
+ *   billing's `cash_paid_cents` on `/v1/billing/accounts` (every payment received
+ *   minus refunds, across acquirers, including what repaid a trial or the onboarding
+ *   advance; `credited_paid_cents` leaves those out and read $0 for a $99 subscriber),
+ *   with gifted credit shown beside it. Per ORG.
  *
  * A field the producers could not serve prints `?`, never a zero.
  *
@@ -75,7 +77,7 @@ const FleetSchema = z.object({
 });
 
 const AccountSchema = z.object({
-  credited_paid_cents: num,
+  cash_paid_cents: num,
   credited_gifted_cents: num,
 });
 
@@ -139,7 +141,7 @@ export function parseFleetOrgs(raw: unknown): Map<string, ClientFleetOrg> {
 
 export function parseOrgCash(raw: unknown): OrgCash {
   const parsed = AccountSchema.parse(raw);
-  return { paidUsd: parsed.credited_paid_cents / 100, giftedUsd: parsed.credited_gifted_cents / 100 };
+  return { paidUsd: parsed.cash_paid_cents / 100, giftedUsd: parsed.credited_gifted_cents / 100 };
 }
 
 function usd(value: number): string {
