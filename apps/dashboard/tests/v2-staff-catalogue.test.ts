@@ -213,8 +213,9 @@ describe("staff Campaigns section (owner 2026-10-10): sales funnel campaigns wit
     expect(read(`${base}/[id]/page.tsx`)).toMatch(/<StaffOnly>\s*<StaffFunnelCampaignPage/);
     const page = read("src/components/v2/staff-campaign-pages.tsx");
     for (const s of [">Workflow picked<", 'label="Funnel id"', ">Caps read<", 'label="Stop reason"', ">Units<"]) expect(page).toContain(s);
-    // Reuse: a unit opens the GA campaign page, never a staff copy of it.
-    expect(page).toContain("v2CampaignHref(orgId, brandId, unit.campaignId)");
+    // Reuse: a unit opens the GA page of the funnel campaign it belongs to (#5293), never a staff copy of it.
+    expect(page).toContain("v2CampaignHref(orgId, brandId, funnelCampaignId)");
+    expect(page).toContain("funnelCampaignId={c.id}");
   });
 });
 
