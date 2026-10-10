@@ -1,7 +1,8 @@
 /**
  * The subscription plan: $99/month, a 3-day free trial, card required (owner
- * 2026-10-01), the default offer since 2026-10-03. Every visitor is in it unless the
- * `lp_variant` cookie (set on `.distribute.you` by the landing) names another variant.
+ * 2026-10-01). Since 2026-10-10 it is one arm of the homepage A/B test: only a visitor
+ * whose `lp_variant` cookie (set on `.distribute.you` by the landing) is `subscription`
+ * is sold it; everyone else gets the prepaid offer.
  *
  * Owner's model, restated: the money paid IS the credit ($99 paid, $99 to spend; the
  * trial start grants $99 at our expense). Outbound runs at $50 a day from the start so
@@ -38,22 +39,26 @@ export const SUBSCRIPTION_OUTBOUND_DAILY_USD = 50;
 /** What reactive work may spend a day on top: +50% of the outbound. */
 export const SUBSCRIPTION_REACTIVE_DAILY_USD = SUBSCRIPTION_OUTBOUND_DAILY_USD / 2;
 
-/**
- * True when this visitor is sold the subscription plan. The plan is the DEFAULT offer
- * (owner 2026-10-03: "we stop talking about $1/day"), so a visitor with no
- * `lp_variant` cookie (blog, compare page, direct link, another device) is in it.
- * Only a cookie that explicitly names another variant (`control`, `instinct`,
- * `assistant`, `concierge`, set by staff testing with `?variant=`) keeps pay-as-you-go.
- */
-export function isSubscriptionArm(cookieHeader: string | null | undefined): boolean {
-  if (!cookieHeader) return true;
+/** The `lp_variant` the landing wrote on `.distribute.you`, or null when there is none. */
+export function lpVariant(cookieHeader: string | null | undefined): string | null {
+  if (!cookieHeader) return null;
   for (const part of cookieHeader.split(";")) {
     const [k, ...rest] = part.trim().split("=");
     if (k !== "lp_variant") continue;
     const variant = decodeURIComponent(rest.join("=")).trim();
-    return variant === "" || variant === SUBSCRIPTION_ARM;
+    return variant === "" ? null : variant;
   }
-  return true;
+  return null;
+}
+
+/**
+ * True when this visitor is sold the $99/month plan: the homepage A/B test (owner
+ * 2026-10-10, 50/50 against the prepaid homepage) put them in the `subscription` arm.
+ * Everyone else (no cookie: blog, compare page, direct link, another device; or any
+ * other variant) gets the prepaid offer, which stays the default.
+ */
+export function isSubscriptionArm(cookieHeader: string | null | undefined): boolean {
+  return lpVariant(cookieHeader) === SUBSCRIPTION_ARM;
 }
 
 /** The fields of a campaign pair this module reads. */

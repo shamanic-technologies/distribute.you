@@ -12,7 +12,7 @@
  * Alias-free on purpose (no runtime `@/` import) so it gets real unit tests.
  */
 
-export const OWNER_PING_EVENTS = ["signed_up", "started", "step", "wall", "paid", "launched"] as const;
+export const OWNER_PING_EVENTS = ["signed_up", "started", "step", "wall", "paid", "trial", "launched"] as const;
 export type OwnerPingEvent = (typeof OWNER_PING_EVENTS)[number];
 
 /** Set in a browser where a staff account signed in: its later anonymous visits are the owner's too. */
@@ -58,6 +58,7 @@ const ICON: Record<OwnerPingEvent, string> = {
   step: "➡️",
   wall: "🧱",
   paid: "💳",
+  trial: "🎟️",
   launched: "🚀",
 };
 
@@ -75,6 +76,9 @@ function what(p: OwnerPing): string {
     case "paid":
       if (p.amountUsd == null || !Number.isFinite(p.amountUsd)) throw new Error("[owner-ping] a paid ping carries no amount");
       return `paid $${p.amountUsd}`;
+    case "trial":
+      if (p.amountUsd == null || !Number.isFinite(p.amountUsd)) throw new Error("[owner-ping] a trial ping carries no amount");
+      return `started the free trial of the $${p.amountUsd}/month plan`;
     case "launched":
       return "launched";
   }

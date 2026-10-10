@@ -81,6 +81,20 @@ describe("the rules the page decides on", () => {
     expect(JSON.stringify(wallCopy())).not.toMatch(/\$30|free credit|gift/i);
   });
 
+  it("sells the $99/month plan with its 3-day trial to the A/B arm only (owner 2026-10-10)", () => {
+    const plan = wallCopy(199);
+    expect(plan.creditUsd).toBe(99);
+    expect(plan.formTitle).toBe("Start your 3-day free trial");
+    expect(plan.cardNote).toBe("Your campaigns start with $99 of credit. Then $199 a month. Cancel anytime.");
+    expect(JSON.stringify(plan)).not.toMatch(/match|\$30|reload|[\u2013\u2014]/i);
+    expect(wallCopy(null)).toEqual(wallCopy());
+    // The card-saved event carries the arm on BOTH paths: the A/B test reads it.
+    expect(WALL).toContain('posthog.capture("get_started_card_saved", { plan: "prepaid", lp_variant: arm.variant });');
+    expect(WALL).toContain('posthog.capture("get_started_card_saved", { plan: "subscription", lp_variant: arm.variant });');
+    // The plan arm shows no amount picker: the prepaid top-up renders only off the plan branch.
+    expect(WALL.indexOf("{arm.plan ? (")).toBeLessThan(WALL.indexOf("<PrepaidTopup"));
+  });
+
   it("restores a snapshot, and starts over on anything malformed or older", () => {
     const snap = {
       version: 2,
@@ -324,7 +338,7 @@ describe("the surface", () => {
 
   it("carries Explee's countdown and spots strips on the wall (owner-decided, copied for now)", () => {
     expect(WALL).toContain("<TrialTimer label={copy.timerLabel}");
-    expect(WALL).toContain("<TrialSpots />");
+    expect(WALL).toContain("<TrialSpots trial={arm.plan} />");
   });
 
   it("counts 7:30, then a 9:59 extension, then starts over: never stops; always 3 spots", async () => {

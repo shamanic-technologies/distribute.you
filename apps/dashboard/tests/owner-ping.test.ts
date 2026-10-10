@@ -33,11 +33,13 @@ describe("formatOwnerPing", () => {
     expect(formatOwnerPing({ event: "wall", who: "Grace" })).toBe("🧱 Grace · reached the payment wall");
     expect(formatOwnerPing({ event: "paid", who: "Grace", amountUsd: 200 })).toBe("💳 Grace · paid $200");
     expect(formatOwnerPing({ event: "launched", who: "Grace" })).toBe("🚀 Grace · launched");
+    expect(formatOwnerPing({ event: "trial", who: "Grace", amountUsd: 99 })).toBe("🎟️ Grace · started the free trial of the $99/month plan");
   });
 
   it("refuses a step ping without its step and a paid ping without its amount", () => {
     expect(() => formatOwnerPing({ event: "step", who: null })).toThrow();
     expect(() => formatOwnerPing({ event: "paid", who: null })).toThrow();
+    expect(() => formatOwnerPing({ event: "trial", who: null })).toThrow();
   });
 });
 

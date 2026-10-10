@@ -2,6 +2,7 @@
 
 import Image from "next/image";
 import Link from "next/link";
+import { useSubscriptionArm } from "@/lib/use-subscription-arm";
 
 /**
  * The left column of /sign-up and /sign-in.
@@ -15,8 +16,9 @@ import Link from "next/link";
  * Every string here is the SERVED landing's own: the headline, the offer pill and
  * the proof line, verbatim from `apps/landing/public/landing/index-v2.html` as the
  * prepaid offer serves it (owner 2026-10-06: the platform is free, no trial, no
- * monthly plan). A visitor reads them on `/`, clicks through, and reads the same
- * sentences on the signup screen rather than a second, older pitch.
+ * monthly plan), or from `index-v2-subscription.html` for a visitor the homepage A/B
+ * test put in the $99/month arm (owner 2026-10-10). A visitor reads them on `/`, clicks
+ * through, and reads the same sentences on the signup screen rather than a second pitch.
  *
  * Colour rides the `brand-*` ramp, never a literal hex or oklch: a customer's
  * dashboard re-declares that ramp at their own hue (`:root[data-brand-tint]`), so
@@ -25,6 +27,7 @@ import Link from "next/link";
  * rather than assumed.
  */
 export function AuthBrandPanel() {
+  const plan = useSubscriptionArm();
   return (
     <div className="relative hidden flex-col justify-between overflow-hidden border-r border-gray-200 bg-gray-50 p-12 lg:flex lg:w-1/2">
       {/* The landing's hero glow, rebuilt from a remapped ramp step so it tints
@@ -56,8 +59,9 @@ export function AuthBrandPanel() {
         <h2 className="mt-4 font-display text-4xl leading-none tracking-[-0.04em] text-gray-900 xl:text-5xl">
           Get <span className="text-brand-600">revenue in 24h</span>
           <br />
-          The platform is free
+          {plan ? "From $99/month" : "The platform is free"}
         </h2>
+        {plan && <p className="mt-4 text-sm font-medium text-gray-900">3-day free trial, cancel anytime</p>}
         <p className="mt-5 max-w-md text-lg leading-snug text-gray-500">
           We A/B test the templates, the AI models and the audiences on every
           campaign, and keep only what books meetings.

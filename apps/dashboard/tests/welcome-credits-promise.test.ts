@@ -83,12 +83,10 @@ function read(rel: string): string {
 }
 
 /**
- * Prepaid credit is the offer (owner 2026-10-06: the platform is free, no free trial,
- * the monthly plan retired for new customers). Every signup-facing dashboard surface
- * a visitor meets before choosing says so: none may promise the plan, the trial, the
- * $30 or $1/day. The
- * pay-as-you-go wall copy (`wallCopy({ subscription: false })`) is exempt: only a
- * visitor whose `lp_variant` cookie names another variant ever reads it.
+ * Prepaid credit is the default offer (owner 2026-10-06: the platform is free). The
+ * $99/month plan with its 3-day free trial is the homepage A/B arm (owner 2026-10-10):
+ * a signup-facing surface may state it ONLY in a branch gated on `plan` (the
+ * `useSubscriptionArm()` read), never to everyone. None may promise the $30 or $1/day.
  */
 describe("signup-facing surfaces sell the prepaid offer", () => {
   const STATIC = [
@@ -96,11 +94,19 @@ describe("signup-facing surfaces sell the prepaid offer", () => {
     "apps/dashboard/src/app/(authed)/sign-up/[[...sign-up]]/page.tsx",
   ];
   const RETIRED = [/\$30/, /\$1 ?\/ ?day/, /\$1 (a|per) day/, /from \$1\b/i, /\$99/, /free trial/i, /3 days are free/i];
+  const ALWAYS_RETIRED = [/\$30/, /\$1 ?\/ ?day/, /\$1 (a|per) day/, /from \$1\b/i, /3 days are free/i];
+  const PLAN_ONLY = [/\$99/, /free trial/i];
 
   for (const rel of STATIC) {
-    it(`${rel} promises no $30 and no $1/day`, () => {
+    it(`${rel} promises no $30 and no $1/day, and the plan only to its arm`, () => {
       const src = read(rel);
-      for (const pattern of RETIRED) expect(pattern.test(src), `${rel} still says ${pattern}`).toBe(false);
+      for (const pattern of ALWAYS_RETIRED) expect(pattern.test(src), `${rel} still says ${pattern}`).toBe(false);
+      const lines = src.split("\n");
+      lines.forEach((line, i) => {
+        if (!PLAN_ONLY.some((p) => p.test(line)) || /^\s*(\*|\/\/)/.test(line)) return;
+        const gate = lines.slice(Math.max(0, i - 2), i + 1).join("\n");
+        expect(/\bplan\s+(\?|&&)/.test(gate), `${rel}:${i + 1} states the plan outside its arm`).toBe(true);
+      });
     });
   }
 
