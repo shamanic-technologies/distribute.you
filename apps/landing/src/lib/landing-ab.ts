@@ -32,6 +32,11 @@
 // $100 matched). Every first visit draws `control` again, and a returning visitor whose
 // cookie names `subscription` (weight 0) is re-drawn, so the cookie the dashboard read
 // as "sell the plan" is overwritten with `control` on the next visit.
+// Owner 2026-10-10: the $99/month plan comes back as an A/B arm, 50/50 against the
+// prepaid homepage (`index-v2-subscription.html`, the dashboard sells the plan with its
+// 3-day free trial to `lp_variant=subscription` only). The read: the share of visitors
+// per arm who save a card (`get_started_card_saved` carries `lp_variant`). Decision date
+// 2026-10-31.
 export const AB_TEST_ENABLED = true;
 
 export const LANDING_VARIANTS = ["control", "assistant", "concierge", "instinct", "subscription"] as const;
@@ -41,14 +46,15 @@ export const VARIANT_COOKIE = "lp_variant";
 const COOKIE_MAX_AGE_S = 90 * 24 * 60 * 60;
 
 /**
- * Share of first visits drawn into each variant. Owner-set 2026-10-06: 100% to `control`
- * (the homepage, sold as prepaid credit). A variant at weight 0 has left
+ * Share of first visits drawn into each variant. Owner-set 2026-10-10: 50% `control` (the
+ * homepage, sold as prepaid credit), 50% `subscription` (the $99/month plan with a 3-day
+ * free trial). A variant at weight 0 has left
  * the test: a visitor whose cookie names it is drawn again rather than kept on a page
  * nobody else is being shown, so the two live arms stay comparable.
  */
 export const VARIANT_WEIGHTS: Record<LandingVariant, number> = {
-  control: 1,
-  subscription: 0,
+  control: 0.5,
+  subscription: 0.5,
   instinct: 0,
   assistant: 0,
   concierge: 0,

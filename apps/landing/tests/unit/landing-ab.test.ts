@@ -19,15 +19,17 @@ const q = (s = "") => new URLSearchParams(s);
 const HOMEPAGE_SRC = readFileSync(path.join(__dirname, "../../public/landing/index-v2.html"), "utf8");
 
 describe("the split rule", () => {
-  it("draws every first-time human onto control: the subscription arm is retired", () => {
-    // Owner 2026-10-06: new customers buy prepaid credit, so no first visit gets the
-    // `subscription` cookie the dashboard read as "sell the monthly plan".
-    expect(VARIANT_WEIGHTS).toEqual({ control: 1, subscription: 0, instinct: 0, assistant: 0, concierge: 0 });
+  it("draws half of first-time humans onto control, half onto the $99/month plan", () => {
+    // Owner 2026-10-10: prepaid against the $99/month plan with a 3-day free trial, 50/50.
+    expect(VARIANT_WEIGHTS).toEqual({ control: 0.5, subscription: 0.5, instinct: 0, assistant: 0, concierge: 0 });
     const counts: Record<string, number> = {};
     for (let i = 0; i < 10000; i++) counts[drawVariant(i / 10000)] = (counts[drawVariant(i / 10000)] ?? 0) + 1;
-    expect(counts).toEqual({ control: 10000 });
+    expect(counts).toEqual({ control: 5000, subscription: 5000 });
     expect(decideVariant({ cookieHeader: null, userAgent: CHROME, query: q(), random: 0.12, enabled: true })).toEqual({
       variant: "control", setCookie: true, inTest: true,
+    });
+    expect(decideVariant({ cookieHeader: null, userAgent: CHROME, query: q(), random: 0.62, enabled: true })).toEqual({
+      variant: "subscription", setCookie: true, inTest: true,
     });
   });
 
@@ -38,8 +40,13 @@ describe("the split rule", () => {
     expect(d).toEqual({ variant: "control", setCookie: false, inTest: true });
   });
 
-  it("redraws a visitor whose cookie names a retired arm (subscription included), or nothing", () => {
-    for (const v of ["subscription", "instinct", "assistant", "concierge", "junk"]) {
+  it("keeps a returning visitor on the $99/month arm", () => {
+    const d = decideVariant({ cookieHeader: `${VARIANT_COOKIE}=subscription`, userAgent: CHROME, query: q(), random: 0.05, enabled: true });
+    expect(d).toEqual({ variant: "subscription", setCookie: false, inTest: true });
+  });
+
+  it("redraws a visitor whose cookie names a retired arm, or nothing", () => {
+    for (const v of ["instinct", "assistant", "concierge", "junk"]) {
       const d = decideVariant({ cookieHeader: `${VARIANT_COOKIE}=${v}`, userAgent: CHROME, query: q(), random: 0.05, enabled: true });
       expect(d, v).toEqual({ variant: "control", setCookie: true, inTest: true });
     }
