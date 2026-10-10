@@ -37,6 +37,7 @@ import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
 import { MODEL_LABEL } from "./model-label.mjs";
 import { meetingStudies } from "./meetings.mjs";
+import { HERALD_LEG, SCOUT_LEG, canonicalLeg } from "./leg-key.mjs";
 import { NAMING_LABEL, namingOf, namingSides, rateP, costP, pText } from "./naming/naming.mjs";
 
 const here = dirname(fileURLToPath(import.meta.url));
@@ -166,7 +167,7 @@ function assertCohortMonths(o, series) {
 const OUTCOMES = {
   reply: {
     crew: "herald",
-    leg: "start_to_conversation",
+    leg: HERALD_LEG,
     noun: "positive reply",
     nounPlural: "positive replies",
     count: "replies",
@@ -183,7 +184,7 @@ const OUTCOMES = {
   },
   visit: {
     crew: "scout",
-    leg: "start_to_website_visit",
+    leg: SCOUT_LEG,
     noun: "website visit",
     nounPlural: "website visits",
     count: "clicks",
@@ -1002,9 +1003,9 @@ for (const [goal, question] of [
 // ---------- catalogue: one page per workflow and per template, per crew ----------
 // Read beside facts.json (extract.sh writes them into the same directory). Every row here is
 // fleet-wide and names no client and no lead.
-const workflowRuns = readJson("workflow-runs.json");
-const templateRuns = readJson("template-runs.json");
-const modelRuns = readJson("model-runs.json");
+const workflowRuns = readJson("workflow-runs.json").map((r) => ({ ...r, leg: canonicalLeg(r.leg) }));
+const templateRuns = readJson("template-runs.json").map((r) => ({ ...r, leg: canonicalLeg(r.leg) }));
+const modelRuns = readJson("model-runs.json").map((r) => ({ ...r, leg: canonicalLeg(r.leg) }));
 // A workflow VERSION to the workflow (dynasty) it belongs to, as workflow-service records it.
 // And each workflow's NAME (Maelstrom, Lithium, ...) as workflow-service states it, verbatim.
 const dynastyOf = new Map();

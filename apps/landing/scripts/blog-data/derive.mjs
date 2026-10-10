@@ -23,6 +23,7 @@ import { openSync, readSync, closeSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { isMature, maturationCutoff, maturationNote, measureMaturation, toMs } from "./maturation.mjs";
 import { MODEL_LABEL } from "./model-label.mjs";
+import { HERALD_LEG, SCOUT_LEG, canonicalLeg } from "./leg-key.mjs";
 import { layoutOf, openingOf, dashOf, LAYOUT, OPENING, DASH } from "./first-email-shape.mjs";
 
 const dir = process.argv[2];
@@ -63,8 +64,12 @@ function eachRow(file, onRow) {
   let rest = "";
   let head = null;
   let row = [], field = "", quoted = false, pendingQuote = false;
+  // `field += ch` builds a rope of one node per character; kept as is, every stored value
+  // costs ~30 bytes a character and the run needs a 4 GB heap. Slicing a fresh copy flattens
+  // it into one flat string (measured 2026-10-10: the run then fits the box's 2.5 GB cap).
+  const own = (s) => (" " + s).slice(1);
   const flushRow = () => {
-    row.push(field); field = "";
+    row.push(own(field)); field = "";
     if (!head) head = row;
     else if (row.length === head.length) {
       const o = {};
@@ -86,7 +91,7 @@ function eachRow(file, onRow) {
         field += ch; continue;
       }
       if (ch === '"') { quoted = true; continue; }
-      if (ch === ",") { row.push(field); field = ""; continue; }
+      if (ch === ",") { row.push(own(field)); field = ""; continue; }
       if (ch === "\n") { flushRow(); continue; }
       if (ch === "\r") continue;
       field += ch;
@@ -164,7 +169,7 @@ function dynastyOfVersion(slug) {
 }
 const scannerRows = load("scanner-hits.csv");
 // platform campaign -> the leg it performs; "" (a campaign from before legs existed) is no leg
-const legOf = new Map(load("campaign-legs.csv").map((c) => [c.platform_campaign_id, c.leg_key || null]));
+const legOf = new Map(load("campaign-legs.csv").map((c) => [c.platform_campaign_id, canonicalLeg(c.leg_key)]));
 const spendLegRows = load("spend-legs.csv");
 // The Research page is written on TWO cost bases. `user` (default) prices every email on what
 // clients were billed; `actual` (COST_BASIS=actual, the staff-only twin) on what the vendors
@@ -176,9 +181,7 @@ if (COST_BASIS !== "user" && COST_BASIS !== "actual") throw new Error(`COST_BASI
 if (COST_BASIS === "actual" && spendLegRows.length && spendLegRows[0].vendor_cents === undefined) {
   throw new Error("spend-legs.csv carries no vendor_cents: re-run extract.sh");
 }
-// The two legs the Research crews buy, one each.
-const HERALD_LEG = "start_to_conversation";
-const SCOUT_LEG = "start_to_website_visit";
+// The two legs the Research crews buy, one each: HERALD_LEG / SCOUT_LEG (leg-key.mjs).
 
 // THE RESEARCH MATURITY RULE, read from features-service (features-service#1196), never measured
 // here: per LEG, how many days after a run STARTS its outcomes count as arrived, and how many
@@ -275,11 +278,15 @@ function hourBucket(h) {
 }
 const WEEKDAY = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
 
+// One formatter per timezone: a new Intl.DateTimeFormat per email holds native (ICU) memory the
+// garbage collector does not see, ~1.5 GB over 160k emails, which the box's 2.5 GB cap killed.
+const tzHour = new Map();
 function localHour(sentAt, tz) {
   if (!tz) return null;
   try {
     const d = new Date(`${sentAt.replace(" ", "T")}Z`);
-    const h = new Intl.DateTimeFormat("en-US", { timeZone: tz, hour: "numeric", hour12: false }).format(d);
+    if (!tzHour.has(tz)) tzHour.set(tz, new Intl.DateTimeFormat("en-US", { timeZone: tz, hour: "numeric", hour12: false }));
+    const h = tzHour.get(tz).format(d);
     const n = Number(h);
     return Number.isFinite(n) ? n % 24 : null;
   } catch { return null; }
@@ -951,8 +958,8 @@ const maxMonth = (rows) => rows.reduce((m, f) => (!m || f.month > m ? f.month : 
 out.research = {
   costBasis: COST_BASIS,
   window: { from: minMonth(research.union), to: maxMonth(research.union) },
-  // Herald buys a positive reply on the start_to_conversation leg; Scout a website visit on the
-  // start_to_website_visit leg, priced on the emails that carried a link.
+  // Herald buys a positive reply on the lead_found_to_conversation leg; Scout a website visit on the
+  // lead_found_to_website_visit leg, priced on the emails that carried a link.
   reply: researchFor(research.herald),
   visit: researchFor(research.scout),
   // what each workflow runs, per crew: a dynasty can run a different model on each leg

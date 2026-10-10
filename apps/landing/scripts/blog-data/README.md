@@ -30,12 +30,19 @@ The Research page in dashboard v2 (`/v2/.../research`) reads
 `apps/dashboard/src/lib/research/research.json`, written from the SAME fact table as the
 articles, so a study and an article cannot state two figures for one population. Every
 study is fleet-wide (all orgs) but scoped to ONE leg of the channel (campaign-service
-`leg_key`, via `campaign-legs.csv`): Herald reads `start_to_conversation` emails only, Scout
-the link-carrying `start_to_website_visit` emails only, and a campaign stating no leg belongs
-to neither. Each (workflow version, leg) is priced on its own spend (`spend-legs.csv`, per
+`leg_key`, via `campaign-legs.csv`): Herald reads `lead_found_to_conversation` emails only, Scout
+the link-carrying `lead_found_to_website_visit` emails only, and a campaign stating no leg belongs
+to neither. The legacy spellings (`start_to_*`, renamed 2026-10-09) are the same legs: every leg key
+read goes through `leg-key.mjs`. Each (workflow version, leg) is priced on its own spend (`spend-legs.csv`, per
 campaign and per day), cut at its leg's cutoff like the emails it divides. Labels and the
 catalogue's last-runs lists are per crew too. The articles keep the fleet-wide, all-legs
-population on purpose: the leg scope lives only in the `research` block. To refresh it:
+population on purpose: the leg scope lives only in the `research` block.
+
+**It refreshes itself every night** (2026-10-10): `/root/distribute/research-refresh-cron.sh` on the
+box runs `refresh.sh` (below, with `BLOG_DATA_LOCAL=1`: no ssh, node in a 2.5 GB container) in a
+dedicated clone, then opens `research/nightly-refresh` to main with auto-merge armed; the PR body
+(`research-diff.mjs`) lists every study whose verdict or winner moved. CI gates the merge; a failed
+run mails the owner. No LLM in it. By hand:
 
 ```sh
 apps/landing/scripts/blog-data/extract.sh 2026-04-15 <today> /tmp/research-data

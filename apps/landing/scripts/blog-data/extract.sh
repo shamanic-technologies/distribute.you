@@ -5,7 +5,7 @@
 #   ./extract.sh <window-start> <window-end-exclusive> <out-dir>
 #   ./extract.sh 2026-04-15 2026-09-12 /tmp/blog-data
 #
-# Requires ssh access to the Hetzner box. Every read is read-only.
+# Requires ssh access to the Hetzner box (or BLOG_DATA_LOCAL=1 on the box itself). Every read is read-only.
 set -euo pipefail
 
 FROM="${1:?window start, e.g. 2026-04-15}"
@@ -16,12 +16,22 @@ KEY="${BLOG_DATA_KEY:-$HOME/.ssh/oracle-distribute}"
 
 mkdir -p "$OUT"
 
+# onbox: run a shell on the box. Over ssh from a laptop; in place when this script already runs
+# ON the box (BLOG_DATA_LOCAL=1, the nightly refresh: refresh.sh), where there is no ssh to itself.
+onbox() { # onbox [command]; no argument = a shell reading stdin
+  if [ -n "${BLOG_DATA_LOCAL:-}" ]; then
+    if [ $# -eq 0 ]; then bash -s; else bash -c "$1"; fi
+  else
+    ssh -i "$KEY" -o ConnectTimeout=20 "$BOX" "${1:-bash -s}"
+  fi
+}
+
 # The window travels with the dumps: derive.mjs reads its END as the moment outcomes stop being
 # observed, which is what the maturation window is measured back from.
 printf '{"from":"%s","to":"%s"}\n' "$FROM" "$TO" > "$OUT/window.json"
 
 run() { # run <database> <sql> <outfile>
-  ssh -i "$KEY" -o ConnectTimeout=20 "$BOX" 'bash -s' > "$OUT/$3" <<EOF
+  onbox > "$OUT/$3" <<EOF
 docker exec -i distribute-postgres-1 psql -U postgres -d "$1" -v ON_ERROR_STOP=1 --csv <<'SQL'
 $2
 SQL
@@ -237,7 +247,7 @@ WHERE task_name = 'execute-workflow'
 # (features-service#1196): how long after a run starts its outcomes count as arrived, and how many
 # outcomes make a figure more than Learning. Read, never re-measured, so the Research page and the
 # dashboard apply ONE rule. Read from inside its container (Cloudflare 1010s a scripted request).
-ssh -i "$KEY" -o ConnectTimeout=20 "$BOX" 'docker exec distribute-features-service-1 node -e "fetch(\"http://127.0.0.1:8080/public/channels\").then(r=>{if(!r.ok)throw new Error(\"channels \"+r.status);return r.json()}).then(j=>{const legs=(j.legs||[]).filter(l=>l.maturity).map(l=>({legKey:l.legKey,durationDays:l.maturity.durationDays,outcomesRequired:l.maturity.outcomesRequired,outcomeSignal:l.maturity.outcomeSignal,source:l.maturity.source}));if(!legs.length)throw new Error(\"channels: no leg carries maturity\");console.log(JSON.stringify(legs))})" </dev/null' > "$OUT/maturity.json"
+onbox 'docker exec distribute-features-service-1 node -e "fetch(\"http://127.0.0.1:8080/public/channels\").then(r=>{if(!r.ok)throw new Error(\"channels \"+r.status);return r.json()}).then(j=>{const legs=(j.legs||[]).filter(l=>l.maturity).map(l=>({legKey:l.legKey,durationDays:l.maturity.durationDays,outcomesRequired:l.maturity.outcomesRequired,outcomeSignal:l.maturity.outcomeSignal,source:l.maturity.source}));if(!legs.length)throw new Error(\"channels: no leg carries maturity\");console.log(JSON.stringify(legs))})" </dev/null' > "$OUT/maturity.json"
 [ -s "$OUT/maturity.json" ] || { echo "maturity.json is empty" >&2; exit 1; }
 echo "  maturity.json: $(wc -c < "$OUT/maturity.json") bytes"
 
@@ -247,7 +257,7 @@ echo "  maturity.json: $(wc -c < "$OUT/maturity.json") bytes"
 # read uses: a row matches the version of its cost name whose billed unit price equals the one
 # the row froze and which was being served when the row was written. A row no known version
 # prices is UNPRICED: it is counted apart, never folded in at the billed price.
-ssh -i "$KEY" -o ConnectTimeout=20 "$BOX" 'docker exec distribute-costs-service-1 node -e "fetch(\"http://127.0.0.1:8080/internal/vendor-costs\",{headers:{\"x-api-key\":process.env.COSTS_SERVICE_API_KEY}}).then(r=>{if(!r.ok)throw new Error(\"vendor-costs \"+r.status);return r.json()}).then(j=>console.log(JSON.stringify(j.versions.filter(v=>v.billedPricePerUnitInUsdCents!==null).map(v=>({cost_name:v.name,billed:v.billedPricePerUnitInUsdCents,vendor:v.vendorCostPerUnitInUsdCents,served_from:new Date(Math.max(Date.parse(v.effectiveFrom),Date.parse(v.createdAt))).toISOString()})))))" </dev/null' > "$OUT/vendor-versions.json"
+onbox 'docker exec distribute-costs-service-1 node -e "fetch(\"http://127.0.0.1:8080/internal/vendor-costs\",{headers:{\"x-api-key\":process.env.COSTS_SERVICE_API_KEY}}).then(r=>{if(!r.ok)throw new Error(\"vendor-costs \"+r.status);return r.json()}).then(j=>console.log(JSON.stringify(j.versions.filter(v=>v.billedPricePerUnitInUsdCents!==null).map(v=>({cost_name:v.name,billed:v.billedPricePerUnitInUsdCents,vendor:v.vendorCostPerUnitInUsdCents,served_from:new Date(Math.max(Date.parse(v.effectiveFrom),Date.parse(v.createdAt))).toISOString()})))))" </dev/null' > "$OUT/vendor-versions.json"
 [ -s "$OUT/vendor-versions.json" ] || { echo "vendor-versions.json is empty" >&2; exit 1; }
 echo "  vendor-versions.json: $(wc -c < "$OUT/vendor-versions.json") bytes"
 VERSIONS_JSON="$(cat "$OUT/vendor-versions.json")"
@@ -306,7 +316,7 @@ LEGS_VALUES="$(awk -F, 'NR>1 && $2!="" {printf "%s(%c%s%c,%c%s%c)", (n++?",":"")
 [ -n "$LEGS_VALUES" ] || { echo "campaign-legs.csv carries no leg" >&2; exit 1; }
 # Each is ONE JSON value (json_agg), so text carrying commas, quotes and newlines needs no CSV.
 runjson() { # runjson <database> <sql> <outfile>
-  ssh -i "$KEY" -o ConnectTimeout=20 "$BOX" 'bash -s' > "$OUT/$3" <<EOF
+  onbox > "$OUT/$3" <<EOF
 docker exec -i distribute-postgres-1 psql -U postgres -d "$1" -v ON_ERROR_STOP=1 -At <<'SQL'
 $2
 SQL
