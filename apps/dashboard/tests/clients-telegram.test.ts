@@ -156,7 +156,7 @@ describe("clients telegram reads", () => {
         ? { customers: [customer(), customer({ brandId: "brand-a2", brandName: "Second brand" })] }
         : url.includes("revenue/fleet")
           ? { orgs: [POSTPAID] }
-          : { credited_paid_cents: "52385.0000000000", credited_gifted_cents: "3700.0000000000" };
+          : { cash_paid_cents: "52385.0000000000", credited_paid_cents: "52385.0000000000", credited_gifted_cents: "3700.0000000000" };
       return new Response(JSON.stringify(body), { status: 200 });
     });
     const { lines } = await buildClientLines(
@@ -185,7 +185,7 @@ describe("clients telegram reads", () => {
           }
         : url.includes("revenue/fleet")
           ? { orgs: [POSTPAID, SUBSCRIPTION, PREPAID] }
-          : { credited_paid_cents: "9900", credited_gifted_cents: "0" };
+          : { cash_paid_cents: "9900", credited_paid_cents: "0", credited_trial_repaid_cents: "9900", credited_gifted_cents: "0" };
       return new Response(JSON.stringify(body), { status: 200 });
     });
     const { lines, idle } = await buildClientLines(
