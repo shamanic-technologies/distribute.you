@@ -100,6 +100,7 @@ describe("the rules the page decides on", () => {
       ...snap,
       campaign: null,
       campaignDone: false,
+      funnels: null,
       lifetimeRevenueUsd: null,
       answered: false,
       icp: null,
@@ -366,9 +367,11 @@ describe("the surface", () => {
 
 describe("the wall", () => {
   it("reads the wall's figure off the campaign chosen, as served", () => {
-    expect(chosenFunnelOutlook({ roi: 17.42 })).toEqual({ outcome: "Paying clients", outcomes: null, roi: 17.42 });
-    // Nothing served: nothing stated.
-    expect(chosenFunnelOutlook({ roi: null })).toBeNull();
+    expect(chosenFunnelOutlook({ roi: 17.42, status: "estimated" })).toEqual({ outcome: "Paying clients", outcomes: null, roi: 17.42, basis: "Estimated" });
+    expect(chosenFunnelOutlook({ roi: 3, status: "measured" })?.basis).toBe("Measured");
+    // Nothing served, or still learning: nothing stated.
+    expect(chosenFunnelOutlook({ roi: null, status: "estimated" })).toBeNull();
+    expect(chosenFunnelOutlook({ roi: 2, status: "learning" })).toBeNull();
     expect(chosenFunnelOutlook(null)).toBeNull();
   });
 

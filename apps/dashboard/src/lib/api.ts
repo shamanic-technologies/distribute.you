@@ -7027,13 +7027,18 @@ export async function startSalesFunnelCampaign(
 }
 
 /**
- * The funnels the signup's campaign step proposes, read signed out (`/api/public/sales-funnels`:
- * features-service's runnable funnels on cold email and on AI meeting booking, verbatim).
+ * The funnels the signup's campaign step proposes, PRICED FOR THIS OFFER (features-service through
+ * `GET /v1/offers/:offerId/sales-funnels`, runnable only, ROI first): the cold-email page and the
+ * AI-meeting-booking page, verbatim. Signed out it rides the anonymous session (`/api/anon/v1`,
+ * brand bound by its query); from the dashboard walk, the org it names.
  */
-export async function getSignupFunnelPages(): Promise<unknown> {
-  const res = await fetch("/api/public/sales-funnels");
-  if (!res.ok) throw new Error(`[dashboard] getSignupFunnelPages: ${res.status}`);
-  return res.json();
+export async function getSignupFunnelPages(brandId: string, offerId: string): Promise<{ proactive: unknown; reactive: unknown }> {
+  const page = (channel: string) =>
+    apiCall<unknown>(
+      `/offers/${encodeURIComponent(offerId)}/sales-funnels?brandId=${encodeURIComponent(brandId)}&containsChannels=${encodeURIComponent(channel)}&limit=25`,
+    );
+  const [proactive, reactive] = await Promise.all([page("sales-cold-email-outreach"), page("ai-meeting-booking")]);
+  return { proactive, reactive };
 }
 
 /**

@@ -11,8 +11,10 @@
  *       [face] <reactive funnel> · Up to [$ 10 ] per [week v]
  *   [ Launch ]  -> then the payment wall exactly as today
  *
- * The funnels are features-service's (`GET /v1/public/catalogue/sales-funnels`, runnable only,
- * ROI first); the launch writes billing's caps then starts campaign-service's funnel campaign.
+ * The funnels are features-service's, runnable only, ROI first, PRICED FOR THIS OFFER (owner
+ * 2026-10-10: the wall shows this offer's return, never the fleet's): `GET /v1/offers/:offerId/
+ * sales-funnels?brandId=` (features v0.179.133 through the gateway, on the visitor's own org: the
+ * anonymous one signed out). The launch writes billing's caps then starts the funnel campaign.
  * Nothing here computes a figure the producers serve: the picks are the first served row of
  * the right type, the line under the name is the channel's own served short description.
  *
@@ -32,6 +34,8 @@ export const PublicSalesFunnelRowSchema = z
     costUsd: z.number().nullable(),
     costPer: z.string().nullable(),
     roi: z.number().nullable(),
+    /** features-service's word for the figures: measured, estimated, learning, customer_time. */
+    status: z.string().nullish(),
     runnable: z.boolean(),
     mixed: z.boolean(),
   })
@@ -40,7 +44,7 @@ export type PublicSalesFunnelRow = z.infer<typeof PublicSalesFunnelRowSchema>;
 
 export const PublicSalesFunnelPageSchema = z.object({ rows: z.array(PublicSalesFunnelRowSchema) }).passthrough();
 
-/** The body `/api/public/sales-funnels` hands back: the two producer pages, verbatim. */
+/** The two producer pages the step reads (cold email, AI meeting booking), verbatim. */
 export const SignupFunnelsBodySchema = z.object({ proactive: PublicSalesFunnelPageSchema, reactive: PublicSalesFunnelPageSchema });
 
 export interface SignupFunnel {
@@ -50,12 +54,14 @@ export interface SignupFunnel {
   costUsd: number | null;
   costPer: string | null;
   roi: number | null;
+  /** The served word for its figures ("estimated", "measured", "learning"), or null. */
+  status: string | null;
 }
 
 /** The first runnable, unmixed row of a type: the producer already ranks ROI first. */
 export function firstOfType(rows: readonly PublicSalesFunnelRow[], type: "proactive" | "reactive"): SignupFunnel | null {
   const row = rows.find((r) => r.type === type && r.runnable && !r.mixed);
-  return row ? { salesFunnelId: row.id, name: row.name, costUsd: row.costUsd, costPer: row.costPer, roi: row.roi } : null;
+  return row ? { salesFunnelId: row.id, name: row.name, costUsd: row.costUsd, costPer: row.costPer, roi: row.roi, status: row.status ?? null } : null;
 }
 
 /** The two funnels the step proposes: the best proactive cold-email one, and the meeting-booking reactive one. */
@@ -68,11 +74,53 @@ export function signupFunnelsFrom(body: unknown): { proactive: SignupFunnel | nu
   return { proactive: firstOfType(parsed.data.proactive.rows, "proactive"), reactive: firstOfType(parsed.data.reactive.rows, "reactive") };
 }
 
-/** "Estimated: $143.48 per paying client". Null when the producer priced nothing (never a made-up figure). */
-export function estimatedLine(f: Pick<SignupFunnel, "costUsd" | "costPer">): string | null {
-  if (f.costUsd == null || !f.costPer) return null;
+/**
+ * The picks as the snapshot keeps them (so the wall reopens after the Google round trip without a
+ * read: signed in, the visitor's session is not the anonymous org the offer lives on until the claim).
+ */
+export function parseSignupFunnels(v: unknown): { proactive: SignupFunnel | null; reactive: SignupFunnel | null } | null {
+  if (!v || typeof v !== "object") return null;
+  const one = (x: unknown): SignupFunnel | null => {
+    if (!x || typeof x !== "object") return null;
+    const o = x as Record<string, unknown>;
+    if (typeof o.salesFunnelId !== "string" || !o.salesFunnelId || typeof o.name !== "string") return null;
+    const num = (n: unknown) => (typeof n === "number" && Number.isFinite(n) ? n : null);
+    return {
+      salesFunnelId: o.salesFunnelId,
+      name: o.name,
+      costUsd: num(o.costUsd),
+      costPer: typeof o.costPer === "string" ? o.costPer : null,
+      roi: num(o.roi),
+      status: typeof o.status === "string" ? o.status : null,
+    };
+  };
+  const o = v as Record<string, unknown>;
+  const proactive = one(o.proactive);
+  return proactive ? { proactive, reactive: one(o.reactive) } : null;
+}
+
+/** A funnel still LEARNING states no figure: the product's own word "Learning" stands in (existing rule). */
+export function isLearning(f: Pick<SignupFunnel, "status">): boolean {
+  return f.status === "learning";
+}
+
+/** The served status as a label ("estimated" -> "Estimated"); null for anything that prices nothing. */
+export function figureLabel(f: Pick<SignupFunnel, "status">): string | null {
+  if (f.status === "estimated") return "Estimated";
+  if (f.status === "measured") return "Measured";
+  return null;
+}
+
+/**
+ * "Estimated: $143 per paying client · 4.2x return": the cost with its unit and this offer's return,
+ * labelled as served. Null when the producer priced nothing, or while it is learning (never a figure).
+ */
+export function estimatedLine(f: Pick<SignupFunnel, "costUsd" | "costPer" | "roi" | "status">): string | null {
+  const label = figureLabel(f);
+  if (!label || f.costUsd == null || !f.costPer) return null;
   const usd = f.costUsd >= 100 ? Math.round(f.costUsd).toLocaleString("en-US") : f.costUsd.toFixed(2).replace(/\.00$/, "");
-  return `Estimated: $${usd} ${f.costPer}`;
+  const ret = f.roi == null ? "" : ` · ${f.roi >= 10 ? Math.round(f.roi) : Math.round(f.roi * 10) / 10}x return`;
+  return `${label}: $${usd} ${f.costPer}${ret}`;
 }
 
 /** The periods the step offers (billing's vocabulary), with the word the select shows. */

@@ -634,7 +634,7 @@ export function AccountCardWall({
                   </BuysTile>
                 )}
                 {expectedRoi != null && (
-                  <BuysTile label="ROI" note="Expected">
+                  <BuysTile label="ROI" note={outlook.basis}>
                     <span className={roiIsGood(expectedRoi) ? "text-[var(--run)]" : undefined}>
                       <CountUp value={expectedRoi} format={(n) => formatRoi(n)} ms={900} />
                     </span>
