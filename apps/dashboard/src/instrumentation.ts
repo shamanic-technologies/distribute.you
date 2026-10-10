@@ -771,7 +771,7 @@ const CAMPAIGN_PREFILL_ALLOWED_TOOLS = [
   "browse_url",
 ];
 
-// The staff Copilot (components/v2/copilot-chat.tsx, owner 2026-10-09). The strategy, not
+// The Copilot (GA 2026-10-10, components/v2/copilot-chat.tsx, owner 2026-10-09). The strategy, not
 // canned replies: the reader should be able to run the account by clicking.
 const COPILOT_PAGE_LINES = Object.entries(COPILOT_PAGES)
   .map(([id, p]) => `- \`${id}\`: ${p.what}`)

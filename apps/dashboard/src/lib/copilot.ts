@@ -1,5 +1,5 @@
 /**
- * The staff Copilot: a chat widget floating bottom right above the page it talks about
+ * The Copilot (GA 2026-10-10): a chat panel on the right beside the page it talks about
  * (owner 2026-10-09). Pure rules only, alias-free, so they unit-test.
  */
 

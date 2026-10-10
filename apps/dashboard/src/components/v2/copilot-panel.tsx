@@ -5,7 +5,7 @@ import { CopilotChat } from "@/components/v2/copilot-chat";
 import { useCopilotDock } from "@/components/v2/copilot-dock";
 
 /**
- * The staff Copilot as a right panel beside the page (owner 2026-10-10, replaces the
+ * The Copilot as a right panel beside the page (owner 2026-10-10, replaces the
  * 10-09 bubble): shown by default, the arrow in its header hides it, the top bar's
  * "Copilot" button brings it back. Below `lg` it slides over the page instead of
  * squeezing it. Hidden = not displayed + `inert`, never unmounted: an answer keeps streaming.

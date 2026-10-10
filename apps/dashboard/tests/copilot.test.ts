@@ -76,8 +76,9 @@ describe("copilot wiring", () => {
   const shell = src("src/components/v2/v2-shell.tsx");
   const chat = src("src/components/v2/copilot-chat.tsx");
 
-  it("is staff mode only, on a brand page", () => {
-    expect(shell).toContain("const copilot = staffMode && hasBrand");
+  it("is GA: every signed-in customer on a brand page, staff mode or not", () => {
+    expect(shell).toContain("const copilot = hasBrand && Boolean(params.orgId);");
+    expect(shell).not.toContain("const copilot = staffMode");
     expect(shell).toContain("{copilot && <CopilotPanel orgId=");
   });
 

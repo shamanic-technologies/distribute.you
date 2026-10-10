@@ -45,7 +45,7 @@ import { AddCreditsButton, ChoiceCards, OpenedPage } from "@/components/v2/copil
 import { useSelectedOfferIfAny } from "@/components/v2/selected-offer";
 
 /**
- * The staff Copilot (owner 2026-10-09), drawn inside the right panel. A reload shows the last
+ * The Copilot (owner 2026-10-09, GA 2026-10-10), drawn inside the right panel. A reload shows the last
  * conversation; "New chat" starts over with the account's figures (Today's own reads, so
  * the numbers match the page) and the model's first choices. Every answer ends on large
  * choices to click, the box below stays for anything else. A dashboard link the model
@@ -233,7 +233,7 @@ export function CopilotChat({ orgId, brandId, headerAction }: { orgId: string; b
   // account's served figures (it cites them, it never computes one).
   const context = useMemo(
     () => ({
-      surface: "staff-copilot",
+      surface: "copilot",
       orgId,
       brandId,
       offerId,
