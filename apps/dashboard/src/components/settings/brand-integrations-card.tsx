@@ -22,7 +22,14 @@ import { useAuthQuery, useQueryClient } from "@/lib/use-auth-query";
 import { useIsBetaUser } from "@/lib/use-beta-user";
 import { CompanyLogo } from "@/components/company-logo";
 import { MessagingLinkRows } from "@/components/settings/messaging-link-rows";
-import { INTEGRATIONS, missingFields, type IntegrationDef, type IntegrationSlug } from "@/lib/integrations";
+import {
+  INTEGRATIONS,
+  isStripeProvider,
+  missingFields,
+  nextStripeProvider,
+  type IntegrationDef,
+  type IntegrationSlug,
+} from "@/lib/integrations";
 import { GOOGLE_RETURN_KEY, googleCallbackUrl } from "@/lib/google-connect";
 import {
   connectErrorMessage,
@@ -55,6 +62,9 @@ interface Connection {
   id: string;
   status: string;
   lastError: string | null;
+  /** Stripe: the key-service provider holding this account's key, and the account it reads. */
+  credentialProvider?: string;
+  account?: { id: string; name: string | null } | null;
 }
 
 /**
@@ -68,7 +78,7 @@ const CONNECTION_IO: Record<
   {
     root: string;
     list: (brandId: string) => Promise<{ connections: Connection[] }>;
-    connect: (brandId: string, values: Record<string, string>) => Promise<unknown>;
+    connect: (brandId: string, values: Record<string, string>, provider: string) => Promise<unknown>;
     disconnect: (connection: Connection, brandId: string) => Promise<unknown>;
   }
 > = {
@@ -88,7 +98,8 @@ const CONNECTION_IO: Record<
   stripe: {
     root: "stripeConnections",
     list: (brandId) => listSourceConnections("stripe", brandId),
-    connect: (brandId) => connectSource("stripe", brandId, {}),
+    // Each Stripe account's key lives under its own provider name (several accounts).
+    connect: (brandId, _values, provider) => connectSource("stripe", brandId, { credentialProvider: provider }),
     disconnect: (connection, brandId) => disconnectSource("stripe", connection.id, brandId),
   },
 };
@@ -118,7 +129,7 @@ function IntegrationsSection({
       brandId={brandId}
       orgId={orgId}
       keysSettled={keysSettled}
-      credentialStored={storedProviders.has(def.slug)}
+      storedProviders={storedProviders}
       onChanged={() => queryClient.invalidateQueries({ queryKey: ["brandKeys", brandId] })}
     />
   ));
@@ -140,20 +151,20 @@ function IntegrationsSection({
   );
 }
 
-/** One integration's own connection read, then its row. */
+/** One integration's own connection read, then its row (Stripe: one row per account). */
 function ConnectedRow({
   def,
   brandId,
   orgId,
   keysSettled,
-  credentialStored,
+  storedProviders,
   onChanged,
 }: {
   def: IntegrationDef;
   brandId: string;
   orgId: string | null;
   keysSettled: boolean;
-  credentialStored: boolean;
+  storedProviders: Set<string>;
   onChanged: () => void;
 }) {
   const queryClient = useQueryClient();
@@ -162,19 +173,66 @@ function ConnectedRow({
   // Reveal on SETTLE, never success-only: a failed read must degrade to the row
   // reading "not connected" rather than skeleton for ever.
   const settled = keysSettled && (!connQ.isPending || connQ.isError);
+  const changed = () => {
+    onChanged();
+    queryClient.invalidateQueries({ queryKey: [io.root, brandId] });
+  };
+  const connections = connQ.data?.connections ?? [];
+
+  if (def.slug !== "stripe") {
+    return (
+      <IntegrationRow
+        def={def}
+        brandId={brandId}
+        orgId={orgId}
+        settled={settled}
+        provider={def.slug}
+        credentialStored={storedProviders.has(def.slug)}
+        connection={connections[0] ?? null}
+        onChanged={changed}
+      />
+    );
+  }
+
+  // Stripe (owner 2026-10-10): several accounts, each its own key and its own row. A key
+  // stored with no connection is an unfinished account; then one row adds another.
+  const connected = new Set(connections.map((c) => c.credentialProvider ?? "stripe"));
+  const unfinished = [...storedProviders].filter((p) => isStripeProvider(p) && !connected.has(p)).sort();
+  const next = nextStripeProvider([...connected, ...storedProviders]);
+  const showAdd = settled && unfinished.length === 0;
   return (
-    <IntegrationRow
-      def={def}
-      brandId={brandId}
-      orgId={orgId}
-      settled={settled}
-      credentialStored={credentialStored}
-      connection={connQ.data?.connections[0] ?? null}
-      onChanged={() => {
-        onChanged();
-        queryClient.invalidateQueries({ queryKey: [io.root, brandId] });
-      }}
-    />
+    <>
+      {connections.map((c) => (
+        <IntegrationRow
+          key={c.id}
+          def={def}
+          brandId={brandId}
+          orgId={orgId}
+          settled={settled}
+          provider={c.credentialProvider ?? "stripe"}
+          credentialStored
+          connection={c}
+          onChanged={changed}
+        />
+      ))}
+      {unfinished.map((p) => (
+        <IntegrationRow key={p} def={def} brandId={brandId} orgId={orgId} settled={settled} provider={p} credentialStored connection={null} onChanged={changed} />
+      ))}
+      {showAdd || !settled ? (
+        <IntegrationRow
+          key={next}
+          def={def}
+          brandId={brandId}
+          orgId={orgId}
+          settled={settled}
+          provider={next}
+          credentialStored={false}
+          connection={null}
+          addAnother={connections.length > 0}
+          onChanged={changed}
+        />
+      ) : null}
+    </>
   );
 }
 
@@ -224,16 +282,22 @@ function IntegrationRow({
   brandId,
   orgId,
   settled,
+  provider,
   credentialStored,
   connection,
+  addAnother = false,
   onChanged,
 }: {
   def: IntegrationDef;
   brandId: string;
   orgId: string | null;
   settled: boolean;
+  /** The key-service provider this row's credential lives under (`stripe-2` for a second Stripe account). */
+  provider: string;
   credentialStored: boolean;
   connection: Connection | null;
+  /** The row that adds one more account beside connected ones. */
+  addAnother?: boolean;
   onChanged: () => void;
 }) {
   const io = CONNECTION_IO[def.slug];
@@ -254,7 +318,7 @@ function IntegrationRow({
       const typedSecret = (values.token ?? "").trim();
       if (typedSecret || !credentialStored) {
         try {
-          await setBrandKey(brandId, def.slug, typedSecret);
+          await setBrandKey(brandId, provider, typedSecret);
         } catch (err) {
           console.error("[integrations] storing the credential failed", err);
           throw new Error(credentialErrorMessage(err));
@@ -263,7 +327,7 @@ function IntegrationRow({
       // 2. The connection. crm-service resolves the credential it was just given
       //    and proves it against the vendor, so THIS is what can refuse.
       try {
-        return await io.connect(brandId, values);
+        return await io.connect(brandId, values, provider);
       } catch (err) {
         console.error("[integrations] connecting failed", err);
         throw new Error(connectErrorMessage(err));
@@ -289,7 +353,7 @@ function IntegrationRow({
           if (msg) throw new Error(msg);
         }
       }
-      await deleteBrandKey(brandId, def.slug).catch((err) => {
+      await deleteBrandKey(brandId, provider).catch((err) => {
         // The connection is already gone by here, which is what was asked for.
         // A credential left behind is inert and is overwritten on reconnect, so
         // this is logged loudly rather than shown as a failure of the action.
@@ -323,10 +387,15 @@ function IntegrationRow({
 
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-2">
-            <span className="font-medium text-gray-900">{def.name}</span>
-            <StatusPill settled={settled} connection={connection} credentialStored={credentialStored} />
+            <span className="font-medium text-gray-900">{addAnother ? `Another ${def.name} account` : def.name}</span>
+            {addAnother ? null : <StatusPill settled={settled} connection={connection} credentialStored={credentialStored} />}
           </div>
-          <p className="mt-0.5 text-sm text-gray-500">{def.blurb}</p>
+          {connection?.account ? (
+            <p className="mt-0.5 text-sm text-gray-700">
+              {connection.account.name ? `${connection.account.name} (${connection.account.id})` : connection.account.id}
+            </p>
+          ) : null}
+          <p className="mt-0.5 text-sm text-gray-500">{addAnother ? `Connect one more ${def.name} account, with its own key.` : def.blurb}</p>
 
           {unfinished ? (
             <p className="mt-2 text-sm text-gray-600">
@@ -378,7 +447,7 @@ function IntegrationRow({
                   onClick={() => setOpen((v) => !v)}
                   className="rounded-lg bg-brand-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-brand-700"
                 >
-                  {open ? "Cancel" : unfinished ? "Finish connecting" : "Connect"}
+                  {open ? "Cancel" : unfinished ? "Finish connecting" : addAnother ? "Add account" : "Connect"}
                 </button>
               )}
               {connection || credentialStored ? (

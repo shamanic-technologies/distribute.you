@@ -49,7 +49,7 @@ describe("the unfinished state has a way forward", () => {
     // Keyed on the CONNECTION, never on the credential: the credential being
     // stored is exactly the case that used to lose the button.
     expect(CARD).toContain("{connection ? null : (");
-    expect(CARD).toContain('unfinished ? "Finish connecting" : "Connect"');
+    expect(CARD).toContain('unfinished ? "Finish connecting" : addAnother ? "Add account" : "Connect"');
   });
 
   it("keeps the way OUT beside it rather than in place of it", () => {
@@ -90,8 +90,8 @@ describe("a retry keeps the credential it already has", () => {
   it("never writes the raw field, which would blank a working credential", () => {
     // `setBrandKey(brandId, def.slug, values.token ?? "")` on an untouched form
     // destroys the token to answer a question the field says to leave alone.
-    expect(CARD).not.toContain('setBrandKey(brandId, def.slug, values.token');
-    expect(CARD).toContain("setBrandKey(brandId, def.slug, typedSecret)");
+    expect(CARD).not.toContain('setBrandKey(brandId, provider, values.token');
+    expect(CARD).toContain("setBrandKey(brandId, provider, typedSecret)");
   });
 
   it("asks missingFields the same question the form answers", () => {
