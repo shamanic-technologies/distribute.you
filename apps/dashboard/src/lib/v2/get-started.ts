@@ -299,6 +299,23 @@ export function leversLLMPrompt(offerName: string, answers: Partial<Record<Lever
     .trim();
 }
 
+/** What we give for free and what we never promise, as a prompt to paste into an LLM. */
+export function givesLLMPrompt(offerName: string, answers: Partial<Record<GiveDraftKey, string>>): string {
+  const blocks = GIVE_DRAFT_FIELDS.map((f) => {
+    const lines = answerLines(answers[f.key] ?? "");
+    const body = lines.length ? lines.map((l) => `- ${l}`).join("\n") : "- (not answered yet)";
+    return `${f.label}: ${f.question}\n${body}`;
+  });
+  return [
+    `I sell "${offerName}". Below is what I can give for free to a prospect who replies to my cold email, and what an email must never promise.`,
+    "Improve each list: make every item concrete, specific and credible, one short bullet point each, and suggest free things I could add.",
+    "",
+    ...blocks.flatMap((b) => [b, ""]),
+  ]
+    .join("\n")
+    .trim();
+}
+
 /** Emails written before the account exists: the first row's is written ahead, the rest on click, one per preview company. */
 export const PREWRITTEN_EMAILS = 1;
 export const EMAIL_CAP = 5;
