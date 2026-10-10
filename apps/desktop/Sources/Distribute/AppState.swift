@@ -1,7 +1,7 @@
 import Foundation
 import AppKit
 
-/// One row of the channel panel: a campaign joined to ITS served figures by campaign id.
+/// One campaign joined to ITS served figures by campaign id.
 struct CampaignRow: Identifiable {
     let campaign: Campaign
     let figures: RevenueGroup?
@@ -44,6 +44,7 @@ enum SidebarMenu { case tenant, account }
 enum Detail {
     case person(LeadRow)
     case company(RevenueOrg)
+    case conversation(UniboxPerson)
 }
 
 @MainActor
@@ -70,8 +71,15 @@ final class AppState: ObservableObject {
     /// Whether the selected offer has a campaign: without one, money reads 404 by design.
     @Published var offerHasCampaign = false
     @Published var counts = SidebarCounts()
-    /// v2's "Top companies": the three worth most, on features-service's own figure.
-    @Published var topCompanies: [RevenueOrg] = []
+    /// The selected offer's ON campaigns (sidebar Campaigns) and the steps they land on (sidebar Outcomes).
+    @Published var onCampaigns: [OnCampaign] = []
+    @Published var outcomes: [OutcomeEntry] = []
+    /// lead-service's bucket counts for the selected offer: the People badge and each outcome's count.
+    @Published var bucketCounts: BucketCounts.Counts?
+    /// The offer's campaigns as the Sales path lists them (Campaigns > Overview, names, order).
+    @Published var salesPaths: Load<OfferSalesPaths> = .idle
+    /// The platform catalogue (legs, campaign names): the same for every tenant, read once.
+    private var legCatalogue: LegCatalogue?
     @Published var balance: Balance?
 
     @Published var pane: Pane? = .today
@@ -82,7 +90,9 @@ final class AppState: ObservableObject {
     @Published var deals: Load<DealsData> = .idle
     @Published var offerData: Load<OfferData> = .idle
     @Published var audiences: Load<[Audience]> = .idle
-    @Published var rows: Load<[CampaignRow]> = .idle
+    @Published var campaignFigures: Load<RevenueGroup?> = .idle
+    @Published var outcomePeople: Load<LeadPage> = .idle
+    @Published var unibox: Load<UniboxPeople> = .idle
 
     @Published var cli: ClaudeCLI.Located?
     @Published var cliChecked = false
@@ -207,7 +217,8 @@ final class AppState: ObservableObject {
     private func resetPanels() {
         counts = SidebarCounts()
         today = .idle; companies = .idle; people = .idle; deals = .idle
-        offerData = .idle; audiences = .idle; rows = .idle
+        offerData = .idle; audiences = .idle; campaignFigures = .idle; outcomePeople = .idle; unibox = .idle
+        onCampaigns = []; outcomes = []; bucketCounts = nil; salesPaths = .idle
     }
 
     /// Re-reads the sidebar and the open panel (after a brand/offer pick or a chat turn).
@@ -220,8 +231,9 @@ final class AppState: ObservableObject {
         guard let api, let brand = selectedBrand, let org = selectedOrg else { return }
         if let b = try? await api.balance(orgId: org.id) { balance = b }
         guard let offer = selectedOffer else { return }
+        await refreshCampaigns(api: api, brandId: brand.id, offerId: offer.offerId)
         do {
-            let campaigns = try await api.campaignOffers(brandId: brand.id)
+            let campaigns = try await api.campaigns(brandId: brand.id)
             offerHasCampaign = campaigns.contains { $0.offerId == offer.offerId }
             async let buckets = api.bucketCounts(brandId: brand.id, offerId: offer.offerId)
             async let standing = api.standingCounts(brandId: brand.id, offerId: offer.offerId)
@@ -229,19 +241,36 @@ final class AppState: ObservableObject {
             let (bk, st, nc) = try await (buckets, standing, needs)
             var c = SidebarCounts()
             c.people = bk.counts.contacted
+            bucketCounts = bk.counts
             // Deals badge = Contacted + Interested + Close won, as v2 adds the board columns.
             c.deals = st.counts.contacted + st.counts.engaged + st.counts.sales_interest + st.counts.customer
             c.needsCall = nc.total
             if offerHasCampaign {
-                let orgs = try await api.offerRevenue(offerId: offer.offerId, brandId: brand.id).organizations
-                c.companies = orgs.count
-                topCompanies = Array(orgs.sorted { $0.expectedRevenueUsd > $1.expectedRevenueUsd }.prefix(3))
-            } else {
-                topCompanies = []
+                c.companies = try await api.offerRevenue(offerId: offer.offerId, brandId: brand.id).organizations.count
             }
             counts = c
         } catch {
             NSLog("[desktop] sidebar counts failed: \(error.localizedDescription)")
+        }
+    }
+
+    /// Campaigns and Outcomes: the brand's campaigns, the leg catalogue and the offer's
+    /// sales-path campaigns, joined as dashboard v2's `useOngoingCampaigns` joins them.
+    private func refreshCampaigns(api: DistributeAPI, brandId: String, offerId: String) async {
+        if case .idle = salesPaths { salesPaths = .loading }
+        do {
+            async let campaigns = api.campaigns(brandId: brandId)
+            async let paths = api.offerSalesPaths(brandId: brandId, offerId: offerId)
+            if legCatalogue == nil { legCatalogue = LegCatalogue(try await api.publicCatalogue()) }
+            let (c, p) = try await (campaigns, paths)
+            guard offerId == selectedOffer?.offerId else { return }
+            salesPaths = .loaded(p)
+            let joined = joinOnCampaigns(campaigns: c, offerId: offerId, catalogue: legCatalogue ?? LegCatalogue(), paths: p)
+            onCampaigns = joined.campaigns
+            outcomes = joined.outcomes
+        } catch {
+            NSLog("[desktop] campaigns failed: \(error.localizedDescription)")
+            salesPaths = .failed(error.localizedDescription)
         }
     }
 
@@ -294,10 +323,11 @@ final class AppState: ObservableObject {
             case .people: people = .failed(none)
             case .deals: deals = .failed(none)
             case .offer: offerData = .failed(none)
-            case .targeting: audiences = .failed(none)
-            case .channels, .integrations, .settings, .billing: break
+            case .campaigns: salesPaths = .failed(none)
+            case .outcome: outcomePeople = .failed(none)
+            case .unibox: await loadUnibox(api: api, brandId: brand.id)
+            case .campaign, .outcomes, .integrations, .settings, .billing: break
             }
-            if p == .channels { await loadChannels(api: api, brandId: brand.id) }
             return
         }
         let b = brand.id, o = offer.offerId
@@ -327,35 +357,58 @@ final class AppState: ObservableObject {
                 return DealsData(standing: st, pipelineUsd: pipe)
             }
         case .offer:
+            // Targeting lives inside the Offer (owner 2026-10-10).
+            await run({ audiences = $0 }) {
+                async let active = api.audiences(brandId: b, offerId: o, status: "active")
+                async let paused = api.audiences(brandId: b, offerId: o, status: "paused")
+                return try await active + paused
+            }
             await run({ offerData = $0 }) {
                 async let econ = api.offerEconomics(brandId: b, offerId: o)
                 async let fields = api.offerUserFields(brandId: b, offerId: o)
                 let f = try await fields
                 return OfferData(lifetimeRevenueUsd: try await econ.lifetimeRevenueUsd, fields: f.fields.mapValues(\.value))
             }
-        case .targeting:
-            await run({ audiences = $0 }) {
-                async let active = api.audiences(brandId: b, offerId: o, status: "active")
-                async let paused = api.audiences(brandId: b, offerId: o, status: "paused")
-                return try await active + paused
+        case .unibox:
+            await loadUnibox(api: api, brandId: b)
+        case .campaigns:
+            await refreshCampaigns(api: api, brandId: b, offerId: o)
+        case .campaign(let id):
+            guard let slug = onCampaigns.first(where: { $0.id == id })?.campaign.featureSlug else { campaignFigures = .loaded(nil); return }
+            // The campaign's own feature serves its figures; a campaign with no row there yet reads "—".
+            await run({ campaignFigures = $0 }) {
+                try await api.featureRevenue(featureSlug: slug, brandId: b).first { $0.campaignId == id }
             }
-        case .channels:
-            await loadChannels(api: api, brandId: b)
-            case .integrations, .settings, .billing:
+        case .outcome(let key):
+            let outcome = outcomes.first { $0.outcome.key == key }?.outcome ?? outcomeOf(featureSlug: nil, toKey: key)
+            switch outcome?.items {
+            case .people(let bucket):
+                await run({ outcomePeople = $0 }) { try await api.leads(brandId: b, offerId: o, extra: ["bucket": bucket, "limit": "50"]) }
+            case .leadsFound:
+                await run({ audiences = $0 }) {
+                    async let active = api.audiences(brandId: b, offerId: o, status: "active")
+                    async let paused = api.audiences(brandId: b, offerId: o, status: "paused")
+                    return try await active + paused
+                }
+            default:
+                break
+            }
+        case .outcomes, .integrations, .settings, .billing:
             break
         }
     }
 
-    private func loadChannels(api: DistributeAPI, brandId: String) async {
-        rows = .loading
-        do {
-            async let campaigns = api.campaigns(brandId: brandId)
-            async let revenue = api.coldEmailRevenue(brandId: brandId)
-            let (c, r) = try await (campaigns, revenue)
-            let byId = Dictionary(r.map { ($0.campaignId, $0) }, uniquingKeysWith: { a, _ in a })
-            rows = .loaded(c.filter { $0.featureSlug == coldEmailFeatureSlug }.map { CampaignRow(campaign: $0, figures: byId[$0.id]) })
-        } catch {
-            rows = .failed(error.localizedDescription)
+    private func loadUnibox(api: DistributeAPI, brandId: String) async {
+        unibox = .loading
+        do { unibox = .loaded(try await api.people(brandId: brandId)) } catch { unibox = .failed(error.localizedDescription) }
+    }
+
+    /// The title of what is open beside the chat: a campaign by its name, an outcome by its step.
+    func title(of p: Pane) -> String {
+        switch p {
+        case .campaign(let id): return onCampaigns.first { $0.id == id }?.label ?? "Campaign"
+        case .outcome(let key): return (outcomes.first { $0.outcome.key == key }?.outcome ?? outcomeOf(featureSlug: nil, toKey: key))?.label ?? "Outcome"
+        default: return p.title
         }
     }
 
@@ -385,7 +438,7 @@ final class AppState: ObservableObject {
         chatBusy = true
         let ctx = SessionContext(
             apiKey: apiKey, orgId: org.id, brandId: brand.id, brandName: brand.label,
-            offerId: selectedOffer?.offerId, offerName: selectedOffer?.name, looking: pane?.title
+            offerId: selectedOffer?.offerId, offerName: selectedOffer?.name, looking: pane.map(title(of:))
         )
         streamingIndex = nil
         session.send(text, cli: cli, context: ctx, onItem: { [weak self] item in

@@ -1,7 +1,5 @@
 import Foundation
 
-/// The one channel distribute runs today. Its slug is features-service's own identifier.
-let coldEmailFeatureSlug = "sales-cold-email-outreach"
 let apiBaseURL = URL(string: "https://api.distribute.you/v1")!
 let dashboardURL = URL(string: "https://dashboard.distribute.you")!
 
@@ -49,6 +47,8 @@ struct Campaign: Decodable, Identifiable {
     let name: String
     let status: String
     let featureSlug: String?
+    var offerId: String? = nil
+    var legKey: String? = nil
 }
 
 struct CampaignList: Decodable { let campaigns: [Campaign] }
@@ -87,8 +87,6 @@ struct Offer: Decodable, Identifiable, Hashable {
 }
 struct OfferList: Decodable { let offers: [Offer] }
 
-struct CampaignOffer: Decodable { let id: String; let offerId: String? }
-struct CampaignOfferList: Decodable { let campaigns: [CampaignOffer] }
 
 struct Maturity: Decodable {
     struct Figures: Decodable { let roiMultiple: Double? }
@@ -138,6 +136,21 @@ struct RevenueWindow: Decodable {
 struct BucketCounts: Decodable {
     struct Counts: Decodable {
         let contacted, website_visit, positive_reply, signup, meeting_booked, meeting_attended, sale: Int
+        var form_submission: Int? = nil
+        /// One bucket's count by lead-service's key (an Outcome's `bucket`).
+        func count(_ bucket: String) -> Int? {
+            switch bucket {
+            case "contacted": return contacted
+            case "website_visit": return website_visit
+            case "positive_reply": return positive_reply
+            case "signup": return signup
+            case "meeting_booked": return meeting_booked
+            case "meeting_attended": return meeting_attended
+            case "sale": return sale
+            case "form_submission": return form_submission
+            default: return nil
+            }
+        }
     }
     struct People: Decodable { let delivered: Int; let interested: Int }
     let counts: Counts
@@ -318,12 +331,32 @@ struct DistributeAPI {
         return list.campaigns
     }
 
-    func coldEmailRevenue(brandId: String) async throws -> [RevenueGroup] {
+    /// One feature's served figures per campaign (`groupBy=campaignId`, `pricing=net`).
+    func featureRevenue(featureSlug: String, brandId: String) async throws -> [RevenueGroup] {
         let res: RevenueByCampaign = try await get(
-            "/features/\(coldEmailFeatureSlug)/revenue",
+            "/features/\(featureSlug)/revenue",
             query: ["brandId": brandId, "groupBy": "campaignId", "pricing": "net"]
         )
         return res.groups
+    }
+
+    /// The platform's steps, legs and campaign names (`GET /public/channels`).
+    func publicCatalogue() async throws -> PublicCatalogue { try await get("/public/channels", query: [:]) }
+
+    /// The offer's campaigns as the Sales path page lists them (`?scope=catalogue`, like the web sidebar).
+    func offerSalesPaths(brandId: String, offerId: String) async throws -> OfferSalesPaths {
+        try await get("/offers/\(offerId)/sales-paths", query: ["brandId": brandId, "scope": "catalogue"])
+    }
+
+    /// The Unibox list: crm-service's people, one per person on every channel.
+    func people(brandId: String, limit: Int = 100) async throws -> UniboxPeople {
+        try await get("/orgs/people", query: ["brandId": brandId, "limit": String(limit), "offset": "0"])
+    }
+
+    /// One person's thread. A crm-service id is a `personId`, anything else a `personKey` (`personRefQuery`).
+    func personTimeline(brandId: String, ref: String) async throws -> PersonTimeline {
+        let isId = ref.range(of: "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$", options: [.regularExpression, .caseInsensitive]) != nil
+        return try await get("/orgs/people/timeline", query: ["brandId": brandId, isId ? "personId" : "personKey": ref])
     }
 
     /// Prepaid top-up: a hosted Stripe checkout the app opens in the browser.
@@ -341,9 +374,6 @@ struct DistributeAPI {
 
     func offers(brandId: String) async throws -> [Offer] {
         let l: OfferList = try await get("/brands/\(brandId)/offers", query: [:]); return l.offers
-    }
-    func campaignOffers(brandId: String) async throws -> [CampaignOffer] {
-        let l: CampaignOfferList = try await get("/campaigns", query: ["brandId": brandId]); return l.campaigns
     }
     func offerRevenue(offerId: String, brandId: String) async throws -> OfferRevenue {
         try await get("/offers/\(offerId)/revenue", query: ["brandId": brandId, "pricing": "net"])
