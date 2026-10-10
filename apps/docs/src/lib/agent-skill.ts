@@ -88,23 +88,23 @@ export const SKILL_USE_CASES: SkillUseCase[] = [
   },
   {
     ask: "List campaigns and read their results",
-    routes: ["GET /v1/campaigns", "GET /v1/campaigns/{id}", "GET /v1/campaigns/{id}/stats"],
+    routes: ["GET /v1/sales-funnel-campaigns", "GET /v1/sales-funnel-campaigns/{id}", "GET /v1/campaigns/{partId}/stats"],
     docs: "/api/campaigns/",
   },
   {
     ask: "Pause or restart a campaign",
-    routes: ["PATCH /v1/campaigns/{id}", "POST /v1/campaigns/{id}/stop"],
+    routes: ["PATCH /v1/sales-funnel-campaigns/{id}"],
     spends: true,
     docs: "/api/campaigns/",
   },
   {
-    ask: "Read or change the daily budget",
+    ask: "Read or change a campaign's budget",
     routes: [
-      "GET /v1/brands/{brandId}/campaign-budgets",
-      "PUT /v1/brands/{brandId}/campaign-budget",
-      "GET /v1/brands/{brandId}/spendable-budget",
+      "GET /v1/brands/{brandId}/offers/{offerId}/sales-funnels/{salesFunnelId}/caps",
+      "PUT /v1/brands/{brandId}/offers/{offerId}/sales-funnels/{salesFunnelId}/caps",
     ],
     spends: true,
+    docs: "/api/campaigns/",
   },
   {
     ask: "Who are we targeting (audiences)?",

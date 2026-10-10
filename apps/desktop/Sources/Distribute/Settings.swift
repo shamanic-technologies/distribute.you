@@ -107,7 +107,6 @@ struct SettingsPanel: View {
     @State private var brand: Load<BrandInfo> = .idle
     @State private var rep: Load<SalesRep> = .idle
     @State private var econ: Load<OfferEconomics> = .idle
-    @State private var budget: Load<SalesBudget> = .idle
     @State private var token: Load<ConversionToken> = .idle
 
     @State private var name = ""
@@ -115,7 +114,6 @@ struct SettingsPanel: View {
     @State private var repPhone = ""
     @State private var repName = ""
     @State private var booking = ""
-    @State private var daily = ""
     @State private var saving: String?
     @State private var error: String?
 
@@ -144,14 +142,8 @@ struct SettingsPanel: View {
                 }
             }
         }
-        SettingsSection(title: "Daily budget", purpose: "The most we spend per day, in whole dollars, from your prepaid credit.") {
-            LoadView(load: budget, rows: 1) { _ in
-                EditLine(label: "Dollars per day", text: $daily, saving: saving == "budget") {
-                    guard let usd = Int(daily.filter(\.isNumber)) else { error = "Type a whole number of dollars."; return }
-                    await save("budget") { try await $0.setSalesBudget(brandId: state.selectedBrand!.id, cents: usd * 100) }
-                }
-            }
-        }
+        // No brand-wide daily budget here (owner 2026-10-10): each campaign carries its own max
+        // budget and max volume, shown and changed on the campaign's page.
         SettingsSection(title: "Conversion tracking", purpose: "Send us your signups and sales, so the return is measured.") {
             LoadView(load: token, rows: 1) { t in
                 InfoLine(label: "Status", value: (t.status ?? "not_set_up").replacingOccurrences(of: "_", with: " ").capitalized)
@@ -165,13 +157,12 @@ struct SettingsPanel: View {
 
     private func load() async {
         guard let api = state.api, let b = state.selectedBrand else { return }
-        brand = .loading; rep = .loading; econ = .loading; budget = .loading; token = .loading
+        brand = .loading; rep = .loading; econ = .loading; token = .loading
         do { let x = try await api.brand(id: b.id); brand = .loaded(x); name = x.name ?? "" } catch { brand = .failed(error.localizedDescription) }
         do { let x = try await api.salesRep(brandId: b.id); rep = .loaded(x); repEmail = x.salesRepEmail ?? ""; repPhone = x.salesRepPhone ?? ""; repName = x.salesRepFirstName ?? "" } catch { rep = .failed(error.localizedDescription) }
         if let o = state.selectedOffer {
             do { let x = try await api.offerEconomics(brandId: b.id, offerId: o.offerId); econ = .loaded(x); booking = x.bookingUrl ?? "" } catch { econ = .failed(error.localizedDescription) }
         }
-        do { let x = try await api.salesBudget(brandId: b.id); budget = .loaded(x); daily = x.dailyBudgetCents.map { String(Int($0 / 100)) } ?? "" } catch { budget = .failed(error.localizedDescription) }
         do { token = .loaded(try await api.conversionToken(brandId: b.id)) } catch { token = .failed(error.localizedDescription) }
     }
 

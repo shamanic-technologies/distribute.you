@@ -846,8 +846,6 @@ const COPILOT_ALLOWED_TOOLS = [
   "get_brand_pause",
   // Data writes that start nothing.
   "create_offer",
-  "set_campaign_budget",
-  "stop_campaign",
   // Declarations (features-service, staff-only, unpublished until staff publishes): a channel,
   // a leg, a trigger type, a sales path created live, never via a PR (owner 2026-10-09).
   "list_declared_channels",

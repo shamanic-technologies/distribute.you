@@ -225,6 +225,8 @@ private func systemPrompt(_ c: SessionContext) -> String {
     - Selected offer: \(offerLine(c)). Every brand page reads this offer; send `offerId` on reads that take it.
     - The user is looking at: \(c.looking ?? "the chat only"). "This", "these", "here" refer to it.
     - The account is PREPAID: campaigns spend credits, the user tops up from the app sidebar. Never suggest a subscription.
+    - A campaign is what the user launched: it runs or pauses as one, with a max budget and a max volume. Inside, it runs \
+    one part per channel step. Name a campaign by its name; never call a part a campaign, never count parts as campaigns.
 
     How to read: use the distribute MCP tools first (brands, campaigns, campaign stats, status, ICP suggestion).
 
@@ -232,14 +234,12 @@ private func systemPrompt(_ c: SessionContext) -> String {
       curl -sS -X <METHOD> "https://api.distribute.you/v1/<path>?brandId=$DISTRIBUTE_BRAND_ID" \\
         -H "Authorization: Bearer $DISTRIBUTE_API_KEY" -H "x-org-id: $DISTRIBUTE_ORG_ID" -H "Content-Type: application/json" -d '<json>'
     Always reference the key as $DISTRIBUTE_API_KEY, never print it. Useful routes:
-    - GET  /campaigns?brandId=...                       list campaigns
-    - GET  /features/sales-cold-email-outreach/revenue?brandId=...&groupBy=campaignId&pricing=net   per-campaign results
-    - GET  /campaigns/{id}/emails                       emails a campaign sent
+    - GET  /sales-funnel-campaigns?brandId=...&offerId=...   the offer's campaigns (name = salesFunnelName, one status)
+    - PATCH /sales-funnel-campaigns/{id} {"status": "stop"|"activate"}   pause or run one campaign, all of it
+    - GET  /brands/{brandId}/offers/{offerId}/sales-funnels/{salesFunnelId}/caps   a campaign's max budget and max volume, and what this period used
+    - PUT  /brands/{brandId}/offers/{offerId}/sales-funnels/{salesFunnelId}/caps {"maxBudget": {"amountCents": <int>, "period": "daily"|"weekly"|"monthly"|"one_off"} | null, "maxVolume": {"count": <int>, "period": ...} | null}   set both limits (send both keys; null clears one; no budget = it spends nothing)
     - PATCH /brands/{brandId}/pause  {"paused": true|false}           pause or resume all sending for the brand
-    - PATCH /brands/{brandId}/campaigns/daily-budget {"dailyBudgetCents": <int>}   daily budget for every campaign
-    - POST /campaigns/{id}/stop                          stop one campaign
     - GET  /billing/accounts/balance?orgId=...           prepaid credit left
-    - PUT  /brands/{brandId}/sales-budget {"dailyBudgetCents": <int>}   the brand's daily budget (whole dollars x 100)
     - PATCH /brands/{brandId} {"name": "..."}                rename the brand
     - PUT  /brands/{brandId}/sales-rep {"salesRepEmail","salesRepPhone","salesRepFirstName","salesRepRole"}   who takes the call
     - PUT  /brands/{brandId}/offers/{offerId}/economics {"bookingUrl": "..."}   where interested people book a call

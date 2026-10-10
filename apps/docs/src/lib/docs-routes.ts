@@ -96,7 +96,7 @@ export const DOCS_ROUTES: DocsRoute[] = [
     path: "/api/campaigns",
     title: "Campaigns API",
     description:
-      "Create, launch, stop and monitor outreach campaigns, and track their status and results in real time, via the distribute.you REST API.",
+      "List your campaigns, run or pause them, set their budget and read their results via the distribute.you REST API.",
   },
   {
     path: "/api/workflows",
