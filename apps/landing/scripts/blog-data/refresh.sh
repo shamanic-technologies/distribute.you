@@ -10,8 +10,9 @@
 # build) gates the merge, so a snapshot that breaks a research guard never reaches the page.
 #
 # MEMORY: the box has ~3 GB free at rest and the OOM killer picks postgres. derive.mjs fits a
-# 2 GB heap (measured 2026-10-10: 1.5 GB resident, output byte-equal to an 8 GB heap), so node
-# runs in a container capped at 2.5 GB: a run that outgrows it dies alone, postgres untouched.
+# 1 GB heap since its CSV reader stores flat strings (measured 2026-10-10, output byte-equal to an
+# 8 GB heap), so node runs in a container capped at 2.5 GB: a run that outgrows it dies alone
+# (exit 137, mailed), postgres untouched.
 set -euo pipefail
 
 DATA="${1:?data directory}"
@@ -42,12 +43,12 @@ BLOG_DATA_LOCAL=1 "$BD/extract.sh" 2026-04-15 "$TODAY" "$DATA"
 BLOG_DATA_LOCAL=1 "$BD/pixel/extract-pixel.sh" "$CUTOFF" "$BD/pixel/pixel.research.snapshot.json"
 
 echo "== derive (billed)"
-node --max-old-space-size=2048 "$BD/derive.mjs" "$DATA" > "$DATA/facts.json"
+node --max-old-space-size=1536 "$BD/derive.mjs" "$DATA" > "$DATA/facts.json"
 node "$BD/research.mjs" "$DATA/facts.json" "$LIB" > "$DATA/research.json"
 mv "$DATA/research.json" "$LIB/research.json"
 
 echo "== derive (actual vendor cost, staff twin)"
-COST_BASIS=actual node --max-old-space-size=2048 "$BD/derive.mjs" "$DATA" > "$DATA/facts-actual.json"
+COST_BASIS=actual node --max-old-space-size=1536 "$BD/derive.mjs" "$DATA" > "$DATA/facts-actual.json"
 node "$BD/research.mjs" "$DATA/facts-actual.json" "$LIB/actual" > "$DATA/ra.json"
 mv "$DATA/ra.json" "$LIB/actual/research.json"
 rm -f "$LIB/actual/research-templates.json"

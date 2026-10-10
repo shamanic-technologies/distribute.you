@@ -64,8 +64,12 @@ function eachRow(file, onRow) {
   let rest = "";
   let head = null;
   let row = [], field = "", quoted = false, pendingQuote = false;
+  // `field += ch` builds a rope of one node per character; kept as is, every stored value
+  // costs ~30 bytes a character and the run needs a 4 GB heap. Slicing a fresh copy flattens
+  // it into one flat string (measured 2026-10-10: the run then fits the box's 2.5 GB cap).
+  const own = (s) => (" " + s).slice(1);
   const flushRow = () => {
-    row.push(field); field = "";
+    row.push(own(field)); field = "";
     if (!head) head = row;
     else if (row.length === head.length) {
       const o = {};
@@ -87,7 +91,7 @@ function eachRow(file, onRow) {
         field += ch; continue;
       }
       if (ch === '"') { quoted = true; continue; }
-      if (ch === ",") { row.push(field); field = ""; continue; }
+      if (ch === ",") { row.push(own(field)); field = ""; continue; }
       if (ch === "\n") { flushRow(); continue; }
       if (ch === "\r") continue;
       field += ch;
