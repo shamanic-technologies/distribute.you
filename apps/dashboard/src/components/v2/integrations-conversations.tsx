@@ -31,11 +31,11 @@ import { parseFrom, personCompanyDomain, personSourceMarks, sourceMark, type Sou
 import { RecordsToolbar } from "@/components/v2/records";
 import { THREAD_SCROLL_STEP, uniboxKeyAction, type UniboxPane } from "@/lib/unibox-keys";
 import { timelineTag, type TimelineTag } from "@/lib/timeline-tags";
-import { conversationItemTag, conversationSourceWord, joinConversationLabels, liveItems, type ConversationItem } from "@/lib/conversation-timeline";
+import { conversationItemTag, conversationSourceWord, joinConversationLabels, liveItems, standingTag, type ConversationItem } from "@/lib/conversation-timeline";
 import { ConversationTags } from "@/components/v2/conversation-timeline";
 import { useSelectedOfferIfAny } from "@/components/v2/selected-offer";
 import { ICON_PATH, TONE_COLOR, TagChip } from "@/components/v2/tag-chip";
-import { LEAD_FAMILIES, familyFilter, familyLook, type FamilyFilter } from "@/lib/lead-families";
+import { LEAD_FAMILIES, familyFilter, type FamilyFilter } from "@/lib/lead-families";
 
 // The publishable logo.dev token the dashboard already ships (company-logo.tsx).
 const LOGO_DEV_TOKEN = "pk_J1iY4__HSfm9acHjR8FibA";
@@ -380,7 +380,7 @@ function PersonRow({
             )}
           </span>
           <span className="mt-1 flex flex-wrap items-center gap-1.5">
-            {status && <PersonTag label={status} family={person.family} />}
+            {status && <PersonTag label={status} state={person.state} />}
             {personSourceMarks(person.presences).map((m) => (
               <SourceLogo key={m.key} mark={m} size={14} />
             ))}
@@ -457,7 +457,11 @@ function Thread({
             </p>
             <PossibleLeadRulings brandId={brandId} person={person} />
           </div>
-          {status && <span className="k-chip ml-auto shrink-0">{status}</span>}
+          {status && (
+            <span className="ml-auto shrink-0">
+              <PersonTag label={status} state={person.state} />
+            </span>
+          )}
         </div>
         {facts ? (
           <div className="mt-2">
@@ -534,11 +538,9 @@ function ThreadItem({ item, tag }: { item: PersonTimelineItem; tag: TimelineTag 
   return <Message item={item} mark={mark} meta={meta} tag={tag ?? timelineTag(item)} />;
 }
 
-/** A person's tag: their state in their family's colour and icon (no family = plain). */
-function PersonTag({ label, family }: { label: string; family: string | null | undefined }) {
-  const look = familyLook(family);
-  if (!look) return <span className="k-chip">{label}</span>;
-  return <TagChip tag={{ label, ...look }} />;
+/** A person's tag: their standing, coloured like the same fact in the thread (owner 2026-10-10). */
+function PersonTag({ label, state }: { label: string; state: string }) {
+  return <TagChip tag={standingTag(state, label)} />;
 }
 
 /** Beside the search: one button per lead family with its served count, then All. */

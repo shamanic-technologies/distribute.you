@@ -49,7 +49,8 @@ describe("Unibox family buttons are wired (owner 2026-10-08)", () => {
     expect(src).toContain('queryKey: ["people", brandId, "scroll", q, f]');
     expect(src).toContain("...listQuery(family),");
     expect(src).toContain("right={<FamilyButtons value={family} families={families} onPick={pickFamily} />}");
-    expect(src).toContain("{status && <PersonTag label={status} family={person.family} />}");
+    // The tag takes its own fact's colour, not the family's (owner 2026-10-10, unibox-standing-colours.test.ts).
+    expect(src).toContain("{status && <PersonTag label={status} state={person.state} />}");
   });
   it("every other family's first page loads with the page, so a button answers from memory", () => {
     expect(src).toContain("prefetchInfiniteQuery({ ...listQuery(f), staleTime: POLL_INTERVAL })");
