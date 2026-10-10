@@ -9,6 +9,7 @@ import {
   sourceLabel,
   sourceLine,
   personStatusLabel,
+  possibleLeadHint,
   stateLabel,
   timelineSourceNote,
 } from "../src/lib/people-conversations";
@@ -287,5 +288,41 @@ describe("a thread opens from memory (owner 2026-10-08: instant)", () => {
     const view = read("components/v2/integrations-conversations.tsx");
     expect(view).toContain("window.history.replaceState(");
     expect(view).not.toContain("router.replace(");
+  });
+});
+
+describe("a guessed pairing with a lead is a hint, never a merge (crm-service v0.24.0)", () => {
+  const brice = { crmContactId: "c-1", email: "drjackson@mabnr.com", fullName: "Brice Jackson", company: "MABNR" };
+
+  it("parses possibleLeads and keeps it on the person", () => {
+    const parsed = PeopleListSchema.parse({ ...list, people: [{ ...person, possibleLeads: [brice] }] });
+    expect(parsed.people[0].possibleLeads).toEqual([brice]);
+  });
+
+  it("states the lead by name and the address lead-service serves", () => {
+    expect(possibleLeadHint({ possibleLeads: [brice] })).toBe(
+      "Maybe the same as Brice Jackson (drjackson@mabnr.com), to confirm",
+    );
+  });
+
+  it("names every guessed lead, falling back to whichever of name or address is served", () => {
+    expect(
+      possibleLeadHint({ possibleLeads: [brice, { crmContactId: "c-1", email: "b@x.com", fullName: null, company: null }] }),
+    ).toBe("Maybe the same as Brice Jackson (drjackson@mabnr.com) or b@x.com, to confirm");
+  });
+
+  it("says nothing for a person without a guessed pairing", () => {
+    expect(possibleLeadHint({})).toBeNull();
+    expect(possibleLeadHint({ possibleLeads: [] })).toBeNull();
+    expect(possibleLeadHint({ possibleLeads: [{ crmContactId: "c-1", email: null, fullName: null, company: null }] })).toBeNull();
+  });
+
+  it("the copy carries no dash", () => {
+    expect(possibleLeadHint({ possibleLeads: [brice] })).not.toMatch(/[\u2014\u2013]/);
+  });
+
+  it("shows the hint on the list row AND in the thread header, never merging rows", () => {
+    const src = read("components/v2/integrations-conversations.tsx");
+    expect(src.match(/<PossibleLeadLine person=\{person\} \/>/g)?.length).toBe(2);
   });
 });

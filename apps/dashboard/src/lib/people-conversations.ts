@@ -86,6 +86,21 @@ export const PersonSchema = z.object({
    */
   family: z.string().nullish(),
   familyLostReason: z.string().nullish(),
+  /**
+   * Leads lead-service paired with this person's CRM contact on a GUESS (its "to confirm"
+   * band). NOT merged: each lead is its own person, so this is only a hint on the row.
+   * Optional so a cached page from before crm-service v0.24.0 still parses.
+   */
+  possibleLeads: z
+    .array(
+      z.object({
+        crmContactId: z.string(),
+        email: z.string().nullable(),
+        fullName: z.string().nullable(),
+        company: z.string().nullable(),
+      }),
+    )
+    .optional(),
 });
 
 export const PeopleListSchema = z.object({
@@ -246,6 +261,24 @@ export function personStatusLabel(person: Pick<Person, "state" | "stateSource">)
 /** Who to call the person: their name, else their first address or number. */
 export function personName(p: Pick<Person, "displayName" | "emails" | "phones" | "personKey">): string {
   return p.displayName?.trim() || p.emails[0] || p.phones[0] || p.personKey;
+}
+
+/**
+ * The "maybe the same person" hint for a CRM contact lead-service paired with a lead on a
+ * guess: "Maybe the same as Brice Jackson (drjackson@mabnr.com), to confirm". The lead stays
+ * its own row; nothing here decides who is a lead. Null when there is no guessed pairing.
+ */
+export function possibleLeadHint(p: Pick<Person, "possibleLeads">): string | null {
+  const names = (p.possibleLeads ?? [])
+    .map((l) => {
+      const name = l.fullName?.trim();
+      const email = l.email?.trim();
+      if (name && email) return `${name} (${email})`;
+      return name || email || null;
+    })
+    .filter((x): x is string => x !== null);
+  if (names.length === 0) return null;
+  return `Maybe the same as ${names.join(" or ")}, to confirm`;
 }
 
 /** The distinct channels a person was reached on, in the order their records list them. */
