@@ -70,7 +70,7 @@ interface Connection {
  * Where each integration's connection lives: its query root, and how to list,
  * connect and disconnect it. GoHighLevel keeps its own readers (and the
  * `crmConnections` root the CRM pages share); PostHog and Stripe ride the generic
- * crm-service source readers.
+ * crm-service source readers, and so does Clerk.
  */
 const CONNECTION_IO: Record<
   IntegrationSlug,
@@ -100,6 +100,12 @@ const CONNECTION_IO: Record<
     // Each Stripe account's key lives under its own provider name (several accounts).
     connect: (brandId, _values, provider) => connectSource("stripe", brandId, { credentialProvider: provider }),
     disconnect: (connection, brandId) => disconnectSource("stripe", connection.id, brandId),
+  },
+  clerk: {
+    root: "clerkConnections",
+    list: (brandId) => listSourceConnections("clerk", brandId),
+    connect: (brandId) => connectSource("clerk", brandId, {}),
+    disconnect: (connection, brandId) => disconnectSource("clerk", connection.id, brandId),
   },
 };
 

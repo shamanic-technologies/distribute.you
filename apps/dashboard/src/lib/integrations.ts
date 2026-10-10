@@ -14,7 +14,7 @@
  * than a source-substring guard. Keep it that way.
  */
 
-export type IntegrationSlug = "gohighlevel" | "posthog" | "stripe";
+export type IntegrationSlug = "gohighlevel" | "posthog" | "stripe" | "clerk";
 
 /** One field the customer has to paste to connect. */
 export interface IntegrationField {
@@ -150,8 +150,33 @@ const STRIPE: IntegrationDef = {
   docsUrl: "https://docs.stripe.com/keys#create-restricted-api-secret-key",
 };
 
+/**
+ * Clerk is the customer's auth provider: every user in it signed up to their
+ * product. crm-service reads the whole instance with the SECRET key (Clerk has no
+ * read-only key) and never writes to it, so this is how a brand with no CRM still
+ * gets every signup, history included, with no code on their site.
+ */
+const CLERK: IntegrationDef = {
+  slug: "clerk",
+  name: "Clerk",
+  domain: "clerk.com",
+  blurb: "See everyone who signed up to your product, in each person's thread.",
+  surfaceLabel: "Unibox",
+  surfaceHref: conversationsHref,
+  fields: [
+    {
+      key: "token",
+      label: "Secret key",
+      help: "In Clerk: Configure, then API keys. Copy the Secret key of your production instance.",
+      placeholder: "sk_live_...",
+      secret: true,
+    },
+  ],
+  docsUrl: "https://clerk.com/docs/deployments/clerk-environment-variables#clerk-publishable-and-secret-keys",
+};
+
 /** Every integration on offer, in the order the Settings section lists them. */
-export const INTEGRATIONS: IntegrationDef[] = [GOHIGHLEVEL, POSTHOG, STRIPE];
+export const INTEGRATIONS: IntegrationDef[] = [GOHIGHLEVEL, POSTHOG, STRIPE, CLERK];
 
 /** Null for a slug the catalogue does not carry, never a guessed definition. */
 export function integrationFor(slug: string): IntegrationDef | null {
