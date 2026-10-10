@@ -254,15 +254,13 @@ function V2Sidebar() {
               />
             </>
           )}
-          {/* Unibox (owner 2026-10-08): every conversation in one place, right under Records, staff mode only. */}
-          {staffMode && (
-            <NavItem
-              href={v2Href(orgId, brandId, "unibox")}
-              label="Unibox"
-              icon={<I d={ICONS.unibox} />}
-              active={section === "unibox"}
-            />
-          )}
+          {/* Unibox (owner 2026-10-08): every conversation in one place, right under Records; GA since 2026-10-10. */}
+          <NavItem
+            href={v2Href(orgId, brandId, "unibox")}
+            label="Unibox"
+            icon={<I d={ICONS.unibox} />}
+            active={section === "unibox"}
+          />
           {staffMode && (
             <NavItem
               href={v2Href(orgId, brandId, "workflows")}

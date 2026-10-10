@@ -7,6 +7,7 @@ import { ApiError, getLeadTimeline, getPersonTimeline, listPeople, setCrmPairing
 import { rulingErrorMessage } from "@/lib/crm-pairings";
 import { ownQueryData } from "@/lib/own-query-data";
 import { useAuthQuery, useOrgQueryGate } from "@/lib/use-auth-query";
+import { useStaffMode } from "@/lib/use-staff-mode";
 import { POLL_INTERVAL } from "@/lib/query-options";
 import { formatCount } from "@/lib/format-number";
 import { friendlyDateTime, timeAgo } from "@/lib/friendly-datetime";
@@ -587,6 +588,8 @@ function Message({ item, mark, meta, tag }: { item: PersonTimelineItem; mark: So
   // The mark up front is WHO wrote it: the person's company logo (initials without one)
   // on their side, the source's mark on ours. Where it came from rides the meta line.
   const sender = parseFrom(item.from);
+  // "Not cleaned" is our pipeline's word (google-service's judge pending), staff mode only.
+  const { staffMode } = useStaffMode();
   const [open, setOpen] = useState(false);
   const [showOriginal, setShowOriginal] = useState(false);
   const outbound = item.direction === "outbound";
@@ -614,7 +617,7 @@ function Message({ item, mark, meta, tag }: { item: PersonTimelineItem; mark: So
         <span className="ml-auto shrink-0">
           <TagChip tag={tag} />
         </span>
-        {notCleaned && <span className="k-chip shrink-0">Not cleaned</span>}
+        {staffMode && notCleaned && <span className="k-chip shrink-0">Not cleaned</span>}
       </p>
       {item.subject && <p className="mt-1 text-[13px] font-medium">{item.subject}</p>}
       {body ? (
