@@ -19,9 +19,13 @@ describe("v2 Brand settings reads as a v2 settings page", () => {
   });
 
   it("the v1 cards that carried their own heading render bare, so nothing is stated twice", () => {
-    for (const card of ["BrandDomainCard", "BrandSalesRepCard", "BrandIntegrationsCard", "BrandConversionTrackingCard"]) {
+    for (const card of ["BrandDomainCard", "BrandSalesRepCard", "BrandConversionTrackingCard"]) {
       expect(PAGE).toContain(`<${card} brandId={brandId} bare />`);
     }
+  });
+
+  it("Integrations live on the Integrations tab only, never twice (owner 2026-10-10)", () => {
+    expect(PAGE).not.toContain("BrandIntegrationsCard");
   });
 
   it("the page itself uses Keel tokens, never v1 greys or v1 card frames", () => {

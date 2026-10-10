@@ -24,8 +24,8 @@ describe("v2 Integrations pages", () => {
   it("marks the CRM tabs beta, and leads with the GA AI tab (Conversations moved to the Unibox)", () => {
     const tabs = SETUP.slice(SETUP.indexOf("function integrationTabs("), SETUP.indexOf("export function V2IntegrationsPage("));
     expect(tabs.match(/badge: "beta"/g)?.length).toBe(2);
-    expect(tabs.indexOf('label: "Your AI"')).toBeGreaterThan(-1);
-    expect(tabs.indexOf('label: "Your AI"')).toBeLessThan(tabs.indexOf('label: "Your CRM"'));
+    expect(tabs.indexOf('label: "Accounts and AI"')).toBeGreaterThan(-1);
+    expect(tabs.indexOf('label: "Accounts and AI"')).toBeLessThan(tabs.indexOf('label: "Your CRM"'));
   });
 
   it("renders a beta-badged tab only for a beta user, and sends GA off a beta tab's URL", () => {
@@ -82,5 +82,17 @@ describe("v2 Integrations pages", () => {
   it("does not skeleton a settled read on every poll", () => {
     expect(RAW).toContain("isFetchedAfterMount");
     expect(MERGED).toContain("isFetchedAfterMount");
+  });
+
+  it("the Accounts and AI tab holds the accounts (GA) and the AI setup on one page (owner 2026-10-10)", () => {
+    const page = SETUP.slice(SETUP.indexOf("export function V2IntegrationsPage("), SETUP.indexOf("// ─── Account pages"));
+    expect(page).toContain("<BrandIntegrationsCard brandId={brandId} bare />");
+    expect(page).toContain("The CRM your brand already runs on. We read it, we never write to it.");
+    expect(page).toContain("<V2AiIntegrationView orgId={orgId} brandId={brandId} />");
+    const card = read("src/components/settings/brand-integrations-card.tsx");
+    expect(card).not.toContain("if (!isBeta) return null;");
+    // The conversation rows wait for the business-only filter: beta until then.
+    expect(card).toContain("withConversations={isBeta}");
+    expect(card).toContain("if (withConversations) {");
   });
 });
