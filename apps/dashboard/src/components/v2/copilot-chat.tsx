@@ -27,7 +27,10 @@ import {
   isPanelLink,
   isThisBrandsSession,
   openPagesByTurn,
+  addCreditsHref,
+  readCreditsRequired,
   type CopilotChoices,
+  type CopilotCreditsRequired,
   type CopilotOpenPage,
 } from "@/lib/copilot";
 import { v2Href } from "@/lib/v2/routes";
@@ -38,7 +41,7 @@ import { useStatBasis } from "@/lib/use-stat-basis";
 import { SINCE_INCEPTION } from "@/lib/revenue-window";
 import { useBrandInfo, useBrandRevenue, useBrandRevenueWindow, useNeedsYourCall } from "@/components/v2/data";
 import { Figure, Shimmer } from "@/components/v2/ui";
-import { ChoiceCards, OpenedPage } from "@/components/v2/copilot-cards";
+import { AddCreditsButton, ChoiceCards, OpenedPage } from "@/components/v2/copilot-cards";
 import { useSelectedOfferIfAny } from "@/components/v2/selected-offer";
 
 /**
@@ -168,6 +171,14 @@ function liveChoices(m: UIMessage): CopilotChoices | null {
   }
   for (const p of m.parts as Array<{ type: string; data?: { buttons?: { label: string; value: string }[] } }>) {
     if (p.type === "data-buttons" && p.data?.buttons?.length) return { choices: p.data.buttons };
+  }
+  return null;
+}
+
+/** The out-of-credits action of one live turn (chat-service `credits_required`), if any. */
+function liveCreditsRequired(m: UIMessage): CopilotCreditsRequired | null {
+  for (const p of m.parts as Array<{ type: string; data?: unknown }>) {
+    if (p.type === "data-credits-required") return readCreditsRequired(p.data);
   }
   return null;
 }
@@ -455,6 +466,11 @@ export function CopilotChat({ orgId, brandId, headerAction }: { orgId: string; b
                   const href = copilotPageHref(orgId, brandId, pg);
                   return href ? <OpenedPage key={`p${i}`} href={href} label={pg.title ?? pg.page} /> : null;
                 })}
+                {(() => {
+                  const credits = liveCreditsRequired(m);
+                  const href = credits ? addCreditsHref(orgId, brandId) : null;
+                  return credits && href ? <AddCreditsButton href={href} label={credits.label} /> : null;
+                })()}
                 {m.id === lastAssistantId && !busy && (() => {
                   const set = liveChoices(m) ?? historyChoices.get(m.id) ?? null;
                   return set ? <ChoiceCards set={set} disabled={busy} onPick={(c) => submit(c.value)} /> : null;
