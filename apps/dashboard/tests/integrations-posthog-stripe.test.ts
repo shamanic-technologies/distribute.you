@@ -8,7 +8,7 @@ const read = (rel: string) => readFileSync(join(SRC, rel), "utf8");
 
 describe("PostHog and Stripe are integrations a brand can connect", () => {
   it("lists them after GoHighLevel", () => {
-    expect(INTEGRATIONS.map((i) => i.slug)).toEqual(["gohighlevel", "posthog", "stripe"]);
+    expect(INTEGRATIONS.map((i) => i.slug)).toEqual(["gohighlevel", "posthog", "stripe", "clerk"]);
   });
 
   it("asks PostHog for the key, the project and the region (a closed choice)", () => {
@@ -25,6 +25,13 @@ describe("PostHog and Stripe are integrations a brand can connect", () => {
     expect(def.fields[0].label).toBe("Restricted key");
   });
 
+  it("asks Clerk for its secret key only, nothing names the instance", () => {
+    const def = integrationFor("clerk")!;
+    expect(def.fields.map((f) => f.key)).toEqual(["token"]);
+    expect(def.fields[0].secret).toBe(true);
+    expect(def.surfaceHref("o", "b")).toBe("/v2/orgs/o/brands/b/unibox");
+  });
+
   it("links both to the Unibox, GoHighLevel to its CRM", () => {
     expect(integrationFor("posthog")!.surfaceHref("o", "b")).toBe("/v2/orgs/o/brands/b/unibox");
     expect(integrationFor("stripe")!.surfaceHref("o", "b")).toBe("/v2/orgs/o/brands/b/unibox");
@@ -38,6 +45,8 @@ describe("wiring", () => {
     expect(card).toContain('root: "crmConnections"');
     expect(card).toContain('root: "posthogConnections"');
     expect(card).toContain('root: "stripeConnections"');
+    expect(card).toContain('root: "clerkConnections"');
+    expect(card).toContain('connectSource("clerk", brandId, {})');
     expect(card).toContain("useAuthQuery([io.root, brandId], () => io.list(brandId))");
     expect(card).toContain("return await io.connect(brandId, values, provider);");
     expect(card).toContain("await io.disconnect(connection, brandId);");
