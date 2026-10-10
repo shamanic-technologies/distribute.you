@@ -8,6 +8,7 @@ import { useOpenV2Nav } from "@/components/v2/nav-context";
 import { useNeedsYourCall } from "@/components/v2/data";
 import { v2Href } from "@/lib/v2/routes";
 import { useStaffMode } from "@/lib/use-staff-mode";
+import { CopilotShowButton } from "@/components/v2/copilot-dock";
 
 /** Opens the ⌘K palette from anywhere (`SearchTrigger` owns it and listens for this). */
 export const OPEN_PALETTE_EVENT = "v2:open-palette";
@@ -72,6 +73,7 @@ export function TopBar({ crumbs, actions }: { crumbs: Crumb[]; actions?: React.R
       <div className="ml-auto flex shrink-0 items-center gap-2">
         {actions}
         <TopBarUniversal />
+        <CopilotShowButton />
       </div>
     </div>
   );
