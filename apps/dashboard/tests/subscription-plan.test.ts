@@ -5,6 +5,7 @@ import {
   SUBSCRIPTION_OUTBOUND_DAILY_USD,
   SUBSCRIPTION_REACTIVE_DAILY_USD,
   isSubscriptionArm,
+  lpVariant,
   monthlyUsd,
   pickedPlanCents,
   planAmountOptions,
@@ -19,21 +20,23 @@ const API = read("src/lib/api.ts");
 const CANCEL_LIB = read("src/lib/cancel-plan.ts");
 
 describe("who is in the $99/month arm", () => {
-  it("is everyone with no lp_variant cookie: the plan is the default offer", () => {
-    expect(isSubscriptionArm(null)).toBe(true);
-    expect(isSubscriptionArm(undefined)).toBe(true);
-    expect(isSubscriptionArm("")).toBe(true);
-    expect(isSubscriptionArm("a=1; b=2")).toBe(true);
-    expect(isSubscriptionArm("x_lp_variant=control")).toBe(true);
-    expect(isSubscriptionArm("lp_variant=")).toBe(true);
+  it("is only a visitor the homepage A/B test put in the subscription arm", () => {
+    expect(isSubscriptionArm("lp_variant=subscription")).toBe(true);
     expect(isSubscriptionArm("a=1; lp_variant=subscription; b=2")).toBe(true);
+    expect(lpVariant("a=1; lp_variant=subscription; b=2")).toBe("subscription");
   });
 
-  it("keeps pay-as-you-go only for a cookie that names another variant", () => {
+  it("keeps everyone else on prepaid: no cookie, an empty one, any other variant", () => {
+    for (const c of [null, undefined, "", "a=1; b=2", "x_lp_variant=subscription", "lp_variant="]) {
+      expect(isSubscriptionArm(c)).toBe(false);
+    }
     for (const v of ["control", "instinct", "assistant", "concierge"]) {
       expect(isSubscriptionArm(`lp_variant=${v}`)).toBe(false);
       expect(isSubscriptionArm(`a=1; lp_variant=${v}; b=2`)).toBe(false);
     }
+    expect(lpVariant(null)).toBe(null);
+    expect(lpVariant("lp_variant=")).toBe(null);
+    expect(lpVariant("lp_variant=control")).toBe("control");
   });
 });
 
@@ -128,6 +131,20 @@ describe("the plan on the Billing page", () => {
     expect(start).toContain('"/billing/accounts/subscription"');
     expect(start).toContain("start_now: true");
     expect(API).toContain("can_start_now: z.boolean().nullish()");
+  });
+
+  it("upgrades an active plan now: a higher amount is charged today, a lower one waits", () => {
+    // Owner 2026-10-10 (billing#712): the out-of-credits email links here to upgrade.
+    expect(PLAN).toContain('const upgradable = sub.status === "active" && sub.can_start_now === true && changed && amount > sub.monthly_amount_cents;');
+    expect(PLAN).toContain("{upgradable && (");
+    expect(PLAN).toContain("Upgrade now");
+    expect(PLAN).toContain("{!startable && !upgradable && changed && (");
+    expect(PLAN).toContain("trialing={startable}");
+    const dialog = PLAN.slice(PLAN.indexOf("export function ChargeNowDialog("), PLAN.indexOf("export function LossDialog("));
+    expect(dialog).toContain('trialing ? "Start my plan now" : "Upgrade my plan"');
+    expect(dialog).toContain('"Your new plan starts today."');
+    expect(dialog).toContain('"Keep my current plan"');
+    expect(PLAN).toContain('if (code === "amount_not_upgrade")');
   });
 
   it("explains a refused start by billing's code, nothing charged", () => {

@@ -82,10 +82,11 @@ describe("every dashboard surface that states a daily budget asks whether to hid
 });
 
 describe("the onboarding wall asks no daily budget", () => {
-  it("budgets are set per campaign at the campaigns step; the wall asks credit only (owner 2026-10-06)", () => {
+  it("budgets are set per campaign at the campaigns step; the wall asks credit or a card only", () => {
     const wall = read("src/components/v2/get-started/account-card-wall.tsx");
     expect(wall).not.toContain("budgetRow");
-    expect(wall).not.toContain("subscription");
     expect(wall).not.toContain("marginOk");
+    // The plan is sold only to the homepage A/B arm (owner 2026-10-10), never by default.
+    expect(wall).toContain("plan: isSubscriptionArm(cookie)");
   });
 });

@@ -42,7 +42,7 @@ function timerStart(): number {
 }
 
 
-/** `label` / `extendedLabel` come from `wallCopy`: the $30 claim, or the plan's free trial. */
+/** `label` / `extendedLabel` come from `wallCopy`: the $100 match, or the plan's free trial. */
 export function TrialTimer({ label, extendedLabel }: { label: string; extendedLabel: string }) {
   const [start] = useState(timerStart);
   const [state, setState] = useState<Phase>(() => timerPhase(start, Date.now()));
@@ -72,7 +72,8 @@ export function TrialTimer({ label, extendedLabel }: { label: string; extendedLa
   );
 }
 
-export function TrialSpots() {
+/** `trial`: the $99/month arm's wall, where the spots are free trial spots (owner 2026-10-10). */
+export function TrialSpots({ trial = false }: { trial?: boolean } = {}) {
   const left: number | null = SPOTS_LEFT;
   return (
     <div className="k-inset min-h-[60px] rounded-lg px-3 py-2.5">
@@ -85,7 +86,7 @@ export function TrialSpots() {
               <span key={left} className="gs-pop inline-block tabular-nums text-[var(--data-amber)]">
                 {left}
               </span>{" "}
-              spots left this hour
+              {trial ? "trial spots left this hour" : "spots left this hour"}
             </span>
           </div>
           <div className="mt-2.5 flex gap-1" aria-hidden="true">
