@@ -75,6 +75,7 @@ export const CAMPAIGN_MONEY_ROOTS = [
   "salesFunnelCampaigns",
   "salesFunnelCampaign",
   "salesFunnelCaps",
+  "funnelCampaignRows",
 ] as const;
 
 /**

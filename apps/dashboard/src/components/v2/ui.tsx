@@ -2,7 +2,7 @@
 
 import { PAYMENT_HOLD_LABEL, type PaymentHoldKind } from "@/lib/payment-declined";
 import Link from "next/link";
-import { useId } from "react";
+import { useId, useLayoutEffect, useRef, useState } from "react";
 import { useParams } from "next/navigation";
 import { useOpenV2Nav } from "@/components/v2/nav-context";
 import { useNeedsYourCall } from "@/components/v2/data";
@@ -233,6 +233,34 @@ export function Initials({ name, size = 20, round = false }: { name: string; siz
       style={{ width: size, height: size, fontSize: Math.max(8, Math.round(size * 0.42)) }}
     >
       {letters}
+    </span>
+  );
+}
+
+/**
+ * A mark (face, logo, avatar) left of a TWO-LINE block (owner 2026-10-11, every v2 page): the mark
+ * is exactly as tall as the two lines beside it, top and bottom aligned. The ONE place this is done:
+ * the block's height is measured (it varies with each page's type scale) and handed to `mark` as its
+ * size. A single-line row keeps its own mark size and does not use this.
+ */
+export function MarkLines({ mark, children, className = "" }: { mark: (px: number) => React.ReactNode; children: React.ReactNode; className?: string }) {
+  const ref = useRef<HTMLSpanElement>(null);
+  const [px, setPx] = useState(36);
+  useLayoutEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const measure = () => setPx(Math.max(16, Math.round(el.getBoundingClientRect().height)));
+    measure();
+    const ro = new ResizeObserver(measure);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
+  return (
+    <span className={`flex min-w-0 items-center gap-2.5 ${className}`}>
+      <span className="flex shrink-0">{mark(px)}</span>
+      <span ref={ref} className="flex min-w-0 flex-1 flex-col">
+        {children}
+      </span>
     </span>
   );
 }
