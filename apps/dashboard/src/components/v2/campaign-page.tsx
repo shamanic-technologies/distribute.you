@@ -36,6 +36,7 @@ import { StaffOnly } from "@/components/v2/staff-only";
 import { StatBasisSwitch } from "@/components/v2/stat-basis-switch";
 import { V2Page, type V2Tab } from "@/components/v2/setup-pages";
 import { EmptyNote, Figure, SectionTitle, Shimmer, StatTile } from "@/components/v2/ui";
+import { FunnelCampaignPage, FunnelPartOf, useFunnelCampaignById } from "@/components/v2/funnel-campaigns";
 
 /**
  * A step label as a count heading: "Positive reply" -> "Positive replies", "Booking call" ->
@@ -52,6 +53,25 @@ const CAMPAIGN_TABS: { key: V2CampaignTab; label: string; staff?: boolean }[] = 
   { key: "settings", label: "Settings" },
   { key: "workflows", label: "Workflows", staff: true },
 ];
+
+/**
+ * `/campaigns/:campaignId`: a campaign that is a sales funnel (owner 2026-10-10) when the
+ * brand's list holds that id, else the campaign page below. Waits for that list to answer
+ * once (it is small and persisted), so neither page flashes "not found" for the other's id.
+ */
+export function V2CampaignRoute() {
+  const { brandId, campaignId } = useParams<{ brandId: string; campaignId: string }>();
+  const funnel = useFunnelCampaignById(brandId, campaignId);
+  if (funnel.campaign) return <FunnelCampaignPage campaign={funnel.campaign} />;
+  if (!funnel.settled) {
+    return (
+      <V2Page crumbs={[{ label: "Campaigns" }, { label: " " }]} title={<Shimmer className="h-8 w-56" />} width="max-w-[1280px]">
+        <Shimmer className="h-[240px] w-full rounded-[12px]" />
+      </V2Page>
+    );
+  }
+  return <V2CampaignPage />;
+}
 
 /**
  * One campaign (offer x leg x channel), opened from the sidebar's Campaigns. The channel
@@ -73,6 +93,10 @@ export function V2CampaignPage() {
   const def = c ? channels.find((ch) => ch.featureSlug === c.featureSlug) : undefined;
   const name = c ? (campaignNameFor(catalogue, c.featureSlug, c.legKey)) : null;
   const shownName = name ?? mission?.crew.name ?? " ";
+  // A PART of a sales-funnel campaign runs and pauses only with it (campaign-service 409s a
+  // status or budget write on it): its page names that campaign instead of offering controls.
+  const partOfId = c?.salesFunnelCampaignId ?? null;
+  const partOf = useFunnelCampaignById(brandId, partOfId ?? "");
 
   const visible = CAMPAIGN_TABS.filter((t) => !t.staff || staffMode);
   const tab = visible.find((t) => t.key === params.get("tab"))?.key ?? "overview";
@@ -138,7 +162,9 @@ export function V2CampaignPage() {
         ) : undefined
       }
       actions={
-        mission ? (
+        mission && partOfId ? (
+          <FunnelPartOf orgId={orgId} campaign={partOf.campaign} />
+        ) : mission ? (
           <>
             <StatBasisSwitch />
             <CampaignControlsTrigger
@@ -175,7 +201,7 @@ export function V2CampaignPage() {
           {c?.featureSlug && isColdEmailChannel(c.featureSlug) && (
             <ColdEmailChannelSettings brandId={brandId} offerId={offerId} channelSlug={c.featureSlug} />
           )}
-          <CampaignSettingsCard brandId={brandId} offerId={offerId} campaignId={id} />
+          {!partOfId && <CampaignSettingsCard brandId={brandId} offerId={offerId} campaignId={id} />}
         </div>
       ) : (
         <StaffOnly>

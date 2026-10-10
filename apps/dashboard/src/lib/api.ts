@@ -1,4 +1,12 @@
 import { parseOfferSalesPaths, type OfferSalesPaths } from "./offer-sales-paths";
+import {
+  parseSalesFunnelCampaign,
+  parseSalesFunnelCampaigns,
+  parseSalesFunnelCaps,
+  type SalesFunnelCampaign,
+  type SalesFunnelCaps,
+  type SalesFunnelCapsInput,
+} from "./sales-funnel-campaigns";
 import { ConversationTimelineSchema, type ConversationTimeline } from "./conversation-timeline";
 import {
   OfferChannelsSchema,
@@ -1286,6 +1294,12 @@ export interface Campaign {
    * string: the vocabulary is campaign-service's and may grow.
    */
   stopReason?: string | null;
+  /**
+   * The campaign (a sales funnel, owner 2026-10-10) this row is one PART of; null on every
+   * campaign started before them. A part runs and pauses only with its campaign
+   * (campaign-service answers 409 `sales_funnel_unit` to a status write on it).
+   */
+  salesFunnelCampaignId?: string | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -6933,6 +6947,75 @@ export async function setCampaignStatus(
       "x-feature-slug": identity.featureSlug,
     },
   });
+}
+
+/**
+ * CAMPAIGNS AS SALES FUNNELS (owner 2026-10-10, campaign-service `/sales-funnel-campaigns`
+ * through the gateway): brand x offer x sales funnel, each owning one ordinary campaign per
+ * part. Listed newest first; the filters are campaign-service's exact matches.
+ */
+export async function listSalesFunnelCampaigns(
+  scope: { brandId: string; offerId?: string | null },
+  token?: string,
+): Promise<SalesFunnelCampaign[]> {
+  const q = new URLSearchParams({ brandId: scope.brandId });
+  if (scope.offerId) q.set("offerId", scope.offerId);
+  const raw = await apiCall<unknown>(`/sales-funnel-campaigns?${q.toString()}`, { token });
+  return parseSalesFunnelCampaigns(raw);
+}
+
+export async function getSalesFunnelCampaign(id: string, token?: string): Promise<SalesFunnelCampaign> {
+  const raw = await apiCall<unknown>(`/sales-funnel-campaigns/${encodeURIComponent(id)}`, { token });
+  return parseSalesFunnelCampaign(raw, "getSalesFunnelCampaign");
+}
+
+/**
+ * Run or pause the WHOLE campaign: every part moves with it in one transaction. ⚠️ `activate`
+ * makes its parts due at once (the scheduler then spends within the caps), and meets the
+ * payment hold (409 `payment_declined` / `no_payment_method`).
+ */
+export async function setSalesFunnelCampaignStatus(
+  id: string,
+  status: "activate" | "stop",
+  brandId: string,
+  token?: string,
+): Promise<SalesFunnelCampaign> {
+  const raw = await apiCall<unknown>(`/sales-funnel-campaigns/${encodeURIComponent(id)}`, {
+    token,
+    method: "PATCH",
+    body: { status },
+    headers: { "x-run-id": globalThis.crypto.randomUUID(), "x-brand-id": brandId },
+  });
+  return parseSalesFunnelCampaign(raw, "setSalesFunnelCampaignStatus");
+}
+
+function salesFunnelCapsPath(brandId: string, offerId: string, salesFunnelId: string): string {
+  return `/brands/${brandId}/offers/${offerId}/sales-funnels/${encodeURIComponent(salesFunnelId)}/caps`;
+}
+
+/**
+ * billing's MAX BUDGET + MAX VOLUME of a campaign and what it consumed in the current period
+ * (`reached` is billing's stop verdict; a consumption it cannot measure is null + a reason).
+ */
+export async function getSalesFunnelCaps(brandId: string, offerId: string, salesFunnelId: string, token?: string): Promise<SalesFunnelCaps> {
+  const raw = await apiCall<unknown>(salesFunnelCapsPath(brandId, offerId, salesFunnelId), { token });
+  return parseSalesFunnelCaps(raw, "getSalesFunnelCaps");
+}
+
+/** States both caps at once (null clears one). Charges nothing; answers the read's shape. */
+export async function saveSalesFunnelCaps(
+  brandId: string,
+  offerId: string,
+  salesFunnelId: string,
+  caps: SalesFunnelCapsInput,
+  token?: string,
+): Promise<SalesFunnelCaps> {
+  const raw = await apiCall<unknown>(salesFunnelCapsPath(brandId, offerId, salesFunnelId), {
+    token,
+    method: "PUT",
+    body: { maxBudget: caps.maxBudget, maxVolume: caps.maxVolume },
+  });
+  return parseSalesFunnelCaps(raw, "saveSalesFunnelCaps");
 }
 
 /**

@@ -9,6 +9,7 @@ import { roiUnavailableLabel } from "@/lib/offer-sales-paths";
 import { useMissions } from "@/components/v2/use-missions";
 import { useSelectedOffer } from "@/components/v2/selected-offer";
 import { OfferCampaigns } from "@/components/v2/offer-campaigns";
+import { FunnelCampaignsSection } from "@/components/v2/funnel-campaigns";
 import { EmptyNote, Shimmer } from "@/components/v2/ui";
 import { V2Page } from "@/components/v2/setup-pages";
 
@@ -16,7 +17,8 @@ import { V2Page } from "@/components/v2/setup-pages";
  * Campaigns > Overview (owner 2026-10-10): every campaign of the selected offer in ONE
  * table, whatever it does (finds leads, writes to them, answers them), no category. The
  * rows are the same features-service reads the Sales path and Sourcing pages list (same
- * cache key), each opening its campaign page.
+ * cache key), each opening its campaign page. Campaigns that are sales funnels (owner
+ * 2026-10-10: face, one status, max budget + max volume) are listed first.
  */
 export function CampaignsOverviewPage() {
   const { orgId, brandId } = useParams<{ orgId: string; brandId: string }>();
@@ -31,7 +33,8 @@ export function CampaignsOverviewPage() {
     () =>
       new Set(
         missions
-          .filter((m) => m.offerId === offerId)
+          // A part of a sales-funnel campaign is listed under that campaign, above.
+          .filter((m) => m.offerId === offerId && !m.row.campaign.salesFunnelCampaignId)
           .map((m) => campaignKey(m.row.campaign.featureSlug ?? "", m.row.campaign.legKey ?? "")),
       ),
     [missions, offerId],
@@ -53,6 +56,7 @@ export function CampaignsOverviewPage() {
         </div>
       ) : (
         <>
+          <FunnelCampaignsSection orgId={orgId} brandId={brandId} offerId={offerId} />
           {paths.isError && !paths.data && <p className="mb-4 text-[13px] text-[var(--data-rose)]">Could not read this offer&apos;s campaigns.</p>}
           <OfferCampaigns
             orgId={orgId}

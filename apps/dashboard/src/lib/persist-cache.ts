@@ -174,6 +174,10 @@ export const PERSISTABLE_QUERY_ROOTS = new Set([
   // Every campaign ceiling billing holds for a brand, per (offer, leg, channel).
   "brandCampaignBudgets",
   "offerCampaignBudgets",
+  // Campaigns as sales funnels (campaign-service) and their max budget / max volume (billing).
+  "salesFunnelCampaigns",
+  "salesFunnelCampaign",
+  "salesFunnelCaps",
   // Per trigger, how often it fired on an offer, ran, was skipped (campaign-service), under
   // the campaign rows of the Sales path and Sourcing pages.
   "offerTriggerEventsSummary",

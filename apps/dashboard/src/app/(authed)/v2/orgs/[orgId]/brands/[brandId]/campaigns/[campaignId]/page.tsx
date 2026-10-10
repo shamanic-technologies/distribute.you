@@ -1,7 +1,7 @@
 "use client";
 
-import { V2CampaignPage } from "@/components/v2/campaign-page";
+import { V2CampaignRoute } from "@/components/v2/campaign-page";
 
 export default function Page() {
-  return <V2CampaignPage />;
+  return <V2CampaignRoute />;
 }
