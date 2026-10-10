@@ -65,6 +65,7 @@ export interface CopilotHistoryTurn {
   buttons?: { label: string; value: string }[] | null;
   choices?: CopilotChoices | null;
   openPages?: CopilotOpenPage[] | null;
+  creditsRequired?: CopilotCreditsRequired | null;
 }
 
 /** The cards chat-service stored on each assistant turn, by turn id (rich choices win over plain buttons). */
@@ -74,6 +75,15 @@ export function choicesByTurn(turns: CopilotHistoryTurn[]): Map<string, CopilotC
     if (t.role !== "assistant") continue;
     if (t.choices && t.choices.choices.length > 0) out.set(t.id, t.choices);
     else if (t.buttons && t.buttons.length > 0) out.set(t.id, { choices: t.buttons });
+  }
+  return out;
+}
+
+/** The "Add credits" action stored on out-of-credits assistant turns, by turn id. */
+export function creditsRequiredByTurn(turns: CopilotHistoryTurn[]): Map<string, CopilotCreditsRequired> {
+  const out = new Map<string, CopilotCreditsRequired>();
+  for (const t of turns) {
+    if (t.role === "assistant" && t.creditsRequired) out.set(t.id, t.creditsRequired);
   }
   return out;
 }
