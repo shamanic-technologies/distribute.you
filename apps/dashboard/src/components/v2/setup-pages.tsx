@@ -33,6 +33,7 @@ import { OfferRevenueSteps } from "@/components/v2/offer-revenue-steps";
 import { V2CrmRawView } from "@/components/v2/integrations-crm";
 import { V2CrmMergedView } from "@/components/v2/integrations-merged";
 import { V2AiIntegrationView } from "@/components/v2/integrations-ai";
+import { BrandIntegrationsCard } from "@/components/settings/brand-integrations-card";
 import { Toast } from "@/components/toast";
 import { useMissions } from "@/components/v2/use-missions";
 import { Shimmer, TopBar, type Crumb } from "@/components/v2/ui";
@@ -330,7 +331,7 @@ type IntegrationView = "ai" | "raw" | "merged";
 function integrationTabs(orgId: string, brandId: string, active: IntegrationView, isBeta: boolean): V2Tab[] | undefined {
   const base = `${v2Base(orgId, brandId)}/integrations`;
   const tabs: V2Tab[] = [
-    { label: "Your AI", href: `${base}/ai`, active: active === "ai" },
+    { label: "Accounts and AI", href: `${base}/ai`, active: active === "ai" },
     { label: "Your CRM", href: base, active: active === "raw", badge: "beta" as const },
     { label: "Merged with our leads", href: `${base}/merged`, active: active === "merged", badge: "beta" as const },
   ];
@@ -383,17 +384,39 @@ export function V2IntegrationsPage({ view }: { view: IntegrationView }) {
           ))}
         </nav>
       )}
-      <p className="k-fg2 mb-4 text-[13px]">
-        {view === "ai"
-          ? "Run distribute.you from the AI you already use. One line sets it up."
-          : "The CRM this brand already runs on, read here and set beside our leads."}
-      </p>
       {view === "ai" ? (
-        <V2AiIntegrationView orgId={orgId} brandId={brandId} />
+        // One page for every integration (owner 2026-10-10): the accounts the brand
+        // already runs on, then the AI it drives us from.
+        <div className="space-y-8">
+          <section>
+            <h2 className="text-[14px] font-medium leading-5">Accounts</h2>
+            <p className="k-fg3 mb-3 mt-1 text-[12px] leading-[18px]">
+              The CRM your brand already runs on. We read it, we never write to it.
+            </p>
+            <div className="v2-embed min-w-0">
+              <div className="k-card overflow-hidden">
+                <BrandIntegrationsCard brandId={brandId} bare />
+              </div>
+            </div>
+          </section>
+          <section>
+            <h2 className="text-[14px] font-medium leading-5">Your AI</h2>
+            <p className="k-fg3 mb-3 mt-1 text-[12px] leading-[18px]">
+              Run distribute.you from the AI you already use. One line sets it up.
+            </p>
+            <V2AiIntegrationView orgId={orgId} brandId={brandId} />
+          </section>
+        </div>
       ) : view === "raw" ? (
-        <V2CrmRawView orgId={orgId} brandId={brandId} />
+        <>
+          <p className="k-fg2 mb-4 text-[13px]">The CRM this brand already runs on, read here and set beside our leads.</p>
+          <V2CrmRawView orgId={orgId} brandId={brandId} />
+        </>
       ) : (
-        <V2CrmMergedView brandId={brandId} />
+        <>
+          <p className="k-fg2 mb-4 text-[13px]">The CRM this brand already runs on, read here and set beside our leads.</p>
+          <V2CrmMergedView brandId={brandId} />
+        </>
       )}
     </V2Page>
   );

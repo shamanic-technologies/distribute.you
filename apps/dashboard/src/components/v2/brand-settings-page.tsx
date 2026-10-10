@@ -5,12 +5,10 @@ import { useParams } from "next/navigation";
 import { V2TabLink, brandTabs } from "@/components/v2/setup-pages";
 import { useAuthQuery } from "@/lib/use-auth-query";
 import { getBrand } from "@/lib/api";
-import { useIsBetaUser } from "@/lib/use-beta-user";
 import { MaturityBadge } from "@/components/maturity-badge";
 import { BrandDomainCard } from "@/components/settings/brand-domain-card";
 import { BrandSalesRepCard, SALES_REP_BLURB } from "@/components/settings/brand-sales-rep-card";
 import { BrandBookingLinkCard, BOOKING_LINK_BLURB } from "@/components/settings/brand-booking-link-card";
-import { BrandIntegrationsCard } from "@/components/settings/brand-integrations-card";
 import { BrandConversionRatesCard } from "@/components/settings/brand-conversion-rates-card";
 import {
   BrandConversionTrackingCard,
@@ -40,7 +38,6 @@ interface Section {
 
 export function V2BrandSettingsPage() {
   const { orgId, brandId } = useParams<{ orgId: string; brandId: string }>();
-  const isBeta = useIsBetaUser();
   // Same key the domain card reads, so this costs no request. The website section
   // only exists while the brand has none: once set, it cannot change here.
   const { data: brandData, isPending: brandPending } = useAuthQuery(["brand", brandId], () => getBrand(brandId));
@@ -76,17 +73,6 @@ export function V2BrandSettingsPage() {
       description: BOOKING_LINK_BLURB,
       body: <BrandBookingLinkCard brandId={brandId} bare />,
     },
-    ...(isBeta
-      ? [
-          {
-            id: "integrations",
-            title: "Integrations",
-            description: "The CRM your brand already runs on. We read it, we never write to it.",
-            beta: true,
-            body: <BrandIntegrationsCard brandId={brandId} bare />,
-          },
-        ]
-      : []),
     {
       id: "conversion-rates",
       title: "Conversion rates",
