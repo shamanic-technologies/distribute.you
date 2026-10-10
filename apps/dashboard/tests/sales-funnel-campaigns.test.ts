@@ -253,3 +253,48 @@ describe("sales funnel campaigns: the type picks the words (owner 2026-10-10)", 
   });
 });
 
+
+describe("Campaigns table, owner spec 2026-10-11", () => {
+  const funnel = () => src("src/components/v2/funnel-campaigns.tsx");
+  const section = () => funnel().slice(funnel().indexOf("export function FunnelCampaignsSection("), funnel().indexOf("function FunnelCampaignRow("));
+
+  it("columns, in order: Campaign, Type (i), ROI, $ Invested, Status; Spent / Volume / Budget dropped", () => {
+    const s = section();
+    const at = (t: string) => s.indexOf(t);
+    expect(at(">Campaign</th>")).toBeGreaterThan(-1);
+    expect(at("Type")).toBeGreaterThan(at(">Campaign</th>"));
+    expect(at("<InfoTooltip tip={TYPE_TIP}")).toBeGreaterThan(at("Type"));
+    expect(at(">ROI</th>")).toBeGreaterThan(at("<InfoTooltip tip={TYPE_TIP}"));
+    expect(at(">$ Invested</th>")).toBeGreaterThan(at(">ROI</th>"));
+    expect(at(">Status</th>")).toBeGreaterThan(at(">$ Invested</th>"));
+    for (const gone of [">Spent</th>", ">Volume</th>", ">Budget</th>"]) expect(s).not.toContain(gone);
+  });
+
+  it("every cell reads features-service's served row: path items, type label, roiMultiple, investedUsd; nothing composed", () => {
+    const f = funnel();
+    expect(f).toContain("<FunnelPathLine items={row.path.items} />");
+    expect(f).toContain("{row.typeLabel}");
+    expect(f).toContain("funnelRoiShown(row)");
+    expect(f).toContain("formatUsdAdaptive(row.investedUsd)");
+    expect(f).not.toContain("row.description");
+    expect(src("src/lib/api.ts")).toContain("/features/brands/${encodeURIComponent(brandId)}/sales-funnel-campaigns?");
+  });
+
+  it("Status is the on/off control: green with the budget when on (Up to for Reactive), Off otherwise; not funded keeps its handling", () => {
+    const f = funnel();
+    expect(f).toContain('`${reactive ? "Up to " : ""}${maxBudgetLabel(b)}`');
+    expect(f).toContain("<FunnelCampaignStatus campaign={campaign} onLabel={onLabel} />");
+    expect(f).toContain("Not funded yet · Set a budget");
+  });
+
+  it("a missing served field reads — and is logged by name", () => {
+    const f = funnel();
+    expect(f).toContain('"[funnel-campaigns] roiMultiple not served"');
+    expect(f).toContain('"[funnel-campaigns] investedUsd not served"');
+  });
+
+  it("the mark beside two lines is as tall as the lines (MarkLines, one primitive)", () => {
+    expect(src("src/components/v2/ui.tsx")).toContain("export function MarkLines(");
+    expect(funnel()).toContain("<MarkLines mark={(px) => <FunnelFace name={campaign.salesFunnelName} size={px} />}>");
+  });
+});

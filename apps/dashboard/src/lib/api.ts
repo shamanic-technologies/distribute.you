@@ -15,6 +15,8 @@ import {
   type SalesFunnelCampaign,
   type SalesFunnelCaps,
   type SalesFunnelCapsInput,
+  FunnelCampaignRowsSchema,
+  type FunnelCampaignRow,
 } from "./sales-funnel-campaigns";
 import { browserHasAnonSession } from "./anon-session-cookie";
 import { offerArchiveRefusalSentence } from "./offer-archive";
@@ -1689,6 +1691,16 @@ export async function listSalesFunnelCampaigns(brandId: string, offerId: string 
   if (offerId) qs.set("offerId", offerId);
   const raw = await apiCall<unknown>(`/sales-funnel-campaigns?${qs.toString()}`);
   return parseStaff("listSalesFunnelCampaigns", SalesFunnelCampaignListSchema, raw).salesFunnelCampaigns;
+}
+
+/**
+ * The Campaigns table rows (owner 2026-10-11): features-service's read of the brand's (offer's) sales
+ * funnel campaigns with their type label, path, invested since inception and ROI, net of discount.
+ */
+export async function listFunnelCampaignRows(brandId: string, offerId: string): Promise<FunnelCampaignRow[]> {
+  const qs = new URLSearchParams({ offerId, pricing: "net" });
+  const raw = await apiCall<unknown>(`/features/brands/${encodeURIComponent(brandId)}/sales-funnel-campaigns?${qs.toString()}`);
+  return parseStaff("listFunnelCampaignRows", FunnelCampaignRowsSchema, raw).salesFunnelCampaigns;
 }
 
 /** One funnel campaign with its units. */

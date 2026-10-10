@@ -185,6 +185,8 @@ export const PERSISTABLE_QUERY_ROOTS = new Set([
   "salesFunnelCampaigns",
   "salesFunnelCampaign",
   "salesFunnelCaps",
+  // The Campaigns table rows (features-service: type label, path, invested, ROI).
+  "funnelCampaignRows",
   // Per trigger, how often it fired on an offer, ran, was skipped (campaign-service), under
   // the campaign rows of the Sales path and Sourcing pages.
   "offerTriggerEventsSummary",

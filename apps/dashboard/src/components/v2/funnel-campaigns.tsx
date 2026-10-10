@@ -1,6 +1,8 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
+import { LightningIcon } from "@phosphor-icons/react/dist/csr/Lightning";
+import { CalendarBlankIcon } from "@phosphor-icons/react/dist/csr/CalendarBlank";
 import { createPortal } from "react-dom";
 import Link from "next/link";
 import { useMutation } from "@tanstack/react-query";
@@ -10,6 +12,7 @@ import { pollOptions } from "@/lib/query-options";
 import {
   ApiError,
   getSalesFunnelCaps,
+  listFunnelCampaignRows,
   listSalesFunnelCampaigns,
   saveSalesFunnelCaps,
   setSalesFunnelCampaignStatus,
@@ -35,11 +38,18 @@ import {
   type SalesFunnelCampaign,
   type SalesFunnelCaps,
   type SalesFunnelUnit,
+  type FunnelCampaignRow,
+  type FunnelPathItem,
+  maxBudgetLabel,
+  roiMissingReason,
+  funnelRoiShown,
 } from "@/lib/sales-funnel-campaigns";
+import { InfoTooltip } from "@/components/visibility/metric-info";
+import { formatRoi, roiIsGood } from "@/lib/format-roi";
 import { paymentHoldKind } from "@/lib/payment-declined";
 import { channelWriteErrorMessage } from "@/lib/channel-start";
 import { invalidateCampaignMoney } from "@/lib/write-invalidation";
-import { formatCount } from "@/lib/format-number";
+import { formatCount, formatUsdAdaptive } from "@/lib/format-number";
 import { useStatBasis } from "@/lib/use-stat-basis";
 import { useRoutePrefetch } from "@/lib/use-route-prefetch";
 import { useAcquisitionChannels } from "@/lib/use-acquisition-channels";
@@ -50,7 +60,7 @@ import { useMissions, type Mission } from "@/components/v2/use-missions";
 import { CampaignResultCells } from "@/components/v2/offer-campaigns";
 import { ChannelChip } from "@/components/v2/offer-sales-paths";
 import { V2Page } from "@/components/v2/setup-pages";
-import { EmptyNote, Figure, Meter, SectionTitle, Shimmer, StateDot } from "@/components/v2/ui";
+import { EmptyNote, Figure, MarkLines, Meter, SectionTitle, Shimmer, StateDot } from "@/components/v2/ui";
 
 /**
  * CAMPAIGNS THAT ARE SALES FUNNELS (owner 2026-10-10). A campaign has a name and a face, ONE
@@ -108,7 +118,17 @@ const Chevron = () => (
  * one-item menu with the other state. Every part moves with it (campaign-service, one
  * transaction). A refused start shows campaign-service's own sentence (payment hold).
  */
-export function FunnelCampaignStatus({ campaign }: { campaign: SalesFunnelCampaign }) {
+export function FunnelCampaignStatus({
+  campaign,
+  onLabel,
+}: {
+  campaign: SalesFunnelCampaign;
+  /**
+   * Campaigns table (owner 2026-10-11): an ON campaign's button is GREEN and reads its budget
+   * ("$50/week", "Up to $50/week"); OFF reads "Off". Absent = the plain On / Off dot and word.
+   */
+  onLabel?: string | null;
+}) {
   const qc = useQueryClient();
   const [open, setOpen] = useState(false);
   const [pressed, setPressed] = useState<boolean | null>(null);
@@ -170,9 +190,15 @@ export function FunnelCampaignStatus({ campaign }: { campaign: SalesFunnelCampai
         aria-expanded={open}
         disabled={isPending}
         onClick={(e) => openMenu(e.currentTarget)}
-        className="k-btn gap-1.5"
+        className="k-btn gap-1.5 tabular-nums"
+        // keel.css is unlayered: the green tint rides inline, never a bg-* utility on a k-btn.
+        style={
+          onLabel !== undefined && on
+            ? { background: "color-mix(in oklab, var(--run) 14%, var(--bg-raised))", color: "var(--fg-1)", boxShadow: "inset 0 0 0 1px color-mix(in oklab, var(--run) 45%, transparent)" }
+            : undefined
+        }
       >
-        <StateDot running={on} label={on ? "On" : "Off"} hold={on ? null : paymentHoldKind(campaign)} />
+        <StateDot running={on} label={on ? (onLabel ?? "On") : "Off"} hold={on ? null : paymentHoldKind(campaign)} />
         <Chevron />
       </button>
       {open &&
@@ -406,14 +432,61 @@ function ContactedCell({ volume, type }: { volume: MaxVolume; type: ReturnType<t
   );
 }
 
-// ─── Campaigns > Overview: the offer's campaigns ────────────────────────────────────────
+// ─── Campaigns > Overview: the offer's campaigns (owner spec 2026-10-11) ─────────────────
+
+/** The (i) of the Type column: the difference between the two kinds, in plain words. */
+const TYPE_TIP =
+  "Proactive campaigns reach new people every day, within their budget. Reactive campaigns wait for something to happen, like a positive reply, then act on it.";
 
 /**
- * The offer's campaigns, newest first: face + name, status, the limits and what each
- * consumed this period. A row opens the campaign. Renders nothing while the offer has none.
+ * The campaign's path on one line, as features-service serves it: step labels, with the channel
+ * between the two steps of each leg we run ("Lead found → [Sales Cold Email Outreach] → Positive
+ * reply → Paid client"). The chip is the staff pipe rows' own (`ChannelChip`); nothing is parsed.
+ */
+export function FunnelPathLine({ items }: { items: FunnelPathItem[] }) {
+  const channels = useAcquisitionChannels();
+  return (
+    <span className="k-fg2 flex min-w-0 items-center gap-1 overflow-hidden whitespace-nowrap text-[11px]">
+      {items.map((it, i) => (
+        <span key={i} className="contents">
+          {i > 0 && <span className="k-fg3">→</span>}
+          {it.kind === "step" ? (
+            <span className="shrink-0">{it.label}</span>
+          ) : (
+            <ChannelChip name={it.name} def={channels.find((d) => d.featureSlug === it.slug)} notRun={false} compact />
+          )}
+        </span>
+      ))}
+    </span>
+  );
+}
+
+/** The Type tag: [calendar Daily] for a proactive campaign, [lightning <trigger>] for a reactive one, both served. */
+function TypeTag({ row }: { row: FunnelCampaignRow }) {
+  if (!row.typeLabel) {
+    console.error("[funnel-campaigns] typeLabel not served", { id: row.id, reason: row.copyUnavailableReason ?? null });
+    return DASH;
+  }
+  const Glyph = row.type === "reactive" ? LightningIcon : CalendarBlankIcon;
+  return (
+    <span className="k-chip inline-flex items-center gap-1 whitespace-nowrap">
+      <Glyph size={13} weight="duotone" aria-hidden className="shrink-0" />
+      {row.typeLabel}
+    </span>
+  );
+}
+
+/**
+ * The offer's campaigns (owner spec 2026-10-11, token for token): Campaign (face, name, path), Type
+ * (i), ROI, $ Invested, Status (the on/off control, green with the budget when on). Rows are
+ * campaign-service's list (fresh after a status write); columns 1-4 read features-service's row for
+ * the same campaign id, the budget billing's caps.
  */
 export function FunnelCampaignsSection({ orgId, brandId, offerId }: { orgId: string; brandId: string; offerId: string }) {
   const q = useFunnelCampaigns(brandId, offerId);
+  const rowsQ = useAuthQuery(["funnelCampaignRows", brandId, offerId], () => listFunnelCampaignRows(brandId, offerId), pollOptions);
+  const rowById = useMemo(() => new Map((rowsQ.data ?? []).map((r) => [r.id, r])), [rowsQ.data]);
+  const rowsSettled = rowsQ.data !== undefined || rowsQ.isFetchedAfterMount;
   const campaigns = q.data ?? [];
   const settled = q.data !== undefined || q.isFetchedAfterMount;
   if (settled && !q.data && q.isError) {
@@ -434,19 +507,24 @@ export function FunnelCampaignsSection({ orgId, brandId, offerId }: { orgId: str
       ) : (
         <div className="k-card overflow-hidden">
           <div className="k-scroll overflow-x-auto">
-            <table className="w-full min-w-[880px] text-[13px]">
+            <table className="w-full min-w-[920px] text-[13px]">
               <thead>
                 <tr className="k-line-subtle border-b">
-                  <th className="k-label px-3 py-2.5 pl-4 text-left font-normal">Campaign</th>
-                  <th className="k-label px-3 py-2.5 text-right font-normal">Spent</th>
-                  <th className="k-label px-3 py-2.5 text-right font-normal">Volume</th>
-                  <th className="k-label w-[130px] px-3 py-2.5 text-right font-normal">Status</th>
-                  <th className="k-label w-[200px] px-3 py-2.5 pr-4 text-right font-normal">Budget</th>
+                  <th className="k-label w-[48%] px-3 py-2.5 pl-4 text-left font-normal">Campaign</th>
+                  <th className="k-label px-3 py-2.5 text-left font-normal">
+                    <span className="inline-flex items-center gap-1">
+                      Type
+                      <InfoTooltip tip={TYPE_TIP} placement="bottom" />
+                    </span>
+                  </th>
+                  <th className="k-label px-3 py-2.5 text-right font-normal">ROI</th>
+                  <th className="k-label px-3 py-2.5 text-right font-normal">$ Invested</th>
+                  <th className="k-label w-[190px] px-3 py-2.5 pr-4 text-right font-normal">Status</th>
                 </tr>
               </thead>
               <tbody>
                 {campaigns.map((c) => (
-                  <FunnelCampaignRow key={c.id} orgId={orgId} campaign={c} />
+                  <FunnelCampaignRow key={c.id} orgId={orgId} campaign={c} row={rowById.get(c.id) ?? null} rowsSettled={rowsSettled} />
                 ))}
               </tbody>
             </table>
@@ -457,40 +535,68 @@ export function FunnelCampaignsSection({ orgId, brandId, offerId }: { orgId: str
   );
 }
 
-function FunnelCampaignRow({ orgId, campaign }: { orgId: string; campaign: SalesFunnelCampaign }) {
+function FunnelCampaignRow({
+  orgId,
+  campaign,
+  row,
+  rowsSettled,
+}: {
+  orgId: string;
+  campaign: SalesFunnelCampaign;
+  /** features-service's row for this campaign (path, type label, money); null when not served. */
+  row: FunnelCampaignRow | null;
+  rowsSettled: boolean;
+}) {
   const router = useRouter();
   const prefetch = useRoutePrefetch();
   const caps = useFunnelCaps(campaign);
+  const [editing, setEditing] = useState(false);
   const href = v2CampaignHref(orgId, campaign.brandId, campaign.id);
   const capsSettled = caps.data !== undefined || caps.isFetchedAfterMount;
   const c = caps.data ?? null;
-  // The status and limits controls (and their portalled menu / modal) never open the page.
+  const on = isFunnelCampaignOn(campaign);
+  const b = c?.maxBudget ?? null;
+  const reactive = (row?.type ?? funnelTypeOf(c)) === "reactive";
+  // ON + Reactive: "Up to $N/<period>"; ON + Proactive: "$N/<period>" (owner 2026-10-11).
+  const onLabel = !capsSettled ? "On" : b ? `${reactive ? "Up to " : ""}${maxBudgetLabel(b)}` : "On";
+  const notFunded = capsSettled && c !== null && !b;
+  const roi = row ? funnelRoiShown(row) : { learning: false, value: null };
+  useEffect(() => {
+    if (!rowsSettled) return;
+    if (!row) console.error("[funnel-campaigns] features-service served no row for this campaign", { id: campaign.id });
+    else if (row.roiMultiple === null && !funnelRoiShown(row).learning) console.error("[funnel-campaigns] roiMultiple not served", { id: row.id, reason: roiMissingReason(row) });
+    if (row && row.investedUsd === null) console.error("[funnel-campaigns] investedUsd not served", { id: row.id });
+    if (row && !row.path) console.error("[funnel-campaigns] path not served", { id: row.id, reason: row.copyUnavailableReason ?? null });
+  }, [row, rowsSettled, campaign.id]);
+  // The status control and its menu / modal never open the page.
   const stop = (e: React.SyntheticEvent) => e.stopPropagation();
-  const capsCell = (node: React.ReactNode) =>
-    !capsSettled ? <Shimmer className="ml-auto h-4 w-16 rounded" /> : caps.isError && !c ? <span className="k-fg3 text-[12px]">Could not load</span> : node;
+  const cell = (node: React.ReactNode) => (!rowsSettled ? <Shimmer className="ml-auto h-4 w-14 rounded" /> : node);
   return (
     <tr
-      className={`k-row k-line-subtle h-12 cursor-pointer border-b last:border-b-0 ${isFunnelCampaignOn(campaign) ? "bg-[color-mix(in_oklab,var(--run)_9%,transparent)]" : ""}`}
+      className={`k-row k-line-subtle h-14 cursor-pointer border-b last:border-b-0 ${on ? "bg-[color-mix(in_oklab,var(--run)_9%,transparent)]" : ""}`}
       onClick={() => router.push(href)}
       onMouseEnter={() => prefetch(href)}
       onFocus={() => prefetch(href)}
     >
-      <td className="px-3 py-2 pl-4">
-        <span className="flex min-w-0 items-center gap-2.5">
-          <FunnelFace name={campaign.salesFunnelName} size={28} />
-          <span className="min-w-0">
-            <span className="block truncate font-semibold">{campaign.salesFunnelName}</span>
-            {capsSettled && c && !c.maxBudget && <span className="mt-0.5 block text-[11.5px] text-[var(--data-amber)]">Not funded yet</span>}
-          </span>
-        </span>
+      <td className="max-w-0 px-3 py-2 pl-4">
+        <MarkLines mark={(px) => <FunnelFace name={campaign.salesFunnelName} size={px} />}>
+          <span className="block truncate font-semibold">{campaign.salesFunnelName}</span>
+          {row?.path ? <FunnelPathLine items={row.path.items} /> : rowsSettled ? <span className="k-fg4 block text-[11px]">—</span> : <Shimmer className="h-3 w-48 rounded" />}
+        </MarkLines>
       </td>
-      <td className="px-3 py-2 text-right">{capsCell(c?.maxBudget ? <SpentCell budget={c.maxBudget} /> : DASH)}</td>
-      <td className="px-3 py-2 text-right">{capsCell(c?.maxVolume ? <ContactedCell volume={c.maxVolume} type={funnelTypeOf(c)} /> : DASH)}</td>
-      <td className="px-3 py-2 text-right" onClick={stop}>
-        <FunnelCampaignStatus campaign={campaign} />
+      <td className="px-3 py-2">{cell(row ? <TypeTag row={row} /> : DASH)}</td>
+      <td className={`px-3 py-2 text-right font-semibold tabular-nums ${roi.value != null && roiIsGood(roi.value) ? "text-[var(--run)]" : ""}`}>
+        {cell(roi.learning ? <span className="k-chip font-normal">Learning</span> : roi.value != null ? formatRoi(roi.value) : DASH)}
       </td>
+      <td className="px-3 py-2 text-right tabular-nums">{cell(row?.investedUsd != null ? formatUsdAdaptive(row.investedUsd) : DASH)}</td>
       <td className="px-3 py-2 pr-4 text-right" onClick={stop}>
-        {capsCell(<FunnelLimitsButton campaign={campaign} caps={c} />)}
+        <FunnelCampaignStatus campaign={campaign} onLabel={onLabel} />
+        {on && notFunded && (
+          <button type="button" onClick={() => setEditing(true)} className="mt-1 block w-full text-right text-[11.5px] text-[var(--data-amber)] hover:underline">
+            Not funded yet · Set a budget
+          </button>
+        )}
+        {editing && <FunnelLimitsModal campaign={campaign} caps={c} onClose={() => setEditing(false)} />}
       </td>
     </tr>
   );

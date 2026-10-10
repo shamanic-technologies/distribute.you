@@ -263,3 +263,56 @@ export function volumeUnitWords(unit: string | null, type: FunnelType | null, co
 export function statedVolume(type: FunnelType | null, v: Pick<MaxVolume, "count" | "period" | "unit">): string {
   return `${capWords(type).prefix}${v.count.toLocaleString("en-US")} ${volumeUnitWords(v.unit, type, v.count)}${capPeriodSuffix(v.period)}`;
 }
+
+// ─── The Campaigns table row (features-service, owner 2026-10-11) ───────────────────────────
+
+/**
+ * One sales funnel campaign as features-service serves it for the Campaigns table
+ * (`GET /v1/features/brands/:brandId/sales-funnel-campaigns`): its type label ("Daily" or the
+ * trigger), its PATH as structured items (steps, and the channel between the two steps of each leg
+ * we run, ending at Paid client), its money invested since inception and its ROI. Everything is
+ * served: the browser parses no id and adds nothing.
+ */
+const PathItemSchema = z.union([
+  z.object({ kind: z.literal("step"), key: z.string(), label: z.string() }).passthrough(),
+  z.object({ kind: z.literal("channel"), slug: z.string(), name: z.string() }).passthrough(),
+]);
+export type FunnelPathItem = z.infer<typeof PathItemSchema>;
+
+export const FunnelCampaignRowSchema = z
+  .object({
+    id: z.string(),
+    salesFunnelId: z.string(),
+    name: z.string(),
+    status: z.string(),
+    type: z.string().nullable(),
+    typeLabel: z.string().nullable(),
+    path: z.object({ items: z.array(PathItemSchema) }).passthrough().nullable(),
+    copyUnavailableReason: z.string().nullish(),
+    investedUsd: z.coerce.number().nullable(),
+    roiMultiple: z.coerce.number().nullable(),
+    moneyUnavailableReason: z.string().nullish(),
+    costEconomics: z.object({ unmeasuredReason: z.string().nullish() }).passthrough().nullable(),
+    // The producer's maturity verdict on the campaign's return (read, never re-graded).
+    maturity: z.object({ isMature: z.boolean() }).passthrough().nullish(),
+  })
+  .passthrough();
+export type FunnelCampaignRow = z.infer<typeof FunnelCampaignRowSchema>;
+
+export const FunnelCampaignRowsSchema = z.object({ salesFunnelCampaigns: z.array(FunnelCampaignRowSchema) }).passthrough();
+
+/** Why a row's ROI is missing, as served (never guessed): the field name and the producer's reason. */
+export function roiMissingReason(row: Pick<FunnelCampaignRow, "moneyUnavailableReason" | "costEconomics">): string | null {
+  return row.moneyUnavailableReason ?? row.costEconomics?.unmeasuredReason ?? null;
+}
+
+/**
+ * The ROI cell's value: features-service's `roiMultiple` under its own maturity verdict, the way every
+ * v2 return reads (`shownReturn`): not mature and not above break-even yet = "Learning".
+ */
+export function funnelRoiShown(row: Pick<FunnelCampaignRow, "roiMultiple" | "maturity">): { learning: boolean; value: number | null } {
+  const roi = row.roiMultiple;
+  if (row.maturity?.isMature === false && !(roi !== null && roi > 1)) return { learning: true, value: null };
+  return { learning: false, value: roi };
+}
+
