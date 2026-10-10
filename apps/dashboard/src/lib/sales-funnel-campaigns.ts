@@ -54,6 +54,10 @@ export const SalesFunnelCapsSchema = z
     salesFunnelId: z.string(),
     stated: z.boolean(),
     updatedAt: z.string().nullable(),
+    // billing v0.83.11 relays features-service's funnel type (owner 2026-10-10); optional until every
+    // cached body carries it, null + a named reason when billing could not read it.
+    salesFunnelType: z.string().nullish(),
+    salesFunnelTypeUnavailableReason: z.string().nullish(),
     maxBudget: z
       .object({ amountCents: z.string(), consumedCents: z.string().nullable(), remainingCents: z.string().nullable(), ...CapWindow })
       .passthrough()
@@ -195,4 +199,65 @@ export function parseWholeAmount(v: string): number | null {
  */
 export function funnelCampaignFaceSrc(name: string): string {
   return `/api/v1/public/catalogue/faces/${encodeURIComponent(name)}.svg`;
+}
+
+// ─── The funnel's TYPE words (owner 2026-10-10) ─────────────────────────────────────────────
+
+/**
+ * A Proactive campaign (at least one proactive pipe) asks "Max budget" / "Max volume"; a Reactive
+ * one asks "Up to $X" / "Up to N <unit>". The type is features-service's, relayed by billing's caps
+ * read: READ, never derived here. Null when not served (logged with billing's reason): neutral words.
+ */
+export type FunnelType = "proactive" | "reactive";
+
+export function funnelTypeOf(caps: Pick<SalesFunnelCaps, "salesFunnelType" | "salesFunnelTypeUnavailableReason"> | null): FunnelType | null {
+  const t = caps?.salesFunnelType ?? null;
+  if (t === "proactive" || t === "reactive") return t;
+  if (caps) console.error("[sales-funnel-campaigns] no funnel type served", { type: t, reason: caps.salesFunnelTypeUnavailableReason ?? null });
+  return null;
+}
+
+export interface CapWords {
+  /** The budget's field / cell label. */
+  budget: string;
+  /** The volume's field / cell label. */
+  volume: string;
+  /** Before a stated amount: "Max $50/week", "Up to $50/week". */
+  prefix: string;
+}
+
+export function capWords(type: FunnelType | null): CapWords {
+  if (type === "proactive") return { budget: "Max budget", volume: "Max volume", prefix: "Max " };
+  if (type === "reactive") return { budget: "Budget", volume: "Volume", prefix: "Up to " };
+  return { budget: "Budget", volume: "Volume", prefix: "" };
+}
+
+/** A stated budget in the type's words: "Max $50/week" (Proactive), "Up to $50/week" (Reactive). */
+export function statedBudget(type: FunnelType | null, b: Pick<MaxBudget, "amountCents" | "period">): string {
+  return `${capWords(type).prefix}${maxBudgetLabel(b)}`;
+}
+
+/**
+ * What one unit of a max volume is, in words: billing's unit when it is stated, else the unit a
+ * campaign of this type is counted in (billing counts a Proactive one in first contacts, a Reactive
+ * one in prospects handled). A unit we have no words for is logged and printed as served.
+ */
+export function volumeUnitWords(unit: string | null, type: FunnelType | null, count: number): string {
+  const u = unit ?? (type === "proactive" ? "first_contacts" : type === "reactive" ? "prospects_handled" : null);
+  switch (u) {
+    case "first_contacts":
+      return count === 1 ? "new person" : "new people";
+    case "prospects_handled":
+      return count === 1 ? "lead handled" : "leads handled";
+    case null:
+      return count === 1 ? "person" : "people";
+    default:
+      console.error("[sales-funnel-campaigns] no words for volume unit", { unit: u });
+      return u.replace(/_/g, " ");
+  }
+}
+
+/** A stated volume in the type's words: "Max 200 new people/month", "Up to 50 leads handled/week". */
+export function statedVolume(type: FunnelType | null, v: Pick<MaxVolume, "count" | "period" | "unit">): string {
+  return `${capWords(type).prefix}${v.count.toLocaleString("en-US")} ${volumeUnitWords(v.unit, type, v.count)}${capPeriodSuffix(v.period)}`;
 }

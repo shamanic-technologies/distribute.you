@@ -14,6 +14,11 @@ import {
   maxBudgetLabel,
   maxVolumeLabel,
   parseWholeAmount,
+  capWords,
+  funnelTypeOf,
+  statedBudget,
+  statedVolume,
+  volumeUnitWords,
 } from "../src/lib/sales-funnel-campaigns";
 
 const parseSalesFunnelCampaigns = (raw: unknown) => SalesFunnelCampaignListSchema.parse(raw).salesFunnelCampaigns;
@@ -210,3 +215,38 @@ describe("sales funnel campaigns: wiring", () => {
     }
   });
 });
+
+describe("sales funnel campaigns: the type picks the words (owner 2026-10-10)", () => {
+  it("Proactive asks Max budget / Max volume; Reactive asks Up to $X / Up to N <unit>", () => {
+    expect(capWords("proactive")).toMatchObject({ budget: "Max budget", volume: "Max volume" });
+    expect(statedBudget("proactive", { amountCents: "5000", period: "weekly" })).toBe("Max $50/week");
+    expect(statedBudget("reactive", { amountCents: "3000", period: "monthly" })).toBe("Up to $30/month");
+    expect(statedVolume("proactive", { count: 200, period: "monthly", unit: "first_contacts" })).toBe("Max 200 new people/month");
+    expect(statedVolume("reactive", { count: 40, period: "one_off", unit: "prospects_handled" })).toBe("Up to 40 leads handled in total");
+  });
+
+  it("reads billing's relayed type, never derives it; unknown = neutral words, logged", () => {
+    expect(funnelTypeOf({ salesFunnelType: "reactive", salesFunnelTypeUnavailableReason: null })).toBe("reactive");
+    expect(funnelTypeOf({ salesFunnelType: null, salesFunnelTypeUnavailableReason: "sales_funnel_catalogue_unavailable" })).toBeNull();
+    expect(capWords(null)).toMatchObject({ budget: "Budget", prefix: "" });
+    const page = src("src/components/v2/funnel-campaigns.tsx");
+    expect(page).not.toMatch(/\.mode === "proactive"/);
+  });
+
+  it("billing's volume unit, in words", () => {
+    expect(volumeUnitWords("first_contacts", "proactive", 1)).toBe("new person");
+    expect(volumeUnitWords("prospects_handled", "reactive", 3)).toBe("leads handled");
+    expect(volumeUnitWords(null, "reactive", 3)).toBe("leads handled");
+  });
+
+  it("a customer's Campaigns page lists ONLY funnel campaigns; the pipe table is staff mode", () => {
+    const overview = src("src/components/v2/campaigns-overview-page.tsx");
+    expect(overview).toContain("{staffMode && <StaffPipeCampaigns orgId={orgId} brandId={brandId} offerId={offerId} />}");
+    const page = overview.slice(overview.indexOf("export function CampaignsOverviewPage()"), overview.indexOf("function StaffPipeCampaigns("));
+    expect(page).not.toContain("<OfferCampaigns");
+    // The funnel page's results read what a part brings in, no leg arrows.
+    const funnel = src("src/components/v2/funnel-campaigns.tsx");
+    expect(funnel).not.toContain("<CampaignLeg");
+  });
+});
+
