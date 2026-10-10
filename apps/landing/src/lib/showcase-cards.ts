@@ -101,17 +101,25 @@ function measuredSteps(brand: ShowcaseBrand): ShowcaseOutcome[] {
 }
 
 /**
- * A CLIENT IS NAMED ONLY IF THE OUTCOMES ITS CARD DRAWS SHOW SOMETHING PAST OUTREACH.
+ * The fewest people a drawn outcome needs before the card may name its client.
+ *
+ * Owner rule (2026-10-10): a card never leads with 1 positive reply; at least 5. One or two
+ * outcomes read as luck, not as a client growing.
+ */
+export const MIN_DRAWN_OUTCOME = 5;
+
+/**
+ * A CLIENT IS NAMED ONLY IF ONE OUTCOME ITS CARD DRAWS, PAST OUTREACH, REACHED {@link MIN_DRAWN_OUTCOME}.
  *
  * The producer gates its pick on an outcome count read off its fleet snapshot, which can count an
  * outcome on a channel the card does not draw — so a client can arrive whose drawn outcomes are
- * contacted-and-zeros (measured 2026-09-24: livingvital.ch, 183 contacted, every step 0). A card
- * that names a customer and shows nothing is worse than a shorter row. This is the owner's rule
- * applied to the served figures: at least one person reached a step after contacted.
+ * contacted-and-zeros (measured 2026-09-24: livingvital.ch, 183 contacted, every step 0), or a
+ * single positive reply (2026-10-10: legistai.com, 385 contacted, 1). A card that names a customer
+ * and shows almost nothing is worse than a shorter row.
  */
 export function hasDrawnOutcome(brand: ShowcaseBrand): boolean {
   return measuredSteps(brand).some(
-    (step) => step.key !== CONTACTED && (step.peopleReached as number) > 0
+    (step) => step.key !== CONTACTED && (step.peopleReached as number) >= MIN_DRAWN_OUTCOME
   );
 }
 

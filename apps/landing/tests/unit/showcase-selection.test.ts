@@ -16,6 +16,7 @@ import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import {
   hasDrawnOutcome,
+  MIN_DRAWN_OUTCOME,
   PODIUM_ORDER,
   podium,
   pricedStep,
@@ -296,5 +297,24 @@ describe("regressions from the first ship of the pick (#4353)", () => {
     expect(out).not.toContain('data-brand="livingvital.ch"');
     expect(out).toContain('data-brand="docdinners.com"');
     expect(pickedBrands({ brands: [livingVital], measured: true, unmeasuredReason: null }, "t")).toBeNull();
+  });
+
+  it("a client whose best drawn outcome is under 5 is never named", () => {
+    const outcome = (n: number): ShowcaseBrand => ({
+      brand: { id: "lg", name: "Legistai", domain: "legistai.com" },
+      returnPerDollar: 0,
+      outcomes: [
+        { key: "contacted", label: "Contacted", peopleReached: 385, costPerReachUsd: 0.3 },
+        { key: "conversation", label: "Positive reply", peopleReached: n, costPerReachUsd: 50 },
+      ],
+      measured: true,
+      unmeasuredReason: null,
+    });
+    expect(MIN_DRAWN_OUTCOME).toBe(5);
+    expect(hasDrawnOutcome(outcome(1))).toBe(false);
+    expect(hasDrawnOutcome(outcome(4))).toBe(false);
+    expect(hasDrawnOutcome(outcome(5))).toBe(true);
+    const out = renderShowcaseSelection(page, [outcome(1), docDinners]);
+    expect(out).not.toContain('data-brand="legistai.com"');
   });
 });
