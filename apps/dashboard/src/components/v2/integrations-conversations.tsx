@@ -317,10 +317,11 @@ export function V2ConversationsView({ brandId }: { brandId: string }) {
           </div>
         </section>
 
-        {/* The thread pane takes Up/Down once the reader moves into it (Right, or a click). */}
+        {/* The thread pane takes Up/Down once the reader moves into it (Right, or a click).
+            Its frame is an outline: an inset shadow paints UNDER the scrolled messages. */}
         <section
           onMouseDown={() => setPane("thread")}
-          style={pane === "thread" ? { boxShadow: "inset 0 0 0 1px var(--accent)" } : undefined}
+          style={pane === "thread" ? { outline: "1px solid var(--accent)", outlineOffset: "-1px" } : undefined}
           className="k-card flex max-h-[calc(100vh-220px)] min-h-[420px] flex-col overflow-hidden lg:max-h-none"
         >
           {openKey ? (
