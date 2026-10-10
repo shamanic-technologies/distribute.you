@@ -36,6 +36,8 @@ export const LEAD_BUCKETS = [
   "meeting_attended",
   "form_submission",
   "sale",
+  // People an AI Instant Call campaign placed a booking call with (lead-service v0.83.31).
+  "booking_call",
 ] as const;
 export type LeadBucket = (typeof LEAD_BUCKETS)[number];
 
@@ -162,6 +164,8 @@ export const LeadBucketCountsSchema = z.object({
     meeting_attended: z.number(),
     form_submission: z.number(),
     sale: z.number(),
+    // Always served since lead-service v0.83.31; optional only for a body cached before it.
+    booking_call: z.number().optional(),
   }),
   // People, not emails (lead-service): sent at least one email; sent and not bounced; distinct
   // people in website_visit OR positive_reply. Optional only for a body cached before it shipped.
