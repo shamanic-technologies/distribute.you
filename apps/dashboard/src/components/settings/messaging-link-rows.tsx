@@ -7,6 +7,7 @@ import { useAuthQuery, useQueryClient } from "@/lib/use-auth-query";
 import { CompanyLogo } from "@/components/company-logo";
 import { linkErrorMessage } from "@/lib/integration-write";
 import { accountsOfChannel, startMethods } from "@/lib/messaging-accounts";
+import { parsePastedHeaders, sessionValues } from "@/lib/browser-session-paste";
 
 /** While a code is on screen it refreshes on the vendor's schedule, so the read polls fast. */
 const WAITING_POLL_MS = 3_000;
@@ -167,6 +168,7 @@ function AccountRow({
   const [error, setError] = useState<string | null>(null);
   const [confirming, setConfirming] = useState(false);
   const [values, setValues] = useState<Record<string, string>>({});
+  const [pasted, setPasted] = useState("");
   const linkId = link.linkId ?? null;
 
   const unlink = useMutation({
@@ -195,12 +197,13 @@ function AccountRow({
   });
 
   const answer = useMutation({
-    mutationFn: () => {
+    mutationFn: (input: Record<string, string>) => {
       if (!linkId) throw new Error("This link has no id to answer");
-      return answerMatrixLink(brandId, link.channel, linkId, values);
+      return answerMatrixLink(brandId, link.channel, linkId, input);
     },
     onSuccess: async () => {
       setValues({});
+      setPasted("");
       setError(null);
       await onChanged();
     },
@@ -216,6 +219,10 @@ function AccountRow({
   const needsRelink = linked && (link.needsRelink === true || (!!link.bridgeState?.state && link.bridgeState.state !== "CONNECTED"));
   const busy = unlink.isPending || relink.isPending || answer.isPending;
   const form = waiting && link.input?.type === "user_input" ? link.input : null;
+  // A web page cannot read another site's cookies: the customer copies one request
+  // from their logged-in browser and we pick out the values the app's step lists.
+  const session = waiting && link.input?.type === "cookies" && link.input.cookies ? link.input.cookies : null;
+  const read = session && pasted.trim() ? sessionValues(session.fields, parsePastedHeaders(pasted)) : null;
 
   return (
     <li>
@@ -232,7 +239,7 @@ function AccountRow({
           ) : null}
           {link.status === "failed" && link.error ? <p className="mt-1 text-sm text-amber-700">{link.error.message}</p> : null}
 
-          {waiting && !form ? (
+          {waiting && !form && !session ? (
             <div className="mt-3 flex flex-wrap items-start gap-4">
               {link.qr ? (
                 <img src={link.qr.imageDataUrl} alt={`QR code to link ${meta.name}`} width={176} height={176} className="rounded-lg border border-gray-200 bg-white p-2" />
@@ -256,7 +263,7 @@ function AccountRow({
               className="mt-3 max-w-md space-y-3"
               onSubmit={(e) => {
                 e.preventDefault();
-                answer.mutate();
+                answer.mutate(values);
               }}
             >
               {form.instructions ? <p className="text-sm text-gray-600">{form.instructions}</p> : null}
@@ -295,6 +302,50 @@ function AccountRow({
               <button
                 type="submit"
                 disabled={busy || form.fields.some((f) => !(values[f.id] ?? "").trim())}
+                className="rounded-lg bg-brand-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-brand-700 disabled:cursor-not-allowed disabled:opacity-40"
+              >
+                {answer.isPending ? `Checking with ${meta.name}...` : "Continue"}
+              </button>
+            </form>
+          ) : null}
+
+          {session ? (
+            <form
+              className="mt-3 max-w-xl space-y-3"
+              onSubmit={(e) => {
+                e.preventDefault();
+                if (read && read.missing.length === 0) answer.mutate(read.values);
+              }}
+            >
+              <p className="text-sm text-gray-600">Log in to {meta.name} in your browser, then copy one of its requests here.</p>
+              <ol className="list-decimal space-y-1 pl-5 text-sm text-gray-600">
+                <li>
+                  <a href={session.url ?? "https://www.linkedin.com/feed/"} target="_blank" rel="noopener noreferrer" className="font-medium text-brand-700 hover:underline">
+                    Open {meta.name}
+                  </a>{" "}
+                  and log in.
+                </li>
+                <li>Open the developer tools (F12, or Cmd+Option+I on a Mac) and click Network.</li>
+                <li>Type voyager in the filter box, then reload the page.</li>
+                <li>Right-click any line, then Copy, then Copy as cURL.</li>
+              </ol>
+              <textarea
+                value={pasted}
+                onChange={(e) => setPasted(e.target.value)}
+                rows={4}
+                placeholder="curl 'https://www.linkedin.com/voyager/api/...' -H ..."
+                aria-label={`The ${meta.name} request you copied`}
+                autoComplete="off"
+                spellCheck={false}
+                className="block w-full rounded-lg border border-gray-200 px-3 py-2 font-mono text-xs text-gray-900 placeholder:text-gray-400 focus:border-brand-300 focus:outline-none focus:ring-2 focus:ring-brand-300/40"
+              />
+              {read && read.missing.length > 0 ? (
+                <p className="text-sm text-amber-700">This copy lacks {read.missing.join(", ")}. Copy a line whose name starts with voyager.</p>
+              ) : null}
+              <p className="text-xs text-gray-500">This holds your {meta.name} login. We pass it to {meta.name} and never store it.</p>
+              <button
+                type="submit"
+                disabled={busy || !read || read.missing.length > 0}
                 className="rounded-lg bg-brand-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-brand-700 disabled:cursor-not-allowed disabled:opacity-40"
               >
                 {answer.isPending ? `Checking with ${meta.name}...` : "Continue"}
