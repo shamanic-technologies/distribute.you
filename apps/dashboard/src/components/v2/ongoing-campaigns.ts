@@ -5,7 +5,9 @@ import { useMissions, type Mission } from "@/components/v2/use-missions";
 import { useLegCatalogue } from "@/lib/use-leg-catalogue";
 import { campaignNameFor } from "@/lib/legs";
 import { useAuthQuery } from "@/lib/use-auth-query";
-import { getOfferSalesPaths } from "@/lib/api";
+import { getOfferSalesPaths, listSalesFunnelCampaigns } from "@/lib/api";
+import { pollOptions } from "@/lib/query-options";
+import { isOngoingFunnelCampaign, type SalesFunnelCampaign } from "@/lib/sales-funnel-campaigns";
 import { roiUnavailableLabel } from "@/lib/offer-sales-paths";
 import { campaignKey, campaignsOfOffer, sortCampaigns, sourceCampaignsOfOffer, type OfferCampaign } from "@/lib/offer-campaigns";
 import { canonicalStepKey } from "@/lib/step-marks";
@@ -16,6 +18,8 @@ import { outcomeOf, type Outcome } from "@/lib/v2/outcomes";
 export interface OngoingOutcome {
   outcome: Outcome;
   campaigns: OngoingCampaign[];
+  /** The sales-funnel campaigns whose parts produce it, each listed once (never its parts). */
+  funnelCampaigns: SalesFunnelCampaign[];
 }
 
 export interface OngoingCampaign {
@@ -30,16 +34,27 @@ export interface OngoingCampaign {
  * The selected offer's campaigns that are ON, named and ordered as the Sales path page's
  * Campaigns section (proactive first, ROI high to low). One read for the sidebar and
  * Today, so the two lists never disagree.
+ *
+ * Sales-funnel campaigns (owner 2026-10-10) are listed ONCE, by name and face
+ * (`funnelCampaigns`); their parts are never in `campaigns`. What the parts produce still
+ * counts (`outcomes`, `steps`), and `running` keeps every running row for the joins that
+ * need what actually runs (staff pipes).
  */
 export function useOngoingCampaigns(orgId: string, brandId: string, offerId: string | null) {
-  const { missions, settled } = useMissions(orgId, brandId);
+  const { allMissions: missions, settled } = useMissions(orgId, brandId);
+  // Same key as every other reader of the offer's funnel campaigns (Campaigns page, staff section).
+  const funnelQ = useAuthQuery(["salesFunnelCampaigns", brandId, offerId ?? "all"], () => listSalesFunnelCampaigns(brandId, offerId), {
+    enabled: !!brandId && !!offerId,
+    ...pollOptions,
+  });
+  const funnelCampaigns = useMemo(() => (funnelQ.data ?? []).filter(isOngoingFunnelCampaign), [funnelQ.data]);
   const legCatalogue = useLegCatalogue();
   const salesPaths = useAuthQuery(
     ["offerSalesPaths", brandId, offerId, "catalogue"],
     () => getOfferSalesPaths(brandId, offerId as string, "catalogue"),
     { enabled: !!brandId && !!offerId },
   );
-  const campaigns = useMemo<OngoingCampaign[]>(() => {
+  const running = useMemo<OngoingCampaign[]>(() => {
     const order = new Map<string, number>();
     const byKey = new Map<string, OfferCampaign>();
     // Source campaigns are campaigns too (owner 2026-10-07): an ON one is listed, named, like the rest.
@@ -65,33 +80,44 @@ export function useOngoingCampaigns(orgId: string, brandId: string, offerId: str
         return { m, name, campaign };
       });
   }, [missions, salesPaths.data, legCatalogue.campaignNames]);
-  // Every step an ON campaign starts from or lands on, in the producer's step keys.
+  // What a surface LISTS: a part of a sales-funnel campaign is listed through its campaign, once.
+  const campaigns = useMemo(() => running.filter((c) => !c.m.row.campaign.salesFunnelCampaignId), [running]);
+  // Every step an ON campaign (or a running part) starts from or lands on, in the producer's step keys.
   const steps = useMemo(() => {
     const out = new Set<string>();
-    for (const { m } of campaigns) {
+    for (const { m } of running) {
       if (m.leg?.fromKey) out.add(canonicalStepKey(m.leg.fromKey));
       if (m.leg) out.add(canonicalStepKey(m.leg.toKey));
     }
     return out;
-  }, [campaigns]);
+  }, [running]);
   // Outcomes (owner 2026-10-10): one per step an ON campaign lands on, in campaign order.
   // A source campaign's leg is not in the leg catalogue: it lands on Lead found.
   const outcomes = useMemo<OngoingOutcome[]>(() => {
     const byKey = new Map<string, OngoingOutcome>();
-    for (const c of campaigns) {
+    const funnelById = new Map((funnelQ.data ?? []).map((f) => [f.id, f]));
+    for (const c of running) {
       const toKey = c.m.leg?.toKey ?? (c.campaign?.kind === "source" ? LEAD_FOUND_STEP : null);
       const outcome = outcomeOf(c.m.row.campaign.featureSlug, toKey, c.m.leg?.toLabel ?? c.campaign?.toLabel);
       if (!outcome) {
         console.error("[v2] a running campaign produces no known step", { featureSlug: c.m.row.campaign.featureSlug, legKey: c.m.row.campaign.legKey });
         continue;
       }
-      const hit = byKey.get(outcome.key);
-      if (hit) hit.campaigns.push(c);
-      else byKey.set(outcome.key, { outcome, campaigns: [c] });
+      const hit = byKey.get(outcome.key) ?? { outcome, campaigns: [], funnelCampaigns: [] };
+      byKey.set(outcome.key, hit);
+      const partOf = c.m.row.campaign.salesFunnelCampaignId;
+      if (!partOf) {
+        hit.campaigns.push(c);
+        continue;
+      }
+      // A part names its campaign, once; until the funnel read answers the outcome still counts.
+      const funnel = funnelById.get(partOf);
+      if (funnel && !hit.funnelCampaigns.some((f) => f.id === funnel.id)) hit.funnelCampaigns.push(funnel);
     }
     return [...byKey.values()];
-  }, [campaigns]);
+  }, [running, funnelQ.data]);
   // Settled once the missions AND the offer's campaign list (names, legs) have answered.
   const catalogueSettled = !offerId || salesPaths.data !== undefined || salesPaths.isError;
-  return { campaigns, outcomes, steps, settled: settled && catalogueSettled };
+  const funnelSettled = !offerId || funnelQ.data !== undefined || funnelQ.isError;
+  return { campaigns, funnelCampaigns, running, outcomes, steps, settled: settled && catalogueSettled && funnelSettled };
 }

@@ -10,6 +10,9 @@ import { useBucketCounts } from "@/components/v2/data";
 import { useSelectedOffer } from "@/components/v2/selected-offer";
 import { useOngoingCampaigns, type OngoingCampaign, type OngoingOutcome } from "@/components/v2/ongoing-campaigns";
 import { PathAvatar } from "@/components/v2/offer-sales-paths";
+import { FunnelFace } from "@/components/v2/funnel-campaigns";
+import { v2CampaignHref } from "@/lib/v2/routes";
+import type { SalesFunnelCampaign } from "@/lib/sales-funnel-campaigns";
 import { CrewMark } from "@/components/v2/crew-mark";
 import { PeoplePage } from "@/components/v2/people-page";
 import { AudienceLists } from "@/components/v2/audience-page";
@@ -31,10 +34,17 @@ function CampaignFace({ c }: { c: OngoingCampaign }) {
   return c.name ? <PathAvatar name={c.name} size={16} /> : <CrewMark color={c.m.crew.color} glyph={c.m.crew.glyph} size={16} />;
 }
 
-/** "Soar, Nova": the campaigns behind an outcome, each with its face. */
-function ProducedBy({ campaigns }: { campaigns: OngoingCampaign[] }) {
+/** "Soar, Nova": the campaigns behind an outcome, each with its face. A sales-funnel campaign is named once, never its parts. */
+function ProducedBy({ campaigns, funnelCampaigns }: { campaigns: OngoingCampaign[]; funnelCampaigns: SalesFunnelCampaign[] }) {
+  const { orgId } = useIds();
   return (
     <span className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1">
+      {funnelCampaigns.map((f) => (
+        <Link key={f.id} href={v2CampaignHref(orgId, f.brandId, f.id)} className="k-fg2 inline-flex min-w-0 items-center gap-1.5 hover:text-[var(--fg-1)]" onClick={(e) => e.stopPropagation()}>
+          <FunnelFace name={f.salesFunnelName} size={16} />
+          <span className="truncate">{f.salesFunnelName}</span>
+        </Link>
+      ))}
       {campaigns.map((c) => (
         <Link key={c.m.row.campaign.id} href={c.m.href} className="k-fg2 inline-flex min-w-0 items-center gap-1.5 hover:text-[var(--fg-1)]" onClick={(e) => e.stopPropagation()}>
           <CampaignFace c={c} />
@@ -93,7 +103,7 @@ export function OutcomesOverviewPage() {
                         </Link>
                       </td>
                       <td className="px-3 py-2">
-                        <ProducedBy campaigns={o.campaigns} />
+                        <ProducedBy campaigns={o.campaigns} funnelCampaigns={o.funnelCampaigns} />
                       </td>
                       <td className="px-3 py-2 pr-4 text-right">
                         <Count outcome={o.outcome} counts={counts} />
@@ -132,7 +142,7 @@ export function OutcomePage() {
           ) : running ? (
             <>
               <span>Produced by</span>
-              <ProducedBy campaigns={running.campaigns} />
+              <ProducedBy campaigns={running.campaigns} funnelCampaigns={running.funnelCampaigns} />
             </>
           ) : (
             <span>No running campaign produces this today.</span>

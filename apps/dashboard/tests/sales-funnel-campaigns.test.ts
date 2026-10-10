@@ -172,7 +172,41 @@ describe("sales funnel campaigns: wiring", () => {
   it("Campaigns lists funnel campaigns: the overview section and the sidebar's ON ones", () => {
     expect(src("src/components/v2/campaigns-overview-page.tsx")).toContain("<FunnelCampaignsSection orgId={orgId} brandId={brandId} offerId={offerId} />");
     const shell = src("src/components/v2/v2-shell.tsx");
-    expect(shell).toContain("funnelCampaigns.filter(isOngoingFunnelCampaign)");
-    expect(shell).toContain(".filter(({ m }) => !m.row.campaign.salesFunnelCampaignId)");
+    expect(shell).toContain("const { campaigns: ongoing, funnelCampaigns, outcomes } = useOngoingCampaigns(orgId, brandId, offerId);");
+    expect(shell).toContain("funnelCampaigns.map((c) => {");
+  });
+
+  it("a part is never LISTED as a campaign: filtered once at the source every listing surface reads", () => {
+    const missions = src("src/components/v2/use-missions.ts");
+    expect(missions).toContain("const missions = useMemo(() => allMissions.filter((m) => !m.row.campaign.salesFunnelCampaignId), [allMissions]);");
+    // Lookups by id keep the parts (a part's own page, a lead's campaign, the funnel page's results).
+    expect(missions).toContain("for (const m of allMissions) out.set(m.row.campaign.id, m);");
+    const ongoing = src("src/components/v2/ongoing-campaigns.ts");
+    expect(ongoing).toContain("const campaigns = useMemo(() => running.filter((c) => !c.m.row.campaign.salesFunnelCampaignId), [running]);");
+    expect(ongoing).toContain("if (funnel && !hit.funnelCampaigns.some((f) => f.id === funnel.id)) hit.funnelCampaigns.push(funnel);");
+  });
+
+  it("Today and Outcomes name a funnel campaign once, by face and name", () => {
+    const today = src("src/components/v2/today-page.tsx");
+    expect(today).toContain("<FunnelCampaignLine key={f.id} orgId={orgId} campaign={f} />");
+    expect(today).toContain("ongoing.campaigns.length + ongoing.funnelCampaigns.length");
+    const outcomes = src("src/components/v2/outcomes-page.tsx");
+    expect(outcomes).toContain("funnelCampaigns={o.funnelCampaigns}");
+    expect(outcomes).toContain("funnelCampaigns={running.funnelCampaigns}");
+  });
+
+  it("a campaign page never waits on the funnel list, and the list paints from disk", () => {
+    const page = src("src/components/v2/campaign-page.tsx");
+    const route = page.slice(page.indexOf("export function V2CampaignRoute()"), page.indexOf("export function V2CampaignPage("));
+    expect(route).toContain("return <V2CampaignPage funnelListSettled={funnel.settled} />;");
+    expect(route).not.toContain("<Shimmer");
+    expect(page).toContain("if (settled && !mission && !funnelListSettled) {");
+    const persist = src("src/lib/persist-cache.ts");
+    const sensitive = persist.slice(persist.indexOf("export const SENSITIVE_QUERY_ROOTS"), persist.indexOf("export const PERSISTABLE_QUERY_ROOTS"));
+    const persistable = persist.slice(persist.indexOf("export const PERSISTABLE_QUERY_ROOTS"));
+    for (const root of ['"salesFunnelCampaigns"', '"salesFunnelCampaign"', '"salesFunnelCaps"']) {
+      expect(sensitive).not.toContain(root);
+      expect(persistable).toContain(root);
+    }
   });
 });

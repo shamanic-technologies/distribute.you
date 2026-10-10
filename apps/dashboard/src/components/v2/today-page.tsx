@@ -34,6 +34,7 @@ import {
 } from "@/components/v2/ui";
 import { useCrewRuns } from "@/components/v2/runs";
 import { useOngoingCampaigns, type OngoingCampaign } from "@/components/v2/ongoing-campaigns";
+import { FunnelCampaignLine } from "@/components/v2/funnel-campaigns";
 import { PathAvatar } from "@/components/v2/offer-sales-paths";
 import { CampaignLeg, budgetLabel } from "@/components/v2/offer-campaigns";
 import { campaignKey, campaignTag } from "@/lib/offer-campaigns";
@@ -457,7 +458,7 @@ export function TodayPage() {
                 {/* The offer's ON campaigns, named and ordered as the sidebar and the Sales path page. */}
                 <section>
                   <SectionTitle
-                    count={ongoing.settled ? ongoing.campaigns.length : null}
+                    count={ongoing.settled ? ongoing.campaigns.length + ongoing.funnelCampaigns.length : null}
                     right={selectedOfferId ? (
                       <Link href={v2OfferHref(orgId, brandId, selectedOfferId, "sales-path")} className="hover:text-[var(--fg-1)]">
                         Budgets →
@@ -475,16 +476,22 @@ export function TodayPage() {
                   <div className="k-card divide-y divide-[var(--line-subtle)]">
                     {!ongoing.settled ? (
                       <div className="p-4"><Shimmer className="h-10 w-full" /></div>
-                    ) : ongoing.campaigns.length === 0 ? (
+                    ) : ongoing.campaigns.length + ongoing.funnelCampaigns.length === 0 ? (
                       <EmptyNote>No campaign is on.</EmptyNote>
                     ) : (
-                      ongoing.campaigns.map((c) => (
-                        <CampaignLine
-                          key={c.m.row.campaign.id}
-                          c={c}
-                          budget={budgetOf(c)}
-                        />
-                      ))
+                      <>
+                        {/* A sales-funnel campaign is ONE line (face + name), never its parts (owner 2026-10-10). */}
+                        {ongoing.funnelCampaigns.map((f) => (
+                          <FunnelCampaignLine key={f.id} orgId={orgId} campaign={f} />
+                        ))}
+                        {ongoing.campaigns.map((c) => (
+                          <CampaignLine
+                            key={c.m.row.campaign.id}
+                            c={c}
+                            budget={budgetOf(c)}
+                          />
+                        ))}
+                      </>
                     )}
                   </div>
                 </section>

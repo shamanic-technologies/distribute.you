@@ -89,7 +89,9 @@ export function useMissions(orgId: string, brandId: string, { allOffers = false 
     return m;
   }, [offersQ.data]);
 
-  const missions = useMemo<Mission[]>(
+  // EVERY campaign row, the parts of sales-funnel campaigns included: lookups by id and the
+  // joins that need what actually runs (outcomes, pipes) read these.
+  const allMissions = useMemo<Mission[]>(
     () =>
       rows.flatMap((row) => {
         const c = row.campaign;
@@ -118,6 +120,9 @@ export function useMissions(orgId: string, brandId: string, { allOffers = false 
       }),
     [rows, channels, legCatalogue, offerNames, orgId, brandId, scopeReady, scopeOfferId],
   );
+  // The campaigns a surface LISTS (owner 2026-10-10): a part of a sales-funnel campaign is never
+  // listed as a campaign of its own; its campaign is listed once, by name and face.
+  const missions = useMemo(() => allMissions.filter((m) => !m.row.campaign.salesFunnelCampaignId), [allMissions]);
 
   // Every stored campaign row → its mission. A campaign as the customer knows it is
   // many stored rows (a new one per workflow switch, the ancestors kept), and a lead is
@@ -128,18 +133,19 @@ export function useMissions(orgId: string, brandId: string, { allOffers = false 
     enabled: !!brandId,
   });
   const missionByCampaignId = useMemo(() => {
-    const identity = (c: { offerId?: string | null; legKey?: string | null; featureSlug?: string | null }) =>
-      `${c.offerId ?? ""}|${canonicalLegKey(c.featureSlug, c.legKey) ?? ""}|${c.featureSlug ?? ""}`;
+    // A part of a sales-funnel campaign is its own identity (campaign-service's uniqueness includes the funnel).
+    const identity = (c: { offerId?: string | null; legKey?: string | null; featureSlug?: string | null; salesFunnelCampaignId?: string | null }) =>
+      `${c.offerId ?? ""}|${canonicalLegKey(c.featureSlug, c.legKey) ?? ""}|${c.featureSlug ?? ""}|${c.salesFunnelCampaignId ?? ""}`;
     const byIdentity = new Map<string, Mission>();
-    for (const m of missions) byIdentity.set(identity(m.row.campaign), m);
+    for (const m of allMissions) byIdentity.set(identity(m.row.campaign), m);
     const out = new Map<string, Mission>();
     for (const c of allQ.data?.campaigns ?? []) {
       const m = byIdentity.get(identity(c));
       if (m) out.set(c.id, m);
     }
-    for (const m of missions) out.set(m.row.campaign.id, m);
+    for (const m of allMissions) out.set(m.row.campaign.id, m);
     return out;
-  }, [missions, allQ.data]);
+  }, [allMissions, allQ.data]);
 
   // Every crew a customer can put to work is listed, working or not, and so is any
   // other crew already working for this brand. The offered ones come first, in the
@@ -191,5 +197,5 @@ export function useMissions(orgId: string, brandId: string, { allOffers = false 
     return [...byKey.values()].sort((a, b) => rank(a) - rank(b) || a.crew.name.localeCompare(b.crew.name));
   }, [missions, legCatalogue, channels]);
 
-  return { missions, crews, settled: settled && (allOffers || selected.settled), missionByCampaignId };
+  return { missions, allMissions, crews, settled: settled && (allOffers || selected.settled), missionByCampaignId };
 }
