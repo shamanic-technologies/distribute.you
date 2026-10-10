@@ -181,13 +181,13 @@ export const MCP_TOOLS: McpTool[] = [
     name: "distribute_list_campaigns",
     category: "Campaigns",
     description:
-      "List all your cold email campaigns. Takes an optional status of ongoing, stopped or all.",
+      "List your campaigns: name, status, type and budget. Takes an optional status of ongoing, stopped or all.",
   },
   {
     name: "distribute_campaign_stats",
     category: "Campaigns",
     description:
-      "Get statistics for one campaign, by campaign id: what it produced and what it cost.",
+      "Get one campaign's results, by campaign id: what each part of it brought in and what it cost.",
   },
   {
     name: "distribute_list_workflows",

@@ -62,7 +62,7 @@ Anything beyond these is reachable over the REST API, which covers every operati
 - [distribute.you API Reference](https://docs.distribute.you/api/): REST API reference for distribute.you. Manage brands, campaigns, workflows, leads, press kits, billing and more.
 - [Brands API](https://docs.distribute.you/api/brands/): Create brands from a URL, fetch full brand details, and extract structured company data with AI through the distribute.you REST API.
 - [Features API](https://docs.distribute.you/api/features/): List automation features, pull live performance stats, and prefill campaign inputs through the distribute.you REST API.
-- [Campaigns API](https://docs.distribute.you/api/campaigns/): Create, launch, stop and monitor outreach campaigns, and track their status and results in real time, via the distribute.you REST API.
+- [Campaigns API](https://docs.distribute.you/api/campaigns/): List your campaigns, run or pause them, set their budget and read their results via the distribute.you REST API.
 - [Workflows API](https://docs.distribute.you/api/workflows/): List workflows, inspect their DAGs, fetch run summaries, and check API-key status through the distribute.you REST API.
 - [Leads API](https://docs.distribute.you/api/leads/): List qualified leads discovered for your campaigns and brands, with enrichment and source context, via the distribute.you REST API.
 - [Emails API](https://docs.distribute.you/api/emails/): View AI-generated emails and full outreach sequences for any campaign, with content and send status, via the distribute.you REST API.

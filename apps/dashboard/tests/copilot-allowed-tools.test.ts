@@ -61,6 +61,11 @@ describe("Copilot allowed tools", () => {
     for (const t of ["get_campaign", "get_campaign_budgets"]) expect(tools).not.toContain(t);
   });
 
+  it("no per-step writes: budgets are funnel caps, on/off is the funnel campaign (owner 2026-10-10)", () => {
+    for (const t of ["set_campaign_budget", "stop_campaign"]) expect(tools).not.toContain(t);
+    for (const t of ["set_funnel_caps", "stop_funnel_campaign"]) expect(tools).toContain(t);
+  });
+
   it("lists each tool once", () => {
     expect(new Set(tools).size).toBe(tools.length);
   });

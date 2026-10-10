@@ -901,7 +901,7 @@ export async function unlinkMatrixLink(brandId: string, channel: string, linkId:
   );
 }
 
-// ==================== POSTHOG + STRIPE, read-only sources of Conversations ====================
+// ==================== POSTHOG + STRIPE + CLERK, read-only sources of Conversations ====================
 //
 // Same two-write connect as GoHighLevel: the credential goes to key-service under the
 // brand (`setBrandKey(brandId, "posthog" | "stripe", key)`), then crm-service proves it
@@ -909,7 +909,7 @@ export async function unlinkMatrixLink(brandId: string, channel: string, linkId:
 // `brandId` rides the query string on every call for the same gateway reason as
 // `connectCrm` above (identity is promoted from headers / query only, never a body).
 
-export type SourceSlug = "posthog" | "stripe";
+export type SourceSlug = "posthog" | "stripe" | "clerk";
 
 const SourceConnectionSchema = z.object({
   id: z.string(),
@@ -946,7 +946,8 @@ export async function listSourceConnections(
 /**
  * Connect `source` for this brand. The credential must ALREADY be stored; `fields`
  * is what names the account (PostHog: projectId + region; Stripe: nothing, the
- * restricted key is bound to its account).
+ * restricted key is bound to its account; Clerk: nothing, the secret key is bound to
+ * its instance).
  */
 export async function connectSource(
   source: SourceSlug,

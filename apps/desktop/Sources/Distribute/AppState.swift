@@ -1,13 +1,6 @@
 import Foundation
 import AppKit
 
-/// One campaign joined to ITS served figures by campaign id.
-struct CampaignRow: Identifiable {
-    let campaign: Campaign
-    let figures: RevenueGroup?
-    var id: String { campaign.id }
-}
-
 /// The four sidebar counts dashboard v2 shows, from the same reads.
 struct SidebarCounts {
     var needsCall: Int?
@@ -76,10 +69,12 @@ final class AppState: ObservableObject {
     @Published var outcomes: [OutcomeEntry] = []
     /// lead-service's bucket counts for the selected offer: the People badge and each outcome's count.
     @Published var bucketCounts: BucketCounts.Counts?
-    /// The offer's campaigns as the Sales path lists them (Campaigns > Overview, names, order).
-    @Published var salesPaths: Load<OfferSalesPaths> = .idle
+    /// Every campaign of the selected offer (Campaigns > Overview and each campaign's page).
+    @Published var offerCampaigns: Load<[FunnelCampaign]> = .idle
+    /// Each campaign's limits (billing), by campaign id; absent = not read (logged).
+    @Published var campaignCaps: [String: FunnelCaps] = [:]
     /// The platform catalogue (legs, campaign names): the same for every tenant, read once.
-    private var legCatalogue: LegCatalogue?
+    var legCatalogue: LegCatalogue?
     @Published var balance: Balance?
 
     @Published var pane: Pane? = .today
@@ -90,7 +85,8 @@ final class AppState: ObservableObject {
     @Published var deals: Load<DealsData> = .idle
     @Published var offerData: Load<OfferData> = .idle
     @Published var audiences: Load<[Audience]> = .idle
-    @Published var campaignFigures: Load<RevenueGroup?> = .idle
+    /// The open campaign's served figures per part, keyed by the part's row id.
+    @Published var campaignFigures: Load<[String: RevenueGroup]> = .idle
     @Published var outcomePeople: Load<LeadPage> = .idle
     @Published var unibox: Load<UniboxPeople> = .idle
 
@@ -218,7 +214,7 @@ final class AppState: ObservableObject {
         counts = SidebarCounts()
         today = .idle; companies = .idle; people = .idle; deals = .idle
         offerData = .idle; audiences = .idle; campaignFigures = .idle; outcomePeople = .idle; unibox = .idle
-        onCampaigns = []; outcomes = []; bucketCounts = nil; salesPaths = .idle
+        onCampaigns = []; outcomes = []; bucketCounts = nil; offerCampaigns = .idle; campaignCaps = [:]
     }
 
     /// Re-reads the sidebar and the open panel (after a brand/offer pick or a chat turn).
@@ -254,24 +250,34 @@ final class AppState: ObservableObject {
         }
     }
 
-    /// Campaigns and Outcomes: the brand's campaigns, the leg catalogue and the offer's
-    /// sales-path campaigns, joined as dashboard v2's `useOngoingCampaigns` joins them.
+    /// Campaigns and Outcomes: the offer's campaigns (campaign-service), their limits (billing) and
+    /// the leg catalogue, joined as dashboard v2's `useOngoingCampaigns` joins them.
     private func refreshCampaigns(api: DistributeAPI, brandId: String, offerId: String) async {
-        if case .idle = salesPaths { salesPaths = .loading }
+        if case .idle = offerCampaigns { offerCampaigns = .loading }
         do {
-            async let campaigns = api.campaigns(brandId: brandId)
-            async let paths = api.offerSalesPaths(brandId: brandId, offerId: offerId)
+            async let campaigns = api.funnelCampaigns(brandId: brandId, offerId: offerId)
             if legCatalogue == nil { legCatalogue = LegCatalogue(try await api.publicCatalogue()) }
-            let (c, p) = try await (campaigns, paths)
+            let list = try await campaigns
             guard offerId == selectedOffer?.offerId else { return }
-            salesPaths = .loaded(p)
-            let joined = joinOnCampaigns(campaigns: c, offerId: offerId, catalogue: legCatalogue ?? LegCatalogue(), paths: p)
+            offerCampaigns = .loaded(list)
+            let joined = joinOnCampaigns(funnels: list, offerId: offerId, catalogue: legCatalogue ?? LegCatalogue())
             onCampaigns = joined.campaigns
             outcomes = joined.outcomes
+            var caps: [String: FunnelCaps] = [:]
+            for c in list {
+                do { caps[c.id] = try await api.funnelCaps(c) } catch { NSLog("[desktop] campaign limits failed \(c.id): \(error.localizedDescription)") }
+            }
+            guard offerId == selectedOffer?.offerId else { return }
+            campaignCaps = caps
         } catch {
             NSLog("[desktop] campaigns failed: \(error.localizedDescription)")
-            salesPaths = .failed(error.localizedDescription)
+            offerCampaigns = .failed(error.localizedDescription)
         }
+    }
+
+    /// What a part brings in and the channel doing it (the leg catalogue, read once).
+    func partNames(_ part: FunnelCampaign.Part) -> (bringsIn: String?, channel: String?) {
+        funnelPartNames(part, catalogue: legCatalogue ?? LegCatalogue())
     }
 
     // MARK: panels
@@ -323,7 +329,7 @@ final class AppState: ObservableObject {
             case .people: people = .failed(none)
             case .deals: deals = .failed(none)
             case .offer: offerData = .failed(none)
-            case .campaigns: salesPaths = .failed(none)
+            case .campaigns: offerCampaigns = .failed(none)
             case .outcome: outcomePeople = .failed(none)
             case .unibox: await loadUnibox(api: api, brandId: brand.id)
             case .campaign, .outcomes, .integrations, .settings, .billing: break
@@ -374,10 +380,16 @@ final class AppState: ObservableObject {
         case .campaigns:
             await refreshCampaigns(api: api, brandId: b, offerId: o)
         case .campaign(let id):
-            guard let slug = onCampaigns.first(where: { $0.id == id })?.campaign.featureSlug else { campaignFigures = .loaded(nil); return }
-            // The campaign's own feature serves its figures; a campaign with no row there yet reads "—".
+            if offerCampaigns.value == nil { await refreshCampaigns(api: api, brandId: b, offerId: o) }
+            guard let c = offerCampaigns.value?.first(where: { $0.id == id }) else { campaignFigures = .loaded([:]); return }
+            // Each part's own feature serves its figures (one read per feature); a part with no row there yet reads "—".
             await run({ campaignFigures = $0 }) {
-                try await api.featureRevenue(featureSlug: slug, brandId: b).first { $0.campaignId == id }
+                let partIds = Set(c.units.map(\.campaignId))
+                var byPart: [String: RevenueGroup] = [:]
+                for slug in Set(c.units.map(\.featureSlug)) {
+                    for g in try await api.featureRevenue(featureSlug: slug, brandId: b) where partIds.contains(g.campaignId) { byPart[g.campaignId] = g }
+                }
+                return byPart
             }
         case .outcome(let key):
             let outcome = outcomes.first { $0.outcome.key == key }?.outcome ?? outcomeOf(featureSlug: nil, toKey: key)
@@ -406,7 +418,7 @@ final class AppState: ObservableObject {
     /// The title of what is open beside the chat: a campaign by its name, an outcome by its step.
     func title(of p: Pane) -> String {
         switch p {
-        case .campaign(let id): return onCampaigns.first { $0.id == id }?.label ?? "Campaign"
+        case .campaign(let id): return offerCampaigns.value?.first { $0.id == id }?.name ?? "Campaign"
         case .outcome(let key): return (outcomes.first { $0.outcome.key == key }?.outcome ?? outcomeOf(featureSlug: nil, toKey: key))?.label ?? "Outcome"
         default: return p.title
         }
