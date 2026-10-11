@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent } fro
 import { useCopilotDock } from "@/components/v2/copilot-dock";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
+import { useAuth } from "@clerk/nextjs";
 import { useChat } from "@ai-sdk/react";
 import { DefaultChatTransport, isToolUIPart, type UIMessage } from "ai";
 import Markdown from "react-markdown";
@@ -63,7 +64,9 @@ function loadSessionId(key: string): string | null {
     return null;
   }
 }
-function saveSessionId(key: string, id: string | null) {
+function saveSessionId(key: string | null, id: string | null) {
+  // No signed-in user yet: nothing is kept, it could land under the wrong person.
+  if (!key) return;
   try {
     if (id) localStorage.setItem(key, id);
     else localStorage.removeItem(key);
@@ -227,7 +230,9 @@ const md = {
 export function CopilotChat({ orgId, brandId, headerAction }: { orgId: string; brandId: string; headerAction?: React.ReactNode }) {
   const router = useRouter();
   const pathname = usePathname();
-  const storageKey = copilotSessionStorageKey(orgId, brandId);
+  // Keyed per signed-in user: a teammate on the same browser never restores this chat.
+  const { userId } = useAuth();
+  const storageKey = userId ? copilotSessionStorageKey(orgId, userId, brandId) : null;
   const sessionIdRef = useRef<string | null>(null);
   const [historyChoices, setHistoryChoices] = useState<Map<string, CopilotChoices>>(new Map());
   const [historyPages, setHistoryPages] = useState<Map<string, CopilotOpenPage[]>>(new Map());
@@ -290,7 +295,7 @@ export function CopilotChat({ orgId, brandId, headerAction }: { orgId: string; b
   );
 
   const { messages, sendMessage, setMessages, status, error, regenerate, stop } = useChat({
-    id: `copilot-${orgId}-${brandId}`,
+    id: `copilot-${orgId}-${userId ?? "signed-out"}-${brandId}`,
     transport,
     onData: (data: { type: string; data?: unknown }) => {
       if (data.type === "data-session" && data.data) {
@@ -317,6 +322,8 @@ export function CopilotChat({ orgId, brandId, headerAction }: { orgId: string; b
   // else the one this browser kept (sessions from before chat-service recorded the brand);
   // none opens a new chat.
   useEffect(() => {
+    // Until Clerk names the user there is no key to read: stay loading.
+    if (!storageKey) return;
     let cancelled = false;
     const localSid = loadSessionId(storageKey);
     setPhase("loading");

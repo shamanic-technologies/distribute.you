@@ -25,8 +25,25 @@ describe("copilot rules", () => {
     expect(isPanelLink(undefined)).toBe(false);
   });
 
-  it("keys the conversation per org and brand", () => {
-    expect(copilotSessionStorageKey("o1", "b1")).not.toBe(copilotSessionStorageKey("o1", "b2"));
+  it("keys the conversation per org, signed-in user and brand", () => {
+    expect(copilotSessionStorageKey("o1", "u1", "b1")).not.toBe(copilotSessionStorageKey("o1", "u1", "b2"));
+    // Two teammates on one browser never share a key (owner 2026-10-11, confidentiality).
+    expect(copilotSessionStorageKey("o1", "uA", "b1")).not.toBe(copilotSessionStorageKey("o1", "uB", "b1"));
+    expect(copilotSessionStorageKey("o1", "uA", "b1")).toBe("copilot-session:o1:uA:b1");
+  });
+
+  it("never reads the legacy org+brand key, and waits for the signed-in user", () => {
+    const chat = src("src/components/v2/copilot-chat.tsx");
+    expect(chat).toContain("const storageKey = userId ? copilotSessionStorageKey(orgId, userId, brandId) : null;");
+    expect(chat).toContain("if (!storageKey) return;");
+    expect(chat).toContain("id: `copilot-${orgId}-${userId");
+    expect(src("src/lib/copilot.ts")).not.toContain("`copilot-session:${orgId}:${brandId}`");
+  });
+
+  it("Edit with AI keeps its session per org and signed-in user too", () => {
+    const edit = src("src/components/ai-edit/edit-with-ai-chat.tsx");
+    expect(edit).toContain("const chatKey = userId && orgId ? `${orgId}:${userId}:${baseKey}` : null;");
+    expect(edit).toContain("id: `edit-ai-${chatKey");
   });
 
   it("re-reads the stored cards of assistant turns only, rich choices before plain buttons", () => {
