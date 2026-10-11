@@ -195,8 +195,8 @@ export function EconomicsCard({
       value: economics.avgLtrUsd === null ? "—" : usdFull(economics.avgLtrUsd),
       detail:
         economics.avgLtrUsd === null
-          ? "No customer here states a lifetime revenue"
-          : `Over ${formatCount(economics.ltrCustomers)} that state one`,
+          ? "Nobody here has paid yet"
+          : `Cash paid to date, over ${formatCount(economics.ltrCustomers)} paying`,
     },
     {
       label: "Avg daily budget",

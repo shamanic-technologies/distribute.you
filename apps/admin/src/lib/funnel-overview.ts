@@ -218,7 +218,9 @@ export function columnHeightPct(value: number, base: number): number {
 
 /** The per-customer figures the economics row averages. A structural subset of `CustomerRow`. */
 export interface ClientEconomicsRow {
-  ltrUsd: number | null;
+  orgId: string;
+  /** Cash the ORG paid us to date, net of refunds; org-level, same on every brand row. Null = unreadable. */
+  orgCashPaidUsd: number | null;
   runningDailyBudgetUsd: number;
   retentionWeeks: number | null;
   activeDays: string[];
@@ -227,9 +229,9 @@ export interface ClientEconomicsRow {
 export interface ClientEconomics {
   /** Customers in the window — the population every average below divides by. */
   customers: number;
-  /** Mean stated lifetime revenue. Null when nobody in the population states one. */
+  /** Mean cash paid to date per paying org. Null when nobody in the population has paid. */
   avgLtrUsd: number | null;
-  /** How many of the population state an LTR — the denominator `avgLtrUsd` really used. */
+  /** How many paying orgs the population holds — the denominator `avgLtrUsd` really used. */
   ltrCustomers: number;
   /** Mean running daily budget, self-serve and agency together. Null on an empty population. */
   avgDailyBudgetUsd: number | null;
@@ -247,10 +249,13 @@ function mean(values: number[]): number | null {
  * asks for in one breath: what one is worth, what one spends a day, and how long one
  * stays.
  *
- * A brand that states NO lifetime revenue is excluded from the LTR average rather
- * than counted as a $0 brand — it has not answered, which is not the same as being
- * worth nothing. The count of those that did answer is served beside the average so
- * the figure can be read for what it is.
+ * LTR is the CASH an org paid us to date (bank transfers included, refunds out), the
+ * owner's revenue rule (2026-10-11: revenue is cash collected). It is NOT the lifetime
+ * value a brand states for its own customers: that figure read $5k-$9k here while no
+ * client had paid us that much. Cash is org-level, so an org counts once however many
+ * brand rows it has. An org that never paid (welcome credit only) is not a paying
+ * customer and an unreadable one is not measured: neither is averaged in as $0, and
+ * the count of paying orgs is served beside the average.
  */
 export function clientEconomics(
   rows: ClientEconomicsRow[],
@@ -259,7 +264,11 @@ export function clientEconomics(
   const population = rows.filter((row) =>
     row.activeDays.some((day) => sinceIso === null || day >= sinceIso),
   );
-  const ltrs = population.flatMap((row) => (row.ltrUsd === null ? [] : [row.ltrUsd]));
+  const cashByOrg = new Map<string, number>();
+  for (const row of population) {
+    if (row.orgCashPaidUsd !== null && row.orgCashPaidUsd > 0) cashByOrg.set(row.orgId, row.orgCashPaidUsd);
+  }
+  const ltrs = [...cashByOrg.values()];
   const retentions = population.flatMap((row) =>
     row.retentionWeeks === null ? [] : [row.retentionWeeks / WEEKS_PER_MONTH],
   );
@@ -275,7 +284,8 @@ export function clientEconomics(
 /** Narrows the customer-success board to the fields the economics row reads. */
 export function economicsRows(customers: CustomerRow[]): ClientEconomicsRow[] {
   return customers.map((customer) => ({
-    ltrUsd: customer.ltrUsd,
+    orgId: customer.orgId,
+    orgCashPaidUsd: customer.orgCashPaidUsd ?? null,
     runningDailyBudgetUsd: customer.runningDailyBudgetUsd,
     retentionWeeks: customer.retentionWeeks,
     activeDays: customer.activeDays,
