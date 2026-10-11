@@ -111,6 +111,7 @@ export function OrgLaunch({
       await declareRevolut();
       const opened = await payTopup({
         amountUsd: choice.topupUsd,
+        consent: choice.consent,
         // Only an org created under the offer starts prepaid; an older one keeps its mode.
         setPrepaid: account?.free_credit_offer === "match_100",
         name: user?.fullName ?? undefined,

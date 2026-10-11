@@ -1,7 +1,7 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { topupCta } from "../src/lib/v2/get-started";
-import { capWords, spendConsentLines, TERMS_URL, CATALOG_URL } from "../src/lib/v2/spend-consent";
+import { capWords, consentRecord, spendConsentLines, TERMS_URL, TERMS_VERSION, CATALOG_URL } from "../src/lib/v2/spend-consent";
 
 const read = (p: string) => readFileSync(new URL(`../${p}`, import.meta.url), "utf8");
 const day = (usd: number) => ({ amountCents: usd * 100, period: "daily" as const });
@@ -90,3 +90,29 @@ describe("three statements ticked before the first payment, both A/B arms (owner
     expect(gs.slice(veil, gs.indexOf("<AccountCardWall"))).toContain("Setting up your account...");
   });
 });
+
+describe("the ticked statements reach billing with the payment (billing PaymentConsent, owner 2026-10-11)", () => {
+  it("records the statements as read, link words included, with the terms version and time", () => {
+    const lines = spendConsentLines({ proactive: day(20), reactive: null, arm: { kind: "prepaid", topupUsd: 100 } });
+    const r = consentRecord(lines, new Date("2026-10-11T07:00:00Z"), "UA");
+    expect(r.statements).toHaveLength(3);
+    expect(r.statements[1].endsWith("at our public prices.")).toBe(true);
+    expect(r.statements[2].endsWith("See the terms.")).toBe(true);
+    expect(r).toMatchObject({ terms_version: TERMS_VERSION, accepted_at: "2026-10-11T07:00:00.000Z", user_agent: "UA" });
+    expect(TERMS_VERSION).toBe("2026-10-11");
+  });
+
+  it("sends it on the top-up checkout, the plan's card form and the plan start", () => {
+    const api = read("src/lib/api.ts");
+    expect(api).toContain('body: { ui_mode: "embedded", topup_amount_cents, ...(consent ? { consent } : {}) },');
+    expect(api).toContain("body: consent ? { consent } : {}");
+    expect(read("src/components/v2/get-started/pay-topup.ts")).toContain("createEmbeddedCheckoutSession(params.amountUsd * 100, undefined, params.consent)");
+    for (const f of ["src/components/v2/get-started/account-card-wall.tsx", "src/components/v2/get-started/org-launch.tsx"]) {
+      expect(read(f)).toContain("consent: choice.consent,");
+    }
+    const wall = read("src/components/v2/get-started/account-card-wall.tsx");
+    expect(wall).toContain("consent: planConsentRecord.current ?? undefined");
+    expect(wall).toContain("await startSubscription(planConsentRecord.current ?? undefined);");
+  });
+});
+
