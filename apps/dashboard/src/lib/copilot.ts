@@ -14,9 +14,14 @@ export const COPILOT_CONFIG_KEY = "copilot";
  */
 export const COPILOT_OPENER = "Open a new chat for this account: what matters right now, and what should I do next?";
 
-/** Where the browser keeps the conversation it shows, per brand (the history lives in chat-service). */
-export function copilotSessionStorageKey(orgId: string, brandId: string): string {
-  return `copilot-session:${orgId}:${brandId}`;
+/**
+ * Where the browser keeps the conversation it shows, per signed-in USER and brand (the
+ * history lives in chat-service). Two teammates on one browser never see each other's chat
+ * (owner 2026-10-11, confidentiality). The old org+brand key is never read: nobody can tell
+ * whose conversation it held.
+ */
+export function copilotSessionStorageKey(orgId: string, userId: string, brandId: string): string {
+  return `copilot-session:${orgId}:${userId}:${brandId}`;
 }
 
 /**

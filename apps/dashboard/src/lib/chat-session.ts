@@ -22,7 +22,9 @@ export function isSessionNotFoundError(
   return data?.code === "session_not_found";
 }
 
-export function clearStoredSession(sessionStorageKey: string): void {
+export function clearStoredSession(sessionStorageKey: string | null): void {
+  // No key (no signed-in user yet): nothing was stored.
+  if (!sessionStorageKey) return;
   try {
     localStorage.removeItem(sessionStorageKey);
   } catch {

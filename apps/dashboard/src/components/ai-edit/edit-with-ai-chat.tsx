@@ -6,6 +6,7 @@ import { DefaultChatTransport, isToolUIPart, type UIMessage } from "ai";
 import { useQueryClient } from "@tanstack/react-query";
 import Link from "next/link";
 import { useParams } from "next/navigation";
+import { useAuth } from "@clerk/nextjs";
 import { useBillingGuard, type PaymentRequiredInfo } from "@/lib/billing-guard";
 import { useAuthQuery } from "@/lib/use-auth-query";
 import { paymentModeOf } from "@/lib/payment-mode";
@@ -55,14 +56,16 @@ import { historyToUIMessages } from "@/lib/chat-session-history";
 const STORAGE_PREFIX = "edit-with-ai-chat";
 type EditChatContext = Record<string, unknown>;
 
-function loadSessionId(k: string): string | null {
+function loadSessionId(k: string | null): string | null {
+  if (!k) return null;
   try { return localStorage.getItem(`${STORAGE_PREFIX}-session:${k}`); } catch { return null; }
 }
-function saveSessionId(k: string, id: string) {
+function saveSessionId(k: string | null, id: string) {
+  if (!k) return;
   try { localStorage.setItem(`${STORAGE_PREFIX}-session:${k}`, id); } catch { /* */ }
 }
-function sessionStorageKey(k: string): string {
-  return `${STORAGE_PREFIX}-session:${k}`;
+function sessionStorageKey(k: string | null): string | null {
+  return k ? `${STORAGE_PREFIX}-session:${k}` : null;
 }
 
 const RETRYABLE_CODES = new Set(["model_overloaded", "rate_limited", "model_error"]);
@@ -123,7 +126,11 @@ export function EditWithAIChat({
   const onPlan = paymentModeOf(billingAccount) === "subscription";
   const [sessionResetNotice, setSessionResetNotice] = useState(false);
   const [copied, setCopied] = useState(false);
-  const chatKey = sessionVersion ? `${configKey}:${sessionVersion}:${brandId}` : `${configKey}:${brandId}`;
+  // Keyed per org AND signed-in user: a teammate on the same browser never resumes this
+  // conversation (owner 2026-10-11, confidentiality). No user yet = no key, nothing kept.
+  const { userId } = useAuth();
+  const baseKey = sessionVersion ? `${configKey}:${sessionVersion}:${brandId}` : `${configKey}:${brandId}`;
+  const chatKey = userId && orgId ? `${orgId}:${userId}:${baseKey}` : null;
   const introMessage = useMemo<UIMessage>(
     () => ({ id: "intro", role: "assistant", parts: [{ type: "text", text: intro }] }) as UIMessage,
     [intro],
@@ -197,7 +204,7 @@ export function EditWithAIChat({
   );
 
   const { messages, sendMessage, regenerate, status, stop, setMessages, error } = useChat({
-    id: `edit-ai-${chatKey}`,
+    id: `edit-ai-${chatKey ?? "signed-out"}`,
     transport,
     messages: [introMessage],
     onData: (data: { type: string; data?: unknown }) => {
