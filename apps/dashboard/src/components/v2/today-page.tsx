@@ -4,11 +4,11 @@ import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { useUser } from "@clerk/nextjs";
-import type { Lead } from "@/lib/api";
+import type { AwaitingReplyPerson, Lead } from "@/lib/api";
 import type { LeadOutcome } from "@/lib/revenue-view";
 import { formatCount, formatUsdAdaptive, formatCentsAsUsdAdaptive } from "@/lib/format-number";
 import { formatRoi } from "@/lib/format-roi";
-import { friendlyDate, friendlyTime, timeAgo } from "@/lib/friendly-datetime";
+import { friendlyDate, friendlyTime } from "@/lib/friendly-datetime";
 import { utcDay } from "@/lib/v2/series";
 import { SINCE_INCEPTION } from "@/lib/revenue-window";
 import { v2CampaignHref, v2Href } from "@/lib/v2/routes";
@@ -44,6 +44,8 @@ import { getOfferCampaignBudgets, type OfferCampaignBudgets } from "@/lib/api";
 import { fmtDailyBudgetUsd } from "@/lib/campaign-budget";
 import { STEP_KEY_FOR_LEAD_STAGE } from "@/lib/step-marks";
 import { CrewMark } from "@/components/v2/crew-mark";
+import { MarkAnswered } from "@/components/v2/mark-answered";
+import { awaitingReason } from "@/lib/awaiting-reason";
 import { useMissions, type Mission } from "@/components/v2/use-missions";
 import {
   useNeedsYourCall,
@@ -399,7 +401,7 @@ export function TodayPage() {
                     [0, 1].map((i) => <Shimmer key={i} className="h-36 w-full rounded-xl" />)
                   ) : callLeads.length === 0 ? (
                     <div className="k-card">
-                      <EmptyNote>Nobody is waiting on you. People who reply with interest land here.</EmptyNote>
+                      <EmptyNote>Nobody is waiting on you. People who write back and wait on you land here.</EmptyNote>
                     </div>
                   ) : (
                     callLeads.map((lead, i) => (
@@ -407,6 +409,7 @@ export function TodayPage() {
                         key={lead.id}
                         brandId={brandId}
                         lead={lead}
+                        waiting={callQ.data?.waiting[lead.id] ?? null}
                         mission={missionByCampaignId.get(lead.campaignId) ?? null}
                         highlight={i === Math.min(cursor, callLeads.length - 1)}
                         href={personHref(orgId, brandId, lead)}
@@ -530,6 +533,7 @@ function CrewLead({ mission }: { mission: Mission | null }) {
 function CallCard({
   brandId,
   lead,
+  waiting,
   mission,
   highlight,
   href,
@@ -539,6 +543,7 @@ function CallCard({
 }: {
   brandId: string;
   lead: Lead;
+  waiting: AwaitingReplyPerson | null;
   mission: Mission | null;
   highlight: boolean;
   href: string;
@@ -560,8 +565,7 @@ function CallCard({
       <div className="min-w-0">
         <p className="k-fg3 flex flex-wrap items-center gap-1.5 text-[13px]">
           <CrewLead mission={mission} />
-          <span>got an interested reply</span>
-          {at && <span>· {timeAgo(at)}</span>}
+          {waiting ? <span>· {awaitingReason(waiting.lastMessage.kind, waiting.waitingSince)}</span> : null}
         </p>
         <p className="mt-2 text-[17px] font-medium leading-6 tracking-[-0.01em]">Follow up with {name}?</p>
         <p className="k-fg2 mt-1 flex min-w-0 items-center gap-1.5 text-[13px]">
@@ -584,6 +588,7 @@ function CallCard({
           <a href={`mailto:${lead.email}`} className="k-btn">
             Email
           </a>
+          <MarkAnswered leadRowId={lead.id} brandId={brandId} />
           {!isLast && (
             <button type="button" onClick={onSkip} className="k-btn-ghost">
               Skip

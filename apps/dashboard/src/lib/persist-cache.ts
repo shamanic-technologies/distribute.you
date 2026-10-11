@@ -250,6 +250,8 @@ export const PERSISTABLE_QUERY_ROOTS = new Set([
   // carries the scope, the tab, the search and the page number, so two windows onto one
   // brand never share an entry.
   "leadsPage",
+  // Needs your call: the people waiting on our answer (lead-service), a handful of rows.
+  "awaitingReply",
   "leadBucketCounts",
   // Every outcome of the brand from any source (crm-service): six step counts, and one page
   // of one step's people (50 rows), so Outcomes paints from disk.

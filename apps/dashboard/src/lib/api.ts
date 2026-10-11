@@ -7652,6 +7652,62 @@ export async function getLeadDetail(leadRowId: string, brandId: string): Promise
   return parseLeadsResponse({ leads: [raw.leadDetail] }, "getLeadDetail").leads[0];
 }
 
+/**
+ * WHO IS WAITING ON US (owner 2026-10-11, "Needs your call"): lead-service
+ * `GET /orgs/leads/awaiting-reply?brandId=`, reached through the gateway's `/v1/leads/:id`
+ * passthrough. The people who wrote back and whose latest message came after any answer of
+ * ours, oldest wait first. `total` is the length of `people`: the count and the list are one
+ * set, decided by lead-service (an answer through our mailboxes, or a person's "answered
+ * outside" statement, takes someone out; website visitors never enter).
+ */
+const AwaitingReplyPersonSchema = z.object({
+  id: z.string().nullable(),
+  leadId: z.string(),
+  email: z.string(),
+  firstName: z.string().nullable(),
+  lastName: z.string().nullable(),
+  name: z.string().nullable(),
+  waitingSince: z.string(),
+  lastMessage: z.object({
+    at: z.string(),
+    kind: z.enum(["question", "interest", "other"]),
+    label: z.string(),
+    subject: z.string().nullable(),
+    campaignId: z.string().nullable(),
+  }),
+  lastAnsweredAt: z.string().nullable(),
+  unansweredMessages: z.coerce.number(),
+});
+const AwaitingReplyResponseSchema = z.object({
+  brandId: z.string(),
+  total: z.coerce.number(),
+  people: z.array(AwaitingReplyPersonSchema),
+});
+export type AwaitingReplyPerson = z.infer<typeof AwaitingReplyPersonSchema>;
+export type AwaitingReply = z.infer<typeof AwaitingReplyResponseSchema>;
+
+export async function getAwaitingReply(brandId: string): Promise<AwaitingReply> {
+  const raw = await apiCall<unknown>(`/leads/awaiting-reply?brandId=${encodeURIComponent(brandId)}`);
+  const parsed = AwaitingReplyResponseSchema.safeParse(raw);
+  if (!parsed.success) {
+    console.error("[dashboard] getAwaitingReply: response shape mismatch", { issues: parsed.error.issues, raw });
+    throw new Error("[dashboard] getAwaitingReply: invalid response shape");
+  }
+  return parsed.data;
+}
+
+/**
+ * "I answered this person outside the platform" (their own Gmail): lead-service
+ * `POST /orgs/leads/{id}/answered-outside`. Takes them out of the waiting list until they
+ * write again. `brandId` rides the query so the gateway forwards it as identity.
+ */
+export async function markAnsweredOutside(leadRowId: string, brandId: string): Promise<void> {
+  await apiCall<unknown>(
+    `/leads/${encodeURIComponent(leadRowId)}/answered-outside?brandId=${encodeURIComponent(brandId)}`,
+    { method: "POST" },
+  );
+}
+
 // `view=basic` returns the slim lead projection (thin person + thin org, no
 // employmentHistory / extra org columns). Both readers feed the SAME
 // `EngagedLeadsPage`, which renders its table, status tabs, search and detail

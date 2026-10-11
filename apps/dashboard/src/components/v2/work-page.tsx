@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
-import type { Lead, RunRow } from "@/lib/api";
+import type { AwaitingReplyPerson, Lead, RunRow } from "@/lib/api";
 import { formatCount, formatCentsAsUsdAdaptive } from "@/lib/format-number";
 import { friendlyTime, timeAgo } from "@/lib/friendly-datetime";
 import { fmtDailyBudgetUsd } from "@/lib/campaign-budget";
@@ -13,6 +13,8 @@ import { campaignHoldCopy, useMissionHold } from "@/components/v2/mission-hold";
 import { useSelectedOffer } from "@/components/v2/selected-offer";
 import { useMissions, type Mission } from "@/components/v2/use-missions";
 import { useNeedsYourCall, useTheirLastWords } from "@/components/v2/data";
+import { MarkAnswered } from "@/components/v2/mark-answered";
+import { awaitingReason } from "@/lib/awaiting-reason";
 import { useCrewRuns, useRunsTodayList, runState, runTaskLabel } from "@/components/v2/runs";
 import { v2RunHref } from "@/lib/v2/routes";
 import { EmptyNote, Shimmer, TopBar } from "@/components/v2/ui";
@@ -30,7 +32,7 @@ interface DoneGroup {
 /**
  * Work: Keel's task board on runs-service. What waits (missions not sending
  * right now, each stating why), what is running (today's runs still in flight), what
- * needs a person (interested replies), and what the crew finished today (today's runs,
+ * needs a person (people waiting on our answer), and what the crew finished today (today's runs,
  * grouped by crew and step). Every card is a served row; the crew filter only hides
  * cards already loaded.
  */
@@ -80,7 +82,8 @@ export function WorkPage() {
   const waiting = missions.filter((m) => keep(m));
   const needsCall = (callQ.data?.leads ?? []).filter((l) => keep(missionByCampaignId.get(l.campaignId) ?? null));
   const runningCrews = crews.filter((c) => c.running > 0).length;
-  const oldestCall = needsCall.reduce<string | null>((o, l) => (l.firstRepliedAt && (!o || l.firstRepliedAt < o) ? l.firstRepliedAt : o), null);
+  // lead-service serves the list oldest wait first: the first row's wait is the oldest.
+  const oldestCall = callQ.data?.leads[0] ? callQ.data.waiting[callQ.data.leads[0].id]?.waitingSince ?? null : null;
   const show = (t: typeof type) => type === "all" || type === t;
 
   return (
@@ -203,7 +206,7 @@ export function WorkPage() {
             title="Needs your call"
             icon={<span className="h-3 w-3 rounded-full border-[1.5px] border-[var(--fg-1)]" />}
             count={interested}
-            meta={oldestCall ? `since ${friendlyTime(oldestCall)}` : "replied with interest"}
+            meta={oldestCall ? `since ${friendlyTime(oldestCall)}` : "waiting on you"}
           >
             {callQ.data === undefined ? (
               callQ.isError ? <EmptyNote>We could not load these.</EmptyNote> : <Skeleton />
@@ -211,7 +214,7 @@ export function WorkPage() {
               <EmptyNote>Nobody is waiting on you.</EmptyNote>
             ) : (
               needsCall.map((l) => (
-                <LeadCard key={l.id} brandId={brandId} lead={l} m={missionByCampaignId.get(l.campaignId) ?? null} href={personHref(orgId, brandId, l)} />
+                <LeadCard key={l.id} brandId={brandId} lead={l} waiting={callQ.data?.waiting[l.id] ?? null} m={missionByCampaignId.get(l.campaignId) ?? null} href={personHref(orgId, brandId, l)} />
               ))
             )}
           </Column>}
@@ -343,9 +346,8 @@ function RunCard({ run, m, href }: { run: RunRow; m: Mission | null; href: strin
   );
 }
 
-function LeadCard({ brandId, lead, m, href }: { brandId: string; lead: Lead; m: Mission | null; href: string }) {
+function LeadCard({ brandId, lead, waiting, m, href }: { brandId: string; lead: Lead; waiting: AwaitingReplyPerson | null; m: Mission | null; href: string }) {
   const company = leadCompany(lead);
-  const at = lead.firstRepliedAt ?? null;
   const { inbound, settled } = useTheirLastWords(lead.id, brandId);
   const body = inbound?.bodyText?.trim() ?? "";
   return (
@@ -353,8 +355,7 @@ function LeadCard({ brandId, lead, m, href }: { brandId: string; lead: Lead; m: 
       <div className="flex items-center gap-2 text-[12px]">
         {m ? <CrewMark color={m.crew.color} glyph={m.crew.glyph} size={16} /> : null}
         <span className="font-medium">{m?.crew.name ?? "Crew"}</span>
-        <span className="k-fg3">· Replied with interest</span>
-        <span className="k-mono k-fg3 ml-auto shrink-0 text-[11px]">{at ? timeAgo(at) : ""}</span>
+        {waiting ? <span className="k-fg3 truncate">· {awaitingReason(waiting.lastMessage.kind, waiting.waitingSince)}</span> : null}
       </div>
       <p className="mt-1.5 flex items-center gap-2 text-[13px] font-medium">
         <PersonAvatar lead={lead} size={18} />
@@ -383,6 +384,7 @@ function LeadCard({ brandId, lead, m, href }: { brandId: string; lead: Lead; m: 
       <div className="mt-2.5 flex items-center gap-1.5">
         <Link href={href} className="k-btn-strong h-6 px-2 text-[12px]">Open conversation</Link>
         <a href={`mailto:${lead.email}`} className="k-btn h-6 px-2 text-[12px]">Email</a>
+        <MarkAnswered leadRowId={lead.id} brandId={brandId} small />
       </div>
     </div>
   );
