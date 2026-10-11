@@ -357,3 +357,20 @@ describe("Campaigns order + one modal (owner 2026-10-11)", () => {
     expect(f).toContain(".sort((x, y) => compareFunnelCampaigns(x.k, y.k))");
   });
 });
+
+describe("path: a channel between every two steps (owner correction 2026-10-11)", () => {
+  it("finds every step pair served with no channel; a full path has none", async () => {
+    const { missingChannelGaps } = await import("../src/lib/sales-funnel-campaigns");
+    const step = (label: string) => ({ kind: "step" as const, key: label, label });
+    const ch = (name: string) => ({ kind: "channel" as const, slug: name, name });
+    expect(missingChannelGaps([step("Lead found"), ch("Sales Cold Email Outreach"), step("Positive reply"), ch("Your team: closing calls"), step("Paid client")])).toEqual([]);
+    expect(missingChannelGaps([step("Lead found"), ch("Cold email"), step("Positive reply"), step("Paid client")])).toEqual([{ from: "Positive reply", to: "Paid client" }]);
+  });
+
+  it("the path line never skips a gap silently: it logs and draws it", () => {
+    const f = src("src/components/v2/funnel-campaigns.tsx");
+    expect(f).toContain('"[funnel-campaigns] a leg of the path is served with no channel"');
+    expect(f).toContain('it.kind === "step" && items[i - 1].kind === "step"');
+  });
+});
+
