@@ -4,7 +4,7 @@ import { useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { useQueries } from "@tanstack/react-query";
-import { EmptyNote, KeyHint, SectionTitle, Shimmer, StateDot, TopBar } from "@/components/v2/ui";
+import { EmptyNote, KeyHint, MarkLines, SectionTitle, Shimmer, StateDot, TopBar } from "@/components/v2/ui";
 import { useRowKeys } from "@/components/v2/records";
 import { CatalogueMark } from "@/components/v2/catalogue-mark";
 import { useSelectedOffer } from "@/components/v2/selected-offer";
@@ -118,16 +118,15 @@ function CatalogueTable({
                   className={`k-row k-line-subtle cursor-pointer border-b last:border-b-0 ${cursorId === r.id ? "k-selected" : ""}`}
                 >
                   <td className={TD}>
-                    <Link href={href} onClick={(e) => e.stopPropagation()} className="flex min-w-0 items-center gap-2.5">
-                      <CatalogueMark icon={r.icon} color={r.color} face={r.face} name={r.name} size={24} />
-                      <span className="min-w-0">
+                    <Link href={href} onClick={(e) => e.stopPropagation()} className="block min-w-0">
+                      <MarkLines mark={(px) => <CatalogueMark icon={r.icon} color={r.color} face={r.face} name={r.name} size={px} />}>
                         <span className="flex items-center gap-2">
                           <span className="truncate font-medium">{r.name}</span>
                           {ongoing?.has(r.id) && <OngoingDot />}
                           {r.draft && <span className="k-chip">Draft</span>}
                         </span>
                         <span className="k-fg3 block truncate text-[12px]">{r.line}</span>
-                      </span>
+                      </MarkLines>
                     </Link>
                   </td>
                   {object === "steps" && (

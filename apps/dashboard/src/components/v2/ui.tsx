@@ -243,7 +243,21 @@ export function Initials({ name, size = 20, round = false }: { name: string; siz
  * the block's height is measured (it varies with each page's type scale) and handed to `mark` as its
  * size. A single-line row keeps its own mark size and does not use this.
  */
-export function MarkLines({ mark, children, className = "" }: { mark: (px: number) => React.ReactNode; children: React.ReactNode; className?: string }) {
+export function MarkLines({
+  mark,
+  children,
+  after,
+  className = "",
+  gap = "gap-2.5",
+}: {
+  mark: (px: number) => React.ReactNode;
+  /** The TWO lines the mark matches (measured). */
+  children: React.ReactNode;
+  /** Anything below them in the same text column (a third line, a match note): not measured. */
+  after?: React.ReactNode;
+  className?: string;
+  gap?: string;
+}) {
   const ref = useRef<HTMLSpanElement>(null);
   const [px, setPx] = useState(36);
   useLayoutEffect(() => {
@@ -256,10 +270,13 @@ export function MarkLines({ mark, children, className = "" }: { mark: (px: numbe
     return () => ro.disconnect();
   }, []);
   return (
-    <span className={`flex min-w-0 items-center gap-2.5 ${className}`}>
+    <span className={`flex min-w-0 items-start ${gap} ${className}`}>
       <span className="flex shrink-0">{mark(px)}</span>
-      <span ref={ref} className="flex min-w-0 flex-1 flex-col">
-        {children}
+      <span className="flex min-w-0 flex-1 flex-col">
+        <span ref={ref} className="flex min-w-0 flex-col">
+          {children}
+        </span>
+        {after}
       </span>
     </span>
   );
