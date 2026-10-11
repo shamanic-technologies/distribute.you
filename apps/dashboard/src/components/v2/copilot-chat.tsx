@@ -45,6 +45,7 @@ import { useBrandInfo, useBrandRevenue, useBrandRevenueWindow, useNeedsYourCall 
 import { Figure, Shimmer } from "@/components/v2/ui";
 import { AddCreditsButton, ChoiceCards, OpenedPage } from "@/components/v2/copilot-cards";
 import { useSelectedOfferIfAny } from "@/components/v2/selected-offer";
+import { RoiLabel } from "@/components/v2/roi-label";
 
 /**
  * The Copilot (owner 2026-10-09, GA 2026-10-10), drawn inside the right panel. A reload shows the last
@@ -111,7 +112,7 @@ function AccountCard({
 }) {
   const cells: { label: string; pending: boolean; value: string; sub?: string; good?: boolean }[] = [
     {
-      label: "Return",
+      label: "ROI",
       pending: revPending,
       good: !figures.returnIsLearning && roiIsGood(figures.returnMultiple),
       value: figures.returnIsLearning ? "Learning" : figures.returnMultiple != null ? formatRoi(figures.returnMultiple) : "—",
@@ -145,7 +146,7 @@ function AccountCard({
       <div className="grid grid-cols-2 divide-[var(--line-subtle)] @2xl:grid-cols-4 @2xl:divide-x">
         {cells.map((c) => (
           <div key={c.label} className="min-w-0 px-4 pb-3.5 pt-2">
-            <span className="k-fg3 text-[12px]">{c.label}</span>
+            <span className="k-fg3 text-[12px]">{c.label === "ROI" ? <RoiLabel /> : c.label}</span>
             <div className="mt-1">{c.pending ? <Shimmer className="h-7 w-16" /> : <Figure value={c.good ? <span className="text-[var(--run)]">{c.value}</span> : c.value} />}</div>
             <p className="k-fg3 mt-0.5 truncate text-[12px] tabular-nums">{c.pending ? " " : c.sub ?? " "}</p>
           </div>

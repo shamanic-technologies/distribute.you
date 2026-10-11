@@ -18,6 +18,7 @@ import { useSelectedOffer } from "@/components/v2/selected-offer";
 import { useLeadScope, useBrandRevenue, useNeedsYourCall, useStandingCounts } from "@/components/v2/data";
 import { EmptyNote, Shimmer, TopBar } from "@/components/v2/ui";
 import { CompanyMark, PersonAvatar, leadCompany, leadCompanyDomain, leadName, personHref } from "@/components/v2/people-bits";
+import { InfoTooltip } from "@/components/visibility/metric-info";
 
 /**
  * v2 names the `sales_interest` column for what it holds. v1's board calls it
@@ -222,8 +223,9 @@ function DealColumn({
         <span className="text-[13px] font-medium">{label}</span>
         <span className="k-fg3 text-[13px] tabular-nums">{total == null ? "" : formatCount(total)}</span>
         {valued && columnValue != null ? (
-          <span className="k-fg2 ml-auto text-[12px] tabular-nums" title="Expected value of these leads, from your conversion rates and client value. Not counted in your pipeline.">
+          <span className="k-fg2 ml-auto inline-flex items-center gap-1 text-[12px] tabular-nums">
             {formatUsdAdaptive(columnValue)} expected
+            <InfoTooltip tip="Expected value of these leads, from your conversion rates and client value. Not counted in your pipeline." placement="bottom" />
           </span>
         ) : served?.valueUsd != null ? (
           <span

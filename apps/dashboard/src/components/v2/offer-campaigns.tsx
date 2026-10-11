@@ -35,6 +35,7 @@ import { EXPECTED_ROI_TIP } from "@/lib/offer-sales-paths";
 import { ChannelChip, ExpectedLabel, PathAvatar } from "@/components/v2/offer-sales-paths";
 import { EmptyNote, MarkLines, SectionTitle, Shimmer, StateDot } from "@/components/v2/ui";
 import { ProviderLogo } from "@/components/provider-logo";
+import { ROI_TIP } from "@/components/v2/roi-label";
 
 /**
  * The offer's CAMPAIGNS (owner 2026-10-05): every channel x leg its sales paths use, with
@@ -144,7 +145,9 @@ export function OfferCampaigns({
                   <tr className="k-line-subtle border-b">
                     <th className="k-label px-3 py-2.5 pl-4 text-left font-normal">Campaign</th>
                     <th className="k-label px-3 py-2.5 text-left font-normal">Type</th>
-                    <th className="k-label px-3 py-2.5 text-right font-normal">ROI</th>
+                    <th className="k-label px-3 py-2.5 text-right font-normal">
+                      <ExpectedLabel tip={ROI_TIP}>ROI</ExpectedLabel>
+                    </th>
                     <th className="k-label px-3 py-2.5 text-right font-normal"># Outcomes</th>
                     <th className="k-label px-3 py-2.5 text-right font-normal">$ Value</th>
                     <th className="k-label px-3 py-2.5 text-right font-normal">$ / Outcome</th>
@@ -344,11 +347,13 @@ function CampaignRow({
       {results ? (
         <CampaignResultCells mission={mission} basis={basis} />
       ) : (
-        <td
-          className={`px-3 py-2 text-right font-semibold tabular-nums ${roiIsGood(campaign.roi) ? "text-[var(--run)]" : ""}`}
-          title={campaign.roiUnavailable ?? undefined}
-        >
-          {formatRoi(campaign.roi)}
+        <td className={`px-3 py-2 text-right font-semibold tabular-nums ${roiIsGood(campaign.roi) ? "text-[var(--run)]" : ""}`}>
+          {campaign.roi == null && campaign.roiUnavailable ? (
+            // The served reason in words, readable on touch (a title= is not).
+            <span className="k-fg3 text-[12px] font-normal">{campaign.roiUnavailable}</span>
+          ) : (
+            formatRoi(campaign.roi)
+          )}
         </td>
       )}
       <td className="px-3 py-2 text-right" onClick={stop}>

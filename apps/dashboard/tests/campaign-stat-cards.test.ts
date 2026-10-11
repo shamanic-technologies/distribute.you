@@ -10,7 +10,7 @@ const overview = page.slice(page.indexOf("function CampaignOverview("), page.ind
 describe("campaign page stat cards", () => {
   it("states the cards in the owner's order", () => {
     const order = [
-      'label="ROI"',
+      "<RoiTile mission={mission} />",
       'label="Contacted"',
       'label="Queued"',
       'label="Sent"',
@@ -24,10 +24,17 @@ describe("campaign page stat cards", () => {
   });
 
   it("reads the served return with its (i), never a recomputation", () => {
-    expect(overview).toContain("shownReturn(g?.economicsMaturity, basis)");
-    expect(overview).toContain("note={<InfoTooltip tip={CAMPAIGN_ROI_TIP}");
+    const tile = page.slice(page.indexOf("function RoiTile("), page.indexOf("function CampaignOverview("));
+    expect(tile).toContain("shownReturn(mission.row.revenue?.economicsMaturity, basis)");
+    // Every ROI label carries the expected (i) (owner 2026-10-11).
+    expect(tile).toContain("<StatTile label={<RoiLabel />}>");
     // Green above break-even like every other ROI (owner 2026-10-06).
-    expect(overview).toContain('roiIsGood(roi.value) ? "text-[var(--run)]" : ""');
+    expect(tile).toContain('roiIsGood(roi.value) ? "text-[var(--run)]" : ""');
+  });
+
+  it("the answering campaign opens on the same ROI tile (owner 2026-10-11: a ROI everywhere)", () => {
+    const conv = page.slice(page.indexOf("function ConversationOverview("));
+    expect(conv).toContain("<RoiTile mission={mission} />");
   });
 
   it("Queued, Sent and Delivered count emails off the campaign window", () => {

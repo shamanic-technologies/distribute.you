@@ -124,7 +124,7 @@ export function StatTile({
   href,
   className = "",
 }: {
-  label: string;
+  label: React.ReactNode;
   note?: React.ReactNode;
   children: React.ReactNode;
   href?: string;
