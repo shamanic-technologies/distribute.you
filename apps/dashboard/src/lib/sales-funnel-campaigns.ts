@@ -391,6 +391,34 @@ export function unpricedWords(reason: string | null): string {
 
 // ─── Campaigns table order (owner 2026-10-11) ─────────────────────────────────────────────
 
+/**
+ * A campaign's pipes in the order its funnel runs them (owner 2026-10-11: "in the right order of
+ * the pipes"): each pipe's leg is linked from the step it starts on to the step it lands on, so
+ * Start -> Lead found (sourcing) reads before Lead found -> Conversation (cold email) before
+ * Conversation -> Paid client (closing). campaign-service serves the units in no stated order.
+ * A pipe whose leg is unknown goes last; pipes on the same step keep the served order.
+ */
+export function orderPipesByFunnel<T>(units: readonly T[], legOf: (u: T) => { fromKey: string | null; toKey: string } | null): T[] {
+  const legs = units.map(legOf);
+  const toKeys = new Set(legs.flatMap((l) => (l ? [l.toKey] : [])));
+  const depth = new Map<string, number>();
+  const depthOf = (fromKey: string | null, seen: Set<string>): number => {
+    if (fromKey === null || !toKeys.has(fromKey) || seen.has(fromKey)) return 0;
+    const known = depth.get(fromKey);
+    if (known !== undefined) return known;
+    seen.add(fromKey);
+    const parents = legs.flatMap((l) => (l && l.toKey === fromKey ? [depthOf(l.fromKey, seen)] : []));
+    const d = 1 + Math.max(0, ...parents);
+    depth.set(fromKey, d);
+    return d;
+  };
+  const rank = legs.map((l) => (l ? depthOf(l.fromKey, new Set()) : Number.POSITIVE_INFINITY));
+  return units
+    .map((u, i) => ({ u, i }))
+    .sort((a, b) => rank[a.i] - rank[b.i] || a.i - b.i)
+    .map((x) => x.u);
+}
+
 const PERIOD_DAYS: Record<string, number> = { daily: 1, weekly: 7, monthly: 30 };
 
 /**
