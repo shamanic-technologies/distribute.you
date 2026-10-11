@@ -4,6 +4,7 @@ import { notFound, useParams } from "next/navigation";
 import { StaffOnly } from "@/components/v2/staff-only";
 import { CatalogueObjectPage } from "@/components/v2/staff-catalogue-pages";
 import { StaffFunnelCampaignPage } from "@/components/v2/staff-campaign-pages";
+import { TriggerPage } from "@/components/v2/staff-trigger-pages";
 import { isCatalogueObject } from "@/lib/staff-catalogue";
 
 /** The id is one encoded segment (`|`, `+`, `@`); decoded once, tolerating a raw one. */
@@ -22,6 +23,13 @@ export default function CatalogueObjectRoute() {
     return (
       <StaffOnly>
         <StaffFunnelCampaignPage key={id} id={decodeId(id)} />
+      </StaffOnly>
+    );
+  }
+  if (object === "triggers") {
+    return (
+      <StaffOnly>
+        <TriggerPage key={id} id={decodeId(id)} />
       </StaffOnly>
     );
   }

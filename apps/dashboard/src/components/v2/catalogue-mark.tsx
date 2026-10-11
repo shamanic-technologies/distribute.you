@@ -11,6 +11,7 @@ import { ChatCircleIcon } from "@phosphor-icons/react/dist/csr/ChatCircle";
 import { ChatCircleTextIcon } from "@phosphor-icons/react/dist/csr/ChatCircleText";
 import { ChatTextIcon } from "@phosphor-icons/react/dist/csr/ChatText";
 import { CircleIcon } from "@phosphor-icons/react/dist/csr/Circle";
+import { ClipboardTextIcon } from "@phosphor-icons/react/dist/csr/ClipboardText";
 import { CurrencyDollarIcon } from "@phosphor-icons/react/dist/csr/CurrencyDollar";
 import { CursorClickIcon } from "@phosphor-icons/react/dist/csr/CursorClick";
 import { EnvelopeIcon } from "@phosphor-icons/react/dist/csr/Envelope";
@@ -20,6 +21,7 @@ import { FlowArrowIcon } from "@phosphor-icons/react/dist/csr/FlowArrow";
 import { FunnelIcon } from "@phosphor-icons/react/dist/csr/Funnel";
 import { HandshakeIcon } from "@phosphor-icons/react/dist/csr/Handshake";
 import { InstagramLogoIcon } from "@phosphor-icons/react/dist/csr/InstagramLogo";
+import { LightningIcon } from "@phosphor-icons/react/dist/csr/Lightning";
 import { LinkedinLogoIcon } from "@phosphor-icons/react/dist/csr/LinkedinLogo";
 import { ListBulletsIcon } from "@phosphor-icons/react/dist/csr/ListBullets";
 import { MagnifyingGlassIcon } from "@phosphor-icons/react/dist/csr/MagnifyingGlass";
@@ -33,6 +35,7 @@ import { QuestionIcon } from "@phosphor-icons/react/dist/csr/Question";
 import { ShareNetworkIcon } from "@phosphor-icons/react/dist/csr/ShareNetwork";
 import { ShoppingCartIcon } from "@phosphor-icons/react/dist/csr/ShoppingCart";
 import { TargetIcon } from "@phosphor-icons/react/dist/csr/Target";
+import { ThumbsUpIcon } from "@phosphor-icons/react/dist/csr/ThumbsUp";
 import { UserCheckIcon } from "@phosphor-icons/react/dist/csr/UserCheck";
 import { UserFocusIcon } from "@phosphor-icons/react/dist/csr/UserFocus";
 import { UserPlusIcon } from "@phosphor-icons/react/dist/csr/UserPlus";
@@ -56,6 +59,7 @@ const CATALOGUE_ICONS: Record<string, Icon> = {
   "chat-circle": ChatCircleIcon,
   "chat-circle-text": ChatCircleTextIcon,
   "chat-text": ChatTextIcon,
+  "clipboard-text": ClipboardTextIcon,
   "currency-dollar": CurrencyDollarIcon,
   "cursor-click": CursorClickIcon,
   envelope: EnvelopeIcon,
@@ -65,6 +69,7 @@ const CATALOGUE_ICONS: Record<string, Icon> = {
   funnel: FunnelIcon,
   handshake: HandshakeIcon,
   "instagram-logo": InstagramLogoIcon,
+  lightning: LightningIcon,
   "linkedin-logo": LinkedinLogoIcon,
   "list-bullets": ListBulletsIcon,
   "magnifying-glass": MagnifyingGlassIcon,
@@ -78,6 +83,7 @@ const CATALOGUE_ICONS: Record<string, Icon> = {
   "share-network": ShareNetworkIcon,
   "shopping-cart": ShoppingCartIcon,
   target: TargetIcon,
+  "thumbs-up": ThumbsUpIcon,
   "user-check": UserCheckIcon,
   "user-focus": UserFocusIcon,
   "user-plus": UserPlusIcon,
