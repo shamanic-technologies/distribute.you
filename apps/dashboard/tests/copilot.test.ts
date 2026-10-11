@@ -136,6 +136,19 @@ describe("copilot wiring", () => {
     }
   });
 
+  // Owner 2026-10-11 (Doc Dinners): the Copilot refused "$6,800 - $5,692" and asked for a
+  // volume cap the person had declined, behind a card on every message.
+  it("estimates a figure no tool serves, files the request, and uses cards only when they help", () => {
+    const boot = src("src/instrumentation.ts");
+    const prompt = boot.slice(boot.indexOf("const COPILOT_SYSTEM_PROMPT"), boot.indexOf("const COPILOT_ALLOWED_TOOLS"));
+    expect(prompt).not.toContain("Never compute");
+    expect(prompt).toContain("saying it is an estimate");
+    expect(prompt).toContain("\\`request_staff\\` (kind feature)");
+    expect(prompt).not.toContain("Then end the turn with");
+    expect(prompt).toContain("Never use cards to ask again for something the person already answered or declined");
+    expect(prompt).toContain("a max budget, a max volume, or both");
+  });
+
   it("prints a cents figure in dollars, never the raw integer", () => {
     const cards = src("src/components/v2/copilot-cards.tsx");
     expect(cards).toContain('unit?.toLowerCase() === "cents"');
