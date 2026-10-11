@@ -53,7 +53,6 @@ import {
   useBucketCounts,
   useLatestInBucket,
   useTheirLastWords,
-  useStandingCounts,
   useOfferOutcomes,
   useOfferContactedValue,
 } from "@/components/v2/data";
@@ -126,7 +125,6 @@ export function TodayPage() {
   const win = useBrandRevenueWindow(brandId, SINCE_INCEPTION);
   const w = win.data ?? null;
   const data = rev.data;
-  const standings = useStandingCounts(brandId).data;
   const outcomesQ = useOfferOutcomes(brandId);
   const outcomesAnswered = outcomesQ.data !== undefined;
   // Not served before features-service v0.179.81: the sections then say they cannot read it.
@@ -175,7 +173,6 @@ export function TodayPage() {
   const learning = shownRoi.learning;
   const roiHalf = shownReturnHalf(data?.costEconomics.maturity, basis);
   const roiCurve = !data?.roiHistory ? null : roiHalf === "flash" ? data.roiHistory.flash ?? null : data.roiHistory;
-  const interestedStanding = standings?.counts.sales_interest ?? null;
 
   // Runs today, per crew: runs-service's own roll-up filed under each crew.
   let runsToday = 0;
@@ -390,7 +387,7 @@ export function TodayPage() {
                       </span>
                     ) : (
                       <Link href={v2Href(orgId, brandId, "deals")} className="hover:text-[var(--fg-1)]">
-                        {interestedStanding != null ? `All ${formatCount(interestedStanding)} interested →` : "All deals →"}
+                        All deals →
                       </Link>
                     )
                   }
