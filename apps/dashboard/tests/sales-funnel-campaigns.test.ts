@@ -374,3 +374,13 @@ describe("path: a channel between every two steps (owner correction 2026-10-11)"
   });
 });
 
+describe("path: several channels on one leg read as one group (owner 2026-10-11)", () => {
+  it("no arrow between two channels of the same leg; a gap is only step after step", async () => {
+    const { missingChannelGaps } = await import("../src/lib/sales-funnel-campaigns");
+    const step = (label: string) => ({ kind: "step" as const, key: label, label });
+    const ch = (name: string) => ({ kind: "channel" as const, slug: name, name });
+    expect(missingChannelGaps([step("Start"), ch("Apollo"), ch("LinkedIn"), ch("CRM"), step("Lead found")])).toEqual([]);
+    expect(src("src/components/v2/funnel-campaigns.tsx")).toContain('!(it.kind === "channel" && items[i - 1].kind === "channel")');
+  });
+});
+
