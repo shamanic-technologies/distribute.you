@@ -1,13 +1,13 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { LightningIcon } from "@phosphor-icons/react/dist/csr/Lightning";
 import { CalendarBlankIcon } from "@phosphor-icons/react/dist/csr/CalendarBlank";
 import { createPortal } from "react-dom";
 import Link from "next/link";
-import { useMutation } from "@tanstack/react-query";
+import { useMutation, useQueries } from "@tanstack/react-query";
 import { useParams, useRouter } from "next/navigation";
-import { useAuthQuery, useQueryClient } from "@/lib/use-auth-query";
+import { useAuthQuery, useOrgQueryGate, useQueryClient } from "@/lib/use-auth-query";
 import { pollOptions } from "@/lib/query-options";
 import {
   ApiError,
@@ -19,6 +19,9 @@ import {
 } from "@/lib/api";
 import {
   CAP_PERIOD_LABEL,
+  CAP_PERIODS,
+  compareFunnelCampaigns,
+  funnelSortKey,
   capUnavailableSentence,
   capWindowWords,
   asCapPeriod,
@@ -112,12 +115,12 @@ const Chevron = () => (
   </svg>
 );
 
-// ─── Status: one control for the whole campaign ─────────────────────────────────────────
+// ─── Status + limits: one button, one modal (owner 2026-10-11) ──────────────────────────
 
 /**
- * On / Off as every campaign status reads: the dot and word in a button with a chevron, a
- * one-item menu with the other state. Every part moves with it (campaign-service, one
- * transaction). A refused start shows campaign-service's own sentence (payment hold).
+ * The campaign's status as every campaign status reads: the dot and word in a button with a
+ * chevron. A click opens the campaign's ONE modal (on/off, max budget, max volume, one Save).
+ * Every part moves with the status (campaign-service, one transaction).
  */
 export function FunnelCampaignStatus({
   campaign,
@@ -130,67 +133,18 @@ export function FunnelCampaignStatus({
    */
   onLabel?: string | null;
 }) {
-  const qc = useQueryClient();
+  const caps = useFunnelCaps(campaign);
+  const capsSettled = caps.data !== undefined || caps.isFetchedAfterMount;
   const [open, setOpen] = useState(false);
-  const [pressed, setPressed] = useState<boolean | null>(null);
-  const [error, setError] = useState<string | null>(null);
-  const ref = useRef<HTMLDivElement>(null);
-  const menuRef = useRef<HTMLDivElement>(null);
-  const [menuAt, setMenuAt] = useState<{ top?: number; bottom?: number; right: number } | null>(null);
-  const served = isFunnelCampaignOn(campaign);
-  useEffect(() => setPressed(null), [served]);
-  const on = pressed ?? served;
-  const { mutate, isPending } = useMutation({
-    mutationFn: (next: "activate" | "stop") => setSalesFunnelCampaignStatus(campaign.id, next, campaign.brandId),
-    onSuccess: async () => {
-      invalidateCampaignMoney(qc);
-    },
-    onError: (err, next) => {
-      console.error("[funnel-campaigns] status change failed", { campaignId: campaign.id, next, err });
-      setPressed(null);
-      setError(channelWriteErrorMessage(err, next === "activate" ? "start" : "pause"));
-    },
-  });
-  useEffect(() => {
-    if (!open) return;
-    const close = (e: MouseEvent) => {
-      const t = e.target as Node;
-      if (!ref.current?.contains(t) && !menuRef.current?.contains(t)) setOpen(false);
-    };
-    const dismiss = () => setOpen(false);
-    const onKey = (e: KeyboardEvent) => e.key === "Escape" && setOpen(false);
-    document.addEventListener("mousedown", close);
-    document.addEventListener("scroll", dismiss, { capture: true, passive: true });
-    window.addEventListener("resize", dismiss);
-    window.addEventListener("keydown", onKey);
-    return () => {
-      document.removeEventListener("mousedown", close);
-      document.removeEventListener("scroll", dismiss, { capture: true });
-      window.removeEventListener("resize", dismiss);
-      window.removeEventListener("keydown", onKey);
-    };
-  }, [open]);
-  const openMenu = (button: HTMLButtonElement) => {
-    if (open) return setOpen(false);
-    const r = button.getBoundingClientRect();
-    const right = window.innerWidth - r.right;
-    setMenuAt(window.innerHeight - r.bottom < 140 ? { bottom: window.innerHeight - r.top + 4, right } : { top: r.bottom + 4, right });
-    setOpen(true);
-  };
-  const toggle = () => {
-    setOpen(false);
-    setError(null);
-    setPressed(!on);
-    mutate(on ? "stop" : "activate");
-  };
+  const on = isFunnelCampaignOn(campaign);
   return (
-    <div ref={ref} className="relative inline-flex flex-col items-end">
+    <>
       <button
         type="button"
-        aria-haspopup="menu"
-        aria-expanded={open}
-        disabled={isPending}
-        onClick={(e) => openMenu(e.currentTarget)}
+        aria-haspopup="dialog"
+        // The modal opens on billing's stated limits, never on an empty form that would overwrite them.
+        disabled={!capsSettled}
+        onClick={() => setOpen(true)}
         className="k-btn gap-1.5 tabular-nums"
         // keel.css is unlayered: the green tint rides inline, never a bg-* utility on a k-btn.
         style={
@@ -202,26 +156,14 @@ export function FunnelCampaignStatus({
         <StateDot running={on} label={on ? (onLabel ?? "On") : "Off"} hold={on ? null : paymentHoldKind(campaign)} />
         <Chevron />
       </button>
-      {open &&
-        menuAt &&
-        createPortal(
-          <div ref={menuRef} role="menu" style={menuAt} className="k-popover fixed z-50 w-[220px] p-1 text-left">
-            <button type="button" role="menuitem" className="k-row w-full rounded-[6px] px-2 py-1.5 text-left text-[13px]" onClick={toggle}>
-              {on ? "Turn off" : "Turn on"}
-            </button>
-          </div>,
-          document.getElementById("v2-portal") ?? document.body,
-        )}
-      {error && <span className="mt-1 max-w-[240px] text-right text-[11.5px] text-[var(--data-rose)]">{error}</span>}
-    </div>
+      {open && <FunnelCampaignModal campaign={campaign} caps={caps.data ?? null} onClose={() => setOpen(false)} />}
+    </>
   );
 }
 
-// ─── Limits: max budget + max volume (billing) ──────────────────────────────────────────
-
 /**
  * The limits as a button in the campaign type's words ("Max $50/week" Proactive, "Up to $50/week"
- * Reactive), opening the editor. "Set a budget" when none.
+ * Reactive), opening the same modal. "Set a budget" when none.
  */
 export function FunnelLimitsButton({ campaign, caps }: { campaign: SalesFunnelCampaign; caps: SalesFunnelCaps | null }) {
   const [open, setOpen] = useState(false);
@@ -233,24 +175,29 @@ export function FunnelLimitsButton({ campaign, caps }: { campaign: SalesFunnelCa
         <span className={budget ? "" : "k-fg3"}>{budget ? statedBudget(type, budget) : "Set a budget"}</span>
         <Chevron />
       </button>
-      {open && <FunnelLimitsModal campaign={campaign} caps={caps} onClose={() => setOpen(false)} />}
+      {open && <FunnelCampaignModal campaign={campaign} caps={caps} onClose={() => setOpen(false)} />}
     </>
   );
 }
 
+const PERIOD_SHORT: Record<CapPeriod, string> = { daily: "Day", weekly: "Week", monthly: "Month", one_off: "Total" };
+
+/** The period as ONE segmented control beside its amount (Day | Week | Month | Total). */
 function PeriodPicker({ value, onChange, label }: { value: CapPeriod; onChange: (p: CapPeriod) => void; label: string }) {
   return (
-    <div role="radiogroup" aria-label={label} className="mt-2 flex flex-wrap items-center gap-1">
-      {(["daily", "weekly", "monthly", "one_off"] as const).map((p) => (
+    <div role="radiogroup" aria-label={label} className="ml-auto inline-flex shrink-0 rounded-[8px] bg-[var(--bg-inset)] p-0.5">
+      {CAP_PERIODS.map((p) => (
         <button
           key={p}
           type="button"
           role="radio"
           aria-checked={value === p}
+          title={CAP_PERIOD_LABEL[p]}
           onClick={() => onChange(p)}
-          className={value === p ? "k-btn-strong" : "k-btn-ghost"}
+          className={`h-6 rounded-[6px] px-2.5 text-[12px] transition-colors ${value === p ? "font-medium" : "k-fg2 hover:text-[var(--fg-1)]"}`}
+          style={value === p ? { background: "var(--bg-raised)", boxShadow: "0 0 0 1px var(--line), 0 1px 2px rgb(0 0 0 / 0.06)" } : undefined}
         >
-          {CAP_PERIOD_LABEL[p]}
+          {PERIOD_SHORT[p]}
         </button>
       ))}
     </div>
@@ -265,12 +212,28 @@ function parseWholeCount(v: string): number | null {
   return n > 0 ? n : null;
 }
 
+/** The on/off switch: green while running (`--run`), never the accent. */
+function RunSwitch({ on, onChange }: { on: boolean; onChange: (next: boolean) => void }) {
+  return (
+    <button
+      type="button"
+      role="switch"
+      aria-checked={on}
+      aria-label="Campaign on"
+      onClick={() => onChange(!on)}
+      className={`relative h-5 w-9 shrink-0 rounded-full transition-colors ${on ? "bg-[var(--run)]" : "bg-[var(--data-track)]"}`}
+    >
+      <span className={`absolute left-0 top-0.5 h-4 w-4 rounded-full bg-white shadow transition-transform ${on ? "translate-x-[18px]" : "translate-x-0.5"}`} />
+    </button>
+  );
+}
+
 /**
- * The one sanctioned Save in v2 (a campaign's money, owner 2026-10-05): both limits in one
- * write, each in the period it is stated in. A max budget is required (no budget = not
- * funded); the max volume is optional (empty = no limit).
+ * The campaign's ONE modal (owner 2026-10-11): on/off, then each limit on one line (amount,
+ * period), one Save writing what changed (billing's limits first, then campaign-service's status,
+ * so a campaign turned on with its first budget starts funded). The one sanctioned Save in v2.
  */
-export function FunnelLimitsModal({
+export function FunnelCampaignModal({
   campaign,
   caps,
   onClose,
@@ -280,27 +243,65 @@ export function FunnelLimitsModal({
   onClose: () => void;
 }) {
   const qc = useQueryClient();
-  // Proactive: "Max budget" / "Max volume". Reactive: "Up to $X" / "Up to N <unit>" (owner 2026-10-10).
+  // Proactive: "Max budget" / "Max volume". Reactive: "Budget" / "Volume" read "Up to" (owner 2026-10-10).
   const type = funnelTypeOf(caps);
   const words = capWords(type);
   const upTo = type === "reactive";
-  const statedUsd = centsToUsd(caps?.maxBudget?.amountCents);
-  const [budget, setBudget] = useState(statedUsd !== null ? String(Math.round(statedUsd)) : "");
-  const [budgetPer, setBudgetPer] = useState<CapPeriod>(caps?.maxBudget ? asCapPeriod(caps.maxBudget.period) : "weekly");
-  const [volume, setVolume] = useState(caps?.maxVolume ? String(caps.maxVolume.count) : "");
-  const [volumePer, setVolumePer] = useState<CapPeriod>(caps?.maxVolume ? asCapPeriod(caps.maxVolume.period) : "monthly");
-  const { mutate, isPending, error } = useMutation({
-    mutationFn: (input: { usd: number; people: number | null }) =>
-      saveSalesFunnelCaps(campaign.brandId, campaign.offerId, campaign.salesFunnelId, {
-        maxBudget: { amountCents: input.usd * 100, period: budgetPer },
-        maxVolume: input.people === null ? null : { count: input.people, period: volumePer },
-      }),
-    onSuccess: (data) => {
-      qc.setQueryData(["salesFunnelCaps", campaign.brandId, campaign.offerId, campaign.salesFunnelId], data);
+  const servedOn = isFunnelCampaignOn(campaign);
+  const stated = caps?.maxBudget ?? null;
+  const statedUsd = centsToUsd(stated?.amountCents);
+  const initial = {
+    budget: statedUsd !== null ? String(Math.round(statedUsd)) : "",
+    budgetPer: stated ? asCapPeriod(stated.period) : ("weekly" as CapPeriod),
+    volume: caps?.maxVolume ? String(caps.maxVolume.count) : "",
+    volumePer: caps?.maxVolume ? asCapPeriod(caps.maxVolume.period) : ("monthly" as CapPeriod),
+  };
+  const [on, setOn] = useState(servedOn);
+  const [budget, setBudget] = useState(initial.budget);
+  const [budgetPer, setBudgetPer] = useState<CapPeriod>(initial.budgetPer);
+  const [volume, setVolume] = useState(initial.volume);
+  const [volumePer, setVolumePer] = useState<CapPeriod>(initial.volumePer);
+  const [failure, setFailure] = useState<string | null>(null);
+
+  const usd = parseWholeAmount(budget);
+  const people = volume.trim() === "" ? null : parseWholeCount(volume);
+  const limitsDirty = budget !== initial.budget || budgetPer !== initial.budgetPer || volume !== initial.volume || volumePer !== initial.volumePer;
+  const statusDirty = on !== servedOn;
+  const budgetProblem =
+    budget.trim() !== "" && usd === null ? "Type a whole number of dollars." : limitsDirty && budget.trim() === "" ? "Set a budget." : null;
+  const volumeProblem = volume.trim() !== "" && people === null ? "Type a whole number of people." : null;
+  const submittable = (limitsDirty || statusDirty) && !budgetProblem && !volumeProblem;
+
+  const { mutate, isPending } = useMutation({
+    mutationFn: async () => {
+      if (limitsDirty && usd !== null) {
+        try {
+          const data = await saveSalesFunnelCaps(campaign.brandId, campaign.offerId, campaign.salesFunnelId, {
+            maxBudget: { amountCents: usd * 100, period: budgetPer },
+            maxVolume: people === null ? null : { count: people, period: volumePer },
+          });
+          qc.setQueryData(["salesFunnelCaps", campaign.brandId, campaign.offerId, campaign.salesFunnelId], data);
+        } catch (err) {
+          console.error("[funnel-campaigns] limits save failed", { campaignId: campaign.id, err });
+          throw new Error(err instanceof ApiError && err.status === 400 ? "These limits are not allowed." : "We could not save your limits. Try again in a moment.");
+        }
+      }
+      if (statusDirty) {
+        try {
+          await setSalesFunnelCampaignStatus(campaign.id, on ? "activate" : "stop", campaign.brandId);
+        } catch (err) {
+          console.error("[funnel-campaigns] status change failed", { campaignId: campaign.id, next: on ? "activate" : "stop", err });
+          throw new Error(channelWriteErrorMessage(err, on ? "start" : "pause"));
+        }
+      }
+    },
+    onSuccess: async () => {
       invalidateCampaignMoney(qc);
+      // The list re-read settles before the modal closes, so the row never shows the old status.
+      await qc.refetchQueries({ queryKey: ["salesFunnelCampaigns", campaign.brandId] });
       onClose();
     },
-    onError: (err) => console.error("[funnel-campaigns] limits save failed", { campaignId: campaign.id, err }),
+    onError: (err) => setFailure(err.message),
   });
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -310,12 +311,8 @@ export function FunnelLimitsModal({
     return () => window.removeEventListener("keydown", onKey);
   }, [onClose, isPending]);
 
-  const usd = parseWholeAmount(budget);
-  const people = volume.trim() === "" ? null : parseWholeCount(volume);
-  const budgetProblem = budget.trim() !== "" && usd === null ? "Type a whole number of dollars." : null;
-  const volumeProblem = volume.trim() !== "" && people === null ? "Type a whole number of people." : null;
-  const submittable = usd !== null && !budgetProblem && !volumeProblem;
-  const status = error instanceof ApiError ? error.status : null;
+  // What the stated budget spent this period (billing), shown while the period is the stated one.
+  const spent = stated && stated.consumedCents !== null && budgetPer === asCapPeriod(stated.period) ? `${formatCapUsd(stated.consumedCents)} spent ${capWindowWords(stated.period)}` : null;
 
   if (typeof document === "undefined") return null;
   const host = document.getElementById("v2-portal") ?? document.body;
@@ -324,13 +321,13 @@ export function FunnelLimitsModal({
       <div
         role="dialog"
         aria-modal="true"
-        aria-labelledby="v2-funnel-limits-title"
-        className="k-popover flex w-full max-w-[440px] flex-col overflow-hidden text-left"
+        aria-labelledby="v2-funnel-campaign-title"
+        className="k-popover flex w-full max-w-[480px] flex-col overflow-hidden text-left"
         onMouseDown={(e) => e.stopPropagation()}
       >
-        <div className="flex h-11 shrink-0 items-center gap-2 border-b border-[var(--line-subtle)] px-4">
-          <FunnelFace name={campaign.salesFunnelName} size={20} />
-          <span id="v2-funnel-limits-title" className="k-label truncate">
+        <div className="flex h-12 shrink-0 items-center gap-2.5 border-b border-[var(--line-subtle)] px-4">
+          <FunnelFace name={campaign.salesFunnelName} size={24} />
+          <span id="v2-funnel-campaign-title" className="truncate text-[14px] font-medium">
             {campaign.salesFunnelName}
           </span>
           <button type="button" aria-label="Close" className="k-btn-ghost ml-auto h-7 w-7 justify-center p-0" onClick={onClose} disabled={isPending}>
@@ -338,62 +335,75 @@ export function FunnelLimitsModal({
           </button>
         </div>
         <form
-          className="px-4 py-4"
           onSubmit={(e) => {
             e.preventDefault();
-            if (submittable && usd !== null && !isPending) mutate({ usd, people });
+            if (submittable && !isPending) {
+              setFailure(null);
+              mutate();
+            }
           }}
         >
-          <label htmlFor="v2-funnel-budget" className="k-label block">
-            {words.budget}
-          </label>
-          <div className="mt-1.5 flex items-center gap-2">
-            <span className="k-fg2">{upTo ? "Up to $" : "$"}</span>
-            <input
-              id="v2-funnel-budget"
-              autoFocus
-              inputMode="numeric"
-              value={budget}
-              onChange={(e) => setBudget(e.target.value)}
-              placeholder="50"
-              aria-invalid={budgetProblem !== null}
-              className={`k-input w-[120px] px-2.5 tabular-nums ${budgetProblem ? "shadow-[inset_0_0_0_1px_var(--data-rose)]" : ""}`}
-            />
+          <div className="flex items-center justify-between gap-3 border-b border-[var(--line-subtle)] px-4 py-3.5">
+            <StateDot running={on} label={on ? "On" : "Off"} />
+            <RunSwitch on={on} onChange={setOn} />
           </div>
-          <PeriodPicker value={budgetPer} onChange={setBudgetPer} label={`${words.budget} period`} />
-          <p className={`mt-1.5 text-[12px] leading-[18px] ${budgetProblem ? "text-[var(--data-rose)]" : "k-fg3"}`}>
-            {budgetProblem ?? (upTo ? "The most this campaign spends." : "We stop reaching new people once it is spent.")}
-          </p>
 
-          <label htmlFor="v2-funnel-volume" className="k-label mt-5 block">
-            {words.volume}
-          </label>
-          <div className="mt-1.5 flex items-center gap-2">
-            {upTo && <span className="k-fg2">Up to</span>}
-            <input
-              id="v2-funnel-volume"
-              inputMode="numeric"
-              value={volume}
-              onChange={(e) => setVolume(e.target.value)}
-              placeholder="200"
-              aria-invalid={volumeProblem !== null}
-              className={`k-input w-[120px] px-2.5 tabular-nums ${volumeProblem ? "shadow-[inset_0_0_0_1px_var(--data-rose)]" : ""}`}
-            />
-            <span className="k-fg2">{volumeUnitWords(caps?.maxVolume?.unit ?? null, type, 2)}</span>
+          <div className="space-y-5 px-4 py-4">
+            <div>
+              <label htmlFor="v2-funnel-budget" className="k-label block">
+                {words.budget}
+              </label>
+              <div className="mt-1.5 flex flex-wrap items-center gap-2">
+                <span className="k-fg2 shrink-0">{upTo ? "Up to $" : "$"}</span>
+                <input
+                  id="v2-funnel-budget"
+                  autoFocus
+                  inputMode="numeric"
+                  value={budget}
+                  onChange={(e) => setBudget(e.target.value)}
+                  placeholder="50"
+                  aria-invalid={budgetProblem !== null}
+                  className={`k-input w-[100px] px-2.5 tabular-nums ${budgetProblem ? "shadow-[inset_0_0_0_1px_var(--data-rose)]" : ""}`}
+                />
+                <PeriodPicker value={budgetPer} onChange={setBudgetPer} label={`${words.budget} period`} />
+              </div>
+              {(budgetProblem || spent) && (
+                <p className={`mt-1.5 text-[12px] leading-[18px] tabular-nums ${budgetProblem ? "text-[var(--data-rose)]" : "k-fg3"}`}>{budgetProblem ?? spent}</p>
+              )}
+            </div>
+
+            <div>
+              <div className="flex items-baseline justify-between">
+                <label htmlFor="v2-funnel-volume" className="k-label block">
+                  {words.volume}
+                </label>
+                <span className="k-fg4 text-[12px]">Optional</span>
+              </div>
+              <div className="mt-1.5 flex flex-wrap items-center gap-2">
+                {upTo && <span className="k-fg2 shrink-0">Up to</span>}
+                <input
+                  id="v2-funnel-volume"
+                  inputMode="numeric"
+                  value={volume}
+                  onChange={(e) => setVolume(e.target.value)}
+                  placeholder="No limit"
+                  aria-invalid={volumeProblem !== null}
+                  className={`k-input w-[100px] px-2.5 tabular-nums ${volumeProblem ? "shadow-[inset_0_0_0_1px_var(--data-rose)]" : ""}`}
+                />
+                <span className="k-fg2 shrink-0">{volumeUnitWords(caps?.maxVolume?.unit ?? null, type, 2)}</span>
+                <PeriodPicker value={volumePer} onChange={setVolumePer} label={`${words.volume} period`} />
+              </div>
+              {volumeProblem && <p className="mt-1.5 text-[12px] leading-[18px] text-[var(--data-rose)]">{volumeProblem}</p>}
+            </div>
           </div>
-          <PeriodPicker value={volumePer} onChange={setVolumePer} label={`${words.volume} period`} />
-          <p className={`mt-1.5 text-[12px] leading-[18px] ${volumeProblem ? "text-[var(--data-rose)]" : "k-fg3"}`}>
-            {volumeProblem ?? "Leave it empty for no limit."}
-          </p>
 
-          {!upTo && <p className="k-fg2 mt-5 text-[12px] leading-[18px]">Replies still get answered once a limit is reached.</p>}
-          {error !== null && (
-            <p role="alert" className="mt-3 text-[13px] text-[var(--data-rose)]">
-              {status === 400 ? "These limits are not allowed." : "We could not save your limits. Try again in a moment."}
-            </p>
-          )}
-          <div className="mt-5 flex items-center justify-end gap-2">
-            <button type="button" onClick={onClose} disabled={isPending} className="k-btn-ghost">
+          <div className="flex items-center gap-2 border-t border-[var(--line-subtle)] px-4 py-3">
+            {failure && (
+              <p role="alert" className="min-w-0 flex-1 text-[12.5px] leading-[18px] text-[var(--data-rose)]">
+                {failure}
+              </p>
+            )}
+            <button type="button" onClick={onClose} disabled={isPending} className="k-btn-ghost ml-auto">
               Cancel
             </button>
             <button
@@ -488,7 +498,28 @@ export function FunnelCampaignsSection({ orgId, brandId, offerId }: { orgId: str
   const rowsQ = useAuthQuery(["funnelCampaignRows", brandId, offerId], () => listFunnelCampaignRows(brandId, offerId), pollOptions);
   const rowById = useMemo(() => new Map((rowsQ.data ?? []).map((r) => [r.id, r])), [rowsQ.data]);
   const rowsSettled = rowsQ.data !== undefined || rowsQ.isFetchedAfterMount;
-  const campaigns = q.data ?? [];
+  // Same keys as each row's own caps read (deduped): the order needs every campaign's limits.
+  const gate = useOrgQueryGate();
+  const capsQs = useQueries({
+    queries: (q.data ?? []).map((c) => ({
+      queryKey: ["salesFunnelCaps", c.brandId, c.offerId, c.salesFunnelId],
+      queryFn: () => getSalesFunnelCaps(c.brandId, c.offerId, c.salesFunnelId),
+      enabled: gate,
+      ...pollOptions,
+    })),
+  });
+  const capsData = capsQs.map((x) => x.data);
+  const capsStamp = capsQs.map((x) => x.dataUpdatedAt).join(",");
+  // Proactive first, then max budget, then max volume, both biggest first (owner 2026-10-11).
+  const campaigns = useMemo(() => {
+    const list = q.data ?? [];
+    return list
+      .map((c, i) => ({ c, k: funnelSortKey(rowById.get(c.id) ?? null, capsData[i] ?? null) }))
+      .sort((x, y) => compareFunnelCampaigns(x.k, y.k))
+      .map((x) => x.c);
+    // capsData is a fresh array each render; capsStamp moves exactly when one of its members does.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [q.data, rowById, capsStamp]);
   const settled = q.data !== undefined || q.isFetchedAfterMount;
   if (settled && !q.data && q.isError) {
     return <p className="mb-6 text-[13px] text-[var(--data-rose)]">Could not read this offer&apos;s campaigns.</p>;
@@ -607,7 +638,7 @@ function FunnelCampaignRow({
             Not funded yet · Set a budget
           </button>
         )}
-        {editing && <FunnelLimitsModal campaign={campaign} caps={c} onClose={() => setEditing(false)} />}
+        {editing && <FunnelCampaignModal campaign={campaign} caps={c} onClose={() => setEditing(false)} />}
       </td>
     </tr>
   );
@@ -868,7 +899,7 @@ export function FunnelCampaignPage({ campaign }: { campaign: SalesFunnelCampaign
 
         <FunnelResults orgId={orgId} brandId={campaign.brandId} units={campaign.units} />
       </div>
-      {editing && <FunnelLimitsModal campaign={campaign} caps={c} onClose={() => setEditing(false)} />}
+      {editing && <FunnelCampaignModal campaign={campaign} caps={c} onClose={() => setEditing(false)} />}
     </V2Page>
   );
 }
