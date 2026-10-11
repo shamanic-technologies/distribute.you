@@ -137,7 +137,7 @@ export function ActiveUsersView() {
 
   return (
     <>
-      <section className="grid gap-4 md:grid-cols-4">
+      <section className="grid gap-4 md:grid-cols-3 xl:grid-cols-5">
         <StatCard
           label="Active users"
           value={num(derived.activeUsers)}
@@ -150,6 +150,13 @@ export function ActiveUsersView() {
           value={s ? num(s.activeCount) : "—"}
           detail="Not paused, budgeted, funded"
           accent="bg-emerald-500"
+          pending={isPending}
+        />
+        <StatCard
+          label="Out of credit"
+          value={s?.outOfCreditCount != null ? num(s.outOfCreditCount) : "—"}
+          detail="Running, balance cannot fund tomorrow"
+          accent="bg-rose-500"
           pending={isPending}
         />
         <StatCard

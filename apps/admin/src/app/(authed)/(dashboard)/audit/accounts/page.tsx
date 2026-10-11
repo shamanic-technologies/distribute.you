@@ -81,6 +81,7 @@ const STATUS_STYLE: Record<AccountStatus, { label: string; className: string }> 
   active: { label: "Active", className: "bg-emerald-50 text-emerald-700" },
   payment_declined: { label: "Payment declined", className: "bg-red-50 text-red-700" },
   no_payment_method: { label: "No payment method", className: "bg-red-50 text-red-700" },
+  out_of_credit: { label: "Out of credit", className: "bg-rose-50 text-rose-700" },
   reactive_only: { label: "Reactive only", className: "bg-sky-50 text-sky-700" },
   paused: { label: "Paused", className: "bg-amber-50 text-amber-700" },
   inactive: { label: "Inactive", className: "bg-gray-100 text-gray-500" },
@@ -217,6 +218,12 @@ export default function AuditAccountsPage() {
               label="Reactive only"
               value={s?.reactiveOnlyCount != null ? num(s.reactiveOnlyCount) : DASH}
               sub="only a reactive cap running"
+              pending={isPending}
+            />
+            <StatCard
+              label="Out of credit"
+              value={s?.outOfCreditCount != null ? num(s.outOfCreditCount) : DASH}
+              sub="running, balance cannot fund tomorrow"
               pending={isPending}
             />
             <StatCard

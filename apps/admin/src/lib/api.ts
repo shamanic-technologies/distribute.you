@@ -5728,8 +5728,10 @@ export interface AuditAccountRow {
   proactiveRunningDailyBudgetUsd: number; // same value as runningDailyBudgetUsd, named for what it is
   reactiveRunningDailyCapUsd: number; // cap behind ongoing REACTIVE campaigns; never money in play, never summed into it
   orgBalanceUsd: number; // org available credit balance (USD)
-  // Precedence (producer-computed): payment_declined / no_payment_method > active > reactive_only > paused > inactive.
+  // Precedence (producer-computed): payment_declined / no_payment_method > active > out_of_credit > reactive_only > paused > inactive.
   // "active" = proactive running budget > 0 and the org can fund the next day.
+  // "out_of_credit" = a proactive campaign runs but the balance cannot fund one more day and there is
+  // no auto-topup: a BILLING state (ask them to top up), never shown as "paused" (their intent).
   // "reactive_only" = nothing proactive running, a reactive campaign still on (cap > 0).
   // "paused" = money configured, nothing running against it. Else "inactive".
   status: AccountStatus;
@@ -5741,6 +5743,8 @@ export type AccountStatus =
   | "active"
   | "payment_declined"
   | "no_payment_method"
+  // features-service v0.179.148: proactive running, balance cannot fund the next day, no auto-topup.
+  | "out_of_credit"
   | "reactive_only"
   | "paused"
   | "inactive"
@@ -5753,10 +5757,11 @@ export const ACCOUNT_STATUS_RANK: Record<AccountStatus, number> = {
   active: 0,
   payment_declined: 1,
   no_payment_method: 2,
-  reactive_only: 3,
-  paused: 4,
-  inactive: 5,
-  unknown: 6,
+  out_of_credit: 3,
+  reactive_only: 4,
+  paused: 5,
+  inactive: 6,
+  unknown: 7,
 };
 
 export interface AuditAccountsStats {
@@ -5774,6 +5779,8 @@ export interface AuditAccountsStats {
   reactiveOnlyCount: number;
   paymentDeclinedCount: number;
   noPaymentMethodCount: number;
+  // features-service v0.179.148; optional so an older body still parses.
+  outOfCreditCount?: number;
   pausedCount: number;
   inactiveCount: number;
   totalCount: number;
@@ -6033,6 +6040,10 @@ export interface CustomerRow {
   orgBalanceUsd: number; // spendable
   orgActualBalanceUsd: number; // actual (active-verdict figure)
   autoTopupEnabled: boolean;
+  // Upcoming features-service release: days the org's CASH funded its spend, and
+  // the cash it paid. Optional: absent on today's body, null = not measured.
+  paidActiveDays?: string[] | null;
+  orgCashPaidUsd?: number | null;
   optimizationGoal: CustomerOptimizationGoal | null;
   conversionTracker: CustomerConversionTracker;
   breakevenCacUsd: number | null; // = brand LTR
@@ -6052,6 +6063,8 @@ export interface CustomerSuccessFleetStats {
   reactiveOnlyCount: number;
   paymentDeclinedCount: number;
   noPaymentMethodCount: number;
+  // features-service v0.179.148; optional so an older body still parses.
+  outOfCreditCount?: number;
   pausedCount: number;
   inactiveCount: number;
   greenCount: number;
