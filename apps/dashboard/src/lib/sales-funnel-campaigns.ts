@@ -391,3 +391,15 @@ export function funnelSortKey(row: Pick<FunnelCampaignRow, "type"> | null, caps:
     volume: caps?.maxVolume ? { count: caps.maxVolume.count, period: caps.maxVolume.period } : null,
   };
 }
+
+/** Where two steps follow each other with no channel between them (a producer gap), by step labels. */
+export function missingChannelGaps(items: readonly FunnelPathItem[]): Array<{ from: string; to: string }> {
+  const out: Array<{ from: string; to: string }> = [];
+  for (let i = 1; i < items.length; i++) {
+    const a = items[i - 1];
+    const b = items[i];
+    if (a.kind === "step" && b.kind === "step") out.push({ from: a.label, to: b.label });
+  }
+  return out;
+}
+

@@ -43,6 +43,7 @@ import {
   type SalesFunnelUnit,
   type FunnelCampaignRow,
   type FunnelPathItem,
+  missingChannelGaps,
   maxBudgetLabel,
   roiMissingReason,
   funnelRoiShown,
@@ -450,17 +451,35 @@ const TYPE_TIP =
   "Proactive campaigns reach new people every day, within their budget. Reactive campaigns wait for something to happen, like a positive reply, then act on it.";
 
 /**
- * The campaign's path on one line, as features-service serves it: step labels, with the channel
- * between the two steps of each leg we run ("Lead found → [Sales Cold Email Outreach] → Positive
- * reply → Paid client"). The chip is the staff pipe rows' own (`ChannelChip`); nothing is parsed.
+ * The campaign's path on one line, as features-service serves it: every step label with the channel
+ * (or channels: several sources on Start → Lead found) between each two of them, ours or the client's
+ * own team ("Start → [Apollo] [LinkedIn] → Lead found → [Sales Cold Email Outreach] → Positive reply →
+ * [Your team: closing calls] → Paid client"). The chip is the staff pipe rows' own (`ChannelChip`);
+ * nothing is parsed or skipped.
  */
 export function FunnelPathLine({ items }: { items: FunnelPathItem[] }) {
   const channels = useAcquisitionChannels();
+  // Every two steps have a channel between them, the client's own team included (owner
+  // 2026-10-11). A pair served without one is a producer gap: logged and drawn as an error.
+  const gaps = missingChannelGaps(items);
+  useEffect(() => {
+    if (gaps.length > 0) console.error("[funnel-campaigns] a leg of the path is served with no channel", { gaps, items });
+  }, [gaps.length]); // eslint-disable-line react-hooks/exhaustive-deps
   return (
     <span className="k-fg2 flex min-w-0 items-center gap-1 overflow-hidden whitespace-nowrap text-[11px]">
       {items.map((it, i) => (
         <span key={i} className="contents">
-          {i > 0 && <span className="k-fg3">→</span>}
+          {/* Several channels on one leg (sources on Start → Lead found) sit side by side, one group
+              between its two steps: an arrow only where a step meets a channel. */}
+          {i > 0 && !(it.kind === "channel" && items[i - 1].kind === "channel") && <span className="k-fg3">→</span>}
+          {i > 0 && it.kind === "step" && items[i - 1].kind === "step" && (
+            <>
+              <span className="k-chip shrink-0 text-[var(--data-rose)]" title="This step has no channel">
+                Unknown
+              </span>
+              <span className="k-fg3">→</span>
+            </>
+          )}
           {it.kind === "step" ? (
             <span className="shrink-0">{it.label}</span>
           ) : (
