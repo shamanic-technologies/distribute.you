@@ -71,3 +71,30 @@ export function spendConsentLines(input: {
     { text: runsOut, link: { label: "terms", href: TERMS_URL } },
   ];
 }
+
+/** The Terms version the statements refer to (the Terms' "Last updated" date). */
+export const TERMS_VERSION = "2026-10-11";
+
+/** billing's consent record (billing-service v0.81.x `PaymentConsent`): stored with the payment. */
+export interface PaymentConsentRecord {
+  statements: string[];
+  terms_version: string;
+  accepted_at: string;
+  user_agent?: string;
+}
+
+/** A statement as the person read it, link words included ("... at our public prices."). */
+export function statementAsShown(line: ConsentLine): string {
+  return line.link ? `${line.text} ${line.link.label}.` : line.text;
+}
+
+/** The record of the boxes just ticked, for billing's dispute file. */
+export function consentRecord(lines: readonly ConsentLine[], acceptedAt: Date, userAgent: string | undefined): PaymentConsentRecord {
+  return {
+    statements: lines.map(statementAsShown),
+    terms_version: TERMS_VERSION,
+    accepted_at: acceptedAt.toISOString(),
+    ...(userAgent ? { user_agent: userAgent.slice(0, 1000) } : {}),
+  };
+}
+

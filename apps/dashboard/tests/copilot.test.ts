@@ -196,3 +196,21 @@ describe("Add credits survives a reload (owner 2026-10-10)", () => {
     expect(src("src/lib/api.ts")).toContain('creditsRequired: z.object({ message: z.string(), action: z.literal("add_credits"), label: z.string() }).nullish()');
   });
 });
+
+describe("Create a campaign button (owner 2026-10-11)", () => {
+  it("sits in the Campaigns Overview header and asks the Copilot", () => {
+    const page = src("src/components/v2/campaigns-overview-page.tsx");
+    expect(page).toContain('CREATE_CAMPAIGN_ASK = "Create a campaign"');
+    expect(page).toContain("copilot.ask(CREATE_CAMPAIGN_ASK)");
+    expect(page).toContain("actions={");
+  });
+
+  it("shows the panel and the chat sends the queued text as if typed and sent", () => {
+    const dock = src("src/components/v2/copilot-dock.tsx");
+    expect(dock).toContain("setOpen(true);\n      setPending(text);");
+    const chat = src("src/components/v2/copilot-chat.tsx");
+    expect(chat).toContain("sendMessage({ text: askedText })");
+    // The ask replaces a new chat's opener: never two first messages.
+    expect(chat).toContain("if (!openerWanted || askedText ||");
+  });
+});

@@ -1,4 +1,5 @@
 import { parseOfferSalesPaths, type OfferSalesPaths } from "./offer-sales-paths";
+import { BrandOutcomesSchema, OutcomePeopleSchema, type BrandOutcomes, type OutcomePeople } from "./v2/outcome-people";
 import { ConversationTimelineSchema, type ConversationTimeline } from "./conversation-timeline";
 import { parseBrandSalesBudget, type BrandSalesBudget } from "./brand-sales-budget";
 import {
@@ -623,6 +624,37 @@ export async function listPeople(
   if (!parsed.success) {
     console.error("[api] listPeople response shape mismatch", parsed.error.flatten());
     throw new Error("listPeople returned an unexpected shape");
+  }
+  return parsed.data;
+}
+
+/**
+ * Every outcome of the brand, from ANY source its own tools state (crm-service): per step,
+ * the distinct people who reached it, by source, and how many of them we contacted.
+ */
+export async function getBrandOutcomes(brandId: string, token?: string): Promise<BrandOutcomes> {
+  const raw = await apiCall<unknown>(`/orgs/people/outcomes?${new URLSearchParams({ brandId }).toString()}`, { token });
+  const parsed = BrandOutcomesSchema.safeParse(raw);
+  if (!parsed.success) {
+    console.error("[api] getBrandOutcomes response shape mismatch", parsed.error.flatten());
+    throw new Error("getBrandOutcomes returned an unexpected shape");
+  }
+  return parsed.data;
+}
+
+/** One outcome step's people, any source, earliest first (crm-service orders and pages). */
+export async function listOutcomePeople(
+  brandId: string,
+  step: string,
+  opts: { limit: number; offset: number },
+  token?: string,
+): Promise<OutcomePeople> {
+  const qs = new URLSearchParams({ brandId, step, limit: String(opts.limit), offset: String(opts.offset) });
+  const raw = await apiCall<unknown>(`/orgs/people/outcomes/people?${qs.toString()}`, { token });
+  const parsed = OutcomePeopleSchema.safeParse(raw);
+  if (!parsed.success) {
+    console.error("[api] listOutcomePeople response shape mismatch", parsed.error.flatten());
+    throw new Error("listOutcomePeople returned an unexpected shape");
   }
   return parsed.data;
 }
@@ -9465,6 +9497,7 @@ export async function createSubscriptionCheckout(params: {
   monthly_amount_cents: number;
   ui_mode: "embedded" | "hosted";
   return_url?: string;
+  consent?: PaymentConsent;
 }): Promise<SubscriptionCheckout> {
   const raw = await apiCall<unknown>("/billing/accounts/subscription/checkout_session", {
     method: "POST",
@@ -9479,8 +9512,8 @@ export async function createSubscriptionCheckout(params: {
 }
 
 /** Open the plan once the card is saved. 409 `card_required` = not confirmed yet, retry. */
-export async function startSubscription(): Promise<SubscriptionRead> {
-  const raw = await apiCall<unknown>("/billing/accounts/subscription/start", { method: "POST", body: {} });
+export async function startSubscription(consent?: PaymentConsent): Promise<SubscriptionRead> {
+  const raw = await apiCall<unknown>("/billing/accounts/subscription/start", { method: "POST", body: consent ? { consent } : {} });
   return parseSubscriptionRead(raw, "startSubscription");
 }
 
@@ -10069,14 +10102,23 @@ export async function createCheckoutSession(
  * off-session (auto-topup) and `topup_amount_cents` charged; credit lands via the
  * existing checkout.session.completed webhook (same accounting as the hosted path).
  */
+/** The consent boxes ticked before a payment (billing stores it for the dispute file). */
+export interface PaymentConsent {
+  statements: string[];
+  terms_version: string;
+  accepted_at?: string;
+  user_agent?: string;
+}
+
 export async function createEmbeddedCheckoutSession(
   topup_amount_cents: number,
-  token?: string
+  token?: string,
+  consent?: PaymentConsent,
 ): Promise<EmbeddedCheckoutSession> {
   return apiCall<EmbeddedCheckoutSession>("/billing/checkout-sessions", {
     token,
     method: "POST",
-    body: { ui_mode: "embedded", topup_amount_cents },
+    body: { ui_mode: "embedded", topup_amount_cents, ...(consent ? { consent } : {}) },
   });
 }
 
