@@ -66,7 +66,10 @@ function ProducedBy({ campaigns, funnelCampaigns, sources = [] }: { campaigns: O
   const { orgId } = useIds();
   return (
     <span className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1">
-      {sources.filter((src) => src.people > 0).map((src) => (
+      {sources
+        // Our campaigns are named one by one beside it: the generic mark only stands when none is.
+        .filter((src) => src.people > 0 && !(src.source === OUR_CAMPAIGNS_SOURCE && campaigns.length + funnelCampaigns.length > 0))
+        .map((src) => (
         <SourceName key={src.source} source={src.source} />
       ))}
       {funnelCampaigns.map((f) => (
