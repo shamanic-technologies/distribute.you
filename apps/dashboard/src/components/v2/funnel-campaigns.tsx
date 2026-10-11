@@ -71,7 +71,8 @@ import { PipeSections } from "@/components/v2/pipe-sections";
 import { PeoplePage } from "@/components/v2/people-page";
 import { V2AudiencesTable } from "@/components/v2/audiences-table";
 import { EmptyNote, Figure, MarkLines, Meter, SectionTitle, Shimmer, StateDot } from "@/components/v2/ui";
-import { RoiLabel } from "@/components/v2/roi-label";
+import { RoiLabel, RoiValue } from "@/components/v2/roi-label";
+import { roiToShow } from "@/lib/expected-return";
 
 /**
  * CAMPAIGNS THAT ARE SALES FUNNELS (owner 2026-10-10). A campaign has a name and a face, ONE
@@ -600,6 +601,20 @@ export function FunnelCampaignsSection({ orgId, brandId, offerId }: { orgId: str
   );
 }
 
+/**
+ * A funnel campaign's ROI: features-service's measured return under its maturity verdict, else
+ * its served EXPECTED return with "expected" beside it (owner 2026-10-11: never blank), else the
+ * served reason in words.
+ */
+function FunnelRoi({ row }: { row: FunnelCampaignRow }) {
+  const shown = funnelRoiShown(row);
+  const roi = roiToShow(shown, row.expectedReturn);
+  if (roi.value == null && roi.reason == null && shown.unpriced) {
+    return <span className="k-fg3 text-[12px] font-normal">{unpricedWords(shown.unpriced)}</span>;
+  }
+  return <RoiValue roi={roi} learning={shown.learning} />;
+}
+
 function FunnelCampaignRow({
   orgId,
   campaign,
@@ -650,18 +665,8 @@ function FunnelCampaignRow({
         </MarkLines>
       </td>
       <td className="px-3 py-2">{cell(row ? <TypeTag row={row} /> : DASH)}</td>
-      <td className={`px-3 py-2 text-right font-semibold tabular-nums ${roi.value != null && roiIsGood(roi.value) ? "text-[var(--run)]" : ""}`}>
-        {cell(
-          roi.learning ? (
-            <span className="k-chip font-normal">Learning</span>
-          ) : roi.value != null ? (
-            formatRoi(roi.value)
-          ) : row ? (
-            <span className="k-fg3 text-[12px] font-normal">{unpricedWords(roi.unpriced)}</span>
-          ) : (
-            DASH
-          ),
-        )}
+      <td className="px-3 py-2 text-right font-semibold tabular-nums">
+        {cell(row ? <FunnelRoi row={row} /> : DASH)}
       </td>
       <td className="px-3 py-2 text-right tabular-nums">{cell(row?.investedUsd != null ? formatUsdAdaptive(row.investedUsd) : DASH)}</td>
       <td className="px-3 py-2 pr-4 text-right" onClick={stop}>
@@ -939,19 +944,7 @@ export function FunnelCampaignPage({ campaign }: { campaign: SalesFunnelCampaign
                   {!rowsSettled ? (
                     <Shimmer className="h-7 w-16" />
                   ) : (
-                    <Figure
-                      value={
-                        roi.learning ? (
-                          "Learning"
-                        ) : roi.value != null ? (
-                          <span className={roiIsGood(roi.value) ? "text-[var(--run)]" : ""}>{formatRoi(roi.value)}</span>
-                        ) : row ? (
-                          <span className="k-fg3 text-[13px] font-normal">{unpricedWords(roi.unpriced)}</span>
-                        ) : (
-                          DASH
-                        )
-                      }
-                    />
+                    <Figure value={row ? <FunnelRoi row={row} /> : DASH} />
                   )}
                 </div>
               </div>

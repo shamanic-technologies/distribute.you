@@ -15,6 +15,7 @@ import { v2OfferHref } from "@/lib/v2/routes";
 import { ExpectedLabel } from "@/components/v2/offer-sales-paths";
 import { CompanyMark } from "@/components/v2/people-bits";
 import { EmptyNote, Initials, SectionTitle, Shimmer } from "@/components/v2/ui";
+import type { ExpectedConversion } from "@/lib/expected-return";
 
 export const WORTH_EACH_TIP =
   "Expected, not measured yet. The chance one person at this step becomes a paying client, times what one client is worth to you.";
@@ -22,6 +23,22 @@ export const WORTH_EACH_TIP =
 // A chance that rounds to 0.0% but is not zero reads "<0.1%", never a false 0.0%.
 const pct = (v: number) => (v > 0 && v < 0.05 ? "<0.1%" : `${v < 10 ? v.toFixed(1) : Math.round(v)}%`);
 const dash = <span className="k-fg4">—</span>;
+
+/** The (i) on % Conversion (owner 2026-10-11: a rate is never empty, on a stated hypothesis). */
+const CONVERSION_TIP =
+  "Measured once enough people went through this step. Until then, expected (shown with ~): your stated rate, else the fleet's, else an industry default.";
+
+/** The measured % Conversion, else features-service's served expected one (never computed here). */
+function conversionShown(measured: number | null, expected: ExpectedConversion | null | undefined): { pct: number | null; expected: boolean } {
+  if (measured != null) return { pct: measured, expected: false };
+  if (expected?.ratePct != null) return { pct: expected.ratePct, expected: expected.basis !== "measured" };
+  return { pct: null, expected: false };
+}
+
+function ConversionCell({ c }: { c: { pct: number | null; expected: boolean } }) {
+  if (c.pct == null) return dash;
+  return <span className={c.expected ? "k-fg2" : ""}>{c.expected ? "~" : ""}{pct(c.pct)}</span>;
+}
 
 /**
  * The headline of what working with us earned (owner 2026-10-08): customers won on OUR
@@ -137,7 +154,9 @@ export function OfferOutcomesTable({
                 <th className="k-label px-2 py-2.5 sm:px-3 text-right font-normal">All</th>
                 <th className="k-label px-2 py-2.5 sm:px-3 text-right font-normal">Hot</th>
                 <th className="k-label hidden px-2 py-2.5 text-right font-normal sm:table-cell sm:px-3">Lost</th>
-                <th className="k-label whitespace-nowrap px-2 py-2.5 text-right font-normal sm:px-3">% Conversion</th>
+                <th className="k-label whitespace-nowrap px-2 py-2.5 text-right font-normal sm:px-3">
+                  <ExpectedLabel tip={CONVERSION_TIP}>% Conversion</ExpectedLabel>
+                </th>
                 <th className="k-label whitespace-nowrap px-2 py-2.5 sm:px-3 text-right font-normal">
                   <ExpectedLabel tip={WORTH_EACH_TIP}>Worth each</ExpectedLabel>
                 </th>
@@ -170,6 +189,7 @@ export function OfferOutcomesTable({
                     eachUsd={ex.contacted.valuePerPersonUsd}
                     totalUsd={ex.contacted.pipelineUsd}
                     conversionPct={ex.contacted.conversionFromRowAbove?.ratePct ?? null}
+                    expectedConversion={ex.contacted.expectedConversionFromRowAbove}
                     onOpen={onOpenContacted}
                   />
                   <tr className="k-line-subtle border-t">
@@ -266,6 +286,7 @@ const GAP_WORDS: Record<string, string> = {
 function SliceLine({ r, onOpen }: { r: ExclusiveRow; onOpen: () => void }) {
   // Owner 2026-10-08: the row above / (this row + the row above), served per row.
   const conversionPct = r.conversionFromRowAbove?.ratePct ?? null;
+  const conversion = conversionShown(conversionPct, r.expectedConversionFromRowAbove);
   return (
     <tr {...openable(onOpen, r.step.label)}>
       <td className="px-2 py-2 pl-4 font-medium sm:px-3">{r.step.label}</td>
@@ -274,7 +295,7 @@ function SliceLine({ r, onOpen }: { r: ExclusiveRow; onOpen: () => void }) {
       <td className="px-2 py-2 text-right tabular-nums sm:px-3">{r.hot ? formatCount(r.hot.count) : dash}</td>
       {/* Of the row's people, those who went cold or were ruled out (features-service, per row). */}
       <td className="hidden px-2 py-2 text-right tabular-nums sm:table-cell sm:px-3">{r.people ? formatCount(r.people.lost.count) : dash}</td>
-      <td className="px-2 py-2 text-right tabular-nums sm:px-3">{conversionPct != null ? pct(conversionPct) : dash}</td>
+      <td className="px-2 py-2 text-right tabular-nums sm:px-3"><ConversionCell c={conversion} /></td>
       <td className="px-2 py-2 text-right tabular-nums sm:px-3">{r.valuePerOutcomeUsd != null ? formatUsdAdaptive(r.valuePerOutcomeUsd) : dash}</td>
       <td className="px-2 py-2 pr-4 text-right font-medium tabular-nums sm:px-3">{r.pipelineUsd != null ? formatUsdAdaptive(r.pipelineUsd) : dash}</td>
     </tr>
@@ -287,6 +308,7 @@ function ContactedLine({
   eachUsd,
   totalUsd,
   conversionPct = null,
+  expectedConversion = null,
   onOpen,
 }: {
   label: string;
@@ -294,6 +316,8 @@ function ContactedLine({
   eachUsd: number | null;
   totalUsd: number | null;
   conversionPct?: number | null;
+  /** The served expected % Conversion, read where the measured one is null. */
+  expectedConversion?: ExpectedConversion | null;
   onOpen?: () => void;
 }) {
   return (
@@ -302,7 +326,7 @@ function ContactedLine({
       <td className="px-2 py-2 sm:px-3 text-right tabular-nums">{count != null ? formatCount(count) : dash}</td>
       <td className="px-2 py-2 text-right sm:px-3">{dash}</td>
       <td className="hidden px-2 py-2 text-right sm:table-cell sm:px-3">{dash}</td>
-      <td className="px-2 py-2 text-right tabular-nums sm:px-3">{conversionPct != null ? pct(conversionPct) : dash}</td>
+      <td className="px-2 py-2 text-right tabular-nums sm:px-3"><ConversionCell c={conversionShown(conversionPct, expectedConversion)} /></td>
       <td className="px-2 py-2 sm:px-3 text-right tabular-nums">{eachUsd != null ? formatUsdAdaptive(eachUsd) : dash}</td>
       <td className="px-2 py-2 sm:px-3 pr-4 text-right font-medium tabular-nums">{totalUsd != null ? formatUsdAdaptive(totalUsd) : dash}</td>
     </tr>

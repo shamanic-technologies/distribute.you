@@ -7,6 +7,7 @@
  * Shapes only, as served; nothing is computed here. Alias-free so it carries real unit tests.
  */
 import { z } from "zod";
+import { ExpectedReturnSchema } from "./expected-return";
 
 export const SalesFunnelUnitSchema = z
   .object({
@@ -299,6 +300,8 @@ export const FunnelCampaignRowSchema = z
     maturity: z.object({ isMature: z.boolean() }).passthrough().nullish(),
     // Why a null ROI is null on the pipeline side (`unpricedReason`, e.g. no_funnel_wired), served.
     headline: z.object({ unpricedReason: z.string().nullish() }).passthrough().nullish(),
+    // The funnel campaign's EXPECTED return, never empty (features-service EXPECTED-ROI-1011).
+    expectedReturn: ExpectedReturnSchema.nullish(),
   })
   .passthrough();
 export type FunnelCampaignRow = z.infer<typeof FunnelCampaignRowSchema>;

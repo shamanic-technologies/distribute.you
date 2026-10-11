@@ -46,6 +46,7 @@ import { Figure, Shimmer } from "@/components/v2/ui";
 import { AddCreditsButton, ChoiceCards, OpenedPage } from "@/components/v2/copilot-cards";
 import { useSelectedOfferIfAny } from "@/components/v2/selected-offer";
 import { RoiLabel } from "@/components/v2/roi-label";
+import { expectedReasonWords, roiToShow } from "@/lib/expected-return";
 
 /**
  * The Copilot (owner 2026-10-09, GA 2026-10-10), drawn inside the right panel. A reload shows the last
@@ -82,7 +83,8 @@ function useAccountFigures(brandId: string) {
   const w = win.data ?? null;
   const figures = {
     brandName,
-    returnMultiple: roi.learning ? null : roi.value,
+    // Measured when stated, else the served expected return (owner 2026-10-11: never blank).
+    returnShown: roiToShow(roi, rev.data?.expectedReturn),
     returnIsLearning: roi.learning,
     positiveReplies: w?.recipientsRepliesPositive.total ?? null,
     needYourCall: callQ.data?.total ?? null,
@@ -114,8 +116,14 @@ function AccountCard({
     {
       label: "ROI",
       pending: revPending,
-      good: !figures.returnIsLearning && roiIsGood(figures.returnMultiple),
-      value: figures.returnIsLearning ? "Learning" : figures.returnMultiple != null ? formatRoi(figures.returnMultiple) : "—",
+      good: roiIsGood(figures.returnShown.value),
+      value:
+        figures.returnShown.value != null
+          ? formatRoi(figures.returnShown.value)
+          : figures.returnIsLearning && figures.returnShown.reason == null
+            ? "Learning"
+            : expectedReasonWords(figures.returnShown.reason),
+      sub: figures.returnShown.expected ? "Expected" : undefined,
     },
     {
       label: "Positive replies",

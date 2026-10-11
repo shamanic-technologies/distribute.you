@@ -9,6 +9,7 @@
 import { z } from "zod";
 import { maturityPairSchema } from "./maturity";
 import type { RevenueOverview, RevenueOverviewWithLeads } from "./revenue-view";
+import { ExpectedReturnSchema } from "./expected-return";
 
 /**
  * The ratios of a cost-economics block, served twice (features-service#1196, lib/maturity.ts).
@@ -568,6 +569,9 @@ const FeatureRevenueResponseSchema = z.object({
   // both bases. Optional and nullable as served — null where the lead population was never
   // read (no funnel wired), absent on the lensed and grouped bodies.
   maturity: ScopeMaturitySchema.nullish(),
+  // The scope's EXPECTED return (features-service EXPECTED-ROI-1011): never empty, read where the
+  // measured one is Learning or null. Optional until every grain serves it.
+  expectedReturn: ExpectedReturnSchema.nullish(),
   timeSeries: z.array(z.object({ date: z.string(), cumulativePipelineUsd: z.number() })),
   organizations: z.array(RevenueOrgSchema),
   events: z.array(RevenueEventSchema),
@@ -698,6 +702,7 @@ function flattenRevenue(d: z.infer<typeof FeatureRevenueResponseSchema>): Revenu
     conversionRateHistory: d.conversionRateHistory ?? null,
     // Whole, verbatim: the scope's verdict and each leg's mature and flash figures.
     maturity: d.maturity ?? null,
+    expectedReturn: d.expectedReturn ?? null,
     stepWalk: d.funnelSteps ?? null,
     // Passed through whole. The band renders these figures verbatim: the browser no
     // longer picks a price, multiplies a threshold or divides a countdown.

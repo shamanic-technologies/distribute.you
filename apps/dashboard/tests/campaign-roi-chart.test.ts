@@ -170,7 +170,8 @@ describe("Pipeline by step: one row per person, a served Total", () => {
     expect(roi).toContain("ex.total.hot ? formatCount(ex.total.hot.count) : dash");
   });
   it("% Conversion = the row above / (row + row above), served per row (owner 2026-10-08)", () => {
-    expect(roi).toContain('sm:px-3">% Conversion</th>');
+    // The header carries the expected (i) (owner 2026-10-11: a rate is never empty).
+    expect(roi).toContain("<ExpectedLabel tip={CONVERSION_TIP}>% Conversion</ExpectedLabel>");
     expect(roi).toContain("r.conversionFromRowAbove?.ratePct ?? null");
     expect(roi).toContain("conversionPct={ex.contacted.conversionFromRowAbove?.ratePct ?? null}");
     expect(roi).not.toContain("const conversionOf");

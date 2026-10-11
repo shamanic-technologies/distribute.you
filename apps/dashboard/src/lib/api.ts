@@ -101,6 +101,7 @@ import {
   type CrmPairingCounts,
   type CrmPairings,
 } from "./crm-pairings";
+import { ExpectedConversionSchema, ExpectedReturnSchema, type ExpectedReturn } from "./expected-return";
 
 const API_URL = process.env.NEXT_PUBLIC_DISTRIBUTE_API_URL || "https://api.distribute.you";
 
@@ -5668,6 +5669,8 @@ const ExclusiveLadderSchema = z.object({
       .nullable(),
     people: z.object({ limit: z.coerce.number(), leads: z.array(ExclusivePersonSchema) }),
     conversionFromRowAbove: ConversionFromRowAboveSchema,
+    // Never empty: the measured % Conversion, else a named hypothesis (features-service EXPECTED-ROI-1011).
+    expectedConversionFromRowAbove: ExpectedConversionSchema.nullish(),
   }),
   rows: z.array(
     z.object({
@@ -5690,6 +5693,7 @@ const ExclusiveLadderSchema = z.object({
         .object({ limit: z.coerce.number(), count: z.coerce.number(), leads: z.array(ExclusivePersonSchema) })
         .nullish(),
       conversionFromRowAbove: ConversionFromRowAboveSchema,
+      expectedConversionFromRowAbove: ExpectedConversionSchema.nullish(),
     }),
   ),
   total: z.object({
@@ -6154,6 +6158,9 @@ const FeatureRevenueByCampaignSchema = z.object({
       headline: z.object({ totalPipelineUsd: z.number().nullable() }),
       costEconomics: CampaignRevenueCostEconomicsSchema,
       outcomes: CampaignRevenueOutcomesSchema.nullish(),
+      // The scope's EXPECTED return (features-service EXPECTED-ROI-1011): never empty, read where the
+      // measured one is Learning or null. Optional until every grain serves it.
+      expectedReturn: ExpectedReturnSchema.nullish(),
     }),
   ),
 });
@@ -6187,6 +6194,8 @@ export interface CampaignRevenueGroup {
   /** The SERVED share of those who replied, in percent. Null = nothing was sent. */
   replyRatePct?: number | null;
   positiveReplyRatePct?: number | null;
+  /** The campaign's EXPECTED return, never empty (features-service); null on an older body. */
+  expectedReturn?: ExpectedReturn | null;
   /** ROI, % CAC and $ CAC served twice with this campaign's maturity verdict. */
   economicsMaturity: MaturityPair<EconomicsFigures> | null;
   /** Cost per visit and per positive reply, served twice. Null when the producer served no
@@ -6228,6 +6237,7 @@ export async function getFeatureRevenueByCampaign(
     sentCount: g.outcomes?.sending?.recipientsSent,
     replyRatePct: g.outcomes?.sending?.replyRatePct,
     positiveReplyRatePct: g.outcomes?.sending?.positiveReplyRatePct,
+    expectedReturn: g.expectedReturn ?? null,
     economicsMaturity: g.costEconomics.maturity ?? null,
     outcomesMaturity: g.outcomes?.maturity ?? null,
   }));

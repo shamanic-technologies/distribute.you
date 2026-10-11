@@ -9,6 +9,7 @@
 // Plain TS interfaces (no `@/lib/api` import) so these types stay safe to import
 // from components reused in the public-report bundle.
 import type { MaturityPair } from "./maturity";
+import type { ExpectedReturn } from "./expected-return";
 
 /** The three ratios of a cost-economics block, as one half of its served maturity pair. */
 export interface EconomicsFigures {
@@ -593,6 +594,8 @@ export interface RevenueOverview {
    * producer never read the lead population.
    */
   maturity?: ScopeMaturity | null;
+  /** The scope's EXPECTED return, never empty (features-service), read where the measured one is Learning. */
+  expectedReturn?: ExpectedReturn | null;
 }
 
 /** The figures of ONE scope on ONE basis for one leg — observed accounting. */
