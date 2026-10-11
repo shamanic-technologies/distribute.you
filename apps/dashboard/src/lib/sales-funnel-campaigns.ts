@@ -276,6 +276,14 @@ export function volumeLimitLabel(type: FunnelType | null, v: Pick<MaxVolume, "co
 }
 
 /**
+ * A volume-only funnel's limit where its budget would sit: "100 new people/month" (no "Max", owner
+ * 2026-10-11), "Up to 50 leads handled/week" for a Reactive one (as its budget reads "Up to $N").
+ */
+export function volumeFundingLabel(type: FunnelType | null, v: Pick<MaxVolume, "count" | "period" | "unit">): string {
+  return `${type === "reactive" ? "Up to " : ""}${volumeLimitLabel(type, v)}`;
+}
+
+/**
  * billing's funding verdict (owner 2026-10-11: a max $ AND/OR a max volume). `false` = not funded
  * ("Not funded yet"); null = billing has not served it yet (logged; nothing is claimed either way).
  */
