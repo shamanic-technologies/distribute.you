@@ -35,7 +35,8 @@ import { EXPECTED_ROI_TIP } from "@/lib/offer-sales-paths";
 import { ChannelChip, ExpectedLabel, PathAvatar } from "@/components/v2/offer-sales-paths";
 import { EmptyNote, MarkLines, SectionTitle, Shimmer, StateDot } from "@/components/v2/ui";
 import { ProviderLogo } from "@/components/provider-logo";
-import { ROI_TIP } from "@/components/v2/roi-label";
+import { roiToShow } from "@/lib/expected-return";
+import { ROI_TIP, RoiValue } from "@/components/v2/roi-label";
 
 /**
  * The offer's CAMPAIGNS (owner 2026-10-05): every channel x leg its sales paths use, with
@@ -401,8 +402,8 @@ export function CampaignResultCells({ mission, basis }: { mission: Mission | nul
   const cost = mission ? costPerResult(mission, basis) : null;
   return (
     <>
-      <td className={`px-3 py-2 text-right font-semibold tabular-nums ${roiIsGood(roi.value) ? "text-[var(--run)]" : ""}`}>
-        {!mission ? DASH : roi.learning ? <span className="k-chip font-normal">Learning</span> : roi.value != null ? formatRoi(roi.value) : DASH}
+      <td className="px-3 py-2 text-right font-semibold tabular-nums">
+        {!mission ? DASH : <RoiValue roi={roiToShow(roi, g?.expectedReturn)} learning={roi.learning} />}
       </td>
       <td className="px-3 py-2 text-right tabular-nums">
         {outcome ? (

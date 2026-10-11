@@ -37,7 +37,8 @@ import { StatBasisSwitch } from "@/components/v2/stat-basis-switch";
 import { V2Page, type V2Tab } from "@/components/v2/setup-pages";
 import { EmptyNote, Figure, SectionTitle, Shimmer, StatTile } from "@/components/v2/ui";
 import { FunnelCampaignPage, FunnelPartOf, useFunnelCampaignById } from "@/components/v2/funnel-campaigns";
-import { RoiLabel } from "@/components/v2/roi-label";
+import { RoiLabel, RoiValue } from "@/components/v2/roi-label";
+import { costToShowCents, roiToShow } from "@/lib/expected-return";
 
 /**
  * A step label as a count heading: "Positive reply" -> "Positive replies", "Booking call" ->
@@ -256,17 +257,7 @@ function RoiTile({ mission }: { mission: Mission }) {
   const roi = shownReturn(mission.row.revenue?.economicsMaturity, basis);
   return (
     <StatTile label={<RoiLabel />}>
-      <Figure
-        value={
-          roi.learning ? (
-            "Learning"
-          ) : roi.value == null ? (
-            "—"
-          ) : (
-            <span className={roiIsGood(roi.value) ? "text-[var(--run)]" : ""}>{formatRoi(roi.value)}</span>
-          )
-        }
-      />
+      <Figure value={<RoiValue roi={roiToShow(roi, mission.row.revenue?.expectedReturn)} learning={roi.learning} />} />
     </StatTile>
   );
 }
@@ -302,6 +293,8 @@ function CampaignOverview({
   const g = mission.row.revenue ?? null;
   const replyLed = leg?.bucket === "positive_reply";
   const cost = shownFigure(g?.outcomesMaturity, (h) => (replyLed ? h.cpprCents : h.cpcCents), basis);
+  // The served expected cost of one outcome where the measured one is Learning (owner 2026-10-11).
+  const costShown = costToShowCents(cost, g?.expectedReturn, replyLed ? "conversation" : "website_visit");
   const cap = crewTrigger(mission.leg)?.kind === "event";
 
   const win = useCampaignWindow(brandId, mission.row.campaign.id, mission.row.campaign.featureSlug ?? null);
@@ -330,7 +323,10 @@ function CampaignOverview({
           <StatTile label={leg ? (outcomes === 1 ? leg.outcome : plural(leg.outcome)) : "Outcomes"}>{count(outcomes)}</StatTile>
           <SpentTile win={win} />
           <StatTile label={replyLed ? "Cost / reply" : "Cost / visit"}>
-            <Figure value={cost.learning ? "Learning" : cost.value == null ? "—" : formatCentsAsUsdAdaptive(cost.value)} />
+            <Figure
+              value={costShown.cents != null ? formatCentsAsUsdAdaptive(costShown.cents) : cost.learning ? "Learning" : "—"}
+              sub={costShown.expected ? "Expected" : undefined}
+            />
           </StatTile>
         </div>
       </section>

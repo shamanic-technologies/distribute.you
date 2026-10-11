@@ -70,6 +70,7 @@ import {
   personHref,
 } from "@/components/v2/people-bits";
 import { RoiLabel } from "@/components/v2/roi-label";
+import { expectedReasonWords, roiToShow } from "@/lib/expected-return";
 
 /** Bars for a short window, a line for a long one (30 bars do not fit a tile). */
 function Trend({ values, line = false, className = "" }: { values: number[] | null; line?: boolean; className?: string }) {
@@ -224,7 +225,9 @@ export function TodayPage() {
   const first = user?.firstName ?? null;
   const dateLine = clock?.toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric" });
   const timeLine = clock?.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" });
-  const roi = shownRoi.value;
+  // Measured when the producer states it, else the served expected return (owner 2026-10-11: never blank).
+  const roiShown = roiToShow(shownRoi, data?.expectedReturn);
+  const roi = roiShown.value;
   const gaugeMax = Math.max(3, Math.ceil((roi ?? 0) + 0.5));
 
   return (
@@ -295,12 +298,13 @@ export function TodayPage() {
                 ) : (
                   <div className="flex flex-col items-center">
                     <div className="relative w-full max-w-[124px]">
-                      <TickGauge value={learning ? null : roi} max={gaugeMax} marker={1} />
-                      <span className={`absolute inset-x-0 bottom-0 text-center font-medium tabular-nums ${learning ? "text-[14px]" : "text-[18px]"}`}>
-                        {learning ? "Learning" : formatRoi(roi)}
+                      <TickGauge value={roi} max={gaugeMax} marker={1} />
+                      <span className={`absolute inset-x-0 bottom-0 text-center font-medium tabular-nums ${roi == null ? "text-[14px]" : "text-[18px]"}`}>
+                        {roi == null ? (learning && roiShown.reason == null ? "Learning" : expectedReasonWords(roiShown.reason)) : formatRoi(roi)}
                       </span>
                     </div>
                     <p className="k-fg3 mt-1 truncate text-[11px]">
+                      {roiShown.expected ? "Expected · " : ""}
                       {data?.totalPipelineUsd != null ? formatUsdAdaptive(data.totalPipelineUsd) : "—"} pipeline
                     </p>
                   </div>

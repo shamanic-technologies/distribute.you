@@ -18,7 +18,8 @@ import type { Mission } from "@/components/v2/use-missions";
 import { LEG_STEPS, StepBar, useCampaignWindow } from "@/components/v2/offer-channel-page";
 import { ChannelChip } from "@/components/v2/offer-sales-paths";
 import { EmptyNote, Shimmer } from "@/components/v2/ui";
-import { RoiLabel } from "@/components/v2/roi-label";
+import { RoiLabel, RoiValue } from "@/components/v2/roi-label";
+import { costToShowCents, roiToShow } from "@/lib/expected-return";
 
 /**
  * A sales-funnel campaign's PIPES, one block each (owner 2026-10-11: "up to 3 columns on
@@ -133,13 +134,17 @@ function MoneyCells({ mission, per }: { mission: Mission | null; per: "reply" | 
   const g = mission?.row.revenue ?? null;
   const roi = shownReturn(g?.economicsMaturity, basis);
   const cost = shownFigure(g?.outcomesMaturity, (h) => (per === "reply" ? h.cpprCents : h.cpcCents), basis);
+  // The served expected cost of one outcome where the measured one is Learning (owner 2026-10-11).
+  const costShown = costToShowCents(cost, g?.expectedReturn, per === "reply" ? "conversation" : "website_visit");
   return (
     <>
-      <Cell label={<RoiLabel />}>
-        {!mission ? DASH : roi.learning ? "Learning" : roi.value == null ? DASH : <span className={roiIsGood(roi.value) ? "text-[var(--run)]" : ""}>{formatRoi(roi.value)}</span>}
-      </Cell>
+      <Cell label={<RoiLabel />}>{!mission ? DASH : <RoiValue roi={roiToShow(roi, g?.expectedReturn)} learning={roi.learning} />}</Cell>
       <Cell label="$ Value">{g?.totalPipelineUsd != null ? formatUsdAdaptive(g.totalPipelineUsd) : DASH}</Cell>
-      {per && <Cell label={per === "reply" ? "$ / Positive reply" : "$ / Visit"}>{cost.learning ? "Learning" : cost.value == null ? DASH : formatCentsAsUsdAdaptive(cost.value)}</Cell>}
+      {per && (
+        <Cell label={per === "reply" ? "$ / Positive reply" : "$ / Visit"} sub={costShown.expected ? "Expected" : undefined}>
+          {costShown.cents != null ? formatCentsAsUsdAdaptive(costShown.cents) : cost.learning ? "Learning" : DASH}
+        </Cell>
+      )}
     </>
   );
 }
