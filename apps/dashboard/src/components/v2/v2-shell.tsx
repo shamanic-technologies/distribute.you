@@ -5,12 +5,12 @@ import Link from "next/link";
 import { useParams, usePathname, useSearchParams } from "next/navigation";
 import { AccountMenuV2, SearchTrigger, TenantSwitcherV2 } from "@/components/v2/sidebar-menus";
 import { useOngoingCampaigns } from "@/components/v2/ongoing-campaigns";
-import { useBrandOutcomeList, useStepIcons } from "@/components/v2/brand-outcomes";
+import { useAudienceSnapshot, useBrandOutcomeList, useStepIcons } from "@/components/v2/brand-outcomes";
 import { CrewMark } from "@/components/v2/crew-mark";
 import { V2NavContext } from "@/components/v2/nav-context";
 import { useBucketCounts, useBrandRevenue, useNeedsYourCall, useStandingCounts } from "@/components/v2/data";
 import { v2CampaignHref, v2CatalogueHref, v2Href, v2OfferHref, v2OutcomeHref, v2SectionOf, v2WorkflowHref } from "@/lib/v2/routes";
-import { CATALOGUE_OBJECTS, CATALOGUE_OBJECT_LABELS } from "@/lib/staff-catalogue";
+import { CATALOGUE_OBJECTS, CATALOGUE_OBJECT_LABELS, TRIGGER_LABELS } from "@/lib/staff-catalogue";
 import { useOngoingCatalogue } from "@/components/v2/staff-catalogue-data";
 import { CatalogueMark } from "@/components/v2/catalogue-mark";
 import { POSTS_STEP } from "@/lib/v2/outcomes";
@@ -191,6 +191,9 @@ function V2Sidebar() {
   // Every outcome of the brand, campaigns or not (owner 2026-10-11), the Overview's own list.
   const { outcomes } = useBrandOutcomeList(orgId, brandId, offerId);
   const stepIcons = useStepIcons();
+  // Leads found counts the people the brand's lists hold, the page's People tab (owner 2026-10-11).
+  const leadsFoundListed = outcomes.some((o) => o.outcome.items.kind === "leads-found");
+  const peopleHeld = useAudienceSnapshot(brandId, leadsFoundListed).data?.totals.people.held;
   const buckets = useBucketCounts(brandId).data;
   const standings = useStandingCounts(brandId).data;
   // Deals badge = the people still in play on the Deals board (Leads + Sales interest +
@@ -332,7 +335,19 @@ function V2Sidebar() {
                   label={outcome.label}
                   icon={<OutcomeMark outcomeKey={outcome.key} label={outcome.label} stepIcons={stepIcons} />}
                   active={pathname === href}
-                  trailing={<Count n={all ? all.people : outcome.items.kind === "people" ? buckets?.counts[outcome.items.bucket] : null} />}
+                  trailing={
+                    <Count
+                      n={
+                        all
+                          ? all.people
+                          : outcome.items.kind === "people"
+                            ? buckets?.counts[outcome.items.bucket]
+                            : outcome.items.kind === "leads-found"
+                              ? peopleHeld
+                              : null
+                      }
+                    />
+                  }
                 />
               );
             })}
@@ -384,7 +399,7 @@ function OutcomeMark({ outcomeKey, label, stepIcons }: { outcomeKey: string; lab
 
 /**
  * The staff sections (owner 2026-10-10): Steps, Sales Paths, Channels, Pipes, Sales Funnels,
- * Workflows. Each = its Overview + every ONGOING one with its served mark and name.
+ * Triggers (owner 2026-10-11), Workflows. Each = its Overview + every ONGOING one with its served mark and name.
  * Mounted only in staff mode, so a customer makes none of these reads.
  */
 function StaffObjectSections({ orgId, brandId, offerId, pathname }: { orgId: string; brandId: string; offerId: string | null; pathname: string }) {
@@ -413,6 +428,28 @@ function StaffObjectSections({ orgId, brandId, offerId, pathname }: { orgId: str
           </Group>
         );
       })}
+      {/* Triggers (owner 2026-10-11): what starts a reactive pipe; ongoing = named by a reactive pipe of a running campaign. */}
+      <Group title={TRIGGER_LABELS.title}>
+        <NavItem
+          href={v2CatalogueHref(orgId, brandId, "triggers")}
+          label="Overview"
+          icon={<I d={ICONS.overview} />}
+          active={pathname === v2CatalogueHref(orgId, brandId, "triggers")}
+        />
+        {offerId &&
+          ongoing.triggers.map((t) => {
+            const href = v2CatalogueHref(orgId, brandId, "triggers", t.id);
+            return (
+              <NavItem
+                key={t.id}
+                href={href}
+                label={t.name}
+                icon={<CatalogueMark icon={t.icon} color={t.color} name={t.name} size={16} />}
+                active={pathname === href}
+              />
+            );
+          })}
+      </Group>
       <Group title="Workflows">
         <NavItem
           href={v2Href(orgId, brandId, "workflows")}

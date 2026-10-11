@@ -3,15 +3,15 @@
 import { useMemo } from "react";
 import { useQueries } from "@tanstack/react-query";
 import { useAuthQuery, useOrgQueryGate } from "@/lib/use-auth-query";
-import { getOfferSalesPaths, getStaffCatalogueObject, getWorkflowRankLadder, listSalesFunnelCampaigns, listStaffCatalogue } from "@/lib/api";
+import { getOfferSalesPaths, getStaffCatalogueObject, getWorkflowRankLadder, listSalesFunnelCampaigns, listStaffCatalogue, listStaffCatalogueTriggers } from "@/lib/api";
 import { isOngoingFunnelCampaign, type SalesFunnelCampaign } from "@/lib/sales-funnel-campaigns";
 import { pollOptions } from "@/lib/query-options";
 import {
   ongoingChannelsAndSteps,
   ongoingFunnelIds,
   ongoingPipeIds,
+  ongoingTriggerIds,
   type CatalogueDetailByObject,
-  type CatalogueObject,
   type CatalogueReadObject,
 } from "@/lib/staff-catalogue";
 import { featureLegId } from "@/lib/outbound-leg-key";
@@ -44,6 +44,14 @@ export function useStaffCatalogueList(object: CatalogueReadObject, query: Record
   });
 }
 
+/** One page of triggers, as served (`q`, `limit`). */
+export function useStaffCatalogueTriggers(query: Record<string, string | undefined>) {
+  return useAuthQuery(["staffCatalogueList", "triggers", query], () => listStaffCatalogueTriggers(query), {
+    ...catalogueOptions,
+    placeholderData: (prev) => prev,
+  });
+}
+
 /** One object by id (a workflow also names its pipe). */
 export function useStaffCatalogueObject<K extends CatalogueReadObject>(object: K, id: string | null, pipe?: string | null) {
   return useAuthQuery(
@@ -54,7 +62,7 @@ export function useStaffCatalogueObject<K extends CatalogueReadObject>(object: K
 }
 
 /** Many objects of one kind by id, in the ids' order; a failed read is logged and left out. */
-function useObjects<K extends CatalogueObject>(object: K, ids: string[], enabled: boolean) {
+function useObjects<K extends CatalogueReadObject>(object: K, ids: string[], enabled: boolean) {
   const gate = useOrgQueryGate();
   const results = useQueries({
     queries: ids.map((id) => ({
@@ -104,6 +112,8 @@ export interface OngoingCatalogue {
   channels: CatalogueDetailByObject["channels"][];
   pipes: CatalogueDetailByObject["pipes"][];
   "sales-funnels": CatalogueDetailByObject["sales-funnels"][];
+  /** The triggers the ongoing reactive pipes name. */
+  triggers: CatalogueDetailByObject["triggers"][];
   workflows: OngoingWorkflow[];
   /** The offer's ongoing SALES FUNNEL campaigns (campaign-service status), each with its funnel's face. */
   campaigns: OngoingFunnelCampaign[];
@@ -144,6 +154,8 @@ export function useOngoingCatalogue(orgId: string, brandId: string, offerId: str
   const { channelIds, stepIds } = useMemo(() => ongoingChannelsAndSteps(pipes.data), [pipes.data]);
   const channels = useObjects("channels", channelIds, enabled);
   const steps = useObjects("steps", stepIds, enabled);
+  const triggerIds = useMemo(() => ongoingTriggerIds(pipes.data), [pipes.data]);
+  const triggers = useObjects("triggers", triggerIds, enabled);
 
   const funnelIds = useMemo(() => ongoingFunnelIds(salesPaths.data?.paths ?? [], pipeIds), [salesPaths.data, pipeIds]);
   const funnels = useObjects("sales-funnels", funnelIds, enabled);
@@ -208,9 +220,10 @@ export function useOngoingCatalogue(orgId: string, brandId: string, offerId: str
     channels: channels.data,
     pipes: pipes.data,
     "sales-funnels": funnels.data,
+    triggers: triggers.data,
     workflows,
     campaigns: campaignsOut,
     campaignsByPipe,
-    settled: funnelCampaignsSettled && campaignsSettled && offerSettled && pipes.settled && channels.settled && steps.settled && funnels.settled && paths.settled && laddersSettled,
+    settled: funnelCampaignsSettled && campaignsSettled && offerSettled && pipes.settled && channels.settled && steps.settled && triggers.settled && funnels.settled && paths.settled && laddersSettled,
   };
 }

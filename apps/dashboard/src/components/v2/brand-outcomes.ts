@@ -3,7 +3,8 @@
 import { useMemo } from "react";
 import { useBrandOutcomes } from "@/components/v2/data";
 import { useAuthQuery } from "@/lib/use-auth-query";
-import { getPublicCatalogueSteps } from "@/lib/api";
+import { getAudienceSnapshot, getPublicCatalogueSteps } from "@/lib/api";
+import { useStaffMode } from "@/lib/use-staff-mode";
 import { useOngoingCampaigns, type OngoingOutcome } from "@/components/v2/ongoing-campaigns";
 import { outcomeOfBucket } from "@/lib/v2/outcomes";
 import { reachedBuckets, stepStatOf, type OutcomeStepStat } from "@/lib/v2/outcome-people";
@@ -52,4 +53,15 @@ export function useBrandOutcomeList(orgId: string, brandId: string, offerId: str
 export function useStepIcons(): Map<string, string> | undefined {
   const q = useAuthQuery(["publicCatalogueSteps"], getPublicCatalogueSteps, { staleTime: 10 * 60_000 });
   return useMemo(() => (q.data ? new Map(q.data.map((s) => [s.key, s.icon] as const)) : undefined), [q.data]);
+}
+
+/**
+ * The brand's list snapshot (lists, people and companies held), one query key for the
+ * Leads found page and its sidebar entry, so the entry's count is the page's People tab
+ * (owner 2026-10-11: « leads found n'affiche pas de nombre »). `enabled` lets the sidebar
+ * skip the read when no Leads found entry is listed.
+ */
+export function useAudienceSnapshot(brandId: string, enabled = true) {
+  const { staffMode: staff } = useStaffMode();
+  return useAuthQuery(["staffAudienceSnapshot", brandId, staff], () => getAudienceSnapshot(brandId, staff), { enabled });
 }

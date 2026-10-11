@@ -5,9 +5,11 @@ import { parseBrandSalesBudget, type BrandSalesBudget } from "./brand-sales-budg
 import {
   CATALOGUE_DETAIL_SCHEMAS,
   CataloguePageSchema,
+  CatalogueTriggerPageSchema,
   type CatalogueDetailByObject,
   type CataloguePage,
   type CatalogueReadObject,
+  type CatalogueTriggerPage,
 } from "./staff-catalogue";
 import {
   SalesFunnelCampaignListSchema,
@@ -1699,6 +1701,14 @@ export async function listStaffCatalogue(object: CatalogueReadObject, query: Rec
   for (const [k, v] of Object.entries(query)) if (v) qs.set(k, v);
   const q = qs.toString();
   return parseStaff(`listStaffCatalogue(${object})`, CataloguePageSchema, await apiCall<unknown>(`${STAFF_CATALOGUE_PATHS.list(object)}${q ? `?${q}` : ""}`));
+}
+
+/** One page of triggers (`q`, `limit` 1..25): no economics, so its own page shape. */
+export async function listStaffCatalogueTriggers(query: Record<string, string | undefined> = {}): Promise<CatalogueTriggerPage> {
+  const qs = new URLSearchParams();
+  for (const [k, v] of Object.entries(query)) if (v) qs.set(k, v);
+  const q = qs.toString();
+  return parseStaff("listStaffCatalogueTriggers", CatalogueTriggerPageSchema, await apiCall<unknown>(`${STAFF_CATALOGUE_PATHS.list("triggers")}${q ? `?${q}` : ""}`));
 }
 
 /** One object by id (a workflow also names its `pipe`). */
