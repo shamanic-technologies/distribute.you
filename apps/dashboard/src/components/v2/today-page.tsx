@@ -25,6 +25,7 @@ import {
   EmptyNote,
   Figure,
   KeyHint,
+  MarkLines,
   SectionTitle,
   Shimmer,
   StateDot,
@@ -622,15 +623,16 @@ function MeetingLine({ lead, at, mission, href }: { lead: Lead; at: string | nul
           <p className="text-[13px] font-medium tabular-nums">{at ? friendlyTime(at) : "—"}</p>
           <p className="k-fg3 text-[11px]">{at ? friendlyDate(at) : "booked"}</p>
         </div>
-        <div className="min-w-0 flex-1">
-          <p className="flex min-w-0 items-center gap-1.5 text-[13px] font-medium">
-            {company ? <CompanyMark name={company} domain={leadCompanyDomain(lead)} size={16} /> : <PersonAvatar lead={lead} size={16} />}
-            <span className="truncate">{company ?? leadName(lead)}</span>
-          </p>
-          <p className="k-fg3 truncate text-[12px]">
+        <MarkLines
+          className="flex-1"
+          gap="gap-2"
+          mark={(px) => (company ? <CompanyMark name={company} domain={leadCompanyDomain(lead)} size={px} /> : <PersonAvatar lead={lead} size={px} />)}
+        >
+          <span className="truncate text-[13px] font-medium">{company ?? leadName(lead)}</span>
+          <span className="k-fg3 truncate text-[12px]">
             {[company ? leadName(lead) : null, mission?.crew.name ? `booked by ${mission.crew.name}` : null].filter(Boolean).join(" · ")}
-          </p>
-        </div>
+          </span>
+        </MarkLines>
       </Link>
     </li>
   );
@@ -672,15 +674,20 @@ function CampaignLine({ c, budget }: { c: OngoingCampaign; budget: string | null
   const invested = m.row.revenue?.committedCostUsd ?? null;
   return (
     <Link href={m.href} className="k-hover block px-4 py-3 first:rounded-t-[12px] last:rounded-b-[12px]">
-      <span className="flex items-center gap-3">
-        {name ? <PathAvatar name={name} size={20} /> : <CrewMark color={m.crew.color} glyph={m.crew.glyph} size={20} />}
-        <span className="min-w-0 flex-1 truncate text-[13px] font-medium">{name ?? m.crew.name}</span>
-        <StateDot running={m.running} hold={m.paymentHold} />
-      </span>
-      {/* The full definition on its own line, as the Sales path page reads it: [Channel] → outcome. */}
-      <span className="mt-1.5 block overflow-hidden">
-        {campaign ? <CampaignLeg campaign={campaign} compact /> : <span className="k-fg4 text-[12px]">{"—"}</span>}
-      </span>
+      {/* The mark is as tall as the name and definition lines beside it (owner 2026-10-11). */}
+      <MarkLines
+        gap="gap-3"
+        mark={(px) => (name ? <PathAvatar name={name} size={px} /> : <CrewMark color={m.crew.color} glyph={m.crew.glyph} size={px} />)}
+      >
+        <span className="flex items-center gap-3">
+          <span className="min-w-0 flex-1 truncate text-[13px] font-medium">{name ?? m.crew.name}</span>
+          <StateDot running={m.running} hold={m.paymentHold} />
+        </span>
+        {/* The full definition on its own line, as the Sales path page reads it: [Channel] → outcome. */}
+        <span className="mt-1.5 block overflow-hidden">
+          {campaign ? <CampaignLeg campaign={campaign} compact /> : <span className="k-fg4 text-[12px]">{"—"}</span>}
+        </span>
+      </MarkLines>
       {/* Its type and budget, then what it has spent so far. */}
       <span className="k-fg3 mt-1.5 flex items-center justify-between gap-2 text-[12px] tabular-nums">
         <span className="truncate">

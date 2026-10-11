@@ -239,9 +239,10 @@ describe("sales funnel campaigns: the type picks the words (owner 2026-10-10)", 
     expect(volumeUnitWords(null, "reactive", 3)).toBe("leads handled");
   });
 
-  it("a customer's Campaigns page lists ONLY funnel campaigns; the pipe table is staff mode", () => {
+  it("the Campaigns page lists ONLY funnel campaigns, staff mode included (no pipe table, owner 2026-10-11)", () => {
     const overview = src("src/components/v2/campaigns-overview-page.tsx");
-    expect(overview).toContain("<StaffPipeCampaigns orgId={orgId} brandId={brandId} offerId={offerId} />");
+    expect(overview).not.toContain("StaffPipeCampaigns");
+    expect(overview).not.toContain("staffMode");
     // Until campaign-service has converted it, a RUNNING old-style campaign stays in view, and only it.
     expect(overview).toContain("<UnconvertedRunningCampaigns orgId={orgId} brandId={brandId} offerId={offerId} />");
     expect(overview).toContain("if (running.size === 0) return null;");
@@ -298,3 +299,16 @@ describe("Campaigns table, owner spec 2026-10-11", () => {
     expect(funnel()).toContain("<MarkLines mark={(px) => <FunnelFace name={campaign.salesFunnelName} size={px} />}>");
   });
 });
+
+describe("ROI cell: a null ROI always says why (owner 2026-10-11)", () => {
+  it("maturing reads Learning; an unpriced pipeline reads Not priced yet; a served ROI reads itself", async () => {
+    const { funnelRoiShown, unpricedWords } = await import("../src/lib/sales-funnel-campaigns");
+    const base = { roiMultiple: null, maturity: null, costEconomics: null, headline: null, moneyUnavailableReason: null };
+    expect(funnelRoiShown({ ...base, maturity: { isMature: false }, costEconomics: { unmeasuredReason: "maturing" } })).toMatchObject({ learning: true });
+    const unpriced = funnelRoiShown({ ...base, headline: { unpricedReason: "no_funnel_wired" } });
+    expect(unpriced).toMatchObject({ learning: false, value: null, unpriced: "no_funnel_wired" });
+    expect(unpricedWords(unpriced.unpriced)).toBe("Not priced yet");
+    expect(funnelRoiShown({ ...base, roiMultiple: 2.5, maturity: { isMature: true } })).toMatchObject({ value: 2.5 });
+  });
+});
+

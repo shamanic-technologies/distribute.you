@@ -43,6 +43,7 @@ import {
   maxBudgetLabel,
   roiMissingReason,
   funnelRoiShown,
+  unpricedWords,
 } from "@/lib/sales-funnel-campaigns";
 import { InfoTooltip } from "@/components/visibility/metric-info";
 import { formatRoi, roiIsGood } from "@/lib/format-roi";
@@ -560,11 +561,11 @@ function FunnelCampaignRow({
   // ON + Reactive: "Up to $N/<period>"; ON + Proactive: "$N/<period>" (owner 2026-10-11).
   const onLabel = !capsSettled ? "On" : b ? `${reactive ? "Up to " : ""}${maxBudgetLabel(b)}` : "On";
   const notFunded = capsSettled && c !== null && !b;
-  const roi = row ? funnelRoiShown(row) : { learning: false, value: null };
+  const roi = row ? funnelRoiShown(row) : { learning: false, value: null, unpriced: null };
   useEffect(() => {
     if (!rowsSettled) return;
     if (!row) console.error("[funnel-campaigns] features-service served no row for this campaign", { id: campaign.id });
-    else if (row.roiMultiple === null && !funnelRoiShown(row).learning) console.error("[funnel-campaigns] roiMultiple not served", { id: row.id, reason: roiMissingReason(row) });
+    else if (row.roiMultiple === null && !funnelRoiShown(row).learning && !funnelRoiShown(row).unpriced) console.error("[funnel-campaigns] roiMultiple not served", { id: row.id, reason: roiMissingReason(row) });
     if (row && row.investedUsd === null) console.error("[funnel-campaigns] investedUsd not served", { id: row.id });
     if (row && !row.path) console.error("[funnel-campaigns] path not served", { id: row.id, reason: row.copyUnavailableReason ?? null });
   }, [row, rowsSettled, campaign.id]);
@@ -586,7 +587,17 @@ function FunnelCampaignRow({
       </td>
       <td className="px-3 py-2">{cell(row ? <TypeTag row={row} /> : DASH)}</td>
       <td className={`px-3 py-2 text-right font-semibold tabular-nums ${roi.value != null && roiIsGood(roi.value) ? "text-[var(--run)]" : ""}`}>
-        {cell(roi.learning ? <span className="k-chip font-normal">Learning</span> : roi.value != null ? formatRoi(roi.value) : DASH)}
+        {cell(
+          roi.learning ? (
+            <span className="k-chip font-normal">Learning</span>
+          ) : roi.value != null ? (
+            formatRoi(roi.value)
+          ) : row ? (
+            <span className="k-fg3 text-[12px] font-normal">{unpricedWords(roi.unpriced)}</span>
+          ) : (
+            DASH
+          ),
+        )}
       </td>
       <td className="px-3 py-2 text-right tabular-nums">{cell(row?.investedUsd != null ? formatUsdAdaptive(row.investedUsd) : DASH)}</td>
       <td className="px-3 py-2 pr-4 text-right" onClick={stop}>
@@ -612,17 +623,18 @@ export function FunnelCampaignLine({ orgId, campaign }: { orgId: string; campaig
   const settledCaps = caps.data !== undefined || caps.isFetchedAfterMount;
   return (
     <Link href={v2CampaignHref(orgId, campaign.brandId, campaign.id)} className="k-hover block px-4 py-3 first:rounded-t-[12px] last:rounded-b-[12px]">
-      <span className="flex items-center gap-3">
-        <FunnelFace name={campaign.salesFunnelName} size={20} />
-        <span className="min-w-0 flex-1 truncate text-[13px] font-medium">{campaign.salesFunnelName}</span>
-        <StateDot running={isFunnelCampaignOn(campaign)} hold={isFunnelCampaignOn(campaign) ? null : paymentHoldKind(campaign)} />
-      </span>
-      <span className="k-fg3 mt-1.5 flex items-center justify-between gap-2 text-[12px] tabular-nums">
-        <span className="truncate">{!settledCaps ? " " : b ? statedBudget(funnelTypeOf(caps.data ?? null), b) : "Not funded yet"}</span>
-        <span className="shrink-0">
-          {b && b.consumedCents !== null ? `${formatCapUsd(b.consumedCents)} spent ${capWindowWords(b.period)}` : "—"}
+      <MarkLines gap="gap-3" mark={(px) => <FunnelFace name={campaign.salesFunnelName} size={px} />}>
+        <span className="flex items-center gap-3">
+          <span className="min-w-0 flex-1 truncate text-[13px] font-medium">{campaign.salesFunnelName}</span>
+          <StateDot running={isFunnelCampaignOn(campaign)} hold={isFunnelCampaignOn(campaign) ? null : paymentHoldKind(campaign)} />
         </span>
-      </span>
+        <span className="k-fg3 mt-1.5 flex items-center justify-between gap-2 text-[12px] tabular-nums">
+          <span className="truncate">{!settledCaps ? " " : b ? statedBudget(funnelTypeOf(caps.data ?? null), b) : "Not funded yet"}</span>
+          <span className="shrink-0">
+            {b && b.consumedCents !== null ? `${formatCapUsd(b.consumedCents)} spent ${capWindowWords(b.period)}` : "—"}
+          </span>
+        </span>
+      </MarkLines>
     </Link>
   );
 }

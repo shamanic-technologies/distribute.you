@@ -33,7 +33,7 @@ import { useStaffMode } from "@/lib/use-staff-mode";
 import { useMissions, type Mission } from "@/components/v2/use-missions";
 import { EXPECTED_ROI_TIP } from "@/lib/offer-sales-paths";
 import { ChannelChip, ExpectedLabel, PathAvatar } from "@/components/v2/offer-sales-paths";
-import { EmptyNote, SectionTitle, Shimmer, StateDot } from "@/components/v2/ui";
+import { EmptyNote, MarkLines, SectionTitle, Shimmer, StateDot } from "@/components/v2/ui";
 import { ProviderLogo } from "@/components/provider-logo";
 
 /**
@@ -319,19 +319,19 @@ function CampaignRow({
       onFocus={onOpen?.warm}
     >
       <td className="px-3 py-2 pl-4">
-        <span className="flex min-w-0 items-center gap-2.5">
-          {campaign.name && <PathAvatar name={campaign.name} size={28} />}
-          {results ? (
-            <span className="min-w-0">
-              <span className="block truncate font-semibold">{campaign.name ?? campaign.channelName}</span>
-              <span className="mt-1 block overflow-hidden">
-                <CampaignLeg campaign={campaign} showFedBy compact />
-              </span>
+        {results ? (
+          <MarkLines mark={(px) => (campaign.name ? <PathAvatar name={campaign.name} size={px} /> : null)}>
+            <span className="block truncate font-semibold">{campaign.name ?? campaign.channelName}</span>
+            <span className="mt-1 block overflow-hidden">
+              <CampaignLeg campaign={campaign} showFedBy compact />
             </span>
-          ) : (
+          </MarkLines>
+        ) : (
+          <span className="flex min-w-0 items-center gap-2.5">
+            {campaign.name && <PathAvatar name={campaign.name} size={28} />}
             <span className="font-semibold">{campaign.name ?? campaign.channelName}</span>
-          )}
-        </span>
+          </span>
+        )}
       </td>
       {!results && (
         <td className="px-3 py-2">
@@ -439,13 +439,10 @@ function UnlistedRow({
   return (
     <tr className="k-row k-line-subtle h-12 cursor-pointer border-b last:border-b-0" onClick={onOpen} onMouseEnter={onWarm} onFocus={onWarm}>
       <td className="px-3 py-2 pl-4">
-        <span className="flex min-w-0 items-center gap-2.5">
-          {name && <PathAvatar name={name} size={28} />}
-          <span className="min-w-0">
-            <span className="block truncate font-semibold">{name ?? mission.crew.name}</span>
-            <span className="k-fg3 mt-1 block text-[11px]">{mission.leg?.label ?? "—"}</span>
-          </span>
-        </span>
+        <MarkLines mark={(px) => (name ? <PathAvatar name={name} size={px} /> : null)}>
+          <span className="block truncate font-semibold">{name ?? mission.crew.name}</span>
+          <span className="k-fg3 mt-1 block text-[11px]">{mission.leg?.label ?? "—"}</span>
+        </MarkLines>
       </td>
       <td className="px-3 py-2">{DASH}</td>
       <CampaignResultCells mission={mission} basis={basis} />
