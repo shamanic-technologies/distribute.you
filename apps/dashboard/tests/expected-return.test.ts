@@ -26,8 +26,8 @@ describe("roiToShow", () => {
   it("a null measured return reads the expected one too", () => {
     expect(roiToShow({ learning: false, value: null }, expected()).value).toBe(2.4);
   });
-  it("an expected figure resting on measured evidence is not flagged expected", () => {
-    expect(roiToShow({ learning: true, value: null }, expected({ basis: "measured" })).expected).toBe(false);
+  it("a stand-in figure is flagged expected even when its basis says measured (not this scope's own)", () => {
+    expect(roiToShow({ learning: true, value: null }, expected({ basis: "measured" })).expected).toBe(true);
   });
   it("no figure at all carries the producer's reason", () => {
     expect(roiToShow({ learning: true, value: null }, expected({ roiMultiple: null, unavailableReason: "no_priced_sales_path" }))).toEqual({
