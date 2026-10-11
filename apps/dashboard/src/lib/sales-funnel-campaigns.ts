@@ -59,6 +59,11 @@ export const SalesFunnelCapsSchema = z
     // cached body carries it, null + a named reason when billing could not read it.
     salesFunnelType: z.string().nullish(),
     salesFunnelTypeUnavailableReason: z.string().nullish(),
+    // billing (owner 2026-10-11): FUNDED = a max budget AND/OR a max volume, each above 0. The one
+    // answer to "may this funnel spend"; read it, never re-derive it from the caps. Optional until
+    // every cached body carries it (an absent one reads as unknown, never as not funded).
+    funded: z.boolean().optional(),
+    fundedBy: z.string().nullish(),
     maxBudget: z
       .object({ amountCents: z.string(), consumedCents: z.string().nullable(), remainingCents: z.string().nullable(), ...CapWindow })
       .passthrough()
@@ -262,7 +267,39 @@ export function volumeUnitWords(unit: string | null, type: FunnelType | null, co
 
 /** A stated volume in the type's words: "Max 200 new people/month", "Up to 50 leads handled/week". */
 export function statedVolume(type: FunnelType | null, v: Pick<MaxVolume, "count" | "period" | "unit">): string {
-  return `${capWords(type).prefix}${v.count.toLocaleString("en-US")} ${volumeUnitWords(v.unit, type, v.count)}${capPeriodSuffix(v.period)}`;
+  return `${capWords(type).prefix}${volumeLimitLabel(type, v)}`;
+}
+
+/** A max volume with no prefix, in the type's unit: "200 new people/month", "50 leads handled/week". */
+export function volumeLimitLabel(type: FunnelType | null, v: Pick<MaxVolume, "count" | "period" | "unit">): string {
+  return `${v.count.toLocaleString("en-US")} ${volumeUnitWords(v.unit, type, v.count)}${capPeriodSuffix(v.period)}`;
+}
+
+/**
+ * billing's funding verdict (owner 2026-10-11: a max $ AND/OR a max volume). `false` = not funded
+ * ("Not funded yet"); null = billing has not served it yet (logged; nothing is claimed either way).
+ */
+export function funnelFunded(caps: Pick<SalesFunnelCaps, "salesFunnelId" | "funded"> | null): boolean | null {
+  if (caps === null) return null;
+  if (caps.funded === undefined) {
+    console.error("[sales-funnel-campaigns] funded not served", { salesFunnelId: caps.salesFunnelId });
+    return null;
+  }
+  return caps.funded;
+}
+
+/**
+ * The limit a funded funnel shows where one figure fits: its max budget when it states one, else its
+ * max volume when billing says the volume alone funds it (no $ figure is ever made up). Null when
+ * nothing funds it.
+ */
+export function fundingLimit(
+  caps: Pick<SalesFunnelCaps, "maxBudget" | "maxVolume" | "fundedBy"> | null,
+): { kind: "budget"; budget: MaxBudget } | { kind: "volume"; volume: MaxVolume } | null {
+  if (!caps) return null;
+  if (caps.maxBudget) return { kind: "budget", budget: caps.maxBudget };
+  if (caps.maxVolume && caps.fundedBy === "max_volume") return { kind: "volume", volume: caps.maxVolume };
+  return null;
 }
 
 // ─── The Campaigns table row (features-service, owner 2026-10-11) ───────────────────────────

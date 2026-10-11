@@ -161,3 +161,18 @@ describe("catalog is reachable", () => {
     expect(read("src/app/sitemap.ts")).toContain('path: "/catalog"');
   });
 });
+
+describe("/catalog on a phone: a price row reads as two lines, nothing cut off", () => {
+  const src = readFileSync("src/lib/pages/catalog.ts", "utf8");
+  const mobile = src.slice(src.indexOf("@media (max-width: 640px)"), src.indexOf("</style>"));
+
+  it("stacks each row: tool and price on top, what it covers underneath", () => {
+    expect(mobile).toContain(".catalog-list tr { display: flex; flex-wrap: wrap;");
+    expect(mobile).toContain(".catalog-list td.what { order: 3; flex-basis: 100%;");
+    expect(mobile).toContain(".catalog-list thead { display: none; }");
+  });
+
+  it("the what cell carries the class the stacking keys on", () => {
+    expect(src).toContain('<td class="what">${esc(r.what)}</td>');
+  });
+});

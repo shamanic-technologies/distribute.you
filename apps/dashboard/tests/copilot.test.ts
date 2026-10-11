@@ -131,6 +131,7 @@ describe("copilot wiring", () => {
     const cfg = boot.slice(at, boot.indexOf("},", at));
     expect(cfg).toContain('provider: "anthropic"');
     expect(cfg).toContain('model: "sonnet"');
+    expect(cfg).toContain('effort: "max"');
     for (const t of ["present_choices", "open_page", "list_replies_to_handle", "get_offer_performance"]) {
       expect(boot).toContain(`"${t}"`);
     }
