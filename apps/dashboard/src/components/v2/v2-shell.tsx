@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useParams, usePathname, useSearchParams } from "next/navigation";
 import { AccountMenuV2, SearchTrigger, TenantSwitcherV2 } from "@/components/v2/sidebar-menus";
 import { useOngoingCampaigns } from "@/components/v2/ongoing-campaigns";
-import { useBrandOutcomeList, useStepIcons } from "@/components/v2/brand-outcomes";
+import { useAudienceSnapshot, useBrandOutcomeList, useStepIcons } from "@/components/v2/brand-outcomes";
 import { CrewMark } from "@/components/v2/crew-mark";
 import { V2NavContext } from "@/components/v2/nav-context";
 import { useBucketCounts, useBrandRevenue, useNeedsYourCall, useStandingCounts } from "@/components/v2/data";
@@ -191,6 +191,9 @@ function V2Sidebar() {
   // Every outcome of the brand, campaigns or not (owner 2026-10-11), the Overview's own list.
   const { outcomes } = useBrandOutcomeList(orgId, brandId, offerId);
   const stepIcons = useStepIcons();
+  // Leads found counts the people the brand's lists hold, the page's People tab (owner 2026-10-11).
+  const leadsFoundListed = outcomes.some((o) => o.outcome.items.kind === "leads-found");
+  const peopleHeld = useAudienceSnapshot(brandId, leadsFoundListed).data?.totals.people.held;
   const buckets = useBucketCounts(brandId).data;
   const standings = useStandingCounts(brandId).data;
   // Deals badge = the people still in play on the Deals board (Leads + Sales interest +
@@ -332,7 +335,19 @@ function V2Sidebar() {
                   label={outcome.label}
                   icon={<OutcomeMark outcomeKey={outcome.key} label={outcome.label} stepIcons={stepIcons} />}
                   active={pathname === href}
-                  trailing={<Count n={all ? all.people : outcome.items.kind === "people" ? buckets?.counts[outcome.items.bucket] : null} />}
+                  trailing={
+                    <Count
+                      n={
+                        all
+                          ? all.people
+                          : outcome.items.kind === "people"
+                            ? buckets?.counts[outcome.items.bucket]
+                            : outcome.items.kind === "leads-found"
+                              ? peopleHeld
+                              : null
+                      }
+                    />
+                  }
                 />
               );
             })}
