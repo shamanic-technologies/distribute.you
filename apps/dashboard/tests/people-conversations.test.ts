@@ -243,6 +243,7 @@ describe("who wrote a message", () => {
     const { parseFrom } = await import("../src/lib/conversation-sources");
     expect(parseFrom('"Christina Kennedy" <Christina@WellConnectedChiro.com>')).toEqual({ name: "Christina Kennedy", email: "christina@wellconnectedchiro.com" });
     expect(parseFrom("bria@ariacoreco.com")).toEqual({ name: null, email: "bria@ariacoreco.com" });
+    // A Copilot answer: the bare name is the sender, with no address.
     expect(parseFrom("AI Copilot")).toEqual({ name: "AI Copilot", email: null });
     expect(parseFrom(null)).toEqual({ name: null, email: null });
   });
@@ -351,5 +352,20 @@ describe("a guessed pairing with a lead is a hint, never a merge (crm-service v0
   it("a stated ruling reads as what was marked, no dash", () => {
     expect(possibleLeadRuledLine("Brice Jackson (drjackson@mabnr.com)", "accepted")).toBe("Marked as the same as Brice Jackson (drjackson@mabnr.com)");
     expect(possibleLeadRuledLine("Brice Jackson", "rejected")).toBe("Marked as not the same as Brice Jackson");
+  });
+});
+
+describe("AI Copilot chat items (crm-service #100)", () => {
+  it("parses both sides of a Copilot chat: words in text, everything else null", async () => {
+    const { PersonTimelineItemSchema } = await import("../src/lib/people-conversations");
+    const { sourceMark, parseFrom } = await import("../src/lib/conversation-sources");
+    const base = { at: "2026-10-11T10:00:00Z", source: "copilot", channel: "chat", kind: "message", subject: null, textClean: null, event: null, outreachFact: null };
+    const asked = PersonTimelineItemSchema.parse({ ...base, direction: "inbound", text: "How many leads?", from: "kevin@acme.com", to: ["AI Copilot"] });
+    const answered = PersonTimelineItemSchema.parse({ ...base, direction: "outbound", text: "You have 42.", from: "AI Copilot", to: ["kevin@acme.com"] });
+    expect(asked.text).toBe("How many leads?");
+    expect(parseFrom(asked.from).email).toBe("kevin@acme.com");
+    expect(answered.text).toBe("You have 42.");
+    expect(parseFrom(answered.from).name).toBe("AI Copilot");
+    expect(sourceMark(answered.source, answered.channel).src).toBe("/logo-distribute.svg");
   });
 });
