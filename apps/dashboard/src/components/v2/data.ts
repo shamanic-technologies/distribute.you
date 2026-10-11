@@ -9,12 +9,15 @@ import {
   getOfferRevenueWindow,
   getOfferOutcomes,
   getOfferContactedValue,
+  getAwaitingReply,
   getLeadBucketCounts,
+  getLeadDetail,
   getLeadHistory,
   getLeadStandingCounts,
   getOrgUsage,
   keepLastGoodFeatureRevenue,
   listLeadsPage,
+  type AwaitingReplyPerson,
   type LeadScope,
 } from "@/lib/api";
 import { useSelectedOffer, useSelectedOfferIfAny } from "@/components/v2/selected-offer";
@@ -162,22 +165,48 @@ export function useStandingCounts(brandId: string) {
 }
 
 /**
- * NEEDS YOUR CALL: the people who REPLIED with interest and whom nobody has closed,
- * disqualified or opted out yet — the `positive_reply` bucket read inside the
- * `sales_interest` standing. `total` is lead-service's own count of that set.
- *
- * NOT the `sales_interest` standing alone: that standing also holds everyone who only
- * visited the website (86 of 87 on the brand that surfaced this), so counting it as
- * "wants to talk" stated 87 conversations for a brand with two replies ever.
+ * NEEDS YOUR CALL (owner 2026-10-11): ONLY the people who wrote back and are waiting on US.
+ * lead-service decides the set (`getAwaitingReply`): their latest message came after any
+ * answer of ours, an answer through our mailboxes or an "answered outside" statement takes
+ * them out, website visitors never enter. `total` is that set's own length, so the bell,
+ * Work and Today count exactly the rows they list. Each shown person's row is read by id for
+ * the card (company, avatar, conversation link); `waiting` says why they are there.
  */
 export function useNeedsYourCall(brandId: string, limit: number) {
+  return useAuthQuery(
+    ["awaitingReply", brandId, limit],
+    async () => {
+      const awaiting = await getAwaitingReply(brandId);
+      const rowless = awaiting.people.filter((p) => !p.id);
+      if (rowless.length > 0) {
+        console.error("[dashboard] useNeedsYourCall: waiting people with no lead row at the brand", {
+          brandId,
+          leadIds: rowless.map((p) => p.leadId),
+        });
+      }
+      const shown = awaiting.people.filter((p): p is AwaitingReplyPerson & { id: string } => !!p.id).slice(0, limit);
+      const leads = await Promise.all(shown.map((p) => getLeadDetail(p.id, brandId)));
+      const waiting: Record<string, AwaitingReplyPerson> = {};
+      for (const p of shown) waiting[p.id] = p;
+      return { total: awaiting.total, leads, waiting };
+    },
+    { refetchInterval: POLL_INTERVAL, enabled: !!brandId },
+  );
+}
+
+/**
+ * The people who REPLIED with interest and whom nobody has closed: the `positive_reply`
+ * bucket inside the `sales_interest` standing. Deals' "N of them replied", answered or not.
+ * Never "Needs your call" (that is `useNeedsYourCall`, the ones still waiting on us).
+ */
+export function useInterestedReplies(brandId: string) {
   const lead = useLeadScope(brandId);
   return useAuthQuery(
-    ["leadsPage", lead.key, "v2-needs-call", limit],
+    ["leadsPage", lead.key, "v2-interested-replies"],
     () =>
       listLeadsPage(
         lead.scope,
-        { view: "basic", bucket: "positive_reply", standing: "sales_interest", sort: "activity", limit: String(limit) },
+        { view: "basic", bucket: "positive_reply", standing: "sales_interest", sort: "activity", limit: "1" },
         undefined,
         { includeCampaigns: false },
       ),

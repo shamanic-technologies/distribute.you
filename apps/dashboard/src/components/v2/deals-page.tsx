@@ -15,7 +15,7 @@ import { boardColumnTotals, leadsColumnPageQuery } from "@/lib/leads-server-page
 import { CrewMark } from "@/components/v2/crew-mark";
 import { useMissions, type Mission } from "@/components/v2/use-missions";
 import { useSelectedOffer } from "@/components/v2/selected-offer";
-import { useLeadScope, useBrandRevenue, useNeedsYourCall, useStandingCounts } from "@/components/v2/data";
+import { useLeadScope, useBrandRevenue, useInterestedReplies, useStandingCounts } from "@/components/v2/data";
 import { EmptyNote, Shimmer, TopBar } from "@/components/v2/ui";
 import { CompanyMark, PersonAvatar, leadCompany, leadCompanyDomain, leadName, personHref } from "@/components/v2/people-bits";
 import { InfoTooltip } from "@/components/visibility/metric-info";
@@ -59,7 +59,7 @@ export function DealsPage() {
   );
   const contacted = totals?.contacted ?? null;
   const interested = totals?.sales_interest ?? null;
-  const replied = useNeedsYourCall(brandId, 5).data?.total ?? null;
+  const replied = useInterestedReplies(brandId).data?.total ?? null;
   const won = totals?.won ?? null;
   const pipeline = revenue.data?.totalPipelineUsd ?? null;
   const biggest = Math.max(1, ...columns.map((c) => totals?.[c.key] ?? 0));

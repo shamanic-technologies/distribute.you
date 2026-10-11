@@ -232,9 +232,9 @@ describe("v2 wiring", () => {
 describe("v2 step 3: honest counts, green running, modals outside the bar", () => {
   const read = (p: string) => readFileSync(resolve(__dirname, "..", p), "utf-8");
 
-  it("needs-your-call is the positive-reply bucket inside the sales-interest standing", () => {
+  it("Deals' replied count is the positive-reply bucket inside the sales-interest standing", () => {
     const data = read("src/components/v2/data.ts");
-    const body = data.slice(data.indexOf("export function useNeedsYourCall"), data.indexOf("export function useLatestInBucket"));
+    const body = data.slice(data.indexOf("export function useInterestedReplies"), data.indexOf("export function useLatestInBucket"));
     expect(body).toContain('bucket: "positive_reply"');
     expect(body).toContain('standing: "sales_interest"');
   });

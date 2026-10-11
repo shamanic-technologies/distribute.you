@@ -81,7 +81,7 @@ export function TopBar({ crumbs, actions }: { crumbs: Crumb[]; actions?: React.R
 
 /**
  * Keel's two universal controls, on every page: the bell and the ⌘K button. The bell
- * is the people waiting on a person (interested replies nobody has closed yet), so its
+ * is the people waiting on a person (people who wrote back and wait on our answer), so its
  * dot is a served count, and it opens Work where they are answered.
  */
 function TopBarUniversal() {
