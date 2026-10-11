@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { buildCreditGrantBody } from "./credit-grant-body";
 import { parseFleetRevenueOutlook, type FleetRevenueOutlook } from "./revenue-outlook";
 
 /** The gateway path of billing's fleet revenue read (api-service staff proxy). */
@@ -2758,20 +2759,30 @@ export interface CreditGrant {
   note: string | null;
   grantedBy: string | null;
   createdAt: string;
+  // Set when this grant records a payment the client made to us directly, on that
+  // date: cash paid, not a gift. Null for a gift.
+  offPlatformPaidAt?: string | null;
 }
 
 // Grant an arbitrary free-credit amount to the active org. `amountCents` is an
 // integer number of cents. A fresh idempotencyKey per call lets grants STACK
 // while protecting against a double-submit (same key = one row, no double-credit).
+// `paidOffPlatformAt` (YYYY-MM-DD) records a payment the client made to us directly
+// instead of a gift; omit it for a gift. See lib/credit-grant-body.ts.
 export async function grantCredits(
   amountCents: number,
   note: string,
-  token?: string,
+  opts: { paidOffPlatformAt?: string | null; token?: string } = {},
 ): Promise<{ ok: boolean; newBalanceCents: string }> {
   return apiCall<{ ok: boolean; newBalanceCents: string }>("/billing/credits/grant", {
-    token,
+    token: opts.token,
     method: "POST",
-    body: { amountCents, note, idempotencyKey: globalThis.crypto.randomUUID() },
+    body: buildCreditGrantBody({
+      amountCents,
+      note,
+      idempotencyKey: globalThis.crypto.randomUUID(),
+      paidOffPlatformAt: opts.paidOffPlatformAt,
+    }),
   });
 }
 
