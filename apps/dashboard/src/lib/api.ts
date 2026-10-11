@@ -9678,6 +9678,28 @@ export async function getBillingAccount(token?: string): Promise<BillingAccount>
   return apiCall<BillingAccount>("/billing/accounts", { token });
 }
 
+/**
+ * How long a prepaid org's balance lasts at its running daily budgets (billing-service
+ * v0.83.22, `GET /v1/accounts/runway`). Switch on `state`, never on a number: `days_left`
+ * and `runs_out_at` are set only for `days` (`days_left` floored, 0 = under a day).
+ */
+const BillingRunwaySchema = z.object({
+  state: z.enum(["days", "depleted", "no_budget", "budget_unavailable", "not_prepaid"]),
+  days_left: z.number().nullable(),
+  runs_out_at: z.string().nullable(),
+});
+export type BillingRunway = z.infer<typeof BillingRunwaySchema>;
+
+export async function getBillingRunway(token?: string): Promise<BillingRunway> {
+  const raw = await apiCall<unknown>("/billing/accounts/runway", { token });
+  const parsed = BillingRunwaySchema.safeParse(raw);
+  if (!parsed.success) {
+    console.error("[dashboard] getBillingRunway: response shape mismatch", { issues: parsed.error.issues, raw });
+    throw new Error("[dashboard] getBillingRunway: invalid response shape");
+  }
+  return parsed.data;
+}
+
 export async function getBillingBalance(token?: string): Promise<BillingBalance> {
   return apiCall<BillingBalance>("/billing/accounts/balance", { token });
 }
