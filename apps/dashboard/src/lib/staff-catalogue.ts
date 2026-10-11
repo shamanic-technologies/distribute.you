@@ -19,8 +19,8 @@ import { featureLegId } from "./outbound-leg-key";
 /** The objects with a catalogue overview + page here, in the producer's path spelling. */
 export const CATALOGUE_OBJECTS = ["steps", "sales-paths", "channels", "pipes", "sales-funnels"] as const;
 export type CatalogueObject = (typeof CATALOGUE_OBJECTS)[number];
-/** Workflows are read per pipe and keep their own pages (`/workflows`). */
-export type CatalogueReadObject = CatalogueObject | "workflows";
+/** Workflows are read per pipe and keep their own pages (`/workflows`); triggers carry no economics and keep their own pages too. */
+export type CatalogueReadObject = CatalogueObject | "workflows" | "triggers";
 
 export function isCatalogueObject(s: string | null | undefined): s is CatalogueObject {
   return !!s && (CATALOGUE_OBJECTS as readonly string[]).includes(s);
@@ -228,12 +228,56 @@ export const CatalogueWorkflowSchema = z
   })
   .passthrough();
 
+/**
+ * TRIGGERS (owner 2026-10-11): what starts a reactive pipe ("Positive reply"). features-service
+ * serves them beside the other objects (`/internal/catalogue/triggers`), with no economics: the
+ * pipes a trigger starts carry the figures. `icon` is the family glyph (`lightning`), `eventIcon`
+ * the trigger type's own picture, `coded` = a service fires it today.
+ */
+export const CatalogueTriggerRowSchema = z
+  .object({
+    id: z.string(),
+    name: z.string(),
+    icon: z.string(),
+    color: z.string(),
+    eventIcon: z.string(),
+    line: z.string(),
+    fromStep: z.string().nullable(),
+    fromStepName: z.string().nullable(),
+    firedBy: z.string(),
+    coded: z.boolean(),
+    kind: z.string(),
+    origin: z.string(),
+    pipeCount: z.number(),
+  })
+  .passthrough();
+export type CatalogueTriggerRow = z.infer<typeof CatalogueTriggerRowSchema>;
+
+export const CatalogueTriggerPageSchema = z
+  .object({ object: z.literal("trigger"), order: z.string(), total: z.number(), truncated: z.boolean(), rows: z.array(CatalogueTriggerRowSchema) })
+  .passthrough();
+export type CatalogueTriggerPage = z.infer<typeof CatalogueTriggerPageSchema>;
+
+export const CatalogueTriggerSchema = CatalogueTriggerRowSchema.extend({
+  object: z.literal("trigger"),
+  params: z.record(z.string(), z.unknown()).nullable(),
+  pipes: z.array(CatalogueRowSchema),
+}).passthrough();
+
+export const TRIGGER_LABELS = {
+  title: "Triggers",
+  one: "trigger",
+  many: "triggers",
+  what: "What starts a reactive pipe, like a positive reply.",
+} as const;
+
 export type CatalogueStep = z.infer<typeof CatalogueStepSchema>;
 export type CatalogueSalesPath = z.infer<typeof CatalogueSalesPathSchema>;
 export type CatalogueChannel = z.infer<typeof CatalogueChannelSchema>;
 export type CataloguePipe = z.infer<typeof CataloguePipeSchema>;
 export type CatalogueFunnel = z.infer<typeof CatalogueFunnelSchema>;
 export type CatalogueWorkflow = z.infer<typeof CatalogueWorkflowSchema>;
+export type CatalogueTrigger = z.infer<typeof CatalogueTriggerSchema>;
 
 export interface CatalogueDetailByObject {
   steps: CatalogueStep;
@@ -242,6 +286,7 @@ export interface CatalogueDetailByObject {
   pipes: CataloguePipe;
   "sales-funnels": CatalogueFunnel;
   workflows: CatalogueWorkflow;
+  triggers: CatalogueTrigger;
 }
 
 export const CATALOGUE_DETAIL_SCHEMAS: { [K in CatalogueReadObject]: z.ZodType<CatalogueDetailByObject[K]> } = {
@@ -251,6 +296,7 @@ export const CATALOGUE_DETAIL_SCHEMAS: { [K in CatalogueReadObject]: z.ZodType<C
   pipes: CataloguePipeSchema,
   "sales-funnels": CatalogueFunnelSchema,
   workflows: CatalogueWorkflowSchema,
+  triggers: CatalogueTriggerSchema,
 };
 
 /**
@@ -340,4 +386,16 @@ export function ongoingChannelsAndSteps(pipes: Array<Pick<CataloguePipe, "channe
     for (const s of [p.fromStep, p.toStep]) if (s && !stepIds.includes(s)) stepIds.push(s);
   }
   return { channelIds, stepIds };
+}
+
+/** The triggers the ongoing REACTIVE pipes name, read off the pipes' own served fields, in order, once each. */
+export function ongoingTriggerIds(pipes: Array<Pick<CataloguePipe, "mode" | "triggerId">>): string[] {
+  const out: string[] = [];
+  for (const p of pipes) if (p.mode === "reactive" && p.triggerId && !out.includes(p.triggerId)) out.push(p.triggerId);
+  return out;
+}
+
+/** The pipe ids a funnel campaign's units ARE (`<channel slug>|<leg key>`, catalogue spelling). */
+export function unitPipeIds(units: Array<{ featureSlug: string; legKey: string }>): string[] {
+  return [...new Set(units.map((u) => featureLegId(u.featureSlug, u.legKey)))];
 }

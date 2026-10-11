@@ -14,6 +14,10 @@ import {
   ongoingChannelsAndSteps,
   ongoingFunnelIds,
   ongoingPipeIds,
+  ongoingTriggerIds,
+  unitPipeIds,
+  CatalogueTriggerPageSchema,
+  CatalogueTriggerSchema,
 } from "../src/lib/staff-catalogue";
 import { v2CatalogueHref, v2SectionOf } from "../src/lib/v2/routes";
 import { SENSITIVE_QUERY_ROOTS } from "../src/lib/persist-cache";
@@ -225,5 +229,40 @@ describe("catalogue icons: Phosphor names only (features-service v0.179.116)", (
     const map = mark.slice(mark.indexOf("const CATALOGUE_ICONS"), mark.indexOf("const warned"));
     for (const k of ['  mail:', '"share-2"', "  mic:", '"message-square"', "  linkedin:", '"help-circle"', "  search:"]) expect(map).not.toContain(k);
     expect(map).toContain("envelope: EnvelopeIcon");
+  });
+});
+
+describe("staff Triggers section (owner 2026-10-11): what starts a reactive pipe", () => {
+  const row = { id: "positive_reply_received", name: "Positive reply", icon: "lightning", color: "#3FA27E", eventIcon: "thumbs-up", line: "A prospect replied with interest.", fromStep: "conversation", fromStepName: "Positive reply", firedBy: "instantly-service", coded: true, kind: "event", origin: "code", pipeCount: 1 };
+  it("parses features-service's trigger list and detail as served", () => {
+    expect(CatalogueTriggerPageSchema.parse({ object: "trigger", order: "catalogue", total: 1, truncated: false, rows: [row] }).rows[0].name).toBe("Positive reply");
+    const d = CatalogueTriggerSchema.parse({ ...row, object: "trigger", params: null, pipes: [{ id: "ai-meeting-booking|conversation_to_meeting_booked", name: "Prism", line: "x", costUsd: 2, roi: 3, status: "measured", mode: "reactive" }] });
+    expect(d.pipes[0].id).toBe("ai-meeting-booking|conversation_to_meeting_booked");
+  });
+  it("ongoing = named by a REACTIVE pipe of a running campaign, once each, in order", () => {
+    expect(
+      ongoingTriggerIds([
+        { mode: "proactive", triggerId: null },
+        { mode: "reactive", triggerId: "positive_reply_received" },
+        { mode: "reactive", triggerId: "positive_reply_received" },
+        { mode: "reactive", triggerId: "lead_requested" },
+      ]),
+    ).toEqual(["positive_reply_received", "lead_requested"]);
+  });
+  it("a funnel campaign's units are pipes in the catalogue spelling", () => {
+    expect(unitPipeIds([{ featureSlug: "ai-meeting-booking", legKey: "conversation_to_meeting_booked" }])).toEqual(["ai-meeting-booking|conversation_to_meeting_booked"]);
+  });
+  it("its pages sit behind <StaffOnly>, and the sidebar lists it in staff mode with each ongoing trigger", () => {
+    const base = "src/app/(authed)/v2/orgs/[orgId]/brands/[brandId]/catalogue/[object]/";
+    expect(read(`${base}page.tsx`)).toMatch(/<StaffOnly>\s*<TriggersOverviewPage \/>/);
+    expect(read(`${base}[id]/page.tsx`)).toMatch(/<StaffOnly>\s*<TriggerPage /);
+    const shell = read("src/components/v2/v2-shell.tsx");
+    const sections = shell.slice(shell.indexOf("function StaffObjectSections("));
+    expect(sections).toContain("<Group title={TRIGGER_LABELS.title}>");
+    expect(sections).toContain("ongoing.triggers.map((t)");
+  });
+  it("reads the gateway's staff route, and a pipe's Trigger fact links its page", () => {
+    expect(read("src/lib/api.ts")).toContain('STAFF_CATALOGUE_PATHS.list("triggers")');
+    expect(read("src/components/v2/staff-catalogue-pages.tsx")).toContain('<NamedLink object="triggers" id={s("triggerId") as string}');
   });
 });

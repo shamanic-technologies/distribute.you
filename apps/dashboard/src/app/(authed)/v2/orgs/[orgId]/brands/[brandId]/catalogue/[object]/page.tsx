@@ -4,6 +4,7 @@ import { notFound, useParams } from "next/navigation";
 import { StaffOnly } from "@/components/v2/staff-only";
 import { CatalogueOverviewPage } from "@/components/v2/staff-catalogue-pages";
 import { StaffCampaignsOverviewPage } from "@/components/v2/staff-campaign-pages";
+import { TriggersOverviewPage } from "@/components/v2/staff-trigger-pages";
 import { isCatalogueObject } from "@/lib/staff-catalogue";
 
 /** A business object's overview (staff mode only): `/catalogue/steps`, `/catalogue/pipes`, ..., `/catalogue/campaigns` */
@@ -14,6 +15,14 @@ export default function CatalogueOverviewRoute() {
     return (
       <StaffOnly>
         <StaffCampaignsOverviewPage />
+      </StaffOnly>
+    );
+  }
+  // Triggers (owner 2026-10-11): what starts a reactive pipe, no economics, own pages.
+  if (object === "triggers") {
+    return (
+      <StaffOnly>
+        <TriggersOverviewPage />
       </StaffOnly>
     );
   }

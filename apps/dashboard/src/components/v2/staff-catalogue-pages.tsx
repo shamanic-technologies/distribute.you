@@ -20,6 +20,7 @@ import {
   costUnitLabel,
   type CatalogueObject,
   type CataloguePipe,
+  type CatalogueReadObject,
   type CatalogueRow,
 } from "@/lib/staff-catalogue";
 
@@ -77,7 +78,7 @@ function rowOf(d: { id: string; name: string; line: string; costUsd: number | nu
  * The card table every catalogue list renders: the object's mark and name (its line under
  * it), its value (steps), the producer's cost in its unit, ROI and status. A row opens its page.
  */
-function CatalogueTable({
+export function CatalogueTable({
   object,
   rows,
   costUnit,
@@ -456,7 +457,7 @@ export function CatalogueObjectPage({ object, id }: { object: CatalogueObject; i
 
 type HrefFor = (o: CatalogueObject) => (r: CatalogueRow) => string;
 
-function ObjectLink({ object, id, name, orgId, brandId }: { object: CatalogueObject; id: string; name: string; orgId: string; brandId: string }) {
+function ObjectLink({ object, id, name, orgId, brandId }: { object: CatalogueReadObject; id: string; name: string; orgId: string; brandId: string }) {
   return (
     <Link href={v2CatalogueHref(orgId, brandId, object, id)} className="hover:underline">
       {name}
@@ -465,7 +466,7 @@ function ObjectLink({ object, id, name, orgId, brandId }: { object: CatalogueObj
 }
 
 /** A link to an object the page knows only by id: its served name once read. */
-function NamedLink({ object, id, orgId, brandId }: { object: CatalogueObject; id: string; orgId: string; brandId: string }) {
+function NamedLink({ object, id, orgId, brandId }: { object: CatalogueReadObject; id: string; orgId: string; brandId: string }) {
   const q = useStaffCatalogueObject(object, id);
   const name = (q.data as { name?: string } | undefined)?.name;
   return <ObjectLink object={object} id={id} name={name ?? (q.isError ? id : "…")} orgId={orgId} brandId={brandId} />;
@@ -525,7 +526,7 @@ function ObjectFacts({ object, d, orgId, brandId }: { object: CatalogueObject; d
         <Fact label="To">
           <NamedLink object="steps" id={s("toStep") as string} orgId={orgId} brandId={brandId} />
         </Fact>
-        <Fact label="Trigger">{s("triggerId") ? <span className="k-mono text-[12px]">{s("triggerId")}</span> : null}</Fact>
+        <Fact label="Trigger">{s("triggerId") ? <NamedLink object="triggers" id={s("triggerId") as string} orgId={orgId} brandId={brandId} /> : null}</Fact>
         <Fact label="Operated by">{s("operatedBy") ? catalogueStatusLabel(s("operatedBy") as string) : null}</Fact>
         <Fact label="Managed">{yes("managed")}</Fact>
         <Fact label="Value of the step reached">
