@@ -11,6 +11,7 @@ import {
   ApiError,
   configureAutoTopup,
   createEmbeddedCheckoutSession,
+  type PaymentConsent,
   disableAutoTopup,
   getBillingAccount,
   setPaymentMode,
@@ -42,6 +43,8 @@ export async function payTopup(params: {
   amountUsd: number;
   /** A NEW org is set to prepaid here; an org that has a mode already keeps it (a mode is a tag). */
   setPrepaid: boolean;
+  /** The boxes ticked before paying, stored by billing with this payment. */
+  consent: PaymentConsent;
   name?: string;
   email?: string;
   onPaid: (creditedBefore: number) => void;
@@ -52,7 +55,7 @@ export async function payTopup(params: {
   if (params.setPrepaid) await setPaymentMode("prepaid");
   const creditedBefore = creditedCents(await getBillingAccount());
   if (!Number.isFinite(creditedBefore)) throw new Error("We could not read your account. Try again.");
-  const session = await createEmbeddedCheckoutSession(params.amountUsd * 100).catch((e: unknown) => {
+  const session = await createEmbeddedCheckoutSession(params.amountUsd * 100, undefined, params.consent).catch((e: unknown) => {
     const refusal = refusalOf(e);
     throw refusal ? new Error(refusal) : e;
   });
