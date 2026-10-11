@@ -6,7 +6,7 @@ import { CalendarBlankIcon } from "@phosphor-icons/react/dist/csr/CalendarBlank"
 import { createPortal } from "react-dom";
 import Link from "next/link";
 import { useMutation, useQueries } from "@tanstack/react-query";
-import { useParams, useRouter } from "next/navigation";
+import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { useAuthQuery, useOrgQueryGate, useQueryClient } from "@/lib/use-auth-query";
 import { pollOptions } from "@/lib/query-options";
 import {
@@ -59,11 +59,16 @@ import { useRoutePrefetch } from "@/lib/use-route-prefetch";
 import { useAcquisitionChannels } from "@/lib/use-acquisition-channels";
 import { useLegCatalogue } from "@/lib/use-leg-catalogue";
 import { legFor } from "@/lib/legs";
-import { v2CampaignHref, v2Href } from "@/lib/v2/routes";
+import { v2CampaignHref, v2Href, type V2CampaignTab } from "@/lib/v2/routes";
+import { isColdEmailChannel } from "@/lib/offer-levers-home";
+import { isProactiveFrom } from "@/lib/outbound-leg-key";
 import { useMissions, type Mission } from "@/components/v2/use-missions";
 import { CampaignResultCells } from "@/components/v2/offer-campaigns";
 import { ChannelChip } from "@/components/v2/offer-sales-paths";
-import { V2Page } from "@/components/v2/setup-pages";
+import { V2Page, type V2Tab } from "@/components/v2/setup-pages";
+import { PipeSections } from "@/components/v2/pipe-sections";
+import { PeoplePage } from "@/components/v2/people-page";
+import { V2AudiencesTable } from "@/components/v2/audiences-table";
 import { EmptyNote, Figure, MarkLines, Meter, SectionTitle, Shimmer, StateDot } from "@/components/v2/ui";
 
 /**
@@ -813,8 +818,27 @@ function FunnelResults({
  * its two limits with what the current period consumed (billing), then its results (each
  * step's own served figures). No max budget = not funded: the page says so and asks for one.
  */
+const FUNNEL_TABS: { key: V2CampaignTab; label: string; needsColdEmail: boolean }[] = [
+  { key: "overview", label: "Overview", needsColdEmail: false },
+  { key: "inbox", label: "Inbox", needsColdEmail: true },
+  { key: "sent", label: "Sent", needsColdEmail: true },
+  { key: "targeting", label: "Targeting", needsColdEmail: true },
+];
+
 export function FunnelCampaignPage({ campaign }: { campaign: SalesFunnelCampaign }) {
   const { orgId } = useParams<{ orgId: string }>();
+  const params = useSearchParams();
+  const catalogue = useLegCatalogue();
+  const { missionByCampaignId } = useMissions(orgId, campaign.brandId, { allOffers: true });
+  const rowsQ = useAuthQuery(["funnelCampaignRows", campaign.brandId, campaign.offerId], () => listFunnelCampaignRows(campaign.brandId, campaign.offerId), pollOptions);
+  const row = rowsQ.data?.find((r) => r.id === campaign.id) ?? null;
+  const rowsSettled = rowsQ.data !== undefined || rowsQ.isFetchedAfterMount;
+  const roi = row ? funnelRoiShown(row) : { learning: false, value: null, unpriced: null };
+  // The part that emails people is where its people live (Inbox, Sent, Targeting read its scope).
+  const coldEmail = campaign.units.find((u) => isColdEmailChannel(u.featureSlug) && isProactiveFrom(legFor(catalogue, u.legKey)?.fromKey)) ?? null;
+  const visible = FUNNEL_TABS.filter((t) => !t.needsColdEmail || coldEmail);
+  const tab = visible.find((t) => t.key === params.get("tab"))?.key ?? "overview";
+  const tabs: V2Tab[] = visible.map((t) => ({ label: t.label, href: v2CampaignHref(orgId, campaign.brandId, campaign.id, t.key), active: t.key === tab }));
   const caps = useFunnelCaps(campaign);
   const [editing, setEditing] = useState(false);
   const capsSettled = caps.data !== undefined || caps.isFetchedAfterMount;
@@ -834,6 +858,8 @@ export function FunnelCampaignPage({ campaign }: { campaign: SalesFunnelCampaign
           <span className="truncate">{campaign.salesFunnelName}</span>
         </span>
       }
+      sub={row?.path ? <FunnelPathLine items={row.path.items} /> : undefined}
+      tabs={tabs}
       actions={
         <>
           {capsSettled && !(caps.isError && !c) && <FunnelLimitsButton campaign={campaign} caps={c} />}
@@ -842,6 +868,17 @@ export function FunnelCampaignPage({ campaign }: { campaign: SalesFunnelCampaign
       }
       width="max-w-[1280px]"
     >
+      {tab === "inbox" && coldEmail ? (
+        <div className="k-card overflow-hidden">
+          <PeoplePage bucket="positive_reply" campaignId={coldEmail.campaignId} />
+        </div>
+      ) : tab === "sent" && coldEmail ? (
+        <div className="k-card overflow-hidden">
+          <PeoplePage bucket="contacted" campaignId={coldEmail.campaignId} />
+        </div>
+      ) : tab === "targeting" && coldEmail ? (
+        <V2AudiencesTable campaignId={coldEmail.campaignId} offerId={campaign.offerId} />
+      ) : (
       <div className="space-y-8">
         {notFunded && (
           // keel.css is unlayered, so a bg-* utility on a k-card loses: the amber tint rides an inline style.
@@ -860,7 +897,39 @@ export function FunnelCampaignPage({ campaign }: { campaign: SalesFunnelCampaign
         )}
 
         <section>
-          <SectionTitle>Limits</SectionTitle>
+          <SectionTitle right={<span>Since it started</span>}>This campaign</SectionTitle>
+          {/* The whole campaign: its return and what it cost (features-service's row), then its two limits (billing). */}
+          <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_minmax(0,2fr)]">
+            <div className="k-card grid grid-cols-2 divide-x divide-[var(--line-subtle)]">
+              <div className="min-w-0 px-4 pb-3.5 pt-3">
+                <span className="k-label">ROI</span>
+                <div className="mt-2">
+                  {!rowsSettled ? (
+                    <Shimmer className="h-7 w-16" />
+                  ) : (
+                    <Figure
+                      value={
+                        roi.learning ? (
+                          "Learning"
+                        ) : roi.value != null ? (
+                          <span className={roiIsGood(roi.value) ? "text-[var(--run)]" : ""}>{formatRoi(roi.value)}</span>
+                        ) : row ? (
+                          <span className="k-fg3 text-[13px] font-normal">{unpricedWords(roi.unpriced)}</span>
+                        ) : (
+                          DASH
+                        )
+                      }
+                    />
+                  )}
+                </div>
+              </div>
+              <div className="min-w-0 px-4 pb-3.5 pt-3">
+                <span className="k-label">$ Invested</span>
+                <div className="mt-2">
+                  {!rowsSettled ? <Shimmer className="h-7 w-16" /> : <Figure value={row?.investedUsd != null ? formatUsdAdaptive(row.investedUsd) : DASH} />}
+                </div>
+              </div>
+            </div>
           {!capsSettled ? (
             <Shimmer className="h-[104px] w-full rounded-[12px]" />
           ) : caps.isError && !c ? (
@@ -895,10 +964,14 @@ export function FunnelCampaignPage({ campaign }: { campaign: SalesFunnelCampaign
               />
             </div>
           )}
+          </div>
         </section>
+
+        <PipeSections brandId={campaign.brandId} units={campaign.units} missionByCampaignId={missionByCampaignId} />
 
         <FunnelResults orgId={orgId} brandId={campaign.brandId} units={campaign.units} />
       </div>
+      )}
       {editing && <FunnelCampaignModal campaign={campaign} caps={c} onClose={() => setEditing(false)} />}
     </V2Page>
   );
