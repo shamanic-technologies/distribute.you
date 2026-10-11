@@ -38,6 +38,8 @@ const SOURCE_MARK: Record<string, SourceMark> = {
   gmail: vendor("gmail", "Gmail", "gmail.com"),
   instantly: DISTRIBUTE,
   posthog: DISTRIBUTE,
+  // The AI Copilot chat is part of our staff: its conversations read as ours (owner 2026-10-11).
+  copilot: { ...DISTRIBUTE, name: "AI Copilot" },
   stripe: vendor("stripe", "Stripe", "stripe.com"),
   gohighlevel: vendor("gohighlevel", "GoHighLevel", "gohighlevel.com"),
   // A contact list the client uploaded (crm-service's "added to CRM" event for an import).

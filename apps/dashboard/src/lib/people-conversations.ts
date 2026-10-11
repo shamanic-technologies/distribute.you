@@ -235,6 +235,7 @@ const SOURCE_LABEL: Record<string, string> = {
   gohighlevel: "GoHighLevel",
   posthog: "PostHog",
   stripe: "Stripe",
+  copilot: "AI Copilot",
 };
 
 const CHANNEL_LABEL: Record<string, string> = {
@@ -243,6 +244,7 @@ const CHANNEL_LABEL: Record<string, string> = {
   telegram: "Telegram",
   discord: "Discord",
   crm: "CRM",
+  chat: "Chat",
 };
 
 /** A served word as a reader sees it: `sales_interest` -> `Sales interest`. */

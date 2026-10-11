@@ -7,6 +7,7 @@ import {
   personChannels,
   personName,
   sourceLabel,
+  channelLabel,
   sourceLine,
   personStatusLabel,
   possibleLeadHint,
@@ -98,6 +99,8 @@ describe("labels only re-case the producer's words", () => {
   });
   it("reads an unknown source as its own id", () => {
     expect(sourceLabel("hubspot")).toBe("Hubspot");
+    expect(sourceLabel("copilot")).toBe("AI Copilot");
+    expect(channelLabel("chat")).toBe("Chat");
   });
   it("names the person, else their first address", () => {
     expect(personName(person)).toBe("Alice Martin");
@@ -194,6 +197,8 @@ describe("where a record came from", () => {
     expect(sourceMark("matrix", "whatsapp").domain).toBe("whatsapp.com");
     expect(sourceMark("matrix", "linkedin").domain).toBe("linkedin.com");
     expect(sourceMark("stripe", "payment").domain).toBe("stripe.com");
+    // The AI Copilot chat is our staff: the Distribute mark, named for the Copilot.
+    expect(sourceMark("copilot", "chat")).toEqual({ key: "distribute", name: "AI Copilot", domain: null, src: "/logo-distribute.svg" });
     expect(sourceMark("brand_new_source", "email")).toMatchObject({ domain: null, src: null });
   });
   it("lists each mark once per person", async () => {
@@ -238,6 +243,7 @@ describe("who wrote a message", () => {
     const { parseFrom } = await import("../src/lib/conversation-sources");
     expect(parseFrom('"Christina Kennedy" <Christina@WellConnectedChiro.com>')).toEqual({ name: "Christina Kennedy", email: "christina@wellconnectedchiro.com" });
     expect(parseFrom("bria@ariacoreco.com")).toEqual({ name: null, email: "bria@ariacoreco.com" });
+    expect(parseFrom("AI Copilot")).toEqual({ name: "AI Copilot", email: null });
     expect(parseFrom(null)).toEqual({ name: null, email: null });
   });
   it("puts the sender's mark up front on their side, the source's on ours", () => {
