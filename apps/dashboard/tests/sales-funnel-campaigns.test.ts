@@ -19,6 +19,9 @@ import {
   statedBudget,
   statedVolume,
   volumeUnitWords,
+  volumeLimitLabel,
+  funnelFunded,
+  fundingLimit,
 } from "../src/lib/sales-funnel-campaigns";
 
 const parseSalesFunnelCampaigns = (raw: unknown) => SalesFunnelCampaignListSchema.parse(raw).salesFunnelCampaigns;
@@ -402,3 +405,37 @@ describe("path: a reactive path starts with its trigger tag (owner 2026-10-11)",
   });
 });
 
+describe("a max budget AND/OR a max volume funds a funnel (owner 2026-10-11, billing `funded`)", () => {
+  const vol = { count: 200, unit: "first_contacts", period: "monthly", consumed: 12, remaining: 188, periodStart: "2026-10-01", periodEnd: null, reached: false, consumedUnavailableReason: null, consumedUnavailableDetail: null };
+  const bud = { amountCents: "5000", consumedCents: "0", remainingCents: "5000", period: "weekly", periodStart: "2026-10-06", periodEnd: null, reached: false, consumedUnavailableReason: null, consumedUnavailableDetail: null };
+
+  it("reads billing's verdict; an absent one is unknown (null), never not funded", () => {
+    expect(funnelFunded({ salesFunnelId: "f", funded: true })).toBe(true);
+    expect(funnelFunded({ salesFunnelId: "f", funded: false })).toBe(false);
+    expect(funnelFunded({ salesFunnelId: "f" })).toBeNull();
+    expect(funnelFunded(null)).toBeNull();
+  });
+
+  it("a volume-only funnel's limit is its max volume, never a $ figure; nothing stated has no limit", () => {
+    expect(fundingLimit({ maxBudget: null, maxVolume: vol, fundedBy: "max_volume" })).toEqual({ kind: "volume", volume: vol });
+    expect(fundingLimit({ maxBudget: bud, maxVolume: vol, fundedBy: "both" })).toEqual({ kind: "budget", budget: bud });
+    expect(fundingLimit({ maxBudget: bud, maxVolume: null, fundedBy: "max_budget" })).toEqual({ kind: "budget", budget: bud });
+    expect(fundingLimit({ maxBudget: null, maxVolume: null, fundedBy: null })).toBeNull();
+    expect(volumeLimitLabel("proactive", vol)).toBe("200 new people/month");
+    expect(statedVolume("reactive", { count: 50, unit: "prospects_handled", period: "weekly" })).toBe("Up to 50 leads handled/week");
+  });
+
+  it("the schema keeps billing's funded + fundedBy", () => {
+    const parsed = SalesFunnelCapsSchema.parse({ salesFunnelId: "f", stated: true, updatedAt: null, funded: true, fundedBy: "max_volume", maxBudget: null, maxVolume: vol });
+    expect(parsed.funded).toBe(true);
+    expect(parsed.fundedBy).toBe("max_volume");
+  });
+
+  it("every Not funded yet reads billing's verdict, and the modal saves a volume alone", () => {
+    const f = src("src/components/v2/funnel-campaigns.tsx");
+    expect(f.match(/funnelFunded\((c|caps\.data \?\? null)\) === false/g)?.length).toBe(3);
+    expect(f).not.toContain("c.maxBudget === null");
+    expect(f).toContain('"Set a budget or a volume."');
+    expect(f).toContain("maxBudget: usd === null ? null : { amountCents: usd * 100, period: budgetPer }");
+  });
+});

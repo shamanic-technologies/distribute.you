@@ -31,8 +31,11 @@ import {
   isOngoingFunnelCampaign as isFunnelCampaignOn,
   capWords,
   funnelTypeOf,
+  fundingLimit,
+  funnelFunded,
   statedBudget,
   statedVolume,
+  volumeLimitLabel,
   volumeUnitWords,
   parseWholeAmount,
   type CapPeriod,
@@ -175,12 +178,15 @@ export function FunnelCampaignStatus({
  */
 export function FunnelLimitsButton({ campaign, caps }: { campaign: SalesFunnelCampaign; caps: SalesFunnelCaps | null }) {
   const [open, setOpen] = useState(false);
-  const budget = caps?.maxBudget ?? null;
+  // A volume-only funnel shows its max volume, never a $ amount (owner 2026-10-11).
+  const limit = fundingLimit(caps);
   const type = funnelTypeOf(caps);
   return (
     <>
       <button type="button" aria-haspopup="dialog" onClick={() => setOpen(true)} className="k-btn gap-1.5 tabular-nums">
-        <span className={budget ? "" : "k-fg3"}>{budget ? statedBudget(type, budget) : "Set a budget"}</span>
+        <span className={limit ? "" : "k-fg3"}>
+          {limit?.kind === "budget" ? statedBudget(type, limit.budget) : limit?.kind === "volume" ? statedVolume(type, limit.volume) : "Set a budget"}
+        </span>
         <Chevron />
       </button>
       {open && <FunnelCampaignModal campaign={campaign} caps={caps} onClose={() => setOpen(false)} />}
@@ -275,17 +281,22 @@ export function FunnelCampaignModal({
   const people = volume.trim() === "" ? null : parseWholeCount(volume);
   const limitsDirty = budget !== initial.budget || budgetPer !== initial.budgetPer || volume !== initial.volume || volumePer !== initial.volumePer;
   const statusDirty = on !== servedOn;
+  // A campaign needs a max budget AND/OR a max volume (owner 2026-10-11); neither = nothing to save.
   const budgetProblem =
-    budget.trim() !== "" && usd === null ? "Type a whole number of dollars." : limitsDirty && budget.trim() === "" ? "Set a budget." : null;
+    budget.trim() !== "" && usd === null
+      ? "Type a whole number of dollars."
+      : limitsDirty && budget.trim() === "" && volume.trim() === ""
+        ? "Set a budget or a volume."
+        : null;
   const volumeProblem = volume.trim() !== "" && people === null ? "Type a whole number of people." : null;
   const submittable = (limitsDirty || statusDirty) && !budgetProblem && !volumeProblem;
 
   const { mutate, isPending } = useMutation({
     mutationFn: async () => {
-      if (limitsDirty && usd !== null) {
+      if (limitsDirty) {
         try {
           const data = await saveSalesFunnelCaps(campaign.brandId, campaign.offerId, campaign.salesFunnelId, {
-            maxBudget: { amountCents: usd * 100, period: budgetPer },
+            maxBudget: usd === null ? null : { amountCents: usd * 100, period: budgetPer },
             maxVolume: people === null ? null : { count: people, period: volumePer },
           });
           qc.setQueryData(["salesFunnelCaps", campaign.brandId, campaign.offerId, campaign.salesFunnelId], data);
@@ -636,10 +647,19 @@ function FunnelCampaignRow({
   const c = caps.data ?? null;
   const on = isFunnelCampaignOn(campaign);
   const b = c?.maxBudget ?? null;
+  const limit = fundingLimit(c);
   const reactive = (row?.type ?? funnelTypeOf(c)) === "reactive";
-  // ON + Reactive: "Up to $N/<period>"; ON + Proactive: "$N/<period>" (owner 2026-10-11).
-  const onLabel = !capsSettled ? "On" : b ? `${reactive ? "Up to " : ""}${maxBudgetLabel(b)}` : "On";
-  const notFunded = capsSettled && c !== null && !b;
+  // ON + Reactive: "Up to $N/<period>"; ON + Proactive: "$N/<period>" (owner 2026-10-11). A
+  // volume-only funnel reads its max volume ("200 new people/month"), never a $ amount.
+  const onLabel = !capsSettled
+    ? "On"
+    : b
+      ? `${reactive ? "Up to " : ""}${maxBudgetLabel(b)}`
+      : limit?.kind === "volume"
+        ? `${reactive ? "Up to " : ""}${volumeLimitLabel(funnelTypeOf(c), limit.volume)}`
+        : "On";
+  // billing's verdict: a max budget AND/OR a max volume funds it.
+  const notFunded = capsSettled && funnelFunded(c) === false;
   const roi = row ? funnelRoiShown(row) : { learning: false, value: null, unpriced: null };
   useEffect(() => {
     if (!rowsSettled) return;
@@ -689,7 +709,11 @@ function FunnelCampaignRow({
 export function FunnelCampaignLine({ orgId, campaign }: { orgId: string; campaign: SalesFunnelCampaign }) {
   const caps = useFunnelCaps(campaign);
   const b = caps.data?.maxBudget ?? null;
+  const limit = fundingLimit(caps.data ?? null);
+  const type = funnelTypeOf(caps.data ?? null);
   const settledCaps = caps.data !== undefined || caps.isFetchedAfterMount;
+  const notFunded = settledCaps && funnelFunded(caps.data ?? null) === false;
+  const v = limit?.kind === "volume" ? limit.volume : null;
   return (
     <Link href={v2CampaignHref(orgId, campaign.brandId, campaign.id)} className="k-hover block px-4 py-3 first:rounded-t-[12px] last:rounded-b-[12px]">
       <MarkLines gap="gap-3" mark={(px) => <FunnelFace name={campaign.salesFunnelName} size={px} />}>
@@ -698,9 +722,15 @@ export function FunnelCampaignLine({ orgId, campaign }: { orgId: string; campaig
           <StateDot running={isFunnelCampaignOn(campaign)} hold={isFunnelCampaignOn(campaign) ? null : paymentHoldKind(campaign)} />
         </span>
         <span className="k-fg3 mt-1.5 flex items-center justify-between gap-2 text-[12px] tabular-nums">
-          <span className="truncate">{!settledCaps ? " " : b ? statedBudget(funnelTypeOf(caps.data ?? null), b) : "Not funded yet"}</span>
+          <span className="truncate">
+            {!settledCaps ? " " : b ? statedBudget(type, b) : v ? statedVolume(type, v) : notFunded ? "Not funded yet" : "—"}
+          </span>
           <span className="shrink-0">
-            {b && b.consumedCents !== null ? `${formatCapUsd(b.consumedCents)} spent ${capWindowWords(b.period)}` : "—"}
+            {b && b.consumedCents !== null
+              ? `${formatCapUsd(b.consumedCents)} spent ${capWindowWords(b.period)}`
+              : v && v.consumed !== null
+                ? `${formatCount(v.consumed)} ${volumeUnitWords(v.unit, type, v.consumed)} ${capWindowWords(v.period)}`
+                : "—"}
           </span>
         </span>
       </MarkLines>
@@ -851,7 +881,8 @@ function FunnelResults({
 /**
  * One campaign that is a sales funnel: its face and name, ONE status for the whole of it,
  * its two limits with what the current period consumed (billing), then its results (each
- * step's own served figures). No max budget = not funded: the page says so and asks for one.
+ * step's own served figures). Neither a max budget nor a max volume = not funded (billing's
+ * `funded`): the page says so and asks for one.
  */
 const FUNNEL_TABS: { key: V2CampaignTab; label: string; needsColdEmail: boolean }[] = [
   { key: "overview", label: "Overview", needsColdEmail: false },
@@ -878,7 +909,8 @@ export function FunnelCampaignPage({ campaign }: { campaign: SalesFunnelCampaign
   const [editing, setEditing] = useState(false);
   const capsSettled = caps.data !== undefined || caps.isFetchedAfterMount;
   const c = caps.data ?? null;
-  const notFunded = capsSettled && c !== null && c.maxBudget === null;
+  // billing's verdict (owner 2026-10-11): a max budget AND/OR a max volume funds it.
+  const notFunded = capsSettled && funnelFunded(c) === false;
   const b = c?.maxBudget ?? null;
   const v = c?.maxVolume ?? null;
   // The campaign's type picks the words (owner 2026-10-10): Proactive "Max budget", Reactive "Up to $X".
@@ -923,7 +955,7 @@ export function FunnelCampaignPage({ campaign }: { campaign: SalesFunnelCampaign
           >
             <div className="min-w-0 flex-1">
               <p className="text-[14px] font-medium">Not funded yet</p>
-              <p className="k-fg2 text-[13px]">Set a budget so this campaign can run.</p>
+              <p className="k-fg2 text-[13px]">Set a budget or a volume so this campaign can run.</p>
             </div>
             <button type="button" className="k-btn-accent" onClick={() => setEditing(true)}>
               Set a budget
