@@ -150,7 +150,7 @@ describe("the copy behind the footer states the current positioning", () => {
   // Each is a claim the homepage no longer makes, with the reason it is retired.
   const RETIRED: [RegExp, string][] = [
     [/\$400/, "the welcome offer is the first $100 matched"],
-    [/free trial|3-day|\$99|from \$100|first top-up/i, "the $99/month plan and its trial are retired (2026-10-06): a free platform, outreach at catalogue prices, no minimum stated"],
+    [/free trial|3-day|\$99|from \$100|first top-up/i, "the $99/month plan and its trial are the A/B arm's own surfaces only (2026-10-10): a free platform, outreach at catalogue prices, no minimum stated"],
     [/first \$400 spent matched/i, "nothing is matched any more"],
     [/bring-your-own-keys|BYOK/i, "customers do not bring keys; we run every vendor"],
     [/cold email outreach done for you/i, "cold email is the channel, not what is sold"],
@@ -165,6 +165,9 @@ describe("the copy behind the footer states the current positioning", () => {
     it(`${surface} makes no retired claim`, () => {
       const src = read(surface);
       for (const [pattern, why] of RETIRED) {
+        // The Terms must cover every offer a customer can be sold, the A/B plan arm included
+        // (owner 2026-10-11): the plan words are not a public claim there.
+        if (surface === "src/app/terms/page.tsx" && pattern.source.startsWith("free trial")) continue;
         expect(pattern.test(src), `${surface} still says ${pattern} (${why})`).toBe(false);
       }
     });
@@ -184,7 +187,7 @@ describe("the copy behind the footer states the current positioning", () => {
     expect(terms).toContain("The referred account\n          receives no referral credit.");
     expect(terms).not.toContain("each side");
     expect(terms).toContain("is an acquisition agency delivered as a service");
-    expect(terms).toContain('const LAST_UPDATED = "October 6, 2026"');
+    expect(terms).toContain('const LAST_UPDATED = "October 11, 2026"');
   });
 
   it("the terms state the billing the product runs: catalogue prices, prepaid credit, no refund but the managed guarantee", () => {
@@ -196,6 +199,7 @@ describe("the copy behind the footer states the current positioning", () => {
     expect(terms).toContain("Prepaid credit is valid for twelve");
     expect(terms).toContain("expires at the end of each monthly period");
     expect(terms).toContain("Payments are final and are not");
+    expect(terms).toContain("automatic plan upgrades, or service fees");
     expect(terms).toContain("we refund 100% of the campaign budget you paid");
     expect(terms).toContain("governed by French law");
     // Post-paid thresholds as the default, a separate platform fee and Delaware law are retired.
@@ -302,3 +306,22 @@ describe("the orphaned pages are gone, everywhere they were listed", () => {
     expect(pipeline).toContain("__HOT_LEAD_BAND__");
   });
 });
+
+describe("the terms cover both offers of the A/B test (owner 2026-10-11)", () => {
+  const terms = read("src/app/terms/page.tsx");
+  it("prepaid: the reload is required, with no switch, stopped by removing the card", () => {
+    expect(terms).toContain("keeps automatic reload on to use the Service");
+    expect(terms).toContain("there is no switch to turn it off");
+    expect(terms).not.toContain("Automatic reload is optional");
+  });
+  it("the plan: trial, automatic upgrade in $100 steps even during the trial, cancel to stop, old plans kept", () => {
+    expect(terms).toContain("<strong>Monthly plan.</strong>");
+    expect(terms).toContain("including during a free trial");
+    expect(terms).toContain("we charge $100 that day, and $199 when the");
+    expect(terms).toContain("Plans started before October 11, 2026 are not upgraded");
+  });
+  it("a budget is not a cap on the total bill", () => {
+    expect(terms).toContain("budgets are not a cap on your total bill");
+  });
+});
+

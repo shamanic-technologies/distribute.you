@@ -3,7 +3,6 @@ import { readFileSync } from "fs";
 import { resolve } from "path";
 import {
   DEFAULT_SIGNUP_DRAFT,
-  dailyPaceUsd,
   estimatedLine,
   isLearning,
   parseSignupFunnels,
@@ -85,12 +84,6 @@ describe("Your campaign: features-service's funnels, picked as served", () => {
     expect(parseSignupFunnels({ proactive: { name: "x" } })).toBeNull();
   });
 
-  it("paces the reload warning on the budget typed: a day x1, a week /7, a month /30", () => {
-    expect(dailyPaceUsd({ budget: "20", budgetPeriod: "daily" })).toBe(20);
-    expect(dailyPaceUsd({ budget: "70", budgetPeriod: "weekly" })).toBe(10);
-    expect(dailyPaceUsd({ budget: "300", budgetPeriod: "monthly" })).toBe(10);
-    expect(dailyPaceUsd({ budget: "", budgetPeriod: "daily" })).toBe(0);
-  });
 });
 
 describe("what we launch: caps first, then ONE funnel campaign (owner 2026-10-10)", () => {

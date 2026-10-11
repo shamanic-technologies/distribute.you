@@ -569,7 +569,7 @@ export function wallCopy(planMonthlyUsd: number | null = null): WallCopy {
       codeCta: "Continue",
       cardTitle: "Nothing charged for 3 days",
       cardNote: `Your campaigns start with $${PLAN_TRIAL_CREDIT_USD} of credit. Then ${plan} a month. Cancel anytime.`,
-      cardCta: "Start my free trial",
+      cardCta: "Start my 3-day free trial",
     };
   }
   const m = MATCH_USD;
@@ -629,9 +629,8 @@ export function topupRefusal(code: string | undefined): string | null {
   return null;
 }
 
-/** The first credit a new org adds, and the amounts an automatic reload adds (owner 2026-10-06). */
+/** The first credit a new org adds (owner 2026-10-06); the required reload adds it again. */
 export const TOPUP_CHOICES_USD = [100, 250, 500, 1000] as const;
-export const RELOAD_CHOICES_USD = [100, 250, 500] as const;
 /** No credit added under $100 (billing refuses it too). */
 export const MIN_TOPUP_USD = 100;
 /** An automatic reload fires when the credit falls under this, never under $5. */
@@ -639,18 +638,12 @@ export const MIN_RELOAD_THRESHOLD_USD = 5;
 export const DEFAULT_RELOAD_THRESHOLD_USD = 10;
 
 /**
- * Turning the automatic reload off asks first when the credit would run out within
- * this many days (owner 2026-10-06: $24/day on $100 of credit stopped in about 4 days).
+ * The pay button's words (owner 2026-10-11): the match rides the button while the org can
+ * still claim it ("Pay $100 + get $100 free"), else the plain amount.
  */
-export const RELOAD_OFF_WARNING_DAYS = 30;
-
-/**
- * How many whole days the credit the visitor is adding lasts at the daily budget THEY
- * typed (their own two inputs, no served figure involved), or null when nothing spends daily.
- */
-export function creditRunwayDays(creditUsd: number, dailyUsd: number): number | null {
-  if (!(dailyUsd > 0) || !(creditUsd > 0)) return null;
-  return Math.floor(creditUsd / dailyUsd);
+export function topupCta(usd: number, matchNote: string): string {
+  const pay = `Pay $${usd.toLocaleString("en-US")}`;
+  return matchNote ? `${pay} + get $${MATCH_USD} free` : `${pay} and launch`;
 }
 
 /** A typed credit amount: whole dollars, at least $100. */

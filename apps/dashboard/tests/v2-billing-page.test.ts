@@ -112,3 +112,10 @@ describe("the v2 page speaks Keel", () => {
     expect(code).not.toContain("—");
   });
 });
+
+describe("prepaid automatic reload is required once on (owner 2026-10-11)", () => {
+  it("offers no off switch to a prepaid org whose reload is on, and says how to stop it", () => {
+    expect(V2).toContain('{!(mode === "prepaid" && c.hasAutoTopup) && (');
+    expect(V2).toContain("To stop it, remove your card.");
+  });
+});
