@@ -66,7 +66,6 @@ import {
   SIGNUP_PERIODS,
   SIGNUP_PROACTIVE_CHANNEL,
   SIGNUP_REACTIVE_CHANNEL,
-  dailyPaceUsd,
   estimatedLine,
   isLearning,
   signupFunnelsFrom,
@@ -1523,7 +1522,6 @@ export function GetStarted({ org }: { org?: OrgWalk } = {}) {
           targetAudience={icpRef.current}
           note={wallNote}
           plan={launchPlan}
-          dailyUsd={dailyPaceUsd(campaignDraft)}
           answered={answered}
           snapshotKey={snapshotKey}
           onClose={() => setWallOpen(false)}
@@ -1557,7 +1555,6 @@ export function GetStarted({ org }: { org?: OrgWalk } = {}) {
           note={wallNote}
           email={(selectedKey ? emails[selectedKey] : undefined) ?? firstWritten(emails, audience.audienceId) ?? restoredEmail}
           plan={launchPlan}
-          dailyUsd={dailyPaceUsd(campaignDraft)}
           outlook={chosenFunnelOutlook(funnels?.proactive ?? null)}
           answered={answered}
           onClose={() => setWallOpen(false)}

@@ -315,6 +315,9 @@ export function V2BillingPage() {
                           : "Off. Your campaigns pause when your credit runs out."}
                       </p>
                     </div>
+                    {/* Prepaid reload is required once on (owner 2026-10-11, like Google Ads): no
+                        off switch; the way out is removing the card or stopping the campaigns. */}
+                    {!(mode === "prepaid" && c.hasAutoTopup) && (
                     <button
                       type="button"
                       role="switch"
@@ -332,7 +335,11 @@ export function V2BillingPage() {
                         }`}
                       />
                     </button>
+                    )}
                   </div>
+                  {c.hasAutoTopup && mode === "prepaid" && (
+                    <p className="k-fg3 mt-2 text-[12px] leading-[18px]">It stays on while your campaigns run. To stop it, remove your card.</p>
+                  )}
                   {c.hasAutoTopup && mode === "postpaid" && c.creditLineCents > 0 && (
                     <div className="mt-3">
                       <Meter value={c.spentSinceChargeCents} max={c.creditLineCents} />
