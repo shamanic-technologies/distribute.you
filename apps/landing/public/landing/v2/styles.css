@@ -786,3 +786,11 @@ footer { padding: 64px 0 40px; border-top: 1px solid var(--hair); }
 .hero-inner .why { margin-top: 16px; }
 .hero-inner > .why-eyebrow { margin-bottom: 20px; }
 .cta-box .why { margin-bottom: 16px; color: #6ea0ff; }
+/* Smallest phones (320px, iPhone SE): the brand ran into "Log in" in the pill nav. */
+@media (max-width: 360px) {
+  .nav-pill { padding: 0 6px 0 12px; }
+  .brand { font-size: 15px; gap: 6px; }
+  .brand img { width: 20px; height: 20px; }
+  .nav-right .btn { padding: 0 10px; font-size: 13px; }
+  .nav-right .btn-ghost { padding: 0 6px; }
+}
