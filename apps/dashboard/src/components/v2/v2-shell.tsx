@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useParams, usePathname, useSearchParams } from "next/navigation";
 import { AccountMenuV2, SearchTrigger, TenantSwitcherV2 } from "@/components/v2/sidebar-menus";
+import { BudgetGauge } from "@/components/v2/budget-gauge";
 import { useOngoingCampaigns } from "@/components/v2/ongoing-campaigns";
 import { useAudienceSnapshot, useBrandOutcomeList, useStepIcons } from "@/components/v2/brand-outcomes";
 import { CrewMark } from "@/components/v2/crew-mark";
@@ -377,6 +378,8 @@ function V2Sidebar() {
         {staffMode && <StaffObjectSections orgId={orgId} brandId={brandId} offerId={offerId} pathname={pathname} />}
       </nav>
       <BrandWhyLine />
+      {/* What is left to spend, always in view (owner 2026-10-11). */}
+      <BudgetGauge orgId={orgId} brandId={brandId} />
       <AccountMenuV2 orgId={orgId} brandId={brandId} />
     </aside>
   );
