@@ -20,6 +20,7 @@ import {
   statedVolume,
   volumeUnitWords,
   volumeLimitLabel,
+  volumeFundingLabel,
   funnelFunded,
   fundingLimit,
 } from "../src/lib/sales-funnel-campaigns";
@@ -422,6 +423,12 @@ describe("a max budget AND/OR a max volume funds a funnel (owner 2026-10-11, bil
     expect(fundingLimit({ maxBudget: bud, maxVolume: null, fundedBy: "max_budget" })).toEqual({ kind: "budget", budget: bud });
     expect(fundingLimit({ maxBudget: null, maxVolume: null, fundedBy: null })).toBeNull();
     expect(volumeLimitLabel("proactive", vol)).toBe("200 new people/month");
+    // Owner 2026-10-11: a volume-only limit reads "100 new people/month", never "Max 100 ...".
+    expect(volumeFundingLabel("proactive", vol)).toBe("200 new people/month");
+    expect(volumeFundingLabel("reactive", { count: 50, unit: "prospects_handled", period: "weekly" })).toBe("Up to 50 leads handled/week");
+    const f = src("src/components/v2/funnel-campaigns.tsx");
+    expect(f).not.toContain("statedVolume(type, limit.volume)");
+    expect(f).not.toContain("v ? statedVolume(type, v) : notFunded");
     expect(statedVolume("reactive", { count: 50, unit: "prospects_handled", period: "weekly" })).toBe("Up to 50 leads handled/week");
   });
 

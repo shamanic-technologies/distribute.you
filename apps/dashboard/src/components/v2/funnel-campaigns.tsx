@@ -35,7 +35,7 @@ import {
   funnelFunded,
   statedBudget,
   statedVolume,
-  volumeLimitLabel,
+  volumeFundingLabel,
   volumeUnitWords,
   parseWholeAmount,
   type CapPeriod,
@@ -185,7 +185,7 @@ export function FunnelLimitsButton({ campaign, caps }: { campaign: SalesFunnelCa
     <>
       <button type="button" aria-haspopup="dialog" onClick={() => setOpen(true)} className="k-btn gap-1.5 tabular-nums">
         <span className={limit ? "" : "k-fg3"}>
-          {limit?.kind === "budget" ? statedBudget(type, limit.budget) : limit?.kind === "volume" ? statedVolume(type, limit.volume) : "Set a budget"}
+          {limit?.kind === "budget" ? statedBudget(type, limit.budget) : limit?.kind === "volume" ? volumeFundingLabel(type, limit.volume) : "Set a budget"}
         </span>
         <Chevron />
       </button>
@@ -650,13 +650,13 @@ function FunnelCampaignRow({
   const limit = fundingLimit(c);
   const reactive = (row?.type ?? funnelTypeOf(c)) === "reactive";
   // ON + Reactive: "Up to $N/<period>"; ON + Proactive: "$N/<period>" (owner 2026-10-11). A
-  // volume-only funnel reads its max volume ("200 new people/month"), never a $ amount.
+  // volume-only funnel reads its max volume ("200 new people/month", no "Max"), never a $ amount.
   const onLabel = !capsSettled
     ? "On"
     : b
       ? `${reactive ? "Up to " : ""}${maxBudgetLabel(b)}`
       : limit?.kind === "volume"
-        ? `${reactive ? "Up to " : ""}${volumeLimitLabel(funnelTypeOf(c), limit.volume)}`
+        ? volumeFundingLabel(reactive ? "reactive" : funnelTypeOf(c), limit.volume)
         : "On";
   // billing's verdict: a max budget AND/OR a max volume funds it.
   const notFunded = capsSettled && funnelFunded(c) === false;
@@ -723,7 +723,7 @@ export function FunnelCampaignLine({ orgId, campaign }: { orgId: string; campaig
         </span>
         <span className="k-fg3 mt-1.5 flex items-center justify-between gap-2 text-[12px] tabular-nums">
           <span className="truncate">
-            {!settledCaps ? " " : b ? statedBudget(type, b) : v ? statedVolume(type, v) : notFunded ? "Not funded yet" : "—"}
+            {!settledCaps ? " " : b ? statedBudget(type, b) : v ? volumeFundingLabel(type, v) : notFunded ? "Not funded yet" : "—"}
           </span>
           <span className="shrink-0">
             {b && b.consumedCents !== null
