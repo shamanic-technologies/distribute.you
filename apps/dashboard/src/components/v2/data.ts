@@ -4,6 +4,7 @@ import { useMemo } from "react";
 import { useAuthQuery } from "@/lib/use-auth-query";
 import {
   getBrand,
+  getBrandOutcomes,
   getOfferRevenue,
   getOfferRevenueWindow,
   getOfferOutcomes,
@@ -135,6 +136,11 @@ export function useBrandRevenueWindow(brandId: string, days: RevenueWindowDays) 
 export function useOrgUsage() {
   const q = useAuthQuery(["orgUsage"], () => getOrgUsage(), pollOptions);
   return { ...q, pending: q.data === undefined && !q.isError };
+}
+
+/** Every outcome of the brand from any source its own tools state (crm-service), campaigns or not. */
+export function useBrandOutcomes(brandId: string) {
+  return useAuthQuery(["brandOutcomes", brandId], () => getBrandOutcomes(brandId), { ...pollOptions, enabled: !!brandId });
 }
 
 export function useBucketCounts(brandId: string) {

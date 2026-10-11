@@ -1,7 +1,8 @@
 import { describe, expect, it } from "vitest";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
-import { outcomeOf, outcomesOf } from "../src/lib/v2/outcomes";
+import { outcomeOf, outcomeOfBucket, outcomesOf } from "../src/lib/v2/outcomes";
+import { BrandOutcomesSchema, OutcomePeopleSchema, reachedBuckets, stepStatOf } from "../src/lib/v2/outcome-people";
 
 const read = (p: string) => readFileSync(join(__dirname, "..", p), "utf8");
 
@@ -51,5 +52,59 @@ describe("outcomes (owner 2026-10-10): one per step a running campaign lands on"
     // Counts are lead-service's, never added up here.
     expect(page).toContain("useBucketCounts(brandId)");
     expect(page).not.toMatch(/\.reduce\(/);
+  });
+
+  it("every outcome of the brand, campaigns or not (owner 2026-10-11): crm-service's steps map onto outcomes", () => {
+    expect(outcomeOfBucket("website_visit")?.key).toBe("website_visit");
+    expect(outcomeOfBucket("sale")).toMatchObject({ key: "paid_client", label: "Paid clients", items: { kind: "people", bucket: "sale" } });
+    expect(outcomeOfBucket("form_submission")?.key).toBe("form_submitted");
+    expect(outcomeOfBucket("nope")).toBeNull();
+    const served = BrandOutcomesSchema.parse({
+      brandId: "b",
+      scope: { status: "ready", lastBuiltAt: null, lastError: null },
+      steps: [
+        { step: "website_visit", people: 83, sources: [{ source: "posthog", people: 83 }], contactedByUs: 4 },
+        { step: "signup", people: "120", sources: [{ source: "clerk", people: 94 }, { source: "posthog", people: 88 }], contactedByUs: 0 },
+        { step: "form_submission", people: 0, sources: [], contactedByUs: 0 },
+      ],
+    });
+    // Empty steps are not outcomes the brand has; counts are the producer's, coerced only.
+    expect(reachedBuckets(served)).toEqual(["website_visit", "signup"]);
+    expect(stepStatOf(served, "signup")?.people).toBe(120);
+    expect(stepStatOf(null, "signup")).toBeNull();
+    expect(
+      OutcomePeopleSchema.safeParse({
+        brandId: "b",
+        step: "signup",
+        total: 1,
+        limit: 50,
+        offset: 0,
+        people: [
+          {
+            personId: "p1",
+            personKey: "email:a@b.co",
+            displayName: null,
+            company: null,
+            emails: ["a@b.co"],
+            phones: [],
+            reachedAt: null,
+            sources: [{ source: "clerk", reachedAt: null }],
+            contactedByUs: false,
+            state: "unresolved",
+            stateSource: "lead_service",
+          },
+        ],
+      }).success,
+    ).toBe(true);
+  });
+
+  it("the Overview and the sidebar read ONE list: running campaigns' steps plus every step the brand's tools state", () => {
+    const page = read("src/components/v2/outcomes-page.tsx");
+    const shell = read("src/components/v2/v2-shell.tsx");
+    expect(page).toContain("useBrandOutcomeList(orgId, brandId, offerId)");
+    expect(shell).toContain("useBrandOutcomeList(orgId, brandId, offerId)");
+    // Everyone first, then the ones we contacted (lead-service's bucket, the column's figure).
+    expect(page).toContain('{ key: "all", label: "Everyone", count: listed.all.people }');
+    expect(page).toContain("<EveryoneTable bucket={outcome.items.bucket} />");
   });
 });

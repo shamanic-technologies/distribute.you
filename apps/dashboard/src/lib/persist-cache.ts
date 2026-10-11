@@ -248,6 +248,10 @@ export const PERSISTABLE_QUERY_ROOTS = new Set([
   // brand never share an entry.
   "leadsPage",
   "leadBucketCounts",
+  // Every outcome of the brand from any source (crm-service): six step counts, and one page
+  // of one step's people (50 rows), so Outcomes paints from disk.
+  "brandOutcomes",
+  "outcomePeople",
   "leadStandingCounts",
   // A conversation campaign's four people counts (AI Meeting Booking). Four integers.
   "conversationCounts",

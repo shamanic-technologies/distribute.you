@@ -177,7 +177,7 @@ describe("sales funnel campaigns: wiring", () => {
   it("Campaigns lists funnel campaigns: the overview section and the sidebar's ON ones", () => {
     expect(src("src/components/v2/campaigns-overview-page.tsx")).toContain("<FunnelCampaignsSection orgId={orgId} brandId={brandId} offerId={offerId} />");
     const shell = src("src/components/v2/v2-shell.tsx");
-    expect(shell).toContain("const { campaigns: ongoing, funnelCampaigns, outcomes } = useOngoingCampaigns(orgId, brandId, offerId);");
+    expect(shell).toContain("const { campaigns: ongoing, funnelCampaigns } = useOngoingCampaigns(orgId, brandId, offerId);");
     expect(shell).toContain("funnelCampaigns.map((c) => {");
   });
 
@@ -197,7 +197,7 @@ describe("sales funnel campaigns: wiring", () => {
     expect(today).toContain("ongoing.campaigns.length + ongoing.funnelCampaigns.length");
     const outcomes = src("src/components/v2/outcomes-page.tsx");
     expect(outcomes).toContain("funnelCampaigns={o.funnelCampaigns}");
-    expect(outcomes).toContain("funnelCampaigns={running.funnelCampaigns}");
+    expect(outcomes).toContain("funnelCampaigns={listed.funnelCampaigns}");
   });
 
   it("a campaign page never waits on the funnel list, and the list paints from disk", () => {
