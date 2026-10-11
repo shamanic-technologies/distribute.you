@@ -48,6 +48,7 @@ import {
   type FunnelPathItem,
   missingChannelGaps,
   maxBudgetLabel,
+  orderPipesByFunnel,
   roiMissingReason,
   funnelRoiShown,
   unpricedWords,
@@ -901,7 +902,9 @@ export function FunnelCampaignPage({ campaign }: { campaign: SalesFunnelCampaign
   const rowsSettled = rowsQ.data !== undefined || rowsQ.isFetchedAfterMount;
   const roi = row ? funnelRoiShown(row) : { learning: false, value: null, unpriced: null };
   // The part that emails people is where its people live (Inbox, Sent, Targeting read its scope).
-  const coldEmail = campaign.units.find((u) => isColdEmailChannel(u.featureSlug) && isProactiveFrom(legFor(catalogue, u.legKey)?.fromKey)) ?? null;
+  // The pipes in the order the funnel runs them (sourcing, then cold email, then closing).
+  const units = orderPipesByFunnel(campaign.units, (u) => legFor(catalogue, u.legKey));
+  const coldEmail = units.find((u) => isColdEmailChannel(u.featureSlug) && isProactiveFrom(legFor(catalogue, u.legKey)?.fromKey)) ?? null;
   const visible = FUNNEL_TABS.filter((t) => !t.needsColdEmail || coldEmail);
   const tab = visible.find((t) => t.key === params.get("tab"))?.key ?? "overview";
   const tabs: V2Tab[] = visible.map((t) => ({ label: t.label, href: v2CampaignHref(orgId, campaign.brandId, campaign.id, t.key), active: t.key === tab }));
@@ -1024,9 +1027,9 @@ export function FunnelCampaignPage({ campaign }: { campaign: SalesFunnelCampaign
           </div>
         </section>
 
-        <PipeSections brandId={campaign.brandId} units={campaign.units} missionByCampaignId={missionByCampaignId} />
+        <PipeSections brandId={campaign.brandId} units={units} missionByCampaignId={missionByCampaignId} />
 
-        <FunnelResults orgId={orgId} brandId={campaign.brandId} units={campaign.units} />
+        <FunnelResults orgId={orgId} brandId={campaign.brandId} units={units} />
       </div>
       )}
       {editing && <FunnelCampaignModal campaign={campaign} caps={c} onClose={() => setEditing(false)} />}
