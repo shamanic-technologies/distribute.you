@@ -46,15 +46,16 @@ export interface RoiToShow {
 
 /**
  * The measured return when the producer states one (`shownReturn` gave a value, not Learning),
- * else the served expected return. A mature measured return is also what the expected figure
- * serves (basis `measured`), so the two never disagree on a mature scope.
+ * else the served expected return, ALWAYS flagged expected: standing in for a scope that is still
+ * Learning, it is not this scope's measured figure even when its basis says `measured` (a
+ * campaign group served its channel's measured return, 44 campaigns at one 1.57x, 2026-10-11).
  */
 export function roiToShow(
   shown: { learning: boolean; value: number | null },
   expected: ExpectedReturn | null | undefined,
 ): RoiToShow {
   if (!shown.learning && shown.value != null) return { value: shown.value, expected: false, reason: null };
-  if (expected?.roiMultiple != null) return { value: expected.roiMultiple, expected: expected.basis !== "measured", reason: null };
+  if (expected?.roiMultiple != null) return { value: expected.roiMultiple, expected: true, reason: null };
   return { value: null, expected: false, reason: expected?.unavailableReason ?? null };
 }
 
