@@ -50,7 +50,7 @@ import {
   type RateBucket,
   type SignupBucket,
 } from "@/lib/signup-buckets";
-import { revenueBuckets, revenueCmgrSummary, mrrSplitBuckets, toCompoundPoints } from "@/lib/revenue-buckets";
+import { cashBuckets, revenueCmgrSummary, mrrSplitBuckets, toCompoundPoints } from "@/lib/revenue-buckets";
 
 const EMPTY_SUMMARY: CompoundGrowthSummary = { latestPct: null, periodsSpanned: null };
 
@@ -243,10 +243,20 @@ export function OverviewView({
     };
   }, [history]);
 
+  // Cash collected per period (owner 2026-10-11: revenue is the cash we COLLECTED,
+  // per week or month, bank transfers included). Server-side props, same buckets as
+  // the Revenue tab's net cash cards, so the two cannot disagree.
+  const cash = useMemo(() => {
+    const monthly = cashBuckets(billing.monthly_growth, "month");
+    const weekly = cashBuckets(billing.weekly_growth, "week");
+    return {
+      monthly: { points: toCompoundPoints(monthly), summary: revenueCmgrSummary(monthly) },
+      weekly: { points: toCompoundPoints(weekly), summary: revenueCmgrSummary(weekly) },
+    };
+  }, [billing]);
+
   const money = useMemo(() => {
     if (!revenue) return null;
-    const monthly = revenueBuckets(revenue.monthly, "month");
-    const weekly = revenueBuckets(revenue.weekly, "week");
     // The MRR halves are disjoint by construction and the producer states their total.
     // A null split is "we could not measure this" — stated below, never charted as 0.
     const split = revenue.mrrSplit ?? null;
@@ -254,8 +264,6 @@ export function OverviewView({
     const weeklyMrr = split ? mrrSplitBuckets(split.weekly, "totalMrrUsd", "week") : [];
     return {
       splitAvailable: split !== null,
-      monthly: { points: toCompoundPoints(monthly), summary: revenueCmgrSummary(monthly) },
-      weekly: { points: toCompoundPoints(weekly), summary: revenueCmgrSummary(weekly) },
       monthlyMrr: { points: toCompoundPoints(monthlyMrr), summary: revenueCmgrSummary(monthlyMrr) },
       weeklyMrr: { points: toCompoundPoints(weeklyMrr), summary: revenueCmgrSummary(weeklyMrr) },
     };
@@ -457,34 +465,32 @@ export function OverviewView({
 
       <SectionHeading
         title="Revenue"
-        blurb="Cold-email spend the fleet consumed, net of usage discounts. Not collected cash — the Revenue tab states both, apart."
+        blurb="Cash collected, net of refunds and lost disputes, card and bank transfer alike. What customers burned in sending is on the Revenue tab."
       />
       <section className="grid gap-6 md:grid-cols-2">
         <PeriodCompoundCard
-          title="Monthly revenue"
-          subtitle="Realized revenue per month with compound monthly growth since inception."
+          title="Monthly cash collected"
+          subtitle="Cash per month, net of refunds, with compound monthly growth since the first charge."
           cmgrLabel="CMGR"
           cmgrUnit="monthly"
-          summary={money?.monthly.summary ?? EMPTY_SUMMARY}
-          data={money?.monthly.points ?? []}
-          valueLabel="revenue"
-          growthLabel="CMGR since inception"
+          summary={cash.monthly.summary}
+          data={cash.monthly.points}
+          valueLabel="net cash"
+          growthLabel="CMGR since the first charge"
           formatValue={usdFull}
           formatAxis={usdCompact}
-          pending={moneyPending}
         />
         <PeriodCompoundCard
-          title="Weekly revenue"
-          subtitle="Realized revenue per week with compound weekly growth since inception."
+          title="Weekly cash collected"
+          subtitle="Cash per week, net of refunds, with compound weekly growth since the first charge."
           cmgrLabel="CWGR"
           cmgrUnit="weekly"
-          summary={money?.weekly.summary ?? EMPTY_SUMMARY}
-          data={money?.weekly.points ?? []}
-          valueLabel="revenue"
-          growthLabel="CWGR since inception"
+          summary={cash.weekly.summary}
+          data={cash.weekly.points}
+          valueLabel="net cash"
+          growthLabel="CWGR since the first charge"
           formatValue={usdFull}
           formatAxis={usdCompact}
-          pending={moneyPending}
         />
       </section>
 

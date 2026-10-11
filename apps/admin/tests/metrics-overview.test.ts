@@ -335,10 +335,10 @@ describe("columnHeightPct", () => {
 
 describe("clientEconomics", () => {
   const rows: ClientEconomicsRow[] = [
-    { ltrUsd: 100, runningDailyBudgetUsd: 10, retentionWeeks: 8, activeDays: ["2026-09-01"] },
-    { ltrUsd: 300, runningDailyBudgetUsd: 30, retentionWeeks: 16, activeDays: ["2026-09-02"] },
-    { ltrUsd: 999, runningDailyBudgetUsd: 99, retentionWeeks: 99, activeDays: ["2026-01-05"] },
-    { ltrUsd: null, runningDailyBudgetUsd: 20, retentionWeeks: null, activeDays: [] },
+    { orgId: "a", orgCashPaidUsd: 100, runningDailyBudgetUsd: 10, retentionWeeks: 8, activeDays: ["2026-09-01"] },
+    { orgId: "b", orgCashPaidUsd: 300, runningDailyBudgetUsd: 30, retentionWeeks: 16, activeDays: ["2026-09-02"] },
+    { orgId: "c", orgCashPaidUsd: 999, runningDailyBudgetUsd: 99, retentionWeeks: 99, activeDays: ["2026-01-05"] },
+    { orgId: "d", orgCashPaidUsd: null, runningDailyBudgetUsd: 20, retentionWeeks: null, activeDays: [] },
   ];
 
   it("averages over the customers active in the window, not the whole board", () => {
@@ -355,26 +355,42 @@ describe("clientEconomics", () => {
     expect(economics.customers).toBe(3);
   });
 
-  // A brand that has not stated a lifetime revenue has not answered. Counting it as a
-  // $0 brand drags the average toward a number nobody stated.
-  it("excludes a customer that states no LTR from the LTR average and says how many did", () => {
+  // LTR is the cash the customer PAID US (owner 2026-10-11: revenue is cash collected),
+  // never the lifetime value the brand states for ITS OWN customers.
+  it("reads the cash the org paid, counted once per org however many brands it runs", () => {
     const economics = clientEconomics(
       [
-        { ltrUsd: 400, runningDailyBudgetUsd: 10, retentionWeeks: 4, activeDays: ["2026-09-01"] },
-        { ltrUsd: null, runningDailyBudgetUsd: 20, retentionWeeks: 4, activeDays: ["2026-09-01"] },
+        { orgId: "a", orgCashPaidUsd: 600, runningDailyBudgetUsd: 10, retentionWeeks: 4, activeDays: ["2026-09-01"] },
+        { orgId: "a", orgCashPaidUsd: 600, runningDailyBudgetUsd: 10, retentionWeeks: 4, activeDays: ["2026-09-03"] },
+        { orgId: "b", orgCashPaidUsd: 200, runningDailyBudgetUsd: 10, retentionWeeks: 4, activeDays: ["2026-09-01"] },
       ],
       "2026-08-01",
     );
-    expect(economics.customers).toBe(2);
+    expect(economics.ltrCustomers).toBe(2);
+    expect(economics.avgLtrUsd).toBe(400);
+  });
+
+  // An org that never paid (welcome credit only) is not a paying customer; an org whose
+  // cash read failed is not measured. Neither is averaged in as $0.
+  it("averages over paying orgs only and leaves out an unreadable one", () => {
+    const economics = clientEconomics(
+      [
+        { orgId: "a", orgCashPaidUsd: 400, runningDailyBudgetUsd: 10, retentionWeeks: 4, activeDays: ["2026-09-01"] },
+        { orgId: "b", orgCashPaidUsd: 0, runningDailyBudgetUsd: 20, retentionWeeks: 4, activeDays: ["2026-09-01"] },
+        { orgId: "c", orgCashPaidUsd: null, runningDailyBudgetUsd: 30, retentionWeeks: 4, activeDays: ["2026-09-01"] },
+      ],
+      "2026-08-01",
+    );
+    expect(economics.customers).toBe(3);
     expect(economics.ltrCustomers).toBe(1);
     expect(economics.avgLtrUsd).toBe(400);
     // the budget average still divides by the whole population — every row states one
-    expect(economics.avgDailyBudgetUsd).toBe(15);
+    expect(economics.avgDailyBudgetUsd).toBe(20);
   });
 
-  it("states null, never zero, when nobody in the population states an LTR", () => {
+  it("states null, never zero, when nobody in the population has paid", () => {
     const economics = clientEconomics(
-      [{ ltrUsd: null, runningDailyBudgetUsd: 20, retentionWeeks: null, activeDays: ["2026-09-01"] }],
+      [{ orgId: "a", orgCashPaidUsd: 0, runningDailyBudgetUsd: 20, retentionWeeks: null, activeDays: ["2026-09-01"] }],
       "2026-08-01",
     );
     expect(economics.avgLtrUsd).toBeNull();
@@ -388,6 +404,25 @@ describe("clientEconomics", () => {
     expect(economics.avgDailyBudgetUsd).toBeNull();
     expect(economics.avgLtrUsd).toBeNull();
     expect(economics.avgRetentionMonths).toBeNull();
+  });
+
+  it("never reads the brand-stated lifetime value of the brand's own customers", () => {
+    const lib = read("../src/lib/funnel-overview.ts");
+    expect(lib).toContain("orgCashPaidUsd: customer.orgCashPaidUsd ?? null");
+    expect(lib).not.toContain("ltrUsd: customer.ltrUsd");
+  });
+});
+
+// The Overview's Revenue section is CASH COLLECTED per period (owner 2026-10-11:
+// « ON VEUT LE REVENU ENCAISSE PAR WEEK OU MOIS »), bank transfers included, never
+// the cold-email spend the fleet consumed.
+describe("overview revenue is cash collected", () => {
+  it("buckets billing's paid growth, not the consumed-spend history", () => {
+    expect(overview).toContain('cashBuckets(billing.monthly_growth, "month")');
+    expect(overview).toContain('cashBuckets(billing.weekly_growth, "week")');
+    expect(overview).not.toContain("revenueBuckets(revenue.monthly");
+    expect(overview).not.toContain("revenueBuckets(revenue.weekly");
+    expect(overview).toContain('title="Weekly cash collected"');
   });
 });
 
