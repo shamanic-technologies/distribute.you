@@ -3,7 +3,6 @@
 import { useMemo, useRef, useState } from "react";
 import { useParams } from "next/navigation";
 import {
-  getAudienceSnapshot,
   getSourcingOrigins,
   getHeldCompanies,
   getHeldPeople,
@@ -20,6 +19,7 @@ import {
 import { formatCount, formatUsdAdaptive } from "@/lib/format-number";
 import { CompanyMark } from "@/components/v2/people-bits";
 import { useAuthQuery } from "@/lib/use-auth-query";
+import { useAudienceSnapshot } from "@/components/v2/brand-outcomes";
 import { useStaffMode } from "@/lib/use-staff-mode";
 import { audienceFilterGroups } from "@/lib/audience-filter-groups";
 import { linkedInSignalOf } from "@/lib/signal-audience";
@@ -200,7 +200,7 @@ export function AudienceLists() {
   const { brandId } = useParams<{ brandId: string }>();
   const { staffMode: staff } = useStaffMode();
   const [tab, setTab] = useState<Tab>("audiences");
-  const snapshot = useAuthQuery(["staffAudienceSnapshot", brandId, staff], () => getAudienceSnapshot(brandId, staff));
+  const snapshot = useAudienceSnapshot(brandId);
   const totals = snapshot.data?.totals ?? null;
   const investment = useAuthQuery(["staffSourcingInvestment", brandId, staff], () => getSourcingInvestment(brandId, staff));
   const totalNet = investment.data?.total.netUsd;
