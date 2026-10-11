@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { budgetGaugeView } from "../../src/lib/budget-gauge";
+import { budgetGaugeView, runwayLine } from "../../src/lib/budget-gauge";
 
 const base = { balance_cents: "14230.0000", has_auto_topup: false, has_payment_method: false, topup_threshold_cents: null };
 
@@ -54,5 +54,17 @@ describe("budgetGaugeView", () => {
 
   it("unknown mode is an error, never a figure", () => {
     expect(budgetGaugeView({ ...base, payment_mode: undefined }, undefined)).toHaveProperty("error");
+  });
+
+  it("prepaid with a runway: how many days the balance lasts", () => {
+    const v = budgetGaugeView({ ...base, payment_mode: "prepaid" }, undefined, { state: "days", days_left: 16, runs_out_at: "2026-10-28T10:00:00Z" });
+    expect(v).toMatchObject({ line: "About 16 days left (Oct 28)", tone: "ok" });
+  });
+
+  it("runway line only for a number of days", () => {
+    expect(runwayLine({ state: "days", days_left: 0, runs_out_at: "2026-10-11T20:00:00Z" })).toBe("Runs out today.");
+    expect(runwayLine({ state: "no_budget", days_left: null, runs_out_at: null })).toBeNull();
+    expect(runwayLine(undefined)).toBeNull();
+    expect(budgetGaugeView({ ...base, payment_mode: "prepaid" }, undefined, { state: "no_budget", days_left: null, runs_out_at: null })).toMatchObject({ line: "Campaigns pause at $0." });
   });
 });

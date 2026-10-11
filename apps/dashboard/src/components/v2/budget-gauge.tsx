@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { getBillingAccount, getSubscription, type BillingAccount } from "@/lib/api";
+import { getBillingAccount, getBillingRunway, getSubscription, type BillingAccount } from "@/lib/api";
 import { useAuthQuery } from "@/lib/use-auth-query";
 import { budgetGaugeView } from "@/lib/budget-gauge";
 import { v2Base } from "@/lib/v2/routes";
@@ -11,12 +11,16 @@ import { Meter, Shimmer } from "./ui";
  * What is left to spend, fixed at the bottom of the sidebar above the account menu
  * (owner 2026-10-11). Its shape follows how the org pays (`lib/budget-gauge`); the whole
  * card opens Billing. Same `["billingAccount"]` and `["subscription"]` keys as the
- * Billing page, so the two never state different money and it costs no new request.
+ * Billing page (plus billing's `["billingRunway"]` for a prepaid org), so the two never state different money and it costs no new request.
  */
 export function BudgetGauge({ orgId, brandId }: { orgId: string; brandId: string }) {
   const account = useAuthQuery<BillingAccount>(["billingAccount"], () => getBillingAccount());
   const isPlan = account.data?.payment_mode === "subscription";
   const plan = useAuthQuery(["subscription"], () => getSubscription(), { enabled: isPlan });
+  // How long a prepaid balance lasts: an extra line, so a failed read only drops the line.
+  const isPrepaid = account.data?.payment_mode === "prepaid";
+  const runway = useAuthQuery(["billingRunway"], () => getBillingRunway(), { enabled: isPrepaid });
+  if (runway.isError) console.error("[budget-gauge] runway read failed", runway.error);
 
   const answered = account.isFetchedAfterMount || account.data !== undefined;
   if (!answered) return <GaugeFrame href={null}><Shimmer className="h-3 w-16" /><Shimmer className="mt-2 h-5 w-24" /><Shimmer className="mt-2 h-2 w-full" /></GaugeFrame>;
@@ -25,7 +29,7 @@ export function BudgetGauge({ orgId, brandId }: { orgId: string; brandId: string
     return <GaugeFrame href={null}><p className="k-fg3 text-[12px]">We could not load your balance.</p></GaugeFrame>;
   }
 
-  const view = budgetGaugeView(account.data, isPlan ? plan.data : undefined);
+  const view = budgetGaugeView(account.data, isPlan ? plan.data : undefined, isPrepaid ? runway.data : undefined);
   const href = `${v2Base(orgId, brandId)}/billing`;
   if (view === null) {
     if (plan.isError) {

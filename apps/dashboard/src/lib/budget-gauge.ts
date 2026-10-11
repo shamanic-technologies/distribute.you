@@ -4,7 +4,8 @@
  * costs them. One shape per way of paying, every figure read off billing-service:
  *
  * - prepaid: the spendable balance. No bar, since billing states no "full" amount to fill
- *   one against; a dot says whether campaigns can still spend.
+ *   one against; a dot says whether campaigns can still spend, and billing's runway says
+ *   how many days it lasts at the running daily budgets.
  * - postpaid: spent since the last card charge, out of the spend that triggers the next one
  *   (the same meter the Billing page draws).
  * - subscription: the month's credit left, out of the plan's monthly amount (the trial's
@@ -40,6 +41,22 @@ export interface GaugeSubscription {
   } | null;
 }
 
+/** billing-service's runway read (`GET /v1/accounts/runway`), prepaid only. */
+export interface GaugeRunway {
+  state: string;
+  days_left: number | null;
+  runs_out_at: string | null;
+}
+
+/** The runway as one line, or null when billing states no number of days. */
+export function runwayLine(runway: GaugeRunway | undefined): string | null {
+  if (!runway || runway.state !== "days" || runway.days_left === null) return null;
+  if (runway.days_left === 0) return "Runs out today.";
+  const date = shortDate(runway.runs_out_at);
+  const days = `About ${runway.days_left} day${runway.days_left === 1 ? "" : "s"} left`;
+  return date ? `${days} (${date})` : `${days}.`;
+}
+
 export type GaugeTone = "ok" | "stopped";
 
 export interface GaugeView {
@@ -67,6 +84,7 @@ function shortDate(iso: string | null): string | null {
 export function budgetGaugeView(
   account: GaugeAccount,
   subscription: GaugeSubscription | undefined,
+  runway?: GaugeRunway,
 ): GaugeView | { error: string } | null {
   const mode = account.payment_mode;
   const balance = parseFloat(account.balance_cents);
@@ -86,7 +104,7 @@ export function budgetGaugeView(
       label: "Balance",
       figure: formatBillingCents(balance),
       meter: null,
-      line: account.has_auto_topup ? "Auto top-up is on." : "Campaigns pause at $0.",
+      line: runwayLine(runway) ?? (account.has_auto_topup ? "Auto top-up is on." : "Campaigns pause at $0."),
       tone: "ok",
     };
   }
