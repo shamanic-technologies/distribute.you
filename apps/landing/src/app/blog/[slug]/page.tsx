@@ -12,6 +12,7 @@ import {
   TWITTER_HANDLE,
 } from "@/lib/seo";
 import { getArticleBySlug } from "@/lib/blog/db";
+import { wrapTables } from "@/lib/blog/table-scroll";
 import { SIGN_UP, WHY } from "@/lib/v2-shell";
 
 export const revalidate = 60;
@@ -158,7 +159,7 @@ export default async function BlogArticlePage({ params }: Props) {
               prose-img:rounded-xl prose-img:border prose-img:border-[var(--dy-border-hi)]
               prose-li:text-[var(--dy-sub)]
             "
-            dangerouslySetInnerHTML={{ __html: body }}
+            dangerouslySetInnerHTML={{ __html: wrapTables(body) }}
           />
         ) : article.contentMarkdown ? (
           <pre className="whitespace-pre-wrap font-sans leading-relaxed text-[var(--dy-sub)]">
