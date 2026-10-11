@@ -298,3 +298,16 @@ describe("Campaigns table, owner spec 2026-10-11", () => {
     expect(funnel()).toContain("<MarkLines mark={(px) => <FunnelFace name={campaign.salesFunnelName} size={px} />}>");
   });
 });
+
+describe("ROI cell: a null ROI always says why (owner 2026-10-11)", () => {
+  it("maturing reads Learning; an unpriced pipeline reads Not priced yet; a served ROI reads itself", async () => {
+    const { funnelRoiShown, unpricedWords } = await import("../src/lib/sales-funnel-campaigns");
+    const base = { roiMultiple: null, maturity: null, costEconomics: null, headline: null, moneyUnavailableReason: null };
+    expect(funnelRoiShown({ ...base, maturity: { isMature: false }, costEconomics: { unmeasuredReason: "maturing" } })).toMatchObject({ learning: true });
+    const unpriced = funnelRoiShown({ ...base, headline: { unpricedReason: "no_funnel_wired" } });
+    expect(unpriced).toMatchObject({ learning: false, value: null, unpriced: "no_funnel_wired" });
+    expect(unpricedWords(unpriced.unpriced)).toBe("Not priced yet");
+    expect(funnelRoiShown({ ...base, roiMultiple: 2.5, maturity: { isMature: true } })).toMatchObject({ value: 2.5 });
+  });
+});
+

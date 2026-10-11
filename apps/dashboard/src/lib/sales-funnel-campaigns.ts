@@ -295,6 +295,8 @@ export const FunnelCampaignRowSchema = z
     costEconomics: z.object({ unmeasuredReason: z.string().nullish() }).passthrough().nullable(),
     // The producer's maturity verdict on the campaign's return (read, never re-graded).
     maturity: z.object({ isMature: z.boolean() }).passthrough().nullish(),
+    // Why a null ROI is null on the pipeline side (`unpricedReason`, e.g. no_funnel_wired), served.
+    headline: z.object({ unpricedReason: z.string().nullish() }).passthrough().nullish(),
   })
   .passthrough();
 export type FunnelCampaignRow = z.infer<typeof FunnelCampaignRowSchema>;
@@ -310,9 +312,29 @@ export function roiMissingReason(row: Pick<FunnelCampaignRow, "moneyUnavailableR
  * The ROI cell's value: features-service's `roiMultiple` under its own maturity verdict, the way every
  * v2 return reads (`shownReturn`): not mature and not above break-even yet = "Learning".
  */
-export function funnelRoiShown(row: Pick<FunnelCampaignRow, "roiMultiple" | "maturity">): { learning: boolean; value: number | null } {
+export function funnelRoiShown(
+  row: Pick<FunnelCampaignRow, "roiMultiple" | "maturity" | "costEconomics" | "headline" | "moneyUnavailableReason">,
+): { learning: boolean; value: number | null; unpriced: string | null } {
   const roi = row.roiMultiple;
-  if (row.maturity?.isMature === false && !(roi !== null && roi > 1)) return { learning: true, value: null };
-  return { learning: false, value: roi };
+  const maturing = row.maturity?.isMature === false || row.costEconomics?.unmeasuredReason === "maturing";
+  if (maturing && !(roi !== null && roi > 1)) return { learning: true, value: null, unpriced: null };
+  if (roi !== null) return { learning: false, value: roi, unpriced: null };
+  // A null ROI always carries its served reason (owner 2026-10-11: never a bare dash).
+  const reason = row.headline?.unpricedReason ?? row.moneyUnavailableReason ?? row.costEconomics?.unmeasuredReason ?? null;
+  return { learning: false, value: null, unpriced: reason };
+}
+
+/** A served reason for a missing ROI, in plain words. A reason we have no words for is logged. */
+export function unpricedWords(reason: string | null): string {
+  switch (reason) {
+    case "no_funnel_wired":
+    case "units_price_differently":
+      return "Not priced yet";
+    case null:
+      return "Not priced yet";
+    default:
+      console.error("[sales-funnel-campaigns] no words for this ROI reason", { reason });
+      return "Not priced yet";
+  }
 }
 
