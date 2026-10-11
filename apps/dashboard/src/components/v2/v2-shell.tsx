@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useParams, usePathname, useSearchParams } from "next/navigation";
 import { AccountMenuV2, SearchTrigger, TenantSwitcherV2 } from "@/components/v2/sidebar-menus";
 import { useOngoingCampaigns } from "@/components/v2/ongoing-campaigns";
+import { useBrandOutcomeList } from "@/components/v2/brand-outcomes";
 import { CrewMark } from "@/components/v2/crew-mark";
 import { V2NavContext } from "@/components/v2/nav-context";
 import { useBucketCounts, useBrandRevenue, useNeedsYourCall, useStandingCounts } from "@/components/v2/data";
@@ -185,7 +186,9 @@ function V2Sidebar() {
   // (proactive first, ROI high to low), so the two lists never disagree. Today reads it too.
   // Campaigns that are sales funnels (owner 2026-10-10) come with it, the ON ones listed once by
   // name and face; their parts are never campaigns of their own (`ongoing` holds none).
-  const { campaigns: ongoing, funnelCampaigns, outcomes } = useOngoingCampaigns(orgId, brandId, offerId);
+  const { campaigns: ongoing, funnelCampaigns } = useOngoingCampaigns(orgId, brandId, offerId);
+  // Every outcome of the brand, campaigns or not (owner 2026-10-11), the Overview's own list.
+  const { outcomes } = useBrandOutcomeList(orgId, brandId, offerId);
   const buckets = useBucketCounts(brandId).data;
   const standings = useStandingCounts(brandId).data;
   // Deals badge = the people still in play on the Deals board (Leads + Sales interest +
@@ -310,7 +313,7 @@ function V2Sidebar() {
             ))}
         </Group>
 
-        {/* Outcomes (owner 2026-10-10): what the running campaigns produce, one entry per step. */}
+        {/* Outcomes (owner 2026-10-10/11): one entry per step, from the running campaigns AND the brand's own tools. */}
         <Group title="Outcomes">
           <NavItem
             href={v2OutcomeHref(orgId, brandId)}
@@ -318,8 +321,7 @@ function V2Sidebar() {
             icon={<I d={ICONS.overview} />}
             active={section === "outcomes" && /\/outcomes\/?$/.test(pathname)}
           />
-          {offerId &&
-            outcomes.map(({ outcome }) => {
+          {outcomes.map(({ outcome, all }) => {
               const href = v2OutcomeHref(orgId, brandId, outcome.key);
               return (
                 <NavItem
@@ -328,7 +330,7 @@ function V2Sidebar() {
                   label={outcome.label}
                   icon={<I d={ICONS.outcome} />}
                   active={pathname === href}
-                  trailing={<Count n={outcome.items.kind === "people" ? buckets?.counts[outcome.items.bucket] : null} />}
+                  trailing={<Count n={all ? all.people : outcome.items.kind === "people" ? buckets?.counts[outcome.items.bucket] : null} />}
                 />
               );
             })}

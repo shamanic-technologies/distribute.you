@@ -80,6 +80,12 @@ export function outcomeOf(
   return { key, label: PLURAL[key] ?? toLabel ?? key, items };
 }
 
+/** The outcome a lead-service bucket token names (crm-service keys its outcome steps on them). Null for a bucket no step maps to. */
+export function outcomeOfBucket(bucket: string): Outcome | null {
+  const key = Object.keys(BUCKET_FOR_STEP).find((k) => BUCKET_FOR_STEP[k] === bucket);
+  return key ? outcomeOf(null, key) : null;
+}
+
 /** One entry per step, in the order the campaigns come (the sidebar's campaign order). */
 export function outcomesOf(
   campaigns: readonly { featureSlug: string | null | undefined; toKey: string | null | undefined; toLabel?: string | null }[],

@@ -1,4 +1,5 @@
 import { parseOfferSalesPaths, type OfferSalesPaths } from "./offer-sales-paths";
+import { BrandOutcomesSchema, OutcomePeopleSchema, type BrandOutcomes, type OutcomePeople } from "./v2/outcome-people";
 import { ConversationTimelineSchema, type ConversationTimeline } from "./conversation-timeline";
 import { parseBrandSalesBudget, type BrandSalesBudget } from "./brand-sales-budget";
 import {
@@ -623,6 +624,37 @@ export async function listPeople(
   if (!parsed.success) {
     console.error("[api] listPeople response shape mismatch", parsed.error.flatten());
     throw new Error("listPeople returned an unexpected shape");
+  }
+  return parsed.data;
+}
+
+/**
+ * Every outcome of the brand, from ANY source its own tools state (crm-service): per step,
+ * the distinct people who reached it, by source, and how many of them we contacted.
+ */
+export async function getBrandOutcomes(brandId: string, token?: string): Promise<BrandOutcomes> {
+  const raw = await apiCall<unknown>(`/orgs/people/outcomes?${new URLSearchParams({ brandId }).toString()}`, { token });
+  const parsed = BrandOutcomesSchema.safeParse(raw);
+  if (!parsed.success) {
+    console.error("[api] getBrandOutcomes response shape mismatch", parsed.error.flatten());
+    throw new Error("getBrandOutcomes returned an unexpected shape");
+  }
+  return parsed.data;
+}
+
+/** One outcome step's people, any source, earliest first (crm-service orders and pages). */
+export async function listOutcomePeople(
+  brandId: string,
+  step: string,
+  opts: { limit: number; offset: number },
+  token?: string,
+): Promise<OutcomePeople> {
+  const qs = new URLSearchParams({ brandId, step, limit: String(opts.limit), offset: String(opts.offset) });
+  const raw = await apiCall<unknown>(`/orgs/people/outcomes/people?${qs.toString()}`, { token });
+  const parsed = OutcomePeopleSchema.safeParse(raw);
+  if (!parsed.success) {
+    console.error("[api] listOutcomePeople response shape mismatch", parsed.error.flatten());
+    throw new Error("listOutcomePeople returned an unexpected shape");
   }
   return parsed.data;
 }
