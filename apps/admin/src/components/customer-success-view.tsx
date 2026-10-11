@@ -151,6 +151,7 @@ const STATUS_PILL: Record<AccountStatus, { label: string; className: string }> =
   active: { label: "Active", className: "bg-emerald-50 text-emerald-700 border-emerald-200" },
   payment_declined: { label: "Payment declined", className: "bg-red-50 text-red-700 border-red-200" },
   no_payment_method: { label: "No payment method", className: "bg-red-50 text-red-700 border-red-200" },
+  out_of_credit: { label: "Out of credit", className: "bg-rose-50 text-rose-700 border-rose-200" },
   reactive_only: { label: "Reactive only", className: "bg-sky-50 text-sky-700 border-sky-200" },
   paused: { label: "Paused", className: "bg-amber-50 text-amber-700 border-amber-200" },
   inactive: { label: "Inactive", className: "bg-gray-50 text-gray-500 border-gray-200" },
@@ -594,10 +595,11 @@ export function CustomerSuccessView() {
 
   return (
     <>
-      <section className="grid gap-4 md:grid-cols-3 xl:grid-cols-6">
+      <section className="grid gap-4 md:grid-cols-4 xl:grid-cols-7">
         <StatCard label="Customers" value={s ? count(s.totalCustomers) : DASH} detail="Ever-active org x brand" accent="bg-brand-500" pending={isPending} />
         <StatCard label="Active" value={s ? count(s.activeCount) : DASH} detail="Proactive budget running, funded" accent="bg-emerald-500" pending={isPending} />
         <StatCard label="Reactive only" value={s ? count(s.reactiveOnlyCount ?? 0) : DASH} detail="Only a reactive cap running" accent="bg-sky-500" pending={isPending} />
+        <StatCard label="Out of credit" value={s?.outOfCreditCount != null ? count(s.outOfCreditCount) : DASH} detail="Running, balance cannot fund tomorrow" accent="bg-rose-500" pending={isPending} />
         <StatCard label="Paused" value={s ? count(s.pausedCount) : DASH} detail="Held, not spending" accent="bg-amber-500" pending={isPending} />
         <StatCard label="Inactive" value={s ? count(s.inactiveCount) : DASH} detail="No budget or funds" accent="bg-gray-500" pending={isPending} />
         <HealthCountCard green={s?.greenCount ?? 0} yellow={s?.yellowCount ?? 0} red={s?.redCount ?? 0} pending={isPending} />
