@@ -903,6 +903,9 @@ const PLATFORM_CHAT_CONFIGS = [
     // platform Anthropic key holds the startup credit).
     provider: "anthropic",
     model: "sonnet",
+    // Highest Anthropic thinking effort (owner 2026-10-11: "plus de thinking"); Sonnet 5.5
+    // defaults to `high`, chat-service v0.63.42+ sends this as output_config.effort.
+    effort: "max",
   },
   {
     key: "workflow",
