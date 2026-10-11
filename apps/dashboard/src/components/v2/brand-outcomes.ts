@@ -2,6 +2,8 @@
 
 import { useMemo } from "react";
 import { useBrandOutcomes } from "@/components/v2/data";
+import { useAuthQuery } from "@/lib/use-auth-query";
+import { getPublicCatalogueSteps } from "@/lib/api";
 import { useOngoingCampaigns, type OngoingOutcome } from "@/components/v2/ongoing-campaigns";
 import { outcomeOfBucket } from "@/lib/v2/outcomes";
 import { reachedBuckets, stepStatOf, type OutcomeStepStat } from "@/lib/v2/outcome-people";
@@ -40,4 +42,14 @@ export function useBrandOutcomeList(orgId: string, brandId: string, offerId: str
   // Settled once the campaigns AND the all-sources read have answered (a failed read settles too).
   const settled = ongoing.settled && (allQ.data !== undefined || allQ.isError);
   return { outcomes, settled, allError: allQ.isError && !allQ.data };
+}
+
+/**
+ * Each step's Phosphor icon, keyed by step key, as the catalogue serves it (the icon the staff
+ * Steps section shows): the sidebar's Outcomes entries wear it (owner 2026-10-11). Public read,
+ * it changes when somebody edits a step, so a long stale time.
+ */
+export function useStepIcons(): Map<string, string> | undefined {
+  const q = useAuthQuery(["publicCatalogueSteps"], getPublicCatalogueSteps, { staleTime: 10 * 60_000 });
+  return useMemo(() => (q.data ? new Map(q.data.map((s) => [s.key, s.icon] as const)) : undefined), [q.data]);
 }

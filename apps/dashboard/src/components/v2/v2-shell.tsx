@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useParams, usePathname, useSearchParams } from "next/navigation";
 import { AccountMenuV2, SearchTrigger, TenantSwitcherV2 } from "@/components/v2/sidebar-menus";
 import { useOngoingCampaigns } from "@/components/v2/ongoing-campaigns";
-import { useBrandOutcomeList } from "@/components/v2/brand-outcomes";
+import { useBrandOutcomeList, useStepIcons } from "@/components/v2/brand-outcomes";
 import { CrewMark } from "@/components/v2/crew-mark";
 import { V2NavContext } from "@/components/v2/nav-context";
 import { useBucketCounts, useBrandRevenue, useNeedsYourCall, useStandingCounts } from "@/components/v2/data";
@@ -13,6 +13,7 @@ import { v2CampaignHref, v2CatalogueHref, v2Href, v2OfferHref, v2OutcomeHref, v2
 import { CATALOGUE_OBJECTS, CATALOGUE_OBJECT_LABELS } from "@/lib/staff-catalogue";
 import { useOngoingCatalogue } from "@/components/v2/staff-catalogue-data";
 import { CatalogueMark } from "@/components/v2/catalogue-mark";
+import { POSTS_STEP } from "@/lib/v2/outcomes";
 import { formatCount } from "@/lib/format-number";
 import { boardColumnTotals } from "@/lib/leads-server-page";
 import { ScopePaymentDeclinedBand } from "@/components/billing/scope-payment-declined-band";
@@ -189,6 +190,7 @@ function V2Sidebar() {
   const { campaigns: ongoing, funnelCampaigns } = useOngoingCampaigns(orgId, brandId, offerId);
   // Every outcome of the brand, campaigns or not (owner 2026-10-11), the Overview's own list.
   const { outcomes } = useBrandOutcomeList(orgId, brandId, offerId);
+  const stepIcons = useStepIcons();
   const buckets = useBucketCounts(brandId).data;
   const standings = useStandingCounts(brandId).data;
   // Deals badge = the people still in play on the Deals board (Leads + Sales interest +
@@ -328,7 +330,7 @@ function V2Sidebar() {
                   key={outcome.key}
                   href={href}
                   label={outcome.label}
-                  icon={<I d={ICONS.outcome} />}
+                  icon={<OutcomeMark outcomeKey={outcome.key} label={outcome.label} stepIcons={stepIcons} />}
                   active={pathname === href}
                   trailing={<Count n={all ? all.people : outcome.items.kind === "people" ? buckets?.counts[outcome.items.bucket] : null} />}
                 />
@@ -363,6 +365,21 @@ function V2Sidebar() {
       <AccountMenuV2 orgId={orgId} brandId={brandId} />
     </aside>
   );
+}
+
+/**
+ * An Outcomes entry's mark: its step's catalogue icon, the one the staff Steps section shows
+ * (owner 2026-10-11). Posts is not a step and keeps the outcome glyph; a step the catalogue does
+ * not list is logged and draws the catalogue's own blank tile.
+ */
+function OutcomeMark({ outcomeKey, label, stepIcons }: { outcomeKey: string; label: string; stepIcons: Map<string, string> | undefined }) {
+  const isStep = outcomeKey !== POSTS_STEP;
+  const icon = stepIcons?.get(outcomeKey);
+  useEffect(() => {
+    if (isStep && stepIcons && !icon) console.error("[v2] outcome step missing from the public step catalogue", { outcomeKey });
+  }, [isStep, stepIcons, icon, outcomeKey]);
+  if (!isStep) return <I d={ICONS.outcome} />;
+  return <CatalogueMark icon={icon} name={label} size={16} />;
 }
 
 /**

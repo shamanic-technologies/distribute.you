@@ -240,6 +240,8 @@ export const PERSISTABLE_QUERY_ROOTS = new Set([
   "offerChannels",
   "offerSelectedSalesPaths",
   "brandSalesBudget",
+  // The public step vocabulary (key, name, icon): the sidebar's Outcomes marks paint from it.
+  "publicCatalogueSteps",
   // ONE page of a scope's leads, and every bucket's count. These are what the Leads page
   // reads now, and the point of them is that each entry is SMALL enough to be written:
   // a 50-row page is a few hundred KB against the 2 MB cap, so the table paints from

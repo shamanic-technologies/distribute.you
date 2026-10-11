@@ -3548,6 +3548,29 @@ function parsePublicCatalogue(raw: unknown, label: string): PublicCatalogue {
   return parsed.data;
 }
 
+/** One catalogue step as the public step vocabulary serves it (features-service `GET /public/catalogue/steps`). */
+const PublicCatalogueStepsSchema = z
+  .object({
+    rows: z.array(z.object({ key: z.string(), name: z.string(), icon: z.string() }).passthrough()),
+  })
+  .passthrough();
+export type PublicCatalogueStep = z.infer<typeof PublicCatalogueStepsSchema>["rows"][number];
+
+/**
+ * GET /v1/public/catalogue/steps — every catalogue step's key, name and Phosphor icon, the
+ * icon the staff Steps section shows (owner 2026-10-11: the customer's Outcomes entries wear it).
+ * Public and org-less, so a customer session reads it; nothing economic.
+ */
+export async function getPublicCatalogueSteps(): Promise<PublicCatalogueStep[]> {
+  const raw = await apiCall<unknown>(`/public/catalogue/steps`);
+  const parsed = PublicCatalogueStepsSchema.safeParse(raw);
+  if (!parsed.success) {
+    console.error("[dashboard] getPublicCatalogueSteps: response shape mismatch", { issues: parsed.error.issues });
+    throw new Error("[dashboard] getPublicCatalogueSteps: invalid response shape");
+  }
+  return parsed.data.rows;
+}
+
 /** GET /public/channels — the steps, the legs, and what each channel performs and costs. */
 export async function getPublicCatalogue(token?: string): Promise<PublicCatalogue> {
   const raw = await apiCall<unknown>(`/public/channels`, { token });
