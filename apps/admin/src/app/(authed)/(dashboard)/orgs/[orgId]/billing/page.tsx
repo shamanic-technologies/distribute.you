@@ -25,6 +25,7 @@ import {
 } from "@/lib/api";
 import { useBillingGuard } from "@/lib/billing-guard";
 import { formatBillingCents } from "@/lib/format-number";
+import { todayIsoDate } from "@/lib/credit-grant-body";
 import { pollOptions } from "@/lib/query-options";
 
 const TOPUP_AMOUNTS = [1000, 2500, 5000, 10000]; // cents
@@ -71,6 +72,10 @@ export default function BillingPage() {
   // Grant form state
   const [grantDollars, setGrantDollars] = useState("");
   const [grantNote, setGrantNote] = useState("");
+  // A grant is a gift unless the client paid us directly: then it records their
+  // payment on the day they paid (billing counts it as cash, not a gift).
+  const [grantIsPayment, setGrantIsPayment] = useState(false);
+  const [grantPaidOn, setGrantPaidOn] = useState(() => todayIsoDate());
   const [grantLoading, setGrantLoading] = useState(false);
   const [grantError, setGrantError] = useState<string | null>(null);
   const [grantSuccess, setGrantSuccess] = useState<string | null>(null);
@@ -85,10 +90,22 @@ export default function BillingPage() {
     setGrantError(null);
     setGrantSuccess(null);
     try {
-      await grantCredits(amountCents, grantNote.trim());
+      if (grantIsPayment && !grantPaidOn) {
+        setGrantError("Pick the day the client paid.");
+        return;
+      }
+      await grantCredits(amountCents, grantNote.trim(), {
+        paidOffPlatformAt: grantIsPayment ? grantPaidOn : null,
+      });
       setGrantDollars("");
       setGrantNote("");
-      setGrantSuccess(`Granted ${formatBillingCents(amountCents)}.`);
+      setGrantSuccess(
+        grantIsPayment
+          ? `Recorded a ${formatBillingCents(amountCents)} payment.`
+          : `Granted ${formatBillingCents(amountCents)}.`,
+      );
+      setGrantIsPayment(false);
+      setGrantPaidOn(todayIsoDate());
       queryClient.invalidateQueries({ queryKey: ["billingAccount"] });
       queryClient.invalidateQueries({ queryKey: ["creditGrants"] });
       queryClient.invalidateQueries({ queryKey: ["creditGrantsAll"] });
@@ -404,6 +421,11 @@ export default function BillingPage() {
 
   const orgGrants: CreditGrant[] = orgGrantsData?.grants ?? [];
   const allGrants: CreditGrant[] = allGrantsData?.grants ?? [];
+
+  // The day the client paid, read in UTC: billing stores the staff-picked date at UTC midnight.
+  function formatPaidDay(iso: string): string {
+    return new Date(iso).toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric", timeZone: "UTC" });
+  }
 
   function formatGrantDate(iso: string): string {
     return new Date(iso).toLocaleDateString(undefined, {
@@ -750,12 +772,42 @@ export default function BillingPage() {
             </div>
           </div>
 
+          <div className="flex flex-wrap items-end gap-x-4 gap-y-3 mb-4">
+            <label className="flex items-center gap-2 text-sm text-gray-800 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={grantIsPayment}
+                onChange={(e) => { setGrantIsPayment(e.target.checked); setGrantError(null); }}
+                className="h-4 w-4 accent-brand-600"
+              />
+              The client paid us directly
+            </label>
+            {grantIsPayment && (
+              <div>
+                <label htmlFor="grant-paid-on" className="block text-xs text-gray-500 mb-1">Paid on</label>
+                <input
+                  id="grant-paid-on"
+                  type="date"
+                  value={grantPaidOn}
+                  max={todayIsoDate()}
+                  onChange={(e) => { setGrantPaidOn(e.target.value); setGrantError(null); }}
+                  className="px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-300"
+                />
+              </div>
+            )}
+          </div>
+          {grantIsPayment && (
+            <p className="text-xs text-gray-500 -mt-2 mb-4">
+              Counts as money the client paid, not a gift.
+            </p>
+          )}
+
           <button
             onClick={handleGrant}
             disabled={grantLoading || !grantDollars}
             className="bg-brand-600 text-white px-6 py-2.5 rounded-lg hover:bg-brand-700 disabled:opacity-50 text-sm font-medium transition"
           >
-            {grantLoading ? "Granting..." : "Grant credits"}
+            {grantLoading ? (grantIsPayment ? "Recording..." : "Granting...") : grantIsPayment ? "Record payment" : "Grant credits"}
           </button>
 
           {/* This org's grant history */}
@@ -768,9 +820,15 @@ export default function BillingPage() {
                 {orgGrants.map((g) => (
                   <div key={g.id} className="flex items-start justify-between py-2.5">
                     <div className="min-w-0 pr-3">
-                      <p className="text-sm text-gray-800">{g.note || <span className="text-gray-400">No note</span>}</p>
+                      <p className="text-sm text-gray-800">
+                        {g.offPlatformPaidAt && (
+                          <span className="mr-1.5 rounded bg-blue-50 px-1.5 py-0.5 text-xs font-medium text-blue-700">Paid</span>
+                        )}
+                        {g.note || <span className="text-gray-400">No note</span>}
+                      </p>
                       <p className="text-xs text-gray-400 mt-0.5">
                         {g.grantedBy ?? "—"} · {formatGrantDate(g.createdAt)}
+                        {g.offPlatformPaidAt ? ` · paid ${formatPaidDay(g.offPlatformPaidAt)}` : ""}
                       </p>
                     </div>
                     <p className="text-sm font-medium text-green-600 whitespace-nowrap">
@@ -979,7 +1037,14 @@ export default function BillingPage() {
                         +{formatBillingCents(g.amountCents)}
                       </td>
                       <td className="py-2.5 pr-3 text-gray-600 whitespace-nowrap">{g.grantedBy ?? "—"}</td>
-                      <td className="py-2.5 pr-3 text-gray-600">{g.note || <span className="text-gray-400">—</span>}</td>
+                      <td className="py-2.5 pr-3 text-gray-600">
+                        {g.offPlatformPaidAt && (
+                          <span className="mr-1.5 rounded bg-blue-50 px-1.5 py-0.5 text-xs font-medium text-blue-700">
+                            Paid {formatPaidDay(g.offPlatformPaidAt)}
+                          </span>
+                        )}
+                        {g.note || <span className="text-gray-400">—</span>}
+                      </td>
                       <td className="py-2.5 text-gray-400 whitespace-nowrap">{formatGrantDate(g.createdAt)}</td>
                     </tr>
                   ))}
