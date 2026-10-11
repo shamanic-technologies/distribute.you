@@ -23,6 +23,7 @@ import {
 import { useBillingGuard } from "@/lib/billing-guard";
 import { topupPresetsForDailyBudget } from "@/lib/credit-runway";
 import { latestPaymentFailure } from "@/lib/payment-failure";
+import { mergePayments, splitCreditGrants } from "@/lib/off-platform-payments";
 import { availableCreditCents } from "@/lib/credit-runway";
 import {
   cardChangeSettleCents,
@@ -89,7 +90,10 @@ export function useBillingController() {
     ["creditGrants"],
     () => getCreditGrants(),
   );
-  const grants = grantsData?.grants ?? [];
+  // A grant that records a payment the client made to us directly is NOT a gift:
+  // it leaves "Free credit" and joins "Payments" (lib/off-platform-payments.ts).
+  const allGrants = grantsData?.grants ?? [];
+  const grants = splitCreditGrants(allGrants).gifts;
 
   // Payments ("Payments" card) — the org's own Stripe top-up history. These are
   // one-off PaymentIntents, NOT Stripe invoices, so the Stripe billing-portal
@@ -100,7 +104,10 @@ export function useBillingController() {
   );
   // Only show successful top-ups — incomplete/failed PaymentIntents are noise to
   // the customer (an abandoned checkout leaves a requires_* husk); hide them.
-  const payments = (paymentsData?.payments ?? []).filter((p) => p.status === "succeeded");
+  const payments: Payment[] = mergePayments(
+    (paymentsData?.payments ?? []).filter((p) => p.status === "succeeded"),
+    allGrants,
+  );
 
   // Has a charge been refused since the last one that went through? Read off the
   // UNFILTERED list on purpose — the card above drops every non-succeeded intent,

@@ -9781,6 +9781,10 @@ export interface CreditGrant {
   note: string | null;
   grantedBy: string | null;
   createdAt: string;
+  // Set when this grant records a PAYMENT the client made to us directly (bank
+  // transfer), on that date: it is cash paid, not a gift. Null for a real gift.
+  // See lib/off-platform-payments.ts.
+  offPlatformPaidAt?: string | null;
 }
 
 const CreditGrantSchema = z
@@ -9792,6 +9796,7 @@ const CreditGrantSchema = z
     note: z.string().nullable(),
     grantedBy: z.string().nullable(),
     createdAt: z.string(),
+    offPlatformPaidAt: z.string().nullish(),
   })
   .passthrough();
 
