@@ -276,6 +276,8 @@ export function statedVolume(type: FunnelType | null, v: Pick<MaxVolume, "count"
 const PathItemSchema = z.union([
   z.object({ kind: z.literal("step"), key: z.string(), label: z.string() }).passthrough(),
   z.object({ kind: z.literal("channel"), slug: z.string(), name: z.string() }).passthrough(),
+  // A reactive path starts with its trigger (owner 2026-10-11), e.g. Positive Reply.
+  z.object({ kind: z.literal("trigger"), slug: z.string(), name: z.string() }).passthrough(),
 ]);
 export type FunnelPathItem = z.infer<typeof PathItemSchema>;
 

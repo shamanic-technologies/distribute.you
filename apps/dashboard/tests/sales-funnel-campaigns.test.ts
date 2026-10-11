@@ -384,3 +384,20 @@ describe("path: several channels on one leg read as one group (owner 2026-10-11)
   });
 });
 
+describe("path: a reactive path starts with its trigger tag (owner 2026-10-11)", () => {
+  it("parses a trigger item and draws it as one lightning tag", async () => {
+    const { FunnelCampaignRowsSchema, missingChannelGaps } = await import("../src/lib/sales-funnel-campaigns");
+    const items = [
+      { kind: "trigger", slug: "positive_reply", name: "Positive Reply" },
+      { kind: "channel", slug: "ai-meeting-booking", name: "AI Meeting Booking" },
+      { kind: "step", key: "meeting_booked", label: "Meeting booked" },
+    ];
+    const parsed = FunnelCampaignRowsSchema.parse({
+      salesFunnelCampaigns: [{ id: "x", salesFunnelId: "f", name: "Motivate", status: "ongoing", type: "reactive", typeLabel: "Positive replies", path: { items }, investedUsd: 0, roiMultiple: null, costEconomics: null }],
+    });
+    expect(parsed.salesFunnelCampaigns[0].path?.items[0].kind).toBe("trigger");
+    expect(missingChannelGaps(parsed.salesFunnelCampaigns[0].path!.items)).toEqual([]);
+    expect(src("src/components/v2/funnel-campaigns.tsx")).toContain('it.kind === "trigger" ? (');
+  });
+});
+

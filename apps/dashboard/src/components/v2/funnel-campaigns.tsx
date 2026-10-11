@@ -487,6 +487,12 @@ export function FunnelPathLine({ items }: { items: FunnelPathItem[] }) {
           )}
           {it.kind === "step" ? (
             <span className="shrink-0">{it.label}</span>
+          ) : it.kind === "trigger" ? (
+            // A reactive path starts with its trigger: one lightning for every trigger (owner 2026-10-11).
+            <span className="k-chip inline-flex shrink-0 items-center gap-1">
+              <LightningIcon size={12} weight="duotone" aria-hidden className="shrink-0" />
+              {it.name}
+            </span>
           ) : (
             <ChannelChip name={it.name} def={channels.find((d) => d.featureSlug === it.slug)} notRun={false} compact />
           )}
