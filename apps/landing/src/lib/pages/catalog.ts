@@ -221,6 +221,21 @@ const STYLE = `<style>
 .catalog-list tr:last-child td { border-bottom: 0; }
 .catalog-list td.price, .catalog-list th.price { text-align: right; white-space: nowrap; font-variant-numeric: tabular-nums; padding-right: 0; }
 .catalog-error { max-width: 680px; padding: 16px 20px; border: 1px solid var(--hair); border-radius: 14px; color: var(--text); }
+/* On a phone the three columns cut the price off ("$8.00 / 1M toke") and ran the tool
+   into the item name. Each row stacks instead: tool and price on one line, what it
+   covers underneath, so nothing scrolls sideways. On the narrowest phones the price wraps
+   to its own line rather than clipping the tool name. */
+@media (max-width: 640px) {
+  .catalog-scroll { padding: 0 16px 12px; }
+  .catalog-list table, .catalog-list tbody { display: block; }
+  .catalog-list thead { display: none; }
+  .catalog-list tr { display: flex; flex-wrap: wrap; align-items: baseline; column-gap: 12px; padding: 10px 0; border-bottom: 1px solid var(--hair); }
+  .catalog-list tr:last-child { border-bottom: 0; }
+  .catalog-list td { border: 0; padding: 0; }
+  .catalog-list td.tool { order: 1; }
+  .catalog-list td.price { order: 2; margin-left: auto; }
+  .catalog-list td.what { order: 3; flex-basis: 100%; margin-top: 2px; font-size: 14px; color: var(--muted); }
+}
 </style>`;
 
 /** Same publishable logo.dev token as the homepage's client logos. */
@@ -241,7 +256,7 @@ function priceListHtml(prices: PlatformPrice[] | null): string {
 <div class="catalog-scroll"><table>
 <thead><tr><th>Tool</th><th>What</th><th class="price">Price</th></tr></thead>
 <tbody>${s.rows
-        .map((r) => `<tr><td class="tool">${logo(r.domain)}${esc(r.tool)}</td><td>${esc(r.what)}</td><td class="price">${esc(r.price)}</td></tr>`)
+        .map((r) => `<tr><td class="tool">${logo(r.domain)}${esc(r.tool)}</td><td class="what">${esc(r.what)}</td><td class="price">${esc(r.price)}</td></tr>`)
         .join("")}</tbody>
 </table></div>
 </details>`,
