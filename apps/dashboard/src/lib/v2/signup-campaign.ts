@@ -241,15 +241,3 @@ export function signupLaunchPlan(
     },
   };
 }
-
-/**
- * The daily pace of the outreach budget the person typed (billing's own rule for a cap: a day
- * x1, a week /7, a month /30), for the reload warning ("At $20 a day, $100 lasts 5 days").
- * Their own input, no served figure. The reactive budget only spends when someone replies.
- */
-export function dailyPaceUsd(draft: Pick<SignupCampaignDraft, "budget" | "budgetPeriod">): number {
-  const usd = wholeUsd(draft.budget);
-  if (usd == null) return 0;
-  const div = draft.budgetPeriod === "weekly" ? 7 : draft.budgetPeriod === "monthly" ? 30 : 1;
-  return Math.round((usd / div) * 100) / 100;
-}

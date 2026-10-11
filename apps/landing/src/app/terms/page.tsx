@@ -9,7 +9,7 @@ import { Section } from "@/components/section";
 export const revalidate = 86400;
 
 const TERMS_URL = `${PROD_URLS.landing}/terms`;
-const LAST_UPDATED = "October 6, 2026";
+const LAST_UPDATED = "October 11, 2026";
 const COMPANY = "BLOOMING GENERATION";
 const COMPANY_SIREN = "882102775";
 const SERVICE = "distribute.you";
@@ -144,8 +144,9 @@ const SECTIONS: SectionDef[] = [
           <a href="/catalog" className="text-brand-400 underline">
             distribute.you/catalog
           </a>
-          . There is no subscription, no seat, and no setup fee on the
-          self-serve plan.
+          . There is no seat and no setup fee. Depending on the offer you
+          signed up under, you pay with prepaid credit or through a monthly
+          plan, both described below.
         </p>
         <p>
           <strong>Prices are dynamic.</strong> Catalogue prices are in USD
@@ -158,8 +159,9 @@ const SECTIONS: SectionDef[] = [
         <p>
           <strong>Prepaid credit.</strong> You add credit before outreach
           starts, through our payment processors (Stripe or Revolut). The
-          work on your campaigns draws on that credit. When it runs out,
-          sending stops, unless you turned on automatic reload. Accounts that
+          work on your campaigns draws on that credit. When it runs out, the
+          automatic reload below adds credit; when it cannot (no payment
+          method on file, or a declined charge), sending stops. Accounts that
           our team has set up to be billed after use are charged when their
           unpaid usage reaches a threshold, or at the end of the month,
           whichever comes first.
@@ -172,12 +174,47 @@ const SECTIONS: SectionDef[] = [
           billed spend and reserved amounts apart.
         </p>
         <p>
-          <strong>Automatic reload.</strong> Automatic reload is optional and
-          off unless you turn it on. When your credit falls under the
-          threshold you chose, we charge your saved payment method the reload
-          amount you chose. By turning it on you authorize these charges
-          without further confirmation. You can turn it off at any time in
-          Billing.
+          <strong>Automatic reload.</strong> Your campaigns spend money every
+          day they run, so a prepaid account opened on or after October 11,
+          2026 keeps automatic reload on to use the Service: when your credit
+          falls under the reload threshold (currently $10), we charge your
+          saved payment method the amount of your first payment and add it to
+          your credit, as many times as your campaigns need. Once it is on,
+          there is no switch to turn it off. To stop these charges, turn your
+          campaigns off or remove your payment method; sending then stops when
+          your credit runs out. Accounts opened before that date keep the
+          reload setting they chose. By adding credit you authorize these
+          charges without further confirmation.
+        </p>
+        <p>
+          <strong>Monthly plan.</strong> Where we offer it, you can subscribe to
+          a monthly plan instead of prepaid credit. Each monthly payment is
+          added to your account as credit for that month. A plan can start
+          with a free trial of the length shown when you sign up (currently 3
+          days): we add the plan&apos;s first month of credit at our expense,
+          and we charge your saved payment method for the plan when the trial
+          ends, unless you cancel before.
+        </p>
+        <p>
+          <strong>Automatic plan upgrade.</strong> When your plan&apos;s credit
+          runs out, including during a free trial, we move your plan up to the
+          next plan amount (currently $100 more a month), charge your saved
+          payment method that $100 right away, and add it to your credit. Each
+          monthly payment after that is at the new amount. This repeats each
+          time your credit runs out. For example, on a $99 plan whose trial
+          credit runs out on day 2, we charge $100 that day, and $199 when the
+          trial ends on day 3. By subscribing you authorize these charges
+          without further confirmation. There is no switch to turn upgrades
+          off: to stop them, cancel your plan, which stops all sending at
+          once. Plans started before October 11, 2026 are not upgraded
+          automatically.
+        </p>
+        <p>
+          <strong>What you agree to spend.</strong> Before your first payment you
+          confirm what your campaigns may spend, in the budgets you set. Those
+          budgets are not a cap on your total bill: AI chat, extra lead
+          sourcing, campaigns you add later, and payment fees are billed on
+          top, at the catalogue prices above.
         </p>
         <p>
           <strong>Campaign budgets.</strong> You set a daily budget for each
@@ -196,7 +233,8 @@ const SECTIONS: SectionDef[] = [
         <p>
           <strong>No refunds.</strong> Payments are final and are not
           refunded, whatever the payment method or plan: prepaid credit,
-          automatic reload, subscription, or service fees. Unused or expired
+          automatic reload, monthly plan payments (including the first payment
+          after a free trial), automatic plan upgrades, or service fees. Unused or expired
           credit is not refunded. The only exception is the managed plan
           guarantee below.
         </p>

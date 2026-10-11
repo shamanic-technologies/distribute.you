@@ -5,7 +5,7 @@
  * signed-out walk opens the account and credit wall, this opens the credit step (owner
  * 2026-10-06: prepaid, no plan, no trial). An org that already holds a card launches on
  * the account it has; one with no card adds prepaid credit first (`PrepaidTopup`, at
- * least $100, optional automatic reload). Then the SAME launch as the signed-out walk
+ * least $100, the automatic reload required). Then the SAME launch as the signed-out walk
  * (`launchFromPreview`: the funnel campaign set at the "Your campaign" step, its caps
  * first), the org marked set up with a token minted FOR it, and only THEN made active
  * (the edge first-run gate would bounce a not-yet-set-up org), and the person lands on
@@ -20,7 +20,7 @@ import { getBillingAccount, sendAuthNotification, setApiActiveOrgOverride, type 
 import { getStripe } from "@/lib/stripe";
 import { defaultSalesRepToAccountEmail } from "@/lib/sales-rep-default";
 import { v2CampaignHref } from "@/lib/v2/routes";
-import { matchNote, type GetStartedOffer } from "@/lib/v2/get-started";
+import { matchNote, topupCta, type GetStartedOffer } from "@/lib/v2/get-started";
 import type { SignupLaunchPlan } from "@/lib/v2/signup-campaign";
 import { EMPTY_PROGRESS, launchFromPreview, type LaunchProgress } from "./launch";
 import { PrepaidTopup, type TopupChoice } from "./prepaid-topup";
@@ -38,7 +38,6 @@ export function OrgLaunch({
   targetAudience,
   note,
   plan,
-  dailyUsd,
   answered,
   snapshotKey,
   onClose,
@@ -52,8 +51,6 @@ export function OrgLaunch({
   note: string | null;
   /** The campaign set at the "Your campaign" step (the funnels and their caps). */
   plan: SignupLaunchPlan;
-  /** The outreach budget's daily pace, for the reload warning. */
-  dailyUsd: number;
   answered: boolean;
   snapshotKey: string;
   onClose: () => void;
@@ -220,7 +217,7 @@ export function OrgLaunch({
                 {busy ? "Checking your payment..." : "Check my payment and launch"}
               </button>
             ) : (
-              <PrepaidTopup busy={busy} matchNote={matchNote(account)} dailyUsd={dailyUsd} onEditCampaigns={onClose} cta={(usd) => `Add $${usd.toLocaleString("en-US")} and launch`} onPay={(c) => void pay(c)} />
+              <PrepaidTopup busy={busy} matchNote={matchNote(account)} plan={plan} cta={(usd) => topupCta(usd, matchNote(account))} onPay={(c) => void pay(c)} />
             )
           )}
 

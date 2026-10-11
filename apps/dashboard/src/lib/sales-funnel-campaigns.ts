@@ -338,3 +338,56 @@ export function unpricedWords(reason: string | null): string {
   }
 }
 
+
+// ─── Campaigns table order (owner 2026-10-11) ─────────────────────────────────────────────
+
+const PERIOD_DAYS: Record<string, number> = { daily: 1, weekly: 7, monthly: 30 };
+
+/**
+ * A cap's amount per day, for ORDERING rows only (never printed): $70/week and $10/day rank
+ * level. A total ("one_off") has no pace, so it returns null and ranks after every paced cap.
+ */
+export function capPerDay(amount: number, period: string): number | null {
+  const days = PERIOD_DAYS[period];
+  return days === undefined ? null : amount / days;
+}
+
+export interface FunnelSortKey {
+  type: FunnelType | null;
+  budget: { amount: number; period: string } | null;
+  volume: { count: number; period: string } | null;
+}
+
+/** Bigger first: a paced cap by its per-day pace, then a total by its amount, then no cap. */
+function compareCap(a: { amount: number; period: string } | null, b: { amount: number; period: string } | null): number {
+  const rank = (c: typeof a) => (c === null ? 2 : capPerDay(c.amount, c.period) === null ? 1 : 0);
+  const ra = rank(a);
+  const rb = rank(b);
+  if (ra !== rb) return ra - rb;
+  if (a === null || b === null) return 0;
+  const va = capPerDay(a.amount, a.period) ?? a.amount;
+  const vb = capPerDay(b.amount, b.period) ?? b.amount;
+  return vb - va;
+}
+
+/** Proactive first, then max budget (desc), then max volume (desc); ties keep the served order. */
+export function compareFunnelCampaigns(a: FunnelSortKey, b: FunnelSortKey): number {
+  const t = (k: FunnelSortKey) => (k.type === "proactive" ? 0 : k.type === "reactive" ? 1 : 2);
+  return (
+    t(a) - t(b) ||
+    compareCap(a.budget, b.budget) ||
+    compareCap(a.volume && { amount: a.volume.count, period: a.volume.period }, b.volume && { amount: b.volume.count, period: b.volume.period })
+  );
+}
+
+/** The order's inputs, all served: the row's type (features-service, else billing's relay) and billing's limits. */
+export function funnelSortKey(row: Pick<FunnelCampaignRow, "type"> | null, caps: SalesFunnelCaps | null): FunnelSortKey {
+  const t = row?.type ?? caps?.salesFunnelType ?? null;
+  const b = caps?.maxBudget ?? null;
+  const usd = b ? centsToUsd(b.amountCents) : null;
+  return {
+    type: t === "proactive" || t === "reactive" ? t : null,
+    budget: b && usd !== null ? { amount: usd, period: b.period } : null,
+    volume: caps?.maxVolume ? { count: caps.maxVolume.count, period: caps.maxVolume.period } : null,
+  };
+}

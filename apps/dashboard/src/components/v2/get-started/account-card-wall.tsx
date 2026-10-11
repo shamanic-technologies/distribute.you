@@ -63,6 +63,7 @@ import {
   GET_STARTED_SNAPSHOT_KEY,
   matchNote,
   nextSlide,
+  topupCta,
   type GetStartedEmail,
   type GetStartedAudience,
   type CampaignOutlook,
@@ -76,6 +77,8 @@ import { PhoneField, browserPhoneCountry } from "./phone-field";
 import { EMPTY_PROGRESS, launchFromPreview, type LaunchProgress } from "./launch";
 import type { SignupLaunchPlan } from "@/lib/v2/signup-campaign";
 import { PrepaidTopup, type TopupChoice } from "./prepaid-topup";
+import { SpendConsent, allTicked } from "./spend-consent";
+import { spendConsentLines } from "@/lib/v2/spend-consent";
 import { payTopup, settleTopup } from "./pay-topup";
 import { pingOwner } from "@/lib/owner-ping-client";
 import { hostOf as pingHostOf, websiteUrl as pingWebsiteUrl } from "@/lib/v2/get-started";
@@ -114,7 +117,6 @@ export function AccountCardWall({
   note = null,
   email: writtenEmail,
   plan,
-  dailyUsd,
   outlook,
   answered,
   onClose,
@@ -134,8 +136,6 @@ export function AccountCardWall({
   email: GetStartedEmail | null;
   /** The campaign set at the "Your campaign" step (the funnels and their caps). */
   plan: SignupLaunchPlan;
-  /** The outreach budget's daily pace, for the reload warning. */
-  dailyUsd: number;
   /** The served figures of the campaign picked: what the match buys is read off it. */
   outlook: CampaignOutlook | null;
   /** The offer points and give lists were answered in the preview (and saved). */
@@ -156,6 +156,14 @@ export function AccountCardWall({
     return { plan: isSubscriptionArm(cookie), variant: lpVariant(cookie), monthlyCents: pickedPlanCents(cookie) };
   });
   const copy = wallCopy(arm.plan ? Math.round(arm.monthlyCents / 100) : null);
+  // The plan's three statements before the trial starts (owner 2026-10-11); prepaid ticks
+  // its own inside `PrepaidTopup`, where the amount they name is picked.
+  const [planTicked, setPlanTicked] = useState([false, false, false]);
+  const planConsent = spendConsentLines({
+    proactive: plan.proactive.caps.maxBudget,
+    reactive: plan.reactive?.caps.maxBudget ?? null,
+    arm: { kind: "plan", monthlyUsd: Math.round(arm.monthlyCents / 100) },
+  });
   const planName = arm.plan ? "subscription" : "prepaid";
 
   const [stage, setStage] = useState<Stage>("account");
@@ -567,7 +575,7 @@ export function AccountCardWall({
 
   // ── Card and plan (the `subscription` arm) ──
   function startTrial() {
-    if (busy || !checkReady()) return;
+    if (busy || !allTicked(planTicked) || !checkReady()) return;
     if (planStarted.current) {
       void launch();
       return;
@@ -931,7 +939,8 @@ export function AccountCardWall({
                       <p className="k-fg text-[13px] font-medium">{copy.cardTitle}</p>
                       <p className="k-fg2 text-[13px] leading-5">{copy.cardNote}</p>
                     </div>
-                    <button type="button" className="k-cta k-btn-accent gs-glow w-full justify-center" onClick={() => startTrial()} disabled={busy}>
+                    <SpendConsent lines={planConsent} ticked={planTicked} onChange={setPlanTicked} disabled={busy} />
+                    <button type="button" className="k-cta k-btn-accent gs-glow w-full justify-center" onClick={() => startTrial()} disabled={busy || !allTicked(planTicked)}>
                       {busy ? "Opening the card form..." : copy.cardCta}
                     </button>
                   </>
@@ -940,7 +949,7 @@ export function AccountCardWall({
                     {busy ? "Checking your payment..." : "Check my payment and launch"}
                   </button>
                 ) : (
-                  <PrepaidTopup busy={busy} matchNote={matchNote(account)} dailyUsd={dailyUsd} onEditCampaigns={onClose} cta={(usd) => `Add $${usd.toLocaleString("en-US")} and launch`} onPay={(c) => void pay(c)} />
+                  <PrepaidTopup busy={busy} matchNote={matchNote(account)} plan={plan} cta={(usd) => topupCta(usd, matchNote(account))} onPay={(c) => void pay(c)} />
                 )}
               </div>
             )}

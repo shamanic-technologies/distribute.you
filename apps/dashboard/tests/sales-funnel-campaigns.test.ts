@@ -312,3 +312,48 @@ describe("ROI cell: a null ROI always says why (owner 2026-10-11)", () => {
   });
 });
 
+
+describe("Campaigns order + one modal (owner 2026-10-11)", () => {
+  it("proactive first, then max budget desc (per-day pace, totals after), then max volume desc", async () => {
+    const { compareFunnelCampaigns } = await import("../src/lib/sales-funnel-campaigns");
+    const k = (type: "proactive" | "reactive" | null, budget: [number, string] | null, volume: [number, string] | null = null) => ({
+      type,
+      budget: budget && { amount: budget[0], period: budget[1] },
+      volume: volume && { count: volume[0], period: volume[1] },
+    });
+    const rows = {
+      reactiveBig: k("reactive", [500, "daily"]),
+      proSmall: k("proactive", [50, "weekly"]),
+      proBig: k("proactive", [20, "daily"]),
+      proMonthly: k("proactive", [300, "monthly"]),
+      proTotal: k("proactive", [5000, "one_off"]),
+      proNone: k("proactive", null),
+      proTieMoreVolume: k("proactive", [140, "weekly"], [100, "daily"]),
+      proTieLessVolume: k("proactive", [20, "daily"], [100, "weekly"]),
+    };
+    const order = Object.entries(rows)
+      .sort((a, b) => compareFunnelCampaigns(a[1], b[1]))
+      .map(([n]) => n);
+    expect(order).toEqual(["proTieMoreVolume", "proTieLessVolume", "proBig", "proMonthly", "proSmall", "proTotal", "proNone", "reactiveBig"]);
+  });
+
+  it("the Status button opens the campaign's one modal (switch + both limits, one Save); no on/off menu left", () => {
+    const f = src("src/components/v2/funnel-campaigns.tsx");
+    const status = f.slice(f.indexOf("export function FunnelCampaignStatus("), f.indexOf("export function FunnelLimitsButton("));
+    expect(status).toContain('aria-haspopup="dialog"');
+    expect(status).toContain("<FunnelCampaignModal campaign={campaign}");
+    expect(status).not.toContain('role="menu"');
+    const modal = f.slice(f.indexOf("export function FunnelCampaignModal("), f.indexOf("/** What the max budget consumed this period"));
+    expect(modal).toContain("<RunSwitch on={on} onChange={setOn} />");
+    expect(modal).toContain('id="v2-funnel-budget"');
+    expect(modal).toContain('id="v2-funnel-volume"');
+    // Limits are written before the status, so turning on with a first budget starts funded.
+    expect(modal.indexOf("saveSalesFunnelCaps(")).toBeLessThan(modal.indexOf("setSalesFunnelCampaignStatus("));
+    expect(f).not.toContain("FunnelLimitsModal");
+  });
+
+  it("the table renders campaigns in that order", () => {
+    const f = src("src/components/v2/funnel-campaigns.tsx");
+    expect(f).toContain(".sort((x, y) => compareFunnelCampaigns(x.k, y.k))");
+  });
+});
