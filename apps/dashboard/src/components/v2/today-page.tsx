@@ -69,6 +69,7 @@ import {
   leadTitle,
   personHref,
 } from "@/components/v2/people-bits";
+import { RoiLabel } from "@/components/v2/roi-label";
 
 /** Bars for a short window, a line for a long one (30 bars do not fit a tile). */
 function Trend({ values, line = false, className = "" }: { values: number[] | null; line?: boolean; className?: string }) {
@@ -288,7 +289,7 @@ export function TodayPage() {
               <span className="k-fg3 text-[12px]">Since you started</span>
             </div>
             <div className={`grid grid-cols-2 gap-3 ${STAT_GRID_COLS[statTiles]}`}>
-              <StatTile label="Return" note="Break-even 1×">
+              <StatTile label={<RoiLabel />} note="Break-even 1×">
                 {rev.pending ? (
                   <Shimmer className="h-16 w-full" />
                 ) : (

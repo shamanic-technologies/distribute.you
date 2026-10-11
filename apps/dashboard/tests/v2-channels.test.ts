@@ -121,7 +121,7 @@ describe("channel pages", () => {
     expect(outbound).toMatch(/<OfferCampaigns[\s\S]*?\bresults\b[\s\S]*?\/>/);
     const results = table.slice(table.indexOf("{results ? (\n                  <tr"), table.indexOf(") : (\n                  <tr"));
     // Column order (owner 2026-10-05): name, type, ROI, # outcomes, $ value, $ / outcome, $ invested, status, budget.
-    const order = ["Campaign", "Type", "ROI", "# Outcomes", "$ Value", "$ / Outcome", "$ Invested", "Status", "Budget"].map((h) => results.indexOf(`>${h}</th>`));
+    const order = ["Campaign", "Type", "ROI", "# Outcomes", "$ Value", "$ / Outcome", "$ Invested", "Status", "Budget"].map((h) => results.indexOf(h === "ROI" ? ">ROI</ExpectedLabel>" : `>${h}</th>`));
     expect(order.every((at, i) => at > -1 && (i === 0 || at > order[i - 1]))).toBe(true);
     // ROI is the campaign's measured return (its campaign page's tile), never the path forecast.
     const cells = table.slice(table.indexOf("function CampaignResultCells("), table.indexOf("function UnlistedRow("));

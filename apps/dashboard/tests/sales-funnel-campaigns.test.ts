@@ -265,8 +265,9 @@ describe("Campaigns table, owner spec 2026-10-11", () => {
     expect(at(">Campaign</th>")).toBeGreaterThan(-1);
     expect(at("Type")).toBeGreaterThan(at(">Campaign</th>"));
     expect(at("<InfoTooltip tip={TYPE_TIP}")).toBeGreaterThan(at("Type"));
-    expect(at(">ROI</th>")).toBeGreaterThan(at("<InfoTooltip tip={TYPE_TIP}"));
-    expect(at(">$ Invested</th>")).toBeGreaterThan(at(">ROI</th>"));
+    // ROI carries the expected (i) (owner 2026-10-11).
+    expect(at("<RoiLabel />")).toBeGreaterThan(at("<InfoTooltip tip={TYPE_TIP}"));
+    expect(at(">$ Invested</th>")).toBeGreaterThan(at("<RoiLabel />"));
     expect(at(">Status</th>")).toBeGreaterThan(at(">$ Invested</th>"));
     for (const gone of [">Spent</th>", ">Volume</th>", ">Budget</th>"]) expect(s).not.toContain(gone);
   });

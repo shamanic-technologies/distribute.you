@@ -71,6 +71,7 @@ import { PipeSections } from "@/components/v2/pipe-sections";
 import { PeoplePage } from "@/components/v2/people-page";
 import { V2AudiencesTable } from "@/components/v2/audiences-table";
 import { EmptyNote, Figure, MarkLines, Meter, SectionTitle, Shimmer, StateDot } from "@/components/v2/ui";
+import { RoiLabel } from "@/components/v2/roi-label";
 
 /**
  * CAMPAIGNS THAT ARE SALES FUNNELS (owner 2026-10-10). A campaign has a name and a face, ONE
@@ -579,7 +580,9 @@ export function FunnelCampaignsSection({ orgId, brandId, offerId }: { orgId: str
                       <InfoTooltip tip={TYPE_TIP} placement="bottom" />
                     </span>
                   </th>
-                  <th className="k-label px-3 py-2.5 text-right font-normal">ROI</th>
+                  <th className="k-label px-3 py-2.5 text-right font-normal">
+                    <RoiLabel />
+                  </th>
                   <th className="k-label px-3 py-2.5 text-right font-normal">$ Invested</th>
                   <th className="k-label w-[190px] px-3 py-2.5 pr-4 text-right font-normal">Status</th>
                 </tr>
@@ -792,7 +795,9 @@ function FunnelResults({
               <thead>
                 <tr className="k-line-subtle border-b">
                   <th className="k-label px-3 py-2.5 pl-4 text-left font-normal">Brings in</th>
-                  <th className="k-label px-3 py-2.5 text-right font-normal">ROI</th>
+                  <th className="k-label px-3 py-2.5 text-right font-normal">
+                    <RoiLabel />
+                  </th>
                   <th className="k-label px-3 py-2.5 text-right font-normal"># Outcomes</th>
                   <th className="k-label px-3 py-2.5 text-right font-normal">$ Value</th>
                   <th className="k-label px-3 py-2.5 text-right font-normal">$ / Outcome</th>
@@ -927,7 +932,9 @@ export function FunnelCampaignPage({ campaign }: { campaign: SalesFunnelCampaign
           <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_minmax(0,2fr)]">
             <div className="k-card grid grid-cols-2 divide-x divide-[var(--line-subtle)]">
               <div className="min-w-0 px-4 pb-3.5 pt-3">
-                <span className="k-label">ROI</span>
+                <span className="k-label">
+                  <RoiLabel />
+                </span>
                 <div className="mt-2">
                   {!rowsSettled ? (
                     <Shimmer className="h-7 w-16" />

@@ -6138,7 +6138,12 @@ const CampaignRevenueOutcomesSchema = z.object({
   // distinct leads sent to, and the SERVED share of them who replied. Only the two
   // figures the v2 missions table prints are declared.
   sending: z
-    .object({ recipientsSent: z.number(), replyRatePct: z.number().nullable() })
+    .object({
+      recipientsSent: z.number(),
+      replyRatePct: z.number().nullable(),
+      // Positive repliers per 100 leads sent to, served (null only when nothing was sent).
+      positiveReplyRatePct: z.number().nullable().optional(),
+    })
     .nullish(),
 });
 const FeatureRevenueByCampaignSchema = z.object({
@@ -6181,6 +6186,7 @@ export interface CampaignRevenueGroup {
   sentCount?: number | null;
   /** The SERVED share of those who replied, in percent. Null = nothing was sent. */
   replyRatePct?: number | null;
+  positiveReplyRatePct?: number | null;
   /** ROI, % CAC and $ CAC served twice with this campaign's maturity verdict. */
   economicsMaturity: MaturityPair<EconomicsFigures> | null;
   /** Cost per visit and per positive reply, served twice. Null when the producer served no
@@ -6221,6 +6227,7 @@ export async function getFeatureRevenueByCampaign(
     cpcCents: g.outcomes?.cpcCents,
     sentCount: g.outcomes?.sending?.recipientsSent,
     replyRatePct: g.outcomes?.sending?.replyRatePct,
+    positiveReplyRatePct: g.outcomes?.sending?.positiveReplyRatePct,
     economicsMaturity: g.costEconomics.maturity ?? null,
     outcomesMaturity: g.outcomes?.maturity ?? null,
   }));

@@ -37,6 +37,7 @@ import { StatBasisSwitch } from "@/components/v2/stat-basis-switch";
 import { V2Page, type V2Tab } from "@/components/v2/setup-pages";
 import { EmptyNote, Figure, SectionTitle, Shimmer, StatTile } from "@/components/v2/ui";
 import { FunnelCampaignPage, FunnelPartOf, useFunnelCampaignById } from "@/components/v2/funnel-campaigns";
+import { RoiLabel } from "@/components/v2/roi-label";
 
 /**
  * A step label as a count heading: "Positive reply" -> "Positive replies", "Booking call" ->
@@ -246,8 +247,29 @@ export function SpentTile({ win }: { win: { data: RevenueWindow | null; pending:
   );
 }
 
-/** The campaign's ROI is an expected value (its pipeline over what it cost), so it says so. */
-const CAMPAIGN_ROI_TIP = "Expected, not measured yet. What the people this campaign reached should be worth, divided by what it cost.";
+/**
+ * The campaign's ROI tile, first on both campaign kinds (cold email and answering), with the
+ * expected (i) every ROI label carries. Green above break-even (lib/format-roi.ts roiIsGood).
+ */
+function RoiTile({ mission }: { mission: Mission }) {
+  const { basis } = useStatBasis();
+  const roi = shownReturn(mission.row.revenue?.economicsMaturity, basis);
+  return (
+    <StatTile label={<RoiLabel />}>
+      <Figure
+        value={
+          roi.learning ? (
+            "Learning"
+          ) : roi.value == null ? (
+            "—"
+          ) : (
+            <span className={roiIsGood(roi.value) ? "text-[var(--run)]" : ""}>{formatRoi(roi.value)}</span>
+          )
+        }
+      />
+    </StatTile>
+  );
+}
 
 /**
  * What this campaign did, all served: where the people it reached stand (lead-service's
@@ -282,7 +304,6 @@ function CampaignOverview({
   const cost = shownFigure(g?.outcomesMaturity, (h) => (replyLed ? h.cpprCents : h.cpcCents), basis);
   const cap = crewTrigger(mission.leg)?.kind === "event";
 
-  const roi = shownReturn(g?.economicsMaturity, basis);
   const win = useCampaignWindow(brandId, mission.row.campaign.id, mission.row.campaign.featureSlug ?? null);
   const emails = win.data?.emails ?? null;
   const queued = win.data?.queuedEmails ?? null;
@@ -301,20 +322,7 @@ function CampaignOverview({
         <SectionTitle right={<span>Since it started</span>}>This campaign</SectionTitle>
         {/* Owner's order (2026-10-06), ONE row on desktop: ROI, Contacted, Queued, Sent, Delivered, outcome, Spent, cost per outcome. */}
         <div className="grid grid-cols-2 gap-3 md:grid-cols-4 xl:grid-cols-8">
-          <StatTile label="ROI" note={<InfoTooltip tip={CAMPAIGN_ROI_TIP} placement="bottom" />}>
-            {/* Green above break-even, as every ROI in the dashboard (lib/format-roi.ts roiIsGood). */}
-            <Figure
-              value={
-                roi.learning ? (
-                  "Learning"
-                ) : roi.value == null ? (
-                  "—"
-                ) : (
-                  <span className={roiIsGood(roi.value) ? "text-[var(--run)]" : ""}>{formatRoi(roi.value)}</span>
-                )
-              }
-            />
-          </StatTile>
+          <RoiTile mission={mission} />
           <StatTile label="Contacted">{count(counts?.contacted)}</StatTile>
           <StatTile label="Queued">{emailCount(queued)}</StatTile>
           <StatTile label="Sent">{emailCount(emails?.sent)}</StatTile>
@@ -417,7 +425,8 @@ function ConversationOverview({
     <div className="space-y-8">
       <section>
         <SectionTitle right={<span>Since it started</span>}>This campaign</SectionTitle>
-        <div className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-5">
+        <div className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-6">
+          <RoiTile mission={mission} />
           <StatTile label={plural(from)}>{count(conv?.handed)}</StatTile>
           <StatTile label="Ongoing conversations">{count(conv?.ongoing)}</StatTile>
           <StatTile label={plural(to)}>{count(conv?.meetingsBooked)}</StatTile>

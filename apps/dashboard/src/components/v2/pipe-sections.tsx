@@ -18,6 +18,7 @@ import type { Mission } from "@/components/v2/use-missions";
 import { LEG_STEPS, StepBar, useCampaignWindow } from "@/components/v2/offer-channel-page";
 import { ChannelChip } from "@/components/v2/offer-sales-paths";
 import { EmptyNote, Shimmer } from "@/components/v2/ui";
+import { RoiLabel } from "@/components/v2/roi-label";
 
 /**
  * A sales-funnel campaign's PIPES, one block each (owner 2026-10-11: "up to 3 columns on
@@ -110,7 +111,7 @@ function Column({ title, note, children }: { title: string; note?: React.ReactNo
 }
 
 /** One figure in a column's 2-wide grid: label, value, an optional line under it. */
-function Cell({ label, children, sub }: { label: string; children: React.ReactNode; sub?: React.ReactNode }) {
+function Cell({ label, children, sub }: { label: React.ReactNode; children: React.ReactNode; sub?: React.ReactNode }) {
   return (
     <div className="min-w-0">
       <div className="k-label truncate">{label}</div>
@@ -123,6 +124,8 @@ function Cell({ label, children, sub }: { label: string; children: React.ReactNo
 const DASH = <span className="k-fg4">—</span>;
 const unitWord = (n: number | null | undefined, one: string, many: string) => <span className="k-fg2 ml-1 text-[12px] font-normal">{n === 1 ? one : many}</span>;
 const count = (n: number | null | undefined, one: string, many: string) => (n == null ? DASH : <>{formatCount(n)}{unitWord(n, one, many)}</>);
+/** A served percent: one decimal, a non-zero share that rounds to 0.0% reads "<0.1%". */
+const pct = (n: number) => (n > 0 && n < 0.05 ? "<0.1%" : `${n.toFixed(1)}%`);
 
 /** The pipe's return and money, off the campaign row's own served revenue group. */
 function MoneyCells({ mission, per }: { mission: Mission | null; per: "reply" | "visit" | null }) {
@@ -132,7 +135,7 @@ function MoneyCells({ mission, per }: { mission: Mission | null; per: "reply" | 
   const cost = shownFigure(g?.outcomesMaturity, (h) => (per === "reply" ? h.cpprCents : h.cpcCents), basis);
   return (
     <>
-      <Cell label="ROI">
+      <Cell label={<RoiLabel />}>
         {!mission ? DASH : roi.learning ? "Learning" : roi.value == null ? DASH : <span className={roiIsGood(roi.value) ? "text-[var(--run)]" : ""}>{formatRoi(roi.value)}</span>}
       </Cell>
       <Cell label="$ Value">{g?.totalPipelineUsd != null ? formatUsdAdaptive(g.totalPipelineUsd) : DASH}</Cell>
@@ -202,6 +205,8 @@ function ColdEmailPipe({ brandId, unit, mission, leg }: { brandId: string; unit:
   const emails = win.data?.emails ?? null;
   const queued = win.data?.queuedEmails ?? null;
   const replyLed = steps?.bucket === "positive_reply";
+  // The campaign row's own served rates (features-service, distinct people emailed).
+  const rates = mission?.row.revenue ?? null;
   const outcomes = steps && counts ? counts[steps.bucket] : null;
   const outcomeDaily = replyLed ? win.data?.recipientsRepliesPositive ?? null : win.data?.recipientsClicked ?? null;
   const scale = Math.max(queued ?? 0, emails?.sent ?? 0, emails?.delivered ?? 0, outcomes ?? 0);
@@ -213,10 +218,18 @@ function ColdEmailPipe({ brandId, unit, mission, leg }: { brandId: string; unit:
       <Column title="Figures" note="Since it started">
         <div className="grid grid-cols-2 gap-x-4 gap-y-4">
           <Cell label="Contacted">{people(counts?.contacted)}</Cell>
-          <Cell label={outcomes === 1 ? leg.toLabel : plural(leg.toLabel)}>{people(outcomes)}</Cell>
+          <Cell
+            label={outcomes === 1 ? leg.toLabel : plural(leg.toLabel)}
+            sub={replyLed && rates?.positiveReplyRatePct != null ? `${pct(rates.positiveReplyRatePct)} of people emailed` : undefined}
+          >
+            {people(outcomes)}
+          </Cell>
           <Cell label="Sent">{mails(emails?.sent)}</Cell>
-          <Cell label="Delivered" sub={emails?.deliveryRatePct != null ? `${emails.deliveryRatePct.toFixed(1)}% of sent` : undefined}>
+          <Cell label="Delivered" sub={emails?.deliveryRatePct != null ? `${pct(emails.deliveryRatePct)} of sent` : undefined}>
             {mails(emails?.delivered)}
+          </Cell>
+          <Cell label="Reply rate" sub="Of people emailed">
+            {rates?.replyRatePct != null ? pct(rates.replyRatePct) : DASH}
           </Cell>
           <SpentCell win={win} />
           <MoneyCells mission={mission} per={replyLed ? "reply" : "visit"} />

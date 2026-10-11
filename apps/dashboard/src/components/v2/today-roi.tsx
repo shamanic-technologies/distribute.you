@@ -136,8 +136,8 @@ export function OfferOutcomesTable({
                 <th className="k-label px-2 py-2.5 sm:px-3 pl-4 text-left font-normal">Step</th>
                 <th className="k-label px-2 py-2.5 sm:px-3 text-right font-normal">All</th>
                 <th className="k-label px-2 py-2.5 sm:px-3 text-right font-normal">Hot</th>
-                <th className="k-label px-2 py-2.5 sm:px-3 text-right font-normal">Lost</th>
-                <th className="k-label hidden whitespace-nowrap px-2 py-2.5 text-right font-normal sm:table-cell sm:px-3">% Conversion</th>
+                <th className="k-label hidden px-2 py-2.5 text-right font-normal sm:table-cell sm:px-3">Lost</th>
+                <th className="k-label whitespace-nowrap px-2 py-2.5 text-right font-normal sm:px-3">% Conversion</th>
                 <th className="k-label whitespace-nowrap px-2 py-2.5 sm:px-3 text-right font-normal">
                   <ExpectedLabel tip={WORTH_EACH_TIP}>Worth each</ExpectedLabel>
                 </th>
@@ -176,8 +176,8 @@ export function OfferOutcomesTable({
                     <td className="px-2 py-2.5 pl-4 font-semibold sm:px-3">Total</td>
                     <td className="px-2 py-2.5 text-right font-semibold tabular-nums sm:px-3">{formatCount(ex.total.people)}</td>
                     <td className="px-2 py-2.5 text-right font-semibold tabular-nums sm:px-3">{ex.total.hot ? formatCount(ex.total.hot.count) : dash}</td>
-                    <td />
                     <td className="hidden sm:table-cell" />
+                    <td />
                     <td />
                     <td className="px-2 py-2.5 pr-4 text-right font-semibold tabular-nums sm:px-3">
                       {ex.total.pipelineUsd != null ? formatUsdAdaptive(ex.total.pipelineUsd) : dash}
@@ -245,9 +245,9 @@ function LadderLine({ s, onOpen }: { s: OfferLadderStep; onOpen: () => void }) {
       <td className="px-2 py-2 pl-4 font-medium sm:px-3">{s.step.label}</td>
       <td className="px-2 py-2 text-right tabular-nums sm:px-3">{s.pricedRecipientsReached != null ? formatCount(s.pricedRecipientsReached) : dash}</td>
       <td className="px-2 py-2 text-right tabular-nums sm:px-3">{dash}</td>
-      <td className="px-2 py-2 text-right tabular-nums sm:px-3">{s.people ? formatCount(s.people.lost.count) : dash}</td>
+      <td className="hidden px-2 py-2 text-right tabular-nums sm:table-cell sm:px-3">{s.people ? formatCount(s.people.lost.count) : dash}</td>
       {/* From the step before, on the people we brought: the same basis as All. */}
-      <td className="hidden px-2 py-2 text-right tabular-nums sm:table-cell sm:px-3">
+      <td className="px-2 py-2 text-right tabular-nums sm:px-3">
         {s.pricedConversionFromPrevious?.ratePct != null ? pct(s.pricedConversionFromPrevious.ratePct) : dash}
       </td>
       <td className="px-2 py-2 text-right tabular-nums sm:px-3">{s.valuePerOutcomeUsd != null ? formatUsdAdaptive(s.valuePerOutcomeUsd) : dash}</td>
@@ -273,8 +273,8 @@ function SliceLine({ r, onOpen }: { r: ExclusiveRow; onOpen: () => void }) {
       {/* Of the row's people, the hot leads (features-service, per row). */}
       <td className="px-2 py-2 text-right tabular-nums sm:px-3">{r.hot ? formatCount(r.hot.count) : dash}</td>
       {/* Of the row's people, those who went cold or were ruled out (features-service, per row). */}
-      <td className="px-2 py-2 text-right tabular-nums sm:px-3">{r.people ? formatCount(r.people.lost.count) : dash}</td>
-      <td className="hidden px-2 py-2 text-right tabular-nums sm:table-cell sm:px-3">{conversionPct != null ? pct(conversionPct) : dash}</td>
+      <td className="hidden px-2 py-2 text-right tabular-nums sm:table-cell sm:px-3">{r.people ? formatCount(r.people.lost.count) : dash}</td>
+      <td className="px-2 py-2 text-right tabular-nums sm:px-3">{conversionPct != null ? pct(conversionPct) : dash}</td>
       <td className="px-2 py-2 text-right tabular-nums sm:px-3">{r.valuePerOutcomeUsd != null ? formatUsdAdaptive(r.valuePerOutcomeUsd) : dash}</td>
       <td className="px-2 py-2 pr-4 text-right font-medium tabular-nums sm:px-3">{r.pipelineUsd != null ? formatUsdAdaptive(r.pipelineUsd) : dash}</td>
     </tr>
@@ -301,8 +301,8 @@ function ContactedLine({
       <td className="px-2 py-2 sm:px-3 pl-4 font-medium">{label}</td>
       <td className="px-2 py-2 sm:px-3 text-right tabular-nums">{count != null ? formatCount(count) : dash}</td>
       <td className="px-2 py-2 text-right sm:px-3">{dash}</td>
-      <td className="px-2 py-2 text-right sm:px-3">{dash}</td>
-      <td className="hidden px-2 py-2 text-right tabular-nums sm:table-cell sm:px-3">{conversionPct != null ? pct(conversionPct) : dash}</td>
+      <td className="hidden px-2 py-2 text-right sm:table-cell sm:px-3">{dash}</td>
+      <td className="px-2 py-2 text-right tabular-nums sm:px-3">{conversionPct != null ? pct(conversionPct) : dash}</td>
       <td className="px-2 py-2 sm:px-3 text-right tabular-nums">{eachUsd != null ? formatUsdAdaptive(eachUsd) : dash}</td>
       <td className="px-2 py-2 sm:px-3 pr-4 text-right font-medium tabular-nums">{totalUsd != null ? formatUsdAdaptive(totalUsd) : dash}</td>
     </tr>

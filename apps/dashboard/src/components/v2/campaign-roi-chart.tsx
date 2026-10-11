@@ -52,8 +52,8 @@ export function CampaignRoiChart({
       history={history}
       answered={answered}
       failed={!answered && q.isFetchedAfterMount && q.isError}
-      right="Measured, since it started"
-      sub="What the people it reached are worth, divided by what it cost, to date."
+      right="Since it started"
+      sub="Expected: what the people it reached should be worth, divided by what it cost, to date."
       failedCopy="Could not read this campaign's return. Retrying."
       emptyCopy="No return to show yet: this campaign has not spent anything."
     />

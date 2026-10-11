@@ -179,10 +179,14 @@ describe("v2 audience table surface", () => {
     }
   });
 
-  it("carries no v1 class family and no per-header tooltip", () => {
+  it("carries no v1 class family and no per-header tooltip but the ROI one", () => {
     for (const src of [table, hook]) {
-      expect(src).not.toMatch(/text-gray-|bg-brand-50|rounded-lg border|InfoTooltip|shadow-2xl|bg-white/);
+      expect(src).not.toMatch(/text-gray-|bg-brand-50|rounded-lg border|shadow-2xl|bg-white/);
     }
+    // The only (i) is the ROI column's expected one (owner 2026-10-11).
+    expect(table.match(/<InfoTooltip /g)?.length).toBe(1);
+    expect(table).toContain('{col === "roi" && <InfoTooltip tip={ROI_TIP} placement="bottom" />}');
+    expect(hook).not.toContain("InfoTooltip");
   });
 
   it("forks no data layer: v1's query keys, readers and invalidations", () => {
