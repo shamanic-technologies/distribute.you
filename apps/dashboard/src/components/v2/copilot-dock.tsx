@@ -15,9 +15,22 @@ interface CopilotDock {
   available: boolean;
   open: boolean;
   setOpen: (open: boolean) => void;
+  /** A message a page button sends as if typed and sent (e.g. "Create a campaign"). */
+  pending: string | null;
+  /** Shows the panel and queues `text`: the chat sends it once it is loaded and idle. */
+  ask: (text: string) => void;
+  /** The chat took the queued message. */
+  clearPending: () => void;
 }
 
-export const CopilotDockContext = createContext<CopilotDock>({ available: false, open: false, setOpen: () => {} });
+export const CopilotDockContext = createContext<CopilotDock>({
+  available: false,
+  open: false,
+  setOpen: () => {},
+  pending: null,
+  ask: () => {},
+  clearPending: () => {},
+});
 
 export function useCopilotDock() {
   return useContext(CopilotDockContext);
@@ -43,7 +56,16 @@ export function useCopilotDockState(available: boolean): CopilotDock {
       // Storage blocked: the choice lasts until the reload.
     }
   }, []);
-  return { available, open, setOpen };
+  const [pending, setPending] = useState<string | null>(null);
+  const ask = useCallback(
+    (text: string) => {
+      setOpen(true);
+      setPending(text);
+    },
+    [setOpen],
+  );
+  const clearPending = useCallback(() => setPending(null), []);
+  return { available, open, setOpen, pending, ask, clearPending };
 }
 
 /** The top bar's way back to a hidden Copilot. Nothing while it is shown. */

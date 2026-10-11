@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent } from "react";
+import { useCopilotDock } from "@/components/v2/copilot-dock";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useChat } from "@ai-sdk/react";
@@ -230,6 +231,7 @@ export function CopilotChat({ orgId, brandId, headerAction }: { orgId: string; b
   const scrollRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const { figures, settled, revPending, winPending } = useAccountFigures(brandId);
+  const { pending: askedText, clearPending } = useCopilotDock();
 
   // What the model reads on every turn: where the user is, the pages it may open, and the
   // account's served figures (it cites them, it never computes one).
@@ -354,12 +356,21 @@ export function CopilotChat({ orgId, brandId, headerAction }: { orgId: string; b
     };
   }, [storageKey, brandId, setMessages]);
 
+  // A page button asked something ("Create a campaign"): sent as if typed and sent, once the
+  // conversation is loaded and idle. It takes the place of a new chat's opener.
+  useEffect(() => {
+    if (!askedText || phase !== "ready" || busy) return;
+    clearPending();
+    setOpenerWanted(false);
+    sendMessage({ text: askedText });
+  }, [askedText, phase, busy, clearPending, sendMessage]);
+
   // A new chat opens on the model's read of the account, once the figures are in.
   useEffect(() => {
-    if (!openerWanted || phase !== "ready" || !settled || busy) return;
+    if (!openerWanted || askedText || phase !== "ready" || !settled || busy) return;
     setOpenerWanted(false);
     sendMessage({ text: COPILOT_OPENER });
-  }, [openerWanted, phase, settled, busy, sendMessage]);
+  }, [openerWanted, askedText, phase, settled, busy, sendMessage]);
 
   const newChat = useCallback(() => {
     stop();
