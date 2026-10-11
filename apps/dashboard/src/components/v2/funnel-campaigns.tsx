@@ -612,17 +612,18 @@ export function FunnelCampaignLine({ orgId, campaign }: { orgId: string; campaig
   const settledCaps = caps.data !== undefined || caps.isFetchedAfterMount;
   return (
     <Link href={v2CampaignHref(orgId, campaign.brandId, campaign.id)} className="k-hover block px-4 py-3 first:rounded-t-[12px] last:rounded-b-[12px]">
-      <span className="flex items-center gap-3">
-        <FunnelFace name={campaign.salesFunnelName} size={20} />
-        <span className="min-w-0 flex-1 truncate text-[13px] font-medium">{campaign.salesFunnelName}</span>
-        <StateDot running={isFunnelCampaignOn(campaign)} hold={isFunnelCampaignOn(campaign) ? null : paymentHoldKind(campaign)} />
-      </span>
-      <span className="k-fg3 mt-1.5 flex items-center justify-between gap-2 text-[12px] tabular-nums">
-        <span className="truncate">{!settledCaps ? " " : b ? statedBudget(funnelTypeOf(caps.data ?? null), b) : "Not funded yet"}</span>
-        <span className="shrink-0">
-          {b && b.consumedCents !== null ? `${formatCapUsd(b.consumedCents)} spent ${capWindowWords(b.period)}` : "—"}
+      <MarkLines gap="gap-3" mark={(px) => <FunnelFace name={campaign.salesFunnelName} size={px} />}>
+        <span className="flex items-center gap-3">
+          <span className="min-w-0 flex-1 truncate text-[13px] font-medium">{campaign.salesFunnelName}</span>
+          <StateDot running={isFunnelCampaignOn(campaign)} hold={isFunnelCampaignOn(campaign) ? null : paymentHoldKind(campaign)} />
         </span>
-      </span>
+        <span className="k-fg3 mt-1.5 flex items-center justify-between gap-2 text-[12px] tabular-nums">
+          <span className="truncate">{!settledCaps ? " " : b ? statedBudget(funnelTypeOf(caps.data ?? null), b) : "Not funded yet"}</span>
+          <span className="shrink-0">
+            {b && b.consumedCents !== null ? `${formatCapUsd(b.consumedCents)} spent ${capWindowWords(b.period)}` : "—"}
+          </span>
+        </span>
+      </MarkLines>
     </Link>
   );
 }

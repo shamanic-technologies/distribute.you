@@ -3,7 +3,7 @@
 import { useMemo } from "react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
-import { EmptyNote, SectionTitle, Shimmer, StateDot, TopBar } from "@/components/v2/ui";
+import { EmptyNote, MarkLines, SectionTitle, Shimmer, StateDot, TopBar } from "@/components/v2/ui";
 import { CatalogueMark } from "@/components/v2/catalogue-mark";
 import { useSelectedOffer } from "@/components/v2/selected-offer";
 import { useOngoingCampaigns } from "@/components/v2/ongoing-campaigns";
@@ -55,12 +55,11 @@ function FunnelCampaignTable({ rows, orgId, brandId }: { rows: SalesFunnelCampai
               return (
                 <tr key={c.id} onClick={() => router.push(href)} className="k-row k-line-subtle cursor-pointer border-b last:border-b-0">
                   <td className={TD}>
-                    <Link href={href} onClick={(e) => e.stopPropagation()} className="flex min-w-0 items-center gap-2.5">
-                      <CatalogueMark face={funnel?.face} name={c.salesFunnelName} size={24} />
-                      <span className="min-w-0">
+                    <Link href={href} onClick={(e) => e.stopPropagation()} className="block min-w-0">
+                      <MarkLines mark={(px) => <CatalogueMark face={funnel?.face} name={c.salesFunnelName} size={px} />}>
                         <span className="block truncate font-medium">{c.salesFunnelName}</span>
                         <span className="k-fg3 block truncate text-[12px]">{funnel?.line ?? c.salesFunnelId}</span>
-                      </span>
+                      </MarkLines>
                     </Link>
                   </td>
                   <td className={`${TD} text-right tabular-nums`}>{c.units.length}</td>
@@ -231,12 +230,11 @@ function UnitRow({
   return (
     <tr className="k-row k-line-subtle border-b last:border-b-0">
       <td className={TD}>
-        <Link href={v2CatalogueHref(orgId, brandId, "pipes", unit.pipeId)} className="flex min-w-0 items-center gap-2.5">
-          <CatalogueMark icon={p?.icon ?? "bird"} color={p?.color} name={unit.name} size={24} />
-          <span className="min-w-0">
+        <Link href={v2CatalogueHref(orgId, brandId, "pipes", unit.pipeId)} className="block min-w-0">
+          <MarkLines mark={(px) => <CatalogueMark icon={p?.icon ?? "bird"} color={p?.color} name={unit.name} size={px} />}>
             <span className="block truncate font-medium">{p?.name ?? unit.name}</span>
             <span className="k-fg3 block truncate text-[12px]">{p?.line ?? unit.pipeId}</span>
-          </span>
+          </MarkLines>
         </Link>
       </td>
       <td className={TD}>

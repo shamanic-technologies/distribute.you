@@ -26,7 +26,7 @@ import {
   type Person,
   type PersonTimelineItem,
 } from "@/lib/people-conversations";
-import { EmptyNote, Initials, Shimmer } from "@/components/v2/ui";
+import { EmptyNote, Initials, MarkLines, Shimmer } from "@/components/v2/ui";
 import { CompanyMark } from "@/components/v2/people-bits";
 import { parseFrom, personCompanyDomain, personSourceMarks, sourceMark, type SourceMark } from "@/lib/conversation-sources";
 import { RecordsToolbar } from "@/components/v2/records";
@@ -373,8 +373,18 @@ function PersonRow({
         aria-current={selected ? "true" : undefined}
         className={`k-row k-line-subtle flex w-full items-start gap-3 border-b px-4 py-2.5 text-left ${selected || cursor ? "k-selected" : ""}`}
       >
-        <PersonMark name={name} emails={person.emails} size={28} />
-        <span className="min-w-0 flex-1">
+        {/* The mark is as tall as the two lines beside it (owner 2026-10-11, MarkLines). */}
+        <MarkLines
+          className="flex-1"
+          gap="gap-3"
+          mark={(px) => <PersonMark name={name} emails={person.emails} size={px} />}
+          after={
+            <>
+              <MatchLine person={person} />
+              <PossibleLeadLine person={person} />
+            </>
+          }
+        >
           <span className="flex items-center gap-2">
             <span className="truncate text-[13px] font-medium">{name}</span>
             {person.lastActivityAt && (
@@ -388,9 +398,7 @@ function PersonRow({
             ))}
             {person.company && <span className="k-fg3 truncate text-[12px]">· {person.company}</span>}
           </span>
-          <MatchLine person={person} />
-          <PossibleLeadLine person={person} />
-        </span>
+        </MarkLines>
       </button>
     </li>
   );
@@ -451,14 +459,17 @@ function Thread({
     <>
       <header className="k-line-subtle shrink-0 border-b px-4 py-3">
         <div className="flex items-center gap-3">
-          <PersonMark name={name} emails={person.emails} size={32} />
-          <div className="min-w-0">
+          <MarkLines
+            className="flex-1"
+            gap="gap-3"
+            mark={(px) => <PersonMark name={name} emails={person.emails} size={px} />}
+            after={<PossibleLeadRulings brandId={brandId} person={person} />}
+          >
             <h2 className="truncate text-[14px] font-semibold">{name}</h2>
             <p className="k-fg3 truncate text-[12px]">
               {[...person.emails, ...person.phones].join(" · ") || "—"}
             </p>
-            <PossibleLeadRulings brandId={brandId} person={person} />
-          </div>
+          </MarkLines>
           {status && (
             <span className="ml-auto shrink-0">
               <PersonTag label={status} state={person.state} />
