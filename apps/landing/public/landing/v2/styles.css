@@ -752,9 +752,11 @@ footer { padding: 64px 0 40px; border-top: 1px solid var(--hair); }
   /* The plan table stacks: plan and price on one line, what it buys underneath. */
   .cmp-prices, .cmp-prices tbody { display: block; width: 100%; }
   .cmp-prices thead { display: none; }
-  .cmp-prices tbody tr { display: grid; grid-template-columns: 1fr auto; box-shadow: none; border-top: 1px solid var(--hair); padding: 10px 0; }
+  .cmp-prices tbody tr { display: grid; grid-template-columns: minmax(0, 1fr) auto; box-shadow: none; border-top: 1px solid var(--hair); padding: 10px 0; }
   .cmp-prices tbody td { border: 0; padding: 2px 4px; }
-  .cmp-prices tbody td:nth-child(2) { text-align: right; }
+  /* A long price ("€69/month annual, €99/month monthly") wraps here: the desktop nowrap
+     pushed the page 14px past a 390px phone. */
+  .cmp-prices tbody td:nth-child(2) { text-align: right; white-space: normal; }
   .cmp-prices tbody td:last-child { grid-column: 1 / -1; text-align: left; color: var(--muted); }
   .cmp-cta .btn { width: 100%; }
 }

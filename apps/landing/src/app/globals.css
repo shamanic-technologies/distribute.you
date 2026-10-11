@@ -885,3 +885,13 @@ h1, h2, h3, .font-display {
   .dy-root *, .dy-root *::before, .dy-root *::after { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
   .dy-r { opacity: 1; transform: none; }
 }
+
+/* Blog article tables (wrapped by lib/blog/table-scroll.ts): a table wider than the
+   screen scrolls inside its own box instead of being cut off by the page. On a phone cells
+   keep a readable width so a 5-column table scrolls rather than squeezing to one word a
+   line; desktop keeps the table at the column width. */
+.dy-table-scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; margin: 2em 0; }
+.dy-table-scroll > table { margin: 0; }
+@media (max-width: 640px) {
+  .dy-table-scroll th, .dy-table-scroll td { min-width: 8rem; }
+}
