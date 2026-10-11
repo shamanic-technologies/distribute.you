@@ -12,6 +12,11 @@ import { OfferCampaigns } from "@/components/v2/offer-campaigns";
 import { FunnelCampaignsSection } from "@/components/v2/funnel-campaigns";
 import { EmptyNote, Shimmer } from "@/components/v2/ui";
 import { V2Page } from "@/components/v2/setup-pages";
+import { useCopilotDock } from "@/components/v2/copilot-dock";
+import { PlusIcon } from "@phosphor-icons/react/dist/csr/Plus";
+
+/** What the "Create a campaign" button sends to the Copilot, as if typed and sent. */
+export const CREATE_CAMPAIGN_ASK = "Create a campaign";
 
 /**
  * Campaigns > Overview (owner 2026-10-10): the offer's campaigns, and a campaign IS a sales
@@ -24,8 +29,22 @@ import { V2Page } from "@/components/v2/setup-pages";
 export function CampaignsOverviewPage() {
   const { orgId, brandId } = useParams<{ orgId: string; brandId: string }>();
   const { offerId, settled } = useSelectedOffer();
+  const copilot = useCopilotDock();
   return (
-    <V2Page crumbs={[{ label: "Campaigns" }, { label: "Overview" }]} title="Campaigns" sub="Every campaign of this offer, the ones running first." width="max-w-[1280px]">
+    <V2Page
+      crumbs={[{ label: "Campaigns" }, { label: "Overview" }]}
+      title="Campaigns"
+      sub="Every campaign of this offer, the ones running first."
+      width="max-w-[1280px]"
+      actions={
+        copilot.available && (
+          <button type="button" onClick={() => copilot.ask(CREATE_CAMPAIGN_ASK)} className="k-btn-accent gap-1.5">
+            <PlusIcon size={14} weight="bold" />
+            Create a campaign
+          </button>
+        )
+      }
+    >
       {!settled ? (
         <Shimmer className="h-10 w-full" />
       ) : !offerId ? (

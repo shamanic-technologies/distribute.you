@@ -78,7 +78,7 @@ import { EMPTY_PROGRESS, launchFromPreview, type LaunchProgress } from "./launch
 import type { SignupLaunchPlan } from "@/lib/v2/signup-campaign";
 import { PrepaidTopup, type TopupChoice } from "./prepaid-topup";
 import { SpendConsent, allTicked } from "./spend-consent";
-import { spendConsentLines } from "@/lib/v2/spend-consent";
+import { consentRecord, spendConsentLines, type PaymentConsentRecord } from "@/lib/v2/spend-consent";
 import { payTopup, settleTopup } from "./pay-topup";
 import { pingOwner } from "@/lib/owner-ping-client";
 import { hostOf as pingHostOf, websiteUrl as pingWebsiteUrl } from "@/lib/v2/get-started";
@@ -159,6 +159,8 @@ export function AccountCardWall({
   // The plan's three statements before the trial starts (owner 2026-10-11); prepaid ticks
   // its own inside `PrepaidTopup`, where the amount they name is picked.
   const [planTicked, setPlanTicked] = useState([false, false, false]);
+  // The plan's boxes as ticked at the click, sent with the card form and the plan start.
+  const planConsentRecord = useRef<PaymentConsentRecord | null>(null);
   const planConsent = spendConsentLines({
     proactive: plan.proactive.caps.maxBudget,
     reactive: plan.reactive?.caps.maxBudget ?? null,
@@ -527,6 +529,7 @@ export function AccountCardWall({
       await declareRevolut();
       const started = await payTopup({
         amountUsd: choice.topupUsd,
+        consent: choice.consent,
         // The account this wall just created is new: prepaid is its first mode.
         setPrepaid: true,
         name: user?.fullName ?? undefined,
@@ -576,6 +579,7 @@ export function AccountCardWall({
   // ── Card and plan (the `subscription` arm) ──
   function startTrial() {
     if (busy || !allTicked(planTicked) || !checkReady()) return;
+    planConsentRecord.current = consentRecord(planConsent, new Date(), navigator.userAgent);
     if (planStarted.current) {
       void launch();
       return;
@@ -590,7 +594,7 @@ export function AccountCardWall({
     setError(null);
     try {
       await declareRevolut();
-      const checkout = await createSubscriptionCheckout({ monthly_amount_cents: arm.monthlyCents, ui_mode: "embedded" });
+      const checkout = await createSubscriptionCheckout({ monthly_amount_cents: arm.monthlyCents, ui_mode: "embedded", consent: planConsentRecord.current ?? undefined });
       posthog.capture("get_started_trial_opened", { monthly_usd: Math.round(arm.monthlyCents / 100), lp_variant: arm.variant });
       const setup: CardSetup | null = checkout.card_setup;
       if (!checkout.card_required || !setup) {
@@ -638,7 +642,7 @@ export function AccountCardWall({
       let started = false;
       for (let i = 0; i < 12 && !started; i++) {
         try {
-          await startSubscription();
+          await startSubscription(planConsentRecord.current ?? undefined);
           started = true;
         } catch (err) {
           const code = err instanceof ApiError && err.status === 409 ? err.body?.code : undefined;

@@ -12,7 +12,7 @@
 
 import { useState } from "react";
 import { DEFAULT_RELOAD_THRESHOLD_USD, TOPUP_CHOICES_USD, parseTopupUsd } from "@/lib/v2/get-started";
-import { spendConsentLines } from "@/lib/v2/spend-consent";
+import { consentRecord, spendConsentLines, type PaymentConsentRecord } from "@/lib/v2/spend-consent";
 import type { SignupLaunchPlan } from "@/lib/v2/signup-campaign";
 import { SpendConsent, allTicked } from "./spend-consent";
 
@@ -20,6 +20,8 @@ export interface TopupChoice {
   topupUsd: number;
   /** Always set: the reload is required (owner 2026-10-11). */
   reload: { thresholdUsd: number; amountUsd: number };
+  /** The three statements as ticked, for billing's record. */
+  consent: PaymentConsentRecord;
 }
 
 const OTHER = "other";
@@ -135,6 +137,7 @@ export function PrepaidTopup({
     onPay({
       topupUsd: firstParsed.usd,
       reload: { thresholdUsd: DEFAULT_RELOAD_THRESHOLD_USD, amountUsd: firstParsed.usd },
+      consent: consentRecord(lines, new Date(), navigator.userAgent),
     });
   }
 
