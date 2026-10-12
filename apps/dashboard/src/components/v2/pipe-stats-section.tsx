@@ -1,6 +1,8 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
+import { useStaffCatalogueList } from "@/components/v2/staff-catalogue-data";
 import { Line, LineChart, ReferenceLine, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { useAuthQuery } from "@/lib/use-auth-query";
 import { pollOptions } from "@/lib/query-options";
@@ -8,6 +10,8 @@ import { getStaffPipeStats } from "@/lib/api";
 import { formatRoi, roiIsGood } from "@/lib/format-roi";
 import { formatUsdAdaptive } from "@/lib/format-number";
 import {
+  endToEndRate,
+  teamReasonWords,
   formatRatePct,
   mergeHistories,
   outcomeVolume,
@@ -15,6 +19,7 @@ import {
   unavailableWords,
   PIPE_STATS_SCOPE_LABELS,
   type PipeStats,
+  type PipeStatsRate,
   type PipeStatsScope,
 } from "@/lib/pipe-stats";
 import { EmptyNote, SectionTitle, Shimmer } from "@/components/v2/ui";
@@ -89,12 +94,7 @@ export function PipeStatsSection({ pipeId, brandId, offerId }: { pipeId: string;
                       if (!x) return <span className="k-fg4">—</span>;
                       if (x.ratePct == null) return <span className="k-fg3 text-[12px]">{unavailableWords(x.unavailableReason)}</span>;
                       return (
-                        <span className="whitespace-nowrap">
-                          {formatRatePct(x.ratePct)}
-                          <span className="k-fg3 ml-1.5 text-[12px]">
-                            {x.numerator.toLocaleString("en-US")} of {x.denominator.toLocaleString("en-US")}
-                          </span>
-                        </span>
+                        <RateCell rate={x} />
                       );
                     }}
                   </Row>
@@ -305,6 +305,111 @@ function VolumesChart({ data, scopes, answered }: { data: Partial<Record<PipeSta
       )}
     </ChartFrame>
   );
+}
+
+/** A served rate with the two counts it is made of ("20%  2 of 10"). */
+function RateCell({ rate }: { rate: PipeStatsRate }) {
+  if (rate.ratePct == null) return <span className="k-fg3 text-[12px]">{unavailableWords(rate.unavailableReason)}</span>;
+  return (
+    <span className="whitespace-nowrap">
+      {formatRatePct(rate.ratePct)}
+      {rate.numerator != null && rate.denominator != null && (
+        <span className="k-fg3 ml-1.5 text-[12px]">
+          {rate.numerator.toLocaleString("en-US")} of {rate.denominator.toLocaleString("en-US")}
+        </span>
+      )}
+    </span>
+  );
+}
+
+/**
+ * Every pipe on the same leg, side by side (owner 2026-10-12: "comment compare ce channel versus
+ * d'autres channels du même leg, comme done by their team"): our AI, an agency, the customer's own
+ * team (its figures read from the brand's own tools by crm-service). One served end-to-end rate per
+ * pipe and scope; a team whose tools do not record a step says so, never 0.
+ */
+export function SameLegSection({
+  pipeId,
+  legKey,
+  brandId,
+  hrefOf,
+}: {
+  pipeId: string;
+  legKey: string;
+  brandId: string;
+  hrefOf: (pipeId: string) => string;
+}) {
+  const list = useStaffCatalogueList("pipes", { legKeys: legKey, limit: "25" });
+  const rows = list.data?.rows ?? [];
+  return (
+    <section>
+      <SectionTitle count={list.data ? rows.length : null} right={<span>Same step, since inception</span>}>
+        Who else works this step
+      </SectionTitle>
+      <div className="k-card overflow-hidden">
+        <div className="k-scroll overflow-x-auto">
+          <table className="w-full text-[13px]">
+            <thead>
+              <tr className="k-line-subtle border-b">
+                <th className={TH}>Pipe</th>
+                <th className={TH}>All clients</th>
+                <th className={TH}>This brand</th>
+              </tr>
+            </thead>
+            <tbody>
+              {!list.data && !list.isFetchedAfterMount ? (
+                <tr>
+                  <td className={TD} colSpan={3}>
+                    <Shimmer className="h-4 w-40" />
+                  </td>
+                </tr>
+              ) : rows.length === 0 ? (
+                <tr>
+                  <td className={`${TD} k-fg3`} colSpan={3}>
+                    {list.isError ? "Could not read the pipes on this step." : "No other pipe works this step."}
+                  </td>
+                </tr>
+              ) : (
+                rows.map((r) => <SameLegRow key={r.id} id={r.id} name={r.name} line={r.line} current={r.id === pipeId} brandId={brandId} href={hrefOf(r.id)} />)
+              )}
+            </tbody>
+          </table>
+        </div>
+        <p className="k-fg3 k-line-subtle border-t px-4 py-2.5 text-[12px]">
+          The client&apos;s own team is read from their tools: people who reached the first step and we never contacted.
+        </p>
+      </div>
+    </section>
+  );
+}
+
+function SameLegRow({ id, name, line, current, brandId, href }: { id: string; name: string; line: string; current: boolean; brandId: string; href: string }) {
+  const fleet = usePipeStats(id, "fleet", brandId, null);
+  const brand = usePipeStats(id, "brand", brandId, null);
+  return (
+    <tr className="k-line-subtle border-b last:border-b-0">
+      <td className={TD}>
+        <div className="min-w-0">
+          {current ? <span className="font-medium">{name}</span> : <Link href={href} className="font-medium hover:underline">{name}</Link>}
+          {current && <span className="k-chip ml-2">This pipe</span>}
+          <p className="k-fg3 truncate text-[12px]">{line}</p>
+        </div>
+      </td>
+      {[fleet, brand].map((r, i) => (
+        <td key={i} className={TD}>
+          {r.data ? <SameLegCell stats={r.data} /> : r.failed && r.answered ? <span className="k-fg4">—</span> : <Shimmer className="ml-auto h-4 w-12" />}
+        </td>
+      ))}
+    </tr>
+  );
+}
+
+function SameLegCell({ stats }: { stats: PipeStats }) {
+  if (stats.teamSource && !stats.teamSource.available) {
+    return <span className="k-fg3 text-[12px]">{teamReasonWords(stats.teamSource.unavailableReason)}</span>;
+  }
+  const rate = endToEndRate(stats);
+  return rate ? <RateCell rate={rate} /> : <span className="k-fg4">—</span>;
 }
 
 /** The pipe's served conversion rates over time (cumulative, percent), one scope at a time like the volumes. */

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { formatRatePct, mergeHistories, outcomeVolume, PipeWithStatsSchema, pipeStatsQuery, unavailableWords, type PipeStats } from "../src/lib/pipe-stats";
+import { endToEndRate, teamReasonWords, formatRatePct, mergeHistories, outcomeVolume, PipeWithStatsSchema, pipeStatsQuery, unavailableWords, type PipeStats } from "../src/lib/pipe-stats";
 
 const stats = (kind: "fleet" | "brand" | "offer", history: PipeStats["history"]): PipeStats =>
   PipeWithStatsSchema.parse({
@@ -78,5 +78,37 @@ describe("pipe conversion rates", () => {
     expect(formatRatePct(20)).toBe("20%");
     expect(formatRatePct(0.01)).toBe("<0.1%");
     expect(formatRatePct(0)).toBe("0%");
+  });
+});
+
+describe("same step, other pipes", () => {
+  it("reads a customer team pipe whose tools do not record the step as a reason, never 0", () => {
+    const s = PipeWithStatsSchema.parse({
+      stats: {
+        scope: { kind: "brand" },
+        volumes: [
+          { key: "reachedFrom", label: "Positive reply (their team)", role: "input", total: null },
+          { key: "outcomes", label: "Meeting booked (their team)", role: "outcome", total: null },
+        ],
+        spendUsd: 0,
+        costPerOutcomeUsd: null,
+        roi: null,
+        conversionRates: [{ key: "reachedFrom_to_outcomes", fromKey: "reachedFrom", toKey: "outcomes", label: "x", numerator: null, denominator: null, ratePct: null, unavailableReason: "volume_not_measured" }],
+        teamSource: { available: false, unavailableReason: "from_step_not_recorded", fromSources: [], toSources: [] },
+        history: [],
+      },
+    }).stats;
+    expect(endToEndRate(s)?.key).toBe("reachedFrom_to_outcomes");
+    expect(teamReasonWords(s.teamSource?.unavailableReason)).toBe("Their tools do not record the first step");
+    expect(teamReasonWords("brand_new_reason")).toBe("Brand new reason");
+  });
+
+  it("picks our pipe's first-volume-to-outcome rate", () => {
+    const s = stats("fleet", []);
+    const withRates = { ...s, conversionRates: [
+      { key: "handed_to_actedOn", fromKey: "handed", toKey: "actedOn", label: "a", numerator: 10, denominator: 16, ratePct: 62.5 },
+      { key: "handed_to_outcomes", fromKey: "handed", toKey: "outcomes", label: "b", numerator: 2, denominator: 16, ratePct: 12.5 },
+    ] };
+    expect(endToEndRate(withRates)?.ratePct).toBe(12.5);
   });
 });

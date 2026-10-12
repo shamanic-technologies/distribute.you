@@ -8,7 +8,7 @@ import { EmptyNote, KeyHint, MarkLines, SectionTitle, Shimmer, StateDot, TopBar 
 import { useRowKeys } from "@/components/v2/records";
 import { CatalogueMark } from "@/components/v2/catalogue-mark";
 import { useSelectedOffer } from "@/components/v2/selected-offer";
-import { PipeStatsSection } from "@/components/v2/pipe-stats-section";
+import { PipeStatsSection, SameLegSection } from "@/components/v2/pipe-stats-section";
 import { useOngoingCatalogue, useStaffCatalogueList, useStaffCatalogueObject, staffCatalogueObjectKey } from "@/components/v2/staff-catalogue-data";
 import { getStaffCatalogueObject } from "@/lib/api";
 import { useOrgQueryGate } from "@/lib/use-auth-query";
@@ -586,7 +586,7 @@ function ObjectBody({
       </section>
     );
   }
-  if (object === "pipes") return <PipeBody id={id} ongoing={ongoing} orgId={orgId} brandId={brandId} offerId={offerId} />;
+  if (object === "pipes") return <PipeBody id={id} legKey={typeof d.legKey === "string" ? d.legKey : null} ongoing={ongoing} orgId={orgId} brandId={brandId} offerId={offerId} />;
   if (object === "sales-paths") return <PathBody id={id} d={d} href={href} ongoing={ongoing} orgId={orgId} brandId={brandId} />;
   return <FunnelBody d={d} href={href} ongoing={ongoingPipes} />;
 }
@@ -611,12 +611,14 @@ function StepBody({ ids, href, ongoing }: { ids: string[]; href: HrefFor; ongoin
 
 function PipeBody({
   id,
+  legKey,
   ongoing,
   orgId,
   brandId,
   offerId,
 }: {
   id: string;
+  legKey: string | null;
   ongoing: ReturnType<typeof useOngoingCatalogue>;
   orgId: string;
   brandId: string;
@@ -630,6 +632,7 @@ function PipeBody({
   return (
     <>
       <PipeStatsSection pipeId={id} brandId={brandId} offerId={offerId} />
+      {legKey && <SameLegSection pipeId={id} legKey={legKey} brandId={brandId} hrefOf={(p) => v2CatalogueHref(orgId, brandId, "pipes", p)} />}
       <section>
         <SectionTitle count={runs.length}>Running for this offer</SectionTitle>
         {runs.length === 0 ? (
