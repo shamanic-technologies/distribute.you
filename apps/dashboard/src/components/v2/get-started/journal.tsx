@@ -111,9 +111,25 @@ function RailEntry({ d, k }: { d: JournalData; k: GetStartedStepKey }) {
         </p>
         <ul className="mt-1.5 grid grid-cols-2 gap-1">
           {d.competitors.slice(0, 8).map((c, i) => (
-            <li key={c.domain ?? c.name} className="gs-pop k-card flex min-w-0 items-center gap-1.5 rounded-md px-1.5 py-1" style={stagger(i, 40)}>
-              <BrandLogo domain={c.domain} size={14} className="rounded-sm" />
-              <span className="k-fg2 truncate text-[12px]">{c.domain ?? c.name}</span>
+            <li key={c.domain ?? c.name} className="gs-pop min-w-0" style={stagger(i, 40)}>
+              {/* A competitor opens its site in a new tab, so the walk stays where it is (owner 2026-10-12). */}
+              {c.domain ? (
+                <a
+                  href={`https://${c.domain}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  title={`Open ${c.domain}`}
+                  className="k-card k-hover flex min-w-0 items-center gap-1.5 rounded-md px-1.5 py-1"
+                >
+                  <BrandLogo domain={c.domain} size={14} className="rounded-sm" />
+                  <span className="k-fg2 truncate text-[12px]">{c.domain}</span>
+                </a>
+              ) : (
+                <span className="k-card flex min-w-0 items-center gap-1.5 rounded-md px-1.5 py-1">
+                  <BrandLogo domain={c.domain} size={14} className="rounded-sm" />
+                  <span className="k-fg2 truncate text-[12px]">{c.name}</span>
+                </span>
+              )}
             </li>
           ))}
         </ul>
