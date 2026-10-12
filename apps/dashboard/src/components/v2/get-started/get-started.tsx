@@ -1079,6 +1079,12 @@ export function GetStarted({ org }: { org?: OrgWalk } = {}) {
     withStageTransition(() => setFocus(prev));
   }
 
+  /** Next from a step opened to look back: the step after it, or the live step once there. */
+  function goForward(from: GetStartedStepKey) {
+    const next = stepIndex(from) + 1;
+    withStageTransition(() => setFocus(next >= stageIdx ? null : GET_STARTED_STEPS[next].key));
+  }
+
   /** Opens a finished step on the stage; the walk takes over again when it moves on. */
   function openStep(key: GetStartedStepKey) {
     const idx = GET_STARTED_STEPS.findIndex((s) => s.key === key);
@@ -1496,23 +1502,16 @@ export function GetStarted({ org }: { org?: OrgWalk } = {}) {
         <JournalRail {...journal} />
         <main className="k-scroll lg:min-h-0 lg:overflow-y-auto">
           <div className="mx-auto max-w-[1040px] px-4 py-6 sm:px-6 sm:py-8">
-            <Stepper steps={steps} staged={stagedKey} onOpen={openStep} nextLit={steps.email === "done"} />
+            <Stepper steps={steps} staged={stagedKey} live={GET_STARTED_STEPS[stageIdx].key} onOpen={openStep} nextLit={steps.email === "done"} />
             <LiveStatus current={current} domain={domain} pick={pick} readFailed={steps.company === "failed"} />
             <div className="mt-4">
               <JournalStrip {...journal} />
             </div>
 
-            {focus && (
-              <div className="gs-in mt-4 flex items-center gap-2 text-[12px]">
-                <span className="k-fg3">You are looking back at a finished step.</span>
-                <button type="button" className="k-btn-ghost h-6 px-2" onClick={() => withStageTransition(() => setFocus(null))}>
-                  Back to the live step
-                </button>
-              </div>
-            )}
-
             <div key={stagedKey} className="gs-in mt-4" style={{ viewTransitionName: stepViewName(stagedKey) }}>
-              <BackContext.Provider value={previousStep(stagedKey) ? () => goBack(stagedKey) : null}>{stageFor(stagedKey)}</BackContext.Provider>
+              <BackContext.Provider value={previousStep(stagedKey) ? () => goBack(stagedKey) : null}>
+                <NextContext.Provider value={focus ? () => goForward(focus) : null}>{stageFor(stagedKey)}</NextContext.Provider>
+              </BackContext.Provider>
             </div>
 
             {readyForCampaign && stagedKey === "email" && (
@@ -1789,16 +1788,19 @@ const settled = settledPhase;
  * Explee's stepper: numbered marks joined by rails that fill as each step lands, the
  * step on the stage named in a raised pill, then "what happens next": the three steps
  * the account turns on, drawn dotted until the preview's email is written, then lit.
- * A finished step's mark opens it on the stage.
+ * A finished step's mark opens it on the stage; the live step's mark brings the walk
+ * back to it (owner 2026-10-12: no separate "back to the live step" line).
  */
 function Stepper({
   steps,
   staged,
+  live,
   onOpen,
   nextLit,
 }: {
   steps: Record<GetStartedStepKey, StepState>;
   staged: GetStartedStepKey;
+  live: GetStartedStepKey;
   onOpen: (key: GetStartedStepKey) => void;
   nextLit: boolean;
 }) {
@@ -1809,7 +1811,7 @@ function Stepper({
           const st = steps[s.key];
           const active = s.key === staged;
           const prevSettled = i > 0 && settled(steps[GET_STARTED_STEPS[i - 1].key]);
-          const openable = settled(st) && !active;
+          const openable = (settled(st) || s.key === live) && !active;
           const mark = (
             <>
               <StepMark index={i + 1} state={st} />
@@ -1950,6 +1952,12 @@ function LiveStatus({
 
 /** Back to the step before the one on the stage, or null on the first. Read by every step card. */
 const BackContext = createContext<(() => void) | null>(null);
+/**
+ * Forward from a finished step opened from the stepper or the rail, or null on the live
+ * step. A finished step draws no Continue of its own, so without it a person who went
+ * back had no way forward (owner 2026-10-12).
+ */
+const NextContext = createContext<(() => void) | null>(null);
 
 function StepCard({
   index,
@@ -1968,6 +1976,7 @@ function StepCard({
   children: React.ReactNode;
 }) {
   const onBack = useContext(BackContext);
+  const onNext = useContext(NextContext);
   return (
     <section className={`gs-fade k-card relative overflow-hidden p-4 ${state === "waiting" ? "translate-y-0.5 opacity-50" : "opacity-100"}`}>
       {state === "running" && (
@@ -1984,13 +1993,21 @@ function StepCard({
       <div key={state} className="gs-in mt-3">
         {children}
       </div>
-      {(onBack || footer) && (
+      {(onBack || footer || onNext) && (
         <div className="mt-4 flex flex-wrap items-center gap-3">
           {onBack && <BackLink onBack={onBack} />}
-          <div className="ml-auto flex flex-wrap items-center justify-end gap-3">{footer}</div>
+          <div className="ml-auto flex flex-wrap items-center justify-end gap-3">{footer ?? (onNext && <NextButton onNext={onNext} />)}</div>
         </div>
       )}
     </section>
+  );
+}
+
+function NextButton({ onNext }: { onNext: () => void }) {
+  return (
+    <button type="button" className="k-btn-accent h-9 px-4" onClick={onNext}>
+      Continue
+    </button>
   );
 }
 
@@ -2756,6 +2773,7 @@ function CompaniesStage({
   onOpen: (index: number) => void;
 }) {
   const onBack = useContext(BackContext);
+  const onNext = useContext(NextContext);
   return (
     <section className="grid gap-3">
       <div className="flex items-center gap-2">
@@ -2871,9 +2889,14 @@ function CompaniesStage({
           </div>
         </div>
       )}
-      {onBack && (
-        <div>
-          <BackLink onBack={onBack} />
+      {(onBack || onNext) && (
+        <div className="flex flex-wrap items-center gap-3">
+          {onBack && <BackLink onBack={onBack} />}
+          {onNext && (
+            <div className="ml-auto">
+              <NextButton onNext={onNext} />
+            </div>
+          )}
         </div>
       )}
     </section>
@@ -2921,6 +2944,7 @@ function EmailsStage({
   const row = rows.find((r) => r.index === selected);
   const sel = emailState(selected);
   const onBack = useContext(BackContext);
+  const onNext = useContext(NextContext);
   return (
     <section className="grid gap-3">
       <div className="flex items-center gap-2">
@@ -2999,9 +3023,14 @@ function EmailsStage({
           </div>
         </div>
       )}
-      {onBack && (
-        <div>
-          <BackLink onBack={onBack} />
+      {(onBack || onNext) && (
+        <div className="flex flex-wrap items-center gap-3">
+          {onBack && <BackLink onBack={onBack} />}
+          {onNext && (
+            <div className="ml-auto">
+              <NextButton onNext={onNext} />
+            </div>
+          )}
         </div>
       )}
     </section>
