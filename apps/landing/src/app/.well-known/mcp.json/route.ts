@@ -18,14 +18,14 @@ export function GET() {
     {
       name: "distribute.you",
       description:
-        "Autonomous sales meetings acquisition. Launch and inspect outbound campaigns, list brands and workflows, read live campaign stats, and suggest an ideal customer profile from a website.",
+        "Revenue made easy. No human needed: request a key with an email (distribute_signup_start, distribute_signup_complete), prepay when you need to spend (distribute_prepay). Then read brands, campaigns, leads and their results, and call any API operation.",
       version: "1",
       servers: [
         {
           name: "distribute.you",
           url: MCP_ENDPOINT,
           transport: "streamable-http",
-          authentication: { type: "oauth2" },
+          authentication: { type: "bearer" },
         },
       ],
       documentation: `${URLS.docs}/mcp`,

@@ -97,12 +97,22 @@ https://distribute.you/developers
 
 ### MCP tools
 
-- `distribute_status`: whether the caller is connected and which org they act for
-- `distribute_list_brands`: the brands on the account
+- `distribute_status`: who the key belongs to; with no key, how to get one
+- `distribute_signup_start`: no key needed: email + phone, a 6-digit code is emailed
+- `distribute_signup_complete`: no key needed: the code returns a new API key, used by the session at once
+- `distribute_prepay`: returns a payment link: prepay (min $10) with automatic top-up
+- `distribute_prepaid_status`: balance, automatic top-up, and whether the card can reload
+- `distribute_list_workflows`: the workflows available
 - `distribute_list_campaigns`: the campaigns on a brand
 - `distribute_campaign_stats`: outcomes and cost for a campaign
-- `distribute_list_workflows`: the workflows available for a feature
+- `distribute_list_brands`: the brands on the account
 - `distribute_suggest_icp`: an ideal customer profile drafted from a website
+- `distribute_list_leads`: a brand's leads and where each stands
+- `distribute_list_emails`: the emails written and sent for a brand
+- `distribute_get_lead`: one lead: emails and conversation
+- `distribute_find_api`: search every API operation by intent
+- `distribute_describe_api`: one API operation in full
+- `distribute_call_api`: call any API operation with the key
 
 ## Brand
 

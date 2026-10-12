@@ -114,11 +114,11 @@ curl -X POST https://api.distribute.you/v1/agent-signups/complete \\
         tint: true,
         html: `<p>If you are wiring an agent rather than writing a client, connect the Model Context Protocol server instead of the REST API. It is the supported programmatic surface for acting on a customer's behalf.</p>
 <ul>
-<li><a href="https://mcp.distribute.you/mcp">mcp.distribute.you/mcp</a>: the server endpoint, Streamable HTTP transport, OAuth 2.0.</li>
+<li><a href="https://mcp.distribute.you/mcp">mcp.distribute.you/mcp</a>: the server endpoint, Streamable HTTP transport, an API key as a bearer token (no key needed to sign up).</li>
 <li><a href="/.well-known/mcp.json">/.well-known/mcp.json</a>: the descriptor, so a client can find the server from the hostname alone.</li>
 <li><a href="https://docs.distribute.you/mcp">docs.distribute.you/mcp</a>: what each tool takes and returns.</li>
 </ul>
-<p>Six tools today: <code>distribute_status</code> for who the caller is acting as, <code>distribute_list_brands</code>, <code>distribute_list_campaigns</code>, <code>distribute_campaign_stats</code> for outcomes and cost, <code>distribute_list_workflows</code>, and <code>distribute_suggest_icp</code> to draft an ideal customer profile from a website.</p>`,
+<p>No key yet? Connect without one and call <code>distribute_signup_start</code>, then <code>distribute_signup_complete</code>: the session gets its key at once. <code>distribute_prepay</code> returns the payment link when you need to spend. The rest reads your account: <code>distribute_status</code>, brands, campaigns and their results, leads and their emails, workflows, and <code>distribute_suggest_icp</code> to draft an ideal customer profile from a website. <code>distribute_find_api</code> and <code>distribute_call_api</code> reach every other API operation.</p>`,
       },
       {
         id: "cli",
