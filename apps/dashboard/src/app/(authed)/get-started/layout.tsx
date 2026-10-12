@@ -17,7 +17,8 @@ export const metadata: Metadata = {
  */
 export default function GetStartedLayout({ children }: { children: React.ReactNode }) {
   return (
-    <div className={`${sans.variable} ${mono.variable}`}>
+    // overflow-x-clip: nothing on this walk may scroll a phone sideways (clip keeps sticky working).
+    <div className={`${sans.variable} ${mono.variable} overflow-x-clip`}>
       <div className="v2-root">{children}</div>
     </div>
   );
