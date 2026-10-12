@@ -33,7 +33,7 @@ const PipeStatsVolumeSchema = z
     key: z.string(),
     label: z.string(),
     role: z.string(),
-    total: z.number(),
+    total: z.number().nullable(),
     undated: z.number().nullish(),
   })
   .passthrough();
@@ -45,8 +45,9 @@ const PipeStatsRateSchema = z
     fromKey: z.string(),
     toKey: z.string(),
     label: z.string(),
-    numerator: z.number(),
-    denominator: z.number(),
+    // Null when the volume is not measured (a customer team pipe whose tools do not record the step).
+    numerator: z.number().nullable(),
+    denominator: z.number().nullable(),
     ratePct: z.number().nullable(),
     unavailableReason: z.string().nullish(),
   })
@@ -78,6 +79,11 @@ export const PipeStatsSchema = z
     roi: z.number().nullable(),
     roiUnavailableReason: z.string().nullish(),
     conversionRates: z.array(PipeStatsRateSchema).optional(),
+    // PIPE-TEAM-BASELINE-1012: on a customer team pipe, where its counts come from (the brand's own tools), or why they cannot be read.
+    teamSource: z
+      .object({ available: z.boolean(), unavailableReason: z.string().nullish(), fromSources: z.array(z.string()).optional(), toSources: z.array(z.string()).optional() })
+      .passthrough()
+      .nullish(),
     history: z.array(PipeStatsPointSchema),
   })
   .passthrough();
@@ -104,6 +110,29 @@ export function outcomeVolume(stats: PipeStats) {
 export function formatRatePct(pct: number): string {
   if (pct > 0 && pct < 0.05) return "<0.1%";
   return `${pct.toFixed(1).replace(/\.0$/, "")}%`;
+}
+
+/**
+ * The served rate from the pipe's first volume to its outcome (our pipe: positive reply to meeting
+ * booked; a customer team pipe: its one rate). A lookup on served keys, nothing divided.
+ */
+export function endToEndRate(stats: PipeStats): PipeStatsRate | null {
+  const first = stats.volumes[0]?.key;
+  return stats.conversionRates?.find((r) => r.fromKey === first && r.toKey === "outcomes") ?? null;
+}
+
+/** Why a customer team's figures cannot be read, in plain words (crm-service's closed vocabulary). */
+const TEAM_REASON_WORDS: Record<string, string> = {
+  from_step_not_recorded: "Their tools do not record the first step",
+  to_step_not_recorded: "Their tools do not record the last step",
+  step_not_in_crm_vocabulary: "No tool records this step",
+  not_synced: "Their tools are not synced yet",
+  no_connected_source: "No tool connected",
+  no_people_scope: "No tool connected",
+  no_brand_answers: "No client's tools record it yet",
+};
+export function teamReasonWords(reason: string | null | undefined): string {
+  return (reason && TEAM_REASON_WORDS[reason]) ?? unavailableWords(reason);
 }
 
 /** A producer reason (`no_outcomes_yet`, `no_spend`) in plain words, never a raw slug alone. */
