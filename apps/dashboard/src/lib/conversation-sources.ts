@@ -40,6 +40,8 @@ const SOURCE_MARK: Record<string, SourceMark> = {
   posthog: DISTRIBUTE,
   // The AI Copilot chat is part of our staff: its conversations read as ours (owner 2026-10-11).
   copilot: { ...DISTRIBUTE, name: "AI Copilot" },
+  // A client's own calls to our API with their key: a conversation with us like any other (owner 2026-10-12).
+  api: { ...DISTRIBUTE, name: "API" },
   stripe: vendor("stripe", "Stripe", "stripe.com"),
   gohighlevel: vendor("gohighlevel", "GoHighLevel", "gohighlevel.com"),
   // A contact list the client uploaded (crm-service's "added to CRM" event for an import).
@@ -51,6 +53,8 @@ const SOURCE_MARK: Record<string, SourceMark> = {
 
 /** The mark for one record: the messaging app when the channel names one, else the source. */
 export function sourceMark(source: string, channel: string | null): SourceMark {
+  // Calls through our MCP server ride source `api` on channel `mcp`: same mark, named MCP.
+  if (source === "api" && channel === "mcp") return { ...DISTRIBUTE, name: "MCP" };
   const byChannel = channel ? CHANNEL_MARK[channel] : undefined;
   if (byChannel) return byChannel;
   const bySource = SOURCE_MARK[source];

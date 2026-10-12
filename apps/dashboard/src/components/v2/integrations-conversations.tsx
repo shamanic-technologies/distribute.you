@@ -37,6 +37,8 @@ import { ConversationTags } from "@/components/v2/conversation-timeline";
 import { useSelectedOfferIfAny } from "@/components/v2/selected-offer";
 import { ICON_PATH, TONE_COLOR, TagChip } from "@/components/v2/tag-chip";
 import { LEAD_FAMILIES, familyFilter, type FamilyFilter } from "@/lib/lead-families";
+import { itemCallId } from "@/lib/api-calls";
+import { ApiCallDetailPanel } from "@/components/v2/api-call-detail";
 
 // The publishable logo.dev token the dashboard already ships (company-logo.tsx).
 const LOGO_DEV_TOKEN = "pk_J1iY4__HSfm9acHjR8FibA";
@@ -487,7 +489,7 @@ function Thread({
           <EmptyNote>No message or event with this person on any connected source.</EmptyNote>
         ) : (
           threadRows(items, facts ? liveItems(facts) : []).map((row, i) =>
-            row.fact ? <FactRow key={row.fact.id} fact={row.fact} /> : <ThreadItem key={i} item={row.item} tag={row.tag} />,
+            row.fact ? <FactRow key={row.fact.id} fact={row.fact} /> : <ThreadItem key={i} brandId={brandId} item={row.item} tag={row.tag} />,
           )
         )}
       </div>
@@ -533,7 +535,7 @@ function FactRow({ fact }: { fact: ConversationItem }) {
   );
 }
 
-function ThreadItem({ item, tag }: { item: PersonTimelineItem; tag: TimelineTag | null }) {
+function ThreadItem({ brandId, item, tag }: { brandId: string; item: PersonTimelineItem; tag: TimelineTag | null }) {
   // Where it came from, as a mark and its name: our own sends and visits read as Distribute.
   const mark = sourceMark(item.source, item.channel);
   const meta = [mark.name, item.at ? friendlyDateTime(item.at) : "No date"].join(" · ");
@@ -548,7 +550,7 @@ function ThreadItem({ item, tag }: { item: PersonTimelineItem; tag: TimelineTag 
     );
   }
 
-  return <Message item={item} mark={mark} meta={meta} tag={tag ?? timelineTag(item)} />;
+  return <Message brandId={brandId} item={item} mark={mark} meta={meta} tag={tag ?? timelineTag(item)} />;
 }
 
 /** A person's tag: their standing, coloured like the same fact in the thread (owner 2026-10-10). */
@@ -596,7 +598,19 @@ function FamilyButtons({
   );
 }
 
-function Message({ item, mark, meta, tag }: { item: PersonTimelineItem; mark: SourceMark; meta: string; tag: TimelineTag }) {
+function Message({
+  brandId,
+  item,
+  mark,
+  meta,
+  tag,
+}: {
+  brandId: string;
+  item: PersonTimelineItem;
+  mark: SourceMark;
+  meta: string;
+  tag: TimelineTag;
+}) {
   // The mark up front is WHO wrote it: the person's company logo (initials without one)
   // on their side, the source's mark on ours. Where it came from rides the meta line.
   const sender = parseFrom(item.from);
@@ -610,6 +624,9 @@ function Message({ item, mark, meta, tag }: { item: PersonTimelineItem; mark: So
   const hasOriginal = original != null && original !== item.text;
   const body = showOriginal && hasOriginal ? original : item.text;
   const long = (body?.length ?? 0) > FOLD_AT;
+  // An API / MCP call: our answer opens the whole call (request and response), read on demand.
+  const callId = outbound ? itemCallId(item) : null;
+  const [callOpen, setCallOpen] = useState(false);
   return (
     <article className={`max-w-[85%] rounded-lg px-3 py-2 ${outbound ? "k-inset ml-auto" : "k-panel"}`}>
       <p className="k-fg3 flex min-w-0 items-center gap-2 text-[12px]">
@@ -637,7 +654,7 @@ function Message({ item, mark, meta, tag }: { item: PersonTimelineItem; mark: So
       ) : (
         <p className="k-fg4 mt-1 text-[13px]">—</p>
       )}
-      {(long || hasOriginal) && (
+      {(long || hasOriginal || callId) && (
         <div className="mt-1 flex gap-1">
           {long && (
             <button type="button" className="k-btn-ghost h-6 px-1.5 text-[12px]" onClick={() => setOpen((o) => !o)}>
@@ -649,8 +666,14 @@ function Message({ item, mark, meta, tag }: { item: PersonTimelineItem; mark: So
               {showOriginal ? "Show what they wrote" : "Show original"}
             </button>
           )}
+          {callId && (
+            <button type="button" aria-expanded={callOpen} className="k-btn-ghost h-6 px-1.5 text-[12px]" onClick={() => setCallOpen((o) => !o)}>
+              {callOpen ? "Hide request and response" : "Show request and response"}
+            </button>
+          )}
         </div>
       )}
+      {callId && callOpen && <ApiCallDetailPanel brandId={brandId} callId={callId} />}
     </article>
   );
 }

@@ -178,6 +178,12 @@ export const PersonTimelineItemSchema = z.object({
    * "Initial email" / "Followup" label on identity, never on time. Null on inbound mail and
    * non-Instantly items; optional until every stored thread is re-read.
    */
+  /**
+   * The source's own keys for the item, verbatim. API / MCP calls (source `api`) carry
+   * `callId` (opens the whole call), `sessionId`, `method`, `path`, `status` (a string),
+   * `mcpTool`. Optional so an older cached thread still parses.
+   */
+  ref: z.record(z.string(), z.string().nullable()).nullish(),
   outreachFact: z
     .object({
       subjectKey: z.string(),
@@ -236,6 +242,7 @@ const SOURCE_LABEL: Record<string, string> = {
   posthog: "PostHog",
   stripe: "Stripe",
   copilot: "AI Copilot",
+  api: "API",
 };
 
 const CHANNEL_LABEL: Record<string, string> = {
@@ -245,6 +252,8 @@ const CHANNEL_LABEL: Record<string, string> = {
   discord: "Discord",
   crm: "CRM",
   chat: "Chat",
+  api: "API",
+  mcp: "MCP",
 };
 
 /** A served word as a reader sees it: `sales_interest` -> `Sales interest`. */

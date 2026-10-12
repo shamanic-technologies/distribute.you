@@ -124,6 +124,8 @@ export const SENSITIVE_QUERY_ROOTS = new Set([
   // One person's whole exchange (Integrations > Conversations): private message bodies
   // from the brand's own inboxes. Read live, never written to disk.
   "personTimeline",
+  // One API / MCP call a person made, whole (request + response bodies). Never on disk.
+  "personApiCall",
   // Messaging app links: while waiting they carry a live login QR / pairing code.
   "matrixLinks",
 ]);
