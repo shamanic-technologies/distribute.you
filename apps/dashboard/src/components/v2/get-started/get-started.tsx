@@ -1799,16 +1799,16 @@ function Stepper({
           const mark = (
             <>
               <StepMark index={i + 1} state={st} />
-              {active ? <span key={s.key} className="gs-in whitespace-nowrap">{s.label}</span> : <span className="sr-only">{s.label}</span>}
+              {active ? <span key={s.key} className="gs-in hidden whitespace-nowrap sm:inline">{s.label}</span> : <span className="sr-only">{s.label}</span>}
             </>
           );
           const cls = `inline-flex h-7 shrink-0 items-center gap-1.5 rounded-full text-[12px] ${
-            active ? "k-card gs-glow k-fg px-2.5 font-medium" : settled(st) ? "k-fg2" : "k-fg3"
+            active ? "k-card gs-glow k-fg px-1.5 font-medium sm:px-2.5" : settled(st) ? "k-fg2" : "k-fg3"
           }`;
           return (
             <li key={s.key} className={`flex items-center ${i > 0 ? "flex-1" : ""}`} aria-current={active ? "step" : undefined}>
               {i > 0 && (
-                <span className="relative mx-1.5 h-px min-w-2 flex-1 overflow-hidden bg-[var(--line)] sm:mx-2" aria-hidden="true">
+                <span className="relative mx-1 h-px min-w-1 flex-1 overflow-hidden bg-[var(--line)] sm:mx-2 sm:min-w-2" aria-hidden="true">
                   <span className="gs-fill absolute inset-y-0 left-0 bg-[var(--bg-strong)]" style={{ width: prevSettled ? "100%" : "0%" }} />
                 </span>
               )}
@@ -1823,6 +1823,10 @@ function Stepper({
           );
         })}
       </ol>
+      {/* A phone has no room for the name inside the pill: ten marks already fill 320px. */}
+      <p key={staged} className="gs-in k-fg -mt-1 text-[12px] font-medium sm:hidden" aria-hidden="true">
+        {GET_STARTED_STEPS.find((s) => s.key === staged)?.label}
+      </p>
       <div className="shrink-0" aria-label="What happens next">
         <p className="k-label mb-1.5 xl:text-center">What happens next</p>
         <ol className="flex flex-wrap items-start gap-x-4 gap-y-1.5">
@@ -1957,10 +1961,10 @@ function StepCard({
           <span className="k-indeterminate block h-full w-1/3 rounded-full bg-[var(--accent)]" />
         </span>
       )}
-      <div className="flex items-center gap-2">
-        <span className="k-label">{`Step ${index}`}</span>
-        <h2 className="k-fg min-w-0 truncate text-[14px] font-medium">{title}</h2>
-        {meta && <span className="ml-auto shrink-0">{meta}</span>}
+      <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+        <span className="k-label shrink-0">{`Step ${index}`}</span>
+        <h2 className="k-fg min-w-0 text-[14px] font-medium">{title}</h2>
+        {meta && <span className="ml-auto shrink-0 whitespace-nowrap">{meta}</span>}
       </div>
       {/* Keyed on the state so the content rises in the moment it lands. */}
       <div key={state} className="gs-in mt-3">

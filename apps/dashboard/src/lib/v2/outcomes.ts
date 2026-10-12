@@ -54,6 +54,32 @@ const PLURAL: Record<string, string> = {
   posts: "Posts",
 };
 
+/**
+ * The steps from the most advanced (a paid client) to the least (a lead found): the
+ * Outcomes list reads in this order (owner 2026-10-12). A step not listed goes last.
+ */
+const DEPTH: readonly string[] = [
+  "paid_client",
+  "meeting_attended",
+  "meeting_booked",
+  "signup",
+  "form_submitted",
+  "booking_call",
+  "conversation",
+  "website_visit",
+  LEAD_FOUND_STEP,
+  "posts",
+];
+
+/** Outcomes sorted most advanced first; steps of equal rank keep their order. */
+export function byDepth<T extends { outcome: Outcome }>(list: readonly T[]): T[] {
+  const rank = (key: string) => {
+    const i = DEPTH.indexOf(key);
+    return i === -1 ? DEPTH.length : i;
+  };
+  return [...list].sort((a, b) => rank(a.outcome.key) - rank(b.outcome.key));
+}
+
 /** The step a publishing campaign produces: what it posts. */
 export const POSTS_STEP = "posts";
 

@@ -406,7 +406,7 @@ export default function SignUpPage() {
                 </>
               ) : (
                 plan
-                  ? "3-day free trial, then from $99 a month. Cancel anytime."
+                  ? "3-day trial with $99 of credit to start. Pause or cancel anytime."
                   : "The platform is free. You choose how much goes to your outreach."
               )}
             </p>

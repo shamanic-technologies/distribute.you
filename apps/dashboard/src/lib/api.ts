@@ -9586,6 +9586,8 @@ const SubscriptionCheckoutSchema = z.object({
     .object({ object: z.literal("card_setup"), mode: z.enum(["hosted_redirect", "embedded_checkout", "embedded_widget"]) })
     .passthrough()
     .nullable(),
+  // billing#736: "prepaid_card" when the card on file cannot start a free trial.
+  card_refused_reason: z.string().nullish(),
 });
 export interface SubscriptionCheckout {
   monthly_amount_cents: number;
@@ -9594,6 +9596,8 @@ export interface SubscriptionCheckout {
   card_required: boolean;
   /** Exactly what `createEmbeddedCardSetup` answers: switch on `mode`. */
   card_setup: CardSetup | null;
+  /** "prepaid_card": the saved card is prepaid, so `card_setup` asks for a debit or credit card. */
+  card_refused_reason?: string | null;
 }
 
 /**
@@ -9619,7 +9623,10 @@ export async function createSubscriptionCheckout(params: {
   return { ...parsed.data, card_setup: parsed.data.card_setup as CardSetup | null };
 }
 
-/** Open the plan once the card is saved. 409 `card_required` = not confirmed yet, retry. */
+/**
+ * Open the plan once the card is saved. 409 `card_required` = not confirmed yet, retry;
+ * 409 `prepaid_card_trial_refused` = a prepaid card cannot start the free trial.
+ */
 export async function startSubscription(consent?: PaymentConsent): Promise<SubscriptionRead> {
   const raw = await apiCall<unknown>("/billing/accounts/subscription/start", { method: "POST", body: consent ? { consent } : {} });
   return parseSubscriptionRead(raw, "startSubscription");

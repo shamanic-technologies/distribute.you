@@ -558,18 +558,19 @@ export function wallCopy(planMonthlyUsd: number | null = null): WallCopy {
     const plan = `$${planMonthlyUsd.toLocaleString("en-US")}`;
     return {
       creditUsd: PLAN_TRIAL_CREDIT_USD,
-      creditLine: "of credit, free for 3 days",
-      bannerTitle: "of credit, free for 3 days",
-      bannerCta: "Start my free trial",
-      timerLabel: "Time left to claim your free trial",
-      timerExtendedLabel: "We're giving you more time to start your free trial",
-      formTitle: "Start your 3-day free trial",
-      formSub: "One minute. Nothing charged for 3 days.",
+      creditLine: "of credit to start",
+      bannerTitle: "of credit to start",
+      bannerCta: "Start my trial",
+      timerLabel: "Time left to claim your trial",
+      timerExtendedLabel: "We're giving you more time to start your trial",
+      formTitle: "Start your 3-day trial",
+      formSub: "One minute to set up.",
       emailCta: "Continue with Email",
       codeCta: "Continue",
-      cardTitle: "Nothing charged for 3 days",
-      cardNote: `Your campaigns start with $${PLAN_TRIAL_CREDIT_USD} of credit. Then ${plan} a month. Cancel anytime.`,
-      cardCta: "Start my 3-day free trial",
+      cardTitle: `$${PLAN_TRIAL_CREDIT_USD} of credit to start`,
+      // Never "nothing charged for 3 days": the plan starts early once the trial credit is used (owner 2026-10-12).
+      cardNote: `Your ${plan} plan starts in 3 days, or as soon as you use the $${PLAN_TRIAL_CREDIT_USD}. Pause or cancel anytime.`,
+      cardCta: "Start my trial",
     };
   }
   const m = MATCH_USD;

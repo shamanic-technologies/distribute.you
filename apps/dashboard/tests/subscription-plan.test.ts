@@ -85,6 +85,9 @@ describe("words", () => {
     expect(subscriptionCheckoutRefusal("existing_paying_org")).toMatch(/Write to us/);
     expect(subscriptionCheckoutRefusal("acquirer_not_supported")).toMatch(/Write to us/);
     expect(subscriptionCheckoutRefusal(undefined)).toMatch(/Nothing was charged/);
+    expect(subscriptionCheckoutRefusal("prepaid_card_trial_refused")).toBe(
+      "Prepaid cards can't start a trial. Use a debit or credit card.",
+    );
   });
 });
 
@@ -125,8 +128,8 @@ describe("the plan on the Billing page", () => {
     expect(PLAN).toContain('onConfirm={() => void run("start", () => startSubscriptionNow(amount))}');
     const dialog = PLAN.slice(PLAN.indexOf("export function ChargeNowDialog("), PLAN.indexOf("export function LossDialog("));
     expect(dialog).toContain("We charge {amount} to your card today.");
-    expect(dialog).toContain("Your free trial ends now.");
-    expect(dialog).toContain("Keep my free trial");
+    expect(dialog).toContain("Your trial ends now.");
+    expect(dialog).toContain("Keep my trial");
     const start = API.slice(API.indexOf("export async function startSubscriptionNow("), API.indexOf("export async function cancelSubscription("));
     expect(start).toContain('"/billing/accounts/subscription"');
     expect(start).toContain("start_now: true");
@@ -178,5 +181,21 @@ describe("the plan on the Billing page", () => {
       expect(API, path).toContain(path);
     }
     expect(API).toContain("SubscriptionReadSchema.safeParse(raw)");
+  });
+});
+
+describe("prepaid card on the subscription wall (billing#736)", () => {
+  const wall = readFileSync(
+    join(__dirname, "../src/components/v2/get-started/account-card-wall.tsx"),
+    "utf8",
+  );
+  it("says why the card form asks for another card", () => {
+    expect(wall).toContain('checkout.card_refused_reason === "prepaid_card"');
+  });
+  it("names the prepaid refusal when the trial start is refused", () => {
+    const at = wall.indexOf("async function afterTrialCardSaved");
+    const body = wall.slice(at, wall.indexOf("async function launch", at));
+    expect(body).toContain('code === "prepaid_card_trial_refused"');
+    expect(body).toContain("PREPAID_CARD_TRIAL_REFUSAL");
   });
 });
