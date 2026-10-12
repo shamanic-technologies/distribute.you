@@ -54,6 +54,58 @@ const PipeStatsRateSchema = z
   .passthrough();
 export type PipeStatsRate = z.infer<typeof PipeStatsRateSchema>;
 
+const ImpactRowSchema = z
+  .object({
+    key: z.string(),
+    label: z.string(),
+    fromCount: z.number().nullable(),
+    toCount: z.number().nullable(),
+    ratePct: z.number().nullable(),
+    rateUnavailableReason: z.string().nullish(),
+    spendUsd: z.number().nullable(),
+    costPerOutcomeUsd: z.number().nullable(),
+    costPerOutcomeUnavailableReason: z.string().nullish(),
+  })
+  .passthrough();
+export type TeamImpactRow = z.infer<typeof ImpactRowSchema>;
+
+const ImpactSchema = z
+  .object({
+    pointsDiff: z.number().nullable(),
+    pointsDiffUnavailableReason: z.string().nullish(),
+    ratio: z.number().nullable(),
+    ratioUnavailableReason: z.string().nullish(),
+  })
+  .passthrough();
+
+const TeamImpactSchema = z
+  .object({
+    available: z.boolean(),
+    unavailableReason: z.string().nullish(),
+    fromStepLabel: z.string().nullable(),
+    toStepLabel: z.string(),
+    rows: z.array(ImpactRowSchema),
+    impact: ImpactSchema,
+    history: z.array(
+      z
+        .object({
+          date: z.string(),
+          teamAlone: z.object({ ratePct: z.number().nullable() }).passthrough(),
+          teamPlusPipe: z.object({ ratePct: z.number().nullable() }).passthrough(),
+        })
+        .passthrough(),
+    ),
+  })
+  .passthrough();
+export type TeamImpact = z.infer<typeof TeamImpactSchema>;
+
+/** A served impact in words: "+8.3 pts (×1.5)"; the reason when a side is missing. */
+export function impactWords(impact: TeamImpact["impact"]): { points: string | null; ratio: string | null } {
+  const pts = impact.pointsDiff == null ? null : `${impact.pointsDiff > 0 ? "+" : ""}${impact.pointsDiff.toFixed(1).replace(/\.0$/, "")} pts`;
+  const ratio = impact.ratio == null ? null : `×${impact.ratio.toFixed(2).replace(/0$/, "").replace(/\.0$/, "")}`;
+  return { points: pts, ratio };
+}
+
 const PipeStatsPointSchema = z
   .object({
     date: z.string(),
@@ -94,6 +146,9 @@ export const PipeStatsSchema = z
       })
       .passthrough()
       .nullish(),
+    // PIPE-TEAM-IMPACT-1012: on a platform pipe whose step a client team also works, "team alone"
+    // vs "team + this pipe" on the people our campaigns brought, and the pipe's impact. Rendered as is.
+    teamImpact: TeamImpactSchema.nullish(),
     history: z.array(PipeStatsPointSchema),
   })
   .passthrough();
@@ -141,6 +196,15 @@ const TEAM_REASON_WORDS: Record<string, string> = {
   no_people_scope: "No tool connected",
   no_brand_answers: "No client's tools record it yet",
   leg_has_no_from_step: "This step has no first step",
+  customer_team_time: "Their team's time",
+  no_outcome_yet: "No outcome yet",
+  outcome_not_measured: "Not measured",
+  no_spend_recorded: "No spend yet",
+  team_alone_not_measured: "Team alone not measured",
+  team_alone_no_input: "No reply left to the team yet",
+  team_plus_pipe_not_measured: "This pipe not measured",
+  team_plus_pipe_no_input: "This pipe acted on nobody yet",
+  team_alone_rate_zero: "Team alone at 0%",
   from_step_not_produced_by_our_campaigns: "Our campaigns do not bring people here",
   to_step_not_recorded_for_our_leads: "Their tools do not record the last step",
   no_campaign_of_ours_brings_people_to_from: "No campaign of ours brings people here",

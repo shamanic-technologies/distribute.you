@@ -11,6 +11,7 @@ import { formatRoi, roiIsGood } from "@/lib/format-roi";
 import { formatUsdAdaptive } from "@/lib/format-number";
 import {
   endToEndRate,
+  impactWords,
   teamOnOurLeadsRate,
   teamReasonWords,
   formatRatePct,
@@ -21,6 +22,7 @@ import {
   PIPE_STATS_SCOPE_LABELS,
   type PipeStats,
   type PipeStatsRate,
+  type TeamImpact,
   type PipeStatsScope,
 } from "@/lib/pipe-stats";
 import { EmptyNote, SectionTitle, Shimmer } from "@/components/v2/ui";
@@ -132,6 +134,8 @@ export function PipeStatsSection({ pipeId, brandId, offerId }: { pipeId: string;
         </div>
         {!answered && scopes.some((s) => reads[s].failed) && <p className="k-fg3 mt-2 text-[12px]">Some figures could not be read. Retrying.</p>}
       </div>
+
+      {scopes.some((x) => data[x]?.teamImpact) && <TeamImpactSection data={data} scopes={scopes} />}
 
       <div className="grid gap-6 lg:grid-cols-2">
         <ScopeChart
@@ -308,6 +312,122 @@ function VolumesChart({ data, scopes, answered }: { data: Partial<Record<PipeSta
   );
 }
 
+/**
+ * The client's team is always on (owner 2026-10-12: "il faut toujours comparer YOUR TEAM alone avec
+ * YOUR TEAM et this PIPE being ON, pour voir l'impact relatif de cette pipe"). Served by
+ * features-service on every platform pipe whose step a client team also works; the columns are the
+ * pipe's own steps. One scope at a time, then both rates over time.
+ */
+function TeamImpactSection({ data, scopes }: { data: Partial<Record<PipeStatsScope, PipeStats | null>>; scopes: PipeStatsScope[] }) {
+  const served = scopes.filter((x) => data[x]?.teamImpact);
+  const [picked, setPicked] = useState<PipeStatsScope>("brand");
+  const scope = served.includes(picked) ? picked : served[0];
+  const t = data[scope]?.teamImpact as TeamImpact;
+  const words = impactWords(t.impact);
+  const toLower = t.toStepLabel.toLowerCase();
+  const points = t.history
+    .map((h) => ({ t: Date.parse(`${h.date}T00:00:00Z`), alone: h.teamAlone.ratePct, plus: h.teamPlusPipe.ratePct }))
+    .filter((p) => p.alone != null || p.plus != null);
+  return (
+    <div className="space-y-6">
+      <div>
+        <SectionTitle right={<ScopeSwitch scopes={served} scope={scope} onPick={setPicked} />}>Impact of this pipe on the client&apos;s team</SectionTitle>
+        <div className="k-card overflow-hidden">
+          {!t.available ? (
+            <EmptyNote>{teamReasonWords(t.unavailableReason)}</EmptyNote>
+          ) : (
+            <div className="k-scroll overflow-x-auto">
+              <table className="w-full text-[13px]">
+                <thead>
+                  <tr className="k-line-subtle border-b">
+                    <th className={TH} />
+                    <th className={TH}>{t.fromStepLabel ?? "Start"}</th>
+                    <th className={TH}>{t.toStepLabel}</th>
+                    <th className={TH}>Rate</th>
+                    <th className={TH}>Cost per {toLower}</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {t.rows.map((r) => (
+                    <tr key={r.key} className="k-line-subtle border-b">
+                      <td className={`${TD} ${r.key === "team_plus_pipe" ? "font-medium" : "k-fg2"}`}>{r.label}</td>
+                      <td className={TD}>{r.fromCount == null ? <span className="k-fg4">—</span> : r.fromCount.toLocaleString("en-US")}</td>
+                      <td className={TD}>{r.toCount == null ? <span className="k-fg4">—</span> : r.toCount.toLocaleString("en-US")}</td>
+                      <td className={TD}>
+                        {r.ratePct == null ? <span className="k-fg3 text-[12px]">{teamReasonWords(r.rateUnavailableReason)}</span> : formatRatePct(r.ratePct)}
+                      </td>
+                      <td className={TD}>
+                        {r.costPerOutcomeUsd == null ? (
+                          <span className="k-fg3 text-[12px]">{teamReasonWords(r.costPerOutcomeUnavailableReason)}</span>
+                        ) : (
+                          formatUsdAdaptive(r.costPerOutcomeUsd)
+                        )}
+                      </td>
+                    </tr>
+                  ))}
+                  <tr>
+                    <td className={`${TD} font-medium`}>Impact of this pipe</td>
+                    <td className={TD} />
+                    <td className={TD} />
+                    <td className={TD}>
+                      {words.points ? (
+                        <span className={`font-medium ${(t.impact.pointsDiff ?? 0) > 0 ? "text-[var(--run)]" : ""}`}>
+                          {words.points}
+                          {words.ratio && <span className="k-fg3 ml-1.5 text-[12px] font-normal">{words.ratio}</span>}
+                        </span>
+                      ) : (
+                        <span className="k-fg3 text-[12px]">{teamReasonWords(t.impact.pointsDiffUnavailableReason)}</span>
+                      )}
+                    </td>
+                    <td className={TD} />
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          )}
+          <p className="k-fg3 k-line-subtle border-t px-4 py-2.5 text-[12px]">
+            People our campaigns brought to {(t.fromStepLabel ?? "the first step").toLowerCase()}. Their team is always on; this pipe works on top of it.
+          </p>
+        </div>
+      </div>
+      {t.available && (
+        <ChartFrame title="Team alone vs team + this pipe over time" right={<span className="k-fg3 text-[12px]">{PIPE_STATS_SCOPE_LABELS[scope]}</span>}>
+          {points.length === 0 ? (
+            <EmptyNote>No history yet.</EmptyNote>
+          ) : (
+            <div className="flex h-full flex-col">
+              <div className="k-fg2 mb-2 flex flex-wrap gap-4 text-[12px]">
+                <span className="inline-flex items-center gap-1.5">
+                  <span className="h-2 w-2 rounded-full" style={{ background: "var(--fg-3)" }} />
+                  {t.rows[0]?.label}
+                </span>
+                <span className="inline-flex items-center gap-1.5">
+                  <span className="h-2 w-2 rounded-full" style={{ background: "var(--accent)" }} />
+                  {t.rows[1]?.label}
+                </span>
+              </div>
+              <div className="min-h-0 flex-1">
+                <ResponsiveContainer width="100%" height="100%">
+                  <LineChart data={points} margin={{ top: 4, right: 4, bottom: 0, left: 0 }}>
+                    <XAxis dataKey="t" type="number" scale="time" domain={["dataMin", "dataMax"]} tick={AXIS} tickLine={false} axisLine={false} minTickGap={40} tickFormatter={day} />
+                    <YAxis tick={AXIS} tickLine={false} axisLine={false} width={44} domain={[0, 100]} ticks={[0, 25, 50, 75, 100]} tickFormatter={(v: number) => formatRatePct(v)} />
+                    <Tooltip
+                      cursor={{ stroke: "var(--line-strong)", strokeWidth: 1 }}
+                      content={<ScopeTooltip names={{ alone: t.rows[0]?.label ?? "", plus: t.rows[1]?.label ?? "" }} format={formatRatePct} />}
+                    />
+                    <Line type="stepAfter" dataKey="alone" stroke="var(--fg-3)" strokeWidth={1.5} dot={false} connectNulls isAnimationActive={false} />
+                    <Line type="stepAfter" dataKey="plus" stroke="var(--accent)" strokeWidth={1.5} dot={false} connectNulls isAnimationActive={false} />
+                  </LineChart>
+                </ResponsiveContainer>
+              </div>
+            </div>
+          )}
+        </ChartFrame>
+      )}
+    </div>
+  );
+}
+
 /** A served rate with the two counts it is made of ("20%  2 of 10"). */
 function RateCell({ rate }: { rate: PipeStatsRate }) {
   if (rate.ratePct == null) return <span className="k-fg3 text-[12px]">{unavailableWords(rate.unavailableReason)}</span>;
@@ -380,7 +500,6 @@ export function SameLegSection({
                     current={r.id === pipeId}
                     brandId={brandId}
                     href={hrefOf(r.id)}
-                    hasTeam={r.status !== "customer_time" && rows.some((x) => x.status === "customer_time")}
                   />
                 ))
               )}
@@ -402,7 +521,6 @@ function SameLegRow({
   current,
   brandId,
   href,
-  hasTeam,
 }: {
   id: string;
   name: string;
@@ -410,7 +528,6 @@ function SameLegRow({
   current: boolean;
   brandId: string;
   href: string;
-  hasTeam: boolean;
 }) {
   const fleet = usePipeStats(id, "fleet", brandId, null);
   const brand = usePipeStats(id, "brand", brandId, null);
@@ -425,7 +542,7 @@ function SameLegRow({
       </td>
       {[fleet, brand].map((r, i) => (
         <td key={i} className={TD}>
-          {r.data ? <SameLegCell stats={r.data} withTeam={hasTeam} /> : r.failed && r.answered ? <span className="k-fg4">—</span> : <Shimmer className="ml-auto h-4 w-12" />}
+          {r.data ? <SameLegCell stats={r.data} /> : r.failed && r.answered ? <span className="k-fg4">—</span> : <Shimmer className="ml-auto h-4 w-12" />}
         </td>
       ))}
     </tr>
@@ -436,7 +553,7 @@ function SameLegRow({
  * A client team reads two populations (owner 2026-10-12): the replies OUR campaigns brought that our
  * AI did not take (the fair comparison, first), then the people we never contacted.
  */
-function SameLegCell({ stats, withTeam }: { stats: PipeStats; withTeam: boolean }) {
+function SameLegCell({ stats }: { stats: PipeStats }) {
   const onOurs = teamOnOurLeadsRate(stats);
   const own =
     stats.teamSource && !stats.teamSource.available ? (
@@ -446,17 +563,7 @@ function SameLegCell({ stats, withTeam }: { stats: PipeStats; withTeam: boolean 
     ) : (
       <span className="k-fg4">—</span>
     );
-  // The client's team is always on (owner 2026-10-12): a platform pipe's figure is the team plus our pipe.
-  if (!stats.teamSource) {
-    return withTeam ? (
-      <div>
-        {own}
-        <p className="k-fg3 text-[11px]">their team + this pipe</p>
-      </div>
-    ) : (
-      own
-    );
-  }
+  if (!stats.teamSource) return own;
   return (
     <div className="space-y-1">
       <div>
