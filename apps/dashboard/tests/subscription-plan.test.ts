@@ -85,6 +85,9 @@ describe("words", () => {
     expect(subscriptionCheckoutRefusal("existing_paying_org")).toMatch(/Write to us/);
     expect(subscriptionCheckoutRefusal("acquirer_not_supported")).toMatch(/Write to us/);
     expect(subscriptionCheckoutRefusal(undefined)).toMatch(/Nothing was charged/);
+    expect(subscriptionCheckoutRefusal("prepaid_card_trial_refused")).toBe(
+      "Prepaid cards can't start a free trial. Use a debit or credit card.",
+    );
   });
 });
 
@@ -178,5 +181,21 @@ describe("the plan on the Billing page", () => {
       expect(API, path).toContain(path);
     }
     expect(API).toContain("SubscriptionReadSchema.safeParse(raw)");
+  });
+});
+
+describe("prepaid card on the subscription wall (billing#736)", () => {
+  const wall = readFileSync(
+    join(__dirname, "../src/components/v2/get-started/account-card-wall.tsx"),
+    "utf8",
+  );
+  it("says why the card form asks for another card", () => {
+    expect(wall).toContain('checkout.card_refused_reason === "prepaid_card"');
+  });
+  it("names the prepaid refusal when the trial start is refused", () => {
+    const at = wall.indexOf("async function afterTrialCardSaved");
+    const body = wall.slice(at, wall.indexOf("async function launch", at));
+    expect(body).toContain('code === "prepaid_card_trial_refused"');
+    expect(body).toContain("PREPAID_CARD_TRIAL_REFUSAL");
   });
 });
