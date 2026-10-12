@@ -65,10 +65,11 @@ describe("where a lead lands is the PRODUCER's answer, rendered", () => {
     expect(at("unresolved")).toBe("unresolved");
   });
 
-  it("leaves a lead we never contacted OFF the board entirely", () => {
-    // Not a column of its own: there is nothing to show about what happened to it, and
-    // inventing one would make the board disagree with the page's own count.
-    expect(at("not_contacted", "not_served")).toBeNull();
+  it("puts a lead found and not yet contacted in Leads, like every other lead in play", () => {
+    // Owner 2026-10-12: the board shows every campaign's people the same way, no special
+    // case. A leads-only campaign (a source, then the customer's team) contacts nobody, so
+    // leaving this standing off the board drew an empty dashboard over 12 found leads.
+    expect(at("not_contacted", "not_served")).toBe("contacted");
   });
 
   it("reads a MEASURED VISIT as positive reply, which a reply signal never could", () => {

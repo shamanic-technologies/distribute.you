@@ -71,7 +71,7 @@ describe("`standing` reaches the board through the real parser", () => {
       { state: "disqualified", signal: "bounced", column: "disqualified" },
       { state: "sales_interest", signal: "measured_visit", column: "sales_interest" },
       { state: "disqualified", signal: "negative_reply", column: "disqualified" },
-      { state: "not_contacted", signal: "none", column: null },
+      { state: "not_contacted", signal: "none", column: "contacted" },
     ] as const;
     for (const m of measured) {
       const { leads } = parseLeadsResponse(

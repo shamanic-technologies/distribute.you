@@ -188,9 +188,9 @@ export type LeadBoardStanding = Pick<LeadStanding, "state" | "signal">;
  * moment the producer split the state. `customer` has its OWN column (`won`): it used
  * to fold into Positive reply, which read a closed deal as a warm one.
  *
- * `not_contacted` lands nowhere (`null`) and the lead is left off the board entirely:
- * there is nothing to show about what happened to it, and inventing a column would make
- * the board disagree with the page's own count of the population.
+ * `not_contacted` lands in Leads: a person found and not yet written to is in play like
+ * any other (owner 2026-10-12: one board for every campaign, no special case; a
+ * leads-only campaign contacts nobody, and leaving them off drew an empty board).
  *
  * An ABSENT standing (`null`/`undefined`) is a payload written before lead-service
  * v0.64.0 — a snapshot restored from disk, in practice, for the second before the poll
@@ -204,11 +204,10 @@ export type LeadBoardStanding = Pick<LeadStanding, "state" | "signal">;
  */
 export function leadBoardColumnFor(
   standing: LeadBoardStanding | null | undefined,
-): LeadBoardColumnKey | null {
+): LeadBoardColumnKey {
   if (!standing) return "unresolved";
   switch (standing.state) {
     case "not_contacted":
-      return null;
     case "contacted":
     case "engaged":
       return "contacted";
@@ -244,16 +243,15 @@ export function leadBoardColumnFor(
  * still in play. That is a decision about what somebody triaging a list needs to see
  * side by side, so it lives here rather than upstream.
  *
- * `not_contacted` is in NO column, deliberately: there is nothing to show about what
- * happened to a lead nobody wrote to, and giving it a column would make the board
- * disagree with the page's own count of the population.
+ * `not_contacted` sits in Leads with everybody else in play, so the columns add up to the
+ * producer's whole population.
  *
  * Kept in lockstep with `leadBoardColumnFor` by a guard that walks every standing
  * through both — a second table that could drift is exactly what this file exists to
  * avoid, so the two must be one statement read two ways.
  */
 export const STANDINGS_BY_COLUMN: Record<LeadBoardColumnKey, readonly LeadStandingState[]> = {
-  contacted: ["contacted", "engaged"],
+  contacted: ["not_contacted", "contacted", "engaged"],
   sales_interest: ["sales_interest"],
   won: ["customer"],
   disqualified: ["disqualified"],
