@@ -147,7 +147,7 @@ describe("the standing dimension the board's columns are drawn from", () => {
     // its own cap as a population.
     const totals = boardColumnTotals(counts);
     expect(totals).not.toBeNull();
-    expect(totals?.contacted).toBe(1966); // contacted + engaged
+    expect(totals?.contacted).toBe(1969); // not_contacted + contacted + engaged
     expect(totals?.sales_interest).toBe(86);
     // Its own column since the board grew one — a closed deal is not a warm one, and
     // adding it into the column above stated one fact under another's name.
@@ -156,13 +156,13 @@ describe("the standing dimension the board's columns are drawn from", () => {
     expect(totals?.unresolved).toBe(0);
   });
 
-  it("leaves `not_contacted` out of every column, so the board matches the population", () => {
-    // There is nothing to show about a lead nobody wrote to. Its 3 people are in the
-    // producer's `total` and in no column, which is what the board draws.
+  it("draws every lead the producer counts, found-only leads included", () => {
+    // Owner 2026-10-12: one board for every campaign. A lead found and not yet contacted
+    // sits in Leads, so the columns now add up to the producer's whole population.
     const totals = boardColumnTotals(counts);
     const drawn = Object.values(totals ?? {}).reduce((a, b) => a + b, 0);
-    expect(drawn).toBe(counts.total - counts.counts.not_contacted);
-    expect(Object.values(STANDINGS_BY_COLUMN).flat()).not.toContain("not_contacted");
+    expect(drawn).toBe(counts.total);
+    expect(STANDINGS_BY_COLUMN.contacted).toContain("not_contacted");
   });
 
   it("is unsettled, never zero, when the counts have not landed", () => {
