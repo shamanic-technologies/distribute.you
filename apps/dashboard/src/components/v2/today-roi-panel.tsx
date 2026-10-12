@@ -31,6 +31,7 @@ import { friendlyDate } from "@/lib/friendly-datetime";
 import { InlineRate } from "@/components/v2/offer-channels-page";
 import { CompanyMark } from "@/components/v2/people-bits";
 import { EmptyNote, Initials, Shimmer } from "@/components/v2/ui";
+import { formatRatePct } from "@/lib/pipe-stats";
 
 /** What the Today panel shows: one step of the pipeline, or one lead. */
 export type TodayPanelTarget =
@@ -39,7 +40,8 @@ export type TodayPanelTarget =
   | { kind: "lead"; lead: PipelineLead | ColdPipelineLead; group: "hot" | "lost" };
 
 // A chance that rounds to 0.0% but is not zero reads "<0.1%", never a false 0.0%.
-const pct = (v: number) => (v > 0 && v < 0.05 ? "<0.1%" : `${v < 10 ? v.toFixed(1) : Math.round(v)}%`);
+// Owner rule (#4756): a whole percent, a decimal only below 1%. One shared formatter.
+const pct = formatRatePct;
 
 /** Where a served leg rate comes from, in the customer's words. */
 function sourceWords(leg: StepValueExplanation["legs"][number]): string {

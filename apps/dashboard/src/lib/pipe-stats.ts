@@ -223,10 +223,13 @@ export function outcomeVolume(stats: PipeStats) {
 
 /**
  * A served percent as the page prints it: the owner's rate rule (#4756), a whole percent, a
- * decimal only below 1% (`roundLegRatePct`); a non-zero rate that still rounds to 0 reads `<0.1%`.
+ * decimal only below 1% (`roundLegRatePct`); a non-zero rate that still rounds to 0 reads `<0.1%`,
+ * one under 100% that rounds to 100 reads `>99%`. Every v2 rate goes through it.
  */
 export function formatRatePct(pct: number): string {
   if (pct > 0 && pct < 0.05) return "<0.1%";
+  // Never round a real loss away: 99.6% delivered is not "100%".
+  if (pct >= 99.5 && pct < 100) return ">99%";
   return formatLegRatePct(pct);
 }
 

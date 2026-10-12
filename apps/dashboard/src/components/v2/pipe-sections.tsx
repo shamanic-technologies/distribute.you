@@ -20,6 +20,7 @@ import { ChannelChip } from "@/components/v2/offer-sales-paths";
 import { EmptyNote, Shimmer } from "@/components/v2/ui";
 import { RoiLabel, RoiValue } from "@/components/v2/roi-label";
 import { costToShowCents, roiToShow } from "@/lib/expected-return";
+import { formatRatePct } from "@/lib/pipe-stats";
 
 /**
  * A sales-funnel campaign's PIPES, one block each (owner 2026-10-11: "up to 3 columns on
@@ -126,7 +127,8 @@ const DASH = <span className="k-fg4">—</span>;
 const unitWord = (n: number | null | undefined, one: string, many: string) => <span className="k-fg2 ml-1 text-[12px] font-normal">{n === 1 ? one : many}</span>;
 const count = (n: number | null | undefined, one: string, many: string) => (n == null ? DASH : <>{formatCount(n)}{unitWord(n, one, many)}</>);
 /** A served percent: one decimal, a non-zero share that rounds to 0.0% reads "<0.1%". */
-const pct = (n: number) => (n > 0 && n < 0.05 ? "<0.1%" : `${n.toFixed(1)}%`);
+// Owner rule (#4756): a whole percent, a decimal only below 1%. One shared formatter.
+const pct = formatRatePct;
 
 /** The pipe's return and money, off the campaign row's own served revenue group. */
 function MoneyCells({ mission, per }: { mission: Mission | null; per: "reply" | "visit" | null }) {
