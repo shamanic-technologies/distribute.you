@@ -987,7 +987,7 @@ export function AccountCardWall({
                     {busy ? "Checking your payment..." : "Check my payment and launch"}
                   </button>
                 ) : (
-                  <PrepaidTopup busy={busy} matchNote={matchNote(account)} cta={(usd) => topupCta(usd, matchNote(account))} onPay={(c) => void pay(c)} />
+                  <PrepaidTopup busy={busy} matchNote={matchNote(account)} monthlyLimit={monthlyLimit} cta={(usd) => topupCta(usd, matchNote(account))} onPay={(c) => void pay(c)} />
                 )}
               </div>
             )}
