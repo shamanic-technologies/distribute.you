@@ -1,0 +1,9 @@
+{
+  "slug": "api-for-ai-agents",
+  "title": "API for AI Agents: Get a Key and Pay With No Human",
+  "excerpt": "An AI agent can now open a distribute.you account, get its own API key and prepay, without a person filling a form. Two calls get the key. Here is how it works, and the checklist to make your own API work the same way.",
+  "tags": ["API for AI agents", "AI agents", "MCP", "API key", "agent-ready API", "cold email"],
+  "publishedAt": "2026-10-12T08:00:00.000Z",
+  "coverImagePath": "/blog/api-for-ai-agents/hero.png",
+  "source": "manual"
+}

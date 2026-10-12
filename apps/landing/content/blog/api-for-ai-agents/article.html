@@ -1,0 +1,77 @@
+<div style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:12px;padding:20px 24px;margin:0 0 32px">
+<p style="margin:0 0 8px;font-size:0.75em;font-weight:600;letter-spacing:0.08em;text-transform:uppercase;color:#2563eb">Key takeaway</p>
+<p style="margin:0 0 12px"><strong>An AI agent can now open a distribute.you account, get its own API key and pay, with no human in the loop.</strong></p>
+<ul style="margin:0">
+<li><strong>2 calls</strong> get a key: an email it can read, then the code it receives.</li>
+<li>Free calls work at once. Paid calls are <strong>prepaid from $10</strong>, with automatic top-up.</li>
+<li>No free credit and no trial: the agent pays before it spends.</li>
+</ul>
+</div>
+
+<p>Most APIs stop an AI agent at the first step. To get a key, someone has to open a browser, fill a signup form and type a card number. The agent can read the docs and write the code, then it waits for a person.</p>
+
+<p>We removed that wait. An agent can now sign up for distribute.you, get an API key and prepay on its own. A person only steps in if the agent cannot pay by card itself.</p>
+
+<h2 id="how">How an agent gets a key</h2>
+
+<p>The agent gives an email address it can read and a phone number. We email it a 6-digit code.</p>
+
+<pre style="white-space:pre-wrap;font-size:0.85em;line-height:1.55">curl -X POST https://api.distribute.you/v1/agent-signups/start \
+  -H "Content-Type: application/json" \
+  -d '{"email":"agent@example.com","phone":"+14155550100"}'</pre>
+
+<p>It reads the code in its inbox and trades it for a key:</p>
+
+<pre style="white-space:pre-wrap;font-size:0.85em;line-height:1.55">curl -X POST https://api.distribute.you/v1/agent-signups/complete \
+  -H "Content-Type: application/json" \
+  -d '{"email":"agent@example.com","code":"123456"}'</pre>
+
+<p>The answer carries the key, sent as <code>Authorization: Bearer &lt;key&gt;</code> on every call after that. Each call to <code>complete</code> creates a new key, so an agent can make as many as it needs. The same email can later sign in to the dashboard, so the person behind the agent sees everything it did.</p>
+
+<h2 id="why-email">Why an email and a phone</h2>
+
+<p>Agents read email now, and many have their own address. The email is where we send account updates, so it has to be real: the code proves it. The phone is for urgent matters only, on WhatsApp. We check its format and nothing else.</p>
+
+<p>There is no CAPTCHA and no limit on keys. A CAPTCHA blocks the exact caller we want to serve.</p>
+
+<h2 id="pay">How an agent pays</h2>
+
+<p>Free calls work as soon as the key exists: brands, stats, the price catalog. Every paid call is paid upfront. No free credit, no trial. That is how we keep free riders out without blocking agents at the door.</p>
+
+<pre style="white-space:pre-wrap;font-size:0.85em;line-height:1.55">curl -X POST https://api.distribute.you/v1/billing/accounts/prepaid_checkout \
+  -H "Authorization: Bearer distrib.usr_..." \
+  -H "Content-Type: application/json" \
+  -d '{"topup_amount_cents":1000,"auto_topup_amount_cents":1500,"auto_topup_threshold_cents":500}'</pre>
+
+<p>The agent picks the amount: at least $10 to start. Automatic top-up is required, at least $15 each time the balance falls under $5 or more, so a campaign never stops halfway. The call returns a payment link. The agent opens it, or hands it to its human for one card entry.</p>
+
+<h2 id="402">What happens before it pays</h2>
+
+<p>A paid call with an empty balance answers <code>402 payment_required</code>. The body says what to do: the prepay route, the minimums, and a note that a human may need to open the link. The agent does not have to guess why it failed or search the docs. It reads the error, prepays and retries.</p>
+
+<p>The same flow runs through our <a href="https://distribute.you/developers">MCP server and CLI</a>. With the CLI it is <code>distribute signup</code>, then <code>distribute signup verify</code>, then <code>distribute prepay --amount 10 --reload 15 --below 5</code>. A payment-required error exits with code 8.</p>
+
+<h2 id="checklist">Checklist: make your own API work for AI agents</h2>
+
+<div style="overflow-x:auto">
+<table>
+<thead><tr><th>Step</th><th>Blocks an agent</th><th>Works for an agent</th></tr></thead>
+<tbody>
+<tr><td>Sign up</td><td>Browser form, CAPTCHA</td><td>Email code over the API</td></tr>
+<tr><td>Get a key</td><td>Copy it from a settings page</td><td>Returned by the signup call</td></tr>
+<tr><td>Pay</td><td>Card form inside the app</td><td>One call that returns a payment link</td></tr>
+<tr><td>Out of money</td><td>Generic error or a silent stop</td><td><code>402</code> with the steps to pay</td></tr>
+<tr><td>Find all this</td><td>A help center written for people</td><td><code>llms.txt</code>, the OpenAPI document, an MCP server</td></tr>
+</tbody>
+</table>
+</div>
+
+<p>Each row is one decision. None needs a new product. It is the same signup, key and checkout, reachable by a caller with no browser.</p>
+
+<h2 id="why">Why we did it</h2>
+
+<p>More of the people who need customers now work through an assistant. If their assistant cannot sign up, we do not exist for them. Our <a href="https://distribute.you/llms.txt">llms.txt</a> already told agents what we do. Now it tells them how to start.</p>
+
+<p><strong>Revenue made easy.</strong> <a href="https://distribute.you">distribute.you</a> finds your buyers, contacts them by cold email from our own domains, and passes you the ones who reply with interest. The platform is free: you prepay what goes to your outreach, at public catalog prices.</p>
+
+<p>Get started: <a href="https://distribute.you">distribute.you</a></p>
