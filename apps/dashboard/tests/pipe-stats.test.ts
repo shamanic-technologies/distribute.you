@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { endToEndRate, teamReasonWords, formatRatePct, mergeHistories, outcomeVolume, PipeWithStatsSchema, pipeStatsQuery, unavailableWords, type PipeStats } from "../src/lib/pipe-stats";
+import { endToEndRate, teamOnOurLeadsRate, teamReasonWords, formatRatePct, mergeHistories, outcomeVolume, PipeWithStatsSchema, pipeStatsQuery, unavailableWords, type PipeStats } from "../src/lib/pipe-stats";
 
 const stats = (kind: "fleet" | "brand" | "offer", history: PipeStats["history"]): PipeStats =>
   PipeWithStatsSchema.parse({
@@ -110,5 +110,15 @@ describe("same step, other pipes", () => {
       { key: "handed_to_outcomes", fromKey: "handed", toKey: "outcomes", label: "b", numerator: 2, denominator: 16, ratePct: 12.5 },
     ] };
     expect(endToEndRate(withRates)?.ratePct).toBe(12.5);
+  });
+});
+
+describe("client team on the replies we brought", () => {
+  it("reads the served rate, and nothing when unavailable", () => {
+    const base = stats("brand", []);
+    const rate = { key: "leftToTeam_to_outcomes", fromKey: "leftToTeam", toKey: "outcomes", label: "x", numerator: 4, denominator: 24, ratePct: 16.67 };
+    expect(teamOnOurLeadsRate({ ...base, ourLeadsToTeam: { available: true, conversionRates: [rate] } })?.ratePct).toBe(16.67);
+    expect(teamOnOurLeadsRate({ ...base, ourLeadsToTeam: { available: false, unavailableReason: "to_step_not_recorded_for_our_leads" } })).toBeNull();
+    expect(teamOnOurLeadsRate(base)).toBeNull();
   });
 });

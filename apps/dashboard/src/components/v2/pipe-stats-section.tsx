@@ -11,6 +11,7 @@ import { formatRoi, roiIsGood } from "@/lib/format-roi";
 import { formatUsdAdaptive } from "@/lib/format-number";
 import {
   endToEndRate,
+  teamOnOurLeadsRate,
   teamReasonWords,
   formatRatePct,
   mergeHistories,
@@ -376,7 +377,7 @@ export function SameLegSection({
           </table>
         </div>
         <p className="k-fg3 k-line-subtle border-t px-4 py-2.5 text-[12px]">
-          The client&apos;s own team is read from their tools: people who reached the first step and we never contacted.
+          A client team is read from their tools, on the replies we brought that our AI did not take, and on their own leads we never contacted.
         </p>
       </div>
     </section>
@@ -404,12 +405,33 @@ function SameLegRow({ id, name, line, current, brandId, href }: { id: string; na
   );
 }
 
+/**
+ * A client team reads two populations (owner 2026-10-12): the replies OUR campaigns brought that our
+ * AI did not take (the fair comparison, first), then the people we never contacted.
+ */
 function SameLegCell({ stats }: { stats: PipeStats }) {
-  if (stats.teamSource && !stats.teamSource.available) {
-    return <span className="k-fg3 text-[12px]">{teamReasonWords(stats.teamSource.unavailableReason)}</span>;
-  }
-  const rate = endToEndRate(stats);
-  return rate ? <RateCell rate={rate} /> : <span className="k-fg4">—</span>;
+  const onOurs = teamOnOurLeadsRate(stats);
+  const own =
+    stats.teamSource && !stats.teamSource.available ? (
+      <span className="k-fg3 text-[12px]">{teamReasonWords(stats.teamSource.unavailableReason)}</span>
+    ) : endToEndRate(stats) ? (
+      <RateCell rate={endToEndRate(stats) as PipeStatsRate} />
+    ) : (
+      <span className="k-fg4">—</span>
+    );
+  if (!stats.teamSource) return own;
+  return (
+    <div className="space-y-1">
+      <div>
+        {onOurs ? <RateCell rate={onOurs} /> : <span className="k-fg3 text-[12px]">{teamReasonWords(stats.ourLeadsToTeam?.unavailableReason)}</span>}
+        <p className="k-fg3 text-[11px]">on replies we brought</p>
+      </div>
+      <div>
+        {own}
+        <p className="k-fg3 text-[11px]">on their own leads</p>
+      </div>
+    </div>
+  );
 }
 
 /** The pipe's served conversion rates over time (cumulative, percent), one scope at a time like the volumes. */

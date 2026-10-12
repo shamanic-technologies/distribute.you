@@ -84,6 +84,16 @@ export const PipeStatsSchema = z
       .object({ available: z.boolean(), unavailableReason: z.string().nullish(), fromSources: z.array(z.string()).optional(), toSources: z.array(z.string()).optional() })
       .passthrough()
       .nullish(),
+    // PIPE-TEAM-ON-OUR-REPLIES-1012: on a customer team pipe, the people OUR campaigns brought to the
+    // first step that our pipes did not act on, and how many the team took to the last step.
+    ourLeadsToTeam: z
+      .object({
+        available: z.boolean(),
+        unavailableReason: z.string().nullish(),
+        conversionRates: z.array(PipeStatsRateSchema).optional(),
+      })
+      .passthrough()
+      .nullish(),
     history: z.array(PipeStatsPointSchema),
   })
   .passthrough();
@@ -130,7 +140,18 @@ const TEAM_REASON_WORDS: Record<string, string> = {
   no_connected_source: "No tool connected",
   no_people_scope: "No tool connected",
   no_brand_answers: "No client's tools record it yet",
+  leg_has_no_from_step: "This step has no first step",
+  from_step_not_produced_by_our_campaigns: "Our campaigns do not bring people here",
+  to_step_not_recorded_for_our_leads: "Their tools do not record the last step",
+  no_campaign_of_ours_brings_people_to_from: "No campaign of ours brings people here",
 };
+/** The team's served rate on the people our campaigns brought (null when not served or unavailable). */
+export function teamOnOurLeadsRate(stats: PipeStats): PipeStatsRate | null {
+  const o = stats.ourLeadsToTeam;
+  if (!o?.available) return null;
+  return o.conversionRates?.find((r) => r.toKey === "outcomes") ?? null;
+}
+
 export function teamReasonWords(reason: string | null | undefined): string {
   return (reason && TEAM_REASON_WORDS[reason]) ?? unavailableWords(reason);
 }
