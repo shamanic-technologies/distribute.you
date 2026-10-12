@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { endToEndRate, impactWords, teamOnOurLeadsRate, teamReasonWords, formatRatePct, mergeHistories, outcomeVolume, PipeWithStatsSchema, pipeStatsQuery, unavailableWords, type PipeStats } from "../src/lib/pipe-stats";
+import { endToEndRate, impactWords, teamOnOurLeadsRate, teamReasonWords, formatRatePct, mergeHistories, outcomeVolume, PipeWithStatsSchema, pipeStatsQuery, periodRows, periodsHaveSpend, unavailableWords, type PipeStats } from "../src/lib/pipe-stats";
 
 const stats = (kind: "fleet" | "brand" | "offer", history: PipeStats["history"]): PipeStats =>
   PipeWithStatsSchema.parse({
@@ -129,5 +129,66 @@ describe("pipe impact on the client team", () => {
     expect(impactWords({ pointsDiff: 10.7, ratio: 2.15 })).toEqual({ points: "+10.7 pts", ratio: "×2.15" });
     expect(impactWords({ pointsDiff: null, ratio: null, pointsDiffUnavailableReason: "team_plus_pipe_no_input" })).toEqual({ points: null, ratio: null });
     expect(teamReasonWords("team_plus_pipe_no_input")).toBe("This pipe acted on nobody yet");
+  });
+});
+
+describe("pipe periods (PIPE-PERIODS-1012)", () => {
+  const row = (period: string, kind: string, label: string, counts: Record<string, number | null>, rate: number | null, spendUsd: number | null) => ({
+    period,
+    kind,
+    label,
+    startDate: "2026-01-01",
+    endDate: "2026-03-31",
+    counts,
+    ratesPct: { reachedFrom_to_outcomes: rate },
+    rateUnavailableReasons: { reachedFrom_to_outcomes: rate == null ? "no_input_yet" : null },
+    spendUsd,
+    costPerOutcomeUsd: null,
+  });
+  const periods = (spend: number | null) => ({
+    basis: "calendar_period",
+    countsDatedBy: { reachedFrom: "input_day", outcomes: "input_day" },
+    total: row("since_inception", "since_inception", "Since Aug 2024", { reachedFrom: 313, outcomes: 187 }, 59.74, spend),
+    quarters: [row("2026-Q1", "quarter", "Q1 2026", { reachedFrom: 81, outcomes: 60 }, 74.07, spend)],
+    months: [row("2026-10", "month", "Oct 2026", { reachedFrom: 0, outcomes: 0 }, null, spend)],
+  });
+  const parse = (p: unknown, impact?: unknown) =>
+    PipeWithStatsSchema.parse({
+      stats: {
+        scope: { kind: "brand" },
+        volumes: [],
+        spendUsd: null,
+        costPerOutcomeUsd: null,
+        roi: null,
+        history: [],
+        periods: p,
+        teamImpact: impact,
+      },
+    }).stats;
+
+  it("prints the served total first, then the picked grain in served order", () => {
+    const s = parse(periods(null));
+    expect(periodRows(s.periods!, "quarters").map((r) => r.label)).toEqual(["Since Aug 2024", "Q1 2026"]);
+    expect(periodRows(s.periods!, "months").map((r) => r.label)).toEqual(["Since Aug 2024", "Oct 2026"]);
+    expect(s.periods!.months[0].ratesPct.reachedFrom_to_outcomes).toBeNull();
+  });
+
+  it("shows money only when the pipe spends ours", () => {
+    expect(periodsHaveSpend(parse(periods(null)).periods!)).toBe(false);
+    expect(periodsHaveSpend(parse(periods(3.52)).periods!)).toBe(true);
+  });
+
+  it("reads the team impact periods with their points per period", () => {
+    const s = parse(null, {
+      available: true,
+      fromStepLabel: "Positive reply received",
+      toStepLabel: "Meeting booked",
+      rows: [],
+      impact: { pointsDiff: 8.33, ratio: 1.5 },
+      history: [],
+      periods: { ...periods(3.52), impactPointsDiff: { since_inception: 8.33, "2026-Q1": null } },
+    });
+    expect(s.periods).toBeNull();
+    expect(s.teamImpact?.periods?.impactPointsDiff?.since_inception).toBe(8.33);
   });
 });

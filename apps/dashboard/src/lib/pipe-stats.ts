@@ -54,6 +54,52 @@ const PipeStatsRateSchema = z
   .passthrough();
 export type PipeStatsRate = z.infer<typeof PipeStatsRateSchema>;
 
+/**
+ * PIPE-PERIODS-1012: the same figures per calendar period (owner 2026-10-12, Doc Dinners' hand-drawn
+ * "Since Dec 2024 / Q1 2026 / … / Oct 2026" table). NOT cumulative: each row counts its own period.
+ * Count keys are the block's volume keys, rate keys its rate keys; money is null when no spend of ours.
+ */
+const PipePeriodRowSchema = z
+  .object({
+    period: z.string(),
+    kind: z.string(),
+    label: z.string(),
+    startDate: z.string().nullish(),
+    endDate: z.string().nullish(),
+    counts: z.record(z.string(), z.number().nullable()),
+    ratesPct: z.record(z.string(), z.number().nullable()),
+    rateUnavailableReasons: z.record(z.string(), z.string().nullable()).optional(),
+    spendUsd: z.number().nullable(),
+    costPerOutcomeUsd: z.number().nullable(),
+  })
+  .passthrough();
+export type PipePeriodRow = z.infer<typeof PipePeriodRowSchema>;
+
+const PipePeriodsSchema = z
+  .object({
+    basis: z.string(),
+    total: PipePeriodRowSchema,
+    quarters: z.array(PipePeriodRowSchema),
+    months: z.array(PipePeriodRowSchema),
+    // teamImpact only: the pipe's impact in points per period key ("since_inception", "2026-Q1", "2026-10").
+    impactPointsDiff: z.record(z.string(), z.number().nullable()).optional(),
+  })
+  .passthrough();
+export type PipePeriods = z.infer<typeof PipePeriodsSchema>;
+
+export const PERIOD_GRAINS = ["quarters", "months"] as const;
+export type PeriodGrain = (typeof PERIOD_GRAINS)[number];
+
+/** The rows a period table prints: the served "Since …" total first, then the grain's rows in served order. */
+export function periodRows(periods: PipePeriods, grain: PeriodGrain): PipePeriodRow[] {
+  return [periods.total, ...periods[grain]];
+}
+
+/** Money columns only when some row carries a spend of ours (a customer team pipe serves null everywhere). */
+export function periodsHaveSpend(periods: PipePeriods): boolean {
+  return [periods.total, ...periods.quarters, ...periods.months].some((r) => r.spendUsd != null);
+}
+
 const ImpactRowSchema = z
   .object({
     key: z.string(),
@@ -86,6 +132,7 @@ const TeamImpactSchema = z
     toStepLabel: z.string(),
     rows: z.array(ImpactRowSchema),
     impact: ImpactSchema,
+    periods: PipePeriodsSchema.nullish(),
     history: z.array(
       z
         .object({
@@ -143,12 +190,14 @@ export const PipeStatsSchema = z
         available: z.boolean(),
         unavailableReason: z.string().nullish(),
         conversionRates: z.array(PipeStatsRateSchema).optional(),
+        periods: PipePeriodsSchema.nullish(),
       })
       .passthrough()
       .nullish(),
     // PIPE-TEAM-IMPACT-1012: on a platform pipe whose step a client team also works, "team alone"
     // vs "team + this pipe" on the people our campaigns brought, and the pipe's impact. Rendered as is.
     teamImpact: TeamImpactSchema.nullish(),
+    periods: PipePeriodsSchema.nullish(),
     history: z.array(PipeStatsPointSchema),
   })
   .passthrough();
