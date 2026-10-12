@@ -84,13 +84,30 @@ describe("the rules the page decides on", () => {
   it("sells the $99/month plan with its 3-day trial to the A/B arm only (owner 2026-10-10)", () => {
     const plan = wallCopy(199);
     expect(plan.creditUsd).toBe(99);
-    expect(plan.formTitle).toBe("Start your 3-day free trial");
-    expect(plan.cardNote).toBe("Your campaigns start with $99 of credit. Then $199 a month. Cancel anytime.");
-    expect(JSON.stringify(plan)).not.toMatch(/match|\$30|reload|[\u2013\u2014]/i);
+    expect(plan).toMatchObject({
+      formTitle: "Start your 3-day trial",
+      formSub: "One minute to set up.",
+      timerLabel: "Time left to claim your trial",
+      timerExtendedLabel: "We're giving you more time to start your trial",
+      cardTitle: "$99 of credit to start",
+      cardNote: "Your $199 plan starts in 3 days, or as soon as you use the $99. Pause or cancel anytime.",
+      cardCta: "Start my trial",
+      bannerCta: "Start my trial",
+      creditLine: "of credit to start",
+      bannerTitle: "of credit to start",
+    });
+    expect(wallCopy(99).cardNote).toBe("Your $99 plan starts in 3 days, or as soon as you use the $99. Pause or cancel anytime.");
+    // Owner 2026-10-12: "Nothing charged for 3 days" and "free" were misleading (the plan starts early once the credit is used).
+    expect(JSON.stringify(plan)).not.toMatch(/match|\$30|reload|free|nothing charged|[\u2013\u2014]/i);
     expect(wallCopy(null)).toEqual(wallCopy());
     // The card-saved event carries the arm on BOTH paths: the A/B test reads it.
     expect(WALL).toContain('posthog.capture("get_started_card_saved", { plan: "prepaid", lp_variant: arm.variant });');
     expect(WALL).toContain('posthog.capture("get_started_card_saved", { plan: "subscription", lp_variant: arm.variant });');
+    // The left panel's three lines, both arms (owner 2026-10-12: never the reductive "we write").
+    expect(WALL).toContain("`We find buyers in ${audience.name}, reach out and follow up.`");
+    expect(WALL).toContain('"We send from our own domains, never yours."');
+    expect(WALL).toContain('"Positive replies land in your inbox."');
+    expect(WALL).not.toContain("one email each");
     // The plan arm shows no amount picker: the prepaid top-up renders only off the plan branch.
     expect(WALL.indexOf("{arm.plan ? (")).toBeLessThan(WALL.indexOf("<PrepaidTopup"));
   });

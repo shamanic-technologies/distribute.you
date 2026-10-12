@@ -56,7 +56,7 @@ describe("Auth pages branding", () => {
     expect(panel).toContain("revenue in 24h");
     expect(panel).toContain("Revenue made easy.");
     expect(panel).toContain('{plan ? "From $99/month" : "The platform is free"}');
-    expect(panel).toContain('{plan && <p className="mt-4 text-sm font-medium text-gray-900">3-day free trial, cancel anytime</p>}');
+    expect(panel).toContain('{plan && <p className="mt-4 text-sm font-medium text-gray-900">3-day trial, pause or cancel anytime</p>}');
     expect(panel).toContain("const plan = useSubscriptionArm();");
     expect(panel).not.toContain("$1/day");
     expect(panel).not.toContain("$30");

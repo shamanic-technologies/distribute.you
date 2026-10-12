@@ -156,7 +156,7 @@ export function monthlyUsd(cents: number): string {
 }
 
 /** A prepaid card cannot start the free trial (billing `prepaid_card_trial_refused`). */
-export const PREPAID_CARD_TRIAL_REFUSAL = "Prepaid cards can't start a free trial. Use a debit or credit card.";
+export const PREPAID_CARD_TRIAL_REFUSAL = "Prepaid cards can't start a trial. Use a debit or credit card.";
 
 /** What a checkout refusal means, keyed on billing's machine `code`, never its English. */
 export function subscriptionCheckoutRefusal(code: unknown): string {

@@ -24,7 +24,7 @@
  *                 (Revolut widget or Stripe's embedded form); we match the first $100.
  *                 A visitor the homepage A/B test put in the `subscription` arm (owner
  *                 2026-10-10) saves a card instead and starts billing's $99/month plan
- *                 with its 3-day free trial: no amount, no match, no reload;
+ *                 with its 3-day trial: no amount, no match, no reload;
  *   4. launch   — the campaign set at the "Your campaign" step starts, its caps first
  *                 (`launch.ts`), and the page lands on it.
  */
@@ -150,7 +150,7 @@ export function AccountCardWall({
   const { createOrganization, setActive: setActiveOrg } = useOrganizationList();
 
   // The homepage A/B arm (owner 2026-10-10): `lp_variant=subscription` is sold the
-  // $99/month plan with its 3-day free trial, everyone else the prepaid credit.
+  // $99/month plan with its 3-day trial, everyone else the prepaid credit.
   const [arm] = useState(() => {
     const cookie = document.cookie;
     return { plan: isSubscriptionArm(cookie), variant: lpVariant(cookie), monthlyCents: pickedPlanCents(cookie) };
@@ -161,11 +161,7 @@ export function AccountCardWall({
   const [planTicked, setPlanTicked] = useState([false, false, false]);
   // The plan's boxes as ticked at the click, sent with the card form and the plan start.
   const planConsentRecord = useRef<PaymentConsentRecord | null>(null);
-  const planConsent = spendConsentLines({
-    proactive: plan.proactive.caps.maxBudget,
-    reactive: plan.reactive?.caps.maxBudget ?? null,
-    arm: { kind: "plan", monthlyUsd: Math.round(arm.monthlyCents / 100) },
-  });
+  const planConsent = spendConsentLines({ arm: { kind: "plan", monthlyUsd: Math.round(arm.monthlyCents / 100) } });
   const planName = arm.plan ? "subscription" : "prepaid";
 
   const [stage, setStage] = useState<Stage>("account");
@@ -748,9 +744,9 @@ export function AccountCardWall({
           </p>
           <ul className="k-fg2 mt-2.5 grid gap-1 text-[13px] leading-5">
             {[
-              `We write to the people in ${audience.name}, one email each.`,
-              "We send from our own warmed domains, never yours.",
-              "Interested replies land in your inbox.",
+              `We find buyers in ${audience.name}, reach out and follow up.`,
+              "We send from our own domains, never yours.",
+              "Positive replies land in your inbox.",
             ].map((line, i) => (
               <li key={line} className="gs-in flex gap-2" style={{ animationDelay: `${160 + i * 80}ms` }}>
                 <span className="mt-2 h-1 w-1 shrink-0 rounded-full bg-[var(--accent)]" aria-hidden="true" />
@@ -960,7 +956,7 @@ export function AccountCardWall({
                     {busy ? "Checking your payment..." : "Check my payment and launch"}
                   </button>
                 ) : (
-                  <PrepaidTopup busy={busy} matchNote={matchNote(account)} plan={plan} cta={(usd) => topupCta(usd, matchNote(account))} onPay={(c) => void pay(c)} />
+                  <PrepaidTopup busy={busy} matchNote={matchNote(account)} cta={(usd) => topupCta(usd, matchNote(account))} onPay={(c) => void pay(c)} />
                 )}
               </div>
             )}

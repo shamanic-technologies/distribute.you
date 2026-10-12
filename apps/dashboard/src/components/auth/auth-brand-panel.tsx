@@ -61,7 +61,7 @@ export function AuthBrandPanel() {
           <br />
           {plan ? "From $99/month" : "The platform is free"}
         </h2>
-        {plan && <p className="mt-4 text-sm font-medium text-gray-900">3-day free trial, cancel anytime</p>}
+        {plan && <p className="mt-4 text-sm font-medium text-gray-900">3-day trial, pause or cancel anytime</p>}
         <p className="mt-5 max-w-md text-lg leading-snug text-gray-500">
           We A/B test the templates, the AI models and the audiences on every
           campaign, and keep only what books meetings.
