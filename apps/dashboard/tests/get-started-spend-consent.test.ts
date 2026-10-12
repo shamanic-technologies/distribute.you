@@ -1,43 +1,44 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { topupCta } from "../src/lib/v2/get-started";
-import { capWords, consentRecord, spendConsentLines, TERMS_URL, TERMS_VERSION, CATALOG_URL } from "../src/lib/v2/spend-consent";
+import { consentRecord, spendConsentLines, statementAsShown, TERMS_URL, TERMS_VERSION, CATALOG_URL } from "../src/lib/v2/spend-consent";
 
 const read = (p: string) => readFileSync(new URL(`../${p}`, import.meta.url), "utf8");
-const day = (usd: number) => ({ amountCents: usd * 100, period: "daily" as const });
 
-describe("three statements ticked before the first payment, both A/B arms (owner 2026-10-11)", () => {
-  it("states each cap in the period the customer typed it, never a /30 pace", () => {
-    expect(capWords(day(20))).toBe("$20 a day");
-    expect(capWords({ amountCents: 9000, period: "monthly" })).toBe("$90 a month");
-    expect(capWords({ amountCents: 1000, period: "weekly" })).toBe("$10 a week");
+describe("three statements ticked before the first payment, both A/B arms (owner 2026-10-11, reworded 2026-10-12)", () => {
+  const COVERS =
+    "I understand that my credit covers my campaigns and what I use myself, as well as everything done on my account on my behalf to get me the best results: brand setup, onboarding, A/B testing and more, as detailed in your public prices.";
+  const TERMS = "I have read and accept the terms and conditions.";
+
+  it("the plan: what the credit covers, the ladder built from the plan amount, the terms", () => {
+    const lines = spendConsentLines({ arm: { kind: "plan", monthlyUsd: 99 } });
+    expect(lines.map(statementAsShown)).toEqual([
+      COVERS,
+      "I understand that each time my credit runs out, my plan upgrades automatically ($199, then $299, and so on) and my card is charged accordingly, so my campaigns keep running as I set them.",
+      TERMS,
+    ]);
+    expect(lines[0].link?.href).toBe(CATALOG_URL);
+    expect(lines[2].link?.href).toBe(TERMS_URL);
+    // Never a hardcoded ladder: a $199 plan climbs from $299.
+    expect(spendConsentLines({ arm: { kind: "plan", monthlyUsd: 199 } })[1].text).toContain("($299, then $399, and so on)");
   });
 
-  it("prepaid: the spend, the on-top costs, the same top-up added again with 12-month credit", () => {
-    const [spend, onTop, runsOut] = spendConsentLines({
-      proactive: day(24),
-      reactive: { amountCents: 1200, period: "daily" },
-      arm: { kind: "prepaid", topupUsd: 250 },
-    });
-    expect(spend.text).toBe("My campaigns spend up to $24 a day to find clients, and up to $12 a day more when prospects reply.");
-    expect(spend.link).toBeNull();
-    expect(onTop.text).toContain("AI chat, extra lead sourcing, new campaigns and payment fees");
-    expect(onTop.link?.href).toBe(CATALOG_URL);
-    expect(runsOut.text).toContain("$250 is added again automatically");
-    expect(runsOut.text).toContain("valid for 12 months");
-    expect(runsOut.link?.href).toBe(TERMS_URL);
+  it("prepaid: boxes 1 and 3 identical to the plan's, box 2 keeps its own reload sentence", () => {
+    const [covers, runsOut, terms] = spendConsentLines({ arm: { kind: "prepaid", topupUsd: 250 } });
+    expect(statementAsShown(covers)).toBe(COVERS);
+    expect(statementAsShown(terms)).toBe(TERMS);
+    expect(runsOut.text).toBe("When my credit runs out, $250 is added again automatically. Credit stays valid for 12 months.");
+    expect(runsOut.link).toBeNull();
   });
 
-  it("the plan: moves up one $100 step, no 12-month line (plan credit lasts its month)", () => {
-    const [spend, , runsOut] = spendConsentLines({ proactive: day(50), reactive: null, arm: { kind: "plan", monthlyUsd: 99 } });
-    expect(spend.text).toBe("My campaigns spend up to $50 a day to find clients.");
-    expect(runsOut.text).toContain("my plan moves up to $199 a month");
-    expect(runsOut.text).not.toContain("12 months");
-  });
-
-  it("no refund wording in the boxes (the Terms carry it)", () => {
+  it("no campaign cap, no refund wording, no em-dash in the boxes", () => {
     for (const arm of [{ kind: "prepaid", topupUsd: 100 }, { kind: "plan", monthlyUsd: 99 }] as const) {
-      for (const l of spendConsentLines({ proactive: day(20), reactive: null, arm })) expect(l.text.toLowerCase()).not.toContain("refund");
+      for (const l of spendConsentLines({ arm })) {
+        const t = statementAsShown(l);
+        expect(t.toLowerCase()).not.toContain("refund");
+        expect(t).not.toContain("My campaigns spend up to");
+        expect(t).not.toMatch(/[\u2013\u2014]/);
+      }
     }
   });
 
@@ -55,13 +56,12 @@ describe("three statements ticked before the first payment, both A/B arms (owner
     expect(src).toContain("disabled={off || !allTicked(ticked)}");
   });
 
-  it("both prepaid callers pass the launch plan and the match CTA", () => {
+  it("both prepaid callers pass the match CTA", () => {
     for (const f of ["src/components/v2/get-started/account-card-wall.tsx", "src/components/v2/get-started/org-launch.tsx"]) {
       const src = read(f);
       const at = src.indexOf("<PrepaidTopup");
       expect(at).toBeGreaterThan(-1);
       const tag = src.slice(at, src.indexOf("/>", at));
-      expect(tag).toContain("plan={plan}");
       expect(tag).toContain("topupCta(usd, matchNote(account))");
     }
   });
@@ -71,7 +71,7 @@ describe("three statements ticked before the first payment, both A/B arms (owner
     const card = wall.slice(wall.indexOf('{stage === "card" && !cardSecret && ('), wall.indexOf('{stage === "card" && cardSecret && ('));
     expect(card).toContain("<SpendConsent lines={planConsent}");
     expect(card).toContain("disabled={busy || !allTicked(planTicked)}");
-    expect(wall).toContain('arm: { kind: "plan", monthlyUsd: Math.round(arm.monthlyCents / 100) }');
+    expect(wall).toContain('spendConsentLines({ arm: { kind: "plan", monthlyUsd: Math.round(arm.monthlyCents / 100) } })');
   });
 
   it("asks the email consent once: remembered across the Google round trip, not asked again at the credit step", () => {
@@ -93,11 +93,12 @@ describe("three statements ticked before the first payment, both A/B arms (owner
 
 describe("the ticked statements reach billing with the payment (billing PaymentConsent, owner 2026-10-11)", () => {
   it("records the statements as read, link words included, with the terms version and time", () => {
-    const lines = spendConsentLines({ proactive: day(20), reactive: null, arm: { kind: "prepaid", topupUsd: 100 } });
+    const lines = spendConsentLines({ arm: { kind: "plan", monthlyUsd: 99 } });
     const r = consentRecord(lines, new Date("2026-10-11T07:00:00Z"), "UA");
     expect(r.statements).toHaveLength(3);
-    expect(r.statements[1].endsWith("at our public prices.")).toBe(true);
-    expect(r.statements[2].endsWith("See the terms.")).toBe(true);
+    expect(r.statements[0].endsWith("as detailed in your public prices.")).toBe(true);
+    expect(r.statements[1]).toContain("($199, then $299, and so on)");
+    expect(r.statements[2]).toBe("I have read and accept the terms and conditions.");
     expect(r).toMatchObject({ terms_version: TERMS_VERSION, accepted_at: "2026-10-11T07:00:00.000Z", user_agent: "UA" });
     expect(TERMS_VERSION).toBe("2026-10-11");
   });

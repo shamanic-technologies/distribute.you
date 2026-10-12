@@ -13,7 +13,6 @@
 import { useState } from "react";
 import { DEFAULT_RELOAD_THRESHOLD_USD, TOPUP_CHOICES_USD, parseTopupUsd } from "@/lib/v2/get-started";
 import { consentRecord, spendConsentLines, type PaymentConsentRecord } from "@/lib/v2/spend-consent";
-import type { SignupLaunchPlan } from "@/lib/v2/signup-campaign";
 import { SpendConsent, allTicked } from "./spend-consent";
 
 export interface TopupChoice {
@@ -102,14 +101,11 @@ export function PrepaidTopup({
   busy,
   disabled = false,
   matchNote,
-  plan,
   cta,
   onPay,
 }: {
   busy: boolean;
   disabled?: boolean;
-  /** The campaign set at the "Your campaign" step: its caps are the first statement's figures. */
-  plan: SignupLaunchPlan;
   /** The match, in billing's figures for this org. */
   matchNote: string;
   /** The button's words for an amount ("Pay $100 + get $100 free"). */
@@ -125,8 +121,6 @@ export function PrepaidTopup({
   const problem = shown && "problem" in firstParsed ? firstParsed.problem : null;
   const off = busy || disabled;
   const lines = spendConsentLines({
-    proactive: plan.proactive.caps.maxBudget,
-    reactive: plan.reactive?.caps.maxBudget ?? null,
     // Until a valid amount is typed, the statement names the smallest one we take.
     arm: { kind: "prepaid", topupUsd: "usd" in firstParsed ? firstParsed.usd : TOPUP_CHOICES_USD[0] },
   });

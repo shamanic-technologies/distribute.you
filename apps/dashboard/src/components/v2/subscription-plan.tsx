@@ -46,7 +46,7 @@ function shortDate(iso: string | null): string | null {
 function planState(sub: Subscription): { running: boolean; label: string } {
   if (sub.cancel_at_period_end) return { running: false, label: "Cancelling" };
   if (sub.paused) return { running: false, label: "Paused" };
-  if (sub.status === "trialing") return { running: true, label: "Free trial" };
+  if (sub.status === "trialing") return { running: true, label: "Trial" };
   if (sub.status === "active") return { running: true, label: "Active" };
   if (sub.status === "past_due") return { running: false, label: "Payment failed" };
   return { running: false, label: "Ended" };
@@ -290,7 +290,7 @@ function planRefusal(kind: PlanWrite, code: string | undefined, trialing: boolea
   if (kind === "start") {
     if (code === "first_charge_declined")
       return trialing
-        ? "Your card was declined. Nothing was charged. Your free trial goes on."
+        ? "Your card was declined. Nothing was charged. Your trial goes on."
         : "Your card was declined. Nothing was charged. Your plan stays as it is.";
     if (code === "amount_not_upgrade") return "Pick a higher amount to upgrade now.";
     if (code === "start_now_in_progress") return "Your payment is already on its way.";
@@ -361,7 +361,7 @@ export function ChargeNowDialog({
           <p className="text-[13px] font-medium">We charge {amount} to your card today.</p>
           <ul className="k-inset mt-3 divide-y divide-[var(--line-subtle)] rounded-lg">
             {[
-              trialing ? "Your free trial ends now." : "Your new plan starts today.",
+              trialing ? "Your trial ends now." : "Your new plan starts today.",
               `Your ${amount} becomes credit right away.`,
               "Your next charge is in one month.",
             ].map((line) => (
@@ -372,7 +372,7 @@ export function ChargeNowDialog({
           </ul>
           <div className="mt-5 flex items-center justify-end gap-2">
             <button type="button" onClick={onKeep} disabled={pending} className="k-btn-ghost">
-              {trialing ? "Keep my free trial" : "Keep my current plan"}
+              {trialing ? "Keep my trial" : "Keep my current plan"}
             </button>
             <button type="button" onClick={onConfirm} disabled={pending} className={`k-btn-accent ${pending ? "cursor-wait" : ""}`}>
               {pending ? "Charging..." : `Pay ${amount} now`}

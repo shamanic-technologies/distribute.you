@@ -95,7 +95,7 @@ describe("signup-facing surfaces sell the prepaid offer", () => {
   ];
   const RETIRED = [/\$30/, /\$1 ?\/ ?day/, /\$1 (a|per) day/, /from \$1\b/i, /\$99/, /free trial/i, /3 days are free/i];
   const ALWAYS_RETIRED = [/\$30/, /\$1 ?\/ ?day/, /\$1 (a|per) day/, /from \$1\b/i, /3 days are free/i];
-  const PLAN_ONLY = [/\$99/, /free trial/i];
+  const PLAN_ONLY = [/\$99/, /free trial/i, /3-day trial/i];
 
   for (const rel of STATIC) {
     it(`${rel} promises no $30 and no $1/day, and the plan only to its arm`, () => {
