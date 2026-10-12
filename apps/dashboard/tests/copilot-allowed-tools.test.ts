@@ -66,6 +66,10 @@ describe("Copilot allowed tools", () => {
     for (const t of ["set_funnel_caps", "stop_funnel_campaign"]) expect(tools).toContain(t);
   });
 
+  it("follows the user up later through our own outreach, started by the agent itself (owner 2026-10-12)", () => {
+    for (const t of ["create_followup", "update_followup", "cancel_followup", "list_followups", "fire_followup"]) expect(tools).toContain(t);
+  });
+
   it("lists each tool once", () => {
     expect(new Set(tools).size).toBe(tools.length);
   });
