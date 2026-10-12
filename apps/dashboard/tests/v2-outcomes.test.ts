@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
-import { outcomeOf, outcomeOfBucket, outcomesOf } from "../src/lib/v2/outcomes";
+import { byDepth, outcomeOf, outcomeOfBucket, outcomesOf } from "../src/lib/v2/outcomes";
 import { BrandOutcomesSchema, OutcomePeopleSchema, reachedBuckets, stepStatOf } from "../src/lib/v2/outcome-people";
 
 const read = (p: string) => readFileSync(join(__dirname, "..", p), "utf8");
@@ -32,6 +32,19 @@ describe("outcomes (owner 2026-10-10): one per step a running campaign lands on"
     // A step no service lists people for: named with its served label, never guessed.
     expect(outcomeOf("x", "some_new_step", "Some new step")).toEqual({ key: "some_new_step", label: "Some new step", items: { kind: "unavailable" } });
     expect(outcomeOf("x", null)).toBeNull();
+  });
+
+  it("sorts outcomes from the most advanced (paid client) to the least (lead found)", () => {
+    const keys = ["conversation", "meeting_booked", "lead_found", "meeting_attended", "paid_client", "website_visit"];
+    const sorted = byDepth(keys.map((k) => ({ outcome: outcomeOf(null, k)! })));
+    expect(sorted.map((o) => o.outcome.label)).toEqual([
+      "Paid clients",
+      "Meetings attended",
+      "Meetings booked",
+      "Positive replies",
+      "Website visits",
+      "Leads found",
+    ]);
   });
 
   it("lists each step once, in campaign order", () => {

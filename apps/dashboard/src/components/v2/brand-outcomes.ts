@@ -6,7 +6,7 @@ import { useAuthQuery } from "@/lib/use-auth-query";
 import { getAudienceSnapshot, getPublicCatalogueSteps } from "@/lib/api";
 import { useStaffMode } from "@/lib/use-staff-mode";
 import { useOngoingCampaigns, type OngoingOutcome } from "@/components/v2/ongoing-campaigns";
-import { outcomeOfBucket } from "@/lib/v2/outcomes";
+import { byDepth, outcomeOfBucket } from "@/lib/v2/outcomes";
 import { reachedBuckets, stepStatOf, type OutcomeStepStat } from "@/lib/v2/outcome-people";
 
 /** One outcome the brand has: what its ON campaigns land on, and what its own tools state, campaigns or not. */
@@ -18,8 +18,9 @@ export interface BrandOutcome extends OngoingOutcome {
 /**
  * EVERY outcome of the brand (owner 2026-10-11: « tous mes outcomes … même s'ils ne
  * viennent pas de campaigns distribute »): the steps the selected offer's ON campaigns
- * land on, in campaign order, then every step crm-service states people for that no
- * campaign produces, in its funnel order. One read for the sidebar and the Overview.
+ * land on, plus every step crm-service states people for that no campaign produces,
+ * most advanced first (Paid clients down to Leads found, owner 2026-10-12). One read
+ * for the sidebar and the Overview.
  */
 export function useBrandOutcomeList(orgId: string, brandId: string, offerId: string | null) {
   const ongoing = useOngoingCampaigns(orgId, brandId, offerId);
@@ -38,7 +39,7 @@ export function useBrandOutcomeList(orgId: string, brandId: string, offerId: str
       if (out.some((o) => o.outcome.key === outcome.key)) continue;
       out.push({ outcome, campaigns: [], funnelCampaigns: [], all: stepStatOf(allQ.data, bucket) });
     }
-    return out;
+    return byDepth(out);
   }, [ongoing.outcomes, allQ.data]);
   // Settled once the campaigns AND the all-sources read have answered (a failed read settles too).
   const settled = ongoing.settled && (allQ.data !== undefined || allQ.isError);
