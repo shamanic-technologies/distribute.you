@@ -32,6 +32,7 @@ import {
   type PeopleList,
   type PersonTimeline,
 } from "./people-conversations";
+import { ApiCallDetailSchema, type ApiCallDetail } from "./api-calls";
 import { z } from "zod";
 import { BrandLinkedinPageSchema, type BrandLinkedinPage } from "./v2/brand-linkedin-page";
 import { LinkedinFeedResponseSchema, toLinkedinFeedPage, type LinkedinFeedPage } from "./v2/linkedin-post-view";
@@ -674,6 +675,21 @@ export async function getPersonTimeline(brandId: string, ref: string, token?: st
   if (!parsed.success) {
     console.error("[api] getPersonTimeline response shape mismatch", parsed.error.flatten());
     throw new Error("getPersonTimeline returned an unexpected shape");
+  }
+  return parsed.data;
+}
+
+/**
+ * One API / MCP call a person made with their key, whole (crm-service, gateway passthrough,
+ * staff Unibox scope): the request and our answer. Keyed by the thread item's `ref.callId`.
+ */
+export async function getPersonApiCall(brandId: string, callId: string, token?: string): Promise<ApiCallDetail> {
+  const qs = new URLSearchParams({ brandId });
+  const raw = await apiCall<unknown>(`/orgs/people/api-calls/${encodeURIComponent(callId)}?${qs.toString()}`, { token });
+  const parsed = ApiCallDetailSchema.safeParse(raw);
+  if (!parsed.success) {
+    console.error("[api] getPersonApiCall response shape mismatch", { callId, issues: parsed.error.flatten() });
+    throw new Error("getPersonApiCall returned an unexpected shape");
   }
   return parsed.data;
 }
