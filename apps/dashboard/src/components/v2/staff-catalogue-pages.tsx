@@ -9,6 +9,7 @@ import { useRowKeys } from "@/components/v2/records";
 import { CatalogueMark } from "@/components/v2/catalogue-mark";
 import { useSelectedOffer } from "@/components/v2/selected-offer";
 import { PipeStatsSection, SameLegSection } from "@/components/v2/pipe-stats-section";
+import { formatRatePct } from "@/lib/pipe-stats";
 import { useOngoingCatalogue, useStaffCatalogueList, useStaffCatalogueObject, staffCatalogueObjectKey } from "@/components/v2/staff-catalogue-data";
 import { getStaffCatalogueObject } from "@/lib/api";
 import { useOrgQueryGate } from "@/lib/use-auth-query";
@@ -351,7 +352,7 @@ export function Kpi({ label, children }: { label: string; children: React.ReactN
 
 function pct(v: number | null | undefined): React.ReactNode {
   if (v == null) return null;
-  return `${v > 0 && v < 0.1 ? "<0.1" : v.toFixed(v < 10 ? 1 : 0)}%`;
+  return formatRatePct(v);
 }
 
 /**
