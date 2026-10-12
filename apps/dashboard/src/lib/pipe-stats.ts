@@ -17,6 +17,7 @@
  * Alias-free (zod only) so it carries real unit tests.
  */
 import { z } from "zod";
+import { formatRatePct as formatLegRatePct, roundLegRatePct } from "./brand-conversion-rates";
 
 export const PIPE_STATS_SCOPES = ["fleet", "brand", "offer"] as const;
 export type PipeStatsScope = (typeof PIPE_STATS_SCOPES)[number];
@@ -148,8 +149,8 @@ export type TeamImpact = z.infer<typeof TeamImpactSchema>;
 
 /** A served impact in words: "+8.3 pts (×1.5)"; the reason when a side is missing. */
 export function impactWords(impact: TeamImpact["impact"]): { points: string | null; ratio: string | null } {
-  const pts = impact.pointsDiff == null ? null : `${impact.pointsDiff > 0 ? "+" : ""}${impact.pointsDiff.toFixed(1).replace(/\.0$/, "")} pts`;
-  const ratio = impact.ratio == null ? null : `×${impact.ratio.toFixed(2).replace(/0$/, "").replace(/\.0$/, "")}`;
+  const pts = impact.pointsDiff == null ? null : formatPoints(impact.pointsDiff);
+  const ratio = impact.ratio == null ? null : `×${impact.ratio.toFixed(impact.ratio < 10 ? 1 : 0).replace(/\.0$/, "")}`;
   return { points: pts, ratio };
 }
 
@@ -220,10 +221,18 @@ export function outcomeVolume(stats: PipeStats) {
   return stats.volumes.find((v) => v.role === "outcome") ?? null;
 }
 
-/** A served percent as the page prints it: one decimal, a non-zero rate that rounds to 0 reads `<0.1%`. */
+/**
+ * A served percent as the page prints it: the owner's rate rule (#4756), a whole percent, a
+ * decimal only below 1% (`roundLegRatePct`); a non-zero rate that still rounds to 0 reads `<0.1%`.
+ */
 export function formatRatePct(pct: number): string {
   if (pct > 0 && pct < 0.05) return "<0.1%";
-  return `${pct.toFixed(1).replace(/\.0$/, "")}%`;
+  return formatLegRatePct(pct);
+}
+
+/** A served difference in percentage points, same rule as the rates it compares: "+8 pts". */
+export function formatPoints(pts: number): string {
+  return `${pts > 0 ? "+" : pts < 0 ? "-" : ""}${roundLegRatePct(Math.abs(pts))} pts`;
 }
 
 /**

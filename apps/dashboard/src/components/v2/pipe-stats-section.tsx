@@ -14,6 +14,7 @@ import {
   impactWords,
   teamOnOurLeadsRate,
   teamReasonWords,
+  formatPoints,
   formatRatePct,
   mergeHistories,
   outcomeVolume,
@@ -829,7 +830,7 @@ function TeamImpactPeriods({ t, periods, scope }: { t: TeamImpact; periods: Pipe
                       <ImpactCells key={x.rate} row={row} side={x} />
                     ))}
                     <td className={TD}>
-                      {pts == null ? <Dash /> : <span className={pts > 0 ? "text-[var(--run)]" : ""}>{`${pts > 0 ? "+" : ""}${pts.toFixed(1).replace(/\.0$/, "")} pts`}</span>}
+                      {pts == null ? <Dash /> : <span className={pts > 0 ? "text-[var(--run)]" : ""}>{formatPoints(pts)}</span>}
                     </td>
                     {money && <td className={TD}>{usd(row.spendUsd)}</td>}
                     {money && <td className={TD}>{usd(row.costPerOutcomeUsd)}</td>}

@@ -74,7 +74,10 @@ describe("pipe conversion rates", () => {
       },
     }).stats;
     expect(s.conversionRates?.[0].ratePct).toBe(62.5);
-    expect(formatRatePct(62.5)).toBe("62.5%");
+    expect(formatRatePct(62.5)).toBe("63%");
+    expect(formatRatePct(59.74)).toBe("60%");
+    expect(formatRatePct(12.77)).toBe("13%");
+    expect(formatRatePct(0.45)).toBe("0.5%");
     expect(formatRatePct(20)).toBe("20%");
     expect(formatRatePct(0.01)).toBe("<0.1%");
     expect(formatRatePct(0)).toBe("0%");
@@ -125,8 +128,9 @@ describe("client team on the replies we brought", () => {
 
 describe("pipe impact on the client team", () => {
   it("says the served impact in words", () => {
-    expect(impactWords({ pointsDiff: 8.33, ratio: 1.5 })).toEqual({ points: "+8.3 pts", ratio: "×1.5" });
-    expect(impactWords({ pointsDiff: 10.7, ratio: 2.15 })).toEqual({ points: "+10.7 pts", ratio: "×2.15" });
+    expect(impactWords({ pointsDiff: 8.33, ratio: 1.5 })).toEqual({ points: "+8 pts", ratio: "×1.5" });
+    expect(impactWords({ pointsDiff: 10.7, ratio: 2.16 })).toEqual({ points: "+11 pts", ratio: "×2.2" });
+    expect(impactWords({ pointsDiff: -66.67, ratio: 0.33 })).toEqual({ points: "-67 pts", ratio: "×0.3" });
     expect(impactWords({ pointsDiff: null, ratio: null, pointsDiffUnavailableReason: "team_plus_pipe_no_input" })).toEqual({ points: null, ratio: null });
     expect(teamReasonWords("team_plus_pipe_no_input")).toBe("This pipe acted on nobody yet");
   });
