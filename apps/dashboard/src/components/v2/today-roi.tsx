@@ -16,12 +16,14 @@ import { ExpectedLabel } from "@/components/v2/offer-sales-paths";
 import { CompanyMark } from "@/components/v2/people-bits";
 import { EmptyNote, Initials, SectionTitle, Shimmer } from "@/components/v2/ui";
 import type { ExpectedConversion } from "@/lib/expected-return";
+import { formatRatePct } from "@/lib/pipe-stats";
 
 export const WORTH_EACH_TIP =
   "Expected, not measured yet. The chance one person at this step becomes a paying client, times what one client is worth to you.";
 
 // A chance that rounds to 0.0% but is not zero reads "<0.1%", never a false 0.0%.
-const pct = (v: number) => (v > 0 && v < 0.05 ? "<0.1%" : `${v < 10 ? v.toFixed(1) : Math.round(v)}%`);
+// Owner rule (#4756): a whole percent, a decimal only below 1%. One shared formatter.
+const pct = formatRatePct;
 const dash = <span className="k-fg4">—</span>;
 
 /** The (i) on % Conversion (owner 2026-10-11: a rate is never empty, on a stated hypothesis). */

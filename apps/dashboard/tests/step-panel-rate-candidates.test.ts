@@ -30,7 +30,7 @@ describe("candidateLines (owner 2026-10-08: every rate weighed, the kept one mar
     expect(candidateLines([c({ basis: "median", ratePct: 12, kept: true }), c({ basis: "default", ratePct: 20 })])).toEqual([
       { key: "median", text: "Median of our clients: 12%", kept: true },
     ]);
-    expect(candidateLines([c({ basis: "default", ratePct: 4.5, kept: true })])[0].text).toBe("Industry average: 4.5%");
+    expect(candidateLines([c({ basis: "default", ratePct: 4.5, kept: true })])[0].text).toBe("Industry average: 5%");
   });
 });
 

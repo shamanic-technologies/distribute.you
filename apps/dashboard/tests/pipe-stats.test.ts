@@ -80,6 +80,9 @@ describe("pipe conversion rates", () => {
     expect(formatRatePct(0.45)).toBe("0.5%");
     expect(formatRatePct(20)).toBe("20%");
     expect(formatRatePct(0.01)).toBe("<0.1%");
+    expect(formatRatePct(99.6)).toBe(">99%");
+    expect(formatRatePct(100)).toBe("100%");
+    expect(formatRatePct(8.3)).toBe("8%");
     expect(formatRatePct(0)).toBe("0%");
   });
 });

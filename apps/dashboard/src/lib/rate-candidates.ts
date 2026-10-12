@@ -1,3 +1,4 @@
+import { formatRatePct } from "./pipe-stats";
 /**
  * The step panel's "How we price it" lines (owner 2026-10-08): under each leg, every rate
  * features-service weighed for it, one line each, the kept one marked.
@@ -26,7 +27,8 @@ export type RateCandidate = {
 export type CandidateLine = { key: RateCandidateBasis; text: string; kept: boolean };
 
 // A rate that rounds to 0.0% but is not zero reads "<0.1%", never a false 0.0%.
-const pct = (v: number) => (v > 0 && v < 0.05 ? "<0.1%" : `${v < 10 ? v.toFixed(1) : Math.round(v)}%`);
+// Owner rule (#4756): a whole percent, a decimal only below 1%. One shared formatter.
+const pct = formatRatePct;
 const count = (n: number) => n.toLocaleString("en-US");
 
 const MEASURED_WHERE: Partial<Record<RateCandidateBasis, string>> = {

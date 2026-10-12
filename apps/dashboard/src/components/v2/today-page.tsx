@@ -71,6 +71,7 @@ import {
 } from "@/components/v2/people-bits";
 import { RoiLabel } from "@/components/v2/roi-label";
 import { expectedReasonWords, roiToShow } from "@/lib/expected-return";
+import { formatRatePct } from "@/lib/pipe-stats";
 
 /** Bars for a short window, a line for a long one (30 bars do not fit a tile). */
 function Trend({ values, line = false, className = "" }: { values: number[] | null; line?: boolean; className?: string }) {
@@ -90,7 +91,8 @@ function cumulative(daily: { date: string; cumulativeCount?: number }[]): number
   return out as number[];
 }
 // A rate that rounds to 0.0% but is not zero reads "<0.1%", never a false 0.0%.
-const pct = (v: number) => (v > 0 && v < 0.05 ? "<0.1%" : `${v < 10 || v > 99 ? v.toFixed(1) : Math.round(v)}%`);
+// Owner rule (#4756): a whole percent, a decimal only below 1%. One shared formatter.
+const pct = formatRatePct;
 /** One column per stat tile on a wide screen, so the row always spans the full width. */
 const STAT_GRID_COLS = {
   4: "md:grid-cols-4",

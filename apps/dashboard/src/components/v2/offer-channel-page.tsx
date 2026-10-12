@@ -21,6 +21,7 @@ import { V2AudiencesTable } from "@/components/v2/audiences-table";
 import { useAudienceTable } from "@/components/v2/use-audience-table";
 import { V2Page, useOfferName, type V2Tab } from "@/components/v2/setup-pages";
 import { EmptyNote, Figure, SectionTitle, Shimmer, StatTile } from "@/components/v2/ui";
+import { formatRatePct } from "@/lib/pipe-stats";
 
 const CHANNEL_TABS: { key: V2ChannelTab; label: string }[] = [
   { key: "overview", label: "Overview" },
@@ -31,7 +32,8 @@ const CHANNEL_TABS: { key: V2ChannelTab; label: string }[] = [
 ];
 
 // A rate that rounds to 0.0% but is not zero reads "<0.1%", never a false 0.0%.
-const pct = (v: number) => (v > 0 && v < 0.05 ? "<0.1%" : `${v < 10 || v > 99 ? v.toFixed(1) : Math.round(v)}%`);
+// Owner rule (#4756): a whole percent, a decimal only below 1%. One shared formatter.
+const pct = formatRatePct;
 
 /**
  * One channel of an offer, opened from the offer's Channels table. Cold email is the only
