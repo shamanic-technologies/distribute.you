@@ -14,18 +14,25 @@ const POSTHOG_AUTH_KEY_PREFIX = "distribute_posthog_auth";
 
 export function PostHogAuthTracker() {
   const { isSignedIn, orgId, userId } = useAuth();
-  const { user } = useUser();
-  const identifiedUserId = useRef<string | null>(null);
+  const { user, isLoaded: userLoaded } = useUser();
+  const identified = useRef<string | null>(null);
 
   useEffect(() => {
-    if (!isSignedIn || !userId) return;
+    // Wait for Clerk to load the profile: `useAuth` resolves before `useUser`,
+    // and identifying on that first render sent an empty email that was never
+    // re-sent, so a third of signed-in people had no email in PostHog and the
+    // visit recap read them as "Not signed up" (owner 2026-10-12). The signup
+    // pings below need the email too.
+    if (!isSignedIn || !userId || !userLoaded || !user) return;
 
-    const email = user?.primaryEmailAddress?.emailAddress;
-    if (identifiedUserId.current !== userId) {
-      identifiedUserId.current = userId;
+    const email = user.primaryEmailAddress?.emailAddress;
+    // Identify again whenever the email or the org changes.
+    const identity = `${userId}|${email ?? ""}|${orgId ?? ""}`;
+    if (identified.current !== identity) {
+      identified.current = identity;
       posthog.identify(userId, {
         email,
-        name: user?.fullName,
+        name: user.fullName,
         org_id: orgId,
       });
     }
@@ -108,7 +115,7 @@ export function PostHogAuthTracker() {
         }).catch(() => {});
       }
     }
-  }, [isSignedIn, orgId, user, userId]);
+  }, [isSignedIn, orgId, user, userId, userLoaded]);
 
   return null;
 }

@@ -10,6 +10,8 @@
  * message text out. `visit-recap-job.ts` fetches the events and sends.
  */
 
+import { clerkUserIdFromDistinctId } from "./owner-ping";
+
 export interface VisitEvent {
   timestamp: string;
   event: string;
@@ -31,6 +33,30 @@ export interface VisitEvent {
   personName: string | null;
   /** The credit amount a `get_started_topup_opened` event opened the card form for. */
   topupUsd: number | null;
+  /** PostHog distinct id: the Clerk user id (`user_…`) once the browser signed in. */
+  distinctId: string | null;
+}
+
+/**
+ * The account behind a signed-in visit, read from Clerk (name, email) and
+ * brand-service (the brands of the user's orgs). PostHog misses the email of
+ * about a third of signed-in people (the identify call used to fire before Clerk
+ * loaded the profile), and never knew the brand (owner 2026-10-12: "si ça a
+ * signup tu devrais pouvoir me dire qui c'est et quelle brand").
+ */
+export interface VisitAccount {
+  name: string | null;
+  email: string | null;
+  brands: { name: string | null; domain: string | null }[];
+}
+
+/** The Clerk user a visit belongs to, from any of its events' distinct ids. */
+export function visitClerkUserId(events: VisitEvent[]): string | null {
+  for (const e of events) {
+    const id = clerkUserIdFromDistinctId(e.distinctId);
+    if (id) return id;
+  }
+  return null;
 }
 
 /**
@@ -226,14 +252,17 @@ export function companyDomain(website: string | null, email: string | null): str
   return fromEmail && DOMAIN.test(fromEmail) ? fromEmail : null;
 }
 
-/** The company domain and the signed-up person behind a visit, if any. */
-export function visitPerson(events: VisitEvent[]): VisitPerson | null {
-  const website = events.find((e) => e.website)?.website ?? null;
+/**
+ * The company domain and the signed-up person behind a visit, if any: the site
+ * typed in the visit, else the account's brand, else the email's domain.
+ */
+export function visitPerson(events: VisitEvent[], account: VisitAccount | null = null): VisitPerson | null {
+  const website = events.find((e) => e.website)?.website ?? account?.brands.find((b) => b.domain)?.domain ?? null;
   const person = events.find((e) => e.email);
-  const email = person?.email ?? null;
+  const email = person?.email ?? account?.email ?? null;
   const domain = companyDomain(website, email);
   if (!domain) return null;
-  const [firstName, ...rest] = (person?.personName ?? "").trim().split(/\s+/);
+  const [firstName, ...rest] = (person?.personName ?? account?.name ?? "").trim().split(/\s+/);
   return { domain, email, firstName: firstName || null, lastName: rest.join(" ") || null };
 }
 
@@ -280,32 +309,46 @@ export function formatAgo(ms: number): string {
   return `${Math.round(h / 24)} days ago`;
 }
 
-/** Who did it (owner 2026-10-07): "Jane Doe · jane@acme.com" when the visit carries a name or an email. */
-export function whoLine(events: VisitEvent[]): string | null {
-  const name = events.find((e) => e.personName?.trim())?.personName?.trim();
-  const email = events.find((e) => e.email)?.email;
+/** Who did it (owner 2026-10-07): "Jane Doe · jane@acme.com" from PostHog, else from the account. */
+export function whoLine(events: VisitEvent[], account: VisitAccount | null = null): string | null {
+  const name = events.find((e) => e.personName?.trim())?.personName?.trim() ?? account?.name?.trim();
+  const email = events.find((e) => e.email)?.email ?? account?.email;
   const who = [name, email].filter(Boolean).join(" · ");
   return who ? escapeHtml(who) : null;
 }
 
+/** "Brand: Acme (acme.com)", "No brand yet". */
+export function brandLine(account: VisitAccount): string {
+  const names = account.brands.map((b) => (b.name && b.domain ? `${b.name} (${b.domain})` : (b.name ?? b.domain))).filter(Boolean);
+  return names.length ? escapeHtml(`Brand: ${names.join(", ")}`) : "No brand yet";
+}
+
 /**
  * The lines that open a recap: that the visitor is back (how many visits, last
- * seen when), then who they are; a returner with no name or email never signed up.
+ * seen when), then who they are and their brand. "Not signed up" only for a
+ * visit with no account at all: no Clerk id, no completed sign-in, no email.
  */
-export function openingLines(r: ReturningVisit | null, events: VisitEvent[]): string[] {
+export function openingLines(r: ReturningVisit | null, events: VisitEvent[], account: VisitAccount | null = null): string[] {
   const lines: string[] = [];
   if (r) {
     const start = Math.min(...events.map((e) => Date.parse(e.timestamp)));
     lines.push(`🔁 <b>Back</b> · visit ${r.priorVisits + 1} in ${RETURNING_LOOKBACK_DAYS} days · last seen ${formatAgo(start - Date.parse(r.lastSeenAt))}`);
   }
-  const who = whoLine(events);
+  const who = whoLine(events, account);
   if (who) lines.push(who);
-  else if (r) lines.push("Not signed up");
+  else if (visitClerkUserId(events)) lines.push("Signed in, account not found");
+  else if (r && !events.some((e) => SIGNUP_DONE.has(e.event))) lines.push("Not signed up");
+  if (account) lines.push(brandLine(account));
   return lines;
 }
 
 /** The Telegram message (parse_mode HTML) for one visit, events in time order. */
-export function visitRecap(events: VisitEvent[], companyLines: string[] = [], returning: ReturningVisit | null = null): string {
+export function visitRecap(
+  events: VisitEvent[],
+  companyLines: string[] = [],
+  returning: ReturningVisit | null = null,
+  account: VisitAccount | null = null,
+): string {
   const sorted = [...events].sort((a, b) => Date.parse(a.timestamp) - Date.parse(b.timestamp));
   const first = sorted.find((e) => e.event === "$pageview") ?? sorted[0];
   const time = new Map<Stage, number>();
@@ -349,7 +392,7 @@ export function visitRecap(events: VisitEvent[], companyLines: string[] = [], re
         ? `<b>Opened the ${checkout}, did not pay ❌</b>`
         : `<b>Left at ${furthest.toLowerCase()} ❌</b>`;
 
-  const lines = openingLines(returning, sorted);
+  const lines = openingLines(returning, sorted, account);
   lines.push(`${countryLabel(first.country)} · ${formatDuration(total)} · ${outcome}`);
   lines.push(escapeHtml(sourceLine(first)));
   if (website) lines.push(`Typed ${escapeHtml(website)}`);
