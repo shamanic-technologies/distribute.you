@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { mergeHistories, outcomeVolume, PipeWithStatsSchema, pipeStatsQuery, unavailableWords, type PipeStats } from "../src/lib/pipe-stats";
+import { formatRatePct, mergeHistories, outcomeVolume, PipeWithStatsSchema, pipeStatsQuery, unavailableWords, type PipeStats } from "../src/lib/pipe-stats";
 
 const stats = (kind: "fleet" | "brand" | "offer", history: PipeStats["history"]): PipeStats =>
   PipeWithStatsSchema.parse({
@@ -55,5 +55,28 @@ describe("pipe stats reader", () => {
   it("says a missing figure's reason in words", () => {
     expect(unavailableWords("no_outcomes_yet")).toBe("No outcomes yet");
     expect(unavailableWords(null)).toBe("Learning");
+  });
+});
+
+describe("pipe conversion rates", () => {
+  it("parses the served rates and prints percents", () => {
+    const s = PipeWithStatsSchema.parse({
+      stats: {
+        scope: { kind: "fleet" },
+        volumes: [],
+        spendUsd: 1,
+        costPerOutcomeUsd: null,
+        roi: null,
+        conversionRates: [
+          { key: "handed_to_actedOn", fromKey: "handed", toKey: "actedOn", label: "Positive reply received → Acted on", numerator: 10, denominator: 16, ratePct: 62.5, unavailableReason: null },
+        ],
+        history: [{ date: "2026-10-12", spendUsd: 1, volumes: {}, costPerOutcomeUsd: null, roi: null, conversionRates: { handed_to_actedOn: 62.5 } }],
+      },
+    }).stats;
+    expect(s.conversionRates?.[0].ratePct).toBe(62.5);
+    expect(formatRatePct(62.5)).toBe("62.5%");
+    expect(formatRatePct(20)).toBe("20%");
+    expect(formatRatePct(0.01)).toBe("<0.1%");
+    expect(formatRatePct(0)).toBe("0%");
   });
 });
