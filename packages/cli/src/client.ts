@@ -69,6 +69,17 @@ export async function request(options: RequestOptions, fetcher: Fetcher = fetch)
     throw authError(`The API rejected this request with ${response.status}.`, body);
   }
 
+  // Paid work with no balance. The body says how to prepay; an agent branches
+  // on the exit code and reads the instructions from it.
+  if (response.status === 402) {
+    throw new CliError({
+      code: "payment_required",
+      message: `${options.method} ${options.path} costs money and the balance is empty. Run \`distribute prepay --amount 10 --reload 15 --below 5\`, pay the url it returns, then retry.`,
+      exitCode: EXIT.paymentRequired,
+      details: body,
+    });
+  }
+
   throw new CliError({
     code: response.status === 404 ? "not_found" : "api_error",
     message: `${options.method} ${options.path} returned ${response.status}.`,
@@ -101,4 +112,4 @@ export function userAgent(): string {
 }
 
 /** Kept in step with package.json by tests/unit/version.test.ts. */
-export const VERSION = "0.1.1";
+export const VERSION = "0.2.0";

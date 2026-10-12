@@ -25,10 +25,25 @@ One key, one header, everywhere. The REST API and the MCP server take the same
 credential, and it carries your org and user identity, so nothing else is sent.
 
 ## 1. Create an account
+
+### An agent, no human needed
+POST https://api.distribute.you/v1/agent-signups/start  {"email": "...", "phone": "+14155550100"}
+A 6-digit code is emailed to that address.
+POST https://api.distribute.you/v1/agent-signups/complete  {"email": "...", "code": "123456"}
+Returns apiKey. Every call mints a new key.
+CLI: distribute signup --email <e> --phone <p>, then distribute signup verify --email <e> --code <c>
+
+Free calls work right away. Paid calls are prepaid:
+POST /v1/billing/accounts/prepaid_checkout  {"topup_amount_cents": 1000, "auto_topup_amount_cents": 1500, "auto_topup_threshold_cents": 500}
+Minimums: $10 prepay, $15 automatic top-up, when the balance falls under $5 or more. Automatic top-up is required.
+Returns a payment url: open it, or give it to your human. Until paid, a paid call answers 402 payment_required.
+No free credit, no trial.
+
+### A person
 Sign up at: dashboard.distribute.you/sign-up
 
 ## 2. Get an API key
-Dashboard, API Keys, Create key.
+Agents: step 1 already returned it. People: Dashboard, API Keys, Create key.
 Format: ${API_KEY_PREFIX}xxxxxxxxxxxxxxxxxxxx
 
 ## 3. Send it
@@ -66,7 +81,27 @@ export default function AuthenticationPage() {
       <div className="prose">
         <h2>1. Create an account</h2>
         <p>
-          Sign up at <a href={URLS.signUp}>dashboard.distribute.you</a> to get started.
+          <strong>An agent needs no human.</strong> Give an email you can read and a phone number. A
+          6-digit code is emailed; trade it for an API key. Every call mints a new key.
+        </p>
+        <pre className="bg-gray-900 text-gray-100 p-4 rounded-lg overflow-x-auto">
+          <code>{`curl -X POST https://api.distribute.you/v1/agent-signups/start \\
+  -H "Content-Type: application/json" \\
+  -d '{"email":"agent@example.com","phone":"+14155550100"}'
+
+curl -X POST https://api.distribute.you/v1/agent-signups/complete \\
+  -H "Content-Type: application/json" \\
+  -d '{"email":"agent@example.com","code":"123456"}'`}</code>
+        </pre>
+        <p>
+          Free calls work right away. Every paid call is paid upfront with{" "}
+          <code>POST /v1/billing/accounts/prepaid_checkout</code>: at least $10, plus an automatic
+          top-up of at least $15 when the balance falls under $5 or more. It returns a payment link to
+          open, or to hand to your human. Until then a paid call answers{" "}
+          <code>402 payment_required</code> with these instructions. No free credit, no trial.
+        </p>
+        <p>
+          A person can sign up at <a href={URLS.signUp}>dashboard.distribute.you</a> instead.
         </p>
 
         <h2>2. Get your API key</h2>

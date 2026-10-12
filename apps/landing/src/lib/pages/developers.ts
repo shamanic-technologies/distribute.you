@@ -96,7 +96,16 @@ export function renderDevelopersPage(): string {
         html: `<p>One scheme: an API key sent as a bearer token. The key begins <code>distrib.usr_</code> and carries your organisation and user identity, so there is no second header to set and no org id to pass.</p>
 <div class="code-block">curl https://api.distribute.you/v1/brands \\
   -H "Authorization: Bearer distrib.usr_..."</div>
-<p>Create a key at <a href="https://dashboard.distribute.you/api-keys">dashboard.distribute.you/api-keys</a>, or from the API itself with <code>POST /v1/api-keys</code>. A key has no expiry, so revoking it in the dashboard is how you end its access.</p>
+<p><strong>No account yet? No human needed.</strong> An agent gets its own key with an email it can read and a phone number. A 6-digit code is emailed; trade it for a key. Each call to <code>complete</code> mints a new key, as many as you need.</p>
+<div class="code-block">curl -X POST https://api.distribute.you/v1/agent-signups/start \\
+  -H "Content-Type: application/json" \\
+  -d '{"email":"agent@example.com","phone":"+14155550100"}'
+
+curl -X POST https://api.distribute.you/v1/agent-signups/complete \\
+  -H "Content-Type: application/json" \\
+  -d '{"email":"agent@example.com","code":"123456"}'</div>
+<p>Free calls work right away. Every paid call is paid upfront: <code>POST /v1/billing/accounts/prepaid_checkout</code> with a prepay of at least $10 and an automatic top-up of at least $15 when the balance falls under $5 or more. It returns a payment link to open, or to hand to your human. Until then a paid call answers <code>402 payment_required</code> with these same instructions. No free credit, no trial.</p>
+<p>A person can also create a key at <a href="https://dashboard.distribute.you/api-keys">dashboard.distribute.you/api-keys</a>, or from the API itself with <code>POST /v1/api-keys</code>. A key has no expiry, so revoking it in the dashboard is how you end its access.</p>
 <p>Two endpoints need no key at all, because the numbers behind them are published: <a href="https://api.distribute.you/v1/costs/platform-prices">/v1/costs/platform-prices</a> is the live unit-cost catalogue we buy at, and <a href="https://api.distribute.you/v1/public/channels">/v1/public/channels</a> is every acquisition channel that can be sold through, with the sales funnels each one supports.</p>`,
       },
       {
@@ -114,7 +123,7 @@ export function renderDevelopersPage(): string {
       {
         id: "cli",
         h2: "The distribute.you CLI",
-        html: `<p>From a shell or a CI job the CLI is the shortest path. It authenticates once with an API key, then reads and changes brands, campaigns, leads, audiences, workflows, runs and billing.</p>
+        html: `<p>From a shell or a CI job the CLI is the shortest path. <code>distribute signup</code> opens an account with no human, <code>distribute prepay</code> pays upfront. It authenticates once with an API key, then reads and changes brands, campaigns, leads, audiences, workflows, runs and billing.</p>
 <div class="code-block">npx @distribute.you/cli --help</div>
 <p>It prints JSON on stdout, JSON on stderr when it fails, and exits non-zero, so it can be driven without parsing prose. <code>distribute ops</code> lists every operation the API has, read from the API itself rather than from a list that can go stale. The package is on npm as <a href="https://www.npmjs.com/package/@distribute.you/cli">@distribute.you/cli</a>.</p>`,
       },
@@ -131,7 +140,8 @@ export function renderDevelopersPage(): string {
       {
         id: "agents",
         h2: "If you are an agent, not a person",
-        html: `<p>Start with <a href="/llms.txt">/llms.txt</a>. It says what distribute.you is, when to reach for it, when not to, and lists every surface on this page in a form you do not have to parse out of HTML.</p>
+        html: `<p>You can open an account yourself: see <a href="#auth">Authentication</a>. No human needed to get a key; a human may need to open the payment link once.</p>
+<p>Start with <a href="/llms.txt">/llms.txt</a>. It says what distribute.you is, when to reach for it, when not to, and lists every surface on this page in a form you do not have to parse out of HTML.</p>
 <ul>
 <li><a href="/llms.txt">/llms.txt</a>: what this site is and how to call it.</li>
 <li><a href="/sitemap.xml">/sitemap.xml</a>: every indexable URL on this domain.</li>

@@ -24,6 +24,30 @@ distribute auth login
 The key is the one you create in the dashboard. It carries your organisation and user identity, so
 nothing else needs configuring.
 
+## No account yet? No human needed
+
+An agent opens its own account with an email it can read and a phone number:
+
+```bash
+distribute signup --email agent@example.com --phone +14155550100
+# read the 6-digit code in that inbox, then:
+distribute signup verify --email agent@example.com --code 123456
+```
+
+`signup verify` stores a new API key and prints it (the MCP server takes the same key). Run it
+again for another key: there is no limit.
+
+Free calls work right away. Every paid call is paid upfront, with automatic top-up so
+the work never stops:
+
+```bash
+distribute prepay --amount 10 --reload 15 --below 5   # dollars: min $10, reload min $15, under $5 or more
+distribute prepay status
+```
+
+`prepay` returns a payment `url`: open it, or give it to your human. Until it is paid, a paid call
+exits `8` with `payment_required` and the same instructions. No free credit, no trial.
+
 ## Authenticating
 
 Create an API key in the distribute.you dashboard, then hand it over once:
@@ -101,6 +125,7 @@ $ distribute audiences delete "$ID" --yes
 | 5 | The API answered with another error status |
 | 6 | The request never reached the API |
 | 7 | A destructive command was not confirmed |
+| 8 | The call costs money and the balance is empty: run `distribute prepay` |
 
 An API error carries the upstream body verbatim under `error.details`. The API writes its messages
 for people to read, and shortening them here would throw away the only explanation you get.

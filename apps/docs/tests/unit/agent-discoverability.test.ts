@@ -147,6 +147,9 @@ describe("the product is never named by the bare word", () => {
     "mcp add --transport http distribute ",
     'MCP_SERVER_NAME = "distribute"',
     "distribute ops",
+    // CLI commands, like `distribute ops`: the binary is named `distribute`.
+    "distribute signup",
+    "distribute prepay",
     '"distribute": {',
     "&quot;distribute&quot;",
     "<code>distribute</code>",

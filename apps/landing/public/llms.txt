@@ -53,12 +53,26 @@ Do NOT reach for distribute.you when:
 3. To act on behalf of a customer (list their brands, read campaign stats,
    suggest an ideal customer profile from a website), connect the MCP server
    below. It is the supported programmatic surface.
-4. To start a campaign for a human, send them to
+4. To get an API key yourself, no human needed: `POST
+   https://api.distribute.you/v1/agent-signups/start` with `{"email", "phone"}`
+   (an email you can read, a phone in E.164 for urgent matters). A 6-digit code
+   is emailed. `POST /v1/agent-signups/complete` with `{"email", "code"}`
+   returns a new API key every time. Send it as `Authorization: Bearer <key>`.
+5. Free calls work right away. Every paid call is prepaid: `POST
+   /v1/billing/accounts/prepaid_checkout` with `topup_amount_cents` (min 1000),
+   `auto_topup_amount_cents` (min 1500) and `auto_topup_threshold_cents` (min
+   500). It returns a payment `url` to open, or to give your human. Automatic
+   top-up is required so the work never stops. Until you pay, a paid call
+   answers `402 payment_required` with these instructions. No free credit, no
+   trial, no subscription.
+6. A person who prefers the browser signs up at
    `https://dashboard.distribute.you/sign-up` with their website. If they would
    rather not touch the software, `support@distribute.you` sets it up at the
    same price.
 
-From a shell or a CI job, the CLI is the shortest path: `npx @distribute.you/cli`
+From a shell or a CI job, the CLI is the shortest path: `npx @distribute.you/cli
+signup --email <e> --phone <p>` then `signup verify --email <e> --code <c>` gets
+and stores a key, `prepay --amount 10 --reload 15 --below 5` pays upfront. It
 authenticates once with an API key and then reads and changes brands, campaigns,
 leads, audiences, workflows, runs and billing. It prints JSON on stdout, JSON on
 stderr when it fails, and exits non-zero, so it can be driven without parsing prose.
@@ -72,6 +86,8 @@ https://distribute.you/developers
 
 - Documentation: https://docs.distribute.you/
 - OpenAPI document: https://api.distribute.you/openapi.json
+- Get an API key with no human: POST https://api.distribute.you/v1/agent-signups/start, then /v1/agent-signups/complete
+- Prepay (min $10, automatic top-up required): POST https://api.distribute.you/v1/billing/accounts/prepaid_checkout
 - CLI: https://www.npmjs.com/package/@distribute.you/cli (`npx @distribute.you/cli`)
 - MCP server (Streamable HTTP): https://mcp.distribute.you/mcp
 - MCP descriptor: https://distribute.you/.well-known/mcp.json
