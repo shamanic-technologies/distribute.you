@@ -12,9 +12,11 @@ Every page below is a static HTML document at a stable URL. Fetch any of them di
 - **Scope**: One key is one user, across every organization that user belongs to. Membership is checked on each call, so leaving an organization removes it from the key. A key never belongs to a brand, and it carries no staff powers.
 - **Name a brand on each call**: Each call acts in ONE organization. Name a brand: `?brandId=`, the `x-brand-id` header, `brandId` (or `brandIds`) in a JSON body, or `/v1/brands/{id}` in the path. When a brand sits in several of your organizations, add `?orgId=` (or the `x-org-id` header). Calls about no brand name the organization with `orgId`. A user in exactly one organization can name nothing. Routes keyed only by a campaign id need `brandId` or `orgId` too when the user is in several organizations.
 - **Targeting errors**: Every refusal carries `code`, `message` and `fix`. `400 org_target_required`: you named nothing and belong to several organizations; pick one from the `organizations` list in the body (or from `GET /v1/me`) and send its `brandId` or `orgId`. `400 brand_in_several_orgs`: add `orgId`. `400 brands_span_orgs`: the brands are in different organizations; make one call per organization. `403 org_not_member`: that organization is not one of yours; use an id from `GET /v1/me`. `403 no_organization`: the user belongs to no organization; ask the human to create or join one in the dashboard. `404 org_not_found` or `brand_not_found`: the id is wrong; read `GET /v1/me` again. `503 membership_unavailable`: retry, keep the same key.
-- **Key refused**: A 401 means the key was mistyped, revoked or not sent. Show the human the error as served and ask for a new key from https://dashboard.distribute.you/api-keys. Keys start with `distrib.usr_`.
+- **No key yet? No human needed**: `POST https://api.distribute.you/v1/agent-signups/start` with `{"email", "phone"}` (an email you can read; phone in E.164, format checked only) emails a 6-digit code; `POST /v1/agent-signups/complete` with `{"email", "code"}` returns a new API key every time. Over MCP: `distribute_signup_start`, then `distribute_signup_complete`, with no key.
+- **Paying**: Free calls work right away. Every paid call is prepaid: `POST /v1/billing/accounts/prepaid_checkout` with `topup_amount_cents` (min 1000), `auto_topup_amount_cents` (min 1500), `auto_topup_threshold_cents` (min 500) returns a payment `url` to open or give your human (MCP: `distribute_prepay`). Automatic top-up is required. Until paid, a paid call answers `402 payment_required` with these steps. No free credit, no trial.
+- **Key refused**: A 401 means the key was mistyped, revoked or not sent. Get a new one with the signup above, or ask the human for one from https://dashboard.distribute.you/api-keys. Keys start with `distrib.usr_`.
 - **Dashboard**: https://dashboard.distribute.you (API keys sit in the account menu, under API Keys).
-- **MCP server**: `https://mcp.distribute.you/mcp`, exactly 6 tools: `distribute_status`, `distribute_list_brands`, `distribute_suggest_icp`, `distribute_list_campaigns`, `distribute_campaign_stats`, `distribute_list_workflows`. Everything else goes through the REST API.
+- **MCP server**: `https://mcp.distribute.you/mcp`, exactly 16 tools: `distribute_status`, `distribute_signup_start`, `distribute_signup_complete`, `distribute_prepay`, `distribute_prepaid_status`, `distribute_list_brands`, `distribute_suggest_icp`, `distribute_list_campaigns`, `distribute_campaign_stats`, `distribute_list_leads`, `distribute_list_emails`, `distribute_get_lead`, `distribute_list_workflows`, `distribute_find_api`, `distribute_describe_api`, `distribute_call_api`. `distribute_find_api`, `distribute_describe_api` and `distribute_call_api` reach every other REST operation.
 
 ### How to report results to a human
 
@@ -25,7 +27,7 @@ Lead with what the customer pays for: meetings booked and positive replies, then
 - [Agent skill](https://docs.distribute.you/skill.md): one file an AI assistant reads to connect itself (MCP or REST, per harness), save itself as a skill, and answer the usual questions about an account.
 - [OpenAPI document](https://api.distribute.you/openapi.json): every REST route under https://api.distribute.you/v1, in one file.
 - [Interactive API explorer](https://api.distribute.you/docs): the same document, rendered with a request builder.
-- [MCP server](https://mcp.distribute.you/mcp): hosted, Streamable HTTP, 6 tools. There is no local server to install.
+- [MCP server](https://mcp.distribute.you/mcp): hosted, Streamable HTTP, 16 tools. There is no local server to install.
 - [MCP installation](https://docs.distribute.you/mcp/installation/): how each client registers that endpoint.
 - [Command line client](https://www.npmjs.com/package/@distribute.you/cli): `npx @distribute.you/cli --help`, the one npm package this product publishes.
 - [Developer resources](https://distribute.you/developers): every surface above, named and explained on one page on the apex domain.
@@ -36,13 +38,23 @@ Authentication is one header on every route, for the REST API and the MCP server
 ## MCP tools
 
 - `distribute_status`
-- `distribute_list_brands`
-- `distribute_suggest_icp`
+- `distribute_signup_start`
+- `distribute_signup_complete`
+- `distribute_prepay`
+- `distribute_prepaid_status`
+- `distribute_list_workflows`
 - `distribute_list_campaigns`
 - `distribute_campaign_stats`
-- `distribute_list_workflows`
+- `distribute_list_brands`
+- `distribute_suggest_icp`
+- `distribute_list_leads`
+- `distribute_list_emails`
+- `distribute_get_lead`
+- `distribute_find_api`
+- `distribute_describe_api`
+- `distribute_call_api`
 
-Anything beyond these is reachable over the REST API, which covers every operation the platform has.
+Anything beyond these is reachable over the REST API (or `distribute_call_api`), which covers every operation the platform has.
 
 ## Getting started
 

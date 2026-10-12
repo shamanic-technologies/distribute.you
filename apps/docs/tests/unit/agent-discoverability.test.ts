@@ -368,13 +368,23 @@ describe("the developer surfaces are spelled once", () => {
 });
 
 describe("the MCP tool catalogue is the one the server exposes", () => {
-  it("names six prefixed tools, and the count is read rather than written", () => {
+  it("names the prefixed tools the server lists, and the count is read rather than written", () => {
     expect(MCP_TOOL_COUNT).toBe(MCP_TOOLS.length);
     expect(MCP_TOOLS.map((t) => t.name).sort()).toEqual([
+      "distribute_call_api",
       "distribute_campaign_stats",
+      "distribute_describe_api",
+      "distribute_find_api",
+      "distribute_get_lead",
       "distribute_list_brands",
       "distribute_list_campaigns",
+      "distribute_list_emails",
+      "distribute_list_leads",
       "distribute_list_workflows",
+      "distribute_prepaid_status",
+      "distribute_prepay",
+      "distribute_signup_complete",
+      "distribute_signup_start",
       "distribute_status",
       "distribute_suggest_icp",
     ]);

@@ -64,13 +64,21 @@ export const AGENT_QUICKSTART_LINES: QuickstartLine[] = [
     text: "Every refusal carries `code`, `message` and `fix`. `400 org_target_required`: you named nothing and belong to several organizations; pick one from the `organizations` list in the body (or from `GET /v1/me`) and send its `brandId` or `orgId`. `400 brand_in_several_orgs`: add `orgId`. `400 brands_span_orgs`: the brands are in different organizations; make one call per organization. `403 org_not_member`: that organization is not one of yours; use an id from `GET /v1/me`. `403 no_organization`: the user belongs to no organization; ask the human to create or join one in the dashboard. `404 org_not_found` or `brand_not_found`: the id is wrong; read `GET /v1/me` again. `503 membership_unavailable`: retry, keep the same key.",
   },
   {
+    label: "No key yet? No human needed",
+    text: `\`POST ${API_BASE_URL}/agent-signups/start\` with \`{"email", "phone"}\` (an email you can read; phone in E.164, format checked only) emails a 6-digit code; \`POST /v1/agent-signups/complete\` with \`{"email", "code"}\` returns a new API key every time. Over MCP: \`distribute_signup_start\`, then \`distribute_signup_complete\`, with no key.`,
+  },
+  {
+    label: "Paying",
+    text: "Free calls work right away. Every paid call is prepaid: `POST /v1/billing/accounts/prepaid_checkout` with `topup_amount_cents` (min 1000), `auto_topup_amount_cents` (min 1500), `auto_topup_threshold_cents` (min 500) returns a payment `url` to open or give your human (MCP: `distribute_prepay`). Automatic top-up is required. Until paid, a paid call answers `402 payment_required` with these steps. No free credit, no trial.",
+  },
+  {
     label: "Key refused",
-    text: `A 401 means the key was mistyped, revoked or not sent. Show the human the error as served and ask for a new key from ${API_KEYS_URL}. Keys start with \`${API_KEY_PREFIX}\`.`,
+    text: `A 401 means the key was mistyped, revoked or not sent. Get a new one with the signup above, or ask the human for one from ${API_KEYS_URL}. Keys start with \`${API_KEY_PREFIX}\`.`,
   },
   { label: "Dashboard", text: `${DASHBOARD_URL} (API keys sit in the account menu, under API Keys).` },
   {
     label: "MCP server",
-    text: `\`${MCP_URL}\`, exactly ${MCP_TOOL_COUNT} tools: ${MCP_TOOLS.map((t) => `\`${t.name}\``).join(", ")}. Everything else goes through the REST API.`,
+    text: `\`${MCP_URL}\`, exactly ${MCP_TOOL_COUNT} tools: ${MCP_TOOLS.map((t) => `\`${t.name}\``).join(", ")}. \`distribute_find_api\`, \`distribute_describe_api\` and \`distribute_call_api\` reach every other REST operation.`,
   },
 ];
 

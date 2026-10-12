@@ -141,8 +141,8 @@ export function curlExample(path: string, extra?: string): string {
  * The tools the hosted server actually exposes.
  *
  * These docs used to publish a catalogue of thirty-five tools under an
- * unprefixed vocabulary. The hosted server exposes the six below, every one of
- * them prefixed, and that is what a connected client lists back. A reference
+ * unprefixed vocabulary. The hosted server exposes the tools below, every one
+ * of them prefixed, and that is what a connected client lists back. A reference
  * page naming tools that do not exist is worse than no
  * reference page: an agent reads it, calls a name nothing answers to, and has
  * no way to tell a wrong catalogue from a broken server.
@@ -152,7 +152,7 @@ export function curlExample(path: string, extra?: string): string {
  */
 export interface McpTool {
   name: string;
-  /** Verbatim from the server's own tool description. */
+  /** The leading sentences of the server's own tool description, verbatim. */
   description: string;
   /** What a reader is deciding between, so the list groups. */
   category: string;
@@ -161,39 +161,99 @@ export interface McpTool {
 export const MCP_TOOLS: McpTool[] = [
   {
     name: "distribute_status",
-    category: "Identity",
+    category: "Account",
     description:
-      "Check the distribute.you connection status and configuration. Answers with the user and org the key acts for, so it is the way to tell a working key from a missing header.",
+      "Check the connection and say who the key belongs to: the user, and every organization the key reaches with its brands.",
+  },
+  {
+    name: "distribute_signup_start",
+    category: "Account",
+    description:
+      "No human needed: request a key with an email, prepay when you need to spend. Step 1 of 2 to open a distribute.you account and get an API key, with no key and no dashboard.",
+  },
+  {
+    name: "distribute_signup_complete",
+    category: "Account",
+    description:
+      "Step 2 of 2: send the 6-digit code emailed by distribute_signup_start and get an API key.",
+  },
+  {
+    name: "distribute_prepay",
+    category: "Account",
+    description:
+      "No human needed: request a key with an email, prepay when you need to spend. Prepay before calls that spend money (a call that needs money and finds none answers 402 payment_required).",
+  },
+  {
+    name: "distribute_prepaid_status",
+    category: "Account",
+    description:
+      "Read the prepaid account: `state` (awaiting_payment: not paid yet; active: ready to spend; card_not_reloadable or auto_topup_off: fix it with distribute_prepay; not_prepaid), `balance_cents`, `paid_cents`, the automatic reload settings and whether the saved card can reload.",
   },
   {
     name: "distribute_list_brands",
     category: "Brands",
     description:
-      "List all your brands, the companies and websites you promote through campaigns.",
+      "List the brands (companies/websites you promote through campaigns) of the targeted organization.",
   },
   {
     name: "distribute_suggest_icp",
     category: "Brands",
     description:
-      "Analyze a brand's website and suggest an Ideal Customer Profile. Use it when the user does not know who to target. Returns a description of the ideal customers to aim a campaign at.",
+      "Analyze a brand's website and suggest an Ideal Customer Profile (ICP). Use this when the user doesn't know who to target and wants AI-generated targeting suggestions.",
   },
   {
     name: "distribute_list_campaigns",
     category: "Campaigns",
     description:
-      "List your campaigns: name, status, type and budget. Takes an optional status of ongoing, stopped or all.",
+      "List the campaigns of one brand or organization. Each campaign has a name, a status (`ongoing` = running, `stopped` = paused), a type (`proactive`: it reaches out to new people on its own; `reactive`: it acts when something happens, such as a reply), and its limits: `budget` and `volume` in words (\"Max $10/day\", \"Up to 50 leads handled/week\"), with what the current period used in `maxBudget` and `maxVolume`.",
   },
   {
     name: "distribute_campaign_stats",
     category: "Campaigns",
     description:
-      "Get one campaign's results, by campaign id: what each part of it brought in and what it cost.",
+      "Get one campaign's results, by the campaign id from distribute_list_campaigns. A campaign runs as one; its results come in `results`, one entry per thing it brings in (`bringsIn`, such as a positive reply or a lead found) with the channel doing it (`channel`).",
+  },
+  {
+    name: "distribute_list_leads",
+    category: "Leads",
+    description:
+      "List the leads (prospects, people we found and contacted) of a brand, newest first, with where each one stands: contacted, sent, delivered, clicked, replied (and how the reply was classified), bounced, unsubscribed, with dates.",
+  },
+  {
+    name: "distribute_list_emails",
+    category: "Leads",
+    description:
+      "List the cold emails we wrote and sent for a brand: for each prospect, the first email and every follow-up (`subject`, then `sequence`: one entry per step with its `bodyText`, its `kind` (first_email or follow_up) and its send `status`: `sent` at `sentAt`, `queued` (goes out in the prospect's business hours) or `stopped` (will not go out: reply, bounce, opt-out, meeting, sequence stopped)), with who it went to (`leadEmail`, lead name, title, company, `leadId`).",
+  },
+  {
+    name: "distribute_get_lead",
+    category: "Leads",
+    description:
+      "Everything about ONE lead in one call: who they are and where they stand (sent, delivered, replied...), the emails we wrote for them (first email and follow-ups, subject and body, each with its send status: sent at sentAt, queued or stopped), and the conversation (every message we sent and every reply they wrote, oldest first).",
   },
   {
     name: "distribute_list_workflows",
     category: "Workflows",
     description:
-      "List all available workflows, including the ones written in the style of a named industry expert.",
+      "List all available workflows. Includes styled workflows written in the style of industry experts (e.g.",
+  },
+  {
+    name: "distribute_find_api",
+    category: "Any API operation",
+    description:
+      "Find how to do something in distribute.you when no other tool covers it. Searches every operation of the distribute.you API (the same API and the same scope your key has: leads, emails, conversations, campaigns, budgets, offers, audiences, billing, CRM, stats...) by what you want to do, in plain words (\"list the emails sent for my brand\", \"change the daily budget\", \"account balance\").",
+  },
+  {
+    name: "distribute_describe_api",
+    category: "Any API operation",
+    description:
+      "Read one distribute.you API operation in full before calling it: what it does, its path and query parameters (required or not), and the JSON body it takes.",
+  },
+  {
+    name: "distribute_call_api",
+    category: "Any API operation",
+    description:
+      "Call any distribute.you API operation with your key, exactly as the API would answer it (same scope, same refusals).",
   },
 ];
 
