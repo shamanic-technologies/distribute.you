@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { endToEndRate, teamOnOurLeadsRate, teamReasonWords, formatRatePct, mergeHistories, outcomeVolume, PipeWithStatsSchema, pipeStatsQuery, unavailableWords, type PipeStats } from "../src/lib/pipe-stats";
+import { endToEndRate, impactWords, teamOnOurLeadsRate, teamReasonWords, formatRatePct, mergeHistories, outcomeVolume, PipeWithStatsSchema, pipeStatsQuery, unavailableWords, type PipeStats } from "../src/lib/pipe-stats";
 
 const stats = (kind: "fleet" | "brand" | "offer", history: PipeStats["history"]): PipeStats =>
   PipeWithStatsSchema.parse({
@@ -120,5 +120,14 @@ describe("client team on the replies we brought", () => {
     expect(teamOnOurLeadsRate({ ...base, ourLeadsToTeam: { available: true, conversionRates: [rate] } })?.ratePct).toBe(16.67);
     expect(teamOnOurLeadsRate({ ...base, ourLeadsToTeam: { available: false, unavailableReason: "to_step_not_recorded_for_our_leads" } })).toBeNull();
     expect(teamOnOurLeadsRate(base)).toBeNull();
+  });
+});
+
+describe("pipe impact on the client team", () => {
+  it("says the served impact in words", () => {
+    expect(impactWords({ pointsDiff: 8.33, ratio: 1.5 })).toEqual({ points: "+8.3 pts", ratio: "×1.5" });
+    expect(impactWords({ pointsDiff: 10.7, ratio: 2.15 })).toEqual({ points: "+10.7 pts", ratio: "×2.15" });
+    expect(impactWords({ pointsDiff: null, ratio: null, pointsDiffUnavailableReason: "team_plus_pipe_no_input" })).toEqual({ points: null, ratio: null });
+    expect(teamReasonWords("team_plus_pipe_no_input")).toBe("This pipe acted on nobody yet");
   });
 });
