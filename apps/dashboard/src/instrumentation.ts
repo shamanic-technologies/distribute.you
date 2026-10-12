@@ -892,6 +892,14 @@ const COPILOT_ALLOWED_TOOLS = [
   "request_skill_upgrade",
   "contact_human",
   "list_staff_requests",
+  // Follow-ups (chat-service v0.63.45): the agent follows the user up later through our own
+  // outreach (one-person campaign on distribute.you's brand, our money, one email max). Owner:
+  // the agent starts it itself, no switch-on gate.
+  "create_followup",
+  "update_followup",
+  "cancel_followup",
+  "list_followups",
+  "fire_followup",
 ];
 
 const PLATFORM_CHAT_CONFIGS = [
