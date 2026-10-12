@@ -9562,6 +9562,8 @@ const SubscriptionReadSchema = z.object({
   sending_stopped_reason: z.string().nullish(),
   credits_remaining_cents: z.string().nullish(),
   trial_grant_cents: z.coerce.number().nullish(),
+  // billing#738: the whole trial credit (advance + grant), what the trial gauge counts down from.
+  trial_credit_cents: z.coerce.number().nullish(),
   expired_cents: z.string().nullish(),
 });
 export type SubscriptionRead = z.infer<typeof SubscriptionReadSchema>;

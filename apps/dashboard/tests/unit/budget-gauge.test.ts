@@ -30,7 +30,7 @@ describe("budgetGaugeView", () => {
   it("subscription: the month's credit left out of the plan amount", () => {
     const v = budgetGaugeView({ ...base, payment_mode: "subscription" }, {
       credits_remaining_cents: "6100",
-      trial_grant_cents: null,
+      trial_credit_cents: null,
       sending_stopped: false,
       subscription: { status: "active", monthly_amount_cents: 9900, next_charge_at: "2026-11-03T12:00:00Z", trial_end: null, current_period_end: null, cancel_at_period_end: false },
     });
@@ -38,14 +38,25 @@ describe("budgetGaugeView", () => {
     expect((v as { line: string }).line).toMatch(/^of \$99 · Renews Nov 3$/);
   });
 
-  it("subscription in trial: out of the trial grant", () => {
+  it("subscription in trial: out of the whole trial credit ($30 advance + $69 grant = $99)", () => {
     const v = budgetGaugeView({ ...base, payment_mode: "subscription" }, {
-      credits_remaining_cents: "1000",
-      trial_grant_cents: 3000,
+      credits_remaining_cents: "5",
+      trial_credit_cents: 9900,
       sending_stopped: false,
-      subscription: { status: "trialing", monthly_amount_cents: 9900, next_charge_at: null, trial_end: "2026-10-14T12:00:00Z", current_period_end: null, cancel_at_period_end: false },
+      subscription: { status: "trialing", monthly_amount_cents: 9900, next_charge_at: null, trial_end: "2026-10-14T22:31:00Z", current_period_end: null, cancel_at_period_end: false },
     });
-    expect(v).toMatchObject({ label: "Trial credit left", meter: { value: 1000, max: 3000 } });
+    expect(v).toMatchObject({ label: "Trial credit left", figure: "$0.05", meter: { value: 5, max: 9900 } });
+    expect((v as { line: string }).line).toMatch(/^of \$99 · Trial ends /);
+  });
+
+  it("subscription in trial without the trial credit served: an error, never the grant row", () => {
+    const v = budgetGaugeView({ ...base, payment_mode: "subscription" }, {
+      credits_remaining_cents: "5",
+      trial_credit_cents: null,
+      sending_stopped: false,
+      subscription: { status: "trialing", monthly_amount_cents: 9900, next_charge_at: null, trial_end: "2026-10-14T22:31:00Z", current_period_end: null, cancel_at_period_end: false },
+    });
+    expect(v).toHaveProperty("error");
   });
 
   it("subscription not loaded yet: nothing to draw", () => {

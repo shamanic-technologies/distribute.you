@@ -29,7 +29,8 @@ export interface GaugeAccount {
 /** The plan read's fields the gauge reads (billing-service `GET /v1/accounts/subscription`). */
 export interface GaugeSubscription {
   credits_remaining_cents?: string | null;
-  trial_grant_cents?: number | null;
+  /** The whole trial credit the org was given (welcome advance + trial grant), billing#738. */
+  trial_credit_cents?: number | null;
   sending_stopped?: boolean | null;
   subscription: {
     status: string;
@@ -135,7 +136,11 @@ export function budgetGaugeView(
     const left = parseFloat(subscription.credits_remaining_cents ?? "");
     if (Number.isNaN(left)) return { error: `credits_remaining_cents is not a number: ${subscription.credits_remaining_cents}` };
     const trialing = sub.status === "trialing";
-    const max = trialing && subscription.trial_grant_cents ? subscription.trial_grant_cents : sub.monthly_amount_cents;
+    // Out of the WHOLE trial credit ($99), never the trial grant row alone ($69 beside a $30 advance).
+    if (trialing && !subscription.trial_credit_cents) {
+      return { error: `trialing plan without trial_credit_cents: ${String(subscription.trial_credit_cents)}` };
+    }
+    const max = trialing ? subscription.trial_credit_cents! : sub.monthly_amount_cents;
     const stopped = subscription.sending_stopped === true || left <= 0;
     const when = sub.cancel_at_period_end
       ? shortDate(sub.current_period_end)
