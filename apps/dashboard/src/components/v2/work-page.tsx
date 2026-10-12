@@ -13,7 +13,6 @@ import { campaignHoldCopy, useMissionHold } from "@/components/v2/mission-hold";
 import { useSelectedOffer } from "@/components/v2/selected-offer";
 import { useMissions, type Mission } from "@/components/v2/use-missions";
 import { useNeedsYourCall, useTheirLastWords } from "@/components/v2/data";
-import { MarkAnswered } from "@/components/v2/mark-answered";
 import { awaitingReason } from "@/lib/awaiting-reason";
 import { useCrewRuns, useRunsTodayList, runState, runTaskLabel } from "@/components/v2/runs";
 import { v2RunHref } from "@/lib/v2/routes";
@@ -384,7 +383,6 @@ function LeadCard({ brandId, lead, waiting, m, href }: { brandId: string; lead: 
       <div className="mt-2.5 flex items-center gap-1.5">
         <Link href={href} className="k-btn-strong h-6 px-2 text-[12px]">Open conversation</Link>
         <a href={`mailto:${lead.email}`} className="k-btn h-6 px-2 text-[12px]">Email</a>
-        <MarkAnswered leadRowId={lead.id} brandId={brandId} small />
       </div>
     </div>
   );
