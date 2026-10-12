@@ -371,7 +371,18 @@ export function SameLegSection({
                   </td>
                 </tr>
               ) : (
-                rows.map((r) => <SameLegRow key={r.id} id={r.id} name={r.name} line={r.line} current={r.id === pipeId} brandId={brandId} href={hrefOf(r.id)} />)
+                rows.map((r) => (
+                  <SameLegRow
+                    key={r.id}
+                    id={r.id}
+                    name={r.name}
+                    line={r.line}
+                    current={r.id === pipeId}
+                    brandId={brandId}
+                    href={hrefOf(r.id)}
+                    hasTeam={r.status !== "customer_time" && rows.some((x) => x.status === "customer_time")}
+                  />
+                ))
               )}
             </tbody>
           </table>
@@ -384,7 +395,23 @@ export function SameLegSection({
   );
 }
 
-function SameLegRow({ id, name, line, current, brandId, href }: { id: string; name: string; line: string; current: boolean; brandId: string; href: string }) {
+function SameLegRow({
+  id,
+  name,
+  line,
+  current,
+  brandId,
+  href,
+  hasTeam,
+}: {
+  id: string;
+  name: string;
+  line: string;
+  current: boolean;
+  brandId: string;
+  href: string;
+  hasTeam: boolean;
+}) {
   const fleet = usePipeStats(id, "fleet", brandId, null);
   const brand = usePipeStats(id, "brand", brandId, null);
   return (
@@ -398,7 +425,7 @@ function SameLegRow({ id, name, line, current, brandId, href }: { id: string; na
       </td>
       {[fleet, brand].map((r, i) => (
         <td key={i} className={TD}>
-          {r.data ? <SameLegCell stats={r.data} /> : r.failed && r.answered ? <span className="k-fg4">—</span> : <Shimmer className="ml-auto h-4 w-12" />}
+          {r.data ? <SameLegCell stats={r.data} withTeam={hasTeam} /> : r.failed && r.answered ? <span className="k-fg4">—</span> : <Shimmer className="ml-auto h-4 w-12" />}
         </td>
       ))}
     </tr>
@@ -409,7 +436,7 @@ function SameLegRow({ id, name, line, current, brandId, href }: { id: string; na
  * A client team reads two populations (owner 2026-10-12): the replies OUR campaigns brought that our
  * AI did not take (the fair comparison, first), then the people we never contacted.
  */
-function SameLegCell({ stats }: { stats: PipeStats }) {
+function SameLegCell({ stats, withTeam }: { stats: PipeStats; withTeam: boolean }) {
   const onOurs = teamOnOurLeadsRate(stats);
   const own =
     stats.teamSource && !stats.teamSource.available ? (
@@ -419,12 +446,22 @@ function SameLegCell({ stats }: { stats: PipeStats }) {
     ) : (
       <span className="k-fg4">—</span>
     );
-  if (!stats.teamSource) return own;
+  // The client's team is always on (owner 2026-10-12): a platform pipe's figure is the team plus our pipe.
+  if (!stats.teamSource) {
+    return withTeam ? (
+      <div>
+        {own}
+        <p className="k-fg3 text-[11px]">their team + this pipe</p>
+      </div>
+    ) : (
+      own
+    );
+  }
   return (
     <div className="space-y-1">
       <div>
         {onOurs ? <RateCell rate={onOurs} /> : <span className="k-fg3 text-[12px]">{teamReasonWords(stats.ourLeadsToTeam?.unavailableReason)}</span>}
-        <p className="k-fg3 text-[11px]">on replies we brought</p>
+        <p className="k-fg3 text-[11px]">team alone, on replies we brought</p>
       </div>
       <div>
         {own}
