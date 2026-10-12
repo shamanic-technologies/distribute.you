@@ -27,7 +27,11 @@ describe("three statements ticked before the first payment, both A/B arms (owner
     const [covers, runsOut, terms] = spendConsentLines({ arm: { kind: "prepaid", topupUsd: 250 } });
     expect(statementAsShown(covers)).toBe(COVERS);
     expect(statementAsShown(terms)).toBe(TERMS);
-    expect(runsOut.text).toBe("When my credit runs out, $250 is added again automatically. Credit stays valid for 12 months.");
+    expect(runsOut.text).toBe("When my credit runs out, $250 is added automatically. My campaigns keep running on the budget I set. I can pause them anytime.");
+    // The monthly limit set at onboarding bounds the reload (owner 2026-10-13).
+    expect(spendConsentLines({ arm: { kind: "prepaid", topupUsd: 100, limitUsd: 295 } })[1].text).toBe(
+      "When my credit runs out, $100 is added automatically, up to my $295 monthly limit. My campaigns keep running on the budget I set. I can pause them anytime.",
+    );
     expect(runsOut.link).toBeNull();
   });
 

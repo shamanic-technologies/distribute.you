@@ -12,6 +12,7 @@
 
 import { useState } from "react";
 import { DEFAULT_RELOAD_THRESHOLD_USD, TOPUP_CHOICES_USD, parseTopupUsd } from "@/lib/v2/get-started";
+import { monthlyLimitToSave } from "@/lib/v2/monthly-limit";
 import { consentRecord, spendConsentLines, type PaymentConsentRecord } from "@/lib/v2/spend-consent";
 import { SpendConsent, allTicked } from "./spend-consent";
 
@@ -101,11 +102,14 @@ export function PrepaidTopup({
   busy,
   disabled = false,
   matchNote,
+  monthlyLimit,
   cta,
   onPay,
 }: {
   busy: boolean;
   disabled?: boolean;
+  /** The monthly limit typed at the campaign step (null while untouched); absent where none is set. */
+  monthlyLimit?: string | null;
   /** The match, in billing's figures for this org. */
   matchNote: string;
   /** The button's words for an amount ("Pay $100 + get $100 free"). */
@@ -120,9 +124,12 @@ export function PrepaidTopup({
   const firstParsed = amountOf(first, firstOther);
   const problem = shown && "problem" in firstParsed ? firstParsed.problem : null;
   const off = busy || disabled;
+  // Until a valid amount is typed, the statement names the smallest one we take.
+  const topupUsd = "usd" in firstParsed ? firstParsed.usd : TOPUP_CHOICES_USD[0];
+  // The limit the wall saves before the charge, named in the reload statement.
+  const limit = monthlyLimit === undefined ? null : monthlyLimitToSave(monthlyLimit, { kind: "prepaid", topupUsd });
   const lines = spendConsentLines({
-    // Until a valid amount is typed, the statement names the smallest one we take.
-    arm: { kind: "prepaid", topupUsd: "usd" in firstParsed ? firstParsed.usd : TOPUP_CHOICES_USD[0] },
+    arm: { kind: "prepaid", topupUsd, ...(limit && "usd" in limit ? { limitUsd: limit.usd } : {}) },
   });
 
   function submit() {
