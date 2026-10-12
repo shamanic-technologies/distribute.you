@@ -6,8 +6,7 @@
  *   <one plain line of what it does>
  *   Estimated: <served cost + its unit>
  *   Max budget   [$ 20 ] per [day v]
- *   Max volume   [ optional ] new people per [month v]
- *   [ ] Also let our AI book meetings when someone replies
+ *   [x] Also let our AI book meetings when someone replies   (ticked by default, owner 2026-10-13)
  *       [face] <reactive funnel> · Up to [$ 10 ] per [week v]
  *   [ Launch ]  -> then the payment wall exactly as today
  *
@@ -139,9 +138,6 @@ export function asSignupPeriod(v: unknown, fallback: SignupPeriod): SignupPeriod
 export interface SignupCampaignDraft {
   budget: string;
   budgetPeriod: SignupPeriod;
-  /** Blank = no volume cap. */
-  volume: string;
-  volumePeriod: SignupPeriod;
   reactiveOn: boolean;
   reactiveBudget: string;
   reactivePeriod: SignupPeriod;
@@ -149,13 +145,14 @@ export interface SignupCampaignDraft {
   monthlyLimit: string | null;
 }
 
-/** The sketch's defaults: $20 a day, no volume cap, meetings off at up to $10 a week. */
+/**
+ * $20 a day, no volume cap (the signup never asks one: owner 2026-10-13, "nobody will ever set
+ * it here"), meetings ON at up to $10 a week (owner 2026-10-13, always ticked by default).
+ */
 export const DEFAULT_SIGNUP_DRAFT: SignupCampaignDraft = {
   budget: "20",
   budgetPeriod: "daily",
-  volume: "",
-  volumePeriod: "monthly",
-  reactiveOn: false,
+  reactiveOn: true,
   reactiveBudget: "10",
   reactivePeriod: "weekly",
   monthlyLimit: null,
@@ -168,9 +165,7 @@ export function parseSignupDraft(v: unknown): SignupCampaignDraft | null {
   return {
     budget: str(o.budget, DEFAULT_SIGNUP_DRAFT.budget),
     budgetPeriod: asSignupPeriod(o.budgetPeriod, DEFAULT_SIGNUP_DRAFT.budgetPeriod),
-    volume: str(o.volume, ""),
-    volumePeriod: asSignupPeriod(o.volumePeriod, DEFAULT_SIGNUP_DRAFT.volumePeriod),
-    reactiveOn: o.reactiveOn === true,
+    reactiveOn: typeof o.reactiveOn === "boolean" ? o.reactiveOn : DEFAULT_SIGNUP_DRAFT.reactiveOn,
     reactiveBudget: str(o.reactiveBudget, DEFAULT_SIGNUP_DRAFT.reactiveBudget),
     reactivePeriod: asSignupPeriod(o.reactivePeriod, DEFAULT_SIGNUP_DRAFT.reactivePeriod),
     monthlyLimit: typeof o.monthlyLimit === "string" ? o.monthlyLimit : null,
@@ -207,7 +202,9 @@ function wholeUsd(raw: string): number | null {
 
 /**
  * The plan to launch, or the one plain sentence that says what to fix. A funnel with no max
- * budget is held unfunded by billing, so a budget is required; the volume cap is optional.
+ * budget is held unfunded by billing, so a budget is required; signup sets no volume cap. The
+ * meeting funnel launches when ticked AND served: an offer it is not served for never shows the
+ * tick, so the default-on tick cannot block the launch.
  */
 export function signupLaunchPlan(
   draft: SignupCampaignDraft,
@@ -216,16 +213,8 @@ export function signupLaunchPlan(
   if (!funnels.proactive) return { problem: "We could not load your campaign. Try again." };
   const budget = wholeUsd(draft.budget);
   if (budget == null) return { problem: "Set a max budget in whole dollars, $1 or more." };
-  let maxVolume: FunnelCapsWrite["maxVolume"] = null;
-  if (draft.volume.trim()) {
-    const t = draft.volume.trim().replace(/,/g, "");
-    const n = WHOLE.test(t) ? Number(t) : 0;
-    if (n < 1) return { problem: "Set the max volume as a whole number of people, or leave it empty." };
-    maxVolume = { count: n, period: draft.volumePeriod };
-  }
   let reactive: SignupLaunchFunnel | null = null;
-  if (draft.reactiveOn) {
-    if (!funnels.reactive) return { problem: "Meeting booking is not available right now. Untick it to continue." };
+  if (draft.reactiveOn && funnels.reactive) {
     const upTo = wholeUsd(draft.reactiveBudget);
     if (upTo == null) return { problem: "Set how much meeting booking may spend, in whole dollars." };
     reactive = {
@@ -239,7 +228,7 @@ export function signupLaunchPlan(
       proactive: {
         salesFunnelId: funnels.proactive.salesFunnelId,
         name: funnels.proactive.name,
-        caps: { maxBudget: { amountCents: budget * 100, period: draft.budgetPeriod }, maxVolume },
+        caps: { maxBudget: { amountCents: budget * 100, period: draft.budgetPeriod }, maxVolume: null },
       },
       reactive,
     },

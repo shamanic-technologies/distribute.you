@@ -80,6 +80,7 @@ import {
   COMPANY_FIELDS,
   COMPETITOR_FIELDS,
   EMAIL_CAP,
+  nextEmailAhead,
   GET_STARTED_ORG_RESUME_MAX_AGE_MS,
   GET_STARTED_SNAPSHOT_KEY,
   GET_STARTED_STEPS,
@@ -176,7 +177,7 @@ export interface OrgWalk {
   brandId: string | null;
 }
 
-export function GetStarted({ org }: { org?: OrgWalk } = {}) {
+export function GetStarted({ org, ipCountry = null }: { org?: OrgWalk; ipCountry?: string | null } = {}) {
   const params = useSearchParams();
   const { isSignedIn } = useAuth();
   // From the dashboard, every call names the org it acts on: never an anonymous
@@ -994,6 +995,21 @@ export function GetStarted({ org }: { org?: OrgWalk } = {}) {
     }
   }
 
+  // One email always waits written beyond the rows opened, so the next click opens at once
+  // (nextEmailAhead). Starts only once the first email landed: that one stays alone and fast.
+  const openedKeys = useRef(new Set<string>());
+  useEffect(() => {
+    if (!audience) return;
+    openedKeys.current.add(rowKey(audience.audienceId, selectedRow));
+    if (!answered || !firstEmailFor(audience.audienceId)) return;
+    const list = rows[audience.audienceId] ?? [];
+    const keyed = list.map((r) => ({ row: r, key: rowKey(audience.audienceId, r.index), writable: rowWritable(r) }));
+    const next = nextEmailAhead(keyed, requested.current, openedKeys.current);
+    const row = keyed.find((k) => k.key === next)?.row;
+    if (row) void writeEmail(audience, row);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [emails, selectedRow, audience?.audienceId, rows, answered]);
+
   /** A row clicked: its email on the stage, written now when it is not yet (up to the cap). */
   function openRow(index: number) {
     if (!audience) return;
@@ -1558,6 +1574,7 @@ export function GetStarted({ org }: { org?: OrgWalk } = {}) {
       )}
       {wallOpen && brandId && offer && audience && launchPlan && !org && (
         <AccountCardWall
+          ipCountry={ipCountry}
           brandId={brandId}
           website={websiteUrl(website)}
           brandName={brandName ?? domain ?? website}
@@ -2201,8 +2218,6 @@ function CapField({
   period,
   onValue,
   onPeriod,
-  placeholder,
-  unit,
   label,
   disabled,
 }: {
@@ -2211,9 +2226,6 @@ function CapField({
   period: SignupPeriod;
   onValue: (v: string) => void;
   onPeriod: (p: SignupPeriod) => void;
-  placeholder?: string;
-  /** The words between the amount and "per" ("new people"). */
-  unit?: string;
   label: string;
   disabled: boolean;
 }) {
@@ -2225,12 +2237,10 @@ function CapField({
         style={{ font: "inherit", paddingRight: 8 }}
         inputMode="numeric"
         value={value}
-        placeholder={placeholder}
         disabled={disabled}
         aria-label={label}
         onChange={(e) => onValue(e.target.value)}
       />
-      {unit && <span className="k-fg2">{unit}</span>}
       <span className="k-fg2">per</span>
       <select
         className="k-input w-auto pr-6"
@@ -2252,7 +2262,8 @@ function CapField({
 
 /**
  * The END of signup (owner sketch 2026-10-10): ONE campaign, the best proactive one
- * features-service runs for cold email, its max budget and optional max volume; a tick adds the
+ * features-service runs for cold email and its max budget (no volume: owner 2026-10-13); a tick, on
+ * by default, adds the
  * campaign that books meetings when someone replies, with its own "up to". Launch opens the wall.
  */
 export function CampaignStage({
@@ -2334,19 +2345,6 @@ export function CampaignStage({
                 onValue={(v) => set({ budget: v })}
                 onPeriod={(p) => set({ budgetPeriod: p })}
                 label="Max budget in dollars"
-                disabled={done}
-              />
-            </div>
-            <div className="grid items-center gap-1.5 sm:grid-cols-[112px_minmax(0,1fr)]">
-              <span className="k-label">Max volume</span>
-              <CapField
-                value={draft.volume}
-                period={draft.volumePeriod}
-                onValue={(v) => set({ volume: v })}
-                onPeriod={(p) => set({ volumePeriod: p })}
-                placeholder="optional"
-                unit="new people"
-                label="Max new people"
                 disabled={done}
               />
             </div>

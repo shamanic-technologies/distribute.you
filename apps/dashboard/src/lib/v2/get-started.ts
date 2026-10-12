@@ -167,13 +167,33 @@ export function givesLLMPrompt(offerName: string, answers: Partial<Record<GiveDr
     .trim();
 }
 
-/** Emails written before the account exists: the first row's is written ahead, the rest on click, one per preview company. */
+/**
+ * Emails written before the account exists: the first row's is written ahead, then one more
+ * always waits beyond the rows opened (`nextEmailAhead`), one per preview company, capped.
+ */
 export const PREWRITTEN_EMAILS = 1;
 export const EMAIL_CAP = 5;
 
 /** Whether one more email may be written before the wall. */
 export function canWriteAnother(requested: number, cap = EMAIL_CAP): boolean {
   return requested < cap;
+}
+
+/**
+ * The row whose email to write now so the NEXT click opens at once, or null. One email (written
+ * or in flight) always waits unopened; once it is opened, the next writable row starts. A click
+ * used to start the write, and the visitor waited the whole model run (owner 2026-10-13: the 2nd
+ * email took 66 s). At most ONE unread email is ever spent ahead, never past the cap.
+ */
+export function nextEmailAhead(
+  rows: ReadonlyArray<{ key: string; writable: boolean }>,
+  requested: ReadonlySet<string>,
+  opened: ReadonlySet<string>,
+  cap = EMAIL_CAP,
+): string | null {
+  if (!canWriteAnother(requested.size, cap)) return null;
+  if (rows.some((r) => requested.has(r.key) && !opened.has(r.key))) return null;
+  return rows.find((r) => r.writable && !requested.has(r.key))?.key ?? null;
 }
 
 /** What we ask brand-service to read off the site for step 1. Keys are our own. */

@@ -5,6 +5,7 @@ import {
   DEFAULT_SIGNUP_DRAFT,
   estimatedLine,
   isLearning,
+  parseSignupDraft,
   parseSignupFunnels,
   signupFunnelsFrom,
   signupLaunchPlan,
@@ -50,24 +51,40 @@ describe("Your campaign: features-service's funnels, picked as served", () => {
     expect(isLearning({ status: "learning" })).toBe(true);
   });
 
-  it("opens on $20 a day, no volume cap, meetings off at up to $10 a week (the sketch)", () => {
-    expect(DEFAULT_SIGNUP_DRAFT).toEqual({ budget: "20", budgetPeriod: "daily", volume: "", volumePeriod: "monthly", reactiveOn: false, reactiveBudget: "10", reactivePeriod: "weekly", monthlyLimit: null });
+  it("opens on $20 a day, no volume cap, meetings ON at up to $10 a week (owner 2026-10-13)", () => {
+    expect(DEFAULT_SIGNUP_DRAFT).toEqual({ budget: "20", budgetPeriod: "daily", reactiveOn: true, reactiveBudget: "10", reactivePeriod: "weekly", monthlyLimit: null });
   });
 
-  it("launches the max budget in cents with an optional volume, and the meeting funnel only when ticked", () => {
+  it("launches the max budget in cents with no volume cap, and the meeting funnel when ticked (the default)", () => {
     const funnels = signupFunnelsFrom(PAGES);
     const r = signupLaunchPlan(DEFAULT_SIGNUP_DRAFT, funnels);
-    expect(r).toEqual({ plan: { proactive: { salesFunnelId: "best@cold", name: "Epiphany", caps: { maxBudget: { amountCents: 2000, period: "daily" }, maxVolume: null } }, reactive: null } });
-    const on = signupLaunchPlan({ ...DEFAULT_SIGNUP_DRAFT, volume: "500", reactiveOn: true }, funnels);
-    expect("plan" in on && on.plan.proactive.caps.maxVolume).toEqual({ count: 500, period: "monthly" });
-    expect("plan" in on && on.plan.reactive).toEqual({ salesFunnelId: "meet@ai", name: "Motivate", caps: { maxBudget: { amountCents: 1000, period: "weekly" }, maxVolume: null } });
+    expect(r).toEqual({
+      plan: {
+        proactive: { salesFunnelId: "best@cold", name: "Epiphany", caps: { maxBudget: { amountCents: 2000, period: "daily" }, maxVolume: null } },
+        reactive: { salesFunnelId: "meet@ai", name: "Motivate", caps: { maxBudget: { amountCents: 1000, period: "weekly" }, maxVolume: null } },
+      },
+    });
+    const off = signupLaunchPlan({ ...DEFAULT_SIGNUP_DRAFT, reactiveOn: false }, funnels);
+    expect("plan" in off && off.plan.reactive).toBeNull();
   });
 
-  it("refuses a missing or broken max budget (a funnel without one is held unfunded), a bad volume, a bad meeting budget", () => {
+  it("a meeting funnel not served for this offer never blocks the launch (its tick is not shown)", () => {
+    const funnels = signupFunnelsFrom(PAGES);
+    const r = signupLaunchPlan(DEFAULT_SIGNUP_DRAFT, { ...funnels, reactive: null });
+    expect("plan" in r && r.plan.reactive).toBeNull();
+  });
+
+  it("an older snapshot's volume is dropped and an untouched tick reads as ON", () => {
+    const d = parseSignupDraft({ budget: "35", budgetPeriod: "weekly", volume: "500", volumePeriod: "monthly" });
+    expect(d).not.toHaveProperty("volume");
+    expect(d?.reactiveOn).toBe(true);
+    expect(parseSignupDraft({ reactiveOn: false })?.reactiveOn).toBe(false);
+  });
+
+  it("refuses a missing or broken max budget (a funnel without one is held unfunded), a bad meeting budget", () => {
     const funnels = signupFunnelsFrom(PAGES);
     expect(signupLaunchPlan({ ...DEFAULT_SIGNUP_DRAFT, budget: "" }, funnels)).toHaveProperty("problem");
     expect(signupLaunchPlan({ ...DEFAULT_SIGNUP_DRAFT, budget: "12.5" }, funnels)).toHaveProperty("problem");
-    expect(signupLaunchPlan({ ...DEFAULT_SIGNUP_DRAFT, volume: "lots" }, funnels)).toHaveProperty("problem");
     expect(signupLaunchPlan({ ...DEFAULT_SIGNUP_DRAFT, reactiveOn: true, reactiveBudget: "0" }, funnels)).toHaveProperty("problem");
     expect(signupLaunchPlan(DEFAULT_SIGNUP_DRAFT, { proactive: null, reactive: null })).toHaveProperty("problem");
   });
@@ -122,7 +139,7 @@ describe("what we launch: caps first, then ONE funnel campaign (owner 2026-10-10
     expect(shown).not.toMatch(/funnel|pipe|\bleg\b|sales path/i);
     expect(stage).toContain('title="Your campaign"');
     expect(stage).toContain("Max budget");
-    expect(stage).toContain("Max volume");
+    expect(stage).not.toContain("Max volume");
     expect(stage).toContain("Also let our AI book meetings when someone replies");
   });
 });

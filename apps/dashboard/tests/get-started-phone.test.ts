@@ -2,7 +2,7 @@ import { describe, it, expect } from "vitest";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { requiredPhoneProblem, phoneSyntaxProblem } from "../src/lib/phone-syntax";
-import { browserPhoneCountry } from "../src/components/v2/get-started/phone-field";
+import { defaultPhoneCountry } from "../src/components/v2/get-started/phone-field";
 
 /**
  * Owner 2026-10-04: every `/get-started` signup leaves a phone number. The wall asks
@@ -23,14 +23,27 @@ describe("requiredPhoneProblem", () => {
   });
 });
 
-describe("browserPhoneCountry", () => {
-  it("reads the region off the browser language", () => {
-    expect(browserPhoneCountry("fr-FR").code).toBe("FR");
-    expect(browserPhoneCountry("en_GB").code).toBe("GB");
+describe("defaultPhoneCountry (owner 2026-10-13: the country the visitor connects from)", () => {
+  it("opens on the connection's country first, whatever the browser language says", () => {
+    expect(defaultPhoneCountry("FR", "en-US").code).toBe("FR");
+    expect(defaultPhoneCountry("fr", "fr").code).toBe("FR");
   });
-  it("falls back to the default country when the language names none we list", () => {
-    expect(browserPhoneCountry("fr").code).toBe("US");
-    expect(browserPhoneCountry(undefined).code).toBe("US");
+  it("reads the region off the browser language when the connection names none we list", () => {
+    expect(defaultPhoneCountry(null, "fr-FR").code).toBe("FR");
+    expect(defaultPhoneCountry("XX", "en_GB").code).toBe("GB");
+    expect(defaultPhoneCountry("T1", "de-DE").code).toBe("DE");
+  });
+  it("falls back to the default country when neither names one", () => {
+    expect(defaultPhoneCountry(null, "fr").code).toBe("US");
+    expect(defaultPhoneCountry(undefined, undefined).code).toBe("US");
+  });
+  it("the public page reads Cloudflare's country on the server and hands it to the wall", () => {
+    const page = readFileSync(join(__dirname, "../src/app/(authed)/get-started/page.tsx"), "utf8");
+    expect(page).toContain('get("cf-ipcountry")');
+    expect(page).toContain("<GetStarted ipCountry={ipCountry} />");
+    const gs = readFileSync(join(__dirname, "../src/components/v2/get-started/get-started.tsx"), "utf8");
+    expect(gs).toContain("<AccountCardWall\n          ipCountry={ipCountry}");
+    expect(wall).toContain("defaultPhoneCountry(ipCountry, navigator.language)");
   });
 });
 

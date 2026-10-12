@@ -74,7 +74,7 @@ import {
 import { formatRoi, roiIsGood } from "@/lib/format-roi";
 import { requiredPhoneProblem } from "@/lib/phone-syntax";
 import type { PhoneValue } from "@/components/onboarding/phone-input";
-import { PhoneField, browserPhoneCountry } from "./phone-field";
+import { PhoneField, defaultPhoneCountry } from "./phone-field";
 import { EMPTY_PROGRESS, launchFromPreview, type LaunchProgress } from "./launch";
 import type { SignupLaunchPlan } from "@/lib/v2/signup-campaign";
 import { PrepaidTopup, type TopupChoice } from "./prepaid-topup";
@@ -122,6 +122,7 @@ export function AccountCardWall({
   monthlyLimit,
   outlook,
   answered,
+  ipCountry = null,
   onClose,
 }: {
   brandId: string;
@@ -145,6 +146,8 @@ export function AccountCardWall({
   outlook: CampaignOutlook | null;
   /** The offer points and give lists were answered in the preview (and saved). */
   answered: boolean;
+  /** The visitor's country from their connection (`cf-ipcountry`), for the phone's default. */
+  ipCountry?: string | null;
   onClose: () => void;
 }) {
   const { isLoaded: authLoaded, isSignedIn, orgId } = useAuth();
@@ -209,7 +212,7 @@ export function AccountCardWall({
   const [cardSecret, setCardSecret] = useState<string | null>(null);
   const [account, setAccount] = useState<BillingAccount | null>(null);
   const [phone, setPhone] = useState<PhoneValue>(() => {
-    const c = browserPhoneCountry(navigator.language);
+    const c = defaultPhoneCountry(ipCountry, navigator.language);
     return { countryCode: c.code, dialCode: c.dial, national: "" };
   });
   // The reason shows once they leave the field or press Continue, never mid-typing.
