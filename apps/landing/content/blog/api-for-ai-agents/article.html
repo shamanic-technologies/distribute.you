@@ -1,16 +1,31 @@
 <div style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:12px;padding:20px 24px;margin:0 0 32px">
 <p style="margin:0 0 8px;font-size:0.75em;font-weight:600;letter-spacing:0.08em;text-transform:uppercase;color:#2563eb">Key takeaway</p>
-<p style="margin:0 0 12px"><strong>An AI agent can now open a distribute.you account, get its own API key and pay, with no human in the loop.</strong></p>
+<p style="margin:0 0 12px"><strong>Your AI assistant can now get you customers on distribute.you, from the first step to the replies, with no form for you to fill.</strong></p>
 <ul style="margin:0">
-<li><strong>2 calls</strong> get a key: an email it can read, then the code it receives.</li>
-<li>Free calls work at once. Paid calls are <strong>prepaid from $10</strong>, with automatic top-up.</li>
-<li>No free credit and no trial: the agent pays before it spends.</li>
+<li>Ask it once. It opens the account, drafts who to target, launches your cold email campaign and tells you who replied with interest.</li>
+<li>It can do this while you work on something else, and report in the chat you already use.</li>
+<li>It gets its own API key in <strong>2 calls</strong> and pays upfront, <strong>from $10</strong>, with automatic top-up so the campaign never stops.</li>
 </ul>
 </div>
 
 <p>Most APIs stop an AI agent at the first step. To get a key, someone has to open a browser, fill a signup form and type a card number. The agent can read the docs and write the code, then it waits for a person.</p>
 
 <p>We removed that wait. An agent can now sign up for distribute.you, get an API key and prepay on its own. A person only steps in if the agent cannot pay by card itself.</p>
+
+<video src="/blog/api-for-ai-agents/agents-launch.mp4" poster="/blog/api-for-ai-agents/signup.png" controls autoplay muted loop playsinline preload="metadata" style="width:100%;max-width:480px;display:block;margin:2rem auto;border-radius:16px;border:1px solid #e4e2de"></video>
+
+<h2 id="value">What your assistant can now do for you</h2>
+
+<p>You say: "Find me customers for acme.com." Your assistant can now carry that out on distribute.you, end to end:</p>
+
+<ul>
+<li><strong>Open your account.</strong> No signup page, no settings to hunt for.</li>
+<li><strong>Work out who to target.</strong> It reads your website and drafts the buyers to aim at.</li>
+<li><strong>Launch the campaign.</strong> We write the emails and send them from our own domains, so there is nothing to set up on your side.</li>
+<li><strong>Bring back the replies.</strong> It tells you who answered with interest, and what it cost you, in the same chat.</li>
+</ul>
+
+<p>The whole point is your time. Getting customers stops being a project with a login and a dashboard. It becomes one sentence to the assistant you already use. The rest of this article is the how, for the people building those assistants.</p>
 
 <h2 id="how">How an agent gets a key</h2>
 
@@ -25,6 +40,8 @@
 <pre style="white-space:pre-wrap;font-size:0.85em;line-height:1.55">curl -X POST https://api.distribute.you/v1/agent-signups/complete \
   -H "Content-Type: application/json" \
   -d '{"email":"agent@example.com","code":"123456"}'</pre>
+
+<img src="/blog/api-for-ai-agents/key.png" alt="The emailed code turns into an API key" width="720" height="900" loading="lazy" style="width:100%;max-width:420px;height:auto;display:block;margin:1.5rem auto;border-radius:12px;border:1px solid #e4e2de">
 
 <p>The answer carries the key, sent as <code>Authorization: Bearer &lt;key&gt;</code> on every call after that. Each call to <code>complete</code> creates a new key, so an agent can make as many as it needs. The same email can later sign in to the dashboard, so the person behind the agent sees everything it did.</p>
 
@@ -42,6 +59,8 @@
   -H "Authorization: Bearer distrib.usr_..." \
   -H "Content-Type: application/json" \
   -d '{"topup_amount_cents":1000,"auto_topup_amount_cents":1500,"auto_topup_threshold_cents":500}'</pre>
+
+<img src="/blog/api-for-ai-agents/prepay.png" alt="Prepay $10 with automatic top-up locked on" width="720" height="900" loading="lazy" style="width:100%;max-width:420px;height:auto;display:block;margin:1.5rem auto;border-radius:12px;border:1px solid #e4e2de">
 
 <p>The agent picks the amount: at least $10 to start. Automatic top-up is required, at least $15 each time the balance falls under $5 or more, so a campaign never stops halfway. The call returns a payment link. The agent opens it, or hands it to its human for one card entry.</p>
 
