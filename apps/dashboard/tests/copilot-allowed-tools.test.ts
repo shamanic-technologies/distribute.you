@@ -70,6 +70,10 @@ describe("Copilot allowed tools", () => {
     for (const t of ["create_followup", "update_followup", "cancel_followup", "list_followups", "fire_followup"]) expect(tools).toContain(t);
   });
 
+  it("knows the offer's steps before proposing a funnel and writes the rates a client states (owner 2026-10-12)", () => {
+    for (const t of ["get_offer_steps", "add_offer_step", "remove_offer_step", "set_leg_rates"]) expect(tools).toContain(t);
+  });
+
   it("lists each tool once", () => {
     expect(new Set(tools).size).toBe(tools.length);
   });
