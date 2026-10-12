@@ -17,6 +17,7 @@
  */
 
 import { isProactiveFrom } from "./outbound-leg-key";
+import { MONTHLY_LIMIT_REFUSAL } from "./v2/monthly-limit";
 
 export const SUBSCRIPTION_ARM = "subscription";
 export const SUBSCRIPTION_MONTHLY_CENTS = 9900;
@@ -169,6 +170,8 @@ export function subscriptionCheckoutRefusal(code: unknown): string {
       return "This account already pays as you go, so the monthly plan is not available on it. Write to us and we will switch it.";
     case "acquirer_not_supported":
       return "Your card setup on this account cannot take a subscription. Write to us and we will sort it out.";
+    case "monthly_charge_limit_reached":
+      return MONTHLY_LIMIT_REFUSAL;
     default:
       return "We couldn't open the checkout. Nothing was charged. Please try again in a moment.";
   }

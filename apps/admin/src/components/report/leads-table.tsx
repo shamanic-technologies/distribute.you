@@ -14,7 +14,6 @@ export interface LeadEmailSummary {
   subject: string;
   bodyText: string;
   sentAt: string;
-  workflow: string;
 }
 
 export interface LeadRow {

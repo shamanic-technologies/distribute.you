@@ -32,6 +32,7 @@ import {
   type PeopleList,
   type PersonTimeline,
 } from "./people-conversations";
+import { ApiCallDetailSchema, type ApiCallDetail } from "./api-calls";
 import { z } from "zod";
 import { BrandLinkedinPageSchema, type BrandLinkedinPage } from "./v2/brand-linkedin-page";
 import { LinkedinFeedResponseSchema, toLinkedinFeedPage, type LinkedinFeedPage } from "./v2/linkedin-post-view";
@@ -674,6 +675,21 @@ export async function getPersonTimeline(brandId: string, ref: string, token?: st
   if (!parsed.success) {
     console.error("[api] getPersonTimeline response shape mismatch", parsed.error.flatten());
     throw new Error("getPersonTimeline returned an unexpected shape");
+  }
+  return parsed.data;
+}
+
+/**
+ * One API / MCP call a person made with their key, whole (crm-service, gateway passthrough,
+ * staff Unibox scope): the request and our answer. Keyed by the thread item's `ref.callId`.
+ */
+export async function getPersonApiCall(brandId: string, callId: string, token?: string): Promise<ApiCallDetail> {
+  const qs = new URLSearchParams({ brandId });
+  const raw = await apiCall<unknown>(`/orgs/people/api-calls/${encodeURIComponent(callId)}?${qs.toString()}`, { token });
+  const parsed = ApiCallDetailSchema.safeParse(raw);
+  if (!parsed.success) {
+    console.error("[api] getPersonApiCall response shape mismatch", { callId, issues: parsed.error.flatten() });
+    throw new Error("getPersonApiCall returned an unexpected shape");
   }
   return parsed.data;
 }
@@ -7696,18 +7712,6 @@ export async function getAwaitingReply(brandId: string): Promise<AwaitingReply> 
   return parsed.data;
 }
 
-/**
- * "I answered this person outside the platform" (their own Gmail): lead-service
- * `POST /orgs/leads/{id}/answered-outside`. Takes them out of the waiting list until they
- * write again. `brandId` rides the query so the gateway forwards it as identity.
- */
-export async function markAnsweredOutside(leadRowId: string, brandId: string): Promise<void> {
-  await apiCall<unknown>(
-    `/leads/${encodeURIComponent(leadRowId)}/answered-outside?brandId=${encodeURIComponent(brandId)}`,
-    { method: "POST" },
-  );
-}
-
 // `view=basic` returns the slim lead projection (thin person + thin org, no
 // employmentHistory / extra org columns). Both readers feed the SAME
 // `EngagedLeadsPage`, which renders its table, status tabs, search and detail
@@ -9781,6 +9785,48 @@ export async function configureAutoTopup(
 
 export async function disableAutoTopup(token?: string): Promise<BillingAccount> {
   return apiCall<BillingAccount>("/billing/accounts/auto_topup", { token, method: "DELETE" });
+}
+
+/**
+ * The account's monthly charge limit (billing-service v0.83.28, owner 2026-10-12: "my card is
+ * never charged more than $X a month"), one per org, everything included, UTC calendar month.
+ * Readable and settable before the first payment. `monthly_charge_limit_cents` null = no limit.
+ */
+const MonthlyChargeLimitSchema = z.object({
+  org_id: z.string(),
+  monthly_charge_limit_cents: z.number().nullable(),
+  period: z.string(),
+  period_start: z.string(),
+  period_end: z.string(),
+  charged_this_period_cents: z.number().nullable(),
+  remaining_cents: z.number().nullable(),
+  limit_reached: z.boolean(),
+  limit_reached_at: z.string().nullable(),
+  refused_amount_cents: z.number().nullable(),
+  updated_at: z.string().nullable(),
+});
+export type MonthlyChargeLimit = z.infer<typeof MonthlyChargeLimitSchema>;
+
+function parseMonthlyChargeLimit(raw: unknown, caller: string): MonthlyChargeLimit {
+  const parsed = MonthlyChargeLimitSchema.safeParse(raw);
+  if (!parsed.success) {
+    console.error(`[dashboard] ${caller}: response shape mismatch`, { issues: parsed.error.issues, raw });
+    throw new Error(`[dashboard] ${caller}: invalid response shape`);
+  }
+  return parsed.data;
+}
+
+export async function getMonthlyChargeLimit(token?: string): Promise<MonthlyChargeLimit> {
+  return parseMonthlyChargeLimit(await apiCall<unknown>("/billing/accounts/monthly_charge_limit", { token }), "getMonthlyChargeLimit");
+}
+
+export async function setMonthlyChargeLimit(cents: number, token?: string): Promise<MonthlyChargeLimit> {
+  const raw = await apiCall<unknown>("/billing/accounts/monthly_charge_limit", { token, method: "PUT", body: { monthly_charge_limit_cents: cents } });
+  return parseMonthlyChargeLimit(raw, "setMonthlyChargeLimit");
+}
+
+export async function clearMonthlyChargeLimit(token?: string): Promise<MonthlyChargeLimit> {
+  return parseMonthlyChargeLimit(await apiCall<unknown>("/billing/accounts/monthly_charge_limit", { token, method: "DELETE" }), "clearMonthlyChargeLimit");
 }
 
 /**

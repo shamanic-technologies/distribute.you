@@ -1,0 +1,195 @@
+{
+  "_note": "Captured from prod crm-service 2026-10-12 (GET /orgs/people/timeline items of source api, GET /orgs/people/api-calls/{callId}).",
+  "items": [
+    {
+      "at": "2026-10-12T07:16:51.509Z",
+      "source": "api",
+      "channel": "mcp",
+      "kind": "message",
+      "direction": "inbound",
+      "subject": null,
+      "text": "Listed brands (MCP tool distribute_list_brands)",
+      "from": "kevin.lourd@gmail.com",
+      "to": [
+        "distribute.you API"
+      ],
+      "ref": {
+        "callId": "a5d293f1-41be-490d-b928-ec0482453a7c",
+        "sessionId": "a5d293f1-41be-490d-b928-ec0482453a7c",
+        "method": "GET",
+        "path": "/v1/brands",
+        "status": "200",
+        "mcpTool": "distribute_list_brands",
+        "callerOrgId": "f0420eb5-8f72-4f0a-a150-f473746df1e6",
+        "callerUserId": "cfe148ed-e3d8-40a2-8920-f8c040a81934",
+        "keyFingerprint": "e99f626ca59a25cb"
+      },
+      "textClean": null,
+      "outreachFact": null,
+      "event": null
+    },
+    {
+      "at": "2026-10-12T07:16:51.576Z",
+      "source": "api",
+      "channel": "mcp",
+      "kind": "message",
+      "direction": "outbound",
+      "subject": null,
+      "text": "Answered: 2 brands (200, 67 ms)",
+      "from": "distribute.you API",
+      "to": [
+        "kevin.lourd@gmail.com"
+      ],
+      "ref": {
+        "callId": "a5d293f1-41be-490d-b928-ec0482453a7c",
+        "sessionId": "a5d293f1-41be-490d-b928-ec0482453a7c",
+        "method": "GET",
+        "path": "/v1/brands",
+        "status": "200",
+        "mcpTool": "distribute_list_brands",
+        "callerOrgId": "f0420eb5-8f72-4f0a-a150-f473746df1e6",
+        "callerUserId": "cfe148ed-e3d8-40a2-8920-f8c040a81934",
+        "keyFingerprint": "e99f626ca59a25cb"
+      },
+      "textClean": null,
+      "outreachFact": null,
+      "event": null
+    },
+    {
+      "at": "2026-10-12T07:18:06.065Z",
+      "source": "api",
+      "channel": "api",
+      "kind": "message",
+      "direction": "inbound",
+      "subject": null,
+      "text": "Read the timeline of lead for brand Distribute.you",
+      "from": "kevin.lourd@gmail.com",
+      "to": [
+        "distribute.you API"
+      ],
+      "ref": {
+        "callId": "b79440ed-d73a-4978-af64-909f4de8e999",
+        "sessionId": "83a9b3ae-9f8f-4cd6-81a5-7aea67dccae9",
+        "method": "GET",
+        "path": "/v1/leads/e89237a3-c0b0-47dc-bf72-37b20a5fa744/timeline",
+        "status": "200",
+        "mcpTool": null,
+        "callerOrgId": "f0420eb5-8f72-4f0a-a150-f473746df1e6",
+        "callerUserId": "cfe148ed-e3d8-40a2-8920-f8c040a81934",
+        "keyFingerprint": "4d1d71e349727215"
+      },
+      "textClean": null,
+      "outreachFact": null,
+      "event": null
+    },
+    {
+      "at": "2026-10-12T07:18:06.126Z",
+      "source": "api",
+      "channel": "api",
+      "kind": "message",
+      "direction": "outbound",
+      "subject": null,
+      "text": "Answered: 3 items (200, 61 ms)",
+      "from": "distribute.you API",
+      "to": [
+        "kevin.lourd@gmail.com"
+      ],
+      "ref": {
+        "callId": "b79440ed-d73a-4978-af64-909f4de8e999",
+        "sessionId": "83a9b3ae-9f8f-4cd6-81a5-7aea67dccae9",
+        "method": "GET",
+        "path": "/v1/leads/e89237a3-c0b0-47dc-bf72-37b20a5fa744/timeline",
+        "status": "200",
+        "mcpTool": null,
+        "callerOrgId": "f0420eb5-8f72-4f0a-a150-f473746df1e6",
+        "callerUserId": "cfe148ed-e3d8-40a2-8920-f8c040a81934",
+        "keyFingerprint": "4d1d71e349727215"
+      },
+      "textClean": null,
+      "outreachFact": null,
+      "event": null
+    }
+  ],
+  "calls": {
+    "mcp": {
+      "callId": "a5d293f1-41be-490d-b928-ec0482453a7c",
+      "channel": "mcp",
+      "mcpTool": "distribute_list_brands",
+      "callerOrgId": "f0420eb5-8f72-4f0a-a150-f473746df1e6",
+      "callerUserId": "cfe148ed-e3d8-40a2-8920-f8c040a81934",
+      "email": "kevin.lourd@gmail.com",
+      "displayName": "Kevin Lourd",
+      "keyFingerprint": "e99f626ca59a25cb",
+      "brandIds": [],
+      "calledAt": "2026-10-12T07:16:51.509Z",
+      "durationMs": 67,
+      "summary": {
+        "asked": "Listed brands",
+        "answered": "Answered: 2 brands (200, 67 ms)"
+      },
+      "request": {
+        "method": "GET",
+        "path": "/v1/brands",
+        "query": {
+          "orgId": "f0420eb5-8f72-4f0a-a150-f473746df1e6"
+        },
+        "headers": {
+          "user-agent": "staff-call-log-probe",
+          "x-distribute-client": "mcp",
+          "x-distribute-mcp-tool": "distribute_list_brands"
+        },
+        "body": null,
+        "bodyBytes": 0,
+        "bodyTruncated": false
+      },
+      "response": {
+        "status": 200,
+        "contentType": "application/json; charset=utf-8",
+        "body": "{\"brands\":[{\"id\":\"f4d73dab-1f9d-49b2-b16e-63ecde76a5eb\",\"domain\":\"distribute.you\",\"name\":\"Distribute.you\",\"brandUrl\":\"https://distribute.you\",\"createdAt\":\"2026-04-14 07:46:46.073376+00\",\"updatedAt\":\"2026-09-09 14:25:36.370803+00\",\"logoUrl\":\"https://img.logo.dev/distribute.you?token=pk_J1iY4__HSfm9acHjR8FibA&size=256&format=png\",\"colors\":null},{\"id\":\"47823ca5-9185-45d3-ac72-5b3bc7119635\",\"domain\":\"loom.com\",\"name\":\"Loom\",\"brandUrl\":\"https://loom.com\",\"createdAt\":\"2026-06-20 02:40:11.390182+00\",\"updatedAt\":\"2026-06-20 02:40:46.549679+00\",\"logoUrl\":\"https://img.logo.dev/loom.com?token=pk_J1iY4__HSfm9acHjR8FibA&size=256&format=png\",\"colors\":null}]}",
+        "bodyBytes": 652,
+        "bodyTruncated": false
+      }
+    },
+    "api": {
+      "callId": "b79440ed-d73a-4978-af64-909f4de8e999",
+      "channel": "api",
+      "mcpTool": null,
+      "callerOrgId": "f0420eb5-8f72-4f0a-a150-f473746df1e6",
+      "callerUserId": "cfe148ed-e3d8-40a2-8920-f8c040a81934",
+      "email": "kevin.lourd@gmail.com",
+      "displayName": "Kevin Lourd",
+      "keyFingerprint": "4d1d71e349727215",
+      "brandIds": [
+        "f4d73dab-1f9d-49b2-b16e-63ecde76a5eb"
+      ],
+      "calledAt": "2026-10-12T07:18:06.065Z",
+      "durationMs": 61,
+      "summary": {
+        "asked": "Read the timeline of lead for brand Distribute.you",
+        "answered": "Answered: 3 items (200, 61 ms)"
+      },
+      "request": {
+        "method": "GET",
+        "path": "/v1/leads/e89237a3-c0b0-47dc-bf72-37b20a5fa744/timeline",
+        "query": {
+          "orgId": "f0420eb5-8f72-4f0a-a150-f473746df1e6",
+          "brandId": "f4d73dab-1f9d-49b2-b16e-63ecde76a5eb"
+        },
+        "headers": {
+          "user-agent": "node",
+          "content-type": "application/json"
+        },
+        "body": null,
+        "bodyBytes": 0,
+        "bodyTruncated": false
+      },
+      "response": {
+        "status": 200,
+        "contentType": "application/json; charset=utf-8",
+        "body": "{\"leadId\":\"0e94a58f-6fed-4c90-9697-166eaf61a83b\",\"brandId\":\"f4d73dab-1f9d-49b2-b16e-63ecde76a5eb\",\"offerId\":null,\"items\":[{\"id\":\"ievt:a5de17b6-c328-4387-87ba-8eb9a25f780a\",\"label\":\"initial_email\",\"source\":\"outreach\",\"occurredAt\":\"2026-05-29T07:43:27.151Z\",\"attributable\":true,\"attributionBasis\":\"our_email\",\"campaignId\":\"2a4ecada-89d5-4c89-9b81-04e25b131b54\",\"offerId\":\"832126f3-f3f1-4601-885d-bc8e101e5680\",\"url\":null,\"withdrawnAt\":null,\"detail\":{\"step\":1}},{\"id\":\"ievt:2ad84f1a-8c9f-4442-ba25-6f5bcf80e3df\",\"label\":\"followup\",\"source\":\"outreach\",\"occurredAt\":\"2026-06-01T05:05:52.263Z\",\"attributable\":true,\"attributionBasis\":\"our_email\",\"campaignId\":\"2a4ecada-89d5-4c89-9b81-04e25b131b54\",\"offerId\":\"832126f3-f3f1-4601-885d-bc8e101e5680\",\"url\":null,\"withdrawnAt\":null,\"detail\":{\"step\":2}},{\"id\":\"ievt:a3db98cf-49b8-4866-a1c6-16aca27ca392\",\"label\":\"followup\",\"source\":\"outreach\",\"occurredAt\":\"2026-08-11T00:12:43.089Z\",\"attributable\":true,\"attributionBasis\":\"our_email\",\"campaignId\":\"2a4ecada-89d5-4c89-9b81-04e25b131b54\",\"offerId\":\"832126f3-f3f1-4601-885d-bc8e101e5680\",\"url\":null,\"withdrawnAt\":null,\"detail\":{\"step\":3}}],\"tags\":{\"lastWord\":\"no_reply\",\"lastWordAt\":null,\"furthestStep\":\"contacted\",\"furthestStepAttributable\":true}}",
+        "bodyBytes": 1232,
+        "bodyTruncated": false
+      }
+    }
+  }
+}

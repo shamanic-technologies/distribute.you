@@ -26,6 +26,7 @@ import { PaymentFailedBanner } from "@/components/billing/payment-failed-banner"
 import { CardChangeConfirmModal } from "@/components/billing/card-change-confirm-modal";
 import { CardRemoveConfirmModal } from "@/components/billing/card-remove-confirm-modal";
 import { EmptyNote, Figure, Meter, Shimmer, TopBar } from "@/components/v2/ui";
+import { MonthlyLimitCard } from "@/components/v2/monthly-limit-card";
 
 /**
  * Billing, in the v2 frame.
@@ -353,6 +354,15 @@ export function V2BillingPage() {
               )}
             </>
           )}
+        </Section>
+
+        {/* The monthly charge limit (owner 2026-10-12): the "limit reached" email links here. */}
+        <Section
+          id="monthly-limit"
+          title="Monthly limit"
+          description="Everything included. Your card is never charged more than this in a calendar month."
+        >
+          <MonthlyLimitCard />
         </Section>
 
         {/* Payment method. */}

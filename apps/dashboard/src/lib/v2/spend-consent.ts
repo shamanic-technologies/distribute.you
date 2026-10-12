@@ -25,8 +25,11 @@ export interface ConsentLine {
 export type ConsentArm =
   /** Prepaid: the amount paid now is added again each time the credit runs out. */
   | { kind: "prepaid"; topupUsd: number }
-  /** The plan: its monthly amount now; each step is $100 a month more (billing's ladder). */
-  | { kind: "plan"; monthlyUsd: number };
+  /**
+   * The plan: its monthly amount now; each step is $100 a month more (billing's ladder).
+   * `limitUsd`: the monthly charge limit set at onboarding, named in the ladder sentence.
+   */
+  | { kind: "plan"; monthlyUsd: number; limitUsd?: number };
 
 /** billing's plan ladder steps $100 a month at a time ($99, $199, $299...). */
 export const PLAN_STEP_USD = 100;
@@ -45,7 +48,7 @@ export function spendConsentLines(input: { arm: ConsentArm }): [ConsentLine, Con
     arm.kind === "prepaid"
       ? { text: `When my credit runs out, ${usd(arm.topupUsd)} is added again automatically. Credit stays valid for 12 months.`, link: null }
       : {
-          text: `I understand that each time my credit runs out, my plan upgrades automatically (${usd(arm.monthlyUsd + PLAN_STEP_USD)}, then ${usd(arm.monthlyUsd + 2 * PLAN_STEP_USD)}, and so on) and my card is charged accordingly, so my campaigns keep running as I set them.`,
+          text: `I understand that each time my credit runs out, my plan upgrades automatically (${usd(arm.monthlyUsd + PLAN_STEP_USD)}, then ${usd(arm.monthlyUsd + 2 * PLAN_STEP_USD)}, and so on${arm.limitUsd !== undefined ? `, up to my ${usd(arm.limitUsd)} monthly limit` : ""}) and my card is charged accordingly, so my campaigns keep running as I set them.`,
           link: null,
         };
   const terms: ConsentLine = { text: "I have read and accept the", link: { label: "terms and conditions", href: TERMS_URL } };
