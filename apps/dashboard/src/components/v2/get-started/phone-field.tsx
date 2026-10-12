@@ -72,8 +72,13 @@ export function PhoneField({
   );
 }
 
-/** The visitor's own country when the browser names one we list, else the default. */
-export function browserPhoneCountry(language: string | undefined): PhoneCountry {
-  const region = (language ?? "").split(/[-_]/)[1]?.toUpperCase();
-  return COUNTRIES.find((c) => c.code === region) ?? DEFAULT_COUNTRY;
+/**
+ * The visitor's own country: where their connection comes from (Cloudflare's `cf-ipcountry`,
+ * read by the page on the server), else the region the browser language names, else the
+ * default. The IP comes first (owner 2026-10-13): a French visitor on an `en-US` browser, or a
+ * bare `fr`, used to land on the US.
+ */
+export function defaultPhoneCountry(ipCountry: string | null | undefined, language: string | undefined): PhoneCountry {
+  const byCode = (code: string | undefined) => (code ? COUNTRIES.find((c) => c.code === code.toUpperCase()) : undefined);
+  return byCode(ipCountry ?? undefined) ?? byCode((language ?? "").split(/[-_]/)[1]) ?? DEFAULT_COUNTRY;
 }

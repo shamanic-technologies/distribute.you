@@ -8,6 +8,7 @@ import {
   PREWRITTEN_EMAILS,
   STEPS_NOT_LIVE,
   canWriteAnother,
+  nextEmailAhead,
   compactCount,
   hostOf,
   nextSlide,
@@ -140,8 +141,8 @@ describe("the rules the page decides on", () => {
     // A snapshot from before the offer and audience steps starts over.
     expect(parseGetStartedSnapshot(JSON.stringify({ ...snap, version: 1 }))).toBeNull();
     // The campaign step as typed survives; a period it does not know reads as the default.
-    const campaign = { budget: "35", budgetPeriod: "weekly", volume: "", volumePeriod: "yearly", reactiveOn: true, reactiveBudget: "10", reactivePeriod: "weekly" };
-    expect(parseGetStartedSnapshot(JSON.stringify({ ...snap, campaign, campaignDone: true }))).toMatchObject({ campaign: { ...campaign, volumePeriod: "monthly" }, campaignDone: true });
+    const campaign = { budget: "35", budgetPeriod: "weekly", reactiveOn: true, reactiveBudget: "10", reactivePeriod: "yearly" };
+    expect(parseGetStartedSnapshot(JSON.stringify({ ...snap, campaign, campaignDone: true }))).toMatchObject({ campaign: { ...campaign, reactivePeriod: "weekly" }, campaignDone: true });
     // An older snapshot's sales path fields are dropped.
     expect(parseGetStartedSnapshot(JSON.stringify({ ...snap, salesPath: { steps: [], legs: [] }, campaigns: [] }))).not.toHaveProperty("salesPath");
     expect(parseGetStartedSnapshot(JSON.stringify({ ...snap, offer: { name: "x" } }))?.offer).toBeNull();
@@ -173,6 +174,28 @@ describe("the rules the page decides on", () => {
     expect(EMAIL_CAP).toBe(5);
     expect(canWriteAnother(4)).toBe(true);
     expect(canWriteAnother(5)).toBe(false);
+  });
+
+  it("keeps ONE email written beyond the rows opened, so the next click opens at once (owner 2026-10-13)", () => {
+    const rows = ["a", "b", "c", "d"].map((key) => ({ key, writable: key !== "c" }));
+    // The first landed and is on screen: the second starts now.
+    expect(nextEmailAhead(rows, new Set(["a"]), new Set(["a"]))).toBe("b");
+    // The second waits unopened (written or in flight): nothing more is spent.
+    expect(nextEmailAhead(rows, new Set(["a", "b"]), new Set(["a"]))).toBeNull();
+    // Opened: the next WRITABLE row starts (c has no name or title).
+    expect(nextEmailAhead(rows, new Set(["a", "b"]), new Set(["a", "b"]))).toBe("d");
+    // A row opened out of order still leaves one ahead.
+    expect(nextEmailAhead(rows, new Set(["a", "d"]), new Set(["a", "d"]))).toBe("b");
+    // Never past the cap, nothing left = nothing.
+    expect(nextEmailAhead(rows, new Set(["a", "b"]), new Set(["a", "b"]), 2)).toBeNull();
+    expect(nextEmailAhead(rows, new Set(["a", "b", "d"]), new Set(["a", "b", "d"]))).toBeNull();
+  });
+
+  it("the page writes ahead only after the first email landed, from the row on screen", () => {
+    const fx = FLOW.slice(FLOW.indexOf("const openedKeys = useRef("), FLOW.indexOf("function openRow("));
+    expect(fx).toContain("openedKeys.current.add(rowKey(audience.audienceId, selectedRow));");
+    expect(fx.indexOf("!firstEmailFor(audience.audienceId)")).toBeLessThan(fx.indexOf("nextEmailAhead("));
+    expect(fx).toContain("void writeEmail(audience, row);");
   });
 
 
