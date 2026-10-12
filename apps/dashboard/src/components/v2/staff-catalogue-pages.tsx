@@ -408,6 +408,11 @@ export function CatalogueObjectPage({ object, id }: { object: CatalogueObject; i
               </div>
             </div>
             <p className="k-fg2 mt-3 text-[14px]">{row.line}</p>
+            {d.draft === true && (
+              <p className="k-fg3 mt-1 text-[12px]">
+                Draft: a proposal, not running{d.runnable === false ? " and not runnable yet" : ""}. Its figures stay empty until it runs.
+              </p>
+            )}
 
             <div className={`k-card mt-6 grid divide-x divide-[var(--line-subtle)] ${object === "channels" ? "grid-cols-2" : "grid-cols-3"}`}>
               <Kpi label={costUnitLabel(d.costUnit)}>

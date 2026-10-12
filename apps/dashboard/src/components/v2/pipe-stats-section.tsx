@@ -18,8 +18,13 @@ import {
   mergeHistories,
   outcomeVolume,
   pipeStatsQuery,
+  periodRows,
+  periodsHaveSpend,
   unavailableWords,
   PIPE_STATS_SCOPE_LABELS,
+  type PeriodGrain,
+  type PipePeriodRow,
+  type PipePeriods,
   type PipeStats,
   type PipeStatsRate,
   type TeamImpact,
@@ -134,6 +139,8 @@ export function PipeStatsSection({ pipeId, brandId, offerId }: { pipeId: string;
         </div>
         {!answered && scopes.some((s) => reads[s].failed) && <p className="k-fg3 mt-2 text-[12px]">Some figures could not be read. Retrying.</p>}
       </div>
+
+      {scopes.some((x) => data[x]?.periods) && <PeriodsSection data={data} scopes={scopes} />}
 
       {scopes.some((x) => data[x]?.teamImpact) && <TeamImpactSection data={data} scopes={scopes} />}
 
@@ -390,6 +397,7 @@ function TeamImpactSection({ data, scopes }: { data: Partial<Record<PipeStatsSco
           </p>
         </div>
       </div>
+      {t.available && t.periods && <TeamImpactPeriods t={t} periods={t.periods} scope={scope} />}
       {t.available && (
         <ChartFrame title="Team alone vs team + this pipe over time" right={<span className="k-fg3 text-[12px]">{PIPE_STATS_SCOPE_LABELS[scope]}</span>}>
           {points.length === 0 ? (
@@ -660,5 +668,201 @@ function ScopeTooltip({
         </p>
       ))}
     </div>
+  );
+}
+
+/** A missing value: the served reason on hover, never a 0. */
+function Dash({ reason }: { reason?: string | null }) {
+  return (
+    <span className="k-fg4" title={reason ? teamReasonWords(reason) : undefined}>
+      —
+    </span>
+  );
+}
+
+const count = (v: number | null | undefined) => (v == null ? <Dash /> : v.toLocaleString("en-US"));
+const rate = (v: number | null | undefined, reason?: string | null) => (v == null ? <Dash reason={reason} /> : formatRatePct(v));
+const usd = (v: number | null | undefined) => (v == null ? <Dash /> : formatUsdAdaptive(v));
+
+function GrainSwitch({ grain, onPick }: { grain: PeriodGrain; onPick: (g: PeriodGrain) => void }) {
+  return (
+    <span className="inline-flex gap-1">
+      {(["quarters", "months"] as const).map((g) => (
+        <button key={g} type="button" onClick={() => onPick(g)} className={`k-btn-ghost ${g === grain ? "k-selected" : ""}`}>
+          {g === "quarters" ? "Quarters" : "Months"}
+        </button>
+      ))}
+    </span>
+  );
+}
+
+/** The "Since …" row reads as the table's headline; each period row counts its own period only. */
+function PeriodTr({ row, children }: { row: PipePeriodRow; children: React.ReactNode }) {
+  const total = row.kind === "since_inception";
+  return (
+    <tr className={`k-line-subtle border-b last:border-b-0 ${total ? "font-medium" : ""}`}>
+      <td className={`${TD} whitespace-nowrap ${total ? "" : "k-fg2"}`}>{row.label}</td>
+      {children}
+    </tr>
+  );
+}
+
+/**
+ * The pipe's figures per calendar period (owner 2026-10-12: Doc Dinners' "Since Dec 2024, Q1 2026, …,
+ * Oct 2026" table, "pour les stats de ce pipe, pas de leur équipe"). Columns are the pipe's own volumes
+ * and rates; money only when the pipe spends ours. Every cell is served (features-service PIPE-PERIODS-1012).
+ */
+function PeriodsSection({ data, scopes }: { data: Partial<Record<PipeStatsScope, PipeStats | null>>; scopes: PipeStatsScope[] }) {
+  const served = scopes.filter((x) => data[x]?.periods);
+  const [picked, setPicked] = useState<PipeStatsScope>("brand");
+  const [grain, setGrain] = useState<PeriodGrain>("quarters");
+  const scope = served.includes(picked) ? picked : served[0];
+  const s = data[scope] as PipeStats;
+  const periods = s.periods as PipePeriods;
+  const money = periodsHaveSpend(periods);
+  const outcome = outcomeVolume(s)?.label.toLowerCase() ?? "outcome";
+  const rates = s.conversionRates ?? [];
+  return (
+    <div>
+      <SectionTitle
+        right={
+          <span className="inline-flex items-center gap-3">
+            <GrainSwitch grain={grain} onPick={setGrain} />
+            <ScopeSwitch scopes={served} scope={scope} onPick={setPicked} />
+          </span>
+        }
+      >
+        By period
+      </SectionTitle>
+      <div className="k-card overflow-hidden">
+        <div className="k-scroll overflow-x-auto">
+          <table className="w-full text-[13px]">
+            <thead>
+              <tr className="k-line-subtle border-b align-bottom">
+                <th className={TH}>Period</th>
+                {s.volumes.map((v) => (
+                  <th key={v.key} className={TH}>
+                    {v.label}
+                  </th>
+                ))}
+                {rates.map((r) => (
+                  <th key={r.key} className={TH}>
+                    {rates.length === 1 ? "Rate" : r.label}
+                  </th>
+                ))}
+                {money && <th className={TH}>Spent</th>}
+                {money && <th className={TH}>Cost per {outcome}</th>}
+              </tr>
+            </thead>
+            <tbody>
+              {periodRows(periods, grain).map((row) => (
+                <PeriodTr key={row.period} row={row}>
+                  {s.volumes.map((v) => (
+                    <td key={v.key} className={TD}>
+                      {count(row.counts[v.key])}
+                    </td>
+                  ))}
+                  {rates.map((r) => (
+                    <td key={r.key} className={TD}>
+                      {rate(row.ratesPct[r.key], row.rateUnavailableReasons?.[r.key])}
+                    </td>
+                  ))}
+                  {money && <td className={TD}>{usd(row.spendUsd)}</td>}
+                  {money && <td className={TD}>{usd(row.costPerOutcomeUsd)}</td>}
+                </PeriodTr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+        <p className="k-fg3 k-line-subtle border-t px-4 py-2.5 text-[12px]">
+          {PIPE_STATS_SCOPE_LABELS[scope]}. Each row counts the people who entered the pipe in that period, not a running total.
+          {rates.length === 1 ? ` Rate: ${rates[0].label}.` : ""}
+        </p>
+      </div>
+    </div>
+  );
+}
+
+/** Team alone vs team + this pipe, per period, with the pipe's impact in points (all served). */
+function TeamImpactPeriods({ t, periods, scope }: { t: TeamImpact; periods: PipePeriods; scope: PipeStatsScope }) {
+  const [grain, setGrain] = useState<PeriodGrain>("quarters");
+  const money = periodsHaveSpend(periods);
+  const from = t.fromStepLabel ?? "Start";
+  const sides = [
+    { label: t.rows[0]?.label ?? "Team alone", from: "teamAloneFrom", to: "teamAloneTo", rate: "teamAlone" },
+    { label: t.rows[1]?.label ?? "Team + this pipe", from: "teamPlusPipeFrom", to: "teamPlusPipeTo", rate: "teamPlusPipe" },
+  ];
+  const sub = "k-label px-3 pb-2.5 text-right font-medium";
+  return (
+    <div>
+      <SectionTitle right={<GrainSwitch grain={grain} onPick={setGrain} />}>Impact by period</SectionTitle>
+      <div className="k-card overflow-hidden">
+        <div className="k-scroll overflow-x-auto">
+          <table className="w-full text-[13px]">
+            <thead>
+              <tr>
+                <th className={TH} />
+                {sides.map((x) => (
+                  <th key={x.rate} colSpan={3} className={`${TH} !text-center normal-case`}>
+                    {x.label}
+                  </th>
+                ))}
+                <th className={TH} />
+                {money && <th className={TH} colSpan={2} />}
+              </tr>
+              <tr className="k-line-subtle border-b align-bottom">
+                <th className="k-label pb-2.5 pl-4 pr-3 text-left font-medium">Period</th>
+                {sides.map((x) => (
+                  <ImpactSubHeads key={x.rate} cls={sub} from={from} to={t.toStepLabel} />
+                ))}
+                <th className={sub}>Impact</th>
+                {money && <th className={sub}>Spent</th>}
+                {money && <th className="k-label pb-2.5 pl-3 pr-4 text-right font-medium">Cost per {t.toStepLabel.toLowerCase()}</th>}
+              </tr>
+            </thead>
+            <tbody>
+              {periodRows(periods, grain).map((row) => {
+                const pts = periods.impactPointsDiff?.[row.period] ?? null;
+                return (
+                  <PeriodTr key={row.period} row={row}>
+                    {sides.map((x) => (
+                      <ImpactCells key={x.rate} row={row} side={x} />
+                    ))}
+                    <td className={TD}>
+                      {pts == null ? <Dash /> : <span className={pts > 0 ? "text-[var(--run)]" : ""}>{`${pts > 0 ? "+" : ""}${pts.toFixed(1).replace(/\.0$/, "")} pts`}</span>}
+                    </td>
+                    {money && <td className={TD}>{usd(row.spendUsd)}</td>}
+                    {money && <td className={TD}>{usd(row.costPerOutcomeUsd)}</td>}
+                  </PeriodTr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+        <p className="k-fg3 k-line-subtle border-t px-4 py-2.5 text-[12px]">
+          {PIPE_STATS_SCOPE_LABELS[scope]}. Each row counts its own period, not a running total.
+        </p>
+      </div>
+    </div>
+  );
+}
+
+function ImpactSubHeads({ cls, from, to }: { cls: string; from: string; to: string }) {
+  return (
+    <>
+      <th className={cls}>{from}</th>
+      <th className={cls}>{to}</th>
+      <th className={cls}>Rate</th>
+    </>
+  );
+}
+
+function ImpactCells({ row, side }: { row: PipePeriodRow; side: { from: string; to: string; rate: string } }) {
+  return (
+    <>
+      <td className={TD}>{count(row.counts[side.from])}</td>
+      <td className={TD}>{count(row.counts[side.to])}</td>
+      <td className={TD}>{rate(row.ratesPct[side.rate], row.rateUnavailableReasons?.[side.rate])}</td>
+    </>
   );
 }
