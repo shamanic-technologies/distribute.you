@@ -2,6 +2,7 @@ import { parseOfferSalesPaths, type OfferSalesPaths } from "./offer-sales-paths"
 import { BrandOutcomesSchema, OutcomePeopleSchema, type BrandOutcomes, type OutcomePeople } from "./v2/outcome-people";
 import { ConversationTimelineSchema, type ConversationTimeline } from "./conversation-timeline";
 import { parseBrandSalesBudget, type BrandSalesBudget } from "./brand-sales-budget";
+import { PipeWithStatsSchema, type PipeStats } from "./pipe-stats";
 import {
   CATALOGUE_DETAIL_SCHEMAS,
   CataloguePageSchema,
@@ -1739,6 +1740,16 @@ export async function getStaffCatalogueObject<K extends CatalogueReadObject>(
   const q = qs.toString();
   const raw = await apiCall<unknown>(`${STAFF_CATALOGUE_PATHS.one(object, id)}${q ? `?${q}` : ""}`);
   return parseStaff(`getStaffCatalogueObject(${object})`, CATALOGUE_DETAIL_SCHEMAS[object] as z.ZodType<CatalogueDetailByObject[K]>, raw);
+}
+
+/**
+ * A pipe's own figures since inception at one scope (fleet, brand, offer): the pipe detail
+ * read with `?stats=true` (features-service PIPE-STATS-1012). Shapes: lib/pipe-stats.ts.
+ */
+export async function getStaffPipeStats(pipeId: string, query: Record<string, string>): Promise<PipeStats> {
+  const qs = new URLSearchParams(query).toString();
+  const raw = await apiCall<unknown>(`${STAFF_CATALOGUE_PATHS.one("pipes", pipeId)}?${qs}`);
+  return parseStaff("getStaffPipeStats", PipeWithStatsSchema, raw).stats;
 }
 
 // ─── Sales funnel campaigns (campaign-service) + their caps (billing-service), owner 2026-10-10 ───

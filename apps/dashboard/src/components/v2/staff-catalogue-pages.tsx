@@ -8,6 +8,7 @@ import { EmptyNote, KeyHint, MarkLines, SectionTitle, Shimmer, StateDot, TopBar 
 import { useRowKeys } from "@/components/v2/records";
 import { CatalogueMark } from "@/components/v2/catalogue-mark";
 import { useSelectedOffer } from "@/components/v2/selected-offer";
+import { PipeStatsSection } from "@/components/v2/pipe-stats-section";
 import { useOngoingCatalogue, useStaffCatalogueList, useStaffCatalogueObject, staffCatalogueObjectKey } from "@/components/v2/staff-catalogue-data";
 import { getStaffCatalogueObject } from "@/lib/api";
 import { useOrgQueryGate } from "@/lib/use-auth-query";
@@ -437,7 +438,7 @@ export function CatalogueObjectPage({ object, id }: { object: CatalogueObject; i
 
             <div className="mt-8 grid gap-6 lg:grid-cols-[minmax(0,1fr)_320px]">
               <div className="min-w-0 space-y-8">
-                <ObjectBody object={object} d={d as unknown as Record<string, unknown>} id={id} href={href} ongoing={ongoing} orgId={orgId} brandId={brandId} />
+                <ObjectBody object={object} d={d as unknown as Record<string, unknown>} id={id} href={href} ongoing={ongoing} orgId={orgId} brandId={brandId} offerId={offerId} />
               </div>
               <aside className="k-card h-fit p-4">
                 <dl>
@@ -557,6 +558,7 @@ function ObjectBody({
   ongoing,
   orgId,
   brandId,
+  offerId,
 }: {
   object: CatalogueObject;
   d: Record<string, unknown>;
@@ -565,6 +567,7 @@ function ObjectBody({
   ongoing: ReturnType<typeof useOngoingCatalogue>;
   orgId: string;
   brandId: string;
+  offerId: string | null;
 }) {
   const ongoingPipes = useMemo(() => new Set(ongoing.pipes.map((p) => p.id)), [ongoing.pipes]);
   if (object === "steps") return <StepBody ids={(d.producingPipeIds as string[]) ?? []} href={href} ongoing={ongoingPipes} />;
@@ -583,7 +586,7 @@ function ObjectBody({
       </section>
     );
   }
-  if (object === "pipes") return <PipeBody id={id} ongoing={ongoing} orgId={orgId} brandId={brandId} />;
+  if (object === "pipes") return <PipeBody id={id} ongoing={ongoing} orgId={orgId} brandId={brandId} offerId={offerId} />;
   if (object === "sales-paths") return <PathBody id={id} d={d} href={href} ongoing={ongoing} orgId={orgId} brandId={brandId} />;
   return <FunnelBody d={d} href={href} ongoing={ongoingPipes} />;
 }
@@ -606,7 +609,19 @@ function StepBody({ ids, href, ongoing }: { ids: string[]; href: HrefFor; ongoin
   );
 }
 
-function PipeBody({ id, ongoing, orgId, brandId }: { id: string; ongoing: ReturnType<typeof useOngoingCatalogue>; orgId: string; brandId: string }) {
+function PipeBody({
+  id,
+  ongoing,
+  orgId,
+  brandId,
+  offerId,
+}: {
+  id: string;
+  ongoing: ReturnType<typeof useOngoingCatalogue>;
+  orgId: string;
+  brandId: string;
+  offerId: string | null;
+}) {
   const workflows = useStaffCatalogueList("workflows", { pipe: id, limit: "25" });
   const runs = ongoing.campaignsByPipe.get(id) ?? [];
   const mission = runs[0]?.m.row.campaign.id ?? null;
@@ -614,6 +629,7 @@ function PipeBody({ id, ongoing, orgId, brandId }: { id: string; ongoing: Return
   const rows = workflows.data?.rows ?? [];
   return (
     <>
+      <PipeStatsSection pipeId={id} brandId={brandId} offerId={offerId} />
       <section>
         <SectionTitle count={runs.length}>Running for this offer</SectionTitle>
         {runs.length === 0 ? (

@@ -117,6 +117,8 @@ export const SENSITIVE_QUERY_ROOTS = new Set([
   // Staff catalogue sections (fleet economics of every business object).
   "staffCatalogueList",
   "staffCatalogueObject",
+  // A pipe's own figures since inception (fleet, brand, offer).
+  "staffPipeStats",
   // Staff Posting > Posts: a brand's LinkedIn posts, read live.
   "staffBrandLinkedinPosts",
   // The signed-in staff member's own LinkedIn posts (Profile page).
