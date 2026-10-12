@@ -44,7 +44,6 @@ import { getOfferCampaignBudgets, type OfferCampaignBudgets } from "@/lib/api";
 import { fmtDailyBudgetUsd } from "@/lib/campaign-budget";
 import { STEP_KEY_FOR_LEAD_STAGE } from "@/lib/step-marks";
 import { CrewMark } from "@/components/v2/crew-mark";
-import { MarkAnswered } from "@/components/v2/mark-answered";
 import { awaitingReason } from "@/lib/awaiting-reason";
 import { useMissions, type Mission } from "@/components/v2/use-missions";
 import {
@@ -588,7 +587,6 @@ function CallCard({
           <a href={`mailto:${lead.email}`} className="k-btn">
             Email
           </a>
-          <MarkAnswered leadRowId={lead.id} brandId={brandId} />
           {!isLast && (
             <button type="button" onClick={onSkip} className="k-btn-ghost">
               Skip

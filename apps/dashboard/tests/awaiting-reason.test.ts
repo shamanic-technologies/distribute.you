@@ -32,13 +32,13 @@ describe("Needs your call reads lead-service's waiting-on-us set", () => {
     expect(body).not.toContain("bucket:");
     expect(body).not.toContain("standing:");
   });
-  it("Today and Work cards say why and can be marked answered", () => {
+  it("Today and Work cards say why, and carry no manual answered button (lead-service drops answered people itself)", () => {
     for (const f of ["today-page.tsx", "work-page.tsx"]) {
       const src = read(`src/components/v2/${f}`);
       expect(src).toContain("awaitingReason(");
-      expect(src).toContain("<MarkAnswered");
+      expect(src).not.toContain("MarkAnswered");
     }
-    expect(read("src/components/v2/mark-answered.tsx")).toContain("markAnsweredOutside(leadRowId, brandId)");
+    expect(read("src/lib/api.ts")).not.toContain("answered-outside");
   });
   it("Needs your call never links to the interested standing", () => {
     expect(read("src/components/v2/today-page.tsx")).not.toMatch(/All \$\{formatCount\([a-zA-Z]+\)\} interested/);

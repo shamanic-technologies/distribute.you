@@ -7696,18 +7696,6 @@ export async function getAwaitingReply(brandId: string): Promise<AwaitingReply> 
   return parsed.data;
 }
 
-/**
- * "I answered this person outside the platform" (their own Gmail): lead-service
- * `POST /orgs/leads/{id}/answered-outside`. Takes them out of the waiting list until they
- * write again. `brandId` rides the query so the gateway forwards it as identity.
- */
-export async function markAnsweredOutside(leadRowId: string, brandId: string): Promise<void> {
-  await apiCall<unknown>(
-    `/leads/${encodeURIComponent(leadRowId)}/answered-outside?brandId=${encodeURIComponent(brandId)}`,
-    { method: "POST" },
-  );
-}
-
 // `view=basic` returns the slim lead projection (thin person + thin org, no
 // employmentHistory / extra org columns). Both readers feed the SAME
 // `EngagedLeadsPage`, which renders its table, status tabs, search and detail
