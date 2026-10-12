@@ -4,21 +4,17 @@
  * (`/v1/accounts/monthly_charge_limit`, v0.83.28). Onboarding states it right after the
  * campaign budget and saves it before the payment; Billing shows and edits it.
  *
- * Prefill: on the plan, its amount plus two ladder steps ($299 on the $99 plan: the trial
- * end and one upgrade); prepaid, three times the first top-up. A limit under the first charge
+ * Prefill: $2,000 a month on both arms (owner 2026-10-12). A limit under the first charge
  * would refuse that charge itself, so it is refused here (a customer minimum is the front's).
+ * Onboarding shows ONE line and nothing else; the meter and "Remove limit" live on Billing.
  *
  * Alias-free on purpose, so it carries real unit tests.
  */
 
-import { PLAN_STEP_USD } from "./spend-consent";
-
 export type LimitArm = { kind: "plan"; monthlyUsd: number } | { kind: "prepaid"; topupUsd: number };
 
-/** The line's prefill for this arm, in whole dollars. */
-export function defaultMonthlyLimitUsd(arm: LimitArm): number {
-  return arm.kind === "plan" ? arm.monthlyUsd + 2 * PLAN_STEP_USD : 3 * arm.topupUsd;
-}
+/** The line's prefill, in whole dollars, on both arms (owner 2026-10-12). */
+export const DEFAULT_MONTHLY_LIMIT_USD = 2000;
 
 /** The first card charge the limit must let through: the plan amount, or the first top-up. */
 export function firstChargeUsd(arm: LimitArm): number {
@@ -35,12 +31,11 @@ export function parseMonthlyLimitUsd(input: string, floorUsd: number): { usd: nu
 }
 
 /**
- * The limit to save: what the person typed (`typed`, null while untouched), else the arm's
- * prefill. Prepaid and untouched, the prefill follows the top-up picked at the wall.
+ * The limit to save: what the person typed (`typed`, null while untouched), else the prefill,
+ * checked against the arm's first charge either way.
  */
 export function monthlyLimitToSave(typed: string | null, arm: LimitArm): { usd: number } | { problem: string } {
-  if (typed === null) return { usd: defaultMonthlyLimitUsd(arm) };
-  return parseMonthlyLimitUsd(typed, firstChargeUsd(arm));
+  return parseMonthlyLimitUsd(typed ?? String(DEFAULT_MONTHLY_LIMIT_USD), firstChargeUsd(arm));
 }
 
 /** billing's refusal when a charge would go over the limit, in words. */

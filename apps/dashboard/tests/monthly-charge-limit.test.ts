@@ -1,17 +1,16 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
-import { defaultMonthlyLimitUsd, firstChargeUsd, monthlyLimitToSave, parseMonthlyLimitUsd } from "../src/lib/v2/monthly-limit";
+import { DEFAULT_MONTHLY_LIMIT_USD, firstChargeUsd, monthlyLimitToSave, parseMonthlyLimitUsd } from "../src/lib/v2/monthly-limit";
 import { spendConsentLines } from "../src/lib/v2/spend-consent";
 import { DEFAULT_SIGNUP_DRAFT, parseSignupDraft } from "../src/lib/v2/signup-campaign";
 
 const read = (p: string) => readFileSync(new URL(`../${p}`, import.meta.url), "utf8");
 
 describe("monthly charge limit (owner 2026-10-12: never charge me more than $X a month)", () => {
-  it("prefills $299 on the $99 plan (built from the plan amount) and 3x the first top-up on prepaid", () => {
-    expect(defaultMonthlyLimitUsd({ kind: "plan", monthlyUsd: 99 })).toBe(299);
-    expect(defaultMonthlyLimitUsd({ kind: "plan", monthlyUsd: 499 })).toBe(699);
-    expect(defaultMonthlyLimitUsd({ kind: "prepaid", topupUsd: 100 })).toBe(300);
-    expect(defaultMonthlyLimitUsd({ kind: "prepaid", topupUsd: 500 })).toBe(1500);
+  it("prefills $2,000 a month on both arms (owner 2026-10-12)", () => {
+    expect(DEFAULT_MONTHLY_LIMIT_USD).toBe(2000);
+    expect(monthlyLimitToSave(null, { kind: "plan", monthlyUsd: 99 })).toEqual({ usd: 2000 });
+    expect(monthlyLimitToSave(null, { kind: "prepaid", topupUsd: 100 })).toEqual({ usd: 2000 });
   });
 
   it("refuses a typed limit under the first charge, whole dollars only", () => {
@@ -21,8 +20,8 @@ describe("monthly charge limit (owner 2026-10-12: never charge me more than $X a
     expect(parseMonthlyLimitUsd("12.5", 1)).toEqual({ problem: "Set your monthly limit in whole dollars." });
   });
 
-  it("untouched follows the arm (prepaid: the top-up picked at the wall); typed wins", () => {
-    expect(monthlyLimitToSave(null, { kind: "prepaid", topupUsd: 250 })).toEqual({ usd: 750 });
+  it("untouched = $2,000; typed wins; both checked against the first charge", () => {
+    expect(monthlyLimitToSave(null, { kind: "prepaid", topupUsd: 250 })).toEqual({ usd: 2000 });
     expect(monthlyLimitToSave("400", { kind: "prepaid", topupUsd: 250 })).toEqual({ usd: 400 });
     expect(monthlyLimitToSave("200", { kind: "prepaid", topupUsd: 250 })).toEqual({ problem: "Your monthly limit starts at $250." });
   });
@@ -42,12 +41,16 @@ describe("monthly charge limit (owner 2026-10-12: never charge me more than $X a
 
   it("the campaign step shows the line on signup only, right after the budgets", () => {
     const gs = read("src/components/v2/get-started/get-started.tsx");
-    expect(gs).toContain("limitPrefillUsd={org ? null : defaultMonthlyLimitUsd(limitArm)}");
+    expect(gs).toContain("limitPrefillUsd={org ? null : DEFAULT_MONTHLY_LIMIT_USD}");
     const stage = gs.slice(gs.indexOf("export function CampaignStage("), gs.indexOf("function ValueStage("));
     expect(stage).toContain(">Never charge me more than</span>");
     expect(stage).toContain(">a month</span>");
     expect(stage.indexOf(">Never charge me more than</span>")).toBeGreaterThan(stage.indexOf('label="Max budget in dollars"'));
     expect(gs).toContain("monthlyLimit={campaignDraft.monthlyLimit}");
+    // Onboarding shows the ONE line: no meter, no "Remove limit" (Billing only, owner 2026-10-12).
+    expect(stage).not.toContain("Remove limit");
+    expect(stage).not.toContain("<Meter");
+    expect(stage).not.toContain("MonthlyLimitCard");
   });
 
   it("the wall saves the limit to billing before any charge, on both arms", () => {
