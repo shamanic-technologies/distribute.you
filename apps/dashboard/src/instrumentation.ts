@@ -834,6 +834,13 @@ const COPILOT_ALLOWED_TOOLS = [
   "list_sourcing_origins",
   "get_offer_sourcing",
   "get_leg_rates",
+  // Writes the rate a client states for a leg (owner 2026-10-12: it could only read them).
+  "set_leg_rates",
+  // The steps the offer's business has: read before proposing a funnel, ask the client about a
+  // missing step, record the answer (owner 2026-10-12, Doc Dinners proposed a purchase funnel).
+  "get_offer_steps",
+  "add_offer_step",
+  "remove_offer_step",
   "list_sales_paths",
   "get_trigger_events",
   "list_campaigns",
