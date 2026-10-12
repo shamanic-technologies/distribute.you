@@ -8,6 +8,8 @@ import { findRoute, groupNames } from "./routes.js";
 import { login, logout, status } from "./commands/auth.js";
 import { call } from "./commands/call.js";
 import { describe, ops } from "./commands/ops.js";
+import { prepay, prepayStatus } from "./commands/prepay.js";
+import { signupStart, signupVerify } from "./commands/signup.js";
 import { groupUsage, runRoute, unknownAction } from "./commands/resource.js";
 
 export interface RunOptions {
@@ -70,6 +72,10 @@ export async function run(options: RunOptions): Promise<ExitCode> {
               exitCode: EXIT.usage,
             });
         }
+      case "signup":
+        return subcommand === "verify" ? await signupVerify(context, args) : await signupStart(context, args);
+      case "prepay":
+        return subcommand === "status" ? await prepayStatus(context) : await prepay(context, args);
       case "ops":
         return await ops(context, args);
       case "describe":

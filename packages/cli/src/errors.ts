@@ -19,6 +19,8 @@ export const EXIT = {
   network: 6,
   /** A destructive command was not confirmed. */
   notConfirmed: 7,
+  /** The API answered 402: this costs money and the balance is empty. Run `distribute prepay`. */
+  paymentRequired: 8,
 } as const;
 
 export type ExitCode = (typeof EXIT)[keyof typeof EXIT];
