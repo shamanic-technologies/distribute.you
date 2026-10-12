@@ -157,6 +157,8 @@ export const PERSISTABLE_QUERY_ROOTS = new Set([
   "entityRegistry",
   // Billing — the account, its credit grants and its payment history.
   "billingAccount",
+  // The monthly charge limit and this month's charges (Billing, billing-service).
+  "monthlyChargeLimit",
   "billingRunway",
   "subscriptionPlans",
   "subscription",

@@ -45,6 +45,7 @@ import {
   getSubscription,
   sendAuthNotification,
   savePhoneNumber,
+  setMonthlyChargeLimit,
   startSubscription,
   type BillingAccount,
   type CardSetup,
@@ -79,6 +80,7 @@ import type { SignupLaunchPlan } from "@/lib/v2/signup-campaign";
 import { PrepaidTopup, type TopupChoice } from "./prepaid-topup";
 import { SpendConsent, allTicked } from "./spend-consent";
 import { consentRecord, spendConsentLines, type PaymentConsentRecord } from "@/lib/v2/spend-consent";
+import { monthlyLimitToSave } from "@/lib/v2/monthly-limit";
 import { payTopup, settleTopup } from "./pay-topup";
 import { pingOwner } from "@/lib/owner-ping-client";
 import { hostOf as pingHostOf, websiteUrl as pingWebsiteUrl } from "@/lib/v2/get-started";
@@ -117,6 +119,7 @@ export function AccountCardWall({
   note = null,
   email: writtenEmail,
   plan,
+  monthlyLimit,
   outlook,
   answered,
   onClose,
@@ -136,6 +139,8 @@ export function AccountCardWall({
   email: GetStartedEmail | null;
   /** The campaign set at the "Your campaign" step (the funnels and their caps). */
   plan: SignupLaunchPlan;
+  /** "Never charge me more than $X a month" as typed at the campaign step; null = the arm's prefill. */
+  monthlyLimit: string | null;
   /** The served figures of the campaign picked: what the match buys is read off it. */
   outlook: CampaignOutlook | null;
   /** The offer points and give lists were answered in the preview (and saved). */
@@ -161,7 +166,11 @@ export function AccountCardWall({
   const [planTicked, setPlanTicked] = useState([false, false, false]);
   // The plan's boxes as ticked at the click, sent with the card form and the plan start.
   const planConsentRecord = useRef<PaymentConsentRecord | null>(null);
-  const planConsent = spendConsentLines({ arm: { kind: "plan", monthlyUsd: Math.round(arm.monthlyCents / 100) } });
+  // The plan's monthly limit (validated at the campaign step), named in the ladder box.
+  const planLimit = monthlyLimitToSave(monthlyLimit, { kind: "plan", monthlyUsd: Math.round(arm.monthlyCents / 100) });
+  const planConsent = spendConsentLines({
+    arm: { kind: "plan", monthlyUsd: Math.round(arm.monthlyCents / 100), ...("usd" in planLimit ? { limitUsd: planLimit.usd } : {}) },
+  });
   const planName = arm.plan ? "subscription" : "prepaid";
 
   const [stage, setStage] = useState<Stage>("account");
@@ -513,15 +522,32 @@ export function AccountCardWall({
     if (!res.ok) throw new Error("We could not prepare the card form. Try again.");
   }
 
+  // The monthly limit is saved to billing before any charge (owner 2026-10-12).
+  async function saveMonthlyLimit(usd: number) {
+    try {
+      await setMonthlyChargeLimit(usd * 100);
+    } catch (e) {
+      console.error("[get-started] monthly limit not saved:", e);
+      throw new Error("We could not save your monthly limit. Try again.");
+    }
+  }
+
   async function pay(choice: TopupChoice) {
     if (busy || !checkReady()) return;
     if (paid) {
       void afterPaid(paid);
       return;
     }
+    // The monthly limit follows the top-up while untouched (3x); a typed one must let it through.
+    const limit = monthlyLimitToSave(monthlyLimit, { kind: "prepaid", topupUsd: choice.topupUsd });
+    if ("problem" in limit) {
+      setError(limit.problem);
+      return;
+    }
     setBusy(true);
     setError(null);
     try {
+      await saveMonthlyLimit(limit.usd);
       await declareRevolut();
       const started = await payTopup({
         amountUsd: choice.topupUsd,
@@ -586,9 +612,14 @@ export function AccountCardWall({
   // The card is saved through the ordinary card setup billing answers (Revolut widget by
   // default, Stripe's embedded form when the org's card lives there), then the plan starts.
   async function openTrialCheckout() {
+    if ("problem" in planLimit) {
+      setError(planLimit.problem);
+      return;
+    }
     setBusy(true);
     setError(null);
     try {
+      await saveMonthlyLimit(planLimit.usd);
       await declareRevolut();
       const checkout = await createSubscriptionCheckout({ monthly_amount_cents: arm.monthlyCents, ui_mode: "embedded", consent: planConsentRecord.current ?? undefined });
       posthog.capture("get_started_trial_opened", { monthly_usd: Math.round(arm.monthlyCents / 100), lp_variant: arm.variant });

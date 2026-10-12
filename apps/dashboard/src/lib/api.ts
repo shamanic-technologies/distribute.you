@@ -9784,6 +9784,48 @@ export async function disableAutoTopup(token?: string): Promise<BillingAccount> 
 }
 
 /**
+ * The account's monthly charge limit (billing-service v0.83.28, owner 2026-10-12: "my card is
+ * never charged more than $X a month"), one per org, everything included, UTC calendar month.
+ * Readable and settable before the first payment. `monthly_charge_limit_cents` null = no limit.
+ */
+const MonthlyChargeLimitSchema = z.object({
+  org_id: z.string(),
+  monthly_charge_limit_cents: z.number().nullable(),
+  period: z.string(),
+  period_start: z.string(),
+  period_end: z.string(),
+  charged_this_period_cents: z.number().nullable(),
+  remaining_cents: z.number().nullable(),
+  limit_reached: z.boolean(),
+  limit_reached_at: z.string().nullable(),
+  refused_amount_cents: z.number().nullable(),
+  updated_at: z.string().nullable(),
+});
+export type MonthlyChargeLimit = z.infer<typeof MonthlyChargeLimitSchema>;
+
+function parseMonthlyChargeLimit(raw: unknown, caller: string): MonthlyChargeLimit {
+  const parsed = MonthlyChargeLimitSchema.safeParse(raw);
+  if (!parsed.success) {
+    console.error(`[dashboard] ${caller}: response shape mismatch`, { issues: parsed.error.issues, raw });
+    throw new Error(`[dashboard] ${caller}: invalid response shape`);
+  }
+  return parsed.data;
+}
+
+export async function getMonthlyChargeLimit(token?: string): Promise<MonthlyChargeLimit> {
+  return parseMonthlyChargeLimit(await apiCall<unknown>("/billing/accounts/monthly_charge_limit", { token }), "getMonthlyChargeLimit");
+}
+
+export async function setMonthlyChargeLimit(cents: number, token?: string): Promise<MonthlyChargeLimit> {
+  const raw = await apiCall<unknown>("/billing/accounts/monthly_charge_limit", { token, method: "PUT", body: { monthly_charge_limit_cents: cents } });
+  return parseMonthlyChargeLimit(raw, "setMonthlyChargeLimit");
+}
+
+export async function clearMonthlyChargeLimit(token?: string): Promise<MonthlyChargeLimit> {
+  return parseMonthlyChargeLimit(await apiCall<unknown>("/billing/accounts/monthly_charge_limit", { token, method: "DELETE" }), "clearMonthlyChargeLimit");
+}
+
+/**
  * What billing-service answers when the card is gone.
  *
  * Conformed to the DEPLOYED contract rather than a shape guessed up front:

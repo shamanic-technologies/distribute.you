@@ -71,7 +71,7 @@ describe("three statements ticked before the first payment, both A/B arms (owner
     const card = wall.slice(wall.indexOf('{stage === "card" && !cardSecret && ('), wall.indexOf('{stage === "card" && cardSecret && ('));
     expect(card).toContain("<SpendConsent lines={planConsent}");
     expect(card).toContain("disabled={busy || !allTicked(planTicked)}");
-    expect(wall).toContain('spendConsentLines({ arm: { kind: "plan", monthlyUsd: Math.round(arm.monthlyCents / 100) } })');
+    expect(wall).toContain('arm: { kind: "plan", monthlyUsd: Math.round(arm.monthlyCents / 100), ...("usd" in planLimit ? { limitUsd: planLimit.usd } : {}) },');
   });
 
   it("asks the email consent once: remembered across the Google round trip, not asked again at the credit step", () => {

@@ -51,7 +51,7 @@ describe("Your campaign: features-service's funnels, picked as served", () => {
   });
 
   it("opens on $20 a day, no volume cap, meetings off at up to $10 a week (the sketch)", () => {
-    expect(DEFAULT_SIGNUP_DRAFT).toEqual({ budget: "20", budgetPeriod: "daily", volume: "", volumePeriod: "monthly", reactiveOn: false, reactiveBudget: "10", reactivePeriod: "weekly" });
+    expect(DEFAULT_SIGNUP_DRAFT).toEqual({ budget: "20", budgetPeriod: "daily", volume: "", volumePeriod: "monthly", reactiveOn: false, reactiveBudget: "10", reactivePeriod: "weekly", monthlyLimit: null });
   });
 
   it("launches the max budget in cents with an optional volume, and the meeting funnel only when ticked", () => {

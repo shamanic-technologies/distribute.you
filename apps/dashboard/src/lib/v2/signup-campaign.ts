@@ -145,6 +145,8 @@ export interface SignupCampaignDraft {
   reactiveOn: boolean;
   reactiveBudget: string;
   reactivePeriod: SignupPeriod;
+  /** "Never charge me more than $X a month" as typed; null while untouched (the arm's prefill). */
+  monthlyLimit: string | null;
 }
 
 /** The sketch's defaults: $20 a day, no volume cap, meetings off at up to $10 a week. */
@@ -156,6 +158,7 @@ export const DEFAULT_SIGNUP_DRAFT: SignupCampaignDraft = {
   reactiveOn: false,
   reactiveBudget: "10",
   reactivePeriod: "weekly",
+  monthlyLimit: null,
 };
 
 export function parseSignupDraft(v: unknown): SignupCampaignDraft | null {
@@ -170,6 +173,7 @@ export function parseSignupDraft(v: unknown): SignupCampaignDraft | null {
     reactiveOn: o.reactiveOn === true,
     reactiveBudget: str(o.reactiveBudget, DEFAULT_SIGNUP_DRAFT.reactiveBudget),
     reactivePeriod: asSignupPeriod(o.reactivePeriod, DEFAULT_SIGNUP_DRAFT.reactivePeriod),
+    monthlyLimit: typeof o.monthlyLimit === "string" ? o.monthlyLimit : null,
   };
 }
 
