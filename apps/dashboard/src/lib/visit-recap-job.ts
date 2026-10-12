@@ -1,5 +1,15 @@
 import { z } from "zod";
-import { firmographicLines, RETURNING_LOOKBACK_DAYS, visitPerson, visitRecap, type ReturningVisit, type VisitEvent } from "./visit-recap";
+import { isStaffEmail } from "./owner-ping";
+import {
+  firmographicLines,
+  RETURNING_LOOKBACK_DAYS,
+  visitClerkUserId,
+  visitPerson,
+  visitRecap,
+  type ReturningVisit,
+  type VisitAccount,
+  type VisitEvent,
+} from "./visit-recap";
 
 /**
  * Every 5 minutes, finds the visits that ended 30 to 40 minutes ago (PostHog
@@ -83,7 +93,7 @@ select $session_id, timestamp, event, properties.$host, properties.$pathname, pr
   properties.$el_text, properties.title, properties.$geoip_country_code, properties.$referring_domain,
   properties.utm_source, properties.utm_medium, properties.utm_term, properties.gclid,
   coalesce(properties.website, properties.domain), person.properties.email, person.properties.name,
-  properties.topup_usd
+  properties.topup_usd, distinct_id
 from events
 where timestamp > now() - interval 1 day and $session_id in (${ids})
   and event not in ('$web_vitals', '$exception', '$set', '$identify', 'landing_variant_viewed')
@@ -94,6 +104,10 @@ limit 10000`;
 interface Config {
   apolloServiceUrl: string;
   apolloServiceApiKey: string;
+  clientServiceUrl: string;
+  clientServiceApiKey: string;
+  brandServiceUrl: string;
+  brandServiceApiKey: string;
   posthogApiHost: string;
   posthogProjectId: string;
   posthogPersonalApiKey: string;
@@ -105,6 +119,10 @@ function configFromEnv(): Config | null {
   const env = {
     apolloServiceUrl: process.env.APOLLO_SERVICE_URL?.trim(),
     apolloServiceApiKey: process.env.APOLLO_SERVICE_API_KEY?.trim(),
+    clientServiceUrl: process.env.CLIENT_SERVICE_URL?.trim(),
+    clientServiceApiKey: process.env.CLIENT_SERVICE_API_KEY?.trim(),
+    brandServiceUrl: process.env.BRAND_SERVICE_URL?.trim(),
+    brandServiceApiKey: process.env.BRAND_SERVICE_API_KEY?.trim(),
     posthogProjectId: process.env.POSTHOG_PROJECT_ID?.trim(),
     posthogPersonalApiKey: process.env.POSTHOG_PERSONAL_API_KEY?.trim(),
     telegramToken: process.env.TELEGRAM_BOT_TOKEN?.trim(),
@@ -118,6 +136,10 @@ function configFromEnv(): Config | null {
   return {
     apolloServiceUrl: env.apolloServiceUrl!.replace(/\/$/, ""),
     apolloServiceApiKey: env.apolloServiceApiKey!,
+    clientServiceUrl: env.clientServiceUrl!.replace(/\/$/, ""),
+    clientServiceApiKey: env.clientServiceApiKey!,
+    brandServiceUrl: env.brandServiceUrl!.replace(/\/$/, ""),
+    brandServiceApiKey: env.brandServiceApiKey!,
     posthogApiHost: (process.env.POSTHOG_API_HOST || DEFAULT_POSTHOG_API_HOST)
       .replace("https://eu.i.posthog.com", "https://eu.posthog.com")
       .replace(/\/$/, ""),
@@ -164,6 +186,7 @@ export function rowToEvent(row: unknown[]): { sessionId: string; event: VisitEve
       email: str(row[15]),
       personName: str(row[16]),
       topupUsd: typeof row[17] === "number" && Number.isFinite(row[17]) ? row[17] : null,
+      distinctId: str(row[18]),
     },
   };
 }
@@ -205,8 +228,8 @@ export function companyLines(res: FirmographicsResponse, email: string | null = 
  * org-less, platform-billed read, cached per domain and per person. A failed
  * lookup is stated in the recap, never hidden.
  */
-async function lookupCompany(config: Config, events: VisitEvent[]): Promise<string[]> {
-  const person = visitPerson(events);
+async function lookupCompany(config: Config, events: VisitEvent[], account: VisitAccount | null): Promise<string[]> {
+  const person = visitPerson(events, account);
   if (!person) return [];
   const body: Record<string, string> = { domain: person.domain };
   if (person.email) body.email = person.email;
@@ -228,6 +251,51 @@ async function lookupCompany(config: Config, events: VisitEvent[]): Promise<stri
   } catch (err) {
     console.error(`[dashboard/visit-recap] company lookup failed for ${person.domain}:`, err);
     return [`Company lookup failed for ${person.domain}`];
+  }
+}
+
+const ResolveResponseSchema = z.object({ orgId: z.string() });
+const OrgBrandsResponseSchema = z.object({
+  brands: z.array(z.object({ name: z.string().nullable(), domain: z.string().nullable() })),
+});
+
+/**
+ * Who a signed-in visitor is and which brands their orgs hold (owner 2026-10-12),
+ * from the Clerk user id the visit carries: Clerk for the name, email and orgs,
+ * client-service for each org's internal id, brand-service for its brands. Null
+ * (and logged) when any hop fails: the recap then says the account was not found.
+ */
+async function lookupAccount(config: Config, clerkUserId: string): Promise<VisitAccount | null> {
+  try {
+    // Imported here so the pure helpers of this module load in unit tests without Clerk.
+    const { clerkClient } = await import("@clerk/nextjs/server");
+    const clerk = await clerkClient();
+    const user = await clerk.users.getUser(clerkUserId);
+    const memberships = await clerk.users.getOrganizationMembershipList({ userId: clerkUserId, limit: 20 });
+    const brands: VisitAccount["brands"] = [];
+    for (const m of memberships.data) {
+      const resolved = await fetch(`${config.clientServiceUrl}/internal/resolve`, {
+        method: "POST",
+        headers: { "x-api-key": config.clientServiceApiKey, "content-type": "application/json" },
+        body: JSON.stringify({ externalOrgId: m.organization.id, externalUserId: clerkUserId }),
+        signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
+      });
+      if (!resolved.ok) throw new Error(`client-service resolve ${resolved.status}: ${(await resolved.text()).slice(0, 300)}`);
+      const { orgId } = ResolveResponseSchema.parse(await resolved.json());
+      const res = await fetch(`${config.brandServiceUrl}/orgs/brands`, {
+        headers: { "x-api-key": config.brandServiceApiKey, "x-org-id": orgId },
+        signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
+      });
+      if (!res.ok) throw new Error(`brand-service /orgs/brands ${res.status}: ${(await res.text()).slice(0, 300)}`);
+      for (const b of OrgBrandsResponseSchema.parse(await res.json()).brands) {
+        if (!brands.some((x) => x.domain === b.domain && x.name === b.name)) brands.push(b);
+      }
+    }
+    const name = [user.firstName, user.lastName].filter(Boolean).join(" ") || null;
+    return { name, email: user.primaryEmailAddress?.emailAddress ?? null, brands };
+  } catch (err) {
+    console.error(`[dashboard/visit-recap] account lookup failed for ${clerkUserId}:`, err);
+    return null;
   }
 }
 
@@ -266,7 +334,14 @@ async function tick(config: Config): Promise<void> {
         console.error(`[dashboard/visit-recap] visit listed as ended but its events came back empty`);
         continue;
       }
-      await sendTelegram(config, visitRecap(events, await lookupCompany(config, events), returning));
+      const clerkUserId = visitClerkUserId(events);
+      const account = clerkUserId ? await lookupAccount(config, clerkUserId) : null;
+      // The SQL drops staff by PostHog email, which a signed-in person can lack.
+      if (isStaffEmail(account?.email)) {
+        sent.set(id, now);
+        continue;
+      }
+      await sendTelegram(config, visitRecap(events, await lookupCompany(config, events, account), returning, account));
       sent.set(id, now);
     }
     console.log(`[dashboard/visit-recap] sent ${ids.length} visit recap(s)`);

@@ -1,6 +1,6 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
-import { companyDomain, countryLabel, firmographicLines, formatAgo, formatDuration, guessRole, sourceLine, stageOf, visitPerson, visitRecap, type VisitEvent } from "../src/lib/visit-recap";
+import { companyDomain, countryLabel, firmographicLines, formatAgo, formatDuration, guessRole, sourceLine, stageOf, visitClerkUserId, visitPerson, visitRecap, type VisitAccount, type VisitEvent } from "../src/lib/visit-recap";
 import { companyLines, ENDED_VISITS_SQL, rowToEvent, rowToVisit } from "../src/lib/visit-recap-job";
 
 const read = (p: string) => readFileSync(new URL(`../${p}`, import.meta.url), "utf8");
@@ -25,6 +25,7 @@ function ev(offsetS: number, partial: Partial<VisitEvent>): VisitEvent {
     email: null,
     personName: null,
     topupUsd: null,
+    distinctId: null,
     ...partial,
   };
 }
@@ -154,7 +155,7 @@ describe("visit recap (owner 2026-10-03: one readable Telegram per human visit)"
   });
 
   it("maps a PostHog row onto a visit event, empty strings as absent", () => {
-    const { sessionId, event } = rowToEvent(["s1", "2026-10-03T10:00:00Z", "$pageview", "distribute.you", "/", "", null, null, "FR", "$direct", null, null, null, null, "acme.com", "jane@acme.com", "Jane Doe", 100]);
+    const { sessionId, event } = rowToEvent(["s1", "2026-10-03T10:00:00Z", "$pageview", "distribute.you", "/", "", null, null, "FR", "$direct", null, null, null, null, "acme.com", "jane@acme.com", "Jane Doe", 100, "user_3KZGifeRJrhEUgCcrq4evxlU7G3"]);
     expect(sessionId).toBe("s1");
     expect(event.topupUsd).toBe(100);
     expect(event.currentUrl).toBeNull();
@@ -297,6 +298,26 @@ describe("returning visitor recap (owner 2026-10-07: tell me when someone comes 
     const anon = visitRecap([ev(0, { host: "distribute.you", pathname: "/" })], [], { priorVisits: 1, lastSeenAt: new Date(T0 - 3 * 3_600_000).toISOString() });
     expect(anon.split("\n").slice(0, 2)).toEqual(["🔁 <b>Back</b> · visit 2 in 90 days · last seen 3 h ago", "Not signed up"]);
     expect(visitRecap([ev(0, {})])).not.toContain("Back");
+  });
+
+  it("names a signed-in returner PostHog holds no email for, with the brand (owner 2026-10-12: Jay Peak read as Not signed up)", () => {
+    const dash = { pathname: "/v2/orgs/x", distinctId: "user_3KZGifeRJrhEUgCcrq4evxlU7G3" };
+    const events = [ev(0, { ...dash, country: "US" }), ev(19, { ...dash, event: "signin_completed" }), click(40, "Unibox", dash), ev(71, dash)];
+    const returning = { priorVisits: 3, lastSeenAt: new Date(T0 - 12 * 3_600_000).toISOString() };
+    const account: VisitAccount = { name: "Jay Peak", email: "jayjppeak@gmail.com", brands: [{ name: "Peak Local Leads", domain: "peaklocalserviceleads.com" }] };
+    expect(visitClerkUserId(events)).toBe("user_3KZGifeRJrhEUgCcrq4evxlU7G3");
+    const text = visitRecap(events, [], returning, account);
+    expect(text.split("\n").slice(0, 3)).toEqual([
+      "🔁 <b>Back</b> · visit 4 in 90 days · last seen 12 h ago",
+      "Jay Peak · jayjppeak@gmail.com",
+      "Brand: Peak Local Leads (peaklocalserviceleads.com)",
+    ]);
+    expect(text).not.toContain("Not signed up");
+    // The company lookup asks for the brand's domain, not gmail.com.
+    expect(visitPerson(events, account)?.domain).toBe("peaklocalserviceleads.com");
+    // Account lookup failed: still never "Not signed up" for a signed-in visit.
+    expect(visitRecap(events, [], returning).split("\n")[1]).toBe("Signed in, account not found");
+    expect(visitRecap(events, [], null, { name: null, email: "a@b.co", brands: [] })).toContain("No brand yet");
   });
 
   it("prints how long ago in words", () => {
