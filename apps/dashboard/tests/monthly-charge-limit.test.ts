@@ -7,10 +7,10 @@ import { DEFAULT_SIGNUP_DRAFT, parseSignupDraft } from "../src/lib/v2/signup-cam
 const read = (p: string) => readFileSync(new URL(`../${p}`, import.meta.url), "utf8");
 
 describe("monthly charge limit (owner 2026-10-12: never charge me more than $X a month)", () => {
-  it("prefills $2,000 a month on both arms (owner 2026-10-12)", () => {
-    expect(DEFAULT_MONTHLY_LIMIT_USD).toBe(2000);
-    expect(monthlyLimitToSave(null, { kind: "plan", monthlyUsd: 99 })).toEqual({ usd: 2000 });
-    expect(monthlyLimitToSave(null, { kind: "prepaid", topupUsd: 100 })).toEqual({ usd: 2000 });
+  it("prefills $9,000 a month on both arms (owner 2026-10-12)", () => {
+    expect(DEFAULT_MONTHLY_LIMIT_USD).toBe(9000);
+    expect(monthlyLimitToSave(null, { kind: "plan", monthlyUsd: 99 })).toEqual({ usd: 9000 });
+    expect(monthlyLimitToSave(null, { kind: "prepaid", topupUsd: 100 })).toEqual({ usd: 9000 });
   });
 
   it("refuses a typed limit under the first charge, whole dollars only", () => {
@@ -20,8 +20,8 @@ describe("monthly charge limit (owner 2026-10-12: never charge me more than $X a
     expect(parseMonthlyLimitUsd("12.5", 1)).toEqual({ problem: "Set your monthly limit in whole dollars." });
   });
 
-  it("untouched = $2,000; typed wins; both checked against the first charge", () => {
-    expect(monthlyLimitToSave(null, { kind: "prepaid", topupUsd: 250 })).toEqual({ usd: 2000 });
+  it("untouched = $9,000; typed wins; both checked against the first charge", () => {
+    expect(monthlyLimitToSave(null, { kind: "prepaid", topupUsd: 250 })).toEqual({ usd: 9000 });
     expect(monthlyLimitToSave("400", { kind: "prepaid", topupUsd: 250 })).toEqual({ usd: 400 });
     expect(monthlyLimitToSave("200", { kind: "prepaid", topupUsd: 250 })).toEqual({ problem: "Your monthly limit starts at $250." });
   });
