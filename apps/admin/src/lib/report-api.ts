@@ -8,7 +8,6 @@ import type {
   Campaign,
   Email,
   Lead,
-  PromptAssignment,
   QuotePitch,
   QuotePitchStatus,
   StatsRegistry,
@@ -744,31 +743,5 @@ export async function fetchQuotePitchesByBrand(
     },
     () => [],
     `fetchQuotePitchesByBrand(${brandId})`,
-  );
-}
-
-/** The resolved generation prompt assigned to this feature (platform default
- *  or the org's fork). Read-only mirror of the authed `CampaignPromptPanel`
- *  (`usePromptAssignment`). Returns null on any failure so the Prompt page can
- *  render an empty state instead of poisoning the 4h cache entry. */
-export async function fetchPromptAssignment(
-  orgId: string,
-  featureSlug: string,
-): Promise<PromptAssignment | null> {
-  return cachedReportFetch(
-    async () => {
-      return await adminGet<PromptAssignment>(
-        "promptAssignment",
-        `/content/prompt-assignments?featureSlug=${encodeURIComponent(featureSlug)}`,
-        orgId,
-      );
-    },
-    [`fetchPromptAssignment`, orgId, featureSlug],
-    {
-      tags: [`prompt-assignment:${orgId}:${featureSlug}`, `report:org:${orgId}`],
-      revalidate: REPORT_REVALIDATE_SECONDS,
-    },
-    () => null,
-    `fetchPromptAssignment(${featureSlug})`,
   );
 }
