@@ -129,7 +129,7 @@ import {
   TOPUP_CHOICES_USD,
   wallCopy,
 } from "@/lib/v2/get-started";
-import { defaultMonthlyLimitUsd, monthlyLimitToSave, type LimitArm } from "@/lib/v2/monthly-limit";
+import { DEFAULT_MONTHLY_LIMIT_USD, monthlyLimitToSave, type LimitArm } from "@/lib/v2/monthly-limit";
 import { Initials, Shimmer } from "@/components/v2/ui";
 import { EditableAnswer } from "@/components/v2/editable-answer";
 import { OfferIcon } from "@/components/v2/new-org-icons";
@@ -194,7 +194,7 @@ export function GetStarted({ org }: { org?: OrgWalk } = {}) {
     if (isSubscriptionArm(document.cookie)) setPlanMonthlyUsd(Math.round(pickedPlanCents(document.cookie) / 100));
   }, []);
   const wall = wallCopy(planMonthlyUsd);
-  // The monthly limit's arm (owner 2026-10-12): the plan, or prepaid at the smallest first top-up.
+  // The monthly limit's first charge to let through (owner 2026-10-12): the plan, or the smallest top-up.
   const limitArm: LimitArm = planMonthlyUsd !== null ? { kind: "plan", monthlyUsd: planMonthlyUsd } : { kind: "prepaid", topupUsd: TOPUP_CHOICES_USD[0] };
 
   const [website, setWebsite] = useState(params.get("url") ?? "");
@@ -1373,7 +1373,7 @@ export function GetStarted({ org }: { org?: OrgWalk } = {}) {
           lineOf={(slug) => channelLines.get(slug) ?? null}
           draft={campaignDraft}
           onChange={changeCampaign}
-          limitPrefillUsd={org ? null : defaultMonthlyLimitUsd(limitArm)}
+          limitPrefillUsd={org ? null : DEFAULT_MONTHLY_LIMIT_USD}
           error={steps.campaign === "choose" ? answerError : null}
           onRetry={() => brandId && offer && void loadFunnels(brandId, offer.offerId)}
           onLaunch={confirmCampaign}
@@ -2368,7 +2368,7 @@ export function CampaignStage({
                 className="k-input w-24 text-right tabular-nums"
                 style={{ font: "inherit", paddingRight: 8 }}
                 inputMode="numeric"
-                value={draft.monthlyLimit ?? String(limitPrefillUsd)}
+                value={draft.monthlyLimit ?? limitPrefillUsd.toLocaleString("en-US")}
                 disabled={done}
                 aria-label="Monthly charge limit in dollars"
                 onChange={(e) => set({ monthlyLimit: e.target.value })}
