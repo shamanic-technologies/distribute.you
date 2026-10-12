@@ -49,7 +49,7 @@ import {
   type BillingAccount,
   type CardSetup,
 } from "@/lib/api";
-import { isSubscriptionArm, lpVariant, pickedPlanCents, subscriptionCheckoutRefusal } from "@/lib/subscription-plan";
+import { PREPAID_CARD_TRIAL_REFUSAL, isSubscriptionArm, lpVariant, pickedPlanCents, subscriptionCheckoutRefusal } from "@/lib/subscription-plan";
 import { getStripe } from "@/lib/stripe";
 import {
   authFailureProps,
@@ -597,6 +597,8 @@ export function AccountCardWall({
       const checkout = await createSubscriptionCheckout({ monthly_amount_cents: arm.monthlyCents, ui_mode: "embedded", consent: planConsentRecord.current ?? undefined });
       posthog.capture("get_started_trial_opened", { monthly_usd: Math.round(arm.monthlyCents / 100), lp_variant: arm.variant });
       const setup: CardSetup | null = checkout.card_setup;
+      // The card on file is prepaid: say why the form asks for another card.
+      if (checkout.card_refused_reason === "prepaid_card") setError(PREPAID_CARD_TRIAL_REFUSAL);
       if (!checkout.card_required || !setup) {
         void afterTrialCardSaved();
         return;
@@ -659,7 +661,12 @@ export function AccountCardWall({
       planStarted.current = true;
     } catch (e) {
       console.error("[get-started] subscription start failed:", e);
-      setError("Your card is saved, but your trial could not start yet. Wait a few seconds and press the button again.");
+      const code = e instanceof ApiError && e.status === 409 ? e.body?.code : undefined;
+      setError(
+        code === "prepaid_card_trial_refused"
+          ? PREPAID_CARD_TRIAL_REFUSAL
+          : "Your card is saved, but your trial could not start yet. Wait a few seconds and press the button again.",
+      );
       setBusy(false);
       return;
     }
