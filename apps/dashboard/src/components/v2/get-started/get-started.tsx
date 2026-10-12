@@ -126,8 +126,10 @@ import {
   type LeverDraftKey,
   type GetStartedStepKey,
   type StepPhase,
+  TOPUP_CHOICES_USD,
   wallCopy,
 } from "@/lib/v2/get-started";
+import { defaultMonthlyLimitUsd, monthlyLimitToSave, type LimitArm } from "@/lib/v2/monthly-limit";
 import { Initials, Shimmer } from "@/components/v2/ui";
 import { EditableAnswer } from "@/components/v2/editable-answer";
 import { OfferIcon } from "@/components/v2/new-org-icons";
@@ -192,6 +194,8 @@ export function GetStarted({ org }: { org?: OrgWalk } = {}) {
     if (isSubscriptionArm(document.cookie)) setPlanMonthlyUsd(Math.round(pickedPlanCents(document.cookie) / 100));
   }, []);
   const wall = wallCopy(planMonthlyUsd);
+  // The monthly limit's arm (owner 2026-10-12): the plan, or prepaid at the smallest first top-up.
+  const limitArm: LimitArm = planMonthlyUsd !== null ? { kind: "plan", monthlyUsd: planMonthlyUsd } : { kind: "prepaid", topupUsd: TOPUP_CHOICES_USD[0] };
 
   const [website, setWebsite] = useState(params.get("url") ?? "");
   const [inputError, setInputError] = useState<string | null>(null);
@@ -661,6 +665,14 @@ export function GetStarted({ org }: { org?: OrgWalk } = {}) {
     if ("problem" in r) {
       setAnswerError(r.problem);
       return;
+    }
+    // The monthly limit (signup only): a typed one under the first charge is refused here.
+    if (!org) {
+      const limit = monthlyLimitToSave(campaignDraft.monthlyLimit, limitArm);
+      if ("problem" in limit) {
+        setAnswerError(limit.problem);
+        return;
+      }
     }
     setAnswerError(null);
     setStep("campaign", "done");
@@ -1361,6 +1373,7 @@ export function GetStarted({ org }: { org?: OrgWalk } = {}) {
           lineOf={(slug) => channelLines.get(slug) ?? null}
           draft={campaignDraft}
           onChange={changeCampaign}
+          limitPrefillUsd={org ? null : defaultMonthlyLimitUsd(limitArm)}
           error={steps.campaign === "choose" ? answerError : null}
           onRetry={() => brandId && offer && void loadFunnels(brandId, offer.offerId)}
           onLaunch={confirmCampaign}
@@ -1555,6 +1568,7 @@ export function GetStarted({ org }: { org?: OrgWalk } = {}) {
           note={wallNote}
           email={(selectedKey ? emails[selectedKey] : undefined) ?? firstWritten(emails, audience.audienceId) ?? restoredEmail}
           plan={launchPlan}
+          monthlyLimit={campaignDraft.monthlyLimit}
           outlook={chosenFunnelOutlook(funnels?.proactive ?? null)}
           answered={answered}
           onClose={() => setWallOpen(false)}
@@ -2232,6 +2246,7 @@ export function CampaignStage({
   lineOf,
   draft,
   onChange,
+  limitPrefillUsd = null,
   error,
   onRetry,
   onLaunch,
@@ -2244,6 +2259,8 @@ export function CampaignStage({
   lineOf: (channelSlug: string) => string | null;
   draft: SignupCampaignDraft;
   onChange: (next: SignupCampaignDraft) => void;
+  /** The "Never charge me more than" line's prefill; null = no line (the signed-in walk). */
+  limitPrefillUsd?: number | null;
   error: string | null;
   onRetry: () => void;
   onLaunch: () => void;
@@ -2342,6 +2359,22 @@ export function CampaignStage({
                 </div>
               )}
             </div>
+          )}
+          {limitPrefillUsd != null && (
+            <label className="flex flex-wrap items-center gap-1.5 text-[13px]">
+              <span className="k-fg">Never charge me more than</span>
+              <span className="k-fg2">$</span>
+              <input
+                className="k-input w-24 text-right tabular-nums"
+                style={{ font: "inherit", paddingRight: 8 }}
+                inputMode="numeric"
+                value={draft.monthlyLimit ?? String(limitPrefillUsd)}
+                disabled={done}
+                aria-label="Monthly charge limit in dollars"
+                onChange={(e) => set({ monthlyLimit: e.target.value })}
+              />
+              <span className="k-fg">a month</span>
+            </label>
           )}
           {error && <p className="text-[12px] text-[var(--data-rose)]">{error}</p>}
         </div>

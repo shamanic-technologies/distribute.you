@@ -18,6 +18,7 @@ import { useAuthQuery, useQueryClient } from "@/lib/use-auth-query";
 import { monthlyUsd, planAmountOptions } from "@/lib/subscription-plan";
 import { EmptyNote, Figure, Shimmer, StateDot } from "@/components/v2/ui";
 import { SUBSCRIPTION_LOSSES } from "@/lib/cancel-plan";
+import { MONTHLY_LIMIT_REFUSAL } from "@/lib/v2/monthly-limit";
 import { CancelPlanFlow } from "@/components/v2/cancel-plan-flow";
 
 export { SUBSCRIPTION_LOSSES };
@@ -293,6 +294,7 @@ function planRefusal(kind: PlanWrite, code: string | undefined, trialing: boolea
         ? "Your card was declined. Nothing was charged. Your trial goes on."
         : "Your card was declined. Nothing was charged. Your plan stays as it is.";
     if (code === "amount_not_upgrade") return "Pick a higher amount to upgrade now.";
+    if (code === "monthly_charge_limit_reached") return MONTHLY_LIMIT_REFUSAL;
     if (code === "start_now_in_progress") return "Your payment is already on its way.";
     if (code === "subscription_cancel_pending") return "Your plan is set to end. Keep it first.";
     if (code === "card_required") return "Add a card to start your plan.";
