@@ -38,6 +38,21 @@ const PipeStatsVolumeSchema = z
   })
   .passthrough();
 
+/** A served rate between two of the pipe's volumes, in PERCENT (62.5 = 62.5%), null with a reason when there is no input yet. */
+const PipeStatsRateSchema = z
+  .object({
+    key: z.string(),
+    fromKey: z.string(),
+    toKey: z.string(),
+    label: z.string(),
+    numerator: z.number(),
+    denominator: z.number(),
+    ratePct: z.number().nullable(),
+    unavailableReason: z.string().nullish(),
+  })
+  .passthrough();
+export type PipeStatsRate = z.infer<typeof PipeStatsRateSchema>;
+
 const PipeStatsPointSchema = z
   .object({
     date: z.string(),
@@ -45,6 +60,8 @@ const PipeStatsPointSchema = z
     volumes: z.record(z.string(), z.number().nullable()),
     costPerOutcomeUsd: z.number().nullable(),
     roi: z.number().nullable(),
+    // PIPE-RATES-1012: the same rates as they stood that day, cumulative, percent.
+    conversionRates: z.record(z.string(), z.number().nullable()).optional(),
   })
   .passthrough();
 
@@ -60,6 +77,7 @@ export const PipeStatsSchema = z
     valuePerOutcomeUsd: z.number().nullish(),
     roi: z.number().nullable(),
     roiUnavailableReason: z.string().nullish(),
+    conversionRates: z.array(PipeStatsRateSchema).optional(),
     history: z.array(PipeStatsPointSchema),
   })
   .passthrough();
@@ -80,6 +98,12 @@ export function pipeStatsQuery(scope: PipeStatsScope, brandId: string | null, of
 /** The volume reached at the end of the pipe (the producer's `role: "outcome"` row). */
 export function outcomeVolume(stats: PipeStats) {
   return stats.volumes.find((v) => v.role === "outcome") ?? null;
+}
+
+/** A served percent as the page prints it: one decimal, a non-zero rate that rounds to 0 reads `<0.1%`. */
+export function formatRatePct(pct: number): string {
+  if (pct > 0 && pct < 0.05) return "<0.1%";
+  return `${pct.toFixed(1).replace(/\.0$/, "")}%`;
 }
 
 /** A producer reason (`no_outcomes_yet`, `no_spend`) in plain words, never a raw slug alone. */

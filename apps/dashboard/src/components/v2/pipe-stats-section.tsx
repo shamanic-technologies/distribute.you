@@ -8,6 +8,7 @@ import { getStaffPipeStats } from "@/lib/api";
 import { formatRoi, roiIsGood } from "@/lib/format-roi";
 import { formatUsdAdaptive } from "@/lib/format-number";
 import {
+  formatRatePct,
   mergeHistories,
   outcomeVolume,
   pipeStatsQuery,
@@ -81,6 +82,23 @@ export function PipeStatsSection({ pipeId, brandId, offerId }: { pipeId: string;
                     }}
                   </Row>
                 ))}
+                {(reference?.conversionRates ?? []).map((r) => (
+                  <Row key={r.key} label={r.label} scopes={scopes} reads={reads}>
+                    {(s) => {
+                      const x = s.conversionRates?.find((y) => y.key === r.key);
+                      if (!x) return <span className="k-fg4">—</span>;
+                      if (x.ratePct == null) return <span className="k-fg3 text-[12px]">{unavailableWords(x.unavailableReason)}</span>;
+                      return (
+                        <span className="whitespace-nowrap">
+                          {formatRatePct(x.ratePct)}
+                          <span className="k-fg3 ml-1.5 text-[12px]">
+                            {x.numerator.toLocaleString("en-US")} of {x.denominator.toLocaleString("en-US")}
+                          </span>
+                        </span>
+                      );
+                    }}
+                  </Row>
+                ))}
                 <Row label="Spent" scopes={scopes} reads={reads}>
                   {(s) => (s.spendUsd == null ? <span className="k-fg4">—</span> : formatUsdAdaptive(s.spendUsd))}
                 </Row>
@@ -134,7 +152,10 @@ export function PipeStatsSection({ pipeId, brandId, offerId }: { pipeId: string;
         />
       </div>
 
-      <VolumesChart data={data} scopes={scopes} answered={answered} />
+      <div className="grid gap-6 lg:grid-cols-2">
+        <VolumesChart data={data} scopes={scopes} answered={answered} />
+        <ConversionChart data={data} scopes={scopes} answered={answered} />
+      </div>
     </section>
   );
 }
@@ -251,15 +272,7 @@ function VolumesChart({ data, scopes, answered }: { data: Partial<Record<PipeSta
   return (
     <ChartFrame
       title="Volumes over time"
-      right={
-        <span className="inline-flex gap-1">
-          {scopes.map((x) => (
-            <button key={x} type="button" onClick={() => setPicked(x)} className={`k-btn-ghost ${x === scope ? "k-selected" : ""}`}>
-              {PIPE_STATS_SCOPE_LABELS[x]}
-            </button>
-          ))}
-        </span>
-      }
+      right={<ScopeSwitch scopes={scopes} scope={scope} onPick={setPicked} />}
     >
       {!answered ? (
         <Shimmer className="h-full w-full rounded-[8px]" />
@@ -291,6 +304,63 @@ function VolumesChart({ data, scopes, answered }: { data: Partial<Record<PipeSta
         </div>
       )}
     </ChartFrame>
+  );
+}
+
+/** The pipe's served conversion rates over time (cumulative, percent), one scope at a time like the volumes. */
+function ConversionChart({ data, scopes, answered }: { data: Partial<Record<PipeStatsScope, PipeStats | null>>; scopes: PipeStatsScope[]; answered: boolean }) {
+  const [picked, setPicked] = useState<PipeStatsScope>("fleet");
+  const scope = scopes.includes(picked) ? picked : "fleet";
+  const s = data[scope] ?? null;
+  const rates = s?.conversionRates ?? [];
+  const rows = (s?.history ?? []).map((p) => ({ t: Date.parse(`${p.date}T00:00:00Z`), date: p.date, ...(p.conversionRates ?? {}) }));
+  const names = Object.fromEntries(rates.map((r) => [r.key, r.label]));
+  const colorOf = (i: number) => RATE_COLORS[i % RATE_COLORS.length];
+  return (
+    <ChartFrame title="Conversion over time" right={<ScopeSwitch scopes={scopes} scope={scope} onPick={setPicked} />}>
+      {!answered ? (
+        <Shimmer className="h-full w-full rounded-[8px]" />
+      ) : rows.length === 0 || rates.length === 0 ? (
+        <EmptyNote>No conversion to show yet.</EmptyNote>
+      ) : (
+        <div className="flex h-full flex-col">
+          <div className="k-fg2 mb-2 flex flex-wrap gap-4 text-[12px]">
+            {rates.map((r, i) => (
+              <span key={r.key} className="inline-flex items-center gap-1.5">
+                <span className="h-2 w-2 rounded-full" style={{ background: colorOf(i) }} />
+                {r.label}
+              </span>
+            ))}
+          </div>
+          <div className="min-h-0 flex-1">
+            <ResponsiveContainer width="100%" height="100%">
+              <LineChart data={rows} margin={{ top: 4, right: 4, bottom: 0, left: 0 }}>
+                <XAxis dataKey="t" type="number" scale="time" domain={["dataMin", "dataMax"]} tick={AXIS} tickLine={false} axisLine={false} minTickGap={40} tickFormatter={day} />
+                <YAxis tick={AXIS} tickLine={false} axisLine={false} width={44} domain={[0, 100]} ticks={[0, 25, 50, 75, 100]} tickFormatter={(v: number) => formatRatePct(v)} />
+                <Tooltip cursor={{ stroke: "var(--line-strong)", strokeWidth: 1 }} content={<ScopeTooltip names={names} format={formatRatePct} />} />
+                {rates.map((r, i) => (
+                  <Line key={r.key} type="stepAfter" dataKey={r.key} stroke={colorOf(i)} strokeWidth={1.5} dot={false} connectNulls isAnimationActive={false} />
+                ))}
+              </LineChart>
+            </ResponsiveContainer>
+          </div>
+        </div>
+      )}
+    </ChartFrame>
+  );
+}
+
+const RATE_COLORS = ["var(--data-sky)", "var(--data-violet)", "var(--data-amber)", "var(--data-lime)", "var(--data-rose)"];
+
+function ScopeSwitch({ scopes, scope, onPick }: { scopes: PipeStatsScope[]; scope: PipeStatsScope; onPick: (s: PipeStatsScope) => void }) {
+  return (
+    <span className="inline-flex gap-1">
+      {scopes.map((x) => (
+        <button key={x} type="button" onClick={() => onPick(x)} className={`k-btn-ghost ${x === scope ? "k-selected" : ""}`}>
+          {PIPE_STATS_SCOPE_LABELS[x]}
+        </button>
+      ))}
+    </span>
   );
 }
 
