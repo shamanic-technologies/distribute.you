@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import type { LeadEmailSummary } from "@/components/report/leads-table";
-import { fetchEmailsForCampaign, fetchWorkflows } from "@/lib/report-api";
+import { fetchEmailsForCampaign } from "@/lib/report-api";
 
 // Lazy-fetch endpoint for the public-report leads drawer. The leads page
 // itself no longer embeds emails into its server-rendered HTML — that
@@ -35,21 +35,14 @@ export async function GET(req: Request, ctx: RouteContext) {
     return NextResponse.json({ error: "campaignId is required" }, { status: 400 });
   }
 
-  const [emails, workflows] = await Promise.all([
-    fetchEmailsForCampaign(orgId, brandId, campaignId).catch((err) => {
-      console.error(`[report-lead-emails] fetchEmailsForCampaign failed for ${campaignId}:`, err);
-      return [];
-    }),
-    fetchWorkflows(orgId, featureSlug).catch((err) => {
-      console.error(`[report-lead-emails] fetchWorkflows failed:`, err);
-      return [];
-    }),
-  ]);
-
-  // Map workflowSlug → display name. taskName on the email's generationRun
-  // matches the workflow slug (same convention used by the dropped
-  // server-side `indexEmailsByLead`).
-  const workflowNameByTask = new Map(workflows.map((w) => [w.workflowSlug, w.workflowDynastyName]));
+  void featureSlug;
+  // A client reads WHAT was sent and WHEN, never how it was generated: the
+  // gateway strips generation internals (prompt, model, run) for non-staff
+  // callers (api-service #1193), so this summary carries no pipeline label.
+  const emails = await fetchEmailsForCampaign(orgId, brandId, campaignId).catch((err) => {
+    console.error(`[report-lead-emails] fetchEmailsForCampaign failed for ${campaignId}:`, err);
+    return [];
+  });
 
   const fnLower = firstName.toLowerCase();
   const lnLower = lastName.toLowerCase();
@@ -62,7 +55,6 @@ export async function GET(req: Request, ctx: RouteContext) {
     subject: e.subject ?? "",
     bodyText: e.bodyText ?? "",
     sentAt: e.createdAt,
-    workflow: workflowNameByTask.get(e.generationRun?.taskName ?? "") ?? "",
   }));
 
   summaries.sort((a, b) => (a.sentAt < b.sentAt ? 1 : -1));

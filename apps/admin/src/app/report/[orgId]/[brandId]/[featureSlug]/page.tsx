@@ -65,8 +65,8 @@ export default async function OverviewPage({ params }: PageProps) {
         description="Use the left sidebar to navigate each section. Every table includes CSV export."
       >
         <ul className="px-5 py-4 space-y-2 text-sm text-gray-700">
-          <li><strong>Leads</strong> — every prospect targeted, with company, email and current status.</li>
-          <li><strong>Workflows</strong> — pipelines used to generate emails, with prompts and per-workflow CAC.</li>
+          <li><strong>Leads</strong>: every prospect targeted, with company, email and current status.</li>
+          <li><strong>Workflows</strong>: what each approach sent and what a positive reply cost.</li>
         </ul>
       </SectionCard>
     </div>

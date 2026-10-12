@@ -687,7 +687,6 @@ function EmailsList({ emails }: { emails: LeadEmailSummary[] }) {
         <div key={i} className="space-y-1.5">
           <div className="text-xs text-gray-500">
             {new Date(e.sentAt).toLocaleString("en-US", { dateStyle: "medium", timeStyle: "short" })}
-            {e.workflow && <> · <WorkflowTag name={e.workflow} /></>}
           </div>
           <div className="font-medium text-gray-800">
             {e.subject || <em className="text-gray-500">(no subject)</em>}

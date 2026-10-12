@@ -15,7 +15,6 @@ const renderSurfaces = [
   "../src/app/(authed)/(dashboard)/orgs/[orgId]/brands/[brandId]/emails/page.tsx",
   "../src/app/(authed)/(dashboard)/orgs/[orgId]/brands/[brandId]/features/[featureSlug]/emails/page.tsx",
   "../src/components/report/public-leads-view.tsx",
-  "../src/components/report/emails-table.tsx",
 ];
 
 describe("EmailSignature component", () => {
