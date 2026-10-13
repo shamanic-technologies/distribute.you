@@ -64,6 +64,8 @@ import {
   type EmailSendPrice,
   SubscriptionCostsSchema,
   type SubscriptionCosts,
+  AbsorbedCostsSchema,
+  type AbsorbedCosts,
   RealCostsSchema,
   type RealCosts,
   RealCostSeriesSchema,
@@ -1675,6 +1677,8 @@ export const STAFF_MONITORING_PATHS = {
   sentPerPeriod: "/instantly/ops/sent-per-period",
   emailSendPrice: "/costs/email-send-price",
   subscriptionCosts: "/costs/subscription-costs",
+  // The cost the platform absorbs per customer (billing-service), staff-only through the gateway.
+  absorbedCosts: "/billing/absorbed-costs",
   realCosts: "/costs/real-costs",
   priceComparison: "/costs/price-comparison",
   brands: "/admin/brands",
@@ -1876,6 +1880,11 @@ export async function getStaffEmailSendPrice(): Promise<EmailSendPrice> {
 /** The real cost per credit of each vendor subscription, per day since 2026-01-01 (costs-service, daily). */
 export async function getStaffSubscriptionCosts(): Promise<SubscriptionCosts> {
   return parseStaff("getStaffSubscriptionCosts", SubscriptionCostsSchema, await apiCall<unknown>(STAFF_MONITORING_PATHS.subscriptionCosts));
+}
+
+/** The cost the platform absorbs (no-campaign spend + card fees), per customer and per month since inception (billing-service). */
+export async function getStaffAbsorbedCosts(): Promise<AbsorbedCosts> {
+  return parseStaff("getStaffAbsorbedCosts", AbsorbedCostsSchema, await apiCall<unknown>(STAFF_MONITORING_PATHS.absorbedCosts));
 }
 
 /** Every cost item's real cost and proposed price on a day (latest when omitted), costs-service, daily. */

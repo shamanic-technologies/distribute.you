@@ -12,6 +12,7 @@ import {
   PriceVersionsSchema,
   EmailSendPriceSchema,
   SubscriptionCostsSchema,
+  AbsorbedCostsSchema,
   RealCostsSchema,
   PriceComparisonSchema,
   BasisSummarySchema,
@@ -530,5 +531,102 @@ describe("monitoring: pricing basis (owner 2026-10-01: averaging only for flat f
     expect(persist.slice(persist.indexOf("export const SENSITIVE_QUERY_ROOTS"), persist.indexOf("export const PERSISTABLE_QUERY_ROOTS"))).toContain('"staffBasisSummary"');
     const v = read("components/v2/monitoring-pricing-basis.tsx");
     expect(v).not.toMatch(/amountProposedUsdCents\s*-|-\s*[\w.]*amountCatalogueUsdCents|\/\s*[\w.]*(realCost|amountCatalogue)UsdCents/);
+  });
+});
+
+describe("monitoring: absorbed costs (owner 2026-10-13)", () => {
+  const month = (m: string, extra: Record<string, unknown> = {}) => ({
+    month: m,
+    absorbedCents: "300.0000000000",
+    noCampaignSpendCents: "250.0000000000",
+    cardFeesCents: "50.0000000000",
+    unattributedCardFeesCents: "0.0000000000",
+    cardFeesOtherCurrencies: [],
+    unattributedCardFeesOtherCurrencies: [],
+    campaignSpendCents: "1000.0000000000",
+    customersWithAbsorbedCost: 2,
+    averagePerCustomerCents: "150.0000000000",
+    payingCustomersWithAbsorbedCost: 1,
+    averagePerPayingCustomerCents: "200.0000000000",
+    neverPaidCustomersWithAbsorbedCost: 1,
+    averagePerNeverPaidCustomerCents: "100.0000000000",
+    cumulativeAbsorbedCents: "300.0000000000",
+    cumulativeCustomersWithAbsorbedCost: 2,
+    averagePerCustomerSinceInceptionCents: "150.0000000000",
+    ...extra,
+  });
+  const group = { customers: 1, customersWithAbsorbedCost: 1, absorbedCents: "200.0000000000", averagePerCustomerCents: "200.0000000000", averagePerCustomerWithCostCents: "200.0000000000", medianPerCustomerWithCostCents: "200.0000000000" };
+  const body = {
+    basis: { ruleSince: "2026-10-13T00:00:00.000Z", absorbed: "spend with no campaign + card fees", beforeRuleSince: "what would have been absorbed", amounts: "USD cents" },
+    firstMonth: "2026-09",
+    lastMonth: "2026-10",
+    months: ["2026-09", "2026-10"],
+    fleet: {
+      ...group,
+      customers: 2,
+      customersWithAbsorbedCost: 2,
+      absorbedCents: "300.0000000000",
+      noCampaignSpendCents: "250.0000000000",
+      cardFeesCents: "50.0000000000",
+      unattributedCardFeesCents: "12.0000000000",
+      cardFeesOtherCurrencies: [{ currency: "eur", feeCents: "40.0000000000" }],
+      unattributedCardFeesOtherCurrencies: [],
+      campaignSpendCents: "1000.0000000000",
+      paying: group,
+      neverPaid: { ...group, absorbedCents: "100.0000000000", averagePerCustomerCents: null, averagePerCustomerWithCostCents: null, medianPerCustomerWithCostCents: null },
+      payingUnknown: 0,
+    },
+    fleetByMonth: [month("2026-09", { averagePerCustomerCents: null, averagePerPayingCustomerCents: null, averagePerNeverPaidCustomerCents: null, averagePerCustomerSinceInceptionCents: null }), month("2026-10")],
+    distribution: [{ label: "$0", minCents: 0, maxCents: 0, customers: 0, paying: 0, neverPaid: 0, payingUnknown: 0 }],
+    customers: [
+      {
+        orgId: "org-1",
+        orgName: "Acme",
+        orgDomain: "acme.com",
+        platformOrg: false,
+        hasBillingAccount: true,
+        createdAt: "2026-09-02T00:00:00.000Z",
+        paymentMode: "prepaid",
+        freeCreditOffer: "match_100",
+        cashPaidCents: null,
+        paying: null,
+        absorbedCents: "200.0000000000",
+        noCampaignSpendCents: "150.0000000000",
+        cardFeesCents: "50.0000000000",
+        cardFeesOtherCurrencies: [],
+        campaignSpendCents: "1000.0000000000",
+        firstAbsorbedMonth: "2026-10",
+        byMonth: [{ month: "2026-10", absorbedCents: "200.0000000000", noCampaignSpendCents: "150.0000000000", cardFeesCents: "50.0000000000", cardFeesOtherCurrencies: [], campaignSpendCents: "1000.0000000000" }],
+      },
+    ],
+  };
+
+  it("billing's read parses: an unreadable cash stays null (never 'never paid'), an empty month's average stays null", () => {
+    const p = AbsorbedCostsSchema.parse(body);
+    expect(p.customers[0].paying).toBeNull();
+    expect(p.customers[0].cashPaidCents).toBeNull();
+    expect(p.fleetByMonth[0].averagePerCustomerCents).toBeNull();
+    expect(p.fleet.cardFeesOtherCurrencies[0].currency).toBe("eur");
+  });
+
+  it("is a Customers card and its own page, read through the staff gateway, never written to disk", () => {
+    expect(MONITORING_PAGES).toContain("customers/absorbed");
+    const page = read("components/v2/monitoring-page.tsx");
+    expect(page).toContain('<Section section="customers" count={1}>');
+    expect(page).toContain('page="customers/absorbed"');
+    expect(page).toContain('{view.page === "customers/absorbed" && <AbsorbedPage />}');
+    expect(page).toContain('["staffAbsorbedCosts"]');
+    expect(read("lib/api.ts")).toContain("STAFF_MONITORING_PATHS.absorbedCosts");
+    const persist = read("lib/persist-cache.ts");
+    expect(persist.slice(persist.indexOf("export const SENSITIVE_QUERY_ROOTS"), persist.indexOf("export const PERSISTABLE_QUERY_ROOTS"))).toContain('"staffAbsorbedCosts"');
+  });
+
+  it("the page draws billing's totals and averages and never sums, averages or buckets them itself", () => {
+    const view = read("components/v2/monitoring-absorbed.tsx");
+    expect(view).not.toMatch(/\.reduce\(/);
+    expect(view).not.toMatch(/\/\s*[\w.]*(customers|length)\b/i);
+    expect(view).toContain("averagePerCustomerWithCostCents");
+    expect(view).toContain("averagePerCustomerSinceInceptionCents");
+    expect(view).toContain("medianPerCustomerWithCostCents");
   });
 });

@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useEffect } from "react";
 import { useParams, usePathname, useRouter } from "next/navigation";
 import { useAuthQuery } from "@/lib/use-auth-query";
-import { getStaffCostMargin, getStaffCurrentPrices, getStaffSkills, getStaffEmailSendPrice, getStaffEmailsSent, getStaffPriceVersions, getStaffRealCosts, getStaffSubscriptionCosts } from "@/lib/api";
+import { getStaffAbsorbedCosts, getStaffCostMargin, getStaffCurrentPrices, getStaffSkills, getStaffEmailSendPrice, getStaffEmailsSent, getStaffPriceVersions, getStaffRealCosts, getStaffSubscriptionCosts } from "@/lib/api";
 import { formatCentsAsUsd } from "@/lib/format-number";
 import { v2Href } from "@/lib/v2/routes";
 import { EmptyNote, Figure, SectionTitle, Shimmer, StatTile, TopBar } from "@/components/v2/ui";
@@ -13,6 +13,7 @@ import { EmailsCharts } from "@/components/v2/monitoring-emails";
 import { EmailPriceView } from "@/components/v2/monitoring-email-price";
 import { BillingTable } from "@/components/v2/monitoring-billing";
 import { SubscriptionsView } from "@/components/v2/monitoring-subscriptions";
+import { AbsorbedView } from "@/components/v2/monitoring-absorbed";
 import { NewPricingView } from "@/components/v2/monitoring-new-pricing";
 import { PricingBasisView } from "@/components/v2/monitoring-pricing-basis";
 import { PricingComparisonView } from "@/components/v2/monitoring-pricing-comparison";
@@ -21,6 +22,7 @@ import { TagIcon } from "@phosphor-icons/react/dist/csr/Tag";
 import { TrendUpIcon } from "@phosphor-icons/react/dist/csr/TrendUp";
 import { EnvelopeSimpleIcon } from "@phosphor-icons/react/dist/csr/EnvelopeSimple";
 import { ChatCircleIcon } from "@phosphor-icons/react/dist/csr/ChatCircle";
+import { UsersThreeIcon } from "@phosphor-icons/react/dist/csr/UsersThree";
 import { SkillsView } from "@/components/v2/monitoring-skills";
 import {
   costItemNames,
@@ -64,6 +66,9 @@ function useLatestRealCosts() {
 function useSkills() {
   return useAuthQuery(["staffSkills"], getStaffSkills, { staleTime: 30_000, retry: false });
 }
+function useAbsorbedCosts() {
+  return useAuthQuery(["staffAbsorbedCosts"], getStaffAbsorbedCosts, ONCE);
+}
 function useSubscriptionCosts() {
   return useAuthQuery(["staffSubscriptionCosts"], getStaffSubscriptionCosts, ONCE);
 }
@@ -79,11 +84,12 @@ const centsPerEmail = (c: number | null) => (c == null ? null : `${c.toLocaleStr
 
 // ─── Shell ─────────────────────────────────────────────────────────────────
 
-type SectionKey = "cost" | "price" | "margin" | "emails" | "chat";
+type SectionKey = "cost" | "customers" | "price" | "margin" | "emails" | "chat";
 
 /** Each section wears one colour and one mark, the way Research's topics do. */
 const SECTION_LOOK: Record<SectionKey, { name: string; color: string; Icon: typeof ReceiptIcon; sub: string }> = {
   cost: { name: "Cost", color: "var(--data-rose)", Icon: ReceiptIcon, sub: "What our vendors charged us" },
+  customers: { name: "Customers", color: "var(--data-lime)", Icon: UsersThreeIcon, sub: "What each customer costs us that they do not pay" },
   price: { name: "Price", color: "var(--data-sky)", Icon: TagIcon, sub: "What we charge our users" },
   margin: { name: "Margin", color: "var(--data-teal)", Icon: TrendUpIcon, sub: "Billed minus what the vendors charged" },
   emails: { name: "Emails", color: "var(--data-violet)", Icon: EnvelopeSimpleIcon, sub: "Every email we sent" },
@@ -95,6 +101,7 @@ const PAGE: Record<MonitoringPage, { section: SectionKey; title: string; questio
   "cost/spend": { section: "cost", title: "Spend per provider", question: "How much has each provider charged us since inception?" },
   "cost/subscriptions": { section: "cost", title: "Subscriptions", question: "What does one credit of each subscription really cost us?" },
   "cost/email-sending": { section: "cost", title: "Email sending", question: "What does sending one cold email really cost us?" },
+  "customers/absorbed": { section: "customers", title: "Absorbed", question: "What do our customers cost us that they do not pay?" },
   "price/billed": { section: "price", title: "Billed to users", question: "What did we bill for each cost item, and at what price?" },
   "price/new-pricing": { section: "price", title: "New pricing", question: "What would each cost item cost at its real cost ×2?" },
   "price/pricing-basis": { section: "price", title: "Pricing basis", question: "Which costs are re-billed on an average, and which at list cost?" },
@@ -172,6 +179,7 @@ export function V2Monitoring() {
         {view.page === "cost/spend" && <SpendPage />}
         {view.page === "cost/subscriptions" && <SubscriptionsPage />}
         {view.page === "cost/email-sending" && <EmailSendingPage />}
+        {view.page === "customers/absorbed" && <AbsorbedPage />}
         {view.page === "price/billed" && <BilledPage />}
         {view.page === "price/new-pricing" && <NewPricingView />}
         {view.page === "price/pricing-basis" && <PricingBasisView />}
@@ -245,6 +253,8 @@ function Hub({ base }: { base: string }) {
   const emails = useEmails();
   const sendPrice = useEmailSendPrice();
   const subs = useSubscriptionCosts();
+  const absorbed = useAbsorbedCosts();
+  const ab = absorbed.data?.fleet;
   const real = useLatestRealCosts();
   const skills = useSkills();
   const rc = real.data;
@@ -316,6 +326,27 @@ function Hub({ base }: { base: string }) {
               bars: sp?.monthly.slice(-7).map((mo) => mo.priceUsdCents ?? 0),
             },
             { label: "Emails to leads", value: sp?.totals.emailsToLeads.toLocaleString("en-US"), note: sp ? `${usd(sp.totals.spendUsd * 100)} infra spend, net` : undefined },
+          ]}
+        />
+      </Section>
+
+      <Section section="customers" count={1}>
+        <Card
+          href={href("customers/absorbed")}
+          page="customers/absorbed"
+          error={absorbed.isError}
+          cells={[
+            {
+              label: "Absorbed",
+              value: ab && usd(Number(ab.absorbedCents)),
+              note: "since inception",
+              bars: absorbed.data?.fleetByMonth.slice(-7).map((mo) => Number(mo.absorbedCents)),
+            },
+            {
+              label: "Per customer",
+              value: ab === undefined ? undefined : ab.averagePerCustomerWithCostCents == null ? null : usdExact(Number(ab.averagePerCustomerWithCostCents)),
+              note: ab ? `average over ${ab.customersWithAbsorbedCost.toLocaleString("en-US")} customers` : undefined,
+            },
           ]}
         />
       </Section>
@@ -580,6 +611,11 @@ function BilledPage() {
 function SubscriptionsPage() {
   const subs = useSubscriptionCosts();
   return <Loaded q={subs}>{(d) => <SubscriptionsView data={d} />}</Loaded>;
+}
+
+function AbsorbedPage() {
+  const absorbed = useAbsorbedCosts();
+  return <Loaded q={absorbed}>{(d) => <AbsorbedView data={d} />}</Loaded>;
 }
 
 function EmailSendingPage() {
