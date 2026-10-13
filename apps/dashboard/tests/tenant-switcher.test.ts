@@ -20,7 +20,7 @@ describe("Tenant switcher", () => {
     expect(hook).toContain("export function useTenantSwitcher");
     // The v2 sidebar's org switcher (the v1 breadcrumb that also did is deleted).
     expect(read("src/components/v2/sidebar-menus.tsx")).toContain("useTenantSwitcher()");
-    // God-mode (staff all-orgs list + join-then-setActive) lives in the hook.
+    // God-mode (staff all-orgs list + join-then-load) lives in the hook.
     expect(hook).toContain("isAdminEmail");
     expect(hook).toContain("/api/admin/orgs/${clerkOrgId}/join");
   });

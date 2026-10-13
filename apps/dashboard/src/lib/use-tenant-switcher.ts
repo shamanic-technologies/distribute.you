@@ -4,7 +4,6 @@ import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import {
   useOrganization,
   useOrganizationList,
-  useSession,
   useUser,
 } from "@clerk/nextjs";
 import { useQuery } from "@tanstack/react-query";
@@ -15,15 +14,14 @@ import { getBrand, listBrands, listBrandOffers, getBrandOffer, type Offer } from
 import { resolveBrandTint } from "@/lib/brand-tint";
 import { brandIdFromPathname } from "@/lib/brand-tint-preload";
 import { useTenantIdentity } from "@/components/tenant-identity-provider";
-import { withTimeout, isTimeoutError } from "@/lib/with-timeout";
 import { orgSwitchErrorMessage } from "@/lib/org-switch-error";
 import { landingHref } from "@/lib/landing-drilldown";
 import { stripV2Prefix } from "@/lib/ui-version";
 
 /**
- * How long any single leg of an org switch may take before the switcher gives up
- * and says so. Every leg is a Clerk round-trip and none of them has a timeout of
- * its own, so without this the click can hang for the rest of the session.
+ * How long a Clerk round-trip of an org switch (the staff join, OrgActivator's
+ * `setActive`) may take before it gives up and says so. None of them has a timeout
+ * of its own, so without this the click can hang for the rest of the session.
  */
 export const ORG_SWITCH_TIMEOUT_MS = 15_000;
 
@@ -136,10 +134,9 @@ export function useTenantSwitcher() {
   const isNewOrgFlow = searchParams.get("new") === "1";
   const router = useRouter();
   const { organization } = useOrganization();
-  const { userMemberships, setActive } = useOrganizationList({
+  const { userMemberships } = useOrganizationList({
     userMemberships: { infinite: true },
   });
-  const { session } = useSession();
   // Staff get a "god-mode" org switcher (ALL platform orgs); regular customers
   // see only their own memberships (unchanged). isStaff gates the UI only — the
   // real security boundary is the `isAdminEmail` 403 on the /api/admin/* routes.
@@ -309,98 +306,53 @@ export function useTenantSwitcher() {
   }, [orgId, brandId, router]);
 
   const handleOrgSwitch = useCallback(async (clerkOrgId: string, orgName?: string) => {
-    // Mark the switch pending SYNCHRONOUSLY, before the first await. Everything
-    // below is network, and until `router.push` lands there is nothing on screen
-    // that reflects the click — the switcher label reads the URL org, which is
-    // still the old one. Reported as "je change d'org et il ne se passe rien,
-    // des fois j'attends 30s".
+    // Mark the switch pending SYNCHRONOUSLY, before the first await. Until the new
+    // page paints there is nothing on screen that reflects the click: the switcher
+    // label reads the URL org, which is still the old one. Reported as "je change
+    // d'org et il ne se passe rien, des fois j'attends 30s".
     setSwitchError(null);
     setSwitchingOrg({ id: clerkOrgId, name: orgName ?? "" });
 
     try {
-      // Update Clerk's client-side active org so useOrganization() reflects the switch
-      // immediately (label, QueryProvider remount). Then push the URL so middleware's
-      // organizationSyncOptions confirms server-side and /api/v1/* calls run under the
-      // new org. Both directions are required: setActive alone left the URL stale
-      // (PR #1058 prod incident, polls 404'd); router.push alone left the client UI
-      // stale until the session cookie refreshed.
+      // A switch is a FULL PAGE LOAD of the target org, never an in-page Clerk
+      // `setActive`. On a freshly loaded prod tab (2026-10-13) `setActive` hung
+      // until our 15s bound fired (the menu blamed the auth service) while the
+      // network was fine: it awaits a Next Server Action Clerk fires on the CURRENT
+      // page, then a session touch, and nothing in it is bounded or reports a
+      // rejection. Worse, it stores the target as the session's last active org
+      // BEFORE hanging, so every later token carried the target org while the page
+      // stayed on the old one, and every read 409'd `org_desync` until a reload.
       //
-      // No cache clear here: the QueryProvider remounts under the org key (fresh empty
-      // in-memory cache) and the per-query persister is org-prefixed, so org A's
-      // labels can reach neither org B's memory nor its disk key space.
+      // The full load needs none of it: `proxy.ts` `organizationSyncOptions`
+      // activates the URL org server-side before the page renders, the page boots
+      // with the new org in its session, and the QueryProvider and the org-prefixed
+      // persister start clean. A stale bundle is replaced on the way.
       //
-      // AWAIT setActive before navigating: it resolves once the Clerk session (and its
-      // org claim) has rotated to the new org. Navigating / firing an API call before
-      // that resolves carries the OLD org in the lag window → write commits under the
-      // wrong org, later read 404s (DIS-143 stale write). The proxy's fail-closed guard
-      // is the backstop; awaiting closes the race at the source.
-      //
-      // ASK CLERK FIRST, join only if it refuses. `setActive` rejects an org the
-      // user is not a member of, and that rejection IS the membership answer —
-      // authoritative, server-side, one round-trip. The previous shape asked a
-      // paginated client-side membership list instead (`userMemberships.data`,
-      // FIRST PAGE only), so a staff member of many orgs read as "not a member"
-      // for nearly every target and paid a full Clerk Backend join round-trip on
-      // nearly every click. Same lesson as the god-mode join route itself: trust
-      // Clerk over a paged list.
-      //
-      // Only STAFF may take the join branch (the route 403s otherwise); a customer
-      // switching into an org they do not own gets the refusal, stated.
-      const activate = async () => {
-        if (!setActive) return;
-        await withTimeout(
-          setActive({ organization: clerkOrgId }),
-          ORG_SWITCH_TIMEOUT_MS,
-          "Switching organization",
-        );
-      };
-
-      try {
-        await activate();
-      } catch (err) {
-        // A TIMEOUT is not a refusal — the network never answered, so joining and
-        // retrying only doubles the wait. Surface it.
-        if (isTimeoutError(err) || !isStaff) throw err;
+      // Staff open orgs they are not a member of, and the middleware cannot activate
+      // an org the user does not belong to, so the god-mode join runs FIRST. It is
+      // skipped only on POSITIVE evidence of membership: Clerk's membership list is
+      // paginated and its first page alone says nothing about absence. The join
+      // route is idempotent (an existing membership answers ok), and only STAFF may
+      // call it (the route 403s otherwise).
+      const knownMember =
+        userMemberships?.data?.some((m) => m.organization.id === clerkOrgId) ?? false;
+      if (isStaff && !knownMember) {
         const res = await fetch(`/api/admin/orgs/${clerkOrgId}/join`, {
           method: "POST",
           signal: AbortSignal.timeout(ORG_SWITCH_TIMEOUT_MS),
         });
-        // Fail loud. Continuing past a failed join reaches `setActive` on an org the
-        // user does not belong to, which REJECTS — and that rejection was unhandled
-        // inside a click handler, so `router.push` never ran and nothing was shown.
-        // That is the "sometimes it never does anything at all" half of the report.
+        // Fail loud: loading an org the user does not belong to lands on a page
+        // whose every read is refused.
         if (!res.ok) {
           throw new Error(`Could not open that organization (join failed: ${res.status}).`);
         }
-        await activate();
       }
-      // Re-mint the session token so the new active org (and, for staff god-mode, the
-      // freshly-added membership) are in the cookie BEFORE the navigation hits the
-      // middleware. `setActive` resolves on the client before its Set-Cookie has
-      // propagated, so without this the next request reaches `proxy.ts`
-      // `organizationSyncOptions` carrying the STALE token (active = previous org /
-      // not-a-member of the target) → Clerk bounces the URL back → OrgActivator
-      // re-syncs the client to the previous org → the switch reverts on its own.
-      // No `.catch` here: a failed re-mint IS that revert, so it belongs in the
-      // handler's catch where the user is told, not swallowed. Bounded for the
-      // same reason as `setActive`: Clerk's token endpoint is the first thing to
-      // become unreachable on a flaky connection, and an unbounded await there
-      // hangs the click forever.
-      if (session) {
-        await withTimeout(
-          session.getToken({ skipCache: true }),
-          ORG_SWITCH_TIMEOUT_MS,
-          "Refreshing your session",
-        );
-      }
-      router.push(`/orgs/${clerkOrgId}`);
+      window.location.assign(`/orgs/${clerkOrgId}`);
     } catch (err) {
       console.error("[dashboard] org switch failed:", err);
       setSwitchingOrg(null);
       // `navigator.onLine === false` is decisive (no network interface at all)
       // and `true` says nothing, so it is read ONLY to sharpen the offline case.
-      // Reported from a console where every request on the page had failed
-      // ERR_INTERNET_DISCONNECTED while the message blamed the auth service.
       setSwitchError(
         orgSwitchErrorMessage(
           err,
@@ -408,7 +360,7 @@ export function useTenantSwitcher() {
         ),
       );
     }
-  }, [isStaff, setActive, session, router]);
+  }, [isStaff, userMemberships?.data]);
 
   // Drop the pending state once the URL has actually moved to the target. The
   // navigation is what ends the switch, not the promise resolving — `router.push`

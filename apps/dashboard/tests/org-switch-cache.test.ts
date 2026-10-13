@@ -162,22 +162,26 @@ describe("Org switch cross-org isolation framework", () => {
 
   // --- Source: close the race ----------------------------------------------
 
-  it("handleOrgSwitch awaits setActive before navigating", () => {
+  it("handleOrgSwitch is a full page load of the target org, never an in-page setActive", () => {
+    // The page boots under the org `organizationSyncOptions` activated server-side,
+    // so the keyed remount and the org-prefixed persister start clean by
+    // construction. An in-page setActive hung in prod (2026-10-13) and left the
+    // token on the target org while the URL stayed on the old one (org_desync on
+    // every read until a reload).
     const content = read(tenantSwitchPath);
-    expect(content).toContain("setActive({ organization: clerkOrgId })");
+    const at = content.indexOf("const handleOrgSwitch = useCallback(");
+    const body = content.slice(at, content.indexOf("const handleBrandSwitch", at));
+    expect(body).toContain("window.location.assign(`/orgs/${clerkOrgId}`)");
+    expect(body).not.toContain("setActive(");
+    expect(body).not.toContain("router.push(");
   });
 
-  it("handleOrgSwitch re-mints the session token AFTER setActive, BEFORE navigating", () => {
-    // Without a fresh mint, setActive's Set-Cookie hasn't propagated when router.push
-    // fires → the middleware's organizationSyncOptions reads the STALE token (active =
-    // previous org / not-a-member of the target) and bounces the URL back → the
-    // god-mode switch reverts on its own. The fresh mint closes that race.
-    const content = read(tenantSwitchPath);
-    expect(content).toContain('session.getToken({ skipCache: true })');
-    const match = content.match(
-      /handleOrgSwitch[\s\S]*?setActive\([\s\S]*?getToken\(\{ skipCache: true \}\)[\s\S]*?router\.push/,
-    );
-    expect(match, "getToken must sit between setActive and router.push").not.toBeNull();
+  it("OrgActivator bounds its setActive and falls back to a full load once", () => {
+    const content = read(orgActivatorPath);
+    expect(content).toContain("withTimeout(\n        setActive({ organization: targetOrgId }),");
+    expect(content).toContain("if (!isTimeoutError(err)) return;");
+    expect(content).toContain("window.sessionStorage.setItem(marker");
+    expect(content).toContain("window.location.reload()");
   });
 
   it("the sidebar org switcher reads the ONE tenant-switch hook", () => {
