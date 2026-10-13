@@ -35,26 +35,31 @@
 // Owner 2026-10-10: the $99/month plan comes back as an A/B arm, 50/50 against the
 // prepaid homepage (`index-v2-subscription.html`, the dashboard sells the plan with its
 // 3-day free trial to `lp_variant=subscription` only). The read: the share of visitors
-// per arm who save a card (`get_started_card_saved` carries `lp_variant`). Decision date
-// 2026-10-31.
+// per arm who save a card (`get_started_card_saved` carries `lp_variant`).
+// Owner 2026-10-13: split in three, a third each, as a NEW test starting 2026-10-13 (the
+// 2-arm read is closed): `subscription` (the $99/month plan), `control` (the prepaid
+// homepage, onboarding sells prepaid credit, first $100 matched) and `postpaid` (the SAME
+// prepaid homepage, onboarding saves a card and charges after the spend, first $100
+// matched). A returning visitor keeps the arm their cookie names.
 export const AB_TEST_ENABLED = true;
 
-export const LANDING_VARIANTS = ["control", "assistant", "concierge", "instinct", "subscription"] as const;
+export const LANDING_VARIANTS = ["control", "assistant", "concierge", "instinct", "subscription", "postpaid"] as const;
 export type LandingVariant = (typeof LANDING_VARIANTS)[number];
 
 export const VARIANT_COOKIE = "lp_variant";
 const COOKIE_MAX_AGE_S = 90 * 24 * 60 * 60;
 
 /**
- * Share of first visits drawn into each variant. Owner-set 2026-10-10: 50% `control` (the
- * homepage, sold as prepaid credit), 50% `subscription` (the $99/month plan with a 3-day
- * free trial). A variant at weight 0 has left
- * the test: a visitor whose cookie names it is drawn again rather than kept on a page
- * nobody else is being shown, so the two live arms stay comparable.
+ * Share of first visits drawn into each variant. Owner-set 2026-10-13, a third each:
+ * `control` (the homepage, sold as prepaid credit), `subscription` (the $99/month plan)
+ * and `postpaid` (the homepage, sold as charged after the spend). A variant at weight 0
+ * has left the test: a visitor whose cookie names it is drawn again rather than kept on a
+ * page nobody else is being shown, so the live arms stay comparable.
  */
 export const VARIANT_WEIGHTS: Record<LandingVariant, number> = {
-  control: 0.5,
-  subscription: 0.5,
+  control: 1 / 3,
+  subscription: 1 / 3,
+  postpaid: 1 / 3,
   instinct: 0,
   assistant: 0,
   concierge: 0,

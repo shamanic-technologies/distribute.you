@@ -110,7 +110,8 @@ describe("the rules the page decides on", () => {
     expect(WALL).toContain('"Positive replies land in your inbox."');
     expect(WALL).not.toContain("one email each");
     // The plan arm shows no amount picker: the prepaid top-up renders only off the plan branch.
-    expect(WALL.indexOf("{arm.plan ? (")).toBeLessThan(WALL.indexOf("<PrepaidTopup"));
+    expect(WALL.indexOf("{isPlan ? (")).toBeGreaterThan(-1);
+    expect(WALL.indexOf("{isPlan ? (")).toBeLessThan(WALL.indexOf("<PrepaidTopup"));
   });
 
   it("restores a snapshot, and starts over on anything malformed or older", () => {
@@ -378,7 +379,7 @@ describe("the surface", () => {
 
   it("carries Explee's countdown and spots strips on the wall (owner-decided, copied for now)", () => {
     expect(WALL).toContain("<TrialTimer label={copy.timerLabel}");
-    expect(WALL).toContain("<TrialSpots trial={arm.plan} />");
+    expect(WALL).toContain("<TrialSpots trial={isPlan} />");
   });
 
   it("counts 7:30, then a 9:59 extension, then starts over: never stops; always 3 spots", async () => {

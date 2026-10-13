@@ -75,6 +75,8 @@ export function DailyLines<P extends { day: string }>({
   windows = DEFAULT_WINDOWS,
   empty,
   label,
+  pointLabel = (d) => dayLabel(d),
+  tickLabel = (d) => dayLabel(d, { month: "short", day: "numeric" }),
 }: {
   points: P[];
   lines: Line<P>[];
@@ -83,6 +85,9 @@ export function DailyLines<P extends { day: string }>({
   windows?: Window[];
   empty: string;
   label: string;
+  /** The hovered point's date in the header, and an axis tick: a day by default, a month for a monthly series. */
+  pointLabel?: (day: string) => string;
+  tickLabel?: (day: string) => string;
 }) {
   const [win, setWin] = useState(windows[0].key);
   const [hover, setHover] = useState<number | null>(null);
@@ -130,7 +135,7 @@ export function DailyLines<P extends { day: string }>({
     <div className="k-card p-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <span className="k-fg2 text-[12px]">
-          {dayLabel(at.day)}
+          {pointLabel(at.day)}
           {caption && <> · {caption(at)}</>}
         </span>
         {windows.length > 1 && (
@@ -177,7 +182,7 @@ export function DailyLines<P extends { day: string }>({
       <div className="k-line-subtle ml-[52px] flex border-t pt-1.5">
         {shown.map((d, i) => (
           <span key={d.day} className="k-fg3 w-0 min-w-0 flex-1 overflow-visible whitespace-nowrap text-[10.5px]">
-            {i % every === 0 ? dayLabel(d.day, { month: "short", day: "numeric" }) : ""}
+            {i % every === 0 ? tickLabel(d.day) : ""}
           </span>
         ))}
       </div>

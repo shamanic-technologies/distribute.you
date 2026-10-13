@@ -9,14 +9,22 @@ import {
   liveItems,
   type ConversationTimeline,
 } from "@/lib/conversation-timeline";
+import { DISQUALIFIED_TAG, type LeadDisqualification } from "@/lib/lead-disqualification";
 import { EmptyNote, Shimmer } from "@/components/v2/ui";
 import { TagChip } from "@/components/v2/tag-chip";
 
 /**
  * The conversation's own tags (lead-service's, owner 2026-10-08): its last word and how far it
  * went, with "Not ours" when the fact that took it there is not our doing (an existing client).
+ * Disqualified is its OWN tag beside them (owner 2026-10-13), with its note: never instead.
  */
-export function ConversationTags({ tags }: { tags: ConversationTimeline["tags"] }) {
+export function ConversationTags({
+  tags,
+  disqualification,
+}: {
+  tags: ConversationTimeline["tags"];
+  disqualification: LeadDisqualification | null | undefined;
+}) {
   const step = furthestStepTag(tags.furthestStep);
   return (
     <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5 text-[12px]">
@@ -29,7 +37,18 @@ export function ConversationTags({ tags }: { tags: ConversationTimeline["tags"] 
         {step ? <TagChip tag={step} /> : <span className="k-fg4">{"—"}</span>}
         {step && tags.furthestStepAttributable === false ? <span className="k-fg3">Not ours</span> : null}
       </span>
+      {disqualification ? <DisqualifiedTag mark={disqualification} /> : null}
     </div>
+  );
+}
+
+/** The Disqualified tag and its note, when there is one. */
+export function DisqualifiedTag({ mark }: { mark: LeadDisqualification }) {
+  return (
+    <span className="inline-flex min-w-0 items-center gap-1.5" title={mark.note ?? undefined}>
+      <TagChip tag={DISQUALIFIED_TAG} />
+      {mark.note ? <span className="k-fg2 min-w-0 truncate">{mark.note}</span> : null}
+    </span>
   );
 }
 
@@ -48,7 +67,7 @@ export function ConversationTimelineCard({
     <section className="k-card overflow-hidden">
       <header className="k-line-subtle flex flex-wrap items-center justify-between gap-3 border-b px-4 py-3">
         <span className="k-label">Timeline</span>
-        {timeline ? <ConversationTags tags={timeline.tags} /> : null}
+        {timeline ? <ConversationTags tags={timeline.tags} disqualification={timeline.disqualification} /> : null}
       </header>
       {timeline ? (
         <TimelineRows timeline={timeline} />

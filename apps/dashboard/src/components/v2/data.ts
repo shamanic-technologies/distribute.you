@@ -5,6 +5,7 @@ import { useAuthQuery } from "@/lib/use-auth-query";
 import {
   getBrand,
   getBrandOutcomes,
+  getBrandDisqualifications,
   getOfferRevenue,
   getOfferRevenueWindow,
   getOfferOutcomes,
@@ -161,6 +162,21 @@ export function useStandingCounts(brandId: string) {
     ["leadStandingCounts", lead.key, ""],
     () => getLeadStandingCounts(lead.scope, standingCountsQuery("")),
     { ...pollOptions, enabled: lead.ready },
+  );
+}
+
+/**
+ * The people marked Disqualified for the selected offer (its own mark or a brand-wide one),
+ * with their notes: lead-service's list, its `total` the length of the same list. The mark is
+ * its own tag beside the standing, so this is the Deals board's Disqualified column, never
+ * `standing=disqualified` (lead-service no longer produces that standing).
+ */
+export function useLeadDisqualifications(brandId: string) {
+  const { offerId } = useSelectedOffer();
+  return useAuthQuery(
+    ["leadDisqualifications", brandId, offerId],
+    () => getBrandDisqualifications({ brandId, offerId }),
+    { ...pollOptions, enabled: !!brandId && !!offerId },
   );
 }
 

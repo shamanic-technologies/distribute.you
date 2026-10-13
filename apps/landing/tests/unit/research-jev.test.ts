@@ -58,6 +58,8 @@ describe("typed judgment studies (jev.mjs)", () => {
     expect(d.result.display).toBe("63%");
     expect(d.result.sample).toContain("2,500 of 4,000 people");
     expect(d.conclusion.join(" ")).toContain("300 people between 50% and 80%");
+    // 4,000 screened, 1,500 kept: the same budget reaches 2.7x more people who fit
+    expect(d.conclusion.join(" ")).toContain("reaches 2.7x more people who fit");
     expect(d.verdict.kind).toBe("conclusion");
   });
 

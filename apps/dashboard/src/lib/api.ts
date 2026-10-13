@@ -1,6 +1,12 @@
 import { parseOfferSalesPaths, type OfferSalesPaths } from "./offer-sales-paths";
 import { BrandOutcomesSchema, OutcomePeopleSchema, type BrandOutcomes, type OutcomePeople } from "./v2/outcome-people";
 import { ConversationTimelineSchema, type ConversationTimeline } from "./conversation-timeline";
+import {
+  BrandDisqualificationsSchema,
+  LeadDisqualificationSchema,
+  type BrandDisqualifications,
+  type LeadDisqualification,
+} from "./lead-disqualification";
 import { parseBrandSalesBudget, type BrandSalesBudget } from "./brand-sales-budget";
 import { PipeWithStatsSchema, type PipeStats } from "./pipe-stats";
 import {
@@ -37,6 +43,7 @@ import {
 } from "./people-conversations";
 import { ApiCallDetailSchema, type ApiCallDetail } from "./api-calls";
 import { z } from "zod";
+import type { CardFacts } from "./v2/card-risk";
 import { BrandLinkedinPageSchema, type BrandLinkedinPage } from "./v2/brand-linkedin-page";
 import { LinkedinFeedResponseSchema, toLinkedinFeedPage, type LinkedinFeedPage } from "./v2/linkedin-post-view";
 import {
@@ -58,6 +65,8 @@ import {
   type EmailSendPrice,
   SubscriptionCostsSchema,
   type SubscriptionCosts,
+  AbsorbedCostsSchema,
+  type AbsorbedCosts,
   RealCostsSchema,
   type RealCosts,
   RealCostSeriesSchema,
@@ -1669,6 +1678,8 @@ export const STAFF_MONITORING_PATHS = {
   sentPerPeriod: "/instantly/ops/sent-per-period",
   emailSendPrice: "/costs/email-send-price",
   subscriptionCosts: "/costs/subscription-costs",
+  // The cost the platform absorbs per customer (billing-service), staff-only through the gateway.
+  absorbedCosts: "/billing/absorbed-costs",
   realCosts: "/costs/real-costs",
   priceComparison: "/costs/price-comparison",
   brands: "/admin/brands",
@@ -1870,6 +1881,11 @@ export async function getStaffEmailSendPrice(): Promise<EmailSendPrice> {
 /** The real cost per credit of each vendor subscription, per day since 2026-01-01 (costs-service, daily). */
 export async function getStaffSubscriptionCosts(): Promise<SubscriptionCosts> {
   return parseStaff("getStaffSubscriptionCosts", SubscriptionCostsSchema, await apiCall<unknown>(STAFF_MONITORING_PATHS.subscriptionCosts));
+}
+
+/** The cost the platform absorbs (no-campaign spend + card fees), per customer and per month since inception (billing-service). */
+export async function getStaffAbsorbedCosts(): Promise<AbsorbedCosts> {
+  return parseStaff("getStaffAbsorbedCosts", AbsorbedCostsSchema, await apiCall<unknown>(STAFF_MONITORING_PATHS.absorbedCosts));
 }
 
 /** Every cost item's real cost and proposed price on a day (latest when omitted), costs-service, daily. */
@@ -7479,6 +7495,11 @@ export interface Lead {
    * none for that campaign — "we cannot tell", never "nothing happened".
    */
   campaigns?: LeadCampaignEvidence[];
+  /**
+   * The Disqualified MARK for this row's conversation (its offer x brand, or every offer of
+   * the brand): its own tag BESIDE the step tags, never instead of them. null = not marked.
+   */
+  disqualification?: LeadDisqualification | null;
   lead: FullLead | null;
 }
 
@@ -7653,6 +7674,9 @@ const LeadDeliverySchema = z
       .nullish(),
     // Declared: the lead page's "Found by" row renders off it.
     sources: z.array(LeadSourceSchema).optional(),
+    // The Disqualified MARK (lead-service v0.83.59), its own tag beside the step tags:
+    // null = not marked. `.nullish()`: required-and-nullable upstream, absent on an older payload.
+    disqualification: LeadDisqualificationSchema.nullish(),
   })
   .passthrough();
 
@@ -8005,6 +8029,58 @@ export async function getLeadTimeline(
     throw new Error("[dashboard] getLeadTimeline: invalid response shape");
   }
   return parsed.data;
+}
+
+/**
+ * Every person marked Disqualified at the brand (of one offer when named: its own mark or a
+ * brand-wide one), with the notes. lead-service `GET /orgs/leads/disqualifications`, reached
+ * through the gateway's `/v1/leads/:id` passthrough. `total` is the length of `leads`.
+ */
+export async function getBrandDisqualifications(
+  params: { brandId: string; offerId?: string | null },
+  token?: string,
+): Promise<BrandDisqualifications> {
+  const qs = new URLSearchParams({ brandId: params.brandId });
+  if (params.offerId) qs.set("offerId", params.offerId);
+  const raw = await apiCall<unknown>(`/leads/disqualifications?${qs.toString()}`, { token });
+  const parsed = BrandDisqualificationsSchema.safeParse(raw);
+  if (!parsed.success) {
+    console.error("[dashboard] getBrandDisqualifications: response shape mismatch", { issues: parsed.error.issues, raw });
+    throw new Error("[dashboard] getBrandDisqualifications: invalid response shape");
+  }
+  return parsed.data;
+}
+
+/**
+ * Mark one lead Disqualified, with an optional note (restating replaces the note).
+ * `offerId` absent = every offer of the brand. `brandId` rides the body AND the query: an
+ * identity value a downstream needs never travels in the body alone.
+ */
+export async function setLeadDisqualification(
+  leadRowId: string,
+  body: { brandId: string; offerId?: string; note?: string },
+  token?: string,
+): Promise<unknown> {
+  const qs = new URLSearchParams({ brandId: body.brandId });
+  return apiCall<unknown>(`/leads/${encodeURIComponent(leadRowId)}/disqualification?${qs.toString()}`, {
+    token,
+    method: "PUT",
+    body,
+  });
+}
+
+/** Remove the mark. `offerId` absent = every mark of the person at the brand. */
+export async function removeLeadDisqualification(
+  leadRowId: string,
+  params: { brandId: string; offerId?: string | null },
+  token?: string,
+): Promise<unknown> {
+  const qs = new URLSearchParams({ brandId: params.brandId });
+  if (params.offerId) qs.set("offerId", params.offerId);
+  return apiCall<unknown>(`/leads/${encodeURIComponent(leadRowId)}/disqualification?${qs.toString()}`, {
+    token,
+    method: "DELETE",
+  });
 }
 
 /**
@@ -9538,6 +9614,8 @@ export type EmbeddedCheckoutSession =
 export async function setPaymentMode(
   payment_mode: "prepaid" | "postpaid",
   token?: string,
+  /** The boxes ticked before a signup goes post-paid (billing v0.83.34 stores them before the switch). */
+  consent?: PaymentConsent,
 ): Promise<{
   org_id: string;
   payment_mode: "prepaid" | "postpaid";
@@ -9545,7 +9623,7 @@ export async function setPaymentMode(
   settled_cents?: string;
   auto_topup_enabled?: boolean;
 }> {
-  return apiCall("/billing/accounts/payment_mode", { token, method: "PUT", body: { payment_mode } });
+  return apiCall("/billing/accounts/payment_mode", { token, method: "PUT", body: { payment_mode, ...(consent ? { consent } : {}) } });
 }
 
 // ── Subscription (monthly plan, 3-day trial; billing-service v0.81.28, billing#568) ──
@@ -9897,6 +9975,37 @@ export async function removePaymentMethod(
     token,
     method: "DELETE",
   });
+}
+
+/**
+ * The saved card and billing's verdict on it (billing-service `GET /v1/accounts/saved_payment_method`,
+ * passed through by the gateway): may automatic charges reach it (`postpaid_allowed`, false for a
+ * prepaid card or one issued in India), and why not. Read at card entry on every signup arm
+ * (owner 2026-10-13, `lib/v2/card-risk.ts`). A failed read throws: the wall says so and retries.
+ */
+const SavedPaymentMethodFactsSchema = z.object({
+  saved: z.boolean(),
+  method: z.object({ id: z.string() }).passthrough().nullable(),
+  card_country: z.string().nullable(),
+  postpaid_allowed: z.boolean(),
+  postpaid_refused_reason: z.enum(["prepaid_card", "card_issuing_country_unsupported"]).nullable(),
+});
+
+export async function getSavedCardFacts(token?: string): Promise<CardFacts> {
+  const raw = await apiCall<unknown>("/billing/accounts/saved_payment_method", { token });
+  const parsed = SavedPaymentMethodFactsSchema.safeParse(raw);
+  if (!parsed.success) {
+    console.error("[billing] saved_payment_method: unexpected shape", parsed.error.issues, raw);
+    throw new Error("[billing] saved_payment_method: unexpected shape");
+  }
+  const d = parsed.data;
+  return {
+    saved: d.saved,
+    methodId: d.method?.id ?? null,
+    postpaidAllowed: d.postpaid_allowed,
+    refusedReason: d.postpaid_refused_reason,
+    country: d.card_country,
+  };
 }
 
 // ── Credit grants ("gifts received") ──

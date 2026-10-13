@@ -19,18 +19,27 @@ const q = (s = "") => new URLSearchParams(s);
 const HOMEPAGE_SRC = readFileSync(path.join(__dirname, "../../public/landing/index-v2.html"), "utf8");
 
 describe("the split rule", () => {
-  it("draws half of first-time humans onto control, half onto the $99/month plan", () => {
-    // Owner 2026-10-10: prepaid against the $99/month plan with a 3-day free trial, 50/50.
-    expect(VARIANT_WEIGHTS).toEqual({ control: 0.5, subscription: 0.5, instinct: 0, assistant: 0, concierge: 0 });
+  it("draws a third of first-time humans onto each arm: prepaid, the $99/month plan, post-paid", () => {
+    // Owner 2026-10-13: three arms, a third each.
+    expect(VARIANT_WEIGHTS).toEqual({ control: 1 / 3, subscription: 1 / 3, postpaid: 1 / 3, instinct: 0, assistant: 0, concierge: 0 });
     const counts: Record<string, number> = {};
-    for (let i = 0; i < 10000; i++) counts[drawVariant(i / 10000)] = (counts[drawVariant(i / 10000)] ?? 0) + 1;
-    expect(counts).toEqual({ control: 5000, subscription: 5000 });
+    for (let i = 0; i < 9000; i++) counts[drawVariant(i / 9000)] = (counts[drawVariant(i / 9000)] ?? 0) + 1;
+    for (const v of ["control", "subscription", "postpaid"]) expect(Math.abs(counts[v] - 3000), v).toBeLessThanOrEqual(1);
+    expect(Object.keys(counts).sort()).toEqual(["control", "postpaid", "subscription"]);
     expect(decideVariant({ cookieHeader: null, userAgent: CHROME, query: q(), random: 0.12, enabled: true })).toEqual({
       variant: "control", setCookie: true, inTest: true,
     });
-    expect(decideVariant({ cookieHeader: null, userAgent: CHROME, query: q(), random: 0.62, enabled: true })).toEqual({
+    expect(decideVariant({ cookieHeader: null, userAgent: CHROME, query: q(), random: 0.5, enabled: true })).toEqual({
       variant: "subscription", setCookie: true, inTest: true,
     });
+    expect(decideVariant({ cookieHeader: null, userAgent: CHROME, query: q(), random: 0.9, enabled: true })).toEqual({
+      variant: "postpaid", setCookie: true, inTest: true,
+    });
+  });
+
+  it("keeps a returning visitor on the post-paid arm", () => {
+    const d = decideVariant({ cookieHeader: `${VARIANT_COOKIE}=postpaid`, userAgent: CHROME, query: q(), random: 0.05, enabled: true });
+    expect(d).toEqual({ variant: "postpaid", setCookie: false, inTest: true });
   });
 
   it("keeps a returning visitor on a live arm their cookie names, and does not rewrite it", () => {
@@ -145,6 +154,16 @@ describe("GET / with the test on", () => {
     // The picker fed the dashboard's monthly plan through `lp_plan`; prepaid has no plan.
     expect(HOMEPAGE_SRC).not.toContain("data-plan-amount");
     expect(HOMEPAGE_SRC).not.toContain("lp_plan=");
+  });
+
+  it("serves the postpaid arm the prepaid homepage, banner included, tagged postpaid", async () => {
+    // Owner 2026-10-13: same landing as control, only the dashboard onboarding differs.
+    const { res, html } = await get({ qs: "?variant=postpaid" });
+    expect(html).toContain("The platform is free");
+    expect(html).toContain("promo-bar");
+    expect(html).not.toContain("From $99/month");
+    expect(html).toContain('lp_variant:"postpaid"');
+    expect(res.headers.get("set-cookie")).toContain("lp_variant=postpaid");
   });
 
   it("serves the homepage to the control arm when forced, tagged", async () => {

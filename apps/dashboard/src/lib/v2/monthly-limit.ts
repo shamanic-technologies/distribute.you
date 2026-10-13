@@ -11,14 +11,21 @@
  * Alias-free on purpose, so it carries real unit tests.
  */
 
-export type LimitArm = { kind: "plan"; monthlyUsd: number } | { kind: "prepaid"; topupUsd: number };
+export type LimitArm =
+  | { kind: "plan"; monthlyUsd: number }
+  | { kind: "prepaid"; topupUsd: number }
+  /** Post-paid (owner 2026-10-13): its first charge is billing's first spend step, $50. */
+  | { kind: "postpaid" };
+
+/** billing-service's first post-paid charge step (`src/lib/topup-tier.ts`). */
+export const POSTPAID_FIRST_CHARGE_USD = 50;
 
 /** The line's prefill, in whole dollars, on both arms (owner 2026-10-12). */
 export const DEFAULT_MONTHLY_LIMIT_USD = 9000;
 
-/** The first card charge the limit must let through: the plan amount, or the first top-up. */
+/** The first card charge the limit must let through: the plan amount, the first top-up, or post-paid's first step. */
 export function firstChargeUsd(arm: LimitArm): number {
-  return arm.kind === "plan" ? arm.monthlyUsd : arm.topupUsd;
+  return arm.kind === "plan" ? arm.monthlyUsd : arm.kind === "prepaid" ? arm.topupUsd : POSTPAID_FIRST_CHARGE_USD;
 }
 
 /** A typed limit: whole dollars, at least the first charge. */

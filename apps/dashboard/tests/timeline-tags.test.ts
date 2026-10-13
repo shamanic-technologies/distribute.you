@@ -29,7 +29,7 @@ describe("Unibox search runs the whole width, above both cards (owner 2026-10-08
     const { readFileSync } = await import("node:fs");
     const src = readFileSync(new URL("../src/components/v2/integrations-conversations.tsx", import.meta.url), "utf8");
     const search = src.indexOf('placeholder="Search people and messages"');
-    const grid = src.indexOf("lg:grid-cols-[380px_minmax(0,1fr)] lg:grid-rows");
+    const grid = src.indexOf("@3xl:grid-cols-[380px_minmax(0,1fr)]");
     expect(search).toBeGreaterThan(0);
     expect(search).toBeLessThan(grid);
     // lead-service's label wins where a stored fact matches; the display lookup is the fallback.

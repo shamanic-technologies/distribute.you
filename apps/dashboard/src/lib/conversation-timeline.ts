@@ -15,6 +15,7 @@
  */
 import { z } from "zod";
 import type { TimelineIcon, TimelineTag, TimelineTone } from "./timeline-tags";
+import { LeadDisqualificationSchema } from "./lead-disqualification";
 
 export const ConversationItemSchema = z.object({
   id: z.string(),
@@ -40,7 +41,12 @@ export const ConversationTimelineSchema = z.object({
     lastWordAt: z.string().nullable(),
     furthestStep: z.string().nullable(),
     furthestStepAttributable: z.boolean().nullable(),
+    // Disqualified, its OWN tag beside the two above (lead-service v0.83.59). `.optional()`
+    // only so a snapshot written before the field still parses.
+    disqualified: z.boolean().optional(),
   }),
+  // The mark answering for this conversation (note, who, when), or null.
+  disqualification: LeadDisqualificationSchema.nullish(),
 });
 
 export type ConversationItem = z.infer<typeof ConversationItemSchema>;

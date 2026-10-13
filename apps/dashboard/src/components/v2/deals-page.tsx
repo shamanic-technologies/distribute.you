@@ -3,11 +3,11 @@
 import { useMemo, useState } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
-import { getOfferContactedValue, getOfferDealsValue, getLeadConsolidatedStatus, leadDateForStatus, listLeadsPage } from "@/lib/api";
+import { getLeadDetail, getOfferContactedValue, getOfferDealsValue, getLeadConsolidatedStatus, leadDateForStatus, listLeadsPage } from "@/lib/api";
 import { useAuthQuery } from "@/lib/use-auth-query";
 import { POLL_INTERVAL } from "@/lib/query-options";
 import { formatCount, formatUsdAdaptive } from "@/lib/format-number";
-import { v2Href } from "@/lib/v2/routes";
+import { v2Href, v2PersonHref } from "@/lib/v2/routes";
 import { timeAgo } from "@/lib/friendly-datetime";
 import { leadStatusLabel } from "@/lib/lead-status";
 import { STANDINGS_BY_COLUMN, LEAD_BOARD_COLUMNS, LEAD_BOARD_PAGE_SIZE, type LeadBoardColumnKey } from "@/lib/lead-board";
@@ -15,7 +15,9 @@ import { boardColumnTotals, leadsColumnPageQuery } from "@/lib/leads-server-page
 import { CrewMark } from "@/components/v2/crew-mark";
 import { useMissions, type Mission } from "@/components/v2/use-missions";
 import { useSelectedOffer } from "@/components/v2/selected-offer";
-import { useLeadScope, useBrandRevenue, useInterestedReplies, useStandingCounts } from "@/components/v2/data";
+import { useLeadScope, useBrandRevenue, useInterestedReplies, useLeadDisqualifications, useStandingCounts } from "@/components/v2/data";
+import { DISQUALIFIED_TAG, disqualificationSourceWord, type DisqualifiedLead } from "@/lib/lead-disqualification";
+import { TagChip } from "@/components/v2/tag-chip";
 import { EmptyNote, Shimmer, TopBar } from "@/components/v2/ui";
 import { CompanyMark, PersonAvatar, leadCompany, leadCompanyDomain, leadName, personHref } from "@/components/v2/people-bits";
 import { InfoTooltip } from "@/components/visibility/metric-info";
@@ -50,7 +52,14 @@ const COLUMN_DOT: Record<LeadBoardColumnKey, string> = {
  */
 export function DealsPage() {
   const { orgId, brandId } = useParams<{ orgId: string; brandId: string }>();
-  const totals = boardColumnTotals(useStandingCounts(brandId).data);
+  const standingTotals = boardColumnTotals(useStandingCounts(brandId).data);
+  // Disqualified is its OWN mark beside the standing (owner 2026-10-13): its column is the
+  // people lead-service lists as marked, who also keep their card in their standing's column.
+  // So the columns no longer add up to the population, on purpose.
+  const disqualified = useLeadDisqualifications(brandId);
+  const totals = standingTotals
+    ? { ...standingTotals, disqualified: disqualified.data?.total ?? null }
+    : null;
   const { missionByCampaignId, crews } = useMissions(orgId, brandId);
   const revenue = useBrandRevenue(brandId);
   const [crewFilter, setCrewFilter] = useState<string | null>(null);
@@ -150,7 +159,18 @@ export function DealsPage() {
         </div>
 
         <div className="k-scroll mt-5 flex gap-4 overflow-x-auto pb-2">
-          {columns.map((c) => (
+          {columns.map((c) =>
+            c.key === "disqualified" ? (
+              <DisqualifiedColumn
+                key={c.key}
+                brandId={brandId}
+                orgId={orgId}
+                label={V2_COLUMN_LABEL[c.key] ?? c.label}
+                people={disqualified.data?.leads ?? null}
+                failed={disqualified.isFetchedAfterMount && !disqualified.data && disqualified.isError}
+                share={(totals?.disqualified ?? 0) / biggest}
+              />
+            ) : (
             <DealColumn
               key={c.key}
               brandId={brandId}
@@ -163,7 +183,8 @@ export function DealsPage() {
               missionFor={(id) => missionByCampaignId.get(id) ?? null}
               served={servedFor(c.key)}
             />
-          ))}
+            ),
+          )}
         </div>
       </div>
     </>
@@ -315,6 +336,11 @@ function DealColumn({
                 <div className="k-fg2 mt-2 flex items-center gap-1.5 border-t border-[var(--line-subtle)] pt-2 text-[12px]">
                   <span className="h-1.5 w-1.5 shrink-0 rounded-full" style={{ background: COLUMN_DOT[column] }} />
                   <span className="truncate">{leadStatusLabel(status)}</span>
+                  {lead.disqualification ? (
+                    <span className="ml-auto" title={lead.disqualification.note ?? undefined}>
+                      <TagChip tag={DISQUALIFIED_TAG} />
+                    </span>
+                  ) : null}
                 </div>
               </Link>
             );
@@ -327,6 +353,112 @@ function DealColumn({
         ) : null}
       </div>
     </section>
+  );
+}
+
+/**
+ * The Disqualified column: lead-service's list of marked people (note, who, when), newest
+ * first. Each card also says what happened with the person (their step tag, read off their
+ * own lead row), because the mark sits BESIDE the steps, never instead of them.
+ */
+function DisqualifiedColumn({
+  brandId,
+  orgId,
+  label,
+  people,
+  failed,
+  share,
+}: {
+  brandId: string;
+  orgId: string;
+  label: string;
+  people: DisqualifiedLead[] | null;
+  failed: boolean;
+  share: number;
+}) {
+  const [shown, setShown] = useState(LEAD_BOARD_PAGE_SIZE);
+  const visible = people ? people.slice(0, shown) : null;
+  return (
+    <section className="flex w-[272px] min-w-[240px] shrink-0 flex-col md:flex-1 md:basis-0">
+      <header className="flex h-7 items-center gap-2 px-0.5">
+        <span className="h-2 w-2 rounded-[2px]" style={{ background: COLUMN_DOT.disqualified }} />
+        <span className="text-[13px] font-medium">{label}</span>
+        <span className="k-fg3 text-[13px] tabular-nums">{people == null ? "" : formatCount(people.length)}</span>
+      </header>
+      <div className="mb-3 mt-1.5 h-1 overflow-hidden rounded-full bg-[var(--data-track)]">
+        <div className="h-full rounded-full" style={{ width: `${Math.round(share * 100)}%`, background: COLUMN_DOT.disqualified }} />
+      </div>
+      <div className="flex flex-col gap-2">
+        {visible === null ? (
+          failed ? (
+            <EmptyNote>We could not read this list right now.</EmptyNote>
+          ) : (
+            [0, 1, 2].map((i) => <Shimmer key={i} className="h-[74px] rounded-[10px]" />)
+          )
+        ) : visible.length === 0 ? (
+          <EmptyNote>Nobody here.</EmptyNote>
+        ) : (
+          visible.map((p) => <DisqualifiedCard key={p.leadId} brandId={brandId} orgId={orgId} person={p} />)
+        )}
+        {people && people.length > shown ? (
+          <button type="button" className="k-btn-ghost k-btn mt-1 justify-center" onClick={() => setShown((s) => s + LEAD_BOARD_PAGE_SIZE)}>
+            Show more
+          </button>
+        ) : null}
+      </div>
+    </section>
+  );
+}
+
+function DisqualifiedCard({ brandId, orgId, person }: { brandId: string; orgId: string; person: DisqualifiedLead }) {
+  // The person's own row (same key as their page, so opening it is instant): company and step tag.
+  const row = useAuthQuery(["leadDetail", person.id, brandId], () => getLeadDetail(person.id!, brandId), {
+    enabled: !!person.id,
+    staleTime: POLL_INTERVAL,
+  });
+  const lead = row.data ?? null;
+  const company = lead ? leadCompany(lead) : null;
+  const name = (lead ? leadName(lead) : null) || person.name || person.email || "Unknown";
+  const status = lead ? getLeadConsolidatedStatus(lead) : null;
+  const mark = person.disqualification;
+  const body = (
+    <>
+      <div className="flex items-center gap-2">
+        {lead ? (
+          company ? (
+            <CompanyMark name={company} domain={leadCompanyDomain(lead)} size={18} />
+          ) : (
+            <PersonAvatar lead={lead} size={18} />
+          )
+        ) : null}
+        <span className="min-w-0 flex-1 truncate text-[13px] font-medium">{company ?? name}</span>
+      </div>
+      {company ? (
+        <div className="k-fg2 mt-1.5 flex items-center gap-1.5 text-[12px]">
+          {lead ? <PersonAvatar lead={lead} size={14} /> : null}
+          <span className="min-w-0 flex-1 truncate">{name}</span>
+        </div>
+      ) : null}
+      {mark.note ? <p className="k-fg2 mt-1.5 line-clamp-2 text-[12px]">{mark.note}</p> : null}
+      <div className="k-fg3 mt-1.5 flex items-center gap-1.5 text-[11px]">
+        <span className="truncate">{disqualificationSourceWord(mark)}</span>
+        <span className="ml-auto shrink-0 tabular-nums">{timeAgo(mark.statedAt)}</span>
+      </div>
+      <div className="k-fg2 mt-2 flex items-center gap-1.5 border-t border-[var(--line-subtle)] pt-2 text-[12px]">
+        <span className="h-1.5 w-1.5 shrink-0 rounded-full" style={{ background: COLUMN_DOT.disqualified }} />
+        <span className="truncate">{status ? leadStatusLabel(status) : " "}</span>
+        <span className="ml-auto">
+          <TagChip tag={DISQUALIFIED_TAG} />
+        </span>
+      </div>
+    </>
+  );
+  return person.id ? (
+    <Link href={v2PersonHref(orgId, brandId, person.id)} className="k-card block p-3">
+      {body}
+    </Link>
+  ) : (
+    <div className="k-card block p-3">{body}</div>
   );
 }
 
