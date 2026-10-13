@@ -493,7 +493,7 @@ function Thread({
         </div>
         {facts ? (
           <div className="mt-2">
-            <ConversationTags tags={facts.tags} />
+            <ConversationTags tags={facts.tags} disqualification={facts.disqualification} />
           </div>
         ) : null}
       </header>

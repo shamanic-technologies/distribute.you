@@ -266,6 +266,8 @@ export const PERSISTABLE_QUERY_ROOTS = new Set([
   "brandOutcomes",
   "outcomePeople",
   "leadStandingCounts",
+  // The people marked Disqualified for the offer, with notes (Deals board column).
+  "leadDisqualifications",
   // A conversation campaign's four people counts (AI Meeting Booking). Four integers.
   "conversationCounts",
   // Dashboard v2: runs-service's per-campaign roll-up over a window (the crew
