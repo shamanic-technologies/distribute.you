@@ -9,6 +9,11 @@ import {
   disqualificationNoteBody,
   disqualificationSourceWord,
   readDisqualification,
+  companyLevelMark,
+  disqualificationLevel,
+  humanOptedOut,
+  leadLevelMark,
+  markTag,
 } from "../src/lib/lead-disqualification";
 
 const src = (...p: string[]) => readFileSync(join(__dirname, "..", "src", ...p), "utf8");
@@ -114,5 +119,72 @@ describe("where the mark is drawn", () => {
     expect(api).toContain('`/leads/${encodeURIComponent(leadRowId)}/disqualification?${qs.toString()}`');
     expect(api).toContain('method: "PUT"');
     expect(api).toContain("`/leads/disqualifications?${qs.toString()}`");
+  });
+});
+
+/**
+ * Tags at THEIR level (LEAD-REFONTE-1013): the person (opted out everywhere), this lead (steps +
+ * its own mark), the company (client, signed up, "not our target"). Each read off its served field.
+ */
+describe("tags at their level", () => {
+  const COMPANY_MARK = { ...MARK, level: "company", note: "Not our target" };
+  const LEAD_MARK = { ...MARK, level: "lead" };
+  const BLOCK = { id: "c-1", key: "c-1", isClient: true, signedUp: true, disqualification: COMPANY_MARK };
+
+  it("parses the company block on a row", () => {
+    const { leads } = parseLeadsResponse({ leads: [{ ...ROW, company: BLOCK, disqualification: COMPANY_MARK }] }, "t");
+    expect(leads[0].company?.isClient).toBe(true);
+    expect(leads[0].company?.disqualification?.level).toBe("company");
+    expect(parseLeadsResponse({ leads: [{ ...ROW, company: null }] }, "t").leads[0].company).toBeNull();
+  });
+
+  it("splits the answering mark by its served level, never mixing them", () => {
+    expect(leadLevelMark(COMPANY_MARK)).toBeNull();
+    expect(leadLevelMark(LEAD_MARK)).toEqual(LEAD_MARK);
+    // A mark written before the level existed is the lead's own.
+    expect(disqualificationLevel(MARK)).toBe("lead");
+    expect(companyLevelMark(BLOCK, LEAD_MARK)).toEqual(COMPANY_MARK);
+    expect(companyLevelMark({ ...BLOCK, disqualification: null }, COMPANY_MARK)).toEqual(COMPANY_MARK);
+    expect(companyLevelMark({ ...BLOCK, disqualification: null }, LEAD_MARK)).toBeNull();
+    expect(markTag(COMPANY_MARK).label).toBe("Company disqualified");
+    expect(markTag(LEAD_MARK).label).toBe("Disqualified");
+  });
+
+  it("reads the person's opt-out off the served signal only", () => {
+    expect(humanOptedOut({ state: "opted_out", signal: "human_opt_out" })).toBe(true);
+    expect(humanOptedOut({ state: "opted_out", signal: "unsubscribed" })).toBe(false);
+    expect(humanOptedOut(null)).toBe(false);
+  });
+
+  it("parses the brand list's companies beside its leads", () => {
+    const parsed = BrandDisqualificationsSchema.parse({
+      brandId: "b",
+      offerId: null,
+      total: 0,
+      leads: [],
+      companyTotal: 1,
+      companies: [{ companyKey: "c-1", companyId: "c-1", name: "BeFCO", domain: "befco.com", leadCount: 3, disqualification: COMPANY_MARK }],
+    });
+    expect(parsed.companies?.[0].leadCount).toBe(3);
+  });
+
+  it("the person page offers both levels and undoes each at its own level", () => {
+    const page = src("components", "v2", "person-page.tsx");
+    expect(page).toContain("level: formLevel");
+    expect(page).toContain('level: "lead" })');
+    expect(page).toContain('level: "company" })');
+    expect(page).toContain("humanOptedOut(");
+    expect(page).toContain("companyBlock.isClient");
+    expect(page).toContain("companyBlock.signedUp");
+  });
+
+  it("the board's Disqualified column lists the marked companies beside the people", () => {
+    const page = src("components", "v2", "deals-page.tsx");
+    expect(page).toContain("companies={disqualified.data ? (markedCompanies ?? []) : null}");
+    expect(page).toContain("<DisqualifiedCompanyCard");
+  });
+
+  it("the remove call carries the level in the query", () => {
+    expect(src("lib", "api.ts")).toContain('if (params.level) qs.set("level", params.level);');
   });
 });

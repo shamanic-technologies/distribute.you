@@ -3,8 +3,11 @@ import { BrandOutcomesSchema, OutcomePeopleSchema, type BrandOutcomes, type Outc
 import { ConversationTimelineSchema, type ConversationTimeline } from "./conversation-timeline";
 import {
   BrandDisqualificationsSchema,
+  LeadCompanyBlockSchema,
   LeadDisqualificationSchema,
   type BrandDisqualifications,
+  type DisqualificationLevel,
+  type LeadCompanyBlock,
   type LeadDisqualification,
 } from "./lead-disqualification";
 import { parseBrandSalesBudget, type BrandSalesBudget } from "./brand-sales-budget";
@@ -7500,6 +7503,11 @@ export interface Lead {
    * the brand): its own tag BESIDE the step tags, never instead of them. null = not marked.
    */
   disqualification?: LeadDisqualification | null;
+  /**
+   * The company this person is at, with what is true of the COMPANY as a buyer of the brand
+   * (client, signed up, its own Disqualified mark). null = no company known.
+   */
+  company?: LeadCompanyBlock | null;
   lead: FullLead | null;
 }
 
@@ -7677,6 +7685,9 @@ const LeadDeliverySchema = z
     // The Disqualified MARK (lead-service v0.83.59), its own tag beside the step tags:
     // null = not marked. `.nullish()`: required-and-nullable upstream, absent on an older payload.
     disqualification: LeadDisqualificationSchema.nullish(),
+    // The COMPANY block (lead-service v0.83.65): client, signed up, its own mark.
+    // `.nullish()`: required-and-nullable upstream, absent on an older payload.
+    company: LeadCompanyBlockSchema.nullish(),
   })
   .passthrough();
 
@@ -8053,12 +8064,13 @@ export async function getBrandDisqualifications(
 
 /**
  * Mark one lead Disqualified, with an optional note (restating replaces the note).
- * `offerId` absent = every offer of the brand. `brandId` rides the body AND the query: an
+ * `offerId` absent = every offer of the brand. `level: "company"` marks the lead's whole company
+ * ("not our target", every lead of it); 409 `lead_has_no_company` when it has none. `brandId` rides the body AND the query: an
  * identity value a downstream needs never travels in the body alone.
  */
 export async function setLeadDisqualification(
   leadRowId: string,
-  body: { brandId: string; offerId?: string; note?: string },
+  body: { brandId: string; offerId?: string; note?: string; level?: DisqualificationLevel },
   token?: string,
 ): Promise<unknown> {
   const qs = new URLSearchParams({ brandId: body.brandId });
@@ -8069,14 +8081,18 @@ export async function setLeadDisqualification(
   });
 }
 
-/** Remove the mark. `offerId` absent = every mark of the person at the brand. */
+/**
+ * Remove the mark. `offerId` absent = every mark of the person at the brand. `level: "company"`
+ * removes the company's mark ("not our target"), else the person's own.
+ */
 export async function removeLeadDisqualification(
   leadRowId: string,
-  params: { brandId: string; offerId?: string | null },
+  params: { brandId: string; offerId?: string | null; level?: DisqualificationLevel },
   token?: string,
 ): Promise<unknown> {
   const qs = new URLSearchParams({ brandId: params.brandId });
   if (params.offerId) qs.set("offerId", params.offerId);
+  if (params.level) qs.set("level", params.level);
   return apiCall<unknown>(`/leads/${encodeURIComponent(leadRowId)}/disqualification?${qs.toString()}`, {
     token,
     method: "DELETE",
