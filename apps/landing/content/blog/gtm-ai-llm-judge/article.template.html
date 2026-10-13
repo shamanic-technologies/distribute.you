@@ -1,79 +1,56 @@
 <div style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:12px;padding:20px 24px;margin:0 0 32px">
 <p style="margin:0 0 8px;font-size:12px;font-weight:600;letter-spacing:0.08em;text-transform:uppercase;color:#1d4ed8">Key takeaway</p>
-<p style="margin:0 0 8px;font-weight:600;color:#0f172a">An LLM judge checks every lead before you pay for it, and keeps machine replies out of your numbers:</p>
-<ul style="margin:0;padding-left:20px">
-<li><strong>{{raw screen.display}} of the people a lead database returns are turned away</strong> before anyone pays to reveal them</li>
-<li><strong>{{raw price.display}} cheaper</strong> to screen a person than to reveal one</li>
-<li><strong>{{raw machine.display}} of cold email replies are written by a machine</strong>, not a person</li>
-</ul>
+<p style="margin:0 0 8px;font-weight:600;color:#0f172a">Jev for GTM, in 3 steps:</p>
+<ol style="margin:0;padding-left:20px">
+<li><strong>Screen the Apollo list before you pay:</strong> {{raw screen.display}} of a cold filtered list is turned away before any reveal, and a screen is {{raw price.display}} cheaper than a reveal</li>
+<li><strong>Tell people from machines:</strong> {{raw machine.display}} of cold email replies are written by a machine</li>
+<li><strong>Read the probability, not the answer:</strong> when Jev is unsure, a person reads it</li>
+</ol>
 </div>
 
-<p>You already know your buyer. You can describe them in one sentence. The hard part is making every tool in your pipeline respect that sentence, thousands of times a day, without paying for the misses.</p>
+<p>Jev is an LLM built to judge, not to write. You give it a piece of text and a typed question, and it answers with a probability. Our pipes asked it {{raw volume.rounded}} questions since September 19, 2026, for one goal: bring our clients signups and booked meetings without paying for the wrong people.</p>
 
-<p>That is the job we hand to an LLM judge. distribute.you finds your buyers, emails them from our own domains and brings you signups and booked meetings. Our pipes asked Jev, an LLM built to judge, {{raw volume.rounded}} typed questions since September 19. Here is how to use one for GTM, and what it does for our clients.</p>
+<p>Here are the 3 ways we use Jev for GTM:</p>
+
+<ol>
+<li><a href="#apollo">Screen the cold filtered list from Apollo before you pay</a></li>
+<li><a href="#machines">Tell people from machines in replies</a></li>
+<li><a href="#probability">Read the probability, not the answer</a></li>
+</ol>
 
 <video src="/blog/gtm-ai-llm-judge/jev.mp4" poster="/blog/gtm-ai-llm-judge/poster.jpg" controls autoplay muted loop playsinline style="width:100%;max-width:560px;display:block;margin:0 auto 32px;border-radius:12px"></video>
 
-<h2 id="what-is-jev">What an LLM judge is</h2>
+<h2 id="what-is-jev">What Jev is</h2>
 
-<p><a href="https://docs.typesafe.ai">Jev</a> is a model by TypeSafe that answers questions instead of writing text. You send a piece of text and a typed question: yes or no, one choice among options, or a level on a scale. Jev sends back a probability for every answer.</p>
+<p><a href="https://docs.typesafe.ai">Jev 1.13</a> is a model by TypeSafe. You ask a yes or no question, a choice among options, or a level on a scale. Jev returns a probability for every answer. A writing model such as DeepSeek V4.1 Flash or Gemini 3 gives one answer with the same confidence whether it is sure or guessing. Jev tells you when it is guessing.</p>
 
-<p>The probability is the point. A writing model such as DeepSeek V4.1 Flash or Gemini 3 gives you one answer, said with the same confidence whether it is sure or guessing. Jev tells you when it is guessing.</p>
+<p>Jev bills input tokens only; the answer is free. Across our pipes, 1,000 judgments come to <strong>{{raw volume.perThousand}}</strong> as billed.</p>
 
-<p>Jev 1.13 bills input tokens only. The answer is free. Across our pipes, 1,000 judgments come to <strong>{{raw volume.perThousand}}</strong> as billed.</p>
+<h2 id="apollo">1. Screen the cold filtered list from Apollo before you pay</h2>
 
-<h2 id="how-to-use">How to use an LLM judge for GTM</h2>
-
-<p>Four rules cover most of what we learned.</p>
-
-<ul>
-<li><strong>Every "is this an X?" is a judgment.</strong> Is this lead in my audience? Is this reply from a person? Is this sender a real buyer? A keyword rule answers these badly and in one language. A judge reads the text the way you would.</li>
-<li><strong>Ask before you pay.</strong> Put the judgment in front of the expensive step, never after it.</li>
-<li><strong>Judge once, keep the verdict.</strong> Store the answer with the exact question and text it was given. Ask again only when one of them changes.</li>
-<li><strong>Read the probability, set the bar per decision.</strong> Being wrong costs more in some places than others, so the bar moves with the stake.</li>
-</ul>
-
-<h2 id="screen-before-you-pay">Case 1: screen a lead before you pay for it</h2>
-
-<p>A lead database such as Apollo shows a name, a title and a company for free. The email address costs a credit. So every person Apollo returns gets one question before any credit is spent: <em>"Does this candidate belong to the target audience the client described?"</em> The client's own sentence is the audience.</p>
+<p>We build each campaign's list in Apollo with cold filters: titles, industries, company sizes. Apollo shows each person's name, title and company for free. The email address costs a credit. Filters are blunt, so before any credit is spent, Jev reads every person against the buyer the client described: <em>"Does this candidate belong to the target audience the client described?"</em></p>
 
 {{chart buckets}}
 
-<p><strong>{{raw screen.display}} of the people are turned away</strong> before the paid step. Your money goes to the people who fit.</p>
+<p><strong>{{raw screen.display}} of the Apollo list is turned away</strong> before the paid reveal. One client sells shockwave devices to chiropractors. The filters also returned hospitalists and a urology physician: Jev put each under 20%. A "Chiropractic Physician / Owner" came back at 94% and was revealed.</p>
 
-<p>One client sells shockwave devices to chiropractors. Apollo's filters also returned hospital doctors and a urology practice. Jev put each of them under 20% before any credit was spent. A "Chiropractic Physician / Owner" came back at 94% and went through.</p>
+<p>A screen costs a fraction of a cent, a reveal about {{raw price.reveal}}: <strong>screening a person is {{raw price.display}} cheaper than revealing one.</strong> Each verdict is stored with the person and the exact audience text, so nobody is judged twice. When a client rewrites the audience, everyone is judged again.</p>
 
-<p>A screen costs a fraction of a cent. A reveal costs about {{raw price.reveal}}. <strong>Screening a person is {{raw price.display}} cheaper than revealing one.</strong></p>
-
-<h2 id="bot-or-human">Case 2: is this reply from a person?</h2>
-
-<p>A reply rate looks great until you read the replies.</p>
+<h2 id="machines">2. Tell people from machines in replies</h2>
 
 {{chart replies}}
 
-<p><strong>{{raw machine.display}} of the replies to our cold emails are written by a machine</strong>: out-of-office messages and other auto-replies. A dashboard that counts them all counts the machines too, and every decision built on it inherits the error.</p>
+<p><strong>{{raw machine.display}} of the replies to our cold emails are written by a machine</strong>: out-of-office messages and auto-replies, in every language ("Ich geniesse gerade Ferien"). A reply rate that counts them counts robots. Our reply classifier, DeepSeek V4.1 Flash, labels each reply and Jev checks the label. In the inbox, Jev decides on its own: a sender is hidden from your contacts as automated only when Jev is at least 75% sure.</p>
 
-<p>The probability helps on the hard ones. A clinic CEO wrote "Unfortunately I can't till next week." One reading says out of office, another says a meeting request. Jev split its answer across three readings and gave a confidence of 22%. That is Jev saying "a person should read this". So a person does.</p>
+<h2 id="probability">3. Read the probability, not the answer</h2>
 
-<p>On cold email replies, Jev runs beside our reply classifier, DeepSeek V4.1 Flash, and checks its work. On the inbox it does decide: a sender judged automated is hidden from your contacts only when Jev is at least 75% sure.</p>
+<p>A clinic CEO wrote "Unfortunately I can't till next week." Out of office, or a meeting request? Jev split its answer across three readings and gave a confidence of 22%: it does not know. So a person reads that reply, and a warm lead stays warm.</p>
 
-<h2 id="set-the-bar">Case 3: the bar we set too high</h2>
+<p>The probability also sets the bar. The Apollo screen started at 80% and turned real buyers away: they sat between 50% and 80%. We lowered it to 50% on September 29. Jev is sure most of the time anyway: {{raw screen.sure}} of its answers are under 20% or at 80% and up. Our bars today: 50% to keep a lead, 75% before we hide a sender.</p>
 
-<p>The lead screen started with a bar of 80%: a person had to be very likely to fit. Real buyers sat between 50% and 80%, so the bar was turning them away. We lowered it to 50% on September 29.</p>
+<h2 id="takeaway">Start with one sentence</h2>
 
-<p>The fix was easy because Jev is sure most of the time. {{raw screen.sure}} of its answers on the screen are under 20% or at 80% and up. The bar only matters in the middle, and you can read that middle before you pick it.</p>
-
-<p>Our bars today: 50% to screen a lead, because losing a real buyer hurts more than one extra reveal. 75% before we hide a sender from your contacts, because hiding a real person hurts more than showing one robot.</p>
-
-<h2 id="judge-once">Judge once, keep the verdict</h2>
-
-<p>Every verdict is stored with the audience, the person, the exact audience text and the version of the question. The same person met twice is not judged twice. When a client rewrites their audience, the text changes, so everyone is judged again against the new words.</p>
-
-<p>The stored verdict is also the record. When a client asks why someone was skipped, the answer is the question, the text and the probability, kept as they were.</p>
-
-<h2 id="takeaway">What to do with this</h2>
-
-<p>Write your buyer down in one sentence. Ask an LLM judge that sentence before every paid step. Keep the probabilities, and set the bar by what a mistake costs.</p>
+<p>Write your buyer down in one sentence. Ask Jev that sentence before every paid step, and read the probability it gives back.</p>
 
 <p>Or let us run it for you. Revenue made easy: get revenue in 24h. distribute.you finds your buyers, emails them from our own domains and brings you signups and booked meetings: 911 hot leads for 28 companies so far, with a 3.6x median ROI reported (homepage figures, October 13, 2026). Give us your website and we do the rest. The platform is free. You only pay for your outreach.</p>
 
@@ -83,7 +60,7 @@
 
 <ul>
 <li>Judgments: {{raw volume.display}} Jev 1.13 judgments billed from September 19, 2026 to the read day, {{raw volume.tokensM}}M input tokens, across {{n volume.clients}} clients. Jev is reached through our model router, on the platform account.</li>
-<li>Lead screen: {{n screen.people}} people judged for {{n screen.audiences}} audiences of {{n screen.clients}} clients. Turned away = a probability of fit at or under 50%, the bar in force today: {{n screen.declined}} people, {{raw screen.display}} (95% interval {{raw screen.ciLo}} to {{raw screen.ciHi}}). The {{n screen.oldBarLost}} people turned away between 50% and 80% under the old bar count as passes here.</li>
+<li>Apollo screen: {{n screen.people}} people from cold filtered Apollo lists judged for {{n screen.audiences}} audiences of {{n screen.clients}} clients. Turned away = a probability of fit at or under 50%, the bar in force today: {{n screen.declined}} people, {{raw screen.display}} (95% interval {{raw screen.ciLo}} to {{raw screen.ciHi}}). The {{n screen.oldBarLost}} people turned away between 50% and 80% under the old bar count as passes here.</li>
 <li>Price: {{raw price.screenPerThousand}} per 1,000 screens on {{n price.screens}} screens, against {{raw price.reveal}} per reveal on {{n price.reveals}} Apollo enrichment credits, both as billed to clients since September 28, 2026. Not every pass becomes a paid reveal, so we compare the two per person and state no total.</li>
 <li>Replies: {{n machine.machine}} of {{n machine.replies}} replies to our cold emails labelled out of office or auto-reply by our reply classifier (DeepSeek V4.1 Flash), {{raw machine.display}} (95% interval {{raw machine.ciLo}} to {{raw machine.ciHi}}).</li>
 <li>Read from our production database on {{day readOn}}. Each figure is a study on our internal research page, verdict-checked there first, and copied by the scripts on <a href="https://github.com/shamanic-technologies/distribute.you/tree/main/apps/landing/scripts/blog-data/jev">GitHub</a>. Measurements, not split tests.</li>

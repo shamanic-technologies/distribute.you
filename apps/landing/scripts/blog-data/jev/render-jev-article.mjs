@@ -38,7 +38,7 @@ function get(path) {
 function chart(kind) {
   const spec = {
     buckets: {
-      title: "People Apollo returned, by Jev's probability that they fit",
+      title: "Cold filtered Apollo list, by Jev's probability that a person fits",
       rows: facts.screen.buckets,
       lead: (r) => /turned away/.test(r.note),
       caption: `Each person is judged once against the audience the client described, before any paid step. A person passes above 50%. Dark bars: turned away before the reveal.`,
