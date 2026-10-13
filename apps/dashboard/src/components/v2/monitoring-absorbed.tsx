@@ -134,6 +134,7 @@ export function AbsorbedView({ data }: { data: AbsorbedCosts }) {
               { key: "unknown", label: "Unknown", color: "var(--fg-4)", get: (b) => b.payingUnknown },
             ]}
             caption={(b) => `${n(b.customers)} customers`}
+            initial={buckets[0] ?? null}
             format={n}
             label={(p) => p}
             empty="No customer yet."
