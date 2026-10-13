@@ -194,7 +194,8 @@ describe("wiring", () => {
     expect(old).toContain("redirect(");
     expect(old).toContain("/unibox`");
   });
-  it("never writes back to a source", () => {
+  // Its writes go through named helpers only (pairing rulings, the reply box's sendUniboxReply).
+  it("never writes back to a source by hand", () => {
     const view = read("components/v2/integrations-conversations.tsx");
     for (const banned of ["useMutation", "apiCall", "fetch("]) expect(view).not.toContain(banned);
   });
