@@ -1,6 +1,12 @@
 import { parseOfferSalesPaths, type OfferSalesPaths } from "./offer-sales-paths";
 import { BrandOutcomesSchema, OutcomePeopleSchema, type BrandOutcomes, type OutcomePeople } from "./v2/outcome-people";
 import { ConversationTimelineSchema, type ConversationTimeline } from "./conversation-timeline";
+import {
+  BrandDisqualificationsSchema,
+  LeadDisqualificationSchema,
+  type BrandDisqualifications,
+  type LeadDisqualification,
+} from "./lead-disqualification";
 import { parseBrandSalesBudget, type BrandSalesBudget } from "./brand-sales-budget";
 import { PipeWithStatsSchema, type PipeStats } from "./pipe-stats";
 import {
@@ -7479,6 +7485,11 @@ export interface Lead {
    * none for that campaign — "we cannot tell", never "nothing happened".
    */
   campaigns?: LeadCampaignEvidence[];
+  /**
+   * The Disqualified MARK for this row's conversation (its offer x brand, or every offer of
+   * the brand): its own tag BESIDE the step tags, never instead of them. null = not marked.
+   */
+  disqualification?: LeadDisqualification | null;
   lead: FullLead | null;
 }
 
@@ -7653,6 +7664,9 @@ const LeadDeliverySchema = z
       .nullish(),
     // Declared: the lead page's "Found by" row renders off it.
     sources: z.array(LeadSourceSchema).optional(),
+    // The Disqualified MARK (lead-service v0.83.59), its own tag beside the step tags:
+    // null = not marked. `.nullish()`: required-and-nullable upstream, absent on an older payload.
+    disqualification: LeadDisqualificationSchema.nullish(),
   })
   .passthrough();
 
@@ -8005,6 +8019,58 @@ export async function getLeadTimeline(
     throw new Error("[dashboard] getLeadTimeline: invalid response shape");
   }
   return parsed.data;
+}
+
+/**
+ * Every person marked Disqualified at the brand (of one offer when named: its own mark or a
+ * brand-wide one), with the notes. lead-service `GET /orgs/leads/disqualifications`, reached
+ * through the gateway's `/v1/leads/:id` passthrough. `total` is the length of `leads`.
+ */
+export async function getBrandDisqualifications(
+  params: { brandId: string; offerId?: string | null },
+  token?: string,
+): Promise<BrandDisqualifications> {
+  const qs = new URLSearchParams({ brandId: params.brandId });
+  if (params.offerId) qs.set("offerId", params.offerId);
+  const raw = await apiCall<unknown>(`/leads/disqualifications?${qs.toString()}`, { token });
+  const parsed = BrandDisqualificationsSchema.safeParse(raw);
+  if (!parsed.success) {
+    console.error("[dashboard] getBrandDisqualifications: response shape mismatch", { issues: parsed.error.issues, raw });
+    throw new Error("[dashboard] getBrandDisqualifications: invalid response shape");
+  }
+  return parsed.data;
+}
+
+/**
+ * Mark one lead Disqualified, with an optional note (restating replaces the note).
+ * `offerId` absent = every offer of the brand. `brandId` rides the body AND the query: an
+ * identity value a downstream needs never travels in the body alone.
+ */
+export async function setLeadDisqualification(
+  leadRowId: string,
+  body: { brandId: string; offerId?: string; note?: string },
+  token?: string,
+): Promise<unknown> {
+  const qs = new URLSearchParams({ brandId: body.brandId });
+  return apiCall<unknown>(`/leads/${encodeURIComponent(leadRowId)}/disqualification?${qs.toString()}`, {
+    token,
+    method: "PUT",
+    body,
+  });
+}
+
+/** Remove the mark. `offerId` absent = every mark of the person at the brand. */
+export async function removeLeadDisqualification(
+  leadRowId: string,
+  params: { brandId: string; offerId?: string | null },
+  token?: string,
+): Promise<unknown> {
+  const qs = new URLSearchParams({ brandId: params.brandId });
+  if (params.offerId) qs.set("offerId", params.offerId);
+  return apiCall<unknown>(`/leads/${encodeURIComponent(leadRowId)}/disqualification?${qs.toString()}`, {
+    token,
+    method: "DELETE",
+  });
 }
 
 /**

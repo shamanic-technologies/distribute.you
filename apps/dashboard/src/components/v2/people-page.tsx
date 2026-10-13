@@ -5,6 +5,8 @@ import Link from "next/link";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { fetchLeadsCsv, getLeadConsolidatedStatus, leadDateForStatus, listLeadsPage } from "@/lib/api";
 import { leadStatusLabel } from "@/lib/lead-status";
+import { DISQUALIFIED_TAG } from "@/lib/lead-disqualification";
+import { TagChip } from "@/components/v2/tag-chip";
 import { useAuthQuery } from "@/lib/use-auth-query";
 import { POLL_INTERVAL } from "@/lib/query-options";
 import { formatCount } from "@/lib/format-number";
@@ -215,7 +217,16 @@ export function PeoplePage({ bucket, campaignId }: { bucket?: LeadBucket; campai
                         <span className="k-fg4">{"—"}</span>
                       )}
                     </td>
-                    <td className="px-3"><span className="k-chip">{leadStatusLabel(status)}</span></td>
+                    <td className="px-3">
+                      <span className="inline-flex items-center gap-1.5">
+                        <span className="k-chip">{leadStatusLabel(status)}</span>
+                        {lead.disqualification ? (
+                          <span title={lead.disqualification.note ?? undefined}>
+                            <TagChip tag={DISQUALIFIED_TAG} />
+                          </span>
+                        ) : null}
+                      </span>
+                    </td>
                     <td className="k-fg2 whitespace-nowrap px-3 tabular-nums">
                       {at ? (
                         <span className="inline-flex items-center gap-1.5">

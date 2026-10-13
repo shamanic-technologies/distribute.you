@@ -21,6 +21,9 @@ import { LeadChecks } from "@/components/v2/lead-checks";
 import { ConversationTimelineCard } from "@/components/v2/conversation-timeline";
 import { useSelectedOffer } from "@/components/v2/selected-offer";
 import { CloseWonForm } from "@/components/leads/close-won-form";
+import { TagChip } from "@/components/v2/tag-chip";
+import { DISQUALIFIED_TAG, disqualificationNoteBody, disqualificationSourceWord } from "@/lib/lead-disqualification";
+import { useRemoveLeadDisqualification, useSetLeadDisqualification } from "@/lib/use-lead-disqualification";
 import { EmptyNote, Shimmer, TopBar } from "@/components/v2/ui";
 import { CompanyMark, PersonAvatar, leadCompany, leadCompanyDomain, leadName, leadTitle } from "@/components/v2/people-bits";
 
@@ -59,6 +62,10 @@ export function PersonPage() {
   );
   const [closing, setClosing] = useState(false);
   const setStep = useSetAnyLeadStepStatement();
+  const [disqualifying, setDisqualifying] = useState(false);
+  const [note, setNote] = useState("");
+  const disqualify = useSetLeadDisqualification();
+  const undoDisqualify = useRemoveLeadDisqualification();
 
   // Only THIS lead's reads: keepPreviousData would show the previous person's while these load.
   const lead = ownQueryData(leadQ) ?? null;
@@ -74,6 +81,9 @@ export function PersonPage() {
   const cold = lead ? leadWentCold((lead as unknown as { standing?: unknown }).standing) : null;
   const lastAt = lead ? leadDateForStatus(lead, getLeadConsolidatedStatus(lead)) : null;
   const linkedin = lead?.lead?.linkedinUrl ?? null;
+  // Disqualified: its own mark beside the step tags (owner 2026-10-13), for this conversation
+  // (the selected offer, or every offer). The timeline answers for it; the row until it loads.
+  const mark = timeline ? (timeline.disqualification ?? null) : (lead?.disqualification ?? null);
 
   return (
     <>
@@ -102,10 +112,16 @@ export function PersonPage() {
               </div>
               <div className="flex flex-wrap items-center gap-2">
                 {tagLabel ? <span className="k-chip">{tagLabel}</span> : null}
+                {mark ? <TagChip tag={DISQUALIFIED_TAG} /> : null}
                 {lead.email ? (
                   <a href={`mailto:${lead.email}`} className="k-btn">
                     Email
                   </a>
+                ) : null}
+                {!mark ? (
+                  <button type="button" className="k-btn" onClick={() => setDisqualifying((v) => !v)} aria-expanded={disqualifying}>
+                    Disqualify
+                  </button>
                 ) : null}
                 {state !== "customer" ? (
                   <button type="button" className="k-btn-strong" onClick={() => setClosing((v) => !v)} aria-expanded={closing}>
@@ -130,6 +146,68 @@ export function PersonPage() {
                   }
                 />
                 {setStep.isError ? <p className="text-[12px] text-[var(--data-rose)]">We could not record this sale. Try again.</p> : null}
+              </div>
+            ) : null}
+
+            {disqualifying && !mark ? (
+              <form
+                className="k-card mt-4 flex flex-wrap items-center gap-2 p-4"
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  disqualify.mutate(
+                    { leadRowId, brandId, ...(offerId ? { offerId } : {}), ...disqualificationNoteBody(note) },
+                    {
+                      onSuccess: () => {
+                        setDisqualifying(false);
+                        setNote("");
+                      },
+                    },
+                  );
+                }}
+              >
+                <label htmlFor="disqualify-note" className="k-fg2 w-full text-[13px]">
+                  Not a fit for this offer? Add a note if you like.
+                </label>
+                <input
+                  id="disqualify-note"
+                  className="k-input min-w-0 flex-1"
+                  value={note}
+                  maxLength={2000}
+                  placeholder="Why (optional)"
+                  onChange={(e) => setNote(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Escape") setDisqualifying(false);
+                  }}
+                  autoFocus
+                />
+                <button type="button" className="k-btn-ghost" onClick={() => setDisqualifying(false)}>
+                  Cancel
+                </button>
+                <button type="submit" className="k-btn-strong" disabled={disqualify.isPending}>
+                  Disqualify
+                </button>
+                {disqualify.isError ? <p className="w-full text-[12px] text-[var(--data-rose)]">We could not save this. Try again.</p> : null}
+              </form>
+            ) : null}
+
+            {mark ? (
+              <div className="k-card mt-4 flex flex-wrap items-start gap-3 p-4">
+                <TagChip tag={DISQUALIFIED_TAG} />
+                <div className="min-w-0 flex-1">
+                  <p className="text-[13px]">{mark.note ?? <span className="k-fg3">No note.</span>}</p>
+                  <p className="k-fg3 mt-0.5 text-[12px]">
+                    {disqualificationSourceWord(mark)} · {friendlyDate(mark.statedAt)}
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  className="k-btn"
+                  disabled={undoDisqualify.isPending}
+                  onClick={() => undoDisqualify.mutate({ leadRowId, brandId, offerId: mark.offerId })}
+                >
+                  Undo
+                </button>
+                {undoDisqualify.isError ? <p className="w-full text-[12px] text-[var(--data-rose)]">We could not undo this. Try again.</p> : null}
               </div>
             ) : null}
 
