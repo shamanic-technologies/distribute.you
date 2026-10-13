@@ -3,6 +3,8 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import {
   SalesFunnelCampaignListSchema,
+  splitFunnelCampaigns,
+  type SalesFunnelCampaign,
   SalesFunnelCapsSchema,
   capPeriodSuffix,
   capUnavailableSentence,
@@ -445,5 +447,22 @@ describe("a max budget AND/OR a max volume funds a funnel (owner 2026-10-11, bil
     expect(f).not.toContain("c.maxBudget === null");
     expect(f).toContain('"Set a budget or a volume."');
     expect(f).toContain("maxBudget: usd === null ? null : { amountCents: usd * 100, period: budgetPer }");
+  });
+});
+
+describe("Running vs Past campaigns (owner 2026-10-13)", () => {
+  const c = (id: string, status: string) => ({ id, status }) as Pick<SalesFunnelCampaign, "id" | "status">;
+  it("ON campaigns are Running; stopped ones are Past only with at least 1 cent invested", () => {
+    const invested = new Map<string, number | null>([["on", 0], ["spent", 3], ["cent", 0.01], ["zero", 0], ["null", null]]);
+    const { running, past } = splitFunnelCampaigns([c("on", "ongoing"), c("spent", "stopped"), c("cent", "stopped"), c("zero", "stopped"), c("null", "stopped"), c("unserved", "stopped")], invested);
+    expect(running.map((x) => x.id)).toEqual(["on"]);
+    expect(past.map((x) => x.id)).toEqual(["spent", "cent"]);
+  });
+  it("the Campaigns section lists running by default, the Past tab only when it holds one", () => {
+    const page = src("src/components/v2/funnel-campaigns.tsx");
+    expect(page).toContain("splitFunnelCampaigns(campaigns, investedById)");
+    expect(page).toContain("{settled && past.length > 0 && (");
+    expect(page).toContain("const shown = showingPast ? past : running;");
+    expect(page).toContain("{shown.map((c) => (");
   });
 });

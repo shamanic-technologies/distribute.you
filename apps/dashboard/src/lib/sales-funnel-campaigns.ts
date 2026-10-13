@@ -97,6 +97,25 @@ export function isOngoingFunnelCampaign(c: Pick<SalesFunnelCampaign, "status">):
   return c.status === "ongoing";
 }
 
+/**
+ * Running vs Past (owner 2026-10-13): the lists show the campaigns that are ON; a stopped one is
+ * Past only when features-service serves at least 1 cent invested since inception
+ * (`investedById`, the Campaigns rows' `investedUsd`). A stopped one that never spent, or whose
+ * spend is not served, is listed nowhere.
+ */
+export function splitFunnelCampaigns<T extends Pick<SalesFunnelCampaign, "id" | "status">>(
+  list: T[],
+  investedById: ReadonlyMap<string, number | null>,
+): { running: T[]; past: T[] } {
+  const running: T[] = [];
+  const past: T[] = [];
+  for (const c of list) {
+    if (isOngoingFunnelCampaign(c)) running.push(c);
+    else if ((investedById.get(c.id) ?? 0) >= 0.01) past.push(c);
+  }
+  return { running, past };
+}
+
 // ─── GA display (owner 2026-10-10): the campaign page, the Overview section, the sidebar ──────────
 
 /** The PUT body: both keys always (object states the cap, null clears it). */

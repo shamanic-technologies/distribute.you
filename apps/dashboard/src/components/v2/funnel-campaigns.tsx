@@ -30,6 +30,7 @@ import {
   formatCapUsd,
   funnelCampaignFaceSrc,
   isOngoingFunnelCampaign as isFunnelCampaignOn,
+  splitFunnelCampaigns,
   capWords,
   funnelTypeOf,
   fundingLimit,
@@ -540,7 +541,9 @@ function TypeTag({ row }: { row: FunnelCampaignCopy }) {
  * The offer's campaigns (owner spec 2026-10-11, token for token): Campaign (face, name, path), Type
  * (i), ROI, $ Invested, Status (the on/off control, green with the budget when on). Rows are
  * campaign-service's list (fresh after a status write); columns 1-4 read features-service's row for
- * the same campaign id, the budget billing's caps.
+ * the same campaign id, the budget billing's caps. Lists the ON campaigns; a Past tab (shown only
+ * when it holds one) lists the stopped ones that spent at least 1 cent; a stopped one that never
+ * spent is listed nowhere (owner 2026-10-13: « a list of OFF campaigns is useless »).
  */
 export function FunnelCampaignsSection({ orgId, brandId, offerId }: { orgId: string; brandId: string; offerId: string }) {
   const q = useFunnelCampaigns(brandId, offerId);
@@ -571,21 +574,37 @@ export function FunnelCampaignsSection({ orgId, brandId, offerId }: { orgId: str
     // capsData is a fresh array each render; capsStamp moves exactly when one of its members does.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [q.data, rowById, capsStamp]);
+  // Running by default; Past = stopped AND served at least 1 cent invested (owner 2026-10-13).
+  const investedById = useMemo(() => new Map((rowsQ.data ?? []).map((r) => [r.id, r.investedUsd])), [rowsQ.data]);
+  const { running, past } = useMemo(() => splitFunnelCampaigns(campaigns, investedById), [campaigns, investedById]);
+  const [view, setView] = useState<"running" | "past">("running");
+  const showingPast = view === "past" && past.length > 0;
+  const shown = showingPast ? past : running;
   const settled = q.data !== undefined || q.isFetchedAfterMount;
   if (settled && !q.data && q.isError) {
     return <p className="mb-6 text-[13px] text-[var(--data-rose)]">Could not read this offer&apos;s campaigns.</p>;
   }
   return (
     <section className="mb-8">
-      <SectionTitle count={settled ? campaigns.length : null}>Campaigns</SectionTitle>
+      <SectionTitle count={settled ? running.length : null}>Campaigns</SectionTitle>
       <p className="k-fg2 -mt-1 mb-3 text-[13px]">Each one runs within its limits.</p>
+      {settled && past.length > 0 && (
+        <nav className="k-line-subtle mb-3 flex gap-5 border-b" aria-label="Campaigns shown">
+          <button type="button" onClick={() => setView("running")} aria-current={!showingPast ? "page" : undefined} className="k-tab text-[13px]">
+            Running <span className="k-fg3 tabular-nums">{running.length}</span>
+          </button>
+          <button type="button" onClick={() => setView("past")} aria-current={showingPast ? "page" : undefined} className="k-tab text-[13px]">
+            Past <span className="k-fg3 tabular-nums">{past.length}</span>
+          </button>
+        </nav>
+      )}
       {!settled ? (
         <div className="space-y-2">
           <Shimmer className="h-12 rounded-[10px]" />
         </div>
-      ) : campaigns.length === 0 ? (
+      ) : shown.length === 0 ? (
         <div className="k-card">
-          <EmptyNote>No campaign yet.</EmptyNote>
+          <EmptyNote>{past.length > 0 ? "No campaign running right now." : "No campaign running yet."}</EmptyNote>
         </div>
       ) : (
         <div className="k-card overflow-hidden">
@@ -608,7 +627,7 @@ export function FunnelCampaignsSection({ orgId, brandId, offerId }: { orgId: str
                 </tr>
               </thead>
               <tbody>
-                {campaigns.map((c) => (
+                {shown.map((c) => (
                   <FunnelCampaignRow
                     key={c.id}
                     orgId={orgId}
