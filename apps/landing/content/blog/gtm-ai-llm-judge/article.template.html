@@ -1,0 +1,108 @@
+<div style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:12px;padding:20px 24px;margin:0 0 32px">
+<p style="margin:0 0 8px;font-size:12px;font-weight:600;letter-spacing:0.08em;text-transform:uppercase;color:#1d4ed8">Key takeaway</p>
+<p style="margin:0 0 8px;font-weight:600;color:#0f172a">We bring our clients signups and booked meetings, done for you. Jev checks each Apollo lead against their ICP before we pay for its email, so the budget goes to the right people.</p>
+<ul style="margin:0;padding-left:20px">
+<li>You write your ICP (Ideal Customer Profile) in one sentence</li>
+<li>Jev checks each Apollo lead against it, and against the signals you pick, before we pay for the email</li>
+<li>For one client, Jev checked {{n case.screened}} people from Apollo and kept {{n case.matched}} before we paid for a single email</li>
+</ul>
+</div>
+
+<p>We bring our clients signups and booked meetings, done for you, and they report a 4.1x median ROI. It starts with emailing the right people. We set Apollo filters for each client's ICP, and even good filters let in people outside it. Here is one real case from our data, and how an AI called Jev checks each lead before we pay for its email.</p>
+
+<video src="/blog/gtm-ai-llm-judge/jev.mp4" poster="/blog/gtm-ai-llm-judge/poster.jpg" controls autoplay muted loop playsinline style="width:100%;max-width:560px;display:block;margin:0 auto 32px;border-radius:12px"></video>
+
+<h2 id="case">One client: Apollo filters vs. one sentence</h2>
+
+<p>One of our clients is {{raw case.client}}. Here are the Apollo filters we set for them and their ICP, side by side, as stored in our database.</p>
+
+<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:16px;margin:0 0 24px">
+<div style="background:#fff;border:1px solid #e2e8f0;border-radius:12px;padding:16px 20px">
+<p style="margin:0 0 10px;font-size:12px;font-weight:600;letter-spacing:0.08em;text-transform:uppercase;color:#64748b">The Apollo filters</p>
+<ul style="margin:0;padding-left:18px;font-size:15px">
+<li style="margin:0 0 6px"><strong>Seniority:</strong> {{raw case.filters.seniority}}</li>
+<li style="margin:0 0 6px"><strong>Location:</strong> {{raw case.filters.location}}</li>
+<li style="margin:0 0 6px"><strong>Company keywords:</strong> {{raw case.filters.keywords}}</li>
+<li style="margin:0"><strong>Similar titles:</strong> {{raw case.filters.similar}}</li>
+</ul>
+</div>
+<div style="background:#fff;border:1px solid #e2e8f0;border-radius:12px;padding:16px 20px;background:#eff6ff;border-color:#bfdbfe">
+<p style="margin:0 0 10px;font-size:12px;font-weight:600;letter-spacing:0.08em;text-transform:uppercase;color:#64748b;color:#1d4ed8">The ICP, in one sentence</p>
+<p style="margin:0;font-size:15px;line-height:1.55">"{{raw case.icpSentence}}"</p>
+</div>
+</div>
+
+<p>The filters say: owners and founders, in the US, at companies Apollo tags with chiropractic. The sentence adds what the filters cannot say: who else matters (the people who advise the owner), and who to leave out, such as "owners outside chiropractic".</p>
+
+<p>Apollo matched {{n case.apolloCount}} people to these filters, and Jev has checked the first {{n case.screened}} against the sentence so far. Most were the clinic owners the client wanted. About 1 in 4 were not: their companies match the keyword "chiropractic", but they run an animal hospital, a physical therapy clinic or a billing company.</p>
+
+<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:16px;margin:0 0 24px">
+<div style="background:#fff;border:1px solid #e2e8f0;border-radius:12px;padding:16px 20px;background:#f8fafc">
+<p style="margin:0 0 10px;font-size:12px;font-weight:600;letter-spacing:0.08em;text-transform:uppercase;color:#64748b">Skipped before we paid for their email</p>
+<ul style="margin:0;padding-left:18px;font-size:15px;color:#475569">
+<li style="margin:0 0 6px">{{raw case.skippedExamples.0}}</li>
+<li style="margin:0 0 6px">{{raw case.skippedExamples.1}}</li>
+<li style="margin:0 0 6px">{{raw case.skippedExamples.2}}</li>
+<li style="margin:0">{{raw case.skippedExamples.3}}</li>
+</ul>
+</div>
+<div style="background:#fff;border:1px solid #e2e8f0;border-radius:12px;padding:16px 20px;background:#f0fdf4;border-color:#bbf7d0">
+<p style="margin:0 0 10px;font-size:12px;font-weight:600;letter-spacing:0.08em;text-transform:uppercase;color:#64748b;color:#15803d">Kept by Jev</p>
+<ul style="margin:0;padding-left:18px;font-size:15px">
+<li style="margin:0 0 6px">{{raw case.keptExamples.0}}</li>
+<li style="margin:0">{{raw case.keptExamples.1}}</li>
+</ul>
+</div>
+</div>
+
+<p><strong>Jev kept {{n case.matched}} clinic owners and skipped {{n case.skipped}} people</strong>, before we paid for a single email. Only the {{n case.matched}} kept moved on to the paid step, where we buy the email.</p>
+
+<h2 id="jev">What Jev does</h2>
+
+<p><a href="https://docs.typesafe.ai">Jev 1.13</a> is a model by TypeSafe built to judge rather than to write. You give it a piece of text and a question; it answers yes or no and says how sure it is. We placed it between Apollo and the moment we pay for an email. Across our clients' campaigns it answered {{raw volume.rounded}} questions since September 19, 2026.</p>
+
+<ol>
+<li><strong>You write your ICP in one sentence.</strong> In your words, not in dropdown values.</li>
+<li><strong>Jev checks each Apollo lead against it.</strong> The name, title and company are free to read; the email costs a credit, so the check comes first.</li>
+<li><strong>You add the signals that make a lead hot.</strong> Our AI suggests some for your offer, you pick the ones you want, and Jev reads the evidence on the company website, its job posts or its LinkedIn page. Real examples from our clients: "Does the company website mention an FDA 510(k) clearance?", "Does the company have open job postings for QA engineers?", and for the client above: "{{raw case.signal}}"</li>
+</ol>
+
+{{chart buckets}}
+
+<h2 id="value">What it changes</h2>
+
+<p><strong>The budget goes to people in the ICP</strong>, the ones who can sign up or book a meeting. The check itself costs a fraction of a cent per lead, and our clients report a 4.1x median ROI on what they spend with us.</p>
+
+<h2 id="objections">The questions we get</h2>
+
+<p><strong>"What if Jev makes a mistake?"</strong> Jev keeps every lead with a 50% chance or more of fitting the ICP, so a lead in doubt still gets the email. We started stricter and lowered the bar on September 29 when we saw good leads just below it.</p>
+
+<p><strong>"Why not tighter Apollo filters?"</strong> We use them too, and they come first. But part of an ICP has no dropdown: "a chiropractic clinic, not an animal hospital that also offers chiropractic care", or "a clinic accepting new patients", which lives on the clinic's website.</p>
+
+<p><strong>"Does the check cost extra?"</strong> A fraction of a cent per lead, against about {{raw price.reveal}} to buy one email. Each verdict is stored, so the same lead is not checked twice.</p>
+
+<p><strong>"What if my ICP changes?"</strong> Rewrite the sentence. The leads are checked again against the new words.</p>
+
+<h2 id="replies">Replies, too</h2>
+
+{{chart replies}}
+
+<p>The same idea runs on replies. More than half of the replies to our cold emails are out-of-office messages or auto-replies, in many languages ("Ich geniesse gerade Ferien"). Our reply classifier, DeepSeek V4.1 Flash, labels them and Jev double-checks the label, so the replies you read and the numbers you track come mostly from real people.</p>
+
+<h2 id="takeaway">Start with one sentence</h2>
+
+<p>Revenue made easy: get revenue in 24h. distribute.you finds your buyers, emails them from our own domains and brings you signups and booked meetings: 909 hot leads for 28 companies so far, with a 4.1x median ROI reported (homepage figures, October 13, 2026). Give us your website and your ICP in one sentence, and we do the rest. The platform is free. You only pay for your outreach.</p>
+
+<p><a href="https://distribute.you">Get started: distribute.you</a></p>
+
+<h2 id="notes">Notes</h2>
+
+<ul>
+<li>Judgments: {{raw volume.display}} Jev 1.13 judgments billed from September 19, 2026 to the read day, {{raw volume.tokensM}}M input tokens, across {{n volume.clients}} clients. Jev is reached through our model router, on the platform account.</li>
+<li>Apollo screen: {{n screen.people}} people from cold filtered Apollo lists judged for {{n screen.audiences}} audiences of {{n screen.clients}} clients. Turned away = a probability of fit at or under 50%, the bar in force today: {{n screen.declined}} people, {{raw screen.display}} (95% interval {{raw screen.ciLo}} to {{raw screen.ciHi}}). The {{n screen.oldBarLost}} people turned away between 50% and 80% under the old bar count as passes here.</li>
+<li>Price (a reveal = buying one person's email from Apollo, one credit): {{raw price.screenPerThousand}} per 1,000 screens on {{n price.screens}} screens, against {{raw price.reveal}} per reveal on {{n price.reveals}} Apollo enrichment credits, both as billed to clients since September 28, 2026. Not every pass becomes a paid reveal, so we compare the two per person and state no total.</li>
+<li>Replies: {{n machine.machine}} of {{n machine.replies}} replies to our cold emails labelled out of office or auto-reply by our reply classifier (DeepSeek V4.1 Flash), {{raw machine.display}} (95% interval {{raw machine.ciLo}} to {{raw machine.ciHi}}).</li>
+<li>Reach: only the {{raw screen.keptShare}} of people kept are revealed, so the same budget reaches {{raw screen.reach}}x more people who fit than revealing the whole list. Shares: {{raw screen.display}} of the people Apollo returned were turned away before the reveal; {{raw machine.display}} of replies to our cold emails were out-of-office or auto-replies. Bars: a lead passes the Apollo screen above a 50% probability of fit (80% until September 29, 2026, which turned away {{n screen.oldBarLost}} people between 50% and 80%); a sender is hidden as automated at 75% and up. Screening a person is {{raw price.display}} cheaper than revealing one. Jev is decisive (under 20% or at 80% and up) on {{raw screen.sure}} of screens.</li>
+<li>Case: one client's ICP screen ({{raw case.icp}}), one Apollo audience matching {{n case.apolloCount}} people, {{n case.screened}} people screened, {{n case.matched}} kept (probability of fit above 50%; {{n case.keptSure}} of them at 80% and up). Titles are quoted as Apollo returned them; employers are described, not named. The skipped examples scored {{raw case.skippedRange}}, the kept examples {{raw case.keptRange}}. Read {{day case.readOn}} by the query on <a href="https://github.com/shamanic-technologies/distribute.you/tree/main/apps/landing/scripts/blog-data/jev">GitHub</a> (case.sql). The client is not named.</li>
+<li>Read from our production database on {{day readOn}}. Each figure is a study on our internal research page, verdict-checked there first, and copied by the scripts on <a href="https://github.com/shamanic-technologies/distribute.you/tree/main/apps/landing/scripts/blog-data/jev">GitHub</a>. Measurements, not split tests.</li>
+</ul>
