@@ -2,9 +2,29 @@
   "readOn": "2026-10-13",
   "client": "a medical-device company selling shockwave devices to chiropractors",
   "icp": "owners of chiropractic clinics in the United States",
+  "icpSentence": "Owners, clinic owners, founders and co-founders of chiropractic clinics or multi-location chiropractic groups in the United States with 201 to 1000 employees and $50M to $250M in revenue, including owner-doctors (DC), managing partners and presidents or CEOs who hold ownership and decide on buying treatment equipment such as shockwave devices. Also in are the people who assist or advise them on this, such as executive assistants, chiefs of staff, advisors and coaches, and the managers of the clinical teams who use the devices, such as regional clinical directors, clinic managers and lead treating chiropractors. Out are functions with no stake in this purchase, such as marketing, HR and recruiting, billing and insurance, IT, front desk administration and finance, however senior.",
+  "filters": {
+    "titles": "Chiropractor Owner, Clinic Owner, Founder",
+    "seniority": "Owner, Founder",
+    "location": "United States",
+    "employees": "201 to 1,000",
+    "revenue": "$50M to $250M"
+  },
   "screened": 3610,
   "matched": 107,
-  "rejectedExample": "Hospital Medicine Physician",
-  "acceptedExample": "Chiropractic Physician-Owner",
+  "skipped": 3503,
+  "founderTitles": 3554,
+  "skippedExamples": [
+    "Founder & CEO of a marketing software company",
+    "Co-Founder and Co-Owner of an ice cream brand",
+    "Founding GTM at a data software company",
+    "Physical Therapist and Clinic Owner"
+  ],
+  "keptExamples": [
+    "Chiropractor and Owner",
+    "Managing Owner of a chiropractic clinic"
+  ],
+  "skippedRange": "1% to 8%",
+  "keptRange": "71% to 73%",
   "signal": "Does the clinic's website show no sign that it belongs to a national shockwave clinic network?"
 }

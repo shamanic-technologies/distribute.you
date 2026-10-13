@@ -4,7 +4,7 @@
 <ul style="margin:0;padding-left:20px">
 <li>You write your ICP (Ideal Customer Profile) in one sentence</li>
 <li>Jev checks each Apollo lead against it, and against the signals you pick, before we pay to reveal the email</li>
-<li>For one client, Jev checked 3,610 people from Apollo; 107 matched the ICP</li>
+<li>For one client, Jev checked 3,610 people from Apollo and kept 107 before we paid for a single email</li>
 </ul>
 </div>
 
@@ -12,13 +12,51 @@
 
 <video src="/blog/gtm-ai-llm-judge/jev.mp4" poster="/blog/gtm-ai-llm-judge/poster.jpg" controls autoplay muted loop playsinline style="width:100%;max-width:560px;display:block;margin:0 auto 32px;border-radius:12px"></video>
 
-<h2 id="case">One client, one sentence</h2>
+<h2 id="case">One client: Apollo filters vs. one sentence</h2>
 
-<p>One of our clients is a medical-device company selling shockwave devices to chiropractors. Their ICP: owners of chiropractic clinics in the United States. We set the Apollo filters that come closest (title, industry, country, size) and Apollo returned a long list.</p>
+<p>One of our clients is a medical-device company selling shockwave devices to chiropractors. Here are the Apollo filters we set for them and their ICP, side by side, as stored in our database.</p>
 
-<p>Jev checked 3,610 of those people against the ICP. <strong>107 matched.</strong> A "Chiropractic Physician-Owner" was a clear yes. A "Hospital Medicine Physician", whom the filters had let in, was a clear no: skipped before the paid reveal, so no credit was spent on that lead.</p>
+<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:16px;margin:0 0 24px">
+<div style="background:#fff;border:1px solid #e2e8f0;border-radius:12px;padding:16px 20px">
+<p style="margin:0 0 10px;font-size:12px;font-weight:600;letter-spacing:0.08em;text-transform:uppercase;color:#64748b">The Apollo filters</p>
+<ul style="margin:0;padding-left:18px;font-size:15px">
+<li style="margin:0 0 6px"><strong>Job titles:</strong> Chiropractor Owner, Clinic Owner, Founder</li>
+<li style="margin:0 0 6px"><strong>Seniority:</strong> Owner, Founder</li>
+<li style="margin:0 0 6px"><strong>Location:</strong> United States</li>
+<li style="margin:0 0 6px"><strong>Employees:</strong> 201 to 1,000</li>
+<li style="margin:0"><strong>Revenue:</strong> $50M to $250M</li>
+</ul>
+</div>
+<div style="background:#fff;border:1px solid #e2e8f0;border-radius:12px;padding:16px 20px;background:#eff6ff;border-color:#bfdbfe">
+<p style="margin:0 0 10px;font-size:12px;font-weight:600;letter-spacing:0.08em;text-transform:uppercase;color:#64748b;color:#1d4ed8">The ICP, in one sentence</p>
+<p style="margin:0;font-size:15px;line-height:1.55">"Owners, clinic owners, founders and co-founders of chiropractic clinics or multi-location chiropractic groups in the United States with 201 to 1000 employees and $50M to $250M in revenue, including owner-doctors (DC), managing partners and presidents or CEOs who hold ownership and decide on buying treatment equipment such as shockwave devices. Also in are the people who assist or advise them on this, such as executive assistants, chiefs of staff, advisors and coaches, and the managers of the clinical teams who use the devices, such as regional clinical directors, clinic managers and lead treating chiropractors. Out are functions with no stake in this purchase, such as marketing, HR and recruiting, billing and insurance, IT, front desk administration and finance, however senior."</p>
+</div>
+</div>
 
-<p>The filters were not wrong to return those people. Titles and industries come close to an ICP; they are not the same thing. The gap between the two is where a cold email budget can quietly leak.</p>
+<p>The filters get the country, the size and the seniority right. The sentence says what no dropdown can: chiropractic, the people who advise the owner, and who is out "however senior".</p>
+
+<p>Apollo returned a long list, and Jev checked 3,610 of those people against the sentence. 3,554 of them had "Founder" in their title. The filter knows the word; it cannot tell founder of what.</p>
+
+<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:16px;margin:0 0 24px">
+<div style="background:#fff;border:1px solid #e2e8f0;border-radius:12px;padding:16px 20px;background:#f8fafc">
+<p style="margin:0 0 10px;font-size:12px;font-weight:600;letter-spacing:0.08em;text-transform:uppercase;color:#64748b">Skipped before the paid reveal</p>
+<ul style="margin:0;padding-left:18px;font-size:15px;color:#475569">
+<li style="margin:0 0 6px">Founder & CEO of a marketing software company</li>
+<li style="margin:0 0 6px">Co-Founder and Co-Owner of an ice cream brand</li>
+<li style="margin:0 0 6px">Founding GTM at a data software company</li>
+<li style="margin:0">Physical Therapist and Clinic Owner</li>
+</ul>
+</div>
+<div style="background:#fff;border:1px solid #e2e8f0;border-radius:12px;padding:16px 20px;background:#f0fdf4;border-color:#bbf7d0">
+<p style="margin:0 0 10px;font-size:12px;font-weight:600;letter-spacing:0.08em;text-transform:uppercase;color:#64748b;color:#15803d">Kept for the reveal</p>
+<ul style="margin:0;padding-left:18px;font-size:15px">
+<li style="margin:0 0 6px">Chiropractor and Owner</li>
+<li style="margin:0">Managing Owner of a chiropractic clinic</li>
+</ul>
+</div>
+</div>
+
+<p><strong>Jev kept 107 people and skipped 3,503</strong>, before we paid to reveal a single email. The reveal budget went to 107 people instead of 3,610.</p>
 
 <h2 id="jev">What Jev does</h2>
 
@@ -61,7 +99,7 @@
 
 <p><strong>"What if Jev is wrong?"</strong> It can be, so the rule leans toward keeping a lead: anyone Jev finds more likely in the ICP than not is kept. We started stricter and lowered the bar on September 29 when we saw good leads just below it.</p>
 
-<p><strong>"Why not tighter Apollo filters?"</strong> We use them too, and they come first. But some ICPs are hard to filter: "independent clinic, not part of a national network" lives on the clinic's website, not in a dropdown.</p>
+<p><strong>"Why not tighter Apollo filters?"</strong> We use them too, and they come first. But part of an ICP has no dropdown: "founder of a chiropractic clinic, not of a software company", or "independent clinic, not part of a national network", which lives on the clinic's website.</p>
 
 <p><strong>"Does the check cost extra?"</strong> A fraction of a cent per lead, against about $0.10 for a reveal. Each verdict is stored, so the same lead is not checked twice.</p>
 
@@ -103,7 +141,7 @@
 <li>Apollo screen: 75,320 people from cold filtered Apollo lists judged for 107 audiences of 14 clients. Turned away = a probability of fit at or under 50%, the bar in force today: 57,774 people, 77% (95% interval 76% to 77%). The 6,540 people turned away between 50% and 80% under the old bar count as passes here.</li>
 <li>Price: $0.07 per 1,000 screens on 75,271 screens, against $0.10 per reveal on 3,951 Apollo enrichment credits, both as billed to clients since September 28, 2026. Not every pass becomes a paid reveal, so we compare the two per person and state no total.</li>
 <li>Replies: 371 of 678 replies to our cold emails labelled out of office or auto-reply by our reply classifier (DeepSeek V4.1 Flash), 55% (95% interval 51% to 58%).</li>
-<li>Reach: only the 23% of people kept are revealed, so the same budget reaches 4.3x more people who fit than revealing the whole list. Shares: 77% of the people Apollo returned were turned away before the reveal; 55% of replies to our cold emails were out-of-office or auto-replies. Examples: the hospitalists and the urology physician scored 3% to 19% probability of fit, the chiropractor 94%. Bars: a lead passes the Apollo screen above a 50% probability of fit (80% until September 29, 2026, which turned away 6,540 people between 50% and 80%); a sender is hidden as automated at 75% and up. Screening a person is 1,475x cheaper than revealing one. Jev is decisive (under 20% or at 80% and up) on 68% of screens.</li>
-<li>Case: one client's ICP screen (owners of chiropractic clinics in the United States), 3,610 people screened, 107 matched, read October 13, 2026 by the query on <a href="https://github.com/shamanic-technologies/distribute.you/tree/main/apps/landing/scripts/blog-data/jev">GitHub</a> (case.sql). The client is not named.</li>
+<li>Reach: only the 23% of people kept are revealed, so the same budget reaches 4.3x more people who fit than revealing the whole list. Shares: 77% of the people Apollo returned were turned away before the reveal; 55% of replies to our cold emails were out-of-office or auto-replies. Bars: a lead passes the Apollo screen above a 50% probability of fit (80% until September 29, 2026, which turned away 6,540 people between 50% and 80%); a sender is hidden as automated at 75% and up. Screening a person is 1,475x cheaper than revealing one. Jev is decisive (under 20% or at 80% and up) on 68% of screens.</li>
+<li>Case: one client's ICP screen (owners of chiropractic clinics in the United States), three Apollo audiences with the same filters (two of them add a hiring or funding signal), 3,610 people screened, 107 kept (probability of fit above 50%). Titles are quoted as Apollo returned them; employers are described, not named. The skipped examples scored 1% to 8%, the kept examples 71% to 73%. Read October 13, 2026 by the query on <a href="https://github.com/shamanic-technologies/distribute.you/tree/main/apps/landing/scripts/blog-data/jev">GitHub</a> (case.sql). The client is not named.</li>
 <li>Read from our production database on October 13, 2026. Each figure is a study on our internal research page, verdict-checked there first, and copied by the scripts on <a href="https://github.com/shamanic-technologies/distribute.you/tree/main/apps/landing/scripts/blog-data/jev">GitHub</a>. Measurements, not split tests.</li>
 </ul>
