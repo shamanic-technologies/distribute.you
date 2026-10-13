@@ -82,9 +82,9 @@ describe("the post-paid arm's wall (owner 2026-10-13)", () => {
     expect(start).toContain("await openCardSave(");
     expect(start).not.toContain("payTopup");
     const arm = wall.slice(wall.indexOf("async function armPostpaid()"), wall.indexOf("// ── The saved card's facts"));
-    expect(arm).toContain('await setPaymentMode("postpaid");');
+    expect(arm).toContain('await setPaymentMode("postpaid", undefined, consentRecord(postpaidConsent, new Date(), navigator.userAgent));');
     expect(arm).toContain("postpaidRefusalFacts(e.body, knownCard.current)");
-    expect(arm.indexOf('setPaymentMode("postpaid")')).toBeLessThan(arm.indexOf("void launch();"));
+    expect(arm.indexOf('setPaymentMode("postpaid"')).toBeLessThan(arm.indexOf("void launch();"));
     expect(wall).toContain("<SpendConsent lines={postpaidConsent}");
     expect(wall).toContain("disabled={busy || !allTicked(postpaidTicked)}");
     const gs = read("src/components/v2/get-started/get-started.tsx");

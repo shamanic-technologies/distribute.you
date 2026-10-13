@@ -9614,6 +9614,8 @@ export type EmbeddedCheckoutSession =
 export async function setPaymentMode(
   payment_mode: "prepaid" | "postpaid",
   token?: string,
+  /** The boxes ticked before a signup goes post-paid (billing v0.83.34 stores them before the switch). */
+  consent?: PaymentConsent,
 ): Promise<{
   org_id: string;
   payment_mode: "prepaid" | "postpaid";
@@ -9621,7 +9623,7 @@ export async function setPaymentMode(
   settled_cents?: string;
   auto_topup_enabled?: boolean;
 }> {
-  return apiCall("/billing/accounts/payment_mode", { token, method: "PUT", body: { payment_mode } });
+  return apiCall("/billing/accounts/payment_mode", { token, method: "PUT", body: { payment_mode, ...(consent ? { consent } : {}) } });
 }
 
 // ── Subscription (monthly plan, 3-day trial; billing-service v0.81.28, billing#568) ──
