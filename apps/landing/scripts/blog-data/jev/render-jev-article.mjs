@@ -13,6 +13,8 @@ const SLUG = "gtm-ai-llm-judge";
 const [snapshotPath, contentDir] = process.argv.slice(2);
 if (!snapshotPath || !contentDir) throw new Error("usage: render-jev-article.mjs <jev.snapshot.json> <content-dir>");
 const facts = JSON.parse(readFileSync(snapshotPath, "utf8"));
+// one client's case, read by jev/case.sql (committed beside it)
+facts.case = JSON.parse(readFileSync(join(new URL(".", import.meta.url).pathname, "case.json"), "utf8"));
 
 // The words in the prose, held to the snapshot: refuse one where they stop being true.
 const pctOf = (s) => Number(String(s).replace("%", ""));

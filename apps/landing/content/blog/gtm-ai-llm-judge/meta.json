@@ -1,7 +1,7 @@
 {
   "slug": "gtm-ai-llm-judge",
-  "title": "Jev for GTM: Screen Your Apollo List with an LLM Judge",
-  "excerpt": "Apollo filters return long lists, with wrong data and no way to say what a company does. Write your ICP in one sentence: Jev checks every lead against it, plus the signals you choose, before we pay for anyone. Same budget, 4x more ICP leads.",
+  "title": "Jev for GTM: Check Each Apollo Lead Against Your ICP",
+  "excerpt": "What we saw in our own data: Apollo filters come close to an ICP, not exactly on it. For one client, Jev checked 3,610 people from Apollo and 107 matched. On average across our clients, the same budget reaches 4x more ICP leads.",
   "tags": [
     "gtm ai",
     "llm judge",

@@ -1,54 +1,56 @@
 <div style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:12px;padding:20px 24px;margin:0 0 32px">
 <p style="margin:0 0 8px;font-size:12px;font-weight:600;letter-spacing:0.08em;text-transform:uppercase;color:#1d4ed8">Key takeaway</p>
-<p style="margin:0 0 8px;font-weight:600;color:#0f172a">Same budget, {{raw screen.reachFloor}}x more leads that match your ICP.</p>
+<p style="margin:0 0 8px;font-weight:600;color:#0f172a">On average across our clients, the same budget reaches {{raw screen.reachFloor}}x more leads that match their ICP.</p>
 <ul style="margin:0;padding-left:20px">
 <li>You write your ICP (Ideal Customer Profile) in one sentence</li>
-<li>Jev checks every Apollo lead against it, plus the signals you choose, before we pay for anyone</li>
-<li>Only leads matching your ICP get your emails, and every reply you read is a real person</li>
+<li>Jev checks each Apollo lead against it, and against the signals you pick, before we pay to reveal the email</li>
+<li>For one client, Jev checked {{n case.screened}} people from Apollo; {{n case.matched}} matched the ICP</li>
 </ul>
 </div>
 
-<p>Your Apollo filters were built for job titles. Your ICP is a sentence. That gap is where most cold email budgets leak, and AI can now close it.</p>
+<p>Apollo filters were built for job titles and company sizes. An ICP is usually a sentence. Here is what we saw in our own data when we let an AI read that sentence for each lead.</p>
 
 <video src="/blog/gtm-ai-llm-judge/jev.mp4" poster="/blog/gtm-ai-llm-judge/poster.jpg" controls autoplay muted loop playsinline style="width:100%;max-width:560px;display:block;margin:0 auto 32px;border-radius:12px"></video>
 
-<h2 id="filters">Your filters return a long list</h2>
+<h2 id="case">One client, one sentence</h2>
 
-<p>You know who you sell to. So you open Apollo and set filters: title, industry, company size, country. Apollo hands back a list, sometimes thousands of people. Then three things go wrong.</p>
+<p>One of our clients is {{raw case.client}}. Their ICP: {{raw case.icp}}. We set the Apollo filters that come closest (title, industry, country, size) and Apollo returned a long list.</p>
 
-<ul>
-<li><strong>Apollo data is sometimes wrong.</strong> A title is two jobs old, an industry tag is a guess. One of our clients sells shockwave devices to chiropractors; the filters also returned hospitalists and a urology physician.</li>
-<li><strong>Filters can't say what a company does.</strong> "Clinics that offer elective treatments" or "startups that ship AI hardware" fit in no dropdown.</li>
-<li><strong>Filters miss the signals that matter.</strong> Is the company hiring? Does its website mention the product you complement? No filter reads that.</li>
-</ul>
+<p>Jev checked {{n case.screened}} of those people against the ICP. <strong>{{n case.matched}} matched.</strong> A "{{raw case.acceptedExample}}" was a clear yes. A "{{raw case.rejectedExample}}", whom the filters had let in, was a clear no: skipped before the paid reveal, so no credit was spent on that lead.</p>
 
-<h2 id="jev">Jev reads every lead like you would</h2>
+<p>The filters were not wrong to return those people. Titles and industries come close to an ICP; they are not the same thing. The gap between the two is where a cold email budget can quietly leak.</p>
 
-<p><a href="https://docs.typesafe.ai">Jev 1.13</a> is a model by TypeSafe built to judge, not to write. You give it a piece of text and a question, and it answers yes or no with how sure it is. We use it as the checkpoint between Apollo and your inbox, across our pipes: {{raw volume.rounded}} questions since September 19, 2026.</p>
+<h2 id="jev">What Jev does</h2>
 
-<h2 id="plan">How it works for you</h2>
+<p><a href="https://docs.typesafe.ai">Jev 1.13</a> is a model by TypeSafe built to judge rather than to write. You give it a piece of text and a question; it answers yes or no and says how sure it is. We placed it between Apollo and the paid reveal. Across our pipes it answered {{raw volume.rounded}} questions since September 19, 2026.</p>
 
 <ol>
-<li><strong>You write your ICP in one sentence.</strong> One client wrote: "practicing chiropractors in the US who decide on or use shockwave therapy devices." That sentence is the brief.</li>
-<li><strong>Jev checks every Apollo lead against it, before we pay for anyone.</strong> The name, title and company are free to read; the email costs a credit. A chiropractor who owns a clinic: yes, revealed. A hospital doctor the filters let through: no, and no credit is spent. Each verdict is kept, so no lead is checked twice.</li>
-<li><strong>You add the signals that make a lead hot.</strong> Our AI suggests them for your offer, you pick the ones you want, and Jev reads the evidence (the company website, its job posts, its LinkedIn page): "Does the company website mention an FDA 510(k) clearance?" "Does the company have open job postings for QA engineers?" "Is the company hiring sales development reps?" "Does the homepage mention elective treatments?"</li>
+<li><strong>You write your ICP in one sentence.</strong> In your words, not in dropdown values.</li>
+<li><strong>Jev checks each Apollo lead against it.</strong> The name, title and company are free to read; the email costs a credit, so the check comes first.</li>
+<li><strong>You add the signals that make a lead hot.</strong> Our AI suggests some for your offer, you pick the ones you want, and Jev reads the evidence on the company website, its job posts or its LinkedIn page. Real examples from our clients: "Does the company website mention an FDA 510(k) clearance?", "Does the company have open job postings for QA engineers?", and for the client above: "{{raw case.signal}}"</li>
 </ol>
 
 {{chart buckets}}
 
-<h2 id="value">Same budget, {{raw screen.reachFloor}}x more ICP leads</h2>
+<h2 id="value">What it changes, on average</h2>
 
-<p><strong>Your budget goes to the people who match your ICP.</strong> Without the check, every person an Apollo list returns is paid for. With it, only the ones who match are, so the same budget reaches {{raw screen.reachFloor}}x more leads in your ICP. The check itself costs a fraction of a cent per lead.</p>
+<p><strong>Across our clients, the same budget reaches {{raw screen.reachFloor}}x more leads that match their ICP.</strong> The reveal is paid for the leads Jev keeps, and the check itself costs a fraction of a cent per lead. The ratio depends on how close the filters already are to the ICP: for the client above, it was far higher.</p>
 
-<h2 id="replies">And every reply you read is a real person</h2>
+<h2 id="objections">The questions we get</h2>
+
+<p><strong>"What if Jev is wrong?"</strong> It can be, so the rule leans toward keeping a lead: anyone Jev finds more likely in the ICP than not is kept. We started stricter and lowered the bar on September 29 when we saw good leads just below it.</p>
+
+<p><strong>"Why not tighter Apollo filters?"</strong> We use them too, and they come first. But some ICPs are hard to filter: "independent clinic, not part of a national network" lives on the clinic's website, not in a dropdown.</p>
+
+<p><strong>"Does the check cost extra?"</strong> A fraction of a cent per lead, against about {{raw price.reveal}} for a reveal. Each verdict is stored, so the same lead is not checked twice.</p>
+
+<p><strong>"What if my ICP changes?"</strong> Rewrite the sentence. The leads are checked again against the new words.</p>
+
+<h2 id="replies">Replies, too</h2>
 
 {{chart replies}}
 
-<p>Out-of-office messages and auto-replies, in every language ("Ich geniesse gerade Ferien"), never reach you. Our reply classifier, DeepSeek V4.1 Flash, labels each reply and Jev checks the label, so your numbers count people only.</p>
-
-<h2 id="founder">Why I built it</h2>
-
-<p>I'm Kevin Lourd. I was the first product manager at MEE6, which grew to 21 million Discord servers, and I ran operations at Walnut Algorithms, an AI hedge fund. At distribute.you, "I aim at generating wealth for my clients. Win and help win." Jev between Apollo and your inbox is one of the ways we make each dollar of your budget work.</p>
+<p>The same idea runs on replies. More than half of the replies to our cold emails are out-of-office messages or auto-replies, in many languages ("Ich geniesse gerade Ferien"). Our reply classifier, DeepSeek V4.1 Flash, labels them and Jev double-checks the label, so the replies you read and the numbers you track come mostly from real people.</p>
 
 <h2 id="takeaway">Start with one sentence</h2>
 
@@ -64,5 +66,6 @@
 <li>Price: {{raw price.screenPerThousand}} per 1,000 screens on {{n price.screens}} screens, against {{raw price.reveal}} per reveal on {{n price.reveals}} Apollo enrichment credits, both as billed to clients since September 28, 2026. Not every pass becomes a paid reveal, so we compare the two per person and state no total.</li>
 <li>Replies: {{n machine.machine}} of {{n machine.replies}} replies to our cold emails labelled out of office or auto-reply by our reply classifier (DeepSeek V4.1 Flash), {{raw machine.display}} (95% interval {{raw machine.ciLo}} to {{raw machine.ciHi}}).</li>
 <li>Reach: only the {{raw screen.keptShare}} of people kept are revealed, so the same budget reaches {{raw screen.reach}}x more people who fit than revealing the whole list. Shares: {{raw screen.display}} of the people Apollo returned were turned away before the reveal; {{raw machine.display}} of replies to our cold emails were out-of-office or auto-replies. Examples: the hospitalists and the urology physician scored 3% to 19% probability of fit, the chiropractor 94%. Bars: a lead passes the Apollo screen above a 50% probability of fit (80% until September 29, 2026, which turned away {{n screen.oldBarLost}} people between 50% and 80%); a sender is hidden as automated at 75% and up. Screening a person is {{raw price.display}} cheaper than revealing one. Jev is decisive (under 20% or at 80% and up) on {{raw screen.sure}} of screens.</li>
+<li>Case: one client's ICP screen ({{raw case.icp}}), {{n case.screened}} people screened, {{n case.matched}} matched, read {{day case.readOn}} by the query on <a href="https://github.com/shamanic-technologies/distribute.you/tree/main/apps/landing/scripts/blog-data/jev">GitHub</a> (case.sql). The client is not named.</li>
 <li>Read from our production database on {{day readOn}}. Each figure is a study on our internal research page, verdict-checked there first, and copied by the scripts on <a href="https://github.com/shamanic-technologies/distribute.you/tree/main/apps/landing/scripts/blog-data/jev">GitHub</a>. Measurements, not split tests.</li>
 </ul>
