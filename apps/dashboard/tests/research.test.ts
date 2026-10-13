@@ -405,7 +405,9 @@ describe("the maturity rule is features-service's, read per leg and applied ever
       for (const c of s.charts) {
         expect(c.note, `${s.id}: ${c.title}`).toBeTruthy();
         // the meeting studies sit on the meeting legs' own rule (outcomesRequired meetings), stated in their note
-        if (s.crew !== "herald" && s.crew !== "scout") expect(c.note, s.id).toMatch(/needs \d+ meetings? behind it/);
+        if (s.crew === "pilot" || s.outcome === "meeting") expect(c.note, s.id).toMatch(/needs \d+ meetings? behind it/);
+        // a typed-judgment study is a count, so no maturity rule applies: its note says so
+        else if (s.outcome === "judgment") expect(c.note, s.id).toMatch(/\S/);
         else if (s.topic !== "opens") expect(c.note, s.id).toBe(m.note);
       }
     }

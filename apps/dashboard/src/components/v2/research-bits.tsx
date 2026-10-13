@@ -13,6 +13,7 @@ import { HandWavingIcon } from "@phosphor-icons/react/dist/csr/HandWaving";
 import { MinusIcon } from "@phosphor-icons/react/dist/csr/Minus";
 import { CalendarIcon } from "@phosphor-icons/react/dist/csr/Calendar";
 import { ClockIcon } from "@phosphor-icons/react/dist/csr/Clock";
+import { ScalesIcon } from "@phosphor-icons/react/dist/csr/Scales";
 import { EmptyNote, SectionTitle } from "@/components/v2/ui";
 import { crewFor, type CrewGlyph } from "@/lib/v2/crews";
 import {
@@ -47,6 +48,8 @@ export const TOPIC_LOOK: Record<ResearchTopic, { color: string; Icon: typeof Bra
   // when the email went out, in the prospect's timezone: a sending-schedule question
   weekday: { color: "var(--data-sky)", Icon: CalendarIcon },
   hour: { color: "var(--data-sky)", Icon: ClockIcon },
+  // a typed question answered with a probability (Jev): what the pipes ask before they act
+  judgment: { color: "var(--data-violet)", Icon: ScalesIcon },
 };
 
 export const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
@@ -65,6 +68,7 @@ export function crewIdentity(crew: ResearchCrew) {
 /** An outcome section's mark: one outcome across every leg, so it wears no crew's colour. */
 const OUTCOME_LOOK: Record<ResearchOutcome, { name: string; color: string; glyph: CrewGlyph }> = {
   meeting: { name: "Meeting booked", color: "var(--data-sky)", glyph: "square" },
+  judgment: { name: "Typed judgment", color: "var(--data-violet)", glyph: "hex" },
 };
 export function outcomeIdentity(outcome: ResearchOutcome) {
   return OUTCOME_LOOK[outcome];

@@ -53,7 +53,7 @@ describe("research conclusions: what a backend service may quote", () => {
   });
 
   it("names the outcome in plain words, never a crew", () => {
-    for (const c of body.conclusions) expect(["Positive reply", "Website visit", "Meeting booked"]).toContain(c.outcome);
+    for (const c of body.conclusions) expect(["Positive reply", "Website visit", "Meeting booked", "Typed judgment"]).toContain(c.outcome);
     expect(JSON.stringify(body)).not.toMatch(/"crew"/);
   });
 

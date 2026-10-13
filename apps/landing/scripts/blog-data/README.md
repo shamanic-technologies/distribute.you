@@ -193,6 +193,17 @@ than the first. The article states lifts (x2, +67%); the counts sit in its Notes
 
 The Research page is written twice. The billed snapshot (`research.mjs <facts.json> apps/dashboard/src/lib/research`) is the default view. The staff-only ACTUAL cost snapshot (what the vendors charged us, before our markup) is derived with `COST_BASIS=actual node derive.mjs <dir> > <dir>/facts-actual.json` then `research.mjs <dir>/facts-actual.json apps/dashboard/src/lib/research/actual` (delete the `research-templates.json` it writes there). extract.sh prices every spend row through costs-service's vendor catalogue with runs-service's match rule; a workflow version carrying billed spend no vendor cost prices is left out of the actual figures whole, and the page states how much. Every research JSON (billed and actual) is imported ONLY by the staff route `/api/research/{basis}/{part}`, never by a client module.
 
+## The Typed judgment section (Jev)
+
+`jev.mjs` writes the Research page's "Typed judgment" outcome section from the `jev-*.csv` dumps
+extract.sh pulls (runs_service judgment runs, the lead screen in human-service then lead-service, the
+billed Apollo reveal price, instantly-service reply kinds). Four studies: judgments run and their
+price, the share of people turned away before the paid reveal (at today's 50% bar), screen price
+against reveal price, and the share of cold email replies written by a machine. Each is a
+measurement: a conclusion on 2+ clients, a signal on one, noise under 5 events. On the vendor-cost
+twin the two priced studies read "not measured" (the prices are billed ones). It runs inside
+research.mjs, so the nightly refresh keeps it current. Test: `tests/unit/research-jev.test.ts`.
+
 ## The cost per positive reply article
 
 `content/blog/cold-email-cost-per-positive-reply` states the Research page's two average-cost studies
