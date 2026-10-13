@@ -204,6 +204,19 @@ measurement: a conclusion on 2+ clients, a signal on one, noise under 5 events. 
 twin the two priced studies read "not measured" (the prices are billed ones). It runs inside
 research.mjs, so the nightly refresh keeps it current. Test: `tests/unit/research-jev.test.ts`.
 
+## The LLM judge article (Jev)
+
+`content/blog/gtm-ai-llm-judge` states the Research page's Typed judgment studies (jev.mjs). It reads
+the committed `research.json`, never a fresh extract, so refresh the Research page first, then:
+
+```sh
+node apps/landing/scripts/blog-data/jev/derive-jev.mjs apps/dashboard/src/lib/research/research.json > apps/landing/scripts/blog-data/jev/jev.snapshot.json
+node apps/landing/scripts/blog-data/jev/render-jev-article.mjs apps/landing/scripts/blog-data/jev/jev.snapshot.json apps/landing/content/blog
+```
+
+derive-jev.mjs refuses a study that is not a `conclusion`; the renderer refuses a snapshot where
+"most people turned away", "half the replies" or "Jev is sure most of the time" stopped being true.
+
 ## The cost per positive reply article
 
 `content/blog/cold-email-cost-per-positive-reply` states the Research page's two average-cost studies

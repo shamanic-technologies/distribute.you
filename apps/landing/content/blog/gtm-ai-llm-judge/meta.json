@@ -1,0 +1,16 @@
+{
+  "slug": "gtm-ai-llm-judge",
+  "title": "GTM AI with an LLM Judge: How We Use Jev (120k+ Calls)",
+  "excerpt": "How to use an LLM judge for GTM: screen every lead before you pay to reveal it, keep machine replies out of your numbers, and set the bar by what a mistake costs. Real figures from 120,000+ Jev judgments in our pipes.",
+  "tags": [
+    "gtm ai",
+    "llm judge",
+    "llm as a judge",
+    "lead qualification",
+    "ai lead scoring",
+    "cold email"
+  ],
+  "publishedAt": "2026-10-13T12:00:00.000Z",
+  "coverImagePath": "/blog/gtm-ai-llm-judge/hero.png",
+  "source": "manual"
+}

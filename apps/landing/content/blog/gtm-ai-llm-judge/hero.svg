@@ -1,0 +1,44 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="900" viewBox="0 0 1600 900">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#f8fafc"/><stop offset="1" stop-color="#e0ecff"/></linearGradient>
+    <filter id="sh" x="-30%" y="-30%" width="160%" height="180%"><feDropShadow dx="0" dy="18" stdDeviation="22" flood-color="#0f172a" flood-opacity="0.16"/></filter>
+    <pattern id="dots" width="36" height="36" patternUnits="userSpaceOnUse"><circle cx="2" cy="2" r="1.6" fill="#cbd5e1"/></pattern>
+  </defs>
+  <rect width="1600" height="900" fill="url(#bg)"/>
+  <rect width="1600" height="900" fill="url(#dots)" opacity="0.6"/>
+  <text x="800" y="150" text-anchor="middle" font-family="Inter, system-ui, sans-serif" font-size="64" font-weight="800" fill="#0f172a" letter-spacing="-2">Ask before you pay.</text>
+  <text x="800" y="210" text-anchor="middle" font-family="Inter, system-ui, sans-serif" font-size="30" font-weight="500" fill="#475569">An LLM judge checks every lead first.</text>
+  <!-- the question card -->
+  <g filter="url(#sh)">
+    <rect x="530" y="280" width="540" height="150" rx="24" fill="#ffffff"/>
+  </g>
+  <text x="566" y="330" font-family="Inter, system-ui, sans-serif" font-size="18" font-weight="600" fill="#64748b" letter-spacing="2">JEV · TYPED QUESTION</text>
+  <text x="566" y="378" font-family="Inter, system-ui, sans-serif" font-size="27" font-weight="700" fill="#0f172a">Does this person fit</text>
+  <text x="566" y="410" font-family="Inter, system-ui, sans-serif" font-size="27" font-weight="700" fill="#0f172a">the buyer you described?</text>
+  <!-- connectors -->
+  <path d="M800 430 C800 500 470 480 470 560" stroke="#94a3b8" stroke-width="3" fill="none" stroke-dasharray="8 8"/>
+  <path d="M800 430 C800 500 1130 480 1130 560" stroke="#2563eb" stroke-width="4" fill="none"/>
+  <!-- turned away -->
+  <g opacity="0.55">
+    <rect x="260" y="600" width="400" height="110" rx="20" fill="#ffffff" transform="rotate(-4 460 655)"/>
+  </g>
+  <g filter="url(#sh)">
+    <rect x="270" y="570" width="400" height="120" rx="20" fill="#ffffff"/>
+  </g>
+  <circle cx="320" cy="630" r="26" fill="#e2e8f0"/>
+  <text x="362" y="622" font-family="Inter, system-ui, sans-serif" font-size="24" font-weight="700" fill="#334155">Hospital doctor</text>
+  <text x="362" y="654" font-family="Inter, system-ui, sans-serif" font-size="20" font-weight="500" fill="#94a3b8">No credit spent</text>
+  <rect x="560" y="600" width="90" height="44" rx="22" fill="#f1f5f9"/>
+  <text x="605" y="630" text-anchor="middle" font-family="Inter, system-ui, sans-serif" font-size="22" font-weight="800" fill="#64748b">3%</text>
+  <!-- passes -->
+  <g filter="url(#sh)">
+    <rect x="930" y="570" width="400" height="120" rx="20" fill="#ffffff" stroke="#2563eb" stroke-width="3"/>
+  </g>
+  <circle cx="980" cy="630" r="26" fill="#dbeafe"/>
+  <path d="M968 630 l9 9 l17 -19" stroke="#2563eb" stroke-width="5" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+  <text x="1022" y="622" font-family="Inter, system-ui, sans-serif" font-size="24" font-weight="700" fill="#0f172a">Clinic owner</text>
+  <text x="1022" y="654" font-family="Inter, system-ui, sans-serif" font-size="20" font-weight="500" fill="#2563eb">Fits your buyer</text>
+  <rect x="1220" y="600" width="90" height="44" rx="22" fill="#2563eb"/>
+  <text x="1265" y="630" text-anchor="middle" font-family="Inter, system-ui, sans-serif" font-size="22" font-weight="800" fill="#ffffff">94%</text>
+  <text x="800" y="800" text-anchor="middle" font-family="Inter, system-ui, sans-serif" font-size="26" font-weight="600" fill="#334155">GTM AI that reads a lead the way you would</text>
+</svg>

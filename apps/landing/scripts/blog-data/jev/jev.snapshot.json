@@ -1,0 +1,142 @@
+{
+  "generatedAt": "2026-10-13T10:45:45.199Z",
+  "readOn": "2026-10-13",
+  "volume": {
+    "display": "122,207",
+    "rounded": "120k+",
+    "tokensM": "89",
+    "perThousand": "$0.09",
+    "months": [
+      {
+        "label": "Sep",
+        "value": 17177,
+        "display": "17,177",
+        "note": "",
+        "partial": false
+      },
+      {
+        "label": "Oct",
+        "value": 105030,
+        "display": "105,030",
+        "note": "month in progress",
+        "partial": true
+      }
+    ],
+    "askers": [
+      {
+        "label": "Lead screens",
+        "value": 75271,
+        "display": "75,271",
+        "note": "62% of all judgments",
+        "partial": false
+      },
+      {
+        "label": "Platform jobs",
+        "value": 37157,
+        "display": "37,157",
+        "note": "30% of all judgments",
+        "partial": false
+      },
+      {
+        "label": "Inbox triage",
+        "value": 5346,
+        "display": "5,346",
+        "note": "4% of all judgments",
+        "partial": false
+      },
+      {
+        "label": "CRM reads",
+        "value": 4169,
+        "display": "4,169",
+        "note": "3% of all judgments",
+        "partial": false
+      },
+      {
+        "label": "Other questions",
+        "value": 264,
+        "display": "264",
+        "note": "<1% of all judgments",
+        "partial": false
+      }
+    ],
+    "clients": 56
+  },
+  "screen": {
+    "display": "77%",
+    "declined": 57774,
+    "people": 75320,
+    "audiences": 107,
+    "clients": 14,
+    "ciLo": "76%",
+    "ciHi": "77%",
+    "sure": "68%",
+    "oldBarLost": 6540,
+    "buckets": [
+      {
+        "label": "Below 20%",
+        "value": 45190,
+        "display": "45,190",
+        "note": "60% · turned away",
+        "partial": false
+      },
+      {
+        "label": "20 to 50%",
+        "value": 12584,
+        "display": "12,584",
+        "note": "17% · turned away",
+        "partial": false
+      },
+      {
+        "label": "50 to 80%",
+        "value": 11153,
+        "display": "11,153",
+        "note": "15% · revealed",
+        "partial": false
+      },
+      {
+        "label": "80% and up",
+        "value": 6393,
+        "display": "6,393",
+        "note": "8% · revealed",
+        "partial": false
+      }
+    ]
+  },
+  "price": {
+    "display": "1,475x",
+    "screenPerThousand": "$0.07",
+    "reveal": "$0.10",
+    "screens": 75271,
+    "reveals": 3951
+  },
+  "machine": {
+    "display": "55%",
+    "machine": 371,
+    "replies": 678,
+    "ciLo": "51%",
+    "ciHi": "58%",
+    "kinds": [
+      {
+        "label": "A person",
+        "value": 307,
+        "display": "307",
+        "note": "45%",
+        "partial": false
+      },
+      {
+        "label": "Out of office",
+        "value": 235,
+        "display": "235",
+        "note": "35%",
+        "partial": false
+      },
+      {
+        "label": "Other auto-reply",
+        "value": 136,
+        "display": "136",
+        "note": "20%",
+        "partial": false
+      }
+    ]
+  }
+}
