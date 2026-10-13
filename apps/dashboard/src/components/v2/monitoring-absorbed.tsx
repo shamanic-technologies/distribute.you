@@ -18,15 +18,16 @@ const usd = (c: string | null) => (c == null ? null : dollars(Number(c) / 100));
 const usdExact = (c: string | null) => (c == null ? null : dollarsExact(Number(c) / 100));
 const PAGE = 25;
 
-const PAYING_LOOK = {
-  paying: { word: "Paying", color: "var(--run)" },
-  never: { word: "Never paid", color: "var(--data-amber)" },
+/** billing's verdict on the customer, named and coloured here (owner 2026-10-13: a churned customer never reads "Paying"). */
+const STATUS_LOOK = {
+  current: { word: "Current", color: "var(--run)" },
+  churned: { word: "Churned", color: "var(--data-rose)" },
+  never_paid: { word: "Never paid", color: "var(--data-amber)" },
   unknown: { word: "Unknown", color: "var(--fg-4)" },
 } as const;
-const payingKey = (p: boolean | null) => (p === true ? "paying" : p === false ? "never" : "unknown");
 
-function PayingDot({ paying }: { paying: boolean | null }) {
-  const look = PAYING_LOOK[payingKey(paying)];
+function StatusDot({ status }: { status: AbsorbedCustomer["customerStatus"] }) {
+  const look = STATUS_LOOK[status ?? "unknown"];
   return (
     <span className="inline-flex items-center gap-1.5 whitespace-nowrap">
       <span className="h-1.5 w-1.5 rounded-full" style={{ background: look.color }} aria-hidden="true" />
@@ -35,15 +36,16 @@ function PayingDot({ paying }: { paying: boolean | null }) {
   );
 }
 
-/** Fees an acquirer took in another currency: billing serves them apart, never converted. */
-function otherFees(list: { currency: string; feeCents: string }[]) {
-  return list.map((o) => `${(Number(o.feeCents) / 100).toLocaleString("en-US", { maximumFractionDigits: 2 })} ${o.currency.toUpperCase()}`).join(", ");
+/** Fees an acquirer took in another currency, while billing still serves them apart. */
+function otherFees(list: { currency: string; feeCents: string }[] | undefined) {
+  return (list ?? []).map((o) => `${(Number(o.feeCents) / 100).toLocaleString("en-US", { maximumFractionDigits: 2 })} ${o.currency.toUpperCase()}`).join(", ");
 }
 
 export function AbsorbedView({ data }: { data: AbsorbedCosts }) {
   const f = data.fleet;
   const thisMonth = data.fleetByMonth.at(-1) ?? null;
-  const customers = data.customers.filter((c) => !c.platformOrg);
+  // Our own orgs (billing's `ownOrg`: platform or staff-only) are listed apart, never as customers.
+  const customers = data.customers.filter((c) => !c.platformOrg && !c.ownOrg);
   const [orgId, setOrgId] = useState<string | null>(customers.find((c) => Number(c.absorbedCents) > 0)?.orgId ?? null);
   const sel = customers.find((c) => c.orgId === orgId) ?? null;
 
@@ -81,7 +83,7 @@ export function AbsorbedView({ data }: { data: AbsorbedCosts }) {
 
   const notes = [
     Number(f.unattributedCardFeesCents) > 0 && `${usdExact(f.unattributedCardFeesCents)} more card fees are not tied to a customer and stay out of these figures.`,
-    f.cardFeesOtherCurrencies.length > 0 && `Card fees taken in another currency are not converted: ${otherFees(f.cardFeesOtherCurrencies)}.`,
+    (f.cardFeesOtherCurrencies?.length ?? 0) > 0 && `Card fees taken in another currency are not converted: ${otherFees(f.cardFeesOtherCurrencies)}.`,
   ].filter(Boolean);
 
   return (
@@ -157,19 +159,36 @@ export function AbsorbedView({ data }: { data: AbsorbedCosts }) {
         />
       </section>
 
-      <CustomersTable customers={customers} selected={orgId} onSelect={setOrgId} />
+      <CustomersTable customers={customers} ownOrgs={data.ownOrgs ?? []} current={f.currentCustomers} churned={f.churnedCustomers} selected={orgId} onSelect={setOrgId} />
 
       {sel && <CustomerDetail c={sel} months={data.months} />}
     </div>
   );
 }
 
-function CustomersTable({ customers, selected, onSelect }: { customers: AbsorbedCustomer[]; selected: string | null; onSelect: (id: string) => void }) {
+function CustomersTable({
+  customers,
+  ownOrgs,
+  current,
+  churned,
+  selected,
+  onSelect,
+}: {
+  customers: AbsorbedCustomer[];
+  ownOrgs: NonNullable<AbsorbedCosts["ownOrgs"]>;
+  current: number | undefined;
+  churned: number | undefined;
+  selected: string | null;
+  onSelect: (id: string) => void;
+}) {
   const [shown, setShown] = useState(PAGE);
   const rows = customers.slice(0, shown);
   return (
     <section>
-      <SectionTitle count={customers.length} right={<span>Largest first, pick a row for its months</span>}>
+      <SectionTitle
+        count={customers.length}
+        right={<span>{current !== undefined && churned !== undefined ? `${n(current)} current, ${n(churned)} churned. ` : ""}Largest first, pick a row for its months</span>}
+      >
         Customers
       </SectionTitle>
       <div className="k-card overflow-hidden">
@@ -179,6 +198,7 @@ function CustomersTable({ customers, selected, onSelect }: { customers: Absorbed
               <tr>
                 <th className={TH}>Customer</th>
                 <th className={TH}>Status</th>
+                <th className={TH}>Last paid</th>
                 <th className={TH}>Signed up</th>
                 <th className={THR}>Absorbed</th>
                 <th className={THR}>No campaign</th>
@@ -207,7 +227,17 @@ function CustomersTable({ customers, selected, onSelect }: { customers: Absorbed
                     </span>
                   </td>
                   <td className={TD}>
-                    <PayingDot paying={c.paying} />
+                    <StatusDot status={c.customerStatus} />
+                  </td>
+                  <td className={`${TD} k-mono k-fg2 whitespace-nowrap text-[12px]`}>
+                    {c.lastPaymentAt ? (
+                      <>
+                        {dayLabel(c.lastPaymentAt)}
+                        {c.daysSinceLastPayment != null && <span className="k-fg3"> · {n(c.daysSinceLastPayment)}d ago</span>}
+                      </>
+                    ) : (
+                      <Dash />
+                    )}
                   </td>
                   <td className={`${TD} k-mono k-fg2 whitespace-nowrap text-[12px]`}>{c.createdAt ? dayLabel(c.createdAt) : <Dash />}</td>
                   <td className={`${TDR} font-medium`}>{usdExact(c.absorbedCents)}</td>
@@ -222,7 +252,8 @@ function CustomersTable({ customers, selected, onSelect }: { customers: Absorbed
         </div>
         <div className="k-fg3 flex items-center justify-between border-t border-[var(--line-subtle)] px-4 py-2.5 text-[12px] tabular-nums">
           <span>
-            {n(rows.length)} of {n(customers.length)} customers. Our own accounts are left out.
+            {n(rows.length)} of {n(customers.length)} customers.{" "}
+            {ownOrgs.length > 0 ? `Our own accounts are left out: ${ownOrgs.map((o) => o.orgName ?? o.orgId).join(", ")}.` : "Our own accounts are left out."}
           </span>
           {shown < customers.length && (
             <button type="button" className="k-btn-ghost h-6 px-2 text-[12px]" onClick={() => setShown((s) => s + PAGE)}>
@@ -242,7 +273,7 @@ function CustomerDetail({ c, months }: { c: AbsorbedCustomer; months: string[] }
   const name = c.orgName ?? c.orgDomain ?? c.orgId;
   return (
     <section>
-      <SectionTitle right={<PayingDot paying={c.paying} />}>{name}, per month</SectionTitle>
+      <SectionTitle right={<StatusDot status={c.customerStatus} />}>{name}, per month</SectionTitle>
       <PeriodBars
         periods={periods}
         series={[
@@ -254,7 +285,7 @@ function CustomerDetail({ c, months }: { c: AbsorbedCustomer; months: string[] }
         label={monthLabel}
         empty="No month yet."
       />
-      {c.cardFeesOtherCurrencies.length > 0 && <p className="k-fg3 mt-2 text-[12px]">Also card fees in another currency, not converted: {otherFees(c.cardFeesOtherCurrencies)}.</p>}
+      {(c.cardFeesOtherCurrencies?.length ?? 0) > 0 && <p className="k-fg3 mt-2 text-[12px]">Also card fees in another currency, not converted: {otherFees(c.cardFeesOtherCurrencies)}.</p>}
     </section>
   );
 }

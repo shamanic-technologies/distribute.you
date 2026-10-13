@@ -572,12 +572,15 @@ export const AbsorbedCostsSchema = z.object({
     noCampaignSpendCents: Cents,
     cardFeesCents: Cents,
     unattributedCardFeesCents: Cents,
-    cardFeesOtherCurrencies: OtherCurrencyFees,
-    unattributedCardFeesOtherCurrencies: OtherCurrencyFees,
+    // Optional: billing is converting other-currency card fees to USD and drops these lists.
+    cardFeesOtherCurrencies: OtherCurrencyFees.optional(),
+    unattributedCardFeesOtherCurrencies: OtherCurrencyFees.optional(),
     campaignSpendCents: Cents,
     paying: AbsorbedGroupSchema,
     neverPaid: AbsorbedGroupSchema,
     payingUnknown: z.number(),
+    currentCustomers: z.number().optional(),
+    churnedCustomers: z.number().optional(),
   }),
   fleetByMonth: z.array(
     z.object({
@@ -612,13 +615,21 @@ export const AbsorbedCostsSchema = z.object({
       absorbedCents: Cents,
       noCampaignSpendCents: Cents,
       cardFeesCents: Cents,
-      cardFeesOtherCurrencies: OtherCurrencyFees,
+      cardFeesOtherCurrencies: OtherCurrencyFees.optional(),
       campaignSpendCents: Cents,
+      // billing #754: OUR orgs (platform, or staff-only) are flagged and kept out of every fleet figure;
+      // a customer is current (a campaign running), churned (paid before, nothing running) or never paid.
+      ownOrg: z.boolean().optional(),
+      ownOrgReason: z.string().nullish(),
+      lastPaymentAt: z.string().nullish(),
+      daysSinceLastPayment: z.number().nullish(),
+      customerStatus: z.enum(["current", "churned", "never_paid"]).nullish(),
       byMonth: z.array(
         z.object({ month: z.string(), absorbedCents: Cents, noCampaignSpendCents: Cents, cardFeesCents: Cents, campaignSpendCents: Cents }),
       ),
     }),
   ),
+  ownOrgs: z.array(z.object({ orgId: z.string(), orgName: z.string().nullable(), reason: z.string().nullable() })).optional(),
 });
 export type AbsorbedCosts = z.infer<typeof AbsorbedCostsSchema>;
 export type AbsorbedCustomer = AbsorbedCosts["customers"][number];
