@@ -13,6 +13,7 @@ import {
   ApiError,
   getSalesFunnelCaps,
   listFunnelCampaignRows,
+  listFunnelCampaignCopies,
   listSalesFunnelCampaigns,
   saveSalesFunnelCaps,
   setSalesFunnelCampaignStatus,
@@ -45,6 +46,7 @@ import {
   type SalesFunnelCaps,
   type SalesFunnelUnit,
   type FunnelCampaignRow,
+  type FunnelCampaignCopy,
   type FunnelPathItem,
   missingChannelGaps,
   maxBudgetLabel,
@@ -520,7 +522,7 @@ export function FunnelPathLine({ items }: { items: FunnelPathItem[] }) {
 }
 
 /** The Type tag: [calendar Daily] for a proactive campaign, [lightning <trigger>] for a reactive one, both served. */
-function TypeTag({ row }: { row: FunnelCampaignRow }) {
+function TypeTag({ row }: { row: FunnelCampaignCopy }) {
   if (!row.typeLabel) {
     console.error("[funnel-campaigns] typeLabel not served", { id: row.id, reason: row.copyUnavailableReason ?? null });
     return DASH;
@@ -544,6 +546,9 @@ export function FunnelCampaignsSection({ orgId, brandId, offerId }: { orgId: str
   const q = useFunnelCampaigns(brandId, offerId);
   const rowsQ = useAuthQuery(["funnelCampaignRows", brandId, offerId], () => listFunnelCampaignRows(brandId, offerId), pollOptions);
   const rowById = useMemo(() => new Map((rowsQ.data ?? []).map((r) => [r.id, r])), [rowsQ.data]);
+  // Path and type label on their own fast read: a campaign newer than the cached rows paints at once (owner 2026-10-13).
+  const copyQ = useAuthQuery(["funnelCampaignCopies", brandId, offerId], () => listFunnelCampaignCopies(brandId, offerId), pollOptions);
+  const copyById = useMemo(() => new Map((copyQ.data ?? []).map((r) => [r.id, r])), [copyQ.data]);
   // Same keys as each row's own caps read (deduped): the order needs every campaign's limits.
   const gate = useOrgQueryGate();
   const capsQs = useQueries({
@@ -610,6 +615,8 @@ export function FunnelCampaignsSection({ orgId, brandId, offerId }: { orgId: str
                     campaign={c}
                     row={rowById.get(c.id) ?? null}
                     rowsSettled={funnelRowSettled(rowById.has(c.id), rowsQ)}
+                    copy={rowById.get(c.id) ?? copyById.get(c.id) ?? null}
+                    copySettled={funnelRowSettled(rowById.has(c.id) || copyById.has(c.id), copyQ)}
                   />
                 ))}
               </tbody>
@@ -640,12 +647,17 @@ function FunnelCampaignRow({
   campaign,
   row,
   rowsSettled,
+  copy,
+  copySettled,
 }: {
   orgId: string;
   campaign: SalesFunnelCampaign;
   /** features-service's row for this campaign (path, type label, money); null when not served. */
   row: FunnelCampaignRow | null;
   rowsSettled: boolean;
+  /** Its path and Type: the full row's, else the fast copy read's (a campaign newer than the cached rows). */
+  copy: FunnelCampaignCopy | null;
+  copySettled: boolean;
 }) {
   const router = useRouter();
   const prefetch = useRoutePrefetch();
@@ -657,7 +669,7 @@ function FunnelCampaignRow({
   const on = isFunnelCampaignOn(campaign);
   const b = c?.maxBudget ?? null;
   const limit = fundingLimit(c);
-  const reactive = (row?.type ?? funnelTypeOf(c)) === "reactive";
+  const reactive = (copy?.type ?? funnelTypeOf(c)) === "reactive";
   // ON + Reactive: "Up to $N/<period>"; ON + Proactive: "$N/<period>" (owner 2026-10-11). A
   // volume-only funnel reads its max volume ("200 new people/month", no "Max"), never a $ amount.
   const onLabel = !capsSettled
@@ -675,8 +687,10 @@ function FunnelCampaignRow({
     if (!row) console.error("[funnel-campaigns] features-service served no row for this campaign", { id: campaign.id });
     else if (row.roiMultiple === null && !funnelRoiShown(row).learning && !funnelRoiShown(row).unpriced) console.error("[funnel-campaigns] roiMultiple not served", { id: row.id, reason: roiMissingReason(row) });
     if (row && row.investedUsd === null) console.error("[funnel-campaigns] investedUsd not served", { id: row.id });
-    if (row && !row.path) console.error("[funnel-campaigns] path not served", { id: row.id, reason: row.copyUnavailableReason ?? null });
   }, [row, rowsSettled, campaign.id]);
+  useEffect(() => {
+    if (copySettled && copy && !copy.path) console.error("[funnel-campaigns] path not served", { id: copy.id, reason: copy.copyUnavailableReason ?? null });
+  }, [copy, copySettled]);
   // The status control and its menu / modal never open the page.
   const stop = (e: React.SyntheticEvent) => e.stopPropagation();
   const cell = (node: React.ReactNode) => (!rowsSettled ? <Shimmer className="ml-auto h-4 w-14 rounded" /> : node);
@@ -690,10 +704,10 @@ function FunnelCampaignRow({
       <td className="max-w-0 px-3 py-2 pl-4">
         <MarkLines mark={(px) => <FunnelFace name={campaign.salesFunnelName} size={px} />}>
           <span className="block truncate font-semibold">{campaign.salesFunnelName}</span>
-          {row?.path ? <FunnelPathLine items={row.path.items} /> : rowsSettled ? <span className="k-fg4 block text-[11px]">—</span> : <Shimmer className="h-3 w-48 rounded" />}
+          {copy?.path ? <FunnelPathLine items={copy.path.items} /> : copySettled ? <span className="k-fg4 block text-[11px]">—</span> : <Shimmer className="h-3 w-48 rounded" />}
         </MarkLines>
       </td>
-      <td className="px-3 py-2">{cell(row ? <TypeTag row={row} /> : DASH)}</td>
+      <td className="px-3 py-2">{copy ? <TypeTag row={copy} /> : copySettled ? DASH : <Shimmer className="ml-auto h-4 w-14 rounded" />}</td>
       <td className="px-3 py-2 text-right font-semibold tabular-nums">
         {cell(row ? <FunnelRoi row={row} /> : DASH)}
       </td>
@@ -909,6 +923,9 @@ export function FunnelCampaignPage({ campaign }: { campaign: SalesFunnelCampaign
   const row = rowsQ.data?.find((r) => r.id === campaign.id) ?? null;
   // A campaign newer than the cached rows waits for the fresh read, never "—" (funnelRowSettled).
   const rowsSettled = funnelRowSettled(row !== null, rowsQ);
+  // Its path on the fast copy read when the cached rows predate it (owner 2026-10-13: instant).
+  const copyQ = useAuthQuery(["funnelCampaignCopies", campaign.brandId, campaign.offerId], () => listFunnelCampaignCopies(campaign.brandId, campaign.offerId), pollOptions);
+  const path = row?.path ?? copyQ.data?.find((r) => r.id === campaign.id)?.path ?? null;
   const roi = row ? funnelRoiShown(row) : { learning: false, value: null, unpriced: null };
   // The part that emails people is where its people live (Inbox, Sent, Targeting read its scope).
   // The pipes in the order the funnel runs them (sourcing, then cold email, then closing).
@@ -937,7 +954,7 @@ export function FunnelCampaignPage({ campaign }: { campaign: SalesFunnelCampaign
           <span className="truncate">{campaign.salesFunnelName}</span>
         </span>
       }
-      sub={row?.path ? <FunnelPathLine items={row.path.items} /> : undefined}
+      sub={path ? <FunnelPathLine items={path.items} /> : undefined}
       tabs={tabs}
       actions={
         <>

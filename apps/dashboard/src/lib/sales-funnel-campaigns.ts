@@ -354,6 +354,24 @@ export type FunnelCampaignRow = z.infer<typeof FunnelCampaignRowSchema>;
 export const FunnelCampaignRowsSchema = z.object({ salesFunnelCampaigns: z.array(FunnelCampaignRowSchema) }).passthrough();
 
 /**
+ * A campaign's COPY only (`?fields=copy`, features-service INSTANT-CAMPAIGN-ROWS 2026-10-13): name,
+ * Type label and path, no money. Read live and fast, so a campaign created seconds ago shows its path
+ * and Type at once while its ROI and invested still compute. Each field is byte-equal to the full row's.
+ */
+export const FunnelCampaignCopySchema = FunnelCampaignRowSchema.pick({
+  id: true,
+  salesFunnelId: true,
+  name: true,
+  status: true,
+  type: true,
+  typeLabel: true,
+  path: true,
+  copyUnavailableReason: true,
+});
+export type FunnelCampaignCopy = z.infer<typeof FunnelCampaignCopySchema>;
+export const FunnelCampaignCopiesSchema = z.object({ salesFunnelCampaigns: z.array(FunnelCampaignCopySchema) }).passthrough();
+
+/**
  * Whether a campaign's served row (path, type, ROI, invested) may be drawn as final.
  *
  * The rows list paints from the on-disk cache first. A campaign created since that copy was

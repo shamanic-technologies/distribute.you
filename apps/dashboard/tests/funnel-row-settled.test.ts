@@ -29,4 +29,9 @@ describe("both readers of the rows gate a missing row on funnelRowSettled", () =
   it("the campaign page uses it for its own row", () => {
     expect(src).toContain("const rowsSettled = funnelRowSettled(row !== null, rowsQ);");
   });
+  it("path and Type read the fast copy read, money the full rows", () => {
+    expect(src).toContain("copy={rowById.get(c.id) ?? copyById.get(c.id) ?? null}");
+    expect(src).toContain("{copy?.path ? <FunnelPathLine items={copy.path.items} />");
+    expect(src).toContain("sub={path ? <FunnelPathLine items={path.items} /> : undefined}");
+  });
 });

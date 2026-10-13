@@ -278,7 +278,8 @@ describe("Campaigns table, owner spec 2026-10-11", () => {
 
   it("every cell reads features-service's served row: path items, type label, roiMultiple, investedUsd; nothing composed", () => {
     const f = funnel();
-    expect(f).toContain("<FunnelPathLine items={row.path.items} />");
+    // Path on the fast copy read (the full row's when present), INSTANT-CAMPAIGN-ROWS 2026-10-13.
+    expect(f).toContain("<FunnelPathLine items={copy.path.items} />");
     expect(f).toContain("{row.typeLabel}");
     expect(f).toContain("funnelRoiShown(row)");
     expect(f).toContain("formatUsdAdaptive(row.investedUsd)");
