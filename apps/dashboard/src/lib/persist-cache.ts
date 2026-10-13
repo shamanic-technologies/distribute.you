@@ -99,6 +99,7 @@ export const SENSITIVE_QUERY_ROOTS = new Set([
   "staffSentPerPeriod",
   "staffEmailSendPrice",
   "staffSubscriptionCosts",
+  "staffAbsorbedCosts",
   "staffRealCosts",
   "staffBasisSummary",
   "staffRealCostSeries",

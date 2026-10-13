@@ -544,13 +544,93 @@ export function costItemNames(versions: PriceVersion[]): { name: string; provide
   return [...by.values()].sort((a, b) => a.name.localeCompare(b.name));
 }
 
+/**
+ * billing-service's staff read of the cost the platform ABSORBS (owner 2026-10-13: a customer
+ * pays only what its campaigns spend): spend with no campaign (Copilot chat, onboarding, setup,
+ * A/B work) plus card-acquiring fees, per customer and per UTC month since inception. Before
+ * `basis.ruleSince` the figures are what WOULD have been absorbed under the rule, so the history
+ * reads on one basis. Every average, total and bucket is billing's; the page draws them.
+ * Amounts are USD cents as decimal strings. `paying` null = billing could not read the cash.
+ */
+const OtherCurrencyFees = z.array(z.object({ currency: z.string(), feeCents: Cents }));
+const AbsorbedGroupShape = {
+  customers: z.number(),
+  customersWithAbsorbedCost: z.number(),
+  absorbedCents: Cents,
+  averagePerCustomerCents: Cents.nullable(),
+  averagePerCustomerWithCostCents: Cents.nullable(),
+  medianPerCustomerWithCostCents: Cents.nullable(),
+};
+const AbsorbedGroupSchema = z.object(AbsorbedGroupShape);
+export const AbsorbedCostsSchema = z.object({
+  basis: z.object({ ruleSince: z.string(), absorbed: z.string(), beforeRuleSince: z.string(), amounts: z.string() }),
+  firstMonth: z.string().nullable(),
+  lastMonth: z.string().nullable(),
+  months: z.array(z.string()),
+  fleet: z.object({
+    ...AbsorbedGroupShape,
+    noCampaignSpendCents: Cents,
+    cardFeesCents: Cents,
+    unattributedCardFeesCents: Cents,
+    cardFeesOtherCurrencies: OtherCurrencyFees,
+    unattributedCardFeesOtherCurrencies: OtherCurrencyFees,
+    campaignSpendCents: Cents,
+    paying: AbsorbedGroupSchema,
+    neverPaid: AbsorbedGroupSchema,
+    payingUnknown: z.number(),
+  }),
+  fleetByMonth: z.array(
+    z.object({
+      month: z.string(),
+      absorbedCents: Cents,
+      noCampaignSpendCents: Cents,
+      cardFeesCents: Cents,
+      unattributedCardFeesCents: Cents,
+      campaignSpendCents: Cents,
+      customersWithAbsorbedCost: z.number(),
+      averagePerCustomerCents: Cents.nullable(),
+      averagePerPayingCustomerCents: Cents.nullable(),
+      averagePerNeverPaidCustomerCents: Cents.nullable(),
+      cumulativeAbsorbedCents: Cents,
+      cumulativeCustomersWithAbsorbedCost: z.number(),
+      averagePerCustomerSinceInceptionCents: Cents.nullable(),
+    }),
+  ),
+  distribution: z.array(
+    z.object({ label: z.string(), customers: z.number(), paying: z.number(), neverPaid: z.number(), payingUnknown: z.number() }),
+  ),
+  customers: z.array(
+    z.object({
+      orgId: z.string(),
+      orgName: z.string().nullable(),
+      orgDomain: z.string().nullable(),
+      platformOrg: z.boolean(),
+      createdAt: z.string().nullable(),
+      paymentMode: z.string().nullable(),
+      cashPaidCents: Cents.nullable(),
+      paying: z.boolean().nullable(),
+      absorbedCents: Cents,
+      noCampaignSpendCents: Cents,
+      cardFeesCents: Cents,
+      cardFeesOtherCurrencies: OtherCurrencyFees,
+      campaignSpendCents: Cents,
+      byMonth: z.array(
+        z.object({ month: z.string(), absorbedCents: Cents, noCampaignSpendCents: Cents, cardFeesCents: Cents, campaignSpendCents: Cents }),
+      ),
+    }),
+  ),
+});
+export type AbsorbedCosts = z.infer<typeof AbsorbedCostsSchema>;
+export type AbsorbedCustomer = AbsorbedCosts["customers"][number];
+export type AbsorbedMonth = AbsorbedCosts["fleetByMonth"][number];
+
 export type MonitoringView =
   | { view: "hub" }
   | { view: "page"; page: MonitoringPage }
   | { view: "moved"; page: MonitoringPage }
   | { view: "missing"; rest: string };
 
-export const MONITORING_PAGES = ["cost/providers", "cost/spend", "cost/subscriptions", "cost/email-sending", "price/billed", "price/new-pricing", "price/pricing-basis", "margin", "margin/pricing-comparison", "emails", "chat/skills"] as const;
+export const MONITORING_PAGES = ["cost/providers", "cost/spend", "cost/subscriptions", "cost/email-sending", "customers/absorbed", "price/billed", "price/new-pricing", "price/pricing-basis", "margin", "margin/pricing-comparison", "emails", "chat/skills"] as const;
 export type MonitoringPage = (typeof MONITORING_PAGES)[number];
 
 /** Retired URLs (owner 2026-10-01): links already shared keep landing on the page that absorbed them. */
