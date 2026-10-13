@@ -1,18 +1,23 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { isSubscriptionArm } from "./subscription-plan";
+import { offerArm, type OfferArm } from "./subscription-plan";
 
 /**
- * True once mounted when the homepage A/B test put this visitor in the $99/month arm
- * (`lp_variant=subscription`, owner 2026-10-10). False on the server render and the
- * first client frame: the cookie is not read there, so the prepaid words paint first
- * and never mismatch hydration.
+ * The offer the homepage A/B test sold this visitor (owner 2026-10-13: subscription,
+ * prepaid or postpaid), once mounted. `prepaid` on the server render and the first client
+ * frame: the cookie is not read there, so the prepaid words paint first and never
+ * mismatch hydration.
  */
-export function useSubscriptionArm(): boolean {
-  const [plan, setPlan] = useState(false);
+export function useOfferArm(): OfferArm {
+  const [arm, setArm] = useState<OfferArm>("prepaid");
   useEffect(() => {
-    setPlan(isSubscriptionArm(document.cookie));
+    setArm(offerArm(document.cookie));
   }, []);
-  return plan;
+  return arm;
+}
+
+/** True once mounted when the visitor is in the $99/month arm (`lp_variant=subscription`). */
+export function useSubscriptionArm(): boolean {
+  return useOfferArm() === "subscription";
 }

@@ -26,10 +26,10 @@ describe("monthly charge limit (owner 2026-10-12: never charge me more than $X a
     expect(monthlyLimitToSave("200", { kind: "prepaid", topupUsd: 250 })).toEqual({ problem: "Your monthly limit starts at $250." });
   });
 
-  it("box 2 of the plan names the limit", () => {
-    const [, ladder] = spendConsentLines({ arm: { kind: "plan", monthlyUsd: 99, limitUsd: 299 } });
+  it("the plan's card box names the limit", () => {
+    const [ladder] = spendConsentLines({ arm: { kind: "plan", monthlyUsd: 99, limitUsd: 299 } });
     expect(ladder.text).toBe(
-      "I understand that each time my credit runs out, my plan upgrades automatically ($199, then $299, and so on, up to my $299 monthly limit) and my card is charged accordingly, so my campaigns keep running as I set them.",
+      "When my credit runs out, my plan moves up automatically ($199, then $299, and so on, up to my $299 monthly limit). My card is charged for each step.",
     );
   });
 

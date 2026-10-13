@@ -9,7 +9,7 @@ import { Section } from "@/components/section";
 export const revalidate = 86400;
 
 const TERMS_URL = `${PROD_URLS.landing}/terms`;
-const LAST_UPDATED = "October 11, 2026";
+const LAST_UPDATED = "October 13, 2026";
 const COMPANY = "BLOOMING GENERATION";
 const COMPANY_SIREN = "882102775";
 const SERVICE = "distribute.you";
@@ -18,7 +18,7 @@ const SUPPORT_EMAIL = "support@distribute.you";
 export const metadata: Metadata = {
   title: "Terms of Service",
   description:
-    "Terms of Service for distribute.you: catalogue pricing, prepaid credit, outreach on your behalf, public performance data, and acceptable use.",
+    "Terms of Service for distribute.you: catalogue pricing, prepaid credit, post-paid billing, outreach on your behalf, public performance data, and acceptable use.",
   alternates: { canonical: TERMS_URL },
   openGraph: {
     title: "Terms of Service | distribute.you",
@@ -145,8 +145,8 @@ const SECTIONS: SectionDef[] = [
             distribute.you/catalog
           </a>
           . There is no seat and no setup fee. Depending on the offer you
-          signed up under, you pay with prepaid credit or through a monthly
-          plan, both described below.
+          signed up under, you pay with prepaid credit, through a monthly
+          plan, or after use (post-paid), all described below.
         </p>
         <p>
           <strong>Prices are dynamic.</strong> Catalogue prices are in USD
@@ -161,10 +161,20 @@ const SECTIONS: SectionDef[] = [
           starts, through our payment processors (Stripe or Revolut). The
           work on your campaigns draws on that credit. When it runs out, the
           automatic reload below adds credit; when it cannot (no payment
-          method on file, or a declined charge), sending stops. Accounts that
-          our team has set up to be billed after use are charged when their
-          unpaid usage reaches a threshold, or at the end of the month,
-          whichever comes first.
+          method on file, or a declined charge), sending stops.
+        </p>
+        <p>
+          <strong>Post-paid billing.</strong> Where we offer it, you pay after
+          use instead of adding credit first. You save a payment method when
+          you sign up and nothing is charged that day. We charge it for what
+          your campaigns spent when your unpaid usage reaches a threshold
+          (currently $50, then $200, then $500), or at the end of the month,
+          whichever comes first. If a charge is declined, sending stops until
+          it is paid. Post-paid is not available on every payment method (for
+          example some prepaid cards, or cards issued in some countries): we
+          may then ask you to use another card or to switch to prepaid credit.
+          By saving a payment method you authorize these charges without
+          further confirmation.
         </p>
         <p>
           <strong>Reserved follow-ups.</strong> When the first email of a
@@ -210,11 +220,11 @@ const SECTIONS: SectionDef[] = [
           automatically.
         </p>
         <p>
-          <strong>What you agree to spend.</strong> Before your first payment you
-          confirm what your campaigns may spend, in the budgets you set. Those
-          budgets are not a cap on your total bill: AI chat, extra lead
-          sourcing, campaigns you add later, and payment fees are billed on
-          top, at the catalogue prices above.
+          <strong>What you agree to spend.</strong> Before your card is first
+          charged you confirm how it will be charged. You pay what your
+          campaigns spend, at the catalogue prices above, within the budgets
+          you set for them. Campaigns you add later spend within their own
+          budgets.
         </p>
         <p>
           <strong>Campaign budgets.</strong> You set a daily budget for each
@@ -233,8 +243,8 @@ const SECTIONS: SectionDef[] = [
         <p>
           <strong>No refunds.</strong> Payments are final and are not
           refunded, whatever the payment method or plan: prepaid credit,
-          automatic reload, monthly plan payments (including the first payment
-          after a free trial), automatic plan upgrades, or service fees. Unused or expired
+          automatic reload, post-paid charges, monthly plan payments (including
+          the first payment after a free trial), automatic plan upgrades, or service fees. Unused or expired
           credit is not refunded. The only exception is the managed plan
           guarantee below.
         </p>

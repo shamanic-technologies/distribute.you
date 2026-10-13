@@ -164,9 +164,9 @@ export function AccountCardWall({
     return { plan: isSubscriptionArm(cookie), variant: lpVariant(cookie), monthlyCents: pickedPlanCents(cookie) };
   });
   const copy = wallCopy(arm.plan ? Math.round(arm.monthlyCents / 100) : null);
-  // The plan's three statements before the trial starts (owner 2026-10-11); prepaid ticks
+  // The plan's statements before the trial starts (owner 2026-10-11); prepaid ticks
   // its own inside `PrepaidTopup`, where the amount they name is picked.
-  const [planTicked, setPlanTicked] = useState([false, false, false]);
+  const [planTicked, setPlanTicked] = useState([false, false]);
   // The plan's boxes as ticked at the click, sent with the card form and the plan start.
   const planConsentRecord = useRef<PaymentConsentRecord | null>(null);
   // The plan's monthly limit (validated at the campaign step), named in the ladder box.

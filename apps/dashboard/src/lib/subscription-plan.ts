@@ -1,8 +1,8 @@
 /**
  * The subscription plan: $99/month, a 3-day free trial, card required (owner
- * 2026-10-01). Since 2026-10-10 it is one arm of the homepage A/B test: only a visitor
- * whose `lp_variant` cookie (set on `.distribute.you` by the landing) is `subscription`
- * is sold it; everyone else gets the prepaid offer.
+ * 2026-10-01). Since 2026-10-10 it is one arm of the homepage A/B test (three arms since
+ * 2026-10-13: plan, prepaid, postpaid, `offerArm`): only a visitor whose `lp_variant`
+ * cookie (set on `.distribute.you` by the landing) is `subscription` is sold it.
  *
  * Owner's model, restated: the money paid IS the credit ($99 paid, $99 to spend; the
  * trial start grants $99 at our expense). Outbound runs at $50 a day from the start so
@@ -52,14 +52,26 @@ export function lpVariant(cookieHeader: string | null | undefined): string | nul
   return null;
 }
 
+/** The landing variant that sells post-paid (owner 2026-10-13 A/B arm). */
+export const POSTPAID_ARM = "postpaid";
+
+/** The offer a visitor is sold, from the homepage A/B arm (owner 2026-10-13: three arms). */
+export type OfferArm = "subscription" | "prepaid" | "postpaid";
+
 /**
- * True when this visitor is sold the $99/month plan: the homepage A/B test (owner
- * 2026-10-10, 50/50 against the prepaid homepage) put them in the `subscription` arm.
- * Everyone else (no cookie: blog, compare page, direct link, another device; or any
- * other variant) gets the prepaid offer, which stays the default.
+ * The offer the homepage A/B test (owner 2026-10-13, a third each) sold this visitor:
+ * `subscription` the $99/month plan, `postpaid` charged after the spend, everyone else
+ * prepaid (no cookie: blog, compare page, direct link, another device; `control` or any
+ * other variant). Prepaid stays the default.
  */
+export function offerArm(cookieHeader: string | null | undefined): OfferArm {
+  const v = lpVariant(cookieHeader);
+  return v === SUBSCRIPTION_ARM ? "subscription" : v === POSTPAID_ARM ? "postpaid" : "prepaid";
+}
+
+/** True when this visitor is sold the $99/month plan (`offerArm` is `subscription`). */
 export function isSubscriptionArm(cookieHeader: string | null | undefined): boolean {
-  return lpVariant(cookieHeader) === SUBSCRIPTION_ARM;
+  return offerArm(cookieHeader) === "subscription";
 }
 
 /** The fields of a campaign pair this module reads. */
