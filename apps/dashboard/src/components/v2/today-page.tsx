@@ -24,6 +24,7 @@ import {
   SparkLine,
   EmptyNote,
   Figure,
+  HoverScroll,
   KeyHint,
   MarkLines,
   SectionTitle,
@@ -691,9 +692,9 @@ function CampaignLine({ c, budget }: { c: OngoingCampaign; budget: string | null
           <StateDot running={m.running} hold={m.paymentHold} />
         </span>
         {/* The full definition on its own line, as the Sales path page reads it: [Channel] → outcome. */}
-        <span className="mt-1.5 block overflow-hidden">
+        <HoverScroll className="mt-1.5">
           {campaign ? <CampaignLeg campaign={campaign} compact /> : <span className="k-fg4 text-[12px]">{"—"}</span>}
-        </span>
+        </HoverScroll>
       </MarkLines>
       {/* Its type and budget, then what it has spent so far. */}
       <span className="k-fg3 mt-1.5 flex items-center justify-between gap-2 text-[12px] tabular-nums">

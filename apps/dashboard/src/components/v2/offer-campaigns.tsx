@@ -33,7 +33,7 @@ import { useStaffMode } from "@/lib/use-staff-mode";
 import { useMissions, type Mission } from "@/components/v2/use-missions";
 import { EXPECTED_ROI_TIP } from "@/lib/offer-sales-paths";
 import { ChannelChip, ExpectedLabel, PathAvatar } from "@/components/v2/offer-sales-paths";
-import { EmptyNote, MarkLines, SectionTitle, Shimmer, StateDot } from "@/components/v2/ui";
+import { EmptyNote, HoverScroll, MarkLines, SectionTitle, Shimmer, StateDot } from "@/components/v2/ui";
 import { ProviderLogo } from "@/components/provider-logo";
 import { roiToShow } from "@/lib/expected-return";
 import { ROI_TIP, RoiValue } from "@/components/v2/roi-label";
@@ -326,9 +326,9 @@ function CampaignRow({
         {results ? (
           <MarkLines mark={(px) => (campaign.name ? <PathAvatar name={campaign.name} size={px} /> : null)}>
             <span className="block truncate font-semibold">{campaign.name ?? campaign.channelName}</span>
-            <span className="mt-1 block overflow-hidden">
+            <HoverScroll className="mt-1">
               <CampaignLeg campaign={campaign} showFedBy compact />
-            </span>
+            </HoverScroll>
           </MarkLines>
         ) : (
           <span className="flex min-w-0 items-center gap-2.5">

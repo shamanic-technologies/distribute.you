@@ -238,6 +238,36 @@ export function Initials({ name, size = 20, round = false }: { name: string; siz
 }
 
 /**
+ * A one-line path that can be wider than its cell (owner 2026-10-13): clipped with a right fade, and
+ * on hover of its row (`k-row`), card (`k-hover`) or itself it slides right to left to its last item,
+ * at ~40px/s, then back when the pointer leaves. A line that fits never moves.
+ */
+export function HoverScroll({ children, className = "" }: { children: React.ReactNode; className?: string }) {
+  const box = useRef<HTMLSpanElement>(null);
+  const track = useRef<HTMLSpanElement>(null);
+  const [shift, setShift] = useState(0);
+  useLayoutEffect(() => {
+    const b = box.current;
+    const t = track.current;
+    if (!b || !t) return;
+    const measure = () => setShift(Math.max(0, Math.ceil(t.getBoundingClientRect().width - b.clientWidth)));
+    measure();
+    const ro = new ResizeObserver(measure);
+    ro.observe(b);
+    ro.observe(t);
+    return () => ro.disconnect();
+  }, []);
+  const style = { "--k-hscroll-shift": `-${shift}px`, "--k-hscroll-dur": `${Math.max(0.6, shift / 40).toFixed(2)}s` } as React.CSSProperties;
+  return (
+    <span ref={box} className={`k-hscroll ${className}`} data-overflow={shift > 0 ? "" : undefined} style={style}>
+      <span ref={track} className="k-hscroll-track">
+        {children}
+      </span>
+    </span>
+  );
+}
+
+/**
  * A mark (face, logo, avatar) left of a TWO-LINE block (owner 2026-10-11, every v2 page): the mark
  * is exactly as tall as the two lines beside it, top and bottom aligned. The ONE place this is done:
  * the block's height is measured (it varies with each page's type scale) and handed to `mark` as its

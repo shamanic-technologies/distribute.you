@@ -137,6 +137,20 @@
 }
 .v2-root .k-row { border-bottom: 1px solid var(--line-subtle); }
 .v2-root .k-row:hover { background: var(--bg-hover); }
+/* A one-line path (Start → [channel] → step …) wider than its cell: a right fade says there is more,
+   and hovering the row, card or line slides it right to left to its end (HoverScroll, ui.tsx). */
+.v2-root .k-hscroll { display: block; min-width: 0; overflow: hidden; }
+.v2-root .k-hscroll-track { display: block; width: max-content; transition: transform 0.35s cubic-bezier(.23, 1, .32, 1); }
+.v2-root .k-hscroll[data-overflow] { mask-image: linear-gradient(to right, #000 calc(100% - 24px), transparent); }
+.v2-root .k-row:hover .k-hscroll[data-overflow],
+.v2-root .k-hover:hover .k-hscroll[data-overflow],
+.v2-root .k-hscroll[data-overflow]:hover { mask-image: none; }
+.v2-root .k-row:hover .k-hscroll[data-overflow] > .k-hscroll-track,
+.v2-root .k-hover:hover .k-hscroll[data-overflow] > .k-hscroll-track,
+.v2-root .k-hscroll[data-overflow]:hover > .k-hscroll-track {
+  transform: translateX(var(--k-hscroll-shift)); transition: transform var(--k-hscroll-dur) linear 0.3s;
+}
+@media (prefers-reduced-motion: reduce) { .v2-root .k-hscroll-track { transform: none !important; } }
 .v2-root .k-dot-pulse { position: relative; }
 .v2-root .k-dot-pulse::after {
   content: ""; position: absolute; inset: -3px; border-radius: 9999px; background: currentColor; opacity: 0.25;
