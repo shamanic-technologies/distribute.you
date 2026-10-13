@@ -7,7 +7,7 @@
   <rect width="1600" height="900" fill="url(#bg)"/>
   <rect width="1600" height="900" fill="url(#dots)" opacity="0.6"/>
   <text x="800" y="150" text-anchor="middle" font-family="Inter, system-ui, sans-serif" font-size="64" font-weight="800" fill="#0f172a" letter-spacing="-2">Jev for GTM.</text>
-  <text x="800" y="210" text-anchor="middle" font-family="Inter, system-ui, sans-serif" font-size="30" font-weight="500" fill="#475569">Only your buyers get your emails.</text>
+  <text x="800" y="210" text-anchor="middle" font-family="Inter, system-ui, sans-serif" font-size="30" font-weight="500" fill="#475569">Same budget, 4x more real buyers.</text>
   <!-- the question card -->
   <g filter="url(#sh)">
     <rect x="530" y="280" width="540" height="150" rx="24" fill="#ffffff"/>

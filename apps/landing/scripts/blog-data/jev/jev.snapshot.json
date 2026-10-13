@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-10-13T10:45:45.199Z",
+  "generatedAt": "2026-10-13T15:01:02.060Z",
   "readOn": "2026-10-13",
   "volume": {
     "display": "122,207",
@@ -71,6 +71,8 @@
     "ciHi": "77%",
     "sure": "68%",
     "oldBarLost": 6540,
+    "reach": 4.3,
+    "reachFloor": 4,
     "buckets": [
       {
         "label": "Below 20%",

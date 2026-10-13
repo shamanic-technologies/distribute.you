@@ -36,7 +36,8 @@ const d = study("jev-screen-decline");
 const ds = match(d.id, d.result.sample, /^([\d,]+) of ([\d,]+) people · ([\d,]+) audiences · ([\d,]+) clients$/);
 const dci = match(d.id, d.conclusion[0], /95% interval (\d+)% to (\d+)%/);
 const dsure = match(d.id, d.conclusion[1], /\((\d+)%\)/);
-const dold = match(d.id, d.conclusion[2], /([\d,]+) people between 50% and 80%/);
+const dreach = match(d.id, d.conclusion.join(" "), /reaches ([\d.]+)x more people who fit/);
+const dold = match(d.id, d.conclusion.join(" "), /([\d,]+) people between 50% and 80%/);
 const p = study("jev-screen-price");
 const ps = match(p.id, p.result.sample, /^(\$[\d.]+) per 1,000 screens · (\$[\d.]+) per reveal · ([\d,]+) screens, ([\d,]+) reveals$/);
 const m = study("jev-machine-replies");
@@ -67,6 +68,9 @@ const snapshot = {
     ciHi: `${dci[2]}%`,
     sure: `${dsure[1]}%`,
     oldBarLost: num(dold[1]),
+    // the same budget reaches this many times more people who fit; marketing copy floors it ("4x")
+    reach: Number(dreach[1]),
+    reachFloor: Math.floor(Number(dreach[1])),
     buckets: bars(d.charts[0]),
   },
   price: { display: p.result.display, screenPerThousand: ps[1], reveal: ps[2], screens: num(ps[3]), reveals: num(ps[4]) },
