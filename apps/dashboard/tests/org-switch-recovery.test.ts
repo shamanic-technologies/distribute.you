@@ -41,54 +41,39 @@ describe("An org switch is bounded and its 409 recovery can actually succeed", (
     return src.slice(at, end);
   };
 
-  it("bounds every leg of the switch", () => {
+  it("never runs Clerk's in-page setActive, and loads the target org instead", () => {
+    // 2026-10-13: on a freshly loaded prod tab `setActive` hung until the 15s bound
+    // fired ("Couldn't reach the auth service") with the network fine, after it had
+    // already stored the target org on the session: every later token carried the
+    // target while the page stayed on the old org, so every read 409'd. A full
+    // load lets proxy.ts organizationSyncOptions activate the org server-side.
     const body = handlerBody();
-    // setActive and the token re-mint are the two Clerk awaits; the join is a
-    // plain fetch, which needs its own abort signal.
-    expect(body).toContain("withTimeout(");
-    expect(body).toContain("ORG_SWITCH_TIMEOUT_MS");
-    expect(body).toContain("setActive({ organization: clerkOrgId })");
-    expect(body).toContain("session.getToken({ skipCache: true })");
-    expect(
-      body,
-      "the join fetch must carry an abort signal — fetch has no default timeout",
-    ).toContain("AbortSignal.timeout(ORG_SWITCH_TIMEOUT_MS)");
+    expect(body).not.toContain("setActive(");
+    expect(body).not.toContain("getToken(");
+    expect(body).toContain("window.location.assign(`/orgs/${clerkOrgId}`)");
   });
 
-  it("asks Clerk instead of a paginated membership list", () => {
+  it("joins BEFORE loading, bounded, skipped only on positive membership", () => {
     const body = handlerBody();
-    expect(
-      body,
-      "the first-page-only membership pre-check is what made every staff switch pay a join round-trip",
-    ).not.toContain("alreadyMember");
-    // The join is the RECOVERY from a refusal, so it lives after the setActive attempt.
-    const activateAt = body.indexOf("await activate();");
+    // The middleware cannot activate an org the user does not belong to.
     const joinAt = body.indexOf("/api/admin/orgs/${clerkOrgId}/join");
-    expect(activateAt).toBeGreaterThan(-1);
-    expect(joinAt, "the join route call is gone").toBeGreaterThan(activateAt);
+    const loadAt = body.indexOf("window.location.assign(");
+    expect(joinAt, "the join route call is gone").toBeGreaterThan(-1);
+    expect(joinAt).toBeLessThan(loadAt);
+    expect(
+      body,
+      "the join fetch must carry an abort signal: fetch has no default timeout",
+    ).toContain("AbortSignal.timeout(ORG_SWITCH_TIMEOUT_MS)");
+    // The paginated first page is evidence of membership, never of its absence.
+    expect(body).toContain("if (isStaff && !knownMember)");
   });
 
-  it("does not join-and-retry after a timeout", () => {
-    // A timeout is not a membership refusal. Joining then retrying on a dead
-    // network only doubles the wait before the same failure.
-    const body = handlerBody();
-    expect(body).toContain("if (isTimeoutError(err) || !isStaff) throw err;");
-  });
-
-  it("states a network failure instead of a spinner", () => {
+  it("states a failure instead of a spinner", () => {
     const body = handlerBody();
     expect(body).toContain("setSwitchingOrg(null)");
-    // The sentence itself moved into the alias-free `org-switch-error.ts` so it
-    // could name the offline case, which is what most timeouts here really are.
-    // Its own copy is pinned by `org-switch-error-message.test.ts`.
+    // The sentence lives in the alias-free `org-switch-error.ts`, pinned by
+    // `org-switch-error-message.test.ts`.
     expect(body).toContain("orgSwitchErrorMessage(");
-  });
-
-  it("keeps the setActive → re-mint → navigate ordering (#1940)", () => {
-    const body = handlerBody();
-    const order =
-      /activate\(\)[\s\S]*?getToken\(\{ skipCache: true \}\)[\s\S]*?router\.push/.test(body);
-    expect(order, "setActive → getToken → router.push ordering broken").toBe(true);
   });
 
   it("re-mints the token before retrying a 409, and retries more than once", () => {

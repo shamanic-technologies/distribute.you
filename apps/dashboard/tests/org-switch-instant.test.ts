@@ -61,47 +61,12 @@ describe("Org switch is instant to the eye and fails loud", () => {
     ).toBeLessThan(firstAwaitAt);
   });
 
-  it("skips the Clerk join round-trip unless Clerk itself refuses the org", () => {
-    // This originally read the client-side membership list to decide. That list is
-    // PAGINATED and only its first page is loaded, so a staff member of many orgs
-    // read as "not a member" for nearly every target and paid a full Clerk Backend
-    // join on nearly every click — one of the three causes of the "switching takes
-    // infinite time" report. `setActive` rejecting IS the membership answer, and it
-    // is authoritative. Fully guarded in org-switch-recovery.test.ts.
-    const body = handlerBody();
-    expect(body).not.toContain("alreadyMember");
-    const activateAt = body.indexOf("await activate();");
-    const joinAt = body.indexOf("/api/admin/orgs/${clerkOrgId}/join");
-    expect(joinAt, "the join route call is gone").toBeGreaterThan(-1);
-    expect(activateAt, "the join must be the recovery from a refusal").toBeLessThan(joinAt);
-  });
-
-  it("fails loud on a join rejection instead of walking into setActive", () => {
-    // Continuing past a failed join reaches `setActive` on an org the user is not
-    // a member of, which rejects — and an unhandled rejection in a click handler
-    // is exactly the silence this whole file exists to kill.
+  it("fails loud on a join rejection instead of loading an org it cannot read", () => {
+    // Loading an org the user is not a member of lands on a page whose every read
+    // is refused, and that silence is what this whole file exists to kill.
     const body = handlerBody();
     expect(body).toContain("!res.ok");
     expect(body).not.toContain('console.error("Failed to join org:');
-  });
-
-  it("does not swallow the session re-mint", () => {
-    // `.catch(() => {})` on the token re-mint hid the one failure that makes the
-    // switch revert on its own (#1940). It is caught by the handler's own catch
-    // now, which surfaces it.
-    const body = handlerBody();
-    expect(body).toContain("session.getToken({ skipCache: true })");
-    expect(body).not.toContain("getToken({ skipCache: true }).catch");
-  });
-
-  it("keeps the setActive → re-mint → navigate ordering (#1940)", () => {
-    // The instant-feedback work must not reorder the race fix: setActive resolves
-    // the active org, the re-mint gets it into the cookie, and only then may the
-    // navigation reach the middleware.
-    const body = handlerBody();
-    const order =
-      /activate\(\)[\s\S]*?getToken\(\{ skipCache: true \}\)[\s\S]*?router\.push/.test(body);
-    expect(order, "setActive → getToken → router.push ordering broken").toBe(true);
   });
 
   it("clears the pending flag on failure so the switcher is retryable", () => {

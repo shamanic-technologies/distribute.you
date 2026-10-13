@@ -13,17 +13,18 @@ describe("Clerk org/URL sync guards", () => {
     expect(src).toMatch(/organizationPatterns\s*:\s*\[\s*['"]\/orgs\/:id['"]\s*,\s*['"]\/orgs\/:id\/\(\.\*\)['"]\s*,\s*['"]\/v2\/orgs\/:id['"]\s*,\s*['"]\/v2\/orgs\/:id\/\(\.\*\)['"]\s*\]/);
   });
 
-  it("handleOrgSwitch calls BOTH setActive and router.push to prevent client/URL drift", () => {
+  it("handleOrgSwitch loads the target org's URL so organizationSyncOptions activates it", () => {
     // Lives in the shared tenant-switch hook — consumed by BOTH the pre-beta
     // breadcrumb and the beta sidebar switcher, so there is one implementation.
     const src = readFileSync(resolve(ROOT, "src/lib/use-tenant-switcher.ts"), "utf8");
     const handlerMatch = src.match(/const handleOrgSwitch[\s\S]*?\n\s*\}, \[/);
     expect(handlerMatch, "handleOrgSwitch handler not found").toBeTruthy();
     const handler = handlerMatch![0];
-    // router.push updates the URL so middleware's organizationSyncOptions confirms server-side
-    expect(handler).toMatch(/router\.push\(`\/orgs\/\$\{[^}]+\}`\)/);
-    // setActive updates Clerk's client-side active org immediately so useOrganization()
-    // reflects the new org without waiting for a session cookie refresh round-trip
-    expect(handler).toMatch(/setActive\(\s*\{\s*organization\s*:/);
+    // A FULL load: the middleware's organizationSyncOptions activates the URL org
+    // server-side before the page renders, so the page boots under the new org. An
+    // in-page setActive hung in prod (2026-10-13) and left the token on the target
+    // org while the page stayed on the old one.
+    expect(handler).toMatch(/window\.location\.assign\(`\/orgs\/\$\{[^}]+\}`\)/);
+    expect(handler).not.toMatch(/setActive\(/);
   });
 });

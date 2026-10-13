@@ -66,11 +66,12 @@ describe("Tenant switcher SWR identity", () => {
     );
   });
 
-  it("still closes the org-switch race (setActive → fresh token → navigate)", () => {
-    const match = hook.match(
-      /handleOrgSwitch[\s\S]*?setActive\([\s\S]*?getToken\(\{ skipCache: true \}\)[\s\S]*?router\.push/,
-    );
-    expect(match, "getToken must sit between setActive and router.push").not.toBeNull();
+  it("switches org with a full page load, never an in-page setActive", () => {
+    // Fully guarded in org-switch-recovery.test.ts.
+    const at = hook.indexOf("const handleOrgSwitch = useCallback(");
+    const body = hook.slice(at, hook.indexOf("const handleBrandSwitch", at));
+    expect(body).toContain("window.location.assign(`/orgs/${clerkOrgId}`)");
+    expect(body).not.toContain("setActive(");
   });
 });
 
