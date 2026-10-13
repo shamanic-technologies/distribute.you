@@ -155,6 +155,7 @@ export function jevStudies({ runs, runOrgs, screens, reach, reveal, replyKinds, 
     conclusion: [
       `A pass needs a probability above 50%. ${pct(declined / people)} stay at or under it, 95% interval ${pct(ci.lo)} to ${pct(ci.hi)}.`,
       `${n(inBucket("lt20") + inBucket("ge80"))} of ${n(people)} answers (${pct((inBucket("lt20") + inBucket("ge80")) / people)}) are below 20% or at 80% and up: Jev is sure on most people.`,
+      `Only the people kept are revealed, so the same budget reaches ${(people / (people - declined)).toFixed(1)}x more people who fit than revealing the whole list.`,
       `Until Sep 29, 2026 the bar was 80%. ${n(oldBarLost)} people between 50% and 80% were turned away under it; they count as passes here.`,
     ],
   }, measurementVerdict(declined, orgs, "people turned away"));
