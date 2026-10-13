@@ -1,34 +1,38 @@
 <div style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:12px;padding:20px 24px;margin:0 0 32px">
 <p style="margin:0 0 8px;font-size:12px;font-weight:600;letter-spacing:0.08em;text-transform:uppercase;color:#1d4ed8">Key takeaway</p>
-<p style="margin:0 0 8px;font-weight:600;color:#0f172a">Same budget, 4x more leads that match your ICP. Jev for GTM, in 2 ways:</p>
-<ol style="margin:0;padding-left:20px">
-<li><strong>Only leads matching your ICP get your emails:</strong> Jev checks every Apollo lead against your Ideal Customer Profile before we pay for it</li>
-<li><strong>Every reply you read is a real person:</strong> out-of-offices and auto-replies never reach you</li>
-</ol>
+<p style="margin:0 0 8px;font-weight:600;color:#0f172a">Same budget, 4x more leads that match your ICP.</p>
+<ul style="margin:0;padding-left:20px">
+<li>You write your ICP (Ideal Customer Profile) in one sentence</li>
+<li>Jev checks every Apollo lead against it, plus the signals you choose, before we pay for anyone</li>
+<li>Only leads matching your ICP get your emails, and every reply you read is a real person</li>
+</ul>
 </div>
 
-<p>Jev is an LLM built to judge, not to write. You give it a piece of text and a question, and it tells you how sure it is of the answer. Our pipes asked it 120k+ questions since September 19, 2026, for one goal: bring our clients signups and booked meetings from the people who match their ICP (Ideal Customer Profile).</p>
-
-<p><strong>What it brings you: the same budget reaches 4x more leads that match your ICP.</strong> Without Jev, every person an Apollo list returns is paid for, in your ICP or not. With Jev, only the people who match your ICP are, so every dollar works for a real prospect.</p>
-
-<p>How? Here are the 2 ways we use Jev for GTM:</p>
-
-<ol>
-<li><a href="#apollo">Only leads matching your ICP get your emails</a></li>
-<li><a href="#machines">Every reply you read is a real person</a></li>
-</ol>
+<p>Your Apollo filters were built for job titles. Your ICP is a sentence. That gap is where most cold email budgets leak, and AI can now close it.</p>
 
 <video src="/blog/gtm-ai-llm-judge/jev.mp4" poster="/blog/gtm-ai-llm-judge/poster.jpg" controls autoplay muted loop playsinline style="width:100%;max-width:560px;display:block;margin:0 auto 32px;border-radius:12px"></video>
 
-<h2 id="what-is-jev">What Jev is</h2>
+<h2 id="filters">Your filters return a long list</h2>
 
-<p><a href="https://docs.typesafe.ai">Jev 1.13</a> is a model by TypeSafe. You ask a yes or no question, a choice among options, or a level on a scale. Jev returns a probability for every answer. A writing model such as DeepSeek V4.1 Flash or Gemini 3 gives one answer with the same confidence whether it is sure or guessing. Jev tells you when it is guessing.</p>
+<p>You know who you sell to. So you open Apollo and set filters: title, industry, company size, country. Apollo hands back a list, sometimes thousands of people. Then three things go wrong.</p>
 
-<p>Jev bills input tokens only; the answer is free. Across our pipes, 1,000 judgments come to <strong>$0.09</strong> as billed.</p>
+<ul>
+<li><strong>Apollo data is sometimes wrong.</strong> A title is two jobs old, an industry tag is a guess. One of our clients sells shockwave devices to chiropractors; the filters also returned hospitalists and a urology physician.</li>
+<li><strong>Filters can't say what a company does.</strong> "Clinics that offer elective treatments" or "startups that ship AI hardware" fit in no dropdown.</li>
+<li><strong>Filters miss the signals that matter.</strong> Is the company hiring? Does its website mention the product you complement? No filter reads that.</li>
+</ul>
 
-<h2 id="apollo">1. Only leads matching your ICP get your emails</h2>
+<h2 id="jev">Jev reads every lead like you would</h2>
 
-<p>We build each campaign's list in Apollo with cold filters: titles, industries, company sizes. Apollo shows each person's name, title and company for free. The email address costs a credit. Filters are blunt, so before any credit is spent, Jev reads every person against the client's ICP, written in their own words: <em>"Does this candidate belong to the target audience the client described?"</em></p>
+<p><a href="https://docs.typesafe.ai">Jev 1.13</a> is a model by TypeSafe built to judge, not to write. You give it a piece of text and a question, and it answers yes or no with how sure it is. We use it as the checkpoint between Apollo and your inbox, across our pipes: 120k+ questions since September 19, 2026.</p>
+
+<h2 id="plan">How it works for you</h2>
+
+<ol>
+<li><strong>You write your ICP in one sentence.</strong> One client wrote: "practicing chiropractors in the US who decide on or use shockwave therapy devices." That sentence is the brief.</li>
+<li><strong>Jev checks every Apollo lead against it, before we pay for anyone.</strong> The name, title and company are free to read; the email costs a credit. A chiropractor who owns a clinic: yes, revealed. A hospital doctor the filters let through: no, and no credit is spent. Each verdict is kept, so no lead is checked twice.</li>
+<li><strong>You add the signals that make a lead hot.</strong> Our AI suggests them for your offer, you pick the ones you want, and Jev reads the evidence (the company website, its job posts, its LinkedIn page): "Does the company website mention an FDA 510(k) clearance?" "Does the company have open job postings for QA engineers?" "Is the company hiring sales development reps?" "Does the homepage mention elective treatments?"</li>
+</ol>
 
 <figure>
 <svg viewBox="0 0 800 258" width="100%" role="img" aria-label="Cold filtered Apollo list, by Jev's probability that a person fits: Below 20% 45,190 (60% · turned away), 20 to 50% 12,584 (17% · turned away), 50 to 80% 11,153 (15% · revealed), 80% and up 6,393 (8% · revealed)" font-family="Inter, system-ui, sans-serif">
@@ -53,11 +57,11 @@
 <figcaption style="color:#64748b;font-size:13px;line-height:1.5;margin-top:4px">Each person is judged once against the audience the client described, before any paid step. A person passes above 50%. Dark bars: turned away before the reveal.</figcaption>
 </figure>
 
-<p><strong>Your budget goes to your ICP.</strong> Jev clears every person before the paid reveal, so the emails we write reach the people who match it. One client sells shockwave devices to chiropractors. The filters also returned hospitalists and a urology physician: Jev turned each of them away. A "Chiropractic Physician / Owner" was a clear fit and was revealed.</p>
+<h2 id="value">Same budget, 4x more ICP leads</h2>
 
-<p>A screen costs a fraction of a cent, a reveal about $0.10. Each verdict is stored with the person and the exact audience text, so nobody is judged twice. When a client rewrites the audience, everyone is judged again.</p>
+<p><strong>Your budget goes to the people who match your ICP.</strong> Without the check, every person an Apollo list returns is paid for. With it, only the ones who match are, so the same budget reaches 4x more leads in your ICP. The check itself costs a fraction of a cent per lead.</p>
 
-<h2 id="machines">2. Every reply you read is a real person</h2>
+<h2 id="replies">And every reply you read is a real person</h2>
 
 <figure>
 <svg viewBox="0 0 800 206" width="100%" role="img" aria-label="Replies to our cold emails, by who wrote them: A person 307 (45%), Out of office 235 (35%), Other auto-reply 136 (20%)" font-family="Inter, system-ui, sans-serif">
@@ -78,13 +82,15 @@
 <figcaption style="color:#64748b;font-size:13px;line-height:1.5;margin-top:4px">Every reply to our cold emails, labelled by our reply classifier. Dark bars: written by a machine.</figcaption>
 </figure>
 
-<p><strong>Every reply you read is a real person.</strong> Out-of-office messages and auto-replies, in every language ("Ich geniesse gerade Ferien"), are filtered out before they reach you, and your numbers count people only. Our reply classifier, DeepSeek V4.1 Flash, labels each reply and Jev checks the label. In the inbox, Jev decides on its own: a sender is hidden from your contacts as automated only when Jev is at least 75% sure.</p>
+<p>Out-of-office messages and auto-replies, in every language ("Ich geniesse gerade Ferien"), never reach you. Our reply classifier, DeepSeek V4.1 Flash, labels each reply and Jev checks the label, so your numbers count people only.</p>
+
+<h2 id="founder">Why I built it</h2>
+
+<p>I'm Kevin Lourd. I was the first product manager at MEE6, which grew to 21 million Discord servers, and I ran operations at Walnut Algorithms, an AI hedge fund. At distribute.you, "I aim at generating wealth for my clients. Win and help win." Jev between Apollo and your inbox is one of the ways we make each dollar of your budget work.</p>
 
 <h2 id="takeaway">Start with one sentence</h2>
 
-<p>Write your ICP down in one sentence. Ask Jev that sentence before every paid step.</p>
-
-<p>Or let us run it for you. Revenue made easy: get revenue in 24h. distribute.you finds your buyers, emails them from our own domains and brings you signups and booked meetings: 911 hot leads for 28 companies so far, with a 3.6x median ROI reported (homepage figures, October 13, 2026). Give us your website and we do the rest. The platform is free. You only pay for your outreach.</p>
+<p>Revenue made easy: get revenue in 24h. distribute.you finds your buyers, emails them from our own domains and brings you signups and booked meetings: 911 hot leads for 28 companies so far, with a 3.6x median ROI reported (homepage figures, October 13, 2026). Give us your website and your ICP in one sentence, and we do the rest. The platform is free. You only pay for your outreach.</p>
 
 <p><a href="https://distribute.you">Get started: distribute.you</a></p>
 
