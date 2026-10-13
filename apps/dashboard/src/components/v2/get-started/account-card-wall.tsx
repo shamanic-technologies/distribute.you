@@ -782,7 +782,8 @@ export function AccountCardWall({
     setBusy(true);
     setError(null);
     try {
-      await setPaymentMode("postpaid");
+      // The boxes as ticked reach billing's dispute file with the switch (billing v0.83.34).
+      await setPaymentMode("postpaid", undefined, consentRecord(postpaidConsent, new Date(), navigator.userAgent));
     } catch (e) {
       const refused = e instanceof ApiError && e.status === 409 ? postpaidRefusalFacts(e.body, knownCard.current) : null;
       if (refused) {
