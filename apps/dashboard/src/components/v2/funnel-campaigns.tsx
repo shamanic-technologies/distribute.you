@@ -15,7 +15,7 @@ import {
   listFunnelCampaignRows,
   listSalesFunnelCampaigns,
   saveSalesFunnelCaps,
-  setSalesFunnelCampaignStatus,
+  updateSalesFunnelCampaign,
 } from "@/lib/api";
 import {
   CAP_PERIOD_LABEL,
@@ -52,7 +52,10 @@ import {
   roiMissingReason,
   funnelRoiShown,
   unpricedWords,
+  sameAudienceSet,
+  statedAudienceIds,
 } from "@/lib/sales-funnel-campaigns";
+import { FunnelAudiencePicker, FunnelAudiencesSection } from "@/components/v2/funnel-audiences";
 import { InfoTooltip } from "@/components/visibility/metric-info";
 import { formatRoi, roiIsGood } from "@/lib/format-roi";
 import { paymentHoldKind } from "@/lib/payment-declined";
@@ -277,11 +280,16 @@ export function FunnelCampaignModal({
   const [volume, setVolume] = useState(initial.volume);
   const [volumePer, setVolumePer] = useState<CapPeriod>(initial.volumePer);
   const [failure, setFailure] = useState<string | null>(null);
+  // The audiences it works (LEAK-1012): null = all of the brand's, a list = only these.
+  const servedAudiences = statedAudienceIds(campaign);
+  const [audiences, setAudiences] = useState<string[] | null>(servedAudiences);
 
   const usd = parseWholeAmount(budget);
   const people = volume.trim() === "" ? null : parseWholeCount(volume);
   const limitsDirty = budget !== initial.budget || budgetPer !== initial.budgetPer || volume !== initial.volume || volumePer !== initial.volumePer;
   const statusDirty = on !== servedOn;
+  const audiencesDirty = !sameAudienceSet(audiences, servedAudiences);
+  const audienceProblem = audiences !== null && audiences.length === 0 ? "Pick at least one audience." : null;
   // A campaign needs a max budget AND/OR a max volume (owner 2026-10-11); neither = nothing to save.
   const budgetProblem =
     budget.trim() !== "" && usd === null
@@ -290,7 +298,7 @@ export function FunnelCampaignModal({
         ? "Set a budget or a volume."
         : null;
   const volumeProblem = volume.trim() !== "" && people === null ? "Type a whole number of people." : null;
-  const submittable = (limitsDirty || statusDirty) && !budgetProblem && !volumeProblem;
+  const submittable = (limitsDirty || statusDirty || audiencesDirty) && !budgetProblem && !volumeProblem && !audienceProblem;
 
   const { mutate, isPending } = useMutation({
     mutationFn: async () => {
@@ -306,12 +314,21 @@ export function FunnelCampaignModal({
           throw new Error(err instanceof ApiError && err.status === 400 ? "These limits are not allowed." : "We could not save your limits. Try again in a moment.");
         }
       }
-      if (statusDirty) {
+      // Status and audiences in ONE write: a campaign turned on with its audiences starts on them.
+      if (statusDirty || audiencesDirty) {
         try {
-          await setSalesFunnelCampaignStatus(campaign.id, on ? "activate" : "stop", campaign.brandId);
+          await updateSalesFunnelCampaign(
+            campaign.id,
+            {
+              ...(statusDirty ? { status: on ? ("activate" as const) : ("stop" as const) } : {}),
+              ...(audiencesDirty ? { audienceIds: audiences } : {}),
+            },
+            campaign.brandId,
+          );
         } catch (err) {
-          console.error("[funnel-campaigns] status change failed", { campaignId: campaign.id, next: on ? "activate" : "stop", err });
-          throw new Error(channelWriteErrorMessage(err, on ? "start" : "pause"));
+          console.error("[funnel-campaigns] campaign change failed", { campaignId: campaign.id, statusDirty, audiencesDirty, next: on ? "activate" : "stop", audiences, err });
+          if (statusDirty) throw new Error(channelWriteErrorMessage(err, on ? "start" : "pause"));
+          throw new Error(err instanceof ApiError && err.status === 400 ? "These audiences are not allowed." : "We could not save your audiences. Try again in a moment.");
         }
       }
     },
@@ -415,6 +432,15 @@ export function FunnelCampaignModal({
               </div>
               {volumeProblem && <p className="mt-1.5 text-[12px] leading-[18px] text-[var(--data-rose)]">{volumeProblem}</p>}
             </div>
+
+            <FunnelAudiencePicker
+              brandId={campaign.brandId}
+              offerId={campaign.offerId}
+              stated={servedAudiences}
+              picked={audiences}
+              onPick={setAudiences}
+              problem={audienceProblem}
+            />
           </div>
 
           <div className="flex items-center gap-2 border-t border-[var(--line-subtle)] px-4 py-3">
@@ -1028,6 +1054,8 @@ export function FunnelCampaignPage({ campaign }: { campaign: SalesFunnelCampaign
           )}
           </div>
         </section>
+
+        <FunnelAudiencesSection campaign={campaign} onChange={() => setEditing(true)} />
 
         <PipeSections brandId={campaign.brandId} units={units} missionByCampaignId={missionByCampaignId} />
 
