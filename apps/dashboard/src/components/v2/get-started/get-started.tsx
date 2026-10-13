@@ -136,7 +136,7 @@ import { EditableAnswer } from "@/components/v2/editable-answer";
 import { OfferIcon } from "@/components/v2/new-org-icons";
 import { CountUp, Typewriter, formatElapsed, stagger, useElapsed } from "./motion";
 import { BrandLogo } from "@/components/brand-logo";
-import { isSubscriptionArm, pickedPlanCents } from "@/lib/subscription-plan";
+import { isSubscriptionArm, offerArm, pickedPlanCents } from "@/lib/subscription-plan";
 import { AccountCardWall } from "./account-card-wall";
 import { OrgLaunch } from "./org-launch";
 import { v2NewBrandHref } from "@/lib/v2/routes";
@@ -191,12 +191,21 @@ export function GetStarted({ org, ipCountry = null }: { org?: OrgWalk; ipCountry
   // The homepage A/B arm (owner 2026-10-10), read after mount: the cookie is not on the
   // server render, and reading it there would mismatch the first frame.
   const [planMonthlyUsd, setPlanMonthlyUsd] = useState<number | null>(null);
+  // The post-paid arm (owner 2026-10-13) is a signup offer: the dashboard walk pays as before.
+  const [postpaidArm, setPostpaidArm] = useState(false);
   useEffect(() => {
     if (isSubscriptionArm(document.cookie)) setPlanMonthlyUsd(Math.round(pickedPlanCents(document.cookie) / 100));
+    if (!org && offerArm(document.cookie) === "postpaid") setPostpaidArm(true);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
-  const wall = wallCopy(planMonthlyUsd);
-  // The monthly limit's first charge to let through (owner 2026-10-12): the plan, or the smallest top-up.
-  const limitArm: LimitArm = planMonthlyUsd !== null ? { kind: "plan", monthlyUsd: planMonthlyUsd } : { kind: "prepaid", topupUsd: TOPUP_CHOICES_USD[0] };
+  const wall = wallCopy(planMonthlyUsd, postpaidArm);
+  // The monthly limit's first charge to let through (owner 2026-10-12): the plan, post-paid's first step, or the smallest top-up.
+  const limitArm: LimitArm =
+    planMonthlyUsd !== null
+      ? { kind: "plan", monthlyUsd: planMonthlyUsd }
+      : postpaidArm
+        ? { kind: "postpaid" }
+        : { kind: "prepaid", topupUsd: TOPUP_CHOICES_USD[0] };
 
   const [website, setWebsite] = useState(params.get("url") ?? "");
   const [inputError, setInputError] = useState<string | null>(null);

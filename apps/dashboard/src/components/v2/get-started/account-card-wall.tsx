@@ -24,7 +24,11 @@
  *                 (Revolut widget or Stripe's embedded form); we match the first $100.
  *                 A visitor the homepage A/B test put in the `subscription` arm (owner
  *                 2026-10-10) saves a card instead and starts billing's $99/month plan
- *                 with its 3-day trial: no amount, no match, no reload;
+ *                 with its 3-day trial: no amount, no match, no reload. The `postpaid`
+ *                 arm (owner 2026-10-13) saves a card, is charged nothing, and the org is
+ *                 made post-paid. On every arm, a saved card billing says automatic
+ *                 charges may not reach (prepaid, India) opens a warning: another card,
+ *                 or continue anyway (post-paid: switch to prepaid, no way past);
  *   4. launch   — the campaign set at the "Your campaign" step starts, its caps first
  *                 (`launch.ts`), and the page lands on it.
  */
@@ -40,17 +44,22 @@ import { EmbeddedCheckout, EmbeddedCheckoutProvider } from "@stripe/react-stripe
 import posthog from "posthog-js";
 import {
   ApiError,
+  createEmbeddedCardSetup,
   createSubscriptionCheckout,
   getBillingAccount,
+  getSavedCardFacts,
   getSubscription,
   sendAuthNotification,
   savePhoneNumber,
   setMonthlyChargeLimit,
+  setPaymentMode,
   startSubscription,
   type BillingAccount,
   type CardSetup,
 } from "@/lib/api";
-import { PREPAID_CARD_TRIAL_REFUSAL, isSubscriptionArm, lpVariant, pickedPlanCents, subscriptionCheckoutRefusal } from "@/lib/subscription-plan";
+import { PREPAID_CARD_TRIAL_REFUSAL, lpVariant, offerArm, pickedPlanCents, subscriptionCheckoutRefusal, type OfferArm } from "@/lib/subscription-plan";
+import { cardRiskCopy, postpaidRefusalFacts, type CardFacts, type CardRiskCopy } from "@/lib/v2/card-risk";
+import { CardRiskNotice } from "./card-risk-notice";
 import { getStripe } from "@/lib/stripe";
 import {
   authFailureProps,
@@ -157,13 +166,22 @@ export function AccountCardWall({
   const { isLoaded: signInLoaded, signIn, setActive: setSignInActive } = useSignIn();
   const { createOrganization, setActive: setActiveOrg } = useOrganizationList();
 
-  // The homepage A/B arm (owner 2026-10-10): `lp_variant=subscription` is sold the
-  // $99/month plan with its 3-day trial, everyone else the prepaid credit.
+  // The homepage A/B arm (owner 2026-10-13, three arms): `lp_variant=subscription` is sold
+  // the $99/month plan with its 3-day trial, `postpaid` saves a card and pays after the
+  // spend, everyone else the prepaid credit.
   const [arm] = useState(() => {
     const cookie = document.cookie;
-    return { plan: isSubscriptionArm(cookie), variant: lpVariant(cookie), monthlyCents: pickedPlanCents(cookie) };
+    return { offer: offerArm(cookie), variant: lpVariant(cookie), monthlyCents: pickedPlanCents(cookie) };
   });
-  const copy = wallCopy(arm.plan ? Math.round(arm.monthlyCents / 100) : null);
+  // The offer sold on this wall: the arm's, until a refused card moves post-paid to prepaid.
+  const [sold, setSoldState] = useState<OfferArm>(arm.offer);
+  const soldRef = useRef<OfferArm>(arm.offer);
+  function setSold(next: OfferArm) {
+    soldRef.current = next;
+    setSoldState(next);
+  }
+  const isPlan = sold === "subscription";
+  const copy = wallCopy(isPlan ? Math.round(arm.monthlyCents / 100) : null, sold === "postpaid");
   // The plan's statements before the trial starts (owner 2026-10-11); prepaid ticks
   // its own inside `PrepaidTopup`, where the amount they name is picked.
   const [planTicked, setPlanTicked] = useState([false, false]);
@@ -174,7 +192,17 @@ export function AccountCardWall({
   const planConsent = spendConsentLines({
     arm: { kind: "plan", monthlyUsd: Math.round(arm.monthlyCents / 100), ...("usd" in planLimit ? { limitUsd: planLimit.usd } : {}) },
   });
-  const planName = arm.plan ? "subscription" : "prepaid";
+  // Post-paid's boxes (owner 2026-10-13): nothing today, charged on spend steps, the terms.
+  const postpaidConsent = spendConsentLines({ arm: { kind: "postpaid" } });
+  const [postpaidTicked, setPostpaidTicked] = useState([false, false]);
+  // The card post-paid runs on is saved and checked; post-paid itself is armed.
+  const postpaidCardSaved = useRef(false);
+  const postpaidArmed = useRef(false);
+  // A saved card automatic charges may not reach (billing's verdict): the warning is up.
+  const [cardRisk, setCardRisk] = useState<CardFacts | null>(null);
+  const knownCard = useRef<CardFacts | null>(null);
+  // What a card saved in Stripe's embedded form goes on to (the plain card save).
+  const cardSaved = useRef<(() => void) | null>(null);
 
   const [stage, setStage] = useState<Stage>("account");
   const [email, setEmail] = useState("");
@@ -598,6 +626,7 @@ export function AccountCardWall({
     sendAuthNotification("first_payment").catch((e) => console.error("[get-started] first_payment email failed:", e));
     pingOwner({ event: "paid", domain: website ? pingHostOf(pingWebsiteUrl(website)) : null, amountUsd: (Number(settled.account.credited_cents) - p.creditedBefore) / 100 });
     posthog.capture("get_started_card_saved", { plan: "prepaid", lp_variant: arm.variant });
+    if (!(await cardIsFine(null))) return;
     void launch();
   }
 
@@ -666,10 +695,11 @@ export function AccountCardWall({
 
   // Open the plan. The saved card reaches billing through the provider's webhook a
   // moment after the form reports it, so `card_required` is retried, not shown.
-  async function afterTrialCardSaved() {
+  async function afterTrialCardSaved(checked = false) {
     setCardSecret(null);
     setBusy(true);
     setError(null);
+    if (!checked && !(await cardIsFine(null))) return;
     try {
       let started = false;
       for (let i = 0; i < 12 && !started; i++) {
@@ -706,6 +736,179 @@ export function AccountCardWall({
     void launch();
   }
 
+  // ── Post-paid (the `postpaid` arm, owner 2026-10-13) ──
+  // A card saved (nothing charged), checked, then the org is made post-paid and launches.
+  function startPostpaid() {
+    if (busy || !allTicked(postpaidTicked) || !checkReady()) return;
+    if (postpaidArmed.current) {
+      void launch();
+      return;
+    }
+    if (postpaidCardSaved.current) {
+      void armPostpaid();
+      return;
+    }
+    const limit = monthlyLimitToSave(monthlyLimit, { kind: "postpaid" });
+    if ("problem" in limit) {
+      setError(limit.problem);
+      return;
+    }
+    posthog.capture("get_started_postpaid_opened", { lp_variant: arm.variant });
+    void (async () => {
+      setBusy(true);
+      setError(null);
+      try {
+        await saveMonthlyLimit(limit.usd);
+      } catch (e) {
+        setError(e instanceof Error ? e.message : "We could not save your monthly limit. Try again.");
+        setBusy(false);
+        return;
+      }
+      await openCardSave(() => void afterPostpaidCardSaved());
+    })();
+  }
+
+  async function afterPostpaidCardSaved() {
+    setBusy(true);
+    setError(null);
+    if (!(await cardIsFine(null))) return;
+    postpaidCardSaved.current = true;
+    await armPostpaid();
+  }
+
+  // billing refuses post-paid on a card it cannot charge later (409 `postpaid_card_not_allowed`):
+  // the same choice as the card check, another card or prepaid.
+  async function armPostpaid() {
+    setBusy(true);
+    setError(null);
+    try {
+      await setPaymentMode("postpaid");
+    } catch (e) {
+      const refused = e instanceof ApiError && e.status === 409 ? postpaidRefusalFacts(e.body, knownCard.current) : null;
+      if (refused) {
+        posthog.capture("get_started_card_risk_shown", { arm: "postpaid", reason: refused.refusedReason, source: "payment_mode", lp_variant: arm.variant });
+        setCardRisk(refused);
+      } else {
+        console.error("[get-started] post-paid did not start:", e);
+        setError("Your card is saved, but post-paid could not start. Press the button again.");
+      }
+      setBusy(false);
+      return;
+    }
+    postpaidArmed.current = true;
+    posthog.capture("get_started_card_saved", { plan: "postpaid", lp_variant: arm.variant });
+    void launch();
+  }
+
+  // ── The saved card's facts (owner 2026-10-13) ──
+  // A card in-page that charges nothing (Revolut widget by default, Stripe's embedded form
+  // when the org's card lives there); `onSaved` runs once the form reports it.
+  async function openCardSave(onSaved: () => void) {
+    setBusy(true);
+    setError(null);
+    try {
+      await declareRevolut();
+      const setup = await createEmbeddedCardSetup();
+      if (setup.mode === "embedded_checkout") {
+        cardSaved.current = onSaved;
+        setCardSecret(setup.client_secret);
+        setBusy(false);
+        return;
+      }
+      if (setup.mode === "embedded_widget") {
+        const { openCardWidget } = await import("@/lib/card-setup-widget");
+        await openCardWidget({
+          token: setup.token,
+          environment: setup.environment,
+          savePaymentMethodFor: setup.save_payment_method_for,
+          name: setup.customer_name ?? user?.fullName ?? undefined,
+          email: setup.customer_email ?? user?.primaryEmailAddress?.emailAddress ?? undefined,
+          onSuccess: () => {
+            setBusy(true);
+            onSaved();
+          },
+          onCancel: () => setBusy(false),
+          onError: (message) => {
+            setError(message);
+            setBusy(false);
+          },
+        });
+        return;
+      }
+      console.error("[get-started] card setup answered a hosted page to an in-page request", setup);
+      throw new Error("[get-started] card setup: no in-page card form");
+    } catch (e) {
+      console.error("[get-started] card setup failed to open:", e);
+      setError("We could not open the card form. Try again.");
+      setBusy(false);
+    }
+  }
+
+  // billing's verdict on the card just saved. The card reaches billing through the
+  // provider's webhook a moment after the form reports it, so a missing (or, when one is
+  // replacing `previousId`, unchanged) card is read again.
+  async function readCardFacts(previousId: string | null): Promise<CardFacts> {
+    for (let i = 0; i < 12; i++) {
+      const facts = await getSavedCardFacts();
+      if (facts.saved && facts.methodId !== previousId) return facts;
+      await new Promise((r) => setTimeout(r, 1000));
+    }
+    throw new Error("[get-started] the saved card did not reach billing in time");
+  }
+
+  // True = go on. False = the warning is up. A failed read is logged and lets the walk go
+  // on: the check only warns, and billing's own gates (post-paid refusal, trial refusal)
+  // still stop a card they cannot charge.
+  async function cardIsFine(previousId: string | null): Promise<boolean> {
+    let facts: CardFacts;
+    try {
+      facts = await readCardFacts(previousId);
+    } catch (e) {
+      console.error("[get-started] card check failed, going on:", e);
+      posthog.capture("get_started_card_check_failed", { arm: soldRef.current, lp_variant: arm.variant });
+      return true;
+    }
+    knownCard.current = facts;
+    if (!cardRiskCopy(soldRef.current, facts)) return true;
+    posthog.capture("get_started_card_risk_shown", { arm: soldRef.current, reason: facts.refusedReason, country: facts.country, lp_variant: arm.variant });
+    setCardRisk(facts);
+    setBusy(false);
+    return false;
+  }
+
+  // "Use another card": a new card saved, checked again, then the arm goes on.
+  function pickAnotherCard() {
+    const previousId = cardRisk?.methodId ?? null;
+    posthog.capture("get_started_card_risk_another_card", { arm: soldRef.current, lp_variant: arm.variant });
+    setCardRisk(null);
+    void openCardSave(() =>
+      void (async () => {
+        if (!(await cardIsFine(previousId))) return;
+        goOnAfterCard();
+      })(),
+    );
+  }
+
+  // "Continue anyway" (plan, prepaid) or "Switch to prepaid" (post-paid).
+  function cardRiskSecondary(action: CardRiskCopy["secondaryAction"]) {
+    posthog.capture("get_started_card_risk_secondary", { arm: soldRef.current, action, lp_variant: arm.variant });
+    setCardRisk(null);
+    if (action === "prepaid") {
+      // The prepaid credit step takes over: the same card pays it, or another one.
+      setSold("prepaid");
+      return;
+    }
+    goOnAfterCard();
+  }
+
+  function goOnAfterCard() {
+    if (soldRef.current === "postpaid") {
+      postpaidCardSaved.current = true;
+      void armPostpaid();
+    } else if (soldRef.current === "subscription") void afterTrialCardSaved(true);
+    else void launch();
+  }
+
   // ── Launch ──
   async function launch() {
     if (!orgId) return;
@@ -723,7 +926,7 @@ export function AccountCardWall({
       const res = await fetch("/api/onboarding/complete", { method: "POST", headers: { Authorization: `Bearer ${token}` } });
       if (!res.ok) throw new Error("We could not finish setting up your account. Try again.");
       await session?.getToken({ skipCache: true });
-      posthog.capture("get_started_launched", { campaigns: plan.reactive ? 2 : 1, plan: planName, lp_variant: arm.variant });
+      posthog.capture("get_started_launched", { campaigns: plan.reactive ? 2 : 1, plan: soldRef.current, lp_variant: arm.variant });
       try {
         localStorage.removeItem(GET_STARTED_SNAPSHOT_KEY);
       } catch {
@@ -747,7 +950,7 @@ export function AccountCardWall({
     stage !== "launching" ? (
       <div className="mb-4 grid gap-2">
         <TrialTimer label={copy.timerLabel} extendedLabel={copy.timerExtendedLabel} />
-        <TrialSpots trial={arm.plan} />
+        <TrialSpots trial={isPlan} />
       </div>
     ) : null;
 
@@ -827,7 +1030,7 @@ export function AccountCardWall({
           <div className="p-5">
           {/* The scarcity and the steps first, then the buttons under them (owner 2026-10-01). */}
           {urgency}
-          <Steps stage={stage} cardLabel={arm.plan ? "Card" : "Credit"} />
+          <Steps stage={stage} cardLabel={sold === "prepaid" ? "Credit" : "Card"} />
           <div key={stage === "code" ? "account" : stage} className="gs-in">
             {(stage === "account" || stage === "code") && !isSignedIn && (
               <>
@@ -971,10 +1174,19 @@ export function AccountCardWall({
               </form>
             )}
 
-            {stage === "card" && !cardSecret && (
+            {stage === "card" && !cardSecret && cardRisk && (
+              <CardRiskNotice
+                copy={cardRiskCopy(sold, cardRisk)}
+                busy={busy}
+                onAnotherCard={pickAnotherCard}
+                onSecondary={cardRiskSecondary}
+              />
+            )}
+
+            {stage === "card" && !cardSecret && !cardRisk && (
               <div className="mt-4 grid gap-3">
                 {!consentGiven.current && <Consent brandName={brandName} checked={consent} onChange={setConsent} />}
-                {arm.plan ? (
+                {isPlan ? (
                   <>
                     <div>
                       <p className="k-fg text-[13px] font-medium">{copy.cardTitle}</p>
@@ -983,6 +1195,17 @@ export function AccountCardWall({
                     <SpendConsent lines={planConsent} ticked={planTicked} onChange={setPlanTicked} disabled={busy} />
                     <button type="button" className="k-cta k-btn-accent gs-glow w-full justify-center" onClick={() => startTrial()} disabled={busy || !allTicked(planTicked)}>
                       {busy ? "Opening the card form..." : copy.cardCta}
+                    </button>
+                  </>
+                ) : sold === "postpaid" ? (
+                  <>
+                    <div>
+                      <p className="k-fg text-[13px] font-medium">{copy.cardTitle}</p>
+                      <p className="k-fg2 text-[13px] leading-5">{copy.cardNote}</p>
+                    </div>
+                    <SpendConsent lines={postpaidConsent} ticked={postpaidTicked} onChange={setPostpaidTicked} disabled={busy} />
+                    <button type="button" className="k-cta k-btn-accent gs-glow w-full justify-center" onClick={() => startPostpaid()} disabled={busy || !allTicked(postpaidTicked)}>
+                      {busy ? "Saving your card..." : copy.cardCta}
                     </button>
                   </>
                 ) : paid ? (
@@ -1003,7 +1226,15 @@ export function AccountCardWall({
                   options={{
                     clientSecret: cardSecret,
                     onComplete: () => {
-                      if (arm.plan) {
+                      const saved = cardSaved.current;
+                      if (saved) {
+                        cardSaved.current = null;
+                        setCardSecret(null);
+                        setBusy(true);
+                        saved();
+                        return;
+                      }
+                      if (soldRef.current === "subscription") {
                         void afterTrialCardSaved();
                         return;
                       }

@@ -50,19 +50,16 @@ export const VARIANT_COOKIE = "lp_variant";
 const COOKIE_MAX_AGE_S = 90 * 24 * 60 * 60;
 
 /**
- * Share of first visits drawn into each variant. Owner-set 2026-10-13: `control` (the
- * homepage, sold as prepaid credit), `subscription` (the $99/month plan) and `postpaid`
- * (the homepage, sold as charged after the spend). A variant at weight 0 has left the
- * test: a visitor whose cookie names it is drawn again rather than kept on a page nobody
- * else is being shown, so the live arms stay comparable.
- *
- * `postpaid` is at 0 until the dashboard's post-paid onboarding is live (it needs
- * billing-service's post-paid signup); `?variant=postpaid` already forces it.
+ * Share of first visits drawn into each variant. Owner-set 2026-10-13, a third each:
+ * `control` (the homepage, sold as prepaid credit), `subscription` (the $99/month plan)
+ * and `postpaid` (the homepage, sold as charged after the spend). A variant at weight 0
+ * has left the test: a visitor whose cookie names it is drawn again rather than kept on a
+ * page nobody else is being shown, so the live arms stay comparable.
  */
 export const VARIANT_WEIGHTS: Record<LandingVariant, number> = {
-  control: 0.5,
-  subscription: 0.5,
-  postpaid: 0,
+  control: 1 / 3,
+  subscription: 1 / 3,
+  postpaid: 1 / 3,
   instinct: 0,
   assistant: 0,
   concierge: 0,
