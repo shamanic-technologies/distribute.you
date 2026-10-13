@@ -207,6 +207,20 @@ export function V2ConversationsView({ brandId }: { brandId: string }) {
   // The keyboard (owner 2026-10-10): Up/Down open the previous/next person, Right/Left
   // move between the list and the thread, and inside the thread Up/Down scroll it.
   const [pane, setPane] = useState<UniboxPane>("list");
+  // A narrow panel (a phone, or the Copilot open beside it) shows the list OR the thread,
+  // never both stacked: a tap opened a thread below the fold (owner 2026-10-13).
+  const [narrowView, setNarrowView] = useState<UniboxPane>("list");
+  const threadCard = useRef<HTMLElement | null>(null);
+  // Hidden, the list loses its scroll: back from a thread, it reopens where it was.
+  const listScrollTop = useRef(0);
+  useEffect(() => {
+    if (narrowView === "list") {
+      if (scrollBox.current) scrollBox.current.scrollTop = listScrollTop.current;
+      return;
+    }
+    const el = threadCard.current;
+    if (el && el.getBoundingClientRect().top < 0) el.scrollIntoView({ block: "start" });
+  }, [narrowView]);
   const threadScroll = useRef<HTMLDivElement | null>(null);
   const openIndex = people && openKey ? people.findIndex((p) => personRef(p) === openKey) : -1;
   // The neighbours load too, so the next press opens from memory.
@@ -240,6 +254,7 @@ export function V2ConversationsView({ brandId }: { brandId: string }) {
         searchRef.current?.focus();
       } else if (action.type === "pane") {
         setPane(action.pane);
+        setNarrowView(action.pane);
       } else if (action.type === "scroll") {
         threadScroll.current?.scrollBy({ top: action.direction * THREAD_SCROLL_STEP });
       } else {
@@ -273,9 +288,9 @@ export function V2ConversationsView({ brandId }: { brandId: string }) {
   const familyLabel = LEAD_FAMILIES.find((f) => f.key === family)?.label.toLowerCase() ?? "people";
 
   return (
-    <div className="space-y-4 lg:flex lg:min-h-0 lg:flex-1 lg:flex-col">
+    <div className="@container space-y-4 lg:flex lg:min-h-0 lg:flex-1 lg:flex-col">
       {/* The search runs the whole width, above both cards (owner 2026-10-08). */}
-      <div className="shrink-0 [&>div]:p-0 md:[&>div]:p-0 [&_label]:w-auto [&_label]:min-w-[240px] [&_label]:max-w-none [&_label]:flex-1">
+      <div className="shrink-0 [&>div]:p-0 md:[&>div]:p-0 [&>div>div:last-child]:min-w-0 [&>div>div:last-child]:max-w-full [&_label]:w-auto [&_label]:min-w-[240px] [&_label]:max-w-none [&_label]:flex-1">
         <RecordsToolbar
           search={search}
           onSearch={setSearch}
@@ -284,8 +299,10 @@ export function V2ConversationsView({ brandId }: { brandId: string }) {
           right={<FamilyButtons value={family} families={families} onPick={pickFamily} />}
         />
       </div>
-      <div className="grid gap-4 lg:min-h-0 lg:flex-1 lg:grid-cols-[380px_minmax(0,1fr)] lg:grid-rows-[minmax(0,1fr)]">
-        <section className="k-card flex max-h-[calc(100vh-220px)] min-h-[420px] flex-col overflow-hidden lg:max-h-none">
+      <div className="grid gap-4 lg:min-h-0 lg:flex-1 lg:grid-rows-[minmax(0,1fr)] @3xl:grid-cols-[380px_minmax(0,1fr)]">
+        <section
+          className={`k-card max-h-[calc(100dvh-220px)] min-h-[420px] flex-col overflow-hidden lg:max-h-none lg:min-h-0 @3xl:flex ${narrowView === "list" ? "flex" : "hidden"}`}
+        >
           <header className="k-line-subtle flex h-10 shrink-0 items-center justify-between border-b px-4">
             <span className="k-label">People</span>
             <span className="k-fg3 text-[12px] tabular-nums">{list && settled ? formatCount(list.total) : "—"}</span>
@@ -302,6 +319,8 @@ export function V2ConversationsView({ brandId }: { brandId: string }) {
                     cursor={i === cursor}
                     onOpen={() => {
                       setPane("list");
+                      listScrollTop.current = scrollBox.current?.scrollTop ?? 0;
+                      setNarrowView("thread");
                       open(p);
                     }}
                     onHover={() => {
@@ -336,10 +355,24 @@ export function V2ConversationsView({ brandId }: { brandId: string }) {
         {/* The thread pane takes Up/Down once the reader moves into it (Right, or a click).
             Its frame is an outline: an inset shadow paints UNDER the scrolled messages. */}
         <section
+          ref={threadCard}
           onMouseDown={() => setPane("thread")}
           style={pane === "thread" ? { outline: "1px solid var(--accent)", outlineOffset: "-1px" } : undefined}
-          className="k-card flex max-h-[calc(100vh-220px)] min-h-[420px] flex-col overflow-hidden lg:max-h-none"
+          className={`k-card max-h-[calc(100dvh-160px)] min-h-[420px] scroll-mt-16 flex-col overflow-hidden lg:max-h-none lg:min-h-0 @3xl:flex ${narrowView === "thread" ? "flex" : "hidden"}`}
         >
+          <button
+            type="button"
+            onClick={() => {
+              setPane("list");
+              setNarrowView("list");
+            }}
+            className="k-btn-ghost k-line-subtle h-10 shrink-0 justify-start gap-1.5 rounded-none border-b px-4 @3xl:hidden"
+          >
+            <svg width="12" height="12" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+              <path d="M10 3 5 8l5 5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
+            People
+          </button>
           {openKey ? (
             <Thread
               brandId={brandId}
@@ -473,9 +506,9 @@ function Thread({
   return (
     <>
       <header className="k-line-subtle shrink-0 border-b px-4 py-3">
-        <div className="flex items-center gap-3">
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
           <MarkLines
-            className="flex-1"
+            className="min-w-0 flex-1 basis-[220px]"
             gap="gap-3"
             mark={(px) => <PersonMark name={name} emails={person.emails} size={px} />}
             after={<PossibleLeadRulings brandId={brandId} person={person} />}
@@ -540,10 +573,10 @@ function threadRows(items: PersonTimelineItem[], facts: ConversationItem[]): Thr
 function FactRow({ fact }: { fact: ConversationItem }) {
   const meta = [conversationSourceWord(fact.source), fact.occurredAt ? friendlyDateTime(fact.occurredAt) : "No date"].join(" · ");
   return (
-    <div className="k-fg2 flex items-center gap-2 text-[12px]">
+    <div className="k-fg2 flex flex-wrap items-center gap-x-2 gap-y-1 text-[12px]">
       <TagChip tag={conversationItemTag(fact.label)} />
       <span className="k-fg3">{meta}</span>
-      {fact.attributable === false ? <span className="k-fg3">· Not ours</span> : null}
+      {fact.attributable === false ? <span className="k-fg3 whitespace-nowrap">· Not ours</span> : null}
     </div>
   );
 }
@@ -555,7 +588,7 @@ function ThreadItem({ brandId, item, tag }: { brandId: string; item: PersonTimel
 
   if (item.kind === "event") {
     return (
-      <div className="k-fg2 flex items-center gap-2 text-[12px]">
+      <div className="k-fg2 flex flex-wrap items-center gap-x-2 gap-y-1 text-[12px]">
         <TagChip tag={tag ?? timelineTag(item)} />
         <SourceLogo mark={mark} size={14} />
         <span className="k-fg3">{meta}</span>
@@ -583,7 +616,7 @@ function FamilyButtons({
 }) {
   const counts = families && families.status !== "failed" ? families.counts : null;
   return (
-    <div role="group" aria-label="Filter by lead family" className="flex flex-wrap items-center gap-1.5">
+    <div role="group" aria-label="Filter by lead family" className="k-scroll flex max-w-full items-center gap-1.5 overflow-x-auto max-sm:flex-nowrap sm:flex-wrap [&>button]:shrink-0">
       {LEAD_FAMILIES.map((f) => {
         const on = value === f.key;
         const color = TONE_COLOR[f.tone];
@@ -641,18 +674,19 @@ function Message({
   const callId = outbound ? itemCallId(item) : null;
   const [callOpen, setCallOpen] = useState(false);
   return (
-    <article className={`max-w-[85%] rounded-lg px-3 py-2 ${outbound ? "k-inset ml-auto" : "k-panel"}`}>
-      <p className="k-fg3 flex min-w-0 items-center gap-2 text-[12px]">
+    <article className={`max-w-[92%] rounded-lg px-3 py-2 sm:max-w-[85%] ${outbound ? "k-inset ml-auto" : "k-panel"}`}>
+      {/* On a narrow bubble the line WRAPS: squeezed, the sender's name and address shrank to nothing. */}
+      <p className="k-fg3 flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1 text-[12px]">
         {outbound ? (
           <SourceLogo mark={mark} size={16} />
         ) : (
           <PersonMark name={sender.name ?? sender.email ?? "Them"} emails={sender.email ? [sender.email] : []} size={16} />
         )}
-        <span className="truncate">{sender.name ?? sender.email ?? (outbound ? "You" : "Them")}</span>
+        <span className="min-w-0 max-w-full truncate">{sender.name ?? sender.email ?? (outbound ? "You" : "Them")}</span>
         {/* The address it was written FROM, on every message: a person can write from
             several mailboxes (work, personal), and a name alone hides which one (owner 2026-10-09). */}
-        {sender.name && sender.email && <span className="k-mono min-w-0 truncate text-[11.5px]">{sender.email}</span>}
-        <span className="flex shrink-0 items-center gap-1">
+        {sender.name && sender.email && <span className="k-mono min-w-0 max-w-full truncate text-[11.5px]">{sender.email}</span>}
+        <span className="flex min-w-0 items-center gap-1">
           ·{!outbound && <SourceLogo mark={mark} size={12} />}
           {meta}
         </span>
@@ -767,9 +801,11 @@ function PossibleLeadRuling({ brandId, person, lead }: { brandId: string; person
   };
   return (
     <div className="k-fg2 flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1 text-[12px] leading-[18px]">
-      <span aria-hidden className="h-1.5 w-1.5 shrink-0 rounded-full bg-[var(--data-amber)]" />
-      <span className="min-w-0 truncate" title={name}>
-        {ruled ? possibleLeadRuledLine(name, ruled) : `Maybe the same as ${name}, to confirm`}
+      <span className="flex min-w-0 max-w-full items-center gap-1.5">
+        <span aria-hidden className="h-1.5 w-1.5 shrink-0 rounded-full bg-[var(--data-amber)]" />
+        <span className="min-w-0 truncate" title={name}>
+          {ruled ? possibleLeadRuledLine(name, ruled) : `Maybe the same as ${name}, to confirm`}
+        </span>
       </span>
       {leadId && !ruled ? (
         <span className="flex shrink-0 gap-1">

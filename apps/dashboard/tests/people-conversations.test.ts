@@ -163,7 +163,19 @@ describe("wiring", () => {
     expect(read("components/v2/unibox-page.tsx")).toContain("lg:flex lg:h-full lg:flex-col");
     const view = read("components/v2/integrations-conversations.tsx");
     expect(view).toContain("lg:grid-rows-[minmax(0,1fr)]");
-    expect(view.match(/min-h-\[420px\] flex-col overflow-hidden lg:max-h-none/g)?.length).toBe(2);
+    expect(view.match(/min-h-\[420px\][^"`]* flex-col overflow-hidden lg:max-h-none lg:min-h-0/g)?.length).toBe(2);
+  });
+  it("on a narrow panel shows the list OR the thread, a tap opens the thread (owner 2026-10-13)", () => {
+    const view = read("components/v2/integrations-conversations.tsx");
+    // The split follows the PANEL width (a phone, or the Copilot open beside it), not the viewport.
+    expect(view).toContain("@container space-y-4");
+    expect(view).toContain("@3xl:grid-cols-[380px_minmax(0,1fr)]");
+    expect(view.match(/@3xl:flex \$\{narrowView === "(list|thread)" \? "flex" : "hidden"\}/g)?.length).toBe(2);
+    const row = view.slice(view.indexOf("onOpen={() => {"), view.indexOf("onHover={() => {"));
+    expect(row).toContain('setNarrowView("thread")');
+    expect(view).toContain('setNarrowView("list")');
+    // A message header wraps on a narrow bubble: squeezed, the sender shrank to 0px.
+    expect(view).toContain('<p className="k-fg3 flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1 text-[12px]">');
   });
   it("is the Unibox under Records, GA since 2026-10-10 (unibox-ga.test.ts)", () => {
     const page = read("app/(authed)/v2/orgs/[orgId]/brands/[brandId]/unibox/page.tsx");
