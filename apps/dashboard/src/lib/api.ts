@@ -43,6 +43,7 @@ import {
 } from "./people-conversations";
 import { ApiCallDetailSchema, type ApiCallDetail } from "./api-calls";
 import { z } from "zod";
+import type { CardFacts } from "./v2/card-risk";
 import { BrandLinkedinPageSchema, type BrandLinkedinPage } from "./v2/brand-linkedin-page";
 import { LinkedinFeedResponseSchema, toLinkedinFeedPage, type LinkedinFeedPage } from "./v2/linkedin-post-view";
 import {
@@ -9963,6 +9964,37 @@ export async function removePaymentMethod(
     token,
     method: "DELETE",
   });
+}
+
+/**
+ * The saved card and billing's verdict on it (billing-service `GET /v1/accounts/saved_payment_method`,
+ * passed through by the gateway): may automatic charges reach it (`postpaid_allowed`, false for a
+ * prepaid card or one issued in India), and why not. Read at card entry on every signup arm
+ * (owner 2026-10-13, `lib/v2/card-risk.ts`). A failed read throws: the wall says so and retries.
+ */
+const SavedPaymentMethodFactsSchema = z.object({
+  saved: z.boolean(),
+  method: z.object({ id: z.string() }).passthrough().nullable(),
+  card_country: z.string().nullable(),
+  postpaid_allowed: z.boolean(),
+  postpaid_refused_reason: z.enum(["prepaid_card", "card_issuing_country_unsupported"]).nullable(),
+});
+
+export async function getSavedCardFacts(token?: string): Promise<CardFacts> {
+  const raw = await apiCall<unknown>("/billing/accounts/saved_payment_method", { token });
+  const parsed = SavedPaymentMethodFactsSchema.safeParse(raw);
+  if (!parsed.success) {
+    console.error("[billing] saved_payment_method: unexpected shape", parsed.error.issues, raw);
+    throw new Error("[billing] saved_payment_method: unexpected shape");
+  }
+  const d = parsed.data;
+  return {
+    saved: d.saved,
+    methodId: d.method?.id ?? null,
+    postpaidAllowed: d.postpaid_allowed,
+    refusedReason: d.postpaid_refused_reason,
+    country: d.card_country,
+  };
 }
 
 // ── Credit grants ("gifts received") ──

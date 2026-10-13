@@ -573,7 +573,7 @@ export const PLAN_TRIAL_CREDIT_USD = 99;
  * for a visitor the homepage A/B test put in the $99/month arm (owner 2026-10-10): the
  * monthly amount they picked on the landing (`lp_plan`), $99 when none.
  */
-export function wallCopy(planMonthlyUsd: number | null = null): WallCopy {
+export function wallCopy(planMonthlyUsd: number | null = null, postpaid = false): WallCopy {
   if (planMonthlyUsd !== null) {
     const plan = `$${planMonthlyUsd.toLocaleString("en-US")}`;
     return {
@@ -594,6 +594,25 @@ export function wallCopy(planMonthlyUsd: number | null = null): WallCopy {
     };
   }
   const m = MATCH_USD;
+  if (postpaid) {
+    // Post-paid (owner 2026-10-13 A/B arm): a card saved, nothing charged today, the
+    // first $100 spent is matched. Never "free trial".
+    return {
+      creditUsd: m,
+      creditLine: "matched on your first spend",
+      bannerTitle: "matched on your first spend",
+      bannerCta: `Get my $${m} match`,
+      timerLabel: `Time left to claim your $${m} match`,
+      timerExtendedLabel: `We're giving you more time to claim your $${m}`,
+      formTitle: `Claim your $${m} match`,
+      formSub: "One minute. You save a card at the end.",
+      emailCta: "Continue with Email",
+      codeCta: "Continue",
+      cardTitle: "Save your card",
+      cardNote: `You pay after your campaigns spend. We match your first $${m}.`,
+      cardCta: "Save my card and launch",
+    };
+  }
   return {
     creditUsd: m,
     creditLine: "matched on your first payment",

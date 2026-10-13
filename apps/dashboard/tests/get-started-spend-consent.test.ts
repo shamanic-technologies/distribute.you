@@ -79,7 +79,7 @@ describe("two statements ticked before the card is taken, one per A/B arm (owner
 
   it("the plan's trial button stays off until its boxes are ticked", () => {
     const wall = read("src/components/v2/get-started/account-card-wall.tsx");
-    const card = wall.slice(wall.indexOf('{stage === "card" && !cardSecret && ('), wall.indexOf('{stage === "card" && cardSecret && ('));
+    const card = wall.slice(wall.indexOf('{stage === "card" && !cardSecret && !cardRisk && ('), wall.indexOf('{stage === "card" && cardSecret && ('));
     expect(card).toContain("<SpendConsent lines={planConsent}");
     expect(card).toContain("disabled={busy || !allTicked(planTicked)}");
     expect(wall).toContain('arm: { kind: "plan", monthlyUsd: Math.round(arm.monthlyCents / 100), ...("usd" in planLimit ? { limitUsd: planLimit.usd } : {}) },');
@@ -89,7 +89,7 @@ describe("two statements ticked before the card is taken, one per A/B arm (owner
     const wall = read("src/components/v2/get-started/account-card-wall.tsx");
     expect(wall).toContain("localStorage.getItem(consentKey)");
     expect(wall).toContain('localStorage.setItem(consentKey, "1")');
-    const card = wall.slice(wall.indexOf('{stage === "card" && !cardSecret && ('), wall.indexOf('{stage === "card" && cardSecret && ('));
+    const card = wall.slice(wall.indexOf('{stage === "card" && !cardSecret && !cardRisk && ('), wall.indexOf('{stage === "card" && cardSecret && ('));
     expect(card).toContain("{!consentGiven.current && <Consent");
   });
 
