@@ -606,7 +606,7 @@ describe("monitoring: absorbed costs (owner 2026-10-13)", () => {
     expect(p.customers[0].paying).toBeNull();
     expect(p.customers[0].cashPaidCents).toBeNull();
     expect(p.fleetByMonth[0].averagePerCustomerCents).toBeNull();
-    expect(p.fleet.cardFeesOtherCurrencies[0].currency).toBe("eur");
+    expect(p.fleet.cardFeesOtherCurrencies?.[0]?.currency).toBe("eur");
   });
 
   it("is a Customers card and its own page, read through the staff gateway, never written to disk", () => {
@@ -619,6 +619,26 @@ describe("monitoring: absorbed costs (owner 2026-10-13)", () => {
     expect(read("lib/api.ts")).toContain("STAFF_MONITORING_PATHS.absorbedCosts");
     const persist = read("lib/persist-cache.ts");
     expect(persist.slice(persist.indexOf("export const SENSITIVE_QUERY_ROOTS"), persist.indexOf("export const PERSISTABLE_QUERY_ROOTS"))).toContain('"staffAbsorbedCosts"');
+  });
+
+  it("a customer reads billing's status (current / churned / never paid) and last payment; our own orgs are never customers (owner 2026-10-13)", () => {
+    const c = body.customers[0];
+    const p = AbsorbedCostsSchema.parse({
+      ...body,
+      fleet: { ...body.fleet, cardFeesOtherCurrencies: undefined, unattributedCardFeesOtherCurrencies: undefined, currentCustomers: 0, churnedCustomers: 1 },
+      customers: [
+        { ...c, customerStatus: "churned", lastPaymentAt: "2026-10-01T14:02:47.363Z", daysSinceLastPayment: 12, ownOrg: false, ownOrgReason: null },
+        { ...c, orgId: "own", orgName: "GrowthAgency.dev", ownOrg: true, ownOrgReason: "staff_billing_contact", customerStatus: null },
+      ],
+      ownOrgs: [{ orgId: "own", orgName: "GrowthAgency.dev", reason: "staff_billing_contact" }],
+    });
+    expect(p.customers[0].customerStatus).toBe("churned");
+    expect(p.fleet.cardFeesOtherCurrencies).toBeUndefined();
+    const view = read("components/v2/monitoring-absorbed.tsx");
+    expect(view).toContain("!c.platformOrg && !c.ownOrg");
+    expect(view).toContain("<StatusDot status={c.customerStatus} />");
+    expect(view).toContain("c.lastPaymentAt");
+    expect(view).not.toContain('word: "Paying"');
   });
 
   it("the page draws billing's totals and averages and never sums, averages or buckets them itself", () => {
