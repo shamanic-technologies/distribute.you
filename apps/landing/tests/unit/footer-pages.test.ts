@@ -187,7 +187,7 @@ describe("the copy behind the footer states the current positioning", () => {
     expect(terms).toContain("The referred account\n          receives no referral credit.");
     expect(terms).not.toContain("each side");
     expect(terms).toContain("is an acquisition agency delivered as a service");
-    expect(terms).toContain('const LAST_UPDATED = "October 11, 2026"');
+    expect(terms).toContain('const LAST_UPDATED = "October 13, 2026"');
   });
 
   it("the terms state the billing the product runs: catalogue prices, prepaid credit, no refund but the managed guarantee", () => {
@@ -307,7 +307,7 @@ describe("the orphaned pages are gone, everywhere they were listed", () => {
   });
 });
 
-describe("the terms cover both offers of the A/B test (owner 2026-10-11)", () => {
+describe("the terms cover the three offers of the A/B test (owner 2026-10-11, postpaid 2026-10-13)", () => {
   const terms = read("src/app/terms/page.tsx");
   it("prepaid: the reload is required, with no switch, stopped by removing the card", () => {
     expect(terms).toContain("keeps automatic reload on to use the Service");
@@ -320,8 +320,16 @@ describe("the terms cover both offers of the A/B test (owner 2026-10-11)", () =>
     expect(terms).toContain("we charge $100 that day, and $199 when the");
     expect(terms).toContain("Plans started before October 11, 2026 are not upgraded");
   });
-  it("a budget is not a cap on the total bill", () => {
-    expect(terms).toContain("budgets are not a cap on your total bill");
+  it("post-paid: nothing charged at signup, charged on spend steps or at month end, a card may be refused", () => {
+    expect(terms).toContain("<strong>Post-paid billing.</strong>");
+    expect(terms).toContain("nothing is charged that day");
+    expect(terms).toContain("(currently $50, then $200, then $500), or at the end of the month");
+    expect(terms).toContain("switch to prepaid credit");
+    expect(terms).toContain("automatic reload, post-paid charges, monthly plan payments");
+  });
+  it("the customer pays its campaigns, within their budgets (owner 2026-10-13: like Google Ads)", () => {
+    expect(terms).toContain("You pay what your\n          campaigns spend, at the catalogue prices above, within the budgets");
+    expect(terms).not.toContain("budgets are not a cap on your total bill");
   });
 });
 

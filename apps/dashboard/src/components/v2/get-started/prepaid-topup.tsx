@@ -6,7 +6,7 @@
  * automatic reload is REQUIRED (owner 2026-10-11): when the credit falls under
  * `DEFAULT_RELOAD_THRESHOLD_USD`, the same amount is added again; there is no switch, here
  * or in Billing (a customer who wants to stop removes their card or stops their campaigns).
- * The three statements of `spendConsentLines` are ticked before the button turns on. The
+ * The statements of `spendConsentLines` are ticked before the button turns on. The
  * wall and the dashboard walk's launch both draw it; the charge itself is theirs (`payTopup`).
  */
 
@@ -20,7 +20,7 @@ export interface TopupChoice {
   topupUsd: number;
   /** Always set: the reload is required (owner 2026-10-11). */
   reload: { thresholdUsd: number; amountUsd: number };
-  /** The three statements as ticked, for billing's record. */
+  /** The statements as ticked, for billing's record. */
   consent: PaymentConsentRecord;
 }
 
@@ -118,7 +118,7 @@ export function PrepaidTopup({
 }) {
   const [first, setFirst] = useState<number | typeof OTHER>(TOPUP_CHOICES_USD[0]);
   const [firstOther, setFirstOther] = useState("");
-  const [ticked, setTicked] = useState([false, false, false]);
+  const [ticked, setTicked] = useState([false, false]);
   const [shown, setShown] = useState(false);
 
   const firstParsed = amountOf(first, firstOther);

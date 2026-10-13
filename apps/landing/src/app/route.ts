@@ -40,6 +40,8 @@ export async function GET(request: Request) {
   // banner is dated the last day of the current month (`lib/promo-banner.ts`).
   // `index-v2-subscription.html` is the same page sold as the $99/month plan with a
   // 3-day free trial (owner 2026-10-10 A/B), with no banner: the match is prepaid-only.
+  // `postpaid` (owner 2026-10-13) reads the prepaid homepage too, banner included (its
+  // first $100 is matched as well); only the dashboard's onboarding differs.
   const homepage = () =>
     withPromoUntil(readFileSync(join(process.cwd(), "public/landing", "index-v2.html"), "utf8"), new Date());
   const subscriptionHomepage = () =>

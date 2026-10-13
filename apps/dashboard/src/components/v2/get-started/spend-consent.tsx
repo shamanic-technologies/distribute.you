@@ -1,15 +1,15 @@
 "use client";
 
 /**
- * The three statements ticked before the first payment (owner 2026-10-11): the words come
- * from `spendConsentLines`, the pay button beside them stays off until every box is ticked
- * (`allTicked`). Used by the prepaid credit step and the plan's trial step alike.
+ * The statements ticked before the card is taken (owner 2026-10-11, two since 2026-10-13):
+ * the words come from `spendConsentLines`, the pay button beside them stays off until every
+ * box is ticked (`allTicked`). Used by every arm's card step.
  */
 
-import type { ConsentLine } from "@/lib/v2/spend-consent";
+import { CONSENT_STATEMENTS, type ConsentLine } from "@/lib/v2/spend-consent";
 
 export function allTicked(ticked: readonly boolean[]): boolean {
-  return ticked.length === 3 && ticked.every(Boolean);
+  return ticked.length === CONSENT_STATEMENTS && ticked.every(Boolean);
 }
 
 export function SpendConsent({
