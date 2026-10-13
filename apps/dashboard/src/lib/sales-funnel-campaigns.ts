@@ -353,6 +353,19 @@ export type FunnelCampaignRow = z.infer<typeof FunnelCampaignRowSchema>;
 
 export const FunnelCampaignRowsSchema = z.object({ salesFunnelCampaigns: z.array(FunnelCampaignRowSchema) }).passthrough();
 
+/**
+ * Whether a campaign's served row (path, type, ROI, invested) may be drawn as final.
+ *
+ * The rows list paints from the on-disk cache first. A campaign created since that copy was
+ * saved has NO row in it, and printing "—" for its path, type and money then reads as
+ * "nothing served" while the fresh read is still on its way (2026-10-13 Doc Dinners: 6 of 9
+ * campaigns showed "—" from a 3-row copy saved before they existed). A missing row is only
+ * final once a read made since mount has answered and no other read is in flight.
+ */
+export function funnelRowSettled(hasRow: boolean, rows: { isFetchedAfterMount: boolean; isFetching: boolean }): boolean {
+  return hasRow || (rows.isFetchedAfterMount && !rows.isFetching);
+}
+
 /** Why a row's ROI is missing, as served (never guessed): the field name and the producer's reason. */
 export function roiMissingReason(row: Pick<FunnelCampaignRow, "moneyUnavailableReason" | "costEconomics">): string | null {
   return row.moneyUnavailableReason ?? row.costEconomics?.unmeasuredReason ?? null;

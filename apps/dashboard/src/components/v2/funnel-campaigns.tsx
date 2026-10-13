@@ -51,6 +51,7 @@ import {
   orderPipesByFunnel,
   roiMissingReason,
   funnelRoiShown,
+  funnelRowSettled,
   unpricedWords,
 } from "@/lib/sales-funnel-campaigns";
 import { InfoTooltip } from "@/components/visibility/metric-info";
@@ -543,7 +544,6 @@ export function FunnelCampaignsSection({ orgId, brandId, offerId }: { orgId: str
   const q = useFunnelCampaigns(brandId, offerId);
   const rowsQ = useAuthQuery(["funnelCampaignRows", brandId, offerId], () => listFunnelCampaignRows(brandId, offerId), pollOptions);
   const rowById = useMemo(() => new Map((rowsQ.data ?? []).map((r) => [r.id, r])), [rowsQ.data]);
-  const rowsSettled = rowsQ.data !== undefined || rowsQ.isFetchedAfterMount;
   // Same keys as each row's own caps read (deduped): the order needs every campaign's limits.
   const gate = useOrgQueryGate();
   const capsQs = useQueries({
@@ -604,7 +604,13 @@ export function FunnelCampaignsSection({ orgId, brandId, offerId }: { orgId: str
               </thead>
               <tbody>
                 {campaigns.map((c) => (
-                  <FunnelCampaignRow key={c.id} orgId={orgId} campaign={c} row={rowById.get(c.id) ?? null} rowsSettled={rowsSettled} />
+                  <FunnelCampaignRow
+                    key={c.id}
+                    orgId={orgId}
+                    campaign={c}
+                    row={rowById.get(c.id) ?? null}
+                    rowsSettled={funnelRowSettled(rowById.has(c.id), rowsQ)}
+                  />
                 ))}
               </tbody>
             </table>
@@ -901,7 +907,8 @@ export function FunnelCampaignPage({ campaign }: { campaign: SalesFunnelCampaign
   const { missionByCampaignId } = useMissions(orgId, campaign.brandId, { allOffers: true });
   const rowsQ = useAuthQuery(["funnelCampaignRows", campaign.brandId, campaign.offerId], () => listFunnelCampaignRows(campaign.brandId, campaign.offerId), pollOptions);
   const row = rowsQ.data?.find((r) => r.id === campaign.id) ?? null;
-  const rowsSettled = rowsQ.data !== undefined || rowsQ.isFetchedAfterMount;
+  // A campaign newer than the cached rows waits for the fresh read, never "—" (funnelRowSettled).
+  const rowsSettled = funnelRowSettled(row !== null, rowsQ);
   const roi = row ? funnelRoiShown(row) : { learning: false, value: null, unpriced: null };
   // The part that emails people is where its people live (Inbox, Sent, Targeting read its scope).
   // The pipes in the order the funnel runs them (sourcing, then cold email, then closing).
