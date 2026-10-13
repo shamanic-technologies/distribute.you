@@ -25,5 +25,6 @@
   ],
   "skippedRange": "2% to 7%",
   "keptRange": "97%",
-  "signal": "Does the company's homepage mention accepting new patients?"
+  "signal": "Does the company's homepage mention accepting new patients?",
+  "apolloCount": 2502
 }
