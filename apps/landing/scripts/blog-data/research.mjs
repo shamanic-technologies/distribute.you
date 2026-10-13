@@ -37,6 +37,7 @@ import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
 import { MODEL_LABEL } from "./model-label.mjs";
 import { meetingStudies } from "./meetings.mjs";
+import { jevStudies } from "./jev.mjs";
 import { HERALD_LEG, SCOUT_LEG, canonicalLeg } from "./leg-key.mjs";
 import { NAMING_LABEL, namingOf, namingSides, rateP, costP, pText } from "./naming/naming.mjs";
 
@@ -993,6 +994,19 @@ const MEETINGS = meetingStudies({
   costBasis: facts.research.costBasis ?? "user",
 });
 for (const st of MEETINGS.studies) add(st);
+// What our typed judgments (Jev) do: the Typed judgment OUTCOME section (jev.mjs).
+const JEV = jevStudies({
+  runs: csvRows("jev-runs.csv"),
+  runOrgs: csvRows("jev-run-orgs.csv"),
+  screens: [...csvRows("jev-screens-human.csv"), ...csvRows("jev-screens-lead.csv")],
+  reach: [...csvRows("jev-screen-reach-human.csv"), ...csvRows("jev-screen-reach-lead.csv")],
+  reveal: csvRows("jev-reveal-price.csv")[0],
+  replyKinds: csvRows("jev-reply-kinds.csv"),
+  replyOrgs: csvRows("jev-reply-orgs.csv"),
+  window: readJson("window.json"),
+  costBasis: facts.research.costBasis ?? "user",
+});
+for (const st of JEV.studies) add(st);
 for (const [goal, question] of [
   ["roi", "Which workflow books a meeting for the least?"],
   ["rate", "Which workflow books the most meetings from a positive reply?"],
@@ -1339,7 +1353,7 @@ const out = {
     { id: "scout", outcome: "Website visit", description: "Cold email that brings a prospect to the website." },
     { id: "pilot", outcome: "Meeting booked", description: "Turns a positive reply into a booked meeting." },
   ],
-  outcomes: MEETINGS.outcomes,
+  outcomes: [...MEETINGS.outcomes, ...JEV.outcomes],
   studies,
   catalogCounts,
 };

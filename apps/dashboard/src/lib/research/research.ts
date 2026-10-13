@@ -18,8 +18,8 @@ export type ResearchCrew = "herald" | "scout" | "pilot";
  * An OUTCOME section: a question asked of one outcome across every leg that leads to it (what a
  * booked meeting costs from the first cold email on), where a crew section is one leg x one channel.
  */
-export type ResearchOutcome = "meeting";
-export type ResearchTopic = "llm" | "cost" | "followups" | "opens" | "template" | "workflow" | "naming" | "layout" | "opening" | "dash" | "weekday" | "hour";
+export type ResearchOutcome = "meeting" | "judgment";
+export type ResearchTopic = "llm" | "cost" | "followups" | "opens" | "template" | "workflow" | "naming" | "layout" | "opening" | "dash" | "weekday" | "hour" | "judgment";
 export type ResearchGoal = "roi" | "rate";
 
 export interface ResearchPoint {
@@ -190,7 +190,7 @@ export const CATALOG_KINDS: CatalogKind[] = ["workflows", "templates", "models"]
 
 
 export const CREW_ORDER: ResearchCrew[] = ["herald", "scout", "pilot"];
-export const OUTCOME_ORDER: ResearchOutcome[] = ["meeting"];
+export const OUTCOME_ORDER: ResearchOutcome[] = ["meeting", "judgment"];
 
 /** The crew each study belongs to, as `lib/v2/crews` keys it (channel slug + landing step). */
 export const CREW_KEY: Record<ResearchCrew, { channel: string; step: string }> = {
@@ -214,6 +214,7 @@ export const TOPIC_LABEL: Record<ResearchTopic, string> = {
   dash: "Dashes",
   weekday: "Day of the week",
   hour: "Hour of the day",
+  judgment: "Typed judgment",
 };
 
 export function studiesFor(crew: ResearchCrew, file: ResearchFile): ResearchStudy[] {

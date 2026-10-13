@@ -216,6 +216,75 @@ WHERE cost_source = 'platform'
 GROUP BY 1, 2, 3, 4
 " meeting-spend.csv
 
+# ---------- Typed judgments (Jev, chat-service /orgs/judgments + /internal/platform-judgments) ----------
+# Not windowed: Jev entered production on 2026-09-19, after every window start. jev.mjs.
+# Every judgment run with its billed input tokens, per month, route and asking service.
+run runs_service "
+SELECT to_char(date_trunc('month', r.created_at), 'YYYY-MM') AS month, r.task_name AS route,
+       coalesce(p.service_name, '') AS asker, count(DISTINCT r.id) AS judgments,
+       count(DISTINCT r.organization_id) AS orgs, sum(c.quantity) AS tokens,
+       sum(c.total_cost_in_usd_cents) AS cents
+FROM runs r
+JOIN runs_costs c ON c.run_id = r.id AND c.status = 'actual' AND c.cost_name LIKE 'typesafe-jev-%'
+LEFT JOIN runs p ON p.id = r.parent_run_id
+WHERE r.service_name = 'chat-service' AND r.task_name IN ('judgments', 'platform-judgments')
+  AND r.created_at < '$TO'
+GROUP BY 1, 2, 3
+" jev-runs.csv
+run runs_service "
+SELECT DISTINCT organization_id::text AS org_id FROM runs
+WHERE service_name = 'chat-service' AND task_name = 'judgments' AND organization_id IS NOT NULL AND created_at < '$TO'
+" jev-run-orgs.csv
+
+# The lead screen BEFORE the paid reveal: every person Apollo returned, judged by Jev against the
+# client's own audience text. human-service ran it until 2026-10-07 (prompt v2 = Jev), lead-service
+# since. P(yes) bucketed; a pass needs P(yes) > 0.5 today (it was > 0.8 until 2026-09-29).
+run human_service "
+SELECT 'human-service' AS screen, to_char(date_trunc('month', created_at), 'YYYY-MM') AS month,
+       CASE WHEN yes_probability < 0.2 THEN 'lt20' WHEN yes_probability <= 0.5 THEN 'lt50'
+            WHEN yes_probability < 0.8 THEN 'lt80' ELSE 'ge80' END AS bucket,
+       CASE WHEN verdict THEN 'pass' ELSE 'decline' END AS verdict,
+       count(*) AS people
+FROM audience_teaser_screenings
+WHERE model LIKE '%jev%' AND yes_probability IS NOT NULL AND created_at < '$TO'
+GROUP BY 1, 2, 3, 4
+" jev-screens-human.csv
+run lead_service "
+SELECT 'lead-service' AS screen, to_char(date_trunc('month', created_at), 'YYYY-MM') AS month,
+       CASE WHEN yes_probability < 0.2 THEN 'lt20' WHEN yes_probability <= 0.5 THEN 'lt50'
+            WHEN yes_probability < 0.8 THEN 'lt80' ELSE 'ge80' END AS bucket,
+       CASE WHEN verdict = 'pass' THEN 'pass' ELSE 'decline' END AS verdict,
+       count(*) AS people
+FROM candidate_screenings
+WHERE yes_probability IS NOT NULL AND created_at < '$TO'
+GROUP BY 1, 2, 3, 4
+" jev-screens-lead.csv
+# How many clients and audiences the screen worked for (distinct across both services).
+run human_service "
+SELECT DISTINCT org_id::text AS org_id, audience_id::text AS audience_id FROM audience_teaser_screenings
+WHERE model LIKE '%jev%' AND yes_probability IS NOT NULL AND created_at < '$TO'
+" jev-screen-reach-human.csv
+run lead_service "
+SELECT DISTINCT org_id, audience_id FROM candidate_screenings WHERE yes_probability IS NOT NULL AND created_at < '$TO'
+" jev-screen-reach-lead.csv
+
+# What one paid reveal (an Apollo enrichment credit) was billed since the screen exists.
+run runs_service "
+SELECT sum(c.quantity) AS credits, sum(c.total_cost_in_usd_cents) AS cents
+FROM runs_costs c JOIN runs r ON r.id = c.run_id
+WHERE c.cost_name = 'apollo-credit' AND c.status = 'actual' AND c.cost_source = 'platform'
+  AND r.service_name = 'apollo-service' AND r.task_name = 'enrichment'
+  AND c.created_at >= '2026-09-28' AND c.created_at < '$TO'
+" jev-reveal-price.csv
+
+# Who wrote each cold email reply: its current kind as instantly-service's reply classifier set it.
+run instantly_service "
+SELECT coalesce(current_kind, '') AS kind, count(*) AS replies FROM replies WHERE received_at < '$TO' GROUP BY 1
+" jev-reply-kinds.csv
+run instantly_service "
+SELECT DISTINCT org_id FROM replies WHERE org_id IS NOT NULL AND received_at < '$TO'
+" jev-reply-orgs.csv
+
 # What the client was charged, per workflow, before per-account discounts.
 run runs_service "
 SELECT r.workflow_slug, sum(rc.total_cost_in_usd_cents) AS cents
