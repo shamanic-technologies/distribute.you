@@ -7093,25 +7093,19 @@ export async function setCampaignStatus(
  * makes its parts due at once (the scheduler then spends within the caps), and meets the
  * payment hold (409 `payment_declined` / `no_payment_method`).
  */
-/**
- * One write on the WHOLE funnel campaign (campaign-service `PATCH /sales-funnel-campaigns/:id`):
- * its status and/or the audiences it works (LEAK-1012, campaign-service #688). `audienceIds`
- * names at least one audience; `null` clears it (the campaign then works every audience of the
- * brand). Every unit gets the same audiences in the same transaction.
- */
-export async function updateSalesFunnelCampaign(
+export async function setSalesFunnelCampaignStatus(
   id: string,
-  change: { status?: "activate" | "stop"; audienceIds?: string[] | null },
+  status: "activate" | "stop",
   brandId: string,
   token?: string,
 ): Promise<SalesFunnelCampaign> {
   const raw = await apiCall<unknown>(`/sales-funnel-campaigns/${encodeURIComponent(id)}`, {
     token,
     method: "PATCH",
-    body: change,
+    body: { status },
     headers: { "x-run-id": globalThis.crypto.randomUUID(), "x-brand-id": brandId },
   });
-  return parseStaff("updateSalesFunnelCampaign", SalesFunnelCampaignOneSchema, raw).salesFunnelCampaign;
+  return parseStaff("setSalesFunnelCampaignStatus", SalesFunnelCampaignOneSchema, raw).salesFunnelCampaign;
 }
 
 function salesFunnelCapsPath(brandId: string, offerId: string, salesFunnelId: string): string {
@@ -7142,20 +7136,13 @@ export async function saveSalesFunnelCaps(
  * caps are written FIRST (`saveSalesFunnelCaps`).
  */
 export async function startSalesFunnelCampaign(
-  // `audienceIds` (campaign-service #688): the audiences it works, at least one; omitted = the brand's.
-  input: { brandId: string; offerId: string; salesFunnelId: string; audienceIds?: string[] },
+  input: { brandId: string; offerId: string; salesFunnelId: string },
   token?: string,
 ): Promise<SalesFunnelCampaign> {
   const raw = await apiCall<unknown>(`/sales-funnel-campaigns`, {
     token,
     method: "POST",
-    body: {
-      brandId: input.brandId,
-      offerId: input.offerId,
-      salesFunnelId: input.salesFunnelId,
-      status: "ongoing",
-      ...(input.audienceIds && input.audienceIds.length > 0 ? { audienceIds: input.audienceIds } : {}),
-    },
+    body: { brandId: input.brandId, offerId: input.offerId, salesFunnelId: input.salesFunnelId, status: "ongoing" },
     headers: { "x-run-id": globalThis.crypto.randomUUID(), "x-brand-id": input.brandId },
   });
   return parseStaff("startSalesFunnelCampaign", SalesFunnelCampaignOneSchema, raw).salesFunnelCampaign;
