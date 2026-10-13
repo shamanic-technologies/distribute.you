@@ -20,6 +20,13 @@ if (!(pctOf(facts.screen.display) >= 50)) throw new Error("the screen no longer 
 if (!(pctOf(facts.machine.display) >= 50)) throw new Error("machines no longer write half the replies: rewrite 'half'");
 if (!(pctOf(facts.screen.sure) >= 50)) throw new Error("Jev is no longer sure on most people: rewrite the bar section");
 
+// Marketing copy speaks in natural frequencies ("1 lead in 4"), derived here, never typed.
+const pct = (x) => Number(String(x).replace("%", ""));
+facts.screen.keptOneIn = Math.round(100 / (100 - pct(facts.screen.display)));
+facts.machine.oneIn = Math.round(100 / pct(facts.machine.display));
+if (facts.screen.keptOneIn !== 4) throw new Error(`the kept share now reads 1 in ${facts.screen.keptOneIn}: rewrite "1 lead in 4"`);
+if (facts.machine.oneIn !== 2) throw new Error(`machine replies now read 1 in ${facts.machine.oneIn}: rewrite "1 reply in 2"`);
+
 const MONTHS = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
 const BLUE = "#2563eb";
 const PALE = "#93c5fd";

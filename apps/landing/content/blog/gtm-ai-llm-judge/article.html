@@ -2,20 +2,20 @@
 <p style="margin:0 0 8px;font-size:12px;font-weight:600;letter-spacing:0.08em;text-transform:uppercase;color:#1d4ed8">Key takeaway</p>
 <p style="margin:0 0 8px;font-weight:600;color:#0f172a">Jev for GTM, in 3 steps:</p>
 <ol style="margin:0;padding-left:20px">
-<li><strong>Screen the Apollo list before you pay:</strong> 77% of a cold filtered list is turned away before any reveal, and a screen is 1,475x cheaper than a reveal</li>
-<li><strong>Tell people from machines:</strong> 55% of cold email replies are written by a machine</li>
-<li><strong>Read the probability, not the answer:</strong> when Jev is unsure, a person reads it</li>
+<li><strong>Screen the Apollo list before you pay:</strong> you pay for about 1 lead in 4, the one who fits your buyer</li>
+<li><strong>Tell people from machines:</strong> 1 reply in 2 is a robot; every reply you see is from a real person</li>
+<li><strong>When Jev is unsure, a person answers:</strong> your warm leads stay warm</li>
 </ol>
 </div>
 
-<p>Jev is an LLM built to judge, not to write. You give it a piece of text and a typed question, and it answers with a probability. Our pipes asked it 120k+ questions since September 19, 2026, for one goal: bring our clients signups and booked meetings without paying for the wrong people.</p>
+<p>Jev is an LLM built to judge, not to write. You give it a piece of text and a question, and it tells you how sure it is of the answer. Our pipes asked it 120k+ questions since September 19, 2026, for one goal: bring our clients signups and booked meetings, and spend nothing on the wrong people.</p>
 
 <p>Here are the 3 ways we use Jev for GTM:</p>
 
 <ol>
 <li><a href="#apollo">Screen the cold filtered list from Apollo before you pay</a></li>
 <li><a href="#machines">Tell people from machines in replies</a></li>
-<li><a href="#probability">Read the probability, not the answer</a></li>
+<li><a href="#unsure">When Jev is unsure, a person answers</a></li>
 </ol>
 
 <video src="/blog/gtm-ai-llm-judge/jev.mp4" poster="/blog/gtm-ai-llm-judge/poster.jpg" controls autoplay muted loop playsinline style="width:100%;max-width:560px;display:block;margin:0 auto 32px;border-radius:12px"></video>
@@ -53,9 +53,9 @@
 <figcaption style="color:#64748b;font-size:13px;line-height:1.5;margin-top:4px">Each person is judged once against the audience the client described, before any paid step. A person passes above 50%. Dark bars: turned away before the reveal.</figcaption>
 </figure>
 
-<p><strong>77% of the Apollo list is turned away</strong> before the paid reveal. One client sells shockwave devices to chiropractors. The filters also returned hospitalists and a urology physician: Jev put each under 20%. A "Chiropractic Physician / Owner" came back at 94% and was revealed.</p>
+<p><strong>You pay for about 1 lead in 4: the one who fits.</strong> Jev turns the others away before the paid reveal. One client sells shockwave devices to chiropractors. The filters also returned hospitalists and a urology physician: Jev turned each of them away. A "Chiropractic Physician / Owner" was a clear fit and was revealed.</p>
 
-<p>A screen costs a fraction of a cent, a reveal about $0.10: <strong>screening a person is 1,475x cheaper than revealing one.</strong> Each verdict is stored with the person and the exact audience text, so nobody is judged twice. When a client rewrites the audience, everyone is judged again.</p>
+<p>A screen costs a fraction of a cent, a reveal about $0.10. Each verdict is stored with the person and the exact audience text, so nobody is judged twice. When a client rewrites the audience, everyone is judged again.</p>
 
 <h2 id="machines">2. Tell people from machines in replies</h2>
 
@@ -78,17 +78,17 @@
 <figcaption style="color:#64748b;font-size:13px;line-height:1.5;margin-top:4px">Every reply to our cold emails, labelled by our reply classifier. Dark bars: written by a machine.</figcaption>
 </figure>
 
-<p><strong>55% of the replies to our cold emails are written by a machine</strong>: out-of-office messages and auto-replies, in every language ("Ich geniesse gerade Ferien"). A reply rate that counts them counts robots. Our reply classifier, DeepSeek V4.1 Flash, labels each reply and Jev checks the label. In the inbox, Jev decides on its own: a sender is hidden from your contacts as automated only when Jev is at least 75% sure.</p>
+<p><strong>1 reply in 2 to our cold emails is a robot</strong>: out-of-office messages and auto-replies, in every language ("Ich geniesse gerade Ferien"). We filter them out, so every reply you see is from a real person. Our reply classifier, DeepSeek V4.1 Flash, labels each reply and Jev checks the label. In the inbox, Jev decides on its own: a sender is hidden from your contacts as automated only when Jev is at least 75% sure.</p>
 
-<h2 id="probability">3. Read the probability, not the answer</h2>
+<h2 id="unsure">3. When Jev is unsure, a person answers</h2>
 
-<p>A clinic CEO wrote "Unfortunately I can't till next week." Out of office, or a meeting request? Jev split its answer across three readings and gave a confidence of 22%: it does not know. So a person reads that reply, and a warm lead stays warm.</p>
+<p>A clinic CEO wrote "Unfortunately I can't till next week." Out of office, or a meeting request? Jev said it was not sure. So a person answered that reply, and a warm lead stayed warm.</p>
 
-<p>The probability also sets the bar. The Apollo screen started at 80% and turned real buyers away: they sat between 50% and 80%. We lowered it to 50% on September 29. Jev is sure most of the time anyway: 68% of its answers are under 20% or at 80% and up. Our bars today: 50% to keep a lead, 75% before we hide a sender.</p>
+<p>Jev is sure most of the time, so a person only steps in where it counts. On the Apollo list we keep anyone Jev finds more likely to fit than not, so no real buyer is lost; before hiding a sender from your contacts, Jev must be very sure.</p>
 
 <h2 id="takeaway">Start with one sentence</h2>
 
-<p>Write your buyer down in one sentence. Ask Jev that sentence before every paid step, and read the probability it gives back.</p>
+<p>Write your buyer down in one sentence. Ask Jev that sentence before every paid step, and let a person answer when Jev is unsure.</p>
 
 <p>Or let us run it for you. Revenue made easy: get revenue in 24h. distribute.you finds your buyers, emails them from our own domains and brings you signups and booked meetings: 911 hot leads for 28 companies so far, with a 3.6x median ROI reported (homepage figures, October 13, 2026). Give us your website and we do the rest. The platform is free. You only pay for your outreach.</p>
 
@@ -101,5 +101,6 @@
 <li>Apollo screen: 75,320 people from cold filtered Apollo lists judged for 107 audiences of 14 clients. Turned away = a probability of fit at or under 50%, the bar in force today: 57,774 people, 77% (95% interval 76% to 77%). The 6,540 people turned away between 50% and 80% under the old bar count as passes here.</li>
 <li>Price: $0.07 per 1,000 screens on 75,271 screens, against $0.10 per reveal on 3,951 Apollo enrichment credits, both as billed to clients since September 28, 2026. Not every pass becomes a paid reveal, so we compare the two per person and state no total.</li>
 <li>Replies: 371 of 678 replies to our cold emails labelled out of office or auto-reply by our reply classifier (DeepSeek V4.1 Flash), 55% (95% interval 51% to 58%).</li>
+<li>Examples: the hospitalists and the urology physician scored 3% to 19% probability of fit, the chiropractor 94%. Unsure reply: Jev split its answer across three readings, confidence 22%. Bars: a lead passes the Apollo screen above a 50% probability of fit (80% until September 29, 2026, which turned away 6,540 people between 50% and 80%); a sender is hidden as automated at 75% and up. Screening a person is 1,475x cheaper than revealing one. Jev is decisive (under 20% or at 80% and up) on 68% of screens.</li>
 <li>Read from our production database on October 13, 2026. Each figure is a study on our internal research page, verdict-checked there first, and copied by the scripts on <a href="https://github.com/shamanic-technologies/distribute.you/tree/main/apps/landing/scripts/blog-data/jev">GitHub</a>. Measurements, not split tests.</li>
 </ul>
