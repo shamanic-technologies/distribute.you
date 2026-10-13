@@ -264,7 +264,9 @@ describe("who wrote a message", () => {
   it("opens the person on top when none is picked", () => {
     const view = read("components/v2/integrations-conversations.tsx");
     expect(view).toContain("if (!openKey || newSearch) open(first);");
-    expect(view).toContain("listQ.isPlaceholderData ? null : (people?.[0] ?? null)");
+    // Only crm-service's answer for what is typed opens a person, never the instant filter.
+    expect(view).toContain("const first = settled ? (people?.[0] ?? null) : null;");
+    expect(view).toContain("const settled = !listQ.isPlaceholderData && typed === q;");
   });
 });
 
