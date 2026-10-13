@@ -4,11 +4,11 @@
 <ul style="margin:0;padding-left:20px">
 <li>You write your ICP (Ideal Customer Profile) in one sentence</li>
 <li>Jev checks each Apollo lead against it, and against the signals you pick, before we pay for the email</li>
-<li>For one client, Jev checked 3,610 people from Apollo and kept 107 before we paid for a single email</li>
+<li>For one client, Jev checked 330 people from Apollo and kept 239 before we paid for a single email</li>
 </ul>
 </div>
 
-<p>You set Apollo filters for your ICP, and Apollo sends back the people who match those filters. Many of them are not your ICP. Here is one real case from our data, and how an AI called Jev checks each lead before we pay for its email.</p>
+<p>You set Apollo filters for your ICP, and Apollo sends back the people who match those filters. Even with tight filters, some of them are not your ICP. Here is one real case from our data, and how an AI called Jev checks each lead before we pay for its email.</p>
 
 <video src="/blog/gtm-ai-llm-judge/jev.mp4" poster="/blog/gtm-ai-llm-judge/poster.jpg" controls autoplay muted loop playsinline style="width:100%;max-width:560px;display:block;margin:0 auto 32px;border-radius:12px"></video>
 
@@ -20,43 +20,42 @@
 <div style="background:#fff;border:1px solid #e2e8f0;border-radius:12px;padding:16px 20px">
 <p style="margin:0 0 10px;font-size:12px;font-weight:600;letter-spacing:0.08em;text-transform:uppercase;color:#64748b">The Apollo filters</p>
 <ul style="margin:0;padding-left:18px;font-size:15px">
-<li style="margin:0 0 6px"><strong>Job titles:</strong> Chiropractor Owner, Clinic Owner, Founder</li>
 <li style="margin:0 0 6px"><strong>Seniority:</strong> Owner, Founder</li>
 <li style="margin:0 0 6px"><strong>Location:</strong> United States</li>
-<li style="margin:0 0 6px"><strong>Employees:</strong> 201 to 1,000</li>
-<li style="margin:0"><strong>Revenue:</strong> $50M to $250M</li>
+<li style="margin:0 0 6px"><strong>Company keywords:</strong> chiropractic, chiropractor</li>
+<li style="margin:0"><strong>Similar titles:</strong> on</li>
 </ul>
 </div>
 <div style="background:#fff;border:1px solid #e2e8f0;border-radius:12px;padding:16px 20px;background:#eff6ff;border-color:#bfdbfe">
 <p style="margin:0 0 10px;font-size:12px;font-weight:600;letter-spacing:0.08em;text-transform:uppercase;color:#64748b;color:#1d4ed8">The ICP, in one sentence</p>
-<p style="margin:0;font-size:15px;line-height:1.55">"Owners, clinic owners, founders and co-founders of chiropractic clinics or multi-location chiropractic groups in the United States with 201 to 1000 employees and $50M to $250M in revenue, including owner-doctors (DC), managing partners and presidents or CEOs who hold ownership and decide on buying treatment equipment [...]. Also in are the people who assist or advise them on this, such as executive assistants, chiefs of staff, advisors and coaches, and the managers of the clinical teams who use the devices, such as regional clinical directors, clinic managers and lead treating chiropractors. Out are functions with no stake in this purchase, such as marketing, HR and recruiting, billing and insurance, IT, front desk administration and finance, however senior."</p>
+<p style="margin:0;font-size:15px;line-height:1.55">"Owners and clinic founders of chiropractic practices in the United States, meaning practicing chiropractors who run their own clinic, under titles such as Owner, Founder, Co-Founder, Practice Owner, Clinic Director or Doctor of Chiropractic (DC) who owns the practice. Also in the target are the people who assist or advise those owners on growing the practice, such as their executive assistants, office or practice managers, chiefs of staff, marketing and growth advisors, business coaches and consultants, and the managers of in-house or external marketing and patient acquisition teams serving them. Out are staff with no stake in marketing, sales or growth, such as billing and insurance coders, front desk reception, clinical support and therapy staff, IT, and legal or compliance, and out are owners outside chiropractic, including other healthcare or medical practices."</p>
 </div>
 </div>
 
-<p>The filters get the country, the company size and the seniority right. The sentence adds what the filters cannot say: the kind of business, who else matters (the people who advise the owner), and who to leave out, "however senior".</p>
+<p>The filters are tight: owners and founders, in the US, at companies Apollo tags with chiropractic. The sentence adds what the filters cannot say: who else matters (the people who advise the owner), and who to leave out, such as "owners outside chiropractic".</p>
 
-<p>Apollo found 3,610 people, and Jev checked each one against the sentence. 3,554 of them had "Founder" in their title: founders of software companies, of an ice cream brand, of all kinds of businesses. The filter matches the word "Founder"; it cannot tell what they founded.</p>
+<p>Apollo found 330 people, and Jev checked each one against the sentence. Most were the clinic owners the client wanted. About 1 in 4 were not: their companies match the keyword "chiropractic", but they run an animal hospital, a physical therapy clinic or a billing company.</p>
 
 <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:16px;margin:0 0 24px">
 <div style="background:#fff;border:1px solid #e2e8f0;border-radius:12px;padding:16px 20px;background:#f8fafc">
 <p style="margin:0 0 10px;font-size:12px;font-weight:600;letter-spacing:0.08em;text-transform:uppercase;color:#64748b">Skipped before we paid for their email</p>
 <ul style="margin:0;padding-left:18px;font-size:15px;color:#475569">
-<li style="margin:0 0 6px">Founder & CEO of a marketing software company</li>
-<li style="margin:0 0 6px">Co-Founder and Co-Owner of an ice cream brand</li>
-<li style="margin:0 0 6px">Founding GTM at a data software company</li>
-<li style="margin:0">Physical Therapist and Clinic Owner</li>
+<li style="margin:0 0 6px">Veterinarian and Owner of an animal hospital</li>
+<li style="margin:0 0 6px">Owner of a physical therapy clinic</li>
+<li style="margin:0 0 6px">Owner of a medical billing company</li>
+<li style="margin:0">Owner and massage therapist of a bodywork studio</li>
 </ul>
 </div>
 <div style="background:#fff;border:1px solid #e2e8f0;border-radius:12px;padding:16px 20px;background:#f0fdf4;border-color:#bbf7d0">
 <p style="margin:0 0 10px;font-size:12px;font-weight:600;letter-spacing:0.08em;text-transform:uppercase;color:#64748b;color:#15803d">Kept by Jev</p>
 <ul style="margin:0;padding-left:18px;font-size:15px">
-<li style="margin:0 0 6px">Chiropractor and Owner</li>
-<li style="margin:0">Managing Owner of a chiropractic clinic</li>
+<li style="margin:0 0 6px">Owner and Chiropractor of a chiropractic clinic</li>
+<li style="margin:0">Founder and Doctor of Chiropractic of a chiropractic clinic</li>
 </ul>
 </div>
 </div>
 
-<p><strong>Jev kept 107 people and skipped 3,503</strong>, before we paid for a single email. Only the 107 kept moved on to the paid step, where we buy the email.</p>
+<p><strong>Jev kept 239 clinic owners and skipped 91 people</strong>, before we paid for a single email. Only the 239 kept moved on to the paid step, where we buy the email.</p>
 
 <h2 id="jev">What Jev does</h2>
 
@@ -65,7 +64,7 @@
 <ol>
 <li><strong>You write your ICP in one sentence.</strong> In your words, not in dropdown values.</li>
 <li><strong>Jev checks each Apollo lead against it.</strong> The name, title and company are free to read; the email costs a credit, so the check comes first.</li>
-<li><strong>You add the signals that make a lead hot.</strong> Our AI suggests some for your offer, you pick the ones you want, and Jev reads the evidence on the company website, its job posts or its LinkedIn page. Real examples from our clients: "Does the company website mention an FDA 510(k) clearance?", "Does the company have open job postings for QA engineers?", and for the client above, whether the clinic is independent rather than part of a national network.</li>
+<li><strong>You add the signals that make a lead hot.</strong> Our AI suggests some for your offer, you pick the ones you want, and Jev reads the evidence on the company website, its job posts or its LinkedIn page. Real examples from our clients: "Does the company website mention an FDA 510(k) clearance?", "Does the company have open job postings for QA engineers?", and for the client above: "Does the company's homepage mention accepting new patients?"</li>
 </ol>
 
 <figure>
@@ -99,7 +98,7 @@
 
 <p><strong>"What if Jev is wrong?"</strong> It can be, so the rule leans toward keeping a lead: anyone Jev finds more likely in the ICP than not is kept. We started stricter and lowered the bar on September 29 when we saw good leads just below it.</p>
 
-<p><strong>"Why not tighter Apollo filters?"</strong> We use them too, and they come first. But part of an ICP has no dropdown: "founder of a chiropractic clinic, not of a software company", or "independent clinic, not part of a national network", which lives on the clinic's website.</p>
+<p><strong>"Why not tighter Apollo filters?"</strong> We use them too, and they come first. But part of an ICP has no dropdown: "a chiropractic clinic, not an animal hospital that also offers chiropractic care", or "a clinic accepting new patients", which lives on the clinic's website.</p>
 
 <p><strong>"Does the check cost extra?"</strong> A fraction of a cent per lead, against about $0.10 to buy one email. Each verdict is stored, so the same lead is not checked twice.</p>
 
@@ -142,6 +141,6 @@
 <li>Price (a reveal = buying one person's email from Apollo, one credit): $0.07 per 1,000 screens on 75,271 screens, against $0.10 per reveal on 3,951 Apollo enrichment credits, both as billed to clients since September 28, 2026. Not every pass becomes a paid reveal, so we compare the two per person and state no total.</li>
 <li>Replies: 371 of 678 replies to our cold emails labelled out of office or auto-reply by our reply classifier (DeepSeek V4.1 Flash), 55% (95% interval 51% to 58%).</li>
 <li>Reach: only the 23% of people kept are revealed, so the same budget reaches 4.3x more people who fit than revealing the whole list. Shares: 77% of the people Apollo returned were turned away before the reveal; 55% of replies to our cold emails were out-of-office or auto-replies. Bars: a lead passes the Apollo screen above a 50% probability of fit (80% until September 29, 2026, which turned away 6,540 people between 50% and 80%); a sender is hidden as automated at 75% and up. Screening a person is 1,475x cheaper than revealing one. Jev is decisive (under 20% or at 80% and up) on 68% of screens.</li>
-<li>Case: one client's ICP screen (owners of chiropractic clinics in the United States), three Apollo audiences with the same filters (two of them add a hiring or funding signal), 3,610 people screened, 107 kept (probability of fit above 50%). Titles are quoted as Apollo returned them; employers are described, not named. The skipped examples scored 1% to 8%, the kept examples 71% to 73%. Read October 13, 2026 by the query on <a href="https://github.com/shamanic-technologies/distribute.you/tree/main/apps/landing/scripts/blog-data/jev">GitHub</a> (case.sql). The client is not named.</li>
+<li>Case: one client's ICP screen (owners of chiropractic clinics in the United States), one Apollo audience, 330 people screened, 239 kept (probability of fit above 50%; 199 of them at 80% and up). Titles are quoted as Apollo returned them; employers are described, not named. The skipped examples scored 2% to 7%, the kept examples 97%. Read October 13, 2026 by the query on <a href="https://github.com/shamanic-technologies/distribute.you/tree/main/apps/landing/scripts/blog-data/jev">GitHub</a> (case.sql). The client is not named.</li>
 <li>Read from our production database on October 13, 2026. Each figure is a study on our internal research page, verdict-checked there first, and copied by the scripts on <a href="https://github.com/shamanic-technologies/distribute.you/tree/main/apps/landing/scripts/blog-data/jev">GitHub</a>. Measurements, not split tests.</li>
 </ul>

@@ -26,8 +26,8 @@
     <rect x="270" y="570" width="400" height="120" rx="20" fill="#ffffff"/>
   </g>
   <circle cx="320" cy="630" r="26" fill="#e2e8f0"/>
-  <text x="362" y="622" font-family="Inter, system-ui, sans-serif" font-size="24" font-weight="700" fill="#334155">Founder &amp; CEO</text>
-  <text x="362" y="654" font-family="Inter, system-ui, sans-serif" font-size="20" font-weight="500" fill="#94a3b8">Software company</text>
+  <text x="362" y="622" font-family="Inter, system-ui, sans-serif" font-size="24" font-weight="700" fill="#334155">Veterinarian</text>
+  <text x="362" y="654" font-family="Inter, system-ui, sans-serif" font-size="20" font-weight="500" fill="#94a3b8">Animal hospital</text>
   <rect x="560" y="600" width="90" height="44" rx="22" fill="#f1f5f9"/>
   <text x="605" y="630" text-anchor="middle" font-family="Inter, system-ui, sans-serif" font-size="22" font-weight="800" fill="#64748b">Skip</text>
   <!-- passes -->
