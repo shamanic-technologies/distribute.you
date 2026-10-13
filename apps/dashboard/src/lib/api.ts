@@ -45,6 +45,7 @@ import {
   type PersonTimeline,
 } from "./people-conversations";
 import { ApiCallDetailSchema, type ApiCallDetail } from "./api-calls";
+import { AmbiguousThreadSchema, ReplySentSchema, newestThread, replyBodyHtml, type ReplySent } from "./unibox-reply";
 import { z } from "zod";
 import type { CardFacts } from "./v2/card-risk";
 import { BrandLinkedinPageSchema, type BrandLinkedinPage } from "./v2/brand-linkedin-page";
@@ -1231,6 +1232,40 @@ export async function setCrmPairingRuling(
   token?: string,
 ): Promise<unknown> {
   return apiCall<unknown>("/leads/crm-pairings/rulings", { token, method: "POST", body });
+}
+
+/**
+ * Answer a person by hand in their cold email thread (Unibox reply box): gateway
+ * `POST /v1/replies` → instantly-service `POST /orgs/replies`. instantly-service picks the
+ * mailbox, persona, signature and thread; we name the address we wrote to and send the
+ * words, declared `sent_by: "human"`. `brandId` rides the QUERY: the gateway promotes
+ * identity from headers/query only, never the body. When the person wrote back on several
+ * campaigns (409 `ambiguous_thread`), the reply goes into the thread with the newest message.
+ */
+export async function sendUniboxReply(
+  q: { brandId: string; email: string; text: string },
+  token?: string,
+): Promise<ReplySent> {
+  const path = `/replies?${new URLSearchParams({ brandId: q.brandId })}`;
+  const body = { email: q.email, body_html: replyBodyHtml(q.text), sent_by: "human" as const };
+  let raw: unknown;
+  try {
+    raw = await apiCall<unknown>(path, { token, method: "POST", body });
+  } catch (err) {
+    const ambiguous = err instanceof ApiError && err.status === 409 ? AmbiguousThreadSchema.safeParse(err.body) : null;
+    if (!ambiguous?.success) throw err;
+    raw = await apiCall<unknown>(path, {
+      token,
+      method: "POST",
+      body: { ...body, campaign_id: newestThread(ambiguous.data.candidates) },
+    });
+  }
+  const parsed = ReplySentSchema.safeParse(raw);
+  if (!parsed.success) {
+    console.error("[api] sendUniboxReply response shape mismatch", parsed.error.flatten(), raw);
+    throw new Error("sendUniboxReply returned an unexpected shape");
+  }
+  return parsed.data.reply;
 }
 
 /** Take a ruling back. Nothing is deleted upstream: the statement is marked withdrawn. */

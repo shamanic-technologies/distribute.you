@@ -3,7 +3,8 @@
 import { useEffect, useRef, useState, type RefObject } from "react";
 import { useInfiniteQuery, useQueryClient, type InfiniteData } from "@tanstack/react-query";
 import { useSearchParams } from "next/navigation";
-import { ApiError, getLeadTimeline, getPersonTimeline, listPeople, setCrmPairingRuling } from "@/lib/api";
+import { ApiError, getLeadTimeline, getPersonTimeline, listPeople, sendUniboxReply, setCrmPairingRuling } from "@/lib/api";
+import { pendingReplies, replyErrorMessage, replyTarget, type LocalReply } from "@/lib/unibox-reply";
 import { rulingErrorMessage } from "@/lib/crm-pairings";
 import { ownQueryData } from "@/lib/own-query-data";
 import { useAuthQuery, useOrgQueryGate } from "@/lib/use-auth-query";
@@ -64,8 +65,9 @@ const FOLD_AT = 600;
  * Conversations: everyone this brand is in conversation with, on any channel, as one
  * inbox. The list is crm-service's merged people (its order, its totals, one state per
  * person); opening a person reads their whole exchange across Gmail, cold email,
- * messaging apps and their CRM as ONE thread, oldest first. Read-only: nothing here
- * writes back to any of those tools.
+ * messaging apps and their CRM as ONE thread, oldest first. One write: a person
+ * who wrote back to our cold email is answered by hand from the reply box under the thread
+ * (instantly-service sends it, in the same thread, from the mailbox that wrote to them).
  */
 export function V2ConversationsView({ brandId }: { brandId: string }) {
   const params = useSearchParams();
@@ -482,8 +484,11 @@ function Thread({
   );
   // No lead row (a CRM-only person) means no lead-service facts, never the previous person's.
   const facts = leadRowId ? ownQueryData(factsQ) : undefined;
+  // Replies sent from this screen, per person, shown until the served thread carries them.
+  const [sentByRef, setSentByRef] = useState<Record<string, LocalReply[]>>({});
+  const local = data ? pendingReplies(sentByRef[ref] ?? [], data.items) : [];
   // Oldest first, so the latest exchange is at the bottom: open there, as any inbox does.
-  const itemCount = data?.items.length ?? 0;
+  const itemCount = (data?.items.length ?? 0) + local.length;
   useEffect(() => {
     const el = scrollRef.current;
     if (el) el.scrollTop = el.scrollHeight;
@@ -503,6 +508,7 @@ function Thread({
   const notes = sources.map(timelineSourceNote).filter((n): n is string => n !== null);
   const name = personName(person);
   const status = personStatusLabel(person);
+  const target = replyTarget(person, items);
   return (
     <>
       <header className="k-line-subtle shrink-0 border-b px-4 py-3">
@@ -538,7 +544,19 @@ function Thread({
             row.fact ? <FactRow key={row.fact.id} fact={row.fact} /> : <ThreadItem key={i} brandId={brandId} item={row.item} tag={row.tag} />,
           )
         )}
+        {local.map((l) => (
+          <ThreadItem key={l.reply.messageId} brandId={brandId} item={localReplyItem(l)} tag={null} />
+        ))}
       </div>
+      {target && (
+        <ReplyBox
+          key={ref}
+          brandId={brandId}
+          email={target}
+          name={name}
+          onSent={(l) => setSentByRef((m) => ({ ...m, [ref]: [...(m[ref] ?? []), l] }))}
+        />
+      )}
       {notes.length > 0 && (
         <footer className="k-fg3 k-line-subtle shrink-0 space-y-0.5 border-t px-4 py-2.5 text-[12px]">
           {notes.map((n) => (
@@ -547,6 +565,121 @@ function Thread({
         </footer>
       )}
     </>
+  );
+}
+
+/** A reply sent from this screen, as the thread item it becomes once the thread re-reads. */
+function localReplyItem(l: LocalReply): PersonTimelineItem {
+  return {
+    at: l.sentAt,
+    source: "instantly",
+    channel: "email",
+    kind: "message",
+    direction: "outbound",
+    subject: l.reply.subject,
+    text: l.text,
+    from: l.reply.from,
+    to: [l.reply.leadEmail],
+    event: null,
+  };
+}
+
+/**
+ * Under the thread: type a plain answer and send it. instantly-service sends it in the
+ * same thread, from where the prospect wrote last (the cold mailbox, or one of our
+ * people's own address); it picks the sender, never us. Cmd/Ctrl+Enter sends. On a refusal the text stays in the box.
+ */
+function ReplyBox({ brandId, email, name, onSent }: { brandId: string; email: string; name: string; onSent: (l: LocalReply) => void }) {
+  const queryClient = useQueryClient();
+  const [text, setText] = useState("");
+  const [sending, setSending] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const box = useRef<HTMLTextAreaElement | null>(null);
+  // The box grows with the text, up to a few lines; the thread keeps the rest of the height.
+  // Empty, it keeps its two rows: mounted hidden (a phone shows the list first), a measure
+  // reads 0 and would collapse it.
+  useEffect(() => {
+    const el = box.current;
+    if (!el) return;
+    if (!text) {
+      el.style.height = "";
+      return;
+    }
+    el.style.height = "auto";
+    el.style.height = `${Math.min(el.scrollHeight, 200)}px`;
+  }, [text]);
+  const send = async () => {
+    const words = text.trim();
+    if (!words || sending) return;
+    setSending(true);
+    setError(null);
+    const sentAt = new Date().toISOString();
+    try {
+      const reply = await sendUniboxReply({ brandId, email, text: words });
+      onSent({ sentAt, text: words, reply });
+      setText("");
+    } catch (err) {
+      console.error("[v2 unibox] reply send failed", err);
+      const body = err instanceof ApiError ? err.body : null;
+      setError(replyErrorMessage(err instanceof ApiError ? err.status : null, typeof body?.code === "string" ? body.code : null));
+      setSending(false);
+      return;
+    }
+    setSending(false);
+    try {
+      await Promise.all([
+        queryClient.refetchQueries({ queryKey: ["personTimeline", brandId] }),
+        queryClient.refetchQueries({ queryKey: ["people", brandId] }),
+      ]);
+    } catch (err) {
+      console.error("[v2 unibox] re-read after reply failed", err);
+    }
+  };
+  const first = name.split(" ")[0] || name;
+  return (
+    <form
+      className="k-line-subtle shrink-0 border-t p-3"
+      onSubmit={(e) => {
+        e.preventDefault();
+        void send();
+      }}
+    >
+      <label className="k-inset block rounded-lg px-3 py-2">
+        <span className="sr-only">Reply to {name}</span>
+        <textarea
+          ref={box}
+          value={text}
+          rows={2}
+          disabled={sending}
+          onChange={(e) => setText(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) {
+              e.preventDefault();
+              void send();
+            }
+          }}
+          placeholder={`Write your reply to ${first}`}
+          className="block w-full resize-none bg-transparent text-[13px] leading-5 outline-none placeholder:text-[var(--fg-3)]"
+          style={{ font: "inherit" }}
+        />
+      </label>
+      <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1.5">
+        {error ? (
+          <span role="alert" className="min-w-0 flex-1 text-[12px] text-[var(--data-rose)]">
+            {error}
+          </span>
+        ) : (
+          <span className="k-fg3 min-w-0 flex-1 text-[12px]">Your reply goes out in this thread, where they last wrote.</span>
+        )}
+        {/* keel.css is unlayered: `hidden` on the k-kbd itself loses, so the wrapper hides it. */}
+        <span className="hidden sm:inline-flex">
+          <span className="k-kbd">⌘ Enter</span>
+        </span>
+        <button type="submit" disabled={sending || !text.trim()} className="k-btn-accent disabled:opacity-40">
+          {sending ? "Sending..." : "Send"}
+        </button>
+      </div>
+    </form>
   );
 }
 
