@@ -74,7 +74,7 @@ import { V2Page, type V2Tab } from "@/components/v2/setup-pages";
 import { PipeSections } from "@/components/v2/pipe-sections";
 import { PeoplePage } from "@/components/v2/people-page";
 import { V2AudiencesTable } from "@/components/v2/audiences-table";
-import { EmptyNote, Figure, MarkLines, Meter, SectionTitle, Shimmer, StateDot } from "@/components/v2/ui";
+import { EmptyNote, Figure, HoverScroll, MarkLines, Meter, SectionTitle, Shimmer, StateDot } from "@/components/v2/ui";
 import { RoiLabel, RoiValue } from "@/components/v2/roi-label";
 import { roiToShow } from "@/lib/expected-return";
 
@@ -485,7 +485,8 @@ export function FunnelPathLine({ items }: { items: FunnelPathItem[] }) {
     if (gaps.length > 0) console.error("[funnel-campaigns] a leg of the path is served with no channel", { gaps, items });
   }, [gaps.length]); // eslint-disable-line react-hooks/exhaustive-deps
   return (
-    <span className="k-fg2 flex min-w-0 items-center gap-1 overflow-hidden whitespace-nowrap text-[11px]">
+    <HoverScroll>
+    <span className="k-fg2 flex items-center gap-1 whitespace-nowrap text-[11px]">
       {items.map((it, i) => (
         <span key={i} className="contents">
           {/* Several channels on one leg (sources on Start → Lead found) sit side by side, one group
@@ -513,6 +514,7 @@ export function FunnelPathLine({ items }: { items: FunnelPathItem[] }) {
         </span>
       ))}
     </span>
+    </HoverScroll>
   );
 }
 
