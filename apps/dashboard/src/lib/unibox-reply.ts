@@ -90,6 +90,9 @@ export function newestThread(candidates: { campaign_id: string; last_message_at:
 
 /** Our own sentence for a refused send, by status and the producer's `code`. Never its raw message. */
 export function replyErrorMessage(status: number | null, code: string | null): string {
+  // Their newest email went to one of our people's own address and we hold no credential
+  // for it (instantly-service v0.83.64: an answer goes where the prospect wrote last).
+  if (code === "prospect_wrote_elsewhere") return "Their last email went to your own mailbox. Answer from that mailbox.";
   if (code === "no_reply_to_thread") return "No reply from them yet, so there is no thread to answer.";
   if (status === 404 || code === "campaign_not_found") return "We never emailed this address, so there is no thread to answer.";
   if (code === "sending_account_unresolved" || code === "mailbox_credential_unavailable")
@@ -102,11 +105,12 @@ export type LocalReply = { sentAt: string; text: string; reply: ReplySent };
 
 /**
  * A reply sent from this screen shows at once, until the served thread carries it: an
- * outbound cold email item dated from a minute before the send on.
+ * outbound item dated from a minute before the send on, from any source (a reply that
+ * left from one of our people's own address comes back through their mailbox).
  */
 export function pendingReplies(local: LocalReply[], items: ItemLike[]): LocalReply[] {
   const served = items
-    .filter((i) => i.source === INSTANTLY && i.direction === "outbound" && i.at)
+    .filter((i) => i.direction === "outbound" && i.at)
     .map((i) => Date.parse(i.at!));
   return local.filter((l) => !served.some((t) => t >= Date.parse(l.sentAt) - 60_000));
 }

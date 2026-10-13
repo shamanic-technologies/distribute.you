@@ -586,8 +586,8 @@ function localReplyItem(l: LocalReply): PersonTimelineItem {
 
 /**
  * Under the thread: type a plain answer and send it. instantly-service sends it in the
- * same thread from the mailbox that wrote to this person (it picks the mailbox, never
- * us). Cmd/Ctrl+Enter sends. On a refusal the text stays in the box.
+ * same thread, from where the prospect wrote last (the cold mailbox, or one of our
+ * people's own address); it picks the sender, never us. Cmd/Ctrl+Enter sends. On a refusal the text stays in the box.
  */
 function ReplyBox({ brandId, email, name, onSent }: { brandId: string; email: string; name: string; onSent: (l: LocalReply) => void }) {
   const queryClient = useQueryClient();
@@ -669,7 +669,7 @@ function ReplyBox({ brandId, email, name, onSent }: { brandId: string; email: st
             {error}
           </span>
         ) : (
-          <span className="k-fg3 min-w-0 flex-1 text-[12px]">Your reply goes out in this thread, from the same mailbox.</span>
+          <span className="k-fg3 min-w-0 flex-1 text-[12px]">Your reply goes out in this thread, where they last wrote.</span>
         )}
         {/* keel.css is unlayered: `hidden` on the k-kbd itself loses, so the wrapper hides it. */}
         <span className="hidden sm:inline-flex">

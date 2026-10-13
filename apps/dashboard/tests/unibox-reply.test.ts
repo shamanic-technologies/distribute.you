@@ -61,13 +61,14 @@ describe("several threads", () => {
 describe("a refused send", () => {
   it("is stated in our own words, by the producer's code", () => {
     expect(replyErrorMessage(409, "no_reply_to_thread")).toMatch(/no thread/);
+    expect(replyErrorMessage(409, "prospect_wrote_elsewhere")).toBe("Their last email went to your own mailbox. Answer from that mailbox.");
     expect(replyErrorMessage(404, "campaign_not_found")).toMatch(/never emailed/);
     expect(replyErrorMessage(502, "mailbox_credential_unavailable")).toMatch(/not sent/);
     expect(replyErrorMessage(502, "reply_dispatch_failed")).toMatch(/Try again/);
     expect(replyErrorMessage(null, null)).toBe("Your reply was not sent. Try again.");
   });
   it("carries no em or en dash", () => {
-    for (const s of [replyErrorMessage(409, "no_reply_to_thread"), replyErrorMessage(404, null), replyErrorMessage(500, "sending_account_unresolved"), replyErrorMessage(500, "reply_dispatch_failed")]) {
+    for (const s of [replyErrorMessage(409, "no_reply_to_thread"), replyErrorMessage(404, null), replyErrorMessage(500, "sending_account_unresolved"), replyErrorMessage(500, "reply_dispatch_failed"), replyErrorMessage(409, "prospect_wrote_elsewhere")]) {
       expect(s).not.toMatch(/[–—]/);
     }
   });
@@ -79,10 +80,11 @@ describe("a reply sent from the screen", () => {
     text: "Thanks",
     reply: { leadEmail: "a@x.com", accountEmail: "k@d.com", from: "Kevin <k@d.com>", subject: "Re: hi", messageId: "m1" },
   };
-  it("shows until the served thread carries an outbound cold email from about then on", () => {
+  it("shows until the served thread carries an outbound item from about then on, any source", () => {
     expect(pendingReplies([local], [item("instantly", "outbound", "k@d.com", "2026-10-12T09:00:00Z")])).toEqual([local]);
     expect(pendingReplies([local], [item("instantly", "outbound", "k@d.com", "2026-10-13T10:05:02Z")])).toEqual([]);
-    expect(pendingReplies([local], [item("gmail", "outbound", "k@d.com", "2026-10-13T10:06:00Z")])).toEqual([local]);
+    expect(pendingReplies([local], [item("gmail", "outbound", "k@d.com", "2026-10-13T10:06:00Z")])).toEqual([]);
+    expect(pendingReplies([local], [item("instantly", "inbound", "a@x.com", "2026-10-13T10:06:00Z")])).toEqual([local]);
   });
 });
 
