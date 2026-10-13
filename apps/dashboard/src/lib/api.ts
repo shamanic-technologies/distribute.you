@@ -20,6 +20,8 @@ import {
   type SalesFunnelCaps,
   type SalesFunnelCapsInput,
   FunnelCampaignRowsSchema,
+  FunnelCampaignCopiesSchema,
+  type FunnelCampaignCopy,
   type FunnelCampaignRow,
 } from "./sales-funnel-campaigns";
 import { browserHasAnonSession } from "./anon-session-cookie";
@@ -1771,6 +1773,16 @@ export async function listFunnelCampaignRows(brandId: string, offerId: string): 
   const qs = new URLSearchParams({ offerId, pricing: "net" });
   const raw = await apiCall<unknown>(`/features/brands/${encodeURIComponent(brandId)}/sales-funnel-campaigns?${qs.toString()}`);
   return parseStaff("listFunnelCampaignRows", FunnelCampaignRowsSchema, raw).salesFunnelCampaigns;
+}
+
+/**
+ * The Campaigns table's COPY (name, Type label, path), no money: features-service's fast live read
+ * (`?fields=copy`), so a campaign created since the cached rows paints its path at once.
+ */
+export async function listFunnelCampaignCopies(brandId: string, offerId: string): Promise<FunnelCampaignCopy[]> {
+  const qs = new URLSearchParams({ offerId, fields: "copy" });
+  const raw = await apiCall<unknown>(`/features/brands/${encodeURIComponent(brandId)}/sales-funnel-campaigns?${qs.toString()}`);
+  return parseStaff("listFunnelCampaignCopies", FunnelCampaignCopiesSchema, raw).salesFunnelCampaigns;
 }
 
 /** One funnel campaign with its units. */
