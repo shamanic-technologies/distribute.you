@@ -353,8 +353,45 @@ describe("Campaigns order + one modal (owner 2026-10-11)", () => {
     expect(modal).toContain('id="v2-funnel-budget"');
     expect(modal).toContain('id="v2-funnel-volume"');
     // Limits are written before the status, so turning on with a first budget starts funded.
-    expect(modal.indexOf("saveSalesFunnelCaps(")).toBeLessThan(modal.indexOf("setSalesFunnelCampaignStatus("));
+    expect(modal.indexOf("saveSalesFunnelCaps(")).toBeLessThan(modal.indexOf("updateSalesFunnelCampaign("));
     expect(f).not.toContain("FunnelLimitsModal");
+  });
+
+  it("LEAK-1012: the modal picks the audiences and writes them with the status in ONE campaign write", () => {
+    const f = src("src/components/v2/funnel-campaigns.tsx");
+    const modal = f.slice(f.indexOf("export function FunnelCampaignModal("), f.indexOf("/** What the max budget consumed this period"));
+    expect(modal).toContain("<FunnelAudiencePicker");
+    expect(modal).toContain("audiencesDirty ? { audienceIds: audiences }");
+    expect(modal).toContain('"Pick at least one audience."');
+    // The page shows the set, and its Change opens the same modal.
+    const page = f.slice(f.indexOf("export function FunnelCampaignPage("), f.indexOf("export function useFunnelCampaignById("));
+    expect(page).toContain("<FunnelAudiencesSection campaign={campaign} onChange={() => setEditing(true)} />");
+  });
+
+  it("LEAK-1012: a stated audience set reads as such; none or empty reads as all; order never dirties it", async () => {
+    const { statedAudienceIds, sameAudienceSet, SalesFunnelCampaignSchema } = await import("../src/lib/sales-funnel-campaigns");
+    expect(statedAudienceIds({ audienceIds: ["a", "b"] })).toEqual(["a", "b"]);
+    expect(statedAudienceIds({ audienceIds: null })).toBeNull();
+    expect(statedAudienceIds({ audienceIds: [] })).toBeNull();
+    expect(statedAudienceIds({})).toBeNull();
+    expect(sameAudienceSet(["a", "b"], ["b", "a"])).toBe(true);
+    expect(sameAudienceSet(null, null)).toBe(true);
+    expect(sameAudienceSet(null, ["a"])).toBe(false);
+    expect(sameAudienceSet(["a"], ["a", "b"])).toBe(false);
+    const base = { id: "f", brandId: "b", offerId: "o", salesFunnelId: "s", salesFunnelName: "N", status: "ongoing", stopReason: null, createdAt: "x", updatedAt: "x" };
+    const unit = { campaignId: "c", pipeId: "p", featureSlug: "x", legKey: "l", status: "ongoing", workflowSlug: null, name: "u" };
+    // Served (campaign-service #688) and not yet served bodies both parse.
+    expect(SalesFunnelCampaignSchema.parse({ ...base, audienceIds: ["a"], units: [{ ...unit, audienceIds: ["a"] }] }).audienceIds).toEqual(["a"]);
+    expect(SalesFunnelCampaignSchema.parse({ ...base, units: [unit] }).audienceIds).toBeUndefined();
+  });
+
+  it("LEAK-1012: the picker lists live audiences plus every stated one", async () => {
+    const { pickableAudiences } = await import("../src/components/v2/funnel-audiences");
+    const a = (id: string, status: string) => ({ id, status }) as never;
+    const ids = (xs: { id: string }[]) => xs.map((x) => x.id);
+    const all = [a("act", "active"), a("pau", "paused"), a("arc", "archived"), a("sug", "suggested")];
+    expect(ids(pickableAudiences(all, null))).toEqual(["act", "pau"]);
+    expect(ids(pickableAudiences(all, ["arc"]))).toEqual(["act", "pau", "arc"]);
   });
 
   it("the table renders campaigns in that order", () => {

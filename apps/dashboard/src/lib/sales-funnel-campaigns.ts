@@ -18,6 +18,9 @@ export const SalesFunnelUnitSchema = z
     status: z.string(),
     workflowSlug: z.string().nullable(),
     name: z.string(),
+    // campaign-service #688 (LEAK-1012): always its funnel campaign's audiences; null = the brand's.
+    // nullish until every served body carries it.
+    audienceIds: z.array(z.string()).nullish(),
   })
   .passthrough();
 export type SalesFunnelUnit = z.infer<typeof SalesFunnelUnitSchema>;
@@ -33,6 +36,9 @@ export const SalesFunnelCampaignSchema = z
     stopReason: z.string().nullable(),
     createdAt: z.string(),
     updatedAt: z.string(),
+    // campaign-service #688 (LEAK-1012): the audiences this campaign works, handed to every unit.
+    // null = it names none, so its units work every audience of the brand. nullish until served.
+    audienceIds: z.array(z.string()).nullish(),
     units: z.array(SalesFunnelUnitSchema),
   })
   .passthrough();
@@ -90,6 +96,22 @@ export function centsToUsd(cents: string | null | undefined): number | null {
 /** The producer's word for a status or reason, capitalised (never renamed). */
 export function producerWord(s: string): string {
   return s.charAt(0).toUpperCase() + s.slice(1).replace(/_/g, " ");
+}
+
+/**
+ * The audiences a funnel campaign states, or null when it names none (it then works every audience
+ * of the brand). An empty list never comes from campaign-service (min 1); read as none.
+ */
+export function statedAudienceIds(c: Pick<SalesFunnelCampaign, "audienceIds">): string[] | null {
+  return c.audienceIds && c.audienceIds.length > 0 ? c.audienceIds : null;
+}
+
+/** Same set, any order: a picker that changed nothing writes nothing. */
+export function sameAudienceSet(a: string[] | null, b: string[] | null): boolean {
+  if (a === null || b === null) return a === b;
+  if (a.length !== b.length) return false;
+  const set = new Set(a);
+  return b.every((id) => set.has(id));
 }
 
 /** A funnel campaign is ONGOING while campaign-service says so (`ongoing`). */
