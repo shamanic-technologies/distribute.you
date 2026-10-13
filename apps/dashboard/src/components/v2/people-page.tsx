@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { fetchLeadsCsv, getLeadConsolidatedStatus, leadDateForStatus, listLeadsPage } from "@/lib/api";
 import { leadStatusLabel } from "@/lib/lead-status";
-import { DISQUALIFIED_TAG } from "@/lib/lead-disqualification";
+import { markTag } from "@/lib/lead-disqualification";
 import { TagChip } from "@/components/v2/tag-chip";
 import { useAuthQuery } from "@/lib/use-auth-query";
 import { POLL_INTERVAL } from "@/lib/query-options";
@@ -222,7 +222,7 @@ export function PeoplePage({ bucket, campaignId }: { bucket?: LeadBucket; campai
                         <span className="k-chip">{leadStatusLabel(status)}</span>
                         {lead.disqualification ? (
                           <span title={lead.disqualification.note ?? undefined}>
-                            <TagChip tag={DISQUALIFIED_TAG} />
+                            <TagChip tag={markTag(lead.disqualification)} />
                           </span>
                         ) : null}
                       </span>

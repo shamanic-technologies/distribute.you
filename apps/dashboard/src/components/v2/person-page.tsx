@@ -22,7 +22,19 @@ import { ConversationTimelineCard } from "@/components/v2/conversation-timeline"
 import { useSelectedOffer } from "@/components/v2/selected-offer";
 import { CloseWonForm } from "@/components/leads/close-won-form";
 import { TagChip } from "@/components/v2/tag-chip";
-import { DISQUALIFIED_TAG, disqualificationNoteBody, disqualificationSourceWord } from "@/lib/lead-disqualification";
+import {
+  CLIENT_TAG,
+  DISQUALIFIED_TAG,
+  OPTED_OUT_TAG,
+  SIGNED_UP_TAG,
+  companyLevelMark,
+  disqualificationNoteBody,
+  disqualificationSourceWord,
+  humanOptedOut,
+  leadLevelMark,
+  type DisqualificationLevel,
+  type LeadDisqualification,
+} from "@/lib/lead-disqualification";
 import { useRemoveLeadDisqualification, useSetLeadDisqualification } from "@/lib/use-lead-disqualification";
 import { EmptyNote, Shimmer, TopBar } from "@/components/v2/ui";
 import { CompanyMark, PersonAvatar, leadCompany, leadCompanyDomain, leadName, leadTitle } from "@/components/v2/people-bits";
@@ -64,6 +76,7 @@ export function PersonPage() {
   const setStep = useSetAnyLeadStepStatement();
   const [disqualifying, setDisqualifying] = useState(false);
   const [note, setNote] = useState("");
+  const [level, setLevel] = useState<DisqualificationLevel>("lead");
   const disqualify = useSetLeadDisqualification();
   const undoDisqualify = useRemoveLeadDisqualification();
 
@@ -81,9 +94,23 @@ export function PersonPage() {
   const cold = lead ? leadWentCold((lead as unknown as { standing?: unknown }).standing) : null;
   const lastAt = lead ? leadDateForStatus(lead, getLeadConsolidatedStatus(lead)) : null;
   const linkedin = lead?.lead?.linkedinUrl ?? null;
-  // Disqualified: its own mark beside the step tags (owner 2026-10-13), for this conversation
-  // (the selected offer, or every offer). The timeline answers for it; the row until it loads.
-  const mark = timeline ? (timeline.disqualification ?? null) : (lead?.disqualification ?? null);
+  // Tags at THEIR level (LEAD-REFONTE-1013), each read off its own served field, never mixed:
+  // the PERSON (opted out, wherever they work), this LEAD (steps + its own Disqualified mark,
+  // for this conversation: the timeline answers, the row until it loads), the COMPANY (client,
+  // signed up, its own Disqualified mark "not our target").
+  const answering = timeline ? (timeline.disqualification ?? null) : (lead?.disqualification ?? null);
+  const leadMark = leadLevelMark(answering);
+  const companyBlock = lead?.company ?? null;
+  const companyMark = companyLevelMark(companyBlock, answering);
+  const optedOut = lead ? humanOptedOut((lead as unknown as { standing?: unknown }).standing) : false;
+  // A level already marked is undone in its row, never marked twice; a lead with no known
+  // company can only be disqualified as a contact.
+  const freeLevels: DisqualificationLevel[] = [
+    ...(leadMark ? [] : (["lead"] as const)),
+    ...(companyBlock && !companyMark ? (["company"] as const) : []),
+  ];
+  const formLevel = freeLevels.includes(level) ? level : freeLevels[0];
+  const companyWord = company ?? "their company";
 
   return (
     <>
@@ -111,14 +138,12 @@ export function PersonPage() {
                 </div>
               </div>
               <div className="flex flex-wrap items-center gap-2">
-                {tagLabel ? <span className="k-chip">{tagLabel}</span> : null}
-                {mark ? <TagChip tag={DISQUALIFIED_TAG} /> : null}
                 {lead.email ? (
                   <a href={`mailto:${lead.email}`} className="k-btn">
                     Email
                   </a>
                 ) : null}
-                {!mark ? (
+                {freeLevels.length > 0 ? (
                   <button type="button" className="k-btn" onClick={() => setDisqualifying((v) => !v)} aria-expanded={disqualifying}>
                     Disqualify
                   </button>
@@ -149,13 +174,13 @@ export function PersonPage() {
               </div>
             ) : null}
 
-            {disqualifying && !mark ? (
+            {disqualifying && formLevel ? (
               <form
                 className="k-card mt-4 flex flex-wrap items-center gap-2 p-4"
                 onSubmit={(e) => {
                   e.preventDefault();
                   disqualify.mutate(
-                    { leadRowId, brandId, ...(offerId ? { offerId } : {}), ...disqualificationNoteBody(note) },
+                    { leadRowId, brandId, level: formLevel, ...(offerId ? { offerId } : {}), ...disqualificationNoteBody(note) },
                     {
                       onSuccess: () => {
                         setDisqualifying(false);
@@ -165,8 +190,25 @@ export function PersonPage() {
                   );
                 }}
               >
+                <div className="flex w-full flex-wrap items-center gap-2" role="radiogroup" aria-label="Disqualify">
+                  <span className="k-fg2 text-[13px]">Disqualify</span>
+                  {freeLevels.map((l) => (
+                    <button
+                      key={l}
+                      type="button"
+                      role="radio"
+                      aria-checked={formLevel === l}
+                      className={formLevel === l ? "k-btn-strong" : "k-btn"}
+                      onClick={() => setLevel(l)}
+                    >
+                      {l === "lead" ? "This contact" : `All of ${companyWord}`}
+                    </button>
+                  ))}
+                </div>
                 <label htmlFor="disqualify-note" className="k-fg2 w-full text-[13px]">
-                  Not a fit for this offer? Add a note if you like.
+                  {formLevel === "lead"
+                    ? "Not the right person? Add a note if you like."
+                    : `Not our target? Everyone at ${companyWord} reads Disqualified.`}
                 </label>
                 <input
                   id="disqualify-note"
@@ -190,26 +232,39 @@ export function PersonPage() {
               </form>
             ) : null}
 
-            {mark ? (
-              <div className="k-card mt-4 flex flex-wrap items-start gap-3 p-4">
-                <TagChip tag={DISQUALIFIED_TAG} />
-                <div className="min-w-0 flex-1">
-                  <p className="text-[13px]">{mark.note ?? <span className="k-fg3">No note.</span>}</p>
-                  <p className="k-fg3 mt-0.5 text-[12px]">
-                    {disqualificationSourceWord(mark)} · {friendlyDate(mark.statedAt)}
-                  </p>
-                </div>
-                <button
-                  type="button"
-                  className="k-btn"
-                  disabled={undoDisqualify.isPending}
-                  onClick={() => undoDisqualify.mutate({ leadRowId, brandId, offerId: mark.offerId })}
-                >
-                  Undo
-                </button>
-                {undoDisqualify.isError ? <p className="w-full text-[12px] text-[var(--data-rose)]">We could not undo this. Try again.</p> : null}
-              </div>
-            ) : null}
+            <div className="k-card mt-4 divide-y divide-[var(--line-subtle)]">
+              <LevelRow label="Everywhere" sub="Wherever they work">
+                {optedOut ? <TagChip tag={OPTED_OUT_TAG} /> : <span className="k-fg4">{"—"}</span>}
+              </LevelRow>
+              <LevelRow label={company ? `At ${company}` : "This contact"} sub="This person, at this company">
+                {tagLabel ? <span className="k-chip">{tagLabel}</span> : null}
+                {leadMark ? (
+                  <MarkLine
+                    mark={leadMark}
+                    busy={undoDisqualify.isPending}
+                    onUndo={() => undoDisqualify.mutate({ leadRowId, brandId, offerId: leadMark.offerId, level: "lead" })}
+                  />
+                ) : !tagLabel ? (
+                  <span className="k-fg4">{"—"}</span>
+                ) : null}
+              </LevelRow>
+              {companyBlock ? (
+                <LevelRow label={company ?? "Company"} sub="Everyone at this company">
+                  {companyBlock.isClient ? <TagChip tag={CLIENT_TAG} /> : null}
+                  {companyBlock.signedUp ? <TagChip tag={SIGNED_UP_TAG} /> : null}
+                  {companyMark ? (
+                    <MarkLine
+                      mark={companyMark}
+                      busy={undoDisqualify.isPending}
+                      onUndo={() => undoDisqualify.mutate({ leadRowId, brandId, offerId: companyMark.offerId, level: "company" })}
+                    />
+                  ) : !companyBlock.isClient && !companyBlock.signedUp ? (
+                    <span className="k-fg4">{"—"}</span>
+                  ) : null}
+                </LevelRow>
+              ) : null}
+              {undoDisqualify.isError ? <p className="px-4 py-2 text-[12px] text-[var(--data-rose)]">We could not undo this. Try again.</p> : null}
+            </div>
 
             {cold ? (
               <div className="k-card mt-4 p-4">
@@ -299,6 +354,37 @@ export function PersonPage() {
         )}
       </div>
     </>
+  );
+}
+
+/** One level of tags: what it covers on the left, its tags on the right. */
+function LevelRow({ label, sub, children }: { label: string; sub: string; children: React.ReactNode }) {
+  return (
+    <div className="grid gap-2 px-4 py-3 md:grid-cols-[220px_minmax(0,1fr)] md:items-start">
+      <div className="min-w-0">
+        <p className="truncate text-[13px] font-medium">{label}</p>
+        <p className="k-fg3 text-[12px]">{sub}</p>
+      </div>
+      <div className="flex min-w-0 flex-wrap items-center gap-2 text-[13px]">{children}</div>
+    </div>
+  );
+}
+
+/** A Disqualified mark: the tag, its note, who set it and when, and Undo. */
+function MarkLine({ mark, busy, onUndo }: { mark: LeadDisqualification; busy: boolean; onUndo: () => void }) {
+  return (
+    <div className="flex w-full min-w-0 flex-wrap items-start gap-3">
+      <TagChip tag={DISQUALIFIED_TAG} />
+      <div className="min-w-0 flex-1">
+        <p className="text-[13px]">{mark.note ?? <span className="k-fg3">No note.</span>}</p>
+        <p className="k-fg3 mt-0.5 text-[12px]">
+          {disqualificationSourceWord(mark)} · {friendlyDate(mark.statedAt)}
+        </p>
+      </div>
+      <button type="button" className="k-btn" disabled={busy} onClick={onUndo}>
+        Undo
+      </button>
+    </div>
   );
 }
 

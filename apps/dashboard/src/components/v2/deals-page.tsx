@@ -16,7 +16,7 @@ import { CrewMark } from "@/components/v2/crew-mark";
 import { useMissions, type Mission } from "@/components/v2/use-missions";
 import { useSelectedOffer } from "@/components/v2/selected-offer";
 import { useLeadScope, useBrandRevenue, useInterestedReplies, useLeadDisqualifications, useStandingCounts } from "@/components/v2/data";
-import { DISQUALIFIED_TAG, disqualificationSourceWord, type DisqualifiedLead } from "@/lib/lead-disqualification";
+import { COMPANY_DISQUALIFIED_TAG, DISQUALIFIED_TAG, disqualificationSourceWord, markTag, type DisqualifiedCompany, type DisqualifiedLead } from "@/lib/lead-disqualification";
 import { TagChip } from "@/components/v2/tag-chip";
 import { EmptyNote, Shimmer, TopBar } from "@/components/v2/ui";
 import { CompanyMark, PersonAvatar, leadCompany, leadCompanyDomain, leadName, personHref } from "@/components/v2/people-bits";
@@ -63,8 +63,16 @@ export function DealsPage() {
   const { missionByCampaignId, crews } = useMissions(orgId, brandId);
   const revenue = useBrandRevenue(brandId);
   const [crewFilter, setCrewFilter] = useState<string | null>(null);
+  // A company marked "not our target" covers every lead of it: the column shows it even when
+  // no person carries a mark of their own.
+  const markedCompanies = disqualified.data?.companies ?? null;
   const columns = LEAD_BOARD_COLUMNS.filter(
-    (c) => !(c.hideWhenEmpty && (totals?.[c.key] ?? 0) === 0),
+    (c) =>
+      !(
+        c.hideWhenEmpty &&
+        (totals?.[c.key] ?? 0) === 0 &&
+        !(c.key === "disqualified" && (markedCompanies?.length ?? 0) > 0)
+      ),
   );
   const contacted = totals?.contacted ?? null;
   const interested = totals?.sales_interest ?? null;
@@ -167,6 +175,7 @@ export function DealsPage() {
                 orgId={orgId}
                 label={V2_COLUMN_LABEL[c.key] ?? c.label}
                 people={disqualified.data?.leads ?? null}
+                companies={disqualified.data ? (markedCompanies ?? []) : null}
                 failed={disqualified.isFetchedAfterMount && !disqualified.data && disqualified.isError}
                 share={(totals?.disqualified ?? 0) / biggest}
               />
@@ -338,7 +347,7 @@ function DealColumn({
                   <span className="truncate">{leadStatusLabel(status)}</span>
                   {lead.disqualification ? (
                     <span className="ml-auto" title={lead.disqualification.note ?? undefined}>
-                      <TagChip tag={DISQUALIFIED_TAG} />
+                      <TagChip tag={markTag(lead.disqualification)} />
                     </span>
                   ) : null}
                 </div>
@@ -357,15 +366,19 @@ function DealColumn({
 }
 
 /**
- * The Disqualified column: lead-service's list of marked people (note, who, when), newest
- * first. Each card also says what happened with the person (their step tag, read off their
- * own lead row), because the mark sits BESIDE the steps, never instead of them.
+ * The Disqualified column: lead-service's list, at its two levels. The COMPANIES marked "not our
+ * target" first (each with the served count of its people), then the people marked on their
+ * own (note, who, when), newest first. Each person card also says what happened with them (their
+ * step tag, read off their own lead row), because the mark sits BESIDE the steps, never instead.
+ * The header states both served counts side by side: a person can be marked AND at a marked
+ * company, so the two are never added here.
  */
 function DisqualifiedColumn({
   brandId,
   orgId,
   label,
   people,
+  companies,
   failed,
   share,
 }: {
@@ -373,6 +386,7 @@ function DisqualifiedColumn({
   orgId: string;
   label: string;
   people: DisqualifiedLead[] | null;
+  companies: DisqualifiedCompany[] | null;
   failed: boolean;
   share: number;
 }) {
@@ -384,6 +398,11 @@ function DisqualifiedColumn({
         <span className="h-2 w-2 rounded-[2px]" style={{ background: COLUMN_DOT.disqualified }} />
         <span className="text-[13px] font-medium">{label}</span>
         <span className="k-fg3 text-[13px] tabular-nums">{people == null ? "" : formatCount(people.length)}</span>
+        {companies && companies.length > 0 ? (
+          <span className="k-fg3 text-[12px] tabular-nums">
+            · {formatCount(companies.length)} {companies.length === 1 ? "company" : "companies"}
+          </span>
+        ) : null}
       </header>
       <div className="mb-3 mt-1.5 h-1 overflow-hidden rounded-full bg-[var(--data-track)]">
         <div className="h-full rounded-full" style={{ width: `${Math.round(share * 100)}%`, background: COLUMN_DOT.disqualified }} />
@@ -395,10 +414,17 @@ function DisqualifiedColumn({
           ) : (
             [0, 1, 2].map((i) => <Shimmer key={i} className="h-[74px] rounded-[10px]" />)
           )
-        ) : visible.length === 0 ? (
+        ) : visible.length === 0 && (companies?.length ?? 0) === 0 ? (
           <EmptyNote>Nobody here.</EmptyNote>
         ) : (
-          visible.map((p) => <DisqualifiedCard key={p.leadId} brandId={brandId} orgId={orgId} person={p} />)
+          <>
+            {(companies ?? []).map((c) => (
+              <DisqualifiedCompanyCard key={c.companyKey} brandId={brandId} orgId={orgId} company={c} />
+            ))}
+            {visible.map((p) => (
+              <DisqualifiedCard key={p.leadId} brandId={brandId} orgId={orgId} person={p} />
+            ))}
+          </>
         )}
         {people && people.length > shown ? (
           <button type="button" className="k-btn-ghost k-btn mt-1 justify-center" onClick={() => setShown((s) => s + LEAD_BOARD_PAGE_SIZE)}>
@@ -407,6 +433,42 @@ function DisqualifiedColumn({
         ) : null}
       </div>
     </section>
+  );
+}
+
+/** A company marked "not our target": every one of its people reads Disqualified. */
+function DisqualifiedCompanyCard({ brandId, orgId, company }: { brandId: string; orgId: string; company: DisqualifiedCompany }) {
+  const mark = company.disqualification;
+  const name = company.name ?? company.domain ?? "Unknown company";
+  const body = (
+    <>
+      <div className="flex items-center gap-2">
+        <CompanyMark name={name} domain={company.domain} size={18} />
+        <span className="min-w-0 flex-1 truncate text-[13px] font-medium">{name}</span>
+      </div>
+      <div className="k-fg2 mt-1.5 text-[12px] tabular-nums">
+        {formatCount(company.leadCount)} {company.leadCount === 1 ? "person" : "people"}
+      </div>
+      {mark.note ? <p className="k-fg2 mt-1.5 line-clamp-2 text-[12px]">{mark.note}</p> : null}
+      <div className="k-fg3 mt-1.5 flex items-center gap-1.5 text-[11px]">
+        <span className="truncate">{disqualificationSourceWord(mark)}</span>
+        <span className="ml-auto shrink-0 tabular-nums">{timeAgo(mark.statedAt)}</span>
+      </div>
+      <div className="k-fg2 mt-2 flex items-center gap-1.5 border-t border-[var(--line-subtle)] pt-2 text-[12px]">
+        <span className="h-1.5 w-1.5 shrink-0 rounded-full" style={{ background: COLUMN_DOT.disqualified }} />
+        <span className="truncate">Whole company</span>
+        <span className="ml-auto">
+          <TagChip tag={COMPANY_DISQUALIFIED_TAG} />
+        </span>
+      </div>
+    </>
+  );
+  return company.domain ? (
+    <Link href={`${v2Href(orgId, brandId, "companies")}/${encodeURIComponent(company.domain)}`} className="k-card block p-3">
+      {body}
+    </Link>
+  ) : (
+    <div className="k-card block p-3">{body}</div>
   );
 }
 

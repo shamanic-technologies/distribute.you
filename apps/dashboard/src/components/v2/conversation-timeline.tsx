@@ -9,7 +9,7 @@ import {
   liveItems,
   type ConversationTimeline,
 } from "@/lib/conversation-timeline";
-import { DISQUALIFIED_TAG, type LeadDisqualification } from "@/lib/lead-disqualification";
+import { markTag, type LeadDisqualification } from "@/lib/lead-disqualification";
 import { EmptyNote, Shimmer } from "@/components/v2/ui";
 import { TagChip } from "@/components/v2/tag-chip";
 
@@ -42,11 +42,11 @@ export function ConversationTags({
   );
 }
 
-/** The Disqualified tag and its note, when there is one. */
+/** The Disqualified tag (the person's own, or their company's) and its note, when there is one. */
 export function DisqualifiedTag({ mark }: { mark: LeadDisqualification }) {
   return (
     <span className="inline-flex min-w-0 items-center gap-1.5" title={mark.note ?? undefined}>
-      <TagChip tag={DISQUALIFIED_TAG} />
+      <TagChip tag={markTag(mark)} />
       {mark.note ? <span className="k-fg2 min-w-0 truncate">{mark.note}</span> : null}
     </span>
   );
