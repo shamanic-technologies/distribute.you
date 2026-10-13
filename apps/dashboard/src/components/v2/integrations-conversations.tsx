@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState, type RefObject } from "react";
-import { useInfiniteQuery, useQueryClient } from "@tanstack/react-query";
+import { useInfiniteQuery, useQueryClient, type InfiniteData } from "@tanstack/react-query";
 import { useSearchParams } from "next/navigation";
 import { ApiError, getLeadTimeline, getPersonTimeline, listPeople, setCrmPairingRuling } from "@/lib/api";
 import { rulingErrorMessage } from "@/lib/crm-pairings";
@@ -38,6 +38,7 @@ import { useSelectedOfferIfAny } from "@/components/v2/selected-offer";
 import { ICON_PATH, TONE_COLOR, TagChip } from "@/components/v2/tag-chip";
 import { LEAD_FAMILIES, familyFilter, type FamilyFilter } from "@/lib/lead-families";
 import { itemCallId } from "@/lib/api-calls";
+import { instantPeople } from "@/lib/unibox-instant-search";
 import { ApiCallDetailPanel } from "@/components/v2/api-call-detail";
 
 // The publishable logo.dev token the dashboard already ships (company-logo.tsx).
@@ -54,7 +55,7 @@ const factsKey = (leadRowId: string | null, brandId: string, offerId: string | n
   ["leadTimeline", leadRowId, brandId, offerId] as const;
 
 /** How long the typing pauses before the search is asked. */
-const SEARCH_DEBOUNCE_MS = 300;
+const SEARCH_DEBOUNCE_MS = 150;
 
 /** A message longer than this opens folded, so one long email does not bury the thread. */
 const FOLD_AT = 600;
@@ -83,7 +84,8 @@ export function V2ConversationsView({ brandId }: { brandId: string }) {
   const searchRef = useRef<HTMLInputElement | null>(null);
   const openKey = params.get("person");
   // The search runs at crm-service (names, addresses, companies AND message text across
-  // every page), asked once the typing pauses.
+  // every page), asked once the typing pauses. Until it answers, the rows already loaded
+  // are filtered in the browser on each letter (owner 2026-10-13: instant search).
   const [search, setSearch] = useState("");
   const [q, setQ] = useState("");
   useEffect(() => {
@@ -112,10 +114,20 @@ export function V2ConversationsView({ brandId }: { brandId: string }) {
     ...listQuery(family),
     enabled: gate && !!brandId,
     refetchInterval: POLL_INTERVAL,
+    // While a new search is asked, the last answer for the SAME family stays on screen
+    // (filtered below), never a blank list; a family click never shows another family.
+    placeholderData: (prev, prevQuery) => (prevQuery?.queryKey[4] === family ? prev : undefined),
   });
+  const queryClient = useQueryClient();
   const list = listQ.data?.pages[0] ?? null;
   const families = list?.families ?? null;
-  const people = listQ.data ? listQ.data.pages.flatMap((p) => p.people) : null;
+  const served = listQ.data ? listQ.data.pages.flatMap((p) => p.people) : null;
+  // Settled = crm-service answered for exactly what is typed. Before that, the rows on
+  // screen plus the plain list already in memory are filtered on the typed letters.
+  const typed = search.trim();
+  const settled = !listQ.isPlaceholderData && typed === q;
+  const plain = queryClient.getQueryData<InfiniteData<{ people: Person[] }>>(["people", brandId, "scroll", "", family]);
+  const people = settled || !served ? served : instantPeople([served, plain?.pages.flatMap((p) => p.people)], typed);
   const scrollBox = useRef<HTMLDivElement | null>(null);
   const sentinel = useRef<HTMLLIElement | null>(null);
   const { hasNextPage, isFetchingNextPage, fetchNextPage } = listQ;
@@ -134,7 +146,6 @@ export function V2ConversationsView({ brandId }: { brandId: string }) {
 
   // A thread opens from memory: the top rows' threads load with the list, any other row's
   // as the pointer reaches it. Same key and read as the Thread itself.
-  const queryClient = useQueryClient();
   // The other family buttons answer from memory: their first page loads with the page
   // (the plain list only; a search asks per family on click).
   const listLoaded = Boolean(list);
@@ -183,7 +194,7 @@ export function V2ConversationsView({ brandId }: { brandId: string }) {
   const open = (p: Person) => setParam("person", personRef(p));
   // The Unibox opens on the person on top (owner 2026-10-08), and a new search on its
   // first result. A person already in the URL (a click, a shared link) is kept.
-  const first = listQ.isPlaceholderData ? null : (people?.[0] ?? null);
+  const first = settled ? (people?.[0] ?? null) : null;
   const openedForQ = useRef<string | null>(null);
   const listedFor = `${family}|${q}`;
   useEffect(() => {
@@ -277,7 +288,7 @@ export function V2ConversationsView({ brandId }: { brandId: string }) {
         <section className="k-card flex max-h-[calc(100vh-220px)] min-h-[420px] flex-col overflow-hidden lg:max-h-none">
           <header className="k-line-subtle flex h-10 shrink-0 items-center justify-between border-b px-4">
             <span className="k-label">People</span>
-            <span className="k-fg3 text-[12px] tabular-nums">{list ? formatCount(list.total) : "—"}</span>
+            <span className="k-fg3 text-[12px] tabular-nums">{list && settled ? formatCount(list.total) : "—"}</span>
           </header>
           <div ref={scrollBox} className="k-scroll min-h-0 flex-1 overflow-y-auto">
             {people && people.length > 0 ? (
@@ -299,13 +310,15 @@ export function V2ConversationsView({ brandId }: { brandId: string }) {
                     }}
                   />
                 ))}
-                {hasNextPage && (
+                {hasNextPage && settled && (
                   <li ref={sentinel} className="space-y-2 px-4 py-3" aria-label="Loading more people">
                     <Shimmer className="h-9 w-full" />
                     <Shimmer className="h-9 w-full" />
                   </li>
                 )}
               </ul>
+            ) : list && !settled ? (
+              <ListRowsShimmer />
             ) : !list ? (
               <EmptyNote>We could not sort people into Hot, Won, Lost and Cold right now. All still lists everyone.</EmptyNote>
             ) : q ? (
@@ -826,6 +839,17 @@ function SourcesStrip({
       <span className="ml-auto">
         {lastError ? `Last refresh failed: ${lastError}` : lastBuiltAt ? `Refreshed ${timeAgo(lastBuiltAt)}` : null}
       </span>
+    </div>
+  );
+}
+
+/** A search still asked with no loaded row matching yet: rows, not "no match". */
+function ListRowsShimmer() {
+  return (
+    <div className="space-y-2 px-4 py-3" aria-label="Searching">
+      {Array.from({ length: 4 }, (_, i) => (
+        <Shimmer key={i} className="h-10 w-full" />
+      ))}
     </div>
   );
 }
