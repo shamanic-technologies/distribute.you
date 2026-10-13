@@ -1,20 +1,20 @@
 /**
- * The three statements a new customer ticks before their first payment (owner 2026-10-11,
- * reworded 2026-10-12: "the minimum a user needs to understand what will happen, not be
- * surprised, feel in control of their consent; legal detail stays in the terms"), on both arms
- * of the homepage A/B test. 1: what the credit pays for (everything, not only the campaigns).
- * 2: what happens when it runs out (prepaid: the first top-up is added again; plan: it moves
- * up the ladder, step after step). 3: the Terms. The pay button stays off until all three are
- * ticked.
+ * The statements a new customer ticks before their card is taken (owner 2026-10-11, reworded
+ * 2026-10-12; statement 1 DELETED 2026-10-13: "un fonctionnement à la Google Ads", the customer
+ * pays only its campaigns, so nothing to say about what else the credit covers). One per arm of
+ * the homepage A/B test: 1: what happens to my card (prepaid: the top-up is added again; plan:
+ * it moves up the ladder; postpaid: nothing today, charged on spend steps or at month end).
+ * 2: the Terms. The pay button stays off until every box is ticked.
  *
- * The campaign caps are NOT restated here (they stay on the "Your campaign" step): the credit
- * covers more than the campaigns, so a cap sentence read as a spending ceiling it is not.
+ * The campaign caps are NOT restated here (they stay on the "Your campaign" step).
  *
  * Alias-free on purpose, so it carries real unit tests.
  */
 
-export const CATALOG_URL = "https://distribute.you/catalog";
 export const TERMS_URL = "https://distribute.you/terms";
+
+/** How many boxes every arm ticks (its card statement, the terms). */
+export const CONSENT_STATEMENTS = 2;
 
 /** One statement: its words, and the link that closes it, when it has one. */
 export interface ConsentLine {
@@ -32,38 +32,48 @@ export type ConsentArm =
    * The plan: its monthly amount now; each step is $100 a month more (billing's ladder).
    * `limitUsd`: the monthly charge limit set at onboarding, named in the ladder sentence.
    */
-  | { kind: "plan"; monthlyUsd: number; limitUsd?: number };
+  | { kind: "plan"; monthlyUsd: number; limitUsd?: number }
+  /** Postpaid (owner 2026-10-13 A/B arm): nothing charged today, the card pays the spend after. */
+  | { kind: "postpaid" };
 
 /** billing's plan ladder steps $100 a month at a time ($99, $199, $299...). */
 export const PLAN_STEP_USD = 100;
+
+/**
+ * The spend a postpaid card is charged at, one step after the other: billing-service's derived
+ * postpaid tiers (`src/lib/topup-tier.ts`: $50, $200, $500 lines), plus the month-end sweep.
+ */
+export const POSTPAID_CHARGE_STEPS_USD = [50, 200, 500] as const;
 
 function usd(n: number): string {
   return `$${n.toLocaleString("en-US")}`;
 }
 
-export function spendConsentLines(input: { arm: ConsentArm }): [ConsentLine, ConsentLine, ConsentLine] {
-  const covers: ConsentLine = {
-    text: "I understand that my credit covers my campaigns and what I use myself, as well as everything done on my account on my behalf to get me the best results: brand setup, onboarding, A/B testing and more, as detailed in your",
-    link: { label: "public prices", href: CATALOG_URL },
-  };
+export function spendConsentLines(input: { arm: ConsentArm }): [ConsentLine, ConsentLine] {
   const { arm } = input;
-  const runsOut: ConsentLine =
+  const limit = (l: number | undefined) => (l !== undefined ? `, up to my ${usd(l)} monthly limit` : "");
+  const card: ConsentLine =
     arm.kind === "prepaid"
       ? {
           // Owner 2026-10-13: the reload, the limit that bounds it, and that the customer stays in control.
-          text: `When my credit runs out, ${usd(arm.topupUsd)} is added automatically${arm.limitUsd !== undefined ? `, up to my ${usd(arm.limitUsd)} monthly limit` : ""}. My campaigns keep running on the budget I set. I can pause them anytime.`,
+          text: `When my credit runs out, ${usd(arm.topupUsd)} is added automatically${limit(arm.limitUsd)}. My campaigns keep running on the budget I set. I can pause them anytime.`,
           link: null,
         }
-      : {
-          text: `I understand that each time my credit runs out, my plan upgrades automatically (${usd(arm.monthlyUsd + PLAN_STEP_USD)}, then ${usd(arm.monthlyUsd + 2 * PLAN_STEP_USD)}, and so on${arm.limitUsd !== undefined ? `, up to my ${usd(arm.limitUsd)} monthly limit` : ""}) and my card is charged accordingly, so my campaigns keep running as I set them.`,
-          link: null,
-        };
+      : arm.kind === "plan"
+        ? {
+            text: `When my credit runs out, my plan moves up automatically (${usd(arm.monthlyUsd + PLAN_STEP_USD)}, then ${usd(arm.monthlyUsd + 2 * PLAN_STEP_USD)}, and so on${limit(arm.limitUsd)}). My card is charged for each step.`,
+            link: null,
+          }
+        : {
+            text: `Nothing is charged today. I pay what my campaigns spend, never more than their budgets. My card is charged when my spend reaches ${POSTPAID_CHARGE_STEPS_USD.map(usd).join(", then ")}, or at the end of the month. You match my first $100.`,
+            link: null,
+          };
   const terms: ConsentLine = { text: "I have read and accept the", link: { label: "terms and conditions", href: TERMS_URL } };
-  return [covers, runsOut, terms];
+  return [card, terms];
 }
 
 /** The Terms version the statements refer to (the Terms' "Last updated" date). */
-export const TERMS_VERSION = "2026-10-11";
+export const TERMS_VERSION = "2026-10-13";
 
 /** billing's consent record (billing-service v0.81.x `PaymentConsent`): stored with the payment. */
 export interface PaymentConsentRecord {
