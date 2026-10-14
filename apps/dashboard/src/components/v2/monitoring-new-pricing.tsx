@@ -38,6 +38,7 @@ const FLAG_LABEL: Record<string, string> = {
 };
 const BASIS_LABEL: Record<string, string> = {
   "real-cost-x2": "real cost ×2",
+  "real-cost-x2-verdict-multiple": "real cost ×2, × verdict multiple",
   "real-cost-x1": "real cost ×1",
   "vendor-list-cost-floor": "floored at vendor list cost",
   "current-price-kept": "current price kept",

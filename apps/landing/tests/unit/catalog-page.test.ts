@@ -80,6 +80,24 @@ describe("catalog price list", () => {
     expect(lost?.rows[0].price).toBe("No price");
   });
 
+  it("an email sent is priced per BounceVerify verdict: one line per tier, its served label, listed before first use", () => {
+    const tier = (name: string, label: string, verdict: string, multiple: number, cents: string) => ({
+      name, unit: "email", members: [`instantly-account-${name}`, `instantly-domain-${name}`], pricePerUnitInUsdCents: cents, label,
+      emailVerification: { provider: "BounceVerify", verdict, priceMultipleOfValid: multiple, validBundle: "email-sent" },
+    });
+    const rows = [
+      row({ bundle: tier("email-sent", "Email sent, address verified valid by BounceVerify", "valid", 1, "5.73") }),
+      row({ lastUsedOn: null, bundle: tier("email-sent-catch-all", "Email sent, address verified catch-all by BounceVerify", "catch_all", 2, "11.46") }),
+      row({ lastUsedOn: null, bundle: tier("email-sent-unknown", "Email sent, address verified unknown by BounceVerify", "unknown", 3, "17.19") }),
+    ];
+    const sending = catalogSections(rows).find((s) => s.key === "sending");
+    expect(sending?.rows.map((r) => [r.what, r.price])).toEqual([
+      ["Email sent, address verified catch-all by BounceVerify", "$0.115 / email"],
+      ["Email sent, address verified unknown by BounceVerify", "$0.172 / email"],
+      ["Email sent, address verified valid by BounceVerify", "$0.0573 / email"],
+    ]);
+  });
+
   it("hides a line unused for 30+ days, measured from the usage read, not from today", () => {
     expect(catalogGroup(row({ lastUsedOn: null }))).toBeNull();
     expect(catalogGroup(row({ lastUsedOn: "2026-09-05", usageReadAt: "2026-10-06T08:00:00Z" }))).toBeNull();
