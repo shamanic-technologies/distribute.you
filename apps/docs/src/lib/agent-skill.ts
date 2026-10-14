@@ -70,6 +70,10 @@ export interface SkillUseCase {
 
 export const SKILL_USE_CASES: SkillUseCase[] = [
   {
+    ask: "How should I organize a new ask (an offer, a campaign, its caps)?",
+    routes: ["GET /v1/skills", "GET /v1/skills/{slug}"],
+  },
+  {
     ask: "Which organizations and brands can this key act in?",
     routes: ["GET /v1/me"],
   },
@@ -98,7 +102,7 @@ export const SKILL_USE_CASES: SkillUseCase[] = [
     docs: "/api/campaigns/",
   },
   {
-    ask: "Read or change a campaign's budget",
+    ask: "Read or change a campaign's caps (max budget, max volume)",
     routes: [
       "GET /v1/brands/{brandId}/offers/{offerId}/sales-funnels/{salesFunnelId}/caps",
       "PUT /v1/brands/{brandId}/offers/{offerId}/sales-funnels/{salesFunnelId}/caps",
@@ -150,13 +154,15 @@ export function agentSkillMarkdown(): string {
   const useCases = SKILL_USE_CASES.map(useCaseBlock).join("\n");
   return `---
 name: ${SKILL_NAME}
-description: Use distribute.you, the cold email agency that finds buyers, writes and sends the emails, and forwards the interested replies. Use when the user asks about their distribute.you brands, offers, campaigns, audiences, leads, replies, results, costs, budget or credit, or wants to change any of them.
+description: Use distribute.you, which finds buyers, writes and sends the cold emails, and forwards the interested replies. Use when the user asks about their distribute.you brands, offers, campaigns, audiences, leads, replies, results, costs, caps or credit, or wants to change any of them.
 ---
 
 # distribute.you
 
 ${agentQuickstartMarkdown()}
-distribute.you is a cold email agency run as software. A customer gives it a website and a daily budget; it finds the people to write to, writes the emails, sends them from its own domains, reads the replies and forwards the interested ones. The customer pays the budget they set and nothing else.
+distribute.you runs cold email for a brand: it finds the people to write to, writes the emails, sends them from its own domains, reads the replies and forwards the interested ones. Each campaign runs within caps the customer sets (a max budget and/or a max volume, each with a period), and the work is paid from a prepaid balance at the public per-action prices on ${CATALOG_URL}.
+
+The method our own Copilot follows is served as skills: \`GET /v1/skills\` (or the \`distribute_list_skills\` tool), then \`GET /v1/skills/index\` (\`distribute_read_skill\`) and every skill whose description matches the ask. Read them before organizing anything new (an offer, a campaign, its caps).
 
 You are the customer's assistant. This file tells you how to connect to their account and what you can do there.
 
@@ -212,7 +218,7 @@ Base URL \`https://api.distribute.you\`, one header on every call: \`${AUTH_HEAD
 - A plain-language map of every service, written for a model: ${LLM_CONTEXT_URL}
 - A command line client: \`${CLI_INSTALL_COMMAND}\`
 
-How the account is organized: an **organization** holds **brands** (one per company it sells for); a brand sells **offers**; each offer is reached through **campaigns**, each campaign targeting **audiences** and producing **leads** we write to. Money is a daily budget per campaign.
+How the account is organized: an **organization** holds **brands** (one per company it sells for); a brand sells **offers**; each offer is reached through **campaigns**, each campaign targeting **audiences** and producing **leads** we write to. A campaign is one sales funnel run for one offer, started or stopped as a whole. Money: each campaign has caps (a max budget and/or a max volume, each with a period), spent from the organization's prepaid balance.
 
 ## 4. What the user usually asks, and the routes that answer it
 
@@ -221,7 +227,7 @@ ${useCases}
 ## 5. Rules
 
 - Read before you write. Answer from the account's own data, never from assumptions.
-- Anything that spends credit, starts or stops a campaign, or changes a budget: say exactly what you are about to do and wait for the user's yes.
+- Anything that spends credit, starts or stops a campaign, or changes a cap: say exactly what you are about to do and wait for the user's yes.
 - A number you report comes from the API's answer as served. Do not recompute a cost or a return yourself. The one ratio you may state is the delivery rate (delivered out of sent) when the answer does not carry it.
 - Report results in the order of "How to report results to a human" above: meetings and positive replies first, failures last, no zero hidden.
 - If a call fails, show the user the error the API returned. Do not retry a write blindly.

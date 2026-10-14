@@ -478,8 +478,7 @@ describe("the two domains point at each other", () => {
  * caps the user states (a max budget and/or a max volume, with a period). The
  * old pitch ("give us a URL and a daily budget"), the free-credit and $1/day
  * offers, and the TypeScript client that was never published are retired, so
- * they must not come back on any page or in llms.txt. agent-skill.ts is left to
- * its own guard (agent-skill.test.ts).
+ * they must not come back on any page, in llms.txt or in the served skill.md.
  */
 describe("the docs speak the method skills' model", () => {
   function textFiles(dir: string): string[] {
@@ -488,7 +487,7 @@ describe("the docs speak the method skills' model", () => {
       const full = join(dir, entry);
       if (statSync(full).isDirectory()) {
         found.push(...textFiles(full));
-      } else if (/\.(tsx?|txt)$/.test(entry) && entry !== "agent-skill.ts") {
+      } else if (/\.(tsx?|txt)$/.test(entry)) {
         found.push(full);
       }
     }
