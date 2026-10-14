@@ -140,6 +140,13 @@ describe("Relationships page", () => {
     expect(read("app/(authed)/v2/orgs/[orgId]/brands/[brandId]/relationships/page.tsx")).toContain("<V2RelationshipsPage />");
   });
 
+  it("a merge is undone from its row's ⋮ menu, Not the same person (owner 2026-10-14)", () => {
+    const page = read("components/v2/relationships-page.tsx");
+    expect(page).toContain('label: "Not the same person"');
+    expect(page).toContain("undoRelationshipMerge(brandId, m.linkId)");
+    expect(page).not.toContain('"Undoing..." : "Undo"');
+  });
+
   it("each click calls lead-service through the gateway's brand-scoped routes", () => {
     const api = read("lib/api.ts");
     expect(api).toContain("`/brands/${encodeURIComponent(brandId)}/relationships`");
