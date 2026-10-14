@@ -14,6 +14,7 @@ import { MinusIcon } from "@phosphor-icons/react/dist/csr/Minus";
 import { CalendarIcon } from "@phosphor-icons/react/dist/csr/Calendar";
 import { ClockIcon } from "@phosphor-icons/react/dist/csr/Clock";
 import { ScalesIcon } from "@phosphor-icons/react/dist/csr/Scales";
+import { RocketLaunchIcon } from "@phosphor-icons/react/dist/csr/RocketLaunch";
 import { EmptyNote, SectionTitle } from "@/components/v2/ui";
 import { crewFor, type CrewGlyph } from "@/lib/v2/crews";
 import {
@@ -50,6 +51,8 @@ export const TOPIC_LOOK: Record<ResearchTopic, { color: string; Icon: typeof Bra
   hour: { color: "var(--data-sky)", Icon: ClockIcon },
   // a typed question answered with a probability (Jev): what the pipes ask before they act
   judgment: { color: "var(--data-violet)", Icon: ScalesIcon },
+  // the same people before and after something went live (the AI answering positive replies)
+  launch: { color: "var(--data-sky)", Icon: RocketLaunchIcon },
 };
 
 export const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];

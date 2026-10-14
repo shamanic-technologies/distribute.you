@@ -37,6 +37,7 @@ import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
 import { MODEL_LABEL } from "./model-label.mjs";
 import { meetingStudies } from "./meetings.mjs";
+import { meetingBeforeAfterStudy } from "./meeting-before-after.mjs";
 import { jevStudies } from "./jev.mjs";
 import { HERALD_LEG, SCOUT_LEG, canonicalLeg } from "./leg-key.mjs";
 import { NAMING_LABEL, namingOf, namingSides, rateP, costP, pText } from "./naming/naming.mjs";
@@ -994,6 +995,9 @@ const MEETINGS = meetingStudies({
   costBasis: facts.research.costBasis ?? "user",
 });
 for (const st of MEETINGS.studies) add(st);
+// Does the AI answering positive replies book more meetings? lead-service's before/after read,
+// in the same Meeting booked section (meeting-before-after.mjs).
+add(meetingBeforeAfterStudy({ read: readJson("meeting-before-after.json"), maturity: readJson("maturity.json") }));
 // What our typed judgments (Jev) do: the Typed judgment OUTCOME section (jev.mjs).
 const JEV = jevStudies({
   runs: csvRows("jev-runs.csv"),

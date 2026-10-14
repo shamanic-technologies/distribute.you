@@ -81,7 +81,7 @@ describe("research.json is coherent", () => {
     // the population is stated: only brands that report their meetings count (owner pick A, 2026-10-03)
     expect(meeting?.population).toMatch(/report(s)? (its|their) booked meetings/);
     const all = studiesForOutcome("meeting", RESEARCH);
-    expect(all.map((s) => s.id)).toEqual(["meeting-cost"]);
+    expect(all.map((s) => s.id)).toEqual(["meeting-cost", "meeting-ai-before-after"]);
     for (const s of [leg!, ...all]) {
       expect(s.verdict, s.id).toBeTruthy();
       // a meeting figure under features-service's count reads Learning, so never a conclusion yet

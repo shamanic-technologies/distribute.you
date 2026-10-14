@@ -320,6 +320,13 @@ onbox 'docker exec distribute-features-service-1 node -e "fetch(\"http://127.0.0
 [ -s "$OUT/maturity.json" ] || { echo "maturity.json is empty" >&2; exit 1; }
 echo "  maturity.json: $(wc -c < "$OUT/maturity.json") bytes"
 
+# BEFORE/AFTER each brand's AI Meeting Booking went live, as lead-service states it (its own
+# /internal/meeting-attribution/before-after read, from inside its container): go-live, who sits
+# on which side, who booked and the rate are all lead-service's; research.mjs only draws them.
+onbox 'docker exec distribute-lead-service-1 node -e "fetch(\"http://127.0.0.1:8080/internal/meeting-attribution/before-after\",{headers:{\"x-api-key\":process.env.LEAD_SERVICE_API_KEY}}).then(r=>{if(!r.ok)throw new Error(\"before-after \"+r.status);return r.json()}).then(j=>{if(!j.fleet)throw new Error(\"before-after: no fleet block\");console.log(JSON.stringify(j))})" </dev/null' > "$OUT/meeting-before-after.json"
+[ -s "$OUT/meeting-before-after.json" ] || { echo "meeting-before-after.json is empty" >&2; exit 1; }
+echo "  meeting-before-after.json: $(wc -c < "$OUT/meeting-before-after.json") bytes"
+
 # What each price version cost US at the vendor, before our markup, as costs-service states it
 # (its own /internal/vendor-costs read, from inside its container). The Research page's staff
 # "Actual cost" basis prices every spend row through this, with the rule runs-service's vendor
