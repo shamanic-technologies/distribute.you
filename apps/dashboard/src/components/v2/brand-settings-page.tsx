@@ -77,7 +77,7 @@ export function V2BrandSettingsPage() {
       id: "conversion-rates",
       title: "Conversion rates",
       description:
-        "We use what we measure on your own leads once enough have reached a step, your value until then, and the median of our clients when you have not given one.",
+        "We use what we measure on your own leads once enough have reached a step, your value until then, and an industry benchmark when you have not given one.",
       body: <BrandConversionRatesCard brandId={brandId} />,
     },
     {

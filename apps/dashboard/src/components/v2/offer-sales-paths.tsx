@@ -373,9 +373,6 @@ function LegLine({
           ? `measured ${formatRatePct(measuredPct)} (${toReached ?? 0} of ${fromReached ?? 0})`
           : null,
         inputs.customerStatedPct != null ? `stated ${formatRatePct(inputs.customerStatedPct)}` : null,
-        inputs.fleetMedian.ratePct != null
-          ? `median ${formatRatePct(inputs.fleetMedian.ratePct)} over ${inputs.fleetMedian.brandCount} brands`
-          : null,
         inputs.industryDefaultPct != null ? `benchmark ${formatRatePct(inputs.industryDefaultPct)}` : null,
       ]
         .filter(Boolean)

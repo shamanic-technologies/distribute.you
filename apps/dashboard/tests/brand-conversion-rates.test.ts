@@ -5,6 +5,7 @@ import {
   formatRatePct,
   parseRateInput,
   rateSourceLabel,
+  rateFieldSeed,
 } from "../src/lib/brand-conversion-rates";
 import type { EffectiveLegRate } from "../src/lib/api";
 
@@ -92,5 +93,24 @@ describe("rateSourceLabel", () => {
 
   it("reads exactly as before when the producer states no basis", () => {
     expect(rateSourceLabel(measuredLeg({ fromReached: 14 }))).toBe("Measured on 14 leads");
+  });
+});
+
+describe("rateFieldSeed", () => {
+  // Owner 2026-10-14: a new brand read 5% (other clients' median) in the box beside "benchmark 0.5%".
+  it("opens an unstated leg on the rate it is priced on, never another client's median", () => {
+    const leg: EffectiveLegRate = {
+      fromStep: "Website visit",
+      toStep: "Signup",
+      effectiveRatePct: 0.2,
+      source: "default",
+      unresolvedReason: null,
+      measured: { fromReached: 0, toReached: 0, ratePct: null, sufficient: false, gap: null },
+      manualRatePct: null,
+      median: { ratePct: 5, brandCount: 14 },
+    };
+    expect(rateFieldSeed(leg)).toBe("0.2");
+    expect(rateFieldSeed({ ...leg, median: null })).toBe("0.2");
+    expect(rateFieldSeed({ ...leg, manualRatePct: 3 })).toBe("3");
   });
 });

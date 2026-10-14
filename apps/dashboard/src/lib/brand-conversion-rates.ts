@@ -5,7 +5,7 @@
  * Owner-decided 2026-09-25: a conversion rate describes how a BRAND sells, so
  * there is one stated rate per (brand, leg), shared by every offer. The number the product prices on is decided upstream —
  * measured when enough people reached the step, else what the brand stated, else
- * the cross-org median — and this module never re-derives it. It only turns what
+ * the industry benchmark (owner 2026-10-14: never another client's numbers) — and this module never re-derives it. It only turns what
  * a person typed into the partial write brand-service expects.
  */
 
@@ -100,13 +100,14 @@ export function statedFromEffective(leg: EffectiveLegRate): StatedLegRate {
 }
 
 /**
- * The value a rate field OPENS with: the brand's own statement, else the
- * cross-org median as a prefill. A prefill is only shown; it is written only if
+ * The value a rate field OPENS with: the brand's own statement, else the rate the
+ * product prices on (measured or the industry benchmark) as a prefill, so the box and
+ * the source line beside it always name the same number. A prefill is only shown; it is written only if
  * the person edits the field or confirms it (see `legRatePatch`, which sends
  * nothing for an leg the form never touched).
  */
 export function rateFieldSeed(leg: EffectiveLegRate): string {
-  const value = leg.manualRatePct ?? leg.median.ratePct;
+  const value = leg.manualRatePct ?? leg.effectiveRatePct;
   return value === null ? "" : String(roundLegRatePct(value));
 }
 
@@ -135,8 +136,6 @@ export function rateSourceLabel(leg: EffectiveLegRate): string {
       return "Your value";
     case "default":
       return "Industry benchmark";
-    case "median":
-      return `Median of ${leg.median.brandCount} ${leg.median.brandCount === 1 ? "client" : "clients"}`;
     case null:
       return "No rate yet";
     default:

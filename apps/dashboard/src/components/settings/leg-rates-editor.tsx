@@ -20,9 +20,9 @@ import { SettingsSaveRow } from "@/components/settings/settings-save-row";
 // The brand's conversion rates, one row per LEG, and the ONLY editor of them.
 //
 // Each row states the rate every money figure is priced on and WHERE it came from
-// (measured on the brand's own leads, the brand's own value, or the median of our
-// clients). The field beside it is the brand's OWN value: it opens on what the
-// brand stated, else on the median as a prefill, and it is written only when the
+// (measured on the brand's own leads, the brand's own value, or an industry
+// benchmark). The field beside it is the brand's OWN value: it opens on what the
+// brand stated, else on the rate the row prices on as a prefill, and it is written only when the
 // person edits it. A measured rate wins over the brand's value once enough leads
 // reached the step, which the row says rather than hides.
 
@@ -53,7 +53,7 @@ export function LegRatesEditor({
 }) {
   const queryClient = useQueryClient();
   // Only the legs a person touched are in here, which is what keeps a prefilled
-  // median from being written as if the brand had stated it.
+  // benchmark from being written as if the brand had stated it.
   const [drafts, setDrafts] = useState<Record<string, string>>({});
   const [error, setError] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);

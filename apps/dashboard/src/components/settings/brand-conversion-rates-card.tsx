@@ -10,7 +10,7 @@ import { LegRatesEditor } from "@/components/settings/leg-rates-editor";
 //
 // The rate every money figure is priced on is resolved by features-service —
 // measured on the brand's own leads once enough of them reached the step, else the
-// brand's own value, else the median of our clients — and each row says which.
+// brand's own value, else an industry benchmark — and each row says which.
 // Nothing here re-derives it.
 
 export function BrandConversionRatesCard({ brandId }: { brandId: string }) {
