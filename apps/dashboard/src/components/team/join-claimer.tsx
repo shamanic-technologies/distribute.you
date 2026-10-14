@@ -5,6 +5,10 @@ import { usePathname, useRouter } from "next/navigation";
 import { useAuth, useClerk } from "@clerk/nextjs";
 import posthog from "posthog-js";
 import { clearJoinCookieAssignment, readJoinCookie } from "@/lib/org-invite";
+import { withTimeout } from "@/lib/with-timeout";
+
+/** Each Clerk leg of opening the joined org is bounded (same budget as an org switch). */
+const JOIN_ACTIVATE_TIMEOUT_MS = 15_000;
 
 type Clerk = ReturnType<typeof useClerk>;
 type Router = ReturnType<typeof useRouter>;
@@ -39,22 +43,44 @@ export async function claimJoin(token: string, clerk: Clerk, router: Router): Pr
   }
   document.cookie = clearJoinCookieAssignment();
   posthog.capture("team_join_completed");
-  const dest = `/orgs/${encodeURIComponent(body.orgId)}`;
-  // The membership was just created SERVER-side, and the browser's session does not
-  // know it yet, so a bare setActive is refused as "not a member". Reload the user
-  // first; if the switch is still refused, a full page load of the org lets the edge
-  // activate it from the URL. The join has already succeeded either way, so neither
-  // path may surface as a failure.
-  try {
-    await clerk.user?.reload();
-    await clerk.setActive({ organization: body.orgId });
-    router.replace(dest);
-  } catch (err) {
-    console.error("[join] setActive after join refused, opening the org with a full load", err);
-    posthog.capture("team_join_activate_fallback");
-    window.location.assign(dest);
-  }
+  await openJoinedOrg(body.orgId, clerk);
   return true;
+}
+
+/**
+ * Make the joined org the session's active org, then open it with ONE full page load.
+ *
+ * Never `clerk.setActive` + a soft navigation here. A person who just signed in or up
+ * through the link has a PENDING session (no org yet), and clerk-js `setActive`
+ * decides its task redirect from the session as it was BEFORE the switch: it still
+ * soft-navigates to the choose-organization task (which the edge 307s to `/v2`),
+ * Clerk's Next provider adds a `router.refresh()`, and our own navigation makes three
+ * concurrent App Router navigations. Next then takes its full-page-navigation branch
+ * mid-render and crashes on React #310 ("This page couldn't load"; prod 2026-10-14,
+ * a reload always worked). Touching the session posts the org to Clerk and mints a
+ * token that carries it, without any of that routing, and the full load is then the
+ * only navigation. A full load alone cannot do it: the edge does not activate an org
+ * for a pending session, it sends it to the task page.
+ *
+ * The join has already succeeded, so a failed activation is logged and the org is
+ * opened anyway (the edge activates it from the URL for an active session).
+ */
+async function openJoinedOrg(orgId: string, clerk: Clerk): Promise<void> {
+  const dest = `/orgs/${encodeURIComponent(orgId)}`;
+  try {
+    // The membership was created server-side: let the browser's user know it first.
+    if (clerk.user) await withTimeout(clerk.user.reload(), JOIN_ACTIVATE_TIMEOUT_MS, "Reloading your account");
+    const session = clerk.session;
+    if (session) {
+      session.lastActiveOrganizationId = orgId;
+      await withTimeout(session.touch({ intent: "select_org" }), JOIN_ACTIVATE_TIMEOUT_MS, "Opening the team");
+      await withTimeout(session.getToken({ skipCache: true }), JOIN_ACTIVATE_TIMEOUT_MS, "Opening the team");
+    }
+  } catch (err) {
+    console.error("[join] activating the joined org failed, opening it with a full load anyway", err);
+    posthog.capture("team_join_activate_fallback");
+  }
+  window.location.assign(dest);
 }
 
 /**
