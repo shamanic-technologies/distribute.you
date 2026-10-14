@@ -332,9 +332,11 @@ function integrationTabs(orgId: string, brandId: string, active: IntegrationView
  * The Brand page's tabs (owner 2026-10-10): its settings and its integrations, one entry
  * in the sidebar.
  */
-export function brandTabs(orgId: string, brandId: string, active: "settings" | "integrations"): V2Tab[] {
+export function brandTabs(orgId: string, brandId: string, active: "settings" | "relationships" | "integrations"): V2Tab[] {
   return [
     { label: "Settings", href: v2Href(orgId, brandId, "settings"), active: active === "settings" },
+    // Who each person is to the brand, and what the AI was not sure about (RELATIONSHIP-TAGS-1014).
+    { label: "Relationships", href: v2Href(orgId, brandId, "relationships"), active: active === "relationships" },
     { label: "Integrations", href: `${v2Href(orgId, brandId, "integrations")}/ai`, active: active === "integrations" },
   ];
 }

@@ -49,7 +49,7 @@ describe("Unibox instant search", () => {
 
   it("is wired into the Unibox list with the previous answer kept on screen", () => {
     const src = readFileSync(join(__dirname, "../src/components/v2/integrations-conversations.tsx"), "utf8");
-    expect(src).toContain("placeholderData: (prev, prevQuery) => (prevQuery?.queryKey[4] === family ? prev : undefined)");
+    expect(src).toContain("prevQuery?.queryKey[4] === family && (prevQuery?.queryKey[5] ?? null) === relationship ? prev : undefined");
     expect(src).toContain("instantPeople([served,");
     expect(src).toContain("const SEARCH_DEBOUNCE_MS = 150;");
   });

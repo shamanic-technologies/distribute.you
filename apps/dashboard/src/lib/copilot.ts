@@ -118,6 +118,7 @@ export const COPILOT_PAGES: Record<string, { section: V2Section | null; what: st
   billing: { section: "billing", what: "balance, payments and spend" },
   integrations: { section: "integrations", what: "connected tools" },
   settings: { section: "settings", what: "brand settings" },
+  relationships: { section: "relationships", what: "who each person is to the brand, and what the AI was not sure about" },
   campaign: { section: null, what: "one campaign's page (needs campaignId)" },
 };
 

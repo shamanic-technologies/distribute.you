@@ -368,7 +368,7 @@ function V2Sidebar() {
             href={v2Href(orgId, brandId, "settings")}
             label="Brand"
             icon={<I d={ICONS.settings} />}
-            active={section === "settings" || section === "integrations"}
+            active={section === "settings" || section === "relationships" || section === "integrations"}
           />
         </Group>
 

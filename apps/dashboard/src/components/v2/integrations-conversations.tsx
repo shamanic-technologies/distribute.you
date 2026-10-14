@@ -41,6 +41,7 @@ import { LEAD_FAMILIES, familyFilter, type FamilyFilter } from "@/lib/lead-famil
 import { itemCallId } from "@/lib/api-calls";
 import { instantPeople } from "@/lib/unibox-instant-search";
 import { ApiCallDetailPanel } from "@/components/v2/api-call-detail";
+import { RelationshipChips, RelationshipFilter, type RelationshipFilterValue } from "@/components/v2/relationship-tags";
 
 // The publishable logo.dev token the dashboard already ships (company-logo.tsx).
 const LOGO_DEV_TOKEN = "pk_J1iY4__HSfm9acHjR8FibA";
@@ -101,14 +102,30 @@ export function V2ConversationsView({ brandId }: { brandId: string }) {
   // crm-service's (features-service's verdict).
   const family = familyFilter(params.get("family"));
   const pickFamily = (f: FamilyFilter) => setParam("family", f);
+  // Who they are to the brand (RELATIONSHIP-TAGS-1014): one relationship tag, or everyone.
+  // crm-service filters and counts; the button shows only once it serves the counts.
+  const relationship: RelationshipFilterValue = params.get("rel") || null;
+  const pickRelationship = (v: RelationshipFilterValue) => {
+    const next = new URLSearchParams(window.location.search);
+    if (v) next.set("rel", v);
+    else next.delete("rel");
+    window.history.replaceState(null, "", `?${next.toString()}`);
+  };
 
   // The first rows load at once, the next ones as the end of the list scrolls into view
   // (owner 2026-10-08: no pages to click through).
   const gate = useOrgQueryGate();
   const listQuery = (f: FamilyFilter) => ({
-    queryKey: ["people", brandId, "scroll", q, f],
+    // The relationship filter rides AFTER the family so `queryKey[4]` stays the family.
+    queryKey: ["people", brandId, "scroll", q, f, ...(relationship ? [relationship] : [])],
     queryFn: ({ pageParam }: { pageParam: number }) =>
-      listPeople(brandId, { limit: PEOPLE_PAGE_SIZE, offset: pageParam, q, family: f === "all" ? undefined : f }),
+      listPeople(brandId, {
+        limit: PEOPLE_PAGE_SIZE,
+        offset: pageParam,
+        q,
+        family: f === "all" ? undefined : f,
+        relationship: relationship ?? undefined,
+      }),
     initialPageParam: 0,
     getNextPageParam: (last: { nextOffset?: number | null }) => last.nextOffset ?? undefined,
   });
@@ -118,7 +135,8 @@ export function V2ConversationsView({ brandId }: { brandId: string }) {
     refetchInterval: POLL_INTERVAL,
     // While a new search is asked, the last answer for the SAME family stays on screen
     // (filtered below), never a blank list; a family click never shows another family.
-    placeholderData: (prev, prevQuery) => (prevQuery?.queryKey[4] === family ? prev : undefined),
+    placeholderData: (prev, prevQuery) =>
+      prevQuery?.queryKey[4] === family && (prevQuery?.queryKey[5] ?? null) === relationship ? prev : undefined,
   });
   const queryClient = useQueryClient();
   const list = listQ.data?.pages[0] ?? null;
@@ -128,7 +146,14 @@ export function V2ConversationsView({ brandId }: { brandId: string }) {
   // screen plus the plain list already in memory are filtered on the typed letters.
   const typed = search.trim();
   const settled = !listQ.isPlaceholderData && typed === q;
-  const plain = queryClient.getQueryData<InfiniteData<{ people: Person[] }>>(["people", brandId, "scroll", "", family]);
+  const plain = queryClient.getQueryData<InfiniteData<{ people: Person[] }>>([
+    "people",
+    brandId,
+    "scroll",
+    "",
+    family,
+    ...(relationship ? [relationship] : []),
+  ]);
   const people = settled || !served ? served : instantPeople([served, plain?.pages.flatMap((p) => p.people)], typed);
   const scrollBox = useRef<HTMLDivElement | null>(null);
   const sentinel = useRef<HTMLLIElement | null>(null);
@@ -157,7 +182,7 @@ export function V2ConversationsView({ brandId }: { brandId: string }) {
       if (f !== family) void queryClient.prefetchInfiniteQuery({ ...listQuery(f), staleTime: POLL_INTERVAL });
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [gate, brandId, q, listLoaded]);
+  }, [gate, brandId, q, listLoaded, relationship]);
   // The lead-service facts load WITH the thread, keyed on the list row's lead (same key
   // and read as the Thread), never after it.
   const selected = useSelectedOfferIfAny();
@@ -198,7 +223,7 @@ export function V2ConversationsView({ brandId }: { brandId: string }) {
   // first result. A person already in the URL (a click, a shared link) is kept.
   const first = settled ? (people?.[0] ?? null) : null;
   const openedForQ = useRef<string | null>(null);
-  const listedFor = `${family}|${q}`;
+  const listedFor = `${family}|${relationship ?? ""}|${q}`;
   useEffect(() => {
     if (!first) return;
     const newSearch = openedForQ.current !== null && openedForQ.current !== listedFor;
@@ -298,7 +323,14 @@ export function V2ConversationsView({ brandId }: { brandId: string }) {
           onSearch={setSearch}
           placeholder="Search people and messages"
           inputRef={searchRef}
-          right={<FamilyButtons value={family} families={families} onPick={pickFamily} />}
+          right={
+            <div className="flex max-w-full items-center gap-1.5">
+              {list?.relationships && (
+                <RelationshipFilter value={relationship} counts={list.relationships} onPick={pickRelationship} />
+              )}
+              <FamilyButtons value={family} families={families} onPick={pickFamily} />
+            </div>
+          }
         />
       </div>
       <div className="grid gap-4 lg:min-h-0 lg:flex-1 lg:grid-rows-[minmax(0,1fr)] @3xl:grid-cols-[380px_minmax(0,1fr)]">
@@ -344,6 +376,8 @@ export function V2ConversationsView({ brandId }: { brandId: string }) {
               <EmptyNote>We could not sort people into Hot, Won, Lost and Cold right now. All still lists everyone.</EmptyNote>
             ) : q ? (
               <EmptyNote>No conversation matches &ldquo;{q}&rdquo;.</EmptyNote>
+            ) : relationship ? (
+              <EmptyNote>Nobody with this tag in your conversations.</EmptyNote>
             ) : family !== "all" ? (
               <EmptyNote>No {familyLabel} in your conversations.</EmptyNote>
             ) : building ? (
@@ -443,6 +477,9 @@ function PersonRow({
           </span>
           <span className="mt-1 flex flex-wrap items-center gap-1.5">
             {status && <PersonTag label={status} state={person.state} />}
+            {person.relationship && (
+              <RelationshipChips tags={person.relationship.tags} unsureTags={person.relationship.unsureTags} />
+            )}
             {personSourceMarks(person.presences).map((m) => (
               <SourceLogo key={m.key} mark={m} size={14} />
             ))}
@@ -524,9 +561,12 @@ function Thread({
               {[...person.emails, ...person.phones].join(" · ") || "—"}
             </p>
           </MarkLines>
-          {status && (
-            <span className="ml-auto shrink-0">
-              <PersonTag label={status} state={person.state} />
+          {(status || listed?.relationship) && (
+            <span className="ml-auto flex shrink-0 flex-wrap items-center gap-1.5">
+              {listed?.relationship && (
+                <RelationshipChips tags={listed.relationship.tags} unsureTags={listed.relationship.unsureTags} />
+              )}
+              {status && <PersonTag label={status} state={person.state} />}
             </span>
           )}
         </div>

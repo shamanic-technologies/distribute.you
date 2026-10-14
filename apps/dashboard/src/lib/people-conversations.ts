@@ -110,6 +110,21 @@ export const PersonSchema = z.object({
       }),
     )
     .optional(),
+  /**
+   * Who the person is to the brand (lead-service's relationship block, relayed verbatim by
+   * crm-service, RELATIONSHIP-TAGS-1014): `tags` are YES, `unsureTags` wait on the owner's
+   * review page. Null = no human id yet, or the relationship read failed (the list's
+   * `relationships.status` says which). Lenient: only what the row prints is read.
+   */
+  relationship: z
+    .object({
+      humanId: z.string().nullable(),
+      tags: z.array(z.string()),
+      unsureTags: z.array(z.string()),
+      judgedAt: z.string().nullable(),
+    })
+    .passthrough()
+    .nullish(),
 });
 
 export const PeopleListSchema = z.object({
@@ -140,6 +155,21 @@ export const PeopleListSchema = z.object({
         lost: z.coerce.number(),
         cold: z.coerce.number(),
       }),
+    })
+    .optional(),
+  /**
+   * People per relationship tag over this list's population (search applied, relationship
+   * filter NOT applied; tags overlap). `status` "failed" carries `error` and null counts.
+   */
+  relationships: z
+    .object({
+      status: z.string(),
+      error: z.string().nullable(),
+      filter: z.string().nullable(),
+      counts: z.record(z.string(), z.coerce.number()).nullable(),
+      untagged: z.coerce.number().nullable(),
+      unjudged: z.coerce.number().nullable(),
+      population: z.coerce.number(),
     })
     .optional(),
 });
