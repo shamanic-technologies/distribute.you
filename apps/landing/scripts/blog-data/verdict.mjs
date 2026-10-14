@@ -61,7 +61,7 @@ const plural = (n, one, many) => `${n.toLocaleString("en-US")} ${n === 1 ? one :
  * strata: optional derive.mjs per-bucket strata map ({ [label]: { [stratum]: counts } }) and the
  * outcome key in it ("clicks" | "replies").
  */
-export function compareVerdict({ a, b, goal, comparisons, strata, count, noun, nouns, splitTest = false }) {
+export function compareVerdict({ a, b, goal, comparisons, strata, count, noun, nouns, splitTest = false, per: perText }) {
   if (!a) return { kind: "noise", reason: `No ${nouns} yet.` };
   if (!b) return { kind: "noise", reason: `Only one side has sent anything: nothing to compare.` };
   if (a.outcomes < MIN_OUTCOMES) {
@@ -71,7 +71,8 @@ export function compareVerdict({ a, b, goal, comparisons, strata, count, noun, n
   const p = exactP(a.outcomes, a[exp], b.outcomes, b[exp]);
   const m = Math.max(1, comparisons);
   const alpha = ALPHA / m;
-  const per = goal === "roi" ? "per dollar" : "per email";
+  // `per` names the exposure when it is not emails (people with a positive reply, say)
+  const per = perText ?? (goal === "roi" ? "per dollar" : "per email");
   const vs = `${a.label} against ${b.label}, ${nouns} ${per}`;
   const corr = m > 1 ? ` (${m} comparisons, so the bar is p < ${pText(alpha)})` : "";
   if (p >= ALPHA) return { kind: "noise", reason: `${vs}: p ${pText(p)}, a gap chance alone produces often.`, p };
