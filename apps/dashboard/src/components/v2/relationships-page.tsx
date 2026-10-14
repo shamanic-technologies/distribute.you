@@ -30,6 +30,7 @@ import {
 import { friendlyDateTime } from "@/lib/friendly-datetime";
 import { formatCount } from "@/lib/format-number";
 import { V2Page, brandTabs } from "@/components/v2/setup-pages";
+import { RowMenu } from "@/components/v2/relationship-tags";
 import { BrandIdentityTitle } from "@/components/v2/brand-identity-title";
 import { EmptyNote, Initials, SectionTitle, Shimmer } from "@/components/v2/ui";
 import { v2Href } from "@/lib/v2/routes";
@@ -512,96 +513,6 @@ function CompanyField({
       )}
       {error && <span className="text-[12px] text-[var(--data-rose)]">{error}</span>}
     </span>
-  );
-}
-
-/** A row's ⋮: a small menu of the rare actions on that row. */
-function RowMenu({
-  label,
-  disabled,
-  items,
-}: {
-  label: string;
-  disabled: boolean;
-  items: Array<{ label: string; onSelect: () => void }>;
-}) {
-  const [open, setOpen] = useState(false);
-  const btn = useRef<HTMLButtonElement | null>(null);
-  const menu = useRef<HTMLDivElement | null>(null);
-  const [pos, setPos] = useState<{ top: number; left: number } | null>(null);
-  const [host, setHost] = useState<HTMLElement | null>(null);
-  useEffect(() => setHost(document.getElementById("v2-portal") ?? document.body), []);
-  useLayoutEffect(() => {
-    if (!open || !btn.current) return;
-    const r = btn.current.getBoundingClientRect();
-    const h = items.length * 32 + 8;
-    const below = r.bottom + 4 + h <= window.innerHeight - 8;
-    // Right-aligned under the ⋮, which sits at the row's right edge.
-    setPos({ top: below ? r.bottom + 4 : Math.max(8, r.top - 4 - h), left: Math.max(8, r.right - 200) });
-  }, [open, items.length]);
-  useEffect(() => {
-    if (!open) return;
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") setOpen(false);
-    };
-    const onDown = (e: MouseEvent) => {
-      const t = e.target as Node;
-      if (!menu.current?.contains(t) && !btn.current?.contains(t)) setOpen(false);
-    };
-    const onScroll = (e: Event) => {
-      if (!menu.current?.contains(e.target as Node)) setOpen(false);
-    };
-    window.addEventListener("keydown", onKey);
-    window.addEventListener("mousedown", onDown);
-    document.addEventListener("scroll", onScroll, { capture: true, passive: true });
-    return () => {
-      window.removeEventListener("keydown", onKey);
-      window.removeEventListener("mousedown", onDown);
-      document.removeEventListener("scroll", onScroll, { capture: true });
-    };
-  }, [open]);
-  return (
-    <>
-      <button
-        ref={btn}
-        type="button"
-        disabled={disabled}
-        aria-label={label}
-        aria-haspopup="menu"
-        aria-expanded={open}
-        onClick={() => setOpen((o) => !o)}
-        className="k-btn-ghost justify-center disabled:opacity-60"
-        style={{ width: 28, padding: 0 }}
-      >
-        <svg width="14" height="14" viewBox="0 0 16 16" aria-hidden="true">
-          <circle cx="8" cy="3.5" r="1.3" fill="currentColor" />
-          <circle cx="8" cy="8" r="1.3" fill="currentColor" />
-          <circle cx="8" cy="12.5" r="1.3" fill="currentColor" />
-        </svg>
-      </button>
-      {open &&
-        host &&
-        pos &&
-        createPortal(
-          <div ref={menu} role="menu" className="k-popover fixed z-[90] w-[200px] p-1" style={{ top: pos.top, left: pos.left }}>
-            {items.map((it) => (
-              <button
-                key={it.label}
-                type="button"
-                role="menuitem"
-                onClick={() => {
-                  setOpen(false);
-                  it.onSelect();
-                }}
-                className="k-fg2 k-hover flex h-8 w-full items-center rounded-lg px-2 text-left text-[13px]"
-              >
-                {it.label}
-              </button>
-            ))}
-          </div>,
-          host,
-        )}
-    </>
   );
 }
 

@@ -122,6 +122,10 @@ export const PersonSchema = z.object({
       tags: z.array(z.string()),
       unsureTags: z.array(z.string()),
       judgedAt: z.string().nullable(),
+      /** The merges that made this person (lead-service), each undoable from the thread's ⋮. */
+      merges: z
+        .array(z.object({ linkId: z.string(), names: z.array(z.string().nullable()) }).passthrough())
+        .optional(),
     })
     .passthrough()
     .nullish(),

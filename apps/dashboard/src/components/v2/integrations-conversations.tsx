@@ -41,7 +41,7 @@ import { LEAD_FAMILIES, familyFilter, type FamilyFilter } from "@/lib/lead-famil
 import { itemCallId } from "@/lib/api-calls";
 import { instantPeople } from "@/lib/unibox-instant-search";
 import { ApiCallDetailPanel } from "@/components/v2/api-call-detail";
-import { RelationshipChips, RelationshipFilter, type RelationshipFilterValue } from "@/components/v2/relationship-tags";
+import { RelationshipChips, RelationshipFilter, UnmergeMenu, type RelationshipFilterValue } from "@/components/v2/relationship-tags";
 
 // The publishable logo.dev token the dashboard already ships (company-logo.tsx).
 const LOGO_DEV_TOKEN = "pk_J1iY4__HSfm9acHjR8FibA";
@@ -567,6 +567,9 @@ function Thread({
                 <RelationshipChips tags={listed.relationship.tags} unsureTags={listed.relationship.unsureTags} />
               )}
               {status && <PersonTag label={status} state={person.state} />}
+              {listed?.relationship?.merges && listed.relationship.merges.length > 0 && (
+                <UnmergeMenu brandId={brandId} name={name} merges={listed.relationship.merges} />
+              )}
             </span>
           )}
         </div>
