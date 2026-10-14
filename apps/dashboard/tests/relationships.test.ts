@@ -147,6 +147,12 @@ describe("Relationships page", () => {
     expect(page).not.toContain('"Undoing..." : "Undo"');
   });
 
+  it("the Unibox thread offers each of the person's merges to unmerge from its ⋮ (owner 2026-10-14)", () => {
+    const view = read("components/v2/integrations-conversations.tsx");
+    expect(view).toContain("<UnmergeMenu brandId={brandId} name={name} merges={listed.relationship.merges} />");
+    expect(read("components/v2/relationship-tags.tsx")).toContain("await undoRelationshipMerge(brandId, m.linkId);");
+  });
+
   it("each click calls lead-service through the gateway's brand-scoped routes", () => {
     const api = read("lib/api.ts");
     expect(api).toContain("`/brands/${encodeURIComponent(brandId)}/relationships`");
