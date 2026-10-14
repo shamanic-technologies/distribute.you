@@ -5,7 +5,6 @@ import { createPortal } from "react-dom";
 import { useParams } from "next/navigation";
 import { useQueryClient } from "@tanstack/react-query";
 import { useAuthQuery } from "@/lib/use-auth-query";
-import { pollIntervalFor } from "@/lib/query-options";
 import {
   ApiError,
   answerRelationshipMerge,
@@ -52,9 +51,9 @@ const QUESTION_PAGE = 10;
 
 export function V2RelationshipsPage() {
   const { orgId, brandId } = useParams<{ orgId: string; brandId: string }>();
-  const q = useAuthQuery(REVIEW_KEY(brandId), () => getRelationshipReview(brandId), {
-    refetchInterval: pollIntervalFor,
-  });
+  // Read on page open and after each click, never polled: nothing here moves faster than
+  // lead-service's 5 minute sweep, and the read covers every person of the brand.
+  const q = useAuthQuery(REVIEW_KEY(brandId), () => getRelationshipReview(brandId), { staleTime: 0 });
   const data = q.data ?? null;
 
   return (
