@@ -261,6 +261,18 @@ describe("llms.txt", () => {
     expect(llms).toContain("Accept: text/markdown");
   });
 
+  // The Copilot's method skills are the source of truth for the model (owner
+  // 2026-10-14): point at them, and keep the retired "website and a daily
+  // budget" pitch (campaign caps replaced it) and the "$1/day" offer out.
+  it("points an agent at the method skills and speaks their model", () => {
+    expect(llms).toContain("https://api.distribute.you/v1/skills");
+    expect(llms).toContain("distribute_list_skills");
+    expect(llms).toContain("https://distribute.you/catalog");
+    expect(llms).not.toMatch(/(website|URL) and\s+(>\s*)?a daily budget/i);
+    expect(llms).not.toContain("$1/day");
+    expect(llms).not.toMatch(/we are the agency/i);
+  });
+
   it("keeps the positioning honest", () => {
     const lower = llms.toLowerCase();
     expect(lower).toContain("distribute.you does done-for-you revenue automation");
@@ -290,5 +302,11 @@ describe("MCP descriptor", () => {
     expect(body.servers[0].transport).toBe("streamable-http");
     expect(body.openapi).toBe("https://api.distribute.you/openapi.json");
     expect(body.documentation).toContain("docs.distribute.you");
+  });
+
+  it("tells a client to read the method skills first", async () => {
+    const { GET } = await import("@/app/.well-known/mcp.json/route");
+    const body = (await GET().json()) as { description: string };
+    expect(body.description).toContain("distribute_list_skills");
   });
 });

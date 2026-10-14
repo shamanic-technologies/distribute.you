@@ -1,6 +1,6 @@
 # distribute.you Documentation
 
-> distribute.you is an AI cold email outreach service run for you. You give a URL and a daily budget; it finds the people, writes the email, sends it on your behalf, qualifies the replies and forwards the good ones. Everything it does is reachable from a hosted MCP server and a REST API, and drivable from a command line client.
+> distribute.you: revenue made easy. Cold email outreach run for you: it finds the people, writes the email, sends it on your behalf, qualifies the replies and forwards the good ones. An organization holds brands; a brand sells offers; a campaign is one sales funnel run for one offer, with caps you state (a max budget and/or a max volume, each with a period), paid as you go from a prepaid balance at the public per-action prices on https://distribute.you/catalog. Everything it does is reachable from a hosted MCP server and a REST API, and drivable from a command line client.
 
 Every page below is a static HTML document at a stable URL. Fetch any of them directly.
 
@@ -13,10 +13,11 @@ Every page below is a static HTML document at a stable URL. Fetch any of them di
 - **Name a brand on each call**: Each call acts in ONE organization. Name a brand: `?brandId=`, the `x-brand-id` header, `brandId` (or `brandIds`) in a JSON body, or `/v1/brands/{id}` in the path. When a brand sits in several of your organizations, add `?orgId=` (or the `x-org-id` header). Calls about no brand name the organization with `orgId`. A user in exactly one organization can name nothing. Routes keyed only by a campaign id need `brandId` or `orgId` too when the user is in several organizations.
 - **Targeting errors**: Every refusal carries `code`, `message` and `fix`. `400 org_target_required`: you named nothing and belong to several organizations; pick one from the `organizations` list in the body (or from `GET /v1/me`) and send its `brandId` or `orgId`. `400 brand_in_several_orgs`: add `orgId`. `400 brands_span_orgs`: the brands are in different organizations; make one call per organization. `403 org_not_member`: that organization is not one of yours; use an id from `GET /v1/me`. `403 no_organization`: the user belongs to no organization; ask the human to create or join one in the dashboard. `404 org_not_found` or `brand_not_found`: the id is wrong; read `GET /v1/me` again. `503 membership_unavailable`: retry, keep the same key.
 - **No key yet? No human needed**: `POST https://api.distribute.you/v1/agent-signups/start` with `{"email", "phone"}` (an email you can read; phone in E.164, format checked only) emails a 6-digit code; `POST /v1/agent-signups/complete` with `{"email", "code"}` returns a new API key every time. Over MCP: `distribute_signup_start`, then `distribute_signup_complete`, with no key.
-- **Paying**: Free calls work right away. Every paid call is prepaid: `POST /v1/billing/accounts/prepaid_checkout` with `topup_amount_cents` (min 1000), `auto_topup_amount_cents` (min 1500), `auto_topup_threshold_cents` (min 500) returns a payment `url` to open or give your human (MCP: `distribute_prepay`). Automatic top-up is required. Until paid, a paid call answers `402 payment_required` with these steps. No free credit, no trial.
+- **Paying**: Free calls work right away. Every paid call is prepaid: `POST /v1/billing/accounts/prepaid_checkout` with `topup_amount_cents` (min 1000), `auto_topup_amount_cents` (min 1500), `auto_topup_threshold_cents` (min 500) returns a payment `url` to open or give your human (MCP: `distribute_prepay`). Automatic top-up is required. Until paid, a paid call answers `402 payment_required` with these steps. No free credit, no trial. Work is billed per action at the public prices on https://distribute.you/catalog.
+- **Method**: Before acting on a request (an offer, a funnel, a campaign, its caps), read the method skills: `GET /v1/skills`, then `GET /v1/skills/{slug}`, `index` first (MCP: `distribute_list_skills`, `distribute_read_skill`). They are the steps our own Copilot follows. A campaign is one sales funnel run for one offer, and it needs at least one cap the human states (a max budget and/or a max volume, each with a period). Nothing that starts work or spends money goes on without the human's yes.
 - **Key refused**: A 401 means the key was mistyped, revoked or not sent. Get a new one with the signup above, or ask the human for one from https://dashboard.distribute.you/api-keys. Keys start with `distrib.usr_`.
 - **Dashboard**: https://dashboard.distribute.you (API keys sit in the account menu, under API Keys).
-- **MCP server**: `https://mcp.distribute.you/mcp`, exactly 16 tools: `distribute_status`, `distribute_signup_start`, `distribute_signup_complete`, `distribute_prepay`, `distribute_prepaid_status`, `distribute_list_brands`, `distribute_suggest_icp`, `distribute_list_campaigns`, `distribute_campaign_stats`, `distribute_list_leads`, `distribute_list_emails`, `distribute_get_lead`, `distribute_list_workflows`, `distribute_find_api`, `distribute_describe_api`, `distribute_call_api`. `distribute_find_api`, `distribute_describe_api` and `distribute_call_api` reach every other REST operation.
+- **MCP server**: `https://mcp.distribute.you/mcp`, exactly 18 tools: `distribute_status`, `distribute_signup_start`, `distribute_signup_complete`, `distribute_prepay`, `distribute_prepaid_status`, `distribute_list_skills`, `distribute_read_skill`, `distribute_list_brands`, `distribute_suggest_icp`, `distribute_list_campaigns`, `distribute_campaign_stats`, `distribute_list_leads`, `distribute_list_emails`, `distribute_get_lead`, `distribute_list_workflows`, `distribute_find_api`, `distribute_describe_api`, `distribute_call_api`. `distribute_find_api`, `distribute_describe_api` and `distribute_call_api` reach every other REST operation.
 
 ### How to report results to a human
 
@@ -24,10 +25,11 @@ Lead with what the customer pays for: meetings booked and positive replies, then
 
 ## Machine-readable entry points
 
+- [Method skills](https://api.distribute.you/v1/skills): the steps our own Copilot follows to organize a request (offers, sales funnels, campaigns, caps, workflows), served read-only and the same for every client. `GET /v1/skills`, then `GET /v1/skills/{slug}`, `index` first; over MCP, `distribute_list_skills` and `distribute_read_skill`. Needs your key.
 - [Agent skill](https://docs.distribute.you/skill.md): one file an AI assistant reads to connect itself (MCP or REST, per harness), save itself as a skill, and answer the usual questions about an account.
 - [OpenAPI document](https://api.distribute.you/openapi.json): every REST route under https://api.distribute.you/v1, in one file.
 - [Interactive API explorer](https://api.distribute.you/docs): the same document, rendered with a request builder.
-- [MCP server](https://mcp.distribute.you/mcp): hosted, Streamable HTTP, 16 tools. There is no local server to install.
+- [MCP server](https://mcp.distribute.you/mcp): hosted, Streamable HTTP, 18 tools. There is no local server to install.
 - [MCP installation](https://docs.distribute.you/mcp/installation/): how each client registers that endpoint.
 - [Command line client](https://www.npmjs.com/package/@distribute.you/cli): `npx @distribute.you/cli --help`, the one npm package this product publishes.
 - [Developer resources](https://distribute.you/developers): every surface above, named and explained on one page on the apex domain.
@@ -42,6 +44,8 @@ Authentication is one header on every route, for the REST API and the MCP server
 - `distribute_signup_complete`
 - `distribute_prepay`
 - `distribute_prepaid_status`
+- `distribute_list_skills`
+- `distribute_read_skill`
 - `distribute_list_workflows`
 - `distribute_list_campaigns`
 - `distribute_campaign_stats`
@@ -67,28 +71,27 @@ Anything beyond these is reachable over the REST API (or `distribute_call_api`),
 
 - [distribute.you MCP Server](https://docs.distribute.you/mcp/): Use distribute.you from Claude Code, Claude Desktop, Cursor, or any MCP-compatible client. A hosted server over Streamable HTTP, with tools for brands, campaigns and workflows.
 - [MCP Installation](https://docs.distribute.you/mcp/installation/): Connect the hosted distribute.you MCP server from Claude Code, Claude Desktop, Cursor, and any other MCP-compatible client. Nothing to install.
-- [MCP Tools Reference](https://docs.distribute.you/mcp/tools/): Reference for every tool the hosted distribute.you MCP server exposes, covering brands, campaigns, workflows and targeting.
+- [MCP Tools Reference](https://docs.distribute.you/mcp/tools/): Reference for every tool the hosted distribute.you MCP server exposes, covering the method skills, brands, campaigns, leads, workflows and targeting.
 
 ## REST API reference
 
-- [distribute.you API Reference](https://docs.distribute.you/api/): REST API reference for distribute.you. Manage brands, campaigns, workflows, leads, press kits, billing and more.
+- [distribute.you API Reference](https://docs.distribute.you/api/): REST API reference for distribute.you. Manage brands, offers, campaigns and their caps, leads, workflows, billing and more, and read the method skills our Copilot follows.
 - [Brands API](https://docs.distribute.you/api/brands/): Create brands from a URL, fetch full brand details, and extract structured company data with AI through the distribute.you REST API.
 - [Features API](https://docs.distribute.you/api/features/): List automation features, pull live performance stats, and prefill campaign inputs through the distribute.you REST API.
-- [Campaigns API](https://docs.distribute.you/api/campaigns/): List your campaigns, run or pause them, set their budget and read their results via the distribute.you REST API.
+- [Campaigns API](https://docs.distribute.you/api/campaigns/): Launch a sales funnel as a campaign, run or pause it, set its caps (max budget and/or max volume) and read its results via the distribute.you REST API.
 - [Workflows API](https://docs.distribute.you/api/workflows/): List workflows, inspect their DAGs, fetch run summaries, and check API-key status through the distribute.you REST API.
 - [Leads API](https://docs.distribute.you/api/leads/): List qualified leads discovered for your campaigns and brands, with enrichment and source context, via the distribute.you REST API.
 - [Emails API](https://docs.distribute.you/api/emails/): View AI-generated emails and full outreach sequences for any campaign, with content and send status, via the distribute.you REST API.
-- [Billing API](https://docs.distribute.you/api/billing/): Check your account balance, credit usage and billing settings programmatically through the distribute.you REST API and MCP server.
+- [Billing API](https://docs.distribute.you/api/billing/): Check your prepaid balance and billing settings programmatically through the distribute.you REST API and MCP server. Actions are billed at public per-action prices.
 - [Costs API](https://docs.distribute.you/api/costs/): Retrieve per-campaign cost breakdowns and email delivery statistics to track spend and performance through the distribute.you REST API.
-- [Webhooks](https://docs.distribute.you/api/webhooks/): Receive real-time notifications for distribute.you campaign events: webhook events, payload structure and signature verification.
 
 ## Integrations
 
 - [distribute.you Integrations](https://docs.distribute.you/integrations/): Connect distribute.you to Claude Code, Claude Desktop, Cursor, ChatGPT, n8n, Zapier, Make.com, and any other MCP-compatible client.
 - [Claude Code Integration](https://docs.distribute.you/integrations/claude/): Use distribute.you from Claude Code. One command registers the hosted MCP server and its tools for brands, campaigns and workflows.
 - [Claude Desktop Integration](https://docs.distribute.you/integrations/claude-desktop/): Add the distribute.you tools to Claude Desktop. Register the hosted MCP server once and read your campaigns from chat.
-- [Cursor Integration](https://docs.distribute.you/integrations/cursor/): Connect distribute.you to the Cursor IDE. Configure the MCP server and automate brand distribution without leaving your editor.
-- [ChatGPT Integration](https://docs.distribute.you/integrations/chatgpt/): Use distribute.you inside ChatGPT. Connect through the MCP connector or call the REST API directly to automate your distribution.
+- [Cursor Integration](https://docs.distribute.you/integrations/cursor/): Connect distribute.you to the Cursor IDE. Configure the MCP server and steer your campaigns without leaving your editor.
+- [ChatGPT Integration](https://docs.distribute.you/integrations/chatgpt/): Use distribute.you inside ChatGPT. Connect through the MCP connector or call the REST API directly to steer your campaigns.
 - [n8n Integration](https://docs.distribute.you/integrations/n8n/): Build automated, self-hosted workflows with distribute.you and n8n, wiring campaigns and outreach together using the REST API.
-- [Zapier Integration](https://docs.distribute.you/integrations/zapier/): Connect distribute.you to 5,000+ apps with Zapier. Trigger campaigns and react to outreach events using the REST API and webhooks.
+- [Zapier Integration](https://docs.distribute.you/integrations/zapier/): Connect distribute.you to 5,000+ apps with Zapier. Read campaign results and steer campaigns on a schedule using the REST API.
 - [Make.com Integration](https://docs.distribute.you/integrations/make/): Build visual automation scenarios with distribute.you and Make.com, orchestrating campaigns, leads and outreach through the REST API.

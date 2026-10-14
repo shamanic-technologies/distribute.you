@@ -72,13 +72,13 @@ export const DOCS_ROUTES: DocsRoute[] = [
     path: "/mcp/tools",
     title: "MCP Tools Reference",
     description:
-      "Reference for every tool the hosted distribute.you MCP server exposes, covering brands, campaigns, workflows and targeting.",
+      "Reference for every tool the hosted distribute.you MCP server exposes, covering the method skills, brands, campaigns, leads, workflows and targeting.",
   },
   {
     path: "/api",
     title: "distribute.you API Reference",
     description:
-      "REST API reference for distribute.you. Manage brands, campaigns, workflows, leads, press kits, billing and more.",
+      "REST API reference for distribute.you. Manage brands, offers, campaigns and their caps, leads, workflows, billing and more, and read the method skills our Copilot follows.",
   },
   {
     path: "/api/brands",
@@ -96,7 +96,7 @@ export const DOCS_ROUTES: DocsRoute[] = [
     path: "/api/campaigns",
     title: "Campaigns API",
     description:
-      "List your campaigns, run or pause them, set their budget and read their results via the distribute.you REST API.",
+      "Launch a sales funnel as a campaign, run or pause it, set its caps (max budget and/or max volume) and read its results via the distribute.you REST API.",
   },
   {
     path: "/api/workflows",
@@ -120,19 +120,13 @@ export const DOCS_ROUTES: DocsRoute[] = [
     path: "/api/billing",
     title: "Billing API",
     description:
-      "Check your account balance, credit usage and billing settings programmatically through the distribute.you REST API and MCP server.",
+      "Check your prepaid balance and billing settings programmatically through the distribute.you REST API and MCP server. Actions are billed at public per-action prices.",
   },
   {
     path: "/api/costs",
     title: "Costs API",
     description:
       "Retrieve per-campaign cost breakdowns and email delivery statistics to track spend and performance through the distribute.you REST API.",
-  },
-  {
-    path: "/api/webhooks",
-    title: "Webhooks",
-    description:
-      "Receive real-time notifications for distribute.you campaign events: webhook events, payload structure and signature verification.",
   },
   {
     path: "/integrations",
@@ -156,13 +150,13 @@ export const DOCS_ROUTES: DocsRoute[] = [
     path: "/integrations/cursor",
     title: "Cursor Integration",
     description:
-      "Connect distribute.you to the Cursor IDE. Configure the MCP server and automate brand distribution without leaving your editor.",
+      "Connect distribute.you to the Cursor IDE. Configure the MCP server and steer your campaigns without leaving your editor.",
   },
   {
     path: "/integrations/chatgpt",
     title: "ChatGPT Integration",
     description:
-      "Use distribute.you inside ChatGPT. Connect through the MCP connector or call the REST API directly to automate your distribution.",
+      "Use distribute.you inside ChatGPT. Connect through the MCP connector or call the REST API directly to steer your campaigns.",
   },
   {
     path: "/integrations/n8n",
@@ -174,7 +168,7 @@ export const DOCS_ROUTES: DocsRoute[] = [
     path: "/integrations/zapier",
     title: "Zapier Integration",
     description:
-      "Connect distribute.you to 5,000+ apps with Zapier. Trigger campaigns and react to outreach events using the REST API and webhooks.",
+      "Connect distribute.you to 5,000+ apps with Zapier. Read campaign results and steer campaigns on a schedule using the REST API.",
   },
   {
     path: "/integrations/make",

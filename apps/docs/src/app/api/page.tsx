@@ -11,6 +11,9 @@ import {
   CLI_NPM_URL,
   CLI_PACKAGE,
   DEVELOPER_HUB_URL,
+  PRODUCT_MODEL,
+  SKILLS_LIST_ROUTE,
+  SKILL_READ_ROUTE,
   curlExample,
 } from "@/lib/developer-surfaces";
 
@@ -31,11 +34,21 @@ ${AUTH_HEADER_LINE}
 npx @distribute.you/cli --help
 The command distribute ops lists every operation this API has, read from the API itself.
 
+## Model
+${PRODUCT_MODEL}
+
+## Method skills
+${SKILLS_LIST_ROUTE}, then ${SKILL_READ_ROUTE} (index first): the steps our own Copilot follows. Read them before acting on a request.
+
 ## Endpoint Groups
 - /me, /api-keys: Identity
-- /brands: Brand management
-- /features: Automation features and stats
-- /campaigns: Campaign CRUD and stats
+- /skills: Method skills (read-only)
+- /brands: Brands and their offers
+- /offers/:offerId/sales-funnels: Sales funnels to run for an offer
+- /sales-funnel-campaigns: Campaigns (one sales funnel run for one offer)
+- /brands/:brandId/offers/:offerId/sales-funnels/:salesFunnelId/caps: Campaign caps
+- /features: Channels, their stats
+- /campaigns/:partId/stats: Results of one part of a campaign
 - /workflows: Workflow inspection
 - /leads: Lead listing
 - /emails: Email listing
@@ -46,13 +59,12 @@ The command distribute ops lists every operation this API has, read from the API
 const API_SECTIONS = [
   { name: "Brands", href: "/api/brands", description: "Create brands from URLs, extract structured data with AI" },
   { name: "Features", href: "/api/features", description: "Browse automation types, stats, and prefill inputs" },
-  { name: "Campaigns", href: "/api/campaigns", description: "Create, stop, and monitor campaigns" },
+  { name: "Campaigns", href: "/api/campaigns", description: "Launch a sales funnel as a campaign, set its caps, run or pause it" },
   { name: "Workflows", href: "/api/workflows", description: "Inspect workflows, DAGs, and key status" },
   { name: "Leads", href: "/api/leads", description: "List discovered leads and their outreach status" },
   { name: "Emails", href: "/api/emails", description: "View generated emails and sequences" },
-  { name: "Billing", href: "/api/billing", description: "Balance, account settings, transactions" },
+  { name: "Billing", href: "/api/billing", description: "Prepaid balance and account settings" },
   { name: "Costs", href: "/api/costs", description: "Cost breakdown and delivery statistics" },
-  { name: "Webhooks", href: "/api/webhooks", description: "Real-time event notifications" },
 ];
 
 export default function ApiOverviewPage() {
@@ -67,6 +79,10 @@ export default function ApiOverviewPage() {
         Direct REST API access to distribute.you. The machine-readable contract
         for everything on this page is the{" "}
         <a href="/openapi/" className="underline">OpenAPI document</a>.
+      </p>
+      <p className="text-sm text-gray-500 mb-4">
+        {PRODUCT_MODEL} The method our own Copilot follows is served too:{" "}
+        <code>{SKILLS_LIST_ROUTE}</code>, then <code>{SKILL_READ_ROUTE}</code>.
       </p>
 
       <div className="bg-brand-50 border border-brand-200 rounded-lg p-4 mb-10 flex items-center justify-between">

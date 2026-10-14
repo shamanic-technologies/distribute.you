@@ -36,7 +36,6 @@ const NAV_ITEMS = [
       { name: "Emails", href: "/api/emails" },
       { name: "Billing", href: "/api/billing" },
       { name: "Costs", href: "/api/costs" },
-      { name: "Webhooks", href: "/api/webhooks" },
       { name: "Interactive Docs \u2197", href: URLS.apiDocs, external: true },
     ],
   },

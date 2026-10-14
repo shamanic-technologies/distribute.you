@@ -87,13 +87,14 @@ export function renderDevelopersPage(): string {
 <li><a href="https://api.distribute.you">api.distribute.you</a>: the base URL. Every path below is relative to it.</li>
 <li><a href="https://api.distribute.you/openapi.json">api.distribute.you/openapi.json</a>: the OpenAPI 3.0 document, served by the API itself rather than kept in a file that drifts. Every operation carries an <code>operationId</code> and a typed response.</li>
 <li><a href="https://api.distribute.you/docs">api.distribute.you/docs</a>: the same document as a browsable explorer.</li>
+<li><code>GET /v1/skills</code>, then <code>GET /v1/skills/{slug}</code>: the method skills, the steps our own Copilot follows to organize a request (offers, sales funnels, campaigns and their caps). Read-only, the same for every client. Read <code>index</code> first.</li>
 </ul>
 <p>Responses carry <code>RateLimit</code>, <code>RateLimit-Policy</code>, <code>RateLimit-Remaining</code> and <code>RateLimit-Reset</code>, and a throttled request answers <code>429</code> with <code>Retry-After</code>. Read those headers rather than guessing at a rate.</p>`,
       },
       {
         id: "auth",
         h2: "Authentication",
-        html: `<p>One scheme: an API key sent as a bearer token. The key begins <code>distrib.usr_</code> and carries your organisation and user identity, so there is no second header to set and no org id to pass.</p>
+        html: `<p>One scheme: an API key sent as a bearer token. The key begins <code>distrib.usr_</code> and is yours across every organization you belong to. <code>GET /v1/me</code> lists them with their brands; name a brand (<code>brandId</code>) or an organization (<code>orgId</code>) on each call.</p>
 <div class="code-block">curl https://api.distribute.you/v1/brands \\
   -H "Authorization: Bearer distrib.usr_..."</div>
 <p><strong>No account yet? No human needed.</strong> An agent gets its own key with an email it can read and a phone number. A 6-digit code is emailed; trade it for a key. Each call to <code>complete</code> mints a new key, as many as you need.</p>
@@ -106,7 +107,7 @@ curl -X POST https://api.distribute.you/v1/agent-signups/complete \\
   -d '{"email":"agent@example.com","code":"123456"}'</div>
 <p>Free calls work right away. Every paid call is paid upfront: <code>POST /v1/billing/accounts/prepaid_checkout</code> with a prepay of at least $10 and an automatic top-up of at least $15 when the balance falls under $5 or more. It returns a payment link to open, or to hand to your human. Until then a paid call answers <code>402 payment_required</code> with these same instructions. No free credit, no trial.</p>
 <p>A person can also create a key at <a href="https://dashboard.distribute.you/api-keys">dashboard.distribute.you/api-keys</a>, or from the API itself with <code>POST /v1/api-keys</code>. A key has no expiry, so revoking it in the dashboard is how you end its access.</p>
-<p>Two endpoints need no key at all, because the numbers behind them are published: <a href="https://api.distribute.you/v1/costs/platform-prices">/v1/costs/platform-prices</a> is the live unit-cost catalogue we buy at, and <a href="https://api.distribute.you/v1/public/channels">/v1/public/channels</a> is every acquisition channel that can be sold through, with the sales funnels each one supports.</p>`,
+<p>Two endpoints need no key at all, because the numbers behind them are published: <a href="https://api.distribute.you/v1/costs/platform-prices">/v1/costs/platform-prices</a> is the live unit-price list (the per-action prices you pay are on <a href="/catalog">distribute.you/catalog</a>), and <a href="https://api.distribute.you/v1/public/channels">/v1/public/channels</a> is every acquisition channel that can be sold through, with the sales funnels each one supports.</p>`,
       },
       {
         id: "mcp",
@@ -118,6 +119,7 @@ curl -X POST https://api.distribute.you/v1/agent-signups/complete \\
 <li><a href="/.well-known/mcp.json">/.well-known/mcp.json</a>: the descriptor, so a client can find the server from the hostname alone.</li>
 <li><a href="https://docs.distribute.you/mcp">docs.distribute.you/mcp</a>: what each tool takes and returns.</li>
 </ul>
+<p>Start with <code>distribute_list_skills</code> and <code>distribute_read_skill</code>: the method our own Copilot follows, so your agent organizes a request the same way. A campaign is one sales funnel run for one offer, and it spends only up to the caps the customer states: a max budget and/or a max volume.</p>
 <p>No key yet? Connect without one and call <code>distribute_signup_start</code>, then <code>distribute_signup_complete</code>: the session gets its key at once. <code>distribute_prepay</code> returns the payment link when you need to spend. The rest reads your account: <code>distribute_status</code>, brands, campaigns and their results, leads and their emails, workflows, and <code>distribute_suggest_icp</code> to draft an ideal customer profile from a website. <code>distribute_find_api</code> and <code>distribute_call_api</code> reach every other API operation.</p>`,
       },
       {
@@ -155,7 +157,7 @@ curl -X POST https://api.distribute.you/v1/agent-signups/complete \\
         h2: "What people build on this",
         tint: true,
         html: `<p>The common one is reporting: pull campaign outcomes and their cost into whatever your team already looks at, so the acquisition numbers sit beside the rest of the business instead of in another tab. The figures on the <a href="/">homepage</a> come from the same endpoints.</p>
-<p>The other is starting campaigns from somewhere else. If you already know a customer's website, a brand and a campaign can be created without anyone opening the dashboard. How the budget is charged is on the <a href="/#pricing">pricing section</a> of the homepage, and the agency model behind it is on the <a href="/about">about page</a>.</p>
+<p>The other is starting campaigns from somewhere else. A brand, its offer and a campaign (one sales funnel run for that offer, with the caps the customer states) can be created without anyone opening the dashboard: follow the <code>campaigns</code> method skill. Each action is billed at the public prices on the <a href="/catalog">catalog</a>, and how we run campaigns for you is on the <a href="/about">about page</a>.</p>
 <p>If something here is missing or wrong, write to <a href="mailto:support@distribute.you">support@distribute.you</a>. The people who answer are the people who build it.</p>`,
       },
     ],

@@ -29,10 +29,10 @@ export default function ZapierIntegrationPage() {
           <li><strong>Action 2:</strong> Slack &rarr; Send Channel Message with stats summary</li>
         </ol>
 
-        <h2>Incoming Webhooks</h2>
+        <h2>Steer campaigns</h2>
         <p>
-          Use <strong>Catch Hook</strong> as a trigger to receive distribute.you webhook events.
-          See <a href="/api/webhooks">Webhooks</a>.
+          A campaign is one sales funnel run for one offer. Run or pause it, or change its caps,
+          with the calls on the <a href="/api/campaigns">Campaigns API</a> page.
         </p>
 
         <h2>API Reference</h2>

@@ -9,11 +9,7 @@ const LLM_INSTRUCTIONS = `# Leads API
 ## List Leads
 GET /v1/leads?campaignId=camp_abc123
 GET /v1/leads?brandId=brand_abc123
-Returns: firstName, lastName, email, title, organizationName, organizationDomain, status, contacted, delivered, bounced, replied
-
-## TypeScript Client
-const { leads } = await client.listLeads({ campaignId: "camp_abc123" });
-const { leads: brandLeads } = await client.listLeads({ brandId: "brand_abc" });`;
+Returns: firstName, lastName, email, title, organizationName, organizationDomain, status, contacted, delivered, bounced, replied`;
 
 export default function LeadsApiPage() {
   return (
@@ -57,12 +53,6 @@ Authorization: Bearer distrib.usr_YOUR_KEY`}</code>
     }
   ]
 }`}</code>
-        </pre>
-
-        <h2>TypeScript Client</h2>
-        <pre className="bg-gray-900 text-gray-100 p-4 rounded-lg overflow-x-auto">
-          <code>{`const { leads } = await client.listLeads({ campaignId: "camp_abc123" });
-const { leads: brandLeads } = await client.listLeads({ brandId: "brand_abc" });`}</code>
         </pre>
       </div>
     </div>

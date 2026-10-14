@@ -24,12 +24,7 @@ POST /v1/brands/extract-fields
 Results cached 30 days.
 
 ## List Extracted Fields
-GET /v1/brands/:brandId/extracted-fields
-
-## TypeScript Client
-const { brands } = await client.listBrands();
-const result = await client.createBrand("https://acme.com");
-const fields = await client.extractBrandFields(["brand_abc"], [{ key: "industry", description: "Primary industry" }]);`;
+GET /v1/brands/:brandId/extracted-fields`;
 
 export default function BrandsApiPage() {
   return (
@@ -120,17 +115,6 @@ Authorization: Bearer distrib.usr_YOUR_KEY
 Authorization: Bearer distrib.usr_YOUR_KEY`}</code>
         </pre>
         <p>Returns all previously extracted fields for a brand with their cached values.</p>
-
-        <h2>TypeScript Client</h2>
-        <pre className="bg-gray-900 text-gray-100 p-4 rounded-lg overflow-x-auto">
-          <code>{`const { brands } = await client.listBrands();
-const { brand } = await client.getBrand("brand_abc123");
-const result = await client.createBrand("https://acme.com");
-const fields = await client.extractBrandFields(
-  ["brand_abc123"],
-  [{ key: "industry", description: "Primary industry" }]
-);`}</code>
-        </pre>
       </div>
     </div>
   );

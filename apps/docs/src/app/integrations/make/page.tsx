@@ -21,10 +21,11 @@ export default function MakeIntegrationPage() {
           <li>Add a header: <code>Authorization: Bearer distrib.usr_YOUR_KEY</code></li>
         </ol>
 
-        <h2>Webhook Trigger</h2>
+        <h2>Example: weekly results</h2>
         <p>
-          Use a <strong>Custom Webhook</strong> trigger to receive distribute.you events.
-          See <a href="/api/webhooks">Webhooks</a>.
+          Schedule a scenario that calls <code>GET /v1/sales-funnel-campaigns?brandId=...</code> to
+          list your campaigns, then <code>GET /v1/campaigns/:partId/stats</code> for each part. See{" "}
+          <a href="/api/campaigns">Campaigns API</a>.
         </p>
 
         <h2>API Reference</h2>

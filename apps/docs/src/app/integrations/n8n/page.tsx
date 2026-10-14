@@ -20,27 +20,24 @@ export default function N8nIntegrationPage() {
           <li>Add a header: <code>Authorization: Bearer distrib.usr_YOUR_KEY</code></li>
         </ol>
 
-        <h2>Example: Create Campaign on Schedule</h2>
+        <h2>Example: change a campaign&apos;s caps on a schedule</h2>
         <pre className="bg-gray-900 text-gray-100 p-4 rounded-lg overflow-x-auto">
-          <code>{`Method: POST
-URL: https://api.distribute.you/v1/campaigns
+          <code>{`Method: PUT
+URL: https://api.distribute.you/v1/brands/:brandId/offers/:offerId/sales-funnels/:salesFunnelId/caps
 Headers:
   Authorization: Bearer distrib.usr_YOUR_KEY
   Content-Type: application/json
 Body:
 {
-  "name": "Weekly Outreach",
-  "workflowSlug": "sales-email-cold-outreach-apex-v4",
-  "brandUrls": ["https://acme.com"],
-  "maxBudgetDailyUsd": "10"
+  "maxBudget": { "amountCents": 5000, "period": "weekly" },
+  "maxVolume": null
 }`}</code>
         </pre>
-
-        <h2>Webhook Trigger</h2>
         <p>
-          Use the distribute.you webhook to trigger n8n workflows when events occur
-          (replies received, campaigns completed, etc.). See{" "}
-          <a href="/api/webhooks">Webhooks</a>.
+          A campaign is one sales funnel run for one offer. Take <code>brandId</code>,{" "}
+          <code>offerId</code> and <code>salesFunnelId</code> from{" "}
+          <code>GET /v1/sales-funnel-campaigns?brandId=...</code>. See the{" "}
+          <a href="/api/campaigns">Campaigns API</a>.
         </p>
 
         <h2>API Reference</h2>
