@@ -1,7 +1,7 @@
 export const BRAND = {
   name: "distribute.you",
-  tagline: "Sales Automation",
-  hero: "Cold Email Outreach, on Autopilot.",
+  tagline: "Revenue made easy.",
+  hero: "The platform is free. We find your buyers, email them and book your meetings.",
   license: "MIT",
   isOpenSource: true,
   social: {

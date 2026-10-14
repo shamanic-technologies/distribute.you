@@ -30,16 +30,16 @@ export const DISTRIBUTION_STEPS: DistributionStep[] = [
   {
     number: 1,
     title: "Add your URL",
-    description: "We analyze your site, your brand, your voice — and build your cold email campaign.",
+    description: "We read your site, your offer and your voice, then build your sales funnel campaign.",
   },
   {
     number: 2,
     title: "We find your buyers",
-    description: "We pull the prospects that match your ideal customer and write a personalized cold email for each.",
+    description: "We find the prospects who match your ideal customer and write each one a personal cold email.",
   },
   {
     number: 3,
-    title: "Set a daily budget",
-    description: "$400 in free credits. Top up when you want. We send, qualify, and forward replies to your Gmail.",
+    title: "Set your caps",
+    description: "Pick a max budget or a max volume per period. You pay as you go at our public catalog prices. We forward every reply to your Gmail.",
   },
 ];

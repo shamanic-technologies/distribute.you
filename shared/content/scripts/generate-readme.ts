@@ -10,18 +10,13 @@ import { fileURLToPath } from "node:url";
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const ROOT = resolve(__dirname, "../../../");
 
-import { WORKFLOW_DEFINITIONS } from "../src/workflows.js";
 import { URLS } from "../src/urls.js";
 import { BRAND } from "../src/brand.js";
 import { DISTRIBUTION_FEATURES } from "../src/features.js";
 
 function generateRootReadme(): string {
-  const workflowTable = WORKFLOW_DEFINITIONS
-    .map((w) => `| ${w.label} | ${w.description} | ${w.featureSlug} |`)
-    .join("\n");
-
   const featureList = DISTRIBUTION_FEATURES
-    .map((f) => `- **${f.title}** — ${f.description} _(${f.status === "live" ? "Live" : "Coming soon"})_`)
+    .map((f) => `- **${f.title}**: ${f.description} _(${f.status === "live" ? "Live" : "Coming soon"})_`)
     .join("\n");
 
   return `# ${BRAND.name}
@@ -34,24 +29,20 @@ function generateRootReadme(): string {
 
 ## What is ${BRAND.name}?
 
-${BRAND.name} is sales automation, done for you. Create an account, give us your URL — we run your cold email outreach with AI workflows ranked by real performance data.
+${BRAND.name} is done-for-you revenue automation. Give us your URL. We find your buyers, contact them by cold email and book your meetings.
+
+Every campaign is a sales funnel campaign. You set its caps: a max budget, a max volume per period, or both. You pay as you go at the public prices on [${URLS.landing.replace("https://", "")}/catalog](${URLS.landing}/catalog).
 
 ## Distribution Features
 
 ${featureList}
 
-## Available Workflows
-
-| Workflow | What it does | Feature |
-|----------|--------------|---------|
-${workflowTable}
-
 ## Quick Start
 
 1. Create an account at [${URLS.dashboard.replace("https://", "")}](${URLS.dashboard})
 2. Add your URL
-3. Enable the distribution features you need
-4. We handle the rest — the best-performing AI workflow runs automatically
+3. Set your caps (max budget and/or max volume per period)
+4. We run the campaign and A/B test templates, models and audiences on it
 
 ## Monorepo Structure
 
