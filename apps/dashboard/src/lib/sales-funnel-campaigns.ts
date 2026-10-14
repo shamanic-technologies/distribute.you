@@ -356,6 +356,10 @@ export const FunnelCampaignRowSchema = z
     typeLabel: z.string().nullable(),
     path: z.object({ items: z.array(PathItemSchema) }).passthrough().nullable(),
     copyUnavailableReason: z.string().nullish(),
+    // One short customer sentence describing the campaign (owner 2026-10-14, features-service v0.179.225),
+    // null + its served reason when there is nothing we run to describe.
+    shortDescription: z.string().nullish(),
+    shortDescriptionUnavailableReason: z.string().nullish(),
     investedUsd: z.coerce.number().nullable(),
     roiMultiple: z.coerce.number().nullable(),
     moneyUnavailableReason: z.string().nullish(),
@@ -386,6 +390,8 @@ export const FunnelCampaignCopySchema = FunnelCampaignRowSchema.pick({
   typeLabel: true,
   path: true,
   copyUnavailableReason: true,
+  shortDescription: true,
+  shortDescriptionUnavailableReason: true,
 });
 export type FunnelCampaignCopy = z.infer<typeof FunnelCampaignCopySchema>;
 export const FunnelCampaignCopiesSchema = z.object({ salesFunnelCampaigns: z.array(FunnelCampaignCopySchema) }).passthrough();

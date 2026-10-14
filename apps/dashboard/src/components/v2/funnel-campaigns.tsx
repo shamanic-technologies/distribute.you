@@ -708,7 +708,7 @@ function FunnelCampaignRow({
     if (row && row.investedUsd === null) console.error("[funnel-campaigns] investedUsd not served", { id: row.id });
   }, [row, rowsSettled, campaign.id]);
   useEffect(() => {
-    if (copySettled && copy && !copy.path) console.error("[funnel-campaigns] path not served", { id: copy.id, reason: copy.copyUnavailableReason ?? null });
+    if (copySettled && copy && !copy.shortDescription) console.error("[funnel-campaigns] shortDescription not served", { id: copy.id, reason: copy.shortDescriptionUnavailableReason ?? null });
   }, [copy, copySettled]);
   // The status control and its menu / modal never open the page.
   const stop = (e: React.SyntheticEvent) => e.stopPropagation();
@@ -723,7 +723,13 @@ function FunnelCampaignRow({
       <td className="max-w-0 px-3 py-2 pl-4">
         <MarkLines mark={(px) => <FunnelFace name={campaign.salesFunnelName} size={px} />}>
           <span className="block truncate font-semibold">{campaign.salesFunnelName}</span>
-          {copy?.path ? <FunnelPathLine items={copy.path.items} /> : copySettled ? <span className="k-fg4 block text-[11px]">—</span> : <Shimmer className="h-3 w-48 rounded" />}
+          {copy?.shortDescription ? (
+            <span className="k-fg2 block truncate text-[12px]">{copy.shortDescription}</span>
+          ) : copySettled ? (
+            <span className="k-fg4 block text-[12px]">—</span>
+          ) : (
+            <Shimmer className="h-3 w-48 rounded" />
+          )}
         </MarkLines>
       </td>
       <td className="px-3 py-2">{copy ? <TypeTag row={copy} /> : copySettled ? DASH : <Shimmer className="ml-auto h-4 w-14 rounded" />}</td>
