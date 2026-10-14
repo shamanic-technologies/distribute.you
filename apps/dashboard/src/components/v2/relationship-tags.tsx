@@ -84,7 +84,10 @@ export function RelationshipFilter({
   useLayoutEffect(() => {
     if (!open || !btn.current) return;
     const r = btn.current.getBoundingClientRect();
-    setPos({ top: r.bottom + 4, left: Math.max(8, Math.min(r.left, window.innerWidth - 248)) });
+    // 32px per line + 8px padding; opens above its button when the panel has no room below.
+    const h = filterOptions().length * 32 + 8;
+    const below = r.bottom + 4 + h <= window.innerHeight - 8;
+    setPos({ top: below ? r.bottom + 4 : Math.max(8, r.top - 4 - h), left: Math.max(8, Math.min(r.left, window.innerWidth - 248)) });
   }, [open]);
   useEffect(() => {
     if (!open) return;
@@ -95,11 +98,17 @@ export function RelationshipFilter({
       const t = e.target as Node;
       if (!menu.current?.contains(t) && !btn.current?.contains(t)) setOpen(false);
     };
+    // The shell scrolls its panel, not the window: a fixed menu would drift off its button.
+    const onScroll = (e: Event) => {
+      if (!menu.current?.contains(e.target as Node)) setOpen(false);
+    };
     window.addEventListener("keydown", onKey);
     window.addEventListener("mousedown", onDown);
+    document.addEventListener("scroll", onScroll, { capture: true, passive: true });
     return () => {
       window.removeEventListener("keydown", onKey);
       window.removeEventListener("mousedown", onDown);
+      document.removeEventListener("scroll", onScroll, { capture: true });
     };
   }, [open]);
 
