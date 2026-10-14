@@ -16,6 +16,7 @@ import {
   OFFER_DOCUMENT_ACCEPT,
   formatFileSize,
   offerDocumentRefusal,
+  opensInBrowser,
   type OfferDocument,
 } from "@/lib/offer-documents";
 import { EmptyNote, Shimmer } from "@/components/v2/ui";
@@ -281,6 +282,7 @@ export function OfferDocuments({ brandId, offerId }: { brandId: string; offerId:
   const docs = q.data ?? null;
 
   const open = async (doc: OfferDocument) => {
+    if (!opensInBrowser(doc.contentType)) return download(doc);
     // Open the tab inside the click, then point it at the file once it has loaded:
     // a window opened after an await is blocked as a popup.
     const tab = window.open("", "_blank");
@@ -293,6 +295,24 @@ export function OfferDocuments({ brandId, offerId }: { brandId: string; offerId:
     } catch (err) {
       tab?.close();
       console.error("[offer-documents] open failed", { documentId: doc.id, err });
+      setRowError(`Could not open ${doc.fileName}. Try again.`);
+    }
+  };
+
+  // A file no tab can show (Word, slides, sheets) is saved under its own name.
+  const download = async (doc: OfferDocument) => {
+    try {
+      const blob = await getOfferDocumentContent(brandId, offerId, doc.id);
+      const url = URL.createObjectURL(new Blob([blob], { type: doc.contentType }));
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = doc.fileName;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 60_000);
+    } catch (err) {
+      console.error("[offer-documents] download failed", { documentId: doc.id, err });
       setRowError(`Could not open ${doc.fileName}. Try again.`);
     }
   };
