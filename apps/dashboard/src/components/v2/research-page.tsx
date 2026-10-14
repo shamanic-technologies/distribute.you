@@ -71,6 +71,8 @@ const WINNER_LABEL: Record<ResearchTopic, string> = {
   hour: "Winner",
   // a count or a share, like the cost curve: it ranks nothing
   judgment: "Comparison",
+  // before against after: two periods, never a pick among options
+  launch: "Comparison",
 };
 
 const STATE_LOOK: Record<StudyState, { label: string; dot: string }> = {

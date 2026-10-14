@@ -156,6 +156,11 @@ four extract.sh dumps (`meetings.csv`, `pilot-acted.csv`, `meeting-campaigns.csv
   `outcomes`): every dollar charged on cold email + meeting booking over every credited meeting, on the brands that
   REPORT meetings only (any live `meeting_booked` row; owner pick 2026-10-03: a brand with no CRM import or tracker
   reads zero meetings by construction). Its `population` line says how many brands that is.
+- `meeting-ai-before-after` (`meeting-before-after.mjs`, same section, topic `launch`): does the AI answering positive
+  replies book more meetings? Every figure is lead-service's `GET /internal/meeting-attribution/before-after` (extract.sh
+  -> `meeting-before-after.json`): go-live = the brand's first AI Meeting Booking act, a person sits on the side of their
+  first positive reply. Headline + verdict on the same-horizon 30-day read; all-time is context only. A brand with no
+  go-live stays out, counted in the population line.
 Learning comes from features-service's rule for `conversation_to_meeting_booked` / `start_to_meeting_booked`
 (maturity.json); research.mjs throws if the catalogue states none. Spend is billed gross (actual rows); the actual
 basis states "not measured on vendor cost yet" instead of a figure.
