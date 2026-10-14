@@ -165,21 +165,11 @@ describe("Campaign rows (useCampaignRows)", () => {
     expect(table).not.toMatch(/\.reduce\(/);
   });
 
-  // A row states what its campaign may spend in a day beside whether it is
-  // running — the ceiling and the status are one answer in two cells.
-  it("states each campaign's own daily ceiling, narrowed by the ROW's own offer", () => {
-    // billing keys one ceiling per (offer x leg x channel), and the helper reads the
-    // ROW's own offer off the campaign it is given, so a row cannot print a sibling
-    // offer's money under this campaign's name. That is what makes the
-    // brand-scoped list and the offer-scoped one agree about one campaign.
-    expect(table).toContain("campaignBudgetCents(c, budgets, channels)");
-    // The shared narrowing, so the table, the campaign Overview and Campaign
-    // Settings cannot disagree about one campaign's money.
-    expect(table).toContain('from "@/lib/campaign-budget"');
-    // The key Campaign Settings and Offer Settings already read → no new poll.
-    expect(table).toContain('["brandCampaignBudgets", brandId]');
-    // Nothing is derived here: no summing ceilings, no dividing one.
-    expect(table).not.toMatch(/budgetCents\s*[/*+]\s*/);
+  // A row carries no per-campaign ceiling (retired, api-service Sunset 2027-04-12): what a
+  // campaign may spend is the caps of the sales funnel campaign it is a part of.
+  it("reads no retired per-campaign ceiling", () => {
+    expect(table).not.toContain("brandCampaignBudgets");
+    expect(table).not.toContain("budgetCents");
   });
 
   /**

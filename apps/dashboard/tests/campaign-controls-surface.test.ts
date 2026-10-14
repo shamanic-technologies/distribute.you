@@ -60,24 +60,18 @@ describe("Pause / Activate — one press, no modal", () => {
   });
 });
 
-describe("the trigger states money it READS", () => {
-  it("adds up only the RUNNING campaigns' ceilings, at every grain it sums", () => {
-    expect(trigger).toContain("scopeTotalCents(");
-    // v2 counts only the crews that spend every day: an event crew's cap is not daily money.
-    expect(trigger).toContain("dailyOnly ? rows.filter((r) => isProactiveFrom(legFor(catalogue, r.legKey)?.fromKey)) : rows");
-    const lib = read("lib/campaign-controls.ts");
-    expect(lib).toContain("r.running && r.savedCents > 0");
+describe("the trigger states no money (per-campaign ceilings retired, owner 2026-10-10)", () => {
+  it("prints no budget and reads no per-campaign ceiling: a campaign's money is its funnel's caps", () => {
+    expect(trigger).not.toContain("fmtDailyBudgetUsd");
+    expect(trigger).not.toContain("scopeTotalCents(");
+    expect(toggle).not.toContain("getBrandCampaignBudgets");
+    expect(toggle).not.toContain("brandCampaignBudgets");
   });
 
-  it("counts one ceiling per campaign, because a row is an identity", () => {
+  it("counts one campaign per identity, because a row is an identity", () => {
     const lib = read("lib/campaign-controls.ts");
     expect(lib).toContain("runningCampaignIds");
     expect(lib).toContain("pickRepresentative");
-  });
-
-  it("prints whole dollars through the one shared formatter", () => {
-    expect(trigger).toContain("fmtDailyBudgetUsd");
-    expect(trigger).not.toContain("toFixed");
   });
 });
 

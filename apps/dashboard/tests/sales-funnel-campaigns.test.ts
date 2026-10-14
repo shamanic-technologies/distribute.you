@@ -172,7 +172,9 @@ describe("sales funnel campaigns: wiring", () => {
   it("a part of a funnel campaign offers no status or budget control of its own", () => {
     const page = src("src/components/v2/campaign-page.tsx");
     expect(page).toContain("<FunnelPartOf orgId={orgId} campaign={partOf.campaign} />");
-    expect(page).toContain("{!partOfId && <CampaignSettingsCard");
+    // Its money reads as its campaign's caps (the per-campaign ceiling is retired).
+    expect(page).not.toContain("CampaignSettingsCard");
+    expect(page).toContain("useFunnelCapsWords(brandId, partOfId)");
   });
 
   it("parts are their own identity and never stand in for an old campaign's row", () => {
@@ -443,7 +445,7 @@ describe("a max budget AND/OR a max volume funds a funnel (owner 2026-10-11, bil
 
   it("every Not funded yet reads billing's verdict, and the modal saves a volume alone", () => {
     const f = src("src/components/v2/funnel-campaigns.tsx");
-    expect(f.match(/funnelFunded\((c|caps\.data \?\? null)\) === false/g)?.length).toBe(3);
+    expect(f.match(/funnelFunded\((c|caps|caps\.data \?\? null)\) === false/g)?.length).toBe(3);
     expect(f).not.toContain("c.maxBudget === null");
     expect(f).toContain('"Set a budget or a volume."');
     expect(f).toContain("maxBudget: usd === null ? null : { amountCents: usd * 100, period: budgetPer }");

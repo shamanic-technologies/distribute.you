@@ -120,17 +120,19 @@ describe("channel pages", () => {
     expect(outbound).toContain("roiUnavailableLabel, (k) => ran.has(k))");
     expect(outbound).toMatch(/<OfferCampaigns[\s\S]*?\bresults\b[\s\S]*?\/>/);
     const results = table.slice(table.indexOf("{results ? (\n                  <tr"), table.indexOf(") : (\n                  <tr"));
-    // Column order (owner 2026-10-05): name, type, ROI, # outcomes, $ value, $ / outcome, $ invested, status, budget.
-    const order = ["Campaign", "Type", "ROI", "# Outcomes", "$ Value", "$ / Outcome", "$ Invested", "Status", "Budget"].map((h) => results.indexOf(h === "ROI" ? ">ROI</ExpectedLabel>" : `>${h}</th>`));
+    // Column order (owner 2026-10-05): name, type, ROI, # outcomes, $ value, $ / outcome, $ invested, status.
+    // No Budget column: a campaign's money is its sales funnel campaign's caps (owner 2026-10-10).
+    const order = ["Campaign", "Type", "ROI", "# Outcomes", "$ Value", "$ / Outcome", "$ Invested", "Status"].map((h) => results.indexOf(h === "ROI" ? ">ROI</ExpectedLabel>" : `>${h}</th>`));
     expect(order.every((at, i) => at > -1 && (i === 0 || at > order[i - 1]))).toBe(true);
     // ROI is the campaign's measured return (its campaign page's tile), never the path forecast.
     const cells = table.slice(table.indexOf("function CampaignResultCells("), table.indexOf("function UnlistedRow("));
     expect(cells).toContain("shownReturn(g?.economicsMaturity, basis)");
     expect(cells).not.toContain("campaign.roi");
     expect(results).not.toContain("EXPECTED_ROI_TIP");
-    // A row opens its campaign page; the status and budget cells never do.
+    // A row opens its campaign page; the status cell never does.
     expect(table).toContain("go: () => router.push(mission.href)");
-    expect(table.match(/onClick=\{stop\}/g)?.length).toBe(2);
+    expect(table.match(/onClick=\{stop\}/g)?.length).toBe(1);
+    expect(results).not.toContain(">Budget</th>");
   });
   it("cold email's page carries Overview, Inbox, Sent, Targeting and Settings", () => {
     for (const label of ["Overview", "Inbox", "Sent", "Targeting", "Settings"]) expect(page).toContain(`label: "${label}"`);

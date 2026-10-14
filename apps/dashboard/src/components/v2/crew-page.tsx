@@ -19,7 +19,9 @@ import { formatRunDuration, useCrewOutcomes, useCrewRuns, useRecentRuns, mission
 import { EmptyNote, SectionTitle, Shimmer, StateDot, TopBar } from "@/components/v2/ui";
 import { useDailyBudgetSplit } from "@/lib/v2/use-daily-budget-split";
 import { CrewTriggerTag } from "@/components/v2/crew-trigger-tag";
-import { AddMissionModal } from "@/components/v2/add-mission-modal";
+import { useCopilotDock } from "@/components/v2/copilot-dock";
+import { CREATE_CAMPAIGN_ASK } from "@/components/v2/campaigns-overview-page";
+import { FunnelCapsWords } from "@/components/v2/funnel-campaigns";
 import { useBrandRevenue, useNeedsYourCall } from "@/components/v2/data";
 import { useScopeToggle } from "@/lib/use-scope-toggle";
 
@@ -39,11 +41,6 @@ export function missionResult(m: Mission, basis: StatBasis): { count: number | n
     return { count: n, noun: n === 1 ? "website visit" : "website visits", cost: shownFigure(g?.outcomesMaturity, (h) => h.cpcCents, basis) };
   }
   return { count: null, noun: "results", cost: none };
-}
-
-/** What a crew's RUNNING missions may spend today: the rule every v1 daily total uses. */
-function crewCeilingCents(missions: Mission[]): number {
-  return missions.reduce((s, m) => s + (m.running && (m.row.budgetCents ?? 0) > 0 ? (m.row.budgetCents ?? 0) : 0), 0);
 }
 
 const WEEKDAY_LETTERS = ["S", "M", "T", "W", "T", "F", "S"];
@@ -67,7 +64,8 @@ export function CrewPage() {
   // A plan's $50/day is fixed (owner 2026-10-03): a subscriber reads spend, never a budget.
   const budgetHidden = useDailyBudgetHidden();
   const { staffMode } = useStaffMode();
-  const [adding, setAdding] = useState<string | null>(null);
+  // A campaign is a sales funnel campaign with caps (owner 2026-10-10): the Copilot creates it.
+  const copilot = useCopilotDock();
   const runningCrews = crews.filter((c) => c.running > 0).length;
   const needsCall = useNeedsYourCall(brandId, 5).data?.total ?? null;
   const [runsShown, setRunsShown] = useState(30);
@@ -163,7 +161,7 @@ export function CrewPage() {
                   lastRun={lastRunByCrew.get(c.crew.key) ?? null}
                   workHref={v2Href(orgId, brandId, "work")}
                   brandId={brandId}
-                  onAddMission={() => setAdding(c.crew.key)}
+                  onAddMission={() => copilot.ask(CREATE_CAMPAIGN_ASK)}
                 />
               ))}
           {settled && staffMode && (
@@ -198,9 +196,6 @@ export function CrewPage() {
           onMore={() => setRunsShown((n) => n + 30)}
         />
       </div>
-      {adding && (
-        <AddMissionModal brandId={brandId} crews={crews} missions={missions} initialCrewKey={adding} onClose={() => setAdding(null)} />
-      )}
     </>
   );
 }
@@ -243,7 +238,6 @@ function CrewCard({
   };
   // One press pauses or restarts the whole crew scope, no modal (owner 2026-10-03).
   const scopeToggle = useScopeToggle(brandId, scope);
-  const ceiling = crewCeilingCents(missions);
   const budgetHidden = useDailyBudgetHidden();
   const leg = missions[0]?.leg?.label ?? null;
   const results = missions.map((m) => missionResult(m, basis));
@@ -251,8 +245,6 @@ function CrewCard({
   const resultCount = counted.length ? counted.reduce((s, r) => s + (r.count ?? 0), 0) : null;
   const priced = missions.length === 1 ? results[0] : null;
   const spend = runs?.spendTodayCents ?? 0;
-  const pills = 10;
-  const filled = ceiling > 0 ? Math.min(pills, Math.round((spend / ceiling) * pills)) : 0;
   const today = new Date().getDay();
   return (
     <div id={crew.crew.key} className="k-card flex scroll-mt-16 flex-col p-4">
@@ -332,7 +324,7 @@ function CrewCard({
               ? `Not working for any offer yet. Once on a mission, it wakes each time a ${crew.trigger.label.toLowerCase()} comes in and turns it into ${crew.trigger.outcome.toLowerCase()}.`
               : budgetHidden
                 ? `Not working for any offer yet. On a mission, it brings ${crew.trigger?.outcome.toLowerCase() ?? "results"} for that offer.`
-                : `Not working for any offer yet. On a mission, it spends its daily budget bringing ${crew.trigger?.outcome.toLowerCase() ?? "results"} for that offer.`}
+                : `Not working for any offer yet. On a mission, it brings ${crew.trigger?.outcome.toLowerCase() ?? "results"} for that offer.`}
           </p>
           <div className="mt-auto w-full">
             <button
@@ -340,7 +332,7 @@ function CrewCard({
               onClick={onAddMission}
               className="k-btn h-8 w-full justify-center"
             >
-              + Add a mission
+              + Create a campaign
             </button>
           </div>
         </div>
@@ -400,20 +392,10 @@ function CrewCard({
         <div className="border-r border-[var(--line-subtle)] p-3">
           <div className="flex items-baseline justify-between gap-2">
             <p className="k-label">Spend</p>
-            <p className="k-fg3 text-[11px]">{budgetHidden ? "today" : <>of {fmtDailyBudgetUsd(ceiling)}{crew.trigger?.kind === "event" ? " cap" : ""}</>}</p>
+            <p className="k-fg3 text-[11px]">today</p>
           </div>
-          <div className="mt-1.5 flex items-center justify-between gap-2">
-            <p className="text-[20px] font-medium leading-6 tabular-nums">{runsSettled ? formatCentsAsUsdAdaptive(spend) : "–"}</p>
-            <div className="flex gap-[3px]" aria-hidden="true">
-              {Array.from({ length: pills }, (_, i) => (
-                <span
-                  key={i}
-                  className="h-4 w-[5px] rounded-full"
-                  style={{ background: i < filled ? crew.crew.color : "var(--data-track)" }}
-                />
-              ))}
-            </div>
-          </div>
+          {/* No ceiling beside it: what a part may spend is its campaign's caps, on each mission line. */}
+          <p className="mt-1.5 text-[20px] font-medium leading-6 tabular-nums">{runsSettled ? formatCentsAsUsdAdaptive(spend) : "–"}</p>
         </div>
         <div className="p-3">
           <div className="flex items-baseline justify-between gap-2">
@@ -454,7 +436,13 @@ function CrewCard({
                 <StateDot running={m.running} label="" />
                 <span className="min-w-0 flex-1 truncate text-[13px]">{m.offerName ?? "Offer"}</span>
                 <span className="k-fg2 shrink-0 text-[12px] tabular-nums">
-                  {r.count != null ? `${formatCount(r.count)} ${r.noun}` : budgetHidden ? "" : fmtDailyBudgetUsd(m.row.budgetCents ?? 0) + " / day"}
+                  {r.count != null ? (
+                    `${formatCount(r.count)} ${r.noun}`
+                  ) : budgetHidden ? (
+                    ""
+                  ) : (
+                    <FunnelCapsWords brandId={brandId} salesFunnelCampaignId={m.row.campaign.salesFunnelCampaignId} />
+                  )}
                 </span>
               </Link>
             </li>
@@ -468,7 +456,7 @@ function CrewCard({
           onClick={onAddMission}
           className="k-btn h-8 w-full justify-center"
         >
-          + Add a mission
+          + Create a campaign
         </button>
         <p className="k-fg2 mt-2 text-[12px] leading-[18px]">
           {running

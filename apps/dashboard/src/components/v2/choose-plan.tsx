@@ -6,7 +6,9 @@ import {
   ApiError,
   createEmbeddedCardSetup,
   getBillingAccount,
-  saveCampaignBudget,
+  getSalesFunnelCaps,
+  listSalesFunnelCampaigns,
+  saveSalesFunnelCaps,
   startPlan,
   type BillingAccount,
 } from "@/lib/api";
@@ -19,9 +21,9 @@ import {
   SUBSCRIPTION_MONTHLY_CENTS,
   monthlyUsd,
   planStartRefusal,
-  subscriptionBudgets,
+  SUBSCRIPTION_OUTBOUND_DAILY_USD,
+  SUBSCRIPTION_REACTIVE_DAILY_USD,
 } from "@/lib/subscription-plan";
-import type { Mission } from "@/components/v2/use-missions";
 
 /**
  * "Choose your plan" for ONE brand x offer (owner 2026-10-03): a plan is per brand x
@@ -182,21 +184,24 @@ export function ChoosePlanPanel({
 }
 
 /**
- * Funds an offer's missions at the plan's figures once its plan started: the first
- * outbound mission $50/day, the first reply mission $25/day, the same rule onboarding
- * writes (`subscriptionBudgets`). Missions with no leg have no budget address.
+ * Funds an offer's campaigns at the plan's figures once its plan started: the first proactive
+ * campaign a $50 daily max budget, the first reactive one $25, the same rule onboarding writes
+ * (`subscriptionBudgets`). A campaign is a sales funnel campaign and its money is its caps
+ * (owner 2026-10-10). A campaign already funded keeps the caps it has, and counts as the plan's
+ * campaign of its type, so the plan never funds two of one type.
  */
-export async function fundOfferOnPlan(brandId: string, offerId: string, missions: readonly Mission[]): Promise<void> {
-  const mine = missions.filter((m) => m.offerId === offerId && m.row.campaign.legKey && m.row.campaign.featureSlug);
-  const usd = subscriptionBudgets(mine.map((m) => ({ key: m.row.campaign.id, fromKey: m.leg?.fromKey ?? null })));
-  for (const m of mine) {
-    const dollars = Number(usd[m.row.campaign.id] ?? "0");
-    if (dollars <= 0) continue;
-    await saveCampaignBudget(
-      brandId,
-      { offerId, legKey: m.row.campaign.legKey!, featureSlug: m.row.campaign.featureSlug! },
-      dollars * 100,
-    );
+export async function fundOfferOnPlan(brandId: string, offerId: string): Promise<void> {
+  const campaigns = await listSalesFunnelCampaigns(brandId, offerId);
+  const caps = await Promise.all(campaigns.map((c) => getSalesFunnelCaps(brandId, offerId, c.salesFunnelId)));
+  const fundedTypes = new Set(caps.filter((c) => c.funded === true).map((c) => c.salesFunnelType));
+  for (const c of caps) {
+    if (c.funded === true || !c.salesFunnelType || fundedTypes.has(c.salesFunnelType)) continue;
+    const usd = c.salesFunnelType === "proactive" ? SUBSCRIPTION_OUTBOUND_DAILY_USD : SUBSCRIPTION_REACTIVE_DAILY_USD;
+    await saveSalesFunnelCaps(brandId, offerId, c.salesFunnelId, {
+      maxBudget: { amountCents: usd * 100, period: "daily" },
+      maxVolume: null,
+    });
+    fundedTypes.add(c.salesFunnelType);
   }
 }
 
@@ -208,11 +213,9 @@ export async function fundOfferOnPlan(brandId: string, offerId: string, missions
 export function OfferPlanBanner({
   brandId,
   offerId,
-  missions,
 }: {
   brandId: string;
   offerId: string | null;
-  missions: readonly Mission[];
 }) {
   const queryClient = useQueryClient();
   const needsPlan = useOfferNeedsPlan(brandId, offerId);
@@ -225,7 +228,7 @@ export function OfferPlanBanner({
           brandId={brandId}
           offerId={offerId}
           onStarted={async () => {
-            await fundOfferOnPlan(brandId, offerId, missions);
+            await fundOfferOnPlan(brandId, offerId);
             invalidateCampaignMoney(queryClient);
           }}
         />

@@ -46,14 +46,16 @@ describe("where a plan is chosen", () => {
   });
 
   it("the offer page and Today carry the banner", () => {
-    expect(read("src/components/v2/setup-pages.tsx")).toContain("<OfferPlanBanner brandId={brandId} offerId={offerId} missions={missions} />");
-    expect(read("src/components/v2/today-page.tsx")).toContain("<OfferPlanBanner brandId={brandId} offerId={selectedOfferId} missions={missions} />");
+    expect(read("src/components/v2/setup-pages.tsx")).toContain("<OfferPlanBanner brandId={brandId} offerId={offerId} />");
+    expect(read("src/components/v2/today-page.tsx")).toContain("<OfferPlanBanner brandId={brandId} offerId={selectedOfferId} />");
   });
 
-  it("Add mission sells the plan first on an offer with none", () => {
-    const add = read("src/components/v2/add-mission-modal.tsx");
-    expect(add).toContain("const needsPlan = useOfferNeedsPlan(brandId, offerId);");
-    expect(add).toContain("<ChoosePlanPanel brandId={brandId} offerId={offerId} onStarted={() => mutation.mutate()} />");
+  it("a started plan funds the offer's campaigns through their caps, never a per-campaign ceiling", () => {
+    const plan = read("src/components/v2/choose-plan.tsx");
+    expect(plan).toContain("saveSalesFunnelCaps(brandId, offerId, c.salesFunnelId");
+    expect(plan).not.toContain("saveCampaignBudget");
+    // A campaign the customer already funded keeps its caps.
+    expect(plan).toContain("c.funded === true");
   });
 
   it("Add a brand ends on prepaid credit, never on a plan (owner 2026-10-06)", () => {

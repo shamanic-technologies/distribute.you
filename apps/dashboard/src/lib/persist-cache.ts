@@ -184,11 +184,8 @@ export const PERSISTABLE_QUERY_ROOTS = new Set([
   // Brand metadata + config + small summaries.
   "brand",
   "brands",
-  // Every campaign ceiling billing holds for a brand, per (offer, leg, channel).
-  "brandCampaignBudgets",
-  "offerCampaignBudgets",
   // Sales-funnel campaigns (campaign-service) and their max budget / max volume (billing), GA
-  // since 2026-10-10: the same class of data as `campaigns` and `offerCampaignBudgets` (no key
+  // since 2026-10-10: the same class of data as `campaigns` (no key
   // material, no margin), org-scoped by the persister prefix like every other root. The staff
   // section first listed them as never-persisted with no stated reason; the campaign page,
   // sidebar and Today read them on every load, so they paint from disk like the rest.
