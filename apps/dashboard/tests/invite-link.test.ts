@@ -81,7 +81,7 @@ describe("invite link call sites", () => {
   it("the claim runs on every authed page and activates the joined org", () => {
     expect(layout).toContain("<JoinClaimer />");
     expect(claimer).toContain("readJoinCookie(document.cookie)");
-    expect(claimer).toContain("clerk.setActive({ organization: body.orgId })");
+    expect(claimer).toContain("await openJoinedOrg(body.orgId, clerk);");
   });
 
   it("/join and /api/join are public, not auth routes", () => {
@@ -128,9 +128,16 @@ describe("joining while already signed in", () => {
   });
   it("the layout claimer re-checks on navigation and leaves /join to the page", () => {
     expect(claimer).toContain('pathname.startsWith("/join")');
-    // A join that succeeded never reports failure: reload the session, else a full load.
-    expect(claimer).toContain("await clerk.user?.reload();");
+    // A join that succeeded never reports failure, and opens the org with ONE full load.
+    expect(claimer).toContain("clerk.user.reload()");
     expect(claimer).toContain("window.location.assign(dest)");
+  });
+  it("activating the joined org never goes through setActive or a soft navigation (React #310 on a pending session)", () => {
+    const open = claimer.slice(claimer.indexOf("async function openJoinedOrg"));
+    expect(open).toContain('session.touch({ intent: "select_org" })');
+    expect(open).toContain("session.getToken({ skipCache: true })");
+    expect(open).not.toContain("setActive(");
+    expect(open).not.toContain("router.");
     expect(claimer).toContain("[isSignedIn, clerk, router, pathname]");
   });
 });
