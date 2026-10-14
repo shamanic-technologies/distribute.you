@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState, type RefObject } from "react";
+import { useEffect, useLayoutEffect, useRef, useState, type RefObject } from "react";
 import { useInfiniteQuery, useQueryClient, type InfiniteData } from "@tanstack/react-query";
 import { useSearchParams } from "next/navigation";
 import { ApiError, getLeadTimeline, getPersonTimeline, listPeople, sendUniboxReply, setCrmPairingRuling } from "@/lib/api";
@@ -25,6 +25,7 @@ import {
   sourceLine,
   timelineSourceNote,
   type Person,
+  type PersonTimeline,
   type PersonTimelineItem,
 } from "@/lib/people-conversations";
 import { EmptyNote, Initials, MarkLines, Shimmer } from "@/components/v2/ui";
@@ -48,11 +49,29 @@ const LOGO_DEV_TOKEN = "pk_J1iY4__HSfm9acHjR8FibA";
 
 /** The thread reads every source live on each call, so it refreshes slower than the list. */
 const TIMELINE_POLL = 60_000;
+/** A source still re-reading (crm-service `refreshing`) is asked again sooner. */
+const TIMELINE_REFRESHING_POLL = 10_000;
+
+/**
+ * The thread opens on its latest messages only; older ones load as the top scrolls into
+ * view (owner 2026-10-14: « peut même être 10 »). One person's whole thread was 6,963
+ * items, 10.7 MB, 14-16 s in one read.
+ */
+const THREAD_PAGE = 10;
 
 /** How many threads, from the top of the list, load before anyone clicks. */
 const PRELOAD_TOP = 8;
 
 const timelineKey = (brandId: string, ref: string) => ["personTimeline", brandId, ref] as const;
+/** One read shape for the Thread and every preload: same key, same pages. */
+const timelineQuery = (brandId: string, ref: string) => ({
+  queryKey: timelineKey(brandId, ref),
+  queryFn: ({ pageParam }: { pageParam: string | null }) =>
+    getPersonTimeline(brandId, ref, { limit: THREAD_PAGE, before: pageParam }),
+  initialPageParam: null as string | null,
+  // `pages[0]` is the latest page, each next one the page above it.
+  getNextPageParam: (last: PersonTimeline) => (last.page?.hasOlder ? (last.page.olderCursor ?? undefined) : undefined),
+});
 const factsKey = (leadRowId: string | null, brandId: string, offerId: string | null) =>
   ["leadTimeline", leadRowId, brandId, offerId] as const;
 
@@ -189,11 +208,7 @@ export function V2ConversationsView({ brandId }: { brandId: string }) {
   const offerId = selected?.offerId ?? null;
   const offerSettled = selected ? selected.settled : true;
   const preload = (p: Person) => {
-    void queryClient.prefetchQuery({
-      queryKey: timelineKey(brandId, personRef(p)),
-      queryFn: () => getPersonTimeline(brandId, personRef(p)),
-      staleTime: TIMELINE_POLL,
-    });
+    void queryClient.prefetchInfiniteQuery({ ...timelineQuery(brandId, personRef(p)), staleTime: TIMELINE_POLL });
     const leadRowId = personLeadRowId(p);
     if (leadRowId && offerSettled) {
       void queryClient.prefetchQuery({
@@ -502,8 +517,12 @@ function Thread({
   listed: Person | null;
   scrollRef: RefObject<HTMLDivElement | null>;
 }) {
-  const q = useAuthQuery(timelineKey(brandId, ref), () => getPersonTimeline(brandId, ref), {
-    refetchInterval: TIMELINE_POLL,
+  const gate = useOrgQueryGate();
+  const q = useInfiniteQuery({
+    ...timelineQuery(brandId, ref),
+    enabled: gate && !!brandId,
+    refetchInterval: (query) =>
+      query.state.data?.pages.some((p) => p.sources.some((s) => s.refreshing)) ? TIMELINE_REFRESHING_POLL : TIMELINE_POLL,
   });
   // The conversation at the selected offer: lead-service's labelled facts and its tags, keyed
   // on the lead row whose standing decided this person's state (none = not one of our leads).
@@ -511,7 +530,9 @@ function Thread({
   const offerId = selected?.offerId ?? null;
   const offerSettled = selected ? selected.settled : true;
   // Only THIS person's data: the app-wide placeholder would hand a re-keyed query the last person's.
-  const data = ownQueryData(q);
+  const pages = ownQueryData(q)?.pages;
+  // The latest page names the person and the sources; the older pages go above it.
+  const data = pages ? { ...pages[0], items: [...pages].reverse().flatMap((p) => p.items) } : undefined;
   // The list row already names the lead row, so the facts start with the thread, not after it.
   const leadRowId = data ? personLeadRowId(data.person) : listed ? personLeadRowId(listed) : null;
   const factsQ = useAuthQuery(
@@ -525,11 +546,41 @@ function Thread({
   const [sentByRef, setSentByRef] = useState<Record<string, LocalReply[]>>({});
   const local = data ? pendingReplies(sentByRef[ref] ?? [], data.items) : [];
   // Oldest first, so the latest exchange is at the bottom: open there, as any inbox does.
-  const itemCount = (data?.items.length ?? 0) + local.length;
+  // Only a change at the BOTTOM (a new message, a reply sent) scrolls down; an older page
+  // loading above keeps the messages being read where they are.
+  const latest = pages?.[0].items ?? [];
+  const bottomKey = `${latest.length}|${latest[latest.length - 1]?.at ?? ""}|${local.length}`;
   useEffect(() => {
     const el = scrollRef.current;
     if (el) el.scrollTop = el.scrollHeight;
-  }, [ref, itemCount]);
+  }, [ref, bottomKey, scrollRef]);
+  const pageCount = pages?.length ?? 0;
+  const heightBefore = useRef<{ ref: string; pages: number; height: number; top: number } | null>(null);
+  useLayoutEffect(() => {
+    const el = scrollRef.current;
+    const before = heightBefore.current;
+    if (el && before && before.ref === ref && pageCount > before.pages) {
+      el.scrollTop = before.top + (el.scrollHeight - before.height);
+    }
+    heightBefore.current = el ? { ref, pages: pageCount, height: el.scrollHeight, top: el.scrollTop } : null;
+  }, [ref, pageCount, scrollRef]);
+  const top = useRef<HTMLDivElement | null>(null);
+  const { hasNextPage, isFetchingNextPage, fetchNextPage } = q;
+  useEffect(() => {
+    const el = top.current;
+    if (!el || !hasNextPage) return;
+    const io = new IntersectionObserver(
+      (entries) => {
+        if (!entries.some((e) => e.isIntersecting) || isFetchingNextPage) return;
+        const box = scrollRef.current;
+        if (box) heightBefore.current = { ref, pages: pageCount, height: box.scrollHeight, top: box.scrollTop };
+        void fetchNextPage();
+      },
+      { root: scrollRef.current, rootMargin: "300px 0px 0px 0px" },
+    );
+    io.observe(el);
+    return () => io.disconnect();
+  }, [hasNextPage, isFetchingNextPage, fetchNextPage, ref, pageCount, scrollRef]);
   if (!q.isFetchedAfterMount && !data) {
     return (
       <div className="space-y-3 p-4">
@@ -580,6 +631,11 @@ function Thread({
         ) : null}
       </header>
       <div ref={scrollRef} className="k-scroll min-h-0 flex-1 space-y-3 overflow-y-auto p-4">
+        {hasNextPage && (
+          <div ref={top} aria-busy={isFetchingNextPage}>
+            <Shimmer className="h-14 w-full rounded-lg" />
+          </div>
+        )}
         {items.length === 0 ? (
           <EmptyNote>No message or event with this person on any connected source.</EmptyNote>
         ) : (

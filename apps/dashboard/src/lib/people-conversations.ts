@@ -237,9 +237,30 @@ export const PersonTimelineSchema = z.object({
       status: z.string(),
       items: z.coerce.number(),
       error: z.string().nullable(),
+      /**
+       * A paged read waits briefly for a live source (Gmail, cold email); one still
+       * re-reading serves its stored copy with `refreshing: true`, so the first page is
+       * re-read sooner (crm-service v0.56.0). Optional until that build is live.
+       */
+      refreshing: z.boolean().optional(),
     }),
   ),
+  /** Items on THIS page; `totalItems` counts the whole thread. */
   itemCount: z.coerce.number(),
+  totalItems: z.coerce.number().optional(),
+  /**
+   * The page this answer holds (crm-service v0.56.0): the latest `limit` items, or the
+   * ones before `before`. `olderCursor` asks the page above; null when `hasOlder` is false.
+   * Absent on a whole-thread read.
+   */
+  page: z
+    .object({
+      limit: z.coerce.number(),
+      before: z.string().nullable(),
+      hasOlder: z.boolean(),
+      olderCursor: z.string().nullable(),
+    })
+    .optional(),
   items: z.array(PersonTimelineItemSchema),
 });
 

@@ -702,12 +702,19 @@ export async function listOutcomePeople(
 }
 
 /**
- * One person's whole exchange, every channel merged, oldest first (read live from each
- * source). `ref` is what the Unibox URL holds: crm-service's `personId`, or an identity
+ * One page of a person's exchange, every channel merged, oldest first inside the page
+ * (crm-service pages it: the latest `limit` items, or those before `before`). `ref` is what the Unibox URL holds: crm-service's `personId`, or an identity
  * key on a row built before ids existed (`personRefQuery` decides which).
  */
-export async function getPersonTimeline(brandId: string, ref: string, token?: string): Promise<PersonTimeline> {
-  const qs = new URLSearchParams({ brandId, ...personRefQuery(ref) });
+export async function getPersonTimeline(
+  brandId: string,
+  ref: string,
+  page: { limit: number; before: string | null },
+  token?: string,
+): Promise<PersonTimeline> {
+  const qs = new URLSearchParams({ brandId, ...personRefQuery(ref), limit: String(page.limit) });
+  // The page above the one on screen: crm-service's own cursor, passed back verbatim.
+  if (page.before) qs.set("before", page.before);
   const raw = await apiCall<unknown>(`/orgs/people/timeline?${qs.toString()}`, { token });
   const parsed = PersonTimelineSchema.safeParse(raw);
   if (!parsed.success) {

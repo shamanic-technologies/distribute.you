@@ -40,7 +40,7 @@ describe("call sites read per-person data through ownQueryData", () => {
   it("Unibox Thread: facts only for the current lead row, person only for the current key", () => {
     const src = read("integrations-conversations.tsx");
     const thread = src.slice(src.indexOf("function Thread("), src.indexOf("type ThreadRow"));
-    expect(thread).toContain("const data = ownQueryData(q);");
+    expect(thread).toContain("const pages = ownQueryData(q)?.pages;");
     expect(thread).toContain("const facts = leadRowId ? ownQueryData(factsQ) : undefined;");
     expect(thread).not.toContain("factsQ.data");
     expect(thread).not.toContain("q.data");
