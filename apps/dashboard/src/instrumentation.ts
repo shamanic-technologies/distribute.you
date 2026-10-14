@@ -880,6 +880,14 @@ const COPILOT_ALLOWED_TOOLS = [
   "create_pipe",
   "create_sales_path",
   "create_sales_funnel",
+  // Plays (chat-service 2026-10-14): how a step runs (cold email "Valid only" vs "Valid +
+  // Catch-all"). Who a step reaches is its play, never a per-campaign audience pick.
+  "find_plays",
+  "find_strategies",
+  "find_tactics",
+  "create_tactic",
+  "create_strategy",
+  "create_play",
   // A campaign is one sales funnel for one offer: created stopped, max budget + max volume
   // asked from the user, started only through propose_switch_on / confirm_switch_on.
   "list_funnel_campaigns",
