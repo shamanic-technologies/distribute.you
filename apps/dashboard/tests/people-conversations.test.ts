@@ -296,8 +296,10 @@ describe("a thread opens from memory (owner 2026-10-08: instant)", () => {
   it("preloads the top rows and the row under the pointer, on the Thread's own key", () => {
     const view = read("components/v2/integrations-conversations.tsx");
     // Same key both sides: the URL's person ref (crm-service personId, owner 2026-10-10).
-    expect(view).toContain("queryKey: timelineKey(brandId, personRef(p))");
-    expect(view).toContain("useAuthQuery(timelineKey(brandId, ref)");
+    // One read shape (`timelineQuery`) for the preload and the Thread: same key, same pages.
+    expect(view).toContain("queryKey: timelineKey(brandId, ref),");
+    expect(view).toContain("prefetchInfiniteQuery({ ...timelineQuery(brandId, personRef(p))");
+    expect(view).toContain("...timelineQuery(brandId, ref),\n    enabled: gate");
     expect(view).toContain("preload(p);");
     expect(view).toContain(".slice(0, PRELOAD_TOP)");
   });
@@ -312,6 +314,17 @@ describe("a thread opens from memory (owner 2026-10-08: instant)", () => {
     const view = read("components/v2/integrations-conversations.tsx");
     expect(view).toContain("window.history.replaceState(");
     expect(view).not.toContain("router.replace(");
+  });
+});
+
+describe("a thread opens on its latest 10 items, older ones on scroll (owner 2026-10-14)", () => {
+  it("asks crm-service one page at a time and walks back with its own cursor", () => {
+    const view = read("components/v2/integrations-conversations.tsx");
+    expect(view).toContain("const THREAD_PAGE = 10;");
+    expect(view).toContain("getPersonTimeline(brandId, ref, { limit: THREAD_PAGE, before: pageParam })");
+    expect(view).toContain("last.page?.hasOlder ? (last.page.olderCursor ?? undefined) : undefined");
+    const api = read("lib/api.ts");
+    expect(api).toContain('if (page.before) qs.set("before", page.before);');
   });
 });
 
