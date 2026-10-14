@@ -6,23 +6,19 @@ import { pollOptions } from "@/lib/query-options";
 import { getConversationCounts, getLeadBucketCounts } from "@/lib/api";
 import { type RevenueWindow } from "@/lib/revenue-window";
 import { formatCentsAsUsdAdaptive, formatCount } from "@/lib/format-number";
-import { fmtDailyBudgetUsd } from "@/lib/campaign-budget";
 import { shownFigure, shownReturn } from "@/lib/maturity";
 import { formatRoi, roiIsGood } from "@/lib/format-roi";
 import { InfoTooltip } from "@/components/visibility/metric-info";
 import { useStatBasis } from "@/lib/use-stat-basis";
 import { useStaffMode } from "@/lib/use-staff-mode";
-import { useDailyBudgetHidden } from "@/lib/use-daily-budget-hidden";
 import { isColdEmailChannel } from "@/lib/offer-levers-home";
 import { useLegCatalogue } from "@/lib/use-leg-catalogue";
 import { campaignNameFor } from "@/lib/legs";
 import { isProactiveFrom, sameLegKey } from "@/lib/outbound-leg-key";
 import { useAcquisitionChannels } from "@/lib/use-acquisition-channels";
-import { crewTrigger } from "@/lib/v2/crews";
 import { v2CampaignHref, v2Href, v2OfferHref, type V2CampaignTab } from "@/lib/v2/routes";
 import { AcquisitionChannelMark } from "@/components/marks/acquisition-channel-mark";
 import { CampaignControlsTrigger } from "@/components/campaigns/campaign-controls-trigger";
-import { CampaignSettingsCard } from "@/components/settings/campaign-settings-card";
 import { CampaignRoiChart } from "@/components/v2/campaign-roi-chart";
 import { CampaignWorkflowsPage } from "@/components/workflows/campaign-workflows-page";
 import { useMissions, type Mission } from "@/components/v2/use-missions";
@@ -36,7 +32,7 @@ import { StaffOnly } from "@/components/v2/staff-only";
 import { StatBasisSwitch } from "@/components/v2/stat-basis-switch";
 import { V2Page, type V2Tab } from "@/components/v2/setup-pages";
 import { EmptyNote, Figure, SectionTitle, Shimmer, StatTile } from "@/components/v2/ui";
-import { FunnelCampaignPage, FunnelPartOf, useFunnelCampaignById } from "@/components/v2/funnel-campaigns";
+import { FunnelCampaignPage, FunnelPartOf, useFunnelCampaignById, useFunnelCapsWords } from "@/components/v2/funnel-campaigns";
 import { RoiLabel, RoiValue } from "@/components/v2/roi-label";
 import { costToShowCents, roiToShow } from "@/lib/expected-return";
 
@@ -176,12 +172,7 @@ export function V2CampaignPage({ funnelListSettled = true }: { funnelListSettled
         ) : mission ? (
           <>
             <StatBasisSwitch />
-            <CampaignControlsTrigger
-              brandId={brandId}
-              campaignId={id}
-              totalCentsOverride={mission.row.budgetCents}
-              cap={crewTrigger(mission.leg)?.kind === "event"}
-            />
+            <CampaignControlsTrigger brandId={brandId} campaignId={id} />
           </>
         ) : undefined
       }
@@ -206,11 +197,11 @@ export function V2CampaignPage({ funnelListSettled = true }: { funnelListSettled
         <V2AudiencesTable campaignId={id} offerId={offerId} />
       ) : tab === "settings" ? (
         <div className="space-y-8">
-          {/* The channel page's settings (give lists, rates per step), then this campaign's daily budget. */}
+          {/* The channel page's settings (give lists, rates per step). Its money is its campaign's
+              caps, stated on that campaign's page (owner 2026-10-10): a part has no budget of its own. */}
           {c?.featureSlug && isColdEmailChannel(c.featureSlug) && (
             <ColdEmailChannelSettings brandId={brandId} offerId={offerId} channelSlug={c.featureSlug} />
           )}
-          {!partOfId && <CampaignSettingsCard brandId={brandId} offerId={offerId} campaignId={id} />}
         </div>
       ) : (
         <StaffOnly>
@@ -282,7 +273,6 @@ function CampaignOverview({
   tabHref: (tab: V2CampaignTab) => string;
 }) {
   const { basis } = useStatBasis();
-  const budgetHidden = useDailyBudgetHidden();
   const q = useAuthQuery(["leadBucketCounts", `campaign:${campaignId}`, ""], () => getLeadBucketCounts({ campaignId }, {}), pollOptions);
   const counts = q.data?.counts ?? null;
   const people = q.data?.people ?? null;
@@ -295,7 +285,6 @@ function CampaignOverview({
   const cost = shownFigure(g?.outcomesMaturity, (h) => (replyLed ? h.cpprCents : h.cpcCents), basis);
   // The served expected cost of one outcome where the measured one is Learning (owner 2026-10-11).
   const costShown = costToShowCents(cost, g?.expectedReturn, replyLed ? "conversation" : "website_visit");
-  const cap = crewTrigger(mission.leg)?.kind === "event";
 
   const win = useCampaignWindow(brandId, mission.row.campaign.id, mission.row.campaign.featureSlug ?? null);
   const emails = win.data?.emails ?? null;
@@ -371,15 +360,7 @@ function CampaignOverview({
               value={audiences.activeTabRows}
               unit={audiences.activeTabRows === 1 ? "audience" : "audiences"}
             />
-            {/* A plan's budget is fixed, so a subscriber's Settings card states the switch alone. */}
-            <SummaryCard
-              label="Settings"
-              href={tabHref("settings")}
-              loading={false}
-              value={null}
-              text={budgetHidden ? (mission.running ? "On" : "Off") : fmtDailyBudgetUsd(mission.row.budgetCents)}
-              unit={budgetHidden ? "" : cap ? "cap / day" : "/ day"}
-            />
+            <SettingsSummary brandId={brandId} mission={mission} tabHref={tabHref} />
           </div>
         </section>
       </div>
@@ -406,12 +387,10 @@ function ConversationOverview({
   mission: Mission;
   tabHref: (tab: V2CampaignTab) => string;
 }) {
-  const budgetHidden = useDailyBudgetHidden();
   const win = useCampaignWindow(brandId, mission.row.campaign.id, mission.row.campaign.featureSlug ?? null);
   const q = useAuthQuery(["conversationCounts", mission.row.campaign.id], () => getConversationCounts(mission.row.campaign.id), pollOptions);
   const conv = q.data ?? null;
   const settled = q.isFetchedAfterMount || q.data !== undefined;
-  const cap = crewTrigger(mission.leg)?.kind === "event";
   const from = mission.leg?.fromLabel ?? "Positive reply";
   const to = mission.leg?.toLabel ?? "Meeting booked";
   const count = (v: number | null | undefined) =>
@@ -458,17 +437,29 @@ function ConversationOverview({
         <section>
           <SectionTitle>At a glance</SectionTitle>
           <div className="flex flex-col gap-3">
-            <SummaryCard
-              label="Settings"
-              href={tabHref("settings")}
-              loading={false}
-              value={null}
-              text={budgetHidden ? (mission.running ? "On" : "Off") : fmtDailyBudgetUsd(mission.row.budgetCents)}
-              unit={budgetHidden ? "" : cap ? "cap / day" : "/ day"}
-            />
+            <SettingsSummary brandId={brandId} mission={mission} tabHref={tabHref} />
           </div>
         </section>
       </div>
     </div>
+  );
+}
+
+/**
+ * What this campaign may spend: the caps of the campaign it is a part of (owner 2026-10-10, billing's
+ * max budget and max volume), else whether it runs. A part has no budget of its own.
+ */
+function SettingsSummary({ brandId, mission, tabHref }: { brandId: string; mission: Mission; tabHref: (tab: V2CampaignTab) => string }) {
+  const partOfId = mission.row.campaign.salesFunnelCampaignId ?? null;
+  const caps = useFunnelCapsWords(brandId, partOfId);
+  return (
+    <SummaryCard
+      label="Settings"
+      href={tabHref("settings")}
+      loading={partOfId !== null && caps === null}
+      value={null}
+      text={partOfId ? caps : mission.running ? "On" : "Off"}
+      unit=""
+    />
   );
 }

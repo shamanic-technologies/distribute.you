@@ -67,7 +67,7 @@ describe("shouldPersistQuery — only successful, non-sensitive queries persist"
       "orgIdentity", "billingAccount", "subscription", "creditGrants", "billingPayments",
       "inviteStatus", "freeCreditPromises",
       // brand metadata + config
-      "brand", "brands", "brandCampaignBudgets",
+      "brand", "brands",
       "brandSpendableBudget", "brandDailyBudget", "brandConversionToken",
       // offers + their outcome rows
       "brandOffers", "brandOffer", "offerUserFields", "offerEconomics",

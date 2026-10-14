@@ -754,7 +754,6 @@ export function FunnelCampaignLine({ orgId, campaign }: { orgId: string; campaig
   const limit = fundingLimit(caps.data ?? null);
   const type = funnelTypeOf(caps.data ?? null);
   const settledCaps = caps.data !== undefined || caps.isFetchedAfterMount;
-  const notFunded = settledCaps && funnelFunded(caps.data ?? null) === false;
   const v = limit?.kind === "volume" ? limit.volume : null;
   return (
     <Link href={v2CampaignHref(orgId, campaign.brandId, campaign.id)} className="k-hover block px-4 py-3 first:rounded-t-[12px] last:rounded-b-[12px]">
@@ -765,7 +764,7 @@ export function FunnelCampaignLine({ orgId, campaign }: { orgId: string; campaig
         </span>
         <span className="k-fg3 mt-1.5 flex items-center justify-between gap-2 text-[12px] tabular-nums">
           <span className="truncate">
-            {!settledCaps ? " " : b ? statedBudget(type, b) : v ? volumeFundingLabel(type, v) : notFunded ? "Not funded yet" : "—"}
+            {!settledCaps ? " " : fundingWords(caps.data ?? null)}
           </span>
           <span className="shrink-0">
             {b && b.consumedCents !== null
@@ -1092,6 +1091,41 @@ export function useFunnelCampaignById(brandId: string, id: string) {
   const campaign = useMemo(() => q.data?.find((c) => c.id === id) ?? null, [q.data, id]);
   const settled = q.data !== undefined || q.isError;
   return { campaign, settled };
+}
+
+/** What a campaign may spend, as its stated caps read ("$50/week", "Up to 200 people/month"). */
+function fundingWords(caps: SalesFunnelCaps | null): string {
+  const b = caps?.maxBudget ?? null;
+  const limit = fundingLimit(caps);
+  const type = funnelTypeOf(caps);
+  const v = limit?.kind === "volume" ? limit.volume : null;
+  return b ? statedBudget(type, b) : v ? volumeFundingLabel(type, v) : funnelFunded(caps) === false ? "Not funded yet" : "—";
+}
+
+/**
+ * A PART's money is its campaign's caps (owner 2026-10-10): a part has no budget of its own, the
+ * campaign it runs in states the max budget and max volume (billing). "—" for a campaign started
+ * before them, which belongs to no campaign and so has no caps; null while either read loads.
+ */
+export function useFunnelCapsWords(brandId: string, salesFunnelCampaignId: string | null | undefined): string | null {
+  const { campaign, settled } = useFunnelCampaignById(brandId, salesFunnelCampaignId ?? "");
+  // The key every caps reader polls (`useFunnelCaps`), so a page showing both costs one request.
+  const caps = useAuthQuery(
+    ["salesFunnelCaps", campaign?.brandId, campaign?.offerId, campaign?.salesFunnelId],
+    () => getSalesFunnelCaps(campaign!.brandId, campaign!.offerId, campaign!.salesFunnelId),
+    { ...pollOptions, enabled: !!campaign },
+  );
+  if (!salesFunnelCampaignId) return "—";
+  if (!settled) return null;
+  if (!campaign) return "—";
+  if (caps.data === undefined && !caps.isFetchedAfterMount) return null;
+  return fundingWords(caps.data ?? null);
+}
+
+/** `useFunnelCapsWords` as text, for a row. */
+export function FunnelCapsWords({ brandId, salesFunnelCampaignId }: { brandId: string; salesFunnelCampaignId: string | null | undefined }) {
+  const words = useFunnelCapsWords(brandId, salesFunnelCampaignId);
+  return words === "—" ? DASH : <>{words ?? " "}</>;
 }
 
 /** A part's page names the campaign it belongs to, and links back to it. */

@@ -38,11 +38,9 @@ import { useCrewRuns } from "@/components/v2/runs";
 import { useOngoingCampaigns, type OngoingCampaign } from "@/components/v2/ongoing-campaigns";
 import { FunnelCampaignLine } from "@/components/v2/funnel-campaigns";
 import { PathAvatar } from "@/components/v2/offer-sales-paths";
-import { CampaignLeg, budgetLabel } from "@/components/v2/offer-campaigns";
-import { campaignKey, campaignTag } from "@/lib/offer-campaigns";
+import { CampaignLeg } from "@/components/v2/offer-campaigns";
+import { campaignTag } from "@/lib/offer-campaigns";
 import { useAuthQuery } from "@/lib/use-auth-query";
-import { getOfferCampaignBudgets, type OfferCampaignBudgets } from "@/lib/api";
-import { fmtDailyBudgetUsd } from "@/lib/campaign-budget";
 import { STEP_KEY_FOR_LEAD_STAGE } from "@/lib/step-marks";
 import { CrewMark } from "@/components/v2/crew-mark";
 import { awaitingReason } from "@/lib/awaiting-reason";
@@ -148,19 +146,6 @@ export function TodayPage() {
   // works (owner 2026-10-05) is not stated here, so Today never shows a stage at zero
   // that nothing aims at.
   const ongoing = useOngoingCampaigns(orgId, brandId, selectedOfferId);
-  // Each ON campaign's budget, billing's own figure in the period it was stated in: what
-  // goes to proactive outreach, and the most each reactive one may spend (owner 2026-10-08).
-  const budgetsQ = useAuthQuery(
-    ["offerCampaignBudgets", brandId, selectedOfferId],
-    () => getOfferCampaignBudgets(brandId, selectedOfferId as string),
-    { enabled: !!selectedOfferId },
-  );
-  const budgetOf = (c: OngoingCampaign): string | null => {
-    if (!budgetsQ.data) return null;
-    const rc = c.m.row.campaign;
-    const item = budgetsQ.data.items.find((i) => campaignKey(i.featureSlug, i.legKey) === campaignKey(rc.featureSlug ?? "", rc.legKey ?? ""));
-    return budgetLabel({ reactive: c.campaign?.reactive ?? false }, item?.budgetCents ?? null, item?.period ?? budgetsQ.data.period);
-  };
   const works = (stage: string) => ongoing.settled && ongoing.steps.has(STEP_KEY_FOR_LEAD_STAGE[stage]);
   const showReplies = works("positive_reply");
   const showVisits = works("website_visit");
@@ -239,7 +224,7 @@ export function TodayPage() {
         actions={<StatBasisSwitch />}
       />
       <div className="mx-auto max-w-[1280px] px-4 pb-16 pt-6 md:px-6">
-        <OfferPlanBanner brandId={brandId} offerId={selectedOfferId} missions={missions} />
+        <OfferPlanBanner brandId={brandId} offerId={selectedOfferId} />
         <div className="mb-6 flex flex-wrap items-end justify-between gap-2">
           <div className="min-w-0">
             <h1 className="text-[28px] font-medium leading-[34px] tracking-[-0.02em]">
@@ -482,14 +467,6 @@ export function TodayPage() {
                       </Link>
                     ) : null}
                   >Campaigns</SectionTitle>
-                  {/* Billing's own totals, ON campaigns only: what goes to proactive outreach,
-                      and the most the reactive ones may spend, per reaction (owner 2026-10-08). */}
-                  {budgetsQ.data?.totals ? (
-                    <BudgetTotals totals={budgetsQ.data.totals} />
-                  ) : budgetsQ.data?.totals === null ? (
-                    // Billing could not tell which campaigns are on: unknown, never $0.
-                    <p className="k-fg3 mb-3 text-[12px]">Totals are not readable right now.</p>
-                  ) : null}
                   <div className="k-card divide-y divide-[var(--line-subtle)]">
                     {!ongoing.settled ? (
                       <div className="p-4"><Shimmer className="h-10 w-full" /></div>
@@ -502,11 +479,7 @@ export function TodayPage() {
                           <FunnelCampaignLine key={f.id} orgId={orgId} campaign={f} />
                         ))}
                         {ongoing.campaigns.map((c) => (
-                          <CampaignLine
-                            key={c.m.row.campaign.id}
-                            c={c}
-                            budget={budgetOf(c)}
-                          />
+                          <CampaignLine key={c.m.row.campaign.id} c={c} />
                         ))}
                       </>
                     )}
@@ -646,38 +619,7 @@ function MeetingLine({ lead, at, mission, href }: { lead: Lead; at: string | nul
   );
 }
 
-function BudgetTotals({ totals }: { totals: NonNullable<OfferCampaignBudgets["totals"]> }) {
-  const per = `/${totals.period}`;
-  return (
-    <div className="k-card mb-3 grid grid-cols-2 divide-x divide-[var(--line-subtle)]">
-      <div className="min-w-0 p-3">
-        <p className="k-label">Proactive</p>
-        <p className="mt-1 text-[17px] font-medium tabular-nums">
-          {fmtDailyBudgetUsd(totals.proactive.budgetCents)}
-          <span className="k-fg3 text-[12px] font-normal">{per}</span>
-        </p>
-        <p className="k-fg3 text-[12px]">
-          {formatCount(totals.proactive.campaigns)} {totals.proactive.campaigns === 1 ? "campaign" : "campaigns"}
-        </p>
-      </div>
-      <div className="min-w-0 p-3">
-        <p className="k-label">Reactive, at most</p>
-        <p className="mt-1 text-[17px] font-medium tabular-nums">
-          {fmtDailyBudgetUsd(totals.reactive.maxBudgetCents)}
-          <span className="k-fg3 text-[12px] font-normal">{per}</span>
-        </p>
-        {totals.reactive.byTrigger.map((t) => (
-          <p key={t.triggerKey ?? "none"} className="k-fg3 truncate text-[12px] tabular-nums">
-            On {(t.triggerLabel ?? "other steps").toLowerCase()}: {fmtDailyBudgetUsd(t.maxBudgetCents)}
-            {per}
-          </p>
-        ))}
-      </div>
-    </div>
-  );
-}
-
-function CampaignLine({ c, budget }: { c: OngoingCampaign; budget: string | null }) {
+function CampaignLine({ c }: { c: OngoingCampaign }) {
   const { m, name, campaign } = c;
   const invested = m.row.revenue?.committedCostUsd ?? null;
   return (
@@ -696,11 +638,11 @@ function CampaignLine({ c, budget }: { c: OngoingCampaign; budget: string | null
           {campaign ? <CampaignLeg campaign={campaign} compact /> : <span className="k-fg4 text-[12px]">{"—"}</span>}
         </HoverScroll>
       </MarkLines>
-      {/* Its type and budget, then what it has spent so far. */}
+      {/* Its type, then what it has spent so far. A campaign started before sales funnel
+          campaigns has no caps: its money is what it spent. */}
       <span className="k-fg3 mt-1.5 flex items-center justify-between gap-2 text-[12px] tabular-nums">
         <span className="truncate">
-          {campaign ? `${campaignTag(campaign)} · ` : ""}
-          {budget ?? "—"}
+          {campaign ? campaignTag(campaign) : "—"}
         </span>
         <span className="shrink-0">{invested != null ? `${formatUsdAdaptive(invested)} spent` : "—"}</span>
       </span>

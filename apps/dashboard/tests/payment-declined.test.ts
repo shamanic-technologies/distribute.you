@@ -196,7 +196,6 @@ describe("call sites", () => {
   it("every campaign status surface reads the payment hold", () => {
     expect(read("lib/use-scope-toggle.ts")).toContain("r.paymentHold");
     expect(read("components/campaigns/campaign-controls-trigger.tsx")).toContain("PAYMENT_HOLD_LABEL[hold]");
-    expect(read("components/settings/campaign-settings-card.tsx")).toContain("paymentHoldKind(campaign)");
   });
   it("dashboard v2 states it on every mission and on every brand page", () => {
     expect(read("components/v2/use-missions.ts")).toContain("paymentHold: paymentHoldKind(c)");
@@ -209,7 +208,6 @@ describe("call sites", () => {
   });
   it("every restart surface renders campaign-service's refusal", () => {
     expect(read("lib/use-scope-toggle.ts")).toContain("campaignStartRefusalMessage(err.status, err.body)");
-    expect(read("components/settings/campaign-settings-card.tsx")).toContain("campaignStartRefusalMessage(err.status, err.body)");
     expect(read("lib/channel-start.ts")).toContain("campaignStartRefusalMessage(");
   });
   it("the notice that tells the customer to act gates on billing's CURRENT hold, on v2 and v1", () => {
@@ -219,7 +217,6 @@ describe("call sites", () => {
     // The bare kind-taking notice is not exported: no surface can skip billing.
     expect(notice).not.toContain("export function PaymentDeclinedNotice");
     expect(read("components/billing/scope-payment-declined-band.tsx")).toContain("<PaymentHoldNotice campaigns={campaigns} />");
-    expect(read("components/settings/campaign-settings-card.tsx")).toContain("<PaymentHoldNotice campaigns={[campaign]} />");
     // The route reads billing's outlook, not a campaign's stop reason.
     expect(read("app/(authed)/api/orgs/payment-hold/route.ts")).toContain("getPaymentOutlook(identity.orgId)");
     expect(read("lib/billing-service.ts")).toContain("/payment-outlook");

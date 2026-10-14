@@ -2,18 +2,12 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { useMutation } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
 import { useAuthQuery, useQueryClient } from "@/lib/use-auth-query";
 import {
-  ApiError,
   getBrand,
-  getOfferCampaignBudgets,
-  saveOfferCampaignBudget,
   setCampaignStatus,
-  type OfferCampaignBudgetItem,
 } from "@/lib/api";
-import { fmtDailyBudgetUsd } from "@/lib/campaign-budget";
 import { formatRoi, roiIsGood } from "@/lib/format-roi";
 import { formatCount, formatUsdAdaptive } from "@/lib/format-number";
 import { shownReturn, type StatBasis } from "@/lib/maturity";
@@ -29,7 +23,6 @@ import { channelWriteErrorMessage } from "@/lib/channel-start";
 import { createCampaignForPair, startReactiveCampaign } from "@/lib/start-pair";
 import { invalidateCampaignMoney } from "@/lib/write-invalidation";
 import { useAcquisitionChannels } from "@/lib/use-acquisition-channels";
-import { useStaffMode } from "@/lib/use-staff-mode";
 import { useMissions, type Mission } from "@/components/v2/use-missions";
 import { EXPECTED_ROI_TIP } from "@/lib/offer-sales-paths";
 import { ChannelChip, ExpectedLabel, PathAvatar } from "@/components/v2/offer-sales-paths";
@@ -40,10 +33,10 @@ import { ROI_TIP, RoiValue } from "@/components/v2/roi-label";
 
 /**
  * The offer's CAMPAIGNS (owner 2026-10-05): every channel x leg its sales paths use, with
- * its type, its ROI (features-service), an on/off status (campaign-service) and its budget
- * per day (billing, per offer): "$50/day" for a proactive one, "Up to $10/day" for a
- * reactive one (a max). Sorted on first, proactive first, ROI high to low; an on row reads
- * on a light green fill.
+ * its type, its ROI (features-service) and an on/off status (campaign-service). No budget:
+ * what a campaign may spend is its sales funnel campaign's caps (owner 2026-10-10), and a
+ * part of one is listed under it, never here. Sorted on first, proactive first, ROI high to
+ * low; an on row reads on a light green fill.
  */
 export function OfferCampaigns({
   orgId,
@@ -111,13 +104,6 @@ export function OfferCampaigns({
   // The proactive campaign that is on now: turning another one on moves the plan to it.
   // A SOURCE campaign runs beside the others (owner 2026-10-07): it neither takes nor gives the plan.
   const activeProactive = sorted.find((c) => c.kind === "outreach" && !c.reactive && running(c)) ?? null;
-  const budgetsQ = useAuthQuery(["offerCampaignBudgets", brandId, offerId], () => getOfferCampaignBudgets(brandId, offerId));
-  const budgetByKey = useMemo(() => {
-    const m = new Map<string, OfferCampaignBudgetItem>();
-    for (const i of budgetsQ.data?.items ?? []) m.set(campaignKey(i.featureSlug, i.legKey), i);
-    return m;
-  }, [budgetsQ.data]);
-  const { staffMode } = useStaffMode();
   // The triggers under the rows are the ones these campaigns wait on (an ON one always shows).
   const triggerCampaigns = useMemo(
     () => campaigns.map((c) => ({ featureSlug: c.featureSlug, legKey: c.legKey, on: running(c) })),
@@ -153,8 +139,7 @@ export function OfferCampaigns({
                     <th className="k-label px-3 py-2.5 text-right font-normal">$ Value</th>
                     <th className="k-label px-3 py-2.5 text-right font-normal">$ / Outcome</th>
                     <th className="k-label px-3 py-2.5 text-right font-normal">$ Invested</th>
-                    <th className="k-label w-[130px] px-3 py-2.5 text-right font-normal">Status</th>
-                    <th className="k-label w-[160px] px-3 py-2.5 pr-4 text-right font-normal">Budget</th>
+                    <th className="k-label w-[130px] px-3 py-2.5 pr-4 text-right font-normal">Status</th>
                   </tr>
                 ) : (
                   <tr className="k-line-subtle border-b">
@@ -164,8 +149,7 @@ export function OfferCampaigns({
                     <th className="k-label px-3 py-2.5 text-right font-normal">
                       <ExpectedLabel tip={EXPECTED_ROI_TIP}>ROI</ExpectedLabel>
                     </th>
-                    <th className="k-label w-[150px] px-3 py-2.5 text-right font-normal">Status</th>
-                    <th className="k-label w-[170px] px-3 py-2.5 pr-4 text-right font-normal">Budget</th>
+                    <th className="k-label w-[150px] px-3 py-2.5 pr-4 text-right font-normal">Status</th>
                   </tr>
                 )}
               </thead>
@@ -189,11 +173,6 @@ export function OfferCampaigns({
                       campaign={c}
                       mission={mission}
                       replaces={c.kind === "outreach" && !c.reactive && activeProactive && activeProactive !== c ? activeProactive : null}
-                      budget={budgetByKey.get(key) ?? null}
-                      budgetPeriod={budgetsQ.data?.period ?? null}
-                      budgetPending={!budgetsQ.isFetchedAfterMount && !budgetsQ.data}
-                      budgetError={budgetsQ.isError && !budgetsQ.data}
-                      showSplit={staffMode}
                     />
                   );
                 })}
@@ -278,11 +257,6 @@ function CampaignRow({
   campaign,
   mission,
   replaces,
-  budget,
-  budgetPeriod,
-  budgetPending,
-  budgetError,
-  showSplit,
 }: {
   /** Sales path page: the campaign's own results columns, the leg under its name. */
   results: boolean;
@@ -297,14 +271,6 @@ function CampaignRow({
   mission: Mission | null;
   /** The proactive campaign this one would take the plan from if turned on. */
   replaces: OfferCampaign | null;
-  /** billing's row for this campaign; null when none is set. */
-  budget: OfferCampaignBudgetItem | null;
-  /** The org's budget period (day = prepaid / postpaid, month = plan subscriber). */
-  budgetPeriod: "day" | "month" | null;
-  budgetPending: boolean;
-  budgetError: boolean;
-  /** Staff mode: the outreach / sourcing split under the budget. */
-  showSplit: boolean;
 }) {
   const [pressed, setPressed] = useState<boolean | null>(null);
   useEffect(() => setPressed(null), [mission?.running]);
@@ -312,7 +278,7 @@ function CampaignRow({
     if (!campaign.name) console.error("[offer-campaigns] features-service served no campaignName", campaign);
   }, [campaign]);
   const on = pressed ?? mission?.running ?? false;
-  // The status and budget controls (and their portalled menu / modal, whose events bubble
+  // The status control (and its portalled menu, whose events bubble
   // through React's tree) never open the campaign page.
   const stop = (e: React.SyntheticEvent) => e.stopPropagation();
   return (
@@ -357,7 +323,7 @@ function CampaignRow({
           )}
         </td>
       )}
-      <td className="px-3 py-2 text-right" onClick={stop}>
+      <td className="px-3 py-2 pr-4 text-right" onClick={stop}>
         <CampaignStatus
           brandId={brandId}
           offerId={offerId}
@@ -367,20 +333,6 @@ function CampaignRow({
           setPressed={setPressed}
           replaces={replaces}
         />
-      </td>
-      <td className="px-3 py-2 pr-4 text-right" onClick={stop}>
-        <CampaignBudget
-          brandId={brandId}
-          offerId={offerId}
-          campaign={campaign}
-          budget={budget}
-          period={budgetPeriod}
-          pending={budgetPending}
-          error={budgetError}
-        />
-        {showSplit && !campaign.reactive && campaign.managed !== false && (
-          <BudgetSplitLine budget={budget} />
-        )}
       </td>
     </tr>
   );
@@ -452,10 +404,9 @@ function UnlistedRow({
       </td>
       <td className="px-3 py-2">{DASH}</td>
       <CampaignResultCells mission={mission} basis={basis} />
-      <td className="px-3 py-2 text-right">
+      <td className="px-3 py-2 pr-4 text-right">
         <StateDot running={mission.running} label={mission.running ? "On" : "Off"} hold={mission.running ? null : mission.paymentHold} />
       </td>
-      <td className="px-3 py-2 pr-4 text-right">{DASH}</td>
     </tr>
   );
 }
@@ -589,231 +540,5 @@ function CampaignStatus({
       )}
       {error && <span className="mt-1 max-w-[220px] text-[11.5px] text-[var(--data-rose)]">{error}</span>}
     </div>
-  );
-}
-
-/**
- * billing's split of a campaign's daily budget: outreach a fixed amount, sourcing on demand
- * up to its ceiling. Nothing when the budget is not split.
- */
-function BudgetSplitLine({ budget }: { budget: OfferCampaignBudgetItem | null }) {
-  if (!budget?.split || budget.outreachDailyBudgetCents === null || budget.sourcingCeilingCents === null) return null;
-  return (
-    <span className="k-fg3 mt-0.5 block whitespace-nowrap text-[11.5px] tabular-nums">
-      Outreach {fmtDailyBudgetUsd(budget.outreachDailyBudgetCents)} + sourcing up to {fmtDailyBudgetUsd(budget.sourcingCeilingCents)}
-    </span>
-  );
-}
-
-/**
- * The budget in the unit it was stated in: "$50/day", "$90/month", "Up to $9/month" for a
- * reactive one (a max), "Not set" when billing holds none. A subscriber's $99 plan reads
- * as "$90/month" + "Up to $9/month", never as its /30 daily pace ("$3/day").
- */
-export function budgetLabel(campaign: Pick<OfferCampaign, "reactive">, cents: number | null, period: "day" | "month"): string {
-  if (cents === null) return "Not set";
-  const amount = `${fmtDailyBudgetUsd(cents)}/${period}`;
-  return campaign.reactive ? `Up to ${amount}` : amount;
-}
-
-/**
- * The campaign's budget per day, billing's own figure. A button like the status one
- * opens a modal to change it. A plan subscriber reads it only: their budget follows the
- * plan, and changing it here would change what the plan costs.
- */
-function CampaignBudget({
-  brandId,
-  offerId,
-  campaign,
-  budget,
-  period,
-  pending,
-  error,
-}: {
-  brandId: string;
-  offerId: string;
-  campaign: OfferCampaign;
-  budget: OfferCampaignBudgetItem | null;
-  period: "day" | "month" | null;
-  pending: boolean;
-  error: boolean;
-}) {
-  const [open, setOpen] = useState(false);
-
-  if (pending) return <Shimmer className="ml-auto h-4 w-20 rounded" />;
-  if (error || period === null) return <span className="k-fg3 text-[12px]">Could not load</span>;
-  if (campaign.managed === false) return <span className="k-fg4">—</span>;
-
-  // billing serves a row only for a campaign whose budget is set, in the period it was stated in.
-  const unit = budget?.period ?? period;
-  const label = budgetLabel(campaign, budget?.budgetCents ?? null, unit);
-  const cents = budget?.budgetCents ?? null;
-  if (period !== "day" || (budget && !budget.budgetable)) {
-    return <span className="tabular-nums">{label}</span>;
-  }
-  return (
-    <>
-      <button type="button" aria-haspopup="dialog" onClick={() => setOpen(true)} className="k-btn gap-1.5 tabular-nums">
-        <span className={cents === null ? "k-fg3" : ""}>{label}</span>
-        <svg width="10" height="10" viewBox="0 0 10 10" aria-hidden className="k-fg3">
-          <path d="M2.5 4l2.5 2.5L7.5 4" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" />
-        </svg>
-      </button>
-      {open && <BudgetModal brandId={brandId} offerId={offerId} campaign={campaign} budget={budget} unit={unit} onClose={() => setOpen(false)} />}
-    </>
-  );
-}
-
-/** Whole dollars typed in the field, or null when it is not a whole positive number. */
-function parseWholeUsd(v: string): number | null {
-  const t = v.trim().replace(/^\$/, "").replace(/,/g, "");
-  if (!/^\d+$/.test(t)) return null;
-  const n = Number(t);
-  return n > 0 ? n : null;
-}
-
-function BudgetModal({
-  brandId,
-  offerId,
-  campaign,
-  budget,
-  unit,
-  onClose,
-}: {
-  brandId: string;
-  offerId: string;
-  campaign: OfferCampaign;
-  budget: OfferCampaignBudgetItem | null;
-  unit: "day" | "month";
-  onClose: () => void;
-}) {
-  const qc = useQueryClient();
-  const [value, setValue] = useState(budget?.budgetCents ? String(Math.round(budget.budgetCents / 100)) : "");
-  // A prepaid / postpaid org states a budget per day or per month (owner 2026-10-05:
-  // "$90/month", burnt like a daily one, no pacing). Opens on the row's own period.
-  const [per, setPer] = useState<"day" | "month">(unit);
-  const { mutate, isPending, error } = useMutation({
-    mutationFn: (usd: number) =>
-      saveOfferCampaignBudget(brandId, offerId, { featureSlug: campaign.featureSlug, legKey: campaign.legKey, budgetCents: usd * 100 }, per),
-    onSuccess: (data) => {
-      qc.setQueryData(["offerCampaignBudgets", brandId, offerId], data);
-      invalidateCampaignMoney(qc);
-      onClose();
-    },
-    onError: (err) => console.error("[offer-campaigns] budget save failed", { campaign, err }),
-  });
-
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape" && !isPending) onClose();
-    };
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [onClose, isPending]);
-
-  const usd = parseWholeUsd(value);
-  // A campaign with no budget yet has no row, so no floor here: billing judges the write.
-  // The row's floor is in ITS period; in the other one billing judges too. There is no
-  // maximum: a customer puts the number they want (owner 2026-10-05).
-  const samePeriod = per === unit;
-  const minUsd = samePeriod && budget?.minimumCents ? Math.ceil(budget.minimumCents / 100) : null;
-  const problem =
-    value.trim() === ""
-      ? null
-      : usd === null
-        ? "Type a whole number of dollars."
-        : minUsd !== null && usd < minUsd
-          ? `This channel needs at least $${minUsd.toLocaleString("en-US")} a ${per}.`
-          : null;
-  const submittable = usd !== null && problem === null;
-  const status = error instanceof ApiError ? error.status : null;
-  const title = per === "month" ? (campaign.reactive ? "Monthly max" : "Monthly budget") : campaign.reactive ? "Daily max" : "Daily budget";
-
-  if (typeof document === "undefined") return null;
-  const host = document.getElementById("v2-portal") ?? document.body;
-  return createPortal(
-    <div className="fixed inset-0 z-[60] flex items-start justify-center bg-[#1010121f] px-3 pt-[12vh]" onMouseDown={() => !isPending && onClose()}>
-      <div
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="v2-campaign-budget-title"
-        className="k-popover flex w-full max-w-[400px] flex-col overflow-hidden text-left"
-        onMouseDown={(e) => e.stopPropagation()}
-      >
-        <div className="flex h-11 shrink-0 items-center gap-2 border-b border-[var(--line-subtle)] px-4">
-          {campaign.name && <PathAvatar name={campaign.name} size={20} />}
-          <span id="v2-campaign-budget-title" className="k-label">
-            {campaign.name ?? campaign.channelName}
-          </span>
-          <button type="button" aria-label="Close" className="k-btn-ghost ml-auto h-7 w-7 justify-center p-0" onClick={onClose} disabled={isPending}>
-            ×
-          </button>
-        </div>
-        <form
-          className="px-4 py-4"
-          onSubmit={(e) => {
-            e.preventDefault();
-            if (submittable && !isPending) mutate(usd);
-          }}
-        >
-          <label htmlFor="v2-campaign-budget-input" className="k-label block">
-            {title}
-          </label>
-          <div className="mt-1.5 flex items-center gap-2">
-            <span className="k-fg2">{campaign.reactive ? "Up to $" : "$"}</span>
-            <input
-              id="v2-campaign-budget-input"
-              autoFocus
-              inputMode="numeric"
-              value={value}
-              onChange={(e) => setValue(e.target.value)}
-              placeholder="50"
-              aria-invalid={problem !== null}
-              className={`k-input w-[120px] px-2.5 tabular-nums ${problem ? "shadow-[inset_0_0_0_1px_var(--data-rose)]" : ""}`}
-            />
-            <div role="radiogroup" aria-label="Budget period" className="flex items-center gap-1">
-              {(["day", "month"] as const).map((p) => (
-                <button
-                  key={p}
-                  type="button"
-                  role="radio"
-                  aria-checked={per === p}
-                  onClick={() => setPer(p)}
-                  className={per === p ? "k-btn-strong" : "k-btn-ghost"}
-                >
-                  / {p}
-                </button>
-              ))}
-            </div>
-          </div>
-          <p className={`mt-1.5 text-[12px] leading-[18px] ${problem ? "text-[var(--data-rose)]" : "k-fg3"}`}>
-            {problem ??
-              (campaign.kind === "source"
-                ? `We spend this much a ${per} at most, only when your outreach needs new leads.`
-                : campaign.reactive
-                  ? `We spend this much a ${per} at most, only when leads reach this step.`
-                  : `We spend up to this much a ${per} on this campaign.`)}
-          </p>
-          {error !== null && (
-            <p role="alert" className="mt-3 text-[13px] text-[var(--data-rose)]">
-              {status === 400 ? "This amount is not allowed for this channel." : "We could not save this budget. Try again in a moment."}
-            </p>
-          )}
-          <div className="mt-5 flex items-center justify-end gap-2">
-            <button type="button" onClick={onClose} disabled={isPending} className="k-btn-ghost">
-              Cancel
-            </button>
-            <button
-              type="submit"
-              disabled={!submittable || isPending}
-              className={`k-btn-accent ${isPending ? "cursor-wait" : "disabled:cursor-not-allowed disabled:opacity-40"}`}
-            >
-              {isPending ? "Saving..." : "Save"}
-            </button>
-          </div>
-        </form>
-      </div>
-    </div>,
-    host,
   );
 }

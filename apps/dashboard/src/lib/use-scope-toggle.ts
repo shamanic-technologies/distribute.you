@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { ApiError, getBrandCampaignBudgets, listCampaignsByBrand, setCampaignStatus } from "@/lib/api";
+import { ApiError, listCampaignsByBrand, setCampaignStatus } from "@/lib/api";
 import { useAuthQuery, useQueryClient } from "@/lib/use-auth-query";
 import { useAcquisitionChannels } from "@/lib/use-acquisition-channels";
 import {
@@ -23,8 +23,8 @@ import { invalidateCampaignMoney } from "@/lib/write-invalidation";
  * l'offre"). A plan's budget is fixed, so the only answer left to give is whether the
  * scope runs.
  *
- * Both query keys are byte-equal to the ones every v2 page already polls, so this
- * costs no new request. The writes are a FAN-OUT (no bulk endpoint): every one is
+ * The query key is byte-equal to the one every v2 page already polls, so this costs
+ * no new request. The writes are a FAN-OUT (no bulk endpoint): every one is
  * attempted, and a failure is surfaced as one sentence rather than a silent half-pause.
  *
  * ⚠️ Activate FIRES THE WORKFLOW IMMEDIATELY rather than at the next tick.
@@ -43,25 +43,22 @@ export function useScopeToggle(
 } {
   const queryClient = useQueryClient();
   const campaignsQ = useAuthQuery(["campaigns", brandId], () => listCampaignsByBrand(brandId));
-  const budgetsQ = useAuthQuery(["brandCampaignBudgets", brandId], () => getBrandCampaignBudgets(brandId));
   const channels = useAcquisitionChannels();
   const { offerId, featureSlug, campaignId, legKey } = scope;
   const rows = useMemo(
     () =>
-      buildControlRows(campaignsQ.data?.campaigns ?? [], budgetsQ.data, channels, {
+      buildControlRows(campaignsQ.data?.campaigns ?? [], undefined, channels, {
         offerId,
         featureSlug,
         campaignId,
         legKey,
       }),
-    [campaignsQ.data, budgetsQ.data, channels, offerId, featureSlug, campaignId, legKey],
+    [campaignsQ.data, channels, offerId, featureSlug, campaignId, legKey],
   );
 
   // Reveal on SETTLE (resolved OR errored): a failed read shows the honest answer
   // rather than an eternal skeleton.
-  const settled =
-    (campaignsQ.data !== undefined || campaignsQ.isError) &&
-    (budgetsQ.data !== undefined || budgetsQ.isError);
+  const settled = campaignsQ.data !== undefined || campaignsQ.isError;
 
   const served = rollupStatus(rows);
   // The PRESSED statement, held over the served one until campaign-service agrees

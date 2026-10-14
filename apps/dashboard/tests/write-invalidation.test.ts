@@ -86,11 +86,11 @@ describe("CAMPAIGN_MONEY_ROOTS", () => {
     }
   });
 
-  it("re-reads the campaign budget set, since billing answers a write with ONE row", () => {
-    // The set every surface reads cannot be patched from a single-row answer, so it
-    // is re-read. The retired per-funnel set is gone and must not come back.
-    expect(CAMPAIGN_MONEY_ROOTS).toContain("brandCampaignBudgets");
-    expect(CAMPAIGN_MONEY_ROOTS).not.toContain("brandFunnelBudgets");
+  it("re-reads the funnel caps; the retired per-campaign and per-funnel ceilings are gone", () => {
+    expect(CAMPAIGN_MONEY_ROOTS).toContain("salesFunnelCaps");
+    for (const gone of ["brandCampaignBudgets", "offerCampaignBudgets", "brandFunnelBudgets"]) {
+      expect(CAMPAIGN_MONEY_ROOTS).not.toContain(gone);
+    }
   });
 
   it("invalidateCampaignMoney asks for all of them", () => {
@@ -125,7 +125,6 @@ describe("call sites", () => {
   const sites: [string, string][] = [
     ["lib/use-lead-step-statements.ts", "invalidateLeadOutcome"],
     ["lib/use-scope-toggle.ts", "invalidateCampaignMoney"],
-    ["components/settings/campaign-settings-card.tsx", "invalidateCampaignMoney"],
   ];
 
   for (const [path, fn] of sites) {
@@ -143,7 +142,6 @@ describe("call sites", () => {
   it("the budget writers no longer hand-list their own roots", () => {
     for (const path of [
       "lib/use-scope-toggle.ts",
-      "components/settings/campaign-settings-card.tsx",
     ]) {
       expect(read(path)).not.toContain('queryKey: ["campaigns"]');
     }

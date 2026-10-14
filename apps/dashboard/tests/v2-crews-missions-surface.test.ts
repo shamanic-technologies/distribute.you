@@ -11,10 +11,10 @@ describe("Crew page", () => {
     expect(page).toContain("{staffMode && (\n            <Link");
     expect(page).toContain("{settled && staffMode && (");
   });
-  it("states each crew by its trigger, and offers a mission on an idle one", () => {
+  it("states each crew by its trigger, and offers a campaign on an idle one", () => {
     expect(page).toContain("<CrewTriggerTag trigger={crew.trigger}");
-    expect(page).toContain("+ Add a mission");
-    expect(page).toContain("<AddMissionModal");
+    expect(page).toContain("+ Create a campaign");
+    expect(page).not.toContain("<AddMissionModal");
   });
   it("states the DAILY budget, with event crews' caps beside it and never added", () => {
     expect(page).toContain("useDailyBudgetSplit(brandId");
@@ -27,8 +27,10 @@ describe("the daily budget excludes event crews", () => {
   it("Today carries no campaign on/off switch: cancelling lives in Billing (owner 2026-10-05)", () => {
     expect(read("components/v2/today-page.tsx")).not.toContain("CampaignControlsTrigger");
   });
-  it("an event mission's figure reads as a cap", () => {
-    expect(read("components/v2/campaign-page.tsx")).toContain('cap={crewTrigger(mission.leg)?.kind === "event"}');
+  it("a campaign page states its funnel campaign's caps, never a per-campaign daily figure", () => {
+    const page = read("components/v2/campaign-page.tsx");
+    expect(page).toContain("useFunnelCapsWords(brandId, partOfId)");
+    expect(page).not.toContain("fmtDailyBudgetUsd");
   });
 });
 
@@ -54,8 +56,8 @@ describe("Offer page", () => {
 });
 
 describe("one start from nothing", () => {
-  it("Add a mission creates through createCampaignForPair", () => {
-    expect(read("components/v2/add-mission-modal.tsx")).toContain("await createCampaignForPair({");
+  it("the per-pipe Add a mission modal is gone: the Copilot creates a sales funnel campaign", () => {
+    expect(existsSync(join(SRC, "components/v2/add-mission-modal.tsx"))).toBe(false);
   });
 });
 
@@ -70,9 +72,9 @@ describe("Campaign page (replaced the mission page, owner 2026-10-05)", () => {
   it("reads where people stand on the campaign, never the brand", () => {
     expect(page).toContain("getLeadBucketCounts({ campaignId }, {})");
   });
-  it("Settings is the channel page's settings plus the campaign's daily budget (owner 2026-10-05)", () => {
+  it("Settings is the channel page's settings; the money is the funnel campaign's caps (owner 2026-10-10)", () => {
     expect(page).toContain("<ColdEmailChannelSettings brandId={brandId} offerId={offerId} channelSlug={c.featureSlug} />");
-    expect(page).toContain("<CampaignSettingsCard brandId={brandId} offerId={offerId} campaignId={id} />");
+    expect(page).not.toContain("<CampaignSettingsCard");
     expect(page).not.toContain("<BrandOfferCard");
   });
 });

@@ -208,7 +208,7 @@ export function V2OfferPage() {
       title={<OfferIdentityTitle brandId={brandId} offerId={offerId} />}
       tabs={offerTabs(orgId, brandId, offerId, "overview")}
     >
-      <OfferPlanBanner brandId={brandId} offerId={offerId} missions={missions} />
+      <OfferPlanBanner brandId={brandId} offerId={offerId} />
       <div className="space-y-8">
         <OfferLifetimeRevenue brandId={brandId} offerId={offerId} />
         <BrandOfferCard orgId={orgId} brandId={brandId} offerId={offerId} />

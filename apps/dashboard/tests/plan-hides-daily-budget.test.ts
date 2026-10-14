@@ -51,12 +51,8 @@ describe("planMissionBudgetUsd", () => {
 
 describe("every dashboard surface that states a daily budget asks whether to hide it", () => {
   const surfaces = [
-    "src/components/campaigns/campaign-controls-trigger.tsx",
-    "src/components/settings/campaign-settings-card.tsx",
-    "src/components/v2/campaign-page.tsx",
     "src/components/v2/crew-page.tsx",
     "src/components/v2/work-page.tsx",
-    "src/components/v2/add-mission-modal.tsx",
   ];
   for (const f of surfaces) {
     it(f, () => {
@@ -64,14 +60,9 @@ describe("every dashboard surface that states a daily budget asks whether to hid
     });
   }
 
-  it("the controls keep Pause/Activate and drop the budget figure", () => {
+  it("the controls state Pause/Activate alone: no per-campaign budget figure for anyone", () => {
     const trigger = read("src/components/campaigns/campaign-controls-trigger.tsx");
-    expect(trigger).toContain("{!budgetHidden && (\n          <span className=\"k-fg2 text-[13px] tabular-nums\">");
-  });
-
-  it("a subscriber's new mission writes the plan's figure, never a typed one", () => {
-    const add = read("src/components/v2/add-mission-modal.tsx");
-    expect(add).toContain("const typed = budgetHidden ? planUsd : budget.trim()");
+    expect(trigger).not.toContain("fmtDailyBudgetUsd");
   });
 
   it("the billing modal drops its budget words and presets for a plan", () => {

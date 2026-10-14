@@ -60,16 +60,14 @@ export const LEAD_OUTCOME_ROOTS = [
  * ceilings to campaign-service's statuses, so it moves on a pause exactly as it moves on
  * a budget edit, and it is what the header money and the cost card's denominator read.
  *
- * `brandCampaignBudgets` is here too: billing answers a write with ONE row, not the
- * set, so the set every surface reads is re-read rather than patched.
+ * The per-campaign ceilings (`brandCampaignBudgets`, `offerCampaignBudgets`) are retired: a
+ * campaign's money is its sales funnel campaign's caps (`salesFunnelCaps`).
  */
 export const CAMPAIGN_MONEY_ROOTS = [
   "campaigns",
   "campaign",
   "brandDailyBudget",
   "brandSpendableBudget",
-  "brandCampaignBudgets",
-  "offerCampaignBudgets",
   "brandSalesBudget",
   // A campaign that is a sales funnel: its status and its caps (and their consumption).
   "salesFunnelCampaigns",

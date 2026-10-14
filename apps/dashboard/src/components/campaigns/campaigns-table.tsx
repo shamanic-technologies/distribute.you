@@ -8,13 +8,11 @@ import { POLL_INTERVAL } from "@/lib/query-options";
 import { isRevenueFeature } from "@/lib/revenue-feature";
 import {
   listCampaignsByBrand,
-  getBrandCampaignBudgets,
   getFeatureRevenueByCampaign,
   type Campaign,
   type CampaignRevenueGroup,
 } from "@/lib/api";
 import { pairIsLearning } from "@/lib/maturity";
-import { campaignBudgetCents } from "@/lib/campaign-budget";
 import { acquisitionChannelForFeatureSlug } from "@/lib/acquisition-channels";
 import { canonicalLegKey } from "@/lib/outbound-leg-key";
 
@@ -42,12 +40,11 @@ export function isActiveStatus(status: string): boolean {
   return ACTIVE_STATUSES.has(status.toLowerCase());
 }
 
-// One row = a campaign joined to its revenue group and to its own daily ceiling.
+// One row = a campaign joined to its revenue group. Its money is the caps of the sales funnel
+// campaign it is a part of (billing), read where it is shown; a part has no budget of its own.
 export interface CampaignRow {
   campaign: Campaign;
   revenue: CampaignRevenueGroup | null;
-  /** billing's ceiling for THIS campaign, in cents. Null = billing had no answer. */
-  budgetCents: number | null;
   /**
    * Whether this row's ratios (ROI, % CAC) are still LEARNING: the producer's own verdict
    * on this campaign's mature cohort (`costEconomics.maturity.isMature: false`,
@@ -55,8 +52,7 @@ export interface CampaignRow {
    * count are the producer's, per leg, and a second judge is how one campaign came to
    * state four different costs per positive reply on four screens.
    *
-   * `$ Invested` and `$ Budget` are NEVER gated by it: one is money already spent and the
-   * other a ceiling the customer set, and neither is a ratio.
+   * `$ Invested` is NEVER gated by it: it is money already spent, not a ratio.
    */
   learning: boolean;
 }
@@ -101,14 +97,6 @@ export function useCampaignRows(brandId: string, featureSlug: string, offerId?: 
     ["featureRevenueByCampaign", brandId, featureSlug],
     () => getFeatureRevenueByCampaign(featureSlug, brandId),
     { enabled: revenueEnabled, refetchInterval: POLL_INTERVAL },
-  );
-
-  // What the brand funds each campaign at. The key is byte-equal to the one both
-  // Offer Settings and Campaign Settings already read, so a surface rendering the
-  // table beside either costs no second request — and the figure a row states is
-  // by construction the figure those pages edit.
-  const budgetsQ = useAuthQuery(["brandCampaignBudgets", brandId], () =>
-    getBrandCampaignBudgets(brandId),
   );
 
   const campaigns = useMemo(() => campaignsQ.data?.campaigns ?? [], [campaignsQ.data]);
@@ -250,18 +238,12 @@ export function useCampaignRows(brandId: string, featureSlug: string, offerId?: 
   // ROI yet has nothing to rank on, so it sits last of its group rather than at zero
   // — and last-updated breaks that tie, so the campaigns with no figures are ordered
   // by the only thing left that distinguishes them.
-  //
-  // Each row's ceiling is read at the campaign's OWN address (offer x leg x channel),
-  // so the brand-scoped list and the offer-scoped one state the same number for the
-  // same campaign.
-  const budgets = budgetsQ.data;
   const rows = useMemo<CampaignRow[]>(() => {
     const joined = listedCampaigns.map((c) => {
       const revenue = groupsById.get(c.id) ?? null;
       return {
         campaign: c,
         revenue,
-        budgetCents: campaignBudgetCents(c, budgets, channels),
         // No group, or a producer that cannot judge (`isMature: null`), is not Learning.
         learning: pairIsLearning(revenue?.economicsMaturity),
       };
@@ -282,7 +264,7 @@ export function useCampaignRows(brandId: string, featureSlug: string, offerId?: 
       if (byRoi !== 0) return byRoi;
       return b.campaign.updatedAt.localeCompare(a.campaign.updatedAt);
     });
-  }, [listedCampaigns, groupsById, budgets, channels]);
+  }, [listedCampaigns, groupsById]);
 
   // The rows that are RUNNING, for the surfaces whose question is about live
   // campaigns rather than about the brand's campaigns: the Campaigns page's "#1
@@ -305,7 +287,6 @@ export function useCampaignRows(brandId: string, featureSlug: string, offerId?: 
   const settled =
     (campaignsQ.data !== undefined || campaignsQ.isError) &&
     (groupsQ.data !== undefined || groupsQ.isError) &&
-    (budgetsQ.data !== undefined || budgetsQ.isError) &&
     channelGroupQs.every((q) => q.data !== undefined || q.isError);
 
   return { rows, activeRows, settled };

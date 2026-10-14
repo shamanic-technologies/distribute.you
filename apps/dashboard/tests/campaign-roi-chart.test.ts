@@ -103,13 +103,12 @@ describe("Today's return and pipeline by step", () => {
   });
 });
 
-describe("Today's budget totals are billing's", () => {
+describe("Today's Campaigns state each campaign's caps, no retired per-campaign totals", () => {
   const today = fs.readFileSync(path.join(__dirname, "../src/components/v2/today-page.tsx"), "utf-8");
-  it("renders the served proactive and reactive totals, sums nothing", () => {
-    expect(today).toContain("<BudgetTotals totals={budgetsQ.data.totals} />");
-    expect(today).toContain("totals.proactive.budgetCents");
-    expect(today).toContain("totals.reactive.maxBudgetCents");
-    expect(today).toContain("totals.reactive.byTrigger.map(");
+  it("a funnel campaign line carries its caps; the per-campaign budget totals are gone", () => {
+    expect(today).toContain("<FunnelCampaignLine key={f.id}");
+    expect(today).not.toContain("BudgetTotals");
+    expect(today).not.toContain("getOfferCampaignBudgets");
     expect(today).not.toMatch(/items\.reduce\(/);
   });
 });

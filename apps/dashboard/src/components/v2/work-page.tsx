@@ -6,12 +6,12 @@ import { useParams } from "next/navigation";
 import type { AwaitingReplyPerson, Lead, RunRow } from "@/lib/api";
 import { formatCount, formatCentsAsUsdAdaptive } from "@/lib/format-number";
 import { friendlyTime, timeAgo } from "@/lib/friendly-datetime";
-import { fmtDailyBudgetUsd } from "@/lib/campaign-budget";
 import { useDailyBudgetHidden } from "@/lib/use-daily-budget-hidden";
 import { CrewMark } from "@/components/v2/crew-mark";
 import { campaignHoldCopy, useMissionHold } from "@/components/v2/mission-hold";
 import { useSelectedOffer } from "@/components/v2/selected-offer";
 import { useMissions, type Mission } from "@/components/v2/use-missions";
+import { FunnelCapsWords } from "@/components/v2/funnel-campaigns";
 import { useNeedsYourCall, useTheirLastWords } from "@/components/v2/data";
 import { awaitingReason } from "@/lib/awaiting-reason";
 import { useCrewRuns, useRunsTodayList, runState, runTaskLabel } from "@/components/v2/runs";
@@ -185,7 +185,7 @@ export function WorkPage() {
             count={null}
             meta="not sending now"
           >
-            {!settled ? <Skeleton /> : waiting.length === 0 ? <EmptyNote>No mission.</EmptyNote> : <WaitingList missions={waiting} />}
+            {!settled ? <Skeleton /> : waiting.length === 0 ? <EmptyNote>No mission.</EmptyNote> : <WaitingList brandId={brandId} missions={waiting} />}
           </Column>}
           {show("running") && <Column
             title="Running"
@@ -273,17 +273,17 @@ function Column({
   );
 }
 
-function WaitingList({ missions }: { missions: Mission[] }) {
+function WaitingList({ brandId, missions }: { brandId: string; missions: Mission[] }) {
   return (
     <>
       {missions.map((m) => (
-        <WaitingCard key={m.row.campaign.id} m={m} />
+        <WaitingCard brandId={brandId} key={m.row.campaign.id} m={m} />
       ))}
     </>
   );
 }
 
-function WaitingCard({ m }: { m: Mission }) {
+function WaitingCard({ brandId, m }: { brandId: string; m: Mission }) {
   const hold = useMissionHold(m.row.campaign.id, m.running);
   const budgetHidden = useDailyBudgetHidden();
   // A running mission with no hold is sending: it belongs to Running, not here.
@@ -295,8 +295,11 @@ function WaitingCard({ m }: { m: Mission }) {
         <span className="font-medium">{m.crew.name}</span>
         <span className="k-fg3">·</span>
         <span className="k-fg2 truncate">{m.running ? "Held" : "Paused"}</span>
+        {/* Its campaign's caps (owner 2026-10-10): a part has no budget of its own. */}
         {budgetHidden ? null : (
-          <span className="k-mono k-fg3 ml-auto shrink-0 text-[11px]">{fmtDailyBudgetUsd(m.row.budgetCents ?? 0)}/day</span>
+          <span className="k-mono k-fg3 ml-auto shrink-0 text-[11px]">
+            <FunnelCapsWords brandId={brandId} salesFunnelCampaignId={m.row.campaign.salesFunnelCampaignId} />
+          </span>
         )}
       </div>
       <p className="mt-1.5 truncate text-[13px] font-medium">{m.offerName ?? "Offer"}{m.leg ? ` · ${m.leg.label}` : ""}</p>
