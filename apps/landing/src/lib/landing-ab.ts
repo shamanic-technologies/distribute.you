@@ -41,6 +41,9 @@
 // homepage, onboarding sells prepaid credit, first $100 matched) and `postpaid` (the SAME
 // prepaid homepage, onboarding saves a card and charges after the spend, first $100
 // matched). A returning visitor keeps the arm their cookie names.
+// Owner 2026-10-14: 100% on `postpaid`. `control` and `subscription` leave the draw (still
+// reachable with `?variant=`); a returning visitor whose cookie names either is redrawn,
+// so the cookie the dashboard reads becomes `postpaid` on their next visit.
 export const AB_TEST_ENABLED = true;
 
 export const LANDING_VARIANTS = ["control", "assistant", "concierge", "instinct", "subscription", "postpaid"] as const;
@@ -50,16 +53,15 @@ export const VARIANT_COOKIE = "lp_variant";
 const COOKIE_MAX_AGE_S = 90 * 24 * 60 * 60;
 
 /**
- * Share of first visits drawn into each variant. Owner-set 2026-10-13, a third each:
- * `control` (the homepage, sold as prepaid credit), `subscription` (the $99/month plan)
- * and `postpaid` (the homepage, sold as charged after the spend). A variant at weight 0
+ * Share of first visits drawn into each variant. Owner-set 2026-10-14: everyone on
+ * `postpaid` (the homepage, sold as charged after the spend). A variant at weight 0
  * has left the test: a visitor whose cookie names it is drawn again rather than kept on a
  * page nobody else is being shown, so the live arms stay comparable.
  */
 export const VARIANT_WEIGHTS: Record<LandingVariant, number> = {
-  control: 1 / 3,
-  subscription: 1 / 3,
-  postpaid: 1 / 3,
+  postpaid: 1,
+  control: 0,
+  subscription: 0,
   instinct: 0,
   assistant: 0,
   concierge: 0,

@@ -52,21 +52,18 @@ export function lpVariant(cookieHeader: string | null | undefined): string | nul
   return null;
 }
 
-/** The landing variant that sells post-paid (owner 2026-10-13 A/B arm). */
-export const POSTPAID_ARM = "postpaid";
-
 /** The offer a visitor is sold, from the homepage A/B arm (owner 2026-10-13: three arms). */
 export type OfferArm = "subscription" | "prepaid" | "postpaid";
 
 /**
- * The offer the homepage A/B test (owner 2026-10-13, a third each) sold this visitor:
- * `subscription` the $99/month plan, `postpaid` charged after the spend, everyone else
- * prepaid (no cookie: blog, compare page, direct link, another device; `control` or any
- * other variant). Prepaid stays the default.
+ * The offer this visitor is sold. Owner 2026-10-14: 100% post-paid (charged after the
+ * spend), the default for everyone, no cookie included (blog, compare page, direct link,
+ * another device). Only `lp_variant=subscription` (an old cookie, or `?variant=` on the
+ * landing) still gets the $99/month plan, matching the page it showed.
  */
 export function offerArm(cookieHeader: string | null | undefined): OfferArm {
   const v = lpVariant(cookieHeader);
-  return v === SUBSCRIPTION_ARM ? "subscription" : v === POSTPAID_ARM ? "postpaid" : "prepaid";
+  return v === SUBSCRIPTION_ARM ? "subscription" : "postpaid";
 }
 
 /** True when this visitor is sold the $99/month plan (`offerArm` is `subscription`). */

@@ -40,10 +40,10 @@ describe("who is in the $99/month arm", () => {
     expect(lpVariant("lp_variant=control")).toBe("control");
   });
 
-  it("reads the three-way offer arm (owner 2026-10-13): plan, postpaid, else prepaid", () => {
+  it("sells post-paid to everyone but the plan cookie (owner 2026-10-14: 100% post-paid)", () => {
     expect(offerArm("lp_variant=subscription")).toBe("subscription");
     expect(offerArm("a=1; lp_variant=postpaid")).toBe("postpaid");
-    for (const c of [null, "", "lp_variant=control", "lp_variant=instinct", "lp_variant=junk"]) expect(offerArm(c)).toBe("prepaid");
+    for (const c of [null, "", "lp_variant=control", "lp_variant=instinct", "lp_variant=junk"]) expect(offerArm(c)).toBe("postpaid");
     expect(isSubscriptionArm("lp_variant=postpaid")).toBe(false);
   });
 });
