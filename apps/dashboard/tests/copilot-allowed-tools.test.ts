@@ -37,6 +37,10 @@ describe("Copilot allowed tools", () => {
     expect(tools).not.toContain("get_channel_catalogue");
   });
 
+  it("shows and builds the plays that run each step, never a per-campaign audience pick (owner 2026-10-13)", () => {
+    for (const t of ["find_plays", "find_strategies", "find_tactics", "create_tactic", "create_strategy", "create_play"]) expect(tools).toContain(t);
+  });
+
   it("runs a sales funnel as one campaign with caps, started only through the gate", () => {
     for (const t of ["list_funnel_campaigns", "get_funnel_caps", "set_funnel_caps", "create_funnel_campaign", "stop_funnel_campaign"]) expect(tools).toContain(t);
   });
