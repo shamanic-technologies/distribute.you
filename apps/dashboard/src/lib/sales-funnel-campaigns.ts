@@ -397,10 +397,16 @@ export const FunnelCampaignCopiesSchema = z.object({ salesFunnelCampaigns: z.arr
  * saved has NO row in it, and printing "—" for its path, type and money then reads as
  * "nothing served" while the fresh read is still on its way (2026-10-13 Doc Dinners: 6 of 9
  * campaigns showed "—" from a 3-row copy saved before they existed). A missing row is only
- * final once a read made since mount has answered and no other read is in flight.
+ * final once a read made since mount has answered AFTER the campaign was created. A later poll
+ * in flight never takes it back: a row the producer does not serve stays "—", it does not flash
+ * the skeleton on every poll (2026-10-14 Ribbon: ROI and Invested blinked every few seconds).
  */
-export function funnelRowSettled(hasRow: boolean, rows: { isFetchedAfterMount: boolean; isFetching: boolean }): boolean {
-  return hasRow || (rows.isFetchedAfterMount && !rows.isFetching);
+export function funnelRowSettled(
+  hasRow: boolean,
+  rows: { isFetchedAfterMount: boolean; dataUpdatedAt: number },
+  campaignCreatedAt: string,
+): boolean {
+  return hasRow || (rows.isFetchedAfterMount && rows.dataUpdatedAt >= Date.parse(campaignCreatedAt));
 }
 
 /** Why a row's ROI is missing, as served (never guessed): the field name and the producer's reason. */

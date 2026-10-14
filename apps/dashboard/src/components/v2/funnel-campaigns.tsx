@@ -633,9 +633,9 @@ export function FunnelCampaignsSection({ orgId, brandId, offerId }: { orgId: str
                     orgId={orgId}
                     campaign={c}
                     row={rowById.get(c.id) ?? null}
-                    rowsSettled={funnelRowSettled(rowById.has(c.id), rowsQ)}
+                    rowsSettled={funnelRowSettled(rowById.has(c.id), rowsQ, c.createdAt)}
                     copy={rowById.get(c.id) ?? copyById.get(c.id) ?? null}
-                    copySettled={funnelRowSettled(rowById.has(c.id) || copyById.has(c.id), copyQ)}
+                    copySettled={funnelRowSettled(rowById.has(c.id) || copyById.has(c.id), copyQ, c.createdAt)}
                   />
                 ))}
               </tbody>
@@ -940,7 +940,7 @@ export function FunnelCampaignPage({ campaign }: { campaign: SalesFunnelCampaign
   const rowsQ = useAuthQuery(["funnelCampaignRows", campaign.brandId, campaign.offerId], () => listFunnelCampaignRows(campaign.brandId, campaign.offerId), pollOptions);
   const row = rowsQ.data?.find((r) => r.id === campaign.id) ?? null;
   // A campaign newer than the cached rows waits for the fresh read, never "—" (funnelRowSettled).
-  const rowsSettled = funnelRowSettled(row !== null, rowsQ);
+  const rowsSettled = funnelRowSettled(row !== null, rowsQ, campaign.createdAt);
   // Its path on the fast copy read when the cached rows predate it (owner 2026-10-13: instant).
   const copyQ = useAuthQuery(["funnelCampaignCopies", campaign.brandId, campaign.offerId], () => listFunnelCampaignCopies(campaign.brandId, campaign.offerId), pollOptions);
   const path = row?.path ?? copyQ.data?.find((r) => r.id === campaign.id)?.path ?? null;
