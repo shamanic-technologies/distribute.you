@@ -44,6 +44,31 @@ describe("the agent skill", () => {
     }
   });
 
+  it("teaches sending an email the user wrote, its price rule, read-back and signature", () => {
+    const at = md.indexOf("## Send an email you wrote");
+    expect(at).toBeGreaterThan(md.indexOf("## 1. Set up"));
+    expect(at).toBeLessThan(md.indexOf("## 2. What the MCP server can do"));
+    const section = md.slice(at, md.indexOf("## 2. What the MCP server can do"));
+    for (const s of [
+      "POST /v1/trigger-events",
+      '"triggerId": "email_pushed_via_api"',
+      '"person": { "email"',
+      '"item": { "subject"',
+      "timezone",
+      "idempotencyKey",
+      "event.outcome",
+      "BounceVerify",
+      "https://distribute.you/catalog",
+      "never sent",
+      "GET /v1/offers/{offerId}/trigger-events",
+      "GET /v1/leads/{id}/history",
+      "GET /v1/runs/{runId}",
+      "PUT /v1/email-signature",
+      "wait for the user's yes",
+    ]) expect(section).toContain(s);
+    expect(section.toLowerCase()).not.toContain("agency");
+  });
+
   it("keeps the key out of the saved skill and carries no em-dash", () => {
     expect(md).toContain("keep the key OUT of it");
     expect(md).not.toContain("—");
