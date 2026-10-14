@@ -35,7 +35,11 @@ Ask: "Check my distribute.you connection" -> calls distribute_status
 "Which campaigns are running?" -> distribute_list_campaigns
 "What did campaign X produce, and what did it cost?" -> distribute_campaign_stats
 
-## 6. Create things over the REST API or the CLI
+## 6. Follow the method
+"List the distribute.you skills" -> distribute_list_skills, then distribute_read_skill (index first)
+Before launching anything, read the campaigns skill: a campaign is one sales funnel run for one offer, with caps you state.
+
+## 7. Create things over the REST API or the CLI
 ${curlExample("/v1/brands", '-H "Content-Type: application/json" \\\\\n  -d \'{"url":"https://acme.com"}\'')}
 
 Or from a shell:
@@ -104,7 +108,15 @@ export default function QuickstartPage() {
 "What did my latest campaign produce, and what did it cost?"`}</code>
         </pre>
 
-        <h2>6. Create things over the API</h2>
+        <h2>6. Follow the method</h2>
+        <p>
+          Ask your client to read the distribute.you skills (<code>distribute_list_skills</code>,
+          then <code>distribute_read_skill</code>, starting with <code>index</code>). They are the
+          steps our own Copilot follows. A campaign is one sales funnel run for one offer, and it
+          spends only up to the caps you state: a max budget and/or a max volume.
+        </p>
+
+        <h2>7. Create things over the API</h2>
         <p>
           The MCP tools read and steer. Creating a brand or launching a campaign is a call to the
           REST API, which covers every operation the platform has:

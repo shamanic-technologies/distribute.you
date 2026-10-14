@@ -79,6 +79,26 @@ export const CLI_INSTALL_COMMAND = `npx ${CLI_PACKAGE} --help`;
 export const DEVELOPER_HUB_URL = "https://distribute.you/developers";
 
 /**
+ * The method skills: the steps our own Copilot follows to organize a request
+ * (offers, sales funnels, campaigns, caps, workflows, plays). They are served,
+ * read-only and the same for every client, so the docs POINT at them rather
+ * than restating them (a restated copy drifts). Static export: no build-time
+ * fetch, the routes need a key.
+ */
+export const SKILLS_LIST_ROUTE = "GET /v1/skills";
+export const SKILL_READ_ROUTE = "GET /v1/skills/{slug}";
+
+/** The public per-action prices, the only price list a page points at. */
+export const CATALOG_URL = "https://distribute.you/catalog";
+
+/**
+ * The model in one paragraph, worded like the skills. Printed on the docs home,
+ * /api, /mcp and llms.txt; the skills carry the detail.
+ */
+export const PRODUCT_MODEL =
+  "An organization holds brands; a brand sells offers. A campaign is one sales funnel run for one offer (brand x offer x funnel), started or stopped as a whole. It runs one part per step of the funnel, and those part ids are what stats and runs show. A reactive campaign acts only when its trigger fires (a positive reply, a delay with no answer). Money: each campaign has caps the user states, a max budget and/or a max volume, each with a period (one_off, daily, weekly, monthly), spent from the organization's prepaid balance at the public per-action prices.";
+
+/**
  * The MCP server is HOSTED and spoken over Streamable HTTP. There is no local
  * stdio server to install: the package these docs used to name does not exist
  * on npm, and the transport an agent connects over is a URL, not a subprocess.
@@ -188,6 +208,18 @@ export const MCP_TOOLS: McpTool[] = [
     category: "Account",
     description:
       "Read the prepaid account: `state` (awaiting_payment: not paid yet; active: ready to spend; card_not_reloadable or auto_topup_off: fix it with distribute_prepay; not_prepaid), `balance_cents`, `paid_cents`, the automatic reload settings and whether the saved card can reload.",
+  },
+  {
+    name: "distribute_list_skills",
+    category: "Method",
+    description:
+      "List the method skills: how to organize a client's request on distribute.you (offers and their documents, sales funnels, campaigns, budgets, workflows, tactics, strategies and plays...), the same skills our own Copilot follows.",
+  },
+  {
+    name: "distribute_read_skill",
+    category: "Method",
+    description:
+      "Read one method skill in full (markdown `content`): the steps, the API operations to call in order and the traps.",
   },
   {
     name: "distribute_list_brands",

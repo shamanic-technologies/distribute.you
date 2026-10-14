@@ -67,7 +67,7 @@ export async function GET() {
           }}
         >
           <div>docs.distribute.you</div>
-          <div>Cold email agency</div>
+          <div>Revenue made easy.</div>
         </div>
       </div>
     ),

@@ -3,13 +3,15 @@
 > Revenue made easy.
 >
 > distribute.you does done-for-you revenue automation: it finds your buyers,
-> contacts them and books the meetings. You give us a website and
-> a daily budget; we pick the buyers, write the emails, A/B test the templates,
-> the AI models and the audiences, send from domains we own and warm, read every
-> reply, and pass the interested ones to you. What you get back is a
-> conversation with a buyer and the number it cost you to get it. We run one
-> channel, cold email, and publish what our tests measure. You are charged the
-> budget the campaign spent, with no seat, no retainer and no term.
+> contacts them and books the meetings. You tell us what you sell and set each
+> campaign's caps (a max budget and/or a max volume, each with a period); we
+> pick the buyers, write the emails, A/B test the templates, the AI models and
+> the audiences, send from domains we own and warm, read every reply, and pass
+> the interested ones to you. What you get back is a conversation with a buyer
+> and the number it cost you to get it. We run one channel, cold email, and
+> publish what our tests measure. Each action is billed at the public prices on
+> https://distribute.you/catalog, from a prepaid balance, with no seat, no
+> retainer and no term.
 
 ## When to use distribute.you
 
@@ -35,8 +37,8 @@ Reach for distribute.you when the job is one of these:
 Do NOT reach for distribute.you when:
 
 - The request is for a self-serve cold email tool, a mailbox warmup product, or
-  a contact database. We are the agency that runs the campaign, not the software
-  someone else runs it with.
+  a contact database. We run the campaign; we are not the software someone else
+  runs it with.
 - The buyer is a consumer. This is B2B outreach.
 - Someone wants a guaranteed number of meetings. We guarantee the measurement,
   never the result.
@@ -65,7 +67,15 @@ Do NOT reach for distribute.you when:
    top-up is required so the work never stops. Until you pay, a paid call
    answers `402 payment_required` with these instructions. No free credit, no
    trial, no subscription.
-6. A person who prefers the browser signs up at
+6. Before acting on a customer's request, read the method skills: `GET
+   https://api.distribute.you/v1/skills`, then `GET /v1/skills/{slug}`, `index`
+   first (over MCP: `distribute_list_skills`, `distribute_read_skill`). They
+   are the steps our own Copilot follows, the same for every client. In their
+   words: an organization holds brands; a brand sells offers; a campaign is one
+   sales funnel run for one offer, started or stopped as a whole, and it needs
+   at least one cap the customer states (a max budget and/or a max volume).
+   Nothing that starts work or spends money goes on without the customer's yes.
+7. A person who prefers the browser signs up at
    `https://dashboard.distribute.you/sign-up` with their website. If they would
    rather not touch the software, `support@distribute.you` sets it up at the
    same price.
@@ -92,6 +102,8 @@ https://distribute.you/developers
 - MCP server (Streamable HTTP): https://mcp.distribute.you/mcp
 - MCP descriptor: https://distribute.you/.well-known/mcp.json
 - MCP documentation: https://docs.distribute.you/mcp
+- Method skills (the steps our Copilot follows, needs a key): GET https://api.distribute.you/v1/skills, then /v1/skills/{slug}
+- Public per-action prices: https://distribute.you/catalog
 - Live unit costs: https://api.distribute.you/v1/costs/platform-prices
 - Source: https://github.com/shamanic-technologies
 
@@ -102,6 +114,8 @@ https://distribute.you/developers
 - `distribute_signup_complete`: no key needed: the code returns a new API key, used by the session at once
 - `distribute_prepay`: returns a payment link: prepay (min $10) with automatic top-up
 - `distribute_prepaid_status`: balance, automatic top-up, and whether the card can reload
+- `distribute_list_skills`: the method skills, the steps our own Copilot follows; read before acting
+- `distribute_read_skill`: one method skill in full, `index` first
 - `distribute_list_workflows`: the workflows available
 - `distribute_list_campaigns`: the campaigns on a brand
 - `distribute_campaign_stats`: outcomes and cost for a campaign
@@ -133,7 +147,7 @@ https://distribute.you/developers
 - [Home](https://distribute.you/): what we sell, how it works, live cost per outcome
 - [Pricing](https://distribute.you/#pricing): the free platform with outreach billed at catalogue prices, or the fully managed plan
 - [Price catalog](https://distribute.you/catalog): why we bill per tool used rather than per email sent, and the live unit price of every tool behind an email
-- [About](https://distribute.you/about): the agency model, how billing works, what is guaranteed
+- [About](https://distribute.you/about): how we run campaigns for you, how billing works, what is guaranteed
 - [Developers](https://distribute.you/developers): the API and its OpenAPI document, how a key
   authenticates, the MCP server, the CLI, and the machine-readable files on this domain
 - [Contact](https://distribute.you/contact): support, press, and the registered company

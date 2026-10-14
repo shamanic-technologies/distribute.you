@@ -18,7 +18,7 @@ export function GET() {
     {
       name: "distribute.you",
       description:
-        "Revenue made easy. No human needed: request a key with an email (distribute_signup_start, distribute_signup_complete), prepay when you need to spend (distribute_prepay). Then read brands, campaigns, leads and their results, and call any API operation.",
+        "Revenue made easy. No human needed: request a key with an email (distribute_signup_start, distribute_signup_complete), prepay when you need to spend (distribute_prepay). Read the method skills first (distribute_list_skills, distribute_read_skill): the steps our own Copilot follows. Then read brands, campaigns, leads and their results, and call any API operation.",
       version: "1",
       servers: [
         {

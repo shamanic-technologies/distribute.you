@@ -23,11 +23,14 @@ import {
   API_KEYS_URL,
   API_KEY_PREFIX,
   AUTH_HEADER_LINE,
+  CATALOG_URL,
   DASHBOARD_URL,
   MCP_TOOLS,
   MCP_TOOL_COUNT,
   MCP_URL,
   REJECTED_KEY_HEADER,
+  SKILLS_LIST_ROUTE,
+  SKILL_READ_ROUTE,
 } from "./developer-surfaces";
 
 export const API_BASE_URL = "https://api.distribute.you/v1";
@@ -69,7 +72,11 @@ export const AGENT_QUICKSTART_LINES: QuickstartLine[] = [
   },
   {
     label: "Paying",
-    text: "Free calls work right away. Every paid call is prepaid: `POST /v1/billing/accounts/prepaid_checkout` with `topup_amount_cents` (min 1000), `auto_topup_amount_cents` (min 1500), `auto_topup_threshold_cents` (min 500) returns a payment `url` to open or give your human (MCP: `distribute_prepay`). Automatic top-up is required. Until paid, a paid call answers `402 payment_required` with these steps. No free credit, no trial.",
+    text: `Free calls work right away. Every paid call is prepaid: \`POST /v1/billing/accounts/prepaid_checkout\` with \`topup_amount_cents\` (min 1000), \`auto_topup_amount_cents\` (min 1500), \`auto_topup_threshold_cents\` (min 500) returns a payment \`url\` to open or give your human (MCP: \`distribute_prepay\`). Automatic top-up is required. Until paid, a paid call answers \`402 payment_required\` with these steps. No free credit, no trial. Work is billed per action at the public prices on ${CATALOG_URL}.`,
+  },
+  {
+    label: "Method",
+    text: `Before acting on a request (an offer, a funnel, a campaign, its caps), read the method skills: \`${SKILLS_LIST_ROUTE}\`, then \`${SKILL_READ_ROUTE}\`, \`index\` first (MCP: \`distribute_list_skills\`, \`distribute_read_skill\`). They are the steps our own Copilot follows. A campaign is one sales funnel run for one offer, and it needs at least one cap the human states (a max budget and/or a max volume, each with a period). Nothing that starts work or spends money goes on without the human's yes.`,
   },
   {
     label: "Key refused",

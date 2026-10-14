@@ -6,6 +6,8 @@ export const metadata = docsMetadata("/api/features");
 
 const LLM_INSTRUCTIONS = `# Features API
 
+A feature is a channel (cold email is one), identified by its feature slug. A channel works one or more steps of a sales funnel. To choose what to run for an offer, walk the catalogue as the \`catalogue\` method skill says (GET /v1/skills/catalogue).
+
 ## List Features
 GET /v1/features
 GET /v1/features?implemented=true
@@ -26,12 +28,7 @@ GET /v1/features/stats
 GET /v1/features/stats?groupBy=feature
 
 ## Stats Registry
-GET /v1/features/stats/registry
-
-## TypeScript Client
-const { features } = await client.listFeatures({ implemented: true });
-const prefilled = await client.prefillFeatureInputs("sales-email-cold-outreach", ["brand_abc"]);
-const stats = await client.getFeatureStats("sales-email-cold-outreach", { groupBy: "brand" });`;
+GET /v1/features/stats/registry`;
 
 export default function FeaturesApiPage() {
   return (
@@ -45,6 +42,12 @@ export default function FeaturesApiPage() {
       </p>
 
       <div className="prose">
+        <p>
+          A feature is a channel, such as cold email, identified by its feature slug. A channel
+          works one or more steps of a sales funnel. To choose what to run for an offer, follow the{" "}
+          <code>catalogue</code> method skill (<code>GET /v1/skills/catalogue</code>).
+        </p>
+
         <h2>List Features</h2>
         <pre className="bg-gray-900 text-gray-100 p-4 rounded-lg overflow-x-auto">
           <code>{`GET /v1/features
@@ -108,14 +111,6 @@ Authorization: Bearer distrib.usr_YOUR_KEY`}</code>
           Returns the stats key registry: maps stat keys to their type (<code>count</code>,{" "}
           <code>rate</code>, <code>currency</code>) and human-readable label.
         </p>
-
-        <h2>TypeScript Client</h2>
-        <pre className="bg-gray-900 text-gray-100 p-4 rounded-lg overflow-x-auto">
-          <code>{`const { features } = await client.listFeatures({ implemented: true });
-const { feature } = await client.getFeature("sales-email-cold-outreach");
-const prefilled = await client.prefillFeatureInputs("sales-email-cold-outreach", ["brand_abc"]);
-const stats = await client.getFeatureStats("sales-email-cold-outreach", { groupBy: "brand" });`}</code>
-        </pre>
       </div>
     </div>
   );

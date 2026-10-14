@@ -10,7 +10,9 @@ export const metadata = docsMetadata("/api/campaigns");
 // api.distribute.you openapi.json.
 const LLM_INSTRUCTIONS = `# Campaigns API
 
-A campaign runs as one: one status, one budget. Inside, it runs one part per channel step (\`units\`). A part is not a campaign: report a campaign by its name (\`salesFunnelName\`).
+A campaign is one sales funnel run for one offer of a brand (brand x offer x funnel). It is started or stopped as a whole. Inside, it runs one part per step of the funnel (\`units\`); stats and runs show those part ids. A part is not a campaign: report a campaign by its name (\`salesFunnelName\`). A reactive campaign acts only when its trigger fires (a positive reply, a delay with no answer).
+
+Method: read the \`campaigns\` skill first (GET /v1/skills/campaigns). Nothing that starts work or spends money goes on without the human's yes.
 
 ## List campaigns
 GET /v1/sales-funnel-campaigns?brandId=<brandId>
@@ -19,15 +21,20 @@ GET /v1/sales-funnel-campaigns?brandId=<brandId>&offerId=<offerId>&status=ongoin
 ## Get one campaign
 GET /v1/sales-funnel-campaigns/:id
 
+## Create a campaign (stopped)
+POST /v1/sales-funnel-campaigns
+Body: {"brandId": "...", "offerId": "...", "salesFunnelId": "...", "status": "stopped"}
+Pick salesFunnelId from GET /v1/offers/:offerId/sales-funnels?brandId=<brandId>. Set its caps, then activate.
+
 ## Run or pause a campaign
 PATCH /v1/sales-funnel-campaigns/:id
 Body: {"status": "activate"} or {"status": "stop"}
 
-## Read or set a campaign's budget
+## Read or set a campaign's caps
 GET /v1/brands/:brandId/offers/:offerId/sales-funnels/:salesFunnelId/caps
 PUT /v1/brands/:brandId/offers/:offerId/sales-funnels/:salesFunnelId/caps
 Body: {"maxBudget": {"amountCents": 5000, "period": "daily"}, "maxVolume": null}
-period: daily, weekly, monthly or one_off. Send both keys; null clears one. No budget means the campaign spends nothing.
+A campaign needs at least one cap the human states: a max budget, a max volume, or both. period: one_off, daily, weekly or monthly. Send both keys; null clears one. With no max budget, billing holds the campaign and it spends nothing.
 
 ## Results of one part
 GET /v1/campaigns/:partId/stats   (partId = units[].campaignId)`;
@@ -40,14 +47,20 @@ export default function CampaignsApiPage() {
         <CopyForLLM content={LLM_INSTRUCTIONS} />
       </div>
       <p className="text-base text-gray-500 mb-8">
-        List your campaigns, run or pause them, set their budget and read their results.
+        Launch a sales funnel as a campaign, run or pause it, set its caps and read its results.
       </p>
 
       <div className="prose">
         <p>
-          A campaign runs as one. It has one status and one budget. Inside, it runs one part per
-          channel step, listed in <code>units</code>. A part is not a campaign of its own: name a
-          campaign by its <code>salesFunnelName</code>.
+          A campaign is one sales funnel run for one offer of a brand. It is started or stopped as
+          a whole. Inside, it runs one part per step of the funnel, listed in <code>units</code>;
+          stats and runs show those part ids. A part is not a campaign of its own: name a campaign
+          by its <code>salesFunnelName</code>. A reactive campaign acts only when its trigger fires,
+          such as a positive reply.
+        </p>
+        <p>
+          The <code>campaigns</code> method skill (<code>GET /v1/skills/campaigns</code>) carries
+          the steps our own Copilot follows. Read it before you start anything that spends.
         </p>
 
         <h2>List campaigns</h2>
@@ -87,6 +100,20 @@ Authorization: Bearer distrib.usr_YOUR_KEY`}</code>
 Authorization: Bearer distrib.usr_YOUR_KEY`}</code>
         </pre>
 
+        <h2>Create a campaign</h2>
+        <pre className="bg-gray-900 text-gray-100 p-4 rounded-lg overflow-x-auto">
+          <code>{`POST /v1/sales-funnel-campaigns
+Content-Type: application/json
+Authorization: Bearer distrib.usr_YOUR_KEY
+
+{ "brandId": "...", "offerId": "...", "salesFunnelId": "...", "status": "stopped" }`}</code>
+        </pre>
+        <p>
+          Pick <code>salesFunnelId</code> from{" "}
+          <code>GET /v1/offers/:offerId/sales-funnels?brandId=...</code>. The campaign is created
+          stopped: set its caps, then run it.
+        </p>
+
         <h2>Run or pause a campaign</h2>
         <pre className="bg-gray-900 text-gray-100 p-4 rounded-lg overflow-x-auto">
           <code>{`PATCH /v1/sales-funnel-campaigns/:id
@@ -100,7 +127,7 @@ Authorization: Bearer distrib.usr_YOUR_KEY
           already contacted still get their follow-ups.
         </p>
 
-        <h2>Read or set a campaign&apos;s budget</h2>
+        <h2>Read or set a campaign&apos;s caps</h2>
         <pre className="bg-gray-900 text-gray-100 p-4 rounded-lg overflow-x-auto">
           <code>{`GET /v1/brands/:brandId/offers/:offerId/sales-funnels/:salesFunnelId/caps
 PUT /v1/brands/:brandId/offers/:offerId/sales-funnels/:salesFunnelId/caps
@@ -113,9 +140,10 @@ Authorization: Bearer distrib.usr_YOUR_KEY
 }`}</code>
         </pre>
         <p>
-          Take <code>salesFunnelId</code> from the campaign. A period is <code>daily</code>,{" "}
-          <code>weekly</code>, <code>monthly</code> or <code>one_off</code>. Send both keys;{" "}
-          <code>null</code> clears one. A campaign with no budget spends nothing. The read also says
+          A campaign needs at least one cap: a max budget, a max volume, or both. Take{" "}
+          <code>salesFunnelId</code> from the campaign. A period is <code>one_off</code>,{" "}
+          <code>daily</code>, <code>weekly</code> or <code>monthly</code>. Send both keys;{" "}
+          <code>null</code> clears one. With no max budget, the campaign spends nothing. The read also says
           what the current period used (<code>consumedCents</code>, <code>consumed</code>).
         </p>
 

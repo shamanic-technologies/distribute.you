@@ -7,11 +7,15 @@ import { AgentQuickstart } from "@/components/agent-quickstart";
 import { agentQuickstartMarkdown } from "@/lib/agent-quickstart";
 import {
   AUTH_HEADER_LINE,
+  CATALOG_URL,
   CLAUDE_CODE_MCP_COMMAND,
   CLI_NPM_URL,
   CLI_PACKAGE,
   DEVELOPER_HUB_URL,
   MCP_URL,
+  PRODUCT_MODEL,
+  SKILLS_LIST_ROUTE,
+  SKILL_READ_ROUTE,
 } from "@/lib/developer-surfaces";
 
 const liveFeatures = DISTRIBUTION_FEATURES.filter((f) => f.status === "live");
@@ -26,21 +30,26 @@ const LLM_INSTRUCTIONS = `# distribute.you Documentation
 ${agentQuickstartMarkdown()}
 
 ## What is distribute.you?
-AI cold email outreach, done for you. One API.
-Provide a URL + a daily budget; distribute.you handles lead finding, content generation,
-sending, and AI-qualified reply forwarding.
+Revenue made easy. Cold email outreach run for you, reachable from one API.
+distribute.you finds the leads, writes and sends the email, qualifies the replies
+and passes the interested ones to you.
 
 ## What it does
 ${channelList}
 
 ## Key Concepts
-- Brands: your company/product profile, auto-analyzed from URL
-- Features: campaign types (Sales Cold Email)
-- Workflows: execution engines behind features, auto-optimized by cost per qualified reply
-- Campaigns: running instances with budget limits
+${PRODUCT_MODEL}
+
+## Method skills
+The steps our own Copilot follows, served read-only and the same for every client.
+Read them before acting: ${SKILLS_LIST_ROUTE}, then ${SKILL_READ_ROUTE} (index first).
+MCP: distribute_list_skills, distribute_read_skill.
+
+## Pricing
+Pay as you go from a prepaid balance, per action, at the public prices on ${CATALOG_URL}.
 
 ## Quick Start
-1. Sign up at dashboard.distribute.you ($400 free credits)
+1. Sign up at dashboard.distribute.you
 2. Get API key (distrib.usr_xxx format)
 3. Connect MCP (hosted, nothing to install):
    ${CLAUDE_CODE_MCP_COMMAND}
@@ -65,17 +74,17 @@ export default function DocsHome() {
       </div>
       <AgentQuickstart />
       <p className="text-base text-gray-500 mb-8">
-        Provide a URL and a budget. distribute.you finds the right people,
-        writes personalized cold email, sends it on your behalf, AI-qualifies the replies,
-        and forwards the good ones to your inbox.
+        Revenue made easy. distribute.you finds the right people, writes personalized cold
+        email, sends it on your behalf, qualifies the replies, and forwards the good ones to
+        your inbox.
       </p>
 
       <div className="prose">
         <h2>What is distribute.you?</h2>
         <p>
-          distribute.you is an AI-powered cold email platform. One account, one API.
-          You provide a URL and a daily budget. We handle sending
-          infrastructure, deliverability, reply qualification, and CAC attribution.
+          distribute.you is an AI-powered cold email platform. One account, one API. Give it
+          your website and the offer you sell; it handles sending infrastructure,
+          deliverability, reply qualification, and what each result cost you.
         </p>
         <p>What we do:</p>
         <ul>
@@ -102,7 +111,7 @@ export default function DocsHome() {
         <ol>
           <li><a href={URLS.signUp}>Create an account</a> and get your API key</li>
           <li>Set up your brand: provide your URL, distribute.you analyzes your site automatically</li>
-          <li>Set a budget and launch your cold email campaign</li>
+          <li>Pick a sales funnel for your offer, set its caps, and start the campaign</li>
           <li>Get notified when someone replies</li>
         </ol>
 
@@ -133,38 +142,22 @@ export default function DocsHome() {
         </p>
 
         <h2>Key Concepts</h2>
+        <p>{PRODUCT_MODEL}</p>
 
-        <h3>Brands</h3>
+        <h3>Method skills</h3>
         <p>
-          A brand represents your company or product. When you provide a URL, distribute.you scrapes and analyzes
-          your site to understand your business, voice, and value proposition.
-        </p>
-
-        <h3>Features</h3>
-        <p>
-          Features define the types of campaigns you can run (e.g. Sales Cold Email).
-          Each feature has specific inputs, outputs, and performance metrics.
-        </p>
-
-        <h3>Workflows</h3>
-        <p>
-          Workflows are the execution engines behind features. Multiple competing workflows run simultaneously
-          for each feature, and the best-performing workflow automatically gets more traffic.
-        </p>
-
-        <h3>Campaigns</h3>
-        <p>
-          A campaign is a running instance of a workflow for your brand. You set budget limits and
-          distribute.you handles execution, optimization, and reporting.
+          The steps our own Copilot follows to organize a request (offers, sales funnels,
+          campaigns, caps, workflows) are served, read-only and the same for every client. Your
+          agent follows the same method: <code>{SKILLS_LIST_ROUTE}</code>, then{" "}
+          <code>{SKILL_READ_ROUTE}</code>, starting with <code>index</code>. Over MCP:{" "}
+          <code>distribute_list_skills</code> and <code>distribute_read_skill</code>.
         </p>
 
         <h2>Pricing</h2>
         <p>
-          distribute.you charges transparent variable costs: every unit price we re-bill is published
-          live at <a href="https://api.distribute.you/v1/costs/platform-prices">api.distribute.you/v1/costs/platform-prices</a>, grouped by
-          provider and cost type. You buy credits and only pay for what you use (AI calls, lead
-          enrichment, email sends). No fixed subscription you only half-use. See your cost
-          breakdown in real-time in the dashboard.
+          Pay as you go. You prepay a balance, and each action is billed at the public prices on{" "}
+          <a href={CATALOG_URL}>{CATALOG_URL.replace("https://", "")}</a>. Each campaign spends
+          only up to the caps you set. See what each result cost you in the dashboard.
         </p>
       </div>
     </div>

@@ -380,9 +380,11 @@ describe("the MCP tool catalogue is the one the server exposes", () => {
       "distribute_list_campaigns",
       "distribute_list_emails",
       "distribute_list_leads",
+      "distribute_list_skills",
       "distribute_list_workflows",
       "distribute_prepaid_status",
       "distribute_prepay",
+      "distribute_read_skill",
       "distribute_signup_complete",
       "distribute_signup_start",
       "distribute_status",
@@ -430,7 +432,7 @@ describe("no page documents a REST surface the API does not serve", () => {
   it("keeps no route, sidebar entry or llms.txt line for the removed pages", () => {
     const sidebar = readFileSync(join(__dirname, "../../src/components/sidebar.tsx"), "utf8");
     const llms = readFileSync(join(__dirname, "../../public/llms.txt"), "utf8");
-    for (const path of ["/api/outlets", "/api/journalists", "/api/articles", "/api/press-kits"]) {
+    for (const path of ["/api/outlets", "/api/journalists", "/api/articles", "/api/press-kits", "/api/webhooks"]) {
       expect(DOCS_ROUTES.map((r) => r.path)).not.toContain(path);
       expect(sidebar).not.toContain(path);
       expect(llms).not.toContain(path);
@@ -466,6 +468,57 @@ describe("the two domains point at each other", () => {
       'name: "distribute.you MCP server"',
     ]) {
       expect(layout).toContain(marker);
+    }
+  });
+});
+
+/**
+ * The Copilot's method skills are the source of truth for the model (owner
+ * 2026-10-14): a campaign is one sales funnel run for one offer, its money is
+ * caps the user states (a max budget and/or a max volume, with a period). The
+ * old pitch ("give us a URL and a daily budget"), the free-credit and $1/day
+ * offers, and the TypeScript client that was never published are retired, so
+ * they must not come back on any page or in llms.txt. agent-skill.ts is left to
+ * its own guard (agent-skill.test.ts).
+ */
+describe("the docs speak the method skills' model", () => {
+  function textFiles(dir: string): string[] {
+    const found: string[] = [];
+    for (const entry of readdirSync(dir)) {
+      const full = join(dir, entry);
+      if (statSync(full).isDirectory()) {
+        found.push(...textFiles(full));
+      } else if (/\.(tsx?|txt)$/.test(entry) && entry !== "agent-skill.ts") {
+        found.push(full);
+      }
+    }
+    return found;
+  }
+
+  const files = [
+    ...textFiles(join(__dirname, "../../src")),
+    ...textFiles(join(__dirname, "../../public")),
+  ];
+
+  const RETIRED_PHRASES = [
+    /(URL|website) (and|\+) a daily budget/i,
+    /free credits/i,
+    /\$1\/day/,
+    /TypeScript Client/,
+    /\bagency\b/i,
+  ];
+
+  it.each(files)("%s carries no retired pitch", (file) => {
+    const src = readFileSync(file, "utf8");
+    for (const phrase of RETIRED_PHRASES) expect(src).not.toMatch(phrase);
+  });
+
+  it("points agents at the served method skills", () => {
+    const llms = readFileSync(join(__dirname, "../../public/llms.txt"), "utf8");
+    expect(llms).toContain("GET /v1/skills");
+    for (const file of ["page.tsx", "api/page.tsx", "mcp/page.tsx"]) {
+      const src = readFileSync(join(APP_DIR, file), "utf8");
+      expect(src).toMatch(/SKILLS_LIST_ROUTE|distribute_list_skills/);
     }
   });
 });

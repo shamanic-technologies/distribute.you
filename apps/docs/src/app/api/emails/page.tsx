@@ -12,11 +12,7 @@ GET /v1/campaigns/:campaignId/emails
 ## List Brand Emails
 GET /v1/emails?brandId=brand_abc123
 
-Returns: subject, bodyHtml, bodyText, sequence steps, lead details
-
-## TypeScript Client
-const { emails } = await client.listCampaignEmails("camp_abc123");
-const { emails: brandEmails } = await client.listBrandEmails("brand_abc");`;
+Returns: subject, bodyHtml, bodyText, sequence steps, lead details`;
 
 export default function EmailsApiPage() {
   return (
@@ -67,12 +63,6 @@ Authorization: Bearer distrib.usr_YOUR_KEY`}</code>
     }
   ]
 }`}</code>
-        </pre>
-
-        <h2>TypeScript Client</h2>
-        <pre className="bg-gray-900 text-gray-100 p-4 rounded-lg overflow-x-auto">
-          <code>{`const { emails } = await client.listCampaignEmails("camp_abc123");
-const { emails: brandEmails } = await client.listBrandEmails("brand_abc");`}</code>
         </pre>
       </div>
     </div>

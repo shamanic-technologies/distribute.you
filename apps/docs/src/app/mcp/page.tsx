@@ -12,6 +12,7 @@ import {
   MCP_TOOLS,
   MCP_TOOL_COUNT,
   MCP_URL,
+  PRODUCT_MODEL,
 } from "@/lib/developer-surfaces";
 
 export const metadata = docsMetadata("/mcp");
@@ -27,6 +28,10 @@ Header:   ${AUTH_HEADER_LINE}
 
 ## Connect from Claude Code
 ${CLAUDE_CODE_MCP_COMMAND}
+
+## Method
+Start with distribute_list_skills, then distribute_read_skill on index and every skill matching the ask: the steps our own Copilot follows.
+${PRODUCT_MODEL}
 
 ## Tools (${MCP_TOOL_COUNT} total)
 ${MCP_TOOLS.map((t) => `- ${t.name}: ${t.description}`).join("\n")}
@@ -53,6 +58,14 @@ export default function McpOverviewPage() {
           The <strong>Model Context Protocol (MCP)</strong> is an open standard that lets AI
           assistants connect to external tools. distribute.you runs a hosted MCP server with{" "}
           {MCP_TOOL_COUNT} tools for reading and steering your outreach.
+        </p>
+
+        <h2>Method skills</h2>
+        <p>
+          <code>distribute_list_skills</code> and <code>distribute_read_skill</code> serve the method
+          our own Copilot follows to organize a request: offers, sales funnels, campaigns and their
+          caps, workflows. Your assistant reads <code>index</code> first, then the skills that match
+          the ask. {PRODUCT_MODEL}
         </p>
 
         <h2>Connect</h2>
@@ -87,7 +100,8 @@ export default function McpOverviewPage() {
 "Which of my campaigns are still running?"
 "What did my latest campaign produce, and what did it cost?"
 "Read acme.com and suggest who I should be targeting"
-"Which workflows can I run?"`}</code>
+"Which workflows can I run?"
+"Read the campaigns skill, then launch my best funnel with a $50 weekly cap"`}</code>
         </pre>
 
         <h2>Tools</h2>

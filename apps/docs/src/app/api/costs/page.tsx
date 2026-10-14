@@ -13,12 +13,8 @@ groupBy values: costName, brandId, featureSlug
 
 ## Delivery Stats
 GET /v1/email-gateway/stats?brandId=brand_abc123
-Returns: reply classifications (meetings booked, interested), emailsReplied, emailsDelivered, emailsSent, emailsContacted, emailsOpened, emailsClicked, emailsBounced
-Report it outcomes first: meetings and positive replies, then the delivery rate (delivered out of sent), then volume. Bounces go last.
-
-## TypeScript Client
-const { groups } = await client.getCostBreakdown({ groupBy: "costName", brandId: "brand_abc123" });
-const deliveryStats = await client.getBrandDeliveryStats("brand_abc123");`;
+Returns: reply classifications (meetings booked, interested), emailsReplied, emailsDelivered, emailsSent, emailsContacted, emailsClicked, emailsBounced
+Report it outcomes first: meetings and positive replies, then the delivery rate (delivered out of sent), then volume. Bounces go last.`;
 
 export default function CostsApiPage() {
   return (
@@ -57,7 +53,6 @@ Authorization: Bearer distrib.usr_YOUR_KEY`}</code>
   "emailsDelivered": 460,
   "emailsSent": 480,
   "emailsContacted": 500,
-  "emailsOpened": 120,
   "emailsClicked": 25,
   "repliesNeutral": 5,
   "repliesNotInterested": 3,
@@ -65,15 +60,6 @@ Authorization: Bearer distrib.usr_YOUR_KEY`}</code>
   "repliesUnsubscribe": 0,
   "emailsBounced": 20
 }`}</code>
-        </pre>
-
-        <h2>TypeScript Client</h2>
-        <pre className="bg-gray-900 text-gray-100 p-4 rounded-lg overflow-x-auto">
-          <code>{`const { groups } = await client.getCostBreakdown({
-  groupBy: "costName",
-  brandId: "brand_abc123",
-});
-const deliveryStats = await client.getBrandDeliveryStats("brand_abc123");`}</code>
         </pre>
       </div>
     </div>

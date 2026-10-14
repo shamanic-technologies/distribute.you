@@ -31,7 +31,8 @@ The server is hosted at ${MCP_URL} and speaks Streamable HTTP. Nothing to instal
 ## Integration Methods
 1. MCP Server: ${MCP_TOOL_COUNT} tools, recommended for AI clients
 2. REST API: api.distribute.you/v1, with ${CLI_PACKAGE} on the command line
-3. Webhooks: real-time event notifications
+
+Whichever you use, read the method skills first (GET /v1/skills, or distribute_list_skills over MCP): the steps our own Copilot follows.
 
 Every developer surface on one page: ${DEVELOPER_HUB_URL}`;
 
@@ -139,10 +140,10 @@ export default function IntegrationsPage() {
           platform has. See the <Link href="/api">API Reference</Link>.
         </p>
 
-        <h3>3. Webhooks</h3>
         <p>
-          Receive real-time notifications when campaigns reach milestones, receive replies,
-          or complete. See <Link href="/api/webhooks">Webhooks</Link>.
+          Whichever you use, read the method skills first (<code>GET /v1/skills</code>, or{" "}
+          <code>distribute_list_skills</code> over MCP): the steps our own Copilot follows to
+          organize a request.
         </p>
       </div>
     </div>

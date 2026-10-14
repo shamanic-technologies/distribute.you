@@ -11,11 +11,13 @@ import { OPENAPI_DOCUMENT_URL } from "@/lib/docs-routes";
 import { DOCS_OG_IMAGE } from "@/lib/docs-metadata";
 import {
   AUTH_HEADER_LINE,
+  CATALOG_URL,
   CLAUDE_CODE_MCP_COMMAND,
   DEVELOPER_HUB_URL,
   MCP_TOOLS,
   MCP_TOOL_COUNT,
   MCP_URL,
+  SKILLS_LIST_ROUTE,
 } from "@/lib/developer-surfaces";
 
 const SITE_URL = "https://docs.distribute.you";
@@ -103,17 +105,17 @@ const softwareJsonLd = {
   name: "distribute.you",
   applicationCategory: "BusinessApplication",
   operatingSystem: "Web",
-  description: "Autonomous sales meetings acquisition, run for you. Give distribute.you a website and a daily budget; it picks the buyers, writes and sends the outreach from domains we own and warm, reads every reply, and passes the interested ones to you. Cold email is the channel it runs, and every outcome is priced against real spend.",
+  description: "Revenue made easy. Sales meetings acquisition, run for you. Tell distribute.you what you sell and set your campaign's caps; it picks the buyers, writes and sends the outreach from domains we own and warm, reads every reply, and passes the interested ones to you. Cold email is the channel it runs, and every outcome is priced against real spend.",
   url: "https://distribute.you",
   offers: {
     "@type": "Offer",
     price: "0",
     priceCurrency: "USD",
-    description: "Transparent variable costs: pay only for what you use, no half-used subscriptions. Live unit prices at api.distribute.you/v1/costs/platform-prices.",
+    description: "Pay as you go from a prepaid balance, per action, at the public prices on distribute.you/catalog. Each campaign spends only up to the caps you set.",
   },
   featureList: [
     "Sales cold email outreach run for you",
-    "Buyers picked from a website and a budget",
+    "Buyers picked from your offer, within the caps you set",
     "Sending domains we own and warm, so yours is never used",
     "Replies read and qualified, interested ones forwarded",
     "AI-powered email generation",
@@ -222,7 +224,7 @@ const faqJsonLd = {
       name: "What is distribute.you?",
       acceptedAnswer: {
         "@type": "Answer",
-        text: `distribute.you runs cold email outreach for you: you give it a website and a daily budget, and it picks the buyers, writes and sends the email from domains it owns and warms, and passes the interested replies to you. It publishes a REST API with an OpenAPI document at ${OPENAPI_DOCUMENT_URL}, a hosted Model Context Protocol server at ${MCP_URL}, a command line client on npm, and a page naming all of them at ${DEVELOPER_HUB_URL}, so an AI assistant such as Claude, Cursor or ChatGPT can read and steer it.`,
+        text: `distribute.you runs cold email outreach for you: you tell it what you sell and set each campaign's caps (a max budget and/or a max volume), and it picks the buyers, writes and sends the email from domains it owns and warms, and passes the interested replies to you. It publishes a REST API with an OpenAPI document at ${OPENAPI_DOCUMENT_URL}, a hosted Model Context Protocol server at ${MCP_URL}, a command line client on npm, and a page naming all of them at ${DEVELOPER_HUB_URL}, so an AI assistant such as Claude, Cursor or ChatGPT can read and steer it. The method skills our own Copilot follows are served at ${SKILLS_LIST_ROUTE}, so an agent can follow the same steps.`,
       },
     },
     {
@@ -246,7 +248,7 @@ const faqJsonLd = {
       name: "How much does distribute.you cost?",
       acceptedAnswer: {
         "@type": "Answer",
-        text: "distribute.you charges transparent variable costs: every unit price we re-bill is published live at api.distribute.you/v1/costs/platform-prices. You buy credits and only pay for what you use (AI calls, lead enrichment, email sends). No fixed subscription you only half-use. See your cost breakdown in real-time in the dashboard.",
+        text: `The platform is free. You pay as you go from a prepaid balance: each action is billed at the public prices on ${CATALOG_URL}, and each campaign spends only up to the caps you set (a max budget and/or a max volume, each with a period). See what each result cost you in the dashboard.`,
       },
     },
   ],
