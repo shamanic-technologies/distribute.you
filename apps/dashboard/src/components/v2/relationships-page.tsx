@@ -5,7 +5,6 @@ import { createPortal } from "react-dom";
 import { useParams } from "next/navigation";
 import { useQueryClient } from "@tanstack/react-query";
 import { useAuthQuery } from "@/lib/use-auth-query";
-import { pollIntervalFor } from "@/lib/query-options";
 import {
   ApiError,
   answerRelationshipMerge,
@@ -52,9 +51,9 @@ const QUESTION_PAGE = 10;
 
 export function V2RelationshipsPage() {
   const { orgId, brandId } = useParams<{ orgId: string; brandId: string }>();
-  const q = useAuthQuery(REVIEW_KEY(brandId), () => getRelationshipReview(brandId), {
-    refetchInterval: pollIntervalFor,
-  });
+  // Read on page open and after each click, never polled: nothing here moves faster than
+  // lead-service's 5 minute sweep, and the read covers every person of the brand.
+  const q = useAuthQuery(REVIEW_KEY(brandId), () => getRelationshipReview(brandId), { staleTime: 0 });
   const data = q.data ?? null;
 
   return (
@@ -98,11 +97,10 @@ function useReviewWrite(brandId: string) {
       return;
     }
     if (opts?.hide) setDone((d) => new Set(d).add(key));
-    try {
-      await qc.refetchQueries({ queryKey: REVIEW_KEY(brandId) });
-    } finally {
-      setBusy(null);
-    }
+    // The buttons free up as soon as the write lands: the re-read takes seconds on a
+    // brand with thousands of people, and the next click must not wait for it.
+    setBusy(null);
+    await qc.refetchQueries({ queryKey: REVIEW_KEY(brandId) });
   };
   return { busy, error, done, run };
 }
@@ -513,7 +511,10 @@ function AddTag({ options, disabled, onPick }: { options: string[]; disabled: bo
   useLayoutEffect(() => {
     if (!open || !btn.current) return;
     const r = btn.current.getBoundingClientRect();
-    setPos({ top: r.bottom + 4, left: Math.max(8, Math.min(r.left, window.innerWidth - 208)) });
+    // 32px per line + 8px padding; opens above its button when the panel has no room below.
+    const h = options.length * 32 + 8;
+    const below = r.bottom + 4 + h <= window.innerHeight - 8;
+    setPos({ top: below ? r.bottom + 4 : Math.max(8, r.top - 4 - h), left: Math.max(8, Math.min(r.left, window.innerWidth - 208)) });
   }, [open]);
   useEffect(() => {
     if (!open) return;
@@ -524,11 +525,17 @@ function AddTag({ options, disabled, onPick }: { options: string[]; disabled: bo
       const t = e.target as Node;
       if (!menu.current?.contains(t) && !btn.current?.contains(t)) setOpen(false);
     };
+    // The shell scrolls its panel, not the window: a fixed menu would drift off its button.
+    const onScroll = (e: Event) => {
+      if (!menu.current?.contains(e.target as Node)) setOpen(false);
+    };
     window.addEventListener("keydown", onKey);
     window.addEventListener("mousedown", onDown);
+    document.addEventListener("scroll", onScroll, { capture: true, passive: true });
     return () => {
       window.removeEventListener("keydown", onKey);
       window.removeEventListener("mousedown", onDown);
+      document.removeEventListener("scroll", onScroll, { capture: true });
     };
   }, [open]);
   if (options.length === 0) return null;
