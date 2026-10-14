@@ -37,7 +37,7 @@ function FileMark({ contentType }: { contentType: string }) {
   return (
     <span
       aria-hidden
-      className="grid h-7 w-7 shrink-0 place-items-center rounded-[7px] bg-[color-mix(in_oklab,var(--data-rose)_14%,transparent)] text-[var(--data-rose)]"
+      className="k-inset grid h-7 w-7 shrink-0 place-items-center rounded-[7px] text-[var(--fg-2)] shadow-[inset_0_0_0_1px_var(--line)]"
     >
       <svg viewBox="0 0 16 16" className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth="1.4">
         {isImage ? (
