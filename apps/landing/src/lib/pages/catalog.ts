@@ -31,7 +31,16 @@ export type PlatformPrice = {
   /** When that usage was last read; the same on every row. */
   usageReadAt: string;
   /** Names billed together for one unit (an email sent = inbox line + domain line). */
-  bundle: { name: string; unit: string; members: string[]; pricePerUnitInUsdCents: string | null } | null;
+  bundle: {
+    name: string;
+    unit: string;
+    members: string[];
+    pricePerUnitInUsdCents: string | null;
+    /** costs-service v0.81.0: the readable line ("Email sent, address verified catch-all by BounceVerify"). */
+    label?: string | null;
+    /** costs-service v0.81.0: an email-sent price tier, keyed on the recipient's BounceVerify verdict. */
+    emailVerification?: { provider: string; verdict: string; priceMultipleOfValid: number; validBundle: string } | null;
+  } | null;
 };
 
 /** Owner 2026-10-06: a line nobody used in 30 days is not shown. */
@@ -62,7 +71,7 @@ export const CATALOG_GROUPS = [
   { key: "leads", title: "Lead data", note: "Finding the right people and checking their email." },
   { key: "research", title: "Web research", note: "Reading each prospect's site and news before writing." },
   { key: "ai", title: "AI writing & intelligence", note: "Writing emails, qualifying leads, finding your audience, answering you in chat. Priced per million tokens." },
-  { key: "sending", title: "Sending", note: "Each email and follow-up, sent from our own inboxes." },
+  { key: "sending", title: "Sending", note: "Each email and follow-up, sent from our own inboxes. The price depends on how sure we are the address exists, checked by BounceVerify before sending: valid, catch-all or unknown. Addresses BounceVerify marks invalid or risky, or cannot check, are never sent." },
   { key: "calls", title: "Calls and messages", note: "Calling or texting a prospect who asked for it." },
   { key: "notifications", title: "Emails we send you", note: "Replies forwarded to you, alerts and digests about your campaigns." },
   { key: "storage", title: "Storage", note: "Keeping files and pages we generate." },
@@ -137,7 +146,9 @@ export function catalogGroup(p: PlatformPrice): CatalogGroupKey | null {
   if (NOT_AN_EMAIL_TOOL.has(p.provider)) return null;
   // A replaced tool stays in the served list for history; it is not one we run.
   if (p.status !== "current") return null;
-  if (!usedRecently(p)) return null;
+  // A verdict price tier is listed from the day it is priced: the client chooses which
+  // addresses it sends to, so a tier nobody billed yet is still a price they can pay.
+  if (!usedRecently(p) && !p.bundle?.emailVerification) return null;
   if (p.unit === TOKEN_UNIT) return "ai";
   if (p.unit === "search" || p.unit === "query") return "research";
   const group = PROVIDER_GROUP[p.provider];
@@ -183,7 +194,7 @@ export function catalogSections(prices: PlatformPrice[]) {
       // One unit billed as several names: one line at the served bundle price, never
       // the members added up here. A bundle that lost its price says so.
       const b = p.bundle;
-      const what = b.name.charAt(0).toUpperCase() + b.name.slice(1).replaceAll("-", " ");
+      const what = b.label ?? b.name.charAt(0).toUpperCase() + b.name.slice(1).replaceAll("-", " ");
       const price =
         b.pricePerUnitInUsdCents === null ? "No price" : formatPrice({ ...p, pricePerUnitInUsdCents: b.pricePerUnitInUsdCents, unit: b.unit });
       row = { tool: providerName(p), domain: p.providerDomain ?? null, what, price };
