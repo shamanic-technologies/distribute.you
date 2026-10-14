@@ -46,9 +46,9 @@ describe("Unibox family buttons are wired (owner 2026-10-08)", () => {
   const src = readFileSync(new URL("../src/components/v2/integrations-conversations.tsx", import.meta.url), "utf8");
   it("asks crm-service for one family and puts the buttons beside the search", () => {
     expect(src).toContain('family: f === "all" ? undefined : f');
-    expect(src).toContain('queryKey: ["people", brandId, "scroll", q, f]');
+    expect(src).toContain('queryKey: ["people", brandId, "scroll", q, f, ...(relationship ? [relationship] : [])]');
     expect(src).toContain("...listQuery(family),");
-    expect(src).toContain("right={<FamilyButtons value={family} families={families} onPick={pickFamily} />}");
+    expect(src).toContain("<FamilyButtons value={family} families={families} onPick={pickFamily} />");
     // The tag takes its own fact's colour, not the family's (owner 2026-10-10, unibox-standing-colours.test.ts).
     expect(src).toContain("{status && <PersonTag label={status} state={person.state} />}");
   });

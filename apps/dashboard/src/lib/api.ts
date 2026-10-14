@@ -49,6 +49,12 @@ import { AmbiguousThreadSchema, ReplySentSchema, newestThread, replyBodyHtml, ty
 import { z } from "zod";
 import type { CardFacts } from "./v2/card-risk";
 import { BrandLinkedinPageSchema, type BrandLinkedinPage } from "./v2/brand-linkedin-page";
+import {
+  RelationshipBlockSchema,
+  RelationshipReviewSchema,
+  type RelationshipBlock,
+  type RelationshipReview,
+} from "./v2/relationships";
 import { LinkedinFeedResponseSchema, toLinkedinFeedPage, type LinkedinFeedPage } from "./v2/linkedin-post-view";
 import {
   CostMarginSchema,
@@ -631,7 +637,7 @@ export async function listCrmConnections(
  */
 export async function listPeople(
   brandId: string,
-  opts: { limit: number; offset: number; q?: string; family?: string },
+  opts: { limit: number; offset: number; q?: string; family?: string; relationship?: string },
   token?: string,
 ): Promise<PeopleList> {
   const qs = new URLSearchParams({ brandId, limit: String(opts.limit), offset: String(opts.offset) });
@@ -639,6 +645,8 @@ export async function listPeople(
   if (opts.q) qs.set("q", opts.q);
   // One lead family only (won | hot | lost | cold); absent = everyone.
   if (opts.family) qs.set("family", opts.family);
+  // Who they are to the brand: a relationship tag, `untagged` or `unjudged`; absent = everyone.
+  if (opts.relationship) qs.set("relationship", opts.relationship);
   const raw = await apiCall<unknown>(`/orgs/people?${qs.toString()}`, { token });
   const parsed = PeopleListSchema.safeParse(raw);
   if (!parsed.success) {
@@ -11919,4 +11927,69 @@ export async function listBrandRunLedger(
     throw new Error("[dashboard] listBrandRunLedger: invalid response shape");
   }
   return parsed.data.runs;
+}
+
+// ---------------------------------------------------------------------------
+// Who each person is to a brand (lead-service RELATIONSHIP-TAGS-1014, through the
+// gateway's brand-scoped `/v1/brands/:id/relationships/*` proxies). Every write is the
+// person's own word and wins over the AI judge; each returns what lead-service now holds.
+// ---------------------------------------------------------------------------
+
+export const BRAND_RELATIONSHIPS_PATH = (brandId: string) => `/brands/${encodeURIComponent(brandId)}/relationships`;
+
+function parseOrThrow<T>(name: string, schema: z.ZodType<T>, raw: unknown): T {
+  const parsed = schema.safeParse(raw);
+  if (!parsed.success) {
+    console.error(`[dashboard] ${name}: response shape mismatch`, { issues: parsed.error.issues, raw });
+    throw new Error(`[dashboard] ${name}: invalid response shape`);
+  }
+  return parsed.data;
+}
+
+/** The owner's questions (unsure merges, tags, companies) and everything already settled. */
+export async function getRelationshipReview(brandId: string): Promise<RelationshipReview> {
+  const raw = await apiCall<unknown>(`${BRAND_RELATIONSHIPS_PATH(brandId)}/review`);
+  return parseOrThrow("getRelationshipReview", RelationshipReviewSchema, raw);
+}
+
+/** Yes = the two records are one person (a link judged by the person); no = never asked again. */
+export async function answerRelationshipMerge(brandId: string, questionId: string, same: boolean): Promise<void> {
+  await apiCall<unknown>(`${BRAND_RELATIONSHIPS_PATH(brandId)}/merge-questions/${encodeURIComponent(questionId)}/answer`, {
+    method: "POST",
+    body: { same },
+  });
+}
+
+export async function undoRelationshipMerge(brandId: string, linkId: string): Promise<void> {
+  await apiCall<unknown>(`${BRAND_RELATIONSHIPS_PATH(brandId)}/merges/${encodeURIComponent(linkId)}/undo`, { method: "POST" });
+}
+
+const RelationshipEnvelopeSchema = z.object({ relationship: RelationshipBlockSchema }).passthrough();
+
+export async function setRelationshipTag(
+  brandId: string,
+  humanId: string,
+  tag: string,
+  state: "yes" | "no",
+): Promise<RelationshipBlock> {
+  const raw = await apiCall<unknown>(
+    `${BRAND_RELATIONSHIPS_PATH(brandId)}/${encodeURIComponent(humanId)}/tags/${encodeURIComponent(tag)}`,
+    { method: "PUT", body: { state } },
+  );
+  return parseOrThrow("setRelationshipTag", RelationshipEnvelopeSchema, raw).relationship;
+}
+
+/** Takes the person's word back: the tag returns to what evidence and the judge say. */
+export async function withdrawRelationshipTag(brandId: string, humanId: string, tag: string): Promise<RelationshipBlock> {
+  const raw = await apiCall<unknown>(
+    `${BRAND_RELATIONSHIPS_PATH(brandId)}/${encodeURIComponent(humanId)}/tags/${encodeURIComponent(tag)}`,
+    { method: "DELETE" },
+  );
+  return parseOrThrow("withdrawRelationshipTag", RelationshipEnvelopeSchema, raw).relationship;
+}
+
+export type RelationshipCompanyStatement = { domain: string } | { name: string } | { none: true };
+
+export async function setRelationshipCompany(brandId: string, humanId: string, body: RelationshipCompanyStatement): Promise<void> {
+  await apiCall<unknown>(`${BRAND_RELATIONSHIPS_PATH(brandId)}/${encodeURIComponent(humanId)}/company`, { method: "PUT", body });
 }

@@ -144,6 +144,8 @@ export const SENSITIVE_QUERY_ROOTS = new Set([
 export const PERSISTABLE_QUERY_ROOTS = new Set([
   // The brand's own LinkedIn company page (Brand settings).
   "brandLinkedinPage",
+  // Who each person is to a brand: the People page's questions and settled answers.
+  "relationshipReview",
   // The platform step, leg and channel catalogue — no org, no auth, one answer for
   // every tenant.
   "publicCatalogue",
