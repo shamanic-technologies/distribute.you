@@ -2586,7 +2586,8 @@ const EffectiveLegRateSchema = z.object({
   unresolvedReason: z.string().nullable(),
   measured: MeasuredLegRateSchema,
   manualRatePct: z.number().nullable(),
-  median: z.object({ ratePct: z.number().nullable(), brandCount: z.number() }),
+  // Optional: features-service stops resolving a leg from other clients' rates (owner 2026-10-14).
+  median: z.object({ ratePct: z.number().nullable(), brandCount: z.number() }).nullish(),
 });
 
 export type EffectiveLegRate = z.infer<typeof EffectiveLegRateSchema>;

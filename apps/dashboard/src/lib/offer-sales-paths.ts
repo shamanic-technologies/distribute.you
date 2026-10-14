@@ -51,7 +51,8 @@ const LegSchema = z
           })
           .passthrough(),
         customerStatedPct: z.number().nullable(),
-        fleetMedian: z.object({ ratePct: z.number().nullable(), brandCount: z.number() }).passthrough(),
+        // No longer read (owner 2026-10-14: a brand never takes another client's numbers); optional so its removal parses.
+        fleetMedian: z.object({ ratePct: z.number().nullable(), brandCount: z.number() }).passthrough().nullish(),
         industryDefaultPct: z.number().nullable(),
       })
       .passthrough()
