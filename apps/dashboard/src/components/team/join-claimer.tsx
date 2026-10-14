@@ -27,7 +27,14 @@ export async function claimJoin(token: string, clerk: Clerk, router: Router): Pr
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ token }),
   });
-  const body = (await res.json().catch(() => null)) as { orgId?: string; error?: string } | null;
+  const body = (await res.json().catch(() => null)) as { orgId?: string; error?: string; code?: string } | null;
+  if (res.status === 409 && body?.code === "team_full") {
+    // Every seat is taken: no retry can fix it, so drop the link and say so.
+    document.cookie = clearJoinCookieAssignment();
+    posthog.capture("team_join_failed", { status: res.status, code: "team_full" });
+    router.replace(`/join/${encodeURIComponent(token)}?error=full`);
+    return true;
+  }
   if (res.status === 404 || res.status === 410) {
     // The link itself is dead (revoked, or never valid): drop it and say so.
     document.cookie = clearJoinCookieAssignment();

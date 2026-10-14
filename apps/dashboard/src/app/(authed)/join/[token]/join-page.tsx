@@ -26,6 +26,7 @@ export function JoinPageClient({ token }: { token: string }) {
   const search = useSearchParams();
   const brand = parseInviteBrand(search);
   const revoked = search.get("error") === "revoked";
+  const full = search.get("error") === "full";
   const { isLoaded, isSignedIn } = useAuth({ treatPendingAsSignedOut: false });
   const { signUp, isLoaded: signUpLoaded } = useSignUp();
   const [googling, setGoogling] = useState(false);
@@ -35,13 +36,13 @@ export function JoinPageClient({ token }: { token: string }) {
   const claiming = useRef(false);
 
   useEffect(() => {
-    if (valid && !revoked) document.cookie = joinCookieAssignment(token);
-  }, [valid, revoked, token]);
+    if (valid && !revoked && !full) document.cookie = joinCookieAssignment(token);
+  }, [valid, revoked, full, token]);
 
   // Already signed in (or just back from Google): join right here. This page is
   // where the person is looking, so it owns the join and says so if it fails.
   useEffect(() => {
-    if (!isLoaded || !isSignedIn || !valid || revoked || claiming.current) return;
+    if (!isLoaded || !isSignedIn || !valid || revoked || full || claiming.current) return;
     claiming.current = true;
     claimJoin(token, clerk, router)
       .then((done) => {
@@ -55,7 +56,7 @@ export function JoinPageClient({ token }: { token: string }) {
         console.error("[join] claim failed", err);
         setError("We could not add you to the team. Reload the page to try again.");
       });
-  }, [isLoaded, isSignedIn, valid, revoked, token, clerk, router]);
+  }, [isLoaded, isSignedIn, valid, revoked, full, token, clerk, router]);
 
   const tint = brand?.tint ?? null;
   useEffect(() => {
@@ -100,6 +101,8 @@ export function JoinPageClient({ token }: { token: string }) {
         This invite link is no longer valid. Ask your team for a new one.
       </p>
     );
+  } else if (full) {
+    body = <p className="text-sm text-gray-600">This team is full. Ask an admin to free a seat.</p>;
   } else if (!isLoaded) {
     body = <div className="h-24 animate-pulse rounded-xl bg-gray-100" />;
   } else if (isSignedIn) {

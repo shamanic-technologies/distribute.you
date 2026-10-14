@@ -60,6 +60,16 @@ export async function POST(req: Request) {
     if (mine?.data.some((m) => m.publicUserData?.userId === userId)) {
       return NextResponse.json({ orgId: org.id, alreadyMember: true });
     }
+    // A full team (Clerk's per-org seat cap, 5 by owner decision 2026-10-14) is the same
+    // bare Forbidden. Count the seats before calling it ours: a retry cannot fix it.
+    const seats = await client.organizations
+      .getOrganizationMembershipList({ organizationId: org.id, limit: 1 })
+      .then((r) => r.totalCount)
+      .catch(() => null);
+    if (org.maxAllowedMemberships > 0 && seats !== null && seats >= org.maxAllowedMemberships) {
+      console.error(`[join] org=${org.id} is full (${seats}/${org.maxAllowedMemberships}), user=${userId} not added`);
+      return NextResponse.json({ error: "This team is full.", code: "team_full" }, { status: 409 });
+    }
     console.error(`[join] membership for user=${userId} in org=${org.id} failed`, err);
     return NextResponse.json({ error: "Could not add you to the team. Try again." }, { status: 502 });
   }
