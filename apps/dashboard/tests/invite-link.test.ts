@@ -73,6 +73,8 @@ describe("invite link call sites", () => {
     expect(joinRoute).toContain("inviteCodeMatches(readInviteLink(org.privateMetadata), parsed.code)");
     expect(joinRoute).toContain("status: 410");
     expect(joinRoute).toContain("role: INVITE_ROLE");
+    // A member re-opening the link on a FULL org gets Forbidden from Clerk: still a member.
+    expect(joinRoute).toContain("getOrganizationMembershipList({ organizationId: org.id, userId: [userId] })");
     expect(joinRoute).toContain("sendTeamMemberJoinedEmails(");
     expect(joinRoute).toContain("!isAdminEmail(email)");
     expect(boot).toContain('name: "team_member_joined"');

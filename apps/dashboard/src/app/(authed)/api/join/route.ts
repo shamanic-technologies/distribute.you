@@ -50,6 +50,16 @@ export async function POST(req: Request) {
     await client.organizations.createOrganizationMembership({ organizationId: org.id, userId, role: INVITE_ROLE });
   } catch (err) {
     if (isAlreadyMemberError(err)) return NextResponse.json({ orgId: org.id, alreadyMember: true });
+    // Clerk checks the org's member quota BEFORE membership, so a member opening the
+    // link again on a full org gets a bare Forbidden, not `already_a_member`. Ask Clerk
+    // about THIS user (filtered, not a paged list) before telling a member we could not
+    // add them (prod 2026-10-14).
+    const mine = await client.organizations
+      .getOrganizationMembershipList({ organizationId: org.id, userId: [userId] })
+      .catch(() => null);
+    if (mine?.data.some((m) => m.publicUserData?.userId === userId)) {
+      return NextResponse.json({ orgId: org.id, alreadyMember: true });
+    }
     console.error(`[join] membership for user=${userId} in org=${org.id} failed`, err);
     return NextResponse.json({ error: "Could not add you to the team. Try again." }, { status: 502 });
   }
