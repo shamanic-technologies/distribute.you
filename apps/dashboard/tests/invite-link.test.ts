@@ -144,6 +144,19 @@ describe("joining while already signed in", () => {
   });
 });
 
+describe("a full team", () => {
+  const route = read("src/app/(authed)/api/join/route.ts");
+  const claimer = read("src/components/team/join-claimer.tsx");
+  const page = read("src/app/(authed)/join/[token]/join-page.tsx");
+  it("is told the team is full, never to reload (seat cap 5, owner 2026-10-14)", () => {
+    expect(route).toContain("seats >= org.maxAllowedMemberships");
+    expect(route).toContain('code: "team_full"');
+    expect(claimer).toContain('body?.code === "team_full"');
+    expect(claimer).toContain("?error=full");
+    expect(page).toContain("This team is full. Ask an admin to free a seat.");
+  });
+});
+
 describe("invite link preview", () => {
   const shell = read("src/app/(authed)/join/[token]/page.tsx");
   const og = read("src/app/api/public/og/join/route.tsx");
