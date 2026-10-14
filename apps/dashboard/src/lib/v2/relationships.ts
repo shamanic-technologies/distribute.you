@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { sourceLabel } from "../people-conversations";
 
 /**
  * Who each person is to a brand (lead-service, RELATIONSHIP-TAGS-1014): the tags an AI
@@ -135,22 +136,14 @@ export function cardTitle(c: MergeCard): string {
   return c.name ?? c.emails[0] ?? c.phones[0] ?? "Unnamed person";
 }
 
-/** Where a channel came from, as a person says it. */
-export function channelLabel(channel: string): string {
-  switch (channel) {
-    case "email":
-      return "Email";
-    case "whatsapp":
-      return "WhatsApp";
-    case "linkedin":
-      return "LinkedIn";
-    case "signup":
-      return "Signed up";
-    case "payment":
-      return "Paid";
-    default:
-      return channel.charAt(0).toUpperCase() + channel.slice(1);
-  }
+/**
+ * Where we know a person from: a card's `channels` are crm-service's person SOURCES, named
+ * the way the Unibox names them, plus the two the Unibox never shows as a source.
+ */
+export function channelLabel(source: string): string {
+  if (source === "clerk") return "Signed up";
+  if (source === "csv") return "CSV upload";
+  return sourceLabel(source);
 }
 
 /** The AI's confidence as a whole %, the way every v2 rate reads. */

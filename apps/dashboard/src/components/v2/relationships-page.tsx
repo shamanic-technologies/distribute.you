@@ -47,6 +47,8 @@ import { v2Href } from "@/lib/v2/routes";
 
 const REVIEW_KEY = (brandId: string) => ["relationshipReview", brandId] as const;
 const SETTLED_PAGE = 50;
+/** Questions open 10 at a time: hundreds of them is a list nobody reads to the end. */
+const QUESTION_PAGE = 10;
 
 export function V2RelationshipsPage() {
   const { orgId, brandId } = useParams<{ orgId: string; brandId: string }>();
@@ -123,6 +125,10 @@ export function RelationshipReviewBody({ brandId, review }: { brandId: string; r
   const settledMerges = review.settled.merges.filter((m) => !w.done.has(`undo:${m.linkId}`));
   const c = review.counts;
   const open = merges.length + tags.length + companies.length;
+  const [mergesShown, setMergesShown] = useState(QUESTION_PAGE);
+  const [unsureShown, setUnsureShown] = useState(QUESTION_PAGE);
+  const shownTags = tags.slice(0, unsureShown);
+  const shownCompanies = companies.slice(0, Math.max(0, unsureShown - tags.length));
 
   return (
     <div className="space-y-10">
@@ -139,7 +145,7 @@ export function RelationshipReviewBody({ brandId, review }: { brandId: string; r
           </div>
         ) : (
           <div className="space-y-3">
-            {merges.map((m) => {
+            {merges.slice(0, mergesShown).map((m) => {
               const key = `merge:${m.id}`;
               return (
                 <article key={m.id} className="k-card p-4">
@@ -173,6 +179,13 @@ export function RelationshipReviewBody({ brandId, review }: { brandId: string; r
                 </article>
               );
             })}
+            {mergesShown < merges.length && (
+              <div className="flex justify-center">
+                <button type="button" onClick={() => setMergesShown((n) => n + QUESTION_PAGE)} className="k-btn-ghost h-6">
+                  Show {formatCount(Math.min(QUESTION_PAGE, merges.length - mergesShown))} more
+                </button>
+              </div>
+            )}
           </div>
         )}
       </section>
@@ -186,7 +199,7 @@ export function RelationshipReviewBody({ brandId, review }: { brandId: string; r
         ) : (
           <div className="k-card overflow-hidden">
             <ul>
-              {tags.map((t) => {
+              {shownTags.map((t) => {
                 const key = `tag:${t.humanId}:${t.tag}`;
                 return (
                   <li key={key} className="k-line-subtle flex flex-wrap items-center gap-3 border-b px-4 py-2.5 last:border-b-0">
@@ -219,7 +232,7 @@ export function RelationshipReviewBody({ brandId, review }: { brandId: string; r
                   </li>
                 );
               })}
-              {companies.map((cq) => {
+              {shownCompanies.map((cq) => {
                 const key = `company:${cq.humanId}`;
                 return (
                   <li key={key} className="k-line-subtle flex flex-wrap items-center gap-3 border-b px-4 py-2.5 last:border-b-0">
@@ -261,6 +274,16 @@ export function RelationshipReviewBody({ brandId, review }: { brandId: string; r
                 );
               })}
             </ul>
+            <div className="k-fg3 k-line-subtle flex items-center justify-between border-t px-4 py-2.5 text-[12px] tabular-nums">
+              <span>
+                {formatCount(shownTags.length + shownCompanies.length)} of {formatCount(tags.length + companies.length)}
+              </span>
+              {unsureShown < tags.length + companies.length && (
+                <button type="button" onClick={() => setUnsureShown((n) => n + QUESTION_PAGE)} className="k-btn-ghost h-6">
+                  Show {formatCount(Math.min(QUESTION_PAGE, tags.length + companies.length - unsureShown))} more
+                </button>
+              )}
+            </div>
           </div>
         )}
       </section>
