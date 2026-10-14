@@ -75,27 +75,43 @@ describe("catalog price list", () => {
       row({ name: "instantly-domain-email-sent", type: "Email send (per domain)", pricePerUnitInUsdCents: "2.9886", bundle }),
     ];
     const sending = catalogSections(rows).find((s) => s.key === "sending");
-    expect(sending?.rows).toEqual([{ tool: "Instantly", domain: "instantly.ai", what: "Email sent", price: "$0.0598 / email" }]);
+    expect(sending?.rows).toEqual([{ tool: "Instantly", domain: "instantly.ai", what: "Email sent", price: "$0.0598 / email", usd: 0.059772 }]);
     const lost = catalogSections([row({ bundle: { ...bundle, pricePerUnitInUsdCents: null } })]).find((s) => s.key === "sending");
     expect(lost?.rows[0].price).toBe("No price");
   });
 
-  it("an email sent is priced per BounceVerify verdict: one line per tier, its served label, listed before first use", () => {
+  it("an email sent is priced per BounceVerify verdict: one line per tier, its served label, cheapest first, listed before first use", () => {
     const tier = (name: string, label: string, verdict: string, multiple: number, cents: string) => ({
       name, unit: "email", members: [`instantly-account-${name}`, `instantly-domain-${name}`], pricePerUnitInUsdCents: cents, label,
       emailVerification: { provider: "BounceVerify", verdict, priceMultipleOfValid: multiple, validBundle: "email-sent" },
     });
     const rows = [
+      row({ lastUsedOn: null, bundle: tier("email-sent-unknown", "Email sent, address verified unknown by BounceVerify", "unknown", 3, "17.19") }),
       row({ bundle: tier("email-sent", "Email sent, address verified valid by BounceVerify", "valid", 1, "5.73") }),
       row({ lastUsedOn: null, bundle: tier("email-sent-catch-all", "Email sent, address verified catch-all by BounceVerify", "catch_all", 2, "11.46") }),
-      row({ lastUsedOn: null, bundle: tier("email-sent-unknown", "Email sent, address verified unknown by BounceVerify", "unknown", 3, "17.19") }),
     ];
     const sending = catalogSections(rows).find((s) => s.key === "sending");
     expect(sending?.rows.map((r) => [r.what, r.price])).toEqual([
+      ["Email sent, address verified valid by BounceVerify", "$0.0573 / email"],
       ["Email sent, address verified catch-all by BounceVerify", "$0.115 / email"],
       ["Email sent, address verified unknown by BounceVerify", "$0.172 / email"],
-      ["Email sent, address verified valid by BounceVerify", "$0.0573 / email"],
     ]);
+  });
+
+  it("every section reads cheapest first; AI keeps one block per vendor, cheapest vendor on top", () => {
+    const tok = (provider: string, type: string, cents: string) => row({ name: `${provider}-${type}`, provider, type, unit: "1M tokens", pricePerUnitInUsdCents: cents });
+    const sections = catalogSections([
+      tok("anthropic", "Output tokens (Opus)", "0.0025"),
+      tok("google", "Output tokens (Flash)", "0.00003"),
+      tok("anthropic", "Input tokens (Opus)", "0.0005"),
+      tok("google", "Input tokens (Flash)", "0.00001"),
+      row({ name: "apify-run", provider: "apify", type: "Actor run", unit: "run", pricePerUnitInUsdCents: "3" }),
+      row({ name: "apollo-reveal", provider: "apollo", type: "Email reveal", unit: "reveal", pricePerUnitInUsdCents: "1" }),
+    ]);
+    expect(sections.find((s) => s.key === "ai")?.rows.map((r) => r.what)).toEqual([
+      "Input tokens (Flash)", "Output tokens (Flash)", "Input tokens (Opus)", "Output tokens (Opus)",
+    ]);
+    expect(sections.find((s) => s.key === "leads")?.rows.map((r) => r.what)).toEqual(["Email reveal", "Actor run"]);
   });
 
   it("hides a line unused for 30+ days, measured from the usage read, not from today", () => {
