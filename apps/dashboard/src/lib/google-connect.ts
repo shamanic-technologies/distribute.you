@@ -56,3 +56,29 @@ export function returnWithOutcome(returnTo: string, outcome: { connected: true }
   const s = q.toString();
   return `${base}${s ? `?${s}` : ""}${hash ? `#${hash}` : ""}`;
 }
+
+/**
+ * Send access on a connected mailbox (GMAIL-NEEDS-SEND-ACCESS-1014). A follow-up can
+ * reply inside a person's own Gmail thread, from the mailbox they wrote to; that needs
+ * `gmail.send` on the grant. google-service asks for it on every sign-in since
+ * 2026-10-14 and serves each mailbox's granted `scopes`; a mailbox connected before
+ * lacks it and its replies are refused (`google_send_permission_missing`) until the
+ * owner signs in again. Signing in again with the same Google account updates the
+ * same mailbox and keeps its history: that is "Reconnect", never Disconnect.
+ */
+export const GMAIL_SEND_SCOPE = "https://www.googleapis.com/auth/gmail.send";
+
+export function canSendFrom(account: { scopes: readonly string[] }): boolean {
+  return account.scopes.includes(GMAIL_SEND_SCOPE);
+}
+
+/**
+ * The Google sign-in URL preselecting one address (`login_hint`), so Reconnect
+ * signs in the mailbox it was clicked on rather than whichever account the browser
+ * picks first. Every other parameter google-service built is kept as is.
+ */
+export function withLoginHint(authorizeUrl: string, email: string): string {
+  const url = new URL(authorizeUrl);
+  url.searchParams.set("login_hint", email);
+  return url.toString();
+}

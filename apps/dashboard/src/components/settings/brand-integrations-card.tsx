@@ -29,7 +29,8 @@ import {
   type IntegrationDef,
   type IntegrationSlug,
 } from "@/lib/integrations";
-import { GOOGLE_RETURN_KEY, googleCallbackUrl } from "@/lib/google-connect";
+import { GOOGLE_RETURN_KEY, googleCallbackUrl, withLoginHint } from "@/lib/google-connect";
+import { GmailMailboxLine } from "@/components/settings/gmail-mailbox-line";
 import {
   connectErrorMessage,
   credentialErrorMessage,
@@ -562,13 +563,15 @@ function GmailRow({ orgId }: { orgId: string | null }) {
   const accounts = accountsQ.data?.accounts ?? [];
   const settled = !accountsQ.isPending || accountsQ.isError;
 
+  // `email` set = Reconnect that mailbox: the same sign-in, preselecting its address.
+  // google-service updates the same mailbox and keeps its history.
   const connect = useMutation({
-    mutationFn: async () => {
+    mutationFn: async (email: string | null) => {
       if (!orgId) throw new Error("Open this page inside an organization to connect Gmail.");
       const { url } = await startGoogleConnect(googleCallbackUrl(window.location.origin));
       const returnTo = `${window.location.pathname}${window.location.search}#integrations`;
       window.sessionStorage.setItem(GOOGLE_RETURN_KEY, JSON.stringify({ orgId, returnTo }));
-      window.location.assign(url);
+      window.location.assign(email ? withLoginHint(url, email) : url);
     },
     onError: (err: Error) => {
       console.error("[integrations] starting the Google sign-in failed", err);
@@ -612,40 +615,23 @@ function GmailRow({ orgId }: { orgId: string | null }) {
           {accounts.length > 0 ? (
             <ul className="mt-2 space-y-1.5">
               {accounts.map((a) => (
-                <li key={a.email} className="flex flex-wrap items-center gap-2 text-sm">
-                  <span className="text-gray-900">{a.email}</span>
-                  {a.status !== "active" ? (
-                    <span className="text-amber-700">{a.gmailUnavailableReason ?? "Gmail is not available on this account."}</span>
-                  ) : null}
-                  {confirming === a.email ? (
-                    <>
-                      <button
-                        type="button"
-                        onClick={() => remove.mutate(a.email)}
-                        disabled={remove.isPending}
-                        className="rounded-lg border border-red-200 bg-red-50 px-2 py-0.5 text-xs font-medium text-red-700 hover:bg-red-100"
-                      >
-                        {remove.isPending ? "Disconnecting..." : "Yes, disconnect"}
-                      </button>
-                      <button type="button" onClick={() => setConfirming(null)} className="rounded-lg px-2 py-0.5 text-xs text-gray-600 hover:bg-gray-50">
-                        Keep it
-                      </button>
-                    </>
-                  ) : (
-                    <button
-                      type="button"
-                      onClick={() => setConfirming(a.email)}
-                      className="rounded-lg border border-gray-200 px-2 py-0.5 text-xs text-gray-700 hover:bg-gray-50"
-                    >
-                      Disconnect
-                    </button>
-                  )}
-                </li>
+                <GmailMailboxLine
+                  key={a.email}
+                  account={a}
+                  confirming={confirming === a.email}
+                  removing={remove.isPending}
+                  reconnecting={connect.isPending && connect.variables === a.email}
+                  onReconnect={() => {
+                    setError(null);
+                    setConfirming(null);
+                    connect.mutate(a.email);
+                  }}
+                  onAskDisconnect={() => setConfirming(a.email)}
+                  onConfirmDisconnect={() => remove.mutate(a.email)}
+                  onKeep={() => setConfirming(null)}
+                />
               ))}
             </ul>
-          ) : null}
-          {confirming ? (
-            <p className="mt-2 text-sm text-gray-600">This stops reading {confirming} and removes what we mirrored. Nothing in the mailbox changes.</p>
           ) : null}
           {error ? <p className="mt-2 text-sm text-red-600">{error}</p> : null}
         </div>
@@ -654,12 +640,12 @@ function GmailRow({ orgId }: { orgId: string | null }) {
             type="button"
             onClick={() => {
               setError(null);
-              connect.mutate();
+              connect.mutate(null);
             }}
             disabled={connect.isPending}
             className="rounded-lg bg-brand-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-brand-700"
           >
-            {connect.isPending ? "Opening Google..." : accounts.length > 0 ? "Add a mailbox" : "Connect with Google"}
+            {connect.isPending && connect.variables === null ? "Opening Google..." : accounts.length > 0 ? "Add a mailbox" : "Connect with Google"}
           </button>
         </div>
       </div>
