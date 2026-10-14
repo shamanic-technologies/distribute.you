@@ -125,6 +125,11 @@ import {
   type CrmPairings,
 } from "./crm-pairings";
 import { ExpectedConversionSchema, ExpectedReturnSchema, type ExpectedReturn } from "./expected-return";
+import {
+  OfferDocumentsResponseSchema,
+  OfferDocumentWriteResponseSchema,
+  type OfferDocument,
+} from "./offer-documents";
 
 const API_URL = process.env.NEXT_PUBLIC_DISTRIBUTE_API_URL || "https://api.distribute.you";
 
@@ -143,7 +148,12 @@ interface ApiOptions {
    * export authenticating differently from the page it exports is a second auth path to
    * keep correct.
    */
-  responseType?: "json" | "text";
+  responseType?: "json" | "text" | "blob";
+  /**
+   * A file upload (offer documents). Sent as multipart/form-data with the browser's own
+   * boundary, so no JSON Content-Type is set; the proxy passes the bytes through untouched.
+   */
+  formData?: FormData;
 }
 
 /**
@@ -310,10 +320,13 @@ async function apiCall<T>(endpoint: string, options?: ApiOptions): Promise<T> {
     headers: extraHeaders,
     suppressPaymentRequired,
     responseType = "json",
+    formData,
   } = options ?? {};
 
   const send = async (forceFreshToken = false): Promise<Response> => {
-    const headers: Record<string, string> = { "Content-Type": "application/json", ...extraHeaders };
+    const headers: Record<string, string> = formData
+      ? { ...extraHeaders }
+      : { "Content-Type": "application/json", ...extraHeaders };
     let url: string;
 
     if (token) {
@@ -381,7 +394,7 @@ async function apiCall<T>(endpoint: string, options?: ApiOptions): Promise<T> {
     return fetch(url, {
       method,
       headers,
-      body: body ? JSON.stringify(body) : undefined,
+      body: formData ?? (body ? JSON.stringify(body) : undefined),
     });
   };
 
@@ -422,6 +435,7 @@ async function apiCall<T>(endpoint: string, options?: ApiOptions): Promise<T> {
   }
 
   if (responseType === "text") return (await response.text()) as T;
+  if (responseType === "blob") return (await response.blob()) as T;
   return await readJsonResponse(response, endpoint) as T;
 }
 
@@ -2689,6 +2703,76 @@ export async function listBrandOffers(
     throw new Error("[dashboard] listBrandOffers: invalid response shape");
   }
   return parsed.data;
+}
+
+// ─── Offer documents (brand-service via the gateway) ─────────────────────────
+
+function offerDocumentsPath(brandId: string, offerId: string): string {
+  return `/brands/${encodeURIComponent(brandId)}/offers/${encodeURIComponent(offerId)}/documents`;
+}
+
+/** GET /brands/:id/offers/:offerId/documents: the offer's files, oldest first, metadata only. */
+export async function listOfferDocuments(brandId: string, offerId: string): Promise<OfferDocument[]> {
+  const raw = await apiCall<unknown>(offerDocumentsPath(brandId, offerId));
+  const parsed = OfferDocumentsResponseSchema.safeParse(raw);
+  if (!parsed.success) {
+    console.error("[dashboard] listOfferDocuments: response shape mismatch", { issues: parsed.error.issues, raw });
+    throw new Error("[dashboard] listOfferDocuments: invalid response shape");
+  }
+  return parsed.data.documents;
+}
+
+/** POST /brands/:id/offers/:offerId/documents, multipart (file + description). */
+export async function uploadOfferDocument(
+  brandId: string,
+  offerId: string,
+  file: File,
+  description: string,
+): Promise<OfferDocument> {
+  const form = new FormData();
+  form.append("description", description);
+  form.append("fileName", file.name);
+  form.append("file", file, file.name);
+  const raw = await apiCall<unknown>(offerDocumentsPath(brandId, offerId), { method: "POST", formData: form });
+  const parsed = OfferDocumentWriteResponseSchema.safeParse(raw);
+  if (!parsed.success) {
+    console.error("[dashboard] uploadOfferDocument: response shape mismatch", { issues: parsed.error.issues, raw });
+    throw new Error("[dashboard] uploadOfferDocument: invalid response shape");
+  }
+  return parsed.data.document;
+}
+
+/** PATCH /brands/:id/offers/:offerId/documents/:documentId ({ fileName?, description? }). */
+export async function updateOfferDocument(
+  brandId: string,
+  offerId: string,
+  documentId: string,
+  patch: { fileName?: string; description?: string },
+): Promise<OfferDocument> {
+  const raw = await apiCall<unknown>(`${offerDocumentsPath(brandId, offerId)}/${encodeURIComponent(documentId)}`, {
+    method: "PATCH",
+    body: patch,
+  });
+  const parsed = OfferDocumentWriteResponseSchema.safeParse(raw);
+  if (!parsed.success) {
+    console.error("[dashboard] updateOfferDocument: response shape mismatch", { issues: parsed.error.issues, raw });
+    throw new Error("[dashboard] updateOfferDocument: invalid response shape");
+  }
+  return parsed.data.document;
+}
+
+/** DELETE /brands/:id/offers/:offerId/documents/:documentId. */
+export async function deleteOfferDocument(brandId: string, offerId: string, documentId: string): Promise<void> {
+  await apiCall<unknown>(`${offerDocumentsPath(brandId, offerId)}/${encodeURIComponent(documentId)}`, {
+    method: "DELETE",
+  });
+}
+
+/** GET …/documents/:documentId/content: the file's bytes, with its own Content-Type. */
+export async function getOfferDocumentContent(brandId: string, offerId: string, documentId: string): Promise<Blob> {
+  return apiCall<Blob>(`${offerDocumentsPath(brandId, offerId)}/${encodeURIComponent(documentId)}/content`, {
+    responseType: "blob",
+  });
 }
 
 /** GET /brands/:brandId/offers/:offerId — one offer, by id. */

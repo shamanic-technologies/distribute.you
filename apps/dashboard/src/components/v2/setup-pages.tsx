@@ -26,6 +26,7 @@ import { BrandIdentityTitle } from "@/components/v2/brand-identity-title";
 import { OfferArchiveCard } from "@/components/settings/offer-archive-card";
 import { OfferLifetimeRevenue } from "@/components/settings/offer-campaigns-card";
 import { BrandOfferCard } from "@/components/settings/brand-offer-card";
+import { OfferDocuments } from "@/components/v2/offer-documents";
 import { V2AudiencesTable } from "@/components/v2/audiences-table";
 import { OfferQualification } from "@/components/v2/offer-qualification";
 import { OfferSourcesTab } from "@/components/v2/offer-sources-tab";
@@ -211,6 +212,7 @@ export function V2OfferPage() {
       <div className="space-y-8">
         <OfferLifetimeRevenue brandId={brandId} offerId={offerId} />
         <BrandOfferCard orgId={orgId} brandId={brandId} offerId={offerId} />
+        <OfferDocuments brandId={brandId} offerId={offerId} />
         <OfferArchiveCard brandId={brandId} offerId={offerId} />
         <ArchivedOffers brandId={brandId} />
       </div>

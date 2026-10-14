@@ -89,16 +89,28 @@ async function proxyRequest(
     const clerkOrgName = await getOrgName(clerkOrgId);
     setIdentityHeader(headers, "x-org-name", clerkOrgName);
 
+    // A file upload (offer documents) is multipart/form-data: forward the browser's own
+    // Content-Type (it carries the boundary) and STREAM the raw bytes. Reading it with
+    // req.text() would decode the binary file as UTF-8 and corrupt it. JSON bodies are
+    // unchanged.
+    const incomingType = req.headers.get("content-type") ?? "";
+    const isMultipart = /^multipart\/form-data/i.test(incomingType);
+    if (isMultipart) headers["Content-Type"] = incomingType;
+
     const body =
       req.method !== "GET" && req.method !== "HEAD"
-        ? await req.text()
+        ? isMultipart
+          ? req.body
+          : await req.text()
         : undefined;
 
     const res = await fetch(url.toString(), {
       method: req.method,
       headers,
       body,
-    });
+      // Node's fetch needs half-duplex to send a streamed request body.
+      ...(isMultipart ? { duplex: "half" } : {}),
+    } as RequestInit);
 
     const contentType = res.headers.get("Content-Type") || "application/json";
 
@@ -120,9 +132,13 @@ async function proxyRequest(
     // Under fluid compute one instance serves several concurrent invocations, so
     // the kill also 500s whatever else is in flight, and the client then sees
     // Vercel's HTML error page as "API returned a non-JSON response".
+    // A file read (offer document content) keeps its file name for the browser.
+    const responseHeaders: Record<string, string> = { "Content-Type": contentType };
+    const disposition = res.headers.get("Content-Disposition");
+    if (disposition) responseHeaders["Content-Disposition"] = disposition;
     return new NextResponse(res.body, {
       status: res.status,
-      headers: { "Content-Type": contentType },
+      headers: responseHeaders,
     });
   } catch (err) {
     const { path } = await segmentData.params;
