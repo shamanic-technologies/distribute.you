@@ -81,7 +81,7 @@ describe("invite link call sites", () => {
   it("the claim runs on every authed page and activates the joined org", () => {
     expect(layout).toContain("<JoinClaimer />");
     expect(claimer).toContain("readJoinCookie(document.cookie)");
-    expect(claimer).toContain("clerk.setActive({ organization: body.orgId })");
+    expect(claimer).toContain("clerk.setActive({ organization: orgId })");
   });
 
   it("/join and /api/join are public, not auth routes", () => {
@@ -132,6 +132,16 @@ describe("joining while already signed in", () => {
     expect(claimer).toContain("await clerk.user?.reload();");
     expect(claimer).toContain("window.location.assign(dest)");
     expect(claimer).toContain("[isSignedIn, clerk, router, pathname]");
+  });
+  it("opens the joined org with a full load, never a client navigation racing Clerk's", () => {
+    // A pending session (new account, no org) is touched with the org: setActive on it
+    // soft-navigates to the choose-organization task URL, and two client navigations
+    // into the dashboard crashed the first page (React #310, JOIN-LANDING-CRASH-1014).
+    expect(claimer).toContain('session?.status === "pending"');
+    expect(claimer).toContain("session.lastActiveOrganizationId = orgId;");
+    expect(claimer).toContain('await session.touch({ intent: "select_org" });');
+    expect(claimer).toContain("const dest = `/v2/orgs/${encodeURIComponent(body.orgId)}`;");
+    expect(claimer).not.toContain("router.replace(dest)");
   });
 });
 

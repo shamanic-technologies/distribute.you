@@ -39,22 +39,45 @@ export async function claimJoin(token: string, clerk: Clerk, router: Router): Pr
   }
   document.cookie = clearJoinCookieAssignment();
   posthog.capture("team_join_completed");
-  const dest = `/orgs/${encodeURIComponent(body.orgId)}`;
+  const dest = `/v2/orgs/${encodeURIComponent(body.orgId)}`;
   // The membership was just created SERVER-side, and the browser's session does not
   // know it yet, so a bare setActive is refused as "not a member". Reload the user
-  // first; if the switch is still refused, a full page load of the org lets the edge
-  // activate it from the URL. The join has already succeeded either way, so neither
-  // path may surface as a failure.
+  // first. The org then opens with a FULL page load, never a client navigation: the
+  // dashboard is another layout tree, and entering it client-side while the session
+  // changes crashed the first page (React #310, "This page couldn't load"; a Reload
+  // always worked). The join has already succeeded, so no path may surface as a failure.
   try {
     await clerk.user?.reload();
-    await clerk.setActive({ organization: body.orgId });
-    router.replace(dest);
+    await activateJoinedOrg(clerk, body.orgId);
+    window.location.assign(dest);
   } catch (err) {
     console.error("[join] setActive after join refused, opening the org with a full load", err);
     posthog.capture("team_join_activate_fallback");
     window.location.assign(dest);
   }
   return true;
+}
+
+/**
+ * Make the joined org the session's active org, without navigating.
+ *
+ * A brand-new account (or one with no org) holds a PENDING session: its open task is
+ * choosing an org. `setActive` on a pending session hands navigation to Clerk, which
+ * soft-navigates to the task URL (`/session-tasks/choose-organization`, bounced to
+ * `/v2` by the edge) while our own navigation runs: two client navigations into the
+ * dashboard at once. So a pending session is touched with the org instead, which is
+ * what `setActive` does under the hood minus the navigation, and a fresh token is
+ * minted so the full load that follows carries the org.
+ */
+async function activateJoinedOrg(clerk: Clerk, orgId: string): Promise<void> {
+  const session = clerk.session;
+  if (session?.status === "pending") {
+    session.lastActiveOrganizationId = orgId;
+    await session.touch({ intent: "select_org" });
+    await session.getToken({ skipCache: true });
+    return;
+  }
+  await clerk.setActive({ organization: orgId });
 }
 
 /**
