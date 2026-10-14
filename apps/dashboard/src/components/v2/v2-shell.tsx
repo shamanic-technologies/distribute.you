@@ -329,6 +329,16 @@ function V2Sidebar() {
           />
           {outcomes.map(({ outcome, all }) => {
               const href = v2OutcomeHref(orgId, brandId, outcome.key);
+              const n = all
+                ? all.people
+                : outcome.items.kind === "people"
+                  ? buckets?.counts[outcome.items.bucket]
+                  : outcome.items.kind === "leads-found"
+                    ? peopleHeld
+                    : null;
+              // An outcome at a known 0 is not listed (owner 2026-10-14); a count still loading
+              // keeps its entry, and so does the page being read.
+              if (n === 0 && pathname !== href) return null;
               return (
                 <NavItem
                   key={outcome.key}
@@ -336,19 +346,7 @@ function V2Sidebar() {
                   label={outcome.label}
                   icon={<OutcomeMark outcomeKey={outcome.key} label={outcome.label} stepIcons={stepIcons} />}
                   active={pathname === href}
-                  trailing={
-                    <Count
-                      n={
-                        all
-                          ? all.people
-                          : outcome.items.kind === "people"
-                            ? buckets?.counts[outcome.items.bucket]
-                            : outcome.items.kind === "leads-found"
-                              ? peopleHeld
-                              : null
-                      }
-                    />
-                  }
+                  trailing={<Count n={n} />}
                 />
               );
             })}

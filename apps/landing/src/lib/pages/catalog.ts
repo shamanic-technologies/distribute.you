@@ -180,7 +180,8 @@ export function formatPrice(p: PlatformPrice): string {
   return usd === 0 ? "Free" : `${formatUsd(usd)} / ${p.unit}`;
 }
 
-type Row = { tool: string; domain: string | null; what: string; price: string };
+/** `usd` orders the rows from cheapest to dearest; a bundle with no price sorts last. */
+type Row = { tool: string; domain: string | null; what: string; price: string; usd: number };
 
 /** The rows of each section, deduplicated (several internal names share one label and price). */
 export function catalogSections(prices: PlatformPrice[]) {
@@ -197,12 +198,14 @@ export function catalogSections(prices: PlatformPrice[]) {
       const what = b.label ?? b.name.charAt(0).toUpperCase() + b.name.slice(1).replaceAll("-", " ");
       const price =
         b.pricePerUnitInUsdCents === null ? "No price" : formatPrice({ ...p, pricePerUnitInUsdCents: b.pricePerUnitInUsdCents, unit: b.unit });
-      row = { tool: providerName(p), domain: p.providerDomain ?? null, what, price };
+      const usd =
+        b.pricePerUnitInUsdCents === null ? Infinity : unitPriceUsd({ ...p, pricePerUnitInUsdCents: b.pricePerUnitInUsdCents, unit: b.unit });
+      row = { tool: providerName(p), domain: p.providerDomain ?? null, what, price, usd };
     } else {
       // A unit we never charge for is not a price (Instantly's contact upload): listed,
       // it reads as a second, free version of a paid line.
       if (unitPriceUsd(p) === 0) continue;
-      row = { tool: providerName(p), domain: p.providerDomain ?? null, what: p.type, price: formatPrice(p) };
+      row = { tool: providerName(p), domain: p.providerDomain ?? null, what: p.type, price: formatPrice(p), usd: unitPriceUsd(p) };
     }
     const key = `${group}|${row.tool}|${row.what}|${row.price}`;
     if (seen.has(key)) continue;
@@ -212,7 +215,13 @@ export function catalogSections(prices: PlatformPrice[]) {
   return CATALOG_GROUPS.flatMap((g) => {
     const rows = byGroup.get(g.key);
     if (!rows) return [];
-    rows.sort((a, b) => a.tool.localeCompare(b.tool) || a.what.localeCompare(b.what));
+    // Owner 2026-10-14: every section reads from cheapest to dearest. AI keeps one block
+    // per vendor (cheapest vendor first, by its cheapest line), cheapest line first inside.
+    const vendorFloor = new Map<string, number>();
+    for (const r of rows) vendorFloor.set(r.tool, Math.min(vendorFloor.get(r.tool) ?? Infinity, r.usd));
+    const byVendor = (a: Row, b: Row) =>
+      g.key === "ai" ? vendorFloor.get(a.tool)! - vendorFloor.get(b.tool)! || a.tool.localeCompare(b.tool) : 0;
+    rows.sort((a, b) => byVendor(a, b) || a.usd - b.usd || a.tool.localeCompare(b.tool) || a.what.localeCompare(b.what));
     return [{ ...g, rows }];
   });
 }
