@@ -194,6 +194,7 @@ ${indent(curlExample("/v1/me"), 3)}
    \`\`\`
    It answers with the user the key acts as and every organization they belong to, each with its brands. Tell the user which organizations and brands you see, then name a brand (\`brandId\`) on each call that follows.
 
+${sendEmailMarkdown()}
 ## 2. What the MCP server can do
 
 It reads. Its tools:
@@ -230,6 +231,66 @@ ${useCases}
 - Documentation: ${DOCS_SITE_URL}
 - Every developer surface on one page: ${DEVELOPER_HUB_URL}
 - Your dashboard: https://dashboard.distribute.you
+`;
+}
+
+/** The public price list the email-sent price is read from. */
+export const CATALOG_URL = "https://distribute.you/catalog";
+
+/** The trigger that sends an email the customer wrote, word for word. */
+export const EMAIL_PUSH_TRIGGER = "email_pushed_via_api";
+
+/**
+ * "Send this email I wrote to me@x.com": the one write a customer who writes
+ * their own emails needs first. Every route and field below is a field of the
+ * deployed openapi (POST /v1/trigger-events, the email-signature routes, the
+ * trigger-events read), checked against it when this section was written.
+ */
+function sendEmailMarkdown(): string {
+  const body = `{
+  "triggerId": "${EMAIL_PUSH_TRIGGER}",
+  "brandId": "BRAND_ID",
+  "offerId": "OFFER_ID",
+  "person": { "email": "me@example.com", "name": "Sam", "timezone": "Europe/London" },
+  "item": { "subject": "Hiring in Leeds?", "bodyText": "Hi Sam,\\nI saw you are hiring..." },
+  "idempotencyKey": "test-email-1"
+}`;
+  const send = curlExample(
+    "/v1/trigger-events",
+    `-H "Content-Type: application/json" \\\n  -d '${body.replace(/\n/g, "\n  ")}'`,
+  );
+  return `## Send an email you wrote
+
+Use this when the user wrote the email themselves and wants it sent as written (for a test, send it to their own address first).
+
+1. **Find the brand and offer.** \`GET /v1/me\` gives the \`brandId\`; \`GET /v1/features/brands/{brandId}/offers\` gives the \`offerId\`. A call naming a \`brandId\` acts in that brand's organization; on a call with no brand (the balance) and a key that reaches several organizations, add \`orgId\` to the query. The email is sent by a running campaign of that offer that holds an email-sending part: in \`GET /v1/sales-funnel-campaigns?brandId=...\`, look for a campaign (any name) on that \`offerId\` with a unit whose \`featureSlug\` is \`email-sending\` and \`status\` is \`ongoing\`. If there is none, tell the user to start one from the dashboard before going on.
+2. **Say what you will send** (to whom, subject, body) and wait for the user's yes: it spends credit.
+3. **Send it** with \`POST /v1/trigger-events\`:
+   \`\`\`
+${indent(send, 3)}
+   \`\`\`
+   - \`person.email\` is the recipient (required). \`person.timezone\` is an IANA name such as \`Europe/London\`, so the email lands in their business hours; leave it out and we infer it (a +44 \`person.phone\` means London). An offset like \`GMT+1\` is refused.
+   - \`item.subject\` plus \`item.bodyText\` (plain text, \`\\n\` between lines) or \`item.bodyHtml\`, at least one body. It is sent word for word, from our own domains and inboxes, with a signature added below it.
+   - \`idempotencyKey\` makes a retry safe: the same key returns the first event (\`replayed: true\`) and sends nothing twice. Use a new key per email.
+   - \`dueAt\` (ISO date-time) sends it later instead of now.
+4. **Read the answer** (201). \`event.outcome\` is \`ran\` when the campaign took the email, or \`skipped\` with a reason (\`no_campaign\`: no running email-sending campaign on that offer; \`unfunded\`: no credit or budget left). \`pending\` means the person is still being filed: read it again in a few minutes. Keep \`event.detail.triggered[].runId\`: it is how you read the cost. \`event.leadId\` can be null: find the person by email instead (below). A 400 names the field that is wrong; nothing was recorded.
+5. **Expect a short wait.** \`ran\` means the email is queued, not sent yet: it usually goes out within about 10 minutes, in the recipient's business hours.
+
+**What gets sent.** Before sending, we check the address (BounceVerify). A \`valid\` address is sent at the public email-sent price on ${CATALOG_URL}; \`catch-all\` costs 2x and \`unknown\` 3x that price. An \`invalid\` or \`risky\` address is never sent.
+
+**Was it delivered?**
+- \`GET /v1/offers/{offerId}/trigger-events?brandId=...\`: the latest pushes, newest first, each with its outcome.
+- \`GET /v1/leads?brandId=...&q=me@example.com\` finds the person: the row carries \`sent\`, \`delivered\`, \`bounced\` and \`firstSentAt\`. Use the row's \`id\` (not its \`leadId\`) for \`GET /v1/leads/{id}/history?brandId=...\`: it lists, in order, the email as sent (sender address, subject, body as you wrote it) and a \`delivery\` event once it is delivered, then any reply.
+- Delivered means the recipient's mail server accepted it; it does not say the email was opened. \`GET /v1/emails\` lists the emails we write, not the ones you pushed: do not look for yours there.
+
+**What did it cost?** \`GET /v1/runs/{runId}\` (the \`runId\` you kept) answers \`totalCostInUsdCents\` for this one email and its cost lines: the address check, then the send, priced at its BounceVerify tier (a \`costName\` ending in \`-catch-all\` was charged as catch-all). A line stays \`provisioned\` until the email is sent, then becomes \`actual\`; a \`cancelled\` line is not charged. \`GET /v1/billing/accounts/balance\` is the whole organization's credit, so it also moves with other work. Report figures as the API serves them.
+
+**The signature.** Every email ends with a signature. By default it is the sending mailbox's name, then ours. To use the user's own:
+- \`GET /v1/email-signature?brandId=...\` reads it (\`signature: null\` means the default).
+- \`PUT /v1/email-signature\` with \`{"brandId": "...", "signature": "Jane Doe\\nHead of Sales, Acme\\nacme.com"}\` sets it: plain text, \`\\n\` between lines, at most 12 lines and 1,000 characters, no \`--\` line (it is added for you).
+- \`DELETE /v1/email-signature?brandId=...\` goes back to the default.
+A new signature applies to new email threads only; a thread keeps the one it started with.
+
 `;
 }
 
