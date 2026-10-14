@@ -795,13 +795,15 @@ export async function disconnectCrm(
 // ==================== GMAIL (google-service), per organization ====================
 //
 // The mailbox is connected by a Google sign-in round trip google-service owns (see
-// `lib/google-connect.ts`). Read-only Gmail scopes; nothing here sends mail.
+// `lib/google-connect.ts`). `scopes` = what the grant allows; a mailbox without
+// `gmail.send` cannot carry follow-up replies until it is reconnected (`canSendFrom`).
 
 const GoogleAccountSchema = z.object({
   email: z.string(),
   // A plain string: the producer owns this vocabulary ("active" | "gmail_unavailable" today).
   status: z.string(),
   gmailUnavailableReason: z.string().nullable(),
+  scopes: z.array(z.string()),
   connectedAt: z.string(),
 });
 
