@@ -62,7 +62,7 @@ export const CATALOG_GROUPS = [
   { key: "leads", title: "Lead data", note: "Finding the right people and checking their email." },
   { key: "research", title: "Web research", note: "Reading each prospect's site and news before writing." },
   { key: "ai", title: "AI writing & intelligence", note: "Writing emails, qualifying leads, finding your audience, answering you in chat. Priced per million tokens." },
-  { key: "sending", title: "Sending", note: "Each email and follow-up, sent from our own inboxes." },
+  { key: "sending", title: "Sending", note: "Each email and follow-up, sent from our own inboxes. The price depends on how sure we are the address exists, checked by BounceVerify before sending: valid, catch-all or unknown. Addresses BounceVerify marks invalid or risky, or cannot check, are never sent." },
   { key: "calls", title: "Calls and messages", note: "Calling or texting a prospect who asked for it." },
   { key: "notifications", title: "Emails we send you", note: "Replies forwarded to you, alerts and digests about your campaigns." },
   { key: "storage", title: "Storage", note: "Keeping files and pages we generate." },
