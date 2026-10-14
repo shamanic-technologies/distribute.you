@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
-import { OfferDocumentsResponseSchema, formatFileSize, offerDocumentRefusal } from "../src/lib/offer-documents";
+import { OfferDocumentsResponseSchema, formatFileSize, offerDocumentRefusal, opensInBrowser } from "../src/lib/offer-documents";
 
 const read = (rel: string) => readFileSync(join(__dirname, "..", "src", rel), "utf8");
 
@@ -56,5 +56,16 @@ describe("offer documents", () => {
     const api = read("lib/api.ts");
     expect(api).toContain("formData: form");
     expect(api).toContain('{ "Content-Type": "application/json", ...extraHeaders }');
+  });
+
+  it("opens in a tab only what a tab can show, downloads the rest under its own name", () => {
+    expect(opensInBrowser("application/pdf")).toBe(true);
+    expect(opensInBrowser("image/png")).toBe(true);
+    expect(opensInBrowser("text/plain; charset=utf-8")).toBe(true);
+    expect(opensInBrowser("application/vnd.openxmlformats-officedocument.wordprocessingml.document")).toBe(false);
+    expect(opensInBrowser("text/csv")).toBe(false);
+    const src = read("components/v2/offer-documents.tsx");
+    expect(src).toContain("if (!opensInBrowser(doc.contentType)) return download(doc);");
+    expect(src).toContain("a.download = doc.fileName;");
   });
 });

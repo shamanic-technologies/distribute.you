@@ -26,6 +26,16 @@ export const OfferDocumentWriteResponseSchema = z.object({ document: OfferDocume
 export const OFFER_DOCUMENT_ACCEPT =
   ".pdf,.docx,.pptx,.xlsx,.doc,.ppt,.xls,.csv,.txt,.md,.png,.jpg,.jpeg,.gif,.webp";
 
+/**
+ * Whether a browser tab can SHOW this file (PDF, image, plain text). Anything else (Word,
+ * PowerPoint, Excel, CSV) is downloaded under its own name instead: opened in a tab it left
+ * a blank page and a download named after a random blob id.
+ */
+export function opensInBrowser(contentType: string): boolean {
+  const t = contentType.split(";")[0].trim().toLowerCase();
+  return t === "application/pdf" || t.startsWith("image/") || t === "text/plain";
+}
+
 /** A size in plain words: "820 KB", "1.4 MB". Pure formatting of the served byte count. */
 export function formatFileSize(bytes: number): string {
   if (!Number.isFinite(bytes) || bytes < 0) return "—";
