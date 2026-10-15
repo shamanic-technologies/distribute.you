@@ -6,11 +6,8 @@ import { answerMatrixLink, listMatrixLinks, startMatrixLink, unlinkMatrixLink, t
 import { useAuthQuery, useQueryClient } from "@/lib/use-auth-query";
 import { CompanyLogo } from "@/components/company-logo";
 import { linkErrorMessage } from "@/lib/integration-write";
-import { accountsOfChannel, startMethods } from "@/lib/messaging-accounts";
+import { accountsOfChannel, linkPollMs, needsRelink as isLoggedOut, startMethods } from "@/lib/messaging-accounts";
 import { parsePastedHeaders, sessionValues } from "@/lib/browser-session-paste";
-
-/** While a code is on screen it refreshes on the vendor's schedule, so the read polls fast. */
-const WAITING_POLL_MS = 3_000;
 
 const CHANNEL: Record<string, { name: string; domain: string; blurb: string; risk?: string; qrSteps?: string }> = {
   whatsapp: { name: "WhatsApp", domain: "whatsapp.com", blurb: "Read your WhatsApp chats with each person, in their thread." },
@@ -40,7 +37,7 @@ const CHANNEL: Record<string, { name: string; domain: string; blurb: string; ris
 export function MessagingLinkRows({ brandId }: { brandId: string }) {
   const q = useAuthQuery(["matrixLinks", brandId], () => listMatrixLinks(brandId), {
     refetchInterval: (query: { state: { data?: { links: MatrixLink[]; accounts: MatrixLink[] } } }) =>
-      query.state.data?.accounts.some((l) => l.status === "waiting") ? WAITING_POLL_MS : false,
+      linkPollMs(query.state.data?.accounts ?? []),
   });
   if (q.isError && !q.data) {
     return <p className="p-5 text-sm text-gray-600">We could not read your messaging apps just now. Retrying.</p>;
@@ -221,7 +218,7 @@ function AccountRow({
 
   const waiting = link.status === "waiting";
   const linked = link.status === "linked";
-  const needsRelink = linked && (link.needsRelink === true || (!!link.bridgeState?.state && link.bridgeState.state !== "CONNECTED"));
+  const needsRelink = isLoggedOut(link);
   const busy = unlink.isPending || relink.isPending || answer.isPending;
   const form = waiting && link.input?.type === "user_input" ? link.input : null;
   // A web page cannot read another site's cookies: the customer copies one request
