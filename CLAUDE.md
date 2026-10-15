@@ -9,7 +9,6 @@ Claude Code loads a nested `CLAUDE.md` only when working in that directory. Read
 - `apps/admin/CLAUDE.md` (staff console on the box, config console, `/metrics`, audit pages, `/model`, investors).
 - `apps/landing/CLAUDE.md` (served static pages, clones/archives, blog, SEO/GEO, agent readiness, compare cluster).
 - `apps/docs/CLAUDE.md` (static export, discoverability).
-- `apps/desktop/CLAUDE.md` (Mac app: prepaid-only offer, user's own Claude Code CLI, CI-only build).
 
 ## Commands
 
@@ -97,7 +96,7 @@ No `release.sh hotfix` here (that is for backend semver services). The Hetzner b
 ## Architecture
 
 **Monorepo**: pnpm workspaces + Turborepo; roots `apps/`, `packages/`, `shared/`.
-- **Apps**: `apps/dashboard/` (port 3001, Next.js App Router, Clerk) · `apps/admin/` (staff console, on the box) · `apps/docs/` · `apps/landing/` · `apps/sales-cold-emails-landing/` · `apps/desktop/` (SwiftUI Mac app, private beta, built by CI; see its CLAUDE.md).
+- **Apps**: `apps/dashboard/` (port 3001, Next.js App Router, Clerk) · `apps/admin/` (staff console, on the box) · `apps/docs/` · `apps/landing/` · `apps/sales-cold-emails-landing/`.
 - **Extracted services (separate repos)**: api-service, mcp (github.com/shamanic-technologies/<name>).
 - **Packages** (published MCP servers, tsup ESM): mcp-sales-outreach · mcp-google-ads · mcp-influencer-pitch · mcp-journalist-pitch · mcp-podcaster-pitch · mcp-reddit-ads · mcp-thought-leader (`@distribute/*`).
 - **Shared libs**: `shared/auth` · `shared/content` · `shared/pictures` · `shared/runs-client` · `shared/types`.
@@ -108,7 +107,7 @@ No `release.sh hotfix` here (that is for backend semver services). The Hetzner b
 - **The cost is the CLIENT's, never ours** ("what it cost you", never "what a meeting costs us"). The client pays one number, margin invisible inside it. Equally banned: "at cost", "pass-through", "no markup". **Default offer (owner 2026-10-06): "The platform is free"; the client chooses how much goes to its outreach, billed at public catalogue prices (`/catalog`), prepaid, optional automatic reload, NO free trial.** Never state the minimum top-up ($100) publicly (not a selling point). "We match your first $100" is ONGOING (no end date) and shown ONLY as a top banner dated "Until <last day of the current month>" (`lib/promo-banner.ts`, rewritten per request), never the tagline or the pricing section. The $30 added at signup is an onboarding ADVANCE deducted from the first prepayment (pay $200: balance $30 + $170), never called a gift or free credit. "$1/day" is RETIRED everywhere. **Since 2026-10-14 every visitor gets the POSTPAID arm (card saved, nothing charged today, charged after the spend); the $99/month plan with a 3-day free trial is an out-of-draw arm**: stated ONLY on the `subscription` arm's own surfaces (`index-v2-subscription.html`, and dashboard signup copy gated on `lp_variant=subscription`), never on a shared one (blog incl. DB-only rows, compare, metadata, llms.txt, emails); sole exception `/terms`, which covers BOTH offers (owner 2026-10-11: required prepaid reload, plan auto-upgrade, no refunds); "no subscription, no seat, no setup fee, pause or cancel anytime" are TRUE.
 - **NAME models and LLMs on public copy, precisely (ENCOURAGED, owner 2026-10-13: « au contraire »)**: "Gemini 3 Flash", "Claude Opus 5.5", "Jev 1.13". Only internal jargon stays banned: "cross-org workflow", "best-performing playbook", "best rate" qualifying the live rate. The software is OPTIONAL (a client can send a website and never log in).
 - **Opens are DEPRECATED**: never show an open rate, "Opened" step or opens count anywhere (funnel is Sent, Click, Positive reply). **Agency sending model**: all outreach goes out from OUR domains/inboxes; copy about sender/domain/warmup/setup attributes the infrastructure to distribute, never "your sending domain".
-- **Stats are SINCE INCEPTION, never a 7 / 30 day window** (owner 2026-10-04, in caps), on the dashboard AND the Mac app: no window toggle; features-service serves the totals as `?windowDays=all`.
+- **Stats are SINCE INCEPTION, never a 7 / 30 day window** (owner 2026-10-04, in caps), on the dashboard: no window toggle; features-service serves the totals as `?windowDays=all`.
 - **No invented people or numbers** on public surfaces: a figure is a live server token, a sourced benchmark or a real named customer. A positive reply is called a POSITIVE REPLY everywhere customers read (owner-decided 2026-09-24).
 
 ## Cross-app backend rules (dashboard, admin, landing readers)

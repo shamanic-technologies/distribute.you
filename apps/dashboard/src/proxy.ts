@@ -31,10 +31,6 @@ const isPublicRoute = createRouteMatcher([
   // anonymous org through `/api/anon/*`, which carries its own signed session and its
   // own allowlist: this entry only decides that the SCREEN is reachable. EXACT.
   "/get-started",
-  // distribute for Mac's browser sign-in. Public so the first-run gate cannot bounce
-  // it to onboarding (DesktopConnectResume would bounce it back: a loop); the page
-  // sends a signed-out visitor to /sign-in itself. EXACT.
-  "/desktop/connect",
   "/api/public(.*)",
   "/api/anon(.*)",
   "/api/cron(.*)",
