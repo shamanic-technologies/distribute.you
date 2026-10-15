@@ -14,6 +14,7 @@ import { EmptyNote, Shimmer } from "@/components/v2/ui";
 import { V2Page } from "@/components/v2/setup-pages";
 import { useCopilotDock } from "@/components/v2/copilot-dock";
 import { PlusIcon } from "@phosphor-icons/react/dist/csr/Plus";
+import { CampaignsListNext, useCampaignsListPreview } from "@/components/v2/campaigns-list-next";
 
 /** What the "Create a campaign" button sends to the Copilot, as if typed and sent. */
 export const CREATE_CAMPAIGN_ASK = "Create a campaign";
@@ -27,6 +28,12 @@ export const CREATE_CAMPAIGN_ASK = "Create a campaign";
  * sidebar's Pipes section.
  */
 export function CampaignsOverviewPage() {
+  // Staff preview of the next layout (owner 2026-10-15), gated in its own module; else today's page.
+  if (useCampaignsListPreview()) return <CampaignsListNext />;
+  return <CampaignsOverviewPageCurrent />;
+}
+
+function CampaignsOverviewPageCurrent() {
   const { orgId, brandId } = useParams<{ orgId: string; brandId: string }>();
   const { offerId, settled } = useSelectedOffer();
   const copilot = useCopilotDock();
