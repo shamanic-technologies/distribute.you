@@ -1,0 +1,210 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<title>Draft: distribute.you, every way you make revenue</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fustat:wght@300;400;500;600&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/landing/v2/styles.css?v=17">
+<style>
+/* Draft page for owner review. Not linked, not in the sitemap, noindex. */
+.sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+.draft-bar { padding: 8px 16px; text-align: center; font-size: 13px; color: var(--muted); background: var(--surface); border-bottom: 1px solid var(--hair); }
+.top { display: flex; align-items: center; gap: 8px; max-width: var(--max); margin: 0 auto; padding: 18px 24px; }
+.top .brand { display: flex; align-items: center; gap: 10px; font-family: var(--font-display); font-weight: 500; font-size: 18px; color: var(--text); text-decoration: none; }
+.top .right { margin-left: auto; display: flex; gap: 4px; }
+
+.re-hero { padding: 72px 0 56px; }
+.re-hero .c-why { display: block; font-family: var(--font-display); font-size: 17px; color: var(--accent-text); margin-bottom: 18px; }
+.re-hero h1 { font-family: var(--font-display); font-weight: 500; font-size: clamp(38px, 6vw, 68px); line-height: 1.04; letter-spacing: -0.03em; max-width: 15ch; }
+.re-hero .lede { margin-top: 22px; max-width: 56ch; font-size: 19px; color: var(--muted); }
+.re-cta { margin-top: 30px; display: flex; flex-wrap: wrap; gap: 12px; align-items: center; }
+.re-cta form { display: flex; gap: 8px; flex: 1 1 380px; max-width: 520px; }
+.re-cta input { flex: 1; height: 48px; padding: 0 16px; font: inherit; font-size: 16px; border: 1px solid var(--hair-2); border-radius: 12px; background: #fff; }
+.re-cta input:focus-visible, .re-cta .btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.re-cta .free { font-size: 15px; color: var(--muted); }
+
+/* The one memorable element: the revenue chain, each step with its dollar value. */
+.chain { margin-top: 64px; }
+.chain ol { list-style: none; display: grid; grid-template-columns: repeat(5, 1fr); gap: 0; border: 1px solid var(--hair-2); border-radius: 20px; overflow: hidden; background: #fff; }
+.chain li { position: relative; padding: 22px 20px 20px; border-left: 1px solid var(--hair); }
+.chain li:first-child { border-left: 0; }
+.chain .c-step { font-size: 15px; color: var(--muted); }
+.chain .val { display: block; margin-top: 10px; font-family: var(--font-display); font-weight: 500; font-size: clamp(26px, 3vw, 38px); letter-spacing: -0.02em; }
+.chain .who { display: block; margin-top: 8px; font-size: 14px; color: var(--muted-2); }
+.chain li.end { background: var(--accent-50); }
+.chain li.end .val { color: var(--accent-text); }
+.chain .rate { position: absolute; top: 20px; right: 16px; font-size: 12px; padding: 2px 7px; border-radius: 100px; background: #fff; border: 1px solid var(--hair-2); color: var(--muted); }
+.chain figcaption { margin-top: 14px; font-size: 15px; color: var(--muted); max-width: 70ch; }
+
+.re-sec { padding: 88px 0; border-top: 1px solid var(--hair); }
+.re-sec h2 { font-family: var(--font-display); font-weight: 500; font-size: clamp(30px, 4vw, 44px); line-height: 1.1; letter-spacing: -0.02em; max-width: 22ch; }
+.re-sec .intro { margin-top: 14px; max-width: 60ch; font-size: 18px; color: var(--muted); }
+
+.plugs { margin-top: 40px; display: grid; grid-template-columns: repeat(5, 1fr); gap: 1px; background: var(--hair); border: 1px solid var(--hair); border-radius: 16px; overflow: hidden; }
+.plugs div { background: #fff; padding: 24px; }
+.plugs h3 { font-size: 17px; font-weight: 600; }
+.plugs p { margin-top: 8px; font-size: 16px; color: var(--muted); }
+
+.phases { margin-top: 40px; display: grid; grid-template-columns: repeat(4, 1fr); gap: 28px; counter-reset: ph; }
+.phases div { counter-increment: ph; padding-top: 18px; border-top: 2px solid var(--text); }
+.phases div::before { content: counter(ph); display: block; font-family: var(--font-display); font-size: 15px; color: var(--muted-2); margin-bottom: 6px; }
+.phases h3 { font-family: var(--font-display); font-weight: 500; font-size: 24px; }
+.phases p { margin-top: 10px; font-size: 16px; color: var(--muted); }
+
+.race { margin-top: 40px; display: grid; gap: 10px; max-width: 760px; }
+.race .row { display: grid; grid-template-columns: 1fr auto; gap: 16px; align-items: center; padding: 16px 20px; border: 1px solid var(--hair-2); border-radius: 14px; }
+.race .row b { font-weight: 500; }
+.race .row span { font-size: 15px; color: var(--muted); }
+.race .row.c-win { border-color: var(--accent); background: var(--accent-50); }
+.race .row.c-win span { color: var(--accent-text); font-weight: 500; }
+
+.c-fit { margin-top: 36px; display: grid; grid-template-columns: repeat(2, 1fr); gap: 14px 40px; max-width: 900px; list-style: none; }
+.c-fit li { padding-left: 26px; position: relative; font-size: 18px; }
+.c-fit li::before { content: ""; position: absolute; left: 0; top: 9px; width: 12px; height: 12px; border-radius: 50%; background: var(--accent-100); border: 2px solid var(--accent); }
+
+.price { display: grid; grid-template-columns: 1.2fr 1fr; gap: 48px; align-items: start; }
+.price ul { list-style: none; display: grid; gap: 12px; font-size: 18px; }
+.price .c-note { margin-top: 18px; font-size: 15px; color: var(--muted); }
+.price .c-note a { color: var(--accent-text); }
+
+.close { padding: 96px 0 120px; text-align: center; border-top: 1px solid var(--hair); }
+.close h2 { font-family: var(--font-display); font-weight: 500; font-size: clamp(32px, 5vw, 52px); letter-spacing: -0.02em; }
+.close .re-cta { justify-content: center; }
+
+@media (max-width: 1100px) { .plugs { grid-template-columns: 1fr 1fr; } .plugs div:last-child { grid-column: span 2; } }
+@media (max-width: 900px) {
+  .chain ol { grid-template-columns: 1fr; }
+  .chain li { border-left: 0; border-top: 1px solid var(--hair); padding: 18px 20px; }
+  .chain li:first-child { border-top: 0; }
+  .chain .val { margin-top: 4px; }
+  .phases { grid-template-columns: 1fr 1fr; }
+  .c-fit, .price { grid-template-columns: 1fr; }
+}
+@media (max-width: 560px) { .phases, .plugs { grid-template-columns: 1fr; } .plugs div:last-child { grid-column: auto; } .re-hero { padding-top: 40px; } }
+</style>
+</head>
+<body>
+<div class="draft-bar">Draft for review. Not linked from the site and hidden from search engines.</div>
+
+<header class="top">
+  <a class="brand" href="/"><img src="/landing/v2/assets/logo-mark.svg" alt="" width="26" height="26">distribute.you</a>
+  <div class="right">
+    <a class="btn btn-ghost" href="https://dashboard.distribute.you/sign-in">Log in</a>
+    <a class="btn btn-primary" href="https://dashboard.distribute.you/start">Start free</a>
+  </div>
+</header>
+
+<main>
+<section class="re-hero">
+  <div class="wrap">
+    <span class="c-why">Revenue made easy.</span>
+    <h1>We run every way you make revenue, and keep what pays.</h1>
+    <p class="lede">We find your buyers, write to them, answer the ones who reply and get them on a call. Every step shows what it is worth to you.</p>
+    <div class="re-cta">
+      <form action="https://dashboard.distribute.you/start" method="get">
+        <label class="sr-only" for="site-top">Your website</label>
+        <input id="site-top" name="url" type="text" autocomplete="off" placeholder="Paste your website, e.g., acme.com">
+        <button class="btn btn-accent btn-lg" type="submit">Start free</button>
+      </form>
+      <span class="free">The platform is free.</span>
+    </div>
+
+    <figure class="chain" aria-label="What each step is worth">
+      <ol>
+        <li><span class="c-step">New lead</span><span class="val">Found</span><span class="who">by us, or sent by you</span></li>
+        <li><span class="c-step">Positive reply</span><span class="val">$52</span><span class="who">we answer in a minute</span></li>
+        <li><span class="rate">19%</span><span class="c-step">Meeting booked</span><span class="val">$276</span><span class="who">on your calendar</span></li>
+        <li><span class="rate">17%</span><span class="c-step">Meeting attended</span><span class="val">$1,625</span><span class="who">your call</span></li>
+        <li class="end"><span class="rate">65%</span><span class="c-step">Paid client</span><span class="val">$2,500</span><span class="who">what a client is worth</span></li>
+      </ol>
+      <figcaption>What each step is worth to Doc Dinners, who sells patient events to clinics. Measured on their own CRM: a client is worth $2,500 to them, and each step carries its share of that.</figcaption>
+    </figure>
+  </div>
+</section>
+
+<section class="re-sec">
+  <div class="wrap">
+    <h2>Start from what you already have.</h2>
+    <p class="intro">Your website is enough to begin. Every source of leads you plug in gets its own play, run the moment something happens.</p>
+    <div class="plugs">
+      <div><h3>Your website</h3><p>We read what you sell and find the people who buy it.</p></div>
+      <div><h3>Your forms</h3><p>A new form fill gets an answer within a minute and an invitation to book.</p></div>
+      <div><h3>Your CRM</h3><p>The leads who never booked, and the no-shows, hear from you again.</p></div>
+      <div><h3>Your replies</h3><p>An interested reply rings your phone so you can call them right away.</p></div>
+      <div><h3>Leads you send us</h3><p>Push a lead or a written email from your own tools, and we take it from there.</p></div>
+    </div>
+  </div>
+</section>
+
+<section class="re-sec" id="how">
+  <div class="wrap">
+    <h2>We run each step, from first touch to paid client.</h2>
+    <div class="phases">
+      <div><h3>Find</h3><p>The right people, from live buying signals and your own CRM.</p></div>
+      <div><h3>Reach</h3><p>A personal email for each one, sent from our own domains.</p></div>
+      <div><h3>Convert</h3><p>Interested people get answered in a minute and booked on your calendar.</p></div>
+      <div><h3>Get paid</h3><p>Follow-ups for no-shows and for signups who have not paid yet.</p></div>
+    </div>
+  </div>
+</section>
+
+<section class="re-sec">
+  <div class="wrap">
+    <h2>On every step, the best play wins.</h2>
+    <p class="intro">Several ways to run each step race side by side: other emails, other AI models, other timings. Each one is measured on the revenue it brings. The winner gets the budget, and the next challenger starts.</p>
+    <div class="race" aria-label="Example: three ways to answer a positive reply">
+      <div class="row c-win"><b>Answer in under a minute, then call</b><span>Kept</span></div>
+      <div class="row"><b>Answer in under a minute, by email only</b><span>Still testing</span></div>
+      <div class="row"><b>Answer the next morning</b><span>Dropped</span></div>
+    </div>
+  </div>
+</section>
+
+<section class="re-sec">
+  <div class="wrap">
+    <h2>Made for founders who sell on a call.</h2>
+    <ul class="c-fit">
+      <li>You sell a service or a B2B product, worth $2k to $20k a client.</li>
+      <li>You run sales yourself, or with a small team.</li>
+      <li>You already get leads, and some slip away before the call.</li>
+      <li>You want to know which part of your spend brings clients.</li>
+    </ul>
+  </div>
+</section>
+
+<section class="re-sec" id="pricing">
+  <div class="wrap price">
+    <div>
+      <h2>The platform is free.</h2>
+      <p class="intro">You choose how much goes to your outreach. Every action is billed at our public catalogue prices, from the balance you add.</p>
+    </div>
+    <div>
+      <ul>
+        <li>Add balance when you want.</li>
+        <li>Pause or stop anytime.</li>
+        <li>Every step shows what it is worth to you.</li>
+      </ul>
+      <p class="c-note">See every price in the <a href="/catalog">catalogue</a>.</p>
+    </div>
+  </div>
+</section>
+
+<section class="close">
+  <div class="wrap">
+    <h2>Your first email goes out today.</h2>
+    <div class="re-cta">
+      <form action="https://dashboard.distribute.you/start" method="get">
+        <label class="sr-only" for="site-bottom">Your website</label>
+        <input id="site-bottom" name="url" type="text" autocomplete="off" placeholder="Paste your website, e.g., acme.com">
+        <button class="btn btn-accent btn-lg" type="submit">Start free</button>
+      </form>
+    </div>
+  </div>
+</section>
+</main>
+</body>
+</html>
