@@ -49,6 +49,7 @@ import { useSelectedOfferIfAny } from "@/components/v2/selected-offer";
 import { RoiLabel } from "@/components/v2/roi-label";
 import { expectedReasonWords, roiToShow } from "@/lib/expected-return";
 import { clickedControlLabel, pushRecentAction, type RecentAction } from "@/lib/recent-actions";
+import { nudgeDelayMs, sessionIdFromUIStream } from "@/lib/copilot-nudge";
 
 /**
  * The Copilot (owner 2026-10-09, GA 2026-10-10), drawn inside the right panel. A reload shows the last
@@ -246,7 +247,7 @@ export function CopilotChat({ orgId, brandId, headerAction }: { orgId: string; b
   const scrollRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const { figures, settled, revPending, winPending } = useAccountFigures(brandId);
-  const { pending: askedText, clearPending } = useCopilotDock();
+  const { open: dockOpen, pending: askedText, clearPending } = useCopilotDock();
 
   // What the model reads on every turn: where the user is, the pages it may open, and the
   // account's served figures (it cites them, it never computes one).
@@ -270,6 +271,8 @@ export function CopilotChat({ orgId, brandId, headerAction }: { orgId: string; b
   // model sees what they are trying to do. The panel stays mounted while hidden, so this
   // records even before the Copilot is opened.
   const recentActionsRef = useRef<RecentAction[]>([]);
+  // Bumped on each recorded action: re-arms the proactive help timer below.
+  const [actionTick, setActionTick] = useState(0);
   const pathnameRef = useRef(pathname);
   useEffect(() => {
     pathnameRef.current = pathname;
@@ -279,6 +282,7 @@ export function CopilotChat({ orgId, brandId, headerAction }: { orgId: string; b
       label: pathname,
       page: pathname,
     });
+    setActionTick((n) => n + 1);
   }, [pathname]);
   useEffect(() => {
     const onClick = (e: MouseEvent) => {
@@ -290,6 +294,7 @@ export function CopilotChat({ orgId, brandId, headerAction }: { orgId: string; b
         label,
         page: pathnameRef.current,
       });
+      setActionTick((n) => n + 1);
     };
     document.addEventListener("click", onClick, true);
     return () => document.removeEventListener("click", onClick, true);
@@ -417,6 +422,64 @@ export function CopilotChat({ orgId, brandId, headerAction }: { orgId: string; b
     setOpenerWanted(false);
     sendMessage({ text: COPILOT_OPENER });
   }, [openerWanted, askedText, phase, settled, busy, sendMessage]);
+
+  // Proactive help (owner 2026-10-15): while the Copilot is open and idle, a moment after
+  // the user opens a page or stops clicking, chat-service's Jev decides whether the Copilot
+  // speaks first. Quiet = nothing shown. Speak = the turn is stored without a visible user
+  // message, so the conversation is reloaded to show it with its cards.
+  const busyRef = useRef(busy);
+  useEffect(() => {
+    busyRef.current = busy;
+  }, [busy]);
+  const nudgeAskedAtRef = useRef<string | null>(null);
+  const nudgingRef = useRef(false);
+  const askNudge = useCallback(async () => {
+    if (nudgingRef.current) return;
+    nudgingRef.current = true;
+    nudgeAskedAtRef.current = new Date().toISOString();
+    try {
+      const res = await fetch("/api/v1/chat", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          nudge: true,
+          configKey: COPILOT_CONFIG_KEY,
+          ...(sessionIdRef.current ? { sessionId: sessionIdRef.current } : {}),
+          context: { ...contextRef.current, recentActions: recentActionsRef.current },
+        }),
+      });
+      if (!res.ok) {
+        // Out of credits is a normal quiet: the user is told when they write.
+        if (res.status !== 402) console.error("[copilot] proactive help request failed", res.status, await res.text());
+        return;
+      }
+      if (res.headers.get("content-type")?.includes("application/json")) return;
+      const sid = sessionIdFromUIStream(await res.text()) ?? sessionIdRef.current;
+      if (!sid) {
+        console.error("[copilot] proactive help answered with no session id");
+        return;
+      }
+      sessionIdRef.current = sid;
+      saveSessionId(storageKey, sid);
+      const h = await getChatSessionHistory(sid);
+      // The user started a turn meanwhile: the stored answer shows on the next load.
+      if (busyRef.current) return;
+      setMessages(historyToUIMessages(h.messages));
+      setHistoryChoices(choicesByTurn(h.messages));
+      setHistoryPages(openPagesByTurn(h.messages));
+      setHistoryCredits(creditsRequiredByTurn(h.messages));
+    } finally {
+      nudgingRef.current = false;
+    }
+  }, [storageKey, setMessages]);
+  useEffect(() => {
+    if (!dockOpen || phase !== "ready" || busy || draft.trim()) return;
+    const actions = recentActionsRef.current;
+    const delay = nudgeDelayMs(actions[actions.length - 1], nudgeAskedAtRef.current);
+    if (delay === null) return;
+    const t = setTimeout(() => void askNudge(), delay);
+    return () => clearTimeout(t);
+  }, [actionTick, dockOpen, phase, busy, draft, askNudge]);
 
   const newChat = useCallback(() => {
     stop();
