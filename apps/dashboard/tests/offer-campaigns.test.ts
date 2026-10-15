@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { campaignsOfOffer, campaignTag, sortCampaigns, type OfferCampaign } from "../src/lib/offer-campaigns";
+import { SERVED_STEPS } from "./fixtures/served-steps";
 
 const step = (label: string, key: string) => ({ key, label });
 
@@ -33,8 +34,8 @@ describe("offer campaigns", () => {
     ]);
   });
   it("tags a campaign by when it works", () => {
-    expect(campaignTag({ reactive: false, fromKey: null, fromLabel: null })).toBe("Daily Proactive");
-    expect(campaignTag({ reactive: true, fromKey: "conversation", fromLabel: "Positive reply" })).toBe("Reactive on positive replies");
+    expect(campaignTag({ reactive: false, fromKey: null, fromLabel: null }, SERVED_STEPS)).toBe("Daily Proactive");
+    expect(campaignTag({ reactive: true, fromKey: "conversation", fromLabel: "Positive reply" }, SERVED_STEPS)).toBe("Reactive on positive replies");
   });
   it("sorts on first, then proactive, then ROI high to low, unmeasured last", () => {
     const c = (name: string, reactive: boolean, roi: number | null): OfferCampaign => ({

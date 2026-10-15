@@ -36,6 +36,8 @@ export interface StepDef {
   label: string;
   /** 3 to 5 words a customer reads under the label (features-service `shortDescription`). */
   description?: string;
+  /** The step in the plural, as a count heading reads it ("Leads", "Positive replies"; features-service `pluralLabel`). */
+  pluralLabel?: string;
 }
 
 /** One leg, with both of its steps resolved. `fromKey` is null for an entry leg. */
@@ -60,6 +62,12 @@ export interface TriggerDef {
   description: string | null;
   /** Phosphor icon name (kebab-case), as served. */
   icon: string | null;
+  /** "outcome" (a step reached; its label IS the outcome's label, the UI draws the lightning glyph) or "condition". Null = not served. */
+  type: "outcome" | "condition" | null;
+  /** The step an outcome trigger fires on; null for a condition or when not served. */
+  outcomeKey: string | null;
+  /** Whether a campaign can be set off by it; null = not served. */
+  callable: boolean | null;
 }
 
 /** How a (channel, leg) runs: on its own budget, or on demand when its trigger fires. */
@@ -94,7 +102,7 @@ export const EMPTY_LEG_CATALOGUE: LegCatalogue = {
 /** The public catalogue body, read structurally: a row missing what this module needs
  *  contributes nothing rather than throwing. */
 export interface PublicCatalogueWire {
-  steps?: Array<{ key?: unknown; label?: unknown; shortDescription?: unknown }> | null;
+  steps?: Array<{ key?: unknown; label?: unknown; shortDescription?: unknown; pluralLabel?: unknown }> | null;
   legs?: Array<{
     legKey?: unknown;
     fromStep?: { key?: unknown; label?: unknown } | null;
@@ -115,7 +123,15 @@ export interface PublicCatalogueWire {
       triggerId?: unknown;
     }> | null;
   }> | null;
-  triggers?: Array<{ id?: unknown; label?: unknown; description?: unknown; icon?: unknown }> | null;
+  triggers?: Array<{
+    id?: unknown;
+    label?: unknown;
+    description?: unknown;
+    icon?: unknown;
+    type?: unknown;
+    outcomeKey?: unknown;
+    callable?: unknown;
+  }> | null;
 }
 
 function str(v: unknown): string | null {
@@ -141,7 +157,10 @@ export function legCatalogueFromWire(body: PublicCatalogueWire | null | undefine
     const key = str(s?.key);
     const label = str(s?.label);
     const description = str(s?.shortDescription);
-    if (key && label && !steps.has(key)) steps.set(key, description ? { key, label, description } : { key, label });
+    const pluralLabel = str(s?.pluralLabel);
+    if (key && label && !steps.has(key)) {
+      steps.set(key, { key, label, ...(description ? { description } : {}), ...(pluralLabel ? { pluralLabel } : {}) });
+    }
   }
   const labelOf = (key: string | null, served: unknown): string | null => {
     if (!key) return null;
@@ -195,7 +214,10 @@ export function legCatalogueFromWire(body: PublicCatalogueWire | null | undefine
   for (const t of body.triggers ?? []) {
     const id = str(t?.id);
     const label = str(t?.label);
-    if (id && label && !triggers.has(id)) triggers.set(id, { id, label, description: str(t?.description), icon: str(t?.icon) });
+    if (!id || !label || triggers.has(id)) continue;
+    const type = t?.type === "outcome" || t?.type === "condition" ? t.type : null;
+    const callable = typeof t?.callable === "boolean" ? t.callable : null;
+    triggers.set(id, { id, label, description: str(t?.description), icon: str(t?.icon), type, outcomeKey: str(t?.outcomeKey), callable });
   }
   return { steps, legs, legsByChannel, crewNames, campaignNames, modes, triggers };
 }
@@ -272,4 +294,28 @@ export function legKeyForSteps(
 export function stepLabel(catalogue: LegCatalogue, stepKey: string | null | undefined): string | null {
   if (!stepKey) return null;
   return catalogue.steps.get(stepKey)?.label ?? null;
+}
+
+const missingPlural = new Set<string>();
+
+/**
+ * A step's name in the plural, as features-service serves it (`pluralLabel`: "Leads",
+ * "Positive replies", "Meetings booked"). The producer owns the word, so nothing here
+ * pluralizes. A step the catalogue carries without a plural is a producer gap: logged
+ * once, and the served singular reads instead. While the catalogue has not answered
+ * (no steps at all) the singular reads silently.
+ */
+export function stepPluralLabel(
+  catalogue: Pick<LegCatalogue, "steps">,
+  stepKey: string | null | undefined,
+  singular: string,
+): string {
+  if (!stepKey) return singular;
+  const plural = catalogue.steps.get(stepKey)?.pluralLabel;
+  if (plural) return plural;
+  if (catalogue.steps.size > 0 && !missingPlural.has(stepKey)) {
+    missingPlural.add(stepKey);
+    console.error("[legs] features-service serves no pluralLabel for this step", { stepKey, singular });
+  }
+  return singular;
 }

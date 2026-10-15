@@ -7,7 +7,7 @@ import { campaignModeFor, legCatalogueFromWire } from "../src/lib/legs";
 // proactive or reactive, a reactive one names the trigger that asks for it.
 const catalogue = legCatalogueFromWire({
   steps: [
-    { key: "lead_found", label: "Lead found" },
+    { key: "lead_found", label: "Lead", pluralLabel: "Leads" },
     { key: "conversation", label: "Positive reply" },
     { key: "meeting_booked", label: "Meeting booked" },
   ],
@@ -29,8 +29,8 @@ const catalogue = legCatalogueFromWire({
     { slug: "older-producer", stepTransitions: [{ legKey: "start_to_lead_found", to: { key: "lead_found" } }] },
   ],
   triggers: [
-    { id: "lead_requested", label: "Lead requested", description: "A campaign needs a new person to contact.", icon: "user-focus" },
-    { id: "positive_reply_received", label: "Positive reply", description: "A prospect replied with interest.", icon: "thumbs-up" },
+    { id: "lead_requested", label: "Lead requested", description: "A campaign needs a new person to contact.", icon: "user-focus", type: "condition", outcomeKey: null, callable: true },
+    { id: "positive_reply_received", label: "Positive reply", description: "A prospect replied with interest.", icon: "thumbs-up", type: "outcome", outcomeKey: "conversation", callable: true },
   ],
 });
 
@@ -44,7 +44,16 @@ describe("campaignModeFor", () => {
   it("a reactive leg carries its trigger, label and icon as served", () => {
     expect(campaignModeFor(catalogue, "ai-meeting-booking", "conversation_to_meeting_booked")).toEqual({
       mode: "reactive",
-      trigger: { id: "positive_reply_received", label: "Positive reply", description: "A prospect replied with interest.", icon: "thumbs-up" },
+      // An outcome trigger is named by its outcome; the lightning is a glyph the UI draws (v0.179.231).
+      trigger: {
+        id: "positive_reply_received",
+        label: "Positive reply",
+        description: "A prospect replied with interest.",
+        icon: "thumbs-up",
+        type: "outcome",
+        outcomeKey: "conversation",
+        callable: true,
+      },
     });
     const sourcing = campaignModeFor(catalogue, "sourcing-apollo-cold-filters", "start_to_lead_found");
     expect(sourcing?.mode === "reactive" && sourcing.trigger?.label).toBe("Lead requested");

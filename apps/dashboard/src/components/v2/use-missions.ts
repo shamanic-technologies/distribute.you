@@ -171,7 +171,7 @@ export function useMissions(orgId: string, brandId: string, { allOffers = false 
         featureSlug: o.featureSlug,
         legKey: o.legKey,
         leg,
-        trigger: crewTrigger(leg),
+        trigger: crewTrigger(legCatalogue, leg),
         offered: true,
       });
     }
@@ -183,7 +183,7 @@ export function useMissions(orgId: string, brandId: string, { allOffers = false 
         featureSlug: m.row.campaign.featureSlug ?? "",
         legKey: m.row.campaign.legKey ?? null,
         leg: m.leg,
-        trigger: crewTrigger(m.leg),
+        trigger: crewTrigger(legCatalogue, m.leg),
         offered: false,
       };
       held.missions += 1;

@@ -35,7 +35,7 @@ export function OfferSourceOverlap({
   return (
     <section className="mt-8">
       <SectionTitle count={pending || !overlap ? null : overlap.multiSourceLeads}>Found by several sources</SectionTitle>
-      <p className="k-fg2 -mt-1 mb-3 text-[13px]">A lead found by two sources counts in both.</p>
+      <p className="k-fg2 -mt-1 mb-3 text-[13px]">A lead from two sources counts in both.</p>
       {pending ? (
         <div className="space-y-2">
           <Shimmer className="h-10 rounded-[10px]" />

@@ -6875,6 +6875,8 @@ const PublicChannelStepSchema = z.object({
   key: z.string(),
   label: z.string(),
   description: z.string(),
+  /** The step in the plural ("Leads", "Positive replies"; features-service v0.179.231). */
+  pluralLabel: z.string().nullish(),
 });
 
 /**

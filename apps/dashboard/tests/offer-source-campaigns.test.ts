@@ -15,6 +15,7 @@ const body = parseOfferSalesPaths(JSON.parse(read("tests/fixtures/offer-sales-pa
 const label = (r: string | null) => r;
 
 import { campaignTag } from "../src/lib/offer-campaigns";
+import { SERVED_STEPS } from "./fixtures/served-steps";
 import { salesPathAvatarSrc } from "../src/lib/sales-path-avatars";
 
 describe("source campaigns read from the real prod body", () => {
@@ -45,7 +46,7 @@ describe("source campaigns read from the real prod body", () => {
 
   it("a source reads Reactive on outreach and has a face (owner 2026-10-07)", () => {
     for (const s of sources) {
-      expect(campaignTag(s)).toBe("Reactive on outreach");
+      expect(campaignTag(s, SERVED_STEPS)).toBe("Reactive on outreach");
       expect(salesPathAvatarSrc(s.name!)).not.toBeNull();
       expect(fs.existsSync(path.join(__dirname, "..", "public", salesPathAvatarSrc(s.name!)!))).toBe(true);
     }

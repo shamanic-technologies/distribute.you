@@ -3568,7 +3568,17 @@ export async function getLeadQualification(leadId: string, brandId: string, offe
  */
 const StepRefSchema = z.object({ key: z.string(), label: z.string().optional() });
 const PublicCatalogueSchema = z.object({
-  steps: z.array(z.object({ key: z.string(), label: z.string(), shortDescription: z.string().nullish() })).optional(),
+  steps: z
+    .array(
+      z.object({
+        key: z.string(),
+        label: z.string(),
+        shortDescription: z.string().nullish(),
+        /** The step in the plural ("Leads", "Positive replies"; features-service v0.179.231). */
+        pluralLabel: z.string().nullish(),
+      }),
+    )
+    .optional(),
   legs: z
     .array(
       z.object({
@@ -3612,11 +3622,31 @@ const PublicCatalogueSchema = z.object({
             minimumMonthlyBudgetCents: z.number().int().nullish(),
             /** True when the leg starts from a step a lead reached (it reacts, never prospects). */
             reactive: z.boolean().optional(),
+            /** How this (channel x leg) runs; read by `campaignModeFor`. Undeclared, zod strips it and no mode ever reads. */
+            mode: z.string().nullish(),
+            /** The trigger a reactive (channel x leg) waits on, an id in `triggers[]`. */
+            triggerId: z.string().nullish(),
           }),
         )
         .optional(),
     }),
   ),
+  /** Every trigger type (features-service); `lib/legs.ts` keys them by id. Optional for an older producer. */
+  triggers: z
+    .array(
+      z.object({
+        id: z.string(),
+        label: z.string(),
+        description: z.string().nullish(),
+        icon: z.string().nullish(),
+        /** "outcome" (a step reached; its label is the outcome's, the UI draws the lightning) or "condition". */
+        type: z.string().nullish(),
+        /** The step an outcome trigger fires on. */
+        outcomeKey: z.string().nullish(),
+        callable: z.boolean().nullish(),
+      }),
+    )
+    .optional(),
 });
 
 export type PublicCatalogue = z.infer<typeof PublicCatalogueSchema>;
@@ -3635,7 +3665,7 @@ function parsePublicCatalogue(raw: unknown, label: string): PublicCatalogue {
 /** One catalogue step as the public step vocabulary serves it (features-service `GET /public/catalogue/steps`). */
 const PublicCatalogueStepsSchema = z
   .object({
-    rows: z.array(z.object({ key: z.string(), name: z.string(), icon: z.string() }).passthrough()),
+    rows: z.array(z.object({ key: z.string(), name: z.string(), icon: z.string(), pluralName: z.string().nullish() }).passthrough()),
   })
   .passthrough();
 export type PublicCatalogueStep = z.infer<typeof PublicCatalogueStepsSchema>["rows"][number];

@@ -40,6 +40,7 @@ import { FunnelCampaignLine } from "@/components/v2/funnel-campaigns";
 import { PathAvatar } from "@/components/v2/offer-sales-paths";
 import { CampaignLeg } from "@/components/v2/offer-campaigns";
 import { campaignTag } from "@/lib/offer-campaigns";
+import { useLegCatalogue } from "@/lib/use-leg-catalogue";
 import { useAuthQuery } from "@/lib/use-auth-query";
 import { STEP_KEY_FOR_LEAD_STAGE } from "@/lib/step-marks";
 import { CrewMark } from "@/components/v2/crew-mark";
@@ -621,6 +622,7 @@ function MeetingLine({ lead, at, mission, href }: { lead: Lead; at: string | nul
 
 function CampaignLine({ c }: { c: OngoingCampaign }) {
   const { m, name, campaign } = c;
+  const catalogue = useLegCatalogue();
   const invested = m.row.revenue?.committedCostUsd ?? null;
   return (
     <Link href={m.href} className="k-hover block px-4 py-3 first:rounded-t-[12px] last:rounded-b-[12px]">
@@ -642,7 +644,7 @@ function CampaignLine({ c }: { c: OngoingCampaign }) {
           campaigns has no caps: its money is what it spent. */}
       <span className="k-fg3 mt-1.5 flex items-center justify-between gap-2 text-[12px] tabular-nums">
         <span className="truncate">
-          {campaign ? campaignTag(campaign) : "—"}
+          {campaign ? campaignTag(campaign, catalogue) : "—"}
         </span>
         <span className="shrink-0">{invested != null ? `${formatUsdAdaptive(invested)} spent` : "—"}</span>
       </span>

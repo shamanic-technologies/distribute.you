@@ -218,7 +218,7 @@ private let bucketForStep: [String: String] = [
 ]
 private let postsStep = "posts"
 private let plural: [String: String] = [
-    leadFoundStep: "Leads found", "conversation": "Positive replies", "website_visit": "Website visits",
+    leadFoundStep: "Leads", "conversation": "Positive replies", "website_visit": "Website visits",
     "meeting_booked": "Meetings booked", "meeting_attended": "Meetings attended", "signup": "Signups",
     "form_submitted": "Form submissions", "paid_client": "Paid clients", postsStep: "Posts",
 ]

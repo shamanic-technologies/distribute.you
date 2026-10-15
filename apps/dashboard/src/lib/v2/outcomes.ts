@@ -1,13 +1,15 @@
 /**
- * OUTCOMES (owner 2026-10-10): a step a RUNNING campaign produces (Leads found, Website
+ * OUTCOMES (owner 2026-10-10): a step a RUNNING campaign produces (Leads, Website
  * visits, Positive replies, Meetings booked...). The sidebar lists one entry per step the
  * selected offer's ON campaigns land on; its page lists the items that reached it, each
- * read from the service that serves them. Nothing is counted or listed here.
+ * read from the service that serves them. Nothing is counted or listed here, and no step
+ * is named here: its plural is features-service's `pluralLabel` (owner 2026-10-15).
  *
  * Alias-free so it carries real unit tests.
  */
 import { canonicalStepKey } from "../step-marks";
 import { LEAD_FOUND_STEP } from "../outbound-leg-key";
+import { stepPluralLabel, type LegCatalogue } from "../legs";
 import type { LeadBucket } from "../leads-server-page";
 
 /** Where an outcome's items are served. */
@@ -41,18 +43,8 @@ const BUCKET_FOR_STEP: Record<string, LeadBucket> = {
   booking_call: "booking_call",
 };
 
-const PLURAL: Record<string, string> = {
-  [LEAD_FOUND_STEP]: "Leads found",
-  conversation: "Positive replies",
-  website_visit: "Website visits",
-  meeting_booked: "Meetings booked",
-  meeting_attended: "Meetings attended",
-  signup: "Signups",
-  form_submitted: "Form submissions",
-  paid_client: "Paid clients",
-  booking_call: "Booking calls",
-  posts: "Posts",
-};
+/** A publishing campaign's outcome is its posts: not a catalogue step, so it is named here. */
+const POSTS_LABEL = "Posts";
 
 /**
  * The steps from the most advanced (a paid client) to the least (a lead found): the
@@ -88,13 +80,20 @@ export function isPublishingChannel(featureSlug: string | null | undefined): boo
   return !!featureSlug && /-publishing$/.test(featureSlug);
 }
 
-/** The outcome one campaign produces: the step its leg lands on. Null for a campaign with no known leg. */
+/** The catalogue's steps, as `outcomeOf` reads them (the served singular and plural). */
+export type OutcomeSteps = Pick<LegCatalogue, "steps">;
+
+/**
+ * The outcome one campaign produces: the step its leg lands on, named by the catalogue's
+ * served plural. Null for a campaign with no known leg.
+ */
 export function outcomeOf(
+  catalogue: OutcomeSteps,
   featureSlug: string | null | undefined,
   toKey: string | null | undefined,
   toLabel?: string | null,
 ): Outcome | null {
-  if (isPublishingChannel(featureSlug)) return { key: POSTS_STEP, label: PLURAL[POSTS_STEP], items: { kind: "posts" } };
+  if (isPublishingChannel(featureSlug)) return { key: POSTS_STEP, label: POSTS_LABEL, items: { kind: "posts" } };
   if (!toKey) return null;
   const key = canonicalStepKey(toKey);
   const bucket = BUCKET_FOR_STEP[key];
@@ -103,22 +102,24 @@ export function outcomeOf(
     : key === LEAD_FOUND_STEP
       ? { kind: "leads-found" }
       : { kind: "unavailable" };
-  return { key, label: PLURAL[key] ?? toLabel ?? key, items };
+  const singular = toLabel ?? catalogue.steps.get(key)?.label ?? key;
+  return { key, label: stepPluralLabel(catalogue, key, singular), items };
 }
 
 /** The outcome a lead-service bucket token names (crm-service keys its outcome steps on them). Null for a bucket no step maps to. */
-export function outcomeOfBucket(bucket: string): Outcome | null {
+export function outcomeOfBucket(catalogue: OutcomeSteps, bucket: string): Outcome | null {
   const key = Object.keys(BUCKET_FOR_STEP).find((k) => BUCKET_FOR_STEP[k] === bucket);
-  return key ? outcomeOf(null, key) : null;
+  return key ? outcomeOf(catalogue, null, key) : null;
 }
 
 /** One entry per step, in the order the campaigns come (the sidebar's campaign order). */
 export function outcomesOf(
+  catalogue: OutcomeSteps,
   campaigns: readonly { featureSlug: string | null | undefined; toKey: string | null | undefined; toLabel?: string | null }[],
 ): Outcome[] {
   const seen = new Map<string, Outcome>();
   for (const c of campaigns) {
-    const o = outcomeOf(c.featureSlug, c.toKey, c.toLabel);
+    const o = outcomeOf(catalogue, c.featureSlug, c.toKey, c.toLabel);
     if (o && !seen.has(o.key)) seen.set(o.key, o);
   }
   return [...seen.values()];

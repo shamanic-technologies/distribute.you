@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { OFFERED_CREWS, crewFor, crewTrigger } from "../src/lib/v2/crews";
+import { SERVED_STEPS } from "./fixtures/served-steps";
 import { crewNameFor, legCatalogueFromWire, legFor } from "../src/lib/legs";
 
 // Excerpt of GET /public/channels as features-service serves it in production
@@ -50,7 +51,7 @@ describe("offered crews", () => {
 
 describe("crewTrigger", () => {
   it("an entry leg works daily", () => {
-    expect(crewTrigger({ fromKey: null, fromLabel: null, toKey: "conversation", toLabel: "Positive reply" })).toEqual({
+    expect(crewTrigger(SERVED_STEPS, { fromKey: null, fromLabel: null, toKey: "conversation", toLabel: "Positive reply" })).toEqual({
       kind: "daily",
       label: "Daily",
       outcome: "Positive replies",
@@ -58,12 +59,12 @@ describe("crewTrigger", () => {
   });
   it("a leg from a step waits for that step", () => {
     expect(
-      crewTrigger({ fromKey: "conversation", fromLabel: "Positive reply", toKey: "meeting_booked", toLabel: "Meeting booked" }),
+      crewTrigger(SERVED_STEPS, { fromKey: "conversation", fromLabel: "Positive reply", toKey: "meeting_booked", toLabel: "Meeting booked" }),
     ).toEqual({ kind: "event", label: "Positive reply", outcome: "Meetings booked" });
   });
   it("an unknown step keeps its own words, and no leg is no trigger", () => {
-    expect(crewTrigger({ fromKey: null, fromLabel: null, toKey: "x", toLabel: "Thing" })?.outcome).toBe("Thing");
-    expect(crewTrigger(null)).toBeNull();
+    expect(crewTrigger(SERVED_STEPS, { fromKey: null, fromLabel: null, toKey: "x", toLabel: "Thing" })?.outcome).toBe("Thing");
+    expect(crewTrigger(SERVED_STEPS, null)).toBeNull();
   });
 });
 

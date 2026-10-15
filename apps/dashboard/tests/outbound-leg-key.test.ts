@@ -18,6 +18,7 @@ import { legCampaignId } from "../src/lib/v2/leg-campaign";
 import { legRateFor, validatedLegSections } from "../src/lib/offer-channel-settings";
 import { NEW_ORG_LEGS } from "../src/lib/v2/new-org-wizard";
 import { OFFERED_CREWS, crewTrigger } from "../src/lib/v2/crews";
+import { SERVED_STEPS } from "./fixtures/served-steps";
 
 // The outbound leg rename (owner 2026-10-09): every backend migrates on its own day, so
 // one join may read the legacy spelling on one side and the new one on the other. Every
@@ -157,7 +158,7 @@ describe("what the dashboard writes", () => {
     expect(src).toContain("startSalesFunnelCampaign({ brandId, offerId, salesFunnelId: f.salesFunnelId })");
   });
   it("a renamed outbound leg still works daily once it starts on a found lead", () => {
-    expect(crewTrigger({ fromKey: "lead_found", fromLabel: "Lead found", toKey: "conversation", toLabel: "Positive reply" })?.kind).toBe("daily");
-    expect(crewTrigger({ fromKey: "conversation", fromLabel: "Positive reply", toKey: "meeting_booked", toLabel: "Meeting booked" })?.kind).toBe("event");
+    expect(crewTrigger(SERVED_STEPS, { fromKey: "lead_found", fromLabel: "Lead", toKey: "conversation", toLabel: "Positive reply" })?.kind).toBe("daily");
+    expect(crewTrigger(SERVED_STEPS, { fromKey: "conversation", fromLabel: "Positive reply", toKey: "meeting_booked", toLabel: "Meeting booked" })?.kind).toBe("event");
   });
 });
