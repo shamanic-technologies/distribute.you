@@ -81,6 +81,7 @@ import {
   type CampaignOutlook,
   type GetStartedOffer,
   wallCopy,
+  accountPhone,
 } from "@/lib/v2/get-started";
 import { formatRoi, roiIsGood } from "@/lib/format-roi";
 import { requiredPhoneProblem } from "@/lib/phone-syntax";
@@ -170,6 +171,9 @@ export function AccountCardWall({
   const { isLoaded: authLoaded, isSignedIn, orgId } = useAuth();
   const { session } = useSession();
   const { user } = useUser();
+  // The claim runs in an effect that does not re-run on `user`: it reads the latest one here.
+  const userRef = useRef(user);
+  userRef.current = user;
   const { isLoaded: signUpLoaded, signUp, setActive } = useSignUp();
   const { isLoaded: signInLoaded, signIn, setActive: setSignInActive } = useSignIn();
   const { createOrganization, setActive: setActiveOrg } = useOrganizationList();
@@ -562,6 +566,9 @@ export function AccountCardWall({
    */
   async function openPhoneStage() {
     if (!earlyPhone || requiredPhoneProblem(earlyPhone)) {
+      // An account that already left a number (an earlier signup) finds it filled in.
+      const held = accountPhone(userRef.current?.publicMetadata as Record<string, unknown> | undefined);
+      if (held) setPhone(held);
       setStage("phone");
       return;
     }

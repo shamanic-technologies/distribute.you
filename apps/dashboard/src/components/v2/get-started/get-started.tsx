@@ -128,6 +128,8 @@ import {
   type GetStartedSnapshot,
   type GetStartedPhone,
   type GetStartedName,
+  GET_STARTED_YOU_KEY,
+  parseRememberedYou,
   givenName as nameOf,
   type GiveDraftKey,
   type LeverDraftKey,
@@ -231,6 +233,26 @@ export function GetStarted({ org, ipCountry = null }: { org?: OrgWalk; ipCountry
   const [givenPerson, setGivenPerson] = useState<GetStartedName | null>(null);
   const givenPersonRef = useRef<GetStartedName | null>(null);
   useEffect(() => {
+    // What they told us on an earlier walk in this browser comes back filled in (owner
+    // 2026-10-15: never ask twice). Read after mount: localStorage is not on the server.
+    if (!org) {
+      let you = null;
+      try {
+        you = parseRememberedYou(localStorage.getItem(GET_STARTED_YOU_KEY));
+      } catch (e) {
+        console.error("[get-started] remembered name and number not read:", e);
+      }
+      if (you?.person) {
+        const p = you.person;
+        setFirstName((cur) => cur || p.firstName);
+        setLastName((cur) => cur || p.lastName);
+      }
+      if (you?.phone) {
+        const ph = you.phone;
+        setPhone((cur) => (cur.national.trim() ? cur : ph));
+        return;
+      }
+    }
     if (ipCountry) return;
     const c = defaultPhoneCountry(null, navigator.language);
     setPhone((cur) => (cur.national.trim() ? cur : { ...cur, countryCode: c.code, dialCode: c.dial }));
@@ -1201,6 +1223,13 @@ export function GetStarted({ org, ipCountry = null }: { org?: OrgWalk; ipCountry
         name: [person.firstName, person.lastName].filter(Boolean).join(" "),
       });
       posthog.capture("get_started_name_given");
+    }
+    if (given || person) {
+      try {
+        localStorage.setItem(GET_STARTED_YOU_KEY, JSON.stringify({ person, phone: given }));
+      } catch (e) {
+        console.error("[get-started] name and number not remembered:", e);
+      }
     }
     setStarted(true);
     setStep("company", "running");

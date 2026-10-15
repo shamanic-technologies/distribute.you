@@ -447,6 +447,46 @@ export function parseSnapshotName(v: unknown): GetStartedName | null {
   return givenName(p.firstName, p.lastName);
 }
 
+/**
+ * What a visitor told us about THEMSELVES on an earlier walk in this browser (owner
+ * 2026-10-15: prefill, never ask twice). Kept apart from the walk's snapshot, which
+ * dies with its anonymous session; this outlives it.
+ */
+export const GET_STARTED_YOU_KEY = "distribute:get-started:you:v1";
+
+export interface RememberedYou {
+  person: GetStartedName | null;
+  phone: GetStartedPhone | null;
+}
+
+/** The remembered name and number, or null when nothing usable is stored. */
+export function parseRememberedYou(raw: string | null): RememberedYou | null {
+  if (!raw) return null;
+  let v: unknown;
+  try {
+    v = JSON.parse(raw);
+  } catch {
+    return null;
+  }
+  if (!v || typeof v !== "object") return null;
+  const o = v as Record<string, unknown>;
+  const you = { person: parseSnapshotName(o.person), phone: parseSnapshotPhone(o.phone) };
+  return you.person || you.phone ? you : null;
+}
+
+/**
+ * The number an existing account already holds (`/api/onboarding/phone` writes these
+ * keys on the Clerk user's public metadata), as the field holds it; null when none.
+ */
+export function accountPhone(publicMetadata: Record<string, unknown> | null | undefined): GetStartedPhone | null {
+  if (!publicMetadata) return null;
+  return parseSnapshotPhone({
+    countryCode: publicMetadata.phoneCountryCode,
+    dialCode: publicMetadata.phoneDialCode,
+    national: publicMetadata.phoneNational,
+  });
+}
+
 /** A stored phone, or null when absent, malformed or empty. */
 export function parseSnapshotPhone(v: unknown): GetStartedPhone | null {
   if (!v || typeof v !== "object") return null;
