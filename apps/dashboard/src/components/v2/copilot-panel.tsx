@@ -14,6 +14,7 @@ export function CopilotPanel({ orgId, brandId }: { orgId: string; brandId: strin
   const { open, setOpen } = useCopilotDock();
   return (
     <aside
+      data-copilot
       aria-hidden={!open}
       inert={!open}
       className={`k-panel fixed inset-y-2 right-2 z-40 w-[min(420px,calc(100vw-16px))] flex-col overflow-hidden shadow-[var(--elev-popover)] lg:static lg:my-2 lg:mr-2 lg:w-[400px] lg:shrink-0 lg:shadow-[var(--elev-panel)] ${
