@@ -1,11 +1,14 @@
 import { ACTIVE_WINDOW_MS, explicitCode, threadCode, unroutedText } from "@/lib/chat/rules";
 import { activeThreads, addMessage, threadForCode, threadForTelegramMessage } from "@/lib/chat/store";
-import { sendToTeam, telegramConfig, type TelegramUpdate } from "@/lib/chat/telegram";
+import { forwardStartLink, startLinkCode } from "@/lib/chat/owner-telegram-link";
+import { sendToChat, sendToTeam, telegramConfig, type TelegramUpdate } from "@/lib/chat/telegram";
 
 export const dynamic = "force-dynamic";
 
 /**
- * Telegram's webhook. Only the team chat is listened to. A message reaches a visitor when
+ * Telegram's webhook. A `/start <code>` from ANY chat (the team's included) links that chat
+ * to an org through client-service; every other message is listened to from the team chat
+ * only. A message reaches a visitor when
  * it addresses their thread (a reply to a relayed message, or `#code text`), or when it
  * addresses nobody and exactly one visitor wrote in the last 30 minutes; the bot then
  * confirms where it went. With several visitors chatting it asks which one.
@@ -21,6 +24,17 @@ export async function POST(request: Request) {
   }
   const update = (await request.json().catch(() => null)) as TelegramUpdate | null;
   const msg = update?.message;
+  const linkCode = msg?.text ? startLinkCode(msg.text) : null;
+  if (msg && linkCode) {
+    const chatId = String(msg.chat.id);
+    const outcome = await forwardStartLink(linkCode, chatId);
+    if (outcome.kind !== "linked") {
+      await sendToChat(config, chatId, outcome.reply).catch((err) =>
+        console.error(`[landing/telegram-link] could not answer chat ${chatId}:`, err),
+      );
+    }
+    return Response.json({ ok: true });
+  }
   if (!msg || String(msg.chat.id) !== config.ownerChatId || !msg.text) {
     return Response.json({ ok: true });
   }
