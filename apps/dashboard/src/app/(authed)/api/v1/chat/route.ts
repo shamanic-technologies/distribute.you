@@ -50,15 +50,20 @@ export async function POST(req: NextRequest) {
   if (orgErr) return NextResponse.json(orgErr.body, { status: orgErr.status });
 
   const body = await req.json();
-  const { message, sessionId, context, configKey } = body as {
+  const { message, sessionId, context, configKey, nudge } = body as {
     message?: string;
     sessionId?: string;
     context?: Record<string, unknown>;
     configKey?: string;
+    /** The open Copilot asks whether to speak first (chat-service #602): no message. */
+    nudge?: boolean;
   };
 
-  if (!message?.trim()) {
-    return NextResponse.json({ error: "Message is required" }, { status: 400 });
+  if (nudge === true ? message !== undefined : !message?.trim()) {
+    return NextResponse.json(
+      { error: nudge === true ? "A nudge carries no message" : "Message is required" },
+      { status: 400 },
+    );
   }
   if (!configKey) {
     return NextResponse.json({ error: "configKey is required" }, { status: 400 });
@@ -100,7 +105,8 @@ export async function POST(req: NextRequest) {
     headers["x-brand-id"] = context.brandId;
   }
 
-  const backendPayload: Record<string, unknown> = { message, configKey };
+  const backendPayload: Record<string, unknown> =
+    nudge === true ? { nudge: true, configKey } : { message, configKey };
   if (sessionId) backendPayload.sessionId = sessionId;
   if (context) backendPayload.context = context;
 
@@ -129,6 +135,11 @@ export async function POST(req: NextRequest) {
       errBody = { error: errText };
     }
     return NextResponse.json(errBody, { status: backendRes.status });
+  }
+
+  // A nudge Jev judged quiet answers JSON (`{"nudge":"quiet"}`): nothing to show.
+  if (nudge === true && backendRes.headers.get("content-type")?.includes("application/json")) {
+    return NextResponse.json(await backendRes.json());
   }
 
   if (!backendRes.body) {
