@@ -546,13 +546,6 @@ export function AccountCardWall({
   }
 
   // ── Credit ──
-  async function declareRevolut() {
-    const token = await session?.getToken({ skipCache: true });
-    if (!token) throw new Error("Your session expired. Sign in again to finish.");
-    const res = await fetch("/api/orgs/revolut", { method: "POST", headers: { Authorization: `Bearer ${token}` } });
-    if (!res.ok) throw new Error("We could not prepare the card form. Try again.");
-  }
-
   // The monthly limit is saved to billing before any charge (owner 2026-10-12).
   async function saveMonthlyLimit(usd: number) {
     try {
@@ -579,7 +572,6 @@ export function AccountCardWall({
     setError(null);
     try {
       await saveMonthlyLimit(limit.usd);
-      await declareRevolut();
       const started = await payTopup({
         amountUsd: choice.topupUsd,
         consent: choice.consent,
@@ -641,8 +633,8 @@ export function AccountCardWall({
     void openTrialCheckout();
   }
 
-  // The card is saved through the ordinary card setup billing answers (Revolut widget by
-  // default, Stripe's embedded form when the org's card lives there), then the plan starts.
+  // The card is saved through the ordinary card setup billing answers (Stripe's embedded
+  // form; Revolut's widget for an older org whose card lives there), then the plan starts.
   async function openTrialCheckout() {
     if ("problem" in planLimit) {
       setError(planLimit.problem);
@@ -652,7 +644,6 @@ export function AccountCardWall({
     setError(null);
     try {
       await saveMonthlyLimit(planLimit.usd);
-      await declareRevolut();
       const checkout = await createSubscriptionCheckout({ monthly_amount_cents: arm.monthlyCents, ui_mode: "embedded", consent: planConsentRecord.current ?? undefined });
       posthog.capture("get_started_trial_opened", { monthly_usd: Math.round(arm.monthlyCents / 100), lp_variant: arm.variant });
       const setup: CardSetup | null = checkout.card_setup;
@@ -802,13 +793,12 @@ export function AccountCardWall({
   }
 
   // ── The saved card's facts (owner 2026-10-13) ──
-  // A card in-page that charges nothing (Revolut widget by default, Stripe's embedded form
-  // when the org's card lives there); `onSaved` runs once the form reports it.
+  // A card in-page that charges nothing (Stripe's embedded form; Revolut's widget for an
+  // older org whose card lives there); `onSaved` runs once the form reports it.
   async function openCardSave(onSaved: () => void) {
     setBusy(true);
     setError(null);
     try {
-      await declareRevolut();
       const setup = await createEmbeddedCardSetup();
       if (setup.mode === "embedded_checkout") {
         cardSaved.current = onSaved;

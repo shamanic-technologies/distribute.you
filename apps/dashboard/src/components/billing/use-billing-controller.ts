@@ -11,7 +11,6 @@ import {
   createCheckoutSession,
   createEmbeddedCheckoutSession,
   createPortalSession,
-  declareRevolutDefault,
   listBrands,
   getBrandDailyBudget,
   type BillingAccount,
@@ -373,8 +372,6 @@ export function useBillingController() {
     setPortalLoadingSource(source);
     setError(null);
     try {
-      // Revolut Business by default; an org with a card elsewhere keeps paying there.
-      await declareRevolutDefault();
       const setup = await createPortalSession(
         `${window.location.origin}${window.location.pathname}`
       );
@@ -567,9 +564,6 @@ export function useBillingController() {
         successUrl.searchParams.set("pending_topup", String(AUTO_TOPUP_ENABLE_AMOUNT_CENTS));
         successUrl.searchParams.set("pending_threshold", String(AUTO_TOPUP_ENABLE_THRESHOLD_CENTS));
       }
-
-      // Revolut Business by default; an org with a card elsewhere keeps paying there.
-      await declareRevolutDefault();
 
       // Revolut saves the card ONLY when the payment is taken in its in-page card
       // field: its hosted page takes the money and keeps no card (seen in prod

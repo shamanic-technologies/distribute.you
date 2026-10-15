@@ -151,13 +151,11 @@ describe("the end: prepaid credit (owner 2026-10-06), then the walk's own launch
     expect(launch).toContain("localStorage.removeItem(snapshotKey)");
     expect(launch).toContain("window.location.assign(v2CampaignHref(orgId, brandId, campaignId))");
   });
-  it("declares Revolut before the first card form, on the org it acts on", () => {
+  it("never pins the org to Revolut before the first card form (Stripe is the default, owner 2026-10-15)", () => {
     const pay = end.slice(end.indexOf("async function pay("), end.indexOf("async function afterPaid("));
-    expect(pay.indexOf("await declareRevolut();")).toBeGreaterThan(-1);
-    expect(pay.indexOf("await declareRevolut();")).toBeLessThan(pay.indexOf("await payTopup("));
-    const dec = end.slice(end.indexOf("async function declareRevolut("), end.indexOf("async function pay("));
-    expect(dec).toContain('"/api/orgs/revolut"');
-    expect(dec).toContain("organizationId: orgId");
+    expect(pay.indexOf("await payTopup(")).toBeGreaterThan(-1);
+    expect(end).not.toContain("declareRevolut");
+    expect(end).not.toContain("/api/orgs/revolut");
   });
   it("Try again replays the launch without re-sending what landed", () => {
     expect(end).toContain("const progress = useRef<LaunchProgress>(");

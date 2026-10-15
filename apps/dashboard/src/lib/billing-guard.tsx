@@ -6,7 +6,6 @@ import { EmbeddedCheckoutProvider, EmbeddedCheckout } from "@stripe/react-stripe
 import {
   createEmbeddedCheckoutSession,
   configureAutoTopup,
-  declareRevolutDefault,
   getBillingAccount,
   type BillingAccount,
 } from "@/lib/api";
@@ -214,8 +213,6 @@ export function BillingGuardProvider({ children }: { children: ReactNode }) {
     setCheckoutLoading(true);
     setCheckoutError(null);
     try {
-      // Revolut Business by default; an org with a card elsewhere keeps paying there.
-      await declareRevolutDefault();
       const checkout = await createEmbeddedCheckoutSession(effectiveAmountCents);
       if (checkout.mode === "embedded_widget") {
         // An org paying through Revolut: the same top-up, in Revolut's widget.
