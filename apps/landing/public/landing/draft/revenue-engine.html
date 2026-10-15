@@ -88,7 +88,6 @@
 
 /* The one orchestrated moment: the window rises, then its bars grow left to right. */
 @media (prefers-reduced-motion: no-preference) {
-  .x-stage .win { animation: rise 0.8s cubic-bezier(0.2, 0.7, 0.2, 1) 0.15s both; }
   .x-stage .bars span { animation: grow 0.7s cubic-bezier(0.2, 0.7, 0.2, 1) both; }
   .x-stage .bars span:nth-child(1) { animation-delay: 0.7s; }
   .x-stage .bars span:nth-child(2) { animation-delay: 0.8s; }
@@ -222,6 +221,39 @@ section.dark.x-dark { padding: 88px 0; }
 .promise b { display: block; font-family: var(--font-display); font-weight: 500; font-size: 20px; color: var(--accent-text); }
 .promise span { display: block; margin-top: 3px; font-size: 14px; color: var(--muted); }
 
+/* Background and motion: a masked grid, a breathing glow and the homepage line art behind
+   the hero; the product window tilted back in 3D, standing up on scroll; a light that
+   follows the pointer on the cards; a slow conic sheen around the plays window. */
+.x-hero .grid-bg { position: absolute; inset: 0; pointer-events: none; background-image: linear-gradient(rgba(37, 99, 235, 0.07) 1px, transparent 1px), linear-gradient(90deg, rgba(37, 99, 235, 0.07) 1px, transparent 1px); background-size: 56px 56px; -webkit-mask-image: radial-gradient(ellipse 70% 55% at 60% 30%, #000 20%, transparent 75%); mask-image: radial-gradient(ellipse 70% 55% at 60% 30%, #000 20%, transparent 75%); }
+.x-hero .hero-glow { top: 62%; }
+.x-hero .wrap { position: relative; z-index: 1; }
+.x-hero h1 .w { display: inline-block; opacity: 0.001; filter: blur(10px); transform: translateY(20px); animation: word-in 0.7s cubic-bezier(0.2, 0.7, 0.2, 1) forwards; animation-delay: calc(var(--i, 0) * 70ms); }
+.x-stage { perspective: 1800px; }
+.x-stage .win { transform-origin: 50% 0; will-change: transform; transition: transform 0.08s linear; }
+.x-stage .win::after { content: ""; position: absolute; inset: 0; border-radius: inherit; pointer-events: none; background: linear-gradient(115deg, transparent 35%, rgba(255, 255, 255, 0.55) 48%, transparent 60%); background-size: 250% 100%; animation: sheen 7s ease-in-out 1.6s infinite; }
+@keyframes sheen { 0%, 60% { background-position: 130% 0; } 100% { background-position: -30% 0; } }
+.flow { animation: bob 6s ease-in-out infinite; }
+@keyframes bob { 50% { translate: 0 -6px; } }
+.live i { animation: lp-live-pulse 2s ease-in-out infinite; }
+.lean { transition: transform 0.25s ease, box-shadow 0.25s ease, border-color 0.25s ease; transform-style: preserve-3d; position: relative; }
+.lean::before { content: ""; position: absolute; inset: 0; border-radius: inherit; pointer-events: none; opacity: 0; transition: opacity 0.25s; background: radial-gradient(260px circle at var(--mx, 50%) var(--my, 50%), rgba(37, 99, 235, 0.10), transparent 70%); }
+.lean:hover { box-shadow: 0 24px 50px -28px rgba(15, 30, 80, 0.35); border-color: var(--accent-100); }
+.lean:hover::before { opacity: 1; }
+.plays .win { isolation: isolate; }
+.plays .win::before { content: ""; position: absolute; inset: -1px; z-index: -1; border-radius: 19px; padding: 1px; background: conic-gradient(from var(--a, 0deg), transparent 0 70%, rgba(37, 99, 235, 0.7) 85%, transparent 100%); -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0); -webkit-mask-composite: xor; mask-composite: exclude; animation: spin 6s linear infinite; }
+@property --a { syntax: "<angle>"; initial-value: 0deg; inherits: false; }
+@keyframes spin { to { --a: 360deg; } }
+section.dark.x-dark { overflow: hidden; }
+section.dark.x-dark::after { content: ""; position: absolute; inset: 0; pointer-events: none; background-image: radial-gradient(rgba(255, 255, 255, 0.10) 1px, transparent 1px); background-size: 22px 22px; -webkit-mask-image: radial-gradient(ellipse 60% 80% at 50% 0%, #000, transparent 70%); mask-image: radial-gradient(ellipse 60% 80% at 50% 0%, #000, transparent 70%); }
+.x-dark .wrap { position: relative; z-index: 1; }
+.hero-faces { margin-top: 22px; display: flex; align-items: center; gap: 14px; font-size: 14px; color: var(--muted); }
+.hero-faces .faces-row img { width: 32px; height: 32px; }
+.hero-faces .stars { color: #f5a524; letter-spacing: 1px; margin-right: 4px; }
+.x-sec .marquee { margin-top: 44px; }
+@media (prefers-reduced-motion: reduce) {
+  .x-stage .win, .x-stage .win::after, .flow, .plays .win::before, .x-hero h1 .w, .live i { animation: none; transform: none; opacity: 1; filter: none; }
+}
+
 /* Footer: the homepage footer, trust row included */
 footer .foot a { color: inherit; }
 
@@ -304,6 +336,9 @@ footer .foot-bottom { display: flex; justify-content: space-between; gap: 12px; 
 <main>
 <section class="x-hero">
   <div class="glow" aria-hidden="true"></div>
+  <div class="grid-bg" aria-hidden="true"></div>
+  <div class="hero-glow" aria-hidden="true"></div>
+  <canvas class="hero-lines" id="hero-lines" aria-hidden="true"></canvas>
   <div class="wrap">
     <div class="x-split">
       <div>
@@ -313,13 +348,17 @@ footer .foot-bottom { display: flex; justify-content: space-between; gap: 12px; 
       <div class="x-right">
         <p class="lede">We find your buyers, write to them, answer the ones who reply and get them on a call. Every step shows what it is worth to you.</p>
         <form class="launch" action="https://dashboard.distribute.you/start" method="get">
-          <label class="sr-only" for="site-top">Your website</label>
+          <label class="sr-only" for="hero-website">Your website</label>
           <div class="launch-field">
-            <input id="site-top" name="url" type="text" autocomplete="off" placeholder="Paste your website, e.g., acme.com">
+            <input id="hero-website" name="url" type="text" autocomplete="off" placeholder="Paste your website, e.g., acme.com">
             <button class="btn btn-accent" type="submit">Start free</button>
           </div>
         </form>
         <ul class="perks"><li>The platform is free</li><li>Nothing charged today</li><li>Live in 2 minutes</li></ul>
+        <div class="hero-faces">
+          <div class="faces-row"><img src="/landing/v2/assets/ryan-parenti.jpg" alt=""><img src="/landing/v2/assets/andrew-becker.jpg" alt=""><img src="/landing/v2/assets/nazim-zidi.jpg" alt=""><img src="/landing/v2/assets/christian-lemke.jpg" alt=""><img src="/landing/v2/assets/katherine-fleishman.jpeg" alt=""></div>
+          <span><span class="stars">★★★★★</span> Loved by 120+ founders</span>
+        </div>
       </div>
     </div>
 
@@ -338,11 +377,11 @@ footer .foot-bottom { display: flex; justify-content: space-between; gap: 12px; 
           <ol class="path">
             <li><span class="c-step">Per positive reply</span><span class="val">$52</span><span class="who">we answer in a minute</span></li>
             <li><span class="rate">19%</span><span class="c-step">Per meeting booked</span><span class="val">$276</span><span class="who">on your calendar</span></li>
-            <li><span class="rate">17%</span><span class="c-step">Per meeting attended</span><span class="val">$1,625</span><span class="who">your call</span></li>
-            <li class="cac"><span class="rate">80%</span><span class="c-step">Per new client (CAC)</span><span class="val">$2,031</span><span class="who">what you pay to win one</span></li>
-            <li class="end"><span class="c-step">A client brings you</span><span class="val">$3,000</span><span class="roi">1.5x return</span></li>
+            <li><span class="rate">70%</span><span class="c-step">Per meeting attended</span><span class="val">$394</span><span class="who">your call</span></li>
+            <li class="cac"><span class="rate">80%</span><span class="c-step">Per new client (CAC)</span><span class="val">$493</span><span class="who">what you pay to win one</span></li>
+            <li class="end"><span class="c-step">A client brings you</span><span class="val">$2,500</span><span class="roi">5.1x return</span></li>
           </ol>
-          <div class="bars" aria-hidden="true"><span style="height:10%"></span><span style="height:18%"></span><span style="height:54%"></span><span style="height:68%"></span><span class="end" style="height:100%"></span></div>
+          <div class="bars" aria-hidden="true"><span style="height:8%"></span><span style="height:14%"></span><span style="height:19%"></span><span style="height:24%"></span><span class="end" style="height:100%"></span></div>
           <figcaption class="win-foot">An example of what you read on every campaign: what you pay at each step, what a new client takes, and what that client brings back.</figcaption>
         </div>
       </figure>
@@ -373,11 +412,11 @@ footer .foot-bottom { display: flex; justify-content: space-between; gap: 12px; 
 
 <section class="x-sec">
   <div class="wrap">
-    <div class="x-head">
+    <div class="rv x-head">
       <h2 class="two-tone">Start from what you already have. <em>Your website is enough to begin.</em></h2>
       <p>Every source of leads you plug in gets its own play, run the moment something happens.</p>
     </div>
-    <div class="src">
+    <div class="rv src">
       <div class="tile wide">
         <h3>Your website</h3>
         <p>We read what you sell and find the people who buy it.</p>
@@ -386,7 +425,7 @@ footer .foot-bottom { display: flex; justify-content: space-between; gap: 12px; 
       <div class="tile wide">
         <h3>Your forms</h3>
         <p>A new form fill gets an answer within a minute and an invitation to book.</p>
-        <div class="mini"><div class="row"><span class="dot o"></span>Form filled: pricing for a team of 12<span class="t">09:41</span></div><div class="row hi"><span class="dot"></span>Answered, calendar link sent<span class="t">09:42</span></div></div>
+        <div class="mini"><div class="row"><span class="dot"></span>Form filled: pricing for a team of 12<span class="t">09:41</span></div><div class="row hi"><span class="dot"></span>Answered, calendar link sent<span class="t">09:42</span></div></div>
       </div>
       <div class="tile">
         <h3>Your CRM</h3>
@@ -409,10 +448,10 @@ footer .foot-bottom { display: flex; justify-content: space-between; gap: 12px; 
 
 <section class="x-sec" id="how">
   <div class="wrap">
-    <div class="x-head">
+    <div class="rv x-head">
       <h2 class="two-tone">We run each step, <em>from first touch to paid client.</em></h2>
     </div>
-    <div class="phases">
+    <div class="rv phases">
       <div class="ph">
         <span class="n">1</span><h3>Find</h3><p>The right people, from live buying signals and your own CRM.</p>
         <div class="mini"><div class="row"><span class="dot g"></span>Head of Sales, 80 people<span class="t">Hiring</span></div><div class="row"><span class="dot g"></span>Founder, consultancy, 25 people<span class="t">New office</span></div></div>
@@ -427,7 +466,7 @@ footer .foot-bottom { display: flex; justify-content: space-between; gap: 12px; 
       </div>
       <div class="ph">
         <span class="n">4</span><h3>Get paid</h3><p>Follow-ups for no-shows and for signups who have not paid yet.</p>
-        <div class="mini"><div class="row"><span class="dot o"></span>Signup not paid yet<span class="t">Reminder</span></div><div class="row hi"><span class="dot"></span>New client paid<span class="t">$3,000</span></div></div>
+        <div class="mini"><div class="row"><span class="dot p"></span>Signup not paid yet<span class="t">Reminder</span></div><div class="row hi"><span class="dot"></span>New client paid<span class="t">$2,500</span></div></div>
       </div>
     </div>
   </div>
@@ -435,7 +474,7 @@ footer .foot-bottom { display: flex; justify-content: space-between; gap: 12px; 
 
 <section class="x-sec plays-sec" id="plays">
   <div class="wrap plays">
-    <div class="x-head">
+    <div class="rv x-head">
       <h2 class="two-tone">On every step, <em>the best play wins.</em></h2>
       <p>Several ways to run each step race side by side: other emails, other AI models, other timings.</p>
       <p>Each one is measured on the revenue it brings. The winner gets the budget, and the next challenger starts.</p>
@@ -456,41 +495,88 @@ footer .foot-bottom { display: flex; justify-content: space-between; gap: 12px; 
 <section class="dark x-dark">
   <div class="wrap">
     <div class="stats">
-      <div class="stat"><div class="n"><span>2</span><span class="u">min</span></div><div class="l">To launch. Paste your website, confirm the plan.</div></div>
-      <div class="stat"><div class="n"><span class="u">$</span><span>0</span></div><div class="l">Charged today. You pay after your outreach runs.</div></div>
-      <div class="stat"><div class="n"><span>1</span><span class="u">min</span></div><div class="l">To answer an interested reply, day and night.</div></div>
+      <div class="stat"><div class="n"><span data-count="2">0</span><span class="u">min</span></div><div class="l">To launch. Paste your website, confirm the plan.</div></div>
+      <div class="stat"><div class="n"><span class="u">$</span><span data-count="0">0</span></div><div class="l">Charged today. You pay after your outreach runs.</div></div>
+      <div class="stat"><div class="n"><span data-count="1">0</span><span class="u">min</span></div><div class="l">To answer an interested reply, day and night.</div></div>
     </div>
   </div>
 </section>
 
 <section class="x-sec">
   <div class="wrap">
-    <div class="x-head">
-      <h2 class="two-tone">Founders like you, <em>in their own words.</em></h2>
+    <div class="rv x-head">
+      <h2 class="two-tone">What clients are saying. <em>In their own words.</em></h2>
     </div>
-    <div class="quotes">
-      <figure>
+  </div>
+  <div class="wrap wide">
+    <div class="marquee rv"><div class="marquee-track">
+      <figure class="quote">
         <div class="stars" aria-hidden="true">★★★★★</div>
         <blockquote>Kevin is a very intelligent person with insights on how to expand and grow a business. I am happy to work with an ethical and hard working individual who brings results.</blockquote>
         <figcaption><img src="/landing/v2/assets/ryan-parenti.jpg" alt=""><span><b>Ryan W.D. Parenti</b><small>Founder, Doc Dinners</small></span></figcaption>
       </figure>
-      <figure>
+      <figure class="quote">
         <div class="stars" aria-hidden="true">★★★★★</div>
-        <blockquote>It was incredibly fast to launch a campaign. I just entered my URL, the platform identified the right audience, handled the outreach, and even let me download the contacts.</blockquote>
+        <blockquote>Best thing I liked is the depth to which it personalizes outreach. Something I always wished I could do better at scale.</blockquote>
+        <figcaption><img src="/landing/v2/assets/andrew-becker.jpg" alt=""><span><b>Andrew Becker</b><small>Founder, voozaa.app</small></span></figcaption>
+      </figure>
+      <figure class="quote">
+        <div class="stars" aria-hidden="true">★★★★★</div>
+        <blockquote>You are doing great man, congrats. I am very impressed</blockquote>
+        <figcaption><img src="/landing/v2/assets/bohdan-petryshyn.jpg" alt=""><span><b>Bohdan Petryshyn</b><small>Co-Founder &amp; CTO, Bosar Agency</small></span></figcaption>
+      </figure>
+      <figure class="quote">
+        <div class="stars" aria-hidden="true">★★★★★</div>
+        <blockquote>It was incredibly fast to launch a campaign. I just entered my URL, the platform identified the right audience, handled the outreach, and even let me download the contacts, so I didn’t need to buy lists or set up a separate email marketing system.</blockquote>
         <figcaption><img src="/landing/v2/assets/christian-lemke.jpg" alt=""><span><b>Christian Lemke</b><small>Google Ads expert, Maggie M.</small></span></figcaption>
       </figure>
-      <figure>
+      <figure class="quote">
         <div class="stars" aria-hidden="true">★★★★★</div>
         <blockquote>This platform is incredible. Excellent click-through rate. I can literally see everything at a glance. Seriously, amazing work here, this is next-level.</blockquote>
         <figcaption><img src="/landing/v2/assets/katherine-fleishman.jpeg" alt=""><span><b>Katherine Fleishman</b><small>Marketing expert, 20+ years</small></span></figcaption>
       </figure>
-    </div>
+      <figure class="quote">
+        <div class="stars" aria-hidden="true">★★★★★</div>
+        <blockquote>Everybody wants to get new leads. That's the solution everyone wants to buy.</blockquote>
+        <figcaption><img src="/landing/v2/assets/christopher-lafay.jpg" alt=""><span><b>Christopher Lafay</b><small>Founder, taap.bio</small></span></figcaption>
+      </figure>
+      <figure class="quote" aria-hidden="true">
+        <div class="stars" aria-hidden="true">★★★★★</div>
+        <blockquote>Kevin is a very intelligent person with insights on how to expand and grow a business. I am happy to work with an ethical and hard working individual who brings results.</blockquote>
+        <figcaption><img src="/landing/v2/assets/ryan-parenti.jpg" alt=""><span><b>Ryan W.D. Parenti</b><small>Founder, Doc Dinners</small></span></figcaption>
+      </figure>
+      <figure class="quote" aria-hidden="true">
+        <div class="stars" aria-hidden="true">★★★★★</div>
+        <blockquote>Best thing I liked is the depth to which it personalizes outreach. Something I always wished I could do better at scale.</blockquote>
+        <figcaption><img src="/landing/v2/assets/andrew-becker.jpg" alt=""><span><b>Andrew Becker</b><small>Founder, voozaa.app</small></span></figcaption>
+      </figure>
+      <figure class="quote" aria-hidden="true">
+        <div class="stars" aria-hidden="true">★★★★★</div>
+        <blockquote>You are doing great man, congrats. I am very impressed</blockquote>
+        <figcaption><img src="/landing/v2/assets/bohdan-petryshyn.jpg" alt=""><span><b>Bohdan Petryshyn</b><small>Co-Founder &amp; CTO, Bosar Agency</small></span></figcaption>
+      </figure>
+      <figure class="quote" aria-hidden="true">
+        <div class="stars" aria-hidden="true">★★★★★</div>
+        <blockquote>It was incredibly fast to launch a campaign. I just entered my URL, the platform identified the right audience, handled the outreach, and even let me download the contacts, so I didn’t need to buy lists or set up a separate email marketing system.</blockquote>
+        <figcaption><img src="/landing/v2/assets/christian-lemke.jpg" alt=""><span><b>Christian Lemke</b><small>Google Ads expert, Maggie M.</small></span></figcaption>
+      </figure>
+      <figure class="quote" aria-hidden="true">
+        <div class="stars" aria-hidden="true">★★★★★</div>
+        <blockquote>This platform is incredible. Excellent click-through rate. I can literally see everything at a glance. Seriously, amazing work here, this is next-level.</blockquote>
+        <figcaption><img src="/landing/v2/assets/katherine-fleishman.jpeg" alt=""><span><b>Katherine Fleishman</b><small>Marketing expert, 20+ years</small></span></figcaption>
+      </figure>
+      <figure class="quote" aria-hidden="true">
+        <div class="stars" aria-hidden="true">★★★★★</div>
+        <blockquote>Everybody wants to get new leads. That's the solution everyone wants to buy.</blockquote>
+        <figcaption><img src="/landing/v2/assets/christopher-lafay.jpg" alt=""><span><b>Christopher Lafay</b><small>Founder, taap.bio</small></span></figcaption>
+      </figure>
+    </div></div>
   </div>
 </section>
 
 <section class="x-sec">
   <div class="wrap fitx">
-    <div class="x-head">
+    <div class="rv x-head">
       <h2>Made for founders who sell on a call.</h2>
       <p>One good call can be worth a whole month. We fill your calendar with them.</p>
     </div>
@@ -505,10 +591,10 @@ footer .foot-bottom { display: flex; justify-content: space-between; gap: 12px; 
 
 <section class="x-sec" id="offer">
   <div class="wrap">
-    <div class="x-head">
+    <div class="rv x-head">
       <h2 class="two-tone">Everything we run for you. <em>From first email to paid client.</em></h2>
     </div>
-    <ul class="stack-list">
+    <ul class="rv stack-list">
       <li><i>✓</i><div><b>Your buyers, found</b><span>From live buying signals, your website and your CRM.</span></div></li>
       <li><i>✓</i><div><b>A personal email for each one</b><span>Written for them, sent from our own warmed domains.</span></div></li>
       <li><i>✓</i><div><b>Every interested reply answered in a minute</b><span>Day and night, with your calendar link.</span></div></li>
@@ -516,18 +602,18 @@ footer .foot-bottom { display: flex; justify-content: space-between; gap: 12px; 
       <li><i>✓</i><div><b>No-shows and unpaid signups followed up</b><span>Until they book again or pay.</span></div></li>
       <li><i>✓</i><div><b>Every play tested on your revenue</b><span>The winner gets the budget, step by step.</span></div></li>
     </ul>
-    <div class="anchor"><p>A sales rep is paid $4,000 to $7,000 a month to run part of this.</p><strong>The platform is free.</strong></div>
-    <div class="promise"><span class="seal" aria-hidden="true">✓</span><div><b>6 booked meetings in 3 months, or your paid media budget back.</b><span>Every meeting is on your dashboard, with what it took to win it.</span></div></div>
+    <div class="rv anchor"><p>A sales rep is paid $4,000 to $7,000 a month to run part of this.</p><strong>The platform is free.</strong></div>
+    <div class="rv promise"><span class="seal" aria-hidden="true">✓</span><div><b>6 booked meetings in 3 months, or your paid media budget back.</b><span>Every meeting is on your dashboard, with what it took to win it.</span></div></div>
   </div>
 </section>
 
 <section class="x-sec price-sec" id="pricing">
   <div class="wrap pricex">
-    <div class="x-head">
+    <div class="rv x-head">
       <h2>The platform is free.</h2>
       <p>You pay for your outreach after it runs, at our public catalogue prices. You set the monthly limit, and we never go above it.</p>
     </div>
-    <article class="plan featured">
+    <article class="rv plan featured">
       <span class="plan-tag"><i></i>Pay after</span>
       <div class="plan-price">Free</div>
       <p class="plan-desc">Save a card today. Nothing is charged until your outreach runs.</p>
@@ -547,7 +633,7 @@ footer .foot-bottom { display: flex; justify-content: space-between; gap: 12px; 
 <section class="x-sec" id="faq">
   <div class="wrap">
     <div class="x-head center"><h2>Common questions</h2></div>
-    <div class="faq-list">
+    <div class="rv faq-list">
       <div class="faq-item open">
         <button class="faq-q" type="button" aria-expanded="true">What do I need to start?<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg></button>
         <div class="faq-a"><p>Your website. We read what you sell and who buys it, and show you the plan to confirm. Then you save a card and the first emails go out. Nothing is charged today.</p></div>
@@ -574,7 +660,7 @@ footer .foot-bottom { display: flex; justify-content: space-between; gap: 12px; 
 
 <section class="x-sec">
   <div class="wrap">
-    <div class="cta-box">
+    <div class="rv cta-box">
       <p class="why">Revenue made easy.</p>
       <h2>Your first email goes out today.</h2>
       <p class="lead">Paste your website. We take it from there.</p>
@@ -593,7 +679,7 @@ footer .foot-bottom { display: flex; justify-content: space-between; gap: 12px; 
 
 <footer>
   <div class="wrap">
-    <div class="faces">
+    <div class="faces rv">
       <div class="faces-row">
         <img src="/landing/v2/assets/ryan-parenti.jpg" alt="">
         <img src="/landing/v2/assets/andrew-becker.jpg" alt="">
@@ -602,7 +688,7 @@ footer .foot-bottom { display: flex; justify-content: space-between; gap: 12px; 
         <img src="/landing/v2/assets/katherine-fleishman.jpeg" alt="">
         <img src="/landing/v2/assets/christopher-lafay.jpg" alt="">
       </div>
-      <div class="faces-text"><span class="stars">★★★★★</span><span data-founder-count>Loved by 70+ founders</span></div>
+      <div class="faces-text"><span class="stars">★★★★★</span><span data-founder-count>Loved by 120+ founders</span></div>
     </div>
     <div class="foot">
       <div>
@@ -618,22 +704,46 @@ footer .foot-bottom { display: flex; justify-content: space-between; gap: 12px; 
   </div>
 </footer>
 
+<script src="/landing/v2/main.js?v=9" defer></script>
 <script>
 (function () {
-  var items = document.querySelectorAll(".faq-item");
-  function setOpen(item, open) {
-    item.classList.toggle("open", open);
-    item.querySelector(".faq-q").setAttribute("aria-expanded", open ? "true" : "false");
-    var a = item.querySelector(".faq-a");
-    a.style.maxHeight = open ? a.scrollHeight + "px" : "0px";
-  }
-  items.forEach(function (item) {
-    setOpen(item, item.classList.contains("open"));
-    item.querySelector(".faq-q").addEventListener("click", function () {
-      var willOpen = !item.classList.contains("open");
-      items.forEach(function (other) { setOpen(other, other === item && willOpen); });
+  var reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  if (reduced) return;
+  /* The headline arrives word by word, blurred then sharp (gojiberry, as on the homepage). */
+  var h1 = document.querySelector(".x-hero h1");
+  if (h1) {
+    var words = h1.textContent.trim().split(/\s+/);
+    h1.textContent = "";
+    words.forEach(function (w, i) {
+      var span = document.createElement("span");
+      span.className = "w"; span.style.setProperty("--i", i); span.textContent = w;
+      h1.appendChild(span); h1.appendChild(document.createTextNode(" "));
     });
-  });
+  }
+  /* The product window lies back in 3D and stands up as the page scrolls. */
+  var stage = document.querySelector(".x-stage");
+  var win = stage && stage.querySelector(".win");
+  function tilt() {
+    if (!win) return;
+    var r = stage.getBoundingClientRect();
+    var p = Math.min(1, Math.max(0, (window.innerHeight - r.top) / (window.innerHeight * 0.9)));
+    var k = 1 - p;
+    win.style.transform = "rotateX(" + (k * 22).toFixed(2) + "deg) scale(" + (0.94 + 0.06 * p).toFixed(3) + ")";
+  }
+  window.addEventListener("scroll", tilt, { passive: true }); tilt();
+  /* Cards lean toward the pointer, a few degrees, on devices with a mouse. */
+  if (window.matchMedia("(hover: hover)").matches) {
+    document.querySelectorAll(".tile, .ph, .quote, .plays .win").forEach(function (el) {
+      el.classList.add("lean");
+      el.addEventListener("pointermove", function (e) {
+        var b = el.getBoundingClientRect();
+        var x = (e.clientX - b.left) / b.width - 0.5, y = (e.clientY - b.top) / b.height - 0.5;
+        el.style.transform = "perspective(900px) rotateY(" + (x * 6).toFixed(2) + "deg) rotateX(" + (-y * 6).toFixed(2) + "deg) translateY(-2px)";
+        el.style.setProperty("--mx", ((x + 0.5) * 100).toFixed(1) + "%"); el.style.setProperty("--my", ((y + 0.5) * 100).toFixed(1) + "%");
+      });
+      el.addEventListener("pointerleave", function () { el.style.transform = ""; });
+    });
+  }
 })();
 </script>
 </body>
