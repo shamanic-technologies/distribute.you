@@ -3,7 +3,7 @@ import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { linkErrorMessage } from "../src/lib/integration-write";
 import { SENSITIVE_QUERY_ROOTS } from "../src/lib/persist-cache";
-import { accountsOfChannel, startMethods } from "../src/lib/messaging-accounts";
+import { accountsOfChannel, linkPollMs, startMethods } from "../src/lib/messaging-accounts";
 
 const SRC = join(__dirname, "..", "src");
 const read = (rel: string) => readFileSync(join(SRC, rel), "utf8");
@@ -19,9 +19,14 @@ describe("messaging apps link self-serve from Integrations", () => {
     expect(block.match(/brandId=\$\{encodeURIComponent\(brandId\)\}/g)?.length).toBe(4);
   });
 
-  it("polls fast only while a code is on screen", () => {
-    const rows = read("components/settings/messaging-link-rows.tsx");
-    expect(rows).toContain('accounts.some((l) => l.status === "waiting") ? WAITING_POLL_MS : false');
+  it("polls fast while a code is on screen, slower while an account is logged out, never otherwise", () => {
+    expect(read("components/settings/messaging-link-rows.tsx")).toContain("linkPollMs(query.state.data?.accounts ?? [])");
+    expect(linkPollMs([{ status: "waiting" }, { status: "linked" }])).toBe(3_000);
+    // Re-linked Telegram 2026-10-15: the code was accepted, the bridge reconnected seconds later,
+    // and the row said "Needs attention" until a manual reload.
+    expect(linkPollMs([{ status: "linked", bridgeState: { state: "BAD_CREDENTIALS" } }])).toBe(10_000);
+    expect(linkPollMs([{ status: "linked", needsRelink: true }])).toBe(10_000);
+    expect(linkPollMs([{ status: "linked", bridgeState: { state: "CONNECTED" } }, { status: "failed" }])).toBe(false);
   });
 
   it("never writes a live login code to disk", () => {

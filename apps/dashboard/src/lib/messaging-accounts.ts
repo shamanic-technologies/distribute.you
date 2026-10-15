@@ -23,3 +23,24 @@ export function startMethods(methods: string[]): string[] {
   const order = ["qr", "password", "phone"];
   return order.filter((m) => methods.includes(m));
 }
+
+interface LinkState {
+  status: string;
+  needsRelink?: boolean | null;
+  bridgeState?: { state?: string | null } | null;
+}
+
+/** A linked account the app logged out (crm-service's flag, or the bridge not CONNECTED). */
+export function needsRelink(link: LinkState): boolean {
+  return link.status === "linked" && (link.needsRelink === true || (!!link.bridgeState?.state && link.bridgeState.state !== "CONNECTED"));
+}
+
+/** A code on screen refreshes fast; a logged-out account slower, until the app reports it back (no reload). */
+export const WAITING_POLL_MS = 3_000;
+export const RELINK_POLL_MS = 10_000;
+
+export function linkPollMs(accounts: LinkState[]): number | false {
+  if (accounts.some((l) => l.status === "waiting")) return WAITING_POLL_MS;
+  if (accounts.some(needsRelink)) return RELINK_POLL_MS;
+  return false;
+}
