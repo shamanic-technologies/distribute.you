@@ -38,7 +38,7 @@ describe("anonymous session route refuses a signed-in caller", () => {
 });
 
 describe("get-started refuses to start a walk for a signed-in visitor", () => {
-  const start = PAGE.slice(PAGE.indexOf("async function start(raw: string)"));
+  const start = PAGE.slice(PAGE.indexOf("async function start(raw: string"));
 
   it("checks the session before the anonymous session or the brand create", () => {
     // `org` is the dashboard's walk, which names its org explicitly (never the public URL).

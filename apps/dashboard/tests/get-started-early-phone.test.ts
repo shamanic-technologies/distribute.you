@@ -10,7 +10,7 @@ import { parseGetStartedSnapshot, parseSnapshotPhone } from "../src/lib/v2/get-s
  */
 const gs = readFileSync(join(__dirname, "../src/components/v2/get-started/get-started.tsx"), "utf8");
 const hero = gs.slice(gs.indexOf("function Hero({"), gs.indexOf("function OrgBar("));
-const start = gs.slice(gs.indexOf("async function start(raw: string)"), gs.indexOf("async function startWithoutWebsite("));
+const start = gs.slice(gs.indexOf("async function start(raw: string"), gs.indexOf("async function startWithoutWebsite("));
 
 describe("the first page asks the WhatsApp number, optional", () => {
   it("renders the field under the website, labelled optional, without stealing the website's focus", () => {
@@ -114,5 +114,50 @@ describe("what they already gave comes back filled in (owner 2026-10-15)", () =>
     const wallSrc = readFileSync(join(__dirname, "../src/components/v2/get-started/account-card-wall.tsx"), "utf8");
     const open = wallSrc.slice(wallSrc.indexOf("async function openPhoneStage("), wallSrc.indexOf("async function submitPhone("));
     expect(open.indexOf("accountPhone(userRef.current?.publicMetadata")).toBeLessThan(open.indexOf('setStage("phone")'));
+  });
+});
+
+describe("after the first page: set up with my AI, or myself (owner 2026-10-15)", () => {
+  it("a public Start records the visitor, then shows the choice before anything is spent", () => {
+    const head = start.slice(0, start.indexOf("ran.current = true"));
+    expect(head).toContain("recordVisitor(raw)");
+    expect(head).toContain('setSetup({ raw, view: "choose" })');
+    expect(start.indexOf('setSetup({ raw, view: "choose" })')).toBeLessThan(start.indexOf("startAnonSession(url)"));
+    expect(gs).toContain("posthog.setPersonProperties({ website: typed })");
+  });
+
+  it("Myself runs the walk; With my AI shows the message to copy", () => {
+    expect(gs).toContain("void start(raw, true)");
+    expect(gs).toContain('posthog.capture("get_started_setup_chosen", { mode: "ai" })');
+    expect(gs).toContain('posthog.capture("get_started_setup_chosen", { mode: "manual" })');
+    const choice = gs.slice(gs.indexOf("function SetupChoice("), gs.indexOf("function OrgBar("));
+    expect(choice).toContain("With my AI");
+    expect(choice).toContain("Myself");
+    expect(choice).toContain("navigator.clipboard.writeText(prompt)");
+    expect(choice).toContain("Copy instructions");
+  });
+
+  it("the AI message carries what they typed and asks the rest", async () => {
+    const { aiSetupPrompt, DISTRIBUTE_MCP_URL } = await import("../src/lib/v2/get-started");
+    const full = aiSetupPrompt({ website: "acme.com", person: { firstName: "Marie", lastName: "Curie" }, phoneE164: "+33612345678" });
+    expect(full).toContain("My website: acme.com");
+    expect(full).toContain("My name: Marie Curie");
+    expect(full).toContain("My WhatsApp: +33612345678");
+    expect(full).toContain(DISTRIBUTE_MCP_URL);
+    expect(full).toContain("distribute_signup_start");
+    expect(full).toContain("ask me for my email");
+    const bare = aiSetupPrompt({ website: "acme.com", person: null, phoneE164: null });
+    expect(bare).not.toContain("My name");
+    expect(bare).toContain("ask me for both");
+    expect(full).not.toMatch(/[—–]/);
+  });
+
+  it("every step sends what was entered, never from the dashboard walk", () => {
+    const fn = gs.slice(gs.indexOf("function stepDone("), gs.indexOf("// ── Steps 3 and 4"));
+    expect(fn).toContain("if (org) return;");
+    expect(fn).toContain('posthog.capture("get_started_step_done"');
+    for (const step of ['"offer"', '"audience"', '"client_value"', '"offer_points"', '"gives"', '"campaign"']) {
+      expect(gs).toContain(`stepDone(${step},`);
+    }
   });
 });

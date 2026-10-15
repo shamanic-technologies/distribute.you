@@ -447,6 +447,31 @@ export function parseSnapshotName(v: unknown): GetStartedName | null {
   return givenName(p.firstName, p.lastName);
 }
 
+/** The MCP server an AI connects to (same host the docs and the API keys page name). */
+export const DISTRIBUTE_MCP_URL = "https://mcp.distribute.you/mcp";
+
+/**
+ * The message a visitor pastes into their own AI (owner 2026-10-15, "onboarding by AI"):
+ * it connects our MCP, opens the account and follows the Copilot's own method. What
+ * they typed on the first page is in it; what is missing, the AI asks.
+ */
+export function aiSetupPrompt(input: { website: string; person: GetStartedName | null; phoneE164: string | null }): string {
+  const name = input.person ? [input.person.firstName, input.person.lastName].filter(Boolean).join(" ") : "";
+  const you = [`My website: ${input.website}`, name ? `My name: ${name}` : null, input.phoneE164 ? `My WhatsApp: ${input.phoneE164}` : null]
+    .filter((l): l is string => !!l)
+    .join("\n");
+  return [
+    "Set up distribute.you for my company. distribute.you finds new clients for B2B companies with cold email.",
+    "",
+    you,
+    "",
+    `1. Connect the distribute.you MCP server: ${DISTRIBUTE_MCP_URL}`,
+    `2. Open my account: call distribute_signup_start with my email${input.phoneE164 ? " and my WhatsApp number" : " and my phone number"} (ask me for ${input.phoneE164 ? "my email" : "both"}), then distribute_signup_complete with the 6-digit code I forward to you.`,
+    "3. Call distribute_status, then distribute_list_skills, and read the index skill. Follow it to set up my brand, my offer, who I sell to and my first campaign.",
+    "4. Ask me before anything that spends money. When I agree, send me the payment link from distribute_prepay.",
+  ].join("\n");
+}
+
 /**
  * What a visitor told us about THEMSELVES on an earlier walk in this browser (owner
  * 2026-10-15: prefill, never ask twice). Kept apart from the walk's snapshot, which
