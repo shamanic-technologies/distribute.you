@@ -17,8 +17,9 @@ describe("every customer ROI label carries the expected (i)", () => {
     expect(read(file)).toContain(marker);
   });
 
-  it("the Campaigns tables label ROI with the (i) in all three places", () => {
-    expect(read("components/v2/funnel-campaigns.tsx").match(/<RoiLabel \/>/g)?.length).toBe(3);
+  it("the Campaigns surfaces label ROI with the (i): campaign page (2) and the list rows", () => {
+    expect(read("components/v2/funnel-campaigns.tsx").match(/<RoiLabel \/>/g)?.length).toBe(2);
+    expect(read("components/v2/campaigns-overview-page.tsx")).toContain("<RoiLabel />");
   });
 
   it("no customer surface prints a bare ROI header", () => {

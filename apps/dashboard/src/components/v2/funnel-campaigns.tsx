@@ -5,9 +5,9 @@ import { LightningIcon } from "@phosphor-icons/react/dist/csr/Lightning";
 import { CalendarBlankIcon } from "@phosphor-icons/react/dist/csr/CalendarBlank";
 import { createPortal } from "react-dom";
 import Link from "next/link";
-import { useMutation, useQueries } from "@tanstack/react-query";
+import { useMutation } from "@tanstack/react-query";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
-import { useAuthQuery, useOrgQueryGate, useQueryClient } from "@/lib/use-auth-query";
+import { useAuthQuery, useQueryClient } from "@/lib/use-auth-query";
 import { pollOptions } from "@/lib/query-options";
 import {
   ApiError,
@@ -21,8 +21,6 @@ import {
 import {
   CAP_PERIOD_LABEL,
   CAP_PERIODS,
-  compareFunnelCampaigns,
-  funnelSortKey,
   capUnavailableSentence,
   capWindowWords,
   asCapPeriod,
@@ -30,7 +28,6 @@ import {
   formatCapUsd,
   funnelCampaignFaceSrc,
   isOngoingFunnelCampaign as isFunnelCampaignOn,
-  splitFunnelCampaigns,
   capWords,
   funnelTypeOf,
   fundingLimit,
@@ -50,14 +47,11 @@ import {
   type FunnelCampaignCopy,
   type FunnelPathItem,
   missingChannelGaps,
-  maxBudgetLabel,
   orderPipesByFunnel,
-  roiMissingReason,
   funnelRoiShown,
   funnelRowSettled,
   unpricedWords,
 } from "@/lib/sales-funnel-campaigns";
-import { InfoTooltip } from "@/components/visibility/metric-info";
 import { formatRoi, roiIsGood } from "@/lib/format-roi";
 import { paymentHoldKind } from "@/lib/payment-declined";
 import { channelWriteErrorMessage } from "@/lib/channel-start";
@@ -472,10 +466,6 @@ function ContactedCell({ volume, type }: { volume: MaxVolume; type: ReturnType<t
 
 // ─── Campaigns > Overview: the offer's campaigns (owner spec 2026-10-11) ─────────────────
 
-/** The (i) of the Type column: the difference between the two kinds, in plain words. */
-const TYPE_TIP =
-  "Proactive campaigns reach new people every day, within their budget. Reactive campaigns wait for something to happen, like a positive reply, then act on it.";
-
 /**
  * The campaign's path on one line, as features-service serves it: every step label with the channel
  * (or channels: several sources on Start → Lead found) between each two of them, ours or the client's
@@ -541,116 +531,6 @@ export function TypeTag({ row }: { row: FunnelCampaignCopy }) {
 }
 
 /**
- * The offer's campaigns (owner spec 2026-10-11, token for token): Campaign (face, name, path), Type
- * (i), ROI, $ Invested, Status (the on/off control, green with the budget when on). Rows are
- * campaign-service's list (fresh after a status write); columns 1-4 read features-service's row for
- * the same campaign id, the budget billing's caps. Lists the ON campaigns; a Past tab (shown only
- * when it holds one) lists the stopped ones that spent at least 1 cent; a stopped one that never
- * spent is listed nowhere (owner 2026-10-13: « a list of OFF campaigns is useless »).
- */
-export function FunnelCampaignsSection({ orgId, brandId, offerId }: { orgId: string; brandId: string; offerId: string }) {
-  const q = useFunnelCampaigns(brandId, offerId);
-  const rowsQ = useAuthQuery(["funnelCampaignRows", brandId, offerId], () => listFunnelCampaignRows(brandId, offerId), pollOptions);
-  const rowById = useMemo(() => new Map((rowsQ.data ?? []).map((r) => [r.id, r])), [rowsQ.data]);
-  // Path and type label on their own fast read: a campaign newer than the cached rows paints at once (owner 2026-10-13).
-  const copyQ = useAuthQuery(["funnelCampaignCopies", brandId, offerId], () => listFunnelCampaignCopies(brandId, offerId), pollOptions);
-  const copyById = useMemo(() => new Map((copyQ.data ?? []).map((r) => [r.id, r])), [copyQ.data]);
-  // Same keys as each row's own caps read (deduped): the order needs every campaign's limits.
-  const gate = useOrgQueryGate();
-  const capsQs = useQueries({
-    queries: (q.data ?? []).map((c) => ({
-      queryKey: ["salesFunnelCaps", c.brandId, c.offerId, c.salesFunnelId],
-      queryFn: () => getSalesFunnelCaps(c.brandId, c.offerId, c.salesFunnelId),
-      enabled: gate,
-      ...pollOptions,
-    })),
-  });
-  const capsData = capsQs.map((x) => x.data);
-  const capsStamp = capsQs.map((x) => x.dataUpdatedAt).join(",");
-  // Proactive first, then max budget, then max volume, both biggest first (owner 2026-10-11).
-  const campaigns = useMemo(() => {
-    const list = q.data ?? [];
-    return list
-      .map((c, i) => ({ c, k: funnelSortKey(rowById.get(c.id) ?? null, capsData[i] ?? null) }))
-      .sort((x, y) => compareFunnelCampaigns(x.k, y.k))
-      .map((x) => x.c);
-    // capsData is a fresh array each render; capsStamp moves exactly when one of its members does.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [q.data, rowById, capsStamp]);
-  // Running by default; Past = stopped AND served at least 1 cent invested (owner 2026-10-13).
-  const investedById = useMemo(() => new Map((rowsQ.data ?? []).map((r) => [r.id, r.investedUsd])), [rowsQ.data]);
-  const { running, past } = useMemo(() => splitFunnelCampaigns(campaigns, investedById), [campaigns, investedById]);
-  const [view, setView] = useState<"running" | "past">("running");
-  const showingPast = view === "past" && past.length > 0;
-  const shown = showingPast ? past : running;
-  const settled = q.data !== undefined || q.isFetchedAfterMount;
-  if (settled && !q.data && q.isError) {
-    return <p className="mb-6 text-[13px] text-[var(--data-rose)]">Could not read this offer&apos;s campaigns.</p>;
-  }
-  return (
-    <section className="mb-8">
-      <SectionTitle count={settled ? running.length : null}>Campaigns</SectionTitle>
-      <p className="k-fg2 -mt-1 mb-3 text-[13px]">Each one runs within its limits.</p>
-      {settled && past.length > 0 && (
-        <nav className="k-line-subtle mb-3 flex gap-5 border-b" aria-label="Campaigns shown">
-          <button type="button" onClick={() => setView("running")} aria-current={!showingPast ? "page" : undefined} className="k-tab text-[13px]">
-            Running <span className="k-fg3 tabular-nums">{running.length}</span>
-          </button>
-          <button type="button" onClick={() => setView("past")} aria-current={showingPast ? "page" : undefined} className="k-tab text-[13px]">
-            Past <span className="k-fg3 tabular-nums">{past.length}</span>
-          </button>
-        </nav>
-      )}
-      {!settled ? (
-        <div className="space-y-2">
-          <Shimmer className="h-12 rounded-[10px]" />
-        </div>
-      ) : shown.length === 0 ? (
-        <div className="k-card">
-          <EmptyNote>{past.length > 0 ? "No campaign running right now." : "No campaign running yet."}</EmptyNote>
-        </div>
-      ) : (
-        <div className="k-card overflow-hidden">
-          <div className="k-scroll overflow-x-auto">
-            <table className="w-full min-w-[920px] text-[13px]">
-              <thead>
-                <tr className="k-line-subtle border-b">
-                  <th className="k-label w-[48%] px-3 py-2.5 pl-4 text-left font-normal">Campaign</th>
-                  <th className="k-label px-3 py-2.5 text-left font-normal">
-                    <span className="inline-flex items-center gap-1">
-                      Type
-                      <InfoTooltip tip={TYPE_TIP} placement="bottom" />
-                    </span>
-                  </th>
-                  <th className="k-label px-3 py-2.5 text-right font-normal">
-                    <RoiLabel />
-                  </th>
-                  <th className="k-label px-3 py-2.5 text-right font-normal">$ Invested</th>
-                  <th className="k-label w-[190px] px-3 py-2.5 pr-4 text-right font-normal">Status</th>
-                </tr>
-              </thead>
-              <tbody>
-                {shown.map((c) => (
-                  <FunnelCampaignRow
-                    key={c.id}
-                    orgId={orgId}
-                    campaign={c}
-                    row={rowById.get(c.id) ?? null}
-                    rowsSettled={funnelRowSettled(rowById.has(c.id), rowsQ, c.createdAt)}
-                    copy={rowById.get(c.id) ?? copyById.get(c.id) ?? null}
-                    copySettled={funnelRowSettled(rowById.has(c.id) || copyById.has(c.id), copyQ, c.createdAt)}
-                  />
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </div>
-      )}
-    </section>
-  );
-}
-
-/**
  * A funnel campaign's ROI: features-service's measured return under its maturity verdict, else
  * its served EXPECTED return with "expected" beside it (owner 2026-10-11: never blank), else the
  * served reason in words.
@@ -662,95 +542,6 @@ export function FunnelRoi({ row }: { row: FunnelCampaignRow }) {
     return <span className="k-fg3 text-[12px] font-normal">{unpricedWords(shown.unpriced)}</span>;
   }
   return <RoiValue roi={roi} learning={shown.learning} />;
-}
-
-function FunnelCampaignRow({
-  orgId,
-  campaign,
-  row,
-  rowsSettled,
-  copy,
-  copySettled,
-}: {
-  orgId: string;
-  campaign: SalesFunnelCampaign;
-  /** features-service's row for this campaign (path, type label, money); null when not served. */
-  row: FunnelCampaignRow | null;
-  rowsSettled: boolean;
-  /** Its path and Type: the full row's, else the fast copy read's (a campaign newer than the cached rows). */
-  copy: FunnelCampaignCopy | null;
-  copySettled: boolean;
-}) {
-  const router = useRouter();
-  const prefetch = useRoutePrefetch();
-  const caps = useFunnelCaps(campaign);
-  const [editing, setEditing] = useState(false);
-  const href = v2CampaignHref(orgId, campaign.brandId, campaign.id);
-  const capsSettled = caps.data !== undefined || caps.isFetchedAfterMount;
-  const c = caps.data ?? null;
-  const on = isFunnelCampaignOn(campaign);
-  const b = c?.maxBudget ?? null;
-  const limit = fundingLimit(c);
-  const reactive = (copy?.type ?? funnelTypeOf(c)) === "reactive";
-  // ON + Reactive: "Up to $N/<period>"; ON + Proactive: "$N/<period>" (owner 2026-10-11). A
-  // volume-only funnel reads its max volume ("200 new people/month", no "Max"), never a $ amount.
-  const onLabel = !capsSettled
-    ? "On"
-    : b
-      ? `${reactive ? "Up to " : ""}${maxBudgetLabel(b)}`
-      : limit?.kind === "volume"
-        ? volumeFundingLabel(reactive ? "reactive" : funnelTypeOf(c), limit.volume)
-        : "On";
-  // billing's verdict: a max budget AND/OR a max volume funds it.
-  const notFunded = capsSettled && funnelFunded(c) === false;
-  const roi = row ? funnelRoiShown(row) : { learning: false, value: null, unpriced: null };
-  useEffect(() => {
-    if (!rowsSettled) return;
-    if (!row) console.error("[funnel-campaigns] features-service served no row for this campaign", { id: campaign.id });
-    else if (row.roiMultiple === null && !funnelRoiShown(row).learning && !funnelRoiShown(row).unpriced) console.error("[funnel-campaigns] roiMultiple not served", { id: row.id, reason: roiMissingReason(row) });
-    if (row && row.investedUsd === null) console.error("[funnel-campaigns] investedUsd not served", { id: row.id });
-  }, [row, rowsSettled, campaign.id]);
-  useEffect(() => {
-    if (copySettled && copy && !copy.shortDescription) console.error("[funnel-campaigns] shortDescription not served", { id: copy.id, reason: copy.shortDescriptionUnavailableReason ?? null });
-  }, [copy, copySettled]);
-  // The status control and its menu / modal never open the page.
-  const stop = (e: React.SyntheticEvent) => e.stopPropagation();
-  const cell = (node: React.ReactNode) => (!rowsSettled ? <Shimmer className="ml-auto h-4 w-14 rounded" /> : node);
-  return (
-    <tr
-      className={`k-row k-line-subtle h-14 cursor-pointer border-b last:border-b-0 ${on ? "bg-[color-mix(in_oklab,var(--run)_9%,transparent)]" : ""}`}
-      onClick={() => router.push(href)}
-      onMouseEnter={() => prefetch(href)}
-      onFocus={() => prefetch(href)}
-    >
-      <td className="max-w-0 px-3 py-2 pl-4">
-        <MarkLines mark={(px) => <FunnelFace name={campaign.salesFunnelName} size={px} />}>
-          <span className="block truncate font-semibold">{campaign.salesFunnelName}</span>
-          {copy?.shortDescription ? (
-            <span className="k-fg2 block truncate text-[12px]">{copy.shortDescription}</span>
-          ) : copySettled ? (
-            <span className="k-fg4 block text-[12px]">—</span>
-          ) : (
-            <Shimmer className="h-3 w-48 rounded" />
-          )}
-        </MarkLines>
-      </td>
-      <td className="px-3 py-2">{copy ? <TypeTag row={copy} /> : copySettled ? DASH : <Shimmer className="ml-auto h-4 w-14 rounded" />}</td>
-      <td className="px-3 py-2 text-right font-semibold tabular-nums">
-        {cell(row ? <FunnelRoi row={row} /> : DASH)}
-      </td>
-      <td className="px-3 py-2 text-right tabular-nums">{cell(row?.investedUsd != null ? formatUsdAdaptive(row.investedUsd) : DASH)}</td>
-      <td className="px-3 py-2 pr-4 text-right" onClick={stop}>
-        <FunnelCampaignStatus campaign={campaign} onLabel={onLabel} />
-        {on && notFunded && (
-          <button type="button" onClick={() => setEditing(true)} className="mt-1 block w-full text-right text-[11.5px] text-[var(--data-amber)] hover:underline">
-            Not funded yet · Set a budget
-          </button>
-        )}
-        {editing && <FunnelCampaignModal campaign={campaign} caps={c} onClose={() => setEditing(false)} />}
-      </td>
-    </tr>
-  );
 }
 
 /**
