@@ -48,6 +48,7 @@ import { AddCreditsButton, ChoiceCards, OpenedPage } from "@/components/v2/copil
 import { useSelectedOfferIfAny } from "@/components/v2/selected-offer";
 import { RoiLabel } from "@/components/v2/roi-label";
 import { expectedReasonWords, roiToShow } from "@/lib/expected-return";
+import { clickedControlLabel, pushRecentAction, type RecentAction } from "@/lib/recent-actions";
 
 /**
  * The Copilot (owner 2026-10-09, GA 2026-10-10), drawn inside the right panel. A reload shows the last
@@ -265,6 +266,35 @@ export function CopilotChat({ orgId, brandId, headerAction }: { orgId: string; b
     contextRef.current = context;
   }, [context]);
 
+  // What the user just did (pages opened, controls clicked), sent with every turn so the
+  // model sees what they are trying to do. The panel stays mounted while hidden, so this
+  // records even before the Copilot is opened.
+  const recentActionsRef = useRef<RecentAction[]>([]);
+  const pathnameRef = useRef(pathname);
+  useEffect(() => {
+    pathnameRef.current = pathname;
+    recentActionsRef.current = pushRecentAction(recentActionsRef.current, {
+      at: new Date().toISOString(),
+      kind: "page",
+      label: pathname,
+      page: pathname,
+    });
+  }, [pathname]);
+  useEffect(() => {
+    const onClick = (e: MouseEvent) => {
+      const label = clickedControlLabel(e.target instanceof Element ? e.target : null);
+      if (!label) return;
+      recentActionsRef.current = pushRecentAction(recentActionsRef.current, {
+        at: new Date().toISOString(),
+        kind: "click",
+        label,
+        page: pathnameRef.current,
+      });
+    };
+    document.addEventListener("click", onClick, true);
+    return () => document.removeEventListener("click", onClick, true);
+  }, []);
+
   // onData is bound once by useChat: it reads these through refs.
   const routerRef = useRef(router);
   const orgIdRef = useRef(orgId);
@@ -286,7 +316,7 @@ export function CopilotChat({ orgId, brandId, headerAction }: { orgId: string; b
               message: last ? textOf(last) : "",
               configKey: COPILOT_CONFIG_KEY,
               ...(sessionIdRef.current ? { sessionId: sessionIdRef.current } : {}),
-              context: contextRef.current,
+              context: { ...contextRef.current, recentActions: recentActionsRef.current },
             },
           };
         },
