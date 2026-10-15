@@ -98,7 +98,7 @@ export function useOngoingCampaigns(orgId: string, brandId: string, offerId: str
     const funnelById = new Map((funnelQ.data ?? []).map((f) => [f.id, f]));
     for (const c of running) {
       const toKey = c.m.leg?.toKey ?? (c.campaign?.kind === "source" ? LEAD_FOUND_STEP : null);
-      const outcome = outcomeOf(c.m.row.campaign.featureSlug, toKey, c.m.leg?.toLabel ?? c.campaign?.toLabel);
+      const outcome = outcomeOf(legCatalogue, c.m.row.campaign.featureSlug, toKey, c.m.leg?.toLabel ?? c.campaign?.toLabel);
       if (!outcome) {
         console.error("[v2] a running campaign produces no known step", { featureSlug: c.m.row.campaign.featureSlug, legKey: c.m.row.campaign.legKey });
         continue;
@@ -115,7 +115,7 @@ export function useOngoingCampaigns(orgId: string, brandId: string, offerId: str
       if (funnel && !hit.funnelCampaigns.some((f) => f.id === funnel.id)) hit.funnelCampaigns.push(funnel);
     }
     return [...byKey.values()];
-  }, [running, funnelQ.data]);
+  }, [running, funnelQ.data, legCatalogue]);
   // Settled once the missions AND the offer's campaign list (names, legs) have answered.
   const catalogueSettled = !offerId || salesPaths.data !== undefined || salesPaths.isError;
   const funnelSettled = !offerId || funnelQ.data !== undefined || funnelQ.isError;

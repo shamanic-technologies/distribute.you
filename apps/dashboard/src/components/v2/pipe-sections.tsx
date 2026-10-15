@@ -10,7 +10,7 @@ import { formatRoi, roiIsGood } from "@/lib/format-roi";
 import { useStatBasis } from "@/lib/use-stat-basis";
 import { isColdEmailChannel } from "@/lib/offer-levers-home";
 import { isProactiveFrom, sameLegKey } from "@/lib/outbound-leg-key";
-import { legFor, type LegDef } from "@/lib/legs";
+import { legFor, stepPluralLabel, type LegDef } from "@/lib/legs";
 import { useLegCatalogue } from "@/lib/use-leg-catalogue";
 import { useAcquisitionChannels } from "@/lib/use-acquisition-channels";
 import type { SalesFunnelUnit } from "@/lib/sales-funnel-campaigns";
@@ -33,10 +33,6 @@ import { formatRatePct } from "@/lib/pipe-stats";
  * A pipe whose figures no producer serves yet (sourcing: people found per source) gets NO
  * block rather than an empty one; it lands when its producer ships.
  */
-
-/** "Positive reply" -> "Positive replies", "Booking call" -> "Booking calls", "Meeting booked" stays. */
-export const plural = (noun: string) =>
-  /ed$/i.test(noun) ? noun : /[^aeiou]y$/i.test(noun) ? `${noun.slice(0, -1)}ies` : `${noun}s`;
 
 /** What kind of block a pipe gets, from its channel and leg. Null = nothing served for it yet. */
 export function pipeKind(featureSlug: string, leg: Pick<LegDef, "fromKey"> | null): "cold_email" | "conversation" | null {
@@ -212,6 +208,8 @@ function ColdEmailPipe({ brandId, unit, mission, leg }: { brandId: string; unit:
   const emails = win.data?.emails ?? null;
   const queued = win.data?.queuedEmails ?? null;
   const replyLed = steps?.bucket === "positive_reply";
+  // Count headings read the catalogue's served plural (features-service `pluralLabel`).
+  const toPlural = stepPluralLabel(useLegCatalogue(), leg.toKey, leg.toLabel);
   // The campaign row's own served rates (features-service, distinct people emailed).
   const rates = mission?.row.revenue ?? null;
   const outcomes = steps && counts ? counts[steps.bucket] : null;
@@ -226,7 +224,7 @@ function ColdEmailPipe({ brandId, unit, mission, leg }: { brandId: string; unit:
         <div className="grid grid-cols-2 gap-x-4 gap-y-4">
           <Cell label="Contacted">{people(counts?.contacted)}</Cell>
           <Cell
-            label={outcomes === 1 ? leg.toLabel : plural(leg.toLabel)}
+            label={outcomes === 1 ? leg.toLabel : toPlural}
             sub={replyLed && rates?.positiveReplyRatePct != null ? `${pct(rates.positiveReplyRatePct)} of people emailed` : undefined}
           >
             {people(outcomes)}
@@ -250,7 +248,7 @@ function ColdEmailPipe({ brandId, unit, mission, leg }: { brandId: string; unit:
         ) : (
           <div className="space-y-5">
             <DailyBars label="Emails sent" total={emails?.sent ?? null} days={emails?.daily.map((d) => ({ date: d.date, value: d.sent })) ?? null} />
-            <DailyBars label={plural(leg.toLabel)} total={outcomeDaily?.total ?? null} days={outcomeDaily?.daily.map((d) => ({ date: d.date, value: d.count })) ?? null} />
+            <DailyBars label={toPlural} total={outcomeDaily?.total ?? null} days={outcomeDaily?.daily.map((d) => ({ date: d.date, value: d.count })) ?? null} />
           </div>
         )}
       </Column>
@@ -281,6 +279,9 @@ function ConversationPipe({ brandId, unit, mission, leg }: { brandId: string; un
   const settled = q.isFetchedAfterMount || q.data !== undefined;
   const win = useCampaignWindow(brandId, unit.campaignId, unit.featureSlug);
   const from = leg.fromLabel ?? "Positive reply";
+  const catalogue = useLegCatalogue();
+  const fromPlural = stepPluralLabel(catalogue, leg.fromKey, from);
+  const toPlural = stepPluralLabel(catalogue, leg.toKey, leg.toLabel);
   const people = (n: number | null | undefined) => (!settled ? <Shimmer className="h-6 w-14" /> : count(n, "person", "people"));
   const spend = win.data?.spend ?? null;
 
@@ -288,8 +289,8 @@ function ConversationPipe({ brandId, unit, mission, leg }: { brandId: string; un
     <>
       <Column title="Figures" note="Since it started">
         <div className="grid grid-cols-2 gap-x-4 gap-y-4">
-          <Cell label={plural(from)}>{people(conv?.handed)}</Cell>
-          <Cell label={plural(leg.toLabel)}>{people(conv?.meetingsBooked)}</Cell>
+          <Cell label={fromPlural}>{people(conv?.handed)}</Cell>
+          <Cell label={toPlural}>{people(conv?.meetingsBooked)}</Cell>
           <Cell label="Ongoing">{people(conv?.ongoing)}</Cell>
           <Cell label="Dropped">{people(conv?.dropped)}</Cell>
           <SpentCell win={win} />
@@ -317,7 +318,7 @@ function ConversationPipe({ brandId, unit, mission, leg }: { brandId: string; un
           <EmptyNote>Could not read this campaign&apos;s conversations. Retrying.</EmptyNote>
         ) : (
           <div className="flex items-end gap-3">
-            <StepBar label={plural(from)} count={conv.handed} of={conv.handed} />
+            <StepBar label={fromPlural} count={conv.handed} of={conv.handed} />
             <StepBar label="Ongoing" count={conv.ongoing} of={conv.handed} />
             <StepBar label={leg.toLabel} count={conv.meetingsBooked} of={conv.handed} />
           </div>

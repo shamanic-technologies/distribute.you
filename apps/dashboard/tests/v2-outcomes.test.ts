@@ -2,53 +2,67 @@ import { describe, expect, it } from "vitest";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { byDepth, outcomeOf, outcomeOfBucket, outcomesOf } from "../src/lib/v2/outcomes";
+import { SERVED_STEPS } from "./fixtures/served-steps";
 import { BrandOutcomesSchema, OutcomePeopleSchema, reachedBuckets, stepStatOf } from "../src/lib/v2/outcome-people";
 
 const read = (p: string) => readFileSync(join(__dirname, "..", p), "utf8");
 
 describe("outcomes (owner 2026-10-10): one per step a running campaign lands on", () => {
   it("reads a step's people from lead-service's bucket for it", () => {
-    expect(outcomeOf("sales-cold-email-outreach", "conversation")).toEqual({
+    expect(outcomeOf(SERVED_STEPS, "sales-cold-email-outreach", "conversation")).toEqual({
       key: "conversation",
       label: "Positive replies",
       items: { kind: "people", bucket: "positive_reply" },
     });
-    expect(outcomeOf("sales-cold-email-outreach", "website_visit")?.items).toEqual({ kind: "people", bucket: "website_visit" });
-    expect(outcomeOf("ai-meeting-booking", "meeting_booked")?.items).toEqual({ kind: "people", bucket: "meeting_booked" });
-    expect(outcomeOf(null, "paid_client")?.items).toEqual({ kind: "people", bucket: "sale" });
+    expect(outcomeOf(SERVED_STEPS, "sales-cold-email-outreach", "website_visit")?.items).toEqual({ kind: "people", bucket: "website_visit" });
+    expect(outcomeOf(SERVED_STEPS, "ai-meeting-booking", "meeting_booked")?.items).toEqual({ kind: "people", bucket: "meeting_booked" });
+    expect(outcomeOf(SERVED_STEPS, null, "paid_client")?.items).toEqual({ kind: "people", bucket: "sale" });
     // A retired form spelling is the one form step.
-    expect(outcomeOf(null, "form_filled")).toMatchObject({ key: "form_submitted", items: { kind: "people", bucket: "form_submission" } });
+    expect(outcomeOf(SERVED_STEPS, null, "form_filled")).toMatchObject({ key: "form_submitted", items: { kind: "people", bucket: "form_submission" } });
   });
 
   it("a source finds leads, a publishing channel posts, anything else is not listed yet", () => {
-    expect(outcomeOf("sourcing-apollo-cold-filters", "lead_found")).toEqual({ key: "lead_found", label: "Leads found", items: { kind: "leads-found" } });
-    expect(outcomeOf("organic-linkedin-publishing", null)).toMatchObject({ key: "posts", label: "Posts", items: { kind: "posts" } });
+    expect(outcomeOf(SERVED_STEPS, "sourcing-apollo-cold-filters", "lead_found")).toEqual({ key: "lead_found", label: "Leads", items: { kind: "leads-found" } });
+    expect(outcomeOf(SERVED_STEPS, "organic-linkedin-publishing", null)).toMatchObject({ key: "posts", label: "Posts", items: { kind: "posts" } });
     // AI Instant Call's booking calls: lead-service's own bucket (v0.83.31).
-    expect(outcomeOf("ai-instant-call", "booking_call", "Booking call")).toEqual({
+    expect(outcomeOf(SERVED_STEPS, "ai-instant-call", "booking_call", "Booking call")).toEqual({
       key: "booking_call",
       label: "Booking calls",
       items: { kind: "people", bucket: "booking_call" },
     });
     // A step no service lists people for: named with its served label, never guessed.
-    expect(outcomeOf("x", "some_new_step", "Some new step")).toEqual({ key: "some_new_step", label: "Some new step", items: { kind: "unavailable" } });
-    expect(outcomeOf("x", null)).toBeNull();
+    expect(outcomeOf(SERVED_STEPS, "x", "some_new_step", "Some new step")).toEqual({ key: "some_new_step", label: "Some new step", items: { kind: "unavailable" } });
+    expect(outcomeOf(SERVED_STEPS, "x", null)).toBeNull();
+  });
+
+  it("names every step by the catalogue's served plural, never a local map (owner 2026-10-15)", () => {
+    const src = read("src/lib/v2/outcomes.ts");
+    expect(src).toContain("stepPluralLabel(catalogue, key, singular)");
+    expect(src).not.toContain("Leads found");
+    expect(src).not.toMatch(/const PLURAL\b/);
+    // The producer renames a step: the outcome reads the new word with no deploy here.
+    const renamed = { steps: new Map([["lead_found", { key: "lead_found", label: "Prospect", pluralLabel: "Prospects" }]]) };
+    expect(outcomeOf(renamed, "sourcing-apollo-cold-filters", "lead_found")?.label).toBe("Prospects");
+    // A step served with no plural reads its served singular (and logs the gap).
+    const bare = { steps: new Map([["lead_found", { key: "lead_found", label: "Lead" }]]) };
+    expect(outcomeOf(bare, "sourcing-apollo-cold-filters", "lead_found")?.label).toBe("Lead");
   });
 
   it("sorts outcomes from the most advanced (paid client) to the least (lead found)", () => {
     const keys = ["conversation", "meeting_booked", "lead_found", "meeting_attended", "paid_client", "website_visit"];
-    const sorted = byDepth(keys.map((k) => ({ outcome: outcomeOf(null, k)! })));
+    const sorted = byDepth(keys.map((k) => ({ outcome: outcomeOf(SERVED_STEPS, null, k)! })));
     expect(sorted.map((o) => o.outcome.label)).toEqual([
       "Paid clients",
       "Meetings attended",
       "Meetings booked",
       "Positive replies",
       "Website visits",
-      "Leads found",
+      "Leads",
     ]);
   });
 
   it("lists each step once, in campaign order", () => {
-    const list = outcomesOf([
+    const list = outcomesOf(SERVED_STEPS, [
       { featureSlug: "sourcing-apollo-cold-filters", toKey: "lead_found" },
       { featureSlug: "sales-cold-email-outreach", toKey: "conversation" },
       { featureSlug: "sourcing-apollo-buying-signals", toKey: "lead_found" },
@@ -68,10 +82,10 @@ describe("outcomes (owner 2026-10-10): one per step a running campaign lands on"
   });
 
   it("every outcome of the brand, campaigns or not (owner 2026-10-11): crm-service's steps map onto outcomes", () => {
-    expect(outcomeOfBucket("website_visit")?.key).toBe("website_visit");
-    expect(outcomeOfBucket("sale")).toMatchObject({ key: "paid_client", label: "Paid clients", items: { kind: "people", bucket: "sale" } });
-    expect(outcomeOfBucket("form_submission")?.key).toBe("form_submitted");
-    expect(outcomeOfBucket("nope")).toBeNull();
+    expect(outcomeOfBucket(SERVED_STEPS, "website_visit")?.key).toBe("website_visit");
+    expect(outcomeOfBucket(SERVED_STEPS, "sale")).toMatchObject({ key: "paid_client", label: "Paid clients", items: { kind: "people", bucket: "sale" } });
+    expect(outcomeOfBucket(SERVED_STEPS, "form_submission")?.key).toBe("form_submitted");
+    expect(outcomeOfBucket(SERVED_STEPS, "nope")).toBeNull();
     const served = BrandOutcomesSchema.parse({
       brandId: "b",
       scope: { status: "ready", lastBuiltAt: null, lastError: null },

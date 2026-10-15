@@ -16,6 +16,7 @@ import { RecordsTabs } from "@/components/v2/records";
 import { formatCount } from "@/lib/format-number";
 import { v2Href, v2OutcomeHref } from "@/lib/v2/routes";
 import { outcomeOf, type Outcome } from "@/lib/v2/outcomes";
+import { useLegCatalogue } from "@/lib/use-leg-catalogue";
 import { useStaffMode } from "@/lib/use-staff-mode";
 import { useBucketCounts } from "@/components/v2/data";
 import { useSelectedOffer } from "@/components/v2/selected-offer";
@@ -262,11 +263,12 @@ export function OutcomePage() {
   const { offerId } = useSelectedOffer();
   const { outcomes, settled } = useBrandOutcomeList(orgId, brandId, offerId);
   const counts = useBucketCounts(brandId).data?.counts ?? null;
+  const catalogue = useLegCatalogue();
   const { staffMode } = useStaffMode();
   const [tab, setTab] = useState<"all" | "ours">("all");
   const listed = outcomes.find((o) => o.outcome.key === stepKey) ?? null;
   // A step nothing produces today still opens (an old link): its items are read the same way.
-  const outcome = listed?.outcome ?? (stepKey ? outcomeOf(null, stepKey) : null);
+  const outcome = listed?.outcome ?? (stepKey ? outcomeOf(catalogue, null, stepKey) : null);
   if (!outcome) return null;
   // The posts are a staff read today (social-service behind the gateway's staff gate).
   if (outcome.items.kind === "posts" && staffMode) return <PostsPage />;

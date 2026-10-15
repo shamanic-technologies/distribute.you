@@ -13,7 +13,7 @@ import { useStatBasis } from "@/lib/use-stat-basis";
 import { useStaffMode } from "@/lib/use-staff-mode";
 import { isColdEmailChannel } from "@/lib/offer-levers-home";
 import { useLegCatalogue } from "@/lib/use-leg-catalogue";
-import { campaignNameFor } from "@/lib/legs";
+import { campaignNameFor, stepPluralLabel } from "@/lib/legs";
 import { isProactiveFrom, sameLegKey } from "@/lib/outbound-leg-key";
 import { useAcquisitionChannels } from "@/lib/use-acquisition-channels";
 import { v2CampaignHref, v2Href, v2OfferHref, type V2CampaignTab } from "@/lib/v2/routes";
@@ -35,13 +35,6 @@ import { EmptyNote, Figure, SectionTitle, Shimmer, StatTile } from "@/components
 import { FunnelCampaignPage, FunnelPartOf, useFunnelCampaignById, useFunnelCapsWords } from "@/components/v2/funnel-campaigns";
 import { RoiLabel, RoiValue } from "@/components/v2/roi-label";
 import { costToShowCents, roiToShow } from "@/lib/expected-return";
-
-/**
- * A step label as a count heading: "Positive reply" -> "Positive replies", "Booking call" ->
- * "Booking calls", and a participle step ("Meeting booked") stays as it is.
- */
-const plural = (noun: string) =>
-  /ed$/i.test(noun) ? noun : /[^aeiou]y$/i.test(noun) ? `${noun.slice(0, -1)}ies` : `${noun}s`;
 
 const CAMPAIGN_TABS: { key: V2CampaignTab; label: string; staff?: boolean }[] = [
   { key: "overview", label: "Overview" },
@@ -278,6 +271,7 @@ function CampaignOverview({
   const people = q.data?.people ?? null;
   const settled = q.isFetchedAfterMount || q.data !== undefined;
   const audiences = useAudienceTable({ campaignId, offerId });
+  const catalogue = useLegCatalogue();
 
   const leg = LEG_STEPS.find((l) => sameLegKey(l.legKey, mission.row.campaign.legKey)) ?? null;
   const g = mission.row.revenue ?? null;
@@ -309,7 +303,7 @@ function CampaignOverview({
           <StatTile label="Queued">{emailCount(queued)}</StatTile>
           <StatTile label="Sent">{emailCount(emails?.sent)}</StatTile>
           <StatTile label="Delivered">{emailCount(emails?.delivered)}</StatTile>
-          <StatTile label={leg ? (outcomes === 1 ? leg.outcome : plural(leg.outcome)) : "Outcomes"}>{count(outcomes)}</StatTile>
+          <StatTile label={leg ? (outcomes === 1 ? leg.outcome : stepPluralLabel(catalogue, mission.leg?.toKey, leg.outcome)) : "Outcomes"}>{count(outcomes)}</StatTile>
           <SpentTile win={win} />
           <StatTile label={replyLed ? "Cost / reply" : "Cost / visit"}>
             <Figure
@@ -393,6 +387,10 @@ function ConversationOverview({
   const settled = q.isFetchedAfterMount || q.data !== undefined;
   const from = mission.leg?.fromLabel ?? "Positive reply";
   const to = mission.leg?.toLabel ?? "Meeting booked";
+  // Count headings read the catalogue's served plural (features-service `pluralLabel`).
+  const catalogue = useLegCatalogue();
+  const fromPlural = stepPluralLabel(catalogue, mission.leg?.fromKey, from);
+  const toPlural = stepPluralLabel(catalogue, mission.leg?.toKey, to);
   const count = (v: number | null | undefined) =>
     !settled ? <Shimmer className="h-7 w-16" /> : <Figure value={v != null ? formatCount(v) : "—"} unit="people" />;
 
@@ -402,9 +400,9 @@ function ConversationOverview({
         <SectionTitle right={<span>Since it started</span>}>This campaign</SectionTitle>
         <div className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-6">
           <RoiTile mission={mission} />
-          <StatTile label={plural(from)}>{count(conv?.handed)}</StatTile>
+          <StatTile label={fromPlural}>{count(conv?.handed)}</StatTile>
           <StatTile label="Ongoing conversations">{count(conv?.ongoing)}</StatTile>
-          <StatTile label={plural(to)}>{count(conv?.meetingsBooked)}</StatTile>
+          <StatTile label={toPlural}>{count(conv?.meetingsBooked)}</StatTile>
           <StatTile label="Dropped conversations">{count(conv?.dropped)}</StatTile>
           <SpentTile win={win} />
         </div>
@@ -427,7 +425,7 @@ function ConversationOverview({
               <EmptyNote>Could not read this campaign&apos;s conversations. Retrying.</EmptyNote>
             ) : (
               <div className="flex items-end gap-3">
-                <StepBar label={plural(from)} count={conv.handed} of={conv.handed} />
+                <StepBar label={fromPlural} count={conv.handed} of={conv.handed} />
                 <StepBar label="Ongoing conversations" count={conv.ongoing} of={conv.handed} />
                 <StepBar label={to} count={conv.meetingsBooked} of={conv.handed} />
               </div>

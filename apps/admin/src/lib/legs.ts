@@ -29,6 +29,8 @@ import { legKeyTwin } from "./outbound-leg-key";
 export interface StepDef {
   key: string;
   label: string;
+  /** The step in the plural, as a count heading reads it ("Leads", "Positive replies"; features-service `pluralLabel`). */
+  pluralLabel?: string;
 }
 
 /** One leg, with both of its steps resolved. `fromKey` is null for an entry leg. */
@@ -59,7 +61,7 @@ export const EMPTY_LEG_CATALOGUE: LegCatalogue = {
 /** The public catalogue body, read structurally: a row missing what this module needs
  *  contributes nothing rather than throwing. */
 export interface PublicCatalogueWire {
-  steps?: Array<{ key?: unknown; label?: unknown }> | null;
+  steps?: Array<{ key?: unknown; label?: unknown; pluralLabel?: unknown }> | null;
   legs?: Array<{
     legKey?: unknown;
     fromStep?: { key?: unknown; label?: unknown } | null;
@@ -97,7 +99,8 @@ export function legCatalogueFromWire(body: PublicCatalogueWire | null | undefine
   for (const s of body.steps ?? []) {
     const key = str(s?.key);
     const label = str(s?.label);
-    if (key && label && !steps.has(key)) steps.set(key, { key, label });
+    const pluralLabel = str(s?.pluralLabel);
+    if (key && label && !steps.has(key)) steps.set(key, pluralLabel ? { key, label, pluralLabel } : { key, label });
   }
   const labelOf = (key: string | null, served: unknown): string | null => {
     if (!key) return null;

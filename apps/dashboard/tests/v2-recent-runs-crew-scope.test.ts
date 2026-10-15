@@ -48,7 +48,7 @@ describe("v2 recent runs are crew runs", () => {
     // on dépense en proactive ... et en réactif, avec le split des max budgets").
     const line = today.slice(today.indexOf("function CampaignLine("));
     expect(line).toContain("<CampaignLeg campaign={campaign}");
-    expect(line).toContain("campaignTag(campaign)");
+    expect(line).toContain("campaignTag(campaign, catalogue)");
     expect(line).toContain("m.row.revenue?.committedCostUsd");
     // Name and status on the top line, the definition alone on one line below (owner 2026-10-05).
     expect(line).toContain("<CampaignLeg campaign={campaign} compact />");

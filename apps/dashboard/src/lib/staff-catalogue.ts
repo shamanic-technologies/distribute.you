@@ -28,7 +28,7 @@ export function isCatalogueObject(s: string | null | undefined): s is CatalogueO
 
 /** How each object is named: the section title, one, many, and the one line saying what it is. */
 export const CATALOGUE_OBJECT_LABELS: Record<CatalogueObject, { title: string; one: string; many: string; what: string }> = {
-  steps: { title: "Steps", one: "step", many: "steps", what: "A thing a buyer reaches, from a lead found to a paid client." },
+  steps: { title: "Steps", one: "step", many: "steps", what: "A thing a buyer reaches, from a lead to a paid client." },
   "sales-paths": { title: "Sales Paths", one: "sales path", many: "sales paths", what: "A series of steps to a paying client, with no channel yet." },
   channels: { title: "Channels", one: "channel", many: "channels", what: "Who does the work: our software, our team or the client's team." },
   pipes: { title: "Pipes", one: "pipe", many: "pipes", what: "One channel working one leg, from one step to the next." },
@@ -96,6 +96,8 @@ export const CatalogueStepSchema = z
     object: z.literal("step"),
     id: z.string(),
     name: z.string(),
+    /** The step in the plural ("Leads"; features-service v0.179.231). */
+    pluralName: z.string().nullish(),
     icon: z.string(),
     description: z.string(),
     line: z.string(),
@@ -249,6 +251,11 @@ export const CatalogueTriggerRowSchema = z
     kind: z.string(),
     origin: z.string(),
     pipeCount: z.number(),
+    /** "outcome" (its name is the outcome's label; the lightning is a glyph the UI draws) or "condition". */
+    type: z.string().nullish(),
+    /** The step an outcome trigger fires on. */
+    outcomeKey: z.string().nullish(),
+    callable: z.boolean().nullish(),
   })
   .passthrough();
 export type CatalogueTriggerRow = z.infer<typeof CatalogueTriggerRowSchema>;

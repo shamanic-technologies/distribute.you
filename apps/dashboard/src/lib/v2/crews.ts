@@ -1,4 +1,5 @@
 import { isProactiveFrom, OUTBOUND_LEG_TO_CONVERSATION, OUTBOUND_LEG_TO_WEBSITE_VISIT } from "../outbound-leg-key";
+import { stepPluralLabel, type LegCatalogue } from "../legs";
 
 /**
  * The CREW vocabulary of dashboard v2.
@@ -103,27 +104,17 @@ export interface CrewTrigger {
   outcome: string;
 }
 
-/** The plural of a step a customer reads under a crew. An unlisted step keeps its own words. */
-const OUTCOME_PLURAL: Record<string, string> = {
-  conversation: "Positive replies",
-  website_visit: "Website visits",
-  meeting_booked: "Meetings booked",
-  meeting_attended: "Meetings attended",
-  signup: "Signups",
-  form_submitted: "Form submissions",
-  paid_client: "Paid clients",
-};
-
-/** A step's name in the plural ("Positive replies"), as the trigger tags read it; the served label otherwise. */
-export function stepPlural(stepKey: string, label: string): string {
-  return OUTCOME_PLURAL[stepKey] ?? label;
+/** A step's name in the plural ("Positive replies"), as features-service serves it (`pluralLabel`); the served singular when it serves none. */
+export function stepPlural(catalogue: Pick<LegCatalogue, "steps">, stepKey: string, label: string): string {
+  return stepPluralLabel(catalogue, stepKey, label);
 }
 
 export function crewTrigger(
+  catalogue: Pick<LegCatalogue, "steps">,
   leg: { fromKey: string | null; fromLabel: string | null; toKey: string; toLabel: string } | null,
 ): CrewTrigger | null {
   if (!leg) return null;
-  const outcome = OUTCOME_PLURAL[leg.toKey] ?? leg.toLabel;
+  const outcome = stepPluralLabel(catalogue, leg.toKey, leg.toLabel);
   if (isProactiveFrom(leg.fromKey)) return { kind: "daily", label: "Daily", outcome };
   // Not proactive, so it starts on a named step.
   return { kind: "event", label: leg.fromLabel ?? (leg.fromKey as string), outcome };
