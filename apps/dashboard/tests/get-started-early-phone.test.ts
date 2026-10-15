@@ -86,3 +86,33 @@ describe("the first page asks the first and last name, optional (owner 2026-10-1
     expect(parseGetStartedSnapshot(JSON.stringify(base))?.person).toBeNull();
   });
 });
+
+describe("what they already gave comes back filled in (owner 2026-10-15)", () => {
+  it("an earlier walk in this browser: name and number remembered at Start, read after mount", () => {
+    expect(start).toContain("localStorage.setItem(GET_STARTED_YOU_KEY");
+    expect(gs).toContain("parseRememberedYou(localStorage.getItem(GET_STARTED_YOU_KEY))");
+    // Never over what they are typing now.
+    expect(gs).toContain("setFirstName((cur) => cur || p.firstName)");
+    expect(gs).toContain("setPhone((cur) => (cur.national.trim() ? cur : ph))");
+  });
+
+  it("parses what was remembered; nothing usable is null", async () => {
+    const { parseRememberedYou } = await import("../src/lib/v2/get-started");
+    const phone = { countryCode: "FR", dialCode: "33", national: "612345678" };
+    expect(parseRememberedYou(JSON.stringify({ person: { firstName: "Marie", lastName: "Curie" }, phone }))).toEqual({ person: { firstName: "Marie", lastName: "Curie" }, phone });
+    expect(parseRememberedYou(JSON.stringify({ person: null, phone }))?.phone).toEqual(phone);
+    expect(parseRememberedYou(JSON.stringify({ person: null, phone: null }))).toBeNull();
+    expect(parseRememberedYou("{nope")).toBeNull();
+    expect(parseRememberedYou(null)).toBeNull();
+  });
+
+  it("an existing account: the phone stage opens with the number it already holds", async () => {
+    const { accountPhone } = await import("../src/lib/v2/get-started");
+    expect(accountPhone({ phone: "+33612345678", phoneCountryCode: "FR", phoneDialCode: "33", phoneNational: "6 12 34 56 78" })).toEqual({ countryCode: "FR", dialCode: "33", national: "6 12 34 56 78" });
+    expect(accountPhone({})).toBeNull();
+    expect(accountPhone({ phoneCountryCode: "FR", phoneDialCode: "33", phoneNational: "" })).toBeNull();
+    const wallSrc = readFileSync(join(__dirname, "../src/components/v2/get-started/account-card-wall.tsx"), "utf8");
+    const open = wallSrc.slice(wallSrc.indexOf("async function openPhoneStage("), wallSrc.indexOf("async function submitPhone("));
+    expect(open.indexOf("accountPhone(userRef.current?.publicMetadata")).toBeLessThan(open.indexOf('setStage("phone")'));
+  });
+});
