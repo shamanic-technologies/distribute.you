@@ -81,6 +81,9 @@ import { V2AudiencesTable } from "@/components/v2/audiences-table";
 import { EmptyNote, Figure, HoverScroll, MarkLines, Meter, SectionTitle, Shimmer, StateDot } from "@/components/v2/ui";
 import { RoiLabel, RoiValue } from "@/components/v2/roi-label";
 import { roiToShow } from "@/lib/expected-return";
+import { useStaffMode } from "@/lib/use-staff-mode";
+import { CAMPAIGN_LAYOUT_PARAM, isCampaignLayoutPreview } from "@/lib/v2/campaign-layout-preview";
+import { FunnelCampaignPageNext } from "@/components/v2/campaign-page-next";
 
 /**
  * CAMPAIGNS THAT ARE SALES FUNNELS (owner 2026-10-10). A campaign has a name and a face, ONE
@@ -652,7 +655,7 @@ export function FunnelCampaignsSection({ orgId, brandId, offerId }: { orgId: str
  * its served EXPECTED return with "expected" beside it (owner 2026-10-11: never blank), else the
  * served reason in words.
  */
-function FunnelRoi({ row }: { row: FunnelCampaignRow }) {
+export function FunnelRoi({ row }: { row: FunnelCampaignRow }) {
   const shown = funnelRoiShown(row);
   const roi = roiToShow(shown, row.expectedReturn);
   if (roi.value == null && roi.reason == null && shown.unpriced) {
@@ -939,6 +942,14 @@ const FUNNEL_TABS: { key: V2CampaignTab; label: string; needsColdEmail: boolean 
 ];
 
 export function FunnelCampaignPage({ campaign }: { campaign: SalesFunnelCampaign }) {
+  // Staff preview of the next layout (owner 2026-10-15): staff mode AND ?layout=next, else today's page.
+  const layout = useSearchParams().get(CAMPAIGN_LAYOUT_PARAM);
+  const { staffMode } = useStaffMode();
+  if (isCampaignLayoutPreview(staffMode, layout)) return <FunnelCampaignPageNext campaign={campaign} />;
+  return <FunnelCampaignPageCurrent campaign={campaign} />;
+}
+
+function FunnelCampaignPageCurrent({ campaign }: { campaign: SalesFunnelCampaign }) {
   const { orgId } = useParams<{ orgId: string }>();
   const params = useSearchParams();
   const catalogue = useLegCatalogue();
