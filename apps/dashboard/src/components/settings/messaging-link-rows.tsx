@@ -12,9 +12,14 @@ import { parsePastedHeaders, sessionValues } from "@/lib/browser-session-paste";
 /** While a code is on screen it refreshes on the vendor's schedule, so the read polls fast. */
 const WAITING_POLL_MS = 3_000;
 
-const CHANNEL: Record<string, { name: string; domain: string; blurb: string; risk?: string }> = {
+const CHANNEL: Record<string, { name: string; domain: string; blurb: string; risk?: string; qrSteps?: string }> = {
   whatsapp: { name: "WhatsApp", domain: "whatsapp.com", blurb: "Read your WhatsApp chats with each person, in their thread." },
-  telegram: { name: "Telegram", domain: "telegram.org", blurb: "Read your Telegram chats with each person, in their thread." },
+  telegram: {
+    name: "Telegram",
+    domain: "telegram.org",
+    blurb: "Read your Telegram chats with each person, in their thread.",
+    qrSteps: "On your phone, open Telegram, then Settings, then Devices, then Link Desktop Device, and scan this code.",
+  },
   discord: { name: "Discord", domain: "discord.com", blurb: "Read your Discord messages with each person, in their thread." },
   linkedin: {
     name: "LinkedIn",
@@ -162,7 +167,7 @@ function AccountRow({
 }: {
   brandId: string;
   link: MatrixLink;
-  meta: { name: string };
+  meta: { name: string; qrSteps?: string };
   onChanged: () => Promise<unknown>;
 }) {
   const [error, setError] = useState<string | null>(null);
@@ -250,7 +255,7 @@ function AccountRow({
               <p className="max-w-xs text-sm text-gray-600">
                 {link.instructions ??
                   (link.qr
-                    ? `On your phone, open ${meta.name}, then Linked devices, then Link a device, and scan this code.`
+                    ? (meta.qrSteps ?? `On your phone, open ${meta.name}, then Linked devices, then Link a device, and scan this code.`)
                     : link.pairingCode
                       ? `On your phone, open ${meta.name}, then Linked devices, then Link with phone number, and type this code.`
                       : "Getting a code...")}
