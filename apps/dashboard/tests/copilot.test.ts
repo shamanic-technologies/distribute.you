@@ -252,3 +252,20 @@ describe("Create a campaign button (owner 2026-10-11)", () => {
     expect(chat).toContain("if (!openerWanted || askedText ||");
   });
 });
+
+describe("the user never waits on the Copilot (owner 2026-10-15)", () => {
+  it("a message sent while an answer streams stops it and goes out at once", () => {
+    const chat = src("src/components/v2/copilot-chat.tsx");
+    const at = chat.indexOf("const submit = useCallback(");
+    const body = chat.slice(at, chat.indexOf("const onSubmit = ", at));
+    // No early return on busy: the send stops the stream and queues the text.
+    const send = body.slice(0, body.indexOf("useEffect("));
+    expect(send).not.toContain("|| busy) return");
+    expect(body).toContain("setQueuedText(value);");
+    expect(body).toContain("stop();");
+    expect(body).toContain("if (!queuedText || busy) return;");
+    expect(body).toContain("sendMessage({ text: queuedText });");
+    // Typing during a stream shows Send, Stop only on an empty box.
+    expect(chat).toContain("{busy && !draft.trim() ? (");
+  });
+});

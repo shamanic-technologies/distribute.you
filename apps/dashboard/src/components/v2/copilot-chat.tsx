@@ -492,15 +492,29 @@ export function CopilotChat({ orgId, brandId, headerAction }: { orgId: string; b
     setOpenerWanted(true);
   }, [stop, storageKey, setMessages]);
 
+  // The user never waits on the Copilot: a message sent while an answer streams (the new
+  // chat's opener reading the account, typically) stops that answer and goes out at once.
+  const [queuedText, setQueuedText] = useState<string | null>(null);
   const submit = useCallback(
     (text: string) => {
       const value = text.trim();
-      if (!value || busy) return;
-      sendMessage({ text: value });
+      if (!value) return;
       setDraft("");
+      if (busy) {
+        setOpenerWanted(false);
+        setQueuedText(value);
+        stop();
+        return;
+      }
+      sendMessage({ text: value });
     },
-    [busy, sendMessage],
+    [busy, stop, sendMessage],
   );
+  useEffect(() => {
+    if (!queuedText || busy) return;
+    setQueuedText(null);
+    sendMessage({ text: queuedText });
+  }, [queuedText, busy, sendMessage]);
   const onSubmit = (e: FormEvent) => {
     e.preventDefault();
     submit(draft);
@@ -639,7 +653,7 @@ export function CopilotChat({ orgId, brandId, headerAction }: { orgId: string; b
             placeholder="Ask anything, or pick a choice above"
             className="k-scroll max-h-[200px] min-h-[24px] flex-1 resize-none bg-transparent text-[14px] leading-6 outline-none placeholder:text-[var(--fg-3)]"
           />
-          {busy ? (
+          {busy && !draft.trim() ? (
             <button type="button" onClick={() => stop()} className="k-btn shrink-0" aria-label="Stop">
               Stop
             </button>
