@@ -127,6 +127,8 @@ import {
   type GetStartedOffer,
   type GetStartedSnapshot,
   type GetStartedPhone,
+  type GetStartedName,
+  givenName as nameOf,
   type GiveDraftKey,
   type LeverDraftKey,
   type GetStartedStepKey,
@@ -223,6 +225,11 @@ export function GetStarted({ org, ipCountry = null }: { org?: OrgWalk; ipCountry
   // The number as given at Start: the wall saves it on the account once it exists.
   const [givenPhone, setGivenPhone] = useState<GetStartedPhone | null>(null);
   const givenPhoneRef = useRef<GetStartedPhone | null>(null);
+  // Their first and last name, optional too (owner 2026-10-15): the WhatsApp greeting says it.
+  const [firstName, setFirstName] = useState("");
+  const [lastName, setLastName] = useState("");
+  const [givenPerson, setGivenPerson] = useState<GetStartedName | null>(null);
+  const givenPersonRef = useRef<GetStartedName | null>(null);
   useEffect(() => {
     if (ipCountry) return;
     const c = defaultPhoneCountry(null, navigator.language);
@@ -431,6 +438,12 @@ export function GetStarted({ org, ipCountry = null }: { org?: OrgWalk; ipCountry
       givenPhoneRef.current = s.phone;
       setGivenPhone(s.phone);
       setPhone(s.phone);
+    }
+    if (s.person) {
+      givenPersonRef.current = s.person;
+      setGivenPerson(s.person);
+      setFirstName(s.person.firstName);
+      setLastName(s.person.lastName);
     }
     setBrandId(s.brandId);
     setBrandName(s.brandName);
@@ -1177,6 +1190,18 @@ export function GetStarted({ org, ipCountry = null }: { org?: OrgWalk; ipCountry
       posthog.setPersonProperties({ phone: toE164(given) });
       posthog.capture("get_started_phone_given", { country: given.countryCode });
     }
+    const person = org ? null : nameOf(firstName, lastName);
+    givenPersonRef.current = person;
+    setGivenPerson(person);
+    if (person) {
+      // Same PostHog person as the number, so the greeting can use their first name.
+      posthog.setPersonProperties({
+        ...(person.firstName ? { first_name: person.firstName } : {}),
+        ...(person.lastName ? { last_name: person.lastName } : {}),
+        name: [person.firstName, person.lastName].filter(Boolean).join(" "),
+      });
+      posthog.capture("get_started_name_given");
+    }
     setStarted(true);
     setStep("company", "running");
     const url = websiteUrl(raw);
@@ -1289,6 +1314,7 @@ export function GetStarted({ org, ipCountry = null }: { org?: OrgWalk; ipCountry
       audience: null,
       email: null,
       phone: givenPhoneRef.current,
+      person: givenPersonRef.current,
     };
     saveSnapshot({});
     setSteps((cur) => ({ ...cur, competitors: "running", offer: "running", audience: "running" }));
@@ -1360,6 +1386,11 @@ export function GetStarted({ org, ipCountry = null }: { org?: OrgWalk; ipCountry
         }}
         onSubmit={() => void start(website)}
         phone={org ? null : phone}
+        person={org ? null : { firstName, lastName }}
+        onPerson={(v) => {
+          setFirstName(v.firstName);
+          setLastName(v.lastName);
+        }}
         onPhone={(v) => {
           setPhone(v);
           setPhoneError(null);
@@ -1634,6 +1665,7 @@ export function GetStarted({ org, ipCountry = null }: { org?: OrgWalk; ipCountry
         <AccountCardWall
           ipCountry={ipCountry}
           earlyPhone={givenPhone}
+          earlyName={givenPerson}
           brandId={brandId}
           website={websiteUrl(website)}
           brandName={brandName ?? domain ?? website}
@@ -1718,6 +1750,8 @@ function Hero({
   onPhone,
   onPhoneBlur,
   phoneError,
+  person,
+  onPerson,
   error,
   exits,
 }: {
@@ -1733,6 +1767,9 @@ function Hero({
   onPhone: (v: PhoneValue) => void;
   onPhoneBlur: () => void;
   phoneError: string | null;
+  /** The public walk's optional first and last name; null from the dashboard. */
+  person: GetStartedName | null;
+  onPerson: (v: GetStartedName) => void;
   error: string | null;
   exits: RefusalExits | null;
 }) {
@@ -1806,6 +1843,33 @@ function Hero({
               onSubmit();
             }}
           >
+            {person && (
+              <>
+                <p className="k-fg mb-1.5 text-[13px] font-medium">
+                  Your name <span className="k-fg3 font-normal">(optional)</span>
+                </p>
+                <div className="k-card mb-4 grid grid-cols-2 gap-2 p-2">
+                  <input
+                    className="k-input min-w-0"
+                    style={{ paddingLeft: 12, paddingRight: 12 }}
+                    placeholder="First name"
+                    aria-label="First name"
+                    autoComplete="given-name"
+                    value={person.firstName}
+                    onChange={(e) => onPerson({ ...person, firstName: e.target.value })}
+                  />
+                  <input
+                    className="k-input min-w-0"
+                    style={{ paddingLeft: 12, paddingRight: 12 }}
+                    placeholder="Last name"
+                    aria-label="Last name"
+                    autoComplete="family-name"
+                    value={person.lastName}
+                    onChange={(e) => onPerson({ ...person, lastName: e.target.value })}
+                  />
+                </div>
+              </>
+            )}
             <p className="k-fg mb-1.5 text-[13px] font-medium">
               Your WhatsApp <span className="k-fg3 font-normal">(optional)</span>
             </p>

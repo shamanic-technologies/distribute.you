@@ -49,7 +49,7 @@ describe("defaultPhoneCountry (owner 2026-10-13: the country the visitor connect
 
 describe("the wall asks for the phone between the account and the card", () => {
   it("the claim lands on the phone stage, not the card", () => {
-    const claim = wall.slice(wall.indexOf('fetch("/api/anon/claim"'), wall.indexOf("// ── Phone ──"));
+    const claim = wall.slice(wall.indexOf('fetch("/api/anon/claim"'), wall.indexOf("// ── Name ──"));
     expect(claim).toContain("await openPhoneStage()");
     expect(claim).not.toContain('setStage("card")');
   });

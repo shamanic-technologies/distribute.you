@@ -51,3 +51,38 @@ describe("the snapshot keeps the number across the Google round trip", () => {
     expect(parseSnapshotPhone("0612")).toBeNull();
   });
 });
+
+describe("the first page asks the first and last name, optional (owner 2026-10-15)", () => {
+  it("renders both fields above the WhatsApp number, labelled optional", () => {
+    expect(hero).toContain("{person && (");
+    expect(hero).toContain("Your name");
+    expect(hero.indexOf('aria-label="First name"')).toBeLessThan(hero.indexOf('aria-label="Last name"'));
+    expect(hero.indexOf('aria-label="Last name"')).toBeLessThan(hero.indexOf("<PhoneField"));
+    expect(gs).toContain("person={org ? null : { firstName, lastName }}");
+  });
+
+  it("a given name goes on the same PostHog person and rides the snapshot to the wall", () => {
+    expect(start).toContain("first_name: person.firstName");
+    expect(start).toContain("last_name: person.lastName");
+    expect(gs).toContain("person: givenPersonRef.current,");
+    expect(gs).toContain("earlyName={givenPerson}");
+  });
+
+  it("the wall sets it on the account after the claim, never over a name the account holds, never blocking", () => {
+    const wallSrc = readFileSync(join(__dirname, "../src/components/v2/get-started/account-card-wall.tsx"), "utf8");
+    const claim = wallSrc.slice(wallSrc.indexOf('fetch("/api/anon/claim"'), wallSrc.indexOf("// ── Name ──"));
+    expect(claim.indexOf("await saveEarlyName()")).toBeLessThan(claim.indexOf("await openPhoneStage()"));
+    const save = wallSrc.slice(wallSrc.indexOf("async function saveEarlyName("), wallSrc.indexOf("// ── Phone ──"));
+    expect(save).toContain("!user.firstName");
+    expect(save).toContain("!user.lastName");
+    expect(save).toContain("await user.update(patch)");
+    expect(save).toContain("console.error(");
+  });
+
+  it("the snapshot keeps the name; an empty one is null", () => {
+    const base = { version: 2, website: "https://home.cern", brandId: "b1", brandName: null, domain: null, overview: "", facts: [], competitors: [], offer: null, audience: null, email: null };
+    expect(parseGetStartedSnapshot(JSON.stringify({ ...base, person: { firstName: " Marie ", lastName: "" } }))?.person).toEqual({ firstName: "Marie", lastName: "" });
+    expect(parseGetStartedSnapshot(JSON.stringify({ ...base, person: { firstName: " ", lastName: "" } }))?.person).toBeNull();
+    expect(parseGetStartedSnapshot(JSON.stringify(base))?.person).toBeNull();
+  });
+});

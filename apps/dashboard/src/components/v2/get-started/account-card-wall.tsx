@@ -135,6 +135,7 @@ export function AccountCardWall({
   answered,
   ipCountry = null,
   earlyPhone = null,
+  earlyName = null,
   onClose,
 }: {
   brandId: string;
@@ -162,6 +163,8 @@ export function AccountCardWall({
   ipCountry?: string | null;
   /** The WhatsApp number typed under the website, if any: saved once the account exists. */
   earlyPhone?: PhoneValue | null;
+  /** The first and last name typed on the first page, if any: set on the account once it exists. */
+  earlyName?: { firstName: string; lastName: string } | null;
   onClose: () => void;
 }) {
   const { isLoaded: authLoaded, isSignedIn, orgId } = useAuth();
@@ -346,6 +349,7 @@ export function AccountCardWall({
         posthog.capture("get_started_claimed");
         const acct = await getBillingAccount();
         setAccount(acct);
+        await saveEarlyName();
         await openPhoneStage();
       } catch (e) {
         claimed.current = false;
@@ -528,6 +532,25 @@ export function AccountCardWall({
       console.error("[get-started] google sign up failed:", err);
       setError(clerkErrorMessage(err));
       setBusy(false);
+    }
+  }
+
+  // ── Name ──
+  /**
+   * The name typed on the first page goes on the account, never over one the account
+   * already holds (Google brings its own). It never blocks the walk: a refusal is logged.
+   */
+  async function saveEarlyName() {
+    if (!earlyName || !user) return;
+    const patch = {
+      ...(earlyName.firstName && !user.firstName ? { firstName: earlyName.firstName } : {}),
+      ...(earlyName.lastName && !user.lastName ? { lastName: earlyName.lastName } : {}),
+    };
+    if (Object.keys(patch).length === 0) return;
+    try {
+      await user.update(patch);
+    } catch (err) {
+      console.error("[get-started] name typed on the first page not saved on the account:", err);
     }
   }
 
