@@ -61,6 +61,9 @@ import {
 import { startAnonSession } from "@/lib/anon-session-client";
 import { refusalExits, type RefusalExits } from "@/lib/claimed-signup";
 import { websiteInputProblem } from "@/lib/website-input";
+import { phoneSyntaxProblem, toE164 } from "@/lib/phone-syntax";
+import type { PhoneValue } from "@/components/onboarding/phone-input";
+import { PhoneField, defaultPhoneCountry } from "./phone-field";
 import {
   DEFAULT_SIGNUP_DRAFT,
   SIGNUP_PERIODS,
@@ -123,6 +126,7 @@ import {
   type GetStartedEmail,
   type GetStartedOffer,
   type GetStartedSnapshot,
+  type GetStartedPhone,
   type GiveDraftKey,
   type LeverDraftKey,
   type GetStartedStepKey,
@@ -208,6 +212,23 @@ export function GetStarted({ org, ipCountry = null }: { org?: OrgWalk; ipCountry
         : { kind: "prepaid", topupUsd: TOPUP_CHOICES_USD[0] };
 
   const [website, setWebsite] = useState(params.get("url") ?? "");
+  // The WhatsApp number typed under the website (optional, owner 2026-10-15). The
+  // country is the connection's (read on the server); the browser language only
+  // refines it after mount, so the first frame matches the server render.
+  const [phone, setPhone] = useState<PhoneValue>(() => {
+    const c = defaultPhoneCountry(ipCountry, undefined);
+    return { countryCode: c.code, dialCode: c.dial, national: "" };
+  });
+  const [phoneError, setPhoneError] = useState<string | null>(null);
+  // The number as given at Start: the wall saves it on the account once it exists.
+  const [givenPhone, setGivenPhone] = useState<GetStartedPhone | null>(null);
+  const givenPhoneRef = useRef<GetStartedPhone | null>(null);
+  useEffect(() => {
+    if (ipCountry) return;
+    const c = defaultPhoneCountry(null, navigator.language);
+    setPhone((cur) => (cur.national.trim() ? cur : { ...cur, countryCode: c.code, dialCode: c.dial }));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
   const [inputError, setInputError] = useState<string | null>(null);
   const [exits, setExits] = useState<RefusalExits | null>(null);
   const [started, setStarted] = useState(false);
@@ -406,6 +427,11 @@ export function GetStarted({ org, ipCountry = null }: { org?: OrgWalk; ipCountry
   function applySnapshot(s: GetStartedSnapshot) {
     snapRef.current = s;
     setWebsite(s.website);
+    if (s.phone) {
+      givenPhoneRef.current = s.phone;
+      setGivenPhone(s.phone);
+      setPhone(s.phone);
+    }
     setBrandId(s.brandId);
     setBrandName(s.brandName);
     setDomain(s.domain);
@@ -1123,6 +1149,12 @@ export function GetStarted({ org, ipCountry = null }: { org?: OrgWalk; ipCountry
       setInputError(problem ?? "Enter your website.");
       return;
     }
+    // Optional: an empty number passes, a typed one must be a number.
+    const phoneProblem = org ? null : phoneSyntaxProblem(phone);
+    if (phoneProblem) {
+      setPhoneError(phoneProblem);
+      return;
+    }
     // A signed-in visitor would build this walk inside the org they are signed in
     // to: the Clerk session outranks the anonymous one on every call, so the brand
     // lands in their active org (a customer's, for staff). Adding a brand from an
@@ -1136,6 +1168,15 @@ export function GetStarted({ org, ipCountry = null }: { org?: OrgWalk; ipCountry
     ran.current = true;
     setInputError(null);
     setExits(null);
+    const given = !org && phone.national.trim() ? { ...phone, national: phone.national.trim() } : null;
+    givenPhoneRef.current = given;
+    setGivenPhone(given);
+    if (given) {
+      // The number reaches crm-service through the PostHog connector, the same one any
+      // client plugs: a WhatsApp campaign greets them before any account exists.
+      posthog.setPersonProperties({ phone: toE164(given) });
+      posthog.capture("get_started_phone_given", { country: given.countryCode });
+    }
     setStarted(true);
     setStep("company", "running");
     const url = websiteUrl(raw);
@@ -1247,6 +1288,7 @@ export function GetStarted({ org, ipCountry = null }: { org?: OrgWalk; ipCountry
       offer: null,
       audience: null,
       email: null,
+      phone: givenPhoneRef.current,
     };
     saveSnapshot({});
     setSteps((cur) => ({ ...cur, competitors: "running", offer: "running", audience: "running" }));
@@ -1317,6 +1359,13 @@ export function GetStarted({ org, ipCountry = null }: { org?: OrgWalk; ipCountry
           setExits(null);
         }}
         onSubmit={() => void start(website)}
+        phone={org ? null : phone}
+        onPhone={(v) => {
+          setPhone(v);
+          setPhoneError(null);
+        }}
+        onPhoneBlur={() => setPhoneError(phone.national.trim() ? phoneSyntaxProblem(phone) : null)}
+        phoneError={phoneError}
         error={inputError}
         exits={exits}
       />
@@ -1584,6 +1633,7 @@ export function GetStarted({ org, ipCountry = null }: { org?: OrgWalk; ipCountry
       {wallOpen && brandId && offer && audience && launchPlan && !org && (
         <AccountCardWall
           ipCountry={ipCountry}
+          earlyPhone={givenPhone}
           brandId={brandId}
           website={websiteUrl(website)}
           brandName={brandName ?? domain ?? website}
@@ -1664,6 +1714,10 @@ function Hero({
   website,
   onWebsite,
   onSubmit,
+  phone,
+  onPhone,
+  onPhoneBlur,
+  phoneError,
   error,
   exits,
 }: {
@@ -1674,6 +1728,11 @@ function Hero({
   website: string;
   onWebsite: (v: string) => void;
   onSubmit: () => void;
+  /** The public walk's optional WhatsApp number; null from the dashboard (no phone there). */
+  phone: PhoneValue | null;
+  onPhone: (v: PhoneValue) => void;
+  onPhoneBlur: () => void;
+  phoneError: string | null;
   error: string | null;
   exits: RefusalExits | null;
 }) {
@@ -1737,6 +1796,24 @@ function Hero({
             Start
           </button>
         </form>
+        )}
+        {phone && (
+          <form
+            className="gs-in mt-4"
+            style={{ animationDelay: "210ms" }}
+            onSubmit={(e) => {
+              e.preventDefault();
+              onSubmit();
+            }}
+          >
+            <p className="k-fg mb-1.5 text-[13px] font-medium">
+              Your WhatsApp <span className="k-fg3 font-normal">(optional)</span>
+            </p>
+            <div className="k-card p-2">
+              <PhoneField value={phone} onChange={onPhone} onBlur={onPhoneBlur} problem={phoneError} disabled={false} autoFocus={false} compact />
+            </div>
+            <p className="k-fg3 mt-1.5 text-[12px]">We message you there if you need a hand.</p>
+          </form>
         )}
         {onWithoutWebsite && (
           <button type="button" className="k-btn-ghost -ml-2 mt-2 h-7 text-[12px]" onClick={() => setNoSite((v) => !v)}>

@@ -19,6 +19,8 @@
  *                 made (`/api/anon/claim`, the same hinge `/onboarding/claim` runs);
  *   2b. phone   — their phone number, required (owner 2026-10-04: every signup leaves
  *                 one, even if they stop before the card), stored on the Clerk user;
+ *                 a number typed under the website (`earlyPhone`, owner 2026-10-15) is
+ *                 saved right after the claim and the stage is skipped;
  *   3. card     — prepaid credit (owner 2026-10-06, no free trial): an amount of at
  *                 least $100 and an optional automatic reload, paid in the same column
  *                 (Revolut widget or Stripe's embedded form); we match the first $100.
@@ -132,6 +134,7 @@ export function AccountCardWall({
   outlook,
   answered,
   ipCountry = null,
+  earlyPhone = null,
   onClose,
 }: {
   brandId: string;
@@ -157,6 +160,8 @@ export function AccountCardWall({
   answered: boolean;
   /** The visitor's country from their connection (`cf-ipcountry`), for the phone's default. */
   ipCountry?: string | null;
+  /** The WhatsApp number typed under the website, if any: saved once the account exists. */
+  earlyPhone?: PhoneValue | null;
   onClose: () => void;
 }) {
   const { isLoaded: authLoaded, isSignedIn, orgId } = useAuth();
@@ -240,6 +245,7 @@ export function AccountCardWall({
   const [cardSecret, setCardSecret] = useState<string | null>(null);
   const [account, setAccount] = useState<BillingAccount | null>(null);
   const [phone, setPhone] = useState<PhoneValue>(() => {
+    if (earlyPhone) return earlyPhone;
     const c = defaultPhoneCountry(ipCountry, navigator.language);
     return { countryCode: c.code, dialCode: c.dial, national: "" };
   });
@@ -340,7 +346,7 @@ export function AccountCardWall({
         posthog.capture("get_started_claimed");
         const acct = await getBillingAccount();
         setAccount(acct);
-        setStage("phone");
+        await openPhoneStage();
       } catch (e) {
         claimed.current = false;
         setError(e instanceof Error ? e.message : "We could not finish setting up your account.");
@@ -526,6 +532,26 @@ export function AccountCardWall({
   }
 
   // ── Phone ──
+  /**
+   * After the claim: a number typed under the website is saved on the account at once
+   * and the card opens; without one (or if that save fails) the phone stage asks,
+   * prefilled with what they typed.
+   */
+  async function openPhoneStage() {
+    if (!earlyPhone || requiredPhoneProblem(earlyPhone)) {
+      setStage("phone");
+      return;
+    }
+    try {
+      await savePhoneNumber(earlyPhone);
+      posthog.capture("get_started_phone_saved", { country: earlyPhone.countryCode, given_at: "website" });
+      setStage("card");
+    } catch (err) {
+      console.error("[get-started] phone typed under the website not saved:", err);
+      setStage("phone");
+    }
+  }
+
   async function submitPhone(e: React.FormEvent) {
     e.preventDefault();
     if (busy) return;

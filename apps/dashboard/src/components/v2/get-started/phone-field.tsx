@@ -16,20 +16,27 @@ export function PhoneField({
   onBlur,
   problem,
   disabled,
+  autoFocus = true,
+  compact = false,
 }: {
   value: PhoneValue;
   onChange: (v: PhoneValue) => void;
   onBlur: () => void;
   problem: string | null;
   disabled: boolean;
+  /** The wall's stage focuses it; under the website it waits its turn. */
+  autoFocus?: boolean;
+  /** The website row's size (under the website it must not outweigh the field that starts the walk). */
+  compact?: boolean;
 }) {
+  const size = compact ? "k-input" : "k-input k-cta-input";
   return (
     <div className="grid gap-1.5">
       <div className="flex items-stretch gap-2">
         <label className="relative shrink-0">
           <span className="sr-only">Country</span>
           {/* Inline padding: keel is unlayered, so a Tailwind `pr-*` on a `k-input` loses. */}
-          <span className="k-input k-cta-input pointer-events-none flex items-center gap-1.5 tabular-nums" style={{ paddingRight: 30 }} aria-hidden="true">
+          <span className={`${size} pointer-events-none flex items-center gap-1.5 tabular-nums`} style={{ paddingRight: 30, ...(compact ? { paddingLeft: 10 } : {}) }} aria-hidden="true">
             <span className="text-[16px] leading-none">{codeToFlag(value.countryCode)}</span>+{value.dialCode}
           </span>
           <ChevronDownIcon className="k-fg3 pointer-events-none absolute right-2 top-1/2 h-4 w-4 -translate-y-1/2" aria-hidden="true" />
@@ -48,7 +55,8 @@ export function PhoneField({
           </select>
         </label>
         <input
-          className="k-input k-cta-input min-w-0 flex-1"
+          className={`${size} min-w-0 flex-1`}
+          style={compact ? { paddingLeft: 12, paddingRight: 12 } : undefined}
           type="tel"
           inputMode="tel"
           autoComplete="tel-national"
@@ -60,7 +68,7 @@ export function PhoneField({
           onChange={(e) => onChange({ ...value, national: e.target.value })}
           onBlur={onBlur}
           disabled={disabled}
-          autoFocus
+          autoFocus={autoFocus}
         />
       </div>
       {problem && (

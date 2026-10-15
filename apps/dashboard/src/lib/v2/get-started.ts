@@ -411,8 +411,26 @@ export interface GetStartedSnapshot {
   answered?: boolean;
   /** Who the brand sells to (the ICP text the audiences were split from); the launch builds every audience from it. Absent on an older snapshot. */
   icp?: string | null;
+  /** The WhatsApp number typed under the website (optional, owner 2026-10-15); saved on the account once it exists. */
+  phone?: GetStartedPhone | null;
   /** When it was last written (ms); a reload resumes only a snapshot younger than the anonymous session. */
   savedAt?: number;
+}
+
+/** A phone as the field holds it: the country picked and the national number typed. */
+export interface GetStartedPhone {
+  countryCode: string;
+  dialCode: string;
+  national: string;
+}
+
+/** A stored phone, or null when absent, malformed or empty. */
+export function parseSnapshotPhone(v: unknown): GetStartedPhone | null {
+  if (!v || typeof v !== "object") return null;
+  const p = v as Record<string, unknown>;
+  if (typeof p.countryCode !== "string" || typeof p.dialCode !== "string" || typeof p.national !== "string") return null;
+  if (!p.national.trim()) return null;
+  return { countryCode: p.countryCode, dialCode: p.dialCode, national: p.national };
 }
 
 /** The anonymous session lives 24 h; a walk older than this cannot be resumed (its calls would be refused). */
@@ -489,6 +507,7 @@ export function parseGetStartedSnapshot(raw: string | null): GetStartedSnapshot 
       typeof s.lifetimeRevenueUsd === "number" && Number.isInteger(s.lifetimeRevenueUsd) && s.lifetimeRevenueUsd > 0 ? s.lifetimeRevenueUsd : null,
     answered: s.answered === true,
     icp: typeof s.icp === "string" && s.icp.trim() ? s.icp : null,
+    phone: parseSnapshotPhone(s.phone),
     savedAt: typeof s.savedAt === "number" ? s.savedAt : undefined,
   };
 }
