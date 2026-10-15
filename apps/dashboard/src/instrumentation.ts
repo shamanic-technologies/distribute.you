@@ -854,14 +854,14 @@ const COPILOT_ALLOWED_TOOLS = [
   // Data writes that start nothing.
   "create_offer",
   // Declarations (features-service, staff-only, unpublished until staff publishes): a channel,
-  // a leg, a trigger type, a sales path created live, never via a PR (owner 2026-10-09).
+  // a leg, a sales path created live, never via a PR (owner 2026-10-09). A new outcome or
+  // trigger is a feature request through request_staff, never a bare row (owner 2026-10-15).
   "list_declared_channels",
   "list_declared_legs",
   "list_trigger_types",
   "list_declared_sales_paths",
   "declare_channel",
   "declare_leg",
-  "declare_trigger_type",
   "declare_sales_path",
   // Anything that starts work goes through the two-step gate: a user message always sits
   // between the proposal and the switch-on. Never launch_campaign / set_brand_pause here.
@@ -876,7 +876,6 @@ const COPILOT_ALLOWED_TOOLS = [
   "find_pipes",
   "find_sales_funnels",
   "find_workflows",
-  "create_step",
   "create_pipe",
   "create_sales_path",
   "create_sales_funnel",
