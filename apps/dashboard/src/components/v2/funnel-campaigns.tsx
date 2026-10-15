@@ -526,7 +526,7 @@ export function FunnelPathLine({ items }: { items: FunnelPathItem[] }) {
 }
 
 /** The Type tag: [calendar Daily] for a proactive campaign, [lightning <trigger>] for a reactive one, both served. */
-function TypeTag({ row }: { row: FunnelCampaignCopy }) {
+export function TypeTag({ row }: { row: FunnelCampaignCopy }) {
   if (!row.typeLabel) {
     console.error("[funnel-campaigns] typeLabel not served", { id: row.id, reason: row.copyUnavailableReason ?? null });
     return DASH;

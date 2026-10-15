@@ -42,3 +42,25 @@ describe("campaign page next layout: staff preview only", () => {
     expect(next).not.toMatch(/text-gray-|bg-brand-50|rounded-lg border|shadow-2xl/);
   });
 });
+
+// Owner 2026-10-15: the Campaigns LIST page gets the same staff preview, same double gate.
+describe("campaigns list next layout: staff preview only", () => {
+  it("CampaignsOverviewPage branches on the shared gate and otherwise renders the current page", () => {
+    const page = read("components/v2/campaigns-overview-page.tsx");
+    const at = page.indexOf("export function CampaignsOverviewPage()");
+    const body = page.slice(at, page.indexOf("function CampaignsOverviewPageCurrent("));
+    expect(body).toContain("if (useCampaignsListPreview()) return <CampaignsListNext />;");
+    expect(body).toContain("return <CampaignsOverviewPageCurrent />;");
+    const current = page.slice(page.indexOf("function CampaignsOverviewPageCurrent("), page.indexOf("function UnconvertedRunningCampaigns("));
+    expect(current).toContain("<FunnelCampaignsSection orgId={orgId} brandId={brandId} offerId={offerId} />");
+    const next = read("components/v2/campaigns-list-next.tsx");
+    expect(next).toContain("return isCampaignLayoutPreview(staffMode, layout);");
+  });
+
+  it("the list preview computes no metric and hands Create to the Copilot", () => {
+    const next = read("components/v2/campaigns-list-next.tsx");
+    expect(next).not.toMatch(/\.reduce\(/);
+    expect(next).toContain("dock.ask(text.trim() || CREATE_ASK)");
+    expect(next).not.toMatch(/text-gray-|bg-brand-50|rounded-lg border|shadow-2xl/);
+  });
+});
