@@ -120,7 +120,7 @@ struct Figure: View {
 struct ShimmerRows: View {
     var count = 4
     var body: some View {
-        TimelineView(.animation) { ctx in
+        TimelineView(.animation(minimumInterval: 0.1)) { ctx in
             let t = ctx.date.timeIntervalSinceReferenceDate
             let o = 0.7 + 0.3 * sin(t * 3)
             VStack(spacing: 8) {

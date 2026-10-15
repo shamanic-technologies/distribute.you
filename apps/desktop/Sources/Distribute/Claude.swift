@@ -99,6 +99,8 @@ final class ClaudeSession {
         env["DISTRIBUTE_API_KEY"] = context.apiKey
         env["DISTRIBUTE_ORG_ID"] = context.orgId
         env["DISTRIBUTE_BRAND_ID"] = context.brandId
+        // The Mac shares its RAM with everything else the user runs: cap the CLI's heap.
+        env["NODE_OPTIONS"] = [env["NODE_OPTIONS"], "--max-old-space-size=512"].compactMap { $0 }.joined(separator: " ")
         proc.environment = env
 
         let out = Pipe(), err = Pipe()
@@ -137,6 +139,7 @@ final class ClaudeSession {
         do {
             try proc.run()
             process = proc
+            Self.all.add(self)
         } catch {
             onItem(.error(id: UUID(), text: "Could not start Claude Code: \(error.localizedDescription)"))
             onDone()
@@ -144,6 +147,10 @@ final class ClaudeSession {
     }
 
     func stop() { process?.terminate() }
+
+    /// Every session started by this app, so quitting can stop a turn still running.
+    private static let all = NSHashTable<ClaudeSession>.weakObjects()
+    static func stopAll() { all.allObjects.forEach { $0.stop() } }
 
     func reset() {
         stop()
