@@ -50,8 +50,18 @@ describe("defaultPhoneCountry (owner 2026-10-13: the country the visitor connect
 describe("the wall asks for the phone between the account and the card", () => {
   it("the claim lands on the phone stage, not the card", () => {
     const claim = wall.slice(wall.indexOf('fetch("/api/anon/claim"'), wall.indexOf("// ── Phone ──"));
-    expect(claim).toContain('setStage("phone")');
+    expect(claim).toContain("await openPhoneStage()");
     expect(claim).not.toContain('setStage("card")');
+  });
+
+  it("the card opens straight away only once the number typed under the website is saved", () => {
+    const open = wall.slice(wall.indexOf("async function openPhoneStage("), wall.indexOf("async function submitPhone("));
+    expect(open).toContain("requiredPhoneProblem(earlyPhone)");
+    expect(open.indexOf('setStage("phone")')).toBeLessThan(open.indexOf("await savePhoneNumber(earlyPhone)"));
+    expect(open.indexOf("await savePhoneNumber(earlyPhone)")).toBeLessThan(open.indexOf('setStage("card")'));
+    // A failed save asks again on the stage, prefilled.
+    expect(open.slice(open.indexOf("catch (err)"))).toContain('setStage("phone")');
+    expect(wall).toContain("if (earlyPhone) return earlyPhone;");
   });
 
   it("the phone stage saves through the route, then opens the card", () => {
