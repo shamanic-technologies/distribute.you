@@ -64,6 +64,8 @@ describe("the agent skill", () => {
       "GET /v1/leads/{id}/history",
       "GET /v1/runs/{runId}",
       "PUT /v1/email-signature",
+      "{first_name}",
+      "{sender_email}",
       "wait for the user's yes",
     ]) expect(section).toContain(s);
     expect(section.toLowerCase()).not.toContain("agency");
