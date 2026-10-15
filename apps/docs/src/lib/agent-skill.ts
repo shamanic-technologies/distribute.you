@@ -294,6 +294,7 @@ ${indent(send, 3)}
 **The signature.** Every email ends with a signature. By default it is the sending mailbox's name, then ours. To use the user's own:
 - \`GET /v1/email-signature?brandId=...\` reads it (\`signature: null\` means the default).
 - \`PUT /v1/email-signature\` with \`{"brandId": "...", "signature": "Jane Doe\\nHead of Sales, Acme\\nacme.com"}\` sets it: plain text, \`\\n\` between lines, at most 12 lines and 1,000 characters, no \`--\` line (it is added for you).
+- The text may use \`{first_name}\`, \`{last_name}\`, \`{full_name}\` and \`{sender_email}\`. Each email fills them with the mailbox that sends it. We rotate mailboxes, so the signed name always matches the From name. Example: \`"{first_name} {last_name}\\nAcme"\` signs \`Jane Doe\` when jane@acme.com sends. Any other \`{...}\` is refused with a 400.
 - \`DELETE /v1/email-signature?brandId=...\` goes back to the default.
 A new signature applies to new email threads only; a thread keeps the one it started with.
 
