@@ -1,11 +1,14 @@
 import { ACTIVE_WINDOW_MS, explicitCode, threadCode, unroutedText } from "@/lib/chat/rules";
 import { activeThreads, addMessage, threadForCode, threadForTelegramMessage } from "@/lib/chat/store";
-import { sendToTeam, telegramConfig, type TelegramUpdate } from "@/lib/chat/telegram";
+import { linkOwnerChat, OWNER_LINK_REPLIES, startCode } from "@/lib/chat/owner-link";
+import { sendToChat, sendToTeam, telegramConfig, type TelegramUpdate } from "@/lib/chat/telegram";
 
 export const dynamic = "force-dynamic";
 
 /**
- * Telegram's webhook. Only the team chat is listened to. A message reaches a visitor when
+ * Telegram's webhook. `/start <code>` from ANY chat links that chat to a customer's org
+ * (client-service records it and says "Connected"; a bad code gets a plain answer here).
+ * Everything else is listened to from the team chat only. A message reaches a visitor when
  * it addresses their thread (a reply to a relayed message, or `#code text`), or when it
  * addresses nobody and exactly one visitor wrote in the last 30 minutes; the bot then
  * confirms where it went. With several visitors chatting it asks which one.
@@ -21,9 +24,18 @@ export async function POST(request: Request) {
   }
   const update = (await request.json().catch(() => null)) as TelegramUpdate | null;
   const msg = update?.message;
-  if (!msg || String(msg.chat.id) !== config.ownerChatId || !msg.text) {
+  if (!msg?.text) return Response.json({ ok: true });
+  const linkCode = startCode(msg.text);
+  if (linkCode) {
+    const outcome = await linkOwnerChat(linkCode, msg.chat.id);
+    if (outcome !== "linked") {
+      await sendToChat(config, msg.chat.id, OWNER_LINK_REPLIES[outcome]).catch((err) =>
+        console.error(`[landing/chat] owner link answer (${outcome}) not sent to chat ${msg.chat.id}:`, err),
+      );
+    }
     return Response.json({ ok: true });
   }
+  if (String(msg.chat.id) !== config.ownerChatId) return Response.json({ ok: true });
   if (msg.text.trim() === "/start") {
     await sendToTeam(config, "Connected. Visitor messages from distribute.you land here. Reply to one to answer in the chat.");
     return Response.json({ ok: true });
