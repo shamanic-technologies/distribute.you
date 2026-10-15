@@ -1,6 +1,7 @@
 /**
  * The Telegram side of the landing chat. The bot relays every visitor message to ONE
- * chat, the team's, and accepts replies from that chat only.
+ * chat, the team's, and accepts replies from that chat only. The one message it takes
+ * from any chat is `/start <code>`: a customer linking their org (lib/chat/owner-link.ts).
  *
  * Three variables on the landing app's env, and the chat is OFF until all three are
  * set: the widget then says the chat is offline and points at the other channels, so a
@@ -23,10 +24,15 @@ export function telegramConfig(): TelegramConfig | null {
 
 /** Sends one message to the team chat and returns Telegram's message id. */
 export async function sendToTeam(config: TelegramConfig, text: string): Promise<number> {
+  return sendToChat(config, config.ownerChatId, text);
+}
+
+/** Sends one message to any chat the bot talks with (a customer linking their org). */
+export async function sendToChat(config: TelegramConfig, chatId: number | string, text: string): Promise<number> {
   const res = await fetch(`https://api.telegram.org/bot${config.token}/sendMessage`, {
     method: "POST",
     headers: { "content-type": "application/json" },
-    body: JSON.stringify({ chat_id: config.ownerChatId, text, disable_web_page_preview: true }),
+    body: JSON.stringify({ chat_id: chatId, text, disable_web_page_preview: true }),
     signal: AbortSignal.timeout(8000),
   });
   const json = (await res.json().catch(() => null)) as
