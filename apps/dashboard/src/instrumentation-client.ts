@@ -1,6 +1,7 @@
 import posthog from "posthog-js";
 
 import { dropVendorNoise } from "./lib/posthog-before-send";
+import { browserScreenEnv, looksLikeHeadlessScanner } from "./lib/posthog-replay";
 import { browserChunkReloadEnv, installStaleChunkReload } from "./lib/stale-chunk-reload";
 import { installStaleServerActionReload } from "./lib/stale-server-action";
 
@@ -40,6 +41,9 @@ if (posthogToken) {
     // Third-party noise nobody can act on: an opaque cross-origin "Script error.",
     // code injected by a link scanner (lib/posthog-before-send.ts).
     before_send: dropVendorNoise,
+    // Email-link scanners are 86% of recorded sessions: their pageviews still count,
+    // their replays are not recorded (lib/posthog-replay.ts).
+    disable_session_recording: looksLikeHeadlessScanner(browserScreenEnv()),
   });
   // The release every event (exceptions included) was captured on. Written into
   // the build env by the box's deploy script; absent in a local build.
