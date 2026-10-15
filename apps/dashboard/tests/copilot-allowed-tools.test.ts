@@ -20,8 +20,13 @@ describe("Copilot allowed tools", () => {
     }
   });
 
-  it("declares channels, legs, trigger types and sales paths live", () => {
-    for (const t of ["declare_channel", "declare_leg", "declare_trigger_type", "declare_sales_path", "list_trigger_types"]) expect(tools).toContain(t);
+  it("declares channels, legs and sales paths live", () => {
+    for (const t of ["declare_channel", "declare_leg", "declare_sales_path", "list_trigger_types"]) expect(tools).toContain(t);
+  });
+
+  it("never creates an outcome or trigger as a bare row: a feature request through request_staff (owner 2026-10-15)", () => {
+    for (const t of ["create_step", "declare_trigger_type"]) expect(tools).not.toContain(t);
+    expect(tools).toContain("request_staff");
   });
 
   it("switches work on only through the two-step gate", () => {
@@ -31,7 +36,7 @@ describe("Copilot allowed tools", () => {
   });
 
   it("walks the agent catalogue on small pages, never the one huge catalogue read (owner 2026-10-10)", () => {
-    for (const t of ["find_steps", "find_sales_paths", "find_channels", "find_pipes", "find_sales_funnels", "find_workflows", "create_step", "create_pipe", "create_sales_path", "create_sales_funnel"]) {
+    for (const t of ["find_steps", "find_sales_paths", "find_channels", "find_pipes", "find_sales_funnels", "find_workflows", "create_pipe", "create_sales_path", "create_sales_funnel"]) {
       expect(tools).toContain(t);
     }
     expect(tools).not.toContain("get_channel_catalogue");
