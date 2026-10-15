@@ -29,6 +29,8 @@ import { createContext, useContext, useEffect, useMemo, useRef, useState } from 
 import { useSearchParams } from "next/navigation";
 import { useAuth } from "@clerk/nextjs";
 import posthog from "posthog-js";
+import { RobotIcon } from "@phosphor-icons/react/dist/csr/Robot";
+import { HandWavingIcon } from "@phosphor-icons/react/dist/csr/HandWaving";
 import { pingOwner } from "@/lib/owner-ping-client";
 import { BRAND_WHY } from "@/lib/brand-why";
 import {
@@ -130,6 +132,7 @@ import {
   type GetStartedName,
   GET_STARTED_YOU_KEY,
   parseRememberedYou,
+  aiSetupPrompt,
   givenName as nameOf,
   type GiveDraftKey,
   type LeverDraftKey,
@@ -260,6 +263,9 @@ export function GetStarted({ org, ipCountry = null }: { org?: OrgWalk; ipCountry
   }, []);
   const [inputError, setInputError] = useState<string | null>(null);
   const [exits, setExits] = useState<RefusalExits | null>(null);
+  // After the first page (owner 2026-10-15): set up with their own AI, or here step by step.
+  // Nothing is spent before they pick "Myself".
+  const [setup, setSetup] = useState<{ raw: string; view: "choose" | "ai" } | null>(null);
   const [started, setStarted] = useState(false);
 
   const [brandId, setBrandId] = useState<string | null>(null);
@@ -546,6 +552,19 @@ export function GetStarted({ org, ipCountry = null }: { org?: OrgWalk; ipCountry
 
   const setStep = (k: GetStartedStepKey, v: StepState) => setSteps((cur) => ({ ...cur, [k]: v }));
 
+  /**
+   * One step done, with what the visitor entered (owner 2026-10-15: every step stored
+   * and on their Unibox thread, through the PostHog connector). The dashboard walk
+   * ("Add a brand") is not a visitor's walk: nothing sent from there.
+   */
+  const periodWord = (p: SignupPeriod) => SIGNUP_PERIODS.find((x) => x.key === p)?.label ?? p;
+
+  function stepDone(step: string, values: Record<string, string | number | boolean | null>) {
+    if (org) return;
+    const clipped = Object.fromEntries(Object.entries(values).map(([k, v]) => [k, typeof v === "string" ? v.slice(0, 2000) : v]));
+    posthog.capture("get_started_step_done", { step, ...clipped });
+  }
+
   // ── Steps 3 and 4, prepared in the background ─────────────────────────────
 
   /** The offers the site describes; the brand-service split runs off step 1's read. */
@@ -640,6 +659,7 @@ export function GetStarted({ org, ipCountry = null }: { org?: OrgWalk; ipCountry
     setStep("audience", "running");
     advance("offer");
     posthog.capture("get_started_offer_picked", { offers: offerProposals.length });
+    stepDone("offer", { offer: picked.name, description: picked.description });
     const id = brandId;
     const held = existingOffers.current?.find((o) => o.name === picked.name) ?? null;
     const p = (async () => {
@@ -749,6 +769,12 @@ export function GetStarted({ org, ipCountry = null }: { org?: OrgWalk; ipCountry
     setStep("campaign", "done");
     saveSnapshot({ campaign: campaignDraft, campaignDone: true });
     posthog.capture("get_started_campaign_set", { funnel: r.plan.proactive.name, meetings: !!r.plan.reactive });
+    stepDone("campaign", {
+      campaign: r.plan.proactive.name,
+      budget: `$${campaignDraft.budget} per ${periodWord(campaignDraft.budgetPeriod)}`,
+      meeting_booking: campaignDraft.reactiveOn ? `up to $${campaignDraft.reactiveBudget} per ${periodWord(campaignDraft.reactivePeriod)}` : "off",
+      monthly_limit: campaignDraft.monthlyLimit,
+    });
     setWallNote(null);
     setWallOpen(true);
   }
@@ -764,6 +790,7 @@ export function GetStarted({ org, ipCountry = null }: { org?: OrgWalk; ipCountry
     setAnswerError(null);
     advance("value");
     saveSnapshot({ lifetimeRevenueUsd: parsed.usd });
+    stepDone("client_value", { client_value_usd: parsed.usd });
     try {
       const o = await ensureOffer();
       await saveOfferLifetimeRevenue(brandId, o.offerId, parsed.usd);
@@ -783,6 +810,7 @@ export function GetStarted({ org, ipCountry = null }: { org?: OrgWalk; ipCountry
       if (lines.length === 0) continue;
       fields[f.key] = f.key === "socialProof" ? lines : lines.join("\n");
     }
+    stepDone("offer_points", Object.fromEntries(Object.entries(fields).map(([k, v]) => [k, Array.isArray(v) ? v.join("\n") : v ?? ""])));
     advance("levers");
     try {
       const o = await ensureOffer();
@@ -797,6 +825,7 @@ export function GetStarted({ org, ipCountry = null }: { org?: OrgWalk; ipCountry
   async function confirmGives() {
     if (!brandId) return;
     setAnswerError(null);
+    stepDone("gives", { give_for_free: answerLines(gives.giveForFree).join("\n"), never_give: answerLines(gives.neverGive).join("\n") });
     advance("gives");
     try {
       const o = await ensureOffer();
@@ -873,6 +902,7 @@ export function GetStarted({ org, ipCountry = null }: { org?: OrgWalk; ipCountry
         }
         chooseAudience(known);
         posthog.capture("get_started_audience_picked", { audiences: audienceProposals.length });
+        stepDone("audience", { audience: seg.name, description: seg.description ?? "", who_they_sell_to: icpRef.current });
       } catch (e) {
         console.error("[get-started] audience confirm failed:", e);
         setPendingAudience(null);
@@ -1177,7 +1207,7 @@ export function GetStarted({ org, ipCountry = null }: { org?: OrgWalk; ipCountry
     withStageTransition(() => setFocus(idx === stageIdx ? null : key));
   }
 
-  async function start(raw: string) {
+  async function start(raw: string, chosen = false) {
     if (ran.current) return;
     const problem = websiteInputProblem(raw);
     if (problem || !raw.trim()) {
@@ -1200,10 +1230,44 @@ export function GetStarted({ org, ipCountry = null }: { org?: OrgWalk; ipCountry
       setExits({ signIn: null, signUp: { href: "/v2", label: "Open your dashboard" } });
       return;
     }
-    ran.current = true;
     setInputError(null);
     setExits(null);
-    const given = !org && phone.national.trim() ? { ...phone, national: phone.national.trim() } : null;
+    if (!org && !chosen) {
+      recordVisitor(raw);
+      setSetup({ raw, view: "choose" });
+      return;
+    }
+    ran.current = true;
+    setStarted(true);
+    setStep("company", "running");
+    const url = websiteUrl(raw);
+    // A brand added from the dashboard is not a visit (the visit was recorded at the choice).
+    if (org) posthog.capture("brand_walk_website_submitted", { org_id: org.orgId });
+    if (!org) {
+      const session = await startAnonSession(url);
+      if (!session.started) {
+        ran.current = false;
+        setStarted(false);
+        setSteps(initialSteps());
+        setInputError(session.message);
+        setExits(refusalExits({ reason: session.reason, domain: hostOf(url), brandUrl: url }));
+        return;
+      }
+    }
+    await createAndWalk(url);
+  }
+
+  /**
+   * The visitor becomes a lead the moment they press Start (owner 2026-10-15): what they
+   * typed goes on their PostHog person, which crm-service's PostHog connector (the same
+   * one any client plugs) turns into a person in the Unibox. Remembered for a later walk.
+   */
+  function recordVisitor(raw: string) {
+    const typed = raw.trim().replace(/^https?:\/\//i, "").replace(/\/$/, "");
+    posthog.setPersonProperties({ website: typed });
+    // `website` also feeds the owner's Telegram visit recap (lib/visit-recap.ts).
+    posthog.capture("get_started_website_submitted", { website: typed });
+    const given = phone.national.trim() ? { ...phone, national: phone.national.trim() } : null;
     givenPhoneRef.current = given;
     setGivenPhone(given);
     if (given) {
@@ -1212,7 +1276,7 @@ export function GetStarted({ org, ipCountry = null }: { org?: OrgWalk; ipCountry
       posthog.setPersonProperties({ phone: toE164(given) });
       posthog.capture("get_started_phone_given", { country: given.countryCode });
     }
-    const person = org ? null : nameOf(firstName, lastName);
+    const person = nameOf(firstName, lastName);
     givenPersonRef.current = person;
     setGivenPerson(person);
     if (person) {
@@ -1231,25 +1295,10 @@ export function GetStarted({ org, ipCountry = null }: { org?: OrgWalk; ipCountry
         console.error("[get-started] name and number not remembered:", e);
       }
     }
-    setStarted(true);
-    setStep("company", "running");
-    const url = websiteUrl(raw);
-    // `website` feeds the owner's Telegram visit recap (lib/visit-recap.ts): a brand
-    // added from the dashboard is not a visit.
-    if (org) posthog.capture("brand_walk_website_submitted", { org_id: org.orgId });
-    else posthog.capture("get_started_website_submitted", { website: raw.trim().replace(/^https?:\/\//i, "").replace(/\/$/, "") });
-    if (!org) {
-      const session = await startAnonSession(url);
-      if (!session.started) {
-        ran.current = false;
-        setStarted(false);
-        setSteps(initialSteps());
-        setInputError(session.message);
-        setExits(refusalExits({ reason: session.reason, domain: hostOf(url), brandUrl: url }));
-        return;
-      }
-    }
+  }
 
+  /** The brand behind the website, then the walk's reads. */
+  async function createAndWalk(url: string) {
     let id: string;
     let createdName: string | null = null;
     try {
@@ -1401,6 +1450,31 @@ export function GetStarted({ org, ipCountry = null }: { org?: OrgWalk; ipCountry
   const current = useMemo(() => GET_STARTED_STEPS.findIndex((s) => steps[s.key] === "running"), [steps]);
 
   const orgBar = org ? <OrgBar orgId={org.orgId} snapshotKey={snapshotKey} started={started} /> : null;
+
+  if (!started && setup) {
+    return (
+      <SetupChoice
+        view={setup.view}
+        prompt={aiSetupPrompt({
+          website: setup.raw.trim().replace(/^https?:\/\//i, "").replace(/\/$/, ""),
+          person: givenPerson,
+          phoneE164: givenPhone ? toE164(givenPhone) : null,
+        })}
+        onAi={() => {
+          posthog.capture("get_started_setup_chosen", { mode: "ai" });
+          setSetup({ ...setup, view: "ai" });
+        }}
+        onCopied={() => posthog.capture("get_started_ai_prompt_copied")}
+        onManual={() => {
+          posthog.capture("get_started_setup_chosen", { mode: "manual" });
+          const raw = setup.raw;
+          setSetup(null);
+          void start(raw, true);
+        }}
+        onBack={() => setSetup(null)}
+      />
+    );
+  }
 
   if (!started) {
     return (
@@ -1942,6 +2016,79 @@ function Hero({
             </a>
           </p>
         )}
+      </div>
+    </div>
+  );
+}
+
+/**
+ * After the first page (owner 2026-10-15): two big choices. "With my AI" hands over one
+ * message to paste into their own AI (it connects our MCP and opens the account);
+ * "Myself" runs the walk here.
+ */
+function SetupChoice({
+  view,
+  prompt,
+  onAi,
+  onCopied,
+  onManual,
+  onBack,
+}: {
+  view: "choose" | "ai";
+  prompt: string;
+  onAi: () => void;
+  onCopied: () => void;
+  onManual: () => void;
+  onBack: () => void;
+}) {
+  const [copied, setCopied] = useState(false);
+  async function copy() {
+    try {
+      await navigator.clipboard.writeText(prompt);
+      setCopied(true);
+      onCopied();
+    } catch (e) {
+      console.error("[get-started] AI instructions not copied:", e);
+    }
+  }
+  return (
+    <div className="k-canvas relative flex min-h-[100dvh] items-center justify-center px-6 py-10">
+      <div className="w-full max-w-[560px]">
+        <p className="k-label gs-in">distribute.you</p>
+        <h1 className="gs-in k-fg mt-3 text-[28px] font-medium leading-9 tracking-[-0.01em]">
+          {view === "ai" ? "Paste this into your AI." : "How do you want to set up?"}
+        </h1>
+        {view === "choose" ? (
+          <div className="gs-in mt-6 grid grid-cols-1 gap-3 sm:grid-cols-2" style={{ animationDelay: "60ms" }}>
+            <button type="button" onClick={onAi} className="k-card flex min-h-[148px] flex-col items-start gap-3 p-5 text-left">
+              <span className="flex h-10 w-10 items-center justify-center rounded-[10px]" style={{ background: "color-mix(in oklch, var(--data-teal) 16%, transparent)", color: "var(--data-teal)" }}>
+                <RobotIcon weight="duotone" className="h-6 w-6" aria-hidden="true" />
+              </span>
+              <span className="k-fg text-[16px] font-medium">With my AI</span>
+              <span className="k-fg2 text-[13px] leading-5">Paste one message into ChatGPT or Claude.</span>
+            </button>
+            <button type="button" onClick={onManual} className="k-card flex min-h-[148px] flex-col items-start gap-3 p-5 text-left">
+              <span className="flex h-10 w-10 items-center justify-center rounded-[10px]" style={{ background: "color-mix(in oklch, var(--accent) 16%, transparent)", color: "var(--accent)" }}>
+                <HandWavingIcon weight="duotone" className="h-6 w-6" aria-hidden="true" />
+              </span>
+              <span className="k-fg text-[16px] font-medium">Myself</span>
+              <span className="k-fg2 text-[13px] leading-5">Step by step, right here.</span>
+            </button>
+          </div>
+        ) : (
+          <div className="gs-in mt-6" style={{ animationDelay: "60ms" }}>
+            <pre className="k-inset k-fg2 max-h-[320px] overflow-auto whitespace-pre-wrap rounded-[12px] p-4 text-[13px] leading-5">{prompt}</pre>
+            <button type="button" onClick={() => void copy()} className="k-btn-accent k-cta mt-4 flex w-full items-center justify-center">
+              {copied ? "Copied. Paste it into your AI." : "Copy instructions"}
+            </button>
+            <button type="button" onClick={onManual} className="k-btn-ghost -ml-2 mt-3 h-7 text-[12px]">
+              Set up myself instead
+            </button>
+          </div>
+        )}
+        <button type="button" onClick={onBack} className="k-btn-ghost -ml-2 mt-2 block h-7 text-[12px]">
+          Change my website
+        </button>
       </div>
     </div>
   );

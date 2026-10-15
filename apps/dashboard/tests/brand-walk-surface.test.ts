@@ -81,7 +81,7 @@ describe("the walk acts on the org it names, explicitly", () => {
     expect(set).toBeLessThan(fn.indexOf("void loadFunnels(brandId, offer.offerId);"));
   });
   it("never starts an anonymous session from the dashboard", () => {
-    const start = walk.slice(walk.indexOf("async function start(raw: string)"));
+    const start = walk.slice(walk.indexOf("async function start(raw: string"));
     expect(start.indexOf("if (!org) {")).toBeLessThan(start.indexOf("startAnonSession(url)"));
   });
   it("a dashboard walk is not a landing visit (the owner's visit recap reads that event)", () => {
