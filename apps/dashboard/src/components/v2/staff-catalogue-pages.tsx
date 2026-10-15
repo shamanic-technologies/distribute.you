@@ -2,6 +2,7 @@
 
 import { useMemo, useRef, useState } from "react";
 import Link from "next/link";
+import { LightningIcon } from "@phosphor-icons/react/dist/csr/Lightning";
 import { useParams, useRouter } from "next/navigation";
 import { useQueries } from "@tanstack/react-query";
 import { EmptyNote, KeyHint, MarkLines, SectionTitle, Shimmer, StateDot, TopBar } from "@/components/v2/ui";
@@ -24,6 +25,7 @@ import {
   type CataloguePipe,
   type CatalogueReadObject,
   type CatalogueRow,
+  type ServedTrigger,
 } from "@/lib/staff-catalogue";
 
 const TH = "k-label px-3 py-2.5 text-left font-medium first:pl-4 last:pr-4";
@@ -404,6 +406,7 @@ export function CatalogueObjectPage({ object, id }: { object: CatalogueObject; i
                   {isOngoing && <StateDot running label="Ongoing" />}
                   <CatalogueStatus status={row.status} />
                   {typeof d.mode === "string" && <span className="k-chip">{catalogueStatusLabel(d.mode)}</span>}
+                  {(object === "sales-paths" || object === "sales-funnels") && <HeadChip d={d as unknown as Record<string, unknown>} />}
                   {d.draft === true && <span className="k-chip">Draft</span>}
                 </div>
               </div>
@@ -472,6 +475,36 @@ function ObjectLink({ object, id, name, orgId, brandId }: { object: CatalogueRea
   );
 }
 
+/**
+ * What starts a sales path or funnel: features-service's served `trigger` (the FUNNEL's head,
+ * owner 2026-10-15), never a pipe's mode. Null = proactive (it starts at Start).
+ */
+function servedTrigger(d: Record<string, unknown>): ServedTrigger | null {
+  return (d.trigger as ServedTrigger | null | undefined) ?? null;
+}
+
+/** The served trigger as a link to its page: one lightning for every trigger (owner 2026-10-11) + its served name. */
+function TriggerLink({ trigger, orgId, brandId }: { trigger: ServedTrigger; orgId: string; brandId: string }) {
+  return (
+    <Link href={v2CatalogueHref(orgId, brandId, "triggers", trigger.slug)} className="inline-flex items-center gap-1 hover:underline">
+      <LightningIcon size={13} weight="duotone" aria-hidden className="shrink-0" />
+      {trigger.name}
+    </Link>
+  );
+}
+
+/** The header chip of a path or funnel: [lightning <trigger>] when served one, else Proactive. */
+function HeadChip({ d }: { d: Record<string, unknown> }) {
+  const trigger = servedTrigger(d);
+  if (!trigger) return <span className="k-chip">Proactive</span>;
+  return (
+    <span className="k-chip inline-flex items-center gap-1">
+      <LightningIcon size={13} weight="duotone" aria-hidden className="shrink-0" />
+      {trigger.name}
+    </span>
+  );
+}
+
 /** A link to an object the page knows only by id: its served name once read. */
 function NamedLink({ object, id, orgId, brandId }: { object: CatalogueReadObject; id: string; orgId: string; brandId: string }) {
   const q = useStaffCatalogueObject(object, id);
@@ -502,8 +535,11 @@ function ObjectFacts({ object, d, orgId, brandId }: { object: CatalogueObject; d
     );
   }
   if (object === "sales-paths") {
+    const trigger = servedTrigger(d);
     return (
       <>
+        <Fact label="Type">{s("type") ? catalogueStatusLabel(s("type") as string) : null}</Fact>
+        <Fact label="Trigger">{trigger ? <TriggerLink trigger={trigger} orgId={orgId} brandId={brandId} /> : "Start"}</Fact>
         <Fact label="Best sales funnel">
           {s("bestSalesFunnelId") ? <NamedLink object="sales-funnels" id={s("bestSalesFunnelId") as string} orgId={orgId} brandId={brandId} /> : null}
         </Fact>
@@ -543,8 +579,10 @@ function ObjectFacts({ object, d, orgId, brandId }: { object: CatalogueObject; d
       </>
     );
   }
+  const trigger = servedTrigger(d);
   return (
     <>
+      <Fact label="Trigger">{trigger ? <TriggerLink trigger={trigger} orgId={orgId} brandId={brandId} /> : "Start"}</Fact>
       <Fact label="Sales path">
         {s("salesPathName") ? (
           <ObjectLink object="sales-paths" id={s("salesPathId") as string} name={s("salesPathName") as string} orgId={orgId} brandId={brandId} />

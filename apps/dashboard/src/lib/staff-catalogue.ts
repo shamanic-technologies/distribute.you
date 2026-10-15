@@ -91,6 +91,15 @@ export type CataloguePage = z.infer<typeof CataloguePageSchema>;
 
 const EconDetail = { ...Econ, learningReason: z.string().nullable(), costUnit: z.string() };
 
+/**
+ * What starts a REACTIVE sales path or funnel (owner 2026-10-15: the trigger lives at the
+ * FUNNEL's head, never on a pipe, so a trigger-headed funnel can run proactive pipes).
+ * features-service serves it on every path and funnel; null = proactive. `slug` is the
+ * trigger's catalogue id. Never read it off a pipe's `mode`/`triggerId`.
+ */
+export const ServedTriggerSchema = z.object({ slug: z.string(), name: z.string() }).passthrough();
+export type ServedTrigger = z.infer<typeof ServedTriggerSchema>;
+
 export const CatalogueStepSchema = z
   .object({
     object: z.literal("step"),
@@ -128,6 +137,8 @@ export const CatalogueSalesPathSchema = z
         .passthrough(),
     ),
     ...EconDetail,
+    type: z.enum(["proactive", "reactive"]),
+    trigger: ServedTriggerSchema.nullable(),
     bestSalesFunnelId: z.string().nullable(),
     salesFunnelCount: z.number(),
     lifetimeRevenueUsd: z.number().nullable(),
@@ -187,6 +198,7 @@ export const CatalogueFunnelSchema = z
     name: z.string(),
     face: z.object({ svgPath: z.string() }).passthrough(),
     line: z.string(),
+    trigger: ServedTriggerSchema.nullable(),
     salesPathId: z.string(),
     salesPathName: z.string().nullable(),
     legs: z.array(
@@ -395,14 +407,13 @@ export function ongoingChannelsAndSteps(pipes: Array<Pick<CataloguePipe, "channe
   return { channelIds, stepIds };
 }
 
-/** The triggers the ongoing REACTIVE pipes name, read off the pipes' own served fields, in order, once each. */
-export function ongoingTriggerIds(pipes: Array<Pick<CataloguePipe, "mode" | "triggerId">>): string[] {
+/**
+ * The triggers the ongoing sales funnels START with, read off each funnel's served `trigger`
+ * (the funnel's head, owner 2026-10-15), in order, once each. Never off a pipe: a
+ * trigger-headed funnel may run only proactive pipes.
+ */
+export function ongoingTriggerIds(funnels: Array<{ trigger: ServedTrigger | null }>): string[] {
   const out: string[] = [];
-  for (const p of pipes) if (p.mode === "reactive" && p.triggerId && !out.includes(p.triggerId)) out.push(p.triggerId);
+  for (const f of funnels) if (f.trigger && !out.includes(f.trigger.slug)) out.push(f.trigger.slug);
   return out;
-}
-
-/** The pipe ids a funnel campaign's units ARE (`<channel slug>|<leg key>`, catalogue spelling). */
-export function unitPipeIds(units: Array<{ featureSlug: string; legKey: string }>): string[] {
-  return [...new Set(units.map((u) => featureLegId(u.featureSlug, u.legKey)))];
 }
