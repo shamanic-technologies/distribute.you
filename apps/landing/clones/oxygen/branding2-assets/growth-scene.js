@@ -11,6 +11,17 @@ export function createGrowthScene({ page, hero, onChange, onPreferenceChange }) 
   let target = 0;
   let timer;
   let frame;
+  // The film is 16 MB. It is fetched only after the document's own load event,
+  // so the poster (the hero's largest paint), fonts and stylesheets never share
+  // the connection with it; a sync before then keeps the poster and resumes on load.
+  let documentLoaded = document.readyState === 'complete';
+  let lastSync;
+  if (!documentLoaded) {
+    addEventListener('load', () => {
+      documentLoaded = true;
+      if (lastSync) sync(lastSync);
+    }, { once: true });
+  }
 
   function shortViewport() {
     const barHeight = document.querySelector('.study-bar')?.getBoundingClientRect().height || 0;
@@ -50,20 +61,25 @@ export function createGrowthScene({ page, hero, onChange, onPreferenceChange }) 
     scheduleSeek();
   }
 
-  function sync({ selected, paused, reduced, visible, retry = false }) {
+  function sync(options) {
+    const { selected, paused, reduced, visible, retry = false } = options;
+    lastSync = { ...options, retry: false };
     active = selected;
     const saveData = Boolean(connection?.saveData);
     const still = reduced || saveData || shortViewport();
     page.classList.toggle('growth-static', selected && still);
     suspended = paused || still || !visible || document.hidden || page.hidden;
-    video.pause();
+    // Never pause the film before it has a source: that runs the media
+    // resource selection algorithm, which WebKit lets hold the load event open
+    // (see pricing-motion.js), and the film itself waits for that event.
+    if (source.getAttribute('src')) video.pause();
     if (!active || suspended) {
       clearTimeout(timer);
       if (frame !== undefined) cancelAnimationFrame(frame);
       frame = undefined;
       return;
     }
-    if (retry || (!loaded && status !== 'error')) {
+    if (documentLoaded && (retry || (!loaded && status !== 'error'))) {
       loaded = true;
       publish('loading');
       video.preload = 'auto';

@@ -1,0 +1,42 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" viewBox="0 0 24 24">
+  <g clip-path="url(#a)">
+    <mask id="b" width="24" height="24" x="0" y="0" maskUnits="userSpaceOnUse" style="mask-type:luminance">
+      <path fill="#fff" d="M24 24H0V0h24v24Z"/>
+    </mask>
+    <g mask="url(#b)">
+      <g filter="url(#c)">
+        <path fill="#FF00D9" d="M12.158 24c0-8.704 3.158-11.928 11.842-12.004C15.316 11.919 12.158 8.704 12.158 0c0 8.811-3.233 12-12.158 12 8.927 0 12.158 3.19 12.158 12Z"/>
+      </g>
+      <g filter="url(#d)">
+        <path fill="url(#e)" d="M12.158 24c0-8.704 3.158-11.928 11.842-12.004C15.316 11.919 12.158 8.704 12.158 0c0 8.811-3.233 12-12.158 12 8.927 0 12.158 3.19 12.158 12Z"/>
+      </g>
+      <g filter="url(#f)">
+        <path fill="#fff" d="m9.46 12 2.77 2.77L15 12l-2.77-2.77L9.46 12Z"/>
+      </g>
+    </g>
+  </g>
+  <defs>
+    <filter id="c" width="29.156" height="29.156" x="-2.578" y="-2.578" color-interpolation-filters="sRGB" filterUnits="userSpaceOnUse">
+      <feFlood flood-opacity="0" result="BackgroundImageFix"/>
+      <feBlend in="SourceGraphic" in2="BackgroundImageFix" result="shape"/>
+      <feGaussianBlur result="effect1_foregroundBlur_3061_873" stdDeviation="1.289"/>
+    </filter>
+    <filter id="d" width="26.576" height="26.576" x="-1.288" y="-1.288" color-interpolation-filters="sRGB" filterUnits="userSpaceOnUse">
+      <feFlood flood-opacity="0" result="BackgroundImageFix"/>
+      <feBlend in="SourceGraphic" in2="BackgroundImageFix" result="shape"/>
+      <feGaussianBlur result="effect1_foregroundBlur_3061_873" stdDeviation=".644"/>
+    </filter>
+    <filter id="f" width="8.115" height="8.116" x="8.173" y="7.942" color-interpolation-filters="sRGB" filterUnits="userSpaceOnUse">
+      <feFlood flood-opacity="0" result="BackgroundImageFix"/>
+      <feBlend in="SourceGraphic" in2="BackgroundImageFix" result="shape"/>
+      <feGaussianBlur result="effect1_foregroundBlur_3061_873" stdDeviation=".644"/>
+    </filter>
+    <radialGradient id="e" cx="0" cy="0" r="1" gradientTransform="matrix(0 -5.14284 5.38752 0 12 12)" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#fff" stop-opacity="0"/>
+      <stop offset="1" stop-color="#FF00D9"/>
+    </radialGradient>
+    <clipPath id="a">
+      <path fill="#fff" d="M0 0h24v24H0z"/>
+    </clipPath>
+  </defs>
+</svg>

@@ -15,6 +15,10 @@
 
   const columnCount = () => getComputedStyle(grid).gridTemplateColumns.split(' ').length;
   const staticMode = () => paused || reduced.matches || touch.matches;
+  // Reels measure the styled grid. Before the Forest stylesheet applies, or once
+  // the root error boundary has replaced the document, computed gaps read empty
+  // and the reel duration would be NaN, which Element.animate rejects.
+  const styled = () => grid.isConnected && getComputedStyle(grid).display === 'grid';
   const blocked = () => staticMode() || !inView || document.hidden;
   const heightOf = card => card.getBoundingClientRect().height;
   function clone(index) {
@@ -29,6 +33,7 @@
     });
   }
   function scroll(reel, initialOffset = 0) {
+    if (!styled()) return;
     // Recycle outside the crop so both directions preserve the visible strip.
     if (!reel.upward) reel.track.prepend(reel.track.lastElementChild);
     const distance = heightOf(reel.track.firstElementChild) + reel.gap;
@@ -49,8 +54,9 @@
     reels.forEach(reel => reel.animation?.cancel());
     reels = [];
     toggle.textContent = paused ? 'Resume post animation' : 'Pause animation and show all posts';
-    grid.classList.toggle('community-grid--scrolling', !staticMode());
-    if (staticMode()) {
+    const still = staticMode() || !styled();
+    grid.classList.toggle('community-grid--scrolling', !still);
+    if (still) {
       grid.replaceChildren(...originals);
       return;
     }

@@ -1,6 +1,7 @@
 import { createGrowthScene } from './growth-scene.js';
 import { createLogoMarquee } from './customer-logos.js';
 import { setupComposer } from './composer.js';
+import { prerenderAuthLinksOnIntent, prerenderAuthScreensWhenIdle } from './auth-prerender.js';
 
 const page = document.getElementById('page');
 const hero = document.getElementById('hero');
@@ -38,6 +39,8 @@ new IntersectionObserver(entries => {
 sync();
 
 setupComposer();
+prerenderAuthLinksOnIntent();
+prerenderAuthScreensWhenIdle();
 document.querySelectorAll('[data-tour]').forEach(link => link.addEventListener('click', () =>
   document.querySelector('oxygen-product-tour').select(link.dataset.tour)));
 

@@ -1,0 +1,32 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1920" height="936" fill="none" viewBox="0 0 1920 936">
+  <g clip-path="url(#a)">
+    <mask id="c" width="2302" height="1297" x="-191" y="-361" maskUnits="userSpaceOnUse" style="mask-type:alpha">
+      <ellipse cx="960" cy="287.5" fill="url(#b)" rx="1151" ry="648.5"/>
+    </mask>
+    <g mask="url(#c)">
+      <path fill="#fff" d="M0-144h1920V936H0z"/>
+      <path fill="#FFC2F5" d="M0 0h1920v72H0V0Z"/>
+      <path fill="#FFC7F6" d="M0 72h1920v72H0V72Z"/>
+      <path fill="#FFCCF7" d="M0 144h1920v72H0v-72Z"/>
+      <path fill="#FFD1F8" d="M0 216h1920v72H0v-72Z"/>
+      <path fill="#FFD6F9" d="M0 288h1920v72H0v-72Z"/>
+      <path fill="#FFDBF9" d="M0 360h1920v72H0v-72Z"/>
+      <path fill="#FFE0FA" d="M0 432h1920v72H0v-72Z"/>
+      <path fill="#FFE6FB" d="M0 504h1920v72H0v-72Z"/>
+      <path fill="#FFEBFC" d="M0 576h1920v72H0v-72Z"/>
+      <path fill="#FFF0FD" d="M0 648h1920v72H0v-72Z"/>
+      <path fill="#FFF5FD" d="M0 720h1920v72H0v-72Z"/>
+      <path fill="#FFFAFE" d="M0 792h1920v72H0v-72Z"/>
+      <path fill="#fff" d="M0 864h1920v72H0v-72Z"/>
+    </g>
+  </g>
+  <defs>
+    <radialGradient id="b" cx="0" cy="0" r="1" gradientTransform="matrix(0 648.5 -1151 0 960 287.5)" gradientUnits="userSpaceOnUse">
+      <stop offset=".774" stop-color="#D9D9D9"/>
+      <stop offset="1" stop-color="#D9D9D9" stop-opacity="0"/>
+    </radialGradient>
+    <clipPath id="a">
+      <path fill="#fff" d="M0 0h1920v936H0z"/>
+    </clipPath>
+  </defs>
+</svg>

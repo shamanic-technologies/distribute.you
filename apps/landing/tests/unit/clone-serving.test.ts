@@ -28,6 +28,7 @@ import {
   EXTERNAL_DIR,
   externalPathFor,
   rewriteReferences,
+  dropLocalisedIntegrity,
   shouldMirrorHost,
 } from "../../scripts/localise-clone.mjs";
 import {
@@ -242,6 +243,13 @@ describe("rapatriating a cross-origin asset", () => {
     expect(rewriteReferences("http://cdn.example.com/a", ["cdn.example.com"])).toBe(
       `/${EXTERNAL_DIR}/cdn.example.com/a`,
     );
+  });
+
+  it("drops the integrity pin only on a tag whose asset was rapatriated", () => {
+    const local = '<link href="/__external/cdn.example.com/a.css" rel="stylesheet" integrity="sha384-x" crossorigin="anonymous"/>';
+    const origin = '<script src="/js/app.js" integrity="sha384-y"></script>';
+    expect(dropLocalisedIntegrity(local)).toBe('<link href="/__external/cdn.example.com/a.css" rel="stylesheet" crossorigin="anonymous"/>');
+    expect(dropLocalisedIntegrity(origin)).toBe(origin);
   });
 
   it("does not let a shorter host claim a longer one's references", () => {

@@ -7,7 +7,7 @@ export function setupBenefits(section) {
   const visible = new Set();
   // Build deliberately, then leave the completed illustration still for several seconds.
   const duration = 12000;
-  const easing = getComputedStyle(section).getPropertyValue('--ox-ease').trim();
+  let easing = '';
 
   function animate(element, frames) {
     const animation = element.animate(frames, { duration, iterations: Infinity });
@@ -26,6 +26,11 @@ export function setupBenefits(section) {
     ]);
   }
   function create() {
+    // The token is empty until the Forest stylesheet applies and after the root
+    // error boundary detaches the section; Element.animate rejects an empty
+    // easing, so the still view stays until a later sync finds it resolved.
+    easing = section.isConnected ? getComputedStyle(section).getPropertyValue('--ox-ease').trim() : '';
+    if (!easing) return;
     section.querySelectorAll('.why-tools > span').forEach((tile, i) => {
       build(tile, .02 + i * .018);
       build(tile.querySelector('.why-tool-cross'), .32 + i * .012, 'scale(.65)');

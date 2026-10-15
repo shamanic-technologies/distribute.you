@@ -174,6 +174,22 @@ async function* textFiles(dir) {
  * bundle that assembles a url by concatenating an origin with a path still resolves. Both
  * schemes are handled because a captured page carries either.
  */
+/**
+ * Drop the Subresource Integrity pin from a tag that now loads a RAPATRIATED asset.
+ *
+ * A Webflow page pins its stylesheet and bundles with `integrity="sha384-…"`. Rewriting the
+ * `url(https://cdn…)` references INSIDE that stylesheet changes its bytes, the hash no longer
+ * matches, and the browser refuses the file: the clone renders as unstyled text (11x and
+ * warmly, 2026-10-15). The pin protected a cross-origin fetch; the file is now served by our
+ * own host, so the attribute is a reference detail of the move, like the URL itself. Only
+ * tags pointing at `/__external/` lose it; an origin-served asset keeps its pin.
+ */
+export function dropLocalisedIntegrity(text) {
+  return text.replace(/<(link|script)\b[^>]*>/gi, (tag) =>
+    new RegExp(`(?:src|href)=["']/${EXTERNAL_DIR}/`).test(tag) ? tag.replace(/\s+integrity=(["'])[^"']*\1/i, "") : tag,
+  );
+}
+
 export function rewriteReferences(text, hosts) {
   let out = text;
   // Longest first, so a host that is a prefix of another cannot claim its references; and
@@ -211,7 +227,8 @@ if (import.meta.url === `file://${process.argv[1]}`) {
   let rewritten = 0;
   for await (const file of textFiles(outRoot)) {
     const before = await readFile(file, "utf8");
-    const after = rewriteReferences(before, hosts);
+    const rewrittenRefs = rewriteReferences(before, hosts);
+    const after = file.endsWith(".html") ? dropLocalisedIntegrity(rewrittenRefs) : rewrittenRefs;
     if (after !== before) {
       await writeFile(file, after);
       rewritten += 1;

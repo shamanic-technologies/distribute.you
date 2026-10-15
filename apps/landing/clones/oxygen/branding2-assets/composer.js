@@ -1,3 +1,4 @@
+import { prerender } from './auth-prerender.js';
 import { setupComposerPopover } from './composer-popover.js';
 
 /** Public landing controls are local previews; only submitting navigates to signup. */
@@ -5,6 +6,17 @@ export function setupComposer() {
   const form = document.getElementById('chat-form');
   // Once the visitor starts working, the entrance stays complete after blur.
   form.addEventListener('focusin', () => form.setAttribute('data-interacted', ''), { once: true });
+  // Focusing the composer is the strongest signal a visitor will submit, and
+  // typing takes seconds: prerender sign-up now so the submit activates a page
+  // whose form is already mounted (see auth-prerender.js).
+  form.addEventListener('focusin', () => prerender({ urls: [new URL(form.action).pathname], eagerness: 'immediate' }), { once: true });
+  // A prerender activates only for the exact URL it rendered, and a GET form
+  // with no named field submits `/auth/sign-up?`, so navigate to the action
+  // itself. Nothing typed here is sent; the action attribute stays the no-JS path.
+  form.addEventListener('submit', event => {
+    event.preventDefault();
+    location.assign(form.action);
+  });
   const prompt = document.getElementById('prompt');
   const approve = document.getElementById('composer-approve');
   const trigger = document.getElementById('composer-model');
