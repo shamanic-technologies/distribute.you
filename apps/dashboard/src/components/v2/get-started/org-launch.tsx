@@ -91,24 +91,11 @@ export function OrgLaunch({
       });
   }, []);
 
-  // A new org pays through Revolut (owner 2026-09-27), declared once before its first
-  // card form; an org already holding a card elsewhere keeps paying there.
-  const revolutDeclared = useRef(false);
-  async function declareRevolut() {
-    if (revolutDeclared.current) return;
-    const orgToken = await session?.getToken({ organizationId: orgId, skipCache: true });
-    if (!orgToken) throw new Error("Your session expired. Sign in again to finish.");
-    const res = await fetch("/api/orgs/revolut", { method: "POST", headers: { Authorization: `Bearer ${orgToken}` } });
-    if (!res.ok) throw new Error("We could not prepare the payment. Try again.");
-    revolutDeclared.current = true;
-  }
-
   async function pay(choice: TopupChoice) {
     if (busy) return;
     setBusy(true);
     setError(null);
     try {
-      await declareRevolut();
       const opened = await payTopup({
         amountUsd: choice.topupUsd,
         consent: choice.consent,
