@@ -253,7 +253,7 @@ export function renderCompareHub(): string {
 ${liveBand()}`;
   return shell({
     title: `Compare distribute.you with ${COMPETITORS.length} cold email tools and AI SDRs (${monthLabel(new Date())})`,
-    description: `Side-by-side pages against ${COMPETITORS.map((c) => c.name).join(", ")}: entry price, who runs the campaign, whose domains send, and the measured cost of a positive reply.`,
+    description: `Side-by-side pages against ${COMPETITORS.length} cold email tools: entry price, who runs the campaign, whose domains send, and what a positive reply costs.`,
     path: "/compare",
     body,
     jsonLd: [breadcrumb([{ name: "Compare", path: "/compare" }])],
@@ -285,7 +285,7 @@ export function renderAlternativesPage(): string {
 ${liveBand()}`;
   return shell({
     title: `Alternatives to ${COMPETITORS.slice(0, 4).map((c) => c.name).join(", ")} and ${COMPETITORS.length - 4} more (${monthLabel(new Date())})`,
-    description: `Weighing ${COMPETITORS.map((c) => c.name).join(", ")}? distribute.you runs the outbound for you from domains we own, on a free platform, and publishes what a positive reply costs.`,
+    description: `Weighing ${COMPETITORS.length} cold email tools? distribute.you runs your outbound from our domains, on a free platform, and shows what a positive reply costs.`,
     path: "/alternatives",
     body,
     jsonLd: [breadcrumb([{ name: "Alternatives", path: "/alternatives" }])],

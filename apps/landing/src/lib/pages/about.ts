@@ -1,7 +1,7 @@
 import { SITE, breadcrumb, docPage } from "../v2-shell";
 
 const DESCRIPTION =
-  "distribute.you does done-for-you revenue automation. You give us a website and a daily budget, we find your buyers, contact them by cold email from domains we own and book your meetings, and you see what each one cost you.";
+  "Revenue made easy. Give us a website and a daily budget. We find your buyers, email them from our domains and book your meetings.";
 
 /** `/about`: what we sell, who runs it and how it is paid for. */
 export function renderAboutPage(): string {

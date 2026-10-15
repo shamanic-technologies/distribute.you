@@ -20,7 +20,7 @@ export const SITE = "https://distribute.you";
  *  it is what a CTA still MEANS to a reader, and because every page renders it
  *  through this one constant -- a second spelling is how one page comes to send
  *  people somewhere else. */
-export const SIGN_UP = "https://dashboard.distribute.you/start";
+export const SIGN_UP = "https://dashboard.distribute.you/get-started";
 export const SIGN_IN = "https://dashboard.distribute.you/sign-in";
 
 /**

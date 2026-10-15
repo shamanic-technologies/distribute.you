@@ -999,6 +999,52 @@ export async function unlinkMatrixLink(brandId: string, channel: string, linkId:
   );
 }
 
+// ==================== TELEGRAM UPDATES TO THE ORG'S OWNER ====================
+//
+// client-service sends the org's owner one short Telegram line when one of our
+// workflows acts for them (a post published). The member links their own chat:
+// a one-time code opens the platform bot (`t.me/<bot>?start=<code>`), the bot hands
+// the code back to client-service, and the status read turns reachable. Own org
+// only, through the gateway (`orgId` = the internal org id, billing's `org_id`).
+
+const OwnerTelegramStatusSchema = z.object({
+  reachable: z.boolean(),
+  target: z.enum(["linked_chat", "platform_owner_chat"]).nullish(),
+  linkedAt: z.string().nullish(),
+});
+export type OwnerTelegramStatus = z.infer<typeof OwnerTelegramStatusSchema>;
+
+const OwnerTelegramLinkCodeSchema = z.object({
+  code: z.string(),
+  linkUrl: z.string().url(),
+  expiresAt: z.string(),
+});
+export type OwnerTelegramLinkCode = z.infer<typeof OwnerTelegramLinkCodeSchema>;
+
+export async function getOwnerTelegram(orgId: string, token?: string): Promise<OwnerTelegramStatus> {
+  const raw = await apiCall<unknown>(`/orgs/${encodeURIComponent(orgId)}/owner-telegram`, { token });
+  const parsed = OwnerTelegramStatusSchema.safeParse(raw);
+  if (!parsed.success) {
+    console.error("[api] getOwnerTelegram response shape mismatch", parsed.error.flatten(), raw);
+    throw new Error("getOwnerTelegram returned an unexpected shape");
+  }
+  return parsed.data;
+}
+
+export async function createOwnerTelegramLinkCode(orgId: string, token?: string): Promise<OwnerTelegramLinkCode> {
+  const raw = await apiCall<unknown>(`/orgs/${encodeURIComponent(orgId)}/owner-telegram/link-codes`, { token, method: "POST" });
+  const parsed = OwnerTelegramLinkCodeSchema.safeParse(raw);
+  if (!parsed.success) {
+    console.error("[api] createOwnerTelegramLinkCode response shape mismatch", parsed.error.flatten(), raw);
+    throw new Error("createOwnerTelegramLinkCode returned an unexpected shape");
+  }
+  return parsed.data;
+}
+
+export async function unlinkOwnerTelegram(orgId: string, token?: string): Promise<unknown> {
+  return apiCall<unknown>(`/orgs/${encodeURIComponent(orgId)}/owner-telegram`, { token, method: "DELETE" });
+}
+
 // ==================== POSTHOG + STRIPE + CLERK, read-only sources of Conversations ====================
 //
 // Same two-write connect as GoHighLevel: the credential goes to key-service under the

@@ -1,7 +1,7 @@
 import { SITE, breadcrumb, docPage } from "../v2-shell";
 
 const DESCRIPTION =
-  "Everything distribute.you publishes for a program to read: the REST API and its OpenAPI document, the MCP server, the CLI, the documentation, and the machine-readable files on this domain.";
+  "What distribute.you publishes for programs: the REST API and its OpenAPI document, the MCP server, the CLI, the docs and machine-readable files.";
 
 /**
  * `/developers`: every developer surface, at an address that does not move. Every
@@ -117,7 +117,7 @@ curl -X POST https://api.distribute.you/v1/agent-signups/complete \\
 <ul>
 <li><a href="https://mcp.distribute.you/mcp">mcp.distribute.you/mcp</a>: the server endpoint, Streamable HTTP transport, an API key as a bearer token (no key needed to sign up).</li>
 <li><a href="/.well-known/mcp.json">/.well-known/mcp.json</a>: the descriptor, so a client can find the server from the hostname alone.</li>
-<li><a href="https://docs.distribute.you/mcp">docs.distribute.you/mcp</a>: what each tool takes and returns.</li>
+<li><a href="https://docs.distribute.you/mcp/">docs.distribute.you/mcp</a>: what each tool takes and returns.</li>
 </ul>
 <p>Start with <code>distribute_list_skills</code> and <code>distribute_read_skill</code>: the method our own Copilot follows, so your agent organizes a request the same way. A campaign is one sales funnel run for one offer, and it spends only up to the caps the customer states: a max budget and/or a max volume.</p>
 <p>No key yet? Connect without one and call <code>distribute_signup_start</code>, then <code>distribute_signup_complete</code>: the session gets its key at once. <code>distribute_prepay</code> returns the payment link when you need to spend. The rest reads your account: <code>distribute_status</code>, brands, campaigns and their results, leads and their emails, workflows, and <code>distribute_suggest_icp</code> to draft an ideal customer profile from a website. <code>distribute_find_api</code> and <code>distribute_call_api</code> reach every other API operation.</p>`,
@@ -135,7 +135,7 @@ curl -X POST https://api.distribute.you/v1/agent-signups/complete \\
         tint: true,
         html: `<ul>
 <li><a href="https://docs.distribute.you/">docs.distribute.you</a>: the developer documentation.</li>
-<li><a href="https://docs.distribute.you/openapi">docs.distribute.you/openapi</a>: the machine-readable entry points, gathered on one page.</li>
+<li><a href="https://docs.distribute.you/openapi/">docs.distribute.you/openapi</a>: the machine-readable entry points, gathered on one page.</li>
 <li><a href="https://github.com/shamanic-technologies">github.com/shamanic-technologies</a>: the source.</li>
 </ul>`,
       },

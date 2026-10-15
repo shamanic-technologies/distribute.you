@@ -7,7 +7,7 @@
  * the registrable domain, so a returning visitor (and the dashboard, which shares the
  * domain) keeps seeing the same page. The URL never changes, so ads and links are
  * untouched. The metric is a PostHog funnel: `landing_variant_viewed` (carrying
- * `lp_variant`) then a pageview on `dashboard.distribute.you/start`.
+ * `lp_variant`) then a pageview on `dashboard.distribute.you/get-started`.
  *
  * Crawlers and agents always get `control`: the homepage is the one page whose index
  * entry matters most, and a crawler landing on a variant would be told a different

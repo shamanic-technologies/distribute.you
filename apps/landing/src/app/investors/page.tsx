@@ -20,7 +20,7 @@ export const revalidate = 86400;
 
 const INVESTORS_URL = `${PROD_URLS.landing}/investors`;
 const PAGE_DESCRIPTION =
-  "Live platform metrics, growth data, infrastructure and SAFE-round details for distribute.you, the AI-native acquisition agency. Public investor page, refreshed daily.";
+  "Live platform metrics, growth data and SAFE-round details for distribute.you. Public investor page, refreshed daily.";
 
 export const metadata: Metadata = {
   title: "Investor Information",
