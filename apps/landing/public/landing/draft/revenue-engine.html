@@ -27,17 +27,19 @@
 .re-cta input:focus-visible, .re-cta .btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 .re-cta .free { font-size: 15px; color: var(--muted); }
 
-/* The one memorable element: the revenue path, each step with its dollar value. */
+/* The one memorable element: the price of each step, the CAC, then what a client brings back and the return. */
 .re-path { margin-top: 64px; }
 .re-path ol { list-style: none; display: grid; grid-template-columns: repeat(5, 1fr); gap: 0; border: 1px solid var(--hair-2); border-radius: 20px; overflow: hidden; background: #fff; }
 .re-path li { position: relative; padding: 22px 20px 20px; border-left: 1px solid var(--hair); }
 .re-path li:first-child { border-left: 0; }
-.re-path .c-step { font-size: 15px; color: var(--muted); }
+.re-path .c-step { display: block; font-size: 15px; color: var(--muted); min-height: 2.6em; }
 .re-path .val { display: block; margin-top: 10px; font-family: var(--font-display); font-weight: 500; font-size: clamp(26px, 3vw, 38px); letter-spacing: -0.02em; }
 .re-path .who { display: block; margin-top: 8px; font-size: 14px; color: var(--muted-2); }
-.re-path li.end { background: var(--accent-50); }
+.re-path li.end { background: var(--accent-50); border-left: 1px solid var(--accent-100); }
 .re-path li.end .val { color: var(--accent-text); }
-.re-path .rate { position: absolute; top: 20px; right: 16px; font-size: 12px; padding: 2px 7px; border-radius: 100px; background: #fff; border: 1px solid var(--hair-2); color: var(--muted); }
+.re-path li.cac .val { font-weight: 600; }
+.re-path .roi { display: inline-block; margin-top: 10px; padding: 4px 12px; border-radius: 100px; background: var(--accent); color: #fff; font-family: var(--font-display); font-size: 18px; font-weight: 500; }
+.re-path .rate { float: right; margin: -2px 0 0 8px; font-size: 12px; padding: 2px 7px; border-radius: 100px; background: #fff; border: 1px solid var(--hair-2); color: var(--muted); }
 .re-path figcaption { margin-top: 14px; font-size: 15px; color: var(--muted); max-width: 70ch; }
 
 .re-sec { padding: 88px 0; border-top: 1px solid var(--hair); }
@@ -113,15 +115,15 @@
       <span class="free">The platform is free.</span>
     </div>
 
-    <figure class="re-path" aria-label="What each step is worth">
+    <figure class="re-path" aria-label="What you pay per step, per new client, and what a client brings back">
       <ol>
-        <li><span class="c-step">New lead</span><span class="val">Found</span><span class="who">by us, or sent by you</span></li>
-        <li><span class="c-step">Positive reply</span><span class="val">$52</span><span class="who">we answer in a minute</span></li>
-        <li><span class="rate">19%</span><span class="c-step">Meeting booked</span><span class="val">$276</span><span class="who">on your calendar</span></li>
-        <li><span class="rate">17%</span><span class="c-step">Meeting attended</span><span class="val">$1,625</span><span class="who">your call</span></li>
-        <li class="end"><span class="rate">65%</span><span class="c-step">Paid client</span><span class="val">$2,500</span><span class="who">what a client is worth</span></li>
+        <li><span class="c-step">Per positive reply</span><span class="val">$52</span><span class="who">we answer in a minute</span></li>
+        <li><span class="rate">19%</span><span class="c-step">Per meeting booked</span><span class="val">$276</span><span class="who">on your calendar</span></li>
+        <li><span class="rate">17%</span><span class="c-step">Per meeting attended</span><span class="val">$1,625</span><span class="who">your call</span></li>
+        <li class="cac"><span class="rate">80%</span><span class="c-step">Per new client (CAC)</span><span class="val">$2,031</span><span class="who">what you pay to win one</span></li>
+        <li class="end"><span class="c-step">A client brings you</span><span class="val">$3,000</span><span class="roi">1.5x return</span></li>
       </ol>
-      <figcaption>What each step is worth to Doc Dinners, who sells patient events to clinics. Measured on their own CRM: a client is worth $2,500 to them, and each step carries its share of that.</figcaption>
+      <figcaption>An example of what you read on every campaign: what you pay at each step, what a new client takes, and what that client brings back.</figcaption>
     </figure>
   </div>
 </section>
