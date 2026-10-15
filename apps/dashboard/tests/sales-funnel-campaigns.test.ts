@@ -183,7 +183,7 @@ describe("sales funnel campaigns: wiring", () => {
   });
 
   it("Campaigns lists funnel campaigns: the overview section and the sidebar's ON ones", () => {
-    expect(src("src/components/v2/campaigns-overview-page.tsx")).toContain("<FunnelCampaignsSection orgId={orgId} brandId={brandId} offerId={offerId} />");
+    expect(src("src/components/v2/campaigns-overview-page.tsx")).toContain("<CampaignList orgId={orgId} brandId={brandId} offerId={offerId} />");
     const shell = src("src/components/v2/v2-shell.tsx");
     expect(shell).toContain("const { campaigns: ongoing, funnelCampaigns } = useOngoingCampaigns(orgId, brandId, offerId);");
     expect(shell).toContain("funnelCampaigns.map((c) => {");
@@ -250,7 +250,8 @@ describe("sales funnel campaigns: the type picks the words (owner 2026-10-10)", 
   it("the Campaigns page lists ONLY funnel campaigns, staff mode included (no pipe table, owner 2026-10-11)", () => {
     const overview = src("src/components/v2/campaigns-overview-page.tsx");
     expect(overview).not.toContain("StaffPipeCampaigns");
-    expect(overview).not.toContain("staffMode");
+    // Staff mode adds ONLY the Suggested funnels (a staff-only read), never a pipe table.
+    expect(overview).toContain("{staffMode && <Suggested campaigns={q.data ?? null} />}");
     // Until campaign-service has converted it, a RUNNING old-style campaign stays in view, and only it.
     expect(overview).toContain("<UnconvertedRunningCampaigns orgId={orgId} brandId={brandId} offerId={offerId} />");
     expect(overview).toContain("if (running.size === 0) return null;");
@@ -264,20 +265,20 @@ describe("sales funnel campaigns: the type picks the words (owner 2026-10-10)", 
 
 
 describe("Campaigns table, owner spec 2026-10-11", () => {
-  const funnel = () => src("src/components/v2/funnel-campaigns.tsx");
-  const section = () => funnel().slice(funnel().indexOf("export function FunnelCampaignsSection("), funnel().indexOf("function FunnelCampaignRow("));
+  // The list (owner 2026-10-15, GA): one row per campaign in campaigns-overview-page.tsx.
+  const funnel = () => src("src/components/v2/campaigns-overview-page.tsx");
+  const section = () => funnel().slice(funnel().indexOf("function CampaignLine("), funnel().indexOf("function UnconvertedRunningCampaigns("));
 
-  it("columns, in order: Campaign, Type (i), ROI, $ Invested, Status; Spent / Volume / Budget dropped", () => {
+  it("a row reads, in order: face + name + sentence, Type, ROI (i), $ Invested, Status; Spent / Volume / Budget dropped", () => {
     const s = section();
     const at = (t: string) => s.indexOf(t);
-    expect(at(">Campaign</th>")).toBeGreaterThan(-1);
-    expect(at("Type")).toBeGreaterThan(at(">Campaign</th>"));
-    expect(at("<InfoTooltip tip={TYPE_TIP}")).toBeGreaterThan(at("Type"));
+    expect(at("<FunnelFace name={campaign.salesFunnelName}")).toBeGreaterThan(-1);
+    expect(at("<TypeTag row={copy} />")).toBeGreaterThan(at("<FunnelFace name={campaign.salesFunnelName}"));
     // ROI carries the expected (i) (owner 2026-10-11).
-    expect(at("<RoiLabel />")).toBeGreaterThan(at("<InfoTooltip tip={TYPE_TIP}"));
-    expect(at(">$ Invested</th>")).toBeGreaterThan(at("<RoiLabel />"));
-    expect(at(">Status</th>")).toBeGreaterThan(at(">$ Invested</th>"));
-    for (const gone of [">Spent</th>", ">Volume</th>", ">Budget</th>"]) expect(s).not.toContain(gone);
+    expect(at("<RoiLabel />")).toBeGreaterThan(at("<TypeTag row={copy} />"));
+    expect(at(">$ Invested</div>")).toBeGreaterThan(at("<RoiLabel />"));
+    expect(at("<FunnelCampaignStatus campaign={campaign}")).toBeGreaterThan(at(">$ Invested</div>"));
+    for (const gone of [">Spent<", ">Volume<", ">Budget<"]) expect(s).not.toContain(gone);
   });
 
   it("every cell reads features-service's served row: short sentence, type label, roiMultiple, investedUsd; nothing composed", () => {
@@ -285,8 +286,8 @@ describe("Campaigns table, owner spec 2026-10-11", () => {
     // One short served sentence under the name, not the path (owner 2026-10-14), on the fast copy read.
     expect(f).toContain("{copy.shortDescription}</span>");
     expect(f).not.toContain("<FunnelPathLine items={copy.path.items} />");
-    expect(f).toContain("{row.typeLabel}");
-    expect(f).toContain("funnelRoiShown(row)");
+    expect(src("src/components/v2/funnel-campaigns.tsx")).toContain("{row.typeLabel}");
+    expect(src("src/components/v2/funnel-campaigns.tsx")).toContain("funnelRoiShown(row)");
     expect(f).toContain("formatUsdAdaptive(row.investedUsd)");
     expect(f).not.toContain("row.description");
     expect(src("src/lib/api.ts")).toContain("/features/brands/${encodeURIComponent(brandId)}/sales-funnel-campaigns?");
@@ -295,7 +296,7 @@ describe("Campaigns table, owner spec 2026-10-11", () => {
   it("Status is the on/off control: green with the budget when on (Up to for Reactive), Off otherwise; not funded keeps its handling", () => {
     const f = funnel();
     expect(f).toContain('`${reactive ? "Up to " : ""}${maxBudgetLabel(b)}`');
-    expect(f).toContain("<FunnelCampaignStatus campaign={campaign} onLabel={onLabel} />");
+    expect(f).toContain("<FunnelCampaignStatus campaign={campaign} onLabel={on ? onLabel : null} />");
     expect(f).toContain("Not funded yet · Set a budget");
   });
 
@@ -307,7 +308,7 @@ describe("Campaigns table, owner spec 2026-10-11", () => {
 
   it("the mark beside two lines is as tall as the lines (MarkLines, one primitive)", () => {
     expect(src("src/components/v2/ui.tsx")).toContain("export function MarkLines(");
-    expect(funnel()).toContain("<MarkLines mark={(px) => <FunnelFace name={campaign.salesFunnelName} size={px} />}>");
+    expect(funnel()).toContain('<MarkLines gap="gap-3" mark={(px) => <FunnelFace name={campaign.salesFunnelName} size={px} />}>');
   });
 });
 
@@ -364,7 +365,7 @@ describe("Campaigns order + one modal (owner 2026-10-11)", () => {
   });
 
   it("the table renders campaigns in that order", () => {
-    const f = src("src/components/v2/funnel-campaigns.tsx");
+    const f = src("src/components/v2/campaigns-overview-page.tsx");
     expect(f).toContain(".sort((x, y) => compareFunnelCampaigns(x.k, y.k))");
   });
 });
@@ -446,7 +447,8 @@ describe("a max budget AND/OR a max volume funds a funnel (owner 2026-10-11, bil
 
   it("every Not funded yet reads billing's verdict, and the modal saves a volume alone", () => {
     const f = src("src/components/v2/funnel-campaigns.tsx");
-    expect(f.match(/funnelFunded\((c|caps|caps\.data \?\? null)\) === false/g)?.length).toBe(3);
+    expect(f.match(/funnelFunded\((c|caps|caps\.data \?\? null)\) === false/g)?.length).toBe(2);
+    expect(src("src/components/v2/campaigns-overview-page.tsx")).toContain("funnelFunded(caps) === false");
     expect(f).not.toContain("c.maxBudget === null");
     expect(f).toContain('"Set a budget or a volume."');
     expect(f).toContain("maxBudget: usd === null ? null : { amountCents: usd * 100, period: budgetPer }");
@@ -462,10 +464,10 @@ describe("Running vs Past campaigns (owner 2026-10-13)", () => {
     expect(past.map((x) => x.id)).toEqual(["spent", "cent"]);
   });
   it("the Campaigns section lists running by default, the Past tab only when it holds one", () => {
-    const page = src("src/components/v2/funnel-campaigns.tsx");
-    expect(page).toContain("splitFunnelCampaigns(campaigns, investedById)");
-    expect(page).toContain("{settled && past.length > 0 && (");
-    expect(page).toContain("const shown = showingPast ? past : running;");
+    const page = src("src/components/v2/campaigns-overview-page.tsx");
+    expect(page).toContain("splitFunnelCampaigns(ordered, investedById)");
+    expect(page).toContain("{past.length > 0 && (");
+    expect(page).toContain("const base = showingPast ? past : running;");
     expect(page).toContain("{shown.map((c) => (");
   });
 });

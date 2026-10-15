@@ -27,15 +27,16 @@ describe("funnelRowSettled", () => {
 
 describe("both readers of the rows gate a missing row on funnelRowSettled", () => {
   const src = readFileSync(join(__dirname, "../src/components/v2/funnel-campaigns.tsx"), "utf8");
-  it("the Campaigns table passes it per row", () => {
-    expect(src).toContain("rowsSettled={funnelRowSettled(rowById.has(c.id), rowsQ, c.createdAt)}");
+  const list = readFileSync(join(__dirname, "../src/components/v2/campaigns-overview-page.tsx"), "utf8");
+  it("the Campaigns list passes it per row", () => {
+    expect(list).toContain("rowSettled={funnelRowSettled(rowById.has(c.id), rowsQ, c.createdAt)}");
   });
   it("the campaign page uses it for its own row", () => {
     expect(src).toContain("const rowsSettled = funnelRowSettled(row !== null, rowsQ, campaign.createdAt);");
   });
   it("sentence and Type read the fast copy read, money the full rows", () => {
-    expect(src).toContain("copy={rowById.get(c.id) ?? copyById.get(c.id) ?? null}");
-    expect(src).toContain("{copy?.shortDescription ? (");
+    expect(list).toContain("copy={rowById.get(c.id) ?? copyById.get(c.id) ?? null}");
+    expect(list).toContain("{copy?.shortDescription ? (");
     expect(src).toContain("sub={path ? <FunnelPathLine items={path.items} /> : undefined}");
   });
 });
