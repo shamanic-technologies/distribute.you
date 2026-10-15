@@ -1471,7 +1471,7 @@ export function GetStarted({ org, ipCountry = null }: { org?: OrgWalk; ipCountry
           setSetup(null);
           void start(raw, true);
         }}
-        onBack={() => setSetup(null)}
+        onBack={() => (setup.view === "ai" ? setSetup({ ...setup, view: "choose" }) : setSetup(null))}
       />
     );
   }
@@ -2086,9 +2086,9 @@ function SetupChoice({
             </button>
           </div>
         )}
-        <button type="button" onClick={onBack} className="k-btn-ghost -ml-2 mt-2 block h-7 text-[12px]">
-          Change my website
-        </button>
+        <div className="mt-4">
+          <BackLink onBack={onBack} />
+        </div>
       </div>
     </div>
   );
