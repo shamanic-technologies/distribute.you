@@ -446,8 +446,12 @@ export function persisterStorageKey(orgId: string | null | undefined): string {
  *
  * "6": `offerSalesPath` gained the REQUIRED `legs` (each leg with its channel, brand-service
  * #636) and its reader no longer reads `legKeys`: an older snapshot would show no leg ticked.
+ *
+ * "7": `googleAccounts` rows gained the REQUIRED `scopes` (GMAIL-NEEDS-SEND-ACCESS-1014).
+ * Integrations > AI read `scopes.includes` on an older snapshot and crashed with
+ * `Cannot read properties of undefined (reading 'includes')`.
  */
-const PERSIST_CACHE_VERSION = "6";
+const PERSIST_CACHE_VERSION = "7";
 
 export function persistCacheVersion(): string {
   return PERSIST_CACHE_VERSION;
