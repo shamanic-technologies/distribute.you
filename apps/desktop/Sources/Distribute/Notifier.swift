@@ -40,8 +40,9 @@ final class Notifier: NSObject, UNUserNotificationCenterDelegate {
         let key = "notified-\(brand.id)-\(offer.offerId)"
         let seen = Set(UserDefaults.standard.stringArray(forKey: key) ?? [])
         let firstRun = UserDefaults.standard.object(forKey: key) == nil
+        // Only the people on the latest read can be clicked from a notification: keep those.
+        known = Dictionary(page.leads.map { ($0.id, $0) }, uniquingKeysWith: { a, _ in a })
         for lead in page.leads {
-            known[lead.id] = lead
             if !firstRun && !seen.contains(lead.id) { post(lead, brand: brand.label) }
         }
         // First run only remembers who is already there: no burst of old replies.

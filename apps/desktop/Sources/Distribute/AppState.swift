@@ -447,6 +447,7 @@ final class AppState: ObservableObject {
     func send(_ text: String) {
         guard let cli, let apiKey, let brand = selectedBrand, let org = selectedOrg, !chatBusy else { return }
         chat.append(.user(id: UUID(), text: text))
+        trimChat()
         chatBusy = true
         let ctx = SessionContext(
             apiKey: apiKey, orgId: org.id, brandId: brand.id, brandName: brand.label,
@@ -457,12 +458,14 @@ final class AppState: ObservableObject {
             guard let self else { return }
             self.streamingIndex = nil
             self.chat.append(item)
+            self.trimChat()
         }, onDelta: { [weak self] delta in
             guard let self else { return }
             if let i = self.streamingIndex, i < self.chat.count, case .assistant(let id, let t) = self.chat[i] {
                 self.chat[i] = .assistant(id: id, text: t + delta)
             } else {
                 self.chat.append(.assistant(id: UUID(), text: delta))
+                self.trimChat()
                 self.streamingIndex = self.chat.count - 1
             }
         }, onText: { [weak self] full in
@@ -483,6 +486,15 @@ final class AppState: ObservableObject {
     }
 
     func stopChat() { session.stop() }
+
+    /// The chat on screen keeps its last 200 items (Claude keeps the whole conversation
+    /// itself through `--resume`): a long session must not grow the app's RAM forever.
+    private func trimChat() {
+        let extra = chat.count - 200
+        guard extra > 0 else { return }
+        chat.removeFirst(extra)
+        if let i = streamingIndex { streamingIndex = i >= extra ? i - extra : nil }
+    }
 
     func newChat() {
         session.reset()
