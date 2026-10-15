@@ -215,7 +215,7 @@ describe("a proof card", () => {
 describe("rendering the pick into the page", () => {
   const page = `<div class="showcase-grid" id="live-cards">
         <a class="show-card" href="#proof" data-live data-brand="old.com" data-steps="1"><b data-n="0">1</b></a>
-        <a class="show-card yours" href="https://dashboard.distribute.you/start">YOURS</a>
+        <a class="show-card yours" href="https://dashboard.distribute.you/get-started">YOURS</a>
       </div>
       <div class="proof-grid">
       <article class="proof-card rv" data-proof-brand="old.com">OLD</article>

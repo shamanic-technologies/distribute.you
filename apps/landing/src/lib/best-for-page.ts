@@ -52,7 +52,7 @@ export function bestForTitle(p: BestForPage): string {
 
 export function bestForDescription(p: BestForPage): string {
   const names = p.ranked.map((r) => competitorBySlug(r.slug)!.name).join(", ");
-  return `${bestForQuestion(p)} distribute.you ranks first for ${p.audience} who want sales meetings without running outreach. Compared with ${names}, prices read from their own sites.`;
+  return `${bestForQuestion(p)} distribute.you ranks first. Compared with ${names}.`;
 }
 
 function metaLine(): string {
@@ -205,7 +205,7 @@ export function renderBestForHub(): string {
 ${liveBand()}`;
   return shell({
     title: `Best cold email agency, AI SDR and lead generation agency by audience (${YEAR})`,
-    description: `Rankings for ${BEST_FOR_PAGES.map((p) => p.audience).join(", ")}, comparing distribute.you with ${COMPETITORS.length} tools and agents, prices read from each vendor's site.`,
+    description: `Rankings for ${BEST_FOR_PAGES.length} kinds of buyers, comparing distribute.you with ${COMPETITORS.length} tools and agents, prices read from each vendor's site.`,
     path: "/best",
     body,
     jsonLd: [breadcrumb([{ name: "Best for", path: "/best" }])],
