@@ -4,7 +4,15 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="robots" content="noindex, nofollow">
-<title>Draft: distribute.you, every way you make revenue</title>
+<title>distribute.you. We run every way you make revenue, and keep what pays</title>
+<meta name="description" content="Revenue made easy. We find your buyers, write to them, answer the ones who reply and book your calls. The platform is free. You pay after your outreach runs.">
+<meta name="theme-color" content="#ffffff">
+<meta property="og:type" content="website">
+<meta property="og:title" content="distribute.you. We run every way you make revenue, and keep what pays">
+<meta property="og:description" content="Revenue made easy. The platform is free. You pay after your outreach runs.">
+<meta property="og:image" content="https://distribute.you/opengraph-image">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="icon" href="/favicon.ico">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Fustat:wght@300;400;500;600&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
@@ -26,7 +34,12 @@
   - gojiberry (via the homepage): the dark band, the closing CTA slab, the FAQ row.
 */
 .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
-.draft-bar { padding: 8px 16px; text-align: center; font-size: 13px; color: var(--muted); background: var(--surface); border-bottom: 1px solid var(--hair); }
+.promo-bar { display: block; padding: 10px 16px; text-align: center; font-size: 14px; color: var(--text); background: var(--accent-50); border-bottom: 1px solid var(--accent-100); text-decoration: none; }
+.promo-bar b { margin-left: 6px; font-weight: 500; color: var(--accent); }
+.promo-bar:hover b { text-decoration: underline; }
+.perks { margin-top: 16px; display: flex; flex-wrap: wrap; gap: 8px 18px; list-style: none; font-size: 14px; color: var(--muted); }
+.perks li { display: inline-flex; align-items: center; gap: 7px; }
+.perks li::before { content: "✓"; display: grid; place-items: center; width: 18px; height: 18px; border-radius: 50%; background: var(--accent-50); color: var(--accent); font-size: 11px; font-weight: 600; }
 .two-tone em { font-style: normal; color: var(--muted-2); }
 
 /* Hero: split, after default */
@@ -183,6 +196,35 @@ section.dark.x-dark { padding: 88px 0; }
 .pricex { display: grid; grid-template-columns: 1fr 1fr; gap: 56px; align-items: center; }
 .pricex .plan { max-width: 480px; width: 100%; justify-self: end; }
 
+/* Proof: three real clients, after the homepage quotes */
+.quotes { margin-top: 48px; display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
+.quotes figure { display: flex; flex-direction: column; padding: 24px; background: #fff; border: 1px solid var(--hair-2); border-radius: 18px; }
+.quotes .stars { color: #f5a524; font-size: 15px; letter-spacing: 2px; }
+.quotes blockquote { margin-top: 12px; font-size: 16px; line-height: 1.55; color: var(--text); }
+.quotes figcaption { margin-top: auto; padding-top: 20px; display: flex; align-items: center; gap: 12px; }
+.quotes img { width: 40px; height: 40px; border-radius: 50%; object-fit: cover; }
+.quotes b { display: block; font-size: 15px; font-weight: 500; }
+.quotes small { display: block; font-size: 13px; color: var(--muted); }
+
+/* Offer: what we run for you, a price anchor, then the promise */
+.stack-list { margin-top: 40px; display: grid; grid-template-columns: repeat(2, 1fr); border: 1px solid var(--hair-2); border-radius: 20px; overflow: hidden; background: #fff; list-style: none; }
+.stack-list li { display: flex; gap: 14px; padding: 20px 22px; border-top: 1px solid var(--hair); }
+.stack-list li:nth-child(-n+2) { border-top: 0; }
+.stack-list li:nth-child(even) { border-left: 1px solid var(--hair); }
+.stack-list i { flex: none; display: grid; place-items: center; width: 26px; height: 26px; border-radius: 50%; background: var(--accent-50); color: var(--accent); font-style: normal; font-size: 13px; font-weight: 600; }
+.stack-list b { display: block; font-size: 16px; font-weight: 500; }
+.stack-list span { display: block; margin-top: 3px; font-size: 14px; color: var(--muted); }
+.anchor { margin-top: 18px; display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 8px 24px; padding: 20px 22px; border-radius: 16px; background: var(--surface); border: 1px solid var(--hair); }
+.anchor p { font-size: 16px; color: var(--muted); }
+.anchor strong { font-family: var(--font-display); font-weight: 500; font-size: 22px; color: var(--text); }
+.promise { margin-top: 18px; display: flex; align-items: center; gap: 18px; padding: 22px; border-radius: 16px; background: var(--accent-50); border: 1px solid var(--accent-100); }
+.promise .seal { flex: none; display: grid; place-items: center; width: 52px; height: 52px; border-radius: 50%; background: var(--accent); color: #fff; font-size: 22px; }
+.promise b { display: block; font-family: var(--font-display); font-weight: 500; font-size: 20px; color: var(--accent-text); }
+.promise span { display: block; margin-top: 3px; font-size: 14px; color: var(--muted); }
+
+/* Footer: the homepage footer, trust row included */
+footer .foot a { color: inherit; }
+
 .faq-list { margin-top: 40px; }
 .cta-box .launch { display: block; }
 footer .foot-bottom { display: flex; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
@@ -202,6 +244,7 @@ footer .foot-bottom { display: flex; justify-content: space-between; gap: 12px; 
   .ph:nth-child(3) { border-left: 0; }
   .ph:nth-child(n+3) { border-top: 1px solid var(--hair); }
   .plays, .fitx, .pricex { grid-template-columns: 1fr; gap: 32px; }
+  .quotes { grid-template-columns: 1fr; }
   .pricex .plan { justify-self: start; }
 }
 @media (max-width: 900px) {
@@ -228,6 +271,10 @@ footer .foot-bottom { display: flex; justify-content: space-between; gap: 12px; 
   .play { grid-template-columns: 34px 1fr; }
   .play .meter { display: none; }
   .play .st { grid-column: 2; justify-self: start; }
+  .stack-list { grid-template-columns: 1fr; }
+  .stack-list li:nth-child(2) { border-top: 1px solid var(--hair); }
+  .stack-list li:nth-child(even) { border-left: 0; }
+  .promise { align-items: flex-start; }
   .flow { margin: -16px 8px 0; }
   .flow-row { grid-template-columns: 1fr; }
   .link { width: 1px; height: 10px; margin: 0 auto; }
@@ -235,7 +282,7 @@ footer .foot-bottom { display: flex; justify-content: space-between; gap: 12px; 
 </style>
 </head>
 <body>
-<div class="draft-bar">Draft for review. Not linked from the site and hidden from search engines.</div>
+<a class="promo-bar" href="https://dashboard.distribute.you/get-started">Until <span data-promo-until>October 31</span>, we match your first $100. <b>Start free</b></a>
 
 <div class="nav" id="nav">
   <div class="nav-pill">
@@ -243,6 +290,7 @@ footer .foot-bottom { display: flex; justify-content: space-between; gap: 12px; 
     <nav class="nav-links">
       <a href="#how">How it works</a>
       <a href="#plays">Plays</a>
+      <a href="#offer">Offer</a>
       <a href="#pricing">Pricing</a>
       <a href="#faq">FAQ</a>
     </nav>
@@ -271,7 +319,7 @@ footer .foot-bottom { display: flex; justify-content: space-between; gap: 12px; 
             <button class="btn btn-accent" type="submit">Start free</button>
           </div>
         </form>
-        <p class="fine"><b>The platform is free.</b> Live in 2 minutes.</p>
+        <ul class="perks"><li>The platform is free</li><li>Nothing charged today</li><li>Live in 2 minutes</li></ul>
       </div>
     </div>
 
@@ -409,8 +457,33 @@ footer .foot-bottom { display: flex; justify-content: space-between; gap: 12px; 
   <div class="wrap">
     <div class="stats">
       <div class="stat"><div class="n"><span>2</span><span class="u">min</span></div><div class="l">To launch. Paste your website, confirm the plan.</div></div>
-      <div class="stat"><div class="n"><span class="u">$</span><span>0</span></div><div class="l">Platform fee. Your balance goes to your outreach.</div></div>
+      <div class="stat"><div class="n"><span class="u">$</span><span>0</span></div><div class="l">Charged today. You pay after your outreach runs.</div></div>
       <div class="stat"><div class="n"><span>1</span><span class="u">min</span></div><div class="l">To answer an interested reply, day and night.</div></div>
+    </div>
+  </div>
+</section>
+
+<section class="x-sec">
+  <div class="wrap">
+    <div class="x-head">
+      <h2 class="two-tone">Founders like you, <em>in their own words.</em></h2>
+    </div>
+    <div class="quotes">
+      <figure>
+        <div class="stars" aria-hidden="true">★★★★★</div>
+        <blockquote>Kevin is a very intelligent person with insights on how to expand and grow a business. I am happy to work with an ethical and hard working individual who brings results.</blockquote>
+        <figcaption><img src="/landing/v2/assets/ryan-parenti.jpg" alt=""><span><b>Ryan W.D. Parenti</b><small>Founder, Doc Dinners</small></span></figcaption>
+      </figure>
+      <figure>
+        <div class="stars" aria-hidden="true">★★★★★</div>
+        <blockquote>It was incredibly fast to launch a campaign. I just entered my URL, the platform identified the right audience, handled the outreach, and even let me download the contacts.</blockquote>
+        <figcaption><img src="/landing/v2/assets/christian-lemke.jpg" alt=""><span><b>Christian Lemke</b><small>Google Ads expert, Maggie M.</small></span></figcaption>
+      </figure>
+      <figure>
+        <div class="stars" aria-hidden="true">★★★★★</div>
+        <blockquote>This platform is incredible. Excellent click-through rate. I can literally see everything at a glance. Seriously, amazing work here, this is next-level.</blockquote>
+        <figcaption><img src="/landing/v2/assets/katherine-fleishman.jpeg" alt=""><span><b>Katherine Fleishman</b><small>Marketing expert, 20+ years</small></span></figcaption>
+      </figure>
     </div>
   </div>
 </section>
@@ -430,23 +503,41 @@ footer .foot-bottom { display: flex; justify-content: space-between; gap: 12px; 
   </div>
 </section>
 
+<section class="x-sec" id="offer">
+  <div class="wrap">
+    <div class="x-head">
+      <h2 class="two-tone">Everything we run for you. <em>From first email to paid client.</em></h2>
+    </div>
+    <ul class="stack-list">
+      <li><i>✓</i><div><b>Your buyers, found</b><span>From live buying signals, your website and your CRM.</span></div></li>
+      <li><i>✓</i><div><b>A personal email for each one</b><span>Written for them, sent from our own warmed domains.</span></div></li>
+      <li><i>✓</i><div><b>Every interested reply answered in a minute</b><span>Day and night, with your calendar link.</span></div></li>
+      <li><i>✓</i><div><b>Calls booked on your calendar</b><span>Your phone rings when a buyer is ready to talk.</span></div></li>
+      <li><i>✓</i><div><b>No-shows and unpaid signups followed up</b><span>Until they book again or pay.</span></div></li>
+      <li><i>✓</i><div><b>Every play tested on your revenue</b><span>The winner gets the budget, step by step.</span></div></li>
+    </ul>
+    <div class="anchor"><p>A sales rep is paid $4,000 to $7,000 a month to run part of this.</p><strong>The platform is free.</strong></div>
+    <div class="promise"><span class="seal" aria-hidden="true">✓</span><div><b>6 booked meetings in 3 months, or your paid media budget back.</b><span>Every meeting is on your dashboard, with what it took to win it.</span></div></div>
+  </div>
+</section>
+
 <section class="x-sec price-sec" id="pricing">
   <div class="wrap pricex">
     <div class="x-head">
       <h2>The platform is free.</h2>
-      <p>You choose how much goes to your outreach. Every action is billed at our public catalogue prices, from the balance you add.</p>
+      <p>You pay for your outreach after it runs, at our public catalogue prices. You set the monthly limit, and we never go above it.</p>
     </div>
     <article class="plan featured">
-      <span class="plan-tag"><i></i>Platform</span>
+      <span class="plan-tag"><i></i>Pay after</span>
       <div class="plan-price">Free</div>
-      <p class="plan-desc">Your balance goes to the outreach you choose to run.</p>
+      <p class="plan-desc">Save a card today. Nothing is charged until your outreach runs.</p>
       <a class="btn btn-accent btn-lg" href="https://dashboard.distribute.you/start">Start free</a>
-      <div class="plan-included">What you get</div>
+      <div class="plan-included">How you pay</div>
       <ul>
-        <li><i></i>Add balance when you want</li>
+        <li><i></i>Charged as your outreach runs, or at month end</li>
+        <li><i></i>Your own monthly limit, set in one line</li>
         <li><i></i>Pause or stop anytime</li>
         <li><i></i>Every step shows what it is worth to you</li>
-        <li><i></i>Every play tested and measured on revenue</li>
         <li><i></i>Every price public in the <a href="/catalog">catalogue</a></li>
       </ul>
     </article>
@@ -459,7 +550,11 @@ footer .foot-bottom { display: flex; justify-content: space-between; gap: 12px; 
     <div class="faq-list">
       <div class="faq-item open">
         <button class="faq-q" type="button" aria-expanded="true">What do I need to start?<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg></button>
-        <div class="faq-a"><p>Your website. We read what you sell and who buys it, and show you the plan to confirm. Then you add a balance and the first emails go out.</p></div>
+        <div class="faq-a"><p>Your website. We read what you sell and who buys it, and show you the plan to confirm. Then you save a card and the first emails go out. Nothing is charged today.</p></div>
+      </div>
+      <div class="faq-item">
+        <button class="faq-q" type="button" aria-expanded="false">When do I pay?<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg></button>
+        <div class="faq-a"><p>After your outreach runs. Your card is charged as your spend grows, or at the end of the month. The monthly limit you set is never passed.</p></div>
       </div>
       <div class="faq-item">
         <button class="faq-q" type="button" aria-expanded="false">Who sends the emails?<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg></button>
@@ -490,7 +585,7 @@ footer .foot-bottom { display: flex; justify-content: space-between; gap: 12px; 
           <button class="btn btn-accent" type="submit">Start free</button>
         </div>
       </form>
-      <div class="fine">The platform is free. Live in 2 minutes.</div>
+      <div class="fine">The platform is free. Nothing charged today.</div>
     </div>
   </div>
 </section>
@@ -498,7 +593,28 @@ footer .foot-bottom { display: flex; justify-content: space-between; gap: 12px; 
 
 <footer>
   <div class="wrap">
-    <div class="foot-bottom"><span>© 2026 distribute.you</span><span>Revenue made easy.</span></div>
+    <div class="faces">
+      <div class="faces-row">
+        <img src="/landing/v2/assets/ryan-parenti.jpg" alt="">
+        <img src="/landing/v2/assets/andrew-becker.jpg" alt="">
+        <img src="/landing/v2/assets/nazim-zidi.jpg" alt="">
+        <img src="/landing/v2/assets/christian-lemke.jpg" alt="">
+        <img src="/landing/v2/assets/katherine-fleishman.jpeg" alt="">
+        <img src="/landing/v2/assets/christopher-lafay.jpg" alt="">
+      </div>
+      <div class="faces-text"><span class="stars">★★★★★</span><span data-founder-count>Loved by 70+ founders</span></div>
+    </div>
+    <div class="foot">
+      <div>
+        <a class="brand" href="/"><img src="/landing/v2/assets/logo-mark.svg" alt="" width="26" height="26">distribute.you</a>
+        <p class="tag">Revenue made easy.</p>
+      </div>
+      <div><h4>Product</h4><ul><li><a href="#how">How it works</a></li><li><a href="#plays">Plays</a></li><li><a href="#offer">Offer</a></li><li><a href="#pricing">Pricing</a></li><li><a href="/catalog">Price catalog</a></li><li><a href="#faq">FAQ</a></li></ul></div>
+      <div><h4>Compare</h4><ul><li><a href="/compare/instantly">distribute.you vs Instantly</a></li><li><a href="/compare/gojiberry">distribute.you vs Gojiberry</a></li><li><a href="/compare/explee">distribute.you vs Explee</a></li><li><a href="/compare/apollo">distribute.you vs Apollo.io</a></li><li><a href="/compare/salesforge">distribute.you vs Salesforge</a></li><li><a href="/compare/11x">distribute.you vs 11x</a></li><li><a href="/compare/smartlead">distribute.you vs Smartlead</a></li><li><a href="/compare/lemlist">distribute.you vs Lemlist</a></li><li><a href="/compare/clay">distribute.you vs Clay</a></li><li><a href="/compare/artisan">distribute.you vs Artisan</a></li><li><a href="/compare/aisdr">distribute.you vs AiSDR</a></li><li><a href="/compare/parcellab">distribute.you vs parcelLab</a></li><li><a href="/compare/postbeyond">distribute.you vs PostBeyond</a></li><li><a href="/compare/leadrebel">distribute.you vs LeadRebel</a></li><li><a href="/compare">All comparisons</a></li><li><a href="/alternatives">Alternatives</a></li></ul></div><div><h4>Best for</h4><ul><li><a href="/best/cold-email-agency-for-saas-founders">Best cold email agency for SaaS founders</a></li><li><a href="/best/ai-sdr-for-agencies">Best AI SDR for agencies</a></li><li><a href="/best/lead-generation-agency-for-consulting-firms">Best lead generation agency for consulting firms</a></li><li><a href="/best/outbound-agency-for-startups">Best outbound agency for early-stage startups</a></li><li><a href="/best/cold-email-agency-for-solo-founders">Best cold email agency for solo founders</a></li><li><a href="/best/lead-generation-agency-for-b2b-service-businesses">Best lead generation agency for B2B service businesses</a></li><li><a href="/best">All rankings</a></li></ul></div>
+      <div><h4>Company</h4><ul><li><a href="https://distribute.you/about">About</a></li><li><a href="https://distribute.you/investors">Investors</a></li><li><a href="https://distribute.you/contact">Contact</a></li><li><a href="https://distribute.you/blog">Blog</a></li></ul></div>
+      <div><h4>Legal</h4><ul><li><a href="https://distribute.you/terms">Terms</a></li><li><a href="https://distribute.you/privacy">Privacy</a></li><li><a href="https://distribute.you/developers">Developers</a></li></ul></div>
+    </div>
+    <div class="foot-bottom"><span>© 2026 distribute.you</span></div>
   </div>
 </footer>
 
