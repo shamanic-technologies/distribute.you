@@ -316,20 +316,13 @@ struct CampaignFace: View {
     }
 }
 
-/// The live dot beside an ON campaign (`k-dot-pulse`): a TimelineView driving opacity only.
+/// The live dot beside an ON campaign: STILL, a soft halo instead of the web's pulse. One
+/// pulsing timeline per campaign redrew the sidebar at screen rate for as long as the app ran.
 struct LiveDot: View {
-    @Environment(\.isSnapshot) private var snapshot
     var body: some View {
-        if snapshot {
-            Circle().fill(K.run).frame(width: 6, height: 6)
-        } else {
-            TimelineView(.animation) { ctx in
-                let t = ctx.date.timeIntervalSinceReferenceDate
-                Circle().fill(K.run).frame(width: 6, height: 6)
-                    .background(Circle().fill(K.run).opacity(0.35 * (1 - (t.truncatingRemainder(dividingBy: 1.6) / 1.6))).frame(width: 12, height: 12))
-            }
+        Circle().fill(K.run).frame(width: 6, height: 6)
+            .background(Circle().fill(K.run).opacity(0.2).frame(width: 12, height: 12))
             .frame(width: 12, height: 12)
-        }
     }
 }
 
