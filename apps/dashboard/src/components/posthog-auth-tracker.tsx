@@ -8,6 +8,7 @@ import {
   DISTRIBUTE_CONVERSION_INGEST_URL,
 } from "@/lib/distribute-conversion";
 import { gclidFromCookie } from "@/lib/gclid-cookie";
+import { isStaffEmail } from "@/lib/owner-ping";
 
 const INTENT_KEY = "distribute_auth_intent";
 const POSTHOG_AUTH_KEY_PREFIX = "distribute_posthog_auth";
@@ -35,6 +36,8 @@ export function PostHogAuthTracker() {
         name: user.fullName,
         org_id: orgId,
       });
+      // Our own sessions are not worth a replay from the free quota; events still count.
+      if (isStaffEmail(email)) posthog.stopSessionRecording();
     }
 
     const authType = sessionStorage.getItem(INTENT_KEY) === "signup" ? "signup" : "signin";

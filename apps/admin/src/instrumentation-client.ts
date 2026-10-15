@@ -18,6 +18,8 @@ if (posthogToken) {
       capture_unhandled_rejections: true,
       capture_console_errors: false,
     },
+    // Staff-only console: nobody watches its replays, and they ate the free quota.
+    disable_session_recording: true,
   });
   // The release every event (exceptions included) was captured on. Written into
   // the build env by the box's deploy script; absent in a local build.
