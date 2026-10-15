@@ -4,6 +4,7 @@ import { describe, expect, it } from "vitest";
 import {
   CATALOGUE_OBJECTS,
   CatalogueFunnelSchema,
+  CatalogueSalesPathSchema,
   CataloguePageSchema,
   CataloguePipeSchema,
   canonicalFunnelId,
@@ -15,7 +16,6 @@ import {
   ongoingFunnelIds,
   ongoingPipeIds,
   ongoingTriggerIds,
-  unitPipeIds,
   CatalogueTriggerPageSchema,
   CatalogueTriggerSchema,
 } from "../src/lib/staff-catalogue";
@@ -125,7 +125,7 @@ describe("served shapes (captured from features-service v0.179.113 in prod)", ()
       CatalogueFunnelSchema.parse({
         object: "sales_funnel", id: "lead_found_to_conversation@sales-cold-email-outreach+conversation_to_paid_client", name: "Zenith",
         face: { animal: "mouse", color: "#FFD3A5", eyes: "wink", mouth: "cat", accessory: "none", svgPath: "/public/catalogue/faces/Zenith.svg" },
-        line: "Sales Cold Email Outreach → your team", salesPathId: "lead_found_to_conversation+conversation_to_paid_client", salesPathName: "Ganges",
+        line: "Sales Cold Email Outreach → your team", trigger: null, salesPathId: "lead_found_to_conversation+conversation_to_paid_client", salesPathName: "Ganges",
         legs: [
           { legKey: "lead_found_to_conversation", ratePct: 0.19, outcomesNeededPerPayingClient: 20, pipe: { id: "sales-cold-email-outreach|lead_found_to_conversation", name: "Jubilation", line: "x", mode: "proactive", costUsd: 137.43, roi: 0.91, status: "measured" } },
           { legKey: "conversation_to_paid_client", ratePct: 5, outcomesNeededPerPayingClient: 1, pipe: null },
@@ -133,6 +133,58 @@ describe("served shapes (captured from features-service v0.179.113 in prod)", ()
         costUsd: 2748.69, roi: 0.91, status: "measured", learningReason: null, costUnit: "per_paying_client", lifetimeRevenueUsd: 2500, draft: false,
       }),
     ).not.toThrow();
+  });
+});
+
+describe("a reactive funnel's trigger sits at the FUNNEL's head (owner 2026-10-15, features-service v0.179.232)", () => {
+  const funnel = {
+    object: "sales_funnel", id: "trigger:website_visited+website_visit_to_purchase@sales-cold-email-outreach+purchase_to_paid_client", name: "Zenith",
+    face: { svgPath: "/public/catalogue/faces/Zenith.svg" }, line: "Website visit → Sales Cold Email Outreach → Paid client",
+    salesPathId: "website_visit_to_purchase+purchase_to_paid_client", salesPathName: "Ganges",
+    // The pipe inside stays PROACTIVE: the funnel's trigger is not read off it.
+    legs: [{ legKey: "website_visit_to_purchase", ratePct: null, outcomesNeededPerPayingClient: null, pipe: { id: "sales-cold-email-outreach|website_visit_to_purchase", name: "Jubilation", line: "x", mode: "proactive", costUsd: null, roi: null, status: "learning" } }],
+    costUsd: null, roi: null, status: "learning", learningReason: null, costUnit: "per_paying_client", lifetimeRevenueUsd: null, draft: false,
+  };
+  it("parses the served trigger on a funnel and requires it (null = proactive)", () => {
+    expect(CatalogueFunnelSchema.parse({ ...funnel, trigger: { slug: "website_visited", name: "Website visit" } }).trigger).toEqual({ slug: "website_visited", name: "Website visit" });
+    expect(CatalogueFunnelSchema.parse({ ...funnel, trigger: null }).trigger).toBeNull();
+    const { trigger: _t, ...noTrigger } = { ...funnel, trigger: null };
+    expect(CatalogueFunnelSchema.safeParse(noTrigger).success).toBe(false);
+  });
+  it("parses the served type + trigger on a sales path", () => {
+    const path = CatalogueSalesPathSchema.parse({
+      object: "sales_path", id: "website_visit_to_purchase+purchase_to_paid_client", name: "Ganges", icon: "path", color: "#3D7FD0", line: "x",
+      trigger: { slug: "website_visited", name: "Website visit" }, type: "reactive", steps: [], legs: [],
+      costUsd: null, roi: null, status: "learning", learningReason: null, costUnit: "per_paying_client", bestSalesFunnelId: null, salesFunnelCount: 1, lifetimeRevenueUsd: null,
+    });
+    expect(path.type).toBe("reactive");
+    expect(path.trigger?.name).toBe("Website visit");
+  });
+  it("ongoing triggers = the served trigger of each ongoing funnel, once each, in order; never a pipe's mode", () => {
+    expect(
+      ongoingTriggerIds([
+        { trigger: null },
+        { trigger: { slug: "positive_reply_received", name: "Positive reply" } },
+        { trigger: { slug: "positive_reply_received", name: "Positive reply" } },
+        { trigger: { slug: "website_visited", name: "Website visit" } },
+      ]),
+    ).toEqual(["positive_reply_received", "website_visited"]);
+    const data = read("src/components/v2/staff-catalogue-data.ts");
+    expect(data).toContain("ongoingTriggerIds([...funnels.data, ...campaignFunnels.data])");
+    expect(data).not.toContain("ongoingTriggerIds(pipes");
+  });
+  it("the path and funnel pages show the SERVED trigger (lightning + served name), not a pipe's", () => {
+    const pages = read("src/components/v2/staff-catalogue-pages.tsx");
+    const facts = pages.slice(pages.indexOf("function ObjectFacts("), pages.indexOf("function ObjectBody("));
+    const paths = facts.slice(facts.indexOf('if (object === "sales-paths")'), facts.indexOf('if (object === "channels")'));
+    expect(paths).toContain('<Fact label="Type">{s("type")');
+    expect(paths).toContain('<Fact label="Trigger">{trigger ? <TriggerLink trigger={trigger}');
+    const funnel = facts.slice(facts.lastIndexOf("const trigger = servedTrigger(d);"));
+    expect(funnel).toContain('<Fact label="Trigger">{trigger ? <TriggerLink trigger={trigger}');
+    const helper = pages.slice(pages.indexOf("function servedTrigger("), pages.indexOf("function TriggerLink("));
+    expect(helper).toContain("d.trigger as ServedTrigger");
+    expect(helper).not.toMatch(/mode|triggerId|legs/);
+    expect(pages).toContain("<LightningIcon size={13}");
   });
 });
 
@@ -239,18 +291,11 @@ describe("staff Triggers section (owner 2026-10-11): what starts a reactive pipe
     const d = CatalogueTriggerSchema.parse({ ...row, object: "trigger", params: null, pipes: [{ id: "ai-meeting-booking|conversation_to_meeting_booked", name: "Prism", line: "x", costUsd: 2, roi: 3, status: "measured", mode: "reactive" }] });
     expect(d.pipes[0].id).toBe("ai-meeting-booking|conversation_to_meeting_booked");
   });
-  it("ongoing = named by a REACTIVE pipe of a running campaign, once each, in order", () => {
-    expect(
-      ongoingTriggerIds([
-        { mode: "proactive", triggerId: null },
-        { mode: "reactive", triggerId: "positive_reply_received" },
-        { mode: "reactive", triggerId: "positive_reply_received" },
-        { mode: "reactive", triggerId: "lead_requested" },
-      ]),
-    ).toEqual(["positive_reply_received", "lead_requested"]);
-  });
-  it("a funnel campaign's units are pipes in the catalogue spelling", () => {
-    expect(unitPipeIds([{ featureSlug: "ai-meeting-booking", legKey: "conversation_to_meeting_booked" }])).toEqual(["ai-meeting-booking|conversation_to_meeting_booked"]);
+  it("a trigger's running campaigns are those whose FUNNEL it heads (served trigger), never a pipe join", () => {
+    const pages = read("src/components/v2/staff-trigger-pages.tsx");
+    expect(pages).toContain('campaigns.filter((c) => c.trigger?.slug === triggerId)');
+    expect(pages).not.toContain("campaignsOnPipes(");
+    expect(read("src/components/v2/staff-catalogue-data.ts")).toContain("trigger: f?.trigger ?? null");
   });
   it("its pages sit behind <StaffOnly>, and the sidebar lists it in staff mode with each ongoing trigger", () => {
     const base = "src/app/(authed)/v2/orgs/[orgId]/brands/[brandId]/catalogue/[object]/";

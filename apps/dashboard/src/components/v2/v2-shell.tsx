@@ -429,7 +429,7 @@ function StaffObjectSections({ orgId, brandId, offerId, pathname }: { orgId: str
           </Group>
         );
       })}
-      {/* Triggers (owner 2026-10-11): what starts a reactive pipe; ongoing = named by a reactive pipe of a running campaign. */}
+      {/* Triggers (owner 2026-10-11): what starts a reactive pipe; ongoing = the served trigger at the head of an ongoing funnel. */}
       <Group title={TRIGGER_LABELS.title}>
         <NavItem
           href={v2CatalogueHref(orgId, brandId, "triggers")}

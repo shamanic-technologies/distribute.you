@@ -13,6 +13,7 @@ import {
   ongoingTriggerIds,
   type CatalogueDetailByObject,
   type CatalogueReadObject,
+  type ServedTrigger,
 } from "@/lib/staff-catalogue";
 import { featureLegId } from "@/lib/outbound-leg-key";
 import { useOngoingCampaigns, type OngoingCampaign } from "@/components/v2/ongoing-campaigns";
@@ -90,10 +91,12 @@ export function useFunnelCampaigns(brandId: string, offerId: string | null, enab
   });
 }
 
-/** An ongoing funnel campaign with its funnel's served face (catalogue). */
+/** An ongoing funnel campaign with its funnel's served face and trigger (catalogue). */
 export interface OngoingFunnelCampaign {
   campaign: SalesFunnelCampaign;
   face: string | null;
+  /** What starts its funnel: the funnel's served `trigger` (its head, owner 2026-10-15), null = proactive or not read yet. */
+  trigger: ServedTrigger | null;
 }
 
 /** A workflow an ON campaign runs: the producer's money pick for that campaign, on its pipe. */
@@ -112,7 +115,7 @@ export interface OngoingCatalogue {
   channels: CatalogueDetailByObject["channels"][];
   pipes: CatalogueDetailByObject["pipes"][];
   "sales-funnels": CatalogueDetailByObject["sales-funnels"][];
-  /** The triggers the ongoing reactive pipes name. */
+  /** The triggers the ongoing sales funnels start with (each funnel's served `trigger`). */
   triggers: CatalogueDetailByObject["triggers"][];
   workflows: OngoingWorkflow[];
   /** The offer's ongoing SALES FUNNEL campaigns (campaign-service status), each with its funnel's face. */
@@ -154,8 +157,6 @@ export function useOngoingCatalogue(orgId: string, brandId: string, offerId: str
   const { channelIds, stepIds } = useMemo(() => ongoingChannelsAndSteps(pipes.data), [pipes.data]);
   const channels = useObjects("channels", channelIds, enabled);
   const steps = useObjects("steps", stepIds, enabled);
-  const triggerIds = useMemo(() => ongoingTriggerIds(pipes.data), [pipes.data]);
-  const triggers = useObjects("triggers", triggerIds, enabled);
 
   const funnelIds = useMemo(() => ongoingFunnelIds(salesPaths.data?.paths ?? [], pipeIds), [salesPaths.data, pipeIds]);
   const funnels = useObjects("sales-funnels", funnelIds, enabled);
@@ -208,8 +209,15 @@ export function useOngoingCatalogue(orgId: string, brandId: string, offerId: str
   const funnelCampaigns = useFunnelCampaigns(brandId, offerId, enabled);
   const ongoingFunnelCampaigns = useMemo(() => (funnelCampaigns.data ?? []).filter(isOngoingFunnelCampaign), [funnelCampaigns.data]);
   const campaignFunnels = useObjects("sales-funnels", [...new Set(ongoingFunnelCampaigns.map((c) => c.salesFunnelId))], enabled);
-  const faceByFunnel = new Map(campaignFunnels.data.map((f) => [f.id, f.face.svgPath] as const));
-  const campaignsOut: OngoingFunnelCampaign[] = ongoingFunnelCampaigns.map((c) => ({ campaign: c, face: faceByFunnel.get(c.salesFunnelId) ?? null }));
+  const funnelById = new Map(campaignFunnels.data.map((f) => [f.id, f] as const));
+  const campaignsOut: OngoingFunnelCampaign[] = ongoingFunnelCampaigns.map((c) => {
+    const f = funnelById.get(c.salesFunnelId);
+    return { campaign: c, face: f?.face.svgPath ?? null, trigger: f?.trigger ?? null };
+  });
+  // Triggers sit at the FUNNEL's head (owner 2026-10-15): the served `trigger` of every ongoing
+  // funnel (ticked on the offer, or run by a funnel campaign), never a pipe's mode.
+  const triggerIds = useMemo(() => ongoingTriggerIds([...funnels.data, ...campaignFunnels.data]), [funnels.data, campaignFunnels.data]);
+  const triggers = useObjects("triggers", triggerIds, enabled);
   const funnelCampaignsSettled = !offerId || funnelCampaigns.data !== undefined || funnelCampaigns.isFetchedAfterMount;
 
   const laddersSettled = ladders.every((r) => r.data !== undefined || r.isFetchedAfterMount || r.isError);
@@ -224,6 +232,6 @@ export function useOngoingCatalogue(orgId: string, brandId: string, offerId: str
     workflows,
     campaigns: campaignsOut,
     campaignsByPipe,
-    settled: funnelCampaignsSettled && campaignsSettled && offerSettled && pipes.settled && channels.settled && steps.settled && triggers.settled && funnels.settled && paths.settled && laddersSettled,
+    settled: funnelCampaignsSettled && campaignsSettled && offerSettled && pipes.settled && channels.settled && steps.settled && campaignFunnels.settled && triggers.settled && funnels.settled && paths.settled && laddersSettled,
   };
 }

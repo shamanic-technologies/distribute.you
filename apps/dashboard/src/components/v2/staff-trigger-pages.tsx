@@ -10,7 +10,7 @@ import { useSelectedOffer } from "@/components/v2/selected-offer";
 import { useOngoingCatalogue, useStaffCatalogueObject, useStaffCatalogueTriggers, type OngoingFunnelCampaign } from "@/components/v2/staff-catalogue-data";
 import { CatalogueTable, Fact, OngoingDot, TableSkeleton } from "@/components/v2/staff-catalogue-pages";
 import { v2CatalogueHref } from "@/lib/v2/routes";
-import { catalogueStatusLabel, TRIGGER_LABELS, unitPipeIds, type CatalogueTriggerRow } from "@/lib/staff-catalogue";
+import { catalogueStatusLabel, TRIGGER_LABELS, type CatalogueTriggerRow } from "@/lib/staff-catalogue";
 
 const TH = "k-label px-3 py-2.5 text-left font-medium first:pl-4 last:pr-4";
 const TD = "px-3 py-2 first:pl-4 last:pr-4";
@@ -33,10 +33,13 @@ function TriggerMark({ row, size }: { row: Pick<CatalogueTriggerRow, "icon" | "c
   return <CatalogueMark icon={row.icon} color={row.color} name={row.name} size={size} />;
 }
 
-/** The offer's ongoing funnel campaigns with a unit on one of these pipes (an id join). */
-function campaignsOnPipes(campaigns: OngoingFunnelCampaign[], pipeIds: string[]): OngoingFunnelCampaign[] {
-  const on = new Set(pipeIds);
-  return campaigns.filter((c) => unitPipeIds(c.campaign.units).some((id) => on.has(id)));
+/**
+ * The offer's ongoing funnel campaigns this trigger starts: their funnel's served `trigger`
+ * (the funnel's head, owner 2026-10-15), never a pipe it runs (a trigger-headed funnel may run
+ * only proactive pipes).
+ */
+function campaignsStartedBy(campaigns: OngoingFunnelCampaign[], triggerId: string): OngoingFunnelCampaign[] {
+  return campaigns.filter((c) => c.trigger?.slug === triggerId);
 }
 
 function CampaignChips({ campaigns }: { campaigns: OngoingFunnelCampaign[] }) {
@@ -132,7 +135,7 @@ function TriggerTable({
 
 /**
  * TRIGGERS overview (owner 2026-10-11, staff): the ones the selected offer's running campaigns
- * use (a reactive pipe of a running campaign names it), then every trigger, searchable.
+ * use (an ongoing funnel's served trigger, its head), then every trigger, searchable.
  */
 export function TriggersOverviewPage() {
   const { orgId, brandId } = useParams<{ orgId: string; brandId: string }>();
@@ -141,10 +144,7 @@ export function TriggersOverviewPage() {
   const ongoing = useOngoingCatalogue(orgId, brandId, offerId, true);
   const ongoingRows = ongoing.triggers;
   const ongoingIds = useMemo(() => new Set(ongoingRows.map((r) => r.id)), [ongoingRows]);
-  const campaignsOf = (r: CatalogueTriggerRow) => {
-    const pipes = ongoing.triggers.find((t) => t.id === r.id)?.pipes ?? [];
-    return campaignsOnPipes(ongoing.campaigns, pipes.map((p) => p.id));
-  };
+  const campaignsOf = (r: CatalogueTriggerRow) => campaignsStartedBy(ongoing.campaigns, r.id);
 
   const [q, setQ] = useState("");
   const list = useStaffCatalogueTriggers({ limit: "25", q: q.trim() || undefined });
@@ -248,7 +248,7 @@ export function TriggerPage({ id }: { id: string }) {
   const d = q.data;
   const isOngoing = ongoing.triggers.some((t) => t.id === id);
   const ongoingPipes = useMemo(() => new Set(ongoing.pipes.map((p) => p.id)), [ongoing.pipes]);
-  const running = useMemo(() => (d ? campaignsOnPipes(ongoing.campaigns, d.pipes.map((p) => p.id)) : []), [d, ongoing.campaigns]);
+  const running = useMemo(() => campaignsStartedBy(ongoing.campaigns, id), [id, ongoing.campaigns]);
 
   return (
     <>
