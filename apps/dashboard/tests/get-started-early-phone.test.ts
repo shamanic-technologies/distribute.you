@@ -161,3 +161,12 @@ describe("after the first page: set up with my AI, or myself (owner 2026-10-15)"
     }
   });
 });
+
+describe("the choice screen goes back like every step (owner 2026-10-15)", () => {
+  it("uses the walk's own Back, never a 'Change my website' link; AI view goes back to the choice", () => {
+    const choice = gs.slice(gs.indexOf("function SetupChoice("), gs.indexOf("function OrgBar("));
+    expect(choice).toContain("<BackLink onBack={onBack} />");
+    expect(choice).not.toContain("Change my website");
+    expect(gs).toContain('setup.view === "ai" ? setSetup({ ...setup, view: "choose" }) : setSetup(null)');
+  });
+});
