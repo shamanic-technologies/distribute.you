@@ -413,6 +413,8 @@ export interface GetStartedSnapshot {
   icp?: string | null;
   /** The WhatsApp number typed under the website (optional, owner 2026-10-15); saved on the account once it exists. */
   phone?: GetStartedPhone | null;
+  /** The first and last name typed on the first page (optional, owner 2026-10-15); set on the account once it exists. */
+  person?: GetStartedName | null;
   /** When it was last written (ms); a reload resumes only a snapshot younger than the anonymous session. */
   savedAt?: number;
 }
@@ -422,6 +424,27 @@ export interface GetStartedPhone {
   countryCode: string;
   dialCode: string;
   national: string;
+}
+
+/** A name as typed on the first page; either part may be empty, never both. */
+export interface GetStartedName {
+  firstName: string;
+  lastName: string;
+}
+
+/** The typed name, trimmed; null when both parts are empty. */
+export function givenName(firstName: string, lastName: string): GetStartedName | null {
+  const first = firstName.trim();
+  const last = lastName.trim();
+  return first || last ? { firstName: first, lastName: last } : null;
+}
+
+/** A stored name, or null when absent, malformed or empty. */
+export function parseSnapshotName(v: unknown): GetStartedName | null {
+  if (!v || typeof v !== "object") return null;
+  const p = v as Record<string, unknown>;
+  if (typeof p.firstName !== "string" || typeof p.lastName !== "string") return null;
+  return givenName(p.firstName, p.lastName);
 }
 
 /** A stored phone, or null when absent, malformed or empty. */
@@ -508,6 +531,7 @@ export function parseGetStartedSnapshot(raw: string | null): GetStartedSnapshot 
     answered: s.answered === true,
     icp: typeof s.icp === "string" && s.icp.trim() ? s.icp : null,
     phone: parseSnapshotPhone(s.phone),
+    person: parseSnapshotName(s.person),
     savedAt: typeof s.savedAt === "number" ? s.savedAt : undefined,
   };
 }

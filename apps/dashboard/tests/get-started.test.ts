@@ -138,6 +138,7 @@ describe("the rules the page decides on", () => {
       answered: false,
       icp: null,
       phone: null,
+      person: null,
     });
     expect(parseGetStartedSnapshot("{nope")).toBeNull();
     // A snapshot from before the offer and audience steps starts over.
