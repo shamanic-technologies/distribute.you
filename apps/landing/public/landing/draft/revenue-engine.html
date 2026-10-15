@@ -27,18 +27,18 @@
 .re-cta input:focus-visible, .re-cta .btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 .re-cta .free { font-size: 15px; color: var(--muted); }
 
-/* The one memorable element: the revenue chain, each step with its dollar value. */
-.chain { margin-top: 64px; }
-.chain ol { list-style: none; display: grid; grid-template-columns: repeat(5, 1fr); gap: 0; border: 1px solid var(--hair-2); border-radius: 20px; overflow: hidden; background: #fff; }
-.chain li { position: relative; padding: 22px 20px 20px; border-left: 1px solid var(--hair); }
-.chain li:first-child { border-left: 0; }
-.chain .c-step { font-size: 15px; color: var(--muted); }
-.chain .val { display: block; margin-top: 10px; font-family: var(--font-display); font-weight: 500; font-size: clamp(26px, 3vw, 38px); letter-spacing: -0.02em; }
-.chain .who { display: block; margin-top: 8px; font-size: 14px; color: var(--muted-2); }
-.chain li.end { background: var(--accent-50); }
-.chain li.end .val { color: var(--accent-text); }
-.chain .rate { position: absolute; top: 20px; right: 16px; font-size: 12px; padding: 2px 7px; border-radius: 100px; background: #fff; border: 1px solid var(--hair-2); color: var(--muted); }
-.chain figcaption { margin-top: 14px; font-size: 15px; color: var(--muted); max-width: 70ch; }
+/* The one memorable element: the revenue path, each step with its dollar value. */
+.re-path { margin-top: 64px; }
+.re-path ol { list-style: none; display: grid; grid-template-columns: repeat(5, 1fr); gap: 0; border: 1px solid var(--hair-2); border-radius: 20px; overflow: hidden; background: #fff; }
+.re-path li { position: relative; padding: 22px 20px 20px; border-left: 1px solid var(--hair); }
+.re-path li:first-child { border-left: 0; }
+.re-path .c-step { font-size: 15px; color: var(--muted); }
+.re-path .val { display: block; margin-top: 10px; font-family: var(--font-display); font-weight: 500; font-size: clamp(26px, 3vw, 38px); letter-spacing: -0.02em; }
+.re-path .who { display: block; margin-top: 8px; font-size: 14px; color: var(--muted-2); }
+.re-path li.end { background: var(--accent-50); }
+.re-path li.end .val { color: var(--accent-text); }
+.re-path .rate { position: absolute; top: 20px; right: 16px; font-size: 12px; padding: 2px 7px; border-radius: 100px; background: #fff; border: 1px solid var(--hair-2); color: var(--muted); }
+.re-path figcaption { margin-top: 14px; font-size: 15px; color: var(--muted); max-width: 70ch; }
 
 .re-sec { padding: 88px 0; border-top: 1px solid var(--hair); }
 .re-sec h2 { font-family: var(--font-display); font-weight: 500; font-size: clamp(30px, 4vw, 44px); line-height: 1.1; letter-spacing: -0.02em; max-width: 22ch; }
@@ -77,10 +77,10 @@
 
 @media (max-width: 1100px) { .plugs { grid-template-columns: 1fr 1fr; } .plugs div:last-child { grid-column: span 2; } }
 @media (max-width: 900px) {
-  .chain ol { grid-template-columns: 1fr; }
-  .chain li { border-left: 0; border-top: 1px solid var(--hair); padding: 18px 20px; }
-  .chain li:first-child { border-top: 0; }
-  .chain .val { margin-top: 4px; }
+  .re-path ol { grid-template-columns: 1fr; }
+  .re-path li { border-left: 0; border-top: 1px solid var(--hair); padding: 18px 20px; }
+  .re-path li:first-child { border-top: 0; }
+  .re-path .val { margin-top: 4px; }
   .phases { grid-template-columns: 1fr 1fr; }
   .c-fit, .price { grid-template-columns: 1fr; }
 }
@@ -113,7 +113,7 @@
       <span class="free">The platform is free.</span>
     </div>
 
-    <figure class="chain" aria-label="What each step is worth">
+    <figure class="re-path" aria-label="What each step is worth">
       <ol>
         <li><span class="c-step">New lead</span><span class="val">Found</span><span class="who">by us, or sent by you</span></li>
         <li><span class="c-step">Positive reply</span><span class="val">$52</span><span class="who">we answer in a minute</span></li>
