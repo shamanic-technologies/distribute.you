@@ -38,7 +38,7 @@ h2, h3, h4, p { margin: 0; }
   overflow: hidden;
   border-radius: 28px;
   background-color: #344b36;
-  background-image: linear-gradient(180deg, #10291b00 20%, #0d251929 100%), url('/branding2-assets/workspace-forest.webp');
+  background-image: linear-gradient(180deg, #10291b00 20%, #0d251929 100%), var(--forest-workspace-image, url('/branding2-assets/workspace-forest.webp'));
   background-size: cover;
   background-position: center 52%;
   box-shadow: 0 20px 50px -38px #14281c66;

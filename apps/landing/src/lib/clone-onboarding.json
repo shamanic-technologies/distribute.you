@@ -212,5 +212,57 @@
     ],
     "wall": "Walked past it by hand on 2026-10-01 (see __flow/). The only CTA, \"Text Instinct to get started\", leads to app.instinct.com/login: a phone number (any country), a Cloudflare Turnstile check, then a 6-digit code by SMS from short code 22395 (a Twilio number gets it delivered as failed with the code stripped). There is no email, no password, no Google and no /signup (404): signing in with a new number IS the signup. Behind it the web app is one screen, /onboarding \"Start texting Instinct\", offering iMessage (+1 650 223 4329) or WhatsApp (wa.me/16508702892) by QR code; every other route (/settings, /workspace, /agent, /vault, /voice...) redirects there until you have texted it. The rest of the onboarding happens in the chat itself, plus link pages it sends (/link-icloud, /connect/whatsapp, /whatsapp-onboarding, /text-onboarding).",
     "flow": "__flow/"
+  },
+  "default": {
+    "origin": "https://www.default.com",
+    "sites": [],
+    "steps": [
+      {
+        "url": "https://www.default.com/book-a-demo",
+        "mode": "bytes"
+      },
+      {
+        "url": "https://www.default.com/pricing",
+        "mode": "bytes"
+      }
+    ],
+    "wall": "Every CTA is Request a Demo: a work-email form that books a sales call. No self-serve signup; Log in goes to app.default.com and os.default.com for existing customers."
+  },
+  "frontrunner": {
+    "origin": "https://usefr.com",
+    "sites": [],
+    "steps": [
+      {
+        "url": "https://usefr.com/demo",
+        "mode": "bytes"
+      }
+    ],
+    "wall": "Every Get started button opens /demo: a form that books a call with the team. No self-serve signup and no public pricing."
+  },
+  "11x": {
+    "origin": "https://www.11x.ai",
+    "sites": [],
+    "steps": [
+      {
+        "url": "https://www.11x.ai/demo",
+        "mode": "bytes"
+      }
+    ],
+    "wall": "Every CTA is Book a Demo (/demo): a qualification form, then a sales call. No self-serve signup and no public pricing."
+  },
+  "warmly": {
+    "origin": "https://www.warmly.ai",
+    "sites": [],
+    "steps": [
+      {
+        "url": "https://www.warmly.ai/p/book-a-demo",
+        "mode": "bytes"
+      },
+      {
+        "url": "https://www.warmly.ai/p/pricing",
+        "mode": "bytes"
+      }
+    ],
+    "wall": "The main CTA is Book a Demo. Log In leads to opps.getwarmly.com with a free signup behind a work email, not captured."
   }
 }

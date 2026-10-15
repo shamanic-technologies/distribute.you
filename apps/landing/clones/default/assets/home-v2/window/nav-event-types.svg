@@ -1,0 +1,28 @@
+<svg preserveAspectRatio="none" overflow="visible" style="display: block;" width="19.2508" height="17.5592" viewBox="0 0 19.2508 17.5592" fill="none" xmlns="http://www.w3.org/2000/svg">
+<g id="Vector">
+<path fill-rule="evenodd" clip-rule="evenodd" d="M8.24412 9.58586C8.24412 7.9106 9.60219 6.55253 11.2775 6.55253C12.9527 6.55253 14.3108 7.9106 14.3108 9.58586C14.3108 11.2611 12.9527 12.6192 11.2775 12.6192C9.60219 12.6192 8.24412 11.2611 8.24412 9.58586ZM11.2775 8.28586C11.5168 8.28586 11.7108 8.47987 11.7108 8.7192V9.40637L12.3061 10.0017C12.4753 10.1709 12.4753 10.4453 12.3061 10.6145C12.1369 10.7837 11.8625 10.7837 11.6933 10.6145L10.971 9.89228C10.8898 9.81101 10.8441 9.70079 10.8441 9.58586V8.7192C10.8441 8.47987 11.0381 8.28586 11.2775 8.28586Z" fill="white" fill-opacity="0.9" shape-rendering="geometricPrecision"/>
+<path d="M4.96 7.14322C4.83532 6.43616 5.30744 5.7619 6.01451 5.63723L9.85525 4.96C10.4459 4.85586 11.0136 5.16814 11.2572 5.68592C10.113 5.69196 9.08536 6.19077 8.37573 6.98096L5.03525 7.56997L4.96 7.14322Z" fill="white" fill-opacity="0.9" shape-rendering="geometricPrecision"/>
+<path d="M7.72512 7.97571L5.18574 8.42347L5.56198 10.5572C5.68665 11.2643 6.36091 11.7364 7.06797 11.6117L7.86356 11.4714C7.55431 10.9126 7.37827 10.2698 7.37827 9.58587C7.37827 9.01172 7.50233 8.46656 7.72512 7.97571Z" fill="white" fill-opacity="0.9" shape-rendering="geometricPrecision"/>
+<path fill-rule="evenodd" clip-rule="evenodd" d="M8.24412 9.58586C8.24412 7.9106 9.60219 6.55253 11.2775 6.55253C12.9527 6.55253 14.3108 7.9106 14.3108 9.58586C14.3108 11.2611 12.9527 12.6192 11.2775 12.6192C9.60219 12.6192 8.24412 11.2611 8.24412 9.58586ZM11.2775 8.28586C11.5168 8.28586 11.7108 8.47987 11.7108 8.7192V9.40637L12.3061 10.0017C12.4753 10.1709 12.4753 10.4453 12.3061 10.6145C12.1369 10.7837 11.8625 10.7837 11.6933 10.6145L10.971 9.89228C10.8898 9.81101 10.8441 9.70079 10.8441 9.58586V8.7192C10.8441 8.47987 11.0381 8.28586 11.2775 8.28586Z" stroke="url(#paint0_linear_0_4618)" stroke-width="0.371429" stroke-linejoin="round" shape-rendering="geometricPrecision"/>
+<path d="M4.96 7.14322C4.83532 6.43616 5.30744 5.7619 6.01451 5.63723L9.85525 4.96C10.4459 4.85586 11.0136 5.16814 11.2572 5.68592C10.113 5.69196 9.08536 6.19077 8.37573 6.98096L5.03525 7.56997L4.96 7.14322Z" stroke="url(#paint1_linear_0_4618)" stroke-width="0.371429" stroke-linejoin="round" shape-rendering="geometricPrecision"/>
+<path d="M7.72512 7.97571L5.18574 8.42347L5.56198 10.5572C5.68665 11.2643 6.36091 11.7364 7.06797 11.6117L7.86356 11.4714C7.55431 10.9126 7.37827 10.2698 7.37827 9.58587C7.37827 9.01172 7.50233 8.46656 7.72512 7.97571Z" stroke="url(#paint2_linear_0_4618)" stroke-width="0.371429" stroke-linejoin="round" shape-rendering="geometricPrecision"/>
+</g>
+<defs>
+
+<linearGradient id="paint0_linear_0_4618" x1="8.70507" y1="4.94004" x2="12.2953" y2="10.3322" gradientUnits="userSpaceOnUse">
+<stop stop-color="white" stop-opacity="0.5"/>
+<stop offset="0.5" stop-color="white" stop-opacity="0"/>
+<stop offset="1" stop-color="white" stop-opacity="0.5"/>
+</linearGradient>
+<linearGradient id="paint1_linear_0_4618" x1="8.70507" y1="4.94004" x2="12.2953" y2="10.3322" gradientUnits="userSpaceOnUse">
+<stop stop-color="white" stop-opacity="0.5"/>
+<stop offset="0.5" stop-color="white" stop-opacity="0"/>
+<stop offset="1" stop-color="white" stop-opacity="0.5"/>
+</linearGradient>
+<linearGradient id="paint2_linear_0_4618" x1="8.70507" y1="4.94004" x2="12.2953" y2="10.3322" gradientUnits="userSpaceOnUse">
+<stop stop-color="white" stop-opacity="0.5"/>
+<stop offset="0.5" stop-color="white" stop-opacity="0"/>
+<stop offset="1" stop-color="white" stop-opacity="0.5"/>
+</linearGradient>
+</defs>
+</svg>
