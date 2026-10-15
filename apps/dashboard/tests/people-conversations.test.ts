@@ -397,3 +397,12 @@ describe("AI Copilot chat items (crm-service #100)", () => {
     expect(sourceMark(answered.source, answered.channel).src).toBe("/logo-distribute.svg");
   });
 });
+
+describe("a signup walk step on the Unibox thread (owner 2026-10-15)", () => {
+  it("a PostHog product event shows crm-service's line: the step and what was entered", () => {
+    const src = readFileSync(join(__dirname, "../src/components/v2/integrations-conversations.tsx"), "utf8");
+    const fn = src.slice(src.indexOf("function ThreadItem("), src.indexOf("function PersonTag("));
+    expect(fn).toContain('item.source === "posthog" && item.event?.step === "event" ? item.text : null');
+    expect(fn).toContain("{said ? <p");
+  });
+});

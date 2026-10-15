@@ -819,11 +819,17 @@ function ThreadItem({ brandId, item, tag }: { brandId: string; item: PersonTimel
   const meta = [mark.name, item.at ? friendlyDateTime(item.at) : "No date"].join(" · ");
 
   if (item.kind === "event") {
+    // A product event the brand's own PostHog recorded (a signup walk step, owner 2026-10-15)
+    // reads as crm-service's one line: the step and what the person entered.
+    const said = item.source === "posthog" && item.event?.step === "event" ? item.text : null;
     return (
-      <div className="k-fg2 flex flex-wrap items-center gap-x-2 gap-y-1 text-[12px]">
-        <TagChip tag={tag ?? timelineTag(item)} />
-        <SourceLogo mark={mark} size={14} />
-        <span className="k-fg3">{meta}</span>
+      <div className="grid gap-1">
+        <div className="k-fg2 flex flex-wrap items-center gap-x-2 gap-y-1 text-[12px]">
+          <TagChip tag={tag ?? timelineTag(item)} />
+          <SourceLogo mark={mark} size={14} />
+          <span className="k-fg3">{meta}</span>
+        </div>
+        {said ? <p className="k-fg2 whitespace-pre-wrap break-words text-[13px] leading-5">{said}</p> : null}
       </div>
     );
   }
