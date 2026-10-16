@@ -5449,6 +5449,109 @@ export async function getOpsDomains(token?: string): Promise<OpsDomains> {
   return parseOps("getOpsDomains", OpsDomainsSchema, await apiCall<unknown>("/instantly/ops/domains", { token }));
 }
 
+// --- Domain blocklists (SURBL, Spamhaus DBL, URIBL) -------------------------
+// instantly-service checks every sending domain daily; a listed domain's
+// mailboxes take no new sequence (follow-ups keep going). Shape: its served
+// `DomainBlocklistRead` (instantly-service v0.83.95, #1184).
+
+const BlocklistKeySchema = z.enum(["surbl", "spamhaus_dbl", "uribl"]);
+export type BlocklistKey = z.infer<typeof BlocklistKeySchema>;
+
+const DomainBlocklistSchema = z.object({
+  asOf: z.string(),
+  monitoredSince: z.string().nullable(),
+  lists: z.array(
+    z.object({
+      key: BlocklistKeySchema,
+      name: z.string(),
+      zone: z.string(),
+      removalUrl: z.string(),
+      removalAutomated: z.boolean(),
+      removalNote: z.string(),
+    }),
+  ),
+  domains: z.array(
+    z.object({
+      domain: z.string(),
+      mailboxes: z.array(z.string()),
+      listed: z.boolean(),
+      outOfNewSequences: z.boolean(),
+      lists: z.array(
+        z.object({
+          list: BlocklistKeySchema,
+          state: z.enum(["listed", "clean", "unknown"]),
+          answer: z.string().nullable(),
+          labels: z.array(z.string()),
+          listedSince: z.string().nullable(),
+          lastCheckedAt: z.string().nullable(),
+          lastAnsweredAt: z.string().nullable(),
+          lastOutcome: z.string().nullable(),
+          lastError: z.string().nullable(),
+        }),
+      ),
+    }),
+  ),
+  events: z.array(
+    z.object({
+      id: z.string(),
+      domain: z.string(),
+      list: z.string(),
+      type: z.enum(["listed", "delisted", "removal_link_issued", "removal_requested"]),
+      answer: z.string().nullable(),
+      labels: z.array(z.string()),
+      mailboxes: z.array(z.string()),
+      detail: z.unknown(),
+      occurredAt: z.string(),
+      alert: z
+        .object({ status: z.string(), attempts: z.number(), lastError: z.string().nullable(), alertedAt: z.string().nullable() })
+        .nullable(),
+    }),
+  ),
+  series: z.object({
+    days: z.array(z.string()),
+    domainsListed: z.array(
+      z.object({ day: z.string(), total: z.number().nullable(), byList: z.record(z.string(), z.number()).nullable() }),
+    ),
+    mailboxesOutOfNewSequences: z.array(z.object({ day: z.string(), mailboxes: z.number().nullable() })),
+    sendsFromListedDomains: z.array(z.object({ day: z.string(), sends: z.number().nullable() })),
+    blocklistBounces: z.array(
+      z.object({
+        day: z.string(),
+        total: z.number(),
+        byList: z.object({ surbl: z.number(), spamhaus: z.number(), uribl: z.number(), other_list: z.number() }),
+      }),
+    ),
+    removalRequests: z.array(z.object({ day: z.string(), linksIssued: z.number(), requested: z.number() })),
+    delistings: z.array(z.object({ day: z.string(), delistings: z.number() })),
+  }),
+});
+export type DomainBlocklist = z.infer<typeof DomainBlocklistSchema>;
+export type DomainBlocklistDomain = DomainBlocklist["domains"][number];
+export type DomainBlocklistEvent = DomainBlocklist["events"][number];
+
+export const DOMAIN_BLOCKLIST_PATH = "/instantly/ops/domain-blocklist";
+
+export async function getDomainBlocklist(days: number, token?: string): Promise<DomainBlocklist> {
+  return parseOps(
+    "getDomainBlocklist",
+    DomainBlocklistSchema,
+    await apiCall<unknown>(`${DOMAIN_BLOCKLIST_PATH}?days=${days}`, { token }),
+  );
+}
+
+/** Runs the daily check now (writes state + events, alerts on a new listing). */
+export async function runDomainBlocklistCheck(token?: string): Promise<unknown> {
+  return apiCall<unknown>(`${DOMAIN_BLOCKLIST_PATH}/check`, { token, method: "POST" });
+}
+
+/** Records a removal request a person filed on the list's own form (we never file it). */
+export async function recordDomainBlocklistRemovalRequest(
+  input: { domain: string; list: BlocklistKey; note?: string; requestedBy?: string },
+  token?: string,
+): Promise<{ id: string }> {
+  return apiCall<{ id: string }>(`${DOMAIN_BLOCKLIST_PATH}/removal-requests`, { token, method: "POST", body: input });
+}
+
 // --- Mailboxes --------------------------------------------------------------
 
 const OpsMailboxAddressSchema = z.object({

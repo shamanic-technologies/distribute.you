@@ -414,6 +414,7 @@ const COLD_EMAIL_ROOT = "/audit/cold-email";
 const COLD_EMAIL_ITEMS: SidebarItem[] = [
   { id: "cold-email-overview", label: "Overview", href: COLD_EMAIL_ROOT, icon: <AuditIcon /> },
   { id: "cold-email-domains", label: "Domains", href: `${COLD_EMAIL_ROOT}/domains`, icon: <AuditIcon /> },
+  { id: "cold-email-blocklists", label: "Blocklists", href: `${COLD_EMAIL_ROOT}/blocklists`, icon: <AuditIcon /> },
   { id: "cold-email-mailboxes", label: "Mailboxes", href: `${COLD_EMAIL_ROOT}/mailboxes`, icon: <AuditIcon /> },
   { id: "cold-email-accounts", label: "Accounts", href: `${COLD_EMAIL_ROOT}/accounts`, icon: <AuditIcon /> },
   { id: "cold-email-inbox", label: "Inbox", href: `${COLD_EMAIL_ROOT}/inbox`, icon: <AuditIcon /> },
