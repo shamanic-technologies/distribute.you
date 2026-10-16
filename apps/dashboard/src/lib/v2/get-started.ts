@@ -26,6 +26,9 @@ export const GET_STARTED_STEPS = [
   { key: "competitors", label: "Find your competitors" },
   { key: "offer", label: "Pick your offer" },
   { key: "audience", label: "Pick who to write to" },
+  // Facts checked on each prospect's company and handed to the email writer, never a filter
+  // (owner 2026-10-16): all ticked, none required.
+  { key: "signals", label: "Add signals" },
   { key: "value", label: "What a client is worth" },
   { key: "levers", label: "Sharpen your offer" },
   { key: "gives", label: "What you give away" },
@@ -405,6 +408,8 @@ export interface GetStartedSnapshot {
   campaignDone?: boolean;
   /** The funnels the step read, priced for this offer; the wall reopens on them after the Google round trip. */
   funnels?: { proactive: SignupFunnel | null; reactive: SignupFunnel | null } | null;
+  /** The signals step was confirmed (the ticked checks turned on as mentions). */
+  signalsDone?: boolean;
   /** What one client is worth, whole dollars; null until answered. */
   lifetimeRevenueUsd?: number | null;
   /** Whether the offer points and the give lists were answered (and saved on the offer). */
@@ -591,6 +596,7 @@ export function parseGetStartedSnapshot(raw: string | null): GetStartedSnapshot 
     campaign: parseSignupDraft(s.campaign),
     campaignDone: s.campaignDone === true,
     funnels: parseSignupFunnels(s.funnels),
+    signalsDone: s.signalsDone === true,
     lifetimeRevenueUsd:
       typeof s.lifetimeRevenueUsd === "number" && Number.isInteger(s.lifetimeRevenueUsd) && s.lifetimeRevenueUsd > 0 ? s.lifetimeRevenueUsd : null,
     answered: s.answered === true,
@@ -898,6 +904,30 @@ export function leadCountLabel(n: number | null | undefined): string | null {
   return `${Math.round(n)} leads`;
 }
 
+/** A qualification check of the offer, as the signals step reads it. */
+export interface SignalCheck {
+  id: string;
+  enabled: boolean;
+  mode: "mention" | "must_pass";
+}
+
+export type SignalWrite = { id: string; patch: { enabled: true; mode: "mention" } | { enabled: false } };
+
+/**
+ * What the signals step writes on Continue (owner 2026-10-16: signals, never filters). A ticked
+ * check that is off is turned ON as a mention (its proof goes to the email writer, nobody is
+ * dropped); an unticked one that is on is turned off. Anything already as asked is left alone,
+ * so an existing check of the offer keeps its own role.
+ */
+export function signalWrites(checks: readonly SignalCheck[], ticked: ReadonlySet<string>): SignalWrite[] {
+  const out: SignalWrite[] = [];
+  for (const c of checks) {
+    if (ticked.has(c.id) && !c.enabled) out.push({ id: c.id, patch: { enabled: true, mode: "mention" } });
+    else if (!ticked.has(c.id) && c.enabled) out.push({ id: c.id, patch: { enabled: false } });
+  }
+  return out;
+}
+
 /** The step before this one, or null for the first. */
 export function previousStep(key: GetStartedStepKey): GetStartedStepKey | null {
   const i = stepIndex(key);
@@ -906,6 +936,7 @@ export function previousStep(key: GetStartedStepKey): GetStartedStepKey | null {
 
 /** The question steps: going back reopens them to be answered again. Others are only shown. */
 export const REOPENABLE_STEPS: ReadonlySet<GetStartedStepKey> = new Set<GetStartedStepKey>([
+  "signals",
   "value",
   "levers",
   "gives",

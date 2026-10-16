@@ -17,12 +17,13 @@ const LAUNCH = readFileSync(resolve(__dirname, "../src/components/v2/get-started
 const API = readFileSync(resolve(__dirname, "../src/lib/api.ts"), "utf-8");
 
 describe("onboarding v2: the offer questions come after the audience, before the companies", () => {
-  it("orders offer, audience, value, levers, gives, companies, email, then the campaign (owner 2026-10-10)", () => {
+  it("orders offer, audience, signals, value, levers, gives, companies, email, then the campaign (owner 2026-10-10, signals 2026-10-16)", () => {
     expect(GET_STARTED_STEPS.map((s) => s.key)).toEqual([
       "company",
       "competitors",
       "offer",
       "audience",
+      "signals",
       "value",
       "levers",
       "gives",

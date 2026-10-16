@@ -3496,6 +3496,15 @@ export async function listOfferQualificationCriteria(brandId: string, offerId: s
   return parseQualification(QualificationCriteriaSchema, raw, "listOfferQualificationCriteria").criteria;
 }
 
+/**
+ * POST …/qualification/suggestions — lead-service drafts the offer's checks (spends AI) and
+ * writes them as criteria turned OFF; an earlier untouched suggestion is archived.
+ */
+export async function suggestOfferQualificationCriteria(brandId: string, offerId: string): Promise<QualificationCriterion[]> {
+  const raw = await apiCall<unknown>(`${qualificationBase(brandId, offerId)}/suggestions`, { method: "POST", body: {} });
+  return parseQualification(QualificationCriteriaSchema, raw, "suggestOfferQualificationCriteria").criteria;
+}
+
 /** PATCH …/qualification/criteria/:id — turn a criterion on or off, or change its role. */
 export async function updateOfferQualificationCriterion(
   brandId: string,
