@@ -45,6 +45,8 @@ export interface JournalData {
   /** The campaign set at the last step ("Epiphany, $20 a day"), or null until set. */
   campaignLine: string | null;
   lifetimeRevenue: string;
+  /** Signals kept at the signals step; null until it is confirmed. */
+  signalCount: number | null;
   leverCount: number;
   giveCount: number;
   onPickAudience: (index: number) => void;
@@ -145,6 +147,8 @@ function RailEntry({ d, k }: { d: JournalData; k: GetStartedStepKey }) {
     ) : null;
   if (k === "audience") return <AudiencePicker d={d} />;
   if (k === "campaign") return d.campaignLine ? <p className="k-fg2 truncate text-[12px] tabular-nums">{d.campaignLine}</p> : null;
+  if (k === "signals")
+    return d.signalCount != null ? <p className="k-fg2 text-[12px] tabular-nums">{d.signalCount === 1 ? "1 signal per email" : `${d.signalCount} signals per email`}</p> : null;
   if (k === "value") return d.lifetimeRevenue ? <p className="k-fg2 text-[12px] tabular-nums">{`$${d.lifetimeRevenue} per client`}</p> : null;
   if (k === "levers") return <p className="k-fg2 text-[12px] tabular-nums">{`${d.leverCount} of 6 offer points`}</p>;
   if (k === "gives") return <p className="k-fg2 text-[12px] tabular-nums">{d.giveCount === 1 ? "1 thing to give away" : `${d.giveCount} things to give away`}</p>;

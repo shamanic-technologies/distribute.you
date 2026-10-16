@@ -71,6 +71,12 @@ const RULES: Rule[] = [
   // refuses an offer that is not the brand's.
   { method: "PUT", segments: ["brands", ":brand", "offers", ":seg", "economics"] },
   { method: "PUT", segments: ["brands", ":brand", "offers", ":seg", "user-fields"] },
+  // The signals step: the offer's checks, suggested (AI billed to this anonymous org,
+  // written OFF), read back, and the ticked ones turned on as mentions. Path-bound to
+  // this session's brand; the producer scopes them to the org. Nothing is sent.
+  { method: "GET", segments: ["brands", ":brand", "offers", ":seg", "qualification", "criteria"] },
+  { method: "POST", segments: ["brands", ":brand", "offers", ":seg", "qualification", "suggestions"] },
+  { method: "PATCH", segments: ["brands", ":brand", "offers", ":seg", "qualification", "criteria", ":seg"] },
   // The last step: the funnels we run, priced for the session's own offer (features-service
   // through the gateway). Read only; the brand rides the QUERY, bound to the session below.
   { method: "GET", segments: ["offers", ":seg", "sales-funnels"], queryBrand: "brandId" },

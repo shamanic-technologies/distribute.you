@@ -45,6 +45,7 @@ import {
   getPublicCatalogueSignedOut,
   getSignupFunnelPages,
   listAudiences,
+  listOfferQualificationCriteria,
   listBrandOffers,
   previewColdEmail,
   prepareColdEmailPreviews,
@@ -54,11 +55,14 @@ import {
   saveOfferUserFields,
   setApiActiveOrgOverride,
   suggestBrandIcp,
+  suggestOfferQualificationCriteria,
+  updateOfferQualificationCriterion,
   upsertBrand,
   type AudienceCompanyRow,
   type AudienceSegmentProposal,
   type OfferProposal,
   type PreviewEmail,
+  type QualificationCriterion,
 } from "@/lib/api";
 import { startAnonSession } from "@/lib/anon-session-client";
 import { refusalExits, type RefusalExits } from "@/lib/claimed-signup";
@@ -98,6 +102,7 @@ import {
   VALUE_FIELDS,
   leadCountLabel,
   previousStep,
+  signalWrites,
   chosenFunnelOutlook,
   answerLines,
   leversLLMPrompt,
@@ -350,6 +355,10 @@ export function GetStarted({ org, ipCountry = null }: { org?: OrgWalk; ipCountry
   answeredRef.current = answered;
   const [answerBusy, setAnswerBusy] = useState(false);
   const [answerError, setAnswerError] = useState<string | null>(null);
+  // The signals step: the offer's checks (lead-service), all ticked until the visitor unticks one.
+  const [signals, setSignals] = useState<QualificationCriterion[]>([]);
+  const [signalTicks, setSignalTicks] = useState<Set<string>>(new Set());
+  const [signalsRead, setSignalsRead] = useState<"no" | "running" | "done" | "failed">("no");
   // The first companies' emails, held until the answers exist.
   const pendingPrewrite = useRef<{ aud: GetStartedAudience; rows: AudienceCompanyRow[] } | null>(null);
 
@@ -491,6 +500,8 @@ export function GetStarted({ org, ipCountry = null }: { org?: OrgWalk; ipCountry
       competitors: s.competitors.length ? "done" : "failed",
       offer: s.offer ? "done" : "failed",
       audience: s.audience ? "done" : "failed",
+      // A snapshot from before this step that went past it counts it as passed.
+      signals: s.signalsDone || s.lifetimeRevenueUsd != null ? "done" : "failed",
       value: s.lifetimeRevenueUsd != null ? "done" : "failed",
       levers: s.answered ? "done" : "failed",
       gives: s.answered ? "done" : "failed",
@@ -509,6 +520,7 @@ export function GetStarted({ org, ipCountry = null }: { org?: OrgWalk; ipCountry
    * done (the brand, its offer and audience are already saved and are not re-created).
    */
   function resumePreparing(s: GetStartedSnapshot) {
+    if (s.offer && !s.signalsDone && s.lifetimeRevenueUsd == null) void prepareSignals(s.brandId, s.offer.offerId);
     if (!s.offer) void prepareOffers(s.brandId, [], s.overview);
     if (!s.audience) {
       // The ideal customer is the picked offer's: without a pick, `pickOffer` drafts it.
@@ -665,6 +677,7 @@ export function GetStarted({ org, ipCountry = null }: { org?: OrgWalk; ipCountry
       setOffer(next);
       saveSnapshot({ offer: next });
       void draftAnswers(id, chosenOfferId);
+      void prepareSignals(id, chosenOfferId);
       void prepareAudiences(id, chosenOfferId);
       return next;
     })();
@@ -687,6 +700,25 @@ export function GetStarted({ org, ipCountry = null }: { org?: OrgWalk; ipCountry
    * value the owner already confirmed overlays the draft). A failed read leaves the
    * fields blank for the visitor to fill; it does not stop the walk.
    */
+  /**
+   * The signals step's checks, prepared while the audience is picked: the offer's own checks when
+   * it has some (a reload, a brand that had them), else lead-service suggests them (written off).
+   * A failed read leaves the step empty: no signal is required to go on.
+   */
+  async function prepareSignals(id: string, offerId: string) {
+    setSignalsRead("running");
+    try {
+      const held = await listOfferQualificationCriteria(id, offerId);
+      const checks = held.length > 0 ? held : await suggestOfferQualificationCriteria(id, offerId);
+      setSignals(checks);
+      setSignalTicks(new Set(checks.map((c) => c.id)));
+      setSignalsRead("done");
+    } catch (e) {
+      console.error("[get-started] signals read failed:", { brandId: id, offerId, e });
+      setSignalsRead("failed");
+    }
+  }
+
   async function draftAnswers(id: string, offerId: string) {
     setDrafted("running");
     try {
@@ -721,12 +753,15 @@ export function GetStarted({ org, ipCountry = null }: { org?: OrgWalk; ipCountry
         if (next[k] === "done" || !prevDone) return;
         next[k] = needsDraft && !ready ? "running" : "choose";
       };
-      open("value", cur.audience === "done", true);
+      if (next.signals !== "done" && cur.audience === "done") {
+        next.signals = signalsRead === "done" || signalsRead === "failed" ? "choose" : "running";
+      }
+      open("value", cur.signals === "done", true);
       open("levers", cur.value === "done", true);
       open("gives", cur.levers === "done", true);
       return JSON.stringify(next) === JSON.stringify(cur) ? cur : next;
     });
-  }, [drafted, steps.audience, steps.value, steps.levers]);
+  }, [drafted, signalsRead, steps.audience, steps.signals, steps.value, steps.levers]);
 
   /**
    * The END: the campaign step on the stage (from the email step's button, or the banner). It
@@ -774,6 +809,25 @@ export function GetStarted({ org, ipCountry = null }: { org?: OrgWalk; ipCountry
     });
     setWallNote(null);
     setWallOpen(true);
+  }
+
+  /** The signals step: the ticked checks turned on as mentions, the unticked ones left off. */
+  async function confirmSignals() {
+    if (!brandId) return;
+    setAnswerError(null);
+    const ticked = signals.filter((c) => signalTicks.has(c.id));
+    stepDone("signals", { signals: ticked.map((c) => c.question).join("\n"), signal_count: ticked.length, offered: signals.length });
+    advance("signals");
+    saveSnapshot({ signalsDone: true });
+    try {
+      const o = await ensureOffer();
+      for (const w of signalWrites(signals, signalTicks)) await updateOfferQualificationCriterion(brandId, o.offerId, w.id, w.patch);
+      setSignals((cur) => cur.map((c) => ({ ...c, enabled: signalTicks.has(c.id) })));
+    } catch (e) {
+      console.error("[get-started] signals save failed:", e);
+      saveSnapshot({ signalsDone: false });
+      reopen("signals", "We could not save your signals. Try again.");
+    }
   }
 
   /** Step 6: what one client is worth, saved on the offer. */
@@ -1510,6 +1564,7 @@ export function GetStarted({ org, ipCountry = null }: { org?: OrgWalk; ipCountry
   const PICK_LINES: Partial<Record<GetStartedStepKey, string>> = {
     offer: "Pick the offer to sell first.",
     audience: "Pick who to write to first.",
+    signals: "Keep the signals you want, then continue.",
     value: "Tell us what one client is worth.",
     levers: "Check your offer, then continue.",
     gives: "Say what you give away, then we write the emails.",
@@ -1540,6 +1595,7 @@ export function GetStarted({ org, ipCountry = null }: { org?: OrgWalk; ipCountry
             .join(" + ")
         : null,
     lifetimeRevenue: valueInput,
+    signalCount: steps.signals === "done" ? signals.filter((c) => signalTicks.has(c.id)).length : null,
     leverCount: LEVER_DRAFT_FIELDS.filter((f) => answerLines(levers[f.key]).length > 0).length,
     giveCount: answerLines(gives.giveForFree).length,
     onPickAudience: (i) => void pickAudience(i),
@@ -1591,6 +1647,24 @@ export function GetStarted({ org, ipCountry = null }: { org?: OrgWalk; ipCountry
           error={steps.campaign === "choose" ? answerError : null}
           onRetry={() => brandId && offer && void loadFunnels(brandId, offer.offerId)}
           onLaunch={confirmCampaign}
+        />
+      );
+    if (key === "signals")
+      return (
+        <SignalsStage
+          state={steps.signals}
+          checks={signals}
+          ticked={signalTicks}
+          onToggle={(id) =>
+            setSignalTicks((cur) => {
+              const next = new Set(cur);
+              if (next.has(id)) next.delete(id);
+              else next.add(id);
+              return next;
+            })
+          }
+          error={steps.signals === "choose" ? answerError : null}
+          onContinue={() => void confirmSignals()}
         />
       );
     if (key === "value")
@@ -1794,6 +1868,7 @@ function initialSteps(): Record<GetStartedStepKey, StepState> {
     competitors: "waiting",
     offer: "waiting",
     audience: "waiting",
+    signals: "waiting",
     value: "waiting",
     levers: "waiting",
     gives: "waiting",
@@ -2239,6 +2314,7 @@ const STATUS: Record<GetStartedStepKey, (domain: string | null) => string> = {
   competitors: () => "Finding your competitors",
   offer: () => "Reading what you sell",
   audience: () => "Working out who to write to",
+  signals: () => "Finding the signals that lift your replies",
   value: () => "Estimating what a client is worth to you",
   levers: () => "Drafting your offer from your site",
   gives: () => "Drafting what you could give away",
@@ -2725,6 +2801,88 @@ export function CampaignStage({
               />
               <span className="k-fg">a month</span>
             </label>
+          )}
+          {error && <p className="text-[12px] text-[var(--data-rose)]">{error}</p>}
+        </div>
+      )}
+    </StepCard>
+  );
+}
+
+/**
+ * The signals step (owner 2026-10-16): the offer's checks, each a big card, all ticked. A signal is
+ * never a filter: its proof is added to the email to lift replies. None is required.
+ */
+export function SignalsStage({
+  state,
+  checks,
+  ticked,
+  onToggle,
+  error,
+  onContinue,
+}: {
+  state: StepState;
+  checks: QualificationCriterion[];
+  ticked: ReadonlySet<string>;
+  onToggle: (id: string) => void;
+  error: string | null;
+  onContinue: () => void;
+}) {
+  const done = state === "done";
+  const on = checks.filter((c) => ticked.has(c.id)).length;
+  return (
+    <StepCard
+      index={stepIndex("signals") + 1}
+      title="Signals in every email"
+      state={state}
+      meta={<StateWord state={state} />}
+      footer={
+        !done && state === "choose" ? (
+          <button type="button" className="k-btn-accent h-9 px-4" onClick={onContinue}>
+            Continue
+          </button>
+        ) : null
+      }
+    >
+      {state === "waiting" || state === "running" ? (
+        <OptionSkeleton />
+      ) : (
+        <div className="grid grid-cols-[minmax(0,1fr)] gap-5">
+          <div>
+            <p className="flex items-baseline gap-2">
+              <span className="k-fg text-[40px] font-semibold leading-none tabular-nums">{on}</span>
+              <span className="k-fg2 text-[16px]">{on === 1 ? "signal" : "signals"}</span>
+            </p>
+            <p className="k-fg2 mt-2 text-[14px]">Signals never filter anyone out. Each signal adds a fact to your emails to lift replies.</p>
+          </div>
+          {checks.length === 0 ? (
+            <p className="k-fg3 text-[13px]">No signal for this offer yet.</p>
+          ) : (
+            <div className="grid grid-cols-[minmax(0,1fr)] gap-3 sm:grid-cols-2">
+              {checks.map((c, i) => {
+                const picked = ticked.has(c.id);
+                return (
+                  <button
+                    key={c.id}
+                    type="button"
+                    aria-pressed={picked}
+                    disabled={done}
+                    onClick={() => onToggle(c.id)}
+                    className={`gs-in k-card flex items-start gap-3 p-5 text-left transition-[box-shadow,background-color] duration-150 active:scale-[0.99] ${picked ? "k-card-on" : "k-hover"}`}
+                    style={stagger(i, 80)}
+                  >
+                    <span className={`min-w-0 flex-1 text-[15px] font-medium leading-6 ${picked ? "k-fg" : "k-fg3"}`}>{c.question}</span>
+                    {picked ? (
+                      <span aria-hidden className="inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-[var(--accent)] text-[12px] text-white">
+                        ✓
+                      </span>
+                    ) : (
+                      <span aria-hidden className="h-6 w-6 shrink-0 rounded-full border border-[var(--line-strong)]" />
+                    )}
+                  </button>
+                );
+              })}
+            </div>
           )}
           {error && <p className="text-[12px] text-[var(--data-rose)]">{error}</p>}
         </div>
