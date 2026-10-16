@@ -4,6 +4,7 @@ import { describe, expect, it } from "vitest";
 import {
   RelationshipReviewSchema,
   addableTags,
+  RELATIONSHIP_TAGS,
   cardTitle,
   confidencePct,
   deniedTags,
@@ -57,6 +58,13 @@ describe("relationship review reader", () => {
     expect(relationshipTagLabel("other_professional")).toBe("Other professional");
     expect(relationshipTagLabel("personal")).toBe("Personal");
     expect(relationshipTagLabel("new_tag")).toBe("new_tag");
+  });
+
+  it("names a journalist and offers the tag in the picker (JOURNALISTS-NOT-LEADS-1016)", () => {
+    expect(relationshipTagLabel("journalist")).toBe("Journalist");
+    expect(RELATIONSHIP_TAGS).toContain("journalist");
+    expect(addableTags(["prospect"])).toContain("journalist");
+    expect(addableTags(["journalist"])).not.toContain("journalist");
   });
 
   it("reads the owner's NO, offers the tags not held yet, and says who merged", () => {
