@@ -6,6 +6,7 @@ import {
   EMAIL_CAP,
   GET_STARTED_STEPS,
   PREWRITTEN_EMAILS,
+  PREVIEW_SIGNATURE,
   STEPS_NOT_LIVE,
   canWriteAnother,
   nextEmailAhead,
@@ -174,8 +175,8 @@ describe("the rules the page decides on", () => {
     expect(offerSourceText([], "")).toBe("");
   });
 
-  it("writes ONE email ahead and caps the free ones at the five preview companies (owner 2026-10-06)", () => {
-    expect(PREWRITTEN_EMAILS).toBe(1);
+  it("writes every preview email ahead, capped at the five preview companies (owner 2026-10-06, 2026-10-16)", () => {
+    expect(PREWRITTEN_EMAILS).toBe(5);
     expect(EMAIL_CAP).toBe(5);
     expect(canWriteAnother(4)).toBe(true);
     expect(canWriteAnother(5)).toBe(false);
@@ -412,6 +413,34 @@ describe("the surface", () => {
     expect(FLOW).toContain("NEXT_STEPS.map(");
     expect(FLOW).toContain('nextLit={steps.email === "done"}');
     expect(FLOW).toContain("border-dashed");
+  });
+
+  it("asks the five emails at once, the moment their last input exists (owner 2026-10-16)", () => {
+    // The give lists are the last answer the writer reads: saved, then every email starts.
+    const gives = FLOW.slice(FLOW.indexOf("async function confirmGives("), FLOW.indexOf("useEffect(", FLOW.indexOf("async function confirmGives(")));
+    expect(gives.indexOf("await saveOfferUserFields(")).toBeLessThan(gives.indexOf("prewrite(held.aud, held.rows);"));
+    // Companies found after the answers: written as soon as the first page lands.
+    const load = FLOW.slice(FLOW.indexOf("async function loadCompanies("), FLOW.indexOf("// ── Step 6: the emails"));
+    expect(load).toContain("if (answeredRef.current) prewrite(aud, got);");
+    // All of them in parallel, not one after the other.
+    const pre = FLOW.slice(FLOW.indexOf("function prewrite("), FLOW.indexOf("const inputsGen = useRef("));
+    expect(pre).toContain("for (const r of writable) void writeEmail(aud, r);");
+    expect(pre).not.toContain("await writeEmail(");
+    // An edited give list asks the written ones again; a write in flight re-asks on landing.
+    expect(gives.indexOf("const edit = answeredRef.current;")).toBeLessThan(gives.indexOf("rewriteEmails();"));
+    expect(gives.indexOf("rewriteEmails();")).toBeLessThan(gives.indexOf("setAnswered(true);"));
+    expect(FLOW).toContain("} while (gen !== inputsGen.current);");
+  });
+
+  it("ends every preview email with the signature, outside the body the highlights index into", () => {
+    expect(PREVIEW_SIGNATURE).toBe("--\nKevin Lourd | Founder\nDistribute.you | Marketing Agency");
+    const explained = FLOW.slice(FLOW.indexOf("function ExplainedBody("), FLOW.indexOf("function EmailBody("));
+    expect(explained).toContain("emailPieces(mail.bodyText, mail.highlights)");
+    expect(explained).toContain("<PreviewSignature />");
+    const typing = FLOW.slice(FLOW.indexOf("function EmailBody("), FLOW.indexOf("function PreviewSignature("));
+    expect(typing).toContain("<Typewriter text={mail.bodyText}");
+    expect(typing).toContain("<PreviewSignature />");
+    expect(FLOW).not.toMatch(/bodyText\s*\+\s*PREVIEW_SIGNATURE|PREVIEW_SIGNATURE\s*\+/);
   });
 
   it("explains each sentence of the email on hover, focus and tap", () => {

@@ -171,11 +171,22 @@ export function givesLLMPrompt(offerName: string, answers: Partial<Record<GiveDr
 }
 
 /**
- * Emails written before the account exists: the first row's is written ahead, then one more
- * always waits beyond the rows opened (`nextEmailAhead`), one per preview company, capped.
+ * Emails written before the account exists, one per preview company, capped. All of them are
+ * asked at once, in the background, the moment their last input exists (the give lists saved
+ * and the first companies found), so the emails step opens on them already written (owner
+ * 2026-10-16: "to save the client time"). `nextEmailAhead` only refills a row whose write failed.
  */
-export const PREWRITTEN_EMAILS = 1;
 export const EMAIL_CAP = 5;
+export const PREWRITTEN_EMAILS = EMAIL_CAP;
+
+/**
+ * The signature under every preview email. The writing model never writes one; instantly-service
+ * appends it at send time (`--`, the sending mailbox's name, then the agency line), or the
+ * brand's own signature when one is set. A brand born in this walk has none, and the anonymous
+ * proxy reaches no signature route, so the preview always shows this one (owner 2026-10-16,
+ * exact text). Kept OUT of `bodyText`: the highlights index into the body alone.
+ */
+export const PREVIEW_SIGNATURE = "--\nKevin Lourd | Founder\nDistribute.you | Marketing Agency";
 
 /** Whether one more email may be written before the wall. */
 export function canWriteAnother(requested: number, cap = EMAIL_CAP): boolean {

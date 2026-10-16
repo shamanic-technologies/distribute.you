@@ -86,6 +86,7 @@ import {
   COMPANY_FIELDS,
   COMPETITOR_FIELDS,
   EMAIL_CAP,
+  PREVIEW_SIGNATURE,
   nextEmailAhead,
   GET_STARTED_ORG_RESUME_MAX_AGE_MS,
   GET_STARTED_SNAPSHOT_KEY,
@@ -885,6 +886,8 @@ export function GetStarted({ org, ipCountry = null }: { org?: OrgWalk; ipCountry
   async function confirmGives() {
     if (!brandId) return;
     setAnswerError(null);
+    // Edited after the emails were asked: those are asked again (only a changed list costs a write).
+    const edit = answeredRef.current;
     stepDone("gives", { give_for_free: answerLines(gives.giveForFree).join("\n"), never_give: answerLines(gives.neverGive).join("\n") });
     advance("gives");
     try {
@@ -893,7 +896,11 @@ export function GetStarted({ org, ipCountry = null }: { org?: OrgWalk; ipCountry
         giveForFree: answerLines(gives.giveForFree),
         neverGive: answerLines(gives.neverGive),
       });
-      // The emails are written from these: only now.
+      if (edit) {
+        rewriteEmails();
+        return;
+      }
+      // The emails are written from these: the last input they need, so all of them start now.
       setAnswered(true);
       answeredRef.current = true;
       saveSnapshot({ answered: true });
@@ -1092,7 +1099,7 @@ export function GetStarted({ org, ipCountry = null }: { org?: OrgWalk; ipCountry
 
   // ── Step 6: the emails ───────────────────────────────────────────────────
 
-  /** The first row's email, written ahead (PREWRITTEN_EMAILS); the others only on click. */
+  /** Every preview company's email (PREWRITTEN_EMAILS, the cap), asked at once in the background. */
   function prewrite(aud: GetStartedAudience, first: AudienceCompanyRow[]) {
     const writable = first.filter(rowWritable).slice(0, PREWRITTEN_EMAILS);
     if (writable.length === 0) {
@@ -1100,9 +1107,29 @@ export function GetStarted({ org, ipCountry = null }: { org?: OrgWalk; ipCountry
       return;
     }
     setStep("email", "running");
-    void (async () => {
-      for (const r of writable) await writeEmail(aud, r);
-    })();
+    for (const r of writable) void writeEmail(aud, r);
+  }
+
+  // Bumped when an input the emails rest on is edited; a write that started before it asks again.
+  const inputsGen = useRef(0);
+  const inFlight = useRef(new Set<string>());
+
+  /**
+   * The give lists were edited: every email already written is asked again. content-generation
+   * keys a stored preview on the recipient AND the give lists, so an unchanged list answers from
+   * storage (nothing billed) and only a changed one is written anew. The old email stays on
+   * screen until the new one lands.
+   */
+  function rewriteEmails() {
+    inputsGen.current += 1;
+    const aud = audienceRef.current;
+    if (!aud) return;
+    for (const r of rows[aud.audienceId] ?? []) {
+      const key = rowKey(aud.audienceId, r.index);
+      if (!writtenKeys.current.has(key) || inFlight.current.has(key)) continue;
+      requested.current.delete(key);
+      void writeEmail(aud, r);
+    }
   }
 
   /** Writes one row's email (content-generation, billed to this anonymous org). The same person returns the stored email. */
@@ -1113,6 +1140,7 @@ export function GetStarted({ org, ipCountry = null }: { org?: OrgWalk; ipCountry
     if (requested.current.has(key) || !brandId) return;
     if (!canWriteAnother(requested.current.size)) return;
     requested.current.add(key);
+    inFlight.current.add(key);
     setWriting((cur) => ({ ...cur, [key]: true }));
     setEmailErrors((cur) => {
       const next = { ...cur };
@@ -1120,20 +1148,25 @@ export function GetStarted({ org, ipCountry = null }: { org?: OrgWalk; ipCountry
       return next;
     });
     try {
-      const mail = await writeWithRetry(() =>
-        previewColdEmail({
-          brandId,
-          recipient: {
-            firstName: row.person.firstName!,
-            lastName: row.person.lastNameObfuscated || row.person.firstName!.slice(0, 1),
-            title: row.person.title!,
-            companyName: row.company.name,
-            ...(row.company.domain ? { companyDomain: row.company.domain } : {}),
-          },
-          audience: aud.name,
-          offerId: offer?.offerId ?? snapRef.current?.offer?.offerId ?? null,
-        }),
-      );
+      let gen: number;
+      let mail: PreviewEmail;
+      do {
+        gen = inputsGen.current;
+        mail = await writeWithRetry(() =>
+          previewColdEmail({
+            brandId,
+            recipient: {
+              firstName: row.person.firstName!,
+              lastName: row.person.lastNameObfuscated || row.person.firstName!.slice(0, 1),
+              title: row.person.title!,
+              companyName: row.company.name,
+              ...(row.company.domain ? { companyDomain: row.company.domain } : {}),
+            },
+            audience: aud.name,
+            offerId: offer?.offerId ?? snapRef.current?.offer?.offerId ?? null,
+          }),
+        );
+      } while (gen !== inputsGen.current);
       writtenKeys.current.add(key);
       setEmails((cur) => ({ ...cur, [key]: mail }));
       if (audienceRef.current?.audienceId === aud.audienceId) setStep("email", "done");
@@ -1151,6 +1184,7 @@ export function GetStarted({ org, ipCountry = null }: { org?: OrgWalk; ipCountry
       }));
       if (audienceRef.current?.audienceId === aud.audienceId && !firstEmailFor(aud.audienceId)) setStep("email", "failed");
     } finally {
+      inFlight.current.delete(key);
       setWriting((cur) => ({ ...cur, [key]: false }));
     }
   }
@@ -3634,7 +3668,7 @@ function ExplainedBody({ mail }: { mail: PreviewEmail }) {
   const shown = active != null ? pieces[active]?.highlight ?? null : null;
   return (
     <div className="gs-in">
-      <p className="k-fg2 whitespace-pre-line px-3 py-3 text-[13px] leading-6">
+      <p className="k-fg2 whitespace-pre-line px-3 pt-3 text-[13px] leading-6">
         {pieces.map((p, i) =>
           p.highlight ? (
             <span
@@ -3672,6 +3706,7 @@ function ExplainedBody({ mail }: { mail: PreviewEmail }) {
           ),
         )}
       </p>
+      <PreviewSignature />
       <div className="border-t border-[var(--line-subtle)] px-3 py-2.5" aria-live="polite">
         {shown ? (
           <div key={active} className="gs-in text-[12px] leading-5">
@@ -3697,5 +3732,22 @@ function EmailBody({ mail }: { mail: PreviewEmail }) {
   const [typed, setTyped] = useState(false);
   useEffect(() => setTyped(false), [mail.id]);
   if (explained && typed) return <ExplainedBody mail={mail} />;
-  return <Typewriter text={mail.bodyText} className="k-fg2 whitespace-pre-line px-3 py-3 text-[13px] leading-6" onDone={explained ? () => setTyped(true) : undefined} />;
+  return (
+    <div>
+      <Typewriter text={mail.bodyText} className="k-fg2 whitespace-pre-line px-3 pt-3 text-[13px] leading-6" onDone={explained ? () => setTyped(true) : undefined} />
+      <PreviewSignature />
+    </div>
+  );
+}
+
+/**
+ * The signature the recipient sees under the email (PREVIEW_SIGNATURE), set apart from the body:
+ * a blank line, a quieter colour, never typed, underlined or explained.
+ */
+function PreviewSignature() {
+  return (
+    <p aria-label="Email signature" className="k-fg3 whitespace-pre-line px-3 pb-3 pt-5 text-[13px] leading-6">
+      {PREVIEW_SIGNATURE}
+    </p>
+  );
 }
