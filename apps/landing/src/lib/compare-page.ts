@@ -137,7 +137,7 @@ export function renderComparePage(c: Competitor): string {
     <span class="eyebrow">${esc(CATEGORY_LABEL[c.category])} · Verified ${COMPARE_VERIFIED_LABEL}</span>
     <div class="cmp-logos" aria-hidden="true"><span class="cmp-logo"><img src="/landing/v2/assets/logo-mark.svg" alt="" width="40" height="40"></span><span class="cmp-vs">vs</span><span class="cmp-logo">${logo(c.domain)}</span></div>
     <h1>distribute.you <span class="accent">vs</span> ${esc(c.name)}</h1>
-    <p class="hero-sub">${esc(c.name)}: ${esc(c.oneLiner)} distribute.you is a cold email agency: you paste a website, we run the campaign from domains we own, and you see what each positive reply cost.</p>
+    <p class="hero-sub">${esc(c.name)}: ${esc(c.oneLiner)} distribute.you runs your cold email for you: you paste a website, we run the campaign from domains we own, and you see what each positive reply cost.</p>
     ${whyLine()}
     <div class="cmp-cta"><a class="btn btn-accent btn-lg" href="${SIGN_UP}">Start free</a><a class="btn btn-outline btn-lg" href="#table">See the table</a></div>
   </div>
@@ -216,7 +216,16 @@ ${liveBand()}
 }
 
 function categoryGroups(): { category: Category; items: Competitor[] }[] {
-  const order: Category[] = ["ai-sdr", "cold-email-tool", "data-platform", "post-purchase", "employee-advocacy"];
+  const order: Category[] = [
+    "ai-sdr",
+    "cold-email-tool",
+    "data-platform",
+    "sales-engagement",
+    "linkedin-outreach",
+    "inbound-routing",
+    "post-purchase",
+    "employee-advocacy",
+  ];
   return order.map((category) => ({
     category,
     items: COMPETITORS.filter((c) => c.category === category),
@@ -271,7 +280,7 @@ export function renderAlternativesPage(): string {
   <div class="wrap hero-inner">
     <span class="eyebrow">Alternatives · Verified ${COMPARE_VERIFIED_LABEL}</span>
     <h1>The alternative to running <span class="accent">outbound yourself</span></h1>
-    <p class="hero-sub">Cold email tools, AI SDR agents and data platforms all sell you a way to run outbound. distribute.you is the alternative to all of them: an agency that runs it from domains we own, charges what the campaign spent, and shows what each positive reply cost.</p>
+    <p class="hero-sub">Cold email tools, AI SDR agents and data platforms all sell you a way to run outbound. distribute.you is the alternative to all of them: we run it for you from domains we own, charges what the campaign spent, and shows what each positive reply cost.</p>
     ${whyLine()}
     <div class="cmp-cta"><a class="btn btn-accent btn-lg" href="${SIGN_UP}">Start free</a><a class="btn btn-outline btn-lg" href="/compare">Every comparison</a></div>
   </div>
