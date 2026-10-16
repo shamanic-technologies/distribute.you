@@ -19,6 +19,7 @@ export const RELATIONSHIP_TAGS = [
   "supplier",
   "partner",
   "other_professional",
+  "journalist",
 ] as const;
 export type RelationshipTag = (typeof RELATIONSHIP_TAGS)[number];
 
@@ -33,6 +34,8 @@ export const RELATIONSHIP_TAG_LABEL: Record<RelationshipTag, string> = {
   supplier: "Supplier",
   partner: "Partner",
   other_professional: "Other professional",
+  // JOURNALISTS-NOT-LEADS-1016: someone the brand only pitched to the press, never a lead.
+  journalist: "Journalist",
 };
 
 /** A tag lead-service adds later must not break the page: unknown values pass and read as their raw word. */
