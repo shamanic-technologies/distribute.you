@@ -12,7 +12,7 @@ describe("Cold email > Blocklists", () => {
 
   it("parses the WHOLE prod payload (59 domains, 24 events) through the real reader", async () => {
     const body = read("tests/fixtures/domain-blocklist-prod-2026-10-16.json");
-    const fetchSpy = vi.fn(async () => new Response(body, { status: 200, headers: { "Content-Type": "application/json" } }));
+    const fetchSpy = vi.fn(async (_url: string | URL | Request) => new Response(body, { status: 200, headers: { "Content-Type": "application/json" } }));
     vi.stubGlobal("fetch", fetchSpy);
     const data = await getDomainBlocklist(60, "staff-key");
     expect(data.domains.length).toBe(59);

@@ -15,6 +15,7 @@ import {
 import { pollOptionsSlower } from "@/lib/query-options";
 import { PageHeader, Section, num, utc, utcDay } from "@/components/cold-email/primitives";
 import { BlocklistDailyChart, type DailyPoint } from "@/components/audit/blocklist-daily-chart";
+import { LeadSourceYieldSection } from "@/components/audit/lead-source-yield-section";
 
 /**
  * Cold email — Blocklists.
@@ -260,6 +261,8 @@ export default function BlocklistsPage() {
               <BlocklistDailyChart key={c.title} title={c.title} now={c.now} data={c.data} keys={c.keys} />
             ))}
           </div>
+
+          <LeadSourceYieldSection days={days} />
 
           <Section title="Domains" blurb="Listed domains first. Open the list's form, file the request, then press &ldquo;I filed it&rdquo; so the request is on record.">
             <div className="overflow-x-auto">
