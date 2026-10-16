@@ -86,6 +86,7 @@ const STATUS_STYLE: Record<AccountStatus, { label: string; className: string }> 
   paused: { label: "Paused", className: "bg-amber-50 text-amber-700" },
   inactive: { label: "Inactive", className: "bg-gray-100 text-gray-500" },
   unknown: { label: "Unknown", className: "bg-orange-50 text-orange-700" },
+  churned: { label: "Churned", className: "bg-gray-100 text-gray-500" },
 };
 
 function StatusCell({ row }: { row: AuditAccountRow }) {
@@ -93,7 +94,7 @@ function StatusCell({ row }: { row: AuditAccountRow }) {
   return (
     <span
       className={`inline-block rounded-md px-2 py-0.5 text-xs font-semibold ${style.className}`}
-      title={row.paymentDeclinedReason ?? undefined}
+      title={row.paymentDeclinedReason ?? row.churnedReason ?? undefined}
     >
       {style.label}
     </span>
@@ -239,6 +240,7 @@ export default function AuditAccountsPage() {
                 s
                   ? [
                       `${num(s.inactiveCount)} inactive`,
+                      s.churnedCount ? `${num(s.churnedCount)} churned` : null,
                       (s.paymentDeclinedCount ?? 0) + (s.noPaymentMethodCount ?? 0) > 0
                         ? `${num((s.paymentDeclinedCount ?? 0) + (s.noPaymentMethodCount ?? 0))} payment held`
                         : null,

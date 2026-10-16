@@ -5928,6 +5928,7 @@ export interface AuditAccountRow {
   // "paused" = money configured, nothing running against it. Else "inactive".
   status: AccountStatus;
   paymentDeclinedReason?: string | null; // billing's reason when status is payment_declined / no_payment_method
+  churnedReason?: string | null; // billing's reason when status is churned (subscription_ended / subscription_canceling)
 }
 
 /** Every account status features-service serves (accounts + customer-health). */
@@ -5942,7 +5943,11 @@ export type AccountStatus =
   | "inactive"
   // features-service v0.179.30: billing could not be read for this org, so its
   // status is not known (never guessed). `statusUnknownReason` says why.
-  | "unknown";
+  | "unknown"
+  // features-service v0.179.253: billing says the account cancelled (trial
+  // cancelled before its first charge, or subscription cancelled). Not a
+  // current client, whatever its campaigns still say. Reason on churnedReason.
+  | "churned";
 
 /** Display rank, mirroring the producer's order. */
 export const ACCOUNT_STATUS_RANK: Record<AccountStatus, number> = {
@@ -5954,6 +5959,7 @@ export const ACCOUNT_STATUS_RANK: Record<AccountStatus, number> = {
   paused: 5,
   inactive: 6,
   unknown: 7,
+  churned: 8,
 };
 
 export interface AuditAccountsStats {
@@ -5973,6 +5979,8 @@ export interface AuditAccountsStats {
   noPaymentMethodCount: number;
   // features-service v0.179.148; optional so an older body still parses.
   outOfCreditCount?: number;
+  // features-service v0.179.253: accounts billing says cancelled; optional so an older body still parses.
+  churnedCount?: number;
   pausedCount: number;
   inactiveCount: number;
   totalCount: number;
@@ -6257,6 +6265,8 @@ export interface CustomerSuccessFleetStats {
   noPaymentMethodCount: number;
   // features-service v0.179.148; optional so an older body still parses.
   outOfCreditCount?: number;
+  // features-service v0.179.253: accounts billing says cancelled; optional so an older body still parses.
+  churnedCount?: number;
   pausedCount: number;
   inactiveCount: number;
   greenCount: number;
