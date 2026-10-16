@@ -911,18 +911,25 @@ export interface SignalCheck {
   mode: "mention" | "must_pass";
 }
 
-export type SignalWrite = { id: string; patch: { enabled: true; mode: "mention" } | { enabled: false } };
+export type SignalRole = SignalCheck["mode"];
+
+export type SignalWrite = { id: string; patch: { enabled: true; mode: SignalRole } | { enabled: false } };
 
 /**
- * What the signals step writes on Continue (owner 2026-10-16: signals, never filters). A ticked
- * check that is off is turned ON as a mention (its proof goes to the email writer, nobody is
- * dropped); an unticked one that is on is turned off. Anything already as asked is left alone,
- * so an existing check of the offer keeps its own role.
+ * What the signals step writes on Continue (owner 2026-10-16). Each card carries a Must have /
+ * Nice to have toggle, prefilled with the role the AI recommends: a ticked check is turned ON in
+ * the role on its toggle (`must_pass` filters, `mention` hands its proof to the email writer); an
+ * unticked one that is on is turned off. Anything already as asked is left alone.
  */
-export function signalWrites(checks: readonly SignalCheck[], ticked: ReadonlySet<string>): SignalWrite[] {
+export function signalWrites(
+  checks: readonly SignalCheck[],
+  ticked: ReadonlySet<string>,
+  roles: Readonly<Record<string, SignalRole>>,
+): SignalWrite[] {
   const out: SignalWrite[] = [];
   for (const c of checks) {
-    if (ticked.has(c.id) && !c.enabled) out.push({ id: c.id, patch: { enabled: true, mode: "mention" } });
+    const role = roles[c.id] ?? c.mode;
+    if (ticked.has(c.id) && (!c.enabled || c.mode !== role)) out.push({ id: c.id, patch: { enabled: true, mode: role } });
     else if (!ticked.has(c.id) && c.enabled) out.push({ id: c.id, patch: { enabled: false } });
   }
   return out;

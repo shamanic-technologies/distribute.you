@@ -3455,8 +3455,12 @@ const QualificationCriterionSchema = z.object({
   id: z.string(),
   offerId: z.string(),
   question: z.string(),
+  /** A short card title (lead-service SIGNALS-TITLE-AND-ROLE-1016); null on a hand-made check. */
+  title: z.string().nullish(),
   why: z.string().nullish(),
   mode: z.enum(QUALIFICATION_MODES),
+  /** What the AI recommended at suggestion time, frozen; null on a hand-made or older check. */
+  recommendation: z.object({ mode: z.enum(QUALIFICATION_MODES), reason: z.string().nullish() }).nullish(),
   enabled: z.boolean(),
   origin: z.string(),
   source: z.string(),

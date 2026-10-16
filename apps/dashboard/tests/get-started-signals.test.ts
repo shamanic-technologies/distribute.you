@@ -6,8 +6,8 @@ import { anonCallAllowed } from "../src/lib/anon-proxy-allowlist";
 
 /**
  * The signals step of /get-started (owner 2026-10-16): right after the audience, the offer's
- * checks as cards, all ticked, none required. A signal is never a filter: a ticked one is turned
- * on as a MENTION (its proof goes to the email writer), an unticked one is never turned on.
+ * checks as one column of cards, all ticked, none required, each with a Must have / Nice to have
+ * toggle prefilled with the AI's pick. A ticked one is turned on in that role; an unticked one never.
  */
 
 const PAGE = readFileSync(resolve(__dirname, "../src/components/v2/get-started/get-started.tsx"), "utf-8");
@@ -21,26 +21,31 @@ describe("the signals step", () => {
     expect(REOPENABLE_STEPS.has("signals")).toBe(true);
   });
 
-  it("turns ticked checks ON as mentions, never a filter, and leaves unticked ones off", () => {
+  it("turns each ticked check ON in the role on its toggle, and leaves unticked ones off", () => {
     const checks = [
       { id: "a", enabled: false, mode: "mention" as const },
       { id: "b", enabled: false, mode: "mention" as const },
       { id: "c", enabled: false, mode: "must_pass" as const },
     ];
-    expect(signalWrites(checks, new Set(["a", "c"]))).toEqual([
+    const roles = { a: "mention" as const, b: "mention" as const, c: "must_pass" as const };
+    expect(signalWrites(checks, new Set(["a", "c"]), roles)).toEqual([
       { id: "a", patch: { enabled: true, mode: "mention" } },
-      { id: "c", patch: { enabled: true, mode: "mention" } },
+      { id: "c", patch: { enabled: true, mode: "must_pass" } },
     ]);
+    // The visitor flipped the AI's must-have to nice to have.
+    expect(signalWrites(checks, new Set(["c"]), { ...roles, c: "mention" })).toEqual([{ id: "c", patch: { enabled: true, mode: "mention" } }]);
     // Zero ticked is allowed: nothing is turned on.
-    expect(signalWrites(checks, new Set())).toEqual([]);
+    expect(signalWrites(checks, new Set(), roles)).toEqual([]);
   });
 
-  it("turns off a check that is on and was unticked, and leaves an existing one as it is", () => {
+  it("turns off a check that is on and was unticked, and leaves one already as asked alone", () => {
     const checks = [
       { id: "on", enabled: true, mode: "must_pass" as const },
       { id: "off", enabled: true, mode: "mention" as const },
     ];
-    expect(signalWrites(checks, new Set(["on"]))).toEqual([{ id: "off", patch: { enabled: false } }]);
+    expect(signalWrites(checks, new Set(["on"]), { on: "must_pass", off: "mention" })).toEqual([{ id: "off", patch: { enabled: false } }]);
+    // An enabled check whose toggle moved is rewritten in its new role.
+    expect(signalWrites(checks, new Set(["on", "off"]), { on: "mention", off: "mention" })).toEqual([{ id: "on", patch: { enabled: true, mode: "mention" } }]);
   });
 
   it("keeps the step's confirmation across a reload", () => {
@@ -61,13 +66,22 @@ describe("the signals step", () => {
 
   it("writes only what signalWrites says on Continue", () => {
     const confirm = PAGE.slice(PAGE.indexOf("async function confirmSignals("), PAGE.indexOf("async function confirmValue("));
-    expect(confirm).toContain("for (const w of signalWrites(signals, signalTicks)) await updateOfferQualificationCriterion(brandId, o.offerId, w.id, w.patch);");
+    expect(confirm).toContain("for (const w of signalWrites(signals, signalTicks, signalRoles)) await updateOfferQualificationCriterion(brandId, o.offerId, w.id, w.patch);");
   });
 
-  it("is a big count, one line, ticked cards and Continue, with nothing required", () => {
-    expect(stage).toContain("Signals never filter anyone out. Each signal adds a fact to your emails to lift replies.");
+  it("is a big count, one line, one column of ticked cards with a Must have / Nice to have toggle, and Continue", () => {
+    expect(stage).toContain("Nice to have adds the fact to your emails. Must have keeps only the companies that pass.");
     expect(stage).toContain('aria-pressed={picked}');
-    expect(stage).toContain('picked ? "k-card-on" : "k-hover"');
+    expect(stage).toContain('picked ? "k-card-on" : ""');
+    expect(stage).toContain('<div className="grid grid-cols-[minmax(0,1fr)] gap-3">');
+    expect(stage).not.toContain("sm:grid-cols-2");
+    expect(stage).toContain('role="radiogroup"');
+    expect(PAGE).toContain('{ key: "must_pass", label: "Must have" }');
+    expect(PAGE).toContain('{ key: "mention", label: "Nice to have" }');
+    // The toggle opens on what the AI recommended; the card title is lead-service's short title.
+    expect(PAGE).toContain("return c.recommendation?.mode ?? c.mode;");
+    expect(PAGE).toContain("return c.title?.trim() || c.question;");
+    expect(PAGE).toContain("setSignalRoles(Object.fromEntries(checks.map((c) => [c.id, recommendedRole(c)])));");
     expect(stage).toContain("text-[40px]");
     // Continue is never disabled for want of a tick.
     const footer = stage.slice(stage.indexOf("footer={"), stage.indexOf("Continue"));
