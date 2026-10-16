@@ -2,13 +2,14 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import {
+  entriesOfOrigin,
   heldByProfile,
   isClientProfile,
-  listsOfOrigin,
   listsOfProfile,
   originOf,
   profileOf,
-  reachOfProfile,
+  sourceHeldByProfile,
+  sourcesOfProfile,
   signalLabelOf,
   type ProfileListAudience,
   type SourcingOriginLike,
@@ -80,7 +81,7 @@ describe("profiles x sources", () => {
   });
 
   it("a profile is reached by its cold list and each live list built for it", () => {
-    const reach = reachOfProfile(byId.get("qa")!, AUDIENCES, ORIGINS);
+    const reach = sourcesOfProfile(byId.get("qa")!, AUDIENCES, ORIGINS);
     expect(reach.map((r) => [r.origin?.name, r.signal])).toEqual([
       ["Apollo Cold Filters", null],
       ["Apollo Buying Signals", "Hiring now"],
@@ -89,9 +90,62 @@ describe("profiles x sources", () => {
   });
 
   it("a source lists one entry per profile, archived whole-target lists left out", () => {
-    const signals = listsOfOrigin(ORIGINS[1], AUDIENCES, ORIGINS);
-    expect(signals.map((a) => a.name)).toEqual(["Heads of QA (Hiring now)", "VPs of Quality Assurance (Hiring now)"]);
-    expect(listsOfOrigin(ORIGINS[0], AUDIENCES, ORIGINS)).toHaveLength(4);
+    const signals = entriesOfOrigin(ORIGINS[1], AUDIENCES, ORIGINS);
+    expect(signals.map((e) => e.row.name)).toEqual(["Heads of QA (Hiring now)", "VPs of Quality Assurance (Hiring now)"]);
+    expect(signals.map((e) => e.profile?.name)).toEqual(["Heads of QA", "VPs of Quality Assurance"]);
+    expect(entriesOfOrigin(ORIGINS[0], AUDIENCES, ORIGINS)).toHaveLength(4);
+  });
+});
+
+// AUDIENCE-SOURCES-1016: after the merge, a source lives BESIDE its audience in `channels[]`
+// (own list first, then one entry per source with sourceId + name + status + size).
+describe("merged model: an audience with its sources", () => {
+  const chiros: ProfileListAudience = {
+    id: "emp",
+    name: "Employed chiros & co",
+    status: "active",
+    profileAudienceId: null,
+    filters: { person_titles: ["chiropractor"] },
+    channels: [
+      { list: "apollo_search", signal: null, size: 5400, sizeUnknownReason: null },
+      { list: "apollo_buying_signal", signal: { type: "hiring" }, sourceId: "s-h", name: "Hiring now", status: "active", size: 320, sizeUnknownReason: null },
+      { list: "linkedin_engagement", signal: { type: "linkedin_engagement" }, sourceId: "s-li", name: "Engaged with competitor posts", status: "paused", size: null, sizeUnknownReason: "unknown_until_walked" },
+    ],
+  };
+  const all = [chiros];
+
+  it("stays one client profile, never one per source", () => {
+    expect(all.filter(isClientProfile).map((a) => a.id)).toEqual(["emp"]);
+  });
+
+  it("lists its own list then its 2 sources with served on/off and size", () => {
+    const s = sourcesOfProfile(chiros, all, ORIGINS);
+    expect(s.map((x) => [x.origin?.name, x.name, x.status, x.size])).toEqual([
+      ["Apollo Cold Filters", null, "active", 5400],
+      ["Apollo Buying Signals", "Hiring now", "active", 320],
+      ["LinkedIn Engagement Signals", "Engaged with competitor posts", "paused", null],
+    ]);
+    expect(s[2].sizeUnknownReason).toBe("unknown_until_walked");
+    expect(originOf(chiros, ORIGINS)?.name).toBe("Apollo Cold Filters");
+  });
+
+  it("the own list is found even when a source is served first", () => {
+    const reordered = { ...chiros, channels: [chiros.channels![1], chiros.channels![0]] };
+    expect(originOf(reordered, ORIGINS)?.name).toBe("Apollo Cold Filters");
+    expect(signalLabelOf(reordered)).toBeNull();
+  });
+
+  it("each source lists the profile under it on Sourcing", () => {
+    const e = entriesOfOrigin(ORIGINS[1], all, ORIGINS);
+    expect(e.map((x) => [x.profile?.name, x.source.name])).toEqual([["Employed chiros & co", "Hiring now"]]);
+    expect(entriesOfOrigin(ORIGINS[2], all, ORIGINS)).toHaveLength(1);
+  });
+
+  it("a paused profile holds its paused sources", () => {
+    const [, hiring, li] = sourcesOfProfile(chiros, all, ORIGINS);
+    expect(sourceHeldByProfile(li, { ...chiros, status: "paused" })).toBe(true);
+    expect(sourceHeldByProfile(hiring, { ...chiros, status: "paused" })).toBe(false);
+    expect(sourceHeldByProfile(li, chiros)).toBe(false);
   });
 });
 
@@ -101,7 +155,7 @@ describe("profiles x sources are wired on the three pages", () => {
     const src = read("src/components/v2/audiences-table.tsx");
     expect(src).toContain("t.audiences.filter(isClientProfile)");
     expect(src).toContain("<ReachLine reach={reachOf(a)} />");
-    expect(src).toContain("lists={plain ? listsOfProfile(selected.id, p.audiences) : []}");
+    expect(src).toContain("sources={plain ? sourcesOfProfile(selected, p.audiences, p.origins).filter((s) => !s.own) : []}");
   });
   it("Lists names each list's profile and source, archived behind a toggle", () => {
     const src = read("src/components/v2/audience-page.tsx");
@@ -112,7 +166,12 @@ describe("profiles x sources are wired on the three pages", () => {
   it("Sourcing lists one entry per profile under each source", () => {
     expect(read("src/components/v2/offer-sourcing-page.tsx")).toContain("<OfferSourceLists brandId={brandId} offerId={offerId} />");
   });
-  it("the audience reader keeps profileAudienceId", () => {
-    expect(read("src/lib/api.ts")).toContain("profileAudienceId: z.string().nullish(),");
+  it("Lists shows the sources served beside an audience", () => {
+    expect(read("src/components/v2/audience-page.tsx")).toContain("servedSourcesOf(a).map(");
+  });
+  it("the audience reader keeps profileAudienceId and the served source fields", () => {
+    const api = read("src/lib/api.ts");
+    expect(api).toContain("profileAudienceId: z.string().nullish(),");
+    expect(api).toContain("sourceId: z.string().optional(),");
   });
 });

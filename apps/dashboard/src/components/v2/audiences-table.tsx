@@ -33,7 +33,7 @@ import { EmptyNote, Shimmer, StateDot } from "@/components/v2/ui";
 import { RecordsFooter, RecordsTabs, RecordsToolbar, REC_TH, useRowKeys } from "@/components/v2/records";
 import { useAudienceTable } from "@/components/v2/use-audience-table";
 import { useProfileLists } from "@/components/v2/use-profile-lists";
-import { heldByProfile, isClientProfile, listsOfProfile, originOf, reachOfProfile, signalLabelOf, type ProfileReach as ProfileReachOf } from "@/lib/profile-lists";
+import { isClientProfile, sourceHeldByProfile, sourcesOfProfile, type ProfileSource as ProfileSourceOf } from "@/lib/profile-lists";
 import { useStatBasis } from "@/lib/use-stat-basis";
 import { shownFigure, type MaturityPair, type StatBasis } from "@/lib/maturity";
 import { LEG_PAIR_NOUN } from "@/lib/campaign-leg-columns";
@@ -399,7 +399,7 @@ export function V2AudiencesTable({
             selectedId={selectedId}
             onHover={setCursor}
             onOpen={setSelectedId}
-            reachOf={(a) => (p.originsSettled ? reachOfProfile(a, p.audiences, p.origins) : null)}
+            reachOf={(a) => (p.originsSettled ? sourcesOfProfile(a, p.audiences, p.origins) : null)}
           />
         ) : (
         <div className="k-scroll overflow-x-auto">
@@ -492,8 +492,7 @@ export function V2AudiencesTable({
           basis={basis}
           paused={t.withheldPaused}
           plain={plain}
-          lists={plain ? listsOfProfile(selected.id, p.audiences) : []}
-          sourceOf={(a) => originOf(a, p.origins)}
+          sources={plain ? sourcesOfProfile(selected, p.audiences, p.origins).filter((s) => !s.own) : []}
           docked={docked}
           onClose={() => {
             setSelectedId(null);
@@ -597,21 +596,23 @@ function ChannelLine({ c }: { c: AudienceChannelWire }) {
         <span className="k-fg3"> · {LIST_WORD[c.list] ?? c.list}</span>
       </span>
       <span className="k-fg2 shrink-0 tabular-nums">
-        {c.size != null ? (
-          `${formatCount(c.size)} people`
-        ) : (
-          <span className="k-fg4">{(c.sizeUnknownReason && SIZE_UNKNOWN_WORD[c.sizeUnknownReason]) ?? "—"}</span>
-        )}
+        <SizeWords size={c.size} reason={c.sizeUnknownReason} />
       </span>
     </div>
   );
 }
 
-type ProfileReach = ProfileReachOf<AudienceWire, SourcingOrigin>;
+type ProfileSource = ProfileSourceOf<AudienceWire, SourcingOrigin>;
 
-/** The sources reaching a profile, one chip each: the provider logo, the source, then the
- *  list's signal. A list that is not live reads muted with its status. */
-function ReachLine({ reach }: { reach: ProfileReach[] | null }) {
+/** A served size in words: "1,200 people", or the served reason it is unknown. */
+function SizeWords({ size, reason }: { size: number | null; reason: string | null }) {
+  if (size != null) return <>{`${formatCount(size)} people`}</>;
+  return <span className="k-fg4">{(reason && SIZE_UNKNOWN_WORD[reason]) ?? "—"}</span>;
+}
+
+/** The sources reaching a profile, one chip each: the provider logo, the source, then its
+ *  signal (or the served source name). A source that is not live reads muted with its status. */
+function ReachLine({ reach }: { reach: ProfileSource[] | null }) {
   if (!reach) return <Shimmer className="mt-1.5 h-4 w-56" />;
   const shown = reach.filter((r) => r.origin);
   if (shown.length === 0) return null;
@@ -619,13 +620,14 @@ function ReachLine({ reach }: { reach: ProfileReach[] | null }) {
     <span className="mt-1.5 flex min-w-0 flex-wrap items-center gap-1">
       <span className="k-fg3 mr-0.5 text-[12px]">Reached by</span>
       {shown.map((r) => {
-        const live = r.list.status === "active";
+        const live = r.status === "active";
+        const detail = r.signal ?? (r.own ? null : r.name);
         return (
-          <span key={r.list.id} className={`k-chip gap-1.5 ${live ? "" : "k-fg3"}`}>
+          <span key={r.key} className={`k-chip gap-1.5 ${live ? "" : "k-fg3"}`}>
             {r.origin?.provider ? <ProviderLogo domain={r.origin.provider.domain} size={12} className="rounded-[3px]" /> : null}
             {r.origin?.name}
-            {r.signal ? <span className="k-fg3">· {r.signal}</span> : null}
-            {live ? null : <span className="k-fg3">· {STATUS_WORD[r.list.status] ?? r.list.status}</span>}
+            {detail ? <span className="k-fg3">· {detail}</span> : null}
+            {live ? null : <span className="k-fg3">· {STATUS_WORD[r.status] ?? r.status}</span>}
           </span>
         );
       })}
@@ -633,20 +635,24 @@ function ReachLine({ reach }: { reach: ProfileReach[] | null }) {
   );
 }
 
-/** One list of a profile in its drawer: name, source and signal, status (held by the profile). */
-function ProfileListLine({ list, source, held }: { list: AudienceWire; source: SourcingOrigin | null; held: boolean }) {
-  const signal = signalLabelOf(list);
+/** One source of a profile in its drawer: name, where it looks and its signal, size, on/off (held by the profile). */
+function ProfileSourceLine({ source, held }: { source: ProfileSource; held: boolean }) {
+  const title = source.name ?? source.signal ?? source.origin?.name ?? "—";
+  const sub = [source.origin?.name, source.signal].filter((v) => v && v !== title).join(" · ");
   return (
     <li className="flex items-center justify-between gap-3 text-[13px]">
       <span className="min-w-0">
-        <span className="block truncate">{list.name}</span>
+        <span className="block truncate">{title}</span>
         <span className="k-fg3 flex min-w-0 items-center gap-1.5 text-[12px]">
-          {source?.provider ? <ProviderLogo domain={source.provider.domain} size={12} className="shrink-0 rounded-[3px]" /> : null}
-          <span className="truncate">{[source?.name, signal].filter(Boolean).join(" · ") || "—"}</span>
+          {source.origin?.provider ? <ProviderLogo domain={source.origin.provider.domain} size={12} className="shrink-0 rounded-[3px]" /> : null}
+          <span className="truncate">
+            {sub ? `${sub} · ` : ""}
+            <SizeWords size={source.size} reason={source.sizeUnknownReason} />
+          </span>
         </span>
       </span>
       <span className="shrink-0">
-        <StateDot running={list.status === "active"} label={held ? "Paused with profile" : STATUS_WORD[list.status] ?? list.status} />
+        <StateDot running={source.status === "active"} label={held ? "Paused with profile" : STATUS_WORD[source.status] ?? source.status} />
       </span>
     </li>
   );
@@ -674,8 +680,8 @@ function PlainAudienceList({
   selectedId: string | null;
   onHover: (i: number) => void;
   onOpen: (id: string) => void;
-  /** The sources reaching a profile (its own list, then each list built for it); null while unread. */
-  reachOf: (a: AudienceWire) => ProfileReach[] | null;
+  /** The sources reaching a profile (its own list, then each source of it); null while unread. */
+  reachOf: (a: AudienceWire) => ProfileSource[] | null;
 }) {
   if (rows.length === 0 && loading) {
     return (
@@ -865,8 +871,7 @@ function AudienceDrawer({
   basis,
   paused,
   plain,
-  lists,
-  sourceOf,
+  sources,
   docked,
   onClose,
   onFindSimilar,
@@ -884,9 +889,8 @@ function AudienceDrawer({
   paused: boolean;
   /** The offer's Targeting: the audience is its text, plus the channels working it. */
   plain: boolean;
-  /** The lists built for this profile (each one source), live ones first. */
-  lists: AudienceWire[];
-  sourceOf: (a: AudienceWire) => SourcingOrigin | null;
+  /** The sources of this profile beside its own list (served sources, legacy rows), live ones first. */
+  sources: ProfileSource[];
   docked: boolean;
   onClose: () => void;
   onFindSimilar: () => void;
@@ -896,6 +900,8 @@ function AudienceDrawer({
   onSetStatus: (s: AudienceStatus) => void;
   pendingStatus: AudienceStatus | null;
 }) {
+  // Used by = the audience's own list; its sources (entries with a sourceId) read under Sources.
+  const ownChannels = (audience.channels ?? []).filter((c) => !c.sourceId);
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (e.key === "Escape") onClose();
@@ -1010,16 +1016,16 @@ function AudienceDrawer({
 
         {plain && (
           <section>
-            <p className="k-label mb-1">Lists</p>
-            <p className="k-fg3 mb-2 text-[12px]">Pausing this profile pauses its lists.</p>
-            {lists.length > 0 ? (
+            <p className="k-label mb-1">Sources</p>
+            <p className="k-fg3 mb-2 text-[12px]">Where we also look for these people. Pausing this profile pauses its sources.</p>
+            {sources.length > 0 ? (
               <ul className="space-y-1.5">
-                {lists.map((l) => (
-                  <ProfileListLine key={l.id} list={l} source={sourceOf(l)} held={heldByProfile(l, audience)} />
+                {sources.map((s) => (
+                  <ProfileSourceLine key={s.key} source={s} held={sourceHeldByProfile(s, audience)} />
                 ))}
               </ul>
             ) : (
-              <p className="k-fg4 text-[13px]">No list built for this profile yet.</p>
+              <p className="k-fg4 text-[13px]">No other source for this profile yet.</p>
             )}
           </section>
         )}
@@ -1027,9 +1033,9 @@ function AudienceDrawer({
         {plain && (
           <section>
             <p className="k-label mb-2">Used by</p>
-            {audience.channels && audience.channels.length > 0 ? (
+            {ownChannels.length > 0 ? (
               <div className="space-y-1.5">
-                {audience.channels.map((c) => (
+                {ownChannels.map((c) => (
                   <ChannelLine key={`${c.channel}-${c.list}-${c.audienceId}`} c={c} />
                 ))}
               </div>

@@ -4,7 +4,7 @@ import { AudienceAvatar } from "@/components/audiences/audience-avatar";
 import { ProviderLogo } from "@/components/provider-logo";
 import { EmptyNote, SectionTitle, Shimmer, StateDot } from "@/components/v2/ui";
 import { useProfileLists } from "@/components/v2/use-profile-lists";
-import { heldByProfile, listsOfOrigin, profileOf, signalLabelOf } from "@/lib/profile-lists";
+import { entriesOfOrigin, sourceHeldByProfile } from "@/lib/profile-lists";
 
 const STATUS_WORD: Record<string, string> = { active: "Active", paused: "Paused", archived: "Archived" };
 
@@ -12,7 +12,9 @@ const STATUS_WORD: Record<string, string> = { active: "Active", paused: "Paused"
  * Sourcing > Lists by profile (owner 2026-10-09, human-service v0.50.0): each source lists
  * one entry per client profile it looks for, "Heads of QA (Hiring now)". A profile paused on
  * Targeting pauses its lists (human-service does it); a list held that way says so. Reads
- * are the Targeting page's own (`useProfileLists`); archived lists are not shown.
+ * are the Targeting page's own (`useProfileLists`); archived lists are not shown. Both shapes
+ * (AUDIENCE-SOURCES-1016): a legacy per-source row, or a source served beside its profile in
+ * `channels[]`, reads as the same entry (`entriesOfOrigin`).
  */
 export function OfferSourceLists({ brandId, offerId }: { brandId: string; offerId: string }) {
   const p = useProfileLists(brandId, offerId);
@@ -20,7 +22,7 @@ export function OfferSourceLists({ brandId, offerId }: { brandId: string; offerI
   const groups = p.origins
     .filter((o) => o.live)
     .sort((a, b) => a.displayOrder - b.displayOrder)
-    .map((o) => ({ origin: o, lists: listsOfOrigin(o, p.audiences, p.origins) }))
+    .map((o) => ({ origin: o, lists: entriesOfOrigin(o, p.audiences, p.origins) }))
     .filter((g) => g.lists.length > 0);
 
   return (
@@ -52,23 +54,24 @@ export function OfferSourceLists({ brandId, offerId }: { brandId: string; offerI
                 </span>
               </div>
               <ul>
-                {lists.map((l) => {
-                  const profile = profileOf(l, p.byId);
-                  const held = heldByProfile(l, profile);
+                {lists.map(({ profile, source, row }) => {
+                  const held = profile ? sourceHeldByProfile(source, profile) : false;
                   // A list built for no profile (an older whole-target list) says so.
                   const name = profile?.name ?? "All profiles";
-                  const sub = [profile ? null : l.name, signalLabelOf(l)].filter((v, i, all) => v && all.indexOf(v) === i).join(" · ");
+                  const sub = [profile ? null : row.name, source.signal ?? source.name]
+                    .filter((v, i, all) => v && v !== name && all.indexOf(v) === i)
+                    .join(" · ");
                   return (
-                    <li key={l.id} className="k-row k-line-subtle flex h-12 items-center justify-between gap-3 border-b px-4 last:border-b-0">
+                    <li key={source.key} className="k-row k-line-subtle flex h-12 items-center justify-between gap-3 border-b px-4 last:border-b-0">
                       <span className="flex min-w-0 items-center gap-2.5">
-                        <AudienceAvatar name={name} avatarUrl={profile?.avatarUrl ?? l.avatarUrl} size={24} />
+                        <AudienceAvatar name={name} avatarUrl={profile?.avatarUrl ?? row.avatarUrl} size={24} />
                         <span className="min-w-0">
                           <span className="block truncate text-[13px]">{name}</span>
                           {sub ? <span className="k-fg3 block truncate text-[12px]">{sub}</span> : null}
                         </span>
                       </span>
                       <span className="shrink-0 text-right">
-                        <StateDot running={l.status === "active"} label={STATUS_WORD[l.status] ?? l.status} />
+                        <StateDot running={source.status === "active"} label={STATUS_WORD[source.status] ?? source.status} />
                         {held ? <span className="k-fg3 block text-[12px]">Profile {profile?.status}</span> : null}
                       </span>
                     </li>

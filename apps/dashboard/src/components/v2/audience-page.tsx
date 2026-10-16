@@ -23,7 +23,7 @@ import { useAudienceSnapshot } from "@/components/v2/brand-outcomes";
 import { useStaffMode } from "@/lib/use-staff-mode";
 import { audienceFilterGroups } from "@/lib/audience-filter-groups";
 import { linkedInSignalOf } from "@/lib/signal-audience";
-import { heldByProfile, originOf, profileOf, signalLabelOf } from "@/lib/profile-lists";
+import { heldByProfile, originOf, originOfKind, ownChannelOf, profileOf, servedSourcesOf, signalLabelOf } from "@/lib/profile-lists";
 import { AudienceAvatar } from "@/components/audiences/audience-avatar";
 import { ProviderLogo } from "@/components/provider-logo";
 import { RecordsFooter, RecordsTabs, RecordsToolbar, REC_TH, useRowKeys } from "@/components/v2/records";
@@ -73,7 +73,7 @@ const TYPE_OF_LIST: Record<string, string> = {
 };
 
 function listOf(a: AudienceWire): AudienceChannelWire | null {
-  return a.channels?.[0] ?? null;
+  return ownChannelOf(a);
 }
 
 function typeOf(a: AudienceWire): string | null {
@@ -396,6 +396,17 @@ function AudiencesTab({
                       ) : (
                         typeOf(a) ?? dash
                       )}
+                      {/* The sources human-service serves beside this audience (AUDIENCE-SOURCES-1016). */}
+                      {servedSourcesOf(a).map((c) => {
+                        const o = originOfKind(c.list, originList);
+                        return (
+                          <span key={c.sourceId} className={`flex items-center gap-2 text-[12px] ${c.status === "active" ? "k-fg2" : "k-fg3"}`}>
+                            {o?.provider ? <ProviderLogo domain={o.provider.domain} size={12} className="rounded-[3px]" /> : null}
+                            {[o?.name, c.name].filter(Boolean).join(" · ")}
+                            {c.status && c.status !== "active" ? ` · ${statusWord(c.status)}` : ""}
+                          </span>
+                        );
+                      })}
                     </td>
                     <td className="px-3 text-right tabular-nums">{snapshotError ? dash : n(h ? h.people.held : snapshot ? 0 : null)}</td>
                     <td className="px-3 text-right tabular-nums">{snapshotError ? dash : n(h ? h.companies.held : snapshot ? 0 : null)}</td>

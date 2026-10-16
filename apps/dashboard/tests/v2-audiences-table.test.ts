@@ -141,7 +141,9 @@ describe("v2 audience table surface", () => {
     const text = table.slice(table.indexOf("function TargetText("), table.indexOf("const CHANNEL_WORD"));
     expect(text).toContain("audience.targetText");
     expect(text).not.toContain("description");
-    expect(table).toContain("audience.channels.map((c) =>");
+    // Used by = the served own list; the served sources read under Sources (AUDIENCE-SOURCES-1016).
+    expect(table).toContain("const ownChannels = (audience.channels ?? []).filter((c) => !c.sourceId);");
+    expect(table).toContain("ownChannels.map((c) =>");
     expect(table).not.toContain("<span>Cold email</span>");
   });
 
