@@ -7295,6 +7295,20 @@ export async function getSignupFunnelPages(brandId: string, offerId: string): Pr
 }
 
 /**
+ * The sales funnels FITTED TO ONE OFFER (features-service through `GET /v1/offers/:offerId/sales-funnels`):
+ * only funnels built on the offer's own steps (the others are served apart, never in `rows`), priced
+ * with the offer's stated lifetime revenue and the brand's own leg rates, in the producer's order
+ * (measured before estimated, then ROI). The Campaigns page's "Suggested for you" reads it (owner
+ * 2026-10-17: the cross-org list proposed direct-purchase funnels to a signup-then-pay offer).
+ */
+export async function listOfferSalesFunnels(brandId: string, offerId: string): Promise<CataloguePage> {
+  const raw = await apiCall<unknown>(
+    `/offers/${encodeURIComponent(offerId)}/sales-funnels?brandId=${encodeURIComponent(brandId)}&runnable=true&limit=25`,
+  );
+  return parseStaff("listOfferSalesFunnels", CataloguePageSchema, raw);
+}
+
+/**
  * POST /campaigns — START one campaign: an acquisition channel performing one LEG for
  * one offer.
  *
