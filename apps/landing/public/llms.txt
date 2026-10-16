@@ -177,6 +177,23 @@ you run; we run the campaign.
 - [vs parcelLab](https://distribute.you/compare/parcellab)
 - [vs PostBeyond](https://distribute.you/compare/postbeyond)
 - [vs LeadRebel](https://distribute.you/compare/leadrebel)
+- [vs Reply.io](https://distribute.you/compare/reply-io)
+- [vs Saleshandy](https://distribute.you/compare/saleshandy)
+- [vs Woodpecker](https://distribute.you/compare/woodpecker)
+- [vs Mailshake](https://distribute.you/compare/mailshake)
+- [vs ZoomInfo](https://distribute.you/compare/zoominfo)
+- [vs Seamless.AI](https://distribute.you/compare/seamless-ai)
+- [vs Hunter](https://distribute.you/compare/hunter)
+- [vs Snov.io](https://distribute.you/compare/snov-io)
+- [vs RB2B](https://distribute.you/compare/rb2b)
+- [vs Warmly](https://distribute.you/compare/warmly)
+- [vs Salesloft](https://distribute.you/compare/salesloft)
+- [vs Outreach](https://distribute.you/compare/outreach)
+- [vs HeyReach](https://distribute.you/compare/heyreach)
+- [vs Waalaxy](https://distribute.you/compare/waalaxy)
+- [vs Chili Piper](https://distribute.you/compare/chili-piper)
+- [vs Default](https://distribute.you/compare/default)
+- [vs Frontrunner](https://distribute.you/compare/frontrunner)
 
 ## Rankings by audience
 

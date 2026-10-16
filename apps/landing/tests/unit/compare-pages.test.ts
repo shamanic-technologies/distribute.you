@@ -32,9 +32,11 @@ const prose = (html: string) =>
   html.replace(/<script[\s\S]*?<\/script>/g, "").replace(/<style[\s\S]*?<\/style>/g, "");
 
 describe("the competitor catalogue", () => {
-  it("names the competitors the owner picked, parcelLab, PostBeyond and LeadRebel for their search demand, and not Amplemarket", () => {
+  it("names the competitors the owner picked, the clones and the 2026-10-16 search-demand set, and not Amplemarket", () => {
     expect(COMPETITORS.map((c) => c.slug).sort()).toEqual(
-      ["11x", "aisdr", "apollo", "artisan", "clay", "explee", "gojiberry", "instantly", "leadrebel", "lemlist", "parcellab", "postbeyond", "salesforge", "smartlead"],
+      [
+        "11x", "aisdr", "apollo", "artisan", "chili-piper", "clay", "default", "explee", "frontrunner", "gojiberry", "heyreach", "hunter", "instantly", "leadrebel", "lemlist", "mailshake", "outreach", "parcellab", "postbeyond", "rb2b", "reply-io", "salesforge", "saleshandy", "salesloft", "seamless-ai", "smartlead", "snov-io", "waalaxy", "warmly", "woodpecker", "zoominfo",
+      ],
     );
     expect(COMPETITORS.some((c) => /amplemarket/i.test(c.name))).toBe(false);
   });
@@ -112,6 +114,7 @@ describe("a comparison page", () => {
 
       it("obeys the copy rules the homepage lives by", () => {
         expect(copy).not.toContain("—");
+        expect(copy).not.toContain("–");
         expect(copy).not.toMatch(/costs? us\b/i);
         expect(copy).not.toMatch(/\bour (?:live )?cost per\b/i);
         expect(copy).not.toMatch(/\bat cost\b/i);
@@ -121,6 +124,8 @@ describe("a comparison page", () => {
         expect(copy).not.toMatch(/\bwe guarantee results\b/i);
         // Opens are a dead metric.
         expect(copy).not.toMatch(/\bopen rate/i);
+        // distribute.you is never called an agency (owner 2026-10-08); another firm's agency is fine.
+        expect(copy).not.toMatch(/distribute\.you is (?:a|an)\b[^.]*\bagency\b|\bour agency\b|\bas an agency\b/i);
       });
 
       it("ships FAQPage and BreadcrumbList JSON-LD that parse", () => {
@@ -174,6 +179,12 @@ describe("the hub and the alternatives page", () => {
     expect(alt).toContain('<link rel="canonical" href="https://distribute.you/alternatives">');
     expect(hub).not.toContain("noindex");
     expect(alt).not.toContain("noindex");
+  });
+
+  it("never call distribute.you an agency", () => {
+    for (const page of [hub, alt]) {
+      expect(prose(page)).not.toMatch(/distribute\.you is (?:a|an)\b[^.]*\bagency\b|\bour agency\b|\bas an agency\b|\ban agency that runs\b/i);
+    }
   });
 
   it("ship no em-dash", () => {
