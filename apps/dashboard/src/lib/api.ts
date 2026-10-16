@@ -4330,6 +4330,11 @@ const AudienceChannelSchema = z.object({
   channel: z.string(),
   list: z.string(),
   audienceId: z.string(),
+  // human-service AUDIENCE-SOURCES-1016: a SOURCE of the audience (buying signal, competitor-post
+  // engagement) is an entry with `sourceId` + its `name` and on/off `status`; the own list has none.
+  sourceId: z.string().optional(),
+  name: z.string().optional(),
+  status: z.string().optional(),
   signal: z.object({ type: z.string(), windowDays: z.coerce.number().nullable() }).nullable(),
   size: z.coerce.number().nullable(),
   sizeUnknownReason: z.string().nullable(),
