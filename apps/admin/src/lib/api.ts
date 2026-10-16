@@ -5552,6 +5552,56 @@ export async function recordDomainBlocklistRemovalRequest(
   return apiCall<{ id: string }>(`${DOMAIN_BLOCKLIST_PATH}/removal-requests`, { token, method: "POST", body: input });
 }
 
+// --- Lead source yield (which source feeds dead addresses / traps) -----------
+// instantly-service `LeadSourceYieldRead` (#1186). Counting rule `per_tag`: a
+// person found by several sources counts once under EACH tag.
+
+const LeadSourceYieldMeasuresSchema = z.object({
+  firstEmails: z.number(),
+  hardBounces: z.number(),
+  hardBounceRate: z.number().nullable(),
+  refusals: z.number(),
+  refusalRate: z.number().nullable(),
+  blocklistRefusals: z.number(),
+  firstEmailsFromListedDomains: z.number(),
+  listedDomainShare: z.number().nullable(),
+});
+const LeadSourceYieldPointSchema = z.object({ day: z.string(), total: z.number(), byKey: z.record(z.string(), z.number()) });
+const LeadSourceYieldSchema = z.object({
+  asOf: z.string(),
+  countingRule: z.literal("per_tag"),
+  countingRuleNote: z.string(),
+  pseudoKeys: z.object({ noSourceRecorded: z.string(), unknown: z.string() }),
+  provenanceSyncedAt: z.string().nullable(),
+  listedDomainsToday: z.array(z.string()),
+  refusalsMeasuredSince: z.string().nullable(),
+  total: LeadSourceYieldMeasuresSchema,
+  coverage: z.object({ firstEmails: z.number(), withSource: z.number(), noSourceRecorded: z.number(), unknown: z.number() }),
+  sources: z.array(
+    LeadSourceYieldMeasuresSchema.extend({ key: z.string(), kind: z.enum(["source", "no_source_recorded", "unknown"]) }),
+  ),
+  series: z.object({
+    days: z.array(z.string()),
+    keys: z.array(z.string()),
+    firstEmails: z.array(LeadSourceYieldPointSchema),
+    hardBounces: z.array(LeadSourceYieldPointSchema),
+    refusals: z.array(LeadSourceYieldPointSchema),
+    blocklistRefusals: z.array(LeadSourceYieldPointSchema),
+    firstEmailsFromListedDomains: z.array(LeadSourceYieldPointSchema),
+  }),
+});
+export type LeadSourceYield = z.infer<typeof LeadSourceYieldSchema>;
+
+export const LEAD_SOURCE_YIELD_PATH = "/instantly/ops/lead-source-yield";
+
+export async function getLeadSourceYield(days: number, token?: string): Promise<LeadSourceYield> {
+  return parseOps(
+    "getLeadSourceYield",
+    LeadSourceYieldSchema,
+    await apiCall<unknown>(`${LEAD_SOURCE_YIELD_PATH}?days=${days}`, { token }),
+  );
+}
+
 // --- Mailboxes --------------------------------------------------------------
 
 const OpsMailboxAddressSchema = z.object({
