@@ -88,7 +88,7 @@ import { requiredPhoneProblem } from "@/lib/phone-syntax";
 import type { PhoneValue } from "@/components/onboarding/phone-input";
 import { PhoneField, defaultPhoneCountry } from "./phone-field";
 import { EMPTY_PROGRESS, launchFromPreview, type LaunchProgress } from "./launch";
-import type { SignupLaunchPlan } from "@/lib/v2/signup-campaign";
+import { launchCount, type SignupLaunchPlan } from "@/lib/v2/signup-campaign";
 import { PrepaidTopup, type TopupChoice } from "./prepaid-topup";
 import { SpendConsent, allTicked } from "./spend-consent";
 import { consentRecord, spendConsentLines, type PaymentConsentRecord } from "@/lib/v2/spend-consent";
@@ -973,7 +973,7 @@ export function AccountCardWall({
       const res = await fetch("/api/onboarding/complete", { method: "POST", headers: { Authorization: `Bearer ${token}` } });
       if (!res.ok) throw new Error("We could not finish setting up your account. Try again.");
       await session?.getToken({ skipCache: true });
-      posthog.capture("get_started_launched", { campaigns: plan.reactive ? 2 : 1, plan: soldRef.current, lp_variant: arm.variant });
+      posthog.capture("get_started_launched", { campaigns: launchCount(plan), plan: soldRef.current, lp_variant: arm.variant });
       try {
         localStorage.removeItem(GET_STARTED_SNAPSHOT_KEY);
       } catch {

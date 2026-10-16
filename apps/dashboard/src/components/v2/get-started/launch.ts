@@ -96,10 +96,10 @@ async function launchFunnel(brandId: string, offerId: string, f: SignupLaunchFun
 
 /**
  * Runs the launch on the offer and audience the visitor picked (no re-pick): the levers, the
- * audience portfolio, then the proactive funnel campaign (it must start or the launch fails),
- * then the meeting-booking one when ticked (a refusal there is stated in the console and does not
- * undo the outreach that started). Mutates `progress` as each write lands so a retry resumes.
- * Returns the proactive funnel campaign's id (where the campaign page opens).
+ * audience portfolio, then each ticked funnel campaign: the proactive one must start or the launch
+ * fails; the meeting-booking one after it is stated in the console on a refusal (it does not undo
+ * the outreach that started), and must start when it is the only one. Mutates `progress` as each
+ * write lands so a retry resumes. Returns the first campaign's id (where the campaign page opens).
  */
 export async function launchFromPreview(input: LaunchInput, progress: LaunchProgress): Promise<string> {
   const { offerId } = input.offer;
@@ -128,9 +128,16 @@ export async function launchFromPreview(input: LaunchInput, progress: LaunchProg
 
   // The emails are written from the offer points: they land before anything starts.
   await levers;
-  const firstId = await launchFunnel(input.brandId, offerId, input.plan.proactive, progress);
+  const proactive = input.plan.proactive;
+  const firstId = proactive ? await launchFunnel(input.brandId, offerId, proactive, progress) : null;
   const reactive = input.plan.reactive;
-  if (reactive && !progress.started[reactive.salesFunnelId]) {
+  if (!reactive) {
+    if (!firstId) throw new Error("[get-started] launch: the plan holds no campaign");
+    return firstId;
+  }
+  // Alone, the AI reply campaign is THE launch: it must start or the launch fails.
+  if (!firstId) return launchFunnel(input.brandId, offerId, reactive, progress);
+  if (!progress.started[reactive.salesFunnelId]) {
     try {
       await launchFunnel(input.brandId, offerId, reactive, progress);
     } catch (err) {

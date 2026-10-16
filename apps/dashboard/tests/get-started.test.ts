@@ -376,7 +376,7 @@ describe("the surface", () => {
     expect(LAUNCH).toContain('extractBrandFields([brandId], leverFields, { mode: "suggest", urlStrategy: "landing", offerId })');
     expect(LAUNCH).toContain("saveOfferUserFields(brandId, offerId, fields)");
     // The campaign starts after the levers land (its emails are written from them).
-    expect(LAUNCH.indexOf("await levers;\n  const firstId = await launchFunnel(")).toBeGreaterThan(0);
+    expect(LAUNCH.indexOf("await levers;\n  const proactive = input.plan.proactive;\n  const firstId = proactive ? await launchFunnel(")).toBeGreaterThan(0);
   });
 
   it("carries Explee's countdown and spots strips on the wall (owner-decided, copied for now)", () => {
@@ -459,7 +459,7 @@ describe("the wall", () => {
     expect(wall).not.toContain("medianReturnPerDollar");
     const page = fs.readFileSync(path.resolve(__dirname, "../src/components/v2/get-started/get-started.tsx"), "utf8");
     const wallTag = page.slice(page.indexOf("<AccountCardWall"), page.indexOf("onClose={() => setWallOpen(false)}", page.indexOf("<AccountCardWall")));
-    expect(wallTag).toContain("outlook={chosenFunnelOutlook(funnels?.proactive ?? null)}");
+    expect(wallTag).toContain("outlook={chosenFunnelOutlook(launchPlan?.proactive ? (funnels?.proactive ?? null) : null)}");
     // Email code, no password to type.
     expect(wall).not.toContain('type="password"');
     expect(wall).toContain('strategy: "email_code"');

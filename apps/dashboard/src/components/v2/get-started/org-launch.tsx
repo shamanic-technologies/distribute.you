@@ -21,7 +21,7 @@ import { getStripe } from "@/lib/stripe";
 import { defaultSalesRepToAccountEmail } from "@/lib/sales-rep-default";
 import { v2CampaignHref } from "@/lib/v2/routes";
 import { matchNote, topupCta, type GetStartedOffer } from "@/lib/v2/get-started";
-import type { SignupLaunchPlan } from "@/lib/v2/signup-campaign";
+import { launchCount, type SignupLaunchPlan } from "@/lib/v2/signup-campaign";
 import { EMPTY_PROGRESS, launchFromPreview, type LaunchProgress } from "./launch";
 import { PrepaidTopup, type TopupChoice } from "./prepaid-topup";
 import { payTopup, settleTopup } from "./pay-topup";
@@ -165,7 +165,7 @@ export function OrgLaunch({
       } catch (e) {
         console.error("[brand-walk] snapshot clear failed:", e);
       }
-      posthog.capture("brand_walk_launched", { org_id: orgId, brand_id: brandId, campaigns: plan.reactive ? 2 : 1 });
+      posthog.capture("brand_walk_launched", { org_id: orgId, brand_id: brandId, campaigns: launchCount(plan) });
       setApiActiveOrgOverride(null);
       pingOwner({ event: "launched", domain: website ? pingHostOf(pingWebsiteUrl(website)) : null });
       window.location.assign(v2CampaignHref(orgId, brandId, campaignId));

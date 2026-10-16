@@ -1,14 +1,13 @@
 /**
- * The END of signup (`/get-started` and "Add a brand"), owner sketch 2026-10-10:
+ * The END of signup (`/get-started` and "Add a brand"), owner 2026-10-16: two equal cards, both
+ * ticked, each its face, served name, served one line and its own prefilled budget:
  *
- *   Your campaign
- *   [face] <best runnable PROACTIVE funnel for the offer>
- *   <one plain line of what it does>
- *   Estimated: <served cost + its unit>
- *   Max budget   [$ 20 ] per [day v]
- *   [x] Also let our AI book meetings when someone replies   (ticked by default, owner 2026-10-13)
- *       [face] <reactive funnel> · Up to [$ 10 ] per [week v]
+ *   [x] [face] <best runnable PROACTIVE cold-email funnel>      [x] [face] <reactive AI reply funnel>
+ *       <served one line>                                           <served one line>
+ *       $ 20 / day                                                  Up to $ 10 / week
  *   [ Launch ]  -> then the payment wall exactly as today
+ *
+ * Unticking a card = that campaign is not created; at least one stays ticked to launch.
  *
  * The funnels are features-service's, runnable only, ROI first, PRICED FOR THIS OFFER (owner
  * 2026-10-10: the wall shows this offer's return, never the fleet's): `GET /v1/offers/:offerId/
@@ -136,6 +135,7 @@ export function asSignupPeriod(v: unknown, fallback: SignupPeriod): SignupPeriod
 
 /** What the person typed, as typed (strings), so a half-typed amount survives a reload. */
 export interface SignupCampaignDraft {
+  proactiveOn: boolean;
   budget: string;
   budgetPeriod: SignupPeriod;
   reactiveOn: boolean;
@@ -150,6 +150,7 @@ export interface SignupCampaignDraft {
  * it here"), meetings ON at up to $10 a week (owner 2026-10-13, always ticked by default).
  */
 export const DEFAULT_SIGNUP_DRAFT: SignupCampaignDraft = {
+  proactiveOn: true,
   budget: "20",
   budgetPeriod: "daily",
   reactiveOn: true,
@@ -163,6 +164,7 @@ export function parseSignupDraft(v: unknown): SignupCampaignDraft | null {
   const o = v as Record<string, unknown>;
   const str = (x: unknown, d: string) => (typeof x === "string" ? x : d);
   return {
+    proactiveOn: typeof o.proactiveOn === "boolean" ? o.proactiveOn : DEFAULT_SIGNUP_DRAFT.proactiveOn,
     budget: str(o.budget, DEFAULT_SIGNUP_DRAFT.budget),
     budgetPeriod: asSignupPeriod(o.budgetPeriod, DEFAULT_SIGNUP_DRAFT.budgetPeriod),
     reactiveOn: typeof o.reactiveOn === "boolean" ? o.reactiveOn : DEFAULT_SIGNUP_DRAFT.reactiveOn,
@@ -185,9 +187,15 @@ export interface SignupLaunchFunnel {
   caps: FunnelCapsWrite;
 }
 
+/** What Launch creates: each ticked campaign, at least one of the two. */
 export interface SignupLaunchPlan {
-  proactive: SignupLaunchFunnel;
+  proactive: SignupLaunchFunnel | null;
   reactive: SignupLaunchFunnel | null;
+}
+
+/** How many campaigns the plan creates (1 or 2). */
+export function launchCount(plan: SignupLaunchPlan): number {
+  return (plan.proactive ? 1 : 0) + (plan.reactive ? 1 : 0);
 }
 
 const WHOLE = /^\d+$/;
@@ -202,35 +210,35 @@ function wholeUsd(raw: string): number | null {
 
 /**
  * The plan to launch, or the one plain sentence that says what to fix. A funnel with no max
- * budget is held unfunded by billing, so a budget is required; signup sets no volume cap. The
- * meeting funnel launches when ticked AND served: an offer it is not served for never shows the
- * tick, so the default-on tick cannot block the launch.
+ * budget is held unfunded by billing, so each ticked card needs its budget; signup sets no
+ * volume cap. A card is created when ticked AND served: a funnel not served for this offer shows
+ * no card, so its default-on tick cannot block the launch. Nothing ticked = nothing to launch.
  */
 export function signupLaunchPlan(
   draft: SignupCampaignDraft,
   funnels: { proactive: SignupFunnel | null; reactive: SignupFunnel | null },
 ): { plan: SignupLaunchPlan } | { problem: string } {
   if (!funnels.proactive) return { problem: "We could not load your campaign. Try again." };
-  const budget = wholeUsd(draft.budget);
-  if (budget == null) return { problem: "Set a max budget in whole dollars, $1 or more." };
+  let proactive: SignupLaunchFunnel | null = null;
+  if (draft.proactiveOn) {
+    const budget = wholeUsd(draft.budget);
+    if (budget == null) return { problem: "Set a budget in whole dollars, $1 or more." };
+    proactive = {
+      salesFunnelId: funnels.proactive.salesFunnelId,
+      name: funnels.proactive.name,
+      caps: { maxBudget: { amountCents: budget * 100, period: draft.budgetPeriod }, maxVolume: null },
+    };
+  }
   let reactive: SignupLaunchFunnel | null = null;
   if (draft.reactiveOn && funnels.reactive) {
     const upTo = wholeUsd(draft.reactiveBudget);
-    if (upTo == null) return { problem: "Set how much meeting booking may spend, in whole dollars." };
+    if (upTo == null) return { problem: "Set a budget in whole dollars, $1 or more." };
     reactive = {
       salesFunnelId: funnels.reactive.salesFunnelId,
       name: funnels.reactive.name,
       caps: { maxBudget: { amountCents: upTo * 100, period: draft.reactivePeriod }, maxVolume: null },
     };
   }
-  return {
-    plan: {
-      proactive: {
-        salesFunnelId: funnels.proactive.salesFunnelId,
-        name: funnels.proactive.name,
-        caps: { maxBudget: { amountCents: budget * 100, period: draft.budgetPeriod }, maxVolume: null },
-      },
-      reactive,
-    },
-  };
+  if (!proactive && !reactive) return { problem: "Pick at least one campaign." };
+  return { plan: { proactive, reactive } };
 }
