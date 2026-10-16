@@ -71,8 +71,6 @@ import {
   SIGNUP_PERIODS,
   SIGNUP_PROACTIVE_CHANNEL,
   SIGNUP_REACTIVE_CHANNEL,
-  estimatedLine,
-  isLearning,
   signupFunnelsFrom,
   signupLaunchPlan,
   type SignupCampaignDraft,
@@ -80,7 +78,6 @@ import {
   type SignupPeriod,
 } from "@/lib/v2/signup-campaign";
 import { FunnelFace } from "@/components/v2/funnel-campaigns";
-import { SelectCard } from "@/components/v2/select-card";
 import {
   COMPANY_FIELDS,
   COMPETITOR_FIELDS,
@@ -768,11 +765,11 @@ export function GetStarted({ org, ipCountry = null }: { org?: OrgWalk; ipCountry
     setAnswerError(null);
     setStep("campaign", "done");
     saveSnapshot({ campaign: campaignDraft, campaignDone: true });
-    posthog.capture("get_started_campaign_set", { funnel: r.plan.proactive.name, meetings: !!r.plan.reactive });
+    posthog.capture("get_started_campaign_set", { funnel: r.plan.proactive?.name ?? null, meetings: !!r.plan.reactive });
     stepDone("campaign", {
-      campaign: r.plan.proactive.name,
-      budget: `$${campaignDraft.budget} per ${periodWord(campaignDraft.budgetPeriod)}`,
-      meeting_booking: campaignDraft.reactiveOn ? `up to $${campaignDraft.reactiveBudget} per ${periodWord(campaignDraft.reactivePeriod)}` : "off",
+      campaign: r.plan.proactive?.name ?? "off",
+      budget: r.plan.proactive ? `$${campaignDraft.budget} per ${periodWord(campaignDraft.budgetPeriod)}` : "off",
+      meeting_booking: r.plan.reactive ? `up to $${campaignDraft.reactiveBudget} per ${periodWord(campaignDraft.reactivePeriod)}` : "off",
       monthly_limit: campaignDraft.monthlyLimit,
     });
     setWallNote(null);
@@ -1536,8 +1533,11 @@ export function GetStarted({ org, ipCountry = null }: { org?: OrgWalk; ipCountry
     rows: audRows,
     written: writtenCount,
     campaignLine:
-      steps.campaign === "done" && funnels?.proactive
-        ? `${funnels.proactive.name}, $${campaignDraft.budget.trim()} a ${SIGNUP_PERIODS.find((p) => p.key === campaignDraft.budgetPeriod)?.label ?? "day"}`
+      steps.campaign === "done" && launchPlan
+        ? [launchPlan.proactive, launchPlan.reactive]
+            .filter((f) => f != null)
+            .map((f) => `${f.name}, $${f.caps.maxBudget.amountCents / 100} a ${SIGNUP_PERIODS.find((p) => p.key === f.caps.maxBudget.period)?.label ?? "day"}`)
+            .join(" + ")
         : null,
     lifetimeRevenue: valueInput,
     leverCount: LEVER_DRAFT_FIELDS.filter((f) => answerLines(levers[f.key]).length > 0).length,
@@ -1779,7 +1779,7 @@ export function GetStarted({ org, ipCountry = null }: { org?: OrgWalk; ipCountry
           email={(selectedKey ? emails[selectedKey] : undefined) ?? firstWritten(emails, audience.audienceId) ?? restoredEmail}
           plan={launchPlan}
           monthlyLimit={campaignDraft.monthlyLimit}
-          outlook={chosenFunnelOutlook(funnels?.proactive ?? null)}
+          outlook={chosenFunnelOutlook(launchPlan?.proactive ? (funnels?.proactive ?? null) : null)}
           answered={answered}
           onClose={() => setWallOpen(false)}
         />
@@ -2537,8 +2537,16 @@ function OfferStage({
   );
 }
 
-/** One amount and its period, as the sketch draws it: "[$ 20 ] per [day v]". */
-function CapField({
+/**
+ * One campaign the visitor ticks (owner 2026-10-16: "ces cases avec logo, nom et description et un
+ * budget prérempli"): face, served name, served one line, and its own budget in big figures. Ticked
+ * = the k-card-on fill + check; unticked, the budget hides and the campaign is not created.
+ */
+function CampaignChoice({
+  on,
+  onToggle,
+  name,
+  line,
   prefix,
   value,
   period,
@@ -2546,51 +2554,72 @@ function CapField({
   onPeriod,
   label,
   disabled,
+  delay,
 }: {
-  prefix?: string;
+  on: boolean;
+  onToggle: () => void;
+  name: string;
+  line: string | null;
+  prefix: string;
   value: string;
   period: SignupPeriod;
   onValue: (v: string) => void;
   onPeriod: (p: SignupPeriod) => void;
   label: string;
   disabled: boolean;
+  delay: number;
 }) {
   return (
-    <span className="inline-flex flex-wrap items-center gap-1.5 text-[13px]">
-      {prefix && <span className="k-fg2">{prefix}</span>}
-      <input
-        className="k-input w-24 text-right tabular-nums"
-        style={{ font: "inherit", paddingRight: 8 }}
-        inputMode="numeric"
-        value={value}
-        disabled={disabled}
-        aria-label={label}
-        onChange={(e) => onValue(e.target.value)}
-      />
-      <span className="k-fg2">per</span>
-      <select
-        className="k-input w-auto pr-6"
-        style={{ font: "inherit" }}
-        value={period}
-        disabled={disabled}
-        aria-label={`${label}: period`}
-        onChange={(e) => onPeriod(e.target.value as SignupPeriod)}
-      >
-        {SIGNUP_PERIODS.map((p) => (
-          <option key={p.key} value={p.key}>
-            {p.label}
-          </option>
-        ))}
-      </select>
-    </span>
+    <div className={`gs-in k-card flex flex-col gap-4 p-5 transition-[box-shadow,background-color] duration-150 ${on ? "k-card-on" : ""}`} style={stagger(delay, 80)}>
+      <button type="button" aria-pressed={on} disabled={disabled} onClick={onToggle} className="flex items-start gap-3 text-left">
+        <FunnelFace name={name} size={48} />
+        <span className="min-w-0 flex-1">
+          <span className={`block text-[20px] font-semibold leading-7 ${on ? "k-fg" : "k-fg3"}`}>{name}</span>
+          {line && <span className="k-fg2 mt-0.5 block text-[13px] leading-5">{line}</span>}
+        </span>
+        {on ? (
+          <span aria-hidden className="inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-[var(--accent)] text-[12px] text-white">✓</span>
+        ) : (
+          <span aria-hidden className="h-6 w-6 shrink-0 rounded-full border border-[var(--line-strong)]" />
+        )}
+      </button>
+      {on && (
+        <span className="flex items-baseline gap-1.5 whitespace-nowrap">
+          <span className="k-fg2 text-[16px]">{prefix}</span>
+          <input
+            className="k-input tabular-nums"
+            style={{ font: "inherit", fontSize: 28, fontWeight: 600, height: 48, width: 80, padding: "0 10px", textAlign: "right", borderRadius: 10 }}
+            inputMode="numeric"
+            value={value}
+            disabled={disabled}
+            aria-label={label}
+            onChange={(e) => onValue(e.target.value)}
+          />
+          <span className="k-fg2 text-[16px]">/</span>
+          <select
+            className="k-input w-auto pr-6"
+            style={{ font: "inherit", fontSize: 16, height: 36, paddingLeft: 8 }}
+            value={period}
+            disabled={disabled}
+            aria-label={`${label}: period`}
+            onChange={(e) => onPeriod(e.target.value as SignupPeriod)}
+          >
+            {SIGNUP_PERIODS.map((p) => (
+              <option key={p.key} value={p.key}>
+                {p.label}
+              </option>
+            ))}
+          </select>
+        </span>
+      )}
+    </div>
   );
 }
 
 /**
- * The END of signup (owner sketch 2026-10-10): ONE campaign, the best proactive one
- * features-service runs for cold email and its max budget (no volume: owner 2026-10-13); a tick, on
- * by default, adds the
- * campaign that books meetings when someone replies, with its own "up to". Launch opens the wall.
+ * The END of signup (owner 2026-10-16): two equal cards, both ticked, the best proactive campaign
+ * features-service runs for cold email and the reactive one that answers replies, each with its own
+ * prefilled budget (no volume: owner 2026-10-13). Nothing else to read. Launch opens the wall.
  */
 export function CampaignStage({
   state,
@@ -2622,17 +2651,17 @@ export function CampaignStage({
   const done = state === "done";
   const main = funnels?.proactive ?? null;
   const meet = funnels?.reactive ?? null;
-  const est = main ? estimatedLine(main) : null;
   const set = (patch: Partial<SignupCampaignDraft>) => onChange({ ...draft, ...patch });
+  const nothingTicked = !draft.proactiveOn && !(meet && draft.reactiveOn);
   return (
     <StepCard
       index={stepIndex("campaign") + 1}
-      title="Your campaign"
+      title="Your campaigns"
       state={state}
       meta={<StateWord state={state} />}
       footer={
         main && !done ? (
-          <button type="button" className="k-btn-accent k-cta gs-glow justify-center px-8" onClick={onLaunch}>
+          <button type="button" className="k-btn-accent k-cta gs-glow justify-center px-8" onClick={onLaunch} disabled={nothingTicked}>
             Launch
           </button>
         ) : null
@@ -2648,59 +2677,39 @@ export function CampaignStage({
           </button>
         </div>
       ) : (
-        <div className="grid grid-cols-[minmax(0,1fr)] gap-4">
-          <div className="flex items-start gap-3">
-            <FunnelFace name={main.name} size={44} />
-            <div className="min-w-0">
-              <p className="k-fg text-[16px] font-semibold leading-6">{main.name}</p>
-              {lineOf(SIGNUP_PROACTIVE_CHANNEL) && <p className="k-fg2 text-[13px] leading-5">{lineOf(SIGNUP_PROACTIVE_CHANNEL)}</p>}
-              {isLearning(main) ? (
-                <span className="k-chip mt-1 inline-flex">Learning</span>
-              ) : (
-                est && <p className="k-fg3 mt-0.5 text-[12px] tabular-nums">{est}</p>
-              )}
-            </div>
-          </div>
-          <div className="k-inset grid grid-cols-[minmax(0,1fr)] gap-2.5 rounded-[10px] p-3">
-            <div className="grid items-center gap-1.5 sm:grid-cols-[112px_minmax(0,1fr)]">
-              <span className="k-label">Max budget</span>
-              <CapField
-                prefix="$"
-                value={draft.budget}
-                period={draft.budgetPeriod}
-                onValue={(v) => set({ budget: v })}
-                onPeriod={(p) => set({ budgetPeriod: p })}
-                label="Max budget in dollars"
-                disabled={done}
-              />
-            </div>
-          </div>
-          {meet && (
-            <div className="grid grid-cols-[minmax(0,1fr)] gap-2">
-              <SelectCard
+        <div className="mt-2 grid grid-cols-[minmax(0,1fr)] gap-5">
+          <div className={`grid grid-cols-[minmax(0,1fr)] gap-3 ${meet ? "sm:grid-cols-2" : ""}`}>
+            <CampaignChoice
+              on={draft.proactiveOn}
+              onToggle={() => set({ proactiveOn: !draft.proactiveOn })}
+              name={main.name}
+              line={lineOf(SIGNUP_PROACTIVE_CHANNEL)}
+              prefix="$"
+              value={draft.budget}
+              period={draft.budgetPeriod}
+              onValue={(v) => set({ budget: v })}
+              onPeriod={(p) => set({ budgetPeriod: p })}
+              label="Max budget in dollars"
+              disabled={done}
+              delay={0}
+            />
+            {meet && (
+              <CampaignChoice
                 on={draft.reactiveOn}
-                onClick={() => !done && set({ reactiveOn: !draft.reactiveOn })}
-                mark={<FunnelFace name={meet.name} size={28} />}
-                title="Also let our AI book meetings when someone replies"
-                sub={[meet.name, isLearning(meet) ? "Learning" : estimatedLine(meet), lineOf(SIGNUP_REACTIVE_CHANNEL)].filter(Boolean).join(" · ")}
-                wrapSub
-                wrapTitle
+                onToggle={() => set({ reactiveOn: !draft.reactiveOn })}
+                name={meet.name}
+                line={lineOf(SIGNUP_REACTIVE_CHANNEL)}
+                prefix="Up to $"
+                value={draft.reactiveBudget}
+                period={draft.reactivePeriod}
+                onValue={(v) => set({ reactiveBudget: v })}
+                onPeriod={(p) => set({ reactivePeriod: p })}
+                label="AI reply budget in dollars"
+                disabled={done}
+                delay={1}
               />
-              {draft.reactiveOn && (
-                <div className="gs-in flex flex-wrap items-center gap-2 pl-1">
-                  <CapField
-                    prefix="Up to $"
-                    value={draft.reactiveBudget}
-                    period={draft.reactivePeriod}
-                    onValue={(v) => set({ reactiveBudget: v })}
-                    onPeriod={(p) => set({ reactivePeriod: p })}
-                    label="Meeting booking budget in dollars"
-                    disabled={done}
-                  />
-                </div>
-              )}
-            </div>
-          )}
+            )}
+          </div>
           {limitPrefillUsd != null && (
             <label className="flex flex-wrap items-center gap-1.5 text-[13px]">
               <span className="k-fg">Never charge me more than</span>

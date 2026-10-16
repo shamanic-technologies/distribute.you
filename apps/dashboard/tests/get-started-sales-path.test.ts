@@ -9,6 +9,7 @@ import {
   parseSignupFunnels,
   signupFunnelsFrom,
   signupLaunchPlan,
+  launchCount,
 } from "../src/lib/v2/signup-campaign";
 
 const read = (p: string) => readFileSync(resolve(__dirname, "..", p), "utf-8");
@@ -51,8 +52,8 @@ describe("Your campaign: features-service's funnels, picked as served", () => {
     expect(isLearning({ status: "learning" })).toBe(true);
   });
 
-  it("opens on $20 a day, no volume cap, meetings ON at up to $10 a week (owner 2026-10-13)", () => {
-    expect(DEFAULT_SIGNUP_DRAFT).toEqual({ budget: "20", budgetPeriod: "daily", reactiveOn: true, reactiveBudget: "10", reactivePeriod: "weekly", monthlyLimit: null });
+  it("opens with both campaigns ticked: $20 a day, no volume cap, AI reply up to $10 a week (owner 2026-10-13/16)", () => {
+    expect(DEFAULT_SIGNUP_DRAFT).toEqual({ proactiveOn: true, budget: "20", budgetPeriod: "daily", reactiveOn: true, reactiveBudget: "10", reactivePeriod: "weekly", monthlyLimit: null });
   });
 
   it("launches the max budget in cents with no volume cap, and the meeting funnel when ticked (the default)", () => {
@@ -66,6 +67,19 @@ describe("Your campaign: features-service's funnels, picked as served", () => {
     });
     const off = signupLaunchPlan({ ...DEFAULT_SIGNUP_DRAFT, reactiveOn: false }, funnels);
     expect("plan" in off && off.plan.reactive).toBeNull();
+  });
+
+  it("an unticked card is not created; the AI reply alone launches; nothing ticked cannot launch", () => {
+    const funnels = signupFunnelsFrom(PAGES);
+    const alone = signupLaunchPlan({ ...DEFAULT_SIGNUP_DRAFT, proactiveOn: false, budget: "" }, funnels);
+    expect("plan" in alone && alone.plan.proactive).toBeNull();
+    expect("plan" in alone && alone.plan.reactive?.salesFunnelId).toBe("meet@ai");
+    expect("plan" in alone && launchCount(alone.plan)).toBe(1);
+    expect(signupLaunchPlan({ ...DEFAULT_SIGNUP_DRAFT, proactiveOn: false, reactiveOn: false }, funnels)).toEqual({ problem: "Pick at least one campaign." });
+    // The AI reply card not served + the proactive one unticked = nothing to launch.
+    expect(signupLaunchPlan({ ...DEFAULT_SIGNUP_DRAFT, proactiveOn: false }, { ...funnels, reactive: null })).toHaveProperty("problem");
+    expect(parseSignupDraft({ proactiveOn: false })?.proactiveOn).toBe(false);
+    expect(parseSignupDraft({})?.proactiveOn).toBe(true);
   });
 
   it("a meeting funnel not served for this offer never blocks the launch (its tick is not shown)", () => {
@@ -95,7 +109,6 @@ describe("Your campaign: features-service's funnels, picked as served", () => {
     expect(api).not.toContain('fetch("/api/public/sales-funnels")');
     expect(PAGE).toContain("saveSnapshot({ funnels: next });");
     expect(PAGE).toContain("if (s.funnels) setFunnels(s.funnels);");
-    expect(PAGE).toContain('<span className="k-chip mt-1 inline-flex">Learning</span>');
     const f = signupFunnelsFrom(PAGES);
     expect(parseSignupFunnels(JSON.parse(JSON.stringify(f)))).toEqual(f);
     expect(parseSignupFunnels({ proactive: { name: "x" } })).toBeNull();
@@ -117,10 +130,11 @@ describe("what we launch: caps first, then ONE funnel campaign (owner 2026-10-10
     }
   });
 
-  it("starts the proactive one first and lands on it", () => {
+  it("starts the proactive one first and lands on it; the AI reply alone must start", () => {
     const fn = LAUNCH.slice(LAUNCH.indexOf("export async function launchFromPreview("));
     expect(fn.indexOf("input.plan.proactive")).toBeLessThan(fn.indexOf("input.plan.reactive"));
     expect(fn).toContain("return firstId;");
+    expect(fn).toContain("if (!firstId) return launchFunnel(input.brandId, offerId, reactive, progress);");
   });
 
   it("the page opens the step from the email step, checks the plan, then opens the wall", () => {
@@ -135,12 +149,17 @@ describe("what we launch: caps first, then ONE funnel campaign (owner 2026-10-10
     const words = stage.replace(/\/\/.*$/gm, "").replace(/\{\/\*[\s\S]*?\*\/\}/g, "");
     // Every quoted string and every JSX text run the visitor can read.
     const shown = [...(words.match(/"[^"\n]*"/g) ?? []), ...(words.match(/>[^<>{}\n]+</g) ?? [])].join("\n");
-    expect(shown).toContain("Your campaign");
+    expect(shown).toContain("Your campaigns");
     expect(shown).not.toMatch(/funnel|pipe|\bleg\b|sales path/i);
-    expect(stage).toContain('title="Your campaign"');
-    expect(stage).toContain("Max budget");
+    expect(stage).toContain('title="Your campaigns"');
     expect(stage).not.toContain("Max volume");
-    expect(stage).toContain("Also let our AI book meetings when someone replies");
+    // Two equal ticked cards (owner 2026-10-16): no extra tick, no figures paragraph.
+    expect(stage).not.toContain("Also let our AI book meetings when someone replies");
+    expect(stage).not.toContain("estimatedLine(");
+    expect(stage.match(/<CampaignChoice\b/g)?.length).toBe(2);
+    expect(stage).toContain("line={lineOf(SIGNUP_PROACTIVE_CHANNEL)}");
+    expect(stage).toContain("line={lineOf(SIGNUP_REACTIVE_CHANNEL)}");
+    expect(stage).toContain("disabled={nothingTicked}");
   });
 });
 
