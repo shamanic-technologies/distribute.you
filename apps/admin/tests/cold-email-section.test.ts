@@ -43,7 +43,7 @@ describe("the section exists, one page per object", () => {
     const hrefs = [...sidebar.matchAll(/href: `?\$?\{?COLD_EMAIL_ROOT\}?(\/[a-z-]+)?`?/g)].map(
       (m) => m[1] ?? "",
     );
-    expect(hrefs.length).toBe(6);
+    expect(hrefs.length).toBe(7); // + Blocklists (2026-10-16)
     for (const suffix of hrefs) {
       const rel = suffix === "" ? PAGES.overview : `${SECTION}${suffix}/page.tsx`;
       expect(exists(rel), `nav points at ${suffix || "/"} which has no page`).toBe(true);

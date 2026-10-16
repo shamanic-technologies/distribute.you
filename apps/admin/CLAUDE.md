@@ -112,6 +112,10 @@ instantly-service serves a USD twin beside every money figure on `/ops/domains` 
 - Rate STATED wherever dollars are totalled (`fxRateLine(fx)`); guards fail on a literal rate. `vendorReportsMailboxes:false` (Instantly DFY) = `vendorMailboxes:0` is "not reported", never a mismatch. Guards `tests/estate-usd.test.ts` + `estate-signals` + `domain-health`.
 - **A verdict the producer computes is READ, never re-derived from its raw INPUTS** (re-grading mailboxes on health/placement listed 48 of 68 domains for deletion vs 2 via `lifecycleStatus`): `in_recovery` is BECAUSE delivery is under the bar; promotion RESETS the 7-day health score; `deactivated_by_user` is policy. Numbers are display/hover only. An alert rule firing on most of the population is a fleet description: count it against prod, GROUP by kind, split by CAUSE.
 
+## Cold-email Blocklists page (`/audit/cold-email/blocklists`)
+
+- **Every monitoring surface = one chart per relevant sub-topic, readable in 1 second, read straight off the producer's DAILY series** (owner 2026-10-16); a monitor shipped without its chart is not done. Here: instantly-service `GET /internal/domain-blocklist` (gateway `/v1/instantly/ops/domain-blocklist`): domains listed (per list), mailboxes out of new sequences, sends from listed domains, blocklist bounces (per list), removal links/requests, delistings. A `null` point = before the first honest check: no bar, tooltip "Not checked yet", never a zero. Removal forms need a person: the page links the list's form and records "I filed it" (`POST .../removal-requests`).
+
 ## Instantly audit
 
 - **"Queued today" = `queuedFirstUnsentSequences + queuedNextToday` (`queuedTodayFor()` in `audit/instantly/page.tsx`)**, what send selection counts; `queuedFirstUnsent` counts STEPS (right only for the `queueSize` partition `= queuedFirstUnsent + queuedNextToday + queuedNextTomorrow + queuedNextLater`). Column, `compareRows`, `QUEUE_BINS`, row panel all call the one helper; panel keeps `Due today` / `Queue (all remaining steps)` separate; the two tiles above the chart count STEPS (`queueSize`) and say so. Guard `tests/instantly-queued-today.test.ts`.
