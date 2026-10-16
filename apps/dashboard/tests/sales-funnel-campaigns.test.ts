@@ -247,6 +247,15 @@ describe("sales funnel campaigns: the type picks the words (owner 2026-10-10)", 
     expect(volumeUnitWords(null, "reactive", 3)).toBe("leads handled");
   });
 
+  it("Suggested cards: an estimated ROI reads expected, never 'across clients', in the producer's order (owner 2026-10-16)", () => {
+    const overview = src("src/components/v2/campaigns-overview-page.tsx");
+    const suggested = overview.slice(overview.indexOf("function Suggested("), overview.indexOf("function CampaignList("));
+    expect(suggested).toContain('expected: f.roiBasis === "estimated"');
+    expect(suggested).toContain('{f.roiBasis === "measured" && <span>across clients</span>}');
+    // features-service ranks measured > estimated, then ROI: a browser ROI sort would drop that tier.
+    expect(suggested).not.toContain(".sort(");
+  });
+
   it("the Campaigns page lists ONLY funnel campaigns, staff mode included (no pipe table, owner 2026-10-11)", () => {
     const overview = src("src/components/v2/campaigns-overview-page.tsx");
     expect(overview).not.toContain("StaffPipeCampaigns");

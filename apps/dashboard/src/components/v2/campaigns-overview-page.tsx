@@ -25,7 +25,6 @@ import {
   type SalesFunnelCampaign,
   type SalesFunnelCaps,
 } from "@/lib/sales-funnel-campaigns";
-import { formatRoi, roiIsGood } from "@/lib/format-roi";
 import { formatUsdAdaptive } from "@/lib/format-number";
 import { useStaffMode } from "@/lib/use-staff-mode";
 import { CAMPAIGN_LAYOUT_PARAM, isCampaignLayoutPreview, withLayoutNext } from "@/lib/v2/campaign-layout-preview";
@@ -41,7 +40,7 @@ import { useCopilotDock } from "@/components/v2/copilot-dock";
 import { useStaffCatalogueList } from "@/components/v2/staff-catalogue-data";
 import { FunnelCampaignModal, FunnelCampaignStatus, FunnelFace, FunnelRoi, TypeTag, useFunnelCampaigns } from "@/components/v2/funnel-campaigns";
 import { EmptyNote, MarkLines, SectionTitle, Shimmer, TopBar } from "@/components/v2/ui";
-import { RoiLabel } from "@/components/v2/roi-label";
+import { RoiLabel, RoiValue } from "@/components/v2/roi-label";
 
 /** What the Create box sends to the Copilot when nothing is typed, as if typed and sent. */
 export const CREATE_CAMPAIGN_ASK = "Create a campaign";
@@ -155,8 +154,10 @@ function CreateBox() {
 
 /**
  * features-service's sales funnel catalogue (cross-org, each with its served ROI), minus the
- * funnels this offer already runs, drafts left out, best ROI first. The catalogue route is
- * staff-only today, which this preview is.
+ * funnels this offer already runs, drafts left out, in the producer's order (measured before
+ * estimated, then ROI). An estimated ROI (`roiBasis: "estimated"`: default rates and the fleet
+ * median lifetime revenue) reads "expected", never "across clients" (owner 2026-10-16). The
+ * catalogue route is staff-only today, which this preview is.
  */
 function Suggested({ campaigns }: { campaigns: SalesFunnelCampaign[] | null }) {
   const dock = useCopilotDock();
@@ -167,7 +168,6 @@ function Suggested({ campaigns }: { campaigns: SalesFunnelCampaign[] | null }) {
     const runs = new Set(campaigns.map((c) => c.salesFunnelId));
     return list.data.rows
       .filter((r) => !r.draft && !runs.has(r.id))
-      .sort((a, b) => (b.roi ?? -Infinity) - (a.roi ?? -Infinity))
       .slice(0, 3);
   }, [campaigns, list.data]);
   if (settled && (list.isError || (picks && picks.length === 0))) return null;
@@ -188,10 +188,10 @@ function Suggested({ campaigns }: { campaigns: SalesFunnelCampaign[] | null }) {
                 <span className="block truncate text-[14px] font-medium">{f.name}</span>
                 <span className="k-fg3 inline-flex items-center gap-1 text-[12px]">
                   <RoiLabel>ROI</RoiLabel>
-                  <span className={`tabular-nums ${f.roi != null && roiIsGood(f.roi) ? "text-[var(--run)]" : "k-fg2"}`}>
-                    {f.roi != null ? formatRoi(f.roi) : "Learning"}
+                  <span className="k-fg2 tabular-nums">
+                    <RoiValue roi={{ value: f.roi, expected: f.roiBasis === "estimated", reason: null }} learning />
                   </span>
-                  <span>across clients</span>
+                  {f.roiBasis === "measured" && <span>across clients</span>}
                 </span>
               </MarkLines>
               <p className="k-fg2 mt-3 line-clamp-2 min-h-[40px] text-[13px] leading-5">{f.line}</p>

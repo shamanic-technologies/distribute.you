@@ -66,6 +66,8 @@ export const CatalogueRowSchema = z
     icon: z.string().optional(),
     line: z.string(),
     ...Econ,
+    // "measured" | "estimated" (null when roi is null); a string: the producer owns the vocabulary.
+    roiBasis: z.string().nullable().optional(),
     color: z.string().optional(),
     face: z.string().optional(),
     valueUsd: z.number().nullable().optional(),
