@@ -323,6 +323,7 @@ function CampaignList({ orgId, brandId, offerId }: { orgId: string; brandId: str
               campaign={c}
               row={rowById.get(c.id) ?? null}
               rowSettled={funnelRowSettled(rowById.has(c.id), rowsQ, c.createdAt)}
+              rowsError={rowsQ.isError && !rowById.has(c.id) ? rowsQ.error : null}
               copy={rowById.get(c.id) ?? copyById.get(c.id) ?? null}
               copySettled={funnelRowSettled(rowById.has(c.id) || copyById.has(c.id), copyQ, c.createdAt)}
               caps={capsById.get(c.id) ?? null}
@@ -361,6 +362,7 @@ function CampaignLine({
   campaign,
   row,
   rowSettled,
+  rowsError,
   copy,
   copySettled,
   caps,
@@ -369,6 +371,7 @@ function CampaignLine({
   campaign: SalesFunnelCampaign;
   row: FunnelCampaignRow | null;
   rowSettled: boolean;
+  rowsError: unknown;
   copy: FunnelCampaignCopy | null;
   copySettled: boolean;
   caps: SalesFunnelCaps | null;
@@ -394,10 +397,11 @@ function CampaignLine({
   // A missing served field reads "—" and is logged by name (no fallback).
   useEffect(() => {
     if (!rowSettled) return;
-    if (!row) console.error("[funnel-campaigns] features-service served no row for this campaign", { id: campaign.id });
+    if (rowsError) console.error("[funnel-campaigns] money read failed", { id: campaign.id, error: rowsError });
+    else if (!row) console.error("[funnel-campaigns] features-service served no row for this campaign", { id: campaign.id });
     else if (row.roiMultiple === null && !funnelRoiShown(row).learning && !funnelRoiShown(row).unpriced) console.error("[funnel-campaigns] roiMultiple not served", { id: row.id, reason: roiMissingReason(row) });
     if (row && row.investedUsd === null) console.error("[funnel-campaigns] investedUsd not served", { id: row.id });
-  }, [row, rowSettled, campaign.id]);
+  }, [row, rowSettled, rowsError, campaign.id]);
   useEffect(() => {
     if (copySettled && copy && !copy.shortDescription) console.error("[funnel-campaigns] shortDescription not served", { id: copy.id, reason: copy.shortDescriptionUnavailableReason ?? null });
   }, [copy, copySettled]);

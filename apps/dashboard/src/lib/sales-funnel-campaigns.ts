@@ -406,13 +406,18 @@ export const FunnelCampaignCopiesSchema = z.object({ salesFunnelCampaigns: z.arr
  * final once a read made since mount has answered AFTER the campaign was created. A later poll
  * in flight never takes it back: a row the producer does not serve stays "—", it does not flash
  * the skeleton on every poll (2026-10-14 Ribbon: ROI and Invested blinked every few seconds).
+ * A read made since mount that FAILED is final too: the cell reads "—" and the caller logs the
+ * error, never a skeleton that waits forever on data that is not coming (2026-10-16: a 502 left
+ * ROI and $ Invested loading for good).
  */
 export function funnelRowSettled(
   hasRow: boolean,
-  rows: { isFetchedAfterMount: boolean; dataUpdatedAt: number },
+  rows: { isFetchedAfterMount: boolean; dataUpdatedAt: number; isError: boolean },
   campaignCreatedAt: string,
 ): boolean {
-  return hasRow || (rows.isFetchedAfterMount && rows.dataUpdatedAt >= Date.parse(campaignCreatedAt));
+  if (hasRow) return true;
+  if (!rows.isFetchedAfterMount) return false;
+  return rows.isError || rows.dataUpdatedAt >= Date.parse(campaignCreatedAt);
 }
 
 /** Why a row's ROI is missing, as served (never guessed): the field name and the producer's reason. */

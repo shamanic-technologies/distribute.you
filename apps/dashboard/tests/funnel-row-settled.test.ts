@@ -11,17 +11,31 @@ const after = Date.parse(CREATED) + 60_000;
 
 describe("funnelRowSettled", () => {
   it("a served row is final, even from the cached copy", () => {
-    expect(funnelRowSettled(true, { isFetchedAfterMount: false, dataUpdatedAt: before }, CREATED)).toBe(true);
+    expect(funnelRowSettled(true, { isFetchedAfterMount: false, dataUpdatedAt: before, isError: false }, CREATED)).toBe(true);
   });
   it("a row missing from the cached copy waits for a read made since mount", () => {
-    expect(funnelRowSettled(false, { isFetchedAfterMount: false, dataUpdatedAt: after }, CREATED)).toBe(false);
+    expect(funnelRowSettled(false, { isFetchedAfterMount: false, dataUpdatedAt: after, isError: false }, CREATED)).toBe(false);
   });
   it("a row missing from an answer older than the campaign still waits", () => {
-    expect(funnelRowSettled(false, { isFetchedAfterMount: true, dataUpdatedAt: before }, CREATED)).toBe(false);
+    expect(funnelRowSettled(false, { isFetchedAfterMount: true, dataUpdatedAt: before, isError: false }, CREATED)).toBe(false);
   });
   it("a row missing from a fresh answer is final, and a later poll in flight never takes it back", () => {
     // 2026-10-14 Ribbon: a row features-service did not serve flashed the skeleton on every poll.
-    expect(funnelRowSettled(false, { isFetchedAfterMount: true, dataUpdatedAt: after }, CREATED)).toBe(true);
+    expect(funnelRowSettled(false, { isFetchedAfterMount: true, dataUpdatedAt: after, isError: false }, CREATED)).toBe(true);
+  });
+  it("a read since mount that failed is final: '—', never a skeleton forever (2026-10-16)", () => {
+    expect(funnelRowSettled(false, { isFetchedAfterMount: true, dataUpdatedAt: 0, isError: true }, CREATED)).toBe(true);
+  });
+  it("a failure restored before mount does not settle a missing row", () => {
+    expect(funnelRowSettled(false, { isFetchedAfterMount: false, dataUpdatedAt: 0, isError: true }, CREATED)).toBe(false);
+  });
+});
+
+describe("the Campaigns list states a failed money read", () => {
+  const list = readFileSync(join(__dirname, "../src/components/v2/campaigns-overview-page.tsx"), "utf8");
+  it("logs the rows error by name instead of blaming a missing row", () => {
+    expect(list).toContain("rowsError={rowsQ.isError && !rowById.has(c.id) ? rowsQ.error : null}");
+    expect(list).toContain('console.error("[funnel-campaigns] money read failed"');
   });
 });
 
