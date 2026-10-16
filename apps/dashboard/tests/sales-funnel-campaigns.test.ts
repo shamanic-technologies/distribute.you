@@ -413,6 +413,23 @@ describe("path: a reactive path starts with its trigger tag (owner 2026-10-11)",
   });
 });
 
+describe("a campaign with no graded leg keeps the whole table's money (2026-10-16)", () => {
+  it("parses maturity.isMature null (features-service `boolean | null`) and shows the served figures", async () => {
+    const { FunnelCampaignRowsSchema, funnelRoiShown } = await import("../src/lib/sales-funnel-campaigns");
+    // Social Videos as served in prod: no leg graded, so the verdict is null; $1.21 spent, ROI 0x.
+    const parsed = FunnelCampaignRowsSchema.safeParse({
+      salesFunnelCampaigns: [
+        { id: "a", salesFunnelId: "f", name: "Social Videos", status: "ongoing", type: "proactive", typeLabel: "Daily", path: null, investedUsd: 1.21, roiMultiple: 0, costEconomics: null, maturity: { isMature: null, legs: [] } },
+        { id: "b", salesFunnelId: "g", name: "Signup WhatsApp", status: "ongoing", type: "reactive", typeLabel: "Signup Not Paid In 24 Hours", path: null, investedUsd: 1.41, roiMultiple: null, costEconomics: null, maturity: { isMature: false, legs: [] } },
+      ],
+    });
+    expect(parsed.success).toBe(true);
+    const row = parsed.success ? parsed.data.salesFunnelCampaigns[0] : null;
+    expect(row?.investedUsd).toBe(1.21);
+    expect(funnelRoiShown({ ...row!, headline: null, moneyUnavailableReason: null })).toMatchObject({ value: 0 });
+  });
+});
+
 describe("a max budget AND/OR a max volume funds a funnel (owner 2026-10-11, billing `funded`)", () => {
   const vol = { count: 200, unit: "first_contacts", period: "monthly", consumed: 12, remaining: 188, periodStart: "2026-10-01", periodEnd: null, reached: false, consumedUnavailableReason: null, consumedUnavailableDetail: null };
   const bud = { amountCents: "5000", consumedCents: "0", remainingCents: "5000", period: "weekly", periodStart: "2026-10-06", periodEnd: null, reached: false, consumedUnavailableReason: null, consumedUnavailableDetail: null };

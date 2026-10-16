@@ -364,8 +364,10 @@ export const FunnelCampaignRowSchema = z
     roiMultiple: z.coerce.number().nullable(),
     moneyUnavailableReason: z.string().nullish(),
     costEconomics: z.object({ unmeasuredReason: z.string().nullish() }).passthrough().nullable(),
-    // The producer's maturity verdict on the campaign's return (read, never re-graded).
-    maturity: z.object({ isMature: z.boolean() }).passthrough().nullish(),
+    // The producer's maturity verdict on the campaign's return (read, never re-graded). Null when the
+    // campaign has no graded leg (features-service `isMature: boolean | null`): a strict boolean
+    // rejected the WHOLE table, so every row read "—" (2026-10-16).
+    maturity: z.object({ isMature: z.boolean().nullable() }).passthrough().nullish(),
     // Why a null ROI is null on the pipeline side (`unpricedReason`, e.g. no_funnel_wired), served.
     headline: z.object({ unpricedReason: z.string().nullish() }).passthrough().nullish(),
     // The funnel campaign's EXPECTED return, never empty (features-service EXPECTED-ROI-1011).
