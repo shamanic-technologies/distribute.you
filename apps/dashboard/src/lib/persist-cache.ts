@@ -198,6 +198,8 @@ export const PERSISTABLE_QUERY_ROOTS = new Set([
   "funnelCampaignRows",
   // Their copy only (name, Type label, path), the fast read that paints a new campaign at once.
   "funnelCampaignCopies",
+  // The sales funnels fitted to one offer (features-service), the Campaigns page's Suggested cards.
+  "offerFittedFunnels",
   // Per trigger, how often it fired on an offer, ran, was skipped (campaign-service), under
   // the campaign rows of the Sales path and Sourcing pages.
   "offerTriggerEventsSummary",

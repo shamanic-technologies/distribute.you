@@ -6,7 +6,7 @@ import { useQueries } from "@tanstack/react-query";
 import { PlusIcon } from "@phosphor-icons/react/dist/csr/Plus";
 import { useAuthQuery, useOrgQueryGate } from "@/lib/use-auth-query";
 import { pollOptions } from "@/lib/query-options";
-import { getSalesFunnelCaps, listFunnelCampaignCopies, listFunnelCampaignRows } from "@/lib/api";
+import { getSalesFunnelCaps, listFunnelCampaignCopies, listFunnelCampaignRows, listOfferSalesFunnels } from "@/lib/api";
 import {
   compareFunnelCampaigns,
   fundingLimit,
@@ -39,7 +39,7 @@ import { useSelectedOffer } from "@/components/v2/selected-offer";
 import { useCopilotDock } from "@/components/v2/copilot-dock";
 import { FunnelCampaignModal, FunnelCampaignStatus, FunnelFace, FunnelRoi, TypeTag, useFunnelCampaigns } from "@/components/v2/funnel-campaigns";
 import { EmptyNote, MarkLines, SectionTitle, Shimmer, TopBar } from "@/components/v2/ui";
-import { RoiLabel } from "@/components/v2/roi-label";
+import { RoiLabel, RoiValue } from "@/components/v2/roi-label";
 
 /** What the Create box sends to the Copilot when nothing is typed, as if typed and sent. */
 export const CREATE_CAMPAIGN_ASK = "Create a campaign";
@@ -67,6 +67,8 @@ function useKeepCampaignPreview(): boolean {
 export function CampaignsOverviewPage() {
   const { orgId, brandId } = useParams<{ orgId: string; brandId: string }>();
   const { offerId, settled } = useSelectedOffer();
+  // Suggested is a staff preview (owner decision), as before 2026-10-17.
+  const { staffMode } = useStaffMode();
   const q = useFunnelCampaigns(brandId, offerId ?? null, { enabled: !!offerId });
   const listSettled = q.data !== undefined || q.isFetchedAfterMount;
   const running = (q.data ?? []).filter(isOngoingFunnelCampaign).length;
@@ -94,6 +96,7 @@ export function CampaignsOverviewPage() {
         ) : (
           <div className="space-y-8">
             <CreateBox />
+            {staffMode && <Suggested brandId={brandId} offerId={offerId} campaigns={q.data ?? null} />}
             <CampaignList orgId={orgId} brandId={brandId} offerId={offerId} />
             <UnconvertedRunningCampaigns orgId={orgId} brandId={brandId} offerId={offerId} />
           </div>
@@ -142,6 +145,63 @@ function CreateBox() {
           </button>
         </div>
       </form>
+    </section>
+  );
+}
+
+// ─── Suggested: sales funnels fitted to this offer, not run yet ─────────────────────────
+
+/**
+ * features-service's sales funnels FITTED TO THIS OFFER (`listOfferSalesFunnels`: only funnels
+ * built on the offer's own steps, priced with its stated lifetime revenue), minus the funnels the
+ * offer already runs, drafts left out, in the producer's order (measured before estimated, then
+ * ROI): no browser sort. An estimated ROI reads "expected", never "across clients".
+ */
+function Suggested({ brandId, offerId, campaigns }: { brandId: string; offerId: string; campaigns: SalesFunnelCampaign[] | null }) {
+  const dock = useCopilotDock();
+  const list = useAuthQuery(["offerFittedFunnels", brandId, offerId], () => listOfferSalesFunnels(brandId, offerId), pollOptions);
+  const settled = list.data !== undefined || list.isFetchedAfterMount;
+  const picks = useMemo(() => {
+    if (!campaigns || !list.data) return null;
+    const runs = new Set(campaigns.map((c) => c.salesFunnelId));
+    return list.data.rows.filter((r) => !r.draft && !runs.has(r.id)).slice(0, 3);
+  }, [campaigns, list.data]);
+  if (list.isError && list.data === undefined) console.error("[v2] offer sales funnels unreadable", { offerId, error: list.error?.message });
+  if (settled && (list.isError || (picks && picks.length === 0))) return null;
+  return (
+    <section>
+      <SectionTitle>Suggested for you</SectionTitle>
+      {!picks ? (
+        <div className="grid gap-3 md:grid-cols-3">
+          {[0, 1, 2].map((i) => (
+            <Shimmer key={i} className="h-[148px] rounded-[12px]" />
+          ))}
+        </div>
+      ) : (
+        <div className="grid gap-3 md:grid-cols-3">
+          {picks.map((f) => (
+            <div key={f.id} className="k-card flex min-w-0 flex-col p-4">
+              <MarkLines mark={(px) => <FunnelFace name={f.name} size={px} />}>
+                <span className="block truncate text-[14px] font-medium">{f.name}</span>
+                <span className="k-fg3 inline-flex items-center gap-1 text-[12px]">
+                  <RoiLabel>ROI</RoiLabel>
+                  <span className="k-fg2 tabular-nums">
+                    <RoiValue roi={{ value: f.roi, expected: f.roiBasis === "estimated", reason: null }} learning />
+                  </span>
+                </span>
+              </MarkLines>
+              <p className="k-fg2 mt-3 line-clamp-2 min-h-[40px] text-[13px] leading-5">{f.line}</p>
+              {dock.available && (
+                <div className="mt-3 flex justify-end">
+                  <button type="button" className="k-btn" onClick={() => dock.ask(`${CREATE_CAMPAIGN_ASK} ${f.name}`)}>
+                    Start
+                  </button>
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
     </section>
   );
 }

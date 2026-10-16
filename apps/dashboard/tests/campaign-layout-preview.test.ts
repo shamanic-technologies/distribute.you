@@ -45,10 +45,10 @@ describe("campaign page next layout: staff preview only", () => {
 
 // Owner 2026-10-15: the Campaigns LIST layout is GA (no preview gate); rows keep ?layout=next only for staff already in it.
 describe("campaigns list: GA layout", () => {
-  it("renders for everyone, no Suggested block, rows open the normal campaign page", () => {
+  it("renders for everyone, Suggested only in staff mode, rows open the normal campaign page", () => {
     const page = read("components/v2/campaigns-overview-page.tsx");
     expect(page).not.toContain("CampaignsOverviewPageCurrent");
-    expect(page).not.toContain("<Suggested");
+    expect(page).toContain("{staffMode && <Suggested brandId={brandId} offerId={offerId} campaigns={q.data ?? null} />}");
     expect(page).toContain("const href = keepPreview ? withLayoutNext(plain) : plain;");
     expect(page).toContain("return isCampaignLayoutPreview(staffMode, layout);");
     expect(page).not.toMatch(/\.reduce\(/);
