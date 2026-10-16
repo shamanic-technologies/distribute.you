@@ -13,7 +13,7 @@ const cs = read("src/components/customer-success-view.tsx");
 describe("account status: proactive vs reactive (admin)", () => {
   it("types every status the producer serves", () => {
     const decl = api.slice(api.indexOf("export type AccountStatus ="), api.indexOf("export const ACCOUNT_STATUS_RANK"));
-    for (const s of ["active", "payment_declined", "no_payment_method", "out_of_credit", "reactive_only", "paused", "inactive"]) {
+    for (const s of ["active", "payment_declined", "no_payment_method", "out_of_credit", "reactive_only", "paused", "inactive", "unknown", "churned"]) {
       expect(decl).toContain(`"${s}"`);
     }
   });
@@ -25,10 +25,10 @@ describe("account status: proactive vs reactive (admin)", () => {
     expect(at("reactive_only")).toBeLessThan(at("paused"));
   });
 
-  it("ranks in the producer's order: active, payment_declined, no_payment_method, out_of_credit, reactive_only, paused, inactive, unknown", () => {
+  it("ranks in the producer's order: active, payment_declined, no_payment_method, out_of_credit, reactive_only, paused, inactive, unknown, churned", () => {
     const rank = api.slice(api.indexOf("export const ACCOUNT_STATUS_RANK"), api.indexOf("export interface AuditAccountsStats"));
     const at = (s: string) => Number(rank.match(new RegExp(`\\b${s}: (\\d+)`))?.[1]);
-    const order = ["active", "payment_declined", "no_payment_method", "out_of_credit", "reactive_only", "paused", "inactive", "unknown"];
+    const order = ["active", "payment_declined", "no_payment_method", "out_of_credit", "reactive_only", "paused", "inactive", "unknown", "churned"];
     const ranks = order.map(at);
     expect(ranks.every((r) => Number.isFinite(r))).toBe(true);
     expect([...ranks].sort((a, b) => a - b)).toEqual(ranks);
@@ -49,6 +49,21 @@ describe("account status: proactive vs reactive (admin)", () => {
     expect(stats).toContain("outOfCreditCount?: number;");
     const fleet = api.slice(api.indexOf("export interface CustomerSuccessFleetStats"));
     expect(fleet.slice(0, fleet.indexOf("}"))).toContain("outOfCreditCount?: number;");
+  });
+
+  // Owner rule 2026-10-16: "Free trial font partie de mes clients." An account billing says
+  // cancelled is churned: own pill + count on both boards, never folded into a client bucket.
+  it("churned gets its own pill and count on both boards", () => {
+    for (const src of [page, cs]) {
+      const line = src.split("\n").find((l) => l.trim().startsWith("churned:")) ?? "";
+      expect(line).toContain('label: "Churned"');
+      expect(src).toContain("churnedCount");
+    }
+    expect(page).toContain("row.churnedReason");
+    const stats = api.slice(api.indexOf("export interface AuditAccountsStats"), api.indexOf("export interface AuditAccounts {"));
+    expect(stats).toContain("churnedCount?: number;");
+    const fleet = api.slice(api.indexOf("export interface CustomerSuccessFleetStats"));
+    expect(fleet.slice(0, fleet.indexOf("}"))).toContain("churnedCount?: number;");
   });
 
   it("accounts page: Proactive and Reactive columns, reactive cap card, Reactive only pill", () => {

@@ -156,6 +156,7 @@ const STATUS_PILL: Record<AccountStatus, { label: string; className: string }> =
   paused: { label: "Paused", className: "bg-amber-50 text-amber-700 border-amber-200" },
   inactive: { label: "Inactive", className: "bg-gray-50 text-gray-500 border-gray-200" },
   unknown: { label: "Unknown", className: "bg-orange-50 text-orange-700 border-orange-200" },
+  churned: { label: "Churned", className: "bg-gray-50 text-gray-500 border-gray-200" },
 };
 
 function statusLabel(status: AccountStatus): string {
@@ -595,13 +596,14 @@ export function CustomerSuccessView() {
 
   return (
     <>
-      <section className="grid gap-4 md:grid-cols-4 xl:grid-cols-7">
+      <section className="grid gap-4 md:grid-cols-4 xl:grid-cols-8">
         <StatCard label="Customers" value={s ? count(s.totalCustomers) : DASH} detail="Ever-active org x brand" accent="bg-brand-500" pending={isPending} />
         <StatCard label="Active" value={s ? count(s.activeCount) : DASH} detail="Proactive budget running, funded" accent="bg-emerald-500" pending={isPending} />
         <StatCard label="Reactive only" value={s ? count(s.reactiveOnlyCount ?? 0) : DASH} detail="Only a reactive cap running" accent="bg-sky-500" pending={isPending} />
         <StatCard label="Out of credit" value={s?.outOfCreditCount != null ? count(s.outOfCreditCount) : DASH} detail="Running, balance cannot fund tomorrow" accent="bg-rose-500" pending={isPending} />
         <StatCard label="Paused" value={s ? count(s.pausedCount) : DASH} detail="Held, not spending" accent="bg-amber-500" pending={isPending} />
         <StatCard label="Inactive" value={s ? count(s.inactiveCount) : DASH} detail="No budget or funds" accent="bg-gray-500" pending={isPending} />
+        <StatCard label="Churned" value={s?.churnedCount != null ? count(s.churnedCount) : DASH} detail="Cancelled, per billing" accent="bg-gray-400" pending={isPending} />
         <HealthCountCard green={s?.greenCount ?? 0} yellow={s?.yellowCount ?? 0} red={s?.redCount ?? 0} pending={isPending} />
       </section>
 
