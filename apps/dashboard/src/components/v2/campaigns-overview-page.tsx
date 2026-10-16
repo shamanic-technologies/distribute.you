@@ -37,10 +37,9 @@ import { v2CampaignHref } from "@/lib/v2/routes";
 import { useRoutePrefetch } from "@/lib/use-route-prefetch";
 import { useSelectedOffer } from "@/components/v2/selected-offer";
 import { useCopilotDock } from "@/components/v2/copilot-dock";
-import { useStaffCatalogueList } from "@/components/v2/staff-catalogue-data";
 import { FunnelCampaignModal, FunnelCampaignStatus, FunnelFace, FunnelRoi, TypeTag, useFunnelCampaigns } from "@/components/v2/funnel-campaigns";
 import { EmptyNote, MarkLines, SectionTitle, Shimmer, TopBar } from "@/components/v2/ui";
-import { RoiLabel, RoiValue } from "@/components/v2/roi-label";
+import { RoiLabel } from "@/components/v2/roi-label";
 
 /** What the Create box sends to the Copilot when nothing is typed, as if typed and sent. */
 export const CREATE_CAMPAIGN_ASK = "Create a campaign";
@@ -68,8 +67,6 @@ function useKeepCampaignPreview(): boolean {
 export function CampaignsOverviewPage() {
   const { orgId, brandId } = useParams<{ orgId: string; brandId: string }>();
   const { offerId, settled } = useSelectedOffer();
-  // Suggested reads a staff-only gateway route: a customer would get a 403, so it is staff mode only.
-  const { staffMode } = useStaffMode();
   const q = useFunnelCampaigns(brandId, offerId ?? null, { enabled: !!offerId });
   const listSettled = q.data !== undefined || q.isFetchedAfterMount;
   const running = (q.data ?? []).filter(isOngoingFunnelCampaign).length;
@@ -97,7 +94,6 @@ export function CampaignsOverviewPage() {
         ) : (
           <div className="space-y-8">
             <CreateBox />
-            {staffMode && <Suggested campaigns={q.data ?? null} />}
             <CampaignList orgId={orgId} brandId={brandId} offerId={offerId} />
             <UnconvertedRunningCampaigns orgId={orgId} brandId={brandId} offerId={offerId} />
           </div>
@@ -146,66 +142,6 @@ function CreateBox() {
           </button>
         </div>
       </form>
-    </section>
-  );
-}
-
-// ─── Suggested: sales funnels this offer does not run yet ───────────────────────────────
-
-/**
- * features-service's sales funnel catalogue (cross-org, each with its served ROI), minus the
- * funnels this offer already runs, drafts left out, in the producer's order (measured before
- * estimated, then ROI). An estimated ROI (`roiBasis: "estimated"`: default rates and the fleet
- * median lifetime revenue) reads "expected", never "across clients" (owner 2026-10-16). The
- * catalogue route is staff-only today, which this preview is.
- */
-function Suggested({ campaigns }: { campaigns: SalesFunnelCampaign[] | null }) {
-  const dock = useCopilotDock();
-  const list = useStaffCatalogueList("sales-funnels", { limit: "25" });
-  const settled = list.data !== undefined || list.isFetchedAfterMount;
-  const picks = useMemo(() => {
-    if (!campaigns || !list.data) return null;
-    const runs = new Set(campaigns.map((c) => c.salesFunnelId));
-    return list.data.rows
-      .filter((r) => !r.draft && !runs.has(r.id))
-      .slice(0, 3);
-  }, [campaigns, list.data]);
-  if (settled && (list.isError || (picks && picks.length === 0))) return null;
-  return (
-    <section>
-      <SectionTitle>Suggested for you</SectionTitle>
-      {!picks ? (
-        <div className="grid gap-3 md:grid-cols-3">
-          {[0, 1, 2].map((i) => (
-            <Shimmer key={i} className="h-[148px] rounded-[12px]" />
-          ))}
-        </div>
-      ) : (
-        <div className="grid gap-3 md:grid-cols-3">
-          {picks.map((f) => (
-            <div key={f.id} className="k-card flex min-w-0 flex-col p-4">
-              <MarkLines mark={(px) => <FunnelFace name={f.name} size={px} />}>
-                <span className="block truncate text-[14px] font-medium">{f.name}</span>
-                <span className="k-fg3 inline-flex items-center gap-1 text-[12px]">
-                  <RoiLabel>ROI</RoiLabel>
-                  <span className="k-fg2 tabular-nums">
-                    <RoiValue roi={{ value: f.roi, expected: f.roiBasis === "estimated", reason: null }} learning />
-                  </span>
-                  {f.roiBasis === "measured" && <span>across clients</span>}
-                </span>
-              </MarkLines>
-              <p className="k-fg2 mt-3 line-clamp-2 min-h-[40px] text-[13px] leading-5">{f.line}</p>
-              {dock.available && (
-                <div className="mt-3 flex justify-end">
-                  <button type="button" className="k-btn" onClick={() => dock.ask(`${CREATE_CAMPAIGN_ASK} ${f.name}`)}>
-                    Start
-                  </button>
-                </div>
-              )}
-            </div>
-          ))}
-        </div>
-      )}
     </section>
   );
 }
