@@ -16,7 +16,7 @@ describe("messaging apps link self-serve from Integrations", () => {
   it("names the brand on the query string of every link call (the gateway reads no body)", () => {
     const api = read("lib/api.ts");
     const block = api.slice(api.indexOf("export async function listMatrixLinks("), api.indexOf("// ==================== POSTHOG + STRIPE"));
-    expect(block.match(/brandId=\$\{encodeURIComponent\(brandId\)\}/g)?.length).toBe(4);
+    expect(block.match(/brandId=\$\{encodeURIComponent\(brandId\)\}/g)?.length).toBe(5);
   });
 
   it("polls fast while a code is on screen, slower while an account is logged out, never otherwise", () => {
@@ -63,6 +63,41 @@ describe("messaging apps link self-serve from Integrations", () => {
     expect(rows).toContain("answerMatrixLink(brandId, link.channel, linkId, input)");
     expect(rows).toContain("answer.mutate(values)");
     expect(rows).toContain('link.input?.type === "user_input"');
+  });
+
+  it("each linked account says whether the assistant may send from it (SOPHIE-WA-1016)", () => {
+    const rows = read("components/settings/messaging-link-rows.tsx");
+    // Only on a LINKED account, and only once crm-service serves the field.
+    expect(rows).toContain("{linked && linkId && link.automationAllowed !== undefined ? (");
+    expect(rows).toContain("Assistant sends from this number");
+    expect(rows).toContain('role="switch"');
+    expect(rows).toContain("aria-checked={allowed}");
+    expect(rows).toContain("updateMatrixLink(brandId, linkId, { automationAllowed: next })");
+    expect(rows).toContain("{!allowed ? <p");
+    expect(rows).toContain("Mirrored in your inbox. Nothing automatic is sent from it.");
+  });
+
+  it("each linked account has a persona; an empty one speaks as the sales rep and clears it", () => {
+    const rows = read("components/settings/messaging-link-rows.tsx");
+    expect(rows).toContain("Speaks as");
+    expect(rows).toContain("Leave empty to speak as your sales rep.");
+    expect(rows).toContain("Instructions (optional)");
+    expect(rows).toContain("{ name: p.name, role: p.role, instructions: p.instructions } : null");
+    expect(rows).toContain("<SettingsSaveRow dirty={dirty}");
+    // A write re-reads the list under the key the rows read.
+    expect(rows).toContain('queryClient.invalidateQueries({ queryKey: ["matrixLinks", brandId] })');
+  });
+
+  it("the update names the brand in the query AND the body, and parses crm-service's answer", () => {
+    const api = read("lib/api.ts");
+    const fn = api.slice(api.indexOf("export async function updateMatrixLink("), api.indexOf("export async function unlinkMatrixLink("));
+    expect(fn).toContain("?brandId=${encodeURIComponent(brandId)}");
+    expect(fn).toContain("body: { brandId, ...patch }");
+    expect(fn).toContain('method: "PATCH"');
+    expect(fn).toContain("z.object({ link: MatrixLinkSchema }).safeParse(raw)");
+    // Not yet live everywhere: an older crm-service answers without them.
+    expect(api).toContain("automationAllowed: z.boolean().optional(),");
+    expect(api).toContain(".object({ name: z.string().nullish(), role: z.string().nullish(), instructions: z.string().nullish() })\n    .nullish(),");
   });
 
   it("a cookies step (LinkedIn's login, 2026-10-10) shows a paste box instead of a dead 'Waiting for you'", () => {

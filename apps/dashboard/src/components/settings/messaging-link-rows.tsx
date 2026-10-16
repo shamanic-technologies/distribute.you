@@ -2,7 +2,8 @@
 
 import { useState } from "react";
 import { useMutation } from "@tanstack/react-query";
-import { answerMatrixLink, listMatrixLinks, startMatrixLink, unlinkMatrixLink, type MatrixLink } from "@/lib/api";
+import { answerMatrixLink, listMatrixLinks, startMatrixLink, unlinkMatrixLink, updateMatrixLink, type MatrixLink } from "@/lib/api";
+import { SettingsSaveRow } from "@/components/settings/settings-save-row";
 import { useAuthQuery, useQueryClient } from "@/lib/use-auth-query";
 import { CompanyLogo } from "@/components/company-logo";
 import { linkErrorMessage } from "@/lib/integration-write";
@@ -355,6 +356,10 @@ function AccountRow({
             </form>
           ) : null}
 
+          {linked && linkId && link.automationAllowed !== undefined ? (
+            <AccountSettings brandId={brandId} linkId={linkId} link={link} automationAllowed={link.automationAllowed} />
+          ) : null}
+
           {confirming ? (
             <p className="mt-2 text-sm text-gray-600">This logs us out of this {meta.name} account, stops reading it and removes what we mirrored. Nothing on your phone changes.</p>
           ) : null}
@@ -386,6 +391,137 @@ function AccountRow({
         </div>
       </div>
     </li>
+  );
+}
+
+type PersonaForm = { name: string; role: string; instructions: string };
+
+function personaForm(p: MatrixLink["persona"]): PersonaForm {
+  return { name: p?.name ?? "", role: p?.role ?? "", instructions: p?.instructions ?? "" };
+}
+
+const INPUT =
+  "mt-1 w-full rounded-lg border border-gray-200 px-3 py-1.5 text-sm text-gray-900 placeholder:text-gray-400 focus:border-brand-300 focus:outline-none focus:ring-2 focus:ring-brand-300/40";
+
+/**
+ * A linked account's own settings (crm-service SOPHIE-WA-1016): may the assistant send
+ * from it (off = mirrored in the inbox only), and who it speaks as (empty = the brand's
+ * sales rep). Rendered only once crm-service serves `automationAllowed`, so an older
+ * crm-service never gets a PATCH it would refuse.
+ */
+function AccountSettings({
+  brandId,
+  linkId,
+  link,
+  automationAllowed,
+}: {
+  brandId: string;
+  linkId: string;
+  link: MatrixLink;
+  automationAllowed: boolean;
+}) {
+  const queryClient = useQueryClient();
+  // The pressed value shows at once, over the served one, until crm-service answers.
+  const [pressed, setPressed] = useState<boolean | null>(null);
+  // The user's edits outrank the server: the form shows the served persona until typed in.
+  const [draft, setDraft] = useState<PersonaForm | null>(null);
+  const [saved, setSaved] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const served = personaForm(link.persona);
+  const form = draft ?? served;
+  const dirty = draft !== null && (draft.name !== served.name || draft.role !== served.role || draft.instructions !== served.instructions);
+  const allowed = pressed ?? automationAllowed;
+
+  const settle = async (next: MatrixLink) => {
+    queryClient.setQueryData(["matrixLinks", brandId], (old: { links: MatrixLink[]; accounts: MatrixLink[] } | undefined) =>
+      old ? { ...old, accounts: old.accounts.map((a) => (a.linkId === next.linkId ? next : a)) } : old,
+    );
+    await queryClient.invalidateQueries({ queryKey: ["matrixLinks", brandId] });
+  };
+
+  const toggle = useMutation({
+    mutationFn: (next: boolean) => updateMatrixLink(brandId, linkId, { automationAllowed: next }),
+    onSuccess: async ({ link: next }) => {
+      setError(null);
+      await settle(next);
+      setPressed(null);
+    },
+    onError: (err: Error) => {
+      console.error("[integrations] changing automation on the account failed", link.channel, linkId, err);
+      setPressed(null);
+      setError("Could not change this setting. Try again.");
+    },
+  });
+
+  const savePersona = useMutation({
+    mutationFn: (p: PersonaForm) =>
+      updateMatrixLink(brandId, linkId, {
+        persona: p.name.trim() || p.role.trim() || p.instructions.trim() ? { name: p.name, role: p.role, instructions: p.instructions } : null,
+      }),
+    onSuccess: async ({ link: next }) => {
+      setError(null);
+      await settle(next);
+      setDraft(null);
+      setSaved(true);
+    },
+    onError: (err: Error) => {
+      console.error("[integrations] saving the persona failed", link.channel, linkId, err);
+      setError("Could not save. Try again.");
+    },
+  });
+
+  const edit = (field: keyof PersonaForm, value: string) => {
+    setSaved(false);
+    setDraft({ ...form, [field]: value });
+  };
+
+  return (
+    <div className="mt-3 max-w-md space-y-4 rounded-lg border border-gray-200 bg-gray-50 p-3">
+      <div>
+        <div className="flex items-center justify-between gap-3">
+          <span id={`automation-${linkId}`} className="text-sm font-medium text-gray-700">
+            Assistant sends from this number
+          </span>
+          <button
+            type="button"
+            role="switch"
+            aria-checked={allowed}
+            aria-labelledby={`automation-${linkId}`}
+            disabled={toggle.isPending}
+            onClick={() => {
+              setPressed(!allowed);
+              toggle.mutate(!allowed);
+            }}
+            className={`relative h-5 w-9 shrink-0 rounded-full transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-300 ${allowed ? "bg-brand-600" : "bg-gray-300"}`}
+          >
+            <span className={`absolute left-0 top-0.5 h-4 w-4 rounded-full bg-white shadow transition-transform ${allowed ? "translate-x-[18px]" : "translate-x-0.5"}`} />
+          </button>
+        </div>
+        {!allowed ? <p className="mt-1 text-xs text-gray-500">Mirrored in your inbox. Nothing automatic is sent from it.</p> : null}
+      </div>
+
+      <div>
+        <p className="text-sm font-medium text-gray-700">Speaks as</p>
+        <p className="text-xs text-gray-500">Leave empty to speak as your sales rep.</p>
+        <div className="mt-2 grid grid-cols-1 gap-2 sm:grid-cols-2">
+          <label className="block">
+            <span className="text-xs text-gray-600">Name</span>
+            <input type="text" value={form.name} onChange={(e) => edit("name", e.target.value)} placeholder="First name" className={INPUT} />
+          </label>
+          <label className="block">
+            <span className="text-xs text-gray-600">Role</span>
+            <input type="text" value={form.role} onChange={(e) => edit("role", e.target.value)} placeholder="Sales assistant" className={INPUT} />
+          </label>
+        </div>
+        <label className="mt-2 block">
+          <span className="text-xs text-gray-600">Instructions (optional)</span>
+          <textarea value={form.instructions} onChange={(e) => edit("instructions", e.target.value)} rows={3} className={INPUT} />
+        </label>
+        <SettingsSaveRow dirty={dirty} saving={savePersona.isPending} saved={saved} onSave={() => savePersona.mutate(form)} />
+      </div>
+      {error ? <p className="text-sm text-red-600">{error}</p> : null}
+    </div>
   );
 }
 
