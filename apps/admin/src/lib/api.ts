@@ -5496,7 +5496,7 @@ const DomainBlocklistSchema = z.object({
       id: z.string(),
       domain: z.string(),
       list: z.string(),
-      type: z.enum(["listed", "delisted", "removal_link_issued", "removal_requested"]),
+      type: z.enum(["listed", "delisted", "removal_link_issued", "removal_requested", "removal_failed"]),
       answer: z.string().nullable(),
       labels: z.array(z.string()),
       mailboxes: z.array(z.string()),
@@ -5521,13 +5521,41 @@ const DomainBlocklistSchema = z.object({
         byList: z.object({ surbl: z.number(), spamhaus: z.number(), uribl: z.number(), other_list: z.number() }),
       }),
     ),
-    removalRequests: z.array(z.object({ day: z.string(), linksIssued: z.number(), requested: z.number() })),
+    // `failed` (automated SURBL form not reached) is optional until instantly-service
+    // #1190 is live: absent = not served, drawn as no series, never a zero.
+    removalRequests: z.array(
+      z.object({ day: z.string(), linksIssued: z.number(), requested: z.number(), failed: z.number().optional() }),
+    ),
     delistings: z.array(z.object({ day: z.string(), delistings: z.number() })),
   }),
 });
 export type DomainBlocklist = z.infer<typeof DomainBlocklistSchema>;
 export type DomainBlocklistDomain = DomainBlocklist["domains"][number];
 export type DomainBlocklistEvent = DomainBlocklist["events"][number];
+
+/**
+ * `detail` of an AUTOMATED `removal_requested` / `removal_failed` event: what we
+ * sent and what the list answered. `null` for any other event (a person's
+ * recorded request, a listing): the page shows no reason it was not served.
+ */
+const RemovalAttemptDetailSchema = z.object({
+  method: z.literal("automated"),
+  outcome: z.string(),
+  httpStatus: z.number().nullable(),
+  error: z.string().nullable(),
+  answer: z.string().nullable(),
+});
+export type RemovalAttemptDetail = z.infer<typeof RemovalAttemptDetailSchema>;
+
+export function removalAttemptDetail(event: DomainBlocklistEvent): RemovalAttemptDetail | null {
+  if (event.type !== "removal_requested" && event.type !== "removal_failed") return null;
+  const parsed = RemovalAttemptDetailSchema.safeParse(event.detail);
+  if (parsed.success) return parsed.data;
+  if (event.type === "removal_failed") {
+    console.error("[admin] removal_failed event without a readable reason", { id: event.id, detail: event.detail });
+  }
+  return null;
+}
 
 export const DOMAIN_BLOCKLIST_PATH = "/instantly/ops/domain-blocklist";
 

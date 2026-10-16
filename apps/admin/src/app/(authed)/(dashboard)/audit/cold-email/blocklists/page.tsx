@@ -6,6 +6,7 @@ import { useAuthQuery } from "@/lib/use-auth-query";
 import {
   getDomainBlocklist,
   recordDomainBlocklistRemovalRequest,
+  removalAttemptDetail,
   runDomainBlocklistCheck,
   type BlocklistKey,
   type DomainBlocklist,
@@ -23,8 +24,10 @@ import { LeadSourceYieldSection } from "@/components/audit/lead-source-yield-sec
  * instantly-service checks every sending domain once a day on SURBL, Spamhaus
  * DBL and URIBL. A listed domain's mailboxes take no NEW sequence (follow-ups
  * keep going out) and come back on their own once a fresh check reads the
- * domain clean. Removal forms need a person: the owner files them from the
- * link here, then records the request.
+ * domain clean. SURBL's removal form is filed by instantly-service itself (at
+ * most once a week per listed domain); every attempt lands in the history as
+ * sent or failed, with the list's answer. Other lists need a person: the owner
+ * files them from the link here, then records the request.
  *
  * One chart per monitored sub-topic (owner rule 2026-10-16), each read straight
  * off the served daily series; the page computes no figure.
@@ -45,6 +48,7 @@ const EVENT_LABEL: Record<DomainBlocklistEvent["type"], string> = {
   delisted: "Removed from the list",
   removal_link_issued: "Removal link sent to you",
   removal_requested: "Removal requested",
+  removal_failed: "Removal request failed",
 };
 
 function lastValue(points: Array<Record<string, unknown>>, key: string): string {
@@ -61,6 +65,7 @@ function charts(data: DomainBlocklist, listName: (k: string) => string) {
     ...Object.fromEntries(listKeys.map((k) => [k.key, p.byList ? (p.byList[k.key] ?? 0) : null])),
   }));
   const bounces: DailyPoint[] = s.blocklistBounces.map((p) => ({ day: p.day, ...p.byList }));
+  const servesFailed = s.removalRequests.length > 0 && s.removalRequests.every((p) => typeof p.failed === "number");
   return [
     {
       title: "Domains listed",
@@ -92,12 +97,16 @@ function charts(data: DomainBlocklist, listName: (k: string) => string) {
       ],
     },
     {
-      title: "Removal links and requests",
-      now: lastValue(s.removalRequests, "requested"),
+      title: "Removal requests: sent and failed",
+      now: servesFailed
+        ? `${lastValue(s.removalRequests, "requested")} sent, ${lastValue(s.removalRequests, "failed")} failed`
+        : `${lastValue(s.removalRequests, "requested")} sent`,
       data: s.removalRequests as DailyPoint[],
       keys: [
+        { key: "requested", label: "Sent to the list", color: "#4f46e5" },
+        // Drawn only once the read serves it: an absent count is not a zero.
+        ...(servesFailed ? [{ key: "failed", label: "Failed", color: "#dc2626" }] : []),
         { key: "linksIssued", label: "Links sent to you", color: "#94a3b8" },
-        { key: "requested", label: "Requests filed", color: "#4f46e5" },
       ],
     },
     {
@@ -107,6 +116,28 @@ function charts(data: DomainBlocklist, listName: (k: string) => string) {
       keys: [{ key: "delistings", label: "Removed", color: "#059669" }],
     },
   ];
+}
+
+/** Why an automated removal request failed (or what the list answered when it went through). */
+function RemovalAttemptNote({ event }: { event: DomainBlocklistEvent }) {
+  const d = removalAttemptDetail(event);
+  if (!d) return null;
+  const status = d.httpStatus !== null ? ` (HTTP ${d.httpStatus})` : "";
+  if (event.type === "removal_failed") {
+    return (
+      <span className="mt-0.5 block text-xs text-red-700">
+        Sent by us. Why it failed: {d.error ?? d.answer ?? "the list gave no reason"}
+        {status}
+        {d.error && d.answer ? <span className="block text-gray-500">List answered: {d.answer}</span> : null}
+      </span>
+    );
+  }
+  return (
+    <span className="mt-0.5 block text-xs text-gray-500">
+      Sent by us{status}
+      {d.answer ? `. List answered: ${d.answer}` : ""}
+    </span>
+  );
 }
 
 function StateBadge({ state, since }: { state: "listed" | "clean" | "unknown"; since: string | null }) {
@@ -154,7 +185,9 @@ function RemovalCell({
                 Open {list.name} form
               </a>
             )}
-            {requested.has(l.list) ? (
+            {list?.removalAutomated ? (
+              <span className="text-gray-500">Filed by us, weekly</span>
+            ) : requested.has(l.list) ? (
               <span className="text-gray-500">Requested</span>
             ) : (
               <button
@@ -264,7 +297,7 @@ export default function BlocklistsPage() {
 
           <LeadSourceYieldSection days={days} />
 
-          <Section title="Domains" blurb="Listed domains first. Open the list's form, file the request, then press &ldquo;I filed it&rdquo; so the request is on record.">
+          <Section title="Domains" blurb="Listed domains first. We file SURBL's form ourselves, once a week per domain. For the other lists, open the form, file the request, then press &ldquo;I filed it&rdquo; so the request is on record.">
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>
@@ -320,6 +353,7 @@ export default function BlocklistsPage() {
                     <span className="font-medium text-gray-900">{EVENT_LABEL[e.type]}</span>{" "}
                     <span className="text-gray-700">{e.domain}</span>{" "}
                     <span className="text-gray-500">on {listName(e.list)}</span>
+                    <RemovalAttemptNote event={e} />
                     {e.type === "listed" && e.alert && (
                       <span className="ml-2 text-xs text-gray-400">
                         {e.alert.status === "sent" ? "Email sent to you" : `Email pending (${e.alert.attempts} tries)`}
