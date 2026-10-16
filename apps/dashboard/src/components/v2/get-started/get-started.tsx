@@ -103,6 +103,7 @@ import {
   leadCountLabel,
   previousStep,
   signalWrites,
+  type SignalRole,
   chosenFunnelOutlook,
   answerLines,
   leversLLMPrompt,
@@ -358,6 +359,8 @@ export function GetStarted({ org, ipCountry = null }: { org?: OrgWalk; ipCountry
   // The signals step: the offer's checks (lead-service), all ticked until the visitor unticks one.
   const [signals, setSignals] = useState<QualificationCriterion[]>([]);
   const [signalTicks, setSignalTicks] = useState<Set<string>>(new Set());
+  // Each check's Must have / Nice to have, prefilled with the role the AI recommends.
+  const [signalRoles, setSignalRoles] = useState<Record<string, SignalRole>>({});
   const [signalsRead, setSignalsRead] = useState<"no" | "running" | "done" | "failed">("no");
   // The first companies' emails, held until the answers exist.
   const pendingPrewrite = useRef<{ aud: GetStartedAudience; rows: AudienceCompanyRow[] } | null>(null);
@@ -712,6 +715,7 @@ export function GetStarted({ org, ipCountry = null }: { org?: OrgWalk; ipCountry
       const checks = held.length > 0 ? held : await suggestOfferQualificationCriteria(id, offerId);
       setSignals(checks);
       setSignalTicks(new Set(checks.map((c) => c.id)));
+      setSignalRoles(Object.fromEntries(checks.map((c) => [c.id, recommendedRole(c)])));
       setSignalsRead("done");
     } catch (e) {
       console.error("[get-started] signals read failed:", { brandId: id, offerId, e });
@@ -816,13 +820,18 @@ export function GetStarted({ org, ipCountry = null }: { org?: OrgWalk; ipCountry
     if (!brandId) return;
     setAnswerError(null);
     const ticked = signals.filter((c) => signalTicks.has(c.id));
-    stepDone("signals", { signals: ticked.map((c) => c.question).join("\n"), signal_count: ticked.length, offered: signals.length });
+    stepDone("signals", {
+      signals: ticked.map((c) => `${signalRoles[c.id] === "must_pass" ? "Must have" : "Nice to have"}: ${c.question}`).join("\n"),
+      signal_count: ticked.length,
+      must_have: ticked.filter((c) => signalRoles[c.id] === "must_pass").length,
+      offered: signals.length,
+    });
     advance("signals");
     saveSnapshot({ signalsDone: true });
     try {
       const o = await ensureOffer();
-      for (const w of signalWrites(signals, signalTicks)) await updateOfferQualificationCriterion(brandId, o.offerId, w.id, w.patch);
-      setSignals((cur) => cur.map((c) => ({ ...c, enabled: signalTicks.has(c.id) })));
+      for (const w of signalWrites(signals, signalTicks, signalRoles)) await updateOfferQualificationCriterion(brandId, o.offerId, w.id, w.patch);
+      setSignals((cur) => cur.map((c) => (signalTicks.has(c.id) ? { ...c, enabled: true, mode: signalRoles[c.id] ?? c.mode } : { ...c, enabled: false })));
     } catch (e) {
       console.error("[get-started] signals save failed:", e);
       saveSnapshot({ signalsDone: false });
@@ -1655,6 +1664,8 @@ export function GetStarted({ org, ipCountry = null }: { org?: OrgWalk; ipCountry
           state={steps.signals}
           checks={signals}
           ticked={signalTicks}
+          roles={signalRoles}
+          onRole={(id, role) => setSignalRoles((cur) => ({ ...cur, [id]: role }))}
           onToggle={(id) =>
             setSignalTicks((cur) => {
               const next = new Set(cur);
@@ -2810,21 +2821,32 @@ export function CampaignStage({
 }
 
 /**
- * The signals step (owner 2026-10-16): the offer's checks, each a big card, all ticked. A signal is
- * never a filter: its proof is added to the email to lift replies. None is required.
+ * The signals step (owner 2026-10-16): the offer's checks in one column, all ticked, none required.
+ * Each card: a short title, why it matters, and a Must have / Nice to have toggle prefilled with the
+ * role the AI recommends. Nice to have adds the fact to the email; Must have keeps only the
+ * companies that pass.
  */
+/** The toggle's first value: the role the AI recommended (lead-service), else the check's own role (a hand-made one). */
+function recommendedRole(c: QualificationCriterion): SignalRole {
+  return c.recommendation?.mode ?? c.mode;
+}
+
 export function SignalsStage({
   state,
   checks,
   ticked,
+  roles,
   onToggle,
+  onRole,
   error,
   onContinue,
 }: {
   state: StepState;
   checks: QualificationCriterion[];
   ticked: ReadonlySet<string>;
+  roles: Readonly<Record<string, SignalRole>>;
   onToggle: (id: string) => void;
+  onRole: (id: string, role: SignalRole) => void;
   error: string | null;
   onContinue: () => void;
 }) {
@@ -2833,7 +2855,7 @@ export function SignalsStage({
   return (
     <StepCard
       index={stepIndex("signals") + 1}
-      title="Signals in every email"
+      title="Your signals"
       state={state}
       meta={<StateWord state={state} />}
       footer={
@@ -2853,33 +2875,60 @@ export function SignalsStage({
               <span className="k-fg text-[40px] font-semibold leading-none tabular-nums">{on}</span>
               <span className="k-fg2 text-[16px]">{on === 1 ? "signal" : "signals"}</span>
             </p>
-            <p className="k-fg2 mt-2 text-[14px]">Signals never filter anyone out. Each signal adds a fact to your emails to lift replies.</p>
+            <p className="k-fg2 mt-2 text-[14px]">Nice to have adds the fact to your emails. Must have keeps only the companies that pass.</p>
           </div>
           {checks.length === 0 ? (
             <p className="k-fg3 text-[13px]">No signal for this offer yet.</p>
           ) : (
-            <div className="grid grid-cols-[minmax(0,1fr)] gap-3 sm:grid-cols-2">
+            <div className="grid grid-cols-[minmax(0,1fr)] gap-3">
               {checks.map((c, i) => {
                 const picked = ticked.has(c.id);
+                const role = roles[c.id] ?? c.mode;
+                const title = signalTitle(c);
                 return (
-                  <button
+                  <div
                     key={c.id}
-                    type="button"
-                    aria-pressed={picked}
-                    disabled={done}
-                    onClick={() => onToggle(c.id)}
-                    className={`gs-in k-card flex items-start gap-3 p-5 text-left transition-[box-shadow,background-color] duration-150 active:scale-[0.99] ${picked ? "k-card-on" : "k-hover"}`}
+                    className={`gs-in k-card flex flex-wrap items-start gap-x-4 gap-y-3 p-5 transition-[box-shadow,background-color] duration-150 ${picked ? "k-card-on" : ""}`}
                     style={stagger(i, 80)}
                   >
-                    <span className={`min-w-0 flex-1 text-[15px] font-medium leading-6 ${picked ? "k-fg" : "k-fg3"}`}>{c.question}</span>
-                    {picked ? (
-                      <span aria-hidden className="inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-[var(--accent)] text-[12px] text-white">
-                        ✓
+                    <button
+                      type="button"
+                      aria-pressed={picked}
+                      disabled={done}
+                      onClick={() => onToggle(c.id)}
+                      className="flex min-w-[220px] flex-1 items-start gap-3 text-left active:scale-[0.99]"
+                    >
+                      {picked ? (
+                        <span aria-hidden className="mt-0.5 inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-[var(--accent)] text-[12px] text-white">
+                          ✓
+                        </span>
+                      ) : (
+                        <span aria-hidden className="mt-0.5 h-6 w-6 shrink-0 rounded-full border border-[var(--line-strong)]" />
+                      )}
+                      <span className="min-w-0 flex-1">
+                        <span className={`block text-[16px] font-semibold leading-6 ${picked ? "k-fg" : "k-fg3"}`}>{title}</span>
+                        {signalWhy(c) && <span className="k-fg2 mt-0.5 block text-[13px] leading-5">{signalWhy(c)}</span>}
                       </span>
-                    ) : (
-                      <span aria-hidden className="h-6 w-6 shrink-0 rounded-full border border-[var(--line-strong)]" />
+                    </button>
+                    {picked && (
+                      <div role="radiogroup" aria-label={`${title}: must have or nice to have`} className="ml-auto inline-flex shrink-0 rounded-[8px] bg-[var(--bg-inset)] p-0.5">
+                        {SIGNAL_ROLES.map((r) => (
+                          <button
+                            key={r.key}
+                            type="button"
+                            role="radio"
+                            aria-checked={role === r.key}
+                            disabled={done}
+                            onClick={() => onRole(c.id, r.key)}
+                            className={`h-7 rounded-[6px] px-3 text-[13px] transition-colors ${role === r.key ? "font-medium" : "k-fg2 hover:text-[var(--fg-1)]"}`}
+                            style={role === r.key ? { background: "var(--bg-raised)", boxShadow: "0 0 0 1px var(--line), 0 1px 2px rgb(0 0 0 / 0.06)" } : undefined}
+                          >
+                            {r.label}
+                          </button>
+                        ))}
+                      </div>
                     )}
-                  </button>
+                  </div>
                 );
               })}
             </div>
@@ -2889,6 +2938,21 @@ export function SignalsStage({
       )}
     </StepCard>
   );
+}
+
+const SIGNAL_ROLES: { key: SignalRole; label: string }[] = [
+  { key: "must_pass", label: "Must have" },
+  { key: "mention", label: "Nice to have" },
+];
+
+/** The card's title: lead-service's short title; a hand-made check has none and shows its question. */
+function signalTitle(c: QualificationCriterion): string {
+  return c.title?.trim() || c.question;
+}
+
+/** Why the check shows a company needs the offer (lead-service `why`), or null. */
+function signalWhy(c: QualificationCriterion): string | null {
+  return c.why?.trim() || null;
 }
 
 /** Step 6: what one client brings over their lifetime, prefilled with our estimate. */
