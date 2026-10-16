@@ -917,6 +917,13 @@ const MatrixLinkSchema = z.object({
   input: MatrixLinkInputSchema.nullish(),
   needsRelink: z.boolean().optional(),
   linkedAccounts: z.number().optional(),
+  // Per linked account (crm-service SOPHIE-WA-1016). Optional until it is live: an
+  // older crm-service answers without them. false = mirrored only, nothing automatic
+  // is sent from it; persona null = speaks as the brand's sales rep.
+  automationAllowed: z.boolean().optional(),
+  persona: z
+    .object({ name: z.string().nullish(), role: z.string().nullish(), instructions: z.string().nullish() })
+    .nullish(),
 });
 
 export type MatrixLink = z.infer<typeof MatrixLinkSchema>;
@@ -987,6 +994,34 @@ export async function answerMatrixLink(
   if (!parsed.success) {
     console.error("[api] answerMatrixLink response shape mismatch", parsed.error.flatten());
     throw new Error("answerMatrixLink returned an unexpected shape");
+  }
+  return parsed.data;
+}
+
+export interface MatrixLinkPatch {
+  outreachDefault?: true;
+  automationAllowed?: boolean;
+  /** Omitted fields keep their value; null or "" clears one; `persona: null` clears all. */
+  persona?: { name?: string | null; role?: string | null; instructions?: string | null } | null;
+}
+
+/** Update ONE linked account: outreach default, whether automation may send from it, who it speaks as. */
+export async function updateMatrixLink(
+  brandId: string,
+  linkId: string,
+  patch: MatrixLinkPatch,
+  token?: string,
+): Promise<{ link: MatrixLink }> {
+  // brandId rides the query string too: the gateway reads identity from query / headers, never a body.
+  const raw = await apiCall<unknown>(`/orgs/matrix/links/${encodeURIComponent(linkId)}?brandId=${encodeURIComponent(brandId)}`, {
+    token,
+    method: "PATCH",
+    body: { brandId, ...patch },
+  });
+  const parsed = z.object({ link: MatrixLinkSchema }).safeParse(raw);
+  if (!parsed.success) {
+    console.error("[api] updateMatrixLink response shape mismatch", parsed.error.flatten());
+    throw new Error("updateMatrixLink returned an unexpected shape");
   }
   return parsed.data;
 }
