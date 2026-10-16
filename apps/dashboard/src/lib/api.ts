@@ -3696,7 +3696,9 @@ export async function getPublicCatalogueSteps(): Promise<PublicCatalogueStep[]> 
 
 /** GET /public/channels — the steps, the legs, and what each channel performs and costs. */
 export async function getPublicCatalogue(token?: string): Promise<PublicCatalogue> {
-  const raw = await apiCall<unknown>(`/public/channels`, { token });
+  // `includeInline=true` (features-service 2026-10-16): `triggers[]` lists entry doors only by default; a campaign
+  // running on an inline trigger (`on_demand`) still names it on its mode chip and trigger lines.
+  const raw = await apiCall<unknown>(`/public/channels?includeInline=true`, { token });
   return parsePublicCatalogue(raw, "getPublicCatalogue");
 }
 
