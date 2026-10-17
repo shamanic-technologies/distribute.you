@@ -39,7 +39,7 @@ import { TagChip } from "@/components/v2/tag-chip";
 import { itemCallId } from "@/lib/api-calls";
 import { ApiCallDetailPanel } from "@/components/v2/api-call-detail";
 import { RelationshipChips, UnmergeMenu } from "@/components/v2/relationship-tags";
-import { UNIBOX_DIMENSIONS, filtersFromParams, filtersKey, uniboxLeadName, uniboxThreadRef, type UniboxDimension, type UniboxPage, type UniboxRow } from "@/lib/unibox-leads";
+import { UNIBOX_DIMENSIONS, filtersFromParams, filtersKey, uniboxRowTitle, uniboxThreadRef, type UniboxDimension, type UniboxPage, type UniboxRow } from "@/lib/unibox-leads";
 import { UniboxFilterBar, UniboxLeadCardPanel, UniboxRowTags } from "@/components/v2/unibox-lead-card";
 
 // The publishable logo.dev token the dashboard already ships (company-logo.tsx).
@@ -444,7 +444,7 @@ function LeadRow({
   onOpen: () => void;
   onHover: () => void;
 }) {
-  const name = uniboxLeadName(row);
+  const name = uniboxRowTitle(row);
   return (
     <li data-row={index}>
       <button
@@ -455,7 +455,7 @@ function LeadRow({
         className={`k-row k-line-subtle flex w-full items-start gap-3 border-b px-4 py-2.5 text-left ${selected || cursor ? "k-selected" : ""}`}
       >
         {/* The mark is as tall as the two lines beside it (owner 2026-10-11, MarkLines). */}
-        <MarkLines className="flex-1" gap="gap-3" mark={(px) => <PersonMark name={name} emails={row.emails} size={px} />}>
+        <MarkLines className="flex-1" gap="gap-3" mark={(px) => (row.company?.domain ? <CompanyMark name={row.company.name ?? name} domain={row.company.domain} size={px} /> : <PersonMark name={name} emails={row.emails} size={px} />)}>
           <span className="flex items-center gap-2">
             <span className="truncate text-[13px] font-medium">{name}</span>
             {row.lastActivityAt && <span className="k-fg3 ml-auto shrink-0 text-[12px] tabular-nums">{timeAgo(row.lastActivityAt)}</span>}

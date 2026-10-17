@@ -9,6 +9,7 @@ import {
   filtersKey,
   lifecycleOptions,
   uniboxLeadName,
+  uniboxRowTitle,
   uniboxQuery,
   uniboxThreadRef,
 } from "../src/lib/unibox-leads";
@@ -82,6 +83,9 @@ describe("Unibox list from lead-service (owner 2026-10-17)", () => {
     expect(dimensionValueLabel("fit", "not_our_target")).toBe("Not our target");
     expect(uniboxThreadRef(row)).toBe("email:kriti@berkeley.edu");
     expect(uniboxLeadName(row)).toBe("kriti@berkeley.edu");
+    // « Adam Nasri @ <company> » (owner 2026-10-17); no served org, the name alone.
+    expect(uniboxRowTitle({ ...row, name: "Adam Nasri", company: { id: "c1", name: "Cifacom", domain: "cifacom.com" } })).toBe("Adam Nasri @ Cifacom");
+    expect(uniboxRowTitle({ ...row, name: "Adam Nasri", company: null })).toBe("Adam Nasri");
   });
 
   it("the page reads the list from lead-service and puts the lead card beside the thread", () => {

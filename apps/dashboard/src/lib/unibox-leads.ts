@@ -37,6 +37,9 @@ export const UniboxRowSchema = z
     lastOursAt: z.string().nullable(),
     lastActivityAt: z.string().nullable(),
     connectionTags: z.array(z.string()),
+    // The org of this relation (lead-service, owner 2026-10-17: « Adam Nasri @ <company> »);
+    // null = company unknown. Optional until every cached body carries it.
+    company: z.object({ id: z.string(), name: z.string().nullable(), domain: z.string().nullable() }).passthrough().nullish(),
   })
   .passthrough();
 export type UniboxRow = z.infer<typeof UniboxRowSchema>;
@@ -176,6 +179,12 @@ export function uniboxQuery(brandId: string, f: UniboxFilters, opts: { q?: strin
 /** The thread's person ref: the first identity key lead-service serves (crm-service reads `personKey`). */
 export function uniboxThreadRef(row: Pick<UniboxRow, "personKeys">): string | null {
   return row.personKeys[0] ?? null;
+}
+
+/** A row's title: `Adam Nasri @ Cifacom` when lead-service names the org, else the name alone. */
+export function uniboxRowTitle(row: Pick<UniboxRow, "name" | "emails" | "phones" | "company">): string {
+  const name = uniboxLeadName(row);
+  return row.company?.name ? `${name} @ ${row.company.name}` : name;
 }
 
 /** A lead's display name: the served name, else the first address or number. */

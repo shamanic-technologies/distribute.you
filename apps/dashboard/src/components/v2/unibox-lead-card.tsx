@@ -9,7 +9,7 @@ import {
   UNIBOX_DIMENSIONS,
   dimensionValueLabel,
   lifecycleOptions,
-  uniboxLeadName,
+  uniboxRowTitle,
   type LifecycleRung,
   type UniboxDimension,
   type UniboxFilters,
@@ -218,7 +218,7 @@ export function UniboxLeadCardPanel({
     <aside className="k-card k-scroll h-fit max-h-full shrink-0 overflow-y-auto p-4 @6xl:w-[300px]" aria-label="Lead">
       {lead ? (
         <>
-          <p className="truncate text-[14px] font-semibold">{uniboxLeadName(lead)}</p>
+          <p className="truncate text-[14px] font-semibold">{uniboxRowTitle(lead)}</p>
           <p className="k-fg3 truncate text-[12px]">{[...lead.emails, ...lead.phones].join(" · ") || "—"}</p>
           <dl className="mt-4 grid grid-cols-[96px_minmax(0,1fr)] items-start gap-x-3 gap-y-2.5">
             <Field label={DIMENSION_LABEL.status}>
