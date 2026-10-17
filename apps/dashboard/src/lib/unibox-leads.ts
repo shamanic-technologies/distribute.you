@@ -1,0 +1,180 @@
+import { z } from "zod";
+
+/**
+ * The Unibox list (owner 2026-10-17, UNIBOX-SIX-TAGS-1017): lead-service's Unibox, ONLY the
+ * people crm-service tags professional to the brand, each a LEAD carrying six tag dimensions
+ * lead-service decides. This module only NAMES the served values and builds the query; it
+ * never derives a tag. Alias-free (real unit tests).
+ */
+
+export const LifecycleRungSchema = z.object({ key: z.string(), rank: z.number(), label: z.string() }).passthrough();
+export type LifecycleRung = z.infer<typeof LifecycleRungSchema>;
+
+const StepSchema = z.object({ step: z.string(), at: z.string().nullable() }).passthrough();
+
+export const UniboxRowSchema = z
+  .object({
+    humanId: z.string(),
+    companyKey: z.string().nullish(),
+    name: z.string().nullable(),
+    emails: z.array(z.string()),
+    phones: z.array(z.string()),
+    personKeys: z.array(z.string()),
+    leadIds: z.array(z.string()),
+    /** Deprecated by lead-service (2026-10-17): read `status` + `roles`. */
+    types: z.array(z.string()),
+    // lead-service v0.83.140: ONE status, several roles. Optional until every cached body carries them.
+    status: z.string().nullish(),
+    roles: z.array(z.string()).optional(),
+    lifecycle: LifecycleRungSchema.nullable(),
+    steps: z.array(StepSchema),
+    interest: z.string(),
+    conversation: z.string(),
+    contactability: z.string(),
+    fit: z.string(),
+    fitNote: z.string().nullable(),
+    lastTheirsAt: z.string().nullable(),
+    lastOursAt: z.string().nullable(),
+    lastActivityAt: z.string().nullable(),
+    connectionTags: z.array(z.string()),
+  })
+  .passthrough();
+export type UniboxRow = z.infer<typeof UniboxRowSchema>;
+
+export const UniboxPageSchema = z
+  .object({
+    brandId: z.string(),
+    lifecycleLadder: z.array(LifecycleRungSchema),
+    rows: z.array(UniboxRowSchema),
+    total: z.number(),
+    nextCursor: z.string().nullable(),
+    builtAt: z.string().nullable(),
+  })
+  .passthrough();
+export type UniboxPage = z.infer<typeof UniboxPageSchema>;
+
+export const UniboxLeadCardSchema = z
+  .object({
+    brandId: z.string(),
+    lead: UniboxRowSchema,
+    campaigns: z.array(
+      z
+        .object({
+          campaignId: z.string(),
+          servedAt: z.string().nullable(),
+          furthest: LifecycleRungSchema.nullable(),
+          steps: z.array(StepSchema),
+        })
+        .passthrough(),
+    ),
+  })
+  .passthrough();
+export type UniboxLeadCard = z.infer<typeof UniboxLeadCardSchema>;
+
+/** The six dimensions, in the order the card and the filters show them. */
+export const UNIBOX_DIMENSIONS = ["status", "role", "lifecycle", "interest", "conversation", "contactability", "fit"] as const;
+export type UniboxDimension = (typeof UNIBOX_DIMENSIONS)[number];
+
+export const DIMENSION_LABEL: Record<UniboxDimension, string> = {
+  status: "Status",
+  role: "Role",
+  lifecycle: "Lifecycle",
+  interest: "Interest",
+  conversation: "Conversation",
+  contactability: "Reachable",
+  fit: "Fit",
+};
+
+/** The value lists lead-service accepts (its 400 names them). Lifecycle comes from the served ladder. */
+export const DIMENSION_VALUES: Record<Exclude<UniboxDimension, "lifecycle">, { value: string; label: string }[]> = {
+  // customer = paying today; churned = paid, then stopped; prospect = never paid (owner 2026-10-17).
+  status: [
+    { value: "prospect", label: "Prospect" },
+    { value: "customer", label: "Customer" },
+    { value: "churned", label: "Churned" },
+  ],
+  role: [
+    { value: "partner", label: "Partner" },
+    { value: "investor", label: "Investor" },
+    { value: "supplier", label: "Supplier" },
+    { value: "employee", label: "Employee" },
+    { value: "advisor", label: "Advisor" },
+    { value: "press", label: "Press" },
+    { value: "other", label: "Other" },
+  ],
+  interest: [
+    { value: "interested", label: "Interested" },
+    { value: "not_interested", label: "Not interested" },
+    { value: "unsure", label: "Unsure" },
+    { value: "not_asked", label: "Not asked yet" },
+  ],
+  conversation: [
+    { value: "waiting_on_us", label: "Waiting on us" },
+    { value: "waiting_on_them", label: "Waiting on them" },
+    { value: "no_reply_yet", label: "No reply yet" },
+    { value: "closed", label: "Closed" },
+  ],
+  contactability: [
+    { value: "contactable", label: "Reachable" },
+    { value: "unsubscribed", label: "Unsubscribed" },
+    { value: "bounced", label: "Bounced" },
+    { value: "do_not_contact", label: "Do not contact" },
+  ],
+  fit: [
+    { value: "fit", label: "Good fit" },
+    { value: "wrong_person", label: "Wrong person" },
+    { value: "not_our_target", label: "Not our target" },
+  ],
+};
+
+/** The lifecycle filter's choices: the served ladder in rank order, then "none". */
+export function lifecycleOptions(ladder: LifecycleRung[]): { value: string; label: string }[] {
+  return [...ladder].sort((a, b) => a.rank - b.rank).map((r) => ({ value: r.key, label: r.label })).concat({ value: "none", label: "No stage yet" });
+}
+
+/** The words for one served value. An unknown one is said as served, and logged. */
+export function dimensionValueLabel(dim: Exclude<UniboxDimension, "lifecycle">, value: string): string {
+  const hit = DIMENSION_VALUES[dim].find((v) => v.value === value);
+  if (hit) return hit.label;
+  console.error("[unibox] value lead-service serves that the dashboard does not name", { dim, value });
+  return value.replace(/_/g, " ");
+}
+
+export type UniboxFilters = Partial<Record<UniboxDimension, string[]>>;
+
+/** The URL param each dimension rides in (kept short, same names as lead-service's). */
+export function filtersFromParams(params: { get(k: string): string | null }): UniboxFilters {
+  const out: UniboxFilters = {};
+  for (const d of UNIBOX_DIMENSIONS) {
+    const raw = params.get(d);
+    if (raw) out[d] = raw.split(",").filter(Boolean);
+  }
+  return out;
+}
+
+/** One stable string per filter set (query key, "did the filter change"). */
+export function filtersKey(f: UniboxFilters): string {
+  return UNIBOX_DIMENSIONS.map((d) => `${d}=${[...(f[d] ?? [])].sort().join(",")}`).join("&");
+}
+
+/** lead-service's query string for one page: each filter a comma list, `q`, the cursor. */
+export function uniboxQuery(brandId: string, f: UniboxFilters, opts: { q?: string; limit: number; cursor?: string | null }): string {
+  const qs = new URLSearchParams({ brandId, limit: String(opts.limit) });
+  for (const d of UNIBOX_DIMENSIONS) {
+    const v = f[d];
+    if (v && v.length > 0) qs.set(d, v.join(","));
+  }
+  if (opts.q) qs.set("q", opts.q);
+  if (opts.cursor) qs.set("cursor", opts.cursor);
+  return qs.toString();
+}
+
+/** The thread's person ref: the first identity key lead-service serves (crm-service reads `personKey`). */
+export function uniboxThreadRef(row: Pick<UniboxRow, "personKeys">): string | null {
+  return row.personKeys[0] ?? null;
+}
+
+/** A lead's display name: the served name, else the first address or number. */
+export function uniboxLeadName(row: Pick<UniboxRow, "name" | "emails" | "phones">): string {
+  return row.name?.trim() || row.emails[0] || row.phones[0] || "Unknown";
+}

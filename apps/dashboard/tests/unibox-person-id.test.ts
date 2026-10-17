@@ -32,10 +32,10 @@ describe("the Unibox names a person by crm-service's opaque id", () => {
     expect(PersonSchema.parse(base).personId).toBeUndefined();
   });
 
-  it("the page writes personRef into the URL and reads threads by it", () => {
+  it("the page writes lead-service's opaque humanId into the URL, never an address", () => {
     const src = readFileSync(join(__dirname, "../src/components/v2/integrations-conversations.tsx"), "utf8");
-    expect(src).toContain('setParam("person", personRef(p))');
-    expect(src).not.toContain('setParam("person", p.personKey)');
+    expect(src).toContain('setParam("lead", r.humanId)');
+    expect(src).not.toContain('setParam("lead", uniboxThreadRef');
     expect(src).not.toMatch(/getPersonTimeline\(brandId, [a-z]+\.personKey\)/);
   });
 

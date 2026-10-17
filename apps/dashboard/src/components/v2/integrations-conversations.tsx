@@ -3,7 +3,7 @@
 import { useEffect, useLayoutEffect, useRef, useState, type RefObject } from "react";
 import { useInfiniteQuery, useQueryClient, type InfiniteData } from "@tanstack/react-query";
 import { useSearchParams } from "next/navigation";
-import { ApiError, getLeadTimeline, getPersonTimeline, listPeople, sendUniboxReply, setCrmPairingRuling } from "@/lib/api";
+import { ApiError, getLeadTimeline, getPersonTimeline, getUniboxLead, listPeople, listUniboxLeads, sendUniboxReply, setCrmPairingRuling } from "@/lib/api";
 import { pendingReplies, replyErrorMessage, replyTarget, type LocalReply } from "@/lib/unibox-reply";
 import { rulingErrorMessage } from "@/lib/crm-pairings";
 import { ownQueryData } from "@/lib/own-query-data";
@@ -13,12 +13,10 @@ import { POLL_INTERVAL } from "@/lib/query-options";
 import { formatCount } from "@/lib/format-number";
 import { friendlyDateTime, timeAgo } from "@/lib/friendly-datetime";
 import {
-  PEOPLE_PAGE_SIZE,
   personRef,
   personLeadRowId,
   personName,
   personStatusLabel,
-  possibleLeadHint,
   possibleLeadName,
   possibleLeadRuledLine,
   type PossibleLead,
@@ -37,12 +35,12 @@ import { timelineTag, type TimelineTag } from "@/lib/timeline-tags";
 import { conversationItemTag, conversationSourceWord, joinConversationLabels, liveItems, standingTag, type ConversationItem } from "@/lib/conversation-timeline";
 import { ConversationTags } from "@/components/v2/conversation-timeline";
 import { useSelectedOfferIfAny } from "@/components/v2/selected-offer";
-import { ICON_PATH, TONE_COLOR, TagChip } from "@/components/v2/tag-chip";
-import { LEAD_FAMILIES, familyFilter, type FamilyFilter } from "@/lib/lead-families";
+import { TagChip } from "@/components/v2/tag-chip";
 import { itemCallId } from "@/lib/api-calls";
-import { instantPeople } from "@/lib/unibox-instant-search";
 import { ApiCallDetailPanel } from "@/components/v2/api-call-detail";
-import { RelationshipChips, RelationshipFilter, UnmergeMenu, type RelationshipFilterValue } from "@/components/v2/relationship-tags";
+import { RelationshipChips, UnmergeMenu } from "@/components/v2/relationship-tags";
+import { UNIBOX_DIMENSIONS, filtersFromParams, filtersKey, uniboxLeadName, uniboxThreadRef, type UniboxDimension, type UniboxPage, type UniboxRow } from "@/lib/unibox-leads";
+import { UniboxFilterBar, UniboxLeadCardPanel, UniboxRowTags } from "@/components/v2/unibox-lead-card";
 
 // The publishable logo.dev token the dashboard already ships (company-logo.tsx).
 const LOGO_DEV_TOKEN = "pk_J1iY4__HSfm9acHjR8FibA";
@@ -82,32 +80,32 @@ const SEARCH_DEBOUNCE_MS = 150;
 const FOLD_AT = 600;
 
 /**
- * Conversations: everyone this brand is in conversation with, on any channel, as one
- * inbox. The list is crm-service's merged people (its order, its totals, one state per
- * person); opening a person reads their whole exchange across Gmail, cold email,
- * messaging apps and their CRM as ONE thread, oldest first. One write: a person
- * who wrote back to our cold email is answered by hand from the reply box under the thread
- * (instantly-service sends it, in the same thread, from the mailbox that wrote to them).
+ * The Unibox (owner 2026-10-17): the list is lead-service's Unibox, ONLY the people crm-service
+ * tags professional to the brand, each a lead with six tags lead-service decides, filtered by
+ * lead-service. Opening a lead reads their whole exchange from crm-service (every channel, one
+ * thread, oldest first), and the lead card beside it states the six tags and the campaigns.
+ * One write: a person who wrote back to our cold email is answered by hand from the reply box
+ * under the thread (instantly-service sends it, in the same thread, from the mailbox that wrote to them).
  */
 export function V2ConversationsView({ brandId }: { brandId: string }) {
   const params = useSearchParams();
-  // A click (a person, a family button) only rewrites the URL: no Next navigation, so no
-  // round trip to the page server before the screen changes (owner 2026-10-08: "tout est
-  // trop lent"). Next keeps useSearchParams in step with the native history call, but
-  // only when the state passed is NOT its own: handed the current entry's state, Next
-  // reads the call as one of its own and skips the sync, so the URL changed and the
-  // panel stayed on "Pick a person" (prod 2026-10-10). Pass null; Next copies its state.
-  const setParam = (key: string, value: string) => {
+  // A click (a lead, a filter) only rewrites the URL: no Next navigation, so no round trip to
+  // the page server before the screen changes (owner 2026-10-08: "tout est trop lent"). Next
+  // keeps useSearchParams in step with the native history call, but only when the state passed
+  // is NOT its own: handed the current entry's state, Next reads the call as one of its own and
+  // skips the sync, so the URL changed and the panel stayed on "Pick a person" (prod 2026-10-10).
+  // Pass null; Next copies its state.
+  const setParam = (key: string, value: string | null) => {
     const next = new URLSearchParams(window.location.search);
-    next.set(key, value);
+    if (value) next.set(key, value);
+    else next.delete(key);
     window.history.replaceState(null, "", `?${next.toString()}`);
   };
   const [cursor, setCursor] = useState(-1);
   const searchRef = useRef<HTMLInputElement | null>(null);
-  const openKey = params.get("person");
-  // The search runs at crm-service (names, addresses, companies AND message text across
-  // every page), asked once the typing pauses. Until it answers, the rows already loaded
-  // are filtered in the browser on each letter (owner 2026-10-13: instant search).
+  // The URL names the lead by lead-service's opaque `humanId`, never an address (owner 2026-10-10).
+  const openKey = params.get("lead");
+  // lead-service searches name and email, asked once the typing pauses.
   const [search, setSearch] = useState("");
   const [q, setQ] = useState("");
   useEffect(() => {
@@ -117,63 +115,30 @@ export function V2ConversationsView({ brandId }: { brandId: string }) {
     return () => clearTimeout(t);
   }, [search]);
 
-  // Filter buttons (owner 2026-10-08): All by default. The families and their counts are
-  // crm-service's (features-service's verdict).
-  const family = familyFilter(params.get("family"));
-  const pickFamily = (f: FamilyFilter) => setParam("family", f);
-  // Who they are to the brand (RELATIONSHIP-TAGS-1014): one relationship tag, or everyone.
-  // crm-service filters and counts; the button shows only once it serves the counts.
-  const relationship: RelationshipFilterValue = params.get("rel") || null;
-  const pickRelationship = (v: RelationshipFilterValue) => {
-    const next = new URLSearchParams(window.location.search);
-    if (v) next.set("rel", v);
-    else next.delete("rel");
-    window.history.replaceState(null, "", `?${next.toString()}`);
-  };
+  // The six tag filters, each a served filter (lead-service narrows and counts the list).
+  const filters = filtersFromParams(params);
+  const fKey = filtersKey(filters);
+  const pickFilter = (dim: UniboxDimension, values: string[]) => setParam(dim, values.length ? values.join(",") : null);
 
   // The first rows load at once, the next ones as the end of the list scrolls into view
   // (owner 2026-10-08: no pages to click through).
   const gate = useOrgQueryGate();
-  const listQuery = (f: FamilyFilter) => ({
-    // The relationship filter rides AFTER the family so `queryKey[4]` stays the family.
-    queryKey: ["people", brandId, "scroll", q, f, ...(relationship ? [relationship] : [])],
-    queryFn: ({ pageParam }: { pageParam: number }) =>
-      listPeople(brandId, {
-        limit: PEOPLE_PAGE_SIZE,
-        offset: pageParam,
-        q,
-        family: f === "all" ? undefined : f,
-        relationship: relationship ?? undefined,
-      }),
-    initialPageParam: 0,
-    getNextPageParam: (last: { nextOffset?: number | null }) => last.nextOffset ?? undefined,
-  });
   const listQ = useInfiniteQuery({
-    ...listQuery(family),
+    queryKey: ["uniboxLeads", brandId, q, fKey],
+    queryFn: ({ pageParam }: { pageParam: string | null }) =>
+      listUniboxLeads(brandId, filters, { limit: UNIBOX_PAGE_SIZE, q, cursor: pageParam }),
+    initialPageParam: null as string | null,
+    getNextPageParam: (last: UniboxPage) => last.nextCursor ?? undefined,
     enabled: gate && !!brandId,
     refetchInterval: POLL_INTERVAL,
-    // While a new search is asked, the last answer for the SAME family stays on screen
-    // (filtered below), never a blank list; a family click never shows another family.
-    placeholderData: (prev, prevQuery) =>
-      prevQuery?.queryKey[4] === family && (prevQuery?.queryKey[5] ?? null) === relationship ? prev : undefined,
+    // While a new search is asked, the last answer for the SAME filters stays on screen,
+    // never a blank list; a filter click never shows another filter's rows.
+    placeholderData: (prev, prevQuery) => (prevQuery?.queryKey[3] === fKey ? prev : undefined),
   });
   const queryClient = useQueryClient();
   const list = listQ.data?.pages[0] ?? null;
-  const families = list?.families ?? null;
-  const served = listQ.data ? listQ.data.pages.flatMap((p) => p.people) : null;
-  // Settled = crm-service answered for exactly what is typed. Before that, the rows on
-  // screen plus the plain list already in memory are filtered on the typed letters.
-  const typed = search.trim();
-  const settled = !listQ.isPlaceholderData && typed === q;
-  const plain = queryClient.getQueryData<InfiniteData<{ people: Person[] }>>([
-    "people",
-    brandId,
-    "scroll",
-    "",
-    family,
-    ...(relationship ? [relationship] : []),
-  ]);
-  const people = settled || !served ? served : instantPeople([served, plain?.pages.flatMap((p) => p.people)], typed);
+  const rows = listQ.data ? listQ.data.pages.flatMap((p) => p.rows) : null;
+  const settled = !listQ.isPlaceholderData && search.trim() === q;
   const scrollBox = useRef<HTMLDivElement | null>(null);
   const sentinel = useRef<HTMLLIElement | null>(null);
   const { hasNextPage, isFetchingNextPage, fetchNextPage } = listQ;
@@ -188,66 +153,71 @@ export function V2ConversationsView({ brandId }: { brandId: string }) {
     );
     io.observe(el);
     return () => io.disconnect();
-  }, [hasNextPage, isFetchingNextPage, fetchNextPage, people?.length]);
+  }, [hasNextPage, isFetchingNextPage, fetchNextPage, rows?.length]);
 
-  // A thread opens from memory: the top rows' threads load with the list, any other row's
-  // as the pointer reaches it. Same key and read as the Thread itself.
-  // The other family buttons answer from memory: their first page loads with the page
-  // (the plain list only; a search asks per family on click).
-  const listLoaded = Boolean(list);
-  useEffect(() => {
-    if (!gate || !brandId || !listLoaded || q) return;
-    for (const f of [...LEAD_FAMILIES.map((x) => x.key), "all" as const]) {
-      if (f !== family) void queryClient.prefetchInfiniteQuery({ ...listQuery(f), staleTime: POLL_INTERVAL });
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [gate, brandId, q, listLoaded, relationship]);
-  // The lead-service facts load WITH the thread, keyed on the list row's lead (same key
-  // and read as the Thread), never after it.
+  // Under the cards, which sources feed the threads (crm-service, unchanged).
+  const sourcesQ = useAuthQuery(["people", brandId, "sources"], () => listPeople(brandId, { limit: 1, offset: 0 }), {
+    enabled: !!brandId,
+    refetchInterval: POLL_INTERVAL,
+  });
+  const sources = sourcesQ.data ?? null;
+
+  // A thread opens from memory: the top rows' threads (and their cards) load with the list,
+  // any other row's as the pointer reaches it. Same key and read as the Thread itself.
+  // The lead-service facts load WITH the thread, keyed on the lead row the thread names (same
+  // key and read as the Thread), never after the click.
   const selected = useSelectedOfferIfAny();
   const offerId = selected?.offerId ?? null;
   const offerSettled = selected ? selected.settled : true;
-  const preload = (p: Person) => {
-    void queryClient.prefetchInfiniteQuery({ ...timelineQuery(brandId, personRef(p)), staleTime: TIMELINE_POLL });
-    const leadRowId = personLeadRowId(p);
-    if (leadRowId && offerSettled) {
-      void queryClient.prefetchQuery({
-        queryKey: factsKey(leadRowId, brandId, offerId),
-        queryFn: () => getLeadTimeline(leadRowId, { brandId, offerId }),
-        staleTime: TIMELINE_POLL,
+  const preload = (r: UniboxRow) => {
+    const ref = uniboxThreadRef(r);
+    if (ref) {
+      void queryClient.prefetchInfiniteQuery({ ...timelineQuery(brandId, ref), staleTime: TIMELINE_POLL }).then(() => {
+        const thread = queryClient.getQueryData<InfiniteData<PersonTimeline>>(timelineKey(brandId, ref));
+        const leadRowId = thread ? personLeadRowId(thread.pages[0].person) : null;
+        if (!leadRowId || !offerSettled) return;
+        void queryClient.prefetchQuery({
+          queryKey: factsKey(leadRowId, brandId, offerId),
+          queryFn: () => getLeadTimeline(leadRowId, { brandId, offerId }),
+          staleTime: TIMELINE_POLL,
+        });
       });
     }
+    void queryClient.prefetchQuery({
+      queryKey: leadCardKey(brandId, r.humanId),
+      queryFn: () => getUniboxLead(brandId, r.humanId),
+      staleTime: TIMELINE_POLL,
+    });
   };
-  const top = (people ?? []).slice(0, PRELOAD_TOP);
-  const topKeys = top.map(personRef).join("|");
+  const top = (rows ?? []).slice(0, PRELOAD_TOP);
+  const topKeys = top.map((r) => r.humanId).join("|");
   useEffect(() => {
     if (!gate || !topKeys) return;
-    for (const p of top) preload(p);
+    for (const r of top) preload(r);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [gate, brandId, topKeys, offerId, offerSettled]);
   // J/K moves the cursor: the row it lands on loads too.
-  const cursorPerson = cursor >= 0 ? (people?.[cursor] ?? null) : null;
+  const cursorRow = cursor >= 0 ? (rows?.[cursor] ?? null) : null;
   useEffect(() => {
-    if (gate && cursorPerson) preload(cursorPerson);
+    if (gate && cursorRow) preload(cursorRow);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [gate, cursorPerson ? personRef(cursorPerson) : null]);
+  }, [gate, cursorRow?.humanId ?? null]);
 
-  // The URL names the person by crm-service's opaque id, never their email (owner 2026-10-10).
-  const open = (p: Person) => setParam("person", personRef(p));
-  // The Unibox opens on the person on top (owner 2026-10-08), and a new search on its
-  // first result. A person already in the URL (a click, a shared link) is kept.
-  const first = settled ? (people?.[0] ?? null) : null;
-  const openedForQ = useRef<string | null>(null);
-  const listedFor = `${family}|${relationship ?? ""}|${q}`;
+  const open = (r: UniboxRow) => setParam("lead", r.humanId);
+  // The Unibox opens on the lead on top (owner 2026-10-08), and a new search or filter on its
+  // first result. A lead already in the URL (a click, a shared link) is kept.
+  const first = settled ? (rows?.[0] ?? null) : null;
+  const openedFor = useRef<string | null>(null);
+  const listedFor = `${fKey}|${q}`;
   useEffect(() => {
     if (!first) return;
-    const newSearch = openedForQ.current !== null && openedForQ.current !== listedFor;
-    openedForQ.current = listedFor;
-    if (!openKey || newSearch) open(first);
+    const changed = openedFor.current !== null && openedFor.current !== listedFor;
+    openedFor.current = listedFor;
+    if (!openKey || changed) open(first);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [first ? personRef(first) : null, openKey, listedFor]);
-  // The keyboard (owner 2026-10-10): Up/Down open the previous/next person, Right/Left
-  // move between the list and the thread, and inside the thread Up/Down scroll it.
+  }, [first?.humanId ?? null, openKey, listedFor]);
+  // The keyboard (owner 2026-10-10): Up/Down open the previous/next lead, Right/Left move
+  // between the list and the thread, and inside the thread Up/Down scroll it.
   const [pane, setPane] = useState<UniboxPane>("list");
   // A narrow panel (a phone, or the Copilot open beside it) shows the list OR the thread,
   // never both stacked: a tap opened a thread below the fold (owner 2026-10-13).
@@ -264,18 +234,18 @@ export function V2ConversationsView({ brandId }: { brandId: string }) {
     if (el && el.getBoundingClientRect().top < 0) el.scrollIntoView({ block: "start" });
   }, [narrowView]);
   const threadScroll = useRef<HTMLDivElement | null>(null);
-  const openIndex = people && openKey ? people.findIndex((p) => personRef(p) === openKey) : -1;
+  const openIndex = rows && openKey ? rows.findIndex((r) => r.humanId === openKey) : -1;
   // The neighbours load too, so the next press opens from memory.
-  const prevPerson = openIndex > 0 ? (people?.[openIndex - 1] ?? null) : null;
-  const nextPerson = openIndex >= 0 ? (people?.[openIndex + 1] ?? null) : null;
+  const prevRow = openIndex > 0 ? (rows?.[openIndex - 1] ?? null) : null;
+  const nextRow = openIndex >= 0 ? (rows?.[openIndex + 1] ?? null) : null;
   useEffect(() => {
     if (!gate) return;
-    if (prevPerson) preload(prevPerson);
-    if (nextPerson) preload(nextPerson);
+    if (prevRow) preload(prevRow);
+    if (nextRow) preload(nextRow);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [gate, prevPerson ? personRef(prevPerson) : null, nextPerson ? personRef(nextPerson) : null]);
-  const keys = useRef({ people, openIndex, pane, hasOpen: Boolean(openKey) });
-  keys.current = { people, openIndex, pane, hasOpen: Boolean(openKey) };
+  }, [gate, prevRow?.humanId ?? null, nextRow?.humanId ?? null]);
+  const keys = useRef({ rows, openIndex, pane, hasOpen: Boolean(openKey) });
+  keys.current = { rows, openIndex, pane, hasOpen: Boolean(openKey) };
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       const t = e.target as HTMLElement | null;
@@ -288,7 +258,7 @@ export function V2ConversationsView({ brandId }: { brandId: string }) {
         pane: s.pane,
         hasOpen: s.hasOpen,
         openIndex: s.openIndex,
-        count: s.people?.length ?? 0,
+        count: s.rows?.length ?? 0,
       });
       if (!action) return;
       e.preventDefault();
@@ -300,12 +270,12 @@ export function V2ConversationsView({ brandId }: { brandId: string }) {
       } else if (action.type === "scroll") {
         threadScroll.current?.scrollBy({ top: action.direction * THREAD_SCROLL_STEP });
       } else {
-        const p = s.people?.[action.index];
-        if (!p) return;
+        const r = s.rows?.[action.index];
+        if (!r) return;
         searchRef.current?.blur();
         setPane("list");
         setCursor(action.index);
-        open(p);
+        open(r);
         scrollBox.current?.querySelector(`[data-row="${action.index}"]`)?.scrollIntoView({ block: "nearest" });
       }
     };
@@ -314,11 +284,21 @@ export function V2ConversationsView({ brandId }: { brandId: string }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // The open lead's card: the six tags and the campaigns. Its lead also names the thread when
+  // the row is not in the loaded pages (a shared link).
+  const openRow = rows?.find((r) => r.humanId === openKey) ?? null;
+  const cardQ = useAuthQuery(leadCardKey(brandId, openKey ?? ""), () => getUniboxLead(brandId, openKey!), {
+    enabled: !!brandId && !!openKey,
+    refetchInterval: TIMELINE_POLL,
+  });
+  const card = openKey ? ownQueryData(cardQ) : undefined;
+  const threadRef = openRow ? uniboxThreadRef(openRow) : card ? uniboxThreadRef(card.lead) : null;
+
   // Answered once (success or failure): a poll on a failed read must not repaint a skeleton.
   if (!listQ.isFetchedAfterMount && !list) return <ListShimmer />;
-  // A filtered read that fails keeps the page and its buttons (All still works); the
-  // unfiltered list failing is the whole page failing.
-  if (!list && family === "all") {
+  const filtered = UNIBOX_DIMENSIONS.some((d) => (filters[d]?.length ?? 0) > 0);
+  // A filtered read that fails keeps the page and its filters; the plain list failing is the page failing.
+  if (!list && !filtered && !q) {
     return (
       <div className="k-card">
         <EmptyNote>We could not load your conversations. Retrying.</EmptyNote>
@@ -326,60 +306,45 @@ export function V2ConversationsView({ brandId }: { brandId: string }) {
     );
   }
 
-  const building = list ? list.scope.status === "building" || list.scope.status === "pending" : false;
-  const familyLabel = LEAD_FAMILIES.find((f) => f.key === family)?.label.toLowerCase() ?? "people";
-
   return (
     <div className="@container space-y-4 lg:flex lg:min-h-0 lg:flex-1 lg:flex-col">
-      {/* The search runs the whole width, above both cards (owner 2026-10-08). */}
+      {/* The search runs the whole width, above the cards (owner 2026-10-08). */}
       <div className="shrink-0 [&>div]:p-0 md:[&>div]:p-0 [&>div>div:last-child]:min-w-0 [&>div>div:last-child]:max-w-full [&_label]:w-auto [&_label]:min-w-[240px] [&_label]:max-w-none [&_label]:flex-1">
-        <RecordsToolbar
-          search={search}
-          onSearch={setSearch}
-          placeholder="Search people and messages"
-          inputRef={searchRef}
-          right={
-            <div className="flex max-w-full items-center gap-1.5">
-              {list?.relationships && (
-                <RelationshipFilter value={relationship} counts={list.relationships} onPick={pickRelationship} />
-              )}
-              <FamilyButtons value={family} families={families} onPick={pickFamily} />
-            </div>
-          }
-        />
+        <RecordsToolbar search={search} onSearch={setSearch} placeholder="Search by name or email" inputRef={searchRef} />
       </div>
-      <div className="grid gap-4 lg:min-h-0 lg:flex-1 lg:grid-rows-[minmax(0,1fr)] @3xl:grid-cols-[380px_minmax(0,1fr)]">
+      <UniboxFilterBar filters={filters} ladder={list?.lifecycleLadder ?? []} onPick={pickFilter} />
+      <div className="grid gap-4 lg:min-h-0 lg:flex-1 lg:grid-rows-[minmax(0,1fr)] @3xl:grid-cols-[340px_minmax(0,1fr)]">
         <section
           className={`k-card max-h-[calc(100dvh-220px)] min-h-[420px] flex-col overflow-hidden lg:max-h-none lg:min-h-0 @3xl:flex ${narrowView === "list" ? "flex" : "hidden"}`}
         >
           <header className="k-line-subtle flex h-10 shrink-0 items-center justify-between border-b px-4">
-            <span className="k-label">People</span>
+            <span className="k-label">Leads</span>
             <span className="k-fg3 text-[12px] tabular-nums">{list && settled ? formatCount(list.total) : "—"}</span>
           </header>
           <div ref={scrollBox} className="k-scroll min-h-0 flex-1 overflow-y-auto">
-            {people && people.length > 0 ? (
+            {rows && rows.length > 0 ? (
               <ul>
-                {people.map((p, i) => (
-                  <PersonRow
-                    key={p.personKey}
+                {rows.map((r, i) => (
+                  <LeadRow
+                    key={r.humanId}
                     index={i}
-                    person={p}
-                    selected={personRef(p) === openKey}
+                    row={r}
+                    selected={r.humanId === openKey}
                     cursor={i === cursor}
                     onOpen={() => {
                       setPane("list");
                       listScrollTop.current = scrollBox.current?.scrollTop ?? 0;
                       setNarrowView("thread");
-                      open(p);
+                      open(r);
                     }}
                     onHover={() => {
                       setCursor(i);
-                      preload(p);
+                      preload(r);
                     }}
                   />
                 ))}
                 {hasNextPage && settled && (
-                  <li ref={sentinel} className="space-y-2 px-4 py-3" aria-label="Loading more people">
+                  <li ref={sentinel} className="space-y-2 px-4 py-3" aria-label="Loading more leads">
                     <Shimmer className="h-9 w-full" />
                     <Shimmer className="h-9 w-full" />
                   </li>
@@ -388,81 +353,99 @@ export function V2ConversationsView({ brandId }: { brandId: string }) {
             ) : list && !settled ? (
               <ListRowsShimmer />
             ) : !list ? (
-              <EmptyNote>We could not sort people into Hot, Won, Lost and Cold right now. All still lists everyone.</EmptyNote>
+              <EmptyNote>We could not load this list right now. Retrying.</EmptyNote>
             ) : q ? (
-              <EmptyNote>No conversation matches &ldquo;{q}&rdquo;.</EmptyNote>
-            ) : relationship ? (
-              <EmptyNote>Nobody with this tag in your conversations.</EmptyNote>
-            ) : family !== "all" ? (
-              <EmptyNote>No {familyLabel} in your conversations.</EmptyNote>
-            ) : building ? (
-              <EmptyNote>We are gathering your conversations for the first time. This takes a few minutes.</EmptyNote>
+              <EmptyNote>No lead matches &ldquo;{q}&rdquo;.</EmptyNote>
+            ) : filtered ? (
+              <EmptyNote>No lead matches these filters.</EmptyNote>
             ) : (
-              <EmptyNote>Nobody in conversation yet. Connect a source below to see your people here.</EmptyNote>
+              <EmptyNote>No lead yet. People you work with show up here once a connected source names them.</EmptyNote>
             )}
           </div>
         </section>
 
-        {/* The thread pane takes Up/Down once the reader moves into it (Right, or a click).
-            Its frame is an outline: an inset shadow paints UNDER the scrolled messages. */}
-        <section
-          ref={threadCard}
-          onMouseDown={() => setPane("thread")}
-          style={pane === "thread" ? { outline: "1px solid var(--accent)", outlineOffset: "-1px" } : undefined}
-          className={`k-card max-h-[calc(100dvh-160px)] min-h-[420px] scroll-mt-16 flex-col overflow-hidden lg:max-h-none lg:min-h-0 @3xl:flex ${narrowView === "thread" ? "flex" : "hidden"}`}
+        {/* The thread and, beside it, the lead card (always open, like an inbox contact sidebar). */}
+        <div
+          className={`min-h-0 gap-4 lg:min-h-0 @3xl:flex @3xl:flex-col @6xl:flex-row ${narrowView === "thread" ? "flex flex-col" : "hidden"}`}
         >
-          <button
-            type="button"
-            onClick={() => {
-              setPane("list");
-              setNarrowView("list");
-            }}
-            className="k-btn-ghost k-line-subtle h-10 shrink-0 justify-start gap-1.5 rounded-none border-b px-4 @3xl:hidden"
+          {/* The thread pane takes Up/Down once the reader moves into it (Right, or a click).
+              Its frame is an outline: an inset shadow paints UNDER the scrolled messages. */}
+          <section
+            ref={threadCard}
+            onMouseDown={() => setPane("thread")}
+            style={pane === "thread" ? { outline: "1px solid var(--accent)", outlineOffset: "-1px" } : undefined}
+            className="k-card flex max-h-[calc(100dvh-160px)] min-h-[420px] min-w-0 flex-1 scroll-mt-16 flex-col overflow-hidden lg:max-h-none lg:min-h-0"
           >
-            <svg width="12" height="12" viewBox="0 0 16 16" fill="none" aria-hidden="true">
-              <path d="M10 3 5 8l5 5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-            </svg>
-            People
-          </button>
-          {openKey ? (
-            <Thread
-              brandId={brandId}
-              personRef={openKey}
-              listed={people?.find((p) => personRef(p) === openKey) ?? null}
-              scrollRef={threadScroll}
-            />
-          ) : (
-            <div className="flex flex-1 items-center justify-center">
-              <EmptyNote>Pick a person to read the whole conversation, every channel in one thread.</EmptyNote>
+            {/* keel.css is unlayered: `@3xl:hidden` on the k-btn-ghost itself loses, so a wrapper hides it. */}
+            <div className="shrink-0 @3xl:hidden">
+              <button
+                type="button"
+                onClick={() => {
+                  setPane("list");
+                  setNarrowView("list");
+                }}
+                className="k-btn-ghost k-line-subtle h-10 w-full justify-start gap-1.5 rounded-none border-b px-4"
+              >
+                <svg width="12" height="12" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+                  <path d="M10 3 5 8l5 5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                </svg>
+                Leads
+              </button>
             </div>
+            {threadRef ? (
+              <Thread brandId={brandId} personRef={threadRef} listed={null} scrollRef={threadScroll} />
+            ) : openKey && !card && !cardQ.isFetchedAfterMount ? (
+              <div className="space-y-3 p-4">
+                {Array.from({ length: 5 }, (_, i) => (
+                  <Shimmer key={i} className="h-14 w-full rounded-lg" />
+                ))}
+              </div>
+            ) : (
+              <div className="flex flex-1 items-center justify-center">
+                <EmptyNote>
+                  {openKey ? "No conversation to show for this lead." : "Pick a lead to read the whole conversation, every channel in one thread."}
+                </EmptyNote>
+              </div>
+            )}
+          </section>
+          {openKey && (
+            <UniboxLeadCardPanel
+              brandId={brandId}
+              card={card ?? null}
+              failed={!card && cardQ.isFetchedAfterMount}
+              listed={openRow}
+            />
           )}
-        </section>
+        </div>
       </div>
 
-      {list && (
-        <SourcesStrip sources={list.sources} lastBuiltAt={list.scope.lastBuiltAt} lastError={list.scope.status === "error" ? list.scope.lastError : null} />
+      {sources && (
+        <SourcesStrip sources={sources.sources} lastBuiltAt={list?.builtAt ?? sources.scope.lastBuiltAt} lastError={sources.scope.status === "error" ? sources.scope.lastError : null} />
       )}
     </div>
   );
 }
 
-function PersonRow({
+const UNIBOX_PAGE_SIZE = 100;
+const leadCardKey = (brandId: string, humanId: string) => ["uniboxLead", brandId, humanId] as const;
+
+/** One lead in the list: name, last activity, then lead-service's stage, conversation and types. */
+function LeadRow({
   index,
-  person,
+  row,
   selected,
   cursor,
   onOpen,
   onHover,
 }: {
   index: number;
-  person: Person;
+  row: UniboxRow;
   selected: boolean;
   cursor: boolean;
   onOpen: () => void;
   onHover: () => void;
 }) {
-  const name = personName(person);
-  const status = personStatusLabel(person);
+  const name = uniboxLeadName(row);
   return (
     <li data-row={index}>
       <button
@@ -473,33 +456,12 @@ function PersonRow({
         className={`k-row k-line-subtle flex w-full items-start gap-3 border-b px-4 py-2.5 text-left ${selected || cursor ? "k-selected" : ""}`}
       >
         {/* The mark is as tall as the two lines beside it (owner 2026-10-11, MarkLines). */}
-        <MarkLines
-          className="flex-1"
-          gap="gap-3"
-          mark={(px) => <PersonMark name={name} emails={person.emails} size={px} />}
-          after={
-            <>
-              <MatchLine person={person} />
-              <PossibleLeadLine person={person} />
-            </>
-          }
-        >
+        <MarkLines className="flex-1" gap="gap-3" mark={(px) => <PersonMark name={name} emails={row.emails} size={px} />}>
           <span className="flex items-center gap-2">
             <span className="truncate text-[13px] font-medium">{name}</span>
-            {person.lastActivityAt && (
-              <span className="k-fg3 ml-auto shrink-0 text-[12px] tabular-nums">{timeAgo(person.lastActivityAt)}</span>
-            )}
+            {row.lastActivityAt && <span className="k-fg3 ml-auto shrink-0 text-[12px] tabular-nums">{timeAgo(row.lastActivityAt)}</span>}
           </span>
-          <span className="mt-1 flex flex-wrap items-center gap-1.5">
-            {status && <PersonTag label={status} state={person.state} />}
-            {person.relationship && (
-              <RelationshipChips tags={person.relationship.tags} unsureTags={person.relationship.unsureTags} />
-            )}
-            {personSourceMarks(person.presences).map((m) => (
-              <SourceLogo key={m.key} mark={m} size={14} />
-            ))}
-            {person.company && <span className="k-fg3 truncate text-[12px]">· {person.company}</span>}
-          </span>
+          <UniboxRowTags row={row} />
         </MarkLines>
       </button>
     </li>
@@ -842,46 +804,6 @@ function PersonTag({ label, state }: { label: string; state: string }) {
   return <TagChip tag={standingTag(state, label)} />;
 }
 
-/** Beside the search: one button per lead family with its served count, then All. */
-function FamilyButtons({
-  value,
-  families,
-  onPick,
-}: {
-  value: FamilyFilter;
-  families: { status: string; counts: Record<"won" | "hot" | "lost" | "cold", number> } | null;
-  onPick: (f: FamilyFilter) => void;
-}) {
-  const counts = families && families.status !== "failed" ? families.counts : null;
-  return (
-    <div role="group" aria-label="Filter by lead family" className="k-scroll flex max-w-full items-center gap-1.5 overflow-x-auto max-sm:flex-nowrap sm:flex-wrap [&>button]:shrink-0">
-      {LEAD_FAMILIES.map((f) => {
-        const on = value === f.key;
-        const color = TONE_COLOR[f.tone];
-        return (
-          <button
-            key={f.key}
-            type="button"
-            aria-pressed={on}
-            onClick={() => onPick(f.key)}
-            className="k-btn gap-1.5"
-            style={on ? { color, background: `color-mix(in srgb, ${color} 14%, transparent)`, boxShadow: `inset 0 0 0 1px color-mix(in srgb, ${color} 40%, transparent)` } : undefined}
-          >
-            <svg width="12" height="12" viewBox="0 0 16 16" fill="none" aria-hidden="true" style={{ color }}>
-              <path d={ICON_PATH[f.icon]} stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-            </svg>
-            {f.label}
-            <span className={`tabular-nums ${on ? "" : "k-fg3"}`}>{counts ? formatCount(counts[f.key]) : "—"}</span>
-          </button>
-        );
-      })}
-      <button type="button" aria-pressed={value === "all"} onClick={() => onPick("all")} className={`k-btn ${value === "all" ? "k-selected" : ""}`}>
-        All
-      </button>
-    </div>
-  );
-}
-
 function Message({
   brandId,
   item,
@@ -960,32 +882,6 @@ function Message({
       )}
       {callId && callOpen && <ApiCallDetailPanel brandId={brandId} callId={callId} />}
     </article>
-  );
-}
-
-/** Under a search: why this person matched, the newest matching message first. */
-function MatchLine({ person }: { person: Person }) {
-  const matches = person.matches ?? [];
-  const message = matches.find((m) => m.field === "message" && m.excerpt);
-  const identity = matches.find((m) => m.field !== "message" && m.field !== "name" && m.value);
-  if (!message && !identity) return null;
-  const more = (person.messageMatches ?? 0) > 1 ? ` · ${formatCount(person.messageMatches!)} messages` : "";
-  return (
-    <span className="k-fg2 mt-1 line-clamp-2 block text-[12px] leading-[18px]">
-      {message ? `${message.direction === "outbound" ? "You: " : ""}${message.excerpt}${more}` : identity!.value}
-    </span>
-  );
-}
-
-/** A guessed pairing with one of our leads, stated as a hint (the lead keeps its own row). */
-function PossibleLeadLine({ person }: { person: Person }) {
-  const hint = possibleLeadHint(person);
-  if (!hint) return null;
-  return (
-    <span className="k-fg2 mt-1 flex min-w-0 items-center gap-1.5 text-[12px] leading-[18px]">
-      <span aria-hidden className="h-1.5 w-1.5 shrink-0 rounded-full bg-[var(--data-amber)]" />
-      <span className="truncate" title={hint}>{hint}</span>
-    </span>
   );
 }
 
