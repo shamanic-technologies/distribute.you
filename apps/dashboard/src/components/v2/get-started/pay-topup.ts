@@ -83,7 +83,7 @@ export async function payTopup(params: {
 export async function settleTopup(
   creditedBefore: number,
   reload: { thresholdUsd: number; amountUsd: number } | null,
-): Promise<{ ok: true; account: BillingAccount } | { ok: false; message: string }> {
+): Promise<{ ok: true; account: BillingAccount; reloadRefused: boolean } | { ok: false; message: string }> {
   let acct: BillingAccount | null = null;
   for (let i = 0; i < 20; i++) {
     acct = await getBillingAccount().catch((e) => {
@@ -103,8 +103,17 @@ export async function settleTopup(
     // the switch to prepaid, so an org that did not ask for it has it taken off.
     else if (acct.has_auto_topup) acct = await disableAutoTopup();
   } catch (e) {
+    // The credit is paid, so a reload billing REFUSES never holds the launch back: the
+    // org runs on what it paid and tops up by hand (Senthil 2026-10-17, CeXO AI: a card
+    // issued in India takes no off-session mandate, and "Check again" looped forever).
+    // A refusal is a 400 and the same card is refused every time; anything else may pass
+    // on a retry.
+    if (e instanceof ApiError && e.status === 400) {
+      console.warn("[get-started] automatic reload refused by billing, launching without it:", e.body);
+      return { ok: true, account: acct, reloadRefused: true };
+    }
     console.error("[get-started] automatic reload could not be set:", e);
-    return { ok: false, message: refusalOf(e) ?? "Your credit is added, but the automatic reload could not be set. Check again to retry." };
+    return { ok: false, message: "Your credit is added, but the automatic reload could not be set. Check again to retry." };
   }
-  return { ok: true, account: acct };
+  return { ok: true, account: acct, reloadRefused: false };
 }
