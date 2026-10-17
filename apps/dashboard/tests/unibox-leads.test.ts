@@ -51,7 +51,7 @@ describe("Unibox list from lead-service (owner 2026-10-17)", () => {
     const card = UniboxLeadCardSchema.parse({
       brandId: "b",
       lead: row,
-      campaigns: [{ campaignId: "647572d9", name: "CRM Email Replies", salesFunnelCampaignId: "647572d9", partCampaignIds: ["p1", "p2"], servedAt: null, furthest: { key: "contacted", rank: 2, label: "Contacted" }, steps: [] }],
+      campaigns: [{ campaignId: "647572d9", name: "CRM Email Replies", pipeCampaignIds: ["p1", "p2"], servedAt: null, furthest: { key: "contacted", rank: 2, label: "Contacted" }, steps: [] }],
     });
     expect(card.campaigns[0].furthest?.label).toBe("Contacted");
     expect(card.campaigns[0].name).toBe("CRM Email Replies");
