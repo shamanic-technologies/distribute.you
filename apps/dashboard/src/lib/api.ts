@@ -3601,6 +3601,48 @@ export async function getLeadQualification(leadId: string, brandId: string, offe
 }
 
 /**
+ * The offer's ENABLED checks run on sample companies that are not leads yet (lead-service
+ * PREVIEW-CHECKS-1017): the signed-out onboarding's preview companies. Each company's
+ * `qualification` is the same shape as a served lead's, forwarded VERBATIM to the preview
+ * email writer (`passthrough`: content-generation reads every key it knows).
+ */
+const QualificationPreviewSchema = z.object({
+  id: z.string(),
+  status: z.enum(["running", "completed", "failed"]),
+  error: z.object({ code: z.string(), message: z.string() }).nullable(),
+  companies: z.array(
+    z.object({
+      domain: z.string(),
+      name: z.string(),
+      mustPass: z.object({
+        state: z.enum(["passes", "fails", "pending", "unknown"]),
+        failed: z.array(z.object({ criterionId: z.string(), title: z.string().nullable(), question: z.string() })),
+      }),
+      qualification: z.object({ domain: z.string(), checks: z.array(z.object({ question: z.string() }).passthrough()) }).passthrough(),
+    }),
+  ),
+});
+const QualificationPreviewResponseSchema = z.object({ preview: QualificationPreviewSchema });
+export type QualificationPreview = z.infer<typeof QualificationPreviewSchema>;
+export type QualificationPreviewCompany = QualificationPreview["companies"][number];
+
+/** POST …/qualification/previews — starts the checks (spends, billed to the calling org); `running` = poll the GET. */
+export async function startQualificationPreview(
+  brandId: string,
+  offerId: string,
+  companies: Array<{ domain: string; name: string }>,
+): Promise<QualificationPreview> {
+  const raw = await apiCall<unknown>(`${qualificationBase(brandId, offerId)}/previews`, { method: "POST", body: { companies } });
+  return parseQualification(QualificationPreviewResponseSchema, raw, "startQualificationPreview").preview;
+}
+
+/** GET …/qualification/previews/:id — where a started preview stands (no spend). */
+export async function getQualificationPreview(brandId: string, offerId: string, previewId: string): Promise<QualificationPreview> {
+  const raw = await apiCall<unknown>(`${qualificationBase(brandId, offerId)}/previews/${encodeURIComponent(previewId)}`);
+  return parseQualification(QualificationPreviewResponseSchema, raw, "getQualificationPreview").preview;
+}
+
+/**
  * The platform's step, leg and channel catalogue, as features-service publishes it
  * (`GET /public/channels`, public, no auth, no org scope).
  *
@@ -4558,7 +4600,15 @@ export interface PreviewEmailRecipient {
 }
 
 export async function previewColdEmail(
-  input: { brandId: string; recipient: PreviewEmailRecipient; audience?: string; offerId?: string | null },
+  input: {
+    brandId: string;
+    recipient: PreviewEmailRecipient;
+    audience?: string;
+    offerId?: string | null;
+    // The recipient company's check results (lead-service, verbatim): the email is written with
+    // them as a campaign email is (content-generation PREVIEW-CHECKS-1017). Absent = no checks.
+    qualification?: QualificationPreviewCompany["qualification"];
+  },
   token?: string,
 ): Promise<PreviewEmail> {
   const raw = await apiCall<unknown>(`/content/preview-email`, {
@@ -4569,6 +4619,7 @@ export async function previewColdEmail(
       recipient: input.recipient,
       ...(input.audience ? { audience: input.audience } : {}),
       ...(input.offerId ? { offerId: input.offerId } : {}),
+      ...(input.qualification ? { qualification: input.qualification } : {}),
     },
     headers: { "x-run-id": globalThis.crypto.randomUUID() },
   });

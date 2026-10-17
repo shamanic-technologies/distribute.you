@@ -301,10 +301,15 @@ describe("the surface", () => {
 
   it("loads ONE page of five companies, never more, and writes the first email ahead, the rest on click, capped", () => {
     const load = FLOW.slice(FLOW.indexOf("async function loadCompanies("), FLOW.indexOf("// ── Step 6: the emails"));
-    // Each company costs a credit and visitors do not scroll: five, then stop (owner 2026-10-06).
+    // Each company costs a credit and visitors do not scroll: five, then stop (owner 2026-10-06),
+    // plus one per company failing a Must have, capped (owner 2026-10-17; see get-started-signal-checks).
     expect(FLOW).toContain("const PREVIEW_COMPANIES = 5;");
-    expect(load).toContain("const limit = PREVIEW_COMPANIES - offset;");
-    expect(load).toContain("offset + got.length >= PREVIEW_COMPANIES");
+    expect(load).toContain("const limit = (wanted.current.get(id) ?? PREVIEW_COMPANIES) - offset;");
+    expect(load).toContain("offset + got.length >= (wanted.current.get(id) ?? PREVIEW_COMPANIES)");
+    // The only two asks for companies: the first five, and one more per company failing a Must have.
+    expect(FLOW.match(/wantRows\((?!aud: )/g)?.length).toBe(2);
+    expect(FLOW).toContain("wantRows(audience, PREVIEW_COMPANIES);");
+    expect(FLOW).toContain("wantRows(aud, companiesWanted(PREVIEW_COMPANIES, failing.size));");
     expect(FLOW).not.toContain("MoreSentinel");
     expect(FLOW).not.toContain("NEXT_PAGE");
     expect(load).toContain("prewrite(aud, got)");
