@@ -117,6 +117,7 @@ import {
   stepIndex,
   PREWRITTEN_EMAILS,
   canWriteAnother,
+  MAX_CHECKED_COMPANIES,
   checkDomain,
   companiesWanted,
   unmetSignals,
@@ -1195,6 +1196,20 @@ export function GetStarted({ org, ipCountry = null }: { org?: OrgWalk; ipCountry
     return !!row.company.domain && companyChecks[checkDomain(row.company.domain)]?.mustPass.state === "fails";
   }
 
+  // Every company listed fails a Must have and no other can be asked: no email will come, so the
+  // step stops writing and says why (QA 2026-10-17: it said "Writing" for minutes).
+  const listed = audience ? rows[audience.audienceId] ?? [] : [];
+  const noneFits =
+    !!audience &&
+    listed.length > 0 &&
+    listed.every((r) => failsMustHave(r)) &&
+    !loadingMore[audience.audienceId] &&
+    (listed.length >= MAX_CHECKED_COMPANIES || exhausted.current.has(audience.audienceId));
+  useEffect(() => {
+    if (noneFits) setStep("email", "failed");
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [noneFits]);
+
   // ── Step 6: the emails ───────────────────────────────────────────────────
 
   /** Every preview company's email (PREWRITTEN_EMAILS, the cap), asked at once in the background. */
@@ -1897,6 +1912,7 @@ export function GetStarted({ org, ipCountry = null }: { org?: OrgWalk; ipCountry
         error={selectedKey ? emailErrors[selectedKey] ?? null : null}
         emailState={(i) => (audience ? emailStateFor(rowKey(audience.audienceId, i)) : "none")}
         written={requested.current.size}
+        noneFits={noneFits}
         unmet={unmetOf}
         onOpen={openRow}
       />
@@ -3664,6 +3680,7 @@ function EmailsStage({
   error,
   emailState,
   written,
+  noneFits,
   unmet,
   onOpen,
 }: {
@@ -3674,6 +3691,7 @@ function EmailsStage({
   error: string | null;
   emailState: (index: number) => RowEmailState;
   written: number;
+  noneFits: boolean;
   unmet: (row: AudienceCompanyRow) => string | null;
   onOpen: (index: number) => void;
 }) {
@@ -3691,6 +3709,11 @@ function EmailsStage({
           {written} of {EMAIL_CAP} free previews
         </span>
       </div>
+      {noneFits && (
+        <p className="k-card k-fg2 px-4 py-3 text-[13px]">
+          None of these {rows.length} companies meets every Must have. Make one of them a Nice to have at step {stepIndex("signals") + 1} to get your emails.
+        </p>
+      )}
       {rows.length === 0 ? (
         <div className="k-card p-4">
           <p className="k-fg3 text-[13px]">{state === "failed" ? "We need at least one person to write to." : "Waiting for the first companies."}</p>

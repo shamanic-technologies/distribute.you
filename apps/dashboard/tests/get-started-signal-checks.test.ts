@@ -66,6 +66,15 @@ describe("the walk checks the preview companies", () => {
     expect(FLOW).toContain("{`Does not meet: ${text}`}");
   });
 
+  it("stops writing and says why when no listed company meets every Must have", () => {
+    const at = FLOW.indexOf("const noneFits =");
+    const block = FLOW.slice(at, FLOW.indexOf("// ── Step 6: the emails", at));
+    expect(block).toContain("listed.every((r) => failsMustHave(r))");
+    expect(block).toContain('setStep("email", "failed")');
+    expect(FLOW).toContain("noneFits={noneFits}");
+    expect(FLOW).toContain("meets every Must have. Make one of them a Nice to have");
+  });
+
   it("forwards the check results verbatim to content-generation", () => {
     const at = API.indexOf("export async function previewColdEmail(");
     const body = API.slice(at, API.indexOf("const PreviewEmailPrepareSchema", at));
