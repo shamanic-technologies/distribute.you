@@ -43,6 +43,7 @@ import {
   getBrand,
   getAudienceCompanies,
   getPublicCatalogueSignedOut,
+  getQualificationPreview,
   getSignupFunnelPages,
   listAudiences,
   listOfferQualificationCriteria,
@@ -54,6 +55,7 @@ import {
   saveOfferLifetimeRevenue,
   saveOfferUserFields,
   setApiActiveOrgOverride,
+  startQualificationPreview,
   suggestBrandIcp,
   suggestOfferQualificationCriteria,
   updateOfferQualificationCriterion,
@@ -63,6 +65,7 @@ import {
   type OfferProposal,
   type PreviewEmail,
   type QualificationCriterion,
+  type QualificationPreviewCompany,
 } from "@/lib/api";
 import { startAnonSession } from "@/lib/anon-session-client";
 import { refusalExits, type RefusalExits } from "@/lib/claimed-signup";
@@ -114,6 +117,9 @@ import {
   stepIndex,
   PREWRITTEN_EMAILS,
   canWriteAnother,
+  checkDomain,
+  companiesWanted,
+  unmetSignals,
   countryFlag,
   emailPieces,
   highlightKindLabel,
@@ -317,6 +323,10 @@ export function GetStarted({ org, ipCountry = null }: { org?: OrgWalk; ipCountry
   const [rows, setRows] = useState<Record<string, AudienceCompanyRow[]>>({});
   const [rowsDone, setRowsDone] = useState<Record<string, boolean>>({});
   const [rowsNote, setRowsNote] = useState<Record<string, string>>({});
+  const rowsRef = useRef(rows);
+  rowsRef.current = rows;
+  // Audiences with no company left to list (refills stop there).
+  const exhausted = useRef(new Set<string>());
   const loading = useRef(new Set<string>());
   const [loadingMore, setLoadingMore] = useState<Record<string, boolean>>({});
   // How many rows the visitor has asked to see, per audience (grows as they scroll).
@@ -363,6 +373,14 @@ export function GetStarted({ org, ipCountry = null }: { org?: OrgWalk; ipCountry
   // Each check's Must have / Nice to have, prefilled with the role the AI recommends.
   const [signalRoles, setSignalRoles] = useState<Record<string, SignalRole>>({});
   const [signalsRead, setSignalsRead] = useState<"no" | "running" | "done" | "failed">("no");
+  // The signals run on the preview companies (lead-service), keyed by company domain: a company
+  // failing a Must have gets no person and no email. `signalsSaved` resolves once the visitor's
+  // ticks are on the offer (checks run on what they chose); `checksGen` drops answers of older ticks.
+  const [companyChecks, setCompanyChecks] = useState<Record<string, QualificationPreviewCompany>>({});
+  const checkWaits = useRef(new Map<string, Promise<QualificationPreviewCompany | null>>());
+  const signalsSaved = useRef<Promise<void> | null>(null);
+  const checksGen = useRef(0);
+  const failingRows = useRef(new Map<string, Set<number>>());
   // The first companies' emails, held until the answers exist.
   const pendingPrewrite = useRef<{ aud: GetStartedAudience; rows: AudienceCompanyRow[] } | null>(null);
 
@@ -496,6 +514,7 @@ export function GetStarted({ org, ipCountry = null }: { org?: OrgWalk; ipCountry
     if (s.funnels) setFunnels(s.funnels);
     if (s.lifetimeRevenueUsd != null) setValueInput(String(s.lifetimeRevenueUsd));
     setAnswered(!!s.answered);
+    if (s.signalsDone) signalsSaved.current = Promise.resolve();
     if (s.icp) icpRef.current = s.icp;
     setStarted(true);
     ran.current = true;
@@ -830,9 +849,22 @@ export function GetStarted({ org, ipCountry = null }: { org?: OrgWalk; ipCountry
     advance("signals");
     saveSnapshot({ signalsDone: true });
     try {
-      const o = await ensureOffer();
-      for (const w of signalWrites(signals, signalTicks, signalRoles)) await updateOfferQualificationCriterion(brandId, o.offerId, w.id, w.patch);
+      const save = (async () => {
+        const o = await ensureOffer();
+        for (const w of signalWrites(signals, signalTicks, signalRoles)) await updateOfferQualificationCriterion(brandId, o.offerId, w.id, w.patch);
+      })();
+      // Checks asked from now on wait for these ticks; answers to older ticks are dropped.
+      checksGen.current += 1;
+      checkWaits.current.clear();
+      failingRows.current.clear();
+      setCompanyChecks({});
+      signalsSaved.current = save;
+      await save;
       setSignals((cur) => cur.map((c) => (signalTicks.has(c.id) ? { ...c, enabled: true, mode: signalRoles[c.id] ?? c.mode } : { ...c, enabled: false })));
+      const aud = audienceRef.current;
+      if (aud) void checkCompanies(rowsRef.current[aud.audienceId] ?? []);
+      // Signals changed after the emails were written: each is asked again with the new answers.
+      if (answeredRef.current) rewriteEmails();
     } catch (e) {
       console.error("[get-started] signals save failed:", e);
       saveSnapshot({ signalsDone: false });
@@ -1024,7 +1056,8 @@ export function GetStarted({ org, ipCountry = null }: { org?: OrgWalk; ipCountry
   function wantRows(aud: GetStartedAudience, n: number) {
     const id = aud.audienceId;
     wanted.current.set(id, Math.max(n, wanted.current.get(id) ?? 0));
-    if (rowsDone[id] || loading.current.has(id)) return;
+    if (exhausted.current.has(id) || loading.current.has(id)) return;
+    if ((rowCount.current.get(id) ?? 0) >= (wanted.current.get(id) ?? 0)) return;
     void loadCompanies(aud);
   }
 
@@ -1037,7 +1070,7 @@ export function GetStarted({ org, ipCountry = null }: { org?: OrgWalk; ipCountry
     let first = offset === 0;
     try {
       while (offset < (wanted.current.get(id) ?? PREVIEW_COMPANIES)) {
-        const limit = PREVIEW_COMPANIES - offset;
+        const limit = (wanted.current.get(id) ?? PREVIEW_COMPANIES) - offset;
         const page = await getAudienceCompanies(id, { offset, limit });
         // human-service is still building this audience's people search (~90 s after
         // it was created): asked again every 3 s, for up to 4 minutes, with the wait shown.
@@ -1049,6 +1082,7 @@ export function GetStarted({ org, ipCountry = null }: { org?: OrgWalk; ipCountry
         }
         setBuilding((cur) => (cur[id] ? { ...cur, [id]: false } : cur));
         if (page.status !== "ready") {
+          exhausted.current.add(id);
           setRowsNote((cur) => ({ ...cur, [id]: companiesNote(page.reason) }));
           setRowsDone((cur) => ({ ...cur, [id]: true }));
           if (audienceRef.current?.audienceId === id && first) {
@@ -1060,6 +1094,10 @@ export function GetStarted({ org, ipCountry = null }: { org?: OrgWalk; ipCountry
         const got = page.rows;
         rowCount.current.set(id, offset + got.length);
         setRows((cur) => ({ ...cur, [id]: mergeRows(cur[id] ?? [], got) }));
+        // The signals run on every company as soon as it is listed (answers ready by the emails).
+        void checkCompanies(got);
+        // A company listed to replace one failing a Must have: its email is written now.
+        if (!first && answeredRef.current && audienceRef.current?.audienceId === id) for (const r of got.filter(rowWritable)) void writeEmail(aud, r);
         if (first && got.length) {
           first = false;
           if (audienceRef.current?.audienceId === id) {
@@ -1069,7 +1107,8 @@ export function GetStarted({ org, ipCountry = null }: { org?: OrgWalk; ipCountry
             else pendingPrewrite.current = { aud, rows: got };
           }
         }
-        if (page.done || page.nextOffset == null || got.length === 0 || offset + got.length >= PREVIEW_COMPANIES) {
+        if (page.done || page.nextOffset == null || got.length === 0) exhausted.current.add(id);
+        if (page.nextOffset == null || exhausted.current.has(id) || offset + got.length >= (wanted.current.get(id) ?? PREVIEW_COMPANIES)) {
           setRowsDone((cur) => ({ ...cur, [id]: true }));
           break;
         }
@@ -1081,6 +1120,7 @@ export function GetStarted({ org, ipCountry = null }: { org?: OrgWalk; ipCountry
       }
     } catch (e) {
       console.error("[get-started] companies read failed:", e);
+      exhausted.current.add(id);
       const outOfCredit = e instanceof ApiError && (e.status === 402 || (e.status === 502 && e.body?.upstreamStatus === 402));
       setRowsNote((cur) => ({
         ...cur,
@@ -1095,6 +1135,64 @@ export function GetStarted({ org, ipCountry = null }: { org?: OrgWalk; ipCountry
       loading.current.delete(id);
       setLoadingMore((cur) => ({ ...cur, [id]: false }));
     }
+  }
+
+  /**
+   * Runs the offer's signals on listed companies not asked yet (lead-service, billed to this
+   * org), in one call per batch, after the visitor's ticks are saved. Each company's answer is
+   * awaited by its email (`checkOf`). A failed run is logged and the emails are written without
+   * it: the preview never stops on a check.
+   */
+  function checkCompanies(list: AudienceCompanyRow[]): void {
+    const saved = signalsSaved.current;
+    if (!saved || !brandId) return;
+    const gen = checksGen.current;
+    const fresh = new Map<string, string>();
+    for (const r of list) {
+      if (!r.company.domain) continue;
+      const d = checkDomain(r.company.domain);
+      if (d && !checkWaits.current.has(d) && !fresh.has(d)) fresh.set(d, r.company.name);
+    }
+    if (fresh.size === 0) return;
+    const run = (async () => {
+      await saved;
+      const o = await ensureOffer();
+      const companies = [...fresh].map(([domain, name]) => ({ domain, name }));
+      let preview = await startQualificationPreview(brandId, o.offerId, companies);
+      for (let i = 0; preview.status === "running" && i < 100; i++) {
+        await new Promise((r) => setTimeout(r, 3000));
+        preview = await getQualificationPreview(brandId, o.offerId, preview.id);
+      }
+      if (preview.status !== "completed") console.error("[get-started] signals preview did not complete:", { status: preview.status, error: preview.error });
+      const byDomain: Record<string, QualificationPreviewCompany> = {};
+      for (const c of preview.companies) byDomain[checkDomain(c.domain)] = c;
+      if (gen === checksGen.current) setCompanyChecks((cur) => ({ ...cur, ...byDomain }));
+      return byDomain;
+    })();
+    for (const d of fresh.keys())
+      checkWaits.current.set(
+        d,
+        run.then(
+          (m) => m[d] ?? null,
+          (e) => {
+            console.error("[get-started] signals check failed:", { domain: d, e });
+            return null;
+          },
+        ),
+      );
+  }
+
+  /** A row's signal answers, once ready (null: no signals, no domain, or the run failed). */
+  async function checkOf(row: AudienceCompanyRow): Promise<QualificationPreviewCompany | null> {
+    if (!row.company.domain || !signalsSaved.current) return null;
+    const d = checkDomain(row.company.domain);
+    if (!checkWaits.current.has(d)) checkCompanies([row]);
+    return (await checkWaits.current.get(d)) ?? null;
+  }
+
+  /** A company failing a Must have, as the page shows it (no person, no email). */
+  function failsMustHave(row: AudienceCompanyRow): boolean {
+    return !!row.company.domain && companyChecks[checkDomain(row.company.domain)]?.mustPass.state === "fails";
   }
 
   // ── Step 6: the emails ───────────────────────────────────────────────────
@@ -1149,9 +1247,12 @@ export function GetStarted({ org, ipCountry = null }: { org?: OrgWalk; ipCountry
     });
     try {
       let gen: number;
-      let mail: PreviewEmail;
+      let mail: PreviewEmail | null = null;
+      let check: QualificationPreviewCompany | null;
       do {
         gen = inputsGen.current;
+        check = await checkOf(row);
+        if (check?.mustPass.state === "fails") break;
         mail = await writeWithRetry(() =>
           previewColdEmail({
             brandId,
@@ -1164,11 +1265,31 @@ export function GetStarted({ org, ipCountry = null }: { org?: OrgWalk; ipCountry
             },
             audience: aud.name,
             offerId: offer?.offerId ?? snapRef.current?.offer?.offerId ?? null,
+            ...(check ? { qualification: check.qualification } : {}),
           }),
         );
       } while (gen !== inputsGen.current);
+      if (check?.mustPass.state === "fails") {
+        // Not our client: no email (one written before the signals changed is dropped), and the
+        // next company takes its place.
+        requested.current.delete(key);
+        writtenKeys.current.delete(key);
+        setEmails((cur) => {
+          if (!cur[key]) return cur;
+          const next = { ...cur };
+          delete next[key];
+          return next;
+        });
+        const failing = failingRows.current.get(aud.audienceId) ?? new Set<number>();
+        failing.add(row.index);
+        failingRows.current.set(aud.audienceId, failing);
+        wantRows(aud, companiesWanted(PREVIEW_COMPANIES, failing.size));
+        return;
+      }
+      if (!mail) throw new Error(`[get-started] no email written for ${key}`);
+      const written = mail;
       writtenKeys.current.add(key);
-      setEmails((cur) => ({ ...cur, [key]: mail }));
+      setEmails((cur) => ({ ...cur, [key]: written }));
       if (audienceRef.current?.audienceId === aud.audienceId) setStep("email", "done");
       if (!snapRef.current?.email) saveSnapshot({ email: { subject: mail.subject, bodyText: mail.bodyText, recipient: mail.recipient } });
     } catch (e) {
@@ -1197,12 +1318,12 @@ export function GetStarted({ org, ipCountry = null }: { org?: OrgWalk; ipCountry
     openedKeys.current.add(rowKey(audience.audienceId, selectedRow));
     if (!answered || !firstEmailFor(audience.audienceId)) return;
     const list = rows[audience.audienceId] ?? [];
-    const keyed = list.map((r) => ({ row: r, key: rowKey(audience.audienceId, r.index), writable: rowWritable(r) }));
+    const keyed = list.map((r) => ({ row: r, key: rowKey(audience.audienceId, r.index), writable: rowWritable(r) && !failsMustHave(r) }));
     const next = nextEmailAhead(keyed, requested.current, openedKeys.current);
     const row = keyed.find((k) => k.key === next)?.row;
     if (row) void writeEmail(audience, row);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [emails, selectedRow, audience?.audienceId, rows, answered]);
+  }, [emails, selectedRow, audience?.audienceId, rows, answered, companyChecks]);
 
   /** A row clicked: its email on the stage, written now when it is not yet (up to the cap). */
   function openRow(index: number) {
@@ -1211,7 +1332,8 @@ export function GetStarted({ org, ipCountry = null }: { org?: OrgWalk; ipCountry
     if (!row) return;
     const key = rowKey(audience.audienceId, index);
     const have = !!emails[key] || requested.current.has(key);
-    if (!have && rowWritable(row) && !canWriteAnother(requested.current.size)) {
+    const writable = rowWritable(row) && !failsMustHave(row);
+    if (!have && writable && !canWriteAnother(requested.current.size)) {
       setWallNote(`You have read ${EMAIL_CAP} emails. Start outreach to write one for every company.`);
       setWallOpen(true);
       return;
@@ -1221,7 +1343,7 @@ export function GetStarted({ org, ipCountry = null }: { org?: OrgWalk; ipCountry
       setStageIdx(stepIndex("email"));
       setFocus(null);
     });
-    if (!have && rowWritable(row)) void writeEmail(audience, row);
+    if (!have && writable) void writeEmail(audience, row);
   }
 
   // ── The stage ────────────────────────────────────────────────────────────
@@ -1762,6 +1884,7 @@ export function GetStarted({ org, ipCountry = null }: { org?: OrgWalk; ipCountry
           building={audience ? !!building[audience.audienceId] : false}
           note={audience ? rowsNote[audience.audienceId] ?? null : null}
           emailState={(i) => (audience ? emailStateFor(rowKey(audience.audienceId, i)) : "none")}
+          unmet={unmetOf}
           onOpen={openRow}
         />
       );
@@ -1774,9 +1897,16 @@ export function GetStarted({ org, ipCountry = null }: { org?: OrgWalk; ipCountry
         error={selectedKey ? emailErrors[selectedKey] ?? null : null}
         emailState={(i) => (audience ? emailStateFor(rowKey(audience.audienceId, i)) : "none")}
         written={requested.current.size}
+        unmet={unmetOf}
         onOpen={openRow}
       />
     );
+  }
+
+  /** The Must haves a row's company does not meet, or null (passes, unchecked, or still checking). */
+  function unmetOf(row: AudienceCompanyRow): string | null {
+    if (!failsMustHave(row) || !row.company.domain) return null;
+    return unmetSignals(companyChecks[checkDomain(row.company.domain)]?.mustPass.failed ?? []);
   }
 
   function emailStateFor(key: string): RowEmailState {
@@ -3317,6 +3447,16 @@ function EmailMark({ state }: { state: RowEmailState }) {
   return null;
 }
 
+/** A company failing a Must have: the condition it does not meet, in the held colour. */
+function UnmetNote({ text }: { text: string }) {
+  return (
+    <span className="flex min-w-0 items-start gap-2 text-[12px] text-[var(--data-amber)]">
+      <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-[var(--data-amber)]" aria-hidden="true" />
+      <span className="line-clamp-2 max-w-[220px]">{`Does not meet: ${text}`}</span>
+    </span>
+  );
+}
+
 function EmailDot({ state }: { state: RowEmailState }) {
   if (state === "writing")
     return (
@@ -3349,6 +3489,7 @@ function CompaniesStage({
   building,
   note,
   emailState,
+  unmet,
   onOpen,
 }: {
   state: StepState;
@@ -3359,6 +3500,7 @@ function CompaniesStage({
   building: boolean;
   note: string | null;
   emailState: (index: number) => RowEmailState;
+  unmet: (row: AudienceCompanyRow) => string | null;
   onOpen: (index: number) => void;
 }) {
   const onBack = useContext(BackContext);
@@ -3400,7 +3542,8 @@ function CompaniesStage({
               </thead>
               <tbody>
                 {rows.map((r, i) => {
-                  const name = r.person.firstName ?? "";
+                  const miss = unmet(r);
+                  const name = miss ? "" : r.person.firstName ?? "";
                   const country = countryFlag(r.company.country);
                   return (
                     <tr
@@ -3441,7 +3584,9 @@ function CompaniesStage({
                         {r.company.industry && <span className="k-fg3 mt-0.5 block max-w-[280px] truncate text-[11.5px] capitalize">{r.company.industry}</span>}
                       </td>
                       <td className="px-3 py-2">
-                        {name ? (
+                        {miss ? (
+                          <UnmetNote text={miss} />
+                        ) : name ? (
                           <span className="flex min-w-0 items-center gap-2">
                             <Initials name={name} size={20} round />
                             <span className="min-w-0">
@@ -3454,7 +3599,7 @@ function CompaniesStage({
                         )}
                       </td>
                       <td className="whitespace-nowrap px-3 py-2 last:pr-4">
-                        <EmailDot state={emailState(r.index)} />
+                        {miss ? <span className="k-fg4">{"—"}</span> : <EmailDot state={emailState(r.index)} />}
                       </td>
                     </tr>
                   );
@@ -3519,6 +3664,7 @@ function EmailsStage({
   error,
   emailState,
   written,
+  unmet,
   onOpen,
 }: {
   state: StepState;
@@ -3528,10 +3674,12 @@ function EmailsStage({
   error: string | null;
   emailState: (index: number) => RowEmailState;
   written: number;
+  unmet: (row: AudienceCompanyRow) => string | null;
   onOpen: (index: number) => void;
 }) {
   const row = rows.find((r) => r.index === selected);
   const sel = emailState(selected);
+  const rowMiss = row ? unmet(row) : null;
   const onBack = useContext(BackContext);
   const onNext = useContext(NextContext);
   return (
@@ -3551,7 +3699,8 @@ function EmailsStage({
         <div className="grid gap-3 lg:grid-cols-[300px_minmax(0,1fr)]">
           <ul className="k-card k-scroll grid max-h-[560px] content-start overflow-y-auto overflow-x-hidden p-1.5" aria-label="People">
             {rows.map((r, i) => {
-              const name = r.person.firstName || r.company.name;
+              const miss = unmet(r);
+              const name = (!miss && r.person.firstName) || r.company.name;
               const on = r.index === selected;
               return (
                 <li key={r.index} className="gs-in" style={stagger(Math.min(i, 12), 30)}>
@@ -3564,9 +3713,13 @@ function EmailsStage({
                     <Initials name={name} size={24} round />
                     <span className="min-w-0 flex-1">
                       <span className="k-fg block truncate text-[13px] font-medium">{name}</span>
-                      <span className="k-fg3 block truncate text-[12px]">
-                        {[r.person.title, r.company.domain ?? r.company.name].filter(Boolean).join(" · ")}
-                      </span>
+                      {miss ? (
+                        <span className="block truncate text-[12px] text-[var(--data-amber)]">{`Does not meet: ${miss}`}</span>
+                      ) : (
+                        <span className="k-fg3 block truncate text-[12px]">
+                          {[r.person.title, r.company.domain ?? r.company.name].filter(Boolean).join(" · ")}
+                        </span>
+                      )}
                     </span>
                     <span className="flex h-5 w-3 shrink-0 items-center justify-center">
                       <EmailMark state={emailState(r.index)} />
@@ -3582,13 +3735,18 @@ function EmailsStage({
                 <BrandLogo domain={row.company.domain} size={28} className="rounded-md" />
                 <div className="min-w-0">
                   <p className="k-fg truncate text-[14px] font-medium">
-                    {row.person.firstName || "—"}
+                    {rowMiss ? row.company.name : row.person.firstName || "—"}
                   </p>
-                  <p className="k-fg3 truncate text-[12px]">{[row.person.title, row.company.name].filter(Boolean).join(" at ")}</p>
+                  <p className="k-fg3 truncate text-[12px]">{rowMiss ? row.company.domain : [row.person.title, row.company.name].filter(Boolean).join(" at ")}</p>
                 </div>
               </div>
             )}
-            {mail ? (
+            {rowMiss ? (
+              <div className="px-4 py-4">
+                <UnmetNote text={rowMiss} />
+                <p className="k-fg3 mt-2 text-[13px]">We only write to companies that meet every Must have.</p>
+              </div>
+            ) : mail ? (
               <div key={mail.id}>
                 <div className="gs-in flex gap-3 border-b border-[var(--line-subtle)] px-4 py-2 text-[13px]">
                   <span className="k-label w-14 shrink-0 pt-0.5">Subject</span>

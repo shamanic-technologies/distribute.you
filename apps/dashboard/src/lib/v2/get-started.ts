@@ -210,6 +210,34 @@ export function nextEmailAhead(
   return rows.find((r) => r.writable && !requested.has(r.key))?.key ?? null;
 }
 
+/**
+ * The signals checked on the preview companies (owner 2026-10-17): lead-service runs the offer's
+ * enabled checks on each company before its email is written. A company failing a Must have is
+ * shown with the condition it does not meet, no person and no email, and the next company takes
+ * its place, up to `MAX_CHECKED_COMPANIES` (lead-service's own cap per call).
+ */
+export const MAX_CHECKED_COMPANIES = 10;
+
+/** A company domain as lead-service keys it (lowercase, no scheme, no www, no path): the join key of its answer. */
+export function checkDomain(domain: string): string {
+  return domain
+    .trim()
+    .toLowerCase()
+    .replace(/^[a-z]+:\/\//, "")
+    .replace(/^www\./, "")
+    .replace(/[/?#].*$/, "");
+}
+
+/** The Must haves a company does not meet, as the visitor named them (the card title, else the question). */
+export function unmetSignals(failed: ReadonlyArray<{ title: string | null; question: string }>): string {
+  return failed.map((f) => f.title?.trim() || f.question).join(" · ");
+}
+
+/** How many companies to show: the five, plus one for each that fails a Must have, capped. */
+export function companiesWanted(base: number, failing: number, cap = MAX_CHECKED_COMPANIES): number {
+  return Math.min(base + failing, cap);
+}
+
 /** What we ask brand-service to read off the site for step 1. Keys are our own. */
 export const COMPANY_FIELDS = [
   {
