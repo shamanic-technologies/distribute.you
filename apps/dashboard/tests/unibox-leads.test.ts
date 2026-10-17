@@ -12,6 +12,9 @@ import {
   uniboxRowTitle,
   uniboxQuery,
   uniboxThreadRef,
+  uniboxRowId,
+  uniboxRowKey,
+  uniboxCardQuery,
 } from "../src/lib/unibox-leads";
 
 const read = (p: string) => readFileSync(join(__dirname, "../src", p), "utf8");
@@ -86,6 +89,32 @@ describe("Unibox list from lead-service (owner 2026-10-17)", () => {
     // « Adam Nasri @ <company> » (owner 2026-10-17); no served org, the name alone.
     expect(uniboxRowTitle({ ...row, name: "Adam Nasri", company: { id: "c1", name: "Cifacom", domain: "cifacom.com" } })).toBe("Adam Nasri @ Cifacom");
     expect(uniboxRowTitle({ ...row, name: "Adam Nasri", company: null })).toBe("Adam Nasri");
+  });
+
+  it("a row is a RELATION: its thread, card and URL read its relationKey, two rows of one human stay apart", () => {
+    const pro = { ...row, humanId: "h1", companyKey: "cifacom.com", relationKey: "rel:p1:org:c1" };
+    const unknownOrg = { ...row, humanId: "h1", companyKey: null, relationKey: "rel:p1:pro" };
+    expect(uniboxThreadRef(pro)).toBe("rel:p1:org:c1");
+    expect(uniboxRowId(pro)).toBe("rel:p1:org:c1");
+    expect(uniboxRowKey(pro)).not.toBe(uniboxRowKey(unknownOrg));
+    expect(uniboxCardQuery("rel:p1:org:c1")).toEqual({ relationKey: "rel:p1:org:c1" });
+    expect(uniboxCardQuery("h1")).toEqual({ humanId: "h1" });
+    // An older body (no relationKey yet) keeps today's reads.
+    const legacy = { ...row, humanId: "h2", companyKey: "a.com" };
+    expect(uniboxRowId(legacy)).toBe("h2");
+    expect(uniboxRowKey(legacy)).toBe("h2|a.com");
+    expect(uniboxThreadRef(legacy)).toBe("email:kriti@berkeley.edu");
+  });
+
+  it("clicking a row opens crm's timeline with relationKey= (the shared timeline read)", () => {
+    const api = read("lib/api.ts");
+    const at = api.indexOf("export async function getPersonTimeline(");
+    expect(api.slice(at, api.indexOf("export async function getPersonApiCall("))).toContain("...personRefQuery(ref)");
+    const view = read("components/v2/integrations-conversations.tsx");
+    expect(view).toContain("getUniboxLead(brandId, uniboxRowId(r))");
+    expect(view).toContain("key={uniboxRowKey(r)}");
+    expect(view).toContain("timelineKey(brandId, threadRef)");
+    expect(view).not.toContain("r.humanId === openKey");
   });
 
   it("the page reads the list from lead-service and puts the lead card beside the thread", () => {

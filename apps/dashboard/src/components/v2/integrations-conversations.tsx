@@ -13,7 +13,6 @@ import { POLL_INTERVAL } from "@/lib/query-options";
 import { formatCount } from "@/lib/format-number";
 import { friendlyDateTime, timeAgo } from "@/lib/friendly-datetime";
 import {
-  personRef,
   personLeadRowId,
   personName,
   personStatusLabel,
@@ -39,7 +38,7 @@ import { TagChip } from "@/components/v2/tag-chip";
 import { itemCallId } from "@/lib/api-calls";
 import { ApiCallDetailPanel } from "@/components/v2/api-call-detail";
 import { RelationshipChips, UnmergeMenu } from "@/components/v2/relationship-tags";
-import { UNIBOX_DIMENSIONS, filtersFromParams, filtersKey, uniboxRowTitle, uniboxThreadRef, type UniboxDimension, type UniboxPage, type UniboxRow } from "@/lib/unibox-leads";
+import { UNIBOX_DIMENSIONS, filtersFromParams, filtersKey, uniboxRowId, uniboxRowKey, uniboxRowTitle, uniboxThreadRef, type UniboxDimension, type UniboxPage, type UniboxRow } from "@/lib/unibox-leads";
 import { UniboxFilterBar, UniboxLeadCardPanel, UniboxRowTags } from "@/components/v2/unibox-lead-card";
 
 // The publishable logo.dev token the dashboard already ships (company-logo.tsx).
@@ -103,7 +102,8 @@ export function V2ConversationsView({ brandId }: { brandId: string }) {
   };
   const [cursor, setCursor] = useState(-1);
   const searchRef = useRef<HTMLInputElement | null>(null);
-  // The URL names the lead by lead-service's opaque `humanId`, never an address (owner 2026-10-10).
+  // The URL names the row by its relation (`relationKey`, one human at one company: the same
+  // human can own several rows), else its opaque `humanId`, never an address (owner 2026-10-10).
   const openKey = params.get("lead");
   // lead-service searches name and email, asked once the typing pauses.
   const [search, setSearch] = useState("");
@@ -184,13 +184,13 @@ export function V2ConversationsView({ brandId }: { brandId: string }) {
       });
     }
     void queryClient.prefetchQuery({
-      queryKey: leadCardKey(brandId, r.humanId),
-      queryFn: () => getUniboxLead(brandId, r.humanId),
+      queryKey: leadCardKey(brandId, uniboxRowId(r)),
+      queryFn: () => getUniboxLead(brandId, uniboxRowId(r)),
       staleTime: TIMELINE_POLL,
     });
   };
   const top = (rows ?? []).slice(0, PRELOAD_TOP);
-  const topKeys = top.map((r) => r.humanId).join("|");
+  const topKeys = top.map(uniboxRowKey).join("|");
   useEffect(() => {
     if (!gate || !topKeys) return;
     for (const r of top) preload(r);
@@ -201,9 +201,9 @@ export function V2ConversationsView({ brandId }: { brandId: string }) {
   useEffect(() => {
     if (gate && cursorRow) preload(cursorRow);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [gate, cursorRow?.humanId ?? null]);
+  }, [gate, cursorRow ? uniboxRowKey(cursorRow) : null]);
 
-  const open = (r: UniboxRow) => setParam("lead", r.humanId);
+  const open = (r: UniboxRow) => setParam("lead", uniboxRowId(r));
   // The Unibox opens on the lead on top (owner 2026-10-08), and a new search or filter on its
   // first result. A lead already in the URL (a click, a shared link) is kept.
   const first = settled ? (rows?.[0] ?? null) : null;
@@ -215,7 +215,7 @@ export function V2ConversationsView({ brandId }: { brandId: string }) {
     openedFor.current = listedFor;
     if (!openKey || changed) open(first);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [first?.humanId ?? null, openKey, listedFor]);
+  }, [first ? uniboxRowKey(first) : null, openKey, listedFor]);
   // The keyboard (owner 2026-10-10): Up/Down open the previous/next lead, Right/Left move
   // between the list and the thread, and inside the thread Up/Down scroll it.
   const [pane, setPane] = useState<UniboxPane>("list");
@@ -234,7 +234,7 @@ export function V2ConversationsView({ brandId }: { brandId: string }) {
     if (el && el.getBoundingClientRect().top < 0) el.scrollIntoView({ block: "start" });
   }, [narrowView]);
   const threadScroll = useRef<HTMLDivElement | null>(null);
-  const openIndex = rows && openKey ? rows.findIndex((r) => r.humanId === openKey) : -1;
+  const openIndex = rows && openKey ? rows.findIndex((r) => uniboxRowId(r) === openKey) : -1;
   // The neighbours load too, so the next press opens from memory.
   const prevRow = openIndex > 0 ? (rows?.[openIndex - 1] ?? null) : null;
   const nextRow = openIndex >= 0 ? (rows?.[openIndex + 1] ?? null) : null;
@@ -243,7 +243,7 @@ export function V2ConversationsView({ brandId }: { brandId: string }) {
     if (prevRow) preload(prevRow);
     if (nextRow) preload(nextRow);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [gate, prevRow?.humanId ?? null, nextRow?.humanId ?? null]);
+  }, [gate, prevRow ? uniboxRowKey(prevRow) : null, nextRow ? uniboxRowKey(nextRow) : null]);
   const keys = useRef({ rows, openIndex, pane, hasOpen: Boolean(openKey) });
   keys.current = { rows, openIndex, pane, hasOpen: Boolean(openKey) };
   useEffect(() => {
@@ -286,7 +286,7 @@ export function V2ConversationsView({ brandId }: { brandId: string }) {
 
   // The open lead's card: the six tags and the campaigns. Its lead also names the thread when
   // the row is not in the loaded pages (a shared link).
-  const openRow = rows?.find((r) => r.humanId === openKey) ?? null;
+  const openRow = rows?.find((r) => uniboxRowId(r) === openKey) ?? null;
   const cardQ = useAuthQuery(leadCardKey(brandId, openKey ?? ""), () => getUniboxLead(brandId, openKey!), {
     enabled: !!brandId && !!openKey,
     refetchInterval: TIMELINE_POLL,
@@ -326,10 +326,10 @@ export function V2ConversationsView({ brandId }: { brandId: string }) {
               <ul>
                 {rows.map((r, i) => (
                   <LeadRow
-                    key={r.humanId}
+                    key={uniboxRowKey(r)}
                     index={i}
                     row={r}
-                    selected={r.humanId === openKey}
+                    selected={uniboxRowId(r) === openKey}
                     cursor={i === cursor}
                     onOpen={() => {
                       setPane("list");
@@ -426,7 +426,7 @@ export function V2ConversationsView({ brandId }: { brandId: string }) {
 }
 
 const UNIBOX_PAGE_SIZE = 100;
-const leadCardKey = (brandId: string, humanId: string) => ["uniboxLead", brandId, humanId] as const;
+const leadCardKey = (brandId: string, rowId: string) => ["uniboxLead", brandId, rowId] as const;
 
 /** One lead in the list: name, last activity, then lead-service's stage, conversation and types. */
 function LeadRow({
@@ -566,7 +566,7 @@ function Thread({
             className="min-w-0 flex-1 basis-[220px]"
             gap="gap-3"
             mark={(px) => <PersonMark name={name} emails={person.emails} size={px} />}
-            after={<PossibleLeadRulings brandId={brandId} person={person} />}
+            after={<PossibleLeadRulings brandId={brandId} person={person} threadRef={ref} />}
           >
             <h2 className="truncate text-[14px] font-semibold">{name}</h2>
             <p className="k-fg3 truncate text-[12px]">
@@ -889,19 +889,19 @@ function Message({
  * pairing drawer already sends (lead-service owns them). crm-service re-reads the pairing on
  * its own cadence, so the stated ruling holds on the line until the served person moves.
  */
-function PossibleLeadRulings({ brandId, person }: { brandId: string; person: Person }) {
+function PossibleLeadRulings({ brandId, person, threadRef }: { brandId: string; person: Person; threadRef: string }) {
   const leads = person.possibleLeads ?? [];
   if (leads.length === 0) return null;
   return (
     <div className="mt-1 space-y-1">
       {leads.map((l) => (
-        <PossibleLeadRuling key={`${person.personKey}|${l.crmContactId}|${l.leadId ?? l.email}`} brandId={brandId} person={person} lead={l} />
+        <PossibleLeadRuling key={`${person.personKey}|${l.crmContactId}|${l.leadId ?? l.email}`} brandId={brandId} person={person} threadRef={threadRef} lead={l} />
       ))}
     </div>
   );
 }
 
-function PossibleLeadRuling({ brandId, person, lead }: { brandId: string; person: Person; lead: PossibleLead }) {
+function PossibleLeadRuling({ brandId, person, threadRef, lead }: { brandId: string; person: Person; threadRef: string; lead: PossibleLead }) {
   const queryClient = useQueryClient();
   const [pending, setPending] = useState<"accepted" | "rejected" | null>(null);
   const [ruled, setRuled] = useState<"accepted" | "rejected" | null>(null);
@@ -925,7 +925,8 @@ function PossibleLeadRuling({ brandId, person, lead }: { brandId: string; person
     try {
       await Promise.all([
         queryClient.refetchQueries({ queryKey: ["people", brandId] }),
-        queryClient.refetchQueries({ queryKey: timelineKey(brandId, personRef(person)) }),
+        // The thread on screen, keyed by its ref (a Unibox row's relation, not the person).
+        queryClient.refetchQueries({ queryKey: timelineKey(brandId, threadRef) }),
       ]);
     } catch (err) {
       console.error("[v2 unibox] re-read after ruling failed", err);

@@ -36,7 +36,7 @@ import {
 import { browserHasAnonSession } from "./anon-session-cookie";
 import { offerArchiveRefusalSentence } from "./offer-archive";
 import { CrmAttributionSchema, type CrmAttribution } from "./crm-attribution";
-import { UniboxLeadCardSchema, UniboxPageSchema, uniboxQuery, type UniboxFilters, type UniboxLeadCard, type UniboxPage } from "./unibox-leads";
+import { UniboxLeadCardSchema, UniboxPageSchema, uniboxCardQuery, uniboxQuery, type UniboxFilters, type UniboxLeadCard, type UniboxPage } from "./unibox-leads";
 import { SendingScheduleResponseSchema, type SendingSchedule } from "./sending-schedule";
 import {
   PeopleListSchema,
@@ -8242,13 +8242,16 @@ export async function listUniboxLeads(
   return parsed.data;
 }
 
-/** One Unibox lead's card: the six tags and every campaign they are part of (lead-service). */
-export async function getUniboxLead(brandId: string, humanId: string, token?: string): Promise<UniboxLeadCard> {
-  const qs = new URLSearchParams({ brandId, humanId });
+/**
+ * One Unibox row's card: the six tags and every campaign they are part of (lead-service). The
+ * id is the row's `relationKey` (that relation), or a `humanId` (their latest-active row).
+ */
+export async function getUniboxLead(brandId: string, id: string, token?: string): Promise<UniboxLeadCard> {
+  const qs = new URLSearchParams({ brandId, ...uniboxCardQuery(id) });
   const raw = await apiCall<unknown>(`/leads/unibox-lead?${qs.toString()}`, { token });
   const parsed = UniboxLeadCardSchema.safeParse(raw);
   if (!parsed.success) {
-    console.error("[dashboard] getUniboxLead: response shape mismatch", { humanId, issues: parsed.error.issues });
+    console.error("[dashboard] getUniboxLead: response shape mismatch", { id, issues: parsed.error.issues });
     throw new Error("[dashboard] getUniboxLead: invalid response shape");
   }
   return parsed.data;
@@ -12110,23 +12113,34 @@ export async function undoRelationshipMerge(brandId: string, linkId: string): Pr
 
 const RelationshipEnvelopeSchema = z.object({ relationship: RelationshipBlockSchema }).passthrough();
 
+/** `?companyKey=` names the relation (a Unibox row) the tag is said about; absent = the human's latest-active row. */
+const relationshipTagPath = (brandId: string, humanId: string, tag: string, companyKey?: string | null) =>
+  `${BRAND_RELATIONSHIPS_PATH(brandId)}/${encodeURIComponent(humanId)}/tags/${encodeURIComponent(tag)}` +
+  (companyKey ? `?companyKey=${encodeURIComponent(companyKey)}` : "");
+
 export async function setRelationshipTag(
   brandId: string,
   humanId: string,
   tag: string,
   state: "yes" | "no",
+  companyKey?: string | null,
 ): Promise<RelationshipBlock> {
   const raw = await apiCall<unknown>(
-    `${BRAND_RELATIONSHIPS_PATH(brandId)}/${encodeURIComponent(humanId)}/tags/${encodeURIComponent(tag)}`,
+    relationshipTagPath(brandId, humanId, tag, companyKey),
     { method: "PUT", body: { state } },
   );
   return parseOrThrow("setRelationshipTag", RelationshipEnvelopeSchema, raw).relationship;
 }
 
 /** Takes the person's word back: the tag returns to what evidence and the judge say. */
-export async function withdrawRelationshipTag(brandId: string, humanId: string, tag: string): Promise<RelationshipBlock> {
+export async function withdrawRelationshipTag(
+  brandId: string,
+  humanId: string,
+  tag: string,
+  companyKey?: string | null,
+): Promise<RelationshipBlock> {
   const raw = await apiCall<unknown>(
-    `${BRAND_RELATIONSHIPS_PATH(brandId)}/${encodeURIComponent(humanId)}/tags/${encodeURIComponent(tag)}`,
+    relationshipTagPath(brandId, humanId, tag, companyKey),
     { method: "DELETE" },
   );
   return parseOrThrow("withdrawRelationshipTag", RelationshipEnvelopeSchema, raw).relationship;
