@@ -23,10 +23,10 @@ describe("a person's tag is coloured like the same fact in the thread", () => {
     expect(standingTag("something_new", "Something new")).toEqual({ label: "Something new", tone: "neutral", icon: "dot" });
   });
 
-  it("the list row and the thread header both draw it, never the family's colour", () => {
+  it("the thread header draws it, never the family's colour", () => {
     const src = readFileSync(join(__dirname, "../src/components/v2/integrations-conversations.tsx"), "utf8");
     expect(src).toContain("standingTag(state, label)");
-    expect(src.match(/<PersonTag label=\{status\} state=\{person\.state\} \/>/g)?.length).toBe(2);
+    expect(src.match(/<PersonTag label=\{status\} state=\{person\.state\} \/>/g)?.length).toBe(1);
     expect(src).not.toContain("familyLook(");
   });
 });

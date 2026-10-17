@@ -36,6 +36,7 @@ import {
 import { browserHasAnonSession } from "./anon-session-cookie";
 import { offerArchiveRefusalSentence } from "./offer-archive";
 import { CrmAttributionSchema, type CrmAttribution } from "./crm-attribution";
+import { UniboxLeadCardSchema, UniboxPageSchema, uniboxQuery, type UniboxFilters, type UniboxLeadCard, type UniboxPage } from "./unibox-leads";
 import { SendingScheduleResponseSchema, type SendingSchedule } from "./sending-schedule";
 import {
   PeopleListSchema,
@@ -8208,6 +8209,37 @@ export async function getLeadTimeline(
   if (!parsed.success) {
     console.error("[dashboard] getLeadTimeline: response shape mismatch", { issues: parsed.error.issues, raw });
     throw new Error("[dashboard] getLeadTimeline: invalid response shape");
+  }
+  return parsed.data;
+}
+
+/**
+ * The brand's Unibox list (owner 2026-10-17): lead-service `GET /orgs/leads/unibox` through the
+ * gateway's `/v1/leads/:id` passthrough. Every filter is served (a comma list per dimension).
+ */
+export async function listUniboxLeads(
+  brandId: string,
+  filters: UniboxFilters,
+  opts: { q?: string; limit: number; cursor?: string | null },
+  token?: string,
+): Promise<UniboxPage> {
+  const raw = await apiCall<unknown>(`/leads/unibox?${uniboxQuery(brandId, filters, opts)}`, { token });
+  const parsed = UniboxPageSchema.safeParse(raw);
+  if (!parsed.success) {
+    console.error("[dashboard] listUniboxLeads: response shape mismatch", { issues: parsed.error.issues });
+    throw new Error("[dashboard] listUniboxLeads: invalid response shape");
+  }
+  return parsed.data;
+}
+
+/** One Unibox lead's card: the six tags and every campaign they are part of (lead-service). */
+export async function getUniboxLead(brandId: string, humanId: string, token?: string): Promise<UniboxLeadCard> {
+  const qs = new URLSearchParams({ brandId, humanId });
+  const raw = await apiCall<unknown>(`/leads/unibox-lead?${qs.toString()}`, { token });
+  const parsed = UniboxLeadCardSchema.safeParse(raw);
+  if (!parsed.success) {
+    console.error("[dashboard] getUniboxLead: response shape mismatch", { humanId, issues: parsed.error.issues });
+    throw new Error("[dashboard] getUniboxLead: invalid response shape");
   }
   return parsed.data;
 }
