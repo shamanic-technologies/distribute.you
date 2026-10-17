@@ -40,7 +40,7 @@ describe("defaultPhoneCountry (owner 2026-10-13: the country the visitor connect
   it("the public page reads Cloudflare's country on the server and hands it to the wall", () => {
     const page = readFileSync(join(__dirname, "../src/app/(authed)/get-started/page.tsx"), "utf8");
     expect(page).toContain('get("cf-ipcountry")');
-    expect(page).toContain("<GetStarted ipCountry={ipCountry} />");
+    expect(page).toContain("<GetStarted ipCountry={ipCountry} ");
     const gs = readFileSync(join(__dirname, "../src/components/v2/get-started/get-started.tsx"), "utf8");
     expect(gs).toContain("<AccountCardWall\n          ipCountry={ipCountry}");
     expect(wall).toContain("defaultPhoneCountry(ipCountry, navigator.language)");

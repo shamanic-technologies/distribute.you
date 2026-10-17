@@ -416,7 +416,7 @@ describe("the surface", () => {
 
   it("draws Explee's steps 7 to 9, dotted until the email is written", () => {
     expect(FLOW).toContain("NEXT_STEPS.map(");
-    expect(FLOW).toContain('nextLit={steps.email === "done"}');
+    expect(FLOW).toContain('nextLit={emailsShown ? steps.email === "done" : steps.companies === "done"}');
     expect(FLOW).toContain("border-dashed");
   });
 
