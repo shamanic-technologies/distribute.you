@@ -27,7 +27,7 @@ import { CompanyMark, PersonAvatar, leadCompany, leadCompanyDomain, leadName, pe
 import { companyHref } from "@/components/v2/companies-page";
 import { v2Base, v2Href, v2NewBrandHref, v2OfferHref, type V2Section } from "@/lib/v2/routes";
 import { useStaffMode } from "@/lib/use-staff-mode";
-import { showOrgSearch, switcherOrgs } from "@/lib/v2/org-switcher-list";
+import { moveOrgCursor, showOrgSearch, switcherOrgs } from "@/lib/v2/org-switcher-list";
 
 /**
  * The three sidebar controls of v2, drawn the way Explee and Keel draw them:
@@ -137,6 +137,17 @@ export function TenantSwitcherV2() {
   });
   const orgSearchShown = showOrgSearch(allOrgs ? t.allOrgsTotal : memberOrgs.length, t.orgSearch);
   const staffOrgsLoading = allOrgs && t.orgsLoading && t.allOrgs.length === 0;
+  // Keyboard pick in the search box: typing highlights the first match, ↓/↑ move the
+  // highlight, Enter opens it (owner 2026-10-17). A click still works the same.
+  const [orgCursor, setOrgCursor] = useState(-1);
+  const orgListRef = useRef<HTMLDivElement>(null);
+  useEffect(() => setOrgCursor(t.orgSearch.trim() ? 0 : -1), [t.orgSearch]);
+  useEffect(() => {
+    if (orgCursor < 0) return;
+    orgListRef.current?.querySelector(`[data-org-idx="${orgCursor}"]`)?.scrollIntoView({ block: "nearest" });
+  }, [orgCursor]);
+  const pickOrg = (o: { id: string; name: string }) =>
+    o.id === t.orgId ? setOpen(false) : void t.handleOrgSwitch(o.id, o.name);
 
   return (
     <div ref={ref} className="relative">
@@ -258,24 +269,40 @@ export function TenantSwitcherV2() {
               <input
                 value={t.orgSearch}
                 onChange={(e) => t.setOrgSearch(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "ArrowDown" || e.key === "ArrowUp") {
+                    e.preventDefault();
+                    setOrgCursor((c) => moveOrgCursor(c, orgs.length, e.key === "ArrowDown" ? 1 : -1));
+                  } else if (e.key === "Enter") {
+                    e.preventDefault();
+                    const o = orgs[orgCursor];
+                    if (o && !t.switchingOrgId) pickOrg(o);
+                  } else if (e.key === "Escape") {
+                    setOpen(false);
+                  }
+                }}
+                aria-activedescendant={orgCursor >= 0 && orgs[orgCursor] ? `org-option-${orgs[orgCursor].id}` : undefined}
                 placeholder="Search organizations…"
                 aria-label="Search organizations"
                 className="k-input w-full px-2"
               />
             </div>
           )}
-          <div className="k-scroll max-h-48 overflow-y-auto">
+          <div ref={orgListRef} className="k-scroll max-h-48 overflow-y-auto">
             {staffOrgsLoading && <p className="k-fg3 px-2 py-1.5 text-[12px]">Loading…</p>}
             {!staffOrgsLoading && orgs.length === 0 && <p className="k-fg3 px-2 py-1.5 text-[12px]">No organization matches.</p>}
-            {!staffOrgsLoading && orgs.map((o) => (
+            {!staffOrgsLoading && orgs.map((o, i) => (
               <button
                 key={o.id}
+                id={`org-option-${o.id}`}
+                data-org-idx={i}
                 type="button"
                 role="menuitem"
                 disabled={!!t.switchingOrgId}
                 aria-current={o.id === t.orgId ? "true" : undefined}
-                className={`${itemCls} ${o.id === t.orgId ? currentCls : ""}`}
-                onClick={() => (o.id === t.orgId ? setOpen(false) : void t.handleOrgSwitch(o.id, o.name))}
+                className={`${itemCls} ${i === orgCursor ? "bg-[var(--bg-hover)] font-medium" : o.id === t.orgId ? currentCls : ""}`}
+                onMouseEnter={() => setOrgCursor(i)}
+                onClick={() => pickOrg(o)}
               >
                 <OrgAvatar name={o.name} imageUrl={o.imageUrl} hasImage={o.hasImage} sizeClass="w-5 h-5" />
                 <span className="truncate">{o.name}</span>

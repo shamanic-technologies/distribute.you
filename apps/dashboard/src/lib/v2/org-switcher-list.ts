@@ -47,3 +47,15 @@ export function switcherOrgs({
   const listed = orgs.find((o) => o.id === current.id) ?? current;
   return [listed, ...orgs.filter((o) => o.id !== current.id)];
 }
+
+/**
+ * The keyboard highlight in the Organizations block: ↓/↑ in the search box move it
+ * through the rows, wrapping at both ends, and Enter opens the highlighted org.
+ * `-1` = nothing highlighted (no search typed yet); ↓ from there lands on the first row,
+ * ↑ on the last. An empty list highlights nothing.
+ */
+export function moveOrgCursor(cursor: number, count: number, step: 1 | -1): number {
+  if (count === 0) return -1;
+  if (cursor < 0 || cursor >= count) return step === 1 ? 0 : count - 1;
+  return (cursor + step + count) % count;
+}

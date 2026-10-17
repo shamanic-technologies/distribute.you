@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
-import { ORG_SEARCH_MIN, showOrgSearch, switcherOrgs } from "../src/lib/v2/org-switcher-list";
+import { ORG_SEARCH_MIN, moveOrgCursor, showOrgSearch, switcherOrgs } from "../src/lib/v2/org-switcher-list";
 
 const org = (id: string, name = id) => ({ id, name });
 
@@ -37,5 +37,29 @@ describe("org switcher list (staff reads like GA)", () => {
     expect(block).toContain("showOrgSearch(");
     expect(block).toContain('placeholder="Search organizations…"');
     expect(block).not.toContain("Search all organizations");
+  });
+});
+
+describe("org switcher keyboard pick", () => {
+  it("moves the highlight with wrap, starting from nothing", () => {
+    expect(moveOrgCursor(-1, 3, 1)).toBe(0);
+    expect(moveOrgCursor(-1, 3, -1)).toBe(2);
+    expect(moveOrgCursor(0, 3, 1)).toBe(1);
+    expect(moveOrgCursor(2, 3, 1)).toBe(0);
+    expect(moveOrgCursor(0, 3, -1)).toBe(2);
+    expect(moveOrgCursor(5, 3, 1)).toBe(0);
+    expect(moveOrgCursor(0, 0, 1)).toBe(-1);
+  });
+
+  it("the search box drives the highlight: arrows move it, Enter opens it, typing preselects the first", () => {
+    const src = readFileSync(join(__dirname, "../src/components/v2/sidebar-menus.tsx"), "utf8");
+    const start = src.indexOf("export function TenantSwitcherV2(");
+    const block = src.slice(start, src.indexOf("// ─── Account menu", start));
+    expect(block).toContain("useEffect(() => setOrgCursor(t.orgSearch.trim() ? 0 : -1), [t.orgSearch]);");
+    expect(block).toContain('e.key === "ArrowDown"');
+    expect(block).toContain("moveOrgCursor(c, orgs.length,");
+    expect(block).toContain("const o = orgs[orgCursor];");
+    expect(block).toContain("pickOrg(o)");
+    expect(block).toContain("data-org-idx={i}");
   });
 });
