@@ -104,7 +104,7 @@ describe("resume after a reload or a quit, per org", () => {
     expect(walk).toContain("const snapshotKey = org ? getStartedOrgSnapshotKey(org.orgId) : GET_STARTED_SNAPSHOT_KEY;");
     const eff = walk.slice(walk.indexOf("localStorage.getItem(snapshotKey)"), walk.indexOf("if (!snap) return;"));
     expect(eff).toContain("snapshotResumable(snap, Date.now(), GET_STARTED_ORG_RESUME_MAX_AGE_MS)");
-    expect(eff).toContain("resumePreparing(snap);");
+    expect(eff).toContain("resumePreparing(resume);");
     // Finish setup names its brand: another brand's snapshot is not resumed for it.
     expect(eff).toContain("snap.brandId === org.brandId");
     expect(eff).toContain("void startExisting(org.brandId)");
