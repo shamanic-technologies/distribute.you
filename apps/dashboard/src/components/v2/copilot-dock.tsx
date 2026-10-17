@@ -21,6 +21,12 @@ interface CopilotDock {
   ask: (text: string) => void;
   /** The chat took the queued message. */
   clearPending: () => void;
+  /** A sentence a page button STARTS for the user (e.g. "Edit with AI"), never sent. */
+  draft: string | null;
+  /** Shows the panel and puts `text` in the box, the cursor after it: the user finishes it. */
+  prefill: (text: string) => void;
+  /** The chat put the started sentence in its box. */
+  clearDraft: () => void;
 }
 
 export const CopilotDockContext = createContext<CopilotDock>({
@@ -30,6 +36,9 @@ export const CopilotDockContext = createContext<CopilotDock>({
   pending: null,
   ask: () => {},
   clearPending: () => {},
+  draft: null,
+  prefill: () => {},
+  clearDraft: () => {},
 });
 
 export function useCopilotDock() {
@@ -65,7 +74,16 @@ export function useCopilotDockState(available: boolean): CopilotDock {
     [setOpen],
   );
   const clearPending = useCallback(() => setPending(null), []);
-  return { available, open, setOpen, pending, ask, clearPending };
+  const [draft, setDraft] = useState<string | null>(null);
+  const prefill = useCallback(
+    (text: string) => {
+      setOpen(true);
+      setDraft(text);
+    },
+    [setOpen],
+  );
+  const clearDraft = useCallback(() => setDraft(null), []);
+  return { available, open, setOpen, pending, ask, clearPending, draft, prefill, clearDraft };
 }
 
 /** The top bar's way back to a hidden Copilot. Nothing while it is shown. */

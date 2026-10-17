@@ -15,6 +15,13 @@ export const COPILOT_CONFIG_KEY = "copilot";
 export const COPILOT_OPENER = "Open a new chat for this account: what matters right now, and what should I do next?";
 
 /**
+ * "Edit with AI" on a page STARTS a sentence in the Copilot's box, never sends it: the
+ * cursor sits after it and the user says what they want (owner 2026-10-17).
+ */
+export const AUDIENCES_COPILOT_START = "For my audiences, I want to ";
+export const QUALIFICATION_COPILOT_START = "For my qualification checks, I want to ";
+
+/**
  * Where the browser keeps the conversation it shows, per signed-in USER and brand (the
  * history lives in chat-service). Two teammates on one browser never see each other's chat
  * (owner 2026-10-11, confidentiality). The old org+brand key is never read: nobody can tell

@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { useMutation } from "@tanstack/react-query";
 import { useAuthQuery, useQueryClient } from "@/lib/use-auth-query";
+import { pollOptions } from "@/lib/query-options";
 import {
   archiveOfferQualificationCriterion,
   listOfferQualificationCriteria,
@@ -24,29 +25,30 @@ import {
 import { EmptyNote, SectionTitle, Shimmer, StateDot } from "@/components/v2/ui";
 import { ExpectedLabel } from "@/components/v2/offer-sales-paths";
 import { SparkleIcon } from "@/components/v2/audiences-table";
-import { EditWithAIChat } from "@/components/ai-edit/edit-with-ai-chat";
+import { useCopilotDock } from "@/components/v2/copilot-dock";
+import { QUALIFICATION_COPILOT_START } from "@/lib/copilot";
 
 /** chat-service's editor chat for an offer's checks. */
-const QUALIFICATION_CHAT_KEY = "qualification-editor" as const;
-
 const criteriaKey = (brandId: string, offerId: string) => ["offerQualificationCriteria", brandId, offerId] as const;
 
 /**
  * Targeting > Qualification (owner 2026-10-07): the checks this OFFER runs on the companies of
  * its prospects, for every audience of it. Per check: the question, its role (Hard filter: a
  * company that fails is skipped; Bonus: a plus, never required), on/off, the served cost per
- * lead and the served pass rate. The AI chat suggests checks (they arrive turned off).
+ * lead and the served pass rate. The Copilot suggests checks (they arrive turned off).
  */
 export function OfferQualification({ brandId, offerId }: { brandId: string; offerId: string }) {
-  const q = useAuthQuery(criteriaKey(brandId, offerId), () => listOfferQualificationCriteria(brandId, offerId));
-  // The checks are suggested, created, turned on/off and archived through the AI chat (owner
-  // 2026-10-07: "comme avec la création d'audiences"). A check's wording is never edited (it may
-  // already have run): the chat archives it and creates a new one.
-  const [aiOpen, setAiOpen] = useState(false);
+  // Polled: a check the Copilot creates or turns on shows up here without a reload.
+  const q = useAuthQuery(criteriaKey(brandId, offerId), () => listOfferQualificationCriteria(brandId, offerId), pollOptions);
+  // The checks are suggested, created, turned on/off and archived through the Copilot (owner
+  // 2026-10-07: "comme avec la création d'audiences"; 2026-10-17: the Copilot, not a separate
+  // chat, the sentence started for the user). A check's wording is never edited (it may
+  // already have run): the Copilot archives it and creates a new one.
+  const copilot = useCopilotDock();
 
   const rows = q.data ? sortCriteria(q.data) : null;
   const aiButton = (
-    <button type="button" className="k-btn-strong" onClick={() => setAiOpen(true)}>
+    <button type="button" className="k-btn-strong" onClick={() => copilot.prefill(QUALIFICATION_COPILOT_START)}>
       <SparkleIcon />
       Edit with AI
     </button>
@@ -99,23 +101,6 @@ export function OfferQualification({ brandId, offerId }: { brandId: string; offe
           </div>
         </div>
       )}
-      <EditWithAIChat
-        open={aiOpen}
-        onClose={() => setAiOpen(false)}
-        title="Edit checks with AI"
-        intro="Hi, I can suggest checks for this offer, create one from your words, turn one on or off, make it a Hard filter or a Bonus, or archive it. What would you like to do?"
-        suggestions={[
-          "Suggest checks for this offer",
-          "Skip companies whose site is slow on mobile",
-          "Archive the checks I never turned on",
-        ]}
-        configKey={QUALIFICATION_CHAT_KEY}
-        brandId={brandId}
-        context={{ offerId }}
-        sessionVersion={offerId}
-        invalidateKeys={[[...criteriaKey(brandId, offerId)]]}
-        panelClassName="k-popover fixed inset-y-2 right-2 z-[95] flex w-[min(28rem,calc(100vw-16px))] flex-col overflow-hidden"
-      />
     </section>
   );
 }

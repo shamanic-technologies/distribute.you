@@ -207,7 +207,11 @@ describe("v2 audience table surface", () => {
   });
 
   it("the chat states the offer, or an audience created here lands brand-wide", () => {
-    expect(table).toContain("...(t.offerId ? { offerId: t.offerId } : {})");
+    // Edit with AI opens the Copilot (owner 2026-10-17), which sends the selected offer.
+    expect(table).toContain("copilot.prefill(AUDIENCES_COPILOT_START)");
+    const chat = read("src/components/v2/copilot-chat.tsx");
+    expect(chat).toContain("const offerId = useSelectedOfferIfAny()?.offerId ?? null;");
+    expect(chat).toMatch(/brandId,\n\s+offerId,\n/);
   });
 });
 

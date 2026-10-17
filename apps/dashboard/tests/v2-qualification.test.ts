@@ -67,11 +67,12 @@ describe("qualification surfaces", () => {
     expect(table).toContain("<ExpectedLabel tip={COST_PER_LEAD_TIP}>Cost per lead</ExpectedLabel>");
   });
 
-  it("checks are managed through the AI chat, scoped to the offer, refreshing the list", () => {
+  it("checks are managed through the Copilot, the sentence started for the user, the list polled", () => {
     const table = src("src/components/v2/offer-qualification.tsx");
-    expect(table).toContain("configKey={QUALIFICATION_CHAT_KEY}");
-    expect(table).toContain("context={{ offerId }}");
-    expect(table).toContain("invalidateKeys={[[...criteriaKey(brandId, offerId)]]}");
+    // Owner 2026-10-17: Edit with AI opens the Copilot, not a separate chat.
+    expect(table).toContain("onClick={() => copilot.prefill(QUALIFICATION_COPILOT_START)}");
+    expect(table).not.toContain("<EditWithAIChat");
+    expect(table).toContain("() => listOfferQualificationCriteria(brandId, offerId), pollOptions)");
     expect(table).not.toContain("suggestOfferQualificationCriteria");
   });
 
