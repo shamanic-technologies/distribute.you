@@ -434,10 +434,15 @@ function GetStartedWalk({ org, ipCountry = null, gsArm = "emails", gsArmFresh = 
       // The org's own walk: resumed at once (it bills the org it names, on purpose).
       // "Finish setup" names its brand: another brand's snapshot is not that one.
       const fits = !!snap && (!org.brandId || snap.brandId === org.brandId) && snapshotResumable(snap, Date.now(), GET_STARTED_ORG_RESUME_MAX_AGE_MS);
-      if (snap && fits) {
-        applySnapshot(snap);
+      // A signup walk stopped at the wall (paid, never launched: CeXO AI 2026-10-17) left its
+      // snapshot under the signup key: "Finish setup" on that brand resumes it, never screen 1.
+      const resume = fits ? snap : org.brandId ? signupSnapshotFor(org.brandId) : null;
+      if (resume) {
+        applySnapshot(resume);
         resumed.current = true;
-        resumePreparing(snap);
+        resumePreparing(resume);
+        // The campaign was already set: straight to Launch.
+        if (resume.campaignDone) setWallOpen(true);
       } else if (org.brandId) void startExisting(org.brandId);
       return;
     }
@@ -2004,6 +2009,19 @@ function GetStartedWalk({ org, ipCountry = null, gsArm = "emails", gsArmFresh = 
       )}
     </div>
   );
+}
+
+/** The signup walk's snapshot when it names this brand (kept like an org walk's, 30 days). */
+function signupSnapshotFor(brandId: string): GetStartedSnapshot | null {
+  let raw: string | null = null;
+  try {
+    raw = localStorage.getItem(GET_STARTED_SNAPSHOT_KEY);
+  } catch (e) {
+    console.error("[get-started] signup snapshot read failed:", e);
+  }
+  const snap = parseGetStartedSnapshot(raw);
+  if (!snap || snap.brandId !== brandId) return null;
+  return snapshotResumable(snap, Date.now(), GET_STARTED_ORG_RESUME_MAX_AGE_MS) ? snap : null;
 }
 
 function initialSteps(): Record<GetStartedStepKey, StepState> {
