@@ -1,8 +1,8 @@
 /**
  * The get-started A/B test (owner 2026-10-17, after a visitor left because the preview
- * emails "weren't the tone I thought would work"): 20% keep the walk as it was, with the
- * first emails written and shown; 80% never see an email, the walk goes from the
- * companies straight to the campaign, and the copy promises leads, not emails.
+ * emails "weren't the tone I thought would work"): half keep the walk with the first
+ * emails written and shown; half never see an email, the walk goes from the companies
+ * straight to the campaign, and the copy promises leads, not emails.
  *
  * Drawn on the server (first visit), kept in a cookie the page writes once mounted, and
  * registered on every PostHog event as `gs_arm`. The read: the share of visitors per arm
@@ -16,8 +16,8 @@ export type GsArm = (typeof GS_ARMS)[number];
 
 export const GS_ARM_COOKIE = "gs_arm";
 
-/** Share of first visits drawn into each arm (owner 2026-10-17: 20 / 80). */
-export const GS_ARM_WEIGHTS: Record<GsArm, number> = { emails: 0.2, leads: 0.8 };
+/** Share of first visits drawn into each arm (owner 2026-10-17: 50 / 50). */
+export const GS_ARM_WEIGHTS: Record<GsArm, number> = { emails: 0.5, leads: 0.5 };
 
 /** The arm a uniform draw in [0, 1) lands on, walking the weights in a fixed order. */
 export function drawGsArm(random: number, weights = GS_ARM_WEIGHTS): GsArm {

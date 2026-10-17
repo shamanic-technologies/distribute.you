@@ -6,12 +6,12 @@ import { GS_ARM_COPY, GS_ARM_WEIGHTS, decideGsArm, drawGsArm, walkStepNumber, wa
 const walk = readFileSync(join(__dirname, "../src/components/v2/get-started/get-started.tsx"), "utf8");
 const page = readFileSync(join(__dirname, "../src/app/(authed)/get-started/page.tsx"), "utf8");
 
-describe("get-started A/B: 20% emails, 80% leads (owner 2026-10-17)", () => {
-  it("draws 20 / 80", () => {
-    expect(GS_ARM_WEIGHTS).toEqual({ emails: 0.2, leads: 0.8 });
+describe("get-started A/B: 50% emails, 50% leads (owner 2026-10-17)", () => {
+  it("draws 50 / 50", () => {
+    expect(GS_ARM_WEIGHTS).toEqual({ emails: 0.5, leads: 0.5 });
     expect(drawGsArm(0)).toBe("emails");
-    expect(drawGsArm(0.19)).toBe("emails");
-    expect(drawGsArm(0.2)).toBe("leads");
+    expect(drawGsArm(0.49)).toBe("emails");
+    expect(drawGsArm(0.5)).toBe("leads");
     expect(drawGsArm(0.99)).toBe("leads");
   });
 
