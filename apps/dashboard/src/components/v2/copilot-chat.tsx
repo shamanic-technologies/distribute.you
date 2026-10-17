@@ -247,7 +247,7 @@ export function CopilotChat({ orgId, brandId, headerAction }: { orgId: string; b
   const scrollRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const { figures, settled, revPending, winPending } = useAccountFigures(brandId);
-  const { open: dockOpen, pending: askedText, clearPending } = useCopilotDock();
+  const { open: dockOpen, pending: askedText, clearPending, draft: startedText, clearDraft } = useCopilotDock();
 
   // What the model reads on every turn: where the user is, the pages it may open, and the
   // account's served figures (it cites them, it never computes one).
@@ -415,6 +415,22 @@ export function CopilotChat({ orgId, brandId, headerAction }: { orgId: string; b
     setOpenerWanted(false);
     sendMessage({ text: askedText });
   }, [askedText, phase, busy, clearPending, sendMessage]);
+
+  // A page button started a sentence ("Edit with AI"): it lands in the box, never sent, the
+  // cursor after it so the user types the rest (owner 2026-10-17).
+  useEffect(() => {
+    if (startedText === null || phase !== "ready") return;
+    clearDraft();
+    setDraft(startedText);
+    // Not cancelled on cleanup: clearDraft re-runs this effect before the frame, and the
+    // focus must still land once the box holds the text.
+    requestAnimationFrame(() => {
+      const el = textareaRef.current;
+      if (!el) return;
+      el.focus();
+      el.setSelectionRange(startedText.length, startedText.length);
+    });
+  }, [startedText, phase, clearDraft]);
 
   // A new chat opens on the model's read of the account, once the figures are in.
   useEffect(() => {

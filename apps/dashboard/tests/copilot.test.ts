@@ -253,6 +253,28 @@ describe("Create a campaign button (owner 2026-10-11)", () => {
   });
 });
 
+describe("Edit with AI opens the Copilot with the sentence started (owner 2026-10-17)", () => {
+  it("the dock shows the panel and holds the started sentence, never sending it", () => {
+    const dock = src("src/components/v2/copilot-dock.tsx");
+    expect(dock).toContain("setOpen(true);\n      setDraft(text);");
+    const chat = src("src/components/v2/copilot-chat.tsx");
+    const at = chat.indexOf("if (startedText === null");
+    const body = chat.slice(at, chat.indexOf("}, [startedText, phase, clearDraft]);", at));
+    expect(body).toContain("setDraft(startedText);");
+    expect(body).toContain("el.setSelectionRange(startedText.length, startedText.length);");
+    expect(body).not.toContain("sendMessage");
+  });
+
+  it("the Audiences and Qualification buttons start their sentence in the Copilot", () => {
+    const audiences = src("src/components/v2/audiences-table.tsx");
+    expect(audiences).toContain("copilot.prefill(AUDIENCES_COPILOT_START)");
+    expect(audiences).not.toContain("<EditWithAIChat");
+    const checks = src("src/components/v2/offer-qualification.tsx");
+    expect(checks).toContain("copilot.prefill(QUALIFICATION_COPILOT_START)");
+    expect(checks).not.toContain("<EditWithAIChat");
+  });
+});
+
 describe("the user never waits on the Copilot (owner 2026-10-15)", () => {
   it("a message sent while an answer streams stops it and goes out at once", () => {
     const chat = src("src/components/v2/copilot-chat.tsx");

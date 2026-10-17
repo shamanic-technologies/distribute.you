@@ -28,7 +28,8 @@ import {
 } from "@/lib/audience-table-model";
 import { AudienceAvatar } from "@/components/audiences/audience-avatar";
 import { ProviderLogo } from "@/components/provider-logo";
-import { EditWithAIChat } from "@/components/ai-edit/edit-with-ai-chat";
+import { useCopilotDock } from "@/components/v2/copilot-dock";
+import { AUDIENCES_COPILOT_START } from "@/lib/copilot";
 import { EmptyNote, Shimmer, StateDot } from "@/components/v2/ui";
 import { RecordsFooter, RecordsTabs, RecordsToolbar, REC_TH, useRowKeys } from "@/components/v2/records";
 import { useAudienceTable } from "@/components/v2/use-audience-table";
@@ -206,8 +207,9 @@ export function V2AudiencesTable({
   const [q, setQ] = useState("");
   const [cursor, setCursor] = useState(-1);
   const [selectedId, setSelectedId] = useState<string | null>(searchParams.get("audienceId"));
-  const [aiOpen, setAiOpen] = useState(false);
-  const [autoPrompt, setAutoPrompt] = useState<string | null>(null);
+  // "Edit with AI" opens the Copilot with the sentence started (owner 2026-10-17), never a
+  // separate chat: the Copilot already knows the offer open on the page.
+  const copilot = useCopilotDock();
   const [sortCol, setSortCol] = useState<AudienceSortCol>(plain ? "audience" : t.defaultSortCol);
   const [sortDir, setSortDir] = useState<"asc" | "desc">(plain ? "asc" : t.defaultSortDir);
   // A plain list has no figure to sort on: it stays alphabetical.
@@ -285,7 +287,6 @@ export function V2AudiencesTable({
     ...columns.map((c) => ({ col: c.col, label: c.label })),
   ];
   const sortLabel = sortable.find((s) => s.col === sortCol)?.label ?? "Audience";
-  const docked = aiOpen && Boolean(selected);
 
   if (!t.revenueOk) {
     return (
@@ -374,7 +375,7 @@ export function V2AudiencesTable({
                 type="button"
                 onClick={() => {
                   setSelectedId(null);
-                  setAiOpen(true);
+                  copilot.prefill(AUDIENCES_COPILOT_START);
                 }}
                 className="k-btn-strong"
               >
@@ -493,14 +494,10 @@ export function V2AudiencesTable({
           paused={t.withheldPaused}
           plain={plain}
           sources={plain ? sourcesOfProfile(selected, p.audiences, p.origins).filter((s) => !s.own) : []}
-          docked={docked}
-          onClose={() => {
-            setSelectedId(null);
-            setAiOpen(false);
-          }}
+          onClose={() => setSelectedId(null)}
           onFindSimilar={() => {
-            setAutoPrompt(`Find audiences similar to "${selected.name || "this audience"}" and create them.`);
-            setAiOpen(true);
+            setSelectedId(null);
+            copilot.ask(`Find audiences similar to "${selected.name || "this audience"}" and create them.`);
           }}
           onRegenerateAvatar={() => t.avatarMut.mutate(selected.id)}
           avatarPending={t.avatarMut.isPending && t.avatarMut.variables === selected.id}
@@ -512,31 +509,6 @@ export function V2AudiencesTable({
         />
       )}
 
-      <EditWithAIChat
-        open={aiOpen}
-        onClose={() => setAiOpen(false)}
-        title="Edit audiences with AI"
-        intro="Hi, I can create a new audience from a description, rename one, pause, resume or archive it, refresh its counts, or regenerate its avatar. What would you like to do?"
-        suggestions={[
-          "Create an audience of heads of marketing at Series A SaaS",
-          "Pause the lowest-performing audience",
-          "Refresh counts on all audiences",
-        ]}
-        configKey="audience-editor"
-        brandId={t.brandId}
-        // The chat files what it creates under the offer it is told; without it an
-        // audience asked for here would be brand-wide and invisible on this page.
-        context={{
-          ...(t.offerId ? { offerId: t.offerId } : {}),
-          ...(selected ? { audienceId: selected.id } : {}),
-        }}
-        sessionVersion={selected?.id}
-        invalidateKeys={[["audiences", t.brandId]]}
-        autoSendMessage={autoPrompt ?? undefined}
-        onAutoSendComplete={() => setAutoPrompt(null)}
-        showBackdrop={!docked}
-        panelClassName="k-popover fixed inset-y-2 right-2 z-[95] flex w-[min(28rem,calc(100vw-16px))] flex-col overflow-hidden"
-      />
     </>
   );
 }
@@ -872,7 +844,6 @@ function AudienceDrawer({
   paused,
   plain,
   sources,
-  docked,
   onClose,
   onFindSimilar,
   onRegenerateAvatar,
@@ -891,7 +862,6 @@ function AudienceDrawer({
   plain: boolean;
   /** The sources of this profile beside its own list (served sources, legacy rows), live ones first. */
   sources: ProfileSource[];
-  docked: boolean;
   onClose: () => void;
   onFindSimilar: () => void;
   onRegenerateAvatar: () => void;
@@ -933,9 +903,7 @@ function AudienceDrawer({
     <aside
       role="dialog"
       aria-label={`${name} audience`}
-      className={`k-popover fixed inset-y-2 right-2 z-[80] flex w-[min(440px,calc(100vw-16px))] flex-col overflow-hidden ${
-        docked ? "md:right-[calc(28rem+16px)]" : ""
-      }`}
+      className="k-popover fixed inset-y-2 right-2 z-[80] flex w-[min(440px,calc(100vw-16px))] flex-col overflow-hidden"
     >
       <div className="k-line-subtle flex h-11 shrink-0 items-center justify-between border-b px-4">
         <span className="k-label">Audience</span>
