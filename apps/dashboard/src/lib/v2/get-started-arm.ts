@@ -1,8 +1,9 @@
 /**
  * The get-started A/B test (owner 2026-10-17, after a visitor left because the preview
- * emails "weren't the tone I thought would work"): half keep the walk with the first
- * emails written and shown; half never see an email, the walk goes from the companies
- * straight to the campaign, and the copy promises leads, not emails.
+ * emails "weren't the tone I thought would work"): both halves see their leads first; the
+ * `emails` half then picks its email style (Offer, Direct named, Direct unnamed, an example
+ * of each on click, lib/v2/email-angles.ts); the `leads` half goes from the companies
+ * straight to the campaign.
  *
  * Drawn on the server (first visit), kept in a cookie the page writes once mounted, and
  * registered on every PostHog event as `gs_arm`. The read: the share of visitors per arm
@@ -54,8 +55,10 @@ export function showsEmails(arm: GsArm): boolean {
 }
 
 /** The steps this arm walks, in order (the `leads` arm has no email step). */
-export function walkSteps(arm: GsArm): (typeof GET_STARTED_STEPS)[number][] {
-  return GET_STARTED_STEPS.filter((st) => st.key !== "email" || showsEmails(arm));
+export function walkSteps(arm: GsArm): { key: GetStartedStepKey; label: string }[] {
+  return GET_STARTED_STEPS.filter((st) => st.key !== "email" || showsEmails(arm)).map((st) =>
+    st.key === "email" ? { key: st.key, label: "Pick your email style" } : { key: st.key, label: st.label },
+  );
 }
 
 /** A step's number as this arm shows it (1-based), or null when the arm skips it. */
@@ -67,10 +70,10 @@ export function walkStepNumber(key: GetStartedStepKey, arm: GsArm): number | nul
 /** The words that name what the walk shows, per arm. */
 export const GS_ARM_COPY: Record<GsArm, { promise: readonly string[]; givesNext: string; givesButton: string; givesPick: string }> = {
   emails: {
-    promise: ["Your company", "5 companies", "Your first emails"],
-    givesNext: "Next, a preview of your first emails. Nothing is sent.",
-    givesButton: "Preview my emails",
-    givesPick: "Say what you give away, then we write the emails.",
+    promise: ["Your company", "Your first leads", "Your email style"],
+    givesNext: "Next, a preview of your first leads.",
+    givesButton: "Preview my leads",
+    givesPick: "Say what you give away, then we find your leads.",
   },
   leads: {
     promise: ["Your company", "Your first leads"],

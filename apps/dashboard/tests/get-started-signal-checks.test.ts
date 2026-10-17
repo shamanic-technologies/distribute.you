@@ -34,14 +34,15 @@ const FLOW = fs.readFileSync(path.resolve(__dirname, "../src/components/v2/get-s
 const API = fs.readFileSync(path.resolve(__dirname, "../src/lib/api.ts"), "utf8");
 
 describe("the walk checks the preview companies", () => {
-  it("sends the company's check results with its preview email", () => {
-    const at = FLOW.indexOf("async function writeEmail(");
-    const body = FLOW.slice(at, FLOW.indexOf("// One email always waits written", at));
-    expect(body).toContain("check = await checkOf(row);");
+  it("sends the company's check results with its example email, and skips a company failing a Must have", () => {
+    const at = FLOW.indexOf("async function writeExample(");
+    const body = FLOW.slice(at, FLOW.indexOf("// ── The stage", at));
+    expect(body).toContain("check = await checkOf(r);");
     expect(body).toContain("qualification: check.qualification");
-    // A company failing a Must have gets no email, and the next company is asked.
-    expect(body).toContain('check?.mustPass.state === "fails"');
-    expect(body).toContain("wantRows(aud, companiesWanted(PREVIEW_COMPANIES, failing.size))");
+    expect(body).toContain('if (check?.mustPass.state !== "fails") {');
+    // A listed company failing a Must have: one more company is listed in its place.
+    const checks = FLOW.slice(FLOW.indexOf("function checkCompanies("), FLOW.indexOf("async function checkOf("));
+    expect(checks).toContain("wantRows(aud, companiesWanted(PREVIEW_COMPANIES, failing.size))");
   });
 
   it("runs the checks only after the visitor's ticks are saved", () => {
@@ -61,8 +62,8 @@ describe("the walk checks the preview companies", () => {
     expect(confirm).toContain("void checkCompanies(");
   });
 
-  it("shows the missed condition on both the companies and the emails steps", () => {
-    expect(FLOW.match(/unmet=\{unmetOf\}/g)?.length).toBe(2);
+  it("shows the missed condition on the companies step", () => {
+    expect(FLOW.match(/unmet=\{unmetOf\}/g)?.length).toBe(1);
     expect(FLOW).toContain("{`Does not meet: ${text}`}");
   });
 

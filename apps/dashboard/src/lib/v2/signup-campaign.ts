@@ -56,20 +56,28 @@ export interface SignupFunnel {
   status: string | null;
 }
 
-/** The first runnable, unmixed row of a type: the producer already ranks ROI first. */
-export function firstOfType(rows: readonly PublicSalesFunnelRow[], type: "proactive" | "reactive"): SignupFunnel | null {
-  const row = rows.find((r) => r.type === type && r.runnable && !r.mixed);
+/** The first runnable, unmixed row of a type the caller accepts: the producer already ranks ROI first. */
+export function firstOfType(
+  rows: readonly PublicSalesFunnelRow[],
+  type: "proactive" | "reactive",
+  fits: (funnelId: string) => boolean = () => true,
+): SignupFunnel | null {
+  const row = rows.find((r) => r.type === type && r.runnable && !r.mixed && fits(r.id));
   return row ? { salesFunnelId: row.id, name: row.name, costUsd: row.costUsd, costPer: row.costPer, roi: row.roi, status: row.status ?? null } : null;
 }
 
 /** The two funnels the step proposes: the best proactive cold-email one, and the meeting-booking reactive one. */
-export function signupFunnelsFrom(body: unknown): { proactive: SignupFunnel | null; reactive: SignupFunnel | null } {
+export function signupFunnelsFrom(
+  body: unknown,
+  /** Which proactive funnels the email style picked allows (lib/v2/email-angles.ts `funnelFitsAngles`). */
+  proactiveFits: (funnelId: string) => boolean = () => true,
+): { proactive: SignupFunnel | null; reactive: SignupFunnel | null } {
   const parsed = SignupFunnelsBodySchema.safeParse(body);
   if (!parsed.success) {
     console.error("[signup-campaign] funnels body shape mismatch", { issues: parsed.error.issues });
     throw new Error("[signup-campaign] invalid funnels body");
   }
-  return { proactive: firstOfType(parsed.data.proactive.rows, "proactive"), reactive: firstOfType(parsed.data.reactive.rows, "reactive") };
+  return { proactive: firstOfType(parsed.data.proactive.rows, "proactive", proactiveFits), reactive: firstOfType(parsed.data.reactive.rows, "reactive") };
 }
 
 /**

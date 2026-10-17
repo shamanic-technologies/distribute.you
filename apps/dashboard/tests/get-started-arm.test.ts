@@ -33,16 +33,14 @@ describe("get-started A/B: 50% emails, 50% leads (owner 2026-10-17)", () => {
     expect(GS_ARM_COPY.leads.givesNext).toBe("Next, a preview of your first leads.");
     expect(GS_ARM_COPY.leads.givesButton).toBe("Preview my leads");
     for (const line of [...GS_ARM_COPY.leads.promise, GS_ARM_COPY.leads.givesNext, GS_ARM_COPY.leads.givesButton]) expect(line).not.toMatch(/email/i);
-    expect(GS_ARM_COPY.emails.givesButton).toBe("Preview my emails");
+    expect(GS_ARM_COPY.emails.givesButton).toBe("Preview my leads");
   });
 
   it("the page draws on the server and the walk writes no email in the leads arm", () => {
     expect(page).toContain("gsArm={arm} gsArmFresh={fresh}");
     expect(walk).toContain("posthog.register({ gs_arm: gsArm });");
-    const write = walk.slice(walk.indexOf("async function writeEmail("), walk.indexOf("async function writeEmail(") + 400);
-    expect(write).toContain("if (!emailsShown) return;");
-    const pre = walk.slice(walk.indexOf("function prewrite("), walk.indexOf("function prewrite(") + 200);
-    expect(pre).toContain("if (!emailsShown) return;");
+    const open = walk.slice(walk.indexOf("function openEmailStyle("), walk.indexOf("function openEmailStyle(") + 200);
+    expect(open).toContain("if (!emailsShown) return;");
     expect(walk).toContain('stagedKey === (emailsShown ? "email" : "companies")');
   });
 });

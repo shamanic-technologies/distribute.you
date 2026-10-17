@@ -197,11 +197,10 @@ describe("the rules the page decides on", () => {
     expect(nextEmailAhead(rows, new Set(["a", "b", "d"]), new Set(["a", "b", "d"]))).toBeNull();
   });
 
-  it("the page writes ahead only after the first email landed, from the row on screen", () => {
-    const fx = FLOW.slice(FLOW.indexOf("const openedKeys = useRef("), FLOW.indexOf("function openRow("));
-    expect(fx).toContain("openedKeys.current.add(rowKey(audience.audienceId, selectedRow));");
-    expect(fx.indexOf("!firstEmailFor(audience.audienceId)")).toBeLessThan(fx.indexOf("nextEmailAhead("));
-    expect(fx).toContain("void writeEmail(audience, row);");
+  it("writes no email ahead: one example per style, on click only (owner 2026-10-17)", () => {
+    expect(FLOW).not.toContain("nextEmailAhead(");
+    expect(FLOW).not.toContain("function prewrite(");
+    expect(FLOW).toContain("onExample={(a) => void writeExample(a)}");
   });
 
 
@@ -299,7 +298,7 @@ describe("the surface", () => {
     expect(FLOW).toContain("<BuildingNote building={building} />");
   });
 
-  it("loads ONE page of five companies, never more, and writes the first email ahead, the rest on click, capped", () => {
+  it("loads ONE page of five companies, never more", () => {
     const load = FLOW.slice(FLOW.indexOf("async function loadCompanies("), FLOW.indexOf("// ── Step 6: the emails"));
     // Each company costs a credit and visitors do not scroll: five, then stop (owner 2026-10-06),
     // plus one per company failing a Must have, capped (owner 2026-10-17; see get-started-signal-checks).
@@ -312,11 +311,7 @@ describe("the surface", () => {
     expect(FLOW).toContain("wantRows(aud, companiesWanted(PREVIEW_COMPANIES, failing.size));");
     expect(FLOW).not.toContain("MoreSentinel");
     expect(FLOW).not.toContain("NEXT_PAGE");
-    expect(load).toContain("prewrite(aud, got)");
-    expect(FLOW).toContain(".slice(0, PREWRITTEN_EMAILS)");
-    expect(FLOW).toContain("if (!canWriteAnother(requested.current.size)) return;");
-    const open = FLOW.slice(FLOW.indexOf("function openRow("), FLOW.indexOf("// ── The stage"));
-    expect(open).toContain("setWallOpen(true)");
+    expect(load).toContain("openEmailStyle()");
   });
 
   it("runs no billed email check before payment (owner 2026-10-06)", () => {
@@ -420,21 +415,15 @@ describe("the surface", () => {
     expect(FLOW).toContain("border-dashed");
   });
 
-  it("asks the five emails at once, the moment their last input exists (owner 2026-10-16)", () => {
-    // The give lists are the last answer the writer reads: saved, then every email starts.
+  it("opens the email style step the moment its last input exists, and drops stale examples", () => {
+    // The give lists are the last answer the examples read: saved, then the step opens.
     const gives = FLOW.slice(FLOW.indexOf("async function confirmGives("), FLOW.indexOf("useEffect(", FLOW.indexOf("async function confirmGives(")));
-    expect(gives.indexOf("await saveOfferUserFields(")).toBeLessThan(gives.indexOf("prewrite(held.aud, held.rows);"));
-    // Companies found after the answers: written as soon as the first page lands.
+    expect(gives.indexOf("await saveOfferUserFields(")).toBeLessThan(gives.indexOf("openEmailStyle();"));
     const load = FLOW.slice(FLOW.indexOf("async function loadCompanies("), FLOW.indexOf("// ── Step 6: the emails"));
-    expect(load).toContain("if (answeredRef.current) prewrite(aud, got);");
-    // All of them in parallel, not one after the other.
-    const pre = FLOW.slice(FLOW.indexOf("function prewrite("), FLOW.indexOf("const inputsGen = useRef("));
-    expect(pre).toContain("for (const r of writable) void writeEmail(aud, r);");
-    expect(pre).not.toContain("await writeEmail(");
-    // An edited give list asks the written ones again; a write in flight re-asks on landing.
-    expect(gives.indexOf("const edit = answeredRef.current;")).toBeLessThan(gives.indexOf("rewriteEmails();"));
-    expect(gives.indexOf("rewriteEmails();")).toBeLessThan(gives.indexOf("setAnswered(true);"));
-    expect(FLOW).toContain("} while (gen !== inputsGen.current);");
+    expect(load).toContain("if (answeredRef.current) openEmailStyle();");
+    // An edited give list drops the examples written from the old one.
+    expect(gives.indexOf("const edit = answeredRef.current;")).toBeLessThan(gives.indexOf("setExamples({});"));
+    expect(gives.indexOf("setExamples({});")).toBeLessThan(gives.indexOf("setAnswered(true);"));
   });
 
   it("ends every preview email with the signature, outside the body the highlights index into", () => {
@@ -510,7 +499,7 @@ describe("the wall", () => {
     // The claim has its own flag, so the code form's finally cannot clear it.
     expect(wall).toContain("setClaiming(true)");
     const flow = fs.readFileSync(path.resolve(__dirname, "../src/components/v2/get-started/get-started.tsx"), "utf8");
-    expect(flow).toContain("email={(selectedKey ? emails[selectedKey] : undefined) ?? firstWritten(emails, audience.audienceId) ?? restoredEmail}");
+    expect(flow).toContain("email={(exampleShown ? examples[exampleShown] : undefined) ?? Object.values(examples)[0] ?? restoredEmail}");
   });
 
   it("lets a code-made account sign in again with a code", () => {
