@@ -89,6 +89,8 @@ describe("Unibox list from lead-service (owner 2026-10-17)", () => {
     // « Adam Nasri @ <company> » (owner 2026-10-17); no served org, the name alone.
     expect(uniboxRowTitle({ ...row, name: "Adam Nasri", company: { id: "c1", name: "Cifacom", domain: "cifacom.com" } })).toBe("Adam Nasri @ Cifacom");
     expect(uniboxRowTitle({ ...row, name: "Adam Nasri", company: null })).toBe("Adam Nasri");
+    // A company held by domain only reads by its served domain.
+    expect(uniboxRowTitle({ ...row, name: "Adam Nasri", company: { id: "c1", name: null, domain: "cifacom.com" } })).toBe("Adam Nasri @ cifacom.com");
   });
 
   it("a row is a RELATION: its thread, card and URL read its relationKey, two rows of one human stay apart", () => {
