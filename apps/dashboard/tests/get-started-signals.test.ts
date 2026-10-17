@@ -101,6 +101,12 @@ describe("the signed-out session reaches the signals routes on its own brand onl
     expect(allow("PATCH", `/brands/${BRAND}/offers/o1/qualification/criteria/c1`).allowed).toBe(true);
   });
 
+  it("runs the ticked signals on the preview companies and polls them (owner 2026-10-17)", () => {
+    expect(allow("POST", `/brands/${BRAND}/offers/o1/qualification/previews`).allowed).toBe(true);
+    expect(allow("GET", `/brands/${BRAND}/offers/o1/qualification/previews/p1`).allowed).toBe(true);
+    expect(allow("POST", `/brands/${OTHER}/offers/o1/qualification/previews`).refusal).toBe("wrong-brand");
+  });
+
   it("refuses another brand, creating or archiving a check, and running one on leads", () => {
     expect(allow("POST", `/brands/${OTHER}/offers/o1/qualification/suggestions`).refusal).toBe("wrong-brand");
     expect(allow("POST", `/brands/${BRAND}/offers/o1/qualification/criteria`).allowed).toBe(false);

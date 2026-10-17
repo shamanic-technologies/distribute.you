@@ -70,6 +70,8 @@ describe("the walk checks the preview companies", () => {
     const at = API.indexOf("export async function previewColdEmail(");
     const body = API.slice(at, API.indexOf("const PreviewEmailPrepareSchema", at));
     expect(body).toContain("...(input.qualification ? { qualification: input.qualification } : {})");
-    expect(API).toContain("/previews`, { method: \"POST\", body: { companies } }");
+    const start = API.slice(API.indexOf("export async function startQualificationPreview("), API.indexOf("export async function getQualificationPreview("));
+    expect(start).toContain("body: { companies },");
+    expect(start).toContain('"x-run-id": globalThis.crypto.randomUUID()');
   });
 });

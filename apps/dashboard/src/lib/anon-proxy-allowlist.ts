@@ -77,6 +77,10 @@ const RULES: Rule[] = [
   { method: "GET", segments: ["brands", ":brand", "offers", ":seg", "qualification", "criteria"] },
   { method: "POST", segments: ["brands", ":brand", "offers", ":seg", "qualification", "suggestions"] },
   { method: "PATCH", segments: ["brands", ":brand", "offers", ":seg", "qualification", "criteria", ":seg"] },
+  // The ticked signals run on the preview companies (billed to this anonymous org,
+  // owner 2026-10-17): started, then polled. Path-bound to this session's brand. Nothing is sent.
+  { method: "POST", segments: ["brands", ":brand", "offers", ":seg", "qualification", "previews"] },
+  { method: "GET", segments: ["brands", ":brand", "offers", ":seg", "qualification", "previews", ":seg"] },
   // The last step: the funnels we run, priced for the session's own offer (features-service
   // through the gateway). Read only; the brand rides the QUERY, bound to the session below.
   { method: "GET", segments: ["offers", ":seg", "sales-funnels"], queryBrand: "brandId" },
