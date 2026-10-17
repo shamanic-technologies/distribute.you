@@ -361,7 +361,7 @@ describe("a guessed pairing with a lead is a hint, never a merge (crm-service v0
   it("shows the hint on the list row AND, with its rulings, in the thread header, never merging rows", () => {
     const src = read("components/v2/integrations-conversations.tsx");
     // The list is lead-service's since 2026-10-17: the hint lives in the thread header.
-    expect(src).toContain("<PossibleLeadRulings brandId={brandId} person={person} />");
+    expect(src).toContain("<PossibleLeadRulings brandId={brandId} person={person} threadRef={ref} />");
   });
 
   it("a ruling goes to lead-service's existing rulings writer, keyed on the served lead id", () => {

@@ -281,9 +281,13 @@ export function personRef(p: Pick<Person, "personId" | "personKey">): string {
   return p.personId ?? p.personKey;
 }
 
-/** The thread read's query for a URL value: an id is a `personId`, anything else a `personKey`. */
-export function personRefQuery(ref: string): { personId: string } | { personKey: string } {
-  return UUID.test(ref) ? { personId: ref } : { personKey: ref };
+/**
+ * The thread read's query for a ref: an id is a `personId`, a `rel:…` one relation of the
+ * person (a Unibox row, PERSON-RELATIONS-1017), anything else a `personKey`.
+ */
+export function personRefQuery(ref: string): { personId: string } | { relationKey: string } | { personKey: string } {
+  if (UUID.test(ref)) return { personId: ref };
+  return ref.startsWith("rel:") ? { relationKey: ref } : { personKey: ref };
 }
 
 /** How many people one page of the people read holds. */

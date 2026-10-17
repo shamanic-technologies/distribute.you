@@ -21,6 +21,8 @@ describe("the Unibox names a person by crm-service's opaque id", () => {
     expect(personRefQuery(id)).toEqual({ personId: id });
     expect(personRefQuery("email:a@b.co")).toEqual({ personKey: "email:a@b.co" });
     expect(personRefQuery("phone:+12014713892")).toEqual({ personKey: "phone:+12014713892" });
+    // A Unibox row's relation (PERSON-RELATIONS-1017): crm-service reads it as `relationKey`.
+    expect(personRefQuery(`rel:${id}:org:c1`)).toEqual({ relationKey: `rel:${id}:org:c1` });
   });
 
   it("parses a person with and without the new field", () => {
@@ -32,9 +34,9 @@ describe("the Unibox names a person by crm-service's opaque id", () => {
     expect(PersonSchema.parse(base).personId).toBeUndefined();
   });
 
-  it("the page writes lead-service's opaque humanId into the URL, never an address", () => {
+  it("the page writes the row's opaque relation (else humanId) into the URL, never an address", () => {
     const src = readFileSync(join(__dirname, "../src/components/v2/integrations-conversations.tsx"), "utf8");
-    expect(src).toContain('setParam("lead", r.humanId)');
+    expect(src).toContain('setParam("lead", uniboxRowId(r))');
     expect(src).not.toContain('setParam("lead", uniboxThreadRef');
     expect(src).not.toMatch(/getPersonTimeline\(brandId, [a-z]+\.personKey\)/);
   });

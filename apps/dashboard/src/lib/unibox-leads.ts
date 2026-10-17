@@ -16,6 +16,11 @@ export const UniboxRowSchema = z
   .object({
     humanId: z.string(),
     companyKey: z.string().nullish(),
+    // PERSON-RELATIONS-1017: a row is ONE relation (one human at one company), so a human can
+    // own several rows. `relationKey` (crm-service's `rel:…`) names the row and its thread.
+    // Optional until every cached body carries it.
+    relationKey: z.string().nullish(),
+    relationKeys: z.array(z.string()).optional(),
     name: z.string().nullable(),
     emails: z.array(z.string()),
     phones: z.array(z.string()),
@@ -176,9 +181,30 @@ export function uniboxQuery(brandId: string, f: UniboxFilters, opts: { q?: strin
   return qs.toString();
 }
 
-/** The thread's person ref: the first identity key lead-service serves (crm-service reads `personKey`). */
-export function uniboxThreadRef(row: Pick<UniboxRow, "personKeys">): string | null {
+/**
+ * The thread's ref: the row's relation (crm-service reads `relationKey`, only that relation's
+ * contact points, never the person's personal chats). A row without one (should not happen)
+ * reads the person by its first identity key, as before.
+ */
+export function uniboxThreadRef(row: Pick<UniboxRow, "personKeys" | "relationKey">): string | null {
+  if (row.relationKey) return row.relationKey;
+  if (row.relationKey === null) console.error("[unibox] row without a relationKey, thread read by person", { personKeys: row.personKeys });
   return row.personKeys[0] ?? null;
+}
+
+/** What the URL names a row by: its relation, else (an older body) its human. */
+export function uniboxRowId(row: Pick<UniboxRow, "humanId" | "relationKey">): string {
+  return row.relationKey ?? row.humanId;
+}
+
+/** One React key per row: the same human legitimately owns several rows. */
+export function uniboxRowKey(row: Pick<UniboxRow, "humanId" | "relationKey" | "companyKey">): string {
+  return row.relationKey ?? `${row.humanId}|${row.companyKey ?? ""}`;
+}
+
+/** The card read for a URL value: a relation opens that row, a human its latest-active row. */
+export function uniboxCardQuery(id: string): { relationKey: string } | { humanId: string } {
+  return id.startsWith("rel:") ? { relationKey: id } : { humanId: id };
 }
 
 /** A row's title: `Adam Nasri @ Cifacom` when lead-service names the org, else the name alone. */
