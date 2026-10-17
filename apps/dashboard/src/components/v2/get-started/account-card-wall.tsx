@@ -669,6 +669,7 @@ export function AccountCardWall({
       return;
     }
     setAccount(settled.account);
+    if (settled.reloadRefused) posthog.capture("get_started_reload_refused", { reload_usd: p.reload?.amountUsd ?? null });
     // The first-payment email (owner 2026-10-07): transactional-email sends it once per
     // org and user, so a later top-up through here never sends it again.
     sendAuthNotification("first_payment").catch((e) => console.error("[get-started] first_payment email failed:", e));
