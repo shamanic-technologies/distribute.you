@@ -1,11 +1,7 @@
 "use client";
 
-import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { useParams } from "next/navigation";
-import { listSalesFunnelCampaigns } from "@/lib/api";
-import { useAuthQuery } from "@/lib/use-auth-query";
-import { pollOptions } from "@/lib/query-options";
 import { timeAgo } from "@/lib/friendly-datetime";
 import {
   DIMENSION_LABEL,
@@ -23,7 +19,6 @@ import {
 import type { TimelineTone } from "@/lib/timeline-tags";
 import { TONE_COLOR } from "@/components/v2/tag-chip";
 import { EmptyNote, Shimmer } from "@/components/v2/ui";
-import { useMissions } from "@/components/v2/use-missions";
 
 /**
  * The colour each served value is shown in: a display lookup only, the value is lead-service's.
@@ -206,22 +201,19 @@ function DimensionMenu({
 
 /**
  * The lead card beside the thread (owner 2026-10-17, like an inbox contact sidebar): the six
- * tags lead-service decides, then one line per campaign the person is part of with the furthest
- * step reached in it. The step by step detail stays in the thread.
+ * tags lead-service decides, then one line per campaign the person is part of (a sales funnel
+ * campaign once, its name and furthest step as lead-service serves them). The step by step detail stays in the thread.
  */
 export function UniboxLeadCardPanel({
-  brandId,
   card,
   failed,
   listed,
 }: {
-  brandId: string;
   card: UniboxLeadCard | null;
   failed: boolean;
   listed: UniboxRow | null;
 }) {
   const lead = card?.lead ?? listed;
-  const names = useCampaignNames(brandId);
   return (
     <aside className="k-card k-scroll h-fit max-h-full shrink-0 overflow-y-auto p-4 @6xl:w-[300px]" aria-label="Lead">
       {lead ? (
@@ -265,8 +257,8 @@ export function UniboxLeadCardPanel({
           {card ? (
             card.campaigns.length > 0 ? (
               <ul className="mt-2 space-y-2">
-                {campaignLines(card.campaigns, names).map((c) => (
-                  <li key={c.key} className="text-[13px] leading-5">
+                {card.campaigns.map((c) => (
+                  <li key={c.campaignId} className="text-[13px] leading-5">
                     <span className={c.name ? "" : "k-fg3"}>{c.name ?? "Campaign"}</span>
                     <span className="k-fg3"> → </span>
                     <span className="font-medium">{c.furthest?.label ?? "Not started"}</span>
@@ -306,58 +298,4 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
       <dd className="min-w-0 text-[13px]">{children}</dd>
     </>
   );
-}
-
-/**
- * One line per campaign the customer knows: the parts of one sales-funnel campaign (its pipes)
- * read as that campaign once (owner 2026-10-10), on the furthest of the steps lead-service
- * served for them, since the first part served the lead.
- */
-function campaignLines(
-  campaigns: UniboxLeadCard["campaigns"],
-  names: Map<string, { key: string; name: string }>,
-): { key: string; name: string | null; furthest: LifecycleRung | null; servedAt: string | null }[] {
-  const out = new Map<string, { key: string; name: string | null; furthest: LifecycleRung | null; servedAt: string | null }>();
-  for (const c of campaigns) {
-    const known = names.get(c.campaignId);
-    const key = known?.key ?? c.campaignId;
-    const held = out.get(key);
-    if (!held) {
-      out.set(key, { key, name: known?.name ?? null, furthest: c.furthest, servedAt: c.servedAt });
-      continue;
-    }
-    if (c.furthest && (!held.furthest || c.furthest.rank > held.furthest.rank)) held.furthest = c.furthest;
-    if (c.servedAt && (!held.servedAt || c.servedAt < held.servedAt)) held.servedAt = c.servedAt;
-  }
-  return [...out.values()];
-}
-
-/**
- * Campaign id → the name the customer knows, from reads the dashboard already makes: a part of
- * a sales-funnel campaign reads as its funnel campaign, any other campaign by its own name.
- */
-function useCampaignNames(brandId: string): Map<string, { key: string; name: string }> {
-  const { orgId = "" } = useParams<{ orgId?: string }>();
-  const { missionByCampaignId } = useMissions(orgId, brandId, { allOffers: true });
-  const funnelsQ = useAuthQuery(["salesFunnelCampaigns", brandId, "all"], () => listSalesFunnelCampaigns(brandId, null), {
-    enabled: !!brandId,
-    ...pollOptions,
-  });
-  return useMemo(() => {
-    const funnelName = new Map<string, string>();
-    const out = new Map<string, { key: string; name: string }>();
-    for (const f of funnelsQ.data ?? []) {
-      funnelName.set(f.id, f.salesFunnelName);
-      out.set(f.id, { key: f.id, name: f.salesFunnelName });
-      for (const u of f.units) out.set(u.campaignId, { key: f.id, name: f.salesFunnelName });
-    }
-    for (const [id, m] of missionByCampaignId) {
-      if (out.has(id)) continue;
-      const c = m.row.campaign;
-      const funnel = c.salesFunnelCampaignId ? funnelName.get(c.salesFunnelCampaignId) : null;
-      if (funnel) out.set(id, { key: c.salesFunnelCampaignId!, name: funnel });
-      else if (c.name) out.set(id, { key: m.row.campaign.id, name: c.name });
-    }
-    return out;
-  }, [funnelsQ.data, missionByCampaignId]);
 }

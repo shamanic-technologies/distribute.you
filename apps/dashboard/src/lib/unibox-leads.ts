@@ -60,7 +60,11 @@ export const UniboxLeadCardSchema = z
     campaigns: z.array(
       z
         .object({
+          // The customer's campaign (lead-service #996): its pipes fold into it, `name` is what the
+          // customer calls it. Optional until every cached body carries them.
           campaignId: z.string(),
+          name: z.string().nullish(),
+          pipeCampaignIds: z.array(z.string()).optional(),
           servedAt: z.string().nullable(),
           furthest: LifecycleRungSchema.nullable(),
           steps: z.array(StepSchema),
