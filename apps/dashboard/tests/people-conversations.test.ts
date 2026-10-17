@@ -169,8 +169,10 @@ describe("wiring", () => {
     const view = read("components/v2/integrations-conversations.tsx");
     // The split follows the PANEL width (a phone, or the Copilot open beside it), not the viewport.
     expect(view).toContain("@container space-y-4");
-    expect(view).toContain("@3xl:grid-cols-[380px_minmax(0,1fr)]");
-    expect(view.match(/@3xl:flex \$\{narrowView === "(list|thread)" \? "flex" : "hidden"\}/g)?.length).toBe(2);
+    expect(view).toContain("@3xl:grid-cols-[340px_minmax(0,1fr)]");
+    expect(view).toContain('@3xl:flex ${narrowView === "list" ? "flex" : "hidden"}');
+    // The thread and its lead card sit side by side once the panel is wide (owner 2026-10-17).
+    expect(view).toContain('@3xl:flex @3xl:flex-col @6xl:flex-row ${narrowView === "thread" ? "flex flex-col" : "hidden"}');
     const row = view.slice(view.indexOf("onOpen={() => {"), view.indexOf("onHover={() => {"));
     expect(row).toContain('setNarrowView("thread")');
     expect(view).toContain('setNarrowView("list")');
@@ -231,14 +233,12 @@ describe("where a record came from", () => {
 });
 
 describe("search (crm-service q, #56)", () => {
-  it("asks crm-service, keyed on the query, never filters in the browser", () => {
-    const api = read("lib/api.ts");
-    expect(api).toContain('if (opts.q) qs.set("q", opts.q);');
+  it("asks lead-service, keyed on the query and the filters, never filters in the browser", () => {
+    expect(read("lib/unibox-leads.ts")).toContain('if (opts.q) qs.set("q", opts.q);');
     const view = read("components/v2/integrations-conversations.tsx");
-    // The family filter rides the same key and read (lead-families.test.ts).
-    expect(view).toContain('queryKey: ["people", brandId, "scroll", q, f, ...(relationship ? [relationship] : [])]');
-    expect(view).toContain("offset: pageParam,\n        q,\n        family:");
-    expect(view).not.toContain("people.filter(");
+    expect(view).toContain('queryKey: ["uniboxLeads", brandId, q, fKey]');
+    expect(view).toContain("listUniboxLeads(brandId, filters, { limit: UNIBOX_PAGE_SIZE, q, cursor: pageParam })");
+    expect(view).not.toContain("rows.filter(");
   });
   it("keeps why each person matched", () => {
     const parsed = PeopleListSchema.parse({
@@ -276,17 +276,17 @@ describe("who wrote a message", () => {
   });
   it("opens the person on top when none is picked", () => {
     const view = read("components/v2/integrations-conversations.tsx");
-    expect(view).toContain("if (!openKey || newSearch) open(first);");
-    // Only crm-service's answer for what is typed opens a person, never the instant filter.
-    expect(view).toContain("const first = settled ? (people?.[0] ?? null) : null;");
-    expect(view).toContain("const settled = !listQ.isPlaceholderData && typed === q;");
+    expect(view).toContain("if (!openKey || changed) open(first);");
+    // Only lead-service's answer for what is typed opens a lead.
+    expect(view).toContain("const first = settled ? (rows?.[0] ?? null) : null;");
+    expect(view).toContain("const settled = !listQ.isPlaceholderData && search.trim() === q;");
   });
 });
 
 describe("the list scrolls, never pages (owner 2026-10-08)", () => {
   it("loads the next rows as the end comes into view", () => {
     const view = read("components/v2/integrations-conversations.tsx");
-    expect(view).toContain("getNextPageParam: (last: { nextOffset?: number | null }) => last.nextOffset ?? undefined");
+    expect(view).toContain("getNextPageParam: (last: UniboxPage) => last.nextCursor ?? undefined");
     expect(view).toContain("new IntersectionObserver(");
     expect(view).not.toContain("Previous");
   });
@@ -298,9 +298,9 @@ describe("a thread opens from memory (owner 2026-10-08: instant)", () => {
     // Same key both sides: the URL's person ref (crm-service personId, owner 2026-10-10).
     // One read shape (`timelineQuery`) for the preload and the Thread: same key, same pages.
     expect(view).toContain("queryKey: timelineKey(brandId, ref),");
-    expect(view).toContain("prefetchInfiniteQuery({ ...timelineQuery(brandId, personRef(p))");
+    expect(view).toContain("prefetchInfiniteQuery({ ...timelineQuery(brandId, ref), staleTime: TIMELINE_POLL })");
     expect(view).toContain("...timelineQuery(brandId, ref),\n    enabled: gate");
-    expect(view).toContain("preload(p);");
+    expect(view).toContain("preload(r);");
     expect(view).toContain(".slice(0, PRELOAD_TOP)");
   });
   it("preloads the lead-service facts with the thread, on the Thread's own facts key", () => {
@@ -360,7 +360,7 @@ describe("a guessed pairing with a lead is a hint, never a merge (crm-service v0
 
   it("shows the hint on the list row AND, with its rulings, in the thread header, never merging rows", () => {
     const src = read("components/v2/integrations-conversations.tsx");
-    expect(src.match(/<PossibleLeadLine person=\{person\} \/>/g)?.length).toBe(1);
+    // The list is lead-service's since 2026-10-17: the hint lives in the thread header.
     expect(src).toContain("<PossibleLeadRulings brandId={brandId} person={person} />");
   });
 

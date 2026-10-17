@@ -238,6 +238,9 @@ export const PERSISTABLE_QUERY_ROOTS = new Set([
   "crmContactOrigins",
   // Integrations > Conversations: one bounded page of merged people (crm-service).
   "people",
+  // The Unibox list and one lead's card beside the thread (lead-service, owner 2026-10-17).
+  "uniboxLeads",
+  "uniboxLead",
   // Offers — the level between the brand and its campaigns. The list feeds the brand
   // Overview's Offers table AND the tenant switcher's third tier, and the by-id read
   // is the offer sidebar's own label.

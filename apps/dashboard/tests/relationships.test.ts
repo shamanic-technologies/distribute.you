@@ -133,12 +133,10 @@ describe("Unibox rows carry the relationship block", () => {
     expect(PeopleListSchema.safeParse({ ...old, people }).success).toBe(true);
   });
 
-  it("the row and the thread header draw the chips; the filter shows only once crm-service serves counts", () => {
+  it("the thread header draws the chips; the list filters on lead-service's tags since 2026-10-17", () => {
     const src = read("components/v2/integrations-conversations.tsx");
-    expect(src).toContain("<RelationshipChips tags={person.relationship.tags}");
     expect(src).toContain("<RelationshipChips tags={listed.relationship.tags}");
-    expect(src).toContain("list?.relationships && (");
-    expect(src).toContain("relationship: relationship ?? undefined");
+    expect(src).toContain("<UniboxFilterBar filters={filters}");
   });
 });
 
