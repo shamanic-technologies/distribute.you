@@ -30,6 +30,8 @@ import { stepViewName } from "./view-transition";
 
 export interface JournalData {
   steps: Record<GetStartedStepKey, StepPhase>;
+  /** The steps this walk's A/B arm shows, in order (numbers the rail). */
+  walk: readonly { key: GetStartedStepKey; label: string }[];
   staged: GetStartedStepKey;
   name: string | null;
   domain: string | null;
@@ -61,7 +63,7 @@ const inRail = (d: JournalData, key: GetStartedStepKey) => {
 };
 
 export function JournalRail(d: JournalData) {
-  const shown = GET_STARTED_STEPS.map((s, i) => ({ ...s, index: i + 1 })).filter((s) => inRail(d, s.key));
+  const shown = d.walk.map((s, i) => ({ ...s, index: i + 1 })).filter((s) => inRail(d, s.key));
   return (
     <aside className="k-surface hidden border-r border-[var(--line-subtle)] lg:block lg:min-h-0 lg:overflow-y-auto k-scroll" aria-label="What we found">
       <div className="px-4 py-5">

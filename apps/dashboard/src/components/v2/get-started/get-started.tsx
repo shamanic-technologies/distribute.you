@@ -160,6 +160,7 @@ import { CountUp, Typewriter, formatElapsed, stagger, useElapsed } from "./motio
 import { BrandLogo } from "@/components/brand-logo";
 import { isSubscriptionArm, offerArm, pickedPlanCents } from "@/lib/subscription-plan";
 import { AccountCardWall } from "./account-card-wall";
+import { GS_ARM_COOKIE, GS_ARM_COPY, showsEmails, walkStepNumber, walkSteps, type GsArm } from "@/lib/v2/get-started-arm";
 import { OrgLaunch } from "./org-launch";
 import { v2NewBrandHref } from "@/lib/v2/routes";
 import { JournalRail, JournalStrip, type JournalData } from "./journal";
@@ -199,8 +200,29 @@ export interface OrgWalk {
   brandId: string | null;
 }
 
-export function GetStarted({ org, ipCountry = null }: { org?: OrgWalk; ipCountry?: string | null } = {}) {
+type GetStartedProps = { org?: OrgWalk; ipCountry?: string | null; gsArm?: GsArm; gsArmFresh?: boolean };
+
+/** The arm this walk was drawn into, for the stages that word or number themselves by it. */
+const GsArmContext = createContext<GsArm>("emails");
+
+export function GetStarted(props: GetStartedProps = {}) {
+  return (
+    <GsArmContext.Provider value={props.gsArm ?? "emails"}>
+      <GetStartedWalk {...props} />
+    </GsArmContext.Provider>
+  );
+}
+
+function GetStartedWalk({ org, ipCountry = null, gsArm = "emails", gsArmFresh = false }: GetStartedProps) {
   const params = useSearchParams();
+  // The get-started A/B arm (owner 2026-10-17, lib/v2/get-started-arm.ts), drawn on the
+  // server: kept in a cookie and carried on every PostHog event as `gs_arm`.
+  const emailsShown = showsEmails(gsArm);
+  const armCopy = GS_ARM_COPY[gsArm];
+  useEffect(() => {
+    if (gsArmFresh) document.cookie = `${GS_ARM_COOKIE}=${gsArm}; path=/; max-age=31536000; samesite=lax`;
+    posthog.register({ gs_arm: gsArm });
+  }, [gsArm, gsArmFresh]);
   const { isSignedIn } = useAuth();
   // From the dashboard, every call names the org it acts on: never an anonymous
   // session, never whichever org the session happens to be on. Set before any read.
@@ -530,7 +552,7 @@ export function GetStarted({ org, ipCountry = null }: { org?: OrgWalk; ipCountry
       levers: s.answered ? "done" : "failed",
       gives: s.answered ? "done" : "failed",
       companies: s.audience ? "running" : "failed",
-      email: s.email ? "done" : "failed",
+      email: !emailsShown ? "waiting" : s.email ? "done" : "failed",
       // Opened again from the email step (or straight away when it was confirmed).
       campaign: s.campaignDone ? "done" : s.answered && s.audience ? "choose" : "waiting",
     };
@@ -583,7 +605,11 @@ export function GetStarted({ org, ipCountry = null }: { org?: OrgWalk; ipCountry
     }
   }
 
-  const setStep = (k: GetStartedStepKey, v: StepState) => setSteps((cur) => ({ ...cur, [k]: v }));
+  // The `leads` arm never walks the email step: it stays waiting, so the stage never lands on it.
+  const setStep = (k: GetStartedStepKey, v: StepState) => {
+    if (k === "email" && !emailsShown) return;
+    setSteps((cur) => ({ ...cur, [k]: v }));
+  };
 
   /**
    * One step done, with what the visitor entered (owner 2026-10-15: every step stored
@@ -1214,6 +1240,7 @@ export function GetStarted({ org, ipCountry = null }: { org?: OrgWalk; ipCountry
 
   /** Every preview company's email (PREWRITTEN_EMAILS, the cap), asked at once in the background. */
   function prewrite(aud: GetStartedAudience, first: AudienceCompanyRow[]) {
+    if (!emailsShown) return;
     const writable = first.filter(rowWritable).slice(0, PREWRITTEN_EMAILS);
     if (writable.length === 0) {
       setStep("email", "failed");
@@ -1248,6 +1275,8 @@ export function GetStarted({ org, ipCountry = null }: { org?: OrgWalk; ipCountry
   /** Writes one row's email (content-generation, billed to this anonymous org). The same person returns the stored email. */
   async function writeEmail(aud: GetStartedAudience, row: AudienceCompanyRow): Promise<void> {
     const key = rowKey(aud.audienceId, row.index);
+    // The `leads` arm writes no email at all.
+    if (!emailsShown) return;
     // An email is written from the offer points and the give lists: none before them.
     if (!answeredRef.current) return;
     if (requested.current.has(key) || !brandId) return;
@@ -1342,7 +1371,7 @@ export function GetStarted({ org, ipCountry = null }: { org?: OrgWalk; ipCountry
 
   /** A row clicked: its email on the stage, written now when it is not yet (up to the cap). */
   function openRow(index: number) {
-    if (!audience) return;
+    if (!audience || !emailsShown) return;
     const row = (rows[audience.audienceId] ?? []).find((r) => r.index === index);
     if (!row) return;
     const key = rowKey(audience.audienceId, index);
@@ -1747,12 +1776,13 @@ export function GetStarted({ org, ipCountry = null }: { org?: OrgWalk; ipCountry
     signals: "Keep the signals you want, then continue.",
     value: "Tell us what one client is worth.",
     levers: "Check your offer, then continue.",
-    gives: "Say what you give away, then we write the emails.",
+    gives: armCopy.givesPick,
     campaign: "Set your budget, then launch.",
   };
   const pick = steps[stagedKey] === "choose" ? PICK_LINES[stagedKey] ?? null : null;
   const journal: JournalData = {
     steps,
+    walk: walkSteps(gsArm),
     staged: stagedKey,
     name: brandName,
     domain,
@@ -1975,7 +2005,7 @@ export function GetStarted({ org, ipCountry = null }: { org?: OrgWalk; ipCountry
         <JournalRail {...journal} />
         <main className="k-scroll lg:min-h-0 lg:overflow-y-auto">
           <div className="mx-auto max-w-[1040px] px-4 py-6 sm:px-6 sm:py-8">
-            <Stepper steps={steps} staged={stagedKey} live={GET_STARTED_STEPS[stageIdx].key} onOpen={openStep} nextLit={steps.email === "done"} />
+            <Stepper steps={steps} staged={stagedKey} live={GET_STARTED_STEPS[stageIdx].key} onOpen={openStep} nextLit={emailsShown ? steps.email === "done" : steps.companies === "done"} />
             <LiveStatus current={current} domain={domain} pick={pick} readFailed={steps.company === "failed"} />
             <div className="mt-4">
               <JournalStrip {...journal} />
@@ -1987,7 +2017,7 @@ export function GetStarted({ org, ipCountry = null }: { org?: OrgWalk; ipCountry
               </BackContext.Provider>
             </div>
 
-            {readyForCampaign && stagedKey === "email" && (
+            {readyForCampaign && stagedKey === (emailsShown ? "email" : "companies") && (
               <div className="gs-in mt-6 flex justify-end" style={{ animationDelay: "200ms" }}>
                 <button type="button" className="k-btn-accent h-9 px-4" onClick={openCampaign}>
                   Set up my campaign
@@ -2142,6 +2172,7 @@ function Hero({
   error: string | null;
   exits: RefusalExits | null;
 }) {
+  const arm = useContext(GsArmContext);
   const [noSite, setNoSite] = useState(false);
   const [name, setName] = useState("");
   const [sells, setSells] = useState("");
@@ -2253,8 +2284,8 @@ function Hero({
             {noSite ? "This brand has a website" : "This brand has no website"}
           </button>
         )}
-        <ol className="gs-in mt-5 grid grid-cols-3 gap-2" style={{ animationDelay: "240ms" }} aria-label="What you will see">
-          {["Your company", "5 companies", "Your first emails"].map((label, i) => (
+        <ol className={`gs-in mt-5 grid gap-2 ${GS_ARM_COPY[arm].promise.length === 3 ? "grid-cols-3" : "grid-cols-2"}`} style={{ animationDelay: "240ms" }} aria-label="What you will see">
+          {GS_ARM_COPY[arm].promise.map((label, i) => (
             <li key={label} className="k-fg3 flex items-center gap-2 text-[12px]">
               <span className="inline-flex h-4 w-4 shrink-0 items-center justify-center rounded-full border border-[var(--line-strong)] text-[10px] tabular-nums">{i + 1}</span>
               {label}
@@ -2413,13 +2444,15 @@ function Stepper({
   onOpen: (key: GetStartedStepKey) => void;
   nextLit: boolean;
 }) {
+  const arm = useContext(GsArmContext);
+  const walk = walkSteps(arm);
   return (
     <div className="flex flex-col gap-3 xl:flex-row xl:items-end xl:gap-5">
       <ol className="flex min-w-0 flex-1 items-center" aria-label="Progress">
-        {GET_STARTED_STEPS.map((s, i) => {
+        {walk.map((s, i) => {
           const st = steps[s.key];
           const active = s.key === staged;
-          const prevSettled = i > 0 && settled(steps[GET_STARTED_STEPS[i - 1].key]);
+          const prevSettled = i > 0 && settled(steps[walk[i - 1].key]);
           const openable = (settled(st) || s.key === live) && !active;
           const mark = (
             <>
@@ -2464,7 +2497,7 @@ function Stepper({
                 }`}
                 style={nextLit ? stagger(i, 160) : undefined}
               >
-                {GET_STARTED_STEPS.length + i + 1}
+                {walk.length + i + 1}
               </span>
               <span className={`whitespace-nowrap text-[11.5px] ${nextLit ? "k-fg2" : "k-fg4"}`}>{label}</span>
             </li>
@@ -2915,6 +2948,7 @@ export function CampaignStage({
   onRetry: () => void;
   onLaunch: () => void;
 }) {
+  const arm = useContext(GsArmContext);
   const done = state === "done";
   const main = funnels?.proactive ?? null;
   const meet = funnels?.reactive ?? null;
@@ -2922,7 +2956,7 @@ export function CampaignStage({
   const nothingTicked = !draft.proactiveOn && !(meet && draft.reactiveOn);
   return (
     <StepCard
-      index={stepIndex("campaign") + 1}
+      index={walkStepNumber("campaign", arm) ?? stepIndex("campaign") + 1}
       title="Your campaigns"
       state={state}
       meta={<StateWord state={state} />}
@@ -3289,6 +3323,7 @@ function GivesStage({
   error: string | null;
   onContinue: () => void;
 }) {
+  const arm = useContext(GsArmContext);
   const [copied, setCopied] = useState(false);
   const done = state === "done";
   async function copyAll() {
@@ -3317,9 +3352,9 @@ function GivesStage({
       footer={
         !done && state === "choose" ? (
           <>
-            <span className="k-fg3 text-[12px]">Next, a preview of your first emails. Nothing is sent.</span>
+            <span className="k-fg3 text-[12px]">{GS_ARM_COPY[arm].givesNext}</span>
             <button type="button" className="k-btn-accent h-9 px-4" onClick={onContinue} disabled={busy}>
-              {busy ? "Saving..." : "Preview my emails"}
+              {busy ? "Saving..." : GS_ARM_COPY[arm].givesButton}
             </button>
           </>
         ) : null
@@ -3519,12 +3554,13 @@ function CompaniesStage({
   unmet: (row: AudienceCompanyRow) => string | null;
   onOpen: (index: number) => void;
 }) {
+  const arm = useContext(GsArmContext);
   const onBack = useContext(BackContext);
   const onNext = useContext(NextContext);
   return (
     <section className="grid gap-3">
       <div className="flex items-center gap-2">
-        <span className="k-label">{`Step ${stepIndex("companies") + 1}`}</span>
+        <span className="k-label">{`Step ${walkStepNumber("companies", arm)}`}</span>
         <h2 className="k-fg min-w-0 truncate text-[14px] font-medium">{audienceName ? `Companies in ${audienceName}` : "Companies that match"}</h2>
         <span className="ml-auto shrink-0">
           <StateWord
@@ -3552,8 +3588,8 @@ function CompaniesStage({
                 <tr className="border-b border-[var(--line-subtle)]">
                   <th className="k-label px-3 py-2.5 text-left font-normal first:pl-4">Company</th>
                   <th className="k-label px-3 py-2.5 text-left font-normal">Description</th>
-                  <th className="k-label px-3 py-2.5 text-left font-normal">We write to</th>
-                  <th className="k-label px-3 py-2.5 text-left font-normal last:pr-4">Email</th>
+                  <th className="k-label px-3 py-2.5 text-left font-normal last:pr-4">We write to</th>
+                  {showsEmails(arm) && <th className="k-label px-3 py-2.5 text-left font-normal last:pr-4">Email</th>}
                 </tr>
               </thead>
               <tbody>
@@ -3564,17 +3600,21 @@ function CompaniesStage({
                   return (
                     <tr
                       key={r.index}
-                      className="gs-in k-row cursor-pointer border-b border-[var(--line-subtle)] last:border-0"
+                      className={`gs-in k-row border-b border-[var(--line-subtle)] last:border-0 ${showsEmails(arm) ? "cursor-pointer" : ""}`}
                       style={stagger(i, 30)}
-                      onClick={() => onOpen(r.index)}
-                      onKeyDown={(e) => {
-                        if (e.key === "Enter" || e.key === " ") {
-                          e.preventDefault();
-                          onOpen(r.index);
-                        }
-                      }}
-                      tabIndex={0}
-                      aria-label={`Read the email to ${name || r.company.name}`}
+                      {...(showsEmails(arm)
+                        ? {
+                            onClick: () => onOpen(r.index),
+                            onKeyDown: (e: React.KeyboardEvent) => {
+                              if (e.key === "Enter" || e.key === " ") {
+                                e.preventDefault();
+                                onOpen(r.index);
+                              }
+                            },
+                            tabIndex: 0,
+                            "aria-label": `Read the email to ${name || r.company.name}`,
+                          }
+                        : {})}
                     >
                       <td className="px-3 py-2 first:pl-4">
                         <span className="flex min-w-0 items-center gap-2.5">
@@ -3614,16 +3654,18 @@ function CompaniesStage({
                           <span className="k-fg4">{"—"}</span>
                         )}
                       </td>
-                      <td className="whitespace-nowrap px-3 py-2 last:pr-4">
-                        {miss ? <span className="k-fg4">{"—"}</span> : <EmailDot state={emailState(r.index)} />}
-                      </td>
+                      {showsEmails(arm) && (
+                        <td className="whitespace-nowrap px-3 py-2 last:pr-4">
+                          {miss ? <span className="k-fg4">{"—"}</span> : <EmailDot state={emailState(r.index)} />}
+                        </td>
+                      )}
                     </tr>
                   );
                 })}
                 {loadingMore &&
                   [0, 1, 2].map((i) => (
                     <tr key={`more-${i}`}>
-                      <td colSpan={4} className="px-4 py-2.5">
+                      <td colSpan={showsEmails(arm) ? 4 : 3} className="px-4 py-2.5">
                         <Shimmer className="h-5" />
                       </td>
                     </tr>
@@ -3633,7 +3675,8 @@ function CompaniesStage({
           </div>
           <div className="flex flex-wrap items-center gap-x-3 gap-y-1 border-t border-[var(--line-subtle)] px-4 py-2.5">
             <p className="k-fg3 min-w-0 flex-1 text-[12px] tabular-nums">
-              {done ? `${rows.length} companies, one person each.` : `${rows.length} companies so far.`} Click a row to read the email we would send. Last names stay masked until your account is set up.
+              {done ? `${rows.length} companies, one person each.` : `${rows.length} companies so far.`}
+              {showsEmails(arm) ? " Click a row to read the email we would send." : ""} Last names stay masked until your account is set up.
               {note && done ? ` ${note}` : ""}
             </p>
           </div>
