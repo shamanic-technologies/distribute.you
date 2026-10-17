@@ -60,7 +60,12 @@ export const UniboxLeadCardSchema = z
     campaigns: z.array(
       z
         .object({
+          // At the SALES FUNNEL grain since lead-service v0.83.142: the funnel campaign's id, its
+          // served name, and the pipes folded into it. Optional until every cached body carries them.
           campaignId: z.string(),
+          name: z.string().nullish(),
+          salesFunnelCampaignId: z.string().nullish(),
+          partCampaignIds: z.array(z.string()).optional(),
           servedAt: z.string().nullable(),
           furthest: LifecycleRungSchema.nullable(),
           steps: z.array(StepSchema),

@@ -410,7 +410,6 @@ export function V2ConversationsView({ brandId }: { brandId: string }) {
           </section>
           {openKey && (
             <UniboxLeadCardPanel
-              brandId={brandId}
               card={card ?? null}
               failed={!card && cardQ.isFetchedAfterMount}
               listed={openRow}

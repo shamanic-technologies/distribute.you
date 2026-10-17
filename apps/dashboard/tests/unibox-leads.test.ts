@@ -51,9 +51,10 @@ describe("Unibox list from lead-service (owner 2026-10-17)", () => {
     const card = UniboxLeadCardSchema.parse({
       brandId: "b",
       lead: row,
-      campaigns: [{ campaignId: "647572d9", servedAt: null, furthest: { key: "contacted", rank: 2, label: "Contacted" }, steps: [] }],
+      campaigns: [{ campaignId: "647572d9", name: "CRM Email Replies", salesFunnelCampaignId: "647572d9", partCampaignIds: ["p1", "p2"], servedAt: null, furthest: { key: "contacted", rank: 2, label: "Contacted" }, steps: [] }],
     });
     expect(card.campaigns[0].furthest?.label).toBe("Contacted");
+    expect(card.campaigns[0].name).toBe("CRM Email Replies");
   });
 
   it("sends every filter as a comma list to lead-service, with q and the cursor", () => {
@@ -88,6 +89,10 @@ describe("Unibox list from lead-service (owner 2026-10-17)", () => {
     expect(view).toContain("listUniboxLeads(");
     expect(view).not.toContain("listPeople(brandId, {\n        limit: PEOPLE_PAGE_SIZE");
     expect(view).toContain("<UniboxLeadCardPanel");
+    // The card shows the campaign name lead-service serves, never a name joined in the browser.
+    const card = read("components/v2/unibox-lead-card.tsx");
+    expect(card).toContain("{c.name ?? \"Campaign\"}");
+    expect(card).not.toContain("useMissions(");
     expect(read("lib/api.ts")).toContain("`/leads/unibox?${uniboxQuery(brandId, filters, opts)}`");
     expect(read("lib/api.ts")).toContain("`/leads/unibox-lead?${qs.toString()}`");
   });
