@@ -87,10 +87,10 @@ describe("snapshot", () => {
 });
 
 describe("the page's call sites", () => {
-  it("writes no email before the answers exist, and holds the first companies' emails until then", () => {
-    expect(PAGE).toContain("if (!answeredRef.current) return;");
+  it("writes no email before the answers exist, and opens the email style step only once they do", () => {
+    expect(PAGE).toContain("!answeredRef.current || examples[angle] || exampleBusy[angle]) return;");
     expect(PAGE).toContain("else pendingPrewrite.current = { aud, rows: got };");
-    expect(PAGE).toContain("prewrite(held.aud, held.rows);");
+    expect(PAGE).toContain("if (answeredRef.current) openEmailStyle();");
   });
 
   it("saves the give lists under brand-service's keys", () => {

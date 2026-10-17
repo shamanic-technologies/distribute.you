@@ -4613,6 +4613,10 @@ export async function previewColdEmail(
     // The recipient company's check results (lead-service, verbatim): the email is written with
     // them as a campaign email is (content-generation PREVIEW-CHECKS-1017). Absent = no checks.
     qualification?: QualificationPreviewCompany["qualification"];
+    // A cold email play's strategy (lib/v2/email-angles.ts `only`): the email is written as a
+    // campaign on that play writes it (content-generation v0.36.0, PREVIEW-BY-ANGLE-1017;
+    // unknown = 400 UNKNOWN_STRATEGY). Absent = today's email.
+    strategyId?: string;
   },
   token?: string,
 ): Promise<PreviewEmail> {
@@ -4625,6 +4629,7 @@ export async function previewColdEmail(
       ...(input.audience ? { audience: input.audience } : {}),
       ...(input.offerId ? { offerId: input.offerId } : {}),
       ...(input.qualification ? { qualification: input.qualification } : {}),
+      ...(input.strategyId ? { strategyId: input.strategyId } : {}),
     },
     headers: { "x-run-id": globalThis.crypto.randomUUID() },
   });
@@ -7341,12 +7346,17 @@ export async function startSalesFunnelCampaign(
  * AI-meeting-booking page, verbatim. Signed out it rides the anonymous session (`/api/anon/v1`,
  * brand bound by its query); from the dashboard walk, the org it names.
  */
-export async function getSignupFunnelPages(brandId: string, offerId: string): Promise<{ proactive: unknown; reactive: unknown }> {
-  const page = (channel: string) =>
+export async function getSignupFunnelPages(
+  brandId: string,
+  offerId: string,
+  /** A cold email play to search for (`sales-cold-email-outreach~<strategy>`), from the email style picked. */
+  proactivePlay: string | null = null,
+): Promise<{ proactive: unknown; reactive: unknown }> {
+  const page = (channel: string, q: string | null = null) =>
     apiCall<unknown>(
-      `/offers/${encodeURIComponent(offerId)}/sales-funnels?brandId=${encodeURIComponent(brandId)}&containsChannels=${encodeURIComponent(channel)}&limit=25`,
+      `/offers/${encodeURIComponent(offerId)}/sales-funnels?brandId=${encodeURIComponent(brandId)}&containsChannels=${encodeURIComponent(channel)}&limit=25${q ? `&q=${encodeURIComponent(q)}` : ""}`,
     );
-  const [proactive, reactive] = await Promise.all([page("sales-cold-email-outreach"), page("ai-meeting-booking")]);
+  const [proactive, reactive] = await Promise.all([page("sales-cold-email-outreach", proactivePlay), page("ai-meeting-booking")]);
   return { proactive, reactive };
 }
 

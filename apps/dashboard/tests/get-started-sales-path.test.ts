@@ -196,7 +196,7 @@ describe("a click moves on at once, and Back goes one step back", () => {
   it("calls the emails step a preview", () => {
     // The words live per A/B arm (owner 2026-10-17): the email arm still says "Preview my emails".
     const arm = readFileSync(resolve(__dirname, "../src/lib/v2/get-started-arm.ts"), "utf8");
-    expect(arm).toContain('givesButton: "Preview my emails"');
+    expect(arm).toContain('givesButton: "Preview my leads"');
     expect(PAGE).toContain("GS_ARM_COPY[arm].givesButton");
     expect(PAGE).not.toContain('"Write my emails"');
   });
