@@ -914,6 +914,15 @@ const COPILOT_ALLOWED_TOOLS = [
   "cancel_followup",
   "list_followups",
   "fire_followup",
+  // People corrections (chat-service v0.63.73): the user fixes how their people were matched
+  // (tags, a person's company, a domain verdict, two people who are one human), each undoable.
+  "find_people",
+  "list_people_organizations",
+  "correct_person",
+  "list_people_corrections",
+  "undo_people_correction",
+  "merge_people",
+  "undo_people_merge",
 ];
 
 const PLATFORM_CHAT_CONFIGS = [

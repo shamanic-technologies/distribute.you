@@ -83,6 +83,10 @@ describe("Copilot allowed tools", () => {
     for (const t of ["get_offer_steps", "add_offer_step", "remove_offer_step", "set_leg_rates"]) expect(tools).toContain(t);
   });
 
+  it("lets the user correct how their people were matched, each correction undoable (chat-service v0.63.73)", () => {
+    for (const t of ["find_people", "list_people_organizations", "correct_person", "list_people_corrections", "undo_people_correction", "merge_people", "undo_people_merge"]) expect(tools).toContain(t);
+  });
+
   it("lists each tool once", () => {
     expect(new Set(tools).size).toBe(tools.length);
   });
