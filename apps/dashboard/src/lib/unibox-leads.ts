@@ -207,10 +207,14 @@ export function uniboxCardQuery(id: string): { relationKey: string } | { humanId
   return id.startsWith("rel:") ? { relationKey: id } : { humanId: id };
 }
 
-/** A row's title: `Adam Nasri @ Cifacom` when lead-service names the org, else the name alone. */
+/**
+ * A row's title: `Adam Nasri @ Cifacom` when lead-service names the org, else its served domain
+ * (`Adam Nasri @ cifacom.com`: most companies are held by domain only), else the name alone.
+ */
 export function uniboxRowTitle(row: Pick<UniboxRow, "name" | "emails" | "phones" | "company">): string {
   const name = uniboxLeadName(row);
-  return row.company?.name ? `${name} @ ${row.company.name}` : name;
+  const org = row.company?.name || row.company?.domain;
+  return org ? `${name} @ ${org}` : name;
 }
 
 /** A lead's display name: the served name, else the first address or number. */
