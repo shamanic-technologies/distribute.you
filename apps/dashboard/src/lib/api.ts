@@ -3632,7 +3632,12 @@ export async function startQualificationPreview(
   offerId: string,
   companies: Array<{ domain: string; name: string }>,
 ): Promise<QualificationPreview> {
-  const raw = await apiCall<unknown>(`${qualificationBase(brandId, offerId)}/previews`, { method: "POST", body: { companies } });
+  // lead-service parents its spend run to the caller's run id (the anonymous proxy forwards only a browser-minted one).
+  const raw = await apiCall<unknown>(`${qualificationBase(brandId, offerId)}/previews`, {
+    method: "POST",
+    body: { companies },
+    headers: { "x-run-id": globalThis.crypto.randomUUID() },
+  });
   return parseQualification(QualificationPreviewResponseSchema, raw, "startQualificationPreview").preview;
 }
 
