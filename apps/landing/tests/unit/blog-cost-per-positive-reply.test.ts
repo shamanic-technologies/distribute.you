@@ -81,7 +81,7 @@ describe("the cold email cost per positive reply article", () => {
     expect(body.replace(/\{\{[^}]*\}\}/g, "").replace(/95% interval/g, "")).not.toMatch(/\$\d|\d+(\.\d+)?%|\d{2,}/);
   });
 
-  it("names no internal crew, no workflow codename and no customer", () => {
+  it("names no retired internal codename, no workflow codename and no customer", () => {
     expect(html + JSON.stringify(meta)).not.toMatch(/herald|scout|pilot|maelstrom|lithium|rampart/i);
     expect(snapshotText).not.toContain("@");
     expect(snapshotText).not.toMatch(/[0-9a-f]{8}-[0-9a-f]{4}-/);

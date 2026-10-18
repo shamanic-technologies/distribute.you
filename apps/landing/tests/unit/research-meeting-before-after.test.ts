@@ -22,7 +22,7 @@ const read = (after: ReturnType<typeof sideOf>) => ({
 describe("AI meeting booking before/after study", () => {
   it("leads with the 30-day read, keeps an empty after side as a bar, and calls it noise", () => {
     const st = meetingBeforeAfterStudy({ read: read(sideOf(10, 2, { people: 0, booked: 0 }, by(1, 0, 1))), maturity });
-    expect(st.crew).toBeNull();
+    expect(st.pipe).toBeNull();
     expect(st.outcome).toBe("meeting");
     expect(st.verdict.kind).toBe("noise");
     expect(st.verdict.reason).toContain("after side");

@@ -5,8 +5,8 @@
 //
 // Reads the Research page's own snapshot (apps/dashboard/src/lib/research/research.json, written by
 // research.mjs) and copies out its two average-cost studies, word for word and figure for figure:
-// what a positive reply cost (`herald-cost-over-time`) and what a website visit cost
-// (`scout-cost-over-time`), each with its months, its average since inception, and the 95% interval
+// what a positive reply cost (`cold-email-positive-reply-cost-over-time`) and what a website visit cost
+// (`cold-email-website-visit-cost-over-time`), each with its months, its average since inception, and the 95% interval
 // research.mjs printed in its verdict. Nothing is re-derived here, so the article and the Research
 // page state the same figures for one refresh. Aggregates only: no text, no client, no lead.
 import { readFileSync } from "node:fs";
@@ -49,7 +49,7 @@ const snapshot = {
   windowFrom: R.window.from,
   durationDays: R.maturation.legs.reply.durationDays,
   cutoff: R.maturation.legs.reply.cutoff,
-  reply: study("herald-cost-over-time"),
-  visit: study("scout-cost-over-time"),
+  reply: study("cold-email-positive-reply-cost-over-time"),
+  visit: study("cold-email-website-visit-cost-over-time"),
 };
 process.stdout.write(`${JSON.stringify(snapshot, null, 2)}\n`);

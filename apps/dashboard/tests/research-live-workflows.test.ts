@@ -161,8 +161,12 @@ describe("research reads nothing scoped to the viewer", () => {
     }
   });
 
-  it("the live table reads the fleet ranking at the crew's leg", () => {
+  it("the live table reads the fleet ranking at the pipe's leg", () => {
     const live = readFileSync(join(dir, "research-live-workflows.tsx"), "utf8");
+    // the leg is the pipe's own key, judged proactive the renamed-leg-safe way (never fromKey === null)
+    expect(live).toContain("legFor(useLegCatalogue(), PIPE_KEY[pipe].leg)");
+    expect(live).toContain("isProactiveFrom(leg.fromKey)");
+    expect(live).not.toContain("legKeyForSteps(");
     expect(live).toContain("getLegWorkflowRanking(featureSlug, legKey)");
     expect(live).toContain('["legWorkflowRanking", featureSlug, legKey]');
     expect(live).not.toContain("useParams");

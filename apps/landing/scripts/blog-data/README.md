@@ -30,12 +30,12 @@ The Research page in dashboard v2 (`/v2/.../research`) reads
 `apps/dashboard/src/lib/research/research.json`, written from the SAME fact table as the
 articles, so a study and an article cannot state two figures for one population. Every
 study is fleet-wide (all orgs) but scoped to ONE leg of the channel (campaign-service
-`leg_key`, via `campaign-legs.csv`): Herald reads `lead_found_to_conversation` emails only, Scout
+`leg_key`, via `campaign-legs.csv`): the positive reply pipe reads `lead_found_to_conversation` emails only, the website visit pipe
 the link-carrying `lead_found_to_website_visit` emails only, and a campaign stating no leg belongs
 to neither. The legacy spellings (`start_to_*`, renamed 2026-10-09) are the same legs: every leg key
 read goes through `leg-key.mjs`. Each (workflow version, leg) is priced on its own spend (`spend-legs.csv`, per
 campaign and per day), cut at its leg's cutoff like the emails it divides. Labels and the
-catalogue's last-runs lists are per crew too. The articles keep the fleet-wide, all-legs
+catalogue's last-runs lists are per pipe too (a PIPE = one leg x one channel). The articles keep the fleet-wide, all-legs
 population on purpose: the leg scope lives only in the `research` block.
 
 **It refreshes itself every night** (2026-10-10): `/root/distribute/research-refresh-cron.sh` on the
@@ -59,7 +59,7 @@ Monday to Friday between 08:00 and 17:00: campaigns sent on any day and hour unt
 a weekend day or an off-hour is also an older month. A leg whose every bucket is Learning gets none.
 
 The second argument receives two side files the workflow and template pages read
-(`research-catalog.json`: one entry per workflow, per template and per model, per crew, with its months and
+(`research-catalog.json`: one entry per workflow, per template and per model, per pipe, with its months and
 its last runs; `research-templates.json`: the text of every listed template). extract.sh writes
 the three inputs they need beside the dumps (`templates.json`, `workflow-runs.json`,
 `template-runs.json`, `model-runs.json`). Commit all three JSON files together.
@@ -149,10 +149,10 @@ spam folders have been emptied.
 ## Meeting booked: one leg, and one OUTCOME section across every leg
 
 `meetings.mjs` (called by research.mjs, unit-tested in `tests/unit/research-meetings.test.ts`) writes two studies from
-four extract.sh dumps (`meetings.csv`, `pilot-acted.csv`, `meeting-campaigns.csv`, `meeting-spend.csv`):
-- `pilot-cost` (the positive reply -> meeting booked leg, `conversation_to_meeting_booked`): that leg's spend over the
+four extract.sh dumps (`meetings.csv`, `meeting-booking-acted.csv`, `meeting-campaigns.csv`, `meeting-spend.csv`):
+- `meeting-booking-cost` (the positive reply -> meeting booked leg, `conversation_to_meeting_booked`): that leg's spend over the
   meetings lead-service credits to our outreach AND booked on or after the leg first acted on the person.
-- `meeting-cost` (the Meeting booked OUTCOME section, `crew: null, outcome: "meeting"`, listed in the file's
+- `meeting-cost` (the Meeting booked OUTCOME section, `pipe: null, outcome: "meeting"`, listed in the file's
   `outcomes`): every dollar charged on cold email + meeting booking over every credited meeting, on the brands that
   REPORT meetings only (any live `meeting_booked` row; owner pick 2026-10-03: a brand with no CRM import or tracker
   reads zero meetings by construction). Its `population` line says how many brands that is.
@@ -174,7 +174,7 @@ were taken down on 2026-10-02: each headline was a signal, not a conclusion (`ve
 ## The follow-up article
 
 `content/blog/cold-email-follow-up` states the Research page's follow-up study for positive replies
-(`herald-followups-roi` / `herald-followups-rate`): every email of a sequence that asks for a reply,
+(`cold-email-positive-reply-followups-roi` / `cold-email-positive-reply-followups-rate`): every email of a sequence that asks for a reply,
 filed under its place in the sequence, a reply counted for the last email sent before it. The
 committed snapshot carries aggregates only.
 
@@ -225,7 +225,7 @@ derive-jev.mjs refuses a study that is not a `conclusion`; the renderer refuses 
 ## The cost per positive reply article
 
 `content/blog/cold-email-cost-per-positive-reply` states the Research page's two average-cost studies
-(`herald-cost-over-time`, `scout-cost-over-time`): what a positive reply and a website visit cost on
+(`cold-email-positive-reply-cost-over-time`, `cold-email-website-visit-cost-over-time`): what a positive reply and a website visit cost on
 average since inception, on what clients were billed. It reads the committed `research.json`, never a
 fresh extract, so refresh the Research page first (above), then:
 

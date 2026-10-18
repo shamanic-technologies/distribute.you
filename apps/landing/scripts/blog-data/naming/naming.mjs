@@ -1,5 +1,5 @@
 // Naming the client: the derivation behind the Research page's naming studies (research.mjs,
-// `herald-naming-rate` / `herald-naming-roi`). Its blog article was taken down on 2026-10-02.
+// `cold-email-positive-reply-naming-rate` / `cold-email-positive-reply-naming-roi`). Its blog article was taken down on 2026-10-02.
 //
 // Does an email that keeps the client's name back get more positive replies, and cheaper ones,
 // than one that names it? Each template VERSION is put on a side by what its prompt tells the

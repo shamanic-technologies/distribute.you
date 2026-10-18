@@ -1,7 +1,7 @@
 // What a booked meeting costs, for the Research page: two studies written from the four meeting
-// dumps extract.sh pulls (meetings.csv, pilot-acted.csv, meeting-campaigns.csv, meeting-spend.csv).
+// dumps extract.sh pulls (meetings.csv, meeting-booking-acted.csv, meeting-campaigns.csv, meeting-spend.csv).
 //
-//  - pilot-cost: the positive reply -> meeting booked LEG on its own (campaign-service leg_key
+//  - meeting-booking-cost: the positive reply -> meeting booked LEG on its own (campaign-service leg_key
 //    `conversation_to_meeting_booked`). Spend = what that leg's campaigns were charged. A meeting
 //    counts for the leg when lead-service credits it to our outreach AND it was booked on or after
 //    the leg first acted on that person (followup_actions).
@@ -18,7 +18,9 @@
 //
 // Pure: no I/O, so tests/unit/research-meetings.test.ts runs it on fixtures.
 
-export const PILOT_LEG = "conversation_to_meeting_booked";
+import { MEETING_BOOKING_LEG } from "./leg-key.mjs";
+
+export { MEETING_BOOKING_LEG };
 export const OUTCOME_LEG = "start_to_meeting_booked";
 const MEETING_FEATURE = "ai-meeting-booking";
 const COLD_EMAIL_FEATURE = "sales-cold-email-outreach";
@@ -52,7 +54,7 @@ const inWindow = (ts, window) => ts.slice(0, 10) >= window.from && ts.slice(0, 1
  * @param {"user"|"actual"} input.costBasis
  */
 export function meetingStudies({ meetings, acted, campaigns, spend, maturity, window, costBasis }) {
-  const pilotRule = legRule(maturity, PILOT_LEG);
+  const bookingRule = legRule(maturity, MEETING_BOOKING_LEG);
   const outcomeRule = legRule(maturity, OUTCOME_LEG);
   const campaignById = new Map(campaigns.map((c) => [c.campaign_id, c]));
   // a spend row with no feature_slug is filed by its campaign; one no campaign names is not ours
@@ -64,47 +66,47 @@ export function meetingStudies({ meetings, acted, campaigns, spend, maturity, wi
   const credited = meetings.filter((m) => m.caused_by_outreach === "true" && inWindow(m.received_at, window));
 
   // ---------- the leg: positive reply -> meeting booked ----------
-  const pilotCampaigns = new Set(campaigns.filter((c) => c.leg_key === PILOT_LEG).map((c) => c.campaign_id));
-  const pilotSpend = spendRows.filter((s) => pilotCampaigns.has(s.campaign_id)).reduce((t, s) => t + s.usd, 0);
+  const bookingCampaigns = new Set(campaigns.filter((c) => c.leg_key === MEETING_BOOKING_LEG).map((c) => c.campaign_id));
+  const bookingSpend = spendRows.filter((s) => bookingCampaigns.has(s.campaign_id)).reduce((t, s) => t + s.usd, 0);
   const firstActed = new Map();
   for (const a of acted) {
-    if (!pilotCampaigns.has(a.acting_campaign_id)) continue;
+    if (!bookingCampaigns.has(a.acting_campaign_id)) continue;
     const prev = firstActed.get(a.lead_id);
     if (!prev || a.acted_at < prev) firstActed.set(a.lead_id, a.acted_at);
   }
-  const pilotMeetings = credited.filter((m) => m.matched_lead_id && firstActed.has(m.matched_lead_id) && m.received_at >= firstActed.get(m.matched_lead_id));
-  const pilotLearning = pilotMeetings.length < pilotRule.outcomesRequired;
-  const pilotPrice = pilotMeetings.length ? pilotSpend / pilotMeetings.length : null;
-  const pilotSample = `${meetingsText(pilotMeetings.length)} · ${usd(pilotSpend)} spent · ${n(firstActed.size)} ${firstActed.size === 1 ? "person" : "people"} acted on`;
-  const pilot = {
-    id: "pilot-cost",
-    crew: "pilot",
+  const bookingMeetings = credited.filter((m) => m.matched_lead_id && firstActed.has(m.matched_lead_id) && m.received_at >= firstActed.get(m.matched_lead_id));
+  const bookingLearning = bookingMeetings.length < bookingRule.outcomesRequired;
+  const bookingPrice = bookingMeetings.length ? bookingSpend / bookingMeetings.length : null;
+  const bookingSample = `${meetingsText(bookingMeetings.length)} · ${usd(bookingSpend)} spent · ${n(firstActed.size)} ${firstActed.size === 1 ? "person" : "people"} acted on`;
+  const booking = {
+    id: "meeting-booking-cost",
+    pipe: "meeting-booking",
     topic: "cost",
     goal: "roi",
     question: "What does a booked meeting cost on average?",
-    status: pilotPrice === null ? "not_enough_data" : "measured",
-    headline: pilotPrice === null
+    status: bookingPrice === null ? "not_enough_data" : "measured",
+    headline: bookingPrice === null
       ? "No meeting booked after this step acted yet."
-      : `${usd(pilotPrice)} per meeting booked on this step alone, from a positive reply to the meeting.`,
+      : `${usd(bookingPrice)} per meeting booked on this step alone, from a positive reply to the meeting.`,
     winner: null,
     crowned: false,
-    result: pilotPrice === null ? null : { display: usd(pilotPrice), unit: "per meeting booked, this step only", sample: pilotSample },
-    charts: pilotPrice === null ? [] : [{
+    result: bookingPrice === null ? null : { display: usd(bookingPrice), unit: "per meeting booked, this step only", sample: bookingSample },
+    charts: bookingPrice === null ? [] : [{
       kind: "bars",
       title: "Cost per meeting booked, positive reply to meeting (USD, lower is better)",
       lowerIsBetter: true,
-      points: [{ label: "Every campaign on this step", value: Number(pilotPrice.toFixed(2)), display: usd(pilotPrice), note: pilotSample, thin: pilotLearning }],
-      note: `A meeting counts here when it was booked on or after this step first acted on that person, and our outreach gets the credit for it. A figure needs ${meetingsText(pilotRule.outcomesRequired)} behind it; below that it reads Learning.`,
+      points: [{ label: "Every campaign on this step", value: Number(bookingPrice.toFixed(2)), display: usd(bookingPrice), note: bookingSample, thin: bookingLearning }],
+      note: `A meeting counts here when it was booked on or after this step first acted on that person, and our outreach gets the credit for it. A figure needs ${meetingsText(bookingRule.outcomesRequired)} behind it; below that it reads Learning.`,
     }],
     conclusion: [
-      `Everything this step was charged (${usd(pilotSpend)}), divided by the meetings booked after it acted. The cold email that won the positive reply is not in this price: the Meeting booked section below counts it.`,
+      `Everything this step was charged (${usd(bookingSpend)}), divided by the meetings booked after it acted. The cold email that won the positive reply is not in this price: the Meeting booked section below counts it.`,
     ],
-    verdict: pilotPrice === null
+    verdict: bookingPrice === null
       ? { kind: "noise", reason: "No meeting booked after this step acted yet." }
-      : { kind: "noise", reason: `Learning: ${meetingsText(pilotMeetings.length)} of the ${n(pilotRule.outcomesRequired)} a figure needs.` },
+      : { kind: "noise", reason: `Learning: ${meetingsText(bookingMeetings.length)} of the ${n(bookingRule.outcomesRequired)} a figure needs.` },
   };
-  if (!pilotLearning) pilot.verdict = { kind: "signal", reason: `${meetingsText(pilotMeetings.length)} on this step, but one price is a measurement, not a comparison: no rival step to beat.` };
-  if (pilot.status === "measured" && pilot.verdict.kind !== "conclusion") pilot.headline += pilot.verdict.kind === "signal" ? " A signal to confirm, not yet a conclusion." : " Noise so far.";
+  if (!bookingLearning) booking.verdict = { kind: "signal", reason: `${meetingsText(bookingMeetings.length)} on this step, but one price is a measurement, not a comparison: no rival step to beat.` };
+  if (booking.status === "measured" && booking.verdict.kind !== "conclusion") booking.headline += booking.verdict.kind === "signal" ? " A signal to confirm, not yet a conclusion." : " Noise so far.";
 
   // ---------- the outcome: first cold email -> meeting booked, every leg ----------
   const reporting = new Set(meetings.map((m) => m.brand_id).filter(Boolean));
@@ -150,7 +152,7 @@ export function meetingStudies({ meetings, acted, campaigns, spend, maturity, wi
   const outcomeSample = `${meetingsText(popMeetings.length)} · ${usd(totalSpend)} spent · ${brandsText(brandsWithSpend.size)}`;
   const outcome = {
     id: "meeting-cost",
-    crew: null,
+    pipe: null,
     outcome: "meeting",
     topic: "cost",
     goal: "roi",
@@ -187,7 +189,7 @@ export function meetingStudies({ meetings, acted, campaigns, spend, maturity, wi
   // The vendor cost of these campaigns is not in the meeting dumps: the staff actual basis says so
   // instead of pricing a meeting at what clients paid.
   if (costBasis === "actual") {
-    for (const st of [pilot, outcome]) {
+    for (const st of [booking, outcome]) {
       Object.assign(st, {
         status: "not_enough_data",
         headline: "Not measured on vendor cost yet.",
@@ -202,6 +204,6 @@ export function meetingStudies({ meetings, acted, campaigns, spend, maturity, wi
 
   return {
     outcomes: [{ id: "meeting", outcome: "Meeting booked", description: "One outcome across every leg, from the first cold email to the meeting.", population }],
-    studies: [pilot, outcome],
+    studies: [booking, outcome],
   };
 }

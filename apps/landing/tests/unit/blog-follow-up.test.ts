@@ -87,7 +87,7 @@ describe("the cold email follow-up article", () => {
     expect(body.replace(/\{\{[^}]*\}\}/g, "")).not.toMatch(/\$\d|\d+(\.\d+)?%|\d{2,}/);
   });
 
-  it("names no internal crew, no workflow codename and no customer", () => {
+  it("names no retired internal codename, no workflow codename and no customer", () => {
     expect(html + JSON.stringify(meta)).not.toMatch(/herald|scout|pilot|maelstrom|lithium|rampart/i);
     expect(snapshotText).not.toContain("@");
     expect(snapshotText).not.toMatch(/[0-9a-f]{8}-[0-9a-f]{4}-/);

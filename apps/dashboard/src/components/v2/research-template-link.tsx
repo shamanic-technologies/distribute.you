@@ -2,11 +2,11 @@
 
 import Link from "next/link";
 import { v2Href } from "@/lib/v2/routes";
-import { researchCatalogHref, researchCrewFor, researchTemplate, researchWorkflow } from "@/lib/research/research";
+import { researchCatalogHref, researchPipeFor, researchTemplate, researchWorkflow } from "@/lib/research/research";
 import { useResearchCatalog } from "@/lib/research/research-source";
 
 /**
- * A workflow's template chip that opens the template's Research page. It links only when Research lists that template for the crew; otherwise it stays
+ * A workflow's template chip that opens the template's Research page. It links only when Research lists that template for the pipe; otherwise it stays
  * the plain chip it was. The catalogue comes from the staff-only Research route (a non-staff
  * reader gets a 403 and the plain chip), shared with the Research page's own cache.
  */
@@ -26,10 +26,10 @@ export function ResearchTemplateChip({
   label: string;
 }) {
   const { data: catalog } = useResearchCatalog("user");
-  const crew = researchCrewFor(channel, step);
+  const pipe = researchPipeFor(channel, step);
   const href =
-    catalog && crew && templateKey && researchTemplate(catalog, crew, templateKey)
-      ? researchCatalogHref(v2Href(orgId, brandId, "research"), crew, "templates", templateKey)
+    catalog && pipe && templateKey && researchTemplate(catalog, pipe, templateKey)
+      ? researchCatalogHref(v2Href(orgId, brandId, "research"), pipe, "templates", templateKey)
       : null;
   return href ? (
     <Link href={href} prefetch className="k-chip hover:text-[var(--accent)]" title="Open this template in Research">
@@ -61,9 +61,9 @@ export function ResearchModelChip({
   label: string;
 }) {
   const { data: catalog } = useResearchCatalog("user");
-  const crew = researchCrewFor(channel, step);
-  const model = catalog && crew ? researchWorkflow(catalog, crew, dynasty)?.model : null;
-  const href = model?.linked ? researchCatalogHref(v2Href(orgId, brandId, "research"), crew!, "models", model.key) : null;
+  const pipe = researchPipeFor(channel, step);
+  const model = catalog && pipe ? researchWorkflow(catalog, pipe, dynasty)?.model : null;
+  const href = model?.linked ? researchCatalogHref(v2Href(orgId, brandId, "research"), pipe!, "models", model.key) : null;
   return href ? (
     <Link href={href} prefetch className="k-chip hover:text-[var(--accent)]" title="Open the model Research measured for this workflow">
       {label} →

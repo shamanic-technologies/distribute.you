@@ -5,7 +5,9 @@
 // Research pipeline goes through canonicalLeg, so a row stored before the rename and one stored
 // after are the same leg. Without it the Research page read ZERO emails on both legs the day
 // campaign-service migrated its rows (2026-10-10). Twin of apps/dashboard/src/lib/outbound-leg-key.ts.
-export const HERALD_LEG = "lead_found_to_conversation";
-export const SCOUT_LEG = "lead_found_to_website_visit";
-const LEGACY = { start_to_conversation: HERALD_LEG, start_to_website_visit: SCOUT_LEG };
+export const POSITIVE_REPLY_LEG = "lead_found_to_conversation";
+export const WEBSITE_VISIT_LEG = "lead_found_to_website_visit";
+// The positive reply -> meeting booked leg the meeting booking pipe buys (never renamed).
+export const MEETING_BOOKING_LEG = "conversation_to_meeting_booked";
+const LEGACY = { start_to_conversation: POSITIVE_REPLY_LEG, start_to_website_visit: WEBSITE_VISIT_LEG };
 export const canonicalLeg = (key) => (key ? (LEGACY[key] ?? key) : null);

@@ -13,10 +13,13 @@
  *
  * Alias-free so it carries real unit tests.
  */
-export type ResearchCrew = "herald" | "scout" | "pilot";
+import { LEAD_FOUND_STEP, OUTBOUND_LEG_TO_CONVERSATION, OUTBOUND_LEG_TO_WEBSITE_VISIT } from "../outbound-leg-key";
+
+/** A PIPE is one leg x one channel: the channel doing the work, the leg (from step -> to step) it buys. */
+export type ResearchPipe = "cold-email-positive-reply" | "cold-email-website-visit" | "meeting-booking";
 /**
  * An OUTCOME section: a question asked of one outcome across every leg that leads to it (what a
- * booked meeting costs from the first cold email on), where a crew section is one leg x one channel.
+ * booked meeting costs from the first cold email on), where a pipe section is one leg x one channel.
  */
 export type ResearchOutcome = "meeting" | "judgment";
 export type ResearchTopic = "llm" | "cost" | "followups" | "opens" | "template" | "workflow" | "naming" | "layout" | "opening" | "dash" | "weekday" | "hour" | "judgment" | "launch";
@@ -52,9 +55,9 @@ export interface ResearchChart {
 
 export interface ResearchStudy {
   id: string;
-  /** The leg section the study sits in; null on an outcome study, which names its `outcome`. */
-  crew: ResearchCrew | null;
-  /** Set exactly when `crew` is null: the outcome section the study sits in. */
+  /** The pipe section the study sits in; null on an outcome study, which names its `outcome`. */
+  pipe: ResearchPipe | null;
+  /** Set exactly when `pipe` is null: the outcome section the study sits in. */
   outcome?: ResearchOutcome;
   topic: ResearchTopic;
   goal: ResearchGoal;
@@ -122,15 +125,15 @@ export interface ResearchFile {
     noRunStart: number;
     note: string;
   };
-  crews: { id: ResearchCrew; outcome: string; description: string }[];
+  pipes: { id: ResearchPipe; channel: string; leg: string; outcome: string; description: string }[];
   /**
    * The outcome sections, each measured across every leg: `population` says which brands the
    * figures rest on. Absent on a snapshot written before outcome sections existed.
    */
   outcomes?: { id: ResearchOutcome; outcome: string; description: string; population: string }[];
   studies: ResearchStudy[];
-  /** How many workflows and templates each crew's pages list (the pages read the catalogue). */
-  catalogCounts: Record<ResearchCrew, { workflows: number; templates: number; models: number }>;
+  /** How many workflows and templates each pipe's pages list (the pages read the catalogue). */
+  catalogCounts: Record<ResearchPipe, { workflows: number; templates: number; models: number }>;
 }
 
 /** The figures a workflow or a template is listed with, fleet-wide, all written by research.mjs. */
@@ -148,7 +151,7 @@ export interface ResearchFigures {
   charts: ResearchChart[];
 }
 
-/** A reference to another catalogue page; `linked` when that page exists in this crew. */
+/** A reference to another catalogue page; `linked` when that page exists in this pipe. */
 export interface ResearchRef {
   key: string;
   label: string;
@@ -161,7 +164,7 @@ export interface ResearchWorkflow extends ResearchFigures {
   /** The workflow's own name as workflow-service states it (Maelstrom, ...); null when it states none. */
   name: string | null;
   model: ResearchRef | null;
-  /** `linked`: the template has its own page in this crew. */
+  /** `linked`: the template has its own page in this pipe. */
   template: ResearchRef | null;
   runs: { when: string; version: string; status: string; duration: string | null; cost: string | null }[];
 }
@@ -182,21 +185,30 @@ export interface ResearchModel extends ResearchFigures {
 }
 
 export type ResearchCatalog = Record<
-  ResearchCrew,
+  ResearchPipe,
   { workflows: ResearchWorkflow[]; templates: ResearchTemplate[]; models: ResearchModel[] }
 >;
 export type CatalogKind = "workflows" | "templates" | "models";
 export const CATALOG_KINDS: CatalogKind[] = ["workflows", "templates", "models"];
 
 
-export const CREW_ORDER: ResearchCrew[] = ["herald", "scout", "pilot"];
+export const PIPE_ORDER: ResearchPipe[] = ["cold-email-positive-reply", "cold-email-website-visit", "meeting-booking"];
 export const OUTCOME_ORDER: ResearchOutcome[] = ["meeting", "judgment"];
 
-/** The crew each study belongs to, as `lib/v2/crews` keys it (channel slug + landing step). */
-export const CREW_KEY: Record<ResearchCrew, { channel: string; step: string }> = {
-  herald: { channel: "sales-cold-email-outreach", step: "conversation" },
-  scout: { channel: "sales-cold-email-outreach", step: "website_visit" },
-  pilot: { channel: "ai-meeting-booking", step: "meeting_booked" },
+/** Each pipe's channel, the leg it buys (features-service's key) and the step that leg lands on. */
+export const PIPE_KEY: Record<ResearchPipe, { channel: string; leg: string; step: string }> = {
+  "cold-email-positive-reply": { channel: "sales-cold-email-outreach", leg: OUTBOUND_LEG_TO_CONVERSATION, step: "conversation" },
+  "cold-email-website-visit": { channel: "sales-cold-email-outreach", leg: OUTBOUND_LEG_TO_WEBSITE_VISIT, step: "website_visit" },
+  "meeting-booking": { channel: "ai-meeting-booking", leg: "conversation_to_meeting_booked", step: "meeting_booked" },
+};
+
+/**
+ * The sales path an outcome section reads as (its steps in order; the leg catalogue labels them),
+ * or null for a section no path reaches: Jev is a judgment the pipes ask, not an outcome.
+ */
+export const OUTCOME_PATH: Record<ResearchOutcome, string[] | null> = {
+  meeting: [LEAD_FOUND_STEP, "conversation", "meeting_booked"],
+  judgment: null,
 };
 
 export const GOAL_LABEL: Record<ResearchGoal, string> = { roi: "ROI", rate: "Rate" };
@@ -218,17 +230,17 @@ export const TOPIC_LABEL: Record<ResearchTopic, string> = {
   launch: "Before and after go-live",
 };
 
-export function studiesFor(crew: ResearchCrew, file: ResearchFile): ResearchStudy[] {
-  return file.studies.filter((s) => s.crew === crew);
+export function studiesFor(pipe: ResearchPipe, file: ResearchFile): ResearchStudy[] {
+  return file.studies.filter((s) => s.pipe === pipe);
 }
 
 export function studiesForOutcome(outcome: ResearchOutcome, file: ResearchFile): ResearchStudy[] {
-  return file.studies.filter((s) => s.crew === null && s.outcome === outcome);
+  return file.studies.filter((s) => s.pipe === null && s.outcome === outcome);
 }
 
 /** The outcome a study measures, in plain words, read off its section's entry in the file. */
 export function studyOutcomeText(study: ResearchStudy, file: ResearchFile): string | null {
-  if (study.crew) return file.crews.find((c) => c.id === study.crew)?.outcome ?? null;
+  if (study.pipe) return file.pipes.find((p) => p.id === study.pipe)?.outcome ?? null;
   return file.outcomes?.find((o) => o.id === study.outcome)?.outcome ?? null;
 }
 
@@ -254,52 +266,69 @@ export function studySpark(study: ResearchStudy): { kind: "line" | "bars"; point
   return first ? { kind: "bars", points: first.points } : null;
 }
 
-export function isResearchCrew(v: string): v is ResearchCrew {
-  return (CREW_ORDER as string[]).includes(v);
+export function isResearchPipe(v: string): v is ResearchPipe {
+  return (PIPE_ORDER as string[]).includes(v);
+}
+
+// Retired section names still live in old links (sent reports, social-service records): each maps to its pipe, never shown.
+const LEGACY_SECTION: Record<string, ResearchPipe> = { herald: "cold-email-positive-reply", scout: "cold-email-website-visit", pilot: "meeting-booking" };
+
+/** An old link's path rewritten onto its pipe, or null when it names no retired section. */
+function legacyPath(parts: string[]): string | null {
+  const [first, ...rest] = parts;
+  const enc = (segs: string[]) => segs.map((p) => encodeURIComponent(p)).join("/");
+  if (rest.length > 0) return Object.hasOwn(LEGACY_SECTION, first) ? enc([LEGACY_SECTION[first], ...rest]) : null;
+  const dash = first.indexOf("-");
+  const head = dash > 0 ? first.slice(0, dash) : "";
+  return head && Object.hasOwn(LEGACY_SECTION, head) ? enc([`${LEGACY_SECTION[head]}${first.slice(dash)}`]) : null;
 }
 
 /** What a path under `/research` shows. Study ids carry no slash, so they never collide. */
 export type ResearchView =
   | { view: "hub" }
   | { view: "study"; id: string }
-  | { view: "list"; crew: ResearchCrew; kind: CatalogKind }
-  | { view: "item"; crew: ResearchCrew; kind: CatalogKind; key: string }
+  | { view: "list"; pipe: ResearchPipe; kind: CatalogKind }
+  | { view: "item"; pipe: ResearchPipe; kind: CatalogKind; key: string }
+  /** An old link: `to` is the same page's path under `/research` today, for a client replace. */
+  | { view: "redirect"; to: string }
   | { view: "missing" };
 export function parseResearchPath(rest: string): ResearchView {
   const parts = rest.split("/").filter(Boolean).map((p) => decodeURIComponent(p));
   if (parts.length === 0) return { view: "hub" };
+  const legacy = legacyPath(parts);
+  if (legacy !== null) return { view: "redirect", to: legacy };
   if (parts.length === 1) return { view: "study", id: parts[0] };
-  const [crew, kind, key, ...extra] = parts;
-  if (!isResearchCrew(crew) || !(CATALOG_KINDS as string[]).includes(kind) || extra.length) return { view: "missing" };
+  const [pipe, kind, key, ...extra] = parts;
+  if (!isResearchPipe(pipe) || !(CATALOG_KINDS as string[]).includes(kind) || extra.length) return { view: "missing" };
   const k = kind as CatalogKind;
-  return key ? { view: "item", crew, kind: k, key } : { view: "list", crew, kind: k };
+  return key ? { view: "item", pipe, kind: k, key } : { view: "list", pipe, kind: k };
 }
 
-export function researchCatalogHref(base: string, crew: ResearchCrew, kind: CatalogKind, key?: string): string {
-  return `${base}/${crew}/${kind}${key ? `/${encodeURIComponent(key)}` : ""}`;
+export function researchCatalogHref(base: string, pipe: ResearchPipe, kind: CatalogKind, key?: string): string {
+  return `${base}/${pipe}/${kind}${key ? `/${encodeURIComponent(key)}` : ""}`;
 }
 
 /** The page a study's bar opens: its workflow's or template's own, when the bar names one. */
 export function pointHref(base: string, study: ResearchStudy, point: ResearchPoint): string | null {
-  if (!point.key || !study.crew) return null;
-  if (study.topic === "workflow") return researchCatalogHref(base, study.crew, "workflows", point.key);
-  if (study.topic === "template") return researchCatalogHref(base, study.crew, "templates", point.key);
-  if (study.topic === "llm") return researchCatalogHref(base, study.crew, "models", point.key);
+  if (!point.key || !study.pipe) return null;
+  if (study.topic === "workflow") return researchCatalogHref(base, study.pipe, "workflows", point.key);
+  if (study.topic === "template") return researchCatalogHref(base, study.pipe, "templates", point.key);
+  if (study.topic === "llm") return researchCatalogHref(base, study.pipe, "models", point.key);
   return null;
 }
 
-export function researchWorkflow(c: ResearchCatalog, crew: ResearchCrew, key: string): ResearchWorkflow | null {
-  return c[crew].workflows.find((w) => w.key === key) ?? null;
+export function researchWorkflow(c: ResearchCatalog, pipe: ResearchPipe, key: string): ResearchWorkflow | null {
+  return c[pipe].workflows.find((w) => w.key === key) ?? null;
 }
-export function researchTemplate(c: ResearchCatalog, crew: ResearchCrew, key: string): ResearchTemplate | null {
-  return c[crew].templates.find((t) => t.key === key) ?? null;
+export function researchTemplate(c: ResearchCatalog, pipe: ResearchPipe, key: string): ResearchTemplate | null {
+  return c[pipe].templates.find((t) => t.key === key) ?? null;
 }
-export function researchModel(c: ResearchCatalog, crew: ResearchCrew, key: string): ResearchModel | null {
-  return c[crew].models.find((m) => m.key === key) ?? null;
+export function researchModel(c: ResearchCatalog, pipe: ResearchPipe, key: string): ResearchModel | null {
+  return c[pipe].models.find((m) => m.key === key) ?? null;
 }
 
-/** The research crew a mission's crew is (its channel and the step its leg lands on), if any. */
-export function researchCrewFor(channel: string | null | undefined, step: string | null | undefined): ResearchCrew | null {
+/** The research pipe a campaign is (its channel and the step its leg lands on), if any. */
+export function researchPipeFor(channel: string | null | undefined, step: string | null | undefined): ResearchPipe | null {
   if (!channel || !step) return null;
-  return CREW_ORDER.find((c) => CREW_KEY[c].channel === channel && CREW_KEY[c].step === step) ?? null;
+  return PIPE_ORDER.find((p) => PIPE_KEY[p].channel === channel && PIPE_KEY[p].step === step) ?? null;
 }

@@ -36,7 +36,7 @@ describe("typed judgment studies (jev.mjs)", () => {
   it("sits every study in the Typed judgment outcome section", () => {
     expect(outcomes.map((o: { id: string }) => o.id)).toEqual(["judgment"]);
     for (const s of studies) {
-      expect(s.crew).toBeNull();
+      expect(s.pipe).toBeNull();
       expect(s.outcome).toBe("judgment");
       expect(s.topic).toBe("judgment");
       for (const c of s.charts) expect(c.note).toBeTruthy();
