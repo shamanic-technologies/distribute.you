@@ -34,6 +34,13 @@ export async function getOrgName(orgId: string): Promise<string | null> {
   }
 }
 
+/** Record a name we just wrote to Clerk, so the next proxied request forwards
+ *  it rather than the stale one cached before the write (client-service would
+ *  store the stale name back on the org row for up to the TTL). */
+export function rememberOrgName(orgId: string, name: string): void {
+  cache.set(orgId, { name, at: Date.now() });
+}
+
 /** Test-only: module state outlives a single test. */
 export function resetOrgNameCache(): void {
   cache.clear();

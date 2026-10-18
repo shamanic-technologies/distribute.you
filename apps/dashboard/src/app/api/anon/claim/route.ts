@@ -1,4 +1,4 @@
-import { auth, currentUser } from "@clerk/nextjs/server";
+import { auth, clerkClient, currentUser } from "@clerk/nextjs/server";
 import { NextRequest, NextResponse } from "next/server";
 import {
   ANON_COOKIE_OPTIONS,
@@ -6,9 +6,11 @@ import {
   ANON_SESSION_COOKIE,
   anonTokenFromCookieHeader,
 } from "@/lib/anon-session-cookie";
-import { readAnonSession } from "@/lib/anon-session-token";
+import { ANON_PRINCIPAL, readAnonSession } from "@/lib/anon-session-token";
 import { settleWelcomeOnSignup } from "@/lib/billing-service";
 import { claimAnonymousOrg } from "@/lib/client-service";
+import { rememberOrgName } from "@/lib/org-name";
+import { isClerkAutoOrgName, orgNameFor } from "@/lib/org-name-rule";
 
 /**
  * The moment the account exists: the org they have been building IS theirs.
@@ -28,6 +30,66 @@ import { claimAnonymousOrg } from "@/lib/client-service";
  * looks like. Treating that as an error would break exactly the customer whose
  * network wobbled at the worst moment.
  */
+
+const API_URL = process.env.NEXT_PUBLIC_DISTRIBUTE_API_URL || "https://api.distribute.you";
+
+/**
+ * The name of the brand the visitor built, read as the ANONYMOUS org (the same
+ * identity the signed-out proxy uses), so it must run BEFORE the claim swaps
+ * that identity. Naming is never worth a signup: a failed read is logged and
+ * the org is named from the email instead.
+ */
+async function anonBrandName(apiKey: string, anonOrgId: string, brandId: string): Promise<string | null> {
+  try {
+    const res = await fetch(new URL(`/v1/brands/${encodeURIComponent(brandId)}`, API_URL), {
+      headers: {
+        "X-API-Key": apiKey,
+        "x-external-org-id": anonOrgId,
+        "x-external-user-id": ANON_PRINCIPAL,
+        "x-brand-id": brandId,
+      },
+      signal: AbortSignal.timeout(8_000),
+    });
+    if (!res.ok) {
+      console.error(`[anon-claim] brand name read for ${brandId}: ${res.status}`);
+      return null;
+    }
+    const body = (await res.json()) as { brand?: { name?: unknown } };
+    return typeof body.brand?.name === "string" ? body.brand.name : null;
+  } catch (err) {
+    console.error(`[anon-claim] brand name read for ${brandId} errored:`, err);
+    return null;
+  }
+}
+
+/**
+ * Name the Clerk org after the business (`lib/org-name-rule.ts`), but ONLY over the
+ * name Clerk gave it on its own ("Personal" or the full name): a name the
+ * person typed is theirs. Returns the name the org carries afterwards, so
+ * client-service is told the same one. Not fatal: a failed rename is logged and
+ * the claim goes on.
+ */
+async function nameClerkOrg(
+  orgId: string,
+  wanted: string | null,
+  firstName: string | null | undefined,
+  lastName: string | null | undefined,
+): Promise<string | null> {
+  try {
+    const clerk = await clerkClient();
+    const org = await clerk.organizations.getOrganization({ organizationId: orgId });
+    if (!wanted || wanted === org.name || !isClerkAutoOrgName(org.name, firstName, lastName)) {
+      return org.name;
+    }
+    await clerk.organizations.updateOrganization(orgId, { name: wanted });
+    rememberOrgName(orgId, wanted);
+    console.log(`[anon-claim] org ${orgId} renamed from Clerk's auto name to "${wanted}"`);
+    return wanted;
+  } catch (err) {
+    console.error(`[anon-claim] naming org ${orgId} failed:`, err);
+    return null;
+  }
+}
 
 const isSecure = (req: NextRequest): boolean => new URL(req.url).protocol === "https:";
 
@@ -76,6 +138,18 @@ export async function POST(req: NextRequest) {
     const user = await currentUser().catch(() => null);
     const email = user?.primaryEmailAddress?.emailAddress ?? undefined;
 
+    // Never "Personal": brand, else business email domain, else full name.
+    // A session that never created a brand carries `brandId: ""` (legal).
+    const brandName = session.brandId
+      ? await anonBrandName(secret, session.anonOrgId, session.brandId)
+      : null;
+    const orgName = await nameClerkOrg(
+      orgId,
+      orgNameFor({ brandName, email, firstName: user?.firstName, lastName: user?.lastName }),
+      user?.firstName,
+      user?.lastName,
+    );
+
     const outcome = await claimAnonymousOrg({
       orgId: session.orgId,
       externalOrgId: orgId,
@@ -84,6 +158,7 @@ export async function POST(req: NextRequest) {
       ...(user?.firstName ? { firstName: user.firstName } : {}),
       ...(user?.lastName ? { lastName: user.lastName } : {}),
       ...(orgSlug ? { orgSlug } : {}),
+      ...(orgName ? { orgName } : {}),
     });
 
     if (!outcome.claimed) {
