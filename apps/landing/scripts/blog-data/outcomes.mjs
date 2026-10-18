@@ -19,6 +19,8 @@
 import { compareVerdict, headlineFor, MIN_OUTCOMES } from "./verdict.mjs";
 
 export const CUTS = ["pipe", "channel", "leg", "workflow", "strategy", "tactic"];
+// the cuts whose cost bars split the outcome's average (decompStudy) rather than compare buckets
+const SPLIT = new Set(["pipe", "channel", "leg"]);
 const YES = "yes";
 const NO = "no";
 
@@ -369,7 +371,7 @@ function tacticStudy(o, goal, data, { tacticName, population, note }) {
     }));
   const lines = [
     population,
-    ...(nobody.length ? [`No workflow that sent these emails follows ${nobody.length === 1 ? "this tactic" : "these tactics"}: ${nobody.join(", ")}.`] : []),
+    ...(nobody.length ? [`No workflow in this population follows ${nobody.length === 1 ? "this tactic" : "these tactics"}: ${nobody.join(", ")}.`] : []),
   ];
   if (!bars.length) {
     const headline = `No tactic a workflow follows has ${goal === "roi" ? `produced a ${o.noun}` : `turned a lead into a ${o.noun}`} yet.`;
@@ -391,7 +393,7 @@ function tacticStudy(o, goal, data, { tacticName, population, note }) {
       noun: goal === "roi" ? o.noun : `lead who went on to a ${o.noun}`, nouns: goal === "roi" ? o.nouns : `leads who went on to a ${o.noun}`,
       ...(goal === "rate" ? { per: "per lead" } : {}),
     })
-    : { kind: "noise", reason: `Every workflow that sent these emails follows ${name}: no email without it to compare with.` };
+    : { kind: "noise", reason: `Every workflow in this population follows ${name}: nothing without it to compare with.` };
   const against = no && value(no) !== null ? `, against ${show(no)} when it does not` : no ? `; none yet when it does not` : "";
   const raw = goal === "roi"
     ? `${name} wins at ${show(yes)} per ${o.noun} when the workflow follows it${against}.`
@@ -413,6 +415,54 @@ function tacticStudy(o, goal, data, { tacticName, population, note }) {
   };
 }
 
+/**
+ * A pipe, channel or leg cut of an outcome's COST (owner 2026-10-18): every pipe whose spend is in
+ * the outcome's average gets one bar, its spend over EVERY outcome, so the bars add up to the
+ * average a reader sees overall. Never a pipe's spend over its own outcomes: on Meeting booked that
+ * read $17 beside a $584 average under the same label. A decomposition ranks nothing, so its
+ * verdict is the average's own.
+ */
+function decompStudy(o, cut, data, { label, population, note, total, verdict }) {
+  const t = makeText(o);
+  const dimNoun = DIM[cut].noun;
+  const base = { id: outcomeStudyId(o.id, cut, "roi"), pipe: null, outcome: o.id, topic: DIM[cut].topic, goal: "roi", question: `What does each ${dimNoun} add to the cost of a ${o.noun}?` };
+  const rows = data.rows.filter((r) => r.spend > 0);
+  if (!total.outcomes || !rows.length) {
+    const headline = `No ${o.noun} to price yet.`;
+    return { ...base, status: "not_enough_data", headline, winner: null, winnerLabel: "Largest share", crowned: false, result: null, charts: [], conclusion: [population], verdict: { kind: "noise", reason: headline } };
+  }
+  const avg = total.spend / total.outcomes;
+  const bars = rows
+    .map((r) => ({ label: label(r.bucket), value: round2(r.spend / total.outcomes), display: usd(r.spend / total.outcomes), note: `${usd(r.spend)} spent, ${shareText(r.spend / total.spend)} of the cost`, thin: total.outcomes < o.required }))
+    .sort((a, b) => b.value - a.value);
+  const raw = bars.length === 1
+    ? `${bars[0].label} carries the whole cost: ${usd(avg)} per ${o.noun}.`
+    : `${usd(avg)} per ${o.noun} in all: ${bars.map((b) => `${b.label} ${b.display}`).join(", ")}.`;
+  const suffix = verdict.kind === "conclusion" ? "" : verdict.kind === "signal" ? " A signal to confirm, not yet a conclusion." : " Noise so far.";
+  return {
+    ...base,
+    status: "measured",
+    headline: `${raw}${suffix}`,
+    winner: bars[0].label,
+    winnerLabel: "Largest share",
+    crowned: verdict.kind === "conclusion",
+    result: { display: usd(avg), unit: `per ${o.noun}, every ${dimNoun} added up`, sample: `${t.outcomesText(total.outcomes)} · ${usd(total.spend)} spent` },
+    charts: [{
+      kind: "bars",
+      title: `What each ${dimNoun} adds to the cost of a ${o.noun} (USD)`,
+      lowerIsBetter: true,
+      points: bars,
+      note: `Each bar is that ${dimNoun}'s spend over every ${o.noun} (${n(total.outcomes)}), so the bars add up to the ${usd(avg)} average. ${note}`,
+    }],
+    conclusion: [population, `The bars split the ${usd(avg)} a ${o.noun} costs by where the money went: ${usd(total.spend)} over ${t.outcomesText(total.outcomes)}.`],
+    verdict: { kind: verdict.kind, reason: verdict.reason },
+  };
+}
+// a share in whole percent; a sliver never reads 0%, nor a near-whole 100%
+const shareText = (x) => (x >= 1 ? "100%" : x > 0.995 ? ">99%" : x > 0 && x < 0.005 ? "<1%" : `${Math.round(x * 100)}%`);
+/** The one line a pipe, channel or leg RATE chart states: each bar is its own leads. */
+const rateCutNote = (o, cut, note) => `Each bar is the share of the leads that entered that ${DIM[cut].noun} who went on to a ${o.noun}. ${note}`;
+
 function overallStudies(o, entry, { pipesText, population, note }) {
   const t = makeText(o);
   const series = entry.byMonth;
@@ -424,7 +474,9 @@ function overallStudies(o, entry, { pipesText, population, note }) {
     const [lo, hi] = poissonInterval(tot.outcomes);
     const verdict = !all
       ? { kind: "noise", reason: `No ${o.noun} yet.` }
-      : tot.outcomes >= MIN_OUTCOMES
+      : tot.outcomes < o.required
+        ? { kind: "noise", reason: `Learning: ${t.outcomesText(tot.outcomes)} of the ${n(o.required)} a figure needs.` }
+        : tot.outcomes >= MIN_OUTCOMES
         ? { kind: "conclusion", reason: `A measurement on ${t.outcomesText(tot.outcomes)}: 95% interval ${usd(tot.spend / hi)} to ${usd(tot.spend / lo)} per ${o.noun}.` }
         : { kind: "noise", reason: `Only ${t.outcomesText(tot.outcomes)} so far.` };
     const headline = all ? `${all.display} per ${o.noun} on average since inception, across ${pipesText}.` : `Not enough ${o.nouns} to state an average yet.`;
@@ -445,7 +497,9 @@ function overallStudies(o, entry, { pipesText, population, note }) {
     const all = tot.leads > 0 ? rateOf(tot) : null;
     const verdict = all === null || tot.reached === 0
       ? { kind: "noise", reason: `No lead has gone on to a ${o.noun} yet.` }
-      : tot.reached >= MIN_OUTCOMES
+      : tot.reached < o.required
+        ? { kind: "noise", reason: `Learning: ${n(tot.reached)} ${tot.reached === 1 ? "lead" : "leads"} went on to a ${o.noun}, of the ${n(o.required)} a figure needs.` }
+        : tot.reached >= MIN_OUTCOMES
         ? (() => { const [lo, hi] = wilson(tot.reached, tot.leads); return { kind: "conclusion", reason: `A measurement on ${n(tot.reached)} of ${t.leadsText(tot.leads)}: 95% interval ${pct(lo * 100)} to ${pct(hi * 100)}.` }; })()
         : { kind: "noise", reason: `Only ${n(tot.reached)} ${tot.reached === 1 ? "lead" : "leads"} went on to a ${o.noun} so far.` };
     const headline = all !== null ? `${pct(all)} of leads went on to a ${o.noun} since inception, across ${pipesText}.` : `No lead written to yet.`;
@@ -478,6 +532,8 @@ export function emailOutcomeStudies(o, entry, words, text) {
   const pipesText = pipeNames.length === 1 ? `the one pipe that lands on it (${pipeNames[0]})` : `${pipeNames.length} pipes (${pipeNames.join(", ")})`;
   const who = `Population: the ${n(sc.emails)} ${o.emailsNoun} of ${pipeNames.length === 1 ? `the one pipe that lands on a ${o.noun}, ${pipeNames[0]},` : `the ${pipeNames.length} pipes that land on a ${o.noun} (${pipeNames.join(", ")})`} to ${t.leadsText(sc.leads)}, across ${n(sc.orgs)} clients.${sc.noLead ? ` ${n(sc.noLead)} ${o.emailsNoun} carry no lead record: in the costs, out of the rates.` : ""}${text.visitLine ? ` ${text.visitLine}` : ""}`;
   const studies = [...overallStudies(o, entry, { pipesText, population: who, note: text.note })];
+  const average = studies[0];
+  const total = entry.byMonth.reduce((a, r) => ({ spend: a.spend + r.spend, outcomes: a.outcomes + r.outcomes }), { spend: 0, outcomes: 0 });
   const labels = {
     pipe: words.pipeName,
     channel: words.channelName,
@@ -493,48 +549,152 @@ export function emailOutcomeStudies(o, entry, words, text) {
     for (const goal of ["roi", "rate"]) {
       const population = cut === "strategy" ? `${who} ${strategyLine}` : cut === "tactic" ? `${who} ${tacticLine}` : who;
       if (cut === "tactic") studies.push(tacticStudy(o, goal, entry.cuts.tactic, { tacticName: words.tacticName, population, note: text.note }));
-      else studies.push(cutStudy(o, cut, goal, entry.cuts[cut], { label: labels[cut], population, note: text.note }));
+      else if (SPLIT.has(cut) && goal === "roi") studies.push(decompStudy(o, cut, entry.cuts[cut], { label: labels[cut], population, note: text.note, total, verdict: average.verdict }));
+      else studies.push(cutStudy(o, cut, goal, entry.cuts[cut], { label: labels[cut], population, note: SPLIT.has(cut) ? rateCutNote(o, cut, text.note) : text.note }));
     }
   }
   return studies;
 }
 
 /**
- * The studies of the Meeting booked outcome beside the two meeting studies meetings.mjs writes
- * (meeting-cost is its average since inception). booking: meetings.mjs's `booking` read, the
- * positive reply -> meeting booked leg: its spend, the leads it acted on (by month first acted)
- * and the meetings booked after it acted. words: { pipeName, channelName, legName }.
+ * The Meeting booked row's counts, in the shape outcomeCuts writes for an email outcome, on the
+ * population meeting-cost prices (the brands that report their meetings):
+ *  - read: meetings.mjs `outcomeRead` (spend per pipe, the credited meetings, the leads the meeting
+ *    booking leg acted on with the run that acted);
+ *  - emailLeads: derive.mjs `meetingEmailLeads`, per cold email pipe (`<channel>|<leg>`) the leads it
+ *    wrote to there with their first email;
+ *  - runs: every meeting booking execute-workflow run (run_id, workflow_slug, campaign_id, cents);
+ *  - dynastyOf: version -> dynasty; brandOfCampaign: campaign -> brand; verdicts: version -> tactic
+ *    -> yes/no; strategyOf(runId) -> { id } (strategy.mjs).
+ * A lead entered a pipe when it wrote to it (cold email) or acted on it (meeting booking); it
+ * reached the outcome when a credited meeting was booked on or after that. Leads at lead-service's
+ * grain: one lead counts once per bucket.
  */
-export function meetingOutcomeStudies(o, booking, words, { pipe, channel, leg, costBasis }) {
-  const t = makeText(o);
-  const note = `A meeting counts when it was booked on or after the meeting booking step first acted on that lead, and our outreach gets the credit for it. A figure needs ${o.required} ${o.required === 1 ? "meeting" : "meetings"} behind it; below that it reads Learning.`;
-  const population = `Population: the ${t.leadsText(booking.leads)} the meeting booking step acted on (a lead who gave a positive reply), the ${n(booking.meetings)} ${booking.meetings === 1 ? "meeting" : "meetings"} booked after it acted, and the ${usd(booking.spend)} it was charged. The cold email that won the positive reply is not in these prices: the average since inception counts it, on the brands that report their meetings.`;
-  const row = { emails: booking.leads, spend: booking.spend, outcomes: booking.meetings, leads: booking.leads, reached: booking.reachedLeads };
-  const single = (bucket) => ({ rows: [{ bucket, ...row }], roiStrata: {}, rateStrata: {} });
-  const meetingText = { ...o, firstTouch: "the meeting booking step first acted on", emailsNoun: booking.leads === 1 ? "lead acted on" : "leads acted on" };
-  const studies = [];
-  // the share of leads acted on who went on to a meeting, by the month first acted
-  {
-    const series = booking.byMonth.map((m) => ({ bucket: m.bucket, emails: m.leads, spend: 0, outcomes: 0, leads: m.leads, reached: m.reached }));
-    const [s] = overallStudies(meetingText, { byMonth: series }, { pipesText: `the one pipe that lands on it (${words.pipeName(pipe)})`, population, note }).filter((x) => x.goal === "rate");
-    studies.push(s);
+export function meetingOutcomeEntry({ read, emailLeads, runs, dynastyOf, brandOfCampaign, verdicts, strategyOf, step, meetingPipe }) {
+  const reporting = new Set(read.reporting);
+  const meetingsByLead = new Map();
+  for (const m of read.meetings) {
+    if (!m.lead) continue;
+    if (!meetingsByLead.has(m.lead)) meetingsByLead.set(m.lead, []);
+    meetingsByLead.get(m.lead).push(m.at);
   }
-  for (const [cut, bucket, label] of [["pipe", pipe, words.pipeName], ["channel", channel, words.channelName], ["leg", leg, words.legName]]) {
-    for (const goal of ["roi", "rate"]) {
-      if (goal === "roi" && costBasis === "actual") {
-        studies.push(notMeasured(outcomeStudyId(o.id, cut, goal), o, cut, goal, DIM[cut].topic, questionOf(o, cut, goal), "The meeting figures are on what clients were charged only. Switch to the billed basis to read them."));
-        continue;
-      }
-      studies.push(cutStudy(meetingText, cut, goal, single(bucket), { label, population, note }));
+  const meetingsAfter = (lead, at) => (meetingsByLead.get(lead) || []).filter((x) => x >= at).length;
+  // every pipe: its spend and the leads that entered it
+  const pipes = new Map();
+  const pipeOf = (k) => pipes.get(k) || pipes.set(k, { spend: 0, leads: new Map() }).get(k);
+  for (const s of read.spendByPipe) pipeOf(`${s.channel}|${s.leg}`).spend += s.spend;
+  for (const [k, list] of Object.entries(emailLeads)) {
+    const p = pipeOf(k);
+    for (const [lead, at] of list) if (!p.leads.has(lead) || at < p.leads.get(lead)) p.leads.set(lead, at);
+  }
+  const booking = pipeOf(meetingPipe);
+  for (const a of read.acted) if (!booking.leads.has(a.lead) || a.at < booking.leads.get(a.lead)) booking.leads.set(a.lead, a.at);
+  const rowOf = (bucket, spend, leads) => {
+    let reached = 0, outcomes = 0;
+    for (const [lead, at] of leads) {
+      const k = meetingsAfter(lead, at);
+      if (k) { reached++; outcomes += k; }
     }
+    return { bucket, emails: leads.size, spend: round2(spend), outcomes, leads: leads.size, reached };
+  };
+  const group = (keyOf) => {
+    const g = new Map();
+    for (const [k, p] of pipes) {
+      const gk = keyOf(k);
+      const x = g.get(gk) || g.set(gk, { spend: 0, leads: new Map() }).get(gk);
+      x.spend += p.spend;
+      for (const [lead, at] of p.leads) if (!x.leads.has(lead) || at < x.leads.get(lead)) x.leads.set(lead, at);
+    }
+    return { rows: [...g.keys()].sort().map((k) => rowOf(k, g.get(k).spend, g.get(k).leads)), roiStrata: {}, rateStrata: {} };
+  };
+  const all = group(() => "all").rows[0] ?? null;
+  // the month each lead first entered any pipe, for the overall rate
+  const first = new Map();
+  for (const p of pipes.values()) for (const [lead, at] of p.leads) if (!first.has(lead) || at < first.get(lead)) first.set(lead, at);
+  const months = new Map();
+  for (const [lead, at] of first) {
+    const m = months.get(at.slice(0, 7)) || months.set(at.slice(0, 7), { leads: 0, reached: 0 }).get(at.slice(0, 7));
+    m.leads++;
+    if (meetingsAfter(lead, at)) m.reached++;
   }
-  const noWorkflow = "Not measured yet: the meeting reads do not record which workflow version acted on each lead, so no meeting can be filed under a workflow or a tactic.";
-  const noStrategy = "Not measured yet: meeting booking runs carry no lead strategy record.";
-  for (const cut of ["workflow", "strategy", "tactic"]) {
+  // the meeting booking leg's leads, by the workflow version of the run that acted on them
+  const runById = new Map(runs.map((r) => [r.run_id, r]));
+  const inPop = (r) => reporting.has(brandOfCampaign.get(r.campaign_id));
+  let noRun = 0, noDynasty = 0;
+  const filed = { workflow: new Map(), tactic: new Map(), strategy: new Map() };
+  const put = (cut, key, lead, at) => {
+    const x = filed[cut].get(key) || filed[cut].set(key, { spend: 0, leads: new Map() }).get(key);
+    if (lead && (!x.leads.has(lead) || at < x.leads.get(lead))) x.leads.set(lead, at);
+    return x;
+  };
+  const keysOf = (run) => {
+    const out = [];
+    const dyn = dynastyOf.get(run.workflow_slug);
+    if (dyn) out.push(["workflow", dyn]);
+    for (const [t, yes] of verdicts.get(run.workflow_slug) || []) out.push(["tactic", `${t}|${yes ? YES : NO}`]);
+    const st = strategyOf(run.run_id);
+    if (st?.id) out.push(["strategy", st.id]);
+    return out;
+  };
+  for (const a of read.acted) {
+    const run = a.runId ? runById.get(a.runId) : null;
+    if (!run) { noRun++; continue; }
+    if (!dynastyOf.get(run.workflow_slug)) noDynasty++;
+    for (const [cut, key] of keysOf(run)) put(cut, key, a.lead, a.at);
+  }
+  for (const r of runs) {
+    if (!inPop(r)) continue;
+    for (const [cut, key] of keysOf(r)) put(cut, key, null, null).spend += Number(r.cents) / 100;
+  }
+  const cutOf = (cut) => ({ rows: [...filed[cut].keys()].sort().map((k) => rowOf(k, filed[cut].get(k).spend, filed[cut].get(k).leads)), roiStrata: {}, rateStrata: {} });
+  return {
+    step,
+    pipes: [...pipes.keys()].sort(),
+    scope: {
+      leads: first.size,
+      meetings: read.meetings.length,
+      meetingsNoLead: read.meetings.filter((m) => !m.lead).length,
+      acted: read.acted.length,
+      actedNoRun: noRun,
+      actedNoDynasty: noDynasty,
+      reached: all ? all.reached : 0,
+    },
+    byMonth: [...months.keys()].sort().map((bucket) => ({ bucket, emails: months.get(bucket).leads, spend: 0, outcomes: 0, leads: months.get(bucket).leads, reached: months.get(bucket).reached })),
+    cuts: {
+      pipe: group((k) => k),
+      channel: group((k) => k.split("|")[0]),
+      leg: group((k) => k.split("|")[1]),
+      workflow: cutOf("workflow"),
+      strategy: cutOf("strategy"),
+      tactic: cutOf("tactic"),
+    },
+    total: { spend: read.totalSpend, outcomes: read.meetings.length },
+  };
+}
+
+/**
+ * The studies of the Meeting booked row beside the two meeting studies meetings.mjs writes
+ * (meeting-cost is its average since inception, and its verdict is the cost split's).
+ * words: { pipeLabel(`<channel>|<leg>`), channelName, legName, workflowLabel(dynasty), strategyLabel, tacticName }.
+ */
+export function meetingOutcomeStudies(o, entry, words, { costBasis, verdict, strategyRecordedFrom }) {
+  const t = makeText(o);
+  const sc = entry.scope;
+  const note = `A meeting counts when it was booked on or after the lead entered that pipe, and our outreach gets the credit for it. A figure needs ${o.required} ${o.required === 1 ? "meeting" : "meetings"} behind it; below that it reads Learning.`;
+  const population = `Population: the brands that report their booked meetings, as the average since inception prices them: every dollar charged there on cold email and meeting booking (${usd(entry.total.spend)}), the ${n(sc.meetings)} ${sc.meetings === 1 ? "meeting" : "meetings"} our outreach gets the credit for${sc.meetingsNoLead ? ` (${n(sc.meetingsNoLead)} name no lead, so they reach no rate)` : ""}, and the ${t.leadsText(sc.leads)} our pipes wrote to or acted on there.`;
+  const runLine = `The meeting booking step's leads are filed under the run that acted on them (its workflow version, Jev's verdicts on that version, the lead strategy it was served under) and its spend under the same runs.${sc.actedNoRun ? ` ${n(sc.actedNoRun)} of the ${n(sc.acted)} leads it acted on carry no such run and are left out.` : ""}${sc.actedNoDynasty ? ` ${n(sc.actedNoDynasty)} more were acted on by a version workflow-service files under no workflow: out of the workflow cut.` : ""}`;
+  const strategyLine = strategyRecordedFrom ? ` A run's lead strategy is recorded since ${dayText(strategyRecordedFrom)}: earlier runs carry none and are left out, never counted under the default.` : "";
+  const notBilled = (cut, goal) => notMeasured(outcomeStudyId(o.id, cut, goal), o, cut, goal, DIM[cut].topic, questionOf(o, cut, goal), "The meeting figures are on what clients were charged only. Switch to the billed basis to read them.");
+  const labels = { pipe: words.pipeLabel, channel: words.channelName, leg: words.legName, workflow: words.workflowLabel, strategy: words.strategyLabel };
+  const studies = overallStudies(o, entry, { pipesText: "every pipe on the brands that report their meetings", population, note }).filter((x) => x.goal === "rate");
+  for (const cut of CUTS) {
     for (const goal of ["roi", "rate"]) {
-      studies.push(notMeasured(outcomeStudyId(o.id, cut, goal), o, cut, goal, DIM[cut].topic, questionOf(o, cut, goal), cut === "strategy" ? noStrategy : noWorkflow));
+      if (goal === "roi" && costBasis === "actual") { studies.push(notBilled(cut, goal)); continue; }
+      const pop = SPLIT.has(cut) ? population : `${population} ${runLine}${cut === "strategy" ? strategyLine : ""}`;
+      if (cut === "tactic") studies.push(tacticStudy(o, goal, entry.cuts.tactic, { tacticName: words.tacticName, population: pop, note }));
+      else if (SPLIT.has(cut) && goal === "roi") studies.push(decompStudy(o, cut, entry.cuts[cut], { label: labels[cut], population: pop, note, total: entry.total, verdict }));
+      else studies.push(cutStudy(o, cut, goal, entry.cuts[cut], { label: labels[cut], population: pop, note: SPLIT.has(cut) ? rateCutNote(o, cut, note) : note }));
     }
   }
   return studies;
 }
-

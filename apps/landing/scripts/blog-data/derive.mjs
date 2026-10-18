@@ -27,6 +27,7 @@ import { POSITIVE_REPLY_LEG, WEBSITE_VISIT_LEG, canonicalLeg } from "./leg-key.m
 import { layoutOf, openingOf, dashOf, LAYOUT, OPENING, DASH } from "./first-email-shape.mjs";
 import { attributionIndex, bySourceStrategy, strategyLabels } from "./strategy.mjs";
 import { outcomeCuts } from "./outcomes.mjs";
+import { reportingBrands } from "./meetings.mjs";
 
 const dir = process.argv[2];
 if (!dir) throw new Error("usage: derive.mjs <dump-dir>");
@@ -1023,6 +1024,23 @@ const OUTCOME_SETS = [
   { pipe: "cold-email-website-visit", channel: "sales-cold-email-outreach", leg: WEBSITE_VISIT_LEG, emailsNoun: "emails with a link", rows: research.visit.map((r) => outcomeRow(r, r.clicked)) },
 ].filter((s) => s.rows.length).map((s) => ({ ...s, step: stepOfLeg(s.leg) }));
 
+// The Meeting booked row's cold email side (outcomes.mjs meetingOutcomeEntry): on the brands that
+// report their meetings (meetings.mjs, the population meeting-cost prices), every lead each cold
+// email pipe wrote to in the window, with its first email. Its outcome is joined in research.mjs.
+const meetingEmailLeads = (() => {
+  const reporting = reportingBrands(load("meetings.csv"));
+  const brandOf = new Map(load("meeting-campaigns.csv").map((c) => [c.campaign_id, c.brand_id]));
+  const by = {};
+  for (const e of emails) {
+    if (!e.lead_id || !reporting.has(brandOf.get(e.platform_campaign_id))) continue;
+    const k = `sales-cold-email-outreach|${legOf.get(e.platform_campaign_id) ?? ""}`;
+    const m = (by[k] ||= new Map());
+    const prev = m.get(e.lead_id);
+    if (!prev || e.sent_at < prev) m.set(e.lead_id, e.sent_at);
+  }
+  return Object.fromEntries(Object.entries(by).sort().map(([k, m]) => [k, [...m.entries()].sort()]));
+})();
+
 const minMonth = (rows) => rows.reduce((m, f) => (!m || f.month < m ? f.month : m), null);
 const maxMonth = (rows) => rows.reduce((m, f) => (!m || f.month > m ? f.month : m), null);
 out.research = {
@@ -1051,6 +1069,7 @@ out.research = {
   // per step a pipe lands on: the outcome studies' counts (outcomes.mjs), and the tactics' names
   outcomes: outcomeCuts(OUTCOME_SETS, verdictsByVersion),
   tactics: TACTICS.tactics,
+  meetingEmailLeads,
   strategyRecordedFrom: STRATEGY_RECORDED_FROM,
 };
 

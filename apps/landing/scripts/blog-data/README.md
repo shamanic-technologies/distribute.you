@@ -73,9 +73,11 @@ VERSION, re-judged in place when a tactic's text changes; one bar per tactic on 
 judged to follow it, the other side beside). $ / outcome = spend over the outcomes the emails earned
 (one pipe: equal to its own cost over time, research.mjs throws otherwise); **% conversion counts LEADS
 at lead-service's grain** (`leads.id`, a human at a company, once however many emails or campaigns),
-never people or emails. Every name is the public catalogue's (`catalogue-words.json`). Meeting booked:
-`meeting-cost` is its average; its cuts read the meeting booking leg (meetings.mjs `booking`);
-workflow, strategy and tactic are not measured there yet.
+never people or emails. The pipe, channel and leg COST bars split the average (each = its spend over
+every outcome, so they add up to it); their rate bars read each one's own leads. Every name is the
+public catalogue's (`catalogue-words.json`). Meeting booked: `meeting-cost` is its average, on the
+brands that report meetings; its workflow and tactic cuts file each lead the booking leg acted on
+under the run that acted (`meeting-booking-acted.csv` run_id, `meeting-runs.csv`).
 
 The second argument receives two side files the workflow and template pages read
 (`research-catalog.json`: one entry per workflow, per template and per model, per pipe, with its months and

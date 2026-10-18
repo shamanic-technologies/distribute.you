@@ -37,10 +37,10 @@ import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
 import { MODEL_LABEL } from "./model-label.mjs";
 import { meetingStudies, OUTCOME_ID as MEETING_OUTCOME_ID } from "./meetings.mjs";
-import { emailOutcomeStudies, meetingOutcomeStudies, outcomeIdOf } from "./outcomes.mjs";
+import { emailOutcomeStudies, meetingOutcomeEntry, meetingOutcomeStudies, outcomeIdOf } from "./outcomes.mjs";
 import { meetingBeforeAfterStudy } from "./meeting-before-after.mjs";
 import { jevStudies } from "./jev.mjs";
-import { strategyPopulation } from "./strategy.mjs";
+import { attributionIndex, strategyPopulation } from "./strategy.mjs";
 import { MEETING_BOOKING_LEG, POSITIVE_REPLY_LEG, WEBSITE_VISIT_LEG, canonicalLeg } from "./leg-key.mjs";
 import { NAMING_LABEL, namingOf, namingSides, rateP, costP, pText } from "./naming/naming.mjs";
 
@@ -1130,12 +1130,61 @@ for (const entry of facts.research.outcomes) {
     // the meeting studies' own words (meetings.mjs): "a booked meeting"
     noun: "booked meeting",
     nouns: "booked meetings",
-    emailsNoun: "leads acted on",
-    required: MEETINGS.booking.outcomesRequired,
+    emailsNoun: "leads",
+    firstTouch: "a pipe first wrote to or acted on",
+    required: MEETINGS.outcomeRead.outcomesRequired,
     lastMonth: readMonth,
     partialMonth: toDay.slice(8, 10) === "01" ? null : readMonth,
   };
-  OUTCOME_STUDIES.push(...meetingOutcomeStudies(o, MEETINGS.booking, outcomeWords, { pipe: "meeting-booking", channel: "ai-meeting-booking", leg: MEETING_BOOKING_LEG, costBasis: facts.research.costBasis ?? "user" }));
+  // the meeting booking runs, their dynasties and Jev's verdicts on them, and the lead strategy each
+  // was served under (run_play_attributions, strategy.mjs)
+  const meetingDynasty = new Map();
+  const dynastyName = new Map();
+  for (const w of csvRows("meeting-workflows.csv")) {
+    meetingDynasty.set(w.workflow_slug, w.workflow_dynasty_slug);
+    if (w.workflow_dynasty_name) dynastyName.set(w.workflow_dynasty_slug, w.workflow_dynasty_name);
+  }
+  const verdicts = new Map();
+  for (const v of readJson("tactic-verdicts.json").verdicts) {
+    if (!verdicts.has(v.workflowSlug)) verdicts.set(v.workflowSlug, new Map());
+    verdicts.get(v.workflowSlug).set(v.tacticId, v.verdict === true);
+  }
+  const attribution = attributionIndex({ attributions: csvRows("play-attributions.csv"), handoffs: [], strategies: readJson("strategies.json") });
+  const meetingChannel = outcomeWords.channelName("ai-meeting-booking");
+  const entry = meetingOutcomeEntry({
+    read: MEETINGS.outcomeRead,
+    emailLeads: facts.research.meetingEmailLeads,
+    runs: csvRows("meeting-runs.csv"),
+    dynastyOf: meetingDynasty,
+    brandOfCampaign: new Map(csvRows("meeting-campaigns.csv").map((c) => [c.campaign_id, c.brand_id])),
+    verdicts,
+    strategyOf: (runId) => attribution.strategyOf(runId),
+    step,
+    meetingPipe: `ai-meeting-booking|${MEETING_BOOKING_LEG}`,
+  });
+  const strategyNames = new Map(readJson("strategies.json").map((x) => [x.id, x.name]));
+  const words = {
+    ...outcomeWords,
+    // a pipe as features-service serves it; spend on a campaign stating no leg has no pipe
+    pipeLabel: (k) => {
+      const [channel, leg] = k.split("|");
+      if (!leg) return `${outcomeWords.channelName(channel)}, no leg recorded`;
+      const served = WORDS.pipes.find((x) => x.id === k);
+      if (!served?.name) throw new Error(`catalogue-words.json serves no pipe for ${k}: re-run extract.sh`);
+      return served.name;
+    },
+    legName: (leg) => (leg ? outcomeWords.legName(leg) : "No leg recorded"),
+    // named as workflow-service names it, after the channel it works for (no model or template is on record)
+    workflowLabel: (d) => `${meetingChannel} · ${(dynastyName.get(d) ?? d).replace(/^ai meeting booking\s*/i, "")}`,
+    strategyLabel: (id) => strategyNames.get(id) ?? (() => { throw new Error(`strategy ${id} is not in strategies.json`); })(),
+  };
+  const made = meetingOutcomeStudies(o, entry, words, { costBasis: facts.research.costBasis ?? "user", verdict: MEETINGS.outcomeRead.verdict, strategyRecordedFrom: facts.research.strategyRecordedFrom });
+  // the cost split adds up to the average since inception, to the cent
+  const avg = studies.find((x) => x.id === "meeting-cost");
+  for (const x of made.filter((y) => y.goal === "roi" && y.status === "measured" && ["pipe", "channel", "leg"].includes(y.topic))) {
+    if (x.result.display !== avg.result.display) throw new Error(`${x.id}: the cost split (${x.result.display}) differs from meeting-cost (${avg.result.display})`);
+  }
+  OUTCOME_STUDIES.push(...made);
   const meeting = MEETINGS.outcomes.find((x) => x.id === MEETING_OUTCOME_ID);
   OUTCOME_ENTRIES.push({ ...meeting, step, pipes: ["meeting-booking"] });
 }
