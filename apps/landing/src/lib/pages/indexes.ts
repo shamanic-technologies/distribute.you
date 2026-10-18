@@ -5,7 +5,7 @@ import {
   formatDay,
   formatIndexValue,
   formatTick,
-  outcomeWords,
+  statusLegend,
   statusLine,
   unavailableLine,
   type IndexDetail,
@@ -108,7 +108,9 @@ export function chartHtml(points: IndexPoint[], unit: "usd" | "percent", ariaNam
     })
     .join("\n");
 
-  const ticks = [0.2, 0.5, 0.8].map((k) => lo + (hi - lo) * k);
+  // A scale around one level would be invented numbers: ticks appear once the series moves.
+  const flat = measured.every((p) => p.value === measured[0].value);
+  const ticks = flat ? [] : [0.2, 0.5, 0.8].map((k) => lo + (hi - lo) * k);
   const grid = ticks
     .map((t) => `<div class="ix-grid" style="top:${pct((yOf(t) / H) * 100)}"><span>${esc(formatTick(t, unit))}</span></div>`)
     .join("");
@@ -256,7 +258,7 @@ const STYLE = `<style>
   .ix-side { padding-bottom: 0; }
   .ix-facts { grid-template-columns: 1fr; }
   .ix-row { grid-template-columns: minmax(0, 1fr) auto; }
-  .ix-spark { display: none; }
+  .ix-row-spark { display: none; }
 }
 </style>`;
 
@@ -267,14 +269,6 @@ function withStyle(html: string): string {
 // ---------------------------------------------------------------------------
 // One index
 // ---------------------------------------------------------------------------
-
-function builtOn(i: IndexSummary): string {
-  if (i.value === null) return "Nothing yet. The count starts with the first measured day.";
-  const outcomes = `${i.outcomes.toLocaleString("en-US")} ${outcomeWords(i.outcome, i.outcomes)}`;
-  return i.contacted !== null
-    ? `${outcomes} from ${i.contacted.toLocaleString("en-US")} people emailed.`
-    : `${outcomes}.`;
-}
 
 function otherIndexes(list: IndexList | null, slug: string): string {
   if (!list) return "";
@@ -340,9 +334,7 @@ ${otherIndexes(list, slug)}`,
     <div class="section-head"><h2>What it measures</h2></div>
     <p class="ix-method">${esc(i.method)}</p>
     <dl class="ix-facts">
-      <div><dt>Read on</dt><dd>${i.workflowDynastyName ? `Our workflow ${esc(i.workflowDynastyName)}` : "No workflow has enough results yet."}</dd></div>
-      <div><dt>Built on</dt><dd>${esc(builtOn(i))}</dd></div>
-      <div><dt>Status</dt><dd>${badge(i.status)}<br>${esc(statusLine(i.status, statusRule))}</dd></div>
+      <div><dt>Status</dt><dd>${esc(statusLine(i.status, statusRule))}</dd></div>
       <div><dt>Last recorded</dt><dd>${i.day ? esc(formatDay(i.day, true)) : "Not recorded yet."}</dd></div>
     </dl>
   </div>
@@ -407,7 +399,7 @@ function listHtml(indexes: IndexSummary[], series: Map<string, IndexPoint[]>): s
     <div class="ix-row-name">${esc(i.name)}</div>
     <div class="ix-row-meta"><span>${esc(i.valuePer)}</span>${badge(i.status)}</div>
   </div>
-  <div>${sparklineHtml(series.get(i.slug) ?? [])}</div>
+  <div class="ix-row-spark">${sparklineHtml(series.get(i.slug) ?? [])}</div>
   ${value}
 </a>`;
     })
@@ -419,7 +411,7 @@ function listHtml(indexes: IndexSummary[], series: Map<string, IndexPoint[]>): s
 export function renderIndexListPage(list: IndexList | null, series: Map<string, IndexPoint[]>): string {
   const content = list
     ? `${listHtml(list.indexes, series)}
-<p class="ix-rule" style="margin-top:20px">${esc(statusLine("robust", list.statusRule))} ${esc(statusLine("signal", list.statusRule))} ${esc(statusLine("noise", list.statusRule))}</p>`
+<p class="ix-rule" style="margin-top:20px">${esc(statusLegend(list.statusRule))}</p>`
     : `<div class="ix-error" role="alert">The indexes could not be read just now. Reload the page in a minute, or read them as JSON at <a href="https://api.distribute.you/v1/public/indexes">api.distribute.you/v1/public/indexes</a>.</div>`;
   const body = `<section class="ix-hero">
   <div class="hero-glow" aria-hidden="true"></div>

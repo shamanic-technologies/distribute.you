@@ -136,16 +136,21 @@ describe("the pages", () => {
     expect(hero).toContain("ix-chart");
   });
 
-  it("states what it measures, the workflow, what it rests on, when", () => {
-    expect(page).toContain("Our workflow Sienna");
-    expect(page).toContain("42 website visits from 2,019 people emailed.");
-    expect(page).toContain("Robust: built on 30+ outcomes.");
+  it("states what it measures, its status and when; never the workflow nor the outcome volume (owner 2026-10-18)", () => {
+    expect(page).not.toContain("Sienna");
+    expect(page).not.toMatch(/2,019|42 website visits|people emailed\./);
+    expect(page.match(/Robust: built on 30\+ outcomes\./g)).toHaveLength(1);
     expect(page).toContain("Oct 18, 2026");
   });
 
   it("links every other index, and ends on the usual CTA", () => {
     expect(page).toContain('href="/indexes/sceo-click-rate"');
     expect(page).toContain("cta-box");
+  });
+
+  it("the status legend states each range once", () => {
+    const legend = renderIndexListPage(LIST, new Map()).match(/<p class="ix-rule"[^>]*>([^<]*)</)![1];
+    expect(legend).toBe("Robust: 30+ outcomes. Signal: 10 to 29. Early read: under 10, published anyway.");
   });
 
   it("the list links every served index with its value", () => {
