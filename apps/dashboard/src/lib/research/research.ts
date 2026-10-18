@@ -22,7 +22,7 @@ export type ResearchPipe = "cold-email-positive-reply" | "cold-email-website-vis
  * booked meeting costs from the first cold email on), where a pipe section is one leg x one channel.
  */
 export type ResearchOutcome = "meeting" | "judgment";
-export type ResearchTopic = "llm" | "cost" | "followups" | "opens" | "template" | "workflow" | "naming" | "layout" | "opening" | "dash" | "weekday" | "hour" | "judgment" | "launch";
+export type ResearchTopic = "llm" | "cost" | "followups" | "opens" | "template" | "workflow" | "naming" | "layout" | "opening" | "dash" | "weekday" | "hour" | "judgment" | "launch" | "strategy" | "sourcing-strategy";
 export type ResearchGoal = "roi" | "rate";
 
 export interface ResearchPoint {
@@ -228,6 +228,8 @@ export const TOPIC_LABEL: Record<ResearchTopic, string> = {
   hour: "Hour of the day",
   judgment: "Typed judgment",
   launch: "Before and after go-live",
+  strategy: "Lead strategy",
+  "sourcing-strategy": "Sourcing strategy",
 };
 
 export function studiesFor(pipe: ResearchPipe, file: ResearchFile): ResearchStudy[] {
