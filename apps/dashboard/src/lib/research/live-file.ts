@@ -1,52 +1,48 @@
-import billedFile from "@/lib/research/research.json";
-import actualFile from "@/lib/research/actual/research.json";
-import type { ResearchFile } from "@/lib/research/research";
-import { mergeLiveResearch, type LiveResearchFile, type MergedResearchFile } from "@/lib/research/live-merge";
+import type { ResearchCatalog, ResearchFile } from "@/lib/research/research";
 
 /**
- * SERVER ONLY. The Research file the page renders: features-service's LIVE studies (gateway
- * `GET /v1/features/research`, staff only: admin key + a staff `x-email`), each study it does not
- * serve yet taken from the nightly snapshot and marked (`lib/research/live-merge.ts`).
+ * SERVER ONLY. Every byte of Research, read LIVE from features-service through the api-service
+ * gateway (staff only: admin key + a staff `x-email`; LIVE-RESEARCH-1018, owner 2026-10-18):
  *
- * Before features-service's first build it answers 503 `research_not_computed_yet`: the page then
- * shows the snapshot alone, every study marked snapshot (a stated state, not a silent default).
- * Any other failure throws: the route answers it and the page shows its error.
+ *   GET /v1/features/research?basis=           the file (studies, rule, pipes, outcomes)
+ *   GET /v1/features/research/catalog?basis=   the workflow, template and model pages per pipe
+ *   GET /v1/features/research/templates        the template texts, by template id
+ *
+ * No snapshot is kept anywhere: any failure (the 503 `research_not_computed_yet` before
+ * features-service's first build included) throws, the route answers it and the page shows its
+ * error state, never an older copy.
  */
 const API_URL = (process.env.NEXT_PUBLIC_DISTRIBUTE_API_URL || "https://api.distribute.you").replace(/\/$/, "");
 
 export type ResearchBasisParam = "user" | "actual";
 
-const SNAPSHOTS: Record<ResearchBasisParam, ResearchFile> = {
-  user: billedFile as unknown as ResearchFile,
-  actual: actualFile as unknown as ResearchFile,
-};
-
-export async function readMergedResearch(basis: ResearchBasisParam, staffEmail: string): Promise<MergedResearchFile> {
+async function readLive<T>(path: string, staffEmail: string): Promise<T> {
   const key = process.env.ADMIN_DISTRIBUTE_API_KEY;
   if (!key) throw new Error("[research] ADMIN_DISTRIBUTE_API_KEY is not set");
-  const snapshot = SNAPSHOTS[basis];
-  const res = await fetch(`${API_URL}/v1/features/research?basis=${basis}`, {
+  const res = await fetch(`${API_URL}${path}`, {
     headers: { "X-API-Key": key, "x-email": staffEmail },
     cache: "no-store",
   });
-  if (res.status === 503) {
-    const body = (await res.json().catch(() => null)) as { error?: string; code?: string } | null;
-    if (body?.error === "research_not_computed_yet" || body?.code === "research_not_computed_yet") {
-      console.warn("[research] live studies not built yet: serving the snapshot, every study marked");
-      return mergeLiveResearch(
-        { ...snapshot, computedAt: null, studies: [], unavailable: [] } as unknown as LiveResearchFile,
-        snapshot,
-      );
-    }
-    throw new Error(`[research] live read answered 503: ${JSON.stringify(body)}`);
-  }
   if (!res.ok) {
     const text = await res.text().catch(() => "");
-    throw new Error(`[research] live read answered ${res.status}: ${text.slice(0, 300)}`);
+    throw new Error(`[research] ${path} answered ${res.status}: ${text.slice(0, 300)}`);
   }
-  const live = (await res.json()) as LiveResearchFile;
-  if (!Array.isArray(live.studies) || !Array.isArray(live.unavailable)) {
-    throw new Error("[research] live read: invalid shape (studies/unavailable missing)");
-  }
-  return mergeLiveResearch(live, snapshot);
+  return (await res.json()) as T;
+}
+
+/** The live Research file on one cost basis. */
+export async function readLiveResearch(basis: ResearchBasisParam, staffEmail: string): Promise<ResearchFile> {
+  const file = await readLive<ResearchFile>(`/v1/features/research?basis=${basis}`, staffEmail);
+  if (!Array.isArray(file.studies)) throw new Error("[research] live file: invalid shape (studies missing)");
+  return file;
+}
+
+/** The live catalogue (workflow, template and model pages) on one cost basis. */
+export async function readLiveCatalog(basis: ResearchBasisParam, staffEmail: string): Promise<ResearchCatalog> {
+  return readLive<ResearchCatalog>(`/v1/features/research/catalog?basis=${basis}`, staffEmail);
+}
+
+/** The live template texts, the same on both bases. */
+export async function readLiveTemplateTexts(staffEmail: string): Promise<Record<string, string>> {
+  return readLive<Record<string, string>>("/v1/features/research/templates", staffEmail);
 }

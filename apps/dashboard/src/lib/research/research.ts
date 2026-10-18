@@ -1,15 +1,11 @@
 /**
  * Our research, as the staff Research page (dashboard v2) renders it.
  *
- * `research.json` is WRITTEN by `apps/landing/scripts/blog-data/research.mjs` from the same fact
- * table the data blog articles are derived from, so a study and an article can never state two
- * figures for one population. Every study is fleet-wide (all orgs). Nothing here divides or ranks:
- * every value, label and sentence arrives written, and this module only types and looks it up.
- *
- * Refresh: re-run the four commands in `apps/landing/scripts/blog-data/README.md` (Research).
- *
- * The JSON files are served ONLY by the staff route `/api/research/{basis}/{part}` and read through
- * `research-source.tsx`; this module never imports them, so no browser bundle carries a figure.
+ * Every study, catalogue page and template text is served LIVE by features-service
+ * (`GET /internal/research[/catalog|/templates]`, LIVE-RESEARCH-1018; rebuilt every 15 min), read
+ * through the staff route `/api/research/{basis}/{part}` and `research-source.tsx`. No snapshot is
+ * kept in this repo. Every study is fleet-wide (all orgs). Nothing here divides or ranks: every
+ * value, label and sentence arrives written, and this module only types and looks it up.
  *
  * Alias-free so it carries real unit tests.
  */
@@ -71,7 +67,7 @@ export interface ResearchChart {
   title: string;
   lowerIsBetter: boolean;
   points: ResearchPoint[];
-  /** On a `months` chart: the average from the first month to each month, written by research.mjs. */
+  /** On a `months` chart: the average from the first month to each month, written by features-service. */
   cumulative?: { title: string; points: ResearchPoint[] };
   /** The grey methodology line under the chart: which emails were too young to count. */
   note?: string;
@@ -98,28 +94,23 @@ export interface ResearchStudy {
   /**
    * What the data can carry (verdict.mjs, owner 2026-10-02): a conclusion (holds after the
    * multiple-comparison correction AND on the same clients in the same months), a signal (to
-   * confirm) or noise. Optional on a snapshot written before verdicts existed.
+   * confirm) or noise. Optional: a study without one states no verdict.
    */
   verdict?: { kind: "conclusion" | "signal" | "noise"; reason: string };
   /** The figure the card leads with, its unit in words, and the counts behind it. */
   result: { display: string; unit: string; sample: string } | null;
   charts: ResearchChart[];
   conclusion: string[];
-  /** `live`: served by features-service now. `snapshot`: not served live yet, from the nightly snapshot (lib/research/live-merge.ts). */
-  source?: "live" | "snapshot";
-  /** Snapshot studies only: why the live read does not serve it yet. */
-  liveReason?: string;
 }
 
 export interface ResearchFile {
   generatedAt: string;
-  /** When features-service last built the live studies; null before its first build (lib/research/live-merge.ts). */
+  /** When features-service last built the studies. */
   computedAt?: string | null;
   allOrgs: true;
   /**
-   * `user`: what clients were billed (this bundled file). `actual`: what the vendors charged us
-   * before our markup (staff only, served by /api/research/actual/file, never bundled). Absent on a
-   * snapshot written before the two bases existed, which is the billed one.
+   * `user`: what clients were billed. `actual`: what the vendors charged us
+   * before our markup (staff only).
    */
   costBasis?: "user" | "actual";
   /** Actual basis only: billed spend no vendor cost is on record for, left out of every figure. */
@@ -129,7 +120,8 @@ export interface ResearchFile {
   window: { from: string; to: string };
   /** The day the data was read out of production. */
   readOn: string;
-  volume: {
+  /** Not served by features-service yet: the hub states `—` until it is. */
+  volume?: {
     emails: number;
     orgs: number;
     workflows: number;
@@ -151,21 +143,21 @@ export interface ResearchFile {
     cutoff: string;
     windowEnd: string;
     legs: Record<"reply" | "visit", { durationDays: number; outcomesRequired: number; cutoff: string }>;
-    /** Emails from runs too recent to count yet. */
-    excludedEmails: number;
-    /** Emails no record ties to a serving run: in the cohort, as features-service counts them. */
-    noRunStart: number;
+    /** Emails from runs too recent to count yet (not served by features-service yet). */
+    excludedEmails?: number;
+    /** Emails no record ties to a serving run: in the cohort, as features-service counts them (not served yet). */
+    noRunStart?: number;
     note: string;
   };
   pipes: { id: ResearchPipe; channel: string; leg: string; outcome: string; description: string }[];
   /**
    * The outcome rows, in the order the data lands on them, then the sections with no step (Jev):
    * `step` is the outcome's step key (null: no outcome, the Other group), `pipes` the pipes that land
-   * on it, `population` who the figures rest on. Absent on a snapshot written before outcome sections existed.
+   * on it, `population` who the figures rest on.
    */
   outcomes?: ResearchOutcomeEntry[];
   studies: ResearchStudy[];
-  /** How many workflows and templates each pipe's pages list (the pages read the catalogue). */
+  /** How many workflows, templates and models each pipe's pages list: the length of the live catalogue, stated by the staff route. */
   catalogCounts: Record<ResearchPipe, { workflows: number; templates: number; models: number }>;
 }
 
@@ -180,7 +172,7 @@ export interface ResearchOutcomeEntry {
   population: string;
 }
 
-/** The figures a workflow or a template is listed with, fleet-wide, all written by research.mjs. */
+/** The figures a workflow or a template is listed with, fleet-wide, all written by features-service. */
 export interface ResearchFigures {
   /** Its place in the ROI order (the study's own), or null when it has no priced outcome yet. */
   rank: number | null;

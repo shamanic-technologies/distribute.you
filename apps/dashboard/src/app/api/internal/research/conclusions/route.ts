@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { verifyServiceKey } from "@/lib/service-key";
 import { researchConclusions } from "@/lib/research/conclusions";
-import { readMergedResearch } from "@/lib/research/live-file";
+import { readLiveResearch } from "@/lib/research/live-file";
 import { ADMIN_ALLOWED_EMAILS } from "@/lib/admin-allowlist";
 
 export const dynamic = "force-dynamic";
@@ -22,8 +22,8 @@ export async function GET(req: Request) {
     if (!verifyServiceKey(req)) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
-    // The same LIVE file the staff page renders (features-service, snapshot studies marked), billed basis.
-    const body = researchConclusions(await readMergedResearch("user", ADMIN_ALLOWED_EMAILS[0]));
+    // The same LIVE file the staff page renders (features-service), billed basis.
+    const body = researchConclusions(await readLiveResearch("user", ADMIN_ALLOWED_EMAILS[0]));
     return NextResponse.json(body, { headers: { "cache-control": "private, no-store" } });
   } catch (err) {
     console.error("[dashboard-research-conclusions] failed:", err);

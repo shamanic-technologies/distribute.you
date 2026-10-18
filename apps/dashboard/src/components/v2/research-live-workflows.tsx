@@ -83,10 +83,10 @@ export function ResearchLiveWorkflows({
     }
     return m;
   }, [catalogueQ.data]);
-  // The Research snapshot's own pages: a workflow, template or model the snapshot studied has one.
+  // The Research catalogue's own pages: a workflow, template or model Research studied has one.
   const researchedWorkflows = useMemo(() => new Map((catalog?.[pipe].workflows ?? []).map((w) => [w.key, w])), [catalog, pipe]);
   const researchedTemplates = useMemo(() => new Set((catalog?.[pipe].templates ?? []).map((t) => t.key)), [catalog, pipe]);
-  // A workflow the snapshot never studied still has its live page (`/workflows/:slug`, priced for this pipe).
+  // A workflow Research never studied still has its live page (`/workflows/:slug`, priced for this pipe).
   const brandBase = base.replace(/\/research$/, "");
   const pipeId = `${featureSlug}|${legKey}`;
   const channelName = usePipeChannelName(pipe);
@@ -226,7 +226,7 @@ function WhyHere({ row }: { row: LiveWorkflowRow }) {
 
 /**
  * One cell as a tag that opens its own page (workflow, template, model). A value with no page yet
- * (a template or model the Research snapshot never studied) is the same tag, not clickable.
+ * (a template or model Research never studied) is the same tag, not clickable.
  */
 function Tag({
   href,

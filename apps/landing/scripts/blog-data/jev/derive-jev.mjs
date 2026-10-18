@@ -1,23 +1,24 @@
 #!/usr/bin/env node
 // Writes the committed snapshot the article `gtm-ai-llm-judge` is rendered from.
 //
-//   node derive-jev.mjs <research.json> > jev.snapshot.json
+//   node derive-jev.mjs <live research file> > jev.snapshot.json
 //
-// Reads the Research page's own snapshot (apps/dashboard/src/lib/research/research.json, written by
-// research.mjs + jev.mjs) and copies out its four Typed judgment studies, figure for figure. Nothing
-// is re-derived here, so the article and the Research page state the same figures for one refresh.
+// Reads the Research page's LIVE file (features-service GET /internal/research?basis=user, saved to
+// disk as the blog-data README says) and copies out its four Typed judgment studies, figure for
+// figure. Nothing is re-derived here, so the article and the Research page state the same figures
+// for one read.
 // It refuses a study that is not a conclusion: noise is never published. Aggregates only.
 import { readFileSync } from "node:fs";
 
 const researchPath = process.argv[2];
-if (!researchPath) throw new Error("usage: derive-jev.mjs <research.json>");
+if (!researchPath) throw new Error("usage: derive-jev.mjs <live research file>");
 const R = JSON.parse(readFileSync(researchPath, "utf8"));
-if (R.costBasis !== "user") throw new Error(`research.json is on the ${R.costBasis} cost basis: the article states what clients were billed (user)`);
-if (R.allOrgs !== true) throw new Error("research.json is not fleet-wide");
+if (R.costBasis !== "user") throw new Error(`the research file is on the ${R.costBasis} cost basis: the article states what clients were billed (user)`);
+if (R.allOrgs !== true) throw new Error("the research file is not fleet-wide");
 
 function study(id) {
   const s = R.studies.find((x) => x.id === id);
-  if (!s) throw new Error(`research.json carries no ${id}`);
+  if (!s) throw new Error(`the research file carries no ${id}`);
   if (s.status !== "measured") throw new Error(`${id} is ${s.status}, not measured`);
   if (s.verdict?.kind !== "conclusion") throw new Error(`${id} is a ${s.verdict?.kind}, not a conclusion: nothing to publish`);
   return s;

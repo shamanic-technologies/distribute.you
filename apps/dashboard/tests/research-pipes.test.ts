@@ -56,12 +56,6 @@ describe("a pipe is one leg x one channel", () => {
     expect(PIPE_KEY["meeting-booking"]).toEqual({ channel: "ai-meeting-booking", leg: "conversation_to_meeting_booked", step: "meeting_booked" });
   });
 
-  it("the snapshot's pipes carry the same channel and leg as the page", () => {
-    const file = JSON.parse(read("apps/dashboard/src/lib/research/research.json")) as { pipes: { id: keyof typeof PIPE_KEY; channel: string; leg: string }[] };
-    expect(file.pipes.map((p) => p.id)).toEqual(PIPE_ORDER);
-    for (const p of file.pipes) expect({ channel: p.channel, leg: p.leg }, p.id).toEqual({ channel: PIPE_KEY[p.id].channel, leg: PIPE_KEY[p.id].leg });
-  });
-
   it("writes a section's path in order from served words, a Shimmer until they answer, never a hardcoded name", () => {
     const bits = read("apps/dashboard/src/components/v2/research-bits.tsx");
     const fn = bits.slice(bits.indexOf("export function SectionPath("), bits.indexOf("/** A topic's mark"));

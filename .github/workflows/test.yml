@@ -2,9 +2,7 @@ name: Test
 
 on:
   push:
-    # research/nightly-refresh: the box's nightly Research snapshot (refresh.sh) is only pushed to
-    # main once these jobs are green on its commit.
-    branches: [main, staging, research/nightly-refresh]
+    branches: [main, staging]
   pull_request:
     branches: [main, staging]
 

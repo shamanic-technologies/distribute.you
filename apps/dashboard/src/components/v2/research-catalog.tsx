@@ -7,7 +7,7 @@ import { CostBasisSwitch } from "@/components/v2/cost-basis-switch";
 import { ResearchLiveWorkflows, usePipeChannelName, useResearchPipeLeg } from "@/components/v2/research-live-workflows";
 import { shortWorkflowName } from "@/lib/live-workflow-rows";
 import { useResearch, useResearchCatalog, useResearchTexts } from "@/lib/research/research-source";
-import { Arrow, MonthsRow, Row, SectionMark, SectionName, TOPIC_LOOK, TopicMark, dayText } from "@/components/v2/research-bits";
+import { Arrow, MonthsRow, Row, SectionMark, SectionName, TOPIC_LOOK, TopicMark, dayText, liveText } from "@/components/v2/research-bits";
 import {
   CATALOG_KINDS,
   researchCatalogHref,
@@ -29,7 +29,7 @@ import {
  * its emails, all clients pooled, and one page per workflow and per template. Laid out like v2's
  * Workflows list and workflow page, with the Global column only: the research is fleet-wide.
  *
- * Every figure, label and date arrives written in `research-catalog.json` (research.mjs); this
+ * Every figure, label and date arrives written in features-service's live catalogue; this
  * file lays them out and never divides, ranks or formats a number. The catalogue and the
  * template texts are read from the staff-only Research route (research-source.tsx).
  */
@@ -114,7 +114,7 @@ export function V2ResearchCatalogView({
   ];
   const liveLeg = useResearchPipeLeg(pipe);
   const channelName = usePipeChannelName(pipe);
-  // The live workflow list needs nothing from the snapshot file to paint: it renders at once.
+  // The live workflow list needs nothing from the Research file to paint: it renders at once.
   if (!catalog && !itemKey && kind === "workflows" && liveLeg != null) {
     return <CatalogList base={base} pipe={pipe} kind={kind} catalog={null} crumbs={crumbs} nav={nav} />;
   }
@@ -223,7 +223,7 @@ function CatalogList({
   const words = KIND_WORD[kind];
   const priced = rows.filter((r) => r.rank != null).length;
   const other = CATALOG_KINDS[(CATALOG_KINDS.indexOf(kind) + 1) % CATALOG_KINDS.length];
-  // Workflows are read LIVE off the producer's ranking at the pipe's leg; the snapshot table
+  // Workflows are read LIVE off the producer's ranking at the pipe's leg; the catalogue table
   // stays for templates, models, and a pipe whose step starts no entry leg.
   const liveLeg = useResearchPipeLeg(pipe);
   const live = kind === "workflows" && liveLeg != null;
@@ -249,8 +249,8 @@ function CatalogList({
           </div>
           {!live && (
             <span className="k-fg2 inline-flex items-center gap-2 text-[13px]">
-              <span className="h-1.5 w-1.5 rounded-full bg-[var(--data-teal)]" />
-              Read from production on {dayText(RESEARCH.readOn)}
+              <span className="h-1.5 w-1.5 rounded-full bg-[var(--run)]" />
+              {liveText(RESEARCH)}
             </span>
           )}
         </div>

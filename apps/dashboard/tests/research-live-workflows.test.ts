@@ -243,7 +243,7 @@ describe("shortWorkflowName", () => {
     expect(shortWorkflowName("Sales Cold Email Outreach", "Sales Cold Email Outreach")).toBe("Sales Cold Email Outreach");
     expect(shortWorkflowName("Maelstrom", null)).toBe("Maelstrom");
   });
-  it("Research renders the short name and paints before the snapshot file loads", () => {
+  it("Research renders the short name and paints before the Research file loads", () => {
     const catalog = readFileSync(join(__dirname, "../src/components/v2/research-catalog.tsx"), "utf8");
     const live = readFileSync(join(__dirname, "../src/components/v2/research-live-workflows.tsx"), "utf8");
     expect(live).toContain("{nameOf(r)}");

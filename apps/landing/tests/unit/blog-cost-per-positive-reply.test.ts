@@ -4,7 +4,7 @@ import { describe, expect, it } from "vitest";
 
 /**
  * The article `cold-email-cost-per-positive-reply` states the Research page's two average-cost
- * studies (what a positive reply cost, what a website visit cost), copied from research.json into a
+ * studies (what a positive reply cost, what a website visit cost), copied from the live Research file into a
  * committed snapshot by `derive-cost.mjs` and rendered by `render-cost-article.mjs`. Every figure
  * below is read back from that snapshot, so a typed figure in the prose fails here.
  */

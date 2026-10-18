@@ -1,28 +1,28 @@
 #!/usr/bin/env node
 // Writes the committed snapshot the article `cold-email-cost-per-positive-reply` is rendered from.
 //
-//   node derive-cost.mjs <research.json> > cost.snapshot.json
+//   node derive-cost.mjs <live research file> > cost.snapshot.json
 //
-// Reads the Research page's own snapshot (apps/dashboard/src/lib/research/research.json, written by
-// research.mjs) and copies out its two average-cost studies, word for word and figure for figure:
+// Reads the Research page's LIVE file (features-service GET /internal/research?basis=user, saved to
+// disk as the blog-data README says) and copies out its two average-cost studies, word for word and figure for figure:
 // what a positive reply cost (`cold-email-positive-reply-cost-over-time`) and what a website visit cost
 // (`cold-email-website-visit-cost-over-time`), each with its months, its average since inception, and the 95% interval
-// research.mjs printed in its verdict. Nothing is re-derived here, so the article and the Research
-// page state the same figures for one refresh. Aggregates only: no text, no client, no lead.
+// features-service printed in its verdict. Nothing is re-derived here, so the article and the Research
+// page state the same figures for one read. Aggregates only: no text, no client, no lead.
 import { readFileSync } from "node:fs";
 
 const researchPath = process.argv[2];
-if (!researchPath) throw new Error("usage: derive-cost.mjs <research.json>");
+if (!researchPath) throw new Error("usage: derive-cost.mjs <live research file>");
 const R = JSON.parse(readFileSync(researchPath, "utf8"));
-if (R.costBasis !== "user") throw new Error(`research.json is on the ${R.costBasis} cost basis: the article states what clients paid (user)`);
-if (R.allOrgs !== true) throw new Error("research.json is not fleet-wide");
+if (R.costBasis !== "user") throw new Error(`the research file is on the ${R.costBasis} cost basis: the article states what clients paid (user)`);
+if (R.allOrgs !== true) throw new Error("the research file is not fleet-wide");
 
 function study(id) {
   const s = R.studies.find((x) => x.id === id);
-  if (!s) throw new Error(`research.json carries no ${id}`);
+  if (!s) throw new Error(`the research file carries no ${id}`);
   if (s.status !== "measured") throw new Error(`${id} is ${s.status}, not measured`);
   if (s.verdict?.kind !== "conclusion") throw new Error(`${id} is a ${s.verdict?.kind}, not a conclusion: nothing to publish`);
-  // the interval lives in the verdict's reason, as research.mjs wrote it (Poisson on the outcomes)
+  // the interval lives in the verdict's reason, as features-service wrote it (Poisson on the outcomes)
   const ci = s.verdict.reason.match(/^A measurement on ([\d,]+) [a-z ]+: 95% interval \$([\d.,]+) to \$([\d.,]+) per /);
   if (!ci) throw new Error(`${id}: cannot read the interval in "${s.verdict.reason}"`);
   const chart = s.charts.find((c) => c.kind === "months");
@@ -30,7 +30,7 @@ function study(id) {
   const sample = s.result.sample.match(/^([\d,]+) [a-z ]+ · ([\d,]+) emails/);
   if (!sample) throw new Error(`${id}: cannot read the sample "${s.result.sample}"`);
   const num = (x) => Number(String(x).replace(/,/g, ""));
-  // `partial`: the month the maturity cutoff falls inside, drawn dotted (research.mjs sets it)
+  // `partial`: the month the maturity cutoff falls inside, drawn dotted (features-service sets it)
   const pts = (ps) => ps.map((p) => ({ label: p.label, value: p.value, display: p.display, note: p.note, thin: p.thin, partial: p.partial === true }));
   return {
     id,

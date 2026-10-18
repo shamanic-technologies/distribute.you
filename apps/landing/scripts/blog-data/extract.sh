@@ -17,7 +17,7 @@ KEY="${BLOG_DATA_KEY:-$HOME/.ssh/oracle-distribute}"
 mkdir -p "$OUT"
 
 # onbox: run a shell on the box. Over ssh from a laptop; in place when this script already runs
-# ON the box (BLOG_DATA_LOCAL=1, the nightly refresh: refresh.sh), where there is no ssh to itself.
+# ON the box (BLOG_DATA_LOCAL=1), where there is no ssh to itself.
 onbox() { # onbox [command]; no argument = a shell reading stdin
   if [ -n "${BLOG_DATA_LOCAL:-}" ]; then
     if [ $# -eq 0 ]; then bash -s; else bash -c "$1"; fi

@@ -5,7 +5,7 @@
 //   node render-followups-article.mjs <followups.snapshot.json> <content-dir>
 //
 // Every figure, bar and count is a token filled here, with the Research page's own arithmetic
-// (research.mjs, follow-ups block): a depth adds up the positive replies of every email up to it
+// (the Research follow-ups study): a depth adds up the positive replies of every email up to it
 // and a rate divides by the people who got the first email. The answer is stated as a lift
 // (x2, +67%); the counts behind it go to the notes.
 import { readFileSync, writeFileSync } from "node:fs";

@@ -17,7 +17,6 @@ import {
   TopicMark,
   type ResearchSection,
   dayText,
-  instantText,
   liveText,
   sectionOf,
   monthText,
@@ -62,7 +61,7 @@ import {
  * (mark + question + state, an inset block of stat cells with a mini chart in the mark's
  * colour, a footer line), a question is a v2 record (40px mark, 24px h1, stat tiles, a main
  * column and a Details aside). Every figure, label and sentence arrives written in
- * `research.json`; this file lays them out and picks one thing only: each topic's mark.
+ * features-service's live Research file; this file lays them out and picks one thing only: each topic's mark.
  */
 
 /** What the WINNER cell is called, per topic: the cost curve is a measurement, it ranks nothing. */
@@ -172,7 +171,6 @@ function StudyCard({ study, href }: { study: ResearchStudy; href: string }) {
               <span style={{ color: look.color }}>{TOPIC_LABEL[study.topic]}</span>
               {" · "}
               {GOAL_LABEL[study.goal]}
-              {study.source === "snapshot" && " · Snapshot"}
             </p>
             <StudyStateDot state={state} />
           </div>
@@ -334,7 +332,7 @@ function V2ResearchHub({ base }: { base: string }) {
   const v = RESEARCH.volume;
   const called = RESEARCH.studies.filter((st) => studyState(st) === "conclusion").length;
   const signals = RESEARCH.studies.filter((st) => studyState(st) === "signal").length;
-  const maxMonth = Math.max(...v.byMonth.map((m) => m.emails), 1);
+  const maxMonth = v ? Math.max(...v.byMonth.map((m) => m.emails), 1) : 1;
   const pipeRows = PIPE_ORDER.map((pipe) => ({ pipe, studies: studiesFor(pipe, RESEARCH) })).filter((r) => r.studies.length > 0);
   const groups = outcomeGroups(RESEARCH);
   const withStudies = (metas: typeof groups.outcomes) => metas.map((meta) => ({ meta, studies: studiesForOutcome(meta.id, RESEARCH) })).filter((r) => r.studies.length > 0);
@@ -356,17 +354,20 @@ function V2ResearchHub({ base }: { base: string }) {
             <p className="k-fg3 mt-1 text-[12px] leading-5">{RESEARCH.maturation.note}</p>
           </div>
           <span className="k-fg2 inline-flex items-center gap-2 text-[13px]">
-            <span className={`h-1.5 w-1.5 rounded-full ${RESEARCH.computedAt ? "bg-[var(--run)]" : "bg-[var(--data-teal)]"}`} />
+            <span className="h-1.5 w-1.5 rounded-full bg-[var(--run)]" />
             {liveText(RESEARCH)}
           </span>
         </div>
 
         <div className="mt-6 grid grid-cols-2 gap-3 lg:grid-cols-4">
-          <StatTile label="Emails studied" note={`People first written to from ${v.byMonth[0]?.label ?? ""} to ${dayText(RESEARCH.maturation.cutoff)}, old enough to count`}>
+          <StatTile
+            label="Emails studied"
+            note={v ? `People first written to from ${v.byMonth[0]?.label ?? ""} to ${dayText(RESEARCH.maturation.cutoff)}, old enough to count` : "Not served live yet"}
+          >
             <div className="flex items-end justify-between gap-2">
-              <Figure value={v.emails.toLocaleString("en-US")} />
+              <Figure value={v ? v.emails.toLocaleString("en-US") : <span className="k-fg4">—</span>} />
               <div className="flex h-6 items-end gap-[3px]" aria-hidden="true">
-                {v.byMonth.map((m) => (
+                {(v?.byMonth ?? []).map((m) => (
                   <span
                     key={m.label}
                     className="w-[6px] rounded-[2px] bg-[var(--accent)]"
@@ -376,11 +377,11 @@ function V2ResearchHub({ base }: { base: string }) {
               </div>
             </div>
           </StatTile>
-          <StatTile label="Clients" note="all orgs, pooled">
-            <Figure value={v.orgs.toLocaleString("en-US")} />
+          <StatTile label="Clients" note={v ? "all orgs, pooled" : "Not served live yet"}>
+            <Figure value={v ? v.orgs.toLocaleString("en-US") : <span className="k-fg4">—</span>} />
           </StatTile>
-          <StatTile label="Workflows compared">
-            <Figure value={v.workflows.toLocaleString("en-US")} />
+          <StatTile label="Workflows compared" note={v ? undefined : "Not served live yet"}>
+            <Figure value={v ? v.workflows.toLocaleString("en-US") : <span className="k-fg4">—</span>} />
           </StatTile>
           <StatTile label="Conclusions" note={`of ${RESEARCH.studies.length}`}>
             <div className="flex items-end justify-between gap-2">
@@ -662,14 +663,13 @@ function V2ResearchStudy({ base, studyId }: { base: string; studyId: string }) {
               {study.pipe && <Row k="Outcome" v={outcomeText} />}
               {outcomeMeta?.step && <Row k={(outcomeMeta.pipes?.length ?? 0) === 1 ? "Pipe" : "Pipes"} v={<OutcomePipes outcome={outcomeMeta.id} prefix={false} />} />}
               <Row k="Question" v={`${TOPIC_LABEL[study.topic]}, ${GOAL_LABEL[study.goal]}`} />
-              {emailLeg && <Row k="Clients" v={`${RESEARCH.volume.orgs}, all orgs`} />}
-              {emailLeg && <Row k="Emails" v={RESEARCH.volume.emails.toLocaleString("en-US")} />}
+              {emailLeg && RESEARCH.volume && <Row k="Clients" v={`${RESEARCH.volume.orgs}, all orgs`} />}
+              {emailLeg && RESEARCH.volume && <Row k="Emails" v={RESEARCH.volume.emails.toLocaleString("en-US")} />}
               <Row
                 k="Read on"
-                v={study.source === "live" && RESEARCH.computedAt ? `Live, updated ${instantText(RESEARCH.computedAt)}` : `${dayText(RESEARCH.readOn)} snapshot`}
+                v={liveText(RESEARCH)}
               />
             </dl>
-            {study.source === "snapshot" && study.liveReason && <p className="k-fg3 mt-2 text-[12px] leading-5">Not live yet: {study.liveReason}</p>}
             <p className="k-label mt-5">How we measured</p>
             {/* the row's population, unless the study states its own (an outcome cut names who it counts) */}
             {outcomeMeta && !study.conclusion[0]?.startsWith("Population:") && <p className="k-fg2 mt-2 text-[12px] leading-5">{outcomeMeta.population}</p>}
@@ -688,8 +688,9 @@ function V2ResearchStudy({ base, studyId }: { base: string; studyId: string }) {
                 days before the read count (before {dayText(RESEARCH.maturation.legs.reply.cutoff)}), with every positive reply and website visit they sent since. A
                 bar resting on fewer than {RESEARCH.maturation.legs.reply.outcomesRequired} positive{" "}
                 {RESEARCH.maturation.legs.reply.outcomesRequired === 1 ? "reply" : "replies"} ({RESEARCH.maturation.legs.visit.outcomesRequired} website visits) is
-                ranked where its value puts it and marked Learning. {RESEARCH.maturation.excludedEmails.toLocaleString("en-US")} emails from more recent runs wait until
-                they are old enough to count.
+                ranked where its value puts it and marked Learning.
+                {RESEARCH.maturation.excludedEmails != null &&
+                  ` ${RESEARCH.maturation.excludedEmails.toLocaleString("en-US")} emails from more recent runs wait until they are old enough to count.`}
               </p>
             )}
           </aside>
@@ -797,7 +798,7 @@ function UnpricedNote() {
       <p className="k-card k-fg2 px-4 py-2.5 text-[12px]">
         Actual cost: what the vendors charged us, before our margin.
         {usd > 0 &&
-          ` ${formatUsdAdaptive(usd)} of billed spend has no vendor cost on record yet (mostly Instantly sending before Aug 23), so the ${(file.unpricedEmails ?? 0).toLocaleString("en-US")} emails it paid for are left out of these figures rather than priced at a partial cost.`}
+          ` ${formatUsdAdaptive(usd)} of billed spend has no vendor cost on record yet (mostly Instantly sending before Aug 23), so the ${file.unpricedEmails != null ? `${file.unpricedEmails.toLocaleString("en-US")} ` : ""}emails it paid for are left out of these figures rather than priced at a partial cost.`}
       </p>
     </div>
   );
