@@ -1,5 +1,5 @@
 {
- "readAt": "2026-10-18T07:00:01.257363+00:00",
+ "readAt": "2026-10-18T14:16:51.018803+00:00",
  "cutoff": "2026-09-27",
  "arms": [
   {
@@ -12,7 +12,7 @@
    "bounced": 2774,
    "delivered": 27188,
    "replied_delivered": 153,
-   "clicked": 477,
+   "clicked": 452,
    "unsubscribed": 101,
    "opened": 0,
    "first_day": "2026-02-10",
@@ -28,7 +28,7 @@
    "bounced": 423,
    "delivered": 25970,
    "replied_delivered": 86,
-   "clicked": 396,
+   "clicked": 395,
    "unsubscribed": 24,
    "opened": 7338,
    "first_day": "2026-02-10",
