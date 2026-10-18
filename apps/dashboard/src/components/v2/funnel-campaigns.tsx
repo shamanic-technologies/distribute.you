@@ -69,6 +69,7 @@ import { useCampaigns, type V2Campaign } from "@/components/v2/use-campaigns";
 import { CampaignResultCells } from "@/components/v2/offer-campaigns";
 import { ChannelChip } from "@/components/v2/offer-sales-paths";
 import { V2Page, type V2Tab } from "@/components/v2/setup-pages";
+import { CampaignHoldNote, useCampaignHolds } from "@/components/v2/campaign-hold";
 import { PipeSections } from "@/components/v2/pipe-sections";
 import { PeoplePage } from "@/components/v2/people-page";
 import { V2AudiencesTable } from "@/components/v2/audiences-table";
@@ -771,6 +772,13 @@ function FunnelCampaignPageCurrent({ campaign }: { campaign: SalesFunnelCampaign
   // The campaign's type picks the words (owner 2026-10-10): Proactive "Max budget", Reactive "Up to $X".
   const type = funnelTypeOf(c);
   const words = capWords(type);
+  // Why a running pipe sends nothing (campaign-service holds each PIPE): one note per reason.
+  const runningPipes = units.filter((u) => campaignById.get(u.campaignId)?.running);
+  const holds = useCampaignHolds(runningPipes.map((u) => u.campaignId));
+  const pipeLabel = (id: string) => {
+    const u = units.find((x) => x.campaignId === id);
+    return (campaignById.get(id)?.leg ?? (u ? legFor(catalogue, u.legKey) : null))?.toLabel ?? null;
+  };
   return (
     <V2Page
       crumbs={[{ label: "Campaigns", href: v2Href(orgId, campaign.brandId, "campaigns") }, { label: campaign.salesFunnelName }]}
@@ -817,6 +825,19 @@ function FunnelCampaignPageCurrent({ campaign }: { campaign: SalesFunnelCampaign
             </button>
           </div>
         )}
+
+        {/* "Not funded yet" above already says what an unfunded hold would. */}
+        {holds
+          .filter((g) => !(notFunded && g.hold.reason === "unfunded"))
+          .map((g) => (
+            <CampaignHoldNote
+              key={g.hold.reason}
+              hold={g.hold}
+              pipes={g.campaignIds.length < runningPipes.length ? g.campaignIds.map(pipeLabel).filter(Boolean).join(", ") : null}
+              onAction={() => setEditing(true)}
+              billingHref={v2Href(orgId, campaign.brandId, "billing")}
+            />
+          ))}
 
         <section>
           <SectionTitle right={<span>Since it started</span>}>This campaign</SectionTitle>

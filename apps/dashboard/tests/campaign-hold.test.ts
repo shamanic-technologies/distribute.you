@@ -4,6 +4,7 @@ import {
   CREDIT_RECHECK_MS,
   HOLD_RECHECK_MS,
   campaignHoldCopy,
+  holdsByReason,
   readCampaignHold,
   type HoldEventInput,
 } from "../src/lib/campaign-hold";
@@ -73,7 +74,10 @@ describe("readCampaignHold", () => {
     expect(hold?.spentCents).toBeCloseTo(428.325);
   });
 
-  it("promises no restart for a hold only money can clear", () => {
+  it("promises no restart for a hold only money or a raise can clear", () => {
+    // A reached limit can be weekly, monthly or a volume (campaign-service 2026-10-18):
+    // "the next UTC midnight" would be a false restart.
+    expect(readCampaignHold([ceilingEvent()], NOW)?.resumeAt).toBeNull();
     // The producer's nextRunAt is the moment we look again and hold again. Naming it as
     // a restart would be a sentence that is false until somebody pays.
     expect(readCampaignHold([unfundedEvent()], NOW)?.resumeAt).toBeNull();
@@ -86,13 +90,6 @@ describe("readCampaignHold", () => {
       NOW,
     );
     expect(hold?.resumeAt).toBe("2026-09-17T06:18:00.000Z");
-  });
-
-  it("resumes a spent ceiling at the next UTC midnight, not at the next re-check", () => {
-    // The producer's own nextRunAt is ten minutes out and will hold again. Its own
-    // sentence says the ceiling clears when the day rolls over.
-    const hold = readCampaignHold([ceilingEvent()], NOW);
-    expect(hold?.resumeAt).toBe("2026-09-18T00:00:00.000Z");
   });
 
   it("reads the credit refusal off creditCheck, never the English reason", () => {
@@ -164,18 +161,40 @@ describe("readCampaignHold", () => {
   });
 });
 
-describe("campaignHoldCopy", () => {
-  it("names the budget and offers the control that raises it", () => {
-    const copy = campaignHoldCopy(readCampaignHold([ceilingEvent()], NOW)!, NOW);
-    expect(copy.headline).toBe("Today's budget is spent");
-    expect(copy.body).toContain("$4");
-    expect(copy.action).toBe("campaign_budget");
+describe("holdsByReason", () => {
+  it("folds a funnel's pipes into one note per reason, newest hold kept", () => {
+    const a = readCampaignHold([ceilingEvent(ago(5 * 60_000))], NOW)!;
+    const b = readCampaignHold([ceilingEvent(ago(60_000))], NOW)!;
+    const c = readCampaignHold([creditEvent()], NOW)!;
+    const groups = holdsByReason([["p1", a], ["p2", b], ["p3", null], ["p4", c]]);
+    expect(groups.map((g) => g.hold.reason)).toEqual(["daily_ceiling_reached", "insufficient_credits"]);
+    expect(groups[0].campaignIds).toEqual(["p1", "p2"]);
+    expect(groups[0].hold).toBe(b);
+    expect(groups[1].campaignIds).toEqual(["p4"]);
   });
 
-  it("tells an unfunded campaign where to get funded", () => {
+  it("says nothing when no pipe is held", () => {
+    expect(holdsByReason([["p1", null]])).toEqual([]);
+  });
+});
+
+describe("campaignHoldCopy", () => {
+  it("names the limit and offers the control that raises it", () => {
+    const copy = campaignHoldCopy(readCampaignHold([ceilingEvent()], NOW)!, NOW);
+    expect(copy.headline).toBe("This campaign reached its limit");
+    expect(copy.body).toContain("max budget or its max volume");
+    expect(copy.action).toBe("campaign_budget");
+    expect(copy.actionLabel).toBe("Raise the limit");
+  });
+
+  it("tells an unfunded campaign where to get funded, never a retired daily budget", () => {
     const copy = campaignHoldCopy(readCampaignHold([unfundedEvent()], NOW)!, NOW);
     expect(copy.action).toBe("campaign_budget");
-    expect(copy.body).toContain("daily budget");
+    expect(copy.body).toContain("max budget or a max volume");
+    for (const e of [ceilingEvent(), unfundedEvent(), creditEvent()]) {
+      const c = campaignHoldCopy(readCampaignHold([e], NOW)!, NOW);
+      expect(`${c.headline} ${c.body} ${c.actionLabel}`).not.toMatch(/daily budget|today/i);
+    }
   });
 
   it("sends an out-of-credit campaign to billing", () => {
@@ -201,17 +220,15 @@ describe("campaignHoldCopy", () => {
       expect(hold.reason).toBe(reason);
       expect(copy.action).toBeNull();
       expect(copy.actionLabel).toBeNull();
-      expect(copy.body).toContain("ours to fix");
+      expect(copy.body).toContain("You have nothing to do.");
+      expect(copy.body).toContain("We try again in 7 minutes.");
+      expect(copy.body).not.toMatch(/\d{4}-\d{2}-\d{2}T/);
     }
   });
 
-  it("states a resume time a person can read, never an ISO timestamp", () => {
-    const copy = campaignHoldCopy(readCampaignHold([ceilingEvent()], NOW)!, NOW);
-    expect(copy.body).not.toMatch(/\d{4}-\d{2}-\d{2}T/);
-    // `timeUntil` counts CALENDAR days like the rest of the module, so a ceiling
-    // ~18 hours out reads "in 1 day" west of Greenwich; the clock time beside it is
-    // what removes the ambiguity, which is why both are stated.
-    expect(copy.body).toMatch(/It starts again in \d+ (hours|day|days), at \d+:\d\d(am|pm) your time\./);
+  it("never opens a sentence on a pronoun", () => {
+    const all = [ceilingEvent(), unfundedEvent(), creditEvent()].map((e) => campaignHoldCopy(readCampaignHold([e], NOW)!, NOW).body);
+    for (const body of all) expect(body).not.toMatch(/(^|\. )(It|They|This is) /);
   });
 
   it("never leaks a reason slug or a run id to the customer", () => {

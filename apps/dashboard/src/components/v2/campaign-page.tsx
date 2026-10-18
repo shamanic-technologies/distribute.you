@@ -34,6 +34,7 @@ import { V2Page, type V2Tab } from "@/components/v2/setup-pages";
 import { EmptyNote, Figure, SectionTitle, Shimmer, StatTile } from "@/components/v2/ui";
 import { FunnelCampaignPage, FunnelPartOf, useFunnelCampaignById, useFunnelCapsWords } from "@/components/v2/funnel-campaigns";
 import { RoiLabel, RoiValue } from "@/components/v2/roi-label";
+import { CampaignHoldNote, useCampaignHold } from "@/components/v2/campaign-hold";
 import { costToShowCents, roiToShow } from "@/lib/expected-return";
 
 const CAMPAIGN_TABS: { key: V2CampaignTab; label: string; staff?: boolean }[] = [
@@ -294,6 +295,7 @@ function CampaignOverview({
 
   return (
     <div className="space-y-8">
+      <CampaignHold campaign={campaign} />
       <section>
         <SectionTitle right={<span>Since it started</span>}>This campaign</SectionTitle>
         {/* Owner's order (2026-10-06), ONE row on desktop: ROI, Contacted, Queued, Sent, Delivered, outcome, Spent, cost per outcome. */}
@@ -396,6 +398,7 @@ function ConversationOverview({
 
   return (
     <div className="space-y-8">
+      <CampaignHold campaign={campaign} />
       <section>
         <SectionTitle right={<span>Since it started</span>}>This campaign</SectionTitle>
         <div className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-6">
@@ -440,6 +443,25 @@ function ConversationOverview({
         </section>
       </div>
     </div>
+  );
+}
+
+/**
+ * Why this campaign reads running and sends nothing, in the customer's words (campaign-service's
+ * verdict, `lib/campaign-hold.ts`). Nothing on a healthy or paused campaign. Its limits live on
+ * the sales-funnel campaign it is a part of, so "Raise the limit" opens that page.
+ */
+function CampaignHold({ campaign }: { campaign: V2Campaign }) {
+  const { orgId, brandId } = useParams<{ orgId: string; brandId: string }>();
+  const hold = useCampaignHold(campaign.row.campaign.id, campaign.running);
+  if (!hold) return null;
+  const partOfId = campaign.row.campaign.salesFunnelCampaignId ?? null;
+  return (
+    <CampaignHoldNote
+      hold={hold}
+      limitsHref={partOfId ? v2CampaignHref(orgId, brandId, partOfId) : null}
+      billingHref={v2Href(orgId, brandId, "billing")}
+    />
   );
 }
 

@@ -35,3 +35,37 @@ describe("the events reader", () => {
     expect(PERSIST).toContain('"campaignHold"');
   });
 });
+
+describe("where the hold renders (campaign page, v2)", () => {
+  const stripComments = (src: string) =>
+    src.replace(/\/\*[\s\S]*?\*\//g, "").replace(/^\s*\/\/.*$/gm, "").replace(/\{\/\*[\s\S]*?\*\/\}/g, "");
+  const HOOK = read("components/v2/campaign-hold.tsx");
+  const PAGE = stripComments(read("components/v2/campaign-page.tsx"));
+  const FUNNEL = stripComments(read("components/v2/funnel-campaigns.tsx"));
+
+  it("polls only a running campaign, on the persisted campaignHold root", () => {
+    expect(HOOK).toContain('["campaignHold", campaignId]');
+    expect(HOOK).toContain("enabled: running");
+    expect(HOOK).toContain("CAMPAIGN_HOLD_EVENTS");
+  });
+
+  it("a pipe's own page states its hold on both overviews", () => {
+    expect(PAGE).toContain("useCampaignHold(campaign.row.campaign.id, campaign.running)");
+    expect(PAGE.match(/<CampaignHold campaign=\{campaign\} \/>/g)?.length).toBe(2);
+  });
+
+  it("a sales-funnel campaign page reads its RUNNING pipes and shows one note per reason", () => {
+    const at = FUNNEL.indexOf("function FunnelCampaignPageCurrent(");
+    const body = FUNNEL.slice(at, FUNNEL.indexOf("export function useFunnelCampaignById(", at));
+    expect(body).toContain("campaignById.get(u.campaignId)?.running");
+    expect(body).toContain("useCampaignHolds(runningPipes.map((u) => u.campaignId))");
+    expect(body).toContain("<CampaignHoldNote");
+    // billing's "Not funded yet" banner already states the unfunded hold.
+    expect(body).toContain('!(notFunded && g.hold.reason === "unfunded")');
+  });
+
+  it("the note uses the held colour, never a raw grey or brand fill", () => {
+    expect(HOOK).toContain("var(--data-amber)");
+    expect(HOOK).not.toMatch(/text-gray-|bg-brand-50|rounded-lg border/);
+  });
+});
