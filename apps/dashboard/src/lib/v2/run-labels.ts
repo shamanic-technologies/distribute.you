@@ -13,7 +13,7 @@ export interface RunLike {
 }
 
 /**
- * The run a crew starts for ONE lead (find, write, queue). Its children (judgments,
+ * The run a campaign starts for ONE lead (find, write, queue). Its children (judgments,
  * enrichment, the budget gate, the queued sends) are its steps, read on the run page.
  */
 export const LEAD_RUN_TASK = "execute-workflow";

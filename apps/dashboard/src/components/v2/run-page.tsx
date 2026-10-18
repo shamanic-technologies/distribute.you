@@ -19,8 +19,8 @@ import { leadWorkflowIdentity } from "@/lib/campaign-workflow-rows";
 import { workflowModelMark } from "@/lib/workflow-model-marks";
 import { workflowTemplateLabel } from "@/lib/workflow-template-label";
 import { v2Href, v2PersonHref, v2WorkflowHref } from "@/lib/v2/routes";
-import { CrewMark } from "@/components/v2/crew-mark";
-import { useMissions } from "@/components/v2/use-missions";
+import { PipeMark } from "@/components/v2/pipe-mark";
+import { useCampaigns } from "@/components/v2/use-campaigns";
 import { foldSteps, runTaskLabel } from "@/components/v2/runs";
 import { EmptyNote, Shimmer, TopBar } from "@/components/v2/ui";
 import { useStaffMode } from "@/lib/use-staff-mode";
@@ -57,14 +57,14 @@ function cents(v: string | null | undefined): string {
  * One workflow run: everything that decided it, in one place. runs-service says what
  * ran and what it cost; the generation content-generation filed under this run says
  * which model actually wrote, from which template, for which audience and which
- * person; the campaign names the mission and its crew. Every value is served, and a
+ * person; the campaign names itself and its pipe. Every value is served, and a
  * value we could not read reads as a dash rather than a guess.
  */
 export function RunPage() {
   const { orgId, brandId, runId } = useParams<{ orgId: string; brandId: string; runId: string }>();
   const personRowId = useSearchParams().get("person");
-  const { missionByCampaignId } = useMissions(orgId, brandId, { allOffers: true });
-  // The workflow, its version, model and template sit below the mission: staff mode only.
+  const { campaignById } = useCampaigns(orgId, brandId, { allOffers: true });
+  // The workflow, its version, model and template sit below the campaign: staff mode only.
   const { staffMode } = useStaffMode();
 
   const runQ = useAuthQuery(["runDetail", runId], () => getRunDetail(runId), { enabled: Boolean(runId) });
@@ -76,9 +76,9 @@ export function RunPage() {
   const run = runQ.data ?? null;
   const gen = genQ.data?.[0] ?? null;
   const campaignId = run?.campaignId ?? gen?.campaignId ?? null;
-  const mission = campaignId ? missionByCampaignId.get(campaignId) ?? null : null;
-  const featureSlug = run?.featureSlug ?? mission?.row.campaign.featureSlug ?? null;
-  const legKey = mission?.row.campaign.legKey ?? null;
+  const campaign = campaignId ? campaignById.get(campaignId) ?? null : null;
+  const featureSlug = run?.featureSlug ?? campaign?.row.campaign.featureSlug ?? null;
+  const legKey = campaign?.row.campaign.legKey ?? null;
   const workflowSlug = run?.workflowSlug ?? gen?.workflowSlug ?? null;
 
   const catalogueQ = useAuthQuery(["workflows", featureSlug ?? "none"], () => listChannelWorkflows(featureSlug as string), {
@@ -107,14 +107,14 @@ export function RunPage() {
     [run],
   );
 
-  const missionName = mission ? `${mission.crew.name}${mission.offerName ? ` · ${mission.offerName}` : ""}` : null;
+  const campaignName = campaign ? `${campaign.pipe.name}${campaign.offerName ? ` · ${campaign.offerName}` : ""}` : null;
   const title = staffMode
     ? workflow?.dynastyName ?? workflowSlug ?? (run ? runTaskLabel(run as unknown as RunRow) : "Run")
-    : missionName ?? (run ? runTaskLabel(run as unknown as RunRow) : "Run");
+    : campaignName ?? (run ? runTaskLabel(run as unknown as RunRow) : "Run");
 
   return (
     <>
-      <TopBar crumbs={[{ label: "Work", href: v2Href(orgId, brandId, "work") }, { label: run ? title : " " }]} />
+      <TopBar crumbs={[{ label: "Campaigns", href: v2Href(orgId, brandId, "campaigns") }, { label: run ? title : " " }]} />
       <div className="mx-auto max-w-[1280px] px-4 pb-16 pt-6 md:px-6">
         {runQ.isError ? (
           <div className="k-card">
@@ -194,18 +194,18 @@ export function RunPage() {
                   <p className="k-label">Details</p>
                   <dl className="mt-3 space-y-2.5 text-[13px]">
                     <Row
-                      k="Mission"
+                      k="Campaign"
                       v={
-                        mission ? (
-                          <Link href={mission.href} className="inline-flex items-center gap-1.5 hover:underline">
-                            <CrewMark color={mission.crew.color} glyph={mission.crew.glyph} />
-                            {mission.crew.name}
-                            {mission.offerName ? ` · ${mission.offerName}` : ""}
+                        campaign ? (
+                          <Link href={campaign.href} className="inline-flex items-center gap-1.5 hover:underline">
+                            <PipeMark color={campaign.pipe.color} glyph={campaign.pipe.glyph} />
+                            {campaign.pipe.name}
+                            {campaign.offerName ? ` · ${campaign.offerName}` : ""}
                           </Link>
                         ) : null
                       }
                     />
-                    <Row k="Objective" v={mission?.leg?.label ?? null} />
+                    <Row k="Objective" v={campaign?.leg?.label ?? null} />
                     {staffMode && (
                       <>
                         <Row

@@ -7,7 +7,6 @@ import { useParams } from "next/navigation";
 import { useOpenV2Nav } from "@/components/v2/nav-context";
 import { useNeedsYourCall } from "@/components/v2/data";
 import { v2Href } from "@/lib/v2/routes";
-import { useStaffMode } from "@/lib/use-staff-mode";
 import { CopilotShowButton } from "@/components/v2/copilot-dock";
 
 /** Opens the ⌘K palette from anywhere (`SearchTrigger` owns it and listens for this). */
@@ -82,7 +81,7 @@ export function TopBar({ crumbs, actions }: { crumbs: Crumb[]; actions?: React.R
 /**
  * Keel's two universal controls, on every page: the bell and the ⌘K button. The bell
  * is the people waiting on a person (people who wrote back and wait on our answer), so its
- * dot is a served count, and it opens Work where they are answered.
+ * dot is a served count, and it opens the Inbox where they are answered.
  */
 function TopBarUniversal() {
   const { orgId, brandId } = useParams<{ orgId?: string; brandId?: string }>();
@@ -99,11 +98,9 @@ function TopBarUniversal() {
 
 function Bell({ orgId, brandId }: { orgId: string; brandId: string }) {
   const needs = useNeedsYourCall(brandId, 5).data?.total ?? null;
-  // Work is staff mode only: a customer's bell opens the Inbox, where those replies are.
-  const { staffMode } = useStaffMode();
   return (
         <Link
-          href={staffMode ? v2Href(orgId, brandId, "work") : `${v2Href(orgId, brandId, "people")}?tab=positive-replies`}
+          href={`${v2Href(orgId, brandId, "people")}?tab=positive-replies`}
           aria-label={needs ? `${needs} need your call` : "Nothing needs your call"}
           title={needs ? `${needs} need your call` : "Nothing needs your call"}
           className="k-btn-ghost relative h-8 w-8 justify-center px-0"
@@ -407,7 +404,7 @@ export function TickGauge({
   );
 }
 
-/** Keel's stacked "crew today" meter: one segment per crew, in its colour, of a ceiling. */
+/** Keel's stacked "today" meter: one segment per part, in its colour, of a ceiling. */
 export function StackMeter({
   parts,
   max,

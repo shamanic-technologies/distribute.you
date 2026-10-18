@@ -190,10 +190,10 @@ describe("sales funnel campaigns: wiring", () => {
   });
 
   it("a part is never LISTED as a campaign: filtered once at the source every listing surface reads", () => {
-    const missions = src("src/components/v2/use-missions.ts");
-    expect(missions).toContain("const missions = useMemo(() => allMissions.filter((m) => !m.row.campaign.salesFunnelCampaignId), [allMissions]);");
+    const campaigns = src("src/components/v2/use-campaigns.ts");
+    expect(campaigns).toContain("const campaigns = useMemo(() => allCampaigns.filter((m) => !m.row.campaign.salesFunnelCampaignId), [allCampaigns]);");
     // Lookups by id keep the parts (a part's own page, a lead's campaign, the funnel page's results).
-    expect(missions).toContain("for (const m of allMissions) out.set(m.row.campaign.id, m);");
+    expect(campaigns).toContain("for (const m of allCampaigns) out.set(m.row.campaign.id, m);");
     const ongoing = src("src/components/v2/ongoing-campaigns.ts");
     expect(ongoing).toContain("const campaigns = useMemo(() => running.filter((c) => !c.m.row.campaign.salesFunnelCampaignId), [running]);");
     expect(ongoing).toContain("if (funnel && !hit.funnelCampaigns.some((f) => f.id === funnel.id)) hit.funnelCampaigns.push(funnel);");
@@ -213,7 +213,7 @@ describe("sales funnel campaigns: wiring", () => {
     const route = page.slice(page.indexOf("export function V2CampaignRoute()"), page.indexOf("export function V2CampaignPage("));
     expect(route).toContain("return <V2CampaignPage funnelListSettled={funnel.settled} />;");
     expect(route).not.toContain("<Shimmer");
-    expect(page).toContain("if (settled && !mission && !funnelListSettled) {");
+    expect(page).toContain("if (settled && !campaign && !funnelListSettled) {");
     const persist = src("src/lib/persist-cache.ts");
     const sensitive = persist.slice(persist.indexOf("export const SENSITIVE_QUERY_ROOTS"), persist.indexOf("export const PERSISTABLE_QUERY_ROOTS"));
     const persistable = persist.slice(persist.indexOf("export const PERSISTABLE_QUERY_ROOTS"));

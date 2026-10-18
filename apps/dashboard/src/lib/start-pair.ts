@@ -18,7 +18,7 @@ import {
  * CREATE the campaign for one (offer x leg x channel) that has none yet.
  *
  * The one implementation of a start from nothing, shared by Offer Settings' per-row
- * switch and dashboard v2's "Add a mission": the workflow is the producer's own pick
+ * switch and dashboard v2's "Add a campaign": the workflow is the producer's own pick
  * for THIS leg (never one of ours), the inputs are the offer's own prefill, and the
  * name carries the leg AND the channel because campaign-service refuses a name the org
  * already holds and one offer sells through several pairs.

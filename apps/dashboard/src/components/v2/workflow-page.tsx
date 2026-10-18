@@ -24,12 +24,12 @@ import {
 } from "@/lib/api";
 import { GrainMark } from "@/components/marks/grain-mark";
 import { AudienceAvatar } from "@/components/audiences/audience-avatar";
-import { CrewMark } from "@/components/v2/crew-mark";
+import { PipeMark } from "@/components/v2/pipe-mark";
 import { ResearchModelChip, ResearchTemplateChip } from "@/components/v2/research-template-link";
 import { EmptyNote, Initials, SectionTitle, Shimmer, TopBar } from "@/components/v2/ui";
 import { CompanyMark } from "@/components/v2/people-bits";
-import { useMissions } from "@/components/v2/use-missions";
-import { crewParam, useBrandMissionSpecs, useMissionWorkflowRanking, type MissionSpec } from "@/components/v2/workflows-data";
+import { useCampaigns } from "@/components/v2/use-campaigns";
+import { pipeParam, useBrandCampaignSpecs, useCampaignWorkflowRanking, type CampaignSpec } from "@/components/v2/workflows-data";
 import { formatCentsAsUsdAdaptive, formatUsdAdaptive } from "@/lib/format-number";
 import { formatRoi } from "@/lib/format-roi";
 import { friendlyDateTime } from "@/lib/friendly-datetime";
@@ -70,7 +70,7 @@ const plural = (noun: string) => (/[^aeiou]y$/i.test(noun) ? `${noun.slice(0, -1
 const AUDIENCES_SHOWN = 6;
 
 /**
- * ONE workflow dynasty, priced for one mission, beta.
+ * ONE workflow dynasty, priced for one campaign, beta.
  *
  * Laid out as a v2 record: identity and chips on top, the figures in one strip, why it
  * ranks where it does and how it was priced in the main column, then cost, value and
@@ -81,25 +81,26 @@ export function V2WorkflowPage() {
   const { orgId, brandId, workflowSlug } = useParams<{ orgId: string; brandId: string; workflowSlug: string }>();
   const dynasty = decodeURIComponent(workflowSlug);
   const search = useSearchParams();
-  const crewRaw = search.get("crew") ?? "";
-  const missionRaw = search.get("mission");
-  const [featureSlug, legKey] = crewRaw.split("|");
+  // Legacy links (before 2026-10-18) carry `crew` and `mission` for the pipe and the campaign.
+  const pipeRaw = search.get("pipe") ?? search.get("crew") ?? "";
+  const campaignRaw = search.get("campaign") ?? search.get("mission");
+  const [featureSlug, legKey] = pipeRaw.split("|");
   const router = useRouter();
-  const { specs, settled, missionByCampaignId } = useBrandMissionSpecs(orgId, brandId);
+  const { specs, settled, campaignById } = useBrandCampaignSpecs(orgId, brandId);
   const { actual } = useCostBasis();
   const { basis } = useStatBasis();
 
-  // The mission the ranking is asked through. A link naming it wins; an older link naming
-  // only the crew resolves when the brand runs a single mission for that crew.
-  const crewSpecs = specs.filter((s) => s.featureSlug === featureSlug && sameLegKey(s.legKey, legKey));
-  const linked = missionRaw ? missionByCampaignId.get(missionRaw) ?? null : null;
-  const spec: MissionSpec | null = linked
+  // The campaign the ranking is asked through. A link naming it wins; an older link naming
+  // only the pipe resolves when the brand runs a single campaign on that pipe.
+  const pipeSpecs = specs.filter((s) => s.featureSlug === featureSlug && sameLegKey(s.legKey, legKey));
+  const linked = campaignRaw ? campaignById.get(campaignRaw) ?? null : null;
+  const spec: CampaignSpec | null = linked
     ? (specs.find((s) => s.campaignId === linked.row.campaign.id) ?? null)
-    : !missionRaw && crewSpecs.length === 1
-      ? crewSpecs[0]
+    : !campaignRaw && pipeSpecs.length === 1
+      ? pipeSpecs[0]
       : null;
 
-  const ranking = useMissionWorkflowRanking(brandId, spec, true);
+  const ranking = useCampaignWorkflowRanking(brandId, spec, true);
   const ranked = ranking.ranked.find((r) => r.row.workflowDynastySlug === dynasty) ?? null;
   const name = ranked?.row.workflowDynastyName ?? dynasty;
 
@@ -113,24 +114,24 @@ export function V2WorkflowPage() {
 
   const ladderRow =
     scopeLadderRows(ranking.allLadderRows, null).find((r) => r.workflow.workflowDynastySlug === dynasty) ?? null;
-  const missionLabel = spec ? `${spec.crew.name}${spec.mission.offerName ? ` · ${spec.mission.offerName}` : ""}` : null;
+  const campaignLabel = spec ? `${spec.pipe.name}${spec.campaign.offerName ? ` · ${spec.campaign.offerName}` : ""}` : null;
 
   let body: React.ReactNode;
   if (!featureSlug || !legKey) {
-    body = <Notice>This link names no crew, so there is no outcome to price this workflow on.</Notice>;
+    body = <Notice>This link names no pipe, so there is no outcome to price this workflow on.</Notice>;
   } else if (!settled) {
     body = <PageSkeleton />;
-  } else if (!spec && crewSpecs.length > 1 && !missionRaw) {
+  } else if (!spec && pipeSpecs.length > 1 && !campaignRaw) {
     body = (
       <div className="k-card mt-6 overflow-hidden">
-        <p className="k-fg2 px-4 pb-2 pt-4 text-[13px]">This crew works several offers. Pick the mission to price this workflow for.</p>
+        <p className="k-fg2 px-4 pb-2 pt-4 text-[13px]">This pipe runs for several offers. Pick the campaign to price this workflow for.</p>
         <ul>
-          {crewSpecs.map((s) => (
+          {pipeSpecs.map((s) => (
             <li key={s.campaignId}>
-              <Link href={v2WorkflowHref(orgId, brandId, dynasty, crewRaw, s.campaignId)} className="k-row k-hover flex h-10 items-center gap-2 px-4">
-                <CrewMark color={s.crew.color} glyph={s.crew.glyph} size={18} />
-                <span className="font-medium">{s.crew.name}</span>
-                <span className="k-fg2 truncate">· {s.mission.offerName ?? "Offer"}</span>
+              <Link href={v2WorkflowHref(orgId, brandId, dynasty, pipeRaw, s.campaignId)} className="k-row k-hover flex h-10 items-center gap-2 px-4">
+                <PipeMark color={s.pipe.color} glyph={s.pipe.glyph} size={18} />
+                <span className="font-medium">{s.pipe.name}</span>
+                <span className="k-fg2 truncate">· {s.campaign.offerName ?? "Offer"}</span>
               </Link>
             </li>
           ))}
@@ -138,18 +139,18 @@ export function V2WorkflowPage() {
       </div>
     );
   } else if (!spec) {
-    body = <Notice>This link names no mission this brand runs for that crew.</Notice>;
+    body = <Notice>This brand runs no campaign on that pipe.</Notice>;
   } else if (ranking.pending) {
     body = <PageSkeleton />;
   } else if (!ranked) {
-    body = <Notice>This crew does not offer this workflow.</Notice>;
+    body = <Notice>This pipe does not offer this workflow.</Notice>;
   } else {
     const model = workflowModelMark(ranked.row.contentModel);
     const template = workflowTemplateLabel(ranked.row.contentPromptType);
     const row = ranked.row;
     const noun = ranking.outcomeNoun;
     const count = workflowOutcomeCount(row);
-    // What THIS mission measured, as the MATURE half of the served pair (Learning where
+    // What THIS campaign measured, as the MATURE half of the served pair (Learning where
     // the producer says so); the projected half beside it is the served ranking.
     const cost = workflowOutcomeCost(row, basis);
     const roi = workflowRoi(row, basis);
@@ -157,17 +158,17 @@ export function V2WorkflowPage() {
       <>
         <div className="mt-2 flex flex-wrap items-start justify-between gap-3">
           <div className="flex min-w-0 items-center gap-3">
-            <CrewMark color={spec.crew.color} glyph={spec.crew.glyph} size={40} />
+            <PipeMark color={spec.pipe.color} glyph={spec.pipe.glyph} size={40} />
             <div className="min-w-0">
               <h1 className="truncate text-[24px] font-medium leading-[30px] tracking-[-0.02em]">{name}</h1>
               <div className="mt-1 flex flex-wrap items-center gap-2">
-                <span className="k-chip tabular-nums">{ranked.rank == null ? "Not ranked" : `#${ranked.rank} for this mission`}</span>
+                <span className="k-chip tabular-nums">{ranked.rank == null ? "Not ranked" : `#${ranked.rank} for this campaign`}</span>
                 {model && (
                   <ResearchModelChip
                     orgId={orgId}
                     brandId={brandId}
                     channel={spec.featureSlug}
-                    step={spec.mission.leg?.toKey ?? null}
+                    step={spec.campaign.leg?.toKey ?? null}
                     dynasty={dynasty}
                     label={model.label}
                   />
@@ -177,7 +178,7 @@ export function V2WorkflowPage() {
                     orgId={orgId}
                     brandId={brandId}
                     channel={spec.featureSlug}
-                    step={spec.mission.leg?.toKey ?? null}
+                    step={spec.campaign.leg?.toKey ?? null}
                     templateKey={ranked.row.contentPromptType}
                     label={template.label}
                   />
@@ -185,17 +186,17 @@ export function V2WorkflowPage() {
               </div>
             </div>
           </div>
-          <Link href={spec.mission.href} className="k-btn">
-            Open mission
+          <Link href={spec.campaign.href} className="k-btn">
+            Open campaign
           </Link>
         </div>
 
-        {/* Keel's Commit / Best case: what this mission MEASURED leads, what the
+        {/* Keel's Commit / Best case: what this campaign MEASURED leads, what the
             ranking PROJECTS sits under it, each named, so the two are never read as
             one figure. Both are served (grouped revenue and the ranking ladder). */}
         <div className="k-card mt-5 grid grid-cols-1 divide-y divide-[var(--line-subtle)] md:grid-cols-3 md:divide-x md:divide-y-0">
           <DualKpi
-            label="Return, this mission"
+            label="Return, this campaign"
             measured={roi.learning ? <span className="k-chip">Learning</span> : formatRoi(roi.value, "—")}
             projected={ranked.estLearning ? <span className="k-chip">Learning</span> : formatRoi(ranked.ladder?.roiMultiple ?? null, "—")}
           />
@@ -204,10 +205,10 @@ export function V2WorkflowPage() {
             measured={cost.learning ? <span className="k-chip">Learning</span> : cost.value == null ? "—" : formatCentsAsUsdAdaptive(cost.value)}
             projected={ranked.estLearning ? <span className="k-chip">Learning</span> : fmtUsd(ranked.estCostPerOutcomeUsd)}
           />
-          <Kpi label={`${plural(noun)}, this mission`} value={fmtCount(count)} />
+          <Kpi label={`${plural(noun)}, this campaign`} value={fmtCount(count)} />
         </div>
         <p className="k-fg3 mt-2 text-[12px]">
-          Measured is what this mission actually produced for what it spent. Projected is what the ranking expects, from your
+          Measured is what this campaign actually produced for what it spent. Projected is what the ranking expects, from your
           conversion rates and your customer value.
         </p>
         {actual && <ActualCostNote unpricedUsd={ranking.ladder?.unpricedBilledCostUsd} />}
@@ -233,16 +234,16 @@ export function V2WorkflowPage() {
               <p className="k-label">Details</p>
               <dl className="mt-3 space-y-2.5 text-[13px]">
                 <Row
-                  k="Crew"
+                  k="Pipe"
                   v={
                     <span className="inline-flex items-center gap-1.5">
-                      <CrewMark color={spec.crew.color} glyph={spec.crew.glyph} />
-                      {spec.crew.name}
+                      <PipeMark color={spec.pipe.color} glyph={spec.pipe.glyph} />
+                      {spec.pipe.name}
                     </span>
                   }
                 />
-                <Row k="Offer" v={spec.mission.offerName} />
-                <Row k="Objective" v={spec.mission.leg?.label ?? null} />
+                <Row k="Offer" v={spec.campaign.offerName} />
+                <Row k="Objective" v={spec.campaign.leg?.label ?? null} />
                 <Row k="Model" v={model ? <span className="k-mono text-[12px]">{model.alias}</span> : null} />
                 <Row k="Invested" v={row.committedCostUsd == null ? null : formatUsdAdaptive(row.committedCostUsd)} />
                 <Row k="Leads emailed" v={row.outreach == null ? null : fmtCount(row.outreach)} />
@@ -253,7 +254,7 @@ export function V2WorkflowPage() {
               dynasty={dynasty}
               workflowName={name}
               featureSlug={spec.featureSlug}
-              onForked={(slug) => router.push(v2WorkflowHref(orgId, brandId, slug, crewParam(spec), spec.campaignId))}
+              onForked={(slug) => router.push(v2WorkflowHref(orgId, brandId, slug, pipeParam(spec), spec.campaignId))}
             />
             <AudiencesCard rows={audienceRowsFor(ranking.allLadderRows, dynasty, basis)} audienceById={audienceById} noun={noun} />
           </div>
@@ -267,7 +268,7 @@ export function V2WorkflowPage() {
       <TopBar
         crumbs={[
           { label: "Workflows", href: v2Href(orgId, brandId, "workflows") },
-          ...(missionLabel ? [{ label: missionLabel }] : []),
+          ...(campaignLabel ? [{ label: campaignLabel }] : []),
           { label: name },
         ]}
         actions={
@@ -353,7 +354,7 @@ function Row({ k, v }: { k: string; v: React.ReactNode | null }) {
 // ─── How it was priced ─────────────────────────────────────────────────────
 
 const GRAINS: { key: WorkflowGrain; label: string }[] = [
-  { key: "campaign", label: "This mission" },
+  { key: "campaign", label: "This campaign" },
   { key: "brand", label: "This brand" },
   { key: "crossOrg", label: "Every client" },
 ];
@@ -390,7 +391,7 @@ function Priced({
     : null;
   return (
     <section>
-      <SectionTitle right={<span>Closest evidence first: this mission, this brand, then every client</span>}>How we priced it</SectionTitle>
+      <SectionTitle right={<span>Closest evidence first: this campaign, this brand, then every client</span>}>How we priced it</SectionTitle>
       {!ladder ? (
         <Notice>We have no estimate for this workflow yet, so there is nothing to break down.</Notice>
       ) : !ladder.measured ? (
@@ -467,7 +468,7 @@ function GrainCell({
   );
 }
 
-/** Every audience this workflow ran for on this mission, cheapest first. */
+/** Every audience this workflow ran for on this campaign, cheapest first. */
 function AudiencesCard({
   rows,
   audienceById,
@@ -529,9 +530,9 @@ function AudiencesCard({
 
 /**
  * Three curves over time for this workflow across ALL client orgs (the fleet), on THIS
- * crew's leg only: cumulative cost, cumulative pipeline value, and their ratio, each as
+ * pipe's leg only: cumulative cost, cumulative pipeline value, and their ratio, each as
  * features-service states it. The leg narrows both spend and value to the campaigns that
- * perform it, so a reply-led crew never shows a visit-led campaign's value (prod
+ * perform it, so a reply-led pipe never shows a visit-led campaign's value (prod
  * 2026-09-27: $1,080 of maelstrom's $1,089 came from a start_to_website_visit campaign
  * while the page was open on start_to_conversation).
  * The fleet is the grain where a workflow has a history (on one brand it is 0 to 2 days),
@@ -582,7 +583,7 @@ function OverTime({ featureSlug, legKey, dynasty }: { featureSlug: string; legKe
   return (
     <section>
       <SectionTitle right={actual ? <span>Actual cost</span> : undefined}>
-        Over time <span className="k-fg3 font-normal">· all clients on this crew</span>
+        Over time <span className="k-fg3 font-normal">· all clients on this pipe</span>
       </SectionTitle>
       {unreadable && (
         <p className="k-fg3 mb-2 text-[12px]">We could not read the {actual ? "actual cost" : "billed cost"} for this workflow just now.</p>
@@ -956,7 +957,7 @@ function RunsCard({
     },
     { ...pollOptions, enabled: read.length > 0 },
   );
-  const { missionByCampaignId } = useMissions(orgId, brandId, { allOffers: true });
+  const { campaignById } = useCampaigns(orgId, brandId, { allOffers: true });
   const runs = q.data ?? [];
   const shown = expanded ? runs : runs.slice(0, RUNS_SHOWN);
   const pending = read.length > 0 && q.data === undefined && !q.isFetchedAfterMount;
@@ -974,7 +975,7 @@ function RunsCard({
               <tr className="border-b border-[var(--line-subtle)]">
                 <th className={`${TH} w-44`}>Time</th>
                 <th className={TH}>Lead</th>
-                <th className={TH}>Mission</th>
+                <th className={TH}>Campaign</th>
                 <th className={`${TH} w-28`}>Status</th>
                 <th className={`${TH} w-20 text-right`}>Took</th>
                 <th className={`${TH} w-20 text-right`}>Cost</th>
@@ -1003,7 +1004,7 @@ function RunsCard({
                 </tr>
               ) : (
                 shown.map((run) => {
-                  const m = run.campaignId ? missionByCampaignId.get(run.campaignId) ?? null : null;
+                  const m = run.campaignId ? campaignById.get(run.campaignId) ?? null : null;
                   // A workflow run's cost lives on the runs it spawned: its SUBTREE total, on
                   // both bases (billed on User cost, vendor on Actual cost).
                   const cost = actual ? (run.vendorCents ?? NaN) : Number(run.totalCostInUsdCents ?? NaN);
@@ -1013,9 +1014,9 @@ function RunsCard({
                       <td className="max-w-0 px-3">
                         {m ? (
                           <span className="flex min-w-0 items-center gap-1.5">
-                            <CrewMark color={m.crew.color} glyph={m.crew.glyph} />
+                            <PipeMark color={m.pipe.color} glyph={m.pipe.glyph} />
                             <span className="truncate">
-                              {m.crew.name}
+                              {m.pipe.name}
                               <span className="k-fg2"> · {m.offerName ?? "Offer"}</span>
                             </span>
                           </span>

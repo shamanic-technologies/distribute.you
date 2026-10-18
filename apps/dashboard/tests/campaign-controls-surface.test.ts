@@ -7,7 +7,6 @@ const read = (p: string) => readFileSync(join(SRC, p), "utf8");
 
 const trigger = read("components/campaigns/campaign-controls-trigger.tsx");
 const toggle = read("lib/use-scope-toggle.ts");
-const crew = read("components/v2/crew-page.tsx");
 const api = read("lib/api.ts");
 
 /**
@@ -18,19 +17,11 @@ describe("Pause / Activate — one press, no modal", () => {
   it("the controls modal is gone, not hidden", () => {
     expect(existsSync(join(SRC, "components/campaigns/campaign-controls-modal.tsx"))).toBe(false);
     expect(trigger).not.toContain("CampaignControlsModal");
-    expect(crew).not.toContain("CampaignControlsModal");
   });
 
-  it("the pill and the crew menu press the ONE shared toggle", () => {
+  it("the pill presses the ONE shared toggle", () => {
     // A second implementation is how a scope comes to be paused two ways.
     expect(trigger).toContain("useScopeToggle(brandId");
-    expect(crew).toContain("useScopeToggle(brandId, scope)");
-    expect(crew).toContain("void scopeToggle.toggle()");
-  });
-
-  it("a crew press is scoped to the crew's own channel and leg, never the bare brand", () => {
-    expect(crew).toContain("featureSlug: crew.featureSlug");
-    expect(crew).toContain("legKey: crew.legKey");
   });
 
   it("writes through campaign-service's STATUS, never by zeroing a ceiling", () => {

@@ -82,8 +82,8 @@ describe("a pipe is one leg x one channel", () => {
 
 describe("the retired section names are gone from the Research code path", () => {
   const BANNED = /\bcrews?\b|herald|scout|\bpilot\b/i;
-  // The one map that redirects old links, and the shared mark imports renamed in a later change.
-  const ALLOWED = [/^const LEGACY_SECTION: Record<string, ResearchPipe> = \{/, /^import .* from "@\/lib\/v2\/crews";$/, /^import \{ CrewMark \} from "@\/components\/v2\/crew-mark";$/];
+  // The one map that redirects old links.
+  const ALLOWED = [/^const LEGACY_SECTION: Record<string, ResearchPipe> = \{/];
   const walk = (dir: string): string[] =>
     readdirSync(dir).flatMap((f) => {
       const p = join(dir, f);

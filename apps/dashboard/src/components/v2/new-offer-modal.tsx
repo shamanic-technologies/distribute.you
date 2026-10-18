@@ -19,7 +19,7 @@ import { OfferMark } from "@/components/marks/offer-mark";
  * copy (`offerWriteErrorMessage`, a sentence per STATUS, never the downstream body) and
  * the same counter rule (`nameCounter`). Only the markup is Keel's: a `k-popover`
  * portalled to `#v2-portal` (the sidebar drawer is transformed, which traps `fixed`),
- * Esc closes it, and the new offer opens on its v2 page, where its missions and what it
+ * Esc closes it, and the new offer opens on its v2 page, where its campaigns and what it
  * promises are stated.
  */
 export function V2NewOfferModal({ brandId, orgId, onClose }: { brandId: string; orgId: string; onClose: () => void }) {
@@ -99,7 +99,7 @@ export function V2NewOfferModal({ brandId, orgId, onClose }: { brandId: string; 
           />
           <div className="mt-1.5 flex items-start gap-3">
             <p className="k-fg3 min-w-0 flex-1 text-[12px] leading-[18px]">
-              One thing this brand sells, {OFFER_NAME_RULES}. It gets its own missions and targeting, and returns its own number.
+              One thing this brand sells, {OFFER_NAME_RULES}. It gets its own campaigns and targeting, and returns its own number.
             </p>
             {counter.reveal && (
               <span

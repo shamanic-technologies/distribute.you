@@ -53,17 +53,7 @@ describe("v2 run labels", () => {
   });
 });
 
-describe("v2 run lists show one row per lead", () => {
-  const runs = src("components/v2/runs.ts");
-  const fn = runs.slice(runs.indexOf("export function useRecentRuns("), runs.indexOf("export function missionCampaignIds("));
-
-  it("useRecentRuns asks runs-service for lead runs with their subtree cost, then drops $0 gate runs", () => {
-    expect(fn).toContain("taskName: LEAD_RUN_TASK");
-    expect(fn).toContain("subtreeCost: true");
-    expect(fn).toContain(".filter(isWorkRun)");
-  });
-
-
+describe("v2 run page", () => {
   it("the run page folds its steps and shows the service name to staff only", () => {
     const page = src("components/v2/run-page.tsx");
     expect(page).toContain("foldSteps(steps)");

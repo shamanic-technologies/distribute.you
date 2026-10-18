@@ -17,7 +17,6 @@ import {
 } from "@/lib/staff-catalogue";
 import { featureLegId } from "@/lib/outbound-leg-key";
 import { useOngoingCampaigns, type OngoingCampaign } from "@/components/v2/ongoing-campaigns";
-import { crewParam } from "@/components/v2/workflows-data";
 
 /**
  * The catalogue's economics are recomputed by features-service every ~15 minutes (warmed off
@@ -102,9 +101,8 @@ export interface OngoingFunnelCampaign {
 /** A workflow an ON campaign runs: the producer's money pick for that campaign, on its pipe. */
 export interface OngoingWorkflow {
   slug: string;
+  /** The `<channel slug>|<leg key>` pipe, also what the workflow page is asked for. */
   pipeId: string;
-  /** The `<channel slug>|<leg key>` the workflow page is asked for. */
-  crew: string;
   campaignId: string;
   detail: CatalogueDetailByObject["workflows"] | null;
 }
@@ -201,7 +199,6 @@ export function useOngoingCatalogue(orgId: string, brandId: string, offerId: str
   const workflows: OngoingWorkflow[] = picks.map(({ s, slug }, i) => ({
     slug,
     pipeId: featureLegId(s.featureSlug, s.legKey),
-    crew: crewParam(s),
     campaignId: s.campaignId,
     detail: workflowDetails[i]?.data ?? null,
   }));

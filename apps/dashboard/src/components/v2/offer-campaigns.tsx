@@ -15,7 +15,7 @@ import { useStatBasis } from "@/lib/use-stat-basis";
 import { useRoutePrefetch } from "@/lib/use-route-prefetch";
 import { useLegCatalogue } from "@/lib/use-leg-catalogue";
 import { campaignNameFor, type LegCatalogue } from "@/lib/legs";
-import { costPerResult, outcomeCount } from "@/components/v2/mission-results";
+import { costPerResult, outcomeCount } from "@/components/v2/campaign-results";
 import { campaignKey, sortCampaigns, type OfferCampaign } from "@/lib/offer-campaigns";
 import { CampaignModeChip } from "@/components/v2/campaign-mode";
 import { TriggerEventLines } from "@/components/v2/trigger-event-lines";
@@ -23,7 +23,7 @@ import { channelWriteErrorMessage } from "@/lib/channel-start";
 import { createCampaignForPair, startReactiveCampaign } from "@/lib/start-pair";
 import { invalidateCampaignMoney } from "@/lib/write-invalidation";
 import { useAcquisitionChannels } from "@/lib/use-acquisition-channels";
-import { useMissions, type Mission } from "@/components/v2/use-missions";
+import { useCampaigns, type V2Campaign } from "@/components/v2/use-campaigns";
 import { EXPECTED_ROI_TIP } from "@/lib/offer-sales-paths";
 import { ChannelChip, ExpectedLabel, PathAvatar } from "@/components/v2/offer-sales-paths";
 import { EmptyNote, HoverScroll, MarkLines, SectionTitle, Shimmer, StateDot } from "@/components/v2/ui";
@@ -74,40 +74,40 @@ export function OfferCampaigns({
   const prefetch = useRoutePrefetch();
   const { basis } = useStatBasis();
   const catalogue = useLegCatalogue();
-  const { missions } = useMissions(orgId, brandId, { allOffers: true });
-  const missionByKey = useMemo(() => {
-    const m = new Map<string, Mission>();
-    for (const x of missions) {
+  const { campaigns: records } = useCampaigns(orgId, brandId, { allOffers: true });
+  const campaignByKey = useMemo(() => {
+    const m = new Map<string, V2Campaign>();
+    for (const x of records) {
       const c = x.row.campaign;
       // A part of a sales-funnel campaign is listed under that campaign, never as one of these rows.
       if (c.salesFunnelCampaignId) continue;
       if (c.offerId === offerId && c.featureSlug && c.legKey) m.set(campaignKey(c.featureSlug, c.legKey), x);
     }
     return m;
-  }, [missions, offerId]);
-  const running = (c: OfferCampaign) => missionByKey.get(campaignKey(c.featureSlug, c.legKey))?.running ?? false;
+  }, [records, offerId]);
+  const running = (c: OfferCampaign) => campaignByKey.get(campaignKey(c.featureSlug, c.legKey))?.running ?? false;
   const measuredRoi = (c: OfferCampaign) => {
-    const m = missionByKey.get(campaignKey(c.featureSlug, c.legKey));
+    const m = campaignByKey.get(campaignKey(c.featureSlug, c.legKey));
     return m ? shownReturn(m.row.revenue?.economicsMaturity, basis).value : null;
   };
   const sorted = useMemo(
     () => sortCampaigns(campaigns, running, results ? measuredRoi : undefined),
-    [campaigns, missionByKey, results, basis], // eslint-disable-line react-hooks/exhaustive-deps
+    [campaigns, campaignByKey, results, basis], // eslint-disable-line react-hooks/exhaustive-deps
   );
   // A campaign the offer ran that features-service no longer lists (its channel or leg
   // left the offer): still one of the offer's campaigns, read only, opening its page.
   const unlisted = useMemo(() => {
     if (!results) return [];
     const listed = new Set(campaigns.map((c) => campaignKey(c.featureSlug, c.legKey)));
-    return [...missionByKey.entries()].filter(([k]) => !listed.has(k) && !listedElsewhere?.has(k)).map(([, m]) => m);
-  }, [results, campaigns, missionByKey, listedElsewhere]);
+    return [...campaignByKey.entries()].filter(([k]) => !listed.has(k) && !listedElsewhere?.has(k)).map(([, m]) => m);
+  }, [results, campaigns, campaignByKey, listedElsewhere]);
   // The proactive campaign that is on now: turning another one on moves the plan to it.
   // A SOURCE campaign runs beside the others (owner 2026-10-07): it neither takes nor gives the plan.
   const activeProactive = sorted.find((c) => c.kind === "outreach" && !c.reactive && running(c)) ?? null;
   // The triggers under the rows are the ones these campaigns wait on (an ON one always shows).
   const triggerCampaigns = useMemo(
     () => campaigns.map((c) => ({ featureSlug: c.featureSlug, legKey: c.legKey, on: running(c) })),
-    [campaigns, missionByKey], // eslint-disable-line react-hooks/exhaustive-deps
+    [campaigns, campaignByKey], // eslint-disable-line react-hooks/exhaustive-deps
   );
 
   return (
@@ -156,7 +156,7 @@ export function OfferCampaigns({
               <tbody>
                 {sorted.map((c) => {
                   const key = campaignKey(c.featureSlug, c.legKey);
-                  const mission = missionByKey.get(key) ?? null;
+                  const record = campaignByKey.get(key) ?? null;
                   return (
                     <CampaignRow
                       key={key}
@@ -164,14 +164,14 @@ export function OfferCampaigns({
                       basis={basis}
                       catalogue={catalogue}
                       onOpen={
-                        (results || openRows) && mission
-                          ? { go: () => router.push(mission.href), warm: () => prefetch(mission.href) }
+                        (results || openRows) && record
+                          ? { go: () => router.push(record.href), warm: () => prefetch(record.href) }
                           : null
                       }
                       brandId={brandId}
                       offerId={offerId}
                       campaign={c}
-                      mission={mission}
+                      record={record}
                       replaces={c.kind === "outreach" && !c.reactive && activeProactive && activeProactive !== c ? activeProactive : null}
                     />
                   );
@@ -179,7 +179,7 @@ export function OfferCampaigns({
                 {unlisted.map((m) => (
                   <UnlistedRow
                     key={m.row.campaign.id}
-                    mission={m}
+                    record={m}
                     name={campaignNameFor(catalogue, m.row.campaign.featureSlug, m.row.campaign.legKey)}
                     basis={basis}
                     onOpen={() => router.push(m.href)}
@@ -255,7 +255,7 @@ function CampaignRow({
   brandId,
   offerId,
   campaign,
-  mission,
+  record,
   replaces,
 }: {
   /** Sales path page: the campaign's own results columns, the leg under its name. */
@@ -268,16 +268,16 @@ function CampaignRow({
   brandId: string;
   offerId: string;
   campaign: OfferCampaign;
-  mission: Mission | null;
+  record: V2Campaign | null;
   /** The proactive campaign this one would take the plan from if turned on. */
   replaces: OfferCampaign | null;
 }) {
   const [pressed, setPressed] = useState<boolean | null>(null);
-  useEffect(() => setPressed(null), [mission?.running]);
+  useEffect(() => setPressed(null), [record?.running]);
   useEffect(() => {
     if (!campaign.name) console.error("[offer-campaigns] features-service served no campaignName", campaign);
   }, [campaign]);
-  const on = pressed ?? mission?.running ?? false;
+  const on = pressed ?? record?.running ?? false;
   // The status control (and its portalled menu, whose events bubble
   // through React's tree) never open the campaign page.
   const stop = (e: React.SyntheticEvent) => e.stopPropagation();
@@ -312,7 +312,7 @@ function CampaignRow({
         <CampaignModeChip catalogue={catalogue} featureSlug={campaign.featureSlug} legKey={campaign.legKey} reactive={campaign.reactive} />
       </td>
       {results ? (
-        <CampaignResultCells mission={mission} basis={basis} />
+        <CampaignResultCells record={record} basis={basis} />
       ) : (
         <td className={`px-3 py-2 text-right font-semibold tabular-nums ${roiIsGood(campaign.roi) ? "text-[var(--run)]" : ""}`}>
           {campaign.roi == null && campaign.roiUnavailable ? (
@@ -328,7 +328,7 @@ function CampaignRow({
           brandId={brandId}
           offerId={offerId}
           campaign={campaign}
-          mission={mission}
+          record={record}
           on={on}
           setPressed={setPressed}
           replaces={replaces}
@@ -343,19 +343,19 @@ const DASH = <span className="k-fg4">—</span>;
 /**
  * A campaign's own results, as its campaign page states them (owner 2026-10-08): ROI,
  * outcomes, value, cost per outcome, money in. Every figure is a served field of the
- * campaign's features-service row (the missions read); nothing is computed here. A
+ * campaign's features-service row (the campaigns read); nothing is computed here. A
  * campaign that never ran has none of them yet.
  */
-export function CampaignResultCells({ mission, basis }: { mission: Mission | null; basis: StatBasis }) {
-  const g = mission?.row.revenue;
+export function CampaignResultCells({ record, basis }: { record: V2Campaign | null; basis: StatBasis }) {
+  const g = record?.row.revenue;
   // Learning unless mature, or already above 1x to date (lib/maturity.ts shownReturn): the campaign page's ROI tile.
   const roi = shownReturn(g?.economicsMaturity, basis);
-  const outcome = mission ? outcomeCount(mission) : null;
-  const cost = mission ? costPerResult(mission, basis) : null;
+  const outcome = record ? outcomeCount(record) : null;
+  const cost = record ? costPerResult(record, basis) : null;
   return (
     <>
       <td className="px-3 py-2 text-right font-semibold tabular-nums">
-        {!mission ? DASH : <RoiValue roi={roiToShow(roi, g?.expectedReturn)} learning={roi.learning} />}
+        {!record ? DASH : <RoiValue roi={roiToShow(roi, g?.expectedReturn)} learning={roi.learning} />}
       </td>
       <td className="px-3 py-2 text-right tabular-nums">
         {outcome ? (
@@ -382,13 +382,13 @@ export function CampaignResultCells({ mission, basis }: { mission: Mission | nul
 
 /** A campaign the offer ran whose channel or leg it no longer lists: its results, read only. */
 function UnlistedRow({
-  mission,
+  record,
   name,
   basis,
   onOpen,
   onWarm,
 }: {
-  mission: Mission;
+  record: V2Campaign;
   name: string | null;
   basis: StatBasis;
   onOpen: () => void;
@@ -398,14 +398,14 @@ function UnlistedRow({
     <tr className="k-row k-line-subtle h-12 cursor-pointer border-b last:border-b-0" onClick={onOpen} onMouseEnter={onWarm} onFocus={onWarm}>
       <td className="px-3 py-2 pl-4">
         <MarkLines mark={(px) => (name ? <PathAvatar name={name} size={px} /> : null)}>
-          <span className="block truncate font-semibold">{name ?? mission.crew.name}</span>
-          <span className="k-fg3 mt-1 block text-[11px]">{mission.leg?.label ?? "—"}</span>
+          <span className="block truncate font-semibold">{name ?? record.pipe.name}</span>
+          <span className="k-fg3 mt-1 block text-[11px]">{record.leg?.label ?? "—"}</span>
         </MarkLines>
       </td>
       <td className="px-3 py-2">{DASH}</td>
-      <CampaignResultCells mission={mission} basis={basis} />
+      <CampaignResultCells record={record} basis={basis} />
       <td className="px-3 py-2 pr-4 text-right">
-        <StateDot running={mission.running} label={mission.running ? "On" : "Off"} hold={mission.running ? null : mission.paymentHold} />
+        <StateDot running={record.running} label={record.running ? "On" : "Off"} hold={record.running ? null : record.paymentHold} />
       </td>
     </tr>
   );
@@ -421,7 +421,7 @@ function CampaignStatus({
   brandId,
   offerId,
   campaign,
-  mission,
+  record,
   on,
   setPressed,
   replaces,
@@ -429,7 +429,7 @@ function CampaignStatus({
   brandId: string;
   offerId: string;
   campaign: OfferCampaign;
-  mission: Mission | null;
+  record: V2Campaign | null;
   on: boolean;
   setPressed: (v: boolean | null) => void;
   replaces: OfferCampaign | null;
@@ -483,8 +483,8 @@ function CampaignStatus({
     setPressed(next);
     setBusy(true);
     try {
-      if (mission) {
-        await setCampaignStatus(mission.row.campaign.id, next ? "activate" : "stop", { brandId, featureSlug: campaign.featureSlug });
+      if (record) {
+        await setCampaignStatus(record.row.campaign.id, next ? "activate" : "stop", { brandId, featureSlug: campaign.featureSlug });
       } else if (campaign.reactive || campaign.kind === "source") {
         // A source campaign runs no workflow: campaign-service starts it as a funded pair (v0.75.2).
         await startReactiveCampaign({ brandId, offerId, featureSlug: campaign.featureSlug, legKey: campaign.legKey });
@@ -520,7 +520,7 @@ function CampaignStatus({
         onClick={(e) => openMenu(e.currentTarget)}
         className="k-btn gap-1.5"
       >
-        <StateDot running={on} label={on ? "On" : "Off"} hold={on ? null : mission?.paymentHold ?? null} />
+        <StateDot running={on} label={on ? "On" : "Off"} hold={on ? null : record?.paymentHold ?? null} />
         <svg width="10" height="10" viewBox="0 0 10 10" aria-hidden className="k-fg3">
           <path d="M2.5 4l2.5 2.5L7.5 4" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" />
         </svg>

@@ -37,9 +37,9 @@ describe("dashboard v2 Workflows: staff mode only, no badge", () => {
     }
   });
 
-  it("a row is a workflow for ONE crew, and its page carries the crew in the URL", () => {
-    expect(read("src/components/v2/workflows-page.tsx")).toContain("crewParam(spec)");
-    expect(read("src/lib/v2/routes.ts")).toContain("?crew=${encodeURIComponent(crew)}");
+  it("a row is a workflow for ONE pipe, and its page carries the pipe in the URL", () => {
+    expect(read("src/components/v2/workflows-page.tsx")).toContain("pipeParam(spec)");
+    expect(read("src/lib/v2/routes.ts")).toContain("?pipe=${encodeURIComponent(pipe)}");
   });
 
   it("a staff-gated surface has its own label, distinct from beta", () => {
@@ -104,12 +104,12 @@ describe("the Actual cost basis is STAFF-only", () => {
   });
 });
 
-describe("the ranking is asked per MISSION, and the pages speak v2", () => {
+describe("the ranking is asked per CAMPAIGN, and the pages speak v2", () => {
   const data = read("src/components/v2/workflows-data.ts");
   const list = read("src/components/v2/workflows-page.tsx");
   const page = read("src/components/v2/workflow-page.tsx");
 
-  it("the ladder is asked with the mission's campaign, on the campaign Workflows page's own key", () => {
+  it("the ladder is asked with the campaign's id, on the campaign Workflows page's own key", () => {
     // A leg-keyed ranking with no campaign 409s on a brand selling several offers.
     // On the billed basis the key is the billed one; the staff Actual basis reads its own
     // (never-persisted) root, so the two bases never share a cache entry.
@@ -118,10 +118,12 @@ describe("the ranking is asked per MISSION, and the pages speak v2", () => {
     expect(read("src/components/workflows/campaign-workflows-page.tsx")).toContain('["workflowRankLadder", brandId, legKey ?? "none", campaignId]');
   });
 
-  it("a workflow link names the mission, and an older crew-only link still resolves on a single mission", () => {
-    expect(read("src/lib/v2/routes.ts")).toContain("&mission=${encodeURIComponent(mission)}");
-    expect(list).toContain("crewParam(spec), spec.campaignId)");
-    expect(page).toContain("!missionRaw && crewSpecs.length === 1");
+  it("a workflow link names the campaign, and an older pipe-only link still resolves on a single campaign", () => {
+    expect(read("src/lib/v2/routes.ts")).toContain("&campaign=${encodeURIComponent(campaignId)}");
+    // Links sent before 2026-10-18 carry the retired parameter names.
+    expect(page).toContain('const pipeRaw = search.get("pipe") ?? search.get(');
+    expect(list).toContain("pipeParam(spec), spec.campaignId)");
+    expect(page).toContain("!campaignRaw && pipeSpecs.length === 1");
   });
 
   it("neither page imports v1 layout or v1 greys", () => {
@@ -157,7 +159,7 @@ describe("v2 workflows: one reading per figure, and runs that say who they wrote
 
   it("states measured and projected in ONE cell, each named, never as a bare 'Est. return'", () => {
     expect(page).not.toContain('label="Est. return"');
-    const strip = page.slice(page.indexOf('label="Return, this mission"'), page.indexOf("<p className=\"k-fg3 mt-2 text-[12px]\">"));
+    const strip = page.slice(page.indexOf('label="Return, this campaign"'), page.indexOf("<p className=\"k-fg3 mt-2 text-[12px]\">"));
     // measured: the MATURE half of the served pair, Learning where the producer says so
     expect(strip).toContain('formatRoi(roi.value, "—")');
     expect(strip).toContain("formatRoi(ranked.ladder?.roiMultiple");

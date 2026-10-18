@@ -2,8 +2,8 @@
  * What a brand spends EVERY DAY, apart from what it only MAY spend when something
  * happens.
  *
- * A crew on an entry leg (Herald, Scout) spends its budget every day. A crew on a leg
- * that starts from a step (Pilot: positive reply to meeting booked) only wakes when a
+ * A campaign on an entry leg spends its budget every day. A campaign on a leg
+ * that starts from a step (positive reply to meeting booked) only wakes when a
  * lead reaches that step, so its budget is a CAP, not a daily spend, and adding it to
  * "your daily budget" states money the brand will usually not spend.
  *
@@ -20,9 +20,9 @@ export interface SpendableLike {
 }
 
 export interface BudgetSplit {
-  /** What running daily crews may spend today. */
+  /** What running daily campaigns may spend today. */
   dailyCents: number;
-  /** The caps of running event crews: spent only when their step is reached. */
+  /** The caps of running event campaigns: spent only when their step is reached. */
   eventCapCents: number;
 }
 

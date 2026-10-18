@@ -14,7 +14,7 @@ describe("v2 Records read campaigns, never crews", () => {
   it.each(RECORDS)("%s says nothing of crews or missions", (f) => {
     const src = v2(f);
     expect(src).not.toMatch(/crew/i);
-    expect(src).not.toMatch(/useMissions|missionByCampaignId/);
+    expect(src).not.toMatch(/useCampaigns|campaignById/);
   });
 
   it.each(["company-page.tsx", "people-page.tsx", "deals-page.tsx"])("%s names a person's campaign by face + name", (f) => {

@@ -31,7 +31,7 @@ import { CAMPAIGN_LAYOUT_PARAM, isCampaignLayoutPreview, withLayoutNext } from "
 import { getOfferSalesPaths } from "@/lib/api";
 import { campaignKey, campaignsOfOffer, sourceCampaignsOfOffer } from "@/lib/offer-campaigns";
 import { roiUnavailableLabel } from "@/lib/offer-sales-paths";
-import { useMissions } from "@/components/v2/use-missions";
+import { useCampaigns } from "@/components/v2/use-campaigns";
 import { OfferCampaigns } from "@/components/v2/offer-campaigns";
 import { v2CampaignHref } from "@/lib/v2/routes";
 import { useRoutePrefetch } from "@/lib/use-route-prefetch";
@@ -458,18 +458,18 @@ function CampaignLine({
  * it) stays listed here, and only it. Renders nothing once every running campaign is converted.
  */
 function UnconvertedRunningCampaigns({ orgId, brandId, offerId }: { orgId: string; brandId: string; offerId: string }) {
-  const { missions } = useMissions(orgId, brandId, { allOffers: true });
+  const { campaigns: records } = useCampaigns(orgId, brandId, { allOffers: true });
   const { running, other } = useMemo(() => {
     const run = new Set<string>();
     const all = new Set<string>();
-    for (const m of missions) {
+    for (const m of records) {
       if (m.offerId !== offerId) continue;
       const k = campaignKey(m.row.campaign.featureSlug ?? "", m.row.campaign.legKey ?? "");
       all.add(k);
       if (m.running) run.add(k);
     }
     return { running: run, other: new Set([...all].filter((k) => !run.has(k))) };
-  }, [missions, offerId]);
+  }, [records, offerId]);
   const paths = useAuthQuery(
     ["offerSalesPaths", brandId, offerId, "catalogue"],
     () => getOfferSalesPaths(brandId, offerId, "catalogue"),

@@ -22,8 +22,8 @@ import { useAcquisitionChannels } from "@/lib/use-acquisition-channels";
 import type { AcquisitionChannelDef } from "@/lib/acquisition-channels";
 import { legFor, stepLabel } from "@/lib/legs";
 // The shared v2 mark and its colour table; renamed to pipe vocabulary in a later change.
-import { crewFor, type CrewGlyph } from "@/lib/v2/crews";
-import { CrewMark } from "@/components/v2/crew-mark";
+import { pipeFor, type PipeGlyph } from "@/lib/v2/pipe-look";
+import { PipeMark } from "@/components/v2/pipe-mark";
 import {
   OUTCOME_PATH,
   PIPE_KEY,
@@ -74,13 +74,13 @@ export function dayText(ymd: string): string {
 /** A section's look: the colour and glyph its mark wears. */
 export interface SectionLook {
   color: string;
-  glyph: CrewGlyph;
+  glyph: PipeGlyph;
 }
 
 /** A pipe's look: the one the v2 mark table fixes for its channel and the step its leg lands on. */
 export function pipeLook(pipe: ResearchPipe): SectionLook {
   const k = PIPE_KEY[pipe];
-  const { color, glyph } = crewFor(k.channel, k.step, "");
+  const { color, glyph } = pipeFor(k.channel, k.step, "");
   return { color, glyph };
 }
 
@@ -107,7 +107,7 @@ export function sectionLook(section: ResearchSection): SectionLook {
 /** A section's mark: a soft tile in its colour with its glyph. */
 export function SectionMark({ section, size }: { section: ResearchSection; size?: number }) {
   const look = sectionLook(section);
-  return <CrewMark color={look.color} glyph={look.glyph} size={size} />;
+  return <PipeMark color={look.color} glyph={look.glyph} size={size} />;
 }
 
 type InOrderItem = { step: string } | { channel: string; def: AcquisitionChannelDef };

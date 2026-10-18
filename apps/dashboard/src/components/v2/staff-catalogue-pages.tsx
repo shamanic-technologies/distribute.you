@@ -670,7 +670,7 @@ function PipeBody({
 }) {
   const workflows = useStaffCatalogueList("workflows", { pipe: id, limit: "25" });
   const runs = ongoing.campaignsByPipe.get(id) ?? [];
-  const mission = runs[0]?.m.row.campaign.id ?? null;
+  const campaign = runs[0]?.m.row.campaign.id ?? null;
   const ongoingSlugs = new Set(ongoing.workflows.filter((w) => w.pipeId === id).map((w) => w.slug));
   const rows = workflows.data?.rows ?? [];
   return (
@@ -688,7 +688,7 @@ function PipeBody({
             {runs.map((c) => (
               <Link key={c.m.row.campaign.id} href={c.m.href} className="k-row k-line-subtle flex h-10 items-center gap-2.5 border-b px-4 text-[13px] last:border-b-0">
                 <OngoingDot />
-                <span className="truncate font-medium">{c.name ?? c.m.crew.name}</span>
+                <span className="truncate font-medium">{c.name ?? c.m.pipe.name}</span>
                 <span className="k-fg3 ml-auto truncate text-[12px]">{c.m.offerName}</span>
               </Link>
             ))}
@@ -713,7 +713,7 @@ function PipeBody({
             rows={rows}
             costUnit={workflows.data?.costUnit ?? "per_outcome"}
             ongoing={ongoingSlugs}
-            hrefOf={(r) => v2WorkflowHref(orgId, brandId, r.id, id, mission)}
+            hrefOf={(r) => v2WorkflowHref(orgId, brandId, r.id, id, campaign)}
             footer={workflows.data?.truncated ? `The first ${rows.length} of ${workflows.data.total}, in the fleet's rank.` : "In the fleet's rank."}
           />
         )}

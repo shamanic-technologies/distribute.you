@@ -277,12 +277,9 @@ export const PERSISTABLE_QUERY_ROOTS = new Set([
   "leadDisqualifications",
   // A conversation campaign's four people counts (AI Meeting Booking). Four integers.
   "conversationCounts",
-  // Dashboard v2: runs-service's per-campaign roll-up over a window (the crew
-  // cards' runs, spend and last-run) and the latest runs themselves (Work, a
-  // mission's timeline). Small, persisted so the cards paint from disk.
+  // Dashboard v2: runs-service's per-campaign roll-up over a window (Today's runs
+  // count). Small, persisted so the line paints from disk.
   "v2RunsByCampaign",
-  "v2RunsWeek",
-  "v2RecentRuns",
   "leadHistory",
   "leadTimeline",
   "leadDetail",
@@ -314,7 +311,6 @@ export const PERSISTABLE_QUERY_ROOTS = new Set([
   // What the contacted-but-not-engaged leads are worth (v2 Deals), a separate figure.
   "contactedValue",
   "dealsValue",
-  "v2RunOutcomes",
   "featureRevenueByCampaign",
   "brandOfferMoney",
   "featureAudienceStats",

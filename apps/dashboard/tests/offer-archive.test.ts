@@ -47,7 +47,7 @@ describe("archive wiring", () => {
   });
 
   it("history readers keep an archived offer's name and mark", () => {
-    for (const f of ["components/v2/use-missions.ts", "components/v2/setup-pages.tsx"]) {
+    for (const f of ["components/v2/use-campaigns.ts", "components/v2/setup-pages.tsx"]) {
       expect(read(f)).toContain("includeArchived: true");
     }
   });

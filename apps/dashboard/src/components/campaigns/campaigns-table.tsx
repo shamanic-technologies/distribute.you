@@ -17,7 +17,7 @@ import { acquisitionChannelForFeatureSlug } from "@/lib/acquisition-channels";
 import { canonicalLegKey } from "@/lib/outbound-leg-key";
 
 /**
- * The brand's campaigns as rows (`useCampaignRows`), read by the v2 missions.
+ * The brand's campaigns as rows (`useCampaignRows`), read by the v2 campaigns.
  *
  * Every number on a row is a READY features-service field. The only non-formatting
  * client work is joining the campaign row (channel / leg / status from
@@ -32,7 +32,7 @@ import { canonicalLegKey } from "@/lib/outbound-leg-key";
  * spelled out rather than narrowed to an enum the wire does not promise.
  *
  * ONE set drives every reading of "running" (the rows' first sort key, the v2
- * missions): two lists of the same words would drift into disagreeing about which
+ * campaigns): two lists of the same words would drift into disagreeing about which
  * campaigns are live.
  */
 const ACTIVE_STATUSES = new Set(["active", "running", "ongoing", "live"]);

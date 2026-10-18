@@ -50,7 +50,7 @@ export function LeadHistoryTimeline({
   /**
    * Where the run that WROTE an email opens. When given, every email lead-service ties
    * to a run links to it, so a reader sees which workflow, model, template, audience and
-   * mission wrote it. Absent = no run page on this surface.
+   * campaign wrote it. Absent = no run page on this surface.
    */
   runHref?: (runId: string) => string;
 }) {

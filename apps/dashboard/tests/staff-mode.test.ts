@@ -54,7 +54,7 @@ describe("staff mode is the ONE staff gate of the customer dashboard", () => {
   });
 });
 
-describe("nothing below a mission reaches a customer", () => {
+describe("nothing below a campaign reaches a customer", () => {
   it("the sidebar Workflows section (with every business-object section) is staff mode only", () => {
     const s = read("components/v2/v2-shell.tsx");
     expect(s).toContain("{staffMode && <StaffObjectSections");
@@ -90,13 +90,9 @@ describe("nothing below a mission reaches a customer", () => {
     expect(s.slice(s.indexOf("<StaffOnly>"))).toContain("<CampaignWorkflowsPage");
   });
 
-  it("the crew card's Workflows link is staff mode only", () => {
-    expect(read("components/v2/crew-page.tsx")).toContain("{staffMode && missions.length === 1 && (");
-  });
-
-  it("the workflow, mission-workflow and research pages sit behind StaffOnly", () => {
+  it("the workflow, campaign-workflow, run and research pages sit behind StaffOnly", () => {
     const base = "app/(authed)/v2/orgs/[orgId]/brands/[brandId]/";
-    for (const p of ["workflows/page.tsx", "workflows/[workflowSlug]/page.tsx", "research/page.tsx", "research/[...path]/page.tsx"]) {
+    for (const p of ["workflows/page.tsx", "workflows/[workflowSlug]/page.tsx", "runs/[runId]/page.tsx", "research/page.tsx", "research/[...path]/page.tsx"]) {
       expect(read(base + p)).toContain("<StaffOnly>");
     }
     const s = read("components/v2/campaign-page.tsx");
@@ -108,7 +104,7 @@ describe("nothing below a mission reaches a customer", () => {
     const gate = s.indexOf("{staffMode && (");
     expect(gate).toBeGreaterThan(-1);
     for (const k of ['k="Workflow"', 'k="Version"', 'k="LLM"', 'k="Template"']) expect(s.indexOf(k)).toBeGreaterThan(gate);
-    expect(s).toContain("missionName ?? (run ?");
+    expect(s).toContain("campaignName ?? (run ?");
   });
 
   it("customer copy never says workflow", () => {
@@ -119,32 +115,27 @@ describe("nothing below a mission reaches a customer", () => {
   });
 });
 
-describe("Work and Crew are staff mode only (owner 2026-10-03: a simpler dashboard for customers)", () => {
+describe("the retired staff pages are redirects (2026-10-18)", () => {
   const route = (p: string) => read(`app/(authed)/v2/orgs/[orgId]/brands/[brandId]/${p}/page.tsx`);
 
-  it("the pages sit behind StaffOnly, the campaign page stays open (onboarding lands there)", () => {
-    for (const p of ["work", "work/runs/[runId]", "crew"]) expect(route(p)).toContain("<StaffOnly>");
+  it("old bookmarks land on Campaigns, an old run URL on its run page; the campaign page stays open", () => {
+    for (const p of ["work", ["cr", "ew"].join("")]) expect(route(p)).toContain("/campaigns`);");
+    expect(route("work/runs/[runId]")).toContain("/runs/${encodeURIComponent(runId)}`);");
     expect(route("campaigns/[campaignId]")).not.toContain("StaffOnly");
   });
 
-  it("the sidebar carries no Work / Crew entry nor Crew / Missions group (owner 2026-10-07)", () => {
+  it("the sidebar, the G-keys and the palette carry no entry for them", () => {
     const shell = read("components/v2/v2-shell.tsx");
-    for (const s of ['v2Href(orgId, brandId, "work")', 'v2Href(orgId, brandId, "crew")', 'title="Crew"', 'title="Missions"', "useMissions"]) {
-      expect(shell).not.toContain(s);
-    }
-  });
-
-  it("the G-keys and the palette skip them outside staff mode", () => {
+    expect(shell).not.toContain('v2Href(orgId, brandId, "work")');
     const menus = read("components/v2/sidebar-menus.tsx");
-    for (const k of ['"work", label: "Work", key: "w", staff: true', '"crew", label: "Crew", key: "c", staff: true']) {
-      expect(menus).toContain(k);
-    }
+    expect(menus).not.toContain('section: "work"');
+    expect(menus).not.toContain('key: "c", staff: true');
     expect(menus).toContain("if (g.staff && !staffMode) continue;");
     expect(menus).toContain("(!g.staff || staffMode)");
   });
 
-  it("Today and the bell send a customer's 'needs your call' to the Inbox, not Work", () => {
-    expect(read("components/v2/today-page.tsx")).toContain('const callHref = staffMode ? v2Href(orgId, brandId, "work") : `${v2Href(orgId, brandId, "people")}?tab=positive-replies`;');
-    expect(read("components/v2/ui.tsx")).toContain('href={staffMode ? v2Href(orgId, brandId, "work") : `${v2Href(orgId, brandId, "people")}?tab=positive-replies`}');
+  it("Today and the bell send 'needs your call' to the Inbox", () => {
+    expect(read("components/v2/today-page.tsx")).toContain('const callHref = `${v2Href(orgId, brandId, "people")}?tab=positive-replies`;');
+    expect(read("components/v2/ui.tsx")).toContain('href={`${v2Href(orgId, brandId, "people")}?tab=positive-replies`}');
   });
 });

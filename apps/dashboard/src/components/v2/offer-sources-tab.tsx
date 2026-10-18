@@ -7,7 +7,7 @@ import { getOfferSalesPaths } from "@/lib/api";
 import { campaignKey, sortCampaigns, sourceCampaignsOfOffer } from "@/lib/offer-campaigns";
 import { roiUnavailableLabel } from "@/lib/offer-sales-paths";
 import { v2OfferHref } from "@/lib/v2/routes";
-import { useMissions, type Mission } from "@/components/v2/use-missions";
+import { useCampaigns, type V2Campaign } from "@/components/v2/use-campaigns";
 import { CampaignLeg } from "@/components/v2/offer-campaigns";
 import { PathAvatar } from "@/components/v2/offer-sales-paths";
 import { EmptyNote, SectionTitle, Shimmer, StateDot } from "@/components/v2/ui";
@@ -15,7 +15,7 @@ import { EmptyNote, SectionTitle, Shimmer, StateDot } from "@/components/v2/ui";
 /**
  * Targeting > Sources (owner 2026-10-09): where we find the people, read only. One row per
  * source campaign of the offer, off the SAME features-service `sourceCampaigns[]` read (and
- * cache key) the Sourcing page polls, its On/Off off the same campaign-service missions.
+ * cache key) the Sourcing page polls, its On/Off off the same campaign-service campaigns.
  * The toggle and the budget stay on the Sourcing page; this tab links there.
  */
 export function OfferSourcesTab({ orgId, brandId, offerId }: { orgId: string; brandId: string; offerId: string }) {
@@ -24,22 +24,22 @@ export function OfferSourcesTab({ orgId, brandId, offerId }: { orgId: string; br
     () => getOfferSalesPaths(brandId, offerId, "catalogue"),
     { enabled: !!offerId },
   );
-  const { missions } = useMissions(orgId, brandId, { allOffers: true });
-  const missionByKey = useMemo(() => {
-    const m = new Map<string, Mission>();
-    for (const x of missions) {
+  const { campaigns } = useCampaigns(orgId, brandId, { allOffers: true });
+  const campaignByKey = useMemo(() => {
+    const m = new Map<string, V2Campaign>();
+    for (const x of campaigns) {
       const c = x.row.campaign;
       if (c.offerId === offerId && c.featureSlug && c.legKey) m.set(campaignKey(c.featureSlug, c.legKey), x);
     }
     return m;
-  }, [missions, offerId]);
+  }, [campaigns, offerId]);
   const sources = useMemo(
     () =>
       sortCampaigns(
         sourceCampaignsOfOffer(paths.data?.sourceCampaigns ?? [], roiUnavailableLabel),
-        (c) => missionByKey.get(campaignKey(c.featureSlug, c.legKey))?.running ?? false,
+        (c) => campaignByKey.get(campaignKey(c.featureSlug, c.legKey))?.running ?? false,
       ),
-    [paths.data, missionByKey],
+    [paths.data, campaignByKey],
   );
   const pending = !paths.isFetchedAfterMount && !paths.data;
   const manage = (
@@ -77,8 +77,8 @@ export function OfferSourcesTab({ orgId, brandId, offerId }: { orgId: string; br
               </thead>
               <tbody>
                 {sources.map((c) => {
-                  const mission = missionByKey.get(campaignKey(c.featureSlug, c.legKey)) ?? null;
-                  const on = mission?.running ?? false;
+                  const campaign = campaignByKey.get(campaignKey(c.featureSlug, c.legKey)) ?? null;
+                  const on = campaign?.running ?? false;
                   return (
                     <tr key={campaignKey(c.featureSlug, c.legKey)} className="k-row k-line-subtle h-12 border-b last:border-b-0">
                       <td className="px-3 py-2 pl-4">
@@ -94,7 +94,7 @@ export function OfferSourcesTab({ orgId, brandId, offerId }: { orgId: string; br
                         {c.managed === false ? (
                           <StateDot running={false} label="Not run yet" />
                         ) : (
-                          <StateDot running={on} label={on ? "On" : "Off"} hold={on ? null : mission?.paymentHold ?? null} />
+                          <StateDot running={on} label={on ? "On" : "Off"} hold={on ? null : campaign?.paymentHold ?? null} />
                         )}
                       </td>
                     </tr>

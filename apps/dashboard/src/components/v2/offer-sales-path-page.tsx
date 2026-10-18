@@ -8,7 +8,7 @@ import { getOfferSalesPaths, stateBrandLegRates, saveOfferLifetimeRevenue } from
 import { invalidateConversionRates } from "@/lib/write-invalidation";
 import { OfferCampaigns } from "@/components/v2/offer-campaigns";
 import { campaignKey, campaignsOfOffer } from "@/lib/offer-campaigns";
-import { useMissions } from "@/components/v2/use-missions";
+import { useCampaigns } from "@/components/v2/use-campaigns";
 import { roiUnavailableLabel, type SalesPathLeg } from "@/lib/offer-sales-paths";
 import { v2OfferHref } from "@/lib/v2/routes";
 import { V2Page, useOfferName } from "@/components/v2/setup-pages";
@@ -53,15 +53,15 @@ export function V2OfferSalesPathPage() {
   // offer has run (owner 2026-10-08: the old Campaigns page folds in here, each row opening
   // its campaign page). The SOURCE campaigns live on the offer's Sourcing page (owner
   // 2026-10-07: keep this page simple).
-  const { missions } = useMissions(orgId, brandId, { allOffers: true });
+  const { campaigns: records } = useCampaigns(orgId, brandId, { allOffers: true });
   const ran = useMemo(
     () =>
       new Set(
-        missions
+        records
           .filter((m) => m.offerId === offerId)
           .map((m) => campaignKey(m.row.campaign.featureSlug ?? "", m.row.campaign.legKey ?? "")),
       ),
-    [missions, offerId],
+    [records, offerId],
   );
   const campaigns = useMemo(
     () => campaignsOfOffer(paths.data?.campaigns ?? [], paths.data?.paths ?? [], roiUnavailableLabel, (k) => ran.has(k)),

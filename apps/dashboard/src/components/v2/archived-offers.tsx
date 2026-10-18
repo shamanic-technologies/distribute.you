@@ -70,7 +70,7 @@ export function ArchivedOffers({ brandId }: { brandId: string }) {
           </tbody>
         </table>
         <div className="k-fg3 border-t border-[var(--line-subtle)] px-4 py-2.5 text-[12px]">
-          {error ?? "Archived offers keep their missions and figures. Archive an offer from its Settings."}
+          {error ?? "Archived offers keep their campaigns and figures. Archive an offer from its Settings."}
         </div>
       </div>
     </div>

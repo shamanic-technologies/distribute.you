@@ -130,7 +130,7 @@ describe("channel pages", () => {
     expect(cells).not.toContain("campaign.roi");
     expect(results).not.toContain("EXPECTED_ROI_TIP");
     // A row opens its campaign page; the status cell never does.
-    expect(table).toContain("go: () => router.push(mission.href)");
+    expect(table).toContain("go: () => router.push(record.href)");
     expect(table.match(/onClick=\{stop\}/g)?.length).toBe(1);
     expect(results).not.toContain(">Budget</th>");
   });

@@ -9,7 +9,7 @@ import {
   outboundRenameDrift,
   sameLegKey,
 } from "../src/lib/outbound-leg-key";
-import { campaignNameFor, crewNameFor, legCatalogueFromWire, legFor } from "../src/lib/legs";
+import { campaignNameFor, legCatalogueFromWire, legFor } from "../src/lib/legs";
 import { campaignKey, campaignsOfOffer } from "../src/lib/offer-campaigns";
 import { campaignSavedCents } from "../src/lib/campaign-budget";
 import { buildControlRows, type ControlCampaign } from "../src/lib/campaign-controls";
@@ -17,8 +17,6 @@ import { acquisitionChannelsFromFeatures } from "../src/lib/acquisition-channels
 import { legCampaignId } from "../src/lib/v2/leg-campaign";
 import { legRateFor, validatedLegSections } from "../src/lib/offer-channel-settings";
 import { NEW_ORG_LEGS } from "../src/lib/v2/new-org-wizard";
-import { OFFERED_CREWS, crewTrigger } from "../src/lib/v2/crews";
-import { SERVED_STEPS } from "./fixtures/served-steps";
 
 // The outbound leg rename (owner 2026-10-09): every backend migrates on its own day, so
 // one join may read the legacy spelling on one side and the new one on the other. Every
@@ -80,15 +78,14 @@ describe("the leg catalogue joins either spelling", () => {
   const wire = (legKey: string) => ({
     legs: [{ legKey, fromStep: null, toStep: { key: "conversation", label: "Positive reply" } }],
     channels: [
-      { slug: COLD, stepTransitions: [{ legKey, from: null, to: { key: "conversation" }, crewName: "Herald", campaignName: "Jubilation" }] },
+      { slug: COLD, stepTransitions: [{ legKey, from: null, to: { key: "conversation" }, campaignName: "Jubilation" }] },
       { slug: ADS, stepTransitions: [{ legKey: LEGACY_VISIT, from: null, to: { key: "website_visit" }, campaignName: "Beacon" }] },
     ],
   });
   for (const [label, served, asked] of BOTH) {
-    it(`names, crews and finds the leg (${label})`, () => {
+    it(`names and finds the leg (${label})`, () => {
       const cat = legCatalogueFromWire(wire(served));
       expect(campaignNameFor(cat, COLD, asked)).toBe("Jubilation");
-      expect(crewNameFor(cat, COLD, asked)).toBe("Herald");
       expect(legFor(cat, asked)?.toKey).toBe("conversation");
     });
   }
@@ -148,17 +145,13 @@ describe("offer campaigns, budgets and controls join either spelling", () => {
 });
 
 describe("what the dashboard writes", () => {
-  it("states outbound legs in the new spelling (wizard, crews)", () => {
+  it("states outbound legs in the new spelling (wizard)", () => {
     expect(NEW_ORG_LEGS.map((l) => l.key)).toEqual([NEW_VISIT, NEW_REPLY]);
-    expect(OFFERED_CREWS.filter((c) => c.featureSlug === COLD).map((c) => c.legKey)).toEqual([NEW_REPLY, NEW_VISIT]);
   });
   it("the get-started launch writes no leg key at all: it starts a sales funnel by its id (owner 2026-10-10)", () => {
     const src = readFileSync(join(__dirname, "..", "src", "components", "v2", "get-started", "launch.ts"), "utf8");
     expect(src).not.toContain("legKey");
     expect(src).toContain("startSalesFunnelCampaign({ brandId, offerId, salesFunnelId: f.salesFunnelId })");
   });
-  it("a renamed outbound leg still works daily once it starts on a found lead", () => {
-    expect(crewTrigger(SERVED_STEPS, { fromKey: "lead_found", fromLabel: "Lead", toKey: "conversation", toLabel: "Positive reply" })?.kind).toBe("daily");
-    expect(crewTrigger(SERVED_STEPS, { fromKey: "conversation", fromLabel: "Positive reply", toKey: "meeting_booked", toLabel: "Meeting booked" })?.kind).toBe("event");
-  });
+
 });

@@ -6,7 +6,7 @@ const SRC = path.join(__dirname, "../src");
 const read = (rel: string) => fs.readFileSync(path.join(SRC, rel), "utf-8");
 
 /**
- * Campaign rows (`useCampaignRows`, read by the v2 missions). Guards the load-bearing invariants:
+ * Campaign rows (`useCampaignRows`, read by the v2 campaigns). Guards the load-bearing invariants:
  *  - every displayed stat is a READY features-service field (pipeline / ROI / %CAC):
  *    the table renders, never computes a cost metric client-side
  *    (CLAUDE.md: a displayed stat is features-service-owned);

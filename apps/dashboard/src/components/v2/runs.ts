@@ -3,19 +3,15 @@
 import { useMemo } from "react";
 import { useAuthQuery } from "@/lib/use-auth-query";
 import { POLL_INTERVAL } from "@/lib/query-options";
-import { getBrandRunsByCampaign, getBrandRunsByCampaignPerDay, getRunOutcomes, listBrandRunLedger, type CampaignRunGroup, type RunOutcomeGroup, type RunRow } from "@/lib/api";
-import type { Mission } from "@/components/v2/use-missions";
-import { LEAD_RUN_TASK, isWorkRun } from "@/lib/v2/run-labels";
+import { getBrandRunsByCampaign } from "@/lib/api";
+import type { V2Campaign } from "@/components/v2/use-campaigns";
 
-export { LEAD_RUN_TASK, foldSteps, isWorkRun, runState, runTaskLabel, type RunState } from "@/lib/v2/run-labels";
+export { foldSteps, runTaskLabel } from "@/lib/v2/run-labels";
 
 /**
- * runs-service, read the way Keel reads its agents: runs today, a week of daily run
- * counts, the spend those runs carried, when the last one started, and the latest runs
- * themselves. Every figure is served per campaign; the only step here is filing each
- * campaign's served group under the crew that works it (a display join, the same one
- * the People table makes), and adding counts that are disjoint by construction (a run
- * belongs to exactly one campaign).
+ * runs-service, read the way Keel reads its agents. Every figure is served per campaign;
+ * the only step here is keeping the groups of the brand's campaigns (a display join), and
+ * adding counts that are disjoint by construction (a run belongs to exactly one campaign).
  */
 
 /** Local midnight, `daysAgo` days back, as an ISO instant. */
@@ -33,189 +29,16 @@ export function useRunsToday(brandId: string) {
   );
 }
 
-/** A local day as runs-service names its bucket: `YYYY-MM-DD` in the browser's timezone. */
-export function localDayKey(daysAgo = 0, now = new Date()): string {
-  const d = new Date(now.getFullYear(), now.getMonth(), now.getDate() - daysAgo);
-  const p = (n: number) => String(n).padStart(2, "0");
-  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`;
-}
-
-/**
- * The last 7 local days, oldest first, one served roll-up per day, in ONE read: runs-service
- * buckets by local day in the browser's timezone (it used to be seven parallel reads).
- */
-export function useRunsWeek(brandId: string) {
-  const today = localDayStart(0);
-  const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
-  return useAuthQuery(
-    ["v2RunsWeek", brandId, today, timezone],
-    async () => {
-      const byDay = await getBrandRunsByCampaignPerDay(brandId, { startedAfter: localDayStart(6), timezone });
-      return Array.from({ length: 7 }, (_, i) => byDay.get(localDayKey(6 - i)) ?? []);
-    },
-    { enabled: !!brandId, refetchInterval: 60_000 },
-  );
-}
-
-/** runs-service caps `campaignIds` at 500 per request. */
-export const MAX_RUN_CAMPAIGN_IDS = 500;
-
-/**
- * The latest runs the brand's CREWS made, newest first: one row per lead worked, never
- * the steps inside it (a single lead is ~15 child runs, mostly judgments). A brand's run
- * ledger also holds work no crew did (a CRM page read, a gateway request), so the read is
- * narrowed server-side to the campaigns the missions own and to lead runs: filtering the
- * page here would let child steps fill it and leave no lead run on it.
- *
- * `campaignIds` is null while the missions are still resolving (the read waits),
- * and an empty list means the brand has no mission, so there is nothing to ask for.
- * Live rows come first, so a family past the cap drops ancestors, never a live row.
- * The page asks 4x `limit` (cap 500) because the $0 gate runs are dropped after.
- */
-export function useRecentRuns(brandId: string, campaignIds: string[] | null, limit = 60) {
-  const ids = campaignIds ? campaignIds.slice(0, MAX_RUN_CAMPAIGN_IDS) : null;
-  const key = ids ? [...ids].sort().join(",") : null;
-  return useAuthQuery(
-    ["v2RecentRuns", brandId, limit, key, LEAD_RUN_TASK],
-    async () => {
-      if (!ids || ids.length === 0) return [];
-      const runs = await listBrandRunLedger(brandId, {
-        limit: Math.min(limit * 4, 500),
-        campaignIds: ids,
-        taskName: LEAD_RUN_TASK,
-        subtreeCost: true,
-      });
-      return runs.filter(isWorkRun).slice(0, limit);
-    },
-    { enabled: !!brandId && ids !== null, refetchInterval: POLL_INTERVAL },
-  );
-}
-
-/** Every campaign id a mission owns, live rows first, then their ancestors. */
-export function missionCampaignIds(
-  missions: Mission[],
-  missionByCampaignId: Map<string, Mission>,
-): string[] {
-  const live = missions.map((m) => m.row.campaign.id);
-  const seen = new Set(live);
-  return [...live, ...[...missionByCampaignId.keys()].filter((id) => !seen.has(id))];
-}
-
-/**
- * Today's runs themselves, newest first, bounded. `complete` is false when the cap cut it.
- * Narrowed server-side to the selected offer's campaigns (`campaignIds`, null while they
- * resolve; empty = the offer has no campaign, so there is nothing to ask for).
- */
-export function useRunsTodayList(brandId: string, campaignIds: string[] | null, limit = 200) {
-  const start = localDayStart(0);
-  const ids = campaignIds ? campaignIds.slice(0, MAX_RUN_CAMPAIGN_IDS) : null;
-  const key = ids ? [...ids].sort().join(",") : null;
-  const q = useAuthQuery(
-    ["v2RecentRuns", brandId, limit, start, key],
-    () => (ids && ids.length > 0 ? listBrandRunLedger(brandId, { limit, startedAfter: start, campaignIds: ids }) : Promise.resolve([])),
-    { enabled: !!brandId && ids !== null, refetchInterval: POLL_INTERVAL },
-  );
-  return { ...q, complete: q.data ? q.data.length < limit : false };
-}
-
-export interface CrewRuns {
-  runsToday: number;
-  spendTodayCents: number;
-  lastRunAt: string | null;
-  /** Runs per local day, oldest first, the last one today. */
-  week: number[];
-}
-
-/** Files each campaign's served roll-up under the crew whose mission it is. */
-export function useCrewRuns(
+/** Runs finished today by the campaigns in `campaignById` (the selected offer's). */
+export function useCampaignRunsToday(
   brandId: string,
-  missionByCampaignId: Map<string, Mission>,
-): { byCrew: Map<string, CrewRuns>; settled: boolean } {
+  campaignById: Map<string, V2Campaign>,
+): { runsToday: number; settled: boolean } {
   const today = useRunsToday(brandId);
-  const week = useRunsWeek(brandId);
-  const byCrew = useMemo(() => {
-    const out = new Map<string, CrewRuns>();
-    const slot = (key: string) => {
-      let r = out.get(key);
-      if (!r) {
-        r = { runsToday: 0, spendTodayCents: 0, lastRunAt: null, week: [0, 0, 0, 0, 0, 0, 0] };
-        out.set(key, r);
-      }
-      return r;
-    };
-    const crewOf = (g: CampaignRunGroup) => (g.campaignId ? missionByCampaignId.get(g.campaignId)?.crew.key : undefined);
-    for (const g of today.data ?? []) {
-      const key = crewOf(g);
-      if (!key) continue;
-      const r = slot(key);
-      r.runsToday += g.runCount;
-      r.spendTodayCents += g.totalCostInUsdCents;
-      if (g.maxStartedAt && (!r.lastRunAt || g.maxStartedAt > r.lastRunAt)) r.lastRunAt = g.maxStartedAt;
-    }
-    (week.data ?? []).forEach((day, i) => {
-      for (const g of day) {
-        const key = crewOf(g);
-        if (!key) continue;
-        const r = slot(key);
-        r.week[i] += g.runCount;
-        if (g.maxStartedAt && (!r.lastRunAt || g.maxStartedAt > r.lastRunAt)) r.lastRunAt = g.maxStartedAt;
-      }
-    });
-    return out;
-  }, [today.data, week.data, missionByCampaignId]);
-  return { byCrew, settled: (today.data !== undefined || today.isError) && (week.data !== undefined || week.isError) };
-}
-
-export interface CrewOutcomes {
-  /** Entry runs over the last 30 days, as runs-service states them for the crew. */
-  month: RunOutcomeGroup | null;
-  /** Entry runs today (for the median run, as Keel states it). */
-  today: RunOutcomeGroup | null;
-}
-
-/**
- * How each crew's runs ENDED and how long they took, from runs-service's own run-outcomes
- * read. A crew is several stored campaigns (a family), so each crew is asked with its whole
- * family in ONE request grouped by feature: the success rate and the median are the
- * producer's, over exactly that crew's runs. Nothing is merged or divided here.
- */
-export function useCrewOutcomes(
-  brandId: string,
-  missionByCampaignId: Map<string, Mission>,
-): { byCrew: Map<string, CrewOutcomes>; settled: boolean } {
-  const families = useMemo(() => {
-    const out = new Map<string, string[]>();
-    for (const [campaignId, m] of missionByCampaignId) out.set(m.crew.key, [...(out.get(m.crew.key) ?? []), campaignId]);
-    return [...out.entries()].sort(([a], [b]) => a.localeCompare(b));
-  }, [missionByCampaignId]);
-  const signature = families.map(([k, ids]) => `${k}:${ids.length}`).join("|");
-  const today = localDayStart(0);
-  const month = localDayStart(30);
-  const q = useAuthQuery(
-    ["v2RunOutcomes", brandId, today, signature],
-    () =>
-      Promise.all(
-        families.map(async ([key, ids]) => {
-          const [m, t] = await Promise.all([
-            getRunOutcomes({ brandId, groupBy: "featureSlug", campaignIds: ids, startedAfter: month }),
-            getRunOutcomes({ brandId, groupBy: "featureSlug", campaignIds: ids, startedAfter: today }),
-          ]);
-          // A family is one channel, so one group; a stray null-feature group is never the crew's.
-          const pick = (gs: RunOutcomeGroup[]) => gs.find((g) => g.dimensions.featureSlug) ?? null;
-          return [key, { month: pick(m), today: pick(t) }] as const;
-        }),
-      ),
-    { enabled: !!brandId && families.length > 0, refetchInterval: 60_000 },
-  );
-  const byCrew = useMemo(() => new Map<string, CrewOutcomes>(q.data ?? []), [q.data]);
-  return { byCrew, settled: q.data !== undefined || q.isError };
-}
-
-/** "1m 52s", "48s", "2h 5m": a served duration in the way Keel prints it. */
-export function formatRunDuration(ms: number): string {
-  const s = Math.round(ms / 1000);
-  if (s < 60) return `${s}s`;
-  const m = Math.floor(s / 60);
-  if (m < 60) return `${m}m ${s % 60}s`;
-  return `${Math.floor(m / 60)}h ${m % 60}m`;
+  const runsToday = useMemo(() => {
+    let n = 0;
+    for (const g of today.data ?? []) if (g.campaignId && campaignById.has(g.campaignId)) n += g.runCount;
+    return n;
+  }, [today.data, campaignById]);
+  return { runsToday, settled: today.data !== undefined || today.isError };
 }

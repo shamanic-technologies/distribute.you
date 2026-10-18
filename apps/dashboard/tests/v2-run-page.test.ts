@@ -7,9 +7,10 @@ const SRC = join(__dirname, "../src");
 const read = (p: string) => readFileSync(join(SRC, p), "utf-8");
 
 describe("v2 run page — one workflow run, opened from the email it wrote", () => {
-  it("lives under Work", () => {
-    expect(v2RunHref("org_1", "b1", "r 1")).toBe("/v2/orgs/org_1/brands/b1/work/runs/r%201");
-    expect(existsSync(join(SRC, "app/(authed)/v2/orgs/[orgId]/brands/[brandId]/work/runs/[runId]/page.tsx"))).toBe(true);
+  it("lives at /runs/:runId, and the old /work/runs/:runId URL redirects there", () => {
+    expect(v2RunHref("org_1", "b1", "r 1")).toBe("/v2/orgs/org_1/brands/b1/runs/r%201");
+    expect(existsSync(join(SRC, "app/(authed)/v2/orgs/[orgId]/brands/[brandId]/runs/[runId]/page.tsx"))).toBe(true);
+    expect(read("app/(authed)/v2/orgs/[orgId]/brands/[brandId]/work/runs/[runId]/page.tsx")).toContain("redirect(");
   });
 
   it("reads the run by id and what it wrote, never a setting", () => {
@@ -35,15 +36,9 @@ describe("v2 run page — one workflow run, opened from the email it wrote", () 
     expect(timeline).toContain("runHref && e.workflowRunId ? runHref(e.workflowRunId) : null");
   });
 
-  it("the person side panel no longer states a mission or an audience (they belong to a run)", () => {
+  it("the person side panel no longer states a campaign or an audience (they belong to a run)", () => {
     const person = read("components/v2/person-page.tsx");
-    expect(person).not.toContain('k="Mission"');
+    expect(person).not.toContain('k="Campaign"');
     expect(person).not.toContain('k="Audience"');
-  });
-
-  it("Work opens a running run on its own page", () => {
-    const work = read("components/v2/work-page.tsx");
-    expect(work).toContain("href={v2RunHref(orgId, brandId, r.id)}");
-    expect(work).toContain("runHrefFor={(r) => v2RunHref(orgId, brandId, r.id)}");
   });
 });

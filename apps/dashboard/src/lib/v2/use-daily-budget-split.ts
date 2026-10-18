@@ -10,10 +10,10 @@ import { useSelectedOffer } from "@/components/v2/selected-offer";
 import { isProactiveFrom } from "@/lib/outbound-leg-key";
 
 /**
- * The brand's running daily budget SPLIT by how its crews work: what daily crews may
- * spend today, and the caps of event crews (a leg that starts from a step, like
+ * The brand's running daily budget SPLIT by how its campaigns work: what daily campaigns
+ * may spend today, and the caps of event campaigns (a leg that starts from a step, like
  * booking a meeting off a positive reply), which spend only when that step is reached.
- * The top bar and Crew state the first; the second is stated beside it, never added.
+ * The top bar states the first; the second is stated beside it, never added.
  *
  * Both are the SELECTED offer's (owner 2026-10-03: the dashboard reads one offer), and
  * `null` until the served budget, the campaigns, the leg catalogue and the offer are in.

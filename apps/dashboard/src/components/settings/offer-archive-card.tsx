@@ -14,7 +14,7 @@ import { useAuthQuery } from "@/lib/use-auth-query";
  * RETIRE AN OFFER the brand no longer sells (or created by mistake), or bring it back.
  *
  * Archiving hides the offer from the offer switcher and the default Offers list. It
- * deletes nothing: its missions, audiences and figures stay, and Restore puts it back.
+ * deletes nothing: its campaigns, audiences and figures stay, and Restore puts it back.
  * brand-service refuses the archive while a campaign on the offer is still running,
  * and that refusal is rendered as a sentence (`offerArchiveErrorMessage`).
  *
@@ -51,7 +51,7 @@ export function OfferArchiveCard({ brandId, offerId }: { brandId: string; offerI
       </h2>
       <p className="mt-0.5 text-xs text-gray-500">
         {archived
-          ? "It is hidden from your offer switcher and your Offers list. Its missions, audiences and figures are all kept."
+          ? "It is hidden from your offer switcher and your Offers list. Its campaigns, audiences and figures are all kept."
           : "Stop showing an offer you no longer sell. Nothing is deleted, and you can restore it at any time."}
       </p>
       <div className="mt-4 flex flex-wrap items-center gap-3">

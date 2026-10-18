@@ -70,11 +70,11 @@ describe("every v2 brand read is the selected offer's", () => {
     }
   });
 
-  it("money, leads, missions, runs and budget all take the provider's offer", () => {
+  it("money, leads, campaigns, runs and budget all take the provider's offer", () => {
     const data = read("components/v2/data.ts");
     expect(data).toContain("getOfferRevenue(offerId!, brandId)");
     expect(data).toContain("scope: offerId ? { brandId, offerId } : { brandId }");
-    expect(read("components/v2/use-missions.ts")).toContain("scopeOfferId && c.offerId !== scopeOfferId");
+    expect(read("components/v2/use-campaigns.ts")).toContain("scopeOfferId && c.offerId !== scopeOfferId");
     expect(read("lib/v2/use-daily-budget-split.ts")).toContain("(id) => offerById.get(id) === offerId");
     expect(read("components/v2/v2-shell.tsx")).toContain("<SelectedOfferProvider brandId={brandId}>");
   });

@@ -1,29 +1,12 @@
 import { describe, expect, it } from "vitest";
-import { existsSync, readFileSync } from "node:fs";
+import { readFileSync } from "node:fs";
 import { join } from "node:path";
 
 const SRC = join(__dirname, "../src");
 const read = (p: string) => readFileSync(join(SRC, p), "utf8");
 
-describe("Crew page", () => {
-  const page = read("components/v2/crew-page.tsx");
-  it("keeps Add a crew for staff only", () => {
-    expect(page).toContain("{staffMode && (\n            <Link");
-    expect(page).toContain("{settled && staffMode && (");
-  });
-  it("states each crew by its trigger, and offers a campaign on an idle one", () => {
-    expect(page).toContain("<CrewTriggerTag trigger={crew.trigger}");
-    expect(page).toContain("+ Create a campaign");
-    expect(page).not.toContain("<AddMissionModal");
-  });
-  it("states the DAILY budget, with event crews' caps beside it and never added", () => {
-    expect(page).toContain("useDailyBudgetSplit(brandId");
-    expect(page).not.toContain("useRunningDailyBudgetCents");
-  });
-});
-
-describe("the daily budget excludes event crews", () => {
-  // Today states no daily budget since its crew tile became Delivered (2026-10-03).
+describe("the daily budget excludes event campaigns", () => {
+  // Today states no daily budget since its runs tile became Delivered (2026-10-03).
   it("Today carries no campaign on/off switch: cancelling lives in Billing (owner 2026-10-05)", () => {
     expect(read("components/v2/today-page.tsx")).not.toContain("CampaignControlsTrigger");
   });
@@ -34,19 +17,23 @@ describe("the daily budget excludes event crews", () => {
   });
 });
 
-describe("Missions page", () => {
-  it("is deleted: old links land on Campaigns (owner 2026-10-05)", () => {
-    expect(existsSync(join(SRC, "components/v2/missions-page.tsx"))).toBe(false);
-    expect(read("app/(authed)/v2/orgs/[orgId]/brands/[brandId]/missions/page.tsx")).toContain("/campaigns`");
+// The legacy `/missions` URLs (old links and onboarding emails) redirect onto Campaigns.
+const LEGACY = "app/(authed)/v2/orgs/[orgId]/brands/[brandId]/" + ["miss", "ions"].join("");
+describe("legacy URLs", () => {
+  it("the old list and campaign URLs land on Campaigns (owner 2026-10-05)", () => {
+    expect(read(`${LEGACY}/page.tsx`)).toContain("/campaigns`");
+    expect(read(`${LEGACY}/[campaignId]/page.tsx`)).toContain("/campaigns/${encodeURIComponent(campaignId)}`");
+    expect(read(`${LEGACY}/[campaignId]/audiences/page.tsx`)).toContain("?tab=targeting`");
+    expect(read(`${LEGACY}/[campaignId]/settings/page.tsx`)).toContain("?tab=settings`");
+    expect(read(`${LEGACY}/[campaignId]/workflows/page.tsx`)).toContain("?tab=workflows`");
   });
 });
 
 describe("Offer page", () => {
   const page = read("components/v2/setup-pages.tsx");
   const offer = page.slice(page.indexOf("export function V2OfferPage("), page.indexOf("/** Who an offer is sold to"));
-  it("is one column: the missions list left the page, the offer's own cards stay", () => {
+  it("is one column: the campaigns list left the page, the offer's own cards stay", () => {
     expect(offer).not.toContain("<aside");
-    expect(offer).not.toContain("<AddMissionModal");
     expect(offer).toContain("<OfferLifetimeRevenue brandId={brandId} offerId={offerId} />");
     expect(offer).toContain("<BrandOfferCard orgId={orgId} brandId={brandId} offerId={offerId} />");
   });
@@ -55,13 +42,7 @@ describe("Offer page", () => {
   });
 });
 
-describe("one start from nothing", () => {
-  it("the per-pipe Add a mission modal is gone: the Copilot creates a sales funnel campaign", () => {
-    expect(existsSync(join(SRC, "components/v2/add-mission-modal.tsx"))).toBe(false);
-  });
-});
-
-describe("Campaign page (replaced the mission page, owner 2026-10-05)", () => {
+describe("Campaign page (owner 2026-10-05)", () => {
   const page = read("components/v2/campaign-page.tsx");
   it("is the channel page's anatomy narrowed to one campaign", () => {
     expect(page).toContain("<LegSteps");

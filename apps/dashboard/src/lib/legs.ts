@@ -79,8 +79,6 @@ export interface LegCatalogue {
   legs: ReadonlyMap<string, LegDef>;
   /** Every channel's own legs, in the order the producer lists them. */
   legsByChannel: ReadonlyMap<string, readonly string[]>;
-  /** The crew name the producer gives a (channel, leg), keyed `slug|legKey`. Absent = unnamed. */
-  crewNames: ReadonlyMap<string, string>;
   /** The CAMPAIGN name (features-service `campaignName`) of a (channel, leg), keyed `featureLegId(slug, legKey)` (canonical spelling). Absent = unnamed. */
   campaignNames: ReadonlyMap<string, string>;
   /** Proactive or reactive (and its trigger) per (channel, leg), keyed `featureLegId(slug, legKey)`. Absent = not served. */
@@ -93,7 +91,6 @@ export const EMPTY_LEG_CATALOGUE: LegCatalogue = {
   steps: new Map(),
   legs: new Map(),
   legsByChannel: new Map(),
-  crewNames: new Map(),
   campaignNames: new Map(),
   modes: new Map(),
   triggers: new Map(),
@@ -117,7 +114,6 @@ export interface PublicCatalogueWire {
       legKey?: unknown;
       from?: { key?: unknown; label?: unknown } | null;
       to?: { key?: unknown; label?: unknown } | null;
-      crewName?: unknown;
       campaignName?: unknown;
       mode?: unknown;
       triggerId?: unknown;
@@ -183,7 +179,6 @@ export function legCatalogueFromWire(body: PublicCatalogueWire | null | undefine
   for (const leg of body.legs ?? []) addLeg(str(leg?.legKey), leg?.fromStep, leg?.toStep);
 
   const legsByChannel = new Map<string, string[]>();
-  const crewNames = new Map<string, string>();
   const campaignNames = new Map<string, string>();
   const channelTypes = new Map<string, string>();
   const modes = new Map<string, LegMode>();
@@ -199,8 +194,6 @@ export function legCatalogueFromWire(body: PublicCatalogueWire | null | undefine
       addLeg(servedKey, t?.from, t?.to);
       const legKey = canonicalLegKey(slug, servedKey);
       if (!keys.includes(legKey)) keys.push(legKey);
-      const crew = str(t?.crewName);
-      if (crew) crewNames.set(featureLegId(slug, legKey), crew);
       const campaign = str(t?.campaignName);
       if (campaign) campaignNames.set(featureLegId(slug, legKey), campaign);
       if (t?.mode === "proactive") modes.set(featureLegId(slug, legKey), { mode: "proactive" });
@@ -219,24 +212,7 @@ export function legCatalogueFromWire(body: PublicCatalogueWire | null | undefine
     const callable = typeof t?.callable === "boolean" ? t.callable : null;
     triggers.set(id, { id, label, description: str(t?.description), icon: str(t?.icon), type, outcomeKey: str(t?.outcomeKey), callable });
   }
-  return { steps, legs, legsByChannel, crewNames, campaignNames, modes, triggers };
-}
-
-/**
- * The teammate name features-service gives the crew performing a (channel, leg), or null
- * when it names none. The producer owns the name, so staff emails and this dashboard
- * say the same one.
- */
-export function crewNameFor(
-  catalogue: LegCatalogue,
-  featureSlug: string | null | undefined,
-  legKey: string | null | undefined,
-): string | null {
-  if (!featureSlug) return null;
-  // An older campaign row stating no leg still has a crew when its channel performs one leg.
-  const key = legKey ?? (catalogue.legsByChannel.get(featureSlug)?.length === 1 ? catalogue.legsByChannel.get(featureSlug)![0] : null);
-  if (!key) return null;
-  return catalogue.crewNames.get(featureLegId(featureSlug, key)) ?? null;
+  return { steps, legs, legsByChannel, campaignNames, modes, triggers };
 }
 
 /** The campaign name features-service gives a (channel, leg), or null when it names none. */

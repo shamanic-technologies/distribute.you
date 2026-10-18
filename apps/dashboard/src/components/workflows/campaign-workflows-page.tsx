@@ -341,7 +341,7 @@ function scopeFigures(
 
 /**
  * `campaignId` is for a host whose route does not name the campaign `id` (dashboard v2's
- * `missions/[campaignId]`). Absent, the route's own `id` is read exactly as before.
+ * `campaigns/[campaignId]`). Absent, the route's own `id` is read exactly as before.
  */
 export function CampaignWorkflowsPage({
   campaignId: campaignIdProp,

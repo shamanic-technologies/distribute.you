@@ -8,11 +8,11 @@ import { pickSelectedOffer, readSelectedOfferCookie, selectedOfferCookie } from 
 
 /**
  * The ONE offer every v2 brand page reads (owner 2026-10-03). The switcher at the top of
- * the sidebar picks it; the readers in `data.ts`, `use-missions.ts`, `runs.ts` and the
+ * the sidebar picks it; the readers in `data.ts`, `use-campaigns.ts`, `runs.ts` and the
  * daily budget take it from here, so a page cannot forget to scope itself.
  *
  * `campaignIds` is every stored campaign that sells the offer (live rows and their
- * ancestors share the offer), off the same `["campaigns", brandId]` read the missions
+ * ancestors share the offer), off the same `["campaigns", brandId]` read the campaigns
  * already make. It is how runs-service reads, which know campaigns and not offers, are
  * narrowed to the offer.
  */
@@ -49,7 +49,7 @@ export function SelectedOfferProvider({ brandId, children }: { brandId: string; 
   useEffect(() => setStored(readSelectedOfferCookie(document.cookie, brandId)), [brandId]);
 
   const campaigns = campaignsQ.data?.campaigns ?? null;
-  // A mission's page names its offer through its campaign: reading it selects that offer.
+  // A campaign's page names its offer through its campaign: reading it selects that offer.
   const fromUrl =
     params.offerId ??
     (params.campaignId

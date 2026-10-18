@@ -2,11 +2,6 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { dailyBudgetHidden } from "../src/lib/payment-mode";
-import {
-  planMissionBudgetUsd,
-  SUBSCRIPTION_OUTBOUND_DAILY_USD,
-  SUBSCRIPTION_REACTIVE_DAILY_USD,
-} from "../src/lib/subscription-plan";
 
 // Owner 2026-10-03: a plan ($99/month and up) runs each brand x offer at a fixed
 // $50/day (+$25/day on replies). Not a choice: never shown, never editable, and no
@@ -34,32 +29,7 @@ describe("dailyBudgetHidden", () => {
   });
 });
 
-describe("planMissionBudgetUsd", () => {
-  it("starts the first outbound mission of an offer at the plan's $50", () => {
-    expect(planMissionBudgetUsd({ fromKey: null }, [])).toBe(SUBSCRIPTION_OUTBOUND_DAILY_USD);
-  });
-
-  it("starts the first reply mission at the plan's $25", () => {
-    expect(planMissionBudgetUsd({ fromKey: "positive_reply" }, [{ fromKey: null }])).toBe(SUBSCRIPTION_REACTIVE_DAILY_USD);
-  });
-
-  it("funds no second mission of a kind the plan already funds on that offer", () => {
-    expect(planMissionBudgetUsd({ fromKey: null }, [{ fromKey: null }])).toBeNull();
-    expect(planMissionBudgetUsd({ fromKey: "positive_reply" }, [{ fromKey: "positive_reply" }])).toBeNull();
-  });
-});
-
 describe("every dashboard surface that states a daily budget asks whether to hide it", () => {
-  const surfaces = [
-    "src/components/v2/crew-page.tsx",
-    "src/components/v2/work-page.tsx",
-  ];
-  for (const f of surfaces) {
-    it(f, () => {
-      expect(read(f)).toContain("const budgetHidden = useDailyBudgetHidden();");
-    });
-  }
-
   it("the controls state Pause/Activate alone: no per-campaign budget figure for anyone", () => {
     const trigger = read("src/components/campaigns/campaign-controls-trigger.tsx");
     expect(trigger).not.toContain("fmtDailyBudgetUsd");
