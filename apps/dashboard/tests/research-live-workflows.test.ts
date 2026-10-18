@@ -189,6 +189,12 @@ describe("research reads nothing scoped to the viewer", () => {
     // Model and template read EVERY version, so a retired workflow still states them.
     expect(live).toContain("listChannelWorkflowStacks(featureSlug)");
     expect(live).toContain("<WhyHere row={r} />");
+    // Every workflow, template and LLM cell is a tag opening its own page; the name cell wears no chip.
+    expect(live).toContain("<Tag href={workflowHref}");
+    expect(live).toContain('researchCatalogHref(base, pipe, "templates", template)');
+    expect(live).toContain('researchCatalogHref(base, pipe, "models", model.key)');
+    expect(live).not.toContain("<LiveWorkflowChips");
+    expect(live).toContain("table-fixed");
     expect(live).not.toContain("useParams");
   });
 });
