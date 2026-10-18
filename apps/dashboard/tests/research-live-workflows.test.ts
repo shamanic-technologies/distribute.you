@@ -5,6 +5,7 @@ import {
   fleetWorkflowRows,
   campaignWorkflowRows,
   shortWorkflowName,
+  placeWords,
   type FleetRankingRow,
   type CampaignLadderRow,
 } from "../src/lib/live-workflow-rows";
@@ -38,6 +39,22 @@ describe("fleetWorkflowRows", () => {
     expect(out.map((r) => r.slug)).toEqual(["raven", "nobelium", "azalea"]);
     expect(out.find((r) => r.first)?.slug).toBe("raven");
     expect(out.find((r) => r.cash)?.slug).toBe("nobelium");
+  });
+
+  it("carries the producer's place, explore price and runnability verbatim", () => {
+    const [r] = fleetWorkflowRows([fleet("a", { place: "explore", explorePriceUsd: 0, executable: true })]);
+    expect(r).toMatchObject({ place: "explore", explorePriceUsd: 0, executable: true });
+    const [old] = fleetWorkflowRows([fleet("b")]);
+    expect(old).toMatchObject({ place: null, explorePriceUsd: null, executable: null });
+  });
+
+  it("names why a row stands there; a cannot-run row says why it cannot run", () => {
+    expect(placeWords({ place: "explore", executable: true, assignment: "active" })?.label).toBe("Explored first");
+    expect(placeWords({ place: "money", executable: true, assignment: "active" })?.label).toBe("Best mature");
+    expect(placeWords({ place: "proven_worse", executable: true, assignment: "active" })?.label).toBe("Proven pricier");
+    expect(placeWords({ place: "cannot_run", executable: false, assignment: "active" })?.label).toBe("Retired: no version runs");
+    expect(placeWords({ place: "cannot_run", executable: true, assignment: "deprecated" })?.label).toBe("Deprecated on this leg");
+    expect(placeWords({ place: null, executable: null, assignment: "active" })).toBeNull();
   });
 
   it("a workflow with no spend on the leg states no result yet", () => {
@@ -169,6 +186,9 @@ describe("research reads nothing scoped to the viewer", () => {
     expect(live).not.toContain("legKeyForSteps(");
     expect(live).toContain("getLegWorkflowRanking(featureSlug, legKey)");
     expect(live).toContain('["legWorkflowRanking", featureSlug, legKey]');
+    // Model and template read EVERY version, so a retired workflow still states them.
+    expect(live).toContain("listChannelWorkflowStacks(featureSlug)");
+    expect(live).toContain("<WhyHere row={r} />");
     expect(live).not.toContain("useParams");
   });
 });
