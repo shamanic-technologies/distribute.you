@@ -70,6 +70,21 @@ export interface TriggerDef {
   callable: boolean | null;
 }
 
+/**
+ * A PIPE (one channel on one leg) as features-service names and marks it on the public
+ * catalogue (v0.179.264): the staff catalogue's own pipe row, so a customer and a staff
+ * surface draw the same name, icon and colour. The look is the producer's, never ours.
+ */
+export interface PipeIdentity {
+  /** `<channel slug>|<leg key>`, byte-equal to `featureLegId`. */
+  id: string;
+  name: string;
+  /** Phosphor icon name, as served; null when none is served. */
+  icon: string | null;
+  /** Hex colour, as served; null when none is served. */
+  color: string | null;
+}
+
 /** How a (channel, leg) runs: on its own budget, or on demand when its trigger fires. */
 export type LegMode = { mode: "proactive" } | { mode: "reactive"; triggerId: string | null };
 
@@ -81,6 +96,8 @@ export interface LegCatalogue {
   legsByChannel: ReadonlyMap<string, readonly string[]>;
   /** The CAMPAIGN name (features-service `campaignName`) of a (channel, leg), keyed `featureLegId(slug, legKey)` (canonical spelling). Absent = unnamed. */
   campaignNames: ReadonlyMap<string, string>;
+  /** Each (channel, leg)'s PIPE as served, keyed `featureLegId(slug, legKey)`. Absent = the producer serves none. */
+  pipes: ReadonlyMap<string, PipeIdentity>;
   /** Proactive or reactive (and its trigger) per (channel, leg), keyed `featureLegId(slug, legKey)`. Absent = not served. */
   modes: ReadonlyMap<string, LegMode>;
   /** Every trigger type, by id, in the producer's order. */
@@ -92,6 +109,7 @@ export const EMPTY_LEG_CATALOGUE: LegCatalogue = {
   legs: new Map(),
   legsByChannel: new Map(),
   campaignNames: new Map(),
+  pipes: new Map(),
   modes: new Map(),
   triggers: new Map(),
 };
@@ -115,6 +133,7 @@ export interface PublicCatalogueWire {
       from?: { key?: unknown; label?: unknown } | null;
       to?: { key?: unknown; label?: unknown } | null;
       campaignName?: unknown;
+      pipe?: { id?: unknown; name?: unknown; icon?: unknown; color?: unknown } | null;
       mode?: unknown;
       triggerId?: unknown;
     }> | null;
@@ -180,6 +199,7 @@ export function legCatalogueFromWire(body: PublicCatalogueWire | null | undefine
 
   const legsByChannel = new Map<string, string[]>();
   const campaignNames = new Map<string, string>();
+  const pipes = new Map<string, PipeIdentity>();
   const channelTypes = new Map<string, string>();
   const modes = new Map<string, LegMode>();
   for (const channel of body.channels ?? []) {
@@ -196,6 +216,15 @@ export function legCatalogueFromWire(body: PublicCatalogueWire | null | undefine
       if (!keys.includes(legKey)) keys.push(legKey);
       const campaign = str(t?.campaignName);
       if (campaign) campaignNames.set(featureLegId(slug, legKey), campaign);
+      const pipeId = str(t?.pipe?.id);
+      const pipeName = str(t?.pipe?.name);
+      if (pipeId && pipeName) {
+        // Keyed on OUR id so a lookup by a campaign's own (channel, leg) finds it; a served id
+        // that disagrees is the producer's spelling drifting, said loudly.
+        const id = featureLegId(slug, legKey);
+        if (pipeId !== id) console.error("[legs] a served pipe id disagrees with its channel and leg", { served: pipeId, expected: id });
+        pipes.set(id, { id, name: pipeName, icon: str(t?.pipe?.icon), color: str(t?.pipe?.color) });
+      }
       if (t?.mode === "proactive") modes.set(featureLegId(slug, legKey), { mode: "proactive" });
       else if (t?.mode === "reactive") modes.set(featureLegId(slug, legKey), { mode: "reactive", triggerId: str(t?.triggerId) });
     }
@@ -212,17 +241,31 @@ export function legCatalogueFromWire(body: PublicCatalogueWire | null | undefine
     const callable = typeof t?.callable === "boolean" ? t.callable : null;
     triggers.set(id, { id, label, description: str(t?.description), icon: str(t?.icon), type, outcomeKey: str(t?.outcomeKey), callable });
   }
-  return { steps, legs, legsByChannel, campaignNames, modes, triggers };
+  return { steps, legs, legsByChannel, campaignNames, pipes, modes, triggers };
 }
 
-/** The campaign name features-service gives a (channel, leg), or null when it names none. */
+/**
+ * The name features-service gives a (channel, leg): its served PIPE name (every leg has one,
+ * 2026-10-18), else the older `campaignName` (equal wherever both are served), else null.
+ */
 export function campaignNameFor(
   catalogue: LegCatalogue,
   featureSlug: string | null | undefined,
   legKey: string | null | undefined,
 ): string | null {
   if (!featureSlug || !legKey) return null;
-  return catalogue.campaignNames.get(featureLegId(featureSlug, legKey)) ?? null;
+  const id = featureLegId(featureSlug, legKey);
+  return catalogue.pipes.get(id)?.name ?? catalogue.campaignNames.get(id) ?? null;
+}
+
+/** The PIPE features-service serves for a (channel, leg), or null when it serves none. */
+export function pipeFor(
+  catalogue: LegCatalogue,
+  featureSlug: string | null | undefined,
+  legKey: string | null | undefined,
+): PipeIdentity | null {
+  if (!featureSlug || !legKey) return null;
+  return catalogue.pipes.get(featureLegId(featureSlug, legKey)) ?? null;
 }
 
 /**

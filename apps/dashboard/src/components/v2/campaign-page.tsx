@@ -24,7 +24,7 @@ import { CampaignWorkflowsPage } from "@/components/workflows/campaign-workflows
 import { useCampaigns, type V2Campaign } from "@/components/v2/use-campaigns";
 import { LEG_STEPS, LegSteps, StepBar, SummaryCard, useCampaignWindow } from "@/components/v2/offer-channel-page";
 import { ColdEmailChannelSettings } from "@/components/v2/offer-channels-page";
-import { PathAvatar } from "@/components/v2/offer-sales-paths";
+import { ServedPipeMark } from "@/components/v2/served-pipe-mark";
 import { PeoplePage } from "@/components/v2/people-page";
 import { V2AudiencesTable } from "@/components/v2/audiences-table";
 import { useAudienceTable } from "@/components/v2/use-audience-table";
@@ -127,7 +127,7 @@ export function V2CampaignPage({ funnelListSettled = true }: { funnelListSettled
       title={
         campaign ? (
           <span className="flex min-w-0 items-center gap-2.5">
-            {name && <PathAvatar name={name} size={32} />}
+            <ServedPipeMark pipeId={campaign.pipe.id} size={32} />
             <span className="truncate">{shownName}</span>
           </span>
         ) : (

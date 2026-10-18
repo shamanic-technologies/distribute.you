@@ -9,7 +9,8 @@ import { roiUnavailableLabel } from "@/lib/offer-sales-paths";
 import { v2OfferHref } from "@/lib/v2/routes";
 import { useCampaigns, type V2Campaign } from "@/components/v2/use-campaigns";
 import { CampaignLeg } from "@/components/v2/offer-campaigns";
-import { PathAvatar } from "@/components/v2/offer-sales-paths";
+import { ServedPipeMark } from "@/components/v2/served-pipe-mark";
+import { featureLegId } from "@/lib/outbound-leg-key";
 import { EmptyNote, SectionTitle, Shimmer, StateDot } from "@/components/v2/ui";
 
 /**
@@ -83,7 +84,7 @@ export function OfferSourcesTab({ orgId, brandId, offerId }: { orgId: string; br
                     <tr key={campaignKey(c.featureSlug, c.legKey)} className="k-row k-line-subtle h-12 border-b last:border-b-0">
                       <td className="px-3 py-2 pl-4">
                         <span className="flex min-w-0 items-center gap-2.5">
-                          {c.name && <PathAvatar name={c.name} size={28} />}
+                          <ServedPipeMark pipeId={featureLegId(c.featureSlug, c.legKey)} size={28} />
                           <span className="truncate font-semibold">{c.name ?? c.channelName}</span>
                         </span>
                       </td>
