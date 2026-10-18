@@ -15,6 +15,7 @@ import { HEADLESS_SCANNER_JS } from "@/lib/posthog-replay";
 import { SITE_URL, organizationJsonLd } from "@/lib/seo";
 import { formatReturnMultiple } from "@/lib/landing-format";
 import { reseedFounderCount } from "@/lib/founder-count";
+import { INDEX_LINKS_TOKEN, fetchIndexList, indexLinksHtml } from "@/lib/fleet-indexes";
 import {
   renderProofSelection,
   renderShowcaseSelection,
@@ -588,6 +589,19 @@ async function withFounderCount(html: string): Promise<string> {
   }
 }
 
+/**
+ * The footer's Indexes column: one link per index the service serves, read live so a
+ * new index is linked on every page without an edit here. A failed read leaves only
+ * the "All indexes" link the markup carries, logged loud by the reader.
+ */
+// Short: every page waits on this read, and a footer link is not worth a slow page.
+const INDEX_LINKS_TIMEOUT_MS = 3_000;
+
+async function withIndexLinks(html: string): Promise<string> {
+  if (!html.includes(INDEX_LINKS_TOKEN)) return html;
+  return html.replaceAll(INDEX_LINKS_TOKEN, indexLinksHtml(await fetchIndexList(INDEX_LINKS_TIMEOUT_MS)));
+}
+
 async function withHotLeadStats(html: string) {
   const wantsRow = html.includes(HOT_LEAD_ROW_TOKEN);
   const wantsBand = html.includes(HOT_LEAD_BAND_TOKEN);
@@ -632,6 +646,11 @@ export interface StaticResponseOptions {
   status?: number;
   /** Canonical path, used for the markdown header when the page states none. */
   canonicalPath?: string;
+  /**
+   * Edge cache in seconds, for a page whose figure moves faster than the day the
+   * rest of the site uses (the fleet indexes record a new day every hour).
+   */
+  sMaxAge?: number;
 }
 
 /**
@@ -684,8 +703,8 @@ async function negotiatedResponse(
     });
   }
 
-  const html = await withFounderCount(
-    await withShowcaseOutcomes(await withHotLeadStats(decorated)),
+  const html = await withIndexLinks(
+    await withFounderCount(await withShowcaseOutcomes(await withHotLeadStats(decorated))),
   );
 
   if (negotiated === "markdown") {
@@ -728,7 +747,10 @@ async function negotiatedResponse(
       // - a reader is always served instantly from the edge, never waiting on a
       // revalidation. Raising this without raising `revalidate` (or vice versa)
       // fixes nothing: both have to move together.
-      "cache-control": "s-maxage=86400, stale-while-revalidate=31536000",
+      "cache-control":
+        options.sMaxAge !== undefined
+          ? `s-maxage=${options.sMaxAge}, stale-while-revalidate=${options.sMaxAge * 2}`
+          : "s-maxage=86400, stale-while-revalidate=31536000",
     },
   });
 }

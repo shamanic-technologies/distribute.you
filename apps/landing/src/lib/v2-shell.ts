@@ -10,6 +10,7 @@
  */
 import { COMPETITORS } from "./competitors";
 import { BEST_FOR_PAGES, bestForLinkLabel } from "./best-for";
+import { INDEX_LINKS_TOKEN } from "./fleet-indexes";
 
 export const SITE = "https://distribute.you";
 /** Where every CTA on the site goes.
@@ -27,7 +28,7 @@ export const SIGN_IN = "https://dashboard.distribute.you/sign-in";
  * Bumped together with the homepage's link: every page reads the same stylesheet, so
  * an edit to it ships to a returning visitor only if every `?v=` moves at once.
  */
-export const V2_STYLES_VERSION = 17;
+export const V2_STYLES_VERSION = 18;
 export const V2_MAIN_VERSION = 8;
 
 /**
@@ -61,6 +62,14 @@ export function compareFooterColumn(): string {
   return `<div><h4>Compare</h4><ul>${items}<li><a href="/compare">All comparisons</a></li><li><a href="/alternatives">Alternatives</a></li></ul></div><div><h4>Best for</h4><ul>${best}<li><a href="/best">All rankings</a></li></ul></div>`;
 }
 
+/**
+ * The footer's Indexes column. Its per-index links are resolved per request from the
+ * live list (`withIndexLinks` in static-html.ts), so the markup carries the token.
+ */
+export function indexesFooterColumn(): string {
+  return `<div><h4>Indexes</h4><ul>${INDEX_LINKS_TOKEN}<li><a href="/indexes">All indexes</a></li></ul></div>`;
+}
+
 export function nav(): string {
   return `<div class="nav" id="nav">
   <div class="nav-pill">
@@ -89,6 +98,7 @@ export function footer(): string {
       </div>
       <div><h4>Product</h4><ul><li><a href="/#how">How it works</a></li><li><a href="/#features">Features</a></li><li><a href="/#pricing">Pricing</a></li><li><a href="/catalog">Price catalog</a></li><li><a href="/#faq">FAQ</a></li></ul></div>
       ${compareFooterColumn()}
+      ${indexesFooterColumn()}
       <div><h4>Company</h4><ul><li><a href="/about">About</a></li><li><a href="/investors">Investors</a></li><li><a href="/contact">Contact</a></li><li><a href="/blog">Blog</a></li></ul></div>
       <div><h4>Legal</h4><ul><li><a href="/terms">Terms</a></li><li><a href="/privacy">Privacy</a></li><li><a href="/developers">Developers</a></li></ul></div>
     </div>
