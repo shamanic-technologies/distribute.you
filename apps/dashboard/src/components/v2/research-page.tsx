@@ -20,7 +20,9 @@ import {
 } from "@/components/v2/research-bits";
 import { V2ResearchCatalogView, CrewCatalogLinks } from "@/components/v2/research-catalog";
 import { CostBasisSwitch } from "@/components/v2/cost-basis-switch";
-import { ResearchSourceProvider, useResearch } from "@/lib/research/research-source";
+import { ResearchSourceProvider, useResearch, useResearchCatalog } from "@/lib/research/research-source";
+import { useFeatures } from "@/lib/features-context";
+import { shortWorkflowName } from "@/lib/live-workflow-rows";
 import { useCostBasis } from "@/lib/v2/use-cost-basis";
 import { formatUsdAdaptive } from "@/lib/format-number";
 import { v2Href } from "@/lib/v2/routes";
@@ -31,6 +33,8 @@ import {
   TOPIC_LABEL,
   parseResearchPath,
   pointHref,
+  researchWorkflow,
+  CREW_KEY,
   studiesFor,
   studiesForOutcome,
   studyById,
@@ -316,12 +320,15 @@ function BarsChart({
   color,
   winner,
   hrefFor,
+  nameFor,
 }: {
   chart: ResearchChart;
   color: string;
   winner: string | null;
   /** A workflow's or template's bar opens that one's own page. */
   hrefFor?: (p: ResearchPoint) => string | null;
+  /** A workflow's own name (Rampart), shown before what it writes with. */
+  nameFor?: (p: ResearchPoint) => string | null;
 }) {
   if (!chart.points.length) return <EmptyNote>Nothing to draw yet.</EmptyNote>;
   const max = Math.max(...chart.points.map((p) => p.value), 0) || 1;
@@ -332,11 +339,14 @@ function BarsChart({
         // sit last with no price, and "Winner" beside "None yet" states two things at once.
         const top = winner !== null && p.label === winner && i === 0;
         const href = hrefFor?.(p) ?? null;
+        const name = nameFor?.(p) ?? null;
         const inner = (
           <>
             <div className="flex items-baseline gap-2 text-[13px]">
-              <span className={`min-w-0 flex-1 truncate ${top ? "font-medium" : ""}`} title={p.label}>
-                {p.label}
+              <span className={`min-w-0 flex-1 truncate ${top ? "font-medium" : ""}`} title={name ? `${name} · ${p.label}` : p.label}>
+                {name && <span className="font-medium">{name}</span>}
+                {name && <span className="k-fg3"> · </span>}
+                <span className={name ? "k-fg2" : ""}>{p.label}</span>
               </span>
               {top && <span className="k-chip shrink-0">Winner</span>}
               {p.thin && <span className="k-fg3 shrink-0 text-[12px]">Learning</span>}
@@ -375,6 +385,16 @@ function BarsChart({
 function V2ResearchStudy({ base, studyId }: { base: string; studyId: string }) {
   const RESEARCH = useResearch().file;
   const study = studyById(studyId, RESEARCH);
+  // A workflow bar names the workflow (Rampart) as workflow-service states it, off the research catalogue.
+  const catalog = useResearchCatalog(useResearch().basis).data ?? null;
+  const { getFeature } = useFeatures();
+  const workflowCrew = study?.topic === "workflow" ? study.crew : null;
+  const channelName = workflowCrew ? getFeature(CREW_KEY[workflowCrew].channel)?.name ?? null : null;
+  const workflowName = (p: ResearchPoint): string | null => {
+    if (!workflowCrew || !catalog || !p.key) return null;
+    const w = researchWorkflow(catalog, workflowCrew, p.key);
+    return w?.name ? shortWorkflowName(w.name, channelName) : null;
+  };
   if (!study) {
     return (
       <>
@@ -469,7 +489,7 @@ function V2ResearchStudy({ base, studyId }: { base: string; studyId: string }) {
                 <div key={c.title}>
                   <SectionTitle>{c.title}</SectionTitle>
                   <div className="k-card overflow-hidden">
-                    <BarsChart chart={c} color={look.color} winner={study.winner} hrefFor={(p) => pointHref(base, study, p)} />
+                    <BarsChart chart={c} color={look.color} winner={study.winner} hrefFor={(p) => pointHref(base, study, p)} nameFor={workflowName} />
                   </div>
                   <ChartNote note={c.note} />
                 </div>
