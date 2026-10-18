@@ -3,6 +3,7 @@ import type { ReactNode } from "react";
 import { BEST_FOR_PAGES, bestForLinkLabel } from "@/lib/best-for";
 import { COMPETITORS } from "@/lib/competitors";
 import { PROD_URLS } from "@/lib/env-urls";
+import { fetchIndexList } from "@/lib/fleet-indexes";
 import { WHY } from "@/lib/v2-shell";
 
 interface FooterProps {
@@ -54,7 +55,7 @@ function Column({ title, links }: { title: string; links: { label: string; href:
   );
 }
 
-export function Footer({ disclaimer }: FooterProps) {
+export async function Footer({ disclaimer }: FooterProps) {
   const compare = [
     ...COMPETITORS.map((c) => ({ label: `distribute.you vs ${c.name}`, href: `/compare/${c.slug}` })),
     { label: "All comparisons", href: "/compare" },
@@ -64,11 +65,17 @@ export function Footer({ disclaimer }: FooterProps) {
     ...BEST_FOR_PAGES.map((p) => ({ label: bestForLinkLabel(p), href: `/best/${p.slug}` })),
     { label: "All rankings", href: "/best" },
   ];
+  // One link per index the service serves, read live like the rendered footers.
+  const indexList = await fetchIndexList(3_000);
+  const indexes = [
+    ...(indexList?.indexes ?? []).map((i) => ({ label: i.name, href: `/indexes/${i.slug}` })),
+    { label: "All indexes", href: "/indexes" },
+  ];
   void PROD_URLS;
   return (
     <footer className="border-t border-[#ececec] bg-white text-[#6b6b6b]">
       <div className="mx-auto max-w-[1120px] px-6 py-16">
-        <div className="grid grid-cols-2 gap-8 md:grid-cols-[1.4fr_1fr_1fr_1fr_1fr_1fr]">
+        <div className="grid grid-cols-2 gap-8 md:grid-cols-[1.4fr_1fr_1fr_1fr_1fr_1fr_1fr]">
           <div className="col-span-2 md:col-span-1">
             <a href="/" className="inline-flex items-center gap-2 text-[20px] tracking-[-0.03em] text-[#0a0a0a]">
               <Image src="/landing/v2/assets/logo-mark.svg" alt="" width={26} height={26} className="rounded-md" />
@@ -79,6 +86,7 @@ export function Footer({ disclaimer }: FooterProps) {
           <Column title="Product" links={PRODUCT} />
           <Column title="Compare" links={compare} />
           <Column title="Best for" links={best} />
+          <Column title="Indexes" links={indexes} />
           <Column title="Company" links={COMPANY} />
           <Column title="Legal" links={LEGAL} />
         </div>
