@@ -1,27 +1,29 @@
 import { auth } from "@clerk/nextjs/server";
 import { NextResponse } from "next/server";
 import { isAdminEmail } from "@/lib/admin-allowlist";
-import billedFile from "@/lib/research/research.json";
-import billedCatalog from "@/lib/research/research-catalog.json";
-import actualFile from "@/lib/research/actual/research.json";
-import actualCatalog from "@/lib/research/actual/research-catalog.json";
-import texts from "@/lib/research/research-templates.json";
-import { readMergedResearch } from "@/lib/research/live-file";
+import { readLiveCatalog, readLiveResearch, readLiveTemplateTexts, type ResearchBasisParam } from "@/lib/research/live-file";
+import { CATALOG_KINDS, PIPE_ORDER, type ResearchCatalog, type ResearchFile } from "@/lib/research/research";
 
 /**
- * GET /api/research/{basis}/{part} — STAFF ONLY. Every byte of Research: the snapshot (`file`),
- * its catalogue (`catalog`) and the template texts (`texts`), on the billed basis (`user`) or the
- * vendor-cost one (`actual`, which reveals our margin).
+ * GET /api/research/{basis}/{part} — STAFF ONLY. Every byte of Research, read LIVE from
+ * features-service (`lib/research/live-file.ts`): the file (`file`), its catalogue (`catalog`) and
+ * the template texts (`texts`), on the billed basis (`user`) or the vendor-cost one (`actual`,
+ * which reveals our margin). No snapshot backs it: a failed read answers 502 and the page shows
+ * its error state.
  *
- * Research is staff-only, so its data is served here and nowhere else: the JSON files are imported
- * by this server route ONLY, never by a client module, so they are in no browser bundle (guarded by
- * tests/research-actual-basis.test.ts). The dashboard has no edge allowlist, so the `isAdminEmail`
- * check below is the sole boundary.
+ * Research is staff-only, so its data is served here and nowhere else (no client module reads a
+ * Research source; guarded by tests/research-actual-basis.test.ts). The dashboard has no edge
+ * allowlist, so the `isAdminEmail` check below is the sole boundary.
  */
-const PARTS: Record<string, Record<string, unknown>> = {
-  user: { file: billedFile, catalog: billedCatalog, texts },
-  actual: { file: actualFile, catalog: actualCatalog, texts },
-};
+const BASES = new Set<ResearchBasisParam>(["user", "actual"]);
+const PARTS = new Set(["file", "catalog", "texts"]);
+
+/** How many rows each pipe's catalogue pages list: the hub's chips state the pages' own lengths. */
+function catalogCountsOf(catalog: ResearchCatalog): ResearchFile["catalogCounts"] {
+  return Object.fromEntries(
+    PIPE_ORDER.map((pipe) => [pipe, Object.fromEntries(CATALOG_KINDS.map((kind) => [kind, catalog[pipe]?.[kind]?.length ?? 0]))]),
+  ) as ResearchFile["catalogCounts"];
+}
 
 export async function GET(_req: Request, { params }: { params: Promise<{ basis: string; part: string }> }) {
   const { userId, sessionClaims } = await auth();
@@ -29,17 +31,21 @@ export async function GET(_req: Request, { params }: { params: Promise<{ basis: 
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
   const { basis, part } = await params;
-  // The file is LIVE (features-service), each study it does not serve yet from the snapshot, marked.
-  if (part === "file" && (basis === "user" || basis === "actual")) {
-    try {
-      const merged = await readMergedResearch(basis, sessionClaims!.email as string);
-      return NextResponse.json(merged, { headers: { "cache-control": "private, no-store" } });
-    } catch (err) {
-      console.error("[research] live file failed:", err);
-      return NextResponse.json({ error: "Research live read failed" }, { status: 502 });
-    }
+  if (!BASES.has(basis as ResearchBasisParam) || !PARTS.has(part)) {
+    return NextResponse.json({ error: `Unknown research part ${basis}/${part}` }, { status: 404 });
   }
-  const body = Object.hasOwn(PARTS, basis) && Object.hasOwn(PARTS[basis], part) ? PARTS[basis][part] : undefined;
-  if (body === undefined) return NextResponse.json({ error: `Unknown research part ${basis}/${part}` }, { status: 404 });
-  return NextResponse.json(body, { headers: { "cache-control": "private, no-store" } });
+  const b = basis as ResearchBasisParam;
+  const email = sessionClaims!.email as string;
+  try {
+    let body: unknown;
+    if (part === "file") {
+      const [file, catalog] = await Promise.all([readLiveResearch(b, email), readLiveCatalog(b, email)]);
+      body = { ...file, catalogCounts: catalogCountsOf(catalog) };
+    } else if (part === "catalog") body = await readLiveCatalog(b, email);
+    else body = await readLiveTemplateTexts(email);
+    return NextResponse.json(body, { headers: { "cache-control": "private, no-store" } });
+  } catch (err) {
+    console.error(`[research] live ${basis}/${part} failed:`, err);
+    return NextResponse.json({ error: "Research live read failed" }, { status: 502 });
+  }
 }

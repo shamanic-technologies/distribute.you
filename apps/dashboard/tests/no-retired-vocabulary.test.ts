@@ -18,8 +18,6 @@ const banned = (line: string) => BANNED_WORD.test(line) || BANNED_IDENT.test(lin
 
 // Legacy URL route folder (old links and onboarding emails): its pages name it in a comment.
 const LEGACY_DIR = `app/(authed)/v2/orgs/[orgId]/brands/[brandId]/${M}s/`;
-// A prompt snapshot quoting a brand profile's own company statement field, not our vocabulary.
-const DATA_FILES = new Set(["lib/research/research-templates.json"]);
 // Workflow links sent before 2026-10-18 carry the retired parameter names.
 const ALLOWED_LINES = new Set([
   `// Legacy links (before 2026-10-18) carry \`${C}\` and \`${M}\` for the pipe and the campaign.`,
@@ -40,7 +38,7 @@ describe("the retired vocabulary is gone from the dashboard source", () => {
     const hits: string[] = [];
     for (const f of files) {
       const rel = relative(SRC, f);
-      if (rel.startsWith(LEGACY_DIR) || DATA_FILES.has(rel)) continue;
+      if (rel.startsWith(LEGACY_DIR)) continue;
       readFileSync(f, "utf8")
         .split("\n")
         .forEach((line, i) => {

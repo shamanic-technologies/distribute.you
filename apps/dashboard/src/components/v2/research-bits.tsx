@@ -48,7 +48,7 @@ import {
 /**
  * The pieces every Research view draws with (the hub, a question, the workflow and template
  * pages): a topic's mark, a section's mark and name, and the monthly charts. Every value arrives
- * written in research.json; these only lay it out.
+ * written in features-service's live Research file; these only lay it out.
  */
 
 export const TOPIC_LOOK: Record<ResearchTopic, { color: string; Icon: typeof BrainIcon }> = {
@@ -96,11 +96,9 @@ export function instantText(iso: string): string {
   return `${dayText(iso.slice(0, 10))}, ${iso.slice(11, 16)} UTC`;
 }
 
-/** Where the page's figures come from: live studies, and how many still read the nightly snapshot. */
-export function liveText(file: { computedAt?: string | null; readOn: string; studies: { source?: "live" | "snapshot" }[] }): string {
-  const snap = file.studies.filter((s) => s.source === "snapshot").length;
-  const tail = snap > 0 ? ` · ${snap} from the ${dayText(file.readOn)} snapshot` : "";
-  return file.computedAt ? `Live, updated ${instantText(file.computedAt)}${tail}` : `Read from production on ${dayText(file.readOn)}`;
+/** Where the page's figures come from: features-service's live build, and when it ran. */
+export function liveText(file: { computedAt?: string | null; readOn: string }): string {
+  return file.computedAt ? `Live, updated ${instantText(file.computedAt)}` : `Live, read on ${dayText(file.readOn)}`;
 }
 
 /** The section a study sits in: its pipe, or its outcome. */

@@ -4,9 +4,10 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { researchConclusions } from "../src/lib/research/conclusions";
 import type { ResearchFile, ResearchStudy } from "../src/lib/research/research";
 import { verifyServiceKey } from "../src/lib/service-key";
+import { RESEARCH_FILE_FIXTURE } from "./fixtures/research-file";
 import { GET } from "../src/app/api/internal/research/conclusions/route";
 
-const FILE: ResearchFile = JSON.parse(readFileSync(join(__dirname, "..", "src", "lib", "research", "research.json"), "utf8"));
+const FILE: ResearchFile = RESEARCH_FILE_FIXTURE;
 const URL = "https://dashboard.example.test/api/internal/research/conclusions";
 
 describe("research conclusions: what a backend service may quote", () => {
@@ -84,9 +85,13 @@ describe("the service key", () => {
 
   it("the route refuses a request without the key and serves the conclusions with it", async () => {
     process.env.DASHBOARD_APP_API_KEY = "k-secret";
-    // The route reads the LIVE file; before features-service's first build it serves the snapshot alone.
+    // The route reads the LIVE file (features-service through the gateway), billed basis.
     process.env.ADMIN_DISTRIBUTE_API_KEY = "admin";
-    vi.stubGlobal("fetch", async () => new Response(JSON.stringify({ error: "research_not_computed_yet" }), { status: 503 }));
+    const urls: string[] = [];
+    vi.stubGlobal("fetch", async (url: string) => {
+      urls.push(url);
+      return new Response(JSON.stringify(FILE), { status: 200 });
+    });
     const refused = await GET(new Request(URL));
     expect(refused.status).toBe(401);
     const ok = await GET(new Request(URL, { headers: { "x-api-key": "k-secret" } }));
@@ -94,6 +99,15 @@ describe("the service key", () => {
     const body = await ok.json();
     expect(body.conclusions.length).toBeGreaterThan(0);
     expect(body.conclusions.every((c: { verdict: { kind: string } }) => c.verdict.kind === "conclusion")).toBe(true);
+    expect(urls.every((u) => u.endsWith("/v1/features/research?basis=user"))).toBe(true);
+  });
+
+  it("the route serves no stale copy: features-service not built yet is an error, never a snapshot", async () => {
+    process.env.DASHBOARD_APP_API_KEY = "k-secret";
+    process.env.ADMIN_DISTRIBUTE_API_KEY = "admin";
+    vi.stubGlobal("fetch", async () => new Response(JSON.stringify({ reason: "research_not_computed_yet" }), { status: 503 }));
+    const res = await GET(new Request(URL, { headers: { "x-api-key": "k-secret" } }));
+    expect(res.status).toBe(500);
   });
 
   it("the route answers 500 when the key is not configured, never an open route", async () => {

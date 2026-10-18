@@ -53,13 +53,19 @@ const RESEARCH_ROUTE = join("app", "(authed)", "api", "research", "[basis]", "[p
 const CONCLUSIONS_ROUTE = join("app", "api", "internal", "research", "conclusions", "route.ts");
 // The second service-key reader (social-service reads every measured study, quotable only when a conclusion).
 const STUDIES_ROUTE = join("app", "api", "internal", "research", "studies", "route.ts");
-// The server-only reader of the live Research file (features-service), snapshot studies marked.
+// The server-only reader of the live Research file, catalogue and template texts (features-service).
 const LIVE_FILE = join("lib", "research", "live-file.ts");
 
-describe("no research snapshot reaches a browser bundle (billed or actual)", () => {
-  it("only the staff route and the server-only live reader import a research JSON file", () => {
-    const importers = walk(SRC).filter((p) => /lib\/research\/(actual\/)?research[\w-]*\.json|\.\/research[\w-]*\.json/.test(readFileSync(p, "utf8")));
-    expect(importers.map((p) => p.slice(SRC.length + 1)).sort()).toEqual([RESEARCH_ROUTE, LIVE_FILE].sort());
+describe("Research keeps no snapshot: every byte is read live, server-side, staff only", () => {
+  it("no source file imports a Research JSON, and none is left in the tree", () => {
+    const importers = walk(SRC).filter((p) => /research[\w-]*\.json/.test(readFileSync(p, "utf8")));
+    expect(importers.map((p) => p.slice(SRC.length + 1))).toEqual([]);
+    expect(walk(join(SRC, "lib", "research"), []).some((p) => p.endsWith(".json"))).toBe(false);
+  });
+  it("the live reader reads the three gateway lines and keeps no fallback", () => {
+    const live = read(LIVE_FILE);
+    for (const path of ["/v1/features/research?basis=", "/v1/features/research/catalog?basis=", "/v1/features/research/templates"]) expect(live).toContain(path);
+    expect(live).not.toMatch(/snapshot\b(?! is kept)/i);
   });
   it("the live reader is imported by server routes only", () => {
     const importers = walk(SRC).filter((p) => readFileSync(p, "utf8").includes('from "@/lib/research/live-file"'));
@@ -69,22 +75,20 @@ describe("no research snapshot reaches a browser bundle (billed or actual)", () 
     const route = read(path);
     expect(route).toContain("verifyServiceKey(req)");
     expect(route).toContain("status: 401");
-    expect(route).toContain('readMergedResearch("user"');
-    expect(route).not.toContain("actual/research");
-    expect(route).not.toContain("research-catalog");
-    expect(route).not.toContain("research-templates");
+    expect(route).toContain('readLiveResearch("user"');
+    expect(route).not.toContain("readLiveCatalog");
+    expect(route).not.toContain('"actual"');
   });
-  it("the route refuses anyone off the staff list", () => {
+  it("the route refuses anyone off the staff list, and a failed live read is an error, never an older copy", () => {
     const route = read(RESEARCH_ROUTE);
     expect(route).toContain("isAdminEmail(sessionClaims?.email)");
     expect(route).toContain("status: 403");
+    expect(route).toContain("status: 502");
     expect(route).not.toMatch(/^"use client"/m);
   });
-  it("the actual snapshot states its basis", () => {
-    const file = JSON.parse(read("lib/research/actual/research.json"));
-    expect(file.costBasis).toBe("actual");
-    const billed = JSON.parse(read("lib/research/research.json"));
-    expect(billed.costBasis).toBe("user");
+  it("the hub marks no study as a snapshot", () => {
+    expect(read("components/v2/research-page.tsx")).not.toMatch(/Snapshot|liveReason|source === "/);
+    expect(read("components/v2/research-bits.tsx")).not.toContain("snapshot");
   });
 });
 

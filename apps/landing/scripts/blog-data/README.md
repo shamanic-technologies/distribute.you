@@ -24,80 +24,34 @@ glyph runs past the box or lands under 9px on a phone.
 Then `pnpm --filter @distribute/landing test`, which pins the copy rules, the dataset's
 coherence and the editorial rules for both pages.
 
-## Research (dashboard v2, staff)
+## Research (dashboard v2, staff): served LIVE by features-service
 
-The Research page in dashboard v2 (`/v2/.../research`) reads
-`apps/dashboard/src/lib/research/research.json`, written from the SAME fact table as the
-articles, so a study and an article cannot state two figures for one population. Every
-study is fleet-wide (all orgs) but scoped to ONE leg of the channel (campaign-service
-`leg_key`, via `campaign-legs.csv`): the positive reply pipe reads `lead_found_to_conversation` emails only, the website visit pipe
-the link-carrying `lead_found_to_website_visit` emails only, and a campaign stating no leg belongs
-to neither. The legacy spellings (`start_to_*`, renamed 2026-10-09) are the same legs: every leg key
-read goes through `leg-key.mjs`. Each (workflow version, leg) is priced on its own spend (`spend-legs.csv`, per
-campaign and per day), cut at its leg's cutoff like the emails it divides. Labels and the
-catalogue's last-runs lists are per pipe too (a PIPE = one leg x one channel). The articles keep the fleet-wide, all-legs
-population on purpose: the leg scope lives only in the `research` block.
+The staff Research page no longer reads anything from this directory (LIVE-RESEARCH-1018, owner
+2026-10-18). features-service builds every study, the workflow / template / model catalogue and
+the template texts every 15 minutes (`GET /internal/research[/catalog|/templates]?basis=user|actual`,
+gateway `/v1/features/research[...]`, staff only), and the dashboard reads them live. The
+snapshot pipeline that used to live here (`research.mjs`, `research-diff.mjs`, `refresh.sh`,
+`pixel/`, `naming/`, `jev.mjs`, `meeting-before-after.mjs`, the nightly box cron
+`research-refresh-cron.sh` and the committed `apps/dashboard/src/lib/research/*.json`) is gone;
+its scripts were features-service's reference for the port.
 
-**It refreshes itself every night** (2026-10-10): `/root/distribute/research-refresh-cron.sh` on the
-box runs `refresh.sh compute` (below, with `BLOG_DATA_LOCAL=1`: no ssh, node in a 2.5 GB container)
-in a dedicated clone, then `refresh.sh publish`: pushes `research/nightly-refresh`, waits for
-test.yml to go green on it, and only then pushes the commit to main (no token on the box may open
-a PR). The commit body (`research-diff.mjs`) lists every study whose verdict or winner moved. A
-failed run mails the owner. No LLM in it. By hand:
+What stays here serves the published ARTICLES only: `extract.sh` -> `derive.mjs` (the fact table
+the follow-up article reads) and the per-article folders below with their committed snapshots.
+`derive.mjs` still writes its `research` block into `facts.json`; nothing reads it any more.
+
+To read a Research study for an article, save the live file (billed basis) from inside the
+features-service container on the box, then hand it to the article's derive script:
 
 ```sh
-apps/landing/scripts/blog-data/extract.sh 2026-04-15 <today> /tmp/research-data
-apps/landing/scripts/blog-data/pixel/extract-pixel.sh <today minus 21 days> "$PWD/apps/landing/scripts/blog-data/pixel/pixel.research.snapshot.json"
-node --max-old-space-size=8192 apps/landing/scripts/blog-data/derive.mjs /tmp/research-data > /tmp/research-data/facts.json
-node apps/landing/scripts/blog-data/research.mjs /tmp/research-data/facts.json apps/dashboard/src/lib/research > /tmp/research.json && mv /tmp/research.json apps/dashboard/src/lib/research/research.json
-pnpm --filter @distribute/dashboard test research
+ssh root@<box> 'docker exec distribute-features-service-1 node -e "fetch(\"http://localhost:8080/internal/research?basis=user\",{headers:{\"x-api-key\":process.env.FEATURES_SERVICE_API_KEY}}).then(r=>r.text()).then(t=>process.stdout.write(t))"' > /tmp/research.json
 ```
-
-The two timing studies (day of the week, hour of the day) read each email's send time in the
-PROSPECT's timezone (the campaign row's, else the lead's) and state, per month, how much went out
-Monday to Friday between 08:00 and 17:00: campaigns sent on any day and hour until the summer, so
-a weekend day or an off-hour is also an older month. A leg whose every bucket is Learning gets none.
-
-The two strategy studies per cold email pipe (`strategy.mjs`, 2026-10-18) read campaign-service's
-`run_play_attributions` (one row per dispatched run, since 2026-10-18): **Lead strategy** (ROI + rate,
-`<pipe>-strategy-<goal>`, the play the email's run was served under, features-service names, `(default)`
-marked) and **Sourcing strategy** (rate only, `<pipe>-sourcing-strategy-rate`, the play of the run that
-FOUND its lead: lead-service `parent_run_id`, or an on_demand run's `caller_run_id`). An email whose run
-carries no attribution (everything before 2026-10-18) is out, stated, never counted under the default.
-
-The OUTCOME rows (`outcomes.mjs`, owner 2026-10-18): one row per step a pipe's leg lands on, built from
-the data (the hub orders Positive reply, Website visit, Meeting booked, then any new one), 14 studies
-each, `outcome-<outcome>-<cut>-<goal>`: overall (average since inception, month chart) then by pipe,
-channel, leg, workflow, lead strategy and tactic (`tactic-verdicts.json`: Jev's verdict per workflow
-VERSION, re-judged in place when a tactic's text changes; one bar per tactic on the emails of versions
-judged to follow it, the other side beside). $ / outcome = spend over the outcomes the emails earned
-(one pipe: equal to its own cost over time, research.mjs throws otherwise); **% conversion counts LEADS
-at lead-service's grain** (`leads.id`, a human at a company, once however many emails or campaigns),
-never people or emails. The pipe, channel and leg COST bars split the average (each = its spend over
-every outcome, so they add up to it); their rate bars read each one's own leads. Every name is the
-public catalogue's (`catalogue-words.json`). Meeting booked: `meeting-cost` is its average, on the
-brands that report meetings; its workflow and tactic cuts file each lead the booking leg acted on
-under the run that acted (`meeting-booking-acted.csv` run_id, `meeting-runs.csv`).
-
-The second argument receives two side files the workflow and template pages read
-(`research-catalog.json`: one entry per workflow, per template and per model, per pipe, with its months and
-its last runs; `research-templates.json`: the text of every listed template). extract.sh writes
-the three inputs they need beside the dumps (`templates.json`, `workflow-runs.json`,
-`template-runs.json`, `model-runs.json`). Commit all three JSON files together.
-
-`derive.mjs` adds a `research` block (per LLM, per template, per step, per month, and each
-LLM's and template's own month curve); `research.mjs` turns it into one study per question,
-with its charts, its one-line result and its conclusion written out, so the page divides
-nothing. The open-tracking studies read `pixel/pixel.research.snapshot.json`, cut at least the
-rule's duration before the read (research.mjs refuses a snapshot cut any later). Do NOT re-render the
-two articles from a refreshed extract unless you mean to move their published figures.
 
 ## Emails too young to count (two rules, one per surface)
 
 An email sent today has not had time to earn its click or its reply, so counting it makes every
 price read too high and every rate too low. The two surfaces hold different rules on purpose.
 
-**The Research page applies features-service's rule, never its own** (features-service#1196).
+**The research block of `facts.json` applies features-service's rule, never its own** (features-service#1196).
 extract.sh reads `/public/channels` from inside the features-service container into
 `maturity.json`: per leg, `durationDays` (21 on the two cold-email entry legs) and
 `outcomesRequired` (1 positive reply, 10 website visits). The clock is when the RUN started
@@ -105,14 +59,13 @@ extract.sh reads `/public/channels` from inside the features-service container i
 counts when its run started at least `durationDays` before the extract's end, with every outcome
 it earned since, and a leg's spend is cut at the same date by its own run start. A bucket with
 fewer mature outcomes than `outcomesRequired` reads Learning and is still drawn and ranked.
-`derive.mjs` writes the rule it applied as `facts.researchMaturity`; research.mjs states it under
-every chart. An email whose run start is unknown stays in (the producer's own rule for a missing
-serve date).
+`derive.mjs` writes the rule it applied as `facts.researchMaturity`. An email whose run start is
+unknown stays in (the producer's own rule for a missing serve date).
 
 **The articles keep the window they were published on**: `maturation.mjs` measures the time from
 the email that earned an outcome to the outcome, at the 95th percentile per outcome, and drops
 every email sent within it of the window's end (11 days on the articles). `facts.maturation`
-carries it; the Research page does not read it.
+carries it.
 
 Run the research extract with TODAY as its end, not tomorrow: the end is when outcomes stop being
 observed.
@@ -167,31 +120,6 @@ The design file naming the sending and receiving addresses stays on the box
 sending addresses. The committed snapshot carries indices only, and is the record once the
 spam folders have been emptied.
 
-## Meeting booked: one leg, and one OUTCOME section across every leg
-
-`meetings.mjs` (called by research.mjs, unit-tested in `tests/unit/research-meetings.test.ts`) writes two studies from
-four extract.sh dumps (`meetings.csv`, `meeting-booking-acted.csv`, `meeting-campaigns.csv`, `meeting-spend.csv`):
-- `meeting-booking-cost` (the positive reply -> meeting booked leg, `conversation_to_meeting_booked`): that leg's spend over the
-  meetings lead-service credits to our outreach AND booked on or after the leg first acted on the person.
-- `meeting-cost` (the Meeting booked OUTCOME section, `pipe: null, outcome: "meeting"`, listed in the file's
-  `outcomes`): every dollar charged on cold email + meeting booking over every credited meeting, on the brands that
-  REPORT meetings only (any live `meeting_booked` row; owner pick 2026-10-03: a brand with no CRM import or tracker
-  reads zero meetings by construction). Its `population` line says how many brands that is.
-- `meeting-ai-before-after` (`meeting-before-after.mjs`, same section, topic `launch`): does the AI answering positive
-  replies book more meetings? Every figure is lead-service's `GET /internal/meeting-attribution/before-after` (extract.sh
-  -> `meeting-before-after.json`): go-live = the brand's first AI Meeting Booking act, a person sits on the side of their
-  first positive reply. Headline + verdict on the same-horizon 30-day read; all-time is context only. A brand with no
-  go-live stays out, counted in the population line.
-Learning comes from features-service's rule for `conversation_to_meeting_booked` / `start_to_meeting_booked`
-(maturity.json); research.mjs throws if the catalogue states none. Spend is billed gross (actual rows); the actual
-basis states "not measured on vendor cost yet" instead of a figure.
-
-## Open tracking and naming the client: Research only
-
-Both studies live on the Research page only (`pixel/pixel.research.snapshot.json` via `pixel/derive-pixel.mjs`,
-and `naming/naming.mjs`). Their articles (`cold-email-open-tracking`, `cold-email-response-rate`)
-were taken down on 2026-10-02: each headline was a signal, not a conclusion (`verdict.mjs`).
-
 ## The follow-up article
 
 `content/blog/cold-email-follow-up` states the Research page's follow-up study for positive replies
@@ -200,7 +128,7 @@ filed under its place in the sequence, a reply counted for the last email sent b
 committed snapshot carries aggregates only.
 
 ```sh
-# 1. the same extract and facts the Research page is built from (end = today)
+# 1. the extract and its fact table (end = today)
 apps/landing/scripts/blog-data/extract.sh 2026-04-15 <today> /tmp/research-data
 node --max-old-space-size=8192 apps/landing/scripts/blog-data/derive.mjs /tmp/research-data > /tmp/research-data/facts.json
 
@@ -215,28 +143,13 @@ The renderer refuses a snapshot where the steps sent stop being the first email 
 the follow-ups stop doubling the positive replies, or the second follow-up stops adding less
 than the first. The article states lifts (x2, +67%); the counts sit in its Notes.
 
-## Research on two cost bases
-
-The Research page is written twice. The billed snapshot (`research.mjs <facts.json> apps/dashboard/src/lib/research`) is the default view. The staff-only ACTUAL cost snapshot (what the vendors charged us, before our markup) is derived with `COST_BASIS=actual node derive.mjs <dir> > <dir>/facts-actual.json` then `research.mjs <dir>/facts-actual.json apps/dashboard/src/lib/research/actual` (delete the `research-templates.json` it writes there). extract.sh prices every spend row through costs-service's vendor catalogue with runs-service's match rule; a workflow version carrying billed spend no vendor cost prices is left out of the actual figures whole, and the page states how much. Every research JSON (billed and actual) is imported ONLY by the staff route `/api/research/{basis}/{part}`, never by a client module.
-
-## The Typed judgment section (Jev)
-
-`jev.mjs` writes the Research page's "Typed judgment" outcome section from the `jev-*.csv` dumps
-extract.sh pulls (runs_service judgment runs, the lead screen in human-service then lead-service, the
-billed Apollo reveal price, instantly-service reply kinds). Four studies: judgments run and their
-price, the share of people turned away before the paid reveal (at today's 50% bar), screen price
-against reveal price, and the share of cold email replies written by a machine. Each is a
-measurement: a conclusion on 2+ clients, a signal on one, noise under 5 events. On the vendor-cost
-twin the two priced studies read "not measured" (the prices are billed ones). It runs inside
-research.mjs, so the nightly refresh keeps it current. Test: `tests/unit/research-jev.test.ts`.
-
 ## The LLM judge article (Jev)
 
-`content/blog/gtm-ai-llm-judge` states the Research page's Typed judgment studies (jev.mjs). It reads
-the committed `research.json`, never a fresh extract, so refresh the Research page first, then:
+`content/blog/gtm-ai-llm-judge` states the Research page's Typed judgment studies. It reads the
+LIVE Research file saved as above (`/tmp/research.json`), never a fresh extract:
 
 ```sh
-node apps/landing/scripts/blog-data/jev/derive-jev.mjs apps/dashboard/src/lib/research/research.json > apps/landing/scripts/blog-data/jev/jev.snapshot.json
+node apps/landing/scripts/blog-data/jev/derive-jev.mjs /tmp/research.json > apps/landing/scripts/blog-data/jev/jev.snapshot.json
 node apps/landing/scripts/blog-data/jev/render-jev-article.mjs apps/landing/scripts/blog-data/jev/jev.snapshot.json apps/landing/content/blog
 ```
 
@@ -247,11 +160,11 @@ derive-jev.mjs refuses a study that is not a `conclusion`; the renderer refuses 
 
 `content/blog/cold-email-cost-per-positive-reply` states the Research page's two average-cost studies
 (`cold-email-positive-reply-cost-over-time`, `cold-email-website-visit-cost-over-time`): what a positive reply and a website visit cost on
-average since inception, on what clients were billed. It reads the committed `research.json`, never a
-fresh extract, so refresh the Research page first (above), then:
+average since inception, on what clients were billed. It reads the LIVE Research file saved as above
+(`/tmp/research.json`), never a fresh extract:
 
 ```sh
-node apps/landing/scripts/blog-data/cost/derive-cost.mjs apps/dashboard/src/lib/research/research.json > apps/landing/scripts/blog-data/cost/cost.snapshot.json
+node apps/landing/scripts/blog-data/cost/derive-cost.mjs /tmp/research.json > apps/landing/scripts/blog-data/cost/cost.snapshot.json
 node apps/landing/scripts/blog-data/cost/render-cost-article.mjs apps/landing/scripts/blog-data/cost/cost.snapshot.json apps/landing/content/blog
 ```
 

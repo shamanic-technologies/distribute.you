@@ -48,7 +48,7 @@ export function useResearch(): ResearchSource {
 }
 
 /**
- * Renders `children` once the snapshot on the reader's basis has loaded; `pending` until then and
+ * Renders `children` once the live file on the reader's basis has loaded; `pending` until then and
  * `failed` when the route refused or broke, never one basis's figures under the other's label.
  * The catalogue starts loading at once beside it, so a click on a workflow finds it in memory.
  */

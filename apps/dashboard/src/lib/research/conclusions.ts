@@ -5,10 +5,10 @@
  *
  * Only a study whose verdict is `conclusion` (and whose status is `measured`) leaves this module:
  * a `signal` or `noise` study must never be quoted publicly, so it is not served at all. The
- * figures are the BILLED basis (`research.json`, what clients paid), never the `actual` one
+ * figures are the BILLED basis (what clients paid), never the `actual` one
  * (vendor cost, reveals our margin).
  *
- * Nothing here computes a figure: every `statement` and `sample` is a string research.mjs wrote,
+ * Nothing here computes a figure: every `statement` and `sample` is a string features-service wrote,
  * copied as the Research page renders it. A chart point marked Learning (`thin`) or without a
  * value yet is left out, since the page itself does not stand behind it.
  *
