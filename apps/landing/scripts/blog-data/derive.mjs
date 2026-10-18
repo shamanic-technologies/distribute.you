@@ -26,6 +26,7 @@ import { MODEL_LABEL } from "./model-label.mjs";
 import { POSITIVE_REPLY_LEG, WEBSITE_VISIT_LEG, canonicalLeg } from "./leg-key.mjs";
 import { layoutOf, openingOf, dashOf, LAYOUT, OPENING, DASH } from "./first-email-shape.mjs";
 import { attributionIndex, bySourceStrategy, strategyLabels } from "./strategy.mjs";
+import { outcomeCuts } from "./outcomes.mjs";
 
 const dir = process.argv[2];
 if (!dir) throw new Error("usage: derive.mjs <dump-dir>");
@@ -1003,6 +1004,25 @@ const research = (() => {
   };
   return { reply, visit, union, scope, immature: young, noRunStart, beforeWindow, strategyWaiting };
 })();
+// The OUTCOME rows of the Research page (outcomes.mjs): every pipe's mature emails, grouped by the
+// step its leg lands on, each with its spend, its lead and the outcome it earned. A tactic is read
+// off Jev's verdict on the email's workflow VERSION (features-service, tactic-verdicts.json).
+const TACTICS = JSON.parse(readFileSync(join(dir, "tactic-verdicts.json"), "utf8"));
+const verdictsByVersion = new Map();
+for (const v of TACTICS.verdicts) {
+  if (!verdictsByVersion.has(v.workflowSlug)) verdictsByVersion.set(v.workflowSlug, new Map());
+  verdictsByVersion.get(v.workflowSlug).set(v.tacticId, v.verdict === true);
+}
+const stepOfLeg = (leg) => leg.slice(leg.indexOf("_to_") + 4);
+const outcomeRow = (r, hit) => ({
+  workflow: r.workflow, dynasty: r.dynasty, strategy: r.strategy, strategyState: r.strategyState,
+  leadId: r.leadId, orgId: r.orgId, month: r.month, chartMonth: r.chartMonth, cost: r.cost, hit,
+});
+const OUTCOME_SETS = [
+  { pipe: "cold-email-positive-reply", channel: "sales-cold-email-outreach", leg: POSITIVE_REPLY_LEG, emailsNoun: "emails", rows: research.reply.map((r) => outcomeRow(r, r.replied)) },
+  { pipe: "cold-email-website-visit", channel: "sales-cold-email-outreach", leg: WEBSITE_VISIT_LEG, emailsNoun: "emails with a link", rows: research.visit.map((r) => outcomeRow(r, r.clicked)) },
+].filter((s) => s.rows.length).map((s) => ({ ...s, step: stepOfLeg(s.leg) }));
+
 const minMonth = (rows) => rows.reduce((m, f) => (!m || f.month < m ? f.month : m), null);
 const maxMonth = (rows) => rows.reduce((m, f) => (!m || f.month > m ? f.month : m), null);
 out.research = {
@@ -1028,6 +1048,10 @@ out.research = {
   scope: research.scope,
   crmReplies,
   shapeLabels: { layout: LAYOUT, opening: OPENING, dash: DASH },
+  // per step a pipe lands on: the outcome studies' counts (outcomes.mjs), and the tactics' names
+  outcomes: outcomeCuts(OUTCOME_SETS, verdictsByVersion),
+  tactics: TACTICS.tactics,
+  strategyRecordedFrom: STRATEGY_RECORDED_FROM,
 };
 
 // THE RULE the research figures are on, stated beside them: features-service's per-leg maturity,

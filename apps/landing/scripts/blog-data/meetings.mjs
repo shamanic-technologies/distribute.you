@@ -22,6 +22,8 @@ import { MEETING_BOOKING_LEG } from "./leg-key.mjs";
 
 export { MEETING_BOOKING_LEG };
 export const OUTCOME_LEG = "start_to_meeting_booked";
+// The Meeting booked outcome row (its served step label, in words joined by dashes).
+export const OUTCOME_ID = "meeting-booked";
 const MEETING_FEATURE = "ai-meeting-booking";
 const COLD_EMAIL_FEATURE = "sales-cold-email-outreach";
 // A measurement on fewer brands than this describes those brands, not the fleet.
@@ -153,7 +155,7 @@ export function meetingStudies({ meetings, acted, campaigns, spend, maturity, wi
   const outcome = {
     id: "meeting-cost",
     pipe: null,
-    outcome: "meeting",
+    outcome: OUTCOME_ID,
     topic: "cost",
     goal: "roi",
     question: "What does a booked meeting cost, from the first cold email?",
@@ -202,8 +204,27 @@ export function meetingStudies({ meetings, acted, campaigns, spend, maturity, wi
     }
   }
 
+  // The leg's own read for the Meeting booked outcome row (outcomes.mjs): the leads it acted on,
+  // by the month it first acted, and the ones who booked after it acted, at lead-service's grain.
+  const bookedLeads = new Set(bookingMeetings.map((m) => m.matched_lead_id));
+  const actedByMonth = new Map();
+  for (const [lead, at] of firstActed) {
+    const m = actedByMonth.get(at.slice(0, 7)) || actedByMonth.set(at.slice(0, 7), { leads: 0, reached: 0 }).get(at.slice(0, 7));
+    m.leads++;
+    if (bookedLeads.has(lead)) m.reached++;
+  }
+  const bookingRead = {
+    spend: Number(bookingSpend.toFixed(2)),
+    meetings: bookingMeetings.length,
+    leads: firstActed.size,
+    reachedLeads: bookedLeads.size,
+    byMonth: [...actedByMonth.keys()].sort().map((bucket) => ({ bucket, ...actedByMonth.get(bucket) })),
+    outcomesRequired: bookingRule.outcomesRequired,
+  };
+
   return {
-    outcomes: [{ id: "meeting", outcome: "Meeting booked", description: "One outcome across every leg, from the first cold email to the meeting.", population }],
+    booking: bookingRead,
+    outcomes: [{ id: OUTCOME_ID, outcome: "Meeting booked", description: "One outcome across every leg, from the first cold email to the meeting.", population }],
     studies: [booking, outcome],
   };
 }

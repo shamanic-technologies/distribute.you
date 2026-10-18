@@ -49,11 +49,19 @@ describe("meeting studies", () => {
     expect(leg.verdict.kind).toBe("noise");
   });
 
+  it("hands the Meeting booked outcome row the leg's own read, in leads (lead-service's grain)", () => {
+    const { booking } = meetingStudies(input);
+    expect(booking.leads).toBe(2);
+    expect(booking.reachedLeads).toBe(1);
+    expect(booking.meetings).toBe(1);
+    expect(booking.byMonth.reduce((t: number, m: { leads: number }) => t + m.leads, 0)).toBe(2);
+  });
+
   it("prices the Meeting booked outcome across every leg, on the brands that report meetings only", () => {
     const { studies, outcomes } = meetingStudies(input);
     const all = studies.find((s: { id: string }) => s.id === "meeting-cost");
     expect(all.pipe).toBeNull();
-    expect(all.outcome).toBe("meeting");
+    expect(all.outcome).toBe("meeting-booked");
     // A: $500 + $400 + $10 over 3 credited meetings; B and the pre-window row stay out
     expect(all.result.display).toBe("$303");
     expect(all.result.sample).toBe("3 meetings · $910 spent · 1 brand");

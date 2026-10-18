@@ -36,7 +36,8 @@ import { execFileSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
 import { MODEL_LABEL } from "./model-label.mjs";
-import { meetingStudies } from "./meetings.mjs";
+import { meetingStudies, OUTCOME_ID as MEETING_OUTCOME_ID } from "./meetings.mjs";
+import { emailOutcomeStudies, meetingOutcomeStudies, outcomeIdOf } from "./outcomes.mjs";
 import { meetingBeforeAfterStudy } from "./meeting-before-after.mjs";
 import { jevStudies } from "./jev.mjs";
 import { strategyPopulation } from "./strategy.mjs";
@@ -1035,6 +1036,111 @@ for (const [goal, question] of [
   add({ id: `meeting-booking-workflow-${goal}`, pipe: "meeting-booking", topic: "workflow", goal, question, status: "not_enough_data", headline: "Not enough data yet.", winner: null, crowned: false, result: null, charts: [], conclusion: [MEETING_BOOKING_REASON] });
 }
 
+// ---------- outcomes: one row per step a pipe lands on (outcomes.mjs, owner 2026-10-18) ----------
+// Each outcome is asked what it costs and what share of LEADS reach it, overall and by pipe,
+// channel, leg, workflow, lead strategy and tactic. Every word naming a step, a channel or a pipe is
+// features-service's (catalogue-words.json); the outcome list is the steps the data lands on.
+const PIPES = [
+  { id: "cold-email-positive-reply", channel: "sales-cold-email-outreach", leg: POSITIVE_REPLY_LEG, description: "Cold email that gets a prospect to answer with interest." },
+  { id: "cold-email-website-visit", channel: "sales-cold-email-outreach", leg: WEBSITE_VISIT_LEG, description: "Cold email that brings a prospect to the website." },
+  { id: "meeting-booking", channel: "ai-meeting-booking", leg: MEETING_BOOKING_LEG, description: "Turns a positive reply into a booked meeting." },
+];
+const WORDS = readJson("catalogue-words.json");
+const stepOfLeg = (leg) => leg.slice(leg.indexOf("_to_") + 4);
+const fromOfLeg = (leg) => leg.slice(0, leg.indexOf("_to_"));
+function servedStep(key) {
+  const st = WORDS.steps.find((x) => x.key === key);
+  if (!st || !st.label) throw new Error(`catalogue-words.json names no step ${key}: re-run extract.sh`);
+  return st;
+}
+const outcomeWords = {
+  pipeName(pipe) {
+    const p = PIPES.find((x) => x.id === pipe);
+    const served = p && WORDS.pipes.find((x) => x.id === `${p.channel}|${p.leg}`);
+    if (!served?.name) throw new Error(`catalogue-words.json serves no pipe for ${pipe}: re-run extract.sh`);
+    return served.name;
+  },
+  channelName(slug) {
+    const c = WORDS.channels.find((x) => x.slug === slug);
+    if (!c?.name) throw new Error(`catalogue-words.json names no channel ${slug}: re-run extract.sh`);
+    return c.name;
+  },
+  legName: (leg) => `${servedStep(fromOfLeg(leg)).label} → ${servedStep(stepOfLeg(leg)).label}`,
+  tacticName(id) {
+    const t = facts.research.tactics.find((x) => x.id === id);
+    if (!t) throw new Error(`tactic ${id} is not in tactic-verdicts.json: re-run extract.sh`);
+    return t.name;
+  },
+};
+const KEY_OF_PIPE = { "cold-email-positive-reply": "reply", "cold-email-website-visit": "visit" };
+const OUTCOME_STUDIES = [];
+const OUTCOME_ENTRIES = [];
+for (const entry of facts.research.outcomes) {
+  const st = servedStep(entry.step);
+  if (!st.pluralLabel) throw new Error(`catalogue-words.json carries no plural for step ${entry.step}: re-run extract.sh`);
+  const keys = entry.pipes.map((p) => KEY_OF_PIPE[p.pipe]);
+  if (keys.some((k) => !k)) throw new Error(`outcome ${entry.step}: a pipe research.mjs does not know`);
+  const legs = keys.map((k) => OUTCOMES[k]);
+  const o = {
+    id: outcomeIdOf(st.label),
+    noun: st.label.toLowerCase(),
+    nouns: st.pluralLabel.toLowerCase(),
+    emailsNoun: entry.emailsNoun,
+    // a bucket spanning legs reads Learning under the strictest of their rules
+    required: Math.max(...legs.map((l) => l.outcomesRequired)),
+    lastMonth: legs.map((l) => l.lastCohortMonth).sort().pop(),
+    partialMonth: legs.map((l) => l.partialMonth).filter(Boolean).sort().pop() ?? null,
+  };
+  const words = {
+    ...outcomeWords,
+    workflowLabel: (d) => keys.map((k) => WORKFLOW_LABEL[k][d]).find(Boolean) ?? (() => { throw new Error(`no label for a workflow of outcome ${o.id}`); })(),
+    strategyLabel: (id) => keys.map((k) => facts.research.strategy[k].labels[id]).find(Boolean) ?? (() => { throw new Error(`no label for strategy ${id}`); })(),
+  };
+  const made = emailOutcomeStudies(o, entry, words, {
+    note: RULE_NOTE,
+    visitLine: entry.step === stepOfLeg(WEBSITE_VISIT_LEG) ? "A website visit is a click our link-scanner check judged human, which only the emails we send ourselves can carry: the emails sent through the provider are left out." : null,
+    strategyRecordedFrom: facts.research.strategyRecordedFrom,
+  });
+  // One pipe landing on the outcome: its average since inception IS that pipe's own, to the cent.
+  if (entry.pipes.length === 1) {
+    const mine = made.find((x) => x.id === `outcome-${o.id}-overall-roi`);
+    const pipeAvg = studies.find((x) => x.id === `${entry.pipes[0].pipe}-cost-over-time`);
+    if ((mine.result?.display ?? null) !== (pipeAvg?.result?.display ?? null) || (mine.result?.sample ?? null) !== (pipeAvg?.result?.sample ?? null)) {
+      throw new Error(`outcome ${o.id}: the average since inception (${mine.result?.display}) differs from its one pipe's (${pipeAvg?.result?.display})`);
+    }
+  }
+  OUTCOME_STUDIES.push(...made);
+  OUTCOME_ENTRIES.push({
+    id: o.id,
+    outcome: st.label,
+    step: entry.step,
+    pipes: entry.pipes.map((p) => p.pipe),
+    description: `What a ${o.noun} costs and what share of leads reach one, on every pipe that lands on it.`,
+    population: made[0].conclusion[0],
+  });
+}
+{
+  const step = stepOfLeg(MEETING_BOOKING_LEG);
+  const st = servedStep(step);
+  if (outcomeIdOf(st.label) !== MEETING_OUTCOME_ID) throw new Error(`the meeting step is served as "${st.label}": rename OUTCOME_ID in meetings.mjs`);
+  const toDay = readJson("window.json").to;
+  const readMonth = toDay.slice(0, 7);
+  const o = {
+    id: MEETING_OUTCOME_ID,
+    // the meeting studies' own words (meetings.mjs): "a booked meeting"
+    noun: "booked meeting",
+    nouns: "booked meetings",
+    emailsNoun: "leads acted on",
+    required: MEETINGS.booking.outcomesRequired,
+    lastMonth: readMonth,
+    partialMonth: toDay.slice(8, 10) === "01" ? null : readMonth,
+  };
+  OUTCOME_STUDIES.push(...meetingOutcomeStudies(o, MEETINGS.booking, outcomeWords, { pipe: "meeting-booking", channel: "ai-meeting-booking", leg: MEETING_BOOKING_LEG, costBasis: facts.research.costBasis ?? "user" }));
+  const meeting = MEETINGS.outcomes.find((x) => x.id === MEETING_OUTCOME_ID);
+  OUTCOME_ENTRIES.push({ ...meeting, step, pipes: ["meeting-booking"] });
+}
+for (const st of OUTCOME_STUDIES) add(st);
+
 // ---------- catalogue: one page per workflow and per template, per pipe ----------
 // Read beside facts.json (extract.sh writes them into the same directory). Every row here is
 // fleet-wide and names no client and no lead.
@@ -1377,7 +1483,8 @@ const out = {
     { id: "cold-email-website-visit", channel: "sales-cold-email-outreach", leg: WEBSITE_VISIT_LEG, outcome: "Website visit", description: "Cold email that brings a prospect to the website." },
     { id: "meeting-booking", channel: "ai-meeting-booking", leg: MEETING_BOOKING_LEG, outcome: "Meeting booked", description: "Turns a positive reply into a booked meeting." },
   ],
-  outcomes: [...MEETINGS.outcomes, ...JEV.outcomes],
+  // the outcome rows in the order the data lands on them, then Jev (no step: the Other group)
+  outcomes: [...OUTCOME_ENTRIES, ...JEV.outcomes.map((x) => ({ ...x, step: null, pipes: [] }))],
   studies,
   catalogCounts,
 };

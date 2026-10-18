@@ -1,7 +1,7 @@
 import { readdirSync, readFileSync, statSync } from "node:fs";
 import { join, relative } from "node:path";
 import { describe, expect, it } from "vitest";
-import { OUTCOME_PATH, PIPE_KEY, PIPE_ORDER, parseResearchPath } from "../src/lib/research/research";
+import { PIPE_KEY, PIPE_ORDER, parseResearchPath } from "../src/lib/research/research";
 import { OUTBOUND_LEG_TO_CONVERSATION, OUTBOUND_LEG_TO_WEBSITE_VISIT } from "../src/lib/outbound-leg-key";
 
 /**
@@ -69,12 +69,14 @@ describe("a pipe is one leg x one channel", () => {
     expect(fn).toContain("{ step: leg.fromLabel }, { channel: def.name, def }, { step: leg.toLabel }");
     expect(fn).toContain("<Shimmer");
     expect(bits).toContain("<ChannelChip name={it.channel} def={it.def} notRun={false} compact />");
-    // the meeting outcome reads as its sales path; Jev is no outcome, so it is just named
-    expect(OUTCOME_PATH.meeting).toEqual(["lead_found", "conversation", "meeting_booked"]);
-    expect(OUTCOME_PATH.judgment).toBeNull();
-    expect(fn).toContain("if (!path) return null;");
+    // an outcome row reads as the pipes that land on it, each by its served name; Jev has none
+    expect(fn).toContain('if ("outcome" in section) return <OutcomePipes outcome={section.outcome} />;');
+    const pipes = bits.slice(bits.indexOf("export function OutcomePipes("), bits.indexOf("export function SectionPath("));
+    expect(pipes).toContain("if (!pipes.length) return null;");
+    expect(pipes).toContain("<SectionMark section={{ pipe: p }} size={12} />");
+    expect(pipes).toContain("<SectionName section={{ pipe: p }} />");
     const page = read("apps/dashboard/src/components/v2/research-page.tsx");
-    expect(page).toContain('{OUTCOME_PATH[outcome] && <span className="k-chip font-normal">Sales path</span>}');
+    expect(page).not.toContain("Sales path</span>");
     expect(page).not.toContain("All legs</span>");
     expect(page).toContain("every pipe buys one outcome");
   });
@@ -121,9 +123,11 @@ describe("Research names each pipe by its served name and mark, one collapsible 
   const bits = read("apps/dashboard/src/components/v2/research-bits.tsx");
   const page = read("apps/dashboard/src/components/v2/research-page.tsx");
 
-  it("a section's name and mark are the catalogue's (pipe by its catalogue id, the meeting outcome by its step), never a local look", () => {
+  it("a section's name and mark are the catalogue's (pipe by its catalogue id, an outcome by its public step), never a local look", () => {
     expect(bits).toContain('useStaffCatalogueObject("pipes", pipeId)');
-    expect(bits).toContain('useStaffCatalogueObject("steps", stepId)');
+    // an outcome row wears its step as the Outcomes pages do: the public step catalogue
+    expect(bits).toContain('const stepId = "outcome" in section ? outcomeEntry(section.outcome, file)?.step ?? null : null;');
+    expect(bits).toContain('useAuthQuery(["publicCatalogueSteps"], getPublicCatalogueSteps');
     expect(bits).toContain("return featureLegId(k.channel, k.leg);");
     expect(bits).toContain("<CatalogueMark icon={served.icon} color={served.color}");
     expect(bits).not.toMatch(/OUTCOME_LOOK|pipeLook|SectionLook|PipeMark/);
@@ -143,6 +147,19 @@ describe("Research names each pipe by its served name and mark, one collapsible 
     expect(page).toContain("useState<ReadonlySet<string>>(() => new Set())");
     expect(page).toContain("window.localStorage.setItem(OPEN_SECTIONS_KEY");
     const hub = page.slice(page.indexOf("function V2ResearchHub("), page.indexOf("function BarsChart("));
-    expect(hub.match(/<ResearchSectionBlock/g)?.length).toBe(2);
+    // one row anatomy for the three groups
+    expect(hub.match(/<ResearchSectionBlock/g)?.length).toBe(3);
+  });
+
+  it("an outcome row: the step's mark and name, the pipes under it, its population line, then its studies", () => {
+    const hub = page.slice(page.indexOf("function V2ResearchHub("), page.indexOf("function BarsChart("));
+    const outcomes = hub.slice(hub.indexOf(">Outcomes</SectionTitle>"), hub.indexOf(">Other</SectionTitle>"));
+    expect(outcomes).toContain("section={{ outcome: meta.id }}");
+    // no `line` override: the line under the name is the pipes (SectionPath -> OutcomePipes)
+    expect(outcomes).not.toContain("line=");
+    expect(outcomes.indexOf("{meta.population}")).toBeLessThan(outcomes.indexOf("<StudyGrid studies={studies} base={base} />"));
+    // Jev, under Other, is named by its description
+    const other = hub.slice(hub.indexOf(">Other</SectionTitle>"));
+    expect(other).toContain("line={meta.description}");
   });
 });

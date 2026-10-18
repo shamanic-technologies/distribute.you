@@ -502,4 +502,20 @@ SELECT coalesce(json_agg(json_build_object('id', id, 'name', name) ORDER BY id),
 FROM strategies
 " strategies.json
 
+# ---------- Outcome studies (outcomes.mjs) ----------
+# Jev's verdict on every cold email workflow VERSION against every tactic (features-service judges
+# each version against each tactic's text, and re-judges in place when that text changes), with
+# each tactic's served name. An email is filed under its version's verdicts.
+runjson features_service "
+SELECT json_build_object(
+  'tactics', coalesce((SELECT json_agg(json_build_object('id', id, 'name', name) ORDER BY id) FROM tactics), '[]'),
+  'verdicts', coalesce((SELECT json_agg(json_build_object('workflowSlug', workflow_slug, 'tacticId', tactic_id, 'verdict', verdict) ORDER BY workflow_slug, tactic_id)
+    FROM workflow_tactic_verdicts WHERE feature_slug = 'sales-cold-email-outreach'), '[]'))
+" tactic-verdicts.json
+# The served words every outcome study names things by: each step's label, each channel's name,
+# each pipe's name (features-service's public catalogue, read from inside its container).
+onbox 'docker exec distribute-features-service-1 node -e "fetch(\"http://127.0.0.1:8080/public/channels\").then(r=>{if(!r.ok)throw new Error(\"channels \"+r.status);return r.json()}).then(j=>{const pipes=[];for(const c of j.channels||[])for(const t of c.stepTransitions||[])if(t.pipe)pipes.push({id:t.pipe.id,name:t.pipe.name,channel:c.slug,legKey:t.legKey});const out={steps:(j.steps||[]).map(s=>({key:s.key,label:s.label,pluralLabel:s.pluralLabel??null})),channels:(j.channels||[]).map(c=>({slug:c.slug,name:c.name})),pipes};if(!out.steps.length||!out.pipes.length)throw new Error(\"channels: no step or no pipe\");console.log(JSON.stringify(out))})" </dev/null' > "$OUT/catalogue-words.json"
+[ -s "$OUT/catalogue-words.json" ] || { echo "catalogue-words.json is empty" >&2; exit 1; }
+echo "  catalogue-words.json: $(wc -c < "$OUT/catalogue-words.json") bytes"
+
 echo "done"
