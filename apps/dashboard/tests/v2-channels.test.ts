@@ -82,7 +82,7 @@ describe("sidebar", () => {
     // Campaigns that are sales funnels (owner 2026-10-10) are listed too, by name and face.
     expect(block).toContain("<FunnelFace name={c.salesFunnelName} size={16} />");
     expect(block).toContain('v2Href(orgId, brandId, "campaigns")');
-    expect(block).toContain("<PipeFace name={name} size={16} />");
+    expect(block).toContain("<ServedPipeMark pipeId={m.pipe.id} size={16} />");
     expect(block).toContain("bg-[var(--run)]");
     expect(block).not.toContain("indent");
   });

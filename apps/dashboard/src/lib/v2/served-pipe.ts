@@ -6,9 +6,8 @@
  * reads), and as `name` on the staff catalogue pipe, which also serves the pipe's `icon` and
  * `color`. The id both reads key on is `<channel slug>|<leg key>` (`featureLegId`).
  *
- * The look (icon, colour) is never ours: staff surfaces draw it off the staff catalogue
- * (`ServedPipeMark`); the public catalogue serves none yet, so a customer surface shows only
- * what it already showed (owner 2026-10-18: « les pipes ont maintenant leur nom et leur logo »).
+ * The look (icon, colour) is never ours: every surface draws it with `ServedPipeMark`, off the
+ * public catalogue's `pipe` per leg (owner 2026-10-18: « les pipes ont maintenant leur nom et leur logo »).
  *
  * Alias-free so it carries real unit tests.
  */

@@ -41,7 +41,7 @@ import { campaignTag } from "@/lib/offer-campaigns";
 import { useLegCatalogue } from "@/lib/use-leg-catalogue";
 import { useAuthQuery } from "@/lib/use-auth-query";
 import { STEP_KEY_FOR_LEAD_STAGE } from "@/lib/step-marks";
-import { PipeFace, ServedPipeFace } from "@/components/v2/served-pipe-mark";
+import { ServedPipeMark } from "@/components/v2/served-pipe-mark";
 import { awaitingReason } from "@/lib/awaiting-reason";
 import { useCampaigns, type V2Campaign } from "@/components/v2/use-campaigns";
 import {
@@ -484,7 +484,7 @@ function CampaignLead({ campaign }: { campaign: V2Campaign | null }) {
   if (!campaign) return <span className="k-fg font-medium">Your campaign</span>;
   return (
     <span className="inline-flex items-center gap-1.5">
-      <ServedPipeFace pipe={campaign.pipe} />
+      <ServedPipeMark pipeId={campaign.pipe.id} />
       <span className="k-fg font-medium">{campaign.pipe.name}</span>
     </span>
   );
@@ -613,7 +613,7 @@ function CampaignLine({ c }: { c: OngoingCampaign }) {
       {/* The mark is as tall as the name and definition lines beside it (owner 2026-10-11). */}
       <MarkLines
         gap="gap-3"
-        mark={(px) => <PipeFace name={name} size={px} />}
+        mark={(px) => <ServedPipeMark pipeId={m.pipe.id} size={px} />}
       >
         <span className="flex items-center gap-3">
           <span className="min-w-0 flex-1 truncate text-[13px] font-medium">{name ?? m.pipe.name}</span>

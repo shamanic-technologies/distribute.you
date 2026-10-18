@@ -24,7 +24,7 @@ import type { OngoingCampaign } from "@/components/v2/ongoing-campaigns";
 import { FunnelFace } from "@/components/v2/funnel-campaigns";
 import { v2CampaignHref } from "@/lib/v2/routes";
 import type { SalesFunnelCampaign } from "@/lib/sales-funnel-campaigns";
-import { PipeFace } from "@/components/v2/served-pipe-mark";
+import { ServedPipeMark } from "@/components/v2/served-pipe-mark";
 import { PeoplePage } from "@/components/v2/people-page";
 import { AudienceLists } from "@/components/v2/audience-page";
 import { PostsPage } from "@/components/v2/posts-page";
@@ -43,7 +43,7 @@ function useIds() {
 }
 
 function CampaignFace({ c }: { c: OngoingCampaign }) {
-  return <PipeFace name={c.name} size={16} />;
+  return <ServedPipeMark pipeId={c.m.pipe.id} size={16} />;
 }
 
 /** crm-service's source for the people OUR campaigns brought to a step (lead-service's buckets). */

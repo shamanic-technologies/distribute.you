@@ -3719,6 +3719,15 @@ const PublicCatalogueSchema = z.object({
             mode: z.string().nullish(),
             /** The trigger a reactive (channel x leg) waits on, an id in `triggers[]`. */
             triggerId: z.string().nullish(),
+            /**
+             * The PIPE (this channel on this leg) as the staff catalogue names and marks it
+             * (features-service v0.179.264): id `<channel slug>|<leg key>`, served name, Phosphor
+             * icon, hex colour. Nullish: null when the producer has no pipe row for it, absent
+             * on a producer older than the field.
+             */
+            pipe: z
+              .object({ id: z.string(), name: z.string(), icon: z.string().nullish(), color: z.string().nullish() })
+              .nullish(),
           }),
         )
         .optional(),

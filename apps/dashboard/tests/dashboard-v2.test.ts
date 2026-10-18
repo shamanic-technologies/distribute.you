@@ -47,14 +47,9 @@ describe("a pipe wears its served name (owner 2026-10-18)", () => {
     }
   });
 
-  it("staff surfaces draw the served pipe mark; customer surfaces never read the staff catalogue for it", () => {
-    for (const f of ["workflow-page.tsx", "workflows-page.tsx", "run-page.tsx"]) {
+  it("staff and customer surfaces draw the same served pipe mark (public catalogue, tests/public-pipe-mark.test.ts)", () => {
+    for (const f of ["workflow-page.tsx", "workflows-page.tsx", "run-page.tsx", "today-page.tsx", "outcomes-page.tsx", "v2-shell.tsx"]) {
       expect(read(`src/components/v2/${f}`), f).toContain("<ServedPipeMark pipeId={");
-    }
-    for (const f of ["today-page.tsx", "outcomes-page.tsx", "v2-shell.tsx"]) {
-      const src = read(`src/components/v2/${f}`);
-      expect(src, f).not.toContain("<ServedPipeMark");
-      expect(src, f).toMatch(/<(Served)?PipeFace /);
     }
   });
 });

@@ -25,7 +25,9 @@ import { invalidateCampaignMoney } from "@/lib/write-invalidation";
 import { useAcquisitionChannels } from "@/lib/use-acquisition-channels";
 import { useCampaigns, type V2Campaign } from "@/components/v2/use-campaigns";
 import { EXPECTED_ROI_TIP } from "@/lib/offer-sales-paths";
-import { ChannelChip, ExpectedLabel, PathAvatar } from "@/components/v2/offer-sales-paths";
+import { ChannelChip, ExpectedLabel } from "@/components/v2/offer-sales-paths";
+import { ServedPipeMark } from "@/components/v2/served-pipe-mark";
+import { featureLegId } from "@/lib/outbound-leg-key";
 import { EmptyNote, HoverScroll, MarkLines, SectionTitle, Shimmer, StateDot } from "@/components/v2/ui";
 import { ProviderLogo } from "@/components/provider-logo";
 import { roiToShow } from "@/lib/expected-return";
@@ -290,7 +292,7 @@ function CampaignRow({
     >
       <td className="px-3 py-2 pl-4">
         {results ? (
-          <MarkLines mark={(px) => (campaign.name ? <PathAvatar name={campaign.name} size={px} /> : null)}>
+          <MarkLines mark={(px) => <ServedPipeMark pipeId={featureLegId(campaign.featureSlug, campaign.legKey)} size={px} />}>
             <span className="block truncate font-semibold">{campaign.name ?? campaign.channelName}</span>
             <HoverScroll className="mt-1">
               <CampaignLeg campaign={campaign} showFedBy compact />
@@ -298,7 +300,7 @@ function CampaignRow({
           </MarkLines>
         ) : (
           <span className="flex min-w-0 items-center gap-2.5">
-            {campaign.name && <PathAvatar name={campaign.name} size={28} />}
+            <ServedPipeMark pipeId={featureLegId(campaign.featureSlug, campaign.legKey)} size={28} />
             <span className="font-semibold">{campaign.name ?? campaign.channelName}</span>
           </span>
         )}
@@ -397,7 +399,7 @@ function UnlistedRow({
   return (
     <tr className="k-row k-line-subtle h-12 cursor-pointer border-b last:border-b-0" onClick={onOpen} onMouseEnter={onWarm} onFocus={onWarm}>
       <td className="px-3 py-2 pl-4">
-        <MarkLines mark={(px) => (name ? <PathAvatar name={name} size={px} /> : null)}>
+        <MarkLines mark={(px) => <ServedPipeMark pipeId={record.pipe.id} size={px} />}>
           <span className="block truncate font-semibold">{name ?? record.pipe.name}</span>
           <span className="k-fg3 mt-1 block text-[11px]">{record.leg?.label ?? "—"}</span>
         </MarkLines>

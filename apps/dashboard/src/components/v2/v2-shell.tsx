@@ -7,7 +7,7 @@ import { AccountMenuV2, SearchTrigger, TenantSwitcherV2 } from "@/components/v2/
 import { BudgetGauge } from "@/components/v2/budget-gauge";
 import { useOngoingCampaigns } from "@/components/v2/ongoing-campaigns";
 import { useAudienceSnapshot, useBrandOutcomeList, useStepIcons } from "@/components/v2/brand-outcomes";
-import { PipeFace } from "@/components/v2/served-pipe-mark";
+import { ServedPipeMark } from "@/components/v2/served-pipe-mark";
 import { V2NavContext } from "@/components/v2/nav-context";
 import { useBucketCounts, useBrandRevenue, useNeedsYourCall, useStandingCounts } from "@/components/v2/data";
 import { v2CampaignHref, v2CatalogueHref, v2Href, v2OfferHref, v2OutcomeHref, v2SectionOf, v2WorkflowHref } from "@/lib/v2/routes";
@@ -309,7 +309,7 @@ function V2Sidebar() {
                 key={m.row.campaign.id}
                 href={m.href}
                 label={name ?? m.pipe.name}
-                icon={<PipeFace name={name} size={16} />}
+                icon={<ServedPipeMark pipeId={m.pipe.id} size={16} />}
                 active={pathname.startsWith(m.href)}
                 trailing={
                   <span className="k-dot-pulse ml-auto mr-1 h-1.5 w-1.5 shrink-0 rounded-full bg-[var(--run)] text-[var(--run)]" aria-label="On" />

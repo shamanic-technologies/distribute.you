@@ -1,33 +1,34 @@
 "use client";
 
 import { CatalogueMark } from "@/components/v2/catalogue-mark";
-import { PathAvatar } from "@/components/v2/offer-sales-paths";
-import { useStaffCatalogueObject } from "@/components/v2/staff-catalogue-data";
-import type { ServedPipe } from "@/lib/v2/served-pipe";
+import { usePublicPipe } from "@/lib/use-leg-catalogue";
 
-/**
- * A PIPE's mark as features-service serves it (staff catalogue `icon` + `color`, owner
- * 2026-10-18: « les pipes ont maintenant leur nom et leur logo »). STAFF surfaces only: the
- * read is the gateway's staff catalogue. A customer surface never mounts this (the public
- * catalogue serves a pipe's name, not its mark yet).
- *
- * Until the catalogue answers, a quiet tile of the same size holds the place; a pipe it
- * cannot read is logged and drawn as the catalogue mark's own unknown-icon circle.
- */
-export function useServedPipe(pipeId: string | null) {
-  return useStaffCatalogueObject("pipes", pipeId);
+const warned = new Set<string>();
+function warnOnce(key: string, message: string, context: Record<string, unknown>) {
+  if (warned.has(key)) return;
+  warned.add(key);
+  console.error(message, context);
 }
 
+/**
+ * A PIPE's mark as features-service serves it (owner 2026-10-18: « les pipes ont maintenant
+ * leur nom et leur logo »): its icon in its colour, off the PUBLIC catalogue (`pipe` on every
+ * `channels[].stepTransitions[]`, the staff catalogue's own row), so customer and staff
+ * surfaces draw one mark from one read. Never a look of ours.
+ *
+ * Until the catalogue answers, a quiet tile of the same size holds the place; a pipe it serves
+ * no mark for is logged once and drawn as the catalogue mark's unknown-icon circle.
+ */
 export function ServedPipeMark({ pipeId, size = 16 }: { pipeId: string | null; size?: number }) {
-  const q = useServedPipe(pipeId);
+  const { pipe, settled } = usePublicPipe(pipeId);
   if (!pipeId) {
-    console.error("[v2] a pipe mark asked with no pipe id");
+    warnOnce("", "[v2] a pipe mark asked with no pipe id", {});
     return <CatalogueMark name="" size={size} />;
   }
-  if (q.data) return <CatalogueMark icon={q.data.icon} color={q.data.color} name={q.data.name} size={size} />;
-  if (q.isError) {
-    console.error("[v2] pipe unreadable in the catalogue", { pipeId, error: q.error?.message });
-    return <CatalogueMark name={pipeId} size={size} />;
+  if (pipe) return <CatalogueMark icon={pipe.icon} color={pipe.color} name={pipe.name} size={size} />;
+  if (settled) {
+    warnOnce(pipeId, "[v2] features-service serves no pipe for this id on the public catalogue", { pipeId });
+    return <CatalogueMark name="" size={size} />;
   }
   return (
     <span
@@ -36,18 +37,4 @@ export function ServedPipeMark({ pipeId, size = 16 }: { pipeId: string | null; s
       style={{ width: size, height: size }}
     />
   );
-}
-
-/**
- * A pipe's face on a CUSTOMER surface: the face drawn for its served name (the campaign face
- * these surfaces already show), never a look of ours. A pipe the producer names none for wears
- * the catalogue mark's unknown-icon circle (the caller already logged the missing name).
- */
-export function PipeFace({ name, size = 16 }: { name: string | null; size?: number }) {
-  return name ? <PathAvatar name={name} size={size} /> : <CatalogueMark name="" size={size} />;
-}
-
-/** The same, for a campaign's served pipe. */
-export function ServedPipeFace({ pipe, size = 16 }: { pipe: ServedPipe; size?: number }) {
-  return <PipeFace name={pipe.named ? pipe.name : null} size={size} />;
 }
