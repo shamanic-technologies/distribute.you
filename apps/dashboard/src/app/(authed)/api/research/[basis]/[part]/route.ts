@@ -6,6 +6,7 @@ import billedCatalog from "@/lib/research/research-catalog.json";
 import actualFile from "@/lib/research/actual/research.json";
 import actualCatalog from "@/lib/research/actual/research-catalog.json";
 import texts from "@/lib/research/research-templates.json";
+import { readMergedResearch } from "@/lib/research/live-file";
 
 /**
  * GET /api/research/{basis}/{part} — STAFF ONLY. Every byte of Research: the snapshot (`file`),
@@ -28,6 +29,16 @@ export async function GET(_req: Request, { params }: { params: Promise<{ basis: 
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
   const { basis, part } = await params;
+  // The file is LIVE (features-service), each study it does not serve yet from the snapshot, marked.
+  if (part === "file" && (basis === "user" || basis === "actual")) {
+    try {
+      const merged = await readMergedResearch(basis, sessionClaims!.email as string);
+      return NextResponse.json(merged, { headers: { "cache-control": "private, no-store" } });
+    } catch (err) {
+      console.error("[research] live file failed:", err);
+      return NextResponse.json({ error: "Research live read failed" }, { status: 502 });
+    }
+  }
   const body = Object.hasOwn(PARTS, basis) && Object.hasOwn(PARTS[basis], part) ? PARTS[basis][part] : undefined;
   if (body === undefined) return NextResponse.json({ error: `Unknown research part ${basis}/${part}` }, { status: 404 });
   return NextResponse.json(body, { headers: { "cache-control": "private, no-store" } });

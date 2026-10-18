@@ -1,6 +1,6 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { researchConclusions } from "../src/lib/research/conclusions";
 import type { ResearchFile, ResearchStudy } from "../src/lib/research/research";
 import { verifyServiceKey } from "../src/lib/service-key";
@@ -84,6 +84,9 @@ describe("the service key", () => {
 
   it("the route refuses a request without the key and serves the conclusions with it", async () => {
     process.env.DASHBOARD_APP_API_KEY = "k-secret";
+    // The route reads the LIVE file; before features-service's first build it serves the snapshot alone.
+    process.env.ADMIN_DISTRIBUTE_API_KEY = "admin";
+    vi.stubGlobal("fetch", async () => new Response(JSON.stringify({ error: "research_not_computed_yet" }), { status: 503 }));
     const refused = await GET(new Request(URL));
     expect(refused.status).toBe(401);
     const ok = await GET(new Request(URL, { headers: { "x-api-key": "k-secret" } }));

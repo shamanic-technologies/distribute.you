@@ -76,6 +76,18 @@ export function dayText(ymd: string): string {
   return `${MONTHS[Number(ymd.slice(5, 7)) - 1]} ${Number(ymd.slice(8, 10))}`;
 }
 
+/** "Oct 18, 15:30 UTC" off an ISO instant (a served build time, never "now"). */
+export function instantText(iso: string): string {
+  return `${dayText(iso.slice(0, 10))}, ${iso.slice(11, 16)} UTC`;
+}
+
+/** Where the page's figures come from: live studies, and how many still read the nightly snapshot. */
+export function liveText(file: { computedAt?: string | null; readOn: string; studies: { source?: "live" | "snapshot" }[] }): string {
+  const snap = file.studies.filter((s) => s.source === "snapshot").length;
+  const tail = snap > 0 ? ` · ${snap} from the ${dayText(file.readOn)} snapshot` : "";
+  return file.computedAt ? `Live, updated ${instantText(file.computedAt)}${tail}` : `Read from production on ${dayText(file.readOn)}`;
+}
+
 /** The section a study sits in: its pipe, or its outcome. */
 export type ResearchSection = { pipe: ResearchPipe } | { outcome: ResearchOutcome };
 export function sectionOf(study: ResearchStudy): ResearchSection {
