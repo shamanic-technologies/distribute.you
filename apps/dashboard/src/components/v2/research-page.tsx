@@ -34,7 +34,7 @@ import {
   parseResearchPath,
   pointHref,
   researchWorkflow,
-  CREW_KEY,
+  PIPE_KEY,
   studiesFor,
   studiesForOutcome,
   studyById,
@@ -385,11 +385,11 @@ function V2ResearchStudy({ base, studyId }: { base: string; studyId: string }) {
   // A workflow bar names the workflow (Rampart) as workflow-service states it, off the research catalogue.
   const catalog = useResearchCatalog(useResearch().basis).data ?? null;
   const { getFeature } = useFeatures();
-  const workflowCrew = study?.topic === "workflow" ? study.crew : null;
-  const channelName = workflowCrew ? getFeature(CREW_KEY[workflowCrew].channel)?.name ?? null : null;
+  const workflowPipe = study?.topic === "workflow" ? study.pipe : null;
+  const channelName = workflowPipe ? getFeature(PIPE_KEY[workflowPipe].channel)?.name ?? null : null;
   const workflowName = (p: ResearchPoint): string | null => {
-    if (!workflowCrew || !catalog || !p.key) return null;
-    const w = researchWorkflow(catalog, workflowCrew, p.key);
+    if (!workflowPipe || !catalog || !p.key) return null;
+    const w = researchWorkflow(catalog, workflowPipe, p.key);
     return w?.name ? shortWorkflowName(w.name, channelName) : null;
   };
   if (!study) {
