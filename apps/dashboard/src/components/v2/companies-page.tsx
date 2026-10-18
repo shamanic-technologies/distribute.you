@@ -11,8 +11,6 @@ import { useBrandRevenue } from "@/components/v2/data";
 import { CompanyMark } from "@/components/v2/people-bits";
 import { EmptyNote, Initials, Shimmer, TopBar } from "@/components/v2/ui";
 import { ExportButton, RecordsFooter, RecordsTabs, RecordsToolbar, REC_TH, useRowKeys } from "@/components/v2/records";
-import { useMissions } from "@/components/v2/use-missions";
-import { CrewMark } from "@/components/v2/crew-mark";
 
 /**
  * features-service's own path tags (`revenue-engine.ts`), in the customer's words. Opens
@@ -111,8 +109,6 @@ export function CompaniesPage() {
   const [sort, setSort] = useState<SortKey>("value");
   const [selected, setSelected] = useState<Set<string>>(() => new Set());
   const searchRef = useRef<HTMLInputElement | null>(null);
-  const { crews } = useMissions(orgId, brandId);
-  const runningCrews = crews.filter((c) => c.running > 0).length;
   const updated = useAgo(revenue.dataUpdatedAt);
   const all = useMemo(() => revenue.data?.organizations ?? [], [revenue.data]);
   const tagOf = TABS.find((t) => t.key === tab)?.tag ?? null;
@@ -205,26 +201,10 @@ export function CompaniesPage() {
         }}
         right={
           revenue.data ? (
-            <>
-              <span className="flex items-center gap-1">
-                {crews.slice(0, 5).map((c) => (
-                  <CrewMark key={c.crew.key} color={c.crew.color} glyph={c.crew.glyph} size={14} />
-                ))}
-              </span>
-              <span>
-                {formatCount(all.length)} {all.length === 1 ? "company" : "companies"} engaged with your crew
-                {updated ? ` · updated ${updated}` : ""}
-              </span>
-              {crews.length > 0 && (
-                <>
-                  <span className="k-fg4">·</span>
-                  <span className="inline-flex items-center gap-1.5">
-                    <span className={`h-1.5 w-1.5 rounded-full ${runningCrews ? "k-dot-pulse bg-[var(--run)] text-[var(--run)]" : "bg-[var(--fg-4)]"}`} />
-                    {runningCrews} {runningCrews === 1 ? "crew" : "crews"} running now
-                  </span>
-                </>
-              )}
-            </>
+            <span>
+              {formatCount(all.length)} {all.length === 1 ? "company" : "companies"} engaged
+              {updated ? ` · updated ${updated}` : ""}
+            </span>
           ) : null
         }
       />

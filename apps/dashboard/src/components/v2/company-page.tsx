@@ -3,16 +3,20 @@
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
-import { getLeadConsolidatedStatus, listLeadsPage, type Lead } from "@/lib/api";
+import { getLeadConsolidatedStatus, getLeadTimeline, listLeadsPage, type Lead } from "@/lib/api";
 import { leadStatusLabel } from "@/lib/lead-status";
-import { useAuthQuery } from "@/lib/use-auth-query";
-import { POLL_INTERVAL } from "@/lib/query-options";
+import { useQueries } from "@tanstack/react-query";
+import { useAuthQuery, useOrgQueryGate } from "@/lib/use-auth-query";
+import { conversationItemSide, conversationItemTag, liveItems, type ConversationItem } from "@/lib/conversation-timeline";
+import { POLL_INTERVAL, pollOptions } from "@/lib/query-options";
 import { formatCount, formatUsdAdaptive } from "@/lib/format-number";
 import { friendlyDate, friendlyTime } from "@/lib/friendly-datetime";
 import { leadsSearchParam } from "@/lib/leads-server-page";
 import { v2Href } from "@/lib/v2/routes";
-import { CrewMark } from "@/components/v2/crew-mark";
-import { useMissions, type Mission } from "@/components/v2/use-missions";
+import { useLeadCampaigns, type LeadCampaign } from "@/components/v2/lead-campaigns";
+import { FunnelFace } from "@/components/v2/funnel-campaigns";
+import { useSelectedOffer } from "@/components/v2/selected-offer";
+import { TagChip } from "@/components/v2/tag-chip";
 import { useLeadScope, useBrandRevenue } from "@/components/v2/data";
 import { CompanyMark, PersonAvatar, leadName, leadTitle, personHref } from "@/components/v2/people-bits";
 import { EmptyNote, SectionTitle, Shimmer, TopBar } from "@/components/v2/ui";
@@ -30,24 +34,27 @@ const FLOW: { tag: string; label: string }[] = [
 interface TimelineEntry {
   at: string;
   lead: Lead;
-  what: string;
-  mission: Mission | null;
-  /** Keel splits a record's timeline by who acted: the crew, or the people. */
-  by: "crew" | "people";
+  item: ConversationItem;
+  campaign: LeadCampaign | null;
+  /** Keel splits a record's timeline by who acted: us, or them. */
+  by: "us" | "them";
 }
 
 /**
  * One company: Keel's record page. The header and the stage come off the
  * organisation features-service values on the brand's revenue read; the people are
- * lead-service's own search on the company name; the timeline is each person's own
- * first-occurrence timestamps as lead-service serves them. Nothing is derived.
+ * lead-service's own search on the company name; the timeline is each person's stored,
+ * labelled conversation (lead-service, the Unibox's facts) at the selected offer, merged
+ * newest first. Nothing is derived.
  */
 export function CompanyPage() {
   const { orgId, brandId, companyKey: rawKey } = useParams<{ orgId: string; brandId: string; companyKey: string }>();
   const key = decodeURIComponent(rawKey);
   const router = useRouter();
   const revenue = useBrandRevenue(brandId);
-  const { missionByCampaignId } = useMissions(orgId, brandId);
+  const { campaignOf } = useLeadCampaigns(orgId, brandId);
+  const { offerId, settled: offerSettled } = useSelectedOffer();
+  const gate = useOrgQueryGate();
   const sorted = useMemo(
     () => [...(revenue.data?.organizations ?? [])].sort((a, b) => b.expectedRevenueUsd - a.expectedRevenueUsd),
     [revenue.data],
@@ -75,19 +82,30 @@ export function CompanyPage() {
     [peopleQ.data, org],
   );
 
+  // Each person's conversation, same key as their person page (one read per person here, ≤50).
+  const timelines = useQueries({
+    queries: people.map((l) => ({
+      queryKey: ["leadTimeline", l.id, brandId, offerId],
+      queryFn: () => getLeadTimeline(l.id, { brandId, offerId }),
+      ...pollOptions,
+      enabled: gate && offerSettled,
+    })),
+  });
+  const timelinesSettled = timelines.every((t) => t.data !== undefined || t.isError);
+  // A stable signature of the answers: a new one only when a person's conversation changed.
+  const timelinesVersion = timelines.map((t) => t.dataUpdatedAt).join(",");
   const timeline = useMemo(() => {
     const out: TimelineEntry[] = [];
-    for (const l of people) {
-      const m = missionByCampaignId.get(l.campaignId) ?? null;
-      const n = leadName(l);
-      if (l.firstRepliedAt) out.push({ at: l.firstRepliedAt, lead: l, what: `${n} replied`, mission: m, by: "people" });
-      if (l.firstClickedAt) out.push({ at: l.firstClickedAt, lead: l, what: `${n} visited your website`, mission: m, by: "people" });
-      if (l.firstDeliveredAt) out.push({ at: l.firstDeliveredAt, lead: l, what: `First email delivered to ${n}`, mission: m, by: "crew" });
-      else if (l.firstSentAt) out.push({ at: l.firstSentAt, lead: l, what: `First email sent to ${n}`, mission: m, by: "crew" });
-      if (l.firstBouncedAt) out.push({ at: l.firstBouncedAt, lead: l, what: `The email to ${n} bounced`, mission: m, by: "crew" });
-    }
+    people.forEach((l, i) => {
+      const t = timelines[i]?.data;
+      if (!t) return;
+      for (const item of liveItems(t)) {
+        if (!item.occurredAt) continue;
+        out.push({ at: item.occurredAt, lead: l, item, campaign: campaignOf(item.campaignId), by: conversationItemSide(item.label) });
+      }
+    });
     return out.sort((a, b) => b.at.localeCompare(a.at));
-  }, [people, missionByCampaignId]);
+  }, [people, campaignOf, timelinesVersion]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const prev = index > 0 ? companyHref(orgId, brandId, sorted[index - 1]) : null;
   const next = index >= 0 && index < sorted.length - 1 ? companyHref(orgId, brandId, sorted[index + 1]) : null;
@@ -106,7 +124,7 @@ export function CompanyPage() {
   const reachedIndex = stage ? FLOW.findIndex((f) => f.tag === stage || (stage === "meetingAttended" && f.tag === "meeting")) : -1;
   const person = org?.topPerson ? `${org.topPerson.firstName ?? ""} ${org.topPerson.lastName ?? ""}`.trim() : "";
 
-  const [tlFilter, setTlFilter] = useState<"all" | "crew" | "people">("all");
+  const [tlFilter, setTlFilter] = useState<"all" | "us" | "them">("all");
   const [copied, setCopied] = useState(false);
   // The company's own facts, off the organisation lead-service stores on its people.
   const facts = useMemo(() => people.find((l) => l.lead?.organization)?.lead?.organization ?? null, [people]);
@@ -263,11 +281,11 @@ export function CompanyPage() {
             <div className="mt-6 grid gap-6 lg:grid-cols-[minmax(0,1fr)_360px]">
               <div className="min-w-0">
                 <SectionTitle
-                  count={peopleQ.data ? timeline.length : null}
+                  count={peopleQ.data && timelinesSettled ? timeline.length : null}
                   right={
-                    peopleQ.data ? (
+                    peopleQ.data && timelinesSettled ? (
                       <span className="k-inset inline-flex rounded-[9px] p-0.5 shadow-[inset_0_0_0_1px_var(--line-subtle)]">
-                        {(["all", "crew", "people"] as const).map((f) => {
+                        {(["all", "us", "them"] as const).map((f) => {
                           const n = f === "all" ? timeline.length : timeline.filter((x) => x.by === f).length;
                           return (
                             <button
@@ -277,7 +295,7 @@ export function CompanyPage() {
                               onClick={() => setTlFilter(f)}
                               className={tlFilter === f ? "k-btn h-6 px-2 text-[12px]" : "k-btn-ghost h-6 px-2 text-[12px]"}
                             >
-                              {f === "all" ? "All" : f === "crew" ? "Crew" : "People"} <span className="k-fg3 tabular-nums">{n}</span>
+                              {f === "all" ? "All" : f === "us" ? "Us" : "Them"} <span className="k-fg3 tabular-nums">{n}</span>
                             </button>
                           );
                         })}
@@ -289,6 +307,8 @@ export function CompanyPage() {
                 </SectionTitle>
                 {!peopleQ.data ? (
                   peopleQ.isError ? <EmptyNote>We could not load this company&apos;s people.</EmptyNote> : <Shimmer className="h-40 rounded-xl" />
+                ) : !timelinesSettled ? (
+                  <Shimmer className="h-40 rounded-xl" />
                 ) : timeline.length === 0 ? (
                   <div className="k-card"><EmptyNote>Nothing has happened with this company yet.</EmptyNote></div>
                 ) : (
@@ -298,16 +318,21 @@ export function CompanyPage() {
                         <p className="k-fg3 border-b border-[var(--line-subtle)] pb-1.5 text-[12px]">{day}</p>
                         <ol className="mt-2 space-y-3">
                           {entries.map((e, i) => (
-                            <li key={`${e.lead.id}-${i}`} className="flex gap-3">
+                            <li key={`${e.lead.id}-${e.item.id}-${i}`} className="flex gap-3">
                               <span className="mt-0.5">
-                                {e.mission ? <CrewMark color={e.mission.crew.color} glyph={e.mission.crew.glyph} size={20} /> : <PersonAvatar lead={e.lead} size={20} />}
+                                <PersonAvatar lead={e.lead} size={20} />
                               </span>
                               <div className="min-w-0 flex-1">
-                                <p className="text-[13px]">
-                                  {e.mission ? <span className="font-medium">{e.mission.crew.name} </span> : null}
-                                  <span className={e.mission ? "k-fg2" : ""}>{e.mission ? "· " : ""}{e.what}</span>
+                                <p className="flex min-w-0 items-center gap-2 text-[13px]">
+                                  <span className="truncate font-medium">{leadName(e.lead)}</span>
+                                  <TagChip tag={conversationItemTag(e.item.label)} />
                                 </p>
-                                {e.mission?.offerName ? <p className="k-fg3 text-[12px]">{e.mission.offerName}</p> : null}
+                                {e.campaign ? (
+                                  <p className="k-fg3 mt-0.5 inline-flex min-w-0 items-center gap-1 text-[12px]">
+                                    <FunnelFace name={e.campaign.name} size={12} />
+                                    <span className="truncate">{e.campaign.name}</span>
+                                  </p>
+                                ) : null}
                               </div>
                               <span className="k-mono k-fg3 shrink-0 text-[11px]">{friendlyTime(e.at)}</span>
                             </li>
@@ -351,7 +376,7 @@ export function CompanyPage() {
                   ) : (
                     <ul className="-mx-2">
                       {people.map((l) => {
-                        const m = missionByCampaignId.get(l.campaignId) ?? null;
+                        const campaign = campaignOf(l.campaignId);
                         return (
                           <li key={l.id}>
                             <Link href={personHref(orgId, brandId, l)} className="k-hover flex items-center gap-2.5 rounded-[8px] px-2 py-1.5">
@@ -362,9 +387,10 @@ export function CompanyPage() {
                               </span>
                               <span className="flex shrink-0 flex-col items-end gap-0.5">
                                 <span className="k-chip">{leadStatusLabel(getLeadConsolidatedStatus(l))}</span>
-                                {m ? (
-                                  <span className="k-fg3 inline-flex items-center gap-1 text-[11px]">
-                                    <CrewMark color={m.crew.color} glyph={m.crew.glyph} size={12} /> {m.crew.name}
+                                {campaign ? (
+                                  <span className="k-fg3 inline-flex max-w-[140px] items-center gap-1 text-[11px]">
+                                    <FunnelFace name={campaign.name} size={12} />
+                                    <span className="truncate">{campaign.name}</span>
                                   </span>
                                 ) : null}
                               </span>

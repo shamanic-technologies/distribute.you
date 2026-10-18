@@ -84,6 +84,14 @@ const ITEM_LOOK: Record<string, Look> = {
   paid_client: { label: "Paid client", tone: "won", icon: "money" },
 };
 
+/** The facts WE did (an email of ours went out, or came back undelivered); every other fact is theirs. */
+const OUR_ITEMS = new Set(["initial_email", "followup", "bounced"]);
+
+/** Who acted on a fact, for a record's Us / Them timeline filter. A display lookup on the served label. */
+export function conversationItemSide(label: string): "us" | "them" {
+  return OUR_ITEMS.has(label) ? "us" : "them";
+}
+
 /** A served item label as a tag. An unknown label keeps its word, in the neutral tone. */
 export function conversationItemTag(label: string): TimelineTag {
   return ITEM_LOOK[label] ?? { label: words(label), tone: "neutral", icon: "dot" };

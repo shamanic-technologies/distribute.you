@@ -12,8 +12,8 @@ import { timeAgo } from "@/lib/friendly-datetime";
 import { leadStatusLabel } from "@/lib/lead-status";
 import { STANDINGS_BY_COLUMN, LEAD_BOARD_COLUMNS, LEAD_BOARD_PAGE_SIZE, type LeadBoardColumnKey } from "@/lib/lead-board";
 import { boardColumnTotals, leadsColumnPageQuery } from "@/lib/leads-server-page";
-import { CrewMark } from "@/components/v2/crew-mark";
-import { useMissions, type Mission } from "@/components/v2/use-missions";
+import { useLeadCampaigns, type LeadCampaign } from "@/components/v2/lead-campaigns";
+import { FunnelFace } from "@/components/v2/funnel-campaigns";
 import { useSelectedOffer } from "@/components/v2/selected-offer";
 import { useLeadScope, useBrandRevenue, useInterestedReplies, useLeadDisqualifications, useStandingCounts } from "@/components/v2/data";
 import { COMPANY_DISQUALIFIED_TAG, DISQUALIFIED_TAG, disqualificationSourceWord, markTag, type DisqualifiedCompany, type DisqualifiedLead } from "@/lib/lead-disqualification";
@@ -60,9 +60,9 @@ export function DealsPage() {
   const totals = standingTotals
     ? { ...standingTotals, disqualified: disqualified.data?.total ?? null }
     : null;
-  const { missionByCampaignId, crews } = useMissions(orgId, brandId);
+  const { campaignOf, campaigns } = useLeadCampaigns(orgId, brandId);
   const revenue = useBrandRevenue(brandId);
-  const [crewFilter, setCrewFilter] = useState<string | null>(null);
+  const [campaignFilter, setCampaignFilter] = useState<string | null>(null);
   // A company marked "not our target" covers every lead of it: the column shows it even when
   // no person carries a mark of their own.
   const markedCompanies = disqualified.data?.companies ?? null;
@@ -145,18 +145,18 @@ export function DealsPage() {
         </div>
 
         <div className="mt-5 flex flex-wrap items-center gap-2">
-          {crews.map((c) => {
-            const on = crewFilter === c.crew.key;
+          {campaigns.map((c) => {
+            const on = campaignFilter === c.key;
             return (
               <button
-                key={c.crew.key}
+                key={c.key}
                 type="button"
                 aria-pressed={on}
-                title={c.crew.name}
-                onClick={() => setCrewFilter(on ? null : c.crew.key)}
+                title={c.name}
+                onClick={() => setCampaignFilter(on ? null : c.key)}
                 className={`inline-flex h-7 w-7 items-center justify-center rounded-full ${on ? "bg-[var(--bg-selected)] shadow-[inset_0_0_0_1px_var(--line-strong)]" : "k-hover"}`}
               >
-                <CrewMark color={c.crew.color} glyph={c.crew.glyph} size={18} />
+                <FunnelFace name={c.name} size={18} />
               </button>
             );
           })}
@@ -188,8 +188,8 @@ export function DealsPage() {
               label={V2_COLUMN_LABEL[c.key] ?? c.label}
               total={totals?.[c.key] ?? null}
               share={(totals?.[c.key] ?? 0) / biggest}
-              crewFilter={crewFilter}
-              missionFor={(id) => missionByCampaignId.get(id) ?? null}
+              campaignFilter={campaignFilter}
+              campaignOf={campaignOf}
               served={servedFor(c.key)}
             />
             ),
@@ -207,8 +207,8 @@ function DealColumn({
   label,
   total,
   share,
-  crewFilter,
-  missionFor,
+  campaignFilter,
+  campaignOf,
   served,
 }: {
   brandId: string;
@@ -217,8 +217,8 @@ function DealColumn({
   label: string;
   total: number | null;
   share: number;
-  crewFilter: string | null;
-  missionFor: (campaignId: string) => Mission | null;
+  campaignFilter: string | null;
+  campaignOf: (campaignId: string) => LeadCampaign | null;
   served: ServedColumnValue | null;
 }) {
   const [shown, setShown] = useState(LEAD_BOARD_PAGE_SIZE);
@@ -245,7 +245,7 @@ function DealColumn({
   );
   const valueByLead = new Map((contactedValue.data?.leads ?? []).map((v) => [v.leadId, v.expectedValueUsd]));
   const columnValue = contactedValue.data?.totalExpectedValueUsd ?? null;
-  const leads = all && crewFilter ? all.filter((l) => missionFor(l.campaignId)?.crew.key === crewFilter) : all;
+  const leads = all && campaignFilter ? all.filter((l) => campaignOf(l.campaignId)?.key === campaignFilter) : all;
   return (
     <section className="flex w-[272px] min-w-[240px] shrink-0 flex-col md:flex-1 md:basis-0">
       <header className="flex h-7 items-center gap-2 px-0.5">
@@ -281,7 +281,7 @@ function DealColumn({
         ) : (
           leads.map((lead) => {
             const company = leadCompany(lead);
-            const m = missionFor(lead.campaignId);
+            const campaign = campaignOf(lead.campaignId);
             const status = getLeadConsolidatedStatus(lead);
             const at = leadDateForStatus(lead, status);
             const value = served && lead.leadId ? served.byLead.get(lead.leadId) ?? null : null;
@@ -335,9 +335,10 @@ function DealColumn({
                   </div>
                 ) : null}
                 <div className="k-fg3 mt-1.5 flex items-center gap-1.5 text-[11px]">
-                  {m ? (
-                    <span className="inline-flex min-w-0 items-center gap-1 truncate">
-                      <CrewMark color={m.crew.color} glyph={m.crew.glyph} size={12} /> {m.crew.name}
+                  {campaign ? (
+                    <span className="inline-flex min-w-0 items-center gap-1">
+                      <FunnelFace name={campaign.name} size={12} />
+                      <span className="truncate">{campaign.name}</span>
                     </span>
                   ) : null}
                   <span className="ml-auto shrink-0 tabular-nums">{at ? timeAgo(at) : ""}</span>
