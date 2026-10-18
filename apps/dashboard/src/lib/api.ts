@@ -6520,6 +6520,46 @@ const WorkflowCatalogueResponseSchema = z.object({
  * this list: dropping a retired workflow would delete the campaign's own history
  * from the page that exists to show it.
  */
+const WorkflowSummariesResponseSchema = z.object({
+  workflows: z.array(
+    z.object({
+      workflowDynastySlug: z.string(),
+      version: z.number(),
+      contentModel: z.string().nullish(),
+      contentPromptType: z.string().nullish(),
+    }),
+  ),
+});
+
+export interface WorkflowWritingStack {
+  workflowDynastySlug: string;
+  version: number;
+  contentModel: string | null;
+  contentPromptType: string | null;
+}
+
+/**
+ * EVERY version of a channel's workflows, retired ones included (workflow-service
+ * `/workflows/summaries?status=all`, no DAG): what each one writes with. The runnable-only
+ * catalogue (`listChannelWorkflows`) has no row for a retired dynasty, so a table listing one
+ * read "—" for its model and template.
+ */
+export async function listChannelWorkflowStacks(featureSlug: string, token?: string): Promise<WorkflowWritingStack[]> {
+  const query = new URLSearchParams({ featureSlug, status: "all" });
+  const raw = await apiCall<unknown>(`/workflows/summaries?${query.toString()}`, { token });
+  const parsed = WorkflowSummariesResponseSchema.safeParse(raw);
+  if (!parsed.success) {
+    console.error("[dashboard] listChannelWorkflowStacks: response shape mismatch", { issues: parsed.error.issues });
+    throw new Error("[dashboard] listChannelWorkflowStacks: invalid response shape");
+  }
+  return parsed.data.workflows.map((w) => ({
+    workflowDynastySlug: w.workflowDynastySlug,
+    version: w.version,
+    contentModel: w.contentModel ?? null,
+    contentPromptType: w.contentPromptType ?? null,
+  }));
+}
+
 export async function listChannelWorkflows(
   featureSlug: string,
   token?: string,
@@ -8494,6 +8534,11 @@ const LegWorkflowRankingSchema = z
         roiMultiple: z.number().nullable(),
         goesFirst: z.boolean(),
         moneyGoesHere: z.boolean(),
+        // Why the row stands where it does (WF-ORDER-EXPLORE-1018): `.optional()` while a stored
+        // ranking from before features-service served them can still answer.
+        executable: z.boolean().optional(),
+        place: z.string().nullish(),
+        explorePriceUsd: z.number().nullish(),
       }),
     ),
   })

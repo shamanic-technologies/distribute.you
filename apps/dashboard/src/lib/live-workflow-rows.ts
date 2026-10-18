@@ -59,6 +59,15 @@ export interface LiveWorkflowRow {
   selectable: boolean;
   first: boolean;
   cash: boolean;
+  /**
+   * Why the producer's order puts the row there (fleet ranking only, null elsewhere):
+   * `explore` | `money` | `mature` | `proven_worse` | `cannot_run`.
+   */
+  place: string | null;
+  /** The price the order compared for a learning row (spend so far over its outcomes, $0 never run). */
+  explorePriceUsd: number | null;
+  /** FALSE when workflow-service runs no version of it (every version retired). */
+  executable: boolean | null;
 }
 
 /** One served fleet ranking row (features-service `LegWorkflowRankingRow`). */
@@ -76,6 +85,9 @@ export interface FleetRankingRow {
   roiMultiple: number | null;
   goesFirst: boolean;
   moneyGoesHere: boolean;
+  executable?: boolean;
+  place?: string | null;
+  explorePriceUsd?: number | null;
 }
 
 /** Research: the fleet ranking, verbatim, in the producer's order. */
@@ -97,6 +109,9 @@ export function fleetWorkflowRows(rows: readonly FleetRankingRow[]): LiveWorkflo
       selectable: r.selectable,
       first: r.goesFirst,
       cash: r.moneyGoesHere,
+      place: r.place ?? null,
+      explorePriceUsd: r.explorePriceUsd ?? null,
+      executable: r.executable ?? null,
     }));
 }
 
@@ -166,6 +181,9 @@ export function campaignWorkflowRows(input: {
       selectable: r.legAssignment ? r.legAssignment.selectable : true,
       first: false,
       cash: false,
+      place: null,
+      explorePriceUsd: null,
+      executable: null,
     });
   }
   const ordered = out
@@ -184,4 +202,32 @@ export function campaignWorkflowRows(input: {
   const cash = ordered.find((r) => r.selectable && r.slug === input.recommendedSlug);
   if (cash) cash.cash = true;
   return ordered;
+}
+
+/** The words for WHY a fleet row stands where it does: a display lookup on the producer's `place`. */
+export type PlaceTone = "explore" | "money" | "mature" | "worse" | "off";
+
+export function placeWords(row: Pick<LiveWorkflowRow, "place" | "executable" | "assignment">): { label: string; tone: PlaceTone } | null {
+  switch (row.place) {
+    case "explore":
+      return { label: "Explored first", tone: "explore" };
+    case "money":
+      return { label: "Best mature", tone: "money" };
+    case "mature":
+      return { label: "Mature, pricier", tone: "mature" };
+    case "proven_worse":
+      return { label: "Proven pricier", tone: "worse" };
+    case "cannot_run":
+      return { label: cannotRunReason(row), tone: "off" };
+    default:
+      return null;
+  }
+}
+
+/** Why a row can never be put forward, from the producer's flags. */
+export function cannotRunReason(row: Pick<LiveWorkflowRow, "executable" | "assignment">): string {
+  if (row.executable === false) return "Retired: no version runs";
+  if (row.assignment === "deprecated") return "Deprecated on this leg";
+  if (row.assignment === "unassigned") return "Not on this leg";
+  return "Cannot run";
 }
