@@ -195,6 +195,9 @@ describe("research reads nothing scoped to the viewer", () => {
     expect(live).toContain('researchCatalogHref(base, pipe, "models", model.key)');
     expect(live).not.toContain("<LiveWorkflowChips");
     expect(live).toContain("table-fixed");
+    // The Template column takes the free width (its values are the longest); Workflow is fixed.
+    expect(live).toContain("<th className={LIVE_TH}>Template</th>");
+    expect(live).toContain("w-36`}>Workflow</th>");
     expect(live).not.toContain("useParams");
   });
 });

@@ -100,13 +100,13 @@ export function ResearchLiveWorkflows({
     <div className="k-card overflow-hidden">
       <LiveRankingStrip rows={rows} moneyNote="no mature workflow yet" nameOf={nameOf} />
       <div className="k-scroll relative overflow-x-auto">
-        <table className="w-full min-w-[900px] table-fixed text-[13px]">
+        <table className="w-full min-w-[960px] table-fixed text-[13px]">
           <thead>
             <tr className="border-b border-[var(--line-subtle)]">
               <th className={`${LIVE_TH} w-10`}>#</th>
-              <th className={LIVE_TH}>Workflow</th>
-              <th className={`${LIVE_TH} w-24`}>LLM</th>
-              <th className={`${LIVE_TH} w-28`}>Template</th>
+              <th className={`${LIVE_TH} w-36`}>Workflow</th>
+              <th className={`${LIVE_TH} w-28`}>LLM</th>
+              <th className={LIVE_TH}>Template</th>
               <th className={`${LIVE_TH} w-36`}>Why here</th>
               <LiveWorkflowHeads costLabel={`Cost ${outcomeUnit.replace("/ ", "per ")}`} compact />
             </tr>
