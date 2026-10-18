@@ -165,10 +165,13 @@ export const STATUS_LABEL: Record<IndexStatus, string> = {
 
 export function statusLine(status: IndexStatus, rule: StatusRule): string {
   if (status === "robust") return `Robust: built on ${rule.robustMinOutcomes}+ outcomes.`;
-  if (status === "signal") {
-    return `Signal: built on ${rule.signalMinOutcomes} to ${rule.robustMinOutcomes - 1} outcomes. Robust from ${rule.robustMinOutcomes}.`;
-  }
-  return `Early read: under ${rule.signalMinOutcomes} outcomes so far. We publish it anyway, so you can watch it firm up.`;
+  if (status === "signal") return `Signal: built on ${rule.signalMinOutcomes} to ${rule.robustMinOutcomes - 1} outcomes.`;
+  return `Early read: under ${rule.signalMinOutcomes} outcomes so far, published anyway.`;
+}
+
+/** Every range once, for a page listing several statuses: no word said twice. */
+export function statusLegend(rule: StatusRule): string {
+  return `Robust: ${rule.robustMinOutcomes}+ outcomes. Signal: ${rule.signalMinOutcomes} to ${rule.robustMinOutcomes - 1}. Early read: under ${rule.signalMinOutcomes}, published anyway.`;
 }
 
 const UNAVAILABLE: Record<string, string> = {
@@ -183,21 +186,6 @@ export function unavailableLine(reason: string | null): string {
   if (reason && UNAVAILABLE[reason]) return UNAVAILABLE[reason];
   console.error(`[landing] fleet index: unknown unavailableReason ${JSON.stringify(reason)}`);
   return "This number is not available today. It is recorded every hour.";
-}
-
-const OUTCOME_WORDS: Record<string, [string, string]> = {
-  website_visit: ["website visit", "website visits"],
-  positive_reply: ["positive reply", "positive replies"],
-  meeting_booked: ["meeting booked", "meetings booked"],
-};
-
-export function outcomeWords(outcome: string, n: number): string {
-  const words = OUTCOME_WORDS[outcome];
-  if (!words) {
-    console.error(`[landing] fleet index: unknown outcome ${JSON.stringify(outcome)}`);
-    return n === 1 ? "outcome" : "outcomes";
-  }
-  return n === 1 ? words[0] : words[1];
 }
 
 const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
