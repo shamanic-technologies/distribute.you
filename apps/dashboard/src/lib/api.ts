@@ -2776,7 +2776,7 @@ const BrandOfferResponseSchema = z.object({ offer: OfferSchema });
  * ARCHIVED offers are left out unless `includeArchived`. Query keys: the default list is
  * `["brandOffers", brandId]`; the list WITH archived offers is
  * `["brandOffers", brandId, "withArchived"]`, so invalidating the prefix refreshes both.
- * A surface that names an offer by id for HISTORY (missions, leads marks) reads the
+ * A surface that names an offer by id for HISTORY (campaigns, leads marks) reads the
  * with-archived list, or an archived offer's past work loses its name.
  */
 export async function listBrandOffers(
@@ -3709,9 +3709,6 @@ const PublicCatalogueSchema = z.object({
             legKey: z.string(),
             from: StepRefSchema.nullable(),
             to: StepRefSchema,
-            // The crew's name (Herald, Scout, Pilot...), published per leg. Undeclared,
-            // zod strips it and every crew reads by its channel's name instead.
-            crewName: z.string().nullish(),
             /** The campaign's name (this channel on this leg), one word shared by every client. */
             campaignName: z.string().nullish(),
             /** The minimum monthly budget of this (channel x leg) item, whole cents. */
@@ -6360,7 +6357,7 @@ const CampaignRevenueOutcomesSchema = z.object({
   maturity: OutcomesMaturitySchema.nullish(),
   // What happened to the emails this campaign identity sent (features-service #1143):
   // distinct leads sent to, and the SERVED share of them who replied. Only the two
-  // figures the v2 missions table prints are declared.
+  // figures the v2 campaigns table prints are declared.
   sending: z
     .object({
       recipientsSent: z.number(),
@@ -8436,7 +8433,7 @@ const FLEET_POINT = z.object({
 /**
  * The query both fleet return reads send. A `legKey` narrows BOTH legs of the curve (spend
  * and value) to the campaigns performing that leg (features-service#1188), so a workflow
- * viewed under one crew states that crew's history, never the dynasty's across every leg.
+ * viewed under one pipe states that pipe's history, never the dynasty's across every leg.
  * Absent, the answer is the whole fleet, unchanged.
  */
 function fleetReturnQuery(featureSlug: string, workflowDynastySlug: string, legKey?: string): URLSearchParams {
@@ -11778,7 +11775,7 @@ export async function computeDomainAiVisibility(
 }
 
 
-// ─── Runs (dashboard v2 crew + work) ───────────────────────────────────────
+// ─── Runs (dashboard v2 Today + run page) ───────────────────────────────────────
 //
 // runs-service is the ledger of every step a campaign's workflow took. v2 reads
 // it two ways, both served whole: the per-campaign roll-up over a window (a run

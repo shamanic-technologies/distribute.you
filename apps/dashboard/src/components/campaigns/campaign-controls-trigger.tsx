@@ -18,7 +18,7 @@ import { Shimmer } from "@/components/v2/ui";
  * a one-item menu holding the other state ("Pause" / "Activate"), so a pause
  * always takes two deliberate presses. The trigger and the menu item are
  * `role="button"` spans rather than native button elements, because the control
- * renders inside clickable regions (a mission row) and a nested button is
+ * renders inside clickable regions (a campaign row) and a nested button is
  * invalid HTML: the parser closes the outer one early and the row breaks. The
  * menu is portalled to `#v2-portal` so a table's scroll box cannot clip it.
  *

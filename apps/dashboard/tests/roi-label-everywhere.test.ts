@@ -32,7 +32,7 @@ describe("every customer ROI label carries the expected (i)", () => {
 describe("pipe blocks state the served rates", () => {
   const pipes = read("components/v2/pipe-sections.tsx");
   it("reply rate and positive reply rate come off the campaign row's served revenue group", () => {
-    expect(pipes).toContain("const rates = mission?.row.revenue ?? null;");
+    expect(pipes).toContain("const rates = campaign?.row.revenue ?? null;");
     expect(pipes).toContain("rates?.replyRatePct != null ? pct(rates.replyRatePct) : DASH");
     expect(pipes).toContain("rates?.positiveReplyRatePct != null");
   });

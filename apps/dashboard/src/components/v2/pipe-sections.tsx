@@ -14,7 +14,7 @@ import { legFor, stepPluralLabel, type LegDef } from "@/lib/legs";
 import { useLegCatalogue } from "@/lib/use-leg-catalogue";
 import { useAcquisitionChannels } from "@/lib/use-acquisition-channels";
 import type { SalesFunnelUnit } from "@/lib/sales-funnel-campaigns";
-import type { Mission } from "@/components/v2/use-missions";
+import type { V2Campaign } from "@/components/v2/use-campaigns";
 import { LEG_STEPS, StepBar, useCampaignWindow } from "@/components/v2/offer-channel-page";
 import { ChannelChip } from "@/components/v2/offer-sales-paths";
 import { EmptyNote, Shimmer } from "@/components/v2/ui";
@@ -45,28 +45,28 @@ export function pipeKind(featureSlug: string, leg: Pick<LegDef, "fromKey"> | nul
 export function PipeSections({
   brandId,
   units,
-  missionByCampaignId,
+  campaignById,
 }: {
   brandId: string;
   units: SalesFunnelUnit[];
-  missionByCampaignId: Map<string, Mission>;
+  campaignById: Map<string, V2Campaign>;
 }) {
   const catalogue = useLegCatalogue();
   const shown = units.flatMap((u) => {
-    const mission = missionByCampaignId.get(u.campaignId) ?? null;
-    const leg = mission?.leg ?? legFor(catalogue, u.legKey);
+    const campaign = campaignById.get(u.campaignId) ?? null;
+    const leg = campaign?.leg ?? legFor(catalogue, u.legKey);
     const kind = pipeKind(u.featureSlug, leg);
-    return kind && leg ? [{ u, mission, leg, kind }] : [];
+    return kind && leg ? [{ u, campaign, leg, kind }] : [];
   });
   if (shown.length === 0) return null;
   return (
     <div className="space-y-8">
-      {shown.map(({ u, mission, leg, kind }) => (
-        <PipeSection key={u.campaignId} unit={u} mission={mission} leg={leg}>
+      {shown.map(({ u, campaign, leg, kind }) => (
+        <PipeSection key={u.campaignId} unit={u} campaign={campaign} leg={leg}>
           {kind === "cold_email" ? (
-            <ColdEmailPipe brandId={brandId} unit={u} mission={mission} leg={leg} />
+            <ColdEmailPipe brandId={brandId} unit={u} campaign={campaign} leg={leg} />
           ) : (
-            <ConversationPipe brandId={brandId} unit={u} mission={mission} leg={leg} />
+            <ConversationPipe brandId={brandId} unit={u} campaign={campaign} leg={leg} />
           )}
         </PipeSection>
       ))}
@@ -75,7 +75,7 @@ export function PipeSections({
 }
 
 /** The block's head: the channel doing it and what it brings in, then a link to the pipe's own page. */
-function PipeSection({ unit, mission, leg, children }: { unit: SalesFunnelUnit; mission: Mission | null; leg: LegDef; children: React.ReactNode }) {
+function PipeSection({ unit, campaign, leg, children }: { unit: SalesFunnelUnit; campaign: V2Campaign | null; leg: LegDef; children: React.ReactNode }) {
   const channels = useAcquisitionChannels();
   const def = channels.find((d) => d.featureSlug === unit.featureSlug);
   return (
@@ -84,8 +84,8 @@ function PipeSection({ unit, mission, leg, children }: { unit: SalesFunnelUnit; 
         <ChannelChip name={def?.name ?? unit.featureSlug} def={def} notRun={false} />
         <span className="k-fg3 text-[13px]">brings in</span>
         <h2 className="text-[14px] font-medium">{leg.toLabel}</h2>
-        {mission?.href && (
-          <Link href={mission.href} className="k-fg3 ml-auto text-[12px] hover:text-[var(--fg-1)]">
+        {campaign?.href && (
+          <Link href={campaign.href} className="k-fg3 ml-auto text-[12px] hover:text-[var(--fg-1)]">
             Details →
           </Link>
         )}
@@ -127,16 +127,16 @@ const count = (n: number | null | undefined, one: string, many: string) => (n ==
 const pct = formatRatePct;
 
 /** The pipe's return and money, off the campaign row's own served revenue group. */
-function MoneyCells({ mission, per }: { mission: Mission | null; per: "reply" | "visit" | null }) {
+function MoneyCells({ campaign, per }: { campaign: V2Campaign | null; per: "reply" | "visit" | null }) {
   const { basis } = useStatBasis();
-  const g = mission?.row.revenue ?? null;
+  const g = campaign?.row.revenue ?? null;
   const roi = shownReturn(g?.economicsMaturity, basis);
   const cost = shownFigure(g?.outcomesMaturity, (h) => (per === "reply" ? h.cpprCents : h.cpcCents), basis);
   // The served expected cost of one outcome where the measured one is Learning (owner 2026-10-11).
   const costShown = costToShowCents(cost, g?.expectedReturn, per === "reply" ? "conversation" : "website_visit");
   return (
     <>
-      <Cell label={<RoiLabel />}>{!mission ? DASH : <RoiValue roi={roiToShow(roi, g?.expectedReturn)} learning={roi.learning} />}</Cell>
+      <Cell label={<RoiLabel />}>{!campaign ? DASH : <RoiValue roi={roiToShow(roi, g?.expectedReturn)} learning={roi.learning} />}</Cell>
       <Cell label="$ Value">{g?.totalPipelineUsd != null ? formatUsdAdaptive(g.totalPipelineUsd) : DASH}</Cell>
       {per && (
         <Cell label={per === "reply" ? "$ / Positive reply" : "$ / Visit"} sub={costShown.expected ? "Expected" : undefined}>
@@ -199,7 +199,7 @@ function DailyBars({ label, total, days, format = formatCount }: { label: string
  * its outcome per day (features-service's campaign window), its steps Queued -> Sent ->
  * Delivered -> outcome as bars.
  */
-function ColdEmailPipe({ brandId, unit, mission, leg }: { brandId: string; unit: SalesFunnelUnit; mission: Mission | null; leg: LegDef }) {
+function ColdEmailPipe({ brandId, unit, campaign, leg }: { brandId: string; unit: SalesFunnelUnit; campaign: V2Campaign | null; leg: LegDef }) {
   const steps = LEG_STEPS.find((l) => sameLegKey(l.legKey, unit.legKey)) ?? null;
   const q = useAuthQuery(["leadBucketCounts", `campaign:${unit.campaignId}`, ""], () => getLeadBucketCounts({ campaignId: unit.campaignId }, {}), pollOptions);
   const counts = q.data?.counts ?? null;
@@ -211,7 +211,7 @@ function ColdEmailPipe({ brandId, unit, mission, leg }: { brandId: string; unit:
   // Count headings read the catalogue's served plural (features-service `pluralLabel`).
   const toPlural = stepPluralLabel(useLegCatalogue(), leg.toKey, leg.toLabel);
   // The campaign row's own served rates (features-service, distinct people emailed).
-  const rates = mission?.row.revenue ?? null;
+  const rates = campaign?.row.revenue ?? null;
   const outcomes = steps && counts ? counts[steps.bucket] : null;
   const outcomeDaily = replyLed ? win.data?.recipientsRepliesPositive ?? null : win.data?.recipientsClicked ?? null;
   const scale = Math.max(queued ?? 0, emails?.sent ?? 0, emails?.delivered ?? 0, outcomes ?? 0);
@@ -237,7 +237,7 @@ function ColdEmailPipe({ brandId, unit, mission, leg }: { brandId: string; unit:
             {rates?.replyRatePct != null ? pct(rates.replyRatePct) : DASH}
           </Cell>
           <SpentCell win={win} />
-          <MoneyCells mission={mission} per={replyLed ? "reply" : "visit"} />
+          <MoneyCells campaign={campaign} per={replyLed ? "reply" : "visit"} />
         </div>
       </Column>
       <Column title="Per day">
@@ -273,7 +273,7 @@ function ColdEmailPipe({ brandId, unit, mission, leg }: { brandId: string; unit:
  * cold email): the people handed to it and where they stand (lead-service's conversation
  * counts, a partition: handed = ongoing + done + dropped), its spend per day, its steps.
  */
-function ConversationPipe({ brandId, unit, mission, leg }: { brandId: string; unit: SalesFunnelUnit; mission: Mission | null; leg: LegDef }) {
+function ConversationPipe({ brandId, unit, campaign, leg }: { brandId: string; unit: SalesFunnelUnit; campaign: V2Campaign | null; leg: LegDef }) {
   const q = useAuthQuery(["conversationCounts", unit.campaignId], () => getConversationCounts(unit.campaignId), pollOptions);
   const conv = q.data ?? null;
   const settled = q.isFetchedAfterMount || q.data !== undefined;
@@ -294,7 +294,7 @@ function ConversationPipe({ brandId, unit, mission, leg }: { brandId: string; un
           <Cell label="Ongoing">{people(conv?.ongoing)}</Cell>
           <Cell label="Dropped">{people(conv?.dropped)}</Cell>
           <SpentCell win={win} />
-          <MoneyCells mission={mission} per={null} />
+          <MoneyCells campaign={campaign} per={null} />
         </div>
       </Column>
       <Column title="Per day">

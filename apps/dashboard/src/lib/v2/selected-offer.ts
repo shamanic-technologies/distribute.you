@@ -35,7 +35,7 @@ export function selectedOfferCookie(brandId: string, offerId: string): string {
 
 /**
  * The offer the dashboard reads, in order: the one the URL names (an offer's own page, or
- * the offer a mission sells), else the stored pick while it is still one of the brand's
+ * the offer a campaign sells), else the stored pick while it is still one of the brand's
  * live offers, else the brand's first offer. Null only when the brand has no offer.
  */
 export function pickSelectedOffer<T extends OfferLike>(

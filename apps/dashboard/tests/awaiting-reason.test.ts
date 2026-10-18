@@ -32,8 +32,8 @@ describe("Needs your call reads lead-service's waiting-on-us set", () => {
     expect(body).not.toContain("bucket:");
     expect(body).not.toContain("standing:");
   });
-  it("Today and Work cards say why, and carry no manual answered button (lead-service drops answered people itself)", () => {
-    for (const f of ["today-page.tsx", "work-page.tsx"]) {
+  it("Today cards say why, and carry no manual answered button (lead-service drops answered people itself)", () => {
+    for (const f of ["today-page.tsx"]) {
       const src = read(`src/components/v2/${f}`);
       expect(src).toContain("awaitingReason(");
       expect(src).not.toContain("MarkAnswered");

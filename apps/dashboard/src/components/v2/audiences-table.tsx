@@ -83,8 +83,8 @@ function Withheld({ paused }: { paused: boolean }) {
   return <span className="k-chip">{paused ? "Paused" : "Learning"}</span>;
 }
 
-/** The mission's own cost per outcome, the served mature figure (Learning where it is not). */
-function MissionPrice({
+/** The campaign's own cost per outcome, the served mature figure (Learning where it is not). */
+function CampaignPrice({
   leg,
   noun,
   basis,
@@ -98,7 +98,7 @@ function MissionPrice({
   const price = shownFigure(leg, (h) => h.costPerOutcomeUsd, basis);
   return (
     <p className="k-fg2 mb-3 flex items-center gap-2 text-[13px]">
-      <span className="k-label">This mission</span>
+      <span className="k-label">This campaign</span>
       {price.learning ? (
         <Withheld paused={paused} />
       ) : (
@@ -178,7 +178,7 @@ function AudienceCell({
 }
 
 /**
- * The audiences of an offer (or of one mission of it), in Keel's records anatomy:
+ * The audiences of an offer (or of one campaign of it), in Keel's records anatomy:
  * underline tabs with counts, a "/" search, a 13px table whose headers sort, J/K/Enter,
  * and a drawer for one audience. Reads and writes are v1's own (`useAudienceTable`), so
  * the two versions share one cache and cannot state one audience two ways.
@@ -301,14 +301,14 @@ export function V2AudiencesTable({
       {!plain && (
       <p className="k-fg2 mb-3 text-[13px]">
         {t.campaignScoped
-          ? "The figures count this mission only. The audiences belong to the offer, so pausing or archiving one here changes it for every mission."
+          ? "The figures count this campaign only. The audiences belong to the offer, so pausing or archiving one here changes it for every campaign."
           : "ROI, % CAC and $ CAC are projected from your conversion rates and lifetime revenue; $ Invested is what each audience has cost so far."}{" "}
         A price counts only outreach sent long enough ago for its answers to have arrived, and reads Learning until that outreach has produced enough outcomes.
       </p>
       )}
-      {/* THE MISSION'S OWN PRICE, off the envelope's scope maturity: the same served figure
-          its Overview states, so this page and that one print one price for one mission. */}
-      {t.campaignScoped && t.scopeLeg && t.legPair && <MissionPrice leg={t.scopeLeg} noun={LEG_PAIR_NOUN[t.legPair]} basis={basis} paused={t.withheldPaused} />}
+      {/* THE CAMPAIGN'S OWN PRICE, off the envelope's scope maturity: the same served figure
+          its Overview states, so this page and that one print one price for one campaign. */}
+      {t.campaignScoped && t.scopeLeg && t.legPair && <CampaignPrice leg={t.scopeLeg} noun={LEG_PAIR_NOUN[t.legPair]} basis={basis} paused={t.withheldPaused} />}
       <div className="k-card overflow-hidden">
         {showArchivedTab && (
           <RecordsTabs

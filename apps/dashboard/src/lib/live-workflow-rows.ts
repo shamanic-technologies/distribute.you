@@ -10,10 +10,10 @@
  *    so nothing Research states depends on who is looking. The ORDER and both flags are the
  *    producer's (the best mature workflow holds the money; learning ones cheaper than it sit
  *    above it). Nothing is re-ranked here.
- *  - `missionWorkflowRows` — the brand's Workflows page. One mission's own figures: the
+ *  - `campaignWorkflowRows` — the brand's Workflows page. One campaign's own figures: the
  *    CAMPAIGN grain of the per-brand ladder, never a coarser grain wearing its name, and the
- *    realized return of the mission's own per-workflow group. "Goes first" is the producer's
- *    rank 1 for the mission, mature or not; "Money goes here" is the producer's
+ *    realized return of the campaign's own per-workflow group. "Goes first" is the producer's
+ *    rank 1 for the campaign, mature or not; "Money goes here" is the producer's
  *    `recommendedWorkflowDynastySlug`, read, never re-derived. Electing "the first mature row in
  *    rank order" here put the money on Dawn ($4.73/visit) while the producer recommended and ran
  *    Osprey ($2.26/visit): the rank had tied on the offer and fallen back to the slug (prod
@@ -49,7 +49,7 @@ export interface LiveWorkflowRow {
   spentUsd: number | null;
   /**
    * Whether the WORKFLOW is proven on the leg (mature) or still learning — the producer's verdict,
-   * stated on every row, including a workflow this mission has not run yet.
+   * stated on every row, including a workflow this campaign has not run yet.
    */
   mature: boolean | null;
   /** FALSE when this scope has no evidence for the workflow at all. */
@@ -100,8 +100,8 @@ export function fleetWorkflowRows(rows: readonly FleetRankingRow[]): LiveWorkflo
     }));
 }
 
-/** The slice of a per-brand ladder row a mission's table reads. */
-export interface MissionLadderRow {
+/** The slice of a per-brand ladder row a campaign's table reads. */
+export interface CampaignLadderRow {
   audienceId: string | null;
   workflow: { workflowDynastySlug: string; workflowDynastyName?: string | null };
   estimatesByGrain: Partial<
@@ -130,14 +130,14 @@ interface HalfFigures {
 }
 
 /**
- * The brand's Workflows page, one mission: every ladder row the caller passes, in the producer's
- * rank for this mission.
+ * The brand's Workflows page, one campaign: every ladder row the caller passes, in the producer's
+ * rank for this campaign.
  *
- * `roiBySlug` is the mission's realized return per workflow (its own grouped revenue read).
- * `recommendedSlug` is the producer's pick for the mission: the row the money goes to.
+ * `roiBySlug` is the campaign's realized return per workflow (its own grouped revenue read).
+ * `recommendedSlug` is the producer's pick for the campaign: the row the money goes to.
  */
-export function missionWorkflowRows(input: {
-  ladderRows: readonly MissionLadderRow[];
+export function campaignWorkflowRows(input: {
+  ladderRows: readonly CampaignLadderRow[];
   roiBySlug: ReadonlyMap<string, number | null>;
   recommendedSlug: string | null;
 }): LiveWorkflowRow[] {
@@ -145,8 +145,8 @@ export function missionWorkflowRows(input: {
   for (const r of input.ladderRows) {
     if (r.audienceId !== null) continue;
     // Which workflows are shown is the CALLER's call (`hiddenWorkflowSlugs` hides an unassigned
-    // one only when this mission never ran it). Dropping every unassigned row here lost the
-    // workflow a mission actually runs when the owner has not assigned it on the leg yet.
+    // one only when this campaign never ran it). Dropping every unassigned row here lost the
+    // workflow a campaign actually runs when the owner has not assigned it on the leg yet.
     const block = r.estimatesByGrain.campaign;
     const mature = block?.isMature ?? null;
     const half = (mature === true ? block?.mature : block?.flash) ?? null;

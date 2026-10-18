@@ -1,19 +1,19 @@
 "use client";
 
-import type { CrewGlyph } from "@/lib/v2/crews";
+import type { PipeGlyph } from "@/lib/v2/pipe-look";
 
 /**
- * A crew's mark, drawn the way Keel draws an agent: a soft tile in the crew's colour
- * with one geometric glyph. The glyph + colour pair is fixed per crew (`lib/v2/crews`),
- * so a crew reads the same in the sidebar, the tables and its own card.
+ * A pipe's mark, drawn the way Keel draws an agent: a soft tile in the pipe's colour
+ * with one geometric glyph. The glyph + colour pair is fixed per pipe (`lib/v2/pipe-look`),
+ * so a pipe reads the same in the sidebar, the tables and its campaign's page.
  */
-export function CrewMark({
+export function PipeMark({
   color,
   glyph,
   size = 16,
 }: {
   color: string;
-  glyph: CrewGlyph;
+  glyph: PipeGlyph;
   size?: number;
 }) {
   const g = Math.round(size * 0.56);

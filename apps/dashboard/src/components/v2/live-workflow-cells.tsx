@@ -7,7 +7,7 @@ import type { LiveWorkflowRow } from "@/lib/live-workflow-rows";
 
 /**
  * The live-ranking cells, drawn ONE way for both tables that state them: Research (the fleet)
- * and the brand's Workflows page (one mission). Two copies of a Status or ROI cell is how the
+ * and the brand's Workflows page (one campaign). Two copies of a Status or ROI cell is how the
  * two surfaces would come to state one workflow two ways.
  */
 
@@ -55,7 +55,7 @@ export function LiveWorkflowChips({ row }: { row: LiveWorkflowRow }) {
 }
 
 /** The live-ranking column heads, in their one order. No `costLabel` means no cost column: the
- *  brand's Workflows page already states the mission's cost in its Offer column, so a second
+ *  brand's Workflows page already states the campaign's cost in its Offer column, so a second
  *  column there repeats it (owner, 2026-09-30). */
 export function LiveWorkflowHeads({ costLabel }: { costLabel?: string }) {
   return (

@@ -197,8 +197,8 @@ describe("call sites", () => {
     expect(read("lib/use-scope-toggle.ts")).toContain("r.paymentHold");
     expect(read("components/campaigns/campaign-controls-trigger.tsx")).toContain("PAYMENT_HOLD_LABEL[hold]");
   });
-  it("dashboard v2 states it on every mission and on every brand page", () => {
-    expect(read("components/v2/use-missions.ts")).toContain("paymentHold: paymentHoldKind(c)");
+  it("dashboard v2 states it on every campaign and on every brand page", () => {
+    expect(read("components/v2/use-campaigns.ts")).toContain("paymentHold: paymentHoldKind(c)");
     expect(read("components/v2/today-page.tsx")).toContain("hold={m.paymentHold}");
     // The campaign page's status button names the hold itself (PAYMENT_HOLD_LABEL). No hold
     // banner under it (owner 2026-10-05: removed even when true, out of credit included).

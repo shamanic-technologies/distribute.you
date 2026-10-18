@@ -1,6 +1,5 @@
 import { canonicalLegKey, legKeyTwin } from "./outbound-leg-key";
-import { stepPlural } from "./v2/crews";
-import type { LegCatalogue } from "./legs";
+import { stepPluralLabel, type LegCatalogue } from "./legs";
 
 /**
  * An offer's CAMPAIGNS on the Sales path page (owner 2026-10-04): every (channel x leg)
@@ -48,7 +47,7 @@ export function campaignTag(
   // A source finds leads when the outreach it feeds needs them (owner 2026-10-07: reactive, a max).
   if (c.kind === "source") return "Reactive on outreach";
   if (!c.reactive || !c.fromKey) return "Daily Proactive";
-  return `Reactive on ${stepPlural(catalogue, c.fromKey, c.fromLabel ?? c.fromKey).toLowerCase()}`;
+  return `Reactive on ${stepPluralLabel(catalogue, c.fromKey, c.fromLabel ?? c.fromKey).toLowerCase()}`;
 }
 
 type PathLegLike = { legKey: string; fromStep: { key: string; label: string } | null; toStep: { label: string } };

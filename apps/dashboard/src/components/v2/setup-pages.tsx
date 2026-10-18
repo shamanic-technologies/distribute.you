@@ -35,7 +35,6 @@ import { V2CrmMergedView } from "@/components/v2/integrations-merged";
 import { V2AiIntegrationView } from "@/components/v2/integrations-ai";
 import { BrandIntegrationsCard } from "@/components/settings/brand-integrations-card";
 import { Toast } from "@/components/toast";
-import { useMissions } from "@/components/v2/use-missions";
 import { Shimmer, TopBar, type Crumb } from "@/components/v2/ui";
 import { MaturityBadge } from "@/components/maturity-badge";
 import { useUser } from "@clerk/nextjs";
@@ -178,13 +177,6 @@ export function useOfferName(brandId: string, offerId: string | null) {
 }
 
 /**
- * One offer, in two columns. LEFT (the wider one): what the offer IS — its name and
- * mark, what a client won through it is worth, and what it promises (the Hormozi
- * levers the emails are written around). RIGHT: the missions working for it, each a
- * crew with its budget, and the way to add one. A mission's own page is where its
- * budget and status are changed.
- */
-/**
  * The offer's tabs: the offer itself and who it targets (Targeting moved inside the offer,
  * owner 2026-10-10). Revenue Steps (the ticked steps and legs) is retired with brand-service's
  * per-offer sales path: an offer sells through its campaigns, each a sales funnel.
@@ -200,7 +192,6 @@ function offerTabs(orgId: string, brandId: string, offerId: string, active: "ove
 export function V2OfferPage() {
   const { orgId, brandId, offerId } = useIds();
   const name = useOfferName(brandId, offerId);
-  const { missions } = useMissions(orgId, brandId, { allOffers: true });
   if (!offerId) return null;
   return (
     <V2Page

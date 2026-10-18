@@ -8,8 +8,6 @@ export type V2Section =
   | "people"
   | "deals"
   | "unibox"
-  | "work"
-  | "crew"
   | "campaigns"
   | "outcomes"
   | "workflows"
@@ -60,19 +58,19 @@ export function v2CampaignHref(orgId: string, brandId: string, campaignId: strin
 }
 
 /**
- * One workflow dynasty's page, priced for one crew (`<channel slug>|<leg key>`) on one
- * mission (its campaign id). The mission is what the ranking is asked through; a link
- * naming only the crew still resolves when the brand runs one mission for that crew.
+ * One workflow dynasty's page, priced for one pipe (`<channel slug>|<leg key>`) on one
+ * campaign (its id). The campaign is what the ranking is asked through; a link naming
+ * only the pipe still resolves when the brand runs one campaign on that pipe.
  */
 export function v2WorkflowHref(
   orgId: string,
   brandId: string,
   dynastySlug: string,
-  crew: string,
-  mission?: string | null,
+  pipe: string,
+  campaignId?: string | null,
 ): string {
-  const m = mission ? `&mission=${encodeURIComponent(mission)}` : "";
-  return `${v2Base(orgId, brandId)}/workflows/${encodeURIComponent(dynastySlug)}?crew=${encodeURIComponent(crew)}${m}`;
+  const c = campaignId ? `&campaign=${encodeURIComponent(campaignId)}` : "";
+  return `${v2Base(orgId, brandId)}/workflows/${encodeURIComponent(dynastySlug)}?pipe=${encodeURIComponent(pipe)}${c}`;
 }
 
 /**
@@ -101,8 +99,6 @@ export function v2SectionOf(pathname: string): V2Section | null {
     "people",
     "deals",
     "unibox",
-    "work",
-    "crew",
     "campaigns",
     "outcomes",
     "workflows",
@@ -136,9 +132,9 @@ export function v2SectionOf(pathname: string): V2Section | null {
   return (known as string[]).includes(s) ? (s as V2Section) : null;
 }
 
-/** One workflow run in v2, under Work. */
+/** One workflow run in v2 (staff). */
 export function v2RunHref(orgId: string, brandId: string, runId: string): string {
-  return `${v2Base(orgId, brandId)}/work/runs/${encodeURIComponent(runId)}`;
+  return `${v2Base(orgId, brandId)}/runs/${encodeURIComponent(runId)}`;
 }
 
 /** One person (a `leads_campaigns` row) in v2. */

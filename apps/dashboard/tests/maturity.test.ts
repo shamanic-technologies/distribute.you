@@ -174,14 +174,13 @@ describe("the staff Auto / Mature / Flash switch", () => {
     expect(chart).toContain('half === "flash" ? q.data.flash ?? null : q.data');
     const page = read("components/v2/campaign-page.tsx");
     expect(page).toContain("economics={g?.economicsMaturity}");
-    expect(page).toContain("economics={mission.row.revenue?.economicsMaturity}");
+    expect(page).toContain("economics={campaign.row.revenue?.economicsMaturity}");
   });
 
   it("rides the top bar of every v2 page that states a ratio", () => {
     for (const page of [
       "components/v2/today-page.tsx",
       "components/v2/campaign-page.tsx",
-      "components/v2/crew-page.tsx",
       "components/v2/workflows-page.tsx",
       "components/v2/workflow-page.tsx",
     ]) {
@@ -243,10 +242,9 @@ describe("no browser-side Learning threshold, median or spend floor remains", ()
 });
 
 describe("every surface states the served mature figure", () => {
-  it("a campaign and its crew read the per-campaign pairs", () => {
-    expect(read("components/v2/mission-results.ts")).toContain("outcomesMaturity");
+  it("a campaign reads the per-campaign pairs", () => {
+    expect(read("components/v2/campaign-results.ts")).toContain("outcomesMaturity");
     expect(read("components/v2/campaign-page.tsx")).toContain("shownFigure(");
-    expect(read("components/v2/crew-page.tsx")).toContain("shownFigure(");
   });
 
   it("Today reads the brand's economics pair and decides Learning from it", () => {

@@ -14,7 +14,6 @@ import { SINCE_INCEPTION } from "@/lib/revenue-window";
 import { v2CampaignHref, v2Href } from "@/lib/v2/routes";
 import { shownReturn, shownReturnHalf } from "@/lib/maturity";
 import { useStatBasis } from "@/lib/use-stat-basis";
-import { useStaffMode } from "@/lib/use-staff-mode";
 import { useClientClock } from "@/lib/use-client-clock";
 import { StatBasisSwitch } from "@/components/v2/stat-basis-switch";
 import { OfferPlanBanner } from "@/components/v2/choose-plan";
@@ -34,7 +33,7 @@ import {
   TickGauge,
   TopBar,
 } from "@/components/v2/ui";
-import { useCrewRuns } from "@/components/v2/runs";
+import { useCampaignRunsToday } from "@/components/v2/runs";
 import { useOngoingCampaigns, type OngoingCampaign } from "@/components/v2/ongoing-campaigns";
 import { FunnelCampaignLine } from "@/components/v2/funnel-campaigns";
 import { PathAvatar } from "@/components/v2/offer-sales-paths";
@@ -43,9 +42,9 @@ import { campaignTag } from "@/lib/offer-campaigns";
 import { useLegCatalogue } from "@/lib/use-leg-catalogue";
 import { useAuthQuery } from "@/lib/use-auth-query";
 import { STEP_KEY_FOR_LEAD_STAGE } from "@/lib/step-marks";
-import { CrewMark } from "@/components/v2/crew-mark";
+import { PipeMark } from "@/components/v2/pipe-mark";
 import { awaitingReason } from "@/lib/awaiting-reason";
-import { useMissions, type Mission } from "@/components/v2/use-missions";
+import { useCampaigns, type V2Campaign } from "@/components/v2/use-campaigns";
 import {
   useNeedsYourCall,
   useBrandInfo,
@@ -136,12 +135,11 @@ export function TodayPage() {
   // The right panel: one step, or one lead (owner 2026-10-08).
   const [panel, setPanel] = useState<TodayPanelTarget | null>(null);
   const buckets = useBucketCounts(brandId).data;
-  const { missions, missionByCampaignId } = useMissions(orgId, brandId);
-  const { byCrew, settled: runsSettled } = useCrewRuns(brandId, missionByCampaignId);
-  // Work, Crew and Missions pages are staff mode only: a customer gets the figures, no
-  // link to them, and "needs your call" opens the Inbox instead of Work.
-  const { staffMode } = useStaffMode();
-  const callHref = staffMode ? v2Href(orgId, brandId, "work") : `${v2Href(orgId, brandId, "people")}?tab=positive-replies`;
+  const { campaignById } = useCampaigns(orgId, brandId);
+  // Runs today: runs-service's own roll-up, kept to the selected offer's campaigns.
+  const { runsToday, settled: runsSettled } = useCampaignRunsToday(brandId, campaignById);
+  // "Needs your call" opens the Inbox, where those replies are answered.
+  const callHref = `${v2Href(orgId, brandId, "people")}?tab=positive-replies`;
   const selectedOfferId = useSelectedOfferIfAny()?.offerId ?? null;
   // The offer's ON campaigns, and the steps their legs touch: a step no ON campaign
   // works (owner 2026-10-05) is not stated here, so Today never shows a stage at zero
@@ -163,10 +161,6 @@ export function TodayPage() {
   const learning = shownRoi.learning;
   const roiHalf = shownReturnHalf(data?.costEconomics.maturity, basis);
   const roiCurve = !data?.roiHistory ? null : roiHalf === "flash" ? data.roiHistory.flash ?? null : data.roiHistory;
-
-  // Runs today, per crew: runs-service's own roll-up filed under each crew.
-  let runsToday = 0;
-  for (const r of byCrew.values()) runsToday += r.runsToday;
 
   // Needs your call: people who REPLIED with interest and whom nobody has closed or
   // disqualified yet. `total` is lead-service's count of that set.
@@ -237,19 +231,10 @@ export function TodayPage() {
                 " "
               ) : (
                 <>
-                  Your crew finished{" "}
-                  {staffMode ? (
-                    <Link
-                      href={v2Href(orgId, brandId, "crew")}
-                      className="k-fg underline decoration-[var(--line-strong)] underline-offset-4 hover:decoration-[var(--fg-2)]"
-                    >
-                      {formatCount(runsToday)} {runsToday === 1 ? "run" : "runs"}
-                    </Link>
-                  ) : (
-                    <span className="k-fg">
-                      {formatCount(runsToday)} {runsToday === 1 ? "run" : "runs"}
-                    </span>
-                  )}{" "}
+                  Your campaigns finished{" "}
+                  <span className="k-fg">
+                    {formatCount(runsToday)} {runsToday === 1 ? "run" : "runs"}
+                  </span>{" "}
                   today.
                   {needsCall != null && needsCall > 0 && (
                     <>
@@ -398,7 +383,7 @@ export function TodayPage() {
                         brandId={brandId}
                         lead={lead}
                         waiting={callQ.data?.waiting[lead.id] ?? null}
-                        mission={missionByCampaignId.get(lead.campaignId) ?? null}
+                        campaign={campaignById.get(lead.campaignId) ?? null}
                         highlight={i === Math.min(cursor, callLeads.length - 1)}
                         href={personHref(orgId, brandId, lead)}
                         onFocus={() => setCursor(i)}
@@ -409,7 +394,7 @@ export function TodayPage() {
                   )}
                   {needsCall != null && needsCall > callLeads.length && (
                     <Link href={callHref} className="k-btn-ghost w-full justify-center">
-                      {formatCount(needsCall - callLeads.length)} more in {staffMode ? "Work" : "Inbox"} →
+                      {formatCount(needsCall - callLeads.length)} more in Inbox →
                     </Link>
                   )}
                 </div>
@@ -440,7 +425,7 @@ export function TodayPage() {
                               key={lead.id}
                               lead={lead}
                               at={meetingAt(lead)}
-                              mission={missionByCampaignId.get(lead.campaignId) ?? null}
+                              campaign={campaignById.get(lead.campaignId) ?? null}
                               href={personHref(orgId, brandId, lead)}
                             />
                           ))}
@@ -496,12 +481,12 @@ export function TodayPage() {
   );
 }
 
-function CrewLead({ mission }: { mission: Mission | null }) {
-  if (!mission) return <span className="k-fg font-medium">Your crew</span>;
+function CampaignLead({ campaign }: { campaign: V2Campaign | null }) {
+  if (!campaign) return <span className="k-fg font-medium">Your campaign</span>;
   return (
     <span className="inline-flex items-center gap-1.5">
-      <CrewMark color={mission.crew.color} glyph={mission.crew.glyph} />
-      <span className="k-fg font-medium">{mission.crew.name}</span>
+      <PipeMark color={campaign.pipe.color} glyph={campaign.pipe.glyph} />
+      <span className="k-fg font-medium">{campaign.pipe.name}</span>
     </span>
   );
 }
@@ -510,7 +495,7 @@ function CallCard({
   brandId,
   lead,
   waiting,
-  mission,
+  campaign,
   highlight,
   href,
   onFocus,
@@ -520,7 +505,7 @@ function CallCard({
   brandId: string;
   lead: Lead;
   waiting: AwaitingReplyPerson | null;
-  mission: Mission | null;
+  campaign: V2Campaign | null;
   highlight: boolean;
   href: string;
   onFocus: () => void;
@@ -540,7 +525,7 @@ function CallCard({
     >
       <div className="min-w-0">
         <p className="k-fg3 flex flex-wrap items-center gap-1.5 text-[13px]">
-          <CrewLead mission={mission} />
+          <CampaignLead campaign={campaign} />
           {waiting ? <span>· {awaitingReason(waiting.lastMessage.kind, waiting.waitingSince)}</span> : null}
         </p>
         <p className="mt-2 text-[17px] font-medium leading-6 tracking-[-0.01em]">Follow up with {name}?</p>
@@ -553,7 +538,7 @@ function CallCard({
             <path d="M4 2.5h5.5L12 5v8.5H4zM6 8h4M6 10.5h4" stroke="currentColor" strokeWidth="1.3" strokeLinejoin="round" />
           </svg>
           <span className="truncate">
-            {[at ? `Replied ${friendlyDate(at)}` : null, mission?.offerName ? `${mission.crew.name} · ${mission.offerName}` : mission?.crew.name].filter(Boolean).join(" · ")}
+            {[at ? `Replied ${friendlyDate(at)}` : null, campaign?.offerName ? `${campaign.pipe.name} · ${campaign.offerName}` : campaign?.pipe.name].filter(Boolean).join(" · ")}
           </span>
         </p>
         <div className="mt-4 flex flex-wrap items-center gap-2">
@@ -596,7 +581,7 @@ function CallCard({
   );
 }
 
-function MeetingLine({ lead, at, mission, href }: { lead: Lead; at: string | null; mission: Mission | null; href: string }) {
+function MeetingLine({ lead, at, campaign, href }: { lead: Lead; at: string | null; campaign: V2Campaign | null; href: string }) {
   const company = leadCompany(lead);
   return (
     <li>
@@ -612,7 +597,7 @@ function MeetingLine({ lead, at, mission, href }: { lead: Lead; at: string | nul
         >
           <span className="truncate text-[13px] font-medium">{company ?? leadName(lead)}</span>
           <span className="k-fg3 truncate text-[12px]">
-            {[company ? leadName(lead) : null, mission?.crew.name ? `booked by ${mission.crew.name}` : null].filter(Boolean).join(" · ")}
+            {[company ? leadName(lead) : null, campaign?.pipe.name ? `booked by ${campaign.pipe.name}` : null].filter(Boolean).join(" · ")}
           </span>
         </MarkLines>
       </Link>
@@ -629,10 +614,10 @@ function CampaignLine({ c }: { c: OngoingCampaign }) {
       {/* The mark is as tall as the name and definition lines beside it (owner 2026-10-11). */}
       <MarkLines
         gap="gap-3"
-        mark={(px) => (name ? <PathAvatar name={name} size={px} /> : <CrewMark color={m.crew.color} glyph={m.crew.glyph} size={px} />)}
+        mark={(px) => (name ? <PathAvatar name={name} size={px} /> : <PipeMark color={m.pipe.color} glyph={m.pipe.glyph} size={px} />)}
       >
         <span className="flex items-center gap-3">
-          <span className="min-w-0 flex-1 truncate text-[13px] font-medium">{name ?? m.crew.name}</span>
+          <span className="min-w-0 flex-1 truncate text-[13px] font-medium">{name ?? m.pipe.name}</span>
           <StateDot running={m.running} hold={m.paymentHold} />
         </span>
         {/* The full definition on its own line, as the Sales path page reads it: [Channel] → outcome. */}

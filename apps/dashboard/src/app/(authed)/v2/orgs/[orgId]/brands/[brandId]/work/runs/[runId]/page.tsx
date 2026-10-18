@@ -1,10 +1,7 @@
-import { StaffOnly } from "@/components/v2/staff-only";
-import { RunPage } from "@/components/v2/run-page";
+import { redirect } from "next/navigation";
 
-export default function V2RunRoute() {
-  return (
-    <StaffOnly>
-      <RunPage />
-    </StaffOnly>
-  );
+/** Legacy staff URL: a run's page moved to `/runs/:runId` (2026-10-18). */
+export default async function Page({ params }: { params: Promise<{ orgId: string; brandId: string; runId: string }> }) {
+  const { orgId, brandId, runId } = await params;
+  redirect(`/v2/orgs/${encodeURIComponent(orgId)}/brands/${encodeURIComponent(brandId)}/runs/${encodeURIComponent(runId)}`);
 }

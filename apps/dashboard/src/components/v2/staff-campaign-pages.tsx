@@ -154,7 +154,7 @@ export function StaffCampaignsOverviewPage() {
           ) : (
             <div className="k-card overflow-hidden">
               {legacy.map((c) => (
-                <LegacyCampaignRow key={c.m.row.campaign.id} href={c.m.href} name={c.name ?? c.m.crew.name} featureSlug={c.m.row.campaign.featureSlug} legKey={c.m.row.campaign.legKey} />
+                <LegacyCampaignRow key={c.m.row.campaign.id} href={c.m.href} name={c.name ?? c.m.pipe.name} featureSlug={c.m.row.campaign.featureSlug} legKey={c.m.row.campaign.legKey} />
               ))}
             </div>
           )}

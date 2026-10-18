@@ -10,7 +10,7 @@ describe("splitDailyBudget", () => {
       { campaignId: "old-pilot", runningDailyBudgetCents: 0 },
     ],
   };
-  it("takes an event crew's cap out of the daily figure", () => {
+  it("takes an event campaign's cap out of the daily figure", () => {
     expect(splitDailyBudget(spendable, (id) => id.includes("pilot"))).toEqual({ dailyCents: 5000, eventCapCents: 2000 });
   });
   it("leaves the served total alone when nothing is event-triggered", () => {

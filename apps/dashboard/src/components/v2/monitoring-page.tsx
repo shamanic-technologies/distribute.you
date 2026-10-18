@@ -429,7 +429,7 @@ function Hub({ base }: { base: string }) {
   );
 }
 
-/** A section heading the way Research heads a crew: its mark, its name, a count, its line on the right. */
+/** A section heading the way Research heads a pipe: its mark, its name, a count, its line on the right. */
 function Section({ section, count, children }: { section: SectionKey; count: number; children: React.ReactNode }) {
   const look = SECTION_LOOK[section];
   return (

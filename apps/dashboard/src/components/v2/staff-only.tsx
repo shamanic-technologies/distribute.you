@@ -5,7 +5,7 @@ import { useUser } from "@clerk/nextjs";
 import { useStaffMode } from "@/lib/use-staff-mode";
 
 /**
- * A page that lives below a mission (workflows, models, templates, Research). A customer
+ * A page that lives below a campaign (workflows, models, templates, Research). A customer
  * never sees it, and neither does staff with Staff mode off: a typed URL reaches the same
  * "not available" a client would. Nothing renders until Clerk says who is reading, so a
  * staff reader never sees the refusal flash first. Once loaded it stays loaded: Clerk's

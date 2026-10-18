@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
-import { CrewMark } from "@/components/v2/crew-mark";
+import { PipeMark } from "@/components/v2/pipe-mark";
 import { EmptyNote, KeyHint, SectionTitle, Shimmer, StateDot, TopBar } from "@/components/v2/ui";
 import { useRowKeys } from "@/components/v2/records";
 import { ActualCostNote, CostBasisSwitch } from "@/components/v2/cost-basis-switch";
@@ -19,14 +19,14 @@ import { useRoutePrefetch } from "@/lib/use-route-prefetch";
 import { v2WorkflowHref } from "@/lib/v2/routes";
 import { DEPRECATED_ON_LEG_LABEL } from "@/lib/workflow-eligibility";
 import { workflowRoi } from "@/lib/campaign-workflow-rows";
-import { missionWorkflowRows, shortWorkflowName, type MissionLadderRow } from "@/lib/live-workflow-rows";
+import { campaignWorkflowRows, shortWorkflowName, type CampaignLadderRow } from "@/lib/live-workflow-rows";
 import { useFeatures } from "@/lib/features-context";
 import { LiveRankingStrip, LiveWorkflowCells, LiveWorkflowChips, LiveWorkflowHeads } from "@/components/v2/live-workflow-cells";
 import {
-  crewParam,
-  useBrandMissionSpecs,
-  useMissionWorkflowRanking,
-  type MissionSpec,
+  pipeParam,
+  useBrandCampaignSpecs,
+  useCampaignWorkflowRanking,
+  type CampaignSpec,
 } from "@/components/v2/workflows-data";
 
 /** Rows a section shows before its footer offers the rest. */
@@ -34,12 +34,12 @@ const ROWS_SHOWN = 10;
 const TH = "k-label px-3 py-2.5 text-left font-medium first:pl-4 last:pr-4";
 
 /**
- * Every workflow the brand's missions can run, beta. One section per MISSION, because
- * the ranking is the producer's per mission: it is asked with the mission's campaign id
+ * Every workflow the brand's campaigns can run, beta. One section per CAMPAIGN, because
+ * the ranking is the producer's per campaign: it is asked with the campaign's id
  * (a brand selling several offers cannot be ranked without one). Three columns per row:
- * Offer (what it has cost the mission's own offer), Brand (what it has cost this brand)
+ * Offer (what it has cost the campaign's own offer), Brand (what it has cost this brand)
  * and Global (what it costs across every client we run it for), narrowest first. Rows
- * are in the producer's rank for the mission, served order (owner-decided 2026-09-30,
+ * are in the producer's rank for the campaign, served order (owner-decided 2026-09-30,
  * replacing the Offer / Brand / Global sort, which made # read 24, 4, 6...). A row opens
  * the workflow's own page.
  *
@@ -50,20 +50,20 @@ const TH = "k-label px-3 py-2.5 text-left font-medium first:pl-4 last:pr-4";
 export function V2WorkflowsPage() {
   const { orgId, brandId } = useParams<{ orgId: string; brandId: string }>();
   const router = useRouter();
-  const { specs, settled } = useBrandMissionSpecs(orgId, brandId);
+  const { specs, settled } = useBrandCampaignSpecs(orgId, brandId);
 
   // Each section reports the rows it drew, so J/K walk the page top to bottom.
-  const [rowsByMission, setRowsByMission] = useState<Record<string, string[]>>({});
-  const [totalByMission, setTotalByMission] = useState<Record<string, number>>({});
+  const [rowsByCampaign, setRowsByCampaign] = useState<Record<string, string[]>>({});
+  const [totalByCampaign, setTotalByCampaign] = useState<Record<string, number>>({});
   const onRows = useCallback((campaignId: string, hrefs: string[], total: number) => {
-    setRowsByMission((prev) => {
+    setRowsByCampaign((prev) => {
       const old = prev[campaignId];
       if (old && old.length === hrefs.length && old.every((h, i) => h === hrefs[i])) return prev;
       return { ...prev, [campaignId]: hrefs };
     });
-    setTotalByMission((prev) => (prev[campaignId] === total ? prev : { ...prev, [campaignId]: total }));
+    setTotalByCampaign((prev) => (prev[campaignId] === total ? prev : { ...prev, [campaignId]: total }));
   }, []);
-  const flat = useMemo(() => specs.flatMap((s) => rowsByMission[s.campaignId] ?? []), [specs, rowsByMission]);
+  const flat = useMemo(() => specs.flatMap((s) => rowsByCampaign[s.campaignId] ?? []), [specs, rowsByCampaign]);
   const [cursor, setCursor] = useState(-1);
   const searchRef = useRef<HTMLInputElement | null>(null);
   useRowKeys({
@@ -78,10 +78,10 @@ export function V2WorkflowsPage() {
   });
   const cursorHref = cursor >= 0 ? (flat[cursor] ?? null) : null;
 
-  const running = specs.filter((s) => s.mission.running).length;
-  const ranked = specs.every((s) => totalByMission[s.campaignId] !== undefined);
+  const running = specs.filter((s) => s.campaign.running).length;
+  const ranked = specs.every((s) => totalByCampaign[s.campaignId] !== undefined);
   const { actual } = useCostBasis();
-  const workflowTotal = specs.reduce((n, s) => n + (totalByMission[s.campaignId] ?? 0), 0);
+  const workflowTotal = specs.reduce((n, s) => n + (totalByCampaign[s.campaignId] ?? 0), 0);
 
   return (
     <>
@@ -99,21 +99,21 @@ export function V2WorkflowsPage() {
           <div className="min-w-0">
             <h1 className="text-[28px] font-medium leading-[34px] tracking-[-0.02em]">
               {settled && specs.length > 0
-                ? `${specs.length} ${specs.length === 1 ? "mission" : "missions"}, ${
+                ? `${specs.length} ${specs.length === 1 ? "campaign" : "campaigns"}, ${
                     ranked ? `${workflowTotal} workflows ranked` : "ranking their workflows"
                   }`
                 : "Workflows"}
             </h1>
             <p className="k-fg2 mt-1 text-[14px]">
-              Offer is the mission&apos;s own offer, Brand is this brand alone, Global is every client we run a workflow for.
-              Rows are in the rank we would put the mission on. Money goes first to the cheap learning workflows above the
-              first mature one, then settles on it. ROI, Rate, Outcomes and Invested are the mission&apos;s own.
+              Offer is the campaign&apos;s own offer, Brand is this brand alone, Global is every client we run a workflow for.
+              Rows are in the rank we would put the campaign on. Money goes first to the cheap learning workflows above the
+              first mature one, then settles on it. ROI, Rate, Outcomes and Invested are the campaign&apos;s own.
             </p>
           </div>
           {settled && specs.length > 0 && (
             <span className="k-fg2 inline-flex items-center gap-2 text-[13px]">
               <span className={`h-1.5 w-1.5 rounded-full ${running ? "k-dot-pulse bg-[var(--run)] text-[var(--run)]" : "bg-[var(--fg-4)]"}`} />
-              {running} {running === 1 ? "mission" : "missions"} running now
+              {running} {running === 1 ? "campaign" : "campaigns"} running now
             </span>
           )}
         </div>
@@ -125,12 +125,12 @@ export function V2WorkflowsPage() {
           </div>
         ) : specs.length === 0 ? (
           <div className="k-card mt-6">
-            <EmptyNote>No mission is set up yet, so no crew has workflows to compare.</EmptyNote>
+            <EmptyNote>No campaign is set up yet, so there are no workflows to compare.</EmptyNote>
           </div>
         ) : (
           <>
             {specs.map((spec) => (
-              <MissionSection
+              <CampaignSection
                 key={spec.campaignId}
                 spec={spec}
                 orgId={orgId}
@@ -162,15 +162,15 @@ function SectionSkeleton() {
   );
 }
 
-/** One mission's ranking. A component of its own because each mission is its own read. */
-function MissionSection({
+/** One campaign's ranking. A component of its own because each campaign is its own read. */
+function CampaignSection({
   spec,
   orgId,
   brandId,
   cursorHref,
   onRows,
 }: {
-  spec: MissionSpec;
+  spec: CampaignSpec;
   orgId: string;
   brandId: string;
   cursorHref: string | null;
@@ -179,7 +179,7 @@ function MissionSection({
   const router = useRouter();
   const prefetch = useRoutePrefetch();
   const [expanded, setExpanded] = useState(false);
-  const r = useMissionWorkflowRanking(brandId, spec, true);
+  const r = useCampaignWorkflowRanking(brandId, spec, true);
   const bySlug = useMemo(
     () => new Map(scopeLadderRows(r.allLadderRows, null).map((row) => [row.workflow.workflowDynastySlug, row])),
     [r.allLadderRows],
@@ -214,12 +214,12 @@ function MissionSection({
     });
     return priced;
   }, [r.ranked, heldBySlug, basis]);
-  // The mission's own live figures (its campaign grain + its realized return), with the
+  // The campaign's own live figures (its campaign grain + its realized return), with the
   // row that goes first (rank 1) and the producer's recommendation (where the money goes).
   const live = useMemo(() => {
     const roiBySlug = new Map(r.rows.map((row) => [row.workflowDynastySlug, workflowRoi(row, basis).value]));
-    return missionWorkflowRows({
-      ladderRows: r.allLadderRows as unknown as MissionLadderRow[],
+    return campaignWorkflowRows({
+      ladderRows: r.allLadderRows as unknown as CampaignLadderRow[],
       roiBySlug,
       recommendedSlug: r.ladder?.recommendedWorkflowDynastySlug ?? null,
     });
@@ -227,7 +227,7 @@ function MissionSection({
   const liveBySlug = useMemo(() => new Map(live.map((row) => [row.slug, row])), [live]);
   const shown = expanded ? rows : rows.slice(0, ROWS_SHOWN);
   const hrefFor = useCallback(
-    (slug: string) => v2WorkflowHref(orgId, brandId, slug, crewParam(spec), spec.campaignId),
+    (slug: string) => v2WorkflowHref(orgId, brandId, slug, pipeParam(spec), spec.campaignId),
     [orgId, brandId, spec],
   );
   const hrefs = useMemo(() => shown.map(({ w }) => hrefFor(w.row.workflowDynastySlug)), [shown, hrefFor]);
@@ -236,7 +236,7 @@ function MissionSection({
     if (!pending) onRows(spec.campaignId, hrefs, r.ranked.length);
   }, [pending, hrefs, onRows, spec.campaignId, r.ranked.length]);
 
-  const m = spec.mission;
+  const m = spec.campaign;
   return (
     <section className="mt-8">
       <SectionTitle
@@ -245,14 +245,14 @@ function MissionSection({
           <>
             <StateDot running={m.running} hold={m.paymentHold} />
             <Link href={m.href} className="k-btn-ghost h-6 px-1.5 text-[12px]">
-              Open mission
+              Open campaign
             </Link>
           </>
         }
       >
         <span className="inline-flex items-center gap-2">
-          <CrewMark color={spec.crew.color} glyph={spec.crew.glyph} size={18} />
-          {spec.crew.name}
+          <PipeMark color={spec.pipe.color} glyph={spec.pipe.glyph} size={18} />
+          {spec.pipe.name}
           {m.offerName && <span className="k-fg2 font-normal">· {m.offerName}</span>}
         </span>
       </SectionTitle>
@@ -280,7 +280,7 @@ function MissionSection({
                 {r.ranked.length === 0 ? (
                   <tr>
                     <td colSpan={13}>
-                      <EmptyNote>This crew offers no workflow yet.</EmptyNote>
+                      <EmptyNote>This pipe offers no workflow yet.</EmptyNote>
                     </td>
                   </tr>
                 ) : (
@@ -347,7 +347,7 @@ function MissionSection({
           <div className="k-fg3 flex items-center gap-3 border-t border-[var(--line-subtle)] px-4 py-2.5 text-[12px] tabular-nums">
             <span className="min-w-0 truncate">
               {r.ladderError
-                ? "We could not read this mission's ranking just now, so its workflows are listed unordered."
+                ? "We could not read this campaign's ranking just now, so its workflows are listed unordered."
                 : `${shown.length} of ${r.ranked.length} ${r.ranked.length === 1 ? "workflow" : "workflows"}, priced per ${r.outcomeNoun.toLowerCase()}`}
             </span>
             {r.ranked.length > ROWS_SHOWN && (

@@ -99,7 +99,7 @@ export function shownFigure<T>(
  * would read as a verdict. The to-date (flash) half is the conservative one: spend whose
  * outcomes have not landed yet pulls it down, never up.
  *
- * Every return on a brand page reads this, so one mission never shows `1.8×` on one
+ * Every return on a brand page reads this, so one campaign never shows `1.8×` on one
  * screen and Learning on another. Costs per outcome keep `shownFigure`.
  */
 export function shownReturn<T extends { roiMultiple: number | null }>(

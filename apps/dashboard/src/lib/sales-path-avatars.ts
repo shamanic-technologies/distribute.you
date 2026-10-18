@@ -2,7 +2,7 @@
  * The face of a sales path combination: a cute manga animal head per NAME, drawn once
  * and served from `public/sales-path-avatars/<name in lower case>.jpg`. The NAME is
  * features-service's (shared by every client, never changed); the face is a look, so it
- * is ours, like a crew's colour was. A name with no face drawn yet is listed nowhere
+ * is ours, like a pipe's colour is. A name with no face drawn yet is listed nowhere
  * here: the caller says so loudly and shows its initial.
  *
  * Alias-free so it carries real unit tests.

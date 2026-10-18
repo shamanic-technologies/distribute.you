@@ -25,7 +25,7 @@ import { PathAvatar } from "@/components/v2/offer-sales-paths";
 import { FunnelFace } from "@/components/v2/funnel-campaigns";
 import { v2CampaignHref } from "@/lib/v2/routes";
 import type { SalesFunnelCampaign } from "@/lib/sales-funnel-campaigns";
-import { CrewMark } from "@/components/v2/crew-mark";
+import { PipeMark } from "@/components/v2/pipe-mark";
 import { PeoplePage } from "@/components/v2/people-page";
 import { AudienceLists } from "@/components/v2/audience-page";
 import { PostsPage } from "@/components/v2/posts-page";
@@ -44,7 +44,7 @@ function useIds() {
 }
 
 function CampaignFace({ c }: { c: OngoingCampaign }) {
-  return c.name ? <PathAvatar name={c.name} size={16} /> : <CrewMark color={c.m.crew.color} glyph={c.m.crew.glyph} size={16} />;
+  return c.name ? <PathAvatar name={c.name} size={16} /> : <PipeMark color={c.m.pipe.color} glyph={c.m.pipe.glyph} size={16} />;
 }
 
 /** crm-service's source for the people OUR campaigns brought to a step (lead-service's buckets). */
@@ -82,7 +82,7 @@ function ProducedBy({ campaigns, funnelCampaigns, sources = [] }: { campaigns: O
       {campaigns.map((c) => (
         <Link key={c.m.row.campaign.id} href={c.m.href} className="k-fg2 inline-flex min-w-0 items-center gap-1.5 hover:text-[var(--fg-1)]" onClick={(e) => e.stopPropagation()}>
           <CampaignFace c={c} />
-          <span className="truncate">{c.name ?? c.m.crew.name}</span>
+          <span className="truncate">{c.name ?? c.m.pipe.name}</span>
         </Link>
       ))}
     </span>

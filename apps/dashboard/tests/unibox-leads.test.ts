@@ -127,7 +127,7 @@ describe("Unibox list from lead-service (owner 2026-10-17)", () => {
     // The card shows the campaign name lead-service serves, never a name joined in the browser.
     const card = read("components/v2/unibox-lead-card.tsx");
     expect(card).toContain("{c.name ?? \"Campaign\"}");
-    expect(card).not.toContain("useMissions(");
+    expect(card).not.toContain("useCampaigns(");
     expect(read("lib/api.ts")).toContain("`/leads/unibox?${uniboxQuery(brandId, filters, opts)}`");
     expect(read("lib/api.ts")).toContain("`/leads/unibox-lead?${qs.toString()}`");
   });

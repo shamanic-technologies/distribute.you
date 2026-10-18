@@ -30,17 +30,17 @@ import { formatUsdAdaptive } from "@/lib/format-number";
 import type { WorkflowLadderRowShape } from "@/lib/workflow-grains";
 import { ladderRowsForScope } from "@/components/workflows/campaign-workflows-page";
 import { useStatBasis } from "@/lib/use-stat-basis";
-import { useMissions, type Mission } from "@/components/v2/use-missions";
-import type { CrewIdentity } from "@/lib/v2/crews";
+import { useCampaigns, type V2Campaign } from "@/components/v2/use-campaigns";
+import type { PipeIdentity } from "@/lib/v2/pipe-look";
 
 /**
  * The data behind dashboard v2's brand-level Workflows pages.
  *
- * A row there is a workflow working for one MISSION (a crew working one offer), never a
+ * A row there is a workflow working for one CAMPAIGN (a pipe working one offer), never a
  * workflow alone: a cost per outcome only means something once the outcome is named, and
- * the crew is what names it (a channel plus the step its leg lands on).
+ * the pipe is what names it (a channel plus the step its leg lands on).
  *
- * The ranking is asked PER MISSION, with that mission's campaign id. features-service
+ * The ranking is asked PER CAMPAIGN, with its campaign id. features-service
  * refuses a leg-keyed ranking with no campaign on a brand selling several offers (409
  * `several_offers`: which offer is the leg bought for?), so a brand-wide read only ever
  * worked for single-offer brands. The keys are byte-equal to the campaign Workflows
@@ -49,39 +49,39 @@ import type { CrewIdentity } from "@/lib/v2/crews";
  * read. Nothing is ranked, divided or summed here.
  */
 
-/** One mission this brand runs, as the ladder is asked for it. */
-export interface MissionSpec {
-  mission: Mission;
-  crew: CrewIdentity;
+/** One campaign this brand runs, as the ladder is asked for it. */
+export interface CampaignSpec {
+  campaign: V2Campaign;
+  pipe: PipeIdentity;
   featureSlug: string;
   legKey: string;
   campaignId: string;
 }
 
-/** The crew key that travels in a workflow page's URL: `<channel slug>|<leg key>`. */
-export function crewParam(spec: { featureSlug: string; legKey: string }): string {
+/** The pipe key that travels in a workflow page's URL: `<channel slug>|<leg key>`. */
+export function pipeParam(spec: { featureSlug: string; legKey: string }): string {
   return `${spec.featureSlug}|${spec.legKey}`;
 }
 
-/** The brand's missions that can be ranked (they name a channel and a leg), running first. */
-export function useBrandMissionSpecs(orgId: string, brandId: string) {
-  const { missions, settled, missionByCampaignId } = useMissions(orgId, brandId);
-  const specs = useMemo<MissionSpec[]>(() => {
-    const out: MissionSpec[] = [];
-    for (const m of missions) {
+/** The brand's campaigns that can be ranked (they name a channel and a leg), running first. */
+export function useBrandCampaignSpecs(orgId: string, brandId: string) {
+  const { campaigns, settled, campaignById } = useCampaigns(orgId, brandId);
+  const specs = useMemo<CampaignSpec[]>(() => {
+    const out: CampaignSpec[] = [];
+    for (const m of campaigns) {
       const featureSlug = m.row.campaign.featureSlug;
       const legKey = m.row.campaign.legKey;
       if (!featureSlug || !legKey) continue;
-      out.push({ mission: m, crew: m.crew, featureSlug, legKey, campaignId: m.row.campaign.id });
+      out.push({ campaign: m, pipe: m.pipe, featureSlug, legKey, campaignId: m.row.campaign.id });
     }
     return out.sort(
       (a, b) =>
-        Number(b.mission.running) - Number(a.mission.running) ||
-        a.crew.name.localeCompare(b.crew.name) ||
-        (a.mission.offerName ?? "").localeCompare(b.mission.offerName ?? ""),
+        Number(b.campaign.running) - Number(a.campaign.running) ||
+        a.pipe.name.localeCompare(b.pipe.name) ||
+        (a.campaign.offerName ?? "").localeCompare(b.campaign.offerName ?? ""),
     );
-  }, [missions]);
-  return { specs, settled, missionByCampaignId };
+  }, [campaigns]);
+  return { specs, settled, campaignById };
 }
 
 /** A read that has answered once stays answered: a failed poll must not repaint a skeleton. */
@@ -90,7 +90,7 @@ function settleOf(q: { data: unknown; isFetchedAfterMount: boolean }) {
   return { pending: !answered, failed: q.data === undefined && q.isFetchedAfterMount };
 }
 
-export interface CrewWorkflowRanking {
+export interface CampaignWorkflowRanking {
   ladder: WorkflowRankLadder | undefined;
   /** Every row the ladder sent, audiences included — what the panel's audience list reads. */
   allLadderRows: WorkflowLadderRowShape[];
@@ -110,14 +110,14 @@ export interface CrewWorkflowRanking {
 }
 
 /**
- * ONE mission's ranking. Every key is the campaign Workflows page's own, so opening that
+ * ONE campaign's ranking. Every key is the campaign Workflows page's own, so opening that
  * tab after this page costs no request.
  */
-export function useMissionWorkflowRanking(
+export function useCampaignWorkflowRanking(
   brandId: string,
   spec: { featureSlug: string; legKey: string; campaignId: string } | null,
   enabled: boolean,
-): CrewWorkflowRanking {
+): CampaignWorkflowRanking {
   const featureSlug = spec?.featureSlug ?? null;
   const legKey = spec?.legKey ?? null;
   const campaignId = spec?.campaignId ?? null;

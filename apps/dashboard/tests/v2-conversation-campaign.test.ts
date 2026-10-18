@@ -6,16 +6,16 @@ const src = readFileSync(join(__dirname, "../src/components/v2/campaign-page.tsx
 
 describe("v2 campaign page: a campaign that answers conversations (AI Meeting Booking)", () => {
   it("reads its leg as a path with the channel on the arrow: from → [channel] → to", () => {
-    const from = src.indexOf("{mission.leg.fromLabel}</span>");
+    const from = src.indexOf("{campaign.leg.fromLabel}</span>");
     const chip = src.indexOf("{def.name}");
-    const to = src.indexOf("{mission.leg.toLabel}</span>");
+    const to = src.indexOf("{campaign.leg.toLabel}</span>");
     expect(from).toBeGreaterThan(-1);
     expect(from).toBeLessThan(chip);
     expect(chip).toBeLessThan(to);
   });
 
   it("opens the conversation overview for a leg that starts on a step", () => {
-    expect(src).toContain('tab === "overview" && mission.leg && !isProactiveFrom(mission.leg.fromKey) ? (');
+    expect(src).toContain('tab === "overview" && campaign.leg && !isProactiveFrom(campaign.leg.fromKey) ? (');
     expect(src).toContain("<ConversationOverview");
   });
 
@@ -31,7 +31,7 @@ describe("v2 campaign page: a campaign that answers conversations (AI Meeting Bo
 
   it("reads the four counts from lead-service on the acting campaign", () => {
     const body = src.slice(src.indexOf("function ConversationOverview("));
-    expect(body).toContain("getConversationCounts(mission.row.campaign.id)");
+    expect(body).toContain("getConversationCounts(campaign.row.campaign.id)");
     expect(body).toContain("conv?.meetingsBooked");
   });
 });

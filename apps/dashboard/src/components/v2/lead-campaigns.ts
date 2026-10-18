@@ -6,7 +6,7 @@ import { listSalesFunnelCampaigns } from "@/lib/api";
 import { pollOptions } from "@/lib/query-options";
 import { useLegCatalogue } from "@/lib/use-leg-catalogue";
 import { campaignNameFor } from "@/lib/legs";
-import { useMissions } from "@/components/v2/use-missions";
+import { useCampaigns } from "@/components/v2/use-campaigns";
 import { useSelectedOffer } from "@/components/v2/selected-offer";
 
 /** The campaign a record was reached by, as the customer knows it: its served name (its face is drawn from it). */
@@ -19,12 +19,12 @@ export interface LeadCampaign {
 /**
  * Which CAMPAIGN reached a lead (owner 2026-10-10: a campaign is a sales funnel campaign, named
  * and faced, never a pipe/unit): the lead's stored campaign row → its campaign identity
- * (`missionByCampaignId`, ancestors included) → the funnel campaign that row is a part of, by
+ * (`campaignById`, ancestors included) → the funnel campaign that row is a part of, by
  * its served `salesFunnelName`. A campaign started before sales funnels has no funnel: it keeps
  * its own served name off the leg catalogue. Joins only, no derived figure.
  */
 export function useLeadCampaigns(orgId: string, brandId: string) {
-  const { missionByCampaignId } = useMissions(orgId, brandId);
+  const { campaignById } = useCampaigns(orgId, brandId);
   const { offerId } = useSelectedOffer();
   const legCatalogue = useLegCatalogue();
   // Same key as every other reader of the offer's funnel campaigns (sidebar, Campaigns page).
@@ -37,7 +37,7 @@ export function useLeadCampaigns(orgId: string, brandId: string) {
   const campaignOf = useCallback(
     (campaignId: string | null | undefined): LeadCampaign | null => {
       if (!campaignId) return null;
-      const m = missionByCampaignId.get(campaignId);
+      const m = campaignById.get(campaignId);
       if (!m) return null;
       const c = m.row.campaign;
       if (c.salesFunnelCampaignId) {
@@ -47,7 +47,7 @@ export function useLeadCampaigns(orgId: string, brandId: string) {
       const name = campaignNameFor(legCatalogue, c.featureSlug, c.legKey);
       return name ? { key: c.id, name } : null;
     },
-    [missionByCampaignId, funnelById, legCatalogue],
+    [campaignById, funnelById, legCatalogue],
   );
 
   // The offer's campaigns, to filter records by (newest first, as served).

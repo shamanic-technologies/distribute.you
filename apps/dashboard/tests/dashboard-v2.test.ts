@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { readFileSync, existsSync, readdirSync } from "fs";
 import { resolve } from "path";
 import { stripV2Prefix, v2DashboardHref } from "../src/lib/ui-version";
-import { crewFor, crewInitial, crewKey } from "../src/lib/v2/crews";
+import { pipeFor, pipeKey } from "../src/lib/v2/pipe-look";
 import { cumulativeWindow, dailyWindow, windowDays } from "../src/lib/v2/series";
 import { brandIdFromPathname } from "../src/lib/brand-tint-preload";
 
@@ -25,20 +25,15 @@ describe("ui-version", () => {
   });
 });
 
-describe("crews", () => {
-  it("takes the producer's crew name, and keeps our look per pair", () => {
-    const scout = crewFor("sales-cold-email-outreach", "website_visit", "Cold email", "Scout");
-    expect(scout.name).toBe("Scout");
-    expect(scout.key).toBe(crewKey("sales-cold-email-outreach", "website_visit"));
-    expect(scout.color).toBe("var(--data-teal)");
-    expect(crewFor("ai-meeting-booking", "meeting_booked", "AI meeting booking", "Pilot").glyph).toBe("triangle");
-  });
-
-  it("names a crew the producer does not name by its channel, never an invented name", () => {
-    expect(crewFor("some-new-channel", "website_visit", "Some channel").name).toBe("Some channel");
-    expect(crewFor("sales-cold-email-outreach", "conversation", "Cold email", null).name).toBe("Cold email");
-    expect(crewFor("x", null, "X").key).toBe("x|unplaced");
-    expect(crewInitial("scout")).toBe("S");
+describe("pipe look", () => {
+  it("names a pipe by its channel, and keeps our look per pair", () => {
+    const visit = pipeFor("sales-cold-email-outreach", "website_visit", "Cold email");
+    expect(visit.name).toBe("Cold email");
+    expect(visit.key).toBe(pipeKey("sales-cold-email-outreach", "website_visit"));
+    expect(visit.color).toBe("var(--data-teal)");
+    expect(pipeFor("ai-meeting-booking", "meeting_booked", "AI meeting booking").glyph).toBe("triangle");
+    expect(pipeFor("some-new-channel", "website_visit", "Some channel").name).toBe("Some channel");
+    expect(pipeFor("x", null, "X").key).toBe("x|unplaced");
   });
 });
 
@@ -82,7 +77,6 @@ const V2_FILES = [
   "src/components/v2/v2-shell.tsx",
   "src/components/v2/v2-client-layout.tsx",
   "src/components/v2/today-page.tsx",
-  "src/components/v2/crew-page.tsx",
   "src/components/v2/archived-offers.tsx",
   "src/components/v2/selected-offer.tsx",
   "src/components/v2/new-offer-modal.tsx",
@@ -90,7 +84,6 @@ const V2_FILES = [
   "src/components/v2/people-page.tsx",
   "src/components/v2/companies-page.tsx",
   "src/components/v2/deals-page.tsx",
-  "src/components/v2/work-page.tsx",
   "src/components/v2/ui.tsx",
   "src/components/v2/company-page.tsx",
   "src/components/v2/records.tsx",
@@ -146,7 +139,6 @@ describe("v2 wiring", () => {
 
   const V2_ROUTES = [
     "",
-    "/crew",
     "/missions",
     "/missions/[campaignId]",
     "/campaigns/[campaignId]",
@@ -154,7 +146,7 @@ describe("v2 wiring", () => {
     "/people/[leadRowId]",
     "/companies",
     "/deals",
-    "/work",
+    "/runs/[runId]",
     "/offers",
     "/offers/[offerId]",
     "/offers/[offerId]/targeting",
@@ -181,8 +173,7 @@ describe("v2 wiring", () => {
     expect(data).toContain('["leadBucketCounts", lead.key, ""]');
     expect(data).toContain('["leadStandingCounts", lead.key, ""]');
     expect(data).toContain("key: brandLeadScopeKey(brandId, offerId)");
-    expect(read("src/components/v2/use-missions.ts")).toContain("useCampaignRows(brandId, featureSlug, ALL_OFFERS)");
-    expect(read("src/components/v2/mission-hold.tsx")).toContain('["campaignHold", campaignId]');
+    expect(read("src/components/v2/use-campaigns.ts")).toContain("useCampaignRows(brandId, featureSlug, ALL_OFFERS)");
   });
 
   it("the Deals board sizes each column from the producer's standing counts", () => {
@@ -215,12 +206,10 @@ describe("v2 wiring", () => {
     }
   });
 
-  it("crew cards and Work read runs-service, filed under the crew, never counted from a lead list", () => {
+  it("Today's runs count reads runs-service, kept to the offer's campaigns, never counted from a lead list", () => {
     const runs = read("src/components/v2/runs.ts");
     expect(runs).toContain("getBrandRunsByCampaign(brandId, { startedAfter: start })");
-    expect(runs).toContain("missionByCampaignId.get(g.campaignId)?.crew.key");
-    expect(read("src/components/v2/crew-page.tsx")).toContain("useCrewRuns(brandId, missionByCampaignId)");
-    expect(read("src/components/v2/work-page.tsx")).toContain("useRunsTodayList(brandId, campaignIds, 200)");
+    expect(runs).toContain("if (g.campaignId && campaignById.has(g.campaignId)) n += g.runCount;");
   });
 
   it("every company row opens its own record page", () => {
@@ -240,7 +229,7 @@ describe("v2 step 3: honest counts, green running, modals outside the bar", () =
   });
 
   it("no surface counts the sales_interest standing as people who want to talk", () => {
-    for (const f of ["today-page.tsx", "work-page.tsx", "v2-shell.tsx"]) {
+    for (const f of ["today-page.tsx", "v2-shell.tsx"]) {
       const src = read(`src/components/v2/${f}`);
       expect(src).toContain("useNeedsYourCall(");
       expect(src).not.toMatch(/want(s)? to talk/);
@@ -257,7 +246,7 @@ describe("v2 step 3: honest counts, green running, modals outside the bar", () =
 
   it("every running indicator is green (--run), never the brand accent", () => {
     expect(read("src/components/v2/keel.css")).toMatch(/--run: #16a34a/);
-    for (const f of ["ui.tsx", "v2-shell.tsx", "today-page.tsx", "work-page.tsx", "crew-page.tsx"]) {
+    for (const f of ["ui.tsx", "v2-shell.tsx", "today-page.tsx"]) {
       const src = read(`src/components/v2/${f}`);
       expect(src).not.toMatch(/k-dot-pulse[^"]*var\(--accent\)/);
     }
@@ -305,7 +294,6 @@ describe("Keel parity, second pass", () => {
     const data = read(V2 + "data.ts");
     expect(data).toContain('["leadHistory", leadRowId, brandId, "campaign"]');
     expect(read(V2 + "today-page.tsx")).toContain("useTheirLastWords(lead.id, brandId)");
-    expect(read(V2 + "work-page.tsx")).toContain("useTheirLastWords(lead.id, brandId)");
   });
 
   it("Today states the spend over its window, setup included", () => {
@@ -320,18 +308,12 @@ describe("Keel parity, second pass", () => {
 
   it("Today states runs off runs-service and the meeting date off the served outcome", () => {
     const today = read(V2 + "today-page.tsx");
-    expect(today).toContain("useCrewRuns(brandId, missionByCampaignId)");
+    expect(today).toContain("useCampaignRunsToday(brandId, campaignById)");
     // Meetings are read wide and ordered on their booking date, newest first.
     expect(today).toContain('useLatestInBucket(brandId, "meeting_booked", MEETINGS_READ_LIMIT)');
     expect(today).toContain("outcomeByLeadId.get(lead.leadId)?.meetingBookedAt");
     expect(today).toContain('.sort((a, b) => (meetingAt(b) ?? "").localeCompare(meetingAt(a) ?? ""))');
     expect(today).toContain(".slice(0, MEETINGS_SHOWN)");
-  });
-
-  it("Crew runs table states how long each run took, off its own two instants", () => {
-    const crew = read(V2 + "crew-page.tsx");
-    expect(crew).toContain('"Took"');
-    expect(crew).toContain("run.completedAt");
   });
 
   it("Deals column and card values are features-service's deals-value, read, never summed", () => {
@@ -342,14 +324,6 @@ describe("Keel parity, second pass", () => {
     expect(deals).not.toMatch(/reduce\(/);
   });
 
-  it("Crew success rate and median run are runs-service's run-outcomes, one crew family per request", () => {
-    const runs = read(V2 + "runs.ts");
-    expect(runs).toContain('groupBy: "featureSlug", campaignIds: ids');
-    const crew = read(V2 + "crew-page.tsx");
-    expect(crew).toContain("outcomes?.month?.successRate");
-    expect(crew).toContain("outcomes?.today?.medianDurationMs");
-    expect(crew).not.toMatch(/completedCount\s*\//);
-  });
 });
 
 describe("v2 sidebar Deals badge agrees with the Deals board", () => {

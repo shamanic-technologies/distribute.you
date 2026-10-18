@@ -43,6 +43,6 @@ describe("Targeting in four steps (owner 2026-10-09)", () => {
 
   it("a Sourcing row opens its campaign page", () => {
     expect(src("src/components/v2/offer-sourcing-page.tsx")).toContain("openRows");
-    expect(src("src/components/v2/offer-campaigns.tsx")).toContain("(results || openRows) && mission");
+    expect(src("src/components/v2/offer-campaigns.tsx")).toContain("(results || openRows) && record");
   });
 });

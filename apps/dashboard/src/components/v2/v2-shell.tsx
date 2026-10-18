@@ -7,7 +7,7 @@ import { AccountMenuV2, SearchTrigger, TenantSwitcherV2 } from "@/components/v2/
 import { BudgetGauge } from "@/components/v2/budget-gauge";
 import { useOngoingCampaigns } from "@/components/v2/ongoing-campaigns";
 import { useAudienceSnapshot, useBrandOutcomeList, useStepIcons } from "@/components/v2/brand-outcomes";
-import { CrewMark } from "@/components/v2/crew-mark";
+import { PipeMark } from "@/components/v2/pipe-mark";
 import { V2NavContext } from "@/components/v2/nav-context";
 import { useBucketCounts, useBrandRevenue, useNeedsYourCall, useStandingCounts } from "@/components/v2/data";
 import { v2CampaignHref, v2CatalogueHref, v2Href, v2OfferHref, v2OutcomeHref, v2SectionOf, v2WorkflowHref } from "@/lib/v2/routes";
@@ -47,7 +47,7 @@ export function V2Shell({ children }: { children: React.ReactNode }) {
 
   const page = (
     <>
-      {/* Every brand page states it when billing has stopped the brand's missions
+      {/* Every brand page states it when billing has stopped the brand's campaigns
           (a declined card, or no card), the same notice v1's Overviews carry. */}
       {brandId && (
         <div className="px-4 pt-3 empty:hidden md:px-6">
@@ -309,8 +309,8 @@ function V2Sidebar() {
               <NavItem
                 key={m.row.campaign.id}
                 href={m.href}
-                label={name ?? m.crew.name}
-                icon={name ? <PathAvatar name={name} size={16} /> : <CrewMark color={m.crew.color} glyph={m.crew.glyph} size={16} />}
+                label={name ?? m.pipe.name}
+                icon={name ? <PathAvatar name={name} size={16} /> : <PipeMark color={m.pipe.color} glyph={m.pipe.glyph} size={16} />}
                 active={pathname.startsWith(m.href)}
                 trailing={
                   <span className="k-dot-pulse ml-auto mr-1 h-1.5 w-1.5 shrink-0 rounded-full bg-[var(--run)] text-[var(--run)]" aria-label="On" />
@@ -460,7 +460,7 @@ function StaffObjectSections({ orgId, brandId, offerId, pathname }: { orgId: str
         />
         {offerId &&
           ongoing.workflows.map((w) => {
-            const href = v2WorkflowHref(orgId, brandId, w.slug, w.crew, w.campaignId);
+            const href = v2WorkflowHref(orgId, brandId, w.slug, w.pipeId, w.campaignId);
             const name = w.detail?.name ?? w.slug;
             return (
               <NavItem

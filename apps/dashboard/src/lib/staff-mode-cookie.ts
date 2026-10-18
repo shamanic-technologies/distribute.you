@@ -1,6 +1,6 @@
 /**
  * Whether a STAFF reader is looking at the dashboard in staff mode (their admin world:
- * every staff-only surface shown, the workflows, models and templates under a mission,
+ * every staff-only surface shown, the workflows, models and templates under a campaign,
  * the investigation switches) or in the customer's world (exactly what a client sees).
  *
  * Stored in a cookie so the choice follows the reader across every page and tab. It is a

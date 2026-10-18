@@ -15,13 +15,11 @@ import { BrandLogo } from "@/components/brand-logo";
 import { OrgAvatar } from "@/components/org-avatar";
 import { supportWhatsAppHref } from "@/components/support/support-button";
 import { REFERRAL_CREDIT_USD } from "@/lib/invite-link";
-import { CrewMark } from "@/components/v2/crew-mark";
 import { OPEN_PALETTE_EVENT } from "@/components/v2/ui";
 import { NewOrganizationModal } from "@/components/v2/new-organization-modal";
 import { V2NewOfferModal } from "@/components/v2/new-offer-modal";
 import { OfferMark } from "@/components/marks/offer-mark";
 import { useSelectedOfferIfAny } from "@/components/v2/selected-offer";
-import { useMissions } from "@/components/v2/use-missions";
 import { useLeadScope, useBrandRevenue, useBucketCounts, useNeedsYourCall } from "@/components/v2/data";
 import { CompanyMark, PersonAvatar, leadCompany, leadCompanyDomain, leadName, personHref } from "@/components/v2/people-bits";
 import { companyHref } from "@/components/v2/companies-page";
@@ -398,7 +396,7 @@ export function AccountMenuV2({ orgId, brandId }: { orgId: string; brandId: stri
         { href: PRICE_CATALOG_URL, label: "Price catalog", icon: MENU_ICON.tag, external: true },
         // Monitoring states our fleet-wide cost, price and margin: staff mode only, like Research.
         ...(staffMode ? [{ href: `${base}/monitoring`, label: "Monitoring", icon: MENU_ICON.monitoring, prefetch: true }] : []),
-        // Research compares workflows, models and templates: below a mission, so staff mode only.
+        // Research compares workflows, models and templates: below a campaign, so staff mode only.
         ...(staffMode ? [{ href: `${base}/research`, label: "Research", icon: MENU_ICON.research, prefetch: true }] : []),
         { href: `${base}/referral`, label: "Refer a friend", icon: MENU_ICON.gift, pill: `Earn $${REFERRAL_CREDIT_USD}` },
       ]
@@ -520,14 +518,12 @@ type PaletteItem = {
 };
 
 /** Keel's "G then letter" jumps. One home so the palette shows what the keys do.
- *  `staff` entries (Work, Crew) exist only in staff mode, like their pages. */
+ *  A `staff` entry exists only in staff mode, like its page. */
 export const GO_KEYS: { section: V2Section; label: string; key: string; staff?: true }[] = [
   { section: "today", label: "Today", key: "t" },
   { section: "companies", label: "Companies", key: "r" },
   { section: "people", label: "People", key: "p" },
   { section: "deals", label: "Deals", key: "d" },
-  { section: "work", label: "Work", key: "w", staff: true },
-  { section: "crew", label: "Crew", key: "c", staff: true },
 ];
 const SETUP: { section: V2Section; label: string }[] = [
   { section: "offers", label: "Offer" },
@@ -549,7 +545,7 @@ function matches(text: string, q: string): boolean {
 /**
  * Every result is a real record or a real page: people come from lead-service's own
  * search over the whole population (the `q` the People table sends), companies from
- * the brand's served organisations, missions and crews from `useMissions`. There is no
+ * the brand's served organisations. There is no
  * "ask" row: nothing here answers a question in words.
  */
 export function CommandPalette({ orgId, brandId, open, onClose }: { orgId: string; brandId: string; open: boolean; onClose: () => void }) {
@@ -572,7 +568,6 @@ export function CommandPalette({ orgId, brandId, open, onClose }: { orgId: strin
     return () => clearTimeout(t);
   }, [q]);
 
-  const { missions, crews } = useMissions(orgId, brandId);
   const { staffMode } = useStaffMode();
   const revenue = useBrandRevenue(brandId).data;
   const buckets = useBucketCounts(brandId).data;
@@ -621,19 +616,6 @@ export function CommandPalette({ orgId, brandId, open, onClose }: { orgId: strin
     if (staffMode && (!term || matches("Posts LinkedIn", term))) {
       out.push({ key: "staff-posts", group: "Staff", text: "Posts", label: "Posts", href: v2Href(orgId, brandId, "posts") });
     }
-    if (term && staffMode) {
-      for (const m of missions) {
-        const label = m.offerName ? `${m.crew.name} · ${m.offerName}` : m.crew.name;
-        if (matches(`${label} ${m.leg?.label ?? ""}`, term)) {
-          out.push({ key: `m-${m.row.campaign.id}`, group: "Missions", text: label, label, meta: m.leg?.label, icon: <CrewMark color={m.crew.color} glyph={m.crew.glyph} />, href: m.href });
-        }
-      }
-      for (const c of crews) {
-        if (matches(c.crew.name, term)) {
-          out.push({ key: `c-${c.crew.key}`, group: "Crew", text: c.crew.name, label: c.crew.name, icon: <CrewMark color={c.crew.color} glyph={c.crew.glyph} />, href: `${v2Href(orgId, brandId, "crew")}#${encodeURIComponent(c.crew.key)}` });
-        }
-      }
-    }
     if (term) {
       let companies = 0;
       for (const o of revenue?.organizations ?? []) {
@@ -646,7 +628,7 @@ export function CommandPalette({ orgId, brandId, open, onClose }: { orgId: strin
       for (const l of peopleQ.data?.leads ?? []) out.push(personItem("People", l));
     }
     return out;
-  }, [q, call, missions, crews, staffMode, revenue, peopleQ.data, orgId, brandId]);
+  }, [q, call, staffMode, revenue, peopleQ.data, orgId, brandId]);
 
   useEffect(() => setCursor(0), [q, items.length]);
   useEffect(() => {

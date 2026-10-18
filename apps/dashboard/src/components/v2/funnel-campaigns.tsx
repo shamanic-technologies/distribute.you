@@ -65,7 +65,7 @@ import { legFor } from "@/lib/legs";
 import { v2CampaignHref, v2Href, type V2CampaignTab } from "@/lib/v2/routes";
 import { isColdEmailChannel } from "@/lib/offer-levers-home";
 import { isProactiveFrom } from "@/lib/outbound-leg-key";
-import { useMissions, type Mission } from "@/components/v2/use-missions";
+import { useCampaigns, type V2Campaign } from "@/components/v2/use-campaigns";
 import { CampaignResultCells } from "@/components/v2/offer-campaigns";
 import { ChannelChip } from "@/components/v2/offer-sales-paths";
 import { V2Page, type V2Tab } from "@/components/v2/setup-pages";
@@ -655,7 +655,7 @@ function FunnelResults({
   const { basis } = useStatBasis();
   const channels = useAcquisitionChannels();
   const catalogue = useLegCatalogue();
-  const { missionByCampaignId, settled } = useMissions(orgId, brandId, { allOffers: true });
+  const { campaignById, settled } = useCampaigns(orgId, brandId, { allOffers: true });
   return (
     <section>
       <SectionTitle count={units.length}>Results</SectionTitle>
@@ -682,12 +682,12 @@ function FunnelResults({
               </thead>
               <tbody>
                 {units.map((u) => {
-                  const mission: Mission | null = missionByCampaignId.get(u.campaignId) ?? null;
+                  const record: V2Campaign | null = campaignById.get(u.campaignId) ?? null;
                   const def = channels.find((d) => d.featureSlug === u.featureSlug);
                   // The step reads off the leg catalogue, so a part that never ran still says what it does.
-                  const leg = mission?.leg ?? legFor(catalogue, u.legKey);
+                  const leg = record?.leg ?? legFor(catalogue, u.legKey);
                   if (settled && !def) console.error("[funnel-campaigns] a part's channel is not in the catalogue", { featureSlug: u.featureSlug });
-                  const href = mission?.href ?? null;
+                  const href = record?.href ?? null;
                   return (
                     <tr
                       key={u.campaignId}
@@ -706,7 +706,7 @@ function FunnelResults({
                         )}
                       </td>
                       {/* Each step runs and pauses with the campaign, so it states no status of its own. */}
-                      <CampaignResultCells mission={mission} basis={basis} />
+                      <CampaignResultCells record={record} basis={basis} />
                     </tr>
                   );
                 })}
@@ -744,7 +744,7 @@ function FunnelCampaignPageCurrent({ campaign }: { campaign: SalesFunnelCampaign
   const { orgId } = useParams<{ orgId: string }>();
   const params = useSearchParams();
   const catalogue = useLegCatalogue();
-  const { missionByCampaignId } = useMissions(orgId, campaign.brandId, { allOffers: true });
+  const { campaignById } = useCampaigns(orgId, campaign.brandId, { allOffers: true });
   const rowsQ = useAuthQuery(["funnelCampaignRows", campaign.brandId, campaign.offerId], () => listFunnelCampaignRows(campaign.brandId, campaign.offerId), pollOptions);
   const row = rowsQ.data?.find((r) => r.id === campaign.id) ?? null;
   // A campaign newer than the cached rows waits for the fresh read, never "—" (funnelRowSettled).
@@ -879,7 +879,7 @@ function FunnelCampaignPageCurrent({ campaign }: { campaign: SalesFunnelCampaign
           </div>
         </section>
 
-        <PipeSections brandId={campaign.brandId} units={units} missionByCampaignId={missionByCampaignId} />
+        <PipeSections brandId={campaign.brandId} units={units} campaignById={campaignById} />
 
         <FunnelResults orgId={orgId} brandId={campaign.brandId} units={units} />
       </div>

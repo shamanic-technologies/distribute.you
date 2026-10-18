@@ -50,7 +50,7 @@ import { isProactiveFrom } from "@/lib/outbound-leg-key";
 import { v2CampaignHref, v2Href, v2OfferHref, type V2CampaignTab } from "@/lib/v2/routes";
 import { withLayoutNext } from "@/lib/v2/campaign-layout-preview";
 import { LEADS_PAGE_SIZE, type LeadBucket } from "@/lib/leads-server-page";
-import { useMissions } from "@/components/v2/use-missions";
+import { useCampaigns } from "@/components/v2/use-campaigns";
 import { useNeedsYourCall } from "@/components/v2/data";
 import { useCampaignWindow } from "@/components/v2/offer-channel-page";
 import { giveListsFrom } from "@/components/v2/offer-channels-page";
@@ -98,11 +98,11 @@ export function FunnelCampaignPageNext({ campaign }: { campaign: SalesFunnelCamp
   const { orgId } = useParams<{ orgId: string }>();
   const params = useSearchParams();
   const catalogue = useLegCatalogue();
-  const { missionByCampaignId } = useMissions(orgId, campaign.brandId, { allOffers: true });
+  const { campaignById } = useCampaigns(orgId, campaign.brandId, { allOffers: true });
   const units = orderPipesByFunnel(campaign.units, (u) => legFor(catalogue, u.legKey));
   const coldEmail = units.find((u) => isColdEmailChannel(u.featureSlug) && isProactiveFrom(legFor(catalogue, u.legKey)?.fromKey)) ?? null;
   const conversation = units.find((u) => {
-    const leg = missionByCampaignId.get(u.campaignId)?.leg ?? legFor(catalogue, u.legKey);
+    const leg = campaignById.get(u.campaignId)?.leg ?? legFor(catalogue, u.legKey);
     return leg != null && !isProactiveFrom(leg.fromKey);
   }) ?? null;
   const visible = NEXT_TABS.filter((t) => t.key === "overview" || coldEmail);
@@ -176,7 +176,7 @@ export function FunnelCampaignPageNext({ campaign }: { campaign: SalesFunnelCamp
               </div>
             )}
 
-            <FunnelStrip brandId={campaign.brandId} coldEmail={coldEmail} conversationCampaignId={conversation?.campaignId ?? null} missionRevenue={coldEmail ? missionByCampaignId.get(coldEmail.campaignId)?.row.revenue ?? null : null} />
+            <FunnelStrip brandId={campaign.brandId} coldEmail={coldEmail} conversationCampaignId={conversation?.campaignId ?? null} campaignRevenue={coldEmail ? campaignById.get(coldEmail.campaignId)?.row.revenue ?? null : null} />
 
             <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_320px]">
               <div className="min-w-0 space-y-6">
@@ -195,7 +195,7 @@ export function FunnelCampaignPageNext({ campaign }: { campaign: SalesFunnelCamp
               </div>
 
               <aside className="space-y-3">
-                <ResultsCard row={row} rowsSettled={rowsSettled} revenue={coldEmail ? missionByCampaignId.get(coldEmail.campaignId)?.row.revenue ?? null : null} />
+                <ResultsCard row={row} rowsSettled={rowsSettled} revenue={coldEmail ? campaignById.get(coldEmail.campaignId)?.row.revenue ?? null : null} />
                 {coldEmail && (
                   <TargetCard
                     brandId={campaign.brandId}
@@ -255,12 +255,12 @@ function FunnelStrip({
   brandId,
   coldEmail,
   conversationCampaignId,
-  missionRevenue,
+  campaignRevenue,
 }: {
   brandId: string;
   coldEmail: { campaignId: string; featureSlug: string } | null;
   conversationCampaignId: string | null;
-  missionRevenue: RevenueGroup | null;
+  campaignRevenue: RevenueGroup | null;
 }) {
   const countsQ = useAuthQuery(
     ["leadBucketCounts", `campaign:${coldEmail?.campaignId ?? ""}`, ""],
@@ -295,7 +295,7 @@ function FunnelStrip({
       label: "Positive replies",
       value: counts?.positive_reply,
       unit: ["person", "people"],
-      rate: missionRevenue?.positiveReplyRatePct != null ? `${formatRatePct(missionRevenue.positiveReplyRatePct)} of people emailed` : null,
+      rate: campaignRevenue?.positiveReplyRatePct != null ? `${formatRatePct(campaignRevenue.positiveReplyRatePct)} of people emailed` : null,
       pending: !countsSettled,
     });
   }

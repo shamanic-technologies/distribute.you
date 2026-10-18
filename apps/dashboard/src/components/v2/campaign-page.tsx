@@ -21,7 +21,7 @@ import { AcquisitionChannelMark } from "@/components/marks/acquisition-channel-m
 import { CampaignControlsTrigger } from "@/components/campaigns/campaign-controls-trigger";
 import { CampaignRoiChart } from "@/components/v2/campaign-roi-chart";
 import { CampaignWorkflowsPage } from "@/components/workflows/campaign-workflows-page";
-import { useMissions, type Mission } from "@/components/v2/use-missions";
+import { useCampaigns, type V2Campaign } from "@/components/v2/use-campaigns";
 import { LEG_STEPS, LegSteps, StepBar, SummaryCard, useCampaignWindow } from "@/components/v2/offer-channel-page";
 import { ColdEmailChannelSettings } from "@/components/v2/offer-channels-page";
 import { PathAvatar } from "@/components/v2/offer-sales-paths";
@@ -69,16 +69,16 @@ export function V2CampaignPage({ funnelListSettled = true }: { funnelListSettled
   const { orgId, brandId, campaignId } = useParams<{ orgId: string; brandId: string; campaignId: string }>();
   const params = useSearchParams();
   const { staffMode } = useStaffMode();
-  const { settled, missionByCampaignId } = useMissions(orgId, brandId, { allOffers: true });
-  const mission = missionByCampaignId.get(campaignId) ?? null;
+  const { settled, campaignById } = useCampaigns(orgId, brandId, { allOffers: true });
+  const campaign = campaignById.get(campaignId) ?? null;
   // The live row of the identity: a link naming an ancestor row still lands on today's campaign.
-  const id = mission?.row.campaign.id ?? campaignId;
+  const id = campaign?.row.campaign.id ?? campaignId;
   const catalogue = useLegCatalogue();
   const channels = useAcquisitionChannels();
-  const c = mission?.row.campaign ?? null;
+  const c = campaign?.row.campaign ?? null;
   const def = c ? channels.find((ch) => ch.featureSlug === c.featureSlug) : undefined;
   const name = c ? (campaignNameFor(catalogue, c.featureSlug, c.legKey)) : null;
-  const shownName = name ?? mission?.crew.name ?? " ";
+  const shownName = name ?? campaign?.pipe.name ?? " ";
   // A PART of a sales-funnel campaign runs and pauses only with it (campaign-service 409s a
   // status or budget write on it): its page names that campaign instead of offering controls.
   const partOfId = c?.salesFunnelCampaignId ?? null;
@@ -89,7 +89,7 @@ export function V2CampaignPage({ funnelListSettled = true }: { funnelListSettled
   const tabHref = (t: V2CampaignTab) => v2CampaignHref(orgId, brandId, id, t);
   const tabs: V2Tab[] = visible.map((t) => ({ label: t.label, href: tabHref(t.key), active: t.key === tab }));
 
-  if (settled && !mission && !funnelListSettled) {
+  if (settled && !campaign && !funnelListSettled) {
     // The id may be a sales-funnel campaign whose list has not answered yet: no "not found" flash.
     return (
       <V2Page crumbs={[{ label: "Campaigns" }, { label: " " }]} title={<Shimmer className="h-8 w-56" />} width="max-w-[1280px]">
@@ -97,7 +97,7 @@ export function V2CampaignPage({ funnelListSettled = true }: { funnelListSettled
       </V2Page>
     );
   }
-  if (settled && !mission) {
+  if (settled && !campaign) {
     return (
       <V2Page crumbs={[{ label: "Campaigns" }, { label: "Not found" }]}>
         <div className="k-card">
@@ -107,13 +107,13 @@ export function V2CampaignPage({ funnelListSettled = true }: { funnelListSettled
     );
   }
 
-  const offerId = mission?.offerId ?? null;
+  const offerId = campaign?.offerId ?? null;
   return (
     <V2Page
       crumbs={
         offerId
           ? [
-              { label: mission?.offerName ?? "Offer", href: v2OfferHref(orgId, brandId, offerId) },
+              { label: campaign?.offerName ?? "Offer", href: v2OfferHref(orgId, brandId, offerId) },
               // The campaign this part runs in (its max budget and volume), else the Campaigns
               // overview: never the staff Sales path page (owner 2026-10-10).
               partOfId
@@ -124,7 +124,7 @@ export function V2CampaignPage({ funnelListSettled = true }: { funnelListSettled
           : [{ label: "Campaigns" }, { label: " " }]
       }
       title={
-        mission ? (
+        campaign ? (
           <span className="flex min-w-0 items-center gap-2.5">
             {name && <PathAvatar name={name} size={32} />}
             <span className="truncate">{shownName}</span>
@@ -134,13 +134,13 @@ export function V2CampaignPage({ funnelListSettled = true }: { funnelListSettled
         )
       }
       sub={
-        mission ? (
+        campaign ? (
           <span className="flex flex-wrap items-center gap-2 text-[13px]">
             {/* The leg read as a path, the channel standing on the arrow it performs:
                 "Positive reply → [AI Meeting Booking] → Meeting booked"; an entry leg starts at the channel. */}
-            {mission.leg?.fromLabel && (
+            {campaign.leg?.fromLabel && (
               <>
-                <span className="k-fg2">{mission.leg.fromLabel}</span>
+                <span className="k-fg2">{campaign.leg.fromLabel}</span>
                 <span className="k-fg3">→</span>
               </>
             )}
@@ -150,34 +150,34 @@ export function V2CampaignPage({ funnelListSettled = true }: { funnelListSettled
                 {def.name}
               </span>
             )}
-            {mission.leg && (
+            {campaign.leg && (
               <>
                 <span className="k-fg3">→</span>
-                <span className="k-fg2">{mission.leg.toLabel}</span>
+                <span className="k-fg2">{campaign.leg.toLabel}</span>
               </>
             )}
           </span>
         ) : undefined
       }
       actions={
-        mission && partOfId ? (
+        campaign && partOfId ? (
           <FunnelPartOf orgId={orgId} campaign={partOf.campaign} />
-        ) : mission ? (
+        ) : campaign ? (
           <>
             <StatBasisSwitch />
             <CampaignControlsTrigger brandId={brandId} campaignId={id} />
           </>
         ) : undefined
       }
-      tabs={mission ? tabs : undefined}
+      tabs={campaign ? tabs : undefined}
       width="max-w-[1280px]"
     >
-      {!mission || !offerId ? (
+      {!campaign || !offerId ? (
         <Shimmer className="h-[240px] w-full rounded-[12px]" />
-      ) : tab === "overview" && mission.leg && !isProactiveFrom(mission.leg.fromKey) ? (
-        <ConversationOverview brandId={brandId} mission={mission} tabHref={tabHref} />
+      ) : tab === "overview" && campaign.leg && !isProactiveFrom(campaign.leg.fromKey) ? (
+        <ConversationOverview brandId={brandId} campaign={campaign} tabHref={tabHref} />
       ) : tab === "overview" ? (
-        <CampaignOverview brandId={brandId} offerId={offerId} campaignId={id} mission={mission} tabHref={tabHref} />
+        <CampaignOverview brandId={brandId} offerId={offerId} campaignId={id} campaign={campaign} tabHref={tabHref} />
       ) : tab === "inbox" ? (
         <div className="k-card overflow-hidden">
           <PeoplePage bucket="positive_reply" campaignId={id} />
@@ -236,12 +236,12 @@ export function SpentTile({ win }: { win: { data: RevenueWindow | null; pending:
  * The campaign's ROI tile, first on both campaign kinds (cold email and answering), with the
  * expected (i) every ROI label carries. Green above break-even (lib/format-roi.ts roiIsGood).
  */
-function RoiTile({ mission }: { mission: Mission }) {
+function RoiTile({ campaign }: { campaign: V2Campaign }) {
   const { basis } = useStatBasis();
-  const roi = shownReturn(mission.row.revenue?.economicsMaturity, basis);
+  const roi = shownReturn(campaign.row.revenue?.economicsMaturity, basis);
   return (
     <StatTile label={<RoiLabel />}>
-      <Figure value={<RoiValue roi={roiToShow(roi, mission.row.revenue?.expectedReturn)} learning={roi.learning} />} />
+      <Figure value={<RoiValue roi={roiToShow(roi, campaign.row.revenue?.expectedReturn)} learning={roi.learning} />} />
     </StatTile>
   );
 }
@@ -256,13 +256,13 @@ function CampaignOverview({
   brandId,
   offerId,
   campaignId,
-  mission,
+  campaign,
   tabHref,
 }: {
   brandId: string;
   offerId: string;
   campaignId: string;
-  mission: Mission;
+  campaign: V2Campaign;
   tabHref: (tab: V2CampaignTab) => string;
 }) {
   const { basis } = useStatBasis();
@@ -273,14 +273,14 @@ function CampaignOverview({
   const audiences = useAudienceTable({ campaignId, offerId });
   const catalogue = useLegCatalogue();
 
-  const leg = LEG_STEPS.find((l) => sameLegKey(l.legKey, mission.row.campaign.legKey)) ?? null;
-  const g = mission.row.revenue ?? null;
+  const leg = LEG_STEPS.find((l) => sameLegKey(l.legKey, campaign.row.campaign.legKey)) ?? null;
+  const g = campaign.row.revenue ?? null;
   const replyLed = leg?.bucket === "positive_reply";
   const cost = shownFigure(g?.outcomesMaturity, (h) => (replyLed ? h.cpprCents : h.cpcCents), basis);
   // The served expected cost of one outcome where the measured one is Learning (owner 2026-10-11).
   const costShown = costToShowCents(cost, g?.expectedReturn, replyLed ? "conversation" : "website_visit");
 
-  const win = useCampaignWindow(brandId, mission.row.campaign.id, mission.row.campaign.featureSlug ?? null);
+  const win = useCampaignWindow(brandId, campaign.row.campaign.id, campaign.row.campaign.featureSlug ?? null);
   const emails = win.data?.emails ?? null;
   const queued = win.data?.queuedEmails ?? null;
   // Emails, every step of a sequence (owner 2026-10-06: "emails, not sequences").
@@ -298,12 +298,12 @@ function CampaignOverview({
         <SectionTitle right={<span>Since it started</span>}>This campaign</SectionTitle>
         {/* Owner's order (2026-10-06), ONE row on desktop: ROI, Contacted, Queued, Sent, Delivered, outcome, Spent, cost per outcome. */}
         <div className="grid grid-cols-2 gap-3 md:grid-cols-4 xl:grid-cols-8">
-          <RoiTile mission={mission} />
+          <RoiTile campaign={campaign} />
           <StatTile label="Contacted">{count(counts?.contacted)}</StatTile>
           <StatTile label="Queued">{emailCount(queued)}</StatTile>
           <StatTile label="Sent">{emailCount(emails?.sent)}</StatTile>
           <StatTile label="Delivered">{emailCount(emails?.delivered)}</StatTile>
-          <StatTile label={leg ? (outcomes === 1 ? leg.outcome : stepPluralLabel(catalogue, mission.leg?.toKey, leg.outcome)) : "Outcomes"}>{count(outcomes)}</StatTile>
+          <StatTile label={leg ? (outcomes === 1 ? leg.outcome : stepPluralLabel(catalogue, campaign.leg?.toKey, leg.outcome)) : "Outcomes"}>{count(outcomes)}</StatTile>
           <SpentTile win={win} />
           <StatTile label={replyLed ? "Cost / reply" : "Cost / visit"}>
             <Figure
@@ -317,15 +317,15 @@ function CampaignOverview({
       <CampaignRoiChart
         brandId={brandId}
         campaignId={campaignId}
-        featureSlug={mission.row.campaign.featureSlug ?? null}
+        featureSlug={campaign.row.campaign.featureSlug ?? null}
         economics={g?.economicsMaturity}
       />
 
       <div className="grid gap-x-3 gap-y-8 lg:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
         <LegSteps
           brandId={brandId}
-          featureSlug={mission.row.campaign.featureSlug ?? null}
-          title={leg?.title ?? mission.leg?.label ?? "Steps"}
+          featureSlug={campaign.row.campaign.featureSlug ?? null}
+          title={leg?.title ?? campaign.leg?.label ?? "Steps"}
           outcome={leg?.outcome ?? null}
           bucket={leg?.bucket ?? null}
           campaignId={campaignId}
@@ -354,7 +354,7 @@ function CampaignOverview({
               value={audiences.activeTabRows}
               unit={audiences.activeTabRows === 1 ? "audience" : "audiences"}
             />
-            <SettingsSummary brandId={brandId} mission={mission} tabHref={tabHref} />
+            <SettingsSummary brandId={brandId} campaign={campaign} tabHref={tabHref} />
           </div>
         </section>
       </div>
@@ -374,23 +374,23 @@ function CampaignOverview({
  */
 function ConversationOverview({
   brandId,
-  mission,
+  campaign,
   tabHref,
 }: {
   brandId: string;
-  mission: Mission;
+  campaign: V2Campaign;
   tabHref: (tab: V2CampaignTab) => string;
 }) {
-  const win = useCampaignWindow(brandId, mission.row.campaign.id, mission.row.campaign.featureSlug ?? null);
-  const q = useAuthQuery(["conversationCounts", mission.row.campaign.id], () => getConversationCounts(mission.row.campaign.id), pollOptions);
+  const win = useCampaignWindow(brandId, campaign.row.campaign.id, campaign.row.campaign.featureSlug ?? null);
+  const q = useAuthQuery(["conversationCounts", campaign.row.campaign.id], () => getConversationCounts(campaign.row.campaign.id), pollOptions);
   const conv = q.data ?? null;
   const settled = q.isFetchedAfterMount || q.data !== undefined;
-  const from = mission.leg?.fromLabel ?? "Positive reply";
-  const to = mission.leg?.toLabel ?? "Meeting booked";
+  const from = campaign.leg?.fromLabel ?? "Positive reply";
+  const to = campaign.leg?.toLabel ?? "Meeting booked";
   // Count headings read the catalogue's served plural (features-service `pluralLabel`).
   const catalogue = useLegCatalogue();
-  const fromPlural = stepPluralLabel(catalogue, mission.leg?.fromKey, from);
-  const toPlural = stepPluralLabel(catalogue, mission.leg?.toKey, to);
+  const fromPlural = stepPluralLabel(catalogue, campaign.leg?.fromKey, from);
+  const toPlural = stepPluralLabel(catalogue, campaign.leg?.toKey, to);
   const count = (v: number | null | undefined) =>
     !settled ? <Shimmer className="h-7 w-16" /> : <Figure value={v != null ? formatCount(v) : "—"} unit="people" />;
 
@@ -399,7 +399,7 @@ function ConversationOverview({
       <section>
         <SectionTitle right={<span>Since it started</span>}>This campaign</SectionTitle>
         <div className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-6">
-          <RoiTile mission={mission} />
+          <RoiTile campaign={campaign} />
           <StatTile label={fromPlural}>{count(conv?.handed)}</StatTile>
           <StatTile label="Ongoing conversations">{count(conv?.ongoing)}</StatTile>
           <StatTile label={toPlural}>{count(conv?.meetingsBooked)}</StatTile>
@@ -410,14 +410,14 @@ function ConversationOverview({
 
       <CampaignRoiChart
         brandId={brandId}
-        campaignId={mission.row.campaign.id}
-        featureSlug={mission.row.campaign.featureSlug ?? null}
-        economics={mission.row.revenue?.economicsMaturity}
+        campaignId={campaign.row.campaign.id}
+        featureSlug={campaign.row.campaign.featureSlug ?? null}
+        economics={campaign.row.revenue?.economicsMaturity}
       />
 
       <div className="grid gap-x-3 gap-y-8 lg:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
         <section>
-          <SectionTitle>{mission.leg?.label ?? "Steps"}</SectionTitle>
+          <SectionTitle>{campaign.leg?.label ?? "Steps"}</SectionTitle>
           <div className="k-card p-4">
             {!settled ? (
               <Shimmer className="h-[200px] w-full rounded-[8px]" />
@@ -435,7 +435,7 @@ function ConversationOverview({
         <section>
           <SectionTitle>At a glance</SectionTitle>
           <div className="flex flex-col gap-3">
-            <SettingsSummary brandId={brandId} mission={mission} tabHref={tabHref} />
+            <SettingsSummary brandId={brandId} campaign={campaign} tabHref={tabHref} />
           </div>
         </section>
       </div>
@@ -447,8 +447,8 @@ function ConversationOverview({
  * What this campaign may spend: the caps of the campaign it is a part of (owner 2026-10-10, billing's
  * max budget and max volume), else whether it runs. A part has no budget of its own.
  */
-function SettingsSummary({ brandId, mission, tabHref }: { brandId: string; mission: Mission; tabHref: (tab: V2CampaignTab) => string }) {
-  const partOfId = mission.row.campaign.salesFunnelCampaignId ?? null;
+function SettingsSummary({ brandId, campaign, tabHref }: { brandId: string; campaign: V2Campaign; tabHref: (tab: V2CampaignTab) => string }) {
+  const partOfId = campaign.row.campaign.salesFunnelCampaignId ?? null;
   const caps = useFunnelCapsWords(brandId, partOfId);
   return (
     <SummaryCard
@@ -456,7 +456,7 @@ function SettingsSummary({ brandId, mission, tabHref }: { brandId: string; missi
       href={tabHref("settings")}
       loading={partOfId !== null && caps === null}
       value={null}
-      text={partOfId ? caps : mission.running ? "On" : "Off"}
+      text={partOfId ? caps : campaign.running ? "On" : "Off"}
       unit=""
     />
   );

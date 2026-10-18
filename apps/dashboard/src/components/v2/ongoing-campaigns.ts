@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo } from "react";
-import { useMissions, type Mission } from "@/components/v2/use-missions";
+import { useCampaigns, type V2Campaign } from "@/components/v2/use-campaigns";
 import { useLegCatalogue } from "@/lib/use-leg-catalogue";
 import { campaignNameFor } from "@/lib/legs";
 import { useAuthQuery } from "@/lib/use-auth-query";
@@ -23,7 +23,7 @@ export interface OngoingOutcome {
 }
 
 export interface OngoingCampaign {
-  m: Mission;
+  m: V2Campaign;
   /** The campaign's served name (features-service leg catalogue); null when none is served. */
   name: string | null;
   /** Its row on the Sales path page's Campaigns section (channel, from and to steps); null until that read answers. */
@@ -41,7 +41,7 @@ export interface OngoingCampaign {
  * need what actually runs (staff pipes).
  */
 export function useOngoingCampaigns(orgId: string, brandId: string, offerId: string | null) {
-  const { allMissions: missions, settled } = useMissions(orgId, brandId);
+  const { allCampaigns: records, settled } = useCampaigns(orgId, brandId);
   // Same key as every other reader of the offer's funnel campaigns (Campaigns page, staff section).
   const funnelQ = useAuthQuery(["salesFunnelCampaigns", brandId, offerId ?? "all"], () => listSalesFunnelCampaigns(brandId, offerId), {
     enabled: !!brandId && !!offerId,
@@ -66,7 +66,7 @@ export function useOngoingCampaigns(orgId: string, brandId: string, offerId: str
       order.set(campaignKey(c.featureSlug, c.legKey), i);
       byKey.set(campaignKey(c.featureSlug, c.legKey), c);
     });
-    return missions
+    return records
       .filter((m) => m.running)
       .map((m) => ({ m, at: order.get(campaignKey(m.row.campaign.featureSlug ?? "", m.row.campaign.legKey ?? "")) ?? Number.MAX_SAFE_INTEGER }))
       .sort((a, b) => a.at - b.at)
@@ -79,7 +79,7 @@ export function useOngoingCampaigns(orgId: string, brandId: string, offerId: str
         if (salesPaths.data && !campaign) console.error("[v2] a running campaign is missing from the offer's Sales path campaigns", { featureSlug: c.featureSlug, legKey: c.legKey });
         return { m, name, campaign };
       });
-  }, [missions, salesPaths.data, legCatalogue.campaignNames]);
+  }, [records, salesPaths.data, legCatalogue.campaignNames]);
   // What a surface LISTS: a part of a sales-funnel campaign is listed through its campaign, once.
   const campaigns = useMemo(() => running.filter((c) => !c.m.row.campaign.salesFunnelCampaignId), [running]);
   // Every step an ON campaign (or a running part) starts from or lands on, in the producer's step keys.
@@ -116,7 +116,7 @@ export function useOngoingCampaigns(orgId: string, brandId: string, offerId: str
     }
     return [...byKey.values()];
   }, [running, funnelQ.data, legCatalogue]);
-  // Settled once the missions AND the offer's campaign list (names, legs) have answered.
+  // Settled once the records AND the offer's campaign list (names, legs) have answered.
   const catalogueSettled = !offerId || salesPaths.data !== undefined || salesPaths.isError;
   const funnelSettled = !offerId || funnelQ.data !== undefined || funnelQ.isError;
   return { campaigns, funnelCampaigns, running, outcomes, steps, settled: settled && catalogueSettled && funnelSettled };
