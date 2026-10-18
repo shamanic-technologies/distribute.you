@@ -10,6 +10,7 @@ import {
   MonthsRow,
   Row,
   TOPIC_LOOK,
+  OutcomePipes,
   SectionMark,
   SectionName,
   SectionPath,
@@ -30,9 +31,9 @@ import { v2Href } from "@/lib/v2/routes";
 import {
   GOAL_LABEL,
   PIPE_ORDER,
-  OUTCOME_ORDER,
-  OUTCOME_PATH,
   TOPIC_LABEL,
+  outcomeEntry,
+  outcomeGroups,
   parseResearchPath,
   pointHref,
   researchWorkflow,
@@ -51,8 +52,9 @@ import {
 } from "@/lib/research/research";
 
 /**
- * Research: what we measured across every org's campaigns, one card per question, grouped by
- * pipe (one leg x one channel), then by outcome. Staff only: page behind StaffOnly, data behind the staff route (research-source.tsx).
+ * Research: what we measured across every org's campaigns, one card per question, in three groups
+ * (owner 2026-10-18): Pipes (one leg x one channel each), Outcomes (one row per outcome, asked
+ * across every pipe that lands on it), Other (Jev). Staff only: page behind StaffOnly, data behind the staff route (research-source.tsx).
  *
  * Built on Keel's own anatomy (see the dashboard-v2-ux skill): the hub is a card grid
  * (mark + question + state, an inset block of stat cells with a mini chart in the mark's
@@ -81,6 +83,12 @@ const WINNER_LABEL: Record<ResearchTopic, string> = {
   launch: "Comparison",
   strategy: "Winner",
   "sourcing-strategy": "Winner",
+  // the share of leads reaching an outcome, like the cost curve: a measurement
+  conversion: "Comparison",
+  pipe: "Winner",
+  channel: "Winner",
+  leg: "Winner",
+  tactic: "Winner",
 };
 
 const STATE_LOOK: Record<StudyState, { label: string; dot: string }> = {
@@ -269,7 +277,6 @@ function ResearchSectionBlock({
   open,
   onToggle,
   animate,
-  chip,
   line,
   children,
 }: {
@@ -279,7 +286,6 @@ function ResearchSectionBlock({
   open: boolean;
   onToggle: () => void;
   animate: boolean;
-  chip?: React.ReactNode;
   /** The second line when the section has no path (Jev). */
   line?: string | null;
   children: React.ReactNode;
@@ -294,7 +300,6 @@ function ResearchSectionBlock({
             <span className="truncate">
               <SectionName section={section} />
             </span>
-            {chip}
           </span>
           <span className="k-fg3 mt-0.5 min-w-0 text-[12px] leading-5">{line ?? <SectionPath section={section} />}</span>
         </MarkLines>
@@ -325,6 +330,11 @@ function V2ResearchHub({ base }: { base: string }) {
   const called = RESEARCH.studies.filter((st) => studyState(st) === "conclusion").length;
   const signals = RESEARCH.studies.filter((st) => studyState(st) === "signal").length;
   const maxMonth = Math.max(...v.byMonth.map((m) => m.emails), 1);
+  const pipeRows = PIPE_ORDER.map((pipe) => ({ pipe, studies: studiesFor(pipe, RESEARCH) })).filter((r) => r.studies.length > 0);
+  const groups = outcomeGroups(RESEARCH);
+  const withStudies = (metas: typeof groups.outcomes) => metas.map((meta) => ({ meta, studies: studiesForOutcome(meta.id, RESEARCH) })).filter((r) => r.studies.length > 0);
+  const outcomeRows = withStudies(groups.outcomes);
+  const otherRows = withStudies(groups.other);
   return (
     <>
       <TopBar crumbs={[{ label: "Research" }]} actions={<CostBasisSwitch />} />
@@ -383,42 +393,63 @@ function V2ResearchHub({ base }: { base: string }) {
           </StatTile>
         </div>
 
-        {/* One collapsible section per pipe (owner 2026-10-18), then per outcome; all collapsed by default. */}
-        <div className="mt-8 space-y-3">
-          {PIPE_ORDER.map((pipe) => {
-            const studies = studiesFor(pipe, RESEARCH);
-            if (!studies.length) return null;
-            return (
-              <ResearchSectionBlock key={pipe} id={pipe} section={{ pipe }} studies={studies} open={open.has(pipe)} onToggle={() => toggle(pipe)} animate={ready}>
-                <PipeCatalogLinks base={base} pipe={pipe} />
-                <StudyGrid studies={studies} base={base} />
-              </ResearchSectionBlock>
-            );
-          })}
+        {/* Three groups (owner 2026-10-18): Pipes, Outcomes, Other; every row collapsed by default. */}
+        <div className="mt-8 space-y-8">
+          <div>
+            <SectionTitle count={pipeRows.length}>Pipes</SectionTitle>
+            <div className="space-y-3">
+              {pipeRows.map(({ pipe, studies }) => (
+                <ResearchSectionBlock key={pipe} id={pipe} section={{ pipe }} studies={studies} open={open.has(pipe)} onToggle={() => toggle(pipe)} animate={ready}>
+                  <PipeCatalogLinks base={base} pipe={pipe} />
+                  <StudyGrid studies={studies} base={base} />
+                </ResearchSectionBlock>
+              ))}
+            </div>
+          </div>
 
-          {/* Outcome sections: one outcome across every leg that leads to it, after the legs. */}
-          {OUTCOME_ORDER.map((outcome) => {
-            const meta = RESEARCH.outcomes?.find((o) => o.id === outcome);
-            const studies = studiesForOutcome(outcome, RESEARCH);
-            if (!studies.length) return null;
-            const id = `outcome-${outcome}`;
-            return (
-              <ResearchSectionBlock
-                key={outcome}
-                id={id}
-                section={{ outcome }}
-                studies={studies}
-                open={open.has(id)}
-                onToggle={() => toggle(id)}
-                animate={ready}
-                chip={OUTCOME_PATH[outcome] && <span className="k-chip font-normal">Sales path</span>}
-                line={OUTCOME_PATH[outcome] ? null : meta?.description ?? null}
-              >
-                {meta && <p className="k-fg3 mb-3 text-[12px] leading-5">{meta.population}</p>}
-                <StudyGrid studies={studies} base={base} />
-              </ResearchSectionBlock>
-            );
-          })}
+          {/* One row per outcome, asked across every pipe that lands on it: the pipes named under it. */}
+          {outcomeRows.length > 0 && (
+            <div>
+              <SectionTitle count={outcomeRows.length}>Outcomes</SectionTitle>
+              <div className="space-y-3">
+                {outcomeRows.map(({ meta, studies }) => {
+                  const id = `outcome-${meta.id}`;
+                  return (
+                    <ResearchSectionBlock key={meta.id} id={id} section={{ outcome: meta.id }} studies={studies} open={open.has(id)} onToggle={() => toggle(id)} animate={ready}>
+                      <p className="k-fg3 mb-3 text-[12px] leading-5">{meta.population}</p>
+                      <StudyGrid studies={studies} base={base} />
+                    </ResearchSectionBlock>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
+          {otherRows.length > 0 && (
+            <div>
+              <SectionTitle count={otherRows.length}>Other</SectionTitle>
+              <div className="space-y-3">
+                {otherRows.map(({ meta, studies }) => {
+                  const id = `outcome-${meta.id}`;
+                  return (
+                    <ResearchSectionBlock
+                      key={meta.id}
+                      id={id}
+                      section={{ outcome: meta.id }}
+                      studies={studies}
+                      open={open.has(id)}
+                      onToggle={() => toggle(id)}
+                      animate={ready}
+                      line={meta.description}
+                    >
+                      <p className="k-fg3 mb-3 text-[12px] leading-5">{meta.population}</p>
+                      <StudyGrid studies={studies} base={base} />
+                    </ResearchSectionBlock>
+                  );
+                })}
+              </div>
+            </div>
+          )}
         </div>
       </div>
     </>
@@ -527,7 +558,7 @@ function V2ResearchStudy({ base, studyId }: { base: string; studyId: string }) {
   }
   const section = sectionOf(study);
   const outcomeText = studyOutcomeText(study, RESEARCH);
-  const outcomeMeta = study.pipe ? null : RESEARCH.outcomes?.find((o) => o.id === study.outcome) ?? null;
+  const outcomeMeta = study.pipe ? null : outcomeEntry(study.outcome, RESEARCH);
   // The email legs' population and rule (clients, emails, the run-start wait) describe the two cold
   // email pipes' figures only: a meeting study states its own in its sample and chart note.
   const emailLeg = study.pipe === "cold-email-positive-reply" || study.pipe === "cold-email-website-visit";
@@ -615,7 +646,7 @@ function V2ResearchStudy({ base, studyId }: { base: string; studyId: string }) {
             <p className="k-label">Details</p>
             <dl className="mt-3 space-y-2.5 text-[13px]">
               <Row
-                k={study.pipe ? "Pipe" : outcomeMeta && OUTCOME_PATH[outcomeMeta.id] ? "Sales path" : "Section"}
+                k={study.pipe ? "Pipe" : outcomeMeta?.step ? "Outcome" : "Section"}
                 v={
                   <span className="inline-flex items-center gap-1.5">
                     <SectionMark section={section} />
@@ -623,15 +654,21 @@ function V2ResearchStudy({ base, studyId }: { base: string; studyId: string }) {
                   </span>
                 }
               />
-              <Row k="Outcome" v={outcomeText} />
-              {outcomeMeta && OUTCOME_PATH[outcomeMeta.id] && <Row k="Legs" v="All legs, first email to meeting" />}
+              {study.pipe && <Row k="Outcome" v={outcomeText} />}
+              {outcomeMeta?.step && <Row k={(outcomeMeta.pipes?.length ?? 0) === 1 ? "Pipe" : "Pipes"} v={<OutcomePipes outcome={outcomeMeta.id} prefix={false} />} />}
               <Row k="Question" v={`${TOPIC_LABEL[study.topic]}, ${GOAL_LABEL[study.goal]}`} />
               {emailLeg && <Row k="Clients" v={`${RESEARCH.volume.orgs}, all orgs`} />}
               {emailLeg && <Row k="Emails" v={RESEARCH.volume.emails.toLocaleString("en-US")} />}
               <Row k="Read on" v={dayText(RESEARCH.readOn)} />
             </dl>
             <p className="k-label mt-5">How we measured</p>
-            {outcomeMeta && <p className="k-fg2 mt-2 text-[12px] leading-5">{outcomeMeta.population}</p>}
+            {/* the row's population, unless the study states its own (an outcome cut names who it counts) */}
+            {outcomeMeta && !study.conclusion[0]?.startsWith("Population:") && <p className="k-fg2 mt-2 text-[12px] leading-5">{outcomeMeta.population}</p>}
+            {outcomeMeta?.step && study.goal === "rate" && (
+              <p className="k-fg2 mt-2 text-[12px] leading-5">
+                A conversion rate counts leads, lead-service&apos;s own lead: a person at a company, counted once however many emails it got. Never emails.
+              </p>
+            )}
             <p className="k-fg2 mt-2 text-[12px] leading-5">
               ROI is read as the cost per outcome: every pipe buys one outcome, so the cheaper outcome is the better return. A website visit is priced on the
               emails that carried a link.

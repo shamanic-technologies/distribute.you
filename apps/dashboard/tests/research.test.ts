@@ -4,6 +4,7 @@ import { describe, expect, it } from "vitest";
 import {
   PIPE_ORDER,
   OUTCOME_ORDER,
+  outcomeGroups,
   parseResearchPath,
   pointHref,
   researchCatalogHref,
@@ -38,8 +39,10 @@ describe("research.json is coherent", () => {
     const legs = (RESEARCH as unknown as { maturation: { legs: Record<string, { cutoff: string }> } }).maturation.legs;
     let partials = 0;
     for (const s of RESEARCH.studies) {
-      // an outcome study (meetings) waits no days under its leg's rule: its months run to the read
-      const cutoff = s.pipe === null ? RESEARCH.maturation.windowEnd : legs[s.pipe === "cold-email-website-visit" ? "visit" : "reply"].cutoff;
+      // a study sits on its pipe's leg rule; an outcome row on the rule of the pipe that lands on it,
+      // and the meeting and Jev rows wait no days: their months run to the read
+      const pipe = s.pipe ?? RESEARCH.outcomes?.find((o) => o.id === s.outcome)?.pipes?.[0] ?? null;
+      const cutoff = pipe === null || pipe === "meeting-booking" ? RESEARCH.maturation.windowEnd : legs[pipe === "cold-email-website-visit" ? "visit" : "reply"].cutoff;
       const last = MONTHS[Number(cutoff.slice(5, 7)) - 1];
       for (const c of s.charts.filter((x) => x.kind === "months")) {
         for (const pts of [c.points, c.cumulative?.points ?? []]) {
@@ -62,7 +65,7 @@ describe("research.json is coherent", () => {
     const ids = RESEARCH.studies.map((s) => s.id);
     expect(new Set(ids).size).toBe(ids.length);
     for (const s of RESEARCH.studies) {
-      if (s.pipe === null) expect(OUTCOME_ORDER, s.id).toContain(s.outcome);
+      if (s.pipe === null) expect(RESEARCH.outcomes?.map((o) => o.id), s.id).toContain(s.outcome);
       else {
         expect(PIPE_ORDER, s.id).toContain(s.pipe);
         expect(s.outcome, s.id).toBeUndefined();
@@ -76,12 +79,16 @@ describe("research.json is coherent", () => {
     const leg = studyById("meeting-booking-cost", RESEARCH);
     expect(leg?.pipe).toBe("meeting-booking");
     expect(leg?.topic).toBe("cost");
-    const meeting = RESEARCH.outcomes?.find((o) => o.id === "meeting");
+    const meeting = RESEARCH.outcomes?.find((o) => o.id === "meeting-booked");
     expect(meeting?.outcome).toBe("Meeting booked");
+    expect(meeting?.step).toBe("meeting_booked");
+    expect(meeting?.pipes).toEqual(["meeting-booking"]);
     // the population is stated: only brands that report their meetings count (owner pick A, 2026-10-03)
     expect(meeting?.population).toMatch(/report(s)? (its|their) booked meetings/);
-    const all = studiesForOutcome("meeting", RESEARCH);
-    expect(all.map((s) => s.id)).toEqual(["meeting-cost", "meeting-ai-before-after"]);
+    // the meeting studies moved into the Meeting booked outcome row, first, beside its new cuts
+    const all = studiesForOutcome("meeting-booked", RESEARCH);
+    expect(all.slice(0, 2).map((s) => s.id)).toEqual(["meeting-cost", "meeting-ai-before-after"]);
+    expect(all.slice(2).every((s) => s.id.startsWith("outcome-meeting-booked-"))).toBe(true);
     for (const s of [leg!, ...all]) {
       expect(s.verdict, s.id).toBeTruthy();
       // a meeting figure under features-service's count reads Learning, so never a conclusion yet
@@ -91,13 +98,23 @@ describe("research.json is coherent", () => {
     }
   });
 
-  it("draws the outcome sections on the hub after the pipes, with their population line", () => {
+  it("groups the hub in three, Pipes, Outcomes, Other, each a titled group with its count (owner 2026-10-18)", () => {
     const page = read("components/v2/research-page.tsx");
     const hub = page.slice(page.indexOf("function V2ResearchHub("), page.indexOf("function BarsChart("));
-    expect(hub.indexOf("PIPE_ORDER.map(")).toBeGreaterThan(0);
-    expect(hub.indexOf("OUTCOME_ORDER.map(")).toBeGreaterThan(hub.indexOf("PIPE_ORDER.map("));
-    expect(hub).toContain("studiesForOutcome(outcome, RESEARCH)");
+    const pipes = hub.indexOf("<SectionTitle count={pipeRows.length}>Pipes</SectionTitle>");
+    const outcomes = hub.indexOf("<SectionTitle count={outcomeRows.length}>Outcomes</SectionTitle>");
+    const other = hub.indexOf("<SectionTitle count={otherRows.length}>Other</SectionTitle>");
+    expect(pipes).toBeGreaterThan(0);
+    expect(outcomes).toBeGreaterThan(pipes);
+    expect(other).toBeGreaterThan(outcomes);
+    expect(hub).toContain("const groups = outcomeGroups(RESEARCH);");
+    expect(hub).toContain("studiesForOutcome(meta.id, RESEARCH)");
     expect(hub).toContain("{meta.population}");
+    // the Outcomes group holds every step the data lands on, in display order; Jev sits under Other
+    const groups = outcomeGroups(RESEARCH);
+    expect(groups.outcomes.map((o) => o.id)).toEqual(OUTCOME_ORDER);
+    expect(groups.other.map((o) => o.id)).toEqual(["judgment"]);
+    for (const o of groups.outcomes) expect(o.pipes?.length, o.id).toBeGreaterThan(0);
     // a question page names its section whatever it is
     expect(page).toContain("const section = sectionOf(study);");
     // the email legs' clients, emails and run-start wait are never printed beside a meeting figure
@@ -390,7 +407,8 @@ describe("the maturity rule is features-service's, read per leg and applied ever
   it("marks Learning exactly where a bar rests on fewer outcomes than its leg requires", () => {
     const counted = (note: string) => Number((note.match(/^([\d,]+) /)?.[1] ?? "").replace(/,/g, ""));
     for (const s of RESEARCH.studies.filter((st) => ["llm", "template", "workflow"].includes(st.topic) && st.status === "measured")) {
-      const required = s.pipe === "cold-email-positive-reply" ? m.legs.reply.outcomesRequired : m.legs.visit.outcomesRequired;
+      const pipe = s.pipe ?? RESEARCH.outcomes?.find((o) => o.id === s.outcome)?.pipes?.[0];
+      const required = pipe === "cold-email-positive-reply" ? m.legs.reply.outcomesRequired : m.legs.visit.outcomesRequired;
       for (const p of s.charts[0].points) {
         const got = counted(p.note);
         if (Number.isFinite(got) && /(positive repl|website visit)/.test(p.note)) expect(p.thin, `${s.id}: ${p.label}`).toBe(got < required);
@@ -405,7 +423,7 @@ describe("the maturity rule is features-service's, read per leg and applied ever
       for (const c of s.charts) {
         expect(c.note, `${s.id}: ${c.title}`).toBeTruthy();
         // the meeting studies sit on the meeting legs' own rule (outcomesRequired meetings), stated in their note
-        if (s.pipe === "meeting-booking" || s.outcome === "meeting") expect(c.note, s.id).toMatch(/needs \d+ meetings? behind it/);
+        if (s.pipe === "meeting-booking" || s.outcome === "meeting-booked") expect(c.note, s.id).toMatch(/needs \d+ meetings? behind it/);
         // a typed-judgment study is a count, so no maturity rule applies: its note says so
         else if (s.outcome === "judgment") expect(c.note, s.id).toMatch(/\S/);
         else if (s.topic !== "opens") expect(c.note, s.id).toBe(m.note);

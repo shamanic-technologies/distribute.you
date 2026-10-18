@@ -13,16 +13,40 @@
  *
  * Alias-free so it carries real unit tests.
  */
-import { LEAD_FOUND_STEP, OUTBOUND_LEG_TO_CONVERSATION, OUTBOUND_LEG_TO_WEBSITE_VISIT } from "../outbound-leg-key";
+import { OUTBOUND_LEG_TO_CONVERSATION, OUTBOUND_LEG_TO_WEBSITE_VISIT } from "../outbound-leg-key";
 
 /** A PIPE is one leg x one channel: the channel doing the work, the leg (from step -> to step) it buys. */
 export type ResearchPipe = "cold-email-positive-reply" | "cold-email-website-visit" | "meeting-booking";
 /**
- * An OUTCOME section: a question asked of one outcome across every leg that leads to it (what a
- * booked meeting costs from the first cold email on), where a pipe section is one leg x one channel.
+ * An OUTCOME row: one outcome asked across every pipe that lands on it (owner 2026-10-18: what one
+ * costs and what share of leads reach it, overall then per pipe, channel, leg, workflow, lead
+ * strategy and tactic). Its id is the step's served label in words joined by dashes
+ * (`positive-reply`, `meeting-booked`); the list comes from the data, so a step a pipe's data
+ * measures later arrives by itself. `judgment` (Jev) is no outcome: it sits under Other.
  */
-export type ResearchOutcome = "meeting" | "judgment";
-export type ResearchTopic = "llm" | "cost" | "followups" | "opens" | "template" | "workflow" | "naming" | "layout" | "opening" | "dash" | "weekday" | "hour" | "judgment" | "launch" | "strategy" | "sourcing-strategy";
+export type ResearchOutcome = string;
+export type ResearchTopic =
+  | "llm"
+  | "cost"
+  | "followups"
+  | "opens"
+  | "template"
+  | "workflow"
+  | "naming"
+  | "layout"
+  | "opening"
+  | "dash"
+  | "weekday"
+  | "hour"
+  | "judgment"
+  | "launch"
+  | "strategy"
+  | "sourcing-strategy"
+  | "conversion"
+  | "pipe"
+  | "channel"
+  | "leg"
+  | "tactic";
 export type ResearchGoal = "roi" | "rate";
 
 export interface ResearchPoint {
@@ -127,13 +151,25 @@ export interface ResearchFile {
   };
   pipes: { id: ResearchPipe; channel: string; leg: string; outcome: string; description: string }[];
   /**
-   * The outcome sections, each measured across every leg: `population` says which brands the
-   * figures rest on. Absent on a snapshot written before outcome sections existed.
+   * The outcome rows, in the order the data lands on them, then the sections with no step (Jev):
+   * `step` is the outcome's step key (null: no outcome, the Other group), `pipes` the pipes that land
+   * on it, `population` who the figures rest on. Absent on a snapshot written before outcome sections existed.
    */
-  outcomes?: { id: ResearchOutcome; outcome: string; description: string; population: string }[];
+  outcomes?: ResearchOutcomeEntry[];
   studies: ResearchStudy[];
   /** How many workflows and templates each pipe's pages list (the pages read the catalogue). */
   catalogCounts: Record<ResearchPipe, { workflows: number; templates: number; models: number }>;
+}
+
+export interface ResearchOutcomeEntry {
+  id: ResearchOutcome;
+  outcome: string;
+  /** The step the outcome is (features-service's key), or null for a section that is no outcome (Jev). */
+  step?: string | null;
+  /** The pipes that land on it. */
+  pipes?: ResearchPipe[];
+  description: string;
+  population: string;
 }
 
 /** The figures a workflow or a template is listed with, fleet-wide, all written by research.mjs. */
@@ -193,7 +229,8 @@ export const CATALOG_KINDS: CatalogKind[] = ["workflows", "templates", "models"]
 
 
 export const PIPE_ORDER: ResearchPipe[] = ["cold-email-positive-reply", "cold-email-website-visit", "meeting-booking"];
-export const OUTCOME_ORDER: ResearchOutcome[] = ["meeting", "judgment"];
+/** The order the Outcomes group lists its rows in (display only: the list itself is the file's). */
+export const OUTCOME_ORDER: ResearchOutcome[] = ["positive-reply", "website-visit", "meeting-booked"];
 
 /** Each pipe's channel, the leg it buys (features-service's key) and the step that leg lands on. */
 export const PIPE_KEY: Record<ResearchPipe, { channel: string; leg: string; step: string }> = {
@@ -203,13 +240,23 @@ export const PIPE_KEY: Record<ResearchPipe, { channel: string; leg: string; step
 };
 
 /**
- * The sales path an outcome section reads as (its steps in order; the leg catalogue labels them),
- * or null for a section no path reaches: Jev is a judgment the pipes ask, not an outcome.
+ * The hub's two lower groups (owner 2026-10-18): Outcomes, every entry that IS a step, in
+ * OUTCOME_ORDER then any other the data brings; Other, the entries with no step (Jev).
  */
-export const OUTCOME_PATH: Record<ResearchOutcome, string[] | null> = {
-  meeting: [LEAD_FOUND_STEP, "conversation", "meeting_booked"],
-  judgment: null,
-};
+export function outcomeGroups(file: ResearchFile): { outcomes: ResearchOutcomeEntry[]; other: ResearchOutcomeEntry[] } {
+  const all = file.outcomes ?? [];
+  const rank = (o: ResearchOutcomeEntry) => {
+    const i = OUTCOME_ORDER.indexOf(o.id);
+    return i === -1 ? OUTCOME_ORDER.length : i;
+  };
+  const outcomes = all.filter((o) => o.step).map((o, i) => ({ o, i })).sort((a, b) => rank(a.o) - rank(b.o) || a.i - b.i).map((x) => x.o);
+  return { outcomes, other: all.filter((o) => !o.step) };
+}
+
+/** An outcome entry by id. */
+export function outcomeEntry(id: ResearchOutcome | undefined, file: ResearchFile): ResearchOutcomeEntry | null {
+  return file.outcomes?.find((o) => o.id === id) ?? null;
+}
 
 export const GOAL_LABEL: Record<ResearchGoal, string> = { roi: "ROI", rate: "Rate" };
 
@@ -230,6 +277,11 @@ export const TOPIC_LABEL: Record<ResearchTopic, string> = {
   launch: "Before and after go-live",
   strategy: "Lead strategy",
   "sourcing-strategy": "Sourcing strategy",
+  conversion: "Conversion over time",
+  pipe: "Pipe",
+  channel: "Channel",
+  leg: "Leg",
+  tactic: "Tactic",
 };
 
 export function studiesFor(pipe: ResearchPipe, file: ResearchFile): ResearchStudy[] {

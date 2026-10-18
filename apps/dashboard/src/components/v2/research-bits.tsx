@@ -17,17 +17,25 @@ import { ScalesIcon } from "@phosphor-icons/react/dist/csr/Scales";
 import { RocketLaunchIcon } from "@phosphor-icons/react/dist/csr/RocketLaunch";
 import { StrategyIcon } from "@phosphor-icons/react/dist/csr/Strategy";
 import { MagnifyingGlassIcon } from "@phosphor-icons/react/dist/csr/MagnifyingGlass";
+import { PercentIcon } from "@phosphor-icons/react/dist/csr/Percent";
+import { PipeIcon } from "@phosphor-icons/react/dist/csr/Pipe";
+import { BroadcastIcon } from "@phosphor-icons/react/dist/csr/Broadcast";
+import { ArrowRightIcon } from "@phosphor-icons/react/dist/csr/ArrowRight";
+import { CrosshairIcon } from "@phosphor-icons/react/dist/csr/Crosshair";
 import { EmptyNote, SectionTitle, Shimmer } from "@/components/v2/ui";
 import { ChannelChip } from "@/components/v2/offer-sales-paths";
 import { useLegCatalogue } from "@/lib/use-leg-catalogue";
 import { useAcquisitionChannels } from "@/lib/use-acquisition-channels";
 import type { AcquisitionChannelDef } from "@/lib/acquisition-channels";
-import { legFor, stepLabel } from "@/lib/legs";
+import { legFor } from "@/lib/legs";
 import { CatalogueMark } from "@/components/v2/catalogue-mark";
 import { useStaffCatalogueObject } from "@/components/v2/staff-catalogue-data";
 import { featureLegId } from "@/lib/outbound-leg-key";
+import { useAuthQuery } from "@/lib/use-auth-query";
+import { getPublicCatalogueSteps } from "@/lib/api";
+import { useResearch } from "@/lib/research/research-source";
 import {
-  OUTCOME_PATH,
+  outcomeEntry,
   PIPE_KEY,
   type ResearchChart,
   type ResearchPipe,
@@ -66,6 +74,13 @@ export const TOPIC_LOOK: Record<ResearchTopic, { color: string; Icon: typeof Bra
   // the play a pipe ran under: who it serves and which workflows it may run, so the workflow colour
   strategy: { color: "var(--data-lime)", Icon: StrategyIcon },
   "sourcing-strategy": { color: "var(--data-lime)", Icon: MagnifyingGlassIcon },
+  // an outcome's own questions (owner 2026-10-18): the share of leads that reach it, and where it
+  // comes from (which pipe, channel, leg); a tactic is a rule a workflow follows, like a strategy
+  conversion: { color: "var(--data-teal)", Icon: PercentIcon },
+  pipe: { color: "var(--data-sky)", Icon: PipeIcon },
+  channel: { color: "var(--data-sky)", Icon: BroadcastIcon },
+  leg: { color: "var(--data-sky)", Icon: ArrowRightIcon },
+  tactic: { color: "var(--data-lime)", Icon: CrosshairIcon },
 };
 
 export const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
@@ -92,28 +107,31 @@ export function researchPipeId(pipe: ResearchPipe): string {
 
 /**
  * What the catalogue serves for a section (owner 2026-10-18: « les pipes ont maintenant leur nom
- * et leur logo »): a pipe's own name, icon and colour (staff catalogue pipe); the meeting outcome
- * is its step (name and icon); Jev is no catalogue object, so it is named and wears its topic mark.
- * Research is staff only, so the staff catalogue is readable here.
+ * et leur logo »): a pipe's own name, icon and colour (staff catalogue pipe); an outcome row is its
+ * step, named and marked off the PUBLIC step catalogue as the Outcomes pages wear it; Jev is no
+ * catalogue object (no step), so it is named and wears its topic mark.
  */
 const unreadableSections = new Set<string>();
 function useServedSection(section: ResearchSection) {
+  const { file } = useResearch();
   const pipeId = "pipe" in section ? researchPipeId(section.pipe) : null;
-  const path = "outcome" in section ? OUTCOME_PATH[section.outcome] : null;
-  const stepId = path ? path[path.length - 1] : null;
+  const stepId = "outcome" in section ? outcomeEntry(section.outcome, file)?.step ?? null : null;
   const pipe = useStaffCatalogueObject("pipes", pipeId);
-  const step = useStaffCatalogueObject("steps", stepId);
-  const q = pipeId ? pipe : step;
+  const steps = useAuthQuery(["publicCatalogueSteps"], getPublicCatalogueSteps, { staleTime: 10 * 60_000, enabled: !!stepId });
+  const step = stepId ? steps.data?.find((s) => s.key === stepId) ?? null : null;
   const id = pipeId ?? stepId;
-  if (id && q.isError && q.data === undefined && !unreadableSections.has(id)) {
+  const isError = pipeId ? pipe.isError && pipe.data === undefined : !!stepId && ((steps.isError && steps.data === undefined) || (steps.data !== undefined && !step));
+  if (id && isError && !unreadableSections.has(id)) {
     unreadableSections.add(id);
-    console.error("[v2] research section unreadable in the catalogue", { id, error: q.error?.message });
+    console.error("[v2] research section unreadable in the catalogue", { id, error: pipeId ? pipe.error?.message : steps.error?.message ?? "step not in the public catalogue" });
   }
+  const name = pipeId ? pipe.data?.name ?? null : step?.name ?? null;
+  const icon = pipeId ? pipe.data?.icon ?? null : step?.icon ?? null;
   const color = pipeId ? pipe.data?.color ?? null : null;
-  return { id, name: q.data?.name ?? null, icon: q.data?.icon ?? null, color, failed: !!id && q.isError && q.data === undefined };
+  return { id, name, icon, color, failed: !!id && isError };
 }
 
-/** A section's mark, as served: a pipe's icon in its colour, the meeting step's icon, Jev's topic mark. */
+/** A section's mark, as served: a pipe's icon in its colour, an outcome's step icon, Jev's topic mark. */
 export function SectionMark({ section, size = 16 }: { section: ResearchSection; size?: number }) {
   const served = useServedSection(section);
   if (!served.id) return <TopicMark topic="judgment" size={size} />;
@@ -127,7 +145,7 @@ export function SectionMark({ section, size = 16 }: { section: ResearchSection; 
   );
 }
 
-/** A section's served NAME ("Dotterel", "Meeting booked"; Jev is named), a Shimmer until the catalogue answers. */
+/** A section's served NAME ("Dotterel", "Positive reply"; Jev is named), a Shimmer until the catalogue answers. */
 export function SectionName({ section }: { section: ResearchSection }) {
   const served = useServedSection(section);
   if (!served.id) return <>Jev</>;
@@ -159,22 +177,38 @@ function InOrder({ items, compact }: { items: InOrderItem[]; compact: boolean })
 }
 
 /**
+ * The line under an outcome row's name (owner 2026-10-18): the pipes that land on it, each by its
+ * served name, or null for a section that is no outcome (Jev).
+ */
+export function OutcomePipes({ outcome, prefix = true }: { outcome: ResearchOutcome; prefix?: boolean }) {
+  const { file } = useResearch();
+  const pipes = outcomeEntry(outcome, file)?.pipes ?? [];
+  if (!pipes.length) return null;
+  return (
+    <span className="inline-flex min-w-0 flex-wrap items-center gap-x-1">
+      {prefix && <span>{pipes.length === 1 ? "Pipe:" : "Pipes:"}</span>}
+      {pipes.map((p, i) => (
+        <span key={p} className="inline-flex items-center gap-1">
+          <SectionMark section={{ pipe: p }} size={12} />
+          <SectionName section={{ pipe: p }} />
+          {i < pipes.length - 1 && <span>,</span>}
+        </span>
+      ))}
+    </span>
+  );
+}
+
+/**
  * A section's PATH, read IN ORDER like a campaign's path (the reminder under its served name): a pipe is `Lead found → [channel] →
- * Positive reply` (the leg's two steps with the channel doing it between them); the meeting outcome
- * is its sales path `Lead found → Positive reply → Meeting booked`; Jev has none (null), since it is not an
- * outcome. Every word is served (the leg catalogue, the channel list): a Shimmer until they answer.
+ * Positive reply` (the leg's two steps with the channel doing it between them); an outcome row names
+ * the pipes that land on it (`OutcomePipes`); Jev has none (null), since it is not an outcome. Every
+ * word is served (the leg catalogue, the channel list): a Shimmer until they answer.
  * `compact` writes the channel as a word, for a line that sits inside a chip.
  */
 export function SectionPath({ section, compact = false }: { section: ResearchSection; compact?: boolean }) {
   const catalogue = useLegCatalogue();
   const channels = useAcquisitionChannels();
-  if ("outcome" in section) {
-    const path = OUTCOME_PATH[section.outcome];
-    if (!path) return null;
-    const labels = path.map((k) => stepLabel(catalogue, k));
-    if (labels.some((l) => l == null)) return <Shimmer className="inline-block h-4 w-56 align-middle" />;
-    return <InOrder items={labels.map((l) => ({ step: l as string }))} compact={compact} />;
-  }
+  if ("outcome" in section) return <OutcomePipes outcome={section.outcome} />;
   const k = PIPE_KEY[section.pipe];
   const leg = legFor(catalogue, k.leg);
   const def = channels.find((d) => d.featureSlug === k.channel);
