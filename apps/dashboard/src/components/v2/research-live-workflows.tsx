@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo } from "react";
+import { useMemo, type ReactNode } from "react";
 import Link from "next/link";
 import { useAuthQuery } from "@/lib/use-auth-query";
 import { pollOptions } from "@/lib/query-options";
@@ -10,14 +10,13 @@ import { legFor } from "@/lib/legs";
 import { isProactiveFrom } from "@/lib/outbound-leg-key";
 import { EmptyNote, Shimmer } from "@/components/v2/ui";
 import { PIPE_KEY, researchCatalogHref, type ResearchCatalog, type ResearchPipe } from "@/lib/research/research";
-import { cannotRunReason, fleetWorkflowRows, placeWords, shortWorkflowName, type LiveWorkflowRow, type PlaceTone } from "@/lib/live-workflow-rows";
+import { fleetWorkflowRows, placeWords, shortWorkflowName, type LiveWorkflowRow, type PlaceTone } from "@/lib/live-workflow-rows";
 import { formatUsdAdaptive } from "@/lib/format-number";
 import { useFeatures } from "@/lib/features-context";
 import {
   LIVE_TH,
   LiveRankingStrip,
   LiveWorkflowCells,
-  LiveWorkflowChips,
   LiveWorkflowHeads,
 } from "@/components/v2/live-workflow-cells";
 
@@ -54,14 +53,14 @@ export function ResearchLiveWorkflows({
   legKey,
   catalog,
   outcomeUnit,
-  nav,
 }: {
   base: string;
   pipe: ResearchPipe;
   legKey: string;
   catalog: ResearchCatalog | null;
   outcomeUnit: string;
-  nav: (href: string) => void;
+  /** Unused since every cell is its own link; kept so the catalogue page passes one shape. */
+  nav?: (href: string) => void;
 }) {
   const featureSlug = PIPE_KEY[pipe].channel;
 
@@ -84,7 +83,12 @@ export function ResearchLiveWorkflows({
     }
     return m;
   }, [catalogueQ.data]);
-  const researched = useMemo(() => new Set((catalog?.[pipe].workflows ?? []).map((w) => w.key)), [catalog, pipe]);
+  // The Research snapshot's own pages: a workflow, template or model the snapshot studied has one.
+  const researchedWorkflows = useMemo(() => new Map((catalog?.[pipe].workflows ?? []).map((w) => [w.key, w])), [catalog, pipe]);
+  const researchedTemplates = useMemo(() => new Set((catalog?.[pipe].templates ?? []).map((t) => t.key)), [catalog, pipe]);
+  // A workflow the snapshot never studied still has its live page (`/workflows/:slug`, priced for this pipe).
+  const brandBase = base.replace(/\/research$/, "");
+  const pipeId = `${featureSlug}|${legKey}`;
   const channelName = usePipeChannelName(pipe);
   const nameOf = (r: { name: string | null; slug: string }) => shortWorkflowName(r.name ?? r.slug, channelName);
 
@@ -96,15 +100,15 @@ export function ResearchLiveWorkflows({
     <div className="k-card overflow-hidden">
       <LiveRankingStrip rows={rows} moneyNote="no mature workflow yet" nameOf={nameOf} />
       <div className="k-scroll relative overflow-x-auto">
-        <table className="w-full min-w-[1360px] text-[13px]">
+        <table className="w-full min-w-[900px] table-fixed text-[13px]">
           <thead>
             <tr className="border-b border-[var(--line-subtle)]">
-              <th className={`${LIVE_TH} w-12`}>#</th>
+              <th className={`${LIVE_TH} w-10`}>#</th>
               <th className={LIVE_TH}>Workflow</th>
-              <th className={`${LIVE_TH} w-40`}>LLM</th>
-              <th className={`${LIVE_TH} w-44`}>Template</th>
-              <th className={`${LIVE_TH} w-48`}>Why here</th>
-              <LiveWorkflowHeads costLabel={`Cost ${outcomeUnit.replace("/ ", "per ")}`} />
+              <th className={`${LIVE_TH} w-24`}>LLM</th>
+              <th className={`${LIVE_TH} w-28`}>Template</th>
+              <th className={`${LIVE_TH} w-36`}>Why here</th>
+              <LiveWorkflowHeads costLabel={`Cost ${outcomeUnit.replace("/ ", "per ")}`} compact />
             </tr>
           </thead>
           <tbody>
@@ -136,33 +140,44 @@ export function ResearchLiveWorkflows({
               </tr>
             ) : (
               rows.map((r) => {
-                const s = stack.get(r.slug);
-                const href = researched.has(r.slug) ? researchCatalogHref(base, pipe, "workflows", r.slug) : null;
+                const st = stack.get(r.slug);
+                const studied = researchedWorkflows.get(r.slug);
+                const workflowHref = studied
+                  ? researchCatalogHref(base, pipe, "workflows", r.slug)
+                  : `${brandBase}/workflows/${encodeURIComponent(r.slug)}?pipe=${encodeURIComponent(pipeId)}`;
+                const model = studied?.model ?? null;
+                const template = st?.template ?? null;
                 return (
-                  <tr
-                    key={r.slug}
-                    onClick={href ? () => nav(href) : undefined}
-                    className={`k-row h-10 ${href ? "cursor-pointer" : ""} ${r.cash ? "k-selected" : ""}`}
-                  >
+                  <tr key={r.slug} className={`k-row h-10 ${r.cash ? "k-selected" : ""}`}>
                     <td className="k-mono k-fg3 pl-4 pr-3 text-[12px] tabular-nums">{r.rank ?? "—"}</td>
                     <td className="max-w-0 px-3">
-                      <div className="flex min-w-0 items-center gap-2">
-                        {href ? (
-                          <Link href={href} className={`min-w-0 truncate font-medium ${r.selectable ? "" : "k-fg3"}`} title={r.name ?? r.slug}>
-                            {nameOf(r)}
-                          </Link>
-                        ) : (
-                          <span className={`min-w-0 truncate font-medium ${r.selectable ? "" : "k-fg3"}`} title={r.name ?? r.slug}>
-                            {nameOf(r)}
-                          </span>
-                        )}
-                        <LiveWorkflowChips row={r} />
-                        {!r.selectable && <span className="k-chip k-fg3 shrink-0">{cannotRunReason(r)}</span>}
-                      </div>
+                      <Tag href={workflowHref} title={r.name ?? r.slug} muted={!r.selectable} strong>
+                        {nameOf(r)}
+                      </Tag>
                     </td>
-                    <td className="k-fg2 max-w-0 truncate px-3">{s?.model ?? <span className="k-fg4">—</span>}</td>
-                    <td className="k-fg2 max-w-0 truncate px-3">{s?.template ?? <span className="k-fg4">—</span>}</td>
-                    <td className="px-3">
+                    <td className="max-w-0 px-3">
+                      {model ? (
+                        <Tag href={model.linked ? researchCatalogHref(base, pipe, "models", model.key) : null} title={model.label}>
+                          {model.label}
+                        </Tag>
+                      ) : st?.model ? (
+                        <Tag href={null} title={st.model}>
+                          {st.model}
+                        </Tag>
+                      ) : (
+                        <span className="k-fg4">—</span>
+                      )}
+                    </td>
+                    <td className="max-w-0 px-3">
+                      {template ? (
+                        <Tag href={researchedTemplates.has(template) ? researchCatalogHref(base, pipe, "templates", template) : null} title={template}>
+                          {template}
+                        </Tag>
+                      ) : (
+                        <span className="k-fg4">—</span>
+                      )}
+                    </td>
+                    <td className="max-w-0 px-3">
                       <WhyHere row={r} />
                     </td>
                     <LiveWorkflowCells row={r} />
@@ -195,15 +210,45 @@ function WhyHere({ row }: { row: LiveWorkflowRow }) {
   const words = placeWords(row);
   if (!words) return <span className="k-fg4">—</span>;
   const learning = words.tone === "explore" || words.tone === "worse";
+  const price = learning && row.explorePriceUsd != null ? (row.explorePriceUsd === 0 ? "never run" : formatUsdAdaptive(row.explorePriceUsd)) : null;
   return (
-    <span className="inline-flex min-w-0 items-center gap-1.5 text-[12px]" style={{ color: TONE[words.tone] }}>
+    <span
+      className="inline-flex max-w-full min-w-0 items-center gap-1.5 text-[12px]"
+      style={{ color: TONE[words.tone] }}
+      title={price ? `${words.label}: ${price === "never run" ? "never run yet" : `${price} per outcome so far`}` : words.label}
+    >
       <span className="h-1.5 w-1.5 shrink-0 rounded-full" style={{ background: TONE[words.tone] }} />
       <span className="truncate">{words.label}</span>
-      {learning && row.explorePriceUsd != null && (
-        <span className="k-fg3 shrink-0 tabular-nums">
-          {row.explorePriceUsd === 0 ? "never run" : `${formatUsdAdaptive(row.explorePriceUsd)} so far`}
-        </span>
-      )}
+      {price && <span className="k-fg3 shrink-0 tabular-nums">{price === "never run" ? "$0" : price}</span>}
+    </span>
+  );
+}
+
+/**
+ * One cell as a tag that opens its own page (workflow, template, model). A value with no page yet
+ * (a template or model the Research snapshot never studied) is the same tag, not clickable.
+ */
+function Tag({
+  href,
+  title,
+  muted = false,
+  strong = false,
+  children,
+}: {
+  href: string | null;
+  title: string;
+  muted?: boolean;
+  strong?: boolean;
+  children: ReactNode;
+}) {
+  const cls = `k-chip inline-block max-w-full truncate align-middle ${strong ? "font-medium" : ""} ${muted ? "k-fg3" : ""}`;
+  return href ? (
+    <Link href={href} title={title} className={`${cls} hover:text-[var(--accent)]`}>
+      {children}
+    </Link>
+  ) : (
+    <span title={title} className={cls}>
+      {children}
     </span>
   );
 }
