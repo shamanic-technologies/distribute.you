@@ -2,12 +2,12 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import {
-  CREW_ORDER,
+  PIPE_ORDER,
   OUTCOME_ORDER,
   parseResearchPath,
   pointHref,
   researchCatalogHref,
-  researchCrewFor,
+  researchPipeFor,
   researchModel,
   researchTemplate,
   researchWorkflow,
@@ -39,7 +39,7 @@ describe("research.json is coherent", () => {
     let partials = 0;
     for (const s of RESEARCH.studies) {
       // an outcome study (meetings) waits no days under its leg's rule: its months run to the read
-      const cutoff = s.crew === null ? RESEARCH.maturation.windowEnd : legs[s.crew === "scout" ? "visit" : "reply"].cutoff;
+      const cutoff = s.pipe === null ? RESEARCH.maturation.windowEnd : legs[s.pipe === "cold-email-website-visit" ? "visit" : "reply"].cutoff;
       const last = MONTHS[Number(cutoff.slice(5, 7)) - 1];
       for (const c of s.charts.filter((x) => x.kind === "months")) {
         for (const pts of [c.points, c.cumulative?.points ?? []]) {
@@ -58,13 +58,13 @@ describe("research.json is coherent", () => {
     expect(bits).toContain('dataKey="pending" stroke={color} strokeWidth={1.5} strokeDasharray="3 3"');
   });
 
-  it("gives every study a unique id and exactly one section: a known crew, or a known outcome", () => {
+  it("gives every study a unique id and exactly one section: a known pipe, or a known outcome", () => {
     const ids = RESEARCH.studies.map((s) => s.id);
     expect(new Set(ids).size).toBe(ids.length);
     for (const s of RESEARCH.studies) {
-      if (s.crew === null) expect(OUTCOME_ORDER, s.id).toContain(s.outcome);
+      if (s.pipe === null) expect(OUTCOME_ORDER, s.id).toContain(s.outcome);
       else {
-        expect(CREW_ORDER, s.id).toContain(s.crew);
+        expect(PIPE_ORDER, s.id).toContain(s.pipe);
         expect(s.outcome, s.id).toBeUndefined();
       }
       expect(studyOutcomeText(s, RESEARCH), s.id).toBeTruthy();
@@ -73,8 +73,8 @@ describe("research.json is coherent", () => {
   });
 
   it("prices a booked meeting on the positive reply to meeting leg, and across every leg as the Meeting booked outcome", () => {
-    const leg = studyById("pilot-cost", RESEARCH);
-    expect(leg?.crew).toBe("pilot");
+    const leg = studyById("meeting-booking-cost", RESEARCH);
+    expect(leg?.pipe).toBe("meeting-booking");
     expect(leg?.topic).toBe("cost");
     const meeting = RESEARCH.outcomes?.find((o) => o.id === "meeting");
     expect(meeting?.outcome).toBe("Meeting booked");
@@ -91,36 +91,36 @@ describe("research.json is coherent", () => {
     }
   });
 
-  it("draws the outcome sections on the hub after the crews, with their population line", () => {
+  it("draws the outcome sections on the hub after the pipes, with their population line", () => {
     const page = read("components/v2/research-page.tsx");
     const hub = page.slice(page.indexOf("function V2ResearchHub("), page.indexOf("function BarsChart("));
-    expect(hub.indexOf("CREW_ORDER.map(")).toBeGreaterThan(0);
-    expect(hub.indexOf("OUTCOME_ORDER.map(")).toBeGreaterThan(hub.indexOf("CREW_ORDER.map("));
+    expect(hub.indexOf("PIPE_ORDER.map(")).toBeGreaterThan(0);
+    expect(hub.indexOf("OUTCOME_ORDER.map(")).toBeGreaterThan(hub.indexOf("PIPE_ORDER.map("));
     expect(hub).toContain("studiesForOutcome(outcome, RESEARCH)");
     expect(hub).toContain("{meta.population}");
     // a question page names its section whatever it is
-    expect(page).toContain("const id = sectionIdentity(study);");
+    expect(page).toContain("const section = sectionOf(study);");
     // the email legs' clients, emails and run-start wait are never printed beside a meeting figure
-    expect(page).toContain('const emailLeg = study.crew === "herald" || study.crew === "scout";');
+    expect(page).toContain('const emailLeg = study.pipe === "cold-email-positive-reply" || study.pipe === "cold-email-website-visit";');
     expect(page).toContain("{emailLeg && <Row k=\"Emails\"");
     expect(page).toContain("{emailLeg && (");
   });
 
-  it("covers the nine questions for Herald and for Scout, plus Pilot", () => {
-    for (const crew of ["herald", "scout"] as const) {
-      const topics = studiesFor(crew, RESEARCH).map((s) => `${s.topic}-${s.goal}`);
+  it("covers the nine questions on both cold email pipes, plus the meeting booking pipe", () => {
+    for (const pipe of ["cold-email-positive-reply", "cold-email-website-visit"] as const) {
+      const topics = studiesFor(pipe, RESEARCH).map((s) => `${s.topic}-${s.goal}`);
       for (const t of ["llm-roi", "llm-rate", "cost-roi", "followups-roi", "followups-rate", "opens-roi", "opens-rate", "template-roi", "template-rate"]) {
         expect(topics).toContain(t);
       }
     }
-    expect(studiesFor("pilot", RESEARCH).length).toBeGreaterThan(0);
+    expect(studiesFor("meeting-booking", RESEARCH).length).toBeGreaterThan(0);
   });
 
   it("asks whether the first email's layout and opening change the cost, per leg, all tiers then per tier", () => {
-    for (const crew of ["herald", "scout"] as const) {
+    for (const pipe of ["cold-email-positive-reply", "cold-email-website-visit"] as const) {
       for (const dim of ["layout", "opening"] as const) {
-        const s = studiesFor(crew, RESEARCH).find((st) => st.id === `${crew}-${dim}-roi`);
-        expect(s, `${crew}-${dim}`).toBeTruthy();
+        const s = studiesFor(pipe, RESEARCH).find((st) => st.id === `${pipe}-${dim}-roi`);
+        expect(s, `${pipe}-${dim}`).toBeTruthy();
         if (!s) continue;
         expect(s.topic).toBe(dim);
         expect(s.charts[0].title.startsWith("All tiers:")).toBe(true);
@@ -140,9 +140,9 @@ describe("research.json is coherent", () => {
   });
 
   it("asks whether dashes in the first email change the cost and the rate, per leg, all tiers then per tier, with the models behind them", () => {
-    for (const crew of ["herald", "scout"] as const) {
-      const s = studiesFor(crew, RESEARCH).find((st) => st.id === `${crew}-dash-roi`);
-      expect(s, crew).toBeTruthy();
+    for (const pipe of ["cold-email-positive-reply", "cold-email-website-visit"] as const) {
+      const s = studiesFor(pipe, RESEARCH).find((st) => st.id === `${pipe}-dash-roi`);
+      expect(s, pipe).toBeTruthy();
       if (!s) continue;
       expect(s.topic).toBe("dash");
       const titles = s.charts.map((c) => c.title);
@@ -163,7 +163,7 @@ describe("research.json is coherent", () => {
   it("asks which day of the week a cold email should go out on, in the prospect's timezone, and says what it cannot answer", () => {
     // Owner 2026-10-03 (copying a Sunday-to-Friday schedule?): one leg, positive replies, judged by
     // verdict.mjs like every other cut. The days are drawn Monday to Sunday, never ranked.
-    const s = studyById("herald-weekday-rate", RESEARCH);
+    const s = studyById("cold-email-positive-reply-weekday-rate", RESEARCH);
     expect(s).toBeTruthy();
     if (!s) return;
     expect(s.topic).toBe("weekday");
@@ -178,13 +178,13 @@ describe("research.json is coherent", () => {
     expect(text).toContain("What this cannot answer");
     expect(text).toContain("The schedule moved over the window");
     // the hour study rides the same rules, drawn 00:00 to 23:00
-    const h = studyById("herald-hour-rate", RESEARCH);
+    const h = studyById("cold-email-positive-reply-hour-rate", RESEARCH);
     expect(h?.topic).toBe("hour");
     const hours = h!.charts[0].points.map((p) => p.label);
     expect(hours).toEqual([...hours].sort());
     // a leg whose every day is still Learning gets no weekday study (one leg x one channel per figure)
-    const scout = studyById("scout-weekday-rate", RESEARCH);
-    if (scout) expect(scout.charts[0].points.some((p) => !p.thin)).toBe(true);
+    const visit = studyById("cold-email-website-visit-weekday-rate", RESEARCH);
+    if (visit) expect(visit.charts[0].points.some((p) => !p.thin)).toBe(true);
   });
 
   it("draws something for every measured study, and nothing is invented for one that is not", () => {
@@ -253,15 +253,15 @@ describe("research.json is coherent", () => {
     }
   });
 
-  it("asks the best-workflow questions (ROI and rate) for Herald and Scout, and Pilot says it cannot yet", () => {
-    for (const crew of ["herald", "scout"] as const) {
-      const wf = studiesFor(crew, RESEARCH).filter((s) => s.topic === "workflow");
+  it("asks the best-workflow questions (ROI and rate) on both cold email pipes, and the meeting booking pipe says it cannot yet", () => {
+    for (const pipe of ["cold-email-positive-reply", "cold-email-website-visit"] as const) {
+      const wf = studiesFor(pipe, RESEARCH).filter((s) => s.topic === "workflow");
       expect(wf.map((s) => s.goal).sort()).toEqual(["rate", "roi"]);
       for (const s of wf) expect(s.status, s.id).toBe("measured");
     }
-    const pilot = studiesFor("pilot", RESEARCH).filter((s) => s.topic === "workflow");
-    expect(pilot.map((s) => s.goal).sort()).toEqual(["rate", "roi"]);
-    for (const s of pilot) {
+    const booking = studiesFor("meeting-booking", RESEARCH).filter((s) => s.topic === "workflow");
+    expect(booking.map((s) => s.goal).sort()).toEqual(["rate", "roi"]);
+    for (const s of booking) {
       expect(s.status).toBe("not_enough_data");
       expect(s.headline).toBe("Not enough data yet.");
     }
@@ -278,13 +278,13 @@ describe("research.json is coherent", () => {
       }
     }
     // two workflows that run the same model and template still read as two
-    const labels = RESEARCH.studies.find((s) => s.id === "herald-workflow-rate")!.charts[0].points.map((p) => p.label);
+    const labels = RESEARCH.studies.find((s) => s.id === "cold-email-positive-reply-workflow-rate")!.charts[0].points.map((p) => p.label);
     expect(new Set(labels).size).toBe(labels.length);
   });
 
   it("asks whether naming the client wins positive replies, on the positive-reply leg only, in plain words", () => {
     const naming = RESEARCH.studies.filter((s) => s.topic === "naming");
-    expect(naming.map((s) => `${s.crew}-${s.goal}`).sort()).toEqual(["herald-rate", "herald-roi"]);
+    expect(naming.map((s) => `${s.pipe}-${s.goal}`).sort()).toEqual(["cold-email-positive-reply-rate", "cold-email-positive-reply-roi"]);
     for (const s of naming) {
       expect(s.status, s.id).toBe("measured");
       expect(s.charts[0].points.map((p) => p.label).sort(), s.id).toEqual(["Client named", "Client not named"]);
@@ -294,7 +294,7 @@ describe("research.json is coherent", () => {
       expect(s.headline, s.id).toMatch(new RegExp(`^${s.winner} ${s.verdict?.kind === "conclusion" ? "wins" : "leads"}`));
       expect(s.conclusion.join(" "), s.id).toContain("not a split test");
       expect(s.charts[0].note, s.id).toBe(RESEARCH.maturation.note);
-      // the crews' names stay internal: the study joins its section by its crew field alone
+      // section ids stay internal: the study joins its section by its pipe field alone
       const text = [s.question, s.headline, s.result?.unit ?? "", s.result?.sample ?? "", ...s.conclusion, ...s.charts.flatMap((c) => [c.title, c.note ?? "", ...c.points.flatMap((p) => [p.label, p.note])])].join(" ");
       expect(text, s.id).not.toMatch(/herald|scout|pilot|blind|discovery|cold email/i);
     }
@@ -390,7 +390,7 @@ describe("the maturity rule is features-service's, read per leg and applied ever
   it("marks Learning exactly where a bar rests on fewer outcomes than its leg requires", () => {
     const counted = (note: string) => Number((note.match(/^([\d,]+) /)?.[1] ?? "").replace(/,/g, ""));
     for (const s of RESEARCH.studies.filter((st) => ["llm", "template", "workflow"].includes(st.topic) && st.status === "measured")) {
-      const required = s.crew === "herald" ? m.legs.reply.outcomesRequired : m.legs.visit.outcomesRequired;
+      const required = s.pipe === "cold-email-positive-reply" ? m.legs.reply.outcomesRequired : m.legs.visit.outcomesRequired;
       for (const p of s.charts[0].points) {
         const got = counted(p.note);
         if (Number.isFinite(got) && /(positive repl|website visit)/.test(p.note)) expect(p.thin, `${s.id}: ${p.label}`).toBe(got < required);
@@ -405,7 +405,7 @@ describe("the maturity rule is features-service's, read per leg and applied ever
       for (const c of s.charts) {
         expect(c.note, `${s.id}: ${c.title}`).toBeTruthy();
         // the meeting studies sit on the meeting legs' own rule (outcomesRequired meetings), stated in their note
-        if (s.crew === "pilot" || s.outcome === "meeting") expect(c.note, s.id).toMatch(/needs \d+ meetings? behind it/);
+        if (s.pipe === "meeting-booking" || s.outcome === "meeting") expect(c.note, s.id).toMatch(/needs \d+ meetings? behind it/);
         // a typed-judgment study is a count, so no maturity rule applies: its note says so
         else if (s.outcome === "judgment") expect(c.note, s.id).toMatch(/\S/);
         else if (s.topic !== "opens") expect(c.note, s.id).toBe(m.note);
@@ -429,25 +429,25 @@ describe("workflow and template pages (the research catalogue)", () => {
   const texts = textsJson as Record<string, string>;
   const base = "/v2/orgs/o/brands/b/research";
 
-  it("reads every path under /research, and never mistakes a study for a crew page", () => {
+  it("reads every path under /research, and never mistakes a study for a pipe page", () => {
     expect(parseResearchPath("")).toEqual({ view: "hub" });
-    expect(parseResearchPath("herald-template-roi")).toEqual({ view: "study", id: "herald-template-roi" });
-    expect(parseResearchPath("herald/workflows")).toEqual({ view: "list", crew: "herald", kind: "workflows" });
-    expect(parseResearchPath("scout/templates/cold-email-v19")).toEqual({ view: "item", crew: "scout", kind: "templates", key: "cold-email-v19" });
-    expect(parseResearchPath("herald/models/gemini-3.1-pro")).toEqual({ view: "item", crew: "herald", kind: "models", key: "gemini-3.1-pro" });
+    expect(parseResearchPath("cold-email-positive-reply-template-roi")).toEqual({ view: "study", id: "cold-email-positive-reply-template-roi" });
+    expect(parseResearchPath("cold-email-positive-reply/workflows")).toEqual({ view: "list", pipe: "cold-email-positive-reply", kind: "workflows" });
+    expect(parseResearchPath("cold-email-website-visit/templates/cold-email-v19")).toEqual({ view: "item", pipe: "cold-email-website-visit", kind: "templates", key: "cold-email-v19" });
+    expect(parseResearchPath("cold-email-positive-reply/models/gemini-3.1-pro")).toEqual({ view: "item", pipe: "cold-email-positive-reply", kind: "models", key: "gemini-3.1-pro" });
     expect(parseResearchPath("nobody/workflows").view).toBe("missing");
-    expect(parseResearchPath("herald/audiences").view).toBe("missing");
-    expect(researchCatalogHref(base, "herald", "workflows", "a b")).toBe(`${base}/herald/workflows/a%20b`);
+    expect(parseResearchPath("cold-email-positive-reply/audiences").view).toBe("missing");
+    expect(researchCatalogHref(base, "cold-email-positive-reply", "workflows", "a b")).toBe(`${base}/cold-email-positive-reply/workflows/a%20b`);
   });
 
-  it("lists, for each crew, what the hub counts", () => {
-    for (const crew of CREW_ORDER) {
-      expect(catalog[crew].workflows.length).toBe(RESEARCH.catalogCounts[crew].workflows);
-      expect(catalog[crew].templates.length).toBe(RESEARCH.catalogCounts[crew].templates);
-      expect(catalog[crew].models.length).toBe(RESEARCH.catalogCounts[crew].models);
+  it("lists, for each pipe, what the hub counts", () => {
+    for (const pipe of PIPE_ORDER) {
+      expect(catalog[pipe].workflows.length).toBe(RESEARCH.catalogCounts[pipe].workflows);
+      expect(catalog[pipe].templates.length).toBe(RESEARCH.catalogCounts[pipe].templates);
+      expect(catalog[pipe].models.length).toBe(RESEARCH.catalogCounts[pipe].models);
     }
-    expect(catalog.herald.workflows.length).toBeGreaterThan(0);
-    expect(catalog.scout.templates.length).toBeGreaterThan(0);
+    expect(catalog["cold-email-positive-reply"].workflows.length).toBeGreaterThan(0);
+    expect(catalog["cold-email-website-visit"].templates.length).toBeGreaterThan(0);
   });
 
   it("gives every bar of a workflow or template study a page, and no other study a link", () => {
@@ -456,20 +456,20 @@ describe("workflow and template pages (the research catalogue)", () => {
         for (const p of c.points) {
           const href = pointHref(base, s, p);
           // an outcome study spans every leg: no catalogue page to open
-          if (s.crew === null) {
+          if (s.pipe === null) {
             expect(href, s.id).toBeNull();
             continue;
           }
           if (s.topic === "workflow") {
-            expect(researchWorkflow(catalog, s.crew, p.key!), `${s.id} ${p.label}`).not.toBeNull();
-            expect(href).toBe(`${base}/${s.crew}/workflows/${encodeURIComponent(p.key!)}`);
+            expect(researchWorkflow(catalog, s.pipe, p.key!), `${s.id} ${p.label}`).not.toBeNull();
+            expect(href).toBe(`${base}/${s.pipe}/workflows/${encodeURIComponent(p.key!)}`);
           } else if (s.topic === "template") {
-            expect(researchTemplate(catalog, s.crew, p.key!), `${s.id} ${p.label}`).not.toBeNull();
-            expect(href).toBe(`${base}/${s.crew}/templates/${encodeURIComponent(p.key!)}`);
+            expect(researchTemplate(catalog, s.pipe, p.key!), `${s.id} ${p.label}`).not.toBeNull();
+            expect(href).toBe(`${base}/${s.pipe}/templates/${encodeURIComponent(p.key!)}`);
           } else if (s.topic === "llm") {
-            expect(researchModel(catalog, s.crew, p.key!), `${s.id} ${p.label}`).not.toBeNull();
-            expect(researchModel(catalog, s.crew, p.key!)!.label).toBe(p.label);
-            expect(href).toBe(`${base}/${s.crew}/models/${encodeURIComponent(p.key!)}`);
+            expect(researchModel(catalog, s.pipe, p.key!), `${s.id} ${p.label}`).not.toBeNull();
+            expect(researchModel(catalog, s.pipe, p.key!)!.label).toBe(p.label);
+            expect(href).toBe(`${base}/${s.pipe}/models/${encodeURIComponent(p.key!)}`);
           } else {
             expect(href).toBeNull();
           }
@@ -479,41 +479,41 @@ describe("workflow and template pages (the research catalogue)", () => {
   });
 
   it("states the same figure on a workflow page as on the study's bar", () => {
-    const study = RESEARCH.studies.find((s) => s.id === "herald-workflow-roi")!;
+    const study = RESEARCH.studies.find((s) => s.id === "cold-email-positive-reply-workflow-roi")!;
     for (const p of study.charts[0].points) {
-      const w = researchWorkflow(catalog, "herald", p.key!)!;
+      const w = researchWorkflow(catalog, "cold-email-positive-reply", p.key!)!;
       expect(w.label).toBe(p.label);
       expect(w.cost).toBe(p.display);
     }
-    const tStudy = RESEARCH.studies.find((s) => s.id === "scout-template-roi")!;
-    for (const p of tStudy.charts[0].points) expect(researchTemplate(catalog, "scout", p.key!)!.cost).toBe(p.display);
-    const mStudy = RESEARCH.studies.find((s) => s.id === "herald-llm-roi")!;
-    for (const p of mStudy.charts[0].points) expect(researchModel(catalog, "herald", p.key!)!.cost).toBe(p.display);
+    const tStudy = RESEARCH.studies.find((s) => s.id === "cold-email-website-visit-template-roi")!;
+    for (const p of tStudy.charts[0].points) expect(researchTemplate(catalog, "cold-email-website-visit", p.key!)!.cost).toBe(p.display);
+    const mStudy = RESEARCH.studies.find((s) => s.id === "cold-email-positive-reply-llm-roi")!;
+    for (const p of mStudy.charts[0].points) expect(researchModel(catalog, "cold-email-positive-reply", p.key!)!.cost).toBe(p.display);
   });
 
   it("links a workflow to its template's page only when that page exists, and every template carries its text", () => {
-    for (const crew of CREW_ORDER) {
-      for (const w of catalog[crew].workflows) {
-        if (w.template?.linked) expect(researchTemplate(catalog, crew, w.template.key)).not.toBeNull();
-        if (w.model?.linked) expect(researchModel(catalog, crew, w.model.key)).not.toBeNull();
+    for (const pipe of PIPE_ORDER) {
+      for (const w of catalog[pipe].workflows) {
+        if (w.template?.linked) expect(researchTemplate(catalog, pipe, w.template.key)).not.toBeNull();
+        if (w.model?.linked) expect(researchModel(catalog, pipe, w.model.key)).not.toBeNull();
         expect(w.label).not.toMatch(/\b[a-z]+-v\d+\b/);
         for (const r of w.runs) expect(r.cost === null || r.cost.startsWith("$")).toBe(true);
       }
-      for (const t of catalog[crew].templates) {
+      for (const t of catalog[pipe].templates) {
         if (t.hasText) expect(texts[t.key]?.length, t.key).toBeGreaterThan(0);
-        for (const wf of t.workflows) expect(researchWorkflow(catalog, crew, wf.key)).not.toBeNull();
+        for (const wf of t.workflows) expect(researchWorkflow(catalog, pipe, wf.key)).not.toBeNull();
       }
-      for (const m of catalog[crew].models) {
-        for (const wf of m.workflows) expect(researchWorkflow(catalog, crew, wf.key)!.model?.key).toBe(m.key);
-        for (const r of m.runs) if (r.template?.linked) expect(researchTemplate(catalog, crew, r.template.key)).not.toBeNull();
+      for (const m of catalog[pipe].models) {
+        for (const wf of m.workflows) expect(researchWorkflow(catalog, pipe, wf.key)!.model?.key).toBe(m.key);
+        for (const r of m.runs) if (r.template?.linked) expect(researchTemplate(catalog, pipe, r.template.key)).not.toBeNull();
       }
     }
   });
 
-  it("maps a mission's crew to its research crew", () => {
-    expect(researchCrewFor("sales-cold-email-outreach", "conversation")).toBe("herald");
-    expect(researchCrewFor("sales-cold-email-outreach", "website_visit")).toBe("scout");
-    expect(researchCrewFor("sales-cold-email-outreach", null)).toBeNull();
+  it("maps a campaign's channel and landing step to its research pipe", () => {
+    expect(researchPipeFor("sales-cold-email-outreach", "conversation")).toBe("cold-email-positive-reply");
+    expect(researchPipeFor("sales-cold-email-outreach", "website_visit")).toBe("cold-email-website-visit");
+    expect(researchPipeFor("sales-cold-email-outreach", null)).toBeNull();
   });
 
   it("writes no em-dash and names no client in the catalogue", () => {
@@ -523,17 +523,17 @@ describe("workflow and template pages (the research catalogue)", () => {
 
   it("wires the links: hub chips, clickable study bars, template chips, and the template link on the brand workflow page", () => {
     const page = read("components/v2/research-page.tsx");
-    expect(page).toContain("<CrewCatalogLinks base={base} crew={crew} />");
+    expect(page).toContain("<PipeCatalogLinks base={base} pipe={pipe} />");
     expect(page).toContain("hrefFor={(p) => pointHref(base, study, p)}");
     const cat = read("components/v2/research-catalog.tsx");
-    expect(cat).toContain('researchCatalogHref(base, crew, "templates", w.template.key)');
+    expect(cat).toContain('researchCatalogHref(base, pipe, "templates", w.template.key)');
     expect(cat).not.toMatch(/\.sort\(|text-gray-|InfoTooltip/);
     const wf = read("components/v2/workflow-page.tsx");
     expect(wf).toContain("<ResearchTemplateChip");
     expect(read("components/v2/research-template-link.tsx")).not.toContain("useIsAdminUser");
     expect(wf).toContain("<ResearchModelChip");
     // a workflow's alias is never mapped to a model: the chip follows the model Research measured
-    expect(read("components/v2/research-template-link.tsx")).toContain("researchWorkflow(catalog, crew, dynasty)?.model");
+    expect(read("components/v2/research-template-link.tsx")).toContain("researchWorkflow(catalog, pipe, dynasty)?.model");
     // the chips read the catalogue from the staff-only route (research.ts carries no data any more)
     expect(read("components/v2/research-template-link.tsx")).toContain('useResearchCatalog("user")');
   });
@@ -542,7 +542,7 @@ describe("workflow and template pages (the research catalogue)", () => {
 describe("the workflows catalogue names each workflow and gives its LLM and template their own columns", () => {
   const catalog = catalogJson as unknown as Record<string, { workflows: { key: string; name: string | null }[] }>;
   it("every workflow carries the name workflow-service states for it", () => {
-    for (const crew of Object.values(catalog)) for (const w of crew.workflows) expect(w.name, w.key).toBeTruthy();
+    for (const pipe of Object.values(catalog)) for (const w of pipe.workflows) expect(w.name, w.key).toBeTruthy();
   });
   it("the list renders LLM and Template columns whose cells link to the model and template pages", () => {
     const src = readFileSync(join(__dirname, "../src/components/v2/research-catalog.tsx"), "utf8");

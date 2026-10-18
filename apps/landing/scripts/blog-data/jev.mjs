@@ -90,7 +90,7 @@ export function jevStudies({ runs, runOrgs, screens, reach, reveal, replyKinds, 
   const perThousand = total ? cents / 100 / (total / 1000) : 0;
   const volume = withVerdict({
     id: "jev-volume",
-    crew: null,
+    pipe: null,
     outcome: OUTCOME_ID,
     topic: "judgment",
     goal: "rate",
@@ -131,7 +131,7 @@ export function jevStudies({ runs, runOrgs, screens, reach, reveal, replyKinds, 
   const ci = wilson(declined, people);
   const decline = withVerdict({
     id: "jev-screen-decline",
-    crew: null,
+    pipe: null,
     outcome: OUTCOME_ID,
     topic: "judgment",
     goal: "rate",
@@ -168,7 +168,7 @@ export function jevStudies({ runs, runOrgs, screens, reach, reveal, replyKinds, 
   const ratio = revealUsd / screenUsd;
   const price = withVerdict({
     id: "jev-screen-price",
-    crew: null,
+    pipe: null,
     outcome: OUTCOME_ID,
     topic: "judgment",
     goal: "roi",
@@ -206,7 +206,7 @@ export function jevStudies({ runs, runOrgs, screens, reach, reveal, replyKinds, 
   const mci = wilson(machine, replies);
   const machineStudy = withVerdict({
     id: "jev-machine-replies",
-    crew: null,
+    pipe: null,
     outcome: OUTCOME_ID,
     topic: "judgment",
     goal: "rate",

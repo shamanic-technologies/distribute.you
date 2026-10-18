@@ -4,7 +4,7 @@
 //   node derive-followups.mjs <facts.json> > followups.snapshot.json
 //
 // Reads the same facts.json the Research page is built from and copies out the follow-up study
-// research.mjs states for positive replies (`herald-followups-roi` / `herald-followups-rate`):
+// research.mjs states for positive replies (`cold-email-positive-reply-followups-roi` / `cold-email-positive-reply-followups-rate`):
 // every email of a sequence that asks for a reply, filed under its place in the sequence (first
 // email, follow-up 1, 2, 3), with the positive replies attributed to the last email sent before
 // the reply. So the article and the Research page state the same figures for one extract.

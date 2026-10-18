@@ -35,7 +35,7 @@ describe("research conclusions: what a backend service may quote", () => {
 
   it("leaves Learning points and valueless buckets out", () => {
     const study: ResearchStudy = {
-      id: "t", crew: "scout", topic: "layout", goal: "roi", question: "q?", status: "measured", headline: "h", winner: "A", crowned: true,
+      id: "t", pipe: "cold-email-website-visit", topic: "layout", goal: "roi", question: "q?", status: "measured", headline: "h", winner: "A", crowned: true,
       verdict: { kind: "conclusion", reason: "A beats B" },
       result: { display: "$2", unit: "per website visit", sample: "10 website visits · 100 emails" },
       charts: [{ kind: "bars", title: "Cost", lowerIsBetter: true, points: [
@@ -52,9 +52,9 @@ describe("research conclusions: what a backend service may quote", () => {
     expect(statements).not.toContain("Cost: C");
   });
 
-  it("names the outcome in plain words, never a crew", () => {
+  it("names the outcome in plain words, never a section id", () => {
     for (const c of body.conclusions) expect(["Positive reply", "Website visit", "Meeting booked", "Typed judgment"]).toContain(c.outcome);
-    expect(JSON.stringify(body)).not.toMatch(/"crew"/);
+    expect(JSON.stringify(body)).not.toMatch(/"crew"|"pipe"/);
   });
 
   it("refuses the vendor-cost basis", () => {

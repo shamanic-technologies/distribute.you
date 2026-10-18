@@ -24,7 +24,7 @@ export interface ResearchFact {
 
 export interface ResearchConclusion {
   id: string;
-  /** Which outcome it measures, in plain words (crew names are internal, never served). */
+  /** Which outcome it measures, in plain words (section ids are internal, never served). */
   outcome: string;
   question: string;
   headline: string;
@@ -72,7 +72,7 @@ export function researchConclusions(file: ResearchFile): ResearchConclusionsBody
   for (const study of file.studies) {
     if (study.status !== "measured" || study.verdict?.kind !== "conclusion") continue;
     const outcome = studyOutcomeText(study, file);
-    if (!outcome) throw new Error(`[dashboard] research study ${study.id} names section ${study.crew ?? study.outcome}, absent from the file's crews and outcomes`);
+    if (!outcome) throw new Error(`[dashboard] research study ${study.id} names section ${study.pipe ?? study.outcome}, absent from the file's pipes and outcomes`);
     conclusions.push({
       id: study.id,
       outcome,
@@ -121,7 +121,7 @@ export function researchStudies(file: ResearchFile): ResearchStudiesBody {
   for (const study of file.studies) {
     if (study.status !== "measured") continue;
     const outcome = studyOutcomeText(study, file);
-    if (!outcome) throw new Error(`[dashboard] research study ${study.id} names section ${study.crew ?? study.outcome}, absent from the file's crews and outcomes`);
+    if (!outcome) throw new Error(`[dashboard] research study ${study.id} names section ${study.pipe ?? study.outcome}, absent from the file's pipes and outcomes`);
     studies.push({
       id: study.id,
       outcome,

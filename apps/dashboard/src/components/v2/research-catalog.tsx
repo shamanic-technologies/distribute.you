@@ -2,13 +2,12 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { CrewMark } from "@/components/v2/crew-mark";
-import { EmptyNote, SectionTitle, Shimmer, TopBar } from "@/components/v2/ui";
+import { EmptyNote, SectionTitle, Shimmer, TopBar, type Crumb } from "@/components/v2/ui";
 import { CostBasisSwitch } from "@/components/v2/cost-basis-switch";
-import { ResearchLiveWorkflows, useCrewChannelName, useResearchCrewLeg } from "@/components/v2/research-live-workflows";
+import { ResearchLiveWorkflows, usePipeChannelName, useResearchPipeLeg } from "@/components/v2/research-live-workflows";
 import { shortWorkflowName } from "@/lib/live-workflow-rows";
 import { useResearch, useResearchCatalog, useResearchTexts } from "@/lib/research/research-source";
-import { Arrow, MonthsRow, Row, TOPIC_LOOK, TopicMark, crewIdentity, dayText } from "@/components/v2/research-bits";
+import { Arrow, MonthsRow, Row, SectionMark, SectionName, TOPIC_LOOK, TopicMark, dayText } from "@/components/v2/research-bits";
 import {
   CATALOG_KINDS,
   researchCatalogHref,
@@ -19,14 +18,14 @@ import {
   type ResearchModel,
   type ResearchRef,
   type ResearchCatalog,
-  type ResearchCrew,
+  type ResearchPipe,
   type ResearchFigures,
   type ResearchTemplate,
   type ResearchWorkflow,
 } from "@/lib/research/research";
 
 /**
- * Research's workflow and template pages: for one crew, every workflow (or template) that sent
+ * Research's workflow and template pages: for one pipe, every workflow (or template) that sent
  * its emails, all clients pooled, and one page per workflow and per template. Laid out like v2's
  * Workflows list and workflow page, with the Global column only: the research is fleet-wide.
  *
@@ -44,11 +43,11 @@ const KIND_WORD: Record<CatalogKind, { one: string; many: string; title: string 
 /** Each kind wears its study topic's mark and colour. */
 const KIND_TOPIC: Record<CatalogKind, "workflow" | "template" | "llm"> = { workflows: "workflow", templates: "template", models: "llm" };
 
-/** A link to another catalogue page when that page exists in this crew, else the name alone. */
-function RefLink({ base, crew, kind, r, className = "" }: { base: string; crew: ResearchCrew; kind: CatalogKind; r: ResearchRef | null; className?: string }) {
+/** A link to another catalogue page when that page exists in this pipe, else the name alone. */
+function RefLink({ base, pipe, kind, r, className = "" }: { base: string; pipe: ResearchPipe; kind: CatalogKind; r: ResearchRef | null; className?: string }) {
   if (!r) return <span className="k-fg4">{"—"}</span>;
   return r.linked ? (
-    <Link href={researchCatalogHref(base, crew, kind, r.key)} className={`hover:text-[var(--accent)] ${className}`} title={r.label}>
+    <Link href={researchCatalogHref(base, pipe, kind, r.key)} className={`hover:text-[var(--accent)] ${className}`} title={r.label}>
       {r.label}
     </Link>
   ) : (
@@ -63,21 +62,21 @@ function rowName(kind: CatalogKind, r: ResearchWorkflow | ResearchTemplate | Res
   return kind === "workflows" ? shortWorkflowName((r as ResearchWorkflow).name ?? r.label, channelName) : r.label;
 }
 
-function useOutcome(crew: ResearchCrew): { noun: string; plural: string; unit: string } {
-  const outcome = useResearch().file.crews.find((c) => c.id === crew)?.outcome ?? "Outcome";
+function useOutcome(pipe: ResearchPipe): { noun: string; plural: string; unit: string } {
+  const outcome = useResearch().file.pipes.find((c) => c.id === pipe)?.outcome ?? "Outcome";
   const plural = /[^aeiou]y$/i.test(outcome) ? `${outcome.slice(0, -1)}ies` : `${outcome}s`;
-  return { noun: outcome, plural, unit: crew === "scout" ? "/ visit" : "/ reply" };
+  return { noun: outcome, plural, unit: pipe === "cold-email-website-visit" ? "/ visit" : "/ reply" };
 }
 
-/** The hub's links from a crew's section to its workflow and template pages. */
-export function CrewCatalogLinks({ base, crew }: { base: string; crew: ResearchCrew }) {
-  const counts = useResearch().file.catalogCounts?.[crew];
+/** The hub's links from a pipe's section to its workflow and template pages. */
+export function PipeCatalogLinks({ base, pipe }: { base: string; pipe: ResearchPipe }) {
+  const counts = useResearch().file.catalogCounts?.[pipe];
   if (!counts || !CATALOG_KINDS.some((k) => counts[k])) return null;
   return (
     <div className="mb-3 flex flex-wrap gap-2">
       {CATALOG_KINDS.map((kind) =>
         counts[kind] ? (
-          <Link key={kind} href={researchCatalogHref(base, crew, kind)} className="k-btn inline-flex items-center gap-2">
+          <Link key={kind} href={researchCatalogHref(base, pipe, kind)} className="k-btn inline-flex items-center gap-2">
             <span className="h-2 w-2 rounded-[2px]" style={{ background: TOPIC_LOOK[KIND_TOPIC[kind]].color }} />
             {KIND_WORD[kind].title}
             <span className="k-fg3 tabular-nums">{counts[kind]}</span>
@@ -93,13 +92,13 @@ export function CrewCatalogLinks({ base, crew }: { base: string; crew: ResearchC
 
 export function V2ResearchCatalogView({
   base,
-  crew,
+  pipe,
   kind,
   itemKey,
   nav,
 }: {
   base: string;
-  crew: ResearchCrew;
+  pipe: ResearchPipe;
   kind: CatalogKind;
   itemKey: string | null;
   nav: (href: string) => void;
@@ -107,18 +106,17 @@ export function V2ResearchCatalogView({
   const catalogQuery = useResearchCatalog(useResearch().basis);
   const catalog = catalogQuery.data ?? null;
   const failed = catalogQuery.isError;
-  const id = crewIdentity(crew);
-  const listHref = researchCatalogHref(base, crew, kind);
+  const listHref = researchCatalogHref(base, pipe, kind);
   const crumbs = [
     { label: "Research", href: base },
-    { label: id.name },
+    { label: <SectionName section={{ pipe }} compact /> },
     itemKey ? { label: KIND_WORD[kind].title, href: listHref } : { label: KIND_WORD[kind].title },
   ];
-  const liveLeg = useResearchCrewLeg(crew);
-  const channelName = useCrewChannelName(crew);
+  const liveLeg = useResearchPipeLeg(pipe);
+  const channelName = usePipeChannelName(pipe);
   // The live workflow list needs nothing from the snapshot file to paint: it renders at once.
   if (!catalog && !itemKey && kind === "workflows" && liveLeg != null) {
-    return <CatalogList base={base} crew={crew} kind={kind} catalog={null} crumbs={crumbs} nav={nav} />;
+    return <CatalogList base={base} pipe={pipe} kind={kind} catalog={null} crumbs={crumbs} nav={nav} />;
   }
   if (!catalog) {
     return (
@@ -136,13 +134,13 @@ export function V2ResearchCatalogView({
       </>
     );
   }
-  if (!itemKey) return <CatalogList base={base} crew={crew} kind={kind} catalog={catalog} crumbs={crumbs} nav={nav} />;
+  if (!itemKey) return <CatalogList base={base} pipe={pipe} kind={kind} catalog={catalog} crumbs={crumbs} nav={nav} />;
   const item =
     kind === "workflows"
-      ? researchWorkflow(catalog, crew, itemKey)
+      ? researchWorkflow(catalog, pipe, itemKey)
       : kind === "templates"
-        ? researchTemplate(catalog, crew, itemKey)
-        : researchModel(catalog, crew, itemKey);
+        ? researchTemplate(catalog, pipe, itemKey)
+        : researchModel(catalog, pipe, itemKey);
   if (!item) {
     return (
       <>
@@ -150,7 +148,7 @@ export function V2ResearchCatalogView({
         <div className="mx-auto max-w-[1280px] px-4 pb-16 pt-6 md:px-6">
           <div className="k-card">
             <EmptyNote>
-              This {KIND_WORD[kind].one} is not in {id.name}&apos;s research.{" "}
+              This {KIND_WORD[kind].one} is not in this pipe&apos;s research.{" "}
               <Link href={listHref} className="k-fg underline">
                 See every {KIND_WORD[kind].one}
               </Link>
@@ -160,11 +158,11 @@ export function V2ResearchCatalogView({
       </>
     );
   }
-  const total = catalog[crew][kind].length;
+  const total = catalog[pipe][kind].length;
   const itemCrumbs = [...crumbs, { label: rowName(kind, item, channelName) }];
-  if (kind === "workflows") return <WorkflowView base={base} crew={crew} w={item as ResearchWorkflow} total={total} crumbs={itemCrumbs} nav={nav} />;
-  if (kind === "templates") return <TemplateView base={base} crew={crew} t={item as ResearchTemplate} total={total} crumbs={itemCrumbs} nav={nav} />;
-  return <ModelView base={base} crew={crew} m={item as ResearchModel} total={total} crumbs={itemCrumbs} nav={nav} />;
+  if (kind === "workflows") return <WorkflowView base={base} pipe={pipe} w={item as ResearchWorkflow} total={total} crumbs={itemCrumbs} nav={nav} />;
+  if (kind === "templates") return <TemplateView base={base} pipe={pipe} t={item as ResearchTemplate} total={total} crumbs={itemCrumbs} nav={nav} />;
+  return <ModelView base={base} pipe={pipe} m={item as ResearchModel} total={total} crumbs={itemCrumbs} nav={nav} />;
 }
 
 function RowsSkeleton() {
@@ -201,34 +199,33 @@ function Dash({ v }: { v: string | null }) {
   return v == null ? <span className="k-fg4">{"—"}</span> : <>{v}</>;
 }
 
-// ─── A crew's list ─────────────────────────────────────────────────────────
+// ─── A pipe's list ─────────────────────────────────────────────────────────
 
 function CatalogList({
   base,
-  crew,
+  pipe,
   kind,
   catalog,
   crumbs,
   nav,
 }: {
   base: string;
-  crew: ResearchCrew;
+  pipe: ResearchPipe;
   kind: CatalogKind;
   catalog: ResearchCatalog | null;
-  crumbs: { label: string; href?: string }[];
+  crumbs: Crumb[];
   nav: (href: string) => void;
 }) {
-  const id = crewIdentity(crew);
-  const o = useOutcome(crew);
-  const channelName = useCrewChannelName(crew);
+  const o = useOutcome(pipe);
+  const channelName = usePipeChannelName(pipe);
   const RESEARCH = useResearch().file;
-  const rows: (ResearchWorkflow | ResearchTemplate | ResearchModel)[] = catalog?.[crew][kind] ?? [];
+  const rows: (ResearchWorkflow | ResearchTemplate | ResearchModel)[] = catalog?.[pipe][kind] ?? [];
   const words = KIND_WORD[kind];
   const priced = rows.filter((r) => r.rank != null).length;
   const other = CATALOG_KINDS[(CATALOG_KINDS.indexOf(kind) + 1) % CATALOG_KINDS.length];
-  // Workflows are read LIVE off the producer's ranking at the crew's leg; the snapshot table
-  // stays for templates, models, and a crew whose step starts no entry leg.
-  const liveLeg = useResearchCrewLeg(crew);
+  // Workflows are read LIVE off the producer's ranking at the pipe's leg; the snapshot table
+  // stays for templates, models, and a pipe whose step starts no entry leg.
+  const liveLeg = useResearchPipeLeg(pipe);
   const live = kind === "workflows" && liveLeg != null;
   return (
     <>
@@ -237,14 +234,14 @@ function CatalogList({
         <div className="flex flex-wrap items-end justify-between gap-3">
           <div className="min-w-0">
             <h1 className="text-[28px] font-medium leading-[34px] tracking-[-0.02em]">
-              {live ? `${id.name} workflows, ranked live` : `${rows.length} ${rows.length === 1 ? words.one : words.many}, ${priced} with a ${o.noun.toLowerCase()}`}
+              {live ? "Workflows on this pipe, ranked live" : `${rows.length} ${rows.length === 1 ? words.one : words.many}, ${priced} with a ${o.noun.toLowerCase()}`}
             </h1>
             <p className="k-fg2 mt-1 text-[14px]">
               {live ? (
                 <>Every workflow on this leg, in the order a campaign picks from, with whether it is mature and its return.</>
               ) : (
                 <>
-                  Every {words.one} that wrote {id.name}&apos;s emails, all clients pooled, the cheapest {o.noun.toLowerCase()} first. Open one for its months,
+                  Every {words.one} that wrote this pipe&apos;s emails, all clients pooled, the cheapest {o.noun.toLowerCase()} first. Open one for its months,
                   its last runs{kind === "templates" ? " and its text" : ""}.
                 </>
               )}
@@ -260,9 +257,9 @@ function CatalogList({
 
         <div className="mt-5 flex gap-5 border-b border-[var(--line-subtle)]">
           {CATALOG_KINDS.map((k) => (
-            <Link key={k} href={researchCatalogHref(base, crew, k)} aria-current={k === kind ? "page" : undefined} className="k-tab inline-flex items-center gap-1.5 text-[13px]">
+            <Link key={k} href={researchCatalogHref(base, pipe, k)} aria-current={k === kind ? "page" : undefined} className="k-tab inline-flex items-center gap-1.5 text-[13px]">
               {KIND_WORD[k].title}
-              {catalog && <span className="k-fg3 tabular-nums">{catalog[crew][k].length}</span>}
+              {catalog && <span className="k-fg3 tabular-nums">{catalog[pipe][k].length}</span>}
             </Link>
           ))}
         </div>
@@ -272,15 +269,15 @@ function CatalogList({
             count={rows.length}
             right={
               <span className="inline-flex items-center gap-1.5">
-                <CrewMark color={id.color} glyph={id.glyph} size={14} />
-                {id.name} · {o.noun}
+                <SectionMark section={{ pipe }} size={14} />
+                <SectionName section={{ pipe }} compact />
               </span>
             }
           >
             {words.title}
           </SectionTitle>
           {live ? (
-            <ResearchLiveWorkflows base={base} crew={crew} legKey={liveLeg} catalog={catalog} outcomeUnit={o.unit} nav={nav} />
+            <ResearchLiveWorkflows base={base} pipe={pipe} legKey={liveLeg} catalog={catalog} outcomeUnit={o.unit} nav={nav} />
           ) : (
           <div className="k-card overflow-hidden">
             <div className="k-scroll relative overflow-x-auto">
@@ -307,12 +304,12 @@ function CatalogList({
                   {rows.length === 0 ? (
                     <tr>
                       <td colSpan={kind === "workflows" ? 10 : 8}>
-                        <EmptyNote>No {words.one} has written {id.name}&apos;s emails yet.</EmptyNote>
+                        <EmptyNote>No {words.one} has written this pipe&apos;s emails yet.</EmptyNote>
                       </td>
                     </tr>
                   ) : (
                     rows.map((r) => {
-                      const href = researchCatalogHref(base, crew, kind, r.key);
+                      const href = researchCatalogHref(base, pipe, kind, r.key);
                       return (
                         <tr key={r.key} onClick={() => nav(href)} className="k-row group h-10 cursor-pointer">
                           <td className="k-mono k-fg3 pl-4 pr-3 text-[12px] tabular-nums">{r.rank ?? "—"}</td>
@@ -325,10 +322,10 @@ function CatalogList({
                             <>
                               {/* Each cell opens that model's or template's own page; the rest of the row opens the workflow. */}
                               <td className="max-w-0 px-3" onClick={(e) => e.stopPropagation()}>
-                                <RefLink base={base} crew={crew} kind="models" r={(r as ResearchWorkflow).model} className="block min-w-0 truncate" />
+                                <RefLink base={base} pipe={pipe} kind="models" r={(r as ResearchWorkflow).model} className="block min-w-0 truncate" />
                               </td>
                               <td className="max-w-0 px-3" onClick={(e) => e.stopPropagation()}>
-                                <RefLink base={base} crew={crew} kind="templates" r={(r as ResearchWorkflow).template} className="block min-w-0 truncate" />
+                                <RefLink base={base} pipe={pipe} kind="templates" r={(r as ResearchWorkflow).template} className="block min-w-0 truncate" />
                               </td>
                             </>
                           )}
@@ -357,7 +354,7 @@ function CatalogList({
               <span className="min-w-0 truncate">
                 {priced} of {rows.length} priced per {o.noun.toLowerCase()}; the rest have not earned one yet and are listed by volume.
               </span>
-              <Link href={researchCatalogHref(base, crew, other)} className="k-btn-ghost ml-auto h-6 shrink-0 whitespace-nowrap px-1.5 text-[12px]">
+              <Link href={researchCatalogHref(base, pipe, other)} className="k-btn-ghost ml-auto h-6 shrink-0 whitespace-nowrap px-1.5 text-[12px]">
                 See the {KIND_WORD[other].many}
               </Link>
             </div>
@@ -401,8 +398,8 @@ function Header({
   );
 }
 
-function KpiStrip({ f, crew }: { f: ResearchFigures; crew: ResearchCrew }) {
-  const o = useOutcome(crew);
+function KpiStrip({ f, pipe }: { f: ResearchFigures; pipe: ResearchPipe }) {
+  const o = useOutcome(pipe);
   return (
     <div className="k-card mt-5 grid grid-cols-2 divide-[var(--line-subtle)] md:grid-cols-4 md:divide-x">
       <Kpi label={`Cost / ${o.noun.toLowerCase()}`} value={<Dash v={f.cost} />} />
@@ -484,23 +481,22 @@ function MeasuredNote() {
 
 function WorkflowView({
   base,
-  crew,
+  pipe,
   w,
   total,
   crumbs,
   nav,
 }: {
   base: string;
-  crew: ResearchCrew;
+  pipe: ResearchPipe;
   w: ResearchWorkflow;
   total: number;
-  crumbs: { label: string; href?: string }[];
+  crumbs: Crumb[];
   nav: (href: string) => void;
 }) {
-  const id = crewIdentity(crew);
-  const o = useOutcome(crew);
-  const channelName = useCrewChannelName(crew);
-  const tplHref = w.template?.linked ? researchCatalogHref(base, crew, "templates", w.template.key) : null;
+  const o = useOutcome(pipe);
+  const channelName = usePipeChannelName(pipe);
+  const tplHref = w.template?.linked ? researchCatalogHref(base, pipe, "templates", w.template.key) : null;
   return (
     <>
       <TopBar crumbs={crumbs} actions={<CostBasisSwitch />} />
@@ -512,12 +508,12 @@ function WorkflowView({
             <>
               <span className="k-chip tabular-nums">{w.rank == null ? "Not priced yet" : `#${w.rank} of ${total}`}</span>
               <span className="k-chip inline-flex items-center gap-1.5">
-                <CrewMark color={id.color} glyph={id.glyph} size={12} />
-                {id.name}
+                <SectionMark section={{ pipe }} size={12} />
+                <SectionName section={{ pipe }} compact />
               </span>
               {w.model &&
                 (w.model.linked ? (
-                  <Link href={researchCatalogHref(base, crew, "models", w.model.key)} className="k-chip inline-flex items-center gap-1 hover:text-[var(--accent)]">
+                  <Link href={researchCatalogHref(base, pipe, "models", w.model.key)} className="k-chip inline-flex items-center gap-1 hover:text-[var(--accent)]">
                     {w.model.label}
                     <Arrow />
                   </Link>
@@ -536,7 +532,7 @@ function WorkflowView({
             </>
           }
         />
-        <KpiStrip f={w} crew={crew} />
+        <KpiStrip f={w} pipe={pipe} />
 
         <div className="mt-6 grid gap-4 lg:grid-cols-[minmax(0,1fr)_320px]">
           <div className="min-w-0 space-y-6">
@@ -572,16 +568,16 @@ function WorkflowView({
             <p className="k-label">Details</p>
             <dl className="mt-3 space-y-2.5 text-[13px]">
               <Row
-                k="Crew"
+                k="Pipe"
                 v={
                   <span className="inline-flex items-center gap-1.5">
-                    <CrewMark color={id.color} glyph={id.glyph} />
-                    {id.name}
+                    <SectionMark section={{ pipe }} />
+                    <SectionName section={{ pipe }} compact />
                   </span>
                 }
               />
               <Row k="Outcome" v={o.noun} />
-              <Row k="Model" v={w.model ? <RefLink base={base} crew={crew} kind="models" r={w.model} className={w.model.linked ? "text-[var(--accent)]" : ""} /> : null} />
+              <Row k="Model" v={w.model ? <RefLink base={base} pipe={pipe} kind="models" r={w.model} className={w.model.linked ? "text-[var(--accent)]" : ""} /> : null} />
               <Row
                 k="Template"
                 v={
@@ -600,7 +596,7 @@ function WorkflowView({
               <Row k="Sample" v={<span className="k-fg2 text-[12px]">{w.sample}</span>} />
             </dl>
             <MeasuredNote />
-            <button type="button" onClick={() => nav(researchCatalogHref(base, crew, "workflows"))} className="k-btn mt-4">
+            <button type="button" onClick={() => nav(researchCatalogHref(base, pipe, "workflows"))} className="k-btn mt-4">
               Every workflow
             </button>
           </aside>
@@ -648,21 +644,20 @@ function TemplateText({ templateKey, hasText }: { templateKey: string; hasText: 
 
 function TemplateView({
   base,
-  crew,
+  pipe,
   t,
   total,
   crumbs,
   nav,
 }: {
   base: string;
-  crew: ResearchCrew;
+  pipe: ResearchPipe;
   t: ResearchTemplate;
   total: number;
-  crumbs: { label: string; href?: string }[];
+  crumbs: Crumb[];
   nav: (href: string) => void;
 }) {
-  const id = crewIdentity(crew);
-  const o = useOutcome(crew);
+  const o = useOutcome(pipe);
   return (
     <>
       <TopBar crumbs={crumbs} actions={<CostBasisSwitch />} />
@@ -674,8 +669,8 @@ function TemplateView({
             <>
               <span className="k-chip tabular-nums">{t.rank == null ? "Not priced yet" : `#${t.rank} of ${total}`}</span>
               <span className="k-chip inline-flex items-center gap-1.5">
-                <CrewMark color={id.color} glyph={id.glyph} size={12} />
-                {id.name}
+                <SectionMark section={{ pipe }} size={12} />
+                <SectionName section={{ pipe }} compact />
               </span>
               <span className="k-chip tabular-nums">
                 {t.workflows.length} {t.workflows.length === 1 ? "workflow" : "workflows"}
@@ -683,7 +678,7 @@ function TemplateView({
             </>
           }
         />
-        <KpiStrip f={t} crew={crew} />
+        <KpiStrip f={t} pipe={pipe} />
 
         <div className="mt-6 grid gap-4 lg:grid-cols-[minmax(0,1fr)_320px]">
           <div className="min-w-0 space-y-6">
@@ -706,7 +701,7 @@ function TemplateView({
                   <td className="k-mono k-fg2 whitespace-nowrap pl-4 pr-3 text-[12px]">{r.when}</td>
                   <td className="max-w-0 px-3">
                     {r.workflow ? (
-                      <Link href={researchCatalogHref(base, crew, "workflows", r.workflow.key)} className="block truncate hover:text-[var(--accent)]" title={r.workflow.label}>
+                      <Link href={researchCatalogHref(base, pipe, "workflows", r.workflow.key)} className="block truncate hover:text-[var(--accent)]" title={r.workflow.label}>
                         {r.workflow.label}
                       </Link>
                     ) : (
@@ -717,7 +712,7 @@ function TemplateView({
                     <Dash v={r.version} />
                   </td>
                   <td className="max-w-0 truncate px-3">
-                    <RefLink base={base} crew={crew} kind="models" r={r.model} className="block truncate" />
+                    <RefLink base={base} pipe={pipe} kind="models" r={r.model} className="block truncate" />
                   </td>
                   <td className="k-mono k-fg2 pl-3 pr-4 text-right text-[12px]">
                     <Dash v={r.tokens} />
@@ -731,11 +726,11 @@ function TemplateView({
               <p className="k-label">Details</p>
               <dl className="mt-3 space-y-2.5 text-[13px]">
                 <Row
-                  k="Crew"
+                  k="Pipe"
                   v={
                     <span className="inline-flex items-center gap-1.5">
-                      <CrewMark color={id.color} glyph={id.glyph} />
-                      {id.name}
+                      <SectionMark section={{ pipe }} />
+                      <SectionName section={{ pipe }} compact />
                     </span>
                   }
                 />
@@ -751,7 +746,7 @@ function TemplateView({
                 <ul className="mt-2 space-y-1 text-[13px]">
                   {t.workflows.map((w) => (
                     <li key={w.key}>
-                      <Link href={researchCatalogHref(base, crew, "workflows", w.key)} className="k-hover -mx-2 flex items-center gap-2 rounded-[8px] px-2 py-1.5">
+                      <Link href={researchCatalogHref(base, pipe, "workflows", w.key)} className="k-hover -mx-2 flex items-center gap-2 rounded-[8px] px-2 py-1.5">
                         <TopicMark topic="workflow" size={18} />
                         <span className="min-w-0 flex-1 truncate">{w.label}</span>
                         <Arrow />
@@ -762,7 +757,7 @@ function TemplateView({
               ) : (
                 <p className="k-fg3 mt-2 text-[12px] leading-5">No workflow wrote most of its emails with it; it was a secondary template.</p>
               )}
-              <button type="button" onClick={() => nav(researchCatalogHref(base, crew, "templates"))} className="k-btn mt-4">
+              <button type="button" onClick={() => nav(researchCatalogHref(base, pipe, "templates"))} className="k-btn mt-4">
                 Every template
               </button>
             </div>
@@ -775,21 +770,20 @@ function TemplateView({
 
 function ModelView({
   base,
-  crew,
+  pipe,
   m,
   total,
   crumbs,
   nav,
 }: {
   base: string;
-  crew: ResearchCrew;
+  pipe: ResearchPipe;
   m: ResearchModel;
   total: number;
-  crumbs: { label: string; href?: string }[];
+  crumbs: Crumb[];
   nav: (href: string) => void;
 }) {
-  const id = crewIdentity(crew);
-  const o = useOutcome(crew);
+  const o = useOutcome(pipe);
   return (
     <>
       <TopBar crumbs={crumbs} actions={<CostBasisSwitch />} />
@@ -801,8 +795,8 @@ function ModelView({
             <>
               <span className="k-chip tabular-nums">{m.rank == null ? "Not priced yet" : `#${m.rank} of ${total}`}</span>
               <span className="k-chip inline-flex items-center gap-1.5">
-                <CrewMark color={id.color} glyph={id.glyph} size={12} />
-                {id.name}
+                <SectionMark section={{ pipe }} size={12} />
+                <SectionName section={{ pipe }} compact />
               </span>
               <span className="k-chip tabular-nums">
                 {m.workflows.length} {m.workflows.length === 1 ? "workflow" : "workflows"}
@@ -810,7 +804,7 @@ function ModelView({
             </>
           }
         />
-        <KpiStrip f={m} crew={crew} />
+        <KpiStrip f={m} pipe={pipe} />
 
         <div className="mt-6 grid gap-4 lg:grid-cols-[minmax(0,1fr)_320px]">
           <div className="min-w-0 space-y-6">
@@ -832,7 +826,7 @@ function ModelView({
                   <td className="k-mono k-fg2 whitespace-nowrap pl-4 pr-3 text-[12px]">{r.when}</td>
                   <td className="max-w-0 px-3">
                     {r.workflow ? (
-                      <Link href={researchCatalogHref(base, crew, "workflows", r.workflow.key)} className="block truncate hover:text-[var(--accent)]" title={r.workflow.label}>
+                      <Link href={researchCatalogHref(base, pipe, "workflows", r.workflow.key)} className="block truncate hover:text-[var(--accent)]" title={r.workflow.label}>
                         {r.workflow.label}
                       </Link>
                     ) : (
@@ -840,7 +834,7 @@ function ModelView({
                     )}
                   </td>
                   <td className="max-w-0 px-3">
-                    <RefLink base={base} crew={crew} kind="templates" r={r.template} className="block truncate" />
+                    <RefLink base={base} pipe={pipe} kind="templates" r={r.template} className="block truncate" />
                   </td>
                   <td className="k-mono k-fg2 px-3 text-[12px]">
                     <Dash v={r.version} />
@@ -857,11 +851,11 @@ function ModelView({
               <p className="k-label">Details</p>
               <dl className="mt-3 space-y-2.5 text-[13px]">
                 <Row
-                  k="Crew"
+                  k="Pipe"
                   v={
                     <span className="inline-flex items-center gap-1.5">
-                      <CrewMark color={id.color} glyph={id.glyph} />
-                      {id.name}
+                      <SectionMark section={{ pipe }} />
+                      <SectionName section={{ pipe }} compact />
                     </span>
                   }
                 />
@@ -877,7 +871,7 @@ function ModelView({
                 <ul className="mt-2 space-y-1 text-[13px]">
                   {m.workflows.map((w) => (
                     <li key={w.key}>
-                      <Link href={researchCatalogHref(base, crew, "workflows", w.key)} className="k-hover -mx-2 flex items-center gap-2 rounded-[8px] px-2 py-1.5">
+                      <Link href={researchCatalogHref(base, pipe, "workflows", w.key)} className="k-hover -mx-2 flex items-center gap-2 rounded-[8px] px-2 py-1.5">
                         <TopicMark topic="workflow" size={18} />
                         <span className="min-w-0 flex-1 truncate">{w.label}</span>
                         <Arrow />
@@ -888,7 +882,7 @@ function ModelView({
               ) : (
                 <p className="k-fg3 mt-2 text-[12px] leading-5">No workflow wrote most of its emails with it; it ran as a secondary model.</p>
               )}
-              <button type="button" onClick={() => nav(researchCatalogHref(base, crew, "models"))} className="k-btn mt-4">
+              <button type="button" onClick={() => nav(researchCatalogHref(base, pipe, "models"))} className="k-btn mt-4">
                 Every model
               </button>
             </div>

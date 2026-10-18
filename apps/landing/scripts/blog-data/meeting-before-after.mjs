@@ -79,7 +79,7 @@ export function meetingBeforeAfterStudy({ read, maturity }) {
 
   return {
     id: "meeting-ai-before-after",
-    crew: null,
+    pipe: null,
     outcome: "meeting",
     topic: "launch",
     goal: "rate",

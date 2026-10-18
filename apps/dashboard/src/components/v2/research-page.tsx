@@ -1,9 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { useRef } from "react";
-import { useParams, usePathname } from "next/navigation";
-import { CrewMark } from "@/components/v2/crew-mark";
+import { useEffect, useRef } from "react";
+import { useParams, usePathname, useRouter } from "next/navigation";
 import { EmptyNote, Figure, SectionTitle, StatTile, TopBar } from "@/components/v2/ui";
 import {
   Arrow,
@@ -11,14 +10,14 @@ import {
   MonthsRow,
   Row,
   TOPIC_LOOK,
+  SectionMark,
+  SectionName,
   TopicMark,
-  crewIdentity,
   dayText,
-  outcomeIdentity,
-  sectionIdentity,
+  sectionOf,
   monthText,
 } from "@/components/v2/research-bits";
-import { V2ResearchCatalogView, CrewCatalogLinks } from "@/components/v2/research-catalog";
+import { V2ResearchCatalogView, PipeCatalogLinks } from "@/components/v2/research-catalog";
 import { CostBasisSwitch } from "@/components/v2/cost-basis-switch";
 import { ResearchSourceProvider, useResearch, useResearchCatalog } from "@/lib/research/research-source";
 import { useFeatures } from "@/lib/features-context";
@@ -28,13 +27,14 @@ import { formatUsdAdaptive } from "@/lib/format-number";
 import { v2Href } from "@/lib/v2/routes";
 import {
   GOAL_LABEL,
-  CREW_ORDER,
+  PIPE_ORDER,
   OUTCOME_ORDER,
+  OUTCOME_PATH,
   TOPIC_LABEL,
   parseResearchPath,
   pointHref,
   researchWorkflow,
-  CREW_KEY,
+  PIPE_KEY,
   studiesFor,
   studiesForOutcome,
   studyById,
@@ -50,9 +50,9 @@ import {
 
 /**
  * Research: what we measured across every org's campaigns, one card per question, grouped by
- * crew. Staff only: page behind StaffOnly, data behind the staff route (research-source.tsx).
+ * pipe (one leg x one channel), then by outcome. Staff only: page behind StaffOnly, data behind the staff route (research-source.tsx).
  *
- * Built on Keel's own anatomy (see the dashboard-v2-ux skill): the hub is the Crew card grid
+ * Built on Keel's own anatomy (see the dashboard-v2-ux skill): the hub is a card grid
  * (mark + question + state, an inset block of stat cells with a mini chart in the mark's
  * colour, a footer line), a question is a v2 record (40px mark, 24px h1, stat tiles, a main
  * column and a Details aside). Every figure, label and sentence arrives written in
@@ -259,21 +259,19 @@ function V2ResearchHub({ base }: { base: string }) {
           </StatTile>
         </div>
 
-        {CREW_ORDER.map((crew) => {
-          const id = crewIdentity(crew);
-          const meta = RESEARCH.crews.find((c) => c.id === crew);
-          const studies = studiesFor(crew, RESEARCH);
+        {PIPE_ORDER.map((pipe) => {
+          const meta = RESEARCH.pipes.find((c) => c.id === pipe);
+          const studies = studiesFor(pipe, RESEARCH);
           if (!studies.length) return null;
           return (
-            <section key={crew} className="mt-8">
+            <section key={pipe} className="mt-8">
               <SectionTitle count={studies.length} right={meta ? <span className="hidden sm:inline">{meta.description}</span> : null}>
                 <span className="inline-flex items-center gap-2">
-                  <CrewMark color={id.color} glyph={id.glyph} size={18} />
-                  {id.name}
-                  {meta && <span className="k-chip font-normal">{meta.outcome}</span>}
+                  <SectionMark section={{ pipe }} size={18} />
+                  <SectionName section={{ pipe }} />
                 </span>
               </SectionTitle>
-              <CrewCatalogLinks base={base} crew={crew} />
+              <PipeCatalogLinks base={base} pipe={pipe} />
               <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3">
                 {studies.map((st) => (
                   <StudyCard key={st.id} study={st} href={`${base}/${encodeURIComponent(st.id)}`} />
@@ -285,7 +283,6 @@ function V2ResearchHub({ base }: { base: string }) {
 
         {/* Outcome sections: one outcome across every leg that leads to it, after the legs. */}
         {OUTCOME_ORDER.map((outcome) => {
-          const id = outcomeIdentity(outcome);
           const meta = RESEARCH.outcomes?.find((o) => o.id === outcome);
           const studies = studiesForOutcome(outcome, RESEARCH);
           if (!studies.length) return null;
@@ -293,9 +290,9 @@ function V2ResearchHub({ base }: { base: string }) {
             <section key={outcome} className="mt-8">
               <SectionTitle count={studies.length} right={meta ? <span className="hidden sm:inline">{meta.description}</span> : null}>
                 <span className="inline-flex items-center gap-2">
-                  <CrewMark color={id.color} glyph={id.glyph} size={18} />
-                  {id.name}
-                  <span className="k-chip font-normal">All legs</span>
+                  <SectionMark section={{ outcome }} size={18} />
+                  <SectionName section={{ outcome }} />
+                  {OUTCOME_PATH[outcome] && <span className="k-chip font-normal">Sales path</span>}
                 </span>
               </SectionTitle>
               {meta && <p className="k-fg3 -mt-1 mb-3 text-[12px] leading-5">{meta.population}</p>}
@@ -388,11 +385,11 @@ function V2ResearchStudy({ base, studyId }: { base: string; studyId: string }) {
   // A workflow bar names the workflow (Rampart) as workflow-service states it, off the research catalogue.
   const catalog = useResearchCatalog(useResearch().basis).data ?? null;
   const { getFeature } = useFeatures();
-  const workflowCrew = study?.topic === "workflow" ? study.crew : null;
-  const channelName = workflowCrew ? getFeature(CREW_KEY[workflowCrew].channel)?.name ?? null : null;
+  const workflowPipe = study?.topic === "workflow" ? study.pipe : null;
+  const channelName = workflowPipe ? getFeature(PIPE_KEY[workflowPipe].channel)?.name ?? null : null;
   const workflowName = (p: ResearchPoint): string | null => {
-    if (!workflowCrew || !catalog || !p.key) return null;
-    const w = researchWorkflow(catalog, workflowCrew, p.key);
+    if (!workflowPipe || !catalog || !p.key) return null;
+    const w = researchWorkflow(catalog, workflowPipe, p.key);
     return w?.name ? shortWorkflowName(w.name, channelName) : null;
   };
   if (!study) {
@@ -412,17 +409,18 @@ function V2ResearchStudy({ base, studyId }: { base: string; studyId: string }) {
       </>
     );
   }
-  const id = sectionIdentity(study);
+  const section = sectionOf(study);
   const outcomeText = studyOutcomeText(study, RESEARCH);
-  const outcomeMeta = study.crew ? null : RESEARCH.outcomes?.find((o) => o.id === study.outcome) ?? null;
-  // The email legs' population and rule (clients, emails, the run-start wait) describe Herald and
-  // Scout's figures only: a meeting study states its own in its sample and chart note.
-  const emailLeg = study.crew === "herald" || study.crew === "scout";
+  const outcomeMeta = study.pipe ? null : RESEARCH.outcomes?.find((o) => o.id === study.outcome) ?? null;
+  // The email legs' population and rule (clients, emails, the run-start wait) describe the two cold
+  // email pipes' figures only: a meeting study states its own in its sample and chart note.
+  const emailLeg = study.pipe === "cold-email-positive-reply" || study.pipe === "cold-email-website-visit";
   const look = TOPIC_LOOK[study.topic];
   const state = studyState(study);
+  const crumbs = [{ label: "Research", href: base }, { label: <SectionName section={section} compact /> }, { label: TOPIC_LABEL[study.topic] }];
   return (
     <>
-      <TopBar crumbs={[{ label: "Research", href: base }, { label: id.name }, { label: TOPIC_LABEL[study.topic] }]} actions={<CostBasisSwitch />} />
+      <TopBar crumbs={crumbs} actions={<CostBasisSwitch />} />
       <div className="mx-auto max-w-[1280px] px-4 pb-16 pt-6 md:px-6">
         <div className="flex min-w-0 items-center gap-3">
           <TopicMark topic={study.topic} size={40} />
@@ -431,8 +429,8 @@ function V2ResearchStudy({ base, studyId }: { base: string; studyId: string }) {
             <div className="mt-1 flex flex-wrap items-center gap-3">
               <StudyStateDot state={state} />
               <span className="k-chip inline-flex items-center gap-1.5">
-                <CrewMark color={id.color} glyph={id.glyph} size={12} />
-                {id.name}
+                <SectionMark section={section} size={12} />
+                <SectionName section={section} compact />
               </span>
               <span className="k-chip">{GOAL_LABEL[study.goal]}</span>
             </div>
@@ -501,16 +499,16 @@ function V2ResearchStudy({ base, studyId }: { base: string; studyId: string }) {
             <p className="k-label">Details</p>
             <dl className="mt-3 space-y-2.5 text-[13px]">
               <Row
-                k={study.crew ? "Crew" : "Section"}
+                k={study.pipe ? "Pipe" : outcomeMeta && OUTCOME_PATH[outcomeMeta.id] ? "Sales path" : "Section"}
                 v={
                   <span className="inline-flex items-center gap-1.5">
-                    <CrewMark color={id.color} glyph={id.glyph} />
-                    {id.name}
+                    <SectionMark section={section} />
+                    <SectionName section={section} compact />
                   </span>
                 }
               />
               <Row k="Outcome" v={outcomeText} />
-              {outcomeMeta && <Row k="Legs" v="All legs, first email to meeting" />}
+              {outcomeMeta && OUTCOME_PATH[outcomeMeta.id] && <Row k="Legs" v="All legs, first email to meeting" />}
               <Row k="Question" v={`${TOPIC_LABEL[study.topic]}, ${GOAL_LABEL[study.goal]}`} />
               {emailLeg && <Row k="Clients" v={`${RESEARCH.volume.orgs}, all orgs`} />}
               {emailLeg && <Row k="Emails" v={RESEARCH.volume.emails.toLocaleString("en-US")} />}
@@ -519,7 +517,7 @@ function V2ResearchStudy({ base, studyId }: { base: string; studyId: string }) {
             <p className="k-label mt-5">How we measured</p>
             {outcomeMeta && <p className="k-fg2 mt-2 text-[12px] leading-5">{outcomeMeta.population}</p>}
             <p className="k-fg2 mt-2 text-[12px] leading-5">
-              ROI is read as the cost per outcome: every crew buys one outcome, so the cheaper outcome is the better return. A website visit is priced on the
+              ROI is read as the cost per outcome: every pipe buys one outcome, so the cheaper outcome is the better return. A website visit is priced on the
               emails that carried a link.
             </p>
             {emailLeg && (
@@ -562,10 +560,16 @@ function scrollToTop(el: HTMLElement | null) {
 export function V2Research() {
   const { orgId, brandId } = useParams<{ orgId: string; brandId: string }>();
   const pathname = usePathname();
+  const router = useRouter();
   const rootRef = useRef<HTMLDivElement | null>(null);
   const base = v2Href(orgId, brandId, "research");
   const rest = pathname.startsWith(base) ? pathname.slice(base.length).replace(/^\/+|\/+$/g, "") : "";
   const view = parseResearchPath(rest);
+  // An old link (a retired section name) opens the same page under its pipe.
+  const redirectTo = view.view === "redirect" ? `${base}/${view.to}` : null;
+  useEffect(() => {
+    if (redirectTo) router.replace(redirectTo);
+  }, [redirectTo, router]);
   const nav = (href: string) => {
     if (href !== pathname) window.history.pushState(null, "", href);
     scrollToTop(rootRef.current);
@@ -604,14 +608,14 @@ export function V2Research() {
     {/* Keyed on the basis: a view that loaded one basis's catalogue must not keep it on the other. */}
     <div key={basis} ref={rootRef} onClickCapture={onClickCapture}>
       <UnpricedNote />
-      {view.view === "hub" ? (
+      {view.view === "redirect" ? null : view.view === "hub" ? (
         <V2ResearchHub base={base} />
       ) : view.view === "study" ? (
         <V2ResearchStudy base={base} studyId={view.id} />
       ) : view.view === "missing" ? (
         <V2ResearchStudy base={base} studyId={rest} />
       ) : (
-        <V2ResearchCatalogView base={base} crew={view.crew} kind={view.kind} itemKey={view.view === "item" ? view.key : null} nav={nav} />
+        <V2ResearchCatalogView base={base} pipe={view.pipe} kind={view.kind} itemKey={view.view === "item" ? view.key : null} nav={nav} />
       )}
     </div>
     </ResearchSourceProvider>

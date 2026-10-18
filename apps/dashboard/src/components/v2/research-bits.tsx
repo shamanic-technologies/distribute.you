@@ -15,12 +15,20 @@ import { CalendarIcon } from "@phosphor-icons/react/dist/csr/Calendar";
 import { ClockIcon } from "@phosphor-icons/react/dist/csr/Clock";
 import { ScalesIcon } from "@phosphor-icons/react/dist/csr/Scales";
 import { RocketLaunchIcon } from "@phosphor-icons/react/dist/csr/RocketLaunch";
-import { EmptyNote, SectionTitle } from "@/components/v2/ui";
+import { EmptyNote, SectionTitle, Shimmer } from "@/components/v2/ui";
+import { ChannelChip } from "@/components/v2/offer-sales-paths";
+import { useLegCatalogue } from "@/lib/use-leg-catalogue";
+import { useAcquisitionChannels } from "@/lib/use-acquisition-channels";
+import type { AcquisitionChannelDef } from "@/lib/acquisition-channels";
+import { legFor, stepLabel } from "@/lib/legs";
+// The shared v2 mark and its colour table; renamed to pipe vocabulary in a later change.
 import { crewFor, type CrewGlyph } from "@/lib/v2/crews";
+import { CrewMark } from "@/components/v2/crew-mark";
 import {
-  CREW_KEY,
+  OUTCOME_PATH,
+  PIPE_KEY,
   type ResearchChart,
-  type ResearchCrew,
+  type ResearchPipe,
   type ResearchOutcome,
   type ResearchPoint,
   type ResearchStudy,
@@ -29,7 +37,7 @@ import {
 
 /**
  * The pieces every Research view draws with (the hub, a question, the workflow and template
- * pages): a topic's mark, the crew's identity, and the monthly charts. Every value arrives
+ * pages): a topic's mark, a section's mark and name, and the monthly charts. Every value arrives
  * written in research.json; these only lay it out.
  */
 
@@ -63,28 +71,92 @@ export function dayText(ymd: string): string {
   return `${MONTHS[Number(ymd.slice(5, 7)) - 1]} ${Number(ymd.slice(8, 10))}`;
 }
 
-export function crewIdentity(crew: ResearchCrew) {
-  const k = CREW_KEY[crew];
-  return crewFor(k.channel, k.step, crew);
+/** A section's look: the colour and glyph its mark wears. */
+export interface SectionLook {
+  color: string;
+  glyph: CrewGlyph;
 }
 
-/** An outcome section's mark: one outcome across every leg, so it wears no crew's colour. */
-const OUTCOME_LOOK: Record<ResearchOutcome, { name: string; color: string; glyph: CrewGlyph }> = {
-  meeting: { name: "Meeting booked", color: "var(--data-sky)", glyph: "square" },
-  judgment: { name: "Typed judgment", color: "var(--data-violet)", glyph: "hex" },
+/** A pipe's look: the one the v2 mark table fixes for its channel and the step its leg lands on. */
+export function pipeLook(pipe: ResearchPipe): SectionLook {
+  const k = PIPE_KEY[pipe];
+  const { color, glyph } = crewFor(k.channel, k.step, "");
+  return { color, glyph };
+}
+
+/** An outcome section's look: one outcome across every leg, so it wears no pipe's colour. */
+const OUTCOME_LOOK: Record<ResearchOutcome, SectionLook> = {
+  meeting: { color: "var(--data-sky)", glyph: "square" },
+  judgment: { color: "var(--data-violet)", glyph: "hex" },
 };
-export function outcomeIdentity(outcome: ResearchOutcome) {
+export function outcomeLook(outcome: ResearchOutcome): SectionLook {
   return OUTCOME_LOOK[outcome];
 }
 
-/** The section a study sits in, as its mark and name: its crew, or its outcome. */
-export function sectionIdentity(study: ResearchStudy): { name: string; color: string; glyph: CrewGlyph } {
-  if (study.crew) return crewIdentity(study.crew);
-  if (!study.outcome) throw new Error(`[dashboard] research study ${study.id} names neither a crew nor an outcome`);
-  return outcomeIdentity(study.outcome);
+/** The section a study sits in: its pipe, or its outcome. */
+export type ResearchSection = { pipe: ResearchPipe } | { outcome: ResearchOutcome };
+export function sectionOf(study: ResearchStudy): ResearchSection {
+  if (study.pipe) return { pipe: study.pipe };
+  if (!study.outcome) throw new Error(`[dashboard] research study ${study.id} names neither a pipe nor an outcome`);
+  return { outcome: study.outcome };
+}
+export function sectionLook(section: ResearchSection): SectionLook {
+  return "pipe" in section ? pipeLook(section.pipe) : outcomeLook(section.outcome);
 }
 
-/** A topic's mark: a soft tile in its colour, drawn like a crew's mark. */
+/** A section's mark: a soft tile in its colour with its glyph. */
+export function SectionMark({ section, size }: { section: ResearchSection; size?: number }) {
+  const look = sectionLook(section);
+  return <CrewMark color={look.color} glyph={look.glyph} size={size} />;
+}
+
+type InOrderItem = { step: string } | { channel: string; def: AcquisitionChannelDef };
+
+/** Served words joined by arrows, a channel chip (or, compact, its name) in its place. */
+function InOrder({ items, compact }: { items: InOrderItem[]; compact: boolean }) {
+  return (
+    <span className="inline-flex min-w-0 flex-wrap items-center gap-x-1.5 gap-y-1">
+      {items.map((it, i) => (
+        <span key={i} className="inline-flex items-center gap-x-1.5">
+          {i > 0 && <span className="k-fg3 font-normal">→</span>}
+          {"step" in it ? (
+            <span>{it.step}</span>
+          ) : compact ? (
+            <span>{it.channel}</span>
+          ) : (
+            <ChannelChip name={it.channel} def={it.def} notRun={false} compact />
+          )}
+        </span>
+      ))}
+    </span>
+  );
+}
+
+/**
+ * A section's name, read IN ORDER like a campaign's path: a pipe is `Lead found → [channel] →
+ * Positive reply` (the leg's two steps with the channel doing it between them); the meeting outcome
+ * is its sales path `Lead found → Positive reply → Meeting booked`; Jev is named, since it is not an
+ * outcome. Every word is served (the leg catalogue, the channel list): a Shimmer until they answer.
+ * `compact` writes the channel as a word, for a line that sits inside a chip.
+ */
+export function SectionName({ section, compact = false }: { section: ResearchSection; compact?: boolean }) {
+  const catalogue = useLegCatalogue();
+  const channels = useAcquisitionChannels();
+  if ("outcome" in section) {
+    const path = OUTCOME_PATH[section.outcome];
+    if (!path) return <>Jev</>;
+    const labels = path.map((k) => stepLabel(catalogue, k));
+    if (labels.some((l) => l == null)) return <Shimmer className="inline-block h-4 w-56 align-middle" />;
+    return <InOrder items={labels.map((l) => ({ step: l as string }))} compact={compact} />;
+  }
+  const k = PIPE_KEY[section.pipe];
+  const leg = legFor(catalogue, k.leg);
+  const def = channels.find((d) => d.featureSlug === k.channel);
+  if (!leg?.fromLabel || !def) return <Shimmer className="inline-block h-4 w-56 align-middle" />;
+  return <InOrder items={[{ step: leg.fromLabel }, { channel: def.name, def }, { step: leg.toLabel }]} compact={compact} />;
+}
+
+/** A topic's mark: a soft tile in its colour, drawn like a section's mark. */
 export function TopicMark({ topic, size = 32 }: { topic: ResearchTopic; size?: number }) {
   const { color, Icon } = TOPIC_LOOK[topic];
   return (

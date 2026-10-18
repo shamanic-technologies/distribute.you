@@ -23,7 +23,7 @@ import { openSync, readSync, closeSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { isMature, maturationCutoff, maturationNote, measureMaturation, toMs } from "./maturation.mjs";
 import { MODEL_LABEL } from "./model-label.mjs";
-import { HERALD_LEG, SCOUT_LEG, canonicalLeg } from "./leg-key.mjs";
+import { POSITIVE_REPLY_LEG, WEBSITE_VISIT_LEG, canonicalLeg } from "./leg-key.mjs";
 import { layoutOf, openingOf, dashOf, LAYOUT, OPENING, DASH } from "./first-email-shape.mjs";
 
 const dir = process.argv[2];
@@ -181,7 +181,7 @@ if (COST_BASIS !== "user" && COST_BASIS !== "actual") throw new Error(`COST_BASI
 if (COST_BASIS === "actual" && spendLegRows.length && spendLegRows[0].vendor_cents === undefined) {
   throw new Error("spend-legs.csv carries no vendor_cents: re-run extract.sh");
 }
-// The two legs the Research crews buy, one each: HERALD_LEG / SCOUT_LEG (leg-key.mjs).
+// The two legs the Research cold email pipes buy, one each: POSITIVE_REPLY_LEG / WEBSITE_VISIT_LEG (leg-key.mjs).
 
 // THE RESEARCH MATURITY RULE, read from features-service (features-service#1196), never measured
 // here: per LEG, how many days after a run STARTS its outcomes count as arrived, and how many
@@ -189,7 +189,7 @@ if (COST_BASIS === "actual" && spendLegRows.length && spendLegRows[0].vendor_cen
 // rule, so a price on the Research page and one on a campaign page rest on one definition.
 // extract.sh reads it off the channel catalogue into maturity.json.
 const LEG_MATURITY = new Map(JSON.parse(readFileSync(join(dir, "maturity.json"), "utf8")).map((l) => [l.legKey, l]));
-for (const leg of [HERALD_LEG, SCOUT_LEG]) {
+for (const leg of [POSITIVE_REPLY_LEG, WEBSITE_VISIT_LEG]) {
   const m = LEG_MATURITY.get(leg);
   if (!m || !Number.isInteger(m.durationDays) || m.durationDays < 0 || !Number.isInteger(m.outcomesRequired) || m.outcomesRequired < 1) {
     throw new Error(`maturity.json carries no usable rule for ${leg}: re-run extract.sh once features-service serves legs[].maturity`);
@@ -834,7 +834,7 @@ const research = (() => {
   let young = 0;
   let beforeWindow = 0;
   const mature = researchRows.filter((r) => {
-    if (r.leg !== HERALD_LEG && r.leg !== SCOUT_LEG) return false;
+    if (r.leg !== POSITIVE_REPLY_LEG && r.leg !== WEBSITE_VISIT_LEG) return false;
     if (!r._runStartedAt) { noRunStart++; return true; }
     const day = new Date(toMs(r._runStartedAt)).toISOString().slice(0, 10);
     // a lead served before the window has only its later emails in the dump: left out whole
@@ -856,14 +856,14 @@ const research = (() => {
     const leg = legOf.get(s.platform_campaign_id) ?? null;
     // the spend of a run started in the window and before its leg's cutoff (a run's day is the
     // day it STARTED, extract.sh), the same span as the emails it divides
-    if (leg === HERALD_LEG || leg === SCOUT_LEG) {
+    if (leg === POSITIVE_REPLY_LEG || leg === WEBSITE_VISIT_LEG) {
       if (s.day < WINDOW.from || s.day >= researchCutoff(leg)) continue;
     } else if (s.day >= maturation.cutoff) continue;
     const cents = COST_BASIS === "actual" ? Number(s.vendor_cents) : Number(s.cents);
     if (!leg) { spendNoLeg += cents; continue; }
     const k = `${s.workflow_slug}|${leg}`;
     if (COST_BASIS === "actual" && Number(s.unpriced_cents) > 0) {
-      if (leg === HERALD_LEG || leg === SCOUT_LEG) unpricedCents += Number(s.unpriced_cents);
+      if (leg === POSITIVE_REPLY_LEG || leg === WEBSITE_VISIT_LEG) unpricedCents += Number(s.unpriced_cents);
       unpricedKeys.add(k);
     }
     spendByVersionLeg.set(k, (spendByVersionLeg.get(k) || 0) + cents / 100);
@@ -910,34 +910,34 @@ const research = (() => {
     delete r._replyAt; delete r._sentAt; delete r._clickAt; delete r._runStartedAt;
     priced.push(r);
   }
-  const herald = priced.filter((r) => r.leg === HERALD_LEG);
-  const scoutAll = priced.filter((r) => r.leg === SCOUT_LEG);
-  // Scout is measured on the emails whose clicks the scanner classifier screens (self-send, our
-  // own /c/ redirect), and its outcome is the HUMAN visit. A provider-sent email cannot produce a
-  // visit we can tell from a bot, so it is out of the population, stated in scope.scout.
-  const scoutLinked = scoutAll.filter((r) => r.hasLink);
-  const scout = scoutLinked.filter((r) => r.transport === "smtp").map((r) => ({ ...r, clicked: r.visited }));
-  const union = [...herald, ...scoutAll];
-  // what the leg scope moved out of each crew, measured on the article's (fleet-wide) population
+  const reply = priced.filter((r) => r.leg === POSITIVE_REPLY_LEG);
+  const visitAll = priced.filter((r) => r.leg === WEBSITE_VISIT_LEG);
+  // The website visit pipe is measured on the emails whose clicks the scanner classifier screens
+  // (self-send, our own /c/ redirect), and its outcome is the HUMAN visit. A provider-sent email
+  // cannot produce a visit we can tell from a bot, so it is out of the population, stated in scope.visit.
+  const visitLinked = visitAll.filter((r) => r.hasLink);
+  const visit = visitLinked.filter((r) => r.transport === "smtp").map((r) => ({ ...r, clicked: r.visited }));
+  const union = [...reply, ...visitAll];
+  // what the leg scope moved out of each pipe, measured on the article's (fleet-wide) population
   const scope = {
-    herald: {
+    reply: {
       before: facts.length,
-      otherLeg: facts.filter((f) => f.leg && f.leg !== HERALD_LEG).length,
+      otherLeg: facts.filter((f) => f.leg && f.leg !== POSITIVE_REPLY_LEG).length,
       noLeg: facts.filter((f) => !f.leg).length,
-      after: herald.length,
+      after: reply.length,
     },
-    scout: {
+    visit: {
       before: linked.length,
-      otherLeg: linked.filter((f) => f.leg && f.leg !== SCOUT_LEG).length,
+      otherLeg: linked.filter((f) => f.leg && f.leg !== WEBSITE_VISIT_LEG).length,
       noLeg: linked.filter((f) => !f.leg).length,
       // linked emails of the leg sent through the provider: their clicks are never screened
-      providerSent: scoutLinked.length - scout.length,
-      providerClicks: scoutLinked.filter((r) => r.transport !== "smtp" && r.clicked).length,
-      after: scout.length,
-      visits: scout.filter((r) => r.clicked).length,
+      providerSent: visitLinked.length - visit.length,
+      providerClicks: visitLinked.filter((r) => r.transport !== "smtp" && r.clicked).length,
+      after: visit.length,
+      visits: visit.filter((r) => r.clicked).length,
       // every human visit on the leg before the maturity, link and pricing filters: equals the
       // people instantly_service's scanner classified human on this leg's campaigns
-      legVisits: researchRows.filter((r) => r.leg === SCOUT_LEG && r.visited).length,
+      legVisits: researchRows.filter((r) => r.leg === WEBSITE_VISIT_LEG && r.visited).length,
     },
     immature: young,
     servedBeforeWindow: beforeWindow,
@@ -945,30 +945,30 @@ const research = (() => {
     perPersonSpreadEvenly,
     droppedForNoDynasty: researchNoDynasty,
     spendOnNoLeg: round(spendNoLeg / 100, 2),
-    // actual basis only: billed spend on the two crews' legs no vendor cost is on record for
+    // actual basis only: billed spend on the two cold email pipes' legs no vendor cost is on record for
     unpricedBilledUsd: round(unpricedCents / 100, 2),
     droppedForNoVendorCost: noVendorCost,
     // leads no generation record ties to a serving run: in the cohort, as features-service does
     noRunStart,
   };
-  return { herald, scout, union, scope, immature: young, noRunStart, beforeWindow };
+  return { reply, visit, union, scope, immature: young, noRunStart, beforeWindow };
 })();
 const minMonth = (rows) => rows.reduce((m, f) => (!m || f.month < m ? f.month : m), null);
 const maxMonth = (rows) => rows.reduce((m, f) => (!m || f.month > m ? f.month : m), null);
 out.research = {
   costBasis: COST_BASIS,
   window: { from: minMonth(research.union), to: maxMonth(research.union) },
-  // Herald buys a positive reply on the lead_found_to_conversation leg; Scout a website visit on the
-  // lead_found_to_website_visit leg, priced on the emails that carried a link.
-  reply: researchFor(research.herald),
-  visit: researchFor(research.scout),
-  // what each workflow runs, per crew: a dynasty can run a different model on each leg
-  workflowMeta: { reply: workflowMeta(research.herald), visit: workflowMeta(research.scout) },
+  // One pipe buys a positive reply on the lead_found_to_conversation leg; the other a website visit
+  // on the lead_found_to_website_visit leg, priced on the emails that carried a link.
+  reply: researchFor(research.reply),
+  visit: researchFor(research.visit),
+  // what each workflow runs, per pipe: a dynasty can run a different model on each leg
+  workflowMeta: { reply: workflowMeta(research.reply), visit: workflowMeta(research.visit) },
   volume: {
     emails: research.union.length,
     orgs: new Set(research.union.map((f) => f.orgId)).size,
     workflows: new Set(research.union.map((f) => f.workflow)).size,
-    linkedEmails: research.scout.length,
+    linkedEmails: research.visit.length,
     byMonth: cut(research.union, (r) => r.chartMonth, monthsOf(research.union)).map((r) => ({ bucket: r.bucket, emails: r.emails })),
   },
   excludedEmails: research.immature,
@@ -983,7 +983,7 @@ out.researchMaturity = {
   rule: "run_start",
   windowEnd: WINDOW.to,
   legs: Object.fromEntries(
-    [["reply", HERALD_LEG], ["visit", SCOUT_LEG]].map(([key, leg]) => {
+    [["reply", POSITIVE_REPLY_LEG], ["visit", WEBSITE_VISIT_LEG]].map(([key, leg]) => {
       const m = LEG_MATURITY.get(leg);
       return [key, { legKey: leg, durationDays: m.durationDays, outcomesRequired: m.outcomesRequired, outcomeSignal: m.outcomeSignal ?? null, source: m.source ?? null, cutoff: researchCutoff(leg), lastCohortMonth: lastCohortMonth(leg) }];
     }),

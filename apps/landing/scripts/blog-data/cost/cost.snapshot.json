@@ -5,7 +5,7 @@
   "durationDays": 21,
   "cutoff": "2026-09-12",
   "reply": {
-    "id": "herald-cost-over-time",
+    "id": "cold-email-positive-reply-cost-over-time",
     "average": {
       "value": 185.11,
       "display": "$185"
@@ -118,7 +118,7 @@
     ]
   },
   "visit": {
-    "id": "scout-cost-over-time",
+    "id": "cold-email-website-visit-cost-over-time",
     "average": {
       "value": 4.16,
       "display": "$4.16"

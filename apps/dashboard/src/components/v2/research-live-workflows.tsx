@@ -6,9 +6,10 @@ import { useAuthQuery } from "@/lib/use-auth-query";
 import { pollOptions } from "@/lib/query-options";
 import { getLegWorkflowRanking, listChannelWorkflows } from "@/lib/api";
 import { useLegCatalogue } from "@/lib/use-leg-catalogue";
-import { legKeyForSteps } from "@/lib/legs";
+import { legFor } from "@/lib/legs";
+import { isProactiveFrom } from "@/lib/outbound-leg-key";
 import { EmptyNote, Shimmer } from "@/components/v2/ui";
-import { CREW_KEY, researchCatalogHref, type ResearchCatalog, type ResearchCrew } from "@/lib/research/research";
+import { PIPE_KEY, researchCatalogHref, type ResearchCatalog, type ResearchPipe } from "@/lib/research/research";
 import { fleetWorkflowRows, shortWorkflowName } from "@/lib/live-workflow-rows";
 import { useFeatures } from "@/lib/features-context";
 import {
@@ -20,43 +21,48 @@ import {
 } from "@/components/v2/live-workflow-cells";
 
 /**
- * A crew's workflows as the FLEET ranks them right now, at the crew's leg: every client we run
+ * A pipe's workflows as the FLEET ranks them right now, at the pipe's leg: every client we run
  * a workflow for, pooled. Research names no org, brand, offer, campaign or audience (owner rule
  * 2026-09-30), so this reads features-service's fleet ranking and nothing scoped to the viewer.
  * The order and both flags are the producer's: the best mature workflow holds the money, the
  * learning ones already cheaper than it sit above it. Nothing is ranked or divided here.
  *
- * The brand's own version of this table (one per mission) lives on the brand Workflows page.
+ * The brand's own version of this table (one per campaign) lives on the brand Workflows page.
  */
 
-/** The crew's channel name, the prefix every one of its workflow names repeats. */
-export function useCrewChannelName(crew: ResearchCrew): string | null {
+/** The pipe's channel name, the prefix every one of its workflow names repeats. */
+export function usePipeChannelName(pipe: ResearchPipe): string | null {
   const { getFeature } = useFeatures();
-  return getFeature(CREW_KEY[crew].channel)?.name ?? null;
+  return getFeature(PIPE_KEY[pipe].channel)?.name ?? null;
 }
 
-/** The crew's leg in the fleet's own key, or null when the crew's step starts no entry leg. */
-export function useResearchCrewLeg(crew: ResearchCrew): string | null {
-  const catalogue = useLegCatalogue();
-  return legKeyForSteps(catalogue, null, CREW_KEY[crew].step);
+/**
+ * The pipe's leg in the fleet's own key, or null when it is not a proactive leg (the fleet ranks
+ * those only) or the catalogue has not answered. Read by the pipe's leg key and judged with
+ * `isProactiveFrom`: the renamed outbound legs start on Lead found, so a `fromKey === null` test
+ * found none of them and the live table never showed.
+ */
+export function useResearchPipeLeg(pipe: ResearchPipe): string | null {
+  const leg = legFor(useLegCatalogue(), PIPE_KEY[pipe].leg);
+  return leg && isProactiveFrom(leg.fromKey) ? leg.legKey : null;
 }
 
 export function ResearchLiveWorkflows({
   base,
-  crew,
+  pipe,
   legKey,
   catalog,
   outcomeUnit,
   nav,
 }: {
   base: string;
-  crew: ResearchCrew;
+  pipe: ResearchPipe;
   legKey: string;
   catalog: ResearchCatalog | null;
   outcomeUnit: string;
   nav: (href: string) => void;
 }) {
-  const featureSlug = CREW_KEY[crew].channel;
+  const featureSlug = PIPE_KEY[pipe].channel;
 
   const rankingQ = useAuthQuery(["legWorkflowRanking", featureSlug, legKey], () => getLegWorkflowRanking(featureSlug, legKey), {
     ...pollOptions,
@@ -76,8 +82,8 @@ export function ResearchLiveWorkflows({
     }
     return m;
   }, [catalogueQ.data]);
-  const researched = useMemo(() => new Set((catalog?.[crew].workflows ?? []).map((w) => w.key)), [catalog, crew]);
-  const channelName = useCrewChannelName(crew);
+  const researched = useMemo(() => new Set((catalog?.[pipe].workflows ?? []).map((w) => w.key)), [catalog, pipe]);
+  const channelName = usePipeChannelName(pipe);
   const nameOf = (r: { name: string | null; slug: string }) => shortWorkflowName(r.name ?? r.slug, channelName);
 
   const answered = rankingQ.data !== undefined || rankingQ.isFetchedAfterMount;
@@ -128,7 +134,7 @@ export function ResearchLiveWorkflows({
             ) : (
               rows.map((r) => {
                 const s = stack.get(r.slug);
-                const href = researched.has(r.slug) ? researchCatalogHref(base, crew, "workflows", r.slug) : null;
+                const href = researched.has(r.slug) ? researchCatalogHref(base, pipe, "workflows", r.slug) : null;
                 return (
                   <tr
                     key={r.slug}

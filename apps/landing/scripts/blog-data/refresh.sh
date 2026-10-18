@@ -74,7 +74,9 @@ raise SystemExit(f"CI did not finish on {sha} within 45 minutes")
 PY
   # main may have moved during CI: the snapshot files are ours alone, so replay the commit on top.
   git fetch -q "$REMOTE" main
-  git rebase -q FETCH_HEAD
+  # A rebase writes new commits, so it needs the committer identity the commit below carries:
+  # the box has no global git identity (failed nightly from 2026-10-16: "Committer identity unknown").
+  git -c user.email=box@distribute.you -c user.name="distribute box" rebase -q FETCH_HEAD
   git push -q "$REMOTE" "HEAD:refs/heads/main"
   echo "== published $(git rev-parse HEAD) to main"
   rm -f "$DATA/committed"

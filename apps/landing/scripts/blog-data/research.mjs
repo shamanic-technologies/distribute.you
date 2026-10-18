@@ -8,16 +8,16 @@
 //     > apps/dashboard/src/lib/research/research.json
 //
 // The second argument is the directory that receives the two side files the workflow and
-// template pages read: research-catalog.json (one entry per workflow and per template, per crew)
+// template pages read: research-catalog.json (one entry per workflow and per template, per pipe)
 // and research-templates.json (the text of every listed template). They stay out of
 // research.json so the hub does not carry them; the page loads them right after it paints.
 //
 // Definitions (stated on the page under "How we measured"):
-//  - ROI is read as COST PER OUTCOME: every crew buys one outcome, so the cheaper outcome is the
-//    better return. Herald's outcome is a positive reply, Scout's a website visit (priced on the
+//  - ROI is read as COST PER OUTCOME: every pipe buys one outcome, so the cheaper outcome is the
+//    better return. The cold email pipes buy a positive reply and a website visit (priced on the
 //    emails that carried a link, since a visit cannot come from an email without one).
-//  - A RATE is a PERCENT, two decimals (0.18%): of emails for positive replies (Herald), of
-//    link-carrying emails for website visits (Scout). Owner rule (2026-09-27): never "N per 10,000".
+//  - A RATE is a PERCENT, two decimals (0.18%): of emails for positive replies, of link-carrying
+//    emails for website visits. Owner rule (2026-09-27): never "N per 10,000".
 //  - The WINNER is always the top bar: the cheapest price, or the highest rate. Owner rule
 //    (2026-09-27): a Learning bar is ranked where its value puts it, never sunk below the rest,
 //    and if it comes first it wins. `crowned` only says whether the winner rests on enough
@@ -39,7 +39,7 @@ import { MODEL_LABEL } from "./model-label.mjs";
 import { meetingStudies } from "./meetings.mjs";
 import { meetingBeforeAfterStudy } from "./meeting-before-after.mjs";
 import { jevStudies } from "./jev.mjs";
-import { HERALD_LEG, SCOUT_LEG, canonicalLeg } from "./leg-key.mjs";
+import { MEETING_BOOKING_LEG, POSITIVE_REPLY_LEG, WEBSITE_VISIT_LEG, canonicalLeg } from "./leg-key.mjs";
 import { NAMING_LABEL, namingOf, namingSides, rateP, costP, pText } from "./naming/naming.mjs";
 
 const here = dirname(fileURLToPath(import.meta.url));
@@ -98,7 +98,7 @@ function templateLabel(id) {
   return `${words}${m[2] ? ` v${m[2]}` : ""}${m[3] ? " (landing)" : ""}`;
 }
 
-// A workflow reads as what it runs ON THIS CREW'S LEG: every research figure is one leg of one
+// A workflow reads as what it runs ON THIS PIPE'S LEG: every research figure is one leg of one
 // channel, so a workflow's model and template are the ones that wrote its emails on that leg. Two
 // workflows can run the same model and template (a new version of the workflow keeps both), so
 // the month it first sent tells them apart, and a number only when that is shared too.
@@ -163,13 +163,13 @@ const IN_PROGRESS = "month in progress";
 // a month series past its leg's last cohort month means derive.mjs filed a month nobody is counted in
 function assertCohortMonths(o, series) {
   const late = series.find((r) => r.bucket > o.lastCohortMonth);
-  if (late) throw new Error(`${o.crew}: a month bar after the last cohort month (${late.bucket} > ${o.lastCohortMonth}): re-run derive.mjs`);
+  if (late) throw new Error(`${o.pipe}: a month bar after the last cohort month (${late.bucket} > ${o.lastCohortMonth}): re-run derive.mjs`);
 }
 
 const OUTCOMES = {
   reply: {
-    crew: "herald",
-    leg: HERALD_LEG,
+    pipe: "cold-email-positive-reply",
+    leg: POSITIVE_REPLY_LEG,
     noun: "positive reply",
     nounPlural: "positive replies",
     count: "replies",
@@ -185,8 +185,8 @@ const OUTCOMES = {
     emailsNoun: "emails",
   },
   visit: {
-    crew: "scout",
-    leg: SCOUT_LEG,
+    pipe: "cold-email-website-visit",
+    leg: WEBSITE_VISIT_LEG,
     noun: "website visit",
     nounPlural: "website visits",
     count: "clicks",
@@ -358,8 +358,8 @@ function dimensionStudies(key, o, R, { dim, dimNoun, cutKey, byMonthKey, label, 
     const line = w ? monthLine(o, R[byMonthKey][w.row.bucket], "cost") : [];
     const moved = movement(line);
     add({
-      id: `${o.crew}-${dim}-roi`,
-      crew: o.crew,
+      id: `${o.pipe}-${dim}-roi`,
+      pipe: o.pipe,
       topic: dim,
       goal: "roi",
       question: `Which ${dimNoun} gets the cheapest ${o.noun}?`,
@@ -387,8 +387,8 @@ function dimensionStudies(key, o, R, { dim, dimNoun, cutKey, byMonthKey, label, 
     const line = w ? monthLine(o, R[byMonthKey][w.row.bucket], "rate") : [];
     const moved = movement(line);
     add({
-      id: `${o.crew}-${dim}-rate`,
-      crew: o.crew,
+      id: `${o.pipe}-${dim}-rate`,
+      pipe: o.pipe,
       topic: dim,
       goal: "rate",
       question: `Which ${dimNoun} gets the most ${o.nounPlural}?`,
@@ -434,8 +434,8 @@ function namingStudies(o, R) {
     // The winner is the first bar, always (owner rule): the p-value is shown, it never withholds it.
     const sig = pv < 0.05 && a[o.rate] > b[o.rate];
     add({
-      id: `${o.crew}-naming-rate`,
-      crew: o.crew,
+      id: `${o.pipe}-naming-rate`,
+      pipe: o.pipe,
       topic: "naming",
       goal: "rate",
       question: `Does naming the client get more ${o.nounPlural}?`,
@@ -456,8 +456,8 @@ function namingStudies(o, R) {
     // The winner is the cheaper side, always (owner rule); only a side with no outcome at all is unpriced.
     const sig = Boolean(a && b) && pv < 0.05;
     add({
-      id: `${o.crew}-naming-roi`,
-      crew: o.crew,
+      id: `${o.pipe}-naming-roi`,
+      pipe: o.pipe,
       topic: "naming",
       goal: "roi",
       question: `Does naming the client get a cheaper ${o.noun}?`,
@@ -525,8 +525,8 @@ function shapeStudies(key, o, R, dim) {
   const last = R.firstShape.lastMonth;
   const crm = key === "reply" ? facts.research.crmReplies : null;
   add({
-    id: `${o.crew}-${dim}-roi`,
-    crew: o.crew,
+    id: `${o.pipe}-${dim}-roi`,
+    pipe: o.pipe,
     topic: dim,
     goal: "roi",
     question: d.question(o),
@@ -602,8 +602,8 @@ function dashStudy(key, o, R) {
     .filter(Boolean);
   const top = modelBars[0], bottom = modelBars[modelBars.length - 1];
   add({
-    id: `${o.crew}-dash-roi`,
-    crew: o.crew,
+    id: `${o.pipe}-dash-roi`,
+    pipe: o.pipe,
     topic: "dash",
     goal: "roi",
     question: `Do dashes in the first email change what a ${o.noun} costs, and how often one comes?`,
@@ -742,8 +742,8 @@ function timingStudy(key, o, R, dim) {
   lines.push(`Each email is filed under its own send ${dim === "weekday" ? "day" : "hour"} in the prospect's timezone, and a ${o.noun} under the email that earned it.`);
   const headline = w ? `${d.label(w.row.bucket)} wins with ${rateSentence(o, w.row[o.rate])}.` : `No ${d.unitNoun} has earned a ${o.noun} yet.`;
   add({
-    id: `${o.crew}-${dim}-rate`,
-    crew: o.crew,
+    id: `${o.pipe}-${dim}-rate`,
+    pipe: o.pipe,
     topic: dim,
     goal: "rate",
     question: d.question(o),
@@ -774,13 +774,13 @@ for (const key of ["reply", "visit"]) {
     // The cheapest LLM is the LLM study's question, under its own verdict: not repeated here.
     const all = avg.length ? avg[avg.length - 1] : null;
     add({
-      id: `${o.crew}-cost-over-time`,
-      crew: o.crew,
+      id: `${o.pipe}-cost-over-time`,
+      pipe: o.pipe,
       topic: "cost",
       goal: "roi",
       question: `What does a ${o.noun} cost on average?`,
       status: all ? "measured" : "not_enough_data",
-      headline: all ? `${all.display} per ${o.noun} on average since inception, across all our emails${o.crew === "scout" ? " whose clicks are screened for bots" : ""}.` : `Not enough ${o.nounPlural} to state an average yet.`,
+      headline: all ? `${all.display} per ${o.noun} on average since inception, across all our emails${o.pipe === "cold-email-website-visit" ? " whose clicks are screened for bots" : ""}.` : `Not enough ${o.nounPlural} to state an average yet.`,
       winner: null,
       // the sample states the counts to date; the in-progress mark belongs to the chart's last bar
       result: all ? { display: all.display, unit: `per ${o.noun}, average since inception`, sample: all.note.replace(` · ${IN_PROGRESS}`, "") } : null,
@@ -828,8 +828,8 @@ for (const key of ["reply", "visit"]) {
     const deepest = worth.length ? worth[worth.length - 1] : null;
     const extra = (m) => (m.spend > 0 ? `${usd(m.cpo)} per extra ${o.noun}` : `no extra cost (sending is not charged per email)`);
     add({
-      id: `${o.crew}-followups-roi`,
-      crew: o.crew,
+      id: `${o.pipe}-followups-roi`,
+      pipe: o.pipe,
       topic: "followups",
       goal: "roi",
       question: `How many follow-ups are worth their cost, for ${o.nounPlural}?`,
@@ -854,8 +854,8 @@ for (const key of ["reply", "visit"]) {
       ],
     });
     add({
-      id: `${o.crew}-followups-rate`,
-      crew: o.crew,
+      id: `${o.pipe}-followups-rate`,
+      pipe: o.pipe,
       topic: "followups",
       goal: "rate",
       question: `How many follow-ups get the most ${o.nounPlural}?`,
@@ -882,7 +882,7 @@ for (const key of ["reply", "visit"]) {
   if (key === "visit") {
     const reason = "The open pixel only ran on emails sent through the provider, whose clicks cannot be told apart from link scanners. A website visit is a human click, so this cannot be measured.";
     for (const [goal, question] of [["roi", `Should we track opens for the cheapest ${o.noun}?`], ["rate", `Should we track opens for the most website visits?`]]) {
-      add({ id: `${o.crew}-opens-${goal}`, crew: o.crew, topic: "opens", goal, question, status: "not_enough_data", headline: "Cannot be measured on human visits.", winner: null, crowned: false, result: null, charts: [], conclusion: [reason] });
+      add({ id: `${o.pipe}-opens-${goal}`, pipe: o.pipe, topic: "opens", goal, question, status: "not_enough_data", headline: "Cannot be measured on human visits.", winner: null, crowned: false, result: null, charts: [], conclusion: [reason] });
     }
   } else {
     const metric = key === "reply" ? pixel.positive : pixel.clicked;
@@ -912,8 +912,8 @@ for (const key of ["reply", "visit"]) {
     const periods = `Tracking was on from ${pixel.on.firstDay} to ${pixel.on.lastDay} and off until ${pixel.off.lastDay}: two periods, not a split test, over ${n(pixel.total.leads)} people.`;
     const what = key === "reply" ? "replied positively" : "visited the website";
     add({
-      id: `${o.crew}-opens-roi`,
-      crew: o.crew,
+      id: `${o.pipe}-opens-roi`,
+      pipe: o.pipe,
       topic: "opens",
       goal: "roi",
       question: `Should we track opens for the cheapest ${o.noun}?`,
@@ -929,8 +929,8 @@ for (const key of ["reply", "visit"]) {
       ],
     });
     add({
-      id: `${o.crew}-opens-rate`,
-      crew: o.crew,
+      id: `${o.pipe}-opens-rate`,
+      pipe: o.pipe,
       topic: "opens",
       goal: "rate",
       question: key === "reply" ? `Should we track opens for the best reply rate?` : `Should we track opens for the most website visits?`,
@@ -963,17 +963,17 @@ for (const key of ["reply", "visit"]) {
   dimensionStudies(key, o, R, { dim: "workflow", dimNoun: "workflow", cutKey: "byWorkflow", byMonthKey: "workflowByMonth", label: workflowLabelFor(key) });
 }
 
-// Pilot runs on one workflow (one model, one template) since early September: every comparison
+// The meeting booking pipe runs one workflow (one model, one template) since early September: every comparison
 // needs at least two, so its cards state that rather than show a single bar as a result.
-const PILOT_REASON = "Pilot has run one workflow (one LLM, one template) on 3 campaigns since 2 Sep 2026. A comparison needs at least two.";
+const MEETING_BOOKING_REASON = "The meeting booking pipe has run one workflow (one LLM, one template) on 3 campaigns since 2 Sep 2026. A comparison needs at least two.";
 for (const [topic, question] of [
   ["llm", "Which LLM books the most meetings from a positive reply?"],
   ["template", "Which template books the most meetings from a positive reply?"],
   ["followups", "How many follow-ups after a positive reply book the most meetings?"],
 ]) {
-  add({ id: `pilot-${topic}`, crew: "pilot", topic, goal: "rate", question, status: "not_enough_data", headline: "Not enough data yet.", winner: null, crowned: false, result: null, charts: [], conclusion: [PILOT_REASON] });
+  add({ id: `meeting-booking-${topic}`, pipe: "meeting-booking", topic, goal: "rate", question, status: "not_enough_data", headline: "Not enough data yet.", winner: null, crowned: false, result: null, charts: [], conclusion: [MEETING_BOOKING_REASON] });
 }
-// What a booked meeting costs: on the Pilot leg alone, and across every leg as the Meeting booked
+// What a booked meeting costs: on the meeting booking leg alone, and across every leg as the Meeting booked
 // OUTCOME section (meetings.mjs). Both carry their own verdict.
 const csvRows = (f) => {
   const [head, ...lines] = readFileSync(join(dataDir, f), "utf8").trim().split("\n");
@@ -986,7 +986,7 @@ const csvRows = (f) => {
 };
 const MEETINGS = meetingStudies({
   meetings: csvRows("meetings.csv"),
-  acted: csvRows("pilot-acted.csv"),
+  acted: csvRows("meeting-booking-acted.csv"),
   campaigns: csvRows("meeting-campaigns.csv"),
   spend: csvRows("meeting-spend.csv"),
   maturity: readJson("maturity.json"),
@@ -1015,10 +1015,10 @@ for (const [goal, question] of [
   ["roi", "Which workflow books a meeting for the least?"],
   ["rate", "Which workflow books the most meetings from a positive reply?"],
 ]) {
-  add({ id: `pilot-workflow-${goal}`, crew: "pilot", topic: "workflow", goal, question, status: "not_enough_data", headline: "Not enough data yet.", winner: null, crowned: false, result: null, charts: [], conclusion: [PILOT_REASON] });
+  add({ id: `meeting-booking-workflow-${goal}`, pipe: "meeting-booking", topic: "workflow", goal, question, status: "not_enough_data", headline: "Not enough data yet.", winner: null, crowned: false, result: null, charts: [], conclusion: [MEETING_BOOKING_REASON] });
 }
 
-// ---------- catalogue: one page per workflow and per template, per crew ----------
+// ---------- catalogue: one page per workflow and per template, per pipe ----------
 // Read beside facts.json (extract.sh writes them into the same directory). Every row here is
 // fleet-wide and names no client and no lead.
 const workflowRuns = readJson("workflow-runs.json").map((r) => ({ ...r, leg: canonicalLeg(r.leg) }));
@@ -1088,7 +1088,7 @@ for (const key of ["reply", "visit"]) {
   const R = facts.research[key];
   const meta = facts.research.workflowMeta[key];
   const workflowLabel = workflowLabelFor(key);
-  // the leg this crew buys: its "last runs" lists read that leg's runs only
+  // the leg this pipe buys: its "last runs" lists read that leg's runs only
   const leg = OUTCOMES[key].leg;
   const tplRows = catalogOrder(o, R.byTemplate);
   const tplKeys = new Set(tplRows.map((r) => r.bucket));
@@ -1174,9 +1174,9 @@ for (const key of ["reply", "visit"]) {
         };
       }),
   }));
-  catalog[o.crew] = { workflows, templates, models };
+  catalog[o.pipe] = { workflows, templates, models };
 }
-catalog.pilot = { workflows: [], templates: [], models: [] };
+catalog["meeting-booking"] = { workflows: [], templates: [], models: [] };
 
 // ---------- verdicts ----------
 // Every measured study gets one word, conclusion / signal / noise (verdict.mjs), and its headline
@@ -1211,14 +1211,14 @@ catalog.pilot = { workflows: [], templates: [], models: [] };
     ];
     for (const c of categorical) {
       for (const goal of ["roi", "rate"]) {
-        const st = byId.get(`${o.crew}-${c.dim}-${goal}`);
+        const st = byId.get(`${o.pipe}-${c.dim}-${goal}`);
         if (!st || st.status !== "measured") continue;
         const { a, b, m } = pairOf(o, R[c.cut], goal);
         judge(st, compareVerdict({ a: side(o, a && c.label(a.bucket), a), b: side(o, b && c.label(b.bucket), b), goal, comparisons: m, strata: c.strata, ...nouns }));
       }
     }
     for (const [dim, cut, strata] of [["layout", "byLayout", R.layoutStrata], ["opening", "byOpening", R.openingStrata], ["dash", "byDash", R.dashStrata]]) {
-      const st = byId.get(`${o.crew}-${dim}-roi`);
+      const st = byId.get(`${o.pipe}-${dim}-roi`);
       if (!st || st.status !== "measured") continue;
       const { a, b, m } = pairOf(o, R[cut], "roi");
       judge(st, compareVerdict({ a: side(o, a?.bucket, a), b: side(o, b?.bucket, b), goal: "roi", comparisons: m, strata, ...nouns }));
@@ -1237,7 +1237,7 @@ catalog.pilot = { workflows: [], templates: [], models: [] };
         }
       }
       for (const goal of ["rate", "roi"]) {
-        const st = byId.get(`${o.crew}-naming-${goal}`);
+        const st = byId.get(`${o.pipe}-naming-${goal}`);
         if (!st || st.status !== "measured") continue;
         const { a, b } = pairOf(o, rows, goal);
         judge(st, compareVerdict({ a: side(o, a?.bucket, a), b: side(o, b?.bucket, b), goal, comparisons: 1, strata, ...nouns }));
@@ -1247,7 +1247,7 @@ catalog.pilot = { workflows: [], templates: [], models: [] };
     {
       const first = R.byStep.find((s) => s.bucket === "First email");
       const rest = R.byStep.filter((s) => s.bucket !== "First email").reduce((t, s) => ({ emails: t.emails + s.emails, spend: t.spend + s.spend, out: t.out + s[o.count] }), { emails: 0, spend: 0, out: 0 });
-      const roi = byId.get(`${o.crew}-followups-roi`);
+      const roi = byId.get(`${o.pipe}-followups-roi`);
       // the ROI verdict judges the follow-ups the study says to send (through its winner), or all
       // of them when it says to stop, so the verdict and the winner speak about the same emails
       let sentUp = rest;
@@ -1268,7 +1268,7 @@ catalog.pilot = { workflows: [], templates: [], models: [] };
         const [a, b] = firstCheaper ? [f, { ...u, label: "the follow-ups" }] : [{ ...u, label: "The follow-ups" }, { ...f, label: "the first email" }];
         judge(roi, compareVerdict({ a, b, goal: "roi", comparisons: 1, splitTest: true, ...nouns }));
       }
-      const rate = byId.get(`${o.crew}-followups-rate`);
+      const rate = byId.get(`${o.pipe}-followups-rate`);
       if (rate?.status === "measured") {
         const lastStep = [...R.byStep].reverse().find((s) => s.bucket !== "First email" && s[o.count] > 0);
         const last = lastStep ? lastStep[o.count] : 0;
@@ -1282,7 +1282,7 @@ catalog.pilot = { workflows: [], templates: [], models: [] };
     }
     // open tracking: two periods, never a split test, so at best a signal
     for (const goal of ["roi", "rate"]) {
-      const st = byId.get(`${o.crew}-opens-${goal}`);
+      const st = byId.get(`${o.pipe}-opens-${goal}`);
       if (!st) continue;
       const mtr = goal === "roi" ? (key === "reply" ? pixel.positive : pixel.clicked) : key === "reply" ? pixel.replied : pixel.clicked;
       judge(st, mtr.significant
@@ -1291,7 +1291,7 @@ catalog.pilot = { workflows: [], templates: [], models: [] };
     }
     // the average cost: a measurement, not a comparison
     {
-      const st = byId.get(`${o.crew}-cost-over-time`);
+      const st = byId.get(`${o.pipe}-cost-over-time`);
       if (st?.status === "measured") {
         const got = R.byMonth.reduce((t, r) => t + r[o.count], 0);
         const spend = R.byMonth.reduce((t, r) => t + r.spend, 0);
@@ -1313,9 +1313,9 @@ if (!sideDir) throw new Error("usage: research.mjs <facts.json> <dir for researc
   writeFileSync(join(sideDir, "research-catalog.json"), `${JSON.stringify(catalog)}\n`);
   writeFileSync(join(sideDir, "research-templates.json"), `${JSON.stringify(texts)}\n`);
 }
-// What the hub prints beside each crew: how many workflows and templates its pages list.
+// What the hub prints beside each pipe: how many workflows and templates its pages list.
 const catalogCounts = Object.fromEntries(
-  Object.entries(catalog).map(([crew, c]) => [crew, { workflows: c.workflows.length, templates: c.templates.length, models: c.models.length }]),
+  Object.entries(catalog).map(([pipe, c]) => [pipe, { workflows: c.workflows.length, templates: c.templates.length, models: c.models.length }]),
 );
 
 const out = {
@@ -1330,7 +1330,7 @@ const out = {
   window: { from: facts.research.window.from, to: facts.research.window.to },
   readOn: facts.generatedAt.slice(0, 10),
   volume: {
-    // the two crews' legs only (one leg each), never the whole channel
+    // the two cold email pipes' legs only (one leg each), never the whole channel
     emails: facts.research.volume.emails,
     orgs: facts.research.volume.orgs,
     workflows: facts.research.volume.workflows,
@@ -1352,10 +1352,11 @@ const out = {
     noRunStart: M.noRunStart,
     note: RULE_NOTE,
   },
-  crews: [
-    { id: "herald", outcome: "Positive reply", description: "Cold email that gets a prospect to answer with interest." },
-    { id: "scout", outcome: "Website visit", description: "Cold email that brings a prospect to the website." },
-    { id: "pilot", outcome: "Meeting booked", description: "Turns a positive reply into a booked meeting." },
+  // A pipe is one leg x one channel: the channel doing the work and the leg it buys.
+  pipes: [
+    { id: "cold-email-positive-reply", channel: "sales-cold-email-outreach", leg: POSITIVE_REPLY_LEG, outcome: "Positive reply", description: "Cold email that gets a prospect to answer with interest." },
+    { id: "cold-email-website-visit", channel: "sales-cold-email-outreach", leg: WEBSITE_VISIT_LEG, outcome: "Website visit", description: "Cold email that brings a prospect to the website." },
+    { id: "meeting-booking", channel: "ai-meeting-booking", leg: MEETING_BOOKING_LEG, outcome: "Meeting booked", description: "Turns a positive reply into a booked meeting." },
   ],
   outcomes: [...MEETINGS.outcomes, ...JEV.outcomes],
   studies,

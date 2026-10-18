@@ -142,9 +142,9 @@ WHERE feature_slug = 'sales-cold-email-outreach'
 " workflows.csv
 
 # Which LEG each campaign performs (campaign-service's leg_key). The Research page computes every
-# figure over ONE leg of ONE channel: Herald reads start_to_conversation, Scout reads
-# start_to_website_visit. A campaign stating no leg (the rows from before legs existed) belongs to
-# neither crew. The articles ignore this file: they are fleet-wide on purpose.
+# figure over ONE leg of ONE channel (a pipe): the positive reply pipe reads start_to_conversation,
+# the website visit pipe start_to_website_visit. A campaign stating no leg (the rows from before legs
+# existed) belongs to neither pipe. The articles ignore this file: they are fleet-wide on purpose.
 run campaign_service "
 SELECT id AS platform_campaign_id, coalesce(leg_key, '') AS leg_key
 FROM campaigns
@@ -162,8 +162,8 @@ LEFT JOIN organizations o ON o.id = lo.organization_id
 
 # The positive replies lead-service records off the client's CRM (a prospect who answered by
 # phone, LinkedIn or in person), attributed to our outreach and not withdrawn: features-service
-# counts them as positive replies beside the inbox-classified ones, so the Research page's Herald
-# figures do too. Keyed on the (org, lead) since the event names no campaign.
+# counts them as positive replies beside the inbox-classified ones, so the Research page's positive
+# reply figures do too. Keyed on the (org, lead) since the event names no campaign.
 run lead_service "
 SELECT org_id, matched_lead_id AS lead_id,
        to_char(received_at AT TIME ZONE 'UTC', 'YYYY-MM-DD HH24:MI:SS.MS') AS replied_at
@@ -172,7 +172,7 @@ WHERE event = 'positive_reply' AND caused_by_outreach = true
   AND withdrawn_at IS NULL AND matched_lead_id IS NOT NULL
 " crm-positive-replies.csv
 
-# ---------- Meeting booked (the Pilot leg and the cross-leg Meeting booked outcome) ----------
+# ---------- Meeting booked (the meeting booking leg and the cross-leg Meeting booked outcome) ----------
 # Every live booked meeting lead-service records (CRM import, tracker, reply, manual), unfiltered by
 # the window: a brand that has ANY such row reports its meetings, which is the population the
 # cross-leg cost per meeting rests on. caused_by_outreach says whether our outreach gets the credit
@@ -194,7 +194,7 @@ SELECT lead_id, brand_ids[1] AS brand_id, acting_campaign_id,
 FROM followup_actions
 WHERE action = 'acted'
 GROUP BY 1, 2, 3
-" pilot-acted.csv
+" meeting-booking-acted.csv
 
 # The leg each cold-email and meeting-booking campaign performs, for the spend below.
 run campaign_service "

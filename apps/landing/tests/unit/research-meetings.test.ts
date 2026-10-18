@@ -41,8 +41,8 @@ const input = { meetings, acted, campaigns, spend, maturity, window, costBasis: 
 describe("meeting studies", () => {
   it("prices the positive reply to meeting leg on its own spend and the meetings booked after it acted", () => {
     const { studies } = meetingStudies(input);
-    const leg = studies.find((s: { id: string }) => s.id === "pilot-cost");
-    expect(leg.crew).toBe("pilot");
+    const leg = studies.find((s: { id: string }) => s.id === "meeting-booking-cost");
+    expect(leg.pipe).toBe("meeting-booking");
     expect(leg.result.display).toBe("$10");
     expect(leg.result.sample).toBe("1 meeting · $10 spent · 2 people acted on");
     expect(leg.charts[0].points[0].thin).toBe(true);
@@ -52,7 +52,7 @@ describe("meeting studies", () => {
   it("prices the Meeting booked outcome across every leg, on the brands that report meetings only", () => {
     const { studies, outcomes } = meetingStudies(input);
     const all = studies.find((s: { id: string }) => s.id === "meeting-cost");
-    expect(all.crew).toBeNull();
+    expect(all.pipe).toBeNull();
     expect(all.outcome).toBe("meeting");
     // A: $500 + $400 + $10 over 3 credited meetings; B and the pre-window row stay out
     expect(all.result.display).toBe("$303");
