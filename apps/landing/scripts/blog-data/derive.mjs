@@ -25,6 +25,7 @@ import { isMature, maturationCutoff, maturationNote, measureMaturation, toMs } f
 import { MODEL_LABEL } from "./model-label.mjs";
 import { POSITIVE_REPLY_LEG, WEBSITE_VISIT_LEG, canonicalLeg } from "./leg-key.mjs";
 import { layoutOf, openingOf, dashOf, LAYOUT, OPENING, DASH } from "./first-email-shape.mjs";
+import { attributionIndex, bySourceStrategy, strategyLabels } from "./strategy.mjs";
 
 const dir = process.argv[2];
 if (!dir) throw new Error("usage: derive.mjs <dump-dir>");
@@ -160,6 +161,15 @@ eachRow("generations.csv", (g) => {
   }
 });
 const spendRows = load("spend.csv");
+// The lead strategy (play) every run was served under, and the strategy that sourced each lead
+// (strategy.mjs): the Research strategy and sourcing strategy studies.
+const ATTRIBUTION = attributionIndex({
+  attributions: load("play-attributions.csv"),
+  handoffs: load("source-handoffs.csv"),
+  strategies: JSON.parse(readFileSync(join(dir, "strategies.json"), "utf8")),
+});
+// the day campaign-service began recording a strategy, read whatever the window
+const STRATEGY_RECORDED_FROM = load("play-attributions-from.csv")[0]?.first_recorded_on || null;
 // workflow version -> its dynasty (workflow-service); the Research page compares dynasties
 const dynastyOf = new Map(load("workflows.csv").map((w) => [w.workflow_slug, w.workflow_dynasty_slug]));
 function dynastyOfVersion(slug) {
@@ -380,7 +390,15 @@ for (const e of emails) {
   };
   if (cpe !== undefined) facts.push({ ...row, cost: cpe });
   if (leg) {
-    if (row.dynasty) researchRows.push({ ...row, platformCampaign: e.platform_campaign_id });
+    // which strategy served this email's run, and which found its lead (null: none recorded)
+    const st = ATTRIBUTION.strategyOf(gen?.runId ?? null);
+    const served = {
+      strategy: st.id,
+      strategyState: st.state,
+      strategyDefault: st.isDefault,
+      sourceStrategies: st.state === "unattributed" ? [] : ATTRIBUTION.sourcesOf(gen?.runId ?? null, e.lead_id, e.platform_campaign_id),
+    };
+    if (row.dynasty) researchRows.push({ ...row, ...served, platformCampaign: e.platform_campaign_id });
     else researchNoDynasty++;
   }
 }
@@ -764,6 +782,15 @@ function researchFor(rows) {
     // and the template, and never prints the slug.
     byWorkflow: cut(rows, (r) => r.dynasty),
     workflowByMonth: byMonthPer(rows, (r) => r.dynasty),
+    // The lead strategy (play) that served the email's run, keyed by strategy id: only emails a
+    // strategy is RECORDED for (strategy.mjs); the rest are out, never filed under the default.
+    byStrategy: cut(rows, (r) => r.strategy),
+    strategyByMonth: byMonthPer(rows, (r) => r.strategy),
+    strategyStrata: strataPer(rows, (r) => r.strategy),
+    // The strategy that FOUND the lead: a lead several strategies found counts under each.
+    bySourceStrategy: cut(bySourceStrategy(rows), (r) => r.sourceStrategy),
+    sourceStrategyByMonth: byMonthPer(bySourceStrategy(rows), (r) => r.sourceStrategy),
+    sourceStrategyStrata: strataPer(bySourceStrategy(rows), (r) => r.sourceStrategy),
     // Every email of a sequence, filed under how its FIRST email was laid out / opened: the
     // outcome is the sequence's, whichever email earned it. Also per tier (Flash, Pro).
     byLayout: cut(rows, (r) => r.firstLayout),
@@ -808,6 +835,26 @@ function researchFor(rows) {
     },
   };
 }
+// The strategy studies' labels and population, per pipe (strategy.mjs).
+function strategyMeta(rows, leg) {
+  const sourced = bySourceStrategy(rows);
+  return {
+    labels: strategyLabels(rows, (r) => r.strategy, (r) => r.strategyDefault, ATTRIBUTION.nameOf),
+    sourceLabels: strategyLabels(sourced, (r) => r.sourceStrategy, (r) => r.sourceDefault, ATTRIBUTION.nameOf),
+    scope: {
+      // the first day campaign-service recorded a play: no email before it carries a strategy
+      recordedFrom: STRATEGY_RECORDED_FROM,
+      emails: rows.length,
+      attributed: rows.filter((r) => r.strategy).length,
+      // a run recorded with no strategy (no play, not a sales funnel unit, unreadable)
+      noPlay: rows.filter((r) => !r.strategy && r.strategyState !== "unattributed").length,
+      unattributed: rows.filter((r) => r.strategyState === "unattributed").length,
+      sourced: rows.filter((r) => r.sourceStrategies.length).length,
+      // recorded, but the run is too recent for the maturity rule: counted at a later read
+      waiting: research.strategyWaiting[leg],
+    },
+  };
+}
 // What each dynasty runs: the model and the template that wrote most of its emails.
 function workflowMeta(rows) {
   const by = new Map();
@@ -833,6 +880,8 @@ const research = (() => {
   let noRunStart = 0;
   let young = 0;
   let beforeWindow = 0;
+  // per leg: the emails a lead strategy is recorded for that wait for the maturity rule
+  const strategyWaiting = { [POSITIVE_REPLY_LEG]: 0, [WEBSITE_VISIT_LEG]: 0 };
   const mature = researchRows.filter((r) => {
     if (r.leg !== POSITIVE_REPLY_LEG && r.leg !== WEBSITE_VISIT_LEG) return false;
     if (!r._runStartedAt) { noRunStart++; return true; }
@@ -840,6 +889,7 @@ const research = (() => {
     // a lead served before the window has only its later emails in the dump: left out whole
     if (day < WINDOW.from) { beforeWindow++; return false; }
     // a run too recent for its outcomes to have arrived: it waits, it is not dropped
+    if (day >= researchCutoff(r.leg) && r.strategy) strategyWaiting[r.leg]++;
     if (day >= researchCutoff(r.leg)) { young++; return false; }
     return true;
   });
@@ -951,7 +1001,7 @@ const research = (() => {
     // leads no generation record ties to a serving run: in the cohort, as features-service does
     noRunStart,
   };
-  return { reply, visit, union, scope, immature: young, noRunStart, beforeWindow };
+  return { reply, visit, union, scope, immature: young, noRunStart, beforeWindow, strategyWaiting };
 })();
 const minMonth = (rows) => rows.reduce((m, f) => (!m || f.month < m ? f.month : m), null);
 const maxMonth = (rows) => rows.reduce((m, f) => (!m || f.month > m ? f.month : m), null);
@@ -964,6 +1014,9 @@ out.research = {
   visit: researchFor(research.visit),
   // what each workflow runs, per pipe: a dynasty can run a different model on each leg
   workflowMeta: { reply: workflowMeta(research.reply), visit: workflowMeta(research.visit) },
+  // per pipe: each strategy's served name ("(default)" on the pipe's default play) and who is in
+  // the strategy studies' population
+  strategy: Object.fromEntries([["reply", research.reply, POSITIVE_REPLY_LEG], ["visit", research.visit, WEBSITE_VISIT_LEG]].map(([key, rows, leg]) => [key, strategyMeta(rows, leg)])),
   volume: {
     emails: research.union.length,
     orgs: new Set(research.union.map((f) => f.orgId)).size,

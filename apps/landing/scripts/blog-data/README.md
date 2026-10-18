@@ -58,6 +58,17 @@ PROSPECT's timezone (the campaign row's, else the lead's) and state, per month, 
 Monday to Friday between 08:00 and 17:00: campaigns sent on any day and hour until the summer, so
 a weekend day or an off-hour is also an older month. A leg whose every bucket is Learning gets none.
 
+The two strategy studies per cold email pipe (`strategy.mjs`, 2026-10-18) read campaign-service's
+`run_play_attributions` (one row per dispatched run, since 2026-10-18): **Lead strategy** (ROI + rate,
+`<pipe>-strategy-<goal>`) files each email under the play its generation's run was served under, a bar
+being the features-service strategy name (`strategies.json`) marked `(default)` on the pipe's default
+play; **Sourcing strategy** (rate only, `<pipe>-sourcing-strategy-rate`) files it under the play of the
+run that FOUND its lead (lead-service `leads_campaigns.parent_run_id` handed to the outreach campaign,
+or an on_demand source run whose `caller_run_id` is the outreach run). Sourcing spend sits on its own
+runs, so no sourcing ROI. An email whose run carries no attribution (everything before 2026-10-18) is
+out of both studies, stated in their population line, never counted under the default. Meeting
+booking runs carry no attribution yet, so that pipe has no strategy study.
+
 The second argument receives two side files the workflow and template pages read
 (`research-catalog.json`: one entry per workflow, per template and per model, per pipe, with its months and
 its last runs; `research-templates.json`: the text of every listed template). extract.sh writes

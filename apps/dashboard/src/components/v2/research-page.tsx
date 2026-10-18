@@ -79,6 +79,8 @@ const WINNER_LABEL: Record<ResearchTopic, string> = {
   judgment: "Comparison",
   // before against after: two periods, never a pick among options
   launch: "Comparison",
+  strategy: "Winner",
+  "sourcing-strategy": "Winner",
 };
 
 const STATE_LOOK: Record<StudyState, { label: string; dot: string }> = {

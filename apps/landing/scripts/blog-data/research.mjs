@@ -39,6 +39,7 @@ import { MODEL_LABEL } from "./model-label.mjs";
 import { meetingStudies } from "./meetings.mjs";
 import { meetingBeforeAfterStudy } from "./meeting-before-after.mjs";
 import { jevStudies } from "./jev.mjs";
+import { strategyPopulation } from "./strategy.mjs";
 import { MEETING_BOOKING_LEG, POSITIVE_REPLY_LEG, WEBSITE_VISIT_LEG, canonicalLeg } from "./leg-key.mjs";
 import { NAMING_LABEL, namingOf, namingSides, rateP, costP, pText } from "./naming/naming.mjs";
 
@@ -348,12 +349,12 @@ function likeForLikeLines(o, strata, winner, { goal }) {
 const studies = [];
 const add = (s) => studies.push(s);
 
-function dimensionStudies(key, o, R, { dim, dimNoun, cutKey, byMonthKey, label, strataKey }) {
+function dimensionStudies(key, o, R, { dim, dimNoun, cutKey, byMonthKey, label, strataKey, goals = ["roi", "rate"] }) {
   const rows = R[cutKey];
   // A workflow's or a template's bar carries its key, so the page can open that one's own page.
   const keyed = dim === "workflow" || dim === "template" || dim === "llm";
   // ROI
-  {
+  if (goals.includes("roi")) {
     const w = costWinner(o, rows);
     const line = w ? monthLine(o, R[byMonthKey][w.row.bucket], "cost") : [];
     const moved = movement(line);
@@ -382,7 +383,7 @@ function dimensionStudies(key, o, R, { dim, dimNoun, cutKey, byMonthKey, label, 
     });
   }
   // rate
-  {
+  if (goals.includes("rate")) {
     const w = rateWinner(o, rows);
     const line = w ? monthLine(o, R[byMonthKey][w.row.bucket], "rate") : [];
     const moved = movement(line);
@@ -961,6 +962,22 @@ for (const key of ["reply", "visit"]) {
   // The best workflow: one model and one template together, which is what a campaign actually
   // runs. The same floors crown it as every other study.
   dimensionStudies(key, o, R, { dim: "workflow", dimNoun: "workflow", cutKey: "byWorkflow", byMonthKey: "workflowByMonth", label: workflowLabelFor(key) });
+
+  // The lead strategy (play) that served the email, and the one that found its lead: only the
+  // emails campaign-service RECORDED a strategy for (strategy.mjs), each study saying who is in.
+  // Sourcing is a rate only: the sourcing runs' own spend is not in the cold email spend.
+  const S = facts.research.strategy?.[key];
+  if (!S) throw new Error(`facts.json carries no ${key} strategy block: re-run derive.mjs`);
+  const strategyLabel = (labels) => (id) => {
+    if (!labels[id]) throw new Error(`no label for strategy ${id}`);
+    return labels[id];
+  };
+  const before = studies.length;
+  dimensionStudies(key, o, R, { dim: "strategy", dimNoun: "lead strategy", cutKey: "byStrategy", byMonthKey: "strategyByMonth", label: strategyLabel(S.labels) });
+  for (const st of studies.slice(before)) st.conclusion.unshift(strategyPopulation(S.scope, o, "strategy", RULE_DAYS));
+  const sourcing = studies.length;
+  dimensionStudies(key, o, R, { dim: "sourcing-strategy", dimNoun: "sourcing strategy", cutKey: "bySourceStrategy", byMonthKey: "sourceStrategyByMonth", label: strategyLabel(S.sourceLabels), goals: ["rate"] });
+  for (const st of studies.slice(sourcing)) st.conclusion.unshift(strategyPopulation(S.scope, o, "sourcing", RULE_DAYS));
 }
 
 // The meeting booking pipe runs one workflow (one model, one template) since early September: every comparison
@@ -1208,6 +1225,8 @@ catalog["meeting-booking"] = { workflows: [], templates: [], models: [] };
       { dim: "llm", cut: "byModel", strata: R.modelStrata, label: (b) => b },
       { dim: "template", cut: "byTemplate", strata: R.templateStrata, label: templateLabel },
       { dim: "workflow", cut: "byWorkflow", strata: R.workflowStrata, label: workflowLabelFor(key) },
+      { dim: "strategy", cut: "byStrategy", strata: R.strategyStrata, label: (id) => facts.research.strategy[key].labels[id] },
+      { dim: "sourcing-strategy", cut: "bySourceStrategy", strata: R.sourceStrategyStrata, label: (id) => facts.research.strategy[key].sourceLabels[id] },
     ];
     for (const c of categorical) {
       for (const goal of ["roi", "rate"]) {

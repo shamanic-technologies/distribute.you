@@ -15,6 +15,8 @@ import { CalendarIcon } from "@phosphor-icons/react/dist/csr/Calendar";
 import { ClockIcon } from "@phosphor-icons/react/dist/csr/Clock";
 import { ScalesIcon } from "@phosphor-icons/react/dist/csr/Scales";
 import { RocketLaunchIcon } from "@phosphor-icons/react/dist/csr/RocketLaunch";
+import { StrategyIcon } from "@phosphor-icons/react/dist/csr/Strategy";
+import { MagnifyingGlassIcon } from "@phosphor-icons/react/dist/csr/MagnifyingGlass";
 import { EmptyNote, SectionTitle, Shimmer } from "@/components/v2/ui";
 import { ChannelChip } from "@/components/v2/offer-sales-paths";
 import { useLegCatalogue } from "@/lib/use-leg-catalogue";
@@ -61,6 +63,9 @@ export const TOPIC_LOOK: Record<ResearchTopic, { color: string; Icon: typeof Bra
   judgment: { color: "var(--data-violet)", Icon: ScalesIcon },
   // the same people before and after something went live (the AI answering positive replies)
   launch: { color: "var(--data-sky)", Icon: RocketLaunchIcon },
+  // the play a pipe ran under: who it serves and which workflows it may run, so the workflow colour
+  strategy: { color: "var(--data-lime)", Icon: StrategyIcon },
+  "sourcing-strategy": { color: "var(--data-lime)", Icon: MagnifyingGlassIcon },
 };
 
 export const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];

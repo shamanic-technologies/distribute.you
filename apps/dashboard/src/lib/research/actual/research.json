@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-10-18T14:19:38.480Z",
+  "generatedAt": "2026-10-18T14:27:56.658Z",
   "allOrgs": true,
   "costBasis": "actual",
   "unpricedBilledUsd": 0,
@@ -3005,6 +3005,93 @@
       }
     },
     {
+      "id": "cold-email-positive-reply-strategy-roi",
+      "pipe": "cold-email-positive-reply",
+      "topic": "strategy",
+      "goal": "roi",
+      "question": "Which lead strategy gets the cheapest positive reply?",
+      "status": "not_enough_data",
+      "headline": "No lead strategy has produced a positive reply yet.",
+      "winner": null,
+      "result": null,
+      "crowned": false,
+      "charts": [
+        {
+          "kind": "bars",
+          "title": "Cost per positive reply (USD, lower is better)",
+          "lowerIsBetter": true,
+          "points": [],
+          "note": "Only people we started writing to at least 21 days before the read (before Sep 27) count, with every positive reply and website visit they sent since. A figure needs 1 positive reply (10 website visits) behind it; below that it reads Learning. A website visit is a click our link-scanner check judged human, which only the emails we send ourselves can carry: website-visit figures leave out the emails sent through the provider, whose clicks are mostly scanners and cannot be screened."
+        }
+      ],
+      "conclusion": [
+        "Population: the 0 emails a lead strategy is recorded for, out of 110,848 emails on this pipe. A run's strategy is recorded since Oct 18, 2026: the 110,848 emails that carry no record (every email before that day) are left out, never counted under the default.",
+        "Nothing priced yet."
+      ],
+      "verdict": {
+        "kind": "noise",
+        "reason": "Population: the 0 emails a lead strategy is recorded for, out of 110,848 emails on this pipe. A run's strategy is recorded since Oct 18, 2026: the 110,848 emails that carry no record (every email before that day) are left out, never counted under the default."
+      }
+    },
+    {
+      "id": "cold-email-positive-reply-strategy-rate",
+      "pipe": "cold-email-positive-reply",
+      "topic": "strategy",
+      "goal": "rate",
+      "question": "Which lead strategy gets the most positive replies?",
+      "status": "not_enough_data",
+      "headline": "No lead strategy has earned a positive reply yet.",
+      "winner": null,
+      "result": null,
+      "crowned": false,
+      "charts": [
+        {
+          "kind": "bars",
+          "title": "Positive reply rate, % of emails (higher is better)",
+          "lowerIsBetter": false,
+          "points": [],
+          "note": "Only people we started writing to at least 21 days before the read (before Sep 27) count, with every positive reply and website visit they sent since. A figure needs 1 positive reply (10 website visits) behind it; below that it reads Learning. A website visit is a click our link-scanner check judged human, which only the emails we send ourselves can carry: website-visit figures leave out the emails sent through the provider, whose clicks are mostly scanners and cannot be screened."
+        }
+      ],
+      "conclusion": [
+        "Population: the 0 emails a lead strategy is recorded for, out of 110,848 emails on this pipe. A run's strategy is recorded since Oct 18, 2026: the 110,848 emails that carry no record (every email before that day) are left out, never counted under the default.",
+        "A lead strategy with fewer than 1 positive reply is ranked where its value puts it and marked Learning."
+      ],
+      "verdict": {
+        "kind": "noise",
+        "reason": "Population: the 0 emails a lead strategy is recorded for, out of 110,848 emails on this pipe. A run's strategy is recorded since Oct 18, 2026: the 110,848 emails that carry no record (every email before that day) are left out, never counted under the default."
+      }
+    },
+    {
+      "id": "cold-email-positive-reply-sourcing-strategy-rate",
+      "pipe": "cold-email-positive-reply",
+      "topic": "sourcing-strategy",
+      "goal": "rate",
+      "question": "Which sourcing strategy gets the most positive replies?",
+      "status": "not_enough_data",
+      "headline": "No sourcing strategy has earned a positive reply yet.",
+      "winner": null,
+      "result": null,
+      "crowned": false,
+      "charts": [
+        {
+          "kind": "bars",
+          "title": "Positive reply rate, % of emails (higher is better)",
+          "lowerIsBetter": false,
+          "points": [],
+          "note": "Only people we started writing to at least 21 days before the read (before Sep 27) count, with every positive reply and website visit they sent since. A figure needs 1 positive reply (10 website visits) behind it; below that it reads Learning. A website visit is a click our link-scanner check judged human, which only the emails we send ourselves can carry: website-visit figures leave out the emails sent through the provider, whose clicks are mostly scanners and cannot be screened."
+        }
+      ],
+      "conclusion": [
+        "Population: the 0 emails whose lead a recorded sourcing strategy found (a lead two strategies found counts under each), out of 110,848 emails on this pipe. A run's strategy is recorded since Oct 18, 2026: the 110,848 emails that carry no record (every email before that day) are left out, never counted under the default. Rate only: finding the lead is paid on the sourcing run, outside the cold email spend, so a cost per positive reply here would leave it out.",
+        "A sourcing strategy with fewer than 1 positive reply is ranked where its value puts it and marked Learning."
+      ],
+      "verdict": {
+        "kind": "noise",
+        "reason": "Population: the 0 emails whose lead a recorded sourcing strategy found (a lead two strategies found counts under each), out of 110,848 emails on this pipe. A run's strategy is recorded since Oct 18, 2026: the 110,848 emails that carry no record (every email before that day) are left out, never counted under the default. Rate only: finding the lead is paid on the sourcing run, outside the cold email spend, so a cost per positive reply here would leave it out."
+      }
+    },
+    {
       "id": "cold-email-website-visit-llm-roi",
       "pipe": "cold-email-website-visit",
       "topic": "llm",
@@ -4596,6 +4683,93 @@
       "verdict": {
         "kind": "noise",
         "reason": "Gemini 3.1 Pro · Cold email v31 rests on 4 website visits; a lead needs at least 5 before chance stops dominating."
+      }
+    },
+    {
+      "id": "cold-email-website-visit-strategy-roi",
+      "pipe": "cold-email-website-visit",
+      "topic": "strategy",
+      "goal": "roi",
+      "question": "Which lead strategy gets the cheapest website visit?",
+      "status": "not_enough_data",
+      "headline": "No lead strategy has produced a website visit yet.",
+      "winner": null,
+      "result": null,
+      "crowned": false,
+      "charts": [
+        {
+          "kind": "bars",
+          "title": "Cost per website visit (USD, lower is better)",
+          "lowerIsBetter": true,
+          "points": [],
+          "note": "Only people we started writing to at least 21 days before the read (before Sep 27) count, with every positive reply and website visit they sent since. A figure needs 1 positive reply (10 website visits) behind it; below that it reads Learning. A website visit is a click our link-scanner check judged human, which only the emails we send ourselves can carry: website-visit figures leave out the emails sent through the provider, whose clicks are mostly scanners and cannot be screened."
+        }
+      ],
+      "conclusion": [
+        "Population: the 0 emails with a link a lead strategy is recorded for, out of 4,185 emails with a link on this pipe. A run's strategy is recorded since Oct 18, 2026: the 4,185 emails with a link that carry no record (every email before that day) are left out, never counted under the default.",
+        "Nothing priced yet."
+      ],
+      "verdict": {
+        "kind": "noise",
+        "reason": "Population: the 0 emails with a link a lead strategy is recorded for, out of 4,185 emails with a link on this pipe. A run's strategy is recorded since Oct 18, 2026: the 4,185 emails with a link that carry no record (every email before that day) are left out, never counted under the default."
+      }
+    },
+    {
+      "id": "cold-email-website-visit-strategy-rate",
+      "pipe": "cold-email-website-visit",
+      "topic": "strategy",
+      "goal": "rate",
+      "question": "Which lead strategy gets the most website visits?",
+      "status": "not_enough_data",
+      "headline": "No lead strategy has earned a website visit yet.",
+      "winner": null,
+      "result": null,
+      "crowned": false,
+      "charts": [
+        {
+          "kind": "bars",
+          "title": "Website visit rate, % of emails with a link (higher is better)",
+          "lowerIsBetter": false,
+          "points": [],
+          "note": "Only people we started writing to at least 21 days before the read (before Sep 27) count, with every positive reply and website visit they sent since. A figure needs 1 positive reply (10 website visits) behind it; below that it reads Learning. A website visit is a click our link-scanner check judged human, which only the emails we send ourselves can carry: website-visit figures leave out the emails sent through the provider, whose clicks are mostly scanners and cannot be screened."
+        }
+      ],
+      "conclusion": [
+        "Population: the 0 emails with a link a lead strategy is recorded for, out of 4,185 emails with a link on this pipe. A run's strategy is recorded since Oct 18, 2026: the 4,185 emails with a link that carry no record (every email before that day) are left out, never counted under the default.",
+        "A lead strategy with fewer than 10 website visits is ranked where its value puts it and marked Learning."
+      ],
+      "verdict": {
+        "kind": "noise",
+        "reason": "Population: the 0 emails with a link a lead strategy is recorded for, out of 4,185 emails with a link on this pipe. A run's strategy is recorded since Oct 18, 2026: the 4,185 emails with a link that carry no record (every email before that day) are left out, never counted under the default."
+      }
+    },
+    {
+      "id": "cold-email-website-visit-sourcing-strategy-rate",
+      "pipe": "cold-email-website-visit",
+      "topic": "sourcing-strategy",
+      "goal": "rate",
+      "question": "Which sourcing strategy gets the most website visits?",
+      "status": "not_enough_data",
+      "headline": "No sourcing strategy has earned a website visit yet.",
+      "winner": null,
+      "result": null,
+      "crowned": false,
+      "charts": [
+        {
+          "kind": "bars",
+          "title": "Website visit rate, % of emails with a link (higher is better)",
+          "lowerIsBetter": false,
+          "points": [],
+          "note": "Only people we started writing to at least 21 days before the read (before Sep 27) count, with every positive reply and website visit they sent since. A figure needs 1 positive reply (10 website visits) behind it; below that it reads Learning. A website visit is a click our link-scanner check judged human, which only the emails we send ourselves can carry: website-visit figures leave out the emails sent through the provider, whose clicks are mostly scanners and cannot be screened."
+        }
+      ],
+      "conclusion": [
+        "Population: the 0 emails with a link whose lead a recorded sourcing strategy found (a lead two strategies found counts under each), out of 4,185 emails with a link on this pipe. A run's strategy is recorded since Oct 18, 2026: the 4,185 emails with a link that carry no record (every email before that day) are left out, never counted under the default. Rate only: finding the lead is paid on the sourcing run, outside the cold email spend, so a cost per website visit here would leave it out.",
+        "A sourcing strategy with fewer than 10 website visits is ranked where its value puts it and marked Learning."
+      ],
+      "verdict": {
+        "kind": "noise",
+        "reason": "Population: the 0 emails with a link whose lead a recorded sourcing strategy found (a lead two strategies found counts under each), out of 4,185 emails with a link on this pipe. A run's strategy is recorded since Oct 18, 2026: the 4,185 emails with a link that carry no record (every email before that day) are left out, never counted under the default. Rate only: finding the lead is paid on the sourcing run, outside the cold email spend, so a cost per website visit here would leave it out."
       }
     },
     {

@@ -385,6 +385,34 @@ WHERE kind = 'click'
   AND received_at >= '$FROM' AND received_at < '$TO'
 " scanner-hits.csv
 
+# ---------- Lead strategies (the Research strategy and sourcing strategy studies, strategy.mjs) ----------
+# The play campaign-service served every run under, recorded at dispatch (append-only, one row per
+# run, since 2026-10-18). A cold email's generation run_id IS its attributed run; an on_demand
+# sourcing run names the outreach run that asked for the lead in caller_run_id.
+run campaign_service "
+SELECT run_id, run_kind, coalesce(caller_run_id, '') AS caller_run_id, campaign_id,
+       coalesce(leg_key, '') AS leg_key, play_state, coalesce(strategy_id, '') AS strategy_id,
+       coalesce(play_is_default::text, '') AS play_is_default,
+       to_char(recorded_at AT TIME ZONE 'UTC', 'YYYY-MM-DD HH24:MI:SS.MS') AS recorded_at
+FROM run_play_attributions
+WHERE recorded_at < '$TO'
+" play-attributions.csv
+# The day recording began, read whatever the window: the studies say every email before it has none.
+run campaign_service "
+SELECT coalesce(to_char(min(recorded_at) AT TIME ZONE 'UTC', 'YYYY-MM-DD'), '') AS first_recorded_on
+FROM run_play_attributions
+" play-attributions-from.csv
+# The sourcing run that found each lead handed to an outreach campaign (lead-service keeps one row
+# per sourcing serve: parent_run_id = the sourcing run). Only rows from the first attribution on:
+# an older sourcing run carries no strategy, so its row could never be read.
+ATTR_FROM="$(awk -F, 'NR==2 {print $1}' "$OUT/play-attributions-from.csv")"
+run lead_service "
+SELECT lead_id, source_handed_to_campaign_id AS platform_campaign_id, parent_run_id AS source_run_id
+FROM leads_campaigns
+WHERE source_handed_to_campaign_id IS NOT NULL AND parent_run_id IS NOT NULL
+  AND created_at >= '${ATTR_FROM:-$TO}' AND created_at < '$TO'
+" source-handoffs.csv
+
 # ---------- Research catalogue (workflow and template pages) ----------
 # Every "last runs" list is per LEG: the campaign-to-leg map lives in another database, so it
 # rides into each query as a VALUES list built from campaign-legs.csv.
@@ -466,5 +494,12 @@ FROM (
   WHERE g.feature_slug = 'sales-cold-email-outreach' AND g.model IS NOT NULL AND g.created_at < '$TO'
 ) x WHERE rn <= 12
 " model-runs.json
+
+# Every lead strategy's served name, as features-service's catalogue states it (a name may carry a
+# comma: JSON, never CSV).
+runjson features_service "
+SELECT coalesce(json_agg(json_build_object('id', id, 'name', name) ORDER BY id), '[]')
+FROM strategies
+" strategies.json
 
 echo "done"
