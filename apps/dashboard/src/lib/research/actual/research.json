@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-10-18T15:04:41.731Z",
+  "generatedAt": "2026-10-18T15:50:11.844Z",
   "allOrgs": true,
   "costBasis": "actual",
   "unpricedBilledUsd": 0,
@@ -5431,41 +5431,41 @@
       "outcome": "positive-reply",
       "topic": "pipe",
       "goal": "roi",
-      "question": "Which pipe gets the cheapest positive reply?",
+      "question": "What does each pipe add to the cost of a positive reply?",
       "status": "measured",
-      "headline": "Dotterel is the only pipe that reaches a positive reply in this read: $59 per positive reply, nothing to compare it with. Noise so far.",
+      "headline": "Dotterel carries the whole cost: $59 per positive reply.",
       "winner": "Dotterel",
-      "crowned": false,
+      "winnerLabel": "Largest share",
+      "crowned": true,
       "result": {
         "display": "$59",
-        "unit": "per positive reply",
-        "sample": "47 positive replies · 110,848 emails"
+        "unit": "per positive reply, every pipe added up",
+        "sample": "47 positive replies · $2,789 spent"
       },
       "charts": [
         {
           "kind": "bars",
-          "title": "Cost per positive reply (USD, lower is better)",
+          "title": "What each pipe adds to the cost of a positive reply (USD)",
           "lowerIsBetter": true,
           "points": [
             {
               "label": "Dotterel",
               "value": 59.34,
               "display": "$59",
-              "note": "47 positive replies · 110,848 emails",
+              "note": "$2,789 spent, 100% of the cost",
               "thin": false
             }
           ],
-          "note": "Only people we started writing to at least 21 days before the read (before Sep 27) count, with every positive reply and website visit they sent since. A figure needs 1 positive reply (10 website visits) behind it; below that it reads Learning. A website visit is a click our link-scanner check judged human, which only the emails we send ourselves can carry: website-visit figures leave out the emails sent through the provider, whose clicks are mostly scanners and cannot be screened."
+          "note": "Each bar is that pipe's spend over every positive reply (47), so the bars add up to the $59 average. Only people we started writing to at least 21 days before the read (before Sep 27) count, with every positive reply and website visit they sent since. A figure needs 1 positive reply (10 website visits) behind it; below that it reads Learning. A website visit is a click our link-scanner check judged human, which only the emails we send ourselves can carry: website-visit figures leave out the emails sent through the provider, whose clicks are mostly scanners and cannot be screened."
         }
       ],
       "conclusion": [
         "Population: the 110,848 emails of the one pipe that lands on a positive reply, Dotterel, to 33,739 leads, across 16 clients.",
-        "Dotterel: 47 positive replies · 110,848 emails, $2,789 spent.",
-        "A pipe with fewer than 1 positive reply is ranked where its value puts it and marked Learning."
+        "The bars split the $59 a positive reply costs by where the money went: $2,789 over 47 positive replies."
       ],
       "verdict": {
-        "kind": "noise",
-        "reason": "Only one pipe reaches a positive reply in this read: one figure, nothing to compare it with."
+        "kind": "conclusion",
+        "reason": "A measurement on 47 positive replies: 95% interval $45 to $81 per positive reply."
       }
     },
     {
@@ -5498,7 +5498,7 @@
               "thin": false
             }
           ],
-          "note": "Only people we started writing to at least 21 days before the read (before Sep 27) count, with every positive reply and website visit they sent since. A figure needs 1 positive reply (10 website visits) behind it; below that it reads Learning. A website visit is a click our link-scanner check judged human, which only the emails we send ourselves can carry: website-visit figures leave out the emails sent through the provider, whose clicks are mostly scanners and cannot be screened."
+          "note": "Each bar is the share of the leads that entered that pipe who went on to a positive reply. Only people we started writing to at least 21 days before the read (before Sep 27) count, with every positive reply and website visit they sent since. A figure needs 1 positive reply (10 website visits) behind it; below that it reads Learning. A website visit is a click our link-scanner check judged human, which only the emails we send ourselves can carry: website-visit figures leave out the emails sent through the provider, whose clicks are mostly scanners and cannot be screened."
         }
       ],
       "conclusion": [
@@ -5517,41 +5517,41 @@
       "outcome": "positive-reply",
       "topic": "channel",
       "goal": "roi",
-      "question": "Which channel gets the cheapest positive reply?",
+      "question": "What does each channel add to the cost of a positive reply?",
       "status": "measured",
-      "headline": "Sales Cold Email Outreach is the only channel that reaches a positive reply in this read: $59 per positive reply, nothing to compare it with. Noise so far.",
+      "headline": "Sales Cold Email Outreach carries the whole cost: $59 per positive reply.",
       "winner": "Sales Cold Email Outreach",
-      "crowned": false,
+      "winnerLabel": "Largest share",
+      "crowned": true,
       "result": {
         "display": "$59",
-        "unit": "per positive reply",
-        "sample": "47 positive replies · 110,848 emails"
+        "unit": "per positive reply, every channel added up",
+        "sample": "47 positive replies · $2,789 spent"
       },
       "charts": [
         {
           "kind": "bars",
-          "title": "Cost per positive reply (USD, lower is better)",
+          "title": "What each channel adds to the cost of a positive reply (USD)",
           "lowerIsBetter": true,
           "points": [
             {
               "label": "Sales Cold Email Outreach",
               "value": 59.34,
               "display": "$59",
-              "note": "47 positive replies · 110,848 emails",
+              "note": "$2,789 spent, 100% of the cost",
               "thin": false
             }
           ],
-          "note": "Only people we started writing to at least 21 days before the read (before Sep 27) count, with every positive reply and website visit they sent since. A figure needs 1 positive reply (10 website visits) behind it; below that it reads Learning. A website visit is a click our link-scanner check judged human, which only the emails we send ourselves can carry: website-visit figures leave out the emails sent through the provider, whose clicks are mostly scanners and cannot be screened."
+          "note": "Each bar is that channel's spend over every positive reply (47), so the bars add up to the $59 average. Only people we started writing to at least 21 days before the read (before Sep 27) count, with every positive reply and website visit they sent since. A figure needs 1 positive reply (10 website visits) behind it; below that it reads Learning. A website visit is a click our link-scanner check judged human, which only the emails we send ourselves can carry: website-visit figures leave out the emails sent through the provider, whose clicks are mostly scanners and cannot be screened."
         }
       ],
       "conclusion": [
         "Population: the 110,848 emails of the one pipe that lands on a positive reply, Dotterel, to 33,739 leads, across 16 clients.",
-        "Sales Cold Email Outreach: 47 positive replies · 110,848 emails, $2,789 spent.",
-        "A channel with fewer than 1 positive reply is ranked where its value puts it and marked Learning."
+        "The bars split the $59 a positive reply costs by where the money went: $2,789 over 47 positive replies."
       ],
       "verdict": {
-        "kind": "noise",
-        "reason": "Only one channel reaches a positive reply in this read: one figure, nothing to compare it with."
+        "kind": "conclusion",
+        "reason": "A measurement on 47 positive replies: 95% interval $45 to $81 per positive reply."
       }
     },
     {
@@ -5584,7 +5584,7 @@
               "thin": false
             }
           ],
-          "note": "Only people we started writing to at least 21 days before the read (before Sep 27) count, with every positive reply and website visit they sent since. A figure needs 1 positive reply (10 website visits) behind it; below that it reads Learning. A website visit is a click our link-scanner check judged human, which only the emails we send ourselves can carry: website-visit figures leave out the emails sent through the provider, whose clicks are mostly scanners and cannot be screened."
+          "note": "Each bar is the share of the leads that entered that channel who went on to a positive reply. Only people we started writing to at least 21 days before the read (before Sep 27) count, with every positive reply and website visit they sent since. A figure needs 1 positive reply (10 website visits) behind it; below that it reads Learning. A website visit is a click our link-scanner check judged human, which only the emails we send ourselves can carry: website-visit figures leave out the emails sent through the provider, whose clicks are mostly scanners and cannot be screened."
         }
       ],
       "conclusion": [
@@ -5603,41 +5603,41 @@
       "outcome": "positive-reply",
       "topic": "leg",
       "goal": "roi",
-      "question": "Which leg gets the cheapest positive reply?",
+      "question": "What does each leg add to the cost of a positive reply?",
       "status": "measured",
-      "headline": "Lead → Positive reply is the only leg that reaches a positive reply in this read: $59 per positive reply, nothing to compare it with. Noise so far.",
+      "headline": "Lead → Positive reply carries the whole cost: $59 per positive reply.",
       "winner": "Lead → Positive reply",
-      "crowned": false,
+      "winnerLabel": "Largest share",
+      "crowned": true,
       "result": {
         "display": "$59",
-        "unit": "per positive reply",
-        "sample": "47 positive replies · 110,848 emails"
+        "unit": "per positive reply, every leg added up",
+        "sample": "47 positive replies · $2,789 spent"
       },
       "charts": [
         {
           "kind": "bars",
-          "title": "Cost per positive reply (USD, lower is better)",
+          "title": "What each leg adds to the cost of a positive reply (USD)",
           "lowerIsBetter": true,
           "points": [
             {
               "label": "Lead → Positive reply",
               "value": 59.34,
               "display": "$59",
-              "note": "47 positive replies · 110,848 emails",
+              "note": "$2,789 spent, 100% of the cost",
               "thin": false
             }
           ],
-          "note": "Only people we started writing to at least 21 days before the read (before Sep 27) count, with every positive reply and website visit they sent since. A figure needs 1 positive reply (10 website visits) behind it; below that it reads Learning. A website visit is a click our link-scanner check judged human, which only the emails we send ourselves can carry: website-visit figures leave out the emails sent through the provider, whose clicks are mostly scanners and cannot be screened."
+          "note": "Each bar is that leg's spend over every positive reply (47), so the bars add up to the $59 average. Only people we started writing to at least 21 days before the read (before Sep 27) count, with every positive reply and website visit they sent since. A figure needs 1 positive reply (10 website visits) behind it; below that it reads Learning. A website visit is a click our link-scanner check judged human, which only the emails we send ourselves can carry: website-visit figures leave out the emails sent through the provider, whose clicks are mostly scanners and cannot be screened."
         }
       ],
       "conclusion": [
         "Population: the 110,848 emails of the one pipe that lands on a positive reply, Dotterel, to 33,739 leads, across 16 clients.",
-        "Lead → Positive reply: 47 positive replies · 110,848 emails, $2,789 spent.",
-        "A leg with fewer than 1 positive reply is ranked where its value puts it and marked Learning."
+        "The bars split the $59 a positive reply costs by where the money went: $2,789 over 47 positive replies."
       ],
       "verdict": {
-        "kind": "noise",
-        "reason": "Only one leg reaches a positive reply in this read: one figure, nothing to compare it with."
+        "kind": "conclusion",
+        "reason": "A measurement on 47 positive replies: 95% interval $45 to $81 per positive reply."
       }
     },
     {
@@ -5670,7 +5670,7 @@
               "thin": false
             }
           ],
-          "note": "Only people we started writing to at least 21 days before the read (before Sep 27) count, with every positive reply and website visit they sent since. A figure needs 1 positive reply (10 website visits) behind it; below that it reads Learning. A website visit is a click our link-scanner check judged human, which only the emails we send ourselves can carry: website-visit figures leave out the emails sent through the provider, whose clicks are mostly scanners and cannot be screened."
+          "note": "Each bar is the share of the leads that entered that leg who went on to a positive reply. Only people we started writing to at least 21 days before the read (before Sep 27) count, with every positive reply and website visit they sent since. A figure needs 1 positive reply (10 website visits) behind it; below that it reads Learning. A website visit is a click our link-scanner check judged human, which only the emails we send ourselves can carry: website-visit figures leave out the emails sent through the provider, whose clicks are mostly scanners and cannot be screened."
         }
       ],
       "conclusion": [
@@ -6231,7 +6231,7 @@
       ],
       "conclusion": [
         "Population: the 110,848 emails of the one pipe that lands on a positive reply, Dotterel, to 33,739 leads, across 16 clients. Each email is filed under its workflow version's verdicts: Jev judges every version against each tactic's text, and re-judges it in place when that text changes, so this reads today's judgment. Every version here carries one.",
-        "No workflow that sent these emails follows these tactics: Answers leads only, Attaches offer documents, Business contacts only, Catch-all, Contacted pure prospects, Email reach, Email replies only, Fresh contacts only, Lead follow-up due, Offer angle, Phone reach, Skips people who already wrote, Skips the brand's team, Unknown email, Warm, never converted, Website visit.",
+        "No workflow in this population follows these tactics: Answers leads only, Attaches offer documents, Business contacts only, Catch-all, Contacted pure prospects, Email reach, Email replies only, Fresh contacts only, Lead follow-up due, Offer angle, Phone reach, Skips people who already wrote, Skips the brand's team, Unknown email, Warm, never converted, Website visit.",
         "Blind angle: followed: $57, 33 positive replies · 73,181 emails; not followed: $66, 14 positive replies · 37,667 emails."
       ],
       "verdict": {
@@ -6281,7 +6281,7 @@
       ],
       "conclusion": [
         "Population: the 110,848 emails of the one pipe that lands on a positive reply, Dotterel, to 33,739 leads, across 16 clients. Each email is filed under its workflow version's verdicts: Jev judges every version against each tactic's text, and re-judges it in place when that text changes, so this reads today's judgment. Every version here carries one.",
-        "No workflow that sent these emails follows these tactics: Answers leads only, Attaches offer documents, Business contacts only, Catch-all, Contacted pure prospects, Email reach, Email replies only, Fresh contacts only, Lead follow-up due, Offer angle, Phone reach, Skips people who already wrote, Skips the brand's team, Unknown email, Warm, never converted, Website visit.",
+        "No workflow in this population follows these tactics: Answers leads only, Attaches offer documents, Business contacts only, Catch-all, Contacted pure prospects, Email reach, Email replies only, Fresh contacts only, Lead follow-up due, Offer angle, Phone reach, Skips people who already wrote, Skips the brand's team, Unknown email, Warm, never converted, Website visit.",
         "Blind angle: followed: 0.14%, 32 of 22,778 leads went on to a positive reply; not followed: 0.11%, 14 of 12,851 leads went on to a positive reply."
       ],
       "verdict": {
@@ -6421,41 +6421,41 @@
       "outcome": "website-visit",
       "topic": "pipe",
       "goal": "roi",
-      "question": "Which pipe gets the cheapest website visit?",
+      "question": "What does each pipe add to the cost of a website visit?",
       "status": "measured",
-      "headline": "Killdeer is the only pipe that reaches a website visit in this read: $2.33 per website visit, nothing to compare it with. Noise so far.",
+      "headline": "Killdeer carries the whole cost: $2.33 per website visit.",
       "winner": "Killdeer",
-      "crowned": false,
+      "winnerLabel": "Largest share",
+      "crowned": true,
       "result": {
         "display": "$2.33",
-        "unit": "per website visit",
-        "sample": "26 website visits · 4,185 emails with a link"
+        "unit": "per website visit, every pipe added up",
+        "sample": "26 website visits · $61 spent"
       },
       "charts": [
         {
           "kind": "bars",
-          "title": "Cost per website visit (USD, lower is better)",
+          "title": "What each pipe adds to the cost of a website visit (USD)",
           "lowerIsBetter": true,
           "points": [
             {
               "label": "Killdeer",
               "value": 2.33,
               "display": "$2.33",
-              "note": "26 website visits · 4,185 emails with a link",
+              "note": "$61 spent, >99% of the cost",
               "thin": false
             }
           ],
-          "note": "Only people we started writing to at least 21 days before the read (before Sep 27) count, with every positive reply and website visit they sent since. A figure needs 1 positive reply (10 website visits) behind it; below that it reads Learning. A website visit is a click our link-scanner check judged human, which only the emails we send ourselves can carry: website-visit figures leave out the emails sent through the provider, whose clicks are mostly scanners and cannot be screened."
+          "note": "Each bar is that pipe's spend over every website visit (26), so the bars add up to the $2.33 average. Only people we started writing to at least 21 days before the read (before Sep 27) count, with every positive reply and website visit they sent since. A figure needs 1 positive reply (10 website visits) behind it; below that it reads Learning. A website visit is a click our link-scanner check judged human, which only the emails we send ourselves can carry: website-visit figures leave out the emails sent through the provider, whose clicks are mostly scanners and cannot be screened."
         }
       ],
       "conclusion": [
         "Population: the 4,185 emails with a link of the one pipe that lands on a website visit, Killdeer, to 1,746 leads, across 3 clients. A website visit is a click our link-scanner check judged human, which only the emails we send ourselves can carry: the emails sent through the provider are left out.",
-        "Killdeer: 26 website visits · 4,185 emails with a link, $61 spent.",
-        "A pipe with fewer than 10 website visits is ranked where its value puts it and marked Learning."
+        "The bars split the $2.33 a website visit costs by where the money went: $61 over 26 website visits."
       ],
       "verdict": {
-        "kind": "noise",
-        "reason": "Only one pipe reaches a website visit in this read: one figure, nothing to compare it with."
+        "kind": "conclusion",
+        "reason": "A measurement on 26 website visits: 95% interval $1.59 to $3.57 per website visit."
       }
     },
     {
@@ -6488,7 +6488,7 @@
               "thin": false
             }
           ],
-          "note": "Only people we started writing to at least 21 days before the read (before Sep 27) count, with every positive reply and website visit they sent since. A figure needs 1 positive reply (10 website visits) behind it; below that it reads Learning. A website visit is a click our link-scanner check judged human, which only the emails we send ourselves can carry: website-visit figures leave out the emails sent through the provider, whose clicks are mostly scanners and cannot be screened."
+          "note": "Each bar is the share of the leads that entered that pipe who went on to a website visit. Only people we started writing to at least 21 days before the read (before Sep 27) count, with every positive reply and website visit they sent since. A figure needs 1 positive reply (10 website visits) behind it; below that it reads Learning. A website visit is a click our link-scanner check judged human, which only the emails we send ourselves can carry: website-visit figures leave out the emails sent through the provider, whose clicks are mostly scanners and cannot be screened."
         }
       ],
       "conclusion": [
@@ -6507,41 +6507,41 @@
       "outcome": "website-visit",
       "topic": "channel",
       "goal": "roi",
-      "question": "Which channel gets the cheapest website visit?",
+      "question": "What does each channel add to the cost of a website visit?",
       "status": "measured",
-      "headline": "Sales Cold Email Outreach is the only channel that reaches a website visit in this read: $2.33 per website visit, nothing to compare it with. Noise so far.",
+      "headline": "Sales Cold Email Outreach carries the whole cost: $2.33 per website visit.",
       "winner": "Sales Cold Email Outreach",
-      "crowned": false,
+      "winnerLabel": "Largest share",
+      "crowned": true,
       "result": {
         "display": "$2.33",
-        "unit": "per website visit",
-        "sample": "26 website visits · 4,185 emails with a link"
+        "unit": "per website visit, every channel added up",
+        "sample": "26 website visits · $61 spent"
       },
       "charts": [
         {
           "kind": "bars",
-          "title": "Cost per website visit (USD, lower is better)",
+          "title": "What each channel adds to the cost of a website visit (USD)",
           "lowerIsBetter": true,
           "points": [
             {
               "label": "Sales Cold Email Outreach",
               "value": 2.33,
               "display": "$2.33",
-              "note": "26 website visits · 4,185 emails with a link",
+              "note": "$61 spent, >99% of the cost",
               "thin": false
             }
           ],
-          "note": "Only people we started writing to at least 21 days before the read (before Sep 27) count, with every positive reply and website visit they sent since. A figure needs 1 positive reply (10 website visits) behind it; below that it reads Learning. A website visit is a click our link-scanner check judged human, which only the emails we send ourselves can carry: website-visit figures leave out the emails sent through the provider, whose clicks are mostly scanners and cannot be screened."
+          "note": "Each bar is that channel's spend over every website visit (26), so the bars add up to the $2.33 average. Only people we started writing to at least 21 days before the read (before Sep 27) count, with every positive reply and website visit they sent since. A figure needs 1 positive reply (10 website visits) behind it; below that it reads Learning. A website visit is a click our link-scanner check judged human, which only the emails we send ourselves can carry: website-visit figures leave out the emails sent through the provider, whose clicks are mostly scanners and cannot be screened."
         }
       ],
       "conclusion": [
         "Population: the 4,185 emails with a link of the one pipe that lands on a website visit, Killdeer, to 1,746 leads, across 3 clients. A website visit is a click our link-scanner check judged human, which only the emails we send ourselves can carry: the emails sent through the provider are left out.",
-        "Sales Cold Email Outreach: 26 website visits · 4,185 emails with a link, $61 spent.",
-        "A channel with fewer than 10 website visits is ranked where its value puts it and marked Learning."
+        "The bars split the $2.33 a website visit costs by where the money went: $61 over 26 website visits."
       ],
       "verdict": {
-        "kind": "noise",
-        "reason": "Only one channel reaches a website visit in this read: one figure, nothing to compare it with."
+        "kind": "conclusion",
+        "reason": "A measurement on 26 website visits: 95% interval $1.59 to $3.57 per website visit."
       }
     },
     {
@@ -6574,7 +6574,7 @@
               "thin": false
             }
           ],
-          "note": "Only people we started writing to at least 21 days before the read (before Sep 27) count, with every positive reply and website visit they sent since. A figure needs 1 positive reply (10 website visits) behind it; below that it reads Learning. A website visit is a click our link-scanner check judged human, which only the emails we send ourselves can carry: website-visit figures leave out the emails sent through the provider, whose clicks are mostly scanners and cannot be screened."
+          "note": "Each bar is the share of the leads that entered that channel who went on to a website visit. Only people we started writing to at least 21 days before the read (before Sep 27) count, with every positive reply and website visit they sent since. A figure needs 1 positive reply (10 website visits) behind it; below that it reads Learning. A website visit is a click our link-scanner check judged human, which only the emails we send ourselves can carry: website-visit figures leave out the emails sent through the provider, whose clicks are mostly scanners and cannot be screened."
         }
       ],
       "conclusion": [
@@ -6593,41 +6593,41 @@
       "outcome": "website-visit",
       "topic": "leg",
       "goal": "roi",
-      "question": "Which leg gets the cheapest website visit?",
+      "question": "What does each leg add to the cost of a website visit?",
       "status": "measured",
-      "headline": "Lead → Website visit is the only leg that reaches a website visit in this read: $2.33 per website visit, nothing to compare it with. Noise so far.",
+      "headline": "Lead → Website visit carries the whole cost: $2.33 per website visit.",
       "winner": "Lead → Website visit",
-      "crowned": false,
+      "winnerLabel": "Largest share",
+      "crowned": true,
       "result": {
         "display": "$2.33",
-        "unit": "per website visit",
-        "sample": "26 website visits · 4,185 emails with a link"
+        "unit": "per website visit, every leg added up",
+        "sample": "26 website visits · $61 spent"
       },
       "charts": [
         {
           "kind": "bars",
-          "title": "Cost per website visit (USD, lower is better)",
+          "title": "What each leg adds to the cost of a website visit (USD)",
           "lowerIsBetter": true,
           "points": [
             {
               "label": "Lead → Website visit",
               "value": 2.33,
               "display": "$2.33",
-              "note": "26 website visits · 4,185 emails with a link",
+              "note": "$61 spent, >99% of the cost",
               "thin": false
             }
           ],
-          "note": "Only people we started writing to at least 21 days before the read (before Sep 27) count, with every positive reply and website visit they sent since. A figure needs 1 positive reply (10 website visits) behind it; below that it reads Learning. A website visit is a click our link-scanner check judged human, which only the emails we send ourselves can carry: website-visit figures leave out the emails sent through the provider, whose clicks are mostly scanners and cannot be screened."
+          "note": "Each bar is that leg's spend over every website visit (26), so the bars add up to the $2.33 average. Only people we started writing to at least 21 days before the read (before Sep 27) count, with every positive reply and website visit they sent since. A figure needs 1 positive reply (10 website visits) behind it; below that it reads Learning. A website visit is a click our link-scanner check judged human, which only the emails we send ourselves can carry: website-visit figures leave out the emails sent through the provider, whose clicks are mostly scanners and cannot be screened."
         }
       ],
       "conclusion": [
         "Population: the 4,185 emails with a link of the one pipe that lands on a website visit, Killdeer, to 1,746 leads, across 3 clients. A website visit is a click our link-scanner check judged human, which only the emails we send ourselves can carry: the emails sent through the provider are left out.",
-        "Lead → Website visit: 26 website visits · 4,185 emails with a link, $61 spent.",
-        "A leg with fewer than 10 website visits is ranked where its value puts it and marked Learning."
+        "The bars split the $2.33 a website visit costs by where the money went: $61 over 26 website visits."
       ],
       "verdict": {
-        "kind": "noise",
-        "reason": "Only one leg reaches a website visit in this read: one figure, nothing to compare it with."
+        "kind": "conclusion",
+        "reason": "A measurement on 26 website visits: 95% interval $1.59 to $3.57 per website visit."
       }
     },
     {
@@ -6660,7 +6660,7 @@
               "thin": false
             }
           ],
-          "note": "Only people we started writing to at least 21 days before the read (before Sep 27) count, with every positive reply and website visit they sent since. A figure needs 1 positive reply (10 website visits) behind it; below that it reads Learning. A website visit is a click our link-scanner check judged human, which only the emails we send ourselves can carry: website-visit figures leave out the emails sent through the provider, whose clicks are mostly scanners and cannot be screened."
+          "note": "Each bar is the share of the leads that entered that leg who went on to a website visit. Only people we started writing to at least 21 days before the read (before Sep 27) count, with every positive reply and website visit they sent since. A figure needs 1 positive reply (10 website visits) behind it; below that it reads Learning. A website visit is a click our link-scanner check judged human, which only the emails we send ourselves can carry: website-visit figures leave out the emails sent through the provider, whose clicks are mostly scanners and cannot be screened."
         }
       ],
       "conclusion": [
@@ -6920,12 +6920,12 @@
       ],
       "conclusion": [
         "Population: the 4,185 emails with a link of the one pipe that lands on a website visit, Killdeer, to 1,746 leads, across 3 clients. A website visit is a click our link-scanner check judged human, which only the emails we send ourselves can carry: the emails sent through the provider are left out. Each email is filed under its workflow version's verdicts: Jev judges every version against each tactic's text, and re-judges it in place when that text changes, so this reads today's judgment. Every version here carries one.",
-        "No workflow that sent these emails follows these tactics: Answers leads only, Attaches offer documents, Blind angle, Business contacts only, Catch-all, Contacted pure prospects, Email reach, Email replies only, Fresh contacts only, Lead follow-up due, Offer angle, Phone reach, Skips people who already wrote, Skips the brand's team, Unknown email, Warm, never converted, Website visit.",
+        "No workflow in this population follows these tactics: Answers leads only, Attaches offer documents, Blind angle, Business contacts only, Catch-all, Contacted pure prospects, Email reach, Email replies only, Fresh contacts only, Lead follow-up due, Offer angle, Phone reach, Skips people who already wrote, Skips the brand's team, Unknown email, Warm, never converted, Website visit.",
         "Named angle: followed: $2.33, 26 website visits · 4,185 emails with a link; not followed: no email."
       ],
       "verdict": {
         "kind": "noise",
-        "reason": "Every workflow that sent these emails follows Named angle: no email without it to compare with."
+        "reason": "Every workflow in this population follows Named angle: nothing without it to compare with."
       }
     },
     {
@@ -6963,12 +6963,12 @@
       ],
       "conclusion": [
         "Population: the 4,185 emails with a link of the one pipe that lands on a website visit, Killdeer, to 1,746 leads, across 3 clients. A website visit is a click our link-scanner check judged human, which only the emails we send ourselves can carry: the emails sent through the provider are left out. Each email is filed under its workflow version's verdicts: Jev judges every version against each tactic's text, and re-judges it in place when that text changes, so this reads today's judgment. Every version here carries one.",
-        "No workflow that sent these emails follows these tactics: Answers leads only, Attaches offer documents, Blind angle, Business contacts only, Catch-all, Contacted pure prospects, Email reach, Email replies only, Fresh contacts only, Lead follow-up due, Offer angle, Phone reach, Skips people who already wrote, Skips the brand's team, Unknown email, Warm, never converted, Website visit.",
+        "No workflow in this population follows these tactics: Answers leads only, Attaches offer documents, Blind angle, Business contacts only, Catch-all, Contacted pure prospects, Email reach, Email replies only, Fresh contacts only, Lead follow-up due, Offer angle, Phone reach, Skips people who already wrote, Skips the brand's team, Unknown email, Warm, never converted, Website visit.",
         "Named angle: followed: 1.49%, 26 of 1,746 leads went on to a website visit; not followed: no email."
       ],
       "verdict": {
         "kind": "noise",
-        "reason": "Every workflow that sent these emails follows Named angle: no email without it to compare with."
+        "reason": "Every workflow in this population follows Named angle: nothing without it to compare with."
       }
     },
     {
@@ -6979,32 +6979,67 @@
       "goal": "rate",
       "question": "What share of leads goes on to a booked meeting?",
       "status": "measured",
-      "headline": "4.55% of leads went on to a booked meeting since inception, across the one pipe that lands on it (Auk). Noise so far.",
+      "headline": "0.04% of leads went on to a booked meeting since inception, across every pipe on the brands that report their meetings. Noise so far.",
       "winner": null,
       "crowned": false,
       "result": {
-        "display": "4.55%",
+        "display": "0.04%",
         "unit": "of leads went on to a booked meeting, since inception",
-        "sample": "1 of 22 leads"
+        "sample": "7 of 18,138 leads"
       },
       "charts": [
         {
           "kind": "months",
-          "title": "Every pipe landing on it: share of leads who went on to a booked meeting, by the month the meeting booking step first acted on them",
+          "title": "Every pipe landing on it: share of leads who went on to a booked meeting, by the month a pipe first wrote to or acted on them",
           "lowerIsBetter": false,
           "points": [
             {
-              "label": "Sep",
+              "label": "Apr",
               "value": 0,
               "display": "0.00%",
-              "note": "0 of 5 leads went on to a booked meeting",
+              "note": "0 of 361 leads went on to a booked meeting",
+              "thin": true
+            },
+            {
+              "label": "May",
+              "value": 0.08,
+              "display": "0.08%",
+              "note": "3 of 3,683 leads went on to a booked meeting",
+              "thin": true
+            },
+            {
+              "label": "Jun",
+              "value": 0,
+              "display": "0.00%",
+              "note": "0 of 259 leads went on to a booked meeting",
+              "thin": true
+            },
+            {
+              "label": "Jul",
+              "value": 0.04,
+              "display": "0.04%",
+              "note": "1 of 2,613 leads went on to a booked meeting",
+              "thin": true
+            },
+            {
+              "label": "Aug",
+              "value": 0.04,
+              "display": "0.04%",
+              "note": "1 of 2,794 leads went on to a booked meeting",
+              "thin": true
+            },
+            {
+              "label": "Sep",
+              "value": 0.03,
+              "display": "0.03%",
+              "note": "2 of 7,734 leads went on to a booked meeting",
               "thin": true
             },
             {
               "label": "Oct",
-              "value": 5.88,
-              "display": "5.88%",
-              "note": "1 of 17 leads went on to a booked meeting · month in progress",
+              "value": 0,
+              "display": "0.00%",
+              "note": "0 of 694 leads went on to a booked meeting · month in progress",
               "thin": true,
               "partial": true
             }
@@ -7013,32 +7048,67 @@
             "title": "Every pipe landing on it: average since inception",
             "points": [
               {
-                "label": "Sep",
+                "label": "Apr",
                 "value": 0,
                 "display": "0.00%",
-                "note": "0 of 5 leads to date",
+                "note": "0 of 361 leads to date",
+                "thin": true
+              },
+              {
+                "label": "May",
+                "value": 0.07,
+                "display": "0.07%",
+                "note": "3 of 4,044 leads to date",
+                "thin": true
+              },
+              {
+                "label": "Jun",
+                "value": 0.07,
+                "display": "0.07%",
+                "note": "3 of 4,303 leads to date",
+                "thin": true
+              },
+              {
+                "label": "Jul",
+                "value": 0.06,
+                "display": "0.06%",
+                "note": "4 of 6,916 leads to date",
+                "thin": true
+              },
+              {
+                "label": "Aug",
+                "value": 0.05,
+                "display": "0.05%",
+                "note": "5 of 9,710 leads to date",
+                "thin": true
+              },
+              {
+                "label": "Sep",
+                "value": 0.04,
+                "display": "0.04%",
+                "note": "7 of 17,444 leads to date",
                 "thin": true
               },
               {
                 "label": "Oct",
-                "value": 4.55,
-                "display": "4.55%",
-                "note": "1 of 22 leads to date · month in progress",
+                "value": 0.04,
+                "display": "0.04%",
+                "note": "7 of 18,138 leads to date · month in progress",
                 "thin": true,
                 "partial": true
               }
             ]
           },
-          "note": "A meeting counts when it was booked on or after the meeting booking step first acted on that lead, and our outreach gets the credit for it. A figure needs 10 meetings behind it; below that it reads Learning."
+          "note": "A meeting counts when it was booked on or after the lead entered that pipe, and our outreach gets the credit for it. A figure needs 10 meetings behind it; below that it reads Learning."
         }
       ],
       "conclusion": [
-        "Population: the 22 leads the meeting booking step acted on (a lead who gave a positive reply), the 1 meeting booked after it acted, and the $17 it was charged. The cold email that won the positive reply is not in these prices: the average since inception counts it, on the brands that report their meetings.",
-        "A lead counts once, however many emails it got and on however many campaigns: lead-service's own lead, a person at a company. Each lead sits in the month the meeting booking step first acted on it."
+        "Population: the brands that report their booked meetings, as the average since inception prices them: every dollar charged there on cold email and meeting booking ($4,090), the 7 meetings our outreach gets the credit for, and the 18,138 leads our pipes wrote to or acted on there.",
+        "A lead counts once, however many emails it got and on however many campaigns: lead-service's own lead, a person at a company. Each lead sits in the month a pipe first wrote to or acted on it."
       ],
       "verdict": {
         "kind": "noise",
-        "reason": "Only 1 lead went on to a booked meeting so far."
+        "reason": "Learning: 7 leads went on to a booked meeting, of the 10 a figure needs."
       }
     },
     {
@@ -7070,13 +7140,13 @@
       "goal": "rate",
       "question": "Which pipe turns the most leads into a booked meeting?",
       "status": "measured",
-      "headline": "Auk is the only pipe that reaches a booked meeting in this read: 4.55% of leads going on to a booked meeting, nothing to compare it with. Noise so far.",
+      "headline": "Auk leads with 10.00% of leads going on to a booked meeting. Noise so far.",
       "winner": "Auk",
       "crowned": false,
       "result": {
-        "display": "4.55%",
+        "display": "10.00%",
         "unit": "of leads went on to a booked meeting",
-        "sample": "1 of 22 leads went on to a booked meeting"
+        "sample": "1 of 10 leads went on to a booked meeting"
       },
       "charts": [
         {
@@ -7086,23 +7156,30 @@
           "points": [
             {
               "label": "Auk",
-              "value": 4.55,
-              "display": "4.55%",
-              "note": "1 of 22 leads went on to a booked meeting",
+              "value": 10,
+              "display": "10.00%",
+              "note": "1 of 10 leads went on to a booked meeting",
+              "thin": true
+            },
+            {
+              "label": "Dotterel",
+              "value": 0.04,
+              "display": "0.04%",
+              "note": "7 of 18,138 leads went on to a booked meeting",
               "thin": true
             }
           ],
-          "note": "A meeting counts when it was booked on or after the meeting booking step first acted on that lead, and our outreach gets the credit for it. A figure needs 10 meetings behind it; below that it reads Learning."
+          "note": "Each bar is the share of the leads that entered that pipe who went on to a booked meeting. A meeting counts when it was booked on or after the lead entered that pipe, and our outreach gets the credit for it. A figure needs 10 meetings behind it; below that it reads Learning."
         }
       ],
       "conclusion": [
-        "Population: the 22 leads the meeting booking step acted on (a lead who gave a positive reply), the 1 meeting booked after it acted, and the $17 it was charged. The cold email that won the positive reply is not in these prices: the average since inception counts it, on the brands that report their meetings.",
-        "Auk: 1 of 22 leads went on to a booked meeting.",
+        "Population: the brands that report their booked meetings, as the average since inception prices them: every dollar charged there on cold email and meeting booking ($4,090), the 7 meetings our outreach gets the credit for, and the 18,138 leads our pipes wrote to or acted on there.",
+        "Auk: 1 of 10 leads went on to a booked meeting.",
         "A pipe with fewer than 10 booked meetings is ranked where its value puts it and marked Learning."
       ],
       "verdict": {
         "kind": "noise",
-        "reason": "Only one pipe reaches a booked meeting in this read: one figure, nothing to compare it with."
+        "reason": "Auk rests on 1 lead who went on to a booked meeting; a lead needs at least 5 before chance stops dominating."
       }
     },
     {
@@ -7134,13 +7211,13 @@
       "goal": "rate",
       "question": "Which channel turns the most leads into a booked meeting?",
       "status": "measured",
-      "headline": "AI Meeting Booking is the only channel that reaches a booked meeting in this read: 4.55% of leads going on to a booked meeting, nothing to compare it with. Noise so far.",
+      "headline": "AI Meeting Booking leads with 10.00% of leads going on to a booked meeting. Noise so far.",
       "winner": "AI Meeting Booking",
       "crowned": false,
       "result": {
-        "display": "4.55%",
+        "display": "10.00%",
         "unit": "of leads went on to a booked meeting",
-        "sample": "1 of 22 leads went on to a booked meeting"
+        "sample": "1 of 10 leads went on to a booked meeting"
       },
       "charts": [
         {
@@ -7150,23 +7227,30 @@
           "points": [
             {
               "label": "AI Meeting Booking",
-              "value": 4.55,
-              "display": "4.55%",
-              "note": "1 of 22 leads went on to a booked meeting",
+              "value": 10,
+              "display": "10.00%",
+              "note": "1 of 10 leads went on to a booked meeting",
+              "thin": true
+            },
+            {
+              "label": "Sales Cold Email Outreach",
+              "value": 0.04,
+              "display": "0.04%",
+              "note": "7 of 18,138 leads went on to a booked meeting",
               "thin": true
             }
           ],
-          "note": "A meeting counts when it was booked on or after the meeting booking step first acted on that lead, and our outreach gets the credit for it. A figure needs 10 meetings behind it; below that it reads Learning."
+          "note": "Each bar is the share of the leads that entered that channel who went on to a booked meeting. A meeting counts when it was booked on or after the lead entered that pipe, and our outreach gets the credit for it. A figure needs 10 meetings behind it; below that it reads Learning."
         }
       ],
       "conclusion": [
-        "Population: the 22 leads the meeting booking step acted on (a lead who gave a positive reply), the 1 meeting booked after it acted, and the $17 it was charged. The cold email that won the positive reply is not in these prices: the average since inception counts it, on the brands that report their meetings.",
-        "AI Meeting Booking: 1 of 22 leads went on to a booked meeting.",
+        "Population: the brands that report their booked meetings, as the average since inception prices them: every dollar charged there on cold email and meeting booking ($4,090), the 7 meetings our outreach gets the credit for, and the 18,138 leads our pipes wrote to or acted on there.",
+        "AI Meeting Booking: 1 of 10 leads went on to a booked meeting.",
         "A channel with fewer than 10 booked meetings is ranked where its value puts it and marked Learning."
       ],
       "verdict": {
         "kind": "noise",
-        "reason": "Only one channel reaches a booked meeting in this read: one figure, nothing to compare it with."
+        "reason": "AI Meeting Booking rests on 1 lead who went on to a booked meeting; a lead needs at least 5 before chance stops dominating."
       }
     },
     {
@@ -7198,13 +7282,13 @@
       "goal": "rate",
       "question": "Which leg turns the most leads into a booked meeting?",
       "status": "measured",
-      "headline": "Positive reply → Meeting booked is the only leg that reaches a booked meeting in this read: 4.55% of leads going on to a booked meeting, nothing to compare it with. Noise so far.",
+      "headline": "Positive reply → Meeting booked leads with 10.00% of leads going on to a booked meeting. Noise so far.",
       "winner": "Positive reply → Meeting booked",
       "crowned": false,
       "result": {
-        "display": "4.55%",
+        "display": "10.00%",
         "unit": "of leads went on to a booked meeting",
-        "sample": "1 of 22 leads went on to a booked meeting"
+        "sample": "1 of 10 leads went on to a booked meeting"
       },
       "charts": [
         {
@@ -7214,23 +7298,30 @@
           "points": [
             {
               "label": "Positive reply → Meeting booked",
-              "value": 4.55,
-              "display": "4.55%",
-              "note": "1 of 22 leads went on to a booked meeting",
+              "value": 10,
+              "display": "10.00%",
+              "note": "1 of 10 leads went on to a booked meeting",
+              "thin": true
+            },
+            {
+              "label": "Lead → Positive reply",
+              "value": 0.04,
+              "display": "0.04%",
+              "note": "7 of 18,138 leads went on to a booked meeting",
               "thin": true
             }
           ],
-          "note": "A meeting counts when it was booked on or after the meeting booking step first acted on that lead, and our outreach gets the credit for it. A figure needs 10 meetings behind it; below that it reads Learning."
+          "note": "Each bar is the share of the leads that entered that leg who went on to a booked meeting. A meeting counts when it was booked on or after the lead entered that pipe, and our outreach gets the credit for it. A figure needs 10 meetings behind it; below that it reads Learning."
         }
       ],
       "conclusion": [
-        "Population: the 22 leads the meeting booking step acted on (a lead who gave a positive reply), the 1 meeting booked after it acted, and the $17 it was charged. The cold email that won the positive reply is not in these prices: the average since inception counts it, on the brands that report their meetings.",
-        "Positive reply → Meeting booked: 1 of 22 leads went on to a booked meeting.",
+        "Population: the brands that report their booked meetings, as the average since inception prices them: every dollar charged there on cold email and meeting booking ($4,090), the 7 meetings our outreach gets the credit for, and the 18,138 leads our pipes wrote to or acted on there.",
+        "Positive reply → Meeting booked: 1 of 10 leads went on to a booked meeting.",
         "A leg with fewer than 10 booked meetings is ranked where its value puts it and marked Learning."
       ],
       "verdict": {
         "kind": "noise",
-        "reason": "Only one leg reaches a booked meeting in this read: one figure, nothing to compare it with."
+        "reason": "Positive reply → Meeting booked rests on 1 lead who went on to a booked meeting; a lead needs at least 5 before chance stops dominating."
       }
     },
     {
@@ -7247,11 +7338,11 @@
       "result": null,
       "charts": [],
       "conclusion": [
-        "Not measured yet: the meeting reads do not record which workflow version acted on each lead, so no meeting can be filed under a workflow or a tactic."
+        "The meeting figures are on what clients were charged only. Switch to the billed basis to read them."
       ],
       "verdict": {
         "kind": "noise",
-        "reason": "Not measured yet: the meeting reads do not record which workflow version acted on each lead, so no meeting can be filed under a workflow or a tactic."
+        "reason": "The meeting figures are on what clients were charged only. Switch to the billed basis to read them."
       }
     },
     {
@@ -7261,18 +7352,47 @@
       "topic": "workflow",
       "goal": "rate",
       "question": "Which workflow turns the most leads into a booked meeting?",
-      "status": "not_enough_data",
-      "headline": "Not measured yet.",
-      "winner": null,
+      "status": "measured",
+      "headline": "AI Meeting Booking · Rhodium leads with 11.11% of leads going on to a booked meeting. Noise so far.",
+      "winner": "AI Meeting Booking · Rhodium",
       "crowned": false,
-      "result": null,
-      "charts": [],
+      "result": {
+        "display": "11.11%",
+        "unit": "of leads went on to a booked meeting",
+        "sample": "1 of 9 leads went on to a booked meeting"
+      },
+      "charts": [
+        {
+          "kind": "bars",
+          "title": "Leads who went on to a booked meeting, % (higher is better)",
+          "lowerIsBetter": false,
+          "points": [
+            {
+              "label": "AI Meeting Booking · Rhodium",
+              "value": 11.11,
+              "display": "11.11%",
+              "note": "1 of 9 leads went on to a booked meeting",
+              "thin": true
+            },
+            {
+              "label": "AI Meeting Booking · Avior",
+              "value": 0,
+              "display": "0.00%",
+              "note": "0 of 1 lead went on to a booked meeting",
+              "thin": true
+            }
+          ],
+          "note": "A meeting counts when it was booked on or after the lead entered that pipe, and our outreach gets the credit for it. A figure needs 10 meetings behind it; below that it reads Learning."
+        }
+      ],
       "conclusion": [
-        "Not measured yet: the meeting reads do not record which workflow version acted on each lead, so no meeting can be filed under a workflow or a tactic."
+        "Population: the brands that report their booked meetings, as the average since inception prices them: every dollar charged there on cold email and meeting booking ($4,090), the 7 meetings our outreach gets the credit for, and the 18,138 leads our pipes wrote to or acted on there. The meeting booking step's leads are filed under the run that acted on them (its workflow version, Jev's verdicts on that version, the lead strategy it was served under) and its spend under the same runs.",
+        "AI Meeting Booking · Rhodium: 1 of 9 leads went on to a booked meeting.",
+        "A workflow with fewer than 10 booked meetings is ranked where its value puts it and marked Learning."
       ],
       "verdict": {
         "kind": "noise",
-        "reason": "Not measured yet: the meeting reads do not record which workflow version acted on each lead, so no meeting can be filed under a workflow or a tactic."
+        "reason": "AI Meeting Booking · Rhodium rests on 1 lead who went on to a booked meeting; a lead needs at least 5 before chance stops dominating."
       }
     },
     {
@@ -7289,11 +7409,11 @@
       "result": null,
       "charts": [],
       "conclusion": [
-        "Not measured yet: meeting booking runs carry no lead strategy record."
+        "The meeting figures are on what clients were charged only. Switch to the billed basis to read them."
       ],
       "verdict": {
         "kind": "noise",
-        "reason": "Not measured yet: meeting booking runs carry no lead strategy record."
+        "reason": "The meeting figures are on what clients were charged only. Switch to the billed basis to read them."
       }
     },
     {
@@ -7304,17 +7424,17 @@
       "goal": "rate",
       "question": "Which lead strategy turns the most leads into a booked meeting?",
       "status": "not_enough_data",
-      "headline": "Not measured yet.",
+      "headline": "No lead strategy has turned a lead into a booked meeting yet.",
       "winner": null,
       "crowned": false,
       "result": null,
       "charts": [],
       "conclusion": [
-        "Not measured yet: meeting booking runs carry no lead strategy record."
+        "Population: the brands that report their booked meetings, as the average since inception prices them: every dollar charged there on cold email and meeting booking ($4,090), the 7 meetings our outreach gets the credit for, and the 18,138 leads our pipes wrote to or acted on there. The meeting booking step's leads are filed under the run that acted on them (its workflow version, Jev's verdicts on that version, the lead strategy it was served under) and its spend under the same runs. A run's lead strategy is recorded since Oct 18, 2026: earlier runs carry none and are left out, never counted under the default."
       ],
       "verdict": {
         "kind": "noise",
-        "reason": "Not measured yet: meeting booking runs carry no lead strategy record."
+        "reason": "No lead strategy has turned a lead into a booked meeting yet."
       }
     },
     {
@@ -7331,11 +7451,11 @@
       "result": null,
       "charts": [],
       "conclusion": [
-        "Not measured yet: the meeting reads do not record which workflow version acted on each lead, so no meeting can be filed under a workflow or a tactic."
+        "The meeting figures are on what clients were charged only. Switch to the billed basis to read them."
       ],
       "verdict": {
         "kind": "noise",
-        "reason": "Not measured yet: the meeting reads do not record which workflow version acted on each lead, so no meeting can be filed under a workflow or a tactic."
+        "reason": "The meeting figures are on what clients were charged only. Switch to the billed basis to read them."
       }
     },
     {
@@ -7346,17 +7466,18 @@
       "goal": "rate",
       "question": "Which tactic turns more leads into a booked meeting when a workflow follows it?",
       "status": "not_enough_data",
-      "headline": "Not measured yet.",
+      "headline": "No tactic a workflow follows has turned a lead into a booked meeting yet.",
       "winner": null,
       "crowned": false,
       "result": null,
       "charts": [],
       "conclusion": [
-        "Not measured yet: the meeting reads do not record which workflow version acted on each lead, so no meeting can be filed under a workflow or a tactic."
+        "Population: the brands that report their booked meetings, as the average since inception prices them: every dollar charged there on cold email and meeting booking ($4,090), the 7 meetings our outreach gets the credit for, and the 18,138 leads our pipes wrote to or acted on there. The meeting booking step's leads are filed under the run that acted on them (its workflow version, Jev's verdicts on that version, the lead strategy it was served under) and its spend under the same runs.",
+        "No workflow in this population follows these tactics: Answers leads only, Attaches offer documents, Blind angle, Business contacts only, Catch-all, Contacted pure prospects, Email reach, Email replies only, Fresh contacts only, Lead follow-up due, Named angle, Offer angle, Phone reach, Skips people who already wrote, Skips the brand's team, Unknown email, Warm, never converted, Website visit."
       ],
       "verdict": {
         "kind": "noise",
-        "reason": "Not measured yet: the meeting reads do not record which workflow version acted on each lead, so no meeting can be filed under a workflow or a tactic."
+        "reason": "No tactic a workflow follows has turned a lead into a booked meeting yet."
       }
     }
   ],

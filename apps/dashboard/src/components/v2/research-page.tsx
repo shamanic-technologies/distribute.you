@@ -100,6 +100,8 @@ const STATE_LOOK: Record<StudyState, { label: string; dot: string }> = {
 
 /** The first bar is a winner only when the verdict is a conclusion; otherwise it merely leads. */
 function winnerLabel(study: ResearchStudy, state: StudyState): string {
+  // a cost split names its largest share, it ranks nothing
+  if (study.winnerLabel) return study.winnerLabel;
   const label = WINNER_LABEL[study.topic];
   return state === "conclusion" || label !== "Winner" ? label : "Leader";
 }
@@ -634,7 +636,7 @@ function V2ResearchStudy({ base, studyId }: { base: string; studyId: string }) {
                 <div key={c.title}>
                   <SectionTitle>{c.title}</SectionTitle>
                   <div className="k-card overflow-hidden">
-                    <BarsChart chart={c} color={look.color} winner={study.winner} hrefFor={(p) => pointHref(base, study, p)} nameFor={workflowName} />
+                    <BarsChart chart={c} color={look.color} winner={study.winnerLabel ? null : study.winner} hrefFor={(p) => pointHref(base, study, p)} nameFor={workflowName} />
                   </div>
                   <ChartNote note={c.note} />
                 </div>
