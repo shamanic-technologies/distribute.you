@@ -98,6 +98,21 @@ describe("research.json is coherent", () => {
     }
   });
 
+  it("splits every outcome's cost by pipe, channel and leg into bars that add up to its average (owner 2026-10-18)", () => {
+    const parse = (d: string) => Number(d.replace(/[$,]/g, ""));
+    for (const o of outcomeGroups(RESEARCH).outcomes) {
+      const avg = o.id === "meeting-booked" ? studyById("meeting-cost", RESEARCH) : studyById(`outcome-${o.id}-overall-roi`, RESEARCH);
+      for (const cut of ["pipe", "channel", "leg"]) {
+        const s = studyById(`outcome-${o.id}-${cut}-roi`, RESEARCH);
+        if (!s || s.status !== "measured" || !avg?.result) continue;
+        expect(s.result?.display, s.id).toBe(avg.result.display);
+        expect(s.winnerLabel, s.id).toBe("Largest share");
+        const sum = s.charts[0].points.reduce((t, p) => t + p.value, 0);
+        expect(Math.abs(sum - parse(avg.result.display)), s.id).toBeLessThan(Math.max(1, parse(avg.result.display) * 0.01));
+      }
+    }
+  });
+
   it("groups the hub in three, Pipes, Outcomes, Other, each a titled group with its count (owner 2026-10-18)", () => {
     const page = read("components/v2/research-page.tsx");
     const hub = page.slice(page.indexOf("function V2ResearchHub("), page.indexOf("function BarsChart("));
@@ -426,7 +441,11 @@ describe("the maturity rule is features-service's, read per leg and applied ever
         if (s.pipe === "meeting-booking" || s.outcome === "meeting-booked") expect(c.note, s.id).toMatch(/needs \d+ meetings? behind it/);
         // a typed-judgment study is a count, so no maturity rule applies: its note says so
         else if (s.outcome === "judgment") expect(c.note, s.id).toMatch(/\S/);
-        else if (s.topic !== "opens") expect(c.note, s.id).toBe(m.note);
+        // an outcome's pipe, channel and leg charts say in one line what each bar is, then the rule
+        else if (s.outcome && ["pipe", "channel", "leg"].includes(s.topic)) {
+          expect(c.note, s.id).toMatch(/^Each bar is /);
+          expect(c.note!.endsWith(m.note), s.id).toBe(true);
+        } else if (s.topic !== "opens") expect(c.note, s.id).toBe(m.note);
       }
     }
   });

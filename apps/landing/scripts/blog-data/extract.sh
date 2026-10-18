@@ -187,10 +187,12 @@ WHERE event = 'meeting_booked' AND withdrawn_at IS NULL
 ORDER BY received_at
 " meetings.csv
 
-# The people the positive-reply-to-meeting leg acted on, first action per person and campaign.
+# The people the positive-reply-to-meeting leg acted on, first action per person and campaign, with
+# the run that took it (an execute-workflow run of the acting campaign: its workflow version).
 run lead_service "
 SELECT lead_id, brand_ids[1] AS brand_id, acting_campaign_id,
-       to_char(min(occurred_at) AT TIME ZONE 'UTC', 'YYYY-MM-DD HH24:MI:SS.MS') AS acted_at
+       to_char(min(occurred_at) AT TIME ZONE 'UTC', 'YYYY-MM-DD HH24:MI:SS.MS') AS acted_at,
+       coalesce((array_agg(run_id ORDER BY occurred_at))[1], '') AS run_id
 FROM followup_actions
 WHERE action = 'acted'
 GROUP BY 1, 2, 3
@@ -198,7 +200,7 @@ GROUP BY 1, 2, 3
 
 # The leg each cold-email and meeting-booking campaign performs, for the spend below.
 run campaign_service "
-SELECT id AS campaign_id, feature_slug, coalesce(leg_key, '') AS leg_key
+SELECT id AS campaign_id, feature_slug, coalesce(leg_key, '') AS leg_key, coalesce(brand_id, brand_ids[1], '') AS brand_id
 FROM campaigns
 WHERE feature_slug IN ('sales-cold-email-outreach', 'ai-meeting-booking')
 " meeting-campaigns.csv
@@ -215,6 +217,42 @@ WHERE cost_source = 'platform'
   AND day >= '$FROM' AND day < '$TO'
 GROUP BY 1, 2, 3, 4
 " meeting-spend.csv
+
+# Every AI meeting booking execute-workflow run in the window, with its workflow version and what
+# its whole run tree was charged (actual rows): the Meeting booked row's workflow and tactic cuts
+# join each lead the leg acted on to the run that acted (outcomes.mjs). The tree is walked level by
+# level (a WITH RECURSIVE over 37k roots hash-joined the whole runs table per step: 8+ minutes);
+# five levels hold it (2026-10-18: 3 levels deep, 4th empty), and the 6th is checked empty.
+run runs_service "
+WITH top AS MATERIALIZED (
+  SELECT id, workflow_slug, coalesce(campaign_id, '') AS campaign_id, (started_at AT TIME ZONE 'UTC')::date AS day
+  FROM runs
+  WHERE task_name = 'execute-workflow' AND workflow_slug IS NOT NULL
+    AND (feature_slug = 'ai-meeting-booking' OR workflow_slug LIKE 'ai-meeting-booking-%')
+    AND started_at >= '$FROM' AND started_at < '$TO'
+), d1 AS MATERIALIZED (SELECT t.id AS root, c.id FROM top t JOIN runs c ON c.parent_run_id = t.id),
+d2 AS MATERIALIZED (SELECT d.root, c.id FROM d1 d JOIN runs c ON c.parent_run_id = d.id),
+d3 AS MATERIALIZED (SELECT d.root, c.id FROM d2 d JOIN runs c ON c.parent_run_id = d.id),
+d4 AS MATERIALIZED (SELECT d.root, c.id FROM d3 d JOIN runs c ON c.parent_run_id = d.id),
+d5 AS MATERIALIZED (SELECT d.root, c.id FROM d4 d JOIN runs c ON c.parent_run_id = d.id),
+deeper AS (SELECT 1 / (CASE WHEN EXISTS (SELECT 1 FROM d5 d JOIN runs c ON c.parent_run_id = d.id) THEN 0 ELSE 1 END) AS ok),
+tree AS (
+  SELECT id AS root, id FROM top
+  UNION ALL SELECT * FROM d1 UNION ALL SELECT * FROM d2 UNION ALL SELECT * FROM d3 UNION ALL SELECT * FROM d4 UNION ALL SELECT * FROM d5
+)
+SELECT top.id AS run_id, top.workflow_slug, top.campaign_id, top.day,
+       coalesce(sum(rc.total_cost_in_usd_cents) FILTER (WHERE rc.status = 'actual'), 0) AS cents
+FROM top JOIN tree ON tree.root = top.id
+LEFT JOIN runs_costs rc ON rc.run_id = tree.id
+CROSS JOIN deeper
+GROUP BY 1, 2, 3, 4
+" meeting-runs.csv
+# Their dynasties, as workflow-service names them.
+run workflow_service "
+SELECT workflow_slug, workflow_dynasty_slug, workflow_dynasty_name
+FROM workflows
+WHERE feature_slug = 'ai-meeting-booking'
+" meeting-workflows.csv
 
 # ---------- Typed judgments (Jev, chat-service /orgs/judgments + /internal/platform-judgments) ----------
 # Not windowed: Jev entered production on 2026-09-19, after every window start. jev.mjs.
@@ -510,7 +548,7 @@ runjson features_service "
 SELECT json_build_object(
   'tactics', coalesce((SELECT json_agg(json_build_object('id', id, 'name', name) ORDER BY id) FROM tactics), '[]'),
   'verdicts', coalesce((SELECT json_agg(json_build_object('workflowSlug', workflow_slug, 'tacticId', tactic_id, 'verdict', verdict) ORDER BY workflow_slug, tactic_id)
-    FROM workflow_tactic_verdicts WHERE feature_slug = 'sales-cold-email-outreach'), '[]'))
+    FROM workflow_tactic_verdicts WHERE feature_slug IN ('sales-cold-email-outreach', 'ai-meeting-booking')), '[]'))
 " tactic-verdicts.json
 # The served words every outcome study names things by: each step's label, each channel's name,
 # each pipe's name (features-service's public catalogue, read from inside its container).

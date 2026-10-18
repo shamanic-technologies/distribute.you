@@ -91,6 +91,8 @@ export interface ResearchStudy {
   headline: string;
   /** The label of the winning bar, when there is one. */
   winner: string | null;
+  /** What the winner cell is called when the study ranks nothing (a cost split: "Largest share"). */
+  winnerLabel?: string;
   /** True only when the verdict is a conclusion. */
   crowned: boolean;
   /**

@@ -18,7 +18,7 @@
 //
 // Pure: no I/O, so tests/unit/research-meetings.test.ts runs it on fixtures.
 
-import { MEETING_BOOKING_LEG } from "./leg-key.mjs";
+import { MEETING_BOOKING_LEG, canonicalLeg } from "./leg-key.mjs";
 
 export { MEETING_BOOKING_LEG };
 export const OUTCOME_LEG = "start_to_meeting_booked";
@@ -44,6 +44,9 @@ function legRule(maturity, legKey) {
 }
 
 const inWindow = (ts, window) => ts.slice(0, 10) >= window.from && ts.slice(0, 10) < window.to;
+
+/** The brands that REPORT their booked meetings (any live meeting row, any source). */
+export const reportingBrands = (meetings) => new Set(meetings.map((m) => m.brand_id).filter(Boolean));
 
 /**
  * @param {object} input
@@ -111,7 +114,7 @@ export function meetingStudies({ meetings, acted, campaigns, spend, maturity, wi
   if (booking.status === "measured" && booking.verdict.kind !== "conclusion") booking.headline += booking.verdict.kind === "signal" ? " A signal to confirm, not yet a conclusion." : " Noise so far.";
 
   // ---------- the outcome: first cold email -> meeting booked, every leg ----------
-  const reporting = new Set(meetings.map((m) => m.brand_id).filter(Boolean));
+  const reporting = reportingBrands(meetings);
   const popSpend = spendRows.filter((s) => reporting.has(s.brand_id));
   const popMeetings = credited.filter((m) => reporting.has(m.brand_id));
   const brandsWithSpend = new Set(popSpend.map((s) => s.brand_id));
@@ -222,7 +225,33 @@ export function meetingStudies({ meetings, acted, campaigns, spend, maturity, wi
     outcomesRequired: bookingRule.outcomesRequired,
   };
 
+  // The Meeting booked outcome row's own read (outcomes.mjs meetingOutcomeEntry): the population
+  // meeting-cost prices, split by the pipe (channel x leg) each dollar was spent on, the meetings it
+  // divides by, and the leads the meeting booking leg acted on there with the run that acted.
+  const spendByPipe = new Map();
+  for (const s of popSpend) {
+    const leg = canonicalLeg(campaignById.get(s.campaign_id)?.leg_key || "") || "";
+    const k = `${s.feature}|${leg}`;
+    spendByPipe.set(k, (spendByPipe.get(k) || 0) + s.usd);
+  }
+  const actedInPop = new Map();
+  for (const a of acted) {
+    if (!bookingCampaigns.has(a.acting_campaign_id) || !reporting.has(a.brand_id)) continue;
+    const prev = actedInPop.get(a.lead_id);
+    if (!prev || a.acted_at < prev.at) actedInPop.set(a.lead_id, { lead: a.lead_id, brand: a.brand_id, at: a.acted_at, runId: a.run_id || null, campaign: a.acting_campaign_id });
+  }
+  const outcomeRead = {
+    reporting: [...reporting].sort(),
+    meetings: popMeetings.map((m) => ({ id: m.conversion_id, lead: m.matched_lead_id || null, brand: m.brand_id, at: m.received_at })),
+    spendByPipe: [...spendByPipe.entries()].sort().map(([k, usd]) => ({ channel: k.split("|")[0], leg: k.split("|")[1], spend: usd })),
+    totalSpend,
+    acted: [...actedInPop.values()],
+    outcomesRequired: outcomeRule.outcomesRequired,
+    verdict: outcome.verdict,
+  };
+
   return {
+    outcomeRead,
     booking: bookingRead,
     outcomes: [{ id: OUTCOME_ID, outcome: "Meeting booked", description: "One outcome across every leg, from the first cold email to the meeting.", population }],
     studies: [booking, outcome],
