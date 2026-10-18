@@ -21,9 +21,9 @@ import { useLegCatalogue } from "@/lib/use-leg-catalogue";
 import { useAcquisitionChannels } from "@/lib/use-acquisition-channels";
 import type { AcquisitionChannelDef } from "@/lib/acquisition-channels";
 import { legFor, stepLabel } from "@/lib/legs";
-// The shared v2 mark and its colour table; renamed to pipe vocabulary in a later change.
-import { pipeFor, type PipeGlyph } from "@/lib/v2/pipe-look";
-import { PipeMark } from "@/components/v2/pipe-mark";
+import { CatalogueMark } from "@/components/v2/catalogue-mark";
+import { useStaffCatalogueObject } from "@/components/v2/staff-catalogue-data";
+import { featureLegId } from "@/lib/outbound-leg-key";
 import {
   OUTCOME_PATH,
   PIPE_KEY,
@@ -71,28 +71,6 @@ export function dayText(ymd: string): string {
   return `${MONTHS[Number(ymd.slice(5, 7)) - 1]} ${Number(ymd.slice(8, 10))}`;
 }
 
-/** A section's look: the colour and glyph its mark wears. */
-export interface SectionLook {
-  color: string;
-  glyph: PipeGlyph;
-}
-
-/** A pipe's look: the one the v2 mark table fixes for its channel and the step its leg lands on. */
-export function pipeLook(pipe: ResearchPipe): SectionLook {
-  const k = PIPE_KEY[pipe];
-  const { color, glyph } = pipeFor(k.channel, k.step, "");
-  return { color, glyph };
-}
-
-/** An outcome section's look: one outcome across every leg, so it wears no pipe's colour. */
-const OUTCOME_LOOK: Record<ResearchOutcome, SectionLook> = {
-  meeting: { color: "var(--data-sky)", glyph: "square" },
-  judgment: { color: "var(--data-violet)", glyph: "hex" },
-};
-export function outcomeLook(outcome: ResearchOutcome): SectionLook {
-  return OUTCOME_LOOK[outcome];
-}
-
 /** The section a study sits in: its pipe, or its outcome. */
 export type ResearchSection = { pipe: ResearchPipe } | { outcome: ResearchOutcome };
 export function sectionOf(study: ResearchStudy): ResearchSection {
@@ -100,14 +78,57 @@ export function sectionOf(study: ResearchStudy): ResearchSection {
   if (!study.outcome) throw new Error(`[dashboard] research study ${study.id} names neither a pipe nor an outcome`);
   return { outcome: study.outcome };
 }
-export function sectionLook(section: ResearchSection): SectionLook {
-  return "pipe" in section ? pipeLook(section.pipe) : outcomeLook(section.outcome);
+
+/** A research pipe's catalogue id (`<channel slug>|<leg key>`), the key features-service names and marks it by. */
+export function researchPipeId(pipe: ResearchPipe): string {
+  const k = PIPE_KEY[pipe];
+  return featureLegId(k.channel, k.leg);
 }
 
-/** A section's mark: a soft tile in its colour with its glyph. */
-export function SectionMark({ section, size }: { section: ResearchSection; size?: number }) {
-  const look = sectionLook(section);
-  return <PipeMark color={look.color} glyph={look.glyph} size={size} />;
+/**
+ * What the catalogue serves for a section (owner 2026-10-18: « les pipes ont maintenant leur nom
+ * et leur logo »): a pipe's own name, icon and colour (staff catalogue pipe); the meeting outcome
+ * is its step (name and icon); Jev is no catalogue object, so it is named and wears its topic mark.
+ * Research is staff only, so the staff catalogue is readable here.
+ */
+const unreadableSections = new Set<string>();
+function useServedSection(section: ResearchSection) {
+  const pipeId = "pipe" in section ? researchPipeId(section.pipe) : null;
+  const path = "outcome" in section ? OUTCOME_PATH[section.outcome] : null;
+  const stepId = path ? path[path.length - 1] : null;
+  const pipe = useStaffCatalogueObject("pipes", pipeId);
+  const step = useStaffCatalogueObject("steps", stepId);
+  const q = pipeId ? pipe : step;
+  const id = pipeId ?? stepId;
+  if (id && q.isError && q.data === undefined && !unreadableSections.has(id)) {
+    unreadableSections.add(id);
+    console.error("[v2] research section unreadable in the catalogue", { id, error: q.error?.message });
+  }
+  const color = pipeId ? pipe.data?.color ?? null : null;
+  return { id, name: q.data?.name ?? null, icon: q.data?.icon ?? null, color, failed: !!id && q.isError && q.data === undefined };
+}
+
+/** A section's mark, as served: a pipe's icon in its colour, the meeting step's icon, Jev's topic mark. */
+export function SectionMark({ section, size = 16 }: { section: ResearchSection; size?: number }) {
+  const served = useServedSection(section);
+  if (!served.id) return <TopicMark topic="judgment" size={size} />;
+  if (served.name || served.failed) return <CatalogueMark icon={served.icon} color={served.color} name={served.name ?? served.id} size={size} />;
+  return (
+    <span
+      aria-hidden="true"
+      className={`inline-block shrink-0 bg-[var(--bg-inset)] ${size <= 18 ? "rounded-[5px]" : "rounded-[8px]"}`}
+      style={{ width: size, height: size }}
+    />
+  );
+}
+
+/** A section's served NAME ("Dotterel", "Meeting booked"; Jev is named), a Shimmer until the catalogue answers. */
+export function SectionName({ section }: { section: ResearchSection }) {
+  const served = useServedSection(section);
+  if (!served.id) return <>Jev</>;
+  if (served.name) return <>{served.name}</>;
+  if (served.failed) return <span className="k-fg4">{"—"}</span>;
+  return <Shimmer className="inline-block h-4 w-20 align-middle" />;
 }
 
 type InOrderItem = { step: string } | { channel: string; def: AcquisitionChannelDef };
@@ -133,18 +154,18 @@ function InOrder({ items, compact }: { items: InOrderItem[]; compact: boolean })
 }
 
 /**
- * A section's name, read IN ORDER like a campaign's path: a pipe is `Lead found → [channel] →
+ * A section's PATH, read IN ORDER like a campaign's path (the reminder under its served name): a pipe is `Lead found → [channel] →
  * Positive reply` (the leg's two steps with the channel doing it between them); the meeting outcome
- * is its sales path `Lead found → Positive reply → Meeting booked`; Jev is named, since it is not an
+ * is its sales path `Lead found → Positive reply → Meeting booked`; Jev has none (null), since it is not an
  * outcome. Every word is served (the leg catalogue, the channel list): a Shimmer until they answer.
  * `compact` writes the channel as a word, for a line that sits inside a chip.
  */
-export function SectionName({ section, compact = false }: { section: ResearchSection; compact?: boolean }) {
+export function SectionPath({ section, compact = false }: { section: ResearchSection; compact?: boolean }) {
   const catalogue = useLegCatalogue();
   const channels = useAcquisitionChannels();
   if ("outcome" in section) {
     const path = OUTCOME_PATH[section.outcome];
-    if (!path) return <>Jev</>;
+    if (!path) return null;
     const labels = path.map((k) => stepLabel(catalogue, k));
     if (labels.some((l) => l == null)) return <Shimmer className="inline-block h-4 w-56 align-middle" />;
     return <InOrder items={labels.map((l) => ({ step: l as string }))} compact={compact} />;

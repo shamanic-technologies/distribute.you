@@ -8,7 +8,7 @@ import { useAcquisitionChannels } from "@/lib/use-acquisition-channels";
 import { useLegCatalogue } from "@/lib/use-leg-catalogue";
 import { acquisitionChannelForFeatureSlug } from "@/lib/acquisition-channels";
 import { channelSlugLabel } from "@/lib/campaign-title";
-import { legFor, type LegDef } from "@/lib/legs";
+import { campaignNameFor, legFor, type LegDef } from "@/lib/legs";
 import { canonicalLegKey } from "@/lib/outbound-leg-key";
 import {
   ALL_OFFERS,
@@ -16,15 +16,15 @@ import {
   useCampaignRows,
   type CampaignRow,
 } from "@/components/campaigns/campaigns-table";
-import { pipeFor, type PipeIdentity } from "@/lib/v2/pipe-look";
+import { servedPipe, type ServedPipe } from "@/lib/v2/served-pipe";
 import { v2CampaignHref } from "@/lib/v2/routes";
 import { paymentHoldKind, type PaymentHoldKind } from "@/lib/payment-declined";
 import { useSelectedOffer } from "@/components/v2/selected-offer";
 
 export interface V2Campaign {
   row: CampaignRow;
-  /** The pipe (leg x channel) it runs, with its look. */
-  pipe: PipeIdentity;
+  /** The pipe (leg x channel) it runs, by its served name (features-service `campaignName`). */
+  pipe: ServedPipe;
   leg: LegDef | null;
   offerId: string;
   offerName: string | null;
@@ -84,7 +84,9 @@ export function useCampaigns(orgId: string, brandId: string, { allOffers = false
         if (!scopeReady || (scopeOfferId && c.offerId !== scopeOfferId)) return [];
         const def = acquisitionChannelForFeatureSlug(c.featureSlug, channels);
         const leg = legFor(legCatalogue, c.legKey);
-        const pipe = pipeFor(c.featureSlug, leg?.toKey ?? null, def ? def.name : channelSlugLabel(c.featureSlug));
+        const served = campaignNameFor(legCatalogue, c.featureSlug, c.legKey);
+        if (!served && legCatalogue.campaignNames.size > 0) console.error("[v2] no pipe name served for a campaign", { featureSlug: c.featureSlug, legKey: c.legKey });
+        const pipe = servedPipe(c.featureSlug, c.legKey, served, def ? def.name : channelSlugLabel(c.featureSlug));
         return [
           {
             row,

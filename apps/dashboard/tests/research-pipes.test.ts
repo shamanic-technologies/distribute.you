@@ -62,9 +62,9 @@ describe("a pipe is one leg x one channel", () => {
     for (const p of file.pipes) expect({ channel: p.channel, leg: p.leg }, p.id).toEqual({ channel: PIPE_KEY[p.id].channel, leg: PIPE_KEY[p.id].leg });
   });
 
-  it("names a section in order from served words, a Shimmer until they answer, never a hardcoded name", () => {
+  it("writes a section's path in order from served words, a Shimmer until they answer, never a hardcoded name", () => {
     const bits = read("apps/dashboard/src/components/v2/research-bits.tsx");
-    const fn = bits.slice(bits.indexOf("export function SectionName("), bits.indexOf("/** A topic's mark"));
+    const fn = bits.slice(bits.indexOf("export function SectionPath("), bits.indexOf("/** A topic's mark"));
     expect(fn).toContain("legFor(catalogue, k.leg)");
     expect(fn).toContain("{ step: leg.fromLabel }, { channel: def.name, def }, { step: leg.toLabel }");
     expect(fn).toContain("<Shimmer");
@@ -72,7 +72,7 @@ describe("a pipe is one leg x one channel", () => {
     // the meeting outcome reads as its sales path; Jev is no outcome, so it is just named
     expect(OUTCOME_PATH.meeting).toEqual(["lead_found", "conversation", "meeting_booked"]);
     expect(OUTCOME_PATH.judgment).toBeNull();
-    expect(fn).toContain("if (!path) return <>Jev</>;");
+    expect(fn).toContain("if (!path) return null;");
     const page = read("apps/dashboard/src/components/v2/research-page.tsx");
     expect(page).toContain('{OUTCOME_PATH[outcome] && <span className="k-chip font-normal">Sales path</span>}');
     expect(page).not.toContain("All legs</span>");
@@ -114,5 +114,35 @@ describe("the retired section names are gone from the Research code path", () =>
     expect(BANNED.test(`const x = "${["sc", "out"].join("")}";`)).toBe(true);
     expect(BANNED.test("// every crew buys one outcome")).toBe(true);
     expect(BANNED.test("Copilot reads the cold-email-positive-reply pipe")).toBe(false);
+  });
+});
+
+describe("Research names each pipe by its served name and mark, one collapsible section each (owner 2026-10-18)", () => {
+  const bits = read("apps/dashboard/src/components/v2/research-bits.tsx");
+  const page = read("apps/dashboard/src/components/v2/research-page.tsx");
+
+  it("a section's name and mark are the catalogue's (pipe by its catalogue id, the meeting outcome by its step), never a local look", () => {
+    expect(bits).toContain('useStaffCatalogueObject("pipes", pipeId)');
+    expect(bits).toContain('useStaffCatalogueObject("steps", stepId)');
+    expect(bits).toContain("return featureLegId(k.channel, k.leg);");
+    expect(bits).toContain("<CatalogueMark icon={served.icon} color={served.color}");
+    expect(bits).not.toMatch(/OUTCOME_LOOK|pipeLook|SectionLook|PipeMark/);
+  });
+
+  it("the hub header is a toggle button: served mark + name, the path under the name, counts, a chevron", () => {
+    const block = page.slice(page.indexOf("function ResearchSectionBlock("), page.indexOf("function V2ResearchHub("));
+    expect(block).toContain('<button type="button" aria-expanded={open} aria-controls={bodyId} onClick={onToggle}');
+    expect(block).toContain("mark={(px) => <SectionMark section={section} size={px} />}");
+    expect(block).toContain("<SectionName section={section} />");
+    expect(block.indexOf("<SectionPath section={section} />")).toBeGreaterThan(block.indexOf("<SectionName section={section} />"));
+    expect(block).toContain("<SectionChevron open={open} />");
+    expect(block).toContain("inert={!open}");
+    expect(block).toContain("motion-reduce:transition-none");
+    expect(block).not.toContain("transition-all");
+    // collapsed by default, the choice remembered for Back
+    expect(page).toContain("useState<ReadonlySet<string>>(() => new Set())");
+    expect(page).toContain("window.localStorage.setItem(OPEN_SECTIONS_KEY");
+    const hub = page.slice(page.indexOf("function V2ResearchHub("), page.indexOf("function BarsChart("));
+    expect(hub.match(/<ResearchSectionBlock/g)?.length).toBe(2);
   });
 });

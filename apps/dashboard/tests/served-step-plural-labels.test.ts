@@ -51,7 +51,6 @@ describe("served step plural labels (owner 2026-10-15)", () => {
 
   it("outcomes and the pipe/campaign count headings read the served plural", () => {
     expect(read("src/lib/v2/outcomes.ts")).toContain("stepPluralLabel(catalogue, key, singular)");
-    expect(read("src/lib/v2/pipe-look.ts")).not.toContain("OUTCOME_PLURAL");
     for (const f of ["src/components/v2/pipe-sections.tsx", "src/components/v2/campaign-page.tsx"]) {
       const src = read(f);
       expect(src).toContain("stepPluralLabel(");
