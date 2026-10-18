@@ -3,6 +3,7 @@ import { PROD_URLS } from "@/lib/env-urls";
 import { listArticles } from "@/lib/blog/db";
 import { comparePaths } from "@/lib/competitors";
 import { bestForPaths } from "@/lib/best-for";
+import { fetchIndexList } from "@/lib/fleet-indexes";
 
 // Sitemap is generated at build time. When DATABASE_URL is not configured
 // (e.g. CI build runners without a Neon binding) we skip article rows
@@ -84,6 +85,18 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       lastModified: new Date(),
       changeFrequency: "weekly" as const,
       priority: e.priority,
+    })),
+  );
+
+  // The fleet indexes, read from the served list (a new index is listed without an
+  // edit here). They move every day; a failed read lists the hub alone.
+  const indexes = await fetchIndexList();
+  staticEntries.push(
+    ...["/indexes", ...(indexes?.indexes ?? []).map((i) => `/indexes/${i.slug}`)].map((path) => ({
+      url: `${baseUrl}${path}`,
+      lastModified: new Date(),
+      changeFrequency: "daily" as const,
+      priority: 0.8,
     })),
   );
 

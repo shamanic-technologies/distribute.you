@@ -488,7 +488,7 @@ section.framed::after {
 
 /* ---------- Footer ---------- */
 footer { padding: 64px 0 40px; border-top: 1px solid var(--hair); }
-.foot { display: grid; grid-template-columns: 1.4fr 1fr 1fr 1fr 1fr 1fr; gap: 32px; }
+.foot { display: grid; grid-template-columns: 1.4fr repeat(6, 1fr); gap: 32px; }
 .foot h4 { font-family: var(--font-display); font-size: 18px; letter-spacing: -0.02em; margin-bottom: 14px; }
 .foot ul { list-style: none; display: grid; gap: 1px; }
 /* 4px above and below takes a 17px line to a 25px target (WCAG 2.5.8, 24px) at the
