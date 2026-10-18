@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-10-18T12:28:46.084Z",
+  "generatedAt": "2026-10-18T14:19:38.480Z",
   "allOrgs": true,
   "costBasis": "actual",
   "unpricedBilledUsd": 0,
@@ -3011,12 +3011,12 @@
       "goal": "roi",
       "question": "Which LLM gets the cheapest website visit?",
       "status": "measured",
-      "headline": "DeepSeek V4 Flash leads at $0.94 per website visit. Noise so far.",
-      "winner": "DeepSeek V4 Flash",
+      "headline": "Gemini 3.5 Flash-Lite leads at $1.51 per website visit. Noise so far.",
+      "winner": "Gemini 3.5 Flash-Lite",
       "result": {
-        "display": "$0.94",
+        "display": "$1.51",
         "unit": "per website visit",
-        "sample": "7 website visits · 656 emails with a link"
+        "sample": "18 website visits · 2,303 emails with a link"
       },
       "crowned": false,
       "charts": [
@@ -3026,43 +3026,35 @@
           "lowerIsBetter": true,
           "points": [
             {
-              "key": "deepseek-v4-flash",
-              "label": "DeepSeek V4 Flash",
-              "value": 0.94,
-              "display": "$0.94",
-              "note": "7 website visits · 656 emails with a link",
-              "thin": true
-            },
-            {
               "key": "gemini-3.5-flash-lite",
               "label": "Gemini 3.5 Flash-Lite",
-              "value": 1.01,
-              "display": "$1.01",
-              "note": "27 website visits · 2,303 emails with a link",
+              "value": 1.51,
+              "display": "$1.51",
+              "note": "18 website visits · 2,303 emails with a link",
               "thin": false
-            },
-            {
-              "key": "glm-5.3-flash",
-              "label": "GLM 5.3 Flash",
-              "value": 1.71,
-              "display": "$1.71",
-              "note": "2 website visits · 344 emails with a link",
-              "thin": true
             },
             {
               "key": "gemini-3.1-pro",
               "label": "Gemini 3.1 Pro",
-              "value": 1.83,
-              "display": "$1.83",
-              "note": "6 website visits · 507 emails with a link",
+              "value": 2.19,
+              "display": "$2.19",
+              "note": "5 website visits · 507 emails with a link",
               "thin": true
             },
             {
-              "key": "gemini-3.8-flash",
-              "label": "Gemini 3.8 Flash",
-              "value": 12.46,
-              "display": "$12",
-              "note": "1 website visit · 375 emails with a link",
+              "key": "deepseek-v4-flash",
+              "label": "DeepSeek V4 Flash",
+              "value": 3.29,
+              "display": "$3.29",
+              "note": "2 website visits · 656 emails with a link",
+              "thin": true
+            },
+            {
+              "key": "glm-5.3-flash",
+              "label": "GLM 5.3 Flash",
+              "value": 3.41,
+              "display": "$3.41",
+              "note": "1 website visit · 344 emails with a link",
               "thin": true
             }
           ],
@@ -3070,27 +3062,27 @@
         },
         {
           "kind": "months",
-          "title": "DeepSeek V4 Flash: cost per website visit by month",
+          "title": "Gemini 3.5 Flash-Lite: cost per website visit by month",
           "lowerIsBetter": true,
           "points": [
             {
               "label": "Sep",
-              "value": 0.94,
-              "display": "$0.94",
-              "note": "7 website visits · 656 emails with a link · month in progress",
-              "thin": true,
+              "value": 1.51,
+              "display": "$1.51",
+              "note": "18 website visits · 2,303 emails with a link · month in progress",
+              "thin": false,
               "partial": true
             }
           ],
           "cumulative": {
-            "title": "DeepSeek V4 Flash: average since inception",
+            "title": "Gemini 3.5 Flash-Lite: average since inception",
             "points": [
               {
                 "label": "Sep",
-                "value": 0.94,
-                "display": "$0.94",
-                "note": "7 website visits · 656 emails with a link to date · month in progress",
-                "thin": true,
+                "value": 1.51,
+                "display": "$1.51",
+                "note": "18 website visits · 2,303 emails with a link to date · month in progress",
+                "thin": false,
                 "partial": true
               }
             ]
@@ -3099,14 +3091,14 @@
         }
       ],
       "conclusion": [
-        "DeepSeek V4 Flash: 7 website visits · 656 emails with a link, $6.58 spent.",
-        "Same clients, same months, a website visit from DeepSeek V4 Flash costs 0.45x one from Gemini 3.5 Flash-Lite (95% interval 0.11x to 1.85x; 1.87x the website visits per email; 7 website visits in 656 emails with a link against 27 in 2,303).",
-        "Same clients, same months, DeepSeek V4 Flash against Gemini 3.1 Pro: 4 website visits in 564 emails with a link against 6 in 498, under 5 on one side, so no ratio.",
-        "Same clients, same months, DeepSeek V4 Flash against Gemini 3.8 Flash: 7 website visits in 622 emails with a link against 1 in 375, under 5 on one side, so no ratio."
+        "Gemini 3.5 Flash-Lite: 18 website visits · 2,303 emails with a link, $27 spent.",
+        "Same clients, same months, Gemini 3.5 Flash-Lite against DeepSeek V4 Flash: 18 website visits in 2,303 emails with a link against 2 in 656, under 5 on one side, so no ratio.",
+        "Same clients, same months, a website visit from Gemini 3.5 Flash-Lite costs 1.55x one from Gemini 3.1 Pro (95% interval 0.55x to 4.34x; 0.37x the website visits per email; 17 website visits in 2,205 emails with a link against 5 in 498).",
+        "Same clients, same months, Gemini 3.5 Flash-Lite against Gemini 3.8 Flash: 2 website visits in 621 emails with a link against 0 in 375, under 5 on one side, so no ratio."
       ],
       "verdict": {
         "kind": "noise",
-        "reason": "DeepSeek V4 Flash against Gemini 3.5 Flash-Lite, website visits per dollar: p 0.830, a gap chance alone produces often."
+        "reason": "Gemini 3.5 Flash-Lite against Gemini 3.1 Pro, website visits per dollar: p 0.645, a gap chance alone produces often."
       }
     },
     {
@@ -3116,12 +3108,12 @@
       "goal": "rate",
       "question": "Which LLM gets the most website visits?",
       "status": "measured",
-      "headline": "Gemini 3.1 Pro leads with a 1.18% website visit rate. Noise so far.",
+      "headline": "Gemini 3.1 Pro leads with a 0.99% website visit rate. Noise so far.",
       "winner": "Gemini 3.1 Pro",
       "result": {
-        "display": "1.18%",
+        "display": "0.99%",
         "unit": "website visit rate",
-        "sample": "6 website visits · 507 emails with a link"
+        "sample": "5 website visits · 507 emails with a link"
       },
       "crowned": false,
       "charts": [
@@ -3133,41 +3125,41 @@
             {
               "key": "gemini-3.1-pro",
               "label": "Gemini 3.1 Pro",
-              "value": 11.8,
-              "display": "1.18%",
-              "note": "6 website visits · 507 emails with a link",
+              "value": 9.9,
+              "display": "0.99%",
+              "note": "5 website visits · 507 emails with a link",
               "thin": true
             },
             {
               "key": "gemini-3.5-flash-lite",
               "label": "Gemini 3.5 Flash-Lite",
-              "value": 11.7,
-              "display": "1.17%",
-              "note": "27 website visits · 2,303 emails with a link",
+              "value": 7.8,
+              "display": "0.78%",
+              "note": "18 website visits · 2,303 emails with a link",
               "thin": false
             },
             {
               "key": "deepseek-v4-flash",
               "label": "DeepSeek V4 Flash",
-              "value": 10.7,
-              "display": "1.07%",
-              "note": "7 website visits · 656 emails with a link",
+              "value": 3,
+              "display": "0.30%",
+              "note": "2 website visits · 656 emails with a link",
               "thin": true
             },
             {
               "key": "glm-5.3-flash",
               "label": "GLM 5.3 Flash",
-              "value": 5.8,
-              "display": "0.58%",
-              "note": "2 website visits · 344 emails with a link",
+              "value": 2.9,
+              "display": "0.29%",
+              "note": "1 website visit · 344 emails with a link",
               "thin": true
             },
             {
               "key": "gemini-3.8-flash",
               "label": "Gemini 3.8 Flash",
-              "value": 2.7,
-              "display": "0.27%",
-              "note": "1 website visit · 375 emails with a link",
+              "value": 0,
+              "display": "0.00%",
+              "note": "0 website visits · 375 emails with a link",
               "thin": true
             }
           ],
@@ -3187,9 +3179,9 @@
             },
             {
               "label": "Sep",
-              "value": 12,
-              "display": "1.20%",
-              "note": "6 website visits · 498 emails with a link · month in progress",
+              "value": 10,
+              "display": "1.00%",
+              "note": "5 website visits · 498 emails with a link · month in progress",
               "thin": true,
               "partial": true
             }
@@ -3206,9 +3198,9 @@
               },
               {
                 "label": "Sep",
-                "value": 11.83,
-                "display": "1.18%",
-                "note": "6 website visits · 507 emails with a link to date · month in progress",
+                "value": 9.86,
+                "display": "0.99%",
+                "note": "5 website visits · 507 emails with a link to date · month in progress",
                 "thin": true,
                 "partial": true
               }
@@ -3218,16 +3210,16 @@
         }
       ],
       "conclusion": [
-        "Gemini 3.1 Pro: 6 website visits · 507 emails with a link.",
-        "Over time: 0.00% in Aug, 1.20% in Sep.",
-        "Same clients, same months, Gemini 3.1 Pro gets 1.58x the website visits per email of Gemini 3.5 Flash-Lite (95% interval 0.65x to 3.87x; 6 website visits in 498 emails with a link against 26 in 2,205).",
-        "Same clients, same months, Gemini 3.1 Pro against DeepSeek V4 Flash: 6 website visits in 498 emails with a link against 4 in 564, under 5 on one side, so no ratio.",
-        "Same clients, same months, Gemini 3.1 Pro against GLM 5.3 Flash: 6 website visits in 498 emails with a link against 2 in 314, under 5 on one side, so no ratio.",
+        "Gemini 3.1 Pro: 5 website visits · 507 emails with a link.",
+        "Over time: 0.00% in Aug, 1.00% in Sep.",
+        "Same clients, same months, Gemini 3.1 Pro gets 2.71x the website visits per email of Gemini 3.5 Flash-Lite (95% interval 0.99x to 7.43x; 5 website visits in 498 emails with a link against 17 in 2,205).",
+        "Same clients, same months, Gemini 3.1 Pro against DeepSeek V4 Flash: 5 website visits in 498 emails with a link against 1 in 564, under 5 on one side, so no ratio.",
+        "Same clients, same months, Gemini 3.1 Pro against GLM 5.3 Flash: 5 website visits in 498 emails with a link against 1 in 314, under 5 on one side, so no ratio.",
         "A LLM with fewer than 10 website visits is ranked where its value puts it and marked Learning."
       ],
       "verdict": {
         "kind": "noise",
-        "reason": "Gemini 3.1 Pro against Gemini 3.5 Flash-Lite, website visits per email: p 1.000, a gap chance alone produces often."
+        "reason": "Gemini 3.1 Pro against Gemini 3.5 Flash-Lite, website visits per email: p 0.591, a gap chance alone produces often."
       }
     },
     {
@@ -3237,12 +3229,12 @@
       "goal": "roi",
       "question": "What does a website visit cost on average?",
       "status": "measured",
-      "headline": "$1.41 per website visit on average since inception, across all our emails whose clicks are screened for bots.",
+      "headline": "$2.33 per website visit on average since inception, across all our emails whose clicks are screened for bots.",
       "winner": null,
       "result": {
-        "display": "$1.41",
+        "display": "$2.33",
         "unit": "per website visit, average since inception",
-        "sample": "43 website visits · 4,185 emails with a link to date"
+        "sample": "26 website visits · 4,185 emails with a link to date"
       },
       "crowned": true,
       "charts": [
@@ -3253,9 +3245,9 @@
           "points": [
             {
               "label": "Sep",
-              "value": 1.4,
-              "display": "$1.40",
-              "note": "43 website visits · 4,176 emails with a link · month in progress",
+              "value": 2.32,
+              "display": "$2.32",
+              "note": "26 website visits · 4,176 emails with a link · month in progress",
               "thin": false,
               "partial": true
             }
@@ -3265,9 +3257,9 @@
             "points": [
               {
                 "label": "Sep",
-                "value": 1.41,
-                "display": "$1.41",
-                "note": "43 website visits · 4,185 emails with a link to date · month in progress",
+                "value": 2.33,
+                "display": "$2.33",
+                "note": "26 website visits · 4,185 emails with a link to date · month in progress",
                 "thin": false,
                 "partial": true
               }
@@ -3281,7 +3273,7 @@
       ],
       "verdict": {
         "kind": "conclusion",
-        "reason": "A measurement on 43 website visits: 95% interval $1.05 to $1.95 per website visit."
+        "reason": "A measurement on 26 website visits: 95% interval $1.59 to $3.57 per website visit."
       }
     },
     {
@@ -3291,12 +3283,12 @@
       "goal": "roi",
       "question": "How many follow-ups are worth their cost, for website visits?",
       "status": "measured",
-      "headline": "Send through follow-up 2: it adds website visits at no extra cost (sending is not charged per email), against $2.02 on a first email.",
+      "headline": "Send through follow-up 2: it adds website visits at no extra cost (sending is not charged per email), against $3.03 on a first email.",
       "winner": "Follow-up 2",
       "result": {
         "display": "$0.00",
         "unit": "per extra website visit, follow-up 2",
-        "sample": "4 website visits · $0.00 extra spent"
+        "sample": "2 website visits · $0.00 extra spent"
       },
       "crowned": true,
       "charts": [
@@ -3307,23 +3299,23 @@
           "points": [
             {
               "label": "First email",
-              "value": 2.02,
-              "display": "$2.02",
-              "note": "30 website visits · 1,746 emails with a link",
+              "value": 3.03,
+              "display": "$3.03",
+              "note": "20 website visits · 1,746 emails with a link",
               "thin": false
             },
             {
               "label": "Follow-up 1",
               "value": 0,
               "display": "$0.00",
-              "note": "9 website visits · 1,248 emails with a link",
+              "note": "4 website visits · 1,248 emails with a link",
               "thin": true
             },
             {
               "label": "Follow-up 2",
               "value": 0,
               "display": "$0.00",
-              "note": "4 website visits · 1,191 emails with a link",
+              "note": "2 website visits · 1,191 emails with a link",
               "thin": true
             }
           ],
@@ -3336,23 +3328,23 @@
           "points": [
             {
               "label": "First email only",
-              "value": 2.02,
-              "display": "$2.02",
-              "note": "30 website visits · $61 spent",
+              "value": 3.03,
+              "display": "$3.03",
+              "note": "20 website visits · $61 spent",
               "thin": false
             },
             {
               "label": "+ 1 follow-up",
-              "value": 1.55,
-              "display": "$1.55",
-              "note": "39 website visits · $61 spent",
+              "value": 2.52,
+              "display": "$2.52",
+              "note": "24 website visits · $61 spent",
               "thin": false
             },
             {
               "label": "+ 2 follow-ups",
-              "value": 1.41,
-              "display": "$1.41",
-              "note": "43 website visits · $61 spent",
+              "value": 2.33,
+              "display": "$2.33",
+              "note": "26 website visits · $61 spent",
               "thin": false
             }
           ],
@@ -3365,7 +3357,7 @@
       ],
       "verdict": {
         "kind": "conclusion",
-        "reason": "Follow-ups cost nothing extra and brought 13 website visits on the same people the first email reached."
+        "reason": "Follow-ups cost nothing extra and brought 6 website visits on the same people the first email reached."
       }
     },
     {
@@ -3375,12 +3367,12 @@
       "goal": "rate",
       "question": "How many follow-ups get the most website visits?",
       "status": "measured",
-      "headline": "Website visits keep coming through 2 follow-ups: the last one adds 0.23 points. A signal to confirm, not yet a conclusion.",
+      "headline": "Website visits keep coming through 2 follow-ups: the last one adds 0.12 points. A signal to confirm, not yet a conclusion.",
       "winner": "+ 2 follow-ups",
       "result": {
-        "display": "2.46%",
+        "display": "1.49%",
         "unit": "of people got a website visit, all follow-ups",
-        "sample": "43 website visits from 1,746 people"
+        "sample": "26 website visits from 1,746 people"
       },
       "crowned": false,
       "charts": [
@@ -3391,23 +3383,23 @@
           "points": [
             {
               "label": "First email only",
-              "value": 17.2,
-              "display": "1.72%",
-              "note": "30 website visits from 1,746 people",
+              "value": 11.5,
+              "display": "1.15%",
+              "note": "20 website visits from 1,746 people",
               "thin": false
             },
             {
               "label": "+ 1 follow-up",
-              "value": 22.3,
-              "display": "2.23%",
-              "note": "39 website visits from 1,746 people",
+              "value": 13.7,
+              "display": "1.37%",
+              "note": "24 website visits from 1,746 people",
               "thin": false
             },
             {
               "label": "+ 2 follow-ups",
-              "value": 24.6,
-              "display": "2.46%",
-              "note": "43 website visits from 1,746 people",
+              "value": 14.9,
+              "display": "1.49%",
+              "note": "26 website visits from 1,746 people",
               "thin": false
             }
           ],
@@ -3416,12 +3408,12 @@
       ],
       "conclusion": [
         "Counted per person reached, so a follow-up is judged on what it adds, not on how many emails it took.",
-        "+ 1 follow-up: +0.51 points.",
-        "+ 2 follow-ups: +0.23 points."
+        "+ 1 follow-up: +0.22 points.",
+        "+ 2 follow-ups: +0.12 points."
       ],
       "verdict": {
         "kind": "signal",
-        "reason": "Follow-ups brought 13 of 43 website visits, so they add some; but the last useful one (follow-up 2) brought only 4, too few to say how far to go."
+        "reason": "Follow-ups brought 6 of 26 website visits, so they add some; but the last useful one (follow-up 2) brought only 2, too few to say how far to go."
       }
     },
     {
@@ -3441,7 +3433,7 @@
       ],
       "verdict": {
         "kind": "noise",
-        "reason": "p 0.38: a gap chance alone produces often, and the two periods are not a split test."
+        "reason": "p 0.91: a gap chance alone produces often, and the two periods are not a split test."
       }
     },
     {
@@ -3461,7 +3453,7 @@
       ],
       "verdict": {
         "kind": "noise",
-        "reason": "p 0.38: a gap chance alone produces often, and the two periods are not a split test."
+        "reason": "p 0.91: a gap chance alone produces often, and the two periods are not a split test."
       }
     },
     {
@@ -3471,12 +3463,12 @@
       "goal": "roi",
       "question": "Which template gets the cheapest website visit?",
       "status": "measured",
-      "headline": "Cold email v35 leads at $0.92 per website visit. Noise so far.",
+      "headline": "Cold email v35 leads at $1.53 per website visit. Noise so far.",
       "winner": "Cold email v35",
       "result": {
-        "display": "$0.92",
+        "display": "$1.53",
         "unit": "per website visit",
-        "sample": "35 website visits · 3,072 emails with a link"
+        "sample": "21 website visits · 3,072 emails with a link"
       },
       "crowned": false,
       "charts": [
@@ -3488,18 +3480,10 @@
             {
               "key": "cold-email-v35",
               "label": "Cold email v35",
-              "value": 0.92,
-              "display": "$0.92",
-              "note": "35 website visits · 3,072 emails with a link",
+              "value": 1.53,
+              "display": "$1.53",
+              "note": "21 website visits · 3,072 emails with a link",
               "thin": false
-            },
-            {
-              "key": "cold-email-v38",
-              "label": "Cold email v38",
-              "value": 1.27,
-              "display": "$1.27",
-              "note": "2 website visits · 103 emails with a link",
-              "thin": true
             },
             {
               "key": "cold-email-v31",
@@ -3510,19 +3494,11 @@
               "thin": true
             },
             {
-              "key": "cold-email-v19",
-              "label": "Cold email v19",
-              "value": 2.49,
-              "display": "$2.49",
-              "note": "1 website visit · 112 emails with a link",
-              "thin": true
-            },
-            {
-              "key": "cold-email-v36",
-              "label": "Cold email v36",
-              "value": 12.46,
-              "display": "$12",
-              "note": "1 website visit · 375 emails with a link",
+              "key": "cold-email-v38",
+              "label": "Cold email v38",
+              "value": 2.54,
+              "display": "$2.54",
+              "note": "1 website visit · 103 emails with a link",
               "thin": true
             }
           ],
@@ -3535,9 +3511,9 @@
           "points": [
             {
               "label": "Sep",
-              "value": 0.92,
-              "display": "$0.92",
-              "note": "35 website visits · 3,072 emails with a link · month in progress",
+              "value": 1.53,
+              "display": "$1.53",
+              "note": "21 website visits · 3,072 emails with a link · month in progress",
               "thin": false,
               "partial": true
             }
@@ -3547,9 +3523,9 @@
             "points": [
               {
                 "label": "Sep",
-                "value": 0.92,
-                "display": "$0.92",
-                "note": "35 website visits · 3,072 emails with a link to date · month in progress",
+                "value": 1.53,
+                "display": "$1.53",
+                "note": "21 website visits · 3,072 emails with a link to date · month in progress",
                 "thin": false,
                 "partial": true
               }
@@ -3559,11 +3535,11 @@
         }
       ],
       "conclusion": [
-        "Cold email v35: 35 website visits · 3,072 emails with a link, $32 spent."
+        "Cold email v35: 21 website visits · 3,072 emails with a link, $32 spent."
       ],
       "verdict": {
         "kind": "noise",
-        "reason": "Cold email v35 against Cold email v38, website visits per dollar: p 1.000, a gap chance alone produces often."
+        "reason": "Cold email v35 against Cold email v31, website visits per dollar: p 1.000, a gap chance alone produces often."
       }
     },
     {
@@ -3573,12 +3549,12 @@
       "goal": "rate",
       "question": "Which template gets the most website visits?",
       "status": "measured",
-      "headline": "Cold email v38 leads with a 1.94% website visit rate. Noise so far.",
-      "winner": "Cold email v38",
+      "headline": "Cold email v31 leads with a 1.28% website visit rate. Noise so far.",
+      "winner": "Cold email v31",
       "result": {
-        "display": "1.94%",
+        "display": "1.28%",
         "unit": "website visit rate",
-        "sample": "2 website visits · 103 emails with a link"
+        "sample": "4 website visits · 312 emails with a link"
       },
       "crowned": false,
       "charts": [
@@ -3588,14 +3564,6 @@
           "lowerIsBetter": false,
           "points": [
             {
-              "key": "cold-email-v38",
-              "label": "Cold email v38",
-              "value": 19.4,
-              "display": "1.94%",
-              "note": "2 website visits · 103 emails with a link",
-              "thin": true
-            },
-            {
               "key": "cold-email-v31",
               "label": "Cold email v31",
               "value": 12.8,
@@ -3604,27 +3572,27 @@
               "thin": true
             },
             {
-              "key": "cold-email-v35",
-              "label": "Cold email v35",
-              "value": 11.4,
-              "display": "1.14%",
-              "note": "35 website visits · 3,072 emails with a link",
-              "thin": false
+              "key": "cold-email-v38",
+              "label": "Cold email v38",
+              "value": 9.7,
+              "display": "0.97%",
+              "note": "1 website visit · 103 emails with a link",
+              "thin": true
             },
             {
-              "key": "cold-email-v19",
-              "label": "Cold email v19",
-              "value": 8.9,
-              "display": "0.89%",
-              "note": "1 website visit · 112 emails with a link",
-              "thin": true
+              "key": "cold-email-v35",
+              "label": "Cold email v35",
+              "value": 6.8,
+              "display": "0.68%",
+              "note": "21 website visits · 3,072 emails with a link",
+              "thin": false
             },
             {
               "key": "cold-email-v36",
               "label": "Cold email v36",
-              "value": 2.7,
-              "display": "0.27%",
-              "note": "1 website visit · 375 emails with a link",
+              "value": 0,
+              "display": "0.00%",
+              "note": "0 website visits · 375 emails with a link",
               "thin": true
             },
             {
@@ -3633,6 +3601,14 @@
               "value": 0,
               "display": "0.00%",
               "note": "0 website visits · 119 emails with a link",
+              "thin": true
+            },
+            {
+              "key": "cold-email-v19",
+              "label": "Cold email v19",
+              "value": 0,
+              "display": "0.00%",
+              "note": "0 website visits · 112 emails with a link",
               "thin": true
             },
             {
@@ -3648,26 +3624,40 @@
         },
         {
           "kind": "months",
-          "title": "Cold email v38: website visit rate by month",
+          "title": "Cold email v31: website visit rate by month",
           "lowerIsBetter": false,
           "points": [
             {
+              "label": "Aug",
+              "value": 0,
+              "display": "0.00%",
+              "note": "0 website visits · 9 emails with a link",
+              "thin": true
+            },
+            {
               "label": "Sep",
-              "value": 19.4,
-              "display": "1.94%",
-              "note": "2 website visits · 103 emails with a link · month in progress",
+              "value": 13.2,
+              "display": "1.32%",
+              "note": "4 website visits · 303 emails with a link · month in progress",
               "thin": true,
               "partial": true
             }
           ],
           "cumulative": {
-            "title": "Cold email v38: average since inception",
+            "title": "Cold email v31: average since inception",
             "points": [
               {
+                "label": "Aug",
+                "value": 0,
+                "display": "0.00%",
+                "note": "0 website visits · 9 emails with a link to date",
+                "thin": true
+              },
+              {
                 "label": "Sep",
-                "value": 19.42,
-                "display": "1.94%",
-                "note": "2 website visits · 103 emails with a link to date · month in progress",
+                "value": 12.82,
+                "display": "1.28%",
+                "note": "4 website visits · 312 emails with a link to date · month in progress",
                 "thin": true,
                 "partial": true
               }
@@ -3677,12 +3667,13 @@
         }
       ],
       "conclusion": [
-        "Cold email v38: 2 website visits · 103 emails with a link.",
+        "Cold email v31: 4 website visits · 312 emails with a link.",
+        "Over time: 0.00% in Aug, 1.32% in Sep.",
         "A template with fewer than 10 website visits is ranked where its value puts it and marked Learning."
       ],
       "verdict": {
         "kind": "noise",
-        "reason": "Cold email v38 rests on 2 website visits; a lead needs at least 5 before chance stops dominating."
+        "reason": "Cold email v31 rests on 4 website visits; a lead needs at least 5 before chance stops dominating."
       }
     },
     {
@@ -3692,12 +3683,12 @@
       "goal": "roi",
       "question": "Does the layout of the first email change what a website visit costs?",
       "status": "measured",
-      "headline": "One block leads at $1.09 per website visit. Noise so far.",
+      "headline": "One block leads at $1.54 per website visit. A signal to confirm, not yet a conclusion.",
       "winner": "One block",
       "result": {
-        "display": "$1.09",
+        "display": "$1.54",
         "unit": "per website visit",
-        "sample": "24 website visits · 2,095 emails with a link"
+        "sample": "17 website visits · 2,095 emails with a link"
       },
       "crowned": false,
       "charts": [
@@ -3708,21 +3699,21 @@
           "points": [
             {
               "label": "One block",
-              "value": 1.09,
-              "display": "$1.09",
-              "note": "24 website visits · 2,095 emails with a link",
+              "value": 1.54,
+              "display": "$1.54",
+              "note": "17 website visits · 2,095 emails with a link",
               "thin": false
             },
             {
               "label": "Double line breaks",
-              "value": 1.78,
-              "display": "$1.78",
-              "note": "19 website visits · 2,065 emails with a link",
-              "thin": false
+              "value": 3.76,
+              "display": "$3.76",
+              "note": "9 website visits · 2,065 emails with a link",
+              "thin": true
             },
             {
               "label": "Single line breaks",
-              "value": 1.78,
+              "value": 3.76,
               "display": "None yet",
               "note": "0 website visits · 25 emails with a link, $0.47 spent",
               "thin": true
@@ -3737,21 +3728,21 @@
           "points": [
             {
               "label": "One block",
-              "value": 0.91,
-              "display": "$0.91",
-              "note": "20 website visits · 1,711 emails with a link",
+              "value": 1.4,
+              "display": "$1.40",
+              "note": "13 website visits · 1,711 emails with a link",
               "thin": false
             },
             {
               "label": "Double line breaks",
-              "value": 1.83,
-              "display": "$1.83",
-              "note": "17 website visits · 1,949 emails with a link",
-              "thin": false
+              "value": 3.88,
+              "display": "$3.88",
+              "note": "8 website visits · 1,949 emails with a link",
+              "thin": true
             },
             {
               "label": "Single line breaks",
-              "value": 1.83,
+              "value": 3.88,
               "display": "None yet",
               "note": "0 website visits · 18 emails with a link, $0.31 spent",
               "thin": true
@@ -3765,13 +3756,6 @@
           "lowerIsBetter": true,
           "points": [
             {
-              "label": "Double line breaks",
-              "value": 1.39,
-              "display": "$1.39",
-              "note": "2 website visits · 116 emails with a link",
-              "thin": true
-            },
-            {
               "label": "One block",
               "value": 2,
               "display": "$2.00",
@@ -3779,8 +3763,15 @@
               "thin": true
             },
             {
+              "label": "Double line breaks",
+              "value": 2.79,
+              "display": "$2.79",
+              "note": "1 website visit · 116 emails with a link",
+              "thin": true
+            },
+            {
               "label": "Single line breaks",
-              "value": 2,
+              "value": 2.79,
               "display": "None yet",
               "note": "0 website visits · 7 emails with a link, $0.16 spent",
               "thin": true
@@ -3790,16 +3781,16 @@
         }
       ],
       "conclusion": [
-        "One block: 24 website visits · 2,095 emails with a link, $26 spent.",
-        "Flash tier: One block is cheapest at $0.91 per website visit (20 website visits · 1,711 emails with a link).",
-        "Pro tier: Double line breaks is cheapest at $1.39 per website visit (2 website visits · 116 emails with a link).",
+        "One block: 17 website visits · 2,095 emails with a link, $26 spent.",
+        "Flash tier: One block is cheapest at $1.40 per website visit (13 website visits · 1,711 emails with a link).",
+        "Pro tier: One block is cheapest at $2.00 per website visit (4 website visits · 384 emails with a link).",
         "Every email of a sequence is filed under how its first email looked, and the sequence's website visits with it. Three layouts: one block (no line break at all), single line breaks (a new line with no empty line), double line breaks (an empty line between paragraphs). Classified by a regex on the text of the first email, no LLM involved.",
         "The model chose this on its own until Sep 28, 2026, when the templates started requiring a greeting and blank-line paragraphs. Every email here was written before, the last in Oct.",
         "The buckets ran for different clients, audiences and months: this is not a split test."
       ],
       "verdict": {
-        "kind": "noise",
-        "reason": "One block against Double line breaks, website visits per dollar: p 0.124, a gap chance alone produces often."
+        "kind": "signal",
+        "reason": "One block against Double line breaks, website visits per dollar: p 0.030, but not under the corrected bar (2 comparisons, so the bar is p < 0.025)."
       }
     },
     {
@@ -3809,12 +3800,12 @@
       "goal": "roi",
       "question": "Does the way the first email opens change what a website visit costs?",
       "status": "measured",
-      "headline": "Greeting + first name leads at $0.80 per website visit. Noise so far.",
+      "headline": "Greeting + first name leads at $1.18 per website visit. Noise so far.",
       "winner": "Greeting + first name",
       "result": {
-        "display": "$0.80",
+        "display": "$1.18",
         "unit": "per website visit",
-        "sample": "25 website visits · 1,893 emails with a link"
+        "sample": "17 website visits · 1,893 emails with a link"
       },
       "crowned": false,
       "charts": [
@@ -3825,23 +3816,23 @@
           "points": [
             {
               "label": "Greeting + first name",
-              "value": 0.8,
-              "display": "$0.80",
-              "note": "25 website visits · 1,893 emails with a link",
+              "value": 1.18,
+              "display": "$1.18",
+              "note": "17 website visits · 1,893 emails with a link",
               "thin": false
             },
             {
               "label": "First name alone",
-              "value": 1.39,
-              "display": "$1.39",
-              "note": "14 website visits · 1,522 emails with a link",
-              "thin": false
+              "value": 2.43,
+              "display": "$2.43",
+              "note": "8 website visits · 1,522 emails with a link",
+              "thin": true
             },
             {
               "label": "No greeting",
-              "value": 5.27,
-              "display": "$5.27",
-              "note": "4 website visits · 770 emails with a link",
+              "value": 21.07,
+              "display": "$21",
+              "note": "1 website visit · 770 emails with a link",
               "thin": true
             }
           ],
@@ -3854,23 +3845,23 @@
           "points": [
             {
               "label": "Greeting + first name",
-              "value": 0.8,
-              "display": "$0.80",
-              "note": "25 website visits · 1,893 emails with a link",
+              "value": 1.18,
+              "display": "$1.18",
+              "note": "17 website visits · 1,893 emails with a link",
               "thin": false
             },
             {
               "label": "First name alone",
-              "value": 1.2,
-              "display": "$1.20",
-              "note": "10 website visits · 1,165 emails with a link",
-              "thin": false
+              "value": 2.99,
+              "display": "$2.99",
+              "note": "4 website visits · 1,165 emails with a link",
+              "thin": true
             },
             {
               "label": "No greeting",
-              "value": 8.81,
-              "display": "$8.81",
-              "note": "2 website visits · 620 emails with a link",
+              "value": 2.99,
+              "display": "None yet",
+              "note": "0 website visits · 620 emails with a link, $18 spent",
               "thin": true
             }
           ],
@@ -3882,17 +3873,17 @@
           "lowerIsBetter": true,
           "points": [
             {
-              "label": "No greeting",
-              "value": 1.73,
-              "display": "$1.73",
-              "note": "2 website visits · 150 emails with a link",
-              "thin": true
-            },
-            {
               "label": "First name alone",
               "value": 1.88,
               "display": "$1.88",
               "note": "4 website visits · 357 emails with a link",
+              "thin": true
+            },
+            {
+              "label": "No greeting",
+              "value": 3.46,
+              "display": "$3.46",
+              "note": "1 website visit · 150 emails with a link",
               "thin": true
             }
           ],
@@ -3900,9 +3891,9 @@
         }
       ],
       "conclusion": [
-        "Greeting + first name: 25 website visits · 1,893 emails with a link, $20 spent.",
-        "Flash tier: Greeting + first name is cheapest at $0.80 per website visit (25 website visits · 1,893 emails with a link).",
-        "Pro tier: No greeting is cheapest at $1.73 per website visit (2 website visits · 150 emails with a link).",
+        "Greeting + first name: 17 website visits · 1,893 emails with a link, $20 spent.",
+        "Flash tier: Greeting + first name is cheapest at $1.18 per website visit (17 website visits · 1,893 emails with a link).",
+        "Pro tier: First name alone is cheapest at $1.88 per website visit (4 website visits · 357 emails with a link).",
         "Every email of a sequence is filed under how its first email looked, and the sequence's website visits with it. A greeting word in any language we write in (Hi, Hallo, Bonjour...) counts as a greeting whatever follows; a first name followed by a comma, a colon or a dash, with no greeting word before it (\"Marie, most clinics...\"), counts as the first name alone. Classified by a regex on the text of the first email, no LLM involved.",
         "The model chose this on its own until Sep 28, 2026, when the templates started requiring a greeting and blank-line paragraphs. Every email here was written before, the last in Oct.",
         "The buckets ran for different clients, audiences and months: this is not a split test."
@@ -3919,12 +3910,12 @@
       "goal": "roi",
       "question": "Do dashes in the first email change what a website visit costs, and how often one comes?",
       "status": "measured",
-      "headline": "No dash leads at $1.39 per website visit. Noise so far.",
+      "headline": "No dash leads at $2.11 per website visit. Noise so far.",
       "winner": "No dash",
       "result": {
-        "display": "$1.39",
+        "display": "$2.11",
         "unit": "per website visit",
-        "sample": "35 website visits · 3,164 emails with a link"
+        "sample": "23 website visits · 3,164 emails with a link"
       },
       "crowned": false,
       "charts": [
@@ -3935,21 +3926,21 @@
           "points": [
             {
               "label": "No dash",
-              "value": 1.39,
-              "display": "$1.39",
-              "note": "35 website visits · 3,164 emails with a link",
+              "value": 2.11,
+              "display": "$2.11",
+              "note": "23 website visits · 3,164 emails with a link",
               "thin": false
             },
             {
               "label": "Em dash",
-              "value": 1.49,
-              "display": "$1.49",
-              "note": "8 website visits · 1,018 emails with a link",
+              "value": 3.96,
+              "display": "$3.96",
+              "note": "3 website visits · 1,018 emails with a link",
               "thin": true
             },
             {
               "label": "En dash",
-              "value": 1.49,
+              "value": 3.96,
               "display": "None yet",
               "note": "0 website visits · 3 emails with a link, $0.03 spent",
               "thin": true
@@ -3964,16 +3955,16 @@
           "points": [
             {
               "label": "No dash",
-              "value": 11.1,
-              "display": "1.11%",
-              "note": "35 website visits · 3,164 emails with a link",
+              "value": 7.3,
+              "display": "0.73%",
+              "note": "23 website visits · 3,164 emails with a link",
               "thin": false
             },
             {
               "label": "Em dash",
-              "value": 7.9,
-              "display": "0.79%",
-              "note": "8 website visits · 1,018 emails with a link",
+              "value": 2.9,
+              "display": "0.29%",
+              "note": "3 website visits · 1,018 emails with a link",
               "thin": true
             },
             {
@@ -3993,21 +3984,21 @@
           "points": [
             {
               "label": "No dash",
-              "value": 1.31,
-              "display": "$1.31",
-              "note": "29 website visits · 2,673 emails with a link",
+              "value": 2.11,
+              "display": "$2.11",
+              "note": "18 website visits · 2,673 emails with a link",
               "thin": false
             },
             {
               "label": "Em dash",
-              "value": 1.44,
-              "display": "$1.44",
-              "note": "8 website visits · 1,002 emails with a link",
+              "value": 3.84,
+              "display": "$3.84",
+              "note": "3 website visits · 1,002 emails with a link",
               "thin": true
             },
             {
               "label": "En dash",
-              "value": 1.44,
+              "value": 3.84,
               "display": "None yet",
               "note": "0 website visits · 3 emails with a link, $0.03 spent",
               "thin": true
@@ -4022,16 +4013,16 @@
           "points": [
             {
               "label": "No dash",
-              "value": 10.8,
-              "display": "1.08%",
-              "note": "29 website visits · 2,673 emails with a link",
+              "value": 6.7,
+              "display": "0.67%",
+              "note": "18 website visits · 2,673 emails with a link",
               "thin": false
             },
             {
               "label": "Em dash",
-              "value": 8,
-              "display": "0.80%",
-              "note": "8 website visits · 1,002 emails with a link",
+              "value": 3,
+              "display": "0.30%",
+              "note": "3 website visits · 1,002 emails with a link",
               "thin": true
             },
             {
@@ -4051,14 +4042,14 @@
           "points": [
             {
               "label": "No dash",
-              "value": 1.76,
-              "display": "$1.76",
-              "note": "6 website visits · 491 emails with a link",
+              "value": 2.12,
+              "display": "$2.12",
+              "note": "5 website visits · 491 emails with a link",
               "thin": true
             },
             {
               "label": "Em dash",
-              "value": 1.76,
+              "value": 2.12,
               "display": "None yet",
               "note": "0 website visits · 16 emails with a link, $0.38 spent",
               "thin": true
@@ -4073,9 +4064,9 @@
           "points": [
             {
               "label": "No dash",
-              "value": 12.2,
-              "display": "1.22%",
-              "note": "6 website visits · 491 emails with a link",
+              "value": 10.2,
+              "display": "1.02%",
+              "note": "5 website visits · 491 emails with a link",
               "thin": true
             },
             {
@@ -4133,9 +4124,9 @@
         }
       ],
       "conclusion": [
-        "No dash: 35 website visits · 3,164 emails with a link, $49 spent, a 1.11% website visit rate.",
-        "Flash tier: No dash is cheapest at $1.31 per website visit (29 website visits · 2,673 emails with a link).",
-        "Pro tier: No dash is cheapest at $1.76 per website visit (6 website visits · 491 emails with a link).",
+        "No dash: 23 website visits · 3,164 emails with a link, $49 spent, a 0.73% website visit rate.",
+        "Flash tier: No dash is cheapest at $2.11 per website visit (18 website visits · 2,673 emails with a link).",
+        "Pro tier: No dash is cheapest at $2.12 per website visit (5 website visits · 491 emails with a link).",
         "Dashes are a model habit: DeepSeek V4 Flash puts one in 93% of its first emails, Gemini 3.5 Flash-Lite in 1%. Read each tier against the models writing its buckets.",
         "Flash tier: 61% of the em dash emails come from DeepSeek V4 Flash, 86% of the no-dash emails come from Gemini 3.5 Flash-Lite: different models, so within this tier the gap is largely a model gap, not a dash effect.",
         "Pro tier: 100% of the em dash emails come from Gemini 3.1 Pro, 100% of the no-dash emails come from Gemini 3.1 Pro: one model writes most of both, so within this tier the gap is closer to a dash effect.",
@@ -4145,141 +4136,8 @@
       ],
       "verdict": {
         "kind": "noise",
-        "reason": "No dash against Em dash, website visits per dollar: p 1.000, a gap chance alone produces often."
+        "reason": "No dash against Em dash, website visits per dollar: p 0.457, a gap chance alone produces often."
       }
-    },
-    {
-      "id": "cold-email-website-visit-weekday-rate",
-      "pipe": "cold-email-website-visit",
-      "topic": "weekday",
-      "goal": "rate",
-      "question": "Which day of the week should a cold email go out on?",
-      "status": "measured",
-      "headline": "Wednesday leads with a 1.67% website visit rate. Noise so far.",
-      "winner": "Wednesday",
-      "result": {
-        "display": "1.67%",
-        "unit": "website visit rate",
-        "sample": "8 website visits · 480 emails with a link"
-      },
-      "crowned": false,
-      "verdict": {
-        "kind": "noise",
-        "reason": "Wednesday against Thursday, website visits per email: p 0.636, a gap chance alone produces often."
-      },
-      "charts": [
-        {
-          "kind": "bars",
-          "title": "By day of the week, prospect's timezone: website visit rate, % of emails with a link (higher is better)",
-          "lowerIsBetter": false,
-          "points": [
-            {
-              "label": "Monday",
-              "value": 8.5,
-              "display": "0.85%",
-              "note": "11 website visits · 1,300 emails with a link",
-              "thin": false
-            },
-            {
-              "label": "Tuesday",
-              "value": 10.7,
-              "display": "1.07%",
-              "note": "9 website visits · 841 emails with a link",
-              "thin": true
-            },
-            {
-              "label": "Wednesday",
-              "value": 16.7,
-              "display": "1.67%",
-              "note": "8 website visits · 480 emails with a link",
-              "thin": true
-            },
-            {
-              "label": "Thursday",
-              "value": 13.2,
-              "display": "1.32%",
-              "note": "10 website visits · 755 emails with a link",
-              "thin": false
-            },
-            {
-              "label": "Friday",
-              "value": 6.4,
-              "display": "0.64%",
-              "note": "5 website visits · 777 emails with a link",
-              "thin": true
-            },
-            {
-              "label": "Saturday",
-              "value": 0,
-              "display": "0.00%",
-              "note": "0 website visits · 4 emails with a link",
-              "thin": true
-            },
-            {
-              "label": "Sunday",
-              "value": 0,
-              "display": "0.00%",
-              "note": "0 website visits · 2 emails with a link",
-              "thin": true
-            }
-          ],
-          "note": "Only people we started writing to at least 21 days before the read (before Sep 27) count, with every positive reply and website visit they sent since. A figure needs 1 positive reply (10 website visits) behind it; below that it reads Learning. A website visit is a click our link-scanner check judged human, which only the emails we send ourselves can carry: website-visit figures leave out the emails sent through the provider, whose clicks are mostly scanners and cannot be screened."
-        },
-        {
-          "kind": "bars",
-          "title": "By day of the week, prospect's timezone: cost per website visit (USD, lower is better)",
-          "lowerIsBetter": true,
-          "points": [
-            {
-              "label": "Monday",
-              "value": 1.1,
-              "display": "$1.10",
-              "note": "11 website visits · 1,300 emails with a link",
-              "thin": false
-            },
-            {
-              "label": "Tuesday",
-              "value": 1.44,
-              "display": "$1.44",
-              "note": "9 website visits · 841 emails with a link",
-              "thin": true
-            },
-            {
-              "label": "Wednesday",
-              "value": 1.58,
-              "display": "$1.58",
-              "note": "8 website visits · 480 emails with a link",
-              "thin": true
-            },
-            {
-              "label": "Thursday",
-              "value": 1.1,
-              "display": "$1.10",
-              "note": "10 website visits · 755 emails with a link",
-              "thin": false
-            },
-            {
-              "label": "Friday",
-              "value": 2.3,
-              "display": "$2.30",
-              "note": "5 website visits · 777 emails with a link",
-              "thin": true
-            }
-          ],
-          "note": "Only people we started writing to at least 21 days before the read (before Sep 27) count, with every positive reply and website visit they sent since. A figure needs 1 positive reply (10 website visits) behind it; below that it reads Learning. A website visit is a click our link-scanner check judged human, which only the emails we send ourselves can carry: website-visit figures leave out the emails sent through the provider, whose clicks are mostly scanners and cannot be screened."
-        }
-      ],
-      "conclusion": [
-        "Wednesday: 8 website visits · 480 emails with a link; runner-up Thursday, 1.32% (10 website visits · 755 emails with a link).",
-        "Sunday against Monday to Friday: 0.00% against 1.04% (0 website visits · 2 emails with a link; 43 website visits · 4,153 emails with a link). Noise: Monday to Friday against Sunday, website visits per email: p 1.000, a gap chance alone produces often.",
-        "Saturday: every email sent from Oct, for 1 of the 3 clients the busiest day reached.",
-        "Sunday: every email sent from Aug, for 1 of the 3 clients the busiest day reached.",
-        "The schedule moved over the window: in Aug, 11% of emails went out Monday to Friday between 08:00 and 17:00 in the prospect's timezone and 22% on a weekend; in Oct, 83% and 1%. So a day or an hour outside that window is also an older month, other clients and other campaigns.",
-        "What this cannot answer: whether a Sunday email works on today's campaigns. Every Sunday email here dates from Aug, from campaigns that also sent on weekends, so no recent Sunday send exists to weigh against recent weekdays. The days also differ by client, month and step of the sequence, which a same-clients, same-months check only partly removes. Only a split test (Sunday against a weekday, same clients, same weeks) can settle it.",
-        "No country with a Sunday to Thursday week (UAE, Saudi Arabia, Israel...) is read apart here.",
-        "26 emails with a link whose prospect has no timezone on record are left out.",
-        "Each email is filed under its own send day in the prospect's timezone, and a website visit under the email that earned it."
-      ]
     },
     {
       "id": "cold-email-website-visit-hour-rate",
@@ -4288,17 +4146,17 @@
       "goal": "rate",
       "question": "Which hour of the day should a cold email go out at?",
       "status": "measured",
-      "headline": "06:00 leads with a 7.69% website visit rate. Noise so far.",
-      "winner": "06:00",
+      "headline": "10:00 leads with a 2.33% website visit rate. Noise so far.",
+      "winner": "10:00",
       "result": {
-        "display": "7.69%",
+        "display": "2.33%",
         "unit": "website visit rate",
-        "sample": "1 website visit · 13 emails with a link"
+        "sample": "12 website visits · 514 emails with a link"
       },
       "crowned": false,
       "verdict": {
         "kind": "noise",
-        "reason": "06:00 rests on 1 website visit; a lead needs at least 5 before chance stops dominating."
+        "reason": "10:00 against 11:00, website visits per email: p 0.810, a gap chance alone produces often."
       },
       "charts": [
         {
@@ -4322,9 +4180,9 @@
             },
             {
               "label": "06:00",
-              "value": 76.9,
-              "display": "7.69%",
-              "note": "1 website visit · 13 emails with a link",
+              "value": 0,
+              "display": "0.00%",
+              "note": "0 website visits · 13 emails with a link",
               "thin": true
             },
             {
@@ -4336,44 +4194,44 @@
             },
             {
               "label": "08:00",
-              "value": 4.3,
-              "display": "0.43%",
-              "note": "7 website visits · 1,623 emails with a link",
+              "value": 1.2,
+              "display": "0.12%",
+              "note": "2 website visits · 1,623 emails with a link",
               "thin": true
             },
             {
               "label": "09:00",
-              "value": 8.2,
-              "display": "0.82%",
-              "note": "6 website visits · 730 emails with a link",
+              "value": 4.1,
+              "display": "0.41%",
+              "note": "3 website visits · 730 emails with a link",
               "thin": true
             },
             {
               "label": "10:00",
-              "value": 25.3,
-              "display": "2.53%",
-              "note": "13 website visits · 514 emails with a link",
+              "value": 23.3,
+              "display": "2.33%",
+              "note": "12 website visits · 514 emails with a link",
               "thin": false
             },
             {
               "label": "11:00",
-              "value": 21.1,
-              "display": "2.11%",
-              "note": "7 website visits · 331 emails with a link",
+              "value": 18.1,
+              "display": "1.81%",
+              "note": "6 website visits · 331 emails with a link",
               "thin": true
             },
             {
               "label": "12:00",
-              "value": 15.7,
-              "display": "1.57%",
-              "note": "3 website visits · 191 emails with a link",
+              "value": 10.5,
+              "display": "1.05%",
+              "note": "2 website visits · 191 emails with a link",
               "thin": true
             },
             {
               "label": "13:00",
-              "value": 13.1,
-              "display": "1.31%",
-              "note": "4 website visits · 305 emails with a link",
+              "value": 0,
+              "display": "0.00%",
+              "note": "0 website visits · 305 emails with a link",
               "thin": true
             },
             {
@@ -4385,9 +4243,9 @@
             },
             {
               "label": "15:00",
-              "value": 13.2,
-              "display": "1.32%",
-              "note": "1 website visit · 76 emails with a link",
+              "value": 0,
+              "display": "0.00%",
+              "note": "0 website visits · 76 emails with a link",
               "thin": true
             },
             {
@@ -4434,52 +4292,38 @@
           "lowerIsBetter": true,
           "points": [
             {
-              "label": "06:00",
-              "value": 0.27,
-              "display": "$0.27",
-              "note": "1 website visit · 13 emails with a link",
-              "thin": true
-            },
-            {
               "label": "08:00",
-              "value": 2.58,
-              "display": "$2.58",
-              "note": "7 website visits · 1,623 emails with a link",
+              "value": 9.03,
+              "display": "$9.03",
+              "note": "2 website visits · 1,623 emails with a link",
               "thin": true
             },
             {
               "label": "09:00",
-              "value": 1.74,
-              "display": "$1.74",
-              "note": "6 website visits · 730 emails with a link",
+              "value": 3.49,
+              "display": "$3.49",
+              "note": "3 website visits · 730 emails with a link",
               "thin": true
             },
             {
               "label": "10:00",
-              "value": 0.49,
-              "display": "$0.49",
-              "note": "13 website visits · 514 emails with a link",
+              "value": 0.53,
+              "display": "$0.53",
+              "note": "12 website visits · 514 emails with a link",
               "thin": false
             },
             {
               "label": "11:00",
-              "value": 0.88,
-              "display": "$0.88",
-              "note": "7 website visits · 331 emails with a link",
+              "value": 1.03,
+              "display": "$1.03",
+              "note": "6 website visits · 331 emails with a link",
               "thin": true
             },
             {
               "label": "12:00",
-              "value": 1.34,
-              "display": "$1.34",
-              "note": "3 website visits · 191 emails with a link",
-              "thin": true
-            },
-            {
-              "label": "13:00",
-              "value": 1.89,
-              "display": "$1.89",
-              "note": "4 website visits · 305 emails with a link",
+              "value": 2.01,
+              "display": "$2.01",
+              "note": "2 website visits · 191 emails with a link",
               "thin": true
             },
             {
@@ -4488,20 +4332,13 @@
               "display": "$4.68",
               "note": "1 website visit · 223 emails with a link",
               "thin": true
-            },
-            {
-              "label": "15:00",
-              "value": 1.18,
-              "display": "$1.18",
-              "note": "1 website visit · 76 emails with a link",
-              "thin": true
             }
           ],
           "note": "Only people we started writing to at least 21 days before the read (before Sep 27) count, with every positive reply and website visit they sent since. A figure needs 1 positive reply (10 website visits) behind it; below that it reads Learning. A website visit is a click our link-scanner check judged human, which only the emails we send ourselves can carry: website-visit figures leave out the emails sent through the provider, whose clicks are mostly scanners and cannot be screened."
         }
       ],
       "conclusion": [
-        "06:00: 1 website visit · 13 emails with a link; runner-up 10:00, 2.53% (13 website visits · 514 emails with a link).",
+        "10:00: 12 website visits · 514 emails with a link; runner-up 11:00, 1.81% (6 website visits · 331 emails with a link).",
         "98% of these emails went out between 08:00 and 17:00 in the prospect's timezone; the other 94 are spread over 8 hours.",
         "The schedule moved over the window: in Aug, 11% of emails went out Monday to Friday between 08:00 and 17:00 in the prospect's timezone and 22% on a weekend; in Oct, 83% and 1%. So a day or an hour outside that window is also an older month, other clients and other campaigns.",
         "What this cannot answer: whether an evening or early-morning email works on today's campaigns. The hours outside 08:00 to 17:00 come from older months, and an hour's bar mixes the clients, months and steps of the sequence sent in it. Only a split test on the same clients in the same weeks can settle it.",
@@ -4516,12 +4353,12 @@
       "goal": "roi",
       "question": "Which workflow gets the cheapest website visit?",
       "status": "measured",
-      "headline": "Gemini 3.5 Flash-Lite · Cold email v35 leads at $0.85 per website visit. Noise so far.",
+      "headline": "Gemini 3.5 Flash-Lite · Cold email v35 leads at $1.23 per website visit. Noise so far.",
       "winner": "Gemini 3.5 Flash-Lite · Cold email v35",
       "result": {
-        "display": "$0.85",
+        "display": "$1.23",
         "unit": "per website visit",
-        "sample": "26 website visits · 2,072 emails with a link"
+        "sample": "18 website visits · 2,072 emails with a link"
       },
       "crowned": false,
       "charts": [
@@ -4533,26 +4370,10 @@
             {
               "key": "sales-cold-email-outreach-rampart",
               "label": "Gemini 3.5 Flash-Lite · Cold email v35",
-              "value": 0.85,
-              "display": "$0.85",
-              "note": "26 website visits · 2,072 emails with a link",
+              "value": 1.23,
+              "display": "$1.23",
+              "note": "18 website visits · 2,072 emails with a link",
               "thin": false
-            },
-            {
-              "key": "sales-cold-email-outreach-lyonesse",
-              "label": "DeepSeek V4 Flash · Cold email v35",
-              "value": 0.94,
-              "display": "$0.94",
-              "note": "7 website visits · 656 emails with a link",
-              "thin": true
-            },
-            {
-              "key": "sales-cold-email-outreach-legato",
-              "label": "Gemini 3.1 Pro · Cold email v38",
-              "value": 1.27,
-              "display": "$1.27",
-              "note": "2 website visits · 103 emails with a link",
-              "thin": true
             },
             {
               "key": "sales-cold-email-outreach-permafrost",
@@ -4563,27 +4384,27 @@
               "thin": true
             },
             {
+              "key": "sales-cold-email-outreach-legato",
+              "label": "Gemini 3.1 Pro · Cold email v38",
+              "value": 2.54,
+              "display": "$2.54",
+              "note": "1 website visit · 103 emails with a link",
+              "thin": true
+            },
+            {
+              "key": "sales-cold-email-outreach-lyonesse",
+              "label": "DeepSeek V4 Flash · Cold email v35",
+              "value": 3.29,
+              "display": "$3.29",
+              "note": "2 website visits · 656 emails with a link",
+              "thin": true
+            },
+            {
               "key": "sales-cold-email-outreach-maelstrom",
               "label": "GLM 5.3 Flash · Cold email v35",
-              "value": 1.71,
-              "display": "$1.71",
-              "note": "2 website visits · 344 emails with a link",
-              "thin": true
-            },
-            {
-              "key": "sales-cold-email-outreach-dawn",
-              "label": "Gemini 3.5 Flash-Lite · Cold email v19",
-              "value": 2.49,
-              "display": "$2.49",
-              "note": "1 website visit · 112 emails with a link",
-              "thin": true
-            },
-            {
-              "key": "sales-cold-email-outreach-pelican",
-              "label": "Gemini 3.8 Flash · Cold email v36",
-              "value": 12.46,
-              "display": "$12",
-              "note": "1 website visit · 375 emails with a link",
+              "value": 3.41,
+              "display": "$3.41",
+              "note": "1 website visit · 344 emails with a link",
               "thin": true
             }
           ],
@@ -4596,9 +4417,9 @@
           "points": [
             {
               "label": "Sep",
-              "value": 0.85,
-              "display": "$0.85",
-              "note": "26 website visits · 2,072 emails with a link · month in progress",
+              "value": 1.23,
+              "display": "$1.23",
+              "note": "18 website visits · 2,072 emails with a link · month in progress",
               "thin": false,
               "partial": true
             }
@@ -4608,9 +4429,9 @@
             "points": [
               {
                 "label": "Sep",
-                "value": 0.85,
-                "display": "$0.85",
-                "note": "26 website visits · 2,072 emails with a link to date · month in progress",
+                "value": 1.23,
+                "display": "$1.23",
+                "note": "18 website visits · 2,072 emails with a link to date · month in progress",
                 "thin": false,
                 "partial": true
               }
@@ -4620,11 +4441,11 @@
         }
       ],
       "conclusion": [
-        "Gemini 3.5 Flash-Lite · Cold email v35: 26 website visits · 2,072 emails with a link, $22 spent."
+        "Gemini 3.5 Flash-Lite · Cold email v35: 18 website visits · 2,072 emails with a link, $22 spent."
       ],
       "verdict": {
         "kind": "noise",
-        "reason": "Gemini 3.5 Flash-Lite · Cold email v35 against DeepSeek V4 Flash · Cold email v35, website visits per dollar: p 1.000, a gap chance alone produces often."
+        "reason": "Gemini 3.5 Flash-Lite · Cold email v35 against Gemini 3.1 Pro · Cold email v31, website visits per dollar: p 0.801, a gap chance alone produces often."
       }
     },
     {
@@ -4634,12 +4455,12 @@
       "goal": "rate",
       "question": "Which workflow gets the most website visits?",
       "status": "measured",
-      "headline": "Gemini 3.1 Pro · Cold email v38 leads with a 1.94% website visit rate. Noise so far.",
-      "winner": "Gemini 3.1 Pro · Cold email v38",
+      "headline": "Gemini 3.1 Pro · Cold email v31 leads with a 1.28% website visit rate. Noise so far.",
+      "winner": "Gemini 3.1 Pro · Cold email v31",
       "result": {
-        "display": "1.94%",
+        "display": "1.28%",
         "unit": "website visit rate",
-        "sample": "2 website visits · 103 emails with a link"
+        "sample": "4 website visits · 312 emails with a link"
       },
       "crowned": false,
       "charts": [
@@ -4649,14 +4470,6 @@
           "lowerIsBetter": false,
           "points": [
             {
-              "key": "sales-cold-email-outreach-legato",
-              "label": "Gemini 3.1 Pro · Cold email v38",
-              "value": 19.4,
-              "display": "1.94%",
-              "note": "2 website visits · 103 emails with a link",
-              "thin": true
-            },
-            {
               "key": "sales-cold-email-outreach-permafrost",
               "label": "Gemini 3.1 Pro · Cold email v31",
               "value": 12.8,
@@ -4665,43 +4478,43 @@
               "thin": true
             },
             {
+              "key": "sales-cold-email-outreach-legato",
+              "label": "Gemini 3.1 Pro · Cold email v38",
+              "value": 9.7,
+              "display": "0.97%",
+              "note": "1 website visit · 103 emails with a link",
+              "thin": true
+            },
+            {
               "key": "sales-cold-email-outreach-rampart",
               "label": "Gemini 3.5 Flash-Lite · Cold email v35",
-              "value": 12.5,
-              "display": "1.25%",
-              "note": "26 website visits · 2,072 emails with a link",
+              "value": 8.7,
+              "display": "0.87%",
+              "note": "18 website visits · 2,072 emails with a link",
               "thin": false
             },
             {
               "key": "sales-cold-email-outreach-lyonesse",
               "label": "DeepSeek V4 Flash · Cold email v35",
-              "value": 10.7,
-              "display": "1.07%",
-              "note": "7 website visits · 656 emails with a link",
-              "thin": true
-            },
-            {
-              "key": "sales-cold-email-outreach-dawn",
-              "label": "Gemini 3.5 Flash-Lite · Cold email v19",
-              "value": 8.9,
-              "display": "0.89%",
-              "note": "1 website visit · 112 emails with a link",
+              "value": 3,
+              "display": "0.30%",
+              "note": "2 website visits · 656 emails with a link",
               "thin": true
             },
             {
               "key": "sales-cold-email-outreach-maelstrom",
               "label": "GLM 5.3 Flash · Cold email v35",
-              "value": 5.8,
-              "display": "0.58%",
-              "note": "2 website visits · 344 emails with a link",
+              "value": 2.9,
+              "display": "0.29%",
+              "note": "1 website visit · 344 emails with a link",
               "thin": true
             },
             {
               "key": "sales-cold-email-outreach-pelican",
               "label": "Gemini 3.8 Flash · Cold email v36",
-              "value": 2.7,
-              "display": "0.27%",
-              "note": "1 website visit · 375 emails with a link",
+              "value": 0,
+              "display": "0.00%",
+              "note": "0 website visits · 375 emails with a link",
               "thin": true
             },
             {
@@ -4710,6 +4523,14 @@
               "value": 0,
               "display": "0.00%",
               "note": "0 website visits · 119 emails with a link",
+              "thin": true
+            },
+            {
+              "key": "sales-cold-email-outreach-dawn",
+              "label": "Gemini 3.5 Flash-Lite · Cold email v19",
+              "value": 0,
+              "display": "0.00%",
+              "note": "0 website visits · 112 emails with a link",
               "thin": true
             },
             {
@@ -4725,26 +4546,40 @@
         },
         {
           "kind": "months",
-          "title": "Gemini 3.1 Pro · Cold email v38: website visit rate by month",
+          "title": "Gemini 3.1 Pro · Cold email v31: website visit rate by month",
           "lowerIsBetter": false,
           "points": [
             {
+              "label": "Aug",
+              "value": 0,
+              "display": "0.00%",
+              "note": "0 website visits · 9 emails with a link",
+              "thin": true
+            },
+            {
               "label": "Sep",
-              "value": 19.4,
-              "display": "1.94%",
-              "note": "2 website visits · 103 emails with a link · month in progress",
+              "value": 13.2,
+              "display": "1.32%",
+              "note": "4 website visits · 303 emails with a link · month in progress",
               "thin": true,
               "partial": true
             }
           ],
           "cumulative": {
-            "title": "Gemini 3.1 Pro · Cold email v38: average since inception",
+            "title": "Gemini 3.1 Pro · Cold email v31: average since inception",
             "points": [
               {
+                "label": "Aug",
+                "value": 0,
+                "display": "0.00%",
+                "note": "0 website visits · 9 emails with a link to date",
+                "thin": true
+              },
+              {
                 "label": "Sep",
-                "value": 19.42,
-                "display": "1.94%",
-                "note": "2 website visits · 103 emails with a link to date · month in progress",
+                "value": 12.82,
+                "display": "1.28%",
+                "note": "4 website visits · 312 emails with a link to date · month in progress",
                 "thin": true,
                 "partial": true
               }
@@ -4754,12 +4589,13 @@
         }
       ],
       "conclusion": [
-        "Gemini 3.1 Pro · Cold email v38: 2 website visits · 103 emails with a link.",
+        "Gemini 3.1 Pro · Cold email v31: 4 website visits · 312 emails with a link.",
+        "Over time: 0.00% in Aug, 1.32% in Sep.",
         "A workflow with fewer than 10 website visits is ranked where its value puts it and marked Learning."
       ],
       "verdict": {
         "kind": "noise",
-        "reason": "Gemini 3.1 Pro · Cold email v38 rests on 2 website visits; a lead needs at least 5 before chance stops dominating."
+        "reason": "Gemini 3.1 Pro · Cold email v31 rests on 4 website visits; a lead needs at least 5 before chance stops dominating."
       }
     },
     {
@@ -4871,7 +4707,7 @@
       "goal": "rate",
       "question": "Does the AI answering positive replies book more meetings?",
       "status": "measured",
-      "headline": "Within 30 days of a positive reply. Before the AI went live: 15% (4 meetings of 27 people). After the AI went live: no positive reply 30 days old yet. Noise so far.",
+      "headline": "Within 30 days of a positive reply. Before the AI went live: 14% (4 meetings of 28 people). After the AI went live: no positive reply 30 days old yet. Noise so far.",
       "winner": null,
       "crowned": false,
       "verdict": {
@@ -4879,9 +4715,9 @@
         "reason": "No positive reply on the after side is 30 days old yet: nothing to compare on the same horizon."
       },
       "result": {
-        "display": "15%",
+        "display": "14%",
         "unit": "booked a meeting within 30 days of a positive reply, before the AI went live",
-        "sample": "4 meetings of 27 people · after: no positive reply 30 days old yet"
+        "sample": "4 meetings of 28 people · after: no positive reply 30 days old yet"
       },
       "charts": [
         {
@@ -4891,9 +4727,9 @@
           "points": [
             {
               "label": "Before the AI went live",
-              "value": 14.8,
-              "display": "15%",
-              "note": "4 meetings booked of 27 people with a positive reply",
+              "value": 14.3,
+              "display": "14%",
+              "note": "4 meetings booked of 28 people with a positive reply",
               "thin": true
             },
             {
