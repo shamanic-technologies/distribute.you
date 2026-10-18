@@ -1,4 +1,4 @@
-import { friendlyTime, timeUntil } from "./friendly-datetime";
+import { timeUntil } from "./friendly-datetime";
 
 /**
  * Why a campaign that reads `ongoing` is not running right now, in the customer's words.
@@ -53,9 +53,6 @@ export const HOLD_RECHECK_MS = 10 * 60_000;
 export const CREDIT_RECHECK_MS = 30 * 60_000;
 const MISSED_CYCLES_BEFORE_STALE = 2;
 
-/** One UTC day, which is the window a daily ceiling is spent against. */
-const DAY_MS = 86_400_000;
-
 /** The shape this reads off `GET /v1/events`. Only the fields a hold needs. */
 export interface HoldEventInput {
   event: string;
@@ -71,16 +68,15 @@ export interface CampaignHold {
   /**
    * When the campaign starts again ON ITS OWN, ISO, or null when it cannot.
    *
-   * Only the holds that CLEAR WITHOUT THE CUSTOMER carry one, and that distinction is the
-   * whole point of the field. A spent ceiling clears when the UTC day rolls over, and a
-   * problem on our side clears when we fix it, so both can promise a time. A campaign
-   * nobody funded and one with no credit clear only when somebody pays, so `nextRunAt`
-   * there is the moment we look again and hold again: promising it as a restart would be
-   * a sentence that is simply false.
+   * Only a problem on OUR side carries one: it clears when we fix it, and `nextRunAt` is
+   * our next try. A campaign nobody funded and one with no credit clear only when somebody
+   * pays, so `nextRunAt` there is the moment we look again and hold again: promising it as
+   * a restart would be a sentence that is simply false.
    *
-   * Note the ceiling does NOT use the producer's `nextRunAt` either, and the producer
-   * says why in its own words ("it runs again when the ceiling is raised or the day rolls
-   * over"): that timestamp is the next re-check, ten minutes out, which will hold again.
+   * A reached limit promises no time either (2026-10-18). Its reason is still spelled
+   * `daily_ceiling_reached`, but campaign-service now emits it for a sales funnel's max
+   * budget OR max volume, of ANY period (daily, weekly, monthly): "the next UTC midnight"
+   * was a false restart for every weekly, monthly and volume cap.
    */
   resumeAt: string | null;
   /** Cents committed today, on the ceiling reason. */
@@ -119,23 +115,12 @@ const HOLD_REASONS = new Set<string>([
   "planning_failed",
 ]);
 
-/** Next 00:00 UTC strictly after `now` — when a daily ceiling starts again. */
-function nextUtcMidnight(now: Date): string {
-  const next = Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()) + DAY_MS;
-  return new Date(next).toISOString();
-}
-
-function fromCampaignHold(e: HoldEventInput, now: Date): CampaignHold | null {
+function fromCampaignHold(e: HoldEventInput): CampaignHold | null {
   if (!isRecord(e.data)) return null;
   const reason = readString(e.data, "reason");
   if (!reason || !HOLD_REASONS.has(reason)) return null;
   const nextRunAt = readString(e.data, "nextRunAt");
-  const resumeAt =
-    reason === "daily_ceiling_reached"
-      ? nextUtcMidnight(now)
-      : reason === "unfunded"
-        ? null
-        : nextRunAt;
+  const resumeAt = reason === "budgets_unreadable" || reason === "planning_failed" ? nextRunAt : null;
   return {
     reason: reason as CampaignHoldReason,
     at: e.createdAt,
@@ -187,7 +172,7 @@ export function readCampaignHold(
   for (const e of events) {
     const parsed =
       e.event === "campaign-hold"
-        ? fromCampaignHold(e, now)
+        ? fromCampaignHold(e)
         : e.event === "gate-check-result"
           ? fromGateCheck(e)
           : null;
@@ -200,54 +185,78 @@ export function readCampaignHold(
   return best;
 }
 
-const wholeUsd = (cents: number): string =>
-  `$${Math.round(cents / 100).toLocaleString("en-US")}`;
-
 /**
  * The sentence a customer reads, in plain language, with no slug and no timestamp.
  *
  * The two reasons that are OURS say so and ask for nothing: a reader who is told to go
- * and fix something we broke goes looking for a control that does not exist.
+ * and fix something we broke goes looking for a control that does not exist. A campaign's
+ * money is its max budget and max volume (owner 2026-10-10), so no line names a daily
+ * budget. Every sentence names its subject (no opening "It").
  */
 export function campaignHoldCopy(
   hold: CampaignHold,
   now: Date = new Date(),
 ): CampaignHoldCopy {
-  const resumes = hold.resumeAt
-    ? ` It starts again ${timeUntil(hold.resumeAt, now)}, at ${friendlyTime(hold.resumeAt)} your time.`
-    : "";
-
   switch (hold.reason) {
-    case "daily_ceiling_reached": {
-      const budget = hold.ceilingCents != null ? ` of ${wholeUsd(hold.ceilingCents)}` : "";
+    case "daily_ceiling_reached":
       return {
-        headline: "Today's budget is spent",
-        body: `This campaign used its full daily budget${budget}, so it stopped for today.${resumes} Raise the daily budget to start it sooner.`,
+        headline: "This campaign reached its limit",
+        body: "This campaign hit its max budget or its max volume for this period. Sending starts again when the next period begins. Raise the limit to start sooner.",
         action: "campaign_budget",
-        actionLabel: "Change the daily budget",
+        actionLabel: "Raise the limit",
       };
-    }
     case "unfunded":
       return {
-        headline: "This campaign has no daily budget",
-        body: "Nothing is funding it, so it cannot run. Set a daily budget and it starts at the next check, within ten minutes.",
+        headline: "This campaign has no budget yet",
+        body: "This campaign needs a max budget or a max volume to run. Set one and sending starts within ten minutes.",
         action: "campaign_budget",
-        actionLabel: "Set a daily budget",
+        actionLabel: "Set a budget",
       };
     case "insufficient_credits":
       return {
         headline: "You are out of credit",
-        body: "This campaign cannot send until your balance covers it. Add credits and it starts again at the next check, within half an hour.",
+        body: "This campaign cannot send until your balance covers it. Add credits and sending starts again within half an hour.",
         action: "billing",
         actionLabel: "Add credits",
       };
     case "budgets_unreadable":
-    case "planning_failed":
+    case "planning_failed": {
+      const when = hold.resumeAt ? timeUntil(hold.resumeAt, now) : null;
+      const retry = when && when !== "now" ? `We try again ${when}.` : "We try again in a moment.";
       return {
-        headline: "This campaign is held up on our side",
-        body: `We could not start it, and that is ours to fix rather than yours. We keep retrying on our own.${resumes}`,
+        headline: "A problem on our side",
+        body: `This campaign could not start because of a problem on our side. You have nothing to do. ${retry}`,
         action: null,
         actionLabel: null,
       };
+    }
   }
+}
+
+/** One reason a campaign's pipes are held, and which pipes. */
+export interface CampaignHoldGroup {
+  hold: CampaignHold;
+  campaignIds: string[];
+}
+
+/**
+ * A sales-funnel campaign's holds, ONE note per reason (campaign-service holds each PIPE,
+ * and a money hold names every pipe of the funnel at once: three identical notes would say
+ * one thing three times). Keeps the newest hold of each reason, ids in the order given.
+ */
+export function holdsByReason(
+  holds: ReadonlyArray<readonly [campaignId: string, hold: CampaignHold | null]>,
+): CampaignHoldGroup[] {
+  const groups = new Map<CampaignHoldReason, CampaignHoldGroup>();
+  for (const [id, hold] of holds) {
+    if (!hold) continue;
+    const g = groups.get(hold.reason);
+    if (!g) {
+      groups.set(hold.reason, { hold, campaignIds: [id] });
+      continue;
+    }
+    g.campaignIds.push(id);
+    if (Date.parse(hold.at) > Date.parse(g.hold.at)) g.hold = hold;
+  }
+  return [...groups.values()];
 }
