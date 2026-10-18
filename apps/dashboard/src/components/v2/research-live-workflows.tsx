@@ -4,7 +4,7 @@ import { useMemo, type ReactNode } from "react";
 import Link from "next/link";
 import { useAuthQuery } from "@/lib/use-auth-query";
 import { pollOptions } from "@/lib/query-options";
-import { getLegWorkflowRanking, listChannelWorkflowStacks } from "@/lib/api";
+import { getLegWorkflowRanking } from "@/lib/api";
 import { useLegCatalogue } from "@/lib/use-leg-catalogue";
 import { legFor } from "@/lib/legs";
 import { isProactiveFrom } from "@/lib/outbound-leg-key";
@@ -68,24 +68,9 @@ export function ResearchLiveWorkflows({
     ...pollOptions,
     retry: false,
   });
-  // Every version, retired ones included: a retired dynasty still states what it wrote with.
-  const catalogueQ = useAuthQuery(["workflows", featureSlug, "stacks-all"], () => listChannelWorkflowStacks(featureSlug), pollOptions);
-
   const rows = useMemo(() => fleetWorkflowRows(rankingQ.data?.rows ?? []), [rankingQ.data]);
-  // The model and template each workflow writes with: its newest version's, retired or not.
-  const stack = useMemo(() => {
-    const m = new Map<string, { version: number; model: string | null; template: string | null }>();
-    for (const w of catalogueQ.data ?? []) {
-      const prev = m.get(w.workflowDynastySlug);
-      if (!prev || w.version > prev.version) {
-        m.set(w.workflowDynastySlug, { version: w.version, model: w.contentModel ?? null, template: w.contentPromptType ?? null });
-      }
-    }
-    return m;
-  }, [catalogueQ.data]);
   // The Research catalogue's own pages: a workflow, template or model Research studied has one.
   const researchedWorkflows = useMemo(() => new Map((catalog?.[pipe].workflows ?? []).map((w) => [w.key, w])), [catalog, pipe]);
-  const researchedTemplates = useMemo(() => new Set((catalog?.[pipe].templates ?? []).map((t) => t.key)), [catalog, pipe]);
   // A workflow Research never studied still has its live page (`/workflows/:slug`, priced for this pipe).
   const brandBase = base.replace(/\/research$/, "");
   const pipeId = `${featureSlug}|${legKey}`;
@@ -140,13 +125,14 @@ export function ResearchLiveWorkflows({
               </tr>
             ) : (
               rows.map((r) => {
-                const st = stack.get(r.slug);
                 const studied = researchedWorkflows.get(r.slug);
+                // What it writes with NOW (its runnable version), each with its own page: features-service's catalogue.
+                const now = studied?.writesWithNow ?? null;
                 const workflowHref = studied
                   ? researchCatalogHref(base, pipe, "workflows", r.slug)
                   : `${brandBase}/workflows/${encodeURIComponent(r.slug)}?pipe=${encodeURIComponent(pipeId)}`;
-                const model = studied?.model ?? null;
-                const template = st?.template ?? null;
+                const model = now?.model ?? null;
+                const template = now?.template ?? null;
                 return (
                   <tr key={r.slug} className={`k-row h-10 ${r.cash ? "k-selected" : ""}`}>
                     <td className="k-mono k-fg3 pl-4 pr-3 text-[12px] tabular-nums">{r.rank ?? "—"}</td>
@@ -160,9 +146,9 @@ export function ResearchLiveWorkflows({
                         <Tag href={model.linked ? researchCatalogHref(base, pipe, "models", model.key) : null} title={model.label}>
                           {model.label}
                         </Tag>
-                      ) : st?.model ? (
-                        <Tag href={null} title={st.model}>
-                          {st.model}
+                      ) : now?.modelAlias ? (
+                        <Tag href={null} title={now.modelAlias}>
+                          {now.modelAlias}
                         </Tag>
                       ) : (
                         <span className="k-fg4">—</span>
@@ -170,8 +156,8 @@ export function ResearchLiveWorkflows({
                     </td>
                     <td className="max-w-0 px-3">
                       {template ? (
-                        <Tag href={researchedTemplates.has(template) ? researchCatalogHref(base, pipe, "templates", template) : null} title={template}>
-                          {template}
+                        <Tag href={template.linked ? researchCatalogHref(base, pipe, "templates", template.key) : null} title={template.label}>
+                          {template.label}
                         </Tag>
                       ) : (
                         <span className="k-fg4">—</span>
