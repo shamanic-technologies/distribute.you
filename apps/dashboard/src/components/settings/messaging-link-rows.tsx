@@ -6,6 +6,7 @@ import { answerMatrixLink, listMatrixLinks, startMatrixLink, unlinkMatrixLink, u
 import { SettingsSaveRow } from "@/components/settings/settings-save-row";
 import { useAuthQuery, useQueryClient } from "@/lib/use-auth-query";
 import { CompanyLogo } from "@/components/company-logo";
+import { InfoTooltip } from "@/components/visibility/metric-info";
 import { linkErrorMessage } from "@/lib/integration-write";
 import { accountsOfChannel, linkPollMs, needsRelink as isLoggedOut, startMethods } from "@/lib/messaging-accounts";
 import { parsePastedHeaders, sessionValues } from "@/lib/browser-session-paste";
@@ -146,7 +147,7 @@ function ChannelRow({ brandId, link, accounts }: { brandId: string; link: Matrix
       </div>
 
       {accounts.length > 0 ? (
-        <ul className="mt-3 space-y-3 border-t border-gray-100 pt-3 sm:ml-[52px]">
+        <ul className="mt-3 space-y-2 border-t border-gray-100 pt-3 sm:ml-[52px]">
           {accounts.map((a) => (
             <AccountRow key={a.linkId ?? a.channel} brandId={brandId} link={a} meta={meta} onChanged={reread} />
           ))}
@@ -231,11 +232,14 @@ function AccountRow({
     <li>
       <div className="flex flex-wrap items-start gap-3">
         <div className="min-w-0 flex-1">
-          <div className="flex flex-wrap items-center gap-2">
+          <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
             <span className="text-sm text-gray-900">
               {link.account ? (link.account.name ? `${link.account.name} (${link.account.id})` : link.account.id) : waiting ? "New account" : meta.name}
             </span>
             <AccountPill link={link} needsRelink={needsRelink} />
+            {linked && linkId && link.automationAllowed !== undefined ? (
+              <AccountSettings brandId={brandId} linkId={linkId} link={link} automationAllowed={link.automationAllowed} />
+            ) : null}
           </div>
           {needsRelink ? (
             <p className="mt-1 text-sm text-amber-700">{link.bridgeState?.reason ?? `${meta.name} logged us out of this account. Link it again.`}</p>
@@ -356,10 +360,6 @@ function AccountRow({
             </form>
           ) : null}
 
-          {linked && linkId && link.automationAllowed !== undefined ? (
-            <AccountSettings brandId={brandId} linkId={linkId} link={link} automationAllowed={link.automationAllowed} />
-          ) : null}
-
           {confirming ? (
             <p className="mt-2 text-sm text-gray-600">This logs us out of this {meta.name} account, stops reading it and removes what we mirrored. Nothing on your phone changes.</p>
           ) : null}
@@ -400,6 +400,12 @@ function personaForm(p: MatrixLink["persona"]): PersonaForm {
   return { name: p?.name ?? "", role: p?.role ?? "", instructions: p?.instructions ?? "" };
 }
 
+/** Who the account speaks as, in a few words for its line: "Sophie, Distribute.you Assistant". */
+function personaSummary(p: PersonaForm): string {
+  const who = [p.name.trim(), p.role.trim()].filter(Boolean).join(", ");
+  return who || (p.instructions.trim() ? "Your instructions" : "As your sales rep");
+}
+
 const INPUT =
   "mt-1 w-full rounded-lg border border-gray-200 px-3 py-1.5 text-sm text-gray-900 placeholder:text-gray-400 focus:border-brand-300 focus:outline-none focus:ring-2 focus:ring-brand-300/40";
 
@@ -407,7 +413,9 @@ const INPUT =
  * A linked account's own settings (crm-service SOPHIE-WA-1016): may the assistant send
  * from it (off = mirrored in the inbox only), and who it speaks as (empty = the brand's
  * sales rep). Rendered only once crm-service serves `automationAllowed`, so an older
- * crm-service never gets a PATCH it would refuse.
+ * crm-service never gets a PATCH it would refuse. It sits INSIDE the account's own
+ * line (a flex-wrap row): the switch and a short persona summary stay on that line, and
+ * the persona form opens below it, full width, only after "Edit".
  */
 function AccountSettings({
   brandId,
@@ -426,6 +434,7 @@ function AccountSettings({
   // The user's edits outrank the server: the form shows the served persona until typed in.
   const [draft, setDraft] = useState<PersonaForm | null>(null);
   const [saved, setSaved] = useState(false);
+  const [editing, setEditing] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const served = personaForm(link.persona);
@@ -477,51 +486,72 @@ function AccountSettings({
   };
 
   return (
-    <div className="mt-3 max-w-md space-y-4 rounded-lg border border-gray-200 bg-gray-50 p-3">
-      <div>
-        <div className="flex items-center justify-between gap-3">
-          <span id={`automation-${linkId}`} className="text-sm font-medium text-gray-700">
-            Assistant sends from this number
+    <>
+      <span className="flex items-center gap-2">
+        <button
+          type="button"
+          role="switch"
+          aria-checked={allowed}
+          aria-labelledby={`automation-${linkId}`}
+          disabled={toggle.isPending}
+          onClick={() => {
+            setPressed(!allowed);
+            toggle.mutate(!allowed);
+          }}
+          className={`relative h-5 w-9 shrink-0 rounded-full transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-300 ${allowed ? "bg-brand-600" : "bg-gray-300"}`}
+        >
+          <span className={`absolute left-0 top-0.5 h-4 w-4 rounded-full bg-white shadow transition-transform ${allowed ? "translate-x-[18px]" : "translate-x-0.5"}`} />
+        </button>
+        <span id={`automation-${linkId}`} className="text-sm text-gray-700">
+          Assistant sends
+        </span>
+      </span>
+      {!allowed ? (
+        <span className="flex items-center gap-1 text-xs text-gray-500">
+          Inbox only
+          <InfoTooltip tip="Mirrored in your inbox. Nothing automatic is sent from it." />
+        </span>
+      ) : null}
+      <button
+        type="button"
+        onClick={() => setEditing((v) => !v)}
+        aria-expanded={editing}
+        aria-label={editing ? "Close who this account speaks as" : "Edit who this account speaks as"}
+        className="flex min-w-0 items-center gap-1.5 rounded text-xs text-gray-500 hover:text-gray-700"
+      >
+        {allowed ? (
+          <span title={personaSummary(served)} className="max-w-[16rem] truncate">
+            {personaSummary(served)}
           </span>
-          <button
-            type="button"
-            role="switch"
-            aria-checked={allowed}
-            aria-labelledby={`automation-${linkId}`}
-            disabled={toggle.isPending}
-            onClick={() => {
-              setPressed(!allowed);
-              toggle.mutate(!allowed);
-            }}
-            className={`relative h-5 w-9 shrink-0 rounded-full transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-300 ${allowed ? "bg-brand-600" : "bg-gray-300"}`}
-          >
-            <span className={`absolute left-0 top-0.5 h-4 w-4 rounded-full bg-white shadow transition-transform ${allowed ? "translate-x-[18px]" : "translate-x-0.5"}`} />
-          </button>
-        </div>
-        {!allowed ? <p className="mt-1 text-xs text-gray-500">Mirrored in your inbox. Nothing automatic is sent from it.</p> : null}
-      </div>
+        ) : null}
+        <span className="font-medium text-brand-700">{editing ? "Close" : "Edit"}</span>
+      </button>
 
-      <div>
-        <p className="text-sm font-medium text-gray-700">Speaks as</p>
-        <p className="text-xs text-gray-500">Leave empty to speak as your sales rep.</p>
-        <div className="mt-2 grid grid-cols-1 gap-2 sm:grid-cols-2">
-          <label className="block">
-            <span className="text-xs text-gray-600">Name</span>
-            <input type="text" value={form.name} onChange={(e) => edit("name", e.target.value)} placeholder="First name" className={INPUT} />
+      {editing ? (
+        <div className="mt-2 basis-full">
+          <div className="max-w-md">
+          <p className="text-sm font-medium text-gray-700">Speaks as</p>
+          <p className="text-xs text-gray-500">Leave empty to speak as your sales rep.</p>
+          <div className="mt-2 grid grid-cols-1 gap-2 sm:grid-cols-2">
+            <label className="block">
+              <span className="text-xs text-gray-600">Name</span>
+              <input type="text" value={form.name} onChange={(e) => edit("name", e.target.value)} placeholder="First name" className={INPUT} />
+            </label>
+            <label className="block">
+              <span className="text-xs text-gray-600">Role</span>
+              <input type="text" value={form.role} onChange={(e) => edit("role", e.target.value)} placeholder="Sales assistant" className={INPUT} />
+            </label>
+          </div>
+          <label className="mt-2 block">
+            <span className="text-xs text-gray-600">Instructions (optional)</span>
+            <textarea value={form.instructions} onChange={(e) => edit("instructions", e.target.value)} rows={3} className={INPUT} />
           </label>
-          <label className="block">
-            <span className="text-xs text-gray-600">Role</span>
-            <input type="text" value={form.role} onChange={(e) => edit("role", e.target.value)} placeholder="Sales assistant" className={INPUT} />
-          </label>
+          <SettingsSaveRow dirty={dirty} saving={savePersona.isPending} saved={saved} onSave={() => savePersona.mutate(form)} />
+          </div>
         </div>
-        <label className="mt-2 block">
-          <span className="text-xs text-gray-600">Instructions (optional)</span>
-          <textarea value={form.instructions} onChange={(e) => edit("instructions", e.target.value)} rows={3} className={INPUT} />
-        </label>
-        <SettingsSaveRow dirty={dirty} saving={savePersona.isPending} saved={saved} onSave={() => savePersona.mutate(form)} />
-      </div>
-      {error ? <p className="text-sm text-red-600">{error}</p> : null}
-    </div>
+      ) : null}
+      {error ? <p className="basis-full text-sm text-red-600">{error}</p> : null}
+    </>
   );
 }
 
