@@ -57,15 +57,19 @@ export function LiveWorkflowChips({ row }: { row: LiveWorkflowRow }) {
 /** The live-ranking column heads, in their one order. No `costLabel` means no cost column: the
  *  brand's Workflows page already states the campaign's cost in its Offer column, so a second
  *  column there repeats it (owner, 2026-09-30). */
-export function LiveWorkflowHeads({ costLabel }: { costLabel?: string }) {
+export function LiveWorkflowHeads({ costLabel, compact = false }: { costLabel?: string; compact?: boolean }) {
+  // `compact`: the narrower widths a fixed-layout table needs to fit the viewport (Research).
+  const w = compact
+    ? { cost: "w-20", status: "w-24", roi: "w-14", rate: "w-14", outcomes: "w-20", invested: "w-20" }
+    : { cost: "w-32", status: "w-28", roi: "w-20", rate: "w-20", outcomes: "w-24", invested: "w-24" };
   return (
     <>
-      {costLabel && <th className={`${LIVE_TH} w-32 text-right`}>{costLabel}</th>}
-      <th className={`${LIVE_TH} w-28`}>Status</th>
-      <th className={`${LIVE_TH} w-20 text-right`}>ROI</th>
-      <th className={`${LIVE_TH} w-20 text-right`}>Rate</th>
-      <th className={`${LIVE_TH} w-24 text-right`}>Outcomes</th>
-      <th className={`${LIVE_TH} w-24 text-right`}>Invested</th>
+      {costLabel && <th className={`${LIVE_TH} ${w.cost} text-right`}>{costLabel}</th>}
+      <th className={`${LIVE_TH} ${w.status}`}>Status</th>
+      <th className={`${LIVE_TH} ${w.roi} text-right`}>ROI</th>
+      <th className={`${LIVE_TH} ${w.rate} text-right`}>Rate</th>
+      <th className={`${LIVE_TH} ${w.outcomes} text-right`}>Outcomes</th>
+      <th className={`${LIVE_TH} ${w.invested} text-right`}>Invested</th>
     </>
   );
 }

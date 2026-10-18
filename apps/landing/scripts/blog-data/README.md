@@ -60,14 +60,22 @@ a weekend day or an off-hour is also an older month. A leg whose every bucket is
 
 The two strategy studies per cold email pipe (`strategy.mjs`, 2026-10-18) read campaign-service's
 `run_play_attributions` (one row per dispatched run, since 2026-10-18): **Lead strategy** (ROI + rate,
-`<pipe>-strategy-<goal>`) files each email under the play its generation's run was served under, a bar
-being the features-service strategy name (`strategies.json`) marked `(default)` on the pipe's default
-play; **Sourcing strategy** (rate only, `<pipe>-sourcing-strategy-rate`) files it under the play of the
-run that FOUND its lead (lead-service `leads_campaigns.parent_run_id` handed to the outreach campaign,
-or an on_demand source run whose `caller_run_id` is the outreach run). Sourcing spend sits on its own
-runs, so no sourcing ROI. An email whose run carries no attribution (everything before 2026-10-18) is
-out of both studies, stated in their population line, never counted under the default. Meeting
-booking runs carry no attribution yet, so that pipe has no strategy study.
+`<pipe>-strategy-<goal>`, the play the email's run was served under, features-service names, `(default)`
+marked) and **Sourcing strategy** (rate only, `<pipe>-sourcing-strategy-rate`, the play of the run that
+FOUND its lead: lead-service `parent_run_id`, or an on_demand run's `caller_run_id`). An email whose run
+carries no attribution (everything before 2026-10-18) is out, stated, never counted under the default.
+
+The OUTCOME rows (`outcomes.mjs`, owner 2026-10-18): one row per step a pipe's leg lands on, built from
+the data (the hub orders Positive reply, Website visit, Meeting booked, then any new one), 14 studies
+each, `outcome-<outcome>-<cut>-<goal>`: overall (average since inception, month chart) then by pipe,
+channel, leg, workflow, lead strategy and tactic (`tactic-verdicts.json`: Jev's verdict per workflow
+VERSION, re-judged in place when a tactic's text changes; one bar per tactic on the emails of versions
+judged to follow it, the other side beside). $ / outcome = spend over the outcomes the emails earned
+(one pipe: equal to its own cost over time, research.mjs throws otherwise); **% conversion counts LEADS
+at lead-service's grain** (`leads.id`, a human at a company, once however many emails or campaigns),
+never people or emails. Every name is the public catalogue's (`catalogue-words.json`). Meeting booked:
+`meeting-cost` is its average; its cuts read the meeting booking leg (meetings.mjs `booking`);
+workflow, strategy and tactic are not measured there yet.
 
 The second argument receives two side files the workflow and template pages read
 (`research-catalog.json`: one entry per workflow, per template and per model, per pipe, with its months and
