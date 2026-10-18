@@ -150,6 +150,26 @@ describe("copilot wiring", () => {
     expect(prompt).toContain("a max budget, a max volume, or both");
   });
 
+  // Owner 2026-10-18 (SOPHIE-COPILOT-WA-1018): one voice, chat-service's `client-comms` skill.
+  // The prompt keeps what only the dashboard knows; its old wording rules beat the skill.
+  it("leaves every wording rule to client-comms", () => {
+    const boot = src("src/instrumentation.ts");
+    const prompt = boot.slice(boot.indexOf("const COPILOT_SYSTEM_PROMPT"), boot.indexOf("const COPILOT_ALLOWED_TOOLS"));
+    expect(prompt).toContain("\\`client-comms\\` skill");
+    for (const old of [
+      "quote figures exactly",
+      'say "still learning"',
+      "tell the person you did",
+      "tell the person it is on hold",
+      "whole dollars from $10 up",
+      "two or three short sentences",
+      "in one or two sentences",
+      "showing the sum in one line",
+    ]) {
+      expect(prompt).not.toContain(old);
+    }
+  });
+
   it("prints a cents figure in dollars, never the raw integer", () => {
     const cards = src("src/components/v2/copilot-cards.tsx");
     expect(cards).toContain('unit?.toLowerCase() === "cents"');
