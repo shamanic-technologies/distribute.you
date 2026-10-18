@@ -14,8 +14,8 @@ import { timeAgo } from "@/lib/friendly-datetime";
 import { leadsExportQuery, leadsSearchParam, leadsSearchProblem, LEADS_PAGE_SIZE, type LeadBucket } from "@/lib/leads-server-page";
 import { ExportButton, RecordsFooter, RecordsTabs, RecordsToolbar, REC_TH, useRowKeys } from "@/components/v2/records";
 import { v2Href } from "@/lib/v2/routes";
-import { CrewMark } from "@/components/v2/crew-mark";
-import { useMissions } from "@/components/v2/use-missions";
+import { useLeadCampaigns } from "@/components/v2/lead-campaigns";
+import { FunnelFace } from "@/components/v2/funnel-campaigns";
 import { useLeadScope, useBucketCounts } from "@/components/v2/data";
 import { EmptyNote, Shimmer, TopBar } from "@/components/v2/ui";
 import {
@@ -68,7 +68,7 @@ export function PeoplePage({ bucket, campaignId }: { bucket?: LeadBucket; campai
   const problem = leadsSearchProblem(search);
   const wire = problem ? "" : (leadsSearchParam(search) ?? "");
   const counts = useBucketCounts(brandId).data;
-  const { missionByCampaignId, crews } = useMissions(orgId, brandId);
+  const { campaignOf } = useLeadCampaigns(orgId, brandId);
   const brandLead = useLeadScope(brandId);
   // `campaignId` set = one campaign's page: lead-service resolves the id to the whole
   // campaign identity (its ancestors included), the same scope its steps card reads.
@@ -118,14 +118,7 @@ export function PeoplePage({ bucket, campaignId }: { bucket?: LeadBucket; campai
         right={
           counts ? (
             <>
-              <span className="flex items-center gap-1">
-                {crews.slice(0, 5).map((c) => (
-                  <CrewMark key={c.crew.key} color={c.crew.color} glyph={c.crew.glyph} size={14} />
-                ))}
-              </span>
-              <span>
-                {formatCount(counts.counts.contacted)} reached by your crew
-              </span>
+              <span>{formatCount(counts.counts.contacted)} contacted</span>
               <span className="k-fg4">·</span>
               <span>{formatCount(counts.counts.positive_reply)} wrote back with interest</span>
             </>
@@ -154,7 +147,7 @@ export function PeoplePage({ bucket, campaignId }: { bucket?: LeadBucket; campai
               <th className={`${REC_TH} pl-4 md:pl-6`}>Person</th>
               <th className={REC_TH}>Company</th>
               <th className={REC_TH}>Role</th>
-              <th className={REC_TH}>Known by</th>
+              <th className={REC_TH}>Campaign</th>
               <th className={REC_TH}>Stage</th>
               <th className={REC_TH}>Last touch</th>
               <th className={`${REC_TH} w-[120px] pr-4 md:pr-6`}><span className="sr-only">Actions</span></th>
@@ -175,7 +168,7 @@ export function PeoplePage({ bucket, campaignId }: { bucket?: LeadBucket; campai
               rows.map((lead, i) => {
                 const status = getLeadConsolidatedStatus(lead);
                 const at = leadDateForStatus(lead, status);
-                const m = missionByCampaignId.get(lead.campaignId) ?? null;
+                const campaign = campaignOf(lead.campaignId);
                 const company = leadCompany(lead);
                 const title = leadTitle(lead);
                 return (
@@ -209,9 +202,10 @@ export function PeoplePage({ bucket, campaignId }: { bucket?: LeadBucket; campai
                       {title ? <span className="k-fg2 block truncate">{title}</span> : <span className="k-fg4">{"—"}</span>}
                     </td>
                     <td className="px-3">
-                      {m ? (
-                        <span className="inline-flex items-center gap-1.5 font-medium">
-                          <CrewMark color={m.crew.color} glyph={m.crew.glyph} /> {m.crew.name}
+                      {campaign ? (
+                        <span className="inline-flex min-w-0 max-w-[220px] items-center gap-1.5 font-medium">
+                          <FunnelFace name={campaign.name} size={16} />
+                          <span className="truncate">{campaign.name}</span>
                         </span>
                       ) : (
                         <span className="k-fg4">{"—"}</span>
