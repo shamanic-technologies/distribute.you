@@ -109,7 +109,7 @@ export function V2ResearchCatalogView({
   const listHref = researchCatalogHref(base, pipe, kind);
   const crumbs = [
     { label: "Research", href: base },
-    { label: <SectionName section={{ pipe }} compact /> },
+    { label: <SectionName section={{ pipe }} /> },
     itemKey ? { label: KIND_WORD[kind].title, href: listHref } : { label: KIND_WORD[kind].title },
   ];
   const liveLeg = useResearchPipeLeg(pipe);
@@ -270,7 +270,7 @@ function CatalogList({
             right={
               <span className="inline-flex items-center gap-1.5">
                 <SectionMark section={{ pipe }} size={14} />
-                <SectionName section={{ pipe }} compact />
+                <SectionName section={{ pipe }} />
               </span>
             }
           >
@@ -509,7 +509,7 @@ function WorkflowView({
               <span className="k-chip tabular-nums">{w.rank == null ? "Not priced yet" : `#${w.rank} of ${total}`}</span>
               <span className="k-chip inline-flex items-center gap-1.5">
                 <SectionMark section={{ pipe }} size={12} />
-                <SectionName section={{ pipe }} compact />
+                <SectionName section={{ pipe }} />
               </span>
               {w.model &&
                 (w.model.linked ? (
@@ -572,7 +572,7 @@ function WorkflowView({
                 v={
                   <span className="inline-flex items-center gap-1.5">
                     <SectionMark section={{ pipe }} />
-                    <SectionName section={{ pipe }} compact />
+                    <SectionName section={{ pipe }} />
                   </span>
                 }
               />
@@ -670,7 +670,7 @@ function TemplateView({
               <span className="k-chip tabular-nums">{t.rank == null ? "Not priced yet" : `#${t.rank} of ${total}`}</span>
               <span className="k-chip inline-flex items-center gap-1.5">
                 <SectionMark section={{ pipe }} size={12} />
-                <SectionName section={{ pipe }} compact />
+                <SectionName section={{ pipe }} />
               </span>
               <span className="k-chip tabular-nums">
                 {t.workflows.length} {t.workflows.length === 1 ? "workflow" : "workflows"}
@@ -730,7 +730,7 @@ function TemplateView({
                   v={
                     <span className="inline-flex items-center gap-1.5">
                       <SectionMark section={{ pipe }} />
-                      <SectionName section={{ pipe }} compact />
+                      <SectionName section={{ pipe }} />
                     </span>
                   }
                 />
@@ -796,7 +796,7 @@ function ModelView({
               <span className="k-chip tabular-nums">{m.rank == null ? "Not priced yet" : `#${m.rank} of ${total}`}</span>
               <span className="k-chip inline-flex items-center gap-1.5">
                 <SectionMark section={{ pipe }} size={12} />
-                <SectionName section={{ pipe }} compact />
+                <SectionName section={{ pipe }} />
               </span>
               <span className="k-chip tabular-nums">
                 {m.workflows.length} {m.workflows.length === 1 ? "workflow" : "workflows"}
@@ -855,7 +855,7 @@ function ModelView({
                   v={
                     <span className="inline-flex items-center gap-1.5">
                       <SectionMark section={{ pipe }} />
-                      <SectionName section={{ pipe }} compact />
+                      <SectionName section={{ pipe }} />
                     </span>
                   }
                 />

@@ -21,11 +21,10 @@ import { useStaffMode } from "@/lib/use-staff-mode";
 import { useBucketCounts } from "@/components/v2/data";
 import { useSelectedOffer } from "@/components/v2/selected-offer";
 import type { OngoingCampaign } from "@/components/v2/ongoing-campaigns";
-import { PathAvatar } from "@/components/v2/offer-sales-paths";
 import { FunnelFace } from "@/components/v2/funnel-campaigns";
 import { v2CampaignHref } from "@/lib/v2/routes";
 import type { SalesFunnelCampaign } from "@/lib/sales-funnel-campaigns";
-import { PipeMark } from "@/components/v2/pipe-mark";
+import { PipeFace } from "@/components/v2/served-pipe-mark";
 import { PeoplePage } from "@/components/v2/people-page";
 import { AudienceLists } from "@/components/v2/audience-page";
 import { PostsPage } from "@/components/v2/posts-page";
@@ -44,7 +43,7 @@ function useIds() {
 }
 
 function CampaignFace({ c }: { c: OngoingCampaign }) {
-  return c.name ? <PathAvatar name={c.name} size={16} /> : <PipeMark color={c.m.pipe.color} glyph={c.m.pipe.glyph} size={16} />;
+  return <PipeFace name={c.name} size={16} />;
 }
 
 /** crm-service's source for the people OUR campaigns brought to a step (lead-service's buckets). */

@@ -19,7 +19,7 @@ describe("MarkLines: a mark beside two lines is as tall as the lines", () => {
     ["src/components/v2/staff-catalogue-pages.tsx", "face={r.face} name={r.name} size={px} />}"],
     ["src/components/v2/staff-campaign-pages.tsx", "<CatalogueMark face={funnel?.face} name={c.salesFunnelName} size={px} />"],
     ["src/components/v2/offer-campaigns.tsx", "<PathAvatar name={campaign.name} size={px} />"],
-    ["src/components/v2/today-page.tsx", "<PathAvatar name={name} size={px} />"],
+    ["src/components/v2/today-page.tsx", "mark={(px) => <PipeFace name={name} size={px} />}"],
   ])("%s draws its two-line mark through MarkLines", (file, call) => {
     const s = src(file);
     expect(s).toContain("<MarkLines");

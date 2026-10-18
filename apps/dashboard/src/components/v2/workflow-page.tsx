@@ -24,7 +24,7 @@ import {
 } from "@/lib/api";
 import { GrainMark } from "@/components/marks/grain-mark";
 import { AudienceAvatar } from "@/components/audiences/audience-avatar";
-import { PipeMark } from "@/components/v2/pipe-mark";
+import { ServedPipeMark } from "@/components/v2/served-pipe-mark";
 import { ResearchModelChip, ResearchTemplateChip } from "@/components/v2/research-template-link";
 import { EmptyNote, Initials, SectionTitle, Shimmer, TopBar } from "@/components/v2/ui";
 import { CompanyMark } from "@/components/v2/people-bits";
@@ -129,7 +129,7 @@ export function V2WorkflowPage() {
           {pipeSpecs.map((s) => (
             <li key={s.campaignId}>
               <Link href={v2WorkflowHref(orgId, brandId, dynasty, pipeRaw, s.campaignId)} className="k-row k-hover flex h-10 items-center gap-2 px-4">
-                <PipeMark color={s.pipe.color} glyph={s.pipe.glyph} size={18} />
+                <ServedPipeMark pipeId={s.pipe.id} size={18} />
                 <span className="font-medium">{s.pipe.name}</span>
                 <span className="k-fg2 truncate">· {s.campaign.offerName ?? "Offer"}</span>
               </Link>
@@ -158,7 +158,7 @@ export function V2WorkflowPage() {
       <>
         <div className="mt-2 flex flex-wrap items-start justify-between gap-3">
           <div className="flex min-w-0 items-center gap-3">
-            <PipeMark color={spec.pipe.color} glyph={spec.pipe.glyph} size={40} />
+            <ServedPipeMark pipeId={spec.pipe.id} size={40} />
             <div className="min-w-0">
               <h1 className="truncate text-[24px] font-medium leading-[30px] tracking-[-0.02em]">{name}</h1>
               <div className="mt-1 flex flex-wrap items-center gap-2">
@@ -237,7 +237,7 @@ export function V2WorkflowPage() {
                   k="Pipe"
                   v={
                     <span className="inline-flex items-center gap-1.5">
-                      <PipeMark color={spec.pipe.color} glyph={spec.pipe.glyph} />
+                      <ServedPipeMark pipeId={spec.pipe.id} />
                       {spec.pipe.name}
                     </span>
                   }
@@ -1014,7 +1014,7 @@ function RunsCard({
                       <td className="max-w-0 px-3">
                         {m ? (
                           <span className="flex min-w-0 items-center gap-1.5">
-                            <PipeMark color={m.pipe.color} glyph={m.pipe.glyph} />
+                            <ServedPipeMark pipeId={m.pipe.id} />
                             <span className="truncate">
                               {m.pipe.name}
                               <span className="k-fg2"> · {m.offerName ?? "Offer"}</span>

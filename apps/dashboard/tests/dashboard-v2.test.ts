@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { readFileSync, existsSync, readdirSync } from "fs";
 import { resolve } from "path";
 import { stripV2Prefix, v2DashboardHref } from "../src/lib/ui-version";
-import { pipeFor, pipeKey } from "../src/lib/v2/pipe-look";
+import { servedPipe } from "../src/lib/v2/served-pipe";
 import { cumulativeWindow, dailyWindow, windowDays } from "../src/lib/v2/series";
 import { brandIdFromPathname } from "../src/lib/brand-tint-preload";
 
@@ -25,15 +25,37 @@ describe("ui-version", () => {
   });
 });
 
-describe("pipe look", () => {
-  it("names a pipe by its channel, and keeps our look per pair", () => {
-    const visit = pipeFor("sales-cold-email-outreach", "website_visit", "Cold email");
-    expect(visit.name).toBe("Cold email");
-    expect(visit.key).toBe(pipeKey("sales-cold-email-outreach", "website_visit"));
-    expect(visit.color).toBe("var(--data-teal)");
-    expect(pipeFor("ai-meeting-booking", "meeting_booked", "AI meeting booking").glyph).toBe("triangle");
-    expect(pipeFor("some-new-channel", "website_visit", "Some channel").name).toBe("Some channel");
-    expect(pipeFor("x", null, "X").key).toBe("x|unplaced");
+describe("a pipe wears its served name (owner 2026-10-18)", () => {
+  it("keys a pipe on the catalogue id and names it by the producer's name", () => {
+    const visit = servedPipe("sales-cold-email-outreach", "start_to_website_visit", "Killdeer", "Sales Cold Email Outreach");
+    // the catalogue id spells the outbound leg the new way, whatever the row stored
+    expect(visit).toEqual({ id: "sales-cold-email-outreach|lead_found_to_website_visit", name: "Killdeer", channelName: "Sales Cold Email Outreach", named: true });
+    const unnamed = servedPipe("some-new-channel", "lead_found_to_conversation", null, "Some channel");
+    expect(unnamed.named).toBe(false);
+    expect(unnamed.name).toBe("Some channel");
+    expect(servedPipe("x", null, "Auk", "X").id).toBeNull();
+  });
+
+  it("no local look is left: the crew-era colour table and glyph mark are gone, nothing imports them", () => {
+    expect(existsSync(resolve(ROOT, "src/lib/v2/pipe-look.ts"))).toBe(false);
+    expect(existsSync(resolve(ROOT, "src/components/v2/pipe-mark.tsx"))).toBe(false);
+    const walk = (dir: string): string[] =>
+      readdirSync(dir, { withFileTypes: true }).flatMap((e) => (e.isDirectory() ? walk(resolve(dir, e.name)) : /\.(ts|tsx)$/.test(e.name) ? [resolve(dir, e.name)] : []));
+    for (const f of walk(resolve(ROOT, "src"))) {
+      const src = readFileSync(f, "utf8");
+      expect(src, f).not.toMatch(/v2\/pipe-look"|v2\/pipe-mark"|PIPE_LOOKS|CHANNEL_LOOKS|<PipeMark\b/);
+    }
+  });
+
+  it("staff surfaces draw the served pipe mark; customer surfaces never read the staff catalogue for it", () => {
+    for (const f of ["workflow-page.tsx", "workflows-page.tsx", "run-page.tsx"]) {
+      expect(read(`src/components/v2/${f}`), f).toContain("<ServedPipeMark pipeId={");
+    }
+    for (const f of ["today-page.tsx", "outcomes-page.tsx", "v2-shell.tsx"]) {
+      const src = read(`src/components/v2/${f}`);
+      expect(src, f).not.toContain("<ServedPipeMark");
+      expect(src, f).toMatch(/<(Served)?PipeFace /);
+    }
   });
 });
 

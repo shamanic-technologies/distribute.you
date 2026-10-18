@@ -7,7 +7,7 @@ import { AccountMenuV2, SearchTrigger, TenantSwitcherV2 } from "@/components/v2/
 import { BudgetGauge } from "@/components/v2/budget-gauge";
 import { useOngoingCampaigns } from "@/components/v2/ongoing-campaigns";
 import { useAudienceSnapshot, useBrandOutcomeList, useStepIcons } from "@/components/v2/brand-outcomes";
-import { PipeMark } from "@/components/v2/pipe-mark";
+import { PipeFace } from "@/components/v2/served-pipe-mark";
 import { V2NavContext } from "@/components/v2/nav-context";
 import { useBucketCounts, useBrandRevenue, useNeedsYourCall, useStandingCounts } from "@/components/v2/data";
 import { v2CampaignHref, v2CatalogueHref, v2Href, v2OfferHref, v2OutcomeHref, v2SectionOf, v2WorkflowHref } from "@/lib/v2/routes";
@@ -20,7 +20,6 @@ import { boardColumnTotals } from "@/lib/leads-server-page";
 import { ScopePaymentDeclinedBand } from "@/components/billing/scope-payment-declined-band";
 import { useStaffMode } from "@/lib/use-staff-mode";
 import { SelectedOfferProvider, useSelectedOffer } from "@/components/v2/selected-offer";
-import { PathAvatar } from "@/components/v2/offer-sales-paths";
 import { FunnelFace } from "@/components/v2/funnel-campaigns";
 import { BRAND_WHY } from "@/lib/brand-why";
 import { CopilotPanel } from "@/components/v2/copilot-panel";
@@ -310,7 +309,7 @@ function V2Sidebar() {
                 key={m.row.campaign.id}
                 href={m.href}
                 label={name ?? m.pipe.name}
-                icon={name ? <PathAvatar name={name} size={16} /> : <PipeMark color={m.pipe.color} glyph={m.pipe.glyph} size={16} />}
+                icon={<PipeFace name={name} size={16} />}
                 active={pathname.startsWith(m.href)}
                 trailing={
                   <span className="k-dot-pulse ml-auto mr-1 h-1.5 w-1.5 shrink-0 rounded-full bg-[var(--run)] text-[var(--run)]" aria-label="On" />

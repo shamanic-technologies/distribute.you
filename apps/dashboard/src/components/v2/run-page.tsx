@@ -19,7 +19,7 @@ import { leadWorkflowIdentity } from "@/lib/campaign-workflow-rows";
 import { workflowModelMark } from "@/lib/workflow-model-marks";
 import { workflowTemplateLabel } from "@/lib/workflow-template-label";
 import { v2Href, v2PersonHref, v2WorkflowHref } from "@/lib/v2/routes";
-import { PipeMark } from "@/components/v2/pipe-mark";
+import { ServedPipeMark } from "@/components/v2/served-pipe-mark";
 import { useCampaigns } from "@/components/v2/use-campaigns";
 import { foldSteps, runTaskLabel } from "@/components/v2/runs";
 import { EmptyNote, Shimmer, TopBar } from "@/components/v2/ui";
@@ -198,7 +198,7 @@ export function RunPage() {
                       v={
                         campaign ? (
                           <Link href={campaign.href} className="inline-flex items-center gap-1.5 hover:underline">
-                            <PipeMark color={campaign.pipe.color} glyph={campaign.pipe.glyph} />
+                            <ServedPipeMark pipeId={campaign.pipe.id} />
                             {campaign.pipe.name}
                             {campaign.offerName ? ` · ${campaign.offerName}` : ""}
                           </Link>

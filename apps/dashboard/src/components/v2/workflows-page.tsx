@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
-import { PipeMark } from "@/components/v2/pipe-mark";
+import { ServedPipeMark } from "@/components/v2/served-pipe-mark";
 import { EmptyNote, KeyHint, SectionTitle, Shimmer, StateDot, TopBar } from "@/components/v2/ui";
 import { useRowKeys } from "@/components/v2/records";
 import { ActualCostNote, CostBasisSwitch } from "@/components/v2/cost-basis-switch";
@@ -251,7 +251,7 @@ function CampaignSection({
         }
       >
         <span className="inline-flex items-center gap-2">
-          <PipeMark color={spec.pipe.color} glyph={spec.pipe.glyph} size={18} />
+          <ServedPipeMark pipeId={spec.pipe.id} size={18} />
           {spec.pipe.name}
           {m.offerName && <span className="k-fg2 font-normal">· {m.offerName}</span>}
         </span>

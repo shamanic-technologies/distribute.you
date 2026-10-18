@@ -31,7 +31,7 @@ import type { WorkflowLadderRowShape } from "@/lib/workflow-grains";
 import { ladderRowsForScope } from "@/components/workflows/campaign-workflows-page";
 import { useStatBasis } from "@/lib/use-stat-basis";
 import { useCampaigns, type V2Campaign } from "@/components/v2/use-campaigns";
-import type { PipeIdentity } from "@/lib/v2/pipe-look";
+import type { ServedPipe } from "@/lib/v2/served-pipe";
 
 /**
  * The data behind dashboard v2's brand-level Workflows pages.
@@ -52,7 +52,7 @@ import type { PipeIdentity } from "@/lib/v2/pipe-look";
 /** One campaign this brand runs, as the ladder is asked for it. */
 export interface CampaignSpec {
   campaign: V2Campaign;
-  pipe: PipeIdentity;
+  pipe: ServedPipe;
   featureSlug: string;
   legKey: string;
   campaignId: string;
