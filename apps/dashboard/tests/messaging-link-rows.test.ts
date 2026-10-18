@@ -69,12 +69,13 @@ describe("messaging apps link self-serve from Integrations", () => {
     const rows = read("components/settings/messaging-link-rows.tsx");
     // Only on a LINKED account, and only once crm-service serves the field.
     expect(rows).toContain("{linked && linkId && link.automationAllowed !== undefined ? (");
-    expect(rows).toContain("Assistant sends from this number");
+    expect(rows).toContain("Assistant sends");
     expect(rows).toContain('role="switch"');
     expect(rows).toContain("aria-checked={allowed}");
     expect(rows).toContain("updateMatrixLink(brandId, linkId, { automationAllowed: next })");
-    expect(rows).toContain("{!allowed ? <p");
-    expect(rows).toContain("Mirrored in your inbox. Nothing automatic is sent from it.");
+    // Off = mirrored only, said on the line in two words, the sentence behind the (i).
+    expect(rows).toContain("{!allowed ? (");
+    expect(rows).toContain('<InfoTooltip tip="Mirrored in your inbox. Nothing automatic is sent from it." />');
   });
 
   it("each linked account has a persona; an empty one speaks as the sales rep and clears it", () => {
@@ -82,6 +83,11 @@ describe("messaging apps link self-serve from Integrations", () => {
     expect(rows).toContain("Speaks as");
     expect(rows).toContain("Leave empty to speak as your sales rep.");
     expect(rows).toContain("Instructions (optional)");
+    // One line per account: the form opens only after "Edit", the line shows a summary.
+    expect(rows).toContain("const [editing, setEditing] = useState(false);");
+    expect(rows).toContain("{editing ? (");
+    expect(rows).toContain("{personaSummary(served)}");
+    expect(rows).not.toContain("rounded-lg border border-gray-200 bg-gray-50 p-3");
     expect(rows).toContain("{ name: p.name, role: p.role, instructions: p.instructions } : null");
     expect(rows).toContain("<SettingsSaveRow dirty={dirty}");
     // A write re-reads the list under the key the rows read.
