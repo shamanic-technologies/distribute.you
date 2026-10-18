@@ -193,6 +193,12 @@ describe("Platform config registration at startup", () => {
       expect(content).toContain("console.warn");
     });
 
+    it("lets the Copilot read a campaign's next steps (CAMPAIGN-NEXT-STEPS-1018)", () => {
+      const arrMatch = content.match(/const COPILOT_ALLOWED_TOOLS\s*=\s*\[([\s\S]*?)\];/);
+      expect(arrMatch).toBeTruthy();
+      expect(arrMatch![1]).toContain('"get_campaign_next_steps"');
+    });
+
     it("should include the three new workflow tool names in WORKFLOW_ALLOWED_TOOLS", () => {
       const arrMatch = content.match(/const WORKFLOW_ALLOWED_TOOLS\s*=\s*\[([\s\S]*?)\];/);
       expect(arrMatch).toBeTruthy();
