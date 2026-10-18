@@ -202,6 +202,11 @@ export interface ResearchWorkflow extends ResearchFigures {
   model: ResearchRef | null;
   /** `linked`: the template has its own page in this pipe. */
   template: ResearchRef | null;
+  /**
+   * What the workflow's runnable version writes with NOW (features-service RESEARCH-PAGES-ALL-1018),
+   * each with its own page even before it sent anything. Absent on a catalogue built before it.
+   */
+  writesWithNow?: { version: string; template: ResearchRef | null; model: ResearchRef | null; modelAlias: string | null } | null;
   runs: { when: string; version: string; status: string; duration: string | null; cost: string | null }[];
 }
 
