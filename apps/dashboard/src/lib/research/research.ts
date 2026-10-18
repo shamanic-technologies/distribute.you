@@ -105,10 +105,16 @@ export interface ResearchStudy {
   result: { display: string; unit: string; sample: string } | null;
   charts: ResearchChart[];
   conclusion: string[];
+  /** `live`: served by features-service now. `snapshot`: not served live yet, from the nightly snapshot (lib/research/live-merge.ts). */
+  source?: "live" | "snapshot";
+  /** Snapshot studies only: why the live read does not serve it yet. */
+  liveReason?: string;
 }
 
 export interface ResearchFile {
   generatedAt: string;
+  /** When features-service last built the live studies; null before its first build (lib/research/live-merge.ts). */
+  computedAt?: string | null;
   allOrgs: true;
   /**
    * `user`: what clients were billed (this bundled file). `actual`: what the vendors charged us

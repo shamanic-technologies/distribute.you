@@ -17,6 +17,8 @@ import {
   TopicMark,
   type ResearchSection,
   dayText,
+  instantText,
+  liveText,
   sectionOf,
   monthText,
 } from "@/components/v2/research-bits";
@@ -170,6 +172,7 @@ function StudyCard({ study, href }: { study: ResearchStudy; href: string }) {
               <span style={{ color: look.color }}>{TOPIC_LABEL[study.topic]}</span>
               {" · "}
               {GOAL_LABEL[study.goal]}
+              {study.source === "snapshot" && " · Snapshot"}
             </p>
             <StudyStateDot state={state} />
           </div>
@@ -353,8 +356,8 @@ function V2ResearchHub({ base }: { base: string }) {
             <p className="k-fg3 mt-1 text-[12px] leading-5">{RESEARCH.maturation.note}</p>
           </div>
           <span className="k-fg2 inline-flex items-center gap-2 text-[13px]">
-            <span className="h-1.5 w-1.5 rounded-full bg-[var(--data-teal)]" />
-            Read from production on {dayText(RESEARCH.readOn)}
+            <span className={`h-1.5 w-1.5 rounded-full ${RESEARCH.computedAt ? "bg-[var(--run)]" : "bg-[var(--data-teal)]"}`} />
+            {liveText(RESEARCH)}
           </span>
         </div>
 
@@ -661,8 +664,12 @@ function V2ResearchStudy({ base, studyId }: { base: string; studyId: string }) {
               <Row k="Question" v={`${TOPIC_LABEL[study.topic]}, ${GOAL_LABEL[study.goal]}`} />
               {emailLeg && <Row k="Clients" v={`${RESEARCH.volume.orgs}, all orgs`} />}
               {emailLeg && <Row k="Emails" v={RESEARCH.volume.emails.toLocaleString("en-US")} />}
-              <Row k="Read on" v={dayText(RESEARCH.readOn)} />
+              <Row
+                k="Read on"
+                v={study.source === "live" && RESEARCH.computedAt ? `Live, updated ${instantText(RESEARCH.computedAt)}` : `${dayText(RESEARCH.readOn)} snapshot`}
+              />
             </dl>
+            {study.source === "snapshot" && study.liveReason && <p className="k-fg3 mt-2 text-[12px] leading-5">Not live yet: {study.liveReason}</p>}
             <p className="k-label mt-5">How we measured</p>
             {/* the row's population, unless the study states its own (an outcome cut names who it counts) */}
             {outcomeMeta && !study.conclusion[0]?.startsWith("Population:") && <p className="k-fg2 mt-2 text-[12px] leading-5">{outcomeMeta.population}</p>}

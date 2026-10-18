@@ -53,17 +53,23 @@ const RESEARCH_ROUTE = join("app", "(authed)", "api", "research", "[basis]", "[p
 const CONCLUSIONS_ROUTE = join("app", "api", "internal", "research", "conclusions", "route.ts");
 // The second service-key reader (social-service reads every measured study, quotable only when a conclusion).
 const STUDIES_ROUTE = join("app", "api", "internal", "research", "studies", "route.ts");
+// The server-only reader of the live Research file (features-service), snapshot studies marked.
+const LIVE_FILE = join("lib", "research", "live-file.ts");
 
 describe("no research snapshot reaches a browser bundle (billed or actual)", () => {
-  it("only the staff route and the two service-key routes import a research JSON file", () => {
+  it("only the staff route and the server-only live reader import a research JSON file", () => {
     const importers = walk(SRC).filter((p) => /lib\/research\/(actual\/)?research[\w-]*\.json|\.\/research[\w-]*\.json/.test(readFileSync(p, "utf8")));
+    expect(importers.map((p) => p.slice(SRC.length + 1)).sort()).toEqual([RESEARCH_ROUTE, LIVE_FILE].sort());
+  });
+  it("the live reader is imported by server routes only", () => {
+    const importers = walk(SRC).filter((p) => readFileSync(p, "utf8").includes('from "@/lib/research/live-file"'));
     expect(importers.map((p) => p.slice(SRC.length + 1)).sort()).toEqual([RESEARCH_ROUTE, CONCLUSIONS_ROUTE, STUDIES_ROUTE].sort());
   });
   it.each([CONCLUSIONS_ROUTE, STUDIES_ROUTE])("the service-key route %s reads the billed file only, behind the service key", (path) => {
     const route = read(path);
     expect(route).toContain("verifyServiceKey(req)");
     expect(route).toContain("status: 401");
-    expect(route).toContain('from "@/lib/research/research.json"');
+    expect(route).toContain('readMergedResearch("user"');
     expect(route).not.toContain("actual/research");
     expect(route).not.toContain("research-catalog");
     expect(route).not.toContain("research-templates");

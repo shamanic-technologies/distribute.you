@@ -1,8 +1,8 @@
 import { NextResponse } from "next/server";
 import { verifyServiceKey } from "@/lib/service-key";
 import { researchConclusions } from "@/lib/research/conclusions";
-import type { ResearchFile } from "@/lib/research/research";
-import billedFile from "@/lib/research/research.json";
+import { readMergedResearch } from "@/lib/research/live-file";
+import { ADMIN_ALLOWED_EMAILS } from "@/lib/admin-allowlist";
 
 export const dynamic = "force-dynamic";
 
@@ -10,7 +10,7 @@ export const dynamic = "force-dynamic";
  * GET /api/internal/research/conclusions — SERVICE KEY ONLY (`x-api-key`, see lib/service-key.ts).
  *
  * The Research studies whose verdict is a CONCLUSION, with their quotable facts, read from the
- * same billed snapshot the staff Research page renders (`research.json`), so a figure quoted by
+ * same billed file the staff Research page renders (live, `lib/research/live-file.ts`), so a figure quoted by
  * a backend service (social-service's takes) is the page's figure exactly. `signal` and `noise`
  * studies, Learning points and the vendor-cost (`actual`) basis are never served here.
  *
@@ -22,7 +22,8 @@ export async function GET(req: Request) {
     if (!verifyServiceKey(req)) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
-    const body = researchConclusions(billedFile as unknown as ResearchFile);
+    // The same LIVE file the staff page renders (features-service, snapshot studies marked), billed basis.
+    const body = researchConclusions(await readMergedResearch("user", ADMIN_ALLOWED_EMAILS[0]));
     return NextResponse.json(body, { headers: { "cache-control": "private, no-store" } });
   } catch (err) {
     console.error("[dashboard-research-conclusions] failed:", err);
