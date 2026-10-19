@@ -1,7 +1,7 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
-import { modelAliases, modelStatus, statusWord, templatePipes } from "../src/lib/research/content-status";
+import { aliasList, modelAliasesOf, modelStatus, statusWord, templatePipes } from "../src/lib/research/content-status";
 import type { ResearchCatalog } from "../src/lib/research/research";
 
 const SRC = join(__dirname, "..", "src");
@@ -35,14 +35,22 @@ describe("TEMPLATE-MODEL-STATUS-1019: lookups", () => {
     expect(statusWord(undefined)).toBeNull();
   });
 
-  it("maps a concrete model id to the alias a runnable workflow names it by, never inventing one", () => {
-    const m = modelAliases(catalog());
-    expect(m.get("glm-5.3")).toEqual(["glm-pro"]);
-    expect(m.get("gemini-3.8-flash")).toEqual(["flash-pro"]);
+  it("reads a model's aliases off its served row, and says why when there is none", () => {
+    // A model no workflow writes with today still has its aliases (GPT-6 Astra, Claude Fable 5.1).
+    expect(modelAliasesOf({ key: "gpt-6-astra", aliases: ["gpt-pro"], aliasesUnavailableReason: null })).toEqual({ aliases: ["gpt-pro"], gap: null });
     // One concrete model served under two aliases (prod 2026-10-19): both are acted on.
-    expect(m.get("deepseek-v4.1-flash")).toEqual(["deepseek-flash", "deepseek-pro"]);
-    expect(m.has("gemini-3.1-pro")).toBe(false);
-    expect(modelAliases(null).size).toBe(0);
+    expect(modelAliasesOf({ key: "deepseek-v4.1-flash", aliases: ["deepseek-flash", "deepseek-pro"] }).aliases).toEqual(["deepseek-flash", "deepseek-pro"]);
+    expect(modelAliasesOf({ key: "glm-5.2", aliases: [], aliasesUnavailableReason: "no_alias_serves_it" }).gap).toBe("Retired: no alias uses it now");
+    expect(modelAliasesOf({ key: "x", aliases: [], aliasesUnavailableReason: "model_not_in_chat_service" }).gap).toBe("Not served by chat-service");
+    expect(modelAliasesOf({ key: "x", aliases: [], aliasesUnavailableReason: "model_ids_unreadable" }).gap).toBe("chat-service unreadable now");
+    // A catalogue built before the field: no guess, a plain word.
+    expect(modelAliasesOf({ key: "x" })).toEqual({ aliases: [], gap: "Not stated yet" });
+  });
+
+  it("names every alias a model write changes", () => {
+    expect(aliasList(["glm-pro"])).toBe("glm-pro");
+    expect(aliasList(["deepseek-flash", "deepseek-pro"])).toBe("deepseek-flash and deepseek-pro");
+    expect(aliasList(["a", "b", "c"])).toBe("a, b and c");
   });
 
   it("a model reads Deprecated only once every alias is", () => {
@@ -101,8 +109,15 @@ describe("TEMPLATE-MODEL-STATUS-1019: the three Research pages", () => {
     expect(list).toContain("<StatusMenu");
   });
 
-  it("Models: Status + ⋮ keyed on the alias, no Leg column", () => {
+  it("Models: Status + ⋮ keyed on the SERVED aliases, never the workflows join, no Leg column", () => {
     expect(list).toContain('{ kind: "model", aliases: modelKeys, label: r.label }');
+    expect(list).toContain("modelAliasesOf(r as ResearchModel)");
+    expect(list).toContain("gap={served.gap}");
+    expect(status).not.toContain("useModelAliases");
+    expect(read("lib/research/content-status.ts")).not.toContain("writesWithNow");
+    // Several aliases: the confirm and the menu name each one.
+    expect(status).toContain("This deprecates each of them.");
+    expect(list).toContain("contentNote(target, DEPRECATE_CONTENT_NOTE)");
     expect(list).toContain('kind === "templates" && <th className={`${TH} w-44`}>Leg</th>');
   });
 
