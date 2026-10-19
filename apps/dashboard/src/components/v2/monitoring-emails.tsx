@@ -42,6 +42,26 @@ function periodLabel(start: string, grain: SentGrain, short = false) {
   return grain === "week" && !short ? `Week of ${md}` : md;
 }
 
+/** Every kind we send, stacked: one chart for the hub (owner 2026-10-19). */
+const ALL_KINDS: Series[] = [
+  { key: "toLeads", label: "Campaign", color: "var(--accent)" },
+  { key: "manualReplies", label: "Replies by hand", color: "var(--data-sky)" },
+  { key: "warmup", label: "Warmup", color: "var(--data-teal)" },
+  { key: "warmupReplies", label: "Warmup replies", color: "var(--data-lime)" },
+  { key: "seeds", label: "Placement tests", color: "var(--data-violet)" },
+];
+const SENT_PER_DAY_WINDOW = 30;
+
+/**
+ * Sent per day, last 30 days, stacked by kind: the hub's Emails chart. Today is the producer's
+ * `inProgress` day, drawn dashed and read "so far". Same read and key as the Daily view below.
+ */
+export function SentPerDayChart() {
+  const q = useAuthQuery(["staffSentPerPeriod", "day"], () => getStaffSentPerPeriod("day"), ONCE);
+  const periods = q.data?.grain === "day" ? q.data.periods.slice(-SENT_PER_DAY_WINDOW) : undefined;
+  return <PeriodChart periods={periods} error={q.isError} grain="day" series={ALL_KINDS} progressWord="so far" />;
+}
+
 export function EmailsCharts() {
   const [grain, setGrain] = useState<SentGrain>("week");
   const q = useAuthQuery(["staffSentPerPeriod", grain], () => getStaffSentPerPeriod(grain), ONCE);
@@ -89,12 +109,15 @@ function PeriodChart({
   grain,
   series,
   extra,
+  progressWord = "in progress",
 }: {
   periods: SentPeriod[] | undefined;
   error: boolean;
   grain: SentGrain;
   series: Series[];
   extra?: (p: SentPeriod) => string;
+  /** How the period still filling reads ("so far" for today). */
+  progressWord?: string;
 }) {
   const [hover, setHover] = useState<string | null>(null);
   const H = 140;
@@ -112,7 +135,7 @@ function PeriodChart({
         <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
           <span className="k-fg2 text-[12px]">
             {periodLabel(shown.periodStart, grain)}
-            {shown.inProgress && " · in progress"}
+            {shown.inProgress && ` · ${progressWord}`}
             {extra && ` · ${extra(shown)}`}
           </span>
           <span className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[12px]">
@@ -130,7 +153,7 @@ function PeriodChart({
             <button
               key={p.periodStart}
               type="button"
-              aria-label={`${periodLabel(p.periodStart, grain)}: ${series.map((s) => `${s.label} ${n(p[s.key])}`).join(", ")}${p.inProgress ? ", in progress" : ""}`}
+              aria-label={`${periodLabel(p.periodStart, grain)}: ${series.map((s) => `${s.label} ${n(p[s.key])}`).join(", ")}${p.inProgress ? `, ${progressWord}` : ""}`}
               onMouseEnter={() => setHover(p.periodStart)}
               onFocus={() => setHover(p.periodStart)}
               className="flex h-full min-w-0 flex-1 flex-col-reverse"

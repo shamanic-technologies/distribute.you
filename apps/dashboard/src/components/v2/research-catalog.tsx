@@ -1,5 +1,6 @@
 "use client";
 
+import { HubChip, HubChips } from "@/components/v2/hub-section";
 import { useState } from "react";
 import Link from "next/link";
 import { EmptyNote, SectionTitle, Shimmer, TopBar, type Crumb } from "@/components/v2/ui";
@@ -73,18 +74,11 @@ export function PipeCatalogLinks({ base, pipe }: { base: string; pipe: ResearchP
   const counts = useResearch().file.catalogCounts?.[pipe];
   if (!counts || !CATALOG_KINDS.some((k) => counts[k])) return null;
   return (
-    <div className="mb-3 flex flex-wrap gap-2">
+    <HubChips>
       {CATALOG_KINDS.map((kind) =>
-        counts[kind] ? (
-          <Link key={kind} href={researchCatalogHref(base, pipe, kind)} className="k-btn inline-flex items-center gap-2">
-            <span className="h-2 w-2 rounded-[2px]" style={{ background: TOPIC_LOOK[KIND_TOPIC[kind]].color }} />
-            {KIND_WORD[kind].title}
-            <span className="k-fg3 tabular-nums">{counts[kind]}</span>
-            <Arrow />
-          </Link>
-        ) : null,
+        counts[kind] ? <HubChip key={kind} href={researchCatalogHref(base, pipe, kind)} color={TOPIC_LOOK[KIND_TOPIC[kind]].color} label={KIND_WORD[kind].title} count={counts[kind]} /> : null,
       )}
-    </div>
+    </HubChips>
   );
 }
 

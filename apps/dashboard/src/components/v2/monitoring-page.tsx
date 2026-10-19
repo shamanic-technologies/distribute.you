@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect } from "react";
+import { createContext, useContext, useEffect } from "react";
 import { useParams, usePathname, useRouter } from "next/navigation";
 import { useAuthQuery } from "@/lib/use-auth-query";
 import { getStaffAbsorbedCosts, getStaffCostMargin, getStaffCurrentPrices, getStaffSkills, getStaffEmailSendPrice, getStaffEmailsSent, getStaffPriceVersions, getStaffRealCosts, getStaffSubscriptionCosts } from "@/lib/api";
@@ -9,7 +9,9 @@ import { formatCentsAsUsd } from "@/lib/format-number";
 import { v2Href } from "@/lib/v2/routes";
 import { EmptyNote, Figure, SectionTitle, Shimmer, StatTile, TopBar } from "@/components/v2/ui";
 import { ProvidersTable } from "@/components/v2/monitoring-providers";
-import { EmailsCharts } from "@/components/v2/monitoring-emails";
+import { EmailsCharts, SentPerDayChart } from "@/components/v2/monitoring-emails";
+import { AccountsPage, DomainsPage, InboxProvidersPage, LatestEmails, MailboxesPage, SendingHealthTiles, useSendingVerdict } from "@/components/v2/monitoring-sending";
+import { HubChip, HubChips, HubSectionBlock, useOpenSections } from "@/components/v2/hub-section";
 import { EmailPriceView } from "@/components/v2/monitoring-email-price";
 import { BillingTable } from "@/components/v2/monitoring-billing";
 import { SubscriptionsView } from "@/components/v2/monitoring-subscriptions";
@@ -35,8 +37,9 @@ import {
 
 /**
  * Monitoring (staff only): what the platform cost us, what we billed for it, the margin between
- * the two, and the emails we sent, every org pooled, since inception. Laid out like Research: a
- * hub of sections with one card per question, and one page per card.
+ * the two, and the emails we sent, every org pooled, since inception. Laid out like Research
+ * (owner 2026-10-19: Monitoring is the ONE home of our monitoring charts): the sending health
+ * first, then groups of collapsible rows, each holding chips and cards leading to one page each.
  *
  * Every figure is served by its owner through the staff-only gateway (see lib/monitoring): the
  * margin is runs-service's, the current price is costs-service's. This file formats and lays
@@ -92,7 +95,7 @@ const SECTION_LOOK: Record<SectionKey, { name: string; color: string; Icon: type
   customers: { name: "Customers", color: "var(--data-lime)", Icon: UsersThreeIcon, sub: "What each customer costs us that they do not pay" },
   price: { name: "Price", color: "var(--data-sky)", Icon: TagIcon, sub: "What we charge our users" },
   margin: { name: "Margin", color: "var(--data-teal)", Icon: TrendUpIcon, sub: "Billed minus what the vendors charged" },
-  emails: { name: "Emails", color: "var(--data-violet)", Icon: EnvelopeSimpleIcon, sub: "Every email we sent" },
+  emails: { name: "Emails", color: "var(--data-violet)", Icon: EnvelopeSimpleIcon, sub: "Inbox placement, mailboxes, domains, and every email we sent" },
   chat: { name: "Chat", color: "var(--data-amber)", Icon: ChatCircleIcon, sub: "What the Copilot knows" },
 };
 
@@ -107,7 +110,11 @@ const PAGE: Record<MonitoringPage, { section: SectionKey; title: string; questio
   "price/pricing-basis": { section: "price", title: "Pricing basis", question: "Which costs are re-billed on an average, and which at list cost?" },
   margin: { section: "margin", title: "Margin", question: "How much margin have we made since inception?" },
   "margin/pricing-comparison": { section: "margin", title: "Pricing comparison", question: "What would a client have paid, and our margin, under two price lists?" },
-  emails: { section: "emails", title: "Emails", question: "How many emails have we sent since inception?" },
+  emails: { section: "emails", title: "Sent per period", question: "How many emails have we sent since inception?" },
+  "emails/inbox-providers": { section: "emails", title: "Inbox providers", question: "Do our emails land in the inbox at Google, Microsoft 365 and Outlook.com?" },
+  "emails/domains": { section: "emails", title: "Domains", question: "Which domains do we send from, and how do they land?" },
+  "emails/mailboxes": { section: "emails", title: "Mailboxes", question: "Which mailboxes send, how much, and how fast do they ramp up?" },
+  "emails/accounts": { section: "emails", title: "Accounts", question: "What does each sending address send, and when is its next test?" },
   "chat/skills": { section: "chat", title: "Skills", question: "What does the Copilot read before it acts?" },
 };
 
@@ -172,7 +179,11 @@ export function V2Monitoring() {
         </div>
       </div>
       <p className="k-fg3 mt-2 text-[13px]">
-        {meta.section === "chat" ? "Read live from production. Your edits save as you type and reach the Copilot on its next message." : "Every org pooled, since the first cost row. Read live from production."}
+        {meta.section === "chat"
+          ? "Read live from production. Your edits save as you type and reach the Copilot on its next message."
+          : meta.section === "emails" && view.page !== "emails"
+            ? "Every mailbox we send from, read live from production. Times are UTC."
+            : "Every org pooled, since the first cost row. Read live from production."}
       </p>
       <div className="mt-6">
         {view.page === "cost/providers" && <ProvidersPage />}
@@ -186,6 +197,10 @@ export function V2Monitoring() {
         {view.page === "margin/pricing-comparison" && <PricingComparisonView />}
         {view.page === "margin" && <MarginPage />}
         {view.page === "emails" && <EmailsPage />}
+        {view.page === "emails/inbox-providers" && <InboxProvidersPage />}
+        {view.page === "emails/domains" && <DomainsPage />}
+        {view.page === "emails/mailboxes" && <MailboxesPage />}
+        {view.page === "emails/accounts" && <AccountsPage />}
         {view.page === "chat/skills" && <SkillsView />}
       </div>
     </Frame>
@@ -267,20 +282,62 @@ function Hub({ base }: { base: string }) {
   const top = m ? (m.providers[0] ?? null) : undefined;
   const providers = versions.data ? new Set(versions.data.map((v) => v.provider)).size : undefined;
   const items = versions.data ? costItemNames(versions.data).length : undefined;
+  const verdict = useSendingVerdict();
+  const hub = useOpenSections(OPEN_SECTIONS_KEY);
   return (
     <Frame crumbs={[{ label: "Monitoring" }]}>
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div className="min-w-0">
-          <h1 className="text-[28px] font-medium leading-[34px] tracking-[-0.02em]">
-            {t ? `${usd(t.netMarginCostInUsdCents)} margin on ${usd(t.netBilledCostInUsdCents)} billed` : "Monitoring"}
-          </h1>
-          <p className="k-fg2 mt-1 text-[14px]">What the platform cost us, what we billed for it, and the margin between the two. Every org, since inception.</p>
+          <h1 className="text-[28px] font-medium leading-[34px] tracking-[-0.02em]">{verdict ?? "Monitoring"}</h1>
+          <p className="k-fg2 mt-1 text-[14px]">Whether our emails land in the inbox, then what the platform cost us, what we billed for it, and the margin. Every org, since inception.</p>
         </div>
         <span className="k-fg2 inline-flex items-center gap-2 text-[13px]">
           <span className="h-1.5 w-1.5 rounded-full bg-[var(--data-teal)]" />
           Read live from production
         </span>
       </div>
+
+      {/* The one-second read (owner 2026-10-19): inbox % at Google and Microsoft 365, red under instantly-service's bar. */}
+      <div className="mt-6">
+        <SendingHealthTiles />
+      </div>
+
+      <HubOpen.Provider value={hub}>
+      <div className="mt-8 space-y-8">
+      <div>
+      <SectionTitle count={1}>Sending</SectionTitle>
+      <Section section="emails" count={5} grid={false}>
+        <HubChips>
+          <HubChip href={href("emails/inbox-providers")} color="var(--data-violet)" label="Inbox providers" />
+          <HubChip href={href("emails/domains")} color="var(--data-sky)" label="Domains" />
+          <HubChip href={href("emails/mailboxes")} color="var(--data-teal)" label="Mailboxes" />
+          <HubChip href={href("emails/accounts")} color="var(--data-amber)" label="Accounts" />
+        </HubChips>
+        <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3">
+          <Card
+            href={href("emails")}
+            page="emails"
+            error={emails.isError}
+            cells={[
+              { label: "Emails sent", value: emails.data?.emails.toLocaleString("en-US"), note: "follow-ups included" },
+              { label: "People emailed", value: emails.data?.people.toLocaleString("en-US"), note: "at least one email" },
+            ]}
+          />
+        </div>
+        <div className="mt-6">
+          <SectionTitle right={<span>Times are UTC</span>}>Sent per day, by kind</SectionTitle>
+          <SentPerDayChart />
+        </div>
+        <div className="mt-6">
+          <SectionTitle>Latest emails</SectionTitle>
+          <LatestEmails />
+        </div>
+      </Section>
+      </div>
+
+      <div>
+      <SectionTitle count={4}>Money</SectionTitle>
+      <div className="space-y-3">
 
       <Section section="cost" count={4}>
         <Card
@@ -402,18 +459,11 @@ function Hub({ base }: { base: string }) {
         />
       </Section>
 
-      <Section section="emails" count={1}>
-        <Card
-          href={href("emails")}
-          page="emails"
-          error={emails.isError}
-          cells={[
-            { label: "Emails sent", value: emails.data?.emails.toLocaleString("en-US"), note: "follow-ups included" },
-            { label: "People emailed", value: emails.data?.people.toLocaleString("en-US"), note: "at least one email" },
-          ]}
-        />
-      </Section>
+      </div>
+      </div>
 
+      <div>
+      <SectionTitle count={1}>Copilot</SectionTitle>
       <Section section="chat" count={1}>
         <Card
           href={href("chat/skills")}
@@ -425,23 +475,35 @@ function Hub({ base }: { base: string }) {
           ]}
         />
       </Section>
+      </div>
+      </div>
+      </HubOpen.Provider>
     </Frame>
   );
 }
 
-/** A section heading the way Research heads a pipe: its mark, its name, a count, its line on the right. */
-function Section({ section, count, children }: { section: SectionKey; count: number; children: React.ReactNode }) {
+/** Where the hub remembers which rows are open, so Back from a page finds them as left. */
+const OPEN_SECTIONS_KEY = "distribute-monitoring-open-sections";
+const HubOpen = createContext<ReturnType<typeof useOpenSections> | null>(null);
+
+/** One collapsible row of the hub, Research's anatomy: its mark, its name, its line, a page count, a chevron. */
+function Section({ section, count, grid = true, children }: { section: SectionKey; count: number; grid?: boolean; children: React.ReactNode }) {
   const look = SECTION_LOOK[section];
+  const hub = useContext(HubOpen);
+  if (!hub) throw new Error("[v2] monitoring Section outside the hub");
   return (
-    <section className="mt-8">
-      <SectionTitle count={count} right={<span className="hidden sm:inline">{look.sub}</span>}>
-        <span className="inline-flex items-center gap-2">
-          <SectionMark section={section} size={18} />
-          {look.name}
-        </span>
-      </SectionTitle>
-      <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3">{children}</div>
-    </section>
+    <HubSectionBlock
+      id={`monitoring-${section}`}
+      open={hub.open.has(section)}
+      onToggle={() => hub.toggle(section)}
+      animate={hub.ready}
+      mark={(px) => <SectionMark section={section} size={px} />}
+      name={look.name}
+      line={look.sub}
+      meta={`${count} ${count === 1 ? "page" : "pages"}`}
+    >
+      {grid ? <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3">{children}</div> : children}
+    </HubSectionBlock>
   );
 }
 
