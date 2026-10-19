@@ -126,7 +126,7 @@ function InboxTile({ provider, name }: { provider: string; name: string }) {
         {series && !latest
           ? `No measured day in ${HEALTH_DAYS} days`
           : latest && alerts.data
-            ? `${latest.below ? "Under" : "At or above"} the ${alerts.data.bar.inboxPctOfFound}% bar · all mailboxes ${pct(latest.fleet.inboxPct) ?? "—"} · ${n(latest.mailboxesCut)} cut`
+            ? `Bar ${alerts.data.bar.inboxPctOfFound}% · all mailboxes ${pct(latest.fleet.inboxPct) ?? "—"} · ${n(latest.mailboxesCut)} cut`
             : " "}
       </p>
     </StatTile>
@@ -166,12 +166,13 @@ function CutTile() {
   );
 }
 
-/** The one-second read: inbox % at Google and Microsoft 365, red under the producer's bar, and the mailboxes it cut. */
+/** The one-second read: inbox % at every provider the alert measures, red when it flags the day below, and the mailboxes cut. */
 export function SendingHealthTiles() {
   return (
-    <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-      <InboxTile provider="google" name="Google" />
-      <InboxTile provider="microsoft" name="Microsoft 365" />
+    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
+      {ALERT_PROVIDERS.map((p) => (
+        <InboxTile key={p.key} provider={p.key} name={p.name} />
+      ))}
       <CutTile />
     </div>
   );

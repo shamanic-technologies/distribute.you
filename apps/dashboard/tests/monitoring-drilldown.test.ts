@@ -53,7 +53,8 @@ describe("Monitoring > Emails drill-down: wiring", () => {
       expect(page).toContain(block);
     }
     // the ramp rule is the producer's sentence, the planned date is labelled so
-    expect(src).toContain("{data.rampRules.rule}");
+    expect(src).toContain("<RampRule rules={data.rampRules} />");
+    expect(src).toContain("title={rules.rule}");
     expect(src).toContain(">Planned date</th>");
     // capacity is slow cold: a skeleton, not an error
     expect(src).toContain("Rebuilding capacity");

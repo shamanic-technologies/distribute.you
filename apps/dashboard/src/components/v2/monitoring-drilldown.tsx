@@ -28,6 +28,7 @@ import {
   TH,
   THR,
   Table,
+  useShowAll,
   n,
   pct,
   shortDay,
@@ -186,9 +187,18 @@ export function CapacityChart({ scope }: { scope: EntityScope }) {
           </span>
         ))}
       </div>
-      <p className="k-fg3 mt-3 text-[12px]">{data.rampRules.rule}</p>
+      <RampRule rules={data.rampRules} />
       {data.additive === false && <p className="k-fg3 mt-1 text-[12px]">This address shares its mailbox&apos;s quota with the mailbox&apos;s other addresses.</p>}
     </div>
+  );
+}
+
+/** The producer's ramp parameters, said in words (its `rule` field is a formula, kept as the hover). */
+function RampRule({ rules }: { rules: { floorPerDay: number; growthFactor: number; volumeWindowDays: number; ceilingPerDay: number; rule: string } }) {
+  return (
+    <p className="k-fg3 mt-3 text-[12px]" title={rules.rule}>
+      Ramp rule: each day a mailbox may send {rules.growthFactor}× what it sent per day over the last {rules.volumeWindowDays} days, never under {rules.floorPerDay}, never over {rules.ceilingPerDay}, nor over the limit we set.
+    </p>
   );
 }
 
@@ -724,6 +734,9 @@ const PASS = (v: boolean | null) => (v == null ? <Dash /> : v ? <span style={{ c
 
 export function PlacementTestPage({ base, testId }: { base: string; testId: string }) {
   const q = useAuthQuery(["staffPlacementTest", testId], () => getStaffPlacementTest(testId), ONCE);
+  // One fleet test holds thousands of seeds (3,002 on Oct 19): the tables show a page, then all.
+  const senders = useShowAll(q.data?.bySender.length ?? 0, 25);
+  const seeds = useShowAll(q.data?.seeds.length ?? 0, 100);
   if (q.isError) return <Failed what="this placement test" />;
   if (!q.data) return <Loading />;
   const t = q.data;
@@ -761,7 +774,7 @@ export function PlacementTestPage({ base, testId }: { base: string; testId: stri
             </>
           }
         >
-          {t.bySender.map((s) => (
+          {t.bySender.slice(0, senders.limit).map((s) => (
             <tr key={s.sender} className="k-row">
               <td className={TD}>
                 <To base={base} path={entityPath("account", s.sender)}>{s.sender}</To>
@@ -780,6 +793,7 @@ export function PlacementTestPage({ base, testId }: { base: string; testId: stri
             </tr>
           ))}
         </Table>
+        {senders.footer}
       </section>
       <section>
         <SectionTitle count={t.seeds.length}>Each seed, by inbox provider</SectionTitle>
@@ -797,7 +811,7 @@ export function PlacementTestPage({ base, testId }: { base: string; testId: stri
             </>
           }
         >
-          {[...t.seeds].sort((a, b) => providerRank(a.provider) - providerRank(b.provider)).map((s, i) => (
+          {[...t.seeds].sort((a, b) => providerRank(a.provider) - providerRank(b.provider)).slice(0, seeds.limit).map((s, i) => (
             <tr key={`${s.sender}|${s.receiver ?? i}`} className="k-row">
               <td className={`${TD} whitespace-nowrap`}>{s.providerLabel}</td>
               <td className={TD}>{s.placement ? <PlacementWord placement={s.placement} /> : <span className="k-fg3 text-[12px]">Not sent ({s.dispatchOutcome})</span>}</td>
@@ -812,6 +826,7 @@ export function PlacementTestPage({ base, testId }: { base: string; testId: stri
             </tr>
           ))}
         </Table>
+        {seeds.footer}
       </section>
     </div>
   );
