@@ -91,10 +91,15 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   // The fleet indexes, read from the served list (a new index is listed without an
   // edit here). They move every day; a failed read lists the hub alone.
   const indexes = await fetchIndexList();
+  // lastModified = the day the index last recorded a value (a crawler trusts a true date).
+  const indexEntries = [
+    { path: "/indexes", day: null as string | null },
+    ...(indexes?.indexes ?? []).map((i) => ({ path: `/indexes/${i.slug}`, day: i.day })),
+  ];
   staticEntries.push(
-    ...["/indexes", ...(indexes?.indexes ?? []).map((i) => `/indexes/${i.slug}`)].map((path) => ({
+    ...indexEntries.map(({ path, day }) => ({
       url: `${baseUrl}${path}`,
-      lastModified: new Date(),
+      lastModified: day ? new Date(`${day}T00:00:00Z`) : new Date(),
       changeFrequency: "daily" as const,
       priority: 0.8,
     })),

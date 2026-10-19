@@ -243,6 +243,11 @@ const STYLE = `<style>
 .ix-row-value.ix-none { font-family: var(--font-body); font-size: 14px; letter-spacing: 0; color: var(--muted); }
 .ix-spark { width: 140px; height: 40px; overflow: visible; }
 .ix-spark path { fill: none; stroke: var(--accent); stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.ix-sub { margin-top: 10px; font-size: 16px; color: var(--muted); max-width: 640px; }
+.ix-table-wrap { overflow-x: auto; max-width: 880px; }
+.ix-table { width: 100%; border-collapse: collapse; font-size: 16px; font-variant-numeric: tabular-nums; }
+.ix-table th { text-align: left; font-weight: 500; font-size: 14px; color: var(--muted); padding: 0 24px 12px 0; border-bottom: 1px solid var(--hair); }
+.ix-table td { padding: 14px 24px 14px 0; border-bottom: 1px solid var(--hair); color: var(--text); }
 .ix-error { max-width: 680px; padding: 16px 20px; border: 1px solid var(--hair); border-radius: 14px; color: var(--text); background: #fff; }
 
 @keyframes ix-reveal { to { clip-path: inset(-10px -10px -10px 0); } }
@@ -269,6 +274,30 @@ function withStyle(html: string): string {
 // ---------------------------------------------------------------------------
 // One index
 // ---------------------------------------------------------------------------
+
+/**
+ * Every recorded day as a plain table, newest first: the chart's numbers in text, so a
+ * search engine or an agent quoting the index reads the series, not only today's value.
+ */
+export function historyTableHtml(points: IndexPoint[], unit: "usd" | "percent", valuePer: string): string {
+  if (points.length === 0) return "";
+  const rows = [...points]
+    .reverse()
+    .map(
+      (p) =>
+        `<tr><td>${esc(formatDay(p.day, true))}</td><td>${p.value !== null ? esc(formatIndexValue(p.value, unit)) : "Not stated"}</td><td>${esc(STATUS_LABEL[p.status])}</td></tr>`,
+    )
+    .join("");
+  return `<section class="framed" id="history">
+  <div class="wrap">
+    <div class="section-head"><h2>Every day so far</h2></div>
+    <div class="ix-table-wrap"><table class="ix-table">
+<thead><tr><th scope="col">Day</th><th scope="col">Value (${esc(valuePer)})</th><th scope="col">Status</th></tr></thead>
+<tbody>${rows}</tbody>
+</table></div>
+  </div>
+</section>`;
+}
 
 function otherIndexes(list: IndexList | null, slug: string): string {
   if (!list) return "";
@@ -324,6 +353,7 @@ ${otherIndexes(list, slug)}`,
   <div class="wrap">
     <p class="ix-crumb"><a href="/indexes">Indexes</a> / ${esc(i.channelName)}</p>
     <h1>${esc(i.name)}</h1>
+    <p class="ix-sub">A cold email benchmark from our live campaigns, recorded every day.</p>
     ${figure}
     ${chartHtml(points, i.unit, i.name)}
     ${ribbonHtml(points)}
@@ -339,6 +369,7 @@ ${otherIndexes(list, slug)}`,
     </dl>
   </div>
 </section>
+${historyTableHtml(points, i.unit, i.valuePer)}
 <section class="framed" id="why">
   <div class="wrap">
     <div class="section-head"><h2>Why we publish it</h2></div>
@@ -352,7 +383,7 @@ ${otherIndexes(list, i.slug)}`;
 
   return withStyle(
     shell({
-      title: `${i.name} | distribute.you`,
+      title: value !== null ? `${i.name}: ${value} ${i.valuePer} | Cold email benchmark` : `${i.name} | Cold email benchmark`,
       description,
       path: `/indexes/${i.slug}`,
       body,
@@ -363,10 +394,26 @@ ${otherIndexes(list, i.slug)}`;
           name: i.name,
           description: `${i.method} Recorded every day.`,
           url: `${SITE}/indexes/${i.slug}`,
+          keywords: ["cold email", "cold email benchmark", i.name, i.valuePer],
           creator: { "@type": "Organization", name: "distribute.you", url: SITE },
+          publisher: { "@type": "Organization", name: "distribute.you", url: SITE },
           isAccessibleForFree: true,
-          ...(points.length ? { temporalCoverage: `${points[0].day}/${points[points.length - 1].day}` } : {}),
-          variableMeasured: `${i.name} (${i.unit === "usd" ? "USD" : "percent"} ${i.valuePer})`,
+          includedInDataCatalog: { "@type": "DataCatalog", name: "distribute.you indexes", url: `${SITE}/indexes` },
+          measurementTechnique: i.method,
+          ...(points.length
+            ? {
+                temporalCoverage: `${points[0].day}/${points[points.length - 1].day}`,
+                datePublished: points[0].day,
+                dateModified: points[points.length - 1].day,
+              }
+            : {}),
+          variableMeasured: {
+            "@type": "PropertyValue",
+            name: i.name,
+            description: i.valuePer,
+            unitText: i.unit === "usd" ? "USD" : "percent",
+            ...(i.value !== null ? { value: i.value } : {}),
+          },
           distribution: {
             "@type": "DataDownload",
             encodingFormat: "application/json",
