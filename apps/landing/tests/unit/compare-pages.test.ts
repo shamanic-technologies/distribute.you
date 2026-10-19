@@ -243,7 +243,7 @@ describe("served through the pipeline", () => {
     expect(body).not.toMatch(/__[A-Z_]+__/);
     // The band is either the two fleet figures or nothing; never a heading over a blank.
     const bands = (body.match(/Measured, not quoted/g) ?? []).length;
-    if (bands === 1) expect(body).toMatch(/hot leads for \d+ companies/);
+    if (bands === 1) expect(body).toMatch(/engaged leads for \d+ companies/);
     else expect(bands).toBe(0);
     expect(body).toContain("googletagmanager");
     expect((body.match(/"@type":"Organization"/g) ?? []).length).toBe(1);

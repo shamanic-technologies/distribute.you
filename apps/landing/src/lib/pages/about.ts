@@ -52,7 +52,7 @@ export function renderAboutPage(): string {
         id: "guarantee",
         h2: "What we guarantee, and what we do not",
         html: `<p>We do not guarantee results. Nobody who is honest about outbound can. What we guarantee is the measurement: the real cost of every outcome stays visible, the full picture stays visible including the replies that went badly, your spend stays under a cap you set, and you can pause at any moment.</p>
-<p>We publish our own numbers rather than describing them. The hot leads the fleet produced and their median cost are on the <a href="/">homepage</a>, read live from every client account. The same figures come out of the API, which is documented on the <a href="/developers">developer resources page</a> along with the MCP server and the CLI.</p>`,
+<p>We publish our own numbers rather than describing them. The engaged leads the fleet produced and their median cost are on the <a href="/">homepage</a>, read live from every client account. The same figures come out of the API, which is documented on the <a href="/developers">developer resources page</a> along with the MCP server and the CLI.</p>`,
       },
       {
         id: "who",
