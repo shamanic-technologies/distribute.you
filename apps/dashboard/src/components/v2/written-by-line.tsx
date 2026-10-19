@@ -3,35 +3,39 @@
 import { ProviderLogo } from "@/components/provider-logo";
 import { getLeadWrittenBy } from "@/lib/api";
 import { useAuthQuery } from "@/lib/use-auth-query";
-import { hasWrittenBy, vendorDomain, writtenByForMessage, type WrittenByEntry } from "@/lib/written-by";
+import { hasWrittenBy, vendorDomain, writtenByForRow, type WrittenBy } from "@/lib/written-by";
 
 /**
  * Who wrote the messages we sent to one person (features-service, `lib/written-by.ts`).
  * Read on open, not polled: the producer walks the pipe rankings to say "under test", which
  * can take seconds a call, and an entry only appears when a new sequence is written.
  */
-export function useLeadWrittenBy(leadId: string | null | undefined): readonly WrittenByEntry[] | null {
+export function useLeadWrittenBy(leadId: string | null | undefined): WrittenBy | null {
   const q = useAuthQuery(["leadWrittenBy", leadId], () => getLeadWrittenBy(leadId!), { enabled: Boolean(leadId) });
   // Only THIS person's entries: the app-wide placeholder would hand a re-keyed read the last person's.
   if (!leadId || q.isPlaceholderData || !q.data || q.data.leadId !== leadId) return null;
-  return q.data.entries;
+  return q.data;
 }
 
 /**
- * Under one message we sent: the model that wrote it (vendor logo + name), "Under test" while
- * the version that wrote it is still tested, then the plain tactic lines. Nothing at all when
- * no entry is served for the message (owner 2026-10-19: never a guess).
+ * Under one message we sent, any channel: the model that wrote it (vendor logo + name), "Under
+ * test" while the version that wrote it is still tested, then the plain tactic lines. Matched on
+ * the message's own id (`messageId`, lead-service's), the campaign entry only for a message with
+ * no served row. Nothing at all when a person wrote it, the writer is unknown, or nothing is
+ * served (owner 2026-10-19: never a guess).
  */
 export function WrittenByLine({
-  entries,
+  writtenBy,
+  messageId,
   campaignId,
   at,
 }: {
-  entries: readonly WrittenByEntry[] | null;
+  writtenBy: WrittenBy | null;
+  messageId: string | null | undefined;
   campaignId: string | null | undefined;
   at: string | null | undefined;
 }) {
-  const entry = entries ? writtenByForMessage(entries, { campaignId, at }) : null;
+  const entry = writtenByForRow(writtenBy, { id: messageId, campaignId, at });
   if (!hasWrittenBy(entry)) return null;
   const domain = entry.model ? vendorDomain(entry.model.vendor.id) : null;
   return (

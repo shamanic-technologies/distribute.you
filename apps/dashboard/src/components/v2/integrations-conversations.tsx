@@ -36,7 +36,7 @@ import { ConversationTags } from "@/components/v2/conversation-timeline";
 import { useSelectedOfferIfAny } from "@/components/v2/selected-offer";
 import { TagChip } from "@/components/v2/tag-chip";
 import { WrittenByLine, useLeadWrittenBy } from "@/components/v2/written-by-line";
-import type { WrittenByEntry } from "@/lib/written-by";
+import { writtenMessageId, type WrittenBy } from "@/lib/written-by";
 import { itemCallId } from "@/lib/api-calls";
 import { ApiCallDetailPanel } from "@/components/v2/api-call-detail";
 import { RelationshipChips, UnmergeMenu } from "@/components/v2/relationship-tags";
@@ -505,7 +505,7 @@ function Thread({
   );
   // No lead row (a CRM-only person) means no lead-service facts, never the previous person's.
   const facts = leadRowId ? ownQueryData(factsQ) : undefined;
-  // Who wrote each email we sent this person (owner 2026-10-19), keyed on the conversation's lead.
+  // Who wrote each message we sent this person, any channel (owner 2026-10-19), keyed on the conversation's lead.
   const writtenBy = useLeadWrittenBy(facts?.leadId ?? null);
   // Replies sent from this screen, per person, shown until the served thread carries them.
   const [sentByRef, setSentByRef] = useState<Record<string, LocalReply[]>>({});
@@ -606,7 +606,7 @@ function Thread({
         ) : (
           threadRows(items, facts ? liveItems(facts) : []).map((row, i) =>
             row.fact ? (
-              <FactRow key={row.fact.id} fact={row.fact} />
+              <FactRow key={row.fact.id} fact={row.fact} writtenBy={writtenBy} />
             ) : (
               <ThreadItem
                 key={i}
@@ -778,13 +778,17 @@ function threadRows(items: PersonTimelineItem[], facts: ConversationItem[]): Thr
   return rows;
 }
 
-function FactRow({ fact }: { fact: ConversationItem }) {
+function FactRow({ fact, writtenBy = null }: { fact: ConversationItem; writtenBy?: WrittenBy | null }) {
   const meta = [conversationSourceWord(fact.source), fact.occurredAt ? friendlyDateTime(fact.occurredAt) : "No date"].join(" · ");
   return (
-    <div className="k-fg2 flex flex-wrap items-center gap-x-2 gap-y-1 text-[12px]">
-      <TagChip tag={conversationItemTag(fact.label)} />
-      <span className="k-fg3">{meta}</span>
-      {fact.attributable === false ? <span className="k-fg3 whitespace-nowrap">· Not ours</span> : null}
+    <div>
+      <div className="k-fg2 flex flex-wrap items-center gap-x-2 gap-y-1 text-[12px]">
+        <TagChip tag={conversationItemTag(fact.label)} />
+        <span className="k-fg3">{meta}</span>
+        {fact.attributable === false ? <span className="k-fg3 whitespace-nowrap">· Not ours</span> : null}
+      </div>
+      {/* A message of ours the thread does not hold: its own row, on its id only (no campaign fallback). */}
+      <WrittenByLine writtenBy={writtenBy} messageId={fact.id} campaignId={null} at={fact.occurredAt} />
     </div>
   );
 }
@@ -808,7 +812,7 @@ function ThreadItem({
   brandId: string;
   item: PersonTimelineItem;
   tag: TimelineTag | null;
-  writtenBy?: readonly WrittenByEntry[] | null;
+  writtenBy?: WrittenBy | null;
   campaignId?: string | null;
 }) {
   // Where it came from, as a mark and its name: our own sends and visits read as Distribute.
@@ -838,7 +842,11 @@ function ThreadItem({
       mark={mark}
       meta={meta}
       tag={tag ?? timelineTag(item)}
-      written={campaignId ? <WrittenByLine entries={writtenBy} campaignId={campaignId} at={item.at} /> : null}
+      written={
+        item.direction === "outbound" ? (
+          <WrittenByLine writtenBy={writtenBy} messageId={writtenMessageId(item)} campaignId={campaignId} at={item.at} />
+        ) : null
+      }
     />
   );
 }

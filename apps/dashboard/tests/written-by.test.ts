@@ -1,7 +1,16 @@
 import { describe, expect, it } from "vitest";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
-import { WrittenBySchema, hasWrittenBy, vendorDomain, writtenByForMessage, type WrittenByEntry } from "../src/lib/written-by";
+import {
+  WrittenBySchema,
+  hasWrittenBy,
+  vendorDomain,
+  writtenByForMessage,
+  writtenByForRow,
+  writtenMessageId,
+  type WrittenByEntry,
+  type WrittenByMessage,
+} from "../src/lib/written-by";
 
 const read = (p: string) => readFileSync(join(__dirname, "../src", p), "utf8");
 
@@ -102,15 +111,103 @@ describe("where the line is drawn", () => {
   it("under every email we sent on the person page, and in the Unibox thread", () => {
     const timeline = read("components/audiences/lead-history-timeline.tsx");
     expect(timeline).toContain('e.type === "message" && e.direction === "outbound"');
-    expect(timeline).toContain("<WrittenByLine entries={writtenBy} campaignId={e.campaignId} at={e.at} />");
-    expect(read("components/v2/person-page.tsx")).toContain("writtenBy={writtenBy}");
+    expect(timeline).toContain("<WrittenByLine writtenBy={writtenBy} messageId={e.id} campaignId={e.campaignId} at={e.at} />");
+    const person = read("components/v2/person-page.tsx");
+    expect(person.match(/writtenBy=\{writtenBy\}/g)?.length).toBe(2);
+    const card = read("components/v2/conversation-timeline.tsx");
+    expect(card).toContain("<TimelineRows timeline={timeline} writtenBy={writtenBy} />");
+    expect(card).toContain("messageId={it.id}");
     const unibox = read("components/v2/integrations-conversations.tsx");
     expect(unibox).toContain("useLeadWrittenBy(facts?.leadId ?? null)");
     expect(unibox).toContain("campaignId={sentCampaignId(row.item, facts)}");
+    // Every message of ours, any channel, on its own id; a fact the thread lacks on its id only.
+    expect(unibox).toContain('item.direction === "outbound" ? (');
+    expect(unibox).toContain("messageId={writtenMessageId(item)}");
+    expect(unibox).toContain("<FactRow key={row.fact.id} fact={row.fact} writtenBy={writtenBy} />");
+    expect(unibox).toContain("messageId={fact.id} campaignId={null}");
   });
 
   it("never names a workflow or a cost", () => {
     const line = read("components/v2/written-by-line.tsx");
     expect(line).not.toMatch(/workflowSlug|workflowName|cost/i);
+  });
+});
+
+const message = (over: Partial<WrittenByMessage>): WrittenByMessage => ({
+  id: "m1",
+  kind: "email_sent",
+  channel: "email",
+  campaignId: "c1",
+  sentAt: "2026-10-18T10:00:00.000Z",
+  writtenBy: "workflow",
+  model: { name: "Claude Opus 5.5", vendor: { id: "anthropic", name: "Anthropic" } },
+  modelUnavailableReason: null,
+  tactics: [],
+  tacticsUnavailableReason: null,
+  underTest: null,
+  underTestUnavailableReason: null,
+  ...over,
+});
+
+describe("writtenByForRow: every message on its own id (WRITTEN-BY-EVERY-MESSAGE-1019)", () => {
+  // Shape served by features-service in prod on our own org (2026-10-19), trimmed.
+  const body = {
+    leadId: "a0f2fb6c-ff20-4d1d-a968-9a036bc9ca40",
+    campaignId: null,
+    entries: [],
+    messages: [
+      message({ id: "ievt:2c6e3448-d151-4982-904a-9f32853a87e0", underTest: true, sentAt: "2026-10-15T13:01:11.205Z" }),
+      message({
+        id: "ievt:followup-1",
+        sentAt: "2026-10-18T13:01:11.205Z",
+        model: { name: "Gemini 3 Flash", vendor: { id: "google", name: "Google" } },
+        tactics: [{ line: "Short follow-up" }],
+      }),
+      message({
+        id: "7a4d71b7-5200-4ea1-a733-77529a171596",
+        kind: "message_out",
+        channel: "whatsapp",
+        campaignId: null,
+        sentAt: "2026-10-15T18:01:55.999Z",
+        tactics: [{ line: "Answers in the prospect's language" }],
+      }),
+      message({ id: "person-sent", kind: "message_out", channel: "whatsapp", campaignId: null, writtenBy: "person", model: null, modelUnavailableReason: "written_by_a_person" }),
+      message({ id: "bebd8c19-c264-4343-bf19-dcce4f207020", kind: "message_out", channel: "whatsapp", campaignId: null, writtenBy: "unknown", model: null, modelUnavailableReason: "writer_unknown" }),
+    ],
+    messagesUnavailableReason: null,
+  };
+  const wb = WrittenBySchema.parse(body);
+
+  it("a first email, a follow-up and a WhatsApp message each read their own row", () => {
+    expect(writtenByForRow(wb, { id: "ievt:2c6e3448-d151-4982-904a-9f32853a87e0", campaignId: "c1", at: null })?.underTest).toBe(true);
+    expect(writtenByForRow(wb, { id: "ievt:followup-1", campaignId: "c1", at: null })?.model?.name).toBe("Gemini 3 Flash");
+    const wa = writtenByForRow(wb, { id: "7a4d71b7-5200-4ea1-a733-77529a171596", campaignId: null, at: null });
+    expect(wa?.tactics.map((t) => t.line)).toEqual(["Answers in the prospect's language"]);
+  });
+
+  it("a person-sent or unknown message shows nothing, even when a campaign entry would fit", () => {
+    const withEntry = { ...wb, entries: [entry({ campaignId: "c1", writtenAt: "2026-01-01T00:00:00.000Z" })] };
+    expect(writtenByForRow(withEntry, { id: "person-sent", campaignId: "c1", at: "2026-10-19T00:00:00.000Z" })).toBeNull();
+    expect(writtenByForRow(withEntry, { id: "bebd8c19-c264-4343-bf19-dcce4f207020", campaignId: "c1", at: "2026-10-19T00:00:00.000Z" })).toBeNull();
+  });
+
+  it("only a message with no row reads its campaign entry", () => {
+    const e = entry({ campaignId: "c9", writtenAt: "2026-10-01T00:00:00.000Z" });
+    const withEntry = { ...wb, entries: [e] };
+    expect(writtenByForRow(withEntry, { id: "message:outreach:c9:0", campaignId: "c9", at: "2026-10-02T00:00:00.000Z" })).toBe(e);
+    expect(writtenByForRow(withEntry, { id: null, campaignId: null, at: "2026-10-02T00:00:00.000Z" })).toBeNull();
+    // messages unreadable: the entry match still answers.
+    const unreadable = WrittenBySchema.parse({ ...body, entries: [e], messages: null, messagesUnavailableReason: "sent_messages_unreadable" });
+    expect(writtenByForRow(unreadable, { id: "ievt:followup-1", campaignId: "c9", at: "2026-10-02T00:00:00.000Z" })).toEqual(e);
+  });
+
+  it("a body written before messages existed still parses", () => {
+    expect(WrittenBySchema.parse({ leadId: "l", campaignId: null, entries: [] }).messages).toBeUndefined();
+  });
+
+  it("a Unibox item's id: the outreach subject key, else crm-service's fact id", () => {
+    expect(writtenMessageId({ outreachFact: { subjectKey: "ievt:x" }, ref: { factId: "f" } })).toBe("ievt:x");
+    expect(writtenMessageId({ outreachFact: null, ref: { eventId: "$e", factId: "f" } })).toBe("f");
+    expect(writtenMessageId({ outreachFact: null, ref: { eventId: "$e" } })).toBeNull();
   });
 });
