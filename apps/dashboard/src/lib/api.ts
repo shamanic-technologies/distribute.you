@@ -33,6 +33,12 @@ import {
   type FunnelCampaignCopy,
   type FunnelCampaignRow,
 } from "./sales-funnel-campaigns";
+import {
+  FunnelCampaignSpendChartsSchema,
+  OfferSpendChartsSchema,
+  type FunnelCampaignSpendCharts,
+  type OfferSpendCharts,
+} from "./spend-charts";
 import { browserHasAnonSession } from "./anon-session-cookie";
 import { offerArchiveRefusalSentence } from "./offer-archive";
 import { CrmAttributionSchema, type CrmAttribution } from "./crm-attribution";
@@ -1945,6 +1951,33 @@ export async function listFunnelCampaignCopies(brandId: string, offerId: string)
   const qs = new URLSearchParams({ offerId, fields: "copy" });
   const raw = await apiCall<unknown>(`/features/brands/${encodeURIComponent(brandId)}/sales-funnel-campaigns?${qs.toString()}`);
   return parseStaff("listFunnelCampaignCopies", FunnelCampaignCopiesSchema, raw).salesFunnelCampaigns;
+}
+
+/**
+ * Why each day costs what it costs, and whether it converges (features-service SPEND-CHARTS-1019): the
+ * campaign's chart plus one per pipe in path order, net of discount. Shapes: lib/spend-charts.ts.
+ */
+export async function getFunnelCampaignSpendCharts(brandId: string, salesFunnelCampaignId: string): Promise<FunnelCampaignSpendCharts> {
+  const qs = new URLSearchParams({ pricing: "net" });
+  const raw = await apiCall<unknown>(
+    `/features/brands/${encodeURIComponent(brandId)}/sales-funnel-campaigns/${encodeURIComponent(salesFunnelCampaignId)}/spend-charts?${qs.toString()}`,
+  );
+  return parseStaff("getFunnelCampaignSpendCharts", FunnelCampaignSpendChartsSchema, raw);
+}
+
+/**
+ * The same chart for the whole offer (every sales funnel campaign of it as one scope), net of discount.
+ * Null = the offer runs no campaign yet (the producer's `offer_has_no_campaigns` 404): nothing to chart.
+ */
+export async function getOfferSpendCharts(offerId: string, brandId: string): Promise<OfferSpendCharts | null> {
+  const qs = new URLSearchParams({ brandId, pricing: "net" });
+  try {
+    const raw = await apiCall<unknown>(`/offers/${encodeURIComponent(offerId)}/spend-charts?${qs.toString()}`);
+    return parseStaff("getOfferSpendCharts", OfferSpendChartsSchema, raw);
+  } catch (err) {
+    if (err instanceof ApiError && err.status === 404 && err.body?.reason === "offer_has_no_campaigns") return null;
+    throw err;
+  }
 }
 
 /** One funnel campaign with its units. */
