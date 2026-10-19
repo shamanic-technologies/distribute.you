@@ -33,7 +33,7 @@ import { StatBasisSwitch } from "@/components/v2/stat-basis-switch";
 import { V2Page, type V2Tab } from "@/components/v2/setup-pages";
 import { EmptyNote, Figure, SectionTitle, Shimmer, StatTile } from "@/components/v2/ui";
 import { FunnelCampaignPage, FunnelPartOf, useFunnelCampaignById, useFunnelCapsWords } from "@/components/v2/funnel-campaigns";
-import { RoiLabel, RoiValue } from "@/components/v2/roi-label";
+import { CostValue, RoiLabel, RoiValue } from "@/components/v2/roi-label";
 import { CampaignHoldNote, useCampaignHold } from "@/components/v2/campaign-hold";
 import { costToShowCents, roiToShow } from "@/lib/expected-return";
 
@@ -278,7 +278,7 @@ function CampaignOverview({
   const g = campaign.row.revenue ?? null;
   const replyLed = leg?.bucket === "positive_reply";
   const cost = shownFigure(g?.outcomesMaturity, (h) => (replyLed ? h.cpprCents : h.cpcCents), basis);
-  // The served expected cost of one outcome where the measured one is Learning (owner 2026-10-11).
+  // Measured first: a Learning cost greyed with the served expected one beside it (owner 2026-10-19).
   const costShown = costToShowCents(cost, g?.expectedReturn, replyLed ? "conversation" : "website_visit");
 
   const win = useCampaignWindow(brandId, campaign.row.campaign.id, campaign.row.campaign.featureSlug ?? null);
@@ -308,10 +308,7 @@ function CampaignOverview({
           <StatTile label={leg ? (outcomes === 1 ? leg.outcome : stepPluralLabel(catalogue, campaign.leg?.toKey, leg.outcome)) : "Outcomes"}>{count(outcomes)}</StatTile>
           <SpentTile win={win} />
           <StatTile label={replyLed ? "Cost / reply" : "Cost / visit"}>
-            <Figure
-              value={costShown.cents != null ? formatCentsAsUsdAdaptive(costShown.cents) : cost.learning ? "Learning" : "—"}
-              sub={costShown.expected ? "Expected" : undefined}
-            />
+            <Figure value={<CostValue cost={costShown} learning={cost.learning} />} />
           </StatTile>
         </div>
       </section>

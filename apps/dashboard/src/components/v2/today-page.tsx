@@ -205,7 +205,8 @@ export function TodayPage() {
   const first = user?.firstName ?? null;
   const dateLine = clock?.toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric" });
   const timeLine = clock?.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" });
-  // Measured when the producer states it, else the served expected return (owner 2026-10-11: never blank).
+  // Measured when the producer states it; still Learning, the return measured so far greyed with the
+  // served expected one beside it (owner 2026-10-19); nothing measured, the expected one (never blank).
   const roiShown = roiToShow(shownRoi, data?.expectedReturn);
   const roi = roiShown.value;
   const gaugeMax = Math.max(3, Math.ceil((roi ?? 0) + 0.5));
@@ -270,12 +271,13 @@ export function TodayPage() {
                   <div className="flex flex-col items-center">
                     <div className="relative w-full max-w-[124px]">
                       <TickGauge value={roi} max={gaugeMax} marker={1} />
-                      <span className={`absolute inset-x-0 bottom-0 text-center font-medium tabular-nums ${roi == null ? "text-[14px]" : "text-[18px]"}`}>
+                      <span className={`absolute inset-x-0 bottom-0 text-center font-medium tabular-nums ${roi == null ? "text-[14px]" : "text-[18px]"} ${roiShown.learning ? "k-fg3" : ""}`}>
                         {roi == null ? (learning && roiShown.reason == null ? "Learning" : expectedReasonWords(roiShown.reason)) : formatRoi(roi)}
                       </span>
                     </div>
                     <p className="k-fg3 mt-1 truncate text-[11px]">
                       {roiShown.expected ? "Expected · " : ""}
+                      {roiShown.learning ? (roiShown.expectedValue != null ? `Expected ${formatRoi(roiShown.expectedValue)} · ` : "Learning · ") : ""}
                       {data?.totalPipelineUsd != null ? formatUsdAdaptive(data.totalPipelineUsd) : "—"} pipeline
                     </p>
                   </div>

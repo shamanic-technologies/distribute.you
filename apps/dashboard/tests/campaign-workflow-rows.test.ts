@@ -210,7 +210,7 @@ describe("buildCampaignWorkflowRows", () => {
       running: { dynastySlug: null, dynastyName: null },
       pair: "reply",
     });
-    expect(workflowOutcomeCost(thin, "mature")).toEqual({ value: null, learning: true });
+    expect(workflowOutcomeCost(thin, "mature")).toEqual({ value: null, learning: true, toDate: 4200 });
     // the staff flash view states the flash half, never tagged
     expect(workflowOutcomeCost(thin, "flash")).toEqual({ value: 4200, learning: false });
   });
@@ -446,7 +446,7 @@ describe("fleetComparison", () => {
   });
 
   it("states this workflow Learning where the producer says it is not mature", () => {
-    expect(fleetComparison("d", read, "mature").mine).toEqual({ value: null, learning: true });
+    expect(fleetComparison("d", read, "mature").mine).toMatchObject({ value: null, learning: true });
   });
 
   it("answers NULL rather than zero when the fleet block is null", () => {

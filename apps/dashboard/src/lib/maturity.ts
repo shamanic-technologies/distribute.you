@@ -71,6 +71,11 @@ export interface ShownFigure {
   value: number | null;
   /** True only when the producer said this scope is not mature, on the mature basis. */
   learning: boolean;
+  /**
+   * While Learning: the figure MEASURED so far (the served to-date half), shown greyed beside
+   * the expected one, never hidden (owner 2026-10-19: "plus de learning qui offusque la data").
+   */
+  toDate?: number | null;
 }
 
 /**
@@ -88,7 +93,7 @@ export function shownFigure<T>(
 ): ShownFigure {
   if (!pair) return { value: null, learning: false };
   if (basis === "flash") return { value: pair.flash == null ? null : pick(pair.flash) ?? null, learning: false };
-  if (pair.isMature === false) return { value: null, learning: true };
+  if (pair.isMature === false) return { value: null, learning: true, toDate: pair.flash == null ? null : pick(pair.flash) ?? null };
   return { value: pair.mature == null ? null : pick(pair.mature) ?? null, learning: false };
 }
 

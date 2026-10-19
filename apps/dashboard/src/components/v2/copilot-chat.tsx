@@ -117,18 +117,26 @@ function AccountCard({
   revPending: boolean;
   winPending: boolean;
 }) {
-  const cells: { label: string; pending: boolean; value: string; sub?: string; good?: boolean }[] = [
+  const cells: { label: string; pending: boolean; value: string; sub?: string; good?: boolean; muted?: boolean }[] = [
     {
       label: "ROI",
       pending: revPending,
-      good: roiIsGood(figures.returnShown.value),
+      good: !figures.returnShown.learning && roiIsGood(figures.returnShown.value),
+      muted: figures.returnShown.learning,
       value:
         figures.returnShown.value != null
           ? formatRoi(figures.returnShown.value)
           : figures.returnIsLearning && figures.returnShown.reason == null
             ? "Learning"
             : expectedReasonWords(figures.returnShown.reason),
-      sub: figures.returnShown.expected ? "Expected" : undefined,
+      // Still Learning: the return measured so far, with the served expected one beside it (owner 2026-10-19).
+      sub: figures.returnShown.learning
+        ? figures.returnShown.expectedValue != null
+          ? `Expected ${formatRoi(figures.returnShown.expectedValue)}`
+          : "Learning"
+        : figures.returnShown.expected
+          ? "Expected"
+          : undefined,
     },
     {
       label: "Positive replies",
@@ -160,7 +168,7 @@ function AccountCard({
         {cells.map((c) => (
           <div key={c.label} className="min-w-0 px-4 pb-3.5 pt-2">
             <span className="k-fg3 text-[12px]">{c.label === "ROI" ? <RoiLabel /> : c.label}</span>
-            <div className="mt-1">{c.pending ? <Shimmer className="h-7 w-16" /> : <Figure value={c.good ? <span className="text-[var(--run)]">{c.value}</span> : c.value} />}</div>
+            <div className="mt-1">{c.pending ? <Shimmer className="h-7 w-16" /> : <Figure value={c.good ? <span className="text-[var(--run)]">{c.value}</span> : c.muted ? <span className="k-fg3">{c.value}</span> : c.value} />}</div>
             <p className="k-fg3 mt-0.5 truncate text-[12px] tabular-nums">{c.pending ? " " : c.sub ?? " "}</p>
           </div>
         ))}

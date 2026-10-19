@@ -38,40 +38,67 @@ export type ExpectedConversion = z.infer<typeof ExpectedConversionSchema>;
 /** What a ROI surface prints: the measured value, else the expected one, else why neither. */
 export interface RoiToShow {
   value: number | null;
-  /** True when `value` is the expected figure standing in for a measured one still Learning. */
+  /** True when `value` is the expected figure standing in for a measured one (none measured yet). */
   expected: boolean;
   /** The producer's reason when no figure at all is served. */
   reason: string | null;
+  /**
+   * True when `value` is the figure MEASURED so far on a scope still Learning: printed greyed,
+   * with `expectedValue` beside it (owner 2026-10-19: "plus de learning qui offusque la data").
+   */
+  learning?: boolean;
+  /** The served expected figure, stated beside a Learning measured value. */
+  expectedValue?: number | null;
 }
 
+/** A Learning scope's measured figure so far, as `shownFigure` carries it. */
+type Shown = { learning: boolean; value: number | null; toDate?: number | null };
+
 /**
- * The measured return when the producer states one (`shownReturn` gave a value, not Learning),
- * else the served expected return, ALWAYS flagged expected: standing in for a scope that is still
- * Learning, it is not this scope's measured figure even when its basis says `measured` (a
- * campaign group served its channel's measured return, 44 campaigns at one 1.57x, 2026-10-11).
+ * The measured return when the producer states one (`shownReturn` gave a value, not Learning).
+ * Still Learning: the return MEASURED so far, greyed, with the served expected return beside it
+ * (owner 2026-10-19). Nothing measured: the served expected return, ALWAYS flagged expected:
+ * standing in for a scope that is still Learning, it is not this scope's measured figure even
+ * when its basis says `measured` (a campaign group served its channel's measured return, 44
+ * campaigns at one 1.57x, 2026-10-11).
  */
-export function roiToShow(
-  shown: { learning: boolean; value: number | null },
-  expected: ExpectedReturn | null | undefined,
-): RoiToShow {
+export function roiToShow(shown: Shown, expected: ExpectedReturn | null | undefined): RoiToShow {
   if (!shown.learning && shown.value != null) return { value: shown.value, expected: false, reason: null };
-  if (expected?.roiMultiple != null) return { value: expected.roiMultiple, expected: true, reason: null };
+  const exp = expected?.roiMultiple ?? null;
+  if (shown.learning && shown.toDate != null) {
+    return { value: shown.toDate, expected: false, reason: null, learning: true, expectedValue: exp };
+  }
+  if (exp != null) return { value: exp, expected: true, reason: null };
   return { value: null, expected: false, reason: expected?.unavailableReason ?? null };
 }
 
+/** What a cost-per-outcome cell prints, in cents (see `roiToShow`). */
+export interface CostToShow {
+  cents: number | null;
+  /** True when `cents` is the expected figure standing in for a measured one. */
+  expected: boolean;
+  /** True when `cents` is the cost MEASURED so far on a scope still Learning (printed greyed). */
+  learning?: boolean;
+  /** The served expected cost, stated beside a Learning measured one. */
+  expectedCents?: number | null;
+}
+
 /**
- * The expected cost of ONE outcome where the measured one is Learning or null: only when the
- * served figure buys the outcome this cell prices (`conversation` = a positive reply,
- * `website_visit` = a visit). In cents, the unit every cost cell formats.
+ * The cost of ONE outcome: measured when stated; still Learning, the cost measured so far
+ * (greyed) with the served expected one beside it; nothing measured, the expected one. The
+ * expected figure is read only when it buys the outcome this cell prices (`conversation` = a
+ * positive reply, `website_visit` = a visit). In cents, the unit every cost cell formats.
  */
 export function costToShowCents(
-  shown: { learning: boolean; value: number | null },
+  shown: Shown,
   expected: ExpectedReturn | null | undefined,
   stepKey: "conversation" | "website_visit",
-): { cents: number | null; expected: boolean } {
+): CostToShow {
   if (!shown.learning && shown.value != null) return { cents: shown.value, expected: false };
   const c = expected?.costPerOutcome;
-  if (c && c.stepKey === stepKey) return { cents: Math.round(c.costPerOutcomeUsd * 100), expected: true };
+  const exp = c && c.stepKey === stepKey ? Math.round(c.costPerOutcomeUsd * 100) : null;
+  if (shown.learning && shown.toDate != null) return { cents: shown.toDate, expected: false, learning: true, expectedCents: exp };
+  if (exp != null) return { cents: exp, expected: true };
   return { cents: null, expected: false };
 }
 

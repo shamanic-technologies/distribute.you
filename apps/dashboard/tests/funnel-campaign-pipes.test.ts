@@ -29,9 +29,18 @@ describe("sales-funnel campaign page: one block per pipe", () => {
   });
 
   it("draws served daily series, never a browser total", () => {
-    expect(pipes).toContain("emails?.daily.map");
+    expect(pipes).toContain("emails.daily.map");
     expect(pipes).toContain("spend.daily.map");
     expect(pipes).not.toMatch(/\.reduce\(/);
+  });
+
+  // Owner 2026-10-12 (homogeneous infra): every pipe gets a block whatever its channel; the kind
+  // comes from the leg alone, never a per-channel check.
+  it("a proactive pipe of ANY channel gets the proactive block", async () => {
+    expect(pipes).not.toContain("isColdEmailChannel");
+    expect(pipes).toContain("export function pipeKind(leg: Pick<LegDef, \"fromKey\"> | null)");
+    expect(pipes).toContain('<StepBar label={leg.toLabel} count={outcomes} of={scale} />');
+    expect(pipes).toContain("label={`$ / ${toLabel}`}");
   });
 
   it("orders pipes by the funnel's step sequence, unknown legs last, ties served order", async () => {

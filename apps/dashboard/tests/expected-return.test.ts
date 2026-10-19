@@ -41,6 +41,47 @@ describe("roiToShow", () => {
   });
 });
 
+// Owner 2026-10-19 ("plus de learning qui offusque la data"): a Learning scope shows the figure
+// MEASURED so far (greyed) with the served expected one beside it, never "Learning" alone.
+describe("measured first while Learning", () => {
+  it("a Learning return with a to-date figure reads it, the expected beside", () => {
+    expect(roiToShow({ learning: true, value: null, toDate: 0.4 }, expected())).toEqual({
+      value: 0.4,
+      expected: false,
+      reason: null,
+      learning: true,
+      expectedValue: 2.4,
+    });
+  });
+  it("a Learning cost with a to-date figure reads it, the expected cost of the same outcome beside", () => {
+    expect(costToShowCents({ learning: true, value: null, toDate: 4200 }, expected(), "conversation")).toEqual({
+      cents: 4200,
+      expected: false,
+      learning: true,
+      expectedCents: 3150,
+    });
+    expect(costToShowCents({ learning: true, value: null, toDate: 4200 }, expected(), "website_visit").expectedCents).toBeNull();
+  });
+  it("nothing measured yet (no outcome): the expected figure stands in", () => {
+    expect(costToShowCents({ learning: true, value: null, toDate: null }, expected(), "conversation")).toEqual({ cents: 3150, expected: true });
+  });
+  it("RoiValue and CostValue print the Learning figure greyed with Expected beside", () => {
+    const src = readFileSync(join(__dirname, "..", "src", "components/v2/roi-label.tsx"), "utf8");
+    expect(src).toContain("<LearningFigure measured={formatRoi(roi.value)}");
+    expect(src).toContain('<span className="k-fg3">{measured}</span>');
+    expect(src).toContain("`Expected ${expected}`");
+  });
+  it.each([
+    ["components/v2/pipe-sections.tsx", "<CostValue cost={costShown} learning={cost.learning} />"],
+    ["components/v2/campaign-page.tsx", "<CostValue cost={costShown} learning={cost.learning} />"],
+    ["components/v2/campaign-page-next.tsx", "<CostValue cost={costShown} learning={cost.learning} />"],
+    ["components/v2/today-page.tsx", "roiShown.learning"],
+    ["components/v2/copilot-chat.tsx", "figures.returnShown.learning"],
+  ])("%s states the measured figure first", (file, marker) => {
+    expect(readFileSync(join(__dirname, "..", "src", file), "utf8")).toContain(marker);
+  });
+});
+
 describe("costToShowCents", () => {
   it("reads the expected cost only for the outcome the cell prices", () => {
     expect(costToShowCents({ learning: true, value: null }, expected(), "conversation")).toEqual({ cents: 3150, expected: true });
