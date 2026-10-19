@@ -16,7 +16,7 @@ import {
   type IndexPoint,
   type IndexSummary,
 } from "../../src/lib/fleet-indexes";
-import { chartDomain, chartHtml, renderIndexListPage, renderIndexPage, ribbonHtml } from "../../src/lib/pages/indexes";
+import { chartDomain, chartHtml, historyTableHtml, renderIndexListPage, renderIndexPage, ribbonHtml } from "../../src/lib/pages/indexes";
 import { footer } from "../../src/lib/v2-shell";
 
 /**
@@ -207,5 +207,35 @@ describe("the first slugs redirect to their renamed pages (2026-10-19)", () => {
     expect(branch).toContain("RENAMED_INDEX_SLUGS[slug]");
     expect(branch).toContain("status: 301");
     expect(branch).toContain("Location: `/indexes/${renamed}`");
+  });
+});
+
+describe("an index page is built to be found (2026-10-19)", () => {
+  const detail: IndexDetail = {
+    statusRule: RULE,
+    index: summary({ day: "2026-10-19" }),
+    points: [point("2026-10-18", 4.1), point("2026-10-19", 4.3512, { status: "signal" })],
+  };
+  const page = renderIndexPage("cold-email-cost-per-click", detail, LIST);
+  const ld = [...page.matchAll(/<script type="application\/ld\+json">(.*?)<\/script>/g)].map((m) => JSON.parse(m[1]));
+  const dataset = ld.find((n) => n["@type"] === "Dataset");
+
+  it("the title carries today's value and the search words", () => {
+    expect(page).toContain("<title>Distribute.you Cost Per Click Index: $4.35 per website visit | Cold email benchmark</title>");
+  });
+
+  it("every recorded day is in a text table, newest first", () => {
+    const table = page.slice(page.indexOf('id="history"'), page.indexOf('id="why"'));
+    expect(table.indexOf("Oct 19, 2026")).toBeGreaterThan(-1);
+    expect(table.indexOf("Oct 19, 2026")).toBeLessThan(table.indexOf("Oct 18, 2026"));
+    expect(table).toContain("<td>$4.10</td>");
+    expect(historyTableHtml([], "usd", "x")).toBe("");
+  });
+
+  it("the Dataset node says what is measured, in what unit, and when", () => {
+    expect(dataset.variableMeasured).toMatchObject({ "@type": "PropertyValue", unitText: "USD", value: 4.3512 });
+    expect(dataset).toMatchObject({ datePublished: "2026-10-18", dateModified: "2026-10-19", temporalCoverage: "2026-10-18/2026-10-19" });
+    expect(dataset.includedInDataCatalog.url).toBe("https://distribute.you/indexes");
+    expect(dataset.keywords).toContain("cold email");
   });
 });
