@@ -24,6 +24,7 @@ import {
   pickedBrands,
   type ShowcaseOutcomes,
 } from "@/lib/showcase-outcomes";
+import { hasHeroOutcome } from "@/lib/showcase-cards";
 
 // Analytics for the statically-served landing pages. These route handlers
 // return raw HTML and bypass the React root layout (GA) and Next client
@@ -249,6 +250,10 @@ const HOT_LEAD_BAND_TOKEN = "__HOT_LEAD_BAND__";
 // features-service owns the population, the 2-client floor and the $100 spend floor.
 export const ENGAGED_LEAD_INDEX_SLUG = "cold-email-cost-per-engaged-lead";
 export const ROI_INDEX_SLUG = "cold-email-roi";
+// Owner 2026-10-19: the hero's price is what a booked meeting costs, read off the meeting
+// index (« $457 <- real number from the research »), no longer the engaged-lead price.
+// The index is our best workflow's figure, not a median, so the label says neither.
+export const MEETING_INDEX_SLUG = "cold-email-cost-per-meeting";
 
 export interface HotLeadStats {
   hotLeads: number;
@@ -285,6 +290,12 @@ export function hotLeadStatsFromIndex(detail: IndexDetail | null): HotLeadStats 
   return { hotLeads: inputs.engagedLeads, companies: inputs.clients, medianCostUsd: detail.index.value };
 }
 
+/** The meeting index as the hero states it; null drops the price stat alone. */
+export function meetingCostFromIndex(detail: IndexDetail | null): number | null {
+  if (!detail || !positive(detail.index.value)) return null;
+  return detail.index.value;
+}
+
 /** The ROI index as the hero states it; null drops the third stat alone. */
 export function fleetReturnFromIndex(detail: IndexDetail | null): FleetReturnStats | null {
   if (!detail || !positive(detail.index.value)) return null;
@@ -307,12 +318,13 @@ const FLEET_READ_TIMEOUT_MS = 8_000;
 export function hotLeadRowHtml(
   stats: HotLeadStats,
   fleetReturn: FleetReturnStats | null = null,
+  meetingCostUsd: number | null = null,
 ): string {
   const leads = stats.hotLeads.toLocaleString("en-US");
   const companies = stats.companies.toLocaleString("en-US");
-  // Whole dollars: this is a headline price, and cents on a median that moves
+  // Whole dollars: this is a headline price, and cents on a figure that moves
   // with every outcome read as precision we do not have.
-  const cost = `$${Math.round(stats.medianCostUsd).toLocaleString("en-US")}`;
+  const cost = meetingCostUsd === null ? null : `$${Math.round(meetingCostUsd).toLocaleString("en-US")}`;
   // The return is a SECOND read and states its own absence: unmeasurable, failed or
   // slow, the row renders the two figures it always did. The row wraps (centred flex),
   // so a third item costs no height at any width — measured, not assumed.
@@ -323,9 +335,11 @@ export function hotLeadRowHtml(
     `<svg class="hstat-i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${FLAME_PATH}</svg>` +
     `<span class="hstat-n"><b data-hot-leads data-n="${stats.hotLeads}">${leads}</b></span>` +
     `<span class="hstat-l">engaged leads for ${companies} companies</span></span>` +
-    '<span class="hstat">' +
-    `<span class="hstat-n"><b>${cost}</b></span>` +
-    '<span class="hstat-l">median cost per engaged lead</span></span>' +
+    (cost
+      ? '<span class="hstat">' +
+        `<span class="hstat-n"><b>${cost}</b></span>` +
+        '<span class="hstat-l">cost per booked meeting</span></span>'
+      : "") +
     (returnFigure
       ? '<span class="hstat">' +
         `<span class="hstat-n"><b>${returnFigure.text}x</b></span>` +
@@ -358,18 +372,22 @@ export function hotLeadRowHtml(
 export function hotLeadBandHtml(
   stats: HotLeadStats,
   fleetReturn: FleetReturnStats | null = null,
+  meetingCostUsd: number | null = null,
 ): string {
   const companies = stats.companies.toLocaleString("en-US");
   const returnFigure = fleetReturn ? formatReturnMultiple(fleetReturn.medianReturnPerDollar) : null;
+  const statCount = 1 + (meetingCostUsd === null ? 0 : 1) + (returnFigure ? 1 : 0);
   return (
     '<section class="framed dark">' +
     '<div class="wrap">' +
     '<div class="section-head center"><span class="eyebrow">Measured, not quoted</span>' +
     "<h2>What the fleet has produced, read off every campaign we run</h2>" +
     "<p>An engaged lead is a buyer who replied with interest or came to the site. No competitor on this page publishes this figure.</p></div>" +
-    `<div class="stats${returnFigure ? "" : " two"}">` +
+    `<div class="stats${statCount === 3 ? "" : " two"}">` +
     `<div class="stat rv"><div class="n"><span data-count="${stats.hotLeads}">0</span></div><div class="l">engaged leads for ${companies} companies</div></div>` +
-    `<div class="stat rv"><div class="n"><span class="u">$</span><span data-count="${Math.round(stats.medianCostUsd)}">0</span></div><div class="l">median cost per engaged lead</div></div>` +
+    (meetingCostUsd === null
+      ? ""
+      : `<div class="stat rv"><div class="n"><span class="u">$</span><span data-count="${Math.round(meetingCostUsd)}">0</span></div><div class="l">cost per booked meeting</div></div>`) +
     (returnFigure
       ? `<div class="stat rv"><div class="n"><span data-count="${returnFigure.text}" data-decimals="${returnFigure.decimals}">0</span><span class="u">x</span></div><div class="l">median ROI of our clients</div></div>`
       : "") +
@@ -435,7 +453,7 @@ async function withShowcaseOutcomes(html: string): Promise<string> {
     // A group the producer declined to answer leaves ITS section on the three clients the page ships
     // with, reseeded — which is what this page did before the pick existed. Nothing here ranks,
     // floors or divides; the only decision on this side is where each of the top three sits.
-    const recent = pickedBrands(data.groups?.recentlyStarted, "recentlyStarted");
+    const recent = pickedBrands(data.groups?.recentlyStarted, "recentlyStarted", hasHeroOutcome);
     const topReturn = pickedBrands(data.groups?.highestReturn, "highestReturn");
     let out = html;
     if (recent) out = renderShowcaseSelection(out, recent);
@@ -517,20 +535,24 @@ async function withHotLeadStats(html: string) {
 
   // ONE read per index, shared by both surfaces: the hero and a compare page cannot
   // quote two medians. A failed read is logged by the reader and drops its figure.
-  const [engaged, roi] = await Promise.all([
+  const [engaged, roi, meeting] = await Promise.all([
     fetchIndexDetail(ENGAGED_LEAD_INDEX_SLUG),
     fetchIndexDetail(ROI_INDEX_SLUG),
+    fetchIndexDetail(MEETING_INDEX_SLUG),
   ]);
   const stats = hotLeadStatsFromIndex(engaged === "not_found" ? null : engaged);
   // A return with no engaged leads beside it states half a picture.
   const fleetReturn = stats ? fleetReturnFromIndex(roi === "not_found" ? null : roi) : null;
-  if (engaged === "not_found" || roi === "not_found") {
-    console.error(`[landing] hero index missing: ${ENGAGED_LEAD_INDEX_SLUG}=${engaged === "not_found"} ${ROI_INDEX_SLUG}=${roi === "not_found"}`);
+  const meetingCost = stats ? meetingCostFromIndex(meeting === "not_found" ? null : meeting) : null;
+  if (engaged === "not_found" || roi === "not_found" || meeting === "not_found") {
+    console.error(
+      `[landing] hero index missing: ${ENGAGED_LEAD_INDEX_SLUG}=${engaged === "not_found"} ${ROI_INDEX_SLUG}=${roi === "not_found"} ${MEETING_INDEX_SLUG}=${meeting === "not_found"}`,
+    );
   }
 
   return html
-    .replaceAll(HOT_LEAD_ROW_TOKEN, stats ? hotLeadRowHtml(stats, fleetReturn) : "")
-    .replaceAll(HOT_LEAD_BAND_TOKEN, stats ? hotLeadBandHtml(stats, fleetReturn) : "");
+    .replaceAll(HOT_LEAD_ROW_TOKEN, stats ? hotLeadRowHtml(stats, fleetReturn, meetingCost) : "")
+    .replaceAll(HOT_LEAD_BAND_TOKEN, stats ? hotLeadBandHtml(stats, fleetReturn, meetingCost) : "");
 }
 
 function canonicalUrlFrom(html: string, fallbackPath?: string): string | undefined {

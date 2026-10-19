@@ -176,12 +176,12 @@ describe("reseedProofCards", () => {
   });
 
   it("keeps a decimal on a price under $10, exactly as the page shipped it", () => {
-    const html = card("opsfolio.com", [], "9.3", "$3.4", "website_visit");
+    const html = card("shockwavecenters.com", [], "9.3", "$3.4", "conversation");
     const out = reseedProofCards(
       html,
       payload(
-        "opsfolio.com",
-        [["website_visit", 148, 4.148716216216216]],
+        "shockwavecenters.com",
+        [["conversation", 148, 4.148716216216216]],
         true,
         7.509853259718874
       )
@@ -233,9 +233,10 @@ describe("reseedProofCards", () => {
 describe("the homepage's proof cards are keyed for that reseed", () => {
   const PROOF = HTML.slice(HTML.indexOf('<div class="proof-grid">'), HTML.indexOf('id="quotes"'));
 
-  it("keys all three cards by the same domain their live card uses", () => {
+  it("keys every card by the same domain its live card uses", () => {
     const proof = [...PROOF.matchAll(/data-proof-brand="([^"]+)"/g)].map((m) => m[1]);
-    expect(proof).toEqual(["docdinners.com", "opsfolio.com", "shockwavecenters.com"]);
+    // Two since 2026-10-19: Opsfolio left the seed, its only drawn outcome was website visits.
+    expect(proof).toEqual(["docdinners.com", "shockwavecenters.com"]);
     for (const domain of proof) expect(HTML).toContain(`data-brand="${domain}"`);
   });
 
@@ -249,14 +250,16 @@ describe("the homepage's proof cards are keyed for that reseed", () => {
     // Both cards labelled "Cost per positive reply" must key the step their words
     // name. Doc Dinners shipped pointing at the meeting-booked step once and stated
     // $1,501 where the positive reply had cost $225.
-    expect(priced).toEqual(["conversation", "website_visit", "conversation"]);
+    expect(priced).toEqual(["conversation", "conversation"]);
+    // A website visit is never priced on a proof card (owner 2026-10-19).
+    expect(PROOF).not.toContain("website_visit");
     // Every card prices exactly one step; a second unkeyed cost line would freeze.
     expect((PROOF.match(/<div class="proof-line"><span>Cost per/g) ?? []).length).toBe(0);
   });
 
   it("keys every outcome cell by a step, so none can be joined by position", () => {
     const cells = PROOF.match(/<span data-proof-step="[a-z_]+"><b>/g) ?? [];
-    expect(cells).toHaveLength(7);
+    expect(cells).toHaveLength(5);
     // A bare cell would silently keep its frozen literal forever.
     expect(PROOF).not.toMatch(/<div class="proof-funnel"><span><b>/);
   });

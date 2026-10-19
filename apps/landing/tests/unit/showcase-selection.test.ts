@@ -15,7 +15,9 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import {
+  HERO_STEPS,
   hasDrawnOutcome,
+  hasHeroOutcome,
   MIN_DRAWN_OUTCOME,
   PODIUM_ORDER,
   podium,
@@ -46,7 +48,11 @@ const docDinners: ShowcaseBrand = {
   unmeasuredReason: null,
 };
 
-/** Opsfolio, the fleet's highest return on the same read. */
+/**
+ * Opsfolio, the fleet's highest return on the same read, and every outcome past outreach a
+ * website visit. Since 2026-10-19 a website visit is never drawn (owner), so this client is
+ * the fixture for "visits only": drawn nowhere, priced nowhere.
+ */
 const opsfolio: ShowcaseBrand = {
   brand: { id: "6e21bb6c", name: "Opsfolio", domain: "opsfolio.com" },
   returnPerDollar: 55.64163966755881,
@@ -55,6 +61,20 @@ const opsfolio: ShowcaseBrand = {
     { key: "website_visit", label: "Website visit", peopleReached: 160, costPerReachUsd: 2.2184375 },
     { key: "form_submitted", label: "Form submitted", peopleReached: 0, costPerReachUsd: null },
     { key: "paid_client", label: "Paid client", peopleReached: 0, costPerReachUsd: null },
+  ],
+  measured: true,
+  unmeasuredReason: null,
+};
+
+/** Shockwave Centers: interested leads past the proof floor, no meeting booked yet. */
+const shockwave: ShowcaseBrand = {
+  brand: { id: "5c0", name: "Shockwave Centers", domain: "shockwavecenters.com" },
+  returnPerDollar: 3.8,
+  outcomes: [
+    { key: "contacted", label: "Contacted", peopleReached: 2875, costPerReachUsd: 0.13 },
+    { key: "website_visit", label: "Website visit", peopleReached: 41, costPerReachUsd: 9.1 },
+    { key: "conversation", label: "Positive reply", peopleReached: 8, costPerReachUsd: 95.2 },
+    { key: "meeting_booked", label: "Meeting booked", peopleReached: 0, costPerReachUsd: null },
   ],
   measured: true,
   unmeasuredReason: null,
@@ -97,13 +117,31 @@ describe("the producer picks, this page renders", () => {
   it("reads each group on its own, so one silence does not gag the other", () => {
     // The two answer different questions and were never meant to name the same clients — the
     // producer says so outright. Requiring both would have shipped the podium as dead code.
-    expect(pickedBrands(measured([opsfolio]), "highestReturn")).toEqual([opsfolio]);
+    expect(pickedBrands(measured([shockwave]), "highestReturn")).toEqual([shockwave]);
   });
 
   it("renders a SHORT group rather than refusing it", () => {
     // The producer states how many qualified, so fewer than three is an answer, not a gap.
-    const short = { ...measured([opsfolio]), qualifyingCount: 1 };
-    expect(pickedBrands(short, "highestReturn")).toEqual([opsfolio]);
+    const short = { ...measured([shockwave]), qualifyingCount: 1 };
+    expect(pickedBrands(short, "highestReturn")).toEqual([shockwave]);
+  });
+
+  it("filters each group by the predicate its section draws by", () => {
+    // The hero takes a client with ONE meeting booked; the proof section keeps its floor of 5.
+    const oneMeeting: ShowcaseBrand = {
+      ...labcritics,
+      brand: { id: "om", name: "One Meeting", domain: "onemeeting.com" },
+      outcomes: [
+        { key: "contacted", label: "Contacted", peopleReached: 300, costPerReachUsd: 0.2 },
+        { key: "conversation", label: "Positive reply", peopleReached: 0, costPerReachUsd: null },
+        { key: "meeting_booked", label: "Meeting booked", peopleReached: 1, costPerReachUsd: 60 },
+      ],
+    };
+    expect(pickedBrands(measured([oneMeeting]), "recentlyStarted", hasHeroOutcome)).toEqual([oneMeeting]);
+    expect(pickedBrands(measured([oneMeeting]), "highestReturn")).toBeNull();
+    // A visits-only client enters neither section.
+    expect(pickedBrands(measured([opsfolio]), "recentlyStarted", hasHeroOutcome)).toBeNull();
+    expect(pickedBrands(measured([opsfolio]), "highestReturn")).toBeNull();
   });
 
   it("keeps the producer's order and only decides where each card sits", () => {
@@ -121,24 +159,44 @@ describe("a hero card", () => {
 
   it("carries every attribute main.js drives it by", () => {
     expect(card).toContain('data-live data-brand="docdinners.com"');
-    expect(card).toContain('data-steps="16951,22,3,0"');
-    expect(card).toContain('<b data-n="0">16,951</b>');
-    expect(card).toContain('<b data-n="3">0</b>');
+    expect(card).toContain('data-steps="22,3"');
+    expect(card).toContain('<b data-n="0">22</b>');
+    expect(card).toContain('<b data-n="1">3</b>');
     expect(card).toContain("<em data-status>Sending</em>");
+  });
+
+  it("states exactly two figures: Interested leads, then Meetings booked", () => {
+    // Owner 2026-10-19: no Contacted, no attended meeting, no paid client on a hero card.
+    expect(HERO_STEPS).toEqual([
+      { key: "conversation", label: "Interested leads" },
+      { key: "meeting_booked", label: "Meetings booked" },
+    ]);
+    const cells = [...card.matchAll(/data-step="([a-z_]+)"[^>]*><b data-n="(\d+)">[^<]*<\/b><small>([^<]*)<\/small>/g)].map(
+      (m) => [m[1], m[2], m[3]]
+    );
+    expect(cells).toEqual([
+      ["conversation", "0", "Interested leads"],
+      ["meeting_booked", "1", "Meetings booked"],
+    ]);
+    expect(card).not.toMatch(/contacted|meeting_attended|paid_client/);
   });
 
   it("hides a step nobody reached rather than dropping it", () => {
     // main.js reveals the cell the first time its counter lands, so the cell has to be in
     // the DOM carrying `data-zero` — removing it leaves the counter climbing with nowhere
     // to render and the step never comes back.
-    expect(card).toContain('data-step="meeting_attended" data-zero');
-    expect(card).not.toContain('data-step="contacted" data-zero');
+    const rendered = renderShowcaseCard(shockwave)!;
+    expect(rendered).toContain('data-step="meeting_booked" data-zero><b data-n="1">0</b>');
+    expect(rendered).toContain('data-steps="8,0"');
+    expect(rendered).not.toContain('data-step="conversation" data-zero');
   });
 
   it("says the page's own words, not the producer's", () => {
-    // The producer labels the step "Positive reply"; the page says "Positive replies".
-    expect(card).toContain("<small>Positive replies</small>");
-    expect(card).not.toContain("Positive reply");
+    // The producer labels the step "Positive reply"; the hero says "Interested leads".
+    expect(card).toContain("<small>Interested leads</small>");
+    expect(card).toContain("<small>Meetings booked</small>");
+    expect(card).not.toContain("Positive repl");
+    expect(card).not.toContain("Meeting booked<");
   });
 
   it("leaves out a step the producer could not measure", () => {
@@ -147,12 +205,64 @@ describe("a hero card", () => {
       outcomes: [
         { key: "contacted", label: "Contacted", peopleReached: 500, costPerReachUsd: 1 },
         { key: "conversation", label: "Positive reply", peopleReached: null, costPerReachUsd: null },
+        { key: "meeting_booked", label: "Meeting booked", peopleReached: 2, costPerReachUsd: 250 },
       ],
     };
     const rendered = renderShowcaseCard(unmeasured)!;
     // A zero here would read as a fact about the client instead of a gap in our reading.
-    expect(rendered).toContain('data-steps="500"');
+    expect(rendered).toContain('data-steps="2"');
+    expect(rendered).toContain('data-step="meeting_booked"><b data-n="0">2</b>');
     expect(rendered).not.toContain("conversation");
+  });
+
+  it("renders nothing when both figures are zero or unmeasured", () => {
+    const zeros: ShowcaseBrand = {
+      ...docDinners,
+      outcomes: [
+        { key: "contacted", label: "Contacted", peopleReached: 900, costPerReachUsd: 0.3 },
+        { key: "conversation", label: "Positive reply", peopleReached: 0, costPerReachUsd: null },
+        { key: "meeting_booked", label: "Meeting booked", peopleReached: null, costPerReachUsd: null },
+      ],
+    };
+    expect(renderShowcaseCard(zeros)).toBeNull();
+  });
+
+  it("never draws a website visit", () => {
+    // Opsfolio's only outcome past outreach is 160 visits: no hero card at all.
+    expect(renderShowcaseCard(opsfolio)).toBeNull();
+    const withVisits = renderShowcaseCard(shockwave)!;
+    expect(withVisits).not.toMatch(/website_visit|Website visit/);
+    expect(withVisits).not.toContain(">41<");
+  });
+});
+
+describe("who enters the hero row", () => {
+  const brand = (conversation: number | null, meeting: number | null, visits = 0): ShowcaseBrand => ({
+    brand: { id: "h", name: "Hero", domain: "hero.com" },
+    returnPerDollar: null,
+    outcomes: [
+      { key: "contacted", label: "Contacted", peopleReached: 400, costPerReachUsd: 0.2 },
+      { key: "website_visit", label: "Website visit", peopleReached: visits, costPerReachUsd: 3 },
+      { key: "conversation", label: "Positive reply", peopleReached: conversation, costPerReachUsd: null },
+      { key: "meeting_booked", label: "Meeting booked", peopleReached: meeting, costPerReachUsd: null },
+    ],
+    measured: true,
+    unmeasuredReason: null,
+  });
+
+  it("takes a client with one meeting booked, or one interested lead", () => {
+    expect(hasHeroOutcome(brand(0, 1))).toBe(true);
+    expect(hasHeroOutcome(brand(1, 0))).toBe(true);
+    expect(hasHeroOutcome(brand(null, 1))).toBe(true);
+    // Under the proof floor of 5, and still a hero client.
+    expect(hasDrawnOutcome(brand(1, 1))).toBe(false);
+  });
+
+  it("refuses a client with only website visits, or nothing past outreach", () => {
+    expect(hasHeroOutcome(brand(0, 0, 160))).toBe(false);
+    expect(hasHeroOutcome(brand(null, null, 160))).toBe(false);
+    expect(hasHeroOutcome(brand(0, 0))).toBe(false);
+    expect(hasHeroOutcome(opsfolio)).toBe(false);
   });
 });
 
@@ -179,17 +289,27 @@ describe("a proof card", () => {
     expect(renderProofCard(docDinners)!).toContain(
       '<div class="proof-line" data-proof-cost-step="conversation"><span>Cost per positive reply</span><b>$232</b></div>'
     );
-    expect(renderProofCard(opsfolio)!).toContain(
-      '<span>Cost per website visit</span><b>$2.2</b>'
-    );
+    // The visit comes first on the wire and is priced, and is skipped all the same.
+    expect(pricedStep(shockwave)!.key).toBe("conversation");
+    expect(renderProofCard(shockwave)!).toContain("<span>Cost per positive reply</span><b>$95</b>");
+  });
+
+  it("never prices nor draws a website visit", () => {
+    // Owner 2026-10-19: a visit proves attention, not demand.
+    expect(pricedStep(opsfolio)).toBeNull();
+    for (const card of [renderProofCard(opsfolio)!, renderProofCard(shockwave)!]) {
+      expect(card).not.toMatch(/website_visit|website visit/i);
+      expect(card).not.toContain("Cost per website");
+    }
+    expect(renderProofCard(opsfolio)!).not.toContain("data-proof-cost-step");
   });
 
   it("states no step nobody reached", () => {
-    const card = renderProofCard(opsfolio)!;
-    expect(card).toContain("<b>2,808</b>contacted");
-    expect(card).toContain("<b>160</b>website visits");
-    // Nobody submitted a form; a card that printed a zero would state that as a result.
-    expect(card).not.toContain("form_submitted");
+    const card = renderProofCard(shockwave)!;
+    expect(card).toContain("<b>2,875</b>contacted");
+    expect(card).toContain("<b>8</b>positive replies");
+    // Nobody booked a meeting yet; a card that printed a zero would state that as a result.
+    expect(card).not.toContain("meeting_booked");
   });
 
   it("renders nothing for a client with no stated return", () => {
@@ -222,17 +342,19 @@ describe("rendering the pick into the page", () => {
       </div>`;
 
   it("replaces the client cards and keeps Your company last", () => {
-    const out = renderShowcaseSelection(page, [docDinners, opsfolio]);
+    const out = renderShowcaseSelection(page, [docDinners, shockwave, opsfolio]);
     expect(out).toContain('data-brand="docdinners.com"');
-    expect(out).toContain('data-brand="opsfolio.com"');
+    expect(out).toContain('data-brand="shockwavecenters.com"');
+    // Visits only: never a hero client.
+    expect(out).not.toContain('data-brand="opsfolio.com"');
     expect(out).not.toContain('data-brand="old.com"');
     // The last card is the page's own call to action, not a client — it must stay last.
-    expect(out.indexOf("show-card yours")).toBeGreaterThan(out.indexOf("opsfolio.com"));
+    expect(out.indexOf("show-card yours")).toBeGreaterThan(out.indexOf("shockwavecenters.com"));
   });
 
   it("lays the proof row out best, third, second", () => {
-    const out = renderProofSelection(page, [opsfolio, labcritics, docDinners]);
-    const first = out.indexOf("opsfolio.com");
+    const out = renderProofSelection(page, [shockwave, labcritics, docDinners]);
+    const first = out.indexOf("shockwavecenters.com");
     const middle = out.indexOf("docdinners.com");
     const last = out.indexOf("labcritics.com");
     expect(first).toBeGreaterThan(-1);
@@ -283,15 +405,19 @@ describe("regressions from the first ship of the pick (#4353)", () => {
   };
 
   it("replacing the proof cards keeps every section after the proof grid", () => {
-    const out = renderProofSelection(page, [opsfolio, docDinners]);
+    const out = renderProofSelection(page, [shockwave, labcritics, docDinners]);
     for (const id of ['id="quotes"', 'id="pricing"', "</footer>"]) {
       if (page.includes(id)) expect(out).toContain(id);
     }
-    expect(page.match(/<\/article>/g)!.length - 3 + 2).toBe(out.match(/<\/article>/g)!.length);
+    const proofGrid = (html: string) => html.slice(html.indexOf('<div class="proof-grid">'), html.indexOf('id="quotes"'));
+    const shipped = proofGrid(page).match(/<\/article>/g)!.length;
+    expect(proofGrid(out).match(/<\/article>/g)!.length).toBe(3);
+    expect(page.match(/<\/article>/g)!.length - shipped + 3).toBe(out.match(/<\/article>/g)!.length);
   });
 
   it("a client whose drawn outcomes show nothing past outreach is never named", () => {
     expect(hasDrawnOutcome(livingVital)).toBe(false);
+    expect(hasHeroOutcome(livingVital)).toBe(false);
     expect(hasDrawnOutcome(docDinners)).toBe(true);
     const out = renderShowcaseSelection(page, [livingVital, docDinners]);
     expect(out).not.toContain('data-brand="livingvital.ch"');
@@ -299,7 +425,7 @@ describe("regressions from the first ship of the pick (#4353)", () => {
     expect(pickedBrands({ brands: [livingVital], measured: true, unmeasuredReason: null }, "t")).toBeNull();
   });
 
-  it("a client whose best drawn outcome is under 5 is never named", () => {
+  it("a client whose best drawn outcome is under 5 is never named in the proof section", () => {
     const outcome = (n: number): ShowcaseBrand => ({
       brand: { id: "lg", name: "Legistai", domain: "legistai.com" },
       returnPerDollar: 0,
@@ -314,7 +440,11 @@ describe("regressions from the first ship of the pick (#4353)", () => {
     expect(hasDrawnOutcome(outcome(1))).toBe(false);
     expect(hasDrawnOutcome(outcome(4))).toBe(false);
     expect(hasDrawnOutcome(outcome(5))).toBe(true);
-    const out = renderShowcaseSelection(page, [outcome(1), docDinners]);
-    expect(out).not.toContain('data-brand="legistai.com"');
+    const proof = renderProofSelection(page, [outcome(1), docDinners]);
+    expect(proof).not.toContain('data-proof-brand="legistai.com"');
+    expect(proof).toContain('data-proof-brand="docdinners.com"');
+    // The hero lifted that floor on 2026-10-19: one interested lead is enough there.
+    expect(hasHeroOutcome(outcome(1))).toBe(true);
+    expect(renderShowcaseSelection(page, [outcome(1), docDinners])).toContain('data-brand="legistai.com"');
   });
 });

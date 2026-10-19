@@ -176,11 +176,15 @@ describe("the offer the page states", () => {
     // pinning one would assert a number no visitor sees. What is pinned here is the
     // part that cannot come off the wire: who the clients are. proof-cards.test.ts
     // pins the keying that makes the reseed reach them.
-    for (const line of ["Doc Dinners", "Opsfolio", "Shockwave"]) {
+    // Owner 2026-10-19: the hero names clients with a booked meeting or an interested lead;
+    // the proof seed dropped Opsfolio, whose only drawn outcome was website visits.
+    for (const line of ["Doc Dinners", "PressBeat", "Shockwave"]) {
       expect(html).toContain(line);
     }
+    // Scoped to the named-client surfaces: the pipeline mocks name Opsfolio as an example.
+    expect(html.slice(html.indexOf('id="live-cards"'), html.indexOf('id="quotes"'))).not.toContain("opsfolio.com");
     expect((html.match(/data-live/g) ?? []).length).toBe(3);
-    expect((html.match(/data-proof-brand=/g) ?? []).length).toBe(3);
+    expect((html.match(/data-proof-brand=/g) ?? []).length).toBe(2);
   });
 
   it("rates every card five stars, hidden from a screen reader", () => {
@@ -288,9 +292,12 @@ describe("the offer the page states", () => {
   it("puts a named person on every proof card, never a company logo", () => {
     const proof = html.slice(html.indexOf('id="proof"'), html.indexOf('id="quotes"'));
     expect(proof).not.toContain("img.logo.dev");
-    expect((proof.match(/<img class="face" src="\/landing\/v2\/assets\/[a-z-]+\.jpe?g"/g) ?? []).length).toBe(3);
-    for (const person of ["Ryan W.D. Parenti", "Shahid Shah", "David Tucker"]) expect(proof).toContain(person);
-    for (const role of ["Founder, Doc Dinners", "CEO Netspective, Opsfolio", "Cofounder, Shockwave Centers"]) expect(proof).toContain(role);
+    // One face per proof card the page ships (two since 2026-10-19), none of them a logo.
+    const cards = (proof.match(/<article class="proof-card/g) ?? []).length;
+    expect(cards).toBe(2);
+    expect((proof.match(/<img class="face" src="\/landing\/v2\/assets\/[a-z-]+\.jpe?g"/g) ?? []).length).toBe(cards);
+    for (const person of ["Ryan W.D. Parenti", "David Tucker"]) expect(proof).toContain(person);
+    for (const role of ["Founder, Doc Dinners", "Cofounder, Shockwave Centers"]) expect(proof).toContain(role);
     expect(css).toContain(".proof-top img.face { border-radius: 50%; }");
   });
 
