@@ -12343,6 +12343,109 @@ export async function setRelationshipCompany(brandId: string, humanId: string, b
   await apiCall<unknown>(`${BRAND_RELATIONSHIPS_PATH(brandId)}/${encodeURIComponent(humanId)}/company`, { method: "PUT", body });
 }
 
+// ─── Staff status of templates, writer models and workflows (TEMPLATE-MODEL-STATUS-1019) ───
+// Cross-org catalogue objects: one status for every client, no per-brand status. The content
+// routes are api-service `requireStaffKeyOrPlatform` (platform key + a staff `x-email`, which the
+// /api/v1 proxy forwards from the verified session); the workflow writes are `requireStaffActor`.
+// A non-staff caller gets 403. Deprecating a template or a model changes its STATUS only:
+// the workflows using it are stopped by `retireWorkflowsByContent`, never brought back by
+// re-activating it.
+
+export type CatalogueStatus = "active" | "deprecated";
+
+const ContentTemplateStatusesSchema = z.object({
+  templates: z.array(z.object({ type: z.string(), status: z.string(), statusChangedAt: z.string().nullish() })),
+});
+const ContentModelStatusesSchema = z.object({
+  models: z.array(z.object({ model: z.string(), provider: z.string().nullish(), status: z.string(), statusChangedAt: z.string().nullish() })),
+});
+
+/** Every stored template type with its status (content-generation-service). */
+export async function getContentTemplateStatuses(): Promise<z.infer<typeof ContentTemplateStatusesSchema>["templates"]> {
+  return parseStaff("getContentTemplateStatuses", ContentTemplateStatusesSchema, await apiCall<unknown>("/content/templates")).templates;
+}
+
+/** Every writer model ALIAS (`glm-pro`, never a concrete id) with its status. */
+export async function getContentModelStatuses(): Promise<z.infer<typeof ContentModelStatusesSchema>["models"]> {
+  return parseStaff("getContentModelStatuses", ContentModelStatusesSchema, await apiCall<unknown>("/content/models")).models;
+}
+
+export async function setContentTemplateStatus(type: string, status: CatalogueStatus): Promise<void> {
+  await apiCall<unknown>(`/content/templates/${encodeURIComponent(type)}/status`, { method: "PUT", body: { status } });
+}
+
+export async function setContentModelStatus(model: string, status: CatalogueStatus): Promise<void> {
+  await apiCall<unknown>(`/content/models/${encodeURIComponent(model)}/status`, { method: "PUT", body: { status } });
+}
+
+const TemplateOutputsSchema = z.object({
+  type: z.string(),
+  outputs: z.array(
+    z.object({
+      generationId: z.string(),
+      createdAt: z.string(),
+      workflowSlug: z.string().nullable(),
+      model: z.string(),
+      subject: z.string().nullable(),
+      emails: z.array(z.object({ step: z.number(), bodyText: z.string(), daysSinceLastStep: z.number().nullable() })),
+    }),
+  ),
+});
+export type TemplateOutput = z.infer<typeof TemplateOutputsSchema>["outputs"][number];
+
+/** The last outputs written with a template, newest first, every org (subject + each email). */
+export async function getTemplateOutputs(type: string, limit = 5): Promise<TemplateOutput[]> {
+  const raw = await apiCall<unknown>(`/content/templates/${encodeURIComponent(type)}/outputs?limit=${limit}`);
+  return parseStaff("getTemplateOutputs", TemplateOutputsSchema, raw).outputs;
+}
+
+const RetireByContentSchema = z.object({
+  dryRun: z.boolean(),
+  workflows: z.array(
+    z.object({
+      workflowDynastySlug: z.string(),
+      workflowDynastyName: z.string(),
+      featureSlug: z.string(),
+      workflowSlug: z.string(),
+      version: z.number(),
+    }),
+  ),
+  retired: z.number(),
+});
+export type RetireByContentResult = z.infer<typeof RetireByContentSchema>;
+
+/**
+ * Every RUNNABLE workflow rendering a template (`promptType`) or writing with a model alias
+ * (`model`): listed only with `dryRun`, retired (whole dynasty, every client) without it.
+ */
+export async function retireWorkflowsByContent(
+  target: { promptType: string } | { model: string },
+  dryRun: boolean,
+): Promise<RetireByContentResult> {
+  const raw = await apiCall<unknown>("/workflows/retire-by-content", { method: "POST", body: { ...target, dryRun } });
+  return parseStaff("retireWorkflowsByContent", RetireByContentSchema, raw);
+}
+
+/** Activate or deprecate a whole workflow dynasty (every client). */
+export async function setWorkflowDynastyStatus(workflowDynastySlug: string, status: CatalogueStatus): Promise<void> {
+  await apiCall<unknown>(`/workflows/dynasty/${encodeURIComponent(workflowDynastySlug)}/status`, { method: "PUT", body: { status } });
+}
+
+const WorkflowSummariesStatusSchema = z.object({
+  workflows: z.array(z.object({ workflowDynastySlug: z.string(), workflowDynastyStatus: z.string() }).passthrough()),
+});
+
+/**
+ * The dynasties of a channel workflow-service can RUN now (its default `status=active` listing:
+ * version active AND dynasty active), as a set. A dynasty absent from it runs no version: it is
+ * deprecated. `status=all` was not used on purpose: it lists every version ever (~730KB).
+ */
+export async function getRunnableWorkflowDynasties(featureSlug: string): Promise<string[]> {
+  const query = new URLSearchParams({ featureSlug });
+  const raw = await apiCall<unknown>(`/workflows/summaries?${query.toString()}`);
+  const rows = parseStaff("getRunnableWorkflowDynasties", WorkflowSummariesStatusSchema, raw).workflows;
+  return [...new Set(rows.filter((w) => w.workflowDynastyStatus === "active").map((w) => w.workflowDynastySlug))];
+}
 
 // ─── Monitoring > Emails, ported from the admin cold-email pages (blocklists) ───
 import {
@@ -12456,107 +12559,4 @@ export const ENTITY_DETAILS_PATHS = {
 /** The estate's monthly run-rate per vendor, its USD total (served) and the 30-day sends. */
 export async function getStaffInfraSpend(): Promise<InfraSpend> {
   return parseStaff("getStaffInfraSpend", InfraSpendSchema, await apiCall<unknown>(ENTITY_DETAILS_PATHS.infraSpend));
-
-// ─── Staff status of templates, writer models and workflows (TEMPLATE-MODEL-STATUS-1019) ───
-// Cross-org catalogue objects: one status for every client, no per-brand status. The content
-// routes are api-service `requireStaffKeyOrPlatform` (platform key + a staff `x-email`, which the
-// /api/v1 proxy forwards from the verified session); the workflow writes are `requireStaffActor`.
-// A non-staff caller gets 403. Deprecating a template or a model changes its STATUS only:
-// the workflows using it are stopped by `retireWorkflowsByContent`, never brought back by
-// re-activating it.
-
-export type CatalogueStatus = "active" | "deprecated";
-
-const ContentTemplateStatusesSchema = z.object({
-  templates: z.array(z.object({ type: z.string(), status: z.string(), statusChangedAt: z.string().nullish() })),
-});
-const ContentModelStatusesSchema = z.object({
-  models: z.array(z.object({ model: z.string(), provider: z.string().nullish(), status: z.string(), statusChangedAt: z.string().nullish() })),
-});
-
-/** Every stored template type with its status (content-generation-service). */
-export async function getContentTemplateStatuses(): Promise<z.infer<typeof ContentTemplateStatusesSchema>["templates"]> {
-  return parseStaff("getContentTemplateStatuses", ContentTemplateStatusesSchema, await apiCall<unknown>("/content/templates")).templates;
-}
-
-/** Every writer model ALIAS (`glm-pro`, never a concrete id) with its status. */
-export async function getContentModelStatuses(): Promise<z.infer<typeof ContentModelStatusesSchema>["models"]> {
-  return parseStaff("getContentModelStatuses", ContentModelStatusesSchema, await apiCall<unknown>("/content/models")).models;
-}
-
-export async function setContentTemplateStatus(type: string, status: CatalogueStatus): Promise<void> {
-  await apiCall<unknown>(`/content/templates/${encodeURIComponent(type)}/status`, { method: "PUT", body: { status } });
-}
-
-export async function setContentModelStatus(model: string, status: CatalogueStatus): Promise<void> {
-  await apiCall<unknown>(`/content/models/${encodeURIComponent(model)}/status`, { method: "PUT", body: { status } });
-}
-
-const TemplateOutputsSchema = z.object({
-  type: z.string(),
-  outputs: z.array(
-    z.object({
-      generationId: z.string(),
-      createdAt: z.string(),
-      workflowSlug: z.string().nullable(),
-      model: z.string(),
-      subject: z.string().nullable(),
-      emails: z.array(z.object({ step: z.number(), bodyText: z.string(), daysSinceLastStep: z.number().nullable() })),
-    }),
-  ),
-});
-export type TemplateOutput = z.infer<typeof TemplateOutputsSchema>["outputs"][number];
-
-/** The last outputs written with a template, newest first, every org (subject + each email). */
-export async function getTemplateOutputs(type: string, limit = 5): Promise<TemplateOutput[]> {
-  const raw = await apiCall<unknown>(`/content/templates/${encodeURIComponent(type)}/outputs?limit=${limit}`);
-  return parseStaff("getTemplateOutputs", TemplateOutputsSchema, raw).outputs;
-}
-
-const RetireByContentSchema = z.object({
-  dryRun: z.boolean(),
-  workflows: z.array(
-    z.object({
-      workflowDynastySlug: z.string(),
-      workflowDynastyName: z.string(),
-      featureSlug: z.string(),
-      workflowSlug: z.string(),
-      version: z.number(),
-    }),
-  ),
-  retired: z.number(),
-});
-export type RetireByContentResult = z.infer<typeof RetireByContentSchema>;
-
-/**
- * Every RUNNABLE workflow rendering a template (`promptType`) or writing with a model alias
- * (`model`): listed only with `dryRun`, retired (whole dynasty, every client) without it.
- */
-export async function retireWorkflowsByContent(
-  target: { promptType: string } | { model: string },
-  dryRun: boolean,
-): Promise<RetireByContentResult> {
-  const raw = await apiCall<unknown>("/workflows/retire-by-content", { method: "POST", body: { ...target, dryRun } });
-  return parseStaff("retireWorkflowsByContent", RetireByContentSchema, raw);
-}
-
-/** Activate or deprecate a whole workflow dynasty (every client). */
-export async function setWorkflowDynastyStatus(workflowDynastySlug: string, status: CatalogueStatus): Promise<void> {
-  await apiCall<unknown>(`/workflows/dynasty/${encodeURIComponent(workflowDynastySlug)}/status`, { method: "PUT", body: { status } });
-}
-
-const WorkflowSummariesStatusSchema = z.object({
-  workflows: z.array(z.object({ workflowDynastySlug: z.string(), workflowDynastyStatus: z.string() }).passthrough()),
-});
-
-/**
- * The dynasties of a channel workflow-service can RUN now (its default `status=active` listing:
- * version active AND dynasty active), as a set. A dynasty absent from it runs no version: it is
- * deprecated. `status=all` was not used on purpose: it lists every version ever (~730KB).
- */
-export async function getRunnableWorkflowDynasties(featureSlug: string): Promise<string[]> {
-  const query = new URLSearchParams({ featureSlug });
-  const raw = await apiCall<unknown>(`/workflows/summaries?${query.toString()}`);
-  const rows = parseStaff("getRunnableWorkflowDynasties", WorkflowSummariesStatusSchema, raw).workflows;
-  return [...new Set(rows.filter((w) => w.workflowDynastyStatus === "active").map((w) => w.workflowDynastySlug))];
 }
