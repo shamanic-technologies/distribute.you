@@ -71,6 +71,7 @@ import { ChannelChip } from "@/components/v2/offer-sales-paths";
 import { V2Page, type V2Tab } from "@/components/v2/setup-pages";
 import { CampaignHoldNote, useCampaignHolds } from "@/components/v2/campaign-hold";
 import { PipeSections } from "@/components/v2/pipe-sections";
+import { SpendChartsBlock, spendChartState, useFunnelCampaignSpendCharts } from "@/components/v2/spend-charts";
 import { PeoplePage } from "@/components/v2/people-page";
 import { V2AudiencesTable } from "@/components/v2/audiences-table";
 import { EmptyNote, Figure, HoverScroll, MarkLines, Meter, SectionTitle, Shimmer, StateDot } from "@/components/v2/ui";
@@ -775,6 +776,9 @@ function FunnelCampaignPageCurrent({ campaign }: { campaign: SalesFunnelCampaign
   // Why a running pipe sends nothing (campaign-service holds each PIPE): one note per reason.
   const runningPipes = units.filter((u) => campaignById.get(u.campaignId)?.running);
   const holds = useCampaignHolds(runningPipes.map((u) => u.campaignId));
+  // Why each day costs what it costs, the campaign's and each pipe's (features-service, owner 2026-10-19).
+  const spendQ = useFunnelCampaignSpendCharts(campaign.brandId, campaign.id);
+  const pipeCharts = new Map((spendQ.data?.pipes ?? []).map((p) => [p.campaignId, p]));
   const pipeLabel = (id: string) => {
     const u = units.find((x) => x.campaignId === id);
     return (campaignById.get(id)?.leg ?? (u ? legFor(catalogue, u.legKey) : null))?.toLabel ?? null;
@@ -900,7 +904,17 @@ function FunnelCampaignPageCurrent({ campaign }: { campaign: SalesFunnelCampaign
           </div>
         </section>
 
-        <PipeSections brandId={campaign.brandId} units={units} campaignById={campaignById} />
+        <section>
+          <SectionTitle right={<span>Since it started</span>}>Spend, day by day</SectionTitle>
+          <SpendChartsBlock {...spendChartState(spendQ, (d) => d.campaign)} />
+        </section>
+
+        <PipeSections
+          brandId={campaign.brandId}
+          units={units}
+          campaignById={campaignById}
+          spendChart={(campaignId) => spendChartState(spendQ, () => pipeCharts.get(campaignId) ?? null)}
+        />
 
         <FunnelResults orgId={orgId} brandId={campaign.brandId} units={units} />
       </div>

@@ -196,6 +196,8 @@ export const PERSISTABLE_QUERY_ROOTS = new Set([
   "salesFunnelCaps",
   // The Campaigns table rows (features-service: type label, path, invested, ROI).
   "funnelCampaignRows",
+  // Why each day costs what it costs (campaign, pipes, offer): features-service spend charts.
+  "spendCharts",
   // Their copy only (name, Type label, path), the fast read that paints a new campaign at once.
   "funnelCampaignCopies",
   // The sales funnels fitted to one offer (features-service), the Campaigns page's Suggested cards.

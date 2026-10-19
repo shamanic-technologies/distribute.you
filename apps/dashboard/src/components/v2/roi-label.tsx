@@ -66,7 +66,7 @@ export function CostValue({ cost, learning }: { cost: CostToShow; learning?: boo
 }
 
 /** A measured figure still Learning: greyed, then "Expected X" (or "Learning" when none is served). */
-function LearningFigure({ measured, expected }: { measured: string; expected: string | null }) {
+export function LearningFigure({ measured, expected }: { measured: string; expected: string | null }) {
   return (
     <span className="inline-flex flex-wrap items-baseline gap-x-1.5">
       <span className="k-fg3">{measured}</span>

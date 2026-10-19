@@ -20,6 +20,7 @@ import { EmptyNote, Shimmer } from "@/components/v2/ui";
 import { CostValue, RoiLabel, RoiValue } from "@/components/v2/roi-label";
 import { costToShowCents, roiToShow } from "@/lib/expected-return";
 import { formatRatePct } from "@/lib/pipe-stats";
+import { SpendChartsBlock, type SpendChartState } from "@/components/v2/spend-charts";
 
 /**
  * A sales-funnel campaign's PIPES, one block each (owner 2026-10-11: "up to 3 columns on
@@ -45,10 +46,13 @@ export function PipeSections({
   brandId,
   units,
   campaignById,
+  spendChart,
 }: {
   brandId: string;
   units: SalesFunnelUnit[];
   campaignById: Map<string, V2Campaign>;
+  /** The pipe's served spend chart (features-service, one per pipe), drawn under its three columns. */
+  spendChart?: (campaignId: string) => SpendChartState;
 }) {
   const catalogue = useLegCatalogue();
   const shown = units.flatMap((u) => {
@@ -61,7 +65,7 @@ export function PipeSections({
   return (
     <div className="space-y-8">
       {shown.map(({ u, campaign, leg, kind }) => (
-        <PipeSection key={u.campaignId} unit={u} campaign={campaign} leg={leg}>
+        <PipeSection key={u.campaignId} unit={u} campaign={campaign} leg={leg} below={spendChart ? <SpendChartsBlock {...spendChart(u.campaignId)} /> : null}>
           {kind === "proactive" ? (
             <ProactivePipe brandId={brandId} unit={u} campaign={campaign} leg={leg} />
           ) : (
@@ -74,7 +78,19 @@ export function PipeSections({
 }
 
 /** The block's head: the channel doing it and what it brings in, then a link to the pipe's own page. */
-function PipeSection({ unit, campaign, leg, children }: { unit: SalesFunnelUnit; campaign: V2Campaign | null; leg: LegDef; children: React.ReactNode }) {
+function PipeSection({
+  unit,
+  campaign,
+  leg,
+  below,
+  children,
+}: {
+  unit: SalesFunnelUnit;
+  campaign: V2Campaign | null;
+  leg: LegDef;
+  below?: React.ReactNode;
+  children: React.ReactNode;
+}) {
   const channels = useAcquisitionChannels();
   const def = channels.find((d) => d.featureSlug === unit.featureSlug);
   return (
@@ -90,6 +106,7 @@ function PipeSection({ unit, campaign, leg, children }: { unit: SalesFunnelUnit;
         )}
       </div>
       <div className="grid gap-3 lg:grid-cols-3">{children}</div>
+      {below && <div className="mt-3">{below}</div>}
     </section>
   );
 }

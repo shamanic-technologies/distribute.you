@@ -58,6 +58,7 @@ import {
 import { EarnedStrip, HotLeads, LostLeads, OfferOutcomesTable } from "@/components/v2/today-roi";
 import { TodayPanel, type TodayPanelTarget } from "@/components/v2/today-roi-panel";
 import { RoiHistoryCard } from "@/components/v2/campaign-roi-chart";
+import { OfferSpendChartsSection } from "@/components/v2/spend-charts";
 import {
   CompanyMark,
   PersonAvatar,
@@ -345,6 +346,10 @@ export function TodayPage() {
                 failedCopy="Could not read your return. Retrying."
                 emptyCopy="No return to show yet: nothing has been spent."
               />
+            </div>
+            {/* Why each day costs what it costs, and where the cost is heading (owner 2026-10-19). */}
+            <div className="mt-6">
+              <OfferSpendChartsSection brandId={brandId} offerId={selectedOfferId} />
             </div>
             <div className="mt-6 grid grid-cols-1 gap-6 lg:grid-cols-2">
               <HotLeads pipeline={pipeline} answered={outcomesAnswered} onOpenLead={(lead) => setPanel({ kind: "lead", lead, group: "hot" })} />

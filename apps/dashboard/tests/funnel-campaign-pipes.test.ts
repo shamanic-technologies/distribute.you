@@ -13,7 +13,10 @@ describe("sales-funnel campaign page: one block per pipe", () => {
   it("the campaign page renders the pipe blocks with its brand and its parts", () => {
     const at = page.indexOf("export function FunnelCampaignPage(");
     const body = page.slice(at, page.indexOf("export function useFunnelCampaignById("));
-    expect(body).toContain("<PipeSections brandId={campaign.brandId} units={units} campaignById={campaignById} />");
+    expect(body).toContain("<PipeSections");
+    expect(body).toContain("brandId={campaign.brandId}");
+    expect(body).toContain("units={units}");
+    expect(body).toContain("campaignById={campaignById}");
     expect(body).toContain("<FunnelResults orgId={orgId} brandId={campaign.brandId} units={units} />");
     // Owner 2026-10-11: the pipes read in the order the funnel runs them.
     expect(body).toContain("const units = orderPipesByFunnel(campaign.units,");

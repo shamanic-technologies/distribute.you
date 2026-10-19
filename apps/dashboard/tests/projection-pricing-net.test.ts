@@ -45,6 +45,14 @@ describe("workflow-projection / audience-stats pricing basis", () => {
     expect(readerBody("listFunnelCampaignRows")).toContain('pricing: "net"');
   });
 
+  it("getFunnelCampaignSpendCharts requests net pricing (campaign + pipe spend charts)", () => {
+    expect(readerBody("getFunnelCampaignSpendCharts")).toContain('pricing: "net"');
+  });
+
+  it("getOfferSpendCharts requests net pricing (Today spend charts)", () => {
+    expect(readerBody("getOfferSpendCharts")).toContain('pricing: "net"');
+  });
+
   it("fetchFeatureAudienceStats requests net pricing", () => {
     expect(readerBody("fetchFeatureAudienceStats")).toContain('query.set("pricing", "net")');
   });
