@@ -22,6 +22,7 @@ import {
   entityPath,
   MESSAGE_KIND_WORD,
   latestMeasured,
+  underBar,
   latestSenderHealthDay,
   lifecycleWord,
   type InboxProvider,
@@ -94,15 +95,19 @@ function DayBars({ values, red, height = 24 }: { values: Array<number | null>; r
 }
 
 /**
- * Inbox % at one provider on its latest measured day, as the inbox-placement alert reads it: the
- * mailboxes we still send from to that provider (the automatic cut applied), red when the producer
- * flags the day `below` its bar. The figure over every mailbox, cut ones included, sits under it.
+ * Inbox % at one provider on its latest measured day, over EVERY mailbox's seed tests (the seed
+ * series: what the owner never saw at 40-60 % spam for weeks, 2026-10-19), red under the bar the
+ * inbox-placement alert fires on (served `bar.inboxPctOfFound`, never typed). The alert itself
+ * reads the mailboxes the automatic cut still lets mail that provider: that figure sits under it,
+ * so a green alert never hides a spam-heavy fleet.
  */
 function InboxTile({ provider, name }: { provider: string; name: string }) {
   const alerts = usePlacementAlerts();
   const series = alerts.data ? alertSeries(alerts.data, provider) : undefined;
   const latest = series?.latest;
   const recent = series?.days.slice(-14) ?? [];
+  const bar = alerts.data?.bar.inboxPctOfFound ?? null;
+  const red = latest && bar != null ? underBar(latest.fleet.inboxPct, bar) : false;
   return (
     <StatTile label={`Inbox at ${name}`} note={latest ? shortDay(latest.day) : undefined}>
       <div className="flex items-end justify-between gap-2">
@@ -112,21 +117,21 @@ function InboxTile({ provider, name }: { provider: string; name: string }) {
               <span className="k-fg3 text-[13px]">not readable</span>
             ) : series === undefined ? (
               <Shimmer className="h-6 w-16" />
-            ) : !latest || latest.allowed.inboxPct == null ? (
+            ) : !latest || latest.fleet.inboxPct == null ? (
               <Dash />
             ) : (
-              <span style={{ color: latest.below ? RED : undefined }}>{pct(latest.allowed.inboxPct)}</span>
+              <span style={{ color: red ? RED : undefined }}>{pct(latest.fleet.inboxPct)}</span>
             )
           }
-          sub={latest ? "mailboxes we send from" : undefined}
+          sub={latest ? "all our mailboxes" : undefined}
         />
-        {series && <DayBars values={recent.map((d) => (d.measured ? d.allowed.inboxPct : null))} red={recent.map((d) => d.below)} />}
+        {series && bar != null && <DayBars values={recent.map((d) => (d.measured ? d.fleet.inboxPct : null))} red={recent.map((d) => d.measured && underBar(d.fleet.inboxPct, bar))} />}
       </div>
       <p className="k-fg3 mt-1 truncate text-[11px]">
         {series && !latest
           ? `No measured day in ${HEALTH_DAYS} days`
-          : latest && alerts.data
-            ? `Bar ${alerts.data.bar.inboxPctOfFound}% · all mailboxes ${pct(latest.fleet.inboxPct) ?? "—"} · ${n(latest.mailboxesCut)} cut`
+          : latest && bar != null
+            ? `Bar ${bar}% · after the cut ${pct(latest.allowed.inboxPct) ?? "—"}${latest.below ? " (alert)" : ""} · ${n(latest.mailboxesCut)} cut`
             : " "}
       </p>
     </StatTile>
@@ -178,14 +183,14 @@ export function SendingHealthTiles() {
   );
 }
 
-/** The hub's headline: which inbox providers the alert flags below its bar on their latest measured day. Lookup only. */
+/** The hub's headline: at which inbox providers every mailbox's tests sit under the alert's bar on their latest measured day. */
 export function useSendingVerdict(): string | null {
   const alerts = usePlacementAlerts();
   if (!alerts.data) return null;
   const data = alerts.data;
   const measured = ALERT_PROVIDERS.map((p) => ({ p, latest: alertSeries(data, p.key).latest })).filter((x) => x.latest !== null);
   if (!measured.length) return `No inbox test in ${HEALTH_DAYS} days`;
-  const under = measured.filter((x) => x.latest!.below);
+  const under = measured.filter((x) => underBar(x.latest!.fleet.inboxPct, data.bar.inboxPctOfFound));
   if (!under.length) return `Inbox at or above the ${data.bar.inboxPctOfFound}% bar at every provider tested`;
   const names = under.map((x) => x.p.name);
   return `Inbox under the ${data.bar.inboxPctOfFound}% bar at ${names.length > 1 ? `${names.slice(0, -1).join(", ")} and ${names[names.length - 1]}` : names[0]}`;
