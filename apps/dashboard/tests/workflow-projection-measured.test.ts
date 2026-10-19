@@ -168,6 +168,10 @@ describe("the filter runs at the ONE reader boundary", () => {
       // whose schema declares `measured` REQUIRED, so a row is never PROBED for the
       // flag — which is what this guard is actually about. Its panel and its ordering
       // module read that same declared field.
+      // A FIFTH producer's field under the same name: instantly-service's inbox-placement
+      // alert marks a (day, provider) `measured` when enough seeds were found to judge it.
+      // Monitoring's hub tile and its lookup read the latest measured day. Not a projection row.
+      "components/v2/monitoring-sending.tsx",
       // Dashboard v2's workflow page, off the same ladder: it says "nothing spent yet"
       // instead of a grain breakdown for an explore row. Reads the declared field.
       "components/v2/workflow-page.tsx",
@@ -179,6 +183,8 @@ describe("the filter runs at the ONE reader boundary", () => {
       // `measured.fromReached` to say how many leads a measured rate rests on. Not a
       // projection row and not a flag.
       "lib/brand-conversion-rates.ts",
+      // Same fifth producer (instantly-service placement alert): the lookup of a provider's latest measured day.
+      "lib/monitoring/sending.ts",
       // A THIRD producer's field under the same name: features-service's public
       // return-on-spend read marks a whole channel `measured`, meaning enough brands past the spend floor to state a median.
       // The pre-signup proof screen branches on it to decide whether it may state

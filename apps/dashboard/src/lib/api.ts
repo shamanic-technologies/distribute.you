@@ -98,6 +98,22 @@ import {
   type BasisSummary,
 } from "./monitoring/monitoring";
 import {
+  CapacityDailySchema,
+  MessageBodySchema,
+  PlacementAlertsSchema,
+  PlacementTestDetailSchema,
+  PlacementTestsSchema,
+  QueuedStepsSchema,
+  ScheduleSchema,
+  scopeQuery,
+  type CapacityDaily,
+  type EntityScope,
+  type MessageBody,
+  type PlacementAlerts,
+  type PlacementTestDetail,
+  type PlacementTests,
+  type QueuedSteps,
+  type Schedule,
   LifecycleRulesSchema,
   OpsAddressesSchema,
   OpsDomainsSchema,
@@ -1858,6 +1874,12 @@ export const STAFF_MONITORING_PATHS = {
   opsMailboxes: "/instantly/ops/mailboxes",
   opsAddresses: "/instantly/ops/addresses",
   opsMessages: "/instantly/ops/messages",
+  // Per account / mailbox / domain (MAILBOX-MONITORING-1019): history, capacity, what is planned.
+  capacityDaily: "/instantly/ops/capacity-daily",
+  schedule: "/instantly/ops/schedule",
+  queuedSteps: "/instantly/ops/queued-steps",
+  placementTests: "/instantly/ops/placement-tests",
+  placementAlerts: "/instantly/ops/placement-alerts",
   emailSendPrice: "/costs/email-send-price",
   subscriptionCosts: "/costs/subscription-costs",
   // The cost the platform absorbs per customer (billing-service), staff-only through the gateway.
@@ -2110,6 +2132,57 @@ export async function getStaffOpsAddresses(): Promise<OpsAddresses> {
 /** The latest emails of every kind, newest first. `limit` is required by the producer (1-500). */
 export async function getStaffOpsMessages(limit: number): Promise<OpsMessages> {
   return parseStaff("getStaffOpsMessages", OpsMessagesSchema, await apiCall<unknown>(`${STAFF_MONITORING_PATHS.opsMessages}?limit=${limit}`));
+}
+
+/** Sent per day by kind for one account / mailbox / domain (empty scope = the fleet), from `since`. */
+export async function getStaffSentPerDayScoped(scope: EntityScope, since: string): Promise<SentPerPeriod> {
+  const q = [scopeQuery(scope), `since=${encodeURIComponent(since)}`].filter(Boolean).join("&");
+  return parseStaff("getStaffSentPerDayScoped", SentPerPeriodSchema, await apiCall<unknown>(`${STAFF_MONITORING_PATHS.sentPerPeriod}?grain=day&${q}`));
+}
+
+/** Capacity per day since the first send, plus the ramp ahead (~30 s cold at the producer). */
+export async function getStaffCapacityDaily(scope: EntityScope, horizonDays: number): Promise<CapacityDaily> {
+  const q = [scopeQuery(scope), `horizonDays=${horizonDays}`].filter(Boolean).join("&");
+  return parseStaff("getStaffCapacityDaily", CapacityDailySchema, await apiCall<unknown>(`${STAFF_MONITORING_PATHS.capacityDaily}?${q}`));
+}
+
+/** Per day from today: planned warmups, placement tests and queued steps at their planned date. */
+export async function getStaffSchedule(scope: EntityScope, horizonDays: number): Promise<Schedule> {
+  const q = [scopeQuery(scope), `horizonDays=${horizonDays}`].filter(Boolean).join("&");
+  return parseStaff("getStaffSchedule", ScheduleSchema, await apiCall<unknown>(`${STAFF_MONITORING_PATHS.schedule}?${q}`));
+}
+
+/** Queued sequence steps at their planned (theoretical) date, oldest first, paged by offset. */
+export async function getStaffQueuedSteps(scope: EntityScope, limit: number, offset: number): Promise<QueuedSteps> {
+  const q = [scopeQuery(scope), `limit=${limit}`, `offset=${offset}`].filter(Boolean).join("&");
+  return parseStaff("getStaffQueuedSteps", QueuedStepsSchema, await apiCall<unknown>(`${STAFF_MONITORING_PATHS.queuedSteps}?${q}`));
+}
+
+/** Placement tests, newest first, counts per inbox provider; `cursor` from the previous page. */
+export async function getStaffPlacementTests(scope: EntityScope, limit: number, cursor: string | null): Promise<PlacementTests> {
+  const q = [scopeQuery(scope), `limit=${limit}`, cursor ? `cursor=${encodeURIComponent(cursor)}` : ""].filter(Boolean).join("&");
+  return parseStaff("getStaffPlacementTests", PlacementTestsSchema, await apiCall<unknown>(`${STAFF_MONITORING_PATHS.placementTests}?${q}`));
+}
+
+/** One placement test, each seed and where it landed. */
+export async function getStaffPlacementTest(testId: string): Promise<PlacementTestDetail> {
+  return parseStaff("getStaffPlacementTest", PlacementTestDetailSchema, await apiCall<unknown>(`${STAFF_MONITORING_PATHS.placementTests}/${encodeURIComponent(testId)}`));
+}
+
+/** The inbox-placement alert's daily evaluation per provider, its bar, and the episodes it fired on. */
+export async function getStaffPlacementAlerts(days: number): Promise<PlacementAlerts> {
+  return parseStaff("getStaffPlacementAlerts", PlacementAlertsSchema, await apiCall<unknown>(`${STAFF_MONITORING_PATHS.placementAlerts}?days=${days}`));
+}
+
+/** The latest emails of one kind and/or one account / mailbox / domain, newest first. */
+export async function getStaffOpsMessagesScoped(scope: EntityScope, kind: string | null, limit: number): Promise<OpsMessages> {
+  const q = [scopeQuery(scope), kind ? `kind=${encodeURIComponent(kind)}` : "", `limit=${limit}`].filter(Boolean).join("&");
+  return parseStaff("getStaffOpsMessagesScoped", OpsMessagesSchema, await apiCall<unknown>(`${STAFF_MONITORING_PATHS.opsMessages}?${q}`));
+}
+
+/** One email's body, read from its source (warmup and seed bodies are not stored: null + source). */
+export async function getStaffMessageBody(id: string): Promise<MessageBody> {
+  return parseStaff("getStaffMessageBody", MessageBodySchema, await apiCall<unknown>(`${STAFF_MONITORING_PATHS.opsMessages}/${encodeURIComponent(id)}/body`));
 }
 
 export async function getStaffProviderSources(): Promise<ProviderSourcesRow[]> {

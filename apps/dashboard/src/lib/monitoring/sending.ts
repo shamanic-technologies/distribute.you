@@ -248,3 +248,213 @@ export const MESSAGE_KIND_WORD: Record<string, string> = {
   manual_reply: "Reply by hand",
   reply: "Reply",
 };
+
+// ─── Per account / mailbox / domain (MAILBOX-MONITORING-1019) ──────────────
+
+/**
+ * One account (sending address), one mailbox (the login a provider enforces quota at) or one
+ * domain: every per-entity read takes the same `account|mailbox|domain` filter, and the producer
+ * serves mailbox figures that add up to the domain and the fleet.
+ */
+export const ENTITY_KINDS = ["account", "mailbox", "domain"] as const;
+export type EntityKind = (typeof ENTITY_KINDS)[number];
+export type EntityScope = Partial<Record<EntityKind, string>>;
+
+/** The list page each kind lives under, and back: `emails/accounts/<email>`. */
+export const ENTITY_LIST_SEGMENT: Record<EntityKind, "accounts" | "mailboxes" | "domains"> = { account: "accounts", mailbox: "mailboxes", domain: "domains" };
+export const ENTITY_WORD: Record<EntityKind, string> = { account: "Account", mailbox: "Mailbox", domain: "Domain" };
+
+/** `account=a%40b.com&` style query for a scope (empty scope = the fleet). */
+export function scopeQuery(scope: EntityScope): string {
+  return ENTITY_KINDS.filter((k) => scope[k]).map((k) => `${k}=${encodeURIComponent(scope[k]!)}`).join("&");
+}
+
+/** The Monitoring path of one entity's page, relative to the Monitoring base. */
+export function entityPath(kind: EntityKind, key: string): string {
+  return `emails/${ENTITY_LIST_SEGMENT[kind]}/${encodeURIComponent(key)}`;
+}
+export function placementTestPath(testId: string): string {
+  return `emails/placement-tests/${encodeURIComponent(testId)}`;
+}
+
+/** The first UTC day of a trailing window of `days` days ending today, as the producer's `since`. */
+export function windowSince(days: number, now: Date): string {
+  const d = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() - (days - 1)));
+  return d.toISOString();
+}
+
+// Capacity per day: the reconstruction of what each mailbox could send, past, today and ahead.
+const CapacityDaySchema = z.object({
+  date: z.string(),
+  phase: z.enum(["past", "today", "future"]),
+  capacity: z.number(),
+  rampCap: z.number(),
+  operatorLimit: z.number(),
+  sustained: z.number(),
+  mailboxesInProduction: z.number(),
+  addressesInProduction: z.number(),
+});
+export const CapacityDailySchema = z.object({
+  asOf: z.string(),
+  horizonDays: z.number(),
+  rampRules: z.object({ floorPerDay: z.number(), growthFactor: z.number(), volumeWindowDays: z.number(), ceilingPerDay: z.number(), rule: z.string() }),
+  days: z.array(CapacityDaySchema),
+  // False at the account grain: aliases share one mailbox's quota (never stack accounts).
+  additive: z.boolean().optional(),
+});
+export type CapacityDaily = z.infer<typeof CapacityDailySchema>;
+export type CapacityDay = CapacityDaily["days"][number];
+
+// What is planned ahead, per day from today. Queued steps carry THEORETICAL dates (owner's call).
+const ScheduleDaySchema = z.object({
+  date: z.string(),
+  isToday: z.boolean(),
+  queuedSteps: z.number(),
+  queuedFirstEmails: z.number(),
+  queuedFollowUps: z.number(),
+  warmupsPlanned: z.number(),
+  seedTestsPlanned: z.number(),
+  seedsPlanned: z.number(),
+});
+export const ScheduleSchema = z.object({
+  asOf: z.string(),
+  horizonDays: z.number(),
+  days: z.array(ScheduleDaySchema),
+  totals: z.object({ overdueQueuedSteps: z.number(), undatedQueuedSteps: z.number(), beyondHorizonQueuedSteps: z.number() }),
+});
+export type Schedule = z.infer<typeof ScheduleSchema>;
+export type ScheduleDay = Schedule["days"][number];
+
+export const QueuedStepsSchema = z.object({
+  total: z.number(),
+  offset: z.number(),
+  steps: z.array(
+    z.object({
+      leadEmail: z.string(),
+      orgId: z.string().nullable(),
+      campaignId: z.string().nullable(),
+      account: z.string(),
+      mailbox: z.string(),
+      domain: z.string(),
+      step: z.number(),
+      isFirstEmail: z.boolean(),
+      theoreticalAt: z.string().nullable(),
+      overdue: z.boolean(),
+    }),
+  ),
+  nextOffset: z.number().nullable(),
+});
+export type QueuedSteps = z.infer<typeof QueuedStepsSchema>;
+
+// Placement tests: one row per test, counts per inbox provider; one test seed by seed.
+const ProviderCountsSchema = z.object({ seeds: z.number(), inbox: z.number(), spam: z.number(), missing: z.number(), inboxPct: z.number().nullable() });
+export type ProviderCounts = z.infer<typeof ProviderCountsSchema>;
+const ByProviderSchema = z.object({ google: ProviderCountsSchema, microsoft: ProviderCountsSchema, microsoftConsumer: ProviderCountsSchema, other: ProviderCountsSchema });
+export type TestProvider = keyof z.infer<typeof ByProviderSchema>;
+/** Placement tests count a fourth bucket, seeds at any other provider. */
+export const TEST_PROVIDERS: Array<{ key: TestProvider; name: string }> = [...INBOX_PROVIDERS, { key: "other", name: "Other" }];
+
+export const PlacementTestsSchema = z.object({
+  tests: z.array(
+    z.object({
+      testId: z.string(),
+      source: z.string(),
+      testedAt: z.string(),
+      senders: z.number(),
+      total: ProviderCountsSchema,
+      byProvider: ByProviderSchema,
+    }),
+  ),
+  nextCursor: z.string().nullable(),
+});
+export type PlacementTests = z.infer<typeof PlacementTestsSchema>;
+
+export const PlacementTestDetailSchema = z.object({
+  testId: z.string(),
+  source: z.string(),
+  testedAt: z.string().nullable(),
+  // False for an Instantly test: its missing seeds exist only as counts.
+  missingSeedsListed: z.boolean(),
+  total: ProviderCountsSchema,
+  byProvider: ByProviderSchema,
+  bySender: z.array(z.object({ sender: z.string(), senderMailbox: z.string(), total: ProviderCountsSchema, byProvider: ByProviderSchema })),
+  seeds: z.array(
+    z.object({
+      sender: z.string(),
+      senderMailbox: z.string(),
+      senderDomain: z.string(),
+      receiver: z.string().nullable(),
+      provider: z.string(),
+      providerLabel: z.string(),
+      placement: z.enum(["inbox", "spam", "missing"]).nullable(),
+      folder: z.string().nullable(),
+      dispatchOutcome: z.string(),
+      dispatchedAt: z.string().nullable(),
+      observedAt: z.string().nullable(),
+      spfPass: z.boolean().nullable(),
+      dkimPass: z.boolean().nullable(),
+      dmarcPass: z.boolean().nullable(),
+    }),
+  ),
+});
+export type PlacementTestDetail = z.infer<typeof PlacementTestDetailSchema>;
+
+/** Who wrote a placement test: our own seed sender, or Instantly's inbox-placement test. */
+export const TEST_SOURCE_WORD: Record<string, string> = { seed: "Our seed test", instantly: "Instantly test" };
+
+// The inbox-placement alert: per day and provider, the inbox % of the mailboxes that still mail it.
+const AlertCountsShape = { seeds: z.number(), found: z.number(), inbox: z.number(), inboxPct: z.number().nullable() };
+export const PlacementAlertsSchema = z.object({
+  asOf: z.string(),
+  bar: z.object({ inboxPctOfFound: z.number(), minFoundSeeds: z.number(), basis: z.string() }),
+  days: z.array(
+    z.object({
+      day: z.string(),
+      provider: z.string(),
+      providerLabel: z.string(),
+      fleet: z.object(AlertCountsShape),
+      allowed: z.object({ senders: z.number(), ...AlertCountsShape }),
+      mailboxesCut: z.number(),
+      measured: z.boolean(),
+      below: z.boolean(),
+    }),
+  ),
+  episodes: z.array(
+    z.object({
+      provider: z.string(),
+      startedOn: z.string(),
+      lastBelowOn: z.string(),
+      closedOn: z.string().nullable(),
+      inboxPct: z.number(),
+      foundSeeds: z.number(),
+      thresholdPct: z.number(),
+      mailboxesCut: z.number(),
+      alertStatus: z.string().nullable(),
+    }),
+  ),
+});
+export type PlacementAlerts = z.infer<typeof PlacementAlertsSchema>;
+export type PlacementAlertDay = PlacementAlerts["days"][number];
+
+/** The alert's provider keys, by the names people know. */
+export const ALERT_PROVIDERS: Array<{ key: string; name: string }> = [
+  { key: "google", name: "Google" },
+  { key: "microsoft", name: "Microsoft 365" },
+  { key: "microsoft_consumer", name: "Outlook.com" },
+];
+
+/** A provider's served rows in day order, and its latest MEASURED day (null = never measured). Lookup only. */
+export function alertSeries(data: PlacementAlerts, provider: string): { days: PlacementAlertDay[]; latest: PlacementAlertDay | null } {
+  const days = data.days.filter((d) => d.provider === provider).sort((a, b) => a.day.localeCompare(b.day));
+  let latest: PlacementAlertDay | null = null;
+  for (let i = days.length - 1; i >= 0; i--) {
+    if (days[i].measured) {
+      latest = days[i];
+      break;
+    }
+  }
+  return { days, latest };
+}
+
+export const MessageBodySchema = z.object({ text: z.string().nullable(), html: z.string().nullable(), source: z.string() });
+export type MessageBody = z.infer<typeof MessageBodySchema>;

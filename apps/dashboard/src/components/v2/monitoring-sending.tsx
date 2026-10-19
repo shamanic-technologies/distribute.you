@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useState } from "react";
 import { useAuthQuery } from "@/lib/use-auth-query";
 import { pollOptions } from "@/lib/query-options";
@@ -9,17 +10,20 @@ import {
   getStaffOpsDomains,
   getStaffOpsMailboxes,
   getStaffOpsMessages,
+  getStaffPlacementAlerts,
   getStaffSeedPlacementDaily,
   getStaffSenderHealth,
 } from "@/lib/api";
 import { EmptyNote, Figure, SectionTitle, Shimmer, StatTile } from "@/components/v2/ui";
 import {
+  ALERT_PROVIDERS,
   INBOX_PROVIDERS,
+  alertSeries,
+  entityPath,
   MESSAGE_KIND_WORD,
   latestMeasured,
   latestSenderHealthDay,
   lifecycleWord,
-  underBar,
   type InboxProvider,
   type SeedPlacementCell,
 } from "@/lib/monitoring/sending";
@@ -43,6 +47,10 @@ export function useSeedPlacement() {
 export function useSenderHealth() {
   return useAuthQuery(["staffSenderHealth", HEALTH_DAYS], () => getStaffSenderHealth(HEALTH_DAYS), pollOptions);
 }
+/** The inbox-placement alert's daily evaluation: the hub's red comes from here, one source with the alert email. */
+export function usePlacementAlerts() {
+  return useAuthQuery(["staffPlacementAlerts", HEALTH_DAYS], () => getStaffPlacementAlerts(HEALTH_DAYS), pollOptions);
+}
 export function useLifecycleRules() {
   return useAuthQuery(["staffLifecycleRules"], getStaffLifecycleRules, ONCE);
 }
@@ -56,18 +64,18 @@ export function useOpsAddresses() {
   return useAuthQuery(["staffOpsAddresses"], getStaffOpsAddresses, ONCE);
 }
 
-const RED = "var(--data-rose)";
-const OK = "var(--run)";
-const n = (v: number) => v.toLocaleString("en-US");
-const pct = (v: number | null) => (v == null ? null : `${v.toLocaleString("en-US", { maximumFractionDigits: 1 })}%`);
-const shortDay = (day: string) => new Date(`${day.slice(0, 10)}T00:00:00.000Z`).toLocaleDateString("en-US", { month: "short", day: "numeric", timeZone: "UTC" });
-const vendorName = (v: string) => v.charAt(0).toUpperCase() + v.slice(1);
-const Dash = () => <span className="k-fg4">{"—"}</span>;
+export const RED = "var(--data-rose)";
+export const OK = "var(--run)";
+export const n = (v: number) => v.toLocaleString("en-US");
+export const pct = (v: number | null) => (v == null ? null : `${v.toLocaleString("en-US", { maximumFractionDigits: 1 })}%`);
+export const shortDay = (day: string) => new Date(`${day.slice(0, 10)}T00:00:00.000Z`).toLocaleDateString("en-US", { month: "short", day: "numeric", timeZone: "UTC" });
+export const vendorName = (v: string) => v.charAt(0).toUpperCase() + v.slice(1);
+export const Dash = () => <span className="k-fg4">{"—"}</span>;
 
 // ─── Health tiles (the hub's first row) ────────────────────────────────────
 
-/** Small daily bars, red on a day under the bar, empty slot on a day with no test. Draws only. */
-function DayBars({ values, bar, height = 24 }: { values: Array<number | null>; bar: number | null; height?: number }) {
+/** Small daily bars, red on a day the producer flags below its bar, empty slot on a day not measured. Draws only. */
+function DayBars({ values, red, height = 24 }: { values: Array<number | null>; red: boolean[]; height?: number }) {
   return (
     <div className="flex items-end gap-[2px]" style={{ height }} aria-hidden="true">
       {values.map((v, i) => (
@@ -77,7 +85,7 @@ function DayBars({ values, bar, height = 24 }: { values: Array<number | null>; b
           style={
             v == null
               ? { height: 2, background: "var(--data-track)" }
-              : { height: Math.max(2, (v / 100) * height), background: bar != null && v < bar ? RED : OK }
+              : { height: Math.max(2, (v / 100) * height), background: red[i] ? RED : OK }
           }
         />
       ))}
@@ -85,38 +93,40 @@ function DayBars({ values, bar, height = 24 }: { values: Array<number | null>; b
   );
 }
 
-function InboxTile({ provider, name }: { provider: InboxProvider; name: string }) {
-  const placement = useSeedPlacement();
-  const rules = useLifecycleRules();
-  const bar = rules.data?.bars.deliveryPctBar ?? null;
-  const latest = placement.data ? latestMeasured(placement.data.days, provider) : undefined;
-  const red = latest && bar != null ? underBar(latest.cell.inboxPct, bar) : false;
-  const failed = placement.isError || rules.isError;
+/**
+ * Inbox % at one provider on its latest measured day, as the inbox-placement alert reads it: the
+ * mailboxes we still send from to that provider (the automatic cut applied), red when the producer
+ * flags the day `below` its bar. The figure over every mailbox, cut ones included, sits under it.
+ */
+function InboxTile({ provider, name }: { provider: string; name: string }) {
+  const alerts = usePlacementAlerts();
+  const series = alerts.data ? alertSeries(alerts.data, provider) : undefined;
+  const latest = series?.latest;
+  const recent = series?.days.slice(-14) ?? [];
   return (
     <StatTile label={`Inbox at ${name}`} note={latest ? shortDay(latest.day) : undefined}>
       <div className="flex items-end justify-between gap-2">
         <Figure
           value={
-            failed ? (
+            alerts.isError ? (
               <span className="k-fg3 text-[13px]">not readable</span>
-            ) : latest === undefined || bar == null ? (
+            ) : series === undefined ? (
               <Shimmer className="h-6 w-16" />
-            ) : latest === null ? (
+            ) : !latest || latest.allowed.inboxPct == null ? (
               <Dash />
             ) : (
-              <span style={{ color: red ? RED : undefined }}>{pct(latest.cell.inboxPct)}</span>
+              <span style={{ color: latest.below ? RED : undefined }}>{pct(latest.allowed.inboxPct)}</span>
             )
           }
+          sub={latest ? "mailboxes we send from" : undefined}
         />
-        {placement.data && <DayBars values={placement.data.days.slice(-14).map((d) => d[provider].inboxPct)} bar={bar} />}
+        {series && <DayBars values={recent.map((d) => (d.measured ? d.allowed.inboxPct : null))} red={recent.map((d) => d.below)} />}
       </div>
       <p className="k-fg3 mt-1 truncate text-[11px]">
-        {latest === null
-          ? `No test in ${HEALTH_DAYS} days`
-          : latest && bar != null
-            ? latest.byVendor.length > 1
-              ? latest.byVendor.map((v) => `${vendorName(v.vendor)} ${pct(v.cell.inboxPct)}`).join(" · ")
-              : `${red ? "Under" : "At or above"} the ${bar}% bar`
+        {series && !latest
+          ? `No measured day in ${HEALTH_DAYS} days`
+          : latest && alerts.data
+            ? `${latest.below ? "Under" : "At or above"} the ${alerts.data.bar.inboxPctOfFound}% bar · all mailboxes ${pct(latest.fleet.inboxPct) ?? "—"} · ${n(latest.mailboxesCut)} cut`
             : " "}
       </p>
     </StatTile>
@@ -167,28 +177,27 @@ export function SendingHealthTiles() {
   );
 }
 
-/** The hub's headline: which inbox providers sit under the bar on their latest test. Lookup only. */
+/** The hub's headline: which inbox providers the alert flags below its bar on their latest measured day. Lookup only. */
 export function useSendingVerdict(): string | null {
-  const placement = useSeedPlacement();
-  const rules = useLifecycleRules();
-  if (!placement.data || !rules.data) return null;
-  const bar = rules.data.bars.deliveryPctBar;
-  const measured = INBOX_PROVIDERS.map((p) => ({ p, latest: latestMeasured(placement.data.days, p.key) })).filter((x) => x.latest !== null);
+  const alerts = usePlacementAlerts();
+  if (!alerts.data) return null;
+  const data = alerts.data;
+  const measured = ALERT_PROVIDERS.map((p) => ({ p, latest: alertSeries(data, p.key).latest })).filter((x) => x.latest !== null);
   if (!measured.length) return `No inbox test in ${HEALTH_DAYS} days`;
-  const under = measured.filter((x) => underBar(x.latest!.cell.inboxPct, bar));
-  if (!under.length) return `Inbox at or above the ${bar}% bar at every provider tested`;
+  const under = measured.filter((x) => x.latest!.below);
+  if (!under.length) return `Inbox at or above the ${data.bar.inboxPctOfFound}% bar at every provider tested`;
   const names = under.map((x) => x.p.name);
-  return `Inbox under the ${bar}% bar at ${names.length > 1 ? `${names.slice(0, -1).join(", ")} and ${names[names.length - 1]}` : names[0]}`;
+  return `Inbox under the ${data.bar.inboxPctOfFound}% bar at ${names.length > 1 ? `${names.slice(0, -1).join(", ")} and ${names[names.length - 1]}` : names[0]}`;
 }
 
 // ─── Tables ────────────────────────────────────────────────────────────────
 
-const TH = "k-label px-3 py-2.5 text-left font-medium first:pl-4 last:pr-4 whitespace-nowrap";
-const THR = `${TH} text-right`;
-const TD = "px-3 py-2 first:pl-4 last:pr-4";
-const TDR = `${TD} text-right tabular-nums`;
+export const TH = "k-label px-3 py-2.5 text-left font-medium first:pl-4 last:pr-4 whitespace-nowrap";
+export const THR = `${TH} text-right`;
+export const TD = "px-3 py-2 first:pl-4 last:pr-4";
+export const TDR = `${TD} text-right tabular-nums`;
 
-function Table({ head, children }: { head: React.ReactNode; children: React.ReactNode }) {
+export function Table({ head, children }: { head: React.ReactNode; children: React.ReactNode }) {
   return (
     <div className="k-card k-scroll overflow-x-auto">
       <table className="w-full text-[13px]">
@@ -201,7 +210,7 @@ function Table({ head, children }: { head: React.ReactNode; children: React.Reac
   );
 }
 
-function Loading() {
+export function Loading() {
   return (
     <div className="k-card space-y-2 p-4">
       {[0, 1, 2, 3, 4, 5].map((i) => (
@@ -211,7 +220,7 @@ function Loading() {
   );
 }
 
-function Failed({ what }: { what: string }) {
+export function Failed({ what }: { what: string }) {
   return (
     <div className="k-card">
       <EmptyNote>Could not read {what} from production.</EmptyNote>
@@ -220,12 +229,12 @@ function Failed({ what }: { what: string }) {
 }
 
 /** An inbox % cell: red under the producer's bar, a dash when never tested. */
-function InboxCell({ value, bar }: { value: number | null; bar: number | null }) {
+export function InboxCell({ value, bar }: { value: number | null; bar: number | null }) {
   if (value == null) return <Dash />;
   return <span style={{ color: bar != null && value < bar ? RED : undefined }}>{pct(value)}</span>;
 }
 
-function StatusWord({ status }: { status: string | null }) {
+export function StatusWord({ status }: { status: string | null }) {
   const w = lifecycleWord(status);
   if (!w) return <Dash />;
   const color = status === "in_production" ? OK : status === "in_recovery" ? "var(--data-amber)" : "var(--fg-3)";
@@ -238,7 +247,7 @@ function StatusWord({ status }: { status: string | null }) {
 }
 
 /** "Show all N" under a long table: the rows stay in the producer's order. */
-function useShowAll(total: number, first = 50) {
+export function useShowAll(total: number, first = 50) {
   const [all, setAll] = useState(false);
   const limit = all ? total : first;
   const footer =
@@ -418,7 +427,7 @@ export function InboxProvidersPage() {
 
 // ─── Domains, mailboxes, accounts ──────────────────────────────────────────
 
-export function DomainsPage() {
+export function DomainsPage({ base }: { base: string }) {
   const q = useOpsDomains();
   const rules = useLifecycleRules();
   const bar = rules.data?.bars.deliveryPctBar ?? null;
@@ -446,7 +455,11 @@ export function DomainsPage() {
       >
         {q.data.domains.slice(0, limit).map((d) => (
           <tr key={`${d.provider}|${d.domain}`} className="k-row">
-            <td className={`${TD} k-mono text-[12px]`}>{d.domain}</td>
+            <td className={`${TD} k-mono text-[12px]`}>
+              <Link href={`${base}/${entityPath("domain", d.domain)}`} className="hover:underline">
+                {d.domain}
+              </Link>
+            </td>
             <td className={TD}>{d.provider ? vendorName(d.provider) : <Dash />}</td>
             <td className={`${TD} text-[12px]`}>{d.absentSince ? `Gone since ${shortDay(d.absentSince)}` : d.status ? vendorName(d.status) : <Dash />}</td>
             <td className={TDR}>{n(d.mailboxes)}</td>
@@ -466,7 +479,7 @@ export function DomainsPage() {
   );
 }
 
-export function MailboxesPage() {
+export function MailboxesPage({ base }: { base: string }) {
   const q = useOpsMailboxes();
   const rules = useLifecycleRules();
   const bar = rules.data?.bars.deliveryPctBar ?? null;
@@ -499,7 +512,11 @@ export function MailboxesPage() {
           const last = ramp[ramp.length - 1];
           return (
             <tr key={m.login} className="k-row">
-              <td className={`${TD} k-mono text-[12px]`}>{m.login}</td>
+              <td className={`${TD} k-mono text-[12px]`}>
+                <Link href={`${base}/${entityPath("mailbox", m.login)}`} className="hover:underline">
+                  {m.login}
+                </Link>
+              </td>
               <td className={TD}>{m.provider ? vendorName(m.provider) : <Dash />}</td>
               <td className={TD}>{m.absentSince ? <span className="k-fg3 text-[12px]">Gone since {shortDay(m.absentSince)}</span> : <StatusWord status={m.addresses[0]?.lifecycleStatus ?? null} />}</td>
               <td className={TDR}>
@@ -522,7 +539,7 @@ export function MailboxesPage() {
   );
 }
 
-export function AccountsPage() {
+export function AccountsPage({ base }: { base: string }) {
   const q = useOpsAddresses();
   const { limit, footer } = useShowAll(q.data?.accounts.length ?? 0);
   const rules = useLifecycleRules();
@@ -548,7 +565,11 @@ export function AccountsPage() {
       >
         {q.data.accounts.slice(0, limit).map((a) => (
           <tr key={a.email} className="k-row">
-            <td className={`${TD} k-mono text-[12px]`}>{a.email}</td>
+            <td className={`${TD} k-mono text-[12px]`}>
+              <Link href={`${base}/${entityPath("account", a.email)}`} className="hover:underline">
+                {a.email}
+              </Link>
+            </td>
             <td className={TD}>
               <StatusWord status={a.lifecycleStatus} />
             </td>

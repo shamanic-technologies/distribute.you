@@ -21,7 +21,7 @@ const GRAIN_LABEL: Record<SentGrain, string> = { day: "Daily", week: "Weekly", m
 const WINDOW: Record<SentGrain, number | null> = { day: 90, week: 52, month: null };
 const WINDOW_NOTE: Record<SentGrain, string> = { day: "last 90 days", week: "last 52 weeks", month: "since the first send" };
 
-type Series = { key: keyof SentPeriod & ("toLeads" | "manualReplies" | "warmup" | "warmupReplies" | "seeds" | "leadsEmailed"); label: string; color: string };
+export type Series = { key: keyof SentPeriod & ("toLeads" | "manualReplies" | "warmup" | "warmupReplies" | "seeds" | "leadsEmailed"); label: string; color: string };
 
 const LEADS: Series[] = [
   { key: "toLeads", label: "Cold emails", color: "var(--accent)" },
@@ -43,7 +43,7 @@ function periodLabel(start: string, grain: SentGrain, short = false) {
 }
 
 /** Every kind we send, stacked: one chart for the hub (owner 2026-10-19). */
-const ALL_KINDS: Series[] = [
+export const ALL_KINDS: Series[] = [
   { key: "toLeads", label: "Campaign", color: "var(--accent)" },
   { key: "manualReplies", label: "Replies by hand", color: "var(--data-sky)" },
   { key: "warmup", label: "Warmup", color: "var(--data-teal)" },
@@ -103,7 +103,7 @@ export function EmailsCharts() {
  * Stacked bars, one per period, a legend with the hovered (else latest) period's counts per
  * series. Heights scale to the tallest bar; the in-progress period is dashed.
  */
-function PeriodChart({
+export function PeriodChart({
   periods,
   error,
   grain,
