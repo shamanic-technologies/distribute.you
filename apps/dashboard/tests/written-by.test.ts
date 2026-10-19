@@ -1,9 +1,11 @@
 import { describe, expect, it } from "vitest";
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import {
   WrittenBySchema,
+  modelLogoFiles,
   modelTag,
+  tagsThatFit,
   writtenByForMessage,
   writtenByForRow,
   writtenMessageId,
@@ -50,7 +52,7 @@ describe("writtenByForMessage (WRITTEN-BY-1019)", () => {
     const tags = writtenWithTags(
       entry({ tactics: [{ line: "Brand not named in the first email", name: "Blind angle" }, { line: "No name yet" }] }),
     );
-    expect(tags?.model).toEqual({ label: "Opus 5.5", name: "Claude Opus 5.5", logoDomain: "claude.ai" });
+    expect(tags?.model).toEqual({ label: "Opus 5.5", name: "Claude Opus 5.5", logoSrc: "/model-logos/claude.svg" });
     expect(tags?.tactics).toEqual([{ name: "Blind angle", line: "Brand not named in the first email" }]);
     // Under test is not a tag (owner 2026-10-19).
     expect(writtenWithTags(entry({ model: null, tactics: [], underTest: true }))).toBeNull();
@@ -58,12 +60,27 @@ describe("writtenByForMessage (WRITTEN-BY-1019)", () => {
     expect(writtenWithTags(null)).toBeNull();
   });
 
-  it("a model reads as its PRODUCT (Claude's logo, not Anthropic's), its family word dropped", () => {
-    expect(modelTag({ name: "Claude Opus 5.5", vendor: { id: "anthropic" } })).toEqual({ label: "Opus 5.5", name: "Claude Opus 5.5", logoDomain: "claude.ai" });
-    // Google's G is the company, not Gemini: the name stays whole.
-    expect(modelTag({ name: "Gemini 3 Flash", vendor: { id: "google" } }).label).toBe("Gemini 3 Flash");
-    expect(modelTag({ name: "GPT-5.5", vendor: { id: "openai" } }).label).toBe("GPT-5.5");
-    expect(modelTag({ name: "Newco 1", vendor: { id: "someone-new" } })).toEqual({ label: "Newco 1", name: "Newco 1", logoDomain: null });
+  it("a model reads as its PRODUCT (Claude's mark, Gemini's sparkle), its family word dropped", () => {
+    expect(modelTag({ name: "Claude Opus 5.5", vendor: { id: "anthropic" } })).toEqual({ label: "Opus 5.5", name: "Claude Opus 5.5", logoSrc: "/model-logos/claude.svg" });
+    expect(modelTag({ name: "Gemini 3 Flash", vendor: { id: "google" } })).toMatchObject({ label: "3 Flash", logoSrc: "/model-logos/gemini.svg" });
+    expect(modelTag({ name: "GPT-5.5", vendor: { id: "openai" } })).toMatchObject({ label: "GPT-5.5", logoSrc: "/model-logos/openai.svg" });
+    expect(modelTag({ name: "Newco 1", vendor: { id: "someone-new" } })).toEqual({ label: "Newco 1", name: "Newco 1", logoSrc: null });
+  });
+
+  it("every product mark the lookup names ships as a file", () => {
+    for (const f of modelLogoFiles()) expect(existsSync(join(__dirname, "../public/model-logos", f)), f).toBe(true);
+  });
+
+  it("tags that do not fit: the first ones and +N more, never fewer than one", () => {
+    // label 80, chips 70 each, "+N more" 60, gap 4.
+    const chips = [70, 70, 70, 70];
+    expect(tagsThatFit(1000, 80, chips, 60, 4)).toBe(4);
+    expect(tagsThatFit(80 + 4 * 74, 80, chips, 60, 4)).toBe(4);
+    // Room for two chips and the more chip: 80 + 74*2 + 4 + 60 = 292.
+    expect(tagsThatFit(292, 80, chips, 60, 4)).toBe(2);
+    expect(tagsThatFit(291, 80, chips, 60, 4)).toBe(1);
+    expect(tagsThatFit(10, 80, chips, 60, 4)).toBe(1);
+    expect(tagsThatFit(10, 80, [70], 60, 4)).toBe(1);
   });
 
   it("parses the producer's body, reasons as plain strings, extra fields kept", () => {
@@ -136,6 +153,10 @@ describe("where the tags sit", () => {
   it("says Written with, never a workflow, a cost or an under-test mark", () => {
     const tags = read("components/v2/written-with-tags.tsx");
     expect(tags).toContain("Written with");
+    // Overflow: "+N more", opened by hover (mouse) or a tap, portalled out of the card.
+    expect(tags).toContain("+{count} more");
+    expect(tags).toContain('e.pointerType === "mouse" && open()');
+    expect(tags).toContain('document.getElementById("v2-portal")');
     expect(tags).not.toMatch(/workflowSlug|workflowName|cost|Under test|Written by/i);
   });
 });
