@@ -129,7 +129,7 @@ describe("reassuranceFor: one fleet figure per question, the homepage hero's thr
   const proof = { hotLeads: { hotLeads: 881, companies: 23, medianCostUsd: 6.2 }, medianReturnPerDollar: 5.2 };
   const fmt = (x: number) => `${x.toFixed(1)}x`;
   it("states the count, then the return", () => {
-    expect(reassuranceFor("outcome", proof, fmt)).toEqual({ figure: "881", label: "hot leads for 23 companies" });
+    expect(reassuranceFor("outcome", proof, fmt)).toEqual({ figure: "881", label: "engaged leads for 23 companies" });
     expect(reassuranceFor("returns", proof, fmt)).toEqual({ figure: "5.2x", label: "median ROI reported" });
   });
   it("falls back to nothing (the founders line) for a figure we do not hold", () => {

@@ -215,10 +215,11 @@ function withCanonicalOrganization(html: string): string {
 }
 
 // ─────────────────────────────────────────────────────────────────────────
-// Homepage hero — the fleet's hot-lead proof row.
+// Homepage hero — the fleet's engaged-lead proof row.
 //
-// A "hot lead" is a person who showed buying interest: a positive reply OR a
-// visit to the brand's site. Both are first steps of a sales funnel, so the sum
+// An "engaged lead" is a person who acted on our outreach: a positive reply OR a
+// visit to the brand's site. Named "engaged", not "hot": a site visit is an
+// Engaged step in the lead vocabulary, and Hot means someone who wants to buy. Both are first steps of a sales funnel, so the sum
 // is the count of people the fleet actually put in front of a customer.
 //
 // All three figures describe ONE set of brands — those with at least one hot
@@ -352,10 +353,10 @@ export function hotLeadRowHtml(
     '<span class="hstat">' +
     `<svg class="hstat-i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${FLAME_PATH}</svg>` +
     `<span class="hstat-n"><b data-hot-leads data-n="${stats.hotLeads}">${leads}</b></span>` +
-    `<span class="hstat-l">hot leads for ${companies} companies</span></span>` +
+    `<span class="hstat-l">engaged leads for ${companies} companies</span></span>` +
     '<span class="hstat">' +
     `<span class="hstat-n"><b>${cost}</b></span>` +
-    '<span class="hstat-l">median cost per hot lead</span></span>' +
+    '<span class="hstat-l">median cost per engaged lead</span></span>' +
     (returnFigure
       ? '<span class="hstat">' +
         `<span class="hstat-n"><b>${returnFigure.text}x</b></span>` +
@@ -396,10 +397,10 @@ export function hotLeadBandHtml(
     '<div class="wrap">' +
     '<div class="section-head center"><span class="eyebrow">Measured, not quoted</span>' +
     "<h2>What the fleet has produced, read off every campaign we run</h2>" +
-    "<p>A hot lead is a buyer who replied with interest or came to the site. No competitor on this page publishes this figure.</p></div>" +
+    "<p>An engaged lead is a buyer who replied with interest or came to the site. No competitor on this page publishes this figure.</p></div>" +
     `<div class="stats${returnFigure ? "" : " two"}">` +
-    `<div class="stat rv"><div class="n"><span data-count="${stats.hotLeads}">0</span></div><div class="l">hot leads for ${companies} companies</div></div>` +
-    `<div class="stat rv"><div class="n"><span class="u">$</span><span data-count="${Math.round(stats.medianCostUsd)}">0</span></div><div class="l">median cost per hot lead</div></div>` +
+    `<div class="stat rv"><div class="n"><span data-count="${stats.hotLeads}">0</span></div><div class="l">engaged leads for ${companies} companies</div></div>` +
+    `<div class="stat rv"><div class="n"><span class="u">$</span><span data-count="${Math.round(stats.medianCostUsd)}">0</span></div><div class="l">median cost per engaged lead</div></div>` +
     (returnFigure
       ? `<div class="stat rv"><div class="n"><span data-count="${returnFigure.text}" data-decimals="${returnFigure.decimals}">0</span><span class="u">x</span></div><div class="l">median ROI of our clients</div></div>`
       : "") +

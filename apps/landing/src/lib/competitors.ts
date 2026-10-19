@@ -87,7 +87,7 @@ export const DISTRIBUTE_ROW = {
   leads: "We find and qualify the buyers from your website. Bring your own list as an extra audience if you like.",
   replies: "We read every reply and answer the interested ones until the meeting is booked.",
   channels: "Cold email, every campaign A/B tested and measured.",
-  costPerMeeting: "Yes. What a hot lead and a meeting cost you is on your dashboard, and the fleet's median cost per hot lead is published on this page.",
+  costPerMeeting: "Yes. What an engaged lead and a meeting cost you is on your dashboard, and the fleet's median cost per engaged lead is published on this page.",
   freeTier: "The platform is free. You pay only for the outreach, and your campaign starts sending on day one.",
   contract: "None. Pause or cancel anytime; your credit is a hard cap.",
 } as const;

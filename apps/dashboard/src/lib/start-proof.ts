@@ -11,9 +11,9 @@
 // directly unit-testable (vitest does not resolve the alias).
 
 // ─────────────────────────────────────────────────────────────────────────
-// Hot leads: the fleet's proof row, the SAME derivation the homepage hero uses.
+// Engaged leads: the fleet's proof row, the SAME derivation the homepage hero uses.
 //
-// A "hot lead" is a person who showed buying interest: a positive reply OR a
+// An "engaged lead" is a person who acted on our outreach: a positive reply OR a
 // visit to the brand's site. All three figures describe ONE set of brands, those
 // with at least one hot lead AND recorded spend, so the count, the company count
 // and the price can never describe different populations. A median over a single
@@ -225,7 +225,7 @@ export function reassuranceFor(
   if (screen === "outcome" && proof.hotLeads) {
     return {
       figure: proof.hotLeads.hotLeads.toLocaleString("en-US"),
-      label: `hot leads for ${proof.hotLeads.companies} companies`,
+      label: `engaged leads for ${proof.hotLeads.companies} companies`,
     };
   }
   if (screen === "returns" && proof.medianReturnPerDollar != null) {
