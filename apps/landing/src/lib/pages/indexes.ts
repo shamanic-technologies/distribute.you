@@ -1,6 +1,7 @@
 import { SITE, breadcrumb, shell, whyLine } from "../v2-shell";
 import {
   STATUS_LABEL,
+  UNIT_TEXT,
   esc,
   formatDay,
   formatIndexValue,
@@ -8,7 +9,9 @@ import {
   statusLegend,
   statusLine,
   unavailableLine,
+  type BasisRule,
   type IndexDetail,
+  type IndexUnit,
   type IndexList,
   type IndexPoint,
   type IndexStatus,
@@ -70,7 +73,7 @@ function pct(n: number): string {
  * that fades in from the left and ends on today's dot: the chart reads as "this is
  * where it starts", and every new day pushes the history leftwards.
  */
-export function chartHtml(points: IndexPoint[], unit: "usd" | "percent", ariaName: string): string {
+export function chartHtml(points: IndexPoint[], unit: IndexUnit, ariaName: string): string {
   const measured = points.filter((p) => p.value !== null) as (IndexPoint & { value: number })[];
   if (measured.length === 0) {
     return `<div class="ix-chart ix-chart-empty" role="img" aria-label="${esc(ariaName)}: no value recorded yet">
@@ -85,26 +88,35 @@ export function chartHtml(points: IndexPoint[], unit: "usd" | "percent", ariaNam
   const xOf = (day: string) => (span === 0 ? W : ((dayNumber(day) - first) / span) * W);
 
   // Segments break on a day with no value: the gap shows, nothing is invented across it.
-  const segments: { x: number; y: number }[][] = [];
-  let current: { x: number; y: number }[] = [];
+  // They also break where rebuilt days meet live ones (rebuilt = dashed), joined at the seam.
+  type Seg = { rebuilt: boolean; pts: { x: number; y: number }[] };
+  const segments: Seg[] = [];
+  let current: Seg | null = null;
   for (const p of points) {
     if (p.value === null) {
-      if (current.length) segments.push(current);
-      current = [];
+      if (current) segments.push(current);
+      current = null;
       continue;
     }
-    current.push({ x: xOf(p.day), y: yOf(p.value) });
+    const q = { x: xOf(p.day), y: yOf(p.value) };
+    const rebuilt = p.basis === "recomputed";
+    if (current && current.rebuilt !== rebuilt) {
+      segments.push(current);
+      current = { rebuilt, pts: [current.pts[current.pts.length - 1]] };
+    }
+    if (!current) current = { rebuilt, pts: [] };
+    current.pts.push(q);
   }
-  if (current.length) segments.push(current);
+  if (current) segments.push(current);
 
   const single = span === 0;
   const paths = segments
     .map((seg) => {
-      const pts = single ? [{ x: 0, y: seg[0].y }, seg[0]] : seg;
+      const pts = single ? [{ x: 0, y: seg.pts[0].y }, seg.pts[0]] : seg.pts;
       const line = pts.map((q, i) => `${i ? "L" : "M"}${q.x.toFixed(1)} ${q.y.toFixed(1)}`).join(" ");
       const area = `${line} L${pts[pts.length - 1].x.toFixed(1)} ${H} L${pts[0].x.toFixed(1)} ${H} Z`;
       return `<path class="ix-area" d="${area}" fill="url(#ix-fill)"/>
-<path class="ix-line" d="${line}" stroke="${single ? "url(#ix-fade)" : "currentColor"}" vector-effect="non-scaling-stroke"/>`;
+<path class="ix-line${seg.rebuilt ? " ix-line-re" : ""}" d="${line}" stroke="${single ? "url(#ix-fade)" : "currentColor"}" vector-effect="non-scaling-stroke"/>`;
     })
     .join("\n");
 
@@ -116,7 +128,9 @@ export function chartHtml(points: IndexPoint[], unit: "usd" | "percent", ariaNam
     .join("");
 
   const lastMeasured = measured[measured.length - 1];
+  // A dot marks a day we published live; rebuilt days are the dashed line alone.
   const dots = measured
+    .filter((p) => p.basis !== "recomputed" || p === lastMeasured)
     .map((p) => {
       const isLast = p === lastMeasured;
       const label = `${formatDay(p.day, true)}: ${formatIndexValue(p.value, unit)}`;
@@ -125,7 +139,7 @@ export function chartHtml(points: IndexPoint[], unit: "usd" | "percent", ariaNam
     .join("");
 
   const firstLabel = single ? `First recorded ${formatDay(points[0].day, true)}` : formatDay(points[0].day, true);
-  const summary = measured.map((p) => `${formatDay(p.day)} ${formatIndexValue(p.value, unit)}`).join(", ");
+  const summary = measured.slice(-30).map((p) => `${formatDay(p.day)} ${formatIndexValue(p.value, unit)}`).join(", ");
   return `<figure class="ix-chart-wrap">
 <div class="ix-chart" role="img" aria-label="${esc(`${ariaName}, daily: ${summary}`)}">
 ${grid}
@@ -154,15 +168,27 @@ export function ribbonHtml(points: IndexPoint[]): string {
   for (let n = last - shown + 1; n <= last; n++) {
     const day = dayFromNumber(n);
     const p = byDay.get(day);
-    const cls = !p ? "ix-day-missed" : p.value === null ? "ix-day-open" : `ix-day-${p.status}`;
-    const what = !p ? "not recorded" : p.value === null ? "recorded, no value" : STATUS_LABEL[p.status];
+    const rebuilt = p?.basis === "recomputed";
+    const cls = !p ? "ix-day-missed" : p.value === null ? "ix-day-open" : `ix-day-${p.status}${rebuilt ? " ix-day-re" : ""}`;
+    const what = !p ? "not recorded" : p.value === null ? "recorded, no value" : `${STATUS_LABEL[p.status]}${rebuilt ? ", rebuilt" : ""}`;
     cells.push(`<span class="ix-day ${cls}" title="${esc(`${formatDay(day, true)}: ${what}`)}"></span>`);
   }
-  const since = formatDay(points[0].day, true);
+  // A rebuilt day was not published that day: the line counts the days we published live.
+  const live = points.filter((p) => p.basis !== "recomputed");
+  const rebuilt = points.length - live.length;
+  const liveFirst = live.length ? dayNumber(live[0].day) : last + 1;
+  const liveTotal = last - liveFirst + 1;
+  const since = live.length ? formatDay(live[0].day, true) : "";
+  const published = !live.length
+    ? ""
+    : live.length === liveTotal
+      ? `Published every day since ${since}.`
+      : `Published on ${live.length} of the ${liveTotal} days since ${since}.`;
+  const earlier = rebuilt ? `${rebuilt} earlier ${rebuilt === 1 ? "day" : "days"} rebuilt, back to ${formatDay(points[0].day, true)}.` : "";
   const line =
-    points.length === total
+    rebuilt === 0 && points.length === total
       ? `Published every day since ${since}. ${total} ${total === 1 ? "day" : "days"} so far.`
-      : `Published on ${points.length} of the ${total} days since ${since}.`;
+      : [published, earlier].filter(Boolean).join(" ");
   return `<div class="ix-ribbon"><div class="ix-days" aria-hidden="true">${cells.join("")}</div><p>${esc(line)}</p></div>`;
 }
 
@@ -223,6 +249,14 @@ const STYLE = `<style>
 .ix-day-signal { background: #6c95f0; }
 .ix-day-noise { background: var(--accent-100); }
 .ix-day-open { background: #fff; border: 1px solid var(--accent-100); }
+.ix-day-re { opacity: .45; }
+.ix-older { margin-top: 18px; max-width: 880px; }
+.ix-older summary { cursor: pointer; font-size: 14px; color: var(--muted); padding: 8px 0; }
+.ix-line-re { stroke-dasharray: 6 6; opacity: .6; }
+.ix-basis { margin-top: 14px; display: flex; flex-wrap: wrap; gap: 8px 24px; font-size: 14px; color: var(--muted); list-style: none; padding: 0; }
+.ix-basis li { display: flex; align-items: center; gap: 8px; }
+.ix-key { width: 22px; height: 0; border-top: 3px solid var(--accent); }
+.ix-key-re { border-top-style: dashed; opacity: .6; }
 .ix-day-missed { background: #fff; border: 1px dashed var(--hair-2); }
 .ix-ribbon p { font-size: 14px; color: var(--muted); }
 
@@ -275,26 +309,37 @@ function withStyle(html: string): string {
 // One index
 // ---------------------------------------------------------------------------
 
+/** What a lighter dot means, in the service's own sentences; nothing when no day was rebuilt. */
+export function basisLegendHtml(points: IndexPoint[], rule: BasisRule | undefined): string {
+  if (!rule || !points.some((p) => p.basis === "recomputed")) return "";
+  return `<ul class="ix-basis">
+<li><span class="ix-key" aria-hidden="true"></span>${esc(rule.recorded)}</li>
+<li><span class="ix-key ix-key-re" aria-hidden="true"></span>${esc(rule.recomputed)}</li>
+</ul>`;
+}
+
 /**
  * Every recorded day as a plain table, newest first: the chart's numbers in text, so a
  * search engine or an agent quoting the index reads the series, not only today's value.
  */
-export function historyTableHtml(points: IndexPoint[], unit: "usd" | "percent", valuePer: string): string {
+export function historyTableHtml(points: IndexPoint[], unit: IndexUnit, valuePer: string): string {
   if (points.length === 0) return "";
-  const rows = [...points]
-    .reverse()
-    .map(
-      (p) =>
-        `<tr><td>${esc(formatDay(p.day, true))}</td><td>${p.value !== null ? esc(formatIndexValue(p.value, unit)) : "Not stated"}</td><td>${esc(STATUS_LABEL[p.status])}</td></tr>`,
-    )
-    .join("");
+  const row = (p: IndexPoint) =>
+        `<tr><td>${esc(formatDay(p.day, true))}</td><td>${p.value !== null ? esc(formatIndexValue(p.value, unit)) : "Not stated"}</td><td>${esc(STATUS_LABEL[p.status])}</td><td>${p.basis === "recomputed" ? "Rebuilt later" : "Recorded live"}</td></tr>`;
+  const head = (label: string) =>
+    `<thead><tr><th scope="col">Day</th><th scope="col">${esc(label)}</th><th scope="col">Status</th><th scope="col">Source</th></tr></thead>`;
+  // The newest month in view; older days fold away, still in the HTML for crawlers.
+  const newest = [...points].reverse();
+  const recent = newest.slice(0, 30);
+  const older = newest.slice(30);
   return `<section class="framed" id="history">
   <div class="wrap">
     <div class="section-head"><h2>Every day so far</h2></div>
     <div class="ix-table-wrap"><table class="ix-table">
-<thead><tr><th scope="col">Day</th><th scope="col">Value (${esc(valuePer)})</th><th scope="col">Status</th></tr></thead>
-<tbody>${rows}</tbody>
+${head(`Value (${valuePer})`)}
+<tbody>${recent.map(row).join("")}</tbody>
 </table></div>
+    ${older.length ? `<details class="ix-older"><summary>${older.length} earlier ${older.length === 1 ? "day" : "days"}</summary><div class="ix-table-wrap"><table class="ix-table">${head(`Value (${valuePer})`)}<tbody>${older.map(row).join("")}</tbody></table></div></details>` : ""}
   </div>
 </section>`;
 }
@@ -356,6 +401,7 @@ ${otherIndexes(list, slug)}`,
     <p class="ix-sub">A cold email benchmark from our live campaigns, recorded every day.</p>
     ${figure}
     ${chartHtml(points, i.unit, i.name)}
+    ${basisLegendHtml(points, detail.basisRule)}
     ${ribbonHtml(points)}
   </div>
 </section>
@@ -403,7 +449,7 @@ ${otherIndexes(list, i.slug)}`;
           ...(points.length
             ? {
                 temporalCoverage: `${points[0].day}/${points[points.length - 1].day}`,
-                datePublished: points[0].day,
+                datePublished: (points.find((p) => p.basis !== "recomputed") ?? points[0]).day,
                 dateModified: points[points.length - 1].day,
               }
             : {}),
@@ -411,7 +457,7 @@ ${otherIndexes(list, i.slug)}`;
             "@type": "PropertyValue",
             name: i.name,
             description: i.valuePer,
-            unitText: i.unit === "usd" ? "USD" : "percent",
+            unitText: UNIT_TEXT[i.unit],
             ...(i.value !== null ? { value: i.value } : {}),
           },
           distribution: {

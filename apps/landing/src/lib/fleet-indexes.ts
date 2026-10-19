@@ -11,7 +11,13 @@
  * Alias-free so the unit tests render it directly.
  */
 
+import { formatReturnMultiple } from "./landing-format";
+
 export type IndexStatus = "robust" | "signal" | "noise";
+
+/** `multiple` = a return (3.6 = $3.6 back per dollar spent), written like the hero ROI. */
+export type IndexUnit = "usd" | "percent" | "multiple";
+const UNITS: readonly IndexUnit[] = ["usd", "percent", "multiple"];
 
 export type StatusRule = { signalMinOutcomes: number; robustMinOutcomes: number };
 
@@ -22,7 +28,7 @@ export type IndexSummary = {
   channelName: string;
   outcome: string;
   metric: string;
-  unit: "usd" | "percent";
+  unit: IndexUnit;
   valuePer: string;
   method: string;
   day: string | null;
@@ -44,10 +50,16 @@ export type IndexPoint = {
   contacted: number | null;
   workflowDynastyName: string | null;
   unavailableReason: string | null;
+  /** `recorded` = written live that day; `recomputed` = rebuilt later as of that day (the 2026-10-19 backfill). */
+  basis?: IndexBasis;
 };
 
+export type IndexBasis = "recorded" | "recomputed";
+/** One served sentence per basis, for the label beside the curve. */
+export type BasisRule = Record<IndexBasis, string>;
+
 export type IndexList = { statusRule: StatusRule; indexes: IndexSummary[] };
-export type IndexDetail = { statusRule: StatusRule; index: IndexSummary; points: IndexPoint[] };
+export type IndexDetail = { statusRule: StatusRule; index: IndexSummary; points: IndexPoint[]; basisRule?: BasisRule };
 
 const STATUSES: readonly IndexStatus[] = ["robust", "signal", "noise"];
 
@@ -66,7 +78,7 @@ function parseRule(body: unknown): StatusRule {
 function parseSummary(s: IndexSummary): IndexSummary {
   if (typeof s?.slug !== "string" || !/^[a-z0-9-]+$/.test(s.slug)) throw new Error(`index slug ${JSON.stringify(s?.slug)}`);
   if (typeof s.name !== "string") throw new Error(`index ${s.slug} has name ${JSON.stringify(s.name)}`);
-  if (s.unit !== "usd" && s.unit !== "percent") throw new Error(`index ${s.slug} has unit ${JSON.stringify(s.unit)}`);
+  if (!UNITS.includes(s.unit)) throw new Error(`index ${s.slug} has unit ${JSON.stringify(s.unit)}`);
   if (!STATUSES.includes(s.status)) throw new Error(`index ${s.slug} has status ${JSON.stringify(s.status)}`);
   if (s.value !== null && !isNum(s.value)) throw new Error(`index ${s.slug} has value ${JSON.stringify(s.value)}`);
   return s;
@@ -87,8 +99,15 @@ export function parseIndexDetail(body: unknown): IndexDetail {
     if (typeof p?.day !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(p.day)) throw new Error(`point day ${JSON.stringify(p?.day)}`);
     if (p.value !== null && !isNum(p.value)) throw new Error(`point ${p.day} has value ${JSON.stringify(p.value)}`);
     if (!STATUSES.includes(p.status)) throw new Error(`point ${p.day} has status ${JSON.stringify(p.status)}`);
+    if (p.basis !== undefined && p.basis !== "recorded" && p.basis !== "recomputed") {
+      throw new Error(`point ${p.day} has basis ${JSON.stringify(p.basis)}`);
+    }
   }
-  return { statusRule: parseRule(body), index: parseSummary(b.index as IndexSummary), points: b.points };
+  const rule = (body as { basisRule?: BasisRule }).basisRule;
+  if (rule !== undefined && (typeof rule?.recorded !== "string" || typeof rule?.recomputed !== "string")) {
+    throw new Error(`basisRule is ${JSON.stringify(rule)}`);
+  }
+  return { statusRule: parseRule(body), index: parseSummary(b.index as IndexSummary), points: b.points, ...(rule ? { basisRule: rule } : {}) };
 }
 
 /**
@@ -155,8 +174,12 @@ export async function fetchIndexDetail(slug: string): Promise<IndexDetail | "not
 // Words and numbers
 // ---------------------------------------------------------------------------
 
-/** $4.35, $1,240, 2.08%. Two decimals while they carry meaning. */
-export function formatIndexValue(value: number, unit: "usd" | "percent"): string {
+/** The JSON-LD `unitText` of a unit. */
+export const UNIT_TEXT: Record<IndexUnit, string> = { usd: "USD", percent: "percent", multiple: "multiple of spend" };
+
+/** $4.35, $1,240, 2.08%, 3.6x. Two decimals while they carry meaning. */
+export function formatIndexValue(value: number, unit: IndexUnit): string {
+  if (unit === "multiple") return `${formatReturnMultiple(value).text}x`;
   if (unit === "percent") {
     return `${value.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}%`;
   }
@@ -165,10 +188,10 @@ export function formatIndexValue(value: number, unit: "usd" | "percent"): string
 }
 
 /** Shorter tick labels for the chart scale ($4.4, 2.1%). */
-export function formatTick(value: number, unit: "usd" | "percent"): string {
+export function formatTick(value: number, unit: IndexUnit): string {
   const digits = Math.abs(value) >= 100 ? 0 : Math.abs(value) >= 10 ? 1 : 2;
   const n = value.toLocaleString("en-US", { minimumFractionDigits: digits, maximumFractionDigits: digits });
-  return unit === "percent" ? `${n}%` : `$${n}`;
+  return unit === "percent" ? `${n}%` : unit === "multiple" ? `${n}x` : `$${n}`;
 }
 
 /** Customer-facing status words: every status is published, each says how far to lean on it. */
