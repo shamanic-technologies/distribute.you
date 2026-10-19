@@ -1,16 +1,33 @@
 "use client";
 
 import { HubChip, HubChips } from "@/components/v2/hub-section";
+import { CatalogueMark } from "@/components/v2/catalogue-mark";
+import { useAuthQuery } from "@/lib/use-auth-query";
+import { getPublicCatalogueSteps } from "@/lib/api";
 import { useState } from "react";
 import Link from "next/link";
 import { EmptyNote, SectionTitle, Shimmer, TopBar, type Crumb } from "@/components/v2/ui";
 import { CostBasisSwitch } from "@/components/v2/cost-basis-switch";
 import { ResearchLiveWorkflows, usePipeChannelName, useResearchPipeLeg } from "@/components/v2/research-live-workflows";
 import { shortWorkflowName } from "@/lib/live-workflow-rows";
+import {
+  ACTIVATE_CONTENT_NOTE,
+  DEPRECATE_CONTENT_NOTE,
+  FirstAndMore,
+  StatusMenu,
+  StatusWord as ContentStatusWord,
+  useContentStatusWrites,
+  useModelAliases,
+  useModelStatuses,
+  useTemplateStatuses,
+} from "@/components/v2/research-status";
+import { TemplateOutputsPanel } from "@/components/v2/research-template-outputs";
+import { modelStatus, templatePipes, type ContentTarget } from "@/lib/research/content-status";
 import { useResearch, useResearchCatalog, useResearchTexts } from "@/lib/research/research-source";
 import { Arrow, MonthsRow, Row, SectionMark, SectionName, TOPIC_LOOK, TopicMark, dayText, liveText } from "@/components/v2/research-bits";
 import {
   CATALOG_KINDS,
+  PIPE_KEY,
   researchCatalogHref,
   researchModel,
   researchTemplate,
@@ -189,6 +206,19 @@ function Money({ value, unit }: { value: string | null; unit: string }) {
   );
 }
 
+/** A leg as Research wears it: the step it lands on ("Positive reply"), its served name and icon (public step catalogue). */
+function LegName({ pipe }: { pipe: ResearchPipe }) {
+  const steps = useAuthQuery(["publicCatalogueSteps"], getPublicCatalogueSteps, { staleTime: 10 * 60_000 });
+  const step = steps.data?.find((x) => x.key === PIPE_KEY[pipe].step) ?? null;
+  if (!step) return steps.data === undefined && !steps.isError ? <Shimmer className="inline-block h-4 w-20 align-middle" /> : <span className="k-fg4">{"—"}</span>;
+  return (
+    <span className="inline-flex min-w-0 items-center gap-1.5">
+      <CatalogueMark icon={step.icon ?? null} color={null} name={step.name} size={14} />
+      <span className="truncate">{step.name}</span>
+    </span>
+  );
+}
+
 function Dash({ v }: { v: string | null }) {
   return v == null ? <span className="k-fg4">{"—"}</span> : <>{v}</>;
 }
@@ -221,6 +251,14 @@ function CatalogList({
   // stays for templates, models, and a pipe whose step starts no entry leg.
   const liveLeg = useResearchPipeLeg(pipe);
   const live = kind === "workflows" && liveLeg != null;
+  // Staff status (TEMPLATE-MODEL-STATUS-1019): templates by type, models by the alias a runnable workflow names them by.
+  const templateStatuses = useTemplateStatuses();
+  const modelStatuses = useModelStatuses();
+  const aliases = useModelAliases(catalog);
+  const writes = useContentStatusWrites();
+  // The Templates page's right panel is open from the start, on the first row until a row is picked.
+  const [selected, setSelected] = useState<string | null>(null);
+  const selectedTemplate = kind === "templates" ? ((rows as ResearchTemplate[]).find((r) => r.key === selected) ?? (rows[0] as ResearchTemplate | undefined) ?? null) : null;
   return (
     <>
       <TopBar crumbs={crumbs} actions={<CostBasisSwitch />} />
@@ -235,8 +273,8 @@ function CatalogList({
                 <>Every workflow on this leg, in the order a campaign picks from, with whether it is mature and its return.</>
               ) : (
                 <>
-                  Every {words.one} that wrote this pipe&apos;s emails, all clients pooled, the cheapest {o.noun.toLowerCase()} first. Open one for its months,
-                  its last runs{kind === "templates" ? " and its text" : ""}.
+                  Every {words.one} that wrote this pipe&apos;s emails, all clients pooled, the cheapest {o.noun.toLowerCase()} first.{" "}
+                  {kind === "templates" ? "Pick one to read its last emails; open its name for its months and its text." : "Open one for its months and its last runs."}
                 </>
               )}
             </p>
@@ -273,87 +311,147 @@ function CatalogList({
           {live ? (
             <ResearchLiveWorkflows base={base} pipe={pipe} legKey={liveLeg} catalog={catalog} outcomeUnit={o.unit} nav={nav} />
           ) : (
-          <div className="k-card overflow-hidden">
-            <div className="k-scroll relative overflow-x-auto">
-              <table className={`w-full ${kind === "workflows" ? "min-w-[1180px]" : "min-w-[860px]"} text-[13px]`}>
-                <thead>
-                  <tr className="border-b border-[var(--line-subtle)]">
-                    <th className={`${TH} w-12`}>#</th>
-                    <th className={TH}>{words.title.slice(0, -1)}</th>
-                    {kind === "workflows" && (
-                      <>
-                        <th className={`${TH} w-40`}>LLM</th>
-                        <th className={`${TH} w-40`}>Template</th>
-                      </>
-                    )}
-                    <th className={`${TH} w-36 text-right`}>Cost {o.unit.replace("/ ", "per ")}</th>
-                    <th className={`${TH} w-28 text-right`}>Rate</th>
-                    <th className={`${TH} w-28 text-right`}>{o.plural}</th>
-                    <th className={`${TH} w-28 text-right`}>Emails</th>
-                    <th className={`${TH} w-28 text-right`}>Invested</th>
-                    <th className={`${TH} w-10`} aria-label="Open" />
-                  </tr>
-                </thead>
-                <tbody>
-                  {rows.length === 0 ? (
-                    <tr>
-                      <td colSpan={kind === "workflows" ? 10 : 8}>
-                        <EmptyNote>No {words.one} has written this pipe&apos;s emails yet.</EmptyNote>
-                      </td>
-                    </tr>
-                  ) : (
-                    rows.map((r) => {
-                      const href = researchCatalogHref(base, pipe, kind, r.key);
-                      return (
-                        <tr key={r.key} onClick={() => nav(href)} className="k-row group h-10 cursor-pointer">
-                          <td className="k-mono k-fg3 pl-4 pr-3 text-[12px] tabular-nums">{r.rank ?? "—"}</td>
-                          <td className="max-w-0 px-3">
-                            <Link href={href} className="block min-w-0 truncate font-medium" title={rowName(kind, r, channelName)}>
-                              {rowName(kind, r, channelName)}
-                            </Link>
-                          </td>
-                          {kind === "workflows" && (
-                            <>
-                              {/* Each cell opens that model's or template's own page; the rest of the row opens the workflow. */}
-                              <td className="max-w-0 px-3" onClick={(e) => e.stopPropagation()}>
-                                <RefLink base={base} pipe={pipe} kind="models" r={(r as ResearchWorkflow).model} className="block min-w-0 truncate" />
-                              </td>
-                              <td className="max-w-0 px-3" onClick={(e) => e.stopPropagation()}>
-                                <RefLink base={base} pipe={pipe} kind="templates" r={(r as ResearchWorkflow).template} className="block min-w-0 truncate" />
-                              </td>
-                            </>
-                          )}
-                          <td className="px-3 text-right tabular-nums">
-                            <Money value={r.cost} unit={o.unit} />
-                          </td>
-                          <td className="px-3 text-right tabular-nums">
-                            <Dash v={r.rate} />
-                          </td>
-                          <td className="px-3 text-right tabular-nums">{r.outcomes}</td>
-                          <td className="px-3 text-right tabular-nums">{r.emails}</td>
-                          <td className="px-3 text-right tabular-nums">{r.spend}</td>
-                          <td className="pl-3 pr-4 text-right">
-                            <span className="k-btn-ghost inline-flex h-6 w-6 justify-center px-0 opacity-0 group-hover:opacity-100">
-                              <Chevron />
-                            </span>
+            <div className={kind === "templates" ? "grid gap-4 lg:grid-cols-[minmax(0,1fr)_360px]" : ""}>
+              <div className="k-card min-w-0 overflow-hidden">
+                <div className="k-scroll relative overflow-x-auto">
+                  <table className={`w-full ${kind === "workflows" ? "min-w-[1180px]" : kind === "templates" ? "min-w-[820px]" : "min-w-[940px]"} text-[13px]`}>
+                    <thead>
+                      <tr className="border-b border-[var(--line-subtle)]">
+                        <th className={`${TH} w-12`}>#</th>
+                        <th className={TH}>{words.title.slice(0, -1)}</th>
+                        {kind === "workflows" && (
+                          <>
+                            <th className={`${TH} w-40`}>LLM</th>
+                            <th className={`${TH} w-40`}>Template</th>
+                          </>
+                        )}
+                        {kind === "templates" && <th className={`${TH} w-44`}>Leg</th>}
+                        {kind !== "workflows" && <th className={`${TH} w-24`}>Status</th>}
+                        {kind === "templates" && <th className={`${TH} w-20 text-right`}>Workflows</th>}
+                        <th className={`${TH} ${kind === "templates" ? "w-28" : "w-36"} text-right`}>Cost {o.unit.replace("/ ", "per ")}</th>
+                        {kind !== "templates" && <th className={`${TH} w-28 text-right`}>Rate</th>}
+                        <th className={`${TH} ${kind === "templates" ? "w-24" : "w-28"} text-right`}>{o.plural}</th>
+                        {kind !== "templates" && (
+                          <>
+                            <th className={`${TH} w-28 text-right`}>Emails</th>
+                            <th className={`${TH} w-28 text-right`}>Invested</th>
+                          </>
+                        )}
+                        <th className={`${TH} w-10`} aria-label={kind === "workflows" ? "Open" : "Status menu"} />
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {rows.length === 0 ? (
+                        <tr>
+                          <td colSpan={10}>
+                            <EmptyNote>No {words.one} has written this pipe&apos;s emails yet.</EmptyNote>
                           </td>
                         </tr>
-                      );
-                    })
-                  )}
-                </tbody>
-              </table>
+                      ) : (
+                        rows.map((r) => {
+                          const href = researchCatalogHref(base, pipe, kind, r.key);
+                          const picked = kind === "templates" && selectedTemplate?.key === r.key;
+                          const modelKeys = kind === "models" ? aliases.get(r.key) ?? [] : [];
+                          const target: ContentTarget | null =
+                            kind === "templates"
+                              ? { kind: "template", key: r.key, label: r.label }
+                              : modelKeys.length
+                                ? { kind: "model", aliases: modelKeys, label: r.label }
+                                : null;
+                          const status =
+                            kind === "templates" ? templateStatuses.map.get(r.key) ?? null : modelStatus(modelKeys, (a) => modelStatuses.map.get(a));
+                          const statusAnswered = kind === "templates" ? templateStatuses.answered : modelStatuses.answered;
+                          return (
+                            <tr
+                              key={r.key}
+                              onClick={() => (kind === "templates" ? setSelected(r.key) : nav(href))}
+                              aria-selected={kind === "templates" ? picked : undefined}
+                              className={`k-row group h-10 cursor-pointer ${picked ? "k-selected" : ""}`}
+                            >
+                              <td className="k-mono k-fg3 pl-4 pr-3 text-[12px] tabular-nums">{r.rank ?? "—"}</td>
+                              <td className="max-w-0 px-3">
+                                <Link href={href} onClick={(e) => e.stopPropagation()} className="block min-w-0 truncate font-medium hover:text-[var(--accent)]" title={rowName(kind, r, channelName)}>
+                                  {rowName(kind, r, channelName)}
+                                </Link>
+                              </td>
+                              {kind === "workflows" && (
+                                <>
+                                  {/* Each cell opens that model's or template's own page; the rest of the row opens the workflow. */}
+                                  <td className="max-w-0 px-3" onClick={(e) => e.stopPropagation()}>
+                                    <RefLink base={base} pipe={pipe} kind="models" r={(r as ResearchWorkflow).model} className="block min-w-0 truncate" />
+                                  </td>
+                                  <td className="max-w-0 px-3" onClick={(e) => e.stopPropagation()}>
+                                    <RefLink base={base} pipe={pipe} kind="templates" r={(r as ResearchWorkflow).template} className="block min-w-0 truncate" />
+                                  </td>
+                                </>
+                              )}
+                              {kind === "templates" && (
+                                <td className="max-w-0 px-3">
+                                  <FirstAndMore
+                                    label="Legs"
+                                    items={templatePipes(catalog, r.key, pipe).map((p) => ({ key: p, body: <LegName pipe={p} /> }))}
+                                  />
+                                </td>
+                              )}
+                              {kind !== "workflows" && (
+                                <td className="px-3">
+                                  <ContentStatusWord status={status} pending={!statusAnswered && (kind === "templates" || modelKeys.length > 0)} />
+                                </td>
+                              )}
+                              {kind === "templates" && <td className="px-3 text-right tabular-nums">{(r as ResearchTemplate).workflows.length}</td>}
+                              <td className="px-3 text-right tabular-nums">
+                                <Money value={r.cost} unit={o.unit} />
+                              </td>
+                              {kind !== "templates" && (
+                                <td className="px-3 text-right tabular-nums">
+                                  <Dash v={r.rate} />
+                                </td>
+                              )}
+                              <td className="px-3 text-right tabular-nums">{r.outcomes}</td>
+                              {kind !== "templates" && (
+                                <>
+                                  <td className="px-3 text-right tabular-nums">{r.emails}</td>
+                                  <td className="px-3 text-right tabular-nums">{r.spend}</td>
+                                </>
+                              )}
+                              <td className="pl-1 pr-4 text-right">
+                                {kind === "workflows" ? (
+                                  <span className="k-btn-ghost inline-flex h-6 w-6 justify-center px-0 opacity-0 group-hover:opacity-100">
+                                    <Chevron />
+                                  </span>
+                                ) : target ? (
+                                  <StatusMenu
+                                    status={status}
+                                    label={r.label}
+                                    onDeprecate={() => writes.askDeprecate(target)}
+                                    onActivate={() => writes.activate(target)}
+                                    deprecateNote={DEPRECATE_CONTENT_NOTE}
+                                    activateNote={ACTIVATE_CONTENT_NOTE}
+                                  />
+                                ) : null}
+                              </td>
+                            </tr>
+                          );
+                        })
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+                <div className="k-fg3 flex items-center gap-3 border-t border-[var(--line-subtle)] px-4 py-2.5 text-[12px] tabular-nums">
+                  <span className="min-w-0 truncate">
+                    {priced} of {rows.length} priced per {o.noun.toLowerCase()}; the rest have not earned one yet and are listed by volume.
+                  </span>
+                  <Link href={researchCatalogHref(base, pipe, other)} className="k-btn-ghost ml-auto h-6 shrink-0 whitespace-nowrap px-1.5 text-[12px]">
+                    See the {KIND_WORD[other].many}
+                  </Link>
+                </div>
+              </div>
+              {kind === "templates" && selectedTemplate && (
+                <TemplateOutputsPanel t={selectedTemplate} href={researchCatalogHref(base, pipe, "templates", selectedTemplate.key)} outcomeNoun={o.noun} />
+              )}
             </div>
-            <div className="k-fg3 flex items-center gap-3 border-t border-[var(--line-subtle)] px-4 py-2.5 text-[12px] tabular-nums">
-              <span className="min-w-0 truncate">
-                {priced} of {rows.length} priced per {o.noun.toLowerCase()}; the rest have not earned one yet and are listed by volume.
-              </span>
-              <Link href={researchCatalogHref(base, pipe, other)} className="k-btn-ghost ml-auto h-6 shrink-0 whitespace-nowrap px-1.5 text-[12px]">
-                See the {KIND_WORD[other].many}
-              </Link>
-            </div>
-          </div>
           )}
+          {writes.modal}
           {!live && <p className="k-fg3 mt-1.5 text-[12px] leading-5">{RESEARCH.maturation.note}</p>}
         </section>
       </div>
