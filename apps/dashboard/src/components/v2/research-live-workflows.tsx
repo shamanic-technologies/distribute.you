@@ -126,8 +126,9 @@ export function ResearchLiveWorkflows({
             ) : (
               rows.map((r) => {
                 const studied = researchedWorkflows.get(r.slug);
-                // What it writes with NOW (its runnable version), each with its own page: features-service's catalogue.
-                const now = studied?.writesWithNow ?? null;
+                // What it writes with NOW (its runnable version); a deprecated workflow has none, so the cells
+                // state what its figures were written with. Both served by features-service's catalogue.
+                const now = studied?.writesWithNow ?? studied?.wroteWith ?? null;
                 const workflowHref = studied
                   ? researchCatalogHref(base, pipe, "workflows", r.slug)
                   : `${brandBase}/workflows/${encodeURIComponent(r.slug)}?pipe=${encodeURIComponent(pipeId)}`;
