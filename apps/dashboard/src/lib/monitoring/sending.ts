@@ -112,6 +112,9 @@ export function latestSenderHealthDay(data: SenderHealth): SenderHealthDay | nul
 // ─── Lifecycle rules (the bars, as data) ───────────────────────────────────
 
 export const LifecycleRulesSchema = z.object({
+  // The rule order (first match decides) and the warmup budget: the Rules page (capacity-rules port).
+  order: z.array(z.object({ rule: z.string(), leadsTo: z.string(), appliesTo: z.string() })),
+  warmup: z.object({ partnersPerDay: z.number(), maxPerDay: z.number(), maxShareOfCap: z.number() }),
   states: z.array(z.object({ status: z.string(), meaning: z.string(), newSends: z.boolean(), campaignDailyLimit: z.number().nullable(), warmupDaily: z.number().nullable() })),
   bars: z.object({ healthEntryBar: z.number(), deliveryPctBar: z.number(), deliveryEvidenceMaxAgeDays: z.number() }),
   ramp: z.object({ floorPerDay: z.number(), growthFactor: z.number(), volumeWindowDays: z.number(), ceiling: z.number(), matureAgeDays: z.number(), statistic: z.string() }),
@@ -151,8 +154,85 @@ const DeliverySchema = z.object({
 });
 export type Delivery = z.infer<typeof DeliverySchema>;
 
+// Entity details (MONITORING-ADMIN-PORT-1019, entity-details): the fields admin's slide-overs show,
+// additive and optional so a read that predates them still parses. Shapes mirror apps/admin/src/lib/api.ts.
+
+/** The EUR -> USD rate instantly-service converted with. Null = no rate on record, every `usd` twin null too. */
+export const FxRateSchema = z.object({ base: z.string(), quote: z.string(), rate: z.number(), asOf: z.string(), source: z.string() });
+export type FxRate = z.infer<typeof FxRateSchema>;
+
+/** What we have paid so far; `source` is the producer's own word for how it knows ("estimate"). */
+export const PaidToDateSchema = z.object({ cents: z.number(), currency: z.string(), source: z.string(), since: z.string().nullable(), months: z.number() });
+export type PaidToDate = z.infer<typeof PaidToDateSchema>;
+
+/** The DNS records the sweep read. The domain row's `dns` is null when the sweep never probed it. */
+export const DnsSchema = z.object({
+  spf: z.object({ present: z.boolean(), allQualifier: z.string().nullable(), includes: z.array(z.string()), raw: z.string().nullable() }),
+  dmarc: z.object({ present: z.boolean(), policy: z.string().nullable(), subdomainPolicy: z.string().nullable(), pct: z.number().nullable(), rua: z.array(z.string()), raw: z.string().nullable() }),
+  dkimSelectors: z.array(z.string()),
+  mx: z.array(z.string()),
+  // Per-record probe errors keyed by record name; `{}` = every probe answered.
+  errors: z.record(z.string(), z.unknown()),
+});
+export type Dns = z.infer<typeof DnsSchema>;
+
+export const DomainCostSchema = z.object({
+  monthlyCents: z.number().nullable(),
+  currency: z.string().nullable(),
+  source: z.string().nullable(),
+  perEmailCents: z.number().nullable(),
+  // Stops billing the moment you cancel.
+  recurringMonthlyCents: z.number().nullable(),
+  // Already paid until `renewalAt`; only avoided then.
+  renewalCents: z.number().nullable(),
+  renewalAt: z.string().nullable(),
+  paidToDate: PaidToDateSchema.nullable(),
+  // The same figures in USD at the response's `fx.rate`; null = no amount or no rate on record.
+  usd: z.object({
+    monthlyCents: z.number().nullable(),
+    perEmailCents: z.number().nullable(),
+    recurringMonthlyCents: z.number().nullable(),
+    renewalCents: z.number().nullable(),
+    paidToDateCents: z.number().nullable(),
+  }),
+});
+export type DomainCost = z.infer<typeof DomainCostSchema>;
+
+export const MailboxCostSchema = z.object({
+  monthlyCents: z.number().nullable(),
+  currency: z.string().nullable(),
+  source: z.string().nullable(),
+  paidToDate: PaidToDateSchema.nullable(),
+});
+
+export const LifecycleTransitionSchema = z.object({
+  fromStatus: z.string().nullable(),
+  toStatus: z.string().nullable(),
+  reason: z.string().nullable(),
+  healthScore: z.number().nullable(),
+  deliveryPct: z.number().nullable(),
+  at: z.string(),
+});
+export type LifecycleTransition = z.infer<typeof LifecycleTransitionSchema>;
+
+/** One provider's pooled seed evidence for an account, with the producer's own verdict. */
+export const ProviderPlacementSchema = z.object({
+  verdict: z.string().nullable(),
+  mostlySpam: z.boolean(),
+  seedTotal: z.number(),
+  inboxCount: z.number(),
+  spamCount: z.number(),
+  inboxPctOfFound: z.number().nullable(),
+  testedAt: z.string().nullable(),
+  testsPooled: z.number(),
+});
+export type ProviderPlacement = z.infer<typeof ProviderPlacementSchema>;
+
+const RampPointSchema = z.object({ date: z.string(), cap: z.number() });
+
 export const OpsDomainsSchema = z.object({
   asOf: z.string(),
+  fx: FxRateSchema.nullable().optional(),
   domains: z.array(
     z.object({
       domain: z.string(),
@@ -166,10 +246,19 @@ export const OpsDomainsSchema = z.object({
       sentLast30d: z.number(),
       volume30d: VolumeSchema,
       delivery: DeliverySchema,
+      autorenew: z.boolean().nullable().optional(),
+      deletionScheduled: z.boolean().nullable().optional(),
+      cancelledAt: z.string().nullable().optional(),
+      purchasedAt: z.string().nullable().optional(),
+      vendorMailboxes: z.number().optional(),
+      // False for a vendor whose inventory never reports mailboxes (Instantly DFY): its 0 means "not reported".
+      vendorReportsMailboxes: z.boolean().optional(),
+      dns: DnsSchema.nullable().optional(),
+      cost: DomainCostSchema.optional(),
     }),
   ),
 });
-export type OpsDomains = z.infer<typeof OpsDomainsSchema>;
+export type OpsDomains =z.infer<typeof OpsDomainsSchema>;
 export type OpsDomainRow = OpsDomains["domains"][number];
 
 export const OpsMailboxesSchema = z.object({
@@ -181,7 +270,16 @@ export const OpsMailboxesSchema = z.object({
       provider: z.string().nullable(),
       poolType: z.string().nullable(),
       absentSince: z.string().nullable(),
-      addresses: z.array(z.object({ email: z.string(), lifecycleStatus: z.string().nullable(), lifecycleReason: z.string().nullable(), dailyLimit: z.number().nullable() })),
+      addresses: z.array(
+        z.object({
+          email: z.string(),
+          lifecycleStatus: z.string().nullable(),
+          lifecycleReason: z.string().nullable(),
+          dailyLimit: z.number().nullable(),
+          sendTransport: z.string().nullable().optional(),
+          absentSince: z.string().nullable().optional(),
+        }),
+      ),
       sustainedDaily: z.number(),
       effectiveDailyCap: z.number().nullable(),
       rampProjection: z.array(z.object({ date: z.string(), cap: z.number() })),
@@ -189,6 +287,15 @@ export const OpsMailboxesSchema = z.object({
       delivery: DeliverySchema,
       evidenceExpiresAt: z.string().nullable(),
       volume7d: VolumeSchema,
+      subscription: z.string().nullable().optional(),
+      credentialSource: z.string().optional(),
+      vendorCreatedAt: z.string().nullable().optional(),
+      vendorPrewarmedAt: z.string().nullable().optional(),
+      importedAt: z.string().nullable().optional(),
+      syncedAt: z.string().nullable().optional(),
+      addressesByLifecycle: z.record(z.string(), z.number()).optional(),
+      volume30d: VolumeSchema.optional(),
+      cost: MailboxCostSchema.nullable().optional(),
     }),
   ),
 });
@@ -212,6 +319,33 @@ export const OpsAddressesSchema = z.object({
       queueSize: z.number(),
       nextSeedTest: z.object({ due: z.boolean(), reason: z.string().nullable(), ageDays: z.number().nullable(), expectedAt: z.string().nullable() }).nullable(),
       volume7d: VolumeSchema,
+      status: z.string().optional(),
+      warmupScore: z.number().nullable().optional(),
+      warmupLimit: z.number().nullable().optional(),
+      blocked: z.boolean().optional(),
+      blockReason: z.string().nullable().optional(),
+      lifecycleUpdatedAt: z.string().nullable().optional(),
+      accountType: z.string().nullable().optional(),
+      fillRank: z.number().nullable().optional(),
+      sendTransport: z.string().nullable().optional(),
+      evidenceExpiresAt: z.string().nullable().optional(),
+      rampProjection: z.array(RampPointSchema).optional(),
+      lifecycleHistory: z.array(LifecycleTransitionSchema).optional(),
+      googlePlacement: ProviderPlacementSchema.nullable().optional(),
+      microsoftPlacement: ProviderPlacementSchema.nullable().optional(),
+      microsoftConsumerPlacement: ProviderPlacementSchema.nullable().optional(),
+      // Queue: `queueSize` partitions into first-unsent + today/overdue + tomorrow + later STEPS;
+      // the *Sequences fields count LEADS, a different grain (never summed with steps).
+      queuedSequences: z.number().optional(),
+      queuedFirstUnsent: z.number().optional(),
+      queuedFirstUnsentSequences: z.number().optional(),
+      queuedFirstDueTodaySequences: z.number().optional(),
+      queuedFirstOverdueSequences: z.number().optional(),
+      newSequencesToday: z.number().optional(),
+      queuedNextToday: z.number().optional(),
+      queuedOverdue: z.number().optional(),
+      queuedNextTomorrow: z.number().optional(),
+      queuedNextLater: z.number().optional(),
     }),
   ),
 });

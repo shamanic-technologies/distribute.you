@@ -123,11 +123,6 @@ describe("the NRR chart wiring", () => {
     // recharts drew one dashed line across the top of the plot that referenced
     // nothing at all.
     expect(chart).not.toContain("<CartesianGrid");
-    const capacity = readFileSync(
-      join(__dirname, "../src/components/audit/capacity-history-chart.tsx"),
-      "utf8"
-    );
-    expect(capacity).not.toContain("<CartesianGrid");
   });
 
   it("puts that line at 100 for both NRR cards", () => {

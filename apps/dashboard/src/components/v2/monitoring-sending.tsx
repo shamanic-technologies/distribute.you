@@ -332,21 +332,50 @@ function ProviderChart({ provider, name, bar }: { provider: InboxProvider; name:
 }
 
 /** Counts per day as bars (mailboxes cut), a day with no check left empty. Draws only. */
-function CountChart({ title, series, note }: { title: string; note: string; series: Array<{ day: string; parts: Array<{ label: string; value: number; color: string }> | null }> }) {
+export function CountChart({
+  title,
+  series,
+  note,
+  now,
+  legend,
+  emptyLabel = "no check",
+}: {
+  title: string;
+  note: string;
+  series: Array<{ day: string; parts: Array<{ label: string; value: number; color: string }> | null }>;
+  /** The served latest figure, shown big under the title (a dash when the latest day is not checked). */
+  now?: string | null;
+  /** Colour key for a stacked chart. */
+  legend?: Array<{ label: string; color: string }>;
+  /** How a day with no check (a null point) reads. */
+  emptyLabel?: string;
+}) {
   const [hover, setHover] = useState<string | null>(null);
   const H = 100;
   // Bar height only: the tallest stack, never a figure shown.
   const max = Math.max(1, ...series.map((s) => (s.parts ?? []).reduce((t, p) => t + p.value, 0)));
   const shown = series.find((s) => s.day === hover) ?? [...series].reverse().find((s) => s.parts !== null) ?? null;
+  const empty = emptyLabel.charAt(0).toUpperCase() + emptyLabel.slice(1);
   return (
     <div className="k-card p-4">
       <div className="flex flex-wrap items-baseline justify-between gap-2">
         <p className="text-[13px] font-medium">{title}</p>
         <span className="k-fg3 text-[12px] tabular-nums">
-          {shown ? `${shortDay(shown.day)} · ${shown.parts ? shown.parts.map((p) => `${p.label} ${n(p.value)}`).join(" · ") : "no check"}` : "No check yet"}
+          {shown ? `${shortDay(shown.day)} · ${shown.parts ? shown.parts.map((p) => `${p.label} ${n(p.value)}`).join(" · ") : emptyLabel}` : `${empty}`}
         </span>
       </div>
+      {now !== undefined && <p className="mt-1 text-[22px] font-medium leading-7 tracking-[-0.02em] tabular-nums">{now ?? <Dash />}</p>}
       <p className="k-fg3 mt-0.5 text-[12px]">{note}</p>
+      {legend && legend.length > 1 && (
+        <p className="mt-1.5 flex flex-wrap gap-x-3 gap-y-1 text-[11px]">
+          {legend.map((l) => (
+            <span key={l.label} className="k-fg3 inline-flex items-center gap-1.5">
+              <span className="h-2 w-2 rounded-[2px]" style={{ background: l.color }} aria-hidden="true" />
+              {l.label}
+            </span>
+          ))}
+        </p>
+      )}
       <div className="mt-3 flex items-end gap-[2px]" style={{ height: H }} onMouseLeave={() => setHover(null)}>
         {series.map((s) => (
           <button

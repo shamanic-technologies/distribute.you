@@ -12342,3 +12342,118 @@ export type RelationshipCompanyStatement = { domain: string } | { name: string }
 export async function setRelationshipCompany(brandId: string, humanId: string, body: RelationshipCompanyStatement): Promise<void> {
   await apiCall<unknown>(`${BRAND_RELATIONSHIPS_PATH(brandId)}/${encodeURIComponent(humanId)}/company`, { method: "PUT", body });
 }
+
+
+// ─── Monitoring > Emails, ported from the admin cold-email pages (blocklists) ───
+import {
+  DomainBlocklistSchema as StaffDomainBlocklistSchema,
+  LeadSourceYieldSchema as StaffLeadSourceYieldSchema,
+  type BlocklistKey as StaffBlocklistKey,
+  type DomainBlocklist as StaffDomainBlocklist,
+  type LeadSourceYield as StaffLeadSourceYield,
+} from "./monitoring/blocklists";
+
+/** instantly-service blocklist + lead-source reads, through api-service's staff passthroughs. */
+export const STAFF_BLOCKLIST_PATHS = {
+  domainBlocklist: "/instantly/ops/domain-blocklist",
+  domainBlocklistCheck: "/instantly/ops/domain-blocklist/check",
+  removalRequests: "/instantly/ops/domain-blocklist/removal-requests",
+  leadSourceYield: "/instantly/ops/lead-source-yield",
+} as const;
+
+/** Every sending domain's state on SURBL, Spamhaus DBL and URIBL, its events and daily series over `days`. */
+export async function getStaffDomainBlocklist(days: number): Promise<StaffDomainBlocklist> {
+  return parseStaff(
+    "getStaffDomainBlocklist",
+    StaffDomainBlocklistSchema,
+    await apiCall<unknown>(`${STAFF_BLOCKLIST_PATHS.domainBlocklist}?days=${days}`),
+  );
+}
+
+/** Runs the daily blocklist check now (writes state + events, alerts on a new listing). */
+export async function runStaffDomainBlocklistCheck(): Promise<void> {
+  await apiCall<unknown>(STAFF_BLOCKLIST_PATHS.domainBlocklistCheck, { method: "POST" });
+}
+
+/** Records a removal request a person filed on the list's own form. */
+export async function recordStaffBlocklistRemovalRequest(input: { domain: string; list: StaffBlocklistKey }): Promise<void> {
+  await apiCall<unknown>(STAFF_BLOCKLIST_PATHS.removalRequests, { method: "POST", body: input });
+}
+
+/** Lead sources ranked by the bounces, refusals and blocklist hits their people produce, over `days`. */
+export async function getStaffLeadSourceYield(days: number): Promise<StaffLeadSourceYield> {
+  return parseStaff(
+    "getStaffLeadSourceYield",
+    StaffLeadSourceYieldSchema,
+    await apiCall<unknown>(`${STAFF_BLOCKLIST_PATHS.leadSourceYield}?days=${days}`),
+  );
+}
+
+// ─── Monitoring > Emails, ported from the admin cold-email pages (capacity-rules) ───
+import {
+  CapacityHistorySchema,
+  OpsInfraSchema,
+  ReconcileSchema,
+  SendForecastSchema,
+  type CapacityHistory,
+  type OpsInfra,
+  type Reconcile,
+  type SendForecast,
+} from "@/lib/monitoring/capacity";
+
+/** Monitoring > Emails > Capacity: instantly-service + features-service staff-only passthroughs. */
+export const CAPACITY_PATHS = {
+  opsInfra: "/instantly/ops/infra",
+  sendForecast: "/features/audit/send-forecast",
+  capacityHistory: "/instantly/audit/capacity-history",
+  reconcile: "/instantly/audit/reconcile",
+} as const;
+
+export async function getStaffOpsInfra(): Promise<OpsInfra> {
+  return parseStaff("getStaffOpsInfra", OpsInfraSchema, await apiCall<unknown>(CAPACITY_PATHS.opsInfra));
+}
+
+/** Created and sent per day (7 past days + the producer's default 14 ahead) and the fleet summary. */
+export async function getStaffSendForecast(): Promise<SendForecast> {
+  return parseStaff("getStaffSendForecast", SendForecastSchema, await apiCall<unknown>(CAPACITY_PATHS.sendForecast));
+}
+
+export async function getStaffCapacityHistory(days: number): Promise<CapacityHistory> {
+  return parseStaff("getStaffCapacityHistory", CapacityHistorySchema, await apiCall<unknown>(`${CAPACITY_PATHS.capacityHistory}?days=${encodeURIComponent(days)}`));
+}
+
+export async function getStaffReconcile(): Promise<Reconcile> {
+  return parseStaff("getStaffReconcile", ReconcileSchema, await apiCall<unknown>(CAPACITY_PATHS.reconcile));
+}
+
+// ─── Monitoring > Emails, ported from the admin cold-email pages (threads) ───
+import { OpsThreadMessagesSchema, OpsThreadsSchema, threadMessagesQuery, type OpsThreadMessages, type OpsThreads } from "@/lib/monitoring/threads";
+
+/** Monitoring > Emails > Threads reads (instantly-service through api-service's staff-only passthroughs). */
+export const THREADS_PATHS = {
+  threads: "/instantly/ops/threads",
+  messages: "/instantly/ops/messages",
+} as const;
+
+/** One page of threads, newest activity first. `query` comes from `threadsQuery` and carries the required `limit`. */
+export async function getStaffOpsThreads(query: string): Promise<OpsThreads> {
+  return parseStaff("getStaffOpsThreads", OpsThreadsSchema, await apiCall<unknown>(`${THREADS_PATHS.threads}?${query}`));
+}
+
+/** Every message of one thread (newest first as served; the panel reads it oldest first). */
+export async function getStaffOpsThreadMessages(threadId: string): Promise<OpsThreadMessages> {
+  return parseStaff("getStaffOpsThreadMessages", OpsThreadMessagesSchema, await apiCall<unknown>(`${THREADS_PATHS.messages}?${threadMessagesQuery(threadId)}`));
+}
+
+// ─── Monitoring > Emails, ported from the admin cold-email pages (entity-details) ───
+import { InfraSpendSchema, type InfraSpend } from "@/lib/monitoring/details";
+
+/** Monitoring > Emails entity details: instantly-service reads through api-service's staff-only passthroughs. */
+export const ENTITY_DETAILS_PATHS = {
+  infraSpend: "/instantly/infra/spend",
+} as const;
+
+/** The estate's monthly run-rate per vendor, its USD total (served) and the 30-day sends. */
+export async function getStaffInfraSpend(): Promise<InfraSpend> {
+  return parseStaff("getStaffInfraSpend", InfraSpendSchema, await apiCall<unknown>(ENTITY_DETAILS_PATHS.infraSpend));
+}
