@@ -22,8 +22,8 @@ import { legFor } from "@/lib/legs";
 import { isProactiveFrom } from "@/lib/outbound-leg-key";
 import { formatUsdAdaptive } from "@/lib/format-number";
 import { Shimmer } from "@/components/v2/ui";
-import { PIPE_KEY, PIPE_ORDER, type ResearchCatalog } from "@/lib/research/research";
-import { modelAliases, statusWord, type ContentTarget } from "@/lib/research/content-status";
+import { PIPE_KEY, PIPE_ORDER } from "@/lib/research/research";
+import { aliasList, statusWord, type ContentTarget } from "@/lib/research/content-status";
 
 /**
  * Staff status of a template, a writer model or a workflow on the Research pages
@@ -61,15 +61,20 @@ export function useDynastyStatuses(featureSlug: string) {
   return { statusOf, answered: q.data !== undefined || q.isFetchedAfterMount };
 }
 
-/** The concrete model id (the Research key) -> the alias a runnable workflow names it by. */
-export function useModelAliases(catalog: ResearchCatalog | null): Map<string, string[]> {
-  return useMemo(() => modelAliases(catalog), [catalog]);
-}
-
 // ─── The status cell ─────────────────────────────────────────────────────────
 
-/** "Active" (green dot) or "Deprecated" (hollow dot); a dash when nothing states one. */
-export function StatusWord({ status, pending = false }: { status: string | null | undefined; pending?: boolean }) {
+/**
+ * "Active" (green dot) or "Deprecated" (hollow dot); `gap` is the plain reason a model has no
+ * status (retired, unknown to chat-service), printed instead of a blank; a dash when nothing states one.
+ */
+export function StatusWord({ status, pending = false, gap = null }: { status: string | null | undefined; pending?: boolean; gap?: string | null }) {
+  if (gap) {
+    return (
+      <span className="k-fg3 block min-w-0 truncate text-[12px]" title={gap}>
+        {gap}
+      </span>
+    );
+  }
   if (pending) return <Shimmer className="inline-block h-3.5 w-16 align-middle" />;
   const word = statusWord(status);
   if (!word) return <span className="k-fg4">{"—"}</span>;
@@ -233,6 +238,11 @@ export function useContentStatusWrites() {
 export const ACTIVATE_CONTENT_NOTE = "Its workflows stay deprecated: set each one active by hand.";
 export const DEPRECATE_CONTENT_NOTE = "Shows every workflow that writes with it, then stops them all.";
 
+/** The menu note for a target: a model served under several aliases names each one the click changes. */
+export function contentNote(t: ContentTarget, note: string): string {
+  return t.kind === "model" && t.aliases.length > 1 ? `Changes ${aliasList(t.aliases)}. ${note}` : note;
+}
+
 /** One workflow's figures on the leg it runs on (the Research live rankings), for the modal. */
 function useFleetFigures(): { byslug: Map<string, { outcomes: number; cost: number | null }>; answered: boolean } {
   const legs = useLegCatalogue();
@@ -352,6 +362,11 @@ export function DeprecateContentModal({ target, onClose }: { target: ContentTarg
                 ? `No running workflow writes with this ${what}. No new workflow can use it once deprecated.`
                 : `${n === 1 ? "This workflow stops" : `These ${n} workflows stop`} for every client. No new workflow can use this ${what}.`}
           </p>
+          {target.kind === "model" && target.aliases.length > 1 && (
+            <p className="mt-2 text-[13px] leading-5">
+              chat-service serves {target.label} under {target.aliases.length} aliases: {aliasList(target.aliases)}. This deprecates each of them.
+            </p>
+          )}
           {preview.isError && preview.data === undefined ? (
             <p role="alert" className="mt-3 text-[13px] text-[var(--data-rose)]">
               We could not list its workflows just now. Close and try again.

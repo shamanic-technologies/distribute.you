@@ -3,7 +3,7 @@
  * the lookups only. Every status is content-generation-service's; this module NAMES it and joins
  * served keys, it never decides one. Alias-free so it carries real unit tests.
  */
-import { PIPE_ORDER, type ResearchCatalog, type ResearchPipe } from "./research";
+import { PIPE_ORDER, type ResearchCatalog, type ResearchModel, type ResearchPipe } from "./research";
 
 /**
  * What a deprecation acts on: a template TYPE, or every model ALIAS a concrete model is served under
@@ -28,24 +28,26 @@ export function statusWord(status: string | null | undefined): "Active" | "Depre
 }
 
 /**
- * The concrete model id Research lists a model under (`glm-5.3`) -> the ALIASES its status is set on
- * (`glm-pro`; one concrete model can be served under two, `deepseek-v4.1-flash` is both
- * `deepseek-flash` and `deepseek-pro` on 2026-10-19), read off what each runnable workflow writes with
- * now (features-service `writesWithNow.model.key` + `modelAlias`). A model no runnable workflow writes
- * with has no alias here, so its row states no status: nothing runs on it to stop.
+ * The ALIASES a model's status is set on, as features-service serves them on its Research row (read
+ * off chat-service's own alias list): `glm-5.3` is `glm-pro`, and one model can be served under two
+ * (`deepseek-v4.1-flash` is `deepseek-flash` and `deepseek-pro`, both acted on). Never guessed from
+ * the workflows: a model no workflow writes with today still has its aliases.
+ * `gap` is the plain sentence a row prints when there is none, so a status is never blank.
  */
-export function modelAliases(catalog: ResearchCatalog | null): Map<string, string[]> {
-  const out = new Map<string, string[]>();
-  if (!catalog) return out;
-  for (const pipe of PIPE_ORDER) {
-    for (const w of catalog[pipe]?.workflows ?? []) {
-      const now = w.writesWithNow;
-      if (!now?.model?.key || !now.modelAlias) continue;
-      const list = out.get(now.model.key) ?? [];
-      if (!list.includes(now.modelAlias)) out.set(now.model.key, [...list, now.modelAlias].sort());
-    }
-  }
-  return out;
+export function modelAliasesOf(m: Pick<ResearchModel, "key" | "aliases" | "aliasesUnavailableReason">): { aliases: string[]; gap: string | null } {
+  if (m.aliases === undefined) return { aliases: [], gap: "Not stated yet" };
+  if (m.aliases.length > 0) return { aliases: m.aliases, gap: null };
+  const reason = m.aliasesUnavailableReason ?? null;
+  if (reason === "no_alias_serves_it") return { aliases: [], gap: "Retired: no alias uses it now" };
+  if (reason === "model_not_in_chat_service") return { aliases: [], gap: "Not served by chat-service" };
+  if (reason === "model_ids_unreadable") return { aliases: [], gap: "chat-service unreadable now" };
+  console.error("[dashboard] research model: no alias and no reason", { key: m.key, reason });
+  return { aliases: [], gap: "No alias stated" };
+}
+
+/** "deepseek-flash and deepseek-pro": the aliases a model write changes, named for the confirm. */
+export function aliasList(aliases: readonly string[]): string {
+  return aliases.length <= 1 ? (aliases[0] ?? "") : `${aliases.slice(0, -1).join(", ")} and ${aliases[aliases.length - 1]}`;
 }
 
 /**

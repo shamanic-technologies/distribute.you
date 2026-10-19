@@ -226,9 +226,21 @@ export interface ResearchTemplate extends ResearchFigures {
 export interface ResearchModel extends ResearchFigures {
   key: string;
   label: string;
+  /**
+   * Every alias chat-service serves this model under NOW, sorted (features-service v0.179.305, read
+   * off chat-service's own alias list): the keys its staff status is set on. Empty when none does,
+   * `aliasesUnavailableReason` saying why. Absent on a catalogue built before it.
+   */
+  aliases?: string[];
+  modelIds?: string[];
+  formerAliases?: string[];
+  aliasesUnavailableReason?: ModelAliasGap | null;
   workflows: { key: string; label: string }[];
   runs: { when: string; workflow: { key: string; label: string } | null; template: ResearchRef | null; version: string | null; tokens: string | null }[];
 }
+
+/** Why a model has no alias now: chat-service unreadable, unknown to it, or retired (no alias resolves to it). */
+export type ModelAliasGap = "model_ids_unreadable" | "model_not_in_chat_service" | "no_alias_serves_it";
 
 export type ResearchCatalog = Record<
   ResearchPipe,

@@ -13,16 +13,16 @@ import { shortWorkflowName } from "@/lib/live-workflow-rows";
 import {
   ACTIVATE_CONTENT_NOTE,
   DEPRECATE_CONTENT_NOTE,
+  contentNote,
   FirstAndMore,
   StatusMenu,
   StatusWord as ContentStatusWord,
   useContentStatusWrites,
-  useModelAliases,
   useModelStatuses,
   useTemplateStatuses,
 } from "@/components/v2/research-status";
 import { TemplateOutputsPanel } from "@/components/v2/research-template-outputs";
-import { modelStatus, templatePipes, type ContentTarget } from "@/lib/research/content-status";
+import { modelAliasesOf, modelStatus, templatePipes, type ContentTarget } from "@/lib/research/content-status";
 import { useResearch, useResearchCatalog, useResearchTexts } from "@/lib/research/research-source";
 import { Arrow, MonthsRow, Row, SectionMark, SectionName, TOPIC_LOOK, TopicMark, dayText, liveText } from "@/components/v2/research-bits";
 import {
@@ -251,10 +251,9 @@ function CatalogList({
   // stays for templates, models, and a pipe whose step starts no entry leg.
   const liveLeg = useResearchPipeLeg(pipe);
   const live = kind === "workflows" && liveLeg != null;
-  // Staff status (TEMPLATE-MODEL-STATUS-1019): templates by type, models by the alias a runnable workflow names them by.
+  // Staff status (TEMPLATE-MODEL-STATUS-1019): templates by type, models by every alias chat-service serves them under (served on the row).
   const templateStatuses = useTemplateStatuses();
   const modelStatuses = useModelStatuses();
-  const aliases = useModelAliases(catalog);
   const writes = useContentStatusWrites();
   // The Templates page's right panel is open from the start, on the first row until a row is picked.
   const [selected, setSelected] = useState<string | null>(null);
@@ -326,7 +325,7 @@ function CatalogList({
                           </>
                         )}
                         {kind === "templates" && <th className={`${TH} w-44`}>Leg</th>}
-                        {kind !== "workflows" && <th className={`${TH} w-24`}>Status</th>}
+                        {kind !== "workflows" && <th className={`${TH} ${kind === "models" ? "w-52" : "w-24"}`}>Status</th>}
                         {kind === "templates" && <th className={`${TH} w-20 text-right`}>Workflows</th>}
                         <th className={`${TH} ${kind === "templates" ? "w-28" : "w-36"} text-right`}>Cost {o.unit.replace("/ ", "per ")}</th>
                         {kind !== "templates" && <th className={`${TH} w-28 text-right`}>Rate</th>}
@@ -351,7 +350,8 @@ function CatalogList({
                         rows.map((r) => {
                           const href = researchCatalogHref(base, pipe, kind, r.key);
                           const picked = kind === "templates" && selectedTemplate?.key === r.key;
-                          const modelKeys = kind === "models" ? aliases.get(r.key) ?? [] : [];
+                          const served = kind === "models" ? modelAliasesOf(r as ResearchModel) : { aliases: [], gap: null };
+                          const modelKeys = served.aliases;
                           const target: ContentTarget | null =
                             kind === "templates"
                               ? { kind: "template", key: r.key, label: r.label }
@@ -394,8 +394,8 @@ function CatalogList({
                                 </td>
                               )}
                               {kind !== "workflows" && (
-                                <td className="px-3">
-                                  <ContentStatusWord status={status} pending={!statusAnswered && (kind === "templates" || modelKeys.length > 0)} />
+                                <td className="max-w-0 px-3">
+                                  <ContentStatusWord status={status} gap={served.gap} pending={!statusAnswered && (kind === "templates" || modelKeys.length > 0)} />
                                 </td>
                               )}
                               {kind === "templates" && <td className="px-3 text-right tabular-nums">{(r as ResearchTemplate).workflows.length}</td>}
@@ -425,8 +425,8 @@ function CatalogList({
                                     label={r.label}
                                     onDeprecate={() => writes.askDeprecate(target)}
                                     onActivate={() => writes.activate(target)}
-                                    deprecateNote={DEPRECATE_CONTENT_NOTE}
-                                    activateNote={ACTIVATE_CONTENT_NOTE}
+                                    deprecateNote={contentNote(target, DEPRECATE_CONTENT_NOTE)}
+                                    activateNote={contentNote(target, ACTIVATE_CONTENT_NOTE)}
                                   />
                                 ) : null}
                               </td>
