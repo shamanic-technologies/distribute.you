@@ -15,7 +15,7 @@ import { HEADLESS_SCANNER_JS } from "@/lib/posthog-replay";
 import { SITE_URL, organizationJsonLd } from "@/lib/seo";
 import { formatReturnMultiple } from "@/lib/landing-format";
 import { reseedFounderCount } from "@/lib/founder-count";
-import { INDEX_LINKS_TOKEN, fetchIndexList, indexLinksHtml } from "@/lib/fleet-indexes";
+import { INDEX_LINKS_TOKEN, fetchIndexDetail, fetchIndexList, indexLinksHtml, type IndexDetail } from "@/lib/fleet-indexes";
 import {
   renderProofSelection,
   renderShowcaseSelection,
@@ -222,24 +222,14 @@ function withCanonicalOrganization(html: string): string {
 // Engaged step in the lead vocabulary, and Hot means someone who wants to buy. Both are first steps of a sales funnel, so the sum
 // is the count of people the fleet actually put in front of a customer.
 //
-// All three figures describe ONE set of brands — those with at least one hot
-// lead AND recorded spend — so the count, the company count and the price can
-// never end up describing different populations.
-//
-// Derived at BUILD time from the per-brand ranked read; no client fetch and no
-// second endpoint. `distribute.you` is in the fleet on purpose: we ran the
+// All figures describe ONE set of brands (at least one engaged lead AND recorded
+// spend), as the engaged-lead index states it: price = index value, count and
+// companies = its inputs. `distribute.you` is in the fleet on purpose: we ran the
 // product on ourselves.
-
-const SALES_COLD_EMAIL_FEATURE_SLUG = "sales-cold-email-outreach";
 
 function resolvePublicApiUrl(): string {
   const base = process.env.API_SERVICE_URL || URLS.api;
   return base.replace(/\/$/, "");
-}
-
-function num(stats: Record<string, number | null>, key: string): number {
-  const value = stats[key];
-  return typeof value === "number" && Number.isFinite(value) ? value : 0;
 }
 
 // A flame beside the count, the way the row it is modelled on marks its own.
@@ -252,12 +242,13 @@ const HOT_LEAD_ROW_TOKEN = "__HOT_LEAD_ROW__";
 // leaving a heading over nothing.
 const HOT_LEAD_BAND_TOKEN = "__HOT_LEAD_BAND__";
 
-// A median over a single brand is that brand's own price, not a fleet figure.
-const MIN_HOT_LEAD_BRANDS = 2;
-
-interface RankedBrandItem {
-  stats: Record<string, number | null>;
-}
+// The hero row and the comparison band state two of the public fleet indexes
+// (owner 2026-10-19: the engaged-lead price "la valeur qu'on donne en haut de la hero"
+// and "le ROI median de nos clients" are indexes). Read from the index, never recomputed
+// here, so the homepage and /indexes/<slug> can never quote two numbers for one figure.
+// features-service owns the population, the 2-client floor and the $100 spend floor.
+export const ENGAGED_LEAD_INDEX_SLUG = "cold-email-cost-per-engaged-lead";
+export const ROI_INDEX_SLUG = "cold-email-roi";
 
 export interface HotLeadStats {
   hotLeads: number;
@@ -265,67 +256,45 @@ export interface HotLeadStats {
   medianCostUsd: number;
 }
 
-/**
- * The fleet's median return on spend, as features-service states it.
- *
- * A SECOND read: the per-brand ranked read the two figures above come from carries
- * spend and outcome counts and no revenue of any kind, so a return cannot be derived
- * from it. features-service answers this one off a persisted snapshot it warms away
- * from the request path — the read is milliseconds, the pass behind it is minutes.
- *
- * `measured: false` is a real answer, not an outage: the fleet has too few brands past
- * the spend floor, or the first snapshot has not landed yet. The producer says which,
- * and either way the stat is DROPPED — a median over a population nobody can stand
- * behind is worse than two figures instead of three.
- */
+/** The fleet's median return on spend, as the ROI index states it today. */
 export interface FleetReturnStats {
   medianReturnPerDollar: number;
   brandCount: number;
 }
 
-// The population the median is taken over. A brand that has barely spent produces a
-// multiple decided by whichever outcome happened to land, so the floor is what makes
-// the figure mean anything — features-service applies it, we only state which one we
-// asked for (owner-set: "la médiane des clients ayant dépensé au moins $100, sinon ça
-// ne veut rien dire").
-const RETURN_MIN_SPEND_USD = 100;
+function latestInputs(detail: IndexDetail): Record<string, unknown> {
+  const point = detail.points.find((p) => p.day === detail.index.day) ?? detail.points[detail.points.length - 1];
+  return ((point as { inputs?: Record<string, unknown> } | undefined)?.inputs ?? {}) as Record<string, unknown>;
+}
+
+function positive(v: unknown): v is number {
+  return typeof v === "number" && Number.isFinite(v) && v > 0;
+}
+
+/**
+ * The engaged-lead index as the hero states it, or null when it cannot be stated:
+ * no value today, or the counts behind it missing (logged, the row is dropped).
+ */
+export function hotLeadStatsFromIndex(detail: IndexDetail | null): HotLeadStats | null {
+  if (!detail || detail.index.value === null) return null;
+  const inputs = latestInputs(detail);
+  if (!positive(inputs.engagedLeads) || !positive(inputs.clients) || !positive(detail.index.value)) {
+    console.error(`[landing] ${ENGAGED_LEAD_INDEX_SLUG} has no usable inputs`, JSON.stringify(inputs));
+    return null;
+  }
+  return { hotLeads: inputs.engagedLeads, companies: inputs.clients, medianCostUsd: detail.index.value };
+}
+
+/** The ROI index as the hero states it; null drops the third stat alone. */
+export function fleetReturnFromIndex(detail: IndexDetail | null): FleetReturnStats | null {
+  if (!detail || !positive(detail.index.value)) return null;
+  const clients = latestInputs(detail).clients;
+  return { medianReturnPerDollar: detail.index.value, brandCount: positive(clients) ? clients : detail.index.outcomes };
+}
 
 // The landing renders while a build waits on it, so every live read is bounded and
 // drops its figure rather than holding the page.
 const FLEET_READ_TIMEOUT_MS = 8_000;
-
-/**
- * Fleet hot-lead proof, or null when it cannot be stated honestly.
- *
- * A brand joins the set only when it has BOTH a hot lead and recorded spend:
- * counting a brand with no spend would pull the median toward a $0 nobody was
- * charged, and stating a company count over a wider set than the price
- * describes would let the two numbers on the row contradict each other.
- */
-export function hotLeadStats(results: RankedBrandItem[]): HotLeadStats | null {
-  const priced = results
-    .map((item) => ({
-      hot: num(item.stats, "recipientsRepliesPositive") + num(item.stats, "recipientsClicked"),
-      costCents: num(item.stats, "totalCostInUsdCents"),
-    }))
-    .filter((brand) => brand.hot > 0 && brand.costCents > 0);
-
-  if (priced.length < MIN_HOT_LEAD_BRANDS) return null;
-
-  const hotLeads = priced.reduce((total, brand) => total + brand.hot, 0);
-  if (hotLeads <= 0) return null;
-
-  const perBrandUsd = priced
-    .map((brand) => brand.costCents / 100 / brand.hot)
-    .sort((a, b) => a - b);
-  const mid = Math.floor(perBrandUsd.length / 2);
-  const medianCostUsd =
-    perBrandUsd.length % 2 === 0
-      ? (perBrandUsd[mid - 1] + perBrandUsd[mid]) / 2
-      : perBrandUsd[mid];
-
-  return { hotLeads, companies: priced.length, medianCostUsd };
-}
 
 /**
  * The row's markup. It lives here rather than in the HTML because the row must
@@ -408,32 +377,6 @@ export function hotLeadBandHtml(
   );
 }
 
-async function fetchHotLeadStats(): Promise<HotLeadStats | null> {
-  const apiUrl = resolvePublicApiUrl();
-  const res = await fetch(
-    `${apiUrl}/v1/public/features/ranked?featureSlug=${encodeURIComponent(
-      SALES_COLD_EMAIL_FEATURE_SLUG,
-    )}&objective=emailsSent&groupBy=brand&limit=200`,
-    { headers: { Accept: "application/json" }, next: { revalidate: 300 } },
-  );
-  if (!res.ok) {
-    throw new Error(
-      `[landing] /v1/public/features/ranked?groupBy=brand failed for ${SALES_COLD_EMAIL_FEATURE_SLUG}: ${res.status}`,
-    );
-  }
-  const data = (await res.json()) as { results: RankedBrandItem[] };
-  return hotLeadStats(data.results ?? []);
-}
-
-/**
- * The fleet's median return on spend, or null when it cannot be stated.
- *
- * `measured: false` carries the producer's own reason and is logged rather than
- * swallowed — "the first snapshot has not landed" and "too few brands past the floor"
- * are different facts, and neither is an error. The response is read defensively for
- * the one thing rendered: a non-finite or non-positive median is refused rather than
- * printed, since `0.0x` on a comparison page would state a result no client got.
- */
 /**
  * The named clients' outcome counts, read at render.
  *
@@ -507,42 +450,6 @@ async function withShowcaseOutcomes(html: string): Promise<string> {
   }
 }
 
-async function fetchFleetReturn(): Promise<FleetReturnStats | null> {
-  const apiUrl = resolvePublicApiUrl();
-  const res = await fetch(
-    `${apiUrl}/v1/public/features/return-on-spend?featureSlug=${encodeURIComponent(
-      SALES_COLD_EMAIL_FEATURE_SLUG,
-    )}&minSpendUsd=${RETURN_MIN_SPEND_USD}`,
-    {
-      headers: { Accept: "application/json" },
-      next: { revalidate: 300 },
-      signal: AbortSignal.timeout(FLEET_READ_TIMEOUT_MS),
-    },
-  );
-  if (!res.ok) {
-    throw new Error(
-      `[landing] /v1/public/features/return-on-spend failed for ${SALES_COLD_EMAIL_FEATURE_SLUG}: ${res.status}`,
-    );
-  }
-  const data = (await res.json()) as {
-    measured?: boolean;
-    reason?: string | null;
-    medianReturnPerDollar?: number | null;
-    brandCount?: number | null;
-  };
-  if (!data.measured) {
-    console.warn(
-      `[landing] fleet return on spend not measurable (${data.reason ?? "no reason given"}), dropping the stat`,
-    );
-    return null;
-  }
-  const median = data.medianReturnPerDollar;
-  const brandCount = data.brandCount;
-  if (typeof median !== "number" || !Number.isFinite(median) || median <= 0) return null;
-  if (typeof brandCount !== "number" || brandCount <= 0) return null;
-  return { medianReturnPerDollar: median, brandCount };
-}
-
 /**
  * How many people have signed up, as client-service counts them.
  *
@@ -608,27 +515,17 @@ async function withHotLeadStats(html: string) {
   const wantsBand = html.includes(HOT_LEAD_BAND_TOKEN);
   if (!wantsRow && !wantsBand) return html;
 
-  let stats: HotLeadStats | null = null;
-  try {
-    stats = await fetchHotLeadStats();
-  } catch (error) {
-    // Build-time prerender must stay shippable (CLAUDE.md "Exception — Vercel
-    // build-time prerender"). Log loud; the row is dropped rather than filled
-    // with a figure nobody measured.
-    console.error("[landing] hot-lead proof row unavailable, dropping it", error);
-  }
-
-  // Both surfaces state the return, from ONE read, so the homepage hero and a
-  // comparison page cannot quote two different medians. Nothing is fetched for a page
-  // that carries neither token, and nothing is fetched when the fleet itself could not
-  // be measured — a return with no hot leads beside it states half a picture.
-  let fleetReturn: FleetReturnStats | null = null;
-  if (stats) {
-    try {
-      fleetReturn = await fetchFleetReturn();
-    } catch (error) {
-      console.error("[landing] fleet return on spend unavailable, dropping the stat", error);
-    }
+  // ONE read per index, shared by both surfaces: the hero and a compare page cannot
+  // quote two medians. A failed read is logged by the reader and drops its figure.
+  const [engaged, roi] = await Promise.all([
+    fetchIndexDetail(ENGAGED_LEAD_INDEX_SLUG),
+    fetchIndexDetail(ROI_INDEX_SLUG),
+  ]);
+  const stats = hotLeadStatsFromIndex(engaged === "not_found" ? null : engaged);
+  // A return with no engaged leads beside it states half a picture.
+  const fleetReturn = stats ? fleetReturnFromIndex(roi === "not_found" ? null : roi) : null;
+  if (engaged === "not_found" || roi === "not_found") {
+    console.error(`[landing] hero index missing: ${ENGAGED_LEAD_INDEX_SLUG}=${engaged === "not_found"} ${ROI_INDEX_SLUG}=${roi === "not_found"}`);
   }
 
   return html
