@@ -91,6 +91,21 @@ export function parseIndexDetail(body: unknown): IndexDetail {
   return { statusRule: parseRule(body), index: parseSummary(b.index as IndexSummary), points: b.points };
 }
 
+/**
+ * Slugs the indexes were first published under (2026-10-18), renamed for search on
+ * 2026-10-19 (owner: "SCEO" read as noise in the URL). An old URL answers a permanent
+ * redirect to its new page once the service no longer knows the old slug, so a link or
+ * a search result already pointing at it keeps its reader and its ranking.
+ */
+export const RENAMED_INDEX_SLUGS: Readonly<Record<string, string>> = {
+  "sceo-cost-per-click": "cold-email-cost-per-click",
+  "sceo-click-rate": "cold-email-click-rate",
+  "sceo-cost-per-interest": "cold-email-cost-per-positive-reply",
+  "sceo-interest-rate": "cold-email-positive-reply-rate",
+  "sceo-cost-per-meeting": "cold-email-cost-per-meeting",
+  "sceo-meeting-rate": "cold-email-meeting-rate",
+};
+
 // ---------------------------------------------------------------------------
 // Reading through the gateway
 // ---------------------------------------------------------------------------

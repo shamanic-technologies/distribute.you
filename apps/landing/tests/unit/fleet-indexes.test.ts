@@ -5,6 +5,7 @@ import { describe, expect, it } from "vitest";
 
 import {
   INDEX_LINKS_TOKEN,
+  RENAMED_INDEX_SLUGS,
   formatIndexValue,
   indexLinksHtml,
   parseIndexDetail,
@@ -30,8 +31,8 @@ const RULE = { signalMinOutcomes: 10, robustMinOutcomes: 30 };
 
 function summary(over: Partial<IndexSummary> = {}): IndexSummary {
   return {
-    slug: "sceo-cost-per-click",
-    name: "SCEO Cost Per Click Index",
+    slug: "cold-email-cost-per-click",
+    name: "Distribute.you Cost Per Click Index",
     channelSlug: "sales-cold-email-outreach",
     channelName: "Sales Cold Email Outreach",
     outcome: "website_visit",
@@ -58,7 +59,7 @@ function point(day: string, value: number | null, over: Partial<IndexPoint> = {}
 
 const LIST: IndexList = {
   statusRule: RULE,
-  indexes: [summary(), summary({ slug: "sceo-click-rate", name: "SCEO Click Rate Index", unit: "percent", value: 2.0812, valuePer: "of people emailed" })],
+  indexes: [summary(), summary({ slug: "cold-email-click-rate", name: "Distribute.you Click Rate Index", unit: "percent", value: 2.0812, valuePer: "of people emailed" })],
 };
 
 describe("values are formatted, never shown raw", () => {
@@ -70,7 +71,7 @@ describe("values are formatted, never shown raw", () => {
 
   it("a null value reads as a sentence, never $0 or NaN", () => {
     const html = renderIndexPage(
-      "sceo-cost-per-meeting",
+      "cold-email-cost-per-meeting",
       { statusRule: RULE, index: summary({ value: null, status: "noise", unavailableReason: "no_mature_workflow", day: null }), points: [] },
       LIST,
     );
@@ -126,7 +127,7 @@ describe("the chart grows from one day", () => {
 
 describe("the pages", () => {
   const detail: IndexDetail = { statusRule: RULE, index: summary(), points: [point("2026-10-18", 4.3512)] };
-  const page = renderIndexPage("sceo-cost-per-click", detail, LIST);
+  const page = renderIndexPage("cold-email-cost-per-click", detail, LIST);
 
   it("the hero is the index: value, unit, status, chart", () => {
     const hero = page.slice(page.indexOf('class="ix-hero"'), page.indexOf('id="measures"'));
@@ -144,7 +145,7 @@ describe("the pages", () => {
   });
 
   it("links every other index, and ends on the usual CTA", () => {
-    expect(page).toContain('href="/indexes/sceo-click-rate"');
+    expect(page).toContain('href="/indexes/cold-email-click-rate"');
     expect(page).toContain("cta-box");
   });
 
@@ -155,14 +156,14 @@ describe("the pages", () => {
 
   it("the list links every served index with its value", () => {
     const list = renderIndexListPage(LIST, new Map());
-    expect(list).toContain('href="/indexes/sceo-cost-per-click"');
+    expect(list).toContain('href="/indexes/cold-email-cost-per-click"');
     expect(list).toContain("$4.35");
     expect(list).toContain("2.08%");
   });
 
   it("a failed read says so", () => {
     expect(renderIndexListPage(null, new Map())).toContain("could not be read just now");
-    expect(renderIndexPage("sceo-x", null, null)).toContain("could not be read just now");
+    expect(renderIndexPage("cold-email-x", null, null)).toContain("could not be read just now");
   });
 
   it("no em dash, never an agency", () => {
@@ -183,7 +184,7 @@ describe("the footer links every index on all three footers", () => {
 
   it("the slot fills from the served list, and stays empty on a failed read", () => {
     expect(indexLinksHtml(LIST)).toBe(
-      '<li><a href="/indexes/sceo-cost-per-click">SCEO Cost Per Click Index</a></li><li><a href="/indexes/sceo-click-rate">SCEO Click Rate Index</a></li>',
+      '<li><a href="/indexes/cold-email-cost-per-click">Distribute.you Cost Per Click Index</a></li><li><a href="/indexes/cold-email-click-rate">Distribute.you Click Rate Index</a></li>',
     );
     expect(indexLinksHtml(null)).toBe("");
   });
@@ -192,5 +193,19 @@ describe("the footer links every index on all three footers", () => {
     const src = read("src/components/footer.tsx");
     expect(src).toContain("fetchIndexList(");
     expect(src).toContain('title="Indexes"');
+  });
+});
+
+describe("the first slugs redirect to their renamed pages (2026-10-19)", () => {
+  it("each old slug points at a cold-email slug, permanently, only once the service forgot it", () => {
+    for (const [from, to] of Object.entries(RENAMED_INDEX_SLUGS)) {
+      expect(from).toMatch(/^sceo-/);
+      expect(to).toMatch(/^cold-email-[a-z-]+$/);
+    }
+    const src = read("src/app/indexes/[slug]/route.ts");
+    const branch = src.slice(src.indexOf('if (detail === "not_found")'), src.indexOf("return renderedResponse(renderIndexPage"));
+    expect(branch).toContain("RENAMED_INDEX_SLUGS[slug]");
+    expect(branch).toContain("status: 301");
+    expect(branch).toContain("Location: `/indexes/${renamed}`");
   });
 });

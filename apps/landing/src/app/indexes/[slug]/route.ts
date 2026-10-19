@@ -1,6 +1,7 @@
+import { NextResponse } from "next/server";
 import { renderedResponse } from "@/lib/static-html";
 import { renderNotFoundPage } from "@/lib/pages/not-found";
-import { INDEX_REVALIDATE_SECONDS, fetchIndexDetail, fetchIndexList } from "@/lib/fleet-indexes";
+import { INDEX_REVALIDATE_SECONDS, RENAMED_INDEX_SLUGS, fetchIndexDetail, fetchIndexList } from "@/lib/fleet-indexes";
 import { renderIndexPage } from "@/lib/pages/indexes";
 
 // Literal (Next reads it statically); equals INDEX_REVALIDATE_SECONDS.
@@ -10,7 +11,8 @@ export const dynamicParams = true;
 /**
  * One page per fleet index the service serves (no hard-coded list: a new slug gets its
  * page the day it is served). An unknown slug is the ordinary 404; a failed read
- * renders the page's "could not be read" state, cached for a minute only.
+ * renders the page's "could not be read" state, cached for a minute only. A slug the
+ * service renamed answers a 301 to its new page.
  */
 export async function GET(request: Request, context: { params: Promise<{ slug: string }> }) {
   const { slug } = await context.params;
@@ -19,6 +21,9 @@ export async function GET(request: Request, context: { params: Promise<{ slug: s
   }
   const [detail, list] = await Promise.all([fetchIndexDetail(slug), fetchIndexList()]);
   if (detail === "not_found") {
+    // A renamed index: permanent redirect, relative Location (request.url is the bind address).
+    const renamed = RENAMED_INDEX_SLUGS[slug];
+    if (renamed) return new NextResponse(null, { status: 301, headers: { Location: `/indexes/${renamed}` } });
     return renderedResponse(renderNotFoundPage(), request, { status: 404, canonicalPath: "/404" });
   }
   return renderedResponse(renderIndexPage(slug, detail, list), request, {
