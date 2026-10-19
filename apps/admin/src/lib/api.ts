@@ -5630,6 +5630,83 @@ export async function getLeadSourceYield(days: number, token?: string): Promise<
   );
 }
 
+// --- Deliverability monitors (seed placement + sender health) ---------------
+// instantly-service SENDER-HEALTH-1019 (#1222), gateway api-service
+// `/v1/instantly/ops/{seed-placement/daily,sender-health}`. Both are the producer's
+// STORED daily series: the page draws them and computes no figure.
+
+const SeedPlacementCellSchema = z.object({
+  seeds: z.number(),
+  inbox: z.number(),
+  spam: z.number(),
+  missing: z.number(),
+  inboxPct: z.number().nullable(),
+  spamPct: z.number().nullable(),
+});
+const SeedPlacementDaySchema = z.object({
+  day: z.string(),
+  google: SeedPlacementCellSchema,
+  microsoft: SeedPlacementCellSchema,
+  microsoftConsumer: SeedPlacementCellSchema,
+});
+const SeedPlacementDailySchema = z.object({
+  asOf: z.string(),
+  from: z.string(),
+  to: z.string(),
+  days: z.array(SeedPlacementDaySchema),
+});
+export type SeedPlacementDaily = z.infer<typeof SeedPlacementDailySchema>;
+export type SeedPlacementProvider = "google" | "microsoft" | "microsoftConsumer";
+
+export const SEED_PLACEMENT_DAILY_PATH = "/instantly/ops/seed-placement/daily";
+
+/** Seed inbox % per day at Google, Microsoft 365 and Outlook.com (each measured apart). */
+export async function getSeedPlacementDaily(days: number, token?: string): Promise<SeedPlacementDaily> {
+  return parseOps(
+    "getSeedPlacementDaily",
+    SeedPlacementDailySchema,
+    await apiCall<unknown>(`${SEED_PLACEMENT_DAILY_PATH}?days=${days}`, { token }),
+  );
+}
+
+const SenderHealthDaySchema = z.object({
+  day: z.string(),
+  // A day with no dispatch tick is null, never 0.
+  refusedMailboxes: z.number().nullable(),
+  mostlySpamMailboxes: z
+    .object({ google: z.number(), microsoft: z.number(), microsoft_consumer: z.number() })
+    .nullable(),
+  heldPlacement: z.number().nullable(),
+  heldMostlySpam: z.number().nullable(),
+  skippedRefused: z.number().nullable(),
+});
+const SenderHealthSchema = z.object({
+  asOf: z.string(),
+  from: z.string(),
+  to: z.string(),
+  current: z
+    .object({
+      day: z.string(),
+      updatedAt: z.string(),
+      refused: z.array(z.string()),
+      mostlySpam: z.object({
+        google: z.array(z.string()),
+        microsoft: z.array(z.string()),
+        microsoft_consumer: z.array(z.string()),
+      }),
+    })
+    .nullable(),
+  days: z.array(SenderHealthDaySchema),
+});
+export type SenderHealth = z.infer<typeof SenderHealthSchema>;
+
+export const SENDER_HEALTH_PATH = "/instantly/ops/sender-health";
+
+/** Mailboxes kept out of prospect mail per day, and why (refused, or mostly spam at a provider). */
+export async function getSenderHealth(days: number, token?: string): Promise<SenderHealth> {
+  return parseOps("getSenderHealth", SenderHealthSchema, await apiCall<unknown>(`${SENDER_HEALTH_PATH}?days=${days}`, { token }));
+}
+
 // --- Mailboxes --------------------------------------------------------------
 
 const OpsMailboxAddressSchema = z.object({

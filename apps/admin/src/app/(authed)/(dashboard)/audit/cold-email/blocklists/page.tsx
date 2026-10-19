@@ -17,6 +17,7 @@ import { pollOptionsSlower } from "@/lib/query-options";
 import { PageHeader, Section, num, utc, utcDay } from "@/components/cold-email/primitives";
 import { BlocklistDailyChart, type DailyPoint } from "@/components/audit/blocklist-daily-chart";
 import { LeadSourceYieldSection } from "@/components/audit/lead-source-yield-section";
+import { DeliverabilityMonitorsSection } from "@/components/audit/deliverability-monitors-section";
 
 /**
  * Cold email — Blocklists.
@@ -294,6 +295,8 @@ export default function BlocklistsPage() {
               <BlocklistDailyChart key={c.title} title={c.title} now={c.now} data={c.data} keys={c.keys} />
             ))}
           </div>
+
+          <DeliverabilityMonitorsSection days={days} />
 
           <LeadSourceYieldSection days={days} />
 
