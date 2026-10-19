@@ -16,7 +16,7 @@ import {
   type IndexPoint,
   type IndexSummary,
 } from "../../src/lib/fleet-indexes";
-import { chartDomain, chartHtml, historyTableHtml, renderIndexListPage, renderIndexPage, ribbonHtml } from "../../src/lib/pages/indexes";
+import { basisLegendHtml, chartDomain, chartHtml, historyTableHtml, renderIndexListPage, renderIndexPage, ribbonHtml } from "../../src/lib/pages/indexes";
 import { footer } from "../../src/lib/v2-shell";
 
 /**
@@ -237,5 +237,46 @@ describe("an index page is built to be found (2026-10-19)", () => {
     expect(dataset).toMatchObject({ datePublished: "2026-10-18", dateModified: "2026-10-19", temporalCoverage: "2026-10-18/2026-10-19" });
     expect(dataset.includedInDataCatalog.url).toBe("https://distribute.you/indexes");
     expect(dataset.keywords).toContain("cold email");
+  });
+});
+
+describe("rebuilt days read apart from the days we published live (INDEX-HISTORY-BACKFILL-1019)", () => {
+  const rule = { recorded: "Recorded live that day.", recomputed: "Rebuilt later as of that day." };
+  const pts: IndexPoint[] = [
+    ...Array.from({ length: 40 }, (_, k) => point(`2026-09-${String(k < 30 ? k + 1 : 30).padStart(2, "0")}`, 5 + k / 10, { basis: "recomputed" })).slice(0, 30),
+    ...Array.from({ length: 17 }, (_, k) => point(`2026-10-${String(k + 1).padStart(2, "0")}`, 5, { basis: "recomputed" })),
+    point("2026-10-18", 4.1, { basis: "recorded" }),
+    point("2026-10-19", 4.3, { basis: "recorded" }),
+  ];
+  const detail = parseIndexDetail({ statusRule: RULE, index: summary({ day: "2026-10-19" }), points: pts, basisRule: rule });
+  const page = renderIndexPage("cold-email-cost-per-click", detail, LIST);
+
+  it("the served rule is read, an unknown basis refused", () => {
+    expect(detail.basisRule).toEqual(rule);
+    expect(() => parseIndexDetail({ statusRule: RULE, index: summary(), points: [point("2026-10-18", 1, { basis: "guess" as never })] })).toThrow();
+  });
+
+  it("rebuilt days are a dashed line with no dots, labelled in the service's words", () => {
+    const chart = chartHtml(detail.points, "usd", "x");
+    expect(chart.match(/class="ix-line ix-line-re"/g)).toHaveLength(1);
+    expect(chart.match(/class="ix-pt/g)).toHaveLength(2);
+    expect(page).toContain(rule.recomputed);
+    expect(basisLegendHtml([point("2026-10-18", 1, { basis: "recorded" })], rule)).toBe("");
+  });
+
+  it("the ribbon counts live days and names the rebuilt ones", () => {
+    expect(ribbonHtml(detail.points)).toContain("Published every day since Oct 18, 2026. 47 earlier days rebuilt, back to Sep 1, 2026.");
+  });
+
+  it("the table keeps a month in view and folds the rest, sources marked", () => {
+    const table = page.slice(page.indexOf('id="history"'), page.indexOf('id="why"'));
+    expect(table).toContain("<summary>19 earlier days</summary>");
+    expect(table).toContain("<td>Recorded live</td>");
+    expect(table).toContain("<td>Rebuilt later</td>");
+  });
+
+  it("the dataset is published from its first live day", () => {
+    const ds = [...page.matchAll(/<script type="application\/ld\+json">(.*?)<\/script>/g)].map((m) => JSON.parse(m[1])).find((n) => n["@type"] === "Dataset");
+    expect(ds).toMatchObject({ datePublished: "2026-10-18", temporalCoverage: "2026-09-01/2026-10-19" });
   });
 });

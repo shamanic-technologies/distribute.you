@@ -44,10 +44,16 @@ export type IndexPoint = {
   contacted: number | null;
   workflowDynastyName: string | null;
   unavailableReason: string | null;
+  /** `recorded` = written live that day; `recomputed` = rebuilt later as of that day (the 2026-10-19 backfill). */
+  basis?: IndexBasis;
 };
 
+export type IndexBasis = "recorded" | "recomputed";
+/** One served sentence per basis, for the label beside the curve. */
+export type BasisRule = Record<IndexBasis, string>;
+
 export type IndexList = { statusRule: StatusRule; indexes: IndexSummary[] };
-export type IndexDetail = { statusRule: StatusRule; index: IndexSummary; points: IndexPoint[] };
+export type IndexDetail = { statusRule: StatusRule; index: IndexSummary; points: IndexPoint[]; basisRule?: BasisRule };
 
 const STATUSES: readonly IndexStatus[] = ["robust", "signal", "noise"];
 
@@ -87,8 +93,15 @@ export function parseIndexDetail(body: unknown): IndexDetail {
     if (typeof p?.day !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(p.day)) throw new Error(`point day ${JSON.stringify(p?.day)}`);
     if (p.value !== null && !isNum(p.value)) throw new Error(`point ${p.day} has value ${JSON.stringify(p.value)}`);
     if (!STATUSES.includes(p.status)) throw new Error(`point ${p.day} has status ${JSON.stringify(p.status)}`);
+    if (p.basis !== undefined && p.basis !== "recorded" && p.basis !== "recomputed") {
+      throw new Error(`point ${p.day} has basis ${JSON.stringify(p.basis)}`);
+    }
   }
-  return { statusRule: parseRule(body), index: parseSummary(b.index as IndexSummary), points: b.points };
+  const rule = (body as { basisRule?: BasisRule }).basisRule;
+  if (rule !== undefined && (typeof rule?.recorded !== "string" || typeof rule?.recomputed !== "string")) {
+    throw new Error(`basisRule is ${JSON.stringify(rule)}`);
+  }
+  return { statusRule: parseRule(body), index: parseSummary(b.index as IndexSummary), points: b.points, ...(rule ? { basisRule: rule } : {}) };
 }
 
 /**
