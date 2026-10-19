@@ -115,6 +115,7 @@ import { EconomicsMaturitySchema, RoiHistorySchema, ScopeMaturitySchema, parseFe
 import { maturityPairSchema, type MaturityPair } from "./maturity";
 import type { EconomicsFigures, OutcomeFigures, ScopeMaturity } from "./revenue-view";
 import { LeadHistorySchema, type LeadHistory } from "./lead-history";
+import { WrittenBySchema, type WrittenBy } from "./written-by";
 import { withAverageCampaignRelevanceScores } from "./outlet-relevance";
 import { measuredProjectionRows } from "./workflow-projection-measured";
 import {
@@ -8225,6 +8226,21 @@ export async function getLeadTimeline(
   if (!parsed.success) {
     console.error("[dashboard] getLeadTimeline: response shape mismatch", { issues: parsed.error.issues, raw });
     throw new Error("[dashboard] getLeadTimeline: invalid response shape");
+  }
+  return parsed.data;
+}
+
+/**
+ * Who wrote the messages we sent to one person, and how (owner 2026-10-19, WRITTEN-BY-1019):
+ * features-service `GET /orgs/leads/:leadId/written-by` through the gateway. `leadId` is
+ * lead-service's lead id (never the `leads_campaigns` row id). See `lib/written-by.ts`.
+ */
+export async function getLeadWrittenBy(leadId: string, token?: string): Promise<WrittenBy> {
+  const raw = await apiCall<unknown>(`/features/orgs/leads/${encodeURIComponent(leadId)}/written-by`, { token });
+  const parsed = WrittenBySchema.safeParse(raw);
+  if (!parsed.success) {
+    console.error("[dashboard] getLeadWrittenBy: response shape mismatch", { issues: parsed.error.issues, raw });
+    throw new Error("[dashboard] getLeadWrittenBy: invalid response shape");
   }
   return parsed.data;
 }
