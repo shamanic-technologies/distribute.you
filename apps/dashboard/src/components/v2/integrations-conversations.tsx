@@ -903,7 +903,7 @@ function Message({
           ·{!outbound && <SourceLogo mark={mark} size={12} />}
           {meta}
         </span>
-        <span className="ml-auto flex min-w-0 flex-wrap items-center justify-end gap-1.5">
+        <span className="ml-auto flex min-w-0 max-w-full items-center justify-end gap-1.5">
           <TagChip tag={tag} />
           {written}
         </span>

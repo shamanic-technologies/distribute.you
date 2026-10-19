@@ -96,7 +96,7 @@ function TimelineRows({ timeline, writtenBy }: { timeline: ConversationTimeline;
   return (
     <ol>
       {items.map((it) => (
-        <li key={it.id} className="k-line-subtle flex min-w-0 items-center gap-2 border-b px-4 py-2.5 text-[12px] last:border-b-0">
+        <li key={it.id} className="k-line-subtle flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1 border-b px-4 py-2.5 text-[12px] last:border-b-0">
           <TagChip tag={conversationItemTag(it.label)} />
           {/* Beside the label, on the fact's own id; only an email of ours (not a bounce) falls back to its campaign entry. */}
           <WrittenWithTags

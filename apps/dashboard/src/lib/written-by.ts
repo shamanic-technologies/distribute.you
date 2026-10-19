@@ -141,35 +141,52 @@ export function writtenWithTags(shown: WrittenByShown | null): {
 
 /** A model as a tag: the PRODUCT's logo (Claude, not Anthropic) and its name without the family word. */
 export interface ModelTag {
-  /** "Opus 5.5" where the logo already says the product (Claude); the served name verbatim otherwise. */
+  /** "Opus 5.5" beside Claude's mark, "3 Flash" beside Gemini's; the served name verbatim otherwise. */
   label: string;
   /** The served public name, whole ("Claude Opus 5.5"), for the hover. */
   name: string;
-  /** For `ProviderLogo`; null = no logo, never a guessed one. */
-  logoDomain: string | null;
+  /** The product mark we ship (`public/model-logos`); null = no logo, never a guessed one. */
+  logoSrc: string | null;
 }
 
 /**
- * The model family each vendor serves and the site whose logo stands for it: the PRODUCT's where
- * one exists (claude.ai draws Claude's mark, anthropic.com the company's). `family` is set only
- * where that logo says the family, so the name drops the word; a company logo (Google's G beside
- * Gemini) keeps the whole name. A display lookup on chat-service's vendor id.
+ * Each vendor's model family and its PRODUCT mark (Claude's starburst, Gemini's sparkle, never the
+ * company's logo), shipped as files: logo.dev only knows company sites. The mark says the family,
+ * so the label drops the word. A display lookup on chat-service's vendor id.
  */
-const MODEL_FAMILIES: Readonly<Record<string, { family: string | null; logoDomain: string }>> = {
-  anthropic: { family: "Claude", logoDomain: "claude.ai" },
-  google: { family: null, logoDomain: "google.com" },
-  openai: { family: null, logoDomain: "chatgpt.com" },
-  deepseek: { family: null, logoDomain: "deepseek.com" },
-  zai: { family: null, logoDomain: "z.ai" },
-  moonshot: { family: null, logoDomain: "kimi.com" },
-  mistral: { family: null, logoDomain: "mistral.ai" },
-  xai: { family: null, logoDomain: "x.ai" },
+const MODEL_FAMILIES: Readonly<Record<string, { family: string; logo: string }>> = {
+  anthropic: { family: "Claude", logo: "claude" },
+  google: { family: "Gemini", logo: "gemini" },
+  openai: { family: "GPT", logo: "openai" },
+  deepseek: { family: "DeepSeek", logo: "deepseek" },
+  zai: { family: "GLM", logo: "glm" },
+  moonshot: { family: "Kimi", logo: "kimi" },
+  mistral: { family: "Mistral", logo: "mistral" },
+  xai: { family: "Grok", logo: "grok" },
 };
 
 export function modelTag(model: { name: string; vendor: { id: string } }): ModelTag {
   const known = MODEL_FAMILIES[model.vendor.id];
-  if (!known) return { label: model.name, name: model.name, logoDomain: null };
-  const prefix = known.family ? `${known.family} ` : null;
-  const label = prefix && model.name.startsWith(prefix) ? model.name.slice(prefix.length) : model.name;
-  return { label, name: model.name, logoDomain: known.logoDomain };
+  if (!known) return { label: model.name, name: model.name, logoSrc: null };
+  const prefix = `${known.family} `;
+  const label = model.name.startsWith(prefix) ? model.name.slice(prefix.length) : model.name;
+  return { label, name: model.name, logoSrc: `/model-logos/${known.logo}.svg` };
+}
+
+/** Every product mark the lookup names, for the test that each file ships. */
+export function modelLogoFiles(): string[] {
+  return Object.values(MODEL_FAMILIES).map((f) => `${f.logo}.svg`);
+}
+
+/**
+ * How many tags fit a width (owner 2026-10-19): all of them, else as many as fit beside a "+N more"
+ * chip, never fewer than the first. Widths in px, measured off the rendered chips; pure.
+ */
+export function tagsThatFit(available: number, label: number, chips: readonly number[], more: number, gap: number): number {
+  const n = chips.length;
+  const used = (k: number) => label + chips.slice(0, k).reduce((a, w) => a + w + gap, 0);
+  if (used(n) <= available) return n;
+  let k = 1;
+  while (k + 1 < n && used(k + 1) + gap + more <= available) k += 1;
+  return k;
 }
