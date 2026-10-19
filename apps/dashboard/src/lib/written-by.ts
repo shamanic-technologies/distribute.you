@@ -1,11 +1,10 @@
 /**
- * WHO WROTE A MESSAGE WE SENT, AND HOW (owner 2026-10-19, WRITTEN-BY-1019).
+ * WHAT A MESSAGE WE SENT WAS WRITTEN WITH (owner 2026-10-19, WRITTEN-BY-1019).
  *
- * A client read one of his cold emails and asked why it never named his company: it came
- * from a version we were testing. So every message we sent on a client's behalf states the
- * LLM that wrote it (vendor logo + public name) and the plain client lines of the tactics
- * the writing version follows, marked "Under test" while that version is still being tested.
- * Never a workflow name or id, never a cost.
+ * We take responsibility for our messages: every one is written BY Distribute, WITH a model and
+ * tactics. So beside a message's label ("Initial email") sit discreet tags: the model (its
+ * product logo + name, "Opus 5.5") and each tactic's NAME ("Blind angle"), its client line
+ * on hover. Never a workflow name or id, never a cost, no "under test" mark, no block.
  *
  * features-service `GET /orgs/leads/:leadId/written-by` (gateway
  * `/v1/features/orgs/leads/{leadId}/written-by`), two lists:
@@ -35,7 +34,8 @@ export const WrittenByEntrySchema = z
       .passthrough()
       .nullable(),
     modelUnavailableReason: z.string().nullable(),
-    tactics: z.array(z.object({ line: z.string() }).passthrough()),
+    // `name` = the tactic's catalogue name, the tag's text (features-service, additive).
+    tactics: z.array(z.object({ line: z.string(), name: z.string().nullish() }).passthrough()),
     tacticsUnavailableReason: z.string().nullable(),
     underTest: z.boolean().nullable(),
     underTestUnavailableReason: z.string().nullable(),
@@ -75,8 +75,8 @@ export const WrittenBySchema = z
 export type WrittenByEntry = z.infer<typeof WrittenByEntrySchema>;
 export type WrittenByMessage = z.infer<typeof WrittenByMessageSchema>;
 export type WrittenBy = z.infer<typeof WrittenBySchema>;
-/** What a line shows, whichever list answered: the model, the tactic lines, the under-test mark. */
-export type WrittenByShown = Pick<WrittenByEntry, "model" | "tactics" | "underTest">;
+/** What the tags show, whichever list answered: the model and the tactics. */
+export type WrittenByShown = Pick<WrittenByEntry, "model" | "tactics">;
 
 /**
  * The entry that wrote one sent message: same campaign, written at or before the message,
@@ -128,26 +128,48 @@ export function writtenMessageId(item: {
   return item.outreachFact?.subjectKey ?? item.ref?.factId ?? null;
 }
 
-/** True when an entry has something to show: a model, a tactic line, or the under-test mark. */
-export function hasWrittenBy<T extends WrittenByShown>(entry: T | null): entry is T {
-  return entry !== null && (entry.model !== null || entry.tactics.length > 0 || entry.underTest === true);
+/** The tags one message shows: its model, then each named tactic. Null = no tag at all. */
+export function writtenWithTags(shown: WrittenByShown | null): {
+  model: ModelTag | null;
+  tactics: { name: string; line: string }[];
+} | null {
+  if (!shown) return null;
+  const model = shown.model ? modelTag(shown.model) : null;
+  const tactics = shown.tactics.flatMap((t) => (t.name ? [{ name: t.name, line: t.line }] : []));
+  return model || tactics.length > 0 ? { model, tactics } : null;
+}
+
+/** A model as a tag: the PRODUCT's logo (Claude, not Anthropic) and its name without the family word. */
+export interface ModelTag {
+  /** "Opus 5.5" where the logo already says the product (Claude); the served name verbatim otherwise. */
+  label: string;
+  /** The served public name, whole ("Claude Opus 5.5"), for the hover. */
+  name: string;
+  /** For `ProviderLogo`; null = no logo, never a guessed one. */
+  logoDomain: string | null;
 }
 
 /**
- * The vendor's site, for its logo (`ProviderLogo`). A display lookup on chat-service's vendor
- * id; an id this build does not know draws no logo, never a guessed one.
+ * The model family each vendor serves and the site whose logo stands for it: the PRODUCT's where
+ * one exists (claude.ai draws Claude's mark, anthropic.com the company's). `family` is set only
+ * where that logo says the family, so the name drops the word; a company logo (Google's G beside
+ * Gemini) keeps the whole name. A display lookup on chat-service's vendor id.
  */
-const VENDOR_DOMAINS: Readonly<Record<string, string>> = {
-  anthropic: "anthropic.com",
-  google: "google.com",
-  openai: "openai.com",
-  deepseek: "deepseek.com",
-  zai: "z.ai",
-  moonshot: "moonshot.ai",
-  mistral: "mistral.ai",
-  xai: "x.ai",
+const MODEL_FAMILIES: Readonly<Record<string, { family: string | null; logoDomain: string }>> = {
+  anthropic: { family: "Claude", logoDomain: "claude.ai" },
+  google: { family: null, logoDomain: "google.com" },
+  openai: { family: null, logoDomain: "chatgpt.com" },
+  deepseek: { family: null, logoDomain: "deepseek.com" },
+  zai: { family: null, logoDomain: "z.ai" },
+  moonshot: { family: null, logoDomain: "kimi.com" },
+  mistral: { family: null, logoDomain: "mistral.ai" },
+  xai: { family: null, logoDomain: "x.ai" },
 };
 
-export function vendorDomain(vendorId: string): string | null {
-  return VENDOR_DOMAINS[vendorId] ?? null;
+export function modelTag(model: { name: string; vendor: { id: string } }): ModelTag {
+  const known = MODEL_FAMILIES[model.vendor.id];
+  if (!known) return { label: model.name, name: model.name, logoDomain: null };
+  const prefix = known.family ? `${known.family} ` : null;
+  const label = prefix && model.name.startsWith(prefix) ? model.name.slice(prefix.length) : model.name;
+  return { label, name: model.name, logoDomain: known.logoDomain };
 }

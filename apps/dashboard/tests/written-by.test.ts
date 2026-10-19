@@ -3,11 +3,11 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import {
   WrittenBySchema,
-  hasWrittenBy,
-  vendorDomain,
+  modelTag,
   writtenByForMessage,
   writtenByForRow,
   writtenMessageId,
+  writtenWithTags,
   type WrittenByEntry,
   type WrittenByMessage,
 } from "../src/lib/written-by";
@@ -46,19 +46,24 @@ describe("writtenByForMessage (WRITTEN-BY-1019)", () => {
     expect(writtenByForMessage([], { campaignId: "c1", at: "2026-10-19T00:00:00.000Z" })).toBeNull();
   });
 
-  it("an entry with no model, no tactic line and not under test has nothing to show", () => {
-    expect(hasWrittenBy(entry({ model: null, tactics: [], underTest: false }))).toBe(false);
-    expect(hasWrittenBy(entry({ model: null, tactics: [], underTest: null }))).toBe(false);
-    expect(hasWrittenBy(entry({ model: null, tactics: [], underTest: true }))).toBe(true);
-    expect(hasWrittenBy(entry({}))).toBe(true);
-    expect(hasWrittenBy(null)).toBe(false);
+  it("tags: the model, then each NAMED tactic, its client line on hover; nothing else", () => {
+    const tags = writtenWithTags(
+      entry({ tactics: [{ line: "Brand not named in the first email", name: "Blind angle" }, { line: "No name yet" }] }),
+    );
+    expect(tags?.model).toEqual({ label: "Opus 5.5", name: "Claude Opus 5.5", logoDomain: "claude.ai" });
+    expect(tags?.tactics).toEqual([{ name: "Blind angle", line: "Brand not named in the first email" }]);
+    // Under test is not a tag (owner 2026-10-19).
+    expect(writtenWithTags(entry({ model: null, tactics: [], underTest: true }))).toBeNull();
+    expect(writtenWithTags(entry({ model: null, tactics: [{ line: "unnamed" }] }))).toBeNull();
+    expect(writtenWithTags(null)).toBeNull();
   });
 
-  it("a known vendor draws its logo, an unknown one none", () => {
-    expect(vendorDomain("anthropic")).toBe("anthropic.com");
-    expect(vendorDomain("openai")).toBe("openai.com");
-    expect(vendorDomain("google")).toBe("google.com");
-    expect(vendorDomain("someone-new")).toBeNull();
+  it("a model reads as its PRODUCT (Claude's logo, not Anthropic's), its family word dropped", () => {
+    expect(modelTag({ name: "Claude Opus 5.5", vendor: { id: "anthropic" } })).toEqual({ label: "Opus 5.5", name: "Claude Opus 5.5", logoDomain: "claude.ai" });
+    // Google's G is the company, not Gemini: the name stays whole.
+    expect(modelTag({ name: "Gemini 3 Flash", vendor: { id: "google" } }).label).toBe("Gemini 3 Flash");
+    expect(modelTag({ name: "GPT-5.5", vendor: { id: "openai" } }).label).toBe("GPT-5.5");
+    expect(modelTag({ name: "Newco 1", vendor: { id: "someone-new" } })).toEqual({ label: "Newco 1", name: "Newco 1", logoDomain: null });
   });
 
   it("parses the producer's body, reasons as plain strings, extra fields kept", () => {
@@ -107,29 +112,31 @@ describe("a real body served in prod (2026-10-19, our own org)", () => {
   });
 });
 
-describe("where the line is drawn", () => {
-  it("under every email we sent on the person page, and in the Unibox thread", () => {
-    const timeline = read("components/audiences/lead-history-timeline.tsx");
-    expect(timeline).toContain('e.type === "message" && e.direction === "outbound"');
-    expect(timeline).toContain("<WrittenByLine writtenBy={writtenBy} messageId={e.id} campaignId={e.campaignId} at={e.at} />");
+describe("where the tags sit", () => {
+  it("beside the label of every message of ours: person page Timeline, Unibox thread, Unibox facts", () => {
+    // The history card carries no block any more (owner 2026-10-19: tags, not sections).
+    expect(read("components/audiences/lead-history-timeline.tsx")).not.toContain("WrittenWith");
     const person = read("components/v2/person-page.tsx");
-    expect(person.match(/writtenBy=\{writtenBy\}/g)?.length).toBe(2);
+    expect(person.match(/writtenBy=\{writtenBy\}/g)?.length).toBe(1);
     const card = read("components/v2/conversation-timeline.tsx");
     expect(card).toContain("<TimelineRows timeline={timeline} writtenBy={writtenBy} />");
+    expect(card.indexOf("<WrittenWithTags")).toBeGreaterThan(card.indexOf("<TagChip tag={conversationItemTag(it.label)} />"));
     expect(card).toContain("messageId={it.id}");
     const unibox = read("components/v2/integrations-conversations.tsx");
     expect(unibox).toContain("useLeadWrittenBy(facts?.leadId ?? null)");
     expect(unibox).toContain("campaignId={sentCampaignId(row.item, facts)}");
-    // Every message of ours, any channel, on its own id; a fact the thread lacks on its id only.
     expect(unibox).toContain('item.direction === "outbound" ? (');
     expect(unibox).toContain("messageId={writtenMessageId(item)}");
     expect(unibox).toContain("<FactRow key={row.fact.id} fact={row.fact} writtenBy={writtenBy} />");
     expect(unibox).toContain("messageId={fact.id} campaignId={null}");
+    // In the message header, right beside its label chip.
+    expect(unibox).toContain("<TagChip tag={tag} />\n          {written}");
   });
 
-  it("never names a workflow or a cost", () => {
-    const line = read("components/v2/written-by-line.tsx");
-    expect(line).not.toMatch(/workflowSlug|workflowName|cost/i);
+  it("says Written with, never a workflow, a cost or an under-test mark", () => {
+    const tags = read("components/v2/written-with-tags.tsx");
+    expect(tags).toContain("Written with");
+    expect(tags).not.toMatch(/workflowSlug|workflowName|cost|Under test|Written by/i);
   });
 });
 
