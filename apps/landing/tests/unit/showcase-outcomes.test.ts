@@ -40,12 +40,17 @@ function cardFor(html: string, domain: string): string {
   return html.slice(at, html.indexOf("</a>", at));
 }
 
-function withStep(key: string, peopleReached: number | null): ShowcaseOutcomes {
+function withStep(
+  key: string,
+  peopleReached: number | null,
+  domain = "docdinners.com",
+): ShowcaseOutcomes {
   const brand = SERVED.brands[0];
   return {
     brands: [
       {
         ...brand,
+        brand: { ...brand.brand, domain },
         outcomes: brand.outcomes.map((s) => (s.key === key ? { ...s, peopleReached } : s)),
       },
     ],
@@ -55,33 +60,39 @@ function withStep(key: string, peopleReached: number | null): ShowcaseOutcomes {
 describe("showcase outcome reseed", () => {
   it("writes the served count into each cell", () => {
     const card = cardFor(reseedShowcaseCards(HOMEPAGE, SERVED), "docdinners.com");
-    expect(card).toContain('data-step="contacted"><b data-n="0">12,999</b>');
-    expect(card).toContain('data-step="conversation"><b data-n="1">27</b>');
+    expect(card).toContain('data-step="conversation"><b data-n="0">27</b>');
+    expect(card).toContain('data-step="meeting_booked"><b data-n="1">5</b>');
   });
 
   it("joins on the producer's KEY, never on position", () => {
-    // The card draws FOUR cells for FIVE served outcomes: it shows Closed won and skips
-    // Meeting attended. An index join would put 4 (attended) under Closed won, which
-    // renders perfectly and is a different number entirely.
+    // The card draws TWO cells for FIVE served outcomes, and the producer serves Contacted
+    // first. An index join would put 12,999 (contacted) under Interested leads and 27
+    // under Meetings booked, which renders perfectly and is a different number entirely.
     const card = cardFor(reseedShowcaseCards(HOMEPAGE, SERVED), "docdinners.com");
-    expect(card).toContain('data-step="paid_client"><b data-n="3">2</b>');
-    expect(card).not.toContain('<b data-n="3">4</b>');
+    expect(card).toContain('data-step="meeting_booked"><b data-n="1">5</b>');
+    expect(card).not.toContain("12,999");
+    expect(card).not.toContain('<b data-n="1">27</b>');
   });
 
   it("keeps the card's data-steps in step with what is rendered", () => {
     const card = cardFor(reseedShowcaseCards(HOMEPAGE, SERVED), "docdinners.com");
-    expect(card).toContain('data-steps="12999,27,5,2"');
+    expect(card).toContain('data-steps="27,5"');
   });
 
   it("hides a step measured at zero, and reveals one that has landed", () => {
     const zero = cardFor(
-      reseedShowcaseCards(HOMEPAGE, withStep("paid_client", 0)),
+      reseedShowcaseCards(HOMEPAGE, withStep("meeting_booked", 0)),
       "docdinners.com",
     );
-    expect(zero).toContain('data-step="paid_client" data-zero>');
-    // The shipped page has that cell at zero; a served 2 must take the marker OFF.
-    const landed = cardFor(reseedShowcaseCards(HOMEPAGE, SERVED), "docdinners.com");
-    expect(landed).toContain('data-step="paid_client"><b');
+    expect(zero).toContain('data-step="meeting_booked" data-zero>');
+    // Shockwave Centers ships that cell at zero; a served 5 must take the marker OFF.
+    const shipped = cardFor(HOMEPAGE, "shockwavecenters.com");
+    expect(shipped).toContain('data-step="meeting_booked" data-zero>');
+    const landed = cardFor(
+      reseedShowcaseCards(HOMEPAGE, withStep("meeting_booked", 5, "shockwavecenters.com")),
+      "shockwavecenters.com",
+    );
+    expect(landed).toContain('data-step="meeting_booked"><b data-n="1">5</b>');
   });
 
   it("leaves a step the producer could not measure exactly as the page ships it", () => {
@@ -91,13 +102,13 @@ describe("showcase outcome reseed", () => {
       reseedShowcaseCards(HOMEPAGE, withStep("conversation", null)),
       "docdinners.com",
     );
-    expect(card).toContain('data-step="conversation"><b data-n="1">20</b>');
-    expect(card).toContain('data-steps="12999,20,5,2"');
+    expect(card).toContain('data-step="conversation"><b data-n="0">20</b>');
+    expect(card).toContain('data-steps="20,5"');
   });
 
   it("leaves a brand the producer does not answer for untouched", () => {
-    expect(cardFor(reseedShowcaseCards(HOMEPAGE, SERVED), "opsfolio.com")).toBe(
-      cardFor(HOMEPAGE, "opsfolio.com"),
+    expect(cardFor(reseedShowcaseCards(HOMEPAGE, SERVED), "pressbeat.io")).toBe(
+      cardFor(HOMEPAGE, "pressbeat.io"),
     );
   });
 
@@ -106,10 +117,10 @@ describe("showcase outcome reseed", () => {
   });
 
   it("never takes a cell's LABEL from the producer", () => {
-    // "Positive replies" is our word for what the producer calls a positive reply.
+    // "Interested leads" is our word for what the producer calls a positive reply.
     const card = cardFor(reseedShowcaseCards(HOMEPAGE, SERVED), "docdinners.com");
-    expect(card).toContain("<small>Positive replies</small>");
-    expect(card).not.toContain("Positive reply");
+    expect(card).toContain("<small>Interested leads</small>");
+    expect(card).not.toContain("Positive repl");
   });
 
   it("every live card carries a brand, and every cell a producer step key", () => {
@@ -120,10 +131,37 @@ describe("showcase outcome reseed", () => {
     for (const card of liveCards) expect(card).toMatch(/data-brand="[^"]+"/);
     // Scoped to the LIVE cards: the "Your company" card is a signup placeholder with
     // no client behind it, so its cells carry no producer step and never should.
-    for (const domain of ["docdinners.com", "opsfolio.com", "shockwavecenters.com"]) {
+    for (const domain of ["docdinners.com", "pressbeat.io", "shockwavecenters.com"]) {
       const cells = cardFor(HOMEPAGE, domain).match(/<span class="sf"[^>]*>/g) ?? [];
       expect(cells.length, `${domain} must draw cells`).toBeGreaterThan(0);
       for (const cell of cells) expect(cell).toMatch(/data-step="[a-z_]+"/);
     }
+  });
+
+  it("ships every live card with exactly Interested leads then Meetings booked", () => {
+    // Owner 2026-10-19: the hero states two figures, never Contacted, never website visits.
+    const liveCards = HOMEPAGE.match(/<a class="show-card" href="#proof" data-live[^>]*>/g) ?? [];
+    expect(liveCards).toHaveLength(3);
+    for (const domain of ["docdinners.com", "pressbeat.io", "shockwavecenters.com"]) {
+      const card = cardFor(HOMEPAGE, domain);
+      const cells = [...card.matchAll(/data-step="([a-z_]+)"[^>]*><b data-n="(\d+)">[^<]*<\/b><small>([^<]*)<\/small>/g)].map(
+        (m) => [m[1], m[2], m[3]],
+      );
+      expect(cells, domain).toEqual([
+        ["conversation", "0", "Interested leads"],
+        ["meeting_booked", "1", "Meetings booked"],
+      ]);
+      expect(card).toMatch(/data-steps="\d+,\d+"/);
+    }
+    expect(HOMEPAGE.slice(HOMEPAGE.indexOf('id="live-cards"'), HOMEPAGE.indexOf('id="proof"'))).not.toMatch(
+      /website_visit|Website visit|data-step="contacted"/,
+    );
+  });
+
+  it("states the same two figures, then the platform fee, on the Your company card", () => {
+    const at = HOMEPAGE.indexOf('class="show-card yours"');
+    const yours = HOMEPAGE.slice(at, HOMEPAGE.indexOf("</a>", at));
+    const labels = [...yours.matchAll(/<small>([^<]*)<\/small>/g)].map((m) => m[1]);
+    expect(labels).toEqual(["Interested leads", "Meetings booked", "Platform fee"]);
   });
 });

@@ -95,9 +95,44 @@ function logoUrl(domain: string, size: number): string {
   return `https://img.logo.dev/${encodeURIComponent(domain)}?token=${LOGO_TOKEN}&size=${size}&format=png`;
 }
 
-/** The outcomes the producer actually measured, in its own order. */
+/**
+ * A website visit is never drawn on a client card, hero or proof (owner 2026-10-19: « plus
+ * jamais des "website visits" »). A visit proves attention, not demand; the cards prove
+ * interested leads and booked meetings.
+ */
+const NEVER_DRAWN: ReadonlySet<string> = new Set(["website_visit"]);
+
+/** The outcomes the producer actually measured, in its own order, minus the never-drawn ones. */
 function measuredSteps(brand: ShowcaseBrand): ShowcaseOutcome[] {
-  return (brand.outcomes ?? []).filter((s) => typeof s.peopleReached === "number");
+  return (brand.outcomes ?? []).filter(
+    (s) => typeof s.peopleReached === "number" && !NEVER_DRAWN.has(s.key)
+  );
+}
+
+/**
+ * THE HERO CARD STATES TWO FIGURES: interested leads, then meetings booked (owner 2026-10-19).
+ *
+ * Keyed on the producer's step keys; the hero's word for `conversation` is the owner's own,
+ * "Interested leads".
+ */
+export const HERO_STEPS: readonly { key: string; label: string }[] = [
+  { key: "conversation", label: "Interested leads" },
+  { key: "meeting_booked", label: "Meetings booked" },
+];
+
+/**
+ * A CLIENT ENTERS THE HERO ROW WITH AT LEAST ONE MEETING BOOKED OR ONE INTERESTED LEAD.
+ *
+ * Owner 2026-10-19: « les last 3 brand qui ont eu au moins des booked meetings, si moins de 3
+ * ceux qui ont eu des Interested leads ». It lifts the hero's share of the 2026-10-10 floor of
+ * five ({@link MIN_DRAWN_OUTCOME}, still the proof section's): one booked meeting is enough.
+ * The producer picks and orders (meetings first); this only refuses a client whose card would
+ * state two zeros.
+ */
+export function hasHeroOutcome(brand: ShowcaseBrand): boolean {
+  return measuredSteps(brand).some(
+    (step) => HERO_STEPS.some((h) => h.key === step.key) && (step.peopleReached as number) >= 1
+  );
 }
 
 /**
@@ -132,7 +167,7 @@ export function hasDrawnOutcome(brand: ShowcaseBrand): boolean {
  */
 export function pricedStep(brand: ShowcaseBrand): ShowcaseOutcome | null {
   for (const step of brand.outcomes ?? []) {
-    if (step.key === CONTACTED) continue;
+    if (step.key === CONTACTED || NEVER_DRAWN.has(step.key)) continue;
     if (typeof step.costPerReachUsd === "number") return step;
   }
   return null;
@@ -150,15 +185,19 @@ export function renderShowcaseCard(brand: ShowcaseBrand): string | null {
   const domain = brand.brand?.domain;
   const name = brand.brand?.name;
   if (!domain || !name) return null;
-  const steps = measuredSteps(brand).slice(0, 4);
-  if (steps.length === 0) return null;
+  const measured = measuredSteps(brand);
+  const steps = HERO_STEPS.flatMap((hero) => {
+    const step = measured.find((s) => s.key === hero.key);
+    return step ? [{ key: hero.key, label: hero.label, value: step.peopleReached as number }] : [];
+  });
+  if (!steps.some((s) => s.value > 0)) return null;
 
-  const counts = steps.map((s) => s.peopleReached as number);
+  const counts = steps.map((s) => s.value);
   const cells = steps
     .map((step, index) => {
       const value = counts[index];
       const zero = value === 0 ? " data-zero" : "";
-      return `<span class="sf" data-step="${esc(step.key)}"${zero}><b data-n="${index}">${formatInt(value)}</b><small>${esc(pluralLabel(step))}</small></span>`;
+      return `<span class="sf" data-step="${esc(step.key)}"${zero}><b data-n="${index}">${formatInt(value)}</b><small>${esc(step.label)}</small></span>`;
     })
     .join("\n            ");
 

@@ -1,5 +1,5 @@
 import { formatCostUsd, formatReturnMultiple } from "@/lib/landing-format";
-import { hasDrawnOutcome, podium, renderProofCard, renderShowcaseCard } from "@/lib/showcase-cards";
+import { hasDrawnOutcome, hasHeroOutcome, podium, renderProofCard, renderShowcaseCard } from "@/lib/showcase-cards";
 
 /**
  * The homepage's named clients state outcome counts we READ, not counts we pasted in.
@@ -296,7 +296,11 @@ export function reseedShowcaseCards(html: string, data: ShowcaseOutcomes): strin
  * clients for that section rather than rendering a short or empty row. A SHORT group is a different
  * thing and IS rendered: the producer states how many qualified, so fewer than three is an answer.
  */
-export function pickedBrands(group: ShowcaseGroup | undefined, label: string): ShowcaseBrand[] | null {
+export function pickedBrands(
+  group: ShowcaseGroup | undefined,
+  label: string,
+  drawable: (brand: ShowcaseBrand) => boolean = hasDrawnOutcome
+): ShowcaseBrand[] | null {
   if (!group) return null;
   if (!group.measured) {
     // Loud, never swallowed: the producer could not answer, and the page silently keeping its
@@ -307,7 +311,7 @@ export function pickedBrands(group: ShowcaseGroup | undefined, label: string): S
     return null;
   }
   const served = Array.isArray(group.brands) ? group.brands : [];
-  const brands = served.filter(hasDrawnOutcome);
+  const brands = served.filter(drawable);
   if (brands.length < served.length) {
     console.warn(
       `[landing] showcase group "${label}" dropped ${served.length - brands.length} client(s) whose drawn outcomes show nothing past outreach`
@@ -336,7 +340,7 @@ export function pickedBrands(group: ShowcaseGroup | undefined, label: string): S
  */
 export function renderShowcaseSelection(html: string, brands: ShowcaseBrand[]): string {
   const cards = brands
-    .filter(hasDrawnOutcome)
+    .filter(hasHeroOutcome)
     .map(renderShowcaseCard).filter((card): card is string => card !== null);
   // Every client the producer picked failed to render — a payload with no measured rung
   // for any of them. Keeping the shipped row beats emptying the hero.
