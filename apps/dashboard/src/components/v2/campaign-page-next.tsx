@@ -35,7 +35,7 @@ import {
   type SalesFunnelCampaign,
   type SalesFunnelCaps,
 } from "@/lib/sales-funnel-campaigns";
-import { formatCentsAsUsdAdaptive, formatCount, formatUsdAdaptive } from "@/lib/format-number";
+import { formatCount, formatUsdAdaptive } from "@/lib/format-number";
 import { timeAgo } from "@/lib/friendly-datetime";
 import { leadStatusLabel } from "@/lib/lead-status";
 import { awaitingReason } from "@/lib/awaiting-reason";
@@ -58,7 +58,7 @@ import { useCopilotDock } from "@/components/v2/copilot-dock";
 import { V2AudiencesTable } from "@/components/v2/audiences-table";
 import { CompanyMark, PersonAvatar, leadCompany, leadCompanyDomain, leadName, personHref } from "@/components/v2/people-bits";
 import { EmptyNote, MarkLines, Meter, SectionTitle, Shimmer, TopBar } from "@/components/v2/ui";
-import { RoiLabel } from "@/components/v2/roi-label";
+import { CostValue, RoiLabel } from "@/components/v2/roi-label";
 import { FunnelCampaignModal, FunnelCampaignStatus, FunnelFace, FunnelPathLine, FunnelRoi } from "@/components/v2/funnel-campaigns";
 
 /**
@@ -620,16 +620,7 @@ function ResultsCard({
         <Line label="$ Invested">{!rowsSettled ? wait : row?.investedUsd != null ? formatUsdAdaptive(row.investedUsd) : DASH}</Line>
         {revenue && (
           <Line label="$ / Positive reply">
-            {costShown.cents != null ? (
-              <>
-                {formatCentsAsUsdAdaptive(costShown.cents)}
-                {costShown.expected && <span className="k-fg3 ml-1 text-[12px] font-normal">expected</span>}
-              </>
-            ) : cost.learning ? (
-              <span className="k-fg3 text-[12px] font-normal">Learning</span>
-            ) : (
-              DASH
-            )}
+            <CostValue cost={costShown} learning={cost.learning} />
           </Line>
         )}
       </dl>

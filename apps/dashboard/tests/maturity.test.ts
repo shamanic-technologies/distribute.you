@@ -34,7 +34,8 @@ describe("shownReturn — Learning gives way to a to-date return above 1x", () =
 
   it("not mature, flash at or below 1x or absent: Learning", () => {
     for (const flash of [{ roiMultiple: 1 }, { roiMultiple: 0.4 }, { roiMultiple: null }, null]) {
-      expect(shownReturn(pair({ flash, isMature: false }), "mature")).toEqual({ value: null, learning: true });
+      // The to-date return rides beside the verdict (owner 2026-10-19: shown greyed, never hidden).
+      expect(shownReturn(pair({ flash, isMature: false }), "mature")).toEqual({ value: null, learning: true, toDate: flash?.roiMultiple ?? null });
     }
   });
 
@@ -66,11 +67,13 @@ describe("shownFigure — one ratio, read off the served pair", () => {
     });
   });
 
-  it("states Learning, and NO figure, where the producer says it is not mature", () => {
-    // A figure beside a caveat reads as a price with a footnote: the tag replaces it.
+  it("states Learning where the producer says it is not mature, the to-date figure beside it", () => {
+    // Owner 2026-10-19 ("plus de learning qui offusque la data"): the measured figure so far is
+    // carried as `toDate`, rendered greyed with the expected one beside it; `value` stays the verdict.
     expect(shownFigure(pair({ flash: { cpprCents: 900 }, mature: { cpprCents: 1500 }, isMature: false }), pick, "mature")).toEqual({
       value: null,
       learning: true,
+      toDate: 900,
     });
   });
 
@@ -429,7 +432,7 @@ describe("the chart headlines state the served mature figure, never the curve's 
 
   it("the Learning verdict on a leg follows the served pair, never a count here", () => {
     const shown = shownFigure(leg({ isMature: false }) as MaturityPair<{ costPerOutcomeUsd: number | null }>, (h) => h.costPerOutcomeUsd, "mature");
-    expect(shown).toEqual({ value: null, learning: true });
+    expect(shown).toEqual({ value: null, learning: true, toDate: 68.06 });
     const staff = shownFigure(leg({ isMature: false }) as MaturityPair<{ costPerOutcomeUsd: number | null }>, (h) => h.costPerOutcomeUsd, "flash");
     expect(staff).toEqual({ value: 68.06, learning: false });
   });

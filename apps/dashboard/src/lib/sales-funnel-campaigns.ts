@@ -433,10 +433,11 @@ export function roiMissingReason(row: Pick<FunnelCampaignRow, "moneyUnavailableR
  */
 export function funnelRoiShown(
   row: Pick<FunnelCampaignRow, "roiMultiple" | "maturity" | "costEconomics" | "headline" | "moneyUnavailableReason">,
-): { learning: boolean; value: number | null; unpriced: string | null } {
+): { learning: boolean; value: number | null; unpriced: string | null; toDate?: number | null } {
   const roi = row.roiMultiple;
   const maturing = row.maturity?.isMature === false || row.costEconomics?.unmeasuredReason === "maturing";
-  if (maturing && !(roi !== null && roi > 1)) return { learning: true, value: null, unpriced: null };
+  // Still Learning: the return measured so far rides beside the verdict, shown greyed (owner 2026-10-19).
+  if (maturing && !(roi !== null && roi > 1)) return { learning: true, value: null, unpriced: null, toDate: roi };
   if (roi !== null) return { learning: false, value: roi, unpriced: null };
   // A null ROI always carries its served reason (owner 2026-10-11: never a bare dash).
   const reason = row.headline?.unpricedReason ?? row.moneyUnavailableReason ?? row.costEconomics?.unmeasuredReason ?? null;

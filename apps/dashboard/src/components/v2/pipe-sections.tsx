@@ -8,7 +8,6 @@ import { formatCentsAsUsdAdaptive, formatCount, formatUsdAdaptive } from "@/lib/
 import { shownFigure, shownReturn } from "@/lib/maturity";
 import { formatRoi, roiIsGood } from "@/lib/format-roi";
 import { useStatBasis } from "@/lib/use-stat-basis";
-import { isColdEmailChannel } from "@/lib/offer-levers-home";
 import { isProactiveFrom, sameLegKey } from "@/lib/outbound-leg-key";
 import { legFor, stepPluralLabel, type LegDef } from "@/lib/legs";
 import { useLegCatalogue } from "@/lib/use-leg-catalogue";
@@ -18,7 +17,7 @@ import type { V2Campaign } from "@/components/v2/use-campaigns";
 import { LEG_STEPS, StepBar, useCampaignWindow } from "@/components/v2/offer-channel-page";
 import { ChannelChip } from "@/components/v2/offer-sales-paths";
 import { EmptyNote, Shimmer } from "@/components/v2/ui";
-import { RoiLabel, RoiValue } from "@/components/v2/roi-label";
+import { CostValue, RoiLabel, RoiValue } from "@/components/v2/roi-label";
 import { costToShowCents, roiToShow } from "@/lib/expected-return";
 import { formatRatePct } from "@/lib/pipe-stats";
 
@@ -30,16 +29,16 @@ import { formatRatePct } from "@/lib/pipe-stats";
  * campaign window and the campaign row's revenue group, lead-service's counts); nothing is
  * summed or divided here.
  *
- * A pipe whose figures no producer serves yet (sourcing: people found per source) gets NO
- * block rather than an empty one; it lands when its producer ships.
+ * Every pipe gets a block whatever its channel (owner 2026-10-12: the dashboard renders every
+ * campaign and every pipe the same way): a proactive pipe reads the proactive block, its cells
+ * named from the pipe's own steps; a pipe that answers reads the conversation block. Only a pipe
+ * whose leg is unknown to the catalogue gets none.
  */
 
-/** What kind of block a pipe gets, from its channel and leg. Null = nothing served for it yet. */
-export function pipeKind(featureSlug: string, leg: Pick<LegDef, "fromKey"> | null): "cold_email" | "conversation" | null {
+/** What kind of block a pipe gets, from its leg alone (never its channel). Null = leg unknown. */
+export function pipeKind(leg: Pick<LegDef, "fromKey"> | null): "proactive" | "conversation" | null {
   if (!leg) return null;
-  if (!isProactiveFrom(leg.fromKey)) return "conversation";
-  if (isColdEmailChannel(featureSlug)) return "cold_email";
-  return null;
+  return isProactiveFrom(leg.fromKey) ? "proactive" : "conversation";
 }
 
 export function PipeSections({
@@ -55,7 +54,7 @@ export function PipeSections({
   const shown = units.flatMap((u) => {
     const campaign = campaignById.get(u.campaignId) ?? null;
     const leg = campaign?.leg ?? legFor(catalogue, u.legKey);
-    const kind = pipeKind(u.featureSlug, leg);
+    const kind = pipeKind(leg);
     return kind && leg ? [{ u, campaign, leg, kind }] : [];
   });
   if (shown.length === 0) return null;
@@ -63,8 +62,8 @@ export function PipeSections({
     <div className="space-y-8">
       {shown.map(({ u, campaign, leg, kind }) => (
         <PipeSection key={u.campaignId} unit={u} campaign={campaign} leg={leg}>
-          {kind === "cold_email" ? (
-            <ColdEmailPipe brandId={brandId} unit={u} campaign={campaign} leg={leg} />
+          {kind === "proactive" ? (
+            <ProactivePipe brandId={brandId} unit={u} campaign={campaign} leg={leg} />
           ) : (
             <ConversationPipe brandId={brandId} unit={u} campaign={campaign} leg={leg} />
           )}
@@ -126,21 +125,24 @@ const count = (n: number | null | undefined, one: string, many: string) => (n ==
 // Owner rule (#4756): a whole percent, a decimal only below 1%. One shared formatter.
 const pct = formatRatePct;
 
-/** The pipe's return and money, off the campaign row's own served revenue group. */
-function MoneyCells({ campaign, per }: { campaign: V2Campaign | null; per: "reply" | "visit" | null }) {
+/**
+ * The pipe's return and money, off the campaign row's own served revenue group. The cost cell
+ * prices the pipe's own outcome (`per`, named by its `toLabel`); null = no cost served for it.
+ */
+function MoneyCells({ campaign, per, toLabel }: { campaign: V2Campaign | null; per: "reply" | "visit" | null; toLabel: string }) {
   const { basis } = useStatBasis();
   const g = campaign?.row.revenue ?? null;
   const roi = shownReturn(g?.economicsMaturity, basis);
   const cost = shownFigure(g?.outcomesMaturity, (h) => (per === "reply" ? h.cpprCents : h.cpcCents), basis);
-  // The served expected cost of one outcome where the measured one is Learning (owner 2026-10-11).
+  // Measured first: a Learning figure greyed with the served expected one beside it (owner 2026-10-19).
   const costShown = costToShowCents(cost, g?.expectedReturn, per === "reply" ? "conversation" : "website_visit");
   return (
     <>
       <Cell label={<RoiLabel />}>{!campaign ? DASH : <RoiValue roi={roiToShow(roi, g?.expectedReturn)} learning={roi.learning} />}</Cell>
       <Cell label="$ Value">{g?.totalPipelineUsd != null ? formatUsdAdaptive(g.totalPipelineUsd) : DASH}</Cell>
       {per && (
-        <Cell label={per === "reply" ? "$ / Positive reply" : "$ / Visit"} sub={costShown.expected ? "Expected" : undefined}>
-          {costShown.cents != null ? formatCentsAsUsdAdaptive(costShown.cents) : cost.learning ? "Learning" : DASH}
+        <Cell label={`$ / ${toLabel}`}>
+          <CostValue cost={costShown} learning={cost.learning} />
         </Cell>
       )}
     </>
@@ -195,26 +197,31 @@ function DailyBars({ label, total, days, format = formatCount }: { label: string
 }
 
 /**
- * Cold email: who it reached and what came back (people, lead-service), its emails per day and
- * its outcome per day (features-service's campaign window), its steps Queued -> Sent ->
- * Delivered -> outcome as bars.
+ * Any proactive pipe, whatever its channel: who it reached and what came back (people,
+ * lead-service), its spend and its outcome per day (features-service's campaign window), its
+ * steps as bars, every label the pipe's own step. Where the window serves messages SENT for the
+ * pipe (a sending channel: cold email today), its Queued, Sent and Delivered join the figures,
+ * the per-day column and the bars; a channel that sent none states none.
  */
-function ColdEmailPipe({ brandId, unit, campaign, leg }: { brandId: string; unit: SalesFunnelUnit; campaign: V2Campaign | null; leg: LegDef }) {
+function ProactivePipe({ brandId, unit, campaign, leg }: { brandId: string; unit: SalesFunnelUnit; campaign: V2Campaign | null; leg: LegDef }) {
   const steps = LEG_STEPS.find((l) => sameLegKey(l.legKey, unit.legKey)) ?? null;
   const q = useAuthQuery(["leadBucketCounts", `campaign:${unit.campaignId}`, ""], () => getLeadBucketCounts({ campaignId: unit.campaignId }, {}), pollOptions);
   const counts = q.data?.counts ?? null;
   const settled = q.isFetchedAfterMount || q.data !== undefined;
   const win = useCampaignWindow(brandId, unit.campaignId, unit.featureSlug);
-  const emails = win.data?.emails ?? null;
   const queued = win.data?.queuedEmails ?? null;
+  // Served messages for this pipe: present only when it sent or holds some (never a row of zeros).
+  const served = win.data?.emails ?? null;
+  const emails = served && (served.sent > 0 || (queued ?? 0) > 0) ? served : null;
+  const spend = win.data?.spend ?? null;
   const replyLed = steps?.bucket === "positive_reply";
   // Count headings read the catalogue's served plural (features-service `pluralLabel`).
   const toPlural = stepPluralLabel(useLegCatalogue(), leg.toKey, leg.toLabel);
-  // The campaign row's own served rates (features-service, distinct people emailed).
+  // The campaign row's own served rates (features-service, distinct people reached).
   const rates = campaign?.row.revenue ?? null;
   const outcomes = steps && counts ? counts[steps.bucket] : null;
-  const outcomeDaily = replyLed ? win.data?.recipientsRepliesPositive ?? null : win.data?.recipientsClicked ?? null;
-  const scale = Math.max(queued ?? 0, emails?.sent ?? 0, emails?.delivered ?? 0, outcomes ?? 0);
+  const outcomeDaily = !steps ? null : replyLed ? win.data?.recipientsRepliesPositive ?? null : win.data?.recipientsClicked ?? null;
+  const scale = Math.max(queued ?? 0, emails?.sent ?? 0, emails?.delivered ?? 0, counts?.contacted ?? 0, outcomes ?? 0);
   const people = (n: number | null | undefined) => (!settled ? <Shimmer className="h-6 w-14" /> : count(n, "person", "people"));
   const mails = (n: number | null | undefined) => (win.pending ? <Shimmer className="h-6 w-14" /> : count(n, "email", "emails"));
 
@@ -225,19 +232,23 @@ function ColdEmailPipe({ brandId, unit, campaign, leg }: { brandId: string; unit
           <Cell label="Contacted">{people(counts?.contacted)}</Cell>
           <Cell
             label={outcomes === 1 ? leg.toLabel : toPlural}
-            sub={replyLed && rates?.positiveReplyRatePct != null ? `${pct(rates.positiveReplyRatePct)} of people emailed` : undefined}
+            sub={replyLed && rates?.positiveReplyRatePct != null ? `${pct(rates.positiveReplyRatePct)} of people contacted` : undefined}
           >
-            {people(outcomes)}
+            {steps ? people(outcomes) : DASH}
           </Cell>
-          <Cell label="Sent">{mails(emails?.sent)}</Cell>
-          <Cell label="Delivered" sub={emails?.deliveryRatePct != null ? `${pct(emails.deliveryRatePct)} of sent` : undefined}>
-            {mails(emails?.delivered)}
-          </Cell>
-          <Cell label="Reply rate" sub="Of people emailed">
+          {emails && (
+            <>
+              <Cell label="Sent">{mails(emails.sent)}</Cell>
+              <Cell label="Delivered" sub={emails.deliveryRatePct != null ? `${pct(emails.deliveryRatePct)} of sent` : undefined}>
+                {mails(emails.delivered)}
+              </Cell>
+            </>
+          )}
+          <Cell label="Reply rate" sub="Of people contacted">
             {rates?.replyRatePct != null ? pct(rates.replyRatePct) : DASH}
           </Cell>
           <SpentCell win={win} />
-          <MoneyCells campaign={campaign} per={replyLed ? "reply" : "visit"} />
+          <MoneyCells campaign={campaign} per={!steps ? null : replyLed ? "reply" : "visit"} toLabel={leg.toLabel} />
         </div>
       </Column>
       <Column title="Per day">
@@ -247,20 +258,37 @@ function ColdEmailPipe({ brandId, unit, campaign, leg }: { brandId: string; unit
           <EmptyNote>Could not read this campaign&apos;s days. Retrying.</EmptyNote>
         ) : (
           <div className="space-y-5">
-            <DailyBars label="Emails sent" total={emails?.sent ?? null} days={emails?.daily.map((d) => ({ date: d.date, value: d.sent })) ?? null} />
-            <DailyBars label={toPlural} total={outcomeDaily?.total ?? null} days={outcomeDaily?.daily.map((d) => ({ date: d.date, value: d.count })) ?? null} />
+            {emails ? (
+              <DailyBars label="Emails sent" total={emails.sent} days={emails.daily.map((d) => ({ date: d.date, value: d.sent }))} />
+            ) : (
+              <DailyBars
+                label="$ Spent"
+                total={spend?.actualSpentCents ?? null}
+                days={spend ? spend.daily.map((d) => ({ date: d.date, value: d.actualSpentCents })) : null}
+                format={formatCentsAsUsdAdaptive}
+              />
+            )}
+            {outcomeDaily && (
+              <DailyBars label={toPlural} total={outcomeDaily.total} days={outcomeDaily.daily.map((d) => ({ date: d.date, value: d.count }))} />
+            )}
           </div>
         )}
       </Column>
-      <Column title="Steps" note="Emails, then people">
+      <Column title="Steps" note={emails ? "Emails, then people" : "People"}>
         {!settled || win.pending ? (
           <Shimmer className="h-[180px] w-full rounded-[8px]" />
         ) : (
           <div className="flex items-end gap-3">
-            <StepBar label="Queued" count={queued} of={scale} />
-            <StepBar label="Sent" count={emails?.sent ?? null} of={scale} />
-            <StepBar label="Delivered" count={emails?.delivered ?? null} of={scale} />
-            {steps && <StepBar label={leg.toLabel} count={outcomes} of={scale} />}
+            {emails ? (
+              <>
+                <StepBar label="Queued" count={queued} of={scale} />
+                <StepBar label="Sent" count={emails.sent} of={scale} />
+                <StepBar label="Delivered" count={emails.delivered} of={scale} />
+              </>
+            ) : (
+              <StepBar label="Contacted" count={counts?.contacted ?? null} of={scale} />
+            )}
+            <StepBar label={leg.toLabel} count={outcomes} of={scale} />
           </div>
         )}
       </Column>
@@ -294,7 +322,7 @@ function ConversationPipe({ brandId, unit, campaign, leg }: { brandId: string; u
           <Cell label="Ongoing">{people(conv?.ongoing)}</Cell>
           <Cell label="Dropped">{people(conv?.dropped)}</Cell>
           <SpentCell win={win} />
-          <MoneyCells campaign={campaign} per={null} />
+          <MoneyCells campaign={campaign} per={null} toLabel={leg.toLabel} />
         </div>
       </Column>
       <Column title="Per day">

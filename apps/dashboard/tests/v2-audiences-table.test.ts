@@ -69,7 +69,7 @@ describe("audience table model", () => {
 
   it("Learning is the producer's verdict on the row; no stats row is not Learning", () => {
     // 500 replies change nothing: nothing is counted against a bar here.
-    expect(audienceFigure("cppr", stats(500, 700, false), "mature")).toEqual({ value: null, learning: true });
+    expect(audienceFigure("cppr", stats(500, 700, false), "mature")).toEqual({ value: null, learning: true, toDate: 700 });
     expect(audienceFigure("cppr", stats(3, 700, true), "mature")).toEqual({ value: 700, learning: false });
     expect(audienceFigure("cppr", undefined, "mature")).toEqual({ value: null, learning: false });
     expect(audienceFigure("outreach", stats(0, null), "mature")).toEqual({ value: null, learning: false });
