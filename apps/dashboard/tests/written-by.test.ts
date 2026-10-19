@@ -69,6 +69,35 @@ describe("writtenByForMessage (WRITTEN-BY-1019)", () => {
   });
 });
 
+describe("a real body served in prod (2026-10-19, our own org)", () => {
+  it("the email sent 4 minutes after its sequence was written shows its model, mark and tactic", () => {
+    const body = {
+      leadId: "1c83d97b-43dc-458d-94f7-8620efa76419",
+      campaignId: null,
+      entries: [
+        {
+          campaignId: "fb201499-4f90-40da-9cc3-f612392664f2",
+          writtenAt: "2026-10-12T20:11:06.457Z",
+          model: { name: "Claude Sonnet 5.5", vendor: { id: "anthropic", name: "Anthropic" } },
+          modelUnavailableReason: null,
+          tactics: [{ line: "Brand named in the email" }],
+          tacticsUnavailableReason: null,
+          underTest: true,
+          underTestUnavailableReason: null,
+        },
+      ],
+    };
+    const parsed = WrittenBySchema.parse(body);
+    const sent = { campaignId: "fb201499-4f90-40da-9cc3-f612392664f2", at: "2026-10-12T20:15:37.070Z" };
+    const e = writtenByForMessage(parsed.entries, sent);
+    expect(e?.model?.name).toBe("Claude Sonnet 5.5");
+    expect(e?.underTest).toBe(true);
+    expect(e?.tactics.map((t) => t.line)).toEqual(["Brand named in the email"]);
+    // A later AI follow-up from another campaign of the same person has no entry: nothing shown.
+    expect(writtenByForMessage(parsed.entries, { campaignId: "5e9709f7-030f-4e4b-b20a-3d0e0d55c931", at: "2026-10-19T06:11:15.013Z" })).toBeNull();
+  });
+});
+
 describe("where the line is drawn", () => {
   it("under every email we sent on the person page, and in the Unibox thread", () => {
     const timeline = read("components/audiences/lead-history-timeline.tsx");
