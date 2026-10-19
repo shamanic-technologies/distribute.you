@@ -60,15 +60,18 @@ describe("Monitoring > Emails drill-down: wiring", () => {
     expect(src).toContain("Rebuilding capacity");
   });
 
-  it("the hub's red is the placement alert's served `below`, one source with the alert email", () => {
+  it("the hub tile: every mailbox's tests, red under the alert's served bar; the after-cut figure the alert reads under it", () => {
+    // Owner 2026-10-19: 40-60 % spam at Google for weeks, never seen. The after-cut figure read
+    // 100 % green that day while every mailbox sat at 54.2 %: the figure is the whole fleet.
     const src = read("components/v2/monitoring-sending.tsx");
     const tile = src.slice(src.indexOf("function InboxTile("), src.indexOf("function CutTile("));
     expect(tile).toContain("usePlacementAlerts()");
-    expect(tile).toContain("latest.below ? RED");
+    expect(tile).toContain("underBar(latest.fleet.inboxPct, bar)");
+    expect(tile).toContain("bar.inboxPctOfFound");
+    expect(tile).toContain("latest.allowed.inboxPct");
     expect(tile).not.toContain("deliveryPctBar");
     const verdict = src.slice(src.indexOf("export function useSendingVerdict("), src.indexOf("// ─── Tables"));
-    expect(verdict).toContain("x.latest!.below");
-    expect(verdict).toContain("data.bar.inboxPctOfFound");
+    expect(verdict).toContain("underBar(x.latest!.fleet.inboxPct, data.bar.inboxPctOfFound)");
   });
 
   it("the new reads are staff gateway paths and never written to disk", () => {
