@@ -1,5 +1,6 @@
 "use client";
 
+import { AccountDetails, DomainDetails, MailboxDetails } from "@/components/v2/monitoring-details";
 import Link from "next/link";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
@@ -644,6 +645,7 @@ export function EntityPage({ base, kind, id }: { base: string; kind: EntityKind;
   return (
     <div className="space-y-8">
       <EntityFacts base={base} kind={kind} id={id} />
+      {kind === "domain" ? <DomainDetails base={base} id={id} /> : kind === "mailbox" ? <MailboxDetails base={base} id={id} /> : <AccountDetails base={base} id={id} />}
       <section>
         <SectionTitle right={<span>Last {HISTORY_DAYS} days, UTC</span>}>Sent per day, by kind</SectionTitle>
         <ScopedSentPerDay scope={scope} />

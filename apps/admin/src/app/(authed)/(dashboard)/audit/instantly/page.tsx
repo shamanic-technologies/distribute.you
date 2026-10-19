@@ -1,10 +1,7 @@
 import { redirect } from "next/navigation";
+import { monitoringUrlForColdEmail } from "@/lib/cold-email-moved";
 
-/**
- * `/audit/instantly` is the old single page. The cold-email estate is a SECTION
- * now (`/audit/cold-email`), one page per object, so this route stays reachable
- * and sends every old bookmark and link to the Overview rather than 404ing.
- */
+/** `/audit/instantly` is the old single page: it lands on dashboard v2 Monitoring > Emails. */
 export default function AuditInstantlyRedirect() {
-  redirect("/audit/cold-email");
+  redirect(monitoringUrlForColdEmail(undefined));
 }

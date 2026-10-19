@@ -27,6 +27,10 @@ import { EnvelopeSimpleIcon } from "@phosphor-icons/react/dist/csr/EnvelopeSimpl
 import { ChatCircleIcon } from "@phosphor-icons/react/dist/csr/ChatCircle";
 import { UsersThreeIcon } from "@phosphor-icons/react/dist/csr/UsersThree";
 import { SkillsView } from "@/components/v2/monitoring-skills";
+import { CapacityPage, RulesPage } from "@/components/v2/monitoring-capacity";
+import { BlocklistsPage } from "@/components/v2/monitoring-blocklists";
+import { ThreadsPage } from "@/components/v2/monitoring-threads";
+import { DomainsEstate, MailboxesSummary } from "@/components/v2/monitoring-details";
 import {
   costItemNames,
   parseMonitoringPath,
@@ -119,6 +123,10 @@ const PAGE: Record<MonitoringPage, { section: SectionKey; title: string; questio
   "emails/placement-tests": { section: "emails", title: "Placement tests", question: "Where did each placement test land, provider by provider?" },
   "emails/warmup": { section: "emails", title: "Warmup", question: "How much warmup do we send, and how much is planned?" },
   "emails/queued": { section: "emails", title: "Queued sequences", question: "Which steps are queued, and on which planned day?" },
+  "emails/capacity": { section: "emails", title: "Capacity", question: "How much can our mailboxes send, how much do they send, and how big is the backlog?" },
+  "emails/blocklists": { section: "emails", title: "Blocklists", question: "Is any sending domain on a blocklist, and is its removal on its way?" },
+  "emails/threads": { section: "emails", title: "Threads", question: "What did each thread send and receive, and how did it end?" },
+  "emails/rules": { section: "emails", title: "Rules", question: "What decides whether an address gets new sequences, and at what limits?" },
   "chat/skills": { section: "chat", title: "Skills", question: "What does the Copilot read before it acts?" },
 };
 
@@ -221,12 +229,26 @@ export function V2Monitoring() {
         {view.page === "margin" && <MarginPage />}
         {view.page === "emails" && <EmailsPage />}
         {view.page === "emails/inbox-providers" && <InboxProvidersPage />}
-        {view.page === "emails/domains" && <DomainsPage base={base} />}
-        {view.page === "emails/mailboxes" && <MailboxesPage base={base} />}
+        {view.page === "emails/domains" && (
+          <div className="space-y-8">
+            <DomainsEstate base={base} />
+            <DomainsPage base={base} />
+          </div>
+        )}
+        {view.page === "emails/mailboxes" && (
+          <div className="space-y-8">
+            <MailboxesSummary />
+            <MailboxesPage base={base} />
+          </div>
+        )}
         {view.page === "emails/accounts" && <AccountsPage base={base} />}
         {view.page === "emails/placement-tests" && <PlacementTestsPage base={base} />}
         {view.page === "emails/warmup" && <WarmupPage base={base} />}
         {view.page === "emails/queued" && <QueuedPage base={base} />}
+        {view.page === "emails/capacity" && <CapacityPage base={base} />}
+        {view.page === "emails/blocklists" && <BlocklistsPage base={base} />}
+        {view.page === "emails/threads" && <ThreadsPage base={base} />}
+        {view.page === "emails/rules" && <RulesPage base={base} />}
         {view.page === "chat/skills" && <SkillsView />}
       </div>
     </Frame>
@@ -332,7 +354,7 @@ function Hub({ base }: { base: string }) {
       <div className="mt-8 space-y-8">
       <div>
       <SectionTitle count={1}>Sending</SectionTitle>
-      <Section section="emails" count={8} grid={false}>
+      <Section section="emails" count={12} grid={false}>
         <HubChips>
           <HubChip href={href("emails/inbox-providers")} color="var(--data-violet)" label="Inbox providers" />
           <HubChip href={href("emails/domains")} color="var(--data-sky)" label="Domains" />
@@ -341,6 +363,10 @@ function Hub({ base }: { base: string }) {
           <HubChip href={href("emails/placement-tests")} color="var(--data-rose)" label="Placement tests" />
           <HubChip href={href("emails/warmup")} color="var(--data-lime)" label="Warmup" />
           <HubChip href={href("emails/queued")} color="var(--accent)" label="Queued sequences" />
+          <HubChip href={href("emails/capacity")} color="var(--data-sky)" label="Capacity" />
+          <HubChip href={href("emails/blocklists")} color="var(--data-rose)" label="Blocklists" />
+          <HubChip href={href("emails/threads")} color="var(--data-violet)" label="Threads" />
+          <HubChip href={href("emails/rules")} color="var(--data-teal)" label="Rules" />
         </HubChips>
         <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3">
           <Card
