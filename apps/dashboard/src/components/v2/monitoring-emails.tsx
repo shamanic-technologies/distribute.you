@@ -5,6 +5,7 @@ import { useAuthQuery } from "@/lib/use-auth-query";
 import { getStaffSentPerPeriod } from "@/lib/api";
 import { EmptyNote, SectionTitle, Shimmer } from "@/components/v2/ui";
 import { SENT_GRAINS, type SentGrain, type SentPeriod } from "@/lib/monitoring/monitoring";
+import type { EntityScope } from "@/lib/monitoring/sending";
 
 /**
  * Monitoring > Emails (staff only): what actually reached LEADS, apart from the mail we send
@@ -50,16 +51,19 @@ const ALL_KINDS: Series[] = [
   { key: "warmupReplies", label: "Warmup replies", color: "var(--data-lime)" },
   { key: "seeds", label: "Placement tests", color: "var(--data-violet)" },
 ];
+const WARMUP_KINDS: Series[] = ALL_KINDS.filter((k) => k.key === "warmup" || k.key === "warmupReplies");
 const SENT_PER_DAY_WINDOW = 30;
 
 /**
  * Sent per day, last 30 days, stacked by kind: the hub's Emails chart. Today is the producer's
  * `inProgress` day, drawn dashed and read "so far". Same read and key as the Daily view below.
  */
-export function SentPerDayChart() {
-  const q = useAuthQuery(["staffSentPerPeriod", "day"], () => getStaffSentPerPeriod("day"), ONCE);
+export function SentPerDayChart({ scope = null, kinds = "all" }: { scope?: EntityScope; kinds?: "all" | "warmup" } = {}) {
+  // The fleet keeps the hub's key; one entity reads instantly-service's scoped series.
+  const key = scope ? ["staffSentPerPeriod", "day", scope.grain, scope.key] : ["staffSentPerPeriod", "day"];
+  const q = useAuthQuery(key, () => getStaffSentPerPeriod("day", scope), ONCE);
   const periods = q.data?.grain === "day" ? q.data.periods.slice(-SENT_PER_DAY_WINDOW) : undefined;
-  return <PeriodChart periods={periods} error={q.isError} grain="day" series={ALL_KINDS} progressWord="so far" />;
+  return <PeriodChart periods={periods} error={q.isError} grain="day" series={kinds === "warmup" ? WARMUP_KINDS : ALL_KINDS} progressWord="so far" />;
 }
 
 export function EmailsCharts() {

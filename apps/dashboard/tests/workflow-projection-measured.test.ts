@@ -161,6 +161,10 @@ describe("the filter runs at the ONE reader boundary", () => {
       // below): the pre-signup catalogue route branches on `return-on-spend`'s
       // `measured` for the fleet median. Not a projection row.
       "app/api/public/catalogue/route.ts",
+      // A FIFTH producer's field under the same name: instantly-service's inbox-placement
+      // alert marks a (day, provider) `measured` when enough seeds were found to judge it.
+      // Monitoring > Emails greys an unjudged day. Not a projection row.
+      "components/v2/monitoring-sending.tsx",
       // The SECOND reader of the same endpoint, and the one surface that legitimately
       // needs the unmeasured rows: the campaign Workflows table ranks on the producer's
       // own ladder, and "this exists and you have not tried it" is an answer a customer
@@ -179,6 +183,8 @@ describe("the filter runs at the ONE reader boundary", () => {
       // `measured.fromReached` to say how many leads a measured rate rests on. Not a
       // projection row and not a flag.
       "lib/brand-conversion-rates.ts",
+      // The same fifth producer's reader (latest judged day per provider).
+      "lib/monitoring/sending.ts",
       // A THIRD producer's field under the same name: features-service's public
       // return-on-spend read marks a whole channel `measured`, meaning enough brands past the spend floor to state a median.
       // The pre-signup proof screen branches on it to decide whether it may state

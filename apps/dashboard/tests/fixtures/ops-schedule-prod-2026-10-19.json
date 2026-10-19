@@ -1,0 +1,322 @@
+{
+ "asOf": "2026-10-19T16:56:01.094Z",
+ "scope": {},
+ "horizonDays": 30,
+ "days": [
+  {
+   "date": "2026-10-19",
+   "isToday": true,
+   "queuedSteps": 337,
+   "queuedFirstEmails": 0,
+   "queuedFollowUps": 337,
+   "warmupsPlanned": 1285,
+   "seedTestsPlanned": 45,
+   "seedsPlanned": 225
+  },
+  {
+   "date": "2026-10-20",
+   "isToday": false,
+   "queuedSteps": 470,
+   "queuedFirstEmails": 0,
+   "queuedFollowUps": 470,
+   "warmupsPlanned": 1288,
+   "seedTestsPlanned": 0,
+   "seedsPlanned": 0
+  },
+  {
+   "date": "2026-10-21",
+   "isToday": false,
+   "queuedSteps": 3,
+   "queuedFirstEmails": 0,
+   "queuedFollowUps": 3,
+   "warmupsPlanned": 1290,
+   "seedTestsPlanned": 0,
+   "seedsPlanned": 0
+  },
+  {
+   "date": "2026-10-22",
+   "isToday": false,
+   "queuedSteps": 508,
+   "queuedFirstEmails": 0,
+   "queuedFollowUps": 508,
+   "warmupsPlanned": 1290,
+   "seedTestsPlanned": 0,
+   "seedsPlanned": 0
+  },
+  {
+   "date": "2026-10-23",
+   "isToday": false,
+   "queuedSteps": 148,
+   "queuedFirstEmails": 0,
+   "queuedFollowUps": 148,
+   "warmupsPlanned": 1290,
+   "seedTestsPlanned": 0,
+   "seedsPlanned": 0
+  },
+  {
+   "date": "2026-10-24",
+   "isToday": false,
+   "queuedSteps": 0,
+   "queuedFirstEmails": 0,
+   "queuedFollowUps": 0,
+   "warmupsPlanned": 1290,
+   "seedTestsPlanned": 0,
+   "seedsPlanned": 0
+  },
+  {
+   "date": "2026-10-25",
+   "isToday": false,
+   "queuedSteps": 179,
+   "queuedFirstEmails": 0,
+   "queuedFollowUps": 179,
+   "warmupsPlanned": 1290,
+   "seedTestsPlanned": 290,
+   "seedsPlanned": 1909
+  },
+  {
+   "date": "2026-10-26",
+   "isToday": false,
+   "queuedSteps": 0,
+   "queuedFirstEmails": 0,
+   "queuedFollowUps": 0,
+   "warmupsPlanned": 1290,
+   "seedTestsPlanned": 0,
+   "seedsPlanned": 0
+  },
+  {
+   "date": "2026-10-27",
+   "isToday": false,
+   "queuedSteps": 0,
+   "queuedFirstEmails": 0,
+   "queuedFollowUps": 0,
+   "warmupsPlanned": 1290,
+   "seedTestsPlanned": 0,
+   "seedsPlanned": 0
+  },
+  {
+   "date": "2026-10-28",
+   "isToday": false,
+   "queuedSteps": 0,
+   "queuedFirstEmails": 0,
+   "queuedFollowUps": 0,
+   "warmupsPlanned": 1290,
+   "seedTestsPlanned": 0,
+   "seedsPlanned": 0
+  },
+  {
+   "date": "2026-10-29",
+   "isToday": false,
+   "queuedSteps": 0,
+   "queuedFirstEmails": 0,
+   "queuedFollowUps": 0,
+   "warmupsPlanned": 1290,
+   "seedTestsPlanned": 0,
+   "seedsPlanned": 0
+  },
+  {
+   "date": "2026-10-30",
+   "isToday": false,
+   "queuedSteps": 0,
+   "queuedFirstEmails": 0,
+   "queuedFollowUps": 0,
+   "warmupsPlanned": 1290,
+   "seedTestsPlanned": 0,
+   "seedsPlanned": 0
+  },
+  {
+   "date": "2026-10-31",
+   "isToday": false,
+   "queuedSteps": 0,
+   "queuedFirstEmails": 0,
+   "queuedFollowUps": 0,
+   "warmupsPlanned": 1290,
+   "seedTestsPlanned": 0,
+   "seedsPlanned": 0
+  },
+  {
+   "date": "2026-11-01",
+   "isToday": false,
+   "queuedSteps": 0,
+   "queuedFirstEmails": 0,
+   "queuedFollowUps": 0,
+   "warmupsPlanned": 1290,
+   "seedTestsPlanned": 290,
+   "seedsPlanned": 1909
+  },
+  {
+   "date": "2026-11-02",
+   "isToday": false,
+   "queuedSteps": 0,
+   "queuedFirstEmails": 0,
+   "queuedFollowUps": 0,
+   "warmupsPlanned": 1290,
+   "seedTestsPlanned": 0,
+   "seedsPlanned": 0
+  },
+  {
+   "date": "2026-11-03",
+   "isToday": false,
+   "queuedSteps": 0,
+   "queuedFirstEmails": 0,
+   "queuedFollowUps": 0,
+   "warmupsPlanned": 1290,
+   "seedTestsPlanned": 0,
+   "seedsPlanned": 0
+  },
+  {
+   "date": "2026-11-04",
+   "isToday": false,
+   "queuedSteps": 0,
+   "queuedFirstEmails": 0,
+   "queuedFollowUps": 0,
+   "warmupsPlanned": 1290,
+   "seedTestsPlanned": 0,
+   "seedsPlanned": 0
+  },
+  {
+   "date": "2026-11-05",
+   "isToday": false,
+   "queuedSteps": 0,
+   "queuedFirstEmails": 0,
+   "queuedFollowUps": 0,
+   "warmupsPlanned": 1290,
+   "seedTestsPlanned": 0,
+   "seedsPlanned": 0
+  },
+  {
+   "date": "2026-11-06",
+   "isToday": false,
+   "queuedSteps": 0,
+   "queuedFirstEmails": 0,
+   "queuedFollowUps": 0,
+   "warmupsPlanned": 1290,
+   "seedTestsPlanned": 0,
+   "seedsPlanned": 0
+  },
+  {
+   "date": "2026-11-07",
+   "isToday": false,
+   "queuedSteps": 0,
+   "queuedFirstEmails": 0,
+   "queuedFollowUps": 0,
+   "warmupsPlanned": 1290,
+   "seedTestsPlanned": 0,
+   "seedsPlanned": 0
+  },
+  {
+   "date": "2026-11-08",
+   "isToday": false,
+   "queuedSteps": 0,
+   "queuedFirstEmails": 0,
+   "queuedFollowUps": 0,
+   "warmupsPlanned": 1290,
+   "seedTestsPlanned": 290,
+   "seedsPlanned": 1909
+  },
+  {
+   "date": "2026-11-09",
+   "isToday": false,
+   "queuedSteps": 0,
+   "queuedFirstEmails": 0,
+   "queuedFollowUps": 0,
+   "warmupsPlanned": 1290,
+   "seedTestsPlanned": 0,
+   "seedsPlanned": 0
+  },
+  {
+   "date": "2026-11-10",
+   "isToday": false,
+   "queuedSteps": 0,
+   "queuedFirstEmails": 0,
+   "queuedFollowUps": 0,
+   "warmupsPlanned": 1290,
+   "seedTestsPlanned": 0,
+   "seedsPlanned": 0
+  },
+  {
+   "date": "2026-11-11",
+   "isToday": false,
+   "queuedSteps": 0,
+   "queuedFirstEmails": 0,
+   "queuedFollowUps": 0,
+   "warmupsPlanned": 1290,
+   "seedTestsPlanned": 0,
+   "seedsPlanned": 0
+  },
+  {
+   "date": "2026-11-12",
+   "isToday": false,
+   "queuedSteps": 0,
+   "queuedFirstEmails": 0,
+   "queuedFollowUps": 0,
+   "warmupsPlanned": 1290,
+   "seedTestsPlanned": 0,
+   "seedsPlanned": 0
+  },
+  {
+   "date": "2026-11-13",
+   "isToday": false,
+   "queuedSteps": 0,
+   "queuedFirstEmails": 0,
+   "queuedFollowUps": 0,
+   "warmupsPlanned": 1290,
+   "seedTestsPlanned": 0,
+   "seedsPlanned": 0
+  },
+  {
+   "date": "2026-11-14",
+   "isToday": false,
+   "queuedSteps": 0,
+   "queuedFirstEmails": 0,
+   "queuedFollowUps": 0,
+   "warmupsPlanned": 1290,
+   "seedTestsPlanned": 0,
+   "seedsPlanned": 0
+  },
+  {
+   "date": "2026-11-15",
+   "isToday": false,
+   "queuedSteps": 0,
+   "queuedFirstEmails": 0,
+   "queuedFollowUps": 0,
+   "warmupsPlanned": 1290,
+   "seedTestsPlanned": 290,
+   "seedsPlanned": 1909
+  },
+  {
+   "date": "2026-11-16",
+   "isToday": false,
+   "queuedSteps": 0,
+   "queuedFirstEmails": 0,
+   "queuedFollowUps": 0,
+   "warmupsPlanned": 1290,
+   "seedTestsPlanned": 0,
+   "seedsPlanned": 0
+  },
+  {
+   "date": "2026-11-17",
+   "isToday": false,
+   "queuedSteps": 0,
+   "queuedFirstEmails": 0,
+   "queuedFollowUps": 0,
+   "warmupsPlanned": 1290,
+   "seedTestsPlanned": 0,
+   "seedsPlanned": 0
+  },
+  {
+   "date": "2026-11-18",
+   "isToday": false,
+   "queuedSteps": 0,
+   "queuedFirstEmails": 0,
+   "queuedFollowUps": 0,
+   "warmupsPlanned": 1290,
+   "seedTestsPlanned": 0,
+   "seedsPlanned": 0
+  }
+ ],
+ "totals": {
+  "overdueQueuedSteps": 592,
+  "undatedQueuedSteps": 0,
+  "beyondHorizonQueuedSteps": 0
+ }
+}

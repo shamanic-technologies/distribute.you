@@ -1,0 +1,70 @@
+{
+ "scope": {
+  "mailbox": "kevin.l@growdistribute.com"
+ },
+ "total": 114,
+ "offset": 0,
+ "steps": [
+  {
+   "instantlyCampaignId": "self:59f5855f-889f-4984-a969-374eb80d8f88",
+   "leadEmail": "andreas.oberleitner@platomics.com",
+   "orgId": "22ffb00a-b7da-4453-9bf2-1784c2d2bf9e",
+   "campaignId": "1e95a4c3-dea7-47a2-9c9f-293bb2aecc72",
+   "account": "kevin.l@growdistribute.com",
+   "mailbox": "kevin.l@growdistribute.com",
+   "domain": "growdistribute.com",
+   "step": 3,
+   "isFirstEmail": false,
+   "anchoredOn": "2026-10-13T17:57:50.309Z",
+   "theoreticalAt": "2026-10-16T17:57:50.309Z",
+   "theoreticalDay": "2026-10-16",
+   "overdue": true
+  },
+  {
+   "instantlyCampaignId": "self:3315ba9b-862a-4da6-9541-bb10b001eab3",
+   "leadEmail": "warakorn.c@g-able.com",
+   "orgId": "d4cbcbd5-35ad-4634-919d-7dbd40f76a59",
+   "campaignId": "18da3b07-611c-46ad-9a3d-0667f2f607c8",
+   "account": "kevin.l@growdistribute.com",
+   "mailbox": "kevin.l@growdistribute.com",
+   "domain": "growdistribute.com",
+   "step": 3,
+   "isFirstEmail": false,
+   "anchoredOn": "2026-10-15T00:11:05.868Z",
+   "theoreticalAt": "2026-10-18T00:11:05.868Z",
+   "theoreticalDay": "2026-10-18",
+   "overdue": true
+  },
+  {
+   "instantlyCampaignId": "self:25a3d273-c554-4a70-8a1d-cdf993c1fa5a",
+   "leadEmail": "tomas.kovachev@graphwise.ai",
+   "orgId": "22ffb00a-b7da-4453-9bf2-1784c2d2bf9e",
+   "campaignId": "1e95a4c3-dea7-47a2-9c9f-293bb2aecc72",
+   "account": "kevin.l@growdistribute.com",
+   "mailbox": "kevin.l@growdistribute.com",
+   "domain": "growdistribute.com",
+   "step": 3,
+   "isFirstEmail": false,
+   "anchoredOn": "2026-10-15T04:13:11.560Z",
+   "theoreticalAt": "2026-10-18T04:13:11.560Z",
+   "theoreticalDay": "2026-10-18",
+   "overdue": true
+  },
+  {
+   "instantlyCampaignId": "self:e87a2340-5720-437a-9885-90119078e491",
+   "leadEmail": "deepa.patel@valleyhealthpartners.org",
+   "orgId": "5fefaf5a-8d50-4c5f-aa4b-3d35bcd1de93",
+   "campaignId": "3922c8e1-3405-46af-8a56-1eef3f221b19",
+   "account": "kevin.l@growdistribute.com",
+   "mailbox": "kevin.l@growdistribute.com",
+   "domain": "growdistribute.com",
+   "step": 3,
+   "isFirstEmail": false,
+   "anchoredOn": "2026-10-15T11:32:44.111Z",
+   "theoreticalAt": "2026-10-18T11:32:44.111Z",
+   "theoreticalDay": "2026-10-18",
+   "overdue": true
+  }
+ ],
+ "nextOffset": 20
+}

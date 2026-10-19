@@ -639,9 +639,13 @@ export type MonitoringView =
   | { view: "hub" }
   | { view: "page"; page: MonitoringPage }
   | { view: "moved"; page: MonitoringPage }
+  /** One domain / mailbox / sending address: `emails/<grain>s/<key>`. */
+  | { view: "entity"; grain: "account" | "mailbox" | "domain"; key: string }
+  /** One placement test: `emails/placement-tests/<testId>`. */
+  | { view: "test"; testId: string }
   | { view: "missing"; rest: string };
 
-export const MONITORING_PAGES = ["cost/providers", "cost/spend", "cost/subscriptions", "cost/email-sending", "customers/absorbed", "price/billed", "price/new-pricing", "price/pricing-basis", "margin", "margin/pricing-comparison", "emails", "emails/inbox-providers", "emails/domains", "emails/mailboxes", "emails/accounts", "chat/skills"] as const;
+export const MONITORING_PAGES = ["cost/providers", "cost/spend", "cost/subscriptions", "cost/email-sending", "customers/absorbed", "price/billed", "price/new-pricing", "price/pricing-basis", "margin", "margin/pricing-comparison", "emails", "emails/inbox-providers", "emails/domains", "emails/mailboxes", "emails/accounts", "emails/placement-tests", "emails/warmup", "emails/queued", "chat/skills"] as const;
 export type MonitoringPage = (typeof MONITORING_PAGES)[number];
 
 /** Retired URLs (owner 2026-10-01): links already shared keep landing on the page that absorbed them. */
@@ -651,9 +655,27 @@ export const MONITORING_MOVED: Record<string, MonitoringPage> = {
   "price/email-sending": "cost/email-sending",
 };
 
+const ENTITY_GRAIN_OF: Record<string, "account" | "mailbox" | "domain"> = { domains: "domain", mailboxes: "mailbox", accounts: "account" };
+
+/** The page of one domain / mailbox / sending address, under the Monitoring base. */
+export function monitoringEntityPath(grain: "account" | "mailbox" | "domain", key: string): string {
+  return `emails/${grain === "domain" ? "domains" : grain === "mailbox" ? "mailboxes" : "accounts"}/${encodeURIComponent(key)}`;
+}
+
 export function parseMonitoringPath(rest: string): MonitoringView {
   const clean = rest.replace(/^\/+|\/+$/g, "");
   if (!clean) return { view: "hub" };
   if (MONITORING_MOVED[clean]) return { view: "moved", page: MONITORING_MOVED[clean] };
+  const one = /^emails\/(domains|mailboxes|accounts|placement-tests)\/([^/]+)$/.exec(clean);
+  if (one) {
+    let key: string;
+    try {
+      key = decodeURIComponent(one[2]);
+    } catch {
+      return { view: "missing", rest: clean };
+    }
+    if (one[1] === "placement-tests") return { view: "test", testId: key };
+    return { view: "entity", grain: ENTITY_GRAIN_OF[one[1]], key };
+  }
   return (MONITORING_PAGES as readonly string[]).includes(clean) ? { view: "page", page: clean as MonitoringPage } : { view: "missing", rest: clean };
 }

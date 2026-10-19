@@ -1,0 +1,178 @@
+{
+ "scope": {},
+ "tests": [
+  {
+   "testId": "seed:81795ee8-ca22-430f-907e-27590ac2bae5",
+   "source": "seed",
+   "testedAt": "2026-10-19T11:22:03.495Z",
+   "senders": 233,
+   "total": {
+    "seeds": 1640,
+    "inbox": 1030,
+    "spam": 610,
+    "missing": 0,
+    "inboxPct": 62.8
+   },
+   "byProvider": {
+    "google": {
+     "seeds": 1360,
+     "inbox": 830,
+     "spam": 530,
+     "missing": 0,
+     "inboxPct": 61
+    },
+    "microsoft": {
+     "seeds": 137,
+     "inbox": 137,
+     "spam": 0,
+     "missing": 0,
+     "inboxPct": 100
+    },
+    "microsoftConsumer": {
+     "seeds": 143,
+     "inbox": 63,
+     "spam": 80,
+     "missing": 0,
+     "inboxPct": 44.1
+    },
+    "other": {
+     "seeds": 0,
+     "inbox": 0,
+     "spam": 0,
+     "missing": 0,
+     "inboxPct": null
+    }
+   }
+  },
+  {
+   "testId": "seed:ad194c55-0fd4-4e5d-9691-2ae9cb6b228d",
+   "source": "seed",
+   "testedAt": "2026-10-19T11:04:17.705Z",
+   "senders": 244,
+   "total": {
+    "seeds": 2245,
+    "inbox": 1021,
+    "spam": 1224,
+    "missing": 0,
+    "inboxPct": 45.5
+   },
+   "byProvider": {
+    "google": {
+     "seeds": 2044,
+     "inbox": 1014,
+     "spam": 1030,
+     "missing": 0,
+     "inboxPct": 49.6
+    },
+    "microsoft": {
+     "seeds": 0,
+     "inbox": 0,
+     "spam": 0,
+     "missing": 0,
+     "inboxPct": null
+    },
+    "microsoftConsumer": {
+     "seeds": 201,
+     "inbox": 7,
+     "spam": 194,
+     "missing": 0,
+     "inboxPct": 3.5
+    },
+    "other": {
+     "seeds": 0,
+     "inbox": 0,
+     "spam": 0,
+     "missing": 0,
+     "inboxPct": null
+    }
+   }
+  },
+  {
+   "testId": "seed:657a903b-e4ed-4eed-84f8-7484efe044ab",
+   "source": "seed",
+   "testedAt": "2026-10-18T12:28:03.974Z",
+   "senders": 245,
+   "total": {
+    "seeds": 2278,
+    "inbox": 1185,
+    "spam": 1093,
+    "missing": 0,
+    "inboxPct": 52
+   },
+   "byProvider": {
+    "google": {
+     "seeds": 2278,
+     "inbox": 1185,
+     "spam": 1093,
+     "missing": 0,
+     "inboxPct": 52
+    },
+    "microsoft": {
+     "seeds": 0,
+     "inbox": 0,
+     "spam": 0,
+     "missing": 0,
+     "inboxPct": null
+    },
+    "microsoftConsumer": {
+     "seeds": 0,
+     "inbox": 0,
+     "spam": 0,
+     "missing": 0,
+     "inboxPct": null
+    },
+    "other": {
+     "seeds": 0,
+     "inbox": 0,
+     "spam": 0,
+     "missing": 0,
+     "inboxPct": null
+    }
+   }
+  },
+  {
+   "testId": "seed:e66c9846-4dc2-430f-a16f-db43da77e37d",
+   "source": "seed",
+   "testedAt": "2026-10-10T14:16:26.241Z",
+   "senders": 244,
+   "total": {
+    "seeds": 2230,
+    "inbox": 904,
+    "spam": 1326,
+    "missing": 0,
+    "inboxPct": 40.5
+   },
+   "byProvider": {
+    "google": {
+     "seeds": 2230,
+     "inbox": 904,
+     "spam": 1326,
+     "missing": 0,
+     "inboxPct": 40.5
+    },
+    "microsoft": {
+     "seeds": 0,
+     "inbox": 0,
+     "spam": 0,
+     "missing": 0,
+     "inboxPct": null
+    },
+    "microsoftConsumer": {
+     "seeds": 0,
+     "inbox": 0,
+     "spam": 0,
+     "missing": 0,
+     "inboxPct": null
+    },
+    "other": {
+     "seeds": 0,
+     "inbox": 0,
+     "spam": 0,
+     "missing": 0,
+     "inboxPct": null
+    }
+   }
+  }
+ ],
+ "nextCursor": null
+}

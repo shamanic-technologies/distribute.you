@@ -207,11 +207,6 @@ export interface ResearchWorkflow extends ResearchFigures {
    * each with its own page even before it sent anything. Absent on a catalogue built before it.
    */
   writesWithNow?: { version: string; template: ResearchRef | null; model: ResearchRef | null; modelAlias: string | null } | null;
-  /**
-   * What the row's FIGURES were written with (RESEARCH-DEPRECATED-LLM-TEMPLATE-1019, features-service v0.179.302):
-   * set on deprecated workflows too, where `writesWithNow` is null. Absent on a catalogue built before it.
-   */
-  wroteWith?: { model: ResearchRef | null; template: ResearchRef | null; version: string | null; modelAlias: string | null } | null;
   runs: { when: string; version: string; status: string; duration: string | null; cost: string | null }[];
 }
 

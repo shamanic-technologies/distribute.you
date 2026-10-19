@@ -189,8 +189,6 @@ describe("research reads nothing scoped to the viewer", () => {
     // Model and template read EVERY version, so a retired workflow still states them.
     // LLM and template read what the workflow writes with NOW from features-service's catalogue (one source).
     expect(live).toContain("studied?.writesWithNow");
-    // A deprecated workflow (no runnable version) states what its figures were written with, never a blank cell.
-    expect(live).toContain("studied?.writesWithNow ?? studied?.wroteWith");
     expect(live).not.toContain("listChannelWorkflowStacks");
     expect(live).toContain("<WhyHere row={r} />");
     // Every workflow, template and LLM cell is a tag opening its own page; the name cell wears no chip.

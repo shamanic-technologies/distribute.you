@@ -1,0 +1,243 @@
+{
+ "testId": "seed:81795ee8-ca22-430f-907e-27590ac2bae5",
+ "source": "seed",
+ "testedAt": "2026-10-19T11:22:03.495Z",
+ "scope": {},
+ "missingSeedsListed": true,
+ "total": {
+  "seeds": 1640,
+  "inbox": 1030,
+  "spam": 610,
+  "missing": 0,
+  "inboxPct": 62.8
+ },
+ "byProvider": {
+  "google": {
+   "seeds": 1360,
+   "inbox": 830,
+   "spam": 530,
+   "missing": 0,
+   "inboxPct": 61
+  },
+  "microsoft": {
+   "seeds": 137,
+   "inbox": 137,
+   "spam": 0,
+   "missing": 0,
+   "inboxPct": 100
+  },
+  "microsoftConsumer": {
+   "seeds": 143,
+   "inbox": 63,
+   "spam": 80,
+   "missing": 0,
+   "inboxPct": 44.1
+  },
+  "other": {
+   "seeds": 0,
+   "inbox": 0,
+   "spam": 0,
+   "missing": 0,
+   "inboxPct": null
+  }
+ },
+ "bySender": [
+  {
+   "sender": "addison@baseclusterio.com",
+   "senderMailbox": "addison@baseclusterio.com",
+   "total": {
+    "seeds": 11,
+    "inbox": 10,
+    "spam": 1,
+    "missing": 0,
+    "inboxPct": 90.9
+   },
+   "byProvider": {
+    "google": {
+     "seeds": 9,
+     "inbox": 9,
+     "spam": 0,
+     "missing": 0,
+     "inboxPct": 100
+    },
+    "microsoft": {
+     "seeds": 1,
+     "inbox": 1,
+     "spam": 0,
+     "missing": 0,
+     "inboxPct": 100
+    },
+    "microsoftConsumer": {
+     "seeds": 1,
+     "inbox": 0,
+     "spam": 1,
+     "missing": 0,
+     "inboxPct": 0
+    },
+    "other": {
+     "seeds": 0,
+     "inbox": 0,
+     "spam": 0,
+     "missing": 0,
+     "inboxPct": null
+    }
+   }
+  },
+  {
+   "sender": "alexander@plainsignalco.com",
+   "senderMailbox": "alexander@plainsignalco.com",
+   "total": {
+    "seeds": 12,
+    "inbox": 12,
+    "spam": 0,
+    "missing": 0,
+    "inboxPct": 100
+   },
+   "byProvider": {
+    "google": {
+     "seeds": 10,
+     "inbox": 10,
+     "spam": 0,
+     "missing": 0,
+     "inboxPct": 100
+    },
+    "microsoft": {
+     "seeds": 1,
+     "inbox": 1,
+     "spam": 0,
+     "missing": 0,
+     "inboxPct": 100
+    },
+    "microsoftConsumer": {
+     "seeds": 1,
+     "inbox": 1,
+     "spam": 0,
+     "missing": 0,
+     "inboxPct": 100
+    },
+    "other": {
+     "seeds": 0,
+     "inbox": 0,
+     "spam": 0,
+     "missing": 0,
+     "inboxPct": null
+    }
+   }
+  },
+  {
+   "sender": "alina@helixmeshio.com",
+   "senderMailbox": "alina@helixmeshio.com",
+   "total": {
+    "seeds": 12,
+    "inbox": 11,
+    "spam": 1,
+    "missing": 0,
+    "inboxPct": 91.7
+   },
+   "byProvider": {
+    "google": {
+     "seeds": 10,
+     "inbox": 10,
+     "spam": 0,
+     "missing": 0,
+     "inboxPct": 100
+    },
+    "microsoft": {
+     "seeds": 1,
+     "inbox": 1,
+     "spam": 0,
+     "missing": 0,
+     "inboxPct": 100
+    },
+    "microsoftConsumer": {
+     "seeds": 1,
+     "inbox": 0,
+     "spam": 1,
+     "missing": 0,
+     "inboxPct": 0
+    },
+    "other": {
+     "seeds": 0,
+     "inbox": 0,
+     "spam": 0,
+     "missing": 0,
+     "inboxPct": null
+    }
+   }
+  }
+ ],
+ "seeds": [
+  {
+   "sender": "addison@baseclusterio.com",
+   "senderMailbox": "addison@baseclusterio.com",
+   "senderDomain": "baseclusterio.com",
+   "providerLabel": "Google",
+   "receiver": "bree@acuteclusterco.com",
+   "provider": "google",
+   "placement": "inbox",
+   "folder": "INBOX",
+   "msInference": null,
+   "msScl": null,
+   "dispatchOutcome": "sent",
+   "dispatchedAt": "2026-10-19T11:22:03.495Z",
+   "observedAt": "2026-10-19T11:36:25.935Z",
+   "spfPass": true,
+   "dkimPass": true,
+   "dmarcPass": true
+  },
+  {
+   "sender": "addison@baseclusterio.com",
+   "senderMailbox": "addison@baseclusterio.com",
+   "senderDomain": "baseclusterio.com",
+   "providerLabel": "Google",
+   "receiver": "fallon@acutezoneco.com",
+   "provider": "google",
+   "placement": "inbox",
+   "folder": "INBOX",
+   "msInference": null,
+   "msScl": null,
+   "dispatchOutcome": "sent",
+   "dispatchedAt": "2026-10-19T11:22:04.411Z",
+   "observedAt": "2026-10-19T11:37:51.725Z",
+   "spfPass": true,
+   "dkimPass": true,
+   "dmarcPass": true
+  },
+  {
+   "sender": "addison@baseclusterio.com",
+   "senderMailbox": "addison@baseclusterio.com",
+   "senderDomain": "baseclusterio.com",
+   "providerLabel": "Google",
+   "receiver": "fallon@agileconsultco.com",
+   "provider": "google",
+   "placement": "inbox",
+   "folder": "INBOX",
+   "msInference": null,
+   "msScl": null,
+   "dispatchOutcome": "sent",
+   "dispatchedAt": "2026-10-19T11:22:05.469Z",
+   "observedAt": "2026-10-19T11:36:50.892Z",
+   "spfPass": true,
+   "dkimPass": true,
+   "dmarcPass": true
+  },
+  {
+   "sender": "addison@baseclusterio.com",
+   "senderMailbox": "addison@baseclusterio.com",
+   "senderDomain": "baseclusterio.com",
+   "providerLabel": "Google",
+   "receiver": "frida@alphaflowco.com",
+   "provider": "google",
+   "placement": "inbox",
+   "folder": "INBOX",
+   "msInference": null,
+   "msScl": null,
+   "dispatchOutcome": "sent",
+   "dispatchedAt": "2026-10-19T11:22:06.482Z",
+   "observedAt": "2026-10-19T11:36:37.339Z",
+   "spfPass": true,
+   "dkimPass": true,
+   "dmarcPass": true
+  }
+ ]
+}

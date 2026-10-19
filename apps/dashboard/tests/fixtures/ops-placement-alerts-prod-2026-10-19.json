@@ -1,0 +1,175 @@
+{
+ "asOf": "2026-10-19T16:55:48.567Z",
+ "bar": {
+  "inboxPctOfFound": 80,
+  "minFoundSeeds": 20,
+  "basis": "inbox / (inbox + spam) of the seeds sent by production mailboxes the automatic cut still lets mail that provider",
+  "sources": [
+   {
+    "name": "Omni Online Strategies",
+    "url": "https://omnionlinestrategies.com/blog/what-is-inbox-placement-rate-cold-email",
+    "says": "below 80% indicates a technical problem; target 85-95%"
+   },
+   {
+    "name": "WarmForge",
+    "url": "https://www.warmforge.ai/blog/what-is-an-inbox-placement-test",
+    "says": "80%+ strong, 70-79% acceptable, below 70% poor"
+   },
+   {
+    "name": "Expandi",
+    "url": "https://expandi.io/blog/email-marketing-kpis/",
+    "says": "below 85% poor for cold email"
+   }
+  ]
+ },
+ "days": [
+  {
+   "day": "2026-09-26",
+   "provider": "google",
+   "providerLabel": "Google",
+   "fleet": {
+    "seeds": 531,
+    "found": 531,
+    "inbox": 461,
+    "inboxPct": 86.8
+   },
+   "allowed": {
+    "senders": 23,
+    "seeds": 223,
+    "found": 223,
+    "inbox": 223,
+    "inboxPct": 100
+   },
+   "mailboxesCut": 0,
+   "measured": true,
+   "below": false
+  },
+  {
+   "day": "2026-10-03",
+   "provider": "google",
+   "providerLabel": "Google",
+   "fleet": {
+    "seeds": 2221,
+    "found": 2221,
+    "inbox": 987,
+    "inboxPct": 44.4
+   },
+   "allowed": {
+    "senders": 38,
+    "seeds": 373,
+    "found": 373,
+    "inbox": 373,
+    "inboxPct": 100
+   },
+   "mailboxesCut": 0,
+   "measured": true,
+   "below": false
+  },
+  {
+   "day": "2026-10-10",
+   "provider": "google",
+   "providerLabel": "Google",
+   "fleet": {
+    "seeds": 2230,
+    "found": 2230,
+    "inbox": 904,
+    "inboxPct": 40.5
+   },
+   "allowed": {
+    "senders": 38,
+    "seeds": 373,
+    "found": 373,
+    "inbox": 373,
+    "inboxPct": 100
+   },
+   "mailboxesCut": 0,
+   "measured": true,
+   "below": false
+  },
+  {
+   "day": "2026-10-18",
+   "provider": "google",
+   "providerLabel": "Google",
+   "fleet": {
+    "seeds": 2278,
+    "found": 2278,
+    "inbox": 1185,
+    "inboxPct": 52
+   },
+   "allowed": {
+    "senders": 38,
+    "seeds": 373,
+    "found": 373,
+    "inbox": 373,
+    "inboxPct": 100
+   },
+   "mailboxesCut": 0,
+   "measured": true,
+   "below": false
+  },
+  {
+   "day": "2026-10-19",
+   "provider": "google",
+   "providerLabel": "Google",
+   "fleet": {
+    "seeds": 3404,
+    "found": 3404,
+    "inbox": 1844,
+    "inboxPct": 54.2
+   },
+   "allowed": {
+    "senders": 38,
+    "seeds": 746,
+    "found": 746,
+    "inbox": 746,
+    "inboxPct": 100
+   },
+   "mailboxesCut": 0,
+   "measured": true,
+   "below": false
+  },
+  {
+   "day": "2026-10-19",
+   "provider": "microsoft",
+   "providerLabel": "Microsoft 365",
+   "fleet": {
+    "seeds": 137,
+    "found": 137,
+    "inbox": 137,
+    "inboxPct": 100
+   },
+   "allowed": {
+    "senders": 38,
+    "seeds": 38,
+    "found": 38,
+    "inbox": 38,
+    "inboxPct": 100
+   },
+   "mailboxesCut": 0,
+   "measured": true,
+   "below": false
+  },
+  {
+   "day": "2026-10-19",
+   "provider": "microsoft_consumer",
+   "providerLabel": "Outlook.com",
+   "fleet": {
+    "seeds": 344,
+    "found": 344,
+    "inbox": 70,
+    "inboxPct": 20.3
+   },
+   "allowed": {
+    "senders": 38,
+    "seeds": 76,
+    "found": 76,
+    "inbox": 15,
+    "inboxPct": 19.7
+   },
+   "mailboxesCut": 0,
+   "measured": true,
+   "below": true
+  }
+ ],
+ "episodes": []
+}

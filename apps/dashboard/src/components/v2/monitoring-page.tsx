@@ -12,6 +12,7 @@ import { ProvidersTable } from "@/components/v2/monitoring-providers";
 import { EmailsCharts, SentPerDayChart } from "@/components/v2/monitoring-emails";
 import { AccountsPage, DomainsPage, InboxProvidersPage, LatestEmails, MailboxesPage, SendingHealthTiles, useSendingVerdict } from "@/components/v2/monitoring-sending";
 import { HubChip, HubChips, HubSectionBlock, useOpenSections } from "@/components/v2/hub-section";
+import { CapacityChart, EntityPage, PlacementTestPage, PlacementTestsPage, QueuedPage, ScheduleChart, WarmupPage, entityTitle } from "@/components/v2/monitoring-entities";
 import { EmailPriceView } from "@/components/v2/monitoring-email-price";
 import { BillingTable } from "@/components/v2/monitoring-billing";
 import { SubscriptionsView } from "@/components/v2/monitoring-subscriptions";
@@ -115,6 +116,9 @@ const PAGE: Record<MonitoringPage, { section: SectionKey; title: string; questio
   "emails/domains": { section: "emails", title: "Domains", question: "Which domains do we send from, and how do they land?" },
   "emails/mailboxes": { section: "emails", title: "Mailboxes", question: "Which mailboxes send, how much, and how fast do they ramp up?" },
   "emails/accounts": { section: "emails", title: "Accounts", question: "What does each sending address send, and when is its next test?" },
+  "emails/placement-tests": { section: "emails", title: "Placement tests", question: "Where did each placement test land, at each inbox provider?" },
+  "emails/warmup": { section: "emails", title: "Warmup", question: "How much warmup do we send, and how much is planned?" },
+  "emails/queued": { section: "emails", title: "Queued sequences", question: "Which sequence steps are queued, and for which day?" },
   "chat/skills": { section: "chat", title: "Skills", question: "What does the Copilot read before it acts?" },
 };
 
@@ -151,6 +155,25 @@ export function V2Monitoring() {
   }, [movedTo, router]);
   if (view.view === "moved") return null;
   if (view.view === "hub") return <Hub base={base} />;
+  if (view.view === "entity" || view.view === "test") {
+    const label = view.view === "test" ? "Placement test" : entityTitle(view.grain);
+    const parent = view.view === "test" ? { label: "Placement tests", href: `${base}/emails/placement-tests` } : { label: PAGE[view.grain === "domain" ? "emails/domains" : view.grain === "mailbox" ? "emails/mailboxes" : "emails/accounts"].title, href: `${base}/emails/${view.grain === "domain" ? "domains" : view.grain === "mailbox" ? "mailboxes" : "accounts"}` };
+    return (
+      <Frame crumbs={[{ label: "Monitoring", href: base }, { label: SECTION_LOOK.emails.name }, parent, { label: view.view === "test" ? view.testId : view.key }]}>
+        <div className="flex min-w-0 items-center gap-3">
+          <SectionMark section="emails" size={40} />
+          <div className="min-w-0">
+            <p className="text-[12px]" style={{ color: SECTION_LOOK.emails.color }}>
+              {label}
+            </p>
+            <h1 className="k-mono truncate text-[22px] font-medium leading-[30px] tracking-[-0.02em]">{view.view === "test" ? view.testId : view.key}</h1>
+          </div>
+        </div>
+        <p className="k-fg3 mt-2 text-[13px]">Read live from production. Times are UTC.</p>
+        <div className="mt-6">{view.view === "test" ? <PlacementTestPage testId={view.testId} /> : <EntityPage grain={view.grain} value={view.key} />}</div>
+      </Frame>
+    );
+  }
   if (view.view === "missing") {
     return (
       <Frame crumbs={[{ label: "Monitoring", href: base }, { label: "Not found" }]}>
@@ -201,6 +224,9 @@ export function V2Monitoring() {
         {view.page === "emails/domains" && <DomainsPage />}
         {view.page === "emails/mailboxes" && <MailboxesPage />}
         {view.page === "emails/accounts" && <AccountsPage />}
+        {view.page === "emails/placement-tests" && <PlacementTestsPage />}
+        {view.page === "emails/warmup" && <WarmupPage />}
+        {view.page === "emails/queued" && <QueuedPage />}
         {view.page === "chat/skills" && <SkillsView />}
       </div>
     </Frame>
@@ -306,12 +332,15 @@ function Hub({ base }: { base: string }) {
       <div className="mt-8 space-y-8">
       <div>
       <SectionTitle count={1}>Sending</SectionTitle>
-      <Section section="emails" count={5} grid={false}>
+      <Section section="emails" count={8} grid={false}>
         <HubChips>
           <HubChip href={href("emails/inbox-providers")} color="var(--data-violet)" label="Inbox providers" />
           <HubChip href={href("emails/domains")} color="var(--data-sky)" label="Domains" />
           <HubChip href={href("emails/mailboxes")} color="var(--data-teal)" label="Mailboxes" />
           <HubChip href={href("emails/accounts")} color="var(--data-amber)" label="Accounts" />
+          <HubChip href={href("emails/placement-tests")} color="var(--data-rose)" label="Placement tests" />
+          <HubChip href={href("emails/warmup")} color="var(--data-lime)" label="Warmup" />
+          <HubChip href={href("emails/queued")} color="var(--accent)" label="Queued sequences" />
         </HubChips>
         <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3">
           <Card
@@ -327,6 +356,10 @@ function Hub({ base }: { base: string }) {
         <div className="mt-6">
           <SectionTitle right={<span>Times are UTC</span>}>Sent per day, by kind</SectionTitle>
           <SentPerDayChart />
+        </div>
+        <div className="mt-6 grid grid-cols-1 gap-3 lg:grid-cols-2">
+          <CapacityChart scope={null} />
+          <ScheduleChart scope={null} />
         </div>
         <div className="mt-6">
           <SectionTitle>Latest emails</SectionTitle>
