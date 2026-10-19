@@ -89,6 +89,13 @@ export const SENSITIVE_QUERY_ROOTS = new Set([
   "workflowRankLadderActual",
   "campaignWorkflowRevenueActual",
   "workflowRunsActual",
+  // Staff Research status (TEMPLATE-MODEL-STATUS-1019): template/model/workflow statuses, the
+  // workflows a deprecation would stop, a template's last emails (every client's copy).
+  "contentTemplateStatuses",
+  "contentModelStatuses",
+  "workflowDynastyStatuses",
+  "retireByContentPreview",
+  "templateOutputs",
   // Staff Monitoring (fleet margin, vendor costs, price catalogue, emails sent).
   "staffCostMargin",
   "staffPriceVersions",

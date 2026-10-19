@@ -19,6 +19,7 @@ import {
   LiveWorkflowCells,
   LiveWorkflowHeads,
 } from "@/components/v2/live-workflow-cells";
+import { WorkflowStatusCells, useDynastyStatuses } from "@/components/v2/research-status";
 
 /**
  * A pipe's workflows as the FLEET ranks them right now, at the pipe's leg: every client we run
@@ -69,6 +70,8 @@ export function ResearchLiveWorkflows({
     retry: false,
   });
   const rows = useMemo(() => fleetWorkflowRows(rankingQ.data?.rows ?? []), [rankingQ.data]);
+  // Each workflow's own status (workflow-service), changed from the row's ⋮ (TEMPLATE-MODEL-STATUS-1019).
+  const dynastyStatuses = useDynastyStatuses(featureSlug);
   // The Research catalogue's own pages: a workflow, template or model Research studied has one.
   const researchedWorkflows = useMemo(() => new Map((catalog?.[pipe].workflows ?? []).map((w) => [w.key, w])), [catalog, pipe]);
   // A workflow Research never studied still has its live page (`/workflows/:slug`, priced for this pipe).
@@ -85,7 +88,7 @@ export function ResearchLiveWorkflows({
     <div className="k-card overflow-hidden">
       <LiveRankingStrip rows={rows} moneyNote="no mature workflow yet" nameOf={nameOf} />
       <div className="k-scroll relative overflow-x-auto">
-        <table className="w-full min-w-[960px] table-fixed text-[13px]">
+        <table className="w-full min-w-[1180px] table-fixed text-[13px]">
           <thead>
             <tr className="border-b border-[var(--line-subtle)]">
               <th className={`${LIVE_TH} w-10`}>#</th>
@@ -93,33 +96,35 @@ export function ResearchLiveWorkflows({
               <th className={`${LIVE_TH} w-28`}>LLM</th>
               <th className={LIVE_TH}>Template</th>
               <th className={`${LIVE_TH} w-36`}>Why here</th>
-              <LiveWorkflowHeads costLabel={`Cost ${outcomeUnit.replace("/ ", "per ")}`} compact />
+              <LiveWorkflowHeads costLabel={`Cost ${outcomeUnit.replace("/ ", "per ")}`} compact maturityLabel="Maturity" />
+              <th className={`${LIVE_TH} w-28`}>Status</th>
+              <th className={`${LIVE_TH} w-10`} aria-label="Status menu" />
             </tr>
           </thead>
           <tbody>
             {!answered ? (
               [0, 1, 2, 3, 4].map((i) => (
                 <tr key={i} className="k-row h-10">
-                  <td colSpan={11} className="px-4">
+                  <td colSpan={13} className="px-4">
                     <Shimmer className="h-4 w-full" />
                   </td>
                 </tr>
               ))
             ) : failed ? (
               <tr>
-                <td colSpan={11}>
+                <td colSpan={13}>
                   <EmptyNote>We could not read the fleet ranking just now. It retries on its own.</EmptyNote>
                 </td>
               </tr>
             ) : notBuilt ? (
               <tr>
-                <td colSpan={11}>
+                <td colSpan={13}>
                   <EmptyNote>The fleet ranking is being computed. It appears here within a few minutes.</EmptyNote>
                 </td>
               </tr>
             ) : rows.length === 0 ? (
               <tr>
-                <td colSpan={11}>
+                <td colSpan={13}>
                   <EmptyNote>No workflow is on this leg yet.</EmptyNote>
                 </td>
               </tr>
@@ -168,6 +173,7 @@ export function ResearchLiveWorkflows({
                       <WhyHere row={r} />
                     </td>
                     <LiveWorkflowCells row={r} />
+                    <WorkflowStatusCells slug={r.slug} label={nameOf(r)} statuses={dynastyStatuses} />
                   </tr>
                 );
               })

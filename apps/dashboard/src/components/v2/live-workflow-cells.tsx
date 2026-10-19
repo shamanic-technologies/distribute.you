@@ -57,7 +57,16 @@ export function LiveWorkflowChips({ row }: { row: LiveWorkflowRow }) {
 /** The live-ranking column heads, in their one order. No `costLabel` means no cost column: the
  *  brand's Workflows page already states the campaign's cost in its Offer column, so a second
  *  column there repeats it (owner, 2026-09-30). */
-export function LiveWorkflowHeads({ costLabel, compact = false }: { costLabel?: string; compact?: boolean }) {
+export function LiveWorkflowHeads({
+  costLabel,
+  compact = false,
+  maturityLabel = "Status",
+}: {
+  costLabel?: string;
+  compact?: boolean;
+  /** Research names it "Maturity": its own Status column is the workflow's Active / Deprecated. */
+  maturityLabel?: string;
+}) {
   // `compact`: the narrower widths a fixed-layout table needs to fit the viewport (Research).
   const w = compact
     ? { cost: "w-20", status: "w-24", roi: "w-14", rate: "w-14", outcomes: "w-20", invested: "w-20" }
@@ -65,7 +74,7 @@ export function LiveWorkflowHeads({ costLabel, compact = false }: { costLabel?: 
   return (
     <>
       {costLabel && <th className={`${LIVE_TH} ${w.cost} text-right`}>{costLabel}</th>}
-      <th className={`${LIVE_TH} ${w.status}`}>Status</th>
+      <th className={`${LIVE_TH} ${w.status}`}>{maturityLabel}</th>
       <th className={`${LIVE_TH} ${w.roi} text-right`}>ROI</th>
       <th className={`${LIVE_TH} ${w.rate} text-right`}>Rate</th>
       <th className={`${LIVE_TH} ${w.outcomes} text-right`}>Outcomes</th>
