@@ -639,9 +639,12 @@ export type MonitoringView =
   | { view: "hub" }
   | { view: "page"; page: MonitoringPage }
   | { view: "moved"; page: MonitoringPage }
-  | { view: "missing"; rest: string };
+  | { view: "missing"; rest: string }
+  // One account / mailbox / domain, or one placement test (MONITORING-EMAILS-DRILLDOWN-1019).
+  | { view: "entity"; kind: "account" | "mailbox" | "domain"; key: string }
+  | { view: "test"; testId: string };
 
-export const MONITORING_PAGES = ["cost/providers", "cost/spend", "cost/subscriptions", "cost/email-sending", "customers/absorbed", "price/billed", "price/new-pricing", "price/pricing-basis", "margin", "margin/pricing-comparison", "emails", "emails/inbox-providers", "emails/domains", "emails/mailboxes", "emails/accounts", "chat/skills"] as const;
+export const MONITORING_PAGES = ["cost/providers", "cost/spend", "cost/subscriptions", "cost/email-sending", "customers/absorbed", "price/billed", "price/new-pricing", "price/pricing-basis", "margin", "margin/pricing-comparison", "emails", "emails/inbox-providers", "emails/domains", "emails/mailboxes", "emails/accounts", "emails/placement-tests", "emails/warmup", "emails/queued", "chat/skills"] as const;
 export type MonitoringPage = (typeof MONITORING_PAGES)[number];
 
 /** Retired URLs (owner 2026-10-01): links already shared keep landing on the page that absorbed them. */
@@ -651,9 +654,22 @@ export const MONITORING_MOVED: Record<string, MonitoringPage> = {
   "price/email-sending": "cost/email-sending",
 };
 
+const ENTITY_OF_SEGMENT: Record<string, "account" | "mailbox" | "domain"> = { accounts: "account", mailboxes: "mailbox", domains: "domain" };
+
 export function parseMonitoringPath(rest: string): MonitoringView {
   const clean = rest.replace(/^\/+|\/+$/g, "");
   if (!clean) return { view: "hub" };
   if (MONITORING_MOVED[clean]) return { view: "moved", page: MONITORING_MOVED[clean] };
+  const entity = /^emails\/(accounts|mailboxes|domains|placement-tests)\/([^/]+)$/.exec(clean);
+  if (entity) {
+    let key: string;
+    try {
+      key = decodeURIComponent(entity[2]);
+    } catch {
+      return { view: "missing", rest: clean };
+    }
+    if (entity[1] === "placement-tests") return { view: "test", testId: key };
+    return { view: "entity", kind: ENTITY_OF_SEGMENT[entity[1]], key };
+  }
   return (MONITORING_PAGES as readonly string[]).includes(clean) ? { view: "page", page: clean as MonitoringPage } : { view: "missing", rest: clean };
 }
