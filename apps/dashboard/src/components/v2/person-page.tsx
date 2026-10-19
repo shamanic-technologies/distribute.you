@@ -19,6 +19,7 @@ import { CrmAttributionCard } from "@/components/crm/crm-attribution-card";
 import { SendingScheduleCard } from "@/components/v2/sending-schedule-card";
 import { LeadChecks } from "@/components/v2/lead-checks";
 import { ConversationTimelineCard } from "@/components/v2/conversation-timeline";
+import { useLeadWrittenBy } from "@/components/v2/written-by-line";
 import { useSelectedOffer } from "@/components/v2/selected-offer";
 import { CloseWonForm } from "@/components/leads/close-won-form";
 import { TagChip } from "@/components/v2/tag-chip";
@@ -84,6 +85,8 @@ export function PersonPage() {
   const lead = ownQueryData(leadQ) ?? null;
   const timeline = ownQueryData(timelineQ) ?? null;
   const history = ownQueryData(historyQ);
+  // Who wrote each email we sent this person (model + tactic lines), keyed on lead-service's lead id.
+  const writtenBy = useLeadWrittenBy(history?.leadId ?? lead?.leadId ?? null);
   const name = lead ? leadName(lead) : "";
   const company = lead ? leadCompany(lead) : null;
   const domain = lead ? leadCompanyDomain(lead) : null;
@@ -285,6 +288,7 @@ export function PersonPage() {
                     history={history}
                     heading="Conversation and activity"
                     showNextFollowup
+                    writtenBy={writtenBy}
                     runHref={staffMode ? (runId) => `${v2RunHref(orgId, brandId, runId)}?person=${encodeURIComponent(leadRowId)}` : undefined}
                   />
                 ) : (
