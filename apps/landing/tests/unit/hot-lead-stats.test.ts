@@ -1,83 +1,52 @@
 import { readFileSync } from "node:fs";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
-import { hotLeadBandHtml, hotLeadRowHtml, hotLeadStats } from "@/lib/static-html";
+import { fleetReturnFromIndex, hotLeadBandHtml, hotLeadRowHtml, hotLeadStatsFromIndex } from "@/lib/static-html";
+import type { IndexDetail } from "@/lib/fleet-indexes";
 
 const LANDING = path.join(process.cwd(), "public/landing");
 const html = readFileSync(path.join(LANDING, "index-v2.html"), "utf8");
 const css = readFileSync(path.join(LANDING, "v2/styles.css"), "utf8");
 const js = readFileSync(path.join(LANDING, "v2/main.js"), "utf8");
 
-function brand(hotReplies: number, clicks: number, costCents: number) {
+function indexDetail(value: number | null, inputs: Record<string, unknown>, over: Partial<IndexDetail["index"]> = {}): IndexDetail {
   return {
-    stats: {
-      recipientsRepliesPositive: hotReplies,
-      recipientsClicked: clicks,
-      totalCostInUsdCents: costCents,
+    statusRule: { signalMinOutcomes: 10, robustMinOutcomes: 30 },
+    index: {
+      slug: "cold-email-cost-per-engaged-lead", name: "Cold Email Cost Per Engaged Lead Index", channelSlug: "x", channelName: "x",
+      outcome: "engaged_lead", metric: "cost_per_outcome", unit: "usd", valuePer: "per engaged lead", method: "m",
+      day: "2026-10-19", value, status: "signal", outcomes: 28, contacted: null, workflowDynastySlug: null,
+      workflowDynastyName: null, unavailableReason: null, recordedAt: null, ...over,
     },
+    points: [
+      { day: "2026-10-19", value, status: "signal", outcomes: 28, contacted: null, workflowDynastyName: null, unavailableReason: null, inputs } as IndexDetail["points"][number],
+    ],
   };
 }
 
-describe("hotLeadStats", () => {
-  it("counts a hot lead as a positive reply OR a website visit", () => {
-    const stats = hotLeadStats([brand(2, 8, 5_000), brand(1, 9, 5_000)]);
-    expect(stats?.hotLeads).toBe(20);
+describe("the hero states the engaged-lead and ROI indexes (2026-10-19)", () => {
+  it("price = the index value, count and companies = its inputs", () => {
+    expect(hotLeadStatsFromIndex(indexDetail(10.48, { engagedLeads: 886, clients: 28 }))).toEqual({ hotLeads: 886, companies: 28, medianCostUsd: 10.48 });
   });
 
-  it("counts only the brands that carry a hot lead and recorded spend", () => {
-    const stats = hotLeadStats([
-      brand(1, 4, 2_000),
-      brand(2, 3, 2_000),
-      brand(0, 0, 90_000), // spent, produced nothing
-      brand(0, 0, 0), // never ran
-    ]);
-    expect(stats?.companies).toBe(2);
+  it("drops the row when the index has no value today, failed, or lacks its counts", () => {
+    expect(hotLeadStatsFromIndex(null)).toBeNull();
+    expect(hotLeadStatsFromIndex(indexDetail(null, { engagedLeads: 886, clients: 28 }))).toBeNull();
+    expect(hotLeadStatsFromIndex(indexDetail(10.48, { clients: 28 }))).toBeNull();
   });
 
-  it("prices each brand on its own hot leads, then takes the median", () => {
-    // $10 / 2 = $5, $30 / 3 = $10, $90 / 9 = $10 -> median $10
-    const stats = hotLeadStats([brand(2, 0, 1_000), brand(3, 0, 3_000), brand(9, 0, 9_000)]);
-    expect(stats?.medianCostUsd).toBe(10);
+  it("the return is the ROI index value, dropped alone when absent", () => {
+    expect(fleetReturnFromIndex(indexDetail(1.98, { clients: 5 }, { unit: "multiple" }))).toEqual({ medianReturnPerDollar: 1.98, brandCount: 5 });
+    expect(fleetReturnFromIndex(indexDetail(null, {}))).toBeNull();
+    expect(fleetReturnFromIndex(null)).toBeNull();
   });
 
-  it("averages the two middles on an even brand count", () => {
-    // $2, $4, $6, $8 -> (4 + 6) / 2 = 5
-    const stats = hotLeadStats([
-      brand(1, 0, 200),
-      brand(1, 0, 400),
-      brand(1, 0, 600),
-      brand(1, 0, 800),
-    ]);
-    expect(stats?.medianCostUsd).toBe(5);
-  });
-
-  it("excludes a brand with hot leads but no recorded spend rather than pricing it at $0", () => {
-    const stats = hotLeadStats([brand(1, 0, 1_000), brand(1, 0, 3_000), brand(50, 0, 0)]);
-    expect(stats?.companies).toBe(2);
-    expect(stats?.medianCostUsd).toBe(20);
-    // the unpriced brand's 50 leads are not counted either - all three figures
-    // describe the same set of brands.
-    expect(stats?.hotLeads).toBe(2);
-  });
-
-  it("states nothing when a single brand would decide the median", () => {
-    expect(hotLeadStats([brand(4, 0, 4_000)])).toBeNull();
-  });
-
-  it("states nothing when the fleet has produced no hot lead", () => {
-    expect(hotLeadStats([brand(0, 0, 5_000), brand(0, 0, 9_000)])).toBeNull();
-  });
-
-  it("states nothing for an empty fleet", () => {
-    expect(hotLeadStats([])).toBeNull();
-  });
-
-  it("reads a missing stat as zero rather than throwing", () => {
-    const stats = hotLeadStats([
-      { stats: { recipientsClicked: 4, totalCostInUsdCents: 400 } },
-      { stats: { recipientsRepliesPositive: 1, totalCostInUsdCents: 100 } },
-    ]);
-    expect(stats).toEqual({ hotLeads: 5, companies: 2, medianCostUsd: 1 });
+  it("one read per index serves both surfaces, and nothing is recomputed here", () => {
+    const src = readFileSync(path.resolve(__dirname, "../../src/lib/static-html.ts"), "utf8");
+    expect(src.match(/fetchIndexDetail\(ENGAGED_LEAD_INDEX_SLUG\)/g)).toHaveLength(1);
+    expect(src.match(/fetchIndexDetail\(ROI_INDEX_SLUG\)/g)).toHaveLength(1);
+    expect(src).not.toContain("/v1/public/features/ranked?");
+    expect(src).not.toContain("/v1/public/features/return-on-spend");
   });
 });
 
@@ -138,15 +107,11 @@ describe("hotLeadRowHtml", () => {
     expect(two.match(/class="hstat"/g)).toHaveLength(2);
   });
 
-  it("states the SAME median as the comparison band, from one read", () => {
+  it("states the SAME median as the comparison band", () => {
     const fleetReturn = { medianReturnPerDollar: 2.1955731579141204, brandCount: 9 };
     const stats = { hotLeads: 740, companies: 21, medianCostUsd: 6 };
-    // Two surfaces, two wordings the owner picked, one figure — a second read here is
-    // how the homepage and a compare page come to quote different medians.
     expect(hotLeadRowHtml(stats, fleetReturn)).toContain("2.2x");
     expect(hotLeadBandHtml(stats, fleetReturn)).toContain('data-count="2.2"');
-    const src = readFileSync(path.resolve(__dirname, "../../src/lib/static-html.ts"), "utf8");
-    expect(src.match(/await fetchFleetReturn\(\)/g)).toHaveLength(1);
   });
 });
 
@@ -192,21 +157,6 @@ describe("hotLeadBandHtml", () => {
     // holding a dash. `null` is the default, so a caller that knows nothing renders it.
     expect(hotLeadBandHtml({ hotLeads: 760, companies: 21, medianCostUsd: 6.4 }, null)).toBe(band);
     expect(band).not.toContain("median ROI of our clients");
-  });
-
-  it("names the population the median is taken over, and bounds the read it makes", () => {
-    const src = readFileSync(path.resolve(__dirname, "../../src/lib/static-html.ts"), "utf8");
-    // The floor is the owner's, and it is stated once: a median over brands that have
-    // barely spent means nothing.
-    expect(src).toContain("const RETURN_MIN_SPEND_USD = 100;");
-    expect(src).toContain("minSpendUsd=${RETURN_MIN_SPEND_USD}");
-    // A build waits on this read, so it is bounded and drops its figure rather than
-    // holding the page.
-    expect(src).toContain("signal: AbortSignal.timeout(FLEET_READ_TIMEOUT_MS)");
-    // The producer decides whether the figure is stateable; we never re-derive its
-    // brand floor, and never compute a return here.
-    expect(src).toContain("if (!data.measured)");
-    expect(src).not.toMatch(/medianReturnPerDollar\s*=\s*[^;]*\//);
   });
 
   it("is what every comparison page closes on", () => {
