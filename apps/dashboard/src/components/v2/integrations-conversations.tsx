@@ -35,7 +35,7 @@ import { conversationItemTag, conversationSourceWord, joinConversationLabels, li
 import { ConversationTags } from "@/components/v2/conversation-timeline";
 import { useSelectedOfferIfAny } from "@/components/v2/selected-offer";
 import { TagChip } from "@/components/v2/tag-chip";
-import { WrittenByLine, useLeadWrittenBy } from "@/components/v2/written-by-line";
+import { WrittenWithTags, useLeadWrittenBy } from "@/components/v2/written-with-tags";
 import { writtenMessageId, type WrittenBy } from "@/lib/written-by";
 import { itemCallId } from "@/lib/api-calls";
 import { ApiCallDetailPanel } from "@/components/v2/api-call-detail";
@@ -505,7 +505,7 @@ function Thread({
   );
   // No lead row (a CRM-only person) means no lead-service facts, never the previous person's.
   const facts = leadRowId ? ownQueryData(factsQ) : undefined;
-  // Who wrote each message we sent this person, any channel (owner 2026-10-19), keyed on the conversation's lead.
+  // What each message we sent this person was written with, any channel (owner 2026-10-19), keyed on the conversation's lead.
   const writtenBy = useLeadWrittenBy(facts?.leadId ?? null);
   // Replies sent from this screen, per person, shown until the served thread carries them.
   const [sentByRef, setSentByRef] = useState<Record<string, LocalReply[]>>({});
@@ -781,14 +781,12 @@ function threadRows(items: PersonTimelineItem[], facts: ConversationItem[]): Thr
 function FactRow({ fact, writtenBy = null }: { fact: ConversationItem; writtenBy?: WrittenBy | null }) {
   const meta = [conversationSourceWord(fact.source), fact.occurredAt ? friendlyDateTime(fact.occurredAt) : "No date"].join(" · ");
   return (
-    <div>
-      <div className="k-fg2 flex flex-wrap items-center gap-x-2 gap-y-1 text-[12px]">
-        <TagChip tag={conversationItemTag(fact.label)} />
-        <span className="k-fg3">{meta}</span>
-        {fact.attributable === false ? <span className="k-fg3 whitespace-nowrap">· Not ours</span> : null}
-      </div>
+    <div className="k-fg2 flex flex-wrap items-center gap-x-2 gap-y-1 text-[12px]">
+      <TagChip tag={conversationItemTag(fact.label)} />
       {/* A message of ours the thread does not hold: its own row, on its id only (no campaign fallback). */}
-      <WrittenByLine writtenBy={writtenBy} messageId={fact.id} campaignId={null} at={fact.occurredAt} />
+      <WrittenWithTags writtenBy={writtenBy} messageId={fact.id} campaignId={null} at={fact.occurredAt} />
+      <span className="k-fg3">{meta}</span>
+      {fact.attributable === false ? <span className="k-fg3 whitespace-nowrap">· Not ours</span> : null}
     </div>
   );
 }
@@ -844,7 +842,7 @@ function ThreadItem({
       tag={tag ?? timelineTag(item)}
       written={
         item.direction === "outbound" ? (
-          <WrittenByLine writtenBy={writtenBy} messageId={writtenMessageId(item)} campaignId={campaignId} at={item.at} />
+          <WrittenWithTags writtenBy={writtenBy} messageId={writtenMessageId(item)} campaignId={campaignId} at={item.at} />
         ) : null
       }
     />
@@ -869,7 +867,7 @@ function Message({
   mark: SourceMark;
   meta: string;
   tag: TimelineTag;
-  /** Who wrote it (model + tactic lines), on an email we sent; null elsewhere. */
+  /** What it was written with (model + tactics, tags beside its label), on a message we sent; null elsewhere. */
   written?: ReactNode;
 }) {
   // The mark up front is WHO wrote it: the person's company logo (initials without one)
@@ -905,8 +903,9 @@ function Message({
           ·{!outbound && <SourceLogo mark={mark} size={12} />}
           {meta}
         </span>
-        <span className="ml-auto shrink-0">
+        <span className="ml-auto flex min-w-0 flex-wrap items-center justify-end gap-1.5">
           <TagChip tag={tag} />
+          {written}
         </span>
         {staffMode && notCleaned && <span className="k-chip shrink-0">Not cleaned</span>}
       </p>
@@ -936,7 +935,6 @@ function Message({
         </div>
       )}
       {callId && callOpen && <ApiCallDetailPanel brandId={brandId} callId={callId} />}
-      {written}
     </article>
   );
 }
