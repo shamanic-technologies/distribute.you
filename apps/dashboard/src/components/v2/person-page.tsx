@@ -85,7 +85,7 @@ export function PersonPage() {
   const lead = ownQueryData(leadQ) ?? null;
   const timeline = ownQueryData(timelineQ) ?? null;
   const history = ownQueryData(historyQ);
-  // Who wrote each email we sent this person (model + tactic lines), keyed on lead-service's lead id.
+  // Who wrote each message we sent this person (model + tactic lines), keyed on lead-service's lead id.
   const writtenBy = useLeadWrittenBy(history?.leadId ?? lead?.leadId ?? null);
   const name = lead ? leadName(lead) : "";
   const company = lead ? leadCompany(lead) : null;
@@ -281,6 +281,7 @@ export function PersonPage() {
                 <ConversationTimelineCard
                   timeline={timeline}
                   failed={timelineQ.isFetchedAfterMount && !timeline && timelineQ.isError}
+                  writtenBy={writtenBy}
                 />
                 {lead.leadId && offerSettled ? <LeadChecks leadId={lead.leadId} brandId={brandId} offerId={offerId} /> : null}
                 {history ? (

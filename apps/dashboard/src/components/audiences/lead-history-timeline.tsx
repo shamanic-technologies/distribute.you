@@ -14,7 +14,7 @@ import {
   type LeadHistory,
   type LeadHistoryEvent,
 } from "@/lib/lead-history";
-import type { WrittenByEntry } from "@/lib/written-by";
+import type { WrittenBy } from "@/lib/written-by";
 
 /**
  * A person's history, rendered exactly as lead-service ordered it.
@@ -59,8 +59,10 @@ export function LeadHistoryTimeline({
   /**
    * Who wrote the person's messages (features-service, owner 2026-10-19): each email we sent
    * states its model and tactic lines under its words. Null = not read here, nothing shown.
+   * A history row's id is lead-service's history key, not a message id, so it matches no
+   * `messages` row and reads the entry of its campaign.
    */
-  writtenBy?: readonly WrittenByEntry[] | null;
+  writtenBy?: WrittenBy | null;
 }) {
   const note = incompleteNote(history);
   // Every row the producer sent is drawn, with its words: the timeline states what
@@ -228,7 +230,7 @@ export function LeadHistoryTimeline({
                         thread, which already carries the one it really went out with. */}
                     {e.type === "generated_email" && <EmailSignature className="text-xs" />}
                     {e.type === "message" && e.direction === "outbound" && (
-                      <WrittenByLine entries={writtenBy} campaignId={e.campaignId} at={e.at} />
+                      <WrittenByLine writtenBy={writtenBy} messageId={e.id} campaignId={e.campaignId} at={e.at} />
                     )}
                   </div>
                 )}
