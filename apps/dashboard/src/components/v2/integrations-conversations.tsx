@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useLayoutEffect, useRef, useState, type RefObject } from "react";
+import { useEffect, useLayoutEffect, useRef, useState, type ReactNode, type RefObject } from "react";
 import { useInfiniteQuery, useQueryClient, type InfiniteData } from "@tanstack/react-query";
 import { useSearchParams } from "next/navigation";
 import { ApiError, getLeadTimeline, getPersonTimeline, getUniboxLead, listPeople, listUniboxLeads, sendUniboxReply, setCrmPairingRuling } from "@/lib/api";
@@ -31,10 +31,12 @@ import { parseFrom, personCompanyDomain, personSourceMarks, sourceMark, type Sou
 import { RecordsToolbar } from "@/components/v2/records";
 import { THREAD_SCROLL_STEP, uniboxKeyAction, type UniboxPane } from "@/lib/unibox-keys";
 import { timelineTag, type TimelineTag } from "@/lib/timeline-tags";
-import { conversationItemTag, conversationSourceWord, joinConversationLabels, liveItems, standingTag, type ConversationItem } from "@/lib/conversation-timeline";
+import { conversationItemTag, conversationSourceWord, joinConversationLabels, liveItems, standingTag, type ConversationItem, type ConversationTimeline } from "@/lib/conversation-timeline";
 import { ConversationTags } from "@/components/v2/conversation-timeline";
 import { useSelectedOfferIfAny } from "@/components/v2/selected-offer";
 import { TagChip } from "@/components/v2/tag-chip";
+import { WrittenByLine, useLeadWrittenBy } from "@/components/v2/written-by-line";
+import type { WrittenByEntry } from "@/lib/written-by";
 import { itemCallId } from "@/lib/api-calls";
 import { ApiCallDetailPanel } from "@/components/v2/api-call-detail";
 import { RelationshipChips, UnmergeMenu } from "@/components/v2/relationship-tags";
@@ -503,6 +505,8 @@ function Thread({
   );
   // No lead row (a CRM-only person) means no lead-service facts, never the previous person's.
   const facts = leadRowId ? ownQueryData(factsQ) : undefined;
+  // Who wrote each email we sent this person (owner 2026-10-19), keyed on the conversation's lead.
+  const writtenBy = useLeadWrittenBy(facts?.leadId ?? null);
   // Replies sent from this screen, per person, shown until the served thread carries them.
   const [sentByRef, setSentByRef] = useState<Record<string, LocalReply[]>>({});
   const local = data ? pendingReplies(sentByRef[ref] ?? [], data.items) : [];
@@ -601,7 +605,18 @@ function Thread({
           <EmptyNote>No message or event with this person on any connected source.</EmptyNote>
         ) : (
           threadRows(items, facts ? liveItems(facts) : []).map((row, i) =>
-            row.fact ? <FactRow key={row.fact.id} fact={row.fact} /> : <ThreadItem key={i} brandId={brandId} item={row.item} tag={row.tag} />,
+            row.fact ? (
+              <FactRow key={row.fact.id} fact={row.fact} />
+            ) : (
+              <ThreadItem
+                key={i}
+                brandId={brandId}
+                item={row.item}
+                tag={row.tag}
+                writtenBy={writtenBy}
+                campaignId={sentCampaignId(row.item, facts)}
+              />
+            ),
           )
         )}
         {local.map((l) => (
@@ -774,7 +789,28 @@ function FactRow({ fact }: { fact: ConversationItem }) {
   );
 }
 
-function ThreadItem({ brandId, item, tag }: { brandId: string; item: PersonTimelineItem; tag: TimelineTag | null }) {
+/**
+ * The campaign that sent one of our emails: lead-service's fact for it (same identity as the
+ * thread's `outreachFact`) names it. Null for anything else: no campaign, no "written by".
+ */
+function sentCampaignId(item: PersonTimelineItem, facts: ConversationTimeline | undefined): string | null {
+  if (item.direction !== "outbound" || !item.outreachFact || !facts) return null;
+  return facts.items.find((f) => f.id === item.outreachFact!.subjectKey)?.campaignId ?? null;
+}
+
+function ThreadItem({
+  brandId,
+  item,
+  tag,
+  writtenBy = null,
+  campaignId = null,
+}: {
+  brandId: string;
+  item: PersonTimelineItem;
+  tag: TimelineTag | null;
+  writtenBy?: readonly WrittenByEntry[] | null;
+  campaignId?: string | null;
+}) {
   // Where it came from, as a mark and its name: our own sends and visits read as Distribute.
   const mark = sourceMark(item.source, item.channel);
   const meta = [mark.name, item.at ? friendlyDateTime(item.at) : "No date"].join(" · ");
@@ -795,7 +831,16 @@ function ThreadItem({ brandId, item, tag }: { brandId: string; item: PersonTimel
     );
   }
 
-  return <Message brandId={brandId} item={item} mark={mark} meta={meta} tag={tag ?? timelineTag(item)} />;
+  return (
+    <Message
+      brandId={brandId}
+      item={item}
+      mark={mark}
+      meta={meta}
+      tag={tag ?? timelineTag(item)}
+      written={campaignId ? <WrittenByLine entries={writtenBy} campaignId={campaignId} at={item.at} /> : null}
+    />
+  );
 }
 
 /** A person's tag: their standing, coloured like the same fact in the thread (owner 2026-10-10). */
@@ -809,12 +854,15 @@ function Message({
   mark,
   meta,
   tag,
+  written = null,
 }: {
   brandId: string;
   item: PersonTimelineItem;
   mark: SourceMark;
   meta: string;
   tag: TimelineTag;
+  /** Who wrote it (model + tactic lines), on an email we sent; null elsewhere. */
+  written?: ReactNode;
 }) {
   // The mark up front is WHO wrote it: the person's company logo (initials without one)
   // on their side, the source's mark on ours. Where it came from rides the meta line.
@@ -880,6 +928,7 @@ function Message({
         </div>
       )}
       {callId && callOpen && <ApiCallDetailPanel brandId={brandId} callId={callId} />}
+      {written}
     </article>
   );
 }

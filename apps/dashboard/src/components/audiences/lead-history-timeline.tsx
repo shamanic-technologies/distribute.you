@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { EmailSignature } from "@/components/email-signature";
 import { LeadNextFollowup } from "@/components/leads/lead-next-followup";
+import { WrittenByLine } from "@/components/v2/written-by-line";
 import { timelineEvents } from "@/lib/lead-followup";
 import { emailBodySegments, linkDisplayText } from "@/lib/email-body-links";
 import { friendlyDate, friendlyDateTime } from "@/lib/friendly-datetime";
@@ -13,6 +14,7 @@ import {
   type LeadHistory,
   type LeadHistoryEvent,
 } from "@/lib/lead-history";
+import type { WrittenByEntry } from "@/lib/written-by";
 
 /**
  * A person's history, rendered exactly as lead-service ordered it.
@@ -34,6 +36,7 @@ export function LeadHistoryTimeline({
   bare = false,
   showNextFollowup = false,
   runHref,
+  writtenBy = null,
 }: {
   history: LeadHistory;
   heading?: string;
@@ -53,6 +56,11 @@ export function LeadHistoryTimeline({
    * campaign wrote it. Absent = no run page on this surface.
    */
   runHref?: (runId: string) => string;
+  /**
+   * Who wrote the person's messages (features-service, owner 2026-10-19): each email we sent
+   * states its model and tactic lines under its words. Null = not read here, nothing shown.
+   */
+  writtenBy?: readonly WrittenByEntry[] | null;
 }) {
   const note = incompleteNote(history);
   // Every row the producer sent is drawn, with its words: the timeline states what
@@ -219,6 +227,9 @@ export function LeadHistoryTimeline({
                         that has not been sent — never under a message read back off the
                         thread, which already carries the one it really went out with. */}
                     {e.type === "generated_email" && <EmailSignature className="text-xs" />}
+                    {e.type === "message" && e.direction === "outbound" && (
+                      <WrittenByLine entries={writtenBy} campaignId={e.campaignId} at={e.at} />
+                    )}
                   </div>
                 )}
                 {/* We hold this message and could not read it. Said out loud, because an
