@@ -129,17 +129,22 @@ describe("Research names each pipe by its served name and mark, one collapsible 
 
   it("the hub header is a toggle button: served mark + name, the path under the name, counts, a chevron", () => {
     const block = page.slice(page.indexOf("function ResearchSectionBlock("), page.indexOf("function V2ResearchHub("));
-    expect(block).toContain('<button type="button" aria-expanded={open} aria-controls={bodyId} onClick={onToggle}');
+    // the row anatomy is the shared hub block (Monitoring wears it too), never a fork
+    expect(block).toContain("<HubSectionBlock");
     expect(block).toContain("mark={(px) => <SectionMark section={section} size={px} />}");
     expect(block).toContain("<SectionName section={section} />");
     expect(block.indexOf("<SectionPath section={section} />")).toBeGreaterThan(block.indexOf("<SectionName section={section} />"));
-    expect(block).toContain("<SectionChevron open={open} />");
-    expect(block).toContain("inert={!open}");
-    expect(block).toContain("motion-reduce:transition-none");
-    expect(block).not.toContain("transition-all");
+    const shared = read("apps/dashboard/src/components/v2/hub-section.tsx");
+    const sharedBlock = shared.slice(shared.indexOf("export function HubSectionBlock("), shared.indexOf("function ChipArrow("));
+    expect(sharedBlock).toContain('<button type="button" aria-expanded={open} aria-controls={bodyId} onClick={onToggle}');
+    expect(sharedBlock).toContain("<SectionChevron open={open} />");
+    expect(sharedBlock).toContain("inert={!open}");
+    expect(sharedBlock).toContain("motion-reduce:transition-none");
+    expect(sharedBlock).not.toContain("transition-all");
     // collapsed by default, the choice remembered for Back
-    expect(page).toContain("useState<ReadonlySet<string>>(() => new Set())");
-    expect(page).toContain("window.localStorage.setItem(OPEN_SECTIONS_KEY");
+    expect(shared).toContain("useState<ReadonlySet<string>>(() => new Set())");
+    expect(shared).toContain("window.localStorage.setItem(storageKey");
+    expect(page).toContain("useOpenSections(OPEN_SECTIONS_KEY)");
     const hub = page.slice(page.indexOf("function V2ResearchHub("), page.indexOf("function BarsChart("));
     // one row anatomy for the three groups
     expect(hub.match(/<ResearchSectionBlock/g)?.length).toBe(3);

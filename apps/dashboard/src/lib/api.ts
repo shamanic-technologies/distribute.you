@@ -98,6 +98,22 @@ import {
   type BasisSummary,
 } from "./monitoring/monitoring";
 import {
+  LifecycleRulesSchema,
+  OpsAddressesSchema,
+  OpsDomainsSchema,
+  OpsMailboxesSchema,
+  OpsMessagesSchema,
+  SeedPlacementDailySchema,
+  SenderHealthSchema,
+  type LifecycleRules,
+  type OpsAddresses,
+  type OpsDomains,
+  type OpsMailboxes,
+  type OpsMessages,
+  type SeedPlacementDaily,
+  type SenderHealth,
+} from "./monitoring/sending";
+import {
   LeadBucketCountsSchema,
   LeadStandingCountsSchema,
   LeadsPageEnvelopeSchema,
@@ -1834,6 +1850,14 @@ export const STAFF_MONITORING_PATHS = {
   marginTimeseries: "/runs/stats/costs/margin/timeseries",
   providerSources: "/costs/provider-payment-sources",
   sentPerPeriod: "/instantly/ops/sent-per-period",
+  // Our sending health (instantly-service ops, staff-only passthroughs).
+  seedPlacementDaily: "/instantly/ops/seed-placement/daily",
+  senderHealth: "/instantly/ops/sender-health",
+  lifecycleRules: "/instantly/ops/lifecycle-rules",
+  opsDomains: "/instantly/ops/domains",
+  opsMailboxes: "/instantly/ops/mailboxes",
+  opsAddresses: "/instantly/ops/addresses",
+  opsMessages: "/instantly/ops/messages",
   emailSendPrice: "/costs/email-send-price",
   subscriptionCosts: "/costs/subscription-costs",
   // The cost the platform absorbs per customer (billing-service), staff-only through the gateway.
@@ -2052,6 +2076,40 @@ export async function getStaffMarginTimeseries(): Promise<MarginTimeseries> {
 /** Emails sent per day/week/month by purpose (instantly-service), to leads apart from our own mail. */
 export async function getStaffSentPerPeriod(grain: SentGrain): Promise<SentPerPeriod> {
   return parseStaff("getStaffSentPerPeriod", SentPerPeriodSchema, await apiCall<unknown>(`${STAFF_MONITORING_PATHS.sentPerPeriod}?grain=${grain}`));
+}
+
+/** Seed inbox % per day at Google, Microsoft 365 and Outlook.com, each measured apart, per vendor too. */
+export async function getStaffSeedPlacementDaily(days: number): Promise<SeedPlacementDaily> {
+  return parseStaff("getStaffSeedPlacementDaily", SeedPlacementDailySchema, await apiCall<unknown>(`${STAFF_MONITORING_PATHS.seedPlacementDaily}?days=${days}`));
+}
+
+/** Mailboxes kept out of prospect mail per day, and why (refused, or mostly spam at a provider). */
+export async function getStaffSenderHealth(days: number): Promise<SenderHealth> {
+  return parseStaff("getStaffSenderHealth", SenderHealthSchema, await apiCall<unknown>(`${STAFF_MONITORING_PATHS.senderHealth}?days=${days}`));
+}
+
+/** The bars a mailbox must clear, as instantly-service applies them (no hand-written number here). */
+export async function getStaffLifecycleRules(): Promise<LifecycleRules> {
+  return parseStaff("getStaffLifecycleRules", LifecycleRulesSchema, await apiCall<unknown>(STAFF_MONITORING_PATHS.lifecycleRules));
+}
+
+export async function getStaffOpsDomains(): Promise<OpsDomains> {
+  return parseStaff("getStaffOpsDomains", OpsDomainsSchema, await apiCall<unknown>(STAFF_MONITORING_PATHS.opsDomains));
+}
+
+/** One row per REAL mailbox (login), its addresses nested. */
+export async function getStaffOpsMailboxes(): Promise<OpsMailboxes> {
+  return parseStaff("getStaffOpsMailboxes", OpsMailboxesSchema, await apiCall<unknown>(STAFF_MONITORING_PATHS.opsMailboxes));
+}
+
+/** One row per sending address (a live Instantly read underneath, ~9s cold, cached 60s by the producer). */
+export async function getStaffOpsAddresses(): Promise<OpsAddresses> {
+  return parseStaff("getStaffOpsAddresses", OpsAddressesSchema, await apiCall<unknown>(STAFF_MONITORING_PATHS.opsAddresses));
+}
+
+/** The latest emails of every kind, newest first. `limit` is required by the producer (1-500). */
+export async function getStaffOpsMessages(limit: number): Promise<OpsMessages> {
+  return parseStaff("getStaffOpsMessages", OpsMessagesSchema, await apiCall<unknown>(`${STAFF_MONITORING_PATHS.opsMessages}?limit=${limit}`));
 }
 
 export async function getStaffProviderSources(): Promise<ProviderSourcesRow[]> {
