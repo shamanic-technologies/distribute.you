@@ -280,3 +280,23 @@ describe("rebuilt days read apart from the days we published live (INDEX-HISTORY
     expect(ds).toMatchObject({ datePublished: "2026-10-18", temporalCoverage: "2026-09-01/2026-10-19" });
   });
 });
+
+describe("a return index reads like the hero ROI (cold-email-roi, 2026-10-19)", () => {
+  const roi = summary({ slug: "cold-email-roi", name: "Cold Email ROI Index", unit: "multiple", value: 3.62, valuePer: "back per dollar spent, median of our clients" });
+
+  it("the list accepts the unit instead of failing every page", () => {
+    expect(parseIndexList({ statusRule: RULE, indexes: [summary(), roi] }).indexes[1].unit).toBe("multiple");
+    expect(() => parseIndexList({ statusRule: RULE, indexes: [summary({ unit: "euro" as never })] })).toThrow();
+  });
+
+  it("value, ticks, table and JSON-LD speak in x", () => {
+    expect(formatIndexValue(3.62, "multiple")).toBe("3.6x");
+    expect(formatIndexValue(18.3, "multiple")).toBe("18x");
+    const page = renderIndexPage("cold-email-roi", { statusRule: RULE, index: roi, points: [point("2026-10-18", 3.4), point("2026-10-19", 3.62)] }, LIST);
+    expect(page).toContain('<div class="ix-value">3.6x</div>');
+    expect(page).toContain("<td>3.4x</td>");
+    expect(page).not.toMatch(/\$3\.6/);
+    const ds = [...page.matchAll(/<script type="application\/ld\+json">(.*?)<\/script>/g)].map((m) => JSON.parse(m[1])).find((n) => n["@type"] === "Dataset");
+    expect(ds.variableMeasured.unitText).toBe("multiple of spend");
+  });
+});

@@ -1,6 +1,7 @@
 import { SITE, breadcrumb, shell, whyLine } from "../v2-shell";
 import {
   STATUS_LABEL,
+  UNIT_TEXT,
   esc,
   formatDay,
   formatIndexValue,
@@ -10,6 +11,7 @@ import {
   unavailableLine,
   type BasisRule,
   type IndexDetail,
+  type IndexUnit,
   type IndexList,
   type IndexPoint,
   type IndexStatus,
@@ -71,7 +73,7 @@ function pct(n: number): string {
  * that fades in from the left and ends on today's dot: the chart reads as "this is
  * where it starts", and every new day pushes the history leftwards.
  */
-export function chartHtml(points: IndexPoint[], unit: "usd" | "percent", ariaName: string): string {
+export function chartHtml(points: IndexPoint[], unit: IndexUnit, ariaName: string): string {
   const measured = points.filter((p) => p.value !== null) as (IndexPoint & { value: number })[];
   if (measured.length === 0) {
     return `<div class="ix-chart ix-chart-empty" role="img" aria-label="${esc(ariaName)}: no value recorded yet">
@@ -320,7 +322,7 @@ export function basisLegendHtml(points: IndexPoint[], rule: BasisRule | undefine
  * Every recorded day as a plain table, newest first: the chart's numbers in text, so a
  * search engine or an agent quoting the index reads the series, not only today's value.
  */
-export function historyTableHtml(points: IndexPoint[], unit: "usd" | "percent", valuePer: string): string {
+export function historyTableHtml(points: IndexPoint[], unit: IndexUnit, valuePer: string): string {
   if (points.length === 0) return "";
   const row = (p: IndexPoint) =>
         `<tr><td>${esc(formatDay(p.day, true))}</td><td>${p.value !== null ? esc(formatIndexValue(p.value, unit)) : "Not stated"}</td><td>${esc(STATUS_LABEL[p.status])}</td><td>${p.basis === "recomputed" ? "Rebuilt later" : "Recorded live"}</td></tr>`;
@@ -455,7 +457,7 @@ ${otherIndexes(list, i.slug)}`;
             "@type": "PropertyValue",
             name: i.name,
             description: i.valuePer,
-            unitText: i.unit === "usd" ? "USD" : "percent",
+            unitText: UNIT_TEXT[i.unit],
             ...(i.value !== null ? { value: i.value } : {}),
           },
           distribution: {
