@@ -174,7 +174,7 @@ export interface SignupCampaignDraft {
   reactiveOn: boolean;
   reactiveBudget: string;
   reactivePeriod: SignupPeriod;
-  /** "Never charge me more than $X a month" as typed; null while untouched (the arm's prefill). */
+  /** "My campaigns spend at most $X a month" as typed; null while untouched (the arm's prefill). */
   monthlyLimit: string | null;
 }
 

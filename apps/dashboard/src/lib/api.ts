@@ -10313,9 +10313,10 @@ export async function disableAutoTopup(token?: string): Promise<BillingAccount> 
 }
 
 /**
- * The account's monthly charge limit (billing-service v0.83.28, owner 2026-10-12: "my card is
- * never charged more than $X a month"), one per org, everything included, UTC calendar month.
- * Readable and settable before the first payment. `monthly_charge_limit_cents` null = no limit.
+ * The account's monthly limit (billing-service v0.83.48, owner 2026-10-21): a cap on what the
+ * org's CAMPAIGNS SPEND in a UTC calendar month; billing stops campaign runs at it and never
+ * refuses a charge. `spent_this_period_cents` (decimal-cents string) is what the limit caps;
+ * `charged_this_period_cents` is card charges, information only. null = no limit set.
  */
 const MonthlyChargeLimitSchema = z.object({
   org_id: z.string(),
@@ -10324,6 +10325,8 @@ const MonthlyChargeLimitSchema = z.object({
   period_start: z.string(),
   period_end: z.string(),
   charged_this_period_cents: z.number().nullable(),
+  /** Additive in v0.83.48: optional so the read survives the rollout window. */
+  spent_this_period_cents: z.union([z.number(), z.string()]).nullable().optional(),
   remaining_cents: z.number().nullable(),
   limit_reached: z.boolean(),
   limit_reached_at: z.string().nullable(),

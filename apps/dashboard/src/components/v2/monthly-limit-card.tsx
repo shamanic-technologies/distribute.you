@@ -8,9 +8,10 @@ import { parseMonthlyLimitUsd } from "@/lib/v2/monthly-limit";
 import { Meter, Shimmer } from "@/components/v2/ui";
 
 /**
- * The monthly charge limit on Billing (owner 2026-10-12: "whatever happens, my card is never
- * charged more than $X a month"). billing-service holds it and counts this month's charges;
- * the "limit reached" email links here. The amount reads as text, a click turns it into its
+ * The monthly limit on Billing (owner 2026-10-21): a cap on what the org's campaigns SPEND in a
+ * month. billing-service stops campaign runs at it and never refuses a charge, so the bar reads
+ * the served spend of the month (`spent_this_period_cents`), never card charges. The "limit
+ * reached" email links here. The amount reads as text, a click turns it into its
  * field, leaving it saves, Esc drops it (v2 inline edit).
  */
 export function MonthlyLimitCard() {
@@ -52,60 +53,77 @@ export function MonthlyLimitCard() {
   }
 
   const limitCents = pending !== undefined ? (pending === null ? null : pending * 100) : data.monthly_charge_limit_cents;
-  const charged = data.charged_this_period_cents;
+  // Decimal-cents string from billing; absent only while billing v0.83.48 rolls out.
+  const spentRaw = data.spent_this_period_cents;
+  const spent = spentRaw === null || spentRaw === undefined ? null : Number(spentRaw);
+  const editing = text !== null;
 
   return (
     <div className="k-card p-4">
       <div className="flex flex-wrap items-center gap-1.5 text-[13px]">
-        <span className="k-fg">Never charge me more than</span>
-        {text !== null ? (
-          <span className="inline-flex items-center gap-1">
-            <span className="k-fg2">$</span>
-            <input
-              autoFocus
-              inputMode="numeric"
-              aria-label="Monthly charge limit in dollars"
-              value={text}
-              onChange={(e) => setText(e.target.value)}
-              onBlur={commit}
-              onKeyDown={(e) => {
-                if (e.key === "Enter") e.currentTarget.blur();
-                if (e.key === "Escape") {
-                  setText(null);
-                  setError(null);
-                }
-              }}
-              className="k-input w-24 text-right tabular-nums"
-              style={{ font: "inherit", paddingRight: 8 }}
-            />
-          </span>
+        {limitCents === null && !editing ? (
+          <>
+            <span className="k-fg">No monthly spend limit.</span>
+            <button type="button" onClick={() => setText("")} className="k-hover k-accent-text rounded-[6px] px-1.5 font-medium">
+              Set a limit
+            </button>
+          </>
         ) : (
-          <button
-            type="button"
-            onClick={() => setText(limitCents === null ? "" : String(Math.round(limitCents / 100)))}
-            className="k-hover rounded-[6px] px-1.5 font-medium tabular-nums"
-          >
-            {limitCents === null ? <span className="k-accent-text">set a limit</span> : formatCentsAsUsd(limitCents, 0)}
-          </button>
+          <>
+            <span className="k-fg">My campaigns spend at most</span>
+            {editing ? (
+              <span className="inline-flex items-center gap-1">
+                <span className="k-fg2">$</span>
+                <input
+                  autoFocus
+                  inputMode="numeric"
+                  aria-label="Monthly spend limit in dollars"
+                  value={text}
+                  onChange={(e) => setText(e.target.value)}
+                  onBlur={commit}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") e.currentTarget.blur();
+                    if (e.key === "Escape") {
+                      setText(null);
+                      setError(null);
+                    }
+                  }}
+                  className="k-input w-24 text-right tabular-nums"
+                  style={{ font: "inherit", paddingRight: 8 }}
+                />
+              </span>
+            ) : (
+              <button
+                type="button"
+                onClick={() => setText(limitCents === null ? "" : String(Math.round(limitCents / 100)))}
+                className="k-hover rounded-[6px] px-1.5 font-medium tabular-nums"
+              >
+                {formatCentsAsUsd(limitCents ?? 0, 0)}
+              </button>
+            )}
+            <span className="k-fg">a month</span>
+          </>
         )}
-        <span className="k-fg">a month</span>
-        {limitCents !== null && text === null && (
+        {limitCents !== null && !editing && (
           <button type="button" className="k-btn-ghost ml-auto" disabled={pending !== undefined} onClick={() => void write(null)}>
             Remove limit
           </button>
         )}
       </div>
-      {limitCents !== null && charged !== null && (
+      {limitCents !== null && spent !== null && Number.isFinite(spent) && (
         <div className="mt-3">
-          <Meter value={charged} max={limitCents} />
-          <p className="k-fg3 mt-1.5 text-[12px] tabular-nums">
-            {formatCentsAsUsd(charged, 0)} of {formatCentsAsUsd(limitCents, 0)} charged this month
+          <Meter value={spent} max={limitCents} />
+          <p className="k-fg3 mt-1.5 flex justify-between gap-3 text-[12px] tabular-nums">
+            <span>
+              {formatCentsAsUsd(spent)} of {formatCentsAsUsd(limitCents, 0)} spent this month
+            </span>
+            {pending === undefined && data.remaining_cents !== null && <span>{formatCentsAsUsd(data.remaining_cents)} left</span>}
           </p>
         </div>
       )}
       {data.limit_reached && pending === undefined && (
         <p className="mt-2 text-[13px] text-[var(--data-amber)]">
-          Your campaigns stopped: the next charge would go over your limit. Raise it to start them again.
+          Your campaigns stopped at your monthly limit. Raise it to start them again.
         </p>
       )}
       {error && (

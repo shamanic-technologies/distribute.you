@@ -1,7 +1,7 @@
 /**
- * The monthly charge limit (owner 2026-10-12: "whatever happens, my card is never charged
- * more than $X a month"), ONE per account, everything included, held by billing-service
- * (`/v1/accounts/monthly_charge_limit`, v0.83.28). Onboarding states it right after the
+ * The monthly limit (owner 2026-10-21): a cap on what the account's campaigns SPEND in a month,
+ * ONE per account, held by billing-service (`/v1/accounts/monthly_charge_limit`, v0.83.48).
+ * billing stops campaign runs at it and never refuses a charge. Onboarding states it right after the
  * campaign budget and saves it before the payment; Billing shows and edits it.
  *
  * Prefill: $9,000 a month on both arms (owner 2026-10-12). A limit under the first charge

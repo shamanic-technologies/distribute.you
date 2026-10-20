@@ -43,9 +43,9 @@ describe("monthly charge limit (owner 2026-10-12: never charge me more than $X a
     const gs = read("src/components/v2/get-started/get-started.tsx");
     expect(gs).toContain("limitPrefillUsd={org ? null : DEFAULT_MONTHLY_LIMIT_USD}");
     const stage = gs.slice(gs.indexOf("export function CampaignStage("), gs.indexOf("function ValueStage("));
-    expect(stage).toContain(">Never charge me more than</span>");
+    expect(stage).toContain(">My campaigns spend at most</span>");
     expect(stage).toContain(">a month</span>");
-    expect(stage.indexOf(">Never charge me more than</span>")).toBeGreaterThan(stage.indexOf('label="Max budget in dollars"'));
+    expect(stage.indexOf(">My campaigns spend at most</span>")).toBeGreaterThan(stage.indexOf('label="Max budget in dollars"'));
     expect(gs).toContain("monthlyLimit={campaignDraft.monthlyLimit}");
     // Onboarding shows the ONE line: no meter, no "Remove limit" (Billing only, owner 2026-10-12).
     expect(stage).not.toContain("Remove limit");
@@ -64,8 +64,23 @@ describe("monthly charge limit (owner 2026-10-12: never charge me more than $X a
     expect(wall).toContain("await setMonthlyChargeLimit(usd * 100);");
   });
 
+  it("Billing's card states a SPEND cap and its bar reads the month's spend, never card charges (owner 2026-10-21)", () => {
+    const card = read("src/components/v2/monthly-limit-card.tsx");
+    expect(card).toContain(">My campaigns spend at most</span>");
+    expect(card).toContain(">No monthly spend limit.</span>");
+    expect(card).toContain("const spentRaw = data.spent_this_period_cents;");
+    expect(card).toContain("<Meter value={spent} max={limitCents} />");
+    expect(card).toContain("spent this month");
+    expect(card).not.toContain("charged_this_period_cents");
+    expect(card).not.toContain("charged this month");
+    expect(card).not.toContain("Never charge me");
+    const api = read("src/lib/api.ts");
+    expect(api).toContain("spent_this_period_cents: z.union([z.number(), z.string()]).nullable().optional(),");
+  });
+
   it("Billing shows and edits it, through the gateway route", () => {
     expect(read("src/components/v2/billing-page.tsx")).toContain("<MonthlyLimitCard />");
+    expect(read("src/components/v2/billing-page.tsx")).toContain('description="Your campaigns stop once they spend this much in a calendar month."');
     const api = read("src/lib/api.ts");
     expect(api).toContain('"/billing/accounts/monthly_charge_limit", { token, method: "PUT", body: { monthly_charge_limit_cents: cents } }');
   });
