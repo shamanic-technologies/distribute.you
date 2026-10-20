@@ -4,11 +4,14 @@ import { createContext, useContext, useState, useEffect, useCallback, type React
 import { usePathname } from "next/navigation";
 import { EmbeddedCheckoutProvider, EmbeddedCheckout } from "@stripe/react-stripe-js";
 import {
+  ApiError,
   createEmbeddedCheckoutSession,
   configureAutoTopup,
   getBillingAccount,
+  payBalance,
   type BillingAccount,
 } from "@/lib/api";
+import { payBalanceRefusal, postpaidOwed } from "@/lib/v2/pay-balance";
 import { getStripe } from "@/lib/stripe";
 import { formatBillingCents, formatCentsAsUsd } from "@/lib/format-number";
 import { topupPresetsForDailyBudget } from "@/lib/credit-runway";
@@ -176,7 +179,8 @@ export function BillingGuardProvider({ children }: { children: ReactNode }) {
     // Fetch latest account info to pre-fill auto-topup from existing config
     getBillingAccount().then((acct) => {
       setAccount(acct);
-      if (acct.has_auto_topup) {
+      // Postpaid has no auto top-up (owner 2026-10-21): nothing to prefill.
+      if (acct.payment_mode !== "postpaid" && acct.has_auto_topup) {
         setEnableAutoTopup(true);
         if (acct.topup_amount_cents !== null) setTopupAmount((acct.topup_amount_cents / 100).toString());
         if (acct.topup_threshold_cents !== null) setTopupThreshold((acct.topup_threshold_cents / 100).toString());
@@ -252,7 +256,7 @@ export function BillingGuardProvider({ children }: { children: ReactNode }) {
     // Skip auto-topup config when the card's country can't be auto-charged —
     // the recharge variant only adds one-time credit.
     const autoTopupBlocked =
-      info.autoReloadSupported === false || acct?.auto_reload_supported === false;
+      info.autoReloadSupported === false || acct?.auto_reload_supported === false || acct?.payment_mode === "postpaid";
     try {
       if (enableAutoTopup && topupAmount && acct?.has_payment_method && !autoTopupBlocked) {
         const topupCents = Math.round(parseFloat(topupAmount) * 100);
@@ -294,8 +298,10 @@ export function BillingGuardProvider({ children }: { children: ReactNode }) {
   const isDepleted = info.depleted === true;
   // Auto-reload impossible for this card's country (e.g. India). Prefer the
   // caller-supplied flag (no flash), fall back to the fetched account.
+  // Postpaid has no auto top-up (owner 2026-10-21): its card is charged as it spends.
+  const postpaid = paymentModeOf(account) === "postpaid";
   const autoTopupBlocked =
-    info.autoReloadSupported === false || account?.auto_reload_supported === false;
+    info.autoReloadSupported === false || account?.auto_reload_supported === false || postpaid;
   // A proactive nudge for a blocked brand has nothing to "turn on" — render it as
   // a one-time recharge (amount selector + Add $X, no auto-topup config).
   const rechargeOnly = autoTopupBlocked;
@@ -309,7 +315,9 @@ export function BillingGuardProvider({ children }: { children: ReactNode }) {
   const rechargeTitle = "Add credits to keep going.";
   // A plan's $50/day is fixed and never shown (owner 2026-10-03): no budget words for it.
   const onPlan = paymentModeOf(account) === "subscription";
-  const rechargeDescription = onPlan
+  const rechargeDescription = postpaid
+    ? "Add credits to keep your campaigns running."
+    : onPlan
     ? "Auto-top-up isn't available for your card's country, so add credits to keep your campaigns running."
     : "Auto-top-up isn't available for your card's country, so add credits to keep your campaigns running. Each brand daily budget stays the spend cap.";
   // Top-up presets sized to N days of the in-scope brand's daily budget (5/15/45/
@@ -342,6 +350,12 @@ export function BillingGuardProvider({ children }: { children: ReactNode }) {
                   <EmbeddedCheckout />
                 </EmbeddedCheckoutProvider>
               </div>
+            ) : postpaid && account?.has_payment_method ? (
+              <PostpaidPay account={account} onDone={() => {
+                window.dispatchEvent(new CustomEvent("billing:resolved"));
+                info.onComplete?.();
+                setVisible(false);
+              }} onCancel={dismissPaymentRequired} />
             ) : (
             <>
             <div className="flex items-center gap-3 mb-4">
@@ -576,6 +590,64 @@ export function BillingGuardProvider({ children }: { children: ReactNode }) {
         </div>
       )}
     </BillingGuardContext.Provider>
+  );
+}
+
+/**
+ * POSTPAID (owner 2026-10-21: « on doit juste pouvoir être prélevé de tout le montant »):
+ * no Add credit, no auto top-up. A postpaid org with a card has one action: pay what it
+ * owes now (billing `pay_balance`), each refusal in plain words.
+ */
+function PostpaidPay({ account, onDone, onCancel }: { account: BillingAccount; onDone: () => void; onCancel: () => void }) {
+  const [pending, setPending] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const owed = postpaidOwed(account);
+  const owes = owed.owedCents !== null && owed.owedCents > 0;
+  async function pay() {
+    setPending(true);
+    setError(null);
+    try {
+      await payBalance();
+    } catch (err) {
+      const refusal = payBalanceRefusal(err instanceof ApiError ? err.body : null);
+      console.error("[billing guard] pay balance refused:", refusal.code, err);
+      setError(refusal.message);
+      setPending(false);
+      return;
+    }
+    setPending(false);
+    onDone();
+  }
+  return (
+    <div>
+      <h2 className="text-lg font-semibold text-gray-900 mb-2">
+        {owes ? `You owe ${formatCentsAsUsd(owed.owedCents ?? 0, 2)}` : "Your campaigns run on credit"}
+      </h2>
+      <p className="text-gray-600 text-sm mb-4">
+        {owes
+          ? "Pay it now and your campaigns keep running. Your card is charged as you spend."
+          : "Your card is charged as you spend. You owe nothing right now."}
+      </p>
+      {error && <p role="alert" className="text-sm text-red-600 mb-4">{error}</p>}
+      <div className="flex gap-3">
+        <button
+          onClick={onCancel}
+          className="flex-1 px-4 py-2.5 text-sm font-medium text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition"
+        >
+          {owes ? "Cancel" : "Close"}
+        </button>
+        {owes && (
+          <button
+            onClick={() => void pay()}
+            disabled={pending}
+            className={`flex-[2] inline-flex items-center justify-center gap-2 px-4 py-2.5 text-sm font-medium text-white bg-brand-600 rounded-lg hover:bg-brand-700 transition ${pending ? "cursor-wait" : ""}`}
+          >
+            {pending && <Spinner />}
+            {pending ? "Charging your card\u2026" : `Pay ${formatCentsAsUsd(owed.owedCents ?? 0, 2)} now`}
+          </button>
+        )}
+      </div>
+    </div>
   );
 }
 

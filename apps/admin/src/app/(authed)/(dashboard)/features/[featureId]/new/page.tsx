@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useMemo, useCallback, useRef, useEffect } from "react";
+import { chargesAutomatically } from "@/lib/automatic-charges";
 import { useParams, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { useFeatures } from "@/lib/features-context";
@@ -495,7 +496,8 @@ export default function CreateCampaignPage() {
       const willExceed = budgetCents > parseFloat(account.balance_cents);
       const isRecurring = budgetFrequency !== "one-off";
 
-      if ((willExceed || isRecurring) && !account.has_auto_topup) {
+      // Postpaid charges at each step of its credit line, never through auto top-up.
+      if ((willExceed || isRecurring) && !chargesAutomatically(account)) {
         saveCampaignIntent();
         // Reset loader — modal will handle the flow
         isCreatingRef.current = false;

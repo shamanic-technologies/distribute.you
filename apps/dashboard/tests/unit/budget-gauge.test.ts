@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { budgetGaugeView, runwayLine } from "../../src/lib/budget-gauge";
 
-const base = { balance_cents: "14230.0000", has_auto_topup: false, has_payment_method: false, topup_threshold_cents: null };
+const base = { balance_cents: "14230.0000", has_auto_topup: false, has_payment_method: false, credit_line_cents: null };
 
 describe("budgetGaugeView", () => {
   it("prepaid: the balance, no bar, pauses at $0", () => {
@@ -17,15 +17,15 @@ describe("budgetGaugeView", () => {
 
   it("postpaid: spent since last charge out of the credit line", () => {
     const v = budgetGaugeView(
-      { ...base, payment_mode: "postpaid", balance_cents: "-3800", has_auto_topup: true, has_payment_method: true, topup_threshold_cents: -10000 },
+      { ...base, payment_mode: "postpaid", balance_cents: "-3800", has_payment_method: true, credit_line_cents: 10000 },
       undefined,
     );
     expect(v).toMatchObject({ label: "Spent since last charge", figure: "$38.00", meter: { value: 3800, max: 10000 }, tone: "ok" });
   });
 
-  it("postpaid with a card and auto top-up OFF still runs on credit (owner 2026-10-21)", () => {
+  it("postpaid reads its credit line, never the auto top-up flag billing stops serving (owner 2026-10-21)", () => {
     const v = budgetGaugeView(
-      { ...base, payment_mode: "postpaid", balance_cents: "-1254", has_auto_topup: false, has_payment_method: true, topup_threshold_cents: -5000 },
+      { ...base, payment_mode: "postpaid", balance_cents: "-1254", has_auto_topup: false, has_payment_method: true, credit_line_cents: 5000 },
       undefined,
     );
     expect(v).toMatchObject({ label: "Spent since last charge", figure: "$12.54", meter: { value: 1254, max: 5000 }, tone: "ok" });
@@ -34,7 +34,7 @@ describe("budgetGaugeView", () => {
 
   it("postpaid with a card and no stated credit line: spent on credit, never red", () => {
     const v = budgetGaugeView(
-      { ...base, payment_mode: "postpaid", balance_cents: "-700", has_auto_topup: false, has_payment_method: true, topup_threshold_cents: null },
+      { ...base, payment_mode: "postpaid", balance_cents: "-700", has_payment_method: true, credit_line_cents: null },
       undefined,
     );
     expect(v).toMatchObject({ label: "Spent on credit", figure: "$7.00", meter: null, tone: "ok" });

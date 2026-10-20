@@ -22,9 +22,11 @@ import { formatBillingCents, formatCentsAsUsd } from "./format-number";
 export interface GaugeAccount {
   payment_mode?: string | null;
   balance_cents: string;
-  has_auto_topup: boolean;
+  /** Prepaid only: postpaid has no auto top-up (owner 2026-10-21); billing stops serving it there. */
+  has_auto_topup?: boolean;
   has_payment_method: boolean;
-  topup_threshold_cents: number | null;
+  /** Postpaid only: how far below $0 the balance goes before the card is charged (billing). */
+  credit_line_cents?: number | null;
 }
 
 /** The plan read's fields the gauge reads (billing-service `GET /v1/accounts/subscription`). */
@@ -112,10 +114,10 @@ export function budgetGaugeView(
   }
 
   if (mode === "postpaid") {
-    // The credit line is the spend that triggers the next charge (billing's negative floor).
-    // A saved card is the only prerequisite: postpaid keeps its credit line whatever the
-    // auto top-up flag says (owner 2026-10-21), so the flag is never read here.
-    const line = Math.abs(account.topup_threshold_cents ?? 0);
+    // The credit line is the spend that triggers the next charge, billing's own
+    // `credit_line_cents` (owner 2026-10-21: postpaid has no auto top-up, so neither the
+    // flag nor the top-up columns are read here).
+    const line = account.credit_line_cents ?? 0;
     if (!account.has_payment_method) {
       return { label: "Spent", figure: formatCentsAsUsd(Math.max(0, -balance), 2), meter: null, line: "Add a card to run campaigns.", tone: "stopped" };
     }

@@ -6,6 +6,7 @@
  * action is paying the whole amount owed now (billing-service `pay_balance`).
  *
  * Alias-free on purpose (no `@/` import) so the words carry real unit tests.
+ * Byte-equal twin: apps/admin/src/lib/pay-balance.ts && apps/dashboard/src/lib/v2/pay-balance.ts.
  * billing-service owns every figure and every refusal; this module only NAMES them.
  */
 

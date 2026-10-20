@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef } from "react";
+import { chargesAutomatically } from "@/lib/automatic-charges";
 import { useAuthQuery } from "@/lib/use-auth-query";
 import { getBillingAccount, listCampaigns, type BillingAccount, type Campaign } from "@/lib/api";
 import { useBillingGuard } from "@/lib/billing-guard";
@@ -63,7 +64,7 @@ export function CreditAlerts() {
   if (!account || !campaignsData) return null;
 
   const status = computeRunway(campaignsData.campaigns, account);
-  const severity = runwaySeverity(status, account.has_auto_topup);
+  const severity = runwaySeverity(status, chargesAutomatically(account));
   if (!severity) return null;
 
   const plural = status.recurringCount > 1;

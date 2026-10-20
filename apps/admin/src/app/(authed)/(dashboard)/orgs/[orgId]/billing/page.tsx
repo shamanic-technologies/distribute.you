@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { postpaidOwed } from "@/lib/pay-balance";
 import { useParams, useSearchParams } from "next/navigation";
 import { useAuthQuery, useQueryClient } from "@/lib/use-auth-query";
 import {
@@ -261,7 +262,11 @@ export default function BillingPage() {
   const hasValidationError = !!(thresholdError || customAmountError || topupAmountError);
 
   const isDepleted = account ? parseFloat(account.balance_cents) <= 0 : false;
-  const hasAutoTopup = account?.has_auto_topup ?? false;
+  // Postpaid has no auto top-up (owner 2026-10-21): it is charged at each step of its
+  // credit line, billing's `credit_line_*`; `has_auto_topup` / `topup_*` are prepaid only.
+  const postpaid = account?.payment_mode === "postpaid";
+  const hasAutoTopup = !postpaid && (account?.has_auto_topup ?? false);
+  const owed = postpaidOwed(account);
 
   // Credit breakdown (math in fractional cents): total − confirmed − provisioned = available.
   // actual_balance_cents absent (older billing deploy) => fold holds into confirmed (provisioned 0).
@@ -273,7 +278,7 @@ export default function BillingPage() {
 
   // Pre-fill auto-topup fields from existing config
   useEffect(() => {
-    if (account?.has_auto_topup) {
+    if (account?.payment_mode !== "postpaid" && account?.has_auto_topup) {
       setEnableAutoTopup(true);
       if (!topupAmount && account.topup_amount_cents !== null) setTopupAmount((account.topup_amount_cents / 100).toString());
       if (!topupThreshold && account.topup_threshold_cents !== null) setTopupThreshold((account.topup_threshold_cents / 100).toString());
@@ -541,8 +546,35 @@ export default function BillingPage() {
           </div>
         </div>
 
-        {/* Auto-Topup Settings (when already configured) */}
-        {hasAutoTopup ? (
+        {postpaid && (
+          <div className="bg-white rounded-xl border border-gray-200 p-5">
+            <h2 className="text-lg font-medium text-gray-900 mb-3">Postpaid credit line</h2>
+            <div className="grid grid-cols-3 gap-4">
+              <div>
+                <p className="text-xs text-gray-500">Credit line</p>
+                <p className="text-lg font-semibold text-gray-900 mt-0.5">
+                  {owed.creditLineCents !== null ? formatBillingCents(owed.creditLineCents) : "No chargeable card"}
+                </p>
+              </div>
+              <div>
+                <p className="text-xs text-gray-500">Charged each step</p>
+                <p className="text-lg font-semibold text-gray-900 mt-0.5">
+                  {owed.stepCents !== null ? formatBillingCents(owed.stepCents) : "\u2014"}
+                </p>
+              </div>
+              <div>
+                <p className="text-xs text-gray-500">Owed now</p>
+                <p className="text-lg font-semibold text-gray-900 mt-0.5">
+                  {owed.owedCents !== null ? formatBillingCents(owed.owedCents) : "\u2014"}
+                </p>
+              </div>
+            </div>
+            <p className="text-xs text-gray-500 mt-3">No auto top-up and no Add credit on postpaid: the card is charged at each step and at month end, and the client can pay everything owed from its Billing page.</p>
+          </div>
+        )}
+
+        {/* Auto-Topup Settings (when already configured); none on postpaid. */}
+        {postpaid ? null : hasAutoTopup ? (
           <div className="bg-white rounded-xl border border-gray-200 p-5">
             <div className="flex items-center justify-between mb-4">
               <div className="flex items-center gap-2">

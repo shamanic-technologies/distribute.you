@@ -31,6 +31,7 @@ import {
 } from "@/lib/card-change-settle";
 import { cardRemoveConsequence } from "@/lib/card-remove";
 import { pollOptions } from "@/lib/query-options";
+import { chargesAutomatically } from "@/lib/automatic-charges";
 import { cardBrandLabel } from "@/components/billing/billing-display";
 
 /**
@@ -201,7 +202,8 @@ export function useBillingController() {
 
   const hasValidationError = !!customAmountError;
 
-  const hasAutoTopup = account?.has_auto_topup ?? false;
+  // Postpaid has no auto top-up: it charges at each step of its credit line (lib/automatic-charges).
+  const hasAutoTopup = account ? chargesAutomatically(account) : false;
   // Auto-reload (off_session auto-topup) can be impossible for the saved card's issuing
   // country. Absent/undefined => supported (older billing deploy, today's behavior);
   // only an explicit `false` blocks the auto-topup controls.
