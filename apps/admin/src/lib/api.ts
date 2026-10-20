@@ -2674,6 +2674,11 @@ export async function createCampaign(
 export interface BillingAccount {
   id: string;
   org_id: string;
+  /**
+   * How this org pays (billing-service `payment_mode`, the customer's explicit choice).
+   * Optional because an older billing deploy states none; read through `paymentModeOf`.
+   */
+  payment_mode?: "prepaid" | "postpaid" | "subscription";
   credited_cents: string;
   usage_cents: string;
   balance_cents: string;

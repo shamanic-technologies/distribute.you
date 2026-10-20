@@ -143,7 +143,8 @@ export function BillingGuardProvider({ children }: { children: ReactNode }) {
     // Fetch latest account info to pre-fill auto-topup from existing config
     getBillingAccount().then((acct) => {
       setAccount(acct);
-      if (acct.has_auto_topup) {
+      // Postpaid has no auto top-up (owner 2026-10-21): nothing to prefill.
+      if (acct.payment_mode !== "postpaid" && acct.has_auto_topup) {
         setEnableAutoTopup(true);
         if (acct.topup_amount_cents !== null) setTopupAmount((acct.topup_amount_cents / 100).toString());
         if (acct.topup_threshold_cents !== null) setTopupThreshold((acct.topup_threshold_cents / 100).toString());
@@ -175,8 +176,10 @@ export function BillingGuardProvider({ children }: { children: ReactNode }) {
     setCheckoutLoading(true);
     setCheckoutError(null);
     try {
+      // Postpaid has no auto top-up (owner 2026-10-21; billing 409s it): never configured here.
+      const postpaid = account?.payment_mode === "postpaid";
       // If user already has a payment method, save auto-topup now
-      if (account?.has_payment_method) {
+      if (account?.has_payment_method && !postpaid) {
         if (enableAutoTopup && topupAmount) {
           const topupCents = Math.round(parseFloat(topupAmount) * 100);
           const thresholdCents = topupThreshold ? Math.round(parseFloat(topupThreshold) * 100) : 500;
@@ -193,7 +196,7 @@ export function BillingGuardProvider({ children }: { children: ReactNode }) {
         successUrl.searchParams.set("pending_campaign", "true");
       }
       successUrl.searchParams.set("success", "true");
-      if (enableAutoTopup && topupAmount && !account?.has_payment_method) {
+      if (enableAutoTopup && topupAmount && !account?.has_payment_method && !postpaid) {
         const topupCents = Math.round(parseFloat(topupAmount) * 100);
         const thresholdCents = topupThreshold ? Math.round(parseFloat(topupThreshold) * 100) : 500;
         successUrl.searchParams.set("pending_topup", topupCents.toString());

@@ -233,8 +233,8 @@ describe("Billing page", () => {
     expect(content).not.toContain("Transaction History");
   });
 
-  it("should read has_auto_topup from snake_case response", () => {
-    expect(content).toContain("has_auto_topup");
+  it("reads auto top-up through the one helper: prepaid's has_auto_topup, postpaid's credit line", () => {
+    expect(content).toContain("chargesAutomatically(account)");
   });
 
   it("should use configureAutoTopup to enable auto-topup", () => {

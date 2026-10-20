@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useMemo, useCallback, useRef, useEffect, Fragment } from "react";
+import { chargesAutomatically } from "@/lib/automatic-charges";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { useAuthQuery, useQueryClient } from "@/lib/use-auth-query";
@@ -1065,7 +1066,8 @@ export default function FeatureCreateCampaignPage() {
       // Recurring campaigns REQUIRE auto-topup (a card on file). They keep spending every
       // period, so a one-time balance is never enough — top-up is mandatory, no "launch
       // anyway". The modal sets up the card (no charge) + auto-topup, then launches.
-      if (isRecurring && !account.has_auto_topup) {
+      // Postpaid charges at each step of its credit line, never through auto top-up.
+      if (isRecurring && !chargesAutomatically(account)) {
         saveCampaignIntent();
         isCreatingRef.current = false;
         setIsCreating(false);

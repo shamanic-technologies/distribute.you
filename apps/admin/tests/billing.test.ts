@@ -455,7 +455,7 @@ describe("Proactive credit check in campaign creation (org-scoped)", () => {
   it("should force auto-topup for recurring (mandatory, no launch-anyway)", () => {
     // Recurring REQUIRES auto-topup regardless of current balance — no runway/onProceed escape.
     expect(content).toContain('budgetFrequency !== "one-off"');
-    expect(content).toContain("isRecurring && !account.has_auto_topup");
+    expect(content).toContain("isRecurring && !chargesAutomatically(account)");
     expect(content).not.toContain("onProceed");
     expect(content).not.toContain("runwayPeriods");
   });

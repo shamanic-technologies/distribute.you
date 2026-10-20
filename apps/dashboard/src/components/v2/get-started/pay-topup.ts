@@ -101,7 +101,8 @@ export async function settleTopup(
     if (reload) acct = await configureAutoTopup(reload.amountUsd * 100, reload.thresholdUsd * 100);
     // Optional (owner 2026-10-06): billing arms one by itself when a card is on file at
     // the switch to prepaid, so an org that did not ask for it has it taken off.
-    else if (acct.has_auto_topup) acct = await disableAutoTopup();
+    // Postpaid has no auto top-up to take off (billing 409s it, owner 2026-10-21).
+    else if (acct.payment_mode !== "postpaid" && acct.has_auto_topup) acct = await disableAutoTopup();
   } catch (e) {
     // The credit is paid, so a reload billing REFUSES never holds the launch back: the
     // org runs on what it paid and tops up by hand (Senthil 2026-10-17, CeXO AI: a card
