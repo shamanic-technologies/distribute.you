@@ -122,18 +122,36 @@ describe("prepaid automatic reload is required once on (owner 2026-10-11)", () =
 
 describe("a postpaid org reads postpaid words only (owner 2026-10-21)", () => {
   it("offers postpaid no auto top-up switch: the switch card is prepaid-only", () => {
-    const auto = V2.slice(V2.indexOf("{/* Auto top-up, in the words of the mode it serves. */}"), V2.indexOf("{/* Postpaid (owner 2026-10-21)"));
+    const auto = V2.slice(V2.indexOf("{/* Auto top-up, in the words of the mode it serves. */}"), V2.indexOf('id="monthly-limit"'));
     expect(auto).toContain('{mode === "prepaid" && account?.has_payment_method && c.autoReloadSupported && (');
     expect(auto).toContain('role="switch"');
+    expect(auto).not.toContain('mode === "postpaid"');
   });
 
-  it("shows postpaid what is spent on credit and when the card is next charged, with nothing to click", () => {
-    const post = V2.slice(V2.indexOf("{/* Postpaid (owner 2026-10-21)"), V2.indexOf('id="monthly-limit"'));
-    expect(post).toContain('mode === "postpaid" && account?.has_payment_method');
-    expect(post).toContain("Next card charge");
-    expect(post).toContain("spent on credit");
-    expect(post).not.toContain("<button");
-    expect(post).not.toContain("top-up");
+  it("shows postpaid what it owes, its credit line, the next charge date and ONE Pay button (owner 2026-10-21)", () => {
+    const section = V2.slice(V2.indexOf('id="owed"'), V2.indexOf("{/* The monthly plan, for an org on one"));
+    expect(V2).toContain('{mode === "postpaid" && account?.has_payment_method && c.autoReloadSupported && (');
+    expect(section).toContain("<PostpaidOwedCard");
+    const card = V2.slice(V2.indexOf("function PostpaidOwedCard("), V2.indexOf("/** Dollars to cents without float noise"));
+    expect(card).toContain("Pay ${owedFigure} now");
+    expect(card).toContain("You owe nothing right now.");
+    expect(card).toContain("owed.creditLineCents");
+    expect(card).toContain("nextChargeDate");
+    expect(card.match(/<button/g)?.length).toBe(1);
+    expect(card).not.toContain("top-up");
+    expect(card).not.toContain("Add credit");
+  });
+
+  it("pays through billing's pay_balance and words each refusal from its code", () => {
+    expect(API).toContain('apiCall("/billing/accounts/pay_balance", { token, method: "POST", suppressPaymentRequired: true })');
+    expect(V2).toContain("payBalanceRefusal(err instanceof ApiError ? err.body : null)");
+    expect(V2).toContain('? void payNow()');
+  });
+
+  it("reads the credit line and the amount owed from billing's own fields, never the auto top-up columns", () => {
+    const CTRL = read("src/components/billing/use-billing-controller.ts");
+    expect(CTRL).not.toContain("Math.abs(account?.topup_threshold_cents");
+    expect(V2).not.toContain("c.creditLineCents");
   });
 
   it("Add credit (button, section, banner) is prepaid only", () => {

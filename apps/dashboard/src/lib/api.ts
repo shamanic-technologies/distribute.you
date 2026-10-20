@@ -9954,6 +9954,21 @@ export interface BillingAccount {
   actual_balance_cents?: string;
   topup_amount_cents: number | null;
   topup_threshold_cents: number | null;
+  /**
+   * POSTPAID only (billing-service v0.83.49, owner 2026-10-21: no auto top-up, no
+   * Add credit): how far below $0 the balance may go before the card is charged
+   * ($50, then $200, then $500 as the org pays), and what each charge takes. null
+   * when not postpaid or when no chargeable card carries the line. Optional until
+   * every billing deploy serves it.
+   */
+  credit_line_cents?: number | null;
+  credit_line_step_cents?: number | null;
+  /**
+   * POSTPAID only: what the org owes right now (actual spend, holds excluded), in
+   * decimal cents: exactly what `payBalance` charges. "0.0000000000" when nothing is
+   * owed, null when not postpaid.
+   */
+  amount_owed_cents?: string | null;
   has_payment_method: boolean;
   has_auto_topup: boolean;
   // Additive (billing-service v0.40.0+): off_session auto-reload is impossible for cards
@@ -10355,6 +10370,18 @@ export async function setMonthlyChargeLimit(cents: number, token?: string): Prom
 
 export async function clearMonthlyChargeLimit(token?: string): Promise<MonthlyChargeLimit> {
   return parseMonthlyChargeLimit(await apiCall<unknown>("/billing/accounts/monthly_charge_limit", { token, method: "DELETE" }), "clearMonthlyChargeLimit");
+}
+
+/**
+ * POSTPAID: pay the WHOLE amount owed now, on the saved card (billing-service
+ * `POST /v1/accounts/pay_balance`, owner 2026-10-21: « on doit juste pouvoir être
+ * prélevé de tout le montant »). The one money action a postpaid org has. Refusals
+ * reach the caller as an `ApiError` whose body carries billing's `code`; name them
+ * with `payBalanceRefusal` (lib/v2/pay-balance). A declined card is a 402 that is
+ * NOT a lack of credit, so the billing-guard top-up modal stays shut.
+ */
+export async function payBalance(token?: string): Promise<{ charged_cents: number; account: BillingAccount }> {
+  return apiCall("/billing/accounts/pay_balance", { token, method: "POST", suppressPaymentRequired: true });
 }
 
 /**
