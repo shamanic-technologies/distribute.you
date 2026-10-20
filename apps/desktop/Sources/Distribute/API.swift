@@ -5,6 +5,8 @@ let dashboardURL = URL(string: "https://dashboard.distribute.you")!
 
 struct APIError: LocalizedError {
     let message: String
+    /// The producer's refusal `code` from the error body, when it states one.
+    var code: String? = nil
     var errorDescription: String? { message }
 }
 
@@ -273,6 +275,12 @@ struct BillingAccount: Decodable {
     let auto_reload_supported: Bool?
     let card_brand: String?
     let card_last4: String?
+    /// POSTPAID only (billing, owner 2026-10-21: no auto top-up, no Add credit): how far
+    /// below $0 the balance goes before the card is charged, what each charge takes, and
+    /// what is owed now (decimal cents). nil when not postpaid.
+    let credit_line_cents: Int?
+    let credit_line_step_cents: Int?
+    let amount_owed_cents: String?
 }
 struct Payment: Decodable, Identifiable { let id: String; let amount: Int; let currency: String; let status: String; let created: Double }
 struct PaymentList: Decodable { let data: [Payment] }
@@ -433,6 +441,10 @@ struct DistributeAPI {
             try await sendIgnoringBody("DELETE", "/billing/accounts/auto_topup", query: ["orgId": orgId], body: nil)
         }
     }
+    /// POSTPAID: pay the whole amount owed now, on the saved card.
+    func payBalance(orgId: String) async throws {
+        try await sendIgnoringBody("POST", "/billing/accounts/pay_balance", query: ["orgId": orgId], body: nil)
+    }
     func createBrand(orgId: String, url: String) async throws -> String {
         let b: CreatedBrand = try await send("POST", "/brands", query: ["orgId": orgId], body: ["url": url]); return b.brandId
     }
@@ -481,7 +493,8 @@ struct DistributeAPI {
         let status = (response as? HTTPURLResponse)?.statusCode ?? 0
         guard (200..<300).contains(status) else {
             let text = String(data: data, encoding: .utf8) ?? ""
-            throw APIError(message: "\(method) \(path) failed (\(status)): \(text.prefix(300))")
+            let code = (try? JSONSerialization.jsonObject(with: data) as? [String: Any])?["code"] as? String
+            throw APIError(message: "\(method) \(path) failed (\(status)): \(text.prefix(300))", code: code)
         }
         return data
     }
