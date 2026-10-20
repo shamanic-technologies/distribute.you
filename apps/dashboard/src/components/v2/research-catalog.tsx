@@ -14,12 +14,14 @@ import {
   ACTIVATE_CONTENT_NOTE,
   DEPRECATE_CONTENT_NOTE,
   contentNote,
+  DeprecationNote,
   FirstAndMore,
   StatusMenu,
   StatusWord as ContentStatusWord,
   useContentStatusWrites,
   useModelStatuses,
   useTemplateStatuses,
+  useWorkflowDeprecation,
 } from "@/components/v2/research-status";
 import { TemplateOutputsPanel } from "@/components/v2/research-template-outputs";
 import { modelAliasesOf, modelStatus, templatePipes, type ContentTarget } from "@/lib/research/content-status";
@@ -325,7 +327,7 @@ function CatalogList({
                           </>
                         )}
                         {kind === "templates" && <th className={`${TH} w-44`}>Leg</th>}
-                        {kind !== "workflows" && <th className={`${TH} ${kind === "models" ? "w-52" : "w-24"}`}>Status</th>}
+                        {kind !== "workflows" && <th className={`${TH} ${kind === "models" ? "w-52" : "w-44"}`}>Status</th>}
                         {kind === "templates" && <th className={`${TH} w-20 text-right`}>Workflows</th>}
                         <th className={`${TH} ${kind === "templates" ? "w-28" : "w-36"} text-right`}>Cost {o.unit.replace("/ ", "per ")}</th>
                         {kind !== "templates" && <th className={`${TH} w-28 text-right`}>Rate</th>}
@@ -361,6 +363,7 @@ function CatalogList({
                           const status =
                             kind === "templates" ? templateStatuses.map.get(r.key) ?? null : modelStatus(modelKeys, (a) => modelStatuses.map.get(a));
                           const statusAnswered = kind === "templates" ? templateStatuses.answered : modelStatuses.answered;
+                          const deprecation = kind === "templates" ? templateStatuses.deprecationOf(r.key) : modelStatuses.deprecationOf(modelKeys);
                           return (
                             <tr
                               key={r.key}
@@ -395,7 +398,12 @@ function CatalogList({
                               )}
                               {kind !== "workflows" && (
                                 <td className="max-w-0 px-3">
-                                  <ContentStatusWord status={status} gap={served.gap} pending={!statusAnswered && (kind === "templates" || modelKeys.length > 0)} />
+                                  <ContentStatusWord
+                                    status={status}
+                                    gap={served.gap}
+                                    pending={!statusAnswered && (kind === "templates" || modelKeys.length > 0)}
+                                    deprecation={deprecation}
+                                  />
                                 </td>
                               )}
                               {kind === "templates" && <td className="px-3 text-right tabular-nums">{(r as ResearchTemplate).workflows.length}</td>}
@@ -589,6 +597,7 @@ function WorkflowView({
   const o = useOutcome(pipe);
   const channelName = usePipeChannelName(pipe);
   const tplHref = w.template?.linked ? researchCatalogHref(base, pipe, "templates", w.template.key) : null;
+  const why = useWorkflowDeprecation(w.key);
   return (
     <>
       <TopBar crumbs={crumbs} actions={<CostBasisSwitch />} />
@@ -624,6 +633,7 @@ function WorkflowView({
             </>
           }
         />
+        <DeprecationNote deprecation={why.deprecation} />
         <KpiStrip f={w} pipe={pipe} />
 
         <div className="mt-6 grid gap-4 lg:grid-cols-[minmax(0,1fr)_320px]">
@@ -750,6 +760,7 @@ function TemplateView({
   nav: (href: string) => void;
 }) {
   const o = useOutcome(pipe);
+  const why = useTemplateStatuses().deprecationOf(t.key);
   return (
     <>
       <TopBar crumbs={crumbs} actions={<CostBasisSwitch />} />
@@ -770,6 +781,7 @@ function TemplateView({
             </>
           }
         />
+        <DeprecationNote deprecation={why} />
         <KpiStrip f={t} pipe={pipe} />
 
         <div className="mt-6 grid gap-4 lg:grid-cols-[minmax(0,1fr)_320px]">
@@ -876,6 +888,7 @@ function ModelView({
   nav: (href: string) => void;
 }) {
   const o = useOutcome(pipe);
+  const why = useModelStatuses().deprecationOf(modelAliasesOf(m).aliases);
   return (
     <>
       <TopBar crumbs={crumbs} actions={<CostBasisSwitch />} />
@@ -896,6 +909,7 @@ function ModelView({
             </>
           }
         />
+        <DeprecationNote deprecation={why} />
         <KpiStrip f={m} pipe={pipe} />
 
         <div className="mt-6 grid gap-4 lg:grid-cols-[minmax(0,1fr)_320px]">

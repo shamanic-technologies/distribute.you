@@ -12355,11 +12355,34 @@ export async function setRelationshipCompany(brandId: string, humanId: string, b
 
 export type CatalogueStatus = "active" | "deprecated";
 
+/**
+ * A status write (DEPRECATION-REASON-1020, owner 2026-10-20): a deprecation always states WHY, in
+ * plain words a staff member reads months later; the producer records who (the verified staff
+ * email the gateway forwards) and when. Re-activating states nothing.
+ */
+export type CatalogueStatusChange = { status: "active" } | { status: "deprecated"; reason: string };
+
+/** Why, who and when an item was deprecated, as its producer serves it ("Not specified" = before reasons existed). */
+export type Deprecation = { reason: string; decidedBy: string | null; decidedAt: string | null };
+
 const ContentTemplateStatusesSchema = z.object({
-  templates: z.array(z.object({ type: z.string(), status: z.string(), statusChangedAt: z.string().nullish() })),
+  templates: z.array(z.object({
+      type: z.string(),
+      status: z.string(),
+      statusReason: z.string().nullish(),
+      statusChangedBy: z.string().nullish(),
+      statusChangedAt: z.string().nullish(),
+    })),
 });
 const ContentModelStatusesSchema = z.object({
-  models: z.array(z.object({ model: z.string(), provider: z.string().nullish(), status: z.string(), statusChangedAt: z.string().nullish() })),
+  models: z.array(z.object({
+      model: z.string(),
+      provider: z.string().nullish(),
+      status: z.string(),
+      statusReason: z.string().nullish(),
+      statusChangedBy: z.string().nullish(),
+      statusChangedAt: z.string().nullish(),
+    })),
 });
 
 /** Every stored template type with its status (content-generation-service). */
@@ -12372,12 +12395,12 @@ export async function getContentModelStatuses(): Promise<z.infer<typeof ContentM
   return parseStaff("getContentModelStatuses", ContentModelStatusesSchema, await apiCall<unknown>("/content/models")).models;
 }
 
-export async function setContentTemplateStatus(type: string, status: CatalogueStatus): Promise<void> {
-  await apiCall<unknown>(`/content/templates/${encodeURIComponent(type)}/status`, { method: "PUT", body: { status } });
+export async function setContentTemplateStatus(type: string, change: CatalogueStatusChange): Promise<void> {
+  await apiCall<unknown>(`/content/templates/${encodeURIComponent(type)}/status`, { method: "PUT", body: change });
 }
 
-export async function setContentModelStatus(model: string, status: CatalogueStatus): Promise<void> {
-  await apiCall<unknown>(`/content/models/${encodeURIComponent(model)}/status`, { method: "PUT", body: { status } });
+export async function setContentModelStatus(model: string, change: CatalogueStatusChange): Promise<void> {
+  await apiCall<unknown>(`/content/models/${encodeURIComponent(model)}/status`, { method: "PUT", body: change });
 }
 
 const TemplateOutputsSchema = z.object({
@@ -12418,19 +12441,44 @@ export type RetireByContentResult = z.infer<typeof RetireByContentSchema>;
 
 /**
  * Every RUNNABLE workflow rendering a template (`promptType`) or writing with a model alias
- * (`model`): listed only with `dryRun`, retired (whole dynasty, every client) without it.
+ * (`model`): listed only with `dryRun`, retired (whole dynasty, every client) without it, each
+ * recording `reason` as why it stopped.
  */
 export async function retireWorkflowsByContent(
   target: { promptType: string } | { model: string },
-  dryRun: boolean,
+  run: { dryRun: true } | { dryRun: false; reason: string },
 ): Promise<RetireByContentResult> {
-  const raw = await apiCall<unknown>("/workflows/retire-by-content", { method: "POST", body: { ...target, dryRun } });
+  const raw = await apiCall<unknown>("/workflows/retire-by-content", { method: "POST", body: { ...target, ...run } });
   return parseStaff("retireWorkflowsByContent", RetireByContentSchema, raw);
 }
 
 /** Activate or deprecate a whole workflow dynasty (every client). */
-export async function setWorkflowDynastyStatus(workflowDynastySlug: string, status: CatalogueStatus): Promise<void> {
-  await apiCall<unknown>(`/workflows/dynasty/${encodeURIComponent(workflowDynastySlug)}/status`, { method: "PUT", body: { status } });
+export async function setWorkflowDynastyStatus(workflowDynastySlug: string, change: CatalogueStatusChange): Promise<void> {
+  await apiCall<unknown>(`/workflows/dynasty/${encodeURIComponent(workflowDynastySlug)}/status`, { method: "PUT", body: change });
+}
+
+const DynastyDeprecationSchema = z.object({
+  workflows: z.array(
+    z
+      .object({
+        version: z.number(),
+        deprecation: z.object({ reason: z.string(), decidedBy: z.string().nullable(), decidedAt: z.string().nullable() }).nullish(),
+      })
+      .passthrough(),
+  ),
+});
+
+/**
+ * Why, who and when a workflow dynasty was deprecated (DEPRECATION-REASON-1020): its NEWEST
+ * version's `deprecation`, as workflow-service serves it on every version (a retired dynasty
+ * carries its decision on each). Null while that version runs.
+ */
+export async function getWorkflowDynastyDeprecation(workflowDynastySlug: string): Promise<Deprecation | null> {
+  const query = new URLSearchParams({ workflowDynastySlug, status: "all" });
+  const raw = await apiCall<unknown>(`/workflows/summaries?${query.toString()}`);
+  const rows = parseStaff("getWorkflowDynastyDeprecation", DynastyDeprecationSchema, raw).workflows;
+  const newest = rows.reduce<(typeof rows)[number] | null>((a, w) => (a == null || w.version > a.version ? w : a), null);
+  return newest?.deprecation ?? null;
 }
 
 const WorkflowSummariesStatusSchema = z.object({

@@ -2071,6 +2071,8 @@ export interface Workflow {
   dag: DAG | null;
   requiredProviders: string[];
   status?: "active" | "deprecated";
+  /** Why, who and when it was deprecated (workflow-service, DEPRECATION-REASON-1020); null while it runs. */
+  deprecation?: { reason: string; decidedBy: string | null; decidedAt: string | null } | null;
   upgradedTo?: string | null;
   forkedFrom?: string | null;
   createdAt: string;
@@ -2148,14 +2150,15 @@ export async function getWorkflow(workflowId: string, token?: string): Promise<W
 
 // Set a whole workflow dynasty's lifecycle status (active/deprecated). Dynasty-scoped,
 // idempotent. Deprecated dynasties are hidden from selection. Owned by workflow-service.
+// A deprecation always states WHY (DEPRECATION-REASON-1020, owner 2026-10-20).
 export async function setWorkflowDynastyStatus(
   workflowDynastySlug: string,
-  status: "active" | "deprecated",
+  change: { status: "active" } | { status: "deprecated"; reason: string },
   token?: string,
 ): Promise<{ workflowDynastySlug: string; status: "active" | "deprecated" }> {
   return apiCall<{ workflowDynastySlug: string; status: "active" | "deprecated" }>(
     `/workflows/dynasty/${encodeURIComponent(workflowDynastySlug)}/status`,
-    { token, method: "PUT", body: { status } },
+    { token, method: "PUT", body: change },
   );
 }
 
