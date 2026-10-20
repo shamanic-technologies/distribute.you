@@ -10504,6 +10504,10 @@ const OrgUsageResponseSchema = z.object({
   totalBilledUsd: z.number(),
   totalSetAsideUsd: z.number(),
   categories: z.array(OrgUsageCategorySchema),
+  // Spend with no campaign the platform covers: recorded, never billed, in no category
+  // and no total (features-service USAGE-MATCHES-BILLED-1021).
+  coveredByUs: z.object({ billedUsd: z.number(), setAsideUsd: z.number(), sinceIso: z.string() }).optional(),
+  totalsSource: z.enum(["billing", "no_billing_account"]).optional(),
 });
 export type OrgUsage = z.infer<typeof OrgUsageResponseSchema>;
 

@@ -142,3 +142,26 @@ describe("a postpaid org reads postpaid words only (owner 2026-10-21)", () => {
     expect(V2).toContain('{mode === "prepaid" && c.isDepleted && (');
   });
 });
+
+describe("Billing Usage shows the same moment as Billed (BILLING-PAGE-COHERENT-1021)", () => {
+  const page = readFileSync(join(__dirname, "..", "src/components/v2/billing-page.tsx"), "utf8");
+  const usage = page.slice(page.indexOf("function UsageSection("));
+
+  it("hands Usage the top's Billed and Set aside", () => {
+    expect(page).toContain(
+      "<UsageSection billedCents={c.confirmedChargesCents} setAsideCents={c.provisionedChargesCents} />",
+    );
+  });
+
+  it("polls, and re-reads fast while its totals differ from the top", () => {
+    expect(usage).toContain("const base = pollIntervalFor(query);");
+    expect(usage).toContain("formatBillingCents(usdToCents(served.totalBilledUsd)) !== formatBillingCents(billedCents)");
+    expect(usage).toContain("formatBillingCents(usdToCents(served.totalSetAsideUsd)) !== formatBillingCents(setAsideCents)");
+    expect(usage).toContain("return behind ? USAGE_CATCH_UP_MS : base;");
+  });
+
+  it("keeps a NEGATIVE account adjustment row and shows what we cover", () => {
+    expect(usage).toContain("Math.abs(usdToCents(cat.billedUsd)) >= 0.5");
+    expect(usage).toContain("Covered by us: {formatBillingCents(coveredCents)}, on the house.");
+  });
+});

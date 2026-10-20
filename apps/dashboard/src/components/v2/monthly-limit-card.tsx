@@ -70,7 +70,7 @@ export function MonthlyLimitCard() {
           </>
         ) : (
           <>
-            <span className="k-fg">My campaigns spend at most</span>
+            <span className="k-fg">Never spend more than</span>
             {editing ? (
               <span className="inline-flex items-center gap-1">
                 <span className="k-fg2">$</span>
@@ -101,7 +101,7 @@ export function MonthlyLimitCard() {
                 {formatCentsAsUsd(limitCents ?? 0, 0)}
               </button>
             )}
-            <span className="k-fg">a month</span>
+            <span className="k-fg">per month</span>
           </>
         )}
         {limitCents !== null && !editing && (
