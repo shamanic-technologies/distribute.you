@@ -1,12 +1,13 @@
 "use client";
 
 import { useState } from "react";
-import { configureAutoTopup, disableAutoTopup, getOrgUsage } from "@/lib/api";
+import { ApiError, configureAutoTopup, disableAutoTopup, getOrgUsage, payBalance } from "@/lib/api";
 import { useAuthQuery, useQueryClient } from "@/lib/use-auth-query";
 import { formatBillingCents, formatCentsAsUsd } from "@/lib/format-number";
 import { creditGrantLabel } from "@/lib/credit-grant-label";
 import { paymentReturnBadge, paymentReturnState } from "@/lib/payment-return";
 import { paymentModeOf, type BillingMode } from "@/lib/payment-mode";
+import { paidLine, payBalanceRefusal, postpaidOwed } from "@/lib/v2/pay-balance";
 import { LossDialog, SubscriptionPlan } from "@/components/v2/subscription-plan";
 import {
   AUTO_TOPUP_ENABLE_AMOUNT_CENTS,
@@ -115,6 +116,31 @@ export function V2BillingPage() {
     ]).catch((err) => console.error("[billing v2] refetch after write failed:", err));
   }
 
+  // Postpaid "Pay $X now": the whole amount owed, on the saved card (owner 2026-10-21).
+  const [payPending, setPayPending] = useState(false);
+  const [payError, setPayError] = useState<string | null>(null);
+  const [paidMessage, setPaidMessage] = useState<string | null>(null);
+
+  async function payNow() {
+    setPayPending(true);
+    setPayError(null);
+    setPaidMessage(null);
+    let charged: number;
+    try {
+      charged = (await payBalance()).charged_cents;
+    } catch (err) {
+      const refusal = payBalanceRefusal(err instanceof ApiError ? err.body : null);
+      console.error("[billing v2] pay balance refused:", refusal.code, err);
+      setPayError(refusal.message);
+      setPayPending(false);
+      await refetchMoney();
+      return;
+    }
+    await refetchMoney();
+    setPaidMessage(paidLine(charged, formatCentsAsUsd(charged, 2)));
+    setPayPending(false);
+  }
+
   async function toggleAutoTopup(on: boolean) {
     setAutoPending(true);
     setAutoError(null);
@@ -135,13 +161,16 @@ export function V2BillingPage() {
   const onCredit = available < 0;
   const balanceFigure = formatBillingCents(onCredit ? Math.abs(available) : account?.balance_cents ?? "0");
   const expiry = cardExpiryLabel(account?.card_exp_month, account?.card_exp_year);
+  const owed = postpaidOwed(account);
   const customCents = c.customAmount ? Math.round(parseFloat(c.customAmount) * 100) || 0 : c.topupSelected;
 
   const sub = c.accountPending
     ? "Your balance, how you pay, and every payment."
     : mode === null
       ? `${onCredit ? `${balanceFigure} spent on credit` : `${balanceFigure} available`}.`
-      : `${MODE_COPY[mode].title}. ${onCredit ? `${balanceFigure} spent on credit` : `${balanceFigure} available`}.`;
+      : mode === "postpaid" && owed.owedCents !== null
+        ? `${MODE_COPY[mode].title}. You owe ${formatCentsAsUsd(owed.owedCents, 2)}.`
+        : `${MODE_COPY[mode].title}. ${onCredit ? `${balanceFigure} spent on credit` : `${balanceFigure} available`}.`;
 
   return (
     <>
@@ -215,7 +244,9 @@ export function V2BillingPage() {
               stopped={c.paymentsStopped}
               updatingCard={c.portalLoadingSource === "manage"}
               onRetry={() =>
-                c.showPaymentRequired({
+                mode === "postpaid"
+                  ? void payNow()
+                  : c.showPaymentRequired({
                   balance_cents: account?.balance_cents,
                   depleted: c.paymentsStopped,
                   autoReloadSupported: c.autoReloadSupported,
@@ -256,7 +287,9 @@ export function V2BillingPage() {
                   </div>
                 ))
               : [
-                  { label: onCredit ? "Spent on credit" : "Available", value: balanceFigure, strong: true },
+                  mode === "postpaid" && owed.owedCents !== null
+                    ? { label: "You owe", value: formatCentsAsUsd(owed.owedCents, 2), strong: true }
+                    : { label: onCredit ? "Spent on credit" : "Available", value: balanceFigure, strong: true },
                   { label: "Total credits", value: formatBillingCents(account?.credited_cents ?? "0") },
                   ...(c.confirmedChargesCents !== null && c.provisionedChargesCents !== null
                     ? [
@@ -274,6 +307,22 @@ export function V2BillingPage() {
                 ))}
           </div>
         </Section>
+
+        {/* Postpaid (owner 2026-10-21: « l'autotopup n'a aucun sens en post paid et ne devrait
+            pas exister, de même que add credit; on doit juste pouvoir être prélevé de tout le
+            montant »): the client starts at $0 and spends on credit; the card is charged at each
+            step of the line and at month end. One money action: pay everything owed now. */}
+        {mode === "postpaid" && account?.has_payment_method && c.autoReloadSupported && (
+          <Section
+            id="owed"
+            title="What you owe"
+            description="Your campaigns run on credit. Your card is charged as you spend, and you can pay it all now."
+          >
+            {paidMessage && <Note tone="teal">{paidMessage}</Note>}
+            {payError && <Note tone="rose">{payError}</Note>}
+            <PostpaidOwedCard owed={owed} nextChargeDate={c.nextChargeDate} pending={payPending} onPay={() => void payNow()} />
+          </Section>
+        )}
 
         {/* The monthly plan, for an org on one: its own row, the Balance strip's anatomy. */}
         {mode === "subscription" && (
@@ -344,28 +393,6 @@ export function V2BillingPage() {
                     <p className="k-fg3 mt-2 text-[12px] leading-[18px]">It stays on while your campaigns run. To stop it, remove your card.</p>
                   )}
                   {autoError && <p role="alert" className="mt-2 text-[13px] text-[var(--data-rose)]">{autoError}</p>}
-                </div>
-              )}
-
-              {/* Postpaid (owner 2026-10-21): the client starts at $0, spends on credit, and the
-                  card is charged at each step of the credit line. Nothing to top up, nothing to
-                  switch off: the card shows what is spent and when the card is next charged. */}
-              {mode === "postpaid" && account?.has_payment_method && c.autoReloadSupported && (
-                <div className="k-card mt-3 p-4">
-                  <p className="text-[13px] font-medium">Next card charge</p>
-                  <p className="k-fg3 mt-0.5 text-[12px] leading-[18px]">
-                    {c.creditLineCents > 0
-                      ? `Your card is charged each time you spend ${formatCentsAsUsd(c.creditLineCents, 0)}. What is left is charged on ${c.nextChargeDate}.`
-                      : `Your card is charged for what you spent on ${c.nextChargeDate}.`}
-                  </p>
-                  {c.creditLineCents > 0 && (
-                    <div className="mt-3">
-                      <Meter value={c.spentSinceChargeCents} max={c.creditLineCents} />
-                      <p className="k-fg3 mt-1.5 text-[12px] tabular-nums">
-                        {formatCentsAsUsd(c.spentSinceChargeCents, 2)} of {formatCentsAsUsd(c.creditLineCents, 2)} spent on credit
-                      </p>
-                    </div>
-                  )}
                 </div>
               )}
             </>
@@ -632,6 +659,60 @@ export function V2BillingPage() {
         <UsageSection />
       </div>
     </>
+  );
+}
+
+/** The postpaid card: what is owed now, the credit line, and the one Pay button. */
+function PostpaidOwedCard({
+  owed,
+  nextChargeDate,
+  pending,
+  onPay,
+}: {
+  owed: ReturnType<typeof postpaidOwed>;
+  nextChargeDate: string;
+  pending: boolean;
+  onPay: () => void;
+}) {
+  if (owed.owedCents === null) {
+    return (
+      <div className="k-card p-4">
+        <p className="k-fg3 text-[12px]">We could not read what you owe right now.</p>
+      </div>
+    );
+  }
+  const owes = owed.owedCents > 0;
+  const owedFigure = formatCentsAsUsd(owed.owedCents, 2);
+  return (
+    <div className="k-card p-4">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <p className="k-fg2 min-w-0 flex-1 text-[13px] leading-5">
+          {owed.creditLineCents !== null && owed.creditLineCents > 0 && owed.stepCents !== null
+            ? `Your card is charged ${formatCentsAsUsd(owed.stepCents, 0)} each time you reach ${formatCentsAsUsd(owed.creditLineCents, 0)} on credit. The rest is charged on ${nextChargeDate}.`
+            : `Your card is charged for what you spent on ${nextChargeDate}.`}
+        </p>
+        {owes ? (
+          <button
+            type="button"
+            className={`k-btn-accent shrink-0 tabular-nums ${pending ? "cursor-wait" : ""}`}
+            disabled={pending}
+            onClick={onPay}
+          >
+            {pending ? "Charging your card..." : `Pay ${owedFigure} now`}
+          </button>
+        ) : (
+          <p className="k-fg3 shrink-0 text-[13px]">You owe nothing right now.</p>
+        )}
+      </div>
+      {owed.creditLineCents !== null && owed.creditLineCents > 0 && (
+        <div className="mt-3">
+          <Meter value={Math.min(owed.owedCents, owed.creditLineCents)} max={owed.creditLineCents} />
+          <p className="k-fg3 mt-1.5 text-[12px] tabular-nums">
+            {owedFigure} of your {formatCentsAsUsd(owed.creditLineCents, 0)} credit line used
+          </p>
+        </div>
+      )}
+    </div>
   );
 }
 

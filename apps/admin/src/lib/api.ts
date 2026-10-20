@@ -2682,6 +2682,21 @@ export interface BillingAccount {
   actual_balance_cents?: string;
   topup_amount_cents: number | null;
   topup_threshold_cents: number | null;
+  /**
+   * POSTPAID only (billing-service v0.83.49, owner 2026-10-21: no auto top-up, no
+   * Add credit): how far below $0 the balance may go before the card is charged
+   * ($50, then $200, then $500 as the org pays), and what each charge takes. null
+   * when not postpaid or when no chargeable card carries the line. Optional until
+   * every billing deploy serves it.
+   */
+  credit_line_cents?: number | null;
+  credit_line_step_cents?: number | null;
+  /**
+   * POSTPAID only: what the org owes right now (actual spend, holds excluded), in
+   * decimal cents: exactly what `payBalance` charges. "0.0000000000" when nothing is
+   * owed, null when not postpaid.
+   */
+  amount_owed_cents?: string | null;
   has_payment_method: boolean;
   has_auto_topup: boolean;
   // Per-org usage discount rate (integer 0-100), frozen upstream at cost-declaration

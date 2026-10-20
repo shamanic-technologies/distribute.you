@@ -226,16 +226,11 @@ export function useBillingController() {
   const provisionedChargesCents = actualBalanceCents !== null ? actualBalanceCents - availableCents : null;
   const totalChargesCents = totalCreditsCents - availableCents; // confirmed + provisioned
 
-  // Postpaid next-charge progress. Auto-topup is threshold-based: the balance runs
-  // NEGATIVE down to a derived credit-line floor (topup_threshold_cents, negative)
-  // and a fixed reload (topup_amount_cents) fires when spend crosses it.
-  //   creditLineCents       = |negative floor| = the amount of spend that triggers the next charge
-  //   spentSinceChargeCents = how far into the line we are = max(0, -available)
-  //   nextChargeDate        = the month-end sweep guarantee (billing-service runMonthEndSweep)
-  const creditLineCents = Math.abs(account?.topup_threshold_cents ?? 0);
+  // Postpaid (owner 2026-10-21): the credit line and the amount owed are billing's own
+  // fields (`credit_line_cents`, `amount_owed_cents`), read by the page through
+  // lib/v2/pay-balance; nothing here derives them from the auto top-up columns.
+  //   nextChargeDate = the month-end sweep guarantee (billing-service runMonthEndSweep)
   const topupAmountCents = account?.topup_amount_cents ?? 0;
-  const spentSinceChargeCents = Math.max(0, -availableCents);
-  const chargePct = creditLineCents > 0 ? Math.min(100, (spentSinceChargeCents / creditLineCents) * 100) : 0;
   const nextChargeDate = lastDayOfMonthLabel();
 
   // Per-org usage discount (frozen upstream at cost-declaration). Every account number
@@ -645,9 +640,6 @@ export function useBillingController() {
     confirmedChargesCents,
     provisionedChargesCents,
     totalChargesCents,
-    spentSinceChargeCents,
-    creditLineCents,
-    chargePct,
     topupAmountCents,
     nextChargeDate,
     presetAmounts,
