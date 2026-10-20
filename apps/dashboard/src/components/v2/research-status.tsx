@@ -23,6 +23,7 @@ import { legFor } from "@/lib/legs";
 import { isProactiveFrom } from "@/lib/outbound-leg-key";
 import { formatUsdAdaptive } from "@/lib/format-number";
 import { Shimmer } from "@/components/v2/ui";
+import { InfoTooltip } from "@/components/visibility/metric-info";
 import { PIPE_KEY, PIPE_ORDER } from "@/lib/research/research";
 import {
   aliasList,
@@ -105,7 +106,7 @@ export function StatusWord({
   status: string | null | undefined;
   pending?: boolean;
   gap?: string | null;
-  /** Deprecated: why, who and when, printed under the word (full text on hover). */
+  /** Deprecated: why, who and when, printed under the word; the (i) beside it opens the full text (hover or tap). */
   deprecation?: DeprecationFacts[] | null;
 }) {
   if (gap) {
@@ -121,10 +122,11 @@ export function StatusWord({
   if (word === "Deprecated" && deprecation?.length) {
     const why = deprecation.map(deprecationLine).join(" · ");
     return (
-      <span className="block min-w-0 leading-4" title={why}>
+      <span className="block min-w-0 leading-4">
         <span className="inline-flex items-center gap-1.5 text-[12px] text-[var(--fg-2)]">
           <span className="h-2 w-2 rounded-full border-[1.5px] border-[var(--fg-3)]" />
           Deprecated
+          <InfoTooltip tip={why} placement="bottom" />
         </span>
         <span className="k-fg3 block truncate text-[11.5px]">{why}</span>
       </span>
