@@ -2,7 +2,7 @@
  * The END of signup (`/get-started` and "Add a brand"), owner 2026-10-16: two equal cards, both
  * ticked, each its face, served name, served one line and its own prefilled budget:
  *
- *   [x] [face] <best runnable Apollo cold email -> positive reply funnel>      [x] [face] <reactive AI reply funnel>
+ *   [x] [face] <best runnable Lead Sourcing cold email -> positive reply>      [x] [face] <reactive AI reply funnel>
  *       <served one line>                                           <served one line>
  *       $ 20 / day                                                  Up to $ 10 / week
  *   [ Launch ]  -> then the payment wall exactly as today
@@ -23,22 +23,28 @@ import { z } from "zod";
 /** The one channel this flow sells (cold email), and the one that books meetings on replies. */
 export const SIGNUP_PROACTIVE_CHANNEL = "sales-cold-email-outreach";
 export const SIGNUP_REACTIVE_CHANNEL = "ai-meeting-booking";
-/** Where the cold email's people come from: Apollo, never the client's own CRM or contacts. */
-export const SIGNUP_SOURCING_CHANNEL = "sourcing-apollo-cold-filters";
+/**
+ * Where the cold email's people come from: Lead Sourcing, the generic sourcing pipe (we pick the
+ * sources, never the client's own CRM contacts), owner 2026-10-20 "plus généraliste" over Apollo alone.
+ */
+export const SIGNUP_SOURCING_CHANNEL = "lead-sourcing";
+/** Lead Sourcing plays that only re-serve people the brand already reached: a new client has none. */
+export const SIGNUP_EXCLUDED_SOURCING_PLAYS: ReadonlySet<string> = new Set(["lead-follow-up-due", "contacted-pure-prospects"]);
 
 /**
  * The ONE proactive funnel shape signup funds (owner 2026-10-20, "ON DEVRAIT SEULEMENT PROPOSER
- * LES POSITIVE REPLY NORMALES"): people found in Apollo -> cold email -> positive reply -> paid
- * client by the client's team. A new client has no CRM, so a funnel sourced from their contacts
- * never sends (LBVisible 2026-10-20 was funded "Warm Email Replies 2" and nothing left); a
- * meeting or website-visit outcome is another offer. Any play on either pipe is allowed (the email
- * style picked sets the cold email one); features-service still ranks them, ROI first.
+ * LES POSITIVE REPLY NORMALES"): people found by Lead Sourcing -> cold email -> positive reply ->
+ * paid client by the client's team. A new client has no CRM, so a funnel sourced from their
+ * contacts never sends (LBVisible 2026-10-20 was funded "Warm Email Replies 2" and nothing left);
+ * a meeting or website-visit outcome is another offer. Any play on the cold email pipe is allowed
+ * (the email style picked sets it); features-service still ranks them, ROI first.
  */
 const COLD_POSITIVE_REPLY_FUNNEL = new RegExp(
-  `^start_to_lead_found@${SIGNUP_SOURCING_CHANNEL}(~[^+]+)?\\+lead_found_to_conversation@${SIGNUP_PROACTIVE_CHANNEL}(~[^+]+)?\\+conversation_to_paid_client$`,
+  `^start_to_lead_found@${SIGNUP_SOURCING_CHANNEL}(?:~([^+]+))?\\+lead_found_to_conversation@${SIGNUP_PROACTIVE_CHANNEL}(?:~[^+]+)?\\+conversation_to_paid_client$`,
 );
 export function isColdPositiveReplyFunnel(funnelId: string): boolean {
-  return COLD_POSITIVE_REPLY_FUNNEL.test(funnelId);
+  const m = funnelId.match(COLD_POSITIVE_REPLY_FUNNEL);
+  return !!m && !(m[1] && SIGNUP_EXCLUDED_SOURCING_PLAYS.has(m[1]));
 }
 
 export const PublicSalesFunnelRowSchema = z
