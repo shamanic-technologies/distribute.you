@@ -190,7 +190,8 @@ export function V2BillingPage() {
             <h1 className="text-[24px] font-medium leading-[30px] tracking-[-0.02em]">Billing</h1>
             <p className="k-fg2 mt-1 text-[14px]">{sub}</p>
           </div>
-          {!c.hasAutoTopup && !c.accountPending && (
+          {/* Postpaid runs on credit, a plan raises its plan: only prepaid adds credit (owner 2026-10-21). */}
+          {mode === "prepaid" && !c.hasAutoTopup && !c.accountPending && (
             <button
               type="button"
               className="k-btn-accent"
@@ -232,8 +233,11 @@ export function V2BillingPage() {
             You have {c.usageDiscountPct}% off all usage. It comes off every charge automatically.
           </Note>
         )}
-        {c.isDepleted && (
+        {mode === "prepaid" && c.isDepleted && (
           <Note tone="amber">Your credit has run out. Add credit to keep your campaigns running.</Note>
+        )}
+        {mode === "postpaid" && account && !account.has_payment_method && (
+          <Note tone="amber">Add a card so your campaigns can run on credit.</Note>
         )}
 
         {/* Balance: one card split into cells, the Keel KPI strip. */}
@@ -303,16 +307,14 @@ export function V2BillingPage() {
               )}
 
               {/* Auto top-up, in the words of the mode it serves. */}
-              {mode !== "subscription" && account?.has_payment_method && c.autoReloadSupported && (
+              {mode === "prepaid" && account?.has_payment_method && c.autoReloadSupported && (
                 <div className="k-card mt-3 p-4">
                   <div className="flex items-center justify-between gap-3">
                     <div className="min-w-0">
                       <p className="text-[13px] font-medium">Auto top-up</p>
                       <p className="k-fg3 mt-0.5 text-[12px] leading-[18px]">
                         {c.hasAutoTopup
-                          ? mode === "prepaid"
-                            ? `When your balance reaches $0, we add ${formatCentsAsUsd(c.topupAmountCents, 0)} from your card.`
-                            : `We charge ${formatCentsAsUsd(c.topupAmountCents, 0)} once you have spent ${formatCentsAsUsd(c.creditLineCents, 0)} on credit, or on ${c.nextChargeDate}.`
+                          ? `When your balance reaches $0, we add ${formatCentsAsUsd(c.topupAmountCents, 0)} from your card.`
                           : "Off. Your campaigns pause when your credit runs out."}
                       </p>
                     </div>
@@ -338,18 +340,32 @@ export function V2BillingPage() {
                     </button>
                     )}
                   </div>
-                  {c.hasAutoTopup && mode === "prepaid" && (
+                  {c.hasAutoTopup && (
                     <p className="k-fg3 mt-2 text-[12px] leading-[18px]">It stays on while your campaigns run. To stop it, remove your card.</p>
                   )}
-                  {c.hasAutoTopup && mode === "postpaid" && c.creditLineCents > 0 && (
+                  {autoError && <p role="alert" className="mt-2 text-[13px] text-[var(--data-rose)]">{autoError}</p>}
+                </div>
+              )}
+
+              {/* Postpaid (owner 2026-10-21): the client starts at $0, spends on credit, and the
+                  card is charged at each step of the credit line. Nothing to top up, nothing to
+                  switch off: the card shows what is spent and when the card is next charged. */}
+              {mode === "postpaid" && account?.has_payment_method && c.autoReloadSupported && (
+                <div className="k-card mt-3 p-4">
+                  <p className="text-[13px] font-medium">Next card charge</p>
+                  <p className="k-fg3 mt-0.5 text-[12px] leading-[18px]">
+                    {c.creditLineCents > 0
+                      ? `Your card is charged each time you spend ${formatCentsAsUsd(c.creditLineCents, 0)}. What is left is charged on ${c.nextChargeDate}.`
+                      : `Your card is charged for what you spent on ${c.nextChargeDate}.`}
+                  </p>
+                  {c.creditLineCents > 0 && (
                     <div className="mt-3">
                       <Meter value={c.spentSinceChargeCents} max={c.creditLineCents} />
                       <p className="k-fg3 mt-1.5 text-[12px] tabular-nums">
-                        {formatCentsAsUsd(c.spentSinceChargeCents, 2)} of {formatCentsAsUsd(c.creditLineCents, 2)} spent
+                        {formatCentsAsUsd(c.spentSinceChargeCents, 2)} of {formatCentsAsUsd(c.creditLineCents, 2)} spent on credit
                       </p>
                     </div>
                   )}
-                  {autoError && <p role="alert" className="mt-2 text-[13px] text-[var(--data-rose)]">{autoError}</p>}
                 </div>
               )}
             </>
@@ -448,7 +464,8 @@ export function V2BillingPage() {
 
         {/* Add credit, only while auto top-up is off (it refills the balance otherwise). */}
         {/* A plan adds money by raising the plan, never a one-off top-up. */}
-        {!c.accountPending && !c.hasAutoTopup && mode !== "subscription" && (
+        {/* Postpaid has nothing to top up (owner 2026-10-21): prepaid only. */}
+        {!c.accountPending && !c.hasAutoTopup && mode === "prepaid" && (
           <Section id="add-credit" title="Add credit" description="A one-off payment. The amounts are sized to what your brands spend a day.">
             <div className="k-card p-4">
               <div className="flex flex-wrap items-center gap-2">
@@ -586,7 +603,7 @@ export function V2BillingPage() {
                       className="k-row k-line-subtle flex min-h-12 items-center justify-between gap-3 border-b px-4 py-2 last:border-b-0"
                     >
                       <div className="min-w-0">
-                        <p className="truncate text-[13px]">{payment.description || "Credit top-up"}</p>
+                        <p className="truncate text-[13px]">{payment.description || (mode === "postpaid" ? "Card charge" : "Credit top-up")}</p>
                         {returned && (
                           <p className="k-fg3 text-[12px]">{formatBillingCents(payment.amountReturnedCents)} returned to your card</p>
                         )}

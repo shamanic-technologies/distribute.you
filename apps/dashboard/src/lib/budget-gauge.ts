@@ -7,7 +7,8 @@
  *   one against; a dot says whether campaigns can still spend, and billing's runway says
  *   how many days it lasts at the running daily budgets.
  * - postpaid: spent since the last card charge, out of the spend that triggers the next one
- *   (the same meter the Billing page draws).
+ *   (the same meter the Billing page draws). Keyed on a saved card only, never on the
+ *   auto top-up flag (a prepaid concept).
  * - subscription: the month's credit left, out of the plan's monthly amount (the trial's
  *   grant while trialing).
  *
@@ -112,9 +113,14 @@ export function budgetGaugeView(
 
   if (mode === "postpaid") {
     // The credit line is the spend that triggers the next charge (billing's negative floor).
+    // A saved card is the only prerequisite: postpaid keeps its credit line whatever the
+    // auto top-up flag says (owner 2026-10-21), so the flag is never read here.
     const line = Math.abs(account.topup_threshold_cents ?? 0);
-    if (!account.has_payment_method || !account.has_auto_topup || line === 0) {
+    if (!account.has_payment_method) {
       return { label: "Spent", figure: formatCentsAsUsd(Math.max(0, -balance), 2), meter: null, line: "Add a card to run campaigns.", tone: "stopped" };
+    }
+    if (line === 0) {
+      return { label: "Spent on credit", figure: formatCentsAsUsd(Math.max(0, -balance), 2), meter: null, line: "Charged to your card as you spend.", tone: "ok" };
     }
     if (balance > 0) {
       return { label: "Credit left", figure: formatBillingCents(balance), meter: null, line: `Then billed every ${formatCentsAsUsd(line, 0)}.`, tone: "ok" };
