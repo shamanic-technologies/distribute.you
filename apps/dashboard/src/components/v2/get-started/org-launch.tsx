@@ -26,6 +26,7 @@ import { EMPTY_PROGRESS, launchFromPreview, type LaunchProgress } from "./launch
 import { PrepaidTopup, type TopupChoice } from "./prepaid-topup";
 import { payTopup, settleTopup } from "./pay-topup";
 import { pingOwner } from "@/lib/owner-ping-client";
+import { sendLaunchEmail } from "@/lib/signup-emails";
 import { hostOf as pingHostOf, websiteUrl as pingWebsiteUrl } from "@/lib/v2/get-started";
 
 type Stage = "reading" | "credit" | "ready" | "launching";
@@ -167,6 +168,7 @@ export function OrgLaunch({
         console.error("[brand-walk] snapshot clear failed:", e);
       }
       posthog.capture("brand_walk_launched", { org_id: orgId, brand_id: brandId, campaigns: launchCount(plan) });
+      await sendLaunchEmail().catch((e) => console.error("[brand-walk] launch email failed:", e));
       setApiActiveOrgOverride(null);
       pingOwner({ event: "launched", domain: website ? pingHostOf(pingWebsiteUrl(website)) : null });
       window.location.assign(v2CampaignHref(orgId, brandId, campaignId));

@@ -16,6 +16,6 @@ describe("the first-payment email", () => {
   });
 
   it("the signup still sends the short welcome", () => {
-    expect(src("src/components/auth-event-tracker.tsx")).toContain('sendAuthNotification("welcome")');
+    expect(src("src/lib/signup-emails.ts")).toContain('sendAuthNotification("welcome")');
   });
 });
