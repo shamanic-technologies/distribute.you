@@ -24,6 +24,18 @@ describe("v2 run page — one workflow run, opened from the email it wrote", () 
     expect(page).toContain("gen?.audienceId ?? run?.audienceId");
   });
 
+  it("Campaign names the sales funnel campaign, never the pipe; the pipe has its own row (owner 2026-10-20)", () => {
+    const page = read("components/v2/run-page.tsx");
+    expect(page).toContain("useFunnelCampaignById(brandId, campaign?.row.campaign.salesFunnelCampaignId");
+    expect(page).toContain("const campaignName = funnelCampaign?.salesFunnelName ?? null;");
+    const camp = page.slice(page.indexOf('k="Campaign"'), page.indexOf('k="Pipe"'));
+    expect(camp).toContain("<FunnelFace name={funnelCampaign.salesFunnelName}");
+    expect(camp).not.toContain("pipe.name");
+    const pipe = page.slice(page.indexOf('k="Pipe"'), page.indexOf('k="Objective"'));
+    expect(pipe).toContain("<ServedPipeMark pipeId={campaign.pipe.id} />");
+    expect(pipe).toContain("{campaign.pipe.name}");
+  });
+
   it("the history reader carries the run lead-service names on each email", () => {
     expect(read("lib/lead-history.ts")).toContain("workflowRunId: z.string().nullable().optional()");
   });

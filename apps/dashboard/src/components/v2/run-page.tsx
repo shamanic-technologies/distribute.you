@@ -18,9 +18,10 @@ import { friendlyDateTime } from "@/lib/friendly-datetime";
 import { leadWorkflowIdentity } from "@/lib/campaign-workflow-rows";
 import { workflowModelMark } from "@/lib/workflow-model-marks";
 import { workflowTemplateLabel } from "@/lib/workflow-template-label";
-import { v2Href, v2PersonHref, v2WorkflowHref } from "@/lib/v2/routes";
+import { v2CampaignHref, v2Href, v2PersonHref, v2WorkflowHref } from "@/lib/v2/routes";
 import { ServedPipeMark } from "@/components/v2/served-pipe-mark";
 import { useCampaigns } from "@/components/v2/use-campaigns";
+import { FunnelFace, useFunnelCampaignById } from "@/components/v2/funnel-campaigns";
 import { foldSteps, runTaskLabel } from "@/components/v2/runs";
 import { EmptyNote, Shimmer, TopBar } from "@/components/v2/ui";
 import { useStaffMode } from "@/lib/use-staff-mode";
@@ -57,7 +58,8 @@ function cents(v: string | null | undefined): string {
  * One workflow run: everything that decided it, in one place. runs-service says what
  * ran and what it cost; the generation content-generation filed under this run says
  * which model actually wrote, from which template, for which audience and which
- * person; the campaign names itself and its pipe. Every value is served, and a
+ * person; the campaign (the sales funnel campaign the run's pipe belongs to) and the pipe
+ * each wear their own served name and mark. Every value is served, and a
  * value we could not read reads as a dash rather than a guess.
  */
 export function RunPage() {
@@ -77,6 +79,9 @@ export function RunPage() {
   const gen = genQ.data?.[0] ?? null;
   const campaignId = run?.campaignId ?? gen?.campaignId ?? null;
   const campaign = campaignId ? campaignById.get(campaignId) ?? null : null;
+  // The CAMPAIGN is the sales funnel campaign this pipe runs in (owner 2026-10-20: a pipe such
+  // as Dotterel is never a campaign). A run whose pipe belongs to no such campaign names none.
+  const { campaign: funnelCampaign } = useFunnelCampaignById(brandId, campaign?.row.campaign.salesFunnelCampaignId ?? "");
   const featureSlug = run?.featureSlug ?? campaign?.row.campaign.featureSlug ?? null;
   const legKey = campaign?.row.campaign.legKey ?? null;
   const workflowSlug = run?.workflowSlug ?? gen?.workflowSlug ?? null;
@@ -107,7 +112,7 @@ export function RunPage() {
     [run],
   );
 
-  const campaignName = campaign ? `${campaign.pipe.name}${campaign.offerName ? ` · ${campaign.offerName}` : ""}` : null;
+  const campaignName = funnelCampaign?.salesFunnelName ?? null;
   const title = staffMode
     ? workflow?.dynastyName ?? workflowSlug ?? (run ? runTaskLabel(run as unknown as RunRow) : "Run")
     : campaignName ?? (run ? runTaskLabel(run as unknown as RunRow) : "Run");
@@ -196,11 +201,24 @@ export function RunPage() {
                     <Row
                       k="Campaign"
                       v={
+                        funnelCampaign ? (
+                          <Link
+                            href={v2CampaignHref(orgId, funnelCampaign.brandId, funnelCampaign.id)}
+                            className="inline-flex items-center gap-1.5 hover:underline"
+                          >
+                            <FunnelFace name={funnelCampaign.salesFunnelName} size={16} />
+                            {funnelCampaign.salesFunnelName}
+                          </Link>
+                        ) : null
+                      }
+                    />
+                    <Row
+                      k="Pipe"
+                      v={
                         campaign ? (
                           <Link href={campaign.href} className="inline-flex items-center gap-1.5 hover:underline">
                             <ServedPipeMark pipeId={campaign.pipe.id} />
                             {campaign.pipe.name}
-                            {campaign.offerName ? ` · ${campaign.offerName}` : ""}
                           </Link>
                         ) : null
                       }
