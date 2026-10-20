@@ -2874,7 +2874,7 @@ export function CampaignStage({
   lineOf: (channelSlug: string) => string | null;
   draft: SignupCampaignDraft;
   onChange: (next: SignupCampaignDraft) => void;
-  /** The "My campaigns spend at most" line's prefill; null = no line (the signed-in walk). */
+  /** The "Never spend more than" line's prefill; null = no line (the signed-in walk). */
   limitPrefillUsd?: number | null;
   error: string | null;
   onRetry: () => void;
@@ -2945,7 +2945,7 @@ export function CampaignStage({
           </div>
           {limitPrefillUsd != null && (
             <label className="flex flex-wrap items-center gap-1.5 text-[13px]">
-              <span className="k-fg">My campaigns spend at most</span>
+              <span className="k-fg">Never spend more than</span>
               <span className="k-fg2">$</span>
               <input
                 className="k-input w-24 text-right tabular-nums"
@@ -2956,7 +2956,7 @@ export function CampaignStage({
                 aria-label="Monthly spend limit in dollars"
                 onChange={(e) => set({ monthlyLimit: e.target.value })}
               />
-              <span className="k-fg">a month</span>
+              <span className="k-fg">per month</span>
             </label>
           )}
           {error && <p className="text-[12px] text-[var(--data-rose)]">{error}</p>}
