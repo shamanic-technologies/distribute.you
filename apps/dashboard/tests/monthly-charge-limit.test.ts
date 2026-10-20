@@ -43,9 +43,9 @@ describe("monthly charge limit (owner 2026-10-12: never charge me more than $X a
     const gs = read("src/components/v2/get-started/get-started.tsx");
     expect(gs).toContain("limitPrefillUsd={org ? null : DEFAULT_MONTHLY_LIMIT_USD}");
     const stage = gs.slice(gs.indexOf("export function CampaignStage("), gs.indexOf("function ValueStage("));
-    expect(stage).toContain(">My campaigns spend at most</span>");
-    expect(stage).toContain(">a month</span>");
-    expect(stage.indexOf(">My campaigns spend at most</span>")).toBeGreaterThan(stage.indexOf('label="Max budget in dollars"'));
+    expect(stage).toContain(">Never spend more than</span>");
+    expect(stage).toContain(">per month</span>");
+    expect(stage.indexOf(">Never spend more than</span>")).toBeGreaterThan(stage.indexOf('label="Max budget in dollars"'));
     expect(gs).toContain("monthlyLimit={campaignDraft.monthlyLimit}");
     // Onboarding shows the ONE line: no meter, no "Remove limit" (Billing only, owner 2026-10-12).
     expect(stage).not.toContain("Remove limit");
@@ -66,7 +66,9 @@ describe("monthly charge limit (owner 2026-10-12: never charge me more than $X a
 
   it("Billing's card states a SPEND cap and its bar reads the month's spend, never card charges (owner 2026-10-21)", () => {
     const card = read("src/components/v2/monthly-limit-card.tsx");
-    expect(card).toContain(">My campaigns spend at most</span>");
+    expect(card).toContain(">Never spend more than</span>");
+    expect(card).toContain(">per month</span>");
+    expect(card).not.toContain("spend at most");
     expect(card).toContain(">No monthly spend limit.</span>");
     expect(card).toContain("const spentRaw = data.spent_this_period_cents;");
     expect(card).toContain("<Meter value={spent} max={limitCents} />");

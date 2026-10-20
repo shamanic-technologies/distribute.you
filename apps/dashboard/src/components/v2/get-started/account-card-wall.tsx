@@ -155,7 +155,7 @@ export function AccountCardWall({
   email: GetStartedEmail | null;
   /** The campaign set at the "Your campaign" step (the funnels and their caps). */
   plan: SignupLaunchPlan;
-  /** "My campaigns spend at most $X a month" as typed at the campaign step; null = the arm's prefill. */
+  /** "Never spend more than $X per month" as typed at the campaign step; null = the arm's prefill. */
   monthlyLimit: string | null;
   /** The served figures of the campaign picked: what the match buys is read off it. */
   outlook: CampaignOutlook | null;

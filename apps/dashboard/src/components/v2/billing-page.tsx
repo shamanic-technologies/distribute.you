@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { ApiError, configureAutoTopup, disableAutoTopup, getOrgUsage, payBalance } from "@/lib/api";
 import { useAuthQuery, useQueryClient } from "@/lib/use-auth-query";
+import { pollIntervalFor } from "@/lib/query-options";
 import { formatBillingCents, formatCentsAsUsd } from "@/lib/format-number";
 import { creditGrantLabel } from "@/lib/credit-grant-label";
 import { paymentReturnBadge, paymentReturnState } from "@/lib/payment-return";
@@ -656,7 +657,7 @@ export function V2BillingPage() {
           </div>
         </Section>
 
-        <UsageSection />
+        <UsageSection billedCents={c.confirmedChargesCents} setAsideCents={c.provisionedChargesCents} />
       </div>
     </>
   );
@@ -721,11 +722,34 @@ function usdToCents(usd: number): number {
   return Math.round(usd * 1e6) / 1e4;
 }
 
-/** Billed spend by category, with a Total row equal to "Billed" at the top. */
-function UsageSection() {
-  const { data: usage, isPending, isError } = useAuthQuery(["orgUsage"], () => getOrgUsage());
-  const rows = (usage?.categories ?? []).filter((cat) => usdToCents(cat.billedUsd) >= 0.5);
-  const setAsideCents = usdToCents(usage?.totalSetAsideUsd ?? 0);
+/** How soon Usage re-reads while its Total still differs from Billed at the top. */
+const USAGE_CATCH_UP_MS = 1_500;
+
+/**
+ * Billed spend by category, with a Total row equal to "Billed" at the top.
+ *
+ * features-service serves billing's own Billed and Set aside as the totals, but from a
+ * snapshot it refreshes behind the response, while the Balance card reads billing live.
+ * So Usage polls with the page AND, while its Total or set-aside differs from the
+ * figures at the top, re-reads every 1.5s until both show the same moment
+ * (BILLING-PAGE-COHERENT-1021). The compare is a freshness check, never a figure shown.
+ */
+function UsageSection({ billedCents, setAsideCents }: { billedCents: number | null; setAsideCents: number | null }) {
+  const { data: usage, isPending, isError } = useAuthQuery(["orgUsage"], () => getOrgUsage(), {
+    refetchInterval: (query) => {
+      const base = pollIntervalFor(query);
+      const served = query.state.data;
+      if (base === false || !served || billedCents === null || setAsideCents === null) return base;
+      const behind =
+        formatBillingCents(usdToCents(served.totalBilledUsd)) !== formatBillingCents(billedCents) ||
+        formatBillingCents(usdToCents(served.totalSetAsideUsd)) !== formatBillingCents(setAsideCents);
+      return behind ? USAGE_CATCH_UP_MS : base;
+    },
+  });
+  // Account adjustments can be NEGATIVE (a correction): keep any row worth half a cent either way.
+  const rows = (usage?.categories ?? []).filter((cat) => Math.abs(usdToCents(cat.billedUsd)) >= 0.5);
+  const setAsideCentsServed = usdToCents(usage?.totalSetAsideUsd ?? 0);
+  const coveredCents = usdToCents(usage?.coveredByUs?.billedUsd ?? 0);
   return (
     <Section
       id="usage"
@@ -757,10 +781,13 @@ function UsageSection() {
             <li className="flex min-h-12 items-center justify-between gap-3 px-4 py-2">
               <div className="min-w-0">
                 <p className="text-[13px] font-semibold">Total</p>
-                {setAsideCents >= 0.5 && (
+                {setAsideCentsServed >= 0.5 && (
                   <p className="k-fg3 text-[12px]">
-                    Plus {formatBillingCents(setAsideCents)} set aside for emails already scheduled.
+                    Plus {formatBillingCents(setAsideCentsServed)} set aside for emails already scheduled.
                   </p>
+                )}
+                {coveredCents >= 0.5 && (
+                  <p className="k-fg3 text-[12px]">Covered by us: {formatBillingCents(coveredCents)}, on the house.</p>
                 )}
               </div>
               <span className="w-20 shrink-0 text-right text-[13px] font-semibold tabular-nums">
