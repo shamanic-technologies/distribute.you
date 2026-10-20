@@ -11,11 +11,12 @@ import {
   getContentTemplateStatuses,
   getLegWorkflowRanking,
   getRunnableWorkflowDynasties,
+  getWorkflowDynastyDeprecation,
   retireWorkflowsByContent,
   setContentModelStatus,
   setContentTemplateStatus,
   setWorkflowDynastyStatus,
-  type CatalogueStatus,
+  type CatalogueStatusChange,
 } from "@/lib/api";
 import { useLegCatalogue } from "@/lib/use-leg-catalogue";
 import { legFor } from "@/lib/legs";
@@ -23,7 +24,15 @@ import { isProactiveFrom } from "@/lib/outbound-leg-key";
 import { formatUsdAdaptive } from "@/lib/format-number";
 import { Shimmer } from "@/components/v2/ui";
 import { PIPE_KEY, PIPE_ORDER } from "@/lib/research/research";
-import { aliasList, statusWord, type ContentTarget } from "@/lib/research/content-status";
+import {
+  aliasList,
+  contentDeprecation,
+  deprecationLine,
+  modelDeprecation,
+  statusWord,
+  type ContentTarget,
+  type DeprecationFacts,
+} from "@/lib/research/content-status";
 
 /**
  * Staff status of a template, a writer model or a workflow on the Research pages
@@ -32,6 +41,9 @@ import { aliasList, statusWord, type ContentTarget } from "@/lib/research/conten
  * stop with it (a dry run of workflow-service's retire-by-content), each with its outcomes,
  * cost per outcome and status; confirming deprecates it AND retires those workflows. Setting it
  * active again touches its status only: the workflows stay deprecated, set back by hand.
+ * Every deprecation states WHY (DEPRECATION-REASON-1020, owner 2026-10-20): Confirm stays off
+ * until the "Why?" box holds text, and every deprecated row and page prints the served reason,
+ * who and when.
  */
 
 const STATUS_ROOTS = {
@@ -39,18 +51,25 @@ const STATUS_ROOTS = {
   models: ["contentModelStatuses"],
 } as const;
 
-/** Template type -> status, as content-generation-service states it. */
+/** Template type -> status (and why it was deprecated), as content-generation-service states it. */
 export function useTemplateStatuses() {
   const q = useAuthQuery([...STATUS_ROOTS.templates], getContentTemplateStatuses, { ...pollOptions, retry: false });
   const map = useMemo(() => new Map((q.data ?? []).map((t) => [t.type, t.status])), [q.data]);
-  return { map, answered: q.data !== undefined || q.isFetchedAfterMount, failed: q.data === undefined && q.isError };
+  const why = useMemo(() => new Map((q.data ?? []).map((t) => [t.type, contentDeprecation(t)])), [q.data]);
+  const deprecationOf = (type: string): DeprecationFacts[] | null => {
+    const d = why.get(type);
+    return d ? [d] : null;
+  };
+  return { map, deprecationOf, answered: q.data !== undefined || q.isFetchedAfterMount, failed: q.data === undefined && q.isError };
 }
 
-/** Model ALIAS -> status. */
+/** Model ALIAS -> status; a model's deprecation reads every alias it is served under. */
 export function useModelStatuses() {
   const q = useAuthQuery([...STATUS_ROOTS.models], getContentModelStatuses, { ...pollOptions, retry: false });
   const map = useMemo(() => new Map((q.data ?? []).map((m) => [m.model, m.status])), [q.data]);
-  return { map, answered: q.data !== undefined || q.isFetchedAfterMount, failed: q.data === undefined && q.isError };
+  const why = useMemo(() => new Map((q.data ?? []).map((m) => [m.model, contentDeprecation(m)])), [q.data]);
+  const deprecationOf = (aliases: readonly string[]) => modelDeprecation(aliases, (a) => why.get(a) ?? null);
+  return { map, deprecationOf, answered: q.data !== undefined || q.isFetchedAfterMount, failed: q.data === undefined && q.isError };
 }
 
 /** A workflow's status: Active while workflow-service can run it, else Deprecated (one channel). */
@@ -61,13 +80,34 @@ export function useDynastyStatuses(featureSlug: string) {
   return { statusOf, answered: q.data !== undefined || q.isFetchedAfterMount };
 }
 
+/**
+ * Why, who and when a workflow was deprecated (workflow-service, its newest version). Read only
+ * where it shows (a deprecated row, a workflow page) and re-read after each status write; no poll:
+ * it changes only through a write, which refetches it.
+ */
+export function useWorkflowDeprecation(slug: string, enabled = true) {
+  const q = useAuthQuery(["workflowDynastyDeprecation", slug], () => getWorkflowDynastyDeprecation(slug), { enabled, retry: false });
+  return { deprecation: q.data ? [q.data] : null, answered: !enabled || q.data !== undefined || q.isError };
+}
+
 // ─── The status cell ─────────────────────────────────────────────────────────
 
 /**
  * "Active" (green dot) or "Deprecated" (hollow dot); `gap` is the plain reason a model has no
  * status (retired, unknown to chat-service), printed instead of a blank; a dash when nothing states one.
  */
-export function StatusWord({ status, pending = false, gap = null }: { status: string | null | undefined; pending?: boolean; gap?: string | null }) {
+export function StatusWord({
+  status,
+  pending = false,
+  gap = null,
+  deprecation = null,
+}: {
+  status: string | null | undefined;
+  pending?: boolean;
+  gap?: string | null;
+  /** Deprecated: why, who and when, printed under the word (full text on hover). */
+  deprecation?: DeprecationFacts[] | null;
+}) {
   if (gap) {
     return (
       <span className="k-fg3 block min-w-0 truncate text-[12px]" title={gap}>
@@ -78,6 +118,18 @@ export function StatusWord({ status, pending = false, gap = null }: { status: st
   if (pending) return <Shimmer className="inline-block h-3.5 w-16 align-middle" />;
   const word = statusWord(status);
   if (!word) return <span className="k-fg4">{"—"}</span>;
+  if (word === "Deprecated" && deprecation?.length) {
+    const why = deprecation.map(deprecationLine).join(" · ");
+    return (
+      <span className="block min-w-0 leading-4" title={why}>
+        <span className="inline-flex items-center gap-1.5 text-[12px] text-[var(--fg-2)]">
+          <span className="h-2 w-2 rounded-full border-[1.5px] border-[var(--fg-3)]" />
+          Deprecated
+        </span>
+        <span className="k-fg3 block truncate text-[11.5px]">{why}</span>
+      </span>
+    );
+  }
   return (
     <span className="inline-flex items-center gap-1.5 text-[12px] text-[var(--fg-2)]">
       {word === "Active" ? (
@@ -210,12 +262,13 @@ function writeErrorText(err: unknown): string {
   return "We could not change it just now. Try again.";
 }
 
-/** Every read a status write moves: the statuses, the workflows' own, the live rankings. */
+/** Every read a status write moves: the statuses, the workflows' own (and why), the live rankings. */
 async function refetchAfterWrite(qc: ReturnType<typeof useQueryClient>) {
   await Promise.all([
     qc.refetchQueries({ queryKey: [...STATUS_ROOTS.templates] }),
     qc.refetchQueries({ queryKey: [...STATUS_ROOTS.models] }),
     qc.refetchQueries({ queryKey: ["workflowDynastyStatuses"] }),
+    qc.invalidateQueries({ queryKey: ["workflowDynastyDeprecation"] }),
     qc.invalidateQueries({ queryKey: ["legWorkflowRanking"] }),
   ]);
 }
@@ -227,8 +280,8 @@ export function useContentStatusWrites() {
   const qc = useQueryClient();
   const [confirming, setConfirming] = useState<ContentTarget | null>(null);
   const activate = async (t: ContentTarget) => {
-    if (t.kind === "template") await setContentTemplateStatus(t.key, "active");
-    else for (const alias of t.aliases) await setContentModelStatus(alias, "active");
+    if (t.kind === "template") await setContentTemplateStatus(t.key, { status: "active" });
+    else for (const alias of t.aliases) await setContentModelStatus(alias, { status: "active" });
     await refetchAfterWrite(qc);
   };
   const modal = confirming ? <DeprecateContentModal target={confirming} onClose={() => setConfirming(null)} /> : null;
@@ -283,7 +336,7 @@ export function DeprecateContentModal({ target, onClose }: { target: ContentTarg
   const preview = useAuthQuery(
     ["retireByContentPreview", target.kind, ...previewKey],
     async () => {
-      const lists = await Promise.all(bodies.map((b) => retireWorkflowsByContent(b, true)));
+      const lists = await Promise.all(bodies.map((b) => retireWorkflowsByContent(b, { dryRun: true })));
       const seen = new Set<string>();
       return { workflows: lists.flatMap((l) => l.workflows).filter((w) => !seen.has(w.workflowDynastySlug) && (seen.add(w.workflowDynastySlug), true)) };
     },
@@ -301,6 +354,8 @@ export function DeprecateContentModal({ target, onClose }: { target: ContentTarg
   };
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [why, setWhy] = useState("");
+  const reason = why.trim();
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => e.key === "Escape" && !busy && onClose();
@@ -313,14 +368,18 @@ export function DeprecateContentModal({ target, onClose }: { target: ContentTarg
   const what = target.kind === "template" ? "template" : "model";
 
   const confirm = async () => {
+    if (!reason) return;
     setBusy(true);
     setError(null);
     let statusSet = false;
+    const change = { status: "deprecated", reason } satisfies CatalogueStatusChange;
+    // Each workflow it stops records why: this deprecation, named, with the staff member's words.
+    const workflowReason = `Uses deprecated ${what} ${target.label}: ${reason}`;
     try {
-      if (target.kind === "template") await setContentTemplateStatus(target.key, "deprecated" satisfies CatalogueStatus);
-      else for (const alias of target.aliases) await setContentModelStatus(alias, "deprecated");
+      if (target.kind === "template") await setContentTemplateStatus(target.key, change);
+      else for (const alias of target.aliases) await setContentModelStatus(alias, change);
       statusSet = true;
-      for (const b of bodies) await retireWorkflowsByContent(b, false);
+      for (const b of bodies) await retireWorkflowsByContent(b, { dryRun: false, reason: workflowReason });
       await refetchAfterWrite(qc);
       onClose();
     } catch (err) {
@@ -415,6 +474,7 @@ export function DeprecateContentModal({ target, onClose }: { target: ContentTarg
             </div>
           ) : null}
           <p className="k-fg3 mt-3 text-[12px] leading-[18px]">Setting it active later brings no workflow back: set each one active by hand.</p>
+          <WhyField value={why} onChange={setWhy} disabled={busy} what={what} />
           {error && (
             <p role="alert" className="mt-3 text-[13px] text-[var(--data-rose)]">
               {error}
@@ -428,7 +488,7 @@ export function DeprecateContentModal({ target, onClose }: { target: ContentTarg
           <button
             type="button"
             onClick={confirm}
-            disabled={busy || preview.data === undefined}
+            disabled={busy || preview.data === undefined || !reason}
             className={`k-btn-strong ${busy ? "cursor-wait" : "disabled:cursor-not-allowed disabled:opacity-40"}`}
           >
             {busy ? "Deprecating..." : n > 0 ? `Deprecate ${n} ${n === 1 ? "workflow" : "workflows"}` : `Deprecate ${what}`}
@@ -442,30 +502,167 @@ export function DeprecateContentModal({ target, onClose }: { target: ContentTarg
 
 // ─── Workflow rows ───────────────────────────────────────────────────────────
 
-/** Status cell + ⋮ for one workflow dynasty (Research Workflows page). */
+/** Status cell + ⋮ for one workflow dynasty (Research Workflows page); Deprecate asks why first. */
 export function WorkflowStatusCells({ slug, label, statuses }: { slug: string; label: string; statuses: ReturnType<typeof useDynastyStatuses> }) {
   const qc = useQueryClient();
   const status = statuses.statusOf(slug);
-  const write = async (next: CatalogueStatus) => {
-    await setWorkflowDynastyStatus(slug, next);
+  const why = useWorkflowDeprecation(slug, status === "deprecated");
+  const [asking, setAsking] = useState(false);
+  const write = async (change: CatalogueStatusChange) => {
+    await setWorkflowDynastyStatus(slug, change);
     await refetchAfterWrite(qc);
   };
   return (
     <>
-      <td className="px-3">
-        <StatusWord status={status} pending={!statuses.answered} />
+      <td className="max-w-0 px-3">
+        <StatusWord status={status} pending={!statuses.answered} deprecation={why.deprecation} />
       </td>
       <td className="pl-1 pr-4 text-right">
         <StatusMenu
           status={status}
           label={label}
-          onDeprecate={() => write("deprecated")}
-          onActivate={() => write("active")}
+          onDeprecate={() => setAsking(true)}
+          onActivate={() => write({ status: "active" })}
           deprecateNote="Stops it for every client."
           activateNote="Runs again for every campaign that picks it."
         />
+        {asking && (
+          <DeprecateWhyModal
+            title={`Deprecate ${label}?`}
+            body="It stops for every client, and no campaign picks it again."
+            what="workflow"
+            onClose={() => setAsking(false)}
+            onConfirm={(reason) => write({ status: "deprecated", reason })}
+          />
+        )}
       </td>
     </>
+  );
+}
+
+// ─── "Why?" ──────────────────────────────────────────────────────────────────
+
+/** The required "Why?" box of every deprecation: its text is the reason the producer records. */
+function WhyField({ value, onChange, disabled, what }: { value: string; onChange: (v: string) => void; disabled: boolean; what: string }) {
+  return (
+    <label className="mt-4 block">
+      <span className="k-label">Why?</span>
+      <textarea
+        autoFocus
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        disabled={disabled}
+        rows={3}
+        maxLength={2000}
+        placeholder={`Why this ${what} stops, for whoever reads it in six months`}
+        className="k-inset mt-1.5 block w-full resize-y rounded-[8px] px-3 py-2 text-[13px] leading-5 outline-none placeholder:text-[var(--fg-4)] focus:ring-1 focus:ring-[var(--accent)]"
+      />
+    </label>
+  );
+}
+
+/** A deprecation with nothing to list first (a workflow): one line, the "Why?" box, Confirm. */
+export function DeprecateWhyModal({
+  title,
+  body,
+  what,
+  onClose,
+  onConfirm,
+}: {
+  title: string;
+  body: string;
+  what: string;
+  onClose: () => void;
+  onConfirm: (reason: string) => Promise<void>;
+}) {
+  const [why, setWhy] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const reason = why.trim();
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => e.key === "Escape" && !busy && onClose();
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [onClose, busy]);
+  const confirm = async () => {
+    if (!reason) return;
+    setBusy(true);
+    setError(null);
+    try {
+      await onConfirm(reason);
+      onClose();
+    } catch (err) {
+      console.error("[research status] deprecate failed", { title, err });
+      setError(writeErrorText(err));
+    } finally {
+      setBusy(false);
+    }
+  };
+  if (typeof document === "undefined") return null;
+  return createPortal(
+    <div className="fixed inset-0 z-[60] flex items-start justify-center bg-[#1010121f] px-3 pt-[10vh]" onMouseDown={() => !busy && onClose()}>
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="v2-deprecate-why-title"
+        className="k-popover flex w-full max-w-[480px] flex-col overflow-hidden text-left"
+        onMouseDown={(e) => e.stopPropagation()}
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="flex h-11 shrink-0 items-center gap-2 border-b border-[var(--line-subtle)] px-4">
+          <span id="v2-deprecate-why-title" className="k-label min-w-0 truncate">
+            {title}
+          </span>
+          <button type="button" aria-label="Close" className="k-btn-ghost ml-auto h-7 w-7 justify-center p-0" onClick={onClose} disabled={busy}>
+            ×
+          </button>
+        </div>
+        <div className="px-4 py-4">
+          <p className="text-[13px] leading-5">{body}</p>
+          <WhyField value={why} onChange={setWhy} disabled={busy} what={what} />
+          {error && (
+            <p role="alert" className="mt-3 text-[13px] text-[var(--data-rose)]">
+              {error}
+            </p>
+          )}
+        </div>
+        <div className="flex shrink-0 items-center justify-end gap-2 border-t border-[var(--line-subtle)] px-4 py-3">
+          <button type="button" onClick={onClose} disabled={busy} className="k-btn-ghost">
+            Cancel
+          </button>
+          <button
+            type="button"
+            onClick={confirm}
+            disabled={busy || !reason}
+            className={`k-btn-strong ${busy ? "cursor-wait" : "disabled:cursor-not-allowed disabled:opacity-40"}`}
+          >
+            {busy ? "Deprecating..." : `Deprecate ${what}`}
+          </button>
+        </div>
+      </div>
+    </div>,
+    document.getElementById("v2-portal") ?? document.body,
+  );
+}
+
+/**
+ * The line under a deprecated workflow, template or model page's title: why, who and when, in
+ * full. Nothing while it runs or before its status is read.
+ */
+export function DeprecationNote({ deprecation }: { deprecation: DeprecationFacts[] | null }) {
+  if (!deprecation?.length) return null;
+  return (
+    <div className="k-inset mt-4 flex items-start gap-2 rounded-[8px] px-3 py-2.5 text-[13px] leading-5">
+      <span className="mt-[6px] h-2 w-2 shrink-0 rounded-full border-[1.5px] border-[var(--fg-3)]" />
+      <div className="min-w-0">
+        <span className="font-medium">Deprecated</span>
+        {deprecation.map((d) => (
+          <p key={deprecationLine(d)} className="k-fg2">
+            {deprecationLine(d)}
+          </p>
+        ))}
+      </div>
+    </div>
   );
 }
 

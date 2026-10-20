@@ -88,8 +88,8 @@ export default function FeatureWorkflowsPage() {
   // Dynasty status write (active <-> deprecated); refetch the list on success.
   const queryClient = useQueryClient();
   const statusMutation = useMutation({
-    mutationFn: (vars: { workflowDynastySlug: string; status: "active" | "deprecated" }) =>
-      setWorkflowDynastyStatus(vars.workflowDynastySlug, vars.status),
+    mutationFn: (vars: { workflowDynastySlug: string; change: { status: "active" } | { status: "deprecated"; reason: string } }) =>
+      setWorkflowDynastyStatus(vars.workflowDynastySlug, vars.change),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["workflows", featureSlug] }),
   });
 
@@ -170,6 +170,7 @@ export default function FeatureWorkflowsPage() {
       workflowDynastySlug: wf.workflowDynastySlug,
       workflowDynastyName: wf.workflowDynastyName,
       status: (wf.status ?? "active") as "active" | "deprecated",
+      deprecation: wf.deprecation ?? null,
       stats: statsMap.get(wf.workflowDynastySlug) ?? {},
       roi: roiByDynasty.get(wf.workflowDynastySlug) ?? null,
     }));
@@ -356,6 +357,11 @@ export default function FeatureWorkflowsPage() {
                       >
                         {wf.status === "deprecated" ? "Deprecated" : "Active"}
                       </span>
+                      {wf.deprecation && (
+                        <p className="mt-1 max-w-[220px] truncate text-xs text-gray-500" title={deprecationText(wf.deprecation)}>
+                          {deprecationText(wf.deprecation)}
+                        </p>
+                      )}
                     </td>
                     <td className="px-3 py-4 whitespace-nowrap text-right">
                       <div className="flex items-center justify-end gap-1">
@@ -389,10 +395,14 @@ export default function FeatureWorkflowsPage() {
                           disabled={statusMutation.isPending}
                           onClick={(e) => {
                             e.stopPropagation();
-                            statusMutation.mutate({
-                              workflowDynastySlug: wf.workflowDynastySlug,
-                              status: wf.status === "deprecated" ? "active" : "deprecated",
-                            });
+                            if (wf.status === "deprecated") {
+                              statusMutation.mutate({ workflowDynastySlug: wf.workflowDynastySlug, change: { status: "active" } });
+                              return;
+                            }
+                            // Required: no reason, no deprecation (DEPRECATION-REASON-1020).
+                            const reason = window.prompt(`Why deprecate ${wf.workflowDynastyName}? It stops for every client.`)?.trim();
+                            if (!reason) return;
+                            statusMutation.mutate({ workflowDynastySlug: wf.workflowDynastySlug, change: { status: "deprecated", reason } });
                           }}
                           className={`inline-flex items-center gap-1 rounded-lg border border-gray-200 px-2.5 py-1.5 text-xs font-medium transition disabled:opacity-40 disabled:cursor-not-allowed ${
                             wf.status === "deprecated"
@@ -431,4 +441,10 @@ export default function FeatureWorkflowsPage() {
       )}
     </div>
   );
+}
+
+/** "Reason (who, 2026-10-20)": who and the day only when served; "Not specified" as is. */
+function deprecationText(d: { reason: string; decidedBy: string | null; decidedAt: string | null }): string {
+  const meta = [d.decidedBy, d.decidedAt ? d.decidedAt.slice(0, 10) : null].filter(Boolean);
+  return meta.length ? `${d.reason} (${meta.join(", ")})` : d.reason;
 }

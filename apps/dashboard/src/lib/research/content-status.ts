@@ -59,3 +59,43 @@ export function templatePipes(catalog: ResearchCatalog | null, key: string, curr
   const on = PIPE_ORDER.filter((p) => (catalog[p]?.templates ?? []).some((t) => t.key === key));
   return on.includes(current) ? [current, ...on.filter((p) => p !== current)] : on;
 }
+
+/** Why, who and when, as a producer serves a deprecation (DEPRECATION-REASON-1020). */
+export type DeprecationFacts = { reason: string; decidedBy: string | null; decidedAt: string | null };
+
+/**
+ * "Catch-all copy of Azha: ... (kevin@distribute.you, 2026-10-20)": the reason, then who and the
+ * day it was decided, each only when served. "Not specified" (deprecated before reasons existed)
+ * prints as is; an unknown who or when prints nothing, never a guess.
+ */
+export function deprecationLine(d: DeprecationFacts): string {
+  const day = d.decidedAt && /^\d{4}-\d{2}-\d{2}/.test(d.decidedAt) ? d.decidedAt.slice(0, 10) : null;
+  const meta = [d.decidedBy, day].filter((x): x is string => Boolean(x));
+  return meta.length ? `${d.reason} (${meta.join(", ")})` : d.reason;
+}
+
+/** A template's or model alias's deprecation off its status row; null while it is active. */
+export function contentDeprecation(row: {
+  status: string;
+  statusReason?: string | null;
+  statusChangedBy?: string | null;
+  statusChangedAt?: string | null;
+}): DeprecationFacts | null {
+  if (row.status !== "deprecated") return null;
+  return { reason: row.statusReason ?? "Not specified", decidedBy: row.statusChangedBy ?? null, decidedAt: row.statusChangedAt ?? null };
+}
+
+/**
+ * A model's deprecation over its aliases: one line per distinct decision (an alias deprecated on
+ * its own keeps its own why). Null unless every alias is deprecated (the model's status rule).
+ */
+export function modelDeprecation(aliases: readonly string[], deprecationOf: (alias: string) => DeprecationFacts | null): DeprecationFacts[] | null {
+  if (aliases.length === 0) return null;
+  const all = aliases.map(deprecationOf);
+  if (all.some((d) => d == null)) return null;
+  const seen = new Set<string>();
+  return (all as DeprecationFacts[]).filter((d) => {
+    const k = deprecationLine(d);
+    return seen.has(k) ? false : (seen.add(k), true);
+  });
+}
