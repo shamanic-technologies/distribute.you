@@ -14,12 +14,13 @@
  *
  * Two limits are stated rather than hidden, because an assistant that tries
  * the impossible wastes the customer's afternoon:
- * - the hosted MCP server authenticates with a Bearer key and has no OAuth, so
- *   a client that only accepts OAuth connectors (claude.ai in the browser,
- *   ChatGPT) cannot add it; those use the REST API through whatever tool runs
- *   code for them;
- * - the MCP server exposes a handful of read tools, so anything that changes
- *   something goes through the REST API.
+ * - a newly added MCP server loads only after the client restarts, so the
+ *   assistant installs it for the NEXT session and keeps working in this one
+ *   through the REST API, never asking the human to restart (owner 2026-10-21);
+ * - the hosted MCP server takes a Bearer key and has no OAuth, so a browser
+ *   connector (claude.ai, ChatGPT) cannot carry an existing key; it connects
+ *   with no authentication and opens the account with the signup tools, which
+ *   bind the key to that connection.
  */
 
 import {
@@ -168,14 +169,14 @@ You are the customer's assistant. This file tells you how to connect to their ac
 
 ## 1. Set up (do this once, in order)
 
-1. **Get the API key.** It starts with \`${API_KEY_PREFIX}\`. If the user pasted one, use it. If not, ask for it, and tell them where it is issued: ${API_KEYS_URL}. Treat it like a password: it acts as them, and can read and change everything in every organization they belong to. Never print it back in full, never commit it to a repository.
+1. **Get the API key.** It starts with \`${API_KEY_PREFIX}\`. If the user pasted one, use it. If they have no account yet, open one yourself: \`POST https://api.distribute.you/v1/agent-signups/start\` with their email and phone (ask for them), then \`POST /v1/agent-signups/complete\` with the 6-digit code they forward; the answer carries the key. Otherwise ask for it, and tell them where it is issued: ${API_KEYS_URL}. Treat it like a password: it acts as them, and can read and change everything in every organization they belong to. Never print it back in full, never commit it to a repository.
 2. **Save this skill** where your harness keeps skills or standing instructions, so the next session knows it:
    - Claude Code, Conductor: \`~/.claude/skills/${SKILL_NAME}/SKILL.md\`
    - Codex: \`~/.codex/skills/${SKILL_NAME}/SKILL.md\`
    - Cursor: \`.cursor/rules/${SKILL_NAME}.mdc\`
    - anything else (OpenClaw, custom agents): the file your harness reads at start, often \`AGENTS.md\`
    Save the file as served, and keep the key OUT of it.
-3. **Connect the MCP server** at \`${MCP_URL}\` (Streamable HTTP, header \`${AUTH_HEADER_LINE}\`). Pick your harness:
+3. **Install the MCP server for the next sessions** at \`${MCP_URL}\` (Streamable HTTP, header \`${AUTH_HEADER_LINE}\`). A newly added server loads only after the client restarts: do not ask the user to restart. Keep going in THIS session with the REST API (section 3) and the same key; the MCP tools take over from the next session. Pick your harness:
    - **Claude Code, Conductor**:
      \`\`\`
      ${CLAUDE_CODE_MCP_COMMAND}
@@ -192,9 +193,9 @@ ${indent(CODEX_BRIDGE_CONFIG, 5)}
      \`\`\`json
 ${indent(MCP_STDIO_BRIDGE_CONFIG, 5)}
      \`\`\`
-   - **claude.ai in the browser, ChatGPT**: their connectors only accept OAuth, which this server does not offer yet. Skip MCP and use the REST API below through your code tool.
-   Replace \`${API_KEY_PREFIX}YOUR_KEY\` with the real key. The client may need a restart to see the new server.
-4. **Check it works**: call the \`distribute_status\` tool, or
+   - **claude.ai in the browser, ChatGPT**: these cannot run commands and their connectors cannot carry a key. Walk the user through adding \`${MCP_URL}\` as a custom connector with no authentication (claude.ai: Settings, Connectors, Add custom connector; ChatGPT: turn on Developer mode in its settings, then add a connector). In that connection, \`distribute_signup_start\` then \`distribute_signup_complete\` open the account, and the key stays bound to it. A user who already has a key uses the REST API through your code tool instead.
+   Replace \`${API_KEY_PREFIX}YOUR_KEY\` with the real key.
+4. **Check it works**: call the \`distribute_status\` tool when its tools are loaded, else
    \`\`\`
 ${indent(curlExample("/v1/me"), 3)}
    \`\`\`
@@ -203,11 +204,11 @@ ${indent(curlExample("/v1/me"), 3)}
 ${sendEmailMarkdown()}
 ## 2. What the MCP server can do
 
-It reads. Its tools:
+Its tools read your account, and \`distribute_call_api\` calls any REST operation, changes included:
 
 ${tools}
 
-Anything else, including every change, goes through the REST API.
+Until the tools are loaded (the session where you added the server), call the REST API directly.
 
 ## 3. The REST API
 

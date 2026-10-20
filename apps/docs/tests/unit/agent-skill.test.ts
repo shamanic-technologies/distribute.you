@@ -27,8 +27,11 @@ describe("the agent skill", () => {
     for (const t of MCP_TOOLS) expect(md).toContain(t.name);
   });
 
-  it("says plainly that OAuth-only connectors cannot add the server", () => {
-    expect(md).toMatch(/only accept OAuth/);
+  it("installs the MCP for later, works through the API now, and guides chat apps to a no-auth connector", () => {
+    expect(md).toMatch(/custom connector with no authentication/);
+    expect(md).toContain("do not ask the user to restart");
+    expect(md).toContain("/v1/agent-signups/start");
+    expect(md).not.toContain("It reads. Its tools");
   });
 
   it("asks before anything that spends or changes what runs", () => {
