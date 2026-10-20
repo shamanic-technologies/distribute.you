@@ -19,7 +19,7 @@ import posthog from "posthog-js";
 import { getBillingAccount, sendAuthNotification, setApiActiveOrgOverride, type BillingAccount } from "@/lib/api";
 import { getStripe } from "@/lib/stripe";
 import { defaultSalesRepToAccountEmail } from "@/lib/sales-rep-default";
-import { v2CampaignHref } from "@/lib/v2/routes";
+import { v2Href } from "@/lib/v2/routes";
 import { matchNote, topupCta, type GetStartedOffer } from "@/lib/v2/get-started";
 import { launchCount, type SignupLaunchPlan } from "@/lib/v2/signup-campaign";
 import { EMPTY_PROGRESS, launchFromPreview, type LaunchProgress } from "./launch";
@@ -148,7 +148,7 @@ export function OrgLaunch({
     setBusy(true);
     setError(null);
     try {
-      const campaignId = await launchFromPreview(
+      await launchFromPreview(
         { brandId, website, offer, targetAudience, plan, answered },
         progress.current,
       );
@@ -171,7 +171,7 @@ export function OrgLaunch({
       await sendLaunchEmail().catch((e) => console.error("[brand-walk] launch email failed:", e));
       setApiActiveOrgOverride(null);
       pingOwner({ event: "launched", domain: website ? pingHostOf(pingWebsiteUrl(website)) : null });
-      window.location.assign(v2CampaignHref(orgId, brandId, campaignId));
+      window.location.assign(v2Href(orgId, brandId, "today"));
     } catch (e) {
       console.error("[brand-walk] launch failed:", e);
       setError(e instanceof Error ? e.message : "The launch stopped. Try again.");

@@ -147,9 +147,9 @@ describe("the end: prepaid credit (owner 2026-10-06), then the walk's own launch
     expect(setActives[0]).toBeGreaterThan(end.indexOf('"/api/onboarding/complete"'));
     expect(launch.indexOf("getToken({ skipCache: true })")).toBeGreaterThan(launch.indexOf("setActive({ organization: orgId })"));
   });
-  it("ends on the new campaign's page and clears the saved walk", () => {
+  it("ends on the brand's Today page and clears the saved walk", () => {
     expect(launch).toContain("localStorage.removeItem(snapshotKey)");
-    expect(launch).toContain("window.location.assign(v2CampaignHref(orgId, brandId, campaignId))");
+    expect(launch).toContain('window.location.assign(v2Href(orgId, brandId, "today"))');
   });
   it("never pins the org to Revolut before the first card form (Stripe is the default, owner 2026-10-15)", () => {
     const pay = end.slice(end.indexOf("async function pay("), end.indexOf("async function afterPaid("));

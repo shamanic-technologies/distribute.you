@@ -85,7 +85,7 @@ describe("the launch email", () => {
       const s = src(f);
       const launched = s.indexOf("await launchFromPreview(");
       const send = s.indexOf("await sendLaunchEmail()");
-      const leave = s.indexOf("window.location.assign(v2CampaignHref(");
+      const leave = s.indexOf("window.location.assign(v2Href(orgId, brandId, \"today\"))");
       expect(launched).toBeGreaterThan(-1);
       expect(send).toBeGreaterThan(launched);
       expect(leave).toBeGreaterThan(send);

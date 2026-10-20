@@ -70,7 +70,7 @@ import {
   sanitizeVerificationCode,
   VERIFICATION_CODE_LENGTH,
 } from "@/lib/clerk-error";
-import { v2CampaignHref } from "@/lib/v2/routes";
+import { v2Href } from "@/lib/v2/routes";
 import {
   GET_STARTED_SNAPSHOT_KEY,
   matchNote,
@@ -969,7 +969,7 @@ export function AccountCardWall({
     setBusy(true);
     setError(null);
     try {
-      const campaignId = await launchFromPreview(
+      await launchFromPreview(
         { brandId, website, offer, targetAudience, plan, answered },
         progress.current,
       );
@@ -987,7 +987,7 @@ export function AccountCardWall({
         // Nothing to clean up in a tab that never wrote one.
       }
       pingOwner({ event: "launched", domain: website ? pingHostOf(pingWebsiteUrl(website)) : null });
-      window.location.assign(v2CampaignHref(orgId, brandId, campaignId));
+      window.location.assign(v2Href(orgId, brandId, "today"));
     } catch (e) {
       console.error("[get-started] launch failed:", e);
       setError(e instanceof Error ? e.message : "The launch stopped. Try again.");
