@@ -97,7 +97,7 @@ export function ResearchLiveWorkflows({
               <th className={LIVE_TH}>Template</th>
               <th className={`${LIVE_TH} w-36`}>Why here</th>
               <LiveWorkflowHeads costLabel={`Cost ${outcomeUnit.replace("/ ", "per ")}`} compact maturityLabel="Maturity" />
-              <th className={`${LIVE_TH} w-28`}>Status</th>
+              <th className={`${LIVE_TH} w-44`}>Status</th>
               <th className={`${LIVE_TH} w-10`} aria-label="Status menu" />
             </tr>
           </thead>
