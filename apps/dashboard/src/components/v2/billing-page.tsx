@@ -372,11 +372,11 @@ export function V2BillingPage() {
           )}
         </Section>
 
-        {/* The monthly charge limit (owner 2026-10-12): the "limit reached" email links here. */}
+        {/* The monthly limit, a cap on campaign SPEND (owner 2026-10-21): the "limit reached" email links here. */}
         <Section
           id="monthly-limit"
           title="Monthly limit"
-          description="Everything included. Your card is never charged more than this in a calendar month."
+          description="Your campaigns stop once they spend this much in a calendar month."
         >
           <MonthlyLimitCard />
         </Section>
