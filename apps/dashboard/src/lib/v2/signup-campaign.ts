@@ -2,7 +2,7 @@
  * The END of signup (`/get-started` and "Add a brand"), owner 2026-10-16: two equal cards, both
  * ticked, each its face, served name, served one line and its own prefilled budget:
  *
- *   [x] [face] <best runnable PROACTIVE cold-email funnel>      [x] [face] <reactive AI reply funnel>
+ *   [x] [face] <best runnable Apollo cold email -> positive reply funnel>      [x] [face] <reactive AI reply funnel>
  *       <served one line>                                           <served one line>
  *       $ 20 / day                                                  Up to $ 10 / week
  *   [ Launch ]  -> then the payment wall exactly as today
@@ -23,6 +23,23 @@ import { z } from "zod";
 /** The one channel this flow sells (cold email), and the one that books meetings on replies. */
 export const SIGNUP_PROACTIVE_CHANNEL = "sales-cold-email-outreach";
 export const SIGNUP_REACTIVE_CHANNEL = "ai-meeting-booking";
+/** Where the cold email's people come from: Apollo, never the client's own CRM or contacts. */
+export const SIGNUP_SOURCING_CHANNEL = "sourcing-apollo-cold-filters";
+
+/**
+ * The ONE proactive funnel shape signup funds (owner 2026-10-20, "ON DEVRAIT SEULEMENT PROPOSER
+ * LES POSITIVE REPLY NORMALES"): people found in Apollo -> cold email -> positive reply -> paid
+ * client by the client's team. A new client has no CRM, so a funnel sourced from their contacts
+ * never sends (LBVisible 2026-10-20 was funded "Warm Email Replies 2" and nothing left); a
+ * meeting or website-visit outcome is another offer. Any play on either pipe is allowed (the email
+ * style picked sets the cold email one); features-service still ranks them, ROI first.
+ */
+const COLD_POSITIVE_REPLY_FUNNEL = new RegExp(
+  `^start_to_lead_found@${SIGNUP_SOURCING_CHANNEL}(~[^+]+)?\\+lead_found_to_conversation@${SIGNUP_PROACTIVE_CHANNEL}(~[^+]+)?\\+conversation_to_paid_client$`,
+);
+export function isColdPositiveReplyFunnel(funnelId: string): boolean {
+  return COLD_POSITIVE_REPLY_FUNNEL.test(funnelId);
+}
 
 export const PublicSalesFunnelRowSchema = z
   .object({
@@ -77,7 +94,8 @@ export function signupFunnelsFrom(
     console.error("[signup-campaign] funnels body shape mismatch", { issues: parsed.error.issues });
     throw new Error("[signup-campaign] invalid funnels body");
   }
-  return { proactive: firstOfType(parsed.data.proactive.rows, "proactive", proactiveFits), reactive: firstOfType(parsed.data.reactive.rows, "reactive") };
+  const fits = (id: string) => isColdPositiveReplyFunnel(id) && proactiveFits(id);
+  return { proactive: firstOfType(parsed.data.proactive.rows, "proactive", fits), reactive: firstOfType(parsed.data.reactive.rows, "reactive") };
 }
 
 /**
@@ -101,8 +119,9 @@ export function parseSignupFunnels(v: unknown): { proactive: SignupFunnel | null
     };
   };
   const o = v as Record<string, unknown>;
+  // A snapshot kept before the cold-only pick (a CRM funnel) is not reopened: the step reads again.
   const proactive = one(o.proactive);
-  return proactive ? { proactive, reactive: one(o.reactive) } : null;
+  return proactive && isColdPositiveReplyFunnel(proactive.salesFunnelId) ? { proactive, reactive: one(o.reactive) } : null;
 }
 
 /** A funnel still LEARNING states no figure: the product's own word "Learning" stands in (existing rule). */

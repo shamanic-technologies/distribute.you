@@ -7514,7 +7514,7 @@ export async function startSalesFunnelCampaign(
 
 /**
  * The funnels the signup's campaign step proposes, PRICED FOR THIS OFFER (features-service through
- * `GET /v1/offers/:offerId/sales-funnels`, runnable only, ROI first): the cold-email page and the
+ * `GET /v1/offers/:offerId/sales-funnels`, runnable only, ROI first): the Apollo page and the
  * AI-meeting-booking page, verbatim. Signed out it rides the anonymous session (`/api/anon/v1`,
  * brand bound by its query); from the dashboard walk, the org it names.
  */
@@ -7528,7 +7528,9 @@ export async function getSignupFunnelPages(
     apiCall<unknown>(
       `/offers/${encodeURIComponent(offerId)}/sales-funnels?brandId=${encodeURIComponent(brandId)}&containsChannels=${encodeURIComponent(channel)}&limit=25${q ? `&q=${encodeURIComponent(q)}` : ""}`,
     );
-  const [proactive, reactive] = await Promise.all([page("sales-cold-email-outreach", proactivePlay), page("ai-meeting-booking")]);
+  // The proactive page asks the Apollo funnels (signup funds only Apollo -> cold email -> positive
+  // reply, lib/v2/signup-campaign.ts): asked by cold email, 25 rows of CRM funnels hid it.
+  const [proactive, reactive] = await Promise.all([page("sourcing-apollo-cold-filters", proactivePlay), page("ai-meeting-booking")]);
   return { proactive, reactive };
 }
 
