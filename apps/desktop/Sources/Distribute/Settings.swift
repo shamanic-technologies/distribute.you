@@ -228,17 +228,55 @@ private struct InfoLine: View {
     }
 }
 
-// MARK: - Billing (v2 `billing-page.tsx`, prepaid)
+// MARK: - Billing (v2 `billing-page.tsx`: prepaid tops up; postpaid pays what it owes)
+
+/// Postpaid refusals in plain words, keyed on billing's `code` (twin of the web's `lib/v2/pay-balance.ts`).
+private let payBalanceRefusals: [String: String] = [
+    "charge_declined": "Your card was declined. Change your card, then try again.",
+    "charge_backoff": "Your card was declined a moment ago. Try again in a few minutes.",
+    "no_chargeable_payment_method": "We have no card to charge. Add a card, then try again.",
+    "card_not_chargeable_off_session": "Your bank asks you to approve each payment, so we cannot charge this card from here. Add another card.",
+    "balance_below_minimum_charge": "This amount is too small to charge on its own. We add it to your next charge.",
+    "not_postpaid": "Your account pays in advance, so there is nothing to pay off.",
+]
 
 struct BillingPanel: View {
     @EnvironmentObject var state: AppState
     @State private var account: Load<BillingAccount> = .idle
     @State private var payments: Load<[Payment]> = .idle
     @State private var error: String?
+    @State private var paying = false
+    @State private var paid: String?
 
     var body: some View {
         if let error { EmptyNote(text: error, isError: true) }
         LoadView(load: account) { a in
+          if a.payment_mode == "postpaid" {
+            // Postpaid (owner 2026-10-21): no auto top-up, no Add credit; one action, pay it all now.
+            let owed = a.amount_owed_cents.flatMap { Double($0) }.map { max(0, ($0 - 1e-9).rounded(.up)) }
+            KCard {
+                HStack(spacing: 0) {
+                    Figure(label: "You owe", value: dollars(cents: owed)).padding(12)
+                    Figure(label: "Total credited", value: dollars(cents: Double(a.credited_cents))).padding(12)
+                }
+            }
+            if let line = a.credit_line_cents, line > 0, let step = a.credit_line_step_cents {
+                Text("Your card is charged \(dollars(cents: Double(step))) each time you reach \(dollars(cents: Double(line))) on credit. The rest is charged at month end.")
+                    .font(K.meta).foregroundStyle(K.fg3)
+            } else if !a.has_payment_method {
+                Text("Add a card so your campaigns can run on credit.").font(K.meta).foregroundStyle(K.fg3)
+            }
+            if let owed, owed > 0, a.has_payment_method {
+                Button(paying ? "Charging your card…" : "Pay \(dollars(cents: owed)) now") { Task { await payNow() } }
+                    .buttonStyle(KButtonStyle(strong: true)).disabled(paying)
+            } else if owed == 0 {
+                Text("You owe nothing right now.").font(K.body).foregroundStyle(K.fg2)
+            }
+            if let paid { Text(paid).font(K.meta).foregroundStyle(K.fg2) }
+            if a.has_payment_method {
+                InfoLineBilling(label: "Card", value: [a.card_brand?.capitalized, a.card_last4.map { "•••• \($0)" }].compactMap { $0 }.joined(separator: " "))
+            }
+          } else {
             KCard {
                 HStack(spacing: 0) {
                     Figure(label: "Available", value: dollars(cents: Double(a.balance_cents))).padding(12)
@@ -262,6 +300,7 @@ struct BillingPanel: View {
                     .toggleStyle(.switch).controlSize(.small)
                 }
             }
+          }
         }
         Text("Payments").font(.system(size: 13, weight: .semibold)).padding(.top, 6)
         LoadView(load: payments) { list in
@@ -284,6 +323,20 @@ struct BillingPanel: View {
         account = .loading; payments = .loading
         do { account = .loaded(try await api.billingAccount(orgId: org.id)) } catch { account = .failed(error.localizedDescription) }
         do { payments = .loaded(try await api.payments(orgId: org.id)) } catch { payments = .failed(error.localizedDescription) }
+    }
+
+    private func payNow() async {
+        guard let api = state.api, let org = state.selectedOrg else { return }
+        paying = true; error = nil; paid = nil
+        do {
+            try await api.payBalance(orgId: org.id)
+            paid = "Paid. You owe nothing now."
+        } catch {
+            let code = (error as? APIError)?.code
+            self.error = code.flatMap { payBalanceRefusals[$0] } ?? "We could not charge your card. Please try again."
+        }
+        paying = false
+        await load()
     }
 
     private func setAuto(_ on: Bool) async {
