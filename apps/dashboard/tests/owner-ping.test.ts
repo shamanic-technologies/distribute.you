@@ -70,7 +70,7 @@ describe("isStaffEmail", () => {
 
 describe("every signup step pings the owner", () => {
   it("signup", () => {
-    expect(src("src/components/auth-event-tracker.tsx")).toContain('pingOwner({ event: "signed_up" })');
+    expect(src("src/lib/signup-emails.ts")).toContain('pingOwner({ event: "signed_up" })');
   });
 
   it("site entered, each step reached, the payment wall", () => {

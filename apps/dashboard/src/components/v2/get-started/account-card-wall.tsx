@@ -95,6 +95,7 @@ import { consentRecord, spendConsentLines, type PaymentConsentRecord } from "@/l
 import { monthlyLimitToSave } from "@/lib/v2/monthly-limit";
 import { payTopup, settleTopup } from "./pay-topup";
 import { pingOwner } from "@/lib/owner-ping-client";
+import { sendLaunchEmail, sendSignupEmailsOnce } from "@/lib/signup-emails";
 import { hostOf as pingHostOf, websiteUrl as pingWebsiteUrl } from "@/lib/v2/get-started";
 import { CountUp, usePrefersReducedMotion } from "./motion";
 import { TrialSpots, TrialTimer } from "./urgency";
@@ -351,6 +352,10 @@ export function AccountCardWall({
         }
         await session?.getToken({ skipCache: true });
         posthog.capture("get_started_claimed");
+        // The signup emails, keyed on the account being NEW (lib/new-account.ts), never on the
+        // page: sent only now, once the session's org is the one they built. Never blocks the walk.
+        const me = userRef.current;
+        if (me) void sendSignupEmailsOnce({ userId: me.id, createdAt: me.createdAt }).catch((e) => console.error("[get-started] signup emails failed:", e));
         const acct = await getBillingAccount();
         setAccount(acct);
         await saveEarlyName();
@@ -975,6 +980,7 @@ export function AccountCardWall({
       if (!res.ok) throw new Error("We could not finish setting up your account. Try again.");
       await session?.getToken({ skipCache: true });
       posthog.capture("get_started_launched", { campaigns: launchCount(plan), plan: soldRef.current, lp_variant: arm.variant });
+      await sendLaunchEmail().catch((e) => console.error("[get-started] launch email failed:", e));
       try {
         localStorage.removeItem(GET_STARTED_SNAPSHOT_KEY);
       } catch {

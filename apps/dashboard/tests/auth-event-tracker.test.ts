@@ -33,18 +33,15 @@ describe("AuthEventTracker component", () => {
     expect(content).toContain("useRef(false)");
   });
 
-  it("should check sessionStorage for signup intent", () => {
-    expect(content).toContain("distribute_auth_intent");
-    expect(content).toContain('sessionStorage.getItem');
+  it("keys the signup emails on the account being NEW, never on the /sign-up flag", () => {
+    expect(content).toContain("isNewAccount(user.createdAt)");
+    expect(content).toContain("sendSignupEmailsOnce(");
+    expect(content).not.toContain("distribute_auth_intent");
   });
 
-  it("should send signup_notification when signup intent is present", () => {
-    expect(content).toContain("signup_notification");
-    expect(content).toContain("sendAuthNotification");
-  });
-
-  it("should remove signup intent flag after firing", () => {
-    expect(content).toContain("sessionStorage.removeItem");
+  it("waits for the org the emails are scoped to, and leaves /get-started to its wall", () => {
+    expect(content).toContain("!orgId");
+    expect(content).toContain("isGetStartedPath(");
   });
 
   it("should keep signin_notification PAUSED, not send it", () => {
@@ -61,7 +58,7 @@ describe("AuthEventTracker component", () => {
     expect(content).toContain("sessionStorage.setItem");
   });
 
-  it("should be best-effort (catch errors silently)", () => {
+  it("never lets a failed send throw", () => {
     expect(content).toContain(".catch(");
   });
 

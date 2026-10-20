@@ -2,23 +2,25 @@
 
 import { useEffect, useRef } from "react";
 import { useAuth, useUser } from "@clerk/nextjs";
-import { sendAuthNotification } from "@/lib/api";
+import { usePathname } from "next/navigation";
 import { isStaffEmail, STAFF_BROWSER_KEY } from "@/lib/owner-ping";
-import { pingOwner } from "@/lib/owner-ping-client";
+import { isGetStartedPath, isNewAccount } from "@/lib/new-account";
+import { sendSignupEmailsOnce } from "@/lib/signup-emails";
 
-const INTENT_KEY = "distribute_auth_intent";
 const SIGNIN_TRACKED_KEY = "distribute_signin_tracked";
 const PROMO_KEY = "distribute_promo_code";
 
 /**
- * Fires signup_notification or signin_notification once per auth session.
- * - Sign-up page sets sessionStorage "distribute_auth_intent" = "signup" before OAuth redirect.
- * - If that flag is present → signup_notification (admin ping) + welcome (user-facing), both once-only dedup server-side.
+ * Fires the signup emails (signup_notification + welcome) or the sign-in ping once per visit.
+ * - A NEW account (Clerk `createdAt` inside `NEW_ACCOUNT_WINDOW_MS`, lib/new-account.ts) gets
+ *   the signup emails, whatever page it signed up on; both once-only dedup server-side.
+ *   Never on `/get-started`: there the wall sends them itself, after its claim.
  * - Otherwise → signin_notification (deduped per browser session via sessionStorage).
  */
 export function AuthEventTracker() {
-  const { isSignedIn } = useAuth();
-  const { user } = useUser();
+  const { isSignedIn, orgId } = useAuth();
+  const { user, isLoaded: userLoaded } = useUser();
+  const pathname = usePathname();
   const hasFired = useRef(false);
 
   // A browser a staff account signed in on: the owner's own later visits send him no ping.
@@ -33,20 +35,18 @@ export function AuthEventTracker() {
   }, [email]);
 
   useEffect(() => {
-    if (!isSignedIn || hasFired.current) return;
+    // The emails are org-scoped: wait for the user AND the org Clerk creates at signup.
+    if (!isSignedIn || !userLoaded || !user || !orgId || hasFired.current) return;
+    if (isGetStartedPath(pathname ?? "")) return;
     hasFired.current = true;
 
-    const intent = sessionStorage.getItem(INTENT_KEY);
-
-    if (intent === "signup") {
-      sessionStorage.removeItem(INTENT_KEY);
+    if (isNewAccount(user.createdAt)) {
       const promoCode = sessionStorage.getItem(PROMO_KEY);
-      if (promoCode) sessionStorage.removeItem(PROMO_KEY);
-      sendAuthNotification("signup_notification", undefined, promoCode ? { promoCode } : undefined).catch(() => {});
-      pingOwner({ event: "signed_up" });
-      // User-facing welcome email — routed to the new user server-side (not in ADMIN_NOTIFICATION_EVENTS),
-      // once-only deduped on {orgId}:welcome:{userId}.
-      sendAuthNotification("welcome").catch(() => {});
+      sendSignupEmailsOnce({ userId: user.id, createdAt: user.createdAt, promoCode })
+        .then(() => {
+          if (promoCode) sessionStorage.removeItem(PROMO_KEY);
+        })
+        .catch((e) => console.error("[auth-event-tracker] signup emails failed:", e));
     } else if (!sessionStorage.getItem(SIGNIN_TRACKED_KEY)) {
       sessionStorage.setItem(SIGNIN_TRACKED_KEY, "1");
       // PAUSED while the platform sits on Postmark's free plan (100 emails/month,
@@ -57,7 +57,7 @@ export function AuthEventTracker() {
       // unchanged the moment it comes back.
       // sendAuthNotification("signin_notification").catch(() => {});
     }
-  }, [isSignedIn]);
+  }, [isSignedIn, userLoaded, user, orgId, pathname]);
 
   return null;
 }

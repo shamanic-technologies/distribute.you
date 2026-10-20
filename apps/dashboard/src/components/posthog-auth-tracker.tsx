@@ -9,6 +9,7 @@ import {
 } from "@/lib/distribute-conversion";
 import { gclidFromCookie } from "@/lib/gclid-cookie";
 import { isStaffEmail } from "@/lib/owner-ping";
+import { isGetStartedPath, isNewAccount } from "@/lib/new-account";
 
 const INTENT_KEY = "distribute_auth_intent";
 const POSTHOG_AUTH_KEY_PREFIX = "distribute_posthog_auth";
@@ -40,11 +41,20 @@ export function PostHogAuthTracker() {
       if (isStaffEmail(email)) posthog.stopSessionRecording();
     }
 
-    const authType = sessionStorage.getItem(INTENT_KEY) === "signup" ? "signup" : "signin";
+    // A signup is a NEW account (lib/new-account.ts), whatever page made it: the
+    // `/sign-up` flag alone missed every `/get-started` signup (GET-STARTED-NO-WELCOME-EMAIL-1020).
+    // On `/get-started` the org is not theirs until the wall's claim: the signup is
+    // recorded where they land next, so nothing below writes to a pre-claim org.
+    const newAccount = isNewAccount(user.createdAt);
+    if (newAccount && isGetStartedPath(window.location.pathname)) return;
+    const authType = sessionStorage.getItem(INTENT_KEY) === "signup" || newAccount ? "signup" : "signin";
+    if (authType === "signup") sessionStorage.removeItem(INTENT_KEY);
+    // A signup is recorded once per browser (localStorage), a sign-in once per tab.
     const trackedKey = `${POSTHOG_AUTH_KEY_PREFIX}_${authType}_${userId}`;
-    if (sessionStorage.getItem(trackedKey)) return;
+    const latch = authType === "signup" ? localStorage : sessionStorage;
+    if (latch.getItem(trackedKey)) return;
 
-    sessionStorage.setItem(trackedKey, "1");
+    latch.setItem(trackedKey, "1");
     posthog.capture(authType === "signup" ? "signup_completed" : "signin_completed", {
       auth_type: authType,
       provider: "google",
