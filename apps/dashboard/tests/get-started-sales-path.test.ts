@@ -22,15 +22,15 @@ const KEEL = read("src/components/v2/keel.css");
 
 // The END of signup (owner sketch 2026-10-10): ONE campaign, its caps, then the wall.
 const row = (o: Record<string, unknown>) => ({ face: "/f.svg", line: "x", costUsd: null, costPer: null, roi: null, runnable: true, mixed: false, ...o });
-const APOLLO = "start_to_lead_found@sourcing-apollo-cold-filters+lead_found_to_conversation@sales-cold-email-outreach+conversation_to_paid_client";
-const APOLLO_2 = "start_to_lead_found@sourcing-apollo-cold-filters+lead_found_to_conversation@sales-cold-email-outreach~valid-only+conversation_to_paid_client";
+const LEAD = "start_to_lead_found@lead-sourcing+lead_found_to_conversation@sales-cold-email-outreach+conversation_to_paid_client";
+const LEAD_2 = "start_to_lead_found@lead-sourcing~valid-catch-all+lead_found_to_conversation@sales-cold-email-outreach~valid-only+conversation_to_paid_client";
 const CRM = "start_to_lead_found@sourcing-crm-contacts~warm-never-converted+lead_found_to_conversation@sales-cold-email-outreach+conversation_to_paid_client";
 const PAGES = {
   proactive: {
     rows: [
       row({ id: "mixed@x", name: "Mixed", type: "proactive", mixed: true, runnable: false }),
-      row({ id: APOLLO, name: "Epiphany", type: "proactive", costUsd: 143.48, costPer: "per paying client", roi: 17.42, status: "estimated" }),
-      row({ id: APOLLO_2, name: "Zenith", type: "proactive", costUsd: 2748.69, costPer: "per paying client", roi: 0.91 }),
+      row({ id: LEAD, name: "Epiphany", type: "proactive", costUsd: 143.48, costPer: "per paying client", roi: 17.42, status: "estimated" }),
+      row({ id: LEAD_2, name: "Zenith", type: "proactive", costUsd: 2748.69, costPer: "per paying client", roi: 0.91 }),
     ],
   },
   reactive: { rows: [row({ id: "meet@ai", name: "Motivate", type: "reactive", status: "learning" })] },
@@ -39,30 +39,35 @@ const PAGES = {
 describe("Your campaign: features-service's funnels, picked as served", () => {
   it("takes the first runnable proactive funnel (the producer ranks ROI first) and the reactive one", () => {
     const f = signupFunnelsFrom(PAGES);
-    expect(f.proactive).toMatchObject({ salesFunnelId: APOLLO, name: "Epiphany", roi: 17.42, status: "estimated" });
+    expect(f.proactive).toMatchObject({ salesFunnelId: LEAD, name: "Epiphany", roi: 17.42, status: "estimated" });
     expect(f.reactive).toMatchObject({ salesFunnelId: "meet@ai", name: "Motivate" });
     expect(signupFunnelsFrom({ proactive: { rows: [] }, reactive: { rows: [] } })).toEqual({ proactive: null, reactive: null });
     expect(() => signupFunnelsFrom({ proactive: {} })).toThrow();
   });
 
-  it("funds only Apollo -> cold email -> positive reply, even when a CRM-sourced funnel ranks first (owner 2026-10-20)", () => {
+  it("funds only Lead Sourcing -> cold email -> positive reply, even when a CRM-sourced funnel ranks first (owner 2026-10-20)", () => {
     const meeting = "start_to_lead_found@sourcing-apollo-cold-filters+lead_found_to_conversation@sales-cold-email-outreach+conversation_to_meeting_booked+meeting_booked_to_meeting_attended+meeting_attended_to_paid_client";
     const followUp = "start_to_lead_found@lead-sourcing~lead-follow-up-due+lead_found_to_conversation@sales-cold-email-outreach+conversation_to_paid_client";
+    const apollo = "start_to_lead_found@sourcing-apollo-cold-filters+lead_found_to_conversation@sales-cold-email-outreach+conversation_to_paid_client";
     const rows = [
+      row({ id: apollo, name: "Apollo only", type: "proactive", roi: 2.9 }),
       row({ id: CRM, name: "Warm Email Replies 2", type: "proactive", roi: 2.64 }),
       row({ id: followUp, name: "Follow up", type: "proactive", roi: 2.35 }),
       row({ id: meeting, name: "Meetings", type: "proactive", roi: 2.2 }),
-      row({ id: APOLLO, name: "Cold", type: "proactive", roi: 1.92 }),
+      row({ id: LEAD, name: "Cold", type: "proactive", roi: 1.92 }),
     ];
     const f = signupFunnelsFrom({ proactive: { rows }, reactive: PAGES.reactive });
-    expect(f.proactive?.salesFunnelId).toBe(APOLLO);
-    expect(signupFunnelsFrom({ proactive: { rows: rows.slice(0, 3) }, reactive: PAGES.reactive }).proactive).toBeNull();
-    expect(isColdPositiveReplyFunnel(APOLLO_2)).toBe(true);
+    expect(f.proactive?.salesFunnelId).toBe(LEAD);
+    expect(signupFunnelsFrom({ proactive: { rows: rows.slice(0, 4) }, reactive: PAGES.reactive }).proactive).toBeNull();
+    expect(isColdPositiveReplyFunnel(LEAD_2)).toBe(true);
     expect(isColdPositiveReplyFunnel(CRM)).toBe(false);
+    expect(isColdPositiveReplyFunnel(followUp)).toBe(false);
+    expect(isColdPositiveReplyFunnel(apollo)).toBe(false);
+    expect(isColdPositiveReplyFunnel(LEAD.replace("@lead-sourcing+", "@lead-sourcing~contacted-pure-prospects+"))).toBe(false);
     // A snapshot that kept a CRM pick is not reopened (the step reads the funnels again).
     expect(parseSignupFunnels({ proactive: { salesFunnelId: CRM, name: "Warm Email Replies 2" } })).toBeNull();
-    // The proactive page asks the Apollo funnels, so 25 CRM rows cannot push the cold one off the page.
-    expect(read("src/lib/api.ts")).toContain('page("sourcing-apollo-cold-filters", proactivePlay)');
+    // The proactive page asks the Lead Sourcing funnels, so 25 CRM rows cannot push the cold one off the page.
+    expect(read("src/lib/api.ts")).toContain('page("lead-sourcing", proactivePlay)');
   });
 
   it("states the served cost with its unit, and nothing when none is served", () => {
@@ -85,7 +90,7 @@ describe("Your campaign: features-service's funnels, picked as served", () => {
     const r = signupLaunchPlan(DEFAULT_SIGNUP_DRAFT, funnels);
     expect(r).toEqual({
       plan: {
-        proactive: { salesFunnelId: APOLLO, name: "Epiphany", caps: { maxBudget: { amountCents: 2000, period: "daily" }, maxVolume: null } },
+        proactive: { salesFunnelId: LEAD, name: "Epiphany", caps: { maxBudget: { amountCents: 2000, period: "daily" }, maxVolume: null } },
         reactive: { salesFunnelId: "meet@ai", name: "Motivate", caps: { maxBudget: { amountCents: 1000, period: "weekly" }, maxVolume: null } },
       },
     });
