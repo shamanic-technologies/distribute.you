@@ -103,8 +103,9 @@ describe("the plan on the Billing page", () => {
   it("shows the plan for a subscription org, and no top-up or auto top-up", () => {
     expect(BILLING).toContain('id="plan"');
     expect(BILLING).toContain("<SubscriptionPlan />");
-    expect(BILLING).toContain('mode !== "subscription" && account?.has_payment_method && c.autoReloadSupported');
-    expect(BILLING).toContain('!c.accountPending && !c.hasAutoTopup && mode !== "subscription"');
+    // Auto top-up and Add credit are prepaid-only (owner 2026-10-21), so a plan never sees them.
+    expect(BILLING).toContain('mode === "prepaid" && account?.has_payment_method && c.autoReloadSupported');
+    expect(BILLING).toContain('!c.accountPending && !c.hasAutoTopup && mode === "prepaid"');
   });
 
   it("lists what stops before a cancel, and before a plan's card is removed", () => {

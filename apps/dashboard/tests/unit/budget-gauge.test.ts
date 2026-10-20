@@ -23,6 +23,23 @@ describe("budgetGaugeView", () => {
     expect(v).toMatchObject({ label: "Spent since last charge", figure: "$38.00", meter: { value: 3800, max: 10000 }, tone: "ok" });
   });
 
+  it("postpaid with a card and auto top-up OFF still runs on credit (owner 2026-10-21)", () => {
+    const v = budgetGaugeView(
+      { ...base, payment_mode: "postpaid", balance_cents: "-1254", has_auto_topup: false, has_payment_method: true, topup_threshold_cents: -5000 },
+      undefined,
+    );
+    expect(v).toMatchObject({ label: "Spent since last charge", figure: "$12.54", meter: { value: 1254, max: 5000 }, tone: "ok" });
+    expect((v as { line: string }).line).not.toContain("Add a card");
+  });
+
+  it("postpaid with a card and no stated credit line: spent on credit, never red", () => {
+    const v = budgetGaugeView(
+      { ...base, payment_mode: "postpaid", balance_cents: "-700", has_auto_topup: false, has_payment_method: true, topup_threshold_cents: null },
+      undefined,
+    );
+    expect(v).toMatchObject({ label: "Spent on credit", figure: "$7.00", meter: null, tone: "ok" });
+  });
+
   it("postpaid with no card: stopped", () => {
     expect(budgetGaugeView({ ...base, payment_mode: "postpaid" }, undefined)).toMatchObject({ tone: "stopped" });
   });
