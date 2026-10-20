@@ -144,6 +144,9 @@ describe("after the first page: set up with my AI, or myself (owner 2026-10-15)"
     expect(full).toContain("My name: Marie Curie");
     expect(full).toContain("My WhatsApp: +33612345678");
     expect(full).toContain(DISTRIBUTE_MCP_URL);
+    expect(full).toContain("/v1/agent-signups/start");
+    expect(full).toContain("do not ask me to restart");
+    expect(full).toContain("keep going with the REST API");
     expect(full).toContain("distribute_signup_start");
     expect(full).toContain("ask me for my email");
     const bare = aiSetupPrompt({ website: "acme.com", person: null, phoneE164: null });

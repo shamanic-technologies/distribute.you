@@ -2294,7 +2294,7 @@ function SetupChoice({
                 <RobotIcon weight="duotone" className="h-6 w-6" aria-hidden="true" />
               </span>
               <span className="k-fg text-[16px] font-medium">With my AI</span>
-              <span className="k-fg2 text-[13px] leading-5">Paste one message into ChatGPT or Claude.</span>
+              <span className="k-fg2 text-[13px] leading-5">Paste one message into Claude Code, Codex or ChatGPT.</span>
             </button>
             <button type="button" onClick={onManual} className="k-card flex min-h-[148px] flex-col items-start gap-3 p-5 text-left">
               <span className="flex h-10 w-10 items-center justify-center rounded-[10px]" style={{ background: "color-mix(in oklch, var(--accent) 16%, transparent)", color: "var(--accent)" }}>

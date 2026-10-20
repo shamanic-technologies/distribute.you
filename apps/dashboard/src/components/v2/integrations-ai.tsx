@@ -108,7 +108,7 @@ export function V2AiIntegrationView({ orgId, brandId }: { orgId: string; brandId
           </button>
         </div>
         <p className="k-fg3 mt-2 text-[12px]">
-          Streamable HTTP, with your key as a Bearer token. Browser apps that only take OAuth connectors (claude.ai, ChatGPT) cannot add it yet; the skill has them use the API instead.
+          Streamable HTTP, with your key as a Bearer token. In claude.ai or ChatGPT, add it as a custom connector with no authentication; the skill walks your AI through it.
         </p>
       </div>
 

@@ -494,25 +494,43 @@ export function parseSnapshotName(v: unknown): GetStartedName | null {
 /** The MCP server an AI connects to (same host the docs and the API keys page name). */
 export const DISTRIBUTE_MCP_URL = "https://mcp.distribute.you/mcp";
 
+/** The skill an AI reads first (served by the docs app, `/skill.md`). */
+export const DISTRIBUTE_SKILL_URL = "https://docs.distribute.you/skill.md";
+
+/** The account-opening route an AI calls with no key (api-service `/v1/agent-signups`). */
+export const AGENT_SIGNUP_START_URL = "https://api.distribute.you/v1/agent-signups/start";
+
 /**
- * The message a visitor pastes into their own AI (owner 2026-10-15, "onboarding by AI"):
- * it connects our MCP, opens the account and follows the Copilot's own method. What
- * they typed on the first page is in it; what is missing, the AI asks.
+ * The message a visitor pastes into their own AI (owner 2026-10-15, "onboarding by AI").
+ * What they typed on the first page is in it; what is missing, the AI asks.
+ *
+ * Written for Claude Code and Codex first (owner 2026-10-21: "tout le monde utilise
+ * Claude Code et Codex"). They run commands, so they open the account and set it up
+ * through the REST API in THIS session, and install the MCP server for the next ones:
+ * a newly added server loads only after a restart, and the visitor is never asked to
+ * restart (LBVisible 2026-10-20 copied the old MCP-first message and was back on the
+ * manual walk 99 s later, no signup ever reached us). A chat app that cannot run
+ * commands (ChatGPT, claude.ai) adds the server as a connector instead: it needs no
+ * key, the signup tools open the account inside that connection.
  */
 export function aiSetupPrompt(input: { website: string; person: GetStartedName | null; phoneE164: string | null }): string {
   const name = input.person ? [input.person.firstName, input.person.lastName].filter(Boolean).join(" ") : "";
   const you = [`My website: ${input.website}`, name ? `My name: ${name}` : null, input.phoneE164 ? `My WhatsApp: ${input.phoneE164}` : null]
     .filter((l): l is string => !!l)
     .join("\n");
+  const ask = input.phoneE164 ? "ask me for my email" : "ask me for both";
   return [
     "Set up distribute.you for my company. distribute.you finds new clients for B2B companies with cold email.",
     "",
     you,
     "",
-    `1. Connect the distribute.you MCP server: ${DISTRIBUTE_MCP_URL}`,
-    `2. Open my account: call distribute_signup_start with my email${input.phoneE164 ? " and my WhatsApp number" : " and my phone number"} (ask me for ${input.phoneE164 ? "my email" : "both"}), then distribute_signup_complete with the 6-digit code I forward to you.`,
-    "3. Call distribute_status, then distribute_list_skills, and read the index skill. Follow it to set up my brand, my offer, who I sell to and my first campaign.",
-    "4. Ask me before anything that spends money. When I agree, send me the payment link from distribute_prepay.",
+    `1. Read ${DISTRIBUTE_SKILL_URL} and save it as a skill.`,
+    `2. Open my account through the API: POST ${AGENT_SIGNUP_START_URL} with my email and my ${input.phoneE164 ? "WhatsApp number" : "phone number"} (${ask}), then POST /v1/agent-signups/complete with the 6-digit code I forward to you. Keep the API key it returns.`,
+    `3. Install the distribute.you MCP server (${DISTRIBUTE_MCP_URL}) with that key, for my next sessions. It only loads after a restart, so do not ask me to restart: in this session, keep going with the REST API and the same key.`,
+    "4. Read the method skills (GET /v1/skills, then GET /v1/skills/index) and follow them to set up my brand, my offer, who I sell to and my first campaign.",
+    "5. Ask me before anything that spends money. When I agree, send me the payment link.",
+    "",
+    `If you cannot run commands here (ChatGPT, claude.ai), walk me through adding ${DISTRIBUTE_MCP_URL} as a connector in this app, one step at a time, with no authentication. Then do the same steps with its tools: distribute_signup_start opens my account.`,
   ].join("\n");
 }
 
