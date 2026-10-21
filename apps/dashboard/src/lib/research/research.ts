@@ -205,10 +205,33 @@ export interface ResearchFigures {
   sample: string;
   charts: ResearchChart[];
   /**
-   * Its return, written by features-service, once it serves one at this grain (not served on
-   * templates yet: a features-service change is in flight). Absent = no ROI tile, never a guess.
+   * Its return as printed (`"3.20x"`), written by features-service (TPL-DYNASTY-ROWS-1021-FS, on templates
+   * and versions); its detail (basis, multiple) rides `roiDetail`. v0.179.328 served the OBJECT here for a
+   * few minutes before its hotfix moved it to `roiDetail`: read both through `researchRoiOf`. Absent = no tile.
    */
-  roi?: string | null;
+  roi?: string | ResearchRoi | null;
+  roiDetail?: ResearchRoi | null;
+}
+
+/** A served return (features-service `CatalogRoi`). */
+export interface ResearchRoi {
+  /** The multiple: 3.2 = $3.20 of pipeline per $1 billed. */
+  value: number | null;
+  display: string | null;
+  basis: "measured" | "expected" | null;
+  source: string | null;
+  spendCovered: number | null;
+  unavailableReason: string | null;
+}
+
+/**
+ * A row's served return, ready to print: `show` (the `RoiValue` input) when the detail is served,
+ * else `text` (the printed string alone), else null (no tile).
+ */
+export function researchRoiOf(f: Pick<ResearchFigures, "roi" | "roiDetail">): { show: { value: number | null; expected: boolean; reason: string | null } } | { text: string } | null {
+  const d = f.roiDetail ?? (f.roi != null && typeof f.roi === "object" ? f.roi : null);
+  if (d) return { show: { value: d.value, expected: d.value != null && d.basis === "expected", reason: d.value == null ? d.unavailableReason : null } };
+  return typeof f.roi === "string" ? { text: f.roi } : null;
 }
 
 /** A reference to another catalogue page; `linked` when that page exists in this pipe. */
@@ -269,6 +292,8 @@ export interface ResearchTemplateVersion extends ResearchFigures {
   label: string;
   head: boolean;
   hasText: boolean;
+  /** content-generation-service's status of this version (only the head is Active); absent on an older catalogue. */
+  status?: "active" | "deprecated" | null;
 }
 
 /**
@@ -282,6 +307,10 @@ export interface ResearchTemplate extends ResearchFigures {
   hasText: boolean;
   dynasty?: ResearchTemplateDynasty | null;
   standaloneReason?: TemplateStandaloneReason | null;
+  /** The DYNASTY's status (features-service, off content generation); null with `statusUnavailableReason`. */
+  status?: "active" | "deprecated" | null;
+  statusSource?: string | null;
+  statusUnavailableReason?: string | null;
   /** Every version, oldest first, as features-service serves them. */
   versions?: ResearchTemplateVersion[];
   workflows: { key: string; label: string }[];
@@ -525,13 +554,16 @@ export interface TemplateStatusRead {
  * in a tab it will leave. The ONE place this is decided: a producer-served dynasty status replaces
  * this body, not its callers.
  */
-export function templateRowStatus(row: Pick<ResearchTemplate, "key" | "dynasty">, statuses: TemplateStatusRead): TemplateTab | null {
+export function templateRowStatus(row: Pick<ResearchTemplate, "key" | "dynasty" | "status">, statuses: TemplateStatusRead): TemplateTab | null {
+  // The dynasty's own status, served by features-service off content generation (TPL-DYNASTY-ROWS-1021-FS),
+  // wins; a row served without one (a version on its own, a catalogue built before it) reads its head's status.
+  if (row.status === "active" || row.status === "deprecated") return row.status;
   if (!statuses.answered) return null;
   return statuses.map.get(templateContentKey(row)) === "active" ? "active" : "deprecated";
 }
 
 /** The rows of each tab, in the served order, or null while the statuses have not answered. */
-export function templatesByTab<T extends Pick<ResearchTemplate, "key" | "dynasty">>(rows: readonly T[], statuses: TemplateStatusRead): Record<TemplateTab, T[]> | null {
+export function templatesByTab<T extends Pick<ResearchTemplate, "key" | "dynasty" | "status">>(rows: readonly T[], statuses: TemplateStatusRead): Record<TemplateTab, T[]> | null {
   if (!statuses.answered) return null;
   const out: Record<TemplateTab, T[]> = { active: [], deprecated: [] };
   for (const r of rows) out[templateRowStatus(r, statuses) ?? "deprecated"].push(r);
