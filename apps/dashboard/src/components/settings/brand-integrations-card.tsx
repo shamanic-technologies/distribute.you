@@ -10,8 +10,10 @@ import {
   disconnectCrm,
   disconnectSource,
   disconnectGoogleAccount,
+  disconnectGoogleCalendar,
   deleteBrandKey,
   listGoogleAccounts,
+  listGoogleCalendars,
   startGoogleConnect,
   listBrandKeys,
   listCrmConnections,
@@ -30,6 +32,7 @@ import {
   type IntegrationSlug,
 } from "@/lib/integrations";
 import { GOOGLE_RETURN_KEY, googleCallbackUrl, withLoginHint } from "@/lib/google-connect";
+import { GoogleCalendarLine } from "@/components/settings/google-calendar-line";
 import { GmailMailboxLine } from "@/components/settings/gmail-mailbox-line";
 import {
   connectErrorMessage,
@@ -134,6 +137,8 @@ function IntegrationsSection({ brandId, bare }: { brandId: string; bare: boolean
 
   // Gmail first: the mailbox is where most conversations already are.
   rows.unshift(<GmailRow key="gmail" orgId={orgId} />);
+  // Google Calendar next to Gmail: booked meetings and who joined them.
+  rows.splice(1, 0, <GoogleCalendarRow key="google-calendar" orgId={orgId} />);
   rows.push(<MessagingLinkRows key="messaging" brandId={brandId} />);
 
   if (bare) return <div className="divide-y divide-gray-100">{rows}</div>;
@@ -570,7 +575,7 @@ function GmailRow({ orgId }: { orgId: string | null }) {
       if (!orgId) throw new Error("Open this page inside an organization to connect Gmail.");
       const { url } = await startGoogleConnect(googleCallbackUrl(window.location.origin));
       const returnTo = `${window.location.pathname}${window.location.search}#integrations`;
-      window.sessionStorage.setItem(GOOGLE_RETURN_KEY, JSON.stringify({ orgId, returnTo }));
+      window.sessionStorage.setItem(GOOGLE_RETURN_KEY, JSON.stringify({ orgId, returnTo, connection: "mailbox" }));
       window.location.assign(email ? withLoginHint(url, email) : url);
     },
     onError: (err: Error) => {
@@ -646,6 +651,110 @@ function GmailRow({ orgId }: { orgId: string | null }) {
             className="rounded-lg bg-brand-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-brand-700"
           >
             {connect.isPending && connect.variables === null ? "Opening Google..." : accounts.length > 0 ? "Add a mailbox" : "Connect with Google"}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/**
+ * Google Calendar, per ORGANIZATION, on its OWN Google consent (never bundled with
+ * Gmail): google-service reads the calendar every ~15 min, the meetings booked in it
+ * (from any scheduling link) and who joined each Google Meet call. Same callback as
+ * Gmail; the trip remembers it is a calendar so the outcome lands on this row.
+ */
+function GoogleCalendarRow({ orgId }: { orgId: string | null }) {
+  const queryClient = useQueryClient();
+  const search = useSearchParams();
+  const calendarsQ = useAuthQuery(["googleCalendars"], () => listGoogleCalendars());
+  const [error, setError] = useState<string | null>(search?.get("calendarError") ?? null);
+  const [confirming, setConfirming] = useState<string | null>(null);
+  const calendars = calendarsQ.data?.calendars ?? [];
+  const settled = !calendarsQ.isPending || calendarsQ.isError;
+
+  // `email` set = Reconnect that calendar: the same consent, preselecting its address.
+  const connect = useMutation({
+    mutationFn: async (email: string | null) => {
+      if (!orgId) throw new Error("Open this page inside an organization to connect Google Calendar.");
+      const { url } = await startGoogleConnect(googleCallbackUrl(window.location.origin), undefined, "calendar");
+      const returnTo = `${window.location.pathname}${window.location.search}#integrations`;
+      window.sessionStorage.setItem(GOOGLE_RETURN_KEY, JSON.stringify({ orgId, returnTo, connection: "calendar" }));
+      window.location.assign(email ? withLoginHint(url, email) : url);
+    },
+    onError: (err: Error) => {
+      console.error("[integrations] starting the Google Calendar sign-in failed", err);
+      setError(err.message.startsWith("Open this page") ? err.message : "Could not start the Google sign-in. Try again.");
+    },
+  });
+
+  const remove = useMutation({
+    mutationFn: (email: string) => disconnectGoogleCalendar(email),
+    onSuccess: async () => {
+      setConfirming(null);
+      setError(null);
+      await queryClient.refetchQueries({ queryKey: ["googleCalendars"] });
+    },
+    onError: (err: Error) => {
+      console.error("[integrations] disconnecting Google Calendar failed", err);
+      setError("Could not disconnect this calendar. Try again.");
+    },
+  });
+
+  return (
+    <div className="p-5" data-testid="google-calendar-row">
+      <div className="flex flex-wrap items-start gap-3">
+        <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-gray-200 bg-white p-1">
+          <CompanyLogo domain="calendar.google.com" name="Google Calendar" size={28} />
+        </span>
+        <div className="min-w-0 flex-1">
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="font-medium text-gray-900">Google Calendar</span>
+            {!settled ? (
+              <span className="h-5 w-24 animate-pulse rounded-full bg-gray-100" />
+            ) : calendars.length > 0 ? (
+              <span className="rounded-full border border-green-200 bg-green-50 px-2 py-0.5 text-xs font-medium text-green-700">Connected</span>
+            ) : (
+              <span className="rounded-full border border-gray-200 bg-gray-50 px-2 py-0.5 text-xs font-medium text-gray-600">Not connected</span>
+            )}
+          </div>
+          <p className="mt-0.5 text-sm text-gray-500">
+            See the meetings booked in your calendar and who joined your Google Meet calls. Shared by every brand of this organization.
+          </p>
+          {calendars.length > 0 ? (
+            <ul className="mt-2 space-y-1.5">
+              {calendars.map((c) => (
+                <GoogleCalendarLine
+                  key={c.email}
+                  calendar={c}
+                  confirming={confirming === c.email}
+                  removing={remove.isPending}
+                  reconnecting={connect.isPending && connect.variables === c.email}
+                  onReconnect={() => {
+                    setError(null);
+                    setConfirming(null);
+                    connect.mutate(c.email);
+                  }}
+                  onAskDisconnect={() => setConfirming(c.email)}
+                  onConfirmDisconnect={() => remove.mutate(c.email)}
+                  onKeep={() => setConfirming(null)}
+                />
+              ))}
+            </ul>
+          ) : null}
+          {error ? <p className="mt-2 text-sm text-red-600">{error}</p> : null}
+        </div>
+        <div className="flex shrink-0 items-center gap-2">
+          <button
+            type="button"
+            onClick={() => {
+              setError(null);
+              connect.mutate(null);
+            }}
+            disabled={connect.isPending}
+            className="rounded-lg bg-brand-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-brand-700"
+          >
+            {connect.isPending && connect.variables === null ? "Opening Google..." : calendars.length > 0 ? "Add a calendar" : "Connect with Google"}
           </button>
         </div>
       </div>

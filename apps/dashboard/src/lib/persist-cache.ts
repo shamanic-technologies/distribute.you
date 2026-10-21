@@ -258,6 +258,7 @@ export const PERSISTABLE_QUERY_ROOTS = new Set([
   "crmConnections",
   "posthogConnections",
   "googleAccounts",
+  "googleCalendars",
   "stripeConnections",
   "clerkConnections",
   // The mirrored CRM itself. Both are bounded (one page of contacts, one
