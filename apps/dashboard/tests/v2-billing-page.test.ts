@@ -39,7 +39,8 @@ describe("the v2 Billing page draws; it re-implements no money path", () => {
   });
 
   it("routes every card control through the gate that asks before it charges", () => {
-    expect(V2.match(/handleManagePayment\("manage"\)/g) ?? []).toHaveLength(3);
+    // Banner Update card, postpaid banner Retry, Change card, Add card.
+    expect(V2.match(/handleManagePayment\("manage"\)/g) ?? []).toHaveLength(4);
     expect(V2.match(/handleManagePayment\("invoices"\)/g) ?? []).toHaveLength(1);
     // The only raw open is the confirmation's own Confirm.
     expect(V2.match(/openCardPage\(/g) ?? []).toHaveLength(1);
@@ -128,24 +129,23 @@ describe("a postpaid org reads postpaid words only (owner 2026-10-21)", () => {
     expect(auto).not.toContain('mode === "postpaid"');
   });
 
-  it("shows postpaid what it owes, its credit line, the next charge date and ONE Pay button (owner 2026-10-21)", () => {
+  it("shows postpaid its next automatic payment, Google Ads style, with NO button (owner 2026-10-21)", () => {
     const section = V2.slice(V2.indexOf('id="owed"'), V2.indexOf("{/* The monthly plan, for an org on one"));
     expect(V2).toContain('{mode === "postpaid" && account?.has_payment_method && c.autoReloadSupported && (');
     expect(section).toContain("<PostpaidOwedCard");
     const card = V2.slice(V2.indexOf("function PostpaidOwedCard("), V2.indexOf("/** Dollars to cents without float noise"));
-    expect(card).toContain("Pay ${owedFigure} now");
-    expect(card).toContain("No balance due.");
-    expect(card).toContain("owed.creditLineCents");
+    expect(card).toContain("Your next automatic payment is when your costs reach");
     expect(card).toContain("nextChargeDate");
-    expect(card.match(/<button/g)?.length).toBe(1);
+    expect(card).not.toContain("<button");
+    expect(card).not.toContain("credit line");
     expect(card).not.toContain("top-up");
     expect(card).not.toContain("Add credit");
   });
 
-  it("pays through billing's pay_balance and words each refusal from its code", () => {
-    expect(API).toContain('apiCall("/billing/accounts/pay_balance", { token, method: "POST", suppressPaymentRequired: true })');
-    expect(V2).toContain("payBalanceRefusal(err instanceof ApiError ? err.body : null)");
-    expect(V2).toContain('? void payNow()');
+  it("has no Pay now anywhere on the page: a declined postpaid card is fixed by changing it", () => {
+    expect(V2).not.toContain("payBalance");
+    expect(V2).not.toContain("payNow");
+    expect(V2).toContain('? c.handleManagePayment("manage")');
   });
 
   it("reads the credit line and the amount owed from billing's own fields, never the auto top-up columns", () => {
