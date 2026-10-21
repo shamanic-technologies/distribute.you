@@ -1,102 +1,113 @@
 <div style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:12px;padding:20px 24px;margin:0 0 32px">
 <p style="margin:0 0 8px;font-size:12px;font-weight:600;letter-spacing:0.08em;text-transform:uppercase;color:#1d4ed8">Key takeaway</p>
-<p style="margin:0 0 8px;font-weight:600;color:#0f172a">Qualifying leads from their website? Ask your question on the screenshot itself, not on a written description of it.</p>
+<p style="margin:0 0 8px;font-weight:600;color:#0f172a">Qualifying leads from their website? Today's AI reads a homepage screenshot right 96 to 99 times in 100. Pick your model on price.</p>
 <ul style="margin:0;padding-left:20px">
-<li>2.3x more right answers on "no phone number in the header?", on 33 roofing homepages checked by eye</li>
-<li>Across 79 homepages, the screenshot answer won every phone and review rating disagreement</li>
-<li>On what a description already covers, like a call to action, both ways agree</li>
+<li>Jev 1.13 checks 1,000 websites for $0.35, the cheapest of the six we tested</li>
+<li>Claude Sonnet 5.5 costs 38x more for no measurable gain</li>
+<li>Jev, GPT-6 Luna, Gemini and Claude on 79 real prospect homepages, answers checked by eye</li>
 </ul>
 </div>
 
-<p>We bring our clients signups and booked meetings, done for you, and they report a 2.0x median ROI. Part of the job is picking who gets an email. A founder knows a good lead when they see the lead's website. So we let an AI look at the website too, and answer the founder's own yes/no questions about it. We just changed how that AI looks, and the change fixed a quiet error in our own data. Here is the case, and the rule we took from it.</p>
+<p>We bring our clients signups and booked meetings, done for you, and they report a 2.0x median ROI. It starts with emailing the right people. A good lead often shows on its website: a phone number missing from the header, no reviews on the first screen, no way to book. So an AI looks at each prospect's homepage and answers our clients' own yes/no questions about it. Which AI should do that, and at what price? We tested six on our real data.</p>
 
-<h2 id="case">One client: roofers with no phone number in the header</h2>
+<h2 id="test">The test: six AI models, 79 homepages</h2>
 
-<p>One of our clients sells to roofing companies. A roofer whose phone number is missing from the top of the website loses calls, and that roofer is this client's lead. So the client's question for each prospect reads, word for word:</p>
+<p>We took every homepage screenshot our lead checks had stored: 79 companies our clients prospect, from roofers to dental clinics and recruiting firms. We asked each screenshot 5 questions our clients care about:</p>
 
-<blockquote><p>"Is there no clearly visible phone number in the header of the homepage above the fold?"</p></blockquote>
+<ul>
+<li>Is there no phone number in the header?</li>
+<li>Is there no customer review rating on the first screen?</li>
+<li>Is there no live chat widget?</li>
+<li>Does the first screen show a street address?</li>
+<li>Is there a clear call-to-action button?</li>
+</ul>
 
-<p>Until October 21, 2026, our AI answered in two steps. First, a model wrote a short description of the homepage screenshot. Then a judge, Jev 1.13, answered the question on that description. Here is a real description of one roofer's homepage, as stored in our database:</p>
+<p>Six models answered every question on the same screenshots: <a href="https://docs.typesafe.ai">Jev 1.13</a> by TypeSafe, GPT-6 Luna from OpenAI, Gemini 3.1 Flash-Lite and Gemini 3.5 Flash-Lite from Google, Claude Haiku 5.5 and Claude Sonnet 5.5 from Anthropic. Where they disagreed, we looked at the page ourselves.</p>
 
-<blockquote><p>"The homepage features the main headline: "[headline]." The company offers residential and commercial roofing services in [their area], including replacement, repair, and inspection. There are two visible call-to-action buttons [...]. The page design is clean, modern, and highly readable."</p></blockquote>
-
-<p>The header of that page shows a phone number. The description does not mention one. Asked "is there no phone number?" on this text, the judge said yes.</p>
-
-<h2 id="answer">The fix: ask the question on the image</h2>
-
-<p>Now the judge reads the screenshot itself and answers the client's question on it. We checked the header of 33 roofing homepages by eye: 20 show a phone number, 13 do not. Then we asked the question both ways, with the same judge on the same screenshots.</p>
-
-<figure>
-<svg viewBox="0 0 800 154" width="100%" role="img" aria-label="Right answers on 32 roofing homepages: &quot;no phone in the header?&quot;: Asked on the screenshot 32 of 32 (the question asked of the image itself), Asked on a description 14 of 32 (a model describes the page, the judge reads the text)" font-family="Inter, system-ui, sans-serif">
-<text x="0" y="22" font-size="16" font-weight="600" fill="#0f172a">Right answers on 32 roofing homepages: &quot;no phone in the header?&quot;</text>
-<text x="0" y="74" font-size="14" fill="#475569">Asked on the screenshot</text>
-<rect x="177" y="56" width="523" height="26" rx="5" fill="#2563eb"/>
-<text x="710" y="75" font-size="16" font-weight="700" fill="#0f172a">32 of 32</text>
-<text x="177" y="95" font-size="11" fill="#94a3b8">the question asked of the image itself</text>
-<text x="0" y="126" font-size="14" fill="#475569">Asked on a description</text>
-<rect x="177" y="108" width="229" height="26" rx="5" fill="#93c5fd"/>
-<text x="416" y="127" font-size="16" font-weight="700" fill="#0f172a">14 of 32</text>
-<text x="177" y="147" font-size="11" fill="#94a3b8">a model describes the page, the judge reads the text</text>
-</svg>
-<figcaption style="color:#64748b;font-size:13px;line-height:1.5;margin-top:4px">Same screenshots, same question, same judge (Jev 1.13). Every header checked by eye.</figcaption>
-</figure>
-
-<p><strong>Asked on the screenshot, the judge was right 32 times out of 32. Asked on a description, 14 times.</strong> The description was written before anyone asked about phones, so it left them out. The judge read that silence as "no phone".</p>
-
-<h2 id="wider">Is it one question? We checked 79 homepages</h2>
-
-<p>One question for one client proves little. So we took every homepage screenshot our clients' qualification checks had stored: 79 companies, from roofers to dental clinics and recruiting firms. We asked 4 questions about details a page summary tends to skip: a phone number in the header, a customer review rating, a live chat widget, a street address. Each one was asked both ways, and we checked every disagreement by eye.</p>
+<h2 id="accuracy">Accuracy: 96 to 99 right answers in 100, for every model</h2>
 
 <figure>
-<svg viewBox="0 0 800 258" width="100%" role="img" aria-label="When the two ways disagreed, which answer was right: Phone in the header, screenshot 27 (times right), Phone in the header, description 0 (times right), Review rating, screenshot 13 (times right), Review rating, description 0 (times right)" font-family="Inter, system-ui, sans-serif">
-<text x="0" y="22" font-size="16" font-weight="600" fill="#0f172a">When the two ways disagreed, which answer was right</text>
-<text x="0" y="74" font-size="14" fill="#475569">Phone in the header, screenshot</text>
-<rect x="229" y="56" width="471" height="26" rx="5" fill="#2563eb"/>
-<text x="710" y="75" font-size="16" font-weight="700" fill="#0f172a">27</text>
-<text x="229" y="95" font-size="11" fill="#94a3b8">times right</text>
-<text x="0" y="126" font-size="14" fill="#475569">Phone in the header, description</text>
-<rect x="229" y="108" width="6" height="26" rx="5" fill="#93c5fd"/>
-<text x="245" y="127" font-size="16" font-weight="700" fill="#0f172a">0</text>
-<text x="229" y="147" font-size="11" fill="#94a3b8">times right</text>
-<text x="0" y="178" font-size="14" fill="#475569">Review rating, screenshot</text>
-<rect x="229" y="160" width="227" height="26" rx="5" fill="#2563eb"/>
-<text x="466" y="179" font-size="16" font-weight="700" fill="#0f172a">13</text>
-<text x="229" y="199" font-size="11" fill="#94a3b8">times right</text>
-<text x="0" y="230" font-size="14" fill="#475569">Review rating, description</text>
-<rect x="229" y="212" width="6" height="26" rx="5" fill="#93c5fd"/>
-<text x="245" y="231" font-size="16" font-weight="700" fill="#0f172a">0</text>
-<text x="229" y="251" font-size="11" fill="#94a3b8">times right</text>
+<svg viewBox="0 0 800 362" width="100%" role="img" aria-label="Right answers per 100 website checks: Claude Sonnet 5.5 99.7 (95% interval 98.5% to 100.0%), Gemini 3.1 Flash-Lite 99.2 (95% interval 97.7% to 99.7%), Gemini 3.5 Flash-Lite 98.9 (95% interval 97.3% to 99.6%), Jev 1.13 98.7 (95% interval 96.9% to 99.4%), GPT-6 Luna 98.7 (95% interval 96.9% to 99.4%), Claude Haiku 5.5 96.8 (95% interval 94.5% to 98.2%)" font-family="Inter, system-ui, sans-serif">
+<text x="0" y="22" font-size="16" font-weight="600" fill="#0f172a">Right answers per 100 website checks</text>
+<text x="0" y="74" font-size="14" fill="#475569">Claude Sonnet 5.5</text>
+<rect x="155" y="56" width="545" height="26" rx="5" fill="#93c5fd"/>
+<text x="710" y="75" font-size="16" font-weight="700" fill="#0f172a">99.7</text>
+<text x="155" y="95" font-size="11" fill="#94a3b8">95% interval 98.5% to 100.0%</text>
+<text x="0" y="126" font-size="14" fill="#475569">Gemini 3.1 Flash-Lite</text>
+<rect x="155" y="108" width="542" height="26" rx="5" fill="#93c5fd"/>
+<text x="707" y="127" font-size="16" font-weight="700" fill="#0f172a">99.2</text>
+<text x="155" y="147" font-size="11" fill="#94a3b8">95% interval 97.7% to 99.7%</text>
+<text x="0" y="178" font-size="14" fill="#475569">Gemini 3.5 Flash-Lite</text>
+<rect x="155" y="160" width="541" height="26" rx="5" fill="#93c5fd"/>
+<text x="706" y="179" font-size="16" font-weight="700" fill="#0f172a">98.9</text>
+<text x="155" y="199" font-size="11" fill="#94a3b8">95% interval 97.3% to 99.6%</text>
+<text x="0" y="230" font-size="14" fill="#475569">Jev 1.13</text>
+<rect x="155" y="212" width="539" height="26" rx="5" fill="#2563eb"/>
+<text x="704" y="231" font-size="16" font-weight="700" fill="#0f172a">98.7</text>
+<text x="155" y="251" font-size="11" fill="#94a3b8">95% interval 96.9% to 99.4%</text>
+<text x="0" y="282" font-size="14" fill="#475569">GPT-6 Luna</text>
+<rect x="155" y="264" width="539" height="26" rx="5" fill="#93c5fd"/>
+<text x="704" y="283" font-size="16" font-weight="700" fill="#0f172a">98.7</text>
+<text x="155" y="303" font-size="11" fill="#94a3b8">95% interval 96.9% to 99.4%</text>
+<text x="0" y="334" font-size="14" fill="#475569">Claude Haiku 5.5</text>
+<rect x="155" y="316" width="529" height="26" rx="5" fill="#93c5fd"/>
+<text x="694" y="335" font-size="16" font-weight="700" fill="#0f172a">96.8</text>
+<text x="155" y="355" font-size="11" fill="#94a3b8">95% interval 94.5% to 98.2%</text>
 </svg>
-<figcaption style="color:#64748b;font-size:13px;line-height:1.5;margin-top:4px">79 company homepages from our clients' prospect lists, each disagreement checked by eye.</figcaption>
+<figcaption style="color:#64748b;font-size:13px;line-height:1.5;margin-top:4px">79 prospect homepages, 5 qualification questions, same screenshot for every model. No model differs from Jev beyond chance.</figcaption>
 </figure>
 
-<p>On the phone number and on the review rating, the screenshot answer won <strong>every disagreement</strong>. The street address leaned the same way on fewer pages, a lead to confirm. Each time the description lost, the detail was on the page and the description did not mention it.</p>
+<p><strong>All six read a homepage right 96 to 99 times in 100.</strong> Compared answer by answer with Jev, no model was measurably better or worse. The misses were small details, like a cookie-settings icon read as a chat bubble, or a street address in small print under a map.</p>
 
-<h2 id="covered">When a description is enough</h2>
+<h2 id="price">Price: Jev is the cheapest</h2>
 
-<p>The two ways part only on what the description leaves out. We also re-judged two questions a page description is written to cover, from two other clients: "is a clear call to action missing above the fold?" and "does the design look outdated?". On those, the two ways gave the same answer on all but one of 66 pages, and that one was a matter of taste. So asking on the image costs nothing in accuracy where the description was fine, and fixes the questions where the description was blind.</p>
+<figure>
+<svg viewBox="0 0 800 362" width="100%" role="img" aria-label="Price per 1,000 website checks: Jev 1.13 $0.35 (the cheapest), GPT-6 Luna $0.36, Gemini 3.1 Flash-Lite $0.66, Gemini 3.5 Flash-Lite $0.81, Claude Haiku 5.5 $0.82, Claude Sonnet 5.5 $13.19" font-family="Inter, system-ui, sans-serif">
+<text x="0" y="22" font-size="16" font-weight="600" fill="#0f172a">Price per 1,000 website checks</text>
+<text x="0" y="74" font-size="14" fill="#475569">Jev 1.13</text>
+<rect x="155" y="56" width="14" height="26" rx="5" fill="#2563eb"/>
+<text x="179" y="75" font-size="16" font-weight="700" fill="#0f172a">$0.35</text>
+<text x="155" y="95" font-size="11" fill="#94a3b8">the cheapest</text>
+<text x="0" y="126" font-size="14" fill="#475569">GPT-6 Luna</text>
+<rect x="155" y="108" width="15" height="26" rx="5" fill="#93c5fd"/>
+<text x="180" y="127" font-size="16" font-weight="700" fill="#0f172a">$0.36</text>
+<text x="0" y="178" font-size="14" fill="#475569">Gemini 3.1 Flash-Lite</text>
+<rect x="155" y="160" width="27" height="26" rx="5" fill="#93c5fd"/>
+<text x="192" y="179" font-size="16" font-weight="700" fill="#0f172a">$0.66</text>
+<text x="0" y="230" font-size="14" fill="#475569">Gemini 3.5 Flash-Lite</text>
+<rect x="155" y="212" width="34" height="26" rx="5" fill="#93c5fd"/>
+<text x="199" y="231" font-size="16" font-weight="700" fill="#0f172a">$0.81</text>
+<text x="0" y="282" font-size="14" fill="#475569">Claude Haiku 5.5</text>
+<rect x="155" y="264" width="34" height="26" rx="5" fill="#93c5fd"/>
+<text x="199" y="283" font-size="16" font-weight="700" fill="#0f172a">$0.82</text>
+<text x="0" y="334" font-size="14" fill="#475569">Claude Sonnet 5.5</text>
+<rect x="155" y="316" width="545" height="26" rx="5" fill="#93c5fd"/>
+<text x="710" y="335" font-size="16" font-weight="700" fill="#0f172a">$13.19</text>
+</svg>
+<figcaption style="color:#64748b;font-size:13px;line-height:1.5;margin-top:4px">What each check was billed at our catalogue prices, image included.</figcaption>
+</figure>
 
-<h2 id="rule">The rule</h2>
+<p><strong>Jev checks 1,000 websites for $0.35.</strong> Claude Sonnet 5.5 costs $13.19 for the same 1,000 checks, with no measurable gain in accuracy. Jev is built to judge rather than to write: you give it the screenshot and the question, and it answers yes or no with how sure it is. No text to generate, so the answer costs input only.</p>
+
+<h2 id="how">How we use Jev to qualify leads</h2>
 
 <ol>
-<li><strong>Write each signal as a yes/no question,</strong> in your words: "Is there no phone number in the header?", "Does the site show a review rating?".</li>
-<li><strong>Take a screenshot</strong> of the prospect's homepage, first screen.</li>
-<li><strong>Ask the question on the screenshot.</strong> A judge reads the image and answers yes or no with how sure it is. No summary in between.</li>
+<li><strong>You describe a good lead in plain words,</strong> down to what you would notice on their website. One of our clients sells to roofers and asked: "Is there no clearly visible phone number in the header?"</li>
+<li><strong>We take a screenshot</strong> of each prospect's homepage.</li>
+<li><strong>Jev answers the question on the screenshot,</strong> before we pay for anyone's email. Leads that fit get your emails.</li>
 </ol>
-
-<p>The judge sees what your eye sees, so a lead is kept or skipped for what is on the page.</p>
 
 <h2 id="objections">The questions we get</h2>
 
-<p><strong>"Is asking on the image expensive?"</strong> No. One check on a screenshot is a small fraction of a cent, and each answer is stored, so the same page is not judged twice for the same question.</p>
+<p><strong>"Wouldn't a bigger model do better?"</strong> Claude Sonnet 5.5, the largest model we tested, scored within chance of Jev at 38x the price.</p>
 
-<p><strong>"What if a cookie banner covers the page?"</strong> The judge first answers whether the screenshot really shows the homepage. A page hidden behind a banner, or an error page, is marked unreadable and not counted as a yes.</p>
+<p><strong>"What about cookie banners?"</strong> Jev first answers whether the screenshot really shows the homepage. A page hidden behind a banner, or an error page, is marked unreadable and not counted as a lead.</p>
 
-<p><strong>"Which AI should read the image?"</strong> On the phone question, 4 judges from three vendors each answered at least 32 of 33 right when they read the screenshot. Judges differ more on harder questions, so test yours on pages you checked by eye.</p>
+<p><strong>"How sure is each answer?"</strong> Jev returns a probability, not just yes or no, so you choose how sure it must be before a lead counts.</p>
 
-<p><strong>"Can I ask about anything on the page?"</strong> About anything visible on the first screen. A question about text deeper in the site reads the page text instead.</p>
+<p><strong>"Can I ask anything?"</strong> Anything visible on the first screen of the homepage. Questions about text deeper in the site read the page text instead.</p>
 
-<h2 id="takeaway">Ask what you would look for</h2>
+<h2 id="takeaway">Tell us what a good lead looks like</h2>
 
 <p>Revenue made easy: get revenue in 24h. distribute.you finds your ICP, emails them from our own domains and brings you signups and booked meetings: 240 engaged leads for 17 companies so far, with a 2.0x median ROI reported (homepage figures, October 21, 2026). Tell us what a good lead looks like, down to what is on their website, and we do the rest. The platform is free. You only pay for your outreach.</p>
 
@@ -105,10 +116,10 @@
 <h2 id="notes">Notes</h2>
 
 <ul>
-<li>Benchmark: 79 homepage screenshots stored by our lead qualification checks (first screen of our clients' prospects), each with the description written for it before October 21, 2026 (Gemini 3.1 Flash-Lite). Each of 4 questions was asked of each screenshot twice with Jev 1.13 (jev-1.13.0): on the description, and on the image. 316 checks in all, read October 21, 2026.</li>
-<li>Roofing case: 33 homepages of one client's prospects, every header checked by eye (20 with a phone number, 13 without). One page was an error page and both ways marked it unreadable, leaving 32 judged. Asked on the description, the judge called 30 pages leads, 18 of them showing a phone number; asked on the screenshot, 12, the 12 real ones. Exact sign test on the pages where the two ways differ: p < 0.001.</li>
-<li>Disagreements by question (screenshot right, description right, ambiguous): phone in the header 27, 0, 0 (p < 0.001); review rating 13, 0, 0 (p < 0.001); street address 7, 0, 0 (p 0.016, 0.063 after the correction for 4 questions: a signal, not a conclusion); chat widget 5, 3, 4 (no measurable difference; the ambiguous ones are quote pop-ups that look like a chat). All four together: the screenshot right 52 times, the description 3 times, out of 55 scored disagreements (p < 0.001). Exact two-sided sign test per question, Bonferroni over the 4 questions. Paired: same screenshot, same question, same judge. A measurement, not a split test.</li>
-<li>Covered questions: 78 stored production verdicts of two criteria from two other clients, judged on the description before October 21, 2026 and re-judged on the screenshot that day; 66 answered both ways, 65 identical. The one difference: a busy dental homepage the screenshot judge called cluttered.</li>
-<li>Judges on the phone question, same 33 screenshots fitted to 1,568 pixels: TypeSafe Jev 1.13, Cloudflare Clef, Cloudflare Clef-flash and OpenAI Decisions each answered 32 to 33 of 33 right (yes above 50%, the error page counted as no phone). The gap between them is within noise; we name no winner.</li>
-<li>The description quoted above is one roofer's, from our database, with the headline and the area removed. Clients and prospects are not named. Data and scripts on <a href="https://github.com/shamanic-technologies/distribute.you/tree/main/apps/landing/scripts/blog-data/image-judge">GitHub</a>, sites anonymised.</li>
+<li>Benchmark: 79 homepage screenshots (first screen) stored by our lead qualification checks for our clients' prospects, 5 questions each, 395 checks per model, run October 21, 2026 through our model router. Jev 1.13 and GPT-6 Luna (OpenAI Decisions) answered as typed judges (a readability gate, then the question, each with a probability; yes above 50%); the four LLMs answered the same two parts in JSON. Same screenshot bytes for every model.</li>
+<li>Right answers: 378 checks scored. Where all six models gave the same answer (285 checks) that answer is taken as right; every other check (93) was settled by looking at the screenshot. On a page covered by a cookie wall, and on a hosting error page, "unreadable" and the visible answer both count as right. 17 checks we could not settle by eye (a quote pop-up that may be a chat, a parked domain, borderline buttons) are left out.</li>
+<li>Scores (right of 378, 95% Wilson interval): Jev 1.13 373 (96.9% to 99.4%); GPT-6 Luna 373 (96.9% to 99.4%); Gemini 3.1 Flash-Lite 375 (97.7% to 99.7%); Gemini 3.5 Flash-Lite 374 (97.3% to 99.6%); Claude Haiku 5.5 366 (94.5% to 98.2%; 19 checks came back empty twice and count as wrong); Claude Sonnet 5.5 377 (98.5% to 100.0%).</li>
+<li>Each model against Jev, paired on the same checks (exact sign test, Bonferroni over 5): GPT-6 Luna p 1.00; Gemini 3.1 Flash-Lite p 0.69; Gemini 3.5 Flash-Lite p 1.00; Claude Haiku 5.5 p 0.12; Claude Sonnet 5.5 p 0.22. None differs from Jev beyond chance.</li>
+<li>Price: what each model's run was billed at our catalogue prices, divided by its 395 checks, times 1,000. Cloudflare Clef and Clef-flash were in the plan but not scored: our Cloudflare account's free daily quota ran out during the run.</li>
+<li>Clients and prospects are not named. Data (sites anonymised) and scripts on <a href="https://github.com/shamanic-technologies/distribute.you/tree/main/apps/landing/scripts/blog-data/image-judge">GitHub</a>. A measurement, not a split test.</li>
 </ul>

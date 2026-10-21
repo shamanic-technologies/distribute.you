@@ -1,179 +1,561 @@
 {
  "readOn": "2026-10-21",
- "judge": "jev-1.13.0",
  "screenshots": 79,
- "questions": 4,
- "checks": 316,
- "roof": {
-  "homepages": 33,
-  "noPhone": 13,
-  "withPhone": 20,
-  "judged": 32,
-  "descriptionRight": 14,
-  "imageRight": 32,
-  "phoneMissed": 18,
-  "descriptionLeads": 30,
-  "imageLeads": 12,
-  "realLeads": 12,
-  "pText": "< 0.001",
-  "multiple": "2.3"
+ "questions": 5,
+ "checksPerModel": 395,
+ "scored": 378,
+ "ambiguous": 17,
+ "truth": {
+  "unanimous": 285,
+  "eye": 93
  },
- "perQuestion": [
+ "models": [
   {
-   "question": "phone",
-   "text": "Is there no clearly visible phone number in the header of the homepage above the fold?",
-   "screenshots": 79,
-   "disagreements": 27,
-   "ambiguous": 0,
-   "scored": 27,
-   "image": 27,
-   "description": 0,
-   "p": 1.4901161193847648e-8,
-   "pText": "< 0.001",
-   "bonferroniText": "< 0.001",
-   "kind": "conclusion",
-   "missed": 27
+   "key": "jev",
+   "label": "Jev 1.13 (TypeSafe)",
+   "right": 373,
+   "scored": 378,
+   "share": 0.9867724867724867,
+   "display": "98.7%",
+   "per100": 98,
+   "per100Display": "98.7",
+   "ciLo": "96.9%",
+   "ciHi": "99.4%",
+   "noAnswer": 0,
+   "perThousand": 0.345873417721519,
+   "perThousandDisplay": "$0.35",
+   "perQuestion": {
+    "phone": {
+     "right": 78,
+     "scored": 78
+    },
+    "reviews": {
+     "right": 78,
+     "scored": 78
+    },
+    "chat": {
+     "right": 69,
+     "scored": 72
+    },
+    "address": {
+     "right": 77,
+     "scored": 78
+    },
+    "cta": {
+     "right": 71,
+     "scored": 72
+    }
+   }
   },
   {
-   "question": "reviews",
-   "text": "Does the first screen of the homepage show no customer review rating (stars or a review score such as Google or Trustpilot)?",
-   "screenshots": 79,
-   "disagreements": 13,
-   "ambiguous": 0,
-   "scored": 13,
-   "image": 13,
-   "description": 0,
-   "p": 0.00024414062500000016,
-   "pText": "< 0.001",
-   "bonferroniText": "< 0.001",
-   "kind": "conclusion",
-   "missed": 13
+   "key": "openai-luna",
+   "label": "GPT-6 Luna (OpenAI Decisions)",
+   "right": 373,
+   "scored": 378,
+   "share": 0.9867724867724867,
+   "display": "98.7%",
+   "per100": 98,
+   "per100Display": "98.7",
+   "ciLo": "96.9%",
+   "ciHi": "99.4%",
+   "noAnswer": 0,
+   "perThousand": 0.36472658227848104,
+   "perThousandDisplay": "$0.36",
+   "perQuestion": {
+    "phone": {
+     "right": 78,
+     "scored": 78
+    },
+    "reviews": {
+     "right": 78,
+     "scored": 78
+    },
+    "chat": {
+     "right": 69,
+     "scored": 72
+    },
+    "address": {
+     "right": 77,
+     "scored": 78
+    },
+    "cta": {
+     "right": 71,
+     "scored": 72
+    }
+   },
+   "vsJev": {
+    "jevOnly": 3,
+    "otherOnly": 3,
+    "p": 1,
+    "pText": "1.00",
+    "bonferroni": "1.00",
+    "kind": "noise"
+   }
   },
   {
-   "question": "chat",
-   "text": "Does the first screen of the homepage show no live chat widget or chat bubble?",
-   "screenshots": 79,
-   "disagreements": 12,
-   "ambiguous": 4,
-   "scored": 8,
-   "image": 5,
-   "description": 3,
-   "p": 0.7265625000000001,
-   "pText": "0.727",
-   "bonferroniText": "1.000",
-   "kind": "noise",
-   "missed": 5
+   "key": "gemini-flash-lite",
+   "label": "Gemini 3.1 Flash-Lite",
+   "right": 375,
+   "scored": 378,
+   "share": 0.9920634920634921,
+   "display": "99.2%",
+   "per100": 99,
+   "per100Display": "99.2",
+   "ciLo": "97.7%",
+   "ciHi": "99.7%",
+   "noAnswer": 0,
+   "perThousand": 0.6647924050632912,
+   "perThousandDisplay": "$0.66",
+   "perQuestion": {
+    "phone": {
+     "right": 78,
+     "scored": 78
+    },
+    "reviews": {
+     "right": 78,
+     "scored": 78
+    },
+    "chat": {
+     "right": 69,
+     "scored": 72
+    },
+    "address": {
+     "right": 78,
+     "scored": 78
+    },
+    "cta": {
+     "right": 72,
+     "scored": 72
+    }
+   },
+   "vsJev": {
+    "jevOnly": 2,
+    "otherOnly": 4,
+    "p": 0.6875000000000013,
+    "pText": "0.69",
+    "bonferroni": "1.00",
+    "kind": "noise"
+   }
   },
   {
-   "question": "address",
-   "text": "Does the first screen of the homepage show a physical street address?",
-   "screenshots": 79,
-   "disagreements": 7,
-   "ambiguous": 0,
-   "scored": 7,
-   "image": 7,
-   "description": 0,
-   "p": 0.01562500000000001,
-   "pText": "0.016",
-   "bonferroniText": "0.063",
-   "kind": "signal",
-   "missed": 7
+   "key": "gemini-flash",
+   "label": "Gemini 3.5 Flash-Lite",
+   "right": 374,
+   "scored": 378,
+   "share": 0.9894179894179894,
+   "display": "98.9%",
+   "per100": 98,
+   "per100Display": "98.9",
+   "ciLo": "97.3%",
+   "ciHi": "99.6%",
+   "noAnswer": 0,
+   "perThousand": 0.8132379746835442,
+   "perThousandDisplay": "$0.81",
+   "perQuestion": {
+    "phone": {
+     "right": 77,
+     "scored": 78
+    },
+    "reviews": {
+     "right": 78,
+     "scored": 78
+    },
+    "chat": {
+     "right": 70,
+     "scored": 72
+    },
+    "address": {
+     "right": 77,
+     "scored": 78
+    },
+    "cta": {
+     "right": 72,
+     "scored": 72
+    }
+   },
+   "vsJev": {
+    "jevOnly": 3,
+    "otherOnly": 4,
+    "p": 1,
+    "pText": "1.00",
+    "bonferroni": "1.00",
+    "kind": "noise"
+   }
+  },
+  {
+   "key": "claude-haiku",
+   "label": "Claude Haiku 5.5",
+   "right": 366,
+   "scored": 378,
+   "share": 0.9682539682539683,
+   "display": "96.8%",
+   "per100": 96,
+   "per100Display": "96.8",
+   "ciLo": "94.5%",
+   "ciHi": "98.2%",
+   "noAnswer": 19,
+   "perThousand": 0.8226911392405063,
+   "perThousandDisplay": "$0.82",
+   "perQuestion": {
+    "phone": {
+     "right": 76,
+     "scored": 78
+    },
+    "reviews": {
+     "right": 76,
+     "scored": 78
+    },
+    "chat": {
+     "right": 68,
+     "scored": 72
+    },
+    "address": {
+     "right": 77,
+     "scored": 78
+    },
+    "cta": {
+     "right": 69,
+     "scored": 72
+    }
+   },
+   "vsJev": {
+    "jevOnly": 11,
+    "otherOnly": 4,
+    "p": 0.11846923828124992,
+    "pText": "0.12",
+    "bonferroni": "0.59",
+    "kind": "noise"
+   }
+  },
+  {
+   "key": "claude-sonnet",
+   "label": "Claude Sonnet 5.5",
+   "right": 377,
+   "scored": 378,
+   "share": 0.9973544973544973,
+   "display": "99.7%",
+   "per100": 99,
+   "per100Display": "99.7",
+   "ciLo": "98.5%",
+   "ciHi": "100.0%",
+   "noAnswer": 1,
+   "perThousand": 13.1921417721519,
+   "perThousandDisplay": "$13.19",
+   "perQuestion": {
+    "phone": {
+     "right": 78,
+     "scored": 78
+    },
+    "reviews": {
+     "right": 78,
+     "scored": 78
+    },
+    "chat": {
+     "right": 72,
+     "scored": 72
+    },
+    "address": {
+     "right": 78,
+     "scored": 78
+    },
+    "cta": {
+     "right": 71,
+     "scored": 72
+    }
+   },
+   "vsJev": {
+    "jevOnly": 1,
+    "otherOnly": 5,
+    "p": 0.21874999999999994,
+    "pText": "0.22",
+    "bonferroni": "1.00",
+    "kind": "noise"
+   }
   }
  ],
- "byQuestion": {
-  "phone": {
-   "question": "phone",
-   "text": "Is there no clearly visible phone number in the header of the homepage above the fold?",
-   "screenshots": 79,
-   "disagreements": 27,
-   "ambiguous": 0,
-   "scored": 27,
-   "image": 27,
-   "description": 0,
-   "p": 1.4901161193847648e-8,
-   "pText": "< 0.001",
-   "bonferroniText": "< 0.001",
-   "kind": "conclusion",
-   "missed": 27
+ "byKey": {
+  "jev": {
+   "key": "jev",
+   "label": "Jev 1.13 (TypeSafe)",
+   "right": 373,
+   "scored": 378,
+   "share": 0.9867724867724867,
+   "display": "98.7%",
+   "per100": 98,
+   "per100Display": "98.7",
+   "ciLo": "96.9%",
+   "ciHi": "99.4%",
+   "noAnswer": 0,
+   "perThousand": 0.345873417721519,
+   "perThousandDisplay": "$0.35",
+   "perQuestion": {
+    "phone": {
+     "right": 78,
+     "scored": 78
+    },
+    "reviews": {
+     "right": 78,
+     "scored": 78
+    },
+    "chat": {
+     "right": 69,
+     "scored": 72
+    },
+    "address": {
+     "right": 77,
+     "scored": 78
+    },
+    "cta": {
+     "right": 71,
+     "scored": 72
+    }
+   }
   },
-  "reviews": {
-   "question": "reviews",
-   "text": "Does the first screen of the homepage show no customer review rating (stars or a review score such as Google or Trustpilot)?",
-   "screenshots": 79,
-   "disagreements": 13,
-   "ambiguous": 0,
-   "scored": 13,
-   "image": 13,
-   "description": 0,
-   "p": 0.00024414062500000016,
-   "pText": "< 0.001",
-   "bonferroniText": "< 0.001",
-   "kind": "conclusion",
-   "missed": 13
+  "openai-luna": {
+   "key": "openai-luna",
+   "label": "GPT-6 Luna (OpenAI Decisions)",
+   "right": 373,
+   "scored": 378,
+   "share": 0.9867724867724867,
+   "display": "98.7%",
+   "per100": 98,
+   "per100Display": "98.7",
+   "ciLo": "96.9%",
+   "ciHi": "99.4%",
+   "noAnswer": 0,
+   "perThousand": 0.36472658227848104,
+   "perThousandDisplay": "$0.36",
+   "perQuestion": {
+    "phone": {
+     "right": 78,
+     "scored": 78
+    },
+    "reviews": {
+     "right": 78,
+     "scored": 78
+    },
+    "chat": {
+     "right": 69,
+     "scored": 72
+    },
+    "address": {
+     "right": 77,
+     "scored": 78
+    },
+    "cta": {
+     "right": 71,
+     "scored": 72
+    }
+   },
+   "vsJev": {
+    "jevOnly": 3,
+    "otherOnly": 3,
+    "p": 1,
+    "pText": "1.00",
+    "bonferroni": "1.00",
+    "kind": "noise"
+   }
   },
-  "chat": {
-   "question": "chat",
-   "text": "Does the first screen of the homepage show no live chat widget or chat bubble?",
-   "screenshots": 79,
-   "disagreements": 12,
-   "ambiguous": 4,
-   "scored": 8,
-   "image": 5,
-   "description": 3,
-   "p": 0.7265625000000001,
-   "pText": "0.727",
-   "bonferroniText": "1.000",
-   "kind": "noise",
-   "missed": 5
+  "gemini-flash-lite": {
+   "key": "gemini-flash-lite",
+   "label": "Gemini 3.1 Flash-Lite",
+   "right": 375,
+   "scored": 378,
+   "share": 0.9920634920634921,
+   "display": "99.2%",
+   "per100": 99,
+   "per100Display": "99.2",
+   "ciLo": "97.7%",
+   "ciHi": "99.7%",
+   "noAnswer": 0,
+   "perThousand": 0.6647924050632912,
+   "perThousandDisplay": "$0.66",
+   "perQuestion": {
+    "phone": {
+     "right": 78,
+     "scored": 78
+    },
+    "reviews": {
+     "right": 78,
+     "scored": 78
+    },
+    "chat": {
+     "right": 69,
+     "scored": 72
+    },
+    "address": {
+     "right": 78,
+     "scored": 78
+    },
+    "cta": {
+     "right": 72,
+     "scored": 72
+    }
+   },
+   "vsJev": {
+    "jevOnly": 2,
+    "otherOnly": 4,
+    "p": 0.6875000000000013,
+    "pText": "0.69",
+    "bonferroni": "1.00",
+    "kind": "noise"
+   }
   },
-  "address": {
-   "question": "address",
-   "text": "Does the first screen of the homepage show a physical street address?",
-   "screenshots": 79,
-   "disagreements": 7,
-   "ambiguous": 0,
-   "scored": 7,
-   "image": 7,
-   "description": 0,
-   "p": 0.01562500000000001,
-   "pText": "0.016",
-   "bonferroniText": "0.063",
-   "kind": "signal",
-   "missed": 7
+  "gemini-flash": {
+   "key": "gemini-flash",
+   "label": "Gemini 3.5 Flash-Lite",
+   "right": 374,
+   "scored": 378,
+   "share": 0.9894179894179894,
+   "display": "98.9%",
+   "per100": 98,
+   "per100Display": "98.9",
+   "ciLo": "97.3%",
+   "ciHi": "99.6%",
+   "noAnswer": 0,
+   "perThousand": 0.8132379746835442,
+   "perThousandDisplay": "$0.81",
+   "perQuestion": {
+    "phone": {
+     "right": 77,
+     "scored": 78
+    },
+    "reviews": {
+     "right": 78,
+     "scored": 78
+    },
+    "chat": {
+     "right": 70,
+     "scored": 72
+    },
+    "address": {
+     "right": 77,
+     "scored": 78
+    },
+    "cta": {
+     "right": 72,
+     "scored": 72
+    }
+   },
+   "vsJev": {
+    "jevOnly": 3,
+    "otherOnly": 4,
+    "p": 1,
+    "pText": "1.00",
+    "bonferroni": "1.00",
+    "kind": "noise"
+   }
+  },
+  "claude-haiku": {
+   "key": "claude-haiku",
+   "label": "Claude Haiku 5.5",
+   "right": 366,
+   "scored": 378,
+   "share": 0.9682539682539683,
+   "display": "96.8%",
+   "per100": 96,
+   "per100Display": "96.8",
+   "ciLo": "94.5%",
+   "ciHi": "98.2%",
+   "noAnswer": 19,
+   "perThousand": 0.8226911392405063,
+   "perThousandDisplay": "$0.82",
+   "perQuestion": {
+    "phone": {
+     "right": 76,
+     "scored": 78
+    },
+    "reviews": {
+     "right": 76,
+     "scored": 78
+    },
+    "chat": {
+     "right": 68,
+     "scored": 72
+    },
+    "address": {
+     "right": 77,
+     "scored": 78
+    },
+    "cta": {
+     "right": 69,
+     "scored": 72
+    }
+   },
+   "vsJev": {
+    "jevOnly": 11,
+    "otherOnly": 4,
+    "p": 0.11846923828124992,
+    "pText": "0.12",
+    "bonferroni": "0.59",
+    "kind": "noise"
+   }
+  },
+  "claude-sonnet": {
+   "key": "claude-sonnet",
+   "label": "Claude Sonnet 5.5",
+   "right": 377,
+   "scored": 378,
+   "share": 0.9973544973544973,
+   "display": "99.7%",
+   "per100": 99,
+   "per100Display": "99.7",
+   "ciLo": "98.5%",
+   "ciHi": "100.0%",
+   "noAnswer": 1,
+   "perThousand": 13.1921417721519,
+   "perThousandDisplay": "$13.19",
+   "perQuestion": {
+    "phone": {
+     "right": 78,
+     "scored": 78
+    },
+    "reviews": {
+     "right": 78,
+     "scored": 78
+    },
+    "chat": {
+     "right": 72,
+     "scored": 72
+    },
+    "address": {
+     "right": 78,
+     "scored": 78
+    },
+    "cta": {
+     "right": 71,
+     "scored": 72
+    }
+   },
+   "vsJev": {
+    "jevOnly": 1,
+    "otherOnly": 5,
+    "p": 0.21874999999999994,
+    "pText": "0.22",
+    "bonferroni": "1.00",
+    "kind": "noise"
+   }
   }
  },
- "pooled": {
-  "scored": 55,
-  "image": 52,
-  "description": 3,
-  "ambiguous": 4,
-  "disagreements": 59,
-  "p": 1.5418777365994477e-12,
-  "pText": "< 0.001"
+ "anyDifference": false,
+ "accuracy": {
+  "min": 96,
+  "max": 99
  },
- "covered": [
-  {
-   "question": "cta",
-   "checks": 39,
-   "decided": 33,
-   "agree": 33
-  },
-  {
-   "question": "design",
-   "checks": 39,
-   "decided": 33,
-   "agree": 32
-  }
- ],
- "judges": {
-  "count": 4,
-  "homepages": 33,
-  "min": 32,
-  "max": 33
+ "cheapest": {
+  "label": "Jev 1.13 (TypeSafe)",
+  "display": "$0.35"
  },
- "coveredTotals": {
-  "checks": 78,
-  "decided": 66,
-  "agree": 65
+ "dearest": {
+  "label": "Claude Sonnet 5.5",
+  "display": "$13.19",
+  "timesJev": 38
+ },
+ "notScored": {
+  "models": [
+   "Cloudflare Clef",
+   "Cloudflare Clef-flash"
+  ],
+  "reason": "our Cloudflare account's free daily quota ran out during the run"
  }
 }

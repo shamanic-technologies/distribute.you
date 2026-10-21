@@ -1,0 +1,6364 @@
+{
+ "readOn": "2026-10-21",
+ "screenshots": 79,
+ "questions": {
+  "phone": "Is there no clearly visible phone number in the header of the homepage above the fold?",
+  "reviews": "Does the first screen of the homepage show no customer review rating (stars or a review score such as Google or Trustpilot)?",
+  "chat": "Does the first screen of the homepage show no live chat widget or chat bubble?",
+  "address": "Does the first screen of the homepage show a physical street address?",
+  "cta": "Is a clear call-to-action button (such as Book, Get a quote, Contact us, Sign up) visible above the fold?"
+ },
+ "models": [
+  {
+   "key": "jev",
+   "label": "Jev 1.13 (TypeSafe)",
+   "calls": 395,
+   "billedCents": 13.662
+  },
+  {
+   "key": "openai-luna",
+   "label": "GPT-6 Luna (OpenAI Decisions)",
+   "calls": 395,
+   "billedCents": 14.4067
+  },
+  {
+   "key": "gemini-flash-lite",
+   "label": "Gemini 3.1 Flash-Lite",
+   "calls": 395,
+   "billedCents": 26.2593
+  },
+  {
+   "key": "gemini-flash",
+   "label": "Gemini 3.5 Flash-Lite",
+   "calls": 395,
+   "billedCents": 32.1229
+  },
+  {
+   "key": "claude-haiku",
+   "label": "Claude Haiku 5.5",
+   "calls": 395,
+   "billedCents": 32.4963
+  },
+  {
+   "key": "claude-sonnet",
+   "label": "Claude Sonnet 5.5",
+   "calls": 395,
+   "billedCents": 521.0896
+  }
+ ],
+ "notScored": {
+  "models": [
+   "Cloudflare Clef",
+   "Cloudflare Clef-flash"
+  ],
+  "reason": "our Cloudflare account's free daily quota ran out during the run"
+ },
+ "rows": [
+  {
+   "site": "site-01",
+   "question": "address",
+   "answers": {
+    "jev": "unavailable",
+    "openai-luna": "unavailable",
+    "gemini-flash-lite": "no",
+    "gemini-flash": "unavailable",
+    "claude-haiku": "no",
+    "claude-sonnet": "unavailable"
+   },
+   "accepted": [
+    "no",
+    "unavailable"
+   ],
+   "truthFrom": "eye"
+  },
+  {
+   "site": "site-02",
+   "question": "address",
+   "answers": {
+    "jev": "no",
+    "openai-luna": "no",
+    "gemini-flash-lite": "no",
+    "gemini-flash": "no",
+    "claude-haiku": "no",
+    "claude-sonnet": "no"
+   },
+   "accepted": [
+    "no"
+   ],
+   "truthFrom": "unanimous"
+  },
+  {
+   "site": "site-03",
+   "question": "address",
+   "answers": {
+    "jev": "no",
+    "openai-luna": "no",
+    "gemini-flash-lite": "no",
+    "gemini-flash": "no",
+    "claude-haiku": "no",
+    "claude-sonnet": "no"
+   },
+   "accepted": [
+    "no"
+   ],
+   "truthFrom": "unanimous"
+  },
+  {
+   "site": "site-04",
+   "question": "address",
+   "answers": {
+    "jev": "no",
+    "openai-luna": "no",
+    "gemini-flash-lite": "no",
+    "gemini-flash": "no",
+    "claude-haiku": "no",
+    "claude-sonnet": "no"
+   },
+   "accepted": [
+    "no"
+   ],
+   "truthFrom": "unanimous"
+  },
+  {
+   "site": "site-05",
+   "question": "address",
+   "answers": {
+    "jev": "no",
+    "openai-luna": "no",
+    "gemini-flash-lite": "no",
+    "gemini-flash": "no",
+    "claude-haiku": "no",
+    "claude-sonnet": "no"
+   },
+   "accepted": [
+    "no"
+   ],
+   "truthFrom": "unanimous"
+  },
+  {
+   "site": "site-06",
+   "question": "address",
+   "answers": {
+    "jev": "no",
+    "openai-luna": "no",
+    "gemini-flash-lite": "no",
+    "gemini-flash": "no",
+    "claude-haiku": "no",
+    "claude-sonnet": "no"
+   },
+   "accepted": [
+    "no"
+   ],
+   "truthFrom": "unanimous"
+  },
+  {
+   "site": "site-07",
+   "question": "address",
+   "answers": {
+    "jev": "no",
+    "openai-luna": "no",
+    "gemini-flash-lite": "no",
+    "gemini-flash": "no",
+    "claude-haiku": "no",
+    "claude-sonnet": "no"
+   },
+   "accepted": [
+    "no"
+   ],
+   "truthFrom": "unanimous"
+  },
+  {
+   "site": "site-08",
+   "question": "address",
+   "answers": {
+    "jev": "unavailable",
+    "openai-luna": "unavailable",
+    "gemini-flash-lite": "unavailable",
+    "gemini-flash": "unavailable",
+    "claude-haiku": "unavailable",
+    "claude-sonnet": "unavailable"
+   },
+   "accepted": [
+    "unavailable"
+   ],
+   "truthFrom": "unanimous"
+  },
+  {
+   "site": "site-09",
+   "question": "address",
+   "answers": {
+    "jev": "no",
+    "openai-luna": "no",
+    "gemini-flash-lite": "no",
+    "gemini-flash": "no",
+    "claude-haiku": "no",
+    "claude-sonnet": "no"
+   },
+   "accepted": [
+    "no"
+   ],
+   "truthFrom": "unanimous"
+  },
+  {
+   "site": "site-10",
+   "question": "address",
+   "answers": {
+    "jev": "no",
+    "openai-luna": "no",
+    "gemini-flash-lite": "no",
+    "gemini-flash": "no",
+    "claude-haiku": "no",
+    "claude-sonnet": "no"
+   },
+   "accepted": [
+    "no"
+   ],
+   "truthFrom": "unanimous"
+  },
+  {
+   "site": "site-11",
+   "question": "address",
+   "answers": {
+    "jev": "no",
+    "openai-luna": "no",
+    "gemini-flash-lite": "no",
+    "gemini-flash": "no",
+    "claude-haiku": "no",
+    "claude-sonnet": "no"
+   },
+   "accepted": [
+    "no"
+   ],
+   "truthFrom": "unanimous"
+  },
+  {
+   "site": "site-12",
+   "question": "address",
+   "answers": {
+    "jev": "no",
+    "openai-luna": "no",
+    "gemini-flash-lite": "no",
+    "gemini-flash": "no",
+    "claude-haiku": "no",
+    "claude-sonnet": "no"
+   },
+   "accepted": [
+    "no"
+   ],
+   "truthFrom": "unanimous"
+  },
+  {
+   "site": "site-13",
+   "question": "address",
+   "answers": {
+    "jev": "no",
+    "openai-luna": "no",
+    "gemini-flash-lite": "no",
+    "gemini-flash": "no",
+    "claude-haiku": "no",
+    "claude-sonnet": "no"
+   },
+   "accepted": [
+    "no"
+   ],
+   "truthFrom": "unanimous"
+  },
+  {
+   "site": "site-14",
+   "question": "address",
+   "answers": {
+    "jev": "no",
+    "openai-luna": "no",
+    "gemini-flash-lite": "no",
+    "gemini-flash": "no",
+    "claude-haiku": "no",
+    "claude-sonnet": "no"
+   },
+   "accepted": [
+    "no"
+   ],
+   "truthFrom": "unanimous"
+  },
+  {
+   "site": "site-15",
+   "question": "address",
+   "answers": {
+    "jev": "no",
+    "openai-luna": "no",
+    "gemini-flash-lite": "no",
+    "gemini-flash": "no",
+    "claude-haiku": "no",
+    "claude-sonnet": "no"
+   },
+   "accepted": [
+    "no"
+   ],
+   "truthFrom": "unanimous"
+  },
+  {
+   "site": "site-16",
+   "question": "address",
+   "answers": {
+    "jev": "no",
+    "openai-luna": "no",
+    "gemini-flash-lite": "no",
+    "gemini-flash": "no",
+    "claude-haiku": "no",
+    "claude-sonnet": "no"
+   },
+   "accepted": [
+    "no"
+   ],
+   "truthFrom": "unanimous"
+  },
+  {
+   "site": "site-17",
+   "question": "address",
+   "answers": {
+    "jev": "no",
+    "openai-luna": "no",
+    "gemini-flash-lite": "no",
+    "gemini-flash": "no",
+    "claude-haiku": "no",
+    "claude-sonnet": "no"
+   },
+   "accepted": [
+    "no"
+   ],
+   "truthFrom": "unanimous"
+  },
+  {
+   "site": "site-18",
+   "question": "address",
+   "answers": {
+    "jev": "no",
+    "openai-luna": "no",
+    "gemini-flash-lite": "no",
+    "gemini-flash": "no",
+    "claude-haiku": "no",
+    "claude-sonnet": "no"
+   },
+   "accepted": [
+    "no"
+   ],
+   "truthFrom": "unanimous"
+  },
+  {
+   "site": "site-19",
+   "question": "address",
+   "answers": {
+    "jev": "no",
+    "openai-luna": "no",
+    "gemini-flash-lite": "no",
+    "gemini-flash": "no",
+    "claude-haiku": "no",
+    "claude-sonnet": "no"
+   },
+   "accepted": [
+    "no"
+   ],
+   "truthFrom": "unanimous"
+  },
+  {
+   "site": "site-20",
+   "question": "address",
+   "answers": {
+    "jev": "no",
+    "openai-luna": "no",
+    "gemini-flash-lite": "no",
+    "gemini-flash": "no",
+    "claude-haiku": "no",
+    "claude-sonnet": "no"
+   },
+   "accepted": [
+    "no"
+   ],
+   "truthFrom": "unanimous"
+  },
+  {
+   "site": "site-21",
+   "question": "address",
+   "answers": {
+    "jev": "no",
+    "openai-luna": "no",
+    "gemini-flash-lite": "no",
+    "gemini-flash": "no",
+    "claude-haiku": "no",
+    "claude-sonnet": "no"
+   },
+   "accepted": [
+    "no"
+   ],
+   "truthFrom": "unanimous"
+  },
+  {
+   "site": "site-22",
+   "question": "address",
+   "answers": {
+    "jev": "no",
+    "openai-luna": "no",
+    "gemini-flash-lite": "no",
+    "gemini-flash": "no",
+    "claude-haiku": "no",
+    "claude-sonnet": "no"
+   },
+   "accepted": [
+    "no"
+   ],
+   "truthFrom": "unanimous"
+  },
+  {
+   "site": "site-23",
+   "question": "address",
+   "answers": {
+    "jev": "no",
+    "openai-luna": "no",
+    "gemini-flash-lite": "no",
+    "gemini-flash": "no",
+    "claude-haiku": "no",
+    "claude-sonnet": "no"
+   },
+   "accepted": [
+    "no"
+   ],
+   "truthFrom": "unanimous"
+  },
+  {
+   "site": "site-24",
+   "question": "address",
+   "answers": {
+    "jev": "no",
+    "openai-luna": "no",
+    "gemini-flash-lite": "no",
+    "gemini-flash": "no",
+    "claude-haiku": "no",
+    "claude-sonnet": "no"
+   },
+   "accepted": [
+    "no"
+   ],
+   "truthFrom": "unanimous"
+  },
+  {
+   "site": "site-25",
+   "question": "address",
+   "answers": {
+    "jev": "no",
+    "openai-luna": "no",
+    "gemini-flash-lite": "no",
+    "gemini-flash": "no",
+    "claude-haiku": "no",
+    "claude-sonnet": "no"
+   },
+   "accepted": [
+    "no"
+   ],
+   "truthFrom": "unanimous"
+  },
+  {
+   "site": "site-26",
+   "question": "address",
+   "answers": {
+    "jev": "no",
+    "openai-luna": "no",
+    "gemini-flash-lite": "no",
+    "gemini-flash": "no",
+    "claude-haiku": "no",
+    "claude-sonnet": "no"
+   },
+   "accepted": [
+    "no"
+   ],
+   "truthFrom": "unanimous"
+  },
+  {
+   "site": "site-27",
+   "question": "address",
+   "answers": {
+    "jev": "yes",
+    "openai-luna": "yes",
+    "gemini-flash-lite": "yes",
+    "gemini-flash": "yes",
+    "claude-haiku": "yes",
+    "claude-sonnet": "yes"
+   },
+   "accepted": [
+    "yes"
+   ],
+   "truthFrom": "eye (earlier pass)"
+  },
+  {
+   "site": "site-28",
+   "question": "address",
+   "answers": {
+    "jev": "no",
+    "openai-luna": "no",
+    "gemini-flash-lite": "no",
+    "gemini-flash": "no",
+    "claude-haiku": "no",
+    "claude-sonnet": "no"
+   },
+   "accepted": [
+    "no"
+   ],
+   "truthFrom": "unanimous"
+  },
+  {
+   "site": "site-29",
+   "question": "address",
+   "answers": {
+    "jev": "no",
+    "openai-luna": "no",
+    "gemini-flash-lite": "yes",
+    "gemini-flash": "no",
+    "claude-haiku": "yes",
+    "claude-sonnet": "yes"
+   },
+   "accepted": [
+    "yes"
+   ],
+   "truthFrom": "eye"
+  },
+  {
+   "site": "site-30",
+   "question": "address",
+   "answers": {
+    "jev": "unavailable",
+    "openai-luna": "unavailable",
+    "gemini-flash-lite": "no",
+    "gemini-flash": "unavailable",
+    "claude-haiku": "no",
+    "claude-sonnet": "unavailable"
+   },
+   "accepted": [
+    "no",
+    "unavailable"
+   ],
+   "truthFrom": "eye"
+  },
+  {
+   "site": "site-31",
+   "question": "address",
+   "answers": {
+    "jev": "no",
+    "openai-luna": "no",
+    "gemini-flash-lite": "no",
+    "gemini-flash": "no",
+    "claude-haiku": "no",
+    "claude-sonnet": "no"
+   },
+   "accepted": [
+    "no"
+   ],
+   "truthFrom": "unanimous"
+  },
+  {
+   "site": "site-32",
+   "question": "address",
+   "answers": {
+    "jev": "no",
+    "openai-luna": "no",
+    "gemini-flash-lite": "no",
+    "gemini-flash": "no",
+    "claude-haiku": "no",
+    "claude-sonnet": "no"
+   },
+   "accepted": [
+    "no"
+   ],
+   "truthFrom": "unanimous"
+  },
+  {
+   "site": "site-33",
+   "question": "address",
+   "answers": {
+    "jev": "no",
+    "openai-luna": "unavailable",
+    "gemini-flash-lite": "no",
+    "gemini-flash": "no",
+    "claude-haiku": "no",
+    "claude-sonnet": "no"
+   },
+   "accepted": [
+    "no",
+    "unavailable"
+   ],
+   "truthFrom": "eye"
+  },
+  {
+   "site": "site-34",
+   "question": "address",
+   "answers": {
+    "jev": "no",
+    "openai-luna": "no",
+    "gemini-flash-lite": "no",
+    "gemini-flash": "no",
+    "claude-haiku": "no",
+    "claude-sonnet": "no"
+   },
+   "accepted": [
+    "no"
+   ],
+   "truthFrom": "unanimous"
+  },
+  {
+   "site": "site-35",
+   "question": "address",
+   "answers": {
+    "jev": "no",
+    "openai-luna": "no",
+    "gemini-flash-lite": "no",
+    "gemini-flash": "no",
+    "claude-haiku": "no",
+    "claude-sonnet": "no"
+   },
+   "accepted": [
+    "no"
+   ],
+   "truthFrom": "unanimous"
+  },
+  {
+   "site": "site-36",
+   "question": "address",
+   "answers": {
+    "jev": "no",
+    "openai-luna": "no",
+    "gemini-flash-lite": "no",
+    "gemini-flash": "no",
+    "claude-haiku": "no",
+    "claude-sonnet": "no"
+   },
+   "accepted": [
+    "no"
+   ],
+   "truthFrom": "unanimous"
+  },
+  {
+   "site": "site-37",
+   "question": "address",
+   "answers": {
+    "jev": "no",
+    "openai-luna": "no",
+    "gemini-flash-lite": "no",
+    "gemini-flash": "no",
+    "claude-haiku": "no",
+    "claude-sonnet": "no"
+   },
+   "accepted": [
+    "no"
+   ],
+   "truthFrom": "unanimous"
+  },
+  {
+   "site": "site-38",
+   "question": "address",
+   "answers": {
+    "jev": "no",
+    "openai-luna": "no",
+    "gemini-flash-lite": "no",
+    "gemini-flash": "no",
+    "claude-haiku": "no",
+    "claude-sonnet": "no"
+   },
+   "accepted": [
+    "no"
+   ],
+   "truthFrom": "unanimous"
+  },
+  {
+   "site": "site-39",
+   "question": "address",
+   "answers": {
+    "jev": "no",
+    "openai-luna": "no",
+    "gemini-flash-lite": "no",
+    "gemini-flash": "no",
+    "claude-haiku": "no",
+    "claude-sonnet": "no"
+   },
+   "accepted": [
+    "no"
+   ],
+   "truthFrom": "unanimous"
+  },
+  {
+   "site": "site-40",
+   "question": "address",
+   "answers": {
+    "jev": "no",
+    "openai-luna": "no",
+    "gemini-flash-lite": "no",
+    "gemini-flash": "no",
+    "claude-haiku": "no",
+    "claude-sonnet": "no"
+   },
+   "accepted": [
+    "no"
+   ],
+   "truthFrom": "unanimous"
+  },
+  {
+   "site": "site-41",
+   "question": "address",
+   "answers": {
+    "jev": "no",
+    "openai-luna": "no",
+    "gemini-flash-lite": "no",
+    "gemini-flash": "no",
+    "claude-haiku": "no",
+    "claude-sonnet": "no"
+   },
+   "accepted": [
+    "no"
+   ],
+   "truthFrom": "unanimous"
+  },
+  {
+   "site": "site-42",
+   "question": "address",
+   "answers": {
+    "jev": "unavailable",
+    "openai-luna": "unavailable",
+    "gemini-flash-lite": "unavailable",
+    "gemini-flash": "unavailable",
+    "claude-haiku": "no",
+    "claude-sonnet": "unavailable"
+   },
+   "accepted": [
+    "no",
+    "unavailable"
+   ],
+   "truthFrom": "eye"
+  },
+  {
+   "site": "site-43",
+   "question": "address",
+   "answers": {
+    "jev": "yes",
+    "openai-luna": "yes",
+    "gemini-flash-lite": "yes",
+    "gemini-flash": "yes",
+    "claude-haiku": "yes",
+    "claude-sonnet": "yes"
+   },
+   "accepted": [
+    "yes"
+   ],
+   "truthFrom": "eye (earlier pass)"
+  },
+  {
+   "site": "site-44",
+   "question": "address",
+   "answers": {
+    "jev": "no",
+    "openai-luna": "no",
+    "gemini-flash-lite": "no",
+    "gemini-flash": "no",
+    "claude-haiku": "no",
+    "claude-sonnet": "no"
+   },
+   "accepted": [
+    "no"
+   ],
+   "truthFrom": "unanimous"
+  },
+  {
+   "site": "site-45",
+   "question": "address",
+   "answers": {
+    "jev": "no",
+    "openai-luna": "no",
+    "gemini-flash-lite": "no",
+    "gemini-flash": "no",
+    "claude-haiku": "no",
+    "claude-sonnet": "no"
+   },
+   "accepted": [
+    "no"
+   ],
+   "truthFrom": "unanimous"
+  },
+  {
+   "site": "site-46",
+   "question": "address",
+   "answers": {
+    "jev": "no",
+    "openai-luna": "no",
+    "gemini-flash-lite": "no",
+    "gemini-flash": "no",
+    "claude-haiku": "no",
+    "claude-sonnet": "no"
+   },
+   "accepted": [
+    "no"
+   ],
+   "truthFrom": "unanimous"
+  },
+  {
+   "site": "site-47",
+   "question": "address",
+   "answers": {
+    "jev": "no",
+    "openai-luna": "no",
+    "gemini-flash-lite": "no",
+    "gemini-flash": "no",
+    "claude-haiku": "no",
+    "claude-sonnet": "no"
+   },
+   "accepted": [
+    "no"
+   ],
+   "truthFrom": "unanimous"
+  },
+  {
+   "site": "site-48",
+   "question": "address",
+   "answers": {
+    "jev": "no",
+    "openai-luna": "no",
+    "gemini-flash-lite": "no",
+    "gemini-flash": "no",
+    "claude-haiku": "no",
+    "claude-sonnet": "no"
+   },
+   "accepted": [
+    "no"
+   ],
+   "truthFrom": "unanimous"
+  },
+  {
+   "site": "site-49",
+   "question": "address",
+   "answers": {
+    "jev": "no",
+    "openai-luna": "no",
+    "gemini-flash-lite": "no",
+    "gemini-flash": "no",
+    "claude-haiku": "no",
+    "claude-sonnet": "no"
+   },
+   "accepted": [
+    "no"
+   ],
+   "truthFrom": "unanimous"
+  },
+  {
+   "site": "site-50",
+   "question": "address",
+   "answers": {
+    "jev": "no",
+    "openai-luna": "no",
+    "gemini-flash-lite": "no",
+    "gemini-flash": "no",
+    "claude-haiku": "no",
+    "claude-sonnet": "no"
+   },
+   "accepted": [
+    "no"
+   ],
+   "truthFrom": "unanimous"
+  },
+  {
+   "site": "site-51",
+   "question": "address",
+   "answers": {
+    "jev": "no",
+    "openai-luna": "no",
+    "gemini-flash-lite": "no",
+    "gemini-flash": "no",
+    "claude-haiku": "no",
+    "claude-sonnet": "no"
+   },
+   "accepted": [
+    "no"
+   ],
+   "truthFrom": "unanimous"
+  },
+  {
+   "site": "site-52",
+   "question": "address",
+   "answers": {
+    "jev": "no",
+    "openai-luna": "unavailable",
+    "gemini-flash-lite": "no",
+    "gemini-flash": "no",
+    "claude-haiku": "no",
+    "claude-sonnet": "unavailable"
+   },
+   "accepted": "ambiguous",
+   "truthFrom": "eye"
+  },
+  {
+   "site": "site-53",
+   "question": "address",
+   "answers": {
+    "jev": "no",
+    "openai-luna": "no",
+    "gemini-flash-lite": "no",
+    "gemini-flash": "no",
+    "claude-haiku": "no",
+    "claude-sonnet": "no"
+   },
+   "accepted": [
+    "no"
+   ],
+   "truthFrom": "unanimous"
+  },
+  {
+   "site": "site-54",
+   "question": "address",
+   "answers": {
+    "jev": "no",
+    "openai-luna": "no",
+    "gemini-flash-lite": "no",
+    "gemini-flash": "no",
+    "claude-haiku": "no",
+    "claude-sonnet": "no"
+   },
+   "accepted": [
+    "no"
+   ],
+   "truthFrom": "unanimous"
+  },
+  {
+   "site": "site-55",
+   "question": "address",
+   "answers": {
+    "jev": "yes",
+    "openai-luna": "yes",
+    "gemini-flash-lite": "yes",
+    "gemini-flash": "yes",
+    "claude-haiku": "yes",
+    "claude-sonnet": "yes"
+   },
+   "accepted": [
+    "yes"
+   ],
+   "truthFrom": "eye (earlier pass)"
+  },
+  {
+   "site": "site-56",
+   "question": "address",
+   "answers": {
+    "jev": "no",
+    "openai-luna": "no",
+    "gemini-flash-lite": "no",
+    "gemini-flash": "no",
+    "claude-haiku": "no",
+    "claude-sonnet": "no"
+   },
+   "accepted": [
+    "no"
+   ],
+   "truthFrom": "unanimous"
+  },
+  {
+   "site": "site-57",
+   "question": "address",
+   "answers": {
+    "jev": "no",
+    "openai-luna": "no",
+    "gemini-flash-lite": "no",
+    "gemini-flash": "no",
+    "claude-haiku": "no",
+    "claude-sonnet": "no"
+   },
+   "accepted": [
+    "no"
+   ],
+   "truthFrom": "unanimous"
+  },
+  {
+   "site": "site-58",
+   "question": "address",
+   "answers": {
+    "jev": "no",
+    "openai-luna": "no",
+    "gemini-flash-lite": "no",
+    "gemini-flash": "no",
+    "claude-haiku": "no",
+    "claude-sonnet": "no"
+   },
+   "accepted": [
+    "no"
+   ],
+   "truthFrom": "unanimous"
+  },
+  {
+   "site": "site-59",
+   "question": "address",
+   "answers": {
+    "jev": "no",
+    "openai-luna": "no",
+    "gemini-flash-lite": "no",
+    "gemini-flash": "no",
+    "claude-haiku": "no",
+    "claude-sonnet": "no"
+   },
+   "accepted": [
+    "no"
+   ],
+   "truthFrom": "unanimous"
+  },
+  {
+   "site": "site-60",
+   "question": "address",
+   "answers": {
+    "jev": "yes",
+    "openai-luna": "yes",
+    "gemini-flash-lite": "yes",
+    "gemini-flash": "yes",
+    "claude-haiku": "yes",
+    "claude-sonnet": "yes"
+   },
+   "accepted": [
+    "yes"
+   ],
+   "truthFrom": "eye (earlier pass)"
+  },
+  {
+   "site": "site-61",
+   "question": "address",
+   "answers": {
+    "jev": "no",
+    "openai-luna": "no",
+    "gemini-flash-lite": "no",
+    "gemini-flash": "no",
+    "claude-haiku": "no",
+    "claude-sonnet": "no"
+   },
+   "accepted": [
+    "no"
+   ],
+   "truthFrom": "unanimous"
+  },
+  {
+   "site": "site-62",
+   "question": "address",
+   "answers": {
+    "jev": "no",
+    "openai-luna": "no",
+    "gemini-flash-lite": "no",
+    "gemini-flash": "no",
+    "claude-haiku": "no",
+    "claude-sonnet": "no"
+   },
+   "accepted": [
+    "no"
+   ],
+   "truthFrom": "unanimous"
+  },
+  {
+   "site": "site-63",
+   "question": "address",
+   "answers": {
+    "jev": "no",
+    "openai-luna": "no",
+    "gemini-flash-lite": "no",
+    "gemini-flash": "no",
+    "claude-haiku": "no",
+    "claude-sonnet": "no"
+   },
+   "accepted": [
+    "no"
+   ],
+   "truthFrom": "unanimous"
+  },
+  {
+   "site": "site-64",
+   "question": "address",
+   "answers": {
+    "jev": "no",
+    "openai-luna": "no",
+    "gemini-flash-lite": "no",
+    "gemini-flash": "no",
+    "claude-haiku": "no",
+    "claude-sonnet": "no"
+   },
+   "accepted": [
+    "no"
+   ],
+   "truthFrom": "unanimous"
+  },
+  {
+   "site": "site-65",
+   "question": "address",
+   "answers": {
+    "jev": "no",
+    "openai-luna": "no",
+    "gemini-flash-lite": "no",
+    "gemini-flash": "no",
+    "claude-haiku": "no",
+    "claude-sonnet": "no"
+   },
+   "accepted": [
+    "no"
+   ],
+   "truthFrom": "unanimous"
+  },
+  {
+   "site": "site-66",
+   "question": "address",
+   "answers": {
+    "jev": "no",
+    "openai-luna": "no",
+    "gemini-flash-lite": "no",
+    "gemini-flash": "no",
+    "claude-haiku": "no",
+    "claude-sonnet": "no"
+   },
+   "accepted": [
+    "no"
+   ],
+   "truthFrom": "unanimous"
+  },
+  {
+   "site": "site-67",
+   "question": "address",
+   "answers": {
+    "jev": "no",
+    "openai-luna": "no",
+    "gemini-flash-lite": "no",
+    "gemini-flash": "no",
+    "claude-haiku": "no",
+    "claude-sonnet": "no"
+   },
+   "accepted": [
+    "no"
+   ],
+   "truthFrom": "unanimous"
+  },
+  {
+   "site": "site-68",
+   "question": "address",
+   "answers": {
+    "jev": "yes",
+    "openai-luna": "yes",
+    "gemini-flash-lite": "yes",
+    "gemini-flash": "yes",
+    "claude-haiku": "error",
+    "claude-sonnet": "yes"
+   },
+   "accepted": [
+    "yes"
+   ],
+   "truthFrom": "eye (earlier pass)"
+  },
+  {
+   "site": "site-69",
+   "question": "address",
+   "answers": {
+    "jev": "no",
+    "openai-luna": "no",
+    "gemini-flash-lite": "no",
+    "gemini-flash": "no",
+    "claude-haiku": "no",
+    "claude-sonnet": "no"
+   },
+   "accepted": [
+    "no"
+   ],
+   "truthFrom": "unanimous"
+  },
+  {
+   "site": "site-70",
+   "question": "address",
+   "answers": {
+    "jev": "unavailable",
+    "openai-luna": "unavailable",
+    "gemini-flash-lite": "unavailable",
+    "gemini-flash": "unavailable",
+    "claude-haiku": "unavailable",
+    "claude-sonnet": "unavailable"
+   },
+   "accepted": [
+    "unavailable"
+   ],
+   "truthFrom": "unanimous"
+  },
+  {
+   "site": "site-71",
+   "question": "address",
+   "answers": {
+    "jev": "no",
+    "openai-luna": "no",
+    "gemini-flash-lite": "no",
+    "gemini-flash": "no",
+    "claude-haiku": "no",
+    "claude-sonnet": "no"
+   },
+   "accepted": [
+    "no"
+   ],
+   "truthFrom": "unanimous"
+  },
+  {
+   "site": "site-72",
+   "question": "address",
+   "answers": {
+    "jev": "yes",
+    "openai-luna": "yes",
+    "gemini-flash-lite": "yes",
+    "gemini-flash": "yes",
+    "claude-haiku": "yes",
+    "claude-sonnet": "yes"
+   },
+   "accepted": [
+    "yes"
+   ],
+   "truthFrom": "eye (earlier pass)"
+  },
+  {
+   "site": "site-73",
+   "question": "address",
+   "answers": {
+    "jev": "no",
+    "openai-luna": "no",
+    "gemini-flash-lite": "no",
+    "gemini-flash": "no",
+    "claude-haiku": "no",
+    "claude-sonnet": "no"
+   },
+   "accepted": [
+    "no"
+   ],
+   "truthFrom": "unanimous"
+  },
+  {
+   "site": "site-74",
+   "question": "address",
+   "answers": {
+    "jev": "no",
+    "openai-luna": "no",
+    "gemini-flash-lite": "no",
+    "gemini-flash": "no",
+    "claude-haiku": "no",
+    "claude-sonnet": "no"
+   },
+   "accepted": [
+    "no"
+   ],
+   "truthFrom": "unanimous"
+  },
+  {
+   "site": "site-75",
+   "question": "address",
+   "answers": {
+    "jev": "no",
+    "openai-luna": "no",
+    "gemini-flash-lite": "no",
+    "gemini-flash": "no",
+    "claude-haiku": "no",
+    "claude-sonnet": "no"
+   },
+   "accepted": [
+    "no"
+   ],
+   "truthFrom": "unanimous"
+  },
+  {
+   "site": "site-76",
+   "question": "address",
+   "answers": {
+    "jev": "no",
+    "openai-luna": "no",
+    "gemini-flash-lite": "no",
+    "gemini-flash": "no",
+    "claude-haiku": "no",
+    "claude-sonnet": "no"
+   },
+   "accepted": [
+    "no"
+   ],
+   "truthFrom": "unanimous"
+  },
+  {
+   "site": "site-77",
+   "question": "address",
+   "answers": {
+    "jev": "no",
+    "openai-luna": "no",
+    "gemini-flash-lite": "no",
+    "gemini-flash": "no",
+    "claude-haiku": "no",
+    "claude-sonnet": "no"
+   },
+   "accepted": [
+    "no"
+   ],
+   "truthFrom": "unanimous"
+  },
+  {
+   "site": "site-78",
+   "question": "address",
+   "answers": {
+    "jev": "no",
+    "openai-luna": "no",
+    "gemini-flash-lite": "no",
+    "gemini-flash": "no",
+    "claude-haiku": "no",
+    "claude-sonnet": "no"
+   },
+   "accepted": [
+    "no"
+   ],
+   "truthFrom": "unanimous"
+  },
+  {
+   "site": "site-79",
+   "question": "address",
+   "answers": {
+    "jev": "yes",
+    "openai-luna": "yes",
+    "gemini-flash-lite": "yes",
+    "gemini-flash": "yes",
+    "claude-haiku": "yes",
+    "claude-sonnet": "yes"
+   },
+   "accepted": [
+    "yes"
+   ],
+   "truthFrom": "eye (earlier pass)"
+  },
+  {
+   "site": "site-01",
+   "question": "chat",
+   "answers": {
+    "jev": "unavailable",
+    "openai-luna": "unavailable",
+    "gemini-flash-lite": "yes",
+    "gemini-flash": "yes",
+    "claude-haiku": "unavailable",
+    "claude-sonnet": "yes"
+   },
+   "accepted": [
+    "unavailable",
+    "yes"
+   ],
+   "truthFrom": "eye"
+  },
+  {
+   "site": "site-02",
+   "question": "chat",
+   "answers": {
+    "jev": "no",
+    "openai-luna": "no",
+    "gemini-flash-lite": "no",
+    "gemini-flash": "no",
+    "claude-haiku": "no",
+    "claude-sonnet": "no"
+   },
+   "accepted": [
+    "no"
+   ],
+   "truthFrom": "unanimous"
+  },
+  {
+   "site": "site-03",
+   "question": "chat",
+   "answers": {
+    "jev": "yes",
+    "openai-luna": "yes",
+    "gemini-flash-lite": "yes",
+    "gemini-flash": "yes",
+    "claude-haiku": "yes",
+    "claude-sonnet": "yes"
+   },
+   "accepted": [
+    "yes"
+   ],
+   "truthFrom": "unanimous"
+  },
+  {
+   "site": "site-04",
+   "question": "chat",
+   "answers": {
+    "jev": "yes",
+    "openai-luna": "yes",
+    "gemini-flash-lite": "yes",
+    "gemini-flash": "yes",
+    "claude-haiku": "yes",
+    "claude-sonnet": "yes"
+   },
+   "accepted": [
+    "yes"
+   ],
+   "truthFrom": "unanimous"
+  },
+  {
+   "site": "site-05",
+   "question": "chat",
+   "answers": {
+    "jev": "yes",
+    "openai-luna": "yes",
+    "gemini-flash-lite": "yes",
+    "gemini-flash": "yes",
+    "claude-haiku": "yes",
+    "claude-sonnet": "yes"
+   },
+   "accepted": [
+    "yes"
+   ],
+   "truthFrom": "unanimous"
+  },
+  {
+   "site": "site-06",
+   "question": "chat",
+   "answers": {
+    "jev": "no",
+    "openai-luna": "yes",
+    "gemini-flash-lite": "yes",
+    "gemini-flash": "yes",
+    "claude-haiku": "yes",
+    "claude-sonnet": "yes"
+   },
+   "accepted": [
+    "yes"
+   ],
+   "truthFrom": "eye (earlier pass)"
+  },
+  {
+   "site": "site-07",
+   "question": "chat",
+   "answers": {
+    "jev": "yes",
+    "openai-luna": "yes",
+    "gemini-flash-lite": "yes",
+    "gemini-flash": "yes",
+    "claude-haiku": "yes",
+    "claude-sonnet": "yes"
+   },
+   "accepted": [
+    "yes"
+   ],
+   "truthFrom": "unanimous"
+  },
+  {
+   "site": "site-08",
+   "question": "chat",
+   "answers": {
+    "jev": "unavailable",
+    "openai-luna": "unavailable",
+    "gemini-flash-lite": "yes",
+    "gemini-flash": "unavailable",
+    "claude-haiku": "error",
+    "claude-sonnet": "unavailable"
+   },
+   "accepted": "ambiguous",
+   "truthFrom": "eye"
+  },
+  {
+   "site": "site-09",
+   "question": "chat",
+   "answers": {
+    "jev": "no",
+    "openai-luna": "no",
+    "gemini-flash-lite": "yes",
+    "gemini-flash": "yes",
+    "claude-haiku": "no",
+    "claude-sonnet": "no"
+   },
+   "accepted": [
+    "no"
+   ],
+   "truthFrom": "eye (earlier pass)"
+  },
+  {
+   "site": "site-10",
+   "question": "chat",
+   "answers": {
+    "jev": "yes",
+    "openai-luna": "yes",
+    "gemini-flash-lite": "yes",
+    "gemini-flash": "yes",
+    "claude-haiku": "yes",
+    "claude-sonnet": "yes"
+   },
+   "accepted": [
+    "yes"
+   ],
+   "truthFrom": "unanimous"
+  },
+  {
+   "site": "site-11",
+   "question": "chat",
+   "answers": {
+    "jev": "yes",
+    "openai-luna": "yes",
+    "gemini-flash-lite": "yes",
+    "gemini-flash": "yes",
+    "claude-haiku": "yes",
+    "claude-sonnet": "yes"
+   },
+   "accepted": [
+    "yes"
+   ],
+   "truthFrom": "unanimous"
+  },
+  {
+   "site": "site-12",
+   "question": "chat",
+   "answers": {
+    "jev": "yes",
+    "openai-luna": "yes",
+    "gemini-flash-lite": "yes",
+    "gemini-flash": "yes",
+    "claude-haiku": "yes",
+    "claude-sonnet": "yes"
+   },
+   "accepted": [
+    "yes"
+   ],
+   "truthFrom": "unanimous"
+  },
+  {
+   "site": "site-13",
+   "question": "chat",
+   "answers": {
+    "jev": "yes",
+    "openai-luna": "yes",
+    "gemini-flash-lite": "yes",
+    "gemini-flash": "yes",
+    "claude-haiku": "yes",
+    "claude-sonnet": "yes"
+   },
+   "accepted": [
+    "yes"
+   ],
+   "truthFrom": "unanimous"
+  },
+  {
+   "site": "site-14",
+   "question": "chat",
+   "answers": {
+    "jev": "yes",
+    "openai-luna": "yes",
+    "gemini-flash-lite": "yes",
+    "gemini-flash": "yes",
+    "claude-haiku": "yes",
+    "claude-sonnet": "yes"
+   },
+   "accepted": [
+    "yes"
+   ],
+   "truthFrom": "unanimous"
+  },
+  {
+   "site": "site-15",
+   "question": "chat",
+   "answers": {
+    "jev": "yes",
+    "openai-luna": "yes",
+    "gemini-flash-lite": "yes",
+    "gemini-flash": "yes",
+    "claude-haiku": "yes",
+    "claude-sonnet": "yes"
+   },
+   "accepted": [
+    "yes"
+   ],
+   "truthFrom": "unanimous"
+  },
+  {
+   "site": "site-16",
+   "question": "chat",
+   "answers": {
+    "jev": "yes",
+    "openai-luna": "yes",
+    "gemini-flash-lite": "yes",
+    "gemini-flash": "yes",
+    "claude-haiku": "yes",
+    "claude-sonnet": "yes"
+   },
+   "accepted": [
+    "yes"
+   ],
+   "truthFrom": "unanimous"
+  },
+  {
+   "site": "site-17",
+   "question": "chat",
+   "answers": {
+    "jev": "yes",
+    "openai-luna": "yes",
+    "gemini-flash-lite": "yes",
+    "gemini-flash": "yes",
+    "claude-haiku": "yes",
+    "claude-sonnet": "yes"
+   },
+   "accepted": [
+    "yes"
+   ],
+   "truthFrom": "unanimous"
+  },
+  {
+   "site": "site-18",
+   "question": "chat",
+   "answers": {
+    "jev": "yes",
+    "openai-luna": "yes",
+    "gemini-flash-lite": "yes",
+    "gemini-flash": "yes",
+    "claude-haiku": "yes",
+    "claude-sonnet": "yes"
+   },
+   "accepted": [
+    "yes"
+   ],
+   "truthFrom": "unanimous"
+  },
+  {
+   "site": "site-19",
+   "question": "chat",
+   "answers": {
+    "jev": "yes",
+    "openai-luna": "yes",
+    "gemini-flash-lite": "yes",
+    "gemini-flash": "yes",
+    "claude-haiku": "yes",
+    "claude-sonnet": "yes"
+   },
+   "accepted": [
+    "yes"
+   ],
+   "truthFrom": "unanimous"
+  },
+  {
+   "site": "site-20",
+   "question": "chat",
+   "answers": {
+    "jev": "no",
+    "openai-luna": "no",
+    "gemini-flash-lite": "no",
+    "gemini-flash": "no",
+    "claude-haiku": "no",
+    "claude-sonnet": "no"
+   },
+   "accepted": [
+    "no"
+   ],
+   "truthFrom": "unanimous"
+  },
+  {
+   "site": "site-21",
+   "question": "chat",
+   "answers": {
+    "jev": "yes",
+    "openai-luna": "yes",
+    "gemini-flash-lite": "yes",
+    "gemini-flash": "yes",
+    "claude-haiku": "yes",
+    "claude-sonnet": "yes"
+   },
+   "accepted": [
+    "yes"
+   ],
+   "truthFrom": "unanimous"
+  },
+  {
+   "site": "site-22",
+   "question": "chat",
+   "answers": {
+    "jev": "yes",
+    "openai-luna": "yes",
+    "gemini-flash-lite": "yes",
+    "gemini-flash": "yes",
+    "claude-haiku": "yes",
+    "claude-sonnet": "yes"
+   },
+   "accepted": [
+    "yes"
+   ],
+   "truthFrom": "unanimous"
+  },
+  {
+   "site": "site-23",
+   "question": "chat",
+   "answers": {
+    "jev": "no",
+    "openai-luna": "no",
+    "gemini-flash-lite": "no",
+    "gemini-flash": "no",
+    "claude-haiku": "no",
+    "claude-sonnet": "no"
+   },
+   "accepted": [
+    "no"
+   ],
+   "truthFrom": "unanimous"
+  },
+  {
+   "site": "site-24",
+   "question": "chat",
+   "answers": {
+    "jev": "yes",
+    "openai-luna": "yes",
+    "gemini-flash-lite": "yes",
+    "gemini-flash": "yes",
+    "claude-haiku": "yes",
+    "claude-sonnet": "yes"
+   },
+   "accepted": [
+    "yes"
+   ],
+   "truthFrom": "unanimous"
+  },
+  {
+   "site": "site-25",
+   "question": "chat",
+   "answers": {
+    "jev": "yes",
+    "openai-luna": "yes",
+    "gemini-flash-lite": "yes",
+    "gemini-flash": "yes",
+    "claude-haiku": "yes",
+    "claude-sonnet": "yes"
+   },
+   "accepted": [
+    "yes"
+   ],
+   "truthFrom": "unanimous"
+  },
+  {
+   "site": "site-26",
+   "question": "chat",
+   "answers": {
+    "jev": "no",
+    "openai-luna": "no",
+    "gemini-flash-lite": "no",
+    "gemini-flash": "no",
+    "claude-haiku": "no",
+    "claude-sonnet": "no"
+   },
+   "accepted": [
+    "no"
+   ],
+   "truthFrom": "unanimous"
+  },
+  {
+   "site": "site-27",
+   "question": "chat",
+   "answers": {
+    "jev": "no",
+    "openai-luna": "no",
+    "gemini-flash-lite": "no",
+    "gemini-flash": "no",
+    "claude-haiku": "no",
+    "claude-sonnet": "no"
+   },
+   "accepted": [
+    "no"
+   ],
+   "truthFrom": "unanimous"
+  },
+  {
+   "site": "site-28",
+   "question": "chat",
+   "answers": {
+    "jev": "no",
+    "openai-luna": "no",
+    "gemini-flash-lite": "yes",
+    "gemini-flash": "yes",
+    "claude-haiku": "error",
+    "claude-sonnet": "yes"
+   },
+   "accepted": [
+    "yes"
+   ],
+   "truthFrom": "eye (earlier pass)"
+  },
+  {
+   "site": "site-29",
+   "question": "chat",
+   "answers": {
+    "jev": "yes",
+    "openai-luna": "yes",
+    "gemini-flash-lite": "yes",
+    "gemini-flash": "yes",
+    "claude-haiku": "yes",
+    "claude-sonnet": "yes"
+   },
+   "accepted": [
+    "yes"
+   ],
+   "truthFrom": "unanimous"
+  },
+  {
+   "site": "site-30",
+   "question": "chat",
+   "answers": {
+    "jev": "unavailable",
+    "openai-luna": "unavailable",
+    "gemini-flash-lite": "unavailable",
+    "gemini-flash": "unavailable",
+    "claude-haiku": "error",
+    "claude-sonnet": "unavailable"
+   },
+   "accepted": [
+    "unavailable",
+    "yes"
+   ],
+   "truthFrom": "eye"
+  },
+  {
+   "site": "site-31",
+   "question": "chat",
+   "answers": {
+    "jev": "yes",
+    "openai-luna": "yes",
+    "gemini-flash-lite": "yes",
+    "gemini-flash": "yes",
+    "claude-haiku": "yes",
+    "claude-sonnet": "yes"
+   },
+   "accepted": [
+    "yes"
+   ],
+   "truthFrom": "unanimous"
+  },
+  {
+   "site": "site-32",
+   "question": "chat",
+   "answers": {
+    "jev": "no",
+    "openai-luna": "yes",
+    "gemini-flash-lite": "yes",
+    "gemini-flash": "yes",
+    "claude-haiku": "yes",
+    "claude-sonnet": "no"
+   },
+   "accepted": "ambiguous",
+   "truthFrom": "eye (earlier pass)"
+  },
+  {
+   "site": "site-33",
+   "question": "chat",
+   "answers": {
+    "jev": "yes",
+    "openai-luna": "unavailable",
+    "gemini-flash-lite": "yes",
+    "gemini-flash": "yes",
+    "claude-haiku": "yes",
+    "claude-sonnet": "yes"
+   },
+   "accepted": [
+    "unavailable",
+    "yes"
+   ],
+   "truthFrom": "eye"
+  },
+  {
+   "site": "site-34",
+   "question": "chat",
+   "answers": {
+    "jev": "yes",
+    "openai-luna": "yes",
+    "gemini-flash-lite": "yes",
+    "gemini-flash": "yes",
+    "claude-haiku": "error",
+    "claude-sonnet": "no"
+   },
+   "accepted": "ambiguous",
+   "truthFrom": "eye"
+  },
+  {
+   "site": "site-35",
+   "question": "chat",
+   "answers": {
+    "jev": "yes",
+    "openai-luna": "no",
+    "gemini-flash-lite": "yes",
+    "gemini-flash": "yes",
+    "claude-haiku": "no",
+    "claude-sonnet": "yes"
+   },
+   "accepted": [
+    "yes"
+   ],
+   "truthFrom": "eye"
+  },
+  {
+   "site": "site-36",
+   "question": "chat",
+   "answers": {
+    "jev": "no",
+    "openai-luna": "yes",
+    "gemini-flash-lite": "yes",
+    "gemini-flash": "yes",
+    "claude-haiku": "error",
+    "claude-sonnet": "yes"
+   },
+   "accepted": "ambiguous",
+   "truthFrom": "eye (earlier pass)"
+  },
+  {
+   "site": "site-37",
+   "question": "chat",
+   "answers": {
+    "jev": "yes",
+    "openai-luna": "yes",
+    "gemini-flash-lite": "yes",
+    "gemini-flash": "yes",
+    "claude-haiku": "yes",
+    "claude-sonnet": "yes"
+   },
+   "accepted": [
+    "yes"
+   ],
+   "truthFrom": "unanimous"
+  },
+  {
+   "site": "site-38",
+   "question": "chat",
+   "answers": {
+    "jev": "yes",
+    "openai-luna": "yes",
+    "gemini-flash-lite": "yes",
+    "gemini-flash": "yes",
+    "claude-haiku": "yes",
+    "claude-sonnet": "yes"
+   },
+   "accepted": [
+    "yes"
+   ],
+   "truthFrom": "unanimous"
+  },
+  {
+   "site": "site-39",
+   "question": "chat",
+   "answers": {
+    "jev": "yes",
+    "openai-luna": "yes",
+    "gemini-flash-lite": "yes",
+    "gemini-flash": "yes",
+    "claude-haiku": "yes",
+    "claude-sonnet": "yes"
+   },
+   "accepted": [
+    "yes"
+   ],
+   "truthFrom": "unanimous"
+  },
+  {
+   "site": "site-40",
+   "question": "chat",
+   "answers": {
+    "jev": "no",
+    "openai-luna": "no",
+    "gemini-flash-lite": "no",
+    "gemini-flash": "no",
+    "claude-haiku": "no",
+    "claude-sonnet": "no"
+   },
+   "accepted": [
+    "no"
+   ],
+   "truthFrom": "eye (earlier pass)"
+  },
+  {
+   "site": "site-41",
+   "question": "chat",
+   "answers": {
+    "jev": "yes",
+    "openai-luna": "yes",
+    "gemini-flash-lite": "yes",
+    "gemini-flash": "yes",
+    "claude-haiku": "yes",
+    "claude-sonnet": "yes"
+   },
+   "accepted": [
+    "yes"
+   ],
+   "truthFrom": "unanimous"
+  },
+  {
+   "site": "site-42",
+   "question": "chat",
+   "answers": {
+    "jev": "unavailable",
+    "openai-luna": "unavailable",
+    "gemini-flash-lite": "unavailable",
+    "gemini-flash": "unavailable",
+    "claude-haiku": "unavailable",
+    "claude-sonnet": "unavailable"
+   },
+   "accepted": [
+    "unavailable"
+   ],
+   "truthFrom": "unanimous"
+  },
+  {
+   "site": "site-43",
+   "question": "chat",
+   "answers": {
+    "jev": "yes",
+    "openai-luna": "yes",
+    "gemini-flash-lite": "yes",
+    "gemini-flash": "yes",
+    "claude-haiku": "yes",
+    "claude-sonnet": "yes"
+   },
+   "accepted": [
+    "yes"
+   ],
+   "truthFrom": "unanimous"
+  },
+  {
+   "site": "site-44",
+   "question": "chat",
+   "answers": {
+    "jev": "no",
+    "openai-luna": "no",
+    "gemini-flash-lite": "no",
+    "gemini-flash": "no",
+    "claude-haiku": "no",
+    "claude-sonnet": "no"
+   },
+   "accepted": [
+    "no"
+   ],
+   "truthFrom": "unanimous"
+  },
+  {
+   "site": "site-45",
+   "question": "chat",
+   "answers": {
+    "jev": "yes",
+    "openai-luna": "yes",
+    "gemini-flash-lite": "yes",
+    "gemini-flash": "yes",
+    "claude-haiku": "yes",
+    "claude-sonnet": "yes"
+   },
+   "accepted": [
+    "yes"
+   ],
+   "truthFrom": "unanimous"
+  },
+  {
+   "site": "site-46",
+   "question": "chat",
+   "answers": {
+    "jev": "yes",
+    "openai-luna": "yes",
+    "gemini-flash-lite": "yes",
+    "gemini-flash": "yes",
+    "claude-haiku": "yes",
+    "claude-sonnet": "yes"
+   },
+   "accepted": [
+    "yes"
+   ],
+   "truthFrom": "unanimous"
+  },
+  {
+   "site": "site-47",
+   "question": "chat",
+   "answers": {
+    "jev": "yes",
+    "openai-luna": "yes",
+    "gemini-flash-lite": "yes",
+    "gemini-flash": "yes",
+    "claude-haiku": "yes",
+    "claude-sonnet": "yes"
+   },
+   "accepted": [
+    "yes"
+   ],
+   "truthFrom": "unanimous"
+  },
+  {
+   "site": "site-48",
+   "question": "chat",
+   "answers": {
+    "jev": "no",
+    "openai-luna": "no",
+    "gemini-flash-lite": "yes",
+    "gemini-flash": "yes",
+    "claude-haiku": "no",
+    "claude-sonnet": "no"
+   },
+   "accepted": [
+    "no"
+   ],
+   "truthFrom": "eye (earlier pass)"
+  },
+  {
+   "site": "site-49",
+   "question": "chat",
+   "answers": {
+    "jev": "no",
+    "openai-luna": "no",
+    "gemini-flash-lite": "no",
+    "gemini-flash": "no",
+    "claude-haiku": "no",
+    "claude-sonnet": "no"
+   },
+   "accepted": [
+    "no"
+   ],
+   "truthFrom": "eye (earlier pass)"
+  },
+  {
+   "site": "site-50",
+   "question": "chat",
+   "answers": {
+    "jev": "yes",
+    "openai-luna": "yes",
+    "gemini-flash-lite": "yes",
+    "gemini-flash": "yes",
+    "claude-haiku": "yes",
+    "claude-sonnet": "yes"
+   },
+   "accepted": [
+    "yes"
+   ],
+   "truthFrom": "unanimous"
+  },
+  {
+   "site": "site-51",
+   "question": "chat",
+   "answers": {
+    "jev": "yes",
+    "openai-luna": "yes",
+    "gemini-flash-lite": "yes",
+    "gemini-flash": "yes",
+    "claude-haiku": "yes",
+    "claude-sonnet": "yes"
+   },
+   "accepted": [
+    "yes"
+   ],
+   "truthFrom": "unanimous"
+  },
+  {
+   "site": "site-52",
+   "question": "chat",
+   "answers": {
+    "jev": "yes",
+    "openai-luna": "unavailable",
+    "gemini-flash-lite": "yes",
+    "gemini-flash": "yes",
+    "claude-haiku": "yes",
+    "claude-sonnet": "yes"
+   },
+   "accepted": "ambiguous",
+   "truthFrom": "eye"
+  },
+  {
+   "site": "site-53",
+   "question": "chat",
+   "answers": {
+    "jev": "no",
+    "openai-luna": "no",
+    "gemini-flash-lite": "no",
+    "gemini-flash": "no",
+    "claude-haiku": "no",
+    "claude-sonnet": "no"
+   },
+   "accepted": [
+    "no"
+   ],
+   "truthFrom": "eye (earlier pass)"
+  },
+  {
+   "site": "site-54",
+   "question": "chat",
+   "answers": {
+    "jev": "yes",
+    "openai-luna": "yes",
+    "gemini-flash-lite": "yes",
+    "gemini-flash": "yes",
+    "claude-haiku": "yes",
+    "claude-sonnet": "yes"
+   },
+   "accepted": [
+    "yes"
+   ],
+   "truthFrom": "unanimous"
+  },
+  {
+   "site": "site-55",
+   "question": "chat",
+   "answers": {
+    "jev": "yes",
+    "openai-luna": "yes",
+    "gemini-flash-lite": "yes",
+    "gemini-flash": "yes",
+    "claude-haiku": "yes",
+    "claude-sonnet": "yes"
+   },
+   "accepted": [
+    "yes"
+   ],
+   "truthFrom": "unanimous"
+  },
+  {
+   "site": "site-56",
+   "question": "chat",
+   "answers": {
+    "jev": "yes",
+    "openai-luna": "yes",
+    "gemini-flash-lite": "yes",
+    "gemini-flash": "yes",
+    "claude-haiku": "yes",
+    "claude-sonnet": "yes"
+   },
+   "accepted": [
+    "yes"
+   ],
+   "truthFrom": "unanimous"
+  },
+  {
+   "site": "site-57",
+   "question": "chat",
+   "answers": {
+    "jev": "yes",
+    "openai-luna": "yes",
+    "gemini-flash-lite": "yes",
+    "gemini-flash": "yes",
+    "claude-haiku": "yes",
+    "claude-sonnet": "yes"
+   },
+   "accepted": [
+    "yes"
+   ],
+   "truthFrom": "unanimous"
+  },
+  {
+   "site": "site-58",
+   "question": "chat",
+   "answers": {
+    "jev": "yes",
+    "openai-luna": "yes",
+    "gemini-flash-lite": "yes",
+    "gemini-flash": "yes",
+    "claude-haiku": "yes",
+    "claude-sonnet": "yes"
+   },
+   "accepted": [
+    "yes"
+   ],
+   "truthFrom": "unanimous"
+  },
+  {
+   "site": "site-59",
+   "question": "chat",
+   "answers": {
+    "jev": "yes",
+    "openai-luna": "yes",
+    "gemini-flash-lite": "yes",
+    "gemini-flash": "yes",
+    "claude-haiku": "yes",
+    "claude-sonnet": "yes"
+   },
+   "accepted": [
+    "yes"
+   ],
+   "truthFrom": "unanimous"
+  },
+  {
+   "site": "site-60",
+   "question": "chat",
+   "answers": {
+    "jev": "no",
+    "openai-luna": "no",
+    "gemini-flash-lite": "no",
+    "gemini-flash": "no",
+    "claude-haiku": "no",
+    "claude-sonnet": "no"
+   },
+   "accepted": [
+    "no"
+   ],
+   "truthFrom": "unanimous"
+  },
+  {
+   "site": "site-61",
+   "question": "chat",
+   "answers": {
+    "jev": "yes",
+    "openai-luna": "yes",
+    "gemini-flash-lite": "yes",
+    "gemini-flash": "yes",
+    "claude-haiku": "yes",
+    "claude-sonnet": "yes"
+   },
+   "accepted": [
+    "yes"
+   ],
+   "truthFrom": "unanimous"
+  },
+  {
+   "site": "site-62",
+   "question": "chat",
+   "answers": {
+    "jev": "yes",
+    "openai-luna": "yes",
+    "gemini-flash-lite": "yes",
+    "gemini-flash": "yes",
+    "claude-haiku": "yes",
+    "claude-sonnet": "yes"
+   },
+   "accepted": [
+    "yes"
+   ],
+   "truthFrom": "unanimous"
+  },
+  {
+   "site": "site-63",
+   "question": "chat",
+   "answers": {
+    "jev": "yes",
+    "openai-luna": "yes",
+    "gemini-flash-lite": "yes",
+    "gemini-flash": "yes",
+    "claude-haiku": "yes",
+    "claude-sonnet": "yes"
+   },
+   "accepted": [
+    "yes"
+   ],
+   "truthFrom": "unanimous"
+  },
+  {
+   "site": "site-64",
+   "question": "chat",
+   "answers": {
+    "jev": "yes",
+    "openai-luna": "yes",
+    "gemini-flash-lite": "yes",
+    "gemini-flash": "yes",
+    "claude-haiku": "yes",
+    "claude-sonnet": "yes"
+   },
+   "accepted": [
+    "yes"
+   ],
+   "truthFrom": "unanimous"
+  },
+  {
+   "site": "site-65",
+   "question": "chat",
+   "answers": {
+    "jev": "yes",
+    "openai-luna": "no",
+    "gemini-flash-lite": "yes",
+    "gemini-flash": "yes",
+    "claude-haiku": "error",
+    "claude-sonnet": "yes"
+   },
+   "accepted": [
+    "yes"
+   ],
+   "truthFrom": "eye"
+  },
+  {
+   "site": "site-66",
+   "question": "chat",
+   "answers": {
+    "jev": "yes",
+    "openai-luna": "yes",
+    "gemini-flash-lite": "yes",
+    "gemini-flash": "yes",
+    "claude-haiku": "yes",
+    "claude-sonnet": "yes"
+   },
+   "accepted": [
+    "yes"
+   ],
+   "truthFrom": "unanimous"
+  },
+  {
+   "site": "site-67",
+   "question": "chat",
+   "answers": {
+    "jev": "yes",
+    "openai-luna": "yes",
+    "gemini-flash-lite": "yes",
+    "gemini-flash": "yes",
+    "claude-haiku": "yes",
+    "claude-sonnet": "yes"
+   },
+   "accepted": [
+    "yes"
+   ],
+   "truthFrom": "unanimous"
+  },
+  {
+   "site": "site-68",
+   "question": "chat",
+   "answers": {
+    "jev": "yes",
+    "openai-luna": "yes",
+    "gemini-flash-lite": "yes",
+    "gemini-flash": "yes",
+    "claude-haiku": "yes",
+    "claude-sonnet": "yes"
+   },
+   "accepted": [
+    "yes"
+   ],
+   "truthFrom": "unanimous"
+  },
+  {
+   "site": "site-69",
+   "question": "chat",
+   "answers": {
+    "jev": "yes",
+    "openai-luna": "yes",
+    "gemini-flash-lite": "yes",
+    "gemini-flash": "yes",
+    "claude-haiku": "yes",
+    "claude-sonnet": "yes"
+   },
+   "accepted": [
+    "yes"
+   ],
+   "truthFrom": "unanimous"
+  },
+  {
+   "site": "site-70",
+   "question": "chat",
+   "answers": {
+    "jev": "unavailable",
+    "openai-luna": "unavailable",
+    "gemini-flash-lite": "unavailable",
+    "gemini-flash": "unavailable",
+    "claude-haiku": "unavailable",
+    "claude-sonnet": "unavailable"
+   },
+   "accepted": [
+    "unavailable"
+   ],
+   "truthFrom": "unanimous"
+  },
+  {
+   "site": "site-71",
+   "question": "chat",
+   "answers": {
+    "jev": "yes",
+    "openai-luna": "yes",
+    "gemini-flash-lite": "yes",
+    "gemini-flash": "yes",
+    "claude-haiku": "yes",
+    "claude-sonnet": "yes"
+   },
+   "accepted": [
+    "yes"
+   ],
+   "truthFrom": "unanimous"
+  },
+  {
+   "site": "site-72",
+   "question": "chat",
+   "answers": {
+    "jev": "yes",
+    "openai-luna": "yes",
+    "gemini-flash-lite": "yes",
+    "gemini-flash": "yes",
+    "claude-haiku": "yes",
+    "claude-sonnet": "yes"
+   },
+   "accepted": [
+    "yes"
+   ],
+   "truthFrom": "unanimous"
+  },
+  {
+   "site": "site-73",
+   "question": "chat",
+   "answers": {
+    "jev": "no",
+    "openai-luna": "yes",
+    "gemini-flash-lite": "yes",
+    "gemini-flash": "yes",
+    "claude-haiku": "yes",
+    "claude-sonnet": "yes"
+   },
+   "accepted": "ambiguous",
+   "truthFrom": "eye (earlier pass)"
+  },
+  {
+   "site": "site-74",
+   "question": "chat",
+   "answers": {
+    "jev": "no",
+    "openai-luna": "yes",
+    "gemini-flash-lite": "no",
+    "gemini-flash": "yes",
+    "claude-haiku": "yes",
+    "claude-sonnet": "yes"
+   },
+   "accepted": [
+    "yes"
+   ],
+   "truthFrom": "eye (earlier pass)"
+  },
+  {
+   "site": "site-75",
+   "question": "chat",
+   "answers": {
+    "jev": "yes",
+    "openai-luna": "yes",
+    "gemini-flash-lite": "yes",
+    "gemini-flash": "yes",
+    "claude-haiku": "yes",
+    "claude-sonnet": "yes"
+   },
+   "accepted": [
+    "yes"
+   ],
+   "truthFrom": "unanimous"
+  },
+  {
+   "site": "site-76",
+   "question": "chat",
+   "answers": {
+    "jev": "no",
+    "openai-luna": "no",
+    "gemini-flash-lite": "no",
+    "gemini-flash": "yes",
+    "claude-haiku": "yes",
+    "claude-sonnet": "yes"
+   },
+   "accepted": "ambiguous",
+   "truthFrom": "eye (earlier pass)"
+  },
+  {
+   "site": "site-77",
+   "question": "chat",
+   "answers": {
+    "jev": "yes",
+    "openai-luna": "yes",
+    "gemini-flash-lite": "yes",
+    "gemini-flash": "yes",
+    "claude-haiku": "yes",
+    "claude-sonnet": "yes"
+   },
+   "accepted": [
+    "yes"
+   ],
+   "truthFrom": "unanimous"
+  },
+  {
+   "site": "site-78",
+   "question": "chat",
+   "answers": {
+    "jev": "yes",
+    "openai-luna": "yes",
+    "gemini-flash-lite": "yes",
+    "gemini-flash": "yes",
+    "claude-haiku": "yes",
+    "claude-sonnet": "yes"
+   },
+   "accepted": [
+    "yes"
+   ],
+   "truthFrom": "unanimous"
+  },
+  {
+   "site": "site-79",
+   "question": "chat",
+   "answers": {
+    "jev": "yes",
+    "openai-luna": "yes",
+    "gemini-flash-lite": "yes",
+    "gemini-flash": "yes",
+    "claude-haiku": "yes",
+    "claude-sonnet": "yes"
+   },
+   "accepted": [
+    "yes"
+   ],
+   "truthFrom": "unanimous"
+  },
+  {
+   "site": "site-01",
+   "question": "cta",
+   "answers": {
+    "jev": "unavailable",
+    "openai-luna": "unavailable",
+    "gemini-flash-lite": "no",
+    "gemini-flash": "unavailable",
+    "claude-haiku": "error",
+    "claude-sonnet": "error"
+   },
+   "accepted": [
+    "no",
+    "unavailable"
+   ],
+   "truthFrom": "eye"
+  },
+  {
+   "site": "site-02",
+   "question": "cta",
+   "answers": {
+    "jev": "yes",
+    "openai-luna": "yes",
+    "gemini-flash-lite": "yes",
+    "gemini-flash": "yes",
+    "claude-haiku": "yes",
+    "claude-sonnet": "yes"
+   },
+   "accepted": [
+    "yes"
+   ],
+   "truthFrom": "unanimous"
+  },
+  {
+   "site": "site-03",
+   "question": "cta",
+   "answers": {
+    "jev": "yes",
+    "openai-luna": "yes",
+    "gemini-flash-lite": "yes",
+    "gemini-flash": "yes",
+    "claude-haiku": "yes",
+    "claude-sonnet": "yes"
+   },
+   "accepted": [
+    "yes"
+   ],
+   "truthFrom": "unanimous"
+  },
+  {
+   "site": "site-04",
+   "question": "cta",
+   "answers": {
+    "jev": "yes",
+    "openai-luna": "yes",
+    "gemini-flash-lite": "yes",
+    "gemini-flash": "yes",
+    "claude-haiku": "yes",
+    "claude-sonnet": "yes"
+   },
+   "accepted": [
+    "yes"
+   ],
+   "truthFrom": "unanimous"
+  },
+  {
+   "site": "site-05",
+   "question": "cta",
+   "answers": {
+    "jev": "no",
+    "openai-luna": "no",
+    "gemini-flash-lite": "no",
+    "gemini-flash": "no",
+    "claude-haiku": "no",
+    "claude-sonnet": "no"
+   },
+   "accepted": [
+    "no"
+   ],
+   "truthFrom": "unanimous"
+  },
+  {
+   "site": "site-06",
+   "question": "cta",
+   "answers": {
+    "jev": "no",
+    "openai-luna": "yes",
+    "gemini-flash-lite": "yes",
+    "gemini-flash": "yes",
+    "claude-haiku": "yes",
+    "claude-sonnet": "yes"
+   },
+   "accepted": [
+    "yes"
+   ],
+   "truthFrom": "eye"
+  },
+  {
+   "site": "site-07",
+   "question": "cta",
+   "answers": {
+    "jev": "no",
+    "openai-luna": "no",
+    "gemini-flash-lite": "yes",
+    "gemini-flash": "no",
+    "claude-haiku": "error",
+    "claude-sonnet": "yes"
+   },
+   "accepted": "ambiguous",
+   "truthFrom": "eye"
+  },
+  {
+   "site": "site-08",
+   "question": "cta",
+   "answers": {
+    "jev": "unavailable",
+    "openai-luna": "unavailable",
+    "gemini-flash-lite": "yes",
+    "gemini-flash": "unavailable",
+    "claude-haiku": "error",
+    "claude-sonnet": "unavailable"
+   },
+   "accepted": [
+    "unavailable",
+    "yes"
+   ],
+   "truthFrom": "eye"
+  },
+  {
+   "site": "site-09",
+   "question": "cta",
+   "answers": {
+    "jev": "yes",
+    "openai-luna": "yes",
+    "gemini-flash-lite": "yes",
+    "gemini-flash": "yes",
+    "claude-haiku": "yes",
+    "claude-sonnet": "yes"
+   },
+   "accepted": [
+    "yes"
+   ],
+   "truthFrom": "unanimous"
+  },
+  {
+   "site": "site-10",
+   "question": "cta",
+   "answers": {
+    "jev": "yes",
+    "openai-luna": "yes",
+    "gemini-flash-lite": "yes",
+    "gemini-flash": "yes",
+    "claude-haiku": "yes",
+    "claude-sonnet": "yes"
+   },
+   "accepted": [
+    "yes"
+   ],
+   "truthFrom": "unanimous"
+  },
+  {
+   "site": "site-11",
+   "question": "cta",
+   "answers": {
+    "jev": "no",
+    "openai-luna": "no",
+    "gemini-flash-lite": "no",
+    "gemini-flash": "no",
+    "claude-haiku": "no",
+    "claude-sonnet": "no"
+   },
+   "accepted": [
+    "no"
+   ],
+   "truthFrom": "unanimous"
+  },
+  {
+   "site": "site-12",
+   "question": "cta",
+   "answers": {
+    "jev": "yes",
+    "openai-luna": "yes",
+    "gemini-flash-lite": "yes",
+    "gemini-flash": "yes",
+    "claude-haiku": "yes",
+    "claude-sonnet": "yes"
+   },
+   "accepted": [
+    "yes"
+   ],
+   "truthFrom": "unanimous"
+  },
+  {
+   "site": "site-13",
+   "question": "cta",
+   "answers": {
+    "jev": "yes",
+    "openai-luna": "yes",
+    "gemini-flash-lite": "yes",
+    "gemini-flash": "yes",
+    "claude-haiku": "yes",
+    "claude-sonnet": "yes"
+   },
+   "accepted": [
+    "yes"
+   ],
+   "truthFrom": "unanimous"
+  },
+  {
+   "site": "site-14",
+   "question": "cta",
+   "answers": {
+    "jev": "no",
+    "openai-luna": "no",
+    "gemini-flash-lite": "no",
+    "gemini-flash": "no",
+    "claude-haiku": "no",
+    "claude-sonnet": "no"
+   },
+   "accepted": [
+    "no"
+   ],
+   "truthFrom": "unanimous"
+  },
+  {
+   "site": "site-15",
+   "question": "cta",
+   "answers": {
+    "jev": "yes",
+    "openai-luna": "yes",
+    "gemini-flash-lite": "yes",
+    "gemini-flash": "yes",
+    "claude-haiku": "yes",
+    "claude-sonnet": "yes"
+   },
+   "accepted": [
+    "yes"
+   ],
+   "truthFrom": "unanimous"
+  },
+  {
+   "site": "site-16",
+   "question": "cta",
+   "answers": {
+    "jev": "yes",
+    "openai-luna": "yes",
+    "gemini-flash-lite": "yes",
+    "gemini-flash": "yes",
+    "claude-haiku": "yes",
+    "claude-sonnet": "yes"
+   },
+   "accepted": [
+    "yes"
+   ],
+   "truthFrom": "unanimous"
+  },
+  {
+   "site": "site-17",
+   "question": "cta",
+   "answers": {
+    "jev": "yes",
+    "openai-luna": "no",
+    "gemini-flash-lite": "yes",
+    "gemini-flash": "yes",
+    "claude-haiku": "error",
+    "claude-sonnet": "yes"
+   },
+   "accepted": "ambiguous",
+   "truthFrom": "eye"
+  },
+  {
+   "site": "site-18",
+   "question": "cta",
+   "answers": {
+    "jev": "yes",
+    "openai-luna": "yes",
+    "gemini-flash-lite": "yes",
+    "gemini-flash": "yes",
+    "claude-haiku": "yes",
+    "claude-sonnet": "yes"
+   },
+   "accepted": [
+    "yes"
+   ],
+   "truthFrom": "unanimous"
+  },
+  {
+   "site": "site-19",
+   "question": "cta",
+   "answers": {
+    "jev": "yes",
+    "openai-luna": "yes",
+    "gemini-flash-lite": "yes",
+    "gemini-flash": "yes",
+    "claude-haiku": "yes",
+    "claude-sonnet": "yes"
+   },
+   "accepted": [
+    "yes"
+   ],
+   "truthFrom": "unanimous"
+  },
+  {
+   "site": "site-20",
+   "question": "cta",
+   "answers": {
+    "jev": "yes",
+    "openai-luna": "yes",
+    "gemini-flash-lite": "yes",
+    "gemini-flash": "yes",
+    "claude-haiku": "yes",
+    "claude-sonnet": "yes"
+   },
+   "accepted": [
+    "yes"
+   ],
+   "truthFrom": "unanimous"
+  },
+  {
+   "site": "site-21",
+   "question": "cta",
+   "answers": {
+    "jev": "yes",
+    "openai-luna": "yes",
+    "gemini-flash-lite": "yes",
+    "gemini-flash": "yes",
+    "claude-haiku": "yes",
+    "claude-sonnet": "yes"
+   },
+   "accepted": [
+    "yes"
+   ],
+   "truthFrom": "unanimous"
+  },
+  {
+   "site": "site-22",
+   "question": "cta",
+   "answers": {
+    "jev": "yes",
+    "openai-luna": "yes",
+    "gemini-flash-lite": "yes",
+    "gemini-flash": "yes",
+    "claude-haiku": "yes",
+    "claude-sonnet": "yes"
+   },
+   "accepted": [
+    "yes"
+   ],
+   "truthFrom": "unanimous"
+  },
+  {
+   "site": "site-23",
+   "question": "cta",
+   "answers": {
+    "jev": "yes",
+    "openai-luna": "yes",
+    "gemini-flash-lite": "yes",
+    "gemini-flash": "yes",
+    "claude-haiku": "yes",
+    "claude-sonnet": "yes"
+   },
+   "accepted": [
+    "yes"
+   ],
+   "truthFrom": "unanimous"
+  },
+  {
+   "site": "site-24",
+   "question": "cta",
+   "answers": {
+    "jev": "yes",
+    "openai-luna": "yes",
+    "gemini-flash-lite": "yes",
+    "gemini-flash": "yes",
+    "claude-haiku": "yes",
+    "claude-sonnet": "yes"
+   },
+   "accepted": [
+    "yes"
+   ],
+   "truthFrom": "unanimous"
+  },
+  {
+   "site": "site-25",
+   "question": "cta",
+   "answers": {
+    "jev": "yes",
+    "openai-luna": "yes",
+    "gemini-flash-lite": "yes",
+    "gemini-flash": "yes",
+    "claude-haiku": "yes",
+    "claude-sonnet": "yes"
+   },
+   "accepted": [
+    "yes"
+   ],
+   "truthFrom": "unanimous"
+  },
+  {
+   "site": "site-26",
+   "question": "cta",
+   "answers": {
+    "jev": "yes",
+    "openai-luna": "yes",
+    "gemini-flash-lite": "yes",
+    "gemini-flash": "yes",
+    "claude-haiku": "yes",
+    "claude-sonnet": "yes"
+   },
+   "accepted": [
+    "yes"
+   ],
+   "truthFrom": "unanimous"
+  },
+  {
+   "site": "site-27",
+   "question": "cta",
+   "answers": {
+    "jev": "yes",
+    "openai-luna": "no",
+    "gemini-flash-lite": "yes",
+    "gemini-flash": "yes",
+    "claude-haiku": "error",
+    "claude-sonnet": "yes"
+   },
+   "accepted": "ambiguous",
+   "truthFrom": "eye"
+  },
+  {
+   "site": "site-28",
+   "question": "cta",
+   "answers": {
+    "jev": "yes",
+    "openai-luna": "no",
+    "gemini-flash-lite": "yes",
+    "gemini-flash": "yes",
+    "claude-haiku": "yes",
+    "claude-sonnet": "yes"
+   },
+   "accepted": [
+    "yes"
+   ],
+   "truthFrom": "eye"
+  },
+  {
+   "site": "site-29",
+   "question": "cta",
+   "answers": {
+    "jev": "yes",
+    "openai-luna": "yes",
+    "gemini-flash-lite": "yes",
+    "gemini-flash": "yes",
+    "claude-haiku": "yes",
+    "claude-sonnet": "yes"
+   },
+   "accepted": [
+    "yes"
+   ],
+   "truthFrom": "unanimous"
+  },
+  {
+   "site": "site-30",
+   "question": "cta",
+   "answers": {
+    "jev": "unavailable",
+    "openai-luna": "unavailable",
+    "gemini-flash-lite": "yes",
+    "gemini-flash": "unavailable",
+    "claude-haiku": "error",
+    "claude-sonnet": "unavailable"
+   },
+   "accepted": [
+    "unavailable",
+    "yes"
+   ],
+   "truthFrom": "eye"
+  },
+  {
+   "site": "site-31",
+   "question": "cta",
+   "answers": {
+    "jev": "yes",
+    "openai-luna": "yes",
+    "gemini-flash-lite": "yes",
+    "gemini-flash": "yes",
+    "claude-haiku": "yes",
+    "claude-sonnet": "yes"
+   },
+   "accepted": [
+    "yes"
+   ],
+   "truthFrom": "unanimous"
+  },
+  {
+   "site": "site-32",
+   "question": "cta",
+   "answers": {
+    "jev": "yes",
+    "openai-luna": "yes",
+    "gemini-flash-lite": "yes",
+    "gemini-flash": "yes",
+    "claude-haiku": "yes",
+    "claude-sonnet": "yes"
+   },
+   "accepted": [
+    "yes"
+   ],
+   "truthFrom": "unanimous"
+  },
+  {
+   "site": "site-33",
+   "question": "cta",
+   "answers": {
+    "jev": "yes",
+    "openai-luna": "unavailable",
+    "gemini-flash-lite": "yes",
+    "gemini-flash": "yes",
+    "claude-haiku": "yes",
+    "claude-sonnet": "yes"
+   },
+   "accepted": [
+    "unavailable",
+    "yes"
+   ],
+   "truthFrom": "eye"
+  },
+  {
+   "site": "site-34",
+   "question": "cta",
+   "answers": {
+    "jev": "yes",
+    "openai-luna": "yes",
+    "gemini-flash-lite": "yes",
+    "gemini-flash": "yes",
+    "claude-haiku": "yes",
+    "claude-sonnet": "yes"
+   },
+   "accepted": [
+    "yes"
+   ],
+   "truthFrom": "unanimous"
+  },
+  {
+   "site": "site-35",
+   "question": "cta",
+   "answers": {
+    "jev": "yes",
+    "openai-luna": "yes",
+    "gemini-flash-lite": "yes",
+    "gemini-flash": "yes",
+    "claude-haiku": "yes",
+    "claude-sonnet": "yes"
+   },
+   "accepted": [
+    "yes"
+   ],
+   "truthFrom": "unanimous"
+  },
+  {
+   "site": "site-36",
+   "question": "cta",
+   "answers": {
+    "jev": "yes",
+    "openai-luna": "yes",
+    "gemini-flash-lite": "yes",
+    "gemini-flash": "yes",
+    "claude-haiku": "yes",
+    "claude-sonnet": "yes"
+   },
+   "accepted": [
+    "yes"
+   ],
+   "truthFrom": "unanimous"
+  },
+  {
+   "site": "site-37",
+   "question": "cta",
+   "answers": {
+    "jev": "yes",
+    "openai-luna": "yes",
+    "gemini-flash-lite": "yes",
+    "gemini-flash": "yes",
+    "claude-haiku": "yes",
+    "claude-sonnet": "yes"
+   },
+   "accepted": [
+    "yes"
+   ],
+   "truthFrom": "unanimous"
+  },
+  {
+   "site": "site-38",
+   "question": "cta",
+   "answers": {
+    "jev": "yes",
+    "openai-luna": "yes",
+    "gemini-flash-lite": "yes",
+    "gemini-flash": "yes",
+    "claude-haiku": "yes",
+    "claude-sonnet": "yes"
+   },
+   "accepted": [
+    "yes"
+   ],
+   "truthFrom": "unanimous"
+  },
+  {
+   "site": "site-39",
+   "question": "cta",
+   "answers": {
+    "jev": "yes",
+    "openai-luna": "yes",
+    "gemini-flash-lite": "yes",
+    "gemini-flash": "yes",
+    "claude-haiku": "yes",
+    "claude-sonnet": "yes"
+   },
+   "accepted": [
+    "yes"
+   ],
+   "truthFrom": "unanimous"
+  },
+  {
+   "site": "site-40",
+   "question": "cta",
+   "answers": {
+    "jev": "yes",
+    "openai-luna": "yes",
+    "gemini-flash-lite": "yes",
+    "gemini-flash": "yes",
+    "claude-haiku": "yes",
+    "claude-sonnet": "yes"
+   },
+   "accepted": [
+    "yes"
+   ],
+   "truthFrom": "unanimous"
+  },
+  {
+   "site": "site-41",
+   "question": "cta",
+   "answers": {
+    "jev": "yes",
+    "openai-luna": "yes",
+    "gemini-flash-lite": "yes",
+    "gemini-flash": "yes",
+    "claude-haiku": "yes",
+    "claude-sonnet": "yes"
+   },
+   "accepted": [
+    "yes"
+   ],
+   "truthFrom": "unanimous"
+  },
+  {
+   "site": "site-42",
+   "question": "cta",
+   "answers": {
+    "jev": "unavailable",
+    "openai-luna": "unavailable",
+    "gemini-flash-lite": "unavailable",
+    "gemini-flash": "unavailable",
+    "claude-haiku": "unavailable",
+    "claude-sonnet": "unavailable"
+   },
+   "accepted": [
+    "unavailable"
+   ],
+   "truthFrom": "unanimous"
+  },
+  {
+   "site": "site-43",
+   "question": "cta",
+   "answers": {
+    "jev": "yes",
+    "openai-luna": "yes",
+    "gemini-flash-lite": "yes",
+    "gemini-flash": "yes",
+    "claude-haiku": "yes",
+    "claude-sonnet": "yes"
+   },
+   "accepted": [
+    "yes"
+   ],
+   "truthFrom": "unanimous"
+  },
+  {
+   "site": "site-44",
+   "question": "cta",
+   "answers": {
+    "jev": "no",
+    "openai-luna": "no",
+    "gemini-flash-lite": "no",
+    "gemini-flash": "yes",
+    "claude-haiku": "no",
+    "claude-sonnet": "yes"
+   },
+   "accepted": "ambiguous",
+   "truthFrom": "eye"
+  },
+  {
+   "site": "site-45",
+   "question": "cta",
+   "answers": {
+    "jev": "yes",
+    "openai-luna": "yes",
+    "gemini-flash-lite": "yes",
+    "gemini-flash": "yes",
+    "claude-haiku": "yes",
+    "claude-sonnet": "yes"
+   },
+   "accepted": [
+    "yes"
+   ],
+   "truthFrom": "unanimous"
+  },
+  {
+   "site": "site-46",
+   "question": "cta",
+   "answers": {
+    "jev": "yes",
+    "openai-luna": "yes",
+    "gemini-flash-lite": "yes",
+    "gemini-flash": "yes",
+    "claude-haiku": "yes",
+    "claude-sonnet": "yes"
+   },
+   "accepted": [
+    "yes"
+   ],
+   "truthFrom": "unanimous"
+  },
+  {
+   "site": "site-47",
+   "question": "cta",
+   "answers": {
+    "jev": "yes",
+    "openai-luna": "yes",
+    "gemini-flash-lite": "yes",
+    "gemini-flash": "yes",
+    "claude-haiku": "yes",
+    "claude-sonnet": "yes"
+   },
+   "accepted": [
+    "yes"
+   ],
+   "truthFrom": "unanimous"
+  },
+  {
+   "site": "site-48",
+   "question": "cta",
+   "answers": {
+    "jev": "yes",
+    "openai-luna": "yes",
+    "gemini-flash-lite": "yes",
+    "gemini-flash": "yes",
+    "claude-haiku": "yes",
+    "claude-sonnet": "yes"
+   },
+   "accepted": [
+    "yes"
+   ],
+   "truthFrom": "unanimous"
+  },
+  {
+   "site": "site-49",
+   "question": "cta",
+   "answers": {
+    "jev": "yes",
+    "openai-luna": "yes",
+    "gemini-flash-lite": "yes",
+    "gemini-flash": "yes",
+    "claude-haiku": "yes",
+    "claude-sonnet": "yes"
+   },
+   "accepted": [
+    "yes"
+   ],
+   "truthFrom": "unanimous"
+  },
+  {
+   "site": "site-50",
+   "question": "cta",
+   "answers": {
+    "jev": "yes",
+    "openai-luna": "yes",
+    "gemini-flash-lite": "yes",
+    "gemini-flash": "yes",
+    "claude-haiku": "yes",
+    "claude-sonnet": "yes"
+   },
+   "accepted": [
+    "yes"
+   ],
+   "truthFrom": "unanimous"
+  },
+  {
+   "site": "site-51",
+   "question": "cta",
+   "answers": {
+    "jev": "yes",
+    "openai-luna": "yes",
+    "gemini-flash-lite": "yes",
+    "gemini-flash": "yes",
+    "claude-haiku": "yes",
+    "claude-sonnet": "yes"
+   },
+   "accepted": [
+    "yes"
+   ],
+   "truthFrom": "unanimous"
+  },
+  {
+   "site": "site-52",
+   "question": "cta",
+   "answers": {
+    "jev": "no",
+    "openai-luna": "unavailable",
+    "gemini-flash-lite": "no",
+    "gemini-flash": "unavailable",
+    "claude-haiku": "error",
+    "claude-sonnet": "no"
+   },
+   "accepted": "ambiguous",
+   "truthFrom": "eye"
+  },
+  {
+   "site": "site-53",
+   "question": "cta",
+   "answers": {
+    "jev": "yes",
+    "openai-luna": "yes",
+    "gemini-flash-lite": "yes",
+    "gemini-flash": "yes",
+    "claude-haiku": "yes",
+    "claude-sonnet": "yes"
+   },
+   "accepted": [
+    "yes"
+   ],
+   "truthFrom": "unanimous"
+  },
+  {
+   "site": "site-54",
+   "question": "cta",
+   "answers": {
+    "jev": "yes",
+    "openai-luna": "yes",
+    "gemini-flash-lite": "yes",
+    "gemini-flash": "yes",
+    "claude-haiku": "yes",
+    "claude-sonnet": "yes"
+   },
+   "accepted": [
+    "yes"
+   ],
+   "truthFrom": "unanimous"
+  },
+  {
+   "site": "site-55",
+   "question": "cta",
+   "answers": {
+    "jev": "no",
+    "openai-luna": "no",
+    "gemini-flash-lite": "no",
+    "gemini-flash": "no",
+    "claude-haiku": "no",
+    "claude-sonnet": "no"
+   },
+   "accepted": [
+    "no"
+   ],
+   "truthFrom": "unanimous"
+  },
+  {
+   "site": "site-56",
+   "question": "cta",
+   "answers": {
+    "jev": "yes",
+    "openai-luna": "yes",
+    "gemini-flash-lite": "yes",
+    "gemini-flash": "yes",
+    "claude-haiku": "yes",
+    "claude-sonnet": "yes"
+   },
+   "accepted": [
+    "yes"
+   ],
+   "truthFrom": "unanimous"
+  },
+  {
+   "site": "site-57",
+   "question": "cta",
+   "answers": {
+    "jev": "yes",
+    "openai-luna": "yes",
+    "gemini-flash-lite": "yes",
+    "gemini-flash": "yes",
+    "claude-haiku": "yes",
+    "claude-sonnet": "yes"
+   },
+   "accepted": [
+    "yes"
+   ],
+   "truthFrom": "unanimous"
+  },
+  {
+   "site": "site-58",
+   "question": "cta",
+   "answers": {
+    "jev": "yes",
+    "openai-luna": "yes",
+    "gemini-flash-lite": "yes",
+    "gemini-flash": "yes",
+    "claude-haiku": "yes",
+    "claude-sonnet": "yes"
+   },
+   "accepted": [
+    "yes"
+   ],
+   "truthFrom": "unanimous"
+  },
+  {
+   "site": "site-59",
+   "question": "cta",
+   "answers": {
+    "jev": "yes",
+    "openai-luna": "yes",
+    "gemini-flash-lite": "yes",
+    "gemini-flash": "yes",
+    "claude-haiku": "yes",
+    "claude-sonnet": "yes"
+   },
+   "accepted": [
+    "yes"
+   ],
+   "truthFrom": "unanimous"
+  },
+  {
+   "site": "site-60",
+   "question": "cta",
+   "answers": {
+    "jev": "yes",
+    "openai-luna": "yes",
+    "gemini-flash-lite": "yes",
+    "gemini-flash": "yes",
+    "claude-haiku": "yes",
+    "claude-sonnet": "yes"
+   },
+   "accepted": [
+    "yes"
+   ],
+   "truthFrom": "unanimous"
+  },
+  {
+   "site": "site-61",
+   "question": "cta",
+   "answers": {
+    "jev": "no",
+    "openai-luna": "no",
+    "gemini-flash-lite": "yes",
+    "gemini-flash": "yes",
+    "claude-haiku": "no",
+    "claude-sonnet": "yes"
+   },
+   "accepted": "ambiguous",
+   "truthFrom": "eye"
+  },
+  {
+   "site": "site-62",
+   "question": "cta",
+   "answers": {
+    "jev": "no",
+    "openai-luna": "no",
+    "gemini-flash-lite": "no",
+    "gemini-flash": "no",
+    "claude-haiku": "no",
+    "claude-sonnet": "no"
+   },
+   "accepted": [
+    "no"
+   ],
+   "truthFrom": "unanimous"
+  },
+  {
+   "site": "site-63",
+   "question": "cta",
+   "answers": {
+    "jev": "yes",
+    "openai-luna": "yes",
+    "gemini-flash-lite": "yes",
+    "gemini-flash": "yes",
+    "claude-haiku": "yes",
+    "claude-sonnet": "yes"
+   },
+   "accepted": [
+    "yes"
+   ],
+   "truthFrom": "unanimous"
+  },
+  {
+   "site": "site-64",
+   "question": "cta",
+   "answers": {
+    "jev": "yes",
+    "openai-luna": "yes",
+    "gemini-flash-lite": "yes",
+    "gemini-flash": "yes",
+    "claude-haiku": "yes",
+    "claude-sonnet": "yes"
+   },
+   "accepted": [
+    "yes"
+   ],
+   "truthFrom": "unanimous"
+  },
+  {
+   "site": "site-65",
+   "question": "cta",
+   "answers": {
+    "jev": "yes",
+    "openai-luna": "yes",
+    "gemini-flash-lite": "yes",
+    "gemini-flash": "yes",
+    "claude-haiku": "yes",
+    "claude-sonnet": "yes"
+   },
+   "accepted": [
+    "yes"
+   ],
+   "truthFrom": "unanimous"
+  },
+  {
+   "site": "site-66",
+   "question": "cta",
+   "answers": {
+    "jev": "yes",
+    "openai-luna": "yes",
+    "gemini-flash-lite": "yes",
+    "gemini-flash": "yes",
+    "claude-haiku": "yes",
+    "claude-sonnet": "yes"
+   },
+   "accepted": [
+    "yes"
+   ],
+   "truthFrom": "unanimous"
+  },
+  {
+   "site": "site-67",
+   "question": "cta",
+   "answers": {
+    "jev": "yes",
+    "openai-luna": "yes",
+    "gemini-flash-lite": "yes",
+    "gemini-flash": "yes",
+    "claude-haiku": "yes",
+    "claude-sonnet": "yes"
+   },
+   "accepted": [
+    "yes"
+   ],
+   "truthFrom": "unanimous"
+  },
+  {
+   "site": "site-68",
+   "question": "cta",
+   "answers": {
+    "jev": "yes",
+    "openai-luna": "yes",
+    "gemini-flash-lite": "yes",
+    "gemini-flash": "yes",
+    "claude-haiku": "yes",
+    "claude-sonnet": "yes"
+   },
+   "accepted": [
+    "yes"
+   ],
+   "truthFrom": "unanimous"
+  },
+  {
+   "site": "site-69",
+   "question": "cta",
+   "answers": {
+    "jev": "yes",
+    "openai-luna": "yes",
+    "gemini-flash-lite": "yes",
+    "gemini-flash": "yes",
+    "claude-haiku": "yes",
+    "claude-sonnet": "yes"
+   },
+   "accepted": [
+    "yes"
+   ],
+   "truthFrom": "unanimous"
+  },
+  {
+   "site": "site-70",
+   "question": "cta",
+   "answers": {
+    "jev": "unavailable",
+    "openai-luna": "unavailable",
+    "gemini-flash-lite": "unavailable",
+    "gemini-flash": "unavailable",
+    "claude-haiku": "unavailable",
+    "claude-sonnet": "unavailable"
+   },
+   "accepted": [
+    "unavailable"
+   ],
+   "truthFrom": "unanimous"
+  },
+  {
+   "site": "site-71",
+   "question": "cta",
+   "answers": {
+    "jev": "no",
+    "openai-luna": "no",
+    "gemini-flash-lite": "no",
+    "gemini-flash": "no",
+    "claude-haiku": "no",
+    "claude-sonnet": "no"
+   },
+   "accepted": [
+    "no"
+   ],
+   "truthFrom": "unanimous"
+  },
+  {
+   "site": "site-72",
+   "question": "cta",
+   "answers": {
+    "jev": "no",
+    "openai-luna": "no",
+    "gemini-flash-lite": "yes",
+    "gemini-flash": "yes",
+    "claude-haiku": "error",
+    "claude-sonnet": "no"
+   },
+   "accepted": "ambiguous",
+   "truthFrom": "eye"
+  },
+  {
+   "site": "site-73",
+   "question": "cta",
+   "answers": {
+    "jev": "yes",
+    "openai-luna": "yes",
+    "gemini-flash-lite": "yes",
+    "gemini-flash": "yes",
+    "claude-haiku": "yes",
+    "claude-sonnet": "yes"
+   },
+   "accepted": [
+    "yes"
+   ],
+   "truthFrom": "unanimous"
+  },
+  {
+   "site": "site-74",
+   "question": "cta",
+   "answers": {
+    "jev": "yes",
+    "openai-luna": "yes",
+    "gemini-flash-lite": "yes",
+    "gemini-flash": "yes",
+    "claude-haiku": "yes",
+    "claude-sonnet": "yes"
+   },
+   "accepted": [
+    "yes"
+   ],
+   "truthFrom": "unanimous"
+  },
+  {
+   "site": "site-75",
+   "question": "cta",
+   "answers": {
+    "jev": "yes",
+    "openai-luna": "yes",
+    "gemini-flash-lite": "yes",
+    "gemini-flash": "yes",
+    "claude-haiku": "yes",
+    "claude-sonnet": "yes"
+   },
+   "accepted": [
+    "yes"
+   ],
+   "truthFrom": "unanimous"
+  },
+  {
+   "site": "site-76",
+   "question": "cta",
+   "answers": {
+    "jev": "yes",
+    "openai-luna": "yes",
+    "gemini-flash-lite": "yes",
+    "gemini-flash": "yes",
+    "claude-haiku": "yes",
+    "claude-sonnet": "yes"
+   },
+   "accepted": [
+    "yes"
+   ],
+   "truthFrom": "unanimous"
+  },
+  {
+   "site": "site-77",
+   "question": "cta",
+   "answers": {
+    "jev": "no",
+    "openai-luna": "no",
+    "gemini-flash-lite": "no",
+    "gemini-flash": "no",
+    "claude-haiku": "no",
+    "claude-sonnet": "no"
+   },
+   "accepted": [
+    "no"
+   ],
+   "truthFrom": "unanimous"
+  },
+  {
+   "site": "site-78",
+   "question": "cta",
+   "answers": {
+    "jev": "yes",
+    "openai-luna": "yes",
+    "gemini-flash-lite": "yes",
+    "gemini-flash": "yes",
+    "claude-haiku": "yes",
+    "claude-sonnet": "yes"
+   },
+   "accepted": [
+    "yes"
+   ],
+   "truthFrom": "unanimous"
+  },
+  {
+   "site": "site-79",
+   "question": "cta",
+   "answers": {
+    "jev": "yes",
+    "openai-luna": "yes",
+    "gemini-flash-lite": "yes",
+    "gemini-flash": "yes",
+    "claude-haiku": "yes",
+    "claude-sonnet": "yes"
+   },
+   "accepted": [
+    "yes"
+   ],
+   "truthFrom": "unanimous"
+  },
+  {
+   "site": "site-01",
+   "question": "phone",
+   "answers": {
+    "jev": "unavailable",
+    "openai-luna": "unavailable",
+    "gemini-flash-lite": "yes",
+    "gemini-flash": "unavailable",
+    "claude-haiku": "unavailable",
+    "claude-sonnet": "yes"
+   },
+   "accepted": [
+    "unavailable",
+    "yes"
+   ],
+   "truthFrom": "eye"
+  },
+  {
+   "site": "site-02",
+   "question": "phone",
+   "answers": {
+    "jev": "yes",
+    "openai-luna": "yes",
+    "gemini-flash-lite": "yes",
+    "gemini-flash": "yes",
+    "claude-haiku": "yes",
+    "claude-sonnet": "yes"
+   },
+   "accepted": [
+    "yes"
+   ],
+   "truthFrom": "unanimous"
+  },
+  {
+   "site": "site-03",
+   "question": "phone",
+   "answers": {
+    "jev": "yes",
+    "openai-luna": "yes",
+    "gemini-flash-lite": "yes",
+    "gemini-flash": "yes",
+    "claude-haiku": "yes",
+    "claude-sonnet": "yes"
+   },
+   "accepted": [
+    "yes"
+   ],
+   "truthFrom": "unanimous"
+  },
+  {
+   "site": "site-04",
+   "question": "phone",
+   "answers": {
+    "jev": "yes",
+    "openai-luna": "yes",
+    "gemini-flash-lite": "yes",
+    "gemini-flash": "yes",
+    "claude-haiku": "yes",
+    "claude-sonnet": "yes"
+   },
+   "accepted": [
+    "yes"
+   ],
+   "truthFrom": "unanimous"
+  },
+  {
+   "site": "site-05",
+   "question": "phone",
+   "answers": {
+    "jev": "no",
+    "openai-luna": "no",
+    "gemini-flash-lite": "no",
+    "gemini-flash": "no",
+    "claude-haiku": "no",
+    "claude-sonnet": "no"
+   },
+   "accepted": [
+    "no"
+   ],
+   "truthFrom": "unanimous"
+  },
+  {
+   "site": "site-06",
+   "question": "phone",
+   "answers": {
+    "jev": "yes",
+    "openai-luna": "yes",
+    "gemini-flash-lite": "yes",
+    "gemini-flash": "yes",
+    "claude-haiku": "yes",
+    "claude-sonnet": "yes"
+   },
+   "accepted": [
+    "yes"
+   ],
+   "truthFrom": "unanimous"
+  },
+  {
+   "site": "site-07",
+   "question": "phone",
+   "answers": {
+    "jev": "yes",
+    "openai-luna": "yes",
+    "gemini-flash-lite": "yes",
+    "gemini-flash": "yes",
+    "claude-haiku": "yes",
+    "claude-sonnet": "yes"
+   },
+   "accepted": [
+    "yes"
+   ],
+   "truthFrom": "eye (earlier pass)"
+  },
+  {
+   "site": "site-08",
+   "question": "phone",
+   "answers": {
+    "jev": "unavailable",
+    "openai-luna": "unavailable",
+    "gemini-flash-lite": "no",
+    "gemini-flash": "unavailable",
+    "claude-haiku": "error",
+    "claude-sonnet": "unavailable"
+   },
+   "accepted": [
+    "no",
+    "unavailable"
+   ],
+   "truthFrom": "eye"
+  },
+  {
+   "site": "site-09",
+   "question": "phone",
+   "answers": {
+    "jev": "no",
+    "openai-luna": "no",
+    "gemini-flash-lite": "no",
+    "gemini-flash": "no",
+    "claude-haiku": "no",
+    "claude-sonnet": "no"
+   },
+   "accepted": [
+    "no"
+   ],
+   "truthFrom": "eye (earlier pass)"
+  },
+  {
+   "site": "site-10",
+   "question": "phone",
+   "answers": {
+    "jev": "yes",
+    "openai-luna": "yes",
+    "gemini-flash-lite": "yes",
+    "gemini-flash": "yes",
+    "claude-haiku": "yes",
+    "claude-sonnet": "yes"
+   },
+   "accepted": [
+    "yes"
+   ],
+   "truthFrom": "eye (earlier pass)"
+  },
+  {
+   "site": "site-11",
+   "question": "phone",
+   "answers": {
+    "jev": "yes",
+    "openai-luna": "yes",
+    "gemini-flash-lite": "yes",
+    "gemini-flash": "yes",
+    "claude-haiku": "yes",
+    "claude-sonnet": "yes"
+   },
+   "accepted": [
+    "yes"
+   ],
+   "truthFrom": "eye (earlier pass)"
+  },
+  {
+   "site": "site-12",
+   "question": "phone",
+   "answers": {
+    "jev": "yes",
+    "openai-luna": "yes",
+    "gemini-flash-lite": "yes",
+    "gemini-flash": "yes",
+    "claude-haiku": "yes",
+    "claude-sonnet": "yes"
+   },
+   "accepted": [
+    "yes"
+   ],
+   "truthFrom": "eye (earlier pass)"
+  },
+  {
+   "site": "site-13",
+   "question": "phone",
+   "answers": {
+    "jev": "no",
+    "openai-luna": "no",
+    "gemini-flash-lite": "no",
+    "gemini-flash": "no",
+    "claude-haiku": "no",
+    "claude-sonnet": "no"
+   },
+   "accepted": [
+    "no"
+   ],
+   "truthFrom": "eye (earlier pass)"
+  },
+  {
+   "site": "site-14",
+   "question": "phone",
+   "answers": {
+    "jev": "no",
+    "openai-luna": "no",
+    "gemini-flash-lite": "no",
+    "gemini-flash": "no",
+    "claude-haiku": "no",
+    "claude-sonnet": "no"
+   },
+   "accepted": [
+    "no"
+   ],
+   "truthFrom": "eye (earlier pass)"
+  },
+  {
+   "site": "site-15",
+   "question": "phone",
+   "answers": {
+    "jev": "yes",
+    "openai-luna": "yes",
+    "gemini-flash-lite": "yes",
+    "gemini-flash": "yes",
+    "claude-haiku": "yes",
+    "claude-sonnet": "yes"
+   },
+   "accepted": [
+    "yes"
+   ],
+   "truthFrom": "unanimous"
+  },
+  {
+   "site": "site-16",
+   "question": "phone",
+   "answers": {
+    "jev": "yes",
+    "openai-luna": "yes",
+    "gemini-flash-lite": "yes",
+    "gemini-flash": "yes",
+    "claude-haiku": "yes",
+    "claude-sonnet": "yes"
+   },
+   "accepted": [
+    "yes"
+   ],
+   "truthFrom": "unanimous"
+  },
+  {
+   "site": "site-17",
+   "question": "phone",
+   "answers": {
+    "jev": "yes",
+    "openai-luna": "yes",
+    "gemini-flash-lite": "yes",
+    "gemini-flash": "yes",
+    "claude-haiku": "yes",
+    "claude-sonnet": "yes"
+   },
+   "accepted": [
+    "yes"
+   ],
+   "truthFrom": "unanimous"
+  },
+  {
+   "site": "site-18",
+   "question": "phone",
+   "answers": {
+    "jev": "yes",
+    "openai-luna": "yes",
+    "gemini-flash-lite": "yes",
+    "gemini-flash": "yes",
+    "claude-haiku": "yes",
+    "claude-sonnet": "yes"
+   },
+   "accepted": [
+    "yes"
+   ],
+   "truthFrom": "unanimous"
+  },
+  {
+   "site": "site-19",
+   "question": "phone",
+   "answers": {
+    "jev": "no",
+    "openai-luna": "no",
+    "gemini-flash-lite": "no",
+    "gemini-flash": "no",
+    "claude-haiku": "no",
+    "claude-sonnet": "no"
+   },
+   "accepted": [
+    "no"
+   ],
+   "truthFrom": "eye (earlier pass)"
+  },
+  {
+   "site": "site-20",
+   "question": "phone",
+   "answers": {
+    "jev": "yes",
+    "openai-luna": "yes",
+    "gemini-flash-lite": "yes",
+    "gemini-flash": "yes",
+    "claude-haiku": "yes",
+    "claude-sonnet": "yes"
+   },
+   "accepted": [
+    "yes"
+   ],
+   "truthFrom": "unanimous"
+  },
+  {
+   "site": "site-21",
+   "question": "phone",
+   "answers": {
+    "jev": "yes",
+    "openai-luna": "yes",
+    "gemini-flash-lite": "yes",
+    "gemini-flash": "yes",
+    "claude-haiku": "yes",
+    "claude-sonnet": "yes"
+   },
+   "accepted": [
+    "yes"
+   ],
+   "truthFrom": "unanimous"
+  },
+  {
+   "site": "site-22",
+   "question": "phone",
+   "answers": {
+    "jev": "yes",
+    "openai-luna": "yes",
+    "gemini-flash-lite": "yes",
+    "gemini-flash": "yes",
+    "claude-haiku": "yes",
+    "claude-sonnet": "yes"
+   },
+   "accepted": [
+    "yes"
+   ],
+   "truthFrom": "unanimous"
+  },
+  {
+   "site": "site-23",
+   "question": "phone",
+   "answers": {
+    "jev": "yes",
+    "openai-luna": "yes",
+    "gemini-flash-lite": "yes",
+    "gemini-flash": "yes",
+    "claude-haiku": "yes",
+    "claude-sonnet": "yes"
+   },
+   "accepted": [
+    "yes"
+   ],
+   "truthFrom": "eye (earlier pass)"
+  },
+  {
+   "site": "site-24",
+   "question": "phone",
+   "answers": {
+    "jev": "yes",
+    "openai-luna": "yes",
+    "gemini-flash-lite": "yes",
+    "gemini-flash": "yes",
+    "claude-haiku": "yes",
+    "claude-sonnet": "yes"
+   },
+   "accepted": [
+    "yes"
+   ],
+   "truthFrom": "eye (earlier pass)"
+  },
+  {
+   "site": "site-25",
+   "question": "phone",
+   "answers": {
+    "jev": "yes",
+    "openai-luna": "yes",
+    "gemini-flash-lite": "yes",
+    "gemini-flash": "yes",
+    "claude-haiku": "yes",
+    "claude-sonnet": "yes"
+   },
+   "accepted": [
+    "yes"
+   ],
+   "truthFrom": "unanimous"
+  },
+  {
+   "site": "site-26",
+   "question": "phone",
+   "answers": {
+    "jev": "no",
+    "openai-luna": "no",
+    "gemini-flash-lite": "no",
+    "gemini-flash": "no",
+    "claude-haiku": "no",
+    "claude-sonnet": "no"
+   },
+   "accepted": [
+    "no"
+   ],
+   "truthFrom": "eye (earlier pass)"
+  },
+  {
+   "site": "site-27",
+   "question": "phone",
+   "answers": {
+    "jev": "no",
+    "openai-luna": "no",
+    "gemini-flash-lite": "no",
+    "gemini-flash": "no",
+    "claude-haiku": "no",
+    "claude-sonnet": "no"
+   },
+   "accepted": [
+    "no"
+   ],
+   "truthFrom": "eye (earlier pass)"
+  },
+  {
+   "site": "site-28",
+   "question": "phone",
+   "answers": {
+    "jev": "yes",
+    "openai-luna": "yes",
+    "gemini-flash-lite": "yes",
+    "gemini-flash": "yes",
+    "claude-haiku": "yes",
+    "claude-sonnet": "yes"
+   },
+   "accepted": [
+    "yes"
+   ],
+   "truthFrom": "unanimous"
+  },
+  {
+   "site": "site-29",
+   "question": "phone",
+   "answers": {
+    "jev": "yes",
+    "openai-luna": "yes",
+    "gemini-flash-lite": "yes",
+    "gemini-flash": "yes",
+    "claude-haiku": "yes",
+    "claude-sonnet": "yes"
+   },
+   "accepted": [
+    "yes"
+   ],
+   "truthFrom": "unanimous"
+  },
+  {
+   "site": "site-30",
+   "question": "phone",
+   "answers": {
+    "jev": "unavailable",
+    "openai-luna": "unavailable",
+    "gemini-flash-lite": "no",
+    "gemini-flash": "unavailable",
+    "claude-haiku": "error",
+    "claude-sonnet": "unavailable"
+   },
+   "accepted": [
+    "no",
+    "unavailable"
+   ],
+   "truthFrom": "eye"
+  },
+  {
+   "site": "site-31",
+   "question": "phone",
+   "answers": {
+    "jev": "yes",
+    "openai-luna": "yes",
+    "gemini-flash-lite": "yes",
+    "gemini-flash": "yes",
+    "claude-haiku": "yes",
+    "claude-sonnet": "yes"
+   },
+   "accepted": [
+    "yes"
+   ],
+   "truthFrom": "unanimous"
+  },
+  {
+   "site": "site-32",
+   "question": "phone",
+   "answers": {
+    "jev": "no",
+    "openai-luna": "no",
+    "gemini-flash-lite": "no",
+    "gemini-flash": "yes",
+    "claude-haiku": "no",
+    "claude-sonnet": "no"
+   },
+   "accepted": [
+    "no"
+   ],
+   "truthFrom": "eye (earlier pass)"
+  },
+  {
+   "site": "site-33",
+   "question": "phone",
+   "answers": {
+    "jev": "yes",
+    "openai-luna": "unavailable",
+    "gemini-flash-lite": "yes",
+    "gemini-flash": "yes",
+    "claude-haiku": "yes",
+    "claude-sonnet": "yes"
+   },
+   "accepted": [
+    "unavailable",
+    "yes"
+   ],
+   "truthFrom": "eye"
+  },
+  {
+   "site": "site-34",
+   "question": "phone",
+   "answers": {
+    "jev": "no",
+    "openai-luna": "no",
+    "gemini-flash-lite": "no",
+    "gemini-flash": "no",
+    "claude-haiku": "no",
+    "claude-sonnet": "no"
+   },
+   "accepted": [
+    "no"
+   ],
+   "truthFrom": "eye (earlier pass)"
+  },
+  {
+   "site": "site-35",
+   "question": "phone",
+   "answers": {
+    "jev": "no",
+    "openai-luna": "no",
+    "gemini-flash-lite": "no",
+    "gemini-flash": "no",
+    "claude-haiku": "no",
+    "claude-sonnet": "no"
+   },
+   "accepted": [
+    "no"
+   ],
+   "truthFrom": "eye (earlier pass)"
+  },
+  {
+   "site": "site-36",
+   "question": "phone",
+   "answers": {
+    "jev": "yes",
+    "openai-luna": "yes",
+    "gemini-flash-lite": "yes",
+    "gemini-flash": "yes",
+    "claude-haiku": "yes",
+    "claude-sonnet": "yes"
+   },
+   "accepted": [
+    "yes"
+   ],
+   "truthFrom": "unanimous"
+  },
+  {
+   "site": "site-37",
+   "question": "phone",
+   "answers": {
+    "jev": "yes",
+    "openai-luna": "yes",
+    "gemini-flash-lite": "yes",
+    "gemini-flash": "yes",
+    "claude-haiku": "yes",
+    "claude-sonnet": "yes"
+   },
+   "accepted": [
+    "yes"
+   ],
+   "truthFrom": "eye (earlier pass)"
+  },
+  {
+   "site": "site-38",
+   "question": "phone",
+   "answers": {
+    "jev": "no",
+    "openai-luna": "no",
+    "gemini-flash-lite": "no",
+    "gemini-flash": "no",
+    "claude-haiku": "no",
+    "claude-sonnet": "no"
+   },
+   "accepted": [
+    "no"
+   ],
+   "truthFrom": "eye (earlier pass)"
+  },
+  {
+   "site": "site-39",
+   "question": "phone",
+   "answers": {
+    "jev": "yes",
+    "openai-luna": "yes",
+    "gemini-flash-lite": "yes",
+    "gemini-flash": "yes",
+    "claude-haiku": "yes",
+    "claude-sonnet": "yes"
+   },
+   "accepted": [
+    "yes"
+   ],
+   "truthFrom": "unanimous"
+  },
+  {
+   "site": "site-40",
+   "question": "phone",
+   "answers": {
+    "jev": "no",
+    "openai-luna": "no",
+    "gemini-flash-lite": "no",
+    "gemini-flash": "no",
+    "claude-haiku": "no",
+    "claude-sonnet": "no"
+   },
+   "accepted": [
+    "no"
+   ],
+   "truthFrom": "eye (earlier pass)"
+  },
+  {
+   "site": "site-41",
+   "question": "phone",
+   "answers": {
+    "jev": "yes",
+    "openai-luna": "yes",
+    "gemini-flash-lite": "yes",
+    "gemini-flash": "yes",
+    "claude-haiku": "yes",
+    "claude-sonnet": "yes"
+   },
+   "accepted": [
+    "yes"
+   ],
+   "truthFrom": "unanimous"
+  },
+  {
+   "site": "site-42",
+   "question": "phone",
+   "answers": {
+    "jev": "unavailable",
+    "openai-luna": "unavailable",
+    "gemini-flash-lite": "unavailable",
+    "gemini-flash": "unavailable",
+    "claude-haiku": "unavailable",
+    "claude-sonnet": "unavailable"
+   },
+   "accepted": [
+    "unavailable"
+   ],
+   "truthFrom": "unanimous"
+  },
+  {
+   "site": "site-43",
+   "question": "phone",
+   "answers": {
+    "jev": "yes",
+    "openai-luna": "yes",
+    "gemini-flash-lite": "yes",
+    "gemini-flash": "yes",
+    "claude-haiku": "yes",
+    "claude-sonnet": "yes"
+   },
+   "accepted": [
+    "yes"
+   ],
+   "truthFrom": "unanimous"
+  },
+  {
+   "site": "site-44",
+   "question": "phone",
+   "answers": {
+    "jev": "no",
+    "openai-luna": "no",
+    "gemini-flash-lite": "no",
+    "gemini-flash": "no",
+    "claude-haiku": "no",
+    "claude-sonnet": "no"
+   },
+   "accepted": [
+    "no"
+   ],
+   "truthFrom": "eye (earlier pass)"
+  },
+  {
+   "site": "site-45",
+   "question": "phone",
+   "answers": {
+    "jev": "no",
+    "openai-luna": "no",
+    "gemini-flash-lite": "no",
+    "gemini-flash": "no",
+    "claude-haiku": "no",
+    "claude-sonnet": "no"
+   },
+   "accepted": [
+    "no"
+   ],
+   "truthFrom": "eye (earlier pass)"
+  },
+  {
+   "site": "site-46",
+   "question": "phone",
+   "answers": {
+    "jev": "no",
+    "openai-luna": "no",
+    "gemini-flash-lite": "no",
+    "gemini-flash": "no",
+    "claude-haiku": "no",
+    "claude-sonnet": "no"
+   },
+   "accepted": [
+    "no"
+   ],
+   "truthFrom": "eye (earlier pass)"
+  },
+  {
+   "site": "site-47",
+   "question": "phone",
+   "answers": {
+    "jev": "yes",
+    "openai-luna": "yes",
+    "gemini-flash-lite": "yes",
+    "gemini-flash": "yes",
+    "claude-haiku": "yes",
+    "claude-sonnet": "yes"
+   },
+   "accepted": [
+    "yes"
+   ],
+   "truthFrom": "eye (earlier pass)"
+  },
+  {
+   "site": "site-48",
+   "question": "phone",
+   "answers": {
+    "jev": "no",
+    "openai-luna": "no",
+    "gemini-flash-lite": "no",
+    "gemini-flash": "no",
+    "claude-haiku": "no",
+    "claude-sonnet": "no"
+   },
+   "accepted": [
+    "no"
+   ],
+   "truthFrom": "eye (earlier pass)"
+  },
+  {
+   "site": "site-49",
+   "question": "phone",
+   "answers": {
+    "jev": "no",
+    "openai-luna": "no",
+    "gemini-flash-lite": "no",
+    "gemini-flash": "no",
+    "claude-haiku": "no",
+    "claude-sonnet": "no"
+   },
+   "accepted": [
+    "no"
+   ],
+   "truthFrom": "eye (earlier pass)"
+  },
+  {
+   "site": "site-50",
+   "question": "phone",
+   "answers": {
+    "jev": "yes",
+    "openai-luna": "yes",
+    "gemini-flash-lite": "yes",
+    "gemini-flash": "yes",
+    "claude-haiku": "yes",
+    "claude-sonnet": "yes"
+   },
+   "accepted": [
+    "yes"
+   ],
+   "truthFrom": "unanimous"
+  },
+  {
+   "site": "site-51",
+   "question": "phone",
+   "answers": {
+    "jev": "yes",
+    "openai-luna": "yes",
+    "gemini-flash-lite": "yes",
+    "gemini-flash": "yes",
+    "claude-haiku": "yes",
+    "claude-sonnet": "yes"
+   },
+   "accepted": [
+    "yes"
+   ],
+   "truthFrom": "unanimous"
+  },
+  {
+   "site": "site-52",
+   "question": "phone",
+   "answers": {
+    "jev": "yes",
+    "openai-luna": "unavailable",
+    "gemini-flash-lite": "unavailable",
+    "gemini-flash": "unavailable",
+    "claude-haiku": "yes",
+    "claude-sonnet": "unavailable"
+   },
+   "accepted": "ambiguous",
+   "truthFrom": "eye"
+  },
+  {
+   "site": "site-53",
+   "question": "phone",
+   "answers": {
+    "jev": "yes",
+    "openai-luna": "yes",
+    "gemini-flash-lite": "yes",
+    "gemini-flash": "yes",
+    "claude-haiku": "yes",
+    "claude-sonnet": "yes"
+   },
+   "accepted": [
+    "yes"
+   ],
+   "truthFrom": "unanimous"
+  },
+  {
+   "site": "site-54",
+   "question": "phone",
+   "answers": {
+    "jev": "yes",
+    "openai-luna": "yes",
+    "gemini-flash-lite": "yes",
+    "gemini-flash": "yes",
+    "claude-haiku": "yes",
+    "claude-sonnet": "yes"
+   },
+   "accepted": [
+    "yes"
+   ],
+   "truthFrom": "eye (earlier pass)"
+  },
+  {
+   "site": "site-55",
+   "question": "phone",
+   "answers": {
+    "jev": "no",
+    "openai-luna": "no",
+    "gemini-flash-lite": "no",
+    "gemini-flash": "no",
+    "claude-haiku": "no",
+    "claude-sonnet": "no"
+   },
+   "accepted": [
+    "no"
+   ],
+   "truthFrom": "eye (earlier pass)"
+  },
+  {
+   "site": "site-56",
+   "question": "phone",
+   "answers": {
+    "jev": "yes",
+    "openai-luna": "yes",
+    "gemini-flash-lite": "yes",
+    "gemini-flash": "yes",
+    "claude-haiku": "yes",
+    "claude-sonnet": "yes"
+   },
+   "accepted": [
+    "yes"
+   ],
+   "truthFrom": "unanimous"
+  },
+  {
+   "site": "site-57",
+   "question": "phone",
+   "answers": {
+    "jev": "no",
+    "openai-luna": "no",
+    "gemini-flash-lite": "no",
+    "gemini-flash": "no",
+    "claude-haiku": "no",
+    "claude-sonnet": "no"
+   },
+   "accepted": [
+    "no"
+   ],
+   "truthFrom": "eye (earlier pass)"
+  },
+  {
+   "site": "site-58",
+   "question": "phone",
+   "answers": {
+    "jev": "no",
+    "openai-luna": "no",
+    "gemini-flash-lite": "no",
+    "gemini-flash": "no",
+    "claude-haiku": "no",
+    "claude-sonnet": "no"
+   },
+   "accepted": [
+    "no"
+   ],
+   "truthFrom": "eye (earlier pass)"
+  },
+  {
+   "site": "site-59",
+   "question": "phone",
+   "answers": {
+    "jev": "no",
+    "openai-luna": "no",
+    "gemini-flash-lite": "no",
+    "gemini-flash": "no",
+    "claude-haiku": "no",
+    "claude-sonnet": "no"
+   },
+   "accepted": [
+    "no"
+   ],
+   "truthFrom": "eye (earlier pass)"
+  },
+  {
+   "site": "site-60",
+   "question": "phone",
+   "answers": {
+    "jev": "no",
+    "openai-luna": "no",
+    "gemini-flash-lite": "no",
+    "gemini-flash": "no",
+    "claude-haiku": "no",
+    "claude-sonnet": "no"
+   },
+   "accepted": [
+    "no"
+   ],
+   "truthFrom": "eye (earlier pass)"
+  },
+  {
+   "site": "site-61",
+   "question": "phone",
+   "answers": {
+    "jev": "yes",
+    "openai-luna": "yes",
+    "gemini-flash-lite": "yes",
+    "gemini-flash": "yes",
+    "claude-haiku": "yes",
+    "claude-sonnet": "yes"
+   },
+   "accepted": [
+    "yes"
+   ],
+   "truthFrom": "unanimous"
+  },
+  {
+   "site": "site-62",
+   "question": "phone",
+   "answers": {
+    "jev": "yes",
+    "openai-luna": "yes",
+    "gemini-flash-lite": "yes",
+    "gemini-flash": "yes",
+    "claude-haiku": "yes",
+    "claude-sonnet": "yes"
+   },
+   "accepted": [
+    "yes"
+   ],
+   "truthFrom": "unanimous"
+  },
+  {
+   "site": "site-63",
+   "question": "phone",
+   "answers": {
+    "jev": "no",
+    "openai-luna": "no",
+    "gemini-flash-lite": "no",
+    "gemini-flash": "no",
+    "claude-haiku": "no",
+    "claude-sonnet": "no"
+   },
+   "accepted": [
+    "no"
+   ],
+   "truthFrom": "unanimous"
+  },
+  {
+   "site": "site-64",
+   "question": "phone",
+   "answers": {
+    "jev": "yes",
+    "openai-luna": "yes",
+    "gemini-flash-lite": "yes",
+    "gemini-flash": "yes",
+    "claude-haiku": "yes",
+    "claude-sonnet": "yes"
+   },
+   "accepted": [
+    "yes"
+   ],
+   "truthFrom": "unanimous"
+  },
+  {
+   "site": "site-65",
+   "question": "phone",
+   "answers": {
+    "jev": "yes",
+    "openai-luna": "yes",
+    "gemini-flash-lite": "yes",
+    "gemini-flash": "yes",
+    "claude-haiku": "yes",
+    "claude-sonnet": "yes"
+   },
+   "accepted": [
+    "yes"
+   ],
+   "truthFrom": "eye (earlier pass)"
+  },
+  {
+   "site": "site-66",
+   "question": "phone",
+   "answers": {
+    "jev": "yes",
+    "openai-luna": "yes",
+    "gemini-flash-lite": "yes",
+    "gemini-flash": "yes",
+    "claude-haiku": "yes",
+    "claude-sonnet": "yes"
+   },
+   "accepted": [
+    "yes"
+   ],
+   "truthFrom": "eye (earlier pass)"
+  },
+  {
+   "site": "site-67",
+   "question": "phone",
+   "answers": {
+    "jev": "no",
+    "openai-luna": "no",
+    "gemini-flash-lite": "no",
+    "gemini-flash": "no",
+    "claude-haiku": "no",
+    "claude-sonnet": "no"
+   },
+   "accepted": [
+    "no"
+   ],
+   "truthFrom": "eye (earlier pass)"
+  },
+  {
+   "site": "site-68",
+   "question": "phone",
+   "answers": {
+    "jev": "yes",
+    "openai-luna": "yes",
+    "gemini-flash-lite": "yes",
+    "gemini-flash": "yes",
+    "claude-haiku": "yes",
+    "claude-sonnet": "yes"
+   },
+   "accepted": [
+    "yes"
+   ],
+   "truthFrom": "unanimous"
+  },
+  {
+   "site": "site-69",
+   "question": "phone",
+   "answers": {
+    "jev": "no",
+    "openai-luna": "no",
+    "gemini-flash-lite": "no",
+    "gemini-flash": "no",
+    "claude-haiku": "no",
+    "claude-sonnet": "no"
+   },
+   "accepted": [
+    "no"
+   ],
+   "truthFrom": "eye (earlier pass)"
+  },
+  {
+   "site": "site-70",
+   "question": "phone",
+   "answers": {
+    "jev": "unavailable",
+    "openai-luna": "unavailable",
+    "gemini-flash-lite": "unavailable",
+    "gemini-flash": "unavailable",
+    "claude-haiku": "unavailable",
+    "claude-sonnet": "unavailable"
+   },
+   "accepted": [
+    "unavailable",
+    "yes"
+   ],
+   "truthFrom": "eye (earlier pass)"
+  },
+  {
+   "site": "site-71",
+   "question": "phone",
+   "answers": {
+    "jev": "yes",
+    "openai-luna": "yes",
+    "gemini-flash-lite": "yes",
+    "gemini-flash": "yes",
+    "claude-haiku": "yes",
+    "claude-sonnet": "yes"
+   },
+   "accepted": [
+    "yes"
+   ],
+   "truthFrom": "eye (earlier pass)"
+  },
+  {
+   "site": "site-72",
+   "question": "phone",
+   "answers": {
+    "jev": "yes",
+    "openai-luna": "yes",
+    "gemini-flash-lite": "yes",
+    "gemini-flash": "yes",
+    "claude-haiku": "yes",
+    "claude-sonnet": "yes"
+   },
+   "accepted": [
+    "yes"
+   ],
+   "truthFrom": "unanimous"
+  },
+  {
+   "site": "site-73",
+   "question": "phone",
+   "answers": {
+    "jev": "no",
+    "openai-luna": "no",
+    "gemini-flash-lite": "no",
+    "gemini-flash": "no",
+    "claude-haiku": "no",
+    "claude-sonnet": "no"
+   },
+   "accepted": [
+    "no"
+   ],
+   "truthFrom": "eye (earlier pass)"
+  },
+  {
+   "site": "site-74",
+   "question": "phone",
+   "answers": {
+    "jev": "no",
+    "openai-luna": "no",
+    "gemini-flash-lite": "no",
+    "gemini-flash": "no",
+    "claude-haiku": "no",
+    "claude-sonnet": "no"
+   },
+   "accepted": [
+    "no"
+   ],
+   "truthFrom": "eye (earlier pass)"
+  },
+  {
+   "site": "site-75",
+   "question": "phone",
+   "answers": {
+    "jev": "no",
+    "openai-luna": "no",
+    "gemini-flash-lite": "no",
+    "gemini-flash": "no",
+    "claude-haiku": "no",
+    "claude-sonnet": "no"
+   },
+   "accepted": [
+    "no"
+   ],
+   "truthFrom": "eye (earlier pass)"
+  },
+  {
+   "site": "site-76",
+   "question": "phone",
+   "answers": {
+    "jev": "no",
+    "openai-luna": "no",
+    "gemini-flash-lite": "no",
+    "gemini-flash": "no",
+    "claude-haiku": "no",
+    "claude-sonnet": "no"
+   },
+   "accepted": [
+    "no"
+   ],
+   "truthFrom": "eye (earlier pass)"
+  },
+  {
+   "site": "site-77",
+   "question": "phone",
+   "answers": {
+    "jev": "yes",
+    "openai-luna": "yes",
+    "gemini-flash-lite": "yes",
+    "gemini-flash": "yes",
+    "claude-haiku": "yes",
+    "claude-sonnet": "yes"
+   },
+   "accepted": [
+    "yes"
+   ],
+   "truthFrom": "unanimous"
+  },
+  {
+   "site": "site-78",
+   "question": "phone",
+   "answers": {
+    "jev": "no",
+    "openai-luna": "no",
+    "gemini-flash-lite": "no",
+    "gemini-flash": "no",
+    "claude-haiku": "no",
+    "claude-sonnet": "no"
+   },
+   "accepted": [
+    "no"
+   ],
+   "truthFrom": "eye (earlier pass)"
+  },
+  {
+   "site": "site-79",
+   "question": "phone",
+   "answers": {
+    "jev": "no",
+    "openai-luna": "no",
+    "gemini-flash-lite": "no",
+    "gemini-flash": "no",
+    "claude-haiku": "no",
+    "claude-sonnet": "no"
+   },
+   "accepted": [
+    "no"
+   ],
+   "truthFrom": "eye (earlier pass)"
+  },
+  {
+   "site": "site-01",
+   "question": "reviews",
+   "answers": {
+    "jev": "unavailable",
+    "openai-luna": "unavailable",
+    "gemini-flash-lite": "yes",
+    "gemini-flash": "unavailable",
+    "claude-haiku": "unavailable",
+    "claude-sonnet": "yes"
+   },
+   "accepted": [
+    "unavailable",
+    "yes"
+   ],
+   "truthFrom": "eye"
+  },
+  {
+   "site": "site-02",
+   "question": "reviews",
+   "answers": {
+    "jev": "yes",
+    "openai-luna": "yes",
+    "gemini-flash-lite": "yes",
+    "gemini-flash": "yes",
+    "claude-haiku": "yes",
+    "claude-sonnet": "yes"
+   },
+   "accepted": [
+    "yes"
+   ],
+   "truthFrom": "unanimous"
+  },
+  {
+   "site": "site-03",
+   "question": "reviews",
+   "answers": {
+    "jev": "yes",
+    "openai-luna": "yes",
+    "gemini-flash-lite": "yes",
+    "gemini-flash": "yes",
+    "claude-haiku": "yes",
+    "claude-sonnet": "yes"
+   },
+   "accepted": [
+    "yes"
+   ],
+   "truthFrom": "unanimous"
+  },
+  {
+   "site": "site-04",
+   "question": "reviews",
+   "answers": {
+    "jev": "no",
+    "openai-luna": "no",
+    "gemini-flash-lite": "no",
+    "gemini-flash": "no",
+    "claude-haiku": "no",
+    "claude-sonnet": "no"
+   },
+   "accepted": [
+    "no"
+   ],
+   "truthFrom": "eye (earlier pass)"
+  },
+  {
+   "site": "site-05",
+   "question": "reviews",
+   "answers": {
+    "jev": "yes",
+    "openai-luna": "yes",
+    "gemini-flash-lite": "yes",
+    "gemini-flash": "yes",
+    "claude-haiku": "yes",
+    "claude-sonnet": "yes"
+   },
+   "accepted": [
+    "yes"
+   ],
+   "truthFrom": "unanimous"
+  },
+  {
+   "site": "site-06",
+   "question": "reviews",
+   "answers": {
+    "jev": "yes",
+    "openai-luna": "yes",
+    "gemini-flash-lite": "yes",
+    "gemini-flash": "yes",
+    "claude-haiku": "yes",
+    "claude-sonnet": "yes"
+   },
+   "accepted": [
+    "yes"
+   ],
+   "truthFrom": "unanimous"
+  },
+  {
+   "site": "site-07",
+   "question": "reviews",
+   "answers": {
+    "jev": "yes",
+    "openai-luna": "yes",
+    "gemini-flash-lite": "yes",
+    "gemini-flash": "yes",
+    "claude-haiku": "yes",
+    "claude-sonnet": "yes"
+   },
+   "accepted": [
+    "yes"
+   ],
+   "truthFrom": "unanimous"
+  },
+  {
+   "site": "site-08",
+   "question": "reviews",
+   "answers": {
+    "jev": "unavailable",
+    "openai-luna": "unavailable",
+    "gemini-flash-lite": "unavailable",
+    "gemini-flash": "unavailable",
+    "claude-haiku": "error",
+    "claude-sonnet": "unavailable"
+   },
+   "accepted": [
+    "unavailable",
+    "yes"
+   ],
+   "truthFrom": "eye"
+  },
+  {
+   "site": "site-09",
+   "question": "reviews",
+   "answers": {
+    "jev": "yes",
+    "openai-luna": "yes",
+    "gemini-flash-lite": "yes",
+    "gemini-flash": "yes",
+    "claude-haiku": "yes",
+    "claude-sonnet": "yes"
+   },
+   "accepted": [
+    "yes"
+   ],
+   "truthFrom": "unanimous"
+  },
+  {
+   "site": "site-10",
+   "question": "reviews",
+   "answers": {
+    "jev": "no",
+    "openai-luna": "no",
+    "gemini-flash-lite": "no",
+    "gemini-flash": "no",
+    "claude-haiku": "no",
+    "claude-sonnet": "no"
+   },
+   "accepted": [
+    "no"
+   ],
+   "truthFrom": "eye (earlier pass)"
+  },
+  {
+   "site": "site-11",
+   "question": "reviews",
+   "answers": {
+    "jev": "no",
+    "openai-luna": "no",
+    "gemini-flash-lite": "no",
+    "gemini-flash": "no",
+    "claude-haiku": "no",
+    "claude-sonnet": "no"
+   },
+   "accepted": [
+    "no"
+   ],
+   "truthFrom": "unanimous"
+  },
+  {
+   "site": "site-12",
+   "question": "reviews",
+   "answers": {
+    "jev": "yes",
+    "openai-luna": "yes",
+    "gemini-flash-lite": "yes",
+    "gemini-flash": "yes",
+    "claude-haiku": "yes",
+    "claude-sonnet": "yes"
+   },
+   "accepted": [
+    "yes"
+   ],
+   "truthFrom": "unanimous"
+  },
+  {
+   "site": "site-13",
+   "question": "reviews",
+   "answers": {
+    "jev": "yes",
+    "openai-luna": "yes",
+    "gemini-flash-lite": "yes",
+    "gemini-flash": "yes",
+    "claude-haiku": "yes",
+    "claude-sonnet": "yes"
+   },
+   "accepted": [
+    "yes"
+   ],
+   "truthFrom": "unanimous"
+  },
+  {
+   "site": "site-14",
+   "question": "reviews",
+   "answers": {
+    "jev": "yes",
+    "openai-luna": "yes",
+    "gemini-flash-lite": "yes",
+    "gemini-flash": "yes",
+    "claude-haiku": "yes",
+    "claude-sonnet": "yes"
+   },
+   "accepted": [
+    "yes"
+   ],
+   "truthFrom": "unanimous"
+  },
+  {
+   "site": "site-15",
+   "question": "reviews",
+   "answers": {
+    "jev": "yes",
+    "openai-luna": "yes",
+    "gemini-flash-lite": "yes",
+    "gemini-flash": "yes",
+    "claude-haiku": "yes",
+    "claude-sonnet": "yes"
+   },
+   "accepted": [
+    "yes"
+   ],
+   "truthFrom": "unanimous"
+  },
+  {
+   "site": "site-16",
+   "question": "reviews",
+   "answers": {
+    "jev": "no",
+    "openai-luna": "no",
+    "gemini-flash-lite": "no",
+    "gemini-flash": "no",
+    "claude-haiku": "no",
+    "claude-sonnet": "no"
+   },
+   "accepted": [
+    "no"
+   ],
+   "truthFrom": "unanimous"
+  },
+  {
+   "site": "site-17",
+   "question": "reviews",
+   "answers": {
+    "jev": "yes",
+    "openai-luna": "yes",
+    "gemini-flash-lite": "yes",
+    "gemini-flash": "yes",
+    "claude-haiku": "yes",
+    "claude-sonnet": "yes"
+   },
+   "accepted": [
+    "yes"
+   ],
+   "truthFrom": "unanimous"
+  },
+  {
+   "site": "site-18",
+   "question": "reviews",
+   "answers": {
+    "jev": "yes",
+    "openai-luna": "yes",
+    "gemini-flash-lite": "yes",
+    "gemini-flash": "yes",
+    "claude-haiku": "yes",
+    "claude-sonnet": "yes"
+   },
+   "accepted": [
+    "yes"
+   ],
+   "truthFrom": "unanimous"
+  },
+  {
+   "site": "site-19",
+   "question": "reviews",
+   "answers": {
+    "jev": "yes",
+    "openai-luna": "yes",
+    "gemini-flash-lite": "yes",
+    "gemini-flash": "yes",
+    "claude-haiku": "yes",
+    "claude-sonnet": "yes"
+   },
+   "accepted": [
+    "yes"
+   ],
+   "truthFrom": "unanimous"
+  },
+  {
+   "site": "site-20",
+   "question": "reviews",
+   "answers": {
+    "jev": "yes",
+    "openai-luna": "yes",
+    "gemini-flash-lite": "yes",
+    "gemini-flash": "yes",
+    "claude-haiku": "yes",
+    "claude-sonnet": "yes"
+   },
+   "accepted": [
+    "yes"
+   ],
+   "truthFrom": "unanimous"
+  },
+  {
+   "site": "site-21",
+   "question": "reviews",
+   "answers": {
+    "jev": "yes",
+    "openai-luna": "yes",
+    "gemini-flash-lite": "yes",
+    "gemini-flash": "yes",
+    "claude-haiku": "yes",
+    "claude-sonnet": "yes"
+   },
+   "accepted": [
+    "yes"
+   ],
+   "truthFrom": "unanimous"
+  },
+  {
+   "site": "site-22",
+   "question": "reviews",
+   "answers": {
+    "jev": "yes",
+    "openai-luna": "yes",
+    "gemini-flash-lite": "yes",
+    "gemini-flash": "yes",
+    "claude-haiku": "yes",
+    "claude-sonnet": "yes"
+   },
+   "accepted": [
+    "yes"
+   ],
+   "truthFrom": "unanimous"
+  },
+  {
+   "site": "site-23",
+   "question": "reviews",
+   "answers": {
+    "jev": "yes",
+    "openai-luna": "yes",
+    "gemini-flash-lite": "yes",
+    "gemini-flash": "yes",
+    "claude-haiku": "yes",
+    "claude-sonnet": "yes"
+   },
+   "accepted": [
+    "yes"
+   ],
+   "truthFrom": "unanimous"
+  },
+  {
+   "site": "site-24",
+   "question": "reviews",
+   "answers": {
+    "jev": "yes",
+    "openai-luna": "yes",
+    "gemini-flash-lite": "yes",
+    "gemini-flash": "yes",
+    "claude-haiku": "yes",
+    "claude-sonnet": "yes"
+   },
+   "accepted": [
+    "yes"
+   ],
+   "truthFrom": "unanimous"
+  },
+  {
+   "site": "site-25",
+   "question": "reviews",
+   "answers": {
+    "jev": "yes",
+    "openai-luna": "yes",
+    "gemini-flash-lite": "yes",
+    "gemini-flash": "yes",
+    "claude-haiku": "yes",
+    "claude-sonnet": "yes"
+   },
+   "accepted": [
+    "yes"
+   ],
+   "truthFrom": "unanimous"
+  },
+  {
+   "site": "site-26",
+   "question": "reviews",
+   "answers": {
+    "jev": "yes",
+    "openai-luna": "yes",
+    "gemini-flash-lite": "yes",
+    "gemini-flash": "yes",
+    "claude-haiku": "yes",
+    "claude-sonnet": "yes"
+   },
+   "accepted": [
+    "yes"
+   ],
+   "truthFrom": "unanimous"
+  },
+  {
+   "site": "site-27",
+   "question": "reviews",
+   "answers": {
+    "jev": "yes",
+    "openai-luna": "yes",
+    "gemini-flash-lite": "yes",
+    "gemini-flash": "yes",
+    "claude-haiku": "yes",
+    "claude-sonnet": "yes"
+   },
+   "accepted": [
+    "yes"
+   ],
+   "truthFrom": "unanimous"
+  },
+  {
+   "site": "site-28",
+   "question": "reviews",
+   "answers": {
+    "jev": "yes",
+    "openai-luna": "yes",
+    "gemini-flash-lite": "yes",
+    "gemini-flash": "yes",
+    "claude-haiku": "yes",
+    "claude-sonnet": "yes"
+   },
+   "accepted": [
+    "yes"
+   ],
+   "truthFrom": "unanimous"
+  },
+  {
+   "site": "site-29",
+   "question": "reviews",
+   "answers": {
+    "jev": "yes",
+    "openai-luna": "yes",
+    "gemini-flash-lite": "yes",
+    "gemini-flash": "yes",
+    "claude-haiku": "yes",
+    "claude-sonnet": "yes"
+   },
+   "accepted": [
+    "yes"
+   ],
+   "truthFrom": "unanimous"
+  },
+  {
+   "site": "site-30",
+   "question": "reviews",
+   "answers": {
+    "jev": "unavailable",
+    "openai-luna": "unavailable",
+    "gemini-flash-lite": "unavailable",
+    "gemini-flash": "unavailable",
+    "claude-haiku": "unavailable",
+    "claude-sonnet": "unavailable"
+   },
+   "accepted": [
+    "unavailable"
+   ],
+   "truthFrom": "unanimous"
+  },
+  {
+   "site": "site-31",
+   "question": "reviews",
+   "answers": {
+    "jev": "yes",
+    "openai-luna": "yes",
+    "gemini-flash-lite": "yes",
+    "gemini-flash": "yes",
+    "claude-haiku": "yes",
+    "claude-sonnet": "yes"
+   },
+   "accepted": [
+    "yes"
+   ],
+   "truthFrom": "unanimous"
+  },
+  {
+   "site": "site-32",
+   "question": "reviews",
+   "answers": {
+    "jev": "no",
+    "openai-luna": "no",
+    "gemini-flash-lite": "no",
+    "gemini-flash": "no",
+    "claude-haiku": "no",
+    "claude-sonnet": "no"
+   },
+   "accepted": [
+    "no"
+   ],
+   "truthFrom": "eye (earlier pass)"
+  },
+  {
+   "site": "site-33",
+   "question": "reviews",
+   "answers": {
+    "jev": "yes",
+    "openai-luna": "unavailable",
+    "gemini-flash-lite": "yes",
+    "gemini-flash": "yes",
+    "claude-haiku": "yes",
+    "claude-sonnet": "yes"
+   },
+   "accepted": [
+    "unavailable",
+    "yes"
+   ],
+   "truthFrom": "eye"
+  },
+  {
+   "site": "site-34",
+   "question": "reviews",
+   "answers": {
+    "jev": "yes",
+    "openai-luna": "yes",
+    "gemini-flash-lite": "yes",
+    "gemini-flash": "yes",
+    "claude-haiku": "yes",
+    "claude-sonnet": "yes"
+   },
+   "accepted": [
+    "yes"
+   ],
+   "truthFrom": "unanimous"
+  },
+  {
+   "site": "site-35",
+   "question": "reviews",
+   "answers": {
+    "jev": "yes",
+    "openai-luna": "yes",
+    "gemini-flash-lite": "yes",
+    "gemini-flash": "yes",
+    "claude-haiku": "yes",
+    "claude-sonnet": "yes"
+   },
+   "accepted": [
+    "yes"
+   ],
+   "truthFrom": "unanimous"
+  },
+  {
+   "site": "site-36",
+   "question": "reviews",
+   "answers": {
+    "jev": "yes",
+    "openai-luna": "yes",
+    "gemini-flash-lite": "yes",
+    "gemini-flash": "yes",
+    "claude-haiku": "yes",
+    "claude-sonnet": "yes"
+   },
+   "accepted": [
+    "yes"
+   ],
+   "truthFrom": "unanimous"
+  },
+  {
+   "site": "site-37",
+   "question": "reviews",
+   "answers": {
+    "jev": "yes",
+    "openai-luna": "yes",
+    "gemini-flash-lite": "yes",
+    "gemini-flash": "yes",
+    "claude-haiku": "yes",
+    "claude-sonnet": "yes"
+   },
+   "accepted": [
+    "yes"
+   ],
+   "truthFrom": "unanimous"
+  },
+  {
+   "site": "site-38",
+   "question": "reviews",
+   "answers": {
+    "jev": "yes",
+    "openai-luna": "yes",
+    "gemini-flash-lite": "yes",
+    "gemini-flash": "yes",
+    "claude-haiku": "yes",
+    "claude-sonnet": "yes"
+   },
+   "accepted": [
+    "yes"
+   ],
+   "truthFrom": "unanimous"
+  },
+  {
+   "site": "site-39",
+   "question": "reviews",
+   "answers": {
+    "jev": "yes",
+    "openai-luna": "yes",
+    "gemini-flash-lite": "yes",
+    "gemini-flash": "yes",
+    "claude-haiku": "yes",
+    "claude-sonnet": "yes"
+   },
+   "accepted": [
+    "yes"
+   ],
+   "truthFrom": "unanimous"
+  },
+  {
+   "site": "site-40",
+   "question": "reviews",
+   "answers": {
+    "jev": "yes",
+    "openai-luna": "yes",
+    "gemini-flash-lite": "yes",
+    "gemini-flash": "yes",
+    "claude-haiku": "yes",
+    "claude-sonnet": "yes"
+   },
+   "accepted": [
+    "yes"
+   ],
+   "truthFrom": "unanimous"
+  },
+  {
+   "site": "site-41",
+   "question": "reviews",
+   "answers": {
+    "jev": "yes",
+    "openai-luna": "yes",
+    "gemini-flash-lite": "yes",
+    "gemini-flash": "yes",
+    "claude-haiku": "yes",
+    "claude-sonnet": "yes"
+   },
+   "accepted": [
+    "yes"
+   ],
+   "truthFrom": "unanimous"
+  },
+  {
+   "site": "site-42",
+   "question": "reviews",
+   "answers": {
+    "jev": "unavailable",
+    "openai-luna": "unavailable",
+    "gemini-flash-lite": "unavailable",
+    "gemini-flash": "unavailable",
+    "claude-haiku": "error",
+    "claude-sonnet": "unavailable"
+   },
+   "accepted": [
+    "unavailable",
+    "yes"
+   ],
+   "truthFrom": "eye"
+  },
+  {
+   "site": "site-43",
+   "question": "reviews",
+   "answers": {
+    "jev": "no",
+    "openai-luna": "no",
+    "gemini-flash-lite": "no",
+    "gemini-flash": "no",
+    "claude-haiku": "no",
+    "claude-sonnet": "no"
+   },
+   "accepted": [
+    "no"
+   ],
+   "truthFrom": "eye (earlier pass)"
+  },
+  {
+   "site": "site-44",
+   "question": "reviews",
+   "answers": {
+    "jev": "yes",
+    "openai-luna": "yes",
+    "gemini-flash-lite": "yes",
+    "gemini-flash": "yes",
+    "claude-haiku": "yes",
+    "claude-sonnet": "yes"
+   },
+   "accepted": [
+    "yes"
+   ],
+   "truthFrom": "unanimous"
+  },
+  {
+   "site": "site-45",
+   "question": "reviews",
+   "answers": {
+    "jev": "yes",
+    "openai-luna": "yes",
+    "gemini-flash-lite": "yes",
+    "gemini-flash": "yes",
+    "claude-haiku": "yes",
+    "claude-sonnet": "yes"
+   },
+   "accepted": [
+    "yes"
+   ],
+   "truthFrom": "unanimous"
+  },
+  {
+   "site": "site-46",
+   "question": "reviews",
+   "answers": {
+    "jev": "yes",
+    "openai-luna": "yes",
+    "gemini-flash-lite": "yes",
+    "gemini-flash": "yes",
+    "claude-haiku": "yes",
+    "claude-sonnet": "yes"
+   },
+   "accepted": [
+    "yes"
+   ],
+   "truthFrom": "unanimous"
+  },
+  {
+   "site": "site-47",
+   "question": "reviews",
+   "answers": {
+    "jev": "yes",
+    "openai-luna": "yes",
+    "gemini-flash-lite": "yes",
+    "gemini-flash": "yes",
+    "claude-haiku": "yes",
+    "claude-sonnet": "yes"
+   },
+   "accepted": [
+    "yes"
+   ],
+   "truthFrom": "unanimous"
+  },
+  {
+   "site": "site-48",
+   "question": "reviews",
+   "answers": {
+    "jev": "yes",
+    "openai-luna": "yes",
+    "gemini-flash-lite": "yes",
+    "gemini-flash": "yes",
+    "claude-haiku": "yes",
+    "claude-sonnet": "yes"
+   },
+   "accepted": [
+    "yes"
+   ],
+   "truthFrom": "unanimous"
+  },
+  {
+   "site": "site-49",
+   "question": "reviews",
+   "answers": {
+    "jev": "yes",
+    "openai-luna": "yes",
+    "gemini-flash-lite": "yes",
+    "gemini-flash": "yes",
+    "claude-haiku": "yes",
+    "claude-sonnet": "yes"
+   },
+   "accepted": [
+    "yes"
+   ],
+   "truthFrom": "unanimous"
+  },
+  {
+   "site": "site-50",
+   "question": "reviews",
+   "answers": {
+    "jev": "yes",
+    "openai-luna": "yes",
+    "gemini-flash-lite": "yes",
+    "gemini-flash": "yes",
+    "claude-haiku": "yes",
+    "claude-sonnet": "yes"
+   },
+   "accepted": [
+    "yes"
+   ],
+   "truthFrom": "unanimous"
+  },
+  {
+   "site": "site-51",
+   "question": "reviews",
+   "answers": {
+    "jev": "yes",
+    "openai-luna": "yes",
+    "gemini-flash-lite": "yes",
+    "gemini-flash": "yes",
+    "claude-haiku": "yes",
+    "claude-sonnet": "yes"
+   },
+   "accepted": [
+    "yes"
+   ],
+   "truthFrom": "unanimous"
+  },
+  {
+   "site": "site-52",
+   "question": "reviews",
+   "answers": {
+    "jev": "no",
+    "openai-luna": "unavailable",
+    "gemini-flash-lite": "no",
+    "gemini-flash": "no",
+    "claude-haiku": "no",
+    "claude-sonnet": "no"
+   },
+   "accepted": "ambiguous",
+   "truthFrom": "eye"
+  },
+  {
+   "site": "site-53",
+   "question": "reviews",
+   "answers": {
+    "jev": "yes",
+    "openai-luna": "yes",
+    "gemini-flash-lite": "yes",
+    "gemini-flash": "yes",
+    "claude-haiku": "yes",
+    "claude-sonnet": "yes"
+   },
+   "accepted": [
+    "yes"
+   ],
+   "truthFrom": "unanimous"
+  },
+  {
+   "site": "site-54",
+   "question": "reviews",
+   "answers": {
+    "jev": "no",
+    "openai-luna": "no",
+    "gemini-flash-lite": "no",
+    "gemini-flash": "no",
+    "claude-haiku": "no",
+    "claude-sonnet": "no"
+   },
+   "accepted": [
+    "no"
+   ],
+   "truthFrom": "eye (earlier pass)"
+  },
+  {
+   "site": "site-55",
+   "question": "reviews",
+   "answers": {
+    "jev": "yes",
+    "openai-luna": "yes",
+    "gemini-flash-lite": "yes",
+    "gemini-flash": "yes",
+    "claude-haiku": "yes",
+    "claude-sonnet": "yes"
+   },
+   "accepted": [
+    "yes"
+   ],
+   "truthFrom": "unanimous"
+  },
+  {
+   "site": "site-56",
+   "question": "reviews",
+   "answers": {
+    "jev": "yes",
+    "openai-luna": "yes",
+    "gemini-flash-lite": "yes",
+    "gemini-flash": "yes",
+    "claude-haiku": "yes",
+    "claude-sonnet": "yes"
+   },
+   "accepted": [
+    "yes"
+   ],
+   "truthFrom": "unanimous"
+  },
+  {
+   "site": "site-57",
+   "question": "reviews",
+   "answers": {
+    "jev": "yes",
+    "openai-luna": "yes",
+    "gemini-flash-lite": "yes",
+    "gemini-flash": "yes",
+    "claude-haiku": "yes",
+    "claude-sonnet": "yes"
+   },
+   "accepted": [
+    "yes"
+   ],
+   "truthFrom": "unanimous"
+  },
+  {
+   "site": "site-58",
+   "question": "reviews",
+   "answers": {
+    "jev": "yes",
+    "openai-luna": "yes",
+    "gemini-flash-lite": "yes",
+    "gemini-flash": "yes",
+    "claude-haiku": "yes",
+    "claude-sonnet": "yes"
+   },
+   "accepted": [
+    "yes"
+   ],
+   "truthFrom": "unanimous"
+  },
+  {
+   "site": "site-59",
+   "question": "reviews",
+   "answers": {
+    "jev": "yes",
+    "openai-luna": "yes",
+    "gemini-flash-lite": "yes",
+    "gemini-flash": "yes",
+    "claude-haiku": "yes",
+    "claude-sonnet": "yes"
+   },
+   "accepted": [
+    "yes"
+   ],
+   "truthFrom": "unanimous"
+  },
+  {
+   "site": "site-60",
+   "question": "reviews",
+   "answers": {
+    "jev": "no",
+    "openai-luna": "no",
+    "gemini-flash-lite": "no",
+    "gemini-flash": "no",
+    "claude-haiku": "no",
+    "claude-sonnet": "no"
+   },
+   "accepted": [
+    "no"
+   ],
+   "truthFrom": "eye (earlier pass)"
+  },
+  {
+   "site": "site-61",
+   "question": "reviews",
+   "answers": {
+    "jev": "yes",
+    "openai-luna": "yes",
+    "gemini-flash-lite": "yes",
+    "gemini-flash": "yes",
+    "claude-haiku": "yes",
+    "claude-sonnet": "yes"
+   },
+   "accepted": [
+    "yes"
+   ],
+   "truthFrom": "unanimous"
+  },
+  {
+   "site": "site-62",
+   "question": "reviews",
+   "answers": {
+    "jev": "yes",
+    "openai-luna": "yes",
+    "gemini-flash-lite": "yes",
+    "gemini-flash": "yes",
+    "claude-haiku": "yes",
+    "claude-sonnet": "yes"
+   },
+   "accepted": [
+    "yes"
+   ],
+   "truthFrom": "unanimous"
+  },
+  {
+   "site": "site-63",
+   "question": "reviews",
+   "answers": {
+    "jev": "no",
+    "openai-luna": "no",
+    "gemini-flash-lite": "no",
+    "gemini-flash": "no",
+    "claude-haiku": "no",
+    "claude-sonnet": "no"
+   },
+   "accepted": [
+    "no"
+   ],
+   "truthFrom": "eye (earlier pass)"
+  },
+  {
+   "site": "site-64",
+   "question": "reviews",
+   "answers": {
+    "jev": "yes",
+    "openai-luna": "yes",
+    "gemini-flash-lite": "yes",
+    "gemini-flash": "yes",
+    "claude-haiku": "yes",
+    "claude-sonnet": "yes"
+   },
+   "accepted": [
+    "yes"
+   ],
+   "truthFrom": "unanimous"
+  },
+  {
+   "site": "site-65",
+   "question": "reviews",
+   "answers": {
+    "jev": "yes",
+    "openai-luna": "yes",
+    "gemini-flash-lite": "yes",
+    "gemini-flash": "yes",
+    "claude-haiku": "yes",
+    "claude-sonnet": "yes"
+   },
+   "accepted": [
+    "yes"
+   ],
+   "truthFrom": "unanimous"
+  },
+  {
+   "site": "site-66",
+   "question": "reviews",
+   "answers": {
+    "jev": "yes",
+    "openai-luna": "yes",
+    "gemini-flash-lite": "yes",
+    "gemini-flash": "yes",
+    "claude-haiku": "yes",
+    "claude-sonnet": "yes"
+   },
+   "accepted": [
+    "yes"
+   ],
+   "truthFrom": "unanimous"
+  },
+  {
+   "site": "site-67",
+   "question": "reviews",
+   "answers": {
+    "jev": "no",
+    "openai-luna": "no",
+    "gemini-flash-lite": "no",
+    "gemini-flash": "no",
+    "claude-haiku": "no",
+    "claude-sonnet": "no"
+   },
+   "accepted": [
+    "no"
+   ],
+   "truthFrom": "eye (earlier pass)"
+  },
+  {
+   "site": "site-68",
+   "question": "reviews",
+   "answers": {
+    "jev": "yes",
+    "openai-luna": "yes",
+    "gemini-flash-lite": "yes",
+    "gemini-flash": "yes",
+    "claude-haiku": "yes",
+    "claude-sonnet": "yes"
+   },
+   "accepted": [
+    "yes"
+   ],
+   "truthFrom": "unanimous"
+  },
+  {
+   "site": "site-69",
+   "question": "reviews",
+   "answers": {
+    "jev": "yes",
+    "openai-luna": "yes",
+    "gemini-flash-lite": "yes",
+    "gemini-flash": "yes",
+    "claude-haiku": "yes",
+    "claude-sonnet": "yes"
+   },
+   "accepted": [
+    "yes"
+   ],
+   "truthFrom": "unanimous"
+  },
+  {
+   "site": "site-70",
+   "question": "reviews",
+   "answers": {
+    "jev": "unavailable",
+    "openai-luna": "unavailable",
+    "gemini-flash-lite": "unavailable",
+    "gemini-flash": "unavailable",
+    "claude-haiku": "unavailable",
+    "claude-sonnet": "unavailable"
+   },
+   "accepted": [
+    "unavailable"
+   ],
+   "truthFrom": "unanimous"
+  },
+  {
+   "site": "site-71",
+   "question": "reviews",
+   "answers": {
+    "jev": "yes",
+    "openai-luna": "yes",
+    "gemini-flash-lite": "yes",
+    "gemini-flash": "yes",
+    "claude-haiku": "yes",
+    "claude-sonnet": "yes"
+   },
+   "accepted": [
+    "yes"
+   ],
+   "truthFrom": "unanimous"
+  },
+  {
+   "site": "site-72",
+   "question": "reviews",
+   "answers": {
+    "jev": "yes",
+    "openai-luna": "yes",
+    "gemini-flash-lite": "yes",
+    "gemini-flash": "yes",
+    "claude-haiku": "yes",
+    "claude-sonnet": "yes"
+   },
+   "accepted": [
+    "yes"
+   ],
+   "truthFrom": "unanimous"
+  },
+  {
+   "site": "site-73",
+   "question": "reviews",
+   "answers": {
+    "jev": "no",
+    "openai-luna": "no",
+    "gemini-flash-lite": "no",
+    "gemini-flash": "no",
+    "claude-haiku": "no",
+    "claude-sonnet": "no"
+   },
+   "accepted": [
+    "no"
+   ],
+   "truthFrom": "eye (earlier pass)"
+  },
+  {
+   "site": "site-74",
+   "question": "reviews",
+   "answers": {
+    "jev": "no",
+    "openai-luna": "no",
+    "gemini-flash-lite": "no",
+    "gemini-flash": "no",
+    "claude-haiku": "no",
+    "claude-sonnet": "no"
+   },
+   "accepted": [
+    "no"
+   ],
+   "truthFrom": "eye (earlier pass)"
+  },
+  {
+   "site": "site-75",
+   "question": "reviews",
+   "answers": {
+    "jev": "yes",
+    "openai-luna": "yes",
+    "gemini-flash-lite": "yes",
+    "gemini-flash": "yes",
+    "claude-haiku": "yes",
+    "claude-sonnet": "yes"
+   },
+   "accepted": [
+    "yes"
+   ],
+   "truthFrom": "unanimous"
+  },
+  {
+   "site": "site-76",
+   "question": "reviews",
+   "answers": {
+    "jev": "yes",
+    "openai-luna": "yes",
+    "gemini-flash-lite": "yes",
+    "gemini-flash": "yes",
+    "claude-haiku": "yes",
+    "claude-sonnet": "yes"
+   },
+   "accepted": [
+    "yes"
+   ],
+   "truthFrom": "unanimous"
+  },
+  {
+   "site": "site-77",
+   "question": "reviews",
+   "answers": {
+    "jev": "yes",
+    "openai-luna": "yes",
+    "gemini-flash-lite": "yes",
+    "gemini-flash": "yes",
+    "claude-haiku": "yes",
+    "claude-sonnet": "yes"
+   },
+   "accepted": [
+    "yes"
+   ],
+   "truthFrom": "unanimous"
+  },
+  {
+   "site": "site-78",
+   "question": "reviews",
+   "answers": {
+    "jev": "no",
+    "openai-luna": "no",
+    "gemini-flash-lite": "no",
+    "gemini-flash": "no",
+    "claude-haiku": "no",
+    "claude-sonnet": "no"
+   },
+   "accepted": [
+    "no"
+   ],
+   "truthFrom": "eye (earlier pass)"
+  },
+  {
+   "site": "site-79",
+   "question": "reviews",
+   "answers": {
+    "jev": "no",
+    "openai-luna": "no",
+    "gemini-flash-lite": "no",
+    "gemini-flash": "no",
+    "claude-haiku": "no",
+    "claude-sonnet": "no"
+   },
+   "accepted": [
+    "no"
+   ],
+   "truthFrom": "eye (earlier pass)"
+  }
+ ]
+}
