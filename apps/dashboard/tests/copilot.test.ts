@@ -253,6 +253,9 @@ describe("Create a campaign button (owner 2026-10-11)", () => {
     // Owner 2026-10-15: Enter or Create opens the panel, posts the text as the user's message, sends it.
     const page = src("src/components/v2/campaigns-overview-page.tsx");
     expect(page).toContain('CREATE_CAMPAIGN_ASK = "Create a campaign"');
+    // Owner 2026-10-22: the Create box is staff-gated again.
+    expect(page).toContain("{staffMode && <CreateBox />}");
+    expect(page).not.toMatch(/^\s*<CreateBox \/>$/m);
     expect(page).toContain("copilot.ask(text.trim() || CREATE_CAMPAIGN_ASK);\n          setText(\"\");");
     expect(page).toContain('if (e.key === "Enter" && !e.shiftKey) {');
     expect(page).toContain("e.currentTarget.form?.requestSubmit();");
