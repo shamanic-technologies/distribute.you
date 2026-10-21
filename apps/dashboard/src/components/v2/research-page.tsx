@@ -95,6 +95,8 @@ const WINNER_LABEL: Record<ResearchTopic, string> = {
   tactic: "Winner",
   // a distribution of delays: it ranks nothing
   delay: "Comparison",
+  // one bar per niche grade: a pick among options
+  niche: "Winner",
 };
 
 const STATE_LOOK: Record<StudyState, { label: string; dot: string }> = {
