@@ -215,7 +215,11 @@ describe("the copy behind the footer states the current positioning", () => {
 
   it("the privacy policy names the company, the processors and the rights", () => {
     const privacy = read("src/app/privacy/page.tsx");
-    expect(privacy).toContain('const LAST_UPDATED = "October 6, 2026"');
+    expect(privacy).toContain('const LAST_UPDATED = "October 21, 2026"');
+    // Google OAuth verification (GCAL-VERIFY-VIDEO-1021): every requested scope named, Limited Use stated.
+    for (const g of ["gmail.readonly", "calendar.events.readonly", "meetings.space.readonly", "Limited Use requirements", "Google API Services User Data Policy"]) {
+      expect(privacy).toContain(g);
+    }
     expect(privacy).toContain("SIREN 882102775");
     for (const p of ["Clerk", "Stripe", "Revolut", "Twilio", "Postmark", "Instantly", "Apollo", "Hetzner", "PostHog"]) {
       expect(privacy).toContain(p);
