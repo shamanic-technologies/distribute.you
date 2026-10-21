@@ -845,6 +845,10 @@ const COPILOT_ALLOWED_TOOLS = [
   "get_offer_steps",
   "add_offer_step",
   "remove_offer_step",
+  // The offer's Brand Settings fields (booking link, destination URL, lifetime revenue): read
+  // and write what the client states (2026-10-21, a stored booking link was called "saved nowhere").
+  "get_offer_settings",
+  "update_offer_settings",
   "list_sales_paths",
   "get_trigger_events",
   "list_campaigns",
