@@ -1,0 +1,71 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="900" viewBox="0 0 1600 900">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#f8fafc"/><stop offset="1" stop-color="#e0ecff"/></linearGradient>
+    <linearGradient id="sky" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#1e3a5f"/><stop offset="1" stop-color="#334155"/></linearGradient>
+    <filter id="sh" x="-30%" y="-30%" width="160%" height="180%"><feDropShadow dx="0" dy="18" stdDeviation="22" flood-color="#0f172a" flood-opacity="0.16"/></filter>
+    <pattern id="dots" width="36" height="36" patternUnits="userSpaceOnUse"><circle cx="2" cy="2" r="1.6" fill="#cbd5e1"/></pattern>
+    <clipPath id="lens"><circle cx="1086" cy="374" r="74"/></clipPath>
+  </defs>
+  <rect width="1600" height="900" fill="url(#bg)"/>
+  <rect width="1600" height="900" fill="url(#dots)" opacity="0.6"/>
+
+  <text x="800" y="130" text-anchor="middle" font-family="Inter, system-ui, sans-serif" font-size="62" font-weight="800" fill="#0f172a" letter-spacing="-2">Is there a phone number in the header?</text>
+  <text x="800" y="190" text-anchor="middle" font-family="Inter, system-ui, sans-serif" font-size="30" font-weight="500" fill="#475569">Ask the screenshot, not a description of it.</text>
+
+  <!-- the screenshot: a browser window with a roofer's homepage (illustrative) -->
+  <g filter="url(#sh)">
+    <rect x="230" y="250" width="720" height="470" rx="22" fill="#ffffff"/>
+  </g>
+  <rect x="230" y="250" width="720" height="44" rx="22" fill="#e2e8f0"/>
+  <rect x="230" y="272" width="720" height="22" fill="#e2e8f0"/>
+  <circle cx="262" cy="272" r="7" fill="#f87171"/><circle cx="286" cy="272" r="7" fill="#fbbf24"/><circle cx="310" cy="272" r="7" fill="#34d399"/>
+  <!-- header row -->
+  <rect x="230" y="294" width="720" height="80" fill="#ffffff"/>
+  <path d="M262 352 L292 322 L322 352 Z" fill="#2563eb"/>
+  <rect x="270" y="352" width="44" height="6" fill="#2563eb"/>
+  <text x="336" y="347" font-family="Inter, system-ui, sans-serif" font-size="24" font-weight="800" fill="#0f172a">ROOFING CO.</text>
+  <rect x="520" y="328" width="56" height="10" rx="5" fill="#cbd5e1"/>
+  <rect x="592" y="328" width="56" height="10" rx="5" fill="#cbd5e1"/>
+  <rect x="664" y="328" width="56" height="10" rx="5" fill="#cbd5e1"/>
+  <text x="808" y="340" text-anchor="middle" font-family="Inter, system-ui, sans-serif" font-size="20" font-weight="700" fill="#0f172a">(555) 010-2468</text>
+  <!-- hero image area -->
+  <rect x="230" y="374" width="720" height="346" fill="url(#sky)"/>
+  <path d="M230 640 L420 520 L600 640 L780 540 L950 640 L950 720 L230 720 Z" fill="#475569"/>
+  <text x="290" y="460" font-family="Inter, system-ui, sans-serif" font-size="44" font-weight="800" fill="#ffffff">QUALITY ROOFS,</text>
+  <text x="290" y="512" font-family="Inter, system-ui, sans-serif" font-size="44" font-weight="800" fill="#ffffff">DONE RIGHT.</text>
+  <rect x="290" y="550" width="180" height="48" rx="10" fill="#2563eb"/>
+  <text x="380" y="581" text-anchor="middle" font-family="Inter, system-ui, sans-serif" font-size="18" font-weight="700" fill="#ffffff">FREE ESTIMATE</text>
+  <rect x="230" y="700" width="720" height="20" rx="0" fill="#475569"/>
+  <rect x="230" y="700" width="720" height="20" rx="22" fill="#475569"/>
+
+  <!-- magnifier on the phone number -->
+  <g filter="url(#sh)">
+    <circle cx="1086" cy="374" r="84" fill="#ffffff"/>
+  </g>
+  <g clip-path="url(#lens)">
+    <rect x="1000" y="290" width="180" height="170" fill="#ffffff"/>
+    <text x="1086" y="388" text-anchor="middle" font-family="Inter, system-ui, sans-serif" font-size="26" font-weight="800" fill="#0f172a">(555) 010</text>
+  </g>
+  <circle cx="1086" cy="374" r="80" fill="none" stroke="#0f172a" stroke-width="12"/>
+  <line x1="1144" y1="432" x2="1210" y2="498" stroke="#0f172a" stroke-width="22" stroke-linecap="round"/>
+  <line x1="900" y1="334" x2="1002" y2="360" stroke="#2563eb" stroke-width="4" stroke-dasharray="10 10"/>
+
+  <!-- the two answers -->
+  <g filter="url(#sh)">
+    <rect x="1010" y="540" width="390" height="84" rx="18" fill="#f0fdf4"/>
+  </g>
+  <rect x="1010" y="540" width="390" height="84" rx="18" fill="none" stroke="#bbf7d0" stroke-width="2"/>
+  <circle cx="1052" cy="582" r="20" fill="#16a34a"/>
+  <path d="M1042 582 L1050 590 L1063 574" fill="none" stroke="#ffffff" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/>
+  <text x="1086" y="574" font-family="Inter, system-ui, sans-serif" font-size="22" font-weight="700" fill="#14532d">On the screenshot:</text>
+  <text x="1086" y="604" font-family="Inter, system-ui, sans-serif" font-size="22" font-weight="500" fill="#14532d">a phone, not a lead</text>
+
+  <g filter="url(#sh)">
+    <rect x="1010" y="646" width="390" height="84" rx="18" fill="#fef2f2"/>
+  </g>
+  <rect x="1010" y="646" width="390" height="84" rx="18" fill="none" stroke="#fecaca" stroke-width="2"/>
+  <circle cx="1052" cy="688" r="20" fill="#dc2626"/>
+  <path d="M1044 680 L1060 696 M1060 680 L1044 696" stroke="#ffffff" stroke-width="5" stroke-linecap="round"/>
+  <text x="1086" y="680" font-family="Inter, system-ui, sans-serif" font-size="22" font-weight="700" fill="#7f1d1d">On a description:</text>
+  <text x="1086" y="710" font-family="Inter, system-ui, sans-serif" font-size="22" font-weight="500" fill="#7f1d1d">"no phone", a wrong lead</text>
+</svg>

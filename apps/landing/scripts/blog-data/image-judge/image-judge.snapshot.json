@@ -1,0 +1,179 @@
+{
+ "readOn": "2026-10-21",
+ "judge": "jev-1.13.0",
+ "screenshots": 79,
+ "questions": 4,
+ "checks": 316,
+ "roof": {
+  "homepages": 33,
+  "noPhone": 13,
+  "withPhone": 20,
+  "judged": 32,
+  "descriptionRight": 14,
+  "imageRight": 32,
+  "phoneMissed": 18,
+  "descriptionLeads": 30,
+  "imageLeads": 12,
+  "realLeads": 12,
+  "pText": "< 0.001",
+  "multiple": "2.3"
+ },
+ "perQuestion": [
+  {
+   "question": "phone",
+   "text": "Is there no clearly visible phone number in the header of the homepage above the fold?",
+   "screenshots": 79,
+   "disagreements": 27,
+   "ambiguous": 0,
+   "scored": 27,
+   "image": 27,
+   "description": 0,
+   "p": 1.4901161193847648e-8,
+   "pText": "< 0.001",
+   "bonferroniText": "< 0.001",
+   "kind": "conclusion",
+   "missed": 27
+  },
+  {
+   "question": "reviews",
+   "text": "Does the first screen of the homepage show no customer review rating (stars or a review score such as Google or Trustpilot)?",
+   "screenshots": 79,
+   "disagreements": 13,
+   "ambiguous": 0,
+   "scored": 13,
+   "image": 13,
+   "description": 0,
+   "p": 0.00024414062500000016,
+   "pText": "< 0.001",
+   "bonferroniText": "< 0.001",
+   "kind": "conclusion",
+   "missed": 13
+  },
+  {
+   "question": "chat",
+   "text": "Does the first screen of the homepage show no live chat widget or chat bubble?",
+   "screenshots": 79,
+   "disagreements": 12,
+   "ambiguous": 4,
+   "scored": 8,
+   "image": 5,
+   "description": 3,
+   "p": 0.7265625000000001,
+   "pText": "0.727",
+   "bonferroniText": "1.000",
+   "kind": "noise",
+   "missed": 5
+  },
+  {
+   "question": "address",
+   "text": "Does the first screen of the homepage show a physical street address?",
+   "screenshots": 79,
+   "disagreements": 7,
+   "ambiguous": 0,
+   "scored": 7,
+   "image": 7,
+   "description": 0,
+   "p": 0.01562500000000001,
+   "pText": "0.016",
+   "bonferroniText": "0.063",
+   "kind": "signal",
+   "missed": 7
+  }
+ ],
+ "byQuestion": {
+  "phone": {
+   "question": "phone",
+   "text": "Is there no clearly visible phone number in the header of the homepage above the fold?",
+   "screenshots": 79,
+   "disagreements": 27,
+   "ambiguous": 0,
+   "scored": 27,
+   "image": 27,
+   "description": 0,
+   "p": 1.4901161193847648e-8,
+   "pText": "< 0.001",
+   "bonferroniText": "< 0.001",
+   "kind": "conclusion",
+   "missed": 27
+  },
+  "reviews": {
+   "question": "reviews",
+   "text": "Does the first screen of the homepage show no customer review rating (stars or a review score such as Google or Trustpilot)?",
+   "screenshots": 79,
+   "disagreements": 13,
+   "ambiguous": 0,
+   "scored": 13,
+   "image": 13,
+   "description": 0,
+   "p": 0.00024414062500000016,
+   "pText": "< 0.001",
+   "bonferroniText": "< 0.001",
+   "kind": "conclusion",
+   "missed": 13
+  },
+  "chat": {
+   "question": "chat",
+   "text": "Does the first screen of the homepage show no live chat widget or chat bubble?",
+   "screenshots": 79,
+   "disagreements": 12,
+   "ambiguous": 4,
+   "scored": 8,
+   "image": 5,
+   "description": 3,
+   "p": 0.7265625000000001,
+   "pText": "0.727",
+   "bonferroniText": "1.000",
+   "kind": "noise",
+   "missed": 5
+  },
+  "address": {
+   "question": "address",
+   "text": "Does the first screen of the homepage show a physical street address?",
+   "screenshots": 79,
+   "disagreements": 7,
+   "ambiguous": 0,
+   "scored": 7,
+   "image": 7,
+   "description": 0,
+   "p": 0.01562500000000001,
+   "pText": "0.016",
+   "bonferroniText": "0.063",
+   "kind": "signal",
+   "missed": 7
+  }
+ },
+ "pooled": {
+  "scored": 55,
+  "image": 52,
+  "description": 3,
+  "ambiguous": 4,
+  "disagreements": 59,
+  "p": 1.5418777365994477e-12,
+  "pText": "< 0.001"
+ },
+ "covered": [
+  {
+   "question": "cta",
+   "checks": 39,
+   "decided": 33,
+   "agree": 33
+  },
+  {
+   "question": "design",
+   "checks": 39,
+   "decided": 33,
+   "agree": 32
+  }
+ ],
+ "judges": {
+  "count": 4,
+  "homepages": 33,
+  "min": 32,
+  "max": 33
+ },
+ "coveredTotals": {
+  "checks": 78,
+  "decided": 66,
+  "agree": 65
+ }
+}
