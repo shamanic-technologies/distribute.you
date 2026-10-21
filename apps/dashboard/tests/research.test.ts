@@ -8,6 +8,7 @@ import {
   researchTemplateOf,
   researchTemplateVersion,
   researchTemplateVersionHref,
+  researchRoiOf,
   templateContentKey,
   templateModels,
   templateRowStatus,
@@ -171,6 +172,22 @@ describe("Template dynasties (TPL-DYNASTY-1021)", () => {
     expect(templateRowStatus(dyn, statuses([["cold-email-v44", "active"]], false))).toBeNull();
   });
 
+  it("the dynasty status served by features-service wins over its head version's", () => {
+    expect(templateRowStatus({ ...dyn, status: "deprecated" }, statuses([["cold-email-v44", "active"]]))).toBe("deprecated");
+    expect(templateRowStatus({ ...dyn, status: "active" }, statuses([], false))).toBe("active");
+    expect(templateRowStatus({ ...dyn, status: null }, statuses([["cold-email-v44", "active"]]))).toBe("active");
+  });
+
+  it("prints a served catalogue return: detail measured or expected, the printed string alone, the pre-hotfix object", () => {
+    const d = { display: "1.40x", source: null, spendCovered: null, unavailableReason: null };
+    expect(researchRoiOf({ roi: "1.40x", roiDetail: { ...d, value: 1.4, basis: "measured" } })).toEqual({ show: { value: 1.4, expected: false, reason: null } });
+    expect(researchRoiOf({ roi: "2.10x", roiDetail: { ...d, value: 2.1, basis: "expected" } })).toEqual({ show: { value: 2.1, expected: true, reason: null } });
+    expect(researchRoiOf({ roi: null, roiDetail: { ...d, value: null, basis: null, unavailableReason: "no_return_on_pipe" } })).toEqual({ show: { value: null, expected: false, reason: "no_return_on_pipe" } });
+    expect(researchRoiOf({ roi: "1.40x" })).toEqual({ text: "1.40x" });
+    expect(researchRoiOf({ roi: { ...d, value: 1.4, basis: "measured" } })).toEqual({ show: { value: 1.4, expected: false, reason: null } });
+    expect(researchRoiOf({})).toBeNull();
+  });
+
   it("splits the rows into the Active and Deprecated tabs in the served order, nothing while pending", () => {
     const by = templatesByTab([dyn, old], statuses([["cold-email-v44", "active"], ["cold-email-v12", "deprecated"]]));
     expect(by?.active.map((r) => r.key)).toEqual(["cold-reply-free-offer-blind"]);
@@ -238,7 +255,7 @@ describe("Template dynasties (TPL-DYNASTY-1021)", () => {
     expect(panel).toContain("useTemplateRowOutputs(t, 4)");
     expect(panel).toContain("useTemplateOutputs(version.key, 5)");
     expect(panel).toContain('document.getElementById("v2-portal")');
-    expect(panel).toContain("{roi != null && <Fig k={<RoiLabel />} v={roi} />}");
+    expect(panel).toContain("{roi != null && <Fig k={<RoiLabel />} v={\"show\" in roi ? <RoiValue roi={roi.show} /> : roi.text} />}");
     expect(panel).not.toMatch(/transition-all|text-gray-/);
     expect(read("components/v2/research-page.tsx")).toContain('versionKey={view.view === "version" ? view.version : null}');
   });

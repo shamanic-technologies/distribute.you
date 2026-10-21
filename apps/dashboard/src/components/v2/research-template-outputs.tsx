@@ -7,7 +7,7 @@ import { useAuthQuery } from "@/lib/use-auth-query";
 import { pollOptions } from "@/lib/query-options";
 import { getTemplateOutputs, type TemplateOutput } from "@/lib/api";
 import { EmptyNote, Shimmer } from "@/components/v2/ui";
-import { RoiLabel } from "@/components/v2/roi-label";
+import { RoiLabel, RoiValue } from "@/components/v2/roi-label";
 import { Arrow, TopicMark, instantText } from "@/components/v2/research-bits";
 import { modelTagFromName } from "@/lib/written-by";
 import {
@@ -19,6 +19,7 @@ import {
   type ResearchPipe,
   type ResearchRef,
   type ResearchTemplate,
+  researchRoiOf,
 } from "@/lib/research/research";
 
 /** The outcome words a panel labels its figures with ("Positive reply", "Positive replies"). */
@@ -69,10 +70,10 @@ export function OutputsList({ read }: { read: ReturnType<typeof useTemplateOutpu
  * otherwise, never a placeholder.
  */
 export function TemplateFigures({ f, outcome, more = false }: { f: ResearchFigures; outcome: OutcomeWords; more?: boolean }) {
-  const roi = f.roi ?? null;
+  const roi = researchRoiOf(f);
   return (
     <dl className="grid grid-cols-2 gap-x-3 gap-y-2.5 text-[12px]">
-      {roi != null && <Fig k={<RoiLabel />} v={roi} />}
+      {roi != null && <Fig k={<RoiLabel />} v={"show" in roi ? <RoiValue roi={roi.show} /> : roi.text} />}
       <Fig k={`Cost per ${outcome.noun.toLowerCase()}`} v={f.cost} />
       <Fig k="Conversion" v={f.rate} />
       <Fig k={outcome.plural} v={f.outcomes} />
@@ -82,7 +83,7 @@ export function TemplateFigures({ f, outcome, more = false }: { f: ResearchFigur
   );
 }
 
-function Fig({ k, v }: { k: React.ReactNode; v: string | null }) {
+function Fig({ k, v }: { k: React.ReactNode; v: React.ReactNode }) {
   return (
     <div className="min-w-0">
       <dt className="k-label truncate">{k}</dt>

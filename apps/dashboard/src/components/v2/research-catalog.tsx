@@ -9,7 +9,7 @@ import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { EmptyNote, SectionTitle, Shimmer, TopBar, type Crumb } from "@/components/v2/ui";
 import { CostBasisSwitch } from "@/components/v2/cost-basis-switch";
-import { RoiLabel } from "@/components/v2/roi-label";
+import { RoiLabel, RoiValue } from "@/components/v2/roi-label";
 import { ResearchLiveWorkflows, usePipeChannelName, useResearchPipeLeg } from "@/components/v2/research-live-workflows";
 import { shortWorkflowName } from "@/lib/live-workflow-rows";
 import {
@@ -64,6 +64,7 @@ import {
   type ResearchTemplate,
   type ResearchTemplateVersion,
   type ResearchWorkflow,
+  researchRoiOf,
 } from "@/lib/research/research";
 
 /**
@@ -626,10 +627,10 @@ function Header({
 function KpiStrip({ f, pipe }: { f: ResearchFigures; pipe: ResearchPipe }) {
   const o = useOutcome(pipe);
   // ROI only once features-service serves it on the row: no tile otherwise.
-  const roi = f.roi ?? null;
+  const roi = researchRoiOf(f);
   return (
     <div className={`k-card mt-5 grid grid-cols-2 divide-[var(--line-subtle)] md:divide-x ${roi != null ? "md:grid-cols-5" : "md:grid-cols-4"}`}>
-      {roi != null && <Kpi label={<RoiLabel />} value={roi} />}
+      {roi != null && <Kpi label={<RoiLabel />} value={"show" in roi ? <RoiValue roi={roi.show} /> : roi.text} />}
       <Kpi label={`Cost / ${o.noun.toLowerCase()}`} value={<Dash v={f.cost} />} />
       <Kpi label="Rate" value={<Dash v={f.rate} />} />
       <Kpi label={o.plural} value={f.outcomes} />
