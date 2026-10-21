@@ -208,7 +208,7 @@ describe("where a record came from", () => {
     const { sourceMark } = await import("../src/lib/conversation-sources");
     expect(sourceMark("instantly", "email").name).toBe("Distribute");
     expect(sourceMark("posthog", "web").name).toBe("Distribute");
-    expect(sourceMark("gmail", "email").domain).toBe("gmail.com");
+    expect(sourceMark("gmail", "email").src).toBe("/integration-logos/gmail.svg");
     expect(sourceMark("matrix", "whatsapp").domain).toBe("whatsapp.com");
     expect(sourceMark("matrix", "linkedin").domain).toBe("linkedin.com");
     expect(sourceMark("stripe", "payment").domain).toBe("stripe.com");

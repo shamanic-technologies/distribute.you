@@ -114,6 +114,14 @@ const CONNECTION_IO: Record<
   },
 };
 
+/**
+ * A Google product's own mark (Gmail, Google Calendar), shipped in `public/integration-logos`.
+ * logo.dev keys on a DOMAIN, and every Google product domain answers with the Google "G".
+ */
+function ProductMark({ src }: { src: string }) {
+  return <img src={src} alt="" width={28} height={28} className="h-7 w-7 shrink-0 object-contain" />;
+}
+
 /** `bare` renders the rows alone, for a host that draws the heading and the card. */
 function IntegrationsSection({ brandId, bare }: { brandId: string; bare: boolean }) {
   const queryClient = useQueryClient();
@@ -606,7 +614,7 @@ function GmailRow({ orgId }: { orgId: string | null }) {
     <div className="p-5">
       <div className="flex flex-wrap items-start gap-3">
         <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-gray-200 bg-white p-1">
-          <CompanyLogo domain="gmail.com" name="Gmail" size={28} />
+          <ProductMark src="/integration-logos/gmail.svg" />
         </span>
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-2">
@@ -710,7 +718,7 @@ function GoogleCalendarRow({ orgId }: { orgId: string | null }) {
     <div className="p-5" data-testid="google-calendar-row">
       <div className="flex flex-wrap items-start gap-3">
         <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-gray-200 bg-white p-1">
-          <CompanyLogo domain="calendar.google.com" name="Google Calendar" size={28} />
+          <ProductMark src="/integration-logos/google-calendar.svg" />
         </span>
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-2">
