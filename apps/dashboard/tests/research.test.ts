@@ -1,7 +1,7 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
-import { parseResearchPath, researchCatalogHref, researchPipeFor } from "../src/lib/research/research";
+import { parseResearchPath, researchCatalogHref, researchPipeFor, researchTemplateOf, templateContentKey, type ResearchCatalog, type ResearchTemplate } from "../src/lib/research/research";
 
 const ROOT = join(__dirname, "..", "src");
 const read = (p: string) => readFileSync(join(ROOT, p), "utf8");
@@ -109,5 +109,38 @@ describe("the workflows catalogue names each workflow and gives its LLM and temp
     expect(src).toContain('kind="models" r={(r as ResearchWorkflow).model}');
     expect(src).toContain('kind="templates" r={(r as ResearchWorkflow).template}');
     expect(src).toContain("onClick={(e) => e.stopPropagation()}");
+  });
+});
+
+describe("Template dynasties (TPL-DYNASTY-1021)", () => {
+  const fig = { rank: null, emails: "0", emailsNoun: "emails", outcomes: "0", spend: "$0", cost: null, rate: null, thin: true, sample: "", charts: [] };
+  const dyn: ResearchTemplate = {
+    ...fig,
+    key: "cold-reply-free-offer-blind",
+    label: "Blind Free Offer",
+    hasText: true,
+    dynasty: { slug: "cold-reply-free-offer-blind", name: "Blind Free Offer", description: "d", identity: "blind", head: { key: "cold-email-v44", label: "v44" } },
+    standaloneReason: null,
+    versions: [
+      { ...fig, key: "cold-email-v40", label: "v40", head: false, hasText: true },
+      { ...fig, key: "cold-email-v44", label: "v44", head: true, hasText: true },
+    ],
+    workflows: [],
+    runs: [],
+  };
+  const old: ResearchTemplate = { ...fig, key: "cold-email-v12", label: "v12", hasText: true, workflows: [], runs: [] };
+  const empty = { workflows: [], templates: [], models: [] };
+  const catalog: ResearchCatalog = { "cold-email-positive-reply": { ...empty, templates: [dyn, old] }, "cold-email-website-visit": empty, "meeting-booking": empty };
+
+  it("opens a version's key on its dynasty's page, and a row's own key on itself", () => {
+    expect(researchTemplateOf(catalog, "cold-email-positive-reply", "cold-email-v40")?.key).toBe("cold-reply-free-offer-blind");
+    expect(researchTemplateOf(catalog, "cold-email-positive-reply", "cold-reply-free-offer-blind")?.key).toBe("cold-reply-free-offer-blind");
+    expect(researchTemplateOf(catalog, "cold-email-positive-reply", "cold-email-v12")?.key).toBe("cold-email-v12");
+    expect(researchTemplateOf(catalog, "cold-email-positive-reply", "nope")).toBeNull();
+  });
+
+  it("reads content-generation status and outputs on the head version, a pre-dynasty row on its own key", () => {
+    expect(templateContentKey(dyn)).toBe("cold-email-v44");
+    expect(templateContentKey(old)).toBe("cold-email-v12");
   });
 });

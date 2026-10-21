@@ -7,7 +7,7 @@ import { pollOptions } from "@/lib/query-options";
 import { getTemplateOutputs, type TemplateOutput } from "@/lib/api";
 import { EmptyNote, Shimmer } from "@/components/v2/ui";
 import { instantText } from "@/components/v2/research-bits";
-import type { ResearchTemplate } from "@/lib/research/research";
+import { templateContentKey, type ResearchTemplate } from "@/lib/research/research";
 
 /**
  * The Templates page's right panel, open from the start (owner 2026-10-19): the selected
@@ -15,7 +15,9 @@ import type { ResearchTemplate } from "@/lib/research/research";
  * (content-generation-service; subject and each email as sent, never a client or a lead).
  */
 export function TemplateOutputsPanel({ t, href, outcomeNoun }: { t: ResearchTemplate; href: string; outcomeNoun: string }) {
-  const q = useAuthQuery(["templateOutputs", t.key], () => getTemplateOutputs(t.key, 5), { ...pollOptions, retry: false });
+  // A dynasty row reads its head version's outputs (content generation keys outputs by version).
+  const outputsKey = templateContentKey(t);
+  const q = useAuthQuery(["templateOutputs", outputsKey], () => getTemplateOutputs(outputsKey, 5), { ...pollOptions, retry: false });
   const answered = q.data !== undefined || q.isFetchedAfterMount;
   return (
     <aside className="k-card flex h-fit min-h-0 flex-col self-start overflow-hidden lg:sticky lg:top-4 lg:max-h-[calc(100vh-120px)]">

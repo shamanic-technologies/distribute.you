@@ -209,6 +209,11 @@ export interface ResearchRef {
   key: string;
   label: string;
   linked: boolean;
+  /**
+   * On a TEMPLATE ref (TPL-DYNASTY-1021): `key`/`label` name the template DYNASTY's page, and
+   * `version` the one version the ref means, when it means one. Absent on a catalogue built before it.
+   */
+  version?: { key: string; label: string } | null;
 }
 
 export interface ResearchWorkflow extends ResearchFigures {
@@ -232,12 +237,56 @@ export interface ResearchWorkflow extends ResearchFigures {
   runs: { when: string; version: string; status: string; duration: string | null; cost: string | null }[];
 }
 
+/**
+ * A template DYNASTY as content-generation-service names it (TPL-DYNASTY-1021, features-service #1893):
+ * every version of one template idea under one name, its customer one-liner, and the version that
+ * writes now (`head`).
+ */
+export interface ResearchTemplateDynasty {
+  slug: string;
+  name: string;
+  /** What the dynasty does, in one customer line. */
+  description: string;
+  signature?: string | null;
+  /** Whether its emails name the client ("named") or keep it private ("blind"). */
+  identity: "blind" | "named" | string;
+  head: { key: string; label: string } | null;
+}
+
+/** Why a template version is listed on its own, outside any dynasty. */
+export type TemplateStandaloneReason = "no_dynasty_on_pipe" | "template_dynasties_unreadable";
+
+/** One version of a dynasty, with its own figures (they add up to the dynasty's page exactly). */
+export interface ResearchTemplateVersion extends ResearchFigures {
+  key: string;
+  label: string;
+  head: boolean;
+  hasText: boolean;
+}
+
+/**
+ * A Templates row. Since TPL-DYNASTY-1021 a row is a template DYNASTY (`key` = its slug, `label` =
+ * its name, figures pooled over every version), or a version on its own (`dynasty` null and
+ * `standaloneReason` set). The dynasty fields are absent on a catalogue built before it.
+ */
 export interface ResearchTemplate extends ResearchFigures {
   key: string;
   label: string;
   hasText: boolean;
+  dynasty?: ResearchTemplateDynasty | null;
+  standaloneReason?: TemplateStandaloneReason | null;
+  /** Every version, oldest first, as features-service serves them. */
+  versions?: ResearchTemplateVersion[];
   workflows: { key: string; label: string }[];
-  runs: { when: string; model: ResearchRef | null; workflow: { key: string; label: string } | null; version: string | null; tokens: string | null }[];
+  runs: {
+    when: string;
+    model: ResearchRef | null;
+    workflow: { key: string; label: string } | null;
+    version: string | null;
+    tokens: string | null;
+    /** The template version the sequence was written with. */
+    templateVersion?: string | null;
+  }[];
 }
 
 export interface ResearchModel extends ResearchFigures {
@@ -416,6 +465,18 @@ export function researchWorkflow(c: ResearchCatalog, pipe: ResearchPipe, key: st
 }
 export function researchTemplate(c: ResearchCatalog, pipe: ResearchPipe, key: string): ResearchTemplate | null {
   return c[pipe].templates.find((t) => t.key === key) ?? null;
+}
+/**
+ * The Templates row a template KEY belongs to: the row itself, else the dynasty that lists it as a
+ * version (a workflow names the version it writes with; its page is the dynasty's).
+ */
+export function researchTemplateOf(c: ResearchCatalog, pipe: ResearchPipe, key: string): ResearchTemplate | null {
+  const rows = c[pipe].templates;
+  return rows.find((t) => t.key === key) ?? rows.find((t) => (t.versions ?? []).some((v) => v.key === key)) ?? null;
+}
+/** The key the content-generation status and outputs of a row are read on: its head version's, else its own. */
+export function templateContentKey(t: Pick<ResearchTemplate, "key" | "dynasty">): string {
+  return t.dynasty?.head?.key ?? t.key;
 }
 export function researchModel(c: ResearchCatalog, pipe: ResearchPipe, key: string): ResearchModel | null {
   return c[pipe].models.find((m) => m.key === key) ?? null;

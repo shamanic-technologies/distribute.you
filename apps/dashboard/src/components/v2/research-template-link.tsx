@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { v2Href } from "@/lib/v2/routes";
-import { researchCatalogHref, researchPipeFor, researchTemplate, researchWorkflow } from "@/lib/research/research";
+import { researchCatalogHref, researchPipeFor, researchTemplateOf, researchWorkflow } from "@/lib/research/research";
 import { useResearchCatalog } from "@/lib/research/research-source";
 
 /**
@@ -27,10 +27,9 @@ export function ResearchTemplateChip({
 }) {
   const { data: catalog } = useResearchCatalog("user");
   const pipe = researchPipeFor(channel, step);
-  const href =
-    catalog && pipe && templateKey && researchTemplate(catalog, pipe, templateKey)
-      ? researchCatalogHref(v2Href(orgId, brandId, "research"), pipe, "templates", templateKey)
-      : null;
+  // A workflow names the template VERSION it writes with; Research lists it under its dynasty's page.
+  const row = catalog && pipe && templateKey ? researchTemplateOf(catalog, pipe, templateKey) : null;
+  const href = row && pipe ? researchCatalogHref(v2Href(orgId, brandId, "research"), pipe, "templates", row.key) : null;
   return href ? (
     <Link href={href} prefetch className="k-chip hover:text-[var(--accent)]" title="Open this template in Research">
       {label} →
