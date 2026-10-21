@@ -3,145 +3,78 @@
 import { useMemo, useState } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
-import { getLeadDetail, getOfferContactedValue, getOfferDealsValue, getLeadConsolidatedStatus, leadDateForStatus, listLeadsPage } from "@/lib/api";
+import { getOfferDealsLifecycle, listUniboxLeads } from "@/lib/api";
 import { useAuthQuery } from "@/lib/use-auth-query";
 import { POLL_INTERVAL } from "@/lib/query-options";
 import { formatCount, formatUsdAdaptive } from "@/lib/format-number";
-import { v2Href, v2PersonHref } from "@/lib/v2/routes";
+import { v2Href } from "@/lib/v2/routes";
 import { timeAgo } from "@/lib/friendly-datetime";
-import { leadStatusLabel } from "@/lib/lead-status";
-import { STANDINGS_BY_COLUMN, LEAD_BOARD_COLUMNS, LEAD_BOARD_PAGE_SIZE, type LeadBoardColumnKey } from "@/lib/lead-board";
-import { boardColumnTotals, leadsColumnPageQuery } from "@/lib/leads-server-page";
-import { useLeadCampaigns, type LeadCampaign } from "@/components/v2/lead-campaigns";
+import { LEAD_BOARD_PAGE_SIZE } from "@/lib/lead-board";
+import { filtersKey, uniboxLeadName, uniboxRowId, uniboxRowKey, uniboxValueTone, type LifecycleRung, type UniboxDimension, type UniboxFilters, type UniboxRow } from "@/lib/unibox-leads";
+import { DEALS_FILTER_DIMENSIONS, dealCardChips, dealsBoardRungs, servedRungValues, type ServedRungValue } from "@/lib/deals-board";
+import { useLeadCampaigns } from "@/components/v2/lead-campaigns";
 import { FunnelFace } from "@/components/v2/funnel-campaigns";
 import { useSelectedOffer } from "@/components/v2/selected-offer";
-import { useLeadScope, useBrandRevenue, useInterestedReplies, useLeadDisqualifications, useStandingCounts } from "@/components/v2/data";
-import { COMPANY_DISQUALIFIED_TAG, DISQUALIFIED_TAG, disqualificationSourceWord, markTag, type DisqualifiedCompany, type DisqualifiedLead } from "@/lib/lead-disqualification";
-import { TagChip } from "@/components/v2/tag-chip";
-import { EmptyNote, Shimmer, TopBar } from "@/components/v2/ui";
-import { CompanyMark, PersonAvatar, leadCompany, leadCompanyDomain, leadName, personHref } from "@/components/v2/people-bits";
-import { InfoTooltip } from "@/components/visibility/metric-info";
+import { useDealsLifecycleCounts } from "@/components/v2/data";
+import { TONE_COLOR, TagChip } from "@/components/v2/tag-chip";
+import { UniboxFilterBar } from "@/components/v2/unibox-lead-card";
+import { EmptyNote, Initials, Shimmer, TopBar } from "@/components/v2/ui";
+import { CompanyMark } from "@/components/v2/people-bits";
+
+/** lead-service pages a list by at most this many rows. */
+const MAX_ROWS = 200;
 
 /**
- * v2 names the `sales_interest` column for what it holds. v1's board calls it
- * "Positive reply", but the standing also holds everyone who only VISITED the website
- * (86 of 87 on the brand that surfaced this), so the word overstated replies.
- */
-const V2_COLUMN_LABEL: Partial<Record<LeadBoardColumnKey, string>> = {
-  // Everybody we wrote to who is still in play: the same standings v1 calls "Leads".
-  contacted: "Contacted",
-  sales_interest: "Interested",
-};
-
-/** Keel's stage dot per column. Semantic only: green is a win, rose is a stop. */
-const COLUMN_DOT: Record<LeadBoardColumnKey, string> = {
-  contacted: "var(--data-sky)",
-  sales_interest: "var(--accent)",
-  won: "var(--data-teal)",
-  disqualified: "var(--fg-4)",
-  opt_out: "var(--data-rose)",
-  unresolved: "var(--fg-4)",
-};
-
-/**
- * Deals: Keel's pipeline board, drawn from lead-service's STANDINGS — a partition,
- * so every person is in exactly one column and the column sizes are the producer's own
- * counts. Each column is its own page on the producer's activity order, the same reads
- * v1's board makes. Moving a card is a statement with a cost, so a card opens the
- * person's own v2 page, where the win is stated with its cost and value.
+ * Deals: Keel's pipeline board over THE lifecycle ladder (owner 2026-10-21, DEALS-LIFECYCLE-1021):
+ * one column per served rung (Contacted, Engaged, Signed up, Meeting booked, Meeting attended,
+ * Paid client), each person on the highest rung they reached. Column sizes are lead-service's
+ * per-rung counts, a column's cards its Unibox page filtered on that rung, values features-service's
+ * deals value per rung. Interest, fit and reachability are chips and filters, never columns. A card
+ * opens the person in the Unibox (thread + lead card).
  */
 export function DealsPage() {
   const { orgId, brandId } = useParams<{ orgId: string; brandId: string }>();
-  const standingTotals = boardColumnTotals(useStandingCounts(brandId).data);
-  // Disqualified is its OWN mark beside the standing (owner 2026-10-13): its column is the
-  // people lead-service lists as marked, who also keep their card in their standing's column.
-  // So the columns no longer add up to the population, on purpose.
-  const disqualified = useLeadDisqualifications(brandId);
-  const totals = standingTotals
-    ? { ...standingTotals, disqualified: disqualified.data?.total ?? null }
-    : null;
-  const { campaignOf, campaigns } = useLeadCampaigns(orgId, brandId);
-  const revenue = useBrandRevenue(brandId);
-  const [campaignFilter, setCampaignFilter] = useState<string | null>(null);
-  // A company marked "not our target" covers every lead of it: the column shows it even when
-  // no person carries a mark of their own.
-  const markedCompanies = disqualified.data?.companies ?? null;
-  const columns = LEAD_BOARD_COLUMNS.filter(
-    (c) =>
-      !(
-        c.hideWhenEmpty &&
-        (totals?.[c.key] ?? 0) === 0 &&
-        !(c.key === "disqualified" && (markedCompanies?.length ?? 0) > 0)
-      ),
-  );
-  const contacted = totals?.contacted ?? null;
-  const interested = totals?.sales_interest ?? null;
-  const replied = useInterestedReplies(brandId).data?.total ?? null;
-  const won = totals?.won ?? null;
-  const pipeline = revenue.data?.totalPipelineUsd ?? null;
-  const biggest = Math.max(1, ...columns.map((c) => totals?.[c.key] ?? 0));
-  // What each column holds, priced by features-service (a separate figure, not in the
-  // pipeline or the ROI). A column is one standing; its value and each card's value are
-  // read, never summed here.
-  // The selected offer's columns (no brand-wide figure, owner 2026-10-03). Not asked
-  // while the offer has no campaign: features-service 404s it, there is nothing to price.
   const { offerId, campaignIds } = useSelectedOffer();
-  const dealsValue = useAuthQuery(["dealsValue", brandId, "offer", offerId], () => getOfferDealsValue(offerId!, brandId), {
-    refetchInterval: POLL_INTERVAL,
-    enabled: !!brandId && !!offerId && (campaignIds?.length ?? 0) > 0,
-  });
-  const servedFor = useMemo(() => {
-    const byStanding = new Map((dealsValue.data?.columns ?? []).map((c) => [c.standing, c]));
-    return (column: LeadBoardColumnKey): ServedColumnValue | null => {
-      const standings = STANDINGS_BY_COLUMN[column];
-      if (column === "contacted" || standings.length !== 1) return null;
-      const c = byStanding.get(standings[0]);
-      if (!c) return null;
-      return {
-        valueUsd: c.valueUsd,
-        unvaluedReason: c.unvaluedReason,
-        basis: c.basis,
-        byLead: new Map(c.leads.map((l) => [l.leadId, l.valueUsd])),
-      };
-    };
-  }, [dealsValue.data]);
+  const { campaigns } = useLeadCampaigns(orgId, brandId);
+  const [campaignFilter, setCampaignFilter] = useState<string | null>(null);
+  const [filters, setFilters] = useState<UniboxFilters>({});
+  const counts = useDealsLifecycleCounts(brandId, campaignFilter, filters);
+  const ladder = counts.data?.lifecycleLadder ?? null;
+  const rungs = ladder ? dealsBoardRungs(ladder) : null;
+  const count = (key: string): number | null => (counts.data ? (counts.data.byLifecycle[key] ?? 0) : null);
+  const biggest = Math.max(1, ...(rungs ?? []).map((r) => count(r.key) ?? 0));
+  // What each rung holds, priced by features-service (the offer's own columns, owner 2026-10-03).
+  // Not asked while the offer has no campaign: features-service 404s it, there is nothing to price.
+  const dealsValue = useAuthQuery(
+    ["dealsLifecycle", brandId, offerId ?? "", campaignFilter ?? ""],
+    () => getOfferDealsLifecycle(offerId!, brandId, campaignFilter),
+    { refetchInterval: POLL_INTERVAL, enabled: !!brandId && !!offerId && (campaignIds?.length ?? 0) > 0 },
+  );
+  const served = useMemo(() => servedRungValues(dealsValue.data), [dealsValue.data]);
+  const pipeline = dealsValue.data?.expectedPipelineUsd ?? null;
+  const contacted = count("contacted");
+  const engaged = count("engaged");
+  const paid = count("paid_client");
   return (
     <>
-      <TopBar
-        crumbs={[{ label: "Records" }, { label: "Deals" }]}
-        actions={
-          <>
-          </>
-        }
-      />
+      <TopBar crumbs={[{ label: "Records" }, { label: "Deals" }]} />
       <div className="flex min-h-0 flex-col px-4 pb-10 pt-6 md:px-6">
-        <div className="flex flex-wrap items-end justify-between gap-3">
-          <div className="min-w-0">
-            <h1 className="text-[28px] font-medium leading-[34px] tracking-[-0.02em]">
-              {pipeline != null ? `${formatUsdAdaptive(pipeline)} in expected pipeline` : "Deals"}
-            </h1>
-            <p className="k-fg2 mt-1 text-[14px]">
-              {won != null && interested != null ? (
-                <>
-                  {contacted != null ? (
-                    <>
-                      <span className="k-fg font-medium tabular-nums">{formatCount(contacted)}</span> contacted,{" "}
-                    </>
-                  ) : null}
-                  <span className="k-fg font-medium tabular-nums">{formatCount(interested)}</span> interested (a website visit or a positive reply)
-                  {replied != null ? (
-                    <>
-                      , <span className="k-fg font-medium tabular-nums">{formatCount(replied)}</span> of them replied
-                    </>
-                  ) : null}
-                  . <span className="inline-block h-2 w-2 rounded-[2px] bg-[var(--data-teal)] align-middle" />{" "}
-                  <span className="k-fg font-medium tabular-nums">{formatCount(won)}</span> won.
-                </>
-              ) : (
-                " "
-              )}
-            </p>
-          </div>
+        <div className="min-w-0">
+          <h1 className="text-[28px] font-medium leading-[34px] tracking-[-0.02em]">
+            {pipeline != null ? `${formatUsdAdaptive(pipeline)} in expected pipeline` : "Deals"}
+          </h1>
+          <p className="k-fg2 mt-1 text-[14px]">
+            {contacted != null && engaged != null && paid != null ? (
+              <>
+                <span className="k-fg font-medium tabular-nums">{formatCount(contacted)}</span> contacted,{" "}
+                <span className="k-fg font-medium tabular-nums">{formatCount(engaged)}</span> engaged.{" "}
+                <span className="inline-block h-2 w-2 rounded-[2px] align-middle" style={{ background: TONE_COLOR[uniboxValueTone("lifecycle", "paid_client")] }} />{" "}
+                <span className="k-fg font-medium tabular-nums">{formatCount(paid)}</span> {paid === 1 ? "paid client" : "paid clients"}.
+              </>
+            ) : (
+              " "
+            )}
+          </p>
         </div>
 
         <div className="mt-5 flex flex-wrap items-center gap-2">
@@ -160,6 +93,12 @@ export function DealsPage() {
               </button>
             );
           })}
+          <UniboxFilterBar
+            filters={filters}
+            ladder={ladder ?? []}
+            dims={DEALS_FILTER_DIMENSIONS}
+            onPick={(dim: UniboxDimension, values: string[]) => setFilters((f) => ({ ...f, [dim]: values }))}
+          />
           <span className="k-inset ml-auto inline-flex rounded-[9px] p-0.5 shadow-[inset_0_0_0_1px_var(--line-subtle)]">
             <span className="k-btn h-6 px-2 text-[12px]">Board</span>
             <Link href={v2Href(orgId, brandId, "people")} className="k-btn-ghost h-6 px-2 text-[12px]">Table</Link>
@@ -167,33 +106,27 @@ export function DealsPage() {
         </div>
 
         <div className="k-scroll mt-5 flex gap-4 overflow-x-auto pb-2">
-          {columns.map((c) =>
-            c.key === "disqualified" ? (
-              <DisqualifiedColumn
-                key={c.key}
-                brandId={brandId}
-                orgId={orgId}
-                label={V2_COLUMN_LABEL[c.key] ?? c.label}
-                people={disqualified.data?.leads ?? null}
-                companies={disqualified.data ? (markedCompanies ?? []) : null}
-                failed={disqualified.isFetchedAfterMount && !disqualified.data && disqualified.isError}
-                share={(totals?.disqualified ?? 0) / biggest}
-              />
-            ) : (
-            <DealColumn
-              key={c.key}
-              brandId={brandId}
-              orgId={orgId}
-              column={c.key}
-              label={V2_COLUMN_LABEL[c.key] ?? c.label}
-              total={totals?.[c.key] ?? null}
-              share={(totals?.[c.key] ?? 0) / biggest}
-              campaignFilter={campaignFilter}
-              campaignOf={campaignOf}
-              served={servedFor(c.key)}
-            />
-            ),
-          )}
+          {rungs === null
+            ? [0, 1, 2, 3].map((i) => (
+                <section key={i} className="flex w-[240px] min-w-[200px] shrink-0 flex-col gap-2 md:flex-1 md:basis-0">
+                  <Shimmer className="h-7 rounded-[8px]" />
+                  <Shimmer className="h-[74px] rounded-[10px]" />
+                </section>
+              ))
+            : rungs.map((r) => (
+                <DealColumn
+                  key={r.key}
+                  orgId={orgId}
+                  brandId={brandId}
+                  offerId={offerId}
+                  campaignId={campaignFilter}
+                  filters={filters}
+                  rung={r}
+                  total={count(r.key)}
+                  share={(count(r.key) ?? 0) / biggest}
+                  served={served.get(r.key) ?? null}
+                />
+              ))}
         </div>
       </div>
     </>
@@ -201,69 +134,50 @@ export function DealsPage() {
 }
 
 function DealColumn({
-  brandId,
   orgId,
-  column,
-  label,
+  brandId,
+  offerId,
+  campaignId,
+  filters,
+  rung,
   total,
   share,
-  campaignFilter,
-  campaignOf,
   served,
 }: {
-  brandId: string;
   orgId: string;
-  column: LeadBoardColumnKey;
-  label: string;
+  brandId: string;
+  offerId: string | null;
+  campaignId: string | null;
+  filters: UniboxFilters;
+  rung: LifecycleRung;
   total: number | null;
   share: number;
-  campaignFilter: string | null;
-  campaignOf: (campaignId: string) => LeadCampaign | null;
-  served: ServedColumnValue | null;
+  served: ServedRungValue | null;
 }) {
   const [shown, setShown] = useState(LEAD_BOARD_PAGE_SIZE);
-  const lead = useLeadScope(brandId);
+  const limit = Math.min(shown, MAX_ROWS);
   const q = useAuthQuery(
-    ["leadsPage", lead.key, "v2-deals", column, shown],
-    () =>
-      listLeadsPage(lead.scope, leadsColumnPageQuery({ column, search: "", shown }), undefined, {
-        includeCampaigns: false,
-      }),
-    { refetchInterval: POLL_INTERVAL, enabled: lead.ready && (total === null || total > 0) },
+    ["dealsLifecycleRows", brandId, offerId ?? "", campaignId ?? "", filtersKey(filters), rung.key, limit],
+    () => listUniboxLeads(brandId, { ...filters, lifecycle: [rung.key] }, { limit, offerId, campaignId }),
+    { refetchInterval: POLL_INTERVAL, enabled: !!brandId && !!offerId && (total === null || total > 0) },
   );
-  const all = total === 0 ? [] : (q.data?.leads ?? null);
-  // What the contacted, not-yet-engaged people are worth in expectation. features-service
-  // prices them, and that value COUNTS in the offer's pipeline and ROI (features-service
-  // lib/contacted-value.ts); this column only shows it, joined to its cards by lead id.
-  const valued = column === "contacted";
-  const valueIds = valued && all ? all.map((l) => l.leadId).filter((id): id is string => !!id) : [];
-  const { offerId } = useSelectedOffer();
-  const contactedValue = useAuthQuery(
-    ["contactedValue", brandId, "offer", offerId, valueIds.join(",")],
-    () => getOfferContactedValue(offerId!, brandId, valueIds),
-    { refetchInterval: POLL_INTERVAL, enabled: valued && !!offerId && total !== 0 && all !== null },
-  );
-  const valueByLead = new Map((contactedValue.data?.leads ?? []).map((v) => [v.leadId, v.expectedValueUsd]));
-  const columnValue = contactedValue.data?.totalExpectedValueUsd ?? null;
-  const leads = all && campaignFilter ? all.filter((l) => campaignOf(l.campaignId)?.key === campaignFilter) : all;
+  const rows = total === 0 ? [] : (q.data?.rows ?? null);
+  const color = TONE_COLOR[uniboxValueTone("lifecycle", rung.key)];
+  const won = served?.valueKind === "won_value";
+  const unibox = v2Href(orgId, brandId, "unibox");
   return (
-    <section className="flex w-[272px] min-w-[240px] shrink-0 flex-col md:flex-1 md:basis-0">
+    <section className="flex w-[240px] min-w-[200px] shrink-0 flex-col md:flex-1 md:basis-0">
       <header className="flex h-7 items-center gap-2 px-0.5">
-        <span className="h-2 w-2 rounded-[2px]" style={{ background: COLUMN_DOT[column] }} />
-        <span className="text-[13px] font-medium">{label}</span>
-        <span className="k-fg3 text-[13px] tabular-nums">{total == null ? "" : formatCount(total)}</span>
-        {valued && columnValue != null ? (
-          <span className="k-fg2 ml-auto inline-flex items-center gap-1 text-[12px] tabular-nums">
-            {formatUsdAdaptive(columnValue)} expected
-            <InfoTooltip tip="Expected value of these leads, from your conversion rates and client value. Not counted in your pipeline." placement="bottom" />
-          </span>
-        ) : served?.valueUsd != null ? (
+        <span className="h-2 w-2 rounded-[2px]" style={{ background: color }} />
+        <span className="truncate whitespace-nowrap text-[13px] font-medium">{rung.label}</span>
+        <span className="k-fg3 shrink-0 text-[13px] tabular-nums">{total == null ? "" : formatCount(total)}</span>
+        {served?.valueUsd ? (
           <span
-            className="k-fg ml-auto text-[13px] font-medium tabular-nums"
+            className="k-fg ml-auto shrink-0 whitespace-nowrap text-[13px] font-medium tabular-nums"
             title={
-              served.basis === "won_value"
+              won
                 ? "What was won: the amount stated on each sale, else your value of a client. One company counts once."
-                : "What these people are worth in expectation, the way your pipeline prices them. One company counts once."
+                : "Expected value: what these people are worth, the way your pipeline prices them. One company counts once."
             }
           >
             {formatUsdAdaptive(served.valueUsd)}
@@ -271,264 +185,58 @@ function DealColumn({
         ) : null}
       </header>
       <div className="mb-3 mt-1.5 h-1 overflow-hidden rounded-full bg-[var(--data-track)]">
-        <div className="h-full rounded-full" style={{ width: `${Math.round(share * 100)}%`, background: COLUMN_DOT[column] }} />
+        <div className="h-full rounded-full" style={{ width: `${Math.round(share * 100)}%`, background: color }} />
       </div>
       <div className="flex flex-col gap-2">
-        {leads === null ? (
+        {rows === null ? (
           [0, 1, 2].map((i) => <Shimmer key={i} className="h-[74px] rounded-[10px]" />)
-        ) : leads.length === 0 ? (
+        ) : rows.length === 0 ? (
           <EmptyNote>Nobody here.</EmptyNote>
         ) : (
-          leads.map((lead) => {
-            const company = leadCompany(lead);
-            const campaign = campaignOf(lead.campaignId);
-            const status = getLeadConsolidatedStatus(lead);
-            const at = leadDateForStatus(lead, status);
-            const value = served && lead.leadId ? served.byLead.get(lead.leadId) ?? null : null;
-            const expected = valued && lead.leadId ? valueByLead.get(lead.leadId) ?? null : null;
-            // Keel's forecast tag under the amount: which figure the amount is. A contacted
-            // lead's value is a chance of engaging (it counts in the pipeline total), so the
-            // card says "Expected".
-            const valueTag =
-              expected != null
-                ? "Expected"
-                : !valued && value != null && value > 0
-                  ? served?.basis === "won_value"
-                    ? "Won"
-                    : "Pipeline"
-                  : null;
-            return (
-              <Link key={lead.id} href={personHref(orgId, brandId, lead)} className="k-card block p-3">
-                <div className="flex items-center gap-2">
-                  {company ? (
-                    <CompanyMark name={company} domain={leadCompanyDomain(lead)} size={18} />
-                  ) : (
-                    <PersonAvatar lead={lead} size={18} />
-                  )}
-                  <span className="min-w-0 flex-1 truncate text-[13px] font-medium">{company ?? leadName(lead)}</span>
-                  {expected != null ? (
-                    // Contacted, not engaged: its expected value, quieter than an engaged figure.
-                    <span className="k-fg2 shrink-0 text-[12px] tabular-nums">{formatUsdAdaptive(expected)}</span>
-                  ) : !valued && value != null && value > 0 ? (
-                    <span className="shrink-0 text-[13px] font-medium tabular-nums">{formatUsdAdaptive(value)}</span>
-                  ) : null}
-                </div>
-                {company || valueTag ? (
-                  <div className="k-fg2 mt-1.5 flex items-center gap-1.5 text-[12px]">
-                    {company ? (
-                      <>
-                        <PersonAvatar lead={lead} size={14} />
-                        <span className="min-w-0 flex-1 truncate">{leadName(lead)}</span>
-                      </>
-                    ) : (
-                      <span className="flex-1" />
-                    )}
-                    {valueTag ? (
-                      <span className="k-fg3 inline-flex shrink-0 items-center gap-1 text-[12px]">
-                        <span
-                          className="h-2 w-2 rounded-[2px]"
-                          style={{ background: valueTag === "Won" ? "var(--data-teal)" : "var(--fg-4)" }}
-                        />
-                        {valueTag}
-                      </span>
-                    ) : null}
-                  </div>
-                ) : null}
-                <div className="k-fg3 mt-1.5 flex items-center gap-1.5 text-[11px]">
-                  {campaign ? (
-                    <span className="inline-flex min-w-0 items-center gap-1">
-                      <FunnelFace name={campaign.name} size={12} />
-                      <span className="truncate">{campaign.name}</span>
-                    </span>
-                  ) : null}
-                  <span className="ml-auto shrink-0 tabular-nums">{at ? timeAgo(at) : ""}</span>
-                </div>
-                <div className="k-fg2 mt-2 flex items-center gap-1.5 border-t border-[var(--line-subtle)] pt-2 text-[12px]">
-                  <span className="h-1.5 w-1.5 shrink-0 rounded-full" style={{ background: COLUMN_DOT[column] }} />
-                  <span className="truncate">{leadStatusLabel(status)}</span>
-                  {lead.disqualification ? (
-                    <span className="ml-auto" title={lead.disqualification.note ?? undefined}>
-                      <TagChip tag={markTag(lead.disqualification)} />
-                    </span>
-                  ) : null}
-                </div>
-              </Link>
-            );
-          })
+          rows.map((row) => (
+            <DealCard key={uniboxRowKey(row)} row={row} href={`${unibox}?lead=${encodeURIComponent(uniboxRowId(row))}`} value={served?.byRow.get(uniboxRowId(row)) ?? null} won={won} />
+          ))
         )}
-        {leads && total != null && leads.length < total ? (
-          <button type="button" className="k-btn-ghost k-btn mt-1 justify-center" onClick={() => setShown((s) => s + LEAD_BOARD_PAGE_SIZE)}>
-            Show more
-          </button>
+        {rows && total != null && rows.length < total ? (
+          shown < MAX_ROWS ? (
+            <button type="button" className="k-btn-ghost k-btn mt-1 justify-center" onClick={() => setShown((s) => s + LEAD_BOARD_PAGE_SIZE)}>
+              Show more
+            </button>
+          ) : (
+            <Link href={`${unibox}?lifecycle=${encodeURIComponent(rung.key)}`} className="k-btn-ghost k-btn mt-1 justify-center">
+              See all {formatCount(total)} in the Unibox
+            </Link>
+          )
         ) : null}
       </div>
     </section>
   );
 }
 
-/**
- * The Disqualified column: lead-service's list, at its two levels. The COMPANIES marked "not our
- * target" first (each with the served count of its people), then the people marked on their
- * own (note, who, when), newest first. Each person card also says what happened with them (their
- * step tag, read off their own lead row), because the mark sits BESIDE the steps, never instead.
- * The header states both served counts side by side: a person can be marked AND at a marked
- * company, so the two are never added here.
- */
-function DisqualifiedColumn({
-  brandId,
-  orgId,
-  label,
-  people,
-  companies,
-  failed,
-  share,
-}: {
-  brandId: string;
-  orgId: string;
-  label: string;
-  people: DisqualifiedLead[] | null;
-  companies: DisqualifiedCompany[] | null;
-  failed: boolean;
-  share: number;
-}) {
-  const [shown, setShown] = useState(LEAD_BOARD_PAGE_SIZE);
-  const visible = people ? people.slice(0, shown) : null;
+function DealCard({ row, href, value, won }: { row: UniboxRow; href: string; value: number | null; won: boolean }) {
+  const company = row.company?.name || row.company?.domain || null;
+  const name = uniboxLeadName(row);
+  const chips = dealCardChips(row);
   return (
-    <section className="flex w-[272px] min-w-[240px] shrink-0 flex-col md:flex-1 md:basis-0">
-      <header className="flex h-7 items-center gap-2 px-0.5">
-        <span className="h-2 w-2 rounded-[2px]" style={{ background: COLUMN_DOT.disqualified }} />
-        <span className="text-[13px] font-medium">{label}</span>
-        <span className="k-fg3 text-[13px] tabular-nums">{people == null ? "" : formatCount(people.length)}</span>
-        {companies && companies.length > 0 ? (
-          <span className="k-fg3 text-[12px] tabular-nums">
-            · {formatCount(companies.length)} {companies.length === 1 ? "company" : "companies"}
-          </span>
-        ) : null}
-      </header>
-      <div className="mb-3 mt-1.5 h-1 overflow-hidden rounded-full bg-[var(--data-track)]">
-        <div className="h-full rounded-full" style={{ width: `${Math.round(share * 100)}%`, background: COLUMN_DOT.disqualified }} />
-      </div>
-      <div className="flex flex-col gap-2">
-        {visible === null ? (
-          failed ? (
-            <EmptyNote>We could not read this list right now.</EmptyNote>
-          ) : (
-            [0, 1, 2].map((i) => <Shimmer key={i} className="h-[74px] rounded-[10px]" />)
-          )
-        ) : visible.length === 0 && (companies?.length ?? 0) === 0 ? (
-          <EmptyNote>Nobody here.</EmptyNote>
-        ) : (
-          <>
-            {(companies ?? []).map((c) => (
-              <DisqualifiedCompanyCard key={c.companyKey} brandId={brandId} orgId={orgId} company={c} />
-            ))}
-            {visible.map((p) => (
-              <DisqualifiedCard key={p.leadId} brandId={brandId} orgId={orgId} person={p} />
-            ))}
-          </>
-        )}
-        {people && people.length > shown ? (
-          <button type="button" className="k-btn-ghost k-btn mt-1 justify-center" onClick={() => setShown((s) => s + LEAD_BOARD_PAGE_SIZE)}>
-            Show more
-          </button>
-        ) : null}
-      </div>
-    </section>
-  );
-}
-
-/** A company marked "not our target": every one of its people reads Disqualified. */
-function DisqualifiedCompanyCard({ brandId, orgId, company }: { brandId: string; orgId: string; company: DisqualifiedCompany }) {
-  const mark = company.disqualification;
-  const name = company.name ?? company.domain ?? "Unknown company";
-  const body = (
-    <>
+    <Link href={href} className="k-card block p-3">
       <div className="flex items-center gap-2">
-        <CompanyMark name={name} domain={company.domain} size={18} />
-        <span className="min-w-0 flex-1 truncate text-[13px] font-medium">{name}</span>
-      </div>
-      <div className="k-fg2 mt-1.5 text-[12px] tabular-nums">
-        {formatCount(company.leadCount)} {company.leadCount === 1 ? "person" : "people"}
-      </div>
-      {mark.note ? <p className="k-fg2 mt-1.5 line-clamp-2 text-[12px]">{mark.note}</p> : null}
-      <div className="k-fg3 mt-1.5 flex items-center gap-1.5 text-[11px]">
-        <span className="truncate">{disqualificationSourceWord(mark)}</span>
-        <span className="ml-auto shrink-0 tabular-nums">{timeAgo(mark.statedAt)}</span>
-      </div>
-      <div className="k-fg2 mt-2 flex items-center gap-1.5 border-t border-[var(--line-subtle)] pt-2 text-[12px]">
-        <span className="h-1.5 w-1.5 shrink-0 rounded-full" style={{ background: COLUMN_DOT.disqualified }} />
-        <span className="truncate">Whole company</span>
-        <span className="ml-auto">
-          <TagChip tag={COMPANY_DISQUALIFIED_TAG} />
-        </span>
-      </div>
-    </>
-  );
-  return company.domain ? (
-    <Link href={`${v2Href(orgId, brandId, "companies")}/${encodeURIComponent(company.domain)}`} className="k-card block p-3">
-      {body}
-    </Link>
-  ) : (
-    <div className="k-card block p-3">{body}</div>
-  );
-}
-
-function DisqualifiedCard({ brandId, orgId, person }: { brandId: string; orgId: string; person: DisqualifiedLead }) {
-  // The person's own row (same key as their page, so opening it is instant): company and step tag.
-  const row = useAuthQuery(["leadDetail", person.id, brandId], () => getLeadDetail(person.id!, brandId), {
-    enabled: !!person.id,
-    staleTime: POLL_INTERVAL,
-  });
-  const lead = row.data ?? null;
-  const company = lead ? leadCompany(lead) : null;
-  const name = (lead ? leadName(lead) : null) || person.name || person.email || "Unknown";
-  const status = lead ? getLeadConsolidatedStatus(lead) : null;
-  const mark = person.disqualification;
-  const body = (
-    <>
-      <div className="flex items-center gap-2">
-        {lead ? (
-          company ? (
-            <CompanyMark name={company} domain={leadCompanyDomain(lead)} size={18} />
-          ) : (
-            <PersonAvatar lead={lead} size={18} />
-          )
-        ) : null}
+        {company ? <CompanyMark name={company} domain={row.company?.domain ?? null} size={18} /> : <Initials name={name} size={18} round />}
         <span className="min-w-0 flex-1 truncate text-[13px] font-medium">{company ?? name}</span>
+        {value != null && value > 0 ? (
+          <span className={`shrink-0 tabular-nums ${won ? "text-[13px] font-medium" : "k-fg2 text-[12px]"}`}>{formatUsdAdaptive(value)}</span>
+        ) : null}
       </div>
-      {company ? (
-        <div className="k-fg2 mt-1.5 flex items-center gap-1.5 text-[12px]">
-          {lead ? <PersonAvatar lead={lead} size={14} /> : null}
-          <span className="min-w-0 flex-1 truncate">{name}</span>
-        </div>
+      {company || row.title ? (
+        <div className="k-fg2 mt-1.5 truncate text-[12px]">{[company ? name : null, row.title].filter(Boolean).join(" · ")}</div>
       ) : null}
-      {mark.note ? <p className="k-fg2 mt-1.5 line-clamp-2 text-[12px]">{mark.note}</p> : null}
-      <div className="k-fg3 mt-1.5 flex items-center gap-1.5 text-[11px]">
-        <span className="truncate">{disqualificationSourceWord(mark)}</span>
-        <span className="ml-auto shrink-0 tabular-nums">{timeAgo(mark.statedAt)}</span>
-      </div>
-      <div className="k-fg2 mt-2 flex items-center gap-1.5 border-t border-[var(--line-subtle)] pt-2 text-[12px]">
-        <span className="h-1.5 w-1.5 shrink-0 rounded-full" style={{ background: COLUMN_DOT.disqualified }} />
-        <span className="truncate">{status ? leadStatusLabel(status) : " "}</span>
-        <span className="ml-auto">
-          <TagChip tag={DISQUALIFIED_TAG} />
+      <div className="k-fg3 mt-2 flex items-center gap-1.5 border-t border-[var(--line-subtle)] pt-2 text-[11px]">
+        <span className="flex min-w-0 flex-1 flex-wrap items-center gap-1">
+          {chips.map((t) => (
+            <TagChip key={t.label} tag={t} shrink />
+          ))}
         </span>
+        <span className="shrink-0 tabular-nums">{row.lastActivityAt ? timeAgo(row.lastActivityAt) : ""}</span>
       </div>
-    </>
-  );
-  return person.id ? (
-    <Link href={v2PersonHref(orgId, brandId, person.id)} className="k-card block p-3">
-      {body}
     </Link>
-  ) : (
-    <div className="k-card block p-3">{body}</div>
   );
-}
-
-/** One column's served value, and each of its cards' values by lead id. */
-interface ServedColumnValue {
-  valueUsd: number | null;
-  unvaluedReason: string | null;
-  basis: string | null;
-  byLead: Map<string, number | null>;
 }

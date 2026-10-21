@@ -16,6 +16,7 @@ import {
   getLeadHistory,
   getLeadStandingCounts,
   getOrgUsage,
+  getUniboxLifecycleCounts,
   keepLastGoodFeatureRevenue,
   listLeadsPage,
   type AwaitingReplyPerson,
@@ -30,6 +31,7 @@ import { POLL_INTERVAL } from "@/lib/query-options";
 import { isRevenueFeature } from "@/lib/revenue-feature";
 import { useSoleFeatureSlug } from "@/lib/sole-feature";
 import { leadBucketCountsQuery, standingCountsQuery, type LeadBucket } from "@/lib/leads-server-page";
+import { filtersKey, type UniboxFilters } from "@/lib/unibox-leads";
 
 /**
  * The reads every v2 page shares. Each is about the ONE offer the sidebar's switcher
@@ -162,6 +164,20 @@ export function useStandingCounts(brandId: string) {
     ["leadStandingCounts", lead.key, ""],
     () => getLeadStandingCounts(lead.scope, standingCountsQuery("")),
     { ...pollOptions, enabled: lead.ready },
+  );
+}
+
+/**
+ * How many of the selected offer's people stand on each lifecycle rung (lead-service), one
+ * campaign when named: the Deals board's column sizes and the sidebar's Deals count read the SAME
+ * key, so the two agree. Filters narrow the counts exactly as they narrow the cards.
+ */
+export function useDealsLifecycleCounts(brandId: string, campaignId: string | null = null, filters: UniboxFilters = {}) {
+  const { offerId } = useSelectedOffer();
+  return useAuthQuery(
+    ["dealsLifecycleCounts", brandId, offerId ?? "", campaignId ?? "", filtersKey(filters)],
+    () => getUniboxLifecycleCounts(brandId, filters, { offerId, campaignId }),
+    { ...pollOptions, enabled: !!brandId && !!offerId },
   );
 }
 

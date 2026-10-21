@@ -89,11 +89,13 @@ describe("the Disqualified mark", () => {
 });
 
 describe("where the mark is drawn", () => {
-  it("the Deals board's Disqualified column reads the mark list, not the standing", () => {
+  it("the Deals board shows Disqualified as a chip and a Fit filter, never a column (owner 2026-10-21)", () => {
     const page = src("components", "v2", "deals-page.tsx");
-    expect(page).toContain("useLeadDisqualifications(brandId)");
-    expect(page).toContain('c.key === "disqualified"');
-    expect(page).toContain("disqualified: disqualified.data?.total");
+    const board = src("lib", "deals-board.ts");
+    expect(page).toContain("dealCardChips(row)");
+    expect(board).toContain('if (row.fit !== "fit") out.push(uniboxValueTag("fit"');
+    expect(board).toContain('"fit"');
+    expect(page).not.toContain("DisqualifiedColumn");
     expect(src("components", "v2", "data.ts")).toContain("getBrandDisqualifications({ brandId, offerId })");
   });
 
@@ -177,12 +179,6 @@ describe("tags at their level", () => {
     expect(page).toContain("humanOptedOut(");
     expect(page).toContain("companyBlock.isClient");
     expect(page).toContain("companyBlock.signedUp");
-  });
-
-  it("the board's Disqualified column lists the marked companies beside the people", () => {
-    const page = src("components", "v2", "deals-page.tsx");
-    expect(page).toContain("companies={disqualified.data ? (markedCompanies ?? []) : null}");
-    expect(page).toContain("<DisqualifiedCompanyCard");
   });
 
   it("the remove call carries the level in the query", () => {
