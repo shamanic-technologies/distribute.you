@@ -49,6 +49,14 @@ describe("connect start", () => {
     expect(card).toContain('rows.splice(1, 0, <GoogleCalendarRow key="google-calendar" orgId={orgId} />);');
   });
 
+  it("Gmail and Google Calendar wear their own product marks, never the Google G", () => {
+    const card = read("components/settings/brand-integrations-card.tsx");
+    expect(card).toContain('<ProductMark src="/integration-logos/gmail.svg" />');
+    expect(card).toContain('<ProductMark src="/integration-logos/google-calendar.svg" />');
+    expect(card).not.toContain('domain="gmail.com"');
+    expect(card).not.toContain('domain="calendar.google.com"');
+  });
+
   it("only staff mode sees the calendar row until Google verifies its scopes (GCAL-VERIFY-VIDEO-1021)", () => {
     const card = read("components/settings/brand-integrations-card.tsx");
     expect(card).toContain('import { useStaffMode } from "@/lib/use-staff-mode";');

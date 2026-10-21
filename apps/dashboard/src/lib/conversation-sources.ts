@@ -35,7 +35,8 @@ const CHANNEL_MARK: Record<string, SourceMark> = {
 };
 
 const SOURCE_MARK: Record<string, SourceMark> = {
-  gmail: vendor("gmail", "Gmail", "gmail.com"),
+  // Gmail's own product mark, never logo.dev's gmail.com (it serves the Google "G").
+  gmail: { key: "gmail", name: "Gmail", domain: null, src: "/integration-logos/gmail.svg" },
   instantly: DISTRIBUTE,
   posthog: DISTRIBUTE,
   // The AI Copilot chat is part of our staff: its conversations read as ours (owner 2026-10-11).
