@@ -1,7 +1,24 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
-import { parseResearchPath, researchCatalogHref, researchPipeFor, researchTemplateOf, templateContentKey, type ResearchCatalog, type ResearchTemplate } from "../src/lib/research/research";
+import {
+  parseResearchPath,
+  researchCatalogHref,
+  researchPipeFor,
+  researchTemplateOf,
+  researchTemplateVersion,
+  researchTemplateVersionHref,
+  researchRoiOf,
+  templateContentKey,
+  templateModels,
+  templateRowStatus,
+  templatesByTab,
+  templateTab,
+  type ResearchCatalog,
+  type ResearchTemplate,
+  type ResearchWorkflow,
+} from "../src/lib/research/research";
+import { modelTagFromName } from "../src/lib/written-by";
 
 const ROOT = join(__dirname, "..", "src");
 const read = (p: string) => readFileSync(join(ROOT, p), "utf8");
@@ -142,5 +159,104 @@ describe("Template dynasties (TPL-DYNASTY-1021)", () => {
   it("reads content-generation status and outputs on the head version, a pre-dynasty row on its own key", () => {
     expect(templateContentKey(dyn)).toBe("cold-email-v44");
     expect(templateContentKey(old)).toBe("cold-email-v12");
+  });
+
+  const statuses = (entries: [string, string][], answered = true) => ({ answered, map: new Map(entries) });
+
+  it("a row is Active iff its head version is Active; a standalone row reads its own key; null until answered", () => {
+    expect(templateRowStatus(dyn, statuses([["cold-email-v44", "active"], ["cold-email-v40", "deprecated"]]))).toBe("active");
+    // An active OLD version does not make the dynasty active: only the head counts.
+    expect(templateRowStatus(dyn, statuses([["cold-email-v40", "active"], ["cold-email-v44", "deprecated"]]))).toBe("deprecated");
+    expect(templateRowStatus(dyn, statuses([]))).toBe("deprecated");
+    expect(templateRowStatus(old, statuses([["cold-email-v12", "active"]]))).toBe("active");
+    expect(templateRowStatus(dyn, statuses([["cold-email-v44", "active"]], false))).toBeNull();
+  });
+
+  it("the dynasty status served by features-service wins over its head version's", () => {
+    expect(templateRowStatus({ ...dyn, status: "deprecated" }, statuses([["cold-email-v44", "active"]]))).toBe("deprecated");
+    expect(templateRowStatus({ ...dyn, status: "active" }, statuses([], false))).toBe("active");
+    expect(templateRowStatus({ ...dyn, status: null }, statuses([["cold-email-v44", "active"]]))).toBe("active");
+  });
+
+  it("prints a served catalogue return: detail measured or expected, the printed string alone, the pre-hotfix object", () => {
+    const d = { display: "1.40x", source: null, spendCovered: null, unavailableReason: null };
+    expect(researchRoiOf({ roi: "1.40x", roiDetail: { ...d, value: 1.4, basis: "measured" } })).toEqual({ show: { value: 1.4, expected: false, reason: null } });
+    expect(researchRoiOf({ roi: "2.10x", roiDetail: { ...d, value: 2.1, basis: "expected" } })).toEqual({ show: { value: 2.1, expected: true, reason: null } });
+    expect(researchRoiOf({ roi: null, roiDetail: { ...d, value: null, basis: null, unavailableReason: "no_return_on_pipe" } })).toEqual({ show: { value: null, expected: false, reason: "no_return_on_pipe" } });
+    expect(researchRoiOf({ roi: "1.40x" })).toEqual({ text: "1.40x" });
+    expect(researchRoiOf({ roi: { ...d, value: 1.4, basis: "measured" } })).toEqual({ show: { value: 1.4, expected: false, reason: null } });
+    expect(researchRoiOf({})).toBeNull();
+  });
+
+  it("splits the rows into the Active and Deprecated tabs in the served order, nothing while pending", () => {
+    const by = templatesByTab([dyn, old], statuses([["cold-email-v44", "active"], ["cold-email-v12", "deprecated"]]));
+    expect(by?.active.map((r) => r.key)).toEqual(["cold-reply-free-offer-blind"]);
+    expect(by?.deprecated.map((r) => r.key)).toEqual(["cold-email-v12"]);
+    expect(templatesByTab([dyn, old], statuses([], false))).toBeNull();
+  });
+
+  it("the tab comes from ?status=, Active by default", () => {
+    expect(templateTab(null)).toBe("active");
+    expect(templateTab("active")).toBe("active");
+    expect(templateTab("deprecated")).toBe("deprecated");
+    expect(templateTab("nope")).toBe("active");
+  });
+
+  it("a version has its own page under its dynasty; one segment still opens the dynasty", () => {
+    const href = researchTemplateVersionHref("/r", "cold-email-positive-reply", "cold-reply-free-offer-blind", "cold-email-v40");
+    expect(href).toBe("/r/cold-email-positive-reply/templates/cold-reply-free-offer-blind/cold-email-v40");
+    expect(parseResearchPath(href.slice(3))).toEqual({
+      view: "version",
+      pipe: "cold-email-positive-reply",
+      kind: "templates",
+      key: "cold-reply-free-offer-blind",
+      version: "cold-email-v40",
+    });
+    expect(parseResearchPath("cold-email-positive-reply/templates/cold-email-v40")).toEqual({ view: "item", pipe: "cold-email-positive-reply", kind: "templates", key: "cold-email-v40" });
+    // Only templates have versions; a deeper path is missing.
+    expect(parseResearchPath("cold-email-positive-reply/workflows/a/b").view).toBe("missing");
+    expect(parseResearchPath("cold-email-positive-reply/templates/a/b/c").view).toBe("missing");
+    expect(researchTemplateVersion(dyn, "cold-email-v40")?.label).toBe("v40");
+    expect(researchTemplateVersion(dyn, "cold-email-v99")).toBeNull();
+  });
+
+  it("the models a row wrote with: its workflows' models, then its runs', each once, first seen first", () => {
+    const claude = { key: "claude-opus", label: "Claude Opus 5.5", linked: true };
+    const gemini = { key: "gemini-flash", label: "Gemini 3 Flash", linked: true };
+    const wf = { ...fig, key: "wf-a", label: "A", name: "A", model: claude, template: null, runs: [] } as ResearchWorkflow;
+    const row: ResearchTemplate = {
+      ...dyn,
+      workflows: [{ key: "wf-a", label: "A" }, { key: "wf-gone", label: "Gone" }],
+      runs: [
+        { when: "", model: gemini, workflow: null, version: null, tokens: null },
+        { when: "", model: claude, workflow: null, version: null, tokens: null },
+      ],
+    };
+    const cat: ResearchCatalog = { ...catalog, "cold-email-positive-reply": { ...empty, workflows: [wf], templates: [row] } };
+    expect(templateModels(cat, "cold-email-positive-reply", row).map((m) => m.key)).toEqual(["claude-opus", "gemini-flash"]);
+    expect(templateModels(null, "cold-email-positive-reply", row).map((m) => m.key)).toEqual(["gemini-flash", "claude-opus"]);
+  });
+
+  it("a model named only by its label wears its product mark", () => {
+    expect(modelTagFromName("Claude Opus 5.5")).toEqual({ label: "Opus 5.5", name: "Claude Opus 5.5", logoSrc: "/model-logos/claude.svg" });
+    expect(modelTagFromName("gemini 3 flash").logoSrc).toBe("/model-logos/gemini.svg");
+    expect(modelTagFromName("Jev 1.13")).toEqual({ label: "Jev 1.13", name: "Jev 1.13", logoSrc: null });
+  });
+
+  it("the Templates list wires tabs, the panel and the version drawer and page", () => {
+    const cat = read("components/v2/research-catalog.tsx");
+    expect(cat).toContain('const tab = templateTab(search?.get("status"));');
+    expect(cat).toContain("templatesByTab(rows as ResearchTemplate[], templateStatuses)");
+    expect(cat).toContain('window.history.replaceState(null, "",');
+    expect(cat).toContain("<TemplateVersionDrawer");
+    expect(cat).toContain("researchTemplateVersionHref(base, pipe, t.key, open.key)");
+    expect(cat).toContain("<TemplateVersionView");
+    const panel = read("components/v2/research-template-outputs.tsx");
+    expect(panel).toContain("useTemplateRowOutputs(t, 4)");
+    expect(panel).toContain("useTemplateOutputs(version.key, 5)");
+    expect(panel).toContain('document.getElementById("v2-portal")');
+    expect(panel).toContain("{roi != null && <Fig k={<RoiLabel />} v={\"show\" in roi ? <RoiValue roi={roi.show} /> : roi.text} />}");
+    expect(panel).not.toMatch(/transition-all|text-gray-/);
+    expect(read("components/v2/research-page.tsx")).toContain('versionKey={view.view === "version" ? view.version : null}');
   });
 });

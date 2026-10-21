@@ -113,8 +113,8 @@ describe("TEMPLATE-MODEL-STATUS-1019: the three Research pages", () => {
     expect(list).toContain('<th className={`${TH} w-36`}>Leg</th>');
     expect(list).toContain("<FirstAndMore");
     expect(list).toContain("<TemplateOutputsPanel");
-    // Open from the start: the first row until one is picked.
-    expect(list).toContain("?? (rows[0] as ResearchTemplate | undefined)");
+    // Open from the start: the tab's first row until one is picked.
+    expect(list).toContain("?? (shown[0] as ResearchTemplate | undefined)");
     expect(list).toContain("<StatusMenu");
   });
 
@@ -208,7 +208,8 @@ describe("DEPRECATION-REASON-1020: every Deprecate asks why; every deprecated it
   it("every deprecated row and page shows its served why", () => {
     expect(list).toContain("deprecation={deprecation}");
     expect(status).toContain("deprecation={why.deprecation}");
-    expect(list.match(/<DeprecationNote /g)?.length).toBe(3);
+    // workflow, template dynasty, template version, model pages
+    expect(list.match(/<DeprecationNote /g)?.length).toBe(4);
     expect(api).toContain('new URLSearchParams({ workflowDynastySlug, status: "all" })');
   });
 });

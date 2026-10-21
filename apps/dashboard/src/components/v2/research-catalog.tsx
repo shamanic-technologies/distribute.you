@@ -6,8 +6,10 @@ import { useAuthQuery } from "@/lib/use-auth-query";
 import { getPublicCatalogueSteps } from "@/lib/api";
 import { useState } from "react";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import { EmptyNote, SectionTitle, Shimmer, TopBar, type Crumb } from "@/components/v2/ui";
 import { CostBasisSwitch } from "@/components/v2/cost-basis-switch";
+import { RoiLabel, RoiValue } from "@/components/v2/roi-label";
 import { ResearchLiveWorkflows, usePipeChannelName, useResearchPipeLeg } from "@/components/v2/research-live-workflows";
 import { shortWorkflowName } from "@/lib/live-workflow-rows";
 import {
@@ -23,7 +25,7 @@ import {
   useTemplateStatuses,
   useWorkflowDeprecation,
 } from "@/components/v2/research-status";
-import { TemplateOutputsPanel } from "@/components/v2/research-template-outputs";
+import { OutputsList, TemplateOutputsPanel, TemplateVersionDrawer, useTemplateOutputs } from "@/components/v2/research-template-outputs";
 import { modelAliasesOf, modelStatus, templatePipes, type ContentTarget } from "@/lib/research/content-status";
 import { useResearch, useResearchCatalog, useResearchTexts } from "@/lib/research/research-source";
 import {
@@ -46,8 +48,13 @@ import {
   researchCatalogHref,
   researchModel,
   researchTemplateOf,
+  researchTemplateVersion,
+  researchTemplateVersionHref,
   researchWorkflow,
   templateContentKey,
+  templatesByTab,
+  templateTab,
+  type TemplateTab,
   type CatalogKind,
   type ResearchModel,
   type ResearchRef,
@@ -57,6 +64,7 @@ import {
   type ResearchTemplate,
   type ResearchTemplateVersion,
   type ResearchWorkflow,
+  researchRoiOf,
 } from "@/lib/research/research";
 
 /**
@@ -132,12 +140,15 @@ export function V2ResearchCatalogView({
   pipe,
   kind,
   itemKey,
+  versionKey = null,
   nav,
 }: {
   base: string;
   pipe: ResearchPipe;
   kind: CatalogKind;
   itemKey: string | null;
+  /** A template version's own page (`templates/<dynasty>/<version>`). */
+  versionKey?: string | null;
   nav: (href: string) => void;
 }) {
   const catalogQuery = useResearchCatalog(useResearch().basis);
@@ -196,6 +207,30 @@ export function V2ResearchCatalogView({
     );
   }
   const total = catalog[pipe][kind].length;
+  if (kind === "templates" && versionKey) {
+    const t = item as ResearchTemplate;
+    const version = researchTemplateVersion(t, versionKey);
+    const dynastyHref = researchCatalogHref(base, pipe, "templates", t.key);
+    const versionCrumbs = [...crumbs, { label: t.label, href: dynastyHref }, { label: version ? version.label : "Not found" }];
+    if (!version) {
+      return (
+        <>
+          <TopBar crumbs={versionCrumbs} actions={<CostBasisSwitch />} />
+          <div className="mx-auto max-w-[1280px] px-4 pb-16 pt-6 md:px-6">
+            <div className="k-card">
+              <EmptyNote>
+                This version is not one of {t.label}&apos;s.{" "}
+                <Link href={dynastyHref} className="k-fg underline">
+                  See its versions
+                </Link>
+              </EmptyNote>
+            </div>
+          </div>
+        </>
+      );
+    }
+    return <TemplateVersionView base={base} pipe={pipe} t={t} v={version} crumbs={versionCrumbs} />;
+  }
   const itemCrumbs = [...crumbs, { label: rowName(kind, item, channelName) }];
   if (kind === "workflows") return <WorkflowView base={base} pipe={pipe} w={item as ResearchWorkflow} total={total} crumbs={itemCrumbs} nav={nav} />;
   if (kind === "templates") return <TemplateView base={base} pipe={pipe} t={item as ResearchTemplate} total={total} crumbs={itemCrumbs} nav={nav} />;
@@ -281,9 +316,21 @@ function CatalogList({
   const templateStatuses = useTemplateStatuses();
   const modelStatuses = useModelStatuses();
   const writes = useContentStatusWrites();
-  // The Templates page's right panel is open from the start, on the first row until a row is picked.
+  // Templates sit in two tabs, Active and Deprecated (owner 2026-10-21), the tab in the URL. No row
+  // shows before the statuses answer, so none flashes in a tab it then leaves.
+  const search = useSearchParams();
+  const tab = templateTab(search?.get("status"));
+  const statusFailed = kind === "templates" && templateStatuses.failed;
+  const byTab = kind === "templates" && !statusFailed ? templatesByTab(rows as ResearchTemplate[], templateStatuses) : null;
+  const statusPending = kind === "templates" && !statusFailed && !byTab;
+  const shown: (ResearchWorkflow | ResearchTemplate | ResearchModel)[] = kind === "templates" ? (byTab?.[tab] ?? []) : rows;
+  const pickTab = (next: TemplateTab) => {
+    // The history API, null state: Next keeps useSearchParams in step (apps/dashboard CLAUDE.md).
+    window.history.replaceState(null, "", next === "active" ? window.location.pathname : `${window.location.pathname}?status=${next}`);
+  };
+  // The Templates page's right panel is open from the start, on the tab's first row until a row is picked.
   const [selected, setSelected] = useState<string | null>(null);
-  const selectedTemplate = kind === "templates" ? ((rows as ResearchTemplate[]).find((r) => r.key === selected) ?? (rows[0] as ResearchTemplate | undefined) ?? null) : null;
+  const selectedTemplate = kind === "templates" ? ((shown as ResearchTemplate[]).find((r) => r.key === selected) ?? (shown[0] as ResearchTemplate | undefined) ?? null) : null;
   return (
     <>
       <TopBar crumbs={crumbs} actions={<CostBasisSwitch />} />
@@ -299,7 +346,7 @@ function CatalogList({
               ) : (
                 <>
                   Every {words.one} that wrote this pipe&apos;s emails, all clients pooled, the cheapest {o.noun.toLowerCase()} first.{" "}
-                  {kind === "templates" ? "Pick one to read its last emails; open its name for its months and its text." : "Open one for its months and its last runs."}
+                  {kind === "templates" ? "Pick one for its workflows, models and last emails; open its name for its page." : "Open one for its months and its last runs."}
                 </>
               )}
             </p>
@@ -333,6 +380,16 @@ function CatalogList({
           >
             {words.title}
           </SectionTitle>
+          {kind === "templates" && (
+            <div className="mb-3 flex gap-5 border-b border-[var(--line-subtle)]">
+              {(["active", "deprecated"] as const).map((k) => (
+                <button key={k} type="button" onClick={() => pickTab(k)} aria-current={k === tab ? "page" : undefined} className="k-tab inline-flex items-center gap-1.5 text-[13px]">
+                  {k === "active" ? "Active" : "Deprecated"}
+                  {byTab ? <span className="k-fg3 tabular-nums">{byTab[k].length}</span> : statusPending ? <Shimmer className="inline-block h-3 w-4" /> : null}
+                </button>
+              ))}
+            </div>
+          )}
           {live ? (
             <ResearchLiveWorkflows base={base} pipe={pipe} legKey={liveLeg} catalog={catalog} outcomeUnit={o.unit} nav={nav} />
           ) : (
@@ -366,14 +423,34 @@ function CatalogList({
                       </tr>
                     </thead>
                     <tbody>
-                      {rows.length === 0 ? (
+                      {statusPending ? (
+                        [0, 1, 2, 3, 4].map((i) => (
+                          <tr key={i} className="k-row h-10">
+                            <td colSpan={10} className="px-4">
+                              <Shimmer className="h-4 w-full" />
+                            </td>
+                          </tr>
+                        ))
+                      ) : statusFailed ? (
                         <tr>
                           <td colSpan={10}>
-                            <EmptyNote>No {words.one} has written this pipe&apos;s emails yet.</EmptyNote>
+                            <EmptyNote>We could not read which templates are active just now. It retries on its own.</EmptyNote>
+                          </td>
+                        </tr>
+                      ) : shown.length === 0 ? (
+                        <tr>
+                          <td colSpan={10}>
+                            <EmptyNote>
+                              {rows.length === 0
+                                ? `No ${words.one} has written this pipe's emails yet.`
+                                : tab === "active"
+                                  ? "No template on this pipe is active."
+                                  : "No template on this pipe is deprecated."}
+                            </EmptyNote>
                           </td>
                         </tr>
                       ) : (
-                        rows.map((r) => {
+                        shown.map((r) => {
                           const href = researchCatalogHref(base, pipe, kind, r.key);
                           const picked = kind === "templates" && selectedTemplate?.key === r.key;
                           const served = kind === "models" ? modelAliasesOf(r as ResearchModel) : { aliases: [], gap: null };
@@ -481,9 +558,23 @@ function CatalogList({
                   </Link>
                 </div>
               </div>
-              {kind === "templates" && selectedTemplate && (
-                <TemplateOutputsPanel t={selectedTemplate} href={researchCatalogHref(base, pipe, "templates", selectedTemplate.key)} outcomeNoun={o.noun} />
-              )}
+              {kind === "templates" &&
+                (statusPending ? (
+                  <aside className="k-card h-fit space-y-2 self-start p-4">
+                    {[0, 1, 2, 3].map((i) => (
+                      <Shimmer key={i} className="h-4 w-full" />
+                    ))}
+                  </aside>
+                ) : selectedTemplate ? (
+                  <TemplateOutputsPanel
+                    t={selectedTemplate}
+                    href={researchCatalogHref(base, pipe, "templates", selectedTemplate.key)}
+                    base={base}
+                    pipe={pipe}
+                    catalog={catalog}
+                    outcome={o}
+                  />
+                ) : null)}
             </div>
           )}
           {writes.modal}
@@ -496,7 +587,7 @@ function CatalogList({
 
 // ─── One workflow, one template ────────────────────────────────────────────
 
-function Kpi({ label, value }: { label: string; value: React.ReactNode }) {
+function Kpi({ label, value }: { label: React.ReactNode; value: React.ReactNode }) {
   return (
     <div className="min-w-0 px-4 py-3">
       <p className="k-label truncate">{label}</p>
@@ -535,8 +626,11 @@ function Header({
 
 function KpiStrip({ f, pipe }: { f: ResearchFigures; pipe: ResearchPipe }) {
   const o = useOutcome(pipe);
+  // ROI only once features-service serves it on the row: no tile otherwise.
+  const roi = researchRoiOf(f);
   return (
-    <div className="k-card mt-5 grid grid-cols-2 divide-[var(--line-subtle)] md:grid-cols-4 md:divide-x">
+    <div className={`k-card mt-5 grid grid-cols-2 divide-[var(--line-subtle)] md:divide-x ${roi != null ? "md:grid-cols-5" : "md:grid-cols-4"}`}>
+      {roi != null && <Kpi label={<RoiLabel />} value={"show" in roi ? <RoiValue roi={roi.show} /> : roi.text} />}
       <Kpi label={`Cost / ${o.noun.toLowerCase()}`} value={<Dash v={f.cost} />} />
       <Kpi label="Rate" value={<Dash v={f.rate} />} />
       <Kpi label={o.plural} value={f.outcomes} />
@@ -767,6 +861,8 @@ function TemplateText({ templateKey, hasText, note }: { templateKey: string; has
               <Shimmer key={i} className="h-4 w-full" />
             ))}
           </div>
+        ) : text == null ? (
+          <EmptyNote>Content generation holds no text for this template.</EmptyNote>
         ) : (
           <>
             <pre className={`k-mono k-fg2 whitespace-pre-wrap break-words p-4 text-[12px] leading-5 ${open ? "" : "max-h-[360px] overflow-hidden"}`}>{text}</pre>
@@ -799,15 +895,22 @@ function TemplateRowChip({ t }: { t: ResearchTemplate }) {
  * serves them (they add up to the page's figures exactly). The head is the version that writes now.
  */
 function VersionsTable({
+  base,
   pipe,
+  t,
   versions,
   statuses,
 }: {
+  base: string;
   pipe: ResearchPipe;
+  t: ResearchTemplate;
   versions: ResearchTemplateVersion[];
   statuses: ReturnType<typeof useTemplateStatuses>;
 }) {
   const o = useOutcome(pipe);
+  // A click opens the version in a drawer (owner 2026-10-21); its page is one link away.
+  const [openKey, setOpenKey] = useState<string | null>(null);
+  const open = openKey ? (versions.find((v) => v.key === openKey) ?? null) : null;
   return (
     <section>
       <SectionTitle count={versions.length} right={<span>Oldest first; they add up to the figures above</span>}>
@@ -829,7 +932,7 @@ function VersionsTable({
             </thead>
             <tbody>
               {versions.map((v) => (
-                <tr key={v.key} className="k-row h-10">
+                <tr key={v.key} onClick={() => setOpenKey(v.key)} aria-selected={openKey === v.key} className={`k-row h-10 cursor-pointer ${openKey === v.key ? "k-selected" : ""}`}>
                   <td className="max-w-0 pl-4 pr-3">
                     <span className="flex min-w-0 items-center gap-1.5">
                       <span className="k-mono min-w-0 truncate text-[12px]" title={v.key}>
@@ -856,7 +959,68 @@ function VersionsTable({
           </table>
         </div>
       </div>
+      {open && (
+        <TemplateVersionDrawer
+          version={open}
+          dynastyLabel={t.label}
+          href={researchTemplateVersionHref(base, pipe, t.key, open.key)}
+          status={<ContentStatusWord status={statuses.map.get(open.key) ?? null} pending={!statuses.answered} deprecation={statuses.deprecationOf(open.key)} />}
+          outcome={o}
+          onClose={() => setOpenKey(null)}
+        />
+      )}
     </section>
+  );
+}
+
+/**
+ * One version of a dynasty on its own page (owner 2026-10-21): what it is a version of, its status,
+ * its figures, its months, its text and its last 5 emails.
+ */
+function TemplateVersionView({ base, pipe, t, v, crumbs }: { base: string; pipe: ResearchPipe; t: ResearchTemplate; v: ResearchTemplateVersion; crumbs: Crumb[] }) {
+  const o = useOutcome(pipe);
+  const statuses = useTemplateStatuses();
+  const outputs = useTemplateOutputs(v.key, 5);
+  const dynastyHref = researchCatalogHref(base, pipe, "templates", t.key);
+  return (
+    <>
+      <TopBar crumbs={crumbs} actions={<CostBasisSwitch />} />
+      <div className="mx-auto max-w-[1280px] px-4 pb-16 pt-6 md:px-6">
+        <Header
+          topic="template"
+          title={v.label}
+          chips={
+            <>
+              <Link href={dynastyHref} className="k-chip inline-flex items-center gap-1 hover:text-[var(--accent)]">
+                Version of {t.label}
+                <Arrow />
+              </Link>
+              {v.head && <span className="k-chip">Head</span>}
+              <ContentStatusWord status={statuses.map.get(v.key) ?? null} pending={!statuses.answered} deprecation={statuses.deprecationOf(v.key)} />
+              <span className="k-chip inline-flex items-center gap-1.5">
+                <SectionMark section={{ pipe }} size={12} />
+                <SectionName section={{ pipe }} />
+              </span>
+            </>
+          }
+        />
+        <DeprecationNote deprecation={statuses.deprecationOf(v.key)} />
+        <KpiStrip f={v} pipe={pipe} />
+
+        <div className="mt-6 grid gap-4 lg:grid-cols-[minmax(0,1fr)_360px]">
+          <div className="min-w-0 space-y-6">
+            <Charts f={v} topic="template" />
+            <TemplateText templateKey={v.key} hasText={v.hasText} note={`The text of ${v.label}.`} />
+          </div>
+          <aside className="k-card flex h-fit min-h-0 flex-col self-start overflow-hidden lg:sticky lg:top-4 lg:max-h-[calc(100vh-120px)]">
+            <p className="k-label border-b border-[var(--line-subtle)] px-4 py-3">Last 5 emails</p>
+            <div className="k-scroll min-h-0 flex-1 overflow-y-auto">
+              <OutputsList read={outputs} />
+            </div>
+          </aside>
+        </div>
+      </div>
+    </>
   );
 }
 
@@ -920,7 +1084,7 @@ function TemplateView({
         <div className="mt-6 grid gap-4 lg:grid-cols-[minmax(0,1fr)_320px]">
           <div className="min-w-0 space-y-6">
             <Charts f={t} topic="template" />
-            {versions.length > 0 && <VersionsTable pipe={pipe} versions={versions} statuses={statuses} />}
+            {versions.length > 0 && <VersionsTable base={base} pipe={pipe} t={t} versions={versions} statuses={statuses} />}
             <TemplateText
               templateKey={t.key}
               hasText={t.hasText}
