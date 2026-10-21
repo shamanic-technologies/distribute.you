@@ -12,12 +12,11 @@ import { POLL_INTERVAL } from "@/lib/query-options";
 import { formatCount } from "@/lib/format-number";
 import { timeAgo } from "@/lib/friendly-datetime";
 import { leadsExportQuery, leadsSearchParam, leadsSearchProblem, LEADS_PAGE_SIZE, type LeadBucket } from "@/lib/leads-server-page";
-import { ExportButton, RecordsFooter, RecordsTabs, RecordsToolbar, REC_TH, useRowKeys } from "@/components/v2/records";
-import { v2Href } from "@/lib/v2/routes";
+import { ExportButton, RecordsFooter, RecordsToolbar, REC_TH, useRowKeys } from "@/components/v2/records";
 import { useLeadCampaigns } from "@/components/v2/lead-campaigns";
 import { FunnelFace } from "@/components/v2/funnel-campaigns";
 import { useLeadScope, useBucketCounts } from "@/components/v2/data";
-import { EmptyNote, Shimmer, TopBar } from "@/components/v2/ui";
+import { EmptyNote, Shimmer } from "@/components/v2/ui";
 import {
   CompanyMark,
   PersonAvatar,
@@ -28,31 +27,17 @@ import {
   personHref,
 } from "@/components/v2/people-bits";
 
-/** The tabs People offers, each one of lead-service's own engagement buckets. */
-export const PEOPLE_TABS: { key: string; label: string; bucket: LeadBucket }[] = [
-  { key: "contacted", label: "Contacted", bucket: "contacted" },
-  { key: "website-visits", label: "Website visits", bucket: "website_visit" },
-  { key: "positive-replies", label: "Positive replies", bucket: "positive_reply" },
-  { key: "meetings", label: "Meeting booked", bucket: "meeting_booked" },
-  { key: "signups", label: "Signups", bucket: "signup" },
-  { key: "sales", label: "Close won", bucket: "sale" },
-];
-
 /**
- * People: Keel's people table over lead-service's own pages. The tab is a bucket,
- * the order is lead-service's activity order, the search runs on the producer over the
- * whole population, and every count is served. A row opens the person in v1's lead
- * panel, which carries the conversation and every statement v2 does not rebuild.
+ * One lead-service bucket as Keel's people table, embedded under another page's tab (a
+ * campaign's Inbox / Sent, an outcome's people). The order is lead-service's activity order,
+ * the search runs on the producer over the whole population. A row opens the person page.
+ * The People page itself reads the lifecycle ladder (`people-lifecycle-page.tsx`).
  */
-export function PeoplePage({ bucket, campaignId }: { bucket?: LeadBucket; campaignId?: string } = {}) {
+export function PeoplePage({ bucket, campaignId }: { bucket: LeadBucket; campaignId?: string }) {
   const { orgId, brandId } = useParams<{ orgId: string; brandId: string }>();
   const params = useSearchParams();
   const router = useRouter();
-  // `bucket` set = the table embedded under another page's tab (a channel's Inbox / Sent):
-  // that one bucket, without People's own top bar and tabs.
-  const tab = bucket
-    ? { key: bucket, label: bucket, bucket }
-    : PEOPLE_TABS.find((t) => t.key === params.get("tab")) ?? PEOPLE_TABS[0];
+  const tab = { key: bucket, bucket };
   const [draft, setDraft] = useState(params.get("q") ?? "");
   const [search, setSearch] = useState(params.get("q") ?? "");
   const [page, setPage] = useState(0);
@@ -95,12 +80,6 @@ export function PeoplePage({ bucket, campaignId }: { bucket?: LeadBucket; campai
   const total = pageQ.data?.total ?? null;
   const pages = total == null ? 1 : Math.max(1, Math.ceil(total / LEADS_PAGE_SIZE));
 
-  const go = (key: string) => {
-    const next = new URLSearchParams(params.toString());
-    next.set("tab", key);
-    router.replace(`${v2Href(orgId, brandId, "people")}?${next.toString()}`);
-  };
-
   const openRow = (i: number) => {
     const lead = rows?.[i];
     if (lead) router.push(personHref(orgId, brandId, lead));
@@ -109,23 +88,6 @@ export function PeoplePage({ bucket, campaignId }: { bucket?: LeadBucket; campai
 
   return (
     <>
-      {!bucket && <TopBar crumbs={[{ label: "Records" }, { label: "People" }]} />}
-      {!bucket && (
-      <RecordsTabs
-        tabs={PEOPLE_TABS.map((t) => ({ key: t.key, label: t.label, count: counts ? (counts.counts[t.bucket] ?? null) : null }))}
-        active={tab.key}
-        onPick={go}
-        right={
-          counts ? (
-            <>
-              <span>{formatCount(counts.counts.contacted)} contacted</span>
-              <span className="k-fg4">·</span>
-              <span>{formatCount(counts.counts.positive_reply)} wrote back with interest</span>
-            </>
-          ) : null
-        }
-      />
-      )}
       <RecordsToolbar
         search={draft}
         onSearch={setDraft}

@@ -92,3 +92,25 @@ describe("the reads", () => {
     expect(v.valueUsd).toBe(60);
   });
 });
+
+describe("People reads the same ladder as the board", () => {
+  it("old bucket tab links open the rung holding those people", async () => {
+    const { peopleLegacyTab } = await import("../src/lib/deals-board");
+    expect(peopleLegacyTab("positive-replies")).toEqual({ rung: "engaged", filters: { interest: ["interested"] } });
+    expect(peopleLegacyTab("website-visits")?.rung).toBe("engaged");
+    expect(peopleLegacyTab("meetings")?.rung).toBe("meeting_booked");
+    expect(peopleLegacyTab("sales")?.rung).toBe("paid_client");
+    expect(peopleLegacyTab("engaged")).toBeNull();
+  });
+  it("the People route renders the ladder page; its tabs are the board's rungs, its rows the board's reads", async () => {
+    const { readFileSync } = await import("node:fs");
+    const { join } = await import("node:path");
+    const route = readFileSync(join(__dirname, "../src/app/(authed)/v2/orgs/[orgId]/brands/[brandId]/people/page.tsx"), "utf8");
+    const page = readFileSync(join(__dirname, "../src/components/v2/people-lifecycle-page.tsx"), "utf8");
+    expect(route).toContain("<PeopleLifecyclePage />");
+    expect(page).toContain("useDealsLifecycleCounts(brandId, null, filters)");
+    expect(page).toContain("dealsBoardRungs(ladder)");
+    expect(page).toContain("listUniboxLeads(brandId, { ...filters, lifecycle: [tab!.key] }");
+    expect(page).not.toMatch(/rows\??\.filter\(/);
+  });
+});
