@@ -42,7 +42,8 @@ export type ResearchTopic =
   | "pipe"
   | "channel"
   | "leg"
-  | "tactic";
+  | "tactic"
+  | "delay";
 export type ResearchGoal = "roi" | "rate";
 
 export interface ResearchPoint {
@@ -71,6 +72,20 @@ export interface ResearchChart {
   cumulative?: { title: string; points: ResearchPoint[] };
   /** The grey methodology line under the chart: which emails were too young to count. */
   note?: string;
+  /**
+   * On a delay histogram (`delay` topic): the cumulative curve over the same buckets, same order and
+   * keys, each value the % arrived by the bucket's END, the last one 100 ("Any time"). Served by
+   * features-service off lead-service's distribution (TTFPR-RESEARCH-STUDY-1021).
+   */
+  curve?: { title: string; points: ResearchPoint[] };
+}
+
+/** One tile of a delay study: a percentile or the average, written (`display` "5.2 days"). */
+export interface ResearchDelayStat {
+  key: string;
+  label: string;
+  ms: number | null;
+  display: string;
 }
 
 export interface ResearchStudy {
@@ -101,6 +116,8 @@ export interface ResearchStudy {
   result: { display: string; unit: string; sample: string } | null;
   charts: ResearchChart[];
   conclusion: string[];
+  /** On a `delay` study: the sample and the tiles (p10, p25, median, p75, p90, average), in the served order. */
+  delay?: { sampleSize: number; stats: ResearchDelayStat[] };
 }
 
 export interface ResearchFile {
@@ -304,6 +321,7 @@ export const TOPIC_LABEL: Record<ResearchTopic, string> = {
   channel: "Channel",
   leg: "Leg",
   tactic: "Tactic",
+  delay: "Time to reply",
 };
 
 export function studiesFor(pipe: ResearchPipe, file: ResearchFile): ResearchStudy[] {

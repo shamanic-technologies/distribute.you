@@ -1,32 +1,39 @@
 import { getBrandSalesRep, setBrandSalesRep } from "@/lib/api";
+import { accountSalesRep, salesRepDefaultWrite, type SalesRepAccount } from "@/lib/sales-rep-account";
 
 /**
- * A new brand's sales rep defaults to the email of the account that launched it.
+ * A new brand's sales rep defaults to the account that launched it: its email,
+ * the phone it gave at signup, and its first name (owner 2026-10-21).
  *
  * Without a rep, a positive reply is forwarded to nobody, and the person who just
  * signed up is the one who wants it. So the terminal launch of every setup flow
- * (`/onboarding`, `/get-started`, the new-org modal) states their own email as the
- * rep, with no phone: copied on every interested reply, never rung.
+ * (`/get-started`, the new-org walk) states them as the rep: copied on every
+ * interested reply, rung on it when they gave a number, introduced by first name.
  *
- * Only an EMPTY rep is filled. A brand that already names somebody (a second
- * brand added to an org whose rep was set by hand, a resumed launch) keeps them.
+ * Only an EMPTY rep, or one that already IS this account, is filled, and only in
+ * its blanks. A brand that names somebody else keeps them.
+ *
+ * The user is RELOADED first: the phone is saved server-side into Clerk
+ * `publicMetadata` and the name by `user.update` minutes earlier in the same walk,
+ * so the hook's copy can predate both.
  *
  * Never fatal: the customer has already paid and the campaign is created, so a
  * failure here is logged loudly and the rep stays editable in Brand Settings.
  */
-export async function defaultSalesRepToAccountEmail(
+export async function defaultSalesRepToAccount(
   brandId: string,
-  accountEmail: string | null | undefined,
+  user: (SalesRepAccount & { reload?: () => Promise<SalesRepAccount> }) | null | undefined,
 ): Promise<void> {
-  const email = accountEmail?.trim();
-  if (!email) {
-    console.error("[dashboard] default sales rep skipped: the account has no email", { brandId });
-    return;
-  }
   try {
+    const fresh = user?.reload ? await user.reload() : user;
+    const account = accountSalesRep(fresh);
+    if (!account.salesRepEmail) {
+      console.error("[dashboard] default sales rep skipped: the account has no email", { brandId });
+      return;
+    }
     const current = await getBrandSalesRep(brandId);
-    if (current.salesRepEmail || current.salesRepPhone) return;
-    await setBrandSalesRep(brandId, { salesRepEmail: email, salesRepPhone: null });
+    const next = salesRepDefaultWrite(current, account);
+    if (next) await setBrandSalesRep(brandId, next);
   } catch (err) {
     console.error("[dashboard] default sales rep failed", { brandId }, err);
   }
