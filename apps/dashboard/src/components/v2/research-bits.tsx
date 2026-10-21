@@ -22,6 +22,7 @@ import { PipeIcon } from "@phosphor-icons/react/dist/csr/Pipe";
 import { BroadcastIcon } from "@phosphor-icons/react/dist/csr/Broadcast";
 import { ArrowRightIcon } from "@phosphor-icons/react/dist/csr/ArrowRight";
 import { CrosshairIcon } from "@phosphor-icons/react/dist/csr/Crosshair";
+import { HourglassIcon } from "@phosphor-icons/react/dist/csr/Hourglass";
 import { EmptyNote, SectionTitle, Shimmer } from "@/components/v2/ui";
 import { ChannelChip } from "@/components/v2/offer-sales-paths";
 import { useLegCatalogue } from "@/lib/use-leg-catalogue";
@@ -81,6 +82,8 @@ export const TOPIC_LOOK: Record<ResearchTopic, { color: string; Icon: typeof Bra
   channel: { color: "var(--data-sky)", Icon: BroadcastIcon },
   leg: { color: "var(--data-sky)", Icon: ArrowRightIcon },
   tactic: { color: "var(--data-lime)", Icon: CrosshairIcon },
+  // how long a person takes to answer: a timing question, like the hour of the day
+  delay: { color: "var(--data-sky)", Icon: HourglassIcon },
 };
 
 export const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
@@ -270,6 +273,7 @@ function pointTooltip(points: ResearchPoint[]) {
 }
 const axisTick = { fontSize: 11, fill: "var(--fg-3)" };
 const tickFor = (money: boolean) => (n: number) => (money ? `$${Math.round(n)}` : String(Math.round(n * 10) / 10));
+const pctTick = (n: number) => `${Math.round(n)}%`;
 
 /** One bar per month, v2 chart styling: fg-3 ticks, no grid, a k-popover tooltip. Thin months fade;
  *  the month still in progress (only part of its people counted yet) is a dotted outline. */
@@ -326,6 +330,71 @@ export function MonthsRow({ chart, color }: { chart: ResearchChart; color: strin
         </div>
       </div>
       <ChartNote note={chart.note} />
+    </div>
+  );
+}
+
+/**
+ * A delay study (TTFPR-RESEARCH-STUDY-1021): the share of people per delay bucket as bars, and beside
+ * it the served cumulative curve ("Within 1 day" 43%), both in % of the sample as features-service
+ * wrote them. Nothing is summed here: the curve arrives cumulative.
+ */
+export function DelayRow({ chart, color }: { chart: ResearchChart; color: string }) {
+  return (
+    <div>
+      <div className="grid gap-3 md:grid-cols-2">
+        <div className="min-w-0">
+          <SectionTitle>{chart.title}</SectionTitle>
+          <div className="k-card overflow-hidden">
+            <DelayBars points={chart.points} color={color} />
+          </div>
+        </div>
+        <div className="min-w-0">
+          <SectionTitle>{chart.curve?.title ?? "Replied by then"}</SectionTitle>
+          <div className="k-card overflow-hidden">
+            <DelayCurve points={chart.curve?.points ?? []} color={color} />
+          </div>
+        </div>
+      </div>
+      <ChartNote note={chart.note} />
+    </div>
+  );
+}
+
+function DelayBars({ points, color }: { points: ResearchPoint[]; color: string }) {
+  if (!points.length) return <EmptyNote>Nothing to draw yet.</EmptyNote>;
+  const Tip = pointTooltip(points);
+  return (
+    <div className="h-[220px] px-2 pb-2 pt-3">
+      <ResponsiveContainer width="100%" height="100%">
+        <BarChart data={points} margin={{ top: 8, right: 12, bottom: 0, left: 0 }}>
+          <XAxis dataKey="label" tick={axisTick} tickLine={false} axisLine={false} interval="preserveStartEnd" minTickGap={8} />
+          <YAxis tick={axisTick} tickLine={false} axisLine={false} width={40} tickCount={3} tickFormatter={pctTick} />
+          <Tooltip cursor={{ fill: "var(--data-track)" }} content={<Tip />} />
+          <Bar dataKey="value" radius={[3, 3, 0, 0]} maxBarSize={28} isAnimationActive={false}>
+            {points.map((p) => (
+              <Cell key={p.label} fill={color} fillOpacity={p.thin ? 0.35 : 0.85} />
+            ))}
+          </Bar>
+        </BarChart>
+      </ResponsiveContainer>
+    </div>
+  );
+}
+
+function DelayCurve({ points, color }: { points: ResearchPoint[]; color: string }) {
+  if (!points.length) return <EmptyNote>Nothing to draw yet.</EmptyNote>;
+  const Tip = pointTooltip(points);
+  return (
+    <div className="h-[220px] px-2 pb-2 pt-3">
+      <ResponsiveContainer width="100%" height="100%">
+        <LineChart data={points} margin={{ top: 8, right: 12, bottom: 0, left: 0 }}>
+          <XAxis dataKey="label" tick={axisTick} tickLine={false} axisLine={false} interval="preserveStartEnd" minTickGap={8} />
+          <YAxis tick={axisTick} tickLine={false} axisLine={false} width={40} ticks={[0, 50, 100]} domain={[0, 100]} tickFormatter={pctTick} />
+          <Tooltip cursor={{ stroke: "var(--line-strong)", strokeWidth: 1 }} content={<Tip />} />
+          <Line type="monotone" dataKey="value" stroke={color} strokeWidth={1.5} dot={{ r: 2.5, fill: color, strokeWidth: 0 }} isAnimationActive={false} />
+        </LineChart>
+      </ResponsiveContainer>
     </div>
   );
 }

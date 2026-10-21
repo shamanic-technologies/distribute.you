@@ -8,6 +8,7 @@ import { HubSectionBlock, useOpenSections } from "@/components/v2/hub-section";
 import {
   Arrow,
   ChartNote,
+  DelayRow,
   MonthsRow,
   Row,
   TOPIC_LOOK,
@@ -91,6 +92,8 @@ const WINNER_LABEL: Record<ResearchTopic, string> = {
   channel: "Winner",
   leg: "Winner",
   tactic: "Winner",
+  // a distribution of delays: it ranks nothing
+  delay: "Comparison",
 };
 
 const STATE_LOOK: Record<StudyState, { label: string; dot: string }> = {
@@ -574,9 +577,23 @@ function V2ResearchStudy({ base, studyId }: { base: string; studyId: string }) {
                 </ul>
               </div>
             </div>
+            {study.delay && study.status === "measured" && (
+              <div>
+                <SectionTitle>How long people took</SectionTitle>
+                <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
+                  {study.delay.stats.map((s) => (
+                    <StatTile key={s.key} label={s.label}>
+                      <Figure value={s.display} />
+                    </StatTile>
+                  ))}
+                </div>
+              </div>
+            )}
             {study.charts.map((c) =>
               c.kind === "months" ? (
                 <MonthsRow key={c.title} chart={c} color={look.color} />
+              ) : c.curve ? (
+                <DelayRow key={c.title} chart={c} color={look.color} />
               ) : (
                 <div key={c.title}>
                   <SectionTitle>{c.title}</SectionTitle>
