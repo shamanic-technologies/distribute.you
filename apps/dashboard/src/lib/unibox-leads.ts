@@ -51,6 +51,22 @@ export const UniboxRowSchema = z
     // The org of this relation (lead-service, owner 2026-10-17: « Adam Nasri @ <company> »);
     // null = company unknown. Optional until every cached body carries it.
     company: z.object({ id: z.string(), name: z.string().nullable(), domain: z.string().nullable() }).passthrough().nullish(),
+    // The thread's last message (lead-service UNIBOX-LAST-MESSAGE-PREVIEW-1021): its first words
+    // and who wrote it. null = no message to show (`lastMessageReason` says why). Optional until
+    // every cached body carries it.
+    lastMessage: z
+      .object({
+        at: z.string().nullish(),
+        side: z.string().nullish(),
+        sentBy: z.string().nullish(),
+        channel: z.string().nullish(),
+        source: z.string().nullish(),
+        subject: z.string().nullish(),
+        preview: z.string().nullish(),
+      })
+      .passthrough()
+      .nullish(),
+    lastMessageReason: z.string().nullish(),
   })
   .passthrough();
 export type UniboxRow = z.infer<typeof UniboxRowSchema>;
@@ -221,6 +237,17 @@ export function uniboxCardQuery(id: string): { relationKey: string } | { humanId
 export function uniboxRowSubtitle(row: Pick<UniboxRow, "title" | "company">): string | null {
   const parts = [row.title?.trim(), row.company?.name || row.company?.domain].filter((x): x is string => Boolean(x));
   return parts.length > 0 ? parts.join(" · ") : null;
+}
+
+/**
+ * A row's third line (owner 2026-10-21, UNIBOX-PREVIEW-ROW-1021, like Gmail): the first words of
+ * the thread's last message as lead-service serves them, `You: …` when we wrote it. Null when no
+ * preview is served: the row then shows no line, never a placeholder.
+ */
+export function uniboxRowPreview(row: Pick<UniboxRow, "lastMessage">): string | null {
+  const text = row.lastMessage?.preview?.trim();
+  if (!text) return null;
+  return row.lastMessage?.side === "ours" ? `You: ${text}` : text;
 }
 
 type Look = { tone: TimelineTone; icon: TimelineIcon };

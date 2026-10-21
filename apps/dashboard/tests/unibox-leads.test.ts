@@ -9,6 +9,7 @@ import {
   filtersKey,
   lifecycleOptions,
   uniboxLeadName,
+  uniboxRowPreview,
   uniboxRowSubtitle,
   uniboxRowTag,
   uniboxValueTag,
@@ -97,6 +98,30 @@ describe("Unibox list from lead-service (owner 2026-10-17)", () => {
     const named = UniboxPageSchema.parse({ brandId: "b", lifecycleLadder: [], rows: [{ ...row, name: "Andreas Oberleitner", firstName: "Andreas", lastName: "Oberleitner", title: "Head of RA" }], total: 1, nextCursor: null, builtAt: null }).rows[0];
     expect(uniboxLeadName(named)).toBe("Andreas Oberleitner");
     expect(named.title).toBe("Head of RA");
+  });
+
+  it("a row shows the first words of its last message, You: when we wrote it, nothing when none is served (owner 2026-10-21)", () => {
+    const at = "2026-10-21T05:08:00.000Z";
+    const parsed = UniboxPageSchema.parse({
+      brandId: "b",
+      lifecycleLadder: [],
+      rows: [{ ...row, lastMessage: { at, side: "ours", sentBy: "automation", channel: "email", source: "instantly", subject: "Re: Platomics", preview: "Last note from me, Andreas…" }, lastMessageReason: null }],
+      total: 1,
+      nextCursor: null,
+      builtAt: null,
+    }).rows[0];
+    expect(uniboxRowPreview(parsed)).toBe("You: Last note from me, Andreas…");
+    expect(uniboxRowPreview({ lastMessage: { side: "theirs", preview: "Sounds good, Tuesday?" } })).toBe("Sounds good, Tuesday?");
+    expect(uniboxRowPreview({ lastMessage: { side: null, preview: "Hello" } })).toBe("Hello");
+    expect(uniboxRowPreview({ lastMessage: { side: "ours", preview: null } })).toBeNull();
+    expect(uniboxRowPreview({ lastMessage: null })).toBeNull();
+    // An older body without the field still parses and shows no line.
+    expect(uniboxRowPreview(UniboxPageSchema.parse({ brandId: "b", lifecycleLadder: [], rows: [row], total: 1, nextCursor: null, builtAt: null }).rows[0])).toBeNull();
+    const view = read("components/v2/integrations-conversations.tsx");
+    const at2 = view.indexOf("function LeadRow(");
+    const leadRow = view.slice(at2, view.indexOf("function Thread(", at2));
+    expect(leadRow).toContain("const preview = uniboxRowPreview(row);");
+    expect(leadRow).toContain("after={preview ? ");
   });
 
   it("a row carries ONE tag, the hottest true fact, nothing for the default (owner 2026-10-21)", () => {
