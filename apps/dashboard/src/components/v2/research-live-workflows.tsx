@@ -20,7 +20,6 @@ import {
   LiveWorkflowHeads,
 } from "@/components/v2/live-workflow-cells";
 import { WorkflowStatusCells, useDynastyStatuses } from "@/components/v2/research-status";
-import { TemplateVersionChip } from "@/components/v2/research-bits";
 
 /**
  * A pipe's workflows as the FLEET ranks them right now, at the pipe's leg: every client we run
@@ -163,12 +162,18 @@ export function ResearchLiveWorkflows({
                     </td>
                     <td className="max-w-0 px-3">
                       {template ? (
-                        <span className="flex min-w-0 items-center gap-1.5">
+                        // Owner 2026-10-21: the dynasty name on line 1, its version on a discreet line 2 (a chip beside
+                        // the name squeezed it to one letter).
+                        <div className="flex min-w-0 flex-col py-1">
                           <Tag href={template.linked ? researchCatalogHref(base, pipe, "templates", template.key) : null} title={template.label}>
                             {template.label}
                           </Tag>
-                          <TemplateVersionChip version={template.version} />
-                        </span>
+                          {template.version && (
+                            <span className="k-mono k-fg3 truncate pl-1 text-[11px] leading-4" title={`Version ${template.version.label} (${template.version.key})`}>
+                              {template.version.label}
+                            </span>
+                          )}
+                        </div>
                       ) : (
                         <span className="k-fg4">—</span>
                       )}

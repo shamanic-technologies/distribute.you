@@ -456,8 +456,8 @@ export function Row({ k, v }: { k: string; v: React.ReactNode | null }) {
 export function TemplateVersionChip({ version }: { version: { key: string; label: string } | null | undefined }) {
   if (!version) return null;
   return (
-    <span className="k-chip k-mono shrink-0 tabular-nums" title={`Version ${version.label} (${version.key})`}>
-      {version.label}
+    <span className="k-chip k-mono min-w-0 max-w-[12rem] tabular-nums" title={`Version ${version.label} (${version.key})`}>
+      <span className="truncate">{version.label}</span>
     </span>
   );
 }
