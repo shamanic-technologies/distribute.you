@@ -5,7 +5,7 @@ import { createPortal } from "react-dom";
 import Link from "next/link";
 import { useAuthQuery } from "@/lib/use-auth-query";
 import { pollOptions } from "@/lib/query-options";
-import { getTemplateOutputs, type TemplateOutput } from "@/lib/api";
+import { getTemplateDynastyOutputs, getTemplateOutputs, type TemplateOutput } from "@/lib/api";
 import { EmptyNote, Shimmer } from "@/components/v2/ui";
 import { RoiLabel, RoiValue } from "@/components/v2/roi-label";
 import { Arrow, TopicMark, instantText } from "@/components/v2/research-bits";
@@ -29,17 +29,25 @@ export interface OutcomeWords {
 }
 
 /** The last `limit` outputs written with one template version, every client, newest first (content-generation-service). */
-export function useTemplateOutputs(outputsKey: string, limit: number) {
-  const q = useAuthQuery(["templateOutputs", outputsKey, limit], () => getTemplateOutputs(outputsKey, limit), { ...pollOptions, retry: false });
+export function useTemplateOutputs(outputsKey: string, limit: number, enabled = true) {
+  const q = useAuthQuery(["templateOutputs", outputsKey, limit], () => getTemplateOutputs(outputsKey, limit), { ...pollOptions, retry: false, enabled });
   return { outputs: q.data, answered: q.data !== undefined || q.isFetchedAfterMount };
 }
 
 /**
- * The outputs a Templates ROW shows. Today its head version's (content generation keys outputs by
- * version); the one place a dynasty-wide read replaces it.
+ * The outputs a Templates ROW shows: a dynasty reads every version's (content generation's dynasty
+ * read, newest first); a version on its own reads its own.
  */
 export function useTemplateRowOutputs(t: Pick<ResearchTemplate, "key" | "dynasty">, limit: number) {
-  return useTemplateOutputs(templateContentKey(t), limit);
+  const slug = t.dynasty ? t.dynasty.slug : null;
+  const q = useAuthQuery(["templateDynastyOutputs", slug ?? "", limit], () => getTemplateDynastyOutputs(slug ?? "", limit), {
+    ...pollOptions,
+    retry: false,
+    enabled: slug != null,
+  });
+  const own = useTemplateOutputs(templateContentKey(t), limit, slug == null);
+  if (slug == null) return own;
+  return { outputs: q.data, answered: q.data !== undefined || q.isFetchedAfterMount };
 }
 
 /** Outputs as a list: subject and each email as sent, never a client or a lead. */
@@ -282,7 +290,12 @@ function OutputItem({ o }: { o: TemplateOutput }) {
     <li className="px-4 py-3">
       <div className="flex min-w-0 items-center gap-2">
         <span className="k-mono k-fg3 shrink-0 text-[11.5px]">{instantText(o.createdAt)}</span>
-        <span className="k-chip ml-auto min-w-0 truncate" title={o.model}>
+        {"promptType" in o && typeof o.promptType === "string" && (
+          <span className="k-chip ml-auto min-w-0 truncate" title={`Version ${o.promptType}`}>
+            {o.promptType}
+          </span>
+        )}
+        <span className={`k-chip min-w-0 truncate ${"promptType" in o ? "" : "ml-auto"}`} title={o.model}>
           {o.model}
         </span>
       </div>
