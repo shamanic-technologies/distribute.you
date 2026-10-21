@@ -23,6 +23,7 @@ import { BroadcastIcon } from "@phosphor-icons/react/dist/csr/Broadcast";
 import { ArrowRightIcon } from "@phosphor-icons/react/dist/csr/ArrowRight";
 import { CrosshairIcon } from "@phosphor-icons/react/dist/csr/Crosshair";
 import { HourglassIcon } from "@phosphor-icons/react/dist/csr/Hourglass";
+import { TargetIcon } from "@phosphor-icons/react/dist/csr/Target";
 import { EmptyNote, SectionTitle, Shimmer } from "@/components/v2/ui";
 import { ChannelChip } from "@/components/v2/offer-sales-paths";
 import { useLegCatalogue } from "@/lib/use-leg-catalogue";
@@ -84,6 +85,8 @@ export const TOPIC_LOOK: Record<ResearchTopic, { color: string; Icon: typeof Bra
   tactic: { color: "var(--data-lime)", Icon: CrosshairIcon },
   // how long a person takes to answer: a timing question, like the hour of the day
   delay: { color: "var(--data-sky)", Icon: HourglassIcon },
+  // how narrow a client's B2B niche is, graded by Jev: a typed judgment, so the judgment colour
+  niche: { color: "var(--data-violet)", Icon: TargetIcon },
 };
 
 export const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];

@@ -43,7 +43,8 @@ export type ResearchTopic =
   | "channel"
   | "leg"
   | "tactic"
-  | "delay";
+  | "delay"
+  | "niche";
 export type ResearchGoal = "roi" | "rate";
 
 export interface ResearchPoint {
@@ -371,6 +372,7 @@ export const TOPIC_LABEL: Record<ResearchTopic, string> = {
   leg: "Leg",
   tactic: "Tactic",
   delay: "Time to reply",
+  niche: "B2B niche",
 };
 
 export function studiesFor(pipe: ResearchPipe, file: ResearchFile): ResearchStudy[] {
