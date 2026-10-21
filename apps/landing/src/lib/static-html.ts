@@ -233,11 +233,9 @@ function resolvePublicApiUrl(): string {
   return base.replace(/\/$/, "");
 }
 
-// A flame beside the count, the way the row it is modelled on marks its own.
-const FLAME_PATH =
-  '<path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.153.433-2.294 1-3a2.5 2.5 0 0 0 2.5 2.5z"/>';
-
 const HOT_LEAD_ROW_TOKEN = "__HOT_LEAD_ROW__";
+const STEP_MEETING_COST_TOKEN = "__STEP_MEETING_COST__";
+const STEP_RETURN_TOKEN = "__STEP_RETURN__";
 // The comparison cluster states the SAME two figures as a full dark band (compare-page.ts).
 // One token for the whole section, so an unmeasurable fleet drops the band rather than
 // leaving a heading over nothing.
@@ -308,33 +306,23 @@ export function fleetReturnFromIndex(detail: IndexDetail | null): FleetReturnSta
 const FLEET_READ_TIMEOUT_MS = 8_000;
 
 /**
- * The row's markup. It lives here rather than in the HTML because the row must
- * DISAPPEAR when the figures cannot be read — a hardcoded fallback would state
- * numbers nobody measured, and "we could not measure this" is not "zero".
+ * The row's markup. It lives here rather than in the HTML because each figure must
+ * DISAPPEAR when it cannot be read — a hardcoded fallback would state numbers nobody
+ * measured, and "we could not measure this" is not "zero".
  *
- * `data-n` seeds the in-session nudge in v2/main.js; the class names are pinned
- * on both sides by tests/unit/hot-lead-stats.test.ts.
+ * Owner 2026-10-21: the engaged-lead count left the hero row; it states the meeting
+ * price and the return only (the comparison band still carries the count). Neither
+ * figure read = no row at all, never an empty strip.
  */
 export function hotLeadRowHtml(
-  stats: HotLeadStats,
+  meetingCostUsd: number | null,
   fleetReturn: FleetReturnStats | null = null,
-  meetingCostUsd: number | null = null,
 ): string {
-  const leads = stats.hotLeads.toLocaleString("en-US");
-  const companies = stats.companies.toLocaleString("en-US");
-  // Whole dollars: this is a headline price, and cents on a figure that moves
-  // with every outcome read as precision we do not have.
-  const cost = meetingCostUsd === null ? null : `$${Math.round(meetingCostUsd).toLocaleString("en-US")}`;
-  // The return is a SECOND read and states its own absence: unmeasurable, failed or
-  // slow, the row renders the two figures it always did. The row wraps (centred flex),
-  // so a third item costs no height at any width — measured, not assumed.
+  const cost = meetingCostUsd === null ? null : formatMeetingCost(meetingCostUsd);
   const returnFigure = fleetReturn ? formatReturnMultiple(fleetReturn.medianReturnPerDollar) : null;
+  if (!cost && !returnFigure) return "";
   return (
     '<div class="hero-stats">' +
-    '<span class="hstat">' +
-    `<svg class="hstat-i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${FLAME_PATH}</svg>` +
-    `<span class="hstat-n"><b data-hot-leads data-n="${stats.hotLeads}">${leads}</b></span>` +
-    `<span class="hstat-l">engaged leads for ${companies} companies</span></span>` +
     (cost
       ? '<span class="hstat">' +
         `<span class="hstat-n"><b>${cost}</b></span>` +
@@ -347,6 +335,31 @@ export function hotLeadRowHtml(
       : "") +
     "</div>"
   );
+}
+
+// Whole dollars: this is a headline price, and cents on a figure that moves with
+// every outcome read as precision we do not have.
+function formatMeetingCost(usd: number): string {
+  return `$${Math.round(usd).toLocaleString("en-US")}`;
+}
+
+/**
+ * Step 03 of "How it works" prices a meeting and states a return with the SAME
+ * figures the hero states (owner 2026-10-21), so the page never quotes two prices
+ * for one meeting. No read = that tile drops; its neighbours stay.
+ */
+export function stepMeetingCostHtml(meetingCostUsd: number | null): string {
+  if (meetingCostUsd === null) return "";
+  return stepTileHtml("Cost / meeting booked", formatMeetingCost(meetingCostUsd));
+}
+
+export function stepReturnHtml(fleetReturn: FleetReturnStats | null): string {
+  if (!fleetReturn) return "";
+  return stepTileHtml("ROI", `${formatReturnMultiple(fleetReturn.medianReturnPerDollar).text}x`);
+}
+
+function stepTileHtml(label: string, value: string): string {
+  return `<div class="control"><div class="k">${label}</div><div class="v">${value}</div><span class="ok">measured</span></div>`;
 }
 
 /**
@@ -531,7 +544,8 @@ async function withIndexLinks(html: string): Promise<string> {
 async function withHotLeadStats(html: string) {
   const wantsRow = html.includes(HOT_LEAD_ROW_TOKEN);
   const wantsBand = html.includes(HOT_LEAD_BAND_TOKEN);
-  if (!wantsRow && !wantsBand) return html;
+  const wantsStep = html.includes(STEP_MEETING_COST_TOKEN) || html.includes(STEP_RETURN_TOKEN);
+  if (!wantsRow && !wantsBand && !wantsStep) return html;
 
   // ONE read per index, shared by both surfaces: the hero and a compare page cannot
   // quote two medians. A failed read is logged by the reader and drops its figure.
@@ -541,9 +555,8 @@ async function withHotLeadStats(html: string) {
     fetchIndexDetail(MEETING_INDEX_SLUG),
   ]);
   const stats = hotLeadStatsFromIndex(engaged === "not_found" ? null : engaged);
-  // A return with no engaged leads beside it states half a picture.
-  const fleetReturn = stats ? fleetReturnFromIndex(roi === "not_found" ? null : roi) : null;
-  const meetingCost = stats ? meetingCostFromIndex(meeting === "not_found" ? null : meeting) : null;
+  const fleetReturn = fleetReturnFromIndex(roi === "not_found" ? null : roi);
+  const meetingCost = meetingCostFromIndex(meeting === "not_found" ? null : meeting);
   if (engaged === "not_found" || roi === "not_found" || meeting === "not_found") {
     console.error(
       `[landing] hero index missing: ${ENGAGED_LEAD_INDEX_SLUG}=${engaged === "not_found"} ${ROI_INDEX_SLUG}=${roi === "not_found"} ${MEETING_INDEX_SLUG}=${meeting === "not_found"}`,
@@ -551,7 +564,10 @@ async function withHotLeadStats(html: string) {
   }
 
   return html
-    .replaceAll(HOT_LEAD_ROW_TOKEN, stats ? hotLeadRowHtml(stats, fleetReturn, meetingCost) : "")
+    .replaceAll(HOT_LEAD_ROW_TOKEN, hotLeadRowHtml(meetingCost, fleetReturn))
+    .replaceAll(STEP_MEETING_COST_TOKEN, stepMeetingCostHtml(meetingCost))
+    .replaceAll(STEP_RETURN_TOKEN, stepReturnHtml(fleetReturn))
+    // The band states the count beside the two figures: no count, no band.
     .replaceAll(HOT_LEAD_BAND_TOKEN, stats ? hotLeadBandHtml(stats, fleetReturn, meetingCost) : "");
 }
 
