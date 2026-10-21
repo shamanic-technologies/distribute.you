@@ -71,6 +71,7 @@ import { startAnonSession } from "@/lib/anon-session-client";
 import { refusalExits, type RefusalExits } from "@/lib/claimed-signup";
 import { websiteInputProblem } from "@/lib/website-input";
 import { phoneSyntaxProblem, toE164 } from "@/lib/phone-syntax";
+import { readGetStartedPrefill } from "@/lib/get-started-prefill";
 import type { PhoneValue } from "@/components/onboarding/phone-input";
 import { PhoneField, defaultPhoneCountry } from "./phone-field";
 import {
@@ -249,10 +250,14 @@ function GetStartedWalk({ org, ipCountry = null, gsArm = "emails", gsArmFresh = 
         : { kind: "prepaid", topupUsd: TOPUP_CHOICES_USD[0] };
 
   const [website, setWebsite] = useState(params.get("url") ?? "");
+  // A prepared link (`?firstName=&lastName=&phone=+…`, owner 2026-10-21): what we already know
+  // about the prospect opens filled in; they still walk every step.
+  const [prefill] = useState(() => readGetStartedPrefill(params, ipCountry));
   // The WhatsApp number typed under the website (optional, owner 2026-10-15). The
   // country is the connection's (read on the server); the browser language only
   // refines it after mount, so the first frame matches the server render.
   const [phone, setPhone] = useState<PhoneValue>(() => {
+    if (prefill.phone) return prefill.phone;
     const c = defaultPhoneCountry(ipCountry, undefined);
     return { countryCode: c.code, dialCode: c.dial, national: "" };
   });
@@ -261,8 +266,8 @@ function GetStartedWalk({ org, ipCountry = null, gsArm = "emails", gsArmFresh = 
   const [givenPhone, setGivenPhone] = useState<GetStartedPhone | null>(null);
   const givenPhoneRef = useRef<GetStartedPhone | null>(null);
   // Their first and last name, optional too (owner 2026-10-15): the WhatsApp greeting says it.
-  const [firstName, setFirstName] = useState("");
-  const [lastName, setLastName] = useState("");
+  const [firstName, setFirstName] = useState(prefill.firstName);
+  const [lastName, setLastName] = useState(prefill.lastName);
   const [givenPerson, setGivenPerson] = useState<GetStartedName | null>(null);
   const givenPersonRef = useRef<GetStartedName | null>(null);
   useEffect(() => {
