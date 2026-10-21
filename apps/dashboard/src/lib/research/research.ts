@@ -204,6 +204,11 @@ export interface ResearchFigures {
   thin: boolean;
   sample: string;
   charts: ResearchChart[];
+  /**
+   * Its return, written by features-service, once it serves one at this grain (not served on
+   * templates yet: a features-service change is in flight). Absent = no ROI tile, never a guess.
+   */
+  roi?: string | null;
 }
 
 /** A reference to another catalogue page; `linked` when that page exists in this pipe. */
@@ -441,6 +446,8 @@ export type ResearchView =
   | { view: "study"; id: string }
   | { view: "list"; pipe: ResearchPipe; kind: CatalogKind }
   | { view: "item"; pipe: ResearchPipe; kind: CatalogKind; key: string }
+  /** One version of a template dynasty: `templates/<dynasty>/<version>`. */
+  | { view: "version"; pipe: ResearchPipe; kind: "templates"; key: string; version: string }
   /** An old link: `to` is the same page's path under `/research` today, for a client replace. */
   | { view: "redirect"; to: string }
   | { view: "missing" };
@@ -451,13 +458,20 @@ export function parseResearchPath(rest: string): ResearchView {
   if (legacy !== null) return { view: "redirect", to: legacy };
   if (parts.length === 1) return { view: "study", id: parts[0] };
   const [pipe, kind, key, ...extra] = parts;
-  if (!isResearchPipe(pipe) || !(CATALOG_KINDS as string[]).includes(kind) || extra.length) return { view: "missing" };
+  if (!isResearchPipe(pipe) || !(CATALOG_KINDS as string[]).includes(kind)) return { view: "missing" };
+  if (kind === "templates" && key && extra.length === 1) return { view: "version", pipe, kind, key, version: extra[0] };
+  if (extra.length) return { view: "missing" };
   const k = kind as CatalogKind;
   return key ? { view: "item", pipe, kind: k, key } : { view: "list", pipe, kind: k };
 }
 
 export function researchCatalogHref(base: string, pipe: ResearchPipe, kind: CatalogKind, key?: string): string {
   return `${base}/${pipe}/${kind}${key ? `/${encodeURIComponent(key)}` : ""}`;
+}
+
+/** A template version's own page: under its dynasty's (`templates/<dynasty>/<version>`). */
+export function researchTemplateVersionHref(base: string, pipe: ResearchPipe, dynastyKey: string, versionKey: string): string {
+  return `${researchCatalogHref(base, pipe, "templates", dynastyKey)}/${encodeURIComponent(versionKey)}`;
 }
 
 /** The page a study's bar opens: its workflow's or template's own, when the bar names one. */
@@ -487,6 +501,58 @@ export function researchTemplateOf(c: ResearchCatalog, pipe: ResearchPipe, key: 
 export function templateContentKey(t: Pick<ResearchTemplate, "key" | "dynasty">): string {
   return t.dynasty?.head?.key ?? t.key;
 }
+/** One version of a Templates row by its key, or null when the row lists no such version. */
+export function researchTemplateVersion(t: Pick<ResearchTemplate, "versions">, versionKey: string): ResearchTemplateVersion | null {
+  return (t.versions ?? []).find((v) => v.key === versionKey) ?? null;
+}
+
+/** The two tabs of the Templates list (owner 2026-10-21). */
+export type TemplateTab = "active" | "deprecated";
+/** The tab a `?status=` value opens: Active unless it names Deprecated. */
+export function templateTab(param: string | null | undefined): TemplateTab {
+  return param === "deprecated" ? "deprecated" : "active";
+}
+
+/** content-generation's template statuses as the list holds them: answered once, keyed by template version. */
+export interface TemplateStatusRead {
+  answered: boolean;
+  map: ReadonlyMap<string, string>;
+}
+
+/**
+ * A Templates row's status (owner 2026-10-21): Active iff its HEAD version is Active, Deprecated
+ * otherwise; a version on its own reads its own key. Null until the statuses answer, so no row lands
+ * in a tab it will leave. The ONE place this is decided: a producer-served dynasty status replaces
+ * this body, not its callers.
+ */
+export function templateRowStatus(row: Pick<ResearchTemplate, "key" | "dynasty">, statuses: TemplateStatusRead): TemplateTab | null {
+  if (!statuses.answered) return null;
+  return statuses.map.get(templateContentKey(row)) === "active" ? "active" : "deprecated";
+}
+
+/** The rows of each tab, in the served order, or null while the statuses have not answered. */
+export function templatesByTab<T extends Pick<ResearchTemplate, "key" | "dynasty">>(rows: readonly T[], statuses: TemplateStatusRead): Record<TemplateTab, T[]> | null {
+  if (!statuses.answered) return null;
+  const out: Record<TemplateTab, T[]> = { active: [], deprecated: [] };
+  for (const r of rows) out[templateRowStatus(r, statuses) ?? "deprecated"].push(r);
+  return out;
+}
+
+/**
+ * The models a Templates row wrote with, first seen first: each workflow's model (the catalogue's
+ * workflow rows, matched by key), then the models its last runs name. A display join of served
+ * refs; nothing counted or ranked.
+ */
+export function templateModels(c: ResearchCatalog | null, pipe: ResearchPipe, t: Pick<ResearchTemplate, "workflows" | "runs">): ResearchRef[] {
+  const seen = new Map<string, ResearchRef>();
+  const add = (r: ResearchRef | null | undefined) => {
+    if (r && !seen.has(r.key)) seen.set(r.key, r);
+  };
+  for (const w of t.workflows) add(c ? researchWorkflow(c, pipe, w.key)?.model : null);
+  for (const r of t.runs) add(r.model);
+  return [...seen.values()];
+}
+
 export function researchModel(c: ResearchCatalog, pipe: ResearchPipe, key: string): ResearchModel | null {
   return c[pipe].models.find((m) => m.key === key) ?? null;
 }
