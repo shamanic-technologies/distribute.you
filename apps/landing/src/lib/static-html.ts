@@ -350,16 +350,21 @@ function formatMeetingCost(usd: number): string {
  */
 export function stepMeetingCostHtml(meetingCostUsd: number | null): string {
   if (meetingCostUsd === null) return "";
-  return stepTileHtml("Cost / meeting booked", formatMeetingCost(meetingCostUsd));
+  // The "from" price is an illustrative trend, kept on purpose by the owner
+  // (2026-10-21): the live price over the ratio the mock shipped with ($600 from $740).
+  const from = formatMeetingCost(meetingCostUsd * STEP_FROM_RATIO);
+  return stepTileHtml("Cost / meeting booked", formatMeetingCost(meetingCostUsd), `↓ from ${from}`);
 }
+
+const STEP_FROM_RATIO = 740 / 600;
 
 export function stepReturnHtml(fleetReturn: FleetReturnStats | null): string {
   if (!fleetReturn) return "";
   return stepTileHtml("ROI", `${formatReturnMultiple(fleetReturn.medianReturnPerDollar).text}x`);
 }
 
-function stepTileHtml(label: string, value: string): string {
-  return `<div class="control"><div class="k">${label}</div><div class="v">${value}</div><span class="ok">measured</span></div>`;
+function stepTileHtml(label: string, value: string, note = "measured"): string {
+  return `<div class="control"><div class="k">${label}</div><div class="v">${value}</div><span class="ok">${note}</span></div>`;
 }
 
 /**

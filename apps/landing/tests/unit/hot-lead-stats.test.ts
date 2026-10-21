@@ -113,12 +113,14 @@ describe("hotLeadRowHtml", () => {
 });
 
 describe("step 03 prices a meeting with the hero's figure (owner 2026-10-21)", () => {
-  it("states the same whole-dollar price as the hero row, marked measured", () => {
+  it("states the same whole-dollar price as the hero row, with the mock's downward trend", () => {
     const tile = stepMeetingCostHtml(67.6);
     expect(tile).toContain('<div class="v">$68</div>');
     expect(hotLeadRowHtml(67.6)).toContain(">$68</b>");
     expect(tile).toContain("Cost / meeting booked");
-    expect(tile).toContain('<span class="ok">measured</span>');
+    // Owner 2026-10-21: keep "↓ from $X", at the ratio the mock shipped with ($600 from $740).
+    expect(tile).toContain('<span class="ok">↓ from $83</span>');
+    expect(stepMeetingCostHtml(600)).toContain("↓ from $740");
   });
 
   it("states the same ROI as the hero row", () => {
