@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, type ReactNode } from "react";
+import { useMemo, useState, type ReactNode } from "react";
 import Link from "next/link";
 import { useAuthQuery } from "@/lib/use-auth-query";
 import { pollOptions } from "@/lib/query-options";
@@ -9,6 +9,7 @@ import { useLegCatalogue } from "@/lib/use-leg-catalogue";
 import { legFor } from "@/lib/legs";
 import { isProactiveFrom } from "@/lib/outbound-leg-key";
 import { EmptyNote, Shimmer } from "@/components/v2/ui";
+import { RecordsTabs } from "@/components/v2/records";
 import { PIPE_KEY, researchCatalogHref, type ResearchCatalog, type ResearchPipe } from "@/lib/research/research";
 import { fleetWorkflowRows, placeWords, shortWorkflowName, type LiveWorkflowRow, type PlaceTone } from "@/lib/live-workflow-rows";
 import { formatUsdAdaptive } from "@/lib/format-number";
@@ -69,9 +70,20 @@ export function ResearchLiveWorkflows({
     ...pollOptions,
     retry: false,
   });
-  const rows = useMemo(() => fleetWorkflowRows(rankingQ.data?.rows ?? []), [rankingQ.data]);
+  // Only the workflows ON this pipe (the producer's `assignment`): one moved to another leg of the channel
+  // (Dotterel's to Killdeer) or on none is not this pipe's, so it is not listed (owner 2026-10-22).
+  const rows = useMemo(() => fleetWorkflowRows((rankingQ.data?.rows ?? []).filter((r) => r.assignment === "active")), [rankingQ.data]);
   // Each workflow's own status (workflow-service), changed from the row's ⋮ (TEMPLATE-MODEL-STATUS-1019).
   const dynastyStatuses = useDynastyStatuses(featureSlug);
+  // Two tabs on that status (owner 2026-10-22): Active first, in the producer's order (learning and mature
+  // lead), then Deprecated. A row moves tab the moment its status is written.
+  const [tab, setTab] = useState<StatusTab>("active");
+  const byTab = useMemo(() => {
+    const out: Record<StatusTab, LiveWorkflowRow[]> = { active: [], deprecated: [] };
+    for (const r of rows) out[dynastyStatuses.statusOf(r.slug) === "deprecated" ? "deprecated" : "active"].push(r);
+    return out;
+  }, [rows, dynastyStatuses]);
+  const shown = byTab[tab];
   // The Research catalogue's own pages: a workflow, template or model Research studied has one.
   const researchedWorkflows = useMemo(() => new Map((catalog?.[pipe].workflows ?? []).map((w) => [w.key, w])), [catalog, pipe]);
   // A workflow Research never studied still has its live page (`/workflows/:slug`, priced for this pipe).
@@ -80,13 +92,19 @@ export function ResearchLiveWorkflows({
   const channelName = usePipeChannelName(pipe);
   const nameOf = (r: { name: string | null; slug: string }) => shortWorkflowName(r.name ?? r.slug, channelName);
 
-  const answered = rankingQ.data !== undefined || rankingQ.isFetchedAfterMount;
+  // Rows wait for the statuses too, or every row would sit in Active and jump tab when they answer.
+  const answered = (rankingQ.data !== undefined || rankingQ.isFetchedAfterMount) && dynastyStatuses.answered;
   const failed = rankingQ.data === undefined && rankingQ.isFetchedAfterMount;
   const notBuilt = rankingQ.data !== undefined && rankingQ.data.computedAt === null;
 
   return (
     <div className="k-card overflow-hidden">
-      <LiveRankingStrip rows={rows} moneyNote="no mature workflow yet" nameOf={nameOf} />
+      <RecordsTabs
+        tabs={STATUS_TABS.map((t) => ({ key: t.key, label: t.label, count: answered ? byTab[t.key].length : null }))}
+        active={tab}
+        onPick={(k) => setTab(k as StatusTab)}
+      />
+      <LiveRankingStrip rows={byTab.active} moneyNote="no mature workflow yet" nameOf={nameOf} />
       <div className="k-scroll relative overflow-x-auto">
         <table className="w-full min-w-[1180px] table-fixed text-[13px]">
           <thead>
@@ -121,14 +139,14 @@ export function ResearchLiveWorkflows({
                   <EmptyNote>The fleet ranking is being computed. It appears here within a few minutes.</EmptyNote>
                 </td>
               </tr>
-            ) : rows.length === 0 ? (
+            ) : shown.length === 0 ? (
               <tr>
                 <td colSpan={13}>
-                  <EmptyNote>No workflow is on this leg yet.</EmptyNote>
+                  <EmptyNote>{rows.length === 0 ? "No workflow is on this leg yet." : tab === "deprecated" ? "No deprecated workflow on this leg." : "No active workflow on this leg."}</EmptyNote>
                 </td>
               </tr>
             ) : (
-              rows.map((r) => {
+              shown.map((r) => {
                 const studied = researchedWorkflows.get(r.slug);
                 // What it writes with NOW (its runnable version); a deprecated workflow has none, so the cells
                 // state what its figures were written with. Both served by features-service's catalogue.
@@ -196,6 +214,12 @@ export function ResearchLiveWorkflows({
     </div>
   );
 }
+
+type StatusTab = "active" | "deprecated";
+const STATUS_TABS: { key: StatusTab; label: string }[] = [
+  { key: "active", label: "Active" },
+  { key: "deprecated", label: "Deprecated" },
+];
 
 const TONE: Record<PlaceTone, string> = {
   explore: "var(--data-amber)",
