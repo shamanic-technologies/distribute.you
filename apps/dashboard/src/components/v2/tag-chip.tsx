@@ -28,17 +28,19 @@ export const ICON_PATH: Record<TimelineIcon, string> = {
 };
 
 /** A timeline item's tag: what happened, in its family's colour, with an icon. */
-export function TagChip({ tag }: { tag: TimelineTag }) {
+export function TagChip({ tag, shrink = false }: { tag: TimelineTag; shrink?: boolean }) {
   const color = TONE_COLOR[tag.tone];
+  // `shrink`: in a tight line (a Unibox row) the word truncates instead of pushing past the card.
   return (
     <span
-      className="inline-flex h-5 shrink-0 items-center gap-1 rounded-md px-1.5 text-[11.5px] font-medium"
+      title={shrink ? tag.label : undefined}
+      className={`inline-flex h-5 items-center gap-1 rounded-md px-1.5 text-[11.5px] font-medium ${shrink ? "min-w-0 shrink" : "shrink-0"}`}
       style={{ color, background: `color-mix(in srgb, ${color} 12%, transparent)` }}
     >
-      <svg width="11" height="11" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+      <svg width="11" height="11" viewBox="0 0 16 16" fill="none" aria-hidden="true" className="shrink-0">
         <path d={ICON_PATH[tag.icon]} stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
       </svg>
-      {tag.label}
+      {shrink ? <span className="truncate">{tag.label}</span> : tag.label}
     </span>
   );
 }

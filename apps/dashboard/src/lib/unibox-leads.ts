@@ -1,4 +1,5 @@
 import { z } from "zod";
+import type { TimelineIcon, TimelineTag, TimelineTone } from "./timeline-tags";
 
 /**
  * The Unibox list (owner 2026-10-17, UNIBOX-SIX-TAGS-1017): lead-service's Unibox, ONLY the
@@ -222,23 +223,78 @@ export function uniboxRowSubtitle(row: Pick<UniboxRow, "title" | "company">): st
   return parts.length > 0 ? parts.join(" · ") : null;
 }
 
-export type UniboxRowTag = { dim: Exclude<UniboxDimension, "role">; value: string; label: string };
+type Look = { tone: TimelineTone; icon: TimelineIcon };
 
 /**
- * The tags a list ROW carries (owner 2026-10-21): only what is NOT the default. Contacted, no reply
- * yet, prospect is what most rows are, so it shows nothing; a row speaks when the lead moved past
- * Contacted on the served ladder, waits on us, said no, became a customer or cannot be reached.
- * A display rule over served values only; the card beside the thread still states all six.
+ * ONE look per served value, on every surface (list row, lead card, filter menus), so a word reads
+ * in the same colour everywhere (owner 2026-10-21: "Engaged" grey in the list, green in the header).
+ * One heat scale: grey = nothing yet, teal = they engaged, amber = a buying signal or a move on us,
+ * green = meeting attended or paid, rose = a closed door. Same tones as the thread and the header
+ * (`STANDING_LOOK`, `STEP_LOOK`, the fact labels). A display lookup only, never a verdict.
  */
-export function uniboxRowTags(row: Pick<UniboxRow, "lifecycle" | "conversation" | "interest" | "status" | "contactability">, ladder: LifecycleRung[]): UniboxRowTag[] {
-  const tags: UniboxRowTag[] = [];
-  if (row.conversation === "waiting_on_us") tags.push({ dim: "conversation", value: row.conversation, label: dimensionValueLabel("conversation", row.conversation) });
-  const contacted = ladder.find((r) => r.key === "contacted")?.rank ?? 0;
-  if (row.lifecycle && row.lifecycle.rank > contacted) tags.push({ dim: "lifecycle", value: row.lifecycle.key, label: row.lifecycle.label });
-  else if (row.status && row.status !== "prospect") tags.push({ dim: "status", value: row.status, label: dimensionValueLabel("status", row.status) });
-  if (row.interest === "not_interested") tags.push({ dim: "interest", value: row.interest, label: dimensionValueLabel("interest", row.interest) });
-  if (row.contactability !== "contactable") tags.push({ dim: "contactability", value: row.contactability, label: dimensionValueLabel("contactability", row.contactability) });
-  return tags;
+const VALUE_LOOK: Record<string, Look> = {
+  "lifecycle:lead_found": { tone: "neutral", icon: "dot" },
+  "lifecycle:contacted": { tone: "neutral", icon: "sent" },
+  "lifecycle:engaged": { tone: "reply", icon: "reply" },
+  "lifecycle:signup_or_form": { tone: "hot", icon: "check" },
+  "lifecycle:meeting_booked": { tone: "hot", icon: "meeting" },
+  "lifecycle:meeting_attended": { tone: "won", icon: "meeting" },
+  "lifecycle:paid_client": { tone: "won", icon: "money" },
+  "interest:interested": { tone: "hot", icon: "flame" },
+  "interest:not_interested": { tone: "lost", icon: "lost" },
+  "interest:unsure": { tone: "neutral", icon: "dot" },
+  "interest:not_asked": { tone: "neutral", icon: "dot" },
+  "conversation:waiting_on_us": { tone: "hot", icon: "reply" },
+  "conversation:waiting_on_them": { tone: "reply", icon: "sent" },
+  "conversation:no_reply_yet": { tone: "neutral", icon: "sent" },
+  "conversation:closed": { tone: "neutral", icon: "dot" },
+  "contactability:contactable": { tone: "neutral", icon: "check" },
+  "contactability:unsubscribed": { tone: "lost", icon: "lost" },
+  "contactability:bounced": { tone: "lost", icon: "lost" },
+  "contactability:do_not_contact": { tone: "lost", icon: "lost" },
+  "fit:fit": { tone: "neutral", icon: "check" },
+  "fit:wrong_person": { tone: "lost", icon: "lost" },
+  "fit:not_our_target": { tone: "lost", icon: "lost" },
+  "status:prospect": { tone: "neutral", icon: "dot" },
+  "status:customer": { tone: "won", icon: "money" },
+  "status:churned": { tone: "lost", icon: "lost" },
+};
+
+/** One served value as its tag: its words and its look (grey with a dot for a value we do not know yet). */
+export function uniboxValueTag(dim: UniboxDimension, value: string, label: string): TimelineTag {
+  return { label, ...(VALUE_LOOK[`${dim}:${value}`] ?? { tone: "neutral", icon: "dot" }) };
+}
+
+/** The tone of a filter option (the dot beside it in the menu). */
+export function uniboxValueTone(dim: UniboxDimension, value: string): TimelineTone {
+  return VALUE_LOOK[`${dim}:${value}`]?.tone ?? "neutral";
+}
+
+/**
+ * The ONE tag a list row carries (owner 2026-10-21): where the lead stands, the hottest true fact
+ * first, nothing for the default (lead found or contacted, no answer, prospect). A customer first;
+ * then a closed door (unreachable, not interested, churned: it ends the conversation); then a stage
+ * past Engaged (signup, meeting, paid); then Interested (hotter than Engaged); then Engaged. Whether
+ * they wait on US is not a stage: the row says it apart (`uniboxWaitsOnUs`).
+ */
+export function uniboxRowTag(row: Pick<UniboxRow, "lifecycle" | "interest" | "status" | "contactability">, ladder: LifecycleRung[]): TimelineTag | null {
+  const rank = (key: string) => ladder.find((r) => r.key === key)?.rank ?? null;
+  const engaged = rank("engaged") ?? rank("contacted") ?? 0;
+  const stage = row.lifecycle;
+  const past = (n: number) => stage !== null && stage.rank > n;
+  if (row.status === "customer") return past(engaged) ? uniboxValueTag("lifecycle", stage!.key, stage!.label) : uniboxValueTag("status", "customer", dimensionValueLabel("status", "customer"));
+  if (row.contactability !== "contactable") return uniboxValueTag("contactability", row.contactability, dimensionValueLabel("contactability", row.contactability));
+  if (row.interest === "not_interested") return uniboxValueTag("interest", row.interest, dimensionValueLabel("interest", row.interest));
+  if (row.status === "churned") return uniboxValueTag("status", "churned", dimensionValueLabel("status", "churned"));
+  if (past(engaged)) return uniboxValueTag("lifecycle", stage!.key, stage!.label);
+  if (row.interest === "interested") return uniboxValueTag("interest", row.interest, dimensionValueLabel("interest", row.interest));
+  if (past(rank("contacted") ?? engaged)) return uniboxValueTag("lifecycle", stage!.key, stage!.label);
+  return null;
+}
+
+/** They wrote and wait on us: the row's amber dot, like an unread mark. */
+export function uniboxWaitsOnUs(row: Pick<UniboxRow, "conversation">): boolean {
+  return row.conversation === "waiting_on_us";
 }
 
 /** A lead's display name: the served name, else the first address or number. */

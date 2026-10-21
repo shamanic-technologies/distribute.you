@@ -40,7 +40,7 @@ import { writtenMessageId, type WrittenBy } from "@/lib/written-by";
 import { itemCallId } from "@/lib/api-calls";
 import { ApiCallDetailPanel } from "@/components/v2/api-call-detail";
 import { RelationshipChips, UnmergeMenu } from "@/components/v2/relationship-tags";
-import { UNIBOX_DIMENSIONS, filtersFromParams, filtersKey, uniboxLeadName, uniboxRowId, uniboxRowKey, uniboxRowSubtitle, uniboxThreadRef, type LifecycleRung, type UniboxDimension, type UniboxPage, type UniboxRow } from "@/lib/unibox-leads";
+import { UNIBOX_DIMENSIONS, filtersFromParams, filtersKey, uniboxLeadName, uniboxRowId, uniboxRowKey, uniboxRowSubtitle, uniboxThreadRef, uniboxWaitsOnUs, type LifecycleRung, type UniboxDimension, type UniboxPage, type UniboxRow } from "@/lib/unibox-leads";
 import { UniboxFilterBar, UniboxLeadCardPanel, UniboxRowTags } from "@/components/v2/unibox-lead-card";
 
 // The publishable logo.dev token the dashboard already ships (company-logo.tsx).
@@ -476,10 +476,12 @@ function LeadRow({
         <MarkLines className="flex-1" gap="gap-3" mark={(px) => (row.company?.domain ? <CompanyMark name={row.company.name ?? name} domain={row.company.domain} size={px} /> : <PersonMark name={name} emails={row.emails} size={px} />)}>
           <span className="flex items-center gap-2">
             <span className="truncate text-[13px] font-semibold">{name}</span>
-            {row.lastActivityAt && <span className="k-fg3 ml-auto shrink-0 text-[12px] tabular-nums">{timeAgo(row.lastActivityAt)}</span>}
+            {/* They wrote and wait on us: an amber dot by the time, like an unread mark (owner 2026-10-21). */}
+            {uniboxWaitsOnUs(row) && <span title="Waiting on us" aria-label="Waiting on us" className="ml-auto h-2 w-2 shrink-0 rounded-full bg-[var(--data-amber)]" />}
+            {row.lastActivityAt && <span className={`k-fg3 shrink-0 text-[12px] tabular-nums ${uniboxWaitsOnUs(row) ? "" : "ml-auto"}`}>{timeAgo(row.lastActivityAt)}</span>}
           </span>
           <span className="mt-0.5 flex min-w-0 items-center gap-2">
-            {sub ? <span className="k-fg3 min-w-[40%] flex-1 truncate text-[12px]">{sub}</span> : <span className="k-fg4 flex-1 text-[12px]">—</span>}
+            {sub ? <span className="k-fg3 min-w-[45%] flex-1 truncate text-[12px]">{sub}</span> : <span className="k-fg4 flex-1 text-[12px]">—</span>}
             <UniboxRowTags row={row} ladder={ladder} />
           </span>
         </MarkLines>
