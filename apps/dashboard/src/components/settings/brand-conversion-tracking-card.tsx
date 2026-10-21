@@ -4,65 +4,18 @@ import { useState } from "react";
 import { getBrandConversionToken, type BrandConversionToken } from "@/lib/api";
 import { useAuthQuery } from "@/lib/use-auth-query";
 
-// Per-brand conversion tracking. The client drops one of the snippets below on
-// their own site; when a lead we emailed signs up, books a meeting, or submits a
-// form, the event reaches us and lead-service attributes it back to that lead.
+// Per-brand conversion tracking. The client wires our tracker into their own site;
+// when a lead we emailed signs up, books a meeting, or submits a form, the event reaches us and lead-service attributes it back to that lead.
 // The token is a publishable write-key (it can only POST events for this one
-// brand), so it is safe to show in full inside a snippet and to embed in a
-// browser pixel. Read-only display of server-owned snippets; no metric computed.
+// brand), so it is safe inside the copied instructions and in a browser
+// fetch. No metric computed here.
 //
-// The script is shown ONCE (not duplicated per event): a single server-side curl
-// and a single browser pixel, each carrying a comment that enumerates the "event"
-// enum with its use case, so the user swaps in whichever one fires on their site.
-// The "Copy content for LLM" button copies a plain-language brief a user can paste into
-// Claude/Cursor to have it wired into their own site.
-
-// Enum of conversion events + when each fires. A sale also carries "valueCents"
-// so we can attribute revenue, not just a count.
-function serverSnippet(ingestUrl: string, token: string): string {
-  return `# event: which conversion to report. One of —
-#   signup           a user creates an account
-#   meeting_booked   a user books a meeting or demo
-#   form_submission  a user submits a lead or contact form
-#   sale             a customer completes a sale (add "valueCents":<amount> for revenue)
-curl -X POST ${ingestUrl} \\
-  -H "x-conversion-token: ${token}" \\
-  -H "Content-Type: application/json" \\
-  -d '{"event":"signup","email":"customer@email.com","firstName":"Jane","lastName":"Doe","companyUrl":"https://theircompany.com"}'`;
-}
-
-function pixelSnippet(ingestUrl: string, token: string): string {
-  return `<script>
-  // Fires on page load so we can confirm your tracker is live —
-  // before your first conversion even lands.
-  fetch("${ingestUrl}", {
-    method: "POST",
-    headers: { "x-conversion-token": "${token}", "Content-Type": "application/json" },
-    body: JSON.stringify({ event: "ping" }),
-  });
-
-  // Fire when the conversion happens (pull real values from your form). "event"
-  // is one of —
-  //   signup           a user creates an account
-  //   meeting_booked   a user books a meeting or demo
-  //   form_submission  a user submits a lead or contact form
-  //   sale             a customer completes a sale (add valueCents: <amount> for revenue)
-  fetch("${ingestUrl}", {
-    method: "POST",
-    headers: {
-      "x-conversion-token": "${token}",
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
-      event: "signup",
-      email: "customer@email.com",
-      firstName: "Jane",
-      lastName: "Doe",
-      companyUrl: "https://theircompany.com",
-    }),
-  });
-</script>`;
-}
+// No code is shown on screen (owner 2026-10-21): one "Copy content for LLM" button
+// copies the full instructions (endpoint, token, events, server and browser
+// variants) for the user to paste into Claude/Cursor or hand to their developer.
+// This tracker is one source among others (CRM, payment and calendar connectors):
+// the same outcome reported twice is reconciled on our side, so nothing is hidden
+// because a connector also covers the step.
 
 // Relative "time since" for the status line. Coarse buckets are enough — we only
 // need "is this recent" reassurance, not a precise timestamp.
@@ -81,7 +34,7 @@ function timeAgo(iso: string): string {
 // Live status pill. Renders the liveness fields lead-service DERIVES from received
 // events (status is server-owned — no client computation of it). Renders nothing
 // until the producer ships those fields (they arrive optional), so the card
-// degrades cleanly to just the snippets in the meantime.
+// degrades cleanly to just the copy button in the meantime.
 function StatusPill({ data }: { data: BrandConversionToken }) {
   const { status, lastEventAt, lastPingAt, eventTypesSeen } = data;
   if (!status) return null;
@@ -109,16 +62,13 @@ function StatusPill({ data }: { data: BrandConversionToken }) {
                 ? `Waiting for your first conversion · last ping ${timeAgo(lastPingAt)}`
                 : "Waiting for your first conversion",
           }
-        : {
-            dot: "bg-gray-400",
-            text: "text-gray-600",
-            box: "border-gray-200 bg-gray-50",
-            label: "Not set up yet",
-            sub: "Add one of the snippets below to your site",
-          };
+        : null;
+  // Nothing until the first ping or event: a "not set up" warning reads as a gap
+  // when another source (a connector) may already report the same outcomes.
+  if (!cfg) return null;
 
   return (
-    <div className={`mb-5 inline-flex items-center gap-2 rounded-lg border ${cfg.box} px-3 py-2`}>
+    <div className={`mt-4 inline-flex items-center gap-2 rounded-lg border ${cfg.box} px-3 py-2`}>
       <span className={`h-2 w-2 rounded-full ${cfg.dot}`} />
       <span className={`text-sm font-medium ${cfg.text}`}>{cfg.label}</span>
       <span className="text-sm text-gray-500">· {cfg.sub}</span>
@@ -128,23 +78,37 @@ function StatusPill({ data }: { data: BrandConversionToken }) {
 
 /** What conversion tracking is for, stated once for this card and its v2 host. */
 export const CONVERSION_TRACKING_BLURB =
-  "Tell us when someone signs up, books a meeting, submits a form, or buys on your site. We match each event back to the lead we emailed for you, so your outcome numbers reflect real results. Send whatever you have about the person. Email matches best, but a name is enough.";
+  "See which leads we emailed became real customers. Add our tracker to your site once. Each time someone signs up, books a call or pays, we link that person to the lead we emailed. Your results then show the customers and revenue our emails bring you. We also learn which emails sell best and send more of them.";
 
 function llmBrief(ingestUrl: string, token: string): string {
   return `Add conversion tracking to my website for distribute.you.
 
-Endpoint: POST ${ingestUrl}
-Headers:  x-conversion-token: ${token}
-          Content-Type: application/json
+distribute.you emails leads for me. Each time one of these events happens on my
+site, send it to distribute.you so it can match the person back to the lead it
+emailed and count the real result.
 
-Fire one event when it happens on my site:
-- signup          when a user creates an account
-- meeting_booked  when a user books a meeting or demo
-- form_submission when a user submits a lead or contact form
-- sale            when a customer completes a sale
+## Endpoint
 
-Body is JSON. "event" is required; send whatever identity fields I have.
-Email matches best.
+POST ${ingestUrl}
+Headers:
+  x-conversion-token: ${token}
+  Content-Type: application/json
+
+The token is a write-only key for this one brand. It can only send events, so it
+is safe in browser code.
+
+## Events ("event" field, required)
+
+- signup           a user creates an account
+- meeting_booked   a user books a meeting or demo
+- form_submission  a user submits a lead or contact form
+- sale             a customer completes a sale (add "valueCents", the amount in cents)
+- ping             no other fields; send once on page load so distribute.you can
+                   confirm the tracker is live before the first real event
+
+## Body
+
+Send every identity field you have. Email matches best; a name is enough.
 {
   "event": "signup",
   "email": "the-user@email.com",
@@ -153,15 +117,44 @@ Email matches best.
   "companyUrl": "https://theircompany.com"
 }
 
-For a sale, also send the amount:
+A sale:
 { "event": "sale", "email": "the-user@email.com", "valueCents": 4900 }
 
-Also fire {"event":"ping"} (no other fields) once on page load, so distribute.you
-can confirm the tracker is live before the first real conversion.
+## Where to wire it
 
-Wire it server-side on the success handler where possible (most reliable).
-Fall back to a browser fetch only if there is no backend. Pull the real
-values from the form or session, not these placeholders.`;
+1. Server side, in the success handler of each action (account created, booking
+   confirmed, form saved, payment succeeded). Most reliable: ad blockers cannot
+   stop it. Example:
+
+curl -X POST ${ingestUrl} \\
+  -H "x-conversion-token: ${token}" \\
+  -H "Content-Type: application/json" \\
+  -d '{"event":"signup","email":"customer@email.com","firstName":"Jane","lastName":"Doe"}'
+
+2. Browser only if there is no backend:
+
+<script>
+  fetch("${ingestUrl}", {
+    method: "POST",
+    headers: { "x-conversion-token": "${token}", "Content-Type": "application/json" },
+    body: JSON.stringify({ event: "ping" }),
+  });
+</script>
+
+Then, when the action succeeds:
+fetch("${ingestUrl}", {
+  method: "POST",
+  headers: { "x-conversion-token": "${token}", "Content-Type": "application/json" },
+  body: JSON.stringify({ event: "signup", email, firstName, lastName }),
+});
+
+## Rules
+
+- Pull the real values from the form, session or payment, never these placeholders.
+- Payments or bookings that happen outside the site (invoice, bank transfer, phone)
+  can be sent the same way from wherever they are recorded.
+- Sending an event that a connected tool (Stripe, calendar, CRM) also reports is
+  fine: distribute.you counts it once.`;
 }
 
 function useCopy(): [boolean, (text: string) => void] {
@@ -173,26 +166,6 @@ function useCopy(): [boolean, (text: string) => void] {
     });
   }
   return [copied, copy];
-}
-
-function CopyBlock({ label, code }: { label: string; code: string }) {
-  const [copied, copy] = useCopy();
-  return (
-    <div>
-      <div className="mb-1.5 flex items-center justify-between">
-        <span className="text-xs font-medium text-gray-500">{label}</span>
-        <button
-          onClick={() => copy(code)}
-          className="rounded-md border border-gray-200 px-2 py-1 text-xs font-medium text-gray-600 transition hover:bg-gray-50"
-        >
-          {copied ? "Copied!" : "Copy"}
-        </button>
-      </div>
-      <pre className="overflow-x-auto rounded-lg border border-gray-200 bg-gray-50 p-3 text-xs leading-relaxed text-gray-800">
-        <code className="font-mono whitespace-pre">{code}</code>
-      </pre>
-    </div>
-  );
 }
 
 /** `bare` drops the card's own heading and explanation, for a host that states them beside it. */
@@ -208,7 +181,6 @@ export function BrandConversionTrackingCard({ brandId, bare = false }: { brandId
       <div className="p-5">
         <div className="mb-4 h-4 w-56 animate-pulse rounded bg-gray-100" />
         <div className="mb-2 h-3 w-40 animate-pulse rounded bg-gray-100" />
-        <div className="h-24 w-full animate-pulse rounded-lg bg-gray-100" />
       </div>
     );
   }
@@ -226,10 +198,9 @@ export function BrandConversionTrackingCard({ brandId, bare = false }: { brandId
   return (
     <div className="p-5">
       {bare ? (
-        <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
+        <div className="flex flex-wrap items-center justify-between gap-3">
           <p className="min-w-0 flex-1 text-sm text-gray-500">
-            Not a coder? Paste the LLM brief into Claude, Cursor, or your dev and it wires the
-            tracking into your site.
+            Paste the instructions into Claude or Cursor, or send them to your developer.
           </p>
           <button
             onClick={() => copyLlm(llmBrief(ingestUrl, token))}
@@ -240,7 +211,7 @@ export function BrandConversionTrackingCard({ brandId, bare = false }: { brandId
         </div>
       ) : (
         <>
-          <div className="mb-5 flex items-start justify-between gap-4">
+          <div className="mb-2 flex items-start justify-between gap-4">
             <div>
               <h3 className="mb-1 text-sm font-semibold text-gray-900">Conversion tracking</h3>
               <p className="max-w-xl text-sm text-gray-500">{CONVERSION_TRACKING_BLURB}</p>
@@ -252,25 +223,13 @@ export function BrandConversionTrackingCard({ brandId, bare = false }: { brandId
               {llmCopied ? "Copied!" : "Copy content for LLM"}
             </button>
           </div>
-          <p className="mb-5 text-xs text-gray-400">
-            Not a coder? Paste the LLM brief into Claude, Cursor, or your dev and it wires the
-            tracking into your site.
+          <p className="text-xs text-gray-400">
+            Paste the instructions into Claude or Cursor, or send them to your developer.
           </p>
         </>
       )}
 
       <StatusPill data={data} />
-
-      <div className="space-y-4">
-        <CopyBlock
-          label="Server side (recommended, most reliable)"
-          code={serverSnippet(ingestUrl, token)}
-        />
-        <CopyBlock
-          label="Browser pixel (if you have no backend)"
-          code={pixelSnippet(ingestUrl, token)}
-        />
-      </div>
     </div>
   );
 }
