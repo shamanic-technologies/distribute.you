@@ -4,14 +4,14 @@ import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useAuthQuery, useQueryClient } from "@/lib/use-auth-query";
 import { createApiKey, listApiKeys, type ApiKey } from "@/lib/api";
-import { AI_RESOURCES, MCP_ENDPOINT_URL, aiSetupPrompt } from "@/lib/ai-integration";
+import { MCP_ENDPOINT_URL, aiSetupPrompt } from "@/lib/ai-integration";
 import { v2Href } from "@/lib/v2/routes";
 import { Toast } from "@/components/toast";
 import { ApiKeyScope } from "@/components/settings/api-key-scope";
 
 /**
- * Integrations → AI: one line to paste into any assistant, and every developer
- * door behind it. The line points the assistant at the agent skill, which
+ * Integrations → AI: one line to paste into any assistant and the MCP server.
+ * Docs links live on docs.distribute.you, not here (owner 2026-10-21). The line points the assistant at the agent skill, which
  * carries the per-harness setup, so this page stays one sentence long.
  *
  * A key is shown once, the moment it is issued; that is the only time the line
@@ -112,22 +112,6 @@ export function V2AiIntegrationView({ orgId, brandId }: { orgId: string; brandId
         </p>
       </div>
 
-      <div className="k-card overflow-hidden">
-        <p className="k-label px-4 pb-2 pt-4">Docs and skills</p>
-        <ul>
-          {AI_RESOURCES.map((r) => (
-            <li key={r.href} className="k-line-subtle border-t">
-              <a href={r.href} target="_blank" rel="noopener noreferrer" className="k-row flex items-baseline justify-between gap-3 px-4 py-2.5">
-                <span className="min-w-0">
-                  <span className="text-[13px]">{r.label}</span>
-                  <span className="k-fg3 ml-2 text-[12px]">{r.note}</span>
-                </span>
-                <span className="k-fg3 shrink-0 text-[12px]">↗</span>
-              </a>
-            </li>
-          ))}
-        </ul>
-      </div>
       {toast && <Toast message={toast} />}
     </div>
   );

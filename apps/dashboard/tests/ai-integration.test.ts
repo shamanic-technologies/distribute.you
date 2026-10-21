@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
-import { AGENT_SKILL_URL, AI_RESOURCES, MCP_ENDPOINT_URL, aiSetupPrompt } from "../src/lib/ai-integration";
+import { AGENT_SKILL_URL, MCP_ENDPOINT_URL, aiSetupPrompt } from "../src/lib/ai-integration";
 
 const ROOT = resolve(__dirname, "..");
 const read = (p: string) => readFileSync(resolve(ROOT, p), "utf8");
@@ -28,8 +28,7 @@ describe("the AI setup line", () => {
     expect(routes).toContain(`MCP_ENDPOINT_URL = "${MCP_ENDPOINT_URL}"`);
   });
 
-  it("links only https destinations, and carries no em-dash", () => {
-    for (const r of AI_RESOURCES) expect(r.href).toMatch(/^https:\/\//);
+  it("carries no em-dash", () => {
     expect(read("src/lib/ai-integration.ts")).not.toContain("—");
     expect(read("src/components/v2/integrations-ai.tsx")).not.toContain("—");
   });
@@ -44,6 +43,11 @@ describe("the AI tab", () => {
     expect(read("src/app/(authed)/v2/orgs/[orgId]/brands/[brandId]/integrations/ai/page.tsx")).toContain('view="ai"');
     // The Brand page's Integrations tab lands on it (owner 2026-10-10: Integrations moved inside Brand).
     expect(SETUP).toContain('{ label: "Integrations", href: `${v2Href(orgId, brandId, "integrations")}/ai`');
+  });
+
+  it("lists no docs links: they live on docs.distribute.you (owner 2026-10-21)", () => {
+    expect(VIEW).not.toContain("Docs and skills");
+    expect(VIEW).not.toContain("AI_RESOURCES");
   });
 
   it("reuses the API Keys query key and the one key writer", () => {

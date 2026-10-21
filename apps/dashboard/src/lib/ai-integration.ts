@@ -32,14 +32,3 @@ export function aiSetupPrompt(key: string | null): string {
   if (key && key.startsWith(API_KEY_PREFIX)) return `${base} My API key is ${key}`;
   return `${base} Ask me for my API key.`;
 }
-
-/** Every other door an assistant or a developer can use, in reading order. */
-export const AI_RESOURCES: { label: string; href: string; note: string }[] = [
-  { label: "Agent skill", href: AGENT_SKILL_URL, note: "What your AI reads: setup for every harness and the usual questions." },
-  { label: "MCP installation", href: "https://docs.distribute.you/mcp/installation/", note: "Claude Code, Cursor, Claude Desktop and any MCP client." },
-  { label: "API reference", href: "https://docs.distribute.you/api/", note: "Brands, campaigns, leads, emails, billing." },
-  { label: "OpenAPI document", href: "https://api.distribute.you/openapi.json", note: "Every REST route, in one file." },
-  { label: "API explorer", href: "https://api.distribute.you/docs", note: "The same routes, with a request builder." },
-  { label: "Command line", href: "https://www.npmjs.com/package/@distribute.you/cli", note: "npx @distribute.you/cli --help" },
-  { label: "llms.txt", href: "https://docs.distribute.you/llms.txt", note: "Every documentation page, one line each." },
-];
