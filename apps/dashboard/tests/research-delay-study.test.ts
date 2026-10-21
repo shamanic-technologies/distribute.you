@@ -26,4 +26,15 @@ describe("research: the delay study", () => {
     const bits = src("src/components/v2/research-bits.tsx");
     expect(bits).toContain("<DelayCurve points={chart.curve?.points ?? []} color={color} />");
   });
+
+  it("a delay study's chart with no curve (the per-day bins) is drawn as vertical bars, never the ranked row list", () => {
+    const page = src("src/components/v2/research-page.tsx");
+    const at = page.indexOf("c.curve ? (");
+    const hist = page.indexOf("study.delay ? (", at);
+    const rows = page.indexOf("<BarsChart chart={c}", at);
+    expect(at).toBeGreaterThan(-1);
+    expect(hist).toBeGreaterThan(at);
+    expect(page.slice(hist, rows)).toContain("<DelayHistogram key={c.title} chart={c} color={look.color} />");
+    expect(rows).toBeGreaterThan(hist);
+  });
 });

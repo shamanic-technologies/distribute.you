@@ -361,6 +361,19 @@ export function DelayRow({ chart, color }: { chart: ResearchChart; color: string
   );
 }
 
+/** A delay study's histogram with no curve (the per-day bins, owner 2026-10-21 "N=21"): vertical bars, full width. */
+export function DelayHistogram({ chart, color }: { chart: ResearchChart; color: string }) {
+  return (
+    <div>
+      <SectionTitle>{chart.title}</SectionTitle>
+      <div className="k-card overflow-hidden">
+        <DelayBars points={chart.points} color={color} />
+      </div>
+      <ChartNote note={chart.note} />
+    </div>
+  );
+}
+
 function DelayBars({ points, color }: { points: ResearchPoint[]; color: string }) {
   if (!points.length) return <EmptyNote>Nothing to draw yet.</EmptyNote>;
   const Tip = pointTooltip(points);
