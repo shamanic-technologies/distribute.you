@@ -17,7 +17,7 @@ describe("Gmail connect round trip", () => {
   });
 
   it("reads back only a same-site return path", () => {
-    expect(parseGoogleReturn(JSON.stringify({ orgId: "o", returnTo: "/v2/orgs/o/brands/b/settings" }))).toEqual({ orgId: "o", returnTo: "/v2/orgs/o/brands/b/settings" });
+    expect(parseGoogleReturn(JSON.stringify({ orgId: "o", returnTo: "/v2/orgs/o/brands/b/settings" }))).toEqual({ orgId: "o", returnTo: "/v2/orgs/o/brands/b/settings", connection: "mailbox" });
     expect(parseGoogleReturn(JSON.stringify({ orgId: "o", returnTo: "https://evil.example" }))).toBeNull();
     expect(parseGoogleReturn(JSON.stringify({ orgId: "o", returnTo: "//evil.example" }))).toBeNull();
     expect(parseGoogleReturn(JSON.stringify({ returnTo: "/x" }))).toBeNull();

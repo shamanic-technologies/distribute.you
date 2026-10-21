@@ -867,9 +867,18 @@ export async function listGoogleAccounts(token?: string): Promise<{ accounts: Go
   return parsed.data;
 }
 
-/** Start the Google sign-in; returns the URL to send the browser to. */
-export async function startGoogleConnect(redirectUri: string, token?: string): Promise<{ url: string }> {
-  const raw = await apiCall<unknown>(`/orgs/google/auth/start`, { token, method: "POST", body: { redirectUri } });
+/**
+ * Start the Google sign-in; returns the URL to send the browser to. `calendar` asks
+ * the calendar consent (its own, never bundled with Gmail); the mailbox one sends no
+ * `connection`, google-service's default.
+ */
+export async function startGoogleConnect(
+  redirectUri: string,
+  token?: string,
+  connection: "mailbox" | "calendar" = "mailbox",
+): Promise<{ url: string }> {
+  const body = connection === "calendar" ? { redirectUri, connection } : { redirectUri };
+  const raw = await apiCall<unknown>(`/orgs/google/auth/start`, { token, method: "POST", body });
   const parsed = z.object({ url: z.string().url() }).safeParse(raw);
   if (!parsed.success) {
     console.error("[api] startGoogleConnect response shape mismatch", parsed.error.flatten());
@@ -883,10 +892,12 @@ export async function finishGoogleConnect(
   code: string,
   state: string,
   token?: string,
-): Promise<{ googleAccountEmail: string }> {
+): Promise<{ googleAccountEmail: string; connection?: "mailbox" | "calendar" }> {
   const qs = new URLSearchParams({ code, state });
   const raw = await apiCall<unknown>(`/orgs/google/auth/callback?${qs.toString()}`, { token });
-  const parsed = z.object({ googleAccountEmail: z.string() }).safeParse(raw);
+  const parsed = z
+    .object({ googleAccountEmail: z.string(), connection: z.enum(["mailbox", "calendar"]).optional() })
+    .safeParse(raw);
   if (!parsed.success) {
     console.error("[api] finishGoogleConnect response shape mismatch", parsed.error.flatten());
     throw new Error("finishGoogleConnect returned an unexpected shape");
@@ -897,6 +908,40 @@ export async function finishGoogleConnect(
 /** Disconnect a mailbox: stops the sync, drops its mirror, revokes the grant at Google. */
 export async function disconnectGoogleAccount(email: string, token?: string): Promise<unknown> {
   return apiCall<unknown>(`/orgs/google/accounts/${encodeURIComponent(email)}`, { token, method: "DELETE" });
+}
+
+// ==================== GOOGLE CALENDAR (google-service), per organization ====================
+//
+// Connected by its own Google consent (`startGoogleConnect(..., "calendar")`), finished by
+// the same callback as Gmail. google-service reads each calendar every ~15 min: booked
+// meetings, and who joined the Google Meet calls when Meet access was granted.
+
+const GoogleCalendarSchema = z.object({
+  email: z.string(),
+  // Plain strings: the producer owns these vocabularies (`calendarLine` reads them).
+  status: z.string(),
+  attendance: z.string(),
+  connectedAt: z.string(),
+  lastSyncedAt: z.string().nullable(),
+  lastSyncError: z.string().nullable(),
+});
+
+export type GoogleCalendar = z.infer<typeof GoogleCalendarSchema>;
+
+/** The org's connected Google Calendars and their health. Empty when none. */
+export async function listGoogleCalendars(token?: string): Promise<{ calendars: GoogleCalendar[] }> {
+  const raw = await apiCall<unknown>(`/orgs/google/calendar/accounts`, { token });
+  const parsed = z.object({ calendars: z.array(GoogleCalendarSchema) }).safeParse(raw);
+  if (!parsed.success) {
+    console.error("[api] listGoogleCalendars response shape mismatch", parsed.error.flatten());
+    throw new Error("listGoogleCalendars returned an unexpected shape");
+  }
+  return parsed.data;
+}
+
+/** Disconnect a calendar: stops reading it and deletes its mirrored meetings. */
+export async function disconnectGoogleCalendar(email: string, token?: string): Promise<unknown> {
+  return apiCall<unknown>(`/orgs/google/calendar/accounts/${encodeURIComponent(email)}`, { token, method: "DELETE" });
 }
 
 // ==================== MESSAGING APPS (crm-service Matrix bridges), per brand ====================
