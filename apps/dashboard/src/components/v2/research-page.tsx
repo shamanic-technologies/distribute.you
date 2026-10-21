@@ -743,7 +743,14 @@ export function V2Research() {
       ) : view.view === "missing" ? (
         <V2ResearchStudy base={base} studyId={rest} />
       ) : (
-        <V2ResearchCatalogView base={base} pipe={view.pipe} kind={view.kind} itemKey={view.view === "item" ? view.key : null} nav={nav} />
+        <V2ResearchCatalogView
+          base={base}
+          pipe={view.pipe}
+          kind={view.kind}
+          itemKey={view.view === "item" || view.view === "version" ? view.key : null}
+          versionKey={view.view === "version" ? view.version : null}
+          nav={nav}
+        />
       )}
     </div>
     </ResearchSourceProvider>

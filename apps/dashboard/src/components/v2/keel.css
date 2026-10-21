@@ -163,6 +163,10 @@
 .v2-root .k-indeterminate { animation: k-indet 1.6s cubic-bezier(.65, 0, .35, 1) infinite; }
 @keyframes k-indet { 0% { transform: translateX(-100%) } 100% { transform: translateX(300%) } }
 @media (prefers-reduced-motion: reduce) { .v2-root .k-indeterminate { animation: none; } }
+/* A right drawer slides in from the edge, ease-out, short; reduced motion opens it in place. */
+.v2-root .k-drawer-in { animation: k-drawer-in 220ms cubic-bezier(.23, 1, .32, 1) both; }
+@keyframes k-drawer-in { from { opacity: 0; transform: translateX(24px); } to { opacity: 1; transform: none; } }
+@media (prefers-reduced-motion: reduce) { .v2-root .k-drawer-in { animation: none; } }
 
 /* ── /get-started motion. A sales surface, so it moves: results rise in as they
    arrive, lists cascade, marks pop, the offer bar slides down, the wall opens.

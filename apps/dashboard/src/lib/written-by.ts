@@ -173,6 +173,16 @@ export function modelTag(model: { name: string; vendor: { id: string } }): Model
   return { label, name: model.name, logoSrc: `/model-logos/${known.logo}.svg` };
 }
 
+/**
+ * A model known only by its served NAME (Research refs carry no vendor id): the family whose word
+ * opens the name ("Claude Opus 5.5", "Gemini 3 Flash") gives the mark; none matches = no logo.
+ */
+export function modelTagFromName(name: string): ModelTag {
+  const known = Object.values(MODEL_FAMILIES).find((f) => name.toLowerCase().startsWith(`${f.family.toLowerCase()} `));
+  if (!known) return { label: name, name, logoSrc: null };
+  return { label: name.slice(known.family.length + 1), name, logoSrc: `/model-logos/${known.logo}.svg` };
+}
+
 /** Every product mark the lookup names, for the test that each file ships. */
 export function modelLogoFiles(): string[] {
   return Object.values(MODEL_FAMILIES).map((f) => `${f.logo}.svg`);
