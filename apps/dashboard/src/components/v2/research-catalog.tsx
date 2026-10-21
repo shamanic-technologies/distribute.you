@@ -26,14 +26,28 @@ import {
 import { TemplateOutputsPanel } from "@/components/v2/research-template-outputs";
 import { modelAliasesOf, modelStatus, templatePipes, type ContentTarget } from "@/lib/research/content-status";
 import { useResearch, useResearchCatalog, useResearchTexts } from "@/lib/research/research-source";
-import { Arrow, MonthsRow, Row, SectionMark, SectionName, TOPIC_LOOK, TopicMark, dayText, liveText } from "@/components/v2/research-bits";
+import {
+  Arrow,
+  MonthsRow,
+  Row,
+  STANDALONE_WORDS,
+  SectionMark,
+  SectionName,
+  TOPIC_LOOK,
+  TemplateVersionChip,
+  TopicMark,
+  dayText,
+  identityWord,
+  liveText,
+} from "@/components/v2/research-bits";
 import {
   CATALOG_KINDS,
   PIPE_KEY,
   researchCatalogHref,
   researchModel,
-  researchTemplate,
+  researchTemplateOf,
   researchWorkflow,
+  templateContentKey,
   type CatalogKind,
   type ResearchModel,
   type ResearchRef,
@@ -41,6 +55,7 @@ import {
   type ResearchPipe,
   type ResearchFigures,
   type ResearchTemplate,
+  type ResearchTemplateVersion,
   type ResearchWorkflow,
 } from "@/lib/research/research";
 
@@ -66,6 +81,15 @@ const KIND_TOPIC: Record<CatalogKind, "workflow" | "template" | "llm"> = { workf
 /** A link to another catalogue page when that page exists in this pipe, else the name alone. */
 function RefLink({ base, pipe, kind, r, className = "" }: { base: string; pipe: ResearchPipe; kind: CatalogKind; r: ResearchRef | null; className?: string }) {
   if (!r) return <span className="k-fg4">{"—"}</span>;
+  // A template ref names its dynasty's page; the version it means rides beside it as a chip.
+  if (r.version) {
+    return (
+      <span className="flex min-w-0 items-center gap-1.5">
+        <RefLink base={base} pipe={pipe} kind={kind} r={{ ...r, version: null }} className={`min-w-0 truncate ${className.replace(/\bblock\b/, "")}`} />
+        <TemplateVersionChip version={r.version} />
+      </span>
+    );
+  }
   return r.linked ? (
     <Link href={researchCatalogHref(base, pipe, kind, r.key)} className={`hover:text-[var(--accent)] ${className}`} title={r.label}>
       {r.label}
@@ -152,7 +176,7 @@ export function V2ResearchCatalogView({
     kind === "workflows"
       ? researchWorkflow(catalog, pipe, itemKey)
       : kind === "templates"
-        ? researchTemplate(catalog, pipe, itemKey)
+        ? researchTemplateOf(catalog, pipe, itemKey)
         : researchModel(catalog, pipe, itemKey);
   if (!item) {
     return (
@@ -326,8 +350,8 @@ function CatalogList({
                             <th className={`${TH} w-40`}>Template</th>
                           </>
                         )}
-                        {kind === "templates" && <th className={`${TH} w-44`}>Leg</th>}
-                        {kind !== "workflows" && <th className={`${TH} ${kind === "models" ? "w-52" : "w-44"}`}>Status</th>}
+                        {kind === "templates" && <th className={`${TH} w-36`}>Leg</th>}
+                        {kind !== "workflows" && <th className={`${TH} ${kind === "models" ? "w-52" : "w-32"}`}>Status</th>}
                         {kind === "templates" && <th className={`${TH} w-20 text-right`}>Workflows</th>}
                         <th className={`${TH} ${kind === "templates" ? "w-28" : "w-36"} text-right`}>Cost {o.unit.replace("/ ", "per ")}</th>
                         {kind !== "templates" && <th className={`${TH} w-28 text-right`}>Rate</th>}
@@ -356,14 +380,14 @@ function CatalogList({
                           const modelKeys = served.aliases;
                           const target: ContentTarget | null =
                             kind === "templates"
-                              ? { kind: "template", key: r.key, label: r.label }
+                              ? { kind: "template", key: templateContentKey(r as ResearchTemplate), label: r.label }
                               : modelKeys.length
                                 ? { kind: "model", aliases: modelKeys, label: r.label }
                                 : null;
                           const status =
-                            kind === "templates" ? templateStatuses.map.get(r.key) ?? null : modelStatus(modelKeys, (a) => modelStatuses.map.get(a));
+                            kind === "templates" ? templateStatuses.map.get(templateContentKey(r as ResearchTemplate)) ?? null : modelStatus(modelKeys, (a) => modelStatuses.map.get(a));
                           const statusAnswered = kind === "templates" ? templateStatuses.answered : modelStatuses.answered;
-                          const deprecation = kind === "templates" ? templateStatuses.deprecationOf(r.key) : modelStatuses.deprecationOf(modelKeys);
+                          const deprecation = kind === "templates" ? templateStatuses.deprecationOf(templateContentKey(r as ResearchTemplate)) : modelStatuses.deprecationOf(modelKeys);
                           return (
                             <tr
                               key={r.key}
@@ -373,9 +397,12 @@ function CatalogList({
                             >
                               <td className="k-mono k-fg3 pl-4 pr-3 text-[12px] tabular-nums">{r.rank ?? "—"}</td>
                               <td className="max-w-0 px-3">
-                                <Link href={href} onClick={(e) => e.stopPropagation()} className="block min-w-0 truncate font-medium hover:text-[var(--accent)]" title={rowName(kind, r, channelName)}>
-                                  {rowName(kind, r, channelName)}
-                                </Link>
+                                <span className="flex min-w-0 items-center gap-1.5">
+                                  <Link href={href} onClick={(e) => e.stopPropagation()} className={`${kind === "templates" && (r as ResearchTemplate).standaloneReason ? "max-w-full shrink-0" : "min-w-0"} truncate font-medium hover:text-[var(--accent)]`} title={rowName(kind, r, channelName)}>
+                                    {rowName(kind, r, channelName)}
+                                  </Link>
+                                  {kind === "templates" && <TemplateRowChip t={r as ResearchTemplate} />}
+                                </span>
                               </td>
                               {kind === "workflows" && (
                                 <>
@@ -407,7 +434,7 @@ function CatalogList({
                                 </td>
                               )}
                               {kind === "templates" && <td className="px-3 text-right tabular-nums">{(r as ResearchTemplate).workflows.length}</td>}
-                              <td className="px-3 text-right tabular-nums">
+                              <td className="whitespace-nowrap px-3 text-right tabular-nums">
                                 <Money value={r.cost} unit={o.unit} />
                               </td>
                               {kind !== "templates" && (
@@ -481,10 +508,13 @@ function Kpi({ label, value }: { label: string; value: React.ReactNode }) {
 function Header({
   topic,
   title,
+  sub,
   chips,
 }: {
   topic: "workflow" | "template" | "llm";
   title: string;
+  /** One customer line under the title (a template dynasty's description). */
+  sub?: string | null;
   chips: React.ReactNode;
 }) {
   return (
@@ -492,6 +522,11 @@ function Header({
       <TopicMark topic={topic} size={40} />
       <div className="min-w-0">
         <h1 className="truncate text-[24px] font-medium leading-[30px] tracking-[-0.02em]">{title}</h1>
+        {sub && (
+          <p className="k-fg2 truncate text-[13px] leading-5" title={sub}>
+            {sub}
+          </p>
+        )}
         <div className="mt-1 flex flex-wrap items-center gap-2">{chips}</div>
       </div>
     </div>
@@ -630,6 +665,7 @@ function WorkflowView({
                 ) : (
                   <span className="k-chip">{w.template.label}</span>
                 ))}
+              {w.template && <TemplateVersionChip version={w.template.version} />}
             </>
           }
         />
@@ -684,13 +720,16 @@ function WorkflowView({
                 k="Template"
                 v={
                   w.template ? (
-                    tplHref ? (
-                      <Link href={tplHref} className="text-[var(--accent)] hover:underline">
-                        {w.template.label}
-                      </Link>
-                    ) : (
-                      w.template.label
-                    )
+                    <span className="inline-flex max-w-full items-center gap-1.5">
+                      {tplHref ? (
+                        <Link href={tplHref} className="min-w-0 truncate text-[var(--accent)] hover:underline">
+                          {w.template.label}
+                        </Link>
+                      ) : (
+                        <span className="min-w-0 truncate">{w.template.label}</span>
+                      )}
+                      <TemplateVersionChip version={w.template.version} />
+                    </span>
                   ) : null
                 }
               />
@@ -708,7 +747,7 @@ function WorkflowView({
   );
 }
 
-function TemplateText({ templateKey, hasText }: { templateKey: string; hasText: boolean }) {
+function TemplateText({ templateKey, hasText, note }: { templateKey: string; hasText: boolean; note: string }) {
   const textsQuery = useResearchTexts(hasText);
   const texts = textsQuery.data ?? null;
   const failed = textsQuery.isError;
@@ -732,13 +771,90 @@ function TemplateText({ templateKey, hasText }: { templateKey: string; hasText: 
           <>
             <pre className={`k-mono k-fg2 whitespace-pre-wrap break-words p-4 text-[12px] leading-5 ${open ? "" : "max-h-[360px] overflow-hidden"}`}>{text}</pre>
             <div className="k-fg3 flex items-center border-t border-[var(--line-subtle)] px-4 py-2.5 text-[12px]">
-              <span>The text that wrote these emails; a new version is a new template.</span>
+              <span>{note}</span>
               <button type="button" onClick={() => setOpen((v) => !v)} className="k-btn-ghost ml-auto h-6 px-1.5 text-[12px]">
                 {open ? "Show less" : "Show all"}
               </button>
             </div>
           </>
         )}
+      </div>
+    </section>
+  );
+}
+
+/** A Templates row's tag: a version listed on its own, outside any dynasty, says so. */
+function TemplateRowChip({ t }: { t: ResearchTemplate }) {
+  if (!t.standaloneReason) return null;
+  return (
+    // The name keeps its room; the chip gives way first (its full words on hover).
+    <span className="k-chip min-w-0 overflow-hidden" title={STANDALONE_WORDS[t.standaloneReason] ?? t.standaloneReason}>
+      <span className="truncate">Not in a dynasty</span>
+    </span>
+  );
+}
+
+/**
+ * Every version of the dynasty with its own served figures, oldest first as features-service
+ * serves them (they add up to the page's figures exactly). The head is the version that writes now.
+ */
+function VersionsTable({
+  pipe,
+  versions,
+  statuses,
+}: {
+  pipe: ResearchPipe;
+  versions: ResearchTemplateVersion[];
+  statuses: ReturnType<typeof useTemplateStatuses>;
+}) {
+  const o = useOutcome(pipe);
+  return (
+    <section>
+      <SectionTitle count={versions.length} right={<span>Oldest first; they add up to the figures above</span>}>
+        Versions
+      </SectionTitle>
+      <div className="k-card overflow-hidden">
+        <div className="k-scroll relative overflow-x-auto">
+          <table className="w-full min-w-[720px] text-[13px]">
+            <thead>
+              <tr className="border-b border-[var(--line-subtle)]">
+                <th className={TH}>Version</th>
+                <th className={`${TH} w-32`}>Status</th>
+                <th className={`${TH} w-28 text-right`}>Cost {o.unit.replace("/ ", "per ")}</th>
+                <th className={`${TH} w-20 text-right`}>Rate</th>
+                <th className={`${TH} w-24 text-right`}>{o.plural}</th>
+                <th className={`${TH} w-24 text-right`}>Emails</th>
+                <th className={`${TH} w-24 text-right`}>Invested</th>
+              </tr>
+            </thead>
+            <tbody>
+              {versions.map((v) => (
+                <tr key={v.key} className="k-row h-10">
+                  <td className="max-w-0 pl-4 pr-3">
+                    <span className="flex min-w-0 items-center gap-1.5">
+                      <span className="k-mono min-w-0 truncate text-[12px]" title={v.key}>
+                        {v.label}
+                      </span>
+                      {v.head && <span className="k-chip shrink-0">Head</span>}
+                    </span>
+                  </td>
+                  <td className="max-w-0 px-3">
+                    <ContentStatusWord status={statuses.map.get(v.key) ?? null} pending={!statuses.answered} deprecation={statuses.deprecationOf(v.key)} />
+                  </td>
+                  <td className="whitespace-nowrap px-3 text-right tabular-nums">
+                    <Money value={v.cost} unit={o.unit} />
+                  </td>
+                  <td className="px-3 text-right tabular-nums">
+                    <Dash v={v.rate} />
+                  </td>
+                  <td className="px-3 text-right tabular-nums">{v.outcomes}</td>
+                  <td className="px-3 text-right tabular-nums">{v.emails}</td>
+                  <td className="pl-3 pr-4 text-right tabular-nums">{v.spend}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       </div>
     </section>
   );
@@ -760,7 +876,12 @@ function TemplateView({
   nav: (href: string) => void;
 }) {
   const o = useOutcome(pipe);
-  const why = useTemplateStatuses().deprecationOf(t.key);
+  const statuses = useTemplateStatuses();
+  const why = statuses.deprecationOf(templateContentKey(t));
+  const dynasty = t.dynasty ?? null;
+  const versions = t.versions ?? [];
+  const identity = identityWord(dynasty?.identity);
+  const versionLabel = new Map(versions.map((v) => [v.key, v.label]));
   return (
     <>
       <TopBar crumbs={crumbs} actions={<CostBasisSwitch />} />
@@ -768,8 +889,20 @@ function TemplateView({
         <Header
           topic="template"
           title={t.label}
+          sub={dynasty?.description ?? null}
           chips={
             <>
+              {identity && <span className="k-chip">{identity}</span>}
+              {dynasty?.head && (
+                <span className="k-chip" title={`The version that writes now: ${dynasty.head.key}`}>
+                  Head <span className="k-mono k-fg">{dynasty.head.label}</span>
+                </span>
+              )}
+              {t.standaloneReason && (
+                <span className="k-chip" title={STANDALONE_WORDS[t.standaloneReason] ?? t.standaloneReason}>
+                  Not in a dynasty
+                </span>
+              )}
               <span className="k-chip tabular-nums">{t.rank == null ? "Not priced yet" : `#${t.rank} of ${total}`}</span>
               <span className="k-chip inline-flex items-center gap-1.5">
                 <SectionMark section={{ pipe }} size={12} />
@@ -787,7 +920,12 @@ function TemplateView({
         <div className="mt-6 grid gap-4 lg:grid-cols-[minmax(0,1fr)_320px]">
           <div className="min-w-0 space-y-6">
             <Charts f={t} topic="template" />
-            <TemplateText templateKey={t.key} hasText={t.hasText} />
+            {versions.length > 0 && <VersionsTable pipe={pipe} versions={versions} statuses={statuses} />}
+            <TemplateText
+              templateKey={t.key}
+              hasText={t.hasText}
+              note={dynasty?.head ? `The text of ${dynasty.head.label}, the version that writes now.` : "The text that wrote these emails."}
+            />
             <RunsTable
               title="Last emails written"
               note="Every client, newest first"
@@ -796,6 +934,7 @@ function TemplateView({
                   <th className={`${TH} w-44`}>Time</th>
                   <th className={TH}>Workflow</th>
                   <th className={`${TH} w-20`}>Version</th>
+                  {versions.length > 0 && <th className={`${TH} w-24`}>Template</th>}
                   <th className={`${TH} w-36`}>Model</th>
                   <th className={`${TH} w-36 text-right`}>Tokens</th>
                 </>
@@ -815,6 +954,11 @@ function TemplateView({
                   <td className="k-mono k-fg2 px-3 text-[12px]">
                     <Dash v={r.version} />
                   </td>
+                  {versions.length > 0 && (
+                    <td className="k-mono k-fg2 px-3 text-[12px]" title={r.templateVersion ?? undefined}>
+                      <Dash v={r.templateVersion ? (versionLabel.get(r.templateVersion) ?? r.templateVersion) : null} />
+                    </td>
+                  )}
                   <td className="max-w-0 truncate px-3">
                     <RefLink base={base} pipe={pipe} kind="models" r={r.model} className="block truncate" />
                   </td>
@@ -839,6 +983,8 @@ function TemplateView({
                   }
                 />
                 <Row k="Outcome" v={o.noun} />
+                <Row k="Dynasty" v={dynasty ? <span className="k-mono k-fg2 text-[12px]">{dynasty.slug}</span> : <span className="k-fg3 text-[12px]">Not in a dynasty</span>} />
+                {versions.length > 0 && <Row k="Versions" v={<span className="tabular-nums">{versions.length}</span>} />}
                 <Row k="Invested" v={t.spend} />
                 <Row k="Sample" v={<span className="k-fg2 text-[12px]">{t.sample}</span>} />
               </dl>

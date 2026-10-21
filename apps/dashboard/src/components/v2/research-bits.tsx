@@ -448,3 +448,28 @@ export function Row({ k, v }: { k: string; v: React.ReactNode | null }) {
   );
 }
 
+
+/**
+ * The template VERSION a ref means, as a small chip beside its dynasty's name (TPL-DYNASTY-1021):
+ * the dynasty is the page, the version is a fact about the ref.
+ */
+export function TemplateVersionChip({ version }: { version: { key: string; label: string } | null | undefined }) {
+  if (!version) return null;
+  return (
+    <span className="k-chip k-mono shrink-0 tabular-nums" title={`Version ${version.label} (${version.key})`}>
+      {version.label}
+    </span>
+  );
+}
+
+/** Why a template is listed on its own, in words. */
+export const STANDALONE_WORDS: Record<string, string> = {
+  no_dynasty_on_pipe: "No dynasty on this pipe lists this version.",
+  template_dynasties_unreadable: "Content generation's dynasties could not be read, so every version is listed on its own.",
+};
+
+/** A template's identity in one word: whether its emails name the client. */
+export function identityWord(identity: string | null | undefined): string | null {
+  if (!identity) return null;
+  return identity.charAt(0).toUpperCase() + identity.slice(1);
+}

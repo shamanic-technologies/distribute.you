@@ -110,7 +110,7 @@ describe("TEMPLATE-MODEL-STATUS-1019: the three Research pages", () => {
   });
 
   it("Templates: Leg column with +N more, Status, Workflows, ⋮, and the outputs panel open from the start", () => {
-    expect(list).toContain('<th className={`${TH} w-44`}>Leg</th>');
+    expect(list).toContain('<th className={`${TH} w-36`}>Leg</th>');
     expect(list).toContain("<FirstAndMore");
     expect(list).toContain("<TemplateOutputsPanel");
     // Open from the start: the first row until one is picked.
@@ -127,7 +127,7 @@ describe("TEMPLATE-MODEL-STATUS-1019: the three Research pages", () => {
     // Several aliases: the confirm and the menu name each one.
     expect(status).toContain("This deprecates each of them.");
     expect(list).toContain("contentNote(target, DEPRECATE_CONTENT_NOTE)");
-    expect(list).toContain('kind === "templates" && <th className={`${TH} w-44`}>Leg</th>');
+    expect(list).toContain('kind === "templates" && <th className={`${TH} w-36`}>Leg</th>');
   });
 
   it("Workflows: each row carries the dynasty status and its ⋮", () => {
