@@ -17,6 +17,7 @@ import {
   getLeadStandingCounts,
   getOrgUsage,
   getUniboxLifecycleCounts,
+  getOfferCompanyLifecycle,
   keepLastGoodFeatureRevenue,
   listLeadsPage,
   type AwaitingReplyPerson,
@@ -179,6 +180,19 @@ export function useDealsLifecycleCounts(brandId: string, campaignId: string | nu
     () => getUniboxLifecycleCounts(brandId, filters, { offerId, campaignId }),
     { ...pollOptions, enabled: !!brandId && !!offerId },
   );
+}
+
+/**
+ * Each company's lifecycle rung for the selected offer (features-service), and the companies per
+ * rung: the Companies page's tabs and Stage column, the company page's stage. Not asked while the
+ * offer has no campaign (features-service 404s it).
+ */
+export function useCompanyLifecycle(brandId: string) {
+  const { offerId, campaignIds } = useSelectedOffer();
+  return useAuthQuery(["companyLifecycle", brandId, offerId ?? ""], () => getOfferCompanyLifecycle(offerId!, brandId), {
+    ...pollOptions,
+    enabled: !!brandId && !!offerId && (campaignIds?.length ?? 0) > 0,
+  });
 }
 
 /**

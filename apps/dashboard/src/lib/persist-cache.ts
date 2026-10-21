@@ -282,6 +282,7 @@ export const PERSISTABLE_QUERY_ROOTS = new Set([
   "dealsLifecycleCounts",
   "dealsLifecycleRows",
   "dealsLifecycle",
+  "companyLifecycle",
   // Offers — the level between the brand and its campaigns. The list feeds the brand
   // Overview's Offers table AND the tenant switcher's third tier, and the by-id read
   // is the offer sidebar's own label.

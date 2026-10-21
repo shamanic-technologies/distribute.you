@@ -17,19 +17,14 @@ import { useLeadCampaigns, type LeadCampaign } from "@/components/v2/lead-campai
 import { FunnelFace } from "@/components/v2/funnel-campaigns";
 import { useSelectedOffer } from "@/components/v2/selected-offer";
 import { TagChip } from "@/components/v2/tag-chip";
-import { useLeadScope, useBrandRevenue } from "@/components/v2/data";
+import { useLeadScope, useBrandRevenue, useCompanyLifecycle } from "@/components/v2/data";
 import { CompanyMark, PersonAvatar, leadName, leadTitle, personHref } from "@/components/v2/people-bits";
 import { EmptyNote, SectionTitle, Shimmer, TopBar } from "@/components/v2/ui";
-import { HIDDEN_TAGS, TAG_LABEL, companyHref, companyKey, companyStage } from "@/components/v2/companies-page";
+import { HIDDEN_TAGS, TAG_LABEL, companyHref, companyKey } from "@/components/v2/companies-page";
+import { companyRungs, dealsBoardRungs } from "@/lib/deals-board";
+import { uniboxValueTag } from "@/lib/unibox-leads";
 
 /** The steps a company moves through, in order, in features-service's own tags. */
-const FLOW: { tag: string; label: string }[] = [
-  { tag: "contacted", label: "Contacted" },
-  { tag: "visit", label: "Visited" },
-  { tag: "reply", label: "Interested" },
-  { tag: "meeting", label: "Meeting" },
-  { tag: "closeWin", label: "Won" },
-];
 
 interface TimelineEntry {
   at: string;
@@ -120,8 +115,11 @@ export function CompanyPage() {
     return () => window.removeEventListener("keydown", onKey);
   }, [prev, next, router]);
 
-  const stage = org ? companyStage(org) : null;
-  const reachedIndex = stage ? FLOW.findIndex((f) => f.tag === stage || (stage === "meetingAttended" && f.tag === "meeting")) : -1;
+  // The company's lifecycle rung (features-service: the highest any of its people reached), on the ladder.
+  const lifecycle = useCompanyLifecycle(brandId).data;
+  const flow = lifecycle ? dealsBoardRungs(lifecycle.rungs) : [];
+  const stage = org?.organizationKey ? (companyRungs(lifecycle).get(org.organizationKey) ?? null) : null;
+  const reachedIndex = stage ? flow.findIndex((f) => f.key === stage.key) : -1;
   const person = org?.topPerson ? `${org.topPerson.firstName ?? ""} ${org.topPerson.lastName ?? ""}`.trim() : "";
 
   const [tlFilter, setTlFilter] = useState<"all" | "us" | "them">("all");
@@ -181,7 +179,7 @@ export function CompanyPage() {
                 <div className="min-w-0">
                   <div className="flex flex-wrap items-center gap-2">
                     <h1 className="truncate text-[22px] font-medium tracking-[-0.02em]">{name}</h1>
-                    {stage && <span className="k-chip">{TAG_LABEL[stage] ?? stage}</span>}
+                    {stage && <TagChip tag={uniboxValueTag("lifecycle", stage.key, stage.label)} />}
                   </div>
                   <p className="k-fg2 mt-0.5 text-[13px]">
                     {[
@@ -239,8 +237,8 @@ export function CompanyPage() {
                 <div className="p-4">
                   <p className="k-label">Stage</p>
                   <div className="mt-2.5 flex flex-wrap items-center gap-1 text-[13px] xl:flex-nowrap">
-                    {FLOW.map((f, i) => (
-                      <span key={f.tag} className="flex items-center gap-1.5">
+                    {flow.map((f, i) => (
+                      <span key={f.key} className="flex items-center gap-1.5">
                         {i > 0 && <span className="h-px w-2.5 bg-[var(--line-strong)]" />}
                         <span
                           className={
