@@ -12551,6 +12551,28 @@ export async function getTemplateOutputs(type: string, limit = 5): Promise<Templ
   return parseStaff("getTemplateOutputs", TemplateOutputsSchema, raw).outputs;
 }
 
+const TemplateDynastyOutputsSchema = z.object({
+  slug: z.string(),
+  outputs: z.array(
+    z.object({
+      generationId: z.string(),
+      createdAt: z.string(),
+      // The version (template type) the sequence was written with.
+      promptType: z.string(),
+      workflowSlug: z.string().nullable(),
+      model: z.string(),
+      subject: z.string().nullable(),
+      emails: z.array(z.object({ step: z.number(), bodyText: z.string(), daysSinceLastStep: z.number().nullable() })),
+    }),
+  ),
+});
+
+/** The last outputs written with ANY version of a template dynasty, newest first, every org (TPL-DYNASTY-ROWS-1021). */
+export async function getTemplateDynastyOutputs(slug: string, limit = 5): Promise<(TemplateOutput & { promptType?: string })[]> {
+  const raw = await apiCall<unknown>(`/content/template-dynasties/${encodeURIComponent(slug)}/outputs?limit=${limit}`);
+  return parseStaff("getTemplateDynastyOutputs", TemplateDynastyOutputsSchema, raw).outputs;
+}
+
 const RetireByContentSchema = z.object({
   dryRun: z.boolean(),
   workflows: z.array(

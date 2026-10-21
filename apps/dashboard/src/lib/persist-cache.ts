@@ -97,6 +97,7 @@ export const SENSITIVE_QUERY_ROOTS = new Set([
   "workflowDynastyDeprecation",
   "retireByContentPreview",
   "templateOutputs",
+  "templateDynastyOutputs",
   // Staff Monitoring (fleet margin, vendor costs, price catalogue, emails sent).
   "staffCostMargin",
   "staffPriceVersions",
