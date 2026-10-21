@@ -11,7 +11,7 @@ import { useAuthQuery, useOrgQueryGate } from "@/lib/use-auth-query";
 import { useStaffMode } from "@/lib/use-staff-mode";
 import { POLL_INTERVAL } from "@/lib/query-options";
 import { formatCount } from "@/lib/format-number";
-import { friendlyDateTime, timeAgo } from "@/lib/friendly-datetime";
+import { friendlyDate, friendlyDateTime, timeAgo } from "@/lib/friendly-datetime";
 import {
   personLeadRowId,
   personName,
@@ -32,7 +32,7 @@ import { RecordsToolbar } from "@/components/v2/records";
 import { THREAD_SCROLL_STEP, uniboxKeyAction, type UniboxPane } from "@/lib/unibox-keys";
 import { timelineTag, type TimelineTag } from "@/lib/timeline-tags";
 import { conversationItemTag, conversationSourceWord, joinConversationLabels, liveItems, standingTag, type ConversationItem, type ConversationTimeline } from "@/lib/conversation-timeline";
-import { ConversationTags } from "@/components/v2/conversation-timeline";
+import { DisqualifiedTag } from "@/components/v2/conversation-timeline";
 import { useSelectedOfferIfAny } from "@/components/v2/selected-offer";
 import { TagChip } from "@/components/v2/tag-chip";
 import { WrittenWithTags, useLeadWrittenBy } from "@/components/v2/written-with-tags";
@@ -40,7 +40,7 @@ import { writtenMessageId, type WrittenBy } from "@/lib/written-by";
 import { itemCallId } from "@/lib/api-calls";
 import { ApiCallDetailPanel } from "@/components/v2/api-call-detail";
 import { RelationshipChips, UnmergeMenu } from "@/components/v2/relationship-tags";
-import { UNIBOX_DIMENSIONS, filtersFromParams, filtersKey, uniboxRowId, uniboxRowKey, uniboxRowTitle, uniboxThreadRef, type UniboxDimension, type UniboxPage, type UniboxRow } from "@/lib/unibox-leads";
+import { UNIBOX_DIMENSIONS, filtersFromParams, filtersKey, uniboxLeadName, uniboxRowId, uniboxRowKey, uniboxRowSubtitle, uniboxThreadRef, type LifecycleRung, type UniboxDimension, type UniboxPage, type UniboxRow } from "@/lib/unibox-leads";
 import { UniboxFilterBar, UniboxLeadCardPanel, UniboxRowTags } from "@/components/v2/unibox-lead-card";
 
 // The publishable logo.dev token the dashboard already ships (company-logo.tsx).
@@ -315,7 +315,8 @@ export function V2ConversationsView({ brandId }: { brandId: string }) {
         <RecordsToolbar search={search} onSearch={setSearch} placeholder="Search by name or email" inputRef={searchRef} />
       </div>
       <UniboxFilterBar filters={filters} ladder={list?.lifecycleLadder ?? []} onPick={pickFilter} />
-      <div className="grid gap-4 lg:min-h-0 lg:flex-1 lg:grid-rows-[minmax(0,1fr)] @3xl:grid-cols-[340px_minmax(0,1fr)]">
+      {/* grid-cols-1 = minmax(0,1fr): a folded message's one line (nowrap) must not widen a phone's page. */}
+      <div className="grid grid-cols-1 gap-4 lg:min-h-0 lg:flex-1 lg:grid-rows-[minmax(0,1fr)] @3xl:grid-cols-[340px_minmax(0,1fr)]">
         <section
           className={`k-card max-h-[calc(100dvh-220px)] min-h-[420px] flex-col overflow-hidden lg:max-h-none lg:min-h-0 @3xl:flex ${narrowView === "list" ? "flex" : "hidden"}`}
         >
@@ -331,6 +332,7 @@ export function V2ConversationsView({ brandId }: { brandId: string }) {
                     key={uniboxRowKey(r)}
                     index={i}
                     row={r}
+                    ladder={list?.lifecycleLadder ?? []}
                     selected={uniboxRowId(r) === openKey}
                     cursor={i === cursor}
                     onOpen={() => {
@@ -368,7 +370,7 @@ export function V2ConversationsView({ brandId }: { brandId: string }) {
 
         {/* The thread and, beside it, the lead card (always open, like an inbox contact sidebar). */}
         <div
-          className={`min-h-0 gap-4 lg:min-h-0 @3xl:flex @3xl:flex-col @6xl:flex-row ${narrowView === "thread" ? "flex flex-col" : "hidden"}`}
+          className={`min-h-0 min-w-0 gap-4 lg:min-h-0 @3xl:flex @3xl:flex-col @6xl:flex-row ${narrowView === "thread" ? "flex flex-col" : "hidden"}`}
         >
           {/* The thread pane takes Up/Down once the reader moves into it (Right, or a click).
               Its frame is an outline: an inset shadow paints UNDER the scrolled messages. */}
@@ -395,7 +397,14 @@ export function V2ConversationsView({ brandId }: { brandId: string }) {
               </button>
             </div>
             {threadRef ? (
-              <Thread brandId={brandId} personRef={threadRef} listed={null} scrollRef={threadScroll} />
+              <Thread
+                brandId={brandId}
+                personRef={threadRef}
+                listed={null}
+                lead={card?.lead ?? openRow}
+                scrollRef={threadScroll}
+                details={<UniboxLeadCardPanel card={card ?? null} failed={!card && cardQ.isFetchedAfterMount} listed={openRow} inline />}
+              />
             ) : openKey && !card && !cardQ.isFetchedAfterMount ? (
               <div className="space-y-3 p-4">
                 {Array.from({ length: 5 }, (_, i) => (
@@ -430,10 +439,14 @@ export function V2ConversationsView({ brandId }: { brandId: string }) {
 const UNIBOX_PAGE_SIZE = 100;
 const leadCardKey = (brandId: string, rowId: string) => ["uniboxLead", brandId, rowId] as const;
 
-/** One lead in the list: name, last activity, then lead-service's stage, conversation and types. */
+/**
+ * One lead in the list (owner 2026-10-21, like Gmail / Superhuman): the person's name in bold and
+ * the time, then their title and company in grey with any tag that is not the default.
+ */
 function LeadRow({
   index,
   row,
+  ladder,
   selected,
   cursor,
   onOpen,
@@ -441,12 +454,15 @@ function LeadRow({
 }: {
   index: number;
   row: UniboxRow;
+  ladder: LifecycleRung[];
   selected: boolean;
   cursor: boolean;
   onOpen: () => void;
   onHover: () => void;
 }) {
-  const name = uniboxRowTitle(row);
+  const name = uniboxLeadName(row);
+  // No served title or company: the address, unless it already IS the first line.
+  const sub = uniboxRowSubtitle(row) ?? (row.name?.trim() ? (row.emails[0] ?? row.phones[0] ?? null) : null);
   return (
     <li data-row={index}>
       <button
@@ -459,10 +475,13 @@ function LeadRow({
         {/* The mark is as tall as the two lines beside it (owner 2026-10-11, MarkLines). */}
         <MarkLines className="flex-1" gap="gap-3" mark={(px) => (row.company?.domain ? <CompanyMark name={row.company.name ?? name} domain={row.company.domain} size={px} /> : <PersonMark name={name} emails={row.emails} size={px} />)}>
           <span className="flex items-center gap-2">
-            <span className="truncate text-[13px] font-medium">{name}</span>
+            <span className="truncate text-[13px] font-semibold">{name}</span>
             {row.lastActivityAt && <span className="k-fg3 ml-auto shrink-0 text-[12px] tabular-nums">{timeAgo(row.lastActivityAt)}</span>}
           </span>
-          <UniboxRowTags row={row} />
+          <span className="mt-0.5 flex min-w-0 items-center gap-2">
+            {sub ? <span className="k-fg3 min-w-[40%] flex-1 truncate text-[12px]">{sub}</span> : <span className="k-fg4 flex-1 text-[12px]">—</span>}
+            <UniboxRowTags row={row} ladder={ladder} />
+          </span>
         </MarkLines>
       </button>
     </li>
@@ -473,12 +492,18 @@ function Thread({
   brandId,
   personRef: ref,
   listed,
+  lead,
   scrollRef,
+  details,
 }: {
   brandId: string;
   personRef: string;
   listed: Person | null;
+  /** The Unibox row (lead-service): who it is, their title and company. */
+  lead: UniboxRow | null;
   scrollRef: RefObject<HTMLDivElement | null>;
+  /** The lead card, folded under the header on a panel too narrow for it beside the thread. */
+  details: ReactNode;
 }) {
   const gate = useOrgQueryGate();
   const q = useInfiniteQuery({
@@ -509,6 +534,7 @@ function Thread({
   const writtenBy = useLeadWrittenBy(facts?.leadId ?? null);
   // Replies sent from this screen, per person, shown until the served thread carries them.
   const [sentByRef, setSentByRef] = useState<Record<string, LocalReply[]>>({});
+  const [detailsOpen, setDetailsOpen] = useState(false);
   const local = data ? pendingReplies(sentByRef[ref] ?? [], data.items) : [];
   // Oldest first, so the latest exchange is at the bottom: open there, as any inbox does.
   // Only a change at the BOTTOM (a new message, a reply sent) scrolls down; an older page
@@ -559,9 +585,17 @@ function Thread({
 
   const { person, items, sources } = data;
   const notes = sources.map(timelineSourceNote).filter((n): n is string => n !== null);
-  const name = personName(person);
+  // lead-service names the relation; crm-service's person only when the row is not loaded.
+  const name = lead ? uniboxLeadName(lead) : personName(person);
   const status = personStatusLabel(person);
   const target = replyTarget(person, items);
+  const subline = [lead?.title?.trim(), lead?.company?.name || lead?.company?.domain, ...person.emails, ...person.phones].filter(Boolean).join(" · ");
+  const rows = threadRows(items, facts ? liveItems(facts) : []);
+  // Older messages fold to one line each, the latest opens (owner 2026-10-21); a click opens one.
+  let lastMessage = -1;
+  rows.forEach((row, i) => {
+    if (row.item?.kind === "message") lastMessage = i;
+  });
   return (
     <>
       <header className="k-line-subtle shrink-0 border-b px-4 py-3">
@@ -569,31 +603,36 @@ function Thread({
           <MarkLines
             className="min-w-0 flex-1 basis-[220px]"
             gap="gap-3"
-            mark={(px) => <PersonMark name={name} emails={person.emails} size={px} />}
+            mark={(px) => <LeadMark name={name} company={lead?.company ?? null} emails={person.emails} size={px} />}
             after={<PossibleLeadRulings brandId={brandId} person={person} threadRef={ref} />}
           >
             <h2 className="truncate text-[14px] font-semibold">{name}</h2>
-            <p className="k-fg3 truncate text-[12px]">
-              {[...person.emails, ...person.phones].join(" · ") || "—"}
-            </p>
+            <p className="k-fg3 truncate text-[12px]">{subline || "—"}</p>
           </MarkLines>
-          {(status || listed?.relationship) && (
+          {/* ONE status (owner 2026-10-21): the last word and furthest step sit in the thread and the card. */}
+          {(status || listed?.relationship || facts?.disqualification) && (
             <span className="ml-auto flex shrink-0 flex-wrap items-center gap-1.5">
               {listed?.relationship && (
                 <RelationshipChips tags={listed.relationship.tags} unsureTags={listed.relationship.unsureTags} />
               )}
               {status && <PersonTag label={status} state={person.state} />}
+              {facts?.disqualification ? <DisqualifiedTag mark={facts.disqualification} /> : null}
               {listed?.relationship?.merges && listed.relationship.merges.length > 0 && (
                 <UnmergeMenu brandId={brandId} name={name} merges={listed.relationship.merges} />
               )}
             </span>
           )}
         </div>
-        {facts ? (
-          <div className="mt-2">
-            <ConversationTags tags={facts.tags} disqualification={facts.disqualification} />
-          </div>
-        ) : null}
+        {/* keel.css is unlayered: the wrapper, not the k-btn-ghost, hides at the wide split. */}
+        <div className="@6xl:hidden">
+          <button type="button" aria-expanded={detailsOpen} onClick={() => setDetailsOpen((o) => !o)} className="k-btn-ghost -ml-2 mt-1 h-6 gap-1 px-2 text-[12px]">
+            Lead details
+            <svg width="10" height="10" viewBox="0 0 12 12" aria-hidden="true" className={detailsOpen ? "rotate-180" : ""}>
+              <path d="M3 4.5l3 3 3-3" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
+          </button>
+          {detailsOpen && details}
+        </div>
       </header>
       <div ref={scrollRef} className="k-scroll min-h-0 flex-1 space-y-3 overflow-y-auto p-4">
         {hasNextPage && (
@@ -604,17 +643,18 @@ function Thread({
         {items.length === 0 ? (
           <EmptyNote>No message or event with this person on any connected source.</EmptyNote>
         ) : (
-          threadRows(items, facts ? liveItems(facts) : []).map((row, i) =>
+          rows.map((row, i) =>
             row.fact ? (
               <FactRow key={row.fact.id} fact={row.fact} writtenBy={writtenBy} />
             ) : (
               <ThreadItem
-                key={i}
+                key={itemKey(row.item, i, rows.length)}
                 brandId={brandId}
                 item={row.item}
                 tag={row.tag}
                 writtenBy={writtenBy}
                 campaignId={sentCampaignId(row.item, facts)}
+                folded={i < lastMessage || local.length > 0}
               />
             ),
           )
@@ -806,12 +846,15 @@ function ThreadItem({
   tag,
   writtenBy = null,
   campaignId = null,
+  folded = false,
 }: {
   brandId: string;
   item: PersonTimelineItem;
   tag: TimelineTag | null;
   writtenBy?: WrittenBy | null;
   campaignId?: string | null;
+  /** An older message: one line until clicked. */
+  folded?: boolean;
 }) {
   // Where it came from, as a mark and its name: our own sends and visits read as Distribute.
   const mark = sourceMark(item.source, item.channel);
@@ -840,6 +883,7 @@ function ThreadItem({
       mark={mark}
       meta={meta}
       tag={tag ?? timelineTag(item)}
+      folded={folded}
       written={
         item.direction === "outbound" ? (
           <WrittenWithTags writtenBy={writtenBy} messageId={writtenMessageId(item)} campaignId={campaignId} at={item.at} />
@@ -861,6 +905,7 @@ function Message({
   meta,
   tag,
   written = null,
+  folded = false,
 }: {
   brandId: string;
   item: PersonTimelineItem;
@@ -869,6 +914,8 @@ function Message({
   tag: TimelineTag;
   /** What it was written with (model + tactics, tags beside its label), on a message we sent; null elsewhere. */
   written?: ReactNode;
+  /** An older message opens as one line (who · first words · date) until clicked (owner 2026-10-21). */
+  folded?: boolean;
 }) {
   // The mark up front is WHO wrote it: the person's company logo (initials without one)
   // on their side, the source's mark on ours. Where it came from rides the meta line.
@@ -886,6 +933,27 @@ function Message({
   // An API / MCP call: our answer opens the whole call (request and response), read on demand.
   const callId = outbound ? itemCallId(item) : null;
   const [callOpen, setCallOpen] = useState(false);
+  const [expanded, setExpanded] = useState(!folded);
+  const who = sender.name ?? sender.email ?? (outbound ? "You" : "Them");
+  if (!expanded) {
+    return (
+      <button
+        type="button"
+        onClick={() => setExpanded(true)}
+        aria-label={`Open the message from ${who}`}
+        className={`flex h-9 w-full max-w-[92%] items-center gap-2 rounded-lg px-3 text-left text-[12px] sm:max-w-[85%] ${outbound ? "k-inset ml-auto" : "k-panel"}`}
+      >
+        {outbound ? (
+          <SourceLogo mark={mark} size={16} />
+        ) : (
+          <PersonMark name={sender.name ?? sender.email ?? "Them"} emails={sender.email ? [sender.email] : []} size={16} />
+        )}
+        <span className="max-w-[40%] shrink-0 truncate font-medium">{who}</span>
+        <span className="k-fg2 min-w-0 flex-1 truncate">{firstWords(item) ?? "—"}</span>
+        <span className="k-fg3 shrink-0 tabular-nums">{item.at ? friendlyDate(item.at) : "No date"}</span>
+      </button>
+    );
+  }
   return (
     <article className={`max-w-[92%] rounded-lg px-3 py-2 sm:max-w-[85%] ${outbound ? "k-inset ml-auto" : "k-panel"}`}>
       {/* On a narrow bubble the line WRAPS: squeezed, the sender's name and address shrank to nothing. */}
@@ -895,7 +963,7 @@ function Message({
         ) : (
           <PersonMark name={sender.name ?? sender.email ?? "Them"} emails={sender.email ? [sender.email] : []} size={16} />
         )}
-        <span className="min-w-0 max-w-full truncate">{sender.name ?? sender.email ?? (outbound ? "You" : "Them")}</span>
+        <span className="min-w-0 max-w-full truncate">{who}</span>
         {/* The address it was written FROM, on every message: a person can write from
             several mailboxes (work, personal), and a name alone hides which one (owner 2026-10-09). */}
         {sender.name && sender.email && <span className="k-mono min-w-0 max-w-full truncate text-[11.5px]">{sender.email}</span>}
@@ -1015,6 +1083,26 @@ function PossibleLeadRuling({ brandId, person, threadRef, lead }: { brandId: str
 function PersonMark({ name, emails, size }: { name: string; emails: string[]; size: number }) {
   const domain = personCompanyDomain(emails);
   return domain ? <CompanyMark name={name} domain={domain} size={size} /> : <Initials name={name} size={size} round />;
+}
+
+/** The thread header's mark: the relation's company logo (the list row's), else the person's. */
+function LeadMark({ name, company, emails, size }: { name: string; company: UniboxRow["company"]; emails: string[]; size: number }) {
+  return company?.domain ? (
+    <CompanyMark name={company.name ?? name} domain={company.domain} size={size} />
+  ) : (
+    <PersonMark name={name} emails={emails} size={size} />
+  );
+}
+
+/** A folded message's line: its first words, else its subject. */
+function firstWords(item: PersonTimelineItem): string | null {
+  const words = (item.text ?? "").replace(/\s+/g, " ").trim();
+  return words || item.subject?.trim() || null;
+}
+
+/** A thread item's key that survives an older page loading above it (an index key does not). */
+function itemKey(item: PersonTimelineItem, i: number, count: number): string {
+  return `${item.at ?? ""}|${item.source}|${item.direction ?? ""}|${item.from ?? ""}|${count - i}`;
 }
 
 /** Where a record came from, as its logo; the name rides the tooltip and the meta line. */

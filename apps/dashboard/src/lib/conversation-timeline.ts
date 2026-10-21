@@ -154,9 +154,12 @@ export function furthestStepTag(step: string | null): TimelineTag | null {
   return STEP_LOOK[step] ?? { label: words(step), tone: "neutral", icon: "dot" };
 }
 
-/** The live facts: a fact its source took back is kept by lead-service but not shown. */
+/**
+ * The live facts: a fact its source took back is kept by lead-service but not shown, and an open
+ * is never shown anywhere (opens are deprecated: tracking pixels, mostly machines).
+ */
 export function liveItems(timeline: ConversationTimeline): ConversationItem[] {
-  return timeline.items.filter((i) => i.withdrawnAt === null);
+  return timeline.items.filter((i) => i.withdrawnAt === null && i.label !== "opened");
 }
 
 const SOURCE_WORD: Record<string, string> = {

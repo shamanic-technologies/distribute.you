@@ -15,7 +15,7 @@ describe("MarkLines: a mark beside two lines is as tall as the lines", () => {
 
   it.each([
     ["src/components/v2/funnel-campaigns.tsx", "<FunnelFace name={campaign.salesFunnelName} size={px} />"],
-    ["src/components/v2/integrations-conversations.tsx", "mark={(px) => <PersonMark name={name} emails={person.emails} size={px} />}"],
+    ["src/components/v2/integrations-conversations.tsx", "mark={(px) => <LeadMark name={name} company={lead?.company ?? null} emails={person.emails} size={px} />}"],
     ["src/components/v2/staff-catalogue-pages.tsx", "face={r.face} name={r.name} size={px} />}"],
     ["src/components/v2/staff-campaign-pages.tsx", "<CatalogueMark face={funnel?.face} name={c.salesFunnelName} size={px} />"],
     ["src/components/v2/offer-campaigns.tsx", "<ServedPipeMark pipeId={featureLegId(campaign.featureSlug, campaign.legKey)} size={px} />"],

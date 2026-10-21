@@ -9,7 +9,8 @@ import {
   filtersKey,
   lifecycleOptions,
   uniboxLeadName,
-  uniboxRowTitle,
+  uniboxRowSubtitle,
+  uniboxRowTags,
   uniboxQuery,
   uniboxThreadRef,
   uniboxRowId,
@@ -86,11 +87,28 @@ describe("Unibox list from lead-service (owner 2026-10-17)", () => {
     expect(dimensionValueLabel("fit", "not_our_target")).toBe("Not our target");
     expect(uniboxThreadRef(row)).toBe("email:kriti@berkeley.edu");
     expect(uniboxLeadName(row)).toBe("kriti@berkeley.edu");
-    // « Adam Nasri @ <company> » (owner 2026-10-17); no served org, the name alone.
-    expect(uniboxRowTitle({ ...row, name: "Adam Nasri", company: { id: "c1", name: "Cifacom", domain: "cifacom.com" } })).toBe("Adam Nasri @ Cifacom");
-    expect(uniboxRowTitle({ ...row, name: "Adam Nasri", company: null })).toBe("Adam Nasri");
-    // A company held by domain only reads by its served domain.
-    expect(uniboxRowTitle({ ...row, name: "Adam Nasri", company: { id: "c1", name: null, domain: "cifacom.com" } })).toBe("Adam Nasri @ cifacom.com");
+    // The name stands alone in bold; title and company make the grey second line (owner 2026-10-21).
+    expect(uniboxRowSubtitle({ title: "Head of RA", company: { id: "c1", name: "Platomics", domain: "platomics.com" } })).toBe("Head of RA · Platomics");
+    expect(uniboxRowSubtitle({ title: null, company: { id: "c1", name: null, domain: "cifacom.com" } })).toBe("cifacom.com");
+    expect(uniboxRowSubtitle({ title: undefined, company: null })).toBeNull();
+    // A served first + last name is the row's name (lead-service UNIBOX-PERSON-NAME-1021).
+    const named = UniboxPageSchema.parse({ brandId: "b", lifecycleLadder: [], rows: [{ ...row, name: "Andreas Oberleitner", firstName: "Andreas", lastName: "Oberleitner", title: "Head of RA" }], total: 1, nextCursor: null, builtAt: null }).rows[0];
+    expect(uniboxLeadName(named)).toBe("Andreas Oberleitner");
+    expect(named.title).toBe("Head of RA");
+  });
+
+  it("a row carries a tag only when it is not the default contacted, no reply yet, prospect (owner 2026-10-21)", () => {
+    const quiet = { ...row, conversation: "no_reply_yet", roles: [] };
+    expect(uniboxRowTags(quiet, ladder)).toEqual([]);
+    expect(uniboxRowTags({ ...quiet, lifecycle: null }, ladder)).toEqual([]);
+    expect(uniboxRowTags({ ...quiet, conversation: "waiting_on_us" }, ladder).map((t) => t.label)).toEqual(["Waiting on us"]);
+    const meeting = { key: "meeting_booked", rank: 5, label: "Meeting booked" };
+    expect(uniboxRowTags({ ...quiet, lifecycle: meeting }, [...ladder, meeting]).map((t) => t.label)).toEqual(["Meeting booked"]);
+    // A customer with no stage past Contacted still says so; with Paid client, the stage says it once.
+    expect(uniboxRowTags({ ...quiet, status: "customer" }, ladder).map((t) => t.label)).toEqual(["Customer"]);
+    const paid = { key: "paid_client", rank: 7, label: "Paid client" };
+    expect(uniboxRowTags({ ...quiet, status: "customer", lifecycle: paid }, [...ladder, paid]).map((t) => t.label)).toEqual(["Paid client"]);
+    expect(uniboxRowTags({ ...quiet, interest: "not_interested", contactability: "bounced" }, ladder).map((t) => t.label)).toEqual(["Not interested", "Bounced"]);
   });
 
   it("a row is a RELATION: its thread, card and URL read its relationKey, two rows of one human stay apart", () => {

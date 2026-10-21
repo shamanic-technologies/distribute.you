@@ -68,6 +68,10 @@ describe("a conversation's stored timeline, named not derived (owner 2026-10-08)
     });
     expect(liveItems(t).map((i) => i.id)).toEqual([christina.items[0].id]);
   });
+  it("never shows an open (opens are deprecated)", () => {
+    const t = ConversationTimelineSchema.parse({ ...christina, items: [...christina.items, { ...christina.items[0], id: "ievt:open", label: "opened" }] });
+    expect(liveItems(t).map((i) => i.id)).toEqual([christina.items[0].id]);
+  });
   it("labels the thread item recorded at the same instant, and returns the facts nothing matched", () => {
     const thread = [
       { at: "2026-10-07T15:13:45.050Z" },
@@ -126,7 +130,9 @@ describe("a conversation's stored timeline, named not derived (owner 2026-10-08)
   it("the Unibox thread and the person page render lead-service's labels and tags", () => {
     const read = (f: string) => readFileSync(join(__dirname, "../src/components/v2", f), "utf8");
     expect(read("integrations-conversations.tsx")).toContain("joinConversationLabels(");
-    expect(read("integrations-conversations.tsx")).toContain("<ConversationTags");
+    // The Unibox header states ONE status (owner 2026-10-21): no Last word / Furthest step block, the disqualified mark kept.
+    expect(read("integrations-conversations.tsx")).not.toContain("<ConversationTags");
+    expect(read("integrations-conversations.tsx")).toContain("<DisqualifiedTag mark={facts.disqualification} />");
     expect(read("person-page.tsx")).toContain("<ConversationTimelineCard");
   });
 });
