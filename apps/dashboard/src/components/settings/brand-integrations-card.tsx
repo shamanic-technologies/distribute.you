@@ -21,6 +21,7 @@ import {
   setBrandKey,
 } from "@/lib/api";
 import { useAuthQuery, useQueryClient } from "@/lib/use-auth-query";
+import { useStaffMode } from "@/lib/use-staff-mode";
 import { CompanyLogo } from "@/components/company-logo";
 import { MessagingLinkRows } from "@/components/settings/messaging-link-rows";
 import {
@@ -118,6 +119,7 @@ function IntegrationsSection({ brandId, bare }: { brandId: string; bare: boolean
   const queryClient = useQueryClient();
   const params = useParams<{ orgId?: string }>();
   const orgId = params?.orgId ?? null;
+  const { staffMode } = useStaffMode();
 
   const keysQ = useAuthQuery(["brandKeys", brandId], () => listBrandKeys(brandId));
   const storedProviders = new Set((keysQ.data?.keys ?? []).map((k) => k.provider));
@@ -137,8 +139,11 @@ function IntegrationsSection({ brandId, bare }: { brandId: string; bare: boolean
 
   // Gmail first: the mailbox is where most conversations already are.
   rows.unshift(<GmailRow key="gmail" orgId={orgId} />);
-  // Google Calendar next to Gmail: booked meetings and who joined them.
-  rows.splice(1, 0, <GoogleCalendarRow key="google-calendar" orgId={orgId} />);
+  // Google Calendar next to Gmail: booked meetings and who joined them. STAFF MODE ONLY until
+  // Google verifies its two sensitive scopes (calendar.events.readonly, meetings.space.readonly):
+  // before that, a customer clicking it lands on Google's "unverified app" screen and spends our
+  // unverified-user quota (GCAL-VERIFY-VIDEO-1021). The owner lifts this gate once Google approves.
+  if (staffMode) rows.splice(1, 0, <GoogleCalendarRow key="google-calendar" orgId={orgId} />);
   rows.push(<MessagingLinkRows key="messaging" brandId={brandId} />);
 
   if (bare) return <div className="divide-y divide-gray-100">{rows}</div>;

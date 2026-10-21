@@ -48,6 +48,13 @@ describe("connect start", () => {
     expect(card).toContain('JSON.stringify({ orgId, returnTo, connection: "mailbox" })');
     expect(card).toContain('rows.splice(1, 0, <GoogleCalendarRow key="google-calendar" orgId={orgId} />);');
   });
+
+  it("only staff mode sees the calendar row until Google verifies its scopes (GCAL-VERIFY-VIDEO-1021)", () => {
+    const card = read("components/settings/brand-integrations-card.tsx");
+    expect(card).toContain('import { useStaffMode } from "@/lib/use-staff-mode";');
+    expect(card).toContain('if (staffMode) rows.splice(1, 0, <GoogleCalendarRow key="google-calendar" orgId={orgId} />);');
+    expect(card.match(/<GoogleCalendarRow /g)?.length).toBe(1);
+  });
 });
 
 describe("callback outcome", () => {
