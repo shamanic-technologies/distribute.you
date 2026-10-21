@@ -18,7 +18,7 @@ import { EmbeddedCheckout, EmbeddedCheckoutProvider } from "@stripe/react-stripe
 import posthog from "posthog-js";
 import { getBillingAccount, sendAuthNotification, setApiActiveOrgOverride, type BillingAccount } from "@/lib/api";
 import { getStripe } from "@/lib/stripe";
-import { defaultSalesRepToAccountEmail } from "@/lib/sales-rep-default";
+import { defaultSalesRepToAccount } from "@/lib/sales-rep-default";
 import { v2Href } from "@/lib/v2/routes";
 import { matchNote, topupCta, type GetStartedOffer } from "@/lib/v2/get-started";
 import { launchCount, type SignupLaunchPlan } from "@/lib/v2/signup-campaign";
@@ -152,7 +152,7 @@ export function OrgLaunch({
         { brandId, website, offer, targetAudience, plan, answered },
         progress.current,
       );
-      await defaultSalesRepToAccountEmail(brandId, email);
+      await defaultSalesRepToAccount(brandId, user);
       // The edge gate reads this claim: the org is set up only now, with a campaign
       // running. Marked with a token minted FOR it, BEFORE it is made active.
       const orgToken = await session?.getToken({ organizationId: orgId, skipCache: true });
