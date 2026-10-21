@@ -282,6 +282,8 @@ export const OpsMailboxesSchema = z.object({
       ),
       sustainedDaily: z.number(),
       effectiveDailyCap: z.number().nullable(),
+      // Queued steps over the mailbox's addresses, served at the mailbox grain (instantly-service v0.83.118).
+      queuedSteps: z.number().optional(),
       rampProjection: z.array(z.object({ date: z.string(), cap: z.number() })),
       warmupBudgetToday: z.number().nullable(),
       delivery: DeliverySchema,
@@ -592,3 +594,88 @@ export function alertSeries(data: PlacementAlerts, provider: string): { days: Pl
 
 export const MessageBodySchema = z.object({ text: z.string().nullable(), html: z.string().nullable(), source: z.string() });
 export type MessageBody = z.infer<typeof MessageBodySchema>;
+
+// ─── Accounts page: lifecycle tabs, queue buckets, capacity vs planned (ACCOUNTS-PROD-TABS-1021) ──
+
+/** The Accounts page tabs, in order, each a set of the producer's lifecycle values. */
+export const ADDRESS_TABS = [
+  { key: "production", label: "In production", statuses: ["in_production"] },
+  { key: "recovery", label: "In recovery", statuses: ["in_recovery"] },
+  { key: "deactivated", label: "Deactivated", statuses: ["deactivated_by_instantly", "deactivated_by_user"] },
+] as const;
+export type AddressTabKey = (typeof ADDRESS_TABS)[number]["key"] | "other";
+
+/** A mailbox counts as in production while it is still there and holds an in-production address. */
+export function mailboxInProduction(m: { absentSince: string | null; addresses: Array<{ lifecycleStatus: string | null }> }): boolean {
+  return m.absentSince == null && m.addresses.some((a) => a.lifecycleStatus === "in_production");
+}
+
+/** The tab an address sits under; a lifecycle value no tab names lands in "other", so the tab counts always add up. */
+export function addressTab(status: string | null): AddressTabKey {
+  const tab = ADDRESS_TABS.find((t) => (t.statuses as readonly string[]).includes(status ?? ""));
+  return tab ? tab.key : "other";
+}
+
+/** Queued emails buckets (fit to prod on 2026-10-21: 11 at 0, 7 under 10, the rest 53 to 177). `max` inclusive, null = no ceiling. */
+export const QUEUE_BUCKETS: Array<{ label: string; min: number; max: number | null }> = [
+  { label: "0", min: 0, max: 0 },
+  { label: "1-50", min: 1, max: 50 },
+  { label: "51-100", min: 51, max: 100 },
+  { label: "101-200", min: 101, max: 200 },
+  { label: "200+", min: 201, max: null },
+];
+
+/** How many served values fall in each bucket, and their share of all values (a display grouping of served rows). */
+export function bucketQueued(values: number[]): Array<{ label: string; count: number; pct: number }> {
+  return QUEUE_BUCKETS.map((b) => {
+    const count = values.filter((v) => v >= b.min && (b.max == null || v <= b.max)).length;
+    return { label: b.label, count, pct: values.length ? (count / values.length) * 100 : 0 };
+  });
+}
+
+export type CapacityPlanDay = {
+  date: string;
+  capacity: number | null;
+  planned: number;
+  cumulativeCapacity: number | null;
+  cumulativePlanned: number;
+};
+
+/**
+ * Per day from today: the served capacity, the served queued steps planned that day, and both
+ * cumulated from today. The cumulated planned starts with the steps already overdue (due now, not on
+ * any day ahead). A day the capacity read does not cover stops the cumulated capacity (null after it).
+ */
+export function capacityVsPlanned(
+  capacityDays: Array<{ date: string; phase: string; capacity: number }>,
+  scheduleDays: Array<{ date: string; queuedSteps: number }>,
+  overdue: number,
+): CapacityPlanDay[] {
+  const cap = new Map(capacityDays.filter((d) => d.phase !== "past").map((d) => [d.date.slice(0, 10), d.capacity]));
+  let cumCap: number | null = 0;
+  let cumPlan = overdue;
+  return scheduleDays.map((d) => {
+    const capacity = cap.get(d.date.slice(0, 10)) ?? null;
+    cumCap = cumCap == null || capacity == null ? null : cumCap + capacity;
+    cumPlan += d.queuedSteps;
+    return { date: d.date.slice(0, 10), capacity, planned: d.queuedSteps, cumulativeCapacity: cumCap, cumulativePlanned: cumPlan };
+  });
+}
+
+/**
+ * The verdict of the cumulated curves: capacity covers every planned send, the backlog is absorbed on
+ * a day (the first day after the last one where planned runs ahead of capacity), or it still runs ahead
+ * on the last day shown. Null when nothing is planned or capacity is unknown.
+ */
+export function backlogVerdict(days: CapacityPlanDay[]): { kind: "covered" } | { kind: "absorbed"; date: string } | { kind: "overflow"; date: string } | null {
+  if (!days.length || days[days.length - 1].cumulativePlanned === 0) return null;
+  let last = -1;
+  for (let i = 0; i < days.length; i++) {
+    const c = days[i].cumulativeCapacity;
+    if (c == null) return null;
+    if (days[i].cumulativePlanned > c) last = i;
+  }
+  if (last < 0) return { kind: "covered" };
+  if (last === days.length - 1) return { kind: "overflow", date: days[last].date };
+  return { kind: "absorbed", date: days[last + 1].date };
+}

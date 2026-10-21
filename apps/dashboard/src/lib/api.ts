@@ -2192,9 +2192,12 @@ export async function getStaffCapacityDaily(scope: EntityScope, horizonDays: num
   return parseStaff("getStaffCapacityDaily", CapacityDailySchema, await apiCall<unknown>(`${STAFF_MONITORING_PATHS.capacityDaily}?${q}`));
 }
 
-/** Per day from today: planned warmups, placement tests and queued steps at their planned date. */
-export async function getStaffSchedule(scope: EntityScope, horizonDays: number): Promise<Schedule> {
-  const q = [scopeQuery(scope), `horizonDays=${horizonDays}`].filter(Boolean).join("&");
+/**
+ * Per day from today: planned warmups, placement tests and queued steps at their planned date.
+ * `lifecycle` keeps only the queued steps of addresses in that lifecycle state (producer-side filter).
+ */
+export async function getStaffSchedule(scope: EntityScope, horizonDays: number, lifecycle?: string): Promise<Schedule> {
+  const q = [scopeQuery(scope), `horizonDays=${horizonDays}`, lifecycle ? `lifecycle=${encodeURIComponent(lifecycle)}` : ""].filter(Boolean).join("&");
   return parseStaff("getStaffSchedule", ScheduleSchema, await apiCall<unknown>(`${STAFF_MONITORING_PATHS.schedule}?${q}`));
 }
 

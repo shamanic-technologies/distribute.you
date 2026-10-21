@@ -11,7 +11,7 @@ import { EmptyNote, Figure, SectionTitle, Shimmer, StatTile, TopBar } from "@/co
 import { ProvidersTable } from "@/components/v2/monitoring-providers";
 import { EmailsCharts, SentPerDayChart } from "@/components/v2/monitoring-emails";
 import { AccountsPage, DomainsPage, InboxProvidersPage, LatestEmails, MailboxesPage, SendingHealthTiles, useSendingVerdict } from "@/components/v2/monitoring-sending";
-import { EntityPage, PlacementTestPage, PlacementTestsPage, QueuedPage, WarmupPage, entityTitle } from "@/components/v2/monitoring-drilldown";
+import { CapacityPlanChart, EntityPage, PlacementTestPage, PlacementTestsPage, QueuedPage, WarmupPage, entityTitle } from "@/components/v2/monitoring-drilldown";
 import { HubChip, HubChips, HubSectionBlock, useOpenSections } from "@/components/v2/hub-section";
 import { EmailPriceView } from "@/components/v2/monitoring-email-price";
 import { BillingTable } from "@/components/v2/monitoring-billing";
@@ -241,7 +241,17 @@ export function V2Monitoring() {
             <MailboxesPage base={base} />
           </div>
         )}
-        {view.page === "emails/accounts" && <AccountsPage base={base} />}
+        {view.page === "emails/accounts" && (
+          <AccountsPage
+            base={base}
+            aside={
+              <section>
+                <SectionTitle>Capacity vs planned</SectionTitle>
+                <CapacityPlanChart scope={{}} lifecycle="in_production" />
+              </section>
+            }
+          />
+        )}
         {view.page === "emails/placement-tests" && <PlacementTestsPage base={base} />}
         {view.page === "emails/warmup" && <WarmupPage base={base} />}
         {view.page === "emails/queued" && <QueuedPage base={base} />}

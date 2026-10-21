@@ -49,6 +49,8 @@ import {
   windowSince,
   type EntityKind,
   type EntityScope,
+  backlogVerdict,
+  capacityVsPlanned,
   type ProviderCounts,
   type ScheduleDay,
 } from "@/lib/monitoring/sending";
@@ -278,6 +280,130 @@ export function ScheduleChart({ scope, series = PLAN_SERIES }: { scope: EntitySc
           {n(totals.beyondHorizonQueuedSteps)} after {days.length ? shortDay(days[days.length - 1].date) : "the horizon"}.
         </p>
       )}
+    </div>
+  );
+}
+
+// ─── Capacity vs planned, cumulated ────────────────────────────────────────
+
+/**
+ * Per day from today: what the mailboxes can send (bars, cumulated from today) against the queued
+ * steps planned (line, cumulated from today, starting with the steps already overdue), so the day the
+ * backlog is absorbed, or still runs ahead, reads at a glance. Both reads are the producer's (the same
+ * keys as the capacity and planned charts, so nothing is fetched twice); only the running totals are
+ * added up here (`capacityVsPlanned`).
+ */
+export function CapacityPlanChart({ scope, lifecycle }: { scope: EntityScope; lifecycle?: "in_production" }) {
+  const cap = useAuthQuery(["staffCapacityDaily", scopeQuery(scope), HORIZON_DAYS], () => getStaffCapacityDaily(scope, HORIZON_DAYS), ONCE);
+  // `lifecycle` keeps the planned sends of addresses in production only (capacity already counts only those).
+  const plan = useAuthQuery(["staffSchedule", scopeQuery(scope), HORIZON_DAYS, lifecycle ?? "all"], () => getStaffSchedule(scope, HORIZON_DAYS, lifecycle), ONCE);
+  const [hover, setHover] = useState<string | null>(null);
+  if (cap.isError) return <Failed what="the capacity per day" />;
+  if (plan.isError) return <Failed what="what is planned ahead" />;
+  if (!cap.data || !plan.data) {
+    return (
+      <div className="k-card p-4">
+        <Shimmer className="h-[140px] w-full" />
+      </div>
+    );
+  }
+  const overdue = plan.data.totals.overdueQueuedSteps;
+  const days = capacityVsPlanned(cap.data.days, plan.data.days, overdue);
+  if (!days.length) {
+    return (
+      <div className="k-card">
+        <EmptyNote>Nothing planned ahead.</EmptyNote>
+      </div>
+    );
+  }
+  const verdict = backlogVerdict(days);
+  const H = 140;
+  // Bar and line height only, never a figure shown. The scale follows the planned line (x1.6), so the
+  // crossing stays readable when capacity cumulates far beyond the plan; taller bars stop at the top.
+  const planMax = Math.max(...days.map((d) => d.cumulativePlanned));
+  const allMax = Math.max(...days.map((d) => Math.max(d.cumulativeCapacity ?? 0, d.cumulativePlanned)));
+  const max = Math.max(1, Math.min(planMax * 1.6, allMax));
+  const y = (v: number) => H - (v / max) * H;
+  const w = 100 / days.length;
+  const shown = days.find((d) => d.date === hover) ?? days[0];
+  const every = Math.ceil(days.length / 4);
+  const fig = (v: number | null) => (v == null ? <Dash /> : n(v));
+  return (
+    <div className="k-card p-4">
+      {verdict && (
+        <p className="text-[13px]" style={{ color: verdict.kind === "overflow" ? RED : undefined }}>
+          {verdict.kind === "covered"
+            ? "Capacity covers every planned send."
+            : verdict.kind === "absorbed"
+              ? `Backlog absorbed by ${shortDay(verdict.date)}.`
+              : `Planned sends still run ahead of capacity on ${shortDay(verdict.date)}.`}
+        </p>
+      )}
+      <div className="k-fg2 mt-2 text-[12px]">{shortDay(shown.date)}{shown.date === days[0].date && " · today"}</div>
+      <dl className="mt-1 grid grid-cols-2 gap-x-4 gap-y-0.5 text-[12px] tabular-nums">
+        <div className="flex justify-between gap-2">
+          <dt className="k-fg3">Capacity</dt>
+          <dd>{fig(shown.capacity)}</dd>
+        </div>
+        <div className="flex justify-between gap-2">
+          <dt className="k-fg3">Planned that day</dt>
+          <dd>{n(shown.planned)}</dd>
+        </div>
+        <div className="flex justify-between gap-2">
+          <dt className="inline-flex items-center gap-1.5 k-fg3">
+            <span className="h-2 w-2 rounded-[2px]" style={{ background: "var(--data-teal)" }} aria-hidden="true" />
+            Capacity, cumulated
+          </dt>
+          <dd>{fig(shown.cumulativeCapacity)}</dd>
+        </div>
+        <div className="flex justify-between gap-2">
+          <dt className="inline-flex items-center gap-1.5 k-fg3">
+            <span className="h-0.5 w-2.5 rounded-full" style={{ background: "var(--accent)" }} aria-hidden="true" />
+            Planned, cumulated
+          </dt>
+          <dd>{n(shown.cumulativePlanned)}</dd>
+        </div>
+      </dl>
+      <div className="relative mt-3" style={{ height: H }} onMouseLeave={() => setHover(null)}>
+        <div className="absolute inset-0 flex items-end gap-[2px]">
+          {days.map((d) => (
+            <button
+              key={d.date}
+              type="button"
+              aria-label={`${shortDay(d.date)}: capacity ${d.capacity ?? "unknown"}, planned ${d.planned}, capacity cumulated ${d.cumulativeCapacity ?? "unknown"}, planned cumulated ${d.cumulativePlanned}`}
+              onMouseEnter={() => setHover(d.date)}
+              onFocus={() => setHover(d.date)}
+              className="flex h-full min-w-0 flex-1 items-end"
+              style={{ opacity: hover && hover !== d.date ? 0.5 : 1 }}
+            >
+              <span
+                className="block w-full rounded-t-[2px]"
+                style={{ height: Math.min(H, Math.max(2, ((d.cumulativeCapacity ?? 0) / max) * H)), background: "color-mix(in oklab, var(--data-teal) 55%, transparent)" }}
+              />
+            </button>
+          ))}
+        </div>
+        <svg className="pointer-events-none absolute inset-0 h-full w-full overflow-visible" viewBox={`0 0 100 ${H}`} preserveAspectRatio="none" aria-hidden="true">
+          <polyline
+            fill="none"
+            stroke="var(--accent)"
+            strokeWidth={2}
+            vectorEffect="non-scaling-stroke"
+            strokeLinejoin="round"
+            points={days.map((d, i) => `${(i + 0.5) * w},${y(d.cumulativePlanned)}`).join(" ")}
+          />
+        </svg>
+      </div>
+      <div className="k-line-subtle flex gap-[2px] border-t pt-1.5">
+        {days.map((d, i) => (
+          <span key={d.date} className="k-fg3 min-w-0 flex-1 overflow-visible whitespace-nowrap text-[10.5px]">
+            {i % every === 0 ? shortDay(d.date) : ""}
+          </span>
+        ))}
+      </div>
+      <p className="k-fg3 mt-3 text-[12px] tabular-nums">
+        Planned = queued steps at their planned date, starting with {n(overdue)} overdue{lifecycle === "in_production" ? ", on addresses in production" : ""}.
+      </p>
     </div>
   );
 }
@@ -657,6 +783,10 @@ export function EntityPage({ base, kind, id }: { base: string; kind: EntityKind;
       <section>
         <SectionTitle right={<span>Next {HORIZON_DAYS} days</span>}>Planned ahead</SectionTitle>
         <ScheduleChart scope={scope} />
+      </section>
+      <section>
+        <SectionTitle right={<span>Next {HORIZON_DAYS} days</span>}>Capacity vs planned, cumulated</SectionTitle>
+        <CapacityPlanChart scope={scope} />
       </section>
       <section>
         <SectionTitle>Emails</SectionTitle>
