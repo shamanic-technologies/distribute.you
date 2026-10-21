@@ -12,7 +12,10 @@ import type { ResearchCatalog, ResearchFile } from "@/lib/research/research";
  * `actual` (what the vendors charged us). Every Research component reads through `useResearch()`,
  * so one switch in the top bar moves the hub, every study and every workflow, template and LLM page.
  *
- * None of these roots is persisted to disk (`research*` is not a persisted root).
+ * Only the billed-basis catalogue is persisted to disk (`researchCatalog`, staff browsers only): the
+ * Workflows table's LLM and Template cells paint on the first frame instead of waiting for 825KB
+ * (owner 2026-10-21, « It should be instant »). The actual-basis catalogue (our margin) sits under its
+ * own root, `researchCatalogActual`, never written to disk; the file and texts stay memory-only.
  */
 export type ResearchBasis = "user" | "actual";
 
@@ -24,9 +27,17 @@ async function fetchPart<T>(basis: ResearchBasis, part: "file" | "catalog" | "te
 
 const ONCE = { staleTime: Infinity, retry: false } as const;
 
-/** The catalogue (workflow, template and model pages) on one basis. Shared by the chips on a workflow page. */
+/**
+ * The catalogue (workflow, template and model pages) on one basis. Shared by the chips on a workflow page.
+ * Painted from disk, then re-read once the default staleTime has passed (never `Infinity`: a restored
+ * copy would otherwise be served for 30 days).
+ */
 export function useResearchCatalog(basis: ResearchBasis) {
-  return useQuery({ queryKey: ["researchCatalog", basis], queryFn: () => fetchPart<ResearchCatalog>(basis, "catalog"), ...ONCE });
+  return useQuery({
+    queryKey: basis === "actual" ? ["researchCatalogActual"] : ["researchCatalog", basis],
+    queryFn: () => fetchPart<ResearchCatalog>(basis, "catalog"),
+    retry: false,
+  });
 }
 
 /** The template texts, the same on both bases. */

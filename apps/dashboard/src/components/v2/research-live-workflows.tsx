@@ -92,12 +92,12 @@ export function ResearchLiveWorkflows({
           <thead>
             <tr className="border-b border-[var(--line-subtle)]">
               <th className={`${LIVE_TH} w-10`}>#</th>
-              <th className={`${LIVE_TH} w-36`}>Workflow</th>
+              <th className={`${LIVE_TH} w-28`}>Workflow</th>
               <th className={`${LIVE_TH} w-28`}>LLM</th>
               <th className={LIVE_TH}>Template</th>
-              <th className={`${LIVE_TH} w-36`}>Why here</th>
+              <th className={`${LIVE_TH} w-32`}>Why here</th>
               <LiveWorkflowHeads costLabel={`Cost ${outcomeUnit.replace("/ ", "per ")}`} compact maturityLabel="Maturity" />
-              <th className={`${LIVE_TH} w-44`}>Status</th>
+              <th className={`${LIVE_TH} w-32`}>Status</th>
               <th className={`${LIVE_TH} w-10`} aria-label="Status menu" />
             </tr>
           </thead>
@@ -163,9 +163,9 @@ export function ResearchLiveWorkflows({
                     <td className="max-w-0 px-3">
                       {template ? (
                         // Owner 2026-10-21: the dynasty name on line 1, its version on a discreet line 2 (a chip beside
-                        // the name squeezed it to one letter).
-                        <div className="flex min-w-0 flex-col py-1">
-                          <Tag href={template.linked ? researchCatalogHref(base, pipe, "templates", template.key) : null} title={template.label}>
+                        // the name squeezed it to one letter). The name WRAPS, never truncated: it must read in full.
+                        <div className="flex min-w-0 flex-col items-start py-1">
+                          <Tag href={template.linked ? researchCatalogHref(base, pipe, "templates", template.key) : null} title={template.label} wrap>
                             {template.label}
                           </Tag>
                           {template.version && (
@@ -235,21 +235,25 @@ function Tag({
   title,
   muted = false,
   strong = false,
+  wrap = false,
   children,
 }: {
   href: string | null;
   title: string;
   muted?: boolean;
   strong?: boolean;
+  /** Wraps onto more lines instead of truncating (keel's unlayered `.k-chip` pins nowrap + 20px, so inline). */
+  wrap?: boolean;
   children: ReactNode;
 }) {
-  const cls = `k-chip inline-block max-w-full truncate align-middle ${strong ? "font-medium" : ""} ${muted ? "k-fg3" : ""}`;
+  const cls = `k-chip inline-block max-w-full align-middle ${wrap ? "" : "truncate"} ${strong ? "font-medium" : ""} ${muted ? "k-fg3" : ""}`;
+  const style = wrap ? { height: "auto", whiteSpace: "normal" as const, overflowWrap: "anywhere" as const, padding: "1px 6px", lineHeight: "18px" } : undefined;
   return href ? (
-    <Link href={href} title={title} className={`${cls} hover:text-[var(--accent)]`}>
+    <Link href={href} title={title} className={`${cls} hover:text-[var(--accent)]`} style={style}>
       {children}
     </Link>
   ) : (
-    <span title={title} className={cls}>
+    <span title={title} className={cls} style={style}>
       {children}
     </span>
   );

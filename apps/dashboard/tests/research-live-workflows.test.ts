@@ -201,7 +201,10 @@ describe("research reads nothing scoped to the viewer", () => {
     expect(live).toContain("table-fixed");
     // The Template column takes the free width (its values are the longest); Workflow is fixed.
     expect(live).toContain("<th className={LIVE_TH}>Template</th>");
-    expect(live).toContain("w-36`}>Workflow</th>");
+    expect(live).toContain("w-28`}>Workflow</th>");
+    // Owner 2026-10-21 (third ask): the Template name wraps, never truncated; Status sized to its word.
+    expect(live).toContain("title={template.label} wrap>");
+    expect(live).toContain("w-32`}>Status</th>");
     expect(live).not.toContain("useParams");
   });
 });
