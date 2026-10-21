@@ -931,6 +931,8 @@ const COPILOT_ALLOWED_TOOLS = [
   "undo_people_correction",
   "merge_people",
   "undo_people_merge",
+  // Adds one person the client names to the brand contacts (COPILOT-ADD-CONTACT-1021).
+  "add_contact",
 ];
 
 const PLATFORM_CHAT_CONFIGS = [
