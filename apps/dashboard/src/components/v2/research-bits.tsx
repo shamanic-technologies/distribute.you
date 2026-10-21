@@ -24,6 +24,7 @@ import { ArrowRightIcon } from "@phosphor-icons/react/dist/csr/ArrowRight";
 import { CrosshairIcon } from "@phosphor-icons/react/dist/csr/Crosshair";
 import { HourglassIcon } from "@phosphor-icons/react/dist/csr/Hourglass";
 import { TargetIcon } from "@phosphor-icons/react/dist/csr/Target";
+import { GlobeIcon } from "@phosphor-icons/react/dist/csr/Globe";
 import { EmptyNote, SectionTitle, Shimmer } from "@/components/v2/ui";
 import { ChannelChip } from "@/components/v2/offer-sales-paths";
 import { useLegCatalogue } from "@/lib/use-leg-catalogue";
@@ -87,7 +88,15 @@ export const TOPIC_LOOK: Record<ResearchTopic, { color: string; Icon: typeof Bra
   delay: { color: "var(--data-sky)", Icon: HourglassIcon },
   // how narrow a client's B2B niche is, graded by Jev: a typed judgment, so the judgment colour
   niche: { color: "var(--data-violet)", Icon: TargetIcon },
+  // where the prospect lives: which market answers best, and at what cost
+  country: { color: "var(--data-amber)", Icon: GlobeIcon },
 };
+
+/** A topic's look; a topic this build does not know yet wears a neutral mark, never a crash. */
+const UNKNOWN_TOPIC_LOOK = { color: "var(--fg-3)", Icon: MagnifyingGlassIcon };
+export function topicLook(topic: ResearchTopic): { color: string; Icon: typeof BrainIcon } {
+  return TOPIC_LOOK[topic] ?? UNKNOWN_TOPIC_LOOK;
+}
 
 export const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 export function monthText(ym: string): string {
@@ -234,7 +243,7 @@ export function SectionPath({ section, compact = false }: { section: ResearchSec
 
 /** A topic's mark: a soft tile in its colour, drawn like a section's mark. */
 export function TopicMark({ topic, size = 32 }: { topic: ResearchTopic; size?: number }) {
-  const { color, Icon } = TOPIC_LOOK[topic];
+  const { color, Icon } = topicLook(topic);
   return (
     <span
       className="inline-flex shrink-0 items-center justify-center rounded-[8px]"

@@ -12,7 +12,7 @@ import {
   DelayRow,
   MonthsRow,
   Row,
-  TOPIC_LOOK,
+  topicLook,
   OutcomePipes,
   SectionMark,
   SectionName,
@@ -35,7 +35,7 @@ import { v2Href } from "@/lib/v2/routes";
 import {
   GOAL_LABEL,
   PIPE_ORDER,
-  TOPIC_LABEL,
+  topicLabel,
   outcomeEntry,
   outcomeGroups,
   parseResearchPath,
@@ -97,6 +97,8 @@ const WINNER_LABEL: Record<ResearchTopic, string> = {
   delay: "Comparison",
   // one bar per niche grade: a pick among options
   niche: "Winner",
+  // countries ranked on their rate and their cost per outcome
+  country: "Winner",
 };
 
 const STATE_LOOK: Record<StudyState, { label: string; dot: string }> = {
@@ -110,7 +112,7 @@ const STATE_LOOK: Record<StudyState, { label: string; dot: string }> = {
 function winnerLabel(study: ResearchStudy, state: StudyState): string {
   // a cost split names its largest share, it ranks nothing
   if (study.winnerLabel) return study.winnerLabel;
-  const label = WINNER_LABEL[study.topic];
+  const label = WINNER_LABEL[study.topic] ?? "Comparison";
   return state === "conclusion" || label !== "Winner" ? label : "Leader";
 }
 
@@ -165,7 +167,7 @@ function MiniLine({ points, color }: { points: ResearchPoint[]; color: string })
 // ─── Hub ───────────────────────────────────────────────────────────────────
 
 function StudyCard({ study, href }: { study: ResearchStudy; href: string }) {
-  const look = TOPIC_LOOK[study.topic];
+  const look = topicLook(study.topic);
   const state = studyState(study);
   const spark = study.status === "measured" ? studySpark(study) : null;
   return (
@@ -175,7 +177,7 @@ function StudyCard({ study, href }: { study: ResearchStudy; href: string }) {
         <div className="min-w-0 flex-1">
           <div className="flex items-center justify-between gap-2">
             <p className="k-fg3 truncate text-[12px]">
-              <span style={{ color: look.color }}>{TOPIC_LABEL[study.topic]}</span>
+              <span style={{ color: look.color }}>{topicLabel(study.topic)}</span>
               {" · "}
               {GOAL_LABEL[study.goal]}
             </p>
@@ -515,9 +517,9 @@ function V2ResearchStudy({ base, studyId }: { base: string; studyId: string }) {
   // The email legs' population and rule (clients, emails, the run-start wait) describe the two cold
   // email pipes' figures only: a meeting study states its own in its sample and chart note.
   const emailLeg = study.pipe === "cold-email-positive-reply" || study.pipe === "cold-email-website-visit";
-  const look = TOPIC_LOOK[study.topic];
+  const look = topicLook(study.topic);
   const state = studyState(study);
-  const crumbs = [{ label: "Research", href: base }, { label: <SectionName section={section} /> }, { label: TOPIC_LABEL[study.topic] }];
+  const crumbs = [{ label: "Research", href: base }, { label: <SectionName section={section} /> }, { label: topicLabel(study.topic) }];
   return (
     <>
       <TopBar crumbs={crumbs} actions={<CostBasisSwitch />} />
@@ -625,7 +627,7 @@ function V2ResearchStudy({ base, studyId }: { base: string; studyId: string }) {
               />
               {study.pipe && <Row k="Outcome" v={outcomeText} />}
               {outcomeMeta?.step && <Row k={(outcomeMeta.pipes?.length ?? 0) === 1 ? "Pipe" : "Pipes"} v={<OutcomePipes outcome={outcomeMeta.id} prefix={false} />} />}
-              <Row k="Question" v={`${TOPIC_LABEL[study.topic]}, ${GOAL_LABEL[study.goal]}`} />
+              <Row k="Question" v={`${topicLabel(study.topic)}, ${GOAL_LABEL[study.goal]}`} />
               {emailLeg && RESEARCH.volume && <Row k="Clients" v={`${RESEARCH.volume.orgs}, all orgs`} />}
               {emailLeg && RESEARCH.volume && <Row k="Emails" v={RESEARCH.volume.emails.toLocaleString("en-US")} />}
               <Row

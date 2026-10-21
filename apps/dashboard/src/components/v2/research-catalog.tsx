@@ -33,7 +33,7 @@ import {
   STANDALONE_WORDS,
   SectionMark,
   SectionName,
-  TOPIC_LOOK,
+  topicLook,
   TemplateVersionChip,
   TopicMark,
   dayText,
@@ -119,7 +119,7 @@ export function PipeCatalogLinks({ base, pipe }: { base: string; pipe: ResearchP
   return (
     <HubChips>
       {CATALOG_KINDS.map((kind) =>
-        counts[kind] ? <HubChip key={kind} href={researchCatalogHref(base, pipe, kind)} color={TOPIC_LOOK[KIND_TOPIC[kind]].color} label={KIND_WORD[kind].title} count={counts[kind]} /> : null,
+        counts[kind] ? <HubChip key={kind} href={researchCatalogHref(base, pipe, kind)} color={topicLook(KIND_TOPIC[kind]).color} label={KIND_WORD[kind].title} count={counts[kind]} /> : null,
       )}
     </HubChips>
   );
@@ -556,7 +556,7 @@ function Charts({ f, topic }: { f: ResearchFigures; topic: "workflow" | "templat
   return (
     <div className="space-y-6">
       {f.charts.map((c) => (
-        <MonthsRow key={c.title} chart={c} color={TOPIC_LOOK[topic].color} />
+        <MonthsRow key={c.title} chart={c} color={topicLook(topic).color} />
       ))}
     </div>
   );
