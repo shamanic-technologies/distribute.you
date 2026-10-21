@@ -115,3 +115,21 @@ export function dealsLifecycleQuery(brandId: string, campaignId: string | null):
   if (campaignId) qs.set("campaignId", campaignId);
   return qs.toString();
 }
+
+/**
+ * People's tab keys before the ladder (owner 2026-10-21), still written by Today's tiles and the
+ * bell: each opens the rung that holds those people, with the filter that keeps only them. A
+ * positive reply is an Engaged person who is Interested; a website visit is Engaged.
+ */
+const LEGACY_PEOPLE_TABS: Record<string, { rung: string; filters: { interest?: string[] } }> = {
+  contacted: { rung: "contacted", filters: {} },
+  "website-visits": { rung: "engaged", filters: {} },
+  "positive-replies": { rung: "engaged", filters: { interest: ["interested"] } },
+  signups: { rung: "signup_or_form", filters: {} },
+  meetings: { rung: "meeting_booked", filters: {} },
+  sales: { rung: "paid_client", filters: {} },
+};
+
+export function peopleLegacyTab(key: string | null): { rung: string; filters: { interest?: string[] } } | null {
+  return key ? (LEGACY_PEOPLE_TABS[key] ?? null) : null;
+}
