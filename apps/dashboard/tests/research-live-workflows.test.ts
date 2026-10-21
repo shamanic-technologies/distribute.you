@@ -261,3 +261,17 @@ describe("shortWorkflowName", () => {
     expect(catalog).toContain('if (!catalog && !itemKey && kind === "workflows" && liveLeg != null)');
   });
 });
+
+describe("Research pipe workflows: this pipe only, Active / Deprecated tabs (owner 2026-10-22)", () => {
+  const src = readFileSync(join(__dirname, "../src/components/v2/research-live-workflows.tsx"), "utf8");
+  it("lists only the workflows the producer assigns to this pipe", () => {
+    expect(src).toContain('.filter((r) => r.assignment === "active")');
+  });
+  it("splits on the workflow's own status, Active first, and renders the picked tab", () => {
+    expect(src).toContain('dynastyStatuses.statusOf(r.slug) === "deprecated" ? "deprecated" : "active"');
+    expect(src.indexOf('{ key: "active", label: "Active" }')).toBeLessThan(src.indexOf('{ key: "deprecated", label: "Deprecated" }'));
+    expect(src).toContain('useState<StatusTab>("active")');
+    expect(src).toContain("shown.map((r) =>");
+    expect(src).toContain("<RecordsTabs");
+  });
+});
