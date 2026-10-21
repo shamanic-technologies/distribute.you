@@ -40,7 +40,7 @@ import { writtenMessageId, type WrittenBy } from "@/lib/written-by";
 import { itemCallId } from "@/lib/api-calls";
 import { ApiCallDetailPanel } from "@/components/v2/api-call-detail";
 import { RelationshipChips, UnmergeMenu } from "@/components/v2/relationship-tags";
-import { UNIBOX_DIMENSIONS, filtersFromParams, filtersKey, uniboxLeadName, uniboxRowId, uniboxRowKey, uniboxRowSubtitle, uniboxThreadRef, type LifecycleRung, type UniboxDimension, type UniboxPage, type UniboxRow } from "@/lib/unibox-leads";
+import { UNIBOX_DIMENSIONS, filtersFromParams, filtersKey, uniboxLeadName, uniboxRowId, uniboxRowKey, uniboxRowPreview, uniboxRowSubtitle, uniboxThreadRef, type LifecycleRung, type UniboxDimension, type UniboxPage, type UniboxRow } from "@/lib/unibox-leads";
 import { UniboxFilterBar, UniboxLeadCardPanel, UniboxRowTags } from "@/components/v2/unibox-lead-card";
 
 // The publishable logo.dev token the dashboard already ships (company-logo.tsx).
@@ -441,7 +441,8 @@ const leadCardKey = (brandId: string, rowId: string) => ["uniboxLead", brandId, 
 
 /**
  * One lead in the list (owner 2026-10-21, like Gmail / Superhuman): the person's name in bold and
- * the time, then their title and company in grey with any tag that is not the default.
+ * the time, then their title and company in grey with any tag that is not the default, then the
+ * first words of the last message (`You: …` when we wrote it), absent when none is served.
  */
 function LeadRow({
   index,
@@ -463,6 +464,7 @@ function LeadRow({
   const name = uniboxLeadName(row);
   // No served title or company: the address, unless it already IS the first line.
   const sub = uniboxRowSubtitle(row) ?? (row.name?.trim() ? (row.emails[0] ?? row.phones[0] ?? null) : null);
+  const preview = uniboxRowPreview(row);
   return (
     <li data-row={index}>
       <button
@@ -473,7 +475,11 @@ function LeadRow({
         className={`k-row k-line-subtle flex w-full items-start gap-3 border-b px-4 py-2.5 text-left ${selected || cursor ? "k-selected" : ""}`}
       >
         {/* The mark is as tall as the two lines beside it (owner 2026-10-11, MarkLines). */}
-        <MarkLines className="flex-1" gap="gap-3" mark={(px) => (row.company?.domain ? <CompanyMark name={row.company.name ?? name} domain={row.company.domain} size={px} /> : <PersonMark name={name} emails={row.emails} size={px} />)}>
+        <MarkLines
+          className="flex-1"
+          gap="gap-3"
+          after={preview ? <span className="k-fg2 mt-0.5 truncate text-[12px]">{preview}</span> : null}
+          mark={(px) => (row.company?.domain ? <CompanyMark name={row.company.name ?? name} domain={row.company.domain} size={px} /> : <PersonMark name={name} emails={row.emails} size={px} />)}>
           <span className="flex items-center gap-2">
             <span className="truncate text-[13px] font-semibold">{name}</span>
             {row.lastActivityAt && <span className="k-fg3 ml-auto shrink-0 text-[12px] tabular-nums">{timeAgo(row.lastActivityAt)}</span>}
