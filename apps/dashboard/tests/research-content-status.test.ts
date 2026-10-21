@@ -138,9 +138,20 @@ describe("TEMPLATE-MODEL-STATUS-1019: the three Research pages", () => {
   it("every new root is held out of the disk cache", () => {
     const persist = read("lib/persist-cache.ts");
     const sensitive = persist.slice(persist.indexOf("SENSITIVE_QUERY_ROOTS"), persist.indexOf("PERSISTABLE_QUERY_ROOTS"));
-    for (const root of ["contentTemplateStatuses", "contentModelStatuses", "workflowDynastyStatuses", "workflowDynastyDeprecation", "retireByContentPreview", "templateOutputs"]) {
+    for (const root of ["contentTemplateStatuses", "contentModelStatuses", "workflowDynastyDeprecation", "retireByContentPreview", "templateOutputs"]) {
       expect(sensitive).toContain(`"${root}"`);
     }
+  });
+
+  it("the Workflows table's Status and LLM/Template cells paint from disk (owner 2026-10-21), the actual basis never", () => {
+    const persist = read("lib/persist-cache.ts");
+    const sensitive = persist.slice(persist.indexOf("SENSITIVE_QUERY_ROOTS"), persist.indexOf("PERSISTABLE_QUERY_ROOTS"));
+    const persistable = persist.slice(persist.indexOf("export const PERSISTABLE_QUERY_ROOTS"));
+    for (const root of ["workflowDynastyStatuses", "researchCatalog"]) expect(persistable).toContain(`"${root}",`);
+    expect(sensitive).not.toContain('"workflowDynastyStatuses"');
+    expect(sensitive).toContain('"researchCatalogActual"');
+    const source = read("lib/research/research-source.tsx");
+    expect(source).toContain('basis === "actual" ? ["researchCatalogActual"]');
   });
 });
 

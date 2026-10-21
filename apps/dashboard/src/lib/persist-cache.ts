@@ -89,11 +89,11 @@ export const SENSITIVE_QUERY_ROOTS = new Set([
   "workflowRankLadderActual",
   "campaignWorkflowRevenueActual",
   "workflowRunsActual",
+  "researchCatalogActual",
   // Staff Research status (TEMPLATE-MODEL-STATUS-1019): template/model/workflow statuses, the
   // workflows a deprecation would stop, a template's last emails (every client's copy).
   "contentTemplateStatuses",
   "contentModelStatuses",
-  "workflowDynastyStatuses",
   "workflowDynastyDeprecation",
   "retireByContentPreview",
   "templateOutputs",
@@ -185,6 +185,10 @@ export const PERSISTABLE_QUERY_ROOTS = new Set([
   "publicCatalogue",
   // Research's fleet ranking of one leg's workflows — no org, one answer for every tenant.
   "legWorkflowRanking",
+  // Research's Workflows table cells (owner 2026-10-21, « It should be instant »): the billed-basis
+  // catalogue (LLM, Template) and which dynasties can run (Status). Staff-only reads, on staff disks.
+  "researchCatalog",
+  "workflowDynastyStatuses",
   // The brand's effective conversion rate per leg (Brand Settings).
   "brandConversionRates",
   // Tenant identity — the sidebar switcher's org label + Clerk avatar. Clerk is the
