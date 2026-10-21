@@ -8,6 +8,7 @@ import { HubSectionBlock, useOpenSections } from "@/components/v2/hub-section";
 import {
   Arrow,
   ChartNote,
+  DelayHistogram,
   DelayRow,
   MonthsRow,
   Row,
@@ -594,6 +595,8 @@ function V2ResearchStudy({ base, studyId }: { base: string; studyId: string }) {
                 <MonthsRow key={c.title} chart={c} color={look.color} />
               ) : c.curve ? (
                 <DelayRow key={c.title} chart={c} color={look.color} />
+              ) : study.delay ? (
+                <DelayHistogram key={c.title} chart={c} color={look.color} />
               ) : (
                 <div key={c.title}>
                   <SectionTitle>{c.title}</SectionTitle>
