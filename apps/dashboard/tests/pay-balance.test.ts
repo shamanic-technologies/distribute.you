@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { PAY_BALANCE_GENERIC, paidLine, payBalanceRefusal, postpaidOwed } from "../src/lib/v2/pay-balance";
+import { PAY_BALANCE_GENERIC, payBalanceRefusal, postpaidOwed } from "../src/lib/v2/pay-balance";
 
 describe("postpaid amount owed (billing-service fields, owner 2026-10-21)", () => {
   it("reads the owed decimal cents rounded up like billing's charge", () => {
@@ -39,12 +39,5 @@ describe("each pay_balance refusal reads in plain words", () => {
 
   it("carries no em-dash", () => {
     expect(JSON.stringify([PAY_BALANCE_GENERIC, payBalanceRefusal({ code: "charge_declined" }).message])).not.toMatch(/[—–]/);
-  });
-});
-
-describe("the paid line", () => {
-  it("says what was paid, or that nothing was owed", () => {
-    expect(paidLine(1217, "$12.17")).toBe("Payment of $12.17 received. Your balance is $0.00.");
-    expect(paidLine(0, "$0.00")).toBe("No balance due.");
   });
 });

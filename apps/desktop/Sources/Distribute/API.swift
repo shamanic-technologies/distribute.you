@@ -441,10 +441,6 @@ struct DistributeAPI {
             try await sendIgnoringBody("DELETE", "/billing/accounts/auto_topup", query: ["orgId": orgId], body: nil)
         }
     }
-    /// POSTPAID: pay the whole amount owed now, on the saved card.
-    func payBalance(orgId: String) async throws {
-        try await sendIgnoringBody("POST", "/billing/accounts/pay_balance", query: ["orgId": orgId], body: nil)
-    }
     func createBrand(orgId: String, url: String) async throws -> String {
         let b: CreatedBrand = try await send("POST", "/brands", query: ["orgId": orgId], body: ["url": url]); return b.brandId
     }

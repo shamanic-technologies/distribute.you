@@ -1,9 +1,8 @@
 /**
- * POSTPAID "Pay $X now" (owner 2026-10-21: « l'autotopup n'a aucun sens en post paid
- * et ne devrait pas exister, de même que add credit; on doit juste pouvoir être
- * prélevé de tout le montant »). A postpaid org starts at $0, spends on credit, and its
- * card is charged at each step of its credit line and at month end. Its one money
- * action is paying the whole amount owed now (billing-service `pay_balance`).
+ * POSTPAID amount owed (owner 2026-10-21: postpaid works like Google Ads, « le plus
+ * simple, invisible, transparent, non topic »). A postpaid org starts at $0, spends on
+ * credit, and its card is charged automatically at each step and at month end. There is
+ * no Pay now button; `pay_balance` is only called to settle on a card change.
  *
  * Alias-free on purpose (no `@/` import) so the words carry real unit tests.
  * Byte-equal twin: apps/admin/src/lib/pay-balance.ts && apps/dashboard/src/lib/v2/pay-balance.ts.
@@ -60,9 +59,4 @@ export function payBalanceRefusal(body: unknown): { code: string | null; message
       ? ((body as { code: string }).code)
       : null;
   return { code, message: (code && PAY_BALANCE_REFUSALS[code]) || PAY_BALANCE_GENERIC };
-}
-
-/** The success line, from what billing says it charged. */
-export function paidLine(chargedCents: number, formatted: string): string {
-  return chargedCents > 0 ? `Payment of ${formatted} received. Your balance is $0.00.` : "No balance due.";
 }
