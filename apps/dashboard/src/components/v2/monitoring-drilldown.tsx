@@ -53,6 +53,7 @@ import {
   capacityVsPlanned,
   type ProviderCounts,
   type ScheduleDay,
+  type CapacityDay,
 } from "@/lib/monitoring/sending";
 
 /**
@@ -127,8 +128,8 @@ export function CapacityChart({ scope }: { scope: EntityScope }) {
     );
   }
   const H = 140;
-  // Bar height only, never a figure shown.
-  const max = Math.max(1, ...days.map((d) => d.capacity));
+  // Bar and line height only, never a figure shown: the ramp line can sit above the bars.
+  const max = Math.max(1, ...days.map((d) => Math.max(d.capacity, d.rampCap)));
   const shown = days.find((d) => d.date === hover) ?? days.find((d) => d.phase === "today") ?? days[days.length - 1];
   const every = Math.ceil(days.length / 6);
   return (
@@ -143,7 +144,8 @@ export function CapacityChart({ scope }: { scope: EntityScope }) {
             <span className="k-fg3">Capacity </span>
             {n(shown.capacity)}
           </span>
-          <span>
+          <span className="inline-flex items-center gap-1.5">
+            <span className="h-[2px] w-3 rounded-full" style={{ background: RAMP_COLOR }} aria-hidden="true" />
             <span className="k-fg3">Ramp allows </span>
             {n(shown.rampCap)}
           </span>
@@ -161,12 +163,13 @@ export function CapacityChart({ scope }: { scope: EntityScope }) {
           </span>
         </span>
       </div>
-      <div className="mt-3 flex items-end gap-[2px]" style={{ height: H }} onMouseLeave={() => setHover(null)}>
+      <div className="relative mt-3 flex items-end gap-[2px]" style={{ height: H }} onMouseLeave={() => setHover(null)}>
+        <RampLine days={days} max={max} height={H} />
         {days.map((d) => (
           <button
             key={d.date}
             type="button"
-            aria-label={`${shortDay(d.date)}${PHASE_WORD[d.phase] ? `, ${PHASE_WORD[d.phase]}` : ""}: capacity ${n(d.capacity)}`}
+            aria-label={`${shortDay(d.date)}${PHASE_WORD[d.phase] ? `, ${PHASE_WORD[d.phase]}` : ""}: capacity ${n(d.capacity)}, ramp allows ${n(d.rampCap)}`}
             onMouseEnter={() => setHover(d.date)}
             onFocus={() => setHover(d.date)}
             className="flex h-full min-w-0 flex-1 items-end"
@@ -193,6 +196,27 @@ export function CapacityChart({ scope }: { scope: EntityScope }) {
       <RampRule rules={data.rampRules} />
       {data.additive === false && <p className="k-fg3 mt-1 text-[12px]">This address shares its mailbox&apos;s quota with the mailbox&apos;s other addresses.</p>}
     </div>
+  );
+}
+
+const RAMP_COLOR = "var(--data-violet)";
+
+/**
+ * The ramp-up curve over the bars: the served `rampCap` per day, one flat step per day so each step
+ * sits exactly over its bar (dotted ahead of today). Drawing only, every value is the producer's.
+ */
+function RampLine({ days, max, height }: { days: CapacityDay[]; max: number; height: number }) {
+  const y = (v: number) => height - (v / max) * height;
+  const step = (from: number, to: number) => days.slice(from, to).map((d, j) => `${from + j},${y(d.rampCap)} ${from + j + 1},${y(d.rampCap)}`).join(" ");
+  const firstFuture = days.findIndex((d) => d.phase === "future");
+  const cut = firstFuture < 0 ? days.length : firstFuture;
+  return (
+    <svg className="pointer-events-none absolute inset-0 h-full w-full overflow-visible" viewBox={`0 0 ${days.length} ${height}`} preserveAspectRatio="none" aria-hidden="true">
+      {cut > 0 && <polyline points={step(0, cut)} fill="none" stroke={RAMP_COLOR} strokeWidth={2} vectorEffect="non-scaling-stroke" strokeLinejoin="round" />}
+      {cut < days.length && (
+        <polyline points={step(Math.max(0, cut - 1), days.length)} fill="none" stroke={RAMP_COLOR} strokeWidth={2} strokeDasharray="4 3" vectorEffect="non-scaling-stroke" strokeLinejoin="round" />
+      )}
+    </svg>
   );
 }
 

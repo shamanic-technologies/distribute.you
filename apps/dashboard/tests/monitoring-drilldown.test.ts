@@ -55,6 +55,11 @@ describe("Monitoring > Emails drill-down: wiring", () => {
     // the ramp rule is the producer's sentence, the planned date is labelled so
     expect(src).toContain("<RampRule rules={data.rampRules} />");
     expect(src).toContain("title={rules.rule}");
+    // the ramp-up curve is drawn over the capacity bars from the served rampCap (owner 2026-10-21)
+    const chart = src.slice(src.indexOf("export function CapacityChart("), src.indexOf("function RampLine("));
+    expect(chart).toContain("<RampLine days={days} max={max} height={H} />");
+    expect(chart).toContain("Math.max(d.capacity, d.rampCap)");
+    expect(src).toContain("y(d.rampCap)");
     expect(src).toContain(">Planned date</th>");
     // capacity is slow cold: a skeleton, not an error
     expect(src).toContain("Rebuilding capacity");
