@@ -25,6 +25,11 @@ import {
   underBar,
   latestSenderHealthDay,
   lifecycleWord,
+  ADDRESS_TABS,
+  addressTab,
+  bucketQueued,
+  mailboxInProduction,
+  type AddressTabKey,
   type InboxProvider,
   type SeedPlacementCell,
 } from "@/lib/monitoring/sending";
@@ -574,55 +579,159 @@ export function MailboxesPage({ base }: { base: string }) {
   );
 }
 
-export function AccountsPage({ base }: { base: string }) {
+/**
+ * Every sending address, one tab per lifecycle family (In production first), the table in the left
+ * 2/3 and the charts in the right 1/3 (`aside`: the page passes the capacity vs planned chart, which
+ * lives with the drill-down reads). Tabs filter the served rows on the served `lifecycleStatus`.
+ */
+export function AccountsPage({ base, aside }: { base: string; aside?: React.ReactNode }) {
   const q = useOpsAddresses();
-  const { limit, footer } = useShowAll(q.data?.accounts.length ?? 0);
+  const [tab, setTab] = useState<AddressTabKey>("production");
+  const rows = (q.data?.accounts ?? []).filter((a) => addressTab(a.lifecycleStatus) === tab);
+  const { limit, footer } = useShowAll(rows.length);
   const rules = useLifecycleRules();
   const bar = rules.data?.bars.deliveryPctBar ?? null;
-  if (q.isError) return <Failed what="the sending addresses" />;
-  if (!q.data) return <Loading />;
+  const counts = new Map<AddressTabKey, number>();
+  for (const a of q.data?.accounts ?? []) counts.set(addressTab(a.lifecycleStatus), (counts.get(addressTab(a.lifecycleStatus)) ?? 0) + 1);
+  // A lifecycle value no tab names gets its own tab, so the counts always add up to every address.
+  // One status per tab except Deactivated (by Instantly / by us) and Other: the column shows only there.
+  const showStatus = tab === "deactivated" || tab === "other";
+  const tabs = [...ADDRESS_TABS.map((t) => ({ key: t.key as AddressTabKey, label: t.label })), ...(counts.get("other") ? [{ key: "other" as AddressTabKey, label: "Other" }] : [])];
   return (
-    <section>
-      <SectionTitle count={q.data.accounts.length}>Every sending address</SectionTitle>
-      <Table
-        head={
-          <>
-            <th className={TH}>Address</th>
-            <th className={TH}>Status</th>
-            <th className={THR}>Inbox %</th>
-            <th className={THR}>Daily limit</th>
-            <th className={THR}>Sent today</th>
-            <th className={THR}>Yesterday</th>
-            <th className={THR}>Queued</th>
-            <th className={TH}>Next test</th>
-          </>
-        }
-      >
-        {q.data.accounts.slice(0, limit).map((a) => (
-          <tr key={a.email} className="k-row">
-            <td className={`${TD} k-mono text-[12px]`}>
-              <Link href={`${base}/${entityPath("account", a.email)}`} className="hover:underline">
-                {a.email}
-              </Link>
-            </td>
-            <td className={TD}>
-              <StatusWord status={a.lifecycleStatus} />
-            </td>
-            <td className={TDR}>
-              <InboxCell value={a.inboxPlacement?.inboxPct ?? null} bar={bar} />
-            </td>
-            <td className={TDR}>{a.dailyLimit == null ? <Dash /> : n(a.dailyLimit)}</td>
-            <td className={TDR}>{n(a.sentToday)}</td>
-            <td className={TDR}>{n(a.sentYesterday)}</td>
-            <td className={TDR}>{n(a.queueSize)}</td>
-            <td className={`${TD} k-mono k-fg2 text-[12px]`}>
-              {a.nextSeedTest == null ? <Dash /> : a.nextSeedTest.due ? "Due now" : a.nextSeedTest.expectedAt ? shortDay(a.nextSeedTest.expectedAt) : <Dash />}
-            </td>
-          </tr>
+    <div className="grid gap-8 lg:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
+      <section className="min-w-0">
+        <SectionTitle count={q.data?.accounts.length}>Every sending address</SectionTitle>
+        {q.isError ? (
+          <Failed what="the sending addresses" />
+        ) : !q.data ? (
+          <Loading />
+        ) : (
+          <div className="k-card overflow-hidden">
+            <div className="k-line-subtle flex gap-5 overflow-x-auto border-b px-4" role="tablist">
+              {tabs.map((t) => (
+                <button
+                  key={t.key}
+                  type="button"
+                  role="tab"
+                  aria-selected={t.key === tab}
+                  aria-current={t.key === tab ? "page" : undefined}
+                  onClick={() => setTab(t.key)}
+                  className="k-tab shrink-0 text-[13px]"
+                >
+                  {t.label}
+                  <span className="k-fg3 tabular-nums">{n(counts.get(t.key) ?? 0)}</span>
+                </button>
+              ))}
+            </div>
+            {rows.length === 0 ? (
+              <EmptyNote>No address here.</EmptyNote>
+            ) : (
+              <div className="k-scroll overflow-x-auto">
+                <table className="w-full text-[13px]">
+                  <thead className="k-line-subtle border-b">
+                    <tr>
+                      <th className={TH}>Address</th>
+                      {showStatus && <th className={TH}>Status</th>}
+                      <th className={THR}>Inbox %</th>
+                      <th className={THR}>Daily limit</th>
+                      <th className={THR}>Sent today</th>
+                      <th className={THR}>Yesterday</th>
+                      <th className={THR}>Queued</th>
+                      <th className={TH}>Next test</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-[var(--line-subtle)]">
+                    {rows.slice(0, limit).map((a) => (
+                      <tr key={a.email} className="k-row">
+                        <td className={`${TD} k-mono text-[12px]`}>
+                          <Link href={`${base}/${entityPath("account", a.email)}`} className="hover:underline">
+                            {a.email}
+                          </Link>
+                        </td>
+                        {showStatus && (
+                          <td className={TD}>
+                            <StatusWord status={a.lifecycleStatus} />
+                          </td>
+                        )}
+                        <td className={TDR}>
+                          <InboxCell value={a.inboxPlacement?.inboxPct ?? null} bar={bar} />
+                        </td>
+                        <td className={TDR}>{a.dailyLimit == null ? <Dash /> : n(a.dailyLimit)}</td>
+                        <td className={TDR}>{n(a.sentToday)}</td>
+                        <td className={TDR}>{n(a.sentYesterday)}</td>
+                        <td className={TDR}>{n(a.queueSize)}</td>
+                        <td className={`${TD} k-mono k-fg2 text-[12px]`}>
+                          {a.nextSeedTest == null ? <Dash /> : a.nextSeedTest.due ? "Due now" : a.nextSeedTest.expectedAt ? shortDay(a.nextSeedTest.expectedAt) : <Dash />}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+            {footer}
+          </div>
+        )}
+      </section>
+      <aside className="min-w-0 space-y-8">
+        <section>
+          <SectionTitle>Emails queued per mailbox</SectionTitle>
+          <QueuedBuckets />
+        </section>
+        {aside}
+      </aside>
+    </div>
+  );
+}
+
+/**
+ * Share of IN-PRODUCTION mailboxes (real mailboxes, never alias addresses) by emails queued: the
+ * mailbox's served `queuedSteps`. Grouping served rows into buckets, nothing summed here.
+ */
+export function QueuedBuckets() {
+  const q = useOpsMailboxes();
+  if (q.isError) return <Failed what="the queued emails" />;
+  if (!q.data) return <Loading />;
+  const prod = q.data.mailboxes.filter(mailboxInProduction);
+  if (!prod.length) {
+    return (
+      <div className="k-card">
+        <EmptyNote>No mailbox in production.</EmptyNote>
+      </div>
+    );
+  }
+  const missing = prod.filter((m) => m.queuedSteps == null);
+  if (missing.length) {
+    console.error("[monitoring] /ops/mailboxes serves no queuedSteps on", missing.length, "production mailboxes, e.g.", missing[0].login);
+    return (
+      <div className="k-card">
+        <EmptyNote>Queued emails per mailbox are not served yet.</EmptyNote>
+      </div>
+    );
+  }
+  const values = prod.map((m) => m.queuedSteps as number);
+  const buckets = bucketQueued(values);
+  // Bar length only, never a figure shown.
+  const max = Math.max(1, ...buckets.map((b) => b.count));
+  return (
+    <div className="k-card p-4">
+      <p className="k-fg3 text-[12px] tabular-nums">
+        {n(values.length)} {values.length === 1 ? "mailbox" : "mailboxes"} in production
+      </p>
+      <div className="mt-3 space-y-2">
+        {buckets.map((b) => (
+          <div key={b.label} className="grid grid-cols-[64px_minmax(0,1fr)_88px] items-center gap-3 text-[12px]">
+            <span className="k-fg2 tabular-nums">{b.label}</span>
+            <span className="k-inset block h-2 rounded-[2px]">
+              <span className="block h-2 rounded-[2px]" style={{ width: `${(b.count / max) * 100}%`, background: b.label === "0" ? "var(--fg-4)" : "var(--accent)" }} />
+            </span>
+            <span className="text-right tabular-nums">
+              {b.count ? `${Math.round(b.pct) || "<1"}%` : "0%"} <span className="k-fg3">· {n(b.count)}</span>
+            </span>
+          </div>
         ))}
-      </Table>
-      {footer}
-    </section>
+      </div>
+    </div>
   );
 }
 
