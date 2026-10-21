@@ -11,7 +11,9 @@ import {
   uniboxLeadName,
   uniboxRowPreview,
   uniboxRowSubtitle,
-  uniboxRowTags,
+  uniboxRowTag,
+  uniboxValueTag,
+  uniboxWaitsOnUs,
   uniboxQuery,
   uniboxThreadRef,
   uniboxRowId,
@@ -122,18 +124,43 @@ describe("Unibox list from lead-service (owner 2026-10-17)", () => {
     expect(leadRow).toContain("after={preview ? ");
   });
 
-  it("a row carries a tag only when it is not the default contacted, no reply yet, prospect (owner 2026-10-21)", () => {
-    const quiet = { ...row, conversation: "no_reply_yet", roles: [] };
-    expect(uniboxRowTags(quiet, ladder)).toEqual([]);
-    expect(uniboxRowTags({ ...quiet, lifecycle: null }, ladder)).toEqual([]);
-    expect(uniboxRowTags({ ...quiet, conversation: "waiting_on_us" }, ladder).map((t) => t.label)).toEqual(["Waiting on us"]);
-    const meeting = { key: "meeting_booked", rank: 5, label: "Meeting booked" };
-    expect(uniboxRowTags({ ...quiet, lifecycle: meeting }, [...ladder, meeting]).map((t) => t.label)).toEqual(["Meeting booked"]);
-    // A customer with no stage past Contacted still says so; with Paid client, the stage says it once.
-    expect(uniboxRowTags({ ...quiet, status: "customer" }, ladder).map((t) => t.label)).toEqual(["Customer"]);
-    const paid = { key: "paid_client", rank: 7, label: "Paid client" };
-    expect(uniboxRowTags({ ...quiet, status: "customer", lifecycle: paid }, [...ladder, paid]).map((t) => t.label)).toEqual(["Paid client"]);
-    expect(uniboxRowTags({ ...quiet, interest: "not_interested", contactability: "bounced" }, ladder).map((t) => t.label)).toEqual(["Not interested", "Bounced"]);
+  it("a row carries ONE tag, the hottest true fact, nothing for the default (owner 2026-10-21)", () => {
+    const L = [
+      { key: "lead_found", rank: 1, label: "Lead found" },
+      { key: "contacted", rank: 2, label: "Contacted" },
+      { key: "engaged", rank: 3, label: "Engaged" },
+      { key: "signup_or_form", rank: 4, label: "Signup / Form submitted" },
+      { key: "meeting_booked", rank: 5, label: "Meeting booked" },
+      { key: "paid_client", rank: 7, label: "Paid client" },
+    ];
+    const at = (key: string) => L.find((r) => r.key === key)!;
+    const quiet = { ...row, conversation: "no_reply_yet", roles: [], lifecycle: at("contacted"), interest: "not_asked" };
+    const tag = (over: object) => uniboxRowTag({ ...quiet, ...over }, L);
+    expect(tag({})).toBeNull();
+    expect(tag({ lifecycle: null })).toBeNull();
+    // Engaged is teal, Interested beats it in amber, a signup beats both, a meeting too.
+    expect(tag({ lifecycle: at("engaged") })).toMatchObject({ label: "Engaged", tone: "reply" });
+    expect(tag({ lifecycle: at("engaged"), interest: "interested" })).toMatchObject({ label: "Interested", tone: "hot" });
+    expect(tag({ lifecycle: at("signup_or_form"), interest: "interested" })).toMatchObject({ label: "Signup / Form submitted", tone: "hot" });
+    expect(tag({ lifecycle: at("meeting_booked") })).toMatchObject({ label: "Meeting booked", tone: "hot" });
+    // A customer reads green; a closed door ends the conversation and reads rose.
+    expect(tag({ status: "customer", lifecycle: at("paid_client") })).toMatchObject({ label: "Paid client", tone: "won" });
+    expect(tag({ status: "customer", lifecycle: null })).toMatchObject({ label: "Customer", tone: "won" });
+    expect(tag({ lifecycle: at("signup_or_form"), interest: "not_interested" })).toMatchObject({ label: "Not interested", tone: "lost" });
+    expect(tag({ contactability: "bounced" })).toMatchObject({ label: "Bounced", tone: "lost" });
+    // Waiting on us is the row's dot, not a stage.
+    expect(tag({ conversation: "waiting_on_us" })).toBeNull();
+    expect(uniboxWaitsOnUs({ conversation: "waiting_on_us" })).toBe(true);
+  });
+
+  it("one look per value on every surface: the card, the row and the filters agree", () => {
+    expect(uniboxValueTag("lifecycle", "engaged", "Engaged").tone).toBe("reply");
+    expect(uniboxValueTag("interest", "interested", "Interested")).toMatchObject({ tone: "hot", icon: "flame" });
+    expect(uniboxValueTag("lifecycle", "paid_client", "Paid client").tone).toBe("won");
+    expect(uniboxValueTag("lifecycle", "something_new", "Something new")).toEqual({ label: "Something new", tone: "neutral", icon: "dot" });
+    const card = read("components/v2/unibox-lead-card.tsx");
+    expect(card).not.toContain("VALUE_TONE");
+    expect(card).toContain("uniboxValueTone(dim, o.value)");
   });
 
   it("a row is a RELATION: its thread, card and URL read its relationKey, two rows of one human stay apart", () => {

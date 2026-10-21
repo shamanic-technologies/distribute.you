@@ -9,61 +9,29 @@ import {
   UNIBOX_DIMENSIONS,
   dimensionValueLabel,
   lifecycleOptions,
-  uniboxRowTags,
+  uniboxRowTag,
+  uniboxValueTag,
+  uniboxValueTone,
   type LifecycleRung,
   type UniboxDimension,
   type UniboxFilters,
   type UniboxLeadCard,
   type UniboxRow,
 } from "@/lib/unibox-leads";
-import type { TimelineTone } from "@/lib/timeline-tags";
-import { TONE_COLOR } from "@/components/v2/tag-chip";
+import { TONE_COLOR, TagChip } from "@/components/v2/tag-chip";
 import { EmptyNote, Shimmer } from "@/components/v2/ui";
 
 /**
- * The colour each served value is shown in: a display lookup only, the value is lead-service's.
- * Anything that asks us to act is amber, a clear yes teal, a closed door rose, the rest grey.
- */
-const VALUE_TONE: Partial<Record<string, TimelineTone>> = {
-  "interest:interested": "reply",
-  "interest:not_interested": "lost",
-  "conversation:waiting_on_us": "hot",
-  "contactability:unsubscribed": "lost",
-  "contactability:bounced": "lost",
-  "contactability:do_not_contact": "lost",
-  "fit:wrong_person": "lost",
-  "fit:not_our_target": "lost",
-  "lifecycle:paid_client": "won",
-  "status:customer": "won",
-  "status:churned": "lost",
-};
-
-function Tag({ label, tone = "neutral" }: { label: string; tone?: TimelineTone }) {
-  const color = TONE_COLOR[tone];
-  return (
-    <span
-      className="inline-flex h-5 shrink-0 items-center rounded-md px-1.5 text-[11.5px] font-medium"
-      style={{ color: tone === "neutral" ? "var(--fg-2)" : color, background: `color-mix(in srgb, ${color} 12%, transparent)` }}
-    >
-      {label}
-    </span>
-  );
-}
-
-/**
- * A row's tags (owner 2026-10-21): only what is not the default, so 200 rows of "Contacted, no
- * reply yet, prospect" read as nothing and the few that moved stand out. Roles stay grey words.
+ * A row's tag (owner 2026-10-21): the ONE hottest thing about where the lead stands, in the colour
+ * it has on the card, the header and the thread; nothing for the default. Roles stay grey words.
  */
 export function UniboxRowTags({ row, ladder }: { row: UniboxRow; ladder: LifecycleRung[] }) {
-  // The first tag only (most pressing first): two crushed the company to one letter.
-  const tags = uniboxRowTags(row, ladder).slice(0, 1);
-  const roles = tags.length > 0 ? [] : (row.roles ?? []);
-  if (tags.length === 0 && roles.length === 0) return null;
+  const tag = uniboxRowTag(row, ladder);
+  if (tag) return <TagChip tag={tag} shrink />;
+  const roles = row.roles ?? [];
+  if (roles.length === 0) return null;
   return (
     <span className="flex shrink-0 items-center gap-1.5 whitespace-nowrap">
-      {tags.map((t) => (
-        <Tag key={t.dim} label={t.label} tone={VALUE_TONE[`${t.dim}:${t.value}`]} />
-      ))}
       {roles.map((t) => (
         <span key={t} className="k-fg3 text-[12px]">
           {dimensionValueLabel("role", t)}
@@ -90,6 +58,7 @@ export function UniboxFilterBar({
         <DimensionMenu
           key={d}
           label={DIMENSION_LABEL[d]}
+          dim={d}
           options={d === "lifecycle" ? lifecycleOptions(ladder) : DIMENSION_VALUES[d]}
           value={filters[d] ?? []}
           onPick={(v) => onPick(d, v)}
@@ -106,11 +75,13 @@ export function UniboxFilterBar({
 
 function DimensionMenu({
   label,
+  dim,
   options,
   value,
   onPick,
 }: {
   label: string;
+  dim: UniboxDimension;
   options: { value: string; label: string }[];
   value: string[];
   onPick: (v: string[]) => void;
@@ -194,6 +165,8 @@ function DimensionMenu({
                       </svg>
                     )}
                   </span>
+                  {/* The value's colour, the same as its tag on the rows and the card. */}
+                  <span aria-hidden="true" className="h-1.5 w-1.5 shrink-0 rounded-full" style={{ background: TONE_COLOR[uniboxValueTone(dim, o.value)] }} />
                   <span className="truncate">{o.label}</span>
                 </button>
               );
@@ -235,7 +208,7 @@ export function UniboxLeadCardPanel({
           <dl className={`${inline ? "" : "mt-3 "}grid grid-cols-[96px_minmax(0,1fr)] items-start gap-x-3 gap-y-2.5`}>
             <Field label={DIMENSION_LABEL.status}>
               {lead.status ? (
-                <Tag label={dimensionValueLabel("status", lead.status)} tone={VALUE_TONE[`status:${lead.status}`]} />
+                <TagChip tag={uniboxValueTag("status", lead.status, dimensionValueLabel("status", lead.status))} />
               ) : (
                 <span className="k-fg4">—</span>
               )}
@@ -244,7 +217,7 @@ export function UniboxLeadCardPanel({
               {lead.roles && lead.roles.length > 0 ? (
                 <span className="flex flex-wrap gap-1">
                   {lead.roles.map((t) => (
-                    <Tag key={t} label={dimensionValueLabel("role", t)} />
+                    <TagChip key={t} tag={uniboxValueTag("role", t, dimensionValueLabel("role", t))} />
                   ))}
                 </span>
               ) : (
@@ -253,14 +226,14 @@ export function UniboxLeadCardPanel({
             </Field>
             <Field label={DIMENSION_LABEL.lifecycle}>
               {lead.lifecycle ? (
-                <Tag label={lead.lifecycle.label} tone={VALUE_TONE[`lifecycle:${lead.lifecycle.key}`]} />
+                <TagChip tag={uniboxValueTag("lifecycle", lead.lifecycle.key, lead.lifecycle.label)} />
               ) : (
                 <span className="k-fg3">No stage yet</span>
               )}
             </Field>
             {(["interest", "conversation", "contactability", "fit"] as const).map((d) => (
               <Field key={d} label={DIMENSION_LABEL[d]}>
-                <Tag label={dimensionValueLabel(d, lead[d])} tone={VALUE_TONE[`${d}:${lead[d]}`]} />
+                <TagChip tag={uniboxValueTag(d, lead[d], dimensionValueLabel(d, lead[d]))} />
                 {d === "fit" && lead.fitNote ? <p className="k-fg2 mt-1 text-[12px] leading-[18px]">{lead.fitNote}</p> : null}
               </Field>
             ))}
