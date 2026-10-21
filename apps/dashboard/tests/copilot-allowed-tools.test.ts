@@ -91,6 +91,10 @@ describe("Copilot allowed tools", () => {
     for (const t of ["find_people", "list_people_organizations", "correct_person", "list_people_corrections", "undo_people_correction", "merge_people", "undo_people_merge"]) expect(tools).toContain(t);
   });
 
+  it("adds one person the client names to the brand contacts (COPILOT-ADD-CONTACT-1021)", () => {
+    expect(tools).toContain("add_contact");
+  });
+
   it("lists each tool once", () => {
     expect(new Set(tools).size).toBe(tools.length);
   });
