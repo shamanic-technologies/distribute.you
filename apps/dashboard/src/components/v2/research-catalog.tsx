@@ -1,9 +1,6 @@
 "use client";
 
 import { HubChip, HubChips } from "@/components/v2/hub-section";
-import { CatalogueMark } from "@/components/v2/catalogue-mark";
-import { useAuthQuery } from "@/lib/use-auth-query";
-import { getPublicCatalogueSteps } from "@/lib/api";
 import { useState } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
@@ -17,7 +14,6 @@ import {
   DEPRECATE_CONTENT_NOTE,
   contentNote,
   DeprecationNote,
-  FirstAndMore,
   StatusMenu,
   StatusWord as ContentStatusWord,
   useContentStatusWrites,
@@ -26,7 +22,7 @@ import {
   useWorkflowDeprecation,
 } from "@/components/v2/research-status";
 import { OutputsList, TemplateOutputsPanel, TemplateVersionDrawer, useTemplateOutputs } from "@/components/v2/research-template-outputs";
-import { modelAliasesOf, modelStatus, templatePipes, type ContentTarget } from "@/lib/research/content-status";
+import { modelAliasesOf, modelStatus, type ContentTarget } from "@/lib/research/content-status";
 import { useResearch, useResearchCatalog, useResearchTexts } from "@/lib/research/research-source";
 import {
   Arrow,
@@ -44,7 +40,6 @@ import {
 } from "@/components/v2/research-bits";
 import {
   CATALOG_KINDS,
-  PIPE_KEY,
   researchCatalogHref,
   researchModel,
   researchTemplateOf,
@@ -206,7 +201,6 @@ export function V2ResearchCatalogView({
       </>
     );
   }
-  const total = catalog[pipe][kind].length;
   if (kind === "templates" && versionKey) {
     const t = item as ResearchTemplate;
     const version = researchTemplateVersion(t, versionKey);
@@ -232,9 +226,9 @@ export function V2ResearchCatalogView({
     return <TemplateVersionView base={base} pipe={pipe} t={t} v={version} crumbs={versionCrumbs} />;
   }
   const itemCrumbs = [...crumbs, { label: rowName(kind, item, channelName) }];
-  if (kind === "workflows") return <WorkflowView base={base} pipe={pipe} w={item as ResearchWorkflow} total={total} crumbs={itemCrumbs} nav={nav} />;
-  if (kind === "templates") return <TemplateView base={base} pipe={pipe} t={item as ResearchTemplate} total={total} crumbs={itemCrumbs} nav={nav} />;
-  return <ModelView base={base} pipe={pipe} m={item as ResearchModel} total={total} crumbs={itemCrumbs} nav={nav} />;
+  if (kind === "workflows") return <WorkflowView base={base} pipe={pipe} w={item as ResearchWorkflow} crumbs={itemCrumbs} nav={nav} />;
+  if (kind === "templates") return <TemplateView base={base} pipe={pipe} t={item as ResearchTemplate} crumbs={itemCrumbs} nav={nav} />;
+  return <ModelView base={base} pipe={pipe} m={item as ResearchModel} crumbs={itemCrumbs} nav={nav} />;
 }
 
 function RowsSkeleton() {
@@ -264,19 +258,6 @@ function Money({ value, unit }: { value: string | null; unit: string }) {
     <>
       {value} <span className="k-fg3 text-[12px]">{unit}</span>
     </>
-  );
-}
-
-/** A leg as Research wears it: the step it lands on ("Positive reply"), its served name and icon (public step catalogue). */
-function LegName({ pipe }: { pipe: ResearchPipe }) {
-  const steps = useAuthQuery(["publicCatalogueSteps"], getPublicCatalogueSteps, { staleTime: 10 * 60_000 });
-  const step = steps.data?.find((x) => x.key === PIPE_KEY[pipe].step) ?? null;
-  if (!step) return steps.data === undefined && !steps.isError ? <Shimmer className="inline-block h-4 w-20 align-middle" /> : <span className="k-fg4">{"—"}</span>;
-  return (
-    <span className="inline-flex min-w-0 items-center gap-1.5">
-      <CatalogueMark icon={step.icon ?? null} color={null} name={step.name} size={14} />
-      <span className="truncate">{step.name}</span>
-    </span>
   );
 }
 
@@ -399,7 +380,6 @@ function CatalogList({
                   <table className={`w-full ${kind === "workflows" ? "min-w-[1180px]" : kind === "templates" ? "min-w-[820px]" : "min-w-[940px]"} text-[13px]`}>
                     <thead>
                       <tr className="border-b border-[var(--line-subtle)]">
-                        <th className={`${TH} w-12`}>#</th>
                         <th className={TH}>{words.title.slice(0, -1)}</th>
                         {kind === "workflows" && (
                           <>
@@ -407,8 +387,15 @@ function CatalogList({
                             <th className={`${TH} w-40`}>Template</th>
                           </>
                         )}
-                        {kind === "templates" && <th className={`${TH} w-36`}>Leg</th>}
-                        {kind !== "workflows" && <th className={`${TH} ${kind === "models" ? "w-52" : "w-32"}`}>Status</th>}
+                        {kind === "templates" && (
+                          <>
+                            <th className={`${TH} w-24 text-right`}>
+                              <RoiLabel />
+                            </th>
+                            <th className={`${TH} w-28 text-right`}>% Conversion</th>
+                          </>
+                        )}
+                        {kind === "models" && <th className={`${TH} w-52`}>Status</th>}
                         {kind === "templates" && <th className={`${TH} w-20 text-right`}>Workflows</th>}
                         <th className={`${TH} ${kind === "templates" ? "w-28" : "w-36"} text-right`}>Cost {o.unit.replace("/ ", "per ")}</th>
                         {kind !== "templates" && <th className={`${TH} w-28 text-right`}>Rate</th>}
@@ -472,8 +459,7 @@ function CatalogList({
                               aria-selected={kind === "templates" ? picked : undefined}
                               className={`k-row group h-10 cursor-pointer ${picked ? "k-selected" : ""}`}
                             >
-                              <td className="k-mono k-fg3 pl-4 pr-3 text-[12px] tabular-nums">{r.rank ?? "—"}</td>
-                              <td className="max-w-0 px-3">
+                              <td className="max-w-0 pl-4 pr-3">
                                 <span className="flex min-w-0 items-center gap-1.5">
                                   <Link href={href} onClick={(e) => e.stopPropagation()} className={`${kind === "templates" && (r as ResearchTemplate).standaloneReason ? "max-w-full shrink-0" : "min-w-0"} truncate font-medium hover:text-[var(--accent)]`} title={rowName(kind, r, channelName)}>
                                     {rowName(kind, r, channelName)}
@@ -493,19 +479,21 @@ function CatalogList({
                                 </>
                               )}
                               {kind === "templates" && (
-                                <td className="max-w-0 px-3">
-                                  <FirstAndMore
-                                    label="Legs"
-                                    items={templatePipes(catalog, r.key, pipe).map((p) => ({ key: p, body: <LegName pipe={p} /> }))}
-                                  />
-                                </td>
+                                <>
+                                  <td className="whitespace-nowrap px-3 text-right tabular-nums">
+                                    <TemplateRoi t={r as ResearchTemplate} />
+                                  </td>
+                                  <td className="px-3 text-right tabular-nums">
+                                    <Dash v={r.rate} />
+                                  </td>
+                                </>
                               )}
-                              {kind !== "workflows" && (
+                              {kind === "models" && (
                                 <td className="max-w-0 px-3">
                                   <ContentStatusWord
                                     status={status}
                                     gap={served.gap}
-                                    pending={!statusAnswered && (kind === "templates" || modelKeys.length > 0)}
+                                    pending={!statusAnswered && modelKeys.length > 0}
                                     deprecation={deprecation}
                                   />
                                 </td>
@@ -639,6 +627,13 @@ function KpiStrip({ f, pipe }: { f: ResearchFigures; pipe: ResearchPipe }) {
   );
 }
 
+/** A template row's served return, as its page's ROI tile prints it; `—` when none is served. */
+function TemplateRoi({ t }: { t: ResearchTemplate }) {
+  const roi = researchRoiOf(t);
+  if (roi == null) return <Dash v={null} />;
+  return "show" in roi ? <RoiValue roi={roi.show} /> : <>{roi.text}</>;
+}
+
 function Charts({ f, topic }: { f: ResearchFigures; topic: "workflow" | "template" | "llm" }) {
   if (!f.charts.length) {
     return (
@@ -712,14 +707,12 @@ function WorkflowView({
   base,
   pipe,
   w,
-  total,
   crumbs,
   nav,
 }: {
   base: string;
   pipe: ResearchPipe;
   w: ResearchWorkflow;
-  total: number;
   crumbs: Crumb[];
   nav: (href: string) => void;
 }) {
@@ -736,7 +729,6 @@ function WorkflowView({
           title={shortWorkflowName(w.name ?? w.label, channelName)}
           chips={
             <>
-              <span className="k-chip tabular-nums">{w.rank == null ? "Not priced yet" : `#${w.rank} of ${total}`}</span>
               <span className="k-chip inline-flex items-center gap-1.5">
                 <SectionMark section={{ pipe }} size={12} />
                 <SectionName section={{ pipe }} />
@@ -1028,14 +1020,12 @@ function TemplateView({
   base,
   pipe,
   t,
-  total,
   crumbs,
   nav,
 }: {
   base: string;
   pipe: ResearchPipe;
   t: ResearchTemplate;
-  total: number;
   crumbs: Crumb[];
   nav: (href: string) => void;
 }) {
@@ -1067,7 +1057,6 @@ function TemplateView({
                   Not in a dynasty
                 </span>
               )}
-              <span className="k-chip tabular-nums">{t.rank == null ? "Not priced yet" : `#${t.rank} of ${total}`}</span>
               <span className="k-chip inline-flex items-center gap-1.5">
                 <SectionMark section={{ pipe }} size={12} />
                 <SectionName section={{ pipe }} />
@@ -1186,14 +1175,12 @@ function ModelView({
   base,
   pipe,
   m,
-  total,
   crumbs,
   nav,
 }: {
   base: string;
   pipe: ResearchPipe;
   m: ResearchModel;
-  total: number;
   crumbs: Crumb[];
   nav: (href: string) => void;
 }) {
@@ -1208,7 +1195,6 @@ function ModelView({
           title={m.label}
           chips={
             <>
-              <span className="k-chip tabular-nums">{m.rank == null ? "Not priced yet" : `#${m.rank} of ${total}`}</span>
               <span className="k-chip inline-flex items-center gap-1.5">
                 <SectionMark section={{ pipe }} size={12} />
                 <SectionName section={{ pipe }} />
