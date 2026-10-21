@@ -162,13 +162,18 @@ export function ResearchLiveWorkflows({
                     </td>
                     <td className="max-w-0 px-3">
                       {template ? (
-                        // The dynasty name only: its version is on hover, a version chip here squeezed the name to one letter.
-                        <Tag
-                          href={template.linked ? researchCatalogHref(base, pipe, "templates", template.key) : null}
-                          title={template.version ? `${template.label} (version ${template.version.label})` : template.label}
-                        >
-                          {template.label}
-                        </Tag>
+                        // Owner 2026-10-21: the dynasty name on line 1, its version on a discreet line 2 (a chip beside
+                        // the name squeezed it to one letter).
+                        <div className="flex min-w-0 flex-col py-1">
+                          <Tag href={template.linked ? researchCatalogHref(base, pipe, "templates", template.key) : null} title={template.label}>
+                            {template.label}
+                          </Tag>
+                          {template.version && (
+                            <span className="k-mono k-fg3 truncate pl-1 text-[11px] leading-4" title={`Version ${template.version.label} (${template.version.key})`}>
+                              {template.version.label}
+                            </span>
+                          )}
+                        </div>
                       ) : (
                         <span className="k-fg4">—</span>
                       )}
