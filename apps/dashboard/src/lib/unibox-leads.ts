@@ -67,6 +67,13 @@ export const UniboxRowSchema = z
       .passthrough()
       .nullish(),
     lastMessageReason: z.string().nullish(),
+    // The campaigns that reached this relation (lead-service v0.83.166, list rows only): the
+    // customer's campaign once, its served name, newest first, within the read's scope. null =
+    // campaign-service unreadable (`campaignsReason`). Optional until every cached body carries it.
+    campaigns: z
+      .array(z.object({ campaignId: z.string(), name: z.string(), pipeCampaignIds: z.array(z.string()), servedAt: z.string().nullable() }).passthrough())
+      .nullish(),
+    campaignsReason: z.string().nullish(),
   })
   .passthrough();
 export type UniboxRow = z.infer<typeof UniboxRowSchema>;

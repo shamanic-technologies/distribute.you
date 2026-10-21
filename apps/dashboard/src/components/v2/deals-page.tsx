@@ -217,6 +217,8 @@ function DealCard({ row, href, value, won }: { row: UniboxRow; href: string; val
   const company = row.company?.name || row.company?.domain || null;
   const name = uniboxLeadName(row);
   const chips = dealCardChips(row);
+  // The campaign that reached them most recently, as lead-service names it on the row.
+  const campaign = row.campaigns?.[0] ?? null;
   return (
     <Link href={href} className="k-card block p-3">
       <div className="flex items-center gap-2">
@@ -228,6 +230,12 @@ function DealCard({ row, href, value, won }: { row: UniboxRow; href: string; val
       </div>
       {company || row.title ? (
         <div className="k-fg2 mt-1.5 truncate text-[12px]">{[company ? name : null, row.title].filter(Boolean).join(" · ")}</div>
+      ) : null}
+      {campaign ? (
+        <div className="k-fg3 mt-1.5 flex min-w-0 items-center gap-1 text-[11px]">
+          <FunnelFace name={campaign.name} size={12} />
+          <span className="truncate">{campaign.name}</span>
+        </div>
       ) : null}
       <div className="k-fg3 mt-2 flex items-center gap-1.5 border-t border-[var(--line-subtle)] pt-2 text-[11px]">
         <span className="flex min-w-0 flex-1 flex-wrap items-center gap-1">
