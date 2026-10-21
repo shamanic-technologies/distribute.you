@@ -8,7 +8,7 @@ import { Section } from "@/components/section";
 export const revalidate = 86400;
 
 const PRIVACY_URL = `${PROD_URLS.landing}/privacy`;
-const LAST_UPDATED = "October 6, 2026";
+const LAST_UPDATED = "October 21, 2026";
 const SUPPORT_EMAIL = "support@distribute.you";
 
 export const metadata: Metadata = {
@@ -57,7 +57,7 @@ const SECTIONS = [
       "Your business: your website, what you sell, your sales path and its rates, the lifetime revenue of a client, your campaigns and their budgets.",
       "Payments: your credit, reload settings and payment history. Card details are handled by Stripe or Revolut; we never see your full card number.",
       "Messages: what you send us by email, WhatsApp or the request forms in the dashboard.",
-      "Accounts you choose to connect, such as Google (read only), GoHighLevel, or a WhatsApp or Discord account linked in read-only mode to bring your leads' messages into your dashboard.",
+      "Accounts you choose to connect, such as Google (Gmail, Google Calendar), GoHighLevel, or a WhatsApp or Discord account linked in read-only mode to bring your leads' messages into your dashboard.",
       "Usage: pages you visit, clicks, device and browser details, and recordings of your sessions on our site and dashboard (see Cookies and tracking).",
     ],
   },
@@ -66,6 +66,18 @@ const SECTIONS = [
     body: [
       "To run your campaigns we process data about the people we contact for you: name, job title, company, LinkedIn profile, location, work email, and phone number when a prospect asks to be called. It comes from lead data providers such as Apollo, from public web pages, and from lists you upload.",
       "We check that email addresses are valid, record the emails we send, link clicks (not opens), unsubscribes and replies. AI reads each reply, answers it on your behalf, and we forward the interested ones to you.",
+    ],
+  },
+  {
+    title: "Google user data",
+    body: [
+      "Connecting a Google account is optional. Gmail and Google Calendar each ask their own Google consent, and we ask only the access each feature needs.",
+      "Gmail (gmail.readonly, gmail.send, contacts.readonly, contacts.other.readonly): we read the emails and contacts of the mailbox you connect, to show your conversations with your leads in your dashboard and tell who replied. We send an email from it only as a reply in a thread your lead already wrote in. We never delete or edit your emails.",
+      "Google Calendar (calendar.events.readonly): we read your calendar events to list the meetings booked with your leads, with their date, title and attendees. Read only: we never create, edit or delete an event.",
+      "Google Meet (meetings.space.readonly): we read who joined the Google Meet calls of those meetings, to show which leads attended. Read only: we never record, join or change a call.",
+      "We use this data only to provide and improve these features for you. We do not sell it, use it for advertising, or use it to train AI models. People at distribute.you read it only with your consent, for security, or when the law requires it. It is shared only with the providers that host and run the service, under the safeguards above.",
+      "distribute.you's use and transfer to any other app of information received from Google APIs will adhere to the Google API Services User Data Policy (https://developers.google.com/terms/api-services-user-data-policy), including the Limited Use requirements.",
+      "You can disconnect a Google account at any time from Integrations in your dashboard, or remove our access at myaccount.google.com/permissions. When you disconnect, we delete the data we read from that account. You can also ask support to delete it.",
     ],
   },
   {
