@@ -46,7 +46,7 @@ export const CREATE_CAMPAIGN_ASK = "Create a campaign";
 
 /**
  * Campaigns > Overview (owner 2026-10-15, after Frontrunner's Agents page, GA for everyone): a title
- * with "N running", a Create box that hands the request to the Copilot (typed text, sent as if typed;
+ * with "N running", a Create box (staff mode only) that hands the request to the Copilot (typed text, sent as if typed;
  * empty = "Create a campaign"), up to three sales funnels this offer does not run yet (staff mode
  * only: their read is a staff-only gateway route), then the offer's funnel campaigns as a clean list,
  * Running / Past, with search, a type filter and a sort over the rows already loaded. A campaign IS a
@@ -67,7 +67,7 @@ function useKeepCampaignPreview(): boolean {
 export function CampaignsOverviewPage() {
   const { orgId, brandId } = useParams<{ orgId: string; brandId: string }>();
   const { offerId, settled } = useSelectedOffer();
-  // Suggested is a staff preview (owner decision), as before 2026-10-17.
+  // Create and Suggested are staff previews (owner decisions: Suggested as before 2026-10-17, Create 2026-10-22).
   const { staffMode } = useStaffMode();
   const q = useFunnelCampaigns(brandId, offerId ?? null, { enabled: !!offerId });
   const listSettled = q.data !== undefined || q.isFetchedAfterMount;
@@ -95,7 +95,7 @@ export function CampaignsOverviewPage() {
           </div>
         ) : (
           <div className="space-y-8">
-            <CreateBox />
+            {staffMode && <CreateBox />}
             {staffMode && <Suggested brandId={brandId} offerId={offerId} campaigns={q.data ?? null} />}
             <CampaignList orgId={orgId} brandId={brandId} offerId={offerId} />
             <UnconvertedRunningCampaigns orgId={orgId} brandId={brandId} offerId={offerId} />

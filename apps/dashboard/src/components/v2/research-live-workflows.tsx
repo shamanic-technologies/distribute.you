@@ -109,7 +109,6 @@ export function ResearchLiveWorkflows({
         <table className="w-full min-w-[1180px] table-fixed text-[13px]">
           <thead>
             <tr className="border-b border-[var(--line-subtle)]">
-              <th className={`${LIVE_TH} w-10`}>#</th>
               <th className={`${LIVE_TH} w-28`}>Workflow</th>
               <th className={`${LIVE_TH} w-28`}>LLM</th>
               <th className={LIVE_TH}>Template</th>
@@ -159,8 +158,7 @@ export function ResearchLiveWorkflows({
                 const template = now?.template ?? null;
                 return (
                   <tr key={r.slug} className={`k-row h-10 ${r.cash ? "k-selected" : ""}`}>
-                    <td className="k-mono k-fg3 pl-4 pr-3 text-[12px] tabular-nums">{r.rank ?? "—"}</td>
-                    <td className="max-w-0 px-3">
+                    <td className="max-w-0 pl-4 pr-3">
                       <Tag href={workflowHref} title={r.name ?? r.slug} muted={!r.selectable} strong>
                         {nameOf(r)}
                       </Tag>

@@ -109,9 +109,15 @@ describe("TEMPLATE-MODEL-STATUS-1019: the three Research pages", () => {
     expect(activate).not.toContain("setWorkflowDynastyStatus");
   });
 
-  it("Templates: Leg column with +N more, Status, Workflows, ⋮, and the outputs panel open from the start", () => {
-    expect(list).toContain('<th className={`${TH} w-36`}>Leg</th>');
-    expect(list).toContain("<FirstAndMore");
+  it("Templates: ROI + % Conversion (served), no Leg / Status / # column, ⋮, and the outputs panel open from the start", () => {
+    // Owner 2026-10-22: one leg per pipe page (Leg said nothing), the Active tab already states the status,
+    // and the ROI order number meant nothing beside the ROI itself.
+    expect(list).not.toContain(">Leg</th>");
+    expect(list).not.toContain("<FirstAndMore");
+    expect(list).not.toContain(">#</th>");
+    expect(list).toContain('{kind === "models" && <th className={`${TH} w-52`}>Status</th>}');
+    expect(list).toContain("<TemplateRoi t={r as ResearchTemplate} />");
+    expect(list).toContain(">% Conversion</th>");
     expect(list).toContain("<TemplateOutputsPanel");
     // Open from the start: the tab's first row until one is picked.
     expect(list).toContain("?? (shown[0] as ResearchTemplate | undefined)");
@@ -127,12 +133,12 @@ describe("TEMPLATE-MODEL-STATUS-1019: the three Research pages", () => {
     // Several aliases: the confirm and the menu name each one.
     expect(status).toContain("This deprecates each of them.");
     expect(list).toContain("contentNote(target, DEPRECATE_CONTENT_NOTE)");
-    expect(list).toContain('kind === "templates" && <th className={`${TH} w-36`}>Leg</th>');
   });
 
   it("Workflows: each row carries the dynasty status and its ⋮", () => {
     expect(live).toContain("<WorkflowStatusCells slug={r.slug}");
     expect(live).toContain('maturityLabel="Maturity"');
+    expect(live).not.toContain(">#</th>");
   });
 
   it("every new root is held out of the disk cache", () => {
