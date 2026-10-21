@@ -134,4 +134,13 @@ describe("outcomes (owner 2026-10-10): one per step a running campaign lands on"
     expect(page).toContain('{ key: "all", label: "Everyone", count: listed.all.people }');
     expect(page).toContain("<EveryoneTable bucket={outcome.items.bucket} />");
   });
+  it("the Overview's Leads row states its figures, never a dash (owner 2026-10-21: 72 leads read as none)", () => {
+    const page = read("src/components/v2/outcomes-page.tsx");
+    // People = the lists' held people, the same key and figure as the sidebar entry.
+    expect(page).toContain("useAudienceSnapshot(brandId, leadsFoundListed).data?.totals.people.held");
+    expect(page).toContain('if (o.outcome.items.kind === "leads-found") return peopleHeld == null');
+    // Contacted by us = lead-service's contacted bucket.
+    expect(page).toContain('kind !== "people" && kind !== "leads-found"');
+    expect(page).toContain(': "contacted"]');
+  });
 });
