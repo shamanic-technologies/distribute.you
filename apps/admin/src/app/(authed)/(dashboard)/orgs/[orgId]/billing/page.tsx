@@ -563,7 +563,7 @@ export default function BillingPage() {
                 </p>
               </div>
               <div>
-                <p className="text-xs text-gray-500">Owed now</p>
+                <p className="text-xs text-gray-500">Current balance</p>
                 <p className="text-lg font-semibold text-gray-900 mt-0.5">
                   {owed.owedCents !== null ? formatBillingCents(owed.owedCents) : "\u2014"}
                 </p>

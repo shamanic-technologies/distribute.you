@@ -256,7 +256,7 @@ struct BillingPanel: View {
             let owed = a.amount_owed_cents.flatMap { Double($0) }.map { max(0, ($0 - 1e-9).rounded(.up)) }
             KCard {
                 HStack(spacing: 0) {
-                    Figure(label: "You owe", value: dollars(cents: owed)).padding(12)
+                    Figure(label: "Current balance", value: dollars(cents: owed)).padding(12)
                     Figure(label: "Total credited", value: dollars(cents: Double(a.credited_cents))).padding(12)
                 }
             }
@@ -270,7 +270,7 @@ struct BillingPanel: View {
                 Button(paying ? "Charging your card…" : "Pay \(dollars(cents: owed)) now") { Task { await payNow() } }
                     .buttonStyle(KButtonStyle(strong: true)).disabled(paying)
             } else if owed == 0 {
-                Text("You owe nothing right now.").font(K.body).foregroundStyle(K.fg2)
+                Text("No balance due.").font(K.body).foregroundStyle(K.fg2)
             }
             if let paid { Text(paid).font(K.meta).foregroundStyle(K.fg2) }
             if a.has_payment_method {
@@ -330,7 +330,7 @@ struct BillingPanel: View {
         paying = true; error = nil; paid = nil
         do {
             try await api.payBalance(orgId: org.id)
-            paid = "Paid. You owe nothing now."
+            paid = "Payment received. Your balance is $0.00."
         } catch {
             let code = (error as? APIError)?.code
             self.error = code.flatMap { payBalanceRefusals[$0] } ?? "We could not charge your card. Please try again."

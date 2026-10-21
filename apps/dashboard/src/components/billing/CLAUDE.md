@@ -46,3 +46,6 @@ Owner rule 2026-09-27: no chargeable card (removed or never added) also stops th
 ## A grant the client PAID for is a payment, never a gift (`lib/off-platform-payments.ts`)
 - billing-service (v0.83.23) stamps a staff grant with `offPlatformPaidAt` when it records money the client paid us directly (bank transfer); admin sets it via the grant form's "The client paid us directly" + date (`paidOffPlatformAt`, `apps/admin/src/lib/credit-grant-body.ts`). Owner rule 2026-10-11: revenue is cash paid, a granted credit never is.
 - The controller drops such grants from "Free credit" (`splitCreditGrants`) and lists them in "Payments" as "Direct payment" on the day paid (`mergePayments`, newest first; a midnight-UTC day prints as noon UTC so no zone shows the day before). `latestPaymentFailure` still reads the raw card list. Guard `tests/off-platform-payments.test.ts`.
+
+## Billing words copy Google Ads / Google Cloud (owner 2026-10-21: « You OWE est vraiment une tournure de phrase dégueulasse »)
+- The postpaid figure is **Current balance** (Google Ads), its card **Next automatic payment**, nothing due = **No balance due**, paying early = Google Cloud's **Pay early** idea ("Pay $X now"). Never "You owe" / "owed" in copy (dashboard, admin, Mac app); guard `tests/billing-words.test.ts`. A new billing label: check how Google Ads / Cloud says it first.

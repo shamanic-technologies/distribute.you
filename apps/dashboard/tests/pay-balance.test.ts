@@ -44,7 +44,7 @@ describe("each pay_balance refusal reads in plain words", () => {
 
 describe("the paid line", () => {
   it("says what was paid, or that nothing was owed", () => {
-    expect(paidLine(1217, "$12.17")).toBe("Paid $12.17. You owe nothing now.");
-    expect(paidLine(0, "$0.00")).toBe("You owe nothing right now.");
+    expect(paidLine(1217, "$12.17")).toBe("Payment of $12.17 received. Your balance is $0.00.");
+    expect(paidLine(0, "$0.00")).toBe("No balance due.");
   });
 });

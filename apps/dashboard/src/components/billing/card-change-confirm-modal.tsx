@@ -149,7 +149,7 @@ export function CardChangeConfirmModal({
 
         <div className="px-5 py-4">
           <p className="text-sm text-gray-600">
-            You owe {amount}. Opening your card page charges it to the card on
+            Your current balance is {amount}. Opening your card page charges it to the card on
             file first.
           </p>
           {/* Load-bearing: the customer most likely to be here is the one whose

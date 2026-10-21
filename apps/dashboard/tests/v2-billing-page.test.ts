@@ -134,7 +134,7 @@ describe("a postpaid org reads postpaid words only (owner 2026-10-21)", () => {
     expect(section).toContain("<PostpaidOwedCard");
     const card = V2.slice(V2.indexOf("function PostpaidOwedCard("), V2.indexOf("/** Dollars to cents without float noise"));
     expect(card).toContain("Pay ${owedFigure} now");
-    expect(card).toContain("You owe nothing right now.");
+    expect(card).toContain("No balance due.");
     expect(card).toContain("owed.creditLineCents");
     expect(card).toContain("nextChargeDate");
     expect(card.match(/<button/g)?.length).toBe(1);
