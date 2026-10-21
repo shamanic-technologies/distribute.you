@@ -1,0 +1,80 @@
+<div style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:12px;padding:20px 24px;margin:0 0 32px">
+<p style="margin:0 0 8px;font-size:12px;font-weight:600;letter-spacing:0.08em;text-transform:uppercase;color:#1d4ed8">Key takeaway</p>
+<p style="margin:0 0 8px;font-weight:600;color:#0f172a">Qualifying leads from their website? Ask your question on the screenshot itself, not on a written description of it.</p>
+<ul style="margin:0;padding-left:20px">
+<li>{{raw roof.multiple}}x more right answers on "no phone number in the header?", on {{n roof.homepages}} roofing homepages checked by eye</li>
+<li>Across {{n screenshots}} homepages, the screenshot answer won every phone and review rating disagreement</li>
+<li>On what a description already covers, like a call to action, both ways agree</li>
+</ul>
+</div>
+
+<p>We bring our clients signups and booked meetings, done for you, and they report a 2.0x median ROI. Part of the job is picking who gets an email. A founder knows a good lead when they see the lead's website. So we let an AI look at the website too, and answer the founder's own yes/no questions about it. We just changed how that AI looks, and the change fixed a quiet error in our own data. Here is the case, and the rule we took from it.</p>
+
+<h2 id="case">One client: roofers with no phone number in the header</h2>
+
+<p>One of our clients sells to roofing companies. A roofer whose phone number is missing from the top of the website loses calls, and that roofer is this client's lead. So the client's question for each prospect reads, word for word:</p>
+
+<blockquote><p>"Is there no clearly visible phone number in the header of the homepage above the fold?"</p></blockquote>
+
+<p>Until October 21, 2026, our AI answered in two steps. First, a model wrote a short description of the homepage screenshot. Then a judge, Jev 1.13, answered the question on that description. Here is a real description of one roofer's homepage, as stored in our database:</p>
+
+<blockquote><p>"The homepage features the main headline: "[headline]." The company offers residential and commercial roofing services in [their area], including replacement, repair, and inspection. There are two visible call-to-action buttons [...]. The page design is clean, modern, and highly readable."</p></blockquote>
+
+<p>The header of that page shows a phone number. The description does not mention one. Asked "is there no phone number?" on this text, the judge said yes.</p>
+
+<h2 id="answer">The fix: ask the question on the image</h2>
+
+<p>Now the judge reads the screenshot itself and answers the client's question on it. We checked the header of {{n roof.homepages}} roofing homepages by eye: {{n roof.withPhone}} show a phone number, {{n roof.noPhone}} do not. Then we asked the question both ways, with the same judge on the same screenshots.</p>
+
+{{chart roofers}}
+
+<p><strong>Asked on the screenshot, the judge was right {{n roof.imageRight}} times out of {{n roof.judged}}. Asked on a description, {{n roof.descriptionRight}} times.</strong> The description was written before anyone asked about phones, so it left them out. The judge read that silence as "no phone".</p>
+
+<h2 id="wider">Is it one question? We checked {{n screenshots}} homepages</h2>
+
+<p>One question for one client proves little. So we took every homepage screenshot our clients' qualification checks had stored: {{n screenshots}} companies, from roofers to dental clinics and recruiting firms. We asked {{n questions}} questions about details a page summary tends to skip: a phone number in the header, a customer review rating, a live chat widget, a street address. Each one was asked both ways, and we checked every disagreement by eye.</p>
+
+{{chart disagreements}}
+
+<p>On the phone number and on the review rating, the screenshot answer won <strong>every disagreement</strong>. The street address leaned the same way on fewer pages, a lead to confirm. Each time the description lost, the detail was on the page and the description did not mention it.</p>
+
+<h2 id="covered">When a description is enough</h2>
+
+<p>The two ways part only on what the description leaves out. We also re-judged two questions a page description is written to cover, from two other clients: "is a clear call to action missing above the fold?" and "does the design look outdated?". On those, the two ways gave the same answer on all but one of {{n coveredTotals.decided}} pages, and that one was a matter of taste. So asking on the image costs nothing in accuracy where the description was fine, and fixes the questions where the description was blind.</p>
+
+<h2 id="rule">The rule</h2>
+
+<ol>
+<li><strong>Write each signal as a yes/no question,</strong> in your words: "Is there no phone number in the header?", "Does the site show a review rating?".</li>
+<li><strong>Take a screenshot</strong> of the prospect's homepage, first screen.</li>
+<li><strong>Ask the question on the screenshot.</strong> A judge reads the image and answers yes or no with how sure it is. No summary in between.</li>
+</ol>
+
+<p>The judge sees what your eye sees, so a lead is kept or skipped for what is on the page.</p>
+
+<h2 id="objections">The questions we get</h2>
+
+<p><strong>"Is asking on the image expensive?"</strong> No. One check on a screenshot is a small fraction of a cent, and each answer is stored, so the same page is not judged twice for the same question.</p>
+
+<p><strong>"What if a cookie banner covers the page?"</strong> The judge first answers whether the screenshot really shows the homepage. A page hidden behind a banner, or an error page, is marked unreadable and not counted as a yes.</p>
+
+<p><strong>"Which AI should read the image?"</strong> On the phone question, {{n judges.count}} judges from three vendors each answered at least {{n judges.min}} of {{n judges.homepages}} right when they read the screenshot. Judges differ more on harder questions, so test yours on pages you checked by eye.</p>
+
+<p><strong>"Can I ask about anything on the page?"</strong> About anything visible on the first screen. A question about text deeper in the site reads the page text instead.</p>
+
+<h2 id="takeaway">Ask what you would look for</h2>
+
+<p>Revenue made easy: get revenue in 24h. distribute.you finds your ICP, emails them from our own domains and brings you signups and booked meetings: 240 engaged leads for 17 companies so far, with a 2.0x median ROI reported (homepage figures, October 21, 2026). Tell us what a good lead looks like, down to what is on their website, and we do the rest. The platform is free. You only pay for your outreach.</p>
+
+<p><a href="https://distribute.you">Get started: distribute.you</a></p>
+
+<h2 id="notes">Notes</h2>
+
+<ul>
+<li>Benchmark: {{n screenshots}} homepage screenshots stored by our lead qualification checks (first screen of our clients' prospects), each with the description written for it before October 21, 2026 (Gemini 3.1 Flash-Lite). Each of {{n questions}} questions was asked of each screenshot twice with Jev 1.13 ({{raw judge}}): on the description, and on the image. {{n checks}} checks in all, read {{day readOn}}.</li>
+<li>Roofing case: {{n roof.homepages}} homepages of one client's prospects, every header checked by eye ({{n roof.withPhone}} with a phone number, {{n roof.noPhone}} without). One page was an error page and both ways marked it unreadable, leaving {{n roof.judged}} judged. Asked on the description, the judge called {{n roof.descriptionLeads}} pages leads, {{n roof.phoneMissed}} of them showing a phone number; asked on the screenshot, {{n roof.imageLeads}}, the {{n roof.realLeads}} real ones. Exact sign test on the pages where the two ways differ: p {{raw roof.pText}}.</li>
+<li>Disagreements by question (screenshot right, description right, ambiguous): phone in the header {{n byQuestion.phone.image}}, {{n byQuestion.phone.description}}, {{n byQuestion.phone.ambiguous}} (p {{raw byQuestion.phone.pText}}); review rating {{n byQuestion.reviews.image}}, {{n byQuestion.reviews.description}}, {{n byQuestion.reviews.ambiguous}} (p {{raw byQuestion.reviews.pText}}); street address {{n byQuestion.address.image}}, {{n byQuestion.address.description}}, {{n byQuestion.address.ambiguous}} (p {{raw byQuestion.address.pText}}, {{raw byQuestion.address.bonferroniText}} after the correction for {{n questions}} questions: a signal, not a conclusion); chat widget {{n byQuestion.chat.image}}, {{n byQuestion.chat.description}}, {{n byQuestion.chat.ambiguous}} (no measurable difference; the ambiguous ones are quote pop-ups that look like a chat). All four together: the screenshot right {{n pooled.image}} times, the description {{n pooled.description}} times, out of {{n pooled.scored}} scored disagreements (p {{raw pooled.pText}}). Exact two-sided sign test per question, Bonferroni over the {{n questions}} questions. Paired: same screenshot, same question, same judge. A measurement, not a split test.</li>
+<li>Covered questions: {{n coveredTotals.checks}} stored production verdicts of two criteria from two other clients, judged on the description before October 21, 2026 and re-judged on the screenshot that day; {{n coveredTotals.decided}} answered both ways, {{n coveredTotals.agree}} identical. The one difference: a busy dental homepage the screenshot judge called cluttered.</li>
+<li>Judges on the phone question, same {{n roof.homepages}} screenshots fitted to 1,568 pixels: TypeSafe Jev 1.13, Cloudflare Clef, Cloudflare Clef-flash and OpenAI Decisions each answered {{n judges.min}} to {{n judges.max}} of {{n judges.homepages}} right (yes above 50%, the error page counted as no phone). The gap between them is within noise; we name no winner.</li>
+<li>The description quoted above is one roofer's, from our database, with the headline and the area removed. Clients and prospects are not named. Data and scripts on <a href="https://github.com/shamanic-technologies/distribute.you/tree/main/apps/landing/scripts/blog-data/image-judge">GitHub</a>, sites anonymised.</li>
+</ul>
