@@ -42,7 +42,8 @@ import {
 import { browserHasAnonSession } from "./anon-session-cookie";
 import { offerArchiveRefusalSentence } from "./offer-archive";
 import { CrmAttributionSchema, type CrmAttribution } from "./crm-attribution";
-import { UniboxLeadCardSchema, UniboxPageSchema, uniboxCardQuery, uniboxQuery, type UniboxFilters, type UniboxLeadCard, type UniboxPage } from "./unibox-leads";
+import { UniboxLeadCardSchema, UniboxLifecycleCountsSchema, UniboxPageSchema, uniboxCardQuery, uniboxCountsQuery, uniboxQuery, type UniboxFilters, type UniboxLeadCard, type UniboxLifecycleCounts, type UniboxPage, type UniboxScope } from "./unibox-leads";
+import { DealsLifecycleSchema, dealsLifecycleQuery, type DealsLifecycle } from "./deals-board";
 import { SendingScheduleResponseSchema, type SendingSchedule } from "./sending-schedule";
 import {
   PeopleListSchema,
@@ -8463,7 +8464,7 @@ export async function getLeadWrittenBy(leadId: string, token?: string): Promise<
 export async function listUniboxLeads(
   brandId: string,
   filters: UniboxFilters,
-  opts: { q?: string; limit: number; cursor?: string | null },
+  opts: { q?: string; limit: number; cursor?: string | null } & UniboxScope,
   token?: string,
 ): Promise<UniboxPage> {
   const raw = await apiCall<unknown>(`/leads/unibox?${uniboxQuery(brandId, filters, opts)}`, { token });
@@ -8471,6 +8472,36 @@ export async function listUniboxLeads(
   if (!parsed.success) {
     console.error("[dashboard] listUniboxLeads: response shape mismatch", { issues: parsed.error.issues });
     throw new Error("[dashboard] listUniboxLeads: invalid response shape");
+  }
+  return parsed.data;
+}
+
+/**
+ * How many of the scope's people stand on each lifecycle rung (lead-service
+ * `GET /orgs/leads/unibox-lifecycle-counts`, v0.83.164, through the `/v1/leads/:id` passthrough):
+ * the Deals board's column sizes, one read for every column.
+ */
+export async function getUniboxLifecycleCounts(brandId: string, filters: UniboxFilters, scope: UniboxScope): Promise<UniboxLifecycleCounts> {
+  const raw = await apiCall<unknown>(`/leads/unibox-lifecycle-counts?${uniboxCountsQuery(brandId, filters, scope)}`);
+  const parsed = UniboxLifecycleCountsSchema.safeParse(raw);
+  if (!parsed.success) {
+    console.error("[dashboard] getUniboxLifecycleCounts: response shape mismatch", { issues: parsed.error.issues });
+    throw new Error("[dashboard] getUniboxLifecycleCounts: invalid response shape");
+  }
+  return parsed.data;
+}
+
+/**
+ * The offer's Deals board value per LIFECYCLE rung (features-service
+ * `GET /offers/:offerId/deals-value?columns=lifecycle`, v0.179.313): each rung's value, each
+ * card's, the expected pipeline and what was won. One campaign when named, else the whole offer.
+ */
+export async function getOfferDealsLifecycle(offerId: string, brandId: string, campaignId: string | null): Promise<DealsLifecycle> {
+  const raw = await apiCall<unknown>(`/offers/${encodeURIComponent(offerId)}/deals-value?${dealsLifecycleQuery(brandId, campaignId)}`);
+  const parsed = DealsLifecycleSchema.safeParse(raw);
+  if (!parsed.success) {
+    console.error("[getOfferDealsLifecycle] response shape mismatch", parsed.error.issues, raw);
+    throw new Error("getOfferDealsLifecycle: invalid response shape");
   }
   return parsed.data;
 }

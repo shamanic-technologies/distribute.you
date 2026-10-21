@@ -67,6 +67,13 @@ export const UniboxRowSchema = z
       .passthrough()
       .nullish(),
     lastMessageReason: z.string().nullish(),
+    // The campaigns that reached this relation (lead-service v0.83.166, list rows only): the
+    // customer's campaign once, its served name, newest first, within the read's scope. null =
+    // campaign-service unreadable (`campaignsReason`). Optional until every cached body carries it.
+    campaigns: z
+      .array(z.object({ campaignId: z.string(), name: z.string(), pipeCampaignIds: z.array(z.string()), servedAt: z.string().nullable() }).passthrough())
+      .nullish(),
+    campaignsReason: z.string().nullish(),
   })
   .passthrough();
 export type UniboxRow = z.infer<typeof UniboxRowSchema>;
@@ -191,17 +198,55 @@ export function filtersKey(f: UniboxFilters): string {
   return UNIBOX_DIMENSIONS.map((d) => `${d}=${[...(f[d] ?? [])].sort().join(",")}`).join("&");
 }
 
-/** lead-service's query string for one page: each filter a comma list, `q`, the cursor. */
-export function uniboxQuery(brandId: string, f: UniboxFilters, opts: { q?: string; limit: number; cursor?: string | null }): string {
-  const qs = new URLSearchParams({ brandId, limit: String(opts.limit) });
+/** Who the read is narrowed to (lead-service v0.83.164): one offer of the brand, and/or one campaign. */
+export interface UniboxScope {
+  offerId?: string | null;
+  campaignId?: string | null;
+}
+
+/** The brand, the scope and each filter as a comma list (shared by the list and the counts). */
+function scopedQuery(brandId: string, f: UniboxFilters, scope: UniboxScope): URLSearchParams {
+  const qs = new URLSearchParams({ brandId });
+  if (scope.offerId) qs.set("offerId", scope.offerId);
+  if (scope.campaignId) qs.set("campaignId", scope.campaignId);
   for (const d of UNIBOX_DIMENSIONS) {
     const v = f[d];
     if (v && v.length > 0) qs.set(d, v.join(","));
   }
+  return qs;
+}
+
+/** lead-service's query string for one page: the scope, each filter a comma list, `q`, the cursor. */
+export function uniboxQuery(brandId: string, f: UniboxFilters, opts: { q?: string; limit: number; cursor?: string | null } & UniboxScope): string {
+  const qs = scopedQuery(brandId, f, opts);
+  qs.set("limit", String(opts.limit));
   if (opts.q) qs.set("q", opts.q);
   if (opts.cursor) qs.set("cursor", opts.cursor);
   return qs.toString();
 }
+
+/** lead-service's query string for the per-rung counts: the same scope and filters, no paging. */
+export function uniboxCountsQuery(brandId: string, f: UniboxFilters, scope: UniboxScope): string {
+  return scopedQuery(brandId, f, scope).toString();
+}
+
+/**
+ * How many people stand on each lifecycle rung, in one scope (lead-service
+ * `GET /orgs/leads/unibox-lifecycle-counts`): every ladder key served, 0 included, plus `none`;
+ * they add up to `total`. The Deals board's column sizes.
+ */
+export const UniboxLifecycleCountsSchema = z
+  .object({
+    brandId: z.string(),
+    offerId: z.string().nullable(),
+    campaignId: z.string().nullable(),
+    lifecycleLadder: z.array(LifecycleRungSchema),
+    total: z.number(),
+    byLifecycle: z.record(z.string(), z.number()),
+    builtAt: z.string().nullable(),
+  })
+  .passthrough();
+export type UniboxLifecycleCounts = z.infer<typeof UniboxLifecycleCountsSchema>;
 
 /**
  * The thread's ref: the row's relation (crm-service reads `relationKey`, only that relation's

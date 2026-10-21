@@ -41,20 +41,25 @@ export function UniboxRowTags({ row, ladder }: { row: UniboxRow; ladder: Lifecyc
   );
 }
 
-/** Above the cards: one menu per tag dimension, several values each. lead-service filters. */
+/**
+ * Above the cards: one menu per tag dimension, several values each. lead-service filters.
+ * `dims` narrows the menus (the Deals board drops Lifecycle: its columns ARE the lifecycle).
+ */
 export function UniboxFilterBar({
   filters,
   ladder,
   onPick,
+  dims = UNIBOX_DIMENSIONS,
 }: {
   filters: UniboxFilters;
   ladder: LifecycleRung[];
   onPick: (dim: UniboxDimension, values: string[]) => void;
+  dims?: readonly UniboxDimension[];
 }) {
-  const any = UNIBOX_DIMENSIONS.some((d) => (filters[d]?.length ?? 0) > 0);
+  const any = dims.some((d) => (filters[d]?.length ?? 0) > 0);
   return (
     <div role="group" aria-label="Filter leads" className="flex shrink-0 flex-wrap items-center gap-1.5">
-      {UNIBOX_DIMENSIONS.map((d) => (
+      {dims.map((d) => (
         <DimensionMenu
           key={d}
           label={DIMENSION_LABEL[d]}
@@ -65,7 +70,7 @@ export function UniboxFilterBar({
         />
       ))}
       {any && (
-        <button type="button" className="k-btn-ghost" onClick={() => UNIBOX_DIMENSIONS.forEach((d) => filters[d]?.length && onPick(d, []))}>
+        <button type="button" className="k-btn-ghost" onClick={() => dims.forEach((d) => filters[d]?.length && onPick(d, []))}>
           Clear filters
         </button>
       )}

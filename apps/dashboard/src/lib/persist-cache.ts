@@ -278,6 +278,10 @@ export const PERSISTABLE_QUERY_ROOTS = new Set([
   // The Unibox list and one lead's card beside the thread (lead-service, owner 2026-10-17).
   "uniboxLeads",
   "uniboxLead",
+  // The Deals board by lifecycle rung (owner 2026-10-21): column sizes, a column's page, the values.
+  "dealsLifecycleCounts",
+  "dealsLifecycleRows",
+  "dealsLifecycle",
   // Offers — the level between the brand and its campaigns. The list feeds the brand
   // Overview's Offers table AND the tenant switcher's third tier, and the by-id read
   // is the offer sidebar's own label.

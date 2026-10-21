@@ -9,14 +9,14 @@ import { useOngoingCampaigns } from "@/components/v2/ongoing-campaigns";
 import { useAudienceSnapshot, useBrandOutcomeList, useStepIcons } from "@/components/v2/brand-outcomes";
 import { ServedPipeMark } from "@/components/v2/served-pipe-mark";
 import { V2NavContext } from "@/components/v2/nav-context";
-import { useBucketCounts, useBrandRevenue, useNeedsYourCall, useStandingCounts } from "@/components/v2/data";
+import { useBucketCounts, useBrandRevenue, useDealsLifecycleCounts, useNeedsYourCall } from "@/components/v2/data";
+import { dealsBoardRungs } from "@/lib/deals-board";
 import { v2CampaignHref, v2CatalogueHref, v2Href, v2OfferHref, v2OutcomeHref, v2SectionOf, v2WorkflowHref } from "@/lib/v2/routes";
 import { CATALOGUE_OBJECTS, CATALOGUE_OBJECT_LABELS, TRIGGER_LABELS } from "@/lib/staff-catalogue";
 import { useOngoingCatalogue } from "@/components/v2/staff-catalogue-data";
 import { CatalogueMark } from "@/components/v2/catalogue-mark";
 import { POSTS_STEP } from "@/lib/v2/outcomes";
 import { formatCount } from "@/lib/format-number";
-import { boardColumnTotals } from "@/lib/leads-server-page";
 import { ScopePaymentDeclinedBand } from "@/components/billing/scope-payment-declined-band";
 import { useStaffMode } from "@/lib/use-staff-mode";
 import { SelectedOfferProvider, useSelectedOffer } from "@/components/v2/selected-offer";
@@ -195,11 +195,10 @@ function V2Sidebar() {
   const leadsFoundListed = outcomes.some((o) => o.outcome.items.kind === "leads-found");
   const peopleHeld = useAudienceSnapshot(brandId, leadsFoundListed).data?.totals.people.held;
   const buckets = useBucketCounts(brandId).data;
-  const standings = useStandingCounts(brandId).data;
-  // Deals badge = the people still in play on the Deals board (Leads + Sales interest +
-  // Close won), read off the same column totals the page states, so the two agree.
-  const boardTotals = boardColumnTotals(standings);
-  const dealsInPlay = boardTotals ? boardTotals.contacted + boardTotals.sales_interest + boardTotals.won : null;
+  // Deals badge = the people on the Deals board's columns (every lifecycle rung but Lead found),
+  // read off the same served counts and key the page reads, so the two agree.
+  const dealCounts = useDealsLifecycleCounts(brandId).data;
+  const dealsInPlay = dealCounts ? dealsBoardRungs(dealCounts.lifecycleLadder).reduce((n, r) => n + (dealCounts.byLifecycle[r.key] ?? 0), 0) : null;
   const revenue = useBrandRevenue(brandId).data;
   const needsCall = useNeedsYourCall(brandId, 5).data?.total ?? null;
   const [recordsOpen, setRecordsOpen] = useState(true);

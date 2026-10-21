@@ -27,9 +27,11 @@ describe("v2 Records read campaigns, never crews", () => {
     expect(v2("people-page.tsx")).toContain("<th className={REC_TH}>Campaign</th>");
   });
 
-  it("Deals filters by the offer's campaigns", () => {
+  it("Deals filters by the offer's campaigns, on the producers (never over loaded cards)", () => {
     const src = v2("deals-page.tsx");
-    expect(src).toContain("campaignOf(l.campaignId)?.key === campaignFilter");
+    expect(src).toContain("useDealsLifecycleCounts(brandId, campaignFilter, filters)");
+    expect(src).toContain("getOfferDealsLifecycle(offerId!, brandId, campaignFilter)");
+    expect(src).toContain("campaignId={campaignFilter}");
   });
 
   it("a funnel part is named by its funnel campaign, a pre-funnel campaign by its own served name", () => {

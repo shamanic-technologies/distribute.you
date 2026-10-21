@@ -193,10 +193,14 @@ describe("v2 wiring", () => {
     expect(read("src/components/v2/use-campaigns.ts")).toContain("useCampaignRows(brandId, featureSlug, ALL_OFFERS)");
   });
 
-  it("the Deals board sizes each column from the producer's standing counts", () => {
+  it("the Deals board sizes each column from lead-service's per-rung counts and pages it on the producer", () => {
     const deals = read("src/components/v2/deals-page.tsx");
-    expect(deals).toContain("boardColumnTotals(useStandingCounts(brandId).data)");
-    expect(deals).toContain("leadsColumnPageQuery({ column, search: \"\", shown })");
+    expect(deals).toContain("useDealsLifecycleCounts(brandId, campaignFilter, filters)");
+    expect(deals).toContain("listUniboxLeads(brandId, { ...filters, lifecycle: [rung.key] }, { limit, offerId, campaignId })");
+    // The columns ARE the served ladder (owner 2026-10-21), never the old standings.
+    expect(deals).toContain("dealsBoardRungs(ladder)");
+    expect(deals).not.toContain("STANDINGS_BY_COLUMN");
+    expect(deals).not.toContain("useStandingCounts");
   });
 
   it("People pages and searches on the producer, never over loaded rows", () => {
@@ -272,21 +276,10 @@ describe("v2 step 3: honest counts, green running, modals outside the bar", () =
 
 describe("v2 Deals states who we contacted", () => {
   const src = read("src/components/v2/deals-page.tsx");
-  it("names the in-play column Contacted (owner 2026-10-09) and counts it in the heading", () => {
-    expect(src).toContain('contacted: "Contacted"');
-    expect(src).toContain("const contacted = totals?.contacted ?? null;");
+  it("names each column by the served rung label and counts Contacted in the heading", () => {
+    expect(src).toContain("{rung.label}");
+    expect(src).toContain('const contacted = count("contacted");');
     expect(src).toContain("{formatCount(contacted)}</span> contacted");
-  });
-});
-
-describe("v2 Deals prices the contacted column off features-service", () => {
-  const src = read("src/components/v2/deals-page.tsx");
-  it("reads the served contacted value and computes none of it", () => {
-    expect(src).toContain("getOfferContactedValue(offerId!, brandId, valueIds)");
-    expect(src).toContain('["contactedValue", brandId, "offer", offerId, valueIds.join(",")]');
-    expect(src).toContain("contactedValue.data?.totalExpectedValueUsd");
-    expect(src).not.toMatch(/expectedValueUsd\s*\*/);
-    expect(src).not.toMatch(/\.reduce\(/);
   });
 });
 
@@ -333,23 +326,25 @@ describe("Keel parity, second pass", () => {
     expect(today).toContain(".slice(0, MEETINGS_SHOWN)");
   });
 
-  it("Deals column and card values are features-service's deals-value, read, never summed", () => {
+  it("Deals column and card values are features-service's deals-value per rung, read, never summed", () => {
     const deals = read(V2 + "deals-page.tsx");
-    expect(deals).toContain('["dealsValue", brandId, "offer", offerId], () => getOfferDealsValue(offerId!, brandId)');
-    expect(deals).toContain("served.byLead.get(lead.leadId)");
+    expect(deals).toContain("getOfferDealsLifecycle(offerId!, brandId, campaignFilter)");
+    expect(deals).toContain("served?.byRow.get(uniboxRowId(row))");
+    expect(deals).toContain("dealsValue.data?.expectedPipelineUsd");
     expect(deals).not.toContain("valueByDomain");
     expect(deals).not.toMatch(/reduce\(/);
+    expect(read("src/lib/deals-board.ts")).toContain('columns: "lifecycle"');
   });
 
 });
 
 describe("v2 sidebar Deals badge agrees with the Deals board", () => {
-  it("counts the in-play board columns off the same column totals the page reads", () => {
+  it("counts the board's columns off the same served per-rung counts the page reads", () => {
     const shell = read("src/components/v2/v2-shell.tsx");
-    expect(shell).toContain("boardColumnTotals(standings)");
-    expect(shell).toContain("boardTotals.contacted + boardTotals.sales_interest + boardTotals.won");
+    expect(shell).toContain("useDealsLifecycleCounts(brandId).data");
+    expect(shell).toContain("dealsBoardRungs(dealCounts.lifecycleLadder)");
     expect(shell).toContain("trailing={<Count n={dealsInPlay} />}");
-    expect(shell).not.toContain("standings.counts.sales_interest + standings.counts.customer");
+    expect(shell).not.toContain("boardColumnTotals");
   });
 });
 
