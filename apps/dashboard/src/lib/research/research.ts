@@ -44,7 +44,8 @@ export type ResearchTopic =
   | "leg"
   | "tactic"
   | "delay"
-  | "niche";
+  | "niche"
+  | "country";
 export type ResearchGoal = "roi" | "rate";
 
 export interface ResearchPoint {
@@ -373,7 +374,13 @@ export const TOPIC_LABEL: Record<ResearchTopic, string> = {
   tactic: "Tactic",
   delay: "Time to reply",
   niche: "B2B niche",
+  country: "Country",
 };
+
+/** A topic's label; a topic this build does not know yet reads "Study", never a crash. */
+export function topicLabel(topic: ResearchTopic): string {
+  return TOPIC_LABEL[topic] ?? "Study";
+}
 
 export function studiesFor(pipe: ResearchPipe, file: ResearchFile): ResearchStudy[] {
   return file.studies.filter((s) => s.pipe === pipe);
