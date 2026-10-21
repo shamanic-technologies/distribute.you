@@ -1,16 +1,17 @@
 {
   "slug": "ai-lead-qualification",
-  "title": "AI Lead Qualification From Website Screenshots (79 Sites)",
-  "excerpt": "We qualify leads by asking yes/no questions about their website. Asking on the screenshot itself, not on a description of it, gave 2.3x more right answers on 33 roofing homepages checked by eye.",
+  "title": "AI Lead Qualification: Jev vs GPT, Gemini, Claude (79 Sites)",
+  "excerpt": "We asked Jev 1.13, GPT-6 Luna, Gemini and Claude the same qualification questions on 79 real prospect homepages. All read them right 96 to 99 times in 100. Jev was the cheapest: $0.35 per 1,000 checks.",
   "tags": [
     "ai lead qualification",
-    "lead qualification",
-    "llm as a judge",
-    "website screenshot",
+    "jev",
+    "gpt vs claude",
+    "gemini vs claude",
+    "llm judge",
     "lead scoring",
-    "cold email"
+    "icp qualification"
   ],
   "publishedAt": "2026-10-21T10:00:00.000Z",
-  "coverImagePath": "/blog/ai-lead-qualification/hero.png",
+  "coverImagePath": "/blog/ai-lead-qualification/hero-2.png",
   "source": "manual"
 }
