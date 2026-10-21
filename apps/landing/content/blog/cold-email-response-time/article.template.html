@@ -1,0 +1,73 @@
+<div style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:12px;padding:20px 24px;margin:0 0 32px">
+<p style="margin:0 0 8px;font-size:12px;font-weight:600;letter-spacing:0.08em;text-transform:uppercase;color:#1d4ed8">Key takeaway</p>
+<p style="margin:0 0 8px;font-weight:600;color:#0f172a">At least {{raw floor}}% of positive replies to our cold emails arrive within 24 hours of the first email.</p>
+<ul style="margin:0;padding-left:20px">
+<li>We bring our clients signups and booked meetings, done for you, and we measured when the good replies come in</li>
+<li>The first day is a strong start, and positive replies keep arriving for weeks after it</li>
+<li>So give a cold email campaign its follow-ups before you judge it, not 48 hours</li>
+</ul>
+</div>
+
+<p>We bring our clients signups and booked meetings, done for you: we find their buyers, write to them from our own domains and hand over the people who say yes. In the first week, clients ask us the same thing: when do the replies come? We looked at each first positive reply our cold emails earned since our first campaign. Here is what we saw in our own data.</p>
+
+<h2 id="the-question">The question founders ask on day 2</h2>
+
+<p>You launch a campaign on Monday. The first emails go out. On Tuesday morning you open your inbox, and it is quiet. Is the campaign working? Should you change the copy, the list, the offer?</p>
+
+<p>That moment is where good campaigns get stopped too early. A quiet inbox on day 2 feels like an answer. In our data, it is a pause between two waves.</p>
+
+<h2 id="first-wave">The first wave: the same day</h2>
+
+<p><strong>At least {{raw floor}}% of first positive replies arrive within 24 hours of the first email.</strong> That is the finding of this study that holds as a conclusion. It also holds for each of our biggest clients taken alone.</p>
+
+<p>Many of those come fast. Some prospects answer within the first hour, while your email still sits at the top of their inbox. When the first email reaches the right person with the right offer, that person often says yes on the spot.</p>
+
+<p>Then the inbox goes quiet. In our data, the second day after the first email brought no new positive reply at all.</p>
+
+<h2 id="the-waves">Then come the waves, after each follow-up</h2>
+
+<p>Our cold email workflows send two follow-ups: one on day 3 and one on day 10. Our early signal is that each follow-up brings its own wave of positive replies.</p>
+
+<p>After the day-3 follow-up, a small wave arrives between day 3 and day 5. After the day-10 follow-up, a bigger one arrives between day 10 and day 14: about {{raw wave2PerDay}} positive replies a day, against about {{raw aroundPerDay}} a day in the days around it. We saw that second wave at several clients.</p>
+
+<p>This is a signal, not yet a conclusion. The sample is small, and one client carries much of it. We will confirm it as more replies come in.</p>
+
+{{chart}}
+
+<h2 id="what-it-means">What this means for your campaign</h2>
+
+<p>Positive replies come in waves: the same day, then after each follow-up. So a cold email campaign is not judged at 48 hours. Here is the plan we follow for our clients:</p>
+
+<ol>
+<li><strong>Read day 1 for the first wave.</strong> Good copy sent to the right people earns replies the same day.</li>
+<li><strong>Let both follow-ups go out.</strong> A quiet day 2 is normal. Our <a href="/blog/cold-email-follow-up">follow-up study</a> found that two follow-ups doubled the positive replies.</li>
+<li><strong>Judge the campaign a few days after the day-10 follow-up.</strong> That is when the second wave lands.</li>
+</ol>
+
+<h2 id="objections">Four questions founders ask us</h2>
+
+<p><strong>Does a quiet day 2 mean the campaign failed?</strong> No. In our data, no positive reply landed on day 2, and the waves still came after it.</p>
+
+<p><strong>Why not judge on the first day alone?</strong> The first day is the biggest single day, and plenty of positive replies still come after it. Stopping early gives those up.</p>
+
+<p><strong>Do follow-ups annoy prospects?</strong> Our follow-ups are short and land in the same thread. In our data, the days after the day-10 follow-up look like one of the best moments of the sequence.</p>
+
+<p><strong>What about prospects who answer weeks later?</strong> They exist. Some of our positive replies came more than a month after the first email. Each lead keeps a next follow-up date, so a late yes still finds its way to you.</p>
+
+<h2 id="revenue-made-easy">Revenue made easy</h2>
+
+<p>Revenue made easy: get revenue in 24h. distribute.you finds your buyers, emails them from our own domains, follows up on day 3 and day 10, and brings you signups and booked meetings: 235 engaged leads for 16 companies so far (homepage figures, October 21, 2026). Give us your website and your ICP in one sentence, and we do the rest. The platform is free. You only pay for your outreach.</p>
+
+<p><a href="https://distribute.you">Get started: distribute.you</a></p>
+
+<h2 id="notes">Notes and method</h2>
+
+<ul>
+<li>Sample: {{raw n}} first positive replies across {{raw campaigns}} campaigns of all our clients, since our first campaign. Read {{day readOn}} from our internal research page (study "How long before a first positive reply?") and copied as served by the scripts on <a href="https://github.com/shamanic-technologies/distribute.you/tree/main/apps/landing/scripts/blog-data/reply-delay">GitHub</a>. A measurement, not a split test.</li>
+<li>Delay: from the first message we sent a person, on any channel, to their first positive reply after it. People who never replied positively are not counted.</li>
+<li>Within 24 hours: {{raw day1.display}} ({{raw day1.count}} of {{raw n}}). With {{raw n}} replies the true share sits between {{raw low}}% and {{raw high}}% (Wilson 95% range), so "at least {{raw floor}}%" holds. The share also holds for each of our three biggest clients taken alone. Within 1 hour: {{raw hour1.count}} of {{raw n}}. Within 3 hours: {{raw hour3.count}} of {{raw n}}.</li>
+<li>Waves (signals): {{raw wave1}} positive replies on days 3 to 5, after the day-3 follow-up; {{raw wave2}} between 10 and 14 days after the first email, after the day-10 follow-up, seen at 4 different clients. One client accounts for about half of the replies in the sample, and the day-10 wave may carry part of the day-3 follow-up's effect. {{raw after30}} positive replies came more than 30 days after the first email.</li>
+<li>Median {{raw median}}, average {{raw average}}, 9 in 10 within {{raw p90}}: signals only. They move a lot from client to client, and recent sends have not had time to earn their late replies yet.</li>
+</ul>
+
+{{table}}

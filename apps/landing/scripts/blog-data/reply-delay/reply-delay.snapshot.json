@@ -1,0 +1,510 @@
+{
+  "computedAt": "2026-10-21T11:17:04.131Z",
+  "study": {
+    "id": "positive-reply-delay",
+    "pipe": null,
+    "outcome": "positive-reply",
+    "topic": "delay",
+    "goal": "rate",
+    "question": "How long before a first positive reply?",
+    "status": "measured",
+    "headline": "At least 30% of first positive replies arrive within 24 hours of the first message.",
+    "winner": null,
+    "crowned": false,
+    "verdict": {
+      "kind": "conclusion",
+      "reason": "42% within 24 hours on 59 positive replies; the low end of the 95% range is 31%, so \"at least 30%\" holds. The exact share and the median stay signals."
+    },
+    "result": {
+      "display": "42%",
+      "unit": "of first positive replies within 24 hours of the first message",
+      "sample": "59 positive replies · 147 campaigns · every client, since the first message"
+    },
+    "charts": [
+      {
+        "kind": "bars",
+        "title": "First positive replies by delay after the first message (% of replies)",
+        "lowerIsBetter": false,
+        "points": [
+          {
+            "key": "lt_1h",
+            "label": "Under 1 hour",
+            "value": 16.95,
+            "display": "17% (10)",
+            "note": "10 of 59 positive replies",
+            "thin": false
+          },
+          {
+            "key": "1h_3h",
+            "label": "1 to 3 hours",
+            "value": 10.17,
+            "display": "10% (6)",
+            "note": "6 of 59 positive replies",
+            "thin": false
+          },
+          {
+            "key": "3h_6h",
+            "label": "3 to 6 hours",
+            "value": 5.08,
+            "display": "5.1% (3)",
+            "note": "3 of 59 positive replies",
+            "thin": false
+          },
+          {
+            "key": "6h_12h",
+            "label": "6 to 12 hours",
+            "value": 5.08,
+            "display": "5.1% (3)",
+            "note": "3 of 59 positive replies",
+            "thin": false
+          },
+          {
+            "key": "12h_1d",
+            "label": "12 to 24 hours",
+            "value": 5.08,
+            "display": "5.1% (3)",
+            "note": "3 of 59 positive replies",
+            "thin": false
+          },
+          {
+            "key": "1d_2d",
+            "label": "1 to 2 days",
+            "value": 0,
+            "display": "0% (0)",
+            "note": "0 of 59 positive replies",
+            "thin": false
+          },
+          {
+            "key": "2d_3d",
+            "label": "2 to 3 days",
+            "value": 5.08,
+            "display": "5.1% (3)",
+            "note": "3 of 59 positive replies",
+            "thin": false
+          },
+          {
+            "key": "3d_5d",
+            "label": "3 to 5 days",
+            "value": 5.08,
+            "display": "5.1% (3)",
+            "note": "3 of 59 positive replies",
+            "thin": false
+          },
+          {
+            "key": "5d_7d",
+            "label": "5 to 7 days",
+            "value": 5.08,
+            "display": "5.1% (3)",
+            "note": "3 of 59 positive replies",
+            "thin": false
+          },
+          {
+            "key": "7d_10d",
+            "label": "7 to 10 days",
+            "value": 6.78,
+            "display": "6.8% (4)",
+            "note": "4 of 59 positive replies",
+            "thin": false
+          },
+          {
+            "key": "10d_14d",
+            "label": "10 to 14 days",
+            "value": 20.34,
+            "display": "20% (12)",
+            "note": "12 of 59 positive replies",
+            "thin": false
+          },
+          {
+            "key": "14d_21d",
+            "label": "14 to 21 days",
+            "value": 5.08,
+            "display": "5.1% (3)",
+            "note": "3 of 59 positive replies",
+            "thin": false
+          },
+          {
+            "key": "21d_30d",
+            "label": "21 to 30 days",
+            "value": 0,
+            "display": "0% (0)",
+            "note": "0 of 59 positive replies",
+            "thin": false
+          },
+          {
+            "key": "30d_60d",
+            "label": "30 to 60 days",
+            "value": 3.39,
+            "display": "3.4% (2)",
+            "note": "2 of 59 positive replies",
+            "thin": false
+          },
+          {
+            "key": "60d_plus",
+            "label": "60 days or more",
+            "value": 6.78,
+            "display": "6.8% (4)",
+            "note": "4 of 59 positive replies",
+            "thin": false
+          }
+        ],
+        "curve": {
+          "title": "Share of first positive replies arrived by then (%)",
+          "points": [
+            {
+              "key": "lt_1h",
+              "label": "Within 1 hour",
+              "value": 16.95,
+              "display": "17%",
+              "note": "10 of 59 positive replies",
+              "thin": false
+            },
+            {
+              "key": "1h_3h",
+              "label": "Within 3 hours",
+              "value": 27.12,
+              "display": "27%",
+              "note": "16 of 59 positive replies",
+              "thin": false
+            },
+            {
+              "key": "3h_6h",
+              "label": "Within 6 hours",
+              "value": 32.2,
+              "display": "32%",
+              "note": "19 of 59 positive replies",
+              "thin": false
+            },
+            {
+              "key": "6h_12h",
+              "label": "Within 12 hours",
+              "value": 37.29,
+              "display": "37%",
+              "note": "22 of 59 positive replies",
+              "thin": false
+            },
+            {
+              "key": "12h_1d",
+              "label": "Within 1 day",
+              "value": 42.37,
+              "display": "42%",
+              "note": "25 of 59 positive replies",
+              "thin": false
+            },
+            {
+              "key": "1d_2d",
+              "label": "Within 2 days",
+              "value": 42.37,
+              "display": "42%",
+              "note": "25 of 59 positive replies",
+              "thin": false
+            },
+            {
+              "key": "2d_3d",
+              "label": "Within 3 days",
+              "value": 47.46,
+              "display": "47%",
+              "note": "28 of 59 positive replies",
+              "thin": false
+            },
+            {
+              "key": "3d_5d",
+              "label": "Within 5 days",
+              "value": 52.54,
+              "display": "53%",
+              "note": "31 of 59 positive replies",
+              "thin": false
+            },
+            {
+              "key": "5d_7d",
+              "label": "Within 7 days",
+              "value": 57.63,
+              "display": "58%",
+              "note": "34 of 59 positive replies",
+              "thin": false
+            },
+            {
+              "key": "7d_10d",
+              "label": "Within 10 days",
+              "value": 64.41,
+              "display": "64%",
+              "note": "38 of 59 positive replies",
+              "thin": false
+            },
+            {
+              "key": "10d_14d",
+              "label": "Within 14 days",
+              "value": 84.75,
+              "display": "85%",
+              "note": "50 of 59 positive replies",
+              "thin": false
+            },
+            {
+              "key": "14d_21d",
+              "label": "Within 21 days",
+              "value": 89.83,
+              "display": "90%",
+              "note": "53 of 59 positive replies",
+              "thin": false
+            },
+            {
+              "key": "21d_30d",
+              "label": "Within 30 days",
+              "value": 89.83,
+              "display": "90%",
+              "note": "53 of 59 positive replies",
+              "thin": false
+            },
+            {
+              "key": "30d_60d",
+              "label": "Within 60 days",
+              "value": 93.22,
+              "display": "93%",
+              "note": "55 of 59 positive replies",
+              "thin": false
+            },
+            {
+              "key": "60d_plus",
+              "label": "Any time",
+              "value": 100,
+              "display": "100%",
+              "note": "59 of 59 positive replies",
+              "thin": false
+            }
+          ]
+        },
+        "note": "The delay runs from the first message we sent a person, on any channel, to their first positive reply after it. People who never replied positively are not counted."
+      },
+      {
+        "kind": "bars",
+        "title": "First positive replies by day after the first message (% of replies)",
+        "lowerIsBetter": false,
+        "points": [
+          {
+            "key": "day_1",
+            "label": "Day 1",
+            "value": 42.37,
+            "display": "42% (25)",
+            "note": "25 of 59 positive replies",
+            "thin": false
+          },
+          {
+            "key": "day_2",
+            "label": "Day 2",
+            "value": 0,
+            "display": "0% (0)",
+            "note": "0 of 59 positive replies",
+            "thin": false
+          },
+          {
+            "key": "day_3",
+            "label": "Day 3",
+            "value": 5.08,
+            "display": "5.1% (3)",
+            "note": "3 of 59 positive replies",
+            "thin": false
+          },
+          {
+            "key": "day_4",
+            "label": "Day 4",
+            "value": 3.39,
+            "display": "3.4% (2)",
+            "note": "2 of 59 positive replies",
+            "thin": false
+          },
+          {
+            "key": "day_5",
+            "label": "Day 5",
+            "value": 1.69,
+            "display": "1.7% (1)",
+            "note": "1 of 59 positive replies",
+            "thin": false
+          },
+          {
+            "key": "day_6",
+            "label": "Day 6",
+            "value": 5.08,
+            "display": "5.1% (3)",
+            "note": "3 of 59 positive replies",
+            "thin": false
+          },
+          {
+            "key": "day_7",
+            "label": "Day 7",
+            "value": 0,
+            "display": "0% (0)",
+            "note": "0 of 59 positive replies",
+            "thin": false
+          },
+          {
+            "key": "day_8",
+            "label": "Day 8",
+            "value": 1.69,
+            "display": "1.7% (1)",
+            "note": "1 of 59 positive replies",
+            "thin": false
+          },
+          {
+            "key": "day_9",
+            "label": "Day 9",
+            "value": 5.08,
+            "display": "5.1% (3)",
+            "note": "3 of 59 positive replies",
+            "thin": false
+          },
+          {
+            "key": "day_10",
+            "label": "Day 10",
+            "value": 0,
+            "display": "0% (0)",
+            "note": "0 of 59 positive replies",
+            "thin": false
+          },
+          {
+            "key": "day_11",
+            "label": "Day 11",
+            "value": 10.17,
+            "display": "10% (6)",
+            "note": "6 of 59 positive replies",
+            "thin": false
+          },
+          {
+            "key": "day_12",
+            "label": "Day 12",
+            "value": 5.08,
+            "display": "5.1% (3)",
+            "note": "3 of 59 positive replies",
+            "thin": false
+          },
+          {
+            "key": "day_13",
+            "label": "Day 13",
+            "value": 3.39,
+            "display": "3.4% (2)",
+            "note": "2 of 59 positive replies",
+            "thin": false
+          },
+          {
+            "key": "day_14",
+            "label": "Day 14",
+            "value": 1.69,
+            "display": "1.7% (1)",
+            "note": "1 of 59 positive replies",
+            "thin": false
+          },
+          {
+            "key": "day_15",
+            "label": "Day 15",
+            "value": 1.69,
+            "display": "1.7% (1)",
+            "note": "1 of 59 positive replies",
+            "thin": false
+          },
+          {
+            "key": "day_16",
+            "label": "Day 16",
+            "value": 1.69,
+            "display": "1.7% (1)",
+            "note": "1 of 59 positive replies",
+            "thin": false
+          },
+          {
+            "key": "day_17",
+            "label": "Day 17",
+            "value": 0,
+            "display": "0% (0)",
+            "note": "0 of 59 positive replies",
+            "thin": false
+          },
+          {
+            "key": "day_18",
+            "label": "Day 18",
+            "value": 0,
+            "display": "0% (0)",
+            "note": "0 of 59 positive replies",
+            "thin": false
+          },
+          {
+            "key": "day_19",
+            "label": "Day 19",
+            "value": 0,
+            "display": "0% (0)",
+            "note": "0 of 59 positive replies",
+            "thin": false
+          },
+          {
+            "key": "day_20",
+            "label": "Day 20",
+            "value": 0,
+            "display": "0% (0)",
+            "note": "0 of 59 positive replies",
+            "thin": false
+          },
+          {
+            "key": "day_21",
+            "label": "Day 21",
+            "value": 1.69,
+            "display": "1.7% (1)",
+            "note": "1 of 59 positive replies",
+            "thin": false
+          },
+          {
+            "key": "day_21_plus",
+            "label": "21 days or more",
+            "value": 10.17,
+            "display": "10% (6)",
+            "note": "6 of 59 positive replies",
+            "thin": false
+          }
+        ],
+        "note": "Day 1 is the first 24 hours after the first message, Day 2 the next 24 hours, and so on. The last bar counts every reply after 21 days."
+      }
+    ],
+    "delay": {
+      "sampleSize": 59,
+      "stats": [
+        {
+          "key": "p10",
+          "label": "1 in 10 replied within",
+          "ms": 1377994,
+          "display": "23 minutes"
+        },
+        {
+          "key": "p25",
+          "label": "1 in 4 replied within",
+          "ms": 7050046,
+          "display": "2 hours"
+        },
+        {
+          "key": "median",
+          "label": "Half replied within",
+          "ms": 282754746,
+          "display": "3.3 days"
+        },
+        {
+          "key": "p75",
+          "label": "3 in 4 replied within",
+          "ms": 923060528,
+          "display": "11 days"
+        },
+        {
+          "key": "p90",
+          "label": "9 in 10 replied within",
+          "ms": 2242842529,
+          "display": "26 days"
+        },
+        {
+          "key": "average",
+          "label": "Average delay",
+          "ms": 1142610686,
+          "display": "13 days"
+        }
+      ]
+    },
+    "conclusion": [
+      "42% of first positive replies arrive within 24 hours of the first message (25 of 59). With 59 replies the true share sits between 31% and 55% (95% range), so at least 30% holds.",
+      "Half arrive within 3.3 days, 3 in 4 within 11 days, and 1 in 10 takes longer than 26 days.",
+      "After the first day, the largest group arrives 10 to 14 days after the first message: 12 replies, 20% of all.",
+      "The average (13 days) sits above the median (3.3 days): a tail of late replies pulls it up, so the median is the typical wait."
+    ]
+  }
+}

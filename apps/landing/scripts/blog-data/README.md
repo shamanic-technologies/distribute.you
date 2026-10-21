@@ -170,3 +170,18 @@ node apps/landing/scripts/blog-data/cost/render-cost-article.mjs apps/landing/sc
 
 derive-cost.mjs refuses a study that is not a `conclusion`; the renderer refuses a snapshot where the
 running average stopped rising since its first month or the latest month stopped being the dearest.
+
+## The response time article
+
+`content/blog/cold-email-response-time` states the Research study `positive-reply-delay` ("How long
+before a first positive reply?") exactly as features-service serves it: the snapshot is the served
+study, copied from inside the features-service container, nothing recomputed from a database.
+
+```sh
+apps/landing/scripts/blog-data/reply-delay/fetch-reply-delay.sh > apps/landing/scripts/blog-data/reply-delay/reply-delay.snapshot.json
+node apps/landing/scripts/blog-data/reply-delay/render-reply-delay-article.mjs apps/landing/scripts/blog-data/reply-delay/reply-delay.snapshot.json apps/landing/content/blog
+```
+
+The renderer refuses a study that is not a `conclusion`, a headline that stops saying "at least N%"
+(N under 30), a day 2 that stops being empty, or a 10 to 14 day wave that stops standing out. The
+waves are signals in the body; exact shares, the 95% range and counts sit in the Notes.
