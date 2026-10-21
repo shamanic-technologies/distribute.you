@@ -146,7 +146,7 @@ describe("the billing page asks before it charges", () => {
 describe("the confirmation copy", () => {
   it("names the amount before it is taken", () => {
     expect(MODAL).toContain("Charge {amount} now?");
-    expect(MODAL).toContain("You owe {amount}");
+    expect(MODAL).toContain("Your current balance is {amount}");
   });
 
   it("says the page opens whether or not the charge lands", () => {

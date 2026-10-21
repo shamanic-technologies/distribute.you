@@ -64,5 +64,5 @@ export function payBalanceRefusal(body: unknown): { code: string | null; message
 
 /** The success line, from what billing says it charged. */
 export function paidLine(chargedCents: number, formatted: string): string {
-  return chargedCents > 0 ? `Paid ${formatted}. You owe nothing now.` : "You owe nothing right now.";
+  return chargedCents > 0 ? `Payment of ${formatted} received. Your balance is $0.00.` : "No balance due.";
 }

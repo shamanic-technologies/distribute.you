@@ -170,7 +170,7 @@ export function V2BillingPage() {
     : mode === null
       ? `${onCredit ? `${balanceFigure} spent on credit` : `${balanceFigure} available`}.`
       : mode === "postpaid" && owed.owedCents !== null
-        ? `${MODE_COPY[mode].title}. You owe ${formatCentsAsUsd(owed.owedCents, 2)}.`
+        ? `${MODE_COPY[mode].title}. Current balance ${formatCentsAsUsd(owed.owedCents, 2)}.`
         : `${MODE_COPY[mode].title}. ${onCredit ? `${balanceFigure} spent on credit` : `${balanceFigure} available`}.`;
 
   return (
@@ -289,7 +289,7 @@ export function V2BillingPage() {
                 ))
               : [
                   mode === "postpaid" && owed.owedCents !== null
-                    ? { label: "You owe", value: formatCentsAsUsd(owed.owedCents, 2), strong: true }
+                    ? { label: "Current balance", value: formatCentsAsUsd(owed.owedCents, 2), strong: true }
                     : { label: onCredit ? "Spent on credit" : "Available", value: balanceFigure, strong: true },
                   { label: "Total credits", value: formatBillingCents(account?.credited_cents ?? "0") },
                   ...(c.confirmedChargesCents !== null && c.provisionedChargesCents !== null
@@ -316,8 +316,8 @@ export function V2BillingPage() {
         {mode === "postpaid" && account?.has_payment_method && c.autoReloadSupported && (
           <Section
             id="owed"
-            title="What you owe"
-            description="Your campaigns run on credit. Your card is charged as you spend, and you can pay it all now."
+            title="Next automatic payment"
+            description="Your card is charged as you spend. You can also pay your balance early."
           >
             {paidMessage && <Note tone="teal">{paidMessage}</Note>}
             {payError && <Note tone="rose">{payError}</Note>}
@@ -678,7 +678,7 @@ function PostpaidOwedCard({
   if (owed.owedCents === null) {
     return (
       <div className="k-card p-4">
-        <p className="k-fg3 text-[12px]">We could not read what you owe right now.</p>
+        <p className="k-fg3 text-[12px]">We could not read your balance right now.</p>
       </div>
     );
   }
@@ -702,7 +702,7 @@ function PostpaidOwedCard({
             {pending ? "Charging your card..." : `Pay ${owedFigure} now`}
           </button>
         ) : (
-          <p className="k-fg3 shrink-0 text-[13px]">You owe nothing right now.</p>
+          <p className="k-fg3 shrink-0 text-[13px]">No balance due.</p>
         )}
       </div>
       {owed.creditLineCents !== null && owed.creditLineCents > 0 && (

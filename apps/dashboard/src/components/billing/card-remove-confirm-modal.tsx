@@ -71,7 +71,7 @@ export function CardRemoveConfirmModal({
           {owed !== null && (
             <>
               <p className="text-sm text-gray-600">
-                You owe {owed}. We charge it to this card now.
+                Your current balance is {owed}. We charge it to this card now.
               </p>
               {/* Load-bearing: the charge never blocks the removal, and saying so
                   is what stops a failed charge reading as a refusal. */}
