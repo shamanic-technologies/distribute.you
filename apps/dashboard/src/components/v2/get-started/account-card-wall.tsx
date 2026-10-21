@@ -35,7 +35,7 @@
  *                 (`launch.ts`), and the page lands on it.
  */
 
-import { defaultSalesRepToAccountEmail } from "@/lib/sales-rep-default";
+import { defaultSalesRepToAccount } from "@/lib/sales-rep-default";
 import { useEffect, useRef, useState } from "react";
 import { BRAND_WHY } from "@/lib/brand-why";
 import { EnvelopeIcon } from "@heroicons/react/24/outline";
@@ -973,7 +973,7 @@ export function AccountCardWall({
         { brandId, website, offer, targetAudience, plan, answered },
         progress.current,
       );
-      await defaultSalesRepToAccountEmail(brandId, user?.primaryEmailAddress?.emailAddress);
+      await defaultSalesRepToAccount(brandId, userRef.current);
       const token = await session?.getToken({ skipCache: true });
       if (!token) throw new Error("Your session expired. Sign in again to finish.");
       const res = await fetch("/api/onboarding/complete", { method: "POST", headers: { Authorization: `Bearer ${token}` } });
