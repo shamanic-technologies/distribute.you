@@ -22,6 +22,11 @@ export const UniboxRowSchema = z
     relationKey: z.string().nullish(),
     relationKeys: z.array(z.string()).optional(),
     name: z.string().nullable(),
+    // WHO it is (lead-service UNIBOX-PERSON-NAME-1021): the relation's lead as sourced. Optional
+    // until every cached body carries them; null = unknown, never derived here from an address.
+    firstName: z.string().nullish(),
+    lastName: z.string().nullish(),
+    title: z.string().nullish(),
     emails: z.array(z.string()),
     phones: z.array(z.string()),
     personKeys: z.array(z.string()),
@@ -208,13 +213,32 @@ export function uniboxCardQuery(id: string): { relationKey: string } | { humanId
 }
 
 /**
- * A row's title: `Adam Nasri @ Cifacom` when lead-service names the org, else its served domain
- * (`Adam Nasri @ cifacom.com`: most companies are held by domain only), else the name alone.
+ * A row's second line (owner 2026-10-21, UNIBOX-LAYOUT-1021): the served job title and company,
+ * `Head of RA · Platomics`, under the name in bold. Never one "Name @ Company" string: it
+ * truncated the company away. Null when lead-service serves neither.
  */
-export function uniboxRowTitle(row: Pick<UniboxRow, "name" | "emails" | "phones" | "company">): string {
-  const name = uniboxLeadName(row);
-  const org = row.company?.name || row.company?.domain;
-  return org ? `${name} @ ${org}` : name;
+export function uniboxRowSubtitle(row: Pick<UniboxRow, "title" | "company">): string | null {
+  const parts = [row.title?.trim(), row.company?.name || row.company?.domain].filter((x): x is string => Boolean(x));
+  return parts.length > 0 ? parts.join(" · ") : null;
+}
+
+export type UniboxRowTag = { dim: Exclude<UniboxDimension, "role">; value: string; label: string };
+
+/**
+ * The tags a list ROW carries (owner 2026-10-21): only what is NOT the default. Contacted, no reply
+ * yet, prospect is what most rows are, so it shows nothing; a row speaks when the lead moved past
+ * Contacted on the served ladder, waits on us, said no, became a customer or cannot be reached.
+ * A display rule over served values only; the card beside the thread still states all six.
+ */
+export function uniboxRowTags(row: Pick<UniboxRow, "lifecycle" | "conversation" | "interest" | "status" | "contactability">, ladder: LifecycleRung[]): UniboxRowTag[] {
+  const tags: UniboxRowTag[] = [];
+  if (row.conversation === "waiting_on_us") tags.push({ dim: "conversation", value: row.conversation, label: dimensionValueLabel("conversation", row.conversation) });
+  const contacted = ladder.find((r) => r.key === "contacted")?.rank ?? 0;
+  if (row.lifecycle && row.lifecycle.rank > contacted) tags.push({ dim: "lifecycle", value: row.lifecycle.key, label: row.lifecycle.label });
+  else if (row.status && row.status !== "prospect") tags.push({ dim: "status", value: row.status, label: dimensionValueLabel("status", row.status) });
+  if (row.interest === "not_interested") tags.push({ dim: "interest", value: row.interest, label: dimensionValueLabel("interest", row.interest) });
+  if (row.contactability !== "contactable") tags.push({ dim: "contactability", value: row.contactability, label: dimensionValueLabel("contactability", row.contactability) });
+  return tags;
 }
 
 /** A lead's display name: the served name, else the first address or number. */

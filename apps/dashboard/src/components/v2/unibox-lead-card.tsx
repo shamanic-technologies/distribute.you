@@ -9,7 +9,7 @@ import {
   UNIBOX_DIMENSIONS,
   dimensionValueLabel,
   lifecycleOptions,
-  uniboxRowTitle,
+  uniboxRowTags,
   type LifecycleRung,
   type UniboxDimension,
   type UniboxFilters,
@@ -50,15 +50,21 @@ function Tag({ label, tone = "neutral" }: { label: string; tone?: TimelineTone }
   );
 }
 
-/** The row's second line: its stage, where the conversation stands, and who they are. */
-export function UniboxRowTags({ row }: { row: UniboxRow }) {
+/**
+ * A row's tags (owner 2026-10-21): only what is not the default, so 200 rows of "Contacted, no
+ * reply yet, prospect" read as nothing and the few that moved stand out. Roles stay grey words.
+ */
+export function UniboxRowTags({ row, ladder }: { row: UniboxRow; ladder: LifecycleRung[] }) {
+  // The first tag only (most pressing first): two crushed the company to one letter.
+  const tags = uniboxRowTags(row, ladder).slice(0, 1);
+  const roles = tags.length > 0 ? [] : (row.roles ?? []);
+  if (tags.length === 0 && roles.length === 0) return null;
   return (
-    // One line: the mark beside the name is as tall as the two lines (MarkLines), never three.
-    <span className="mt-1 flex items-center gap-1.5 overflow-hidden whitespace-nowrap">
-      {row.lifecycle && <Tag label={row.lifecycle.label} tone={VALUE_TONE[`lifecycle:${row.lifecycle.key}`]} />}
-      <Tag label={dimensionValueLabel("conversation", row.conversation)} tone={VALUE_TONE[`conversation:${row.conversation}`]} />
-      {row.status && <Tag label={dimensionValueLabel("status", row.status)} tone={VALUE_TONE[`status:${row.status}`]} />}
-      {(row.roles ?? []).map((t) => (
+    <span className="flex shrink-0 items-center gap-1.5 whitespace-nowrap">
+      {tags.map((t) => (
+        <Tag key={t.dim} label={t.label} tone={VALUE_TONE[`${t.dim}:${t.value}`]} />
+      ))}
+      {roles.map((t) => (
         <span key={t} className="k-fg3 text-[12px]">
           {dimensionValueLabel("role", t)}
         </span>
@@ -208,19 +214,25 @@ export function UniboxLeadCardPanel({
   card,
   failed,
   listed,
+  inline = false,
 }: {
   card: UniboxLeadCard | null;
   failed: boolean;
   listed: UniboxRow | null;
+  /** Folded into the thread header (a narrow panel): no card frame, never a second card below the thread. */
+  inline?: boolean;
 }) {
   const lead = card?.lead ?? listed;
   return (
-    <aside className="k-card k-scroll h-fit max-h-full shrink-0 overflow-y-auto p-4 @6xl:w-[300px]" aria-label="Lead">
+    <aside
+      className={inline ? "pt-3" : "k-card k-scroll hidden h-fit max-h-full w-[300px] shrink-0 overflow-y-auto p-4 @6xl:block"}
+      aria-label="Lead"
+    >
       {lead ? (
         <>
-          <p className="truncate text-[14px] font-semibold">{uniboxRowTitle(lead)}</p>
-          <p className="k-fg3 truncate text-[12px]">{[...lead.emails, ...lead.phones].join(" · ") || "—"}</p>
-          <dl className="mt-4 grid grid-cols-[96px_minmax(0,1fr)] items-start gap-x-3 gap-y-2.5">
+          {/* Who it is lives in the thread header beside it: the card starts on the tags. */}
+          {!inline && <p className="k-label">Lead</p>}
+          <dl className={`${inline ? "" : "mt-3 "}grid grid-cols-[96px_minmax(0,1fr)] items-start gap-x-3 gap-y-2.5`}>
             <Field label={DIMENSION_LABEL.status}>
               {lead.status ? (
                 <Tag label={dimensionValueLabel("status", lead.status)} tone={VALUE_TONE[`status:${lead.status}`]} />

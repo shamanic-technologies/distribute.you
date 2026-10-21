@@ -105,8 +105,9 @@ describe("where the mark is drawn", () => {
     expect(page).toContain("<TagChip tag={DISQUALIFIED_TAG} />");
   });
 
-  it("every ConversationTags caller passes the mark (person page and Unibox)", () => {
-    for (const f of ["conversation-timeline.tsx", "integrations-conversations.tsx"]) {
+  it("every ConversationTags caller passes the mark (person page; the Unibox header draws the mark alone)", () => {
+    expect(src("components", "v2", "integrations-conversations.tsx")).toContain("<DisqualifiedTag mark={facts.disqualification} />");
+    for (const f of ["conversation-timeline.tsx"]) {
       const s = src("components", "v2", f);
       const calls = s.match(/<ConversationTags [^>]*\/>/g) ?? [];
       expect(calls.length).toBeGreaterThan(0);
