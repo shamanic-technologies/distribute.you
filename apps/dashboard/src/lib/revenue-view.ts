@@ -97,6 +97,8 @@ export interface ConversionOrg {
   orgLogoUrl: string | null;
   /** Company domain for logo.dev when `orgLogoUrl` is absent. */
   orgDomain?: string | null;
+  /** The row's key on features-service's company lifecycle read (`org:<id>` / `lead:<id>`). */
+  organizationKey?: string;
   /** The most-likely person (argmax person_EV). */
   topPerson: ConversionTopPerson | null;
   /** Conversion channels across the org (multi-tag). */

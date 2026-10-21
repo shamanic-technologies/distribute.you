@@ -114,3 +114,39 @@ describe("People reads the same ladder as the board", () => {
     expect(page).not.toMatch(/rows\??\.filter\(/);
   });
 });
+
+describe("Companies reads each company's served rung", () => {
+  it("parses features-service's company lifecycle and keys it by organizationKey", async () => {
+    const { CompanyLifecycleSchema, companyRungs, companyLifecycleQuery } = await import("../src/lib/deals-board");
+    const body = CompanyLifecycleSchema.parse({
+      offerId: "o",
+      brandId: "b",
+      columns: "company_lifecycle",
+      organizationCount: 2,
+      withoutCompanyCount: 0,
+      noRungOrganizationCount: 1,
+      outOfScopeRowCount: 0,
+      rungs: [{ key: "engaged", rank: 3, label: "Engaged", organizationCount: 1, withoutCompanyCount: 0 }],
+      organizations: [
+        { organizationKey: "org:1", orgId: "1", lifecycle: { key: "engaged", rank: 3, label: "Engaged" } },
+        { organizationKey: "lead:2", orgId: null, lifecycle: null },
+      ],
+    });
+    const m = companyRungs(body);
+    expect(m.get("org:1")?.label).toBe("Engaged");
+    expect(m.get("lead:2")).toBeNull();
+    expect(companyLifecycleQuery("b")).toBe("brandId=b&columns=company_lifecycle");
+  });
+  it("the Companies tabs and Stage column read the served rung, never the old tags", async () => {
+    const { readFileSync } = await import("node:fs");
+    const { join } = await import("node:path");
+    const page = readFileSync(join(__dirname, "../src/components/v2/companies-page.tsx"), "utf8");
+    const one = readFileSync(join(__dirname, "../src/components/v2/company-page.tsx"), "utf8");
+    expect(page).toContain("useCompanyLifecycle(brandId)");
+    expect(page).toContain("rungOf(o)?.key === tab");
+    expect(page).not.toContain("STAGE_ORDER");
+    expect(page).not.toContain('label: "Won"');
+    expect(one).toContain("dealsBoardRungs(lifecycle.rungs)");
+    expect(one).not.toContain("const FLOW");
+  });
+});

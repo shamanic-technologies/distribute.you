@@ -78,6 +78,9 @@ const RevenueOrgSchema = z.object({
   // Company domain for logo.dev (features-service maps the lead's primaryDomain
   // through). `.nullish()` so the parse survives until that backend field ships.
   orgDomain: z.string().nullish(),
+  // features-service v0.179.318: the row's key on the company lifecycle read (`org:<orgId>`, or
+  // `lead:<leadId>` for a company-less row). Optional until every cached body carries it.
+  organizationKey: z.string().optional(),
   topPerson: RevenueTopPersonSchema.nullable(),
   tags: z.array(z.string()),
   expectedRevenueUsd: z.number(),

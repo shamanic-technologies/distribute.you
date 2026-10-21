@@ -133,3 +133,31 @@ const LEGACY_PEOPLE_TABS: Record<string, { rung: string; filters: { interest?: s
 export function peopleLegacyTab(key: string | null): { rung: string; filters: { interest?: string[] } } | null {
   return key ? (LEGACY_PEOPLE_TABS[key] ?? null) : null;
 }
+
+/**
+ * features-service `GET /offers/:offerId/deals-value?columns=company_lifecycle` (v0.179.318): each
+ * company's lifecycle rung (the highest any of its people reached) and how many companies stand on
+ * each rung, once each. Rows join the Companies table by `organizationKey`.
+ */
+export const CompanyLifecycleSchema = z
+  .object({
+    offerId: z.string(),
+    brandId: z.string(),
+    columns: z.literal("company_lifecycle"),
+    organizationCount: z.number(),
+    rungs: z.array(z.object({ key: z.string(), rank: z.number(), label: z.string(), organizationCount: z.number() }).passthrough()),
+    organizations: z.array(
+      z.object({ organizationKey: z.string(), orgId: z.string().nullable(), lifecycle: z.object({ key: z.string(), rank: z.number(), label: z.string() }).passthrough().nullable() }).passthrough(),
+    ),
+  })
+  .passthrough();
+export type CompanyLifecycle = z.infer<typeof CompanyLifecycleSchema>;
+
+export function companyLifecycleQuery(brandId: string): string {
+  return new URLSearchParams({ brandId, columns: "company_lifecycle" }).toString();
+}
+
+/** Each company's served rung, by its `organizationKey`. */
+export function companyRungs(body: CompanyLifecycle | undefined): Map<string, LifecycleRung | null> {
+  return new Map((body?.organizations ?? []).map((o) => [o.organizationKey, o.lifecycle]));
+}

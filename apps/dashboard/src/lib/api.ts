@@ -43,7 +43,7 @@ import { browserHasAnonSession } from "./anon-session-cookie";
 import { offerArchiveRefusalSentence } from "./offer-archive";
 import { CrmAttributionSchema, type CrmAttribution } from "./crm-attribution";
 import { UniboxLeadCardSchema, UniboxLifecycleCountsSchema, UniboxPageSchema, uniboxCardQuery, uniboxCountsQuery, uniboxQuery, type UniboxFilters, type UniboxLeadCard, type UniboxLifecycleCounts, type UniboxPage, type UniboxScope } from "./unibox-leads";
-import { DealsLifecycleSchema, dealsLifecycleQuery, type DealsLifecycle } from "./deals-board";
+import { CompanyLifecycleSchema, DealsLifecycleSchema, companyLifecycleQuery, dealsLifecycleQuery, type CompanyLifecycle, type DealsLifecycle } from "./deals-board";
 import { SendingScheduleResponseSchema, type SendingSchedule } from "./sending-schedule";
 import {
   PeopleListSchema,
@@ -8490,6 +8490,20 @@ export async function getUniboxLifecycleCounts(brandId: string, filters: UniboxF
   if (!parsed.success) {
     console.error("[dashboard] getUniboxLifecycleCounts: response shape mismatch", { issues: parsed.error.issues });
     throw new Error("[dashboard] getUniboxLifecycleCounts: invalid response shape");
+  }
+  return parsed.data;
+}
+
+/**
+ * Each company's lifecycle rung for one offer, and the companies per rung (features-service
+ * `GET /offers/:offerId/deals-value?columns=company_lifecycle`, v0.179.318). The Companies page.
+ */
+export async function getOfferCompanyLifecycle(offerId: string, brandId: string): Promise<CompanyLifecycle> {
+  const raw = await apiCall<unknown>(`/offers/${encodeURIComponent(offerId)}/deals-value?${companyLifecycleQuery(brandId)}`);
+  const parsed = CompanyLifecycleSchema.safeParse(raw);
+  if (!parsed.success) {
+    console.error("[getOfferCompanyLifecycle] response shape mismatch", parsed.error.issues);
+    throw new Error("getOfferCompanyLifecycle: invalid response shape");
   }
   return parsed.data;
 }

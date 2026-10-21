@@ -7,7 +7,10 @@ import type { ConversionOrg } from "@/lib/revenue-view";
 import { formatCount, formatUsdAdaptive } from "@/lib/format-number";
 import { friendlyDate } from "@/lib/friendly-datetime";
 import { v2Href } from "@/lib/v2/routes";
-import { useBrandRevenue } from "@/components/v2/data";
+import { useBrandRevenue, useCompanyLifecycle } from "@/components/v2/data";
+import { companyRungs, dealsBoardRungs } from "@/lib/deals-board";
+import { uniboxValueTag } from "@/lib/unibox-leads";
+import { TagChip } from "@/components/v2/tag-chip";
 import { CompanyMark } from "@/components/v2/people-bits";
 import { EmptyNote, Initials, Shimmer, TopBar } from "@/components/v2/ui";
 import { ExportButton, RecordsFooter, RecordsTabs, RecordsToolbar, REC_TH, useRowKeys } from "@/components/v2/records";
@@ -29,13 +32,6 @@ export const TAG_LABEL: Record<string, string> = {
   closeWin: "Close won",
 };
 export const HIDDEN_TAGS = new Set(["opened"]);
-
-/** The most advanced tag an organisation carries, as the step it stands on. */
-const STAGE_ORDER = ["closeWin", "meetingAttended", "meeting", "formSubmitted", "reply", "visit", "delivered", "sent", "contacted"];
-export function companyStage(o: ConversionOrg): string | null {
-  for (const t of STAGE_ORDER) if (o.tags.includes(t)) return t;
-  return null;
-}
 
 /** The URL key of a company: its domain when served, else features-service's org id. */
 export function companyKey(o: ConversionOrg): string | null {
@@ -73,25 +69,6 @@ function useAgo(at: number | undefined): string | null {
   return m < 1 ? "just now" : m < 60 ? `${m}m ago` : `${Math.floor(m / 60)}h ago`;
 }
 
-const TABS = [
-  { key: "all", label: "All companies", tag: null },
-  { key: "interested", label: "Interested", tag: "reply" },
-  { key: "visited", label: "Visited", tag: "visit" },
-  { key: "meetings", label: "Meetings", tag: "meeting" },
-  { key: "won", label: "Won", tag: "closeWin" },
-] as const;
-
-/** Keel's pipeline step glyph: one bar per step, the reached ones filled. */
-function StageBars({ tag }: { tag: string | null }) {
-  const level = tag === "closeWin" || tag === "meetingAttended" ? 4 : tag === "meeting" || tag === "formSubmitted" ? 3 : tag === "reply" ? 2 : tag === "visit" ? 1 : 0;
-  return (
-    <span className="inline-flex items-end gap-[1.5px]" aria-hidden="true">
-      {[4, 6, 8, 10].map((h, i) => (
-        <span key={i} className="w-[2.5px] rounded-[1px]" style={{ height: h, background: i < level ? "var(--fg-2)" : "var(--data-track)" }} />
-      ))}
-    </span>
-  );
-}
 
 /**
  * Companies: Keel's company table over the organisations features-service already
@@ -104,25 +81,32 @@ export function CompaniesPage() {
   const router = useRouter();
   const revenue = useBrandRevenue(brandId);
   const [q, setQ] = useState("");
-  const [tab, setTab] = useState<(typeof TABS)[number]["key"]>("all");
+  // One tab per lifecycle rung (owner 2026-10-21): each company on the highest rung any of its
+  // people reached, served by features-service with the companies per rung.
+  const lifecycle = useCompanyLifecycle(brandId);
+  const rungOf = useMemo(() => {
+    const m = companyRungs(lifecycle.data);
+    return (o: ConversionOrg) => (o.organizationKey ? (m.get(o.organizationKey) ?? null) : null);
+  }, [lifecycle.data]);
+  const rungTabs = lifecycle.data ? dealsBoardRungs(lifecycle.data.rungs) : [];
+  const [tab, setTab] = useState<string>("all");
   const [cursor, setCursor] = useState(-1);
   const [sort, setSort] = useState<SortKey>("value");
   const [selected, setSelected] = useState<Set<string>>(() => new Set());
   const searchRef = useRef<HTMLInputElement | null>(null);
   const updated = useAgo(revenue.dataUpdatedAt);
   const all = useMemo(() => revenue.data?.organizations ?? [], [revenue.data]);
-  const tagOf = TABS.find((t) => t.key === tab)?.tag ?? null;
   const orgs = useMemo(() => {
     const needle = q.trim().toLowerCase();
     return all
-      .filter((o) => (tagOf ? o.tags.includes(tagOf) : true))
+      .filter((o) => (tab === "all" ? true : rungOf(o)?.key === tab))
       .filter((o) => (needle ? `${o.orgName ?? ""} ${o.orgDomain ?? ""}`.toLowerCase().includes(needle) : true))
       .sort(SORTS[sort].compare);
-  }, [all, q, tagOf, sort]);
+  }, [all, q, tab, rungOf, sort]);
   // How many of `orgs` are drawn. Back to one step whenever the filter or order changes;
   // the keyboard cursor and the end-of-list sentinel extend it.
   const [shown, setShown] = useState(ROWS_STEP);
-  useEffect(() => setShown(ROWS_STEP), [q, tagOf, sort]);
+  useEffect(() => setShown(ROWS_STEP), [q, tab, sort]);
   useEffect(() => {
     if (cursor >= shown) setShown(cursor + ROWS_STEP);
   }, [cursor, shown]);
@@ -162,12 +146,12 @@ export function CompaniesPage() {
     const lines = [
       ["Company", "Domain", "Stage", "Best contact", "Expected value (USD)", "Signals", "Last touch"].join(","),
       ...pick.map((o) => {
-        const stage = companyStage(o);
+        const stage = rungOf(o);
         const person = o.topPerson ? `${o.topPerson.firstName ?? ""} ${o.topPerson.lastName ?? ""}`.trim() : "";
         return [
           o.orgName ?? "",
           o.orgDomain ?? "",
-          stage ? TAG_LABEL[stage] ?? stage : "",
+          stage?.label ?? "",
           person,
           String(o.expectedRevenueUsd),
           o.tags.filter((t) => !HIDDEN_TAGS.has(t)).map((t) => TAG_LABEL[t] ?? t).join("; "),
@@ -189,14 +173,13 @@ export function CompaniesPage() {
     <>
       <TopBar crumbs={[{ label: "Records" }, { label: "Companies" }]} />
       <RecordsTabs
-        tabs={TABS.map((t) => ({
-          key: t.key,
-          label: t.label,
-          count: revenue.data ? (t.tag ? all.filter((o) => o.tags.includes(t.tag)).length : all.length) : null,
-        }))}
+        tabs={[
+          { key: "all", label: "All companies", count: revenue.data ? all.length : null },
+          ...rungTabs.map((r) => ({ key: r.key, label: r.label, count: lifecycle.data?.rungs.find((x) => x.key === r.key)?.organizationCount ?? null })),
+        ]}
         active={tab}
         onPick={(k) => {
-          setTab(k as typeof tab);
+          setTab(k);
           setCursor(-1);
         }}
         right={
@@ -263,12 +246,12 @@ export function CompaniesPage() {
                 <tr key={i} className="k-row h-10"><td colSpan={8} className="px-4 md:px-6"><Shimmer className="h-4 w-full" /></td></tr>
               ))
             ) : !revenue.enabled || orgs.length === 0 ? (
-              <tr><td colSpan={8}><EmptyNote>{q || tagOf ? "No company matches." : "No company has engaged yet."}</EmptyNote></td></tr>
+              <tr><td colSpan={8}><EmptyNote>{q || tab !== "all" ? "No company matches." : "No company has engaged yet."}</EmptyNote></td></tr>
             ) : (
               orgs.slice(0, shown).map((o, i) => {
                 const name = o.orgName ?? o.orgDomain ?? "Unknown company";
                 const person = o.topPerson ? `${o.topPerson.firstName ?? ""} ${o.topPerson.lastName ?? ""}`.trim() : "";
-                const stage = companyStage(o);
+                const stage = rungOf(o);
                 const href = companyHref(orgId, brandId, o);
                 return (
                   <tr
@@ -297,9 +280,7 @@ export function CompaniesPage() {
                       </span>
                     </td>
                     <td className="px-3">
-                      {stage ? (
-                        <span className="k-chip gap-1.5"><StageBars tag={stage} />{TAG_LABEL[stage] ?? stage}</span>
-                      ) : <span className="k-fg4">{"—"}</span>}
+                      {stage ? <TagChip tag={uniboxValueTag("lifecycle", stage.key, stage.label)} /> : <span className="k-fg4">{"—"}</span>}
                     </td>
                     <td className="max-w-[200px] px-3">
                       {person ? (
@@ -317,7 +298,7 @@ export function CompaniesPage() {
                     <td className="px-3 text-right font-medium tabular-nums">{formatUsdAdaptive(o.expectedRevenueUsd)}</td>
                     <td className="px-3">
                       <span className="flex gap-1">
-                        {o.tags.filter((t) => !HIDDEN_TAGS.has(t) && t !== stage).slice(0, 2).map((t) => (
+                        {o.tags.filter((t) => !HIDDEN_TAGS.has(t)).slice(0, 2).map((t) => (
                           <span key={t} className="k-fg3 text-[12px]">{TAG_LABEL[t] ?? t}</span>
                         ))}
                       </span>
