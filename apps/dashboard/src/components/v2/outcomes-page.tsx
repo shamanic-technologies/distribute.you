@@ -11,7 +11,7 @@ import { pollOptions } from "@/lib/query-options";
 import { integrationFor } from "@/lib/integrations";
 import { timeAgo } from "@/lib/friendly-datetime";
 import { OUTCOME_PEOPLE_PAGE_SIZE, type OutcomeStepStat } from "@/lib/v2/outcome-people";
-import { useBrandOutcomeList, type BrandOutcome } from "@/components/v2/brand-outcomes";
+import { useAudienceSnapshot, useBrandOutcomeList, type BrandOutcome } from "@/components/v2/brand-outcomes";
 import { RecordsTabs } from "@/components/v2/records";
 import { formatCount } from "@/lib/format-number";
 import { v2Href, v2OutcomeHref } from "@/lib/v2/routes";
@@ -93,8 +93,10 @@ function Num({ n }: { n: number | null | undefined }) {
 }
 
 /** Everyone who reached it, any source (crm-service); a step it does not serve reads our own people. */
-function AllCount({ o, counts }: { o: BrandOutcome; counts: Record<string, number> | null }) {
+function AllCount({ o, counts, peopleHeld }: { o: BrandOutcome; counts: Record<string, number> | null; peopleHeld: number | null }) {
   if (o.all) return <Num n={o.all.people} />;
+  // Leads found = the people the brand's lists hold, the figure its sidebar entry and People tab state.
+  if (o.outcome.items.kind === "leads-found") return peopleHeld == null ? <Shimmer className="ml-auto h-4 w-10" /> : <Num n={peopleHeld} />;
   if (o.outcome.items.kind !== "people" || o.outcome.items.bucket === "booking_call") return <Num n={null} />;
   if (!counts) return <Shimmer className="ml-auto h-4 w-10" />;
   return <Num n={counts[o.outcome.items.bucket]} />;
@@ -102,9 +104,11 @@ function AllCount({ o, counts }: { o: BrandOutcome; counts: Record<string, numbe
 
 /** The ones we contacted: lead-service's bucket, the same figure the Contacted by us tab states. */
 function OursCount({ o, counts }: { o: BrandOutcome; counts: Record<string, number> | null }) {
-  if (o.outcome.items.kind !== "people") return <Num n={null} />;
+  const kind = o.outcome.items.kind;
+  if (kind !== "people" && kind !== "leads-found") return <Num n={null} />;
   if (!counts) return <Shimmer className="ml-auto h-4 w-10" />;
-  return <Num n={counts[o.outcome.items.bucket]} />;
+  // A lead found that we contacted = lead-service's contacted bucket.
+  return <Num n={counts[o.outcome.items.kind === "people" ? o.outcome.items.bucket : "contacted"]} />;
 }
 
 export function OutcomesOverviewPage() {
@@ -112,6 +116,8 @@ export function OutcomesOverviewPage() {
   const { offerId } = useSelectedOffer();
   const { outcomes, settled, allError } = useBrandOutcomeList(orgId, brandId, offerId);
   const counts = useBucketCounts(brandId).data?.counts ?? null;
+  const leadsFoundListed = outcomes.some((o) => o.outcome.items.kind === "leads-found");
+  const peopleHeld = useAudienceSnapshot(brandId, leadsFoundListed).data?.totals.people.held ?? null;
   return (
     <div>
       <TopBar crumbs={[{ label: "Outcomes" }, { label: "Overview" }]} />
@@ -153,7 +159,7 @@ export function OutcomesOverviewPage() {
                         <ProducedBy campaigns={o.campaigns} funnelCampaigns={o.funnelCampaigns} sources={o.all?.sources} />
                       </td>
                       <td className="px-3 py-2 text-right">
-                        <AllCount o={o} counts={counts} />
+                        <AllCount o={o} counts={counts} peopleHeld={peopleHeld} />
                       </td>
                       <td className="px-3 py-2 pr-4 text-right">
                         <OursCount o={o} counts={counts} />
