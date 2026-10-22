@@ -6,6 +6,7 @@ import {
   campaignWorkflowRows,
   shortWorkflowName,
   placeWords,
+  tagsThatFit,
   type FleetRankingRow,
   type CampaignLadderRow,
 } from "../src/lib/live-workflow-rows";
@@ -273,20 +274,20 @@ describe("Research pipe workflows: the owner's columns (2026-10-22)", () => {
   const thead = src.slice(src.indexOf("<thead>"), src.indexOf("</thead>"));
 
   it("mark, name, description, ROI, $/outcome, % conversion, $ spent, status: in that order", () => {
-    const order = ["w-44`}>Workflow</th>", ">Description</th>", "<RoiLabel />", "{`$ ${outcomeUnit}`}", ">% Conversion</th>", ">$ Spent</th>", "w-28`}>Status</th>"];
+    const order = ["w-40`}>Workflow</th>", ">Description</th>", "w-48`}>Tactics</th>", "<RoiLabel />", "{`$ ${outcomeUnit}`}", ">% Conversion</th>", ">$ Spent</th>", "w-28`}>Status</th>"];
     const at = order.map((h) => thead.indexOf(h));
     for (const i of at) expect(i).toBeGreaterThan(-1);
     expect([...at].sort((x, y) => x - y)).toEqual(at);
-    expect(src).toContain("const COLS = 8;");
+    expect(src).toContain("const COLS = 9;");
   });
 
   it("every row wears the workflow mark and links its name to its page", () => {
     expect(src).toContain('<TopicMark topic="workflow" size={22} />');
-    expect(src).toContain("<Link href={href} title={r.name ?? r.slug}");
+    expect(src).toContain("title={`Open ${r.name ?? r.slug}`}");
   });
 
   it("the description is workflow-service's own words, the runnable one off the status listing, a deprecated one off its newest version", () => {
-    expect(src).toContain("deprecated ? newest.description : statuses.descriptionOf(r.slug)");
+    expect(src).toContain("deprecated ? newest.description : statuses.descriptionOf(slug)");
     expect(status).toContain('["workflowDynastySummaries", featureSlug], () => getRunnableWorkflowDynastySummaries(featureSlug)');
     expect(api).toContain("description: newest?.description ?? null");
     expect(status).toContain('qc.refetchQueries({ queryKey: ["workflowDynastySummaries"] })');
@@ -301,5 +302,57 @@ describe("Research pipe workflows: the owner's columns (2026-10-22)", () => {
   it("a cost per outcome at zero outcomes reads Learning, never the spend", () => {
     expect(src).toContain("learning: cents != null && r.mature === false");
     expect(src).toContain("} learning />");
+  });
+});
+
+describe("Research pipe workflows: tactics column and the row drawer (owner 2026-10-22)", () => {
+  const src = readFileSync(join(__dirname, "../src/components/v2/research-live-workflows.tsx"), "utf8");
+  const drawer = readFileSync(join(__dirname, "../src/components/v2/research-template-outputs.tsx"), "utf8");
+  const catalogue = readFileSync(join(__dirname, "../src/lib/staff-catalogue.ts"), "utf8");
+
+  it("tactics are features-service's verdict per workflow, read, never re-judged", () => {
+    expect(src).toContain('queryKey: staffCatalogueObjectKey("workflows", slug, pipeId)');
+    expect(src).toContain('getStaffCatalogueObject("workflows", slug, { pipe: pipeId })');
+    expect(src).toContain(".filter((t) => t.follows === true)");
+    expect(catalogue).toContain("tactics: z.array(z.object({ id: z.string(), name: z.string(), follows: z.boolean().nullable() })).optional()");
+    // Not polled: tactics move only on Jev's sweeps.
+    const hook = src.slice(src.indexOf("function useWorkflowTactics("), src.indexOf("const TACTICS_STALE_MS"));
+    expect(hook).not.toContain("pollOptions");
+  });
+
+  it("shows the first tags then +N more, the full list on hover or tap in a portalled popover", () => {
+    expect(src).toContain("setFit(tagsThatFit(widths, el.clientWidth, MORE_W, TAG_GAP));");
+    expect(src).toContain("new ResizeObserver(measure)");
+    expect(src).toContain("<MoreTactics label={`+${rest} more`} tactics={tactics} />");
+    expect(src).toContain('onPointerEnter={(e) => e.pointerType === "mouse" && show()}');
+    expect(src).toContain('createPortal(\n          <div className="k-popover fixed');
+  });
+
+  it("the name is a link to the page; any other click on the row opens the drawer", () => {
+    expect(src).toContain("if (opensDrawer(e.target, e.currentTarget)) onOpen();");
+    expect(src).toContain('target.closest("a,button,input,textarea,select,[role=menu],[role=dialog]") == null');
+    expect(src).toContain("!row.contains(target)");
+    expect(src).toContain("<WorkflowDrawer");
+    expect(src).toContain("Open workflow page");
+  });
+
+  it("the drawer is the one Research drawer shell, shared with the template version drawer", () => {
+    expect(src).toContain("<ResearchDrawer");
+    expect(drawer).toContain("export function ResearchDrawer(");
+    expect(drawer.slice(drawer.indexOf("export function TemplateVersionDrawer("), drawer.indexOf("export function ResearchDrawer("))).toContain("<ResearchDrawer");
+    expect(drawer).toContain("k-popover k-drawer-in fixed inset-y-0 right-0");
+  });
+});
+
+describe("tagsThatFit", () => {
+  it("keeps every tag that fits, room for +N more when some are left out, never below one", () => {
+    // 3 tags of 60px, gap 4, more 64: all three need 188px.
+    expect(tagsThatFit([60, 60, 60], 188, 64, 4)).toBe(3);
+    // 168px: two tags (124) + gap + more (64) = 192 > 168, one tag + more = 128 fits.
+    expect(tagsThatFit([60, 60, 60], 168, 64, 4)).toBe(1);
+    expect(tagsThatFit([60, 40, 60, 60], 172, 64, 4)).toBe(2);
+    // A lone tag wider than the cell still shows (it truncates).
+    expect(tagsThatFit([300], 168, 64, 4)).toBe(1);
+    expect(tagsThatFit([300, 40], 168, 64, 4)).toBe(1);
   });
 });

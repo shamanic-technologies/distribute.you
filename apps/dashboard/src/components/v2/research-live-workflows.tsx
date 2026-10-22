@@ -1,24 +1,29 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import Link from "next/link";
-import { useAuthQuery } from "@/lib/use-auth-query";
+import { useQueries } from "@tanstack/react-query";
+import { useAuthQuery, useOrgQueryGate } from "@/lib/use-auth-query";
 import { pollOptions } from "@/lib/query-options";
-import { getLegWorkflowRanking } from "@/lib/api";
+import { getLegWorkflowRanking, getStaffCatalogueObject } from "@/lib/api";
+import { staffCatalogueObjectKey } from "@/components/v2/staff-catalogue-data";
+import { ResearchDrawer } from "@/components/v2/research-template-outputs";
+import { Arrow } from "@/components/v2/research-bits";
 import { useLegCatalogue } from "@/lib/use-leg-catalogue";
 import { legFor } from "@/lib/legs";
 import { isProactiveFrom } from "@/lib/outbound-leg-key";
 import { EmptyNote, Shimmer } from "@/components/v2/ui";
 import { RecordsTabs } from "@/components/v2/records";
 import { PIPE_KEY, researchCatalogHref, type ResearchCatalog, type ResearchPipe } from "@/lib/research/research";
-import { fleetWorkflowRows, shortWorkflowName, type LiveWorkflowRow } from "@/lib/live-workflow-rows";
+import { fleetWorkflowRows, shortWorkflowName, tagsThatFit, type LiveWorkflowRow } from "@/lib/live-workflow-rows";
 import { formatUsdAdaptive } from "@/lib/format-number";
 import { formatRatePct } from "@/lib/brand-conversion-rates";
 import { useFeatures } from "@/lib/features-context";
 import { LIVE_TH } from "@/components/v2/live-workflow-cells";
 import { CostValue, RoiLabel, RoiValue } from "@/components/v2/roi-label";
 import { TopicMark } from "@/components/v2/research-bits";
-import { WorkflowStatusCells, useDynastyStatuses, useWorkflowDeprecation } from "@/components/v2/research-status";
+import { StatusWord, WorkflowStatusCells, useDynastyStatuses, useWorkflowDeprecation } from "@/components/v2/research-status";
 import type { RoiToShow } from "@/lib/expected-return";
 import type { ResearchWorkflow } from "@/lib/research/research";
 
@@ -29,8 +34,8 @@ import type { ResearchWorkflow } from "@/lib/research/research";
  * The order is the producer's, the same order campaign-service runs (WF-ORDER-EXPLORE-1018).
  * Nothing is ranked or divided here.
  *
- * Columns (owner 2026-10-22): mark, name, description, ROI, cost per outcome, conversion, spent,
- * status. No LLM / Template column: since BEST-TPL-LLM-1022 a workflow fixes neither, each send
+ * Columns (owner 2026-10-22): mark + name (a link to its page), description, tactics, ROI, cost
+ * per outcome, conversion, spent, status. A click anywhere else on the row opens its drawer. No LLM / Template column: since BEST-TPL-LLM-1022 a workflow fixes neither, each send
  * writes with the leg's best template and LLM. No summary banner above the table: the owner does
  * not want to read which workflow writes the next email.
  *
@@ -97,6 +102,12 @@ export function ResearchLiveWorkflows({
   const pipeId = `${featureSlug}|${legKey}`;
   const channelName = usePipeChannelName(pipe);
   const nameOf = (r: { name: string | null; slug: string }) => shortWorkflowName(r.name ?? r.slug, channelName);
+  const tactics = useWorkflowTactics(shown.map((r) => r.slug), pipeId);
+  // The row whose drawer is open (owner 2026-10-22: a click on the row opens the detail on the right).
+  const [open, setOpen] = useState<string | null>(null);
+  const openRow = open ? (rows.find((r) => r.slug === open) ?? null) : null;
+  const hrefOf = (slug: string) =>
+    researchedWorkflows.has(slug) ? researchCatalogHref(base, pipe, "workflows", slug) : `${brandBase}/workflows/${encodeURIComponent(slug)}?pipe=${encodeURIComponent(pipeId)}`;
 
   // Rows wait for the statuses too, or every row would sit in Active and jump tab when they answer.
   const answered = (rankingQ.data !== undefined || rankingQ.isFetchedAfterMount) && dynastyStatuses.answered;
@@ -111,16 +122,17 @@ export function ResearchLiveWorkflows({
         onPick={(k) => setTab(k as StatusTab)}
       />
       <div className="k-scroll relative overflow-x-auto">
-        <table className="w-full min-w-[1080px] table-fixed text-[13px]">
+        <table className="w-full min-w-[1140px] table-fixed text-[13px]">
           <thead>
             <tr className="border-b border-[var(--line-subtle)]">
-              <th className={`${LIVE_TH} w-44`}>Workflow</th>
+              <th className={`${LIVE_TH} w-40`}>Workflow</th>
               <th className={LIVE_TH}>Description</th>
+              <th className={`${LIVE_TH} w-48`}>Tactics</th>
               <th className={`${LIVE_TH} w-24 text-right`}>
                 <RoiLabel />
               </th>
-              <th className={`${LIVE_TH} w-28 text-right`}>{`$ ${outcomeUnit}`}</th>
-              <th className={`${LIVE_TH} w-32 text-right`}>% Conversion</th>
+              <th className={`${LIVE_TH} w-24 text-right`}>{`$ ${outcomeUnit}`}</th>
+              <th className={`${LIVE_TH} w-[124px] text-right`}>% Conversion</th>
               <th className={`${LIVE_TH} w-24 text-right`}>$ Spent</th>
               <th className={`${LIVE_TH} w-28`}>Status</th>
               <th className={`${LIVE_TH} w-10`} aria-label="Status menu" />
@@ -154,36 +166,45 @@ export function ResearchLiveWorkflows({
                 </td>
               </tr>
             ) : (
-              shown.map((r) => {
-                const studied = researchedWorkflows.get(r.slug);
-                const workflowHref = studied
-                  ? researchCatalogHref(base, pipe, "workflows", r.slug)
-                  : `${brandBase}/workflows/${encodeURIComponent(r.slug)}?pipe=${encodeURIComponent(pipeId)}`;
-                return (
-                  <WorkflowRow
-                    key={r.slug}
-                    row={r}
-                    studied={studied ?? null}
-                    href={workflowHref}
-                    name={nameOf(r)}
-                    statuses={dynastyStatuses}
-                  />
-                );
-              })
+              shown.map((r) => (
+                <WorkflowRow
+                  key={r.slug}
+                  row={r}
+                  studied={researchedWorkflows.get(r.slug) ?? null}
+                  href={hrefOf(r.slug)}
+                  name={nameOf(r)}
+                  statuses={dynastyStatuses}
+                  tactics={tactics.of(r.slug)}
+                  selected={open === r.slug}
+                  onOpen={() => setOpen(r.slug)}
+                />
+              ))
             )}
           </tbody>
         </table>
       </div>
       <div className="k-fg3 border-t border-[var(--line-subtle)] px-4 py-2.5 text-[12px]">
         Every client we run a workflow for, pooled, in the order every campaign runs. Each send writes with the pipe&apos;s best template and
-        LLM. Open a workflow for its runs.
+        LLM. Click a row for its detail; its name opens its page.
       </div>
+      {openRow && (
+        <WorkflowDrawer
+          row={openRow}
+          studied={researchedWorkflows.get(openRow.slug) ?? null}
+          href={hrefOf(openRow.slug)}
+          name={nameOf(openRow)}
+          statuses={dynastyStatuses}
+          tactics={tactics.of(openRow.slug)}
+          outcomeUnit={outcomeUnit}
+          onClose={() => setOpen(null)}
+        />
+      )}
     </div>
   );
 }
 
 /** The table's column count (empty and loading rows span it). */
-const COLS = 8;
+const COLS = 9;
 
 type StatusTab = "active" | "deprecated";
 const STATUS_TABS: { key: StatusTab; label: string }[] = [
@@ -205,29 +226,79 @@ export function workflowRoiToShow(row: Pick<LiveWorkflowRow, "roiMultiple">, stu
 
 const DASH = <span className="k-fg4">—</span>;
 
+/** A tactic a workflow follows, as features-service names it. */
+interface FollowedTactic {
+  id: string;
+  name: string;
+}
+
+/**
+ * The tactics each listed workflow follows: features-service's own verdict per workflow (the
+ * catalogue workflow read, `tactics[].follows`, Jev on its CURRENT version), never re-judged here.
+ * Tactics move only when Jev sweeps (every ~15 min), so these are read once a few minutes, never polled.
+ * `null` = not answered yet.
+ */
+function useWorkflowTactics(slugs: readonly string[], pipeId: string) {
+  const gate = useOrgQueryGate();
+  const reads = useQueries({
+    queries: slugs.map((slug) => ({
+      queryKey: staffCatalogueObjectKey("workflows", slug, pipeId),
+      queryFn: () => getStaffCatalogueObject("workflows", slug, { pipe: pipeId }),
+      staleTime: TACTICS_STALE_MS,
+      retry: false,
+      enabled: gate,
+    })),
+  });
+  const bySlug = new Map<string, FollowedTactic[] | null>();
+  slugs.forEach((slug, i) => {
+    const d = reads[i]?.data;
+    bySlug.set(slug, d ? (d.tactics ?? []).filter((t) => t.follows === true).map((t) => ({ id: t.id, name: t.name })) : null);
+  });
+  return { of: (slug: string): FollowedTactic[] | null => bySlug.get(slug) ?? null };
+}
+
+const TACTICS_STALE_MS = 5 * 60_000;
+
 function WorkflowRow({
   row: r,
   studied,
   href,
   name,
   statuses,
+  tactics,
+  selected,
+  onOpen,
 }: {
   row: LiveWorkflowRow;
   studied: ResearchWorkflow | null;
   href: string;
   name: string;
   statuses: ReturnType<typeof useDynastyStatuses>;
+  tactics: FollowedTactic[] | null;
+  selected: boolean;
+  onOpen: () => void;
 }) {
-  const deprecated = statuses.statusOf(r.slug) === "deprecated";
-  // A runnable workflow's description rides the status listing; a deprecated one's is its newest
-  // version's (the same per-workflow read its Status cell makes for why it was deprecated).
-  const newest = useWorkflowDeprecation(r.slug, deprecated);
-  const description = deprecated ? newest.description : statuses.descriptionOf(r.slug);
+  const description = useWorkflowDescription(r.slug, statuses);
   const cents = r.costPerOutcomeUsd == null ? null : Math.round(r.costPerOutcomeUsd * 100);
+  const stop = (e: React.SyntheticEvent) => e.stopPropagation();
   return (
-    <tr className="k-row">
+    <tr
+      className={`k-row cursor-pointer ${selected ? "k-selected" : ""}`}
+      tabIndex={0}
+      onClick={(e) => {
+        if (opensDrawer(e.target, e.currentTarget)) onOpen();
+      }}
+      onKeyDown={(e) => {
+        if (e.key === "Enter" && e.target === e.currentTarget) onOpen();
+      }}
+    >
       <td className="max-w-0 py-2 pl-4 pr-3">
-        <Link href={href} title={r.name ?? r.slug} className={`flex min-w-0 items-center gap-2 hover:text-[var(--accent)] ${r.selectable ? "" : "k-fg3"}`}>
+        <Link
+          href={href}
+          onClick={stop}
+          title={`Open ${r.name ?? r.slug}`}
+          className={`k-btn-ghost -mx-1.5 inline-flex h-8 max-w-full items-center gap-2 px-1.5 hover:text-[var(--accent)] ${r.selectable ? "" : "k-fg3"}`}
+        >
           <TopicMark topic="workflow" size={22} />
           <span className="truncate font-medium">{name}</span>
         </Link>
@@ -241,6 +312,9 @@ function WorkflowRow({
           DASH
         )}
       </td>
+      <td className="max-w-0 px-3 py-2">
+        <TacticTags tactics={tactics} />
+      </td>
       <td className="px-3 py-2 text-right tabular-nums">
         <RoiValue roi={workflowRoiToShow(r, studied)} />
       </td>
@@ -252,5 +326,229 @@ function WorkflowRow({
       <td className="px-3 py-2 text-right tabular-nums">{r.spentUsd == null ? DASH : formatUsdAdaptive(r.spentUsd)}</td>
       <WorkflowStatusCells slug={r.slug} label={name} statuses={statuses} />
     </tr>
+  );
+}
+
+/**
+ * A click on the row opens its drawer, except on a control (the name link, "+N more", the status
+ * menu) and except a click that only BUBBLED here through a portal (the status menu's modal, the
+ * tactics popover): React carries portal events up the component tree, not the DOM one.
+ */
+export function opensDrawer(target: EventTarget, row: Element): boolean {
+  if (!(target instanceof Element) || !row.contains(target)) return false;
+  return target.closest("a,button,input,textarea,select,[role=menu],[role=dialog]") == null;
+}
+
+/**
+ * A workflow's description, workflow-service's own words: a runnable one's rides the status
+ * listing; a deprecated one's is its newest version's (the read its Status cell makes for why).
+ */
+function useWorkflowDescription(slug: string, statuses: ReturnType<typeof useDynastyStatuses>): string | null {
+  const deprecated = statuses.statusOf(slug) === "deprecated";
+  const newest = useWorkflowDeprecation(slug, deprecated);
+  return deprecated ? newest.description : statuses.descriptionOf(slug);
+}
+
+/**
+ * The first tactic tags that FIT the cell on one line, then "+N more" listing them all on hover
+ * (desktop) or tap (mobile). The fit is measured off an invisible copy of every tag, re-measured
+ * when the cell resizes; a lone tag too wide for the cell truncates with an ellipsis.
+ */
+function TacticTags({ tactics }: { tactics: FollowedTactic[] | null }) {
+  const box = useRef<HTMLDivElement>(null);
+  const ruler = useRef<HTMLDivElement>(null);
+  const [fit, setFit] = useState<number | null>(null);
+  const names = tactics?.map((t) => t.name).join("|") ?? "";
+  useLayoutEffect(() => {
+    const el = box.current;
+    const rl = ruler.current;
+    if (!el || !rl || !tactics?.length) return;
+    const measure = () => {
+      const widths = [...rl.children].map((c) => (c as HTMLElement).offsetWidth);
+      setFit(tagsThatFit(widths, el.clientWidth, MORE_W, TAG_GAP));
+    };
+    measure();
+    const ro = new ResizeObserver(measure);
+    ro.observe(el);
+    return () => ro.disconnect();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [names]);
+  if (tactics == null) return <Shimmer className="h-4 w-24" />;
+  if (tactics.length === 0) return <span className="k-fg3 text-[12px]">None</span>;
+  const n = fit ?? 1;
+  const rest = tactics.length - n;
+  return (
+    <div ref={box} className="relative flex min-w-0 flex-nowrap items-center gap-1">
+      <div ref={ruler} aria-hidden="true" className="pointer-events-none invisible absolute left-0 top-0 flex gap-1">
+        {tactics.map((t) => (
+          <span key={t.id} className="k-chip whitespace-nowrap">
+            {t.name}
+          </span>
+        ))}
+      </div>
+      {tactics.slice(0, n).map((t) => (
+        <span key={t.id} className="k-chip min-w-0 shrink" title={t.name}>
+          <span className="truncate">{t.name}</span>
+        </span>
+      ))}
+      {rest > 0 && <MoreTactics label={`+${rest} more`} tactics={tactics} />}
+    </div>
+  );
+}
+
+/** Room kept for "+N more" and the gap between tags, in px. */
+const MORE_W = 64;
+const TAG_GAP = 4;
+
+/** "+N more": the whole list in a portalled k-popover, opened by hover on desktop or a tap. */
+function MoreTactics({ label, tactics }: { label: string; tactics: FollowedTactic[] }) {
+  const btn = useRef<HTMLButtonElement>(null);
+  const [at, setAt] = useState<{ top: number; left: number } | null>(null);
+  const show = () => {
+    const r = btn.current?.getBoundingClientRect();
+    if (r) setAt({ top: r.bottom + 6, left: Math.max(8, Math.min(r.left, window.innerWidth - 248)) });
+  };
+  useEffect(() => {
+    if (!at) return;
+    const close = () => setAt(null);
+    const onKey = (e: KeyboardEvent) => e.key === "Escape" && close();
+    window.addEventListener("scroll", close, true);
+    window.addEventListener("keydown", onKey);
+    return () => {
+      window.removeEventListener("scroll", close, true);
+      window.removeEventListener("keydown", onKey);
+    };
+  }, [at]);
+  const host = typeof document === "undefined" ? null : (document.getElementById("v2-portal") ?? document.body);
+  return (
+    <>
+      <button
+        ref={btn}
+        type="button"
+        className="k-btn-ghost h-6 shrink-0 whitespace-nowrap px-1.5 text-[12px]"
+        aria-expanded={at != null}
+        // Hover is a mouse thing: a tap also fires the enter, which would open then the click close it.
+        onPointerEnter={(e) => e.pointerType === "mouse" && show()}
+        onPointerLeave={(e) => e.pointerType === "mouse" && setAt(null)}
+        onClick={(e) => {
+          e.stopPropagation();
+          if (at) setAt(null);
+          else show();
+        }}
+      >
+        {label}
+      </button>
+      {at &&
+        host &&
+        createPortal(
+          <div className="k-popover fixed z-[70] w-60 p-2.5" style={{ top: at.top, left: at.left }} role="tooltip">
+            <p className="k-label">Tactics</p>
+            <ul className="mt-1.5 flex flex-wrap gap-1">
+              {tactics.map((t) => (
+                <li key={t.id} className="k-chip">
+                  {t.name}
+                </li>
+              ))}
+            </ul>
+          </div>,
+          host,
+        )}
+    </>
+  );
+}
+
+/**
+ * The row's detail sliding in from the right (owner 2026-10-22): mark, name, full description,
+ * tactics, the figures, and its page. Recent runs join once content generation serves them.
+ */
+function WorkflowDrawer({
+  row: r,
+  studied,
+  href,
+  name,
+  statuses,
+  tactics,
+  outcomeUnit,
+  onClose,
+}: {
+  row: LiveWorkflowRow;
+  studied: ResearchWorkflow | null;
+  href: string;
+  name: string;
+  statuses: ReturnType<typeof useDynastyStatuses>;
+  tactics: FollowedTactic[] | null;
+  outcomeUnit: string;
+  onClose: () => void;
+}) {
+  const description = useWorkflowDescription(r.slug, statuses);
+  const deprecated = statuses.statusOf(r.slug) === "deprecated";
+  const why = useWorkflowDeprecation(r.slug, deprecated);
+  const cents = r.costPerOutcomeUsd == null ? null : Math.round(r.costPerOutcomeUsd * 100);
+  return (
+    <ResearchDrawer
+      label={name}
+      onClose={onClose}
+      head={
+        <div className="flex min-w-0 items-center gap-2.5">
+          <TopicMark topic="workflow" size={36} />
+          <div className="min-w-0">
+            <p className="k-label">Workflow</p>
+            <p className="truncate text-[14px] font-medium" title={r.name ?? r.slug}>
+              {name}
+            </p>
+          </div>
+        </div>
+      }
+      right={<StatusWord status={statuses.statusOf(r.slug)} pending={!statuses.answered} deprecation={why.deprecation} />}
+      footer={
+        <Link href={href} onClick={onClose} className="k-btn inline-flex items-center gap-1.5">
+          Open workflow page
+          <Arrow />
+        </Link>
+      }
+    >
+      <div className="space-y-4 px-4 py-3">
+        <div>
+          <p className="k-label">Description</p>
+          {description ? (
+            <p className="k-fg2 mt-1.5 whitespace-pre-wrap break-words text-[13px] leading-5">{description}</p>
+          ) : (
+            <p className="k-fg3 mt-1.5 text-[12px]">No description on record.</p>
+          )}
+        </div>
+        <div>
+          <p className="k-label">Tactics</p>
+          {tactics == null ? (
+            <Shimmer className="mt-1.5 h-4 w-40" />
+          ) : tactics.length === 0 ? (
+            <p className="k-fg3 mt-1.5 text-[12px]">Follows no tactic.</p>
+          ) : (
+            <div className="mt-1.5 flex flex-wrap gap-1">
+              {tactics.map((t) => (
+                <span key={t.id} className="k-chip">
+                  {t.name}
+                </span>
+              ))}
+            </div>
+          )}
+        </div>
+        <dl className="grid grid-cols-2 gap-x-3 gap-y-2.5 border-t border-[var(--line-subtle)] pt-3 text-[12px]">
+          <Fig k={<RoiLabel />} v={<RoiValue roi={workflowRoiToShow(r, studied)} />} />
+          <Fig k={`$ ${outcomeUnit}`} v={<CostValue cost={{ cents, expected: false, learning: cents != null && r.mature === false, expectedCents: null }} learning />} />
+          <Fig k="% Conversion" v={r.conversionRatePct == null ? DASH : formatRatePct(r.conversionRatePct)} />
+          <Fig k="$ Spent" v={r.spentUsd == null ? DASH : formatUsdAdaptive(r.spentUsd)} />
+          <Fig k="Outcomes" v={r.outcomes == null ? DASH : Math.round(r.outcomes).toLocaleString("en-US")} />
+        </dl>
+      </div>
+    </ResearchDrawer>
+  );
+}
+
+function Fig({ k, v }: { k: React.ReactNode; v: React.ReactNode }) {
+  return (
+    <div className="min-w-0">
+      <dt className="k-label truncate">{k}</dt>
+      <dd className="mt-0.5 truncate text-[15px] font-medium tabular-nums">{v}</dd>
+    </div>
   );
 }

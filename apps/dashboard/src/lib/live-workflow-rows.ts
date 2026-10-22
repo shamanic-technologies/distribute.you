@@ -231,3 +231,20 @@ export function cannotRunReason(row: Pick<LiveWorkflowRow, "executable" | "assig
   if (row.assignment === "unassigned") return "Not on this leg";
   return "Cannot run";
 }
+
+/**
+ * How many tags (widths in order) fit on one line of `room` px, keeping `moreW` for "+N more"
+ * whenever some are left out. Never below 1: a lone tag truncates rather than vanish.
+ */
+export function tagsThatFit(widths: readonly number[], room: number, moreW: number, gap: number): number {
+  const total = widths.reduce((sum, w, i) => sum + w + (i ? gap : 0), 0);
+  if (total <= room) return widths.length;
+  let used = 0;
+  let k = 0;
+  for (let i = 0; i < widths.length; i++) {
+    used += (i ? gap : 0) + widths[i];
+    if (used + gap + moreW > room) break;
+    k = i + 1;
+  }
+  return Math.max(1, k);
+}

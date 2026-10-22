@@ -235,27 +235,71 @@ export function TemplateVersionDrawer({
 }) {
   const read = useTemplateOutputs(version.key, 5);
   return (
+    <ResearchDrawer
+      label={`Version ${version.label}`}
+      onClose={onClose}
+      head={
+        <>
+          <p className="k-label">Version</p>
+          <p className="flex min-w-0 items-center gap-1.5 text-[13px] font-medium">
+            <span className="k-mono truncate" title={version.key}>
+              {version.label}
+            </span>
+            {version.head && <span className="k-chip shrink-0">Head</span>}
+          </p>
+          <p className="k-fg3 truncate text-[12px]">Version of {dynastyLabel}</p>
+        </>
+      }
+      right={status}
+      footer={
+        <Link href={href} onClick={onClose} className="k-btn inline-flex items-center gap-1.5">
+          Open version page
+          <Arrow />
+        </Link>
+      }
+    >
+      <div className="border-b border-[var(--line-subtle)] px-4 py-3">
+        <TemplateFigures f={version} outcome={outcome} more />
+      </div>
+      <p className="k-label px-4 pt-3">Last 5 emails</p>
+      <OutputsList read={read} />
+    </ResearchDrawer>
+  );
+}
+
+/**
+ * The Research right drawer (owner 2026-10-21): a `k-popover` sliding in from the right, portalled
+ * to the shell's layer, Esc or a click outside closes it. Header (`head` + `right` + ×), a scrolling
+ * body, a footer. One shell for every Research drawer (template version, workflow).
+ */
+export function ResearchDrawer({
+  label,
+  onClose,
+  head,
+  right,
+  footer,
+  children,
+}: {
+  label: string;
+  onClose: () => void;
+  head: React.ReactNode;
+  right?: React.ReactNode;
+  footer?: React.ReactNode;
+  children: React.ReactNode;
+}) {
+  return (
     <V2Layer onEscape={onClose}>
       <div className="fixed inset-0 z-[60] bg-[#1010121f]" onMouseDown={onClose}>
         <div
           role="dialog"
-          aria-label={`Version ${version.label}`}
+          aria-label={label}
           className="k-popover k-drawer-in fixed inset-y-0 right-0 flex w-full flex-col overflow-hidden rounded-none md:inset-y-2 md:right-2 md:w-[30rem] md:max-w-[94vw] md:rounded-[12px]"
           onMouseDown={(e) => e.stopPropagation()}
         >
           <div className="flex items-center gap-3 border-b border-[var(--line-subtle)] px-4 py-2.5">
-            <div className="min-w-0">
-              <p className="k-label">Version</p>
-              <p className="flex min-w-0 items-center gap-1.5 text-[13px] font-medium">
-                <span className="k-mono truncate" title={version.key}>
-                  {version.label}
-                </span>
-                {version.head && <span className="k-chip shrink-0">Head</span>}
-              </p>
-              <p className="k-fg3 truncate text-[12px]">Version of {dynastyLabel}</p>
-            </div>
+            <div className="min-w-0">{head}</div>
             <div className="ml-auto flex items-center gap-2">
-              {status}
+              {right}
               <button type="button" onClick={onClose} aria-label="Close" className="k-btn-ghost h-7 w-7 justify-center px-0">
                 <svg width="12" height="12" viewBox="0 0 12 12" aria-hidden="true">
                   <path d="M3 3l6 6M9 3l-6 6" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" />
@@ -263,19 +307,8 @@ export function TemplateVersionDrawer({
               </button>
             </div>
           </div>
-          <div className="k-scroll min-h-0 flex-1 overflow-y-auto">
-            <div className="border-b border-[var(--line-subtle)] px-4 py-3">
-              <TemplateFigures f={version} outcome={outcome} more />
-            </div>
-            <p className="k-label px-4 pt-3">Last 5 emails</p>
-            <OutputsList read={read} />
-          </div>
-          <div className="border-t border-[var(--line-subtle)] px-4 py-2.5">
-            <Link href={href} onClick={onClose} className="k-btn inline-flex items-center gap-1.5">
-              Open version page
-              <Arrow />
-            </Link>
-          </div>
+          <div className="k-scroll min-h-0 flex-1 overflow-y-auto">{children}</div>
+          {footer && <div className="border-t border-[var(--line-subtle)] px-4 py-2.5">{footer}</div>}
         </div>
       </div>
     </V2Layer>
