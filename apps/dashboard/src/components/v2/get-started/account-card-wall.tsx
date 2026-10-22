@@ -829,8 +829,10 @@ export function AccountCardWall({
     await armPostpaid();
   }
 
-  // billing refuses post-paid on a card it cannot charge later (409 `postpaid_card_not_allowed`):
-  // the same choice as the card check, another card or prepaid.
+  // billing refuses post-paid on a card it cannot charge later (409 `postpaid_card_not_allowed`)
+  // or one whose bank refused the $50 check (409 `postpaid_card_hold_refused`, billing's sentence
+  // shown): the same choice as the card check, another card or prepaid. Another card comes back
+  // here, so billing checks the new one.
   async function armPostpaid() {
     setBusy(true);
     setError(null);

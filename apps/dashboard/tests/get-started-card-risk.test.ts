@@ -56,6 +56,31 @@ describe("a card automatic charges may not reach (owner 2026-10-13), on billing'
     expect(postpaidRefusalFacts({ code: "something_else" }, indian)).toBeNull();
     expect(postpaidRefusalFacts(undefined, null)).toBeNull();
   });
+
+  it("reads billing's refused $50 card check as the same choice, with the bank's sentence (owner 2026-10-22)", () => {
+    const error = "Your bank refused a $50.00 check on this card: Your card has insufficient funds. Use another card, or pay upfront.";
+    const refused = postpaidRefusalFacts({ code: "postpaid_card_hold_refused", card_refused_reason: "card_hold_refused", error }, fine)!;
+    expect(refused).toEqual({ ...fine, postpaidAllowed: false, refusedReason: "card_hold_refused", refusalMessage: error });
+    const c = cardRiskCopy("postpaid", refused)!;
+    expect(c.title).toBe("Post-paid does not work with this card");
+    expect(c.body).toBe(error);
+    expect([c.primary, c.secondary, c.secondaryAction]).toEqual(["Use another card", "Switch to prepaid", "prepaid"]);
+    const silent = cardRiskCopy("postpaid", postpaidRefusalFacts({ code: "postpaid_card_hold_refused" }, null)!)!;
+    expect(silent.body).toBe("Your bank refused a check on this card.");
+    expect(silent.body).not.toMatch(/[–—]/);
+    // The country/prepaid refusal reads exactly as before.
+    expect(postpaidRefusalFacts({ code: "postpaid_card_not_allowed", card_refused_reason: "prepaid_card" }, prepaid)).toEqual(prepaid);
+  });
+
+  it("the wall sends a refused card check to the card choice, and another card arms post-paid again", () => {
+    const wall = read("src/components/v2/get-started/account-card-wall.tsx");
+    const arm = wall.slice(wall.indexOf("async function armPostpaid()"), wall.indexOf("// ── The saved card's facts"));
+    expect(arm.indexOf("postpaidRefusalFacts(e.body, knownCard.current)")).toBeLessThan(arm.indexOf("setCardRisk(refused);"));
+    const goOn = wall.slice(wall.indexOf("function goOnAfterCard()"), wall.indexOf("// ── Launch"));
+    expect(goOn).toContain("void armPostpaid();");
+    const another = wall.slice(wall.indexOf("function pickAnotherCard()"), wall.indexOf("function cardRiskSecondary("));
+    expect(another).toContain("goOnAfterCard();");
+  });
 });
 
 describe("the post-paid arm's wall (owner 2026-10-13)", () => {
