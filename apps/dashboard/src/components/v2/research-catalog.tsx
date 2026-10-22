@@ -394,15 +394,30 @@ function CatalogList({
                             <th className={`${TH} w-28 text-right`}>% Conversion</th>
                           </>
                         )}
-                        {kind === "models" && <th className={`${TH} w-52`}>Status</th>}
-                        {kind === "templates" && <th className={`${TH} w-20 text-right`}>Workflows</th>}
-                        <th className={`${TH} ${kind === "templates" ? "w-28" : "w-36"} text-right`}>Cost {o.unit.replace("/ ", "per ")}</th>
-                        {kind !== "templates" && <th className={`${TH} w-28 text-right`}>Rate</th>}
-                        <th className={`${TH} ${kind === "templates" ? "w-24" : "w-28"} text-right`}>{o.plural}</th>
-                        {kind !== "templates" && (
+                        {kind === "models" ? (
                           <>
-                            <th className={`${TH} w-28 text-right`}>Emails</th>
-                            <th className={`${TH} w-28 text-right`}>Invested</th>
+                            {/* Owner 2026-10-23: Model, ROI, $ / outcome, % Conversion, # outcomes, $ Spent, Status. */}
+                            <th className={`${TH} w-24 text-right`}>
+                              <RoiLabel />
+                            </th>
+                            <th className={`${TH} w-36 text-right`}>{`$ ${o.unit}`}</th>
+                            <th className={`${TH} w-28 text-right`}>% Conversion</th>
+                            <th className={`${TH} w-32 text-right`}>{`# ${o.plural}`}</th>
+                            <th className={`${TH} w-28 text-right`}>$ Spent</th>
+                            <th className={`${TH} w-40`}>Status</th>
+                          </>
+                        ) : (
+                          <>
+                            {kind === "templates" && <th className={`${TH} w-20 text-right`}>Workflows</th>}
+                            <th className={`${TH} ${kind === "templates" ? "w-28" : "w-36"} text-right`}>Cost {o.unit.replace("/ ", "per ")}</th>
+                            {kind !== "templates" && <th className={`${TH} w-28 text-right`}>Rate</th>}
+                            <th className={`${TH} ${kind === "templates" ? "w-24" : "w-28"} text-right`}>{o.plural}</th>
+                            {kind !== "templates" && (
+                              <>
+                                <th className={`${TH} w-28 text-right`}>Emails</th>
+                                <th className={`${TH} w-28 text-right`}>Invested</th>
+                              </>
+                            )}
                           </>
                         )}
                         <th className={`${TH} w-10`} aria-label={kind === "workflows" ? "Open" : "Status menu"} />
@@ -494,30 +509,46 @@ function CatalogList({
                                   </td>
                                 </>
                               )}
-                              {kind === "models" && (
-                                <td className="max-w-0 px-3">
-                                  <ContentStatusWord
-                                    status={status}
-                                    gap={served.gap}
-                                    pending={!statusAnswered && modelKeys.length > 0}
-                                    deprecation={deprecation}
-                                  />
-                                </td>
-                              )}
-                              {kind === "templates" && <td className="px-3 text-right tabular-nums">{(r as ResearchTemplate).workflows.length}</td>}
-                              <td className="whitespace-nowrap px-3 text-right tabular-nums">
-                                <Money value={r.cost} unit={o.unit} />
-                              </td>
-                              {kind !== "templates" && (
-                                <td className="px-3 text-right tabular-nums">
-                                  <Dash v={r.rate} />
-                                </td>
-                              )}
-                              <td className="px-3 text-right tabular-nums">{r.outcomes}</td>
-                              {kind !== "templates" && (
+                              {kind === "models" ? (
                                 <>
-                                  <td className="px-3 text-right tabular-nums">{r.emails}</td>
+                                  <td className="whitespace-nowrap px-3 text-right tabular-nums">
+                                    <RowRoi f={r} />
+                                  </td>
+                                  <td className="whitespace-nowrap px-3 text-right tabular-nums">
+                                    <Dash v={r.cost} />
+                                  </td>
+                                  <td className="px-3 text-right tabular-nums">
+                                    <Dash v={r.rate} />
+                                  </td>
+                                  <td className="px-3 text-right tabular-nums">{r.outcomes}</td>
                                   <td className="px-3 text-right tabular-nums">{r.spend}</td>
+                                  <td className="max-w-0 px-3">
+                                    <ContentStatusWord
+                                      status={status}
+                                      gap={served.gap}
+                                      pending={!statusAnswered && modelKeys.length > 0}
+                                      deprecation={deprecation}
+                                    />
+                                  </td>
+                                </>
+                              ) : (
+                                <>
+                                  {kind === "templates" && <td className="px-3 text-right tabular-nums">{(r as ResearchTemplate).workflows.length}</td>}
+                                  <td className="whitespace-nowrap px-3 text-right tabular-nums">
+                                    <Money value={r.cost} unit={o.unit} />
+                                  </td>
+                                  {kind !== "templates" && (
+                                    <td className="px-3 text-right tabular-nums">
+                                      <Dash v={r.rate} />
+                                    </td>
+                                  )}
+                                  <td className="px-3 text-right tabular-nums">{r.outcomes}</td>
+                                  {kind !== "templates" && (
+                                    <>
+                                      <td className="px-3 text-right tabular-nums">{r.emails}</td>
+                                      <td className="px-3 text-right tabular-nums">{r.spend}</td>
+                                    </>
+                                  )}
                                 </>
                               )}
                               <td className="pl-1 pr-4 text-right">
@@ -640,7 +671,12 @@ function KpiStrip({ f, pipe }: { f: ResearchFigures; pipe: ResearchPipe }) {
 
 /** A template row's served return, as its page's ROI tile prints it; `—` when none is served. */
 function TemplateRoi({ t }: { t: ResearchTemplate }) {
-  const roi = researchRoiOf(t);
+  return <RowRoi f={t} />;
+}
+
+/** A catalogue row's served return (template, model), as its page's ROI tile prints it; `—` when none is served. */
+function RowRoi({ f }: { f: ResearchFigures }) {
+  const roi = researchRoiOf(f);
   if (roi == null) return <Dash v={null} />;
   return "show" in roi ? <RoiValue roi={roi.show} /> : <>{roi.text}</>;
 }
