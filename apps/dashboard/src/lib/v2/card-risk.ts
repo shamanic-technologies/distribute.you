@@ -11,13 +11,18 @@
  * - postpaid: post-paid cannot run on that card, so "Use another card" or "Switch to
  *   prepaid", no way past.
  *
+ * Post-paid also asks the bank to hold the first $50 step on the card (billing v0.83.52,
+ * owner 2026-10-22): a refused hold comes back as billing's 409 `postpaid_card_hold_refused`
+ * and opens the same choice, with billing's own sentence (the bank's words inside) as the
+ * body. The wall never mentions the hold otherwise (disclosed in the Terms only).
+ *
  * No "x2 if answered in a minute" figure: we hold no sourced number for it, so the cost
  * of an unanswered prospect is said in words.
  *
  * Alias-free on purpose, so it carries real unit tests.
  */
 
-export type CardRefusal = "prepaid_card" | "card_issuing_country_unsupported";
+export type CardRefusal = "prepaid_card" | "card_issuing_country_unsupported" | "card_hold_refused";
 
 /** billing's card facts at card entry, as the wall reads them. */
 export interface CardFacts {
@@ -28,6 +33,8 @@ export interface CardFacts {
   refusedReason: CardRefusal | null;
   /** ISO 3166-1 alpha-2, as billing states it; null = not stated. */
   country: string | null;
+  /** billing's customer-readable sentence when the bank refused the card check (409 only). */
+  refusalMessage?: string | null;
 }
 
 export type CardRiskArm = "subscription" | "prepaid" | "postpaid";
@@ -61,6 +68,15 @@ function reasonLine(facts: CardFacts): string {
 export function cardRiskCopy(arm: CardRiskArm, facts: CardFacts): CardRiskCopy | null {
   if (!facts.saved || facts.postpaidAllowed) return null;
   const reason = reasonLine(facts);
+  if (arm === "postpaid" && facts.refusedReason === "card_hold_refused") {
+    return {
+      title: "Post-paid does not work with this card",
+      body: facts.refusalMessage ?? "Your bank refused a check on this card.",
+      primary: "Use another card",
+      secondary: "Switch to prepaid",
+      secondaryAction: "prepaid",
+    };
+  }
   if (arm === "postpaid") {
     return {
       title: "Post-paid does not work with this card",
@@ -83,6 +99,18 @@ export function cardRiskCopy(arm: CardRiskArm, facts: CardFacts): CardRiskCopy |
 
 /** billing's 409 on `PUT payment_mode {postpaid}` for a refused card, as card facts. */
 export function postpaidRefusalFacts(body: Record<string, unknown> | undefined, known: CardFacts | null): CardFacts | null {
+  if (body?.code === "postpaid_card_hold_refused") {
+    const message = typeof body.error === "string" && body.error.trim() ? body.error.trim() : null;
+    if (!message) console.error("[get-started] billing refused the card check with no sentence", body);
+    return {
+      saved: true,
+      methodId: known?.methodId ?? null,
+      postpaidAllowed: false,
+      refusedReason: "card_hold_refused",
+      country: known?.country ?? null,
+      refusalMessage: message,
+    };
+  }
   if (!body || body.code !== "postpaid_card_not_allowed") return null;
   const r = body.card_refused_reason;
   return {
