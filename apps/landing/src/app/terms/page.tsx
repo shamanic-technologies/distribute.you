@@ -9,7 +9,7 @@ import { Section } from "@/components/section";
 export const revalidate = 86400;
 
 const TERMS_URL = `${PROD_URLS.landing}/terms`;
-const LAST_UPDATED = "October 13, 2026";
+const LAST_UPDATED = "October 22, 2026";
 const COMPANY = "BLOOMING GENERATION";
 const COMPANY_SIREN = "882102775";
 const SERVICE = "distribute.you";
@@ -175,6 +175,14 @@ const SECTIONS: SectionDef[] = [
           may then ask you to use another card or to switch to prepaid credit.
           By saving a payment method you authorize these charges without
           further confirmation.
+        </p>
+        <p>
+          <strong>Card check.</strong> When you save a card, we may place a
+          temporary authorization hold on it (for example $50) to check the
+          card. A hold is not a charge. Your bank releases it after a few days,
+          unless your campaigns reach that amount while the hold is active: we
+          then use it toward your payment, only for what you owe, instead of a
+          new charge. We may refuse a card that cannot take the hold.
         </p>
         <p>
           <strong>Reserved follow-ups.</strong> When the first email of a

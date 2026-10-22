@@ -187,7 +187,15 @@ describe("the copy behind the footer states the current positioning", () => {
     expect(terms).toContain("The referred account\n          receives no referral credit.");
     expect(terms).not.toContain("each side");
     expect(terms).toContain("is an acquisition agency delivered as a service");
-    expect(terms).toContain('const LAST_UPDATED = "October 13, 2026"');
+    expect(terms).toContain('const LAST_UPDATED = "October 22, 2026"');
+  });
+
+  it("the terms disclose the card authorization hold, and say it is not a charge", () => {
+    const terms = read("src/app/terms/page.tsx");
+    expect(terms).toContain("<strong>Card check.</strong>");
+    expect(terms).toContain("temporary authorization hold on it (for example $50)");
+    expect(terms).toContain("A hold is not a charge.");
+    expect(terms).toContain("we\n          then use it toward your payment, only for what you owe");
   });
 
   it("the terms state the billing the product runs: catalogue prices, prepaid credit, no refund but the managed guarantee", () => {
