@@ -149,4 +149,18 @@ describe("Companies reads each company's served rung", () => {
     expect(one).toContain("dealsBoardRungs(lifecycle.rungs)");
     expect(one).not.toContain("const FLOW");
   });
+  it("Companies has a Board view: one column per served rung, each company on its served rung", async () => {
+    const { readFileSync } = await import("node:fs");
+    const { join } = await import("node:path");
+    const page = readFileSync(join(__dirname, "../src/components/v2/companies-page.tsx"), "utf8");
+    const board = page.slice(page.indexOf("function CompaniesBoard("), page.indexOf("function CompaniesColumn("));
+    // The toggle exists and the board is rendered from it.
+    expect(page).toContain('view === "board" ? (');
+    expect(page).toContain("<CompaniesBoard");
+    // Columns are the served ladder (minus Lead found), cards land on the served company rung.
+    expect(page).toContain('rungs={tab === "all" ? rungTabs');
+    expect(board).toContain("rungOf(o)?.key");
+    // Each card opens the company, where its people sit together.
+    expect(page).toContain("const href = companyHref(orgId, brandId, o);");
+  });
 });
