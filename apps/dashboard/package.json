@@ -14,7 +14,7 @@
   },
   "dependencies": {
     "@ai-sdk/react": "^3.0.118",
-    "@clerk/nextjs": "^7.0.7",
+    "@clerk/nextjs": "^7.9.19",
     "@heroicons/react": "^2.1.0",
     "@phosphor-icons/react": "^2.1.10",
     "@revolut/checkout": "1.1.25",
@@ -31,7 +31,7 @@
     "isomorphic-dompurify": "^3.12.0",
     "lottie-react": "^2.4.1",
     "mermaid": "^11.13.0",
-    "next": "^16.2.1",
+    "next": "^16.4.2",
     "posthog-js": "^1.386.6",
     "react": "^19.2.4",
     "react-dom": "^19.2.4",
@@ -42,7 +42,7 @@
     "zod": "^4.3.6"
   },
   "devDependencies": {
-    "@clerk/testing": "^1.5.1",
+    "@clerk/testing": "^1.14.11",
     "@playwright/test": "^1.52.0",
     "@types/canvas-confetti": "^1.9.0",
     "@types/node": "^20.0.0",
@@ -50,6 +50,6 @@
     "@types/react-dom": "^19.2.3",
     "tailwindcss": "^4.2.2",
     "typescript": "^5.3.0",
-    "vitest": "^4.0.18"
+    "vitest": "^4.1.12"
   }
 }

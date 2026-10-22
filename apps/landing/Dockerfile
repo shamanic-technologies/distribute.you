@@ -18,7 +18,7 @@
 # history and an env file is a layer, and this is a real database credential rather
 # than a publishable token. The mount exists only for the length of those RUNs.
 
-FROM node:22-alpine AS builder
+FROM node:22.23.4-alpine AS builder
 RUN corepack enable && apk add --no-cache libc6-compat
 WORKDIR /repo
 
@@ -42,7 +42,7 @@ RUN --mount=type=secret,id=landing_db_url \
     DATABASE_URL="$(cat /run/secrets/landing_db_url 2>/dev/null || true)" \
     pnpm --filter @distribute/landing... build
 
-FROM node:22-alpine AS runner
+FROM node:22.23.4-alpine AS runner
 WORKDIR /app
 ENV NODE_ENV=production
 ENV PORT=3000

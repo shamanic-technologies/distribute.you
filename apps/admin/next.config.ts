@@ -4,6 +4,9 @@ import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
   reactStrictMode: true,
+  // Next 16.4 type-checks every file tsconfig.json includes, tests too; 16.2 did not.
+  // The build keeps checking app code only (tests are checked by vitest + tsc).
+  typescript: { tsconfigPath: "tsconfig.build.json" },
   // The staff console ships as a container on the Hetzner box, so the build emits a
   // self-contained server plus only the traced dependencies. `next build` runs with
   // apps/admin as its cwd, and the trace root has to be the monorepo root or the
