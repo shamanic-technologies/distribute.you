@@ -888,7 +888,7 @@ function ModelRowChip({ m }: { m: ResearchModel }) {
 /**
  * Every version of an LLM dynasty with its own served figures, newest first as features-service
  * serves them (they add up to the page's figures). The head is the version the dynasty runs now; a
- * version chat-service no longer serves reads Retired. A click opens the version in a drawer.
+ * version chat-service no longer serves reads Retired. A click opens the version's figures in a drawer.
  */
 function ModelVersionsTable({ pipe, m, versions }: { pipe: ResearchPipe; m: ResearchModel; versions: ResearchModelVersion[] }) {
   const o = useOutcome(pipe);
@@ -962,22 +962,11 @@ function ModelVersionsTable({ pipe, m, versions }: { pipe: ResearchPipe; m: Rese
             <TemplateFigures f={open} outcome={o} more />
           </div>
           {open.modelIds.length > 0 && (
-            <div className="border-b border-[var(--line-subtle)] px-4 py-3">
+            <div className="px-4 py-3">
               <p className="k-label">Model ids</p>
               <p className="k-mono k-fg2 mt-1 break-words text-[12px] leading-5">{open.modelIds.join(", ")}</p>
             </div>
           )}
-          <div className="px-4 py-3">
-            {open.charts.length ? (
-              <div className="space-y-6">
-                {open.charts.map((c) => (
-                  <MonthsRow key={c.title} chart={c} color={topicLook("llm").color} />
-                ))}
-              </div>
-            ) : (
-              <p className="k-fg3 text-[12px]">Too few emails in any single month to draw a curve.</p>
-            )}
-          </div>
         </ResearchDrawer>
       )}
     </section>
