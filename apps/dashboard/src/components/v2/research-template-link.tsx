@@ -1,6 +1,6 @@
 "use client";
 
-import Link from "next/link";
+import { CatalogueName } from "@/components/v2/catalogue-name";
 import { v2Href } from "@/lib/v2/routes";
 import { researchCatalogHref, researchPipeFor, researchTemplateOf, researchWorkflow } from "@/lib/research/research";
 import { useResearchCatalog } from "@/lib/research/research-source";
@@ -17,6 +17,7 @@ export function ResearchTemplateChip({
   step,
   templateKey,
   label,
+  version = null,
 }: {
   orgId: string;
   brandId: string;
@@ -24,19 +25,14 @@ export function ResearchTemplateChip({
   step: string | null;
   templateKey: string | null;
   label: string;
+  version?: string | null;
 }) {
   const { data: catalog } = useResearchCatalog("user");
   const pipe = researchPipeFor(channel, step);
   // A workflow names the template VERSION it writes with; Research lists it under its dynasty's page.
   const row = catalog && pipe && templateKey ? researchTemplateOf(catalog, pipe, templateKey) : null;
   const href = row && pipe ? researchCatalogHref(v2Href(orgId, brandId, "research"), pipe, "templates", row.key) : null;
-  return href ? (
-    <Link href={href} prefetch className="k-chip hover:text-[var(--accent)]" title="Open this template in Research">
-      {label} →
-    </Link>
-  ) : (
-    <span className="k-chip">{label}</span>
-  );
+  return <CatalogueName kind="template" variant="chip" name={label} version={version} href={href} />;
 }
 
 /**
@@ -63,11 +59,5 @@ export function ResearchModelChip({
   const pipe = researchPipeFor(channel, step);
   const model = catalog && pipe ? researchWorkflow(catalog, pipe, dynasty)?.model : null;
   const href = model?.linked ? researchCatalogHref(v2Href(orgId, brandId, "research"), pipe!, "models", model.key) : null;
-  return href ? (
-    <Link href={href} prefetch className="k-chip hover:text-[var(--accent)]" title="Open the model Research measured for this workflow">
-      {label} →
-    </Link>
-  ) : (
-    <span className="k-chip">{label}</span>
-  );
+  return <CatalogueName kind="llm" variant="chip" name={label} href={href} />;
 }

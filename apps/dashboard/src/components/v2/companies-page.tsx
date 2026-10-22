@@ -9,8 +9,8 @@ import { friendlyDate } from "@/lib/friendly-datetime";
 import { v2Href } from "@/lib/v2/routes";
 import { useBrandRevenue, useCompanyLifecycle } from "@/components/v2/data";
 import { companyRungs, dealsBoardRungs } from "@/lib/deals-board";
-import { uniboxValueTag } from "@/lib/unibox-leads";
-import { TagChip } from "@/components/v2/tag-chip";
+import { uniboxValueTag, uniboxValueTone, type LifecycleRung } from "@/lib/unibox-leads";
+import { TONE_COLOR, TagChip } from "@/components/v2/tag-chip";
 import { CompanyMark } from "@/components/v2/people-bits";
 import { EmptyNote, Initials, Shimmer, TopBar } from "@/components/v2/ui";
 import { ExportButton, RecordsFooter, RecordsTabs, RecordsToolbar, REC_TH, useRowKeys } from "@/components/v2/records";
@@ -57,6 +57,14 @@ const SORTS: Record<SortKey, { label: string; compare: (a: ConversionOrg, b: Con
  */
 const ROWS_STEP = 60;
 
+/**
+ * List or Board (owner 2026-10-23, after Senthil asked to see the people of one company side by
+ * side on Deals): the Board is the Deals board one grain up, one column per served lifecycle rung,
+ * one card per company on the rung features-service puts it on. Remembered per browser.
+ */
+type CompaniesView = "list" | "board";
+const VIEW_STORAGE_KEY = "distribute-companies-view";
+
 /** "2m ago" for when a read last landed, ticking once a minute. */
 function useAgo(at: number | undefined): string | null {
   const [now, setNow] = useState(() => Date.now());
@@ -92,6 +100,14 @@ export function CompaniesPage() {
   const [tab, setTab] = useState<string>("all");
   const [cursor, setCursor] = useState(-1);
   const [sort, setSort] = useState<SortKey>("value");
+  const [view, setView] = useState<CompaniesView>("list");
+  useEffect(() => {
+    if (window.localStorage.getItem(VIEW_STORAGE_KEY) === "board") setView("board");
+  }, []);
+  const pickView = (v: CompaniesView) => {
+    setView(v);
+    window.localStorage.setItem(VIEW_STORAGE_KEY, v);
+  };
   const [selected, setSelected] = useState<Set<string>>(() => new Set());
   const searchRef = useRef<HTMLInputElement | null>(null);
   const updated = useAgo(revenue.dataUpdatedAt);
@@ -198,6 +214,19 @@ export function CompaniesPage() {
         inputRef={searchRef}
         right={
           <>
+            <span className="k-inset inline-flex rounded-[9px] p-0.5 shadow-[inset_0_0_0_1px_var(--line-subtle)]">
+              {(["list", "board"] as const).map((v) => (
+                <button
+                  key={v}
+                  type="button"
+                  aria-pressed={view === v}
+                  onClick={() => pickView(v)}
+                  className={`${view === v ? "k-btn" : "k-btn-ghost"} h-6 px-2 text-[12px]`}
+                >
+                  {v === "list" ? "List" : "Board"}
+                </button>
+              ))}
+            </span>
             <label className="k-btn relative h-7 pr-7 text-[12px]">
               <svg width="13" height="13" viewBox="0 0 16 16" fill="none" className="k-fg3" aria-hidden="true">
                 <path d="M4.5 2.5v11M2 11l2.5 2.5L7 11M11.5 13.5v-11M9 5l2.5-2.5L14 5" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" />
@@ -218,6 +247,18 @@ export function CompaniesPage() {
           </>
         }
       />
+      {view === "board" ? (
+        <CompaniesBoard
+          orgId={orgId}
+          brandId={brandId}
+          rungs={tab === "all" ? rungTabs : rungTabs.filter((r) => r.key === tab)}
+          orgs={orgs}
+          rungOf={rungOf}
+          served={(key) => lifecycle.data?.rungs.find((x) => x.key === key)?.organizationCount ?? null}
+          pending={revenue.pending || lifecycle.data === undefined}
+          filtered={q.trim() !== ""}
+        />
+      ) : (
       <div className="k-scroll overflow-x-auto">
         <table className="w-full min-w-[940px] text-[13px]">
           <thead>
@@ -330,6 +371,7 @@ export function CompaniesPage() {
           </tbody>
         </table>
       </div>
+      )}
       <RecordsFooter
         right={
           <>
@@ -350,5 +392,144 @@ export function CompaniesPage() {
         }
       />
     </>
+  );
+}
+
+/**
+ * The Board: one column per rung, each company once, on the rung features-service serves for it
+ * (the highest any of its people reached), in the page's sort. A card opens the company, where
+ * all its people sit together. A column's count is the served one unless a search narrows it.
+ */
+function CompaniesBoard({
+  orgId,
+  brandId,
+  rungs,
+  orgs,
+  rungOf,
+  served,
+  pending,
+  filtered,
+}: {
+  orgId: string;
+  brandId: string;
+  rungs: LifecycleRung[];
+  orgs: ConversionOrg[];
+  rungOf: (o: ConversionOrg) => LifecycleRung | null;
+  served: (key: string) => number | null;
+  pending: boolean;
+  filtered: boolean;
+}) {
+  const byRung = useMemo(() => {
+    const m = new Map<string, ConversionOrg[]>();
+    for (const o of orgs) {
+      const key = rungOf(o)?.key;
+      if (!key) continue;
+      const list = m.get(key) ?? [];
+      list.push(o);
+      m.set(key, list);
+    }
+    return m;
+  }, [orgs, rungOf]);
+  return (
+    <div className="k-scroll flex gap-4 overflow-x-auto px-4 pb-6 pt-4 md:px-6">
+      {pending
+        ? [0, 1, 2, 3].map((i) => (
+            <section key={i} className="flex w-[240px] min-w-[200px] shrink-0 flex-col gap-2 md:flex-1 md:basis-0">
+              <Shimmer className="h-7 rounded-[8px]" />
+              <Shimmer className="h-[74px] rounded-[10px]" />
+            </section>
+          ))
+        : rungs.map((r) => {
+            const list = byRung.get(r.key) ?? [];
+            return (
+              <CompaniesColumn
+                key={r.key}
+                orgId={orgId}
+                brandId={brandId}
+                rung={r}
+                orgs={list}
+                total={filtered ? list.length : (served(r.key) ?? list.length)}
+              />
+            );
+          })}
+    </div>
+  );
+}
+
+function CompaniesColumn({
+  orgId,
+  brandId,
+  rung,
+  orgs,
+  total,
+}: {
+  orgId: string;
+  brandId: string;
+  rung: LifecycleRung;
+  orgs: ConversionOrg[];
+  total: number;
+}) {
+  const [shown, setShown] = useState(ROWS_STEP);
+  const color = TONE_COLOR[uniboxValueTone("lifecycle", rung.key)];
+  return (
+    <section className="flex w-[240px] min-w-[200px] shrink-0 flex-col md:flex-1 md:basis-0">
+      <header className="mb-2 flex h-7 items-center gap-2 px-0.5">
+        <span className="h-2 w-2 rounded-[2px]" style={{ background: color }} />
+        <span className="truncate whitespace-nowrap text-[13px] font-medium">{rung.label}</span>
+        <span className="k-fg3 shrink-0 text-[13px] tabular-nums">{formatCount(total)}</span>
+      </header>
+      <div className="flex flex-col gap-2">
+        {orgs.length === 0 ? (
+          <EmptyNote>No company here.</EmptyNote>
+        ) : (
+          orgs.slice(0, shown).map((o, i) => <CompanyCard key={o.orgId ?? o.organizationKey ?? `${o.orgName}-${i}`} orgId={orgId} brandId={brandId} o={o} />)
+        )}
+        {orgs.length > shown ? (
+          <button type="button" className="k-btn-ghost k-btn mt-1 justify-center" onClick={() => setShown((s) => s + ROWS_STEP)}>
+            Show more
+          </button>
+        ) : null}
+      </div>
+    </section>
+  );
+}
+
+function CompanyCard({ orgId, brandId, o }: { orgId: string; brandId: string; o: ConversionOrg }) {
+  const name = o.orgName ?? o.orgDomain ?? "Unknown company";
+  const person = o.topPerson ? `${o.topPerson.firstName ?? ""} ${o.topPerson.lastName ?? ""}`.trim() : "";
+  const href = companyHref(orgId, brandId, o);
+  const signals = o.tags.filter((t) => !HIDDEN_TAGS.has(t)).slice(0, 2);
+  const body = (
+    <>
+      <div className="flex items-center gap-2">
+        <CompanyMark name={name} domain={o.orgDomain ?? null} size={18} />
+        <span className="min-w-0 flex-1 truncate text-[13px] font-medium">{name}</span>
+        {o.expectedRevenueUsd > 0 ? <span className="k-fg2 shrink-0 text-[12px] tabular-nums">{formatUsdAdaptive(o.expectedRevenueUsd)}</span> : null}
+      </div>
+      {person ? (
+        <div className="k-fg2 mt-1.5 flex min-w-0 items-center gap-1.5 text-[12px]">
+          {o.topPerson?.photoUrl ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={o.topPerson.photoUrl} alt="" className="h-4 w-4 shrink-0 rounded-full object-cover" />
+          ) : (
+            <Initials name={person} size={16} round />
+          )}
+          <span className="truncate">{person}</span>
+        </div>
+      ) : null}
+      <div className="k-fg3 mt-2 flex items-center gap-1.5 border-t border-[var(--line-subtle)] pt-2 text-[11px]">
+        <span className="flex min-w-0 flex-1 gap-1.5 truncate">
+          {signals.map((t) => (
+            <span key={t}>{TAG_LABEL[t] ?? t}</span>
+          ))}
+        </span>
+        <span className="k-mono shrink-0 tabular-nums">{o.mostAdvancedDate ? friendlyDate(o.mostAdvancedDate) : ""}</span>
+      </div>
+    </>
+  );
+  return href ? (
+    <Link href={href} className="k-card block p-3">{body}</Link>
+  ) : (
+    <div className="k-card p-3">{body}</div>
   );
 }

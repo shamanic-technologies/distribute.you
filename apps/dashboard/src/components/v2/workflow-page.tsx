@@ -25,6 +25,7 @@ import {
 import { GrainMark } from "@/components/marks/grain-mark";
 import { AudienceAvatar } from "@/components/audiences/audience-avatar";
 import { ServedPipeMark } from "@/components/v2/served-pipe-mark";
+import { CatalogueName, CatalogueObjectMark } from "@/components/v2/catalogue-name";
 import { ResearchModelChip, ResearchTemplateChip } from "@/components/v2/research-template-link";
 import { EmptyNote, Initials, SectionTitle, Shimmer, TopBar } from "@/components/v2/ui";
 import { CompanyMark } from "@/components/v2/people-bits";
@@ -158,7 +159,7 @@ export function V2WorkflowPage() {
       <>
         <div className="mt-2 flex flex-wrap items-start justify-between gap-3">
           <div className="flex min-w-0 items-center gap-3">
-            <ServedPipeMark pipeId={spec.pipe.id} size={40} />
+            <CatalogueObjectMark kind="workflow" name={name} size={40} />
             <div className="min-w-0">
               <h1 className="truncate text-[24px] font-medium leading-[30px] tracking-[-0.02em]">{name}</h1>
               <div className="mt-1 flex flex-wrap items-center gap-2">
@@ -181,6 +182,7 @@ export function V2WorkflowPage() {
                     step={spec.campaign.leg?.toKey ?? null}
                     templateKey={ranked.row.contentPromptType}
                     label={template.label}
+                    version={template.version}
                   />
                 )}
               </div>
@@ -244,7 +246,7 @@ export function V2WorkflowPage() {
                 />
                 <Row k="Offer" v={spec.campaign.offerName} />
                 <Row k="Objective" v={spec.campaign.leg?.label ?? null} />
-                <Row k="Model" v={model ? <span className="k-mono text-[12px]">{model.alias}</span> : null} />
+                <Row k="Model" v={model ? <CatalogueName kind="llm" name={model.label} /> : null} />
                 <Row k="Invested" v={row.committedCostUsd == null ? null : formatUsdAdaptive(row.committedCostUsd)} />
                 <Row k="Leads emailed" v={row.outreach == null ? null : fmtCount(row.outreach)} />
               </dl>
@@ -821,7 +823,13 @@ function PromptCard({
   return (
     <div className="k-card p-4">
       <p className="k-label">Prompt</p>
-      <p className="k-mono k-fg2 mt-2 truncate text-[12px]">{promptType ?? "This workflow names no prompt template."}</p>
+      {promptType ? (
+        <p className="mt-2 flex min-w-0 text-[13px]">
+          <CatalogueName kind="template" name={promptType} />
+        </p>
+      ) : (
+        <p className="k-fg2 mt-2 text-[12px]">This workflow names no prompt template.</p>
+      )}
       {promptType && (
         <button type="button" onClick={() => setOpen(true)} className="k-btn mt-3">
           See the prompt

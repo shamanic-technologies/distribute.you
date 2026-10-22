@@ -14,6 +14,7 @@ import type { WorkflowRankLadderRow } from "@/lib/api";
 import { useStatBasis } from "@/lib/use-stat-basis";
 import { StatBasisSwitch } from "@/components/v2/stat-basis-switch";
 import { workflowModelMark } from "@/lib/workflow-model-marks";
+import { CatalogueName } from "@/components/v2/catalogue-name";
 import { workflowTemplateLabel } from "@/lib/workflow-template-label";
 import { useRoutePrefetch } from "@/lib/use-route-prefetch";
 import { v2WorkflowHref } from "@/lib/v2/routes";
@@ -302,9 +303,12 @@ function CampaignSection({
                         <td className="k-mono k-fg3 pl-4 pr-3 text-[12px] tabular-nums">{w.rank ?? "—"}</td>
                         <td className="max-w-0 px-3">
                           <div className="flex min-w-0 items-center gap-2">
-                            <span className="min-w-0 truncate font-medium" title={w.row.workflowDynastyName ?? undefined}>
-                              {shortName(w.row.workflowDynastyName, w.row.workflowDynastySlug)}
-                            </span>
+                            <CatalogueName
+                              kind="workflow"
+                              name={w.row.workflowDynastyName ?? w.row.workflowDynastySlug}
+                              label={shortName(w.row.workflowDynastyName, w.row.workflowDynastySlug)}
+                              className="font-medium"
+                            />
                             {liveRow && <LiveWorkflowChips row={liveRow} />}
                             {r.deprecatedSlugs.has(w.row.workflowDynastySlug) && (
                               <span className="k-chip k-fg3 shrink-0 text-[11px]">{DEPRECATED_ON_LEG_LABEL}</span>
@@ -312,14 +316,10 @@ function CampaignSection({
                           </div>
                         </td>
                         <td className="max-w-0 px-3">
-                          <span className="block min-w-0 truncate" title={model?.label}>
-                            {model?.label ?? <span className="k-fg4">{"—"}</span>}
-                          </span>
+                          {model ? <CatalogueName kind="llm" name={model.label} /> : <span className="k-fg4">{"—"}</span>}
                         </td>
                         <td className="max-w-0 px-3">
-                          <span className="block min-w-0 truncate" title={template?.label}>
-                            {template?.label ?? <span className="k-fg4">{"—"}</span>}
-                          </span>
+                          {template ? <CatalogueName kind="template" name={template.label} version={template.version} /> : <span className="k-fg4">{"—"}</span>}
                         </td>
                         <CostCell value={offer} unit={unit} />
                         <CostCell value={brand} unit={unit} />

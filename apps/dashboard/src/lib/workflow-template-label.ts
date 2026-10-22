@@ -31,6 +31,8 @@ export interface WorkflowTemplateLabel {
   id: string;
   /** Title-cased words with the trailing version dropped. The id when nothing is left. */
   label: string;
+  /** The trailing version (`v26`), printed small after the label; null when the id states none. */
+  version: string | null;
 }
 
 /** A trailing version marker: `-v26`, `_v3`. Only at the END — `v2-email` is a word. */
@@ -61,6 +63,7 @@ export function workflowTemplateLabel(
   const id = contentPromptType?.trim();
   if (!id) return null;
   const stem = id.replace(TRAILING_VERSION, "");
+  const version = TRAILING_VERSION.exec(id)?.[0].slice(1).toLowerCase() ?? null;
   const words = stem.split(SEPARATORS).filter(Boolean).map(titleCaseWord);
-  return { id, label: words.length > 0 ? words.join(" ") : id };
+  return { id, label: words.length > 0 ? words.join(" ") : id, version };
 }

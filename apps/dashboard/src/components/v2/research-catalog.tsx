@@ -23,6 +23,7 @@ import {
 } from "@/components/v2/research-status";
 import { OutputsList, RecentRuns, ResearchDrawer, TemplateFigures, TemplateOutputsPanel, TemplateVersionDrawer, useTemplateOutputs } from "@/components/v2/research-template-outputs";
 import { modelAliasesOf, modelStatus, type ContentTarget } from "@/lib/research/content-status";
+import { CatalogueName, CatalogueObjectMark } from "@/components/v2/catalogue-name";
 import { useResearch, useResearchCatalog, useResearchTexts } from "@/lib/research/research-source";
 import {
   Arrow,
@@ -32,8 +33,6 @@ import {
   SectionMark,
   SectionName,
   topicLook,
-  TemplateVersionChip,
-  TopicMark,
   dayText,
   identityWord,
   liveText,
@@ -83,26 +82,17 @@ const KIND_WORD: Record<CatalogKind, { one: string; many: string; title: string 
 /** Each kind wears its study topic's mark and colour. */
 const KIND_TOPIC: Record<CatalogKind, "workflow" | "template" | "llm"> = { workflows: "workflow", templates: "template", models: "llm" };
 
-/** A link to another catalogue page when that page exists in this pipe, else the name alone. */
+/** A model, template or workflow named the shared way (mark + name, a template's version after it), a link when its page exists in this pipe. */
 function RefLink({ base, pipe, kind, r, className = "" }: { base: string; pipe: ResearchPipe; kind: CatalogKind; r: ResearchRef | null; className?: string }) {
   if (!r) return <span className="k-fg4">{"—"}</span>;
-  // A template ref names its dynasty's page; the version it means rides beside it as a chip.
-  if (r.version) {
-    return (
-      <span className="flex min-w-0 items-center gap-1.5">
-        <RefLink base={base} pipe={pipe} kind={kind} r={{ ...r, version: null }} className={`min-w-0 truncate ${className.replace(/\bblock\b/, "")}`} />
-        <TemplateVersionChip version={r.version} />
-      </span>
-    );
-  }
-  return r.linked ? (
-    <Link href={researchCatalogHref(base, pipe, kind, r.key)} className={`hover:text-[var(--accent)] ${className}`} title={r.label}>
-      {r.label}
-    </Link>
-  ) : (
-    <span className={className} title={r.label}>
-      {r.label}
-    </span>
+  return (
+    <CatalogueName
+      kind={KIND_TOPIC[kind]}
+      name={r.label}
+      href={r.linked ? researchCatalogHref(base, pipe, kind, r.key) : null}
+      version={r.version?.label ?? null}
+      className={className.replace(/\b(block|truncate)\b/g, "").trim()}
+    />
   );
 }
 
@@ -463,9 +453,13 @@ function CatalogList({
                             >
                               <td className="max-w-0 pl-4 pr-3">
                                 <span className="flex min-w-0 items-center gap-1.5">
-                                  <Link href={href} onClick={(e) => e.stopPropagation()} className={`${(kind === "templates" && (r as ResearchTemplate).standaloneReason) || (kind === "models" && modelRowChipShown(r as ResearchModel)) ? "max-w-full shrink-0" : "min-w-0"} truncate font-medium hover:text-[var(--accent)]`} title={rowName(kind, r, channelName)}>
-                                    {rowName(kind, r, channelName)}
-                                  </Link>
+                                  <CatalogueName
+                                    kind={KIND_TOPIC[kind]}
+                                    name={r.label}
+                                    label={rowName(kind, r, channelName)}
+                                    href={href}
+                                    className={`${(kind === "templates" && (r as ResearchTemplate).standaloneReason) || (kind === "models" && modelRowChipShown(r as ResearchModel)) ? "shrink-0" : ""} font-medium`}
+                                  />
                                   {kind === "templates" && <TemplateRowChip t={r as ResearchTemplate} />}
                                   {kind === "models" && <ModelRowChip m={r as ResearchModel} />}
                                 </span>
@@ -601,7 +595,7 @@ function Header({
 }) {
   return (
     <div className="mt-2 flex min-w-0 items-center gap-3">
-      <TopicMark topic={topic} size={40} />
+      <CatalogueObjectMark kind={topic} name={title} size={40} />
       <div className="min-w-0">
         <h1 className="truncate text-[24px] font-medium leading-[30px] tracking-[-0.02em]">{title}</h1>
         {sub && (
@@ -726,25 +720,8 @@ function WorkflowView({
                 <SectionMark section={{ pipe }} size={12} />
                 <SectionName section={{ pipe }} />
               </span>
-              {w.model &&
-                (w.model.linked ? (
-                  <Link href={researchCatalogHref(base, pipe, "models", w.model.key)} className="k-chip inline-flex items-center gap-1 hover:text-[var(--accent)]">
-                    {w.model.label}
-                    <Arrow />
-                  </Link>
-                ) : (
-                  <span className="k-chip">{w.model.label}</span>
-                ))}
-              {w.template &&
-                (tplHref ? (
-                  <Link href={tplHref} className="k-chip inline-flex items-center gap-1 hover:text-[var(--accent)]">
-                    {w.template.label}
-                    <Arrow />
-                  </Link>
-                ) : (
-                  <span className="k-chip">{w.template.label}</span>
-                ))}
-              {w.template && <TemplateVersionChip version={w.template.version} />}
+              {w.model && <CatalogueName kind="llm" variant="chip" name={w.model.label} href={w.model.linked ? researchCatalogHref(base, pipe, "models", w.model.key) : null} />}
+              {w.template && <CatalogueName kind="template" variant="chip" name={w.template.label} href={tplHref} version={w.template.version?.label ?? null} />}
             </>
           }
         />
@@ -778,18 +755,7 @@ function WorkflowView({
               <Row
                 k="Template"
                 v={
-                  w.template ? (
-                    <span className="inline-flex max-w-full items-center gap-1.5">
-                      {tplHref ? (
-                        <Link href={tplHref} className="min-w-0 truncate text-[var(--accent)] hover:underline">
-                          {w.template.label}
-                        </Link>
-                      ) : (
-                        <span className="min-w-0 truncate">{w.template.label}</span>
-                      )}
-                      <TemplateVersionChip version={w.template.version} />
-                    </span>
-                  ) : null
+                  w.template ? <RefLink base={base} pipe={pipe} kind="templates" r={w.template} className={tplHref ? "text-[var(--accent)]" : ""} /> : null
                 }
               />
               <Row k="Invested" v={w.spend} />
@@ -918,9 +884,7 @@ function ModelVersionsTable({ pipe, m, versions }: { pipe: ResearchPipe; m: Rese
                 <tr key={v.key} onClick={() => setOpenKey(v.key)} aria-selected={openKey === v.key} className={`k-row h-10 cursor-pointer ${openKey === v.key ? "k-selected" : ""}`}>
                   <td className="max-w-0 pl-4 pr-3">
                     <span className="flex min-w-0 items-center gap-1.5">
-                      <span className="min-w-0 truncate" title={v.modelIds.join(", ") || v.key}>
-                        {v.label}
-                      </span>
+                      <CatalogueName kind="llm" name={v.label} label={v.label} className="min-w-0" />
                       {v.head && <span className="k-chip shrink-0">Head</span>}
                     </span>
                   </td>
@@ -950,7 +914,7 @@ function ModelVersionsTable({ pipe, m, versions }: { pipe: ResearchPipe; m: Rese
             <>
               <p className="k-label">Version</p>
               <p className="flex min-w-0 items-center gap-1.5 text-[13px] font-medium">
-                <span className="truncate">{open.label}</span>
+                <CatalogueName kind="llm" name={open.label} label={open.label} className="min-w-0" />
                 {open.head && <span className="k-chip shrink-0">Head</span>}
               </p>
               <p className="k-fg3 truncate text-[12px]">Version of {m.label}</p>
@@ -1028,9 +992,7 @@ function VersionsTable({
                 <tr key={v.key} onClick={() => setOpenKey(v.key)} aria-selected={openKey === v.key} className={`k-row h-10 cursor-pointer ${openKey === v.key ? "k-selected" : ""}`}>
                   <td className="max-w-0 pl-4 pr-3">
                     <span className="flex min-w-0 items-center gap-1.5">
-                      <span className="k-mono min-w-0 truncate text-[12px]" title={v.key}>
-                        {v.label}
-                      </span>
+                      <CatalogueName kind="template" name={t.label} label={v.label} className="k-mono text-[12px]" />
                       {v.head && <span className="k-chip shrink-0">Head</span>}
                     </span>
                   </td>
@@ -1084,10 +1046,8 @@ function TemplateVersionView({ base, pipe, t, v, crumbs }: { base: string; pipe:
           title={v.label}
           chips={
             <>
-              <Link href={dynastyHref} className="k-chip inline-flex items-center gap-1 hover:text-[var(--accent)]">
-                Version of {t.label}
-                <Arrow />
-              </Link>
+              <span className="k-fg3 text-[12px]">Version of</span>
+              <CatalogueName kind="template" variant="chip" name={t.label} href={dynastyHref} />
               {v.head && <span className="k-chip">Head</span>}
               <ContentStatusWord status={statuses.map.get(v.key) ?? null} pending={!statuses.answered} deprecation={statuses.deprecationOf(v.key)} />
               <span className="k-chip inline-flex items-center gap-1.5">
@@ -1198,9 +1158,7 @@ function TemplateView({
                   <td className="k-mono k-fg2 whitespace-nowrap pl-4 pr-3 text-[12px]">{r.when}</td>
                   <td className="max-w-0 px-3">
                     {r.workflow ? (
-                      <Link href={researchCatalogHref(base, pipe, "workflows", r.workflow.key)} className="block truncate hover:text-[var(--accent)]" title={r.workflow.label}>
-                        {r.workflow.label}
-                      </Link>
+                      <CatalogueName kind="workflow" name={r.workflow.label} href={researchCatalogHref(base, pipe, "workflows", r.workflow.key)} />
                     ) : (
                       <span className="k-fg4">{"—"}</span>
                     )}
@@ -1251,8 +1209,7 @@ function TemplateView({
                   {t.workflows.map((w) => (
                     <li key={w.key}>
                       <Link href={researchCatalogHref(base, pipe, "workflows", w.key)} className="k-hover -mx-2 flex items-center gap-2 rounded-[8px] px-2 py-1.5">
-                        <TopicMark topic="workflow" size={18} />
-                        <span className="min-w-0 flex-1 truncate">{w.label}</span>
+                        <CatalogueName kind="workflow" name={w.label} className="flex-1" />
                         <Arrow />
                       </Link>
                     </li>
@@ -1342,9 +1299,7 @@ function ModelView({
                   <td className="k-mono k-fg2 whitespace-nowrap pl-4 pr-3 text-[12px]">{r.when}</td>
                   <td className="max-w-0 px-3">
                     {r.workflow ? (
-                      <Link href={researchCatalogHref(base, pipe, "workflows", r.workflow.key)} className="block truncate hover:text-[var(--accent)]" title={r.workflow.label}>
-                        {r.workflow.label}
-                      </Link>
+                      <CatalogueName kind="workflow" name={r.workflow.label} href={researchCatalogHref(base, pipe, "workflows", r.workflow.key)} />
                     ) : (
                       <span className="k-fg4">{"—"}</span>
                     )}
@@ -1390,8 +1345,7 @@ function ModelView({
                   {m.workflows.map((w) => (
                     <li key={w.key}>
                       <Link href={researchCatalogHref(base, pipe, "workflows", w.key)} className="k-hover -mx-2 flex items-center gap-2 rounded-[8px] px-2 py-1.5">
-                        <TopicMark topic="workflow" size={18} />
-                        <span className="min-w-0 flex-1 truncate">{w.label}</span>
+                        <CatalogueName kind="workflow" name={w.label} className="flex-1" />
                         <Arrow />
                       </Link>
                     </li>

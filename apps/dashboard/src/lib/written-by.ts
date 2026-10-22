@@ -21,6 +21,7 @@
  * carries real unit tests.
  */
 import { z } from "zod";
+import { llmLogoFiles, llmMark } from "./llm-marks";
 
 export const WrittenByEntrySchema = z
   .object({
@@ -149,43 +150,21 @@ export interface ModelTag {
   logoSrc: string | null;
 }
 
-/**
- * Each vendor's model family and its PRODUCT mark (Claude's starburst, Gemini's sparkle, never the
- * company's logo), shipped as files: logo.dev only knows company sites. The mark says the family,
- * so the label drops the word. A display lookup on chat-service's vendor id.
- */
-const MODEL_FAMILIES: Readonly<Record<string, { family: string; logo: string }>> = {
-  anthropic: { family: "Claude", logo: "claude" },
-  google: { family: "Gemini", logo: "gemini" },
-  openai: { family: "GPT", logo: "openai" },
-  deepseek: { family: "DeepSeek", logo: "deepseek" },
-  zai: { family: "GLM", logo: "glm" },
-  moonshot: { family: "Kimi", logo: "kimi" },
-  mistral: { family: "Mistral", logo: "mistral" },
-  xai: { family: "Grok", logo: "grok" },
-};
-
+/** A model as a tag, by chat-service vendor id (one lookup for every surface: `lib/llm-marks.ts`). */
 export function modelTag(model: { name: string; vendor: { id: string } }): ModelTag {
-  const known = MODEL_FAMILIES[model.vendor.id];
-  if (!known) return { label: model.name, name: model.name, logoSrc: null };
-  const prefix = `${known.family} `;
-  const label = model.name.startsWith(prefix) ? model.name.slice(prefix.length) : model.name;
-  return { label, name: model.name, logoSrc: `/model-logos/${known.logo}.svg` };
+  const m = llmMark(model.name, model.vendor.id);
+  return { label: m.label, name: m.name, logoSrc: m.logoSrc };
 }
 
-/**
- * A model known only by its served NAME (Research refs carry no vendor id): the family whose word
- * opens the name ("Claude Opus 5.5", "Gemini 3 Flash") gives the mark; none matches = no logo.
- */
+/** A model known only by its served NAME (Research refs carry no vendor id). */
 export function modelTagFromName(name: string): ModelTag {
-  const known = Object.values(MODEL_FAMILIES).find((f) => name.toLowerCase().startsWith(`${f.family.toLowerCase()} `));
-  if (!known) return { label: name, name, logoSrc: null };
-  return { label: name.slice(known.family.length + 1), name, logoSrc: `/model-logos/${known.logo}.svg` };
+  const m = llmMark(name);
+  return { label: m.label, name: m.name, logoSrc: m.logoSrc };
 }
 
 /** Every product mark the lookup names, for the test that each file ships. */
 export function modelLogoFiles(): string[] {
-  return Object.values(MODEL_FAMILIES).map((f) => `${f.logo}.svg`);
+  return llmLogoFiles();
 }
 
 /**
