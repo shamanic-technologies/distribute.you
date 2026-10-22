@@ -66,8 +66,8 @@ export async function CompanyOverviewSection() {
   return (
     <div className="bg-gray-50 border border-gray-200 rounded-xl p-6 text-gray-600 space-y-4 text-sm leading-relaxed">
       <p>
-        <strong className="text-gray-900">distribute.you</strong> is an AI-native
-        acquisition agency sold as software. A company pastes its website and sets a
+        <strong className="text-gray-900">distribute.you</strong> runs sales cold
+        email for B2B companies, sold as software. A company pastes its website and sets a
         daily budget. We find the buyers, write and send the outreach from domains we
         own, answer the interested replies until a meeting is booked, and show what
         each one cost. Cold email is the channel we run most today; the engine tests
