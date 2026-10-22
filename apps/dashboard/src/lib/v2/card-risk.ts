@@ -97,6 +97,21 @@ export function cardRiskCopy(arm: CardRiskArm, facts: CardFacts): CardRiskCopy |
   };
 }
 
+/**
+ * billing's 409 `postpaid_card_hold_requires_action` (Stripe orgs only): the bank wants the
+ * customer to confirm the card check (3-D Secure). Returns the PaymentIntent secret the wall
+ * hands to Stripe.js `handleNextAction`, then it asks billing again. Null for any other answer.
+ */
+export function postpaidCardCheckSecret(body: Record<string, unknown> | undefined): string | null {
+  if (body?.code !== "postpaid_card_hold_requires_action") return null;
+  if (typeof body.client_secret === "string" && body.client_secret) return body.client_secret;
+  console.error("[get-started] billing asked for a card confirmation with no client_secret", body);
+  return null;
+}
+
+/** What the wall says when the customer left the bank's confirmation unfinished. */
+export const CARD_CHECK_UNFINISHED = "Your bank did not finish checking your card. Press the button to try again.";
+
 /** billing's 409 on `PUT payment_mode {postpaid}` for a refused card, as card facts. */
 export function postpaidRefusalFacts(body: Record<string, unknown> | undefined, known: CardFacts | null): CardFacts | null {
   if (body?.code === "postpaid_card_hold_refused") {

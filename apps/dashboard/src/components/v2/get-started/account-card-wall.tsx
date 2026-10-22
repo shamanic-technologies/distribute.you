@@ -60,7 +60,7 @@ import {
   type CardSetup,
 } from "@/lib/api";
 import { PREPAID_CARD_TRIAL_REFUSAL, lpVariant, offerArm, pickedPlanCents, subscriptionCheckoutRefusal, type OfferArm } from "@/lib/subscription-plan";
-import { cardRiskCopy, postpaidRefusalFacts, type CardFacts, type CardRiskCopy } from "@/lib/v2/card-risk";
+import { CARD_CHECK_UNFINISHED, cardRiskCopy, postpaidCardCheckSecret, postpaidRefusalFacts, type CardFacts, type CardRiskCopy } from "@/lib/v2/card-risk";
 import { CardRiskNotice } from "./card-risk-notice";
 import { getStripe } from "@/lib/stripe";
 import {
@@ -832,14 +832,37 @@ export function AccountCardWall({
   // billing refuses post-paid on a card it cannot charge later (409 `postpaid_card_not_allowed`)
   // or one whose bank refused the $50 check (409 `postpaid_card_hold_refused`, billing's sentence
   // shown): the same choice as the card check, another card or prepaid. Another card comes back
-  // here, so billing checks the new one.
+  // here, so billing checks the new one. A bank that wants the customer to confirm the check
+  // (409 `postpaid_card_hold_requires_action`, Stripe orgs) gets Stripe's 3-D Secure step, then
+  // billing is asked once more: it re-reads the same check (passed, refused, or still waiting
+  // when the customer left it, then the button runs it again).
   async function armPostpaid() {
     setBusy(true);
     setError(null);
+    // The boxes as ticked reach billing's dispute file with the switch (billing v0.83.34).
+    const putPostpaid = () => setPaymentMode("postpaid", undefined, consentRecord(postpaidConsent, new Date(), navigator.userAgent));
     try {
-      // The boxes as ticked reach billing's dispute file with the switch (billing v0.83.34).
-      await setPaymentMode("postpaid", undefined, consentRecord(postpaidConsent, new Date(), navigator.userAgent));
+      try {
+        await putPostpaid();
+      } catch (e) {
+        const clientSecret = e instanceof ApiError && e.status === 409 ? postpaidCardCheckSecret(e.body) : null;
+        if (!clientSecret) throw e;
+        posthog.capture("get_started_card_check_action", { lp_variant: arm.variant });
+        const stripe = await getStripe();
+        if (!stripe) console.error("[get-started] Stripe.js did not load for the card confirmation");
+        else {
+          const confirmed = await stripe.handleNextAction({ clientSecret });
+          if (confirmed.error) console.error("[get-started] card confirmation:", confirmed.error);
+        }
+        await putPostpaid();
+      }
     } catch (e) {
+      if (e instanceof ApiError && e.status === 409 && postpaidCardCheckSecret(e.body)) {
+        posthog.capture("get_started_card_check_unfinished", { lp_variant: arm.variant });
+        setError(CARD_CHECK_UNFINISHED);
+        setBusy(false);
+        return;
+      }
       const refused = e instanceof ApiError && e.status === 409 ? postpaidRefusalFacts(e.body, knownCard.current) : null;
       if (refused) {
         posthog.capture("get_started_card_risk_shown", { arm: "postpaid", reason: refused.refusedReason, source: "payment_mode", lp_variant: arm.variant });

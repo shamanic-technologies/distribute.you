@@ -1,6 +1,6 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
-import { cardRiskCopy, countryName, postpaidRefusalFacts, type CardFacts } from "../src/lib/v2/card-risk";
+import { CARD_CHECK_UNFINISHED, cardRiskCopy, countryName, postpaidCardCheckSecret, postpaidRefusalFacts, type CardFacts } from "../src/lib/v2/card-risk";
 import { firstChargeUsd, monthlyLimitToSave } from "../src/lib/v2/monthly-limit";
 import { wallCopy } from "../src/lib/v2/get-started";
 
@@ -72,6 +72,25 @@ describe("a card automatic charges may not reach (owner 2026-10-13), on billing'
     expect(postpaidRefusalFacts({ code: "postpaid_card_not_allowed", card_refused_reason: "prepaid_card" }, prepaid)).toEqual(prepaid);
   });
 
+  it("a bank that wants the customer to confirm the card check: Stripe's step, then billing asked again", () => {
+    expect(postpaidCardCheckSecret({ code: "postpaid_card_hold_requires_action", client_secret: "pi_1_secret_x" })).toBe("pi_1_secret_x");
+    expect(postpaidCardCheckSecret({ code: "postpaid_card_hold_requires_action" })).toBeNull();
+    expect(postpaidCardCheckSecret({ code: "postpaid_card_hold_refused", client_secret: "pi_1_secret_x" })).toBeNull();
+    expect(postpaidCardCheckSecret(undefined)).toBeNull();
+    expect(postpaidRefusalFacts({ code: "postpaid_card_hold_requires_action", client_secret: "pi_1_secret_x" }, fine)).toBeNull();
+    expect(CARD_CHECK_UNFINISHED).not.toMatch(/[–—]|\$|\d/);
+    const wall = read("src/components/v2/get-started/account-card-wall.tsx");
+    const arm = wall.slice(wall.indexOf("async function armPostpaid()"), wall.indexOf("// ── The saved card's facts"));
+    const first = arm.indexOf("await putPostpaid();");
+    const action = arm.indexOf("await stripe.handleNextAction({ clientSecret });");
+    const again = arm.indexOf("await putPostpaid();", action);
+    expect(first).toBeGreaterThan(-1);
+    expect(action).toBeGreaterThan(first);
+    expect(again).toBeGreaterThan(action);
+    expect(arm.indexOf("setError(CARD_CHECK_UNFINISHED);")).toBeLessThan(arm.indexOf("setCardRisk(refused);"));
+    expect(again).toBeLessThan(arm.indexOf("void launch();"));
+  });
+
   it("the wall sends a refused card check to the card choice, and another card arms post-paid again", () => {
     const wall = read("src/components/v2/get-started/account-card-wall.tsx");
     const arm = wall.slice(wall.indexOf("async function armPostpaid()"), wall.indexOf("// ── The saved card's facts"));
@@ -107,7 +126,8 @@ describe("the post-paid arm's wall (owner 2026-10-13)", () => {
     expect(start).toContain("await openCardSave(");
     expect(start).not.toContain("payTopup");
     const arm = wall.slice(wall.indexOf("async function armPostpaid()"), wall.indexOf("// ── The saved card's facts"));
-    expect(arm).toContain('await setPaymentMode("postpaid", undefined, consentRecord(postpaidConsent, new Date(), navigator.userAgent));');
+    expect(arm).toContain('setPaymentMode("postpaid", undefined, consentRecord(postpaidConsent, new Date(), navigator.userAgent));');
+    expect(arm).toContain("await putPostpaid();");
     expect(arm).toContain("postpaidRefusalFacts(e.body, knownCard.current)");
     expect(arm.indexOf('setPaymentMode("postpaid"')).toBeLessThan(arm.indexOf("void launch();"));
     expect(wall).toContain("<SpendConsent lines={postpaidConsent}");
