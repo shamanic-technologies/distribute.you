@@ -30,7 +30,7 @@ export const metadata: Metadata = {
     "distribute.you SAFE round",
     "distribute.you platform metrics",
     "distribute.you revenue",
-    "acquisition agency investors",
+    "cold email investors",
     "Y Combinator SAFE",
     "distribute.you growth metrics",
   ],
@@ -51,7 +51,9 @@ export const metadata: Metadata = {
     creator: TWITTER_HANDLE,
   },
   alternates: { canonical: INVESTORS_URL },
-  robots: { index: true, follow: true },
+  // Not indexed (owner 2026-10-22): the page outranked the homepage on a
+  // "distribute you" search. It stays linked from the footer.
+  robots: { index: false, follow: true },
 };
 
 const investorsOrganizationJsonLd = {
@@ -61,7 +63,7 @@ const investorsOrganizationJsonLd = {
   url: PROD_URLS.landing,
   logo: BRAND_LOGO_URL,
   image: BRAND_LOGO_URL,
-  description: "AI-native acquisition agency. Paste a website, set a daily budget, get sales meetings with their cost.",
+  description: "We run sales cold email for B2B companies. Paste a website, set a daily budget, get sales meetings with their cost.",
   foundingDate: "2024",
   sameAs: [PROD_URLS.github, PROD_URLS.twitter],
   contactPoint: {
@@ -245,7 +247,7 @@ export default function InvestorsPage() {
                 <div>
                   <h3 className="text-gray-900 font-semibold text-base mb-3">Accepts</h3>
                   <ul className="list-disc list-inside space-y-1 text-gray-600 marker:text-blue-500/60">
-                    <li>An agency sending on their behalf, from domains it owns</li>
+                    <li>A team sending on their behalf, from domains it owns</li>
                     <li>Interested replies answered and handed over with the meeting</li>
                     <li>Our margin inside the budget, the cost per outcome shown</li>
                     <li>A free platform, outreach billed at catalogue prices, cancel anytime</li>

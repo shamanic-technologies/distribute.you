@@ -271,9 +271,12 @@ describe("the orphaned pages are gone, everywhere they were listed", () => {
     for (const gone of ["/pricing", "/performance", "/use-cases", "/cold-email-cost-guide", "/v3"]) {
       expect(urls).not.toContain(`https://distribute.you${gone}`);
     }
-    for (const kept of ["/about", "/contact", "/developers", "/investors", "/terms", "/privacy", "/blog", "/compare"]) {
+    for (const kept of ["/about", "/contact", "/developers", "/terms", "/privacy", "/blog", "/compare"]) {
       expect(urls).toContain(`https://distribute.you${kept}`);
     }
+    // /investors stays in the footer but is noindex (owner 2026-10-22: it
+    // outranked the homepage on a brand search), so it is not in the sitemap.
+    expect(urls).not.toContain("https://distribute.you/investors");
   });
 
   it("/how-it-works survives as a redirect onto the homepage section", () => {
