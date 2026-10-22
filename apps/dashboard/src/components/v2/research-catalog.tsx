@@ -7,7 +7,7 @@ import { useSearchParams } from "next/navigation";
 import { EmptyNote, MarkLines, SectionTitle, Shimmer, TopBar, type Crumb } from "@/components/v2/ui";
 import { CostBasisSwitch } from "@/components/v2/cost-basis-switch";
 import { RoiLabel, RoiValue } from "@/components/v2/roi-label";
-import { ResearchLiveWorkflows, usePipeChannelName, usePipeWorkflowRows, useResearchPipeLeg } from "@/components/v2/research-live-workflows";
+import { opensDrawer, ResearchLiveWorkflows, usePipeChannelName, usePipeWorkflowRows, useResearchPipeLeg } from "@/components/v2/research-live-workflows";
 import { shortWorkflowName } from "@/lib/live-workflow-rows";
 import {
   ACTIVATE_CONTENT_NOTE,
@@ -48,6 +48,7 @@ import {
   researchWorkflow,
   templateContentKey,
   templatesByTab,
+  templatesInTableOrder,
   templateTab,
   type TemplateTab,
   type CatalogKind,
@@ -303,14 +304,15 @@ function CatalogList({
   const statusFailed = kind === "templates" && templateStatuses.failed;
   const byTab = kind === "templates" && !statusFailed ? templatesByTab(rows as ResearchTemplate[], templateStatuses) : null;
   const statusPending = kind === "templates" && !statusFailed && !byTab;
-  const shown: (ResearchWorkflow | ResearchTemplate | ResearchModel)[] = kind === "templates" ? (byTab?.[tab] ?? []) : rows;
+  // Templates: cheapest $ / outcome first, then the rest by $ spent (owner 2026-10-23).
+  const shown: (ResearchWorkflow | ResearchTemplate | ResearchModel)[] = kind === "templates" ? templatesInTableOrder(byTab?.[tab] ?? []) : rows;
   const pickTab = (next: TemplateTab) => {
     // The history API, null state: Next keeps useSearchParams in step (apps/dashboard CLAUDE.md).
     window.history.replaceState(null, "", next === "active" ? window.location.pathname : `${window.location.pathname}?status=${next}`);
   };
-  // The Templates page's right panel is open from the start, on the tab's first row until a row is picked.
+  // A Templates row opens its detail in the right drawer (owner 2026-10-23); its name opens its page.
   const [selected, setSelected] = useState<string | null>(null);
-  const selectedTemplate = kind === "templates" ? ((shown as ResearchTemplate[]).find((r) => r.key === selected) ?? (shown[0] as ResearchTemplate | undefined) ?? null) : null;
+  const selectedTemplate = kind === "templates" ? ((shown as ResearchTemplate[]).find((r) => r.key === selected) ?? null) : null;
   return (
     <>
       <TopBar crumbs={crumbs} actions={<CostBasisSwitch />} />
@@ -326,7 +328,7 @@ function CatalogList({
               ) : (
                 <>
                   Every {words.one} that wrote this pipe&apos;s emails, all clients pooled, the cheapest {o.noun.toLowerCase()} first.{" "}
-                  {kind === "templates" ? "Pick one for its workflows, models and last emails; open its name for its page." : "Open one for its months and its last runs."}
+                  {kind === "templates" ? "Click a row for its workflows, models and last emails; its name opens its page." : "Open one for its months and its last runs."}
                 </>
               )}
             </p>
@@ -373,10 +375,10 @@ function CatalogList({
           {live ? (
             <ResearchLiveWorkflows base={base} pipe={pipe} legKey={liveLeg} catalog={catalog} outcomeUnit={o.unit} nav={nav} />
           ) : (
-            <div className={kind === "templates" ? "grid gap-4 lg:grid-cols-[minmax(0,1fr)_360px]" : ""}>
+            <div>
               <div className="k-card min-w-0 overflow-hidden">
                 <div className="k-scroll relative overflow-x-auto">
-                  <table className={`w-full ${kind === "workflows" ? "min-w-[1180px]" : kind === "templates" ? "min-w-[820px]" : "min-w-[940px]"} text-[13px]`}>
+                  <table className={`w-full ${kind === "workflows" ? "min-w-[1180px]" : kind === "templates" ? "min-w-[920px]" : "min-w-[940px]"} text-[13px]`}>
                     <thead>
                       <tr className="border-b border-[var(--line-subtle)]">
                         <th className={TH}>{words.title.slice(0, -1)}</th>
@@ -388,10 +390,15 @@ function CatalogList({
                         )}
                         {kind === "templates" && (
                           <>
+                            {/* Owner 2026-10-23: Template, ROI, % Conversion, $ / outcome, # outcomes, $ Spent, Status. */}
                             <th className={`${TH} w-24 text-right`}>
                               <RoiLabel />
                             </th>
                             <th className={`${TH} w-28 text-right`}>% Conversion</th>
+                            <th className={`${TH} w-28 text-right`}>{`$ ${o.unit}`}</th>
+                            <th className={`${TH} w-28 text-right`}>{`# ${o.plural}`}</th>
+                            <th className={`${TH} w-24 text-right`}>$ Spent</th>
+                            <th className={`${TH} w-28`}>Status</th>
                           </>
                         )}
                         {kind === "models" ? (
@@ -406,20 +413,15 @@ function CatalogList({
                             <th className={`${TH} w-28 text-right`}>$ Spent</th>
                             <th className={`${TH} w-40`}>Status</th>
                           </>
-                        ) : (
+                        ) : kind === "workflows" ? (
                           <>
-                            {kind === "templates" && <th className={`${TH} w-20 text-right`}>Workflows</th>}
-                            <th className={`${TH} ${kind === "templates" ? "w-28" : "w-36"} text-right`}>Cost {o.unit.replace("/ ", "per ")}</th>
-                            {kind !== "templates" && <th className={`${TH} w-28 text-right`}>Rate</th>}
-                            <th className={`${TH} ${kind === "templates" ? "w-24" : "w-28"} text-right`}>{o.plural}</th>
-                            {kind !== "templates" && (
-                              <>
-                                <th className={`${TH} w-28 text-right`}>Emails</th>
-                                <th className={`${TH} w-28 text-right`}>Invested</th>
-                              </>
-                            )}
+                            <th className={`${TH} w-36 text-right`}>Cost {o.unit.replace("/ ", "per ")}</th>
+                            <th className={`${TH} w-28 text-right`}>Rate</th>
+                            <th className={`${TH} w-28 text-right`}>{o.plural}</th>
+                            <th className={`${TH} w-28 text-right`}>Emails</th>
+                            <th className={`${TH} w-28 text-right`}>Invested</th>
                           </>
-                        )}
+                        ) : null}
                         <th className={`${TH} w-10`} aria-label={kind === "workflows" ? "Open" : "Status menu"} />
                       </tr>
                     </thead>
@@ -469,7 +471,7 @@ function CatalogList({
                           return (
                             <tr
                               key={r.key}
-                              onClick={() => (kind === "templates" ? setSelected(r.key) : nav(href))}
+                              onClick={(e) => (kind === "templates" ? opensDrawer(e.target, e.currentTarget) && setSelected(r.key) : nav(href))}
                               aria-selected={kind === "templates" ? picked : undefined}
                               className={`k-row group h-10 cursor-pointer ${picked ? "k-selected" : ""}`}
                             >
@@ -478,15 +480,33 @@ function CatalogList({
                                   <ModelNameLines m={r as ResearchModel} href={href} />
                                 ) : (
                                 <span className="flex min-w-0 items-center gap-1.5">
-                                  <CatalogueName
-                                    kind={KIND_TOPIC[kind]}
-                                    name={r.label}
-                                    label={rowName(kind, r, channelName)}
-                                    href={href}
-                                    icon={(r as ResearchWorkflow | ResearchTemplate).icon ?? null}
-                                    color={(r as ResearchWorkflow | ResearchTemplate).color ?? null}
-                                    className={`${kind === "templates" && (r as ResearchTemplate).standaloneReason ? "shrink-0" : ""} font-medium`}
-                                  />
+                                  {kind === "templates" ? (
+                                    // The name is a button to the template's own page; the rest of the row opens the drawer.
+                                    <Link
+                                      href={href}
+                                      title={`Open ${r.label}`}
+                                      className={`k-btn-ghost -mx-1.5 inline-flex h-8 min-w-0 max-w-full items-center gap-2 px-1.5 hover:text-[var(--accent)] ${(r as ResearchTemplate).standaloneReason ? "shrink-0" : ""}`}
+                                    >
+                                      <CatalogueName
+                                        kind="template"
+                                        name={r.label}
+                                        label={rowName(kind, r, channelName)}
+                                        icon={(r as ResearchTemplate).icon ?? null}
+                                        color={(r as ResearchTemplate).color ?? null}
+                                        className="font-medium"
+                                      />
+                                    </Link>
+                                  ) : (
+                                    <CatalogueName
+                                      kind={KIND_TOPIC[kind]}
+                                      name={r.label}
+                                      label={rowName(kind, r, channelName)}
+                                      href={href}
+                                      icon={(r as ResearchWorkflow).icon ?? null}
+                                      color={(r as ResearchWorkflow).color ?? null}
+                                      className="font-medium"
+                                    />
+                                  )}
                                   {kind === "templates" && <TemplateRowChip t={r as ResearchTemplate} />}
                                 </span>
                                 )}
@@ -509,6 +529,14 @@ function CatalogList({
                                   </td>
                                   <td className="px-3 text-right tabular-nums">
                                     <Dash v={r.rate} />
+                                  </td>
+                                  <td className="whitespace-nowrap px-3 text-right tabular-nums">
+                                    <Dash v={r.cost} />
+                                  </td>
+                                  <td className="px-3 text-right tabular-nums">{r.outcomes}</td>
+                                  <td className="whitespace-nowrap px-3 text-right tabular-nums">{r.spend}</td>
+                                  <td className="max-w-0 px-3">
+                                    <ContentStatusWord status={status} pending={!statusAnswered} deprecation={deprecation} />
                                   </td>
                                 </>
                               )}
@@ -534,26 +562,19 @@ function CatalogList({
                                     />
                                   </td>
                                 </>
-                              ) : (
+                              ) : kind === "workflows" ? (
                                 <>
-                                  {kind === "templates" && <td className="px-3 text-right tabular-nums">{(r as ResearchTemplate).workflows.length}</td>}
                                   <td className="whitespace-nowrap px-3 text-right tabular-nums">
                                     <Money value={r.cost} unit={o.unit} />
                                   </td>
-                                  {kind !== "templates" && (
-                                    <td className="px-3 text-right tabular-nums">
-                                      <Dash v={r.rate} />
-                                    </td>
-                                  )}
+                                  <td className="px-3 text-right tabular-nums">
+                                    <Dash v={r.rate} />
+                                  </td>
                                   <td className="px-3 text-right tabular-nums">{r.outcomes}</td>
-                                  {kind !== "templates" && (
-                                    <>
-                                      <td className="px-3 text-right tabular-nums">{r.emails}</td>
-                                      <td className="px-3 text-right tabular-nums">{r.spend}</td>
-                                    </>
-                                  )}
+                                  <td className="px-3 text-right tabular-nums">{r.emails}</td>
+                                  <td className="px-3 text-right tabular-nums">{r.spend}</td>
                                 </>
-                              )}
+                              ) : null}
                               <td className="pl-1 pr-4 text-right">
                                 {kind === "workflows" ? (
                                   <span className="k-btn-ghost inline-flex h-6 w-6 justify-center px-0 opacity-0 group-hover:opacity-100">
@@ -586,23 +607,17 @@ function CatalogList({
                   </Link>
                 </div>
               </div>
-              {kind === "templates" &&
-                (statusPending ? (
-                  <aside className="k-card h-fit space-y-2 self-start p-4">
-                    {[0, 1, 2, 3].map((i) => (
-                      <Shimmer key={i} className="h-4 w-full" />
-                    ))}
-                  </aside>
-                ) : selectedTemplate ? (
-                  <TemplateOutputsPanel
-                    t={selectedTemplate}
-                    href={researchCatalogHref(base, pipe, "templates", selectedTemplate.key)}
-                    base={base}
-                    pipe={pipe}
-                    catalog={catalog}
-                    outcome={o}
-                  />
-                ) : null)}
+              {selectedTemplate && (
+                <TemplateOutputsPanel
+                  t={selectedTemplate}
+                  href={researchCatalogHref(base, pipe, "templates", selectedTemplate.key)}
+                  base={base}
+                  pipe={pipe}
+                  catalog={catalog}
+                  outcome={o}
+                  onClose={() => setSelected(null)}
+                />
+              )}
             </div>
           )}
           {writes.modal}
