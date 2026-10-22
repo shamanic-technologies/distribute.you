@@ -11,6 +11,7 @@ import {
   getContentTemplateStatuses,
   getLegWorkflowRanking,
   getRunnableWorkflowDynasties,
+  getRunnableWorkflowDynastySummaries,
   getWorkflowDynastyDeprecation,
   retireWorkflowsByContent,
   setContentModelStatus,
@@ -73,12 +74,16 @@ export function useModelStatuses() {
   return { map, deprecationOf, answered: q.data !== undefined || q.isFetchedAfterMount, failed: q.data === undefined && q.isError };
 }
 
-/** A workflow's status: Active while workflow-service can run it, else Deprecated (one channel). */
+/**
+ * A workflow's status: Active while workflow-service can run it, else Deprecated (one channel).
+ * The same read states what a runnable workflow does (`descriptionOf`, workflow-service's words).
+ */
 export function useDynastyStatuses(featureSlug: string) {
-  const q = useAuthQuery(["workflowDynastyStatuses", featureSlug], () => getRunnableWorkflowDynasties(featureSlug), { ...pollOptions, retry: false });
-  const runnable = useMemo(() => (q.data ? new Set(q.data) : null), [q.data]);
+  const q = useAuthQuery(["workflowDynastySummaries", featureSlug], () => getRunnableWorkflowDynastySummaries(featureSlug), { ...pollOptions, retry: false });
+  const runnable = useMemo(() => (q.data ? new Map(q.data.map((d) => [d.slug, d])) : null), [q.data]);
   const statusOf = (slug: string): string | null => (runnable ? (runnable.has(slug) ? "active" : "deprecated") : null);
-  return { statusOf, answered: q.data !== undefined || q.isFetchedAfterMount };
+  const descriptionOf = (slug: string): string | null => runnable?.get(slug)?.description ?? null;
+  return { statusOf, descriptionOf, answered: q.data !== undefined || q.isFetchedAfterMount };
 }
 
 /**
@@ -88,7 +93,12 @@ export function useDynastyStatuses(featureSlug: string) {
  */
 export function useWorkflowDeprecation(slug: string, enabled = true) {
   const q = useAuthQuery(["workflowDynastyDeprecation", slug], () => getWorkflowDynastyDeprecation(slug), { enabled, retry: false });
-  return { deprecation: q.data ? [q.data] : null, answered: !enabled || q.data !== undefined || q.isError };
+  return {
+    deprecation: q.data?.deprecation ? [q.data.deprecation] : null,
+    // What its newest version does (workflow-service's words): a deprecated row's Description.
+    description: q.data?.description ?? null,
+    answered: !enabled || q.data !== undefined || q.isError,
+  };
 }
 
 // ─── The status cell ─────────────────────────────────────────────────────────
@@ -270,6 +280,7 @@ async function refetchAfterWrite(qc: ReturnType<typeof useQueryClient>) {
     qc.refetchQueries({ queryKey: [...STATUS_ROOTS.templates] }),
     qc.refetchQueries({ queryKey: [...STATUS_ROOTS.models] }),
     qc.refetchQueries({ queryKey: ["workflowDynastyStatuses"] }),
+    qc.refetchQueries({ queryKey: ["workflowDynastySummaries"] }),
     qc.invalidateQueries({ queryKey: ["workflowDynastyDeprecation"] }),
     qc.invalidateQueries({ queryKey: ["legWorkflowRanking"] }),
   ]);

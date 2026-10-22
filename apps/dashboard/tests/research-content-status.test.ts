@@ -137,7 +137,7 @@ describe("TEMPLATE-MODEL-STATUS-1019: the three Research pages", () => {
 
   it("Workflows: each row carries the dynasty status and its ⋮", () => {
     expect(live).toContain("<WorkflowStatusCells slug={r.slug}");
-    expect(live).toContain('maturityLabel="Maturity"');
+    expect(live).toContain("w-28`}>Status</th>");
     expect(live).not.toContain(">#</th>");
   });
 

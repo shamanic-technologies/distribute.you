@@ -323,7 +323,7 @@ function CatalogList({
             </h1>
             <p className="k-fg2 mt-1 text-[14px]">
               {live ? (
-                <>Every workflow on this leg, in the order a campaign picks from, with whether it is mature and its return.</>
+                <>Every workflow on this pipe, all clients pooled, in the order a campaign picks from.</>
               ) : (
                 <>
                   Every {words.one} that wrote this pipe&apos;s emails, all clients pooled, the cheapest {o.noun.toLowerCase()} first.{" "}

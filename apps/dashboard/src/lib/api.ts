@@ -12611,6 +12611,7 @@ const DynastyDeprecationSchema = z.object({
     z
       .object({
         version: z.number(),
+        description: z.string().nullish(),
         deprecation: z.object({ reason: z.string(), decidedBy: z.string().nullable(), decidedAt: z.string().nullable() }).nullish(),
       })
       .passthrough(),
@@ -12618,16 +12619,16 @@ const DynastyDeprecationSchema = z.object({
 });
 
 /**
- * Why, who and when a workflow dynasty was deprecated (DEPRECATION-REASON-1020): its NEWEST
- * version's `deprecation`, as workflow-service serves it on every version (a retired dynasty
- * carries its decision on each). Null while that version runs.
+ * A workflow dynasty's NEWEST version as workflow-service serves it: why, who and when it was
+ * deprecated (DEPRECATION-REASON-1020; a retired dynasty carries its decision on each version,
+ * null while that version runs) and what it does (`description`, the producer's plain words).
  */
-export async function getWorkflowDynastyDeprecation(workflowDynastySlug: string): Promise<Deprecation | null> {
+export async function getWorkflowDynastyDeprecation(workflowDynastySlug: string): Promise<{ deprecation: Deprecation | null; description: string | null }> {
   const query = new URLSearchParams({ workflowDynastySlug, status: "all" });
   const raw = await apiCall<unknown>(`/workflows/summaries?${query.toString()}`);
   const rows = parseStaff("getWorkflowDynastyDeprecation", DynastyDeprecationSchema, raw).workflows;
   const newest = rows.reduce<(typeof rows)[number] | null>((a, w) => (a == null || w.version > a.version ? w : a), null);
-  return newest?.deprecation ?? null;
+  return { deprecation: newest?.deprecation ?? null, description: newest?.description ?? null };
 }
 
 const WorkflowSummariesStatusSchema = z.object({
@@ -12644,6 +12645,35 @@ export async function getRunnableWorkflowDynasties(featureSlug: string): Promise
   const raw = await apiCall<unknown>(`/workflows/summaries?${query.toString()}`);
   const rows = parseStaff("getRunnableWorkflowDynasties", WorkflowSummariesStatusSchema, raw).workflows;
   return [...new Set(rows.filter((w) => w.workflowDynastyStatus === "active").map((w) => w.workflowDynastySlug))];
+}
+
+const WorkflowSummariesRunnableSchema = z.object({
+  workflows: z.array(
+    z.object({ workflowDynastySlug: z.string(), workflowDynastyStatus: z.string(), description: z.string().nullish() }).passthrough(),
+  ),
+});
+
+/** One dynasty workflow-service can run now, with what it does in the producer's words. */
+export interface RunnableWorkflowDynasty {
+  slug: string;
+  description: string | null;
+}
+
+/**
+ * The same listing as `getRunnableWorkflowDynasties` (one call), each runnable dynasty with its
+ * `description` (workflow-service `WorkflowSummary.description`, its runnable version's): the
+ * Research Workflows table states both, Status and Description.
+ */
+export async function getRunnableWorkflowDynastySummaries(featureSlug: string): Promise<RunnableWorkflowDynasty[]> {
+  const query = new URLSearchParams({ featureSlug });
+  const raw = await apiCall<unknown>(`/workflows/summaries?${query.toString()}`);
+  const rows = parseStaff("getRunnableWorkflowDynastySummaries", WorkflowSummariesRunnableSchema, raw).workflows;
+  const out = new Map<string, RunnableWorkflowDynasty>();
+  for (const w of rows) {
+    if (w.workflowDynastyStatus !== "active" || out.has(w.workflowDynastySlug)) continue;
+    out.set(w.workflowDynastySlug, { slug: w.workflowDynastySlug, description: w.description?.trim() || null });
+  }
+  return [...out.values()];
 }
 
 // ─── Monitoring > Emails, ported from the admin cold-email pages (blocklists) ───

@@ -186,25 +186,16 @@ describe("research reads nothing scoped to the viewer", () => {
     expect(live).not.toContain("legKeyForSteps(");
     expect(live).toContain("getLegWorkflowRanking(featureSlug, legKey)");
     expect(live).toContain('["legWorkflowRanking", featureSlug, legKey]');
-    // Model and template read EVERY version, so a retired workflow still states them.
-    // LLM and template read what the workflow writes with NOW from features-service's catalogue (one source).
-    expect(live).toContain("studied?.writesWithNow");
-    // A deprecated workflow (no runnable version) states what its figures were written with, never a blank cell.
-    expect(live).toContain("studied?.writesWithNow ?? studied?.wroteWith");
-    expect(live).not.toContain("listChannelWorkflowStacks");
-    expect(live).toContain("<WhyHere row={r} />");
-    // Every workflow, template and LLM cell is a tag opening its own page; the name cell wears no chip.
-    expect(live).toContain("<Tag href={workflowHref}");
-    expect(live).toContain('researchCatalogHref(base, pipe, "templates", template.key)');
-    expect(live).toContain('researchCatalogHref(base, pipe, "models", model.key)');
+    // BEST-TPL-LLM-1022: a workflow fixes no template and no LLM, so neither column is drawn, and no
+    // "Why here" column nor summary strip above the table (owner 2026-10-22).
+    expect(live).not.toContain("writesWithNow");
+    expect(live).not.toContain(">LLM</th>");
+    expect(live).not.toContain(">Template</th>");
+    expect(live).not.toContain("WhyHere");
+    expect(live).not.toContain("<LiveRankingStrip");
     expect(live).not.toContain("<LiveWorkflowChips");
+    expect(live).not.toContain("listChannelWorkflowStacks");
     expect(live).toContain("table-fixed");
-    // The Template column takes the free width (its values are the longest); Workflow is fixed.
-    expect(live).toContain("<th className={LIVE_TH}>Template</th>");
-    expect(live).toContain("w-28`}>Workflow</th>");
-    // Owner 2026-10-21 (third ask): the Template name wraps, never truncated; Status sized to its word.
-    expect(live).toContain("title={template.label} wrap>");
-    expect(live).toContain("w-32`}>Status</th>");
     expect(live).not.toContain("useParams");
   });
 });
@@ -256,8 +247,7 @@ describe("shortWorkflowName", () => {
   it("Research renders the short name and paints before the Research file loads", () => {
     const catalog = readFileSync(join(__dirname, "../src/components/v2/research-catalog.tsx"), "utf8");
     const live = readFileSync(join(__dirname, "../src/components/v2/research-live-workflows.tsx"), "utf8");
-    expect(live).toContain("{nameOf(r)}");
-    expect(live).toContain("nameOf={nameOf}");
+    expect(live).toContain("name={nameOf(r)}");
     expect(catalog).toContain('if (!catalog && !itemKey && kind === "workflows" && liveLeg != null)');
   });
 });
@@ -273,5 +263,43 @@ describe("Research pipe workflows: this pipe only, Active / Deprecated tabs (own
     expect(src).toContain('useState<StatusTab>("active")');
     expect(src).toContain("shown.map((r) =>");
     expect(src).toContain("<RecordsTabs");
+  });
+});
+
+describe("Research pipe workflows: the owner's columns (2026-10-22)", () => {
+  const src = readFileSync(join(__dirname, "../src/components/v2/research-live-workflows.tsx"), "utf8");
+  const status = readFileSync(join(__dirname, "../src/components/v2/research-status.tsx"), "utf8");
+  const api = readFileSync(join(__dirname, "../src/lib/api.ts"), "utf8");
+  const thead = src.slice(src.indexOf("<thead>"), src.indexOf("</thead>"));
+
+  it("mark, name, description, ROI, $/outcome, % conversion, $ spent, status: in that order", () => {
+    const order = ["w-44`}>Workflow</th>", ">Description</th>", "<RoiLabel />", "{`$ ${outcomeUnit}`}", ">% Conversion</th>", ">$ Spent</th>", "w-28`}>Status</th>"];
+    const at = order.map((h) => thead.indexOf(h));
+    for (const i of at) expect(i).toBeGreaterThan(-1);
+    expect([...at].sort((x, y) => x - y)).toEqual(at);
+    expect(src).toContain("const COLS = 8;");
+  });
+
+  it("every row wears the workflow mark and links its name to its page", () => {
+    expect(src).toContain('<TopicMark topic="workflow" size={22} />');
+    expect(src).toContain("<Link href={href} title={r.name ?? r.slug}");
+  });
+
+  it("the description is workflow-service's own words, the runnable one off the status listing, a deprecated one off its newest version", () => {
+    expect(src).toContain("deprecated ? newest.description : statuses.descriptionOf(r.slug)");
+    expect(status).toContain('["workflowDynastySummaries", featureSlug], () => getRunnableWorkflowDynastySummaries(featureSlug)');
+    expect(api).toContain("description: newest?.description ?? null");
+    expect(status).toContain('qc.refetchQueries({ queryKey: ["workflowDynastySummaries"] })');
+  });
+
+  it("ROI never blank: measured from the ranking, else the served expected return, never computed here", () => {
+    expect(src).toContain("if (row.roiMultiple != null) return { value: row.roiMultiple, expected: false, reason: null };");
+    expect(src).toContain('expected: d.basis === "expected"');
+    expect(src).toContain("<RoiValue roi={workflowRoiToShow(r, studied)} />");
+  });
+
+  it("a cost per outcome at zero outcomes reads Learning, never the spend", () => {
+    expect(src).toContain("learning: cents != null && r.mature === false");
+    expect(src).toContain("} learning />");
   });
 });
