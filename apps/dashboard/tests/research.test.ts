@@ -13,6 +13,7 @@ import {
   templateModels,
   templateRowStatus,
   templatesByTab,
+  templatesInTableOrder,
   templateTab,
   type ResearchCatalog,
   type ResearchTemplate,
@@ -258,5 +259,19 @@ describe("Template dynasties (TPL-DYNASTY-1021)", () => {
     expect(panel).toContain("{roi != null && <Fig k={<RoiLabel />} v={\"show\" in roi ? <RoiValue roi={roi.show} /> : roi.text} />}");
     expect(panel).not.toMatch(/transition-all|text-gray-/);
     expect(read("components/v2/research-page.tsx")).toContain('versionKey={view.view === "version" ? view.version : null}');
+  });
+});
+
+describe("templatesInTableOrder (owner 2026-10-23)", () => {
+  it("cheapest $ / outcome first, then the rest by $ spent, most first", () => {
+    const rows = [
+      { key: "a", cost: null, spend: "$9.50" },
+      { key: "b", cost: "$166", spend: "$4,000" },
+      { key: "c", cost: "$137", spend: "$1,370" },
+      { key: "d", cost: null, spend: "$1,200" },
+      { key: "e", cost: "$1,317", spend: "$2,634" },
+      { key: "f", cost: null, spend: "$0.00" },
+    ];
+    expect(templatesInTableOrder(rows).map((r) => r.key)).toEqual(["c", "b", "e", "d", "a", "f"]);
   });
 });

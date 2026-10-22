@@ -9,7 +9,7 @@ import { getTemplateDynastyOutputs, getTemplateOutputs, getWorkflowDynastyOutput
 import { EmptyNote, Shimmer } from "@/components/v2/ui";
 import { RoiLabel, RoiValue } from "@/components/v2/roi-label";
 import { Arrow, instantText } from "@/components/v2/research-bits";
-import { CatalogueName } from "@/components/v2/catalogue-name";
+import { CatalogueName, CatalogueObjectMark } from "@/components/v2/catalogue-name";
 import { runVersionLabel } from "@/lib/research/workflow-runs";
 import {
   researchCatalogHref,
@@ -117,6 +117,7 @@ export function TemplateOutputsPanel({
   pipe,
   catalog,
   outcome,
+  onClose,
 }: {
   t: ResearchTemplate;
   href: string;
@@ -124,62 +125,70 @@ export function TemplateOutputsPanel({
   pipe: ResearchPipe;
   catalog: ResearchCatalog | null;
   outcome: OutcomeWords;
+  onClose: () => void;
 }) {
   const read = useTemplateRowOutputs(t, 4);
   const models = templateModels(catalog, pipe, t);
   return (
-    <aside className="k-card flex h-fit min-h-0 flex-col self-start overflow-hidden lg:sticky lg:top-4 lg:max-h-[calc(100vh-120px)]">
-      <div className="border-b border-[var(--line-subtle)] px-4 py-3">
-        <p className="k-label">Template</p>
-        <p className="mt-1 flex min-w-0 text-[14px] font-medium">
-          <CatalogueName kind="template" name={t.label} href={href} icon={t.icon ?? null} color={t.color ?? null} />
-        </p>
-        <div className="mt-3">
-          <TemplateFigures f={t} outcome={outcome} />
-        </div>
-      </div>
-      <div className="k-scroll min-h-0 flex-1 overflow-y-auto">
-        <div className="space-y-4 border-b border-[var(--line-subtle)] px-4 py-3">
-          <div>
-            <p className="k-label">Workflows</p>
-            {t.workflows.length ? (
-              <ul className="mt-1.5 space-y-0.5 text-[13px]">
-                {t.workflows.map((w) => (
-                  <li key={w.key}>
-                    <Link href={researchCatalogHref(base, pipe, "workflows", w.key)} className="k-hover -mx-2 flex items-center gap-2 rounded-[8px] px-2 py-1" title={w.label}>
-                      <CatalogueName kind="workflow" name={w.label} servedKey={w.key} className="flex-1" />
-                      <Arrow />
-                    </Link>
-                  </li>
-                ))}
-              </ul>
-            ) : (
-              <p className="k-fg3 mt-1.5 text-[12px]">No workflow writes most of its emails with it.</p>
-            )}
-          </div>
-          <div>
-            <p className="k-label">Written with</p>
-            {models.length ? (
-              <div className="mt-1.5 flex flex-wrap gap-1.5">
-                {models.map((m) => (
-                  <ModelTag key={m.key} base={base} pipe={pipe} r={m} />
-                ))}
-              </div>
-            ) : (
-              <p className="k-fg3 mt-1.5 text-[12px]">No model on record yet.</p>
-            )}
+    <ResearchDrawer
+      label={t.label}
+      onClose={onClose}
+      head={
+        <div className="flex min-w-0 items-center gap-2.5">
+          <CatalogueObjectMark kind="template" name={t.label} icon={t.icon ?? null} color={t.color ?? null} size={36} />
+          <div className="min-w-0">
+            <p className="k-label">Template</p>
+            <p className="truncate text-[14px] font-medium" title={t.label}>
+              {t.label}
+            </p>
           </div>
         </div>
-        <p className="k-label px-4 pt-3">Last 4 email sequences</p>
-        <OutputsList read={read} />
-      </div>
-      <div className="border-t border-[var(--line-subtle)] px-4 py-2.5">
-        <Link href={href} className="k-btn inline-flex items-center gap-1.5">
+      }
+      footer={
+        <Link href={href} onClick={onClose} className="k-btn inline-flex items-center gap-1.5">
           Open template page
           <Arrow />
         </Link>
+      }
+    >
+      <div className="border-b border-[var(--line-subtle)] px-4 py-3">
+        {t.dynasty?.description && <p className="k-fg2 mb-3 text-[13px] leading-5">{t.dynasty.description}</p>}
+        <TemplateFigures f={t} outcome={outcome} />
       </div>
-    </aside>
+      <div className="space-y-4 border-b border-[var(--line-subtle)] px-4 py-3">
+        <div>
+          <p className="k-label">Workflows</p>
+          {t.workflows.length ? (
+            <ul className="mt-1.5 space-y-0.5 text-[13px]">
+              {t.workflows.map((w) => (
+                <li key={w.key}>
+                  <Link href={researchCatalogHref(base, pipe, "workflows", w.key)} onClick={onClose} className="k-hover -mx-2 flex items-center gap-2 rounded-[8px] px-2 py-1" title={w.label}>
+                    <CatalogueName kind="workflow" name={w.label} servedKey={w.key} className="flex-1" />
+                    <Arrow />
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <p className="k-fg3 mt-1.5 text-[12px]">No workflow writes most of its emails with it.</p>
+          )}
+        </div>
+        <div>
+          <p className="k-label">Written with</p>
+          {models.length ? (
+            <div className="mt-1.5 flex flex-wrap gap-1.5">
+              {models.map((m) => (
+                <ModelTag key={m.key} base={base} pipe={pipe} r={m} />
+              ))}
+            </div>
+          ) : (
+            <p className="k-fg3 mt-1.5 text-[12px]">No model on record yet.</p>
+          )}
+        </div>
+      </div>
+      <p className="k-label px-4 pt-3">Last 4 email sequences</p>
+      <OutputsList read={read} />
+    </ResearchDrawer>
   );
 }
 

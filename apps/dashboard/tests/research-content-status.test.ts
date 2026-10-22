@@ -109,7 +109,7 @@ describe("TEMPLATE-MODEL-STATUS-1019: the three Research pages", () => {
     expect(activate).not.toContain("setWorkflowDynastyStatus");
   });
 
-  it("Templates: ROI + % Conversion (served), no Leg / Status / # column, ⋮, and the outputs panel open from the start", () => {
+  it("Templates: ROI + % Conversion (served), no Leg / # column, ⋮, and the outputs drawer on a row click", () => {
     // Owner 2026-10-22: one leg per pipe page (Leg said nothing), the Active tab already states the status,
     // and the ROI order number meant nothing beside the ROI itself.
     expect(list).not.toContain(">Leg</th>");
@@ -119,8 +119,9 @@ describe("TEMPLATE-MODEL-STATUS-1019: the three Research pages", () => {
     expect(list).toContain("<TemplateRoi t={r as ResearchTemplate} />");
     expect(list).toContain(">% Conversion</th>");
     expect(list).toContain("<TemplateOutputsPanel");
-    // Open from the start: the tab's first row until one is picked.
-    expect(list).toContain("?? (shown[0] as ResearchTemplate | undefined)");
+    // A row opens its detail in the right drawer (owner 2026-10-23), no panel open from the start.
+    expect(list).not.toContain("?? (shown[0] as ResearchTemplate | undefined)");
+    expect(list).toContain("onClose={() => setSelected(null)}");
     expect(list).toContain("<StatusMenu");
   });
 
