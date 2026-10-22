@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState, type ReactNode } from "react";
+import { useMemo, useState } from "react";
 import Link from "next/link";
 import { useAuthQuery } from "@/lib/use-auth-query";
 import { pollOptions } from "@/lib/query-options";
@@ -11,23 +11,28 @@ import { isProactiveFrom } from "@/lib/outbound-leg-key";
 import { EmptyNote, Shimmer } from "@/components/v2/ui";
 import { RecordsTabs } from "@/components/v2/records";
 import { PIPE_KEY, researchCatalogHref, type ResearchCatalog, type ResearchPipe } from "@/lib/research/research";
-import { fleetWorkflowRows, placeWords, shortWorkflowName, type LiveWorkflowRow, type PlaceTone } from "@/lib/live-workflow-rows";
+import { fleetWorkflowRows, shortWorkflowName, type LiveWorkflowRow } from "@/lib/live-workflow-rows";
 import { formatUsdAdaptive } from "@/lib/format-number";
+import { formatRatePct } from "@/lib/brand-conversion-rates";
 import { useFeatures } from "@/lib/features-context";
-import {
-  LIVE_TH,
-  LiveRankingStrip,
-  LiveWorkflowCells,
-  LiveWorkflowHeads,
-} from "@/components/v2/live-workflow-cells";
-import { WorkflowStatusCells, useDynastyStatuses } from "@/components/v2/research-status";
+import { LIVE_TH } from "@/components/v2/live-workflow-cells";
+import { CostValue, RoiLabel, RoiValue } from "@/components/v2/roi-label";
+import { TopicMark } from "@/components/v2/research-bits";
+import { WorkflowStatusCells, useDynastyStatuses, useWorkflowDeprecation } from "@/components/v2/research-status";
+import type { RoiToShow } from "@/lib/expected-return";
+import type { ResearchWorkflow } from "@/lib/research/research";
 
 /**
  * A pipe's workflows as the FLEET ranks them right now, at the pipe's leg: every client we run
  * a workflow for, pooled. Research names no org, brand, offer, campaign or audience (owner rule
  * 2026-09-30), so this reads features-service's fleet ranking and nothing scoped to the viewer.
- * The order, both flags and each row's `place` (why it stands there) are the producer's, the same
- * order campaign-service runs (WF-ORDER-EXPLORE-1018). Nothing is ranked or divided here.
+ * The order is the producer's, the same order campaign-service runs (WF-ORDER-EXPLORE-1018).
+ * Nothing is ranked or divided here.
+ *
+ * Columns (owner 2026-10-22): mark, name, description, ROI, cost per outcome, conversion, spent,
+ * status. No LLM / Template column: since BEST-TPL-LLM-1022 a workflow fixes neither, each send
+ * writes with the leg's best template and LLM. No summary banner above the table: the owner does
+ * not want to read which workflow writes the next email.
  *
  * The brand's own version of this table (one per campaign) lives on the brand Workflows page.
  */
@@ -84,7 +89,8 @@ export function ResearchLiveWorkflows({
     return out;
   }, [rows, dynastyStatuses]);
   const shown = byTab[tab];
-  // The Research catalogue's own pages: a workflow, template or model Research studied has one.
+  // The Research catalogue's own pages: a workflow Research studied has one, and its served return
+  // (`roiDetail`) carries the EXPECTED figure where the ranking measures none yet.
   const researchedWorkflows = useMemo(() => new Map((catalog?.[pipe].workflows ?? []).map((w) => [w.key, w])), [catalog, pipe]);
   // A workflow Research never studied still has its live page (`/workflows/:slug`, priced for this pipe).
   const brandBase = base.replace(/\/research$/, "");
@@ -104,17 +110,19 @@ export function ResearchLiveWorkflows({
         active={tab}
         onPick={(k) => setTab(k as StatusTab)}
       />
-      <LiveRankingStrip rows={byTab.active} moneyNote="no mature workflow yet" nameOf={nameOf} />
       <div className="k-scroll relative overflow-x-auto">
-        <table className="w-full min-w-[1180px] table-fixed text-[13px]">
+        <table className="w-full min-w-[1080px] table-fixed text-[13px]">
           <thead>
             <tr className="border-b border-[var(--line-subtle)]">
-              <th className={`${LIVE_TH} w-28`}>Workflow</th>
-              <th className={`${LIVE_TH} w-28`}>LLM</th>
-              <th className={LIVE_TH}>Template</th>
-              <th className={`${LIVE_TH} w-32`}>Why here</th>
-              <LiveWorkflowHeads costLabel={`Cost ${outcomeUnit.replace("/ ", "per ")}`} compact maturityLabel="Maturity" />
-              <th className={`${LIVE_TH} w-32`}>Status</th>
+              <th className={`${LIVE_TH} w-44`}>Workflow</th>
+              <th className={LIVE_TH}>Description</th>
+              <th className={`${LIVE_TH} w-24 text-right`}>
+                <RoiLabel />
+              </th>
+              <th className={`${LIVE_TH} w-28 text-right`}>{`$ ${outcomeUnit}`}</th>
+              <th className={`${LIVE_TH} w-32 text-right`}>% Conversion</th>
+              <th className={`${LIVE_TH} w-24 text-right`}>$ Spent</th>
+              <th className={`${LIVE_TH} w-28`}>Status</th>
               <th className={`${LIVE_TH} w-10`} aria-label="Status menu" />
             </tr>
           </thead>
@@ -122,84 +130,44 @@ export function ResearchLiveWorkflows({
             {!answered ? (
               [0, 1, 2, 3, 4].map((i) => (
                 <tr key={i} className="k-row h-10">
-                  <td colSpan={13} className="px-4">
+                  <td colSpan={COLS} className="px-4">
                     <Shimmer className="h-4 w-full" />
                   </td>
                 </tr>
               ))
             ) : failed ? (
               <tr>
-                <td colSpan={13}>
+                <td colSpan={COLS}>
                   <EmptyNote>We could not read the fleet ranking just now. It retries on its own.</EmptyNote>
                 </td>
               </tr>
             ) : notBuilt ? (
               <tr>
-                <td colSpan={13}>
+                <td colSpan={COLS}>
                   <EmptyNote>The fleet ranking is being computed. It appears here within a few minutes.</EmptyNote>
                 </td>
               </tr>
             ) : shown.length === 0 ? (
               <tr>
-                <td colSpan={13}>
+                <td colSpan={COLS}>
                   <EmptyNote>{rows.length === 0 ? "No workflow is on this leg yet." : tab === "deprecated" ? "No deprecated workflow on this leg." : "No active workflow on this leg."}</EmptyNote>
                 </td>
               </tr>
             ) : (
               shown.map((r) => {
                 const studied = researchedWorkflows.get(r.slug);
-                // What it writes with NOW (its runnable version); a deprecated workflow has none, so the cells
-                // state what its figures were written with. Both served by features-service's catalogue.
-                const now = studied?.writesWithNow ?? studied?.wroteWith ?? null;
                 const workflowHref = studied
                   ? researchCatalogHref(base, pipe, "workflows", r.slug)
                   : `${brandBase}/workflows/${encodeURIComponent(r.slug)}?pipe=${encodeURIComponent(pipeId)}`;
-                const model = now?.model ?? null;
-                const template = now?.template ?? null;
                 return (
-                  <tr key={r.slug} className={`k-row h-10 ${r.cash ? "k-selected" : ""}`}>
-                    <td className="max-w-0 pl-4 pr-3">
-                      <Tag href={workflowHref} title={r.name ?? r.slug} muted={!r.selectable} strong>
-                        {nameOf(r)}
-                      </Tag>
-                    </td>
-                    <td className="max-w-0 px-3">
-                      {model ? (
-                        <Tag href={model.linked ? researchCatalogHref(base, pipe, "models", model.key) : null} title={model.label}>
-                          {model.label}
-                        </Tag>
-                      ) : now?.modelAlias ? (
-                        <Tag href={null} title={now.modelAlias}>
-                          {now.modelAlias}
-                        </Tag>
-                      ) : (
-                        <span className="k-fg4">—</span>
-                      )}
-                    </td>
-                    <td className="max-w-0 px-3">
-                      {template ? (
-                        // Owner 2026-10-21: the dynasty name on line 1, its version on a discreet line 2 (a chip beside
-                        // the name squeezed it to one letter). The name WRAPS, never truncated: it must read in full.
-                        <div className="flex min-w-0 flex-col items-start py-1">
-                          <Tag href={template.linked ? researchCatalogHref(base, pipe, "templates", template.key) : null} title={template.label} wrap>
-                            {template.label}
-                          </Tag>
-                          {template.version && (
-                            <span className="k-mono k-fg3 truncate pl-1 text-[11px] leading-4" title={`Version ${template.version.label} (${template.version.key})`}>
-                              {template.version.label}
-                            </span>
-                          )}
-                        </div>
-                      ) : (
-                        <span className="k-fg4">—</span>
-                      )}
-                    </td>
-                    <td className="max-w-0 px-3">
-                      <WhyHere row={r} />
-                    </td>
-                    <LiveWorkflowCells row={r} />
-                    <WorkflowStatusCells slug={r.slug} label={nameOf(r)} statuses={dynastyStatuses} />
-                  </tr>
+                  <WorkflowRow
+                    key={r.slug}
+                    row={r}
+                    studied={studied ?? null}
+                    href={workflowHref}
+                    name={nameOf(r)}
+                    statuses={dynastyStatuses}
+                  />
                 );
               })
             )}
@@ -207,13 +175,15 @@ export function ResearchLiveWorkflows({
         </table>
       </div>
       <div className="k-fg3 border-t border-[var(--line-subtle)] px-4 py-2.5 text-[12px]">
-        Every client we run a workflow for, pooled: the same order every campaign runs. A learning workflow goes first while its spend per
-        outcome so far ($0 if never run) is below the best mature price; then the best mature one, which gets the money. A workflow that
-        cannot run sits last.
+        Every client we run a workflow for, pooled, in the order every campaign runs. Each send writes with the pipe&apos;s best template and
+        LLM. Open a workflow for its runs.
       </div>
     </div>
   );
 }
+
+/** The table's column count (empty and loading rows span it). */
+const COLS = 8;
 
 type StatusTab = "active" | "deprecated";
 const STATUS_TABS: { key: StatusTab; label: string }[] = [
@@ -221,62 +191,66 @@ const STATUS_TABS: { key: StatusTab; label: string }[] = [
   { key: "deprecated", label: "Deprecated" },
 ];
 
-const TONE: Record<PlaceTone, string> = {
-  explore: "var(--data-amber)",
-  money: "var(--run)",
-  mature: "var(--data-teal)",
-  worse: "var(--fg-3)",
-  off: "var(--fg-4)",
-};
-
-/** Why the producer's order puts this row here, and for a learning row the price it compared. */
-function WhyHere({ row }: { row: LiveWorkflowRow }) {
-  const words = placeWords(row);
-  if (!words) return <span className="k-fg4">—</span>;
-  const learning = words.tone === "explore" || words.tone === "worse";
-  const price = learning && row.explorePriceUsd != null ? (row.explorePriceUsd === 0 ? "never run" : formatUsdAdaptive(row.explorePriceUsd)) : null;
-  return (
-    <span
-      className="inline-flex max-w-full min-w-0 items-center gap-1.5 text-[12px]"
-      style={{ color: TONE[words.tone] }}
-      title={price ? `${words.label}: ${price === "never run" ? "never run yet" : `${price} per outcome so far`}` : words.label}
-    >
-      <span className="h-1.5 w-1.5 shrink-0 rounded-full" style={{ background: TONE[words.tone] }} />
-      <span className="truncate">{words.label}</span>
-      {price && <span className="k-fg3 shrink-0 tabular-nums">{price === "never run" ? "$0" : price}</span>}
-    </span>
-  );
+/**
+ * The return a row prints, never blank (owner 2026-10-11): the ranking's measured multiple; none
+ * measured, the EXPECTED one features-service serves on the Research catalogue row (`roiDetail`,
+ * basis `expected`); neither, a dash.
+ */
+export function workflowRoiToShow(row: Pick<LiveWorkflowRow, "roiMultiple">, studied: Pick<ResearchWorkflow, "roiDetail"> | null): RoiToShow {
+  if (row.roiMultiple != null) return { value: row.roiMultiple, expected: false, reason: null };
+  const d = studied?.roiDetail ?? null;
+  if (d?.value != null) return { value: d.value, expected: d.basis === "expected", reason: null };
+  return { value: null, expected: false, reason: null };
 }
 
-/**
- * One cell as a tag that opens its own page (workflow, template, model). A value with no page yet
- * (a template or model Research never studied) is the same tag, not clickable.
- */
-function Tag({
+const DASH = <span className="k-fg4">—</span>;
+
+function WorkflowRow({
+  row: r,
+  studied,
   href,
-  title,
-  muted = false,
-  strong = false,
-  wrap = false,
-  children,
+  name,
+  statuses,
 }: {
-  href: string | null;
-  title: string;
-  muted?: boolean;
-  strong?: boolean;
-  /** Wraps onto more lines instead of truncating (keel's unlayered `.k-chip` pins nowrap + 20px, so inline). */
-  wrap?: boolean;
-  children: ReactNode;
+  row: LiveWorkflowRow;
+  studied: ResearchWorkflow | null;
+  href: string;
+  name: string;
+  statuses: ReturnType<typeof useDynastyStatuses>;
 }) {
-  const cls = `k-chip inline-block max-w-full align-middle ${wrap ? "" : "truncate"} ${strong ? "font-medium" : ""} ${muted ? "k-fg3" : ""}`;
-  const style = wrap ? { height: "auto", whiteSpace: "normal" as const, overflowWrap: "anywhere" as const, padding: "1px 6px", lineHeight: "18px" } : undefined;
-  return href ? (
-    <Link href={href} title={title} className={`${cls} hover:text-[var(--accent)]`} style={style}>
-      {children}
-    </Link>
-  ) : (
-    <span title={title} className={cls} style={style}>
-      {children}
-    </span>
+  const deprecated = statuses.statusOf(r.slug) === "deprecated";
+  // A runnable workflow's description rides the status listing; a deprecated one's is its newest
+  // version's (the same per-workflow read its Status cell makes for why it was deprecated).
+  const newest = useWorkflowDeprecation(r.slug, deprecated);
+  const description = deprecated ? newest.description : statuses.descriptionOf(r.slug);
+  const cents = r.costPerOutcomeUsd == null ? null : Math.round(r.costPerOutcomeUsd * 100);
+  return (
+    <tr className="k-row">
+      <td className="max-w-0 py-2 pl-4 pr-3">
+        <Link href={href} title={r.name ?? r.slug} className={`flex min-w-0 items-center gap-2 hover:text-[var(--accent)] ${r.selectable ? "" : "k-fg3"}`}>
+          <TopicMark topic="workflow" size={22} />
+          <span className="truncate font-medium">{name}</span>
+        </Link>
+      </td>
+      <td className="max-w-0 px-3 py-2">
+        {description ? (
+          <p className="k-fg2 line-clamp-2 text-[12px] leading-[18px]" title={description}>
+            {description}
+          </p>
+        ) : (
+          DASH
+        )}
+      </td>
+      <td className="px-3 py-2 text-right tabular-nums">
+        <RoiValue roi={workflowRoiToShow(r, studied)} />
+      </td>
+      <td className="px-3 py-2 text-right tabular-nums">
+        {/* At zero outcomes the producer states no price: Learning, never the spend as a floor. */}
+        <CostValue cost={{ cents, expected: false, learning: cents != null && r.mature === false, expectedCents: null }} learning />
+      </td>
+      <td className="px-3 py-2 text-right tabular-nums">{r.conversionRatePct == null ? DASH : formatRatePct(r.conversionRatePct)}</td>
+      <td className="px-3 py-2 text-right tabular-nums">{r.spentUsd == null ? DASH : formatUsdAdaptive(r.spentUsd)}</td>
+      <WorkflowStatusCells slug={r.slug} label={name} statuses={statuses} />
+    </tr>
   );
 }

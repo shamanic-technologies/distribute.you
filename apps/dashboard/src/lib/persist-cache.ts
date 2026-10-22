@@ -190,6 +190,8 @@ export const PERSISTABLE_QUERY_ROOTS = new Set([
   // catalogue (LLM, Template) and which dynasties can run (Status). Staff-only reads, on staff disks.
   "researchCatalog",
   "workflowDynastyStatuses",
+  // The same listing with each runnable workflow's description (Status + Description cells).
+  "workflowDynastySummaries",
   // The brand's effective conversion rate per leg (Brand Settings).
   "brandConversionRates",
   // Tenant identity — the sidebar switcher's org label + Clerk avatar. Clerk is the
