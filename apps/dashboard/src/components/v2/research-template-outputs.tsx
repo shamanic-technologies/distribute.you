@@ -1,11 +1,11 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import Link from "next/link";
 import { useAuthQuery } from "@/lib/use-auth-query";
 import { pollOptions } from "@/lib/query-options";
-import { getTemplateDynastyOutputs, getTemplateOutputs, type TemplateOutput } from "@/lib/api";
+import { getTemplateDynastyOutputs, getTemplateOutputs, getWorkflowDynastyOutputs, type TemplateOutput, type WorkflowRunOutput } from "@/lib/api";
 import { EmptyNote, Shimmer } from "@/components/v2/ui";
 import { RoiLabel, RoiValue } from "@/components/v2/roi-label";
 import { Arrow, TopicMark, instantText } from "@/components/v2/research-bits";
@@ -50,8 +50,8 @@ export function useTemplateRowOutputs(t: Pick<ResearchTemplate, "key" | "dynasty
   return { outputs: q.data, answered: q.data !== undefined || q.isFetchedAfterMount };
 }
 
-/** Outputs as a list: subject and each email as sent, never a client or a lead. */
-export function OutputsList({ read }: { read: ReturnType<typeof useTemplateOutputs> }) {
+/** Outputs as a list: subject and each email as sent, never a client or a lead. `expanded` opens every email in full. */
+export function OutputsList({ read, expanded = false }: { read: ReturnType<typeof useTemplateOutputs>; expanded?: boolean }) {
   if (!read.answered) {
     return (
       <div className="space-y-2 p-4">
@@ -66,7 +66,7 @@ export function OutputsList({ read }: { read: ReturnType<typeof useTemplateOutpu
   return (
     <ol className="divide-y divide-[var(--line-subtle)]">
       {read.outputs.map((o) => (
-        <OutputItem key={o.generationId} o={o} />
+        <OutputItem key={o.generationId} o={o} expanded={expanded} />
       ))}
     </ol>
   );
@@ -198,11 +198,23 @@ export function TemplateOutputsPanel({
   );
 }
 
+/** The open layers, newest last: Esc closes only the top one (a run's email opened over a workflow drawer). */
+const openLayers: object[] = [];
+
 /** Portals to the shell's own layer (a transformed ancestor traps `fixed`), and closes on Esc. */
 function V2Layer({ onEscape, children }: { onEscape: () => void; children: React.ReactNode }) {
+  const id = useRef({});
+  useEffect(() => {
+    const me = id.current;
+    openLayers.push(me);
+    return () => {
+      const i = openLayers.indexOf(me);
+      if (i !== -1) openLayers.splice(i, 1);
+    };
+  }, []);
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") {
+      if (e.key === "Escape" && openLayers[openLayers.length - 1] === id.current) {
         e.preventDefault();
         onEscape();
       }
@@ -315,8 +327,83 @@ export function ResearchDrawer({
   );
 }
 
-function OutputItem({ o }: { o: TemplateOutput }) {
-  const [open, setOpen] = useState(false);
+/** A workflow dynasty's latest runs that wrote an email, every client, newest first (content-generation-service). */
+export function useWorkflowRuns(slug: string, limit: number) {
+  const q = useAuthQuery(["workflowDynastyOutputs", slug, limit], () => getWorkflowDynastyOutputs(slug, limit), { ...pollOptions, retry: false });
+  return { runs: q.data, answered: q.data !== undefined || q.isFetchedAfterMount };
+}
+
+/** A run's template as its dynasty name and version ("Blind Intro Offer v6"); its raw type outside any dynasty. */
+export function runTemplateText(o: Pick<WorkflowRunOutput, "templateDynasty" | "promptType">): string | null {
+  if (o.templateDynasty) return `${o.templateDynasty.name} v${o.templateDynasty.position}`;
+  return o.promptType;
+}
+
+/**
+ * "Recent runs" (owner 2026-10-22), on the workflow drawer and the workflow page: newest first, each
+ * with its date, template and LLM. A click opens the email it wrote in the Research drawer, as the
+ * template panels list them (`OutputsList`). Names no client and no campaign.
+ */
+export function RecentRuns({ slug, limit }: { slug: string; limit: number }) {
+  const read = useWorkflowRuns(slug, limit);
+  const [open, setOpen] = useState<WorkflowRunOutput | null>(null);
+  if (!read.answered) {
+    return (
+      <div className="space-y-2 px-4 py-3">
+        {[0, 1, 2].map((i) => (
+          <Shimmer key={i} className="h-4 w-full" />
+        ))}
+      </div>
+    );
+  }
+  if (read.runs === undefined) return <EmptyNote>We could not read its recent runs just now. It retries on its own.</EmptyNote>;
+  if (read.runs.length === 0) return <EmptyNote>No run of this workflow wrote an email yet.</EmptyNote>;
+  return (
+    <>
+      <ol className="divide-y divide-[var(--line-subtle)]">
+        {read.runs.map((o) => {
+          const template = runTemplateText(o);
+          return (
+            <li key={o.generationId}>
+              <button
+                type="button"
+                onClick={() => setOpen(o)}
+                className="k-row flex w-full min-w-0 items-center gap-2 px-4 py-2 text-left"
+                title="Open the email it wrote"
+              >
+                <span className="k-mono k-fg2 w-[136px] shrink-0 text-[12px]">{instantText(o.createdAt)}</span>
+                <span className="k-chip min-w-0 truncate" title={o.promptType ?? undefined}>
+                  {template ?? <span className="k-fg3">No template on record</span>}
+                </span>
+                <span className="k-chip ml-auto min-w-0 shrink-0 truncate" title={o.model}>
+                  {o.model}
+                </span>
+                <Arrow />
+              </button>
+            </li>
+          );
+        })}
+      </ol>
+      {open && (
+        <ResearchDrawer
+          label="Run"
+          onClose={() => setOpen(null)}
+          head={
+            <>
+              <p className="k-label">Run</p>
+              <p className="truncate text-[13px] font-medium">{runTemplateText(open) ?? instantText(open.createdAt)}</p>
+            </>
+          }
+        >
+          <OutputsList read={{ outputs: [open], answered: true }} expanded />
+        </ResearchDrawer>
+      )}
+    </>
+  );
+}
+
+function OutputItem({ o, expanded }: { o: TemplateOutput; expanded: boolean }) {
+  const [open, setOpen] = useState(expanded);
   const first = o.emails[0] ?? null;
   const rest = o.emails.slice(1);
   return (

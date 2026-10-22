@@ -21,7 +21,7 @@ import {
   useTemplateStatuses,
   useWorkflowDeprecation,
 } from "@/components/v2/research-status";
-import { OutputsList, ResearchDrawer, TemplateFigures, TemplateOutputsPanel, TemplateVersionDrawer, useTemplateOutputs } from "@/components/v2/research-template-outputs";
+import { OutputsList, RecentRuns, ResearchDrawer, TemplateFigures, TemplateOutputsPanel, TemplateVersionDrawer, useTemplateOutputs } from "@/components/v2/research-template-outputs";
 import { modelAliasesOf, modelStatus, type ContentTarget } from "@/lib/research/content-status";
 import { useResearch, useResearchCatalog, useResearchTexts } from "@/lib/research/research-source";
 import {
@@ -654,16 +654,6 @@ function Charts({ f, topic }: { f: ResearchFigures; topic: "workflow" | "templat
   );
 }
 
-function StatusWord({ status }: { status: string }) {
-  const dot = status === "completed" ? "bg-[var(--data-teal)]" : status === "failed" ? "bg-[var(--data-rose)]" : "bg-[var(--run)]";
-  return (
-    <span className="inline-flex items-center gap-1.5 text-[12px]">
-      <span className={`h-1.5 w-1.5 rounded-full ${dot}`} />
-      {status.charAt(0).toUpperCase() + status.slice(1)}
-    </span>
-  );
-}
-
 function RunsTable({ title, note, head, rows }: { title: string; note: string; head: React.ReactNode; rows: React.ReactNode[] }) {
   return (
     <section>
@@ -764,32 +754,12 @@ function WorkflowView({
         <div className="mt-6 grid gap-4 lg:grid-cols-[minmax(0,1fr)_320px]">
           <div className="min-w-0 space-y-6">
             <Charts f={w} topic="workflow" />
-            <RunsTable
-              title="Last runs"
-              note="Every client, newest first"
-              head={
-                <>
-                  <th className={`${TH} w-44`}>Time</th>
-                  <th className={`${TH} w-24`}>Version</th>
-                  <th className={TH}>Status</th>
-                  <th className={`${TH} w-20 text-right`}>Took</th>
-                  <th className={`${TH} w-24 text-right`}>Charged</th>
-                </>
-              }
-              rows={w.runs.map((r, i) => (
-                <tr key={`${r.when}-${i}`} className="k-row h-10">
-                  <td className="k-mono k-fg2 whitespace-nowrap pl-4 pr-3 text-[12px]">{r.when}</td>
-                  <td className="k-mono k-fg2 px-3 text-[12px]">{r.version}</td>
-                  <td className="px-3">
-                    <StatusWord status={r.status} />
-                  </td>
-                  <td className="k-mono k-fg2 px-3 text-right text-[12px]">
-                    <Dash v={r.duration} />
-                  </td>
-                  <td className="whitespace-nowrap pl-3 pr-4 text-right tabular-nums">{r.cost ?? <span className="k-fg3 text-[12px]">Not charged</span>}</td>
-                </tr>
-              ))}
-            />
+            <section>
+              <SectionTitle right={<span>Every client, newest first</span>}>Recent runs</SectionTitle>
+              <div className="k-card overflow-hidden">
+                <RecentRuns slug={w.key} limit={20} />
+              </div>
+            </section>
           </div>
           <aside className="k-card h-fit p-4">
             <p className="k-label">Details</p>
