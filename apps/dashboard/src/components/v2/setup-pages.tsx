@@ -17,7 +17,6 @@ import { formatBillingCentsWhole } from "@/lib/format-number";
 import { REFERRAL_CREDIT_USD, inviteLinkForCode } from "@/lib/invite-link";
 import { promiseProgressSentence, promiseProgressWidth, promiseUnlockLine } from "@/lib/free-credit-promise-view";
 import { v2Base, v2Href, v2OfferHref } from "@/lib/v2/routes";
-import { ArchivedOffers } from "@/components/v2/archived-offers";
 import { V2NewOfferModal } from "@/components/v2/new-offer-modal";
 import { OfferPlanBanner } from "@/components/v2/choose-plan";
 import { useSelectedOffer } from "@/components/v2/selected-offer";
@@ -205,7 +204,6 @@ export function V2OfferPage() {
         <BrandOfferCard orgId={orgId} brandId={brandId} offerId={offerId} />
         <OfferDocuments brandId={brandId} offerId={offerId} />
         <OfferArchiveCard brandId={brandId} offerId={offerId} />
-        <ArchivedOffers brandId={brandId} />
       </div>
     </V2Page>
   );

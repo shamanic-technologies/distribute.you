@@ -52,8 +52,9 @@ describe("archive wiring", () => {
     }
   });
 
-  it("the offer's page lists archived offers with Restore (there is no list of offers)", () => {
-    expect(read("components/v2/setup-pages.tsx")).toContain("<ArchivedOffers brandId={brandId} />");
+  it("Brand Settings lists archived offers with Restore, the offer's page does not", () => {
+    expect(read("components/v2/brand-settings-page.tsx")).toContain("<ArchivedOffers brandId={brandId} />");
+    expect(read("components/v2/setup-pages.tsx")).not.toContain("<ArchivedOffers");
     expect(read("components/v2/archived-offers.tsx")).toContain("setBrandOfferArchived(brandId, offerId, false)");
   });
 });

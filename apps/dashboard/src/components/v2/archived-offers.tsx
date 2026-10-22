@@ -6,21 +6,26 @@ import { useAuthQuery } from "@/lib/use-auth-query";
 import { POLL_INTERVAL } from "@/lib/query-options";
 import { listBrandOffers, isOfferArchived, offerArchiveErrorMessage, setBrandOfferArchived } from "@/lib/api";
 import { OfferMark } from "@/components/marks/offer-mark";
-import { SectionTitle } from "@/components/v2/ui";
+
+/** The brand's archived offers. Same key as the offer pages' with-archived read, so no extra request. */
+export function useArchivedOffers(brandId: string) {
+  const allQ = useAuthQuery(
+    ["brandOffers", brandId, "withArchived"],
+    () => listBrandOffers(brandId, undefined, { includeArchived: true }),
+    { refetchInterval: POLL_INTERVAL, enabled: !!brandId },
+  );
+  return (allQ.data?.offers ?? []).filter(isOfferArchived);
+}
 
 /**
- * The offers the owner ARCHIVED, each with Restore, under the selected offer's page (there
- * is no list of offers since 2026-10-03). Reads the with-archived list; the switcher keeps
+ * The offers the owner ARCHIVED, each with Restore, as a section of Brand Settings (owner
+ * 2026-10-22: a brand-wide list does not belong under one offer's page). The switcher keeps
  * the default list, which already leaves them out. Renders nothing while there are none.
  */
 export function ArchivedOffers({ brandId }: { brandId: string }) {
   const queryClient = useQueryClient();
   const [error, setError] = useState<string | null>(null);
-  const allQ = useAuthQuery(
-    ["brandOffers", brandId, "withArchived"],
-    () => listBrandOffers(brandId, undefined, { includeArchived: true }),
-    { refetchInterval: POLL_INTERVAL },
-  );
+  const archived = useArchivedOffers(brandId);
   const restore = useMutation({
     mutationFn: (offerId: string) => setBrandOfferArchived(brandId, offerId, false),
     onSuccess: (res) => {
@@ -33,15 +38,10 @@ export function ArchivedOffers({ brandId }: { brandId: string }) {
       setError(offerArchiveErrorMessage(err, false));
     },
   });
-  const archived = (allQ.data?.offers ?? []).filter(isOfferArchived);
   if (archived.length === 0) return null;
 
   return (
-    <div className="mt-10">
-      <SectionTitle count={archived.length} right={<span>Hidden from the offer switcher</span>}>
-        Archived
-      </SectionTitle>
-      <div className="k-card overflow-hidden">
+    <>
         <table className="w-full text-[13px]">
           <tbody>
             {archived.map((offer) => (
@@ -69,10 +69,7 @@ export function ArchivedOffers({ brandId }: { brandId: string }) {
             ))}
           </tbody>
         </table>
-        <div className="k-fg3 border-t border-[var(--line-subtle)] px-4 py-2.5 text-[12px]">
-          {error ?? "Archived offers keep their campaigns and figures. Archive an offer from its Settings."}
-        </div>
-      </div>
-    </div>
+        {error && <div className="k-fg3 border-t border-[var(--line-subtle)] px-4 py-2.5 text-[12px]">{error}</div>}
+    </>
   );
 }
