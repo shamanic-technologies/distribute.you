@@ -7,7 +7,7 @@ import { useSearchParams } from "next/navigation";
 import { EmptyNote, SectionTitle, Shimmer, TopBar, type Crumb } from "@/components/v2/ui";
 import { CostBasisSwitch } from "@/components/v2/cost-basis-switch";
 import { RoiLabel, RoiValue } from "@/components/v2/roi-label";
-import { ResearchLiveWorkflows, usePipeChannelName, useResearchPipeLeg } from "@/components/v2/research-live-workflows";
+import { ResearchLiveWorkflows, usePipeChannelName, usePipeWorkflowRows, useResearchPipeLeg } from "@/components/v2/research-live-workflows";
 import { shortWorkflowName } from "@/lib/live-workflow-rows";
 import {
   ACTIVATE_CONTENT_NOTE,
@@ -61,6 +61,7 @@ import {
   type ResearchTemplateVersion,
   type ResearchWorkflow,
   researchRoiOf,
+  PIPE_KEY,
 } from "@/lib/research/research";
 
 /**
@@ -286,6 +287,11 @@ function CatalogList({
   // stays for templates, models, and a pipe whose step starts no entry leg.
   const liveLeg = useResearchPipeLeg(pipe);
   const live = kind === "workflows" && liveLeg != null;
+  // The live table's own rows (Active + Deprecated), so the title and the Workflows tab count what
+  // the table lists, never the Research study's own workflow count (owner 2026-10-23: 52 over 8 + 38).
+  const liveRows = usePipeWorkflowRows(PIPE_KEY[pipe].channel, liveLeg);
+  const liveTotal = liveRows.rankingQ.data !== undefined ? liveRows.rows.length : null;
+  const countOf = (k: CatalogKind): number | null => (k === "workflows" && liveLeg != null ? liveTotal : (catalog?.[pipe][k].length ?? null));
   // Staff status (TEMPLATE-MODEL-STATUS-1019): templates by type, models by every alias chat-service serves them under (served on the row).
   const templateStatuses = useTemplateStatuses();
   const modelStatuses = useModelStatuses();
@@ -316,7 +322,7 @@ function CatalogList({
             </h1>
             <p className="k-fg2 mt-1 text-[14px]">
               {live ? (
-                <>Every workflow on this pipe, all clients pooled, in the order a campaign picks from.</>
+                <>Every workflow on this pipe, all clients pooled, best ROI first.</>
               ) : (
                 <>
                   Every {words.one} that wrote this pipe&apos;s emails, all clients pooled, the cheapest {o.noun.toLowerCase()} first.{" "}
@@ -337,14 +343,14 @@ function CatalogList({
           {CATALOG_KINDS.map((k) => (
             <Link key={k} href={researchCatalogHref(base, pipe, k)} aria-current={k === kind ? "page" : undefined} className="k-tab inline-flex items-center gap-1.5 text-[13px]">
               {KIND_WORD[k].title}
-              {catalog && <span className="k-fg3 tabular-nums">{catalog[pipe][k].length}</span>}
+              {countOf(k) != null && <span className="k-fg3 tabular-nums">{countOf(k)}</span>}
             </Link>
           ))}
         </div>
 
         <section className="mt-6">
           <SectionTitle
-            count={rows.length}
+            count={live ? liveTotal : rows.length}
             right={
               <span className="inline-flex items-center gap-1.5">
                 <SectionMark section={{ pipe }} size={14} />
