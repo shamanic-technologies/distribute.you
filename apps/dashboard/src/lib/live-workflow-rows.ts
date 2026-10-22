@@ -23,6 +23,8 @@
  * only) so it carries real unit tests.
  */
 
+import type { CostToShow, RoiToShow } from "./expected-return";
+
 /**
  * A workflow's distinctive name: its channel's name dropped from the front ("Sales Cold Email
  * Outreach Maelstrom" under "Sales Cold Email Outreach" reads "Maelstrom"). A name that does not
@@ -88,10 +90,48 @@ export interface FleetRankingRow {
   executable?: boolean;
   place?: string | null;
   explorePriceUsd?: number | null;
+  figures: WorkflowFigures;
+  lastRunAt?: string | null;
+  lastRunUnavailableReason?: string | null;
+  tactics?: readonly FollowedTactic[] | null;
+  tacticsUnavailableReason?: string | null;
+}
+
+/** One served figure (features-service `figures.*`): measured, else the pipe's expected one, else why neither. */
+export interface ServedFigure {
+  value: number | null;
+  basis: "measured" | "expected" | null;
+  expectedValue: number | null;
+  unavailableReason: string | null;
+}
+
+/** A ranking row's `figures`, on the read's pricing (net): the ONE set the list, drawer and page print. */
+export interface WorkflowFigures {
+  roi: ServedFigure;
+  costPerOutcomeUsd: ServedFigure;
+  conversionRatePct: ServedFigure;
+  spentUsd: { value: number | null; unavailableReason: string | null };
+  outcomes: number;
+}
+
+/** A tactic a workflow follows, as features-service names it. */
+export interface FollowedTactic {
+  id: string;
+  name: string;
+}
+
+/** A Research row: the shared row plus what only the fleet ranking serves. */
+export interface ResearchWorkflowRow extends LiveWorkflowRow {
+  figures: WorkflowFigures;
+  lastRunAt: string | null;
+  lastRunUnavailableReason: string | null;
+  /** Null with `tacticsUnavailableReason`. */
+  tactics: readonly FollowedTactic[] | null;
+  tacticsUnavailableReason: string | null;
 }
 
 /** Research: the fleet ranking, verbatim, in the producer's order. */
-export function fleetWorkflowRows(rows: readonly FleetRankingRow[]): LiveWorkflowRow[] {
+export function fleetWorkflowRows(rows: readonly FleetRankingRow[]): ResearchWorkflowRow[] {
   return [...rows]
     .sort((a, b) => a.rank - b.rank)
     .map((r) => ({
@@ -112,7 +152,39 @@ export function fleetWorkflowRows(rows: readonly FleetRankingRow[]): LiveWorkflo
       place: r.place ?? null,
       explorePriceUsd: r.explorePriceUsd ?? null,
       executable: r.executable ?? null,
+      figures: r.figures,
+      lastRunAt: r.lastRunAt ?? null,
+      lastRunUnavailableReason: r.lastRunUnavailableReason ?? null,
+      tactics: r.tactics ?? null,
+      tacticsUnavailableReason: r.tacticsUnavailableReason ?? null,
     }));
+}
+
+/** The ROI a Research row prints: the served figure, marked expected when it is the pipe's, never computed here. */
+export function servedRoi(f: ServedFigure): RoiToShow {
+  return { value: f.value, expected: f.value != null && f.basis === "expected", reason: f.value == null ? f.unavailableReason : null };
+}
+
+/** The cost per outcome a Research row prints, in cents, read like `servedRoi`. */
+export function servedCost(f: ServedFigure): CostToShow {
+  return { cents: f.value == null ? null : Math.round(f.value * 100), expected: f.value != null && f.basis === "expected", learning: false, expectedCents: null };
+}
+
+/**
+ * "Last run" as a short relative time (owner 2026-10-22): "Just now", "3m ago", "2h ago", "5d ago",
+ * "4mo ago"; "Never" when the producer states it never ran; null when the producer could not read it.
+ */
+export function lastRunText(row: Pick<ResearchWorkflowRow, "lastRunAt" | "lastRunUnavailableReason">, now: Date = new Date()): string | null {
+  if (row.lastRunAt == null) return row.lastRunUnavailableReason == null ? "Never" : null;
+  const ms = Math.max(0, now.getTime() - new Date(row.lastRunAt).getTime());
+  const minutes = Math.floor(ms / 60_000);
+  if (minutes < 1) return "Just now";
+  if (minutes < 60) return `${minutes}m ago`;
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) return `${hours}h ago`;
+  const days = Math.floor(hours / 24);
+  if (days < 60) return `${days}d ago`;
+  return `${Math.floor(days / 30)}mo ago`;
 }
 
 /** The slice of a per-brand ladder row a campaign's table reads. */

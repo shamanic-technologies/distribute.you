@@ -111,6 +111,15 @@ export function expectedReasonWords(reason: string | null): string {
       return "No priced path yet";
     case "expected_model_unavailable":
       return "Not available";
+    // The fleet ranking's `figures` (features-service RESEARCH-WF-FIGURES-1022).
+    case "no_return_on_pipe":
+      return "No return on this pipe yet";
+    case "no_outcome_on_pipe":
+      return "No outcome on this pipe yet";
+    case "no_conversion_on_pipe":
+      return "No conversion on this pipe yet";
+    case "net_not_measured_on_pipe":
+      return "Not measured on this pipe";
     case null:
       return "—";
     default:
