@@ -17,6 +17,7 @@ import {
 import { TopBar } from "@/components/v2/ui";
 import { BrandLinkedinPageRow } from "@/components/v2/brand-linkedin-page-row";
 import { BrandIdentityTitle } from "@/components/v2/brand-identity-title";
+import { ArchivedOffers, useArchivedOffers } from "@/components/v2/archived-offers";
 
 /**
  * Brand settings, laid out the way every settings page of a Linear-grade product is:
@@ -42,6 +43,8 @@ export function V2BrandSettingsPage() {
   // only exists while the brand has none: once set, it cannot change here.
   const { data: brandData, isPending: brandPending } = useAuthQuery(["brand", brandId], () => getBrand(brandId));
   const needsWebsite = !brandPending && (brandData?.brand?.domain ?? null) === null;
+  // Archived offers are brand-wide, so they live here, not under one offer (owner 2026-10-22).
+  const hasArchivedOffers = useArchivedOffers(brandId).length > 0;
 
   const sections: Section[] = [
     ...(needsWebsite
@@ -86,6 +89,17 @@ export function V2BrandSettingsPage() {
       description: CONVERSION_TRACKING_BLURB,
       body: <BrandConversionTrackingCard brandId={brandId} bare />,
     },
+    ...(hasArchivedOffers
+      ? [
+          {
+            id: "archived-offers",
+            title: "Archived offers",
+            description:
+              "Offers hidden from the switcher keep their campaigns and figures. Archive an offer from its Overview page.",
+            body: <ArchivedOffers brandId={brandId} />,
+          },
+        ]
+      : []),
   ];
 
   const active = useActiveSection(sections.map((s) => s.id));
