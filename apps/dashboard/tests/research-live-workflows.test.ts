@@ -414,6 +414,9 @@ describe("Research workflow recent runs (owner 2026-10-22)", () => {
     expect(body).toContain("{instantText(o.createdAt)}");
     expect(body).toContain("const template = runTemplateText(o);");
     expect(body).toContain("{o.model}");
+    // The workflow version each run was on (WF-RUNS-OUTPUTS-1022-DASH), in the row and the email drawer.
+    expect(body).toContain("{runVersionLabel(slug, o.workflowSlug)}");
+    expect(body).toContain("Workflow version {runVersionLabel(slug, open.workflowSlug)}");
     expect(body).toContain("onClick={() => setOpen(o)}");
     expect(body).toContain("<ResearchDrawer");
     expect(body).toContain("<OutputsList read={{ outputs: [open], answered: true }} expanded />");

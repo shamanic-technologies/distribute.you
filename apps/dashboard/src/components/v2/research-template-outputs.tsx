@@ -10,6 +10,7 @@ import { EmptyNote, Shimmer } from "@/components/v2/ui";
 import { RoiLabel, RoiValue } from "@/components/v2/roi-label";
 import { Arrow, TopicMark, instantText } from "@/components/v2/research-bits";
 import { modelTagFromName } from "@/lib/written-by";
+import { runVersionLabel } from "@/lib/research/workflow-runs";
 import {
   researchCatalogHref,
   templateContentKey,
@@ -341,7 +342,7 @@ export function runTemplateText(o: Pick<WorkflowRunOutput, "templateDynasty" | "
 
 /**
  * "Recent runs" (owner 2026-10-22), on the workflow drawer and the workflow page: newest first, each
- * with its date, template and LLM. A click opens the email it wrote in the Research drawer, as the
+ * with its date, the workflow version it ran on, template and LLM. A click opens the email it wrote in the Research drawer, as the
  * template panels list them (`OutputsList`). Names no client and no campaign.
  */
 export function RecentRuns({ slug, limit }: { slug: string; limit: number }) {
@@ -372,6 +373,9 @@ export function RecentRuns({ slug, limit }: { slug: string; limit: number }) {
                 title="Open the email it wrote"
               >
                 <span className="k-mono k-fg2 w-[136px] shrink-0 text-[12px]">{instantText(o.createdAt)}</span>
+                <span className="k-mono k-fg3 w-8 shrink-0 truncate text-[12px]" title={`Workflow version ${o.workflowSlug}`}>
+                  {runVersionLabel(slug, o.workflowSlug)}
+                </span>
                 <span className="k-chip min-w-0 truncate" title={o.promptType ?? undefined}>
                   {template ?? <span className="k-fg3">No template on record</span>}
                 </span>
@@ -392,6 +396,9 @@ export function RecentRuns({ slug, limit }: { slug: string; limit: number }) {
             <>
               <p className="k-label">Run</p>
               <p className="truncate text-[13px] font-medium">{runTemplateText(open) ?? instantText(open.createdAt)}</p>
+              <p className="k-fg3 truncate text-[12px]" title={open.workflowSlug}>
+                Workflow version {runVersionLabel(slug, open.workflowSlug)}
+              </p>
             </>
           }
         >
