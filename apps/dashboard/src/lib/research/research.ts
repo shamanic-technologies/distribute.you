@@ -652,16 +652,12 @@ export function templateModels(c: ResearchCatalog | null, pipe: ResearchPipe, t:
 }
 
 /**
- * The version an LLM dynasty runs now, as its row names it (« 3.8 Flash » under « Gemini Flash »):
- * the served head version's label, the dynasty's own words dropped from its front. Null on a model on
- * its own or a catalogue built before dynasties.
+ * The version an LLM dynasty runs now, its full served name (« Gemini 3.8 Flash » under « Gemini Flash »,
+ * owner 2026-10-23). Null on a model on its own or a catalogue built before dynasties.
  */
 export function modelHeadLabel(m: Pick<ResearchModel, "dynasty" | "models">): string | null {
   if (!m.dynasty) return null;
-  const head = (m.models ?? []).find((v) => v.head);
-  if (!head) return null;
-  const vendor = m.dynasty.name.split(" ")[0];
-  return head.label.startsWith(`${vendor} `) ? head.label.slice(vendor.length + 1) : head.label;
+  return (m.models ?? []).find((v) => v.head)?.label ?? null;
 }
 
 export function researchModel(c: ResearchCatalog, pipe: ResearchPipe, key: string): ResearchModel | null {

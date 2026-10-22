@@ -4,10 +4,10 @@ import { HubChip, HubChips } from "@/components/v2/hub-section";
 import { useState } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
-import { EmptyNote, SectionTitle, Shimmer, TopBar, type Crumb } from "@/components/v2/ui";
+import { EmptyNote, MarkLines, SectionTitle, Shimmer, TopBar, type Crumb } from "@/components/v2/ui";
 import { CostBasisSwitch } from "@/components/v2/cost-basis-switch";
 import { RoiLabel, RoiValue } from "@/components/v2/roi-label";
-import { opensDrawer, ResearchLiveWorkflows, usePipeChannelName, useResearchPipeLeg } from "@/components/v2/research-live-workflows";
+import { opensDrawer, ResearchLiveWorkflows, usePipeChannelName, usePipeWorkflowRows, useResearchPipeLeg } from "@/components/v2/research-live-workflows";
 import { shortWorkflowName } from "@/lib/live-workflow-rows";
 import {
   ACTIVATE_CONTENT_NOTE,
@@ -62,6 +62,7 @@ import {
   type ResearchTemplateVersion,
   type ResearchWorkflow,
   researchRoiOf,
+  PIPE_KEY,
 } from "@/lib/research/research";
 
 /**
@@ -287,6 +288,11 @@ function CatalogList({
   // stays for templates, models, and a pipe whose step starts no entry leg.
   const liveLeg = useResearchPipeLeg(pipe);
   const live = kind === "workflows" && liveLeg != null;
+  // The live table's own rows (Active + Deprecated), so the title and the Workflows tab count what
+  // the table lists, never the Research study's own workflow count (owner 2026-10-23: 52 over 8 + 38).
+  const liveRows = usePipeWorkflowRows(PIPE_KEY[pipe].channel, liveLeg);
+  const liveTotal = liveRows.rankingQ.data !== undefined ? liveRows.rows.length : null;
+  const countOf = (k: CatalogKind): number | null => (k === "workflows" && liveLeg != null ? liveTotal : (catalog?.[pipe][k].length ?? null));
   // Staff status (TEMPLATE-MODEL-STATUS-1019): templates by type, models by every alias chat-service serves them under (served on the row).
   const templateStatuses = useTemplateStatuses();
   const modelStatuses = useModelStatuses();
@@ -318,7 +324,7 @@ function CatalogList({
             </h1>
             <p className="k-fg2 mt-1 text-[14px]">
               {live ? (
-                <>Every workflow on this pipe, all clients pooled, in the order a campaign picks from.</>
+                <>Every workflow on this pipe, all clients pooled, best ROI first.</>
               ) : (
                 <>
                   Every {words.one} that wrote this pipe&apos;s emails, all clients pooled, the cheapest {o.noun.toLowerCase()} first.{" "}
@@ -339,14 +345,14 @@ function CatalogList({
           {CATALOG_KINDS.map((k) => (
             <Link key={k} href={researchCatalogHref(base, pipe, k)} aria-current={k === kind ? "page" : undefined} className="k-tab inline-flex items-center gap-1.5 text-[13px]">
               {KIND_WORD[k].title}
-              {catalog && <span className="k-fg3 tabular-nums">{catalog[pipe][k].length}</span>}
+              {countOf(k) != null && <span className="k-fg3 tabular-nums">{countOf(k)}</span>}
             </Link>
           ))}
         </div>
 
         <section className="mt-6">
           <SectionTitle
-            count={rows.length}
+            count={live ? liveTotal : rows.length}
             right={
               <span className="inline-flex items-center gap-1.5">
                 <SectionMark section={{ pipe }} size={14} />
@@ -382,8 +388,9 @@ function CatalogList({
                             <th className={`${TH} w-40`}>Template</th>
                           </>
                         )}
-                        {kind === "templates" ? (
+                        {kind === "templates" && (
                           <>
+                            {/* Owner 2026-10-23: Template, ROI, % Conversion, $ / outcome, # outcomes, $ Spent, Status. */}
                             <th className={`${TH} w-24 text-right`}>
                               <RoiLabel />
                             </th>
@@ -393,20 +400,28 @@ function CatalogList({
                             <th className={`${TH} w-24 text-right`}>$ Spent</th>
                             <th className={`${TH} w-28`}>Status</th>
                           </>
-                        ) : (
+                        )}
+                        {kind === "models" ? (
                           <>
-                            {kind === "models" && <th className={`${TH} w-52`}>Status</th>}
+                            {/* Owner 2026-10-23: Model, ROI, $ / outcome, % Conversion, # outcomes, $ Spent, Status. */}
+                            <th className={`${TH} w-24 text-right`}>
+                              <RoiLabel />
+                            </th>
+                            <th className={`${TH} w-36 text-right`}>{`$ ${o.unit}`}</th>
+                            <th className={`${TH} w-28 text-right`}>% Conversion</th>
+                            <th className={`${TH} w-32 text-right`}>{`# ${o.plural}`}</th>
+                            <th className={`${TH} w-28 text-right`}>$ Spent</th>
+                            <th className={`${TH} w-40`}>Status</th>
+                          </>
+                        ) : kind === "workflows" ? (
+                          <>
                             <th className={`${TH} w-36 text-right`}>Cost {o.unit.replace("/ ", "per ")}</th>
                             <th className={`${TH} w-28 text-right`}>Rate</th>
                             <th className={`${TH} w-28 text-right`}>{o.plural}</th>
-                          </>
-                        )}
-                        {kind !== "templates" && (
-                          <>
                             <th className={`${TH} w-28 text-right`}>Emails</th>
                             <th className={`${TH} w-28 text-right`}>Invested</th>
                           </>
-                        )}
+                        ) : null}
                         <th className={`${TH} w-10`} aria-label={kind === "workflows" ? "Open" : "Status menu"} />
                       </tr>
                     </thead>
@@ -460,7 +475,10 @@ function CatalogList({
                               aria-selected={kind === "templates" ? picked : undefined}
                               className={`k-row group h-10 cursor-pointer ${picked ? "k-selected" : ""}`}
                             >
-                              <td className="max-w-0 pl-4 pr-3">
+                              <td className={`max-w-0 pl-4 pr-3 ${kind === "models" ? "py-1.5" : ""}`}>
+                                {kind === "models" ? (
+                                  <ModelNameLines m={r as ResearchModel} href={href} />
+                                ) : (
                                 <span className="flex min-w-0 items-center gap-1.5">
                                   {kind === "templates" ? (
                                     // The name is a button to the template's own page; the rest of the row opens the drawer.
@@ -479,19 +497,19 @@ function CatalogList({
                                       />
                                     </Link>
                                   ) : (
-                                  <CatalogueName
-                                    kind={KIND_TOPIC[kind]}
-                                    name={r.label}
-                                    label={rowName(kind, r, channelName)}
-                                    href={href}
-                                    icon={kind === "models" ? null : ((r as ResearchWorkflow | ResearchTemplate).icon ?? null)}
-                                    color={kind === "models" ? null : ((r as ResearchWorkflow | ResearchTemplate).color ?? null)}
-                                    className={`${kind === "models" && modelRowChipShown(r as ResearchModel) ? "shrink-0" : ""} font-medium`}
-                                  />
+                                    <CatalogueName
+                                      kind={KIND_TOPIC[kind]}
+                                      name={r.label}
+                                      label={rowName(kind, r, channelName)}
+                                      href={href}
+                                      icon={(r as ResearchWorkflow).icon ?? null}
+                                      color={(r as ResearchWorkflow).color ?? null}
+                                      className="font-medium"
+                                    />
                                   )}
                                   {kind === "templates" && <TemplateRowChip t={r as ResearchTemplate} />}
-                                  {kind === "models" && <ModelRowChip m={r as ResearchModel} />}
                                 </span>
+                                )}
                               </td>
                               {kind === "workflows" && (
                                 <>
@@ -522,17 +540,29 @@ function CatalogList({
                                   </td>
                                 </>
                               )}
-                              {kind === "models" && (
-                                <td className="max-w-0 px-3">
-                                  <ContentStatusWord
-                                    status={status}
-                                    gap={served.gap}
-                                    pending={!statusAnswered && modelKeys.length > 0}
-                                    deprecation={deprecation}
-                                  />
-                                </td>
-                              )}
-                              {kind !== "templates" && (
+                              {kind === "models" ? (
+                                <>
+                                  <td className="whitespace-nowrap px-3 text-right tabular-nums">
+                                    <RowRoi f={r} />
+                                  </td>
+                                  <td className="whitespace-nowrap px-3 text-right tabular-nums">
+                                    <Dash v={r.cost} />
+                                  </td>
+                                  <td className="px-3 text-right tabular-nums">
+                                    <Dash v={r.rate} />
+                                  </td>
+                                  <td className="px-3 text-right tabular-nums">{r.outcomes}</td>
+                                  <td className="px-3 text-right tabular-nums">{r.spend}</td>
+                                  <td className="max-w-0 px-3">
+                                    <ContentStatusWord
+                                      status={status}
+                                      gap={served.gap}
+                                      pending={!statusAnswered && modelKeys.length > 0}
+                                      deprecation={deprecation}
+                                    />
+                                  </td>
+                                </>
+                              ) : kind === "workflows" ? (
                                 <>
                                   <td className="whitespace-nowrap px-3 text-right tabular-nums">
                                     <Money value={r.cost} unit={o.unit} />
@@ -544,7 +574,7 @@ function CatalogList({
                                   <td className="px-3 text-right tabular-nums">{r.emails}</td>
                                   <td className="px-3 text-right tabular-nums">{r.spend}</td>
                                 </>
-                              )}
+                              ) : null}
                               <td className="pl-1 pr-4 text-right">
                                 {kind === "workflows" ? (
                                   <span className="k-btn-ghost inline-flex h-6 w-6 justify-center px-0 opacity-0 group-hover:opacity-100">
@@ -659,7 +689,12 @@ function KpiStrip({ f, pipe }: { f: ResearchFigures; pipe: ResearchPipe }) {
 
 /** A template row's served return, as its page's ROI tile prints it; `—` when none is served. */
 function TemplateRoi({ t }: { t: ResearchTemplate }) {
-  const roi = researchRoiOf(t);
+  return <RowRoi f={t} />;
+}
+
+/** A catalogue row's served return (template, model), as its page's ROI tile prints it; `—` when none is served. */
+function RowRoi({ f }: { f: ResearchFigures }) {
+  const roi = researchRoiOf(f);
   if (roi == null) return <Dash v={null} />;
   return "show" in roi ? <RoiValue roi={roi.show} /> : <>{roi.text}</>;
 }
@@ -862,27 +897,31 @@ const MODEL_STANDALONE_WORDS: Record<string, string> = {
   llm_dynasties_unreadable: "chat-service's dynasties could not be read for this build: every model is listed on its own.",
 };
 
-function modelRowChipShown(m: ResearchModel): boolean {
-  return modelHeadLabel(m) != null || Boolean(m.standaloneReason);
+/** The quiet second line under a model's name: the version its dynasty runs now, or why it stands alone. */
+function modelSecondLine(m: ResearchModel): { text: string; title: string } | null {
+  const head = modelHeadLabel(m);
+  if (head) return { text: head, title: `The version ${m.label} runs now: ${m.dynasty?.headModelId ?? head}` };
+  if (m.standaloneReason) return { text: "Not in a dynasty", title: MODEL_STANDALONE_WORDS[m.standaloneReason] ?? m.standaloneReason };
+  return null;
 }
 
-/** A Models row's tag: the version a dynasty runs now (« now 3.8 Flash »), or a model on its own says so. */
-function ModelRowChip({ m }: { m: ResearchModel }) {
-  const head = modelHeadLabel(m);
-  if (head) {
-    return (
-      <span className="k-chip min-w-0 overflow-hidden" title={`${m.label} runs ${m.dynasty?.headModelId ?? head} now`}>
-        <span className="truncate">
-          now <span className="k-fg">{head}</span>
-        </span>
-      </span>
-    );
-  }
-  if (!m.standaloneReason) return null;
+/**
+ * A Models row's name (owner 2026-10-23): the product logo big on the left, as tall as two lines;
+ * the dynasty's name (a button to its page), then the version it runs now, quieter, under it.
+ */
+function ModelNameLines({ m, href }: { m: ResearchModel; href: string }) {
+  const second = modelSecondLine(m);
   return (
-    <span className="k-chip min-w-0 overflow-hidden" title={MODEL_STANDALONE_WORDS[m.standaloneReason] ?? m.standaloneReason}>
-      <span className="truncate">Not in a dynasty</span>
-    </span>
+    <MarkLines mark={(px) => <CatalogueObjectMark kind="llm" name={m.label} size={px} />}>
+      <Link href={href} onClick={(e) => e.stopPropagation()} className="min-w-0 truncate text-[13px] font-medium leading-5 hover:text-[var(--accent)]" title={m.label}>
+        {m.label}
+      </Link>
+      {second && (
+        <span className="k-fg3 min-w-0 truncate text-[12px] leading-4" title={second.title}>
+          {second.text}
+        </span>
+      )}
+    </MarkLines>
   );
 }
 
@@ -1284,7 +1323,7 @@ function ModelView({
   const o = useOutcome(pipe);
   const why = useModelStatuses().deprecationOf(modelAliasesOf(m).aliases);
   const versions = m.models ?? [];
-  const head = modelHeadLabel(m);
+  const second = modelSecondLine(m);
   return (
     <>
       <TopBar crumbs={crumbs} actions={<CostBasisSwitch />} />
@@ -1292,18 +1331,9 @@ function ModelView({
         <Header
           topic="llm"
           title={m.label}
+          sub={second?.text ?? null}
           chips={
             <>
-              {head && (
-                <span className="k-chip" title={`The version the dynasty runs now: ${m.dynasty?.headModelId ?? head}`}>
-                  Now <span className="k-fg">{head}</span>
-                </span>
-              )}
-              {m.standaloneReason && (
-                <span className="k-chip" title={MODEL_STANDALONE_WORDS[m.standaloneReason] ?? m.standaloneReason}>
-                  Not in a dynasty
-                </span>
-              )}
               <span className="k-chip inline-flex items-center gap-1.5">
                 <SectionMark section={{ pipe }} size={12} />
                 <SectionName section={{ pipe }} />

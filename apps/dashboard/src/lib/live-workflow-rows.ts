@@ -167,6 +167,20 @@ export function fleetWorkflowRows(rows: readonly FleetRankingRow[]): ResearchWor
     }));
 }
 
+/**
+ * Research's table order (owner 2026-10-23: « mets par ROI desc »): the ROI each row PRINTS (served
+ * `figures.roi.value`, measured or expected), highest first; a row with none last; ties keep the
+ * producer's order. Sorts served values, computes nothing.
+ */
+export function byServedRoiDesc<T extends { figures: WorkflowFigures }>(rows: readonly T[]): T[] {
+  return [...rows].sort((a, b) => {
+    const x = a.figures.roi.value;
+    const y = b.figures.roi.value;
+    if (x == null || y == null) return x == null ? (y == null ? 0 : 1) : -1;
+    return y - x;
+  });
+}
+
 /** The ROI a Research row prints: the served figure, marked expected when it is the pipe's, never computed here. */
 export function servedRoi(f: ServedFigure): RoiToShow {
   return { value: f.value, expected: f.value != null && f.basis === "expected", reason: f.value == null ? f.unavailableReason : null };

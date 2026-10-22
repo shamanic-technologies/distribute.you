@@ -109,13 +109,34 @@ describe("TEMPLATE-MODEL-STATUS-1019: the three Research pages", () => {
     expect(activate).not.toContain("setWorkflowDynastyStatus");
   });
 
+  it("Models: Model, ROI, $ / outcome, % Conversion, # outcomes, $ Spent, Status, in that order (owner 2026-10-23)", () => {
+    const head = list.slice(list.indexOf('{kind === "models" ? ('), list.indexOf("</thead>"));
+    const order = ["<RoiLabel />", "{`$ ${o.unit}`}", ">% Conversion</th>", "{`# ${o.plural}`}", ">$ Spent</th>", ">Status</th>"].map((t) => head.indexOf(t));
+    expect(order.every((i) => i > 0)).toBe(true);
+    expect([...order].sort((a, b) => a - b)).toEqual(order);
+    const models = head.slice(0, head.indexOf(') : kind === "workflows" ? ('));
+    expect(models).not.toContain("Emails");
+    const roiAt = list.indexOf("<RowRoi f={r} />");
+    const cells = list.slice(roiAt, list.indexOf("<ContentStatusWord", roiAt));
+    expect(cells).toContain("<Dash v={r.cost} />");
+    expect(cells.indexOf("{r.outcomes}")).toBeLessThan(cells.indexOf("{r.spend}"));
+  });
+
+  it("Templates: Template, ROI, % Conversion, $ / outcome, # outcomes, $ Spent, Status, in that order (owner 2026-10-23)", () => {
+    const head = list.slice(list.indexOf("Owner 2026-10-23: Template, ROI"), list.indexOf('{kind === "models" ? ('));
+    const order = ["<RoiLabel />", ">% Conversion</th>", "{`$ ${o.unit}`}", "{`# ${o.plural}`}", ">$ Spent</th>", ">Status</th>"].map((t) => head.indexOf(t));
+    expect(order.every((i) => i > 0)).toBe(true);
+    expect([...order].sort((a, b) => a - b)).toEqual(order);
+    expect(head).not.toContain("Workflows</th>");
+    expect(list).toContain("templatesInTableOrder(byTab?.[tab] ?? [])");
+  });
+
   it("Templates: ROI + % Conversion (served), no Leg / # column, ⋮, and the outputs drawer on a row click", () => {
     // Owner 2026-10-22: one leg per pipe page (Leg said nothing), the Active tab already states the status,
     // and the ROI order number meant nothing beside the ROI itself.
     expect(list).not.toContain(">Leg</th>");
     expect(list).not.toContain("<FirstAndMore");
     expect(list).not.toContain(">#</th>");
-    expect(list).toContain('{kind === "models" && <th className={`${TH} w-52`}>Status</th>}');
     expect(list).toContain("<TemplateRoi t={r as ResearchTemplate} />");
     expect(list).toContain(">% Conversion</th>");
     expect(list).toContain("<TemplateOutputsPanel");
