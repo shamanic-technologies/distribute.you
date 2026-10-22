@@ -21,7 +21,7 @@ import {
   useTemplateStatuses,
   useWorkflowDeprecation,
 } from "@/components/v2/research-status";
-import { OutputsList, RecentRuns, TemplateOutputsPanel, TemplateVersionDrawer, useTemplateOutputs } from "@/components/v2/research-template-outputs";
+import { OutputsList, RecentRuns, ResearchDrawer, TemplateFigures, TemplateOutputsPanel, TemplateVersionDrawer, useTemplateOutputs } from "@/components/v2/research-template-outputs";
 import { modelAliasesOf, modelStatus, type ContentTarget } from "@/lib/research/content-status";
 import { CatalogueName, CatalogueObjectMark } from "@/components/v2/catalogue-name";
 import { useResearch, useResearchCatalog, useResearchTexts } from "@/lib/research/research-source";
@@ -40,6 +40,7 @@ import {
 import {
   CATALOG_KINDS,
   researchCatalogHref,
+  modelHeadLabel,
   researchModel,
   researchTemplateOf,
   researchTemplateVersion,
@@ -51,6 +52,7 @@ import {
   type TemplateTab,
   type CatalogKind,
   type ResearchModel,
+  type ResearchModelVersion,
   type ResearchRef,
   type ResearchCatalog,
   type ResearchPipe,
@@ -459,9 +461,10 @@ function CatalogList({
                                     href={href}
                                     icon={kind === "models" ? null : ((r as ResearchWorkflow | ResearchTemplate).icon ?? null)}
                                     color={kind === "models" ? null : ((r as ResearchWorkflow | ResearchTemplate).color ?? null)}
-                                    className={`${kind === "templates" && (r as ResearchTemplate).standaloneReason ? "shrink-0" : ""} font-medium`}
+                                    className={`${(kind === "templates" && (r as ResearchTemplate).standaloneReason) || (kind === "models" && modelRowChipShown(r as ResearchModel)) ? "shrink-0" : ""} font-medium`}
                                   />
                                   {kind === "templates" && <TemplateRowChip t={r as ResearchTemplate} />}
+                                  {kind === "models" && <ModelRowChip m={r as ResearchModel} />}
                                 </span>
                               </td>
                               {kind === "workflows" && (
@@ -828,6 +831,132 @@ function TemplateRowChip({ t }: { t: ResearchTemplate }) {
   );
 }
 
+/** The words a model row on its own prints for why it is outside any LLM dynasty. */
+const MODEL_STANDALONE_WORDS: Record<string, string> = {
+  no_dynasty_in_chat_service: "chat-service places this model in no dynasty: it is listed on its own.",
+  llm_dynasties_unreadable: "chat-service's dynasties could not be read for this build: every model is listed on its own.",
+};
+
+function modelRowChipShown(m: ResearchModel): boolean {
+  return modelHeadLabel(m) != null || Boolean(m.standaloneReason);
+}
+
+/** A Models row's tag: the version a dynasty runs now (« now 3.8 Flash »), or a model on its own says so. */
+function ModelRowChip({ m }: { m: ResearchModel }) {
+  const head = modelHeadLabel(m);
+  if (head) {
+    return (
+      <span className="k-chip min-w-0 overflow-hidden" title={`${m.label} runs ${m.dynasty?.headModelId ?? head} now`}>
+        <span className="truncate">
+          now <span className="k-fg">{head}</span>
+        </span>
+      </span>
+    );
+  }
+  if (!m.standaloneReason) return null;
+  return (
+    <span className="k-chip min-w-0 overflow-hidden" title={MODEL_STANDALONE_WORDS[m.standaloneReason] ?? m.standaloneReason}>
+      <span className="truncate">Not in a dynasty</span>
+    </span>
+  );
+}
+
+/**
+ * Every version of an LLM dynasty with its own served figures, newest first as features-service
+ * serves them (they add up to the page's figures). The head is the version the dynasty runs now; a
+ * version chat-service no longer serves reads Retired. A click opens the version's figures in a drawer.
+ */
+function ModelVersionsTable({ pipe, m, versions }: { pipe: ResearchPipe; m: ResearchModel; versions: ResearchModelVersion[] }) {
+  const o = useOutcome(pipe);
+  const [openKey, setOpenKey] = useState<string | null>(null);
+  const open = openKey ? (versions.find((v) => v.key === openKey) ?? null) : null;
+  return (
+    <section>
+      <SectionTitle count={versions.length} right={<span>Newest first; they add up to the figures above</span>}>
+        Versions
+      </SectionTitle>
+      <div className="k-card overflow-hidden">
+        <div className="k-scroll relative overflow-x-auto">
+          <table className="w-full min-w-[720px] text-[13px]">
+            <thead>
+              <tr className="border-b border-[var(--line-subtle)]">
+                <th className={TH}>Version</th>
+                <th className={`${TH} w-28`}>Served</th>
+                <th className={`${TH} w-28 text-right`}>Cost {o.unit.replace("/ ", "per ")}</th>
+                <th className={`${TH} w-20 text-right`}>Rate</th>
+                <th className={`${TH} w-24 text-right`}>{o.plural}</th>
+                <th className={`${TH} w-24 text-right`}>Emails</th>
+                <th className={`${TH} w-24 text-right`}>Invested</th>
+              </tr>
+            </thead>
+            <tbody>
+              {versions.map((v) => (
+                <tr key={v.key} onClick={() => setOpenKey(v.key)} aria-selected={openKey === v.key} className={`k-row h-10 cursor-pointer ${openKey === v.key ? "k-selected" : ""}`}>
+                  <td className="max-w-0 pl-4 pr-3">
+                    <span className="flex min-w-0 items-center gap-1.5">
+                      <CatalogueName kind="llm" name={v.label} label={v.label} className="min-w-0" />
+                      {v.head && <span className="k-chip shrink-0">Head</span>}
+                    </span>
+                  </td>
+                  <td className="px-3">
+                    <ServedWord served={v.servedToday} />
+                  </td>
+                  <td className="whitespace-nowrap px-3 text-right tabular-nums">
+                    <Money value={v.cost} unit={o.unit} />
+                  </td>
+                  <td className="px-3 text-right tabular-nums">
+                    <Dash v={v.rate} />
+                  </td>
+                  <td className="px-3 text-right tabular-nums">{v.outcomes}</td>
+                  <td className="px-3 text-right tabular-nums">{v.emails}</td>
+                  <td className="pl-3 pr-4 text-right tabular-nums">{v.spend}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+      {open && (
+        <ResearchDrawer
+          label={`Version ${open.label}`}
+          onClose={() => setOpenKey(null)}
+          head={
+            <>
+              <p className="k-label">Version</p>
+              <p className="flex min-w-0 items-center gap-1.5 text-[13px] font-medium">
+                <CatalogueName kind="llm" name={open.label} label={open.label} className="min-w-0" />
+                {open.head && <span className="k-chip shrink-0">Head</span>}
+              </p>
+              <p className="k-fg3 truncate text-[12px]">Version of {m.label}</p>
+            </>
+          }
+          right={<ServedWord served={open.servedToday} />}
+        >
+          <div className="border-b border-[var(--line-subtle)] px-4 py-3">
+            <TemplateFigures f={open} outcome={o} more />
+          </div>
+          {open.modelIds.length > 0 && (
+            <div className="px-4 py-3">
+              <p className="k-label">Model ids</p>
+              <p className="k-mono k-fg2 mt-1 break-words text-[12px] leading-5">{open.modelIds.join(", ")}</p>
+            </div>
+          )}
+        </ResearchDrawer>
+      )}
+    </section>
+  );
+}
+
+/** Whether chat-service still serves a version: a dot plus its word. */
+function ServedWord({ served }: { served: boolean }) {
+  return (
+    <span className="inline-flex items-center gap-1.5 text-[12px]">
+      <span className={`h-1.5 w-1.5 rounded-full ${served ? "bg-[var(--run)]" : "bg-[var(--fg-4)]"}`} />
+      {served ? "Served" : "Retired"}
+    </span>
+  );
+}
+
 /**
  * Every version of the dynasty with its own served figures, oldest first as features-service
  * serves them (they add up to the page's figures exactly). The head is the version that writes now.
@@ -1129,6 +1258,8 @@ function ModelView({
 }) {
   const o = useOutcome(pipe);
   const why = useModelStatuses().deprecationOf(modelAliasesOf(m).aliases);
+  const versions = m.models ?? [];
+  const head = modelHeadLabel(m);
   return (
     <>
       <TopBar crumbs={crumbs} actions={<CostBasisSwitch />} />
@@ -1138,6 +1269,16 @@ function ModelView({
           title={m.label}
           chips={
             <>
+              {head && (
+                <span className="k-chip" title={`The version the dynasty runs now: ${m.dynasty?.headModelId ?? head}`}>
+                  Now <span className="k-fg">{head}</span>
+                </span>
+              )}
+              {m.standaloneReason && (
+                <span className="k-chip" title={MODEL_STANDALONE_WORDS[m.standaloneReason] ?? m.standaloneReason}>
+                  Not in a dynasty
+                </span>
+              )}
               <span className="k-chip inline-flex items-center gap-1.5">
                 <SectionMark section={{ pipe }} size={12} />
                 <SectionName section={{ pipe }} />
@@ -1154,6 +1295,7 @@ function ModelView({
         <div className="mt-6 grid gap-4 lg:grid-cols-[minmax(0,1fr)_320px]">
           <div className="min-w-0 space-y-6">
             <Charts f={m} topic="llm" />
+            {versions.length > 0 && <ModelVersionsTable pipe={pipe} m={m} versions={versions} />}
             <RunsTable
               title="Last emails written"
               note="Every client, newest first"
@@ -1203,6 +1345,8 @@ function ModelView({
                   }
                 />
                 <Row k="Outcome" v={o.noun} />
+                <Row k="Dynasty" v={m.dynasty ? <span className="k-mono k-fg2 text-[12px]">{m.dynasty.slug}</span> : <span className="k-fg3 text-[12px]">Not in a dynasty</span>} />
+                {versions.length > 0 && <Row k="Versions" v={<span className="tabular-nums">{versions.length}</span>} />}
                 <Row k="Invested" v={m.spend} />
                 <Row k="Sample" v={<span className="k-fg2 text-[12px]">{m.sample}</span>} />
               </dl>

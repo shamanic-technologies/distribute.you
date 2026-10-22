@@ -331,9 +331,49 @@ export interface ResearchTemplate extends ResearchFigures {
   }[];
 }
 
+/**
+ * An LLM DYNASTY as chat-service names it (LLM-DYNASTY-1022-FS, features-service #1944): every version
+ * of one model line under one name (« Gemini Flash »), its slug the word a workflow calls, which runs
+ * the head (`headModelId`).
+ */
+export interface ResearchLlmDynasty {
+  slug: string;
+  name: string;
+  provider: string;
+  capabilityTier: string;
+  headModelId: string;
+  /** The slug answers chat-service today. */
+  servedToday: boolean;
+  /** Names workflows wrote before dynasties; each runs the head. */
+  legacyAliases: string[];
+}
+
+/** Why a model page is one model on its own, outside any dynasty. */
+export type ModelStandaloneReason = "no_dynasty_in_chat_service" | "llm_dynasties_unreadable";
+
+/** One version of an LLM dynasty, with its own share of the page's figures (they add up to it). */
+export interface ResearchModelVersion extends ResearchFigures {
+  key: string;
+  label: string;
+  modelIds: string[];
+  /** The version the dynasty's slug runs now. */
+  head: boolean;
+  /** chat-service still serves it today (false = retired). */
+  servedToday: boolean;
+}
+
+/**
+ * A Models row. Since LLM-DYNASTY-1022-FS a row is an LLM DYNASTY (`key` = its slug, `label` = its
+ * name, figures pooled over every version), or a model on its own (`dynasty` null, `standaloneReason`
+ * set). The dynasty fields are absent on a catalogue built before it.
+ */
 export interface ResearchModel extends ResearchFigures {
   key: string;
   label: string;
+  dynasty?: ResearchLlmDynasty | null;
+  standaloneReason?: ModelStandaloneReason | null;
+  /** Every version, newest first, as features-service serves them; on a model on its own, that model. */
+  models?: ResearchModelVersion[];
   /**
    * Every alias chat-service serves this model under NOW, sorted (features-service v0.179.305, read
    * off chat-service's own alias list): the keys its staff status is set on. Empty when none does,
@@ -589,6 +629,19 @@ export function templateModels(c: ResearchCatalog | null, pipe: ResearchPipe, t:
   for (const w of t.workflows) add(c ? researchWorkflow(c, pipe, w.key)?.model : null);
   for (const r of t.runs) add(r.model);
   return [...seen.values()];
+}
+
+/**
+ * The version an LLM dynasty runs now, as its row names it (« 3.8 Flash » under « Gemini Flash »):
+ * the served head version's label, the dynasty's own words dropped from its front. Null on a model on
+ * its own or a catalogue built before dynasties.
+ */
+export function modelHeadLabel(m: Pick<ResearchModel, "dynasty" | "models">): string | null {
+  if (!m.dynasty) return null;
+  const head = (m.models ?? []).find((v) => v.head);
+  if (!head) return null;
+  const vendor = m.dynasty.name.split(" ")[0];
+  return head.label.startsWith(`${vendor} `) ? head.label.slice(vendor.length + 1) : head.label;
 }
 
 export function researchModel(c: ResearchCatalog, pipe: ResearchPipe, key: string): ResearchModel | null {
