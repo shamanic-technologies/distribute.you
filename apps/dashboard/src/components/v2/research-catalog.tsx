@@ -4,7 +4,7 @@ import { HubChip, HubChips } from "@/components/v2/hub-section";
 import { useState } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
-import { EmptyNote, SectionTitle, Shimmer, TopBar, type Crumb } from "@/components/v2/ui";
+import { EmptyNote, MarkLines, SectionTitle, Shimmer, TopBar, type Crumb } from "@/components/v2/ui";
 import { CostBasisSwitch } from "@/components/v2/cost-basis-switch";
 import { RoiLabel, RoiValue } from "@/components/v2/roi-label";
 import { ResearchLiveWorkflows, usePipeChannelName, useResearchPipeLeg } from "@/components/v2/research-live-workflows";
@@ -467,20 +467,23 @@ function CatalogList({
                               aria-selected={kind === "templates" ? picked : undefined}
                               className={`k-row group h-10 cursor-pointer ${picked ? "k-selected" : ""}`}
                             >
-                              <td className="max-w-0 pl-4 pr-3">
+                              <td className={`max-w-0 pl-4 pr-3 ${kind === "models" ? "py-1.5" : ""}`}>
+                                {kind === "models" ? (
+                                  <ModelNameLines m={r as ResearchModel} href={href} />
+                                ) : (
                                 <span className="flex min-w-0 items-center gap-1.5">
                                   <CatalogueName
                                     kind={KIND_TOPIC[kind]}
                                     name={r.label}
                                     label={rowName(kind, r, channelName)}
                                     href={href}
-                                    icon={kind === "models" ? null : ((r as ResearchWorkflow | ResearchTemplate).icon ?? null)}
-                                    color={kind === "models" ? null : ((r as ResearchWorkflow | ResearchTemplate).color ?? null)}
-                                    className={`${(kind === "templates" && (r as ResearchTemplate).standaloneReason) || (kind === "models" && modelRowChipShown(r as ResearchModel)) ? "shrink-0" : ""} font-medium`}
+                                    icon={(r as ResearchWorkflow | ResearchTemplate).icon ?? null}
+                                    color={(r as ResearchWorkflow | ResearchTemplate).color ?? null}
+                                    className={`${kind === "templates" && (r as ResearchTemplate).standaloneReason ? "shrink-0" : ""} font-medium`}
                                   />
                                   {kind === "templates" && <TemplateRowChip t={r as ResearchTemplate} />}
-                                  {kind === "models" && <ModelRowChip m={r as ResearchModel} />}
                                 </span>
+                                )}
                               </td>
                               {kind === "workflows" && (
                                 <>
@@ -873,27 +876,31 @@ const MODEL_STANDALONE_WORDS: Record<string, string> = {
   llm_dynasties_unreadable: "chat-service's dynasties could not be read for this build: every model is listed on its own.",
 };
 
-function modelRowChipShown(m: ResearchModel): boolean {
-  return modelHeadLabel(m) != null || Boolean(m.standaloneReason);
+/** The quiet second line under a model's name: the version its dynasty runs now, or why it stands alone. */
+function modelSecondLine(m: ResearchModel): { text: string; title: string } | null {
+  const head = modelHeadLabel(m);
+  if (head) return { text: head, title: `The version ${m.label} runs now: ${m.dynasty?.headModelId ?? head}` };
+  if (m.standaloneReason) return { text: "Not in a dynasty", title: MODEL_STANDALONE_WORDS[m.standaloneReason] ?? m.standaloneReason };
+  return null;
 }
 
-/** A Models row's tag: the version a dynasty runs now (« now 3.8 Flash »), or a model on its own says so. */
-function ModelRowChip({ m }: { m: ResearchModel }) {
-  const head = modelHeadLabel(m);
-  if (head) {
-    return (
-      <span className="k-chip min-w-0 overflow-hidden" title={`${m.label} runs ${m.dynasty?.headModelId ?? head} now`}>
-        <span className="truncate">
-          now <span className="k-fg">{head}</span>
-        </span>
-      </span>
-    );
-  }
-  if (!m.standaloneReason) return null;
+/**
+ * A Models row's name (owner 2026-10-23): the product logo big on the left, as tall as two lines;
+ * the dynasty's name (a button to its page), then the version it runs now, quieter, under it.
+ */
+function ModelNameLines({ m, href }: { m: ResearchModel; href: string }) {
+  const second = modelSecondLine(m);
   return (
-    <span className="k-chip min-w-0 overflow-hidden" title={MODEL_STANDALONE_WORDS[m.standaloneReason] ?? m.standaloneReason}>
-      <span className="truncate">Not in a dynasty</span>
-    </span>
+    <MarkLines mark={(px) => <CatalogueObjectMark kind="llm" name={m.label} size={px} />}>
+      <Link href={href} onClick={(e) => e.stopPropagation()} className="min-w-0 truncate text-[13px] font-medium leading-5 hover:text-[var(--accent)]" title={m.label}>
+        {m.label}
+      </Link>
+      {second && (
+        <span className="k-fg3 min-w-0 truncate text-[12px] leading-4" title={second.title}>
+          {second.text}
+        </span>
+      )}
+    </MarkLines>
   );
 }
 
@@ -1295,7 +1302,7 @@ function ModelView({
   const o = useOutcome(pipe);
   const why = useModelStatuses().deprecationOf(modelAliasesOf(m).aliases);
   const versions = m.models ?? [];
-  const head = modelHeadLabel(m);
+  const second = modelSecondLine(m);
   return (
     <>
       <TopBar crumbs={crumbs} actions={<CostBasisSwitch />} />
@@ -1303,18 +1310,9 @@ function ModelView({
         <Header
           topic="llm"
           title={m.label}
+          sub={second?.text ?? null}
           chips={
             <>
-              {head && (
-                <span className="k-chip" title={`The version the dynasty runs now: ${m.dynasty?.headModelId ?? head}`}>
-                  Now <span className="k-fg">{head}</span>
-                </span>
-              )}
-              {m.standaloneReason && (
-                <span className="k-chip" title={MODEL_STANDALONE_WORDS[m.standaloneReason] ?? m.standaloneReason}>
-                  Not in a dynasty
-                </span>
-              )}
               <span className="k-chip inline-flex items-center gap-1.5">
                 <SectionMark section={{ pipe }} size={12} />
                 <SectionName section={{ pipe }} />
