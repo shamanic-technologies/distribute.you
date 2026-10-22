@@ -234,16 +234,17 @@ export function RunPage() {
                               <CatalogueName
                                 kind="workflow"
                                 name={workflow.dynastyName ?? workflow.dynastySlug}
+                                servedKey={workflow.dynastySlug}
                                 href={v2WorkflowHref(orgId, brandId, workflow.dynastySlug, `${featureSlug}|${legKey}`, campaignId)}
                               />
                             ) : workflow?.dynastyName ? (
-                              <CatalogueName kind="workflow" name={workflow.dynastyName} />
+                              <CatalogueName kind="workflow" name={workflow.dynastyName} servedKey={workflow.dynastySlug} />
                             ) : null
                           }
                         />
                         <Row k="Version" v={workflowSlug ? <span className="k-mono text-[12px]">{workflowSlug}</span> : null} />
                         <Row k="LLM" v={model ? <CatalogueName kind="llm" name={model.label} /> : null} />
-                        <Row k="Template" v={template ? <CatalogueName kind="template" name={template.label} version={template.version} /> : null} />
+                        <Row k="Template" v={template ? <CatalogueName kind="template" name={template.label} version={template.version} servedKey={template.id} /> : null} />
                       </>
                     )}
                     <Row k="Audience" v={audienceName} />

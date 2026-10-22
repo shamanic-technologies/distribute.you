@@ -132,7 +132,7 @@ export function WorkflowStackLine({
       )}
       {template && (
         <span className="inline-flex min-w-0 items-center gap-1">
-          <CatalogueObjectMark kind="template" name={template.id} size={12} />
+          <CatalogueObjectMark kind="template" name={template.id} servedKey={template.id} size={12} />
           <span className="font-mono break-all">{template.id}</span>
         </span>
       )}
@@ -180,7 +180,7 @@ export function WorkflowTemplateCell({
   }
   return (
     <TwoLine
-      mark={<CatalogueObjectMark kind="template" name={template.label} size={MARK_PX} />}
+      mark={<CatalogueObjectMark kind="template" name={template.label} servedKey={template.id} size={MARK_PX} />}
       line1={template.label}
       line2={template.id}
     />

@@ -970,7 +970,7 @@ export function WorkflowMatrix({
                       >
                         {r.rank ?? "—"}
                       </span>
-                      <CatalogueName kind="workflow" name={r.row.workflowDynastyName} className="flex-1 text-sm font-medium text-gray-900" />
+                      <CatalogueName kind="workflow" name={r.row.workflowDynastyName} servedKey={r.dynastySlug} className="flex-1 text-sm font-medium text-gray-900" />
                       {deprecatedSlugs.has(r.dynastySlug) && (
                         <span className="inline-flex shrink-0 items-center rounded-full border border-gray-200 bg-gray-100 px-2 py-0.5 text-[11px] font-medium text-gray-500">
                           {DEPRECATED_ON_LEG_LABEL}
@@ -1356,7 +1356,7 @@ function ScopeRow({
             cell a `nowrap` row squeezed the name to ZERO width and showed a badge with
             no workflow at all. */}
         <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1">
-          <CatalogueName kind="workflow" name={row.workflowDynastyName} className="text-sm font-medium text-gray-900" />
+          <CatalogueName kind="workflow" name={row.workflowDynastyName} servedKey={row.workflowDynastySlug} className="text-sm font-medium text-gray-900" />
           {row.running && (
             <span className="inline-flex shrink-0 items-center gap-1 rounded-full border border-brand-200 bg-white px-2 py-0.5 text-[11px] font-medium text-brand-600">
               Running now

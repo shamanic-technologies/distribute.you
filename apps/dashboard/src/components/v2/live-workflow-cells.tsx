@@ -34,13 +34,13 @@ export function LiveRankingStrip({
       </span>
       {firstRow && (
         <span>
-          Goes first: <CatalogueName kind="workflow" name={firstRow.name ?? firstRow.slug} label={nameOf(firstRow)} className="k-fg align-middle font-medium" />
+          Goes first: <CatalogueName kind="workflow" name={firstRow.name ?? firstRow.slug} label={nameOf(firstRow)} icon={firstRow.icon} color={firstRow.color} className="k-fg align-middle font-medium" />
         </span>
       )}
       <span>
         Money goes to:{" "}
         {cashRow ? (
-          <CatalogueName kind="workflow" name={cashRow.name ?? cashRow.slug} label={nameOf(cashRow)} className="k-fg align-middle font-medium" />
+          <CatalogueName kind="workflow" name={cashRow.name ?? cashRow.slug} label={nameOf(cashRow)} icon={cashRow.icon} color={cashRow.color} className="k-fg align-middle font-medium" />
         ) : (
           <span className="k-fg3">{moneyNote}</span>
         )}

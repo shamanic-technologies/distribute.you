@@ -307,6 +307,9 @@ function CampaignSection({
                               kind="workflow"
                               name={w.row.workflowDynastyName ?? w.row.workflowDynastySlug}
                               label={shortName(w.row.workflowDynastyName, w.row.workflowDynastySlug)}
+                              icon={liveRow?.icon ?? null}
+                              color={liveRow?.color ?? null}
+                              servedKey={w.row.workflowDynastySlug}
                               className="font-medium"
                             />
                             {liveRow && <LiveWorkflowChips row={liveRow} />}
@@ -319,7 +322,7 @@ function CampaignSection({
                           {model ? <CatalogueName kind="llm" name={model.label} /> : <span className="k-fg4">{"—"}</span>}
                         </td>
                         <td className="max-w-0 px-3">
-                          {template ? <CatalogueName kind="template" name={template.label} version={template.version} /> : <span className="k-fg4">{"—"}</span>}
+                          {template ? <CatalogueName kind="template" name={template.label} version={template.version} servedKey={template.id} /> : <span className="k-fg4">{"—"}</span>}
                         </td>
                         <CostCell value={offer} unit={unit} />
                         <CostCell value={brand} unit={unit} />

@@ -43,6 +43,7 @@ import { UsersIcon } from "@phosphor-icons/react/dist/csr/Users";
 import { WavesIcon } from "@phosphor-icons/react/dist/csr/Waves";
 import { YoutubeLogoIcon } from "@phosphor-icons/react/dist/csr/YoutubeLogo";
 import { catalogueFaceSrc } from "@/lib/staff-catalogue";
+import { MARK_ICONS } from "@/components/v2/catalogue-mark-icons";
 
 /**
  * The served icon NAME of a catalogue object, drawn. features-service serves Phosphor names only
@@ -125,7 +126,8 @@ export function CatalogueMark({
       />
     );
   }
-  const Glyph = icon ? CATALOGUE_ICONS[icon] : undefined;
+  // A workflow or template mark (MARKS-1022) reads the served mark vocabulary too.
+  const Glyph = icon ? (CATALOGUE_ICONS[icon] ?? MARK_ICONS[icon]) : undefined;
   if (icon && !Glyph && !warned.has(icon)) {
     warned.add(icon);
     console.error("[v2] catalogue icon not drawn here yet", { icon, name });

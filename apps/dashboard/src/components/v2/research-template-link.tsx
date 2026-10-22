@@ -32,7 +32,7 @@ export function ResearchTemplateChip({
   // A workflow names the template VERSION it writes with; Research lists it under its dynasty's page.
   const row = catalog && pipe && templateKey ? researchTemplateOf(catalog, pipe, templateKey) : null;
   const href = row && pipe ? researchCatalogHref(v2Href(orgId, brandId, "research"), pipe, "templates", row.key) : null;
-  return <CatalogueName kind="template" variant="chip" name={label} version={version} href={href} />;
+  return <CatalogueName kind="template" variant="chip" name={label} version={version} href={href} servedKey={templateKey} />;
 }
 
 /**
