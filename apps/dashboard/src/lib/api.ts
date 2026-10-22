@@ -8813,6 +8813,9 @@ const LegWorkflowRankingSchema = z
         // The tactics its CURRENT version follows (Jev's verdicts), read live by features-service.
         tactics: z.array(z.object({ id: z.string(), name: z.string() })).nullish(),
         tacticsUnavailableReason: z.string().nullish(),
+        // The workflow's own mark (MARKS-1022, features-service v0.179.351): a Phosphor name + `#RRGGBB`.
+        icon: z.string().nullish(),
+        color: z.string().nullish(),
       }),
     ),
   })

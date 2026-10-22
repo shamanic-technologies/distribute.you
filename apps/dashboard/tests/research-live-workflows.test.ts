@@ -336,7 +336,7 @@ describe("Research pipe workflows: the owner's columns (2026-10-22)", () => {
   });
 
   it("every row wears the workflow mark and links its name to its page", () => {
-    expect(src).toContain('<CatalogueName kind="workflow" name={r.name ?? r.slug} label={name} className="font-medium" />');
+    expect(src).toContain('<CatalogueName kind="workflow" name={r.name ?? r.slug} label={name} icon={r.icon} color={r.color} className="font-medium" />');
     expect(src).toContain("title={`Open ${r.name ?? r.slug}`}");
   });
 

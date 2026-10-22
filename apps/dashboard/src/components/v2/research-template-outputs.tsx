@@ -132,7 +132,7 @@ export function TemplateOutputsPanel({
       <div className="border-b border-[var(--line-subtle)] px-4 py-3">
         <p className="k-label">Template</p>
         <p className="mt-1 flex min-w-0 text-[14px] font-medium">
-          <CatalogueName kind="template" name={t.label} href={href} />
+          <CatalogueName kind="template" name={t.label} href={href} icon={t.icon ?? null} color={t.color ?? null} />
         </p>
         <div className="mt-3">
           <TemplateFigures f={t} outcome={outcome} />
@@ -147,7 +147,7 @@ export function TemplateOutputsPanel({
                 {t.workflows.map((w) => (
                   <li key={w.key}>
                     <Link href={researchCatalogHref(base, pipe, "workflows", w.key)} className="k-hover -mx-2 flex items-center gap-2 rounded-[8px] px-2 py-1" title={w.label}>
-                      <CatalogueName kind="workflow" name={w.label} className="flex-1" />
+                      <CatalogueName kind="workflow" name={w.label} servedKey={w.key} className="flex-1" />
                       <Arrow />
                     </Link>
                   </li>
@@ -361,9 +361,9 @@ export function RecentRuns({ slug, limit }: { slug: string; limit: number }) {
                   {runVersionLabel(slug, o.workflowSlug)}
                 </span>
                 {o.templateDynasty ? (
-                  <CatalogueName kind="template" variant="chip" name={o.templateDynasty.name} version={`v${o.templateDynasty.position}`} className="min-w-0" />
+                  <CatalogueName kind="template" variant="chip" name={o.templateDynasty.name} version={`v${o.templateDynasty.position}`} servedKey={o.templateDynasty.slug} className="min-w-0" />
                 ) : template ? (
-                  <CatalogueName kind="template" variant="chip" name={template} className="min-w-0" />
+                  <CatalogueName kind="template" variant="chip" name={template} servedKey={o.promptType} className="min-w-0" />
                 ) : (
                   <span className="k-chip k-fg3 min-w-0 truncate">No template on record</span>
                 )}
@@ -404,7 +404,7 @@ function OutputItem({ o, expanded }: { o: TemplateOutput; expanded: boolean }) {
       <div className="flex min-w-0 items-center gap-2">
         <span className="k-mono k-fg3 shrink-0 text-[11.5px]">{instantText(o.createdAt)}</span>
         {"promptType" in o && typeof o.promptType === "string" && (
-          <CatalogueName kind="template" variant="chip" name={o.promptType} className="ml-auto min-w-0" />
+          <CatalogueName kind="template" variant="chip" name={o.promptType} servedKey={o.promptType} className="ml-auto min-w-0" />
         )}
         <CatalogueName kind="llm" variant="chip" name={o.model} className={`min-w-0 ${"promptType" in o ? "" : "ml-auto"}`} />
       </div>

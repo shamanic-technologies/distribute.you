@@ -8,6 +8,7 @@ import { FlowArrowIcon } from "@phosphor-icons/react/dist/csr/FlowArrow";
 import { CatalogueMark } from "@/components/v2/catalogue-mark";
 import { ModelProductLogo } from "@/components/provider-logo";
 import { llmMark } from "@/lib/llm-marks";
+import { useServedMarks, type ServedMark } from "@/components/v2/served-marks";
 
 /**
  * ONE look for every workflow, template and LLM the dashboard names (owner 2026-10-22: « chaque
@@ -19,8 +20,10 @@ import { llmMark } from "@/lib/llm-marks";
  * A page header draws `CatalogueObjectMark` at its own title size (40px), the same mark.
  *
  * Marks: an LLM wears its PRODUCT mark (`ModelProductLogo`, a display lookup on its served name or
- * vendor id); a workflow or a template wears the icon features-service serves for it (`icon`,
- * `color`), drawn by `CatalogueMark`. Until a read serves one, the kind's own glyph stands in.
+ * vendor id); a workflow or a template wears the icon features-service serves for it (MARKS-1022,
+ * drawn by `CatalogueMark`): pass `icon`/`color` when the read at hand carries them (fleet ranking,
+ * catalogue rows), else `servedKey` (dynasty slug, or a template version key) and the mark is read
+ * off the Research catalogue. Nothing served = the kind's own glyph. Customer surfaces pass neither.
  * A template's version rides after its dynasty name, discreet (mono, fg-3).
  */
 
@@ -62,6 +65,7 @@ export function CatalogueObjectMark({
   icon,
   color,
   vendorId,
+  servedKey,
   size = INLINE_MARK,
 }: {
   kind: CatalogueKind;
@@ -69,8 +73,13 @@ export function CatalogueObjectMark({
   icon?: string | null;
   color?: string | null;
   vendorId?: string | null;
+  /** A workflow dynasty slug or template key whose served mark to read (staff surfaces). */
+  servedKey?: string | null;
   size?: number;
 }) {
+  if (servedKey && !icon && kind !== "llm") {
+    return <WithServedMark kind={kind} servedKey={servedKey} render={(m) => <CatalogueObjectMark kind={kind} name={name} icon={m.icon} color={m.color} size={size} />} />;
+  }
   if (kind === "llm") {
     const m = llmMark(name, vendorId);
     if (m.logoSrc) return <ModelProductLogo src={m.logoSrc} size={size} />;
@@ -110,6 +119,7 @@ export function CatalogueName({
   variant = "inline",
   className = "",
   after,
+  servedKey,
 }: {
   kind: CatalogueKind;
   name: string;
@@ -125,7 +135,13 @@ export function CatalogueName({
   className?: string;
   /** Something that sits after the name on the same line (a status chip). */
   after?: ReactNode;
+  /** A workflow dynasty slug or template key whose served mark to read (staff surfaces). */
+  servedKey?: string | null;
 }) {
+  if (servedKey && !icon && kind !== "llm") {
+    const props = { kind, name, label, version, href, vendorId, variant, className, after };
+    return <WithServedMark kind={kind} servedKey={servedKey} render={(m) => <CatalogueName {...props} icon={m.icon} color={m.color} />} />;
+  }
   const shown = label ?? (kind === "llm" ? llmMark(name, vendorId).label : name);
   const chip = variant === "chip";
   const text = href ? (
@@ -152,4 +168,18 @@ export function CatalogueName({
       {after}
     </span>
   );
+}
+
+/** Reads one workflow's or template's served mark off the Research catalogue, then draws with it. */
+function WithServedMark({
+  kind,
+  servedKey,
+  render,
+}: {
+  kind: Exclude<CatalogueKind, "llm">;
+  servedKey: string;
+  render: (m: ServedMark) => ReactNode;
+}) {
+  const marks = useServedMarks();
+  return <>{render(kind === "workflow" ? marks.workflow(servedKey) : marks.template(servedKey))}</>;
 }

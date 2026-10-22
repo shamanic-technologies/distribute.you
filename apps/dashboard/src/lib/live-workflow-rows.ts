@@ -43,6 +43,9 @@ export function shortWorkflowName(name: string, channelName: string | null | und
 export interface LiveWorkflowRow {
   slug: string;
   name: string | null;
+  /** The workflow's served mark (MARKS-1022), fleet ranking only; absent elsewhere. */
+  icon?: string | null;
+  color?: string | null;
   rank: number | null;
   costPerOutcomeUsd: number | null;
   roiMultiple: number | null;
@@ -95,6 +98,8 @@ export interface FleetRankingRow {
   lastRunUnavailableReason?: string | null;
   tactics?: readonly FollowedTactic[] | null;
   tacticsUnavailableReason?: string | null;
+  icon?: string | null;
+  color?: string | null;
 }
 
 /** One served figure (features-service `figures.*`): measured, else the pipe's expected one, else why neither. */
@@ -137,6 +142,8 @@ export function fleetWorkflowRows(rows: readonly FleetRankingRow[]): ResearchWor
     .map((r) => ({
       slug: r.workflowDynastySlug,
       name: r.workflowDynastyName,
+      icon: r.icon ?? null,
+      color: r.color ?? null,
       rank: r.rank,
       costPerOutcomeUsd: r.costPerOutcomeUsd,
       roiMultiple: r.roiMultiple,

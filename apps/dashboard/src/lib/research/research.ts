@@ -249,6 +249,9 @@ export interface ResearchRef {
 export interface ResearchWorkflow extends ResearchFigures {
   key: string;
   label: string;
+  /** The workflow's own mark (MARKS-1022): a Phosphor name and `#RRGGBB`. Absent on an older catalogue. */
+  icon?: string | null;
+  color?: string | null;
   /** The workflow's own name as workflow-service states it (Maelstrom, ...); null when it states none. */
   name: string | null;
   model: ResearchRef | null;
@@ -304,6 +307,9 @@ export interface ResearchTemplateVersion extends ResearchFigures {
 export interface ResearchTemplate extends ResearchFigures {
   key: string;
   label: string;
+  /** The template dynasty's own mark (MARKS-1022): a Phosphor name and `#RRGGBB`. Absent on an older catalogue. */
+  icon?: string | null;
+  color?: string | null;
   hasText: boolean;
   dynasty?: ResearchTemplateDynasty | null;
   standaloneReason?: TemplateStandaloneReason | null;

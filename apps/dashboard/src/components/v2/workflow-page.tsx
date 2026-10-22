@@ -159,7 +159,7 @@ export function V2WorkflowPage() {
       <>
         <div className="mt-2 flex flex-wrap items-start justify-between gap-3">
           <div className="flex min-w-0 items-center gap-3">
-            <CatalogueObjectMark kind="workflow" name={name} size={40} />
+            <CatalogueObjectMark kind="workflow" name={name} servedKey={dynasty} size={40} />
             <div className="min-w-0">
               <h1 className="truncate text-[24px] font-medium leading-[30px] tracking-[-0.02em]">{name}</h1>
               <div className="mt-1 flex flex-wrap items-center gap-2">
@@ -825,7 +825,7 @@ function PromptCard({
       <p className="k-label">Prompt</p>
       {promptType ? (
         <p className="mt-2 flex min-w-0 text-[13px]">
-          <CatalogueName kind="template" name={promptType} />
+          <CatalogueName kind="template" name={promptType} servedKey={promptType} />
         </p>
       ) : (
         <p className="k-fg2 mt-2 text-[12px]">This workflow names no prompt template.</p>
