@@ -240,6 +240,8 @@ export const CatalogueWorkflowSchema = z
     spentUsd: z.number(),
     conversionRatePct: z.number().nullable(),
     holdsTheMoney: z.boolean(),
+    /** Every tactic and whether the workflow's CURRENT version follows it (Jev's verdict; null = not judged yet). */
+    tactics: z.array(z.object({ id: z.string(), name: z.string(), follows: z.boolean().nullable() })).optional(),
     ...EconDetail,
   })
   .passthrough();
