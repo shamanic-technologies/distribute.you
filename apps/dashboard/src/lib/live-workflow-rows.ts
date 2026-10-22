@@ -168,6 +168,15 @@ export function fleetWorkflowRows(rows: readonly FleetRankingRow[]): ResearchWor
 }
 
 /**
+ * The line a Research row prints (WF-SHORT-LINE-1023): what sets the workflow apart on THIS leg,
+ * the leg's own entry first (a dynasty on several legs), else the one line; null = none written yet.
+ */
+export function siblingLineAt(s: { siblingLine: string | null; siblingLines: readonly { legKey: string; line: string }[] } | null, legKey: string): string | null {
+  if (!s) return null;
+  return s.siblingLines.find((l) => l.legKey === legKey)?.line ?? s.siblingLine;
+}
+
+/**
  * Research's table order (owner 2026-10-23: « mets par ROI desc »): the ROI each row PRINTS (served
  * `figures.roi.value`, measured or expected), highest first; a row with none last; ties keep the
  * producer's order. Sorts served values, computes nothing.

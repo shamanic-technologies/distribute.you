@@ -4,6 +4,7 @@ import { join } from "node:path";
 import {
   fleetWorkflowRows,
   byServedRoiDesc,
+  siblingLineAt,
   campaignWorkflowRows,
   shortWorkflowName,
   placeWords,
@@ -283,6 +284,21 @@ describe("the brand Workflows page states the campaign's own live figures", () =
     // Rows keep the producer's rank order: no Offer / Brand / Global re-sort.
     expect(page).not.toContain("asc(cost(a.offer)");
     expect(page).toContain("colSpan={13}");
+  });
+});
+
+describe("siblingLineAt", () => {
+  it("reads the leg's own line first, else the one line, else none", () => {
+    const two = { siblingLine: null, siblingLines: [{ legKey: "a", line: "Brand name" }, { legKey: "b", line: "No date" }] };
+    expect(siblingLineAt(two, "b")).toBe("No date");
+    expect(siblingLineAt(two, "c")).toBeNull();
+    expect(siblingLineAt({ siblingLine: "Lightest brief", siblingLines: [] }, "a")).toBe("Lightest brief");
+    expect(siblingLineAt(null, "a")).toBeNull();
+  });
+  it("the Research row prints the line, the full description on hover", () => {
+    const live = readFileSync(join(__dirname, "../src/components/v2/research-live-workflows.tsx"), "utf8");
+    expect(live).toContain("{line ?? description}");
+    expect(live).toContain("useWorkflowWords(r.slug, statuses, legKey)");
   });
 });
 

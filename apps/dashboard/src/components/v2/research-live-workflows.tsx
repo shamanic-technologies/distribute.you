@@ -17,6 +17,7 @@ import { PIPE_KEY, researchCatalogHref, type ResearchCatalog, type ResearchPipe 
 import {
   byServedRoiDesc,
   fleetWorkflowRows,
+  siblingLineAt,
   lastRunText,
   servedCost,
   servedRoi,
@@ -175,6 +176,7 @@ export function ResearchLiveWorkflows({
                   href={hrefOf(r.slug)}
                   name={nameOf(r)}
                   statuses={dynastyStatuses}
+                  legKey={legKey}
                   selected={open === r.slug}
                   onOpen={() => setOpen(r.slug)}
                 />
@@ -251,6 +253,7 @@ function WorkflowRow({
   href,
   name,
   statuses,
+  legKey,
   selected,
   onOpen,
 }: {
@@ -258,10 +261,11 @@ function WorkflowRow({
   href: string;
   name: string;
   statuses: ReturnType<typeof useDynastyStatuses>;
+  legKey: string;
   selected: boolean;
   onOpen: () => void;
 }) {
-  const description = useWorkflowDescription(r.slug, statuses);
+  const { description, line } = useWorkflowWords(r.slug, statuses, legKey);
   const lastRun = lastRunText(r);
   const stop = (e: React.SyntheticEvent) => e.stopPropagation();
   return (
@@ -286,9 +290,10 @@ function WorkflowRow({
         </Link>
       </td>
       <td className="max-w-0 px-3 py-2">
-        {description ? (
-          <p className="k-fg2 truncate text-[12px] leading-[18px]" title={description}>
-            {description}
+        {/* What sets it apart on this pipe (owner 2026-10-23); the full description on hover and in the drawer. */}
+        {line || description ? (
+          <p className="k-fg2 truncate text-[12px] leading-[18px]" title={description ?? undefined}>
+            {line ?? description}
           </p>
         ) : (
           DASH
@@ -332,9 +337,19 @@ export function opensDrawer(target: EventTarget, row: Element): boolean {
  * listing; a deprecated one's is its newest version's (the read its Status cell makes for why).
  */
 function useWorkflowDescription(slug: string, statuses: ReturnType<typeof useDynastyStatuses>): string | null {
+  return useWorkflowWords(slug, statuses, null).description;
+}
+
+/**
+ * The same, plus the short line saying what sets it apart from its siblings on the page's leg
+ * (workflow-service WF-SHORT-LINE-1023; null until written, the row then prints the description).
+ */
+function useWorkflowWords(slug: string, statuses: ReturnType<typeof useDynastyStatuses>, legKey: string | null) {
   const deprecated = statuses.statusOf(slug) === "deprecated";
   const newest = useWorkflowDeprecation(slug, deprecated);
-  return deprecated ? newest.description : statuses.descriptionOf(slug);
+  const description = deprecated ? newest.description : statuses.descriptionOf(slug);
+  const line = legKey == null ? null : siblingLineAt(deprecated ? newest.siblings : statuses.siblingsOf(slug), legKey);
+  return { description, line };
 }
 
 /**

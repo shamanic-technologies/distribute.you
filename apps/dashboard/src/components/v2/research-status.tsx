@@ -84,7 +84,9 @@ export function useDynastyStatuses(featureSlug: string) {
   const runnable = useMemo(() => (q.data ? new Map(q.data.map((d) => [d.slug, d])) : null), [q.data]);
   const statusOf = (slug: string): string | null => (runnable ? (runnable.has(slug) ? "active" : "deprecated") : null);
   const descriptionOf = (slug: string): string | null => runnable?.get(slug)?.description ?? null;
-  return { statusOf, descriptionOf, answered: q.data !== undefined || q.isFetchedAfterMount };
+  // What sets it apart from its pipe siblings, as workflow-service states it (WF-SHORT-LINE-1023).
+  const siblingsOf = (slug: string) => runnable?.get(slug) ?? null;
+  return { statusOf, descriptionOf, siblingsOf, answered: q.data !== undefined || q.isFetchedAfterMount };
 }
 
 /**
@@ -98,6 +100,7 @@ export function useWorkflowDeprecation(slug: string, enabled = true) {
     deprecation: q.data?.deprecation ? [q.data.deprecation] : null,
     // What its newest version does (workflow-service's words): a deprecated row's Description.
     description: q.data?.description ?? null,
+    siblings: q.data ?? null,
     answered: !enabled || q.data !== undefined || q.isError,
   };
 }
