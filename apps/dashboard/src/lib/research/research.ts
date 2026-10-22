@@ -310,6 +310,12 @@ export interface ResearchTemplate extends ResearchFigures {
   /** The template dynasty's own mark (MARKS-1022): a Phosphor name and `#RRGGBB`. Absent on an older catalogue. */
   icon?: string | null;
   color?: string | null;
+  /**
+   * The tactics its dynasty follows (features-service v0.179.352, the angle tactics): `[]` = judged, follows
+   * none; null = not known, with `tacticsUnavailableReason` (`not_judged_yet` | `tactics_unreadable`).
+   */
+  tactics?: { id: string; name: string }[] | null;
+  tacticsUnavailableReason?: string | null;
   hasText: boolean;
   dynasty?: ResearchTemplateDynasty | null;
   standaloneReason?: TemplateStandaloneReason | null;

@@ -8,6 +8,7 @@ import { EmptyNote, MarkLines, SectionTitle, Shimmer, TopBar, type Crumb } from 
 import { CostBasisSwitch } from "@/components/v2/cost-basis-switch";
 import { RoiLabel, RoiValue } from "@/components/v2/roi-label";
 import { opensDrawer, ResearchLiveWorkflows, usePipeChannelName, usePipeWorkflowRows, useResearchPipeLeg } from "@/components/v2/research-live-workflows";
+import { TacticTags, TacticsBlock } from "@/components/v2/tactic-tags";
 import { shortWorkflowName } from "@/lib/live-workflow-rows";
 import {
   ACTIVATE_CONTENT_NOTE,
@@ -378,7 +379,7 @@ function CatalogList({
             <div>
               <div className="k-card min-w-0 overflow-hidden">
                 <div className="k-scroll relative overflow-x-auto">
-                  <table className={`w-full ${kind === "workflows" ? "min-w-[1180px]" : kind === "templates" ? "min-w-[920px]" : "min-w-[940px]"} text-[13px]`}>
+                  <table className={`w-full ${kind === "workflows" ? "min-w-[1180px]" : kind === "templates" ? "min-w-[1100px]" : "min-w-[940px]"} text-[13px]`}>
                     <thead>
                       <tr className="border-b border-[var(--line-subtle)]">
                         <th className={TH}>{words.title.slice(0, -1)}</th>
@@ -390,7 +391,8 @@ function CatalogList({
                         )}
                         {kind === "templates" && (
                           <>
-                            {/* Owner 2026-10-23: Template, ROI, % Conversion, $ / outcome, # outcomes, $ Spent, Status. */}
+                            {/* Owner 2026-10-23: Template, Tactics (where Workflows has it), ROI, % Conversion, $ / outcome, # outcomes, $ Spent, Status. */}
+                            <th className={`${TH} w-48`}>Tactics</th>
                             <th className={`${TH} w-24 text-right`}>
                               <RoiLabel />
                             </th>
@@ -524,6 +526,9 @@ function CatalogList({
                               )}
                               {kind === "templates" && (
                                 <>
+                                  <td className="max-w-0 px-3 py-2">
+                                    <TacticTags tactics={(r as ResearchTemplate).tactics ?? null} reason={(r as ResearchTemplate).tacticsUnavailableReason ?? null} />
+                                  </td>
                                   <td className="whitespace-nowrap px-3 text-right tabular-nums">
                                     <TemplateRoi t={r as ResearchTemplate} />
                                   </td>
@@ -1261,6 +1266,9 @@ function TemplateView({
           </div>
           <div className="min-w-0 space-y-4">
             <aside className="k-card h-fit p-4">
+              <div className="mb-4 border-b border-[var(--line-subtle)] pb-4">
+                <TacticsBlock tactics={t.tactics ?? null} reason={t.tacticsUnavailableReason ?? null} />
+              </div>
               <p className="k-label">Details</p>
               <dl className="mt-3 space-y-2.5 text-[13px]">
                 <Row
