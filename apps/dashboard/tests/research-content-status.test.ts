@@ -122,9 +122,9 @@ describe("TEMPLATE-MODEL-STATUS-1019: the three Research pages", () => {
     expect(cells.indexOf("{r.outcomes}")).toBeLessThan(cells.indexOf("{r.spend}"));
   });
 
-  it("Templates: Template, ROI, % Conversion, $ / outcome, # outcomes, $ Spent, Status, in that order (owner 2026-10-23)", () => {
-    const head = list.slice(list.indexOf("Owner 2026-10-23: Template, ROI"), list.indexOf('{kind === "models" ? ('));
-    const order = ["<RoiLabel />", ">% Conversion</th>", "{`$ ${o.unit}`}", "{`# ${o.plural}`}", ">$ Spent</th>", ">Status</th>"].map((t) => head.indexOf(t));
+  it("Templates: Template, Tactics, ROI, % Conversion, $ / outcome, # outcomes, $ Spent, Status, in that order (owner 2026-10-23)", () => {
+    const head = list.slice(list.indexOf("Owner 2026-10-23: Template, Tactics"), list.indexOf('{kind === "models" ? ('));
+    const order = [">Tactics</th>", "<RoiLabel />", ">% Conversion</th>", "{`$ ${o.unit}`}", "{`# ${o.plural}`}", ">$ Spent</th>", ">Status</th>"].map((t) => head.indexOf(t));
     expect(order.every((i) => i > 0)).toBe(true);
     expect([...order].sort((a, b) => a - b)).toEqual(order);
     expect(head).not.toContain("Workflows</th>");

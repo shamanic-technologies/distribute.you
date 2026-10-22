@@ -398,7 +398,7 @@ describe("Research pipe workflows: tactics column and the row drawer (owner 2026
   const api = readFileSync(join(__dirname, "../src/lib/api.ts"), "utf8");
 
   it("tactics are the ranking row's own (features-service's verdict), never one catalogue read per row", () => {
-    expect(src).toContain("<TacticTags tactics={r.tactics} />");
+    expect(src).toContain("<TacticTags tactics={r.tactics} reason={r.tacticsUnavailableReason} />");
     expect(src).toContain("const tactics = r.tactics;");
     expect(src).not.toContain("getStaffCatalogueObject");
     expect(src).not.toContain("useQueries");
@@ -406,6 +406,8 @@ describe("Research pipe workflows: tactics column and the row drawer (owner 2026
   });
 
   it("shows the first tags then +N more, the full list on hover or tap in a portalled popover", () => {
+    // One shared component for workflows and templates (tactic-tags.tsx, TPL-TACTICS-1023).
+    const src = readFileSync(join(__dirname, "../src/components/v2/tactic-tags.tsx"), "utf8");
     expect(src).toContain("setFit(tagsThatFit(widths, el.clientWidth, MORE_W, TAG_GAP));");
     expect(src).toContain("new ResizeObserver(measure)");
     expect(src).toContain("<MoreTactics label={`+${rest} more`} tactics={tactics} />");
@@ -476,5 +478,29 @@ describe("tagsThatFit", () => {
     // A lone tag wider than the cell still shows (it truncates).
     expect(tagsThatFit([300], 168, 64, 4)).toBe(1);
     expect(tagsThatFit([300, 40], 168, 64, 4)).toBe(1);
+  });
+});
+
+describe("Research Templates: the same Tactics as Workflows (TPL-TACTICS-1023)", () => {
+  const catalog = readFileSync(join(__dirname, "../src/components/v2/research-catalog.tsx"), "utf8");
+  const outputs = readFileSync(join(__dirname, "../src/components/v2/research-template-outputs.tsx"), "utf8");
+  const tags = readFileSync(join(__dirname, "../src/components/v2/tactic-tags.tsx"), "utf8");
+
+  it("the list carries a Tactics column right after the name, the served tactics with their reason", () => {
+    const at = catalog.indexOf("<th className={`${TH} w-48`}>Tactics</th>");
+    expect(at).toBeGreaterThan(-1);
+    expect(at).toBeLessThan(catalog.indexOf("<RoiLabel />", at));
+    expect(catalog).toContain("<TacticTags tactics={(r as ResearchTemplate).tactics ?? null} reason={(r as ResearchTemplate).tacticsUnavailableReason ?? null} />");
+  });
+
+  it("the drawer and the page show the Tactics block, like the workflow drawer", () => {
+    expect(outputs).toContain("<TacticsBlock tactics={t.tactics ?? null} reason={t.tacticsUnavailableReason ?? null} />");
+    const view = catalog.slice(catalog.indexOf("function TemplateView("));
+    expect(view).toContain("<TacticsBlock tactics={t.tactics ?? null} reason={t.tacticsUnavailableReason ?? null} />");
+  });
+
+  it("unknown reads as not judged yet, never None", () => {
+    expect(tags).toContain('return reason === "tactics_unreadable" ? "Not readable just now" : "Not judged yet";');
+    expect(tags).toContain("if (tactics == null) return <span className=\"k-fg3 text-[12px]\">{unknownTacticsWords(reason)}</span>;");
   });
 });

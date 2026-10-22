@@ -10,6 +10,7 @@ import { EmptyNote, Shimmer } from "@/components/v2/ui";
 import { RoiLabel, RoiValue } from "@/components/v2/roi-label";
 import { Arrow, instantText } from "@/components/v2/research-bits";
 import { CatalogueName, CatalogueObjectMark } from "@/components/v2/catalogue-name";
+import { TacticsBlock } from "@/components/v2/tactic-tags";
 import { runVersionLabel } from "@/lib/research/workflow-runs";
 import {
   researchCatalogHref,
@@ -153,6 +154,10 @@ export function TemplateOutputsPanel({
     >
       <div className="border-b border-[var(--line-subtle)] px-4 py-3">
         {t.dynasty?.description && <p className="k-fg2 mb-3 text-[13px] leading-5">{t.dynasty.description}</p>}
+        {/* Tactics where the workflow drawer has them: under the description, above the figures. */}
+        <div className="mb-3">
+          <TacticsBlock tactics={t.tactics ?? null} reason={t.tacticsUnavailableReason ?? null} />
+        </div>
         <TemplateFigures f={t} outcome={outcome} />
       </div>
       <div className="space-y-4 border-b border-[var(--line-subtle)] px-4 py-3">
