@@ -3,6 +3,7 @@ import { readFileSync, readdirSync } from "node:fs";
 import { join } from "node:path";
 import {
   fleetWorkflowRows,
+  byServedRoiDesc,
   campaignWorkflowRows,
   shortWorkflowName,
   placeWords,
@@ -234,8 +235,9 @@ describe("research reads nothing scoped to the viewer", () => {
     expect(live).toContain("legFor(useLegCatalogue(), PIPE_KEY[pipe].leg)");
     expect(live).toContain("isProactiveFrom(leg.fromKey)");
     expect(live).not.toContain("legKeyForSteps(");
-    expect(live).toContain("getLegWorkflowRanking(featureSlug, legKey)");
-    expect(live).toContain("legWorkflowRankingKey(featureSlug, legKey)");
+    expect(live).toContain("getLegWorkflowRanking(featureSlug, leg)");
+    expect(live).toContain("legWorkflowRankingKey(featureSlug, leg)");
+    expect(live).toContain("enabled: legKey != null");
     // BEST-TPL-LLM-1022: a workflow fixes no template and no LLM, so neither column is drawn, and no
     // "Why here" column nor summary strip above the table (owner 2026-10-22).
     expect(live).not.toContain("writesWithNow");
@@ -284,6 +286,21 @@ describe("the brand Workflows page states the campaign's own live figures", () =
   });
 });
 
+describe("byServedRoiDesc", () => {
+  const row = (slug: string, roi: number | null) => ({ slug, figures: { roi: roi == null ? { value: null, basis: null, expectedValue: null, unavailableReason: "x" } : measured(roi) } as never });
+  it("puts the highest printed ROI first, a row with none last, ties in the producer's order", () => {
+    const out = byServedRoiDesc([row("a", 0.6), row("b", null), row("c", 8.3), row("d", 3.5), row("e", 3.5), row("f", null)]);
+    expect(out.map((r) => r.slug)).toEqual(["c", "d", "e", "a", "b", "f"]);
+  });
+  it("Research sorts each tab with it, and the title counts the live rows", () => {
+    const live = readFileSync(join(__dirname, "../src/components/v2/research-live-workflows.tsx"), "utf8");
+    expect(live).toContain("active: byServedRoiDesc(out.active), deprecated: byServedRoiDesc(out.deprecated)");
+    const catalog = readFileSync(join(__dirname, "../src/components/v2/research-catalog.tsx"), "utf8");
+    expect(catalog).toContain("count={live ? liveTotal : rows.length}");
+    expect(catalog).toContain("countOf(k)");
+  });
+});
+
 describe("shortWorkflowName", () => {
   it("drops the channel name from the front", () => {
     expect(shortWorkflowName("Sales Cold Email Outreach Maelstrom", "Sales Cold Email Outreach")).toBe("Maelstrom");
@@ -323,7 +340,7 @@ describe("Research pipe workflows: the owner's columns (2026-10-22)", () => {
   const thead = src.slice(src.indexOf("<thead>"), src.indexOf("</thead>"));
 
   it("mark, name, description, tactics, ROI, $/outcome, % conversion, $ spent, last run, status: in that order", () => {
-    const order = ["w-40`}>Workflow</th>", ">Description</th>", "w-48`}>Tactics</th>", "<RoiLabel />", "{`$ ${outcomeUnit}`}", ">% Conversion</th>", ">$ Spent</th>", "w-24`}>Last run</th>", "w-28`}>Status</th>"];
+    const order = ["w-36`}>Workflow</th>", ">Description</th>", "w-28`}>Tactics</th>", "<RoiLabel />", "{`$ ${outcomeUnit}`}", ">% Conversion</th>", ">$ Spent</th>", "w-24`}>Last run</th>", "w-28`}>Status</th>"];
     const at = order.map((h) => thead.indexOf(h));
     for (const i of at) expect(i).toBeGreaterThan(-1);
     expect([...at].sort((x, y) => x - y)).toEqual(at);

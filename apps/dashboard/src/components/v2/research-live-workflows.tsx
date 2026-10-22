@@ -15,6 +15,7 @@ import { EmptyNote, Shimmer } from "@/components/v2/ui";
 import { RecordsTabs } from "@/components/v2/records";
 import { PIPE_KEY, researchCatalogHref, type ResearchCatalog, type ResearchPipe } from "@/lib/research/research";
 import {
+  byServedRoiDesc,
   fleetWorkflowRows,
   lastRunText,
   servedCost,
@@ -38,8 +39,7 @@ import { expectedReasonWords } from "@/lib/expected-return";
  * A pipe's workflows as the FLEET ranks them right now, at the pipe's leg: every client we run
  * a workflow for, pooled. Research names no org, brand, offer, campaign or audience (owner rule
  * 2026-09-30), so this reads features-service's fleet ranking and nothing scoped to the viewer.
- * The order is the producer's, the same order campaign-service runs (WF-ORDER-EXPLORE-1018).
- * Nothing is ranked or divided here.
+ * Rows read best ROI first (owner 2026-10-23), the ROI each row prints; nothing divided here.
  *
  * Columns (owner 2026-10-22): mark + name (a link to its page), description, tactics, ROI, cost
  * per outcome, conversion, spent, last run, status. A click anywhere else on the row opens its drawer.
@@ -85,22 +85,16 @@ export function ResearchLiveWorkflows({
 }) {
   const featureSlug = PIPE_KEY[pipe].channel;
 
-  const rankingQ = useAuthQuery(legWorkflowRankingKey(featureSlug, legKey), () => getLegWorkflowRanking(featureSlug, legKey), {
-    ...pollOptions,
-    retry: false,
-  });
-  // Only the workflows ON this pipe (the producer's `assignment`): one moved to another leg of the channel
-  // (Dotterel's to Killdeer) or on none is not this pipe's, so it is not listed (owner 2026-10-22).
-  const rows = useMemo(() => fleetWorkflowRows((rankingQ.data?.rows ?? []).filter((r) => r.assignment === "active")), [rankingQ.data]);
+  const { rankingQ, rows } = usePipeWorkflowRows(featureSlug, legKey);
   // Each workflow's own status (workflow-service), changed from the row's ⋮ (TEMPLATE-MODEL-STATUS-1019).
   const dynastyStatuses = useDynastyStatuses(featureSlug);
-  // Two tabs on that status (owner 2026-10-22): Active first, in the producer's order (learning and mature
-  // lead), then Deprecated. A row moves tab the moment its status is written.
+  // Two tabs on that status (owner 2026-10-22): Active first, then Deprecated, each best ROI first
+  // (owner 2026-10-23). A row moves tab the moment its status is written.
   const [tab, setTab] = useState<StatusTab>("active");
   const byTab = useMemo(() => {
     const out: Record<StatusTab, ResearchWorkflowRow[]> = { active: [], deprecated: [] };
     for (const r of rows) out[dynastyStatuses.statusOf(r.slug) === "deprecated" ? "deprecated" : "active"].push(r);
-    return out;
+    return { active: byServedRoiDesc(out.active), deprecated: byServedRoiDesc(out.deprecated) };
   }, [rows, dynastyStatuses]);
   const shown = byTab[tab];
   // The Research catalogue's own pages: a workflow Research studied has one.
@@ -129,17 +123,17 @@ export function ResearchLiveWorkflows({
         onPick={(k) => setTab(k as StatusTab)}
       />
       <div className="k-scroll relative overflow-x-auto">
-        <table className="w-full min-w-[1220px] table-fixed text-[13px]">
+        <table className="w-full min-w-[1240px] table-fixed text-[13px]">
           <thead>
             <tr className="border-b border-[var(--line-subtle)]">
-              <th className={`${LIVE_TH} w-40`}>Workflow</th>
+              <th className={`${LIVE_TH} w-36`}>Workflow</th>
               <th className={LIVE_TH}>Description</th>
-              <th className={`${LIVE_TH} w-48`}>Tactics</th>
-              <th className={`${LIVE_TH} w-24 text-right`}>
+              <th className={`${LIVE_TH} w-28`}>Tactics</th>
+              <th className={`${LIVE_TH} w-[124px] text-right`}>
                 <RoiLabel />
               </th>
-              <th className={`${LIVE_TH} w-24 text-right`}>{`$ ${outcomeUnit}`}</th>
-              <th className={`${LIVE_TH} w-[124px] text-right`}>% Conversion</th>
+              <th className={`${LIVE_TH} w-[132px] text-right`}>{`$ ${outcomeUnit}`}</th>
+              <th className={`${LIVE_TH} w-[132px] text-right`}>% Conversion</th>
               <th className={`${LIVE_TH} w-24 text-right`}>$ Spent</th>
               <th className={`${LIVE_TH} w-24`}>Last run</th>
               <th className={`${LIVE_TH} w-28`}>Status</th>
@@ -190,8 +184,8 @@ export function ResearchLiveWorkflows({
         </table>
       </div>
       <div className="k-fg3 border-t border-[var(--line-subtle)] px-4 py-2.5 text-[12px]">
-        Every client we run a workflow for, pooled, in the order every campaign runs. Each send writes with the pipe&apos;s best template and
-        LLM. Click a row for its detail; its name opens its page.
+        Every client pooled, best ROI first. Each send writes with the pipe&apos;s best template and LLM. Click a row for its detail; its
+        name opens its page.
       </div>
       {openRow && (
         <WorkflowDrawer
@@ -205,6 +199,23 @@ export function ResearchLiveWorkflows({
       )}
     </div>
   );
+}
+
+/**
+ * The workflows ON this pipe (the producer's `assignment`): one moved to another leg of the channel
+ * (Dotterel's to Killdeer) or on none is not this pipe's, so it is not listed (owner 2026-10-22).
+ * The page title's count reads the same rows (one query key), so it is Active + Deprecated.
+ */
+export function usePipeWorkflowRows(featureSlug: string, legKey: string | null) {
+  // Disabled (never sent) while the pipe has no proactive leg: the title then counts the catalogue's own list.
+  const leg = legKey ?? "";
+  const rankingQ = useAuthQuery(legWorkflowRankingKey(featureSlug, leg), () => getLegWorkflowRanking(featureSlug, leg), {
+    ...pollOptions,
+    retry: false,
+    enabled: legKey != null,
+  });
+  const rows = useMemo(() => fleetWorkflowRows((rankingQ.data?.rows ?? []).filter((r) => r.assignment === "active")), [rankingQ.data]);
+  return { rankingQ, rows };
 }
 
 /** The table's column count (empty and loading rows span it). */
@@ -276,7 +287,7 @@ function WorkflowRow({
       </td>
       <td className="max-w-0 px-3 py-2">
         {description ? (
-          <p className="k-fg2 line-clamp-2 text-[12px] leading-[18px]" title={description}>
+          <p className="k-fg2 truncate text-[12px] leading-[18px]" title={description}>
             {description}
           </p>
         ) : (
