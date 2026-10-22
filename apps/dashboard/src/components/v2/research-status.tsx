@@ -10,6 +10,7 @@ import {
   getContentModelStatuses,
   getContentTemplateStatuses,
   getLegWorkflowRanking,
+  legWorkflowRankingKey,
   getRunnableWorkflowDynasties,
   getRunnableWorkflowDynastySummaries,
   getWorkflowDynastyDeprecation,
@@ -320,7 +321,7 @@ function useFleetFigures(): { byslug: Map<string, { outcomes: number; cost: numb
   const results = useQueries({
     queries: pairs.map((p) => ({
       enabled: gate,
-      queryKey: ["legWorkflowRanking", p.featureSlug, p.legKey],
+      queryKey: legWorkflowRankingKey(p.featureSlug, p.legKey),
       queryFn: () => getLegWorkflowRanking(p.featureSlug, p.legKey),
       retry: false,
     })),

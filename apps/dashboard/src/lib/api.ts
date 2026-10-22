@@ -8751,6 +8751,27 @@ export async function getFleetWorkflowReturnHistory(
   return parsed.data.roiHistory ? parsed.data.roiHistory.daily : null;
 }
 
+/** One served figure: the measured value, else the pipe's expected one (basis says which), else why neither. */
+const ServedFigureSchema = z.object({
+  value: z.number().nullable(),
+  basis: z.enum(["measured", "expected"]).nullable(),
+  source: z.string().nullable(),
+  expectedValue: z.number().nullable(),
+  unavailableReason: z.string().nullable(),
+});
+const WorkflowFiguresSchema = z
+  .object({
+    pricing: z.enum(["gross", "net"]),
+    half: z.enum(["mature", "flash"]),
+    roi: ServedFigureSchema,
+    costPerOutcomeUsd: ServedFigureSchema,
+    conversionRatePct: ServedFigureSchema,
+    spentUsd: z.object({ value: z.number().nullable(), basis: z.literal("measured").nullable(), unavailableReason: z.string().nullable() }),
+    outcomes: z.number(),
+    contacted: z.number(),
+  })
+  .passthrough();
+
 const LegWorkflowRankingSchema = z
   .object({
     featureSlug: z.string(),
@@ -8783,12 +8804,26 @@ const LegWorkflowRankingSchema = z
         executable: z.boolean().optional(),
         place: z.string().nullish(),
         explorePriceUsd: z.number().nullish(),
+        // ONE set of figures per workflow (RESEARCH-WF-FIGURES-1022), on the read's `pricing`: the list, its
+        // drawer and the workflow page print these, so the three cannot disagree. Required: every row serves it.
+        figures: WorkflowFiguresSchema,
+        // When a run of it last started on the pipe, every org; null = never ran, or the reason says why.
+        lastRunAt: z.string().nullish(),
+        lastRunUnavailableReason: z.string().nullish(),
+        // The tactics its CURRENT version follows (Jev's verdicts), read live by features-service.
+        tactics: z.array(z.object({ id: z.string(), name: z.string() })).nullish(),
+        tacticsUnavailableReason: z.string().nullish(),
       }),
     ),
   })
   .passthrough();
 
 export type LegWorkflowRanking = z.infer<typeof LegWorkflowRankingSchema>;
+
+/** The query key of the fleet ranking read (net pricing), shared by every reader so they share one cache. */
+export function legWorkflowRankingKey(featureSlug: string, legKey: string) {
+  return ["legWorkflowRanking", featureSlug, legKey, "net"] as const;
+}
 
 /**
  * EVERY WORKFLOW ON ONE LEG, RANKED AT THE FLEET GRAIN (features-service
@@ -8797,7 +8832,8 @@ export type LegWorkflowRanking = z.infer<typeof LegWorkflowRankingSchema>;
  * is looking. `computedAt: null` = the producer has not built it yet (no rows).
  */
 export async function getLegWorkflowRanking(featureSlug: string, legKey: string, token?: string): Promise<LegWorkflowRanking> {
-  const query = new URLSearchParams({ featureSlug, leg: legKey });
+  // Every money reader asks what the orgs paid (repo rule): `figures` follow it; the legacy row fields stay incurred.
+  const query = new URLSearchParams({ featureSlug, leg: legKey, pricing: "net" });
   const raw = await apiCall<unknown>(`/public/features/leg-workflow-ranking?${query.toString()}`, { token });
   const parsed = LegWorkflowRankingSchema.safeParse(raw);
   if (!parsed.success) {
@@ -12566,6 +12602,36 @@ const TemplateDynastyOutputsSchema = z.object({
     }),
   ),
 });
+
+const WorkflowDynastyOutputsSchema = z.object({
+  slug: z.string(),
+  outputs: z.array(
+    z.object({
+      generationId: z.string(),
+      createdAt: z.string(),
+      runId: z.string(),
+      // The workflow VERSION slug of the run.
+      workflowSlug: z.string(),
+      // The exact template version; null on rows written before templates were recorded.
+      promptType: z.string().nullable(),
+      templateDynasty: z.object({ slug: z.string(), name: z.string(), position: z.number() }).nullable(),
+      model: z.string(),
+      subject: z.string().nullable(),
+      emails: z.array(z.object({ step: z.number(), bodyText: z.string(), daysSinceLastStep: z.number().nullable() })),
+    }),
+  ),
+});
+export type WorkflowRunOutput = z.infer<typeof WorkflowDynastyOutputsSchema>["outputs"][number];
+
+/**
+ * STAFF ONLY. A workflow dynasty's latest runs that wrote an email, every org, newest first: the run,
+ * its template (dynasty + version), the model and the email sequence (content-generation-service via
+ * api-service `/v1/content/workflow-dynasties/:slug/outputs`). Names no org, brand, campaign or audience.
+ */
+export async function getWorkflowDynastyOutputs(slug: string, limit = 10): Promise<WorkflowRunOutput[]> {
+  const raw = await apiCall<unknown>(`/content/workflow-dynasties/${encodeURIComponent(slug)}/outputs?limit=${limit}`);
+  return parseStaff("getWorkflowDynastyOutputs", WorkflowDynastyOutputsSchema, raw).outputs;
+}
 
 /** The last outputs written with ANY version of a template dynasty, newest first, every org (TPL-DYNASTY-ROWS-1021). */
 export async function getTemplateDynastyOutputs(slug: string, limit = 5): Promise<(TemplateOutput & { promptType?: string })[]> {

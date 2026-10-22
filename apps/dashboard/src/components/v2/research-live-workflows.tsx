@@ -3,12 +3,10 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import Link from "next/link";
-import { useQueries } from "@tanstack/react-query";
-import { useAuthQuery, useOrgQueryGate } from "@/lib/use-auth-query";
+import { useAuthQuery } from "@/lib/use-auth-query";
 import { pollOptions } from "@/lib/query-options";
-import { getLegWorkflowRanking, getStaffCatalogueObject } from "@/lib/api";
-import { staffCatalogueObjectKey } from "@/components/v2/staff-catalogue-data";
-import { ResearchDrawer } from "@/components/v2/research-template-outputs";
+import { getLegWorkflowRanking, legWorkflowRankingKey } from "@/lib/api";
+import { RecentRuns, ResearchDrawer } from "@/components/v2/research-template-outputs";
 import { Arrow } from "@/components/v2/research-bits";
 import { useLegCatalogue } from "@/lib/use-leg-catalogue";
 import { legFor } from "@/lib/legs";
@@ -16,7 +14,17 @@ import { isProactiveFrom } from "@/lib/outbound-leg-key";
 import { EmptyNote, Shimmer } from "@/components/v2/ui";
 import { RecordsTabs } from "@/components/v2/records";
 import { PIPE_KEY, researchCatalogHref, type ResearchCatalog, type ResearchPipe } from "@/lib/research/research";
-import { fleetWorkflowRows, shortWorkflowName, tagsThatFit, type LiveWorkflowRow } from "@/lib/live-workflow-rows";
+import {
+  fleetWorkflowRows,
+  lastRunText,
+  servedCost,
+  servedRoi,
+  shortWorkflowName,
+  tagsThatFit,
+  type FollowedTactic,
+  type ResearchWorkflowRow,
+  type WorkflowFigures,
+} from "@/lib/live-workflow-rows";
 import { formatUsdAdaptive } from "@/lib/format-number";
 import { formatRatePct } from "@/lib/brand-conversion-rates";
 import { useFeatures } from "@/lib/features-context";
@@ -24,8 +32,7 @@ import { LIVE_TH } from "@/components/v2/live-workflow-cells";
 import { CostValue, RoiLabel, RoiValue } from "@/components/v2/roi-label";
 import { TopicMark } from "@/components/v2/research-bits";
 import { StatusWord, WorkflowStatusCells, useDynastyStatuses, useWorkflowDeprecation } from "@/components/v2/research-status";
-import type { RoiToShow } from "@/lib/expected-return";
-import type { ResearchWorkflow } from "@/lib/research/research";
+import { expectedReasonWords } from "@/lib/expected-return";
 
 /**
  * A pipe's workflows as the FLEET ranks them right now, at the pipe's leg: every client we run
@@ -35,7 +42,9 @@ import type { ResearchWorkflow } from "@/lib/research/research";
  * Nothing is ranked or divided here.
  *
  * Columns (owner 2026-10-22): mark + name (a link to its page), description, tactics, ROI, cost
- * per outcome, conversion, spent, status. A click anywhere else on the row opens its drawer. No LLM / Template column: since BEST-TPL-LLM-1022 a workflow fixes neither, each send
+ * per outcome, conversion, spent, last run, status. A click anywhere else on the row opens its drawer.
+ * Every figure, the tactics and the last run are the ranking row's own (`figures` on net pricing):
+ * the workflow page reads the same `figures`, so the list, the drawer and the page print one ROI. No LLM / Template column: since BEST-TPL-LLM-1022 a workflow fixes neither, each send
  * writes with the leg's best template and LLM. No summary banner above the table: the owner does
  * not want to read which workflow writes the next email.
  *
@@ -76,7 +85,7 @@ export function ResearchLiveWorkflows({
 }) {
   const featureSlug = PIPE_KEY[pipe].channel;
 
-  const rankingQ = useAuthQuery(["legWorkflowRanking", featureSlug, legKey], () => getLegWorkflowRanking(featureSlug, legKey), {
+  const rankingQ = useAuthQuery(legWorkflowRankingKey(featureSlug, legKey), () => getLegWorkflowRanking(featureSlug, legKey), {
     ...pollOptions,
     retry: false,
   });
@@ -89,20 +98,18 @@ export function ResearchLiveWorkflows({
   // lead), then Deprecated. A row moves tab the moment its status is written.
   const [tab, setTab] = useState<StatusTab>("active");
   const byTab = useMemo(() => {
-    const out: Record<StatusTab, LiveWorkflowRow[]> = { active: [], deprecated: [] };
+    const out: Record<StatusTab, ResearchWorkflowRow[]> = { active: [], deprecated: [] };
     for (const r of rows) out[dynastyStatuses.statusOf(r.slug) === "deprecated" ? "deprecated" : "active"].push(r);
     return out;
   }, [rows, dynastyStatuses]);
   const shown = byTab[tab];
-  // The Research catalogue's own pages: a workflow Research studied has one, and its served return
-  // (`roiDetail`) carries the EXPECTED figure where the ranking measures none yet.
+  // The Research catalogue's own pages: a workflow Research studied has one.
   const researchedWorkflows = useMemo(() => new Map((catalog?.[pipe].workflows ?? []).map((w) => [w.key, w])), [catalog, pipe]);
   // A workflow Research never studied still has its live page (`/workflows/:slug`, priced for this pipe).
   const brandBase = base.replace(/\/research$/, "");
   const pipeId = `${featureSlug}|${legKey}`;
   const channelName = usePipeChannelName(pipe);
   const nameOf = (r: { name: string | null; slug: string }) => shortWorkflowName(r.name ?? r.slug, channelName);
-  const tactics = useWorkflowTactics(shown.map((r) => r.slug), pipeId);
   // The row whose drawer is open (owner 2026-10-22: a click on the row opens the detail on the right).
   const [open, setOpen] = useState<string | null>(null);
   const openRow = open ? (rows.find((r) => r.slug === open) ?? null) : null;
@@ -122,7 +129,7 @@ export function ResearchLiveWorkflows({
         onPick={(k) => setTab(k as StatusTab)}
       />
       <div className="k-scroll relative overflow-x-auto">
-        <table className="w-full min-w-[1140px] table-fixed text-[13px]">
+        <table className="w-full min-w-[1220px] table-fixed text-[13px]">
           <thead>
             <tr className="border-b border-[var(--line-subtle)]">
               <th className={`${LIVE_TH} w-40`}>Workflow</th>
@@ -134,6 +141,7 @@ export function ResearchLiveWorkflows({
               <th className={`${LIVE_TH} w-24 text-right`}>{`$ ${outcomeUnit}`}</th>
               <th className={`${LIVE_TH} w-[124px] text-right`}>% Conversion</th>
               <th className={`${LIVE_TH} w-24 text-right`}>$ Spent</th>
+              <th className={`${LIVE_TH} w-24`}>Last run</th>
               <th className={`${LIVE_TH} w-28`}>Status</th>
               <th className={`${LIVE_TH} w-10`} aria-label="Status menu" />
             </tr>
@@ -170,11 +178,9 @@ export function ResearchLiveWorkflows({
                 <WorkflowRow
                   key={r.slug}
                   row={r}
-                  studied={researchedWorkflows.get(r.slug) ?? null}
                   href={hrefOf(r.slug)}
                   name={nameOf(r)}
                   statuses={dynastyStatuses}
-                  tactics={tactics.of(r.slug)}
                   selected={open === r.slug}
                   onOpen={() => setOpen(r.slug)}
                 />
@@ -190,11 +196,9 @@ export function ResearchLiveWorkflows({
       {openRow && (
         <WorkflowDrawer
           row={openRow}
-          studied={researchedWorkflows.get(openRow.slug) ?? null}
           href={hrefOf(openRow.slug)}
           name={nameOf(openRow)}
           statuses={dynastyStatuses}
-          tactics={tactics.of(openRow.slug)}
           outcomeUnit={outcomeUnit}
           onClose={() => setOpen(null)}
         />
@@ -204,7 +208,7 @@ export function ResearchLiveWorkflows({
 }
 
 /** The table's column count (empty and loading rows span it). */
-const COLS = 9;
+const COLS = 10;
 
 type StatusTab = "active" | "deprecated";
 const STATUS_TABS: { key: StatusTab; label: string }[] = [
@@ -212,74 +216,42 @@ const STATUS_TABS: { key: StatusTab; label: string }[] = [
   { key: "deprecated", label: "Deprecated" },
 ];
 
-/**
- * The return a row prints, never blank (owner 2026-10-11): the ranking's measured multiple; none
- * measured, the EXPECTED one features-service serves on the Research catalogue row (`roiDetail`,
- * basis `expected`); neither, a dash.
- */
-export function workflowRoiToShow(row: Pick<LiveWorkflowRow, "roiMultiple">, studied: Pick<ResearchWorkflow, "roiDetail"> | null): RoiToShow {
-  if (row.roiMultiple != null) return { value: row.roiMultiple, expected: false, reason: null };
-  const d = studied?.roiDetail ?? null;
-  if (d?.value != null) return { value: d.value, expected: d.basis === "expected", reason: null };
-  return { value: null, expected: false, reason: null };
-}
-
 const DASH = <span className="k-fg4">—</span>;
 
-/** A tactic a workflow follows, as features-service names it. */
-interface FollowedTactic {
-  id: string;
-  name: string;
+/** A served % conversion, marked expected when it is the pipe's (the same small word as an expected ROI). */
+function RateValue({ f }: { f: WorkflowFigures["conversionRatePct"] }) {
+  if (f.value == null) return <span className="k-fg3 text-[12px] font-normal">{expectedReasonWords(f.unavailableReason)}</span>;
+  return (
+    <span className="whitespace-nowrap">
+      {formatRatePct(f.value)}
+      {f.basis === "expected" && <span className="k-fg3 ml-1 text-[11px] font-normal">expected</span>}
+    </span>
+  );
 }
 
-/**
- * The tactics each listed workflow follows: features-service's own verdict per workflow (the
- * catalogue workflow read, `tactics[].follows`, Jev on its CURRENT version), never re-judged here.
- * Tactics move only when Jev sweeps (every ~15 min), so these are read once a few minutes, never polled.
- * `null` = not answered yet.
- */
-function useWorkflowTactics(slugs: readonly string[], pipeId: string) {
-  const gate = useOrgQueryGate();
-  const reads = useQueries({
-    queries: slugs.map((slug) => ({
-      queryKey: staffCatalogueObjectKey("workflows", slug, pipeId),
-      queryFn: () => getStaffCatalogueObject("workflows", slug, { pipe: pipeId }),
-      staleTime: TACTICS_STALE_MS,
-      retry: false,
-      enabled: gate,
-    })),
-  });
-  const bySlug = new Map<string, FollowedTactic[] | null>();
-  slugs.forEach((slug, i) => {
-    const d = reads[i]?.data;
-    bySlug.set(slug, d ? (d.tactics ?? []).filter((t) => t.follows === true).map((t) => ({ id: t.id, name: t.name })) : null);
-  });
-  return { of: (slug: string): FollowedTactic[] | null => bySlug.get(slug) ?? null };
+/** A served spend on net pricing; a dash with the producer's reason when it is not measured. */
+function SpentValue({ f }: { f: WorkflowFigures["spentUsd"] }) {
+  if (f.value == null) return <span title={f.unavailableReason ? expectedReasonWords(f.unavailableReason) : undefined}>{DASH}</span>;
+  return <>{formatUsdAdaptive(f.value)}</>;
 }
-
-const TACTICS_STALE_MS = 5 * 60_000;
 
 function WorkflowRow({
   row: r,
-  studied,
   href,
   name,
   statuses,
-  tactics,
   selected,
   onOpen,
 }: {
-  row: LiveWorkflowRow;
-  studied: ResearchWorkflow | null;
+  row: ResearchWorkflowRow;
   href: string;
   name: string;
   statuses: ReturnType<typeof useDynastyStatuses>;
-  tactics: FollowedTactic[] | null;
   selected: boolean;
   onOpen: () => void;
 }) {
   const description = useWorkflowDescription(r.slug, statuses);
-  const cents = r.costPerOutcomeUsd == null ? null : Math.round(r.costPerOutcomeUsd * 100);
+  const lastRun = lastRunText(r);
   const stop = (e: React.SyntheticEvent) => e.stopPropagation();
   return (
     <tr
@@ -313,17 +285,23 @@ function WorkflowRow({
         )}
       </td>
       <td className="max-w-0 px-3 py-2">
-        <TacticTags tactics={tactics} />
+        <TacticTags tactics={r.tactics} />
       </td>
       <td className="px-3 py-2 text-right tabular-nums">
-        <RoiValue roi={workflowRoiToShow(r, studied)} />
+        <RoiValue roi={servedRoi(r.figures.roi)} />
       </td>
       <td className="px-3 py-2 text-right tabular-nums">
-        {/* At zero outcomes the producer states no price: Learning, never the spend as a floor. */}
-        <CostValue cost={{ cents, expected: false, learning: cents != null && r.mature === false, expectedCents: null }} learning />
+        <CostValue cost={servedCost(r.figures.costPerOutcomeUsd)} />
       </td>
-      <td className="px-3 py-2 text-right tabular-nums">{r.conversionRatePct == null ? DASH : formatRatePct(r.conversionRatePct)}</td>
-      <td className="px-3 py-2 text-right tabular-nums">{r.spentUsd == null ? DASH : formatUsdAdaptive(r.spentUsd)}</td>
+      <td className="px-3 py-2 text-right tabular-nums">
+        <RateValue f={r.figures.conversionRatePct} />
+      </td>
+      <td className="px-3 py-2 text-right tabular-nums">
+        <SpentValue f={r.figures.spentUsd} />
+      </td>
+      <td className="k-mono k-fg2 whitespace-nowrap px-3 py-2 text-[12px]" title={r.lastRunAt ?? undefined}>
+        {lastRun ?? DASH}
+      </td>
       <WorkflowStatusCells slug={r.slug} label={name} statuses={statuses} />
     </tr>
   );
@@ -354,7 +332,7 @@ function useWorkflowDescription(slug: string, statuses: ReturnType<typeof useDyn
  * (desktop) or tap (mobile). The fit is measured off an invisible copy of every tag, re-measured
  * when the cell resizes; a lone tag too wide for the cell truncates with an ellipsis.
  */
-function TacticTags({ tactics }: { tactics: FollowedTactic[] | null }) {
+function TacticTags({ tactics }: { tactics: readonly FollowedTactic[] | null }) {
   const box = useRef<HTMLDivElement>(null);
   const ruler = useRef<HTMLDivElement>(null);
   const [fit, setFit] = useState<number | null>(null);
@@ -373,7 +351,8 @@ function TacticTags({ tactics }: { tactics: FollowedTactic[] | null }) {
     return () => ro.disconnect();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [names]);
-  if (tactics == null) return <Shimmer className="h-4 w-24" />;
+  // Null = features-service could not read them (`tacticsUnavailableReason`), never "none".
+  if (tactics == null) return DASH;
   if (tactics.length === 0) return <span className="k-fg3 text-[12px]">None</span>;
   const n = fit ?? 1;
   const rest = tactics.length - n;
@@ -401,7 +380,7 @@ const MORE_W = 64;
 const TAG_GAP = 4;
 
 /** "+N more": the whole list in a portalled k-popover, opened by hover on desktop or a tap. */
-function MoreTactics({ label, tactics }: { label: string; tactics: FollowedTactic[] }) {
+function MoreTactics({ label, tactics }: { label: string; tactics: readonly FollowedTactic[] }) {
   const btn = useRef<HTMLButtonElement>(null);
   const [at, setAt] = useState<{ top: number; left: number } | null>(null);
   const show = () => {
@@ -459,31 +438,28 @@ function MoreTactics({ label, tactics }: { label: string; tactics: FollowedTacti
 
 /**
  * The row's detail sliding in from the right (owner 2026-10-22): mark, name, full description,
- * tactics, the figures, and its page. Recent runs join once content generation serves them.
+ * tactics, the figures (the row's own), its recent runs, and its page.
  */
 function WorkflowDrawer({
   row: r,
-  studied,
   href,
   name,
   statuses,
-  tactics,
   outcomeUnit,
   onClose,
 }: {
-  row: LiveWorkflowRow;
-  studied: ResearchWorkflow | null;
+  row: ResearchWorkflowRow;
   href: string;
   name: string;
   statuses: ReturnType<typeof useDynastyStatuses>;
-  tactics: FollowedTactic[] | null;
   outcomeUnit: string;
   onClose: () => void;
 }) {
   const description = useWorkflowDescription(r.slug, statuses);
   const deprecated = statuses.statusOf(r.slug) === "deprecated";
   const why = useWorkflowDeprecation(r.slug, deprecated);
-  const cents = r.costPerOutcomeUsd == null ? null : Math.round(r.costPerOutcomeUsd * 100);
+  const tactics = r.tactics;
+  const lastRun = lastRunText(r);
   return (
     <ResearchDrawer
       label={name}
@@ -519,7 +495,7 @@ function WorkflowDrawer({
         <div>
           <p className="k-label">Tactics</p>
           {tactics == null ? (
-            <Shimmer className="mt-1.5 h-4 w-40" />
+            <p className="k-fg3 mt-1.5 text-[12px]">Not readable just now.</p>
           ) : tactics.length === 0 ? (
             <p className="k-fg3 mt-1.5 text-[12px]">Follows no tactic.</p>
           ) : (
@@ -533,13 +509,16 @@ function WorkflowDrawer({
           )}
         </div>
         <dl className="grid grid-cols-2 gap-x-3 gap-y-2.5 border-t border-[var(--line-subtle)] pt-3 text-[12px]">
-          <Fig k={<RoiLabel />} v={<RoiValue roi={workflowRoiToShow(r, studied)} />} />
-          <Fig k={`$ ${outcomeUnit}`} v={<CostValue cost={{ cents, expected: false, learning: cents != null && r.mature === false, expectedCents: null }} learning />} />
-          <Fig k="% Conversion" v={r.conversionRatePct == null ? DASH : formatRatePct(r.conversionRatePct)} />
-          <Fig k="$ Spent" v={r.spentUsd == null ? DASH : formatUsdAdaptive(r.spentUsd)} />
-          <Fig k="Outcomes" v={r.outcomes == null ? DASH : Math.round(r.outcomes).toLocaleString("en-US")} />
+          <Fig k={<RoiLabel />} v={<RoiValue roi={servedRoi(r.figures.roi)} />} />
+          <Fig k={`$ ${outcomeUnit}`} v={<CostValue cost={servedCost(r.figures.costPerOutcomeUsd)} />} />
+          <Fig k="% Conversion" v={<RateValue f={r.figures.conversionRatePct} />} />
+          <Fig k="$ Spent" v={<SpentValue f={r.figures.spentUsd} />} />
+          <Fig k="Outcomes" v={Math.round(r.figures.outcomes).toLocaleString("en-US")} />
+          <Fig k="Last run" v={lastRun ?? DASH} />
         </dl>
       </div>
+      <p className="k-label border-t border-[var(--line-subtle)] px-4 pt-3">Recent runs</p>
+      <RecentRuns slug={r.slug} limit={10} />
     </ResearchDrawer>
   );
 }

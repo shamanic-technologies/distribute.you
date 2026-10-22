@@ -7,7 +7,11 @@ import {
   shortWorkflowName,
   placeWords,
   tagsThatFit,
+  servedRoi,
+  servedCost,
+  lastRunText,
   type FleetRankingRow,
+  type ServedFigure,
   type CampaignLadderRow,
 } from "../src/lib/live-workflow-rows";
 
@@ -26,8 +30,19 @@ function fleet(slug: string, o: Partial<FleetRankingRow> = {}): FleetRankingRow 
     roiMultiple: 2,
     goesFirst: false,
     moneyGoesHere: false,
+    figures: {
+      roi: measured(2),
+      costPerOutcomeUsd: measured(10),
+      conversionRatePct: measured(1),
+      spentUsd: { value: 30, unavailableReason: null },
+      outcomes: 3,
+    },
     ...o,
   };
+}
+
+function measured(value: number): ServedFigure {
+  return { value, basis: "measured", expectedValue: null, unavailableReason: null };
 }
 
 describe("fleetWorkflowRows", () => {
@@ -58,6 +73,14 @@ describe("fleetWorkflowRows", () => {
     expect(placeWords({ place: null, executable: null, assignment: "active" })).toBeNull();
   });
 
+  it("carries the served figures, last run and tactics verbatim (RESEARCH-WF-FIGURES-1022)", () => {
+    const [r] = fleetWorkflowRows([fleet("a", { lastRunAt: "2026-10-22T16:00:00.000Z", tactics: [{ id: "named-angle", name: "Named angle" }] })]);
+    expect(r.figures.roi.value).toBe(2);
+    expect(r).toMatchObject({ lastRunAt: "2026-10-22T16:00:00.000Z", lastRunUnavailableReason: null, tactics: [{ id: "named-angle", name: "Named angle" }] });
+    const [u] = fleetWorkflowRows([fleet("b", { tactics: null, tacticsUnavailableReason: "tactics_unreadable" })]);
+    expect(u).toMatchObject({ tactics: null, tacticsUnavailableReason: "tactics_unreadable", lastRunAt: null });
+  });
+
   it("a workflow with no spend on the leg states no result yet", () => {
     const [r] = fleetWorkflowRows([fleet("a", { spentUsd: 0, outcomes: 0, costPerOutcomeUsd: null })]);
     expect(r.ran).toBe(false);
@@ -81,6 +104,32 @@ const half = (spent: number, contacted: number, outcomes: number) => ({
   outcomes,
   costPerOutcomeUsd: outcomes > 0 ? spent / outcomes : null,
   conversionRatePct: contacted > 0 ? (100 * outcomes) / contacted : null,
+});
+
+describe("the served figures, as a Research row prints them", () => {
+  it("a measured ROI prints as measured, the pipe's expected one marked expected, none = the producer's reason", () => {
+    expect(servedRoi(measured(4.27))).toEqual({ value: 4.27, expected: false, reason: null });
+    expect(servedRoi({ value: 3.48, basis: "expected", expectedValue: 3.48, unavailableReason: null })).toEqual({ value: 3.48, expected: true, reason: null });
+    expect(servedRoi({ value: null, basis: null, expectedValue: null, unavailableReason: "no_return_on_pipe" })).toEqual({ value: null, expected: false, reason: "no_return_on_pipe" });
+  });
+
+  it("a cost per outcome in cents, expected when the producer says so, never Learning", () => {
+    expect(servedCost(measured(161.59))).toMatchObject({ cents: 16159, expected: false, learning: false });
+    expect(servedCost({ value: 186.36, basis: "expected", expectedValue: 186.36, unavailableReason: null })).toMatchObject({ cents: 18636, expected: true });
+    expect(servedCost({ value: null, basis: null, expectedValue: null, unavailableReason: "no_outcome_on_pipe" }).cents).toBeNull();
+  });
+
+  it("last run reads as a short relative time; Never when it never ran; null when the producer could not read it", () => {
+    const now = new Date("2026-10-22T18:00:00.000Z");
+    const at = (iso: string) => lastRunText({ lastRunAt: iso, lastRunUnavailableReason: null }, now);
+    expect(at("2026-10-22T17:59:40.000Z")).toBe("Just now");
+    expect(at("2026-10-22T17:57:00.000Z")).toBe("3m ago");
+    expect(at("2026-10-22T16:00:00.000Z")).toBe("2h ago");
+    expect(at("2026-10-17T12:00:00.000Z")).toBe("5d ago");
+    expect(at("2026-06-01T12:00:00.000Z")).toBe("4mo ago");
+    expect(lastRunText({ lastRunAt: null, lastRunUnavailableReason: null }, now)).toBe("Never");
+    expect(lastRunText({ lastRunAt: null, lastRunUnavailableReason: "not_read_on_pipe" }, now)).toBeNull();
+  });
 });
 
 describe("campaignWorkflowRows", () => {
@@ -186,7 +235,7 @@ describe("research reads nothing scoped to the viewer", () => {
     expect(live).toContain("isProactiveFrom(leg.fromKey)");
     expect(live).not.toContain("legKeyForSteps(");
     expect(live).toContain("getLegWorkflowRanking(featureSlug, legKey)");
-    expect(live).toContain('["legWorkflowRanking", featureSlug, legKey]');
+    expect(live).toContain("legWorkflowRankingKey(featureSlug, legKey)");
     // BEST-TPL-LLM-1022: a workflow fixes no template and no LLM, so neither column is drawn, and no
     // "Why here" column nor summary strip above the table (owner 2026-10-22).
     expect(live).not.toContain("writesWithNow");
@@ -273,12 +322,17 @@ describe("Research pipe workflows: the owner's columns (2026-10-22)", () => {
   const api = readFileSync(join(__dirname, "../src/lib/api.ts"), "utf8");
   const thead = src.slice(src.indexOf("<thead>"), src.indexOf("</thead>"));
 
-  it("mark, name, description, ROI, $/outcome, % conversion, $ spent, status: in that order", () => {
-    const order = ["w-40`}>Workflow</th>", ">Description</th>", "w-48`}>Tactics</th>", "<RoiLabel />", "{`$ ${outcomeUnit}`}", ">% Conversion</th>", ">$ Spent</th>", "w-28`}>Status</th>"];
+  it("mark, name, description, tactics, ROI, $/outcome, % conversion, $ spent, last run, status: in that order", () => {
+    const order = ["w-40`}>Workflow</th>", ">Description</th>", "w-48`}>Tactics</th>", "<RoiLabel />", "{`$ ${outcomeUnit}`}", ">% Conversion</th>", ">$ Spent</th>", "w-24`}>Last run</th>", "w-28`}>Status</th>"];
     const at = order.map((h) => thead.indexOf(h));
     for (const i of at) expect(i).toBeGreaterThan(-1);
     expect([...at].sort((x, y) => x - y)).toEqual(at);
-    expect(src).toContain("const COLS = 9;");
+    expect(src).toContain("const COLS = 10;");
+  });
+
+  it("last run is the ranking row's own, as a short relative time", () => {
+    expect(src).toContain("const lastRun = lastRunText(r);");
+    expect(src).toContain("{lastRun ?? DASH}");
   });
 
   it("every row wears the workflow mark and links its name to its page", () => {
@@ -293,31 +347,29 @@ describe("Research pipe workflows: the owner's columns (2026-10-22)", () => {
     expect(status).toContain('qc.refetchQueries({ queryKey: ["workflowDynastySummaries"] })');
   });
 
-  it("ROI never blank: measured from the ranking, else the served expected return, never computed here", () => {
-    expect(src).toContain("if (row.roiMultiple != null) return { value: row.roiMultiple, expected: false, reason: null };");
-    expect(src).toContain('expected: d.basis === "expected"');
-    expect(src).toContain("<RoiValue roi={workflowRoiToShow(r, studied)} />");
-  });
-
-  it("a cost per outcome at zero outcomes reads Learning, never the spend", () => {
-    expect(src).toContain("learning: cents != null && r.mature === false");
-    expect(src).toContain("} learning />");
+  it("every figure is the ranking row's served `figures`, list and drawer alike: one ROI everywhere", () => {
+    // The legacy multiple read a measured 29x on a workflow with 0 outcomes; `figures.roi` is the one the page shows too.
+    expect(src).not.toContain("roiMultiple");
+    expect(src).not.toContain("roiDetail");
+    expect(src.match(/<RoiValue roi=\{servedRoi\(r\.figures\.roi\)\} \/>/g)).toHaveLength(2);
+    expect(src.match(/servedCost\(r\.figures\.costPerOutcomeUsd\)/g)).toHaveLength(2);
+    expect(src.match(/<RateValue f=\{r\.figures\.conversionRatePct\} \/>/g)).toHaveLength(2);
+    expect(src.match(/<SpentValue f=\{r\.figures\.spentUsd\} \/>/g)).toHaveLength(2);
+    expect(src).toContain('{f.basis === "expected" && <span className="k-fg3 ml-1 text-[11px] font-normal">expected</span>}');
   });
 });
 
 describe("Research pipe workflows: tactics column and the row drawer (owner 2026-10-22)", () => {
   const src = readFileSync(join(__dirname, "../src/components/v2/research-live-workflows.tsx"), "utf8");
   const drawer = readFileSync(join(__dirname, "../src/components/v2/research-template-outputs.tsx"), "utf8");
-  const catalogue = readFileSync(join(__dirname, "../src/lib/staff-catalogue.ts"), "utf8");
+  const api = readFileSync(join(__dirname, "../src/lib/api.ts"), "utf8");
 
-  it("tactics are features-service's verdict per workflow, read, never re-judged", () => {
-    expect(src).toContain('queryKey: staffCatalogueObjectKey("workflows", slug, pipeId)');
-    expect(src).toContain('getStaffCatalogueObject("workflows", slug, { pipe: pipeId })');
-    expect(src).toContain(".filter((t) => t.follows === true)");
-    expect(catalogue).toContain("tactics: z.array(z.object({ id: z.string(), name: z.string(), follows: z.boolean().nullable() })).optional()");
-    // Not polled: tactics move only on Jev's sweeps.
-    const hook = src.slice(src.indexOf("function useWorkflowTactics("), src.indexOf("const TACTICS_STALE_MS"));
-    expect(hook).not.toContain("pollOptions");
+  it("tactics are the ranking row's own (features-service's verdict), never one catalogue read per row", () => {
+    expect(src).toContain("<TacticTags tactics={r.tactics} />");
+    expect(src).toContain("const tactics = r.tactics;");
+    expect(src).not.toContain("getStaffCatalogueObject");
+    expect(src).not.toContain("useQueries");
+    expect(api).toContain("tactics: z.array(z.object({ id: z.string(), name: z.string() })).nullish(),");
   });
 
   it("shows the first tags then +N more, the full list on hover or tap in a portalled popover", () => {
@@ -341,6 +393,40 @@ describe("Research pipe workflows: tactics column and the row drawer (owner 2026
     expect(drawer).toContain("export function ResearchDrawer(");
     expect(drawer.slice(drawer.indexOf("export function TemplateVersionDrawer("), drawer.indexOf("export function ResearchDrawer("))).toContain("<ResearchDrawer");
     expect(drawer).toContain("k-popover k-drawer-in fixed inset-y-0 right-0");
+  });
+});
+
+describe("Research workflow recent runs (owner 2026-10-22)", () => {
+  const src = readFileSync(join(__dirname, "../src/components/v2/research-live-workflows.tsx"), "utf8");
+  const outputs = readFileSync(join(__dirname, "../src/components/v2/research-template-outputs.tsx"), "utf8");
+  const catalog = readFileSync(join(__dirname, "../src/components/v2/research-catalog.tsx"), "utf8");
+  const api = readFileSync(join(__dirname, "../src/lib/api.ts"), "utf8");
+
+  it("the row drawer and the workflow page both list them", () => {
+    expect(src).toContain("<RecentRuns slug={r.slug} limit={10} />");
+    const view = catalog.slice(catalog.indexOf("function WorkflowView("), catalog.indexOf("function TemplateText("));
+    expect(view).toContain("<RecentRuns slug={w.key} limit={20} />");
+    expect(view).not.toContain('title="Last runs"');
+  });
+
+  it("each run shows date, template (dynasty + version) and LLM; a click opens its email in the Research drawer", () => {
+    const body = outputs.slice(outputs.indexOf("export function RecentRuns("), outputs.indexOf("function OutputItem("));
+    expect(body).toContain("{instantText(o.createdAt)}");
+    expect(body).toContain("const template = runTemplateText(o);");
+    expect(body).toContain("{o.model}");
+    expect(body).toContain("onClick={() => setOpen(o)}");
+    expect(body).toContain("<ResearchDrawer");
+    expect(body).toContain("<OutputsList read={{ outputs: [open], answered: true }} expanded />");
+    expect(outputs).toContain("return `${o.templateDynasty.name} v${o.templateDynasty.position}`;");
+  });
+
+  it("reads content generation's workflow dynasty outputs through the staff gateway route", () => {
+    expect(api).toContain("`/content/workflow-dynasties/${encodeURIComponent(slug)}/outputs?limit=${limit}`");
+    expect(outputs).toContain('useAuthQuery(["workflowDynastyOutputs", slug, limit], () => getWorkflowDynastyOutputs(slug, limit)');
+  });
+
+  it("Esc closes only the top drawer (the email over the workflow drawer)", () => {
+    expect(outputs).toContain('e.key === "Escape" && openLayers[openLayers.length - 1] === id.current');
   });
 });
 

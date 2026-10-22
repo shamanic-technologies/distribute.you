@@ -53,6 +53,10 @@ describe("workflow-projection / audience-stats pricing basis", () => {
     expect(readerBody("getOfferSpendCharts")).toContain('pricing: "net"');
   });
 
+  it("getLegWorkflowRanking requests net pricing (Research workflow figures)", () => {
+    expect(readerBody("getLegWorkflowRanking")).toContain('pricing: "net"');
+  });
+
   it("fetchFeatureAudienceStats requests net pricing", () => {
     expect(readerBody("fetchFeatureAudienceStats")).toContain('query.set("pricing", "net")');
   });
