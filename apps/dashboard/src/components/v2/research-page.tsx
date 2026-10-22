@@ -26,6 +26,7 @@ import {
 } from "@/components/v2/research-bits";
 import { V2ResearchCatalogView, PipeCatalogLinks } from "@/components/v2/research-catalog";
 import { CostBasisSwitch } from "@/components/v2/cost-basis-switch";
+import { CatalogueName } from "@/components/v2/catalogue-name";
 import { ResearchSourceProvider, useResearch, useResearchCatalog } from "@/lib/research/research-source";
 import { useFeatures } from "@/lib/features-context";
 import { shortWorkflowName } from "@/lib/live-workflow-rows";
@@ -109,6 +110,14 @@ const STATE_LOOK: Record<StudyState, { label: string; dot: string }> = {
 };
 
 /** The first bar is a winner only when the verdict is a conclusion; otherwise it merely leads. */
+/** A study's winner, named the shared way when it is a model, a template or a workflow (owner 2026-10-22). */
+function StudyWinner({ study }: { study: ResearchStudy }) {
+  if (!study.winner) return <span className="k-fg4">{"—"}</span>;
+  const kind = study.topic === "llm" ? "llm" : study.topic === "template" ? "template" : study.topic === "workflow" ? "workflow" : null;
+  if (!kind) return <span className="min-w-0 truncate">{study.winner}</span>;
+  return <CatalogueName kind={kind} name={study.winner} />;
+}
+
 function winnerLabel(study: ResearchStudy, state: StudyState): string {
   // a cost split names its largest share, it ranks nothing
   if (study.winnerLabel) return study.winnerLabel;
@@ -190,8 +199,8 @@ function StudyCard({ study, href }: { study: ResearchStudy; href: string }) {
       <div className="k-inset mt-4 grid grid-cols-2 overflow-hidden rounded-[10px] shadow-[inset_0_0_0_1px_var(--line-subtle)]">
         <div className="min-w-0 border-r border-[var(--line-subtle)] p-3">
           <p className="k-label">{winnerLabel(study, state)}</p>
-          <p className="mt-1.5 truncate text-[14px] font-medium leading-6" title={study.winner ?? undefined}>
-            {study.winner ?? <span className="k-fg4">{"—"}</span>}
+          <p className="mt-1.5 flex min-w-0 text-[14px] font-medium leading-6" title={study.winner ?? undefined}>
+            <StudyWinner study={study} />
           </p>
           {state === "no-data" && <p className="k-fg3 mt-0.5 truncate text-[11px]">nothing to compare</p>}
         </div>
@@ -541,8 +550,8 @@ function V2ResearchStudy({ base, studyId }: { base: string; studyId: string }) {
 
         <div className="mt-5 grid grid-cols-2 gap-3 lg:grid-cols-4">
           <StatTile label={winnerLabel(study, state)}>
-            <p className="truncate text-[18px] font-medium leading-7" title={study.winner ?? undefined}>
-              {study.winner ?? <span className="k-fg4">{"—"}</span>}
+            <p className="flex min-w-0 text-[18px] font-medium leading-7" title={study.winner ?? undefined}>
+              <StudyWinner study={study} />
             </p>
           </StatTile>
           <StatTile label="Result">

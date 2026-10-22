@@ -1,5 +1,7 @@
 "use client";
 
+import { CatalogueName } from "@/components/v2/catalogue-name";
+
 /**
  * ONE WORKFLOW, OPENED FROM ITS ROW — why it is ranked where it is, and what it did.
  *
@@ -575,8 +577,8 @@ export function WorkflowRankPanel({
           </svg>
           Back
         </button>
-        <h2 className="hidden min-w-0 truncate font-semibold text-gray-800 md:block">
-          {row.workflowDynastyName}
+        <h2 className="hidden min-w-0 font-semibold text-gray-800 md:flex">
+          <CatalogueName kind="workflow" name={row.workflowDynastyName} />
         </h2>
         <button
           onClick={onClose}
@@ -599,7 +601,7 @@ export function WorkflowRankPanel({
             <span className="inline-flex h-7 min-w-7 items-center justify-center rounded-full border border-gray-200 bg-gray-100 px-2 text-xs font-medium text-gray-700 tabular-nums">
               #{ranked.rank}
             </span>
-            <span className="text-sm font-medium text-gray-900">{row.workflowDynastyName}</span>
+            <CatalogueName kind="workflow" name={row.workflowDynastyName} className="text-sm font-medium text-gray-900" />
             {row.running && (
               <span className="inline-flex items-center rounded-full border border-brand-200 bg-brand-50 px-2 py-0.5 text-[11px] font-medium text-brand-600">
                 Running now

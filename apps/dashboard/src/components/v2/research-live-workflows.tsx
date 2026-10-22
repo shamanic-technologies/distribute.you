@@ -30,7 +30,7 @@ import { formatRatePct } from "@/lib/brand-conversion-rates";
 import { useFeatures } from "@/lib/features-context";
 import { LIVE_TH } from "@/components/v2/live-workflow-cells";
 import { CostValue, RoiLabel, RoiValue } from "@/components/v2/roi-label";
-import { TopicMark } from "@/components/v2/research-bits";
+import { CatalogueName, CatalogueObjectMark } from "@/components/v2/catalogue-name";
 import { StatusWord, WorkflowStatusCells, useDynastyStatuses, useWorkflowDeprecation } from "@/components/v2/research-status";
 import { expectedReasonWords } from "@/lib/expected-return";
 
@@ -271,8 +271,7 @@ function WorkflowRow({
           title={`Open ${r.name ?? r.slug}`}
           className={`k-btn-ghost -mx-1.5 inline-flex h-8 max-w-full items-center gap-2 px-1.5 hover:text-[var(--accent)] ${r.selectable ? "" : "k-fg3"}`}
         >
-          <TopicMark topic="workflow" size={22} />
-          <span className="truncate font-medium">{name}</span>
+          <CatalogueName kind="workflow" name={r.name ?? r.slug} label={name} className="font-medium" />
         </Link>
       </td>
       <td className="max-w-0 px-3 py-2">
@@ -466,7 +465,7 @@ function WorkflowDrawer({
       onClose={onClose}
       head={
         <div className="flex min-w-0 items-center gap-2.5">
-          <TopicMark topic="workflow" size={36} />
+          <CatalogueObjectMark kind="workflow" name={r.name ?? r.slug} size={36} />
           <div className="min-w-0">
             <p className="k-label">Workflow</p>
             <p className="truncate text-[14px] font-medium" title={r.name ?? r.slug}>

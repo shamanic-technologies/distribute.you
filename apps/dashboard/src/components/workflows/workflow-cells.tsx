@@ -32,7 +32,7 @@
 
 import { FileTextIcon } from "@phosphor-icons/react/dist/csr/FileText";
 import { CpuIcon } from "@phosphor-icons/react/dist/csr/Cpu";
-import { ProviderLogo } from "@/components/provider-logo";
+import { CatalogueObjectMark } from "@/components/v2/catalogue-name";
 import { workflowModelMark } from "@/lib/workflow-model-marks";
 import { workflowTemplateLabel } from "@/lib/workflow-template-label";
 
@@ -126,17 +126,13 @@ export function WorkflowStackLine({
     <div className="mt-1 flex min-w-0 flex-wrap items-center gap-x-2 gap-y-0.5 text-[11px] leading-tight text-gray-400">
       {model && (
         <span className="inline-flex min-w-0 items-center gap-1">
-          {model.providerDomain ? (
-            <ProviderLogo domain={model.providerDomain} size={12} className="shrink-0 rounded-[2px]" />
-          ) : (
-            <CpuIcon size={12} weight="duotone" className="shrink-0" aria-hidden />
-          )}
+          <CatalogueObjectMark kind="llm" name={model.alias} size={12} />
           <span className="font-mono break-all">{model.alias}</span>
         </span>
       )}
       {template && (
         <span className="inline-flex min-w-0 items-center gap-1">
-          <FileTextIcon size={12} weight="duotone" className="shrink-0" aria-hidden />
+          <CatalogueObjectMark kind="template" name={template.id} size={12} />
           <span className="font-mono break-all">{template.id}</span>
         </span>
       )}
@@ -158,21 +154,8 @@ export function WorkflowModelCell({ contentModel }: { contentModel: string | nul
     return <TwoLine mark={<GlyphTile glyph="model" accent={false} />} line1={<span className="text-gray-400">—</span>} />;
   }
   const known = model.label !== model.alias;
-  return (
-    <TwoLine
-      mark={
-        model.providerDomain ? (
-          <span className={`${TILE} bg-white`}>
-            <ProviderLogo domain={model.providerDomain} size={MARK_PX - 8} className="rounded-sm" />
-          </span>
-        ) : (
-          <GlyphTile glyph="model" accent={false} />
-        )
-      }
-      line1={model.label}
-      line2={known ? model.alias : null}
-    />
-  );
+  // The shared LLM mark (product logo; an unknown family draws the neutral one and is logged).
+  return <TwoLine mark={<CatalogueObjectMark kind="llm" name={model.label} size={MARK_PX} />} line1={model.label} line2={known ? model.alias : null} />;
 }
 
 /**
@@ -197,7 +180,7 @@ export function WorkflowTemplateCell({
   }
   return (
     <TwoLine
-      mark={<GlyphTile glyph="template" accent />}
+      mark={<CatalogueObjectMark kind="template" name={template.label} size={MARK_PX} />}
       line1={template.label}
       line2={template.id}
     />

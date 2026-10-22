@@ -13,6 +13,7 @@ describe("workflowTemplateLabel", () => {
     expect(workflowTemplateLabel("blind-discovery-email-v26")).toEqual({
       id: "blind-discovery-email-v26",
       label: "Blind Discovery Email",
+      version: "v26",
     });
   });
 
@@ -43,14 +44,15 @@ describe("workflowTemplateLabel", () => {
 
   it("answers NULL for a workflow that states no template", () => {
     expect(workflowTemplateLabel(null)).toBeNull();
+    expect(workflowTemplateLabel("Cold Email")!.version).toBeNull();
     expect(workflowTemplateLabel(undefined)).toBeNull();
     expect(workflowTemplateLabel("   ")).toBeNull();
   });
 
   it("keeps the id as the label when the strip leaves nothing", () => {
     // "we could not name this" must never render blank.
-    expect(workflowTemplateLabel("v9")).toEqual({ id: "v9", label: "V9" });
-    expect(workflowTemplateLabel("-v9")).toEqual({ id: "-v9", label: "-v9" });
+    expect(workflowTemplateLabel("v9")).toEqual({ id: "v9", label: "V9", version: null });
+    expect(workflowTemplateLabel("-v9")).toEqual({ id: "-v9", label: "-v9", version: "v9" });
   });
 });
 

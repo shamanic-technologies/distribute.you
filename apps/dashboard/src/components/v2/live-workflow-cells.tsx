@@ -4,6 +4,7 @@ import { formatUsdAdaptive } from "@/lib/format-number";
 import { formatRoi, roiIsGood } from "@/lib/format-roi";
 import { formatRatePct } from "@/lib/brand-conversion-rates";
 import type { LiveWorkflowRow } from "@/lib/live-workflow-rows";
+import { CatalogueName } from "@/components/v2/catalogue-name";
 
 /**
  * The live-ranking cells, drawn ONE way for both tables that state them: Research (the fleet)
@@ -33,12 +34,16 @@ export function LiveRankingStrip({
       </span>
       {firstRow && (
         <span>
-          Goes first: <span className="k-fg font-medium">{nameOf(firstRow)}</span>
+          Goes first: <CatalogueName kind="workflow" name={firstRow.name ?? firstRow.slug} label={nameOf(firstRow)} className="k-fg align-middle font-medium" />
         </span>
       )}
       <span>
         Money goes to:{" "}
-        {cashRow ? <span className="k-fg font-medium">{nameOf(cashRow)}</span> : <span className="k-fg3">{moneyNote}</span>}
+        {cashRow ? (
+          <CatalogueName kind="workflow" name={cashRow.name ?? cashRow.slug} label={nameOf(cashRow)} className="k-fg align-middle font-medium" />
+        ) : (
+          <span className="k-fg3">{moneyNote}</span>
+        )}
       </span>
     </div>
   );
