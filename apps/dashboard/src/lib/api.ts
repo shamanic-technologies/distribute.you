@@ -12681,6 +12681,9 @@ const DynastyDeprecationSchema = z.object({
       .object({
         version: z.number(),
         description: z.string().nullish(),
+        // WF-SHORT-LINE-1023 (workflow-service #764): what sets the dynasty apart on its pipe, per leg.
+        siblingLine: z.string().nullish(),
+        siblingLines: z.array(z.object({ legKey: z.string(), line: z.string() })).nullish(),
         deprecation: z.object({ reason: z.string(), decidedBy: z.string().nullable(), decidedAt: z.string().nullable() }).nullish(),
       })
       .passthrough(),
@@ -12692,12 +12695,19 @@ const DynastyDeprecationSchema = z.object({
  * deprecated (DEPRECATION-REASON-1020; a retired dynasty carries its decision on each version,
  * null while that version runs) and what it does (`description`, the producer's plain words).
  */
-export async function getWorkflowDynastyDeprecation(workflowDynastySlug: string): Promise<{ deprecation: Deprecation | null; description: string | null }> {
+export async function getWorkflowDynastyDeprecation(
+  workflowDynastySlug: string,
+): Promise<{ deprecation: Deprecation | null; description: string | null } & SiblingLines> {
   const query = new URLSearchParams({ workflowDynastySlug, status: "all" });
   const raw = await apiCall<unknown>(`/workflows/summaries?${query.toString()}`);
   const rows = parseStaff("getWorkflowDynastyDeprecation", DynastyDeprecationSchema, raw).workflows;
   const newest = rows.reduce<(typeof rows)[number] | null>((a, w) => (a == null || w.version > a.version ? w : a), null);
-  return { deprecation: newest?.deprecation ?? null, description: newest?.description ?? null };
+  return {
+    deprecation: newest?.deprecation ?? null,
+    description: newest?.description ?? null,
+    siblingLine: newest?.siblingLine ?? null,
+    siblingLines: newest?.siblingLines ?? [],
+  };
 }
 
 const WorkflowSummariesStatusSchema = z.object({
@@ -12718,12 +12728,29 @@ export async function getRunnableWorkflowDynasties(featureSlug: string): Promise
 
 const WorkflowSummariesRunnableSchema = z.object({
   workflows: z.array(
-    z.object({ workflowDynastySlug: z.string(), workflowDynastyStatus: z.string(), description: z.string().nullish() }).passthrough(),
+    z
+      .object({
+        workflowDynastySlug: z.string(),
+        workflowDynastyStatus: z.string(),
+        description: z.string().nullish(),
+        siblingLine: z.string().nullish(),
+        siblingLines: z.array(z.object({ legKey: z.string(), line: z.string() })).nullish(),
+      })
+      .passthrough(),
   ),
 });
 
+/**
+ * What sets a dynasty apart from its pipe siblings (workflow-service, per dynasty): `siblingLine`
+ * when one line holds on every leg it sits on, else one per leg in `siblingLines`.
+ */
+export interface SiblingLines {
+  siblingLine: string | null;
+  siblingLines: readonly { legKey: string; line: string }[];
+}
+
 /** One dynasty workflow-service can run now, with what it does in the producer's words. */
-export interface RunnableWorkflowDynasty {
+export interface RunnableWorkflowDynasty extends SiblingLines {
   slug: string;
   description: string | null;
 }
@@ -12740,7 +12767,12 @@ export async function getRunnableWorkflowDynastySummaries(featureSlug: string): 
   const out = new Map<string, RunnableWorkflowDynasty>();
   for (const w of rows) {
     if (w.workflowDynastyStatus !== "active" || out.has(w.workflowDynastySlug)) continue;
-    out.set(w.workflowDynastySlug, { slug: w.workflowDynastySlug, description: w.description?.trim() || null });
+    out.set(w.workflowDynastySlug, {
+      slug: w.workflowDynastySlug,
+      description: w.description?.trim() || null,
+      siblingLine: w.siblingLine ?? null,
+      siblingLines: w.siblingLines ?? [],
+    });
   }
   return [...out.values()];
 }
