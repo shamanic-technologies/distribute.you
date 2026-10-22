@@ -710,8 +710,8 @@ describe("the table survives a phone and the dark theme", () => {
     // Neither stated means nothing is drawn — never a row of dashes, which would read
     // as two facts we looked up and failed to find.
     expect(body).toContain("if (!model && !template) return null;");
-    // An alias the catalogue does not know draws the neutral glyph, never a guessed logo.
-    expect(body).toContain("model.providerDomain ? (");
+    // The shared mark (owner 2026-10-22): an unknown family draws the neutral one, never a guessed logo.
+    expect(body).toContain('<CatalogueObjectMark kind="llm" name={model.alias} size={12} />');
   });
 
   it("the column heads are OBLIQUE, each with its own face", () => {

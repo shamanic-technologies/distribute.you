@@ -8,8 +8,8 @@ import { pollOptions } from "@/lib/query-options";
 import { getTemplateDynastyOutputs, getTemplateOutputs, getWorkflowDynastyOutputs, type TemplateOutput, type WorkflowRunOutput } from "@/lib/api";
 import { EmptyNote, Shimmer } from "@/components/v2/ui";
 import { RoiLabel, RoiValue } from "@/components/v2/roi-label";
-import { Arrow, TopicMark, instantText } from "@/components/v2/research-bits";
-import { modelTagFromName } from "@/lib/written-by";
+import { Arrow, instantText } from "@/components/v2/research-bits";
+import { CatalogueName } from "@/components/v2/catalogue-name";
 import { runVersionLabel } from "@/lib/research/workflow-runs";
 import {
   researchCatalogHref,
@@ -101,24 +101,9 @@ function Fig({ k, v }: { k: React.ReactNode; v: React.ReactNode }) {
   );
 }
 
-/** A model as a tag that opens its page: the product mark (Claude, Gemini) and its name. */
+/** A model as a tag that opens its page when it has one: the shared LLM chip. */
 function ModelTag({ base, pipe, r }: { base: string; pipe: ResearchPipe; r: ResearchRef }) {
-  const tag = modelTagFromName(r.label);
-  const body = (
-    <>
-      {tag.logoSrc ? <img src={tag.logoSrc} alt="" width={12} height={12} className="shrink-0" /> : <TopicMark topic="llm" size={14} />}
-      <span className="truncate">{tag.logoSrc ? tag.label : r.label}</span>
-    </>
-  );
-  return r.linked ? (
-    <Link href={researchCatalogHref(base, pipe, "models", r.key)} title={r.label} className="k-chip inline-flex min-w-0 max-w-full items-center gap-1 hover:text-[var(--accent)]">
-      {body}
-    </Link>
-  ) : (
-    <span title={r.label} className="k-chip inline-flex min-w-0 max-w-full items-center gap-1">
-      {body}
-    </span>
-  );
+  return <CatalogueName kind="llm" variant="chip" name={r.label} href={r.linked ? researchCatalogHref(base, pipe, "models", r.key) : null} />;
 }
 
 /**
@@ -146,9 +131,9 @@ export function TemplateOutputsPanel({
     <aside className="k-card flex h-fit min-h-0 flex-col self-start overflow-hidden lg:sticky lg:top-4 lg:max-h-[calc(100vh-120px)]">
       <div className="border-b border-[var(--line-subtle)] px-4 py-3">
         <p className="k-label">Template</p>
-        <Link href={href} className="mt-1 block truncate text-[14px] font-medium hover:text-[var(--accent)]" title={t.label}>
-          {t.label}
-        </Link>
+        <p className="mt-1 flex min-w-0 text-[14px] font-medium">
+          <CatalogueName kind="template" name={t.label} href={href} />
+        </p>
         <div className="mt-3">
           <TemplateFigures f={t} outcome={outcome} />
         </div>
@@ -162,8 +147,7 @@ export function TemplateOutputsPanel({
                 {t.workflows.map((w) => (
                   <li key={w.key}>
                     <Link href={researchCatalogHref(base, pipe, "workflows", w.key)} className="k-hover -mx-2 flex items-center gap-2 rounded-[8px] px-2 py-1" title={w.label}>
-                      <TopicMark topic="workflow" size={18} />
-                      <span className="min-w-0 flex-1 truncate">{w.label}</span>
+                      <CatalogueName kind="workflow" name={w.label} className="flex-1" />
                       <Arrow />
                     </Link>
                   </li>
@@ -376,12 +360,14 @@ export function RecentRuns({ slug, limit }: { slug: string; limit: number }) {
                 <span className="k-mono k-fg3 w-8 shrink-0 truncate text-[12px]" title={`Workflow version ${o.workflowSlug}`}>
                   {runVersionLabel(slug, o.workflowSlug)}
                 </span>
-                <span className="k-chip min-w-0 truncate" title={o.promptType ?? undefined}>
-                  {template ?? <span className="k-fg3">No template on record</span>}
-                </span>
-                <span className="k-chip ml-auto min-w-0 shrink-0 truncate" title={o.model}>
-                  {o.model}
-                </span>
+                {o.templateDynasty ? (
+                  <CatalogueName kind="template" variant="chip" name={o.templateDynasty.name} version={`v${o.templateDynasty.position}`} className="min-w-0" />
+                ) : template ? (
+                  <CatalogueName kind="template" variant="chip" name={template} className="min-w-0" />
+                ) : (
+                  <span className="k-chip k-fg3 min-w-0 truncate">No template on record</span>
+                )}
+                <CatalogueName kind="llm" variant="chip" name={o.model} className="ml-auto min-w-0 shrink-0" />
                 <Arrow />
               </button>
             </li>
@@ -418,13 +404,9 @@ function OutputItem({ o, expanded }: { o: TemplateOutput; expanded: boolean }) {
       <div className="flex min-w-0 items-center gap-2">
         <span className="k-mono k-fg3 shrink-0 text-[11.5px]">{instantText(o.createdAt)}</span>
         {"promptType" in o && typeof o.promptType === "string" && (
-          <span className="k-chip ml-auto min-w-0 truncate" title={`Version ${o.promptType}`}>
-            {o.promptType}
-          </span>
+          <CatalogueName kind="template" variant="chip" name={o.promptType} className="ml-auto min-w-0" />
         )}
-        <span className={`k-chip min-w-0 truncate ${"promptType" in o ? "" : "ml-auto"}`} title={o.model}>
-          {o.model}
-        </span>
+        <CatalogueName kind="llm" variant="chip" name={o.model} className={`min-w-0 ${"promptType" in o ? "" : "ml-auto"}`} />
       </div>
       <p className="mt-1.5 text-[13px] font-medium leading-5">{o.subject ?? <span className="k-fg4">No subject</span>}</p>
       {first ? (

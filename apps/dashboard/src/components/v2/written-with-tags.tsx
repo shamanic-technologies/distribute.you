@@ -4,6 +4,7 @@ import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from "re
 import { createPortal } from "react-dom";
 import { getLeadWrittenBy } from "@/lib/api";
 import { useAuthQuery } from "@/lib/use-auth-query";
+import { CatalogueName } from "@/components/v2/catalogue-name";
 import { tagsThatFit, writtenByForRow, writtenWithTags, type ModelTag, type WrittenBy } from "@/lib/written-by";
 
 /**
@@ -19,10 +20,6 @@ export function useLeadWrittenBy(leadId: string | null | undefined): WrittenBy |
 }
 
 const GAP = 4;
-
-function ModelLogo({ model, size }: { model: ModelTag; size: number }) {
-  return model.logoSrc ? <img src={model.logoSrc} alt="" width={size} height={size} className="shrink-0" /> : null;
-}
 
 /**
  * Discreet tags beside a message's label (owner 2026-10-19): "Written with", the model (product
@@ -47,21 +44,18 @@ export function WrittenWithTags({
   at: string | null | undefined;
 }) {
   const tags = writtenWithTags(writtenByForRow(writtenBy, { id: messageId, campaignId, at }));
-  const chips: { key: string; title: string; body: ReactNode }[] = [];
-  if (tags?.model) {
-    const model = tags.model;
+  // The model wears the shared LLM chip (product mark + name, `catalogue-name.tsx`); a tactic is a plain chip.
+  const chips: { key: string; el: ReactNode }[] = [];
+  if (tags?.model) chips.push({ key: "model", el: <CatalogueName kind="llm" variant="chip" name={tags.model.name} /> });
+  for (const t of tags?.tactics ?? [])
     chips.push({
-      key: "model",
-      title: model.name,
-      body: (
-        <>
-          <ModelLogo model={model} size={12} />
-          {model.label}
-        </>
+      key: `t:${t.name}`,
+      el: (
+        <span className="k-chip" title={t.line}>
+          {t.name}
+        </span>
       ),
     });
-  }
-  for (const t of tags?.tactics ?? []) chips.push({ key: `t:${t.name}`, title: t.line, body: t.name });
 
   const rootRef = useRef<HTMLSpanElement>(null);
   const ghostRef = useRef<HTMLSpanElement>(null);
@@ -97,8 +91,8 @@ export function WrittenWithTags({
       <span ref={ghostRef} aria-hidden className="invisible flex h-0 items-center gap-1 whitespace-nowrap">
         <span className="k-fg3 text-[12px]">Written with</span>
         {chips.map((c) => (
-          <span key={c.key} className="k-chip">
-            {c.body}
+          <span key={c.key} className="inline-flex">
+            {c.el}
           </span>
         ))}
         <span className="k-chip">+{chips.length} more</span>
@@ -106,8 +100,8 @@ export function WrittenWithTags({
       <span className="flex items-center gap-1 whitespace-nowrap">
         <span className="k-fg3 text-[12px]">Written with</span>
         {chips.slice(0, chips.length - hidden).map((c) => (
-          <span key={c.key} className="k-chip" title={c.title}>
-            {c.body}
+          <span key={c.key} className="inline-flex">
+            {c.el}
           </span>
         ))}
         {hidden > 0 && tags ? <MoreTags count={hidden} model={tags.model} tactics={tags.tactics} /> : null}
@@ -187,9 +181,8 @@ function MoreTags({
             >
               <p className="k-label">Written with</p>
               {model ? (
-                <p className="mt-2 flex items-center gap-1.5 font-medium">
-                  <ModelLogo model={model} size={14} />
-                  {model.name}
+                <p className="mt-2 flex font-medium">
+                  <CatalogueName kind="llm" name={model.name} label={model.name} />
                 </p>
               ) : null}
               <ul className="mt-2 space-y-1.5">

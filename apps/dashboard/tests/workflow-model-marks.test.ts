@@ -163,8 +163,8 @@ describe("the surfaces that draw a model", () => {
     }
   });
 
-  it("draws the provider logo by DOMAIN, never by a name", () => {
-    expect(cells).toMatch(/domain=\{model\.providerDomain/);
+  it("draws the model's product mark through the ONE shared component (owner 2026-10-22)", () => {
+    expect(cells).toContain('<CatalogueObjectMark kind="llm" name={model.label} size={MARK_PX} />');
   });
 
   it("prints the template VERBATIM — it is the only template identity on the wire", () => {

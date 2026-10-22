@@ -18,6 +18,7 @@ import { friendlyDateTime } from "@/lib/friendly-datetime";
 import { leadWorkflowIdentity } from "@/lib/campaign-workflow-rows";
 import { workflowModelMark } from "@/lib/workflow-model-marks";
 import { workflowTemplateLabel } from "@/lib/workflow-template-label";
+import { CatalogueName } from "@/components/v2/catalogue-name";
 import { v2CampaignHref, v2Href, v2PersonHref, v2WorkflowHref } from "@/lib/v2/routes";
 import { ServedPipeMark } from "@/components/v2/served-pipe-mark";
 import { useCampaigns } from "@/components/v2/use-campaigns";
@@ -230,20 +231,19 @@ export function RunPage() {
                           k="Workflow"
                           v={
                             workflow?.dynastySlug && featureSlug && legKey ? (
-                              <Link
+                              <CatalogueName
+                                kind="workflow"
+                                name={workflow.dynastyName ?? workflow.dynastySlug}
                                 href={v2WorkflowHref(orgId, brandId, workflow.dynastySlug, `${featureSlug}|${legKey}`, campaignId)}
-                                className="hover:underline"
-                              >
-                                {workflow.dynastyName ?? workflow.dynastySlug}
-                              </Link>
-                            ) : (
-                              workflow?.dynastyName ?? null
-                            )
+                              />
+                            ) : workflow?.dynastyName ? (
+                              <CatalogueName kind="workflow" name={workflow.dynastyName} />
+                            ) : null
                           }
                         />
                         <Row k="Version" v={workflowSlug ? <span className="k-mono text-[12px]">{workflowSlug}</span> : null} />
-                        <Row k="LLM" v={model ? <span title={model.alias}>{model.label}</span> : null} />
-                        <Row k="Template" v={template ? <span title={template.id}>{template.label}</span> : null} />
+                        <Row k="LLM" v={model ? <CatalogueName kind="llm" name={model.label} /> : null} />
+                        <Row k="Template" v={template ? <CatalogueName kind="template" name={template.label} version={template.version} /> : null} />
                       </>
                     )}
                     <Row k="Audience" v={audienceName} />
