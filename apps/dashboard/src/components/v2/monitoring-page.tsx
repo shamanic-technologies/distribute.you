@@ -30,6 +30,9 @@ import { SkillsView } from "@/components/v2/monitoring-skills";
 import { CapacityPage, RulesPage } from "@/components/v2/monitoring-capacity";
 import { BlocklistsPage } from "@/components/v2/monitoring-blocklists";
 import { ThreadsPage } from "@/components/v2/monitoring-threads";
+import { WhatsappLinesPage, WhatsappLinesTile, useWhatsappLines } from "@/components/v2/monitoring-whatsapp";
+import { WhatsappLogoIcon } from "@phosphor-icons/react/dist/csr/WhatsappLogo";
+import { linesDown, linkedLines } from "@/lib/monitoring/whatsapp-lines";
 import { DomainsEstate, MailboxesSummary } from "@/components/v2/monitoring-details";
 import {
   costItemNames,
@@ -92,7 +95,7 @@ const centsPerEmail = (c: number | null) => (c == null ? null : `${c.toLocaleStr
 
 // ─── Shell ─────────────────────────────────────────────────────────────────
 
-type SectionKey = "cost" | "customers" | "price" | "margin" | "emails" | "chat";
+type SectionKey = "cost" | "customers" | "price" | "margin" | "emails" | "whatsapp" | "chat";
 
 /** Each section wears one colour and one mark, the way Research's topics do. */
 const SECTION_LOOK: Record<SectionKey, { name: string; color: string; Icon: typeof ReceiptIcon; sub: string }> = {
@@ -101,6 +104,7 @@ const SECTION_LOOK: Record<SectionKey, { name: string; color: string; Icon: type
   price: { name: "Price", color: "var(--data-sky)", Icon: TagIcon, sub: "What we charge our users" },
   margin: { name: "Margin", color: "var(--data-teal)", Icon: TrendUpIcon, sub: "Billed minus what the vendors charged" },
   emails: { name: "Emails", color: "var(--data-violet)", Icon: EnvelopeSimpleIcon, sub: "Inbox placement, mailboxes, domains, and every email we sent" },
+  whatsapp: { name: "WhatsApp", color: "var(--data-lime)", Icon: WhatsappLogoIcon, sub: "Whether every linked line can send" },
   chat: { name: "Chat", color: "var(--data-amber)", Icon: ChatCircleIcon, sub: "What the Copilot knows" },
 };
 
@@ -127,6 +131,7 @@ const PAGE: Record<MonitoringPage, { section: SectionKey; title: string; questio
   "emails/blocklists": { section: "emails", title: "Blocklists", question: "Is any sending domain on a blocklist, and is its removal on its way?" },
   "emails/threads": { section: "emails", title: "Threads", question: "What did each thread send and receive, and how did it end?" },
   "emails/rules": { section: "emails", title: "Rules", question: "What decides whether an address gets new sequences, and at what limits?" },
+  "whatsapp/lines": { section: "whatsapp", title: "Lines", question: "Is every WhatsApp line connected, and since when is one down?" },
   "chat/skills": { section: "chat", title: "Skills", question: "What does the Copilot read before it acts?" },
 };
 
@@ -210,7 +215,9 @@ export function V2Monitoring() {
         </div>
       </div>
       <p className="k-fg3 mt-2 text-[13px]">
-        {meta.section === "chat"
+        {meta.section === "whatsapp"
+          ? "Every org pooled, read live from production. Times are UTC."
+          : meta.section === "chat"
           ? "Read live from production. Your edits save as you type and reach the Copilot on its next message."
           : meta.section === "emails" && view.page !== "emails"
             ? "Every mailbox we send from, read live from production. Times are UTC."
@@ -259,6 +266,7 @@ export function V2Monitoring() {
         {view.page === "emails/blocklists" && <BlocklistsPage base={base} />}
         {view.page === "emails/threads" && <ThreadsPage base={base} />}
         {view.page === "emails/rules" && <RulesPage base={base} />}
+        {view.page === "whatsapp/lines" && <WhatsappLinesPage />}
         {view.page === "chat/skills" && <SkillsView />}
       </div>
     </Frame>
@@ -342,6 +350,7 @@ function Hub({ base }: { base: string }) {
   const items = versions.data ? costItemNames(versions.data).length : undefined;
   const verdict = useSendingVerdict();
   const hub = useOpenSections(OPEN_SECTIONS_KEY);
+  const wa = useWhatsappLines();
   return (
     <Frame crumbs={[{ label: "Monitoring" }]}>
       <div className="flex flex-wrap items-end justify-between gap-3">
@@ -358,6 +367,10 @@ function Hub({ base }: { base: string }) {
       {/* The one-second read (owner 2026-10-19): inbox % at Google and Microsoft 365, red under instantly-service's bar. */}
       <div className="mt-6">
         <SendingHealthTiles />
+      </div>
+      {/* A line down blocks every WhatsApp greeting (owner 2026-10-23): red here IS the alert, outside any collapsed row. */}
+      <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
+        <WhatsappLinesTile href={href("whatsapp/lines")} />
       </div>
 
       <HubOpen.Provider value={hub}>
@@ -525,6 +538,30 @@ function Hub({ base }: { base: string }) {
       </Section>
 
       </div>
+      </div>
+
+      <div>
+      <SectionTitle count={1}>WhatsApp</SectionTitle>
+      <Section section="whatsapp" count={1} grid={false}>
+        <HubChips>
+          <HubChip href={href("whatsapp/lines")} color={wa.data && linesDown(wa.data).length ? "var(--data-rose)" : "var(--data-lime)"} label="Lines" />
+        </HubChips>
+        <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3">
+        <Card
+          href={href("whatsapp/lines")}
+          page="whatsapp/lines"
+          error={wa.isError && !wa.data}
+          cells={[
+            {
+              label: "Down now",
+              value: wa.data && <span style={{ color: linesDown(wa.data).length ? "var(--data-rose)" : undefined }}>{linesDown(wa.data).length}</span>,
+              note: "a red line sends nothing",
+            },
+            { label: "Linked lines", value: wa.data && linkedLines(wa.data).length, note: "every org" },
+          ]}
+        />
+        </div>
+      </Section>
       </div>
 
       <div>
