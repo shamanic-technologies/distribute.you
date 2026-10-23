@@ -38,8 +38,8 @@ export interface PerformanceRow extends PerformanceFigures {
   key: string;
   rank: number;
   workflow: { key: string; label: string; name: string | null } & PerformanceMark;
-  /** The template VERSION that wrote these people, and its dynasty (= its Research page). */
-  template: { key: string; label: string; dynasty: ({ key: string; label: string } & PerformanceMark) | null } | null;
+  /** The template DYNASTY (owner 2026-10-23: a Template column is the dynasty) = its Research page. */
+  template: ({ key: string; label: string; dynasty?: ({ key: string; label: string } & PerformanceMark) | null } & PerformanceMark) | null;
   /** The LLM dynasty (= its Research model page). */
   llm: { key: string; label: string; provider: string | null } | null;
   writerUnavailableReason: string | null;
