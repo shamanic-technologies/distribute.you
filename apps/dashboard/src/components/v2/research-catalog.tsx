@@ -5,7 +5,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { EmptyNote, MarkLines, SectionTitle, Shimmer, TopBar, type Crumb } from "@/components/v2/ui";
-import { CostBasisSwitch } from "@/components/v2/cost-basis-switch";
+import { ResearchSwitches } from "@/components/v2/maturity-view-switch";
 import { RoiLabel, RoiValue } from "@/components/v2/roi-label";
 import { opensDrawer, ResearchLiveWorkflows, usePipeChannelName, usePipeWorkflowRows, useResearchPipeLeg } from "@/components/v2/research-live-workflows";
 import { TacticTags, TacticsBlock } from "@/components/v2/tactic-tags";
@@ -215,7 +215,7 @@ export function V2ResearchCatalogView({
   if (!catalog) {
     return (
       <>
-        <TopBar crumbs={crumbs} actions={<CostBasisSwitch />} />
+        <TopBar crumbs={crumbs} actions={<ResearchSwitches />} />
         <div className="mx-auto max-w-[1280px] px-4 pb-16 pt-6 md:px-6">
           {failed ? (
             <div className="k-card">
@@ -238,7 +238,7 @@ export function V2ResearchCatalogView({
   if (!item) {
     return (
       <>
-        <TopBar crumbs={[...crumbs, { label: "Not found" }]} actions={<CostBasisSwitch />} />
+        <TopBar crumbs={[...crumbs, { label: "Not found" }]} actions={<ResearchSwitches />} />
         <div className="mx-auto max-w-[1280px] px-4 pb-16 pt-6 md:px-6">
           <div className="k-card">
             <EmptyNote>
@@ -260,7 +260,7 @@ export function V2ResearchCatalogView({
     if (!version) {
       return (
         <>
-          <TopBar crumbs={versionCrumbs} actions={<CostBasisSwitch />} />
+          <TopBar crumbs={versionCrumbs} actions={<ResearchSwitches />} />
           <div className="mx-auto max-w-[1280px] px-4 pb-16 pt-6 md:px-6">
             <div className="k-card">
               <EmptyNote>
@@ -376,7 +376,7 @@ function CatalogList({
   const selectedTemplate = kind === "templates" ? ((shown as ResearchTemplate[]).find((r) => r.key === selected) ?? null) : null;
   return (
     <>
-      <TopBar crumbs={crumbs} actions={<CostBasisSwitch />} />
+      <TopBar crumbs={crumbs} actions={<ResearchSwitches />} />
       <div className="mx-auto max-w-[1280px] px-4 pb-16 pt-6 md:px-6">
         <div className="flex flex-wrap items-end justify-between gap-3">
           <div className="min-w-0">
@@ -844,7 +844,7 @@ function WorkflowView({
   const why = useWorkflowDeprecation(w.key);
   return (
     <>
-      <TopBar crumbs={crumbs} actions={<CostBasisSwitch />} />
+      <TopBar crumbs={crumbs} actions={<ResearchSwitches />} />
       <div className="mx-auto max-w-[1280px] px-4 pb-16 pt-6 md:px-6">
         <Header
           topic="workflow"
@@ -1180,7 +1180,7 @@ function TemplateVersionView({ base, pipe, t, v, crumbs }: { base: string; pipe:
   const dynastyHref = researchCatalogHref(base, pipe, "templates", t.key);
   return (
     <>
-      <TopBar crumbs={crumbs} actions={<CostBasisSwitch />} />
+      <TopBar crumbs={crumbs} actions={<ResearchSwitches />} />
       <div className="mx-auto max-w-[1280px] px-4 pb-16 pt-6 md:px-6">
         <Header
           topic="template"
@@ -1243,7 +1243,7 @@ function TemplateView({
   const versionLabel = new Map(versions.map((v) => [v.key, v.label]));
   return (
     <>
-      <TopBar crumbs={crumbs} actions={<CostBasisSwitch />} />
+      <TopBar crumbs={crumbs} actions={<ResearchSwitches />} />
       <div className="mx-auto max-w-[1280px] px-4 pb-16 pt-6 md:px-6">
         <Header
           topic="template"
@@ -1397,7 +1397,7 @@ function ModelView({
   const second = modelSecondLine(m);
   return (
     <>
-      <TopBar crumbs={crumbs} actions={<CostBasisSwitch />} />
+      <TopBar crumbs={crumbs} actions={<ResearchSwitches />} />
       <div className="mx-auto max-w-[1280px] px-4 pb-16 pt-6 md:px-6">
         <Header
           topic="llm"

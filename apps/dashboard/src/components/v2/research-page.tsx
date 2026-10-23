@@ -27,7 +27,7 @@ import {
 } from "@/components/v2/research-bits";
 import { V2ResearchCatalogView, PipeCatalogLinks } from "@/components/v2/research-catalog";
 import { useResearchPipeLeg } from "@/components/v2/research-live-workflows";
-import { CostBasisSwitch } from "@/components/v2/cost-basis-switch";
+import { ResearchSwitches } from "@/components/v2/maturity-view-switch";
 import { CatalogueName } from "@/components/v2/catalogue-name";
 import { ResearchSourceProvider, useResearch, useResearchCatalog } from "@/lib/research/research-source";
 import { useFeatures } from "@/lib/features-context";
@@ -300,7 +300,7 @@ function V2ResearchHub({ base }: { base: string }) {
   const otherRows = withStudies(groups.other);
   return (
     <>
-      <TopBar crumbs={[{ label: "Research" }]} actions={<CostBasisSwitch />} />
+      <TopBar crumbs={[{ label: "Research" }]} actions={<ResearchSwitches />} />
       <div className="mx-auto max-w-[1280px] px-4 pb-16 pt-6 md:px-6">
         <div className="flex flex-wrap items-end justify-between gap-3">
           <div className="min-w-0">
@@ -512,7 +512,7 @@ function V2ResearchStudy({ base, studyId }: { base: string; studyId: string }) {
   if (!study) {
     return (
       <>
-        <TopBar crumbs={[{ label: "Research", href: base }, { label: "Not found" }]} actions={<CostBasisSwitch />} />
+        <TopBar crumbs={[{ label: "Research", href: base }, { label: "Not found" }]} actions={<ResearchSwitches />} />
         <div className="mx-auto max-w-[1280px] px-4 pb-16 pt-6 md:px-6">
           <div className="k-card">
             <EmptyNote>
@@ -535,7 +535,7 @@ function V2ResearchStudy({ base, studyId }: { base: string; studyId: string }) {
   const crumbs = [{ label: "Research", href: base }, { label: <SectionName section={section} /> }, { label: topicLabel(study.topic) }];
   return (
     <>
-      <TopBar crumbs={crumbs} actions={<CostBasisSwitch />} />
+      <TopBar crumbs={crumbs} actions={<ResearchSwitches />} />
       <div className="mx-auto max-w-[1280px] px-4 pb-16 pt-6 md:px-6">
         <div className="flex min-w-0 items-center gap-3">
           <TopicMark topic={study.topic} size={40} />
@@ -731,7 +731,7 @@ export function V2Research() {
     <ResearchSourceProvider
       pending={
         <>
-          <TopBar crumbs={crumbs} actions={<CostBasisSwitch />} />
+          <TopBar crumbs={crumbs} actions={<ResearchSwitches />} />
           <div className="mx-auto max-w-[1280px] px-4 pt-6 md:px-6">
             <p className="k-fg3 text-[13px]">Loading the research…</p>
           </div>
@@ -739,7 +739,7 @@ export function V2Research() {
       }
       failed={
         <>
-          <TopBar crumbs={crumbs} actions={<CostBasisSwitch />} />
+          <TopBar crumbs={crumbs} actions={<ResearchSwitches />} />
           <div className="mx-auto max-w-[1280px] px-4 pt-6 md:px-6">
             <EmptyNote>We could not load the research just now.</EmptyNote>
           </div>

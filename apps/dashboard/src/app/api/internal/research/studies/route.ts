@@ -20,7 +20,7 @@ export async function GET(req: Request) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
     // The same LIVE file the staff page renders (features-service), billed basis.
-    const body = researchStudies(await readLiveResearch("user", ADMIN_ALLOWED_EMAILS[0]));
+    const body = researchStudies(await readLiveResearch("user", "mature", ADMIN_ALLOWED_EMAILS[0]));
     return NextResponse.json(body, { headers: { "cache-control": "private, no-store" } });
   } catch (err) {
     console.error("[dashboard-research-studies] failed:", err);

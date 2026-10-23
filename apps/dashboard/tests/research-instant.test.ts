@@ -70,7 +70,7 @@ describe("the Research route's memory", () => {
 describe("the route reads every part through the memory", () => {
   const route = read("app/(authed)/api/research/[basis]/[part]/route.ts");
   it("file, catalog, performance and texts", () => {
-    for (const k of ["`${b}/file`", "`${b}/catalog`", "`${b}/performance`", '"texts"']) expect(route).toContain(`memory.read(${k}`);
+    for (const k of ["`${b}/${v}/file`", "`${b}/${v}/catalog`", "`${b}/${v}/performance`", '"texts"']) expect(route).toContain(`memory.read(${k}`);
   });
 });
 
@@ -85,14 +85,14 @@ describe("the browser paints Research from disk on the billed basis only", () =>
       expect(sensitive).not.toContain(`"${root}",`);
     }
     for (const root of ["researchFileActual", "researchPerformanceActual"]) expect(sensitive).toContain(`"${root}",`);
-    expect(source).toContain('basis === "actual" ? ["researchFileActual"]');
-    expect(source).toContain('basis === "actual" ? ["researchPerformanceActual"]');
+    expect(source).toContain('basis === "actual" ? ["researchFileActual", view]');
+    expect(source).toContain('basis === "actual" ? ["researchPerformanceActual", view]');
   });
   it("the file is re-read after a restore (no infinite staleTime) and the hub prefetches Performance and texts", () => {
     const fileQuery = source.slice(source.indexOf("function researchFileQuery("), source.indexOf("function researchPerformanceQuery("));
     expect(fileQuery).not.toContain("ONCE");
     expect(fileQuery).not.toContain("Infinity");
-    expect(source).toContain("prefetchQuery(researchPerformanceQuery(basis))");
+    expect(source).toContain("prefetchQuery(researchPerformanceQuery(basis, view))");
     expect(source).toContain("prefetchQuery(TEXTS_QUERY)");
   });
 });

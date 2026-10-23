@@ -4,7 +4,7 @@ import { useMemo, useState } from "react";
 import { Line, LineChart, ReferenceLine, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { EmptyNote, Shimmer, StatTile, TopBar } from "@/components/v2/ui";
 import { RecordsTabs } from "@/components/v2/records";
-import { CostBasisSwitch } from "@/components/v2/cost-basis-switch";
+import { ResearchSwitches } from "@/components/v2/maturity-view-switch";
 import { RoiLabel, RoiValue, LearningFigure } from "@/components/v2/roi-label";
 import { CatalogueName } from "@/components/v2/catalogue-name";
 import { SectionMark, SectionName } from "@/components/v2/research-bits";
@@ -102,7 +102,7 @@ export function V2ResearchPerformanceView({ base, pipe }: { base: string; pipe: 
 
   return (
     <>
-      <TopBar crumbs={crumbs} actions={<CostBasisSwitch />} />
+      <TopBar crumbs={crumbs} actions={<ResearchSwitches />} />
       <div className="mx-auto max-w-[1280px] px-4 pb-16 pt-6 md:px-6">
         <div className="min-w-0">
           <h1 className="text-[28px] font-medium leading-[34px] tracking-[-0.02em]">
