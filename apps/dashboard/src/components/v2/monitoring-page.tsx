@@ -18,6 +18,7 @@ import { EmailPriceView } from "@/components/v2/monitoring-email-price";
 import { BillingTable } from "@/components/v2/monitoring-billing";
 import { SubscriptionsView } from "@/components/v2/monitoring-subscriptions";
 import { AbsorbedView } from "@/components/v2/monitoring-absorbed";
+import { AccountsView } from "@/components/v2/monitoring-accounts";
 import { NewPricingView } from "@/components/v2/monitoring-new-pricing";
 import { PricingBasisView } from "@/components/v2/monitoring-pricing-basis";
 import { PricingComparisonView } from "@/components/v2/monitoring-pricing-comparison";
@@ -101,7 +102,7 @@ type SectionKey = "cost" | "customers" | "price" | "margin" | "emails" | "whatsa
 /** Each section wears one colour and one mark, the way Research's topics do. */
 const SECTION_LOOK: Record<SectionKey, { name: string; color: string; Icon: typeof ReceiptIcon; sub: string }> = {
   cost: { name: "Cost", color: "var(--data-rose)", Icon: ReceiptIcon, sub: "What our vendors charged us" },
-  customers: { name: "Customers", color: "var(--data-lime)", Icon: UsersThreeIcon, sub: "What each customer costs us that they do not pay" },
+  customers: { name: "Customers", color: "var(--data-lime)", Icon: UsersThreeIcon, sub: "How each account is doing, and what it costs us" },
   price: { name: "Price", color: "var(--data-sky)", Icon: TagIcon, sub: "What we charge our users" },
   margin: { name: "Margin", color: "var(--data-teal)", Icon: TrendUpIcon, sub: "Billed minus what the vendors charged" },
   emails: { name: "Emails", color: "var(--data-violet)", Icon: EnvelopeSimpleIcon, sub: "Inbox placement, mailboxes, domains, and every email we sent" },
@@ -114,6 +115,7 @@ const PAGE: Record<MonitoringPage, { section: SectionKey; title: string; questio
   "cost/spend": { section: "cost", title: "Spend per provider", question: "How much has each provider charged us since inception?" },
   "cost/subscriptions": { section: "cost", title: "Subscriptions", question: "What does one credit of each subscription really cost us?" },
   "cost/email-sending": { section: "cost", title: "Email sending", question: "What does sending one cold email really cost us?" },
+  "customers/accounts": { section: "customers", title: "Accounts", question: "How healthy is each customer's account?" },
   "customers/absorbed": { section: "customers", title: "Absorbed", question: "What do our customers cost us that they do not pay?" },
   "price/billed": { section: "price", title: "Billed to users", question: "What did we bill for each cost item, and at what price?" },
   "price/new-pricing": { section: "price", title: "New pricing", question: "What would each cost item cost at its real cost ×2?" },
@@ -229,6 +231,7 @@ export function V2Monitoring() {
         {view.page === "cost/spend" && <SpendPage />}
         {view.page === "cost/subscriptions" && <SubscriptionsPage />}
         {view.page === "cost/email-sending" && <EmailSendingPage />}
+        {view.page === "customers/accounts" && <CustomerAccountsPage />}
         {view.page === "customers/absorbed" && <AbsorbedPage />}
         {view.page === "price/billed" && <BilledPage />}
         {view.page === "price/new-pricing" && <NewPricingView />}
@@ -469,7 +472,16 @@ function Hub({ base }: { base: string }) {
         />
       </Section>
 
-      <Section section="customers" count={1}>
+      <Section section="customers" count={2}>
+        <Card
+          href={href("customers/accounts")}
+          page="customers/accounts"
+          error={absorbed.isError}
+          cells={[
+            { label: "Active", value: ab?.currentCustomers, note: "a campaign running" },
+            { label: "Churned", value: ab?.churnedCustomers, note: "paid before, nothing running" },
+          ]}
+        />
         <Card
           href={href("customers/absorbed")}
           page="customers/absorbed"
@@ -779,6 +791,11 @@ function BilledPage() {
 function SubscriptionsPage() {
   const subs = useSubscriptionCosts();
   return <Loaded q={subs}>{(d) => <SubscriptionsView data={d} />}</Loaded>;
+}
+
+function CustomerAccountsPage() {
+  const absorbed = useAbsorbedCosts();
+  return <Loaded q={absorbed}>{(d) => <AccountsView data={d} />}</Loaded>;
 }
 
 function AbsorbedPage() {

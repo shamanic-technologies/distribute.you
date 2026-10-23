@@ -612,13 +612,30 @@ describe("monitoring: absorbed costs (owner 2026-10-13)", () => {
   it("is a Customers card and its own page, read through the staff gateway, never written to disk", () => {
     expect(MONITORING_PAGES).toContain("customers/absorbed");
     const page = read("components/v2/monitoring-page.tsx");
-    expect(page).toContain('<Section section="customers" count={1}>');
+    expect(page).toContain('<Section section="customers" count={2}>');
     expect(page).toContain('page="customers/absorbed"');
     expect(page).toContain('{view.page === "customers/absorbed" && <AbsorbedPage />}');
     expect(page).toContain('["staffAbsorbedCosts"]');
     expect(read("lib/api.ts")).toContain("STAFF_MONITORING_PATHS.absorbedCosts");
     const persist = read("lib/persist-cache.ts");
     expect(persist.slice(persist.indexOf("export const SENSITIVE_QUERY_ROOTS"), persist.indexOf("export const PERSISTABLE_QUERY_ROOTS"))).toContain('"staffAbsorbedCosts"');
+  });
+
+  it("Accounts (owner 2026-10-23): one row per customer, tabs Active | Churned on billing's verdict, a row opens a right panel", () => {
+    expect(MONITORING_PAGES).toContain("customers/accounts");
+    const page = read("components/v2/monitoring-page.tsx");
+    expect(page).toContain('page="customers/accounts"');
+    expect(page).toContain('{view.page === "customers/accounts" && <CustomerAccountsPage />}');
+    const view = read("components/v2/monitoring-accounts.tsx");
+    // The tab is billing's served verdict, never re-graded here; our own orgs are never customers.
+    expect(view).toContain('c.customerStatus === "current"');
+    expect(view).toContain('c.customerStatus === "churned"');
+    expect(view).toContain("!c.platformOrg && !c.ownOrg");
+    expect(view).toContain('label: "Active"');
+    expect(view).toContain('label: "Churned"');
+    // The panel portals to the shell and closes on Esc.
+    expect(view).toContain('document.getElementById("v2-portal")');
+    expect(view).toContain('e.key === "Escape"');
   });
 
   it("a customer reads billing's status (current / churned / never paid) and last payment; our own orgs are never customers (owner 2026-10-13)", () => {
