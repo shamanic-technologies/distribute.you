@@ -2,8 +2,10 @@
  * Research's Performance tab (owner 2026-10-23, RESEARCH-PERFORMANCE-1023): for one pipe, every
  * workflow x template x LLM combination that sent its emails, all clients pooled, plus the pipe's
  * five since-inception figures and their monthly series. features-service serves every figure
- * (`GET /internal/research/performance`, gateway `/v1/features/research/performance`); this module
- * only types the read and sorts rows into the Active / Deprecated tabs. Alias-free: unit-tested.
+ * (`GET /internal/research/performance`, gateway `/v1/features/research/performance`), each row's
+ * status and its order included (RESEARCH-COMBO-STATUS-1023); this module only types the read, splits
+ * rows into the Active / Deprecated tabs on the served status and words the deprecated parts.
+ * Alias-free: unit-tested.
  */
 
 export interface PerformanceFigure {
@@ -45,6 +47,26 @@ export interface PerformanceRow extends PerformanceFigures {
   writerUnavailableReason: string | null;
   maturity: { isMature: boolean; matureOutcomes: number | null; outcomesRequired: number };
   learning: boolean;
+  /** The figure the rows are ordered on: own spend and outcomes blended with what its parts predict. */
+  estimate: PerformanceEstimate;
+  /** Deprecated as soon as one part can no longer run (features-service decides; never re-derived here). */
+  status: "active" | "deprecated";
+  /** Which parts made it deprecated; [] when active. */
+  deprecatedParts: PerformancePart[];
+}
+
+export type PerformancePart = "workflow" | "template" | "llm";
+
+export interface PerformanceEstimate {
+  costPerOutcomeUsd: number | null;
+  display: string | null;
+  ownSpentUsd: number;
+  ownOutcomes: number;
+  priorCostPerOutcomeUsd: number | null;
+  priorSource: "own_parts" | "pipe_combinations" | null;
+  priorParts?: PerformancePart[];
+  priorWeightOutcomes: number;
+  unavailableReason: "no_outcome_on_pipe" | null;
 }
 
 export interface PerformancePoint {
@@ -62,6 +84,8 @@ export interface PipePerformance {
   pipe: string;
   /** The bars the figures are read on (features-service names it; "workflow_bars" = the Workflows tab's own). */
   figuresBasis: string;
+  /** "estimated_cost": active rows first, each group cheapest estimated cost per outcome first. */
+  rowOrder?: string;
   outcomeNoun: string;
   outcomeNounPlural: string;
   rows: PerformanceRow[];
@@ -79,23 +103,27 @@ export interface ResearchPerformance {
 }
 
 export type PerformanceTab = "active" | "deprecated";
-export type PartStatus = "active" | "deprecated" | null;
 
-/**
- * A combination is Active only when its workflow, its template and its LLM are all active (owner
- * 2026-10-23); one deprecated part makes it Deprecated. A part not on record (null) blocks nothing.
- * Null while a status a present part needs has not answered.
- */
-export function combinationStatus(parts: { workflow: PartStatus | undefined; template?: PartStatus | undefined; llm?: PartStatus | undefined }): PartStatus {
-  const all = [parts.workflow, parts.template, parts.llm];
-  if (all.some((s) => s === "deprecated")) return "deprecated";
-  if (all.some((s) => s === undefined)) return null;
-  return "active";
+/** Rows split into the two tabs on the SERVED status, each in the served order (never re-sorted here). */
+export function performanceByTab<T extends { status: PerformanceRow["status"] }>(rows: readonly T[]): Record<PerformanceTab, T[]> {
+  const out: Record<PerformanceTab, T[]> = { active: [], deprecated: [] };
+  for (const r of rows) out[r.status === "deprecated" ? "deprecated" : "active"].push(r);
+  return out;
 }
 
-/** Rows split into the two tabs, each in the served order (never re-sorted here). */
-export function performanceByTab<T>(rows: readonly T[], statusOf: (r: T) => PartStatus): Record<PerformanceTab, T[]> {
-  const out: Record<PerformanceTab, T[]> = { active: [], deprecated: [] };
-  for (const r of rows) out[statusOf(r) === "deprecated" ? "deprecated" : "active"].push(r);
-  return out;
+const PART_WORDS: Record<PerformancePart, string> = {
+  workflow: "Workflow deprecated",
+  template: "Template deprecated",
+  llm: "LLM retired",
+};
+
+/** Why a deprecated row is deprecated, short and plain ("LLM retired"); null when no part is named. */
+export function deprecatedPartsWords(parts: readonly string[] | null | undefined): string | null {
+  const words: string[] = [];
+  for (const p of parts ?? []) {
+    const w = PART_WORDS[p as PerformancePart];
+    if (w) words.push(w);
+    else console.error("[research-performance] unknown deprecated part", p);
+  }
+  return words.length ? words.join(" · ") : null;
 }

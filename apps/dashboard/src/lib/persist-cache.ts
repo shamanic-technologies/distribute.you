@@ -515,8 +515,12 @@ export function persisterStorageKey(orgId: string | null | undefined): string {
  * "8": `workflowDynastySummaries` and `workflowDynastyDeprecation` gained the REQUIRED
  * `siblingLines` (WF-SHORT-LINE-1023, #5638). Research Workflows read `siblingLines.find` on an
  * older snapshot and crashed with `Cannot read properties of undefined (reading 'find')`.
+ *
+ * "9": `researchPerformance` rows gained the REQUIRED `status` + `deprecatedParts`
+ * (RESEARCH-COMBO-STATUS-1023). An older snapshot put every combination, a retired LLM's
+ * included, under Active until the re-read.
  */
-const PERSIST_CACHE_VERSION = "8";
+const PERSIST_CACHE_VERSION = "9";
 
 export function persistCacheVersion(): string {
   return PERSIST_CACHE_VERSION;
