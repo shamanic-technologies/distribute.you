@@ -18,12 +18,13 @@ import {
   StatusMenu,
   StatusWord as ContentStatusWord,
   useContentStatusWrites,
+  useDynastyStatuses,
   useModelStatuses,
   useTemplateStatuses,
   useWorkflowDeprecation,
 } from "@/components/v2/research-status";
 import { OutputsList, RecentRuns, ResearchDrawer, TemplateFigures, TemplateOutputsPanel, TemplateVersionDrawer, useTemplateOutputs } from "@/components/v2/research-template-outputs";
-import { modelAliasesOf, modelStatus, type ContentTarget } from "@/lib/research/content-status";
+import { modelAliasesOf, modelsByTab, modelStatus, type ContentTarget } from "@/lib/research/content-status";
 import { CatalogueName, CatalogueObjectMark } from "@/components/v2/catalogue-name";
 import { useResearch, useResearchCatalog, useResearchTexts } from "@/lib/research/research-source";
 import {
@@ -135,17 +136,35 @@ function useOutcome(pipe: ResearchPipe): { noun: string; plural: string; unit: s
 }
 
 /**
- * The hub's links from a pipe's section to its workflow and template pages. Each chip states its
- * page's own length: Workflows reads the same live rows as its page's title (Active + Deprecated),
- * never the Research study's workflow count (owner 2026-10-23: Dotterel's chip said 57).
+ * How many of a pipe's workflows, templates and models are ACTIVE (owner 2026-10-23: « le total doit
+ * être le nombre d'actifs, on ne compte pas les deprecated », for all three). Workflows read the live
+ * ranking's rows at the pipe's leg (else the catalogue's own list, which states no status); each kind
+ * is null until its statuses answer, so no count flashes the wrong number.
  */
-export function PipeCatalogLinks({ base, pipe }: { base: string; pipe: ResearchPipe }) {
-  const counts = useResearch().file.catalogCounts?.[pipe];
+function useActiveCatalogCounts(pipe: ResearchPipe, catalog: ResearchCatalog | null): Record<CatalogKind, number | null> {
   const liveLeg = useResearchPipeLeg(pipe);
   const liveRows = usePipeWorkflowRows(PIPE_KEY[pipe].channel, liveLeg);
+  const dynasties = useDynastyStatuses(PIPE_KEY[pipe].channel);
+  const templateStatuses = useTemplateStatuses();
+  const modelStatuses = useModelStatuses();
+  const workflows =
+    liveLeg != null
+      ? liveRows.rankingQ.data !== undefined && dynasties.answered
+        ? liveRows.rows.filter((r) => dynasties.statusOf(r.slug) !== "deprecated").length
+        : null
+      : (catalog?.[pipe].workflows.length ?? null);
+  const templates = catalog ? (templatesByTab(catalog[pipe].templates, templateStatuses)?.active.length ?? null) : null;
+  const models = catalog ? (modelsByTab(catalog[pipe].models, modelStatuses)?.active.length ?? null) : null;
+  return { workflows, templates, models };
+}
+
+/** The hub's links from a pipe's section to its workflow, template and model pages, each with its active count. */
+export function PipeCatalogLinks({ base, pipe }: { base: string; pipe: ResearchPipe }) {
+  const counts = useResearch().file.catalogCounts?.[pipe];
+  const catalog = useResearchCatalog(useResearch().basis).data ?? null;
+  const active = useActiveCatalogCounts(pipe, catalog);
   if (!counts || !CATALOG_KINDS.some((k) => counts[k])) return null;
-  const countOf = (k: CatalogKind): number | null =>
-    k === "workflows" && liveLeg != null ? (liveRows.rankingQ.data !== undefined ? liveRows.rows.length : null) : counts[k];
+  const countOf = (k: CatalogKind): number | null => active[k];
   return (
     <HubChips>
       {CATALOG_KINDS.map((kind) =>
@@ -321,25 +340,29 @@ function CatalogList({
   // stays for templates, models, and a pipe whose step starts no entry leg.
   const liveLeg = useResearchPipeLeg(pipe);
   const live = kind === "workflows" && liveLeg != null;
-  // The live table's own rows (Active + Deprecated), so the title and the Workflows tab count what
-  // the table lists, never the Research study's own workflow count (owner 2026-10-23: 52 over 8 + 38).
-  const liveRows = usePipeWorkflowRows(PIPE_KEY[pipe].channel, liveLeg);
-  const liveTotal = liveRows.rankingQ.data !== undefined ? liveRows.rows.length : null;
-  const countOf = (k: CatalogKind): number | null => (k === "workflows" && liveLeg != null ? liveTotal : (catalog?.[pipe][k].length ?? null));
+  // Every count on the page is the ACTIVE count, deprecated never counted (owner 2026-10-23).
+  const active = useActiveCatalogCounts(pipe, catalog);
+  const countOf = (k: CatalogKind): number | null => active[k];
   // Staff status (TEMPLATE-MODEL-STATUS-1019): templates by type, models by every alias chat-service serves them under (served on the row).
   const templateStatuses = useTemplateStatuses();
   const modelStatuses = useModelStatuses();
   const writes = useContentStatusWrites();
-  // Templates sit in two tabs, Active and Deprecated (owner 2026-10-21), the tab in the URL. No row
-  // shows before the statuses answer, so none flashes in a tab it then leaves.
+  // Templates and models sit in two tabs, Active and Deprecated (owner 2026-10-21, models 2026-10-23),
+  // the tab in the URL. No row shows before the statuses answer, so none flashes in a tab it then leaves.
   const search = useSearchParams();
   const tab = templateTab(search?.get("status"));
-  const statusFailed = kind === "templates" && templateStatuses.failed;
-  const byTab = kind === "templates" && !statusFailed ? templatesByTab(rows as ResearchTemplate[], templateStatuses) : null;
-  const statusPending = kind === "templates" && !statusFailed && !byTab;
+  const tabbed = kind === "templates" || kind === "models";
+  const statusFailed = kind === "templates" ? templateStatuses.failed : kind === "models" ? modelStatuses.failed : false;
+  const byTab: Record<TemplateTab, (ResearchTemplate | ResearchModel)[]> | null =
+    !tabbed || statusFailed
+      ? null
+      : kind === "templates"
+        ? templatesByTab(rows as ResearchTemplate[], templateStatuses)
+        : modelsByTab(rows as ResearchModel[], modelStatuses);
+  const statusPending = tabbed && !statusFailed && !byTab;
   // Templates and models render in the served order: features-service ranks them in the ONE leg order the
   // pipe picks them by, so row 1 is the one it writes with next. Never re-sorted here (owner 2026-10-23).
-  const shown: (ResearchWorkflow | ResearchTemplate | ResearchModel)[] = kind === "templates" ? (byTab?.[tab] ?? []) : rows;
+  const shown: (ResearchWorkflow | ResearchTemplate | ResearchModel)[] = tabbed ? (byTab?.[tab] ?? []) : rows;
   const pickTab = (next: TemplateTab) => {
     // The history API, null state: Next keeps useSearchParams in step (apps/dashboard CLAUDE.md).
     window.history.replaceState(null, "", next === "active" ? window.location.pathname : `${window.location.pathname}?status=${next}`);
@@ -379,7 +402,7 @@ function CatalogList({
 
         <section className="mt-6">
           <SectionTitle
-            count={live ? liveTotal : rows.length}
+            count={countOf(kind)}
             right={
               <span className="inline-flex items-center gap-1.5">
                 <SectionMark section={{ pipe }} size={14} />
@@ -389,7 +412,7 @@ function CatalogList({
           >
             {words.title}
           </SectionTitle>
-          {kind === "templates" && (
+          {tabbed && (
             <div className="mb-3 flex gap-5 border-b border-[var(--line-subtle)]">
               {(["active", "deprecated"] as const).map((k) => (
                 <button key={k} type="button" onClick={() => pickTab(k)} aria-current={k === tab ? "page" : undefined} className="k-tab inline-flex items-center gap-1.5 text-[13px]">
@@ -465,7 +488,7 @@ function CatalogList({
                       ) : statusFailed ? (
                         <tr>
                           <td colSpan={10}>
-                            <EmptyNote>We could not read which templates are active just now. It retries on its own.</EmptyNote>
+                            <EmptyNote>We could not read which {words.many} are active just now. It retries on its own.</EmptyNote>
                           </td>
                         </tr>
                       ) : shown.length === 0 ? (
@@ -475,8 +498,8 @@ function CatalogList({
                               {rows.length === 0
                                 ? `No ${words.one} has written this pipe's emails yet.`
                                 : tab === "active"
-                                  ? "No template on this pipe is active."
-                                  : "No template on this pipe is deprecated."}
+                                  ? `No ${words.one} on this pipe is active.`
+                                  : `No ${words.one} on this pipe is deprecated.`}
                             </EmptyNote>
                           </td>
                         </tr>

@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { readFileSync, readdirSync } from "node:fs";
+import { modelsByTab } from "../src/lib/research/content-status";
 import { join } from "node:path";
 import {
   fleetWorkflowRows,
@@ -287,6 +288,17 @@ describe("the brand Workflows page states the campaign's own live figures", () =
   });
 });
 
+describe("modelsByTab", () => {
+  const m = (key: string, aliases: string[] | undefined, reason: string | null = null) => ({ key, aliases, aliasesUnavailableReason: reason }) as never;
+  it("Deprecated once every alias is, or when no alias serves it; Active otherwise; null until answered", () => {
+    const map = new Map([["a", "active"], ["b", "deprecated"], ["c", "deprecated"]]);
+    const out = modelsByTab([m("one", ["a", "b"]), m("two", ["b", "c"]), m("gone", [], "no_alias_serves_it"), m("new", ["z"])], { answered: true, map });
+    expect(out?.active.map((x: { key: string }) => x.key)).toEqual(["one", "new"]);
+    expect(out?.deprecated.map((x: { key: string }) => x.key)).toEqual(["two", "gone"]);
+    expect(modelsByTab([m("one", ["a"])], { answered: false, map })).toBeNull();
+  });
+});
+
 describe("siblingLineAt", () => {
   it("reads the leg's own line first, else the one line, else none", () => {
     const two = { siblingLine: null, siblingLines: [{ legKey: "a", line: "Brand name" }, { legKey: "b", line: "No date" }] };
@@ -312,8 +324,11 @@ describe("byServedRoiDesc", () => {
     const live = readFileSync(join(__dirname, "../src/components/v2/research-live-workflows.tsx"), "utf8");
     expect(live).toContain("active: byServedRoiDesc(out.active), deprecated: byServedRoiDesc(out.deprecated)");
     const catalog = readFileSync(join(__dirname, "../src/components/v2/research-catalog.tsx"), "utf8");
-    expect(catalog).toContain("count={live ? liveTotal : rows.length}");
-    expect(catalog).toContain("countOf(k)");
+    // Every count is the ACTIVE count, deprecated never counted (owner 2026-10-23), for all three kinds.
+    expect(catalog).toContain("count={countOf(kind)}");
+    expect(catalog).toContain('liveRows.rows.filter((r) => dynasties.statusOf(r.slug) !== "deprecated").length');
+    expect(catalog).toContain("templatesByTab(catalog[pipe].templates, templateStatuses)?.active.length");
+    expect(catalog).toContain("modelsByTab(catalog[pipe].models, modelStatuses)?.active.length");
   });
 });
 

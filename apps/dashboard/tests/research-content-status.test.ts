@@ -129,7 +129,7 @@ describe("TEMPLATE-MODEL-STATUS-1019: the three Research pages", () => {
     expect([...order].sort((a, b) => a - b)).toEqual(order);
     expect(head).not.toContain("Workflows</th>");
     // Served order, never re-sorted in the browser (RESEARCH-TPL-SERVED-ORDER-1023).
-    expect(list).toContain('kind === "templates" ? (byTab?.[tab] ?? []) : rows;');
+    expect(list).toContain("tabbed ? (byTab?.[tab] ?? []) : rows;");
     const lib = read("lib/research/research.ts");
     expect(lib).not.toContain("templatesInTableOrder");
     const shownAt = list.indexOf("const shown: (ResearchWorkflow");
