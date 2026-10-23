@@ -128,7 +128,12 @@ describe("TEMPLATE-MODEL-STATUS-1019: the three Research pages", () => {
     expect(order.every((i) => i > 0)).toBe(true);
     expect([...order].sort((a, b) => a - b)).toEqual(order);
     expect(head).not.toContain("Workflows</th>");
-    expect(list).toContain("templatesInTableOrder(byTab?.[tab] ?? [])");
+    // Served order, never re-sorted in the browser (RESEARCH-TPL-SERVED-ORDER-1023).
+    expect(list).toContain('kind === "templates" ? (byTab?.[tab] ?? []) : rows;');
+    const lib = read("lib/research/research.ts");
+    expect(lib).not.toContain("templatesInTableOrder");
+    const shownAt = list.indexOf("const shown: (ResearchWorkflow");
+    expect(list.slice(shownAt, list.indexOf("\n", shownAt))).not.toMatch(/\.sort\(|toSorted/);
   });
 
   it("Templates: ROI + % Conversion (served), no Leg / # column, ⋮, and the outputs drawer on a row click", () => {

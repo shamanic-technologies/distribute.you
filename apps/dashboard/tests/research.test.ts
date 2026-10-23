@@ -13,7 +13,6 @@ import {
   templateModels,
   templateRowStatus,
   templatesByTab,
-  templatesInTableOrder,
   templateTab,
   type ResearchCatalog,
   type ResearchTemplate,
@@ -262,16 +261,15 @@ describe("Template dynasties (TPL-DYNASTY-1021)", () => {
   });
 });
 
-describe("templatesInTableOrder (owner 2026-10-23)", () => {
-  it("cheapest $ / outcome first, then the rest by $ spent, most first", () => {
-    const rows = [
-      { key: "a", cost: null, spend: "$9.50" },
-      { key: "b", cost: "$166", spend: "$4,000" },
-      { key: "c", cost: "$137", spend: "$1,370" },
-      { key: "d", cost: null, spend: "$1,200" },
-      { key: "e", cost: "$1,317", spend: "$2,634" },
-      { key: "f", cost: null, spend: "$0.00" },
-    ];
-    expect(templatesInTableOrder(rows).map((r) => r.key)).toEqual(["c", "b", "e", "d", "a", "f"]);
+describe("Templates render in the served order (RESEARCH-TPL-SERVED-ORDER-1023)", () => {
+  it("keeps the served order even when it is not the cheapest $ / outcome order", () => {
+    // features-service serves the pipe's pick order: a cheap learning template first (no $ / outcome yet),
+    // then mature, then other learning. The cheapest $ / outcome here is last; it must stay last.
+    const fig = { roi: null, conversion: null, outcomes: null, rank: null };
+    const row = (key: string, cost: string | null, spend: string): ResearchTemplate =>
+      ({ ...fig, key, label: key, dynasty: key, status: "active", cost, spend, hasText: true, workflows: [], runs: [] }) as unknown as ResearchTemplate;
+    const rows = [row("brand-first-stack", null, "$14"), row("pain-question", "$166", "$4,000"), row("three-line-reply", "$137", "$1,370"), row("researched-observation", "$90", "$900")];
+    const tabs = templatesByTab(rows, { answered: true, map: new Map() });
+    expect(tabs?.active.map((r) => r.key)).toEqual(["brand-first-stack", "pain-question", "three-line-reply", "researched-observation"]);
   });
 });

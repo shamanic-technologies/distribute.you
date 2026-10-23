@@ -49,7 +49,6 @@ import {
   researchWorkflow,
   templateContentKey,
   templatesByTab,
-  templatesInTableOrder,
   templateTab,
   type TemplateTab,
   type CatalogKind,
@@ -313,8 +312,9 @@ function CatalogList({
   const statusFailed = kind === "templates" && templateStatuses.failed;
   const byTab = kind === "templates" && !statusFailed ? templatesByTab(rows as ResearchTemplate[], templateStatuses) : null;
   const statusPending = kind === "templates" && !statusFailed && !byTab;
-  // Templates: cheapest $ / outcome first, then the rest by $ spent (owner 2026-10-23).
-  const shown: (ResearchWorkflow | ResearchTemplate | ResearchModel)[] = kind === "templates" ? templatesInTableOrder(byTab?.[tab] ?? []) : rows;
+  // Templates and models render in the served order: features-service ranks them in the ONE leg order the
+  // pipe picks them by, so row 1 is the one it writes with next. Never re-sorted here (owner 2026-10-23).
+  const shown: (ResearchWorkflow | ResearchTemplate | ResearchModel)[] = kind === "templates" ? (byTab?.[tab] ?? []) : rows;
   const pickTab = (next: TemplateTab) => {
     // The history API, null state: Next keeps useSearchParams in step (apps/dashboard CLAUDE.md).
     window.history.replaceState(null, "", next === "active" ? window.location.pathname : `${window.location.pathname}?status=${next}`);
@@ -613,7 +613,9 @@ function CatalogList({
                 </div>
                 <div className="k-fg3 flex items-center gap-3 border-t border-[var(--line-subtle)] px-4 py-2.5 text-[12px] tabular-nums">
                   <span className="min-w-0 truncate">
-                    {priced} of {rows.length} priced per {o.noun.toLowerCase()}; the rest have not earned one yet and are listed by volume.
+                    {kind === "workflows"
+                      ? `${priced} of ${rows.length} priced per ${o.noun.toLowerCase()}; the rest have not earned one yet and are listed by volume.`
+                      : `${priced} of ${rows.length} priced per ${o.noun.toLowerCase()}. Listed in the order the pipe picks them, so row 1 goes next.`}
                   </span>
                   <Link href={researchCatalogHref(base, pipe, other)} className="k-btn-ghost ml-auto h-6 shrink-0 whitespace-nowrap px-1.5 text-[12px]">
                     See the {KIND_WORD[other].many}
