@@ -84,7 +84,9 @@ import {
   SubscriptionCostsSchema,
   type SubscriptionCosts,
   AbsorbedCostsSchema,
+  CustomerHealthSchema,
   type AbsorbedCosts,
+  type CustomerHealth,
   RealCostsSchema,
   type RealCosts,
   RealCostSeriesSchema,
@@ -1930,6 +1932,8 @@ export const STAFF_MONITORING_PATHS = {
   subscriptionCosts: "/costs/subscription-costs",
   // The cost the platform absorbs per customer (billing-service), staff-only through the gateway.
   absorbedCosts: "/billing/absorbed-costs",
+  // features-service customer-health board (staff gateway passthrough), served from its last build.
+  customerHealth: "/features/audit/customer-success",
   realCosts: "/costs/real-costs",
   priceComparison: "/costs/price-comparison",
   brands: "/admin/brands",
@@ -2251,6 +2255,11 @@ export async function getStaffSubscriptionCosts(): Promise<SubscriptionCosts> {
 /** The cost the platform absorbs (no-campaign spend + card fees), per customer and per month since inception (billing-service). */
 export async function getStaffAbsorbedCosts(): Promise<AbsorbedCosts> {
   return parseStaff("getStaffAbsorbedCosts", AbsorbedCostsSchema, await apiCall<unknown>(STAFF_MONITORING_PATHS.absorbedCosts));
+}
+
+/** Each customer's account health, per org and per brand (features-service, last build, ~15 min old at most). */
+export async function getStaffCustomerHealth(): Promise<CustomerHealth> {
+  return parseStaff("getStaffCustomerHealth", CustomerHealthSchema, await apiCall<unknown>(STAFF_MONITORING_PATHS.customerHealth));
 }
 
 /** Every cost item's real cost and proposed price on a day (latest when omitted), costs-service, daily. */

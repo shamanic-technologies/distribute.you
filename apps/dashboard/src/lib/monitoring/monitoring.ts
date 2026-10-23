@@ -635,6 +635,60 @@ export type AbsorbedCosts = z.infer<typeof AbsorbedCostsSchema>;
 export type AbsorbedCustomer = AbsorbedCosts["customers"][number];
 export type AbsorbedMonth = AbsorbedCosts["fleetByMonth"][number];
 
+/**
+ * features-service's staff customer-health board (CUSTOMER-HEALTH-OOM-1023), served from its last build:
+ * `orgs[]` one row per org (billing's `customerStatus` copied, worst badge, org money, last visit) and
+ * `customers[]` one row per (org, brand) with the brand's ROI, audience, best audience and workflow, and
+ * its budget and pause history. Only the fields the Accounts page reads are declared; every verdict and
+ * figure is the producer's.
+ */
+const HealthVisits = z.object({
+  sessions7d: z.number(),
+  sessions30d: z.number(),
+  lastSeen: z.string().nullable(),
+  daysSinceLastSeen: z.number().nullable(),
+});
+export const CustomerHealthSchema = z.object({
+  freshness: z.object({ computedAt: z.string(), refreshEveryMinutes: z.number() }).optional(),
+  orgs: z.array(
+    z.object({
+      orgId: z.string(),
+      customerStatus: z.enum(["current", "churned", "never_paid"]).nullable(),
+      ownOrg: z.boolean().nullable(),
+      healthBadge: z.enum(["green", "yellow", "red"]),
+      brandIds: z.array(z.string()),
+      runningDailyBudgetUsd: z.number(),
+      configuredDailyBudgetUsd: z.number(),
+      orgBalanceUsd: z.number().nullable(),
+      autoTopupEnabled: z.boolean().nullable(),
+      lastActiveDay: z.string().nullable(),
+      dashboardReturnFrequency: HealthVisits.nullable(),
+    }),
+  ),
+  customers: z.array(
+    z.object({
+      orgId: z.string(),
+      brandId: z.string(),
+      brandName: z.string().nullable(),
+      brandDomain: z.string().nullable(),
+      status: z.string(),
+      health: z.object({ badge: z.enum(["green", "yellow", "red"]) }),
+      breakevenCacUsd: z.number().nullable(),
+      currentEconomics: z.object({ committedSpendUsd: z.number().nullable(), currentCacUsd: z.number().nullable(), roiMultiple: z.number().nullable() }),
+      audiences: z.object({ count: z.number(), totalSize: z.number().nullable(), totalRemaining: z.number().nullable(), pctUsed: z.number().nullable() }),
+      bestAudience: z.object({ name: z.string(), remaining: z.number().nullable(), cacUsd: z.number().nullable() }).nullable(),
+      bestWorkflow: z.object({ name: z.string().nullable(), workflowDynastySlug: z.string(), cacUsd: z.number() }).nullable(),
+      notTrackedYet: z.object({
+        budgetChangeHistory: z.array(z.object({ dailyBudgetUsd: z.number(), changedAt: z.string() })).nullable(),
+        pauseHistory: z.array(z.object({ paused: z.boolean(), transitionedAt: z.string() })).nullable(),
+      }),
+    }),
+  ),
+});
+export type CustomerHealth = z.infer<typeof CustomerHealthSchema>;
+export type CustomerHealthOrg = CustomerHealth["orgs"][number];
+export type CustomerHealthBrand = CustomerHealth["customers"][number];
+
 export type MonitoringView =
   | { view: "hub" }
   | { view: "page"; page: MonitoringPage }
