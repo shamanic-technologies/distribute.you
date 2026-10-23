@@ -1,4 +1,5 @@
 import type { ResearchCatalog, ResearchFile } from "@/lib/research/research";
+import type { ResearchPerformance } from "@/lib/research/performance";
 
 /**
  * SERVER ONLY. Every byte of Research, read LIVE from features-service through the api-service
@@ -7,6 +8,7 @@ import type { ResearchCatalog, ResearchFile } from "@/lib/research/research";
  *   GET /v1/features/research?basis=           the file (studies, rule, pipes, outcomes)
  *   GET /v1/features/research/catalog?basis=   the workflow, template and model pages per pipe
  *   GET /v1/features/research/templates        the template texts, by template id
+ *   GET /v1/features/research/performance?basis=   the Performance tab per pipe
  *
  * No snapshot is kept anywhere: any failure (the 503 `research_not_computed_yet` before
  * features-service's first build included) throws, the route answers it and the page shows its
@@ -45,4 +47,9 @@ export async function readLiveCatalog(basis: ResearchBasisParam, staffEmail: str
 /** The live template texts, the same on both bases. */
 export async function readLiveTemplateTexts(staffEmail: string): Promise<Record<string, string>> {
   return readLive<Record<string, string>>("/v1/features/research/templates", staffEmail);
+}
+
+/** The live Performance tab (every workflow x template x LLM per pipe, with the pipe's totals and series) on one cost basis. */
+export async function readLivePerformance(basis: ResearchBasisParam, staffEmail: string): Promise<ResearchPerformance> {
+  return readLive<ResearchPerformance>(`/v1/features/research/performance?basis=${basis}`, staffEmail);
 }

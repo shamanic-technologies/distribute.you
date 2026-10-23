@@ -41,6 +41,7 @@ import {
 } from "@/components/v2/research-bits";
 import {
   CATALOG_KINDS,
+  RESEARCH_TABS,
   researchCatalogHref,
   modelHeadLabel,
   researchModel,
@@ -54,6 +55,7 @@ import {
   templateTab,
   type TemplateTab,
   type CatalogKind,
+  type ResearchTabKind,
   type ResearchModel,
   type ResearchModelVersion,
   type ResearchRef,
@@ -83,6 +85,28 @@ const KIND_WORD: Record<CatalogKind, { one: string; many: string; title: string 
   templates: { one: "template", many: "templates", title: "Templates" },
   models: { one: "model", many: "models", title: "Models" },
 };
+/** A pipe's tab names: the catalogue kinds, then Performance. */
+const TAB_TITLE: Record<ResearchTabKind, string> = { workflows: "Workflows", templates: "Templates", models: "Models", performance: "Performance" };
+/** Performance has no study topic of its own: it wears the conversion colour (what it measures). */
+const PERFORMANCE_COLOR = "var(--data-teal)";
+
+/**
+ * The tabs across a pipe's pages (Workflows, Templates, Models, Performance). Each states its own
+ * page's length when that page has answered, never another read's count.
+ */
+export function PipeTabs({ base, pipe, current, countOf }: { base: string; pipe: ResearchPipe; current: ResearchTabKind; countOf: (k: ResearchTabKind) => number | null }) {
+  return (
+    <div className="mt-5 flex gap-5 border-b border-[var(--line-subtle)]">
+      {RESEARCH_TABS.map((k) => (
+        <Link key={k} href={researchCatalogHref(base, pipe, k)} aria-current={k === current ? "page" : undefined} className="k-tab inline-flex items-center gap-1.5 text-[13px]">
+          {TAB_TITLE[k]}
+          {countOf(k) != null && <span className="k-fg3 tabular-nums">{countOf(k)}</span>}
+        </Link>
+      ))}
+    </div>
+  );
+}
+
 /** Each kind wears its study topic's mark and colour. */
 const KIND_TOPIC: Record<CatalogKind, "workflow" | "template" | "llm"> = { workflows: "workflow", templates: "template", models: "llm" };
 
@@ -147,6 +171,7 @@ export function PipeCatalogLinks({ base, pipe }: { base: string; pipe: ResearchP
       {CATALOG_KINDS.map((kind) =>
         counts[kind] ? <HubChip key={kind} href={researchCatalogHref(base, pipe, kind)} color={topicLook(KIND_TOPIC[kind]).color} label={KIND_WORD[kind].title} count={countOf(kind)} /> : null,
       )}
+      <HubChip href={researchCatalogHref(base, pipe, "performance")} color={PERFORMANCE_COLOR} label={TAB_TITLE.performance} />
     </HubChips>
   );
 }
@@ -374,14 +399,7 @@ function CatalogList({
           )}
         </div>
 
-        <div className="mt-5 flex gap-5 border-b border-[var(--line-subtle)]">
-          {CATALOG_KINDS.map((k) => (
-            <Link key={k} href={researchCatalogHref(base, pipe, k)} aria-current={k === kind ? "page" : undefined} className="k-tab inline-flex items-center gap-1.5 text-[13px]">
-              {KIND_WORD[k].title}
-              {countOf(k) != null && <span className="k-fg3 tabular-nums">{countOf(k)}</span>}
-            </Link>
-          ))}
-        </div>
+        <PipeTabs base={base} pipe={pipe} current={kind} countOf={(k) => (k === "performance" ? null : countOf(k))} />
 
         <section className="mt-6">
           <SectionTitle
