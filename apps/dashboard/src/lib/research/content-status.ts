@@ -19,6 +19,25 @@ export function modelStatus(aliases: readonly string[], statusOf: (alias: string
   return all.every((x) => x === "deprecated") ? "deprecated" : "active";
 }
 
+/**
+ * The Models list's two tabs (owner 2026-10-23, like Templates and Workflows): Deprecated once every
+ * alias it is served under is, or when no alias serves it now (it cannot write); Active otherwise.
+ * Null until the statuses answer, so no row lands in a tab it then leaves.
+ */
+export function modelsByTab<T extends Pick<ResearchModel, "key" | "aliases" | "aliasesUnavailableReason">>(
+  rows: readonly T[],
+  statuses: { answered: boolean; map: ReadonlyMap<string, string> },
+): Record<"active" | "deprecated", T[]> | null {
+  if (!statuses.answered) return null;
+  const out: Record<"active" | "deprecated", T[]> = { active: [], deprecated: [] };
+  for (const m of rows) {
+    const { aliases } = modelAliasesOf(m);
+    const dead = aliases.length === 0 || modelStatus(aliases, (a) => statuses.map.get(a)) === "deprecated";
+    out[dead ? "deprecated" : "active"].push(m);
+  }
+  return out;
+}
+
 /** A served status as the word a row prints, or null when nothing states one. */
 export function statusWord(status: string | null | undefined): "Active" | "Deprecated" | null {
   if (status === "active") return "Active";
