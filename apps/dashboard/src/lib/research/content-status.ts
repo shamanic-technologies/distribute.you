@@ -51,32 +51,6 @@ export function researchPipeOf(pipes: readonly Pick<ResearchPipeEntry, "id" | "c
   return pipes.find((p) => p.channel === pipe.featureSlug && sameLegKey(canonicalLegKey(p.channel, p.leg), pipe.legKey))?.id ?? null;
 }
 
-/**
- * The OTHER pipes a model is deprecated on (every alias deprecated there, the model's status rule),
- * each with why, who and when; the pipe the page shows is left out.
- */
-export function modelDeprecatedElsewhere(
-  aliases: readonly string[],
-  pipeStatusesOf: (alias: string) => readonly ModelPipeStatusRow[] | null | undefined,
-  current: ContentPipe | null,
-): { pipe: ContentPipe; deprecation: DeprecationFacts[] }[] {
-  if (aliases.length === 0) return [];
-  const pipes: ContentPipe[] = [];
-  for (const a of aliases) {
-    for (const p of pipeStatusesOf(a) ?? []) {
-      if (p.status !== "deprecated") continue;
-      if (current && samePipe(p, current)) continue;
-      if (!pipes.some((q) => samePipe(q, p))) pipes.push({ featureSlug: p.featureSlug, legKey: p.legKey });
-    }
-  }
-  const out: { pipe: ContentPipe; deprecation: DeprecationFacts[] }[] = [];
-  for (const pipe of pipes) {
-    const d = modelDeprecation(aliases, (a) => contentDeprecation(aliasStatusOnPipe(pipeStatusesOf(a), pipe)));
-    if (d) out.push({ pipe, deprecation: d });
-  }
-  return out;
-}
-
 /** A model's status over its aliases: Deprecated only once every one is; null while any is unstated. */
 export function modelStatus(aliases: readonly string[], statusOf: (alias: string) => string | null | undefined): string | null {
   if (aliases.length === 0) return null;
