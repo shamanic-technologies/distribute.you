@@ -1,6 +1,6 @@
 "use client";
 
-import { useResearch } from "@/lib/research/research-source";
+import { useResearch, useResearchPipeEntry } from "@/lib/research/research-source";
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import { useQueries } from "@tanstack/react-query";
@@ -26,16 +26,23 @@ import { legFor } from "@/lib/legs";
 import { isProactiveFrom } from "@/lib/outbound-leg-key";
 import { formatUsdAdaptive } from "@/lib/format-number";
 import { Shimmer } from "@/components/v2/ui";
+import { SectionMark, SectionName } from "@/components/v2/research-bits";
 import { InfoTooltip } from "@/components/visibility/metric-info";
 import {
   aliasList,
+  aliasStatusOnPipe,
   contentDeprecation,
+  contentPipeOf,
   deprecationLine,
+  modelDeprecatedElsewhere,
   modelDeprecation,
+  researchPipeOf,
   statusWord,
+  type ContentPipe,
   type ContentTarget,
   type DeprecationFacts,
 } from "@/lib/research/content-status";
+import type { ResearchPipe } from "@/lib/research/research";
 
 /**
  * Staff status of a template, a writer model or a workflow on the Research pages
@@ -66,13 +73,37 @@ export function useTemplateStatuses() {
   return { map, deprecationOf, answered: q.data !== undefined || q.isFetchedAfterMount, failed: q.data === undefined && q.isError };
 }
 
-/** Model ALIAS -> status; a model's deprecation reads every alias it is served under. */
-export function useModelStatuses() {
+/** A Research pipe as content-generation keys a model's status (channel x leg); null while its entry is missing. */
+export function useContentPipe(pipe: ResearchPipe): ContentPipe | null {
+  const entry = useResearchPipeEntry(pipe);
+  return useMemo(() => contentPipeOf(entry), [entry]);
+}
+
+/**
+ * Model ALIAS -> status ON ONE PIPE (LLM-STATUS-PER-PIPE-1023, owner 2026-10-23: a model deprecated on
+ * Lead → Website visit stays active on Lead → Positive reply). A model's deprecation reads every alias
+ * it is served under; `elsewhere` names the other pipes it is deprecated on. Unanswered without a pipe.
+ */
+export function useModelStatuses(pipe: ContentPipe | null) {
   const q = useAuthQuery([...STATUS_ROOTS.models], getContentModelStatuses, { ...pollOptions, retry: false });
-  const map = useMemo(() => new Map((q.data ?? []).map((m) => [m.model, m.status])), [q.data]);
-  const why = useMemo(() => new Map((q.data ?? []).map((m) => [m.model, contentDeprecation(m)])), [q.data]);
+  const pipeStatuses = useMemo(() => new Map((q.data ?? []).map((m) => [m.model, m.pipeStatuses ?? []])), [q.data]);
+  const map = useMemo(
+    () => new Map(pipe ? (q.data ?? []).map((m) => [m.model, aliasStatusOnPipe(m.pipeStatuses, pipe).status]) : []),
+    [q.data, pipe],
+  );
+  const why = useMemo(
+    () => new Map(pipe ? (q.data ?? []).map((m) => [m.model, contentDeprecation(aliasStatusOnPipe(m.pipeStatuses, pipe))]) : []),
+    [q.data, pipe],
+  );
   const deprecationOf = (aliases: readonly string[]) => modelDeprecation(aliases, (a) => why.get(a) ?? null);
-  return { map, deprecationOf, answered: q.data !== undefined || q.isFetchedAfterMount, failed: q.data === undefined && q.isError };
+  const elsewhere = (aliases: readonly string[]) => modelDeprecatedElsewhere(aliases, (a) => pipeStatuses.get(a), pipe);
+  return {
+    map,
+    deprecationOf,
+    elsewhere,
+    answered: pipe !== null && (q.data !== undefined || q.isFetchedAfterMount),
+    failed: q.data === undefined && q.isError,
+  };
 }
 
 /**
@@ -155,6 +186,69 @@ export function StatusWord({
       )}
       {word}
     </span>
+  );
+}
+
+/** A content pipe named the way the Research pages name it (served mark + name); its keys when Research lists no such pipe. */
+export function ContentPipeName({ pipe, size = 12, wrap = false }: { pipe: ContentPipe; size?: number; wrap?: boolean }) {
+  const researchPipe = researchPipeOf(useResearch().file.pipes, pipe);
+  if (!researchPipe) return <span className="k-mono break-all text-[11.5px]">{`${pipe.featureSlug} · ${pipe.legKey}`}</span>;
+  if (wrap) {
+    return (
+      <>
+        <span className="inline-block align-[-1px]">
+          <SectionMark section={{ pipe: researchPipe }} size={size} />
+        </span>{" "}
+        <SectionName section={{ pipe: researchPipe }} />
+      </>
+    );
+  }
+  return (
+    <span className="inline-flex min-w-0 items-center gap-1.5">
+      <SectionMark section={{ pipe: researchPipe }} size={size} />
+      <span className="min-w-0">
+        <SectionName section={{ pipe: researchPipe }} />
+      </span>
+    </span>
+  );
+}
+
+/** Under a model's status on this pipe: each OTHER pipe it is deprecated on (LLM-STATUS-PER-PIPE-1023). */
+export function DeprecatedElsewhere({ items }: { items: ReturnType<ReturnType<typeof useModelStatuses>["elsewhere"]> }) {
+  if (!items.length) return null;
+  return (
+    <span className="k-fg3 block min-w-0 text-[11.5px] leading-4">
+      {items.map((e) => (
+        // Wraps, never truncates: the leg is the end of the name, and the part that tells two pipes apart.
+        <span key={`${e.pipe.featureSlug}|${e.pipe.legKey}`} className="block">
+          Deprecated on <ContentPipeName pipe={e.pipe} size={11} wrap />
+        </span>
+      ))}
+    </span>
+  );
+}
+
+/** A model page's list of the other pipes it is deprecated on, each with why, who and when. */
+export function ModelOtherPipes({ items }: { items: ReturnType<ReturnType<typeof useModelStatuses>["elsewhere"]> }) {
+  if (!items.length) return null;
+  return (
+    <div className="k-card p-4">
+      <p className="k-label">Deprecated on other pipes</p>
+      <ul className="mt-2 space-y-2.5 text-[13px]">
+        {items.map((e) => (
+          <li key={`${e.pipe.featureSlug}|${e.pipe.legKey}`} className="min-w-0">
+            <span className="flex min-w-0 font-medium">
+              <ContentPipeName pipe={e.pipe} size={14} />
+            </span>
+            {e.deprecation.map((d) => (
+              <p key={deprecationLine(d)} className="k-fg2 text-[12px] leading-[18px]">
+                {deprecationLine(d)}
+              </p>
+            ))}
+          </li>
+        ))}
+      </ul>
+    </div>
   );
 }
 
@@ -298,7 +392,7 @@ export function useContentStatusWrites() {
   const [confirming, setConfirming] = useState<ContentTarget | null>(null);
   const activate = async (t: ContentTarget) => {
     if (t.kind === "template") await setContentTemplateStatus(t.key, { status: "active" });
-    else for (const alias of t.aliases) await setContentModelStatus(alias, { status: "active" });
+    else for (const alias of t.aliases) await setContentModelStatus(alias, { status: "active" }, t.pipe);
     await refetchAfterWrite(qc);
   };
   const modal = confirming ? <DeprecateContentModal target={confirming} onClose={() => setConfirming(null)} /> : null;
@@ -307,10 +401,15 @@ export function useContentStatusWrites() {
 
 export const ACTIVATE_CONTENT_NOTE = "Its workflows stay deprecated: set each one active by hand.";
 export const DEPRECATE_CONTENT_NOTE = "Shows every workflow that writes with it, then stops them all.";
+/** A model's status is set on ONE pipe (LLM-STATUS-PER-PIPE-1023): the menu says so. */
+const ACTIVATE_MODEL_NOTE = "Writes again on this pipe. Its workflows stay deprecated.";
+const DEPRECATE_MODEL_NOTE = "Stops it on this pipe only. Every other pipe keeps it.";
 
-/** The menu note for a target: a model served under several aliases names each one the click changes. */
+/** The menu note for a target: a model's note is per pipe, and names each alias the click changes. */
 export function contentNote(t: ContentTarget, note: string): string {
-  return t.kind === "model" && t.aliases.length > 1 ? `Changes ${aliasList(t.aliases)}. ${note}` : note;
+  if (t.kind !== "model") return note;
+  const own = note === DEPRECATE_CONTENT_NOTE ? DEPRECATE_MODEL_NOTE : ACTIVATE_MODEL_NOTE;
+  return t.aliases.length > 1 ? `Changes ${aliasList(t.aliases)}. ${own}` : own;
 }
 
 /** One workflow's figures on the leg it runs on (the Research live rankings), for the modal. */
@@ -348,9 +447,18 @@ function useFleetFigures(): { byslug: Map<string, { outcomes: number; cost: numb
  */
 export function DeprecateContentModal({ target, onClose }: { target: ContentTarget; onClose: () => void }) {
   const qc = useQueryClient();
-  // One retire-by-content body per template, or per alias of the model (a model can be served under two).
-  const bodies = target.kind === "template" ? [{ promptType: target.key }] : target.aliases.map((model) => ({ model }));
-  const previewKey = target.kind === "template" ? [target.key] : target.aliases;
+  // A model is deprecated on ONE pipe (LLM-STATUS-PER-PIPE-1023): only the workflows of that pipe stop.
+  const pipe = target.kind === "model" ? target.pipe : null;
+  // One retire-by-content body per template, or per alias of the model (a model can be served under two),
+  // a model's narrowed to its pipe's channel.
+  const bodies = target.kind === "template" ? [{ promptType: target.key }] : target.aliases.map((model) => ({ model, featureSlug: target.pipe.featureSlug }));
+  const previewKey = target.kind === "template" ? [target.key] : [...target.aliases, target.pipe.featureSlug, target.pipe.legKey];
+  // The workflows that run on the pipe's leg (the fleet ranking lists every one): a channel's other legs are other pipes.
+  const legRows = useAuthQuery(
+    pipe ? legWorkflowRankingKey(pipe.featureSlug, pipe.legKey) : ["legWorkflowRanking", "none"],
+    () => (pipe ? getLegWorkflowRanking(pipe.featureSlug, pipe.legKey) : Promise.resolve(null)),
+    { retry: false, enabled: pipe !== null },
+  );
   const preview = useAuthQuery(
     ["retireByContentPreview", target.kind, ...previewKey],
     async () => {
@@ -360,6 +468,9 @@ export function DeprecateContentModal({ target, onClose }: { target: ContentTarg
     },
     { retry: false, staleTime: 0 },
   );
+  const onPipe = pipe ? (legRows.data ? new Set(legRows.data.rows.map((r) => r.workflowDynastySlug)) : null) : undefined;
+  const listed = preview.data === undefined || onPipe === null ? undefined : { workflows: onPipe ? preview.data.workflows.filter((w) => onPipe.has(w.workflowDynastySlug)) : preview.data.workflows };
+  const pipeUnreadable = pipe !== null && legRows.isError && legRows.data === undefined;
   const figures = useFleetFigures();
   const gate = useOrgQueryGate();
   const featureSlugs = [...new Set((preview.data?.workflows ?? []).map((w) => w.featureSlug))];
@@ -381,9 +492,11 @@ export function DeprecateContentModal({ target, onClose }: { target: ContentTarg
     return () => window.removeEventListener("keydown", onKey);
   }, [onClose, busy]);
 
-  const rows = preview.data?.workflows ?? [];
+  const rows = listed?.workflows ?? [];
   const n = rows.length;
   const what = target.kind === "template" ? "template" : "model";
+  const researchPipes = useResearch().file.pipes;
+  const researchPipe = pipe ? researchPipeOf(researchPipes, pipe) : null;
 
   const confirm = async () => {
     if (!reason) return;
@@ -394,10 +507,16 @@ export function DeprecateContentModal({ target, onClose }: { target: ContentTarg
     // Each workflow it stops records why: this deprecation, named, with the staff member's words.
     const workflowReason = `Uses deprecated ${what} ${target.label}: ${reason}`;
     try {
-      if (target.kind === "template") await setContentTemplateStatus(target.key, change);
-      else for (const alias of target.aliases) await setContentModelStatus(alias, change);
-      statusSet = true;
-      for (const b of bodies) await retireWorkflowsByContent(b, { dryRun: false, reason: workflowReason });
+      if (target.kind === "template") {
+        await setContentTemplateStatus(target.key, change);
+        statusSet = true;
+        for (const b of bodies) await retireWorkflowsByContent(b, { dryRun: false, reason: workflowReason });
+      } else {
+        for (const alias of target.aliases) await setContentModelStatus(alias, change, target.pipe);
+        statusSet = true;
+        // Only the workflows listed (this pipe's): retire-by-content would stop the channel's other legs too.
+        for (const w of rows) await setWorkflowDynastyStatus(w.workflowDynastySlug, { status: "deprecated", reason: workflowReason });
+      }
       await refetchAfterWrite(qc);
       onClose();
     } catch (err) {
@@ -425,30 +544,48 @@ export function DeprecateContentModal({ target, onClose }: { target: ContentTarg
       >
         <div className="flex h-11 shrink-0 items-center gap-2 border-b border-[var(--line-subtle)] px-4">
           <span id="v2-deprecate-title" className="k-label min-w-0 truncate">
-            Deprecate {target.label}?
+            {pipe ? `Deprecate ${target.label} on this pipe?` : `Deprecate ${target.label}?`}
           </span>
           <button type="button" aria-label="Close" className="k-btn-ghost ml-auto h-7 w-7 justify-center p-0" onClick={onClose} disabled={busy}>
             ×
           </button>
         </div>
         <div className="k-scroll min-h-0 overflow-y-auto px-4 py-4">
+          {pipe && (
+            <p className="mb-2 inline-flex items-center gap-1.5 text-[13px] font-medium">
+              {researchPipe ? (
+                <>
+                  <SectionMark section={{ pipe: researchPipe }} size={14} />
+                  <SectionName section={{ pipe: researchPipe }} />
+                </>
+              ) : (
+                <span className="k-mono text-[12px]">{`${pipe.featureSlug} · ${pipe.legKey}`}</span>
+              )}
+            </p>
+          )}
           <p className="text-[13px] leading-5">
-            {preview.data === undefined
-              ? `Finding the workflows that write with this ${what}.`
-              : n === 0
-                ? `No running workflow writes with this ${what}. No new workflow can use it once deprecated.`
-                : `${n === 1 ? "This workflow stops" : `These ${n} workflows stop`} for every client. No new workflow can use this ${what}.`}
+            {pipe
+              ? listed === undefined
+                ? "Finding the workflows on this pipe that write with this model."
+                : n === 0
+                  ? "No running workflow on this pipe names this model. Every other pipe keeps it."
+                  : `${n === 1 ? "This workflow stops" : `These ${n} workflows stop`} on this pipe, for every client. Every other pipe keeps the model.`
+              : preview.data === undefined
+                ? `Finding the workflows that write with this ${what}.`
+                : n === 0
+                  ? `No running workflow writes with this ${what}. No new workflow can use it once deprecated.`
+                  : `${n === 1 ? "This workflow stops" : `These ${n} workflows stop`} for every client. No new workflow can use this ${what}.`}
           </p>
           {target.kind === "model" && target.aliases.length > 1 && (
             <p className="mt-2 text-[13px] leading-5">
               chat-service serves {target.label} under {target.aliases.length} aliases: {aliasList(target.aliases)}. This deprecates each of them.
             </p>
           )}
-          {preview.isError && preview.data === undefined ? (
+          {(preview.isError && preview.data === undefined) || pipeUnreadable ? (
             <p role="alert" className="mt-3 text-[13px] text-[var(--data-rose)]">
-              We could not list its workflows just now. Close and try again.
+              {pipeUnreadable ? "We could not read which workflows run on this pipe. Close and try again." : "We could not list its workflows just now. Close and try again."}
             </p>
-          ) : n > 0 || preview.data === undefined ? (
+          ) : n > 0 || listed === undefined ? (
             <div className="k-card mt-3 overflow-hidden">
               <table className="w-full table-fixed text-[13px]">
                 <thead>
@@ -460,7 +597,7 @@ export function DeprecateContentModal({ target, onClose }: { target: ContentTarg
                   </tr>
                 </thead>
                 <tbody>
-                  {preview.data === undefined
+                  {listed === undefined
                     ? [0, 1, 2].map((i) => (
                         <tr key={i} className="k-row h-10">
                           <td colSpan={4} className="px-4">
@@ -506,7 +643,7 @@ export function DeprecateContentModal({ target, onClose }: { target: ContentTarg
           <button
             type="button"
             onClick={confirm}
-            disabled={busy || preview.data === undefined || !reason}
+            disabled={busy || listed === undefined || !reason}
             className={`k-btn-strong ${busy ? "cursor-wait" : "disabled:cursor-not-allowed disabled:opacity-40"}`}
           >
             {busy ? "Deprecating..." : n > 0 ? `Deprecate ${n} ${n === 1 ? "workflow" : "workflows"}` : `Deprecate ${what}`}

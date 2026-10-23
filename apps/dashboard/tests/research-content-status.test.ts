@@ -152,7 +152,7 @@ describe("TEMPLATE-MODEL-STATUS-1019: the three Research pages", () => {
   });
 
   it("Models: Status + ⋮ keyed on the SERVED aliases, never the workflows join, no Leg column", () => {
-    expect(list).toContain('{ kind: "model", aliases: modelKeys, label: r.label }');
+    expect(list).toContain('{ kind: "model", aliases: modelKeys, label: r.label, pipe: contentPipe }');
     expect(list).toContain("modelAliasesOf(r as ResearchModel)");
     expect(list).toContain("gap={served.gap}");
     expect(status).not.toContain("useModelAliases");
@@ -225,13 +225,13 @@ describe("DEPRECATION-REASON-1020: every Deprecate asks why; every deprecated it
   it("every deprecation write carries a reason, typed so none can be sent without one", () => {
     expect(api).toContain('export type CatalogueStatusChange = { status: "active" } | { status: "deprecated"; reason: string };');
     expect(api).toContain("setContentTemplateStatus(type: string, change: CatalogueStatusChange)");
-    expect(api).toContain("setContentModelStatus(model: string, change: CatalogueStatusChange)");
+    expect(api).toContain("setContentModelStatus(model: string, change: CatalogueStatusChange, pipe: ContentPipe)");
     expect(api).toContain("setWorkflowDynastyStatus(workflowDynastySlug: string, change: CatalogueStatusChange)");
     expect(api).toContain('run: { dryRun: true } | { dryRun: false; reason: string }');
   });
 
   it("Confirm stays off until the Why? box holds text, in both confirmations", () => {
-    expect(status).toContain("disabled={busy || preview.data === undefined || !reason}");
+    expect(status).toContain("disabled={busy || listed === undefined || !reason}");
     expect(status).toContain("disabled={busy || !reason}");
     expect(status.match(/<WhyField /g)?.length).toBe(2);
     // A workflow's Deprecate opens the Why? modal, never writes on the menu click.
