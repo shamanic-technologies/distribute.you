@@ -17,6 +17,9 @@ import {
   DeprecationNote,
   StatusMenu,
   StatusWord as ContentStatusWord,
+  DeprecatedElsewhere,
+  ModelOtherPipes,
+  useContentPipe,
   useContentStatusWrites,
   useDynastyStatuses,
   useModelStatuses,
@@ -149,7 +152,8 @@ function useActiveCatalogCounts(pipe: ResearchPipe, catalog: ResearchCatalog | n
   const liveRows = usePipeWorkflowRows(channel, liveLeg);
   const dynasties = useDynastyStatuses(channel);
   const templateStatuses = useTemplateStatuses();
-  const modelStatuses = useModelStatuses();
+  // A model's status is the one on THIS pipe (LLM-STATUS-PER-PIPE-1023).
+  const modelStatuses = useModelStatuses(useContentPipe(pipe));
   const workflows =
     liveLeg != null
       ? liveRows.rankingQ.data !== undefined && dynasties.answered
@@ -349,7 +353,9 @@ function CatalogList({
   const countOf = (k: CatalogKind): number | null => active[k];
   // Staff status (TEMPLATE-MODEL-STATUS-1019): templates by type, models by every alias chat-service serves them under (served on the row).
   const templateStatuses = useTemplateStatuses();
-  const modelStatuses = useModelStatuses();
+  // Models: the status on THIS pipe, set on this pipe only (LLM-STATUS-PER-PIPE-1023, owner 2026-10-23).
+  const contentPipe = useContentPipe(pipe);
+  const modelStatuses = useModelStatuses(contentPipe);
   const writes = useContentStatusWrites();
   // Templates and models sit in two tabs, Active and Deprecated (owner 2026-10-21, models 2026-10-23),
   // the tab in the URL. No row shows before the statuses answer, so none flashes in a tab it then leaves.
@@ -466,7 +472,7 @@ function CatalogList({
                             <th className={`${TH} w-28 text-right`}>% Conversion</th>
                             <th className={`${TH} w-32 text-right`}>{`# ${o.plural}`}</th>
                             <th className={`${TH} w-28 text-right`}>$ Spent</th>
-                            <th className={`${TH} w-40`}>Status</th>
+                            <th className={`${TH} w-56`}>Status</th>
                           </>
                         ) : kind === "workflows" ? (
                           <>
@@ -516,8 +522,8 @@ function CatalogList({
                           const target: ContentTarget | null =
                             kind === "templates"
                               ? { kind: "template", key: templateContentKey(r as ResearchTemplate), label: r.label }
-                              : modelKeys.length
-                                ? { kind: "model", aliases: modelKeys, label: r.label }
+                              : modelKeys.length && contentPipe
+                                ? { kind: "model", aliases: modelKeys, label: r.label, pipe: contentPipe }
                                 : null;
                           // A template row's word is the status that picked its tab (the dynasty's), never its head
                           // version's own: a head served a few minutes behind an upgrade read Deprecated under Active.
@@ -625,6 +631,7 @@ function CatalogList({
                                       pending={!statusAnswered && modelKeys.length > 0}
                                       deprecation={deprecation}
                                     />
+                                    {statusAnswered && <DeprecatedElsewhere items={modelStatuses.elsewhere(modelKeys)} />}
                                   </td>
                                 </>
                               ) : kind === "workflows" ? (
@@ -1392,7 +1399,9 @@ function ModelView({
   nav: (href: string) => void;
 }) {
   const o = useOutcome(pipe);
-  const why = useModelStatuses().deprecationOf(modelAliasesOf(m).aliases);
+  const modelStatuses = useModelStatuses(useContentPipe(pipe));
+  const aliases = modelAliasesOf(m).aliases;
+  const why = modelStatuses.deprecationOf(aliases);
   const versions = m.models ?? [];
   const second = modelSecondLine(m);
   return (
@@ -1478,6 +1487,7 @@ function ModelView({
               </dl>
               <MeasuredNote />
             </aside>
+            <ModelOtherPipes items={modelStatuses.elsewhere(aliases)} />
             <div className="k-card p-4">
               <p className="k-label">Workflows that write with it</p>
               {m.workflows.length ? (

@@ -12549,14 +12549,26 @@ const ContentTemplateStatusesSchema = z.object({
       statusChangedAt: z.string().nullish(),
     })),
 });
+const ContentModelPipeStatusSchema = z.object({
+  featureSlug: z.string(),
+  legKey: z.string(),
+  status: z.string(),
+  statusReason: z.string().nullish(),
+  statusChangedBy: z.string().nullish(),
+  statusChangedAt: z.string().nullish(),
+});
+export type ContentModelPipeStatus = z.infer<typeof ContentModelPipeStatusSchema>;
 const ContentModelStatusesSchema = z.object({
   models: z.array(z.object({
       model: z.string(),
       provider: z.string().nullish(),
+      // Read without a pipe, always `active` (LLM-STATUS-PER-PIPE-1023): a model is never retired fleet-wide.
       status: z.string(),
       statusReason: z.string().nullish(),
       statusChangedBy: z.string().nullish(),
       statusChangedAt: z.string().nullish(),
+      // Every pipe staff stated a status on; no entry = active on that pipe.
+      pipeStatuses: z.array(ContentModelPipeStatusSchema).nullish(),
     })),
 });
 
@@ -12574,8 +12586,18 @@ export async function setContentTemplateStatus(type: string, change: CatalogueSt
   await apiCall<unknown>(`/content/templates/${encodeURIComponent(type)}/status`, { method: "PUT", body: change });
 }
 
-export async function setContentModelStatus(model: string, change: CatalogueStatusChange): Promise<void> {
-  await apiCall<unknown>(`/content/models/${encodeURIComponent(model)}/status`, { method: "PUT", body: change });
+/** A pipe: one channel (feature slug) x one leg, the grain a writer model's status is set on. */
+export type ContentPipe = { featureSlug: string; legKey: string };
+
+/**
+ * A writer model's status on ONE pipe (LLM-STATUS-PER-PIPE-1023, owner 2026-10-23: « la deprecation
+ * manuelle doit être par pipe »): every other pipe keeps its own. content-generation 400s a write without one.
+ */
+export async function setContentModelStatus(model: string, change: CatalogueStatusChange, pipe: ContentPipe): Promise<void> {
+  await apiCall<unknown>(`/content/models/${encodeURIComponent(model)}/status`, {
+    method: "PUT",
+    body: { ...change, featureSlug: pipe.featureSlug, legKey: pipe.legKey },
+  });
 }
 
 const TemplateOutputsSchema = z.object({
@@ -12672,7 +12694,8 @@ export type RetireByContentResult = z.infer<typeof RetireByContentSchema>;
  * recording `reason` as why it stopped.
  */
 export async function retireWorkflowsByContent(
-  target: { promptType: string } | { model: string },
+  // `featureSlug` narrows to one channel (absent = every channel).
+  target: ({ promptType: string } | { model: string }) & { featureSlug?: string },
   run: { dryRun: true } | { dryRun: false; reason: string },
 ): Promise<RetireByContentResult> {
   const raw = await apiCall<unknown>("/workflows/retire-by-content", { method: "POST", body: { ...target, ...run } });

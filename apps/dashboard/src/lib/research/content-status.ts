@@ -3,13 +3,79 @@
  * the lookups only. Every status is content-generation-service's; this module NAMES it and joins
  * served keys, it never decides one. Alias-free so it carries real unit tests.
  */
-import { catalogPipes, pipeCatalog, type ResearchCatalog, type ResearchModel, type ResearchPipe } from "./research";
+import { canonicalLegKey, sameLegKey } from "../outbound-leg-key";
+import { catalogPipes, pipeCatalog, type ResearchCatalog, type ResearchModel, type ResearchPipe, type ResearchPipeEntry } from "./research";
 
 /**
  * What a deprecation acts on: a template TYPE, or every model ALIAS a concrete model is served under
  * (never the concrete id: content-generation-service sets a status per alias).
  */
-export type ContentTarget = { kind: "template"; key: string; label: string } | { kind: "model"; aliases: string[]; label: string };
+export type ContentTarget =
+  | { kind: "template"; key: string; label: string }
+  | { kind: "model"; aliases: string[]; label: string; pipe: ContentPipe };
+
+/**
+ * A pipe as content-generation keys a writer model's status (LLM-STATUS-PER-PIPE-1023): one channel
+ * (feature slug) x one leg. Structurally `ContentPipe` of `lib/api`, restated so this module stays alias-free.
+ */
+export type ContentPipe = { featureSlug: string; legKey: string };
+
+/** A Research pipe's content pipe: its channel and its leg, in the leg's current spelling. */
+export function contentPipeOf(entry: Pick<ResearchPipeEntry, "channel" | "leg"> | null | undefined): ContentPipe | null {
+  if (!entry?.channel || !entry.leg) return null;
+  return { featureSlug: entry.channel, legKey: canonicalLegKey(entry.channel, entry.leg) };
+}
+
+export function samePipe(a: ContentPipe, b: ContentPipe): boolean {
+  return a.featureSlug === b.featureSlug && sameLegKey(a.legKey, b.legKey);
+}
+
+/** One status staff stated for a model alias on one pipe, as content-generation serves it. */
+export type ModelPipeStatusRow = ContentPipe & {
+  status: string;
+  statusReason?: string | null;
+  statusChangedBy?: string | null;
+  statusChangedAt?: string | null;
+};
+
+/**
+ * An alias's status on one pipe: the status staff stated there, else `active` (no entry = active,
+ * the producer's rule). The alias's top-level status is never read: it is always `active` now.
+ */
+export function aliasStatusOnPipe(pipeStatuses: readonly ModelPipeStatusRow[] | null | undefined, pipe: ContentPipe): ModelPipeStatusRow | { status: "active" } {
+  return (pipeStatuses ?? []).find((p) => samePipe(p, pipe)) ?? { status: "active" };
+}
+
+/** The Research pipe a content pipe is, by channel and leg; null when the Research file lists none. */
+export function researchPipeOf(pipes: readonly Pick<ResearchPipeEntry, "id" | "channel" | "leg">[], pipe: ContentPipe): ResearchPipe | null {
+  return pipes.find((p) => p.channel === pipe.featureSlug && sameLegKey(canonicalLegKey(p.channel, p.leg), pipe.legKey))?.id ?? null;
+}
+
+/**
+ * The OTHER pipes a model is deprecated on (every alias deprecated there, the model's status rule),
+ * each with why, who and when; the pipe the page shows is left out.
+ */
+export function modelDeprecatedElsewhere(
+  aliases: readonly string[],
+  pipeStatusesOf: (alias: string) => readonly ModelPipeStatusRow[] | null | undefined,
+  current: ContentPipe | null,
+): { pipe: ContentPipe; deprecation: DeprecationFacts[] }[] {
+  if (aliases.length === 0) return [];
+  const pipes: ContentPipe[] = [];
+  for (const a of aliases) {
+    for (const p of pipeStatusesOf(a) ?? []) {
+      if (p.status !== "deprecated") continue;
+      if (current && samePipe(p, current)) continue;
+      if (!pipes.some((q) => samePipe(q, p))) pipes.push({ featureSlug: p.featureSlug, legKey: p.legKey });
+    }
+  }
+  const out: { pipe: ContentPipe; deprecation: DeprecationFacts[] }[] = [];
+  for (const pipe of pipes) {
+    const d = modelDeprecation(aliases, (a) => contentDeprecation(aliasStatusOnPipe(pipeStatusesOf(a), pipe)));
+    if (d) out.push({ pipe, deprecation: d });
+  }
+  return out;
+}
 
 /** A model's status over its aliases: Deprecated only once every one is; null while any is unstated. */
 export function modelStatus(aliases: readonly string[], statusOf: (alias: string) => string | null | undefined): string | null {
