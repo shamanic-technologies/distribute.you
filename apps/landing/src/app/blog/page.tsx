@@ -51,7 +51,7 @@ async function fetchArticles(): Promise<BlogArticle[]> {
 function CoverPlaceholder({ title }: { title: string }) {
   const initial = title.trim().charAt(0).toUpperCase() || "•";
   return (
-    <div className="relative aspect-[16/9] w-full overflow-hidden rounded-xl bg-gradient-to-br from-brand-100 via-brand-50 to-amber-50 flex items-center justify-center">
+    <div className="relative aspect-video w-full overflow-hidden rounded-xl bg-linear-to-br from-brand-100 via-brand-50 to-amber-50 flex items-center justify-center">
       <span className="font-display text-6xl text-brand-400/80 select-none">
         {initial}
       </span>
@@ -63,12 +63,12 @@ function FeaturedArticleCard({ article }: { article: BlogArticle }) {
   return (
     <Link
       href={`/blog/${article.slug}`}
-      className="group block focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-400 rounded-2xl"
+      className="group block focus:outline-hidden focus-visible:ring-2 focus-visible:ring-brand-400 rounded-2xl"
     >
       <article className="flex flex-col md:flex-row overflow-hidden rounded-2xl border border-gray-200 bg-white hover:border-gray-300 hover:shadow-md transition-all duration-200">
         <div className="md:w-1/2 relative">
           {article.coverImageUrl ? (
-            <div className="relative aspect-[16/9] md:aspect-auto md:h-full w-full overflow-hidden bg-gray-100">
+            <div className="relative aspect-video md:aspect-auto md:h-full w-full overflow-hidden bg-gray-100">
               <Image
                 src={article.coverImageUrl}
                 alt={article.title}
@@ -122,11 +122,11 @@ function ArticleCard({ article }: { article: BlogArticle }) {
   return (
     <Link
       href={`/blog/${article.slug}`}
-      className="group block focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-400 rounded-2xl"
+      className="group block focus:outline-hidden focus-visible:ring-2 focus-visible:ring-brand-400 rounded-2xl"
     >
       <article className="h-full flex flex-col overflow-hidden rounded-2xl border border-gray-200 bg-white hover:border-gray-300 hover:shadow-md transition-all duration-200">
         {article.coverImageUrl ? (
-          <div className="relative aspect-[16/9] w-full overflow-hidden bg-gray-100">
+          <div className="relative aspect-video w-full overflow-hidden bg-gray-100">
             <Image
               src={article.coverImageUrl}
               alt={article.title}

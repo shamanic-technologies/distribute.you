@@ -22,6 +22,9 @@ export function MermaidDiagram({ chart, className }: MermaidDiagramProps) {
         mermaid.initialize({
           startOnLoad: false,
           theme: "neutral",
+          // Mermaid 12 defaults to the ELK layout and the "neo" look; keep the v11 rendering.
+          layout: "dagre",
+          look: "classic",
           flowchart: {
             useMaxWidth: true,
             htmlLabels: true,

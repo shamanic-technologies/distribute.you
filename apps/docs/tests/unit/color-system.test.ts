@@ -89,8 +89,8 @@ describe("color system in docs app", () => {
 
   it("colours links and code from the brand ramp in globals.css", () => {
     const css = readFileSync(join(ROOT, "src/app/globals.css"), "utf-8");
-    expect(css).toContain("color: theme('colors.brand.600');"); // links
-    expect(css).toContain("color: theme('colors.brand.700');"); // code, link hover
-    expect(css).toContain("background-color: theme('colors.brand.50');"); // code bg
+    expect(css).toContain("color: var(--color-brand-600);"); // links
+    expect(css).toContain("color: var(--color-brand-700);"); // code, link hover
+    expect(css).toContain("background-color: var(--color-brand-50);"); // code bg
   });
 });

@@ -88,7 +88,7 @@ export function Sidebar() {
   const activeHref = activeNavHref(pathname, INTERNAL_HREFS);
 
   return (
-    <aside className="w-56 h-full border-r border-gray-100 bg-gradient-to-b from-white to-gray-50/30 p-4 flex-shrink-0 overflow-y-auto">
+    <aside className="w-56 h-full border-r border-gray-100 bg-linear-to-b from-white to-gray-50/30 p-4 shrink-0 overflow-y-auto">
       <nav className="space-y-5">
         {NAV_ITEMS.map((section) => (
           <div key={section.title}>

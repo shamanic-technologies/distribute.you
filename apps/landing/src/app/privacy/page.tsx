@@ -53,7 +53,7 @@ const SECTIONS = [
     title: "Data about you",
     body: [
       "Account: your name and work email, or your Google sign-in. Sign-in is handled by Clerk.",
-      "Phone number: asked at sign-up. We use it to reach you, and for AI Instant Call, to ring your sales rep when a prospect asks to talk.",
+      "Phone number: asked at sign-up. We use it to reach you, and for AI Instant Call, to ring-3 your sales rep when a prospect asks to talk.",
       "Your business: your website, what you sell, your sales path and its rates, the lifetime revenue of a client, your campaigns and their budgets.",
       "Payments: your credit, reload settings and payment history. Card details are handled by Stripe or Revolut; we never see your full card number.",
       "Messages: what you send us by email, WhatsApp or the request forms in the dashboard.",
@@ -136,13 +136,13 @@ export default function PrivacyPage() {
       <Navbar />
       <main className="dy-page">
         <Section variant="prose" outerClassName="dy-section">
-          <p className="dy-mono text-xs font-semibold uppercase tracking-[0.18em] text-[var(--dy-accent-hi)]">
+          <p className="dy-mono text-xs font-semibold uppercase tracking-[0.18em] text-(--dy-accent-hi)">
             Legal
           </p>
           <h1 className="dy-title mt-4 text-4xl">
             Privacy Policy
           </h1>
-          <p className="dy-mono mt-4 text-sm text-[var(--dy-muted)]">Last updated {LAST_UPDATED}</p>
+          <p className="dy-mono mt-4 text-sm text-(--dy-muted)">Last updated {LAST_UPDATED}</p>
           <p className="dy-body mt-6 text-lg">
             This Privacy Policy explains how distribute.you collects, uses, and
             protects information when you use our websites, dashboard, APIs,
@@ -171,7 +171,7 @@ export default function PrivacyPage() {
               </h2>
               <p className="dy-body mt-4 text-base">
                 For privacy questions or requests, contact{" "}
-                <a href={`mailto:${SUPPORT_EMAIL}`} className="text-[var(--dy-accent-hi)] underline">
+                <a href={`mailto:${SUPPORT_EMAIL}`} className="text-(--dy-accent-hi) underline">
                   {SUPPORT_EMAIL}
                 </a>
                 .
