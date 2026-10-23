@@ -274,7 +274,7 @@ export function CompaniesPage() {
               </th>
               <th className={REC_TH}>Company</th>
               <th className={REC_TH}>Stage</th>
-              <th className={REC_TH}>Best contact</th>
+              <th className={REC_TH}>People</th>
               <th className={`${REC_TH} text-right`}>Value</th>
               <th className={REC_TH}>Signals</th>
               <th className={`${REC_TH} text-right`}>Last touch</th>
@@ -333,6 +333,10 @@ export function CompaniesPage() {
                             <Initials name={person} size={18} round />
                           )}
                           <span className="truncate">{person}</span>
+                          {/* The others behind the company (Senthil 2026-10-23: « it's showing only one »). */}
+                          {o.peopleCount != null && o.peopleCount > 1 ? (
+                            <span className="k-chip shrink-0 tabular-nums">+{formatCount(o.peopleCount - 1)}</span>
+                          ) : null}
                         </span>
                       ) : <span className="k-fg4">{"—"}</span>}
                     </td>
@@ -515,6 +519,7 @@ function CompanyCard({ orgId, brandId, o }: { orgId: string; brandId: string; o:
             <Initials name={person} size={16} round />
           )}
           <span className="truncate">{person}</span>
+          {o.peopleCount != null && o.peopleCount > 1 ? <span className="k-chip shrink-0 tabular-nums">+{formatCount(o.peopleCount - 1)}</span> : null}
         </div>
       ) : null}
       <div className="k-fg3 mt-2 flex items-center gap-1.5 border-t border-[var(--line-subtle)] pt-2 text-[11px]">

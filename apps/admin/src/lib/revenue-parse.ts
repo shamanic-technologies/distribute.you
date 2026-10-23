@@ -22,6 +22,9 @@ const RevenueOrgSchema = z.object({
   // through). `.nullish()` so the parse survives until that backend field ships.
   orgDomain: z.string().nullish(),
   topPerson: RevenueTopPersonSchema.nullable(),
+  // features-service v0.179.382 (COMPANY-PEOPLE-COUNT-1023): distinct people the row is built
+  // from, `topPerson` one of them. Optional until every cached body carries it.
+  peopleCount: z.number().int().optional(),
   tags: z.array(z.string()),
   expectedRevenueUsd: z.number(),
   mostAdvancedDate: z.string().nullable(),
