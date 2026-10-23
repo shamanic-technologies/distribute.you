@@ -90,6 +90,8 @@ export const SENSITIVE_QUERY_ROOTS = new Set([
   "campaignWorkflowRevenueActual",
   "workflowRunsActual",
   "researchCatalogActual",
+  "researchFileActual",
+  "researchPerformanceActual",
   // Staff Research status (TEMPLATE-MODEL-STATUS-1019): template/model/workflow statuses, the
   // workflows a deprecation would stop, a template's last emails (every client's copy).
   "contentTemplateStatuses",
@@ -193,6 +195,9 @@ export const PERSISTABLE_QUERY_ROOTS = new Set([
   // Research's Workflows table cells (owner 2026-10-21, « It should be instant »): the billed-basis
   // catalogue (LLM, Template) and which dynasties can run (Status). Staff-only reads, on staff disks.
   "researchCatalog",
+  // The Research file (hub, every study) and the Performance tab, billed basis (owner 2026-10-23, « instantanées »).
+  "researchFile",
+  "researchPerformance",
   "workflowDynastyStatuses",
   // The same listing with each runnable workflow's description (Status + Description cells).
   "workflowDynastySummaries",

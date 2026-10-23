@@ -1,7 +1,7 @@
 "use client";
 
-import { createContext, useContext } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { createContext, useContext, useEffect } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useCostBasis } from "@/lib/v2/use-cost-basis";
 import { researchPipeEntry, type ResearchCatalog, type ResearchFile, type ResearchPipe, type ResearchPipeEntry } from "@/lib/research/research";
 import type { ResearchPerformance } from "@/lib/research/performance";
@@ -13,10 +13,11 @@ import type { ResearchPerformance } from "@/lib/research/performance";
  * `actual` (what the vendors charged us). Every Research component reads through `useResearch()`,
  * so one switch in the top bar moves the hub, every study and every workflow, template and LLM page.
  *
- * Only the billed-basis catalogue is persisted to disk (`researchCatalog`, staff browsers only): the
- * Workflows table's LLM and Template cells paint on the first frame instead of waiting for 825KB
- * (owner 2026-10-21, « It should be instant »). The actual-basis catalogue (our margin) sits under its
- * own root, `researchCatalogActual`, never written to disk; the file and texts stay memory-only.
+ * The billed-basis file, catalogue and Performance tab are persisted to disk (`researchFile`,
+ * `researchCatalog`, `researchPerformance`, staff browsers only): every Research page paints on the
+ * first frame, then re-reads (owner 2026-10-21 « It should be instant », 2026-10-23 « instantanées »).
+ * The actual-basis reads (our margin) sit under their own roots (`researchFileActual`,
+ * `researchCatalogActual`, `researchPerformanceActual`), never written to disk; the texts stay memory-only.
  */
 export type ResearchBasis = "user" | "actual";
 
@@ -41,14 +42,33 @@ export function useResearchCatalog(basis: ResearchBasis) {
   });
 }
 
-/** The Performance tab's read on one basis (memory only: the actual basis reveals our margin). */
+/** The Research file (studies, pipes) on one basis: painted from disk on the billed basis, then re-read. */
+function researchFileQuery(basis: ResearchBasis) {
+  return {
+    queryKey: basis === "actual" ? ["researchFileActual"] : ["researchFile", basis],
+    queryFn: () => fetchPart<ResearchFile>(basis, "file"),
+    retry: false,
+  } as const;
+}
+
+function researchPerformanceQuery(basis: ResearchBasis) {
+  return {
+    queryKey: basis === "actual" ? ["researchPerformanceActual"] : ["researchPerformance", basis],
+    queryFn: () => fetchPart<ResearchPerformance>(basis, "performance"),
+    retry: false,
+  } as const;
+}
+
+const TEXTS_QUERY = { queryKey: ["researchTexts"], queryFn: () => fetchPart<Record<string, string>>("user", "texts"), ...ONCE } as const;
+
+/** The Performance tab's read on one basis (disk on the billed basis; the actual basis reveals our margin, memory only). */
 export function useResearchPerformance(basis: ResearchBasis) {
-  return useQuery({ queryKey: ["researchPerformance", basis], queryFn: () => fetchPart<ResearchPerformance>(basis, "performance"), retry: false });
+  return useQuery(researchPerformanceQuery(basis));
 }
 
 /** The template texts, the same on both bases. */
 export function useResearchTexts(enabled: boolean) {
-  return useQuery({ queryKey: ["researchTexts"], queryFn: () => fetchPart<Record<string, string>>("user", "texts"), enabled, ...ONCE });
+  return useQuery({ ...TEXTS_QUERY, enabled });
 }
 
 /**
@@ -57,7 +77,7 @@ export function useResearchTexts(enabled: boolean) {
  * (a non-staff reader gets a 403 and never a pipe).
  */
 export function useResearchPipes(): ResearchPipeEntry[] | null {
-  const q = useQuery({ queryKey: ["researchFile", "user"], queryFn: () => fetchPart<ResearchFile>("user", "file"), ...ONCE });
+  const q = useQuery(researchFileQuery("user"));
   return q.data?.pipes ?? null;
 }
 
@@ -100,7 +120,8 @@ export function usePipeChannel(pipe: ResearchPipe): string {
 /**
  * Renders `children` once the live file on the reader's basis has loaded; `pending` until then and
  * `failed` when the route refused or broke, never one basis's figures under the other's label.
- * The catalogue starts loading at once beside it, so a click on a workflow finds it in memory.
+ * The catalogue starts loading at once beside it, and the Performance tab and template texts right
+ * after, so a click on a workflow, a template or Performance finds its data already there.
  */
 export function ResearchSourceProvider({
   children,
@@ -113,8 +134,13 @@ export function ResearchSourceProvider({
 }) {
   const { actual } = useCostBasis();
   const basis: ResearchBasis = actual ? "actual" : "user";
-  const q = useQuery({ queryKey: ["researchFile", basis], queryFn: () => fetchPart<ResearchFile>(basis, "file"), ...ONCE });
+  const q = useQuery(researchFileQuery(basis));
   useResearchCatalog(basis);
+  const queryClient = useQueryClient();
+  useEffect(() => {
+    void queryClient.prefetchQuery(researchPerformanceQuery(basis));
+    void queryClient.prefetchQuery(TEXTS_QUERY);
+  }, [queryClient, basis]);
   if (q.isError) return <>{failed}</>;
   if (!q.data) return <>{pending}</>;
   return <Ctx.Provider value={{ basis, file: q.data }}>{children}</Ctx.Provider>;
