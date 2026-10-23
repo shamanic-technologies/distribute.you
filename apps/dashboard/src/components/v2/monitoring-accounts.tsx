@@ -211,13 +211,13 @@ export function AccountsView({ data, health }: { data: AbsorbedCosts; health: He
                       </td>
                       <td className={TDR}>
                         <HealthCell health={health} org={org}>
-                          {() => (one ? <RoiValue v={one.currentEconomics.roiMultiple} /> : brands.length > 1 ? <span className="k-fg3 text-[12px]">{brands.length} brands</span> : <Dash />)}
+                          {() => (one ? <RoiValue v={one.currentEconomics?.roiMultiple ?? null} /> : brands.length > 1 ? <span className="k-fg3 text-[12px]">{brands.length} brands</span> : <Dash />)}
                         </HealthCell>
                       </td>
                       <td className={`${TDR} hidden lg:table-cell`}>
                         <HealthCell health={health} org={org}>
                           {() =>
-                            one && one.audiences.totalRemaining != null ? (
+                            one?.audiences && one.audiences.totalRemaining != null ? (
                               <>
                                 {n(one.audiences.totalRemaining)}
                                 {one.audiences.pctUsed != null && <span className="k-fg3"> · {Math.round(one.audiences.pctUsed)}% used</span>}
@@ -430,8 +430,9 @@ function HealthSection({ health, org, brands }: { health: HealthState; org: Cust
 
 function BrandHealth({ b }: { b: CustomerHealthBrand }) {
   const e = b.currentEconomics;
-  const budgets = b.notTrackedYet.budgetChangeHistory;
-  const pauses = b.notTrackedYet.pauseHistory;
+  const budgets = b.notTrackedYet?.budgetChangeHistory ?? null;
+  const pauses = b.notTrackedYet?.pauseHistory ?? null;
+  const aud = b.audiences;
   const history = [
     ...(budgets ?? []).map((h) => ({ at: h.changedAt, what: h.dailyBudgetUsd > 0 ? `Budget set to ${usdWhole(h.dailyBudgetUsd)}/day` : "Budget set to $0" })),
     ...(pauses ?? []).map((h) => ({ at: h.transitionedAt, what: h.paused ? "Paused" : "Resumed" })),
@@ -449,15 +450,15 @@ function BrandHealth({ b }: { b: CustomerHealthBrand }) {
       </div>
       <Facts
         rows={[
-          [<RoiLabel key="roi" />, <RoiValue key="v" v={e.roiMultiple} />],
-          ["Cost per client", e.currentCacUsd == null ? null : `${dollarsExact(e.currentCacUsd)}${b.breakevenCacUsd != null ? ` · break-even ${dollarsExact(b.breakevenCacUsd)}` : ""}`],
+          [<RoiLabel key="roi" />, <RoiValue key="v" v={e?.roiMultiple ?? null} />],
+          ["Cost per client", e?.currentCacUsd == null ? null : `${dollarsExact(e.currentCacUsd)}${b.breakevenCacUsd != null ? ` · break-even ${dollarsExact(b.breakevenCacUsd)}` : ""}`],
           // The brand's whole history (a brand moved between orgs keeps it); the org's own campaign spend is billing's, above.
-          ["Spent on this brand", e.committedSpendUsd == null ? null : dollarsExact(e.committedSpendUsd)],
+          ["Spent on this brand", e?.committedSpendUsd == null ? null : dollarsExact(e.committedSpendUsd)],
           [
             "Audience left",
-            b.audiences.totalRemaining == null
+            aud?.totalRemaining == null
               ? null
-              : `${n(b.audiences.totalRemaining)} of ${b.audiences.totalSize == null ? "?" : n(b.audiences.totalSize)} · ${b.audiences.count} list${b.audiences.count === 1 ? "" : "s"}`,
+              : `${n(aud.totalRemaining)} of ${aud.totalSize == null ? "?" : n(aud.totalSize)}${aud.count == null ? "" : ` · ${aud.count} list${aud.count === 1 ? "" : "s"}`}`,
           ],
           ["Best audience", b.bestAudience ? b.bestAudience.name : null],
           ["Best workflow", b.bestWorkflow ? (b.bestWorkflow.name ?? b.bestWorkflow.workflowDynastySlug) : null],
