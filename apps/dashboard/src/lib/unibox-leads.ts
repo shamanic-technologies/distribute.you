@@ -217,12 +217,49 @@ function scopedQuery(brandId: string, f: UniboxFilters, scope: UniboxScope): URL
 }
 
 /** lead-service's query string for one page: the scope, each filter a comma list, `q`, the cursor. */
-export function uniboxQuery(brandId: string, f: UniboxFilters, opts: { q?: string; limit: number; cursor?: string | null } & UniboxScope): string {
+export function uniboxQuery(
+  brandId: string,
+  f: UniboxFilters,
+  opts: { q?: string; limit: number; cursor?: string | null; sort?: UniboxSort | null } & UniboxScope,
+): string {
   const qs = scopedQuery(brandId, f, opts);
   qs.set("limit", String(opts.limit));
   if (opts.q) qs.set("q", opts.q);
   if (opts.cursor) qs.set("cursor", opts.cursor);
+  if (opts.sort) qs.set("sort", opts.sort);
   return qs.toString();
+}
+
+/**
+ * The orders lead-service serves on the Unibox list (PEOPLE-SORT-BY-COMPANY-1023). Absent (null)
+ * = its default, newest activity first. `company_*` keeps every person of one company together
+ * across pages, so a client sees colleagues side by side. A cursor answers only the sort it was
+ * issued for: drop the cursor when the sort changes.
+ */
+export type UniboxSort = "company_asc" | "company_desc" | "stage_desc" | "stage_asc" | "last_touch_asc";
+export type UniboxSortColumn = "company" | "stage" | "lastTouch";
+
+/** Each sortable column's orders, first click first; one more click returns to the default. */
+const SORT_CYCLE: Record<UniboxSortColumn, (UniboxSort | null)[]> = {
+  company: ["company_asc", "company_desc", null],
+  stage: ["stage_desc", "stage_asc", null],
+  // The default IS newest touch first, so this column only flips to oldest first and back.
+  lastTouch: ["last_touch_asc", null],
+};
+
+/** The sort a click on `column`'s header asks for, given the sort in force. */
+export function nextUniboxSort(column: UniboxSortColumn, current: UniboxSort | null): UniboxSort | null {
+  const cycle = SORT_CYCLE[column];
+  const at = current ? cycle.indexOf(current) : -1;
+  if (at === -1) return cycle[0];
+  return cycle[(at + 1) % cycle.length];
+}
+
+/** The arrow a column header shows: "asc", "desc", or null when the list is not ordered on it. */
+export function uniboxSortArrow(column: UniboxSortColumn, current: UniboxSort | null): "asc" | "desc" | null {
+  if (column === "lastTouch") return current === "last_touch_asc" ? "asc" : current === null ? "desc" : null;
+  if (column === "company") return current === "company_asc" ? "asc" : current === "company_desc" ? "desc" : null;
+  return current === "stage_asc" ? "asc" : current === "stage_desc" ? "desc" : null;
 }
 
 /** lead-service's query string for the per-rung counts: the same scope and filters, no paging. */

@@ -42,7 +42,7 @@ import {
 import { browserHasAnonSession } from "./anon-session-cookie";
 import { offerArchiveRefusalSentence } from "./offer-archive";
 import { CrmAttributionSchema, type CrmAttribution } from "./crm-attribution";
-import { UniboxLeadCardSchema, UniboxLifecycleCountsSchema, UniboxPageSchema, uniboxCardQuery, uniboxCountsQuery, uniboxQuery, type UniboxFilters, type UniboxLeadCard, type UniboxLifecycleCounts, type UniboxPage, type UniboxScope } from "./unibox-leads";
+import { UniboxLeadCardSchema, UniboxLifecycleCountsSchema, UniboxPageSchema, uniboxCardQuery, uniboxCountsQuery, uniboxQuery, type UniboxFilters, type UniboxLeadCard, type UniboxLifecycleCounts, type UniboxPage, type UniboxScope, type UniboxSort } from "./unibox-leads";
 import { CompanyLifecycleSchema, DealsLifecycleSchema, companyLifecycleQuery, dealsLifecycleQuery, type CompanyLifecycle, type DealsLifecycle } from "./deals-board";
 import { SendingScheduleResponseSchema, type SendingSchedule } from "./sending-schedule";
 import {
@@ -8476,7 +8476,7 @@ export async function getLeadWrittenBy(leadId: string, token?: string): Promise<
 export async function listUniboxLeads(
   brandId: string,
   filters: UniboxFilters,
-  opts: { q?: string; limit: number; cursor?: string | null } & UniboxScope,
+  opts: { q?: string; limit: number; cursor?: string | null; sort?: UniboxSort | null } & UniboxScope,
   token?: string,
 ): Promise<UniboxPage> {
   const raw = await apiCall<unknown>(`/leads/unibox?${uniboxQuery(brandId, filters, opts)}`, { token });

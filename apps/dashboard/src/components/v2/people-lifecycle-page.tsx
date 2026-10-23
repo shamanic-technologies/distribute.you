@@ -9,7 +9,19 @@ import { POLL_INTERVAL } from "@/lib/query-options";
 import { formatCount } from "@/lib/format-number";
 import { timeAgo } from "@/lib/friendly-datetime";
 import { leadsExportQuery, LEADS_PAGE_SIZE } from "@/lib/leads-server-page";
-import { filtersKey, uniboxLeadName, uniboxRowId, uniboxRowKey, uniboxValueTag, type UniboxDimension, type UniboxFilters } from "@/lib/unibox-leads";
+import {
+  filtersKey,
+  nextUniboxSort,
+  uniboxLeadName,
+  uniboxRowId,
+  uniboxRowKey,
+  uniboxSortArrow,
+  uniboxValueTag,
+  type UniboxDimension,
+  type UniboxFilters,
+  type UniboxSort,
+  type UniboxSortColumn,
+} from "@/lib/unibox-leads";
 import { DEALS_FILTER_DIMENSIONS, dealCardChips, dealsBoardRungs, peopleLegacyTab } from "@/lib/deals-board";
 import { v2Href } from "@/lib/v2/routes";
 import { ExportButton, RecordsFooter, RecordsTabs, RecordsToolbar, REC_TH, useRowKeys } from "@/components/v2/records";
@@ -43,6 +55,8 @@ export function PeopleLifecyclePage() {
   const tab = rungs?.find((r) => r.key === wanted) ?? rungs?.[0] ?? null;
   const [draft, setDraft] = useState(params.get("q") ?? "");
   const [search, setSearch] = useState(params.get("q") ?? "");
+  // The order lead-service serves the rows in (null = its default, newest activity first).
+  const [sort, setSort] = useState<UniboxSort | null>(null);
   // lead-service pages by cursor: the cursors of the pages already passed, to step back.
   const [cursors, setCursors] = useState<(string | null)[]>([null]);
   const [cursor, setCursor] = useState(-1);
@@ -52,13 +66,14 @@ export function PeopleLifecyclePage() {
     return () => clearTimeout(t);
   }, [draft]);
   const fKey = filtersKey(filters);
-  useEffect(() => setCursors([null]), [tab?.key, search, fKey]);
+  useEffect(() => setCursors([null]), [tab?.key, search, fKey, sort]);
   const page = cursors.length - 1;
-  useEffect(() => setCursor(-1), [tab?.key, search, fKey, page]);
+  useEffect(() => setCursor(-1), [tab?.key, search, fKey, sort, page]);
 
   const pageQ = useAuthQuery(
-    ["dealsLifecycleRows", brandId, offerId ?? "", "people", fKey, tab?.key ?? "", search, cursors[page] ?? ""],
-    () => listUniboxLeads(brandId, { ...filters, lifecycle: [tab!.key] }, { limit: LEADS_PAGE_SIZE, offerId, q: search || undefined, cursor: cursors[page] }),
+    ["dealsLifecycleRows", brandId, offerId ?? "", "people", fKey, tab?.key ?? "", search, sort ?? "", cursors[page] ?? ""],
+    // A cursor answers only the sort it was issued for: the reset above drops it on a sort change.
+    () => listUniboxLeads(brandId, { ...filters, lifecycle: [tab!.key] }, { limit: LEADS_PAGE_SIZE, offerId, q: search || undefined, cursor: cursors[page], sort }),
     { refetchInterval: POLL_INTERVAL, enabled: !!brandId && !!offerId && !!tab },
   );
   const rows = pageQ.data?.rows ?? null;
@@ -115,11 +130,11 @@ export function PeopleLifecyclePage() {
           <thead>
             <tr>
               <th className={`${REC_TH} pl-4 md:pl-6`}>Person</th>
-              <th className={REC_TH}>Company</th>
+              <SortTh column="company" label="Company" sort={sort} onSort={setSort} />
               <th className={REC_TH}>Role</th>
               <th className={REC_TH}>Campaign</th>
-              <th className={REC_TH}>Stage</th>
-              <th className={REC_TH}>Last touch</th>
+              <SortTh column="stage" label="Stage" sort={sort} onSort={setSort} />
+              <SortTh column="lastTouch" label="Last touch" sort={sort} onSort={setSort} />
               <th className={`${REC_TH} w-[60px] pr-4 md:pr-6`}><span className="sr-only">Open</span></th>
             </tr>
           </thead>
@@ -213,5 +228,47 @@ export function PeopleLifecyclePage() {
         }
       />
     </>
+  );
+}
+
+/**
+ * A column header that orders the list (Senthil, 2026-10-22: « a sort button… if there are more
+ * than one person in a company, then we can see next to next »). A click asks lead-service for the
+ * column's next order; the arrow shows the order in force. The order runs on the producer over the
+ * whole list, never on the page in hand.
+ */
+function SortTh({
+  column,
+  label,
+  sort,
+  onSort,
+}: {
+  column: UniboxSortColumn;
+  label: string;
+  sort: UniboxSort | null;
+  onSort: (next: UniboxSort | null) => void;
+}) {
+  const arrow = uniboxSortArrow(column, sort);
+  return (
+    <th className={REC_TH} aria-sort={arrow === "asc" ? "ascending" : arrow === "desc" ? "descending" : "none"}>
+      <button
+        type="button"
+        onClick={() => onSort(nextUniboxSort(column, sort))}
+        className={`-mx-1 inline-flex items-center gap-1 rounded px-1 py-0.5 uppercase hover:text-[var(--fg-1)] ${arrow ? "text-[var(--fg-1)]" : ""}`}
+      >
+        {label}
+        {/* Idle columns keep a faint up-down mark so the header reads as a button. */}
+        <svg width="9" height="9" viewBox="0 0 10 10" aria-hidden="true" className={arrow ? "" : "opacity-50"}>
+          <path
+            d={arrow === "asc" ? "M5 2.5v5M2.8 4.7 5 2.5l2.2 2.2" : arrow === "desc" ? "M5 2.5v5M2.8 5.3 5 7.5l2.2-2.2" : "M2.8 3.8 5 1.6l2.2 2.2M2.8 6.2 5 8.4l2.2-2.2"}
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="1.3"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          />
+        </svg>
+      </button>
+    </th>
   );
 }
