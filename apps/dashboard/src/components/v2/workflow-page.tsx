@@ -169,7 +169,7 @@ export function V2WorkflowPage() {
                     orgId={orgId}
                     brandId={brandId}
                     channel={spec.featureSlug}
-                    step={spec.campaign.leg?.toKey ?? null}
+                    legKey={spec.legKey}
                     dynasty={dynasty}
                     label={model.label}
                   />
@@ -179,7 +179,7 @@ export function V2WorkflowPage() {
                     orgId={orgId}
                     brandId={brandId}
                     channel={spec.featureSlug}
-                    step={spec.campaign.leg?.toKey ?? null}
+                    legKey={spec.legKey}
                     templateKey={ranked.row.contentPromptType}
                     label={template.label}
                     version={template.version}

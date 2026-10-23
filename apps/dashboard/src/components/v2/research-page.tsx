@@ -26,6 +26,7 @@ import {
   monthText,
 } from "@/components/v2/research-bits";
 import { V2ResearchCatalogView, PipeCatalogLinks } from "@/components/v2/research-catalog";
+import { useResearchPipeLeg } from "@/components/v2/research-live-workflows";
 import { CostBasisSwitch } from "@/components/v2/cost-basis-switch";
 import { CatalogueName } from "@/components/v2/catalogue-name";
 import { ResearchSourceProvider, useResearch, useResearchCatalog } from "@/lib/research/research-source";
@@ -36,14 +37,13 @@ import { formatUsdAdaptive } from "@/lib/format-number";
 import { v2Href } from "@/lib/v2/routes";
 import {
   GOAL_LABEL,
-  PIPE_ORDER,
   topicLabel,
   outcomeEntry,
   outcomeGroups,
   parseResearchPath,
   pointHref,
+  researchPipeEntry,
   researchWorkflow,
-  PIPE_KEY,
   studiesFor,
   studiesForOutcome,
   studyById,
@@ -292,7 +292,8 @@ function V2ResearchHub({ base }: { base: string }) {
   const called = RESEARCH.studies.filter((st) => studyState(st) === "conclusion").length;
   const signals = RESEARCH.studies.filter((st) => studyState(st) === "signal").length;
   const maxMonth = v ? Math.max(...v.byMonth.map((m) => m.emails), 1) : 1;
-  const pipeRows = PIPE_ORDER.map((pipe) => ({ pipe, studies: studiesFor(pipe, RESEARCH) })).filter((r) => r.studies.length > 0);
+  // Every pipe the file serves, in its order (WA-PIPE-RESEARCH-1023): a pipe with no study yet keeps its section and tabs.
+  const pipeRows = RESEARCH.pipes.map(({ id: pipe }) => ({ pipe, studies: studiesFor(pipe, RESEARCH) }));
   const groups = outcomeGroups(RESEARCH);
   const withStudies = (metas: typeof groups.outcomes) => metas.map((meta) => ({ meta, studies: studiesForOutcome(meta.id, RESEARCH) })).filter((r) => r.studies.length > 0);
   const outcomeRows = withStudies(groups.outcomes);
@@ -366,7 +367,7 @@ function V2ResearchHub({ base }: { base: string }) {
               {pipeRows.map(({ pipe, studies }) => (
                 <ResearchSectionBlock key={pipe} id={pipe} section={{ pipe }} studies={studies} open={open.has(pipe)} onToggle={() => toggle(pipe)} animate={ready}>
                   <PipeCatalogLinks base={base} pipe={pipe} />
-                  <StudyGrid studies={studies} base={base} />
+                  {studies.length > 0 && <StudyGrid studies={studies} base={base} />}
                 </ResearchSectionBlock>
               ))}
             </div>
@@ -498,7 +499,11 @@ function V2ResearchStudy({ base, studyId }: { base: string; studyId: string }) {
   const catalog = useResearchCatalog(useResearch().basis).data ?? null;
   const { getFeature } = useFeatures();
   const workflowPipe = study?.topic === "workflow" ? study.pipe : null;
-  const channelName = workflowPipe ? getFeature(PIPE_KEY[workflowPipe].channel)?.name ?? null : null;
+  const workflowChannel = researchPipeEntry(RESEARCH, workflowPipe)?.channel ?? null;
+  const channelName = workflowChannel ? getFeature(workflowChannel)?.name ?? null : null;
+  // The email legs' population and rule (clients, emails, the run-start wait) describe the figures of
+  // a pipe on a PROACTIVE leg only: a meeting study states its own in its sample and chart note.
+  const proactiveLeg = useResearchPipeLeg(study?.pipe ?? null) != null;
   const workflowName = (p: ResearchPoint): string | null => {
     if (!workflowPipe || !catalog || !p.key) return null;
     const w = researchWorkflow(catalog, workflowPipe, p.key);
@@ -524,9 +529,7 @@ function V2ResearchStudy({ base, studyId }: { base: string; studyId: string }) {
   const section = sectionOf(study);
   const outcomeText = studyOutcomeText(study, RESEARCH);
   const outcomeMeta = study.pipe ? null : outcomeEntry(study.outcome, RESEARCH);
-  // The email legs' population and rule (clients, emails, the run-start wait) describe the two cold
-  // email pipes' figures only: a meeting study states its own in its sample and chart note.
-  const emailLeg = study.pipe === "cold-email-positive-reply" || study.pipe === "cold-email-website-visit";
+  const emailLeg = proactiveLeg;
   const look = topicLook(study.topic);
   const state = studyState(study);
   const crumbs = [{ label: "Research", href: base }, { label: <SectionName section={section} /> }, { label: topicLabel(study.topic) }];
@@ -752,21 +755,31 @@ export function V2Research() {
         <V2ResearchStudy base={base} studyId={view.id} />
       ) : view.view === "missing" ? (
         <V2ResearchStudy base={base} studyId={rest} />
-      ) : view.view === "performance" ? (
-        <V2ResearchPerformanceView base={base} pipe={view.pipe} />
       ) : (
-        <V2ResearchCatalogView
-          base={base}
-          pipe={view.pipe}
-          kind={view.kind}
-          itemKey={view.view === "item" || view.view === "version" ? view.key : null}
-          versionKey={view.view === "version" ? view.version : null}
-          nav={nav}
-        />
+        <ServedPipe base={base} pipe={view.pipe} rest={rest}>
+          {view.view === "performance" ? (
+            <V2ResearchPerformanceView base={base} pipe={view.pipe} />
+          ) : (
+            <V2ResearchCatalogView
+              base={base}
+              pipe={view.pipe}
+              kind={view.kind}
+              itemKey={view.view === "item" || view.view === "version" ? view.key : null}
+              versionKey={view.view === "version" ? view.version : null}
+              nav={nav}
+            />
+          )}
+        </ServedPipe>
       )}
     </div>
     </ResearchSourceProvider>
   );
+}
+
+/** A pipe's pages render only for a pipe the live file serves; any other id reads Not found. */
+function ServedPipe({ base, pipe, rest, children }: { base: string; pipe: string; rest: string; children: React.ReactNode }) {
+  const { file } = useResearch();
+  return researchPipeEntry(file, pipe) ? <>{children}</> : <V2ResearchStudy base={base} studyId={rest} />;
 }
 
 /**

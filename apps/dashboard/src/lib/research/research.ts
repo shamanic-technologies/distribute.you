@@ -9,10 +9,15 @@
  *
  * Alias-free so it carries real unit tests.
  */
-import { OUTBOUND_LEG_TO_CONVERSATION, OUTBOUND_LEG_TO_WEBSITE_VISIT } from "../outbound-leg-key";
+import { sameLegKey } from "../outbound-leg-key";
 
-/** A PIPE is one leg x one channel: the channel doing the work, the leg (from step -> to step) it buys. */
-export type ResearchPipe = "cold-email-positive-reply" | "cold-email-website-visit" | "meeting-booking";
+/**
+ * A PIPE is one leg x one channel: the channel doing the work, the leg (from step -> to step) it buys.
+ * Its id is SERVED (`file.pipes[].id`, WA-PIPE-RESEARCH-1023): the three studied pipes keep their
+ * historical ids, every other catalogue pipe holding a workflow is `<channel slug>|<leg>`. Never a
+ * local list: a pipe the producer adds renders by itself.
+ */
+export type ResearchPipe = string;
 /**
  * An OUTCOME row: one outcome asked across every pipe that lands on it (owner 2026-10-18: what one
  * costs and what share of leads reach it, overall then per pipe, channel, leg, workflow, lead
@@ -168,7 +173,8 @@ export interface ResearchFile {
     noRunStart?: number;
     note: string;
   };
-  pipes: { id: ResearchPipe; channel: string; leg: string; outcome: string; description: string }[];
+  /** Every pipe, in the served order: the three studied ones, then every catalogue pipe holding a workflow. */
+  pipes: ResearchPipeEntry[];
   /**
    * The outcome rows, in the order the data lands on them, then the sections with no step (Jev):
    * `step` is the outcome's step key (null: no outcome, the Other group), `pipes` the pipes that land
@@ -178,6 +184,29 @@ export interface ResearchFile {
   studies: ResearchStudy[];
   /** How many workflows, templates and models each pipe's pages list: the length of the live catalogue, stated by the staff route. */
   catalogCounts: Record<ResearchPipe, { workflows: number; templates: number; models: number }>;
+}
+
+/** One served pipe: its id, channel, leg (served spelling), the outcome its leg lands on, in words. */
+export interface ResearchPipeEntry {
+  id: ResearchPipe;
+  channel: string;
+  leg: string;
+  outcome: string;
+  description: string;
+}
+
+/** A served pipe by id, or null when the file does not list it (an old link, a pipe withdrawn). */
+export function researchPipeEntry(file: Pick<ResearchFile, "pipes">, pipe: ResearchPipe | null | undefined): ResearchPipeEntry | null {
+  return pipe ? (file.pipes.find((p) => p.id === pipe) ?? null) : null;
+}
+
+/** The unit a pipe's cost per outcome reads in (« / reply », « / visit », « / signup »): its served outcome's head noun. */
+export function outcomeUnitOf(outcome: string): string {
+  const words = outcome.toLowerCase().split(" ").filter(Boolean);
+  const last = words[words.length - 1] ?? "outcome";
+  // A participle closes the phrase ("meeting booked"): the noun before it names the unit.
+  const head = words.length > 1 && /ed$/.test(last) ? words[words.length - 2] : last;
+  return `/ ${head}`;
 }
 
 export interface ResearchOutcomeEntry {
@@ -396,10 +425,22 @@ export interface ResearchModel extends ResearchFigures {
 /** Why a model has no alias now: chat-service unreadable, unknown to it, or retired (no alias resolves to it). */
 export type ModelAliasGap = "model_ids_unreadable" | "model_not_in_chat_service" | "no_alias_serves_it";
 
-export type ResearchCatalog = Record<
-  ResearchPipe,
-  { workflows: ResearchWorkflow[]; templates: ResearchTemplate[]; models: ResearchModel[] }
->;
+/** Keyed by served pipe id; a pipe the catalogue has not built yet is absent (read through `pipeCatalog`). */
+export type ResearchCatalog = Partial<Record<ResearchPipe, ResearchPipeCatalog>>;
+export interface ResearchPipeCatalog {
+  workflows: ResearchWorkflow[];
+  templates: ResearchTemplate[];
+  models: ResearchModel[];
+}
+const EMPTY_PIPE_CATALOG: ResearchPipeCatalog = { workflows: [], templates: [], models: [] };
+/** A pipe's catalogue lists; a pipe with nothing built yet reads empty (Learning), never a crash. */
+export function pipeCatalog(c: ResearchCatalog, pipe: ResearchPipe): ResearchPipeCatalog {
+  return c[pipe] ?? EMPTY_PIPE_CATALOG;
+}
+/** The pipes the catalogue lists, in its served order. */
+export function catalogPipes(c: ResearchCatalog): ResearchPipe[] {
+  return Object.keys(c);
+}
 export type CatalogKind = "workflows" | "templates" | "models";
 export const CATALOG_KINDS: CatalogKind[] = ["workflows", "templates", "models"];
 /**
@@ -410,16 +451,8 @@ export type ResearchTabKind = CatalogKind | "performance";
 export const RESEARCH_TABS: ResearchTabKind[] = [...CATALOG_KINDS, "performance"];
 
 
-export const PIPE_ORDER: ResearchPipe[] = ["cold-email-positive-reply", "cold-email-website-visit", "meeting-booking"];
 /** The order the Outcomes group lists its rows in (display only: the list itself is the file's). */
 export const OUTCOME_ORDER: ResearchOutcome[] = ["positive-reply", "website-visit", "meeting-booked"];
-
-/** Each pipe's channel, the leg it buys (features-service's key) and the step that leg lands on. */
-export const PIPE_KEY: Record<ResearchPipe, { channel: string; leg: string; step: string }> = {
-  "cold-email-positive-reply": { channel: "sales-cold-email-outreach", leg: OUTBOUND_LEG_TO_CONVERSATION, step: "conversation" },
-  "cold-email-website-visit": { channel: "sales-cold-email-outreach", leg: OUTBOUND_LEG_TO_WEBSITE_VISIT, step: "website_visit" },
-  "meeting-booking": { channel: "ai-meeting-booking", leg: "conversation_to_meeting_booked", step: "meeting_booked" },
-};
 
 /**
  * The hub's two lower groups (owner 2026-10-18): Outcomes, every entry that IS a step, in
@@ -510,10 +543,6 @@ export function studySpark(study: ResearchStudy): { kind: "line" | "bars"; point
   return first ? { kind: "bars", points: first.points } : null;
 }
 
-export function isResearchPipe(v: string): v is ResearchPipe {
-  return (PIPE_ORDER as string[]).includes(v);
-}
-
 // Retired section names still live in old links (sent reports, social-service records): each maps to its pipe, never shown.
 const LEGACY_SECTION: Record<string, ResearchPipe> = { herald: "cold-email-positive-reply", scout: "cold-email-website-visit", pilot: "meeting-booking" };
 
@@ -547,8 +576,9 @@ export function parseResearchPath(rest: string): ResearchView {
   if (legacy !== null) return { view: "redirect", to: legacy };
   if (parts.length === 1) return { view: "study", id: parts[0] };
   const [pipe, kind, key, ...extra] = parts;
-  if (isResearchPipe(pipe) && kind === "performance") return key ? { view: "missing" } : { view: "performance", pipe };
-  if (!isResearchPipe(pipe) || !(CATALOG_KINDS as string[]).includes(kind)) return { view: "missing" };
+  // Any pipe id parses: whether the file serves it is the page's to say (a new pipe needs no build).
+  if (kind === "performance") return key ? { view: "missing" } : { view: "performance", pipe };
+  if (!(CATALOG_KINDS as string[]).includes(kind)) return { view: "missing" };
   if (kind === "templates" && key && extra.length === 1) return { view: "version", pipe, kind, key, version: extra[0] };
   if (extra.length) return { view: "missing" };
   const k = kind as CatalogKind;
@@ -556,7 +586,7 @@ export function parseResearchPath(rest: string): ResearchView {
 }
 
 export function researchCatalogHref(base: string, pipe: ResearchPipe, kind: ResearchTabKind, key?: string): string {
-  return `${base}/${pipe}/${kind}${key ? `/${encodeURIComponent(key)}` : ""}`;
+  return `${base}/${encodeURIComponent(pipe)}/${kind}${key ? `/${encodeURIComponent(key)}` : ""}`;
 }
 
 /** A template version's own page: under its dynasty's (`templates/<dynasty>/<version>`). */
@@ -574,17 +604,17 @@ export function pointHref(base: string, study: ResearchStudy, point: ResearchPoi
 }
 
 export function researchWorkflow(c: ResearchCatalog, pipe: ResearchPipe, key: string): ResearchWorkflow | null {
-  return c[pipe].workflows.find((w) => w.key === key) ?? null;
+  return pipeCatalog(c, pipe).workflows.find((w) => w.key === key) ?? null;
 }
 export function researchTemplate(c: ResearchCatalog, pipe: ResearchPipe, key: string): ResearchTemplate | null {
-  return c[pipe].templates.find((t) => t.key === key) ?? null;
+  return pipeCatalog(c, pipe).templates.find((t) => t.key === key) ?? null;
 }
 /**
  * The Templates row a template KEY belongs to: the row itself, else the dynasty that lists it as a
  * version (a workflow names the version it writes with; its page is the dynasty's).
  */
 export function researchTemplateOf(c: ResearchCatalog, pipe: ResearchPipe, key: string): ResearchTemplate | null {
-  const rows = c[pipe].templates;
+  const rows = pipeCatalog(c, pipe).templates;
   return rows.find((t) => t.key === key) ?? rows.find((t) => (t.versions ?? []).some((v) => v.key === key)) ?? null;
 }
 /** The key the content-generation status and outputs of a row are read on: its head version's, else its own. */
@@ -656,11 +686,11 @@ export function modelHeadLabel(m: Pick<ResearchModel, "dynasty" | "models">): st
 }
 
 export function researchModel(c: ResearchCatalog, pipe: ResearchPipe, key: string): ResearchModel | null {
-  return c[pipe].models.find((m) => m.key === key) ?? null;
+  return pipeCatalog(c, pipe).models.find((m) => m.key === key) ?? null;
 }
 
-/** The research pipe a campaign is (its channel and the step its leg lands on), if any. */
-export function researchPipeFor(channel: string | null | undefined, step: string | null | undefined): ResearchPipe | null {
-  if (!channel || !step) return null;
-  return PIPE_ORDER.find((p) => PIPE_KEY[p].channel === channel && PIPE_KEY[p].step === step) ?? null;
+/** The served research pipe a campaign is (its channel and its leg, either spelling), if the file lists one. */
+export function researchPipeFor(pipes: readonly ResearchPipeEntry[] | null | undefined, channel: string | null | undefined, legKey: string | null | undefined): ResearchPipe | null {
+  if (!pipes || !channel || !legKey) return null;
+  return pipes.find((p) => p.channel === channel && sameLegKey(p.leg, legKey))?.id ?? null;
 }

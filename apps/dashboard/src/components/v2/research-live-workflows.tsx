@@ -13,7 +13,8 @@ import { legFor } from "@/lib/legs";
 import { isProactiveFrom } from "@/lib/outbound-leg-key";
 import { EmptyNote, Shimmer } from "@/components/v2/ui";
 import { RecordsTabs } from "@/components/v2/records";
-import { PIPE_KEY, researchCatalogHref, type ResearchCatalog, type ResearchPipe } from "@/lib/research/research";
+import { pipeCatalog, researchCatalogHref, type ResearchCatalog, type ResearchPipe } from "@/lib/research/research";
+import { usePipeChannel, useResearchPipeEntry } from "@/lib/research/research-source";
 import {
   byServedRoiDesc,
   fleetWorkflowRows,
@@ -53,7 +54,8 @@ import { expectedReasonWords } from "@/lib/expected-return";
 /** The pipe's channel name, the prefix every one of its workflow names repeats. */
 export function usePipeChannelName(pipe: ResearchPipe): string | null {
   const { getFeature } = useFeatures();
-  return getFeature(PIPE_KEY[pipe].channel)?.name ?? null;
+  const entry = useResearchPipeEntry(pipe);
+  return entry ? (getFeature(entry.channel)?.name ?? null) : null;
 }
 
 /**
@@ -62,8 +64,9 @@ export function usePipeChannelName(pipe: ResearchPipe): string | null {
  * `isProactiveFrom`: the renamed outbound legs start on Lead found, so a `fromKey === null` test
  * found none of them and the live table never showed.
  */
-export function useResearchPipeLeg(pipe: ResearchPipe): string | null {
-  const leg = legFor(useLegCatalogue(), PIPE_KEY[pipe].leg);
+export function useResearchPipeLeg(pipe: ResearchPipe | null): string | null {
+  const entry = useResearchPipeEntry(pipe);
+  const leg = legFor(useLegCatalogue(), entry?.leg ?? null);
   return leg && isProactiveFrom(leg.fromKey) ? leg.legKey : null;
 }
 
@@ -82,7 +85,7 @@ export function ResearchLiveWorkflows({
   /** Unused since every cell is its own link; kept so the catalogue page passes one shape. */
   nav?: (href: string) => void;
 }) {
-  const featureSlug = PIPE_KEY[pipe].channel;
+  const featureSlug = usePipeChannel(pipe);
 
   const { rankingQ, rows } = usePipeWorkflowRows(featureSlug, legKey);
   // Each workflow's own status (workflow-service), changed from the row's ⋮ (TEMPLATE-MODEL-STATUS-1019).
@@ -97,7 +100,7 @@ export function ResearchLiveWorkflows({
   }, [rows, dynastyStatuses]);
   const shown = byTab[tab];
   // The Research catalogue's own pages: a workflow Research studied has one.
-  const researchedWorkflows = useMemo(() => new Map((catalog?.[pipe].workflows ?? []).map((w) => [w.key, w])), [catalog, pipe]);
+  const researchedWorkflows = useMemo(() => new Map((catalog ? pipeCatalog(catalog, pipe).workflows : []).map((w) => [w.key, w])), [catalog, pipe]);
   // A workflow Research never studied still has its live page (`/workflows/:slug`, priced for this pipe).
   const brandBase = base.replace(/\/research$/, "");
   const pipeId = `${featureSlug}|${legKey}`;

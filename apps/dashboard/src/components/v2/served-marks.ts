@@ -2,7 +2,7 @@
 
 import { useMemo } from "react";
 import { useResearchCatalog } from "@/lib/research/research-source";
-import { PIPE_ORDER, researchTemplateOf, type ResearchCatalog } from "@/lib/research/research";
+import { catalogPipes, researchTemplateOf, type ResearchCatalog } from "@/lib/research/research";
 
 /** A served mark (MARKS-1022): a Phosphor name and `#RRGGBB`. */
 export interface ServedMark {
@@ -21,7 +21,7 @@ const NONE: ServedMark = { icon: null, color: null };
 export function servedMarks(catalog: ResearchCatalog | null | undefined) {
   const workflow = (slug: string | null | undefined): ServedMark => {
     if (!catalog || !slug) return NONE;
-    for (const p of PIPE_ORDER) {
+    for (const p of catalogPipes(catalog)) {
       const w = catalog[p]?.workflows.find((x) => x.key === slug);
       if (w?.icon) return { icon: w.icon, color: w.color ?? null };
     }
@@ -29,8 +29,7 @@ export function servedMarks(catalog: ResearchCatalog | null | undefined) {
   };
   const template = (key: string | null | undefined): ServedMark => {
     if (!catalog || !key) return NONE;
-    for (const p of PIPE_ORDER) {
-      if (!catalog[p]) continue;
+    for (const p of catalogPipes(catalog)) {
       const t = researchTemplateOf(catalog, p, key);
       if (t?.icon) return { icon: t.icon, color: t.color ?? null };
     }

@@ -89,15 +89,20 @@ describe("workflow and template pages (the research catalogue)", () => {
     expect(parseResearchPath("cold-email-positive-reply/workflows")).toEqual({ view: "list", pipe: "cold-email-positive-reply", kind: "workflows" });
     expect(parseResearchPath("cold-email-website-visit/templates/cold-email-v19")).toEqual({ view: "item", pipe: "cold-email-website-visit", kind: "templates", key: "cold-email-v19" });
     expect(parseResearchPath("cold-email-positive-reply/models/gemini-3.1-pro")).toEqual({ view: "item", pipe: "cold-email-positive-reply", kind: "models", key: "gemini-3.1-pro" });
-    expect(parseResearchPath("nobody/workflows").view).toBe("missing");
+    // any pipe id parses: the page answers Not found for one the served file does not list
+    expect(parseResearchPath("nobody/workflows").view).toBe("list");
     expect(parseResearchPath("cold-email-positive-reply/audiences").view).toBe("missing");
     expect(researchCatalogHref(base, "cold-email-positive-reply", "workflows", "a b")).toBe(`${base}/cold-email-positive-reply/workflows/a%20b`);
   });
 
-  it("maps a campaign's channel and landing step to its research pipe", () => {
-    expect(researchPipeFor("sales-cold-email-outreach", "conversation")).toBe("cold-email-positive-reply");
-    expect(researchPipeFor("sales-cold-email-outreach", "website_visit")).toBe("cold-email-website-visit");
-    expect(researchPipeFor("sales-cold-email-outreach", null)).toBeNull();
+  it("maps a campaign's channel and leg to its served research pipe", () => {
+    const pipes = [
+      { id: "cold-email-positive-reply", channel: "sales-cold-email-outreach", leg: "lead_found_to_conversation", outcome: "Positive reply", description: "d" },
+      { id: "cold-email-website-visit", channel: "sales-cold-email-outreach", leg: "lead_found_to_website_visit", outcome: "Website visit", description: "d" },
+    ];
+    expect(researchPipeFor(pipes, "sales-cold-email-outreach", "lead_found_to_conversation")).toBe("cold-email-positive-reply");
+    expect(researchPipeFor(pipes, "sales-cold-email-outreach", "lead_found_to_website_visit")).toBe("cold-email-website-visit");
+    expect(researchPipeFor(pipes, "sales-cold-email-outreach", null)).toBeNull();
   });
 
   it("wires the links: hub chips, clickable study bars, template chips, and the template link on the brand workflow page", () => {

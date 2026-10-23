@@ -1,8 +1,7 @@
 import { readdirSync, readFileSync, statSync } from "node:fs";
 import { join, relative } from "node:path";
 import { describe, expect, it } from "vitest";
-import { PIPE_KEY, PIPE_ORDER, parseResearchPath } from "../src/lib/research/research";
-import { OUTBOUND_LEG_TO_CONVERSATION, OUTBOUND_LEG_TO_WEBSITE_VISIT } from "../src/lib/outbound-leg-key";
+import { catalogPipes, outcomeUnitOf, parseResearchPath, pipeCatalog, researchCatalogHref, researchPipeEntry, researchPipeFor, type ResearchPipeEntry } from "../src/lib/research/research";
 
 /**
  * Research speaks the current vocabulary (owner 2026-10-18): a PIPE is one leg x one channel, a
@@ -48,12 +47,63 @@ describe("old Research links open the same page under its pipe", () => {
   });
 });
 
-describe("a pipe is one leg x one channel", () => {
-  it("keys every pipe by its channel and the leg it buys", () => {
-    expect(PIPE_ORDER).toEqual(["cold-email-positive-reply", "cold-email-website-visit", "meeting-booking"]);
-    expect(PIPE_KEY["cold-email-positive-reply"]).toEqual({ channel: "sales-cold-email-outreach", leg: OUTBOUND_LEG_TO_CONVERSATION, step: "conversation" });
-    expect(PIPE_KEY["cold-email-website-visit"]).toEqual({ channel: "sales-cold-email-outreach", leg: OUTBOUND_LEG_TO_WEBSITE_VISIT, step: "website_visit" });
-    expect(PIPE_KEY["meeting-booking"]).toEqual({ channel: "ai-meeting-booking", leg: "conversation_to_meeting_booked", step: "meeting_booked" });
+describe("a pipe is one leg x one channel, and every pipe is the one the file serves (WA-PIPE-RESEARCH-1023)", () => {
+  // As features-service serves them: the three studied pipes, then every catalogue pipe holding a workflow.
+  const PIPES: ResearchPipeEntry[] = [
+    { id: "cold-email-positive-reply", channel: "sales-cold-email-outreach", leg: "lead_found_to_conversation", outcome: "Positive reply", description: "d" },
+    { id: "cold-email-website-visit", channel: "sales-cold-email-outreach", leg: "lead_found_to_website_visit", outcome: "Website visit", description: "d" },
+    { id: "meeting-booking", channel: "ai-meeting-booking", leg: "conversation_to_meeting_booked", outcome: "Meeting booked", description: "d" },
+    { id: "cold-whatsapp-outreach|start_to_signup", channel: "cold-whatsapp-outreach", leg: "start_to_signup", outcome: "Signup", description: "d" },
+  ];
+
+  it("reads a pipe's channel and leg off the served entry, a pipe the file does not list is null", () => {
+    expect(researchPipeEntry({ pipes: PIPES }, "cold-whatsapp-outreach|start_to_signup")?.channel).toBe("cold-whatsapp-outreach");
+    expect(researchPipeEntry({ pipes: PIPES }, "meeting-booking")?.leg).toBe("conversation_to_meeting_booked");
+    expect(researchPipeEntry({ pipes: PIPES }, "nobody")).toBeNull();
+    expect(researchPipeEntry({ pipes: PIPES }, null)).toBeNull();
+  });
+
+  it("maps a campaign (channel + leg, either spelling) to the served pipe", () => {
+    expect(researchPipeFor(PIPES, "sales-cold-email-outreach", "lead_found_to_conversation")).toBe("cold-email-positive-reply");
+    expect(researchPipeFor(PIPES, "sales-cold-email-outreach", "start_to_website_visit")).toBe("cold-email-website-visit");
+    expect(researchPipeFor(PIPES, "cold-whatsapp-outreach", "start_to_signup")).toBe("cold-whatsapp-outreach|start_to_signup");
+    expect(researchPipeFor(PIPES, "cold-whatsapp-outreach", "signup_to_paid_client")).toBeNull();
+    expect(researchPipeFor(null, "sales-cold-email-outreach", "lead_found_to_conversation")).toBeNull();
+  });
+
+  it("a served pipe id with a `|` round-trips through its page URL", () => {
+    const href = researchCatalogHref("/r", "cold-whatsapp-outreach|start_to_signup", "templates");
+    expect(href).toBe("/r/cold-whatsapp-outreach%7Cstart_to_signup/templates");
+    expect(parseResearchPath(href.slice(3))).toEqual({ view: "list", pipe: "cold-whatsapp-outreach|start_to_signup", kind: "templates" });
+    expect(parseResearchPath("cold-whatsapp-outreach%7Cstart_to_signup/performance")).toEqual({ view: "performance", pipe: "cold-whatsapp-outreach|start_to_signup" });
+  });
+
+  it("a pipe the catalogue has not built reads empty (Learning), and the catalogue's own pipes are listed in its order", () => {
+    expect(pipeCatalog({}, "cold-whatsapp-outreach|start_to_signup")).toEqual({ workflows: [], templates: [], models: [] });
+    expect(catalogPipes({ b: { workflows: [], templates: [], models: [] }, a: { workflows: [], templates: [], models: [] } })).toEqual(["b", "a"]);
+  });
+
+  it("names a cost per outcome by the served outcome's noun", () => {
+    expect(outcomeUnitOf("Positive reply")).toBe("/ reply");
+    expect(outcomeUnitOf("Website visit")).toBe("/ visit");
+    expect(outcomeUnitOf("Meeting booked")).toBe("/ meeting");
+    expect(outcomeUnitOf("Signup")).toBe("/ signup");
+    expect(outcomeUnitOf("Paid client")).toBe("/ client");
+  });
+
+  it("no pipe id is typed in the Research code: the hub, the status modal and the marks walk the served pipes", () => {
+    const lib = read("apps/dashboard/src/lib/research/research.ts");
+    expect(lib).not.toMatch(/PIPE_ORDER|PIPE_KEY|isResearchPipe/);
+    expect(lib).toContain("export type ResearchPipe = string;");
+    const page = read("apps/dashboard/src/components/v2/research-page.tsx");
+    expect(page).toContain("const pipeRows = RESEARCH.pipes.map(({ id: pipe }) => ({ pipe, studies: studiesFor(pipe, RESEARCH) }));");
+    expect(page).not.toMatch(/study\.pipe === "/);
+    // a pipe's pages render only for a pipe the file serves
+    expect(page).toContain("researchPipeEntry(file, pipe) ? <>{children}</> : <V2ResearchStudy base={base} studyId={rest} />");
+    expect(read("apps/dashboard/src/components/v2/research-status.tsx")).toContain("useResearch().file.pipes.map((p) => {");
+    expect(read("apps/dashboard/src/components/v2/served-marks.ts")).toContain("for (const p of catalogPipes(catalog)) {");
+    expect(read("apps/dashboard/src/components/v2/research-catalog.tsx")).not.toContain('pipe === "cold-email');
+    expect(read("apps/dashboard/src/app/(authed)/api/research/[basis]/[part]/route.ts")).toContain("catalogPipes(catalog).map((pipe)");
   });
 
   it("writes a section's path in order from served words, a Shimmer until they answer, never a hardcoded name", () => {
@@ -122,7 +172,7 @@ describe("Research names each pipe by its served name and mark, one collapsible 
     // an outcome row wears its step as the Outcomes pages do: the public step catalogue
     expect(bits).toContain('const stepId = "outcome" in section ? outcomeEntry(section.outcome, file)?.step ?? null : null;');
     expect(bits).toContain('useAuthQuery(["publicCatalogueSteps"], getPublicCatalogueSteps');
-    expect(bits).toContain("return featureLegId(k.channel, k.leg);");
+    expect(bits).toContain("return featureLegId(entry.channel, entry.leg);");
     expect(bits).toContain("<CatalogueMark icon={served.icon} color={served.color}");
     expect(bits).not.toMatch(/OUTCOME_LOOK|pipeLook|SectionLook|PipeMark/);
   });

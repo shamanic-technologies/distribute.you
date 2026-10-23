@@ -234,7 +234,7 @@ describe("research reads nothing scoped to the viewer", () => {
   it("the live table reads the fleet ranking at the pipe's leg", () => {
     const live = readFileSync(join(dir, "research-live-workflows.tsx"), "utf8");
     // the leg is the pipe's own key, judged proactive the renamed-leg-safe way (never fromKey === null)
-    expect(live).toContain("legFor(useLegCatalogue(), PIPE_KEY[pipe].leg)");
+    expect(live).toContain("legFor(useLegCatalogue(), entry?.leg ?? null)");
     expect(live).toContain("isProactiveFrom(leg.fromKey)");
     expect(live).not.toContain("legKeyForSteps(");
     expect(live).toContain("getLegWorkflowRanking(featureSlug, leg)");
@@ -327,8 +327,8 @@ describe("byServedRoiDesc", () => {
     // Every count is the ACTIVE count, deprecated never counted (owner 2026-10-23), for all three kinds.
     expect(catalog).toContain("count={countOf(kind)}");
     expect(catalog).toContain('liveRows.rows.filter((r) => dynasties.statusOf(r.slug) !== "deprecated").length');
-    expect(catalog).toContain("templatesByTab(catalog[pipe].templates, templateStatuses)?.active.length");
-    expect(catalog).toContain("modelsByTab(catalog[pipe].models, modelStatuses)?.active.length");
+    expect(catalog).toContain("templatesByTab(pipeCatalog(catalog, pipe).templates, templateStatuses)?.active.length");
+    expect(catalog).toContain("modelsByTab(pipeCatalog(catalog, pipe).models, modelStatuses)?.active.length");
   });
 });
 
