@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
-import { combinationStatus, performanceByTab } from "../src/lib/research/performance";
+import { deprecatedPartsWords, performanceByTab } from "../src/lib/research/performance";
 import { parseResearchPath, researchCatalogHref, RESEARCH_TABS } from "../src/lib/research/research";
 
 const src = (p: string) => readFileSync(join(__dirname, "..", p), "utf8");
@@ -14,21 +14,28 @@ describe("Research Performance tab (owner 2026-10-23, RESEARCH-PERFORMANCE-1023)
     expect(researchCatalogHref("/r", "cold-email-website-visit", "performance")).toBe("/r/cold-email-website-visit/performance");
   });
 
-  it("a combination is Active only when workflow, template and LLM all are", () => {
-    expect(combinationStatus({ workflow: "active", template: "active", llm: "active" })).toBe("active");
-    expect(combinationStatus({ workflow: "active", template: "deprecated", llm: "active" })).toBe("deprecated");
-    expect(combinationStatus({ workflow: "deprecated", template: "active", llm: "active" })).toBe("deprecated");
-    expect(combinationStatus({ workflow: "active", template: "active", llm: "deprecated" })).toBe("deprecated");
-    // A part not on record blocks nothing; a status not answered yet leaves the row unknown.
-    expect(combinationStatus({ workflow: "active", template: null, llm: null })).toBe("active");
-    expect(combinationStatus({ workflow: "active", template: undefined, llm: "active" })).toBeNull();
+  it("splits rows into tabs on the SERVED status, in the served order (RESEARCH-COMBO-STATUS-1023)", () => {
+    const rows = [
+      { k: "a", status: "active" as const },
+      { k: "deepseek-pro", status: "deprecated" as const },
+      { k: "c", status: "active" as const },
+    ];
+    const t = performanceByTab(rows);
+    expect(t.active.map((r) => r.k)).toEqual(["a", "c"]);
+    expect(t.deprecated.map((r) => r.k)).toEqual(["deepseek-pro"]);
   });
 
-  it("splits rows into tabs in the served order", () => {
-    const rows = [{ k: "a", s: "active" as const }, { k: "b", s: "deprecated" as const }, { k: "c", s: "active" as const }];
-    const t = performanceByTab(rows, (r) => r.s);
-    expect(t.active.map((r) => r.k)).toEqual(["a", "c"]);
-    expect(t.deprecated.map((r) => r.k)).toEqual(["b"]);
+  it("a deprecated row says which part made it so, in plain words", () => {
+    expect(deprecatedPartsWords(["llm"])).toBe("LLM retired");
+    expect(deprecatedPartsWords(["workflow", "template"])).toBe("Workflow deprecated · Template deprecated");
+    expect(deprecatedPartsWords([])).toBeNull();
+  });
+
+  it("the page never re-derives a combination's status", () => {
+    const page = src("src/components/v2/research-performance.tsx");
+    expect(page).toContain("performanceByTab(rows)");
+    expect(page).toContain("deprecatedPartsWords(row.deprecatedParts)");
+    for (const banned of ["combinationStatus", "modelStatus", "useModelStatuses", "useTemplateStatuses", "useDynastyStatuses"]) expect(page).not.toContain(banned);
   });
 
   it("the page renders served figures, never sorts or divides", () => {

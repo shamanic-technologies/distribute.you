@@ -8,20 +8,18 @@ import { ResearchSwitches } from "@/components/v2/maturity-view-switch";
 import { RoiLabel, RoiValue, LearningFigure } from "@/components/v2/roi-label";
 import { CatalogueName } from "@/components/v2/catalogue-name";
 import { SectionMark, SectionName } from "@/components/v2/research-bits";
-import { StatusWord, useDynastyStatuses, useModelStatuses, useTemplateStatuses } from "@/components/v2/research-status";
+import { StatusWord } from "@/components/v2/research-status";
 import { PipeTabs } from "@/components/v2/research-catalog";
 import { usePipeChannelName } from "@/components/v2/research-live-workflows";
-import { usePipeChannel, useResearch, useResearchCatalog, useResearchPerformance } from "@/lib/research/research-source";
-import { pipeCatalog, researchCatalogHref, templateRowStatus, type ResearchPipe } from "@/lib/research/research";
-import { modelAliasesOf, modelStatus } from "@/lib/research/content-status";
+import { useResearch, useResearchCatalog, useResearchPerformance } from "@/lib/research/research-source";
+import { pipeCatalog, researchCatalogHref, type ResearchPipe } from "@/lib/research/research";
 import { shortWorkflowName } from "@/lib/live-workflow-rows";
 import { formatUsdAdaptive, formatCount } from "@/lib/format-number";
 import { formatRatePct } from "@/lib/pipe-stats";
 import { formatRoi } from "@/lib/format-roi";
 import {
-  combinationStatus,
+  deprecatedPartsWords,
   performanceByTab,
-  type PartStatus,
   type PerformanceFigure,
   type PerformancePoint,
   type PerformanceRow,
@@ -35,8 +33,9 @@ import {
  * Five cards for the pipe on top, the combinations in Active / Deprecated tabs on 2/3, the pipe's
  * five curves on 1/3. A combination is Active only when its workflow, template and LLM all are.
  *
- * Every figure, its order and every point of a curve are features-service's, only formatted here;
- * nothing is divided, summed or ranked.
+ * Every figure, each row's status (and which part deprecated it), the row order and every point of a
+ * curve are features-service's (RESEARCH-COMBO-STATUS-1023), only formatted here; nothing is divided,
+ * summed, ranked or graded.
  */
 
 const TH = "k-label px-3 py-2.5 text-left font-medium first:pl-4 last:pr-4";
@@ -47,10 +46,6 @@ const TABS: { key: PerformanceTab; label: string }[] = [
   { key: "deprecated", label: "Deprecated" },
 ];
 
-function asStatus(s: string | null | undefined): PartStatus {
-  return s === "active" || s === "deprecated" ? s : null;
-}
-
 export function V2ResearchPerformanceView({ base, pipe }: { base: string; pipe: ResearchPipe }) {
   const { basis } = useResearch();
   const q = useResearchPerformance(basis);
@@ -60,37 +55,11 @@ export function V2ResearchPerformanceView({ base, pipe }: { base: string; pipe: 
   const rows = perf?.rows ?? [];
   const channelName = usePipeChannelName(pipe);
 
-  // Each part's status where Research already reads it: workflow-service, content-generation (template versions, model aliases).
-  const workflows = useDynastyStatuses(usePipeChannel(pipe));
-  const templates = useTemplateStatuses();
-  const models = useModelStatuses();
-  const catalogModels = useMemo(() => new Map((catalog ? pipeCatalog(catalog, pipe).models : []).map((m) => [m.key, m])), [catalog, pipe]);
-  const catalogTemplates = useMemo(() => new Map((catalog ? pipeCatalog(catalog, pipe).templates : []).map((t) => [t.key, t])), [catalog, pipe]);
+  const catalogModels = useMemo(() => new Set((catalog ? pipeCatalog(catalog, pipe).models : []).map((m) => m.key)), [catalog, pipe]);
+  const catalogTemplates = useMemo(() => new Set((catalog ? pipeCatalog(catalog, pipe).templates : []).map((t) => t.key)), [catalog, pipe]);
   const listedWorkflows = useMemo(() => new Set((catalog ? pipeCatalog(catalog, pipe).workflows : []).map((w) => w.key)), [catalog, pipe]);
-  // The Template column is the template DYNASTY (owner 2026-10-23): its status is the dynasty's, as the Templates tab reads it.
-  const templateStatus = (r: PerformanceRow): PartStatus | undefined => {
-    if (!r.template) return null;
-    const t = catalogTemplates.get(templateDynastyKey(r.template));
-    if (!t) return catalog ? (templates.answered ? asStatus(templates.map.get(r.template.key)) : undefined) : undefined;
-    const s = templateRowStatus(t, templates);
-    return s === null ? undefined : s;
-  };
-  const statusOf = (r: PerformanceRow): PartStatus => {
-    const llmStatus = (): PartStatus | undefined => {
-      if (!r.llm) return null;
-      const m = catalogModels.get(r.llm.key);
-      if (!m) return catalog ? null : undefined;
-      if (!models.answered) return undefined;
-      return asStatus(modelStatus(modelAliasesOf(m).aliases, (a) => models.map.get(a)));
-    };
-    return combinationStatus({
-      workflow: workflows.answered ? asStatus(workflows.statusOf(r.workflow.key)) : undefined,
-      template: templateStatus(r),
-      llm: llmStatus(),
-    });
-  };
-  const statusesAnswered = workflows.answered && templates.answered && models.answered && catalog !== null;
-  const byTab = statusesAnswered ? performanceByTab(rows, statusOf) : null;
+  // The tabs split on features-service's own status: a combination with one part that can no longer run is Deprecated.
+  const byTab = q.data !== undefined ? performanceByTab(rows) : null;
   const [tab, setTab] = useState<PerformanceTab>("active");
   const shown = byTab?.[tab] ?? [];
 
@@ -106,12 +75,12 @@ export function V2ResearchPerformanceView({ base, pipe }: { base: string; pipe: 
       <div className="mx-auto max-w-[1280px] px-4 pb-16 pt-6 md:px-6">
         <div className="min-w-0">
           <h1 className="text-[28px] font-medium leading-[34px] tracking-[-0.02em]">
-            {!answered ? "Performance" : byTab ? `${rows.length} combinations, ${byTab.active.length} active` : `${rows.length} combinations`}
+            {!byTab ? "Performance" : `${byTab.active.length} active combinations`}
           </h1>
-          <p className="k-fg2 mt-1 text-[14px]">Every workflow, template and LLM sent together on this pipe, all clients pooled, best ROI first.</p>
+          <p className="k-fg2 mt-1 text-[14px]">Every workflow, template and LLM sent together on this pipe, all clients pooled, cheapest estimated cost first.</p>
         </div>
 
-        <PipeTabs base={base} pipe={pipe} current="performance" countOf={(k) => (k === "performance" && answered ? rows.length : null)} />
+        <PipeTabs base={base} pipe={pipe} current="performance" countOf={(k) => (k === "performance" && byTab ? byTab.active.length : null)} />
 
         {failed ? (
           <div className="k-card mt-6">
@@ -234,7 +203,7 @@ export function V2ResearchPerformanceView({ base, pipe }: { base: string; pipe: 
                               <td className="px-3 text-right tabular-nums">{r.outcomes.display}</td>
                               <td className="whitespace-nowrap px-3 text-right tabular-nums">{r.spentUsd.display}</td>
                               <td className="max-w-0 px-3">
-                                <StatusWord status={statusOf(r)} />
+                                <RowStatus row={r} />
                               </td>
                             </tr>
                           ))
@@ -271,6 +240,20 @@ const UNAVAILABLE_WORDS: Record<string, string> = {
 /** The template's Research page key: its dynasty's, else its own (a template on its own is its own page). */
 function templateDynastyKey(t: NonNullable<PerformanceRow["template"]>): string {
   return t.dynasty?.key ?? t.key;
+}
+
+/** The served status; a deprecated row says under it which part made it so ("LLM retired"). */
+function RowStatus({ row }: { row: PerformanceRow }) {
+  const why = row.status === "deprecated" ? deprecatedPartsWords(row.deprecatedParts) : null;
+  if (!why) return <StatusWord status={row.status} />;
+  return (
+    <span className="block min-w-0 leading-4">
+      <StatusWord status={row.status} />
+      <span className="k-fg3 block truncate text-[11.5px]" title={why}>
+        {why}
+      </span>
+    </span>
+  );
 }
 
 function NotOnRecord() {
