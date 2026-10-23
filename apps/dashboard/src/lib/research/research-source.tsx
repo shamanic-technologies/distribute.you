@@ -3,6 +3,8 @@
 import { createContext, useContext, useEffect } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useCostBasis } from "@/lib/v2/use-cost-basis";
+import { useMaturityView } from "@/lib/v2/use-maturity-view";
+import type { MaturityView } from "@/lib/v2/maturity-view-cookie";
 import { researchPipeEntry, type ResearchCatalog, type ResearchFile, type ResearchPipe, type ResearchPipeEntry } from "@/lib/research/research";
 import type { ResearchPerformance } from "@/lib/research/performance";
 
@@ -18,11 +20,14 @@ import type { ResearchPerformance } from "@/lib/research/performance";
  * first frame, then re-reads (owner 2026-10-21 « It should be instant », 2026-10-23 « instantanées »).
  * The actual-basis reads (our margin) sit under their own roots (`researchFileActual`,
  * `researchCatalogActual`, `researchPerformanceActual`), never written to disk; the texts stay memory-only.
+ *
+ * Every read but the texts also carries the staff Mature / Flash view (`view=`, MATURITY-VIEW-1023)
+ * and every query key ends on it, so one view's body is never painted under the other's switch.
  */
 export type ResearchBasis = "user" | "actual";
 
-async function fetchPart<T>(basis: ResearchBasis, part: "file" | "catalog" | "texts" | "performance"): Promise<T> {
-  const res = await fetch(`/api/research/${basis}/${part}`, { cache: "no-store" });
+async function fetchPart<T>(basis: ResearchBasis, part: "file" | "catalog" | "texts" | "performance", view?: MaturityView): Promise<T> {
+  const res = await fetch(`/api/research/${basis}/${part}${view ? `?view=${view}` : ""}`, { cache: "no-store" });
   if (!res.ok) throw new Error(`[research] ${basis}/${part} answered ${res.status}`);
   return (await res.json()) as T;
 }
@@ -35,26 +40,27 @@ const ONCE = { staleTime: Infinity, retry: false } as const;
  * copy would otherwise be served for 30 days).
  */
 export function useResearchCatalog(basis: ResearchBasis) {
+  const { view } = useMaturityView();
   return useQuery({
-    queryKey: basis === "actual" ? ["researchCatalogActual"] : ["researchCatalog", basis],
-    queryFn: () => fetchPart<ResearchCatalog>(basis, "catalog"),
+    queryKey: basis === "actual" ? ["researchCatalogActual", view] : ["researchCatalog", basis, view],
+    queryFn: () => fetchPart<ResearchCatalog>(basis, "catalog", view),
     retry: false,
   });
 }
 
 /** The Research file (studies, pipes) on one basis: painted from disk on the billed basis, then re-read. */
-function researchFileQuery(basis: ResearchBasis) {
+function researchFileQuery(basis: ResearchBasis, view: MaturityView) {
   return {
-    queryKey: basis === "actual" ? ["researchFileActual"] : ["researchFile", basis],
-    queryFn: () => fetchPart<ResearchFile>(basis, "file"),
+    queryKey: basis === "actual" ? ["researchFileActual", view] : ["researchFile", basis, view],
+    queryFn: () => fetchPart<ResearchFile>(basis, "file", view),
     retry: false,
   } as const;
 }
 
-function researchPerformanceQuery(basis: ResearchBasis) {
+function researchPerformanceQuery(basis: ResearchBasis, view: MaturityView) {
   return {
-    queryKey: basis === "actual" ? ["researchPerformanceActual"] : ["researchPerformance", basis],
-    queryFn: () => fetchPart<ResearchPerformance>(basis, "performance"),
+    queryKey: basis === "actual" ? ["researchPerformanceActual", view] : ["researchPerformance", basis, view],
+    queryFn: () => fetchPart<ResearchPerformance>(basis, "performance", view),
     retry: false,
   } as const;
 }
@@ -63,7 +69,7 @@ const TEXTS_QUERY = { queryKey: ["researchTexts"], queryFn: () => fetchPart<Reco
 
 /** The Performance tab's read on one basis (disk on the billed basis; the actual basis reveals our margin, memory only). */
 export function useResearchPerformance(basis: ResearchBasis) {
-  return useQuery(researchPerformanceQuery(basis));
+  return useQuery(researchPerformanceQuery(basis, useMaturityView().view));
 }
 
 /** The template texts, the same on both bases. */
@@ -77,12 +83,13 @@ export function useResearchTexts(enabled: boolean) {
  * (a non-staff reader gets a 403 and never a pipe).
  */
 export function useResearchPipes(): ResearchPipeEntry[] | null {
-  const q = useQuery(researchFileQuery("user"));
+  const q = useQuery(researchFileQuery("user", useMaturityView().view));
   return q.data?.pipes ?? null;
 }
 
 export interface ResearchSource {
   basis: ResearchBasis;
+  view: MaturityView;
   file: ResearchFile;
 }
 
@@ -134,14 +141,15 @@ export function ResearchSourceProvider({
 }) {
   const { actual } = useCostBasis();
   const basis: ResearchBasis = actual ? "actual" : "user";
-  const q = useQuery(researchFileQuery(basis));
+  const { view } = useMaturityView();
+  const q = useQuery(researchFileQuery(basis, view));
   useResearchCatalog(basis);
   const queryClient = useQueryClient();
   useEffect(() => {
-    void queryClient.prefetchQuery(researchPerformanceQuery(basis));
+    void queryClient.prefetchQuery(researchPerformanceQuery(basis, view));
     void queryClient.prefetchQuery(TEXTS_QUERY);
-  }, [queryClient, basis]);
+  }, [queryClient, basis, view]);
   if (q.isError) return <>{failed}</>;
   if (!q.data) return <>{pending}</>;
-  return <Ctx.Provider value={{ basis, file: q.data }}>{children}</Ctx.Provider>;
+  return <Ctx.Provider value={{ basis, view, file: q.data }}>{children}</Ctx.Provider>;
 }

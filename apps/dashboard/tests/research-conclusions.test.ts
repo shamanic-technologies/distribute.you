@@ -99,7 +99,7 @@ describe("the service key", () => {
     const body = await ok.json();
     expect(body.conclusions.length).toBeGreaterThan(0);
     expect(body.conclusions.every((c: { verdict: { kind: string } }) => c.verdict.kind === "conclusion")).toBe(true);
-    expect(urls.every((u) => u.endsWith("/v1/features/research?basis=user"))).toBe(true);
+    expect(urls.every((u) => u.endsWith("/v1/features/research?basis=user&view=mature"))).toBe(true);
   });
 
   it("the route serves no stale copy: features-service not built yet is an error, never a snapshot", async () => {

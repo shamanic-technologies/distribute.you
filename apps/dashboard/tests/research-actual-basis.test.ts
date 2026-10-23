@@ -35,14 +35,27 @@ describe("staff cost basis: one cookie, user by default", () => {
 });
 
 describe("the switch sits in the top bar of every page that states costs", () => {
-  for (const f of ["components/v2/workflows-page.tsx", "components/v2/workflow-page.tsx", "components/v2/research-page.tsx", "components/v2/research-catalog.tsx"]) {
+  // Research's bars carry it inside <ResearchSwitches /> (beside the Mature / Flash view, MATURITY-VIEW-1023).
+  for (const [f, sw] of [
+    ["components/v2/workflows-page.tsx", "<CostBasisSwitch />"],
+    ["components/v2/workflow-page.tsx", "<CostBasisSwitch />"],
+    ["components/v2/research-page.tsx", "<ResearchSwitches />"],
+    ["components/v2/research-catalog.tsx", "<ResearchSwitches />"],
+    ["components/v2/research-performance.tsx", "<ResearchSwitches />"],
+  ] as const) {
     it(f, () => {
       const src = read(f);
       const bars = src.match(/<TopBar\b[\s\S]*?\/>/g) ?? [];
       expect(bars.length).toBeGreaterThan(0);
-      for (const b of bars) expect(b).toContain("<CostBasisSwitch />");
+      for (const b of bars) expect(b).toContain(sw);
     });
   }
+  it("ResearchSwitches holds the cost basis switch", () => {
+    const src = read("components/v2/maturity-view-switch.tsx");
+    const fn = src.slice(src.indexOf("export function ResearchSwitches("));
+    expect(fn).toContain("<CostBasisSwitch />");
+    expect(fn).toContain("<MaturityViewSwitch />");
+  });
   it("the workflow page no longer keeps a basis of its own", () => {
     const src = read("components/v2/workflow-page.tsx");
     expect(src).not.toContain('useState<"user" | "actual">');
