@@ -12822,6 +12822,25 @@ export async function getStaffLeadSourceYield(days: number): Promise<StaffLeadSo
   );
 }
 
+// ─── Monitoring > WhatsApp > Lines (WA-LINE-MONITOR-1023) ───
+import { WhatsappLinesSchema as StaffWhatsappLinesSchema, type WhatsappLines as StaffWhatsappLines } from "./monitoring/whatsapp-lines";
+
+/** crm-service's WhatsApp line watch, through api-service's staff passthroughs (#1358). */
+export const STAFF_WHATSAPP_LINE_PATHS = {
+  lines: "/crm/ops/whatsapp-lines",
+  check: "/crm/ops/whatsapp-lines/check",
+} as const;
+
+/** Every linked WhatsApp line, fleet-wide: its state now and its daily series over `days`. */
+export async function getStaffWhatsappLines(days: number): Promise<StaffWhatsappLines> {
+  return parseStaff("getStaffWhatsappLines", StaffWhatsappLinesSchema, await apiCall<unknown>(`${STAFF_WHATSAPP_LINE_PATHS.lines}?days=${days}`));
+}
+
+/** Runs one line watch pass now (the producer's loop runs every 2 min). */
+export async function runStaffWhatsappLineCheck(): Promise<void> {
+  await apiCall<unknown>(STAFF_WHATSAPP_LINE_PATHS.check, { method: "POST" });
+}
+
 // ─── Monitoring > Emails, ported from the admin cold-email pages (capacity-rules) ───
 import {
   CapacityHistorySchema,

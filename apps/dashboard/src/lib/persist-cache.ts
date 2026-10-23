@@ -112,6 +112,8 @@ export const SENSITIVE_QUERY_ROOTS = new Set([
   // Monitoring > Emails pages ported from the admin cold-email audit (MONITORING-ADMIN-PORT-1019).
   "staffDomainBlocklist",
   "staffLeadSourceYield",
+  // Monitoring > WhatsApp > Lines: every client's line number and state (WA-LINE-MONITOR-1023).
+  "staffWhatsappLines",
   "staffOpsThreads",
   "staffOpsThreadMessages",
   "staffOpsInfra",
