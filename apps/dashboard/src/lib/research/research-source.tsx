@@ -4,6 +4,7 @@ import { createContext, useContext } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useCostBasis } from "@/lib/v2/use-cost-basis";
 import type { ResearchCatalog, ResearchFile } from "@/lib/research/research";
+import type { ResearchPerformance } from "@/lib/research/performance";
 
 /**
  * Where Research's data comes from: the staff-only `/api/research/{basis}/{part}` route, never a
@@ -19,7 +20,7 @@ import type { ResearchCatalog, ResearchFile } from "@/lib/research/research";
  */
 export type ResearchBasis = "user" | "actual";
 
-async function fetchPart<T>(basis: ResearchBasis, part: "file" | "catalog" | "texts"): Promise<T> {
+async function fetchPart<T>(basis: ResearchBasis, part: "file" | "catalog" | "texts" | "performance"): Promise<T> {
   const res = await fetch(`/api/research/${basis}/${part}`, { cache: "no-store" });
   if (!res.ok) throw new Error(`[research] ${basis}/${part} answered ${res.status}`);
   return (await res.json()) as T;
@@ -38,6 +39,11 @@ export function useResearchCatalog(basis: ResearchBasis) {
     queryFn: () => fetchPart<ResearchCatalog>(basis, "catalog"),
     retry: false,
   });
+}
+
+/** The Performance tab's read on one basis (memory only: the actual basis reveals our margin). */
+export function useResearchPerformance(basis: ResearchBasis) {
+  return useQuery({ queryKey: ["researchPerformance", basis], queryFn: () => fetchPart<ResearchPerformance>(basis, "performance"), retry: false });
 }
 
 /** The template texts, the same on both bases. */

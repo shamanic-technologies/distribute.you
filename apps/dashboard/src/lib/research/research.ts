@@ -402,6 +402,12 @@ export type ResearchCatalog = Record<
 >;
 export type CatalogKind = "workflows" | "templates" | "models";
 export const CATALOG_KINDS: CatalogKind[] = ["workflows", "templates", "models"];
+/**
+ * A pipe's tabs: the three catalogue lists, then Performance (owner 2026-10-23), every workflow x
+ * template x LLM combination that sent the pipe's emails, served by features-service on its own read.
+ */
+export type ResearchTabKind = CatalogKind | "performance";
+export const RESEARCH_TABS: ResearchTabKind[] = [...CATALOG_KINDS, "performance"];
 
 
 export const PIPE_ORDER: ResearchPipe[] = ["cold-email-positive-reply", "cold-email-website-visit", "meeting-booking"];
@@ -526,6 +532,8 @@ export type ResearchView =
   | { view: "hub" }
   | { view: "study"; id: string }
   | { view: "list"; pipe: ResearchPipe; kind: CatalogKind }
+  /** The pipe's Performance tab: one row per workflow x template x LLM. */
+  | { view: "performance"; pipe: ResearchPipe }
   | { view: "item"; pipe: ResearchPipe; kind: CatalogKind; key: string }
   /** One version of a template dynasty: `templates/<dynasty>/<version>`. */
   | { view: "version"; pipe: ResearchPipe; kind: "templates"; key: string; version: string }
@@ -539,6 +547,7 @@ export function parseResearchPath(rest: string): ResearchView {
   if (legacy !== null) return { view: "redirect", to: legacy };
   if (parts.length === 1) return { view: "study", id: parts[0] };
   const [pipe, kind, key, ...extra] = parts;
+  if (isResearchPipe(pipe) && kind === "performance") return key ? { view: "missing" } : { view: "performance", pipe };
   if (!isResearchPipe(pipe) || !(CATALOG_KINDS as string[]).includes(kind)) return { view: "missing" };
   if (kind === "templates" && key && extra.length === 1) return { view: "version", pipe, kind, key, version: extra[0] };
   if (extra.length) return { view: "missing" };
@@ -546,7 +555,7 @@ export function parseResearchPath(rest: string): ResearchView {
   return key ? { view: "item", pipe, kind: k, key } : { view: "list", pipe, kind: k };
 }
 
-export function researchCatalogHref(base: string, pipe: ResearchPipe, kind: CatalogKind, key?: string): string {
+export function researchCatalogHref(base: string, pipe: ResearchPipe, kind: ResearchTabKind, key?: string): string {
   return `${base}/${pipe}/${kind}${key ? `/${encodeURIComponent(key)}` : ""}`;
 }
 

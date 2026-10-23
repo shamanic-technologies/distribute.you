@@ -1,0 +1,367 @@
+"use client";
+
+import { useMemo, useState } from "react";
+import { Line, LineChart, ReferenceLine, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
+import { EmptyNote, Shimmer, StatTile, TopBar } from "@/components/v2/ui";
+import { RecordsTabs } from "@/components/v2/records";
+import { CostBasisSwitch } from "@/components/v2/cost-basis-switch";
+import { RoiLabel, RoiValue, LearningFigure } from "@/components/v2/roi-label";
+import { CatalogueName } from "@/components/v2/catalogue-name";
+import { SectionMark, SectionName } from "@/components/v2/research-bits";
+import { StatusWord, useDynastyStatuses, useModelStatuses, useTemplateStatuses } from "@/components/v2/research-status";
+import { PipeTabs } from "@/components/v2/research-catalog";
+import { usePipeChannelName } from "@/components/v2/research-live-workflows";
+import { useResearch, useResearchCatalog, useResearchPerformance } from "@/lib/research/research-source";
+import { PIPE_KEY, researchCatalogHref, type ResearchPipe } from "@/lib/research/research";
+import { modelAliasesOf, modelStatus } from "@/lib/research/content-status";
+import { shortWorkflowName } from "@/lib/live-workflow-rows";
+import { formatUsdAdaptive, formatCount } from "@/lib/format-number";
+import { formatRatePct } from "@/lib/pipe-stats";
+import { formatRoi } from "@/lib/format-roi";
+import {
+  combinationStatus,
+  performanceByTab,
+  type PartStatus,
+  type PerformanceFigure,
+  type PerformancePoint,
+  type PerformanceRow,
+  type PerformanceTab,
+  type PipePerformance,
+} from "@/lib/research/performance";
+
+/**
+ * Research › <pipe> › Performance (owner 2026-10-23, RESEARCH-PERFORMANCE-1023): every workflow x
+ * template x LLM combination that sent this pipe's emails, all clients pooled, since inception.
+ * Five cards for the pipe on top, the combinations in Active / Deprecated tabs on 2/3, the pipe's
+ * five curves on 1/3. A combination is Active only when its workflow, template and LLM all are.
+ *
+ * Every figure, its order and every point of a curve are features-service's (the served `display`
+ * where it serves one); nothing is divided, summed or ranked here.
+ */
+
+const TH = "k-label px-3 py-2.5 text-left font-medium first:pl-4 last:pr-4";
+const TICK = { fontSize: 11, fill: "var(--fg-3)" };
+const DASH = <span className="k-fg4">{"—"}</span>;
+const TABS: { key: PerformanceTab; label: string }[] = [
+  { key: "active", label: "Active" },
+  { key: "deprecated", label: "Deprecated" },
+];
+
+function asStatus(s: string | null | undefined): PartStatus {
+  return s === "active" || s === "deprecated" ? s : null;
+}
+
+export function V2ResearchPerformanceView({ base, pipe }: { base: string; pipe: ResearchPipe }) {
+  const { basis } = useResearch();
+  const q = useResearchPerformance(basis);
+  const catalog = useResearchCatalog(basis).data ?? null;
+  const perf: PipePerformance | null = q.data?.[pipe] ?? null;
+  const failed = q.data === undefined && q.isError;
+  const rows = perf?.rows ?? [];
+  const channelName = usePipeChannelName(pipe);
+
+  // Each part's status where Research already reads it: workflow-service, content-generation (template versions, model aliases).
+  const workflows = useDynastyStatuses(PIPE_KEY[pipe].channel);
+  const templates = useTemplateStatuses();
+  const models = useModelStatuses();
+  const catalogModels = useMemo(() => new Map((catalog?.[pipe].models ?? []).map((m) => [m.key, m])), [catalog, pipe]);
+  const listed = useMemo(
+    () => ({
+      workflows: new Set((catalog?.[pipe].workflows ?? []).map((w) => w.key)),
+      templates: new Set((catalog?.[pipe].templates ?? []).map((t) => t.key)),
+    }),
+    [catalog, pipe],
+  );
+  const statusOf = (r: PerformanceRow): PartStatus => {
+    const llmStatus = (): PartStatus | undefined => {
+      if (!r.llm) return null;
+      const m = catalogModels.get(r.llm.key);
+      if (!m) return catalog ? null : undefined;
+      if (!models.answered) return undefined;
+      return asStatus(modelStatus(modelAliasesOf(m).aliases, (a) => models.map.get(a)));
+    };
+    return combinationStatus({
+      workflow: workflows.answered ? asStatus(workflows.statusOf(r.workflow.key)) : undefined,
+      template: !r.template ? null : templates.answered ? asStatus(templates.map.get(r.template.key)) : undefined,
+      llm: llmStatus(),
+    });
+  };
+  const statusesAnswered = workflows.answered && templates.answered && models.answered && catalog !== null;
+  const byTab = statusesAnswered ? performanceByTab(rows, statusOf) : null;
+  const [tab, setTab] = useState<PerformanceTab>("active");
+  const shown = byTab?.[tab] ?? [];
+
+  const crumbs = [{ label: "Research", href: base }, { label: <SectionName section={{ pipe }} /> }, { label: "Performance" }];
+  const unit = perf ? `/ ${perf.outcomeNoun}` : "";
+  const t = perf?.totals ?? null;
+  const points = perf?.series?.points ?? [];
+  const answered = q.data !== undefined;
+
+  return (
+    <>
+      <TopBar crumbs={crumbs} actions={<CostBasisSwitch />} />
+      <div className="mx-auto max-w-[1280px] px-4 pb-16 pt-6 md:px-6">
+        <div className="min-w-0">
+          <h1 className="text-[28px] font-medium leading-[34px] tracking-[-0.02em]">
+            {!answered ? "Performance" : byTab ? `${rows.length} combinations, ${byTab.active.length} active` : `${rows.length} combinations`}
+          </h1>
+          <p className="k-fg2 mt-1 text-[14px]">Every workflow, template and LLM sent together on this pipe, all clients pooled, best ROI first.</p>
+        </div>
+
+        <PipeTabs base={base} pipe={pipe} current="performance" countOf={(k) => (k === "performance" && answered ? rows.length : null)} />
+
+        {failed ? (
+          <div className="k-card mt-6">
+            <EmptyNote>We could not load this page just now. Reload to try again.</EmptyNote>
+          </div>
+        ) : perf?.unavailableReason ? (
+          <div className="k-card mt-6">
+            <EmptyNote>{UNAVAILABLE_WORDS[perf.unavailableReason] ?? "This pipe has no combination to show yet."}</EmptyNote>
+          </div>
+        ) : (
+          <>
+            <div className="mt-6 grid grid-cols-2 gap-3 md:grid-cols-5">
+              <StatTile label={<RoiLabel />}>{!answered ? <Shimmer className="h-7 w-16" /> : t ? <BigRoi f={t.roi} /> : DASH}</StatTile>
+              <StatTile label={`$ ${unit}`}>{!answered ? <Shimmer className="h-7 w-16" /> : t ? <Big f={t.costPerOutcomeUsd} /> : DASH}</StatTile>
+              <StatTile label="% Conversion">{!answered ? <Shimmer className="h-7 w-16" /> : t ? <Big f={t.conversionRatePct} /> : DASH}</StatTile>
+              <StatTile label={`# ${perf?.outcomeNounPlural ?? "Outcomes"}`}>{!answered ? <Shimmer className="h-7 w-16" /> : t ? <BigText>{t.outcomes.display}</BigText> : DASH}</StatTile>
+              <StatTile label="$ Spent">{!answered ? <Shimmer className="h-7 w-16" /> : t ? <BigText>{t.spentUsd.display}</BigText> : DASH}</StatTile>
+            </div>
+
+            <div className="mt-6 grid gap-4 lg:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
+              <section className="min-w-0">
+                <div className="k-card overflow-hidden">
+                  <RecordsTabs
+                    tabs={TABS.map((x) => ({ key: x.key, label: x.label, count: byTab ? byTab[x.key].length : null }))}
+                    active={tab}
+                    onPick={(k) => setTab(k as PerformanceTab)}
+                    right={
+                      <span className="k-fg3 inline-flex items-center gap-1.5 text-[12px]">
+                        <SectionMark section={{ pipe }} size={12} />
+                        <SectionName section={{ pipe }} />
+                      </span>
+                    }
+                  />
+                  <div className="k-scroll relative overflow-x-auto">
+                    <table className="w-full min-w-[940px] table-fixed text-[13px]">
+                      <thead>
+                        <tr className="border-b border-[var(--line-subtle)]">
+                          <th className={TH}>Workflow</th>
+                          <th className={`${TH} w-40`}>Template</th>
+                          <th className={`${TH} w-36`}>LLM</th>
+                          <th className={`${TH} w-[84px] text-right`}>
+                            <RoiLabel />
+                          </th>
+                          <th className={`${TH} w-[92px] text-right`}>{`$ ${unit}`}</th>
+                          <th className={`${TH} w-[92px] text-right`}>% Conversion</th>
+                          <th className={`${TH} w-[76px] text-right`}>{`# ${perf?.outcomeNounPlural ?? ""}`}</th>
+                          <th className={`${TH} w-[84px] text-right`}>$ Spent</th>
+                          <th className={`${TH} w-24`}>Status</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {!byTab || !answered ? (
+                          [0, 1, 2, 3, 4].map((i) => (
+                            <tr key={i} className="k-row h-10">
+                              <td colSpan={9} className="px-4">
+                                <Shimmer className="h-4 w-full" />
+                              </td>
+                            </tr>
+                          ))
+                        ) : shown.length === 0 ? (
+                          <tr>
+                            <td colSpan={9}>
+                              <EmptyNote>{rows.length === 0 ? `No email has gone out on this pipe yet.` : tab === "active" ? "No combination on this pipe is active." : "No combination on this pipe is deprecated."}</EmptyNote>
+                            </td>
+                          </tr>
+                        ) : (
+                          shown.map((r) => (
+                            <tr key={r.key} className="k-row h-10">
+                              <td className="max-w-0 pl-4 pr-3">
+                                <CatalogueName
+                                  kind="workflow"
+                                  variant="chip"
+                                  name={r.workflow.name ?? r.workflow.label}
+                                  label={shortWorkflowName(r.workflow.name ?? r.workflow.label, channelName)}
+                                  icon={r.workflow.icon ?? null}
+                                  color={r.workflow.color ?? null}
+                                  href={listed.workflows.has(r.workflow.key) ? researchCatalogHref(base, pipe, "workflows", r.workflow.key) : null}
+                                  className="max-w-full"
+                                />
+                              </td>
+                              <td className="max-w-0 px-3">
+                                {r.template ? (
+                                  <CatalogueName
+                                    kind="template"
+                                    variant="chip"
+                                    name={r.template.dynasty?.label ?? r.template.label}
+                                    version={r.template.dynasty ? r.template.label : null}
+                                    icon={r.template.dynasty?.icon ?? null}
+                                    color={r.template.dynasty?.color ?? null}
+                                    href={r.template.dynasty && listed.templates.has(r.template.dynasty.key) ? researchCatalogHref(base, pipe, "templates", r.template.dynasty.key) : null}
+                                    className="max-w-full"
+                                  />
+                                ) : (
+                                  <NotOnRecord />
+                                )}
+                              </td>
+                              <td className="max-w-0 px-3">
+                                {r.llm ? (
+                                  <CatalogueName
+                                    kind="llm"
+                                    variant="chip"
+                                    name={r.llm.label}
+                                    href={catalogModels.has(r.llm.key) ? researchCatalogHref(base, pipe, "models", r.llm.key) : null}
+                                    className="max-w-full"
+                                  />
+                                ) : (
+                                  <NotOnRecord />
+                                )}
+                              </td>
+                              <td className="whitespace-nowrap px-3 text-right tabular-nums">
+                                <RowRoi f={r.roi} learning={r.learning} />
+                              </td>
+                              <td className="whitespace-nowrap px-3 text-right tabular-nums">
+                                <Cell f={r.costPerOutcomeUsd} learning={r.learning} />
+                              </td>
+                              <td className="whitespace-nowrap px-3 text-right tabular-nums">
+                                <Cell f={r.conversionRatePct} learning={r.learning} />
+                              </td>
+                              <td className="px-3 text-right tabular-nums">{r.outcomes.display}</td>
+                              <td className="whitespace-nowrap px-3 text-right tabular-nums">{r.spentUsd.display}</td>
+                              <td className="max-w-0 px-3">
+                                <StatusWord status={statusOf(r)} />
+                              </td>
+                            </tr>
+                          ))
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
+                  <div className="k-fg3 border-t border-[var(--line-subtle)] px-4 py-2.5 text-[12px]">
+                    Active means its workflow, template and LLM are all active. The rows add up to the cards above.
+                  </div>
+                </div>
+              </section>
+
+              <aside className="min-w-0 space-y-3">
+                <SeriesCard title="ROI" answered={answered} points={points} pick={(p) => p.roi} format={(v) => formatRoi(v)} expected={expectedOf(t?.roi)} />
+                <SeriesCard title={`$ ${unit}`} answered={answered} points={points} pick={(p) => p.costPerOutcomeUsd} format={formatUsdAdaptive} expected={expectedOf(t?.costPerOutcomeUsd)} />
+                <SeriesCard title="% Conversion" answered={answered} points={points} pick={(p) => p.conversionRatePct} format={formatRatePct} expected={expectedOf(t?.conversionRatePct)} />
+                <SeriesCard title={`# ${perf?.outcomeNounPlural ?? "Outcomes"}, added up`} answered={answered} points={points} pick={(p) => p.outcomes} format={formatCount} />
+                <SeriesCard title="$ Spent, added up" answered={answered} points={points} pick={(p) => p.spentUsd} format={formatUsdAdaptive} />
+                <p className="k-fg3 px-1 text-[12px] leading-5">Each month counts everything since the first email, to the end of that month.</p>
+              </aside>
+            </div>
+          </>
+        )}
+      </div>
+    </>
+  );
+}
+
+const UNAVAILABLE_WORDS: Record<string, string> = {
+  no_writer_recorded_on_pipe: "This pipe answers in a chat, so no template is on record for its messages yet.",
+};
+
+function NotOnRecord() {
+  return <span className="k-fg3 text-[12px]">Not on record</span>;
+}
+
+/** The served expected value, drawn as a dotted line, only when the figure IS the expected one. */
+function expectedOf(f: PerformanceFigure | undefined): number | null {
+  return f && f.basis === "expected" ? f.value : null;
+}
+
+function BigText({ children }: { children: React.ReactNode }) {
+  return <div className="text-[22px] font-medium leading-7 tracking-[-0.02em] tabular-nums">{children}</div>;
+}
+
+function BigRoi({ f }: { f: PerformanceFigure }) {
+  return (
+    <BigText>
+      <RoiValue roi={{ value: f.value, expected: f.value != null && f.basis === "expected", reason: f.value == null ? f.unavailableReason : null }} />
+    </BigText>
+  );
+}
+
+function Big({ f }: { f: PerformanceFigure }) {
+  return (
+    <BigText>
+      <Cell f={f} learning={false} />
+    </BigText>
+  );
+}
+
+/** A served figure: its display, `expected` beside it when it is the expected one, greyed while the row is Learning. */
+function Cell({ f, learning }: { f: PerformanceFigure; learning: boolean }) {
+  if (f.display == null) return DASH;
+  if (f.basis === "expected") {
+    return (
+      <span className="whitespace-nowrap">
+        {f.display}
+        <span className="k-fg3 ml-1 text-[11px] font-normal">expected</span>
+      </span>
+    );
+  }
+  return learning ? <LearningFigure measured={f.display} expected={null} /> : <>{f.display}</>;
+}
+
+function RowRoi({ f, learning }: { f: PerformanceFigure; learning: boolean }) {
+  if (learning && f.basis === "measured" && f.value != null) return <LearningFigure measured={formatRoi(f.value)} expected={null} />;
+  return <RoiValue roi={{ value: f.value, expected: f.value != null && f.basis === "expected", reason: f.value == null ? f.unavailableReason : null }} />;
+}
+
+/** One served monthly series as a line; the served expected value dotted when the pipe's figure is the expected one. */
+function SeriesCard({
+  title,
+  answered,
+  points,
+  pick,
+  format,
+  expected = null,
+}: {
+  title: string;
+  answered: boolean;
+  points: PerformancePoint[];
+  pick: (p: PerformancePoint) => number | null;
+  format: (v: number) => string;
+  expected?: number | null;
+}) {
+  const rows = points.map((p) => ({ label: p.label, month: p.month, v: pick(p) }));
+  const drawn = rows.some((r) => r.v != null);
+  return (
+    <div className="k-card p-4">
+      <span className="k-label truncate">{title}</span>
+      <div className="mt-2 h-[120px]">
+        {!answered ? (
+          <Shimmer className="h-full w-full rounded-[8px]" />
+        ) : !drawn ? (
+          <EmptyNote>Nothing to draw yet.</EmptyNote>
+        ) : (
+          <ResponsiveContainer width="100%" height="100%">
+            <LineChart data={rows} margin={{ top: 4, right: 4, bottom: 0, left: 0 }}>
+              <XAxis dataKey="label" tick={TICK} tickLine={false} axisLine={false} minTickGap={24} />
+              <YAxis tick={TICK} tickLine={false} axisLine={false} width={48} tickCount={4} tickFormatter={(v: number) => format(v)} />
+              {expected != null && <ReferenceLine y={expected} stroke="var(--fg-3)" strokeDasharray="4 4" />}
+              <Tooltip
+                cursor={{ stroke: "var(--line-strong)", strokeWidth: 1 }}
+                content={({ active, payload }) => {
+                  if (!active || !payload?.length) return null;
+                  const r = payload[0].payload as (typeof rows)[number];
+                  return (
+                    <div className="k-popover px-2.5 py-1.5 text-[12px]">
+                      <p className="k-fg3">{r.label}</p>
+                      <p className="font-medium tabular-nums">{r.v == null ? "—" : format(r.v)}</p>
+                    </div>
+                  );
+                }}
+              />
+              <Line type="linear" dataKey="v" stroke="var(--accent)" strokeWidth={1.75} dot={rows.length < 3} connectNulls={false} isAnimationActive={false} />
+            </LineChart>
+          </ResponsiveContainer>
+        )}
+      </div>
+    </div>
+  );
+}

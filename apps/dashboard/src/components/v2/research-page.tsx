@@ -1,5 +1,6 @@
 "use client";
 
+import { V2ResearchPerformanceView } from "@/components/v2/research-performance";
 import Link from "next/link";
 import { useEffect, useRef } from "react";
 import { useParams, usePathname, useRouter } from "next/navigation";
@@ -751,6 +752,8 @@ export function V2Research() {
         <V2ResearchStudy base={base} studyId={view.id} />
       ) : view.view === "missing" ? (
         <V2ResearchStudy base={base} studyId={rest} />
+      ) : view.view === "performance" ? (
+        <V2ResearchPerformanceView base={base} pipe={view.pipe} />
       ) : (
         <V2ResearchCatalogView
           base={base}
