@@ -185,7 +185,7 @@ export default function InvestorsPage() {
                 fixed fast, features shipped fast.&quot;
               </blockquote>
 
-              <div className="rounded-lg bg-gradient-to-br from-brand-500/10 to-blue-500/10 border border-brand-500/30 p-4">
+              <div className="rounded-lg bg-linear-to-br from-brand-500/10 to-blue-500/10 border border-brand-500/30 p-4">
                 <p className="text-[10px] uppercase tracking-wider text-brand-700 font-semibold mb-2">
                   The dream
                 </p>

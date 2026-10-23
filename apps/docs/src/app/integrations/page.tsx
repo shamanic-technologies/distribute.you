@@ -91,7 +91,7 @@ export default function IntegrationsPage() {
       <h2 className="text-lg font-semibold text-gray-900 mb-3">MCP Clients</h2>
       <p className="text-gray-500 text-sm mb-4">
         Connect any MCP-compatible AI client to the hosted server at{" "}
-        <code className="text-brand-700 bg-brand-50 px-1.5 py-0.5 rounded text-xs">{MCP_URL}</code>.
+        <code className="text-brand-700 bg-brand-50 px-1.5 py-0.5 rounded-sm text-xs">{MCP_URL}</code>.
         There is nothing to install.
       </p>
       <div className="grid gap-2 mb-10">
@@ -99,7 +99,7 @@ export default function IntegrationsPage() {
           <Link
             key={item.name}
             href={item.href}
-            className="block p-3 border border-gray-200 rounded-lg hover:border-brand-300 hover:shadow-sm transition"
+            className="block p-3 border border-gray-200 rounded-lg hover:border-brand-300 hover:shadow-xs transition"
           >
             <h3 className="text-sm font-semibold text-gray-900">{item.name}</h3>
             <p className="text-xs text-gray-500 mt-0.5">{item.description}</p>
@@ -116,7 +116,7 @@ export default function IntegrationsPage() {
           <Link
             key={item.name}
             href={item.href}
-            className="block p-3 border border-gray-200 rounded-lg hover:border-brand-300 hover:shadow-sm transition"
+            className="block p-3 border border-gray-200 rounded-lg hover:border-brand-300 hover:shadow-xs transition"
           >
             <h3 className="text-sm font-semibold text-gray-900">{item.name}</h3>
             <p className="text-xs text-gray-500 mt-0.5">{item.description}</p>

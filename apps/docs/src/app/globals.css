@@ -1,37 +1,59 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import 'tailwindcss';
 
-:root {
-  --foreground: #101012;
-  --background: #ffffff;
-}
-
-html.dark {
-  --foreground: #e2e8f0;
-  --background: #0f172a;
-  color-scheme: dark;
-}
-
-body {
-  color: var(--foreground);
-  background: var(--background);
-  font-family: var(--font-geist-sans), system-ui, -apple-system, sans-serif;
-}
+@config '../../tailwind.config.ts';
 
 /*
+  The default border color has changed to `currentcolor` in Tailwind CSS v4,
+  so we've added these compatibility styles to make sure everything still
+  looks the same as it did with Tailwind CSS v3.
+
+  If we ever want to remove these styles, we need to add an explicit border
+  color utility to any element that depends on these defaults.
+*/
+@layer base {
+  *,
+  ::after,
+  ::before,
+  ::backdrop,
+  ::file-selector-button {
+    border-color: var(--color-gray-200, currentcolor);
+  }
+}
+
+@utility text-balance {
+  text-wrap: balance;
+}
+
+@layer utilities {
+  :root {
+    --foreground: #101012;
+    --background: #ffffff;
+  }
+
+  html.dark {
+    --foreground: #e2e8f0;
+    --background: #0f172a;
+    color-scheme: dark;
+  }
+
+  body {
+    color: var(--foreground);
+    background: var(--background);
+    font-family:
+      var(--font-geist-sans),
+      system-ui,
+      -apple-system,
+      sans-serif;
+  }
+
+  /*
  * Defense-in-depth: never let a stray child produce body-level horizontal scroll
  * on mobile. `clip` (not `hidden`) keeps `position: sticky` descendants working
  * (no scroll container created). Wide LEGIT content (code blocks, tables) must
  * scroll INTERNALLY so clip never hides it — see `.prose pre` below.
  */
-html {
-  overflow-x: clip;
-}
-
-@layer utilities {
-  .text-balance {
-    text-wrap: balance;
+  html {
+    overflow-x: clip;
   }
 }
 
@@ -45,18 +67,18 @@ html {
 }
 
 .prose a {
-  color: theme('colors.brand.600');
+  color: var(--color-brand-600);
   text-decoration: none;
 }
 
 .prose a:hover {
-  color: theme('colors.brand.700');
+  color: var(--color-brand-700);
   text-decoration: underline;
 }
 
 .prose code {
-  color: theme('colors.brand.700');
-  background-color: theme('colors.brand.50');
+  color: var(--color-brand-700);
+  background-color: var(--color-brand-50);
   padding: 0.2em 0.4em;
   border-radius: 0.25rem;
   font-size: 0.875em;
@@ -116,14 +138,14 @@ html.dark .hover\:text-gray-800:hover { color: #e2e8f0; }
 html.dark .hover\:text-gray-900:hover { color: #f1f5f9; }
 
 /* Brand colors in dark */
-html.dark .bg-brand-50 { background-color: color-mix(in oklab, theme('colors.brand.600') 15%, transparent); }
-html.dark .bg-brand-100 { background-color: color-mix(in oklab, theme('colors.brand.600') 20%, transparent); }
-html.dark .border-brand-200 { border-color: color-mix(in oklab, theme('colors.brand.600') 30%, transparent); }
-html.dark .border-brand-300 { border-color: color-mix(in oklab, theme('colors.brand.500') 40%, transparent); }
-html.dark .text-brand-800 { color: theme('colors.brand.200'); }
-html.dark .text-brand-700 { color: theme('colors.brand.200'); }
-html.dark .text-brand-600 { color: theme('colors.brand.300'); }
-html.dark .text-brand-500 { color: theme('colors.brand.400'); }
+html.dark .bg-brand-50 { background-color: color-mix(in oklab, var(--color-brand-600) 15%, transparent); }
+html.dark .bg-brand-100 { background-color: color-mix(in oklab, var(--color-brand-600) 20%, transparent); }
+html.dark .border-brand-200 { border-color: color-mix(in oklab, var(--color-brand-600) 30%, transparent); }
+html.dark .border-brand-300 { border-color: color-mix(in oklab, var(--color-brand-500) 40%, transparent); }
+html.dark .text-brand-800 { color: var(--color-brand-200); }
+html.dark .text-brand-700 { color: var(--color-brand-200); }
+html.dark .text-brand-600 { color: var(--color-brand-300); }
+html.dark .text-brand-500 { color: var(--color-brand-400); }
 
 /* Status/accent backgrounds */
 html.dark .bg-blue-50 { background-color: rgba(59, 130, 246, 0.15); }
@@ -147,8 +169,8 @@ html.dark .prose th { color: #cbd5e1; }
 html.dark .prose strong { color: #f1f5f9; }
 
 html.dark .prose code {
-  color: theme('colors.brand.200');
-  background-color: color-mix(in oklab, theme('colors.brand.600') 15%, transparent);
+  color: var(--color-brand-200);
+  background-color: color-mix(in oklab, var(--color-brand-600) 15%, transparent);
 }
 
 html.dark .prose pre {
