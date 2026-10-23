@@ -110,14 +110,22 @@ function useOutcome(pipe: ResearchPipe): { noun: string; plural: string; unit: s
   return { noun: outcome, plural, unit: pipe === "cold-email-website-visit" ? "/ visit" : "/ reply" };
 }
 
-/** The hub's links from a pipe's section to its workflow and template pages. */
+/**
+ * The hub's links from a pipe's section to its workflow and template pages. Each chip states its
+ * page's own length: Workflows reads the same live rows as its page's title (Active + Deprecated),
+ * never the Research study's workflow count (owner 2026-10-23: Dotterel's chip said 57).
+ */
 export function PipeCatalogLinks({ base, pipe }: { base: string; pipe: ResearchPipe }) {
   const counts = useResearch().file.catalogCounts?.[pipe];
+  const liveLeg = useResearchPipeLeg(pipe);
+  const liveRows = usePipeWorkflowRows(PIPE_KEY[pipe].channel, liveLeg);
   if (!counts || !CATALOG_KINDS.some((k) => counts[k])) return null;
+  const countOf = (k: CatalogKind): number | null =>
+    k === "workflows" && liveLeg != null ? (liveRows.rankingQ.data !== undefined ? liveRows.rows.length : null) : counts[k];
   return (
     <HubChips>
       {CATALOG_KINDS.map((kind) =>
-        counts[kind] ? <HubChip key={kind} href={researchCatalogHref(base, pipe, kind)} color={topicLook(KIND_TOPIC[kind]).color} label={KIND_WORD[kind].title} count={counts[kind]} /> : null,
+        counts[kind] ? <HubChip key={kind} href={researchCatalogHref(base, pipe, kind)} color={topicLook(KIND_TOPIC[kind]).color} label={KIND_WORD[kind].title} count={countOf(kind)} /> : null,
       )}
     </HubChips>
   );
