@@ -82,6 +82,9 @@ const RevenueOrgSchema = z.object({
   // `lead:<leadId>` for a company-less row). Optional until every cached body carries it.
   organizationKey: z.string().optional(),
   topPerson: RevenueTopPersonSchema.nullable(),
+  // features-service v0.179.382 (COMPANY-PEOPLE-COUNT-1023): distinct people the row is built
+  // from, `topPerson` one of them. Optional until every cached body carries it.
+  peopleCount: z.number().int().optional(),
   tags: z.array(z.string()),
   expectedRevenueUsd: z.number(),
   mostAdvancedDate: z.string().nullable(),
