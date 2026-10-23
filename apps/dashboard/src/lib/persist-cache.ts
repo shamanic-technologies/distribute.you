@@ -504,8 +504,12 @@ export function persisterStorageKey(orgId: string | null | undefined): string {
  * "7": `googleAccounts` rows gained the REQUIRED `scopes` (GMAIL-NEEDS-SEND-ACCESS-1014).
  * Integrations > AI read `scopes.includes` on an older snapshot and crashed with
  * `Cannot read properties of undefined (reading 'includes')`.
+ *
+ * "8": `workflowDynastySummaries` and `workflowDynastyDeprecation` gained the REQUIRED
+ * `siblingLines` (WF-SHORT-LINE-1023, #5638). Research Workflows read `siblingLines.find` on an
+ * older snapshot and crashed with `Cannot read properties of undefined (reading 'find')`.
  */
-const PERSIST_CACHE_VERSION = "7";
+const PERSIST_CACHE_VERSION = "8";
 
 export function persistCacheVersion(): string {
   return PERSIST_CACHE_VERSION;
