@@ -50,6 +50,10 @@ function Badge({ badge }: { badge: keyof typeof BADGE_LOOK }) {
   );
 }
 
+/** features-service's reason an org has no brand row yet, in words; an unknown reason prints as served. */
+const NO_ROWS_WORD: Record<string, string> = { no_lead_on_any_channel: "No lead yet" };
+const noRowsWord = (r: string | null | undefined) => (r ? (NO_ROWS_WORD[r] ?? r.replace(/_/g, " ")) : "No brand yet");
+
 /** features-service's account status token, capitalised for reading ("out_of_credit" -> "Out of credit"). */
 const statusWord = (s: string) => (s.charAt(0).toUpperCase() + s.slice(1)).replace(/_/g, " ");
 
@@ -191,12 +195,12 @@ export function AccountsView({ data, health }: { data: AbsorbedCosts; health: He
                       </td>
                       <td className={TD}>
                         <HealthCell health={health} org={org}>
-                          {(o) => <Badge badge={o.healthBadge} />}
+                          {(o) => (o.healthBadge ? <Badge badge={o.healthBadge} /> : <span className="k-fg3 text-[12px]">{noRowsWord(o.noBrandRowsReason)}</span>)}
                         </HealthCell>
                       </td>
                       <td className={TDR}>
                         <HealthCell health={health} org={org}>
-                          {(o) => (o.runningDailyBudgetUsd > 0 ? usdWhole(o.runningDailyBudgetUsd) : <Dash />)}
+                          {(o) => (o.runningDailyBudgetUsd != null && o.runningDailyBudgetUsd > 0 ? usdWhole(o.runningDailyBudgetUsd) : <Dash />)}
                         </HealthCell>
                       </td>
                       <td className={TDR}>
@@ -337,7 +341,7 @@ function AccountPanel({
             <h2 className="truncate text-[16px] font-medium leading-6">{name ?? <span className="k-mono k-fg2 text-[13px]">{c.orgId}</span>}</h2>
             <div className="mt-0.5 flex items-center gap-2">
               {tab && <StatusDot tab={tab} />}
-              {org && <Badge badge={org.healthBadge} />}
+              {org?.healthBadge && <Badge badge={org.healthBadge} />}
               {modeWord(c.paymentMode) && <span className="k-chip text-[11px]">{modeWord(c.paymentMode)}</span>}
             </div>
           </div>
@@ -412,8 +416,8 @@ function HealthSection({ health, org, brands }: { health: HealthState; org: Cust
         <p className="k-label mb-2">Account health</p>
         <Facts
           rows={[
-            ["Running", org.runningDailyBudgetUsd > 0 ? `${usdWhole(org.runningDailyBudgetUsd)}/day` : null],
-            ["Budget set", org.configuredDailyBudgetUsd > 0 ? `${usdWhole(org.configuredDailyBudgetUsd)}/day` : null],
+            ["Running", org.runningDailyBudgetUsd != null && org.runningDailyBudgetUsd > 0 ? `${usdWhole(org.runningDailyBudgetUsd)}/day` : null],
+            ["Budget set", org.configuredDailyBudgetUsd != null && org.configuredDailyBudgetUsd > 0 ? `${usdWhole(org.configuredDailyBudgetUsd)}/day` : null],
             ["Balance", org.orgBalanceUsd == null ? null : `${dollarsExact(org.orgBalanceUsd)}${org.autoTopupEnabled ? " · auto reload on" : ""}`],
             ["Last active day", org.lastActiveDay ? dayLabel(org.lastActiveDay) : null],
             ["Dashboard visits", visits ? `${n(visits.sessions7d)} this week · ${n(visits.sessions30d)} in 30 days` : null],
