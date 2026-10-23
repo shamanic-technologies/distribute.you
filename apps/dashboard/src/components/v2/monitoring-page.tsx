@@ -34,6 +34,10 @@ import { BlocklistsPage } from "@/components/v2/monitoring-blocklists";
 import { ThreadsPage } from "@/components/v2/monitoring-threads";
 import { WhatsappLinesPage, WhatsappLinesTile, useWhatsappLines } from "@/components/v2/monitoring-whatsapp";
 import { WhatsappLogoIcon } from "@phosphor-icons/react/dist/csr/WhatsappLogo";
+import { ScalesIcon } from "@phosphor-icons/react/dist/csr/Scales";
+import { LedgerCheckPage, LedgerCheckTile, OutcomeCoveragePage, OutcomeCoverageTile, useLedgerCheck, useOutcomeCoverage } from "@/components/v2/monitoring-cost-ledger";
+import { belowTarget, headlinePoint, serviceNames } from "@/lib/monitoring/cost-ledger";
+import { formatRatePct } from "@/lib/pipe-stats";
 import { linesDown, linkedLines } from "@/lib/monitoring/whatsapp-lines";
 import { DomainsEstate, MailboxesSummary } from "@/components/v2/monitoring-details";
 import {
@@ -97,11 +101,12 @@ const centsPerEmail = (c: number | null) => (c == null ? null : `${c.toLocaleStr
 
 // ─── Shell ─────────────────────────────────────────────────────────────────
 
-type SectionKey = "cost" | "customers" | "price" | "margin" | "emails" | "whatsapp" | "chat";
+type SectionKey = "cost" | "ledger" | "customers" | "price" | "margin" | "emails" | "whatsapp" | "chat";
 
 /** Each section wears one colour and one mark, the way Research's topics do. */
 const SECTION_LOOK: Record<SectionKey, { name: string; color: string; Icon: typeof ReceiptIcon; sub: string }> = {
   cost: { name: "Cost", color: "var(--data-rose)", Icon: ReceiptIcon, sub: "What our vendors charged us" },
+  ledger: { name: "Cost ledger", color: "var(--data-amber)", Icon: ScalesIcon, sub: "Whether every dollar spent lands on the outcome it produced, to the cent" },
   customers: { name: "Customers", color: "var(--data-lime)", Icon: UsersThreeIcon, sub: "How each account is doing, and what it costs us" },
   price: { name: "Price", color: "var(--data-sky)", Icon: TagIcon, sub: "What we charge our users" },
   margin: { name: "Margin", color: "var(--data-teal)", Icon: TrendUpIcon, sub: "Billed minus what the vendors charged" },
@@ -115,6 +120,8 @@ const PAGE: Record<MonitoringPage, { section: SectionKey; title: string; questio
   "cost/spend": { section: "cost", title: "Spend per provider", question: "How much has each provider charged us since inception?" },
   "cost/subscriptions": { section: "cost", title: "Subscriptions", question: "What does one credit of each subscription really cost us?" },
   "cost/email-sending": { section: "cost", title: "Email sending", question: "What does sending one cold email really cost us?" },
+  "ledger/coverage": { section: "ledger", title: "Outcome coverage", question: "How much of our spend says which outcome it produced?" },
+  "ledger/check": { section: "ledger", title: "To the cent", question: "Does every org-day of the cost ledger balance to the cent?" },
   "customers/accounts": { section: "customers", title: "Accounts", question: "How healthy is each customer's account?" },
   "customers/absorbed": { section: "customers", title: "Absorbed", question: "What do our customers cost us that they do not pay?" },
   "price/billed": { section: "price", title: "Billed to users", question: "What did we bill for each cost item, and at what price?" },
@@ -222,6 +229,8 @@ export function V2Monitoring() {
           ? "Every org pooled, read live from production. Times are UTC."
           : meta.section === "chat"
           ? "Read live from production. Your edits save as you type and reach the Copilot on its next message."
+          : meta.section === "ledger"
+          ? "Every org pooled, read live from runs-service's stored daily computation. Days are UTC."
           : meta.section === "emails" && view.page !== "emails"
             ? "Every mailbox we send from, read live from production. Times are UTC."
             : "Every org pooled, since the first cost row. Read live from production."}
@@ -231,6 +240,8 @@ export function V2Monitoring() {
         {view.page === "cost/spend" && <SpendPage />}
         {view.page === "cost/subscriptions" && <SubscriptionsPage />}
         {view.page === "cost/email-sending" && <EmailSendingPage />}
+        {view.page === "ledger/coverage" && <OutcomeCoveragePage />}
+        {view.page === "ledger/check" && <LedgerCheckPage />}
         {view.page === "customers/accounts" && <CustomerAccountsPage />}
         {view.page === "customers/absorbed" && <AbsorbedPage />}
         {view.page === "price/billed" && <BilledPage />}
@@ -358,6 +369,9 @@ function Hub({ base }: { base: string }) {
   const verdict = useSendingVerdict();
   const hub = useOpenSections(OPEN_SECTIONS_KEY);
   const wa = useWhatsappLines();
+  const coverage = useOutcomeCoverage();
+  const ledger = useLedgerCheck();
+  const covAt = coverage.data ? headlinePoint(coverage.data) : undefined;
   return (
     <Frame crumbs={[{ label: "Monitoring" }]}>
       <div className="flex flex-wrap items-end justify-between gap-3">
@@ -378,6 +392,9 @@ function Hub({ base }: { base: string }) {
       {/* A line down blocks every WhatsApp greeting (owner 2026-10-23): red here IS the alert, outside any collapsed row. */}
       <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
         <WhatsappLinesTile href={href("whatsapp/lines")} />
+        {/* Every outcome's cost exact to the cent (owner 2026-10-23): red here IS the alert. */}
+        <OutcomeCoverageTile href={href("ledger/coverage")} />
+        <LedgerCheckTile href={href("ledger/check")} />
       </div>
 
       <HubOpen.Provider value={hub}>
@@ -421,7 +438,7 @@ function Hub({ base }: { base: string }) {
       </div>
 
       <div>
-      <SectionTitle count={4}>Money</SectionTitle>
+      <SectionTitle count={5}>Money</SectionTitle>
       <div className="space-y-3">
 
       <Section section="cost" count={4}>
@@ -470,6 +487,42 @@ function Hub({ base }: { base: string }) {
             { label: "Emails to leads", value: sp?.totals.emailsToLeads.toLocaleString("en-US"), note: sp ? `${usd(sp.totals.spendUsd * 100)} infra spend, net` : undefined },
           ]}
         />
+      </Section>
+
+      <Section section="ledger" count={2} grid={false}>
+        <HubChips>
+          <HubChip href={href("ledger/coverage")} color={covAt !== undefined && belowTarget(covAt) ? "var(--data-rose)" : "var(--data-amber)"} label="Outcome coverage" />
+          <HubChip href={href("ledger/check")} color={ledger.data && !ledger.data.balanced ? "var(--data-rose)" : "var(--data-amber)"} label="To the cent" />
+        </HubChips>
+        <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3">
+          <Card
+            href={href("ledger/coverage")}
+            page="ledger/coverage"
+            error={coverage.isError && !coverage.data}
+            cells={[
+              {
+                label: "Declared share",
+                value: covAt === undefined ? undefined : covAt === null ? null : <span style={{ color: belowTarget(covAt) ? "var(--data-rose)" : undefined }}>{formatRatePct(Number(covAt.coveragePct))}</span>,
+                note: "target 95%",
+                bars: coverage.data?.fleet.slice(-7).map((p) => Number(p.coveragePct ?? 0)),
+              },
+              { label: "Services spending", value: coverage.data && serviceNames(coverage.data).length, note: "in the window" },
+            ]}
+          />
+          <Card
+            href={href("ledger/check")}
+            page="ledger/check"
+            error={ledger.isError && !ledger.data}
+            cells={[
+              {
+                label: "Org-days off",
+                value: ledger.data && <span style={{ color: ledger.data.mismatches.length ? "var(--data-rose)" : undefined }}>{ledger.data.mismatches.length}</span>,
+                note: "gross, net and vendor",
+              },
+              { label: "Days not computed", value: ledger.data?.daysMissing.length, note: "checked once filled" },
+            ]}
+          />
+        </div>
       </Section>
 
       <Section section="customers" count={2}>
