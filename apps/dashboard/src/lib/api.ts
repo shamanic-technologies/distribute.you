@@ -12549,14 +12549,26 @@ const ContentTemplateStatusesSchema = z.object({
       statusChangedAt: z.string().nullish(),
     })),
 });
+/**
+ * A writer model's status is PER PIPE (featureSlug x legKey, LLM-STATUS-PER-PIPE-1023, owner 2026-10-23:
+ * « la deprecation manuelle doit être par pipe »). `pipeStatuses` lists every pipe staff stated one on;
+ * no entry = active there. The top-level `status` read without a pipe is always `active` (no fleet-wide
+ * retirement exists): never read it as the model's status.
+ */
+const ContentModelPipeStatusSchema = z.object({
+  featureSlug: z.string(),
+  legKey: z.string(),
+  status: z.string(),
+  statusReason: z.string().nullable(),
+  statusChangedBy: z.string().nullable(),
+  statusChangedAt: z.string().nullable(),
+});
+export type ContentModelPipeStatus = z.infer<typeof ContentModelPipeStatusSchema>;
 const ContentModelStatusesSchema = z.object({
   models: z.array(z.object({
       model: z.string(),
       provider: z.string().nullish(),
-      status: z.string(),
-      statusReason: z.string().nullish(),
-      statusChangedBy: z.string().nullish(),
-      statusChangedAt: z.string().nullish(),
+      pipeStatuses: z.array(ContentModelPipeStatusSchema),
     })),
 });
 
@@ -12574,8 +12586,15 @@ export async function setContentTemplateStatus(type: string, change: CatalogueSt
   await apiCall<unknown>(`/content/templates/${encodeURIComponent(type)}/status`, { method: "PUT", body: change });
 }
 
-export async function setContentModelStatus(model: string, change: CatalogueStatusChange): Promise<void> {
-  await apiCall<unknown>(`/content/models/${encodeURIComponent(model)}/status`, { method: "PUT", body: change });
+/** One pipe a model's status is set on: the channel (feature slug) x the leg. */
+export type ModelPipe = { featureSlug: string; legKey: string };
+
+/** Sets a model alias's status on ONE pipe; every other pipe keeps its own (the producer refuses a write with no pipe). */
+export async function setContentModelStatus(model: string, pipe: ModelPipe, change: CatalogueStatusChange): Promise<void> {
+  await apiCall<unknown>(`/content/models/${encodeURIComponent(model)}/status`, {
+    method: "PUT",
+    body: { ...change, featureSlug: pipe.featureSlug, legKey: pipe.legKey },
+  });
 }
 
 const TemplateOutputsSchema = z.object({
@@ -12672,7 +12691,7 @@ export type RetireByContentResult = z.infer<typeof RetireByContentSchema>;
  * recording `reason` as why it stopped.
  */
 export async function retireWorkflowsByContent(
-  target: { promptType: string } | { model: string },
+  target: { promptType: string } | { model: string; featureSlug?: string },
   run: { dryRun: true } | { dryRun: false; reason: string },
 ): Promise<RetireByContentResult> {
   const raw = await apiCall<unknown>("/workflows/retire-by-content", { method: "POST", body: { ...target, ...run } });

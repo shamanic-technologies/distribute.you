@@ -8,6 +8,7 @@ import {
   modelAliasesOf,
   modelDeprecation,
   modelStatus,
+  modelStatusOnPipe,
   statusWord,
   templatePipes,
 } from "../src/lib/research/content-status";
@@ -152,14 +153,14 @@ describe("TEMPLATE-MODEL-STATUS-1019: the three Research pages", () => {
   });
 
   it("Models: Status + ⋮ keyed on the SERVED aliases, never the workflows join, no Leg column", () => {
-    expect(list).toContain('{ kind: "model", aliases: modelKeys, label: r.label }');
+    expect(list).toContain('{ kind: "model", aliases: modelKeys, label: r.label, pipe: modelPipe, researchPipe: pipe }');
     expect(list).toContain("modelAliasesOf(r as ResearchModel)");
     expect(list).toContain("gap={served.gap}");
     expect(status).not.toContain("useModelAliases");
     expect(read("lib/research/content-status.ts")).not.toContain("writesWithNow");
     // Several aliases: the confirm and the menu name each one.
     expect(status).toContain("This deprecates each of them.");
-    expect(list).toContain("contentNote(target, DEPRECATE_CONTENT_NOTE)");
+    expect(list).toContain('contentNote(target, target.kind === "model" ? DEPRECATE_MODEL_NOTE : DEPRECATE_CONTENT_NOTE)');
   });
 
   it("Workflows: each row carries the dynasty status and its ⋮", () => {
@@ -225,7 +226,7 @@ describe("DEPRECATION-REASON-1020: every Deprecate asks why; every deprecated it
   it("every deprecation write carries a reason, typed so none can be sent without one", () => {
     expect(api).toContain('export type CatalogueStatusChange = { status: "active" } | { status: "deprecated"; reason: string };');
     expect(api).toContain("setContentTemplateStatus(type: string, change: CatalogueStatusChange)");
-    expect(api).toContain("setContentModelStatus(model: string, change: CatalogueStatusChange)");
+    expect(api).toContain("setContentModelStatus(model: string, pipe: ModelPipe, change: CatalogueStatusChange)");
     expect(api).toContain("setWorkflowDynastyStatus(workflowDynastySlug: string, change: CatalogueStatusChange)");
     expect(api).toContain('run: { dryRun: true } | { dryRun: false; reason: string }');
   });
@@ -244,5 +245,79 @@ describe("DEPRECATION-REASON-1020: every Deprecate asks why; every deprecated it
     // workflow, template dynasty, template version, model pages
     expect(list.match(/<DeprecationNote /g)?.length).toBe(4);
     expect(api).toContain('new URLSearchParams({ workflowDynastySlug, status: "all" })');
+  });
+});
+
+describe("LLM-STATUS-PER-PIPE-1023: a model is deprecated on ONE pipe (owner 2026-10-23)", () => {
+  const status = read("components/v2/research-status.tsx");
+  const list = read("components/v2/research-catalog.tsx");
+  const api = read("lib/api.ts");
+  const WEBSITE = { featureSlug: "sales-cold-email-outreach", legKey: "lead_found_to_website_visit" };
+  const REPLY = { featureSlug: "sales-cold-email-outreach", legKey: "lead_found_to_conversation" };
+  // glm-pro as content-generation-service serves it in prod today.
+  const glm = {
+    pipeStatuses: [
+      {
+        ...WEBSITE,
+        status: "deprecated",
+        statusReason: "Too expensive, too smart for clicks",
+        statusChangedBy: "kevin.lourd@gmail.com",
+        statusChangedAt: "2026-10-23T09:00:00Z",
+      },
+    ],
+  };
+
+  it("Deprecated on Lead -> Website visit with its why and who, Active on Lead -> Positive reply", () => {
+    expect(modelStatusOnPipe(glm, WEBSITE)).toEqual({
+      status: "deprecated",
+      deprecation: { reason: "Too expensive, too smart for clicks", decidedBy: "kevin.lourd@gmail.com", decidedAt: "2026-10-23T09:00:00Z" },
+    });
+    expect(modelStatusOnPipe(glm, REPLY)).toEqual({ status: "active", deprecation: null });
+    // Same leg on another channel is another pipe.
+    expect(modelStatusOnPipe(glm, { featureSlug: "sales-linkedin-outreach", legKey: WEBSITE.legKey }).status).toBe("active");
+    expect(modelStatusOnPipe({ pipeStatuses: [] }, WEBSITE)).toEqual({ status: "active", deprecation: null });
+  });
+
+  it("the write carries the pipe (featureSlug + legKey) beside the status", () => {
+    const fn = api.slice(api.indexOf("export async function setContentModelStatus("), api.indexOf("const TemplateOutputsSchema"));
+    expect(fn).toContain("body: { ...change, featureSlug: pipe.featureSlug, legKey: pipe.legKey }");
+    // Both writers pass the target's pipe.
+    expect(status).toContain("setContentModelStatus(alias, t.pipe, { status: \"active\" })");
+    expect(status).toContain("setContentModelStatus(alias, target.pipe, change)");
+    expect(status).not.toMatch(/setContentModelStatus\(alias, (change|\{)/);
+  });
+
+  it("never reads the top-level status (always active without a pipe): only pipeStatuses", () => {
+    const schema = api.slice(api.indexOf("const ContentModelStatusesSchema"), api.indexOf("/** Every stored template type"));
+    expect(schema).toContain("pipeStatuses: z.array(ContentModelPipeStatusSchema)");
+    expect(schema).not.toContain("status: z.string(),\n      statusReason");
+    expect(status).toContain("modelStatusOnPipe(m, pipe)");
+    expect(read("lib/persist-cache.ts")).toContain('const PERSIST_CACHE_VERSION = "10";');
+  });
+
+  it("the pipe comes from the pipe catalogue (channel x leg), never a hard-coded list", () => {
+    const hook = status.slice(status.indexOf("export function useResearchModelPipe"), status.indexOf("export function useModelStatuses"));
+    expect(hook).toContain("legFor(useLegCatalogue(), entry?.leg ?? null)");
+    for (const src of [status, list]) expect(src).not.toContain('"lead_found_to_website_visit"');
+    expect(list).toContain("const modelPipe = useResearchModelPipe(pipe);");
+  });
+
+  it("a model's deprecation stops only the workflows on THAT pipe's leg", () => {
+    const preview = status.slice(status.indexOf("const bodies ="), status.indexOf("const figures = useFleetFigures()"));
+    expect(preview).toContain("featureSlug: target.pipe.featureSlug");
+    expect(preview).toContain("getLegWorkflowRanking(target.pipe.featureSlug, target.pipe.legKey)");
+    expect(preview).toContain("onLeg.has(w.workflowDynastySlug)");
+    const confirm = status.slice(status.indexOf("const confirm = async"), status.indexOf("if (typeof document"));
+    // Models never go through retire-by-content's write (it narrows to a channel, not a leg).
+    expect(confirm).toContain('if (target.kind === "template") for (const b of bodies) await retireWorkflowsByContent(b, { dryRun: false');
+    expect(confirm).toContain("else for (const w of rows) await setWorkflowDynastyStatus(w.workflowDynastySlug,");
+  });
+
+  it("the model page lists its status on each pipe, each row acting on its own pipe", () => {
+    expect(list).toContain("<ModelPipeStatuses base={base} pipe={pipe} m={m} />");
+    const row = list.slice(list.indexOf("function ModelPipeStatusRow("), list.indexOf("function ModelView("));
+    expect(row).toContain("const modelPipe = useResearchModelPipe(pipe);");
+    expect(row).toContain("pipe: modelPipe, researchPipe: pipe");
+    expect(row).toContain("deprecationLine(d)");
   });
 });

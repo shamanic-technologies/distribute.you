@@ -1,6 +1,7 @@
 "use client";
 
-import { useResearch } from "@/lib/research/research-source";
+import { useResearch, useResearchPipeEntry } from "@/lib/research/research-source";
+import type { ResearchPipe } from "@/lib/research/research";
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import { useQueries } from "@tanstack/react-query";
@@ -26,15 +27,18 @@ import { legFor } from "@/lib/legs";
 import { isProactiveFrom } from "@/lib/outbound-leg-key";
 import { formatUsdAdaptive } from "@/lib/format-number";
 import { Shimmer } from "@/components/v2/ui";
+import { SectionMark, SectionName } from "@/components/v2/research-bits";
 import { InfoTooltip } from "@/components/visibility/metric-info";
 import {
   aliasList,
   contentDeprecation,
   deprecationLine,
   modelDeprecation,
+  modelStatusOnPipe,
   statusWord,
   type ContentTarget,
   type DeprecationFacts,
+  type ModelPipe,
 } from "@/lib/research/content-status";
 
 /**
@@ -66,13 +70,36 @@ export function useTemplateStatuses() {
   return { map, deprecationOf, answered: q.data !== undefined || q.isFetchedAfterMount, failed: q.data === undefined && q.isError };
 }
 
-/** Model ALIAS -> status; a model's deprecation reads every alias it is served under. */
-export function useModelStatuses() {
+/**
+ * The pipe a Research pipe's model status is read and written on: its channel x its leg, from the
+ * pipe catalogue the page already reads. Null while the leg catalogue has not answered.
+ */
+export function useResearchModelPipe(pipe: ResearchPipe | null): ModelPipe | null {
+  const entry = useResearchPipeEntry(pipe);
+  const leg = legFor(useLegCatalogue(), entry?.leg ?? null);
+  return useMemo(() => (entry?.channel && leg ? { featureSlug: entry.channel, legKey: leg.legKey } : null), [entry?.channel, leg]);
+}
+
+/**
+ * Model ALIAS -> status ON ONE PIPE (LLM-STATUS-PER-PIPE-1023, owner 2026-10-23): a model deprecated on
+ * Lead → Website visit stays active on every other pipe. A model's deprecation reads every alias it is
+ * served under, on that pipe. Not answered until the pipe is known, so no row lands in the wrong tab.
+ */
+export function useModelStatuses(pipe: ModelPipe | null) {
   const q = useAuthQuery([...STATUS_ROOTS.models], getContentModelStatuses, { ...pollOptions, retry: false });
-  const map = useMemo(() => new Map((q.data ?? []).map((m) => [m.model, m.status])), [q.data]);
-  const why = useMemo(() => new Map((q.data ?? []).map((m) => [m.model, contentDeprecation(m)])), [q.data]);
-  const deprecationOf = (aliases: readonly string[]) => modelDeprecation(aliases, (a) => why.get(a) ?? null);
-  return { map, deprecationOf, answered: q.data !== undefined || q.isFetchedAfterMount, failed: q.data === undefined && q.isError };
+  const onPipe = useMemo(
+    () => (pipe ? new Map((q.data ?? []).map((m) => [m.model, modelStatusOnPipe(m, pipe)])) : new Map<string, ReturnType<typeof modelStatusOnPipe>>()),
+    [q.data, pipe],
+  );
+  const map = useMemo(() => new Map([...onPipe].map(([alias, s]) => [alias, s.status])), [onPipe]);
+  const deprecationOf = (aliases: readonly string[]) => modelDeprecation(aliases, (a) => onPipe.get(a)?.deprecation ?? null);
+  return {
+    map,
+    deprecationOf,
+    rows: q.data ?? null,
+    answered: pipe !== null && (q.data !== undefined || q.isFetchedAfterMount),
+    failed: q.data === undefined && q.isError,
+  };
 }
 
 /**
@@ -298,7 +325,7 @@ export function useContentStatusWrites() {
   const [confirming, setConfirming] = useState<ContentTarget | null>(null);
   const activate = async (t: ContentTarget) => {
     if (t.kind === "template") await setContentTemplateStatus(t.key, { status: "active" });
-    else for (const alias of t.aliases) await setContentModelStatus(alias, { status: "active" });
+    else for (const alias of t.aliases) await setContentModelStatus(alias, t.pipe, { status: "active" });
     await refetchAfterWrite(qc);
   };
   const modal = confirming ? <DeprecateContentModal target={confirming} onClose={() => setConfirming(null)} /> : null;
@@ -307,6 +334,8 @@ export function useContentStatusWrites() {
 
 export const ACTIVATE_CONTENT_NOTE = "Its workflows stay deprecated: set each one active by hand.";
 export const DEPRECATE_CONTENT_NOTE = "Shows every workflow that writes with it, then stops them all.";
+export const ACTIVATE_MODEL_NOTE = "On this pipe only. Its workflows stay deprecated: set each one active by hand.";
+export const DEPRECATE_MODEL_NOTE = "On this pipe only: stops its workflows here, every other pipe keeps it.";
 
 /** The menu note for a target: a model served under several aliases names each one the click changes. */
 export function contentNote(t: ContentTarget, note: string): string {
@@ -349,14 +378,27 @@ function useFleetFigures(): { byslug: Map<string, { outcomes: number; cost: numb
 export function DeprecateContentModal({ target, onClose }: { target: ContentTarget; onClose: () => void }) {
   const qc = useQueryClient();
   // One retire-by-content body per template, or per alias of the model (a model can be served under two).
-  const bodies = target.kind === "template" ? [{ promptType: target.key }] : target.aliases.map((model) => ({ model }));
-  const previewKey = target.kind === "template" ? [target.key] : target.aliases;
+  // A model is deprecated on ONE pipe (owner 2026-10-23), so its list narrows to the pipe's channel, then to
+  // the workflows the pipe's own leg ranking lists: a workflow on another leg of the channel keeps running.
+  const bodies =
+    target.kind === "template" ? [{ promptType: target.key }] : target.aliases.map((model) => ({ model, featureSlug: target.pipe.featureSlug }));
+  const previewKey = target.kind === "template" ? [target.key] : [target.pipe.featureSlug, target.pipe.legKey, ...target.aliases];
   const preview = useAuthQuery(
     ["retireByContentPreview", target.kind, ...previewKey],
     async () => {
-      const lists = await Promise.all(bodies.map((b) => retireWorkflowsByContent(b, { dryRun: true })));
+      const [lists, onLeg] = await Promise.all([
+        Promise.all(bodies.map((b) => retireWorkflowsByContent(b, { dryRun: true }))),
+        target.kind === "model"
+          ? getLegWorkflowRanking(target.pipe.featureSlug, target.pipe.legKey).then((r) => new Set(r.rows.map((row) => row.workflowDynastySlug)))
+          : Promise.resolve(null),
+      ]);
       const seen = new Set<string>();
-      return { workflows: lists.flatMap((l) => l.workflows).filter((w) => !seen.has(w.workflowDynastySlug) && (seen.add(w.workflowDynastySlug), true)) };
+      return {
+        workflows: lists
+          .flatMap((l) => l.workflows)
+          .filter((w) => (onLeg ? onLeg.has(w.workflowDynastySlug) : true))
+          .filter((w) => !seen.has(w.workflowDynastySlug) && (seen.add(w.workflowDynastySlug), true)),
+      };
     },
     { retry: false, staleTime: 0 },
   );
@@ -395,9 +437,12 @@ export function DeprecateContentModal({ target, onClose }: { target: ContentTarg
     const workflowReason = `Uses deprecated ${what} ${target.label}: ${reason}`;
     try {
       if (target.kind === "template") await setContentTemplateStatus(target.key, change);
-      else for (const alias of target.aliases) await setContentModelStatus(alias, change);
+      else for (const alias of target.aliases) await setContentModelStatus(alias, target.pipe, change);
       statusSet = true;
-      for (const b of bodies) await retireWorkflowsByContent(b, { dryRun: false, reason: workflowReason });
+      if (target.kind === "template") for (const b of bodies) await retireWorkflowsByContent(b, { dryRun: false, reason: workflowReason });
+      // A model stops only the workflows the confirmation listed (this pipe's), one dynasty at a time:
+      // retire-by-content narrows to a channel, never to a leg.
+      else for (const w of rows) await setWorkflowDynastyStatus(w.workflowDynastySlug, { status: "deprecated", reason: workflowReason });
       await refetchAfterWrite(qc);
       onClose();
     } catch (err) {
@@ -437,8 +482,18 @@ export function DeprecateContentModal({ target, onClose }: { target: ContentTarg
               ? `Finding the workflows that write with this ${what}.`
               : n === 0
                 ? `No running workflow writes with this ${what}. No new workflow can use it once deprecated.`
-                : `${n === 1 ? "This workflow stops" : `These ${n} workflows stop`} for every client. No new workflow can use this ${what}.`}
+                : `${n === 1 ? "This workflow stops" : `These ${n} workflows stop`} for every client. No new workflow can use this ${what}${target.kind === "model" ? " on this pipe" : ""}.`}
           </p>
+          {target.kind === "model" && (
+            <p className="mt-2 inline-flex flex-wrap items-center gap-1.5 text-[13px] leading-5">
+              On
+              <span className="k-chip inline-flex items-center gap-1.5">
+                <SectionMark section={{ pipe: target.researchPipe }} size={12} />
+                <SectionName section={{ pipe: target.researchPipe }} />
+              </span>
+              only. Every other pipe keeps it.
+            </p>
+          )}
           {target.kind === "model" && target.aliases.length > 1 && (
             <p className="mt-2 text-[13px] leading-5">
               chat-service serves {target.label} under {target.aliases.length} aliases: {aliasList(target.aliases)}. This deprecates each of them.

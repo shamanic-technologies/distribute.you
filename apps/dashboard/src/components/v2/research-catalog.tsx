@@ -12,7 +12,9 @@ import { TacticTags, TacticsBlock } from "@/components/v2/tactic-tags";
 import { shortWorkflowName } from "@/lib/live-workflow-rows";
 import {
   ACTIVATE_CONTENT_NOTE,
+  ACTIVATE_MODEL_NOTE,
   DEPRECATE_CONTENT_NOTE,
+  DEPRECATE_MODEL_NOTE,
   contentNote,
   DeprecationNote,
   StatusMenu,
@@ -20,11 +22,12 @@ import {
   useContentStatusWrites,
   useDynastyStatuses,
   useModelStatuses,
+  useResearchModelPipe,
   useTemplateStatuses,
   useWorkflowDeprecation,
 } from "@/components/v2/research-status";
 import { OutputsList, RecentRuns, ResearchDrawer, TemplateFigures, TemplateOutputsPanel, TemplateVersionDrawer, useTemplateOutputs } from "@/components/v2/research-template-outputs";
-import { modelAliasesOf, modelsByTab, modelStatus, type ContentTarget } from "@/lib/research/content-status";
+import { deprecationLine, modelAliasesOf, modelsByTab, modelStatus, type ContentTarget } from "@/lib/research/content-status";
 import { CatalogueName, CatalogueObjectMark } from "@/components/v2/catalogue-name";
 import { usePipeChannel, useResearch, useResearchCatalog, useResearchTexts } from "@/lib/research/research-source";
 import {
@@ -67,6 +70,7 @@ import {
   type ResearchWorkflow,
   researchRoiOf,
   outcomeUnitOf,
+  catalogPipes,
   pipeCatalog,
 } from "@/lib/research/research";
 
@@ -149,7 +153,7 @@ function useActiveCatalogCounts(pipe: ResearchPipe, catalog: ResearchCatalog | n
   const liveRows = usePipeWorkflowRows(channel, liveLeg);
   const dynasties = useDynastyStatuses(channel);
   const templateStatuses = useTemplateStatuses();
-  const modelStatuses = useModelStatuses();
+  const modelStatuses = useModelStatuses(useResearchModelPipe(pipe));
   const workflows =
     liveLeg != null
       ? liveRows.rankingQ.data !== undefined && dynasties.answered
@@ -349,7 +353,9 @@ function CatalogList({
   const countOf = (k: CatalogKind): number | null => active[k];
   // Staff status (TEMPLATE-MODEL-STATUS-1019): templates by type, models by every alias chat-service serves them under (served on the row).
   const templateStatuses = useTemplateStatuses();
-  const modelStatuses = useModelStatuses();
+  // A model's status is per pipe (owner 2026-10-23): this list reads and writes it on THIS pipe only.
+  const modelPipe = useResearchModelPipe(pipe);
+  const modelStatuses = useModelStatuses(modelPipe);
   const writes = useContentStatusWrites();
   // Templates and models sit in two tabs, Active and Deprecated (owner 2026-10-21, models 2026-10-23),
   // the tab in the URL. No row shows before the statuses answer, so none flashes in a tab it then leaves.
@@ -516,8 +522,8 @@ function CatalogList({
                           const target: ContentTarget | null =
                             kind === "templates"
                               ? { kind: "template", key: templateContentKey(r as ResearchTemplate), label: r.label }
-                              : modelKeys.length
-                                ? { kind: "model", aliases: modelKeys, label: r.label }
+                              : modelKeys.length && modelPipe
+                                ? { kind: "model", aliases: modelKeys, label: r.label, pipe: modelPipe, researchPipe: pipe }
                                 : null;
                           // A template row's word is the status that picked its tab (the dynasty's), never its head
                           // version's own: a head served a few minutes behind an upgrade read Deprecated under Active.
@@ -651,8 +657,8 @@ function CatalogList({
                                     label={r.label}
                                     onDeprecate={() => writes.askDeprecate(target)}
                                     onActivate={() => writes.activate(target)}
-                                    deprecateNote={contentNote(target, DEPRECATE_CONTENT_NOTE)}
-                                    activateNote={contentNote(target, ACTIVATE_CONTENT_NOTE)}
+                                    deprecateNote={contentNote(target, target.kind === "model" ? DEPRECATE_MODEL_NOTE : DEPRECATE_CONTENT_NOTE)}
+                                    activateNote={contentNote(target, target.kind === "model" ? ACTIVATE_MODEL_NOTE : ACTIVATE_CONTENT_NOTE)}
                                   />
                                 ) : null}
                               </td>
@@ -1378,6 +1384,87 @@ function TemplateView({
   );
 }
 
+/**
+ * A model's status on EACH pipe it writes for (LLM-STATUS-PER-PIPE-1023, owner 2026-10-23: deprecated on
+ * Lead → Website visit, still active on Lead → Positive reply). One row per pipe of the Research
+ * catalogue listing it, this page's pipe first; each row's ⋮ changes that pipe only.
+ */
+export function ModelPipeStatuses({ base, pipe, m }: { base: string; pipe: ResearchPipe; m: ResearchModel }) {
+  const catalog = useResearchCatalog(useResearch().basis).data ?? null;
+  const writes = useContentStatusWrites();
+  const on = catalog ? catalogPipes(catalog).filter((p) => pipeCatalog(catalog, p).models.some((x) => x.key === m.key)) : [];
+  const pipes = on.includes(pipe) ? [pipe, ...on.filter((p) => p !== pipe)] : [pipe, ...on];
+  const { aliases, gap } = modelAliasesOf(m);
+  return (
+    <div className="k-card p-4">
+      <p className="k-label">Status on each pipe</p>
+      <ul className="mt-2 space-y-1 text-[13px]">
+        {pipes.map((p) => (
+          <ModelPipeStatusRow key={p} base={base} pipe={p} m={m} aliases={aliases} gap={gap} writes={writes} />
+        ))}
+      </ul>
+      {writes.modal}
+    </div>
+  );
+}
+
+function ModelPipeStatusRow({
+  base,
+  pipe,
+  m,
+  aliases,
+  gap,
+  writes,
+}: {
+  base: string;
+  pipe: ResearchPipe;
+  m: ResearchModel;
+  aliases: string[];
+  gap: string | null;
+  writes: ReturnType<typeof useContentStatusWrites>;
+}) {
+  const modelPipe = useResearchModelPipe(pipe);
+  const statuses = useModelStatuses(modelPipe);
+  const status = modelStatus(aliases, (a) => statuses.map.get(a));
+  const target: ContentTarget | null = aliases.length && modelPipe ? { kind: "model", aliases, label: m.label, pipe: modelPipe, researchPipe: pipe } : null;
+  const why = status === "deprecated" ? statuses.deprecationOf(aliases) : null;
+  return (
+    <li className="py-1.5">
+      <div className="flex items-start gap-2">
+      {/* The served pipe name wraps: two pipes of one channel share their first words. */}
+      <Link href={researchCatalogHref(base, pipe, "models", m.key)} className="k-hover -mx-1 flex min-w-0 flex-1 items-start gap-1.5 rounded-[6px] px-1 leading-5">
+        <span className="mt-[3px] flex shrink-0">
+          <SectionMark section={{ pipe }} size={14} />
+        </span>
+        <span className="min-w-0">
+          <SectionName section={{ pipe }} />
+        </span>
+      </Link>
+      <span className="w-[92px] shrink-0 leading-5">
+        <ContentStatusWord status={status} gap={gap} pending={!statuses.answered && aliases.length > 0} />
+      </span>
+      {target ? (
+        <StatusMenu
+          status={status}
+          label={m.label}
+          onDeprecate={() => writes.askDeprecate(target)}
+          onActivate={() => writes.activate(target)}
+          deprecateNote={contentNote(target, DEPRECATE_MODEL_NOTE)}
+          activateNote={contentNote(target, ACTIVATE_MODEL_NOTE)}
+        />
+      ) : (
+        <span className="w-6 shrink-0" />
+      )}
+      </div>
+      {why?.map((d) => (
+        <p key={deprecationLine(d)} className="k-fg3 mt-0.5 pl-5 text-[12px] leading-[17px]">
+          {deprecationLine(d)}
+        </p>
+      ))}
+    </li>
+  );
+}
+
 function ModelView({
   base,
   pipe,
@@ -1392,7 +1479,7 @@ function ModelView({
   nav: (href: string) => void;
 }) {
   const o = useOutcome(pipe);
-  const why = useModelStatuses().deprecationOf(modelAliasesOf(m).aliases);
+  const why = useModelStatuses(useResearchModelPipe(pipe)).deprecationOf(modelAliasesOf(m).aliases);
   const versions = m.models ?? [];
   const second = modelSecondLine(m);
   return (
@@ -1458,6 +1545,7 @@ function ModelView({
             />
           </div>
           <div className="min-w-0 space-y-4">
+            <ModelPipeStatuses base={base} pipe={pipe} m={m} />
             <aside className="k-card h-fit p-4">
               <p className="k-label">Details</p>
               <dl className="mt-3 space-y-2.5 text-[13px]">

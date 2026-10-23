@@ -9,7 +9,37 @@ import { catalogPipes, pipeCatalog, type ResearchCatalog, type ResearchModel, ty
  * What a deprecation acts on: a template TYPE, or every model ALIAS a concrete model is served under
  * (never the concrete id: content-generation-service sets a status per alias).
  */
-export type ContentTarget = { kind: "template"; key: string; label: string } | { kind: "model"; aliases: string[]; label: string };
+export type ContentTarget =
+  | { kind: "template"; key: string; label: string }
+  | { kind: "model"; aliases: string[]; label: string; pipe: ModelPipe; researchPipe: ResearchPipe };
+
+/**
+ * The ONE pipe a model status is read and written on (LLM-STATUS-PER-PIPE-1023, owner 2026-10-23:
+ * « la deprecation manuelle doit être par pipe »): the channel (feature slug) x the leg.
+ */
+export type ModelPipe = { featureSlug: string; legKey: string };
+
+/** A model alias's status row as content-generation-service serves it: one entry per pipe staff stated a status on. */
+export type ModelPipeStatuses = {
+  pipeStatuses: readonly {
+    featureSlug: string;
+    legKey: string;
+    status: string;
+    statusReason: string | null;
+    statusChangedBy: string | null;
+    statusChangedAt: string | null;
+  }[];
+};
+
+/**
+ * An alias's status on ONE pipe: the pipe's entry, else `active` (the producer's rule: no entry =
+ * active there). Another pipe's entry never counts.
+ */
+export function modelStatusOnPipe(row: ModelPipeStatuses, pipe: ModelPipe): { status: string; deprecation: DeprecationFacts | null } {
+  const e = row.pipeStatuses.find((p) => p.featureSlug === pipe.featureSlug && p.legKey === pipe.legKey);
+  if (!e) return { status: "active", deprecation: null };
+  return { status: e.status, deprecation: contentDeprecation(e) };
+}
 
 /** A model's status over its aliases: Deprecated only once every one is; null while any is unstated. */
 export function modelStatus(aliases: readonly string[], statusOf: (alias: string) => string | null | undefined): string | null {

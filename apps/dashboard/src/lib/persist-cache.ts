@@ -523,8 +523,11 @@ export function persisterStorageKey(orgId: string | null | undefined): string {
  * "9": `researchPerformance` rows gained the REQUIRED `status` + `deprecatedParts`
  * (RESEARCH-COMBO-STATUS-1023). An older snapshot put every combination, a retired LLM's
  * included, under Active until the re-read.
+ *
+ * "10": `contentModelStatuses` rows gained the REQUIRED `pipeStatuses` (LLM-STATUS-PER-PIPE-1023).
+ * Research Models read `pipeStatuses.find` on an older snapshot, which carries none.
  */
-const PERSIST_CACHE_VERSION = "9";
+const PERSIST_CACHE_VERSION = "10";
 
 export function persistCacheVersion(): string {
   return PERSIST_CACHE_VERSION;
