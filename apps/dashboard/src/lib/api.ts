@@ -12841,6 +12841,25 @@ export async function runStaffWhatsappLineCheck(): Promise<void> {
   await apiCall<unknown>(STAFF_WHATSAPP_LINE_PATHS.check, { method: "POST" });
 }
 
+// ─── Monitoring > Cost ledger (COST-ACCOUNTING-1023-MONITOR) ───
+import { LedgerCheckSchema as StaffLedgerCheckSchema, OutcomeCoverageSchema as StaffOutcomeCoverageSchema, type LedgerCheck as StaffLedgerCheck, type OutcomeCoverage as StaffOutcomeCoverage } from "./monitoring/cost-ledger";
+
+/** runs-service's ledger monitor, through api-service's staff passthroughs. */
+export const STAFF_COST_LEDGER_PATHS = {
+  coverage: "/runs/stats/outcome-coverage",
+  ledgerCheck: "/runs/outcome-costs/ledger-check",
+} as const;
+
+/** Share of spend whose run declared its outcome, per UTC day: fleet, per service, per task (default: 60 days ending today). */
+export async function getStaffOutcomeCoverage(): Promise<StaffOutcomeCoverage> {
+  return parseStaff("getStaffOutcomeCoverage", StaffOutcomeCoverageSchema, await apiCall<unknown>(STAFF_COST_LEDGER_PATHS.coverage));
+}
+
+/** The to-the-cent check over the 60 days ending yesterday: totals and failing org-days only (`rows=false`). */
+export async function getStaffLedgerCheck(): Promise<StaffLedgerCheck> {
+  return parseStaff("getStaffLedgerCheck", StaffLedgerCheckSchema, await apiCall<unknown>(`${STAFF_COST_LEDGER_PATHS.ledgerCheck}?rows=false`));
+}
+
 // ─── Monitoring > Emails, ported from the admin cold-email pages (capacity-rules) ───
 import {
   CapacityHistorySchema,
