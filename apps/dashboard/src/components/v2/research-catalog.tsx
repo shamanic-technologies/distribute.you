@@ -17,8 +17,6 @@ import {
   DeprecationNote,
   StatusMenu,
   StatusWord as ContentStatusWord,
-  DeprecatedElsewhere,
-  ModelOtherPipes,
   useContentPipe,
   useContentStatusWrites,
   useDynastyStatuses,
@@ -631,7 +629,6 @@ function CatalogList({
                                       pending={!statusAnswered && modelKeys.length > 0}
                                       deprecation={deprecation}
                                     />
-                                    {statusAnswered && <DeprecatedElsewhere items={modelStatuses.elsewhere(modelKeys)} />}
                                   </td>
                                 </>
                               ) : kind === "workflows" ? (
@@ -1487,7 +1484,6 @@ function ModelView({
               </dl>
               <MeasuredNote />
             </aside>
-            <ModelOtherPipes items={modelStatuses.elsewhere(aliases)} />
             <div className="k-card p-4">
               <p className="k-label">Workflows that write with it</p>
               {m.workflows.length ? (

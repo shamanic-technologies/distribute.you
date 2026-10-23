@@ -6,7 +6,6 @@ import {
   aliasStatusOnPipe,
   contentDeprecation,
   contentPipeOf,
-  modelDeprecatedElsewhere,
   modelsByTab,
   researchPipeOf,
   type ModelPipeStatusRow,
@@ -62,17 +61,6 @@ describe("a model's status is the one on the page's pipe", () => {
     expect(reply.deprecated).toEqual([]);
   });
 
-  it("names the OTHER pipes a model is deprecated on, never the page's own", () => {
-    const fromReply = modelDeprecatedElsewhere(["glm-pro"], pipeStatusesOf, REPLY);
-    expect(fromReply).toHaveLength(1);
-    expect(fromReply[0].pipe).toEqual(VISIT);
-    expect(fromReply[0].deprecation[0].reason).toBe(WHY);
-    expect(modelDeprecatedElsewhere(["glm-pro"], pipeStatusesOf, VISIT)).toEqual([]);
-    expect(modelDeprecatedElsewhere(["sonnet"], pipeStatusesOf, REPLY)).toEqual([]);
-    // Several aliases: a pipe counts only once every alias is deprecated there.
-    expect(modelDeprecatedElsewhere(["glm-pro", "sonnet"], pipeStatusesOf, REPLY)).toEqual([]);
-  });
-
   it("a Research pipe maps to its content pipe and back, by channel and leg", () => {
     const pipes = [
       { id: "cold-email-website-visit", channel: "sales-cold-email-outreach", leg: "start_to_website_visit" },
@@ -121,6 +109,14 @@ describe("the page acts on its own pipe only", () => {
   const read = (p: string) => readFileSync(join(__dirname, "../src", p), "utf8");
   const status = read("components/v2/research-status.tsx");
   const list = read("components/v2/research-catalog.tsx");
+
+  it("never names another pipe's status, on the list or the model page (owner 2026-10-23: « je m'en fous »)", () => {
+    for (const src of [list, status]) {
+      expect(src).not.toContain("Deprecated on <");
+      expect(src).not.toContain("Deprecated on other pipes");
+      expect(src).not.toContain("elsewhere(");
+    }
+  });
 
   it("every model status read is scoped to the page's pipe", () => {
     expect(list).not.toContain("useModelStatuses()");

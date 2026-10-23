@@ -34,7 +34,6 @@ import {
   contentDeprecation,
   contentPipeOf,
   deprecationLine,
-  modelDeprecatedElsewhere,
   modelDeprecation,
   researchPipeOf,
   statusWord,
@@ -82,11 +81,10 @@ export function useContentPipe(pipe: ResearchPipe): ContentPipe | null {
 /**
  * Model ALIAS -> status ON ONE PIPE (LLM-STATUS-PER-PIPE-1023, owner 2026-10-23: a model deprecated on
  * Lead → Website visit stays active on Lead → Positive reply). A model's deprecation reads every alias
- * it is served under; `elsewhere` names the other pipes it is deprecated on. Unanswered without a pipe.
+ * it is served under; another pipe's status is never shown here (owner 2026-10-23). Unanswered without a pipe.
  */
 export function useModelStatuses(pipe: ContentPipe | null) {
   const q = useAuthQuery([...STATUS_ROOTS.models], getContentModelStatuses, { ...pollOptions, retry: false });
-  const pipeStatuses = useMemo(() => new Map((q.data ?? []).map((m) => [m.model, m.pipeStatuses ?? []])), [q.data]);
   const map = useMemo(
     () => new Map(pipe ? (q.data ?? []).map((m) => [m.model, aliasStatusOnPipe(m.pipeStatuses, pipe).status]) : []),
     [q.data, pipe],
@@ -96,11 +94,9 @@ export function useModelStatuses(pipe: ContentPipe | null) {
     [q.data, pipe],
   );
   const deprecationOf = (aliases: readonly string[]) => modelDeprecation(aliases, (a) => why.get(a) ?? null);
-  const elsewhere = (aliases: readonly string[]) => modelDeprecatedElsewhere(aliases, (a) => pipeStatuses.get(a), pipe);
   return {
     map,
     deprecationOf,
-    elsewhere,
     answered: pipe !== null && (q.data !== undefined || q.isFetchedAfterMount),
     failed: q.data === undefined && q.isError,
   };
@@ -186,69 +182,6 @@ export function StatusWord({
       )}
       {word}
     </span>
-  );
-}
-
-/** A content pipe named the way the Research pages name it (served mark + name); its keys when Research lists no such pipe. */
-export function ContentPipeName({ pipe, size = 12, wrap = false }: { pipe: ContentPipe; size?: number; wrap?: boolean }) {
-  const researchPipe = researchPipeOf(useResearch().file.pipes, pipe);
-  if (!researchPipe) return <span className="k-mono break-all text-[11.5px]">{`${pipe.featureSlug} · ${pipe.legKey}`}</span>;
-  if (wrap) {
-    return (
-      <>
-        <span className="inline-block align-[-1px]">
-          <SectionMark section={{ pipe: researchPipe }} size={size} />
-        </span>{" "}
-        <SectionName section={{ pipe: researchPipe }} />
-      </>
-    );
-  }
-  return (
-    <span className="inline-flex min-w-0 items-center gap-1.5">
-      <SectionMark section={{ pipe: researchPipe }} size={size} />
-      <span className="min-w-0">
-        <SectionName section={{ pipe: researchPipe }} />
-      </span>
-    </span>
-  );
-}
-
-/** Under a model's status on this pipe: each OTHER pipe it is deprecated on (LLM-STATUS-PER-PIPE-1023). */
-export function DeprecatedElsewhere({ items }: { items: ReturnType<ReturnType<typeof useModelStatuses>["elsewhere"]> }) {
-  if (!items.length) return null;
-  return (
-    <span className="k-fg3 block min-w-0 text-[11.5px] leading-4">
-      {items.map((e) => (
-        // Wraps, never truncates: the leg is the end of the name, and the part that tells two pipes apart.
-        <span key={`${e.pipe.featureSlug}|${e.pipe.legKey}`} className="block">
-          Deprecated on <ContentPipeName pipe={e.pipe} size={11} wrap />
-        </span>
-      ))}
-    </span>
-  );
-}
-
-/** A model page's list of the other pipes it is deprecated on, each with why, who and when. */
-export function ModelOtherPipes({ items }: { items: ReturnType<ReturnType<typeof useModelStatuses>["elsewhere"]> }) {
-  if (!items.length) return null;
-  return (
-    <div className="k-card p-4">
-      <p className="k-label">Deprecated on other pipes</p>
-      <ul className="mt-2 space-y-2.5 text-[13px]">
-        {items.map((e) => (
-          <li key={`${e.pipe.featureSlug}|${e.pipe.legKey}`} className="min-w-0">
-            <span className="flex min-w-0 font-medium">
-              <ContentPipeName pipe={e.pipe} size={14} />
-            </span>
-            {e.deprecation.map((d) => (
-              <p key={deprecationLine(d)} className="k-fg2 text-[12px] leading-[18px]">
-                {deprecationLine(d)}
-              </p>
-            ))}
-          </li>
-        ))}
-      </ul>
-    </div>
   );
 }
 
