@@ -5,7 +5,7 @@ import { MaturityViewSameNote, MaturityViewSwitch } from "@/components/v2/maturi
 import { createContext, useContext, useEffect } from "react";
 import { useParams, usePathname, useRouter } from "next/navigation";
 import { useAuthQuery } from "@/lib/use-auth-query";
-import { getStaffAbsorbedCosts, getStaffCostMargin, getStaffCurrentPrices, getStaffSkills, getStaffEmailSendPrice, getStaffEmailsSent, getStaffPriceVersions, getStaffRealCosts, getStaffSubscriptionCosts } from "@/lib/api";
+import { getStaffAbsorbedCosts, getStaffCustomerHealth, getStaffCostMargin, getStaffCurrentPrices, getStaffSkills, getStaffEmailSendPrice, getStaffEmailsSent, getStaffPriceVersions, getStaffRealCosts, getStaffSubscriptionCosts } from "@/lib/api";
 import { formatCentsAsUsd } from "@/lib/format-number";
 import { v2Href } from "@/lib/v2/routes";
 import { EmptyNote, Figure, SectionTitle, Shimmer, StatTile, TopBar } from "@/components/v2/ui";
@@ -795,7 +795,9 @@ function SubscriptionsPage() {
 
 function CustomerAccountsPage() {
   const absorbed = useAbsorbedCosts();
-  return <Loaded q={absorbed}>{(d) => <AccountsView data={d} />}</Loaded>;
+  // The health board is served from features-service's last build; it fills its columns when it answers.
+  const health = useAuthQuery(["staffCustomerHealth"], getStaffCustomerHealth, { ...ONCE, retry: false });
+  return <Loaded q={absorbed}>{(d) => <AccountsView data={d} health={{ data: health.data, isError: health.isError }} />}</Loaded>;
 }
 
 function AbsorbedPage() {

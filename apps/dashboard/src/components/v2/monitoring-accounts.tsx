@@ -2,9 +2,11 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
-import { EmptyNote, Initials } from "@/components/v2/ui";
+import { EmptyNote, Initials, Shimmer } from "@/components/v2/ui";
+import { RoiLabel } from "@/components/v2/roi-label";
+import { formatRoi, roiIsGood } from "@/lib/format-roi";
 import { RecordsTabs } from "@/components/v2/records";
-import type { AbsorbedCosts, AbsorbedCustomer } from "@/lib/monitoring/monitoring";
+import type { AbsorbedCosts, AbsorbedCustomer, CustomerHealth, CustomerHealthBrand, CustomerHealthOrg } from "@/lib/monitoring/monitoring";
 import { Dash, PeriodBars, TD, TDR, TH, THR, dayLabel, dollarsExact, monthLabel, n } from "@/components/v2/monitoring-charts";
 
 /**
@@ -13,8 +15,10 @@ import { Dash, PeriodBars, TD, TDR, TH, THR, dayLabel, dollarsExact, monthLabel,
  * detail. The verdict (current / churned / never paid) and every figure are billing-service's
  * (its staff absorbed-costs read); this file picks the tab, formats and draws, it never adds,
  * averages or re-grades a figure. Never-paid signups are not customers and stay off the page.
- * The health columns (budget, balance, ROI, audience, last visit) wait on features-service's
- * customer-health board, whose read crashed features-service when asked (2026-10-23).
+ * The health columns (badge, running $/day, balance, ROI, audience, last visit) and the panel's
+ * per-brand detail are features-service's customer-health board (served from its last build),
+ * joined on the org id: a display lookup, never a figure made here. A customer on several brands
+ * reads its per-brand ROI and audience in the panel, never a blend.
  */
 
 type Tab = "current" | "churned";
@@ -23,6 +27,43 @@ const usdExact = (c: string | null) => (c == null ? null : dollarsExact(Number(c
 const PAYMENT_MODE: Record<string, string> = { prepaid: "Prepaid", postpaid: "Postpaid", subscription: "Subscription" };
 const modeWord = (m: string | null) => (m == null ? null : (PAYMENT_MODE[m] ?? m.charAt(0).toUpperCase() + m.slice(1)));
 const nameOf = (c: AbsorbedCustomer) => c.orgName ?? c.orgDomain ?? null;
+const usdWhole = (v: number | null) => (v == null ? null : `$${Math.round(v).toLocaleString("en-US")}`);
+const daysAgo = (d: number | null) => (d == null ? null : d === 0 ? "today" : `${n(d)}d ago`);
+
+/** The board's state for the whole page: its body, still on its first build, or unreadable. */
+export type HealthState = { data: CustomerHealth | undefined; isError: boolean };
+
+/** features-service's badge, named and coloured here (same words as the admin board). */
+const BADGE_LOOK = {
+  green: { word: "Healthy", color: "var(--run)" },
+  yellow: { word: "At risk", color: "var(--data-amber)" },
+  red: { word: "Not active", color: "var(--data-rose)" },
+} as const;
+
+function Badge({ badge }: { badge: keyof typeof BADGE_LOOK }) {
+  const look = BADGE_LOOK[badge];
+  return (
+    <span className="inline-flex items-center gap-1.5 whitespace-nowrap">
+      <span className="h-1.5 w-1.5 rounded-full" style={{ background: look.color }} aria-hidden="true" />
+      {look.word}
+    </span>
+  );
+}
+
+/** features-service's account status token, capitalised for reading ("out_of_credit" -> "Out of credit"). */
+const statusWord = (s: string) => (s.charAt(0).toUpperCase() + s.slice(1)).replace(/_/g, " ");
+
+function RoiValue({ v }: { v: number | null }) {
+  return <span style={roiIsGood(v) ? { color: "var(--run)" } : undefined}>{formatRoi(v)}</span>;
+}
+
+/** A cell fed by the health board: shimmer until it answers, a word when it cannot. */
+function HealthCell({ health, org, children }: { health: HealthState; org: CustomerHealthOrg | null; children: (o: CustomerHealthOrg) => React.ReactNode }) {
+  if (health.isError) return <span className="k-fg3 text-[12px]">not readable</span>;
+  if (health.data === undefined) return <Shimmer className="ml-auto h-4 w-12" />;
+  if (!org) return <Dash />;
+  return <>{children(org)}</>;
+}
 
 /** billing's verdict, named and coloured as on the Absorbed page. */
 const STATUS_LOOK = {
@@ -50,7 +91,7 @@ function LastPayment({ c }: { c: AbsorbedCustomer }) {
   );
 }
 
-export function AccountsView({ data }: { data: AbsorbedCosts }) {
+export function AccountsView({ data, health }: { data: AbsorbedCosts; health: HealthState }) {
   // Our own orgs (billing's `ownOrg`: platform or staff-only) are never customers.
   const customers = useMemo(() => data.customers.filter((c) => !c.platformOrg && !c.ownOrg), [data.customers]);
   const byTab = useMemo(
@@ -65,6 +106,12 @@ export function AccountsView({ data }: { data: AbsorbedCosts }) {
   const [cursor, setCursor] = useState(-1);
   const rows = byTab[tab];
   const openRow = open ? (customers.find((c) => c.orgId === open) ?? null) : null;
+  const orgOf = useMemo(() => new Map((health.data?.orgs ?? []).map((o) => [o.orgId, o])), [health.data]);
+  const brandsOf = useMemo(() => {
+    const m = new Map<string, CustomerHealthBrand[]>();
+    for (const b of health.data?.customers ?? []) m.set(b.orgId, [...(m.get(b.orgId) ?? []), b]);
+    return m;
+  }, [health.data]);
 
   // J/K move the highlighted row, Enter opens it; never while typing, on a control, or with the panel open.
   useEffect(() => {
@@ -108,18 +155,25 @@ export function AccountsView({ data }: { data: AbsorbedCosts }) {
               <thead className="border-b border-[var(--line-subtle)]">
                 <tr>
                   <th className={TH}>Customer</th>
-                  <th className={TH}>Payment</th>
+                  <th className={TH}>Health</th>
+                  <th className={THR}>$ / day</th>
+                  <th className={THR}>Balance</th>
+                  <th className={THR}>
+                    <RoiLabel />
+                  </th>
+                  <th className={`${THR} hidden lg:table-cell`}>Audience left</th>
+                  <th className={`${TH} hidden md:table-cell`}>Last visit</th>
                   <th className={THR}>Paid to date</th>
-                  <th className={THR}>Campaign spend</th>
-                  <th className={`${THR} hidden md:table-cell`}>Absorbed</th>
-                  <th className={TH}>Last payment</th>
-                  <th className={`${TH} hidden lg:table-cell`}>Customer since</th>
+                  <th className={`${TH} hidden xl:table-cell`}>Last payment</th>
                   <th className="w-8 pr-4" aria-hidden="true" />
                 </tr>
               </thead>
               <tbody className="divide-y divide-[var(--line-subtle)]">
                 {rows.map((c, i) => {
                   const name = nameOf(c);
+                  const org = orgOf.get(c.orgId) ?? null;
+                  const brands = brandsOf.get(c.orgId) ?? [];
+                  const one = brands.length === 1 ? brands[0] : null;
                   return (
                     <tr
                       key={c.orgId}
@@ -135,14 +189,56 @@ export function AccountsView({ data }: { data: AbsorbedCosts }) {
                           {name ? <span className="truncate font-medium">{name}</span> : <span className="k-mono k-fg3 truncate text-[12px]">{c.orgId}</span>}
                         </span>
                       </td>
-                      <td className={TD}>{modeWord(c.paymentMode) ? <span className="k-chip text-[12px]">{modeWord(c.paymentMode)}</span> : <Dash />}</td>
+                      <td className={TD}>
+                        <HealthCell health={health} org={org}>
+                          {(o) => <Badge badge={o.healthBadge} />}
+                        </HealthCell>
+                      </td>
+                      <td className={TDR}>
+                        <HealthCell health={health} org={org}>
+                          {(o) => (o.runningDailyBudgetUsd > 0 ? usdWhole(o.runningDailyBudgetUsd) : <Dash />)}
+                        </HealthCell>
+                      </td>
+                      <td className={TDR}>
+                        <HealthCell health={health} org={org}>
+                          {(o) => (
+                            <span className="inline-flex items-center justify-end gap-1.5">
+                              {o.orgBalanceUsd == null ? <Dash /> : dollarsExact(o.orgBalanceUsd)}
+                              {o.autoTopupEnabled && <span className="k-chip text-[11px]">Auto</span>}
+                            </span>
+                          )}
+                        </HealthCell>
+                      </td>
+                      <td className={TDR}>
+                        <HealthCell health={health} org={org}>
+                          {() => (one ? <RoiValue v={one.currentEconomics.roiMultiple} /> : brands.length > 1 ? <span className="k-fg3 text-[12px]">{brands.length} brands</span> : <Dash />)}
+                        </HealthCell>
+                      </td>
+                      <td className={`${TDR} hidden lg:table-cell`}>
+                        <HealthCell health={health} org={org}>
+                          {() =>
+                            one && one.audiences.totalRemaining != null ? (
+                              <>
+                                {n(one.audiences.totalRemaining)}
+                                {one.audiences.pctUsed != null && <span className="k-fg3"> · {Math.round(one.audiences.pctUsed)}% used</span>}
+                              </>
+                            ) : brands.length > 1 ? (
+                              <span className="k-fg3 text-[12px]">{brands.length} brands</span>
+                            ) : (
+                              <Dash />
+                            )
+                          }
+                        </HealthCell>
+                      </td>
+                      <td className={`${TD} k-mono k-fg2 hidden whitespace-nowrap text-[12px] md:table-cell`}>
+                        <HealthCell health={health} org={org}>
+                          {(o) => daysAgo(o.dashboardReturnFrequency?.daysSinceLastSeen ?? null) ?? <Dash />}
+                        </HealthCell>
+                      </td>
                       <td className={`${TDR} font-medium`}>{usdExact(c.cashPaidCents) ?? <Dash />}</td>
-                      <td className={`${TDR} k-fg2`}>{usdExact(c.campaignSpendCents)}</td>
-                      <td className={`${TDR} k-fg2 hidden md:table-cell`}>{usdExact(c.absorbedCents)}</td>
-                      <td className={`${TD} k-mono k-fg2 whitespace-nowrap text-[12px]`}>
+                      <td className={`${TD} k-mono k-fg2 hidden whitespace-nowrap text-[12px] xl:table-cell`}>
                         <LastPayment c={c} />
                       </td>
-                      <td className={`${TD} k-mono k-fg2 hidden whitespace-nowrap text-[12px] lg:table-cell`}>{c.createdAt ? dayLabel(c.createdAt) : <Dash />}</td>
                       <td className="pr-4 text-right">
                         <span className="k-btn-ghost inline-flex h-6 w-6 justify-center px-0 opacity-0 group-hover:opacity-100" aria-hidden="true">
                           <svg width="12" height="12" viewBox="0 0 12 12">
@@ -160,20 +256,37 @@ export function AccountsView({ data }: { data: AbsorbedCosts }) {
         <div className="k-fg3 flex items-center justify-between border-t border-[var(--line-subtle)] px-4 py-2.5 text-[12px] tabular-nums">
           <span>
             {n(rows.length)} customer{rows.length === 1 ? "" : "s"}. Signups who never paid and our own accounts are left out.
+            {health.data?.freshness && ` Health as of ${new Date(health.data.freshness.computedAt).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" })}, rebuilt every ${health.data.freshness.refreshEveryMinutes} min.`}
           </span>
           <span className="hidden sm:inline">
             <kbd className="k-kbd">J</kbd> <kbd className="k-kbd">K</kbd> to move, <kbd className="k-kbd">Enter</kbd> to open
           </span>
         </div>
       </div>
-      {openRow && <AccountPanel c={openRow} months={data.months} onClose={() => setOpen(null)} />}
+      {openRow && (
+        <AccountPanel c={openRow} months={data.months} health={health} org={orgOf.get(openRow.orgId) ?? null} brands={brandsOf.get(openRow.orgId) ?? []} onClose={() => setOpen(null)} />
+      )}
     </>
   );
 }
 
 // ─── Right panel ───────────────────────────────────────────────────────────
 
-function AccountPanel({ c, months, onClose }: { c: AbsorbedCustomer; months: string[]; onClose: () => void }) {
+function AccountPanel({
+  c,
+  months,
+  health,
+  org,
+  brands,
+  onClose,
+}: {
+  c: AbsorbedCustomer;
+  months: string[];
+  health: HealthState;
+  org: CustomerHealthOrg | null;
+  brands: CustomerHealthBrand[];
+  onClose: () => void;
+}) {
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (e.key === "Escape") onClose();
@@ -224,6 +337,7 @@ function AccountPanel({ c, months, onClose }: { c: AbsorbedCustomer; months: str
             <h2 className="truncate text-[16px] font-medium leading-6">{name ?? <span className="k-mono k-fg2 text-[13px]">{c.orgId}</span>}</h2>
             <div className="mt-0.5 flex items-center gap-2">
               {tab && <StatusDot tab={tab} />}
+              {org && <Badge badge={org.healthBadge} />}
               {modeWord(c.paymentMode) && <span className="k-chip text-[11px]">{modeWord(c.paymentMode)}</span>}
             </div>
           </div>
@@ -237,6 +351,8 @@ function AccountPanel({ c, months, onClose }: { c: AbsorbedCustomer; months: str
             </div>
           ))}
         </div>
+
+        <HealthSection health={health} org={org} brands={brands} />
 
         <section>
           <p className="k-label mb-2">Per month</p>
@@ -263,10 +379,98 @@ function AccountPanel({ c, months, onClose }: { c: AbsorbedCustomer; months: str
             ))}
           </dl>
         </section>
-
-        <p className="k-fg3 text-[12px]">Budget, balance, ROI, audience left and last visit come next.</p>
       </div>
     </aside>,
     host,
+  );
+}
+
+// ─── Health detail (features-service board) ────────────────────────────────
+
+function Facts({ rows }: { rows: [React.ReactNode, React.ReactNode][] }) {
+  return (
+    <dl className="k-card divide-y divide-[var(--line-subtle)]">
+      {rows.map(([label, v], i) => (
+        <div key={i} className="flex min-h-10 items-center justify-between gap-3 px-3 py-2 text-[13px]">
+          <dt className="k-fg2">{label}</dt>
+          <dd className="min-w-0 truncate text-right tabular-nums">{v ?? <Dash />}</dd>
+        </div>
+      ))}
+    </dl>
+  );
+}
+
+function HealthSection({ health, org, brands }: { health: HealthState; org: CustomerHealthOrg | null; brands: CustomerHealthBrand[] }) {
+  if (health.isError) return <EmptyNote>Could not read the account health board.</EmptyNote>;
+  if (health.data === undefined) return <Shimmer className="h-24 w-full" />;
+  if (!org) return <EmptyNote>Not on the account health board.</EmptyNote>;
+  const visits = org.dashboardReturnFrequency;
+  return (
+    <>
+      <section>
+        <p className="k-label mb-2">Account health</p>
+        <Facts
+          rows={[
+            ["Running", org.runningDailyBudgetUsd > 0 ? `${usdWhole(org.runningDailyBudgetUsd)}/day` : null],
+            ["Budget set", org.configuredDailyBudgetUsd > 0 ? `${usdWhole(org.configuredDailyBudgetUsd)}/day` : null],
+            ["Balance", org.orgBalanceUsd == null ? null : `${dollarsExact(org.orgBalanceUsd)}${org.autoTopupEnabled ? " · auto reload on" : ""}`],
+            ["Last active day", org.lastActiveDay ? dayLabel(org.lastActiveDay) : null],
+            ["Dashboard visits", visits ? `${n(visits.sessions7d)} this week · ${n(visits.sessions30d)} in 30 days` : null],
+            ["Last visit", visits?.lastSeen ? `${dayLabel(visits.lastSeen)} · ${daysAgo(visits.daysSinceLastSeen)}` : null],
+          ]}
+        />
+      </section>
+      {brands.map((b) => (
+        <BrandHealth key={b.brandId} b={b} />
+      ))}
+    </>
+  );
+}
+
+function BrandHealth({ b }: { b: CustomerHealthBrand }) {
+  const e = b.currentEconomics;
+  const budgets = b.notTrackedYet.budgetChangeHistory;
+  const pauses = b.notTrackedYet.pauseHistory;
+  const history = [
+    ...(budgets ?? []).map((h) => ({ at: h.changedAt, what: h.dailyBudgetUsd > 0 ? `Budget set to ${usdWhole(h.dailyBudgetUsd)}/day` : "Budget set to $0" })),
+    ...(pauses ?? []).map((h) => ({ at: h.transitionedAt, what: h.paused ? "Paused" : "Resumed" })),
+  ]
+    .sort((x, y) => y.at.localeCompare(x.at))
+    .slice(0, 6);
+  return (
+    <section>
+      <div className="mb-2 flex items-center justify-between gap-3">
+        <p className="k-label truncate">{b.brandName ?? b.brandDomain ?? "Brand"}</p>
+        <span className="flex shrink-0 items-center gap-2 text-[12px]">
+          <span className="k-chip text-[11px]">{statusWord(b.status)}</span>
+          <Badge badge={b.health.badge} />
+        </span>
+      </div>
+      <Facts
+        rows={[
+          [<RoiLabel key="roi" />, <RoiValue key="v" v={e.roiMultiple} />],
+          ["Cost per client", e.currentCacUsd == null ? null : `${dollarsExact(e.currentCacUsd)}${b.breakevenCacUsd != null ? ` · break-even ${dollarsExact(b.breakevenCacUsd)}` : ""}`],
+          ["Spent", e.committedSpendUsd == null ? null : dollarsExact(e.committedSpendUsd)],
+          [
+            "Audience left",
+            b.audiences.totalRemaining == null
+              ? null
+              : `${n(b.audiences.totalRemaining)} of ${b.audiences.totalSize == null ? "?" : n(b.audiences.totalSize)} · ${b.audiences.count} list${b.audiences.count === 1 ? "" : "s"}`,
+          ],
+          ["Best audience", b.bestAudience ? b.bestAudience.name : null],
+          ["Best workflow", b.bestWorkflow ? (b.bestWorkflow.name ?? b.bestWorkflow.workflowDynastySlug) : null],
+        ]}
+      />
+      {history.length > 0 && (
+        <ul className="k-card mt-2 divide-y divide-[var(--line-subtle)]">
+          {history.map((h) => (
+            <li key={`${h.at}-${h.what}`} className="flex h-9 items-center justify-between gap-3 px-3 text-[13px]">
+              <span>{h.what}</span>
+              <span className="k-mono k-fg2 text-[12px]">{dayLabel(h.at)}</span>
+            </li>
+          ))}
+        </ul>
+      )}
+    </section>
   );
 }
