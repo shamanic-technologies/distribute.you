@@ -50,6 +50,7 @@ import {
   researchTemplateVersionHref,
   researchWorkflow,
   templateContentKey,
+  templateRowStatus,
   templatesByTab,
   templateTab,
   type TemplateTab,
@@ -515,10 +516,17 @@ function CatalogList({
                               : modelKeys.length
                                 ? { kind: "model", aliases: modelKeys, label: r.label }
                                 : null;
+                          // A template row's word is the status that picked its tab (the dynasty's), never its head
+                          // version's own: a head served a few minutes behind an upgrade read Deprecated under Active.
                           const status =
-                            kind === "templates" ? templateStatuses.map.get(templateContentKey(r as ResearchTemplate)) ?? null : modelStatus(modelKeys, (a) => modelStatuses.map.get(a));
-                          const statusAnswered = kind === "templates" ? templateStatuses.answered : modelStatuses.answered;
-                          const deprecation = kind === "templates" ? templateStatuses.deprecationOf(templateContentKey(r as ResearchTemplate)) : modelStatuses.deprecationOf(modelKeys);
+                            kind === "templates" ? templateRowStatus(r as ResearchTemplate, templateStatuses) : modelStatus(modelKeys, (a) => modelStatuses.map.get(a));
+                          const statusAnswered = kind === "templates" ? status !== null : modelStatuses.answered;
+                          const deprecation =
+                            kind === "templates"
+                              ? status === "deprecated"
+                                ? templateStatuses.deprecationOf(templateContentKey(r as ResearchTemplate))
+                                : null
+                              : modelStatuses.deprecationOf(modelKeys);
                           return (
                             <tr
                               key={r.key}
@@ -1224,7 +1232,8 @@ function TemplateView({
 }) {
   const o = useOutcome(pipe);
   const statuses = useTemplateStatuses();
-  const why = statuses.deprecationOf(templateContentKey(t));
+  // Why it was deprecated only while the dynasty is (the status its tab reads), never an upgraded head's note.
+  const why = templateRowStatus(t, statuses) === "deprecated" ? statuses.deprecationOf(templateContentKey(t)) : null;
   const dynasty = t.dynasty ?? null;
   const versions = t.versions ?? [];
   const identity = identityWord(dynasty?.identity);
