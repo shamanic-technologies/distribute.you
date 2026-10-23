@@ -2,6 +2,7 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import {
+  CustomerHealthSchema,
   CostMarginSchema,
   CurrentPricesSchema,
   FleetEmailStatsSchema,
@@ -647,6 +648,11 @@ describe("monitoring: absorbed costs (owner 2026-10-13)", () => {
     // A multi-brand customer never reads a blended ROI: the panel lists each brand.
     expect(view).toContain("brands.length === 1 ? brands[0] : null");
     expect(view).toContain("<RoiLabel />");
+  });
+
+  it("an org with no brand row yet (no badge, no budget) parses: one such org never blanks the whole Accounts page", () => {
+    const org = { orgId: "o1", customerStatus: "current", ownOrg: false, healthBadge: null, brandIds: [], noBrandRowsReason: "no_lead_on_any_channel", runningDailyBudgetUsd: null, configuredDailyBudgetUsd: null, orgBalanceUsd: null, autoTopupEnabled: null, lastActiveDay: null, dashboardReturnFrequency: null };
+    expect(CustomerHealthSchema.safeParse({ orgs: [org], customers: [] }).success).toBe(true);
   });
 
   it("a customer reads billing's status (current / churned / never paid) and last payment; our own orgs are never customers (owner 2026-10-13)", () => {
