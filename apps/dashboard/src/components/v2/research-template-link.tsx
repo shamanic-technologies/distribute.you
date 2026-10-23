@@ -3,7 +3,7 @@
 import { CatalogueName } from "@/components/v2/catalogue-name";
 import { v2Href } from "@/lib/v2/routes";
 import { researchCatalogHref, researchPipeFor, researchTemplateOf, researchWorkflow } from "@/lib/research/research";
-import { useResearchCatalog } from "@/lib/research/research-source";
+import { useResearchCatalog, useResearchPipes } from "@/lib/research/research-source";
 
 /**
  * A workflow's template chip that opens the template's Research page. It links only when Research lists that template for the pipe; otherwise it stays
@@ -14,7 +14,7 @@ export function ResearchTemplateChip({
   orgId,
   brandId,
   channel,
-  step,
+  legKey,
   templateKey,
   label,
   version = null,
@@ -22,13 +22,14 @@ export function ResearchTemplateChip({
   orgId: string;
   brandId: string;
   channel: string | null;
-  step: string | null;
+  /** The campaign's leg key (either spelling): with the channel, it names the served pipe. */
+  legKey: string | null;
   templateKey: string | null;
   label: string;
   version?: string | null;
 }) {
   const { data: catalog } = useResearchCatalog("user");
-  const pipe = researchPipeFor(channel, step);
+  const pipe = researchPipeFor(useResearchPipes(), channel, legKey);
   // A workflow names the template VERSION it writes with; Research lists it under its dynasty's page.
   const row = catalog && pipe && templateKey ? researchTemplateOf(catalog, pipe, templateKey) : null;
   const href = row && pipe ? researchCatalogHref(v2Href(orgId, brandId, "research"), pipe, "templates", row.key) : null;
@@ -44,19 +45,20 @@ export function ResearchModelChip({
   orgId,
   brandId,
   channel,
-  step,
+  legKey,
   dynasty,
   label,
 }: {
   orgId: string;
   brandId: string;
   channel: string | null;
-  step: string | null;
+  /** The campaign's leg key (either spelling): with the channel, it names the served pipe. */
+  legKey: string | null;
   dynasty: string;
   label: string;
 }) {
   const { data: catalog } = useResearchCatalog("user");
-  const pipe = researchPipeFor(channel, step);
+  const pipe = researchPipeFor(useResearchPipes(), channel, legKey);
   const model = catalog && pipe ? researchWorkflow(catalog, pipe, dynasty)?.model : null;
   const href = model?.linked ? researchCatalogHref(v2Href(orgId, brandId, "research"), pipe!, "models", model.key) : null;
   return <CatalogueName kind="llm" variant="chip" name={label} href={href} />;

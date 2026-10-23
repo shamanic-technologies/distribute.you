@@ -1,5 +1,6 @@
 "use client";
 
+import { useResearch } from "@/lib/research/research-source";
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import { useQueries } from "@tanstack/react-query";
@@ -26,7 +27,6 @@ import { isProactiveFrom } from "@/lib/outbound-leg-key";
 import { formatUsdAdaptive } from "@/lib/format-number";
 import { Shimmer } from "@/components/v2/ui";
 import { InfoTooltip } from "@/components/visibility/metric-info";
-import { PIPE_KEY, PIPE_ORDER } from "@/lib/research/research";
 import {
   aliasList,
   contentDeprecation,
@@ -316,9 +316,10 @@ export function contentNote(t: ContentTarget, note: string): string {
 /** One workflow's figures on the leg it runs on (the Research live rankings), for the modal. */
 function useFleetFigures(): { byslug: Map<string, { outcomes: number; cost: number | null }>; answered: boolean } {
   const legs = useLegCatalogue();
-  const pairs = PIPE_ORDER.map((p) => {
-    const leg = legFor(legs, PIPE_KEY[p].leg);
-    return leg && isProactiveFrom(leg.fromKey) ? { featureSlug: PIPE_KEY[p].channel, legKey: leg.legKey } : null;
+  // Every pipe the Research file serves, in its order.
+  const pairs = useResearch().file.pipes.map((p) => {
+    const leg = legFor(legs, p.leg);
+    return leg && isProactiveFrom(leg.fromKey) ? { featureSlug: p.channel, legKey: leg.legKey } : null;
   }).filter((x): x is { featureSlug: string; legKey: string } => x !== null);
   const gate = useOrgQueryGate();
   const results = useQueries({

@@ -11,8 +11,8 @@ import { SectionMark, SectionName } from "@/components/v2/research-bits";
 import { StatusWord, useDynastyStatuses, useModelStatuses, useTemplateStatuses } from "@/components/v2/research-status";
 import { PipeTabs } from "@/components/v2/research-catalog";
 import { usePipeChannelName } from "@/components/v2/research-live-workflows";
-import { useResearch, useResearchCatalog, useResearchPerformance } from "@/lib/research/research-source";
-import { PIPE_KEY, researchCatalogHref, templateRowStatus, type ResearchPipe } from "@/lib/research/research";
+import { usePipeChannel, useResearch, useResearchCatalog, useResearchPerformance } from "@/lib/research/research-source";
+import { pipeCatalog, researchCatalogHref, templateRowStatus, type ResearchPipe } from "@/lib/research/research";
 import { modelAliasesOf, modelStatus } from "@/lib/research/content-status";
 import { shortWorkflowName } from "@/lib/live-workflow-rows";
 import { formatUsdAdaptive, formatCount } from "@/lib/format-number";
@@ -61,12 +61,12 @@ export function V2ResearchPerformanceView({ base, pipe }: { base: string; pipe: 
   const channelName = usePipeChannelName(pipe);
 
   // Each part's status where Research already reads it: workflow-service, content-generation (template versions, model aliases).
-  const workflows = useDynastyStatuses(PIPE_KEY[pipe].channel);
+  const workflows = useDynastyStatuses(usePipeChannel(pipe));
   const templates = useTemplateStatuses();
   const models = useModelStatuses();
-  const catalogModels = useMemo(() => new Map((catalog?.[pipe].models ?? []).map((m) => [m.key, m])), [catalog, pipe]);
-  const catalogTemplates = useMemo(() => new Map((catalog?.[pipe].templates ?? []).map((t) => [t.key, t])), [catalog, pipe]);
-  const listedWorkflows = useMemo(() => new Set((catalog?.[pipe].workflows ?? []).map((w) => w.key)), [catalog, pipe]);
+  const catalogModels = useMemo(() => new Map((catalog ? pipeCatalog(catalog, pipe).models : []).map((m) => [m.key, m])), [catalog, pipe]);
+  const catalogTemplates = useMemo(() => new Map((catalog ? pipeCatalog(catalog, pipe).templates : []).map((t) => [t.key, t])), [catalog, pipe]);
+  const listedWorkflows = useMemo(() => new Set((catalog ? pipeCatalog(catalog, pipe).workflows : []).map((w) => w.key)), [catalog, pipe]);
   // The Template column is the template DYNASTY (owner 2026-10-23): its status is the dynasty's, as the Templates tab reads it.
   const templateStatus = (r: PerformanceRow): PartStatus | undefined => {
     if (!r.template) return null;

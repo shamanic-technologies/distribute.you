@@ -26,7 +26,7 @@ import {
 import { OutputsList, RecentRuns, ResearchDrawer, TemplateFigures, TemplateOutputsPanel, TemplateVersionDrawer, useTemplateOutputs } from "@/components/v2/research-template-outputs";
 import { modelAliasesOf, modelsByTab, modelStatus, type ContentTarget } from "@/lib/research/content-status";
 import { CatalogueName, CatalogueObjectMark } from "@/components/v2/catalogue-name";
-import { useResearch, useResearchCatalog, useResearchTexts } from "@/lib/research/research-source";
+import { usePipeChannel, useResearch, useResearchCatalog, useResearchTexts } from "@/lib/research/research-source";
 import {
   Arrow,
   MonthsRow,
@@ -66,7 +66,8 @@ import {
   type ResearchTemplateVersion,
   type ResearchWorkflow,
   researchRoiOf,
-  PIPE_KEY,
+  outcomeUnitOf,
+  pipeCatalog,
 } from "@/lib/research/research";
 
 /**
@@ -133,7 +134,7 @@ function rowName(kind: CatalogKind, r: ResearchWorkflow | ResearchTemplate | Res
 function useOutcome(pipe: ResearchPipe): { noun: string; plural: string; unit: string } {
   const outcome = useResearch().file.pipes.find((c) => c.id === pipe)?.outcome ?? "Outcome";
   const plural = /[^aeiou]y$/i.test(outcome) ? `${outcome.slice(0, -1)}ies` : `${outcome}s`;
-  return { noun: outcome, plural, unit: pipe === "cold-email-website-visit" ? "/ visit" : "/ reply" };
+  return { noun: outcome, plural, unit: outcomeUnitOf(outcome) };
 }
 
 /**
@@ -144,8 +145,9 @@ function useOutcome(pipe: ResearchPipe): { noun: string; plural: string; unit: s
  */
 function useActiveCatalogCounts(pipe: ResearchPipe, catalog: ResearchCatalog | null): Record<CatalogKind, number | null> {
   const liveLeg = useResearchPipeLeg(pipe);
-  const liveRows = usePipeWorkflowRows(PIPE_KEY[pipe].channel, liveLeg);
-  const dynasties = useDynastyStatuses(PIPE_KEY[pipe].channel);
+  const channel = usePipeChannel(pipe);
+  const liveRows = usePipeWorkflowRows(channel, liveLeg);
+  const dynasties = useDynastyStatuses(channel);
   const templateStatuses = useTemplateStatuses();
   const modelStatuses = useModelStatuses();
   const workflows =
@@ -153,24 +155,25 @@ function useActiveCatalogCounts(pipe: ResearchPipe, catalog: ResearchCatalog | n
       ? liveRows.rankingQ.data !== undefined && dynasties.answered
         ? liveRows.rows.filter((r) => dynasties.statusOf(r.slug) !== "deprecated").length
         : null
-      : (catalog?.[pipe].workflows.length ?? null);
-  const templates = catalog ? (templatesByTab(catalog[pipe].templates, templateStatuses)?.active.length ?? null) : null;
-  const models = catalog ? (modelsByTab(catalog[pipe].models, modelStatuses)?.active.length ?? null) : null;
+      : (catalog ? pipeCatalog(catalog, pipe).workflows.length : null);
+  const templates = catalog ? (templatesByTab(pipeCatalog(catalog, pipe).templates, templateStatuses)?.active.length ?? null) : null;
+  const models = catalog ? (modelsByTab(pipeCatalog(catalog, pipe).models, modelStatuses)?.active.length ?? null) : null;
   return { workflows, templates, models };
 }
 
-/** The hub's links from a pipe's section to its workflow, template and model pages, each with its active count. */
+/**
+ * The hub's links from a pipe's section to its workflow, template and model pages, each with its active
+ * count, and Performance. Every served pipe gets all four (WA-PIPE-RESEARCH-1023): a page with nothing
+ * measured yet opens on its Learning state, never hidden.
+ */
 export function PipeCatalogLinks({ base, pipe }: { base: string; pipe: ResearchPipe }) {
-  const counts = useResearch().file.catalogCounts?.[pipe];
   const catalog = useResearchCatalog(useResearch().basis).data ?? null;
   const active = useActiveCatalogCounts(pipe, catalog);
-  if (!counts || !CATALOG_KINDS.some((k) => counts[k])) return null;
-  const countOf = (k: CatalogKind): number | null => active[k];
   return (
     <HubChips>
-      {CATALOG_KINDS.map((kind) =>
-        counts[kind] ? <HubChip key={kind} href={researchCatalogHref(base, pipe, kind)} color={topicLook(KIND_TOPIC[kind]).color} label={KIND_WORD[kind].title} count={countOf(kind)} /> : null,
-      )}
+      {CATALOG_KINDS.map((kind) => (
+        <HubChip key={kind} href={researchCatalogHref(base, pipe, kind)} color={topicLook(KIND_TOPIC[kind]).color} label={KIND_WORD[kind].title} count={active[kind]} />
+      ))}
       <HubChip href={researchCatalogHref(base, pipe, "performance")} color={PERFORMANCE_COLOR} label={TAB_TITLE.performance} />
     </HubChips>
   );
@@ -333,7 +336,7 @@ function CatalogList({
   const o = useOutcome(pipe);
   const channelName = usePipeChannelName(pipe);
   const RESEARCH = useResearch().file;
-  const rows: (ResearchWorkflow | ResearchTemplate | ResearchModel)[] = catalog?.[pipe][kind] ?? [];
+  const rows: (ResearchWorkflow | ResearchTemplate | ResearchModel)[] = catalog ? pipeCatalog(catalog, pipe)[kind] : [];
   const words = KIND_WORD[kind];
   const priced = rows.filter((r) => r.rank != null).length;
   const other = CATALOG_KINDS[(CATALOG_KINDS.indexOf(kind) + 1) % CATALOG_KINDS.length];

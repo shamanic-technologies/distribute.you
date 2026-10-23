@@ -39,7 +39,8 @@ import { getPublicCatalogueSteps } from "@/lib/api";
 import { useResearch } from "@/lib/research/research-source";
 import {
   outcomeEntry,
-  PIPE_KEY,
+  researchPipeEntry,
+  type ResearchPipeEntry,
   type ResearchChart,
   type ResearchPipe,
   type ResearchOutcome,
@@ -124,10 +125,9 @@ export function sectionOf(study: ResearchStudy): ResearchSection {
   return { outcome: study.outcome };
 }
 
-/** A research pipe's catalogue id (`<channel slug>|<leg key>`), the key features-service names and marks it by. */
-export function researchPipeId(pipe: ResearchPipe): string {
-  const k = PIPE_KEY[pipe];
-  return featureLegId(k.channel, k.leg);
+/** A served pipe's catalogue id (`<channel slug>|<leg key>`), the key features-service names and marks it by. */
+export function researchPipeId(entry: Pick<ResearchPipeEntry, "channel" | "leg">): string {
+  return featureLegId(entry.channel, entry.leg);
 }
 
 /**
@@ -139,7 +139,8 @@ export function researchPipeId(pipe: ResearchPipe): string {
 const unreadableSections = new Set<string>();
 function useServedSection(section: ResearchSection) {
   const { file } = useResearch();
-  const pipeId = "pipe" in section ? researchPipeId(section.pipe) : null;
+  const entry = "pipe" in section ? researchPipeEntry(file, section.pipe) : null;
+  const pipeId = entry ? researchPipeId(entry) : null;
   const stepId = "outcome" in section ? outcomeEntry(section.outcome, file)?.step ?? null : null;
   const pipe = useStaffCatalogueObject("pipes", pipeId);
   const steps = useAuthQuery(["publicCatalogueSteps"], getPublicCatalogueSteps, { staleTime: 10 * 60_000, enabled: !!stepId });
@@ -233,8 +234,10 @@ export function OutcomePipes({ outcome, prefix = true }: { outcome: ResearchOutc
 export function SectionPath({ section, compact = false }: { section: ResearchSection; compact?: boolean }) {
   const catalogue = useLegCatalogue();
   const channels = useAcquisitionChannels();
+  const { file } = useResearch();
   if ("outcome" in section) return <OutcomePipes outcome={section.outcome} />;
-  const k = PIPE_KEY[section.pipe];
+  const k = researchPipeEntry(file, section.pipe);
+  if (!k) return <span className="k-fg4">{"—"}</span>;
   const leg = legFor(catalogue, k.leg);
   const def = channels.find((d) => d.featureSlug === k.channel);
   if (!leg?.fromLabel || !def) return <Shimmer className="inline-block h-4 w-56 align-middle" />;

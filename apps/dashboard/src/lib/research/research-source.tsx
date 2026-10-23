@@ -3,7 +3,7 @@
 import { createContext, useContext } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useCostBasis } from "@/lib/v2/use-cost-basis";
-import type { ResearchCatalog, ResearchFile } from "@/lib/research/research";
+import { researchPipeEntry, type ResearchCatalog, type ResearchFile, type ResearchPipe, type ResearchPipeEntry } from "@/lib/research/research";
 import type { ResearchPerformance } from "@/lib/research/performance";
 
 /**
@@ -51,6 +51,16 @@ export function useResearchTexts(enabled: boolean) {
   return useQuery({ queryKey: ["researchTexts"], queryFn: () => fetchPart<Record<string, string>>("user", "texts"), enabled, ...ONCE });
 }
 
+/**
+ * The pipes the billed-basis Research file serves, for a staff surface outside the Research page (a
+ * workflow page's chips): the same query the page holds, so it is read once. Null until it answers
+ * (a non-staff reader gets a 403 and never a pipe).
+ */
+export function useResearchPipes(): ResearchPipeEntry[] | null {
+  const q = useQuery({ queryKey: ["researchFile", "user"], queryFn: () => fetchPart<ResearchFile>("user", "file"), ...ONCE });
+  return q.data?.pipes ?? null;
+}
+
 export interface ResearchSource {
   basis: ResearchBasis;
   file: ResearchFile;
@@ -62,6 +72,29 @@ export function useResearch(): ResearchSource {
   const v = useContext(Ctx);
   if (!v) throw new Error("[research] useResearch() outside ResearchSourceProvider");
   return v;
+}
+
+const missingPipes = new Set<string>();
+/**
+ * A pipe's served entry (channel, leg, outcome) off the file. The page renders a pipe only once the
+ * file lists it, so a null here is a producer withdrawal mid-session: logged once, never a crash.
+ */
+export function useResearchPipeEntry(pipe: ResearchPipe | null): ResearchPipeEntry | null {
+  const entry = researchPipeEntry(useResearch().file, pipe);
+  if (pipe && !entry && !missingPipes.has(pipe)) {
+    missingPipes.add(pipe);
+    console.error("[research] pipe not in the served file", { pipe });
+  }
+  return entry;
+}
+
+/**
+ * A pipe's channel slug. Every pipe view renders only for a pipe the file lists (the page answers
+ * Not found otherwise), so the entry is there; the empty string only stands for a pipe withdrawn
+ * mid-session, already logged by `useResearchPipeEntry`.
+ */
+export function usePipeChannel(pipe: ResearchPipe): string {
+  return useResearchPipeEntry(pipe)?.channel ?? "";
 }
 
 /**

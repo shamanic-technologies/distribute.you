@@ -2,7 +2,7 @@ import { auth } from "@clerk/nextjs/server";
 import { NextResponse } from "next/server";
 import { isAdminEmail } from "@/lib/admin-allowlist";
 import { readLiveCatalog, readLivePerformance, readLiveResearch, readLiveTemplateTexts, type ResearchBasisParam } from "@/lib/research/live-file";
-import { CATALOG_KINDS, PIPE_ORDER, type ResearchCatalog, type ResearchFile } from "@/lib/research/research";
+import { CATALOG_KINDS, catalogPipes, pipeCatalog, type ResearchCatalog, type ResearchFile } from "@/lib/research/research";
 
 /**
  * GET /api/research/{basis}/{part} — STAFF ONLY. Every byte of Research, read LIVE from
@@ -18,10 +18,10 @@ import { CATALOG_KINDS, PIPE_ORDER, type ResearchCatalog, type ResearchFile } fr
 const BASES = new Set<ResearchBasisParam>(["user", "actual"]);
 const PARTS = new Set(["file", "catalog", "texts", "performance"]);
 
-/** How many rows each pipe's catalogue pages list: the hub's chips state the pages' own lengths. */
+/** How many rows each pipe's catalogue pages list (every pipe the catalogue serves): the hub's chips state the pages' own lengths. */
 function catalogCountsOf(catalog: ResearchCatalog): ResearchFile["catalogCounts"] {
   return Object.fromEntries(
-    PIPE_ORDER.map((pipe) => [pipe, Object.fromEntries(CATALOG_KINDS.map((kind) => [kind, catalog[pipe]?.[kind]?.length ?? 0]))]),
+    catalogPipes(catalog).map((pipe) => [pipe, Object.fromEntries(CATALOG_KINDS.map((kind) => [kind, pipeCatalog(catalog, pipe)[kind].length]))]),
   ) as ResearchFile["catalogCounts"];
 }
 

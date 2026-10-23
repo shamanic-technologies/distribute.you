@@ -3,7 +3,7 @@
  * the lookups only. Every status is content-generation-service's; this module NAMES it and joins
  * served keys, it never decides one. Alias-free so it carries real unit tests.
  */
-import { PIPE_ORDER, type ResearchCatalog, type ResearchModel, type ResearchPipe } from "./research";
+import { catalogPipes, pipeCatalog, type ResearchCatalog, type ResearchModel, type ResearchPipe } from "./research";
 
 /**
  * What a deprecation acts on: a template TYPE, or every model ALIAS a concrete model is served under
@@ -75,7 +75,7 @@ export function aliasList(aliases: readonly string[]): string {
  */
 export function templatePipes(catalog: ResearchCatalog | null, key: string, current: ResearchPipe): ResearchPipe[] {
   if (!catalog) return [];
-  const on = PIPE_ORDER.filter((p) => (catalog[p]?.templates ?? []).some((t) => t.key === key));
+  const on = catalogPipes(catalog).filter((p) => pipeCatalog(catalog, p).templates.some((t) => t.key === key));
   return on.includes(current) ? [current, ...on.filter((p) => p !== current)] : on;
 }
 
