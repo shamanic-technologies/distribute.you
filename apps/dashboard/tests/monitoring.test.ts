@@ -638,6 +638,17 @@ describe("monitoring: absorbed costs (owner 2026-10-13)", () => {
     expect(view).toContain('e.key === "Escape"');
   });
 
+  it("Accounts health columns read features-service's customer-health board through the staff gateway, never persisted", () => {
+    expect(read("lib/api.ts")).toContain('customerHealth: "/features/audit/customer-success"');
+    const persist = read("lib/persist-cache.ts");
+    expect(persist.slice(persist.indexOf("export const SENSITIVE_QUERY_ROOTS"), persist.indexOf("export const PERSISTABLE_QUERY_ROOTS"))).toContain('"staffCustomerHealth"');
+    expect(read("components/v2/monitoring-page.tsx")).toContain('useAuthQuery(["staffCustomerHealth"], getStaffCustomerHealth');
+    const view = read("components/v2/monitoring-accounts.tsx");
+    // A multi-brand customer never reads a blended ROI: the panel lists each brand.
+    expect(view).toContain("brands.length === 1 ? brands[0] : null");
+    expect(view).toContain("<RoiLabel />");
+  });
+
   it("a customer reads billing's status (current / churned / never paid) and last payment; our own orgs are never customers (owner 2026-10-13)", () => {
     const c = body.customers[0];
     const p = AbsorbedCostsSchema.parse({

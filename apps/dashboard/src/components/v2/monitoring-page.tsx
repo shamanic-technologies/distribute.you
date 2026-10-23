@@ -5,7 +5,7 @@ import { MaturityViewSameNote, MaturityViewSwitch } from "@/components/v2/maturi
 import { createContext, useContext, useEffect } from "react";
 import { useParams, usePathname, useRouter } from "next/navigation";
 import { useAuthQuery } from "@/lib/use-auth-query";
-import { getStaffAbsorbedCosts, getStaffCostMargin, getStaffCurrentPrices, getStaffSkills, getStaffEmailSendPrice, getStaffEmailsSent, getStaffPriceVersions, getStaffRealCosts, getStaffSubscriptionCosts } from "@/lib/api";
+import { ApiError, getStaffAbsorbedCosts, getStaffCustomerHealth, getStaffCostMargin, getStaffCurrentPrices, getStaffSkills, getStaffEmailSendPrice, getStaffEmailsSent, getStaffPriceVersions, getStaffRealCosts, getStaffSubscriptionCosts } from "@/lib/api";
 import { formatCentsAsUsd } from "@/lib/format-number";
 import { v2Href } from "@/lib/v2/routes";
 import { EmptyNote, Figure, SectionTitle, Shimmer, StatTile, TopBar } from "@/components/v2/ui";
@@ -793,9 +793,21 @@ function SubscriptionsPage() {
   return <Loaded q={subs}>{(d) => <SubscriptionsView data={d} />}</Loaded>;
 }
 
+/** features-service's "first build still running" answer on the customer-health board. */
+function isBoardComputing(error: unknown): boolean {
+  return error instanceof ApiError && error.status === 503 && error.body?.reason === "customer_health_not_computed_yet";
+}
+
 function CustomerAccountsPage() {
   const absorbed = useAbsorbedCosts();
-  return <Loaded q={absorbed}>{(d) => <AccountsView data={d} />}</Loaded>;
+  // The health board is served from features-service's last build; it fills its columns when it answers.
+  // Right after a deploy the board answers 503 until its first build: "computing", re-asked every 30 s.
+  const health = useAuthQuery(["staffCustomerHealth"], getStaffCustomerHealth, {
+    ...ONCE,
+    refetchInterval: (q: { state: { error: unknown } }) => (isBoardComputing(q.state.error) ? 30_000 : false),
+  });
+  const computing = isBoardComputing(health.error);
+  return <Loaded q={absorbed}>{(d) => <AccountsView data={d} health={{ data: health.data, isError: health.isError && !computing, computing }} />}</Loaded>;
 }
 
 function AbsorbedPage() {
