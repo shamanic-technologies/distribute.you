@@ -31,7 +31,7 @@ const usdWhole = (v: number | null) => (v == null ? null : `$${Math.round(v).toL
 const daysAgo = (d: number | null) => (d == null ? null : d === 0 ? "today" : `${n(d)}d ago`);
 
 /** The board's state for the whole page: its body, still on its first build, or unreadable. */
-export type HealthState = { data: CustomerHealth | undefined; isError: boolean };
+export type HealthState = { data: CustomerHealth | undefined; isError: boolean; computing: boolean };
 
 /** features-service's badge, named and coloured here (same words as the admin board). */
 const BADGE_LOOK = {
@@ -402,6 +402,7 @@ function Facts({ rows }: { rows: [React.ReactNode, React.ReactNode][] }) {
 
 function HealthSection({ health, org, brands }: { health: HealthState; org: CustomerHealthOrg | null; brands: CustomerHealthBrand[] }) {
   if (health.isError) return <EmptyNote>Could not read the account health board.</EmptyNote>;
+  if (health.computing) return <EmptyNote>Account health is being computed. Back in a few minutes.</EmptyNote>;
   if (health.data === undefined) return <Shimmer className="h-24 w-full" />;
   if (!org) return <EmptyNote>Not on the account health board.</EmptyNote>;
   const visits = org.dashboardReturnFrequency;
