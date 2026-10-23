@@ -178,6 +178,16 @@ describe("Template dynasties (TPL-DYNASTY-1021)", () => {
     expect(templateRowStatus({ ...dyn, status: null }, statuses([["cold-email-v44", "active"]]))).toBe("active");
   });
 
+  it("a template row's Status word and why-note read the row's status, the same one that picks its tab", () => {
+    // 2026-10-23: features-service served a head the dynasty had just been upgraded past (v61 -> v75), so the
+    // Active tab printed "Deprecated" when the cell read the head version's own status.
+    const src = readFileSync(join(__dirname, "../src/components/v2/research-catalog.tsx"), "utf8");
+    const cell = src.slice(src.indexOf("const status =\n"), src.indexOf("const deprecation = kind"));
+    expect(cell).toContain("templateRowStatus(r as ResearchTemplate, templateStatuses)");
+    expect(cell).not.toContain("templateStatuses.map.get(");
+    expect(src).toContain('const why = templateRowStatus(t, statuses) === "deprecated" ? statuses.deprecationOf(templateContentKey(t)) : null;');
+  });
+
   it("prints a served catalogue return: detail measured or expected, the printed string alone, the pre-hotfix object", () => {
     const d = { display: "1.40x", source: null, spendCovered: null, unavailableReason: null };
     expect(researchRoiOf({ roi: "1.40x", roiDetail: { ...d, value: 1.4, basis: "measured" } })).toEqual({ show: { value: 1.4, expected: false, reason: null } });
