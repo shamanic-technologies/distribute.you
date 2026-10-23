@@ -147,7 +147,7 @@ export default async function Home() {
             </svg>
             100% Open Source
           </a>
-          <h1 className="text-4xl md:text-6xl font-bold mb-6 leading-tight">
+          <h1 className="text-4xl md:text-6xl font-bold mb-6 leading-tight md:leading-none">
             <span className="gradient-text">Sales Cold Emails</span>
             <br />
             <span className="text-gray-800">That Actually Work</span>

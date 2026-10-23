@@ -53,7 +53,7 @@ const SECTIONS = [
     title: "Data about you",
     body: [
       "Account: your name and work email, or your Google sign-in. Sign-in is handled by Clerk.",
-      "Phone number: asked at sign-up. We use it to reach you, and for AI Instant Call, to ring-3 your sales rep when a prospect asks to talk.",
+      "Phone number: asked at sign-up. We use it to reach you, and for AI Instant Call, to ring your sales rep when a prospect asks to talk.",
       "Your business: your website, what you sell, your sales path and its rates, the lifetime revenue of a client, your campaigns and their budgets.",
       "Payments: your credit, reload settings and payment history. Card details are handled by Stripe or Revolut; we never see your full card number.",
       "Messages: what you send us by email, WhatsApp or the request forms in the dashboard.",

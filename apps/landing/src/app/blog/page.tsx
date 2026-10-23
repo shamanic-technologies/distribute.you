@@ -98,7 +98,7 @@ function FeaturedArticleCard({ article }: { article: BlogArticle }) {
             ))}
           </div>
 
-          <h2 className="font-display text-2xl md:text-3xl lg:text-4xl font-bold text-gray-900 group-hover:text-brand-600 transition leading-tight tracking-tight mb-4">
+          <h2 className="font-display text-2xl md:text-3xl lg:text-4xl font-bold text-gray-900 group-hover:text-brand-600 transition leading-tight md:leading-9 lg:leading-10 tracking-tight mb-4">
             {article.title}
           </h2>
 
