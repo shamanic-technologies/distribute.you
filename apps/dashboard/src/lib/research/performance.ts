@@ -70,7 +70,12 @@ export interface PipePerformance {
   unavailableReason: string | null;
 }
 
-export type ResearchPerformance = Record<string, PipePerformance>;
+/** The served read: every Research pipe's tab, on one cost basis. */
+export interface ResearchPerformance {
+  computedAt: string | null;
+  costBasis: string;
+  pipes: Record<string, PipePerformance>;
+}
 
 export type PerformanceTab = "active" | "deprecated";
 export type PartStatus = "active" | "deprecated" | null;

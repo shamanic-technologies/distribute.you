@@ -35,8 +35,8 @@ import {
  * Five cards for the pipe on top, the combinations in Active / Deprecated tabs on 2/3, the pipe's
  * five curves on 1/3. A combination is Active only when its workflow, template and LLM all are.
  *
- * Every figure, its order and every point of a curve are features-service's (the served `display`
- * where it serves one); nothing is divided, summed or ranked here.
+ * Every figure, its order and every point of a curve are features-service's, only formatted here;
+ * nothing is divided, summed or ranked.
  */
 
 const TH = "k-label px-3 py-2.5 text-left font-medium first:pl-4 last:pr-4";
@@ -55,7 +55,7 @@ export function V2ResearchPerformanceView({ base, pipe }: { base: string; pipe: 
   const { basis } = useResearch();
   const q = useResearchPerformance(basis);
   const catalog = useResearchCatalog(basis).data ?? null;
-  const perf: PipePerformance | null = q.data?.[pipe] ?? null;
+  const perf: PipePerformance | null = q.data?.pipes[pipe] ?? null;
   const failed = q.data === undefined && q.isError;
   const rows = perf?.rows ?? [];
   const channelName = usePipeChannelName(pipe);
@@ -122,8 +122,8 @@ export function V2ResearchPerformanceView({ base, pipe }: { base: string; pipe: 
           <>
             <div className="mt-6 grid grid-cols-2 gap-3 md:grid-cols-5">
               <StatTile label={<RoiLabel />}>{!answered ? <Shimmer className="h-7 w-16" /> : t ? <BigRoi f={t.roi} /> : DASH}</StatTile>
-              <StatTile label={`$ ${unit}`}>{!answered ? <Shimmer className="h-7 w-16" /> : t ? <Big f={t.costPerOutcomeUsd} /> : DASH}</StatTile>
-              <StatTile label="% Conversion">{!answered ? <Shimmer className="h-7 w-16" /> : t ? <Big f={t.conversionRatePct} /> : DASH}</StatTile>
+              <StatTile label={`$ ${unit}`}>{!answered ? <Shimmer className="h-7 w-16" /> : t ? <Big f={t.costPerOutcomeUsd} format={formatUsdAdaptive} /> : DASH}</StatTile>
+              <StatTile label="% Conversion">{!answered ? <Shimmer className="h-7 w-16" /> : t ? <Big f={t.conversionRatePct} format={formatRatePct} /> : DASH}</StatTile>
               <StatTile label={`# ${perf?.outcomeNounPlural ?? "Outcomes"}`}>{!answered ? <Shimmer className="h-7 w-16" /> : t ? <BigText>{t.outcomes.display}</BigText> : DASH}</StatTile>
               <StatTile label="$ Spent">{!answered ? <Shimmer className="h-7 w-16" /> : t ? <BigText>{t.spentUsd.display}</BigText> : DASH}</StatTile>
             </div>
@@ -143,20 +143,21 @@ export function V2ResearchPerformanceView({ base, pipe }: { base: string; pipe: 
                     }
                   />
                   <div className="k-scroll relative overflow-x-auto">
-                    <table className="w-full min-w-[940px] table-fixed text-[13px]">
+                    <table className="w-full min-w-[800px] table-fixed text-[13px]">
                       <thead>
                         <tr className="border-b border-[var(--line-subtle)]">
-                          <th className={TH}>Workflow</th>
-                          <th className={`${TH} w-40`}>Template</th>
-                          <th className={`${TH} w-36`}>LLM</th>
-                          <th className={`${TH} w-[84px] text-right`}>
+                          {/* Template is the free column: its served names are the longest; a long one truncates, its full name on hover. */}
+                          <th className={`${TH} w-[116px]`}>Workflow</th>
+                          <th className={TH}>Template</th>
+                          <th className={`${TH} w-[96px]`}>LLM</th>
+                          <th className={`${TH} w-[64px] text-right`}>
                             <RoiLabel />
                           </th>
-                          <th className={`${TH} w-[92px] text-right`}>{`$ ${unit}`}</th>
-                          <th className={`${TH} w-[92px] text-right`}>% Conversion</th>
-                          <th className={`${TH} w-[76px] text-right`}>{`# ${perf?.outcomeNounPlural ?? ""}`}</th>
-                          <th className={`${TH} w-[84px] text-right`}>$ Spent</th>
-                          <th className={`${TH} w-24`}>Status</th>
+                          <th className={`${TH} w-[72px] text-right`}>{`$ ${unit}`}</th>
+                          <th className={`${TH} w-[72px] text-right`}>% Conv.</th>
+                          <th className={`${TH} w-[60px] text-right`}>{`# ${perf?.outcomeNounPlural ?? ""}`}</th>
+                          <th className={`${TH} w-[72px] text-right`}>$ Spent</th>
+                          <th className={`${TH} w-[104px]`}>Status</th>
                         </tr>
                       </thead>
                       <tbody>
@@ -176,7 +177,7 @@ export function V2ResearchPerformanceView({ base, pipe }: { base: string; pipe: 
                           </tr>
                         ) : (
                           shown.map((r) => (
-                            <tr key={r.key} className="k-row h-10">
+                            <tr key={r.key} className="k-row h-11">
                               <td className="max-w-0 pl-4 pr-3">
                                 <CatalogueName
                                   kind="workflow"
@@ -194,8 +195,8 @@ export function V2ResearchPerformanceView({ base, pipe }: { base: string; pipe: 
                                   <CatalogueName
                                     kind="template"
                                     variant="chip"
-                                    name={r.template.dynasty?.label ?? r.template.label}
-                                    version={r.template.dynasty ? r.template.label : null}
+                                    // The version that wrote these emails, wearing its dynasty's mark and opening its page.
+                                    name={r.template.label}
                                     icon={r.template.dynasty?.icon ?? null}
                                     color={r.template.dynasty?.color ?? null}
                                     href={r.template.dynasty && listed.templates.has(r.template.dynasty.key) ? researchCatalogHref(base, pipe, "templates", r.template.dynasty.key) : null}
@@ -222,10 +223,10 @@ export function V2ResearchPerformanceView({ base, pipe }: { base: string; pipe: 
                                 <RowRoi f={r.roi} learning={r.learning} />
                               </td>
                               <td className="whitespace-nowrap px-3 text-right tabular-nums">
-                                <Cell f={r.costPerOutcomeUsd} learning={r.learning} />
+                                <Cell f={r.costPerOutcomeUsd} learning={r.learning} format={formatUsdAdaptive} stacked />
                               </td>
                               <td className="whitespace-nowrap px-3 text-right tabular-nums">
-                                <Cell f={r.conversionRatePct} learning={r.learning} />
+                                <Cell f={r.conversionRatePct} learning={r.learning} format={formatRatePct} stacked />
                               </td>
                               <td className="px-3 text-right tabular-nums">{r.outcomes.display}</td>
                               <td className="whitespace-nowrap px-3 text-right tabular-nums">{r.spentUsd.display}</td>
@@ -265,7 +266,7 @@ const UNAVAILABLE_WORDS: Record<string, string> = {
 };
 
 function NotOnRecord() {
-  return <span className="k-fg3 text-[12px]">Not on record</span>;
+  return <span className="k-fg3 block truncate text-[12px]">Not on record</span>;
 }
 
 /** The served expected value, drawn as a dotted line, only when the figure IS the expected one. */
@@ -285,31 +286,49 @@ function BigRoi({ f }: { f: PerformanceFigure }) {
   );
 }
 
-function Big({ f }: { f: PerformanceFigure }) {
+function Big({ f, format }: { f: PerformanceFigure; format: (v: number) => string }) {
   return (
     <BigText>
-      <Cell f={f} learning={false} />
+      <Cell f={f} learning={false} format={format} />
     </BigText>
   );
 }
 
-/** A served figure: its display, `expected` beside it when it is the expected one, greyed while the row is Learning. */
-function Cell({ f, learning }: { f: PerformanceFigure; learning: boolean }) {
-  if (f.display == null) return DASH;
+/**
+ * A served figure in the dashboard's own format (a rate a whole %, a decimal only below 1%), `expected`
+ * beside it when it is the expected one, greyed while the row is Learning.
+ */
+function Cell({ f, learning, format, stacked = false }: { f: PerformanceFigure; learning: boolean; format: (v: number) => string; stacked?: boolean }) {
+  if (f.value == null) return DASH;
+  const text = format(f.value);
+  if (f.basis === "expected" && stacked) return <Stacked value={text} tag="expected" />;
+  if (learning && stacked) return <Stacked value={text} tag="Learning" grey />;
   if (f.basis === "expected") {
     return (
       <span className="whitespace-nowrap">
-        {f.display}
+        {text}
         <span className="k-fg3 ml-1 text-[11px] font-normal">expected</span>
       </span>
     );
   }
-  return learning ? <LearningFigure measured={f.display} expected={null} /> : <>{f.display}</>;
+  return learning ? <LearningFigure measured={text} expected={null} /> : <>{text}</>;
+}
+
+/** A table cell's figure with its tag on a second line, so the 2/3 column holds every column. */
+function Stacked({ value, tag, grey = false }: { value: string; tag: string; grey?: boolean }) {
+  return (
+    <span className="inline-flex flex-col items-end leading-4">
+      <span className={grey ? "k-fg3" : ""}>{value}</span>
+      <span className="k-fg3 text-[11px] font-normal">{tag}</span>
+    </span>
+  );
 }
 
 function RowRoi({ f, learning }: { f: PerformanceFigure; learning: boolean }) {
-  if (learning && f.basis === "measured" && f.value != null) return <LearningFigure measured={formatRoi(f.value)} expected={null} />;
-  return <RoiValue roi={{ value: f.value, expected: f.value != null && f.basis === "expected", reason: f.value == null ? f.unavailableReason : null }} />;
+  if (f.value == null) return <RoiValue roi={{ value: null, expected: false, reason: f.unavailableReason }} />;
+  if (f.basis === "expected") return <Stacked value={formatRoi(f.value)} tag="expected" />;
+  if (learning) return <Stacked value={formatRoi(f.value)} tag="Learning" grey />;
+  return <RoiValue roi={{ value: f.value, expected: false, reason: null }} />;
 }
 
 /** One served monthly series as a line; the served expected value dotted when the pipe's figure is the expected one. */
