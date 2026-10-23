@@ -86,7 +86,7 @@ export default async function Home() {
   return (
     <main className="min-h-screen">
       {/* Navbar */}
-      <nav className="bg-white/80 backdrop-blur-sm border-b border-gray-100 sticky top-0 z-50">
+      <nav className="bg-white/80 backdrop-blur-xs border-b border-gray-100 sticky top-0 z-50">
         <div className="max-w-6xl mx-auto px-4 py-3 flex items-center justify-between">
           <div className="flex items-center gap-2">
             <Image
@@ -97,7 +97,7 @@ export default async function Home() {
               className="rounded-lg"
             />
             <span className="font-bold text-xl text-brand-600">Sales Cold Emails</span>
-            <span className="text-[10px] text-brand-500 font-medium bg-brand-50 px-1.5 py-0.5 rounded uppercase">beta</span>
+            <span className="text-[10px] text-brand-500 font-medium bg-brand-50 px-1.5 py-0.5 rounded-sm uppercase">beta</span>
           </div>
           <div className="flex items-center gap-4">
             <a
@@ -212,14 +212,14 @@ export default async function Home() {
 
       {/* Live Performance Stats */}
       {heroStats && (heroStats.bestCostPerOpen || heroStats.bestCostPerReply) && (
-        <section className="py-12 px-4 bg-gradient-to-b from-white to-brand-50 border-b border-brand-100">
+        <section className="py-12 px-4 bg-linear-to-b from-white to-brand-50 border-b border-brand-100">
           <div className="max-w-4xl mx-auto text-center">
             <p className="text-sm text-gray-500 uppercase tracking-wider mb-2">Real Performance Data</p>
             <h2 className="text-2xl font-bold mb-8 text-gray-800">
               100% Transparent Results
             </h2>
             <div className="grid md:grid-cols-2 gap-6 max-w-2xl mx-auto mb-6">
-              <div className="bg-white rounded-xl p-6 border border-brand-200 shadow-sm">
+              <div className="bg-white rounded-xl p-6 border border-brand-200 shadow-xs">
                 <p className="text-4xl font-bold text-brand-500 mb-1">
                   {heroStats.bestCostPerOpen ? formatCostCents(heroStats.bestCostPerOpen.costPerOpenCents) : "TBD"}
                 </p>
@@ -228,7 +228,7 @@ export default async function Home() {
                   <p className="text-xs text-gray-400">{heroStats.bestCostPerOpen.brandDomain}</p>
                 )}
               </div>
-              <div className="bg-white rounded-xl p-6 border border-violet-200 shadow-sm">
+              <div className="bg-white rounded-xl p-6 border border-violet-200 shadow-xs">
                 <p className="text-4xl font-bold text-violet-500 mb-1">
                   {heroStats.bestCostPerReply ? formatCostCents(heroStats.bestCostPerReply.costPerReplyCents) : "TBD"}
                 </p>
@@ -256,7 +256,7 @@ export default async function Home() {
           </h2>
 
           <div className="grid md:grid-cols-2 gap-8">
-            <div className="bg-gradient-to-br from-brand-50 to-blue-50 rounded-2xl p-6 border border-brand-100">
+            <div className="bg-linear-to-br from-brand-50 to-blue-50 rounded-2xl p-6 border border-brand-100">
               <div className="w-14 h-14 bg-brand-100 rounded-xl flex items-center justify-center mb-4 border border-brand-200">
                 <span className="text-3xl">🎯</span>
               </div>
@@ -265,12 +265,12 @@ export default async function Home() {
                 Competitors give you tools. distribute does the work.
               </p>
               <div className="text-sm text-gray-500 space-y-1">
-                <p>You say: <span className="font-mono bg-white/80 px-2 py-0.5 rounded text-brand-700">&quot;Target CTOs at SaaS companies&quot;</span></p>
+                <p>You say: <span className="font-mono bg-white/80 px-2 py-0.5 rounded-sm text-brand-700">&quot;Target CTOs at SaaS companies&quot;</span></p>
                 <p>We: Find leads → Generate emails → Send → Optimize → Report</p>
               </div>
             </div>
 
-            <div className="bg-gradient-to-br from-violet-50 to-purple-50 rounded-2xl p-6 border border-violet-100">
+            <div className="bg-linear-to-br from-violet-50 to-purple-50 rounded-2xl p-6 border border-violet-100">
               <div className="w-14 h-14 bg-violet-100 rounded-xl flex items-center justify-center mb-4 border border-violet-200">
                 <span className="text-3xl">🔑</span>
               </div>
@@ -301,7 +301,7 @@ export default async function Home() {
 
           <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
             {SALES_FEATURES.map((feature) => (
-              <div key={feature.title} className="bg-white rounded-2xl p-6 border border-gray-200 shadow-sm">
+              <div key={feature.title} className="bg-white rounded-2xl p-6 border border-gray-200 shadow-xs">
                 <div className="text-4xl mb-4">{feature.icon}</div>
                 <h3 className="font-bold text-lg mb-2 text-gray-800">{feature.title}</h3>
                 <p className="text-gray-600">{feature.description}</p>
@@ -480,7 +480,7 @@ export default async function Home() {
               className="rounded-md"
             />
             <span className="font-bold text-white text-lg">distribute.you</span>
-            <span className="text-[10px] text-brand-400 font-medium bg-brand-500/10 px-1.5 py-0.5 rounded uppercase">beta</span>
+            <span className="text-[10px] text-brand-400 font-medium bg-brand-500/10 px-1.5 py-0.5 rounded-sm uppercase">beta</span>
           </div>
           <p className="text-sm mb-4">Open-source cold email automation</p>
           <div className="flex justify-center gap-6 text-sm">

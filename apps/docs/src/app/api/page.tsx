@@ -148,7 +148,7 @@ export default function ApiOverviewPage() {
           <Link
             key={section.name}
             href={section.href}
-            className="block p-4 border border-gray-200 rounded-lg hover:border-brand-300 hover:shadow-sm transition"
+            className="block p-4 border border-gray-200 rounded-lg hover:border-brand-300 hover:shadow-xs transition"
           >
             <h3 className="text-base font-semibold text-gray-900">{section.name}</h3>
             <p className="text-sm text-gray-500 mt-1">{section.description}</p>

@@ -97,20 +97,20 @@ export default async function BlogArticlePage({ params }: Props) {
       <Section variant="prose" outerClassName="pt-28 pb-4" as="div">
         <Link
           href="/blog"
-          className="mb-8 inline-flex items-center gap-1 text-sm text-[var(--dy-sub)] transition hover:text-[var(--dy-accent-hi)]"
+          className="mb-8 inline-flex items-center gap-1 text-sm text-(--dy-sub) transition hover:text-(--dy-accent-hi)"
         >
           ← All articles
         </Link>
 
         <header className="mb-10">
-          <div className="dy-mono mb-4 flex flex-wrap items-center gap-3 text-xs text-[var(--dy-muted)]">
+          <div className="dy-mono mb-4 flex flex-wrap items-center gap-3 text-xs text-(--dy-muted)">
             <time dateTime={article.publishedAt} className="font-medium">
               {formatDate(article.publishedAt)}
             </time>
             {article.tags.slice(0, 4).map((t) => (
               <span
                 key={t}
-                className="rounded-full bg-[var(--dy-surface-hi)] px-2 py-0.5 text-[var(--dy-sub)]"
+                className="rounded-full bg-(--dy-surface-hi) px-2 py-0.5 text-(--dy-sub)"
               >
                 {t}
               </span>
@@ -129,7 +129,7 @@ export default async function BlogArticlePage({ params }: Props) {
         </header>
 
         {article.coverImageUrl && (
-          <div className="relative mb-12 aspect-[16/9] w-full overflow-hidden rounded-2xl border border-[var(--dy-border-hi)] bg-[var(--dy-surface-hi)]">
+          <div className="relative mb-12 aspect-video w-full overflow-hidden rounded-2xl border border-(--dy-border-hi) bg-(--dy-surface-hi)">
             <Image
               src={article.coverImageUrl}
               alt={article.title}
@@ -162,11 +162,11 @@ export default async function BlogArticlePage({ params }: Props) {
             dangerouslySetInnerHTML={{ __html: wrapTables(body) }}
           />
         ) : article.contentMarkdown ? (
-          <pre className="whitespace-pre-wrap font-sans leading-relaxed text-[var(--dy-sub)]">
+          <pre className="whitespace-pre-wrap font-sans leading-relaxed text-(--dy-sub)">
             {article.contentMarkdown}
           </pre>
         ) : (
-          <p className="text-[var(--dy-muted)]">No content available for this article.</p>
+          <p className="text-(--dy-muted)">No content available for this article.</p>
         )}
 
         {/* Every article closes on the why and the one CTA wording, from the template so
@@ -178,14 +178,14 @@ export default async function BlogArticlePage({ params }: Props) {
           </a>
         </aside>
 
-        <div className="mt-16 flex items-center justify-between border-t border-[var(--dy-border)] pt-8 text-sm">
+        <div className="mt-16 flex items-center justify-between border-t border-(--dy-border) pt-8 text-sm">
           <Link
             href="/blog"
-            className="inline-flex items-center gap-1 text-[var(--dy-sub)] transition hover:text-[var(--dy-accent-hi)]"
+            className="inline-flex items-center gap-1 text-(--dy-sub) transition hover:text-(--dy-accent-hi)"
           >
             ← All articles
           </Link>
-          <span className="dy-mono text-xs text-[var(--dy-muted)]">
+          <span className="dy-mono text-xs text-(--dy-muted)">
             Updated {formatDate(article.updatedAt)}
           </span>
         </div>

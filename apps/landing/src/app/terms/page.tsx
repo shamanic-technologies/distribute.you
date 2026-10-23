@@ -757,13 +757,13 @@ export default function TermsPage() {
       <main className="dy-page">
         <Section variant="prose" outerClassName="dy-section">
           <header className="mb-12">
-            <p className="dy-mono mb-3 text-xs uppercase tracking-wider text-[var(--dy-muted)]">
+            <p className="dy-mono mb-3 text-xs uppercase tracking-wider text-(--dy-muted)">
               Legal
             </p>
             <h1 className="dy-title mb-3 text-4xl md:text-5xl">
               Terms of Service
             </h1>
-            <p className="dy-mono text-sm text-[var(--dy-muted)]">
+            <p className="dy-mono text-sm text-(--dy-muted)">
               Last updated: {LAST_UPDATED}
             </p>
             <p className="dy-body mt-6 text-base">
@@ -778,7 +778,7 @@ export default function TermsPage() {
             aria-label="Table of contents"
             className="dy-card mb-12 p-5"
           >
-            <p className="dy-mono mb-3 text-xs font-semibold uppercase tracking-wider text-[var(--dy-muted)]">
+            <p className="dy-mono mb-3 text-xs font-semibold uppercase tracking-wider text-(--dy-muted)">
               Contents
             </p>
             <ol className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-1.5 text-sm">
@@ -786,7 +786,7 @@ export default function TermsPage() {
                 <li key={s.id}>
                   <Link
                     href={`#${s.id}`}
-                    className="text-[var(--dy-sub)] transition hover:text-[var(--dy-accent-hi)]"
+                    className="text-(--dy-sub) transition hover:text-(--dy-accent-hi)"
                   >
                     {s.title}
                   </Link>

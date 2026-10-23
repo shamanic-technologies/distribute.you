@@ -12,7 +12,7 @@ function Inline({ text }: { text: string }) {
     <>
       {text.split("`").map((part, i) =>
         i % 2 === 1 ? (
-          <code key={i} className="rounded bg-gray-100 px-1 py-0.5 text-[13px] text-gray-900 break-words">
+          <code key={i} className="rounded-sm bg-gray-100 px-1 py-0.5 text-[13px] text-gray-900 wrap-break-word">
             {part}
           </code>
         ) : (
