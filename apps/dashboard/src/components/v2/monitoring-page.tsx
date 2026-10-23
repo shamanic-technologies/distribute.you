@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { MaturityViewSameNote, MaturityViewSwitch } from "@/components/v2/maturity-view-switch";
 import { createContext, useContext, useEffect } from "react";
 import { useParams, usePathname, useRouter } from "next/navigation";
 import { useAuthQuery } from "@/lib/use-auth-query";
@@ -276,8 +277,11 @@ export function V2Monitoring() {
 function Frame({ crumbs, children }: { crumbs: { label: string; href?: string }[]; children: React.ReactNode }) {
   return (
     <>
-      <TopBar crumbs={crumbs} />
-      <div className="mx-auto max-w-[1280px] px-4 pb-16 pt-6 md:px-6">{children}</div>
+      <TopBar crumbs={crumbs} actions={<MaturityViewSwitch />} />
+      <div className="mx-auto max-w-[1280px] px-4 pb-16 pt-6 md:px-6">
+        <MaturityViewSameNote />
+        {children}
+      </div>
     </>
   );
 }

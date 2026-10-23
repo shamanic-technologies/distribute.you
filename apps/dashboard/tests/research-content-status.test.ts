@@ -184,7 +184,7 @@ describe("TEMPLATE-MODEL-STATUS-1019: the three Research pages", () => {
     expect(sensitive).not.toContain('"workflowDynastyStatuses"');
     expect(sensitive).toContain('"researchCatalogActual"');
     const source = read("lib/research/research-source.tsx");
-    expect(source).toContain('basis === "actual" ? ["researchCatalogActual"]');
+    expect(source).toContain('basis === "actual" ? ["researchCatalogActual", view]');
   });
 });
 
