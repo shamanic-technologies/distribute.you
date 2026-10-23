@@ -451,7 +451,8 @@ function BrandHealth({ b }: { b: CustomerHealthBrand }) {
         rows={[
           [<RoiLabel key="roi" />, <RoiValue key="v" v={e.roiMultiple} />],
           ["Cost per client", e.currentCacUsd == null ? null : `${dollarsExact(e.currentCacUsd)}${b.breakevenCacUsd != null ? ` · break-even ${dollarsExact(b.breakevenCacUsd)}` : ""}`],
-          ["Spent", e.committedSpendUsd == null ? null : dollarsExact(e.committedSpendUsd)],
+          // The brand's whole history (a brand moved between orgs keeps it); the org's own campaign spend is billing's, above.
+          ["Spent on this brand", e.committedSpendUsd == null ? null : dollarsExact(e.committedSpendUsd)],
           [
             "Audience left",
             b.audiences.totalRemaining == null
