@@ -60,7 +60,8 @@ export interface PerformancePoint {
 
 export interface PipePerformance {
   pipe: string;
-  figuresBasis: "since_inception";
+  /** The bars the figures are read on (features-service names it; "workflow_bars" = the Workflows tab's own). */
+  figuresBasis: string;
   outcomeNoun: string;
   outcomeNounPlural: string;
   rows: PerformanceRow[];
