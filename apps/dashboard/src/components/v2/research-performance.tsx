@@ -12,7 +12,7 @@ import { StatusWord, useDynastyStatuses, useModelStatuses, useTemplateStatuses }
 import { PipeTabs } from "@/components/v2/research-catalog";
 import { usePipeChannelName } from "@/components/v2/research-live-workflows";
 import { useResearch, useResearchCatalog, useResearchPerformance } from "@/lib/research/research-source";
-import { PIPE_KEY, researchCatalogHref, type ResearchPipe } from "@/lib/research/research";
+import { PIPE_KEY, researchCatalogHref, templateRowStatus, type ResearchPipe } from "@/lib/research/research";
 import { modelAliasesOf, modelStatus } from "@/lib/research/content-status";
 import { shortWorkflowName } from "@/lib/live-workflow-rows";
 import { formatUsdAdaptive, formatCount } from "@/lib/format-number";
@@ -65,13 +65,16 @@ export function V2ResearchPerformanceView({ base, pipe }: { base: string; pipe: 
   const templates = useTemplateStatuses();
   const models = useModelStatuses();
   const catalogModels = useMemo(() => new Map((catalog?.[pipe].models ?? []).map((m) => [m.key, m])), [catalog, pipe]);
-  const listed = useMemo(
-    () => ({
-      workflows: new Set((catalog?.[pipe].workflows ?? []).map((w) => w.key)),
-      templates: new Set((catalog?.[pipe].templates ?? []).map((t) => t.key)),
-    }),
-    [catalog, pipe],
-  );
+  const catalogTemplates = useMemo(() => new Map((catalog?.[pipe].templates ?? []).map((t) => [t.key, t])), [catalog, pipe]);
+  const listedWorkflows = useMemo(() => new Set((catalog?.[pipe].workflows ?? []).map((w) => w.key)), [catalog, pipe]);
+  // The Template column is the template DYNASTY (owner 2026-10-23): its status is the dynasty's, as the Templates tab reads it.
+  const templateStatus = (r: PerformanceRow): PartStatus | undefined => {
+    if (!r.template) return null;
+    const t = catalogTemplates.get(templateDynastyKey(r.template));
+    if (!t) return catalog ? (templates.answered ? asStatus(templates.map.get(r.template.key)) : undefined) : undefined;
+    const s = templateRowStatus(t, templates);
+    return s === null ? undefined : s;
+  };
   const statusOf = (r: PerformanceRow): PartStatus => {
     const llmStatus = (): PartStatus | undefined => {
       if (!r.llm) return null;
@@ -82,7 +85,7 @@ export function V2ResearchPerformanceView({ base, pipe }: { base: string; pipe: 
     };
     return combinationStatus({
       workflow: workflows.answered ? asStatus(workflows.statusOf(r.workflow.key)) : undefined,
-      template: !r.template ? null : templates.answered ? asStatus(templates.map.get(r.template.key)) : undefined,
+      template: templateStatus(r),
       llm: llmStatus(),
     });
   };
@@ -186,7 +189,7 @@ export function V2ResearchPerformanceView({ base, pipe }: { base: string; pipe: 
                                   label={shortWorkflowName(r.workflow.name ?? r.workflow.label, channelName)}
                                   icon={r.workflow.icon ?? null}
                                   color={r.workflow.color ?? null}
-                                  href={listed.workflows.has(r.workflow.key) ? researchCatalogHref(base, pipe, "workflows", r.workflow.key) : null}
+                                  href={listedWorkflows.has(r.workflow.key) ? researchCatalogHref(base, pipe, "workflows", r.workflow.key) : null}
                                   className="max-w-full"
                                 />
                               </td>
@@ -195,11 +198,11 @@ export function V2ResearchPerformanceView({ base, pipe }: { base: string; pipe: 
                                   <CatalogueName
                                     kind="template"
                                     variant="chip"
-                                    // The version that wrote these emails, wearing its dynasty's mark and opening its page.
-                                    name={r.template.label}
-                                    icon={r.template.dynasty?.icon ?? null}
-                                    color={r.template.dynasty?.color ?? null}
-                                    href={r.template.dynasty && listed.templates.has(r.template.dynasty.key) ? researchCatalogHref(base, pipe, "templates", r.template.dynasty.key) : null}
+                                    // The template dynasty (owner 2026-10-23), its mark, opening its page.
+                                    name={r.template.dynasty?.label ?? r.template.label}
+                                    icon={r.template.dynasty?.icon ?? r.template.icon ?? null}
+                                    color={r.template.dynasty?.color ?? r.template.color ?? null}
+                                    href={catalogTemplates.has(templateDynastyKey(r.template)) ? researchCatalogHref(base, pipe, "templates", templateDynastyKey(r.template)) : null}
                                     className="max-w-full"
                                   />
                                 ) : (
@@ -264,6 +267,11 @@ export function V2ResearchPerformanceView({ base, pipe }: { base: string; pipe: 
 const UNAVAILABLE_WORDS: Record<string, string> = {
   no_writer_recorded_on_pipe: "This pipe answers in a chat, so no template is on record for its messages yet.",
 };
+
+/** The template's Research page key: its dynasty's, else its own (a template on its own is its own page). */
+function templateDynastyKey(t: NonNullable<PerformanceRow["template"]>): string {
+  return t.dynasty?.key ?? t.key;
+}
 
 function NotOnRecord() {
   return <span className="k-fg3 block truncate text-[12px]">Not on record</span>;
@@ -347,8 +355,12 @@ function SeriesCard({
   format: (v: number) => string;
   expected?: number | null;
 }) {
-  const rows = points.map((p) => ({ label: p.label, month: p.month, v: pick(p) }));
+  // The curve starts the first month anything was spent: the months before it are not the pipe's history.
+  const from = points.findIndex((p) => p.spentUsd > 0);
+  const rows = (from < 0 ? [] : points.slice(from)).map((p) => ({ label: p.label, month: p.month, v: pick(p) }));
   const drawn = rows.some((r) => r.v != null);
+  // Two ticks, 0 and the top of the curve: rounded in-between ticks repeated ("0.1%, 0.1%").
+  const top = Math.max(0, expected ?? 0, ...rows.map((r) => r.v ?? 0));
   return (
     <div className="k-card p-4">
       <span className="k-label truncate">{title}</span>
@@ -361,7 +373,7 @@ function SeriesCard({
           <ResponsiveContainer width="100%" height="100%">
             <LineChart data={rows} margin={{ top: 4, right: 4, bottom: 0, left: 0 }}>
               <XAxis dataKey="label" tick={TICK} tickLine={false} axisLine={false} minTickGap={24} />
-              <YAxis tick={TICK} tickLine={false} axisLine={false} width={48} tickCount={4} tickFormatter={(v: number) => format(v)} />
+              <YAxis tick={TICK} tickLine={false} axisLine={false} width={48} domain={[0, top]} ticks={top > 0 ? [0, top] : [0]} tickFormatter={(v: number) => format(v)} />
               {expected != null && <ReferenceLine y={expected} stroke="var(--fg-3)" strokeDasharray="4 4" />}
               <Tooltip
                 cursor={{ stroke: "var(--line-strong)", strokeWidth: 1 }}
@@ -376,7 +388,7 @@ function SeriesCard({
                   );
                 }}
               />
-              <Line type="linear" dataKey="v" stroke="var(--accent)" strokeWidth={1.75} dot={rows.length < 3} connectNulls={false} isAnimationActive={false} />
+              <Line type="linear" dataKey="v" stroke="var(--accent)" strokeWidth={1.75} dot={{ r: 2, strokeWidth: 0, fill: "var(--accent)" }} connectNulls={false} isAnimationActive={false} />
             </LineChart>
           </ResponsiveContainer>
         )}

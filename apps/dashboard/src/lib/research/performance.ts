@@ -38,8 +38,8 @@ export interface PerformanceRow extends PerformanceFigures {
   key: string;
   rank: number;
   workflow: { key: string; label: string; name: string | null } & PerformanceMark;
-  /** The template VERSION that wrote these people, and its dynasty (= its Research page). */
-  template: { key: string; label: string; dynasty: ({ key: string; label: string } & PerformanceMark) | null } | null;
+  /** The template DYNASTY (owner 2026-10-23: a Template column is the dynasty) = its Research page. */
+  template: ({ key: string; label: string; dynasty?: ({ key: string; label: string } & PerformanceMark) | null } & PerformanceMark) | null;
   /** The LLM dynasty (= its Research model page). */
   llm: { key: string; label: string; provider: string | null } | null;
   writerUnavailableReason: string | null;
@@ -60,7 +60,8 @@ export interface PerformancePoint {
 
 export interface PipePerformance {
   pipe: string;
-  figuresBasis: "since_inception";
+  /** The bars the figures are read on (features-service names it; "workflow_bars" = the Workflows tab's own). */
+  figuresBasis: string;
   outcomeNoun: string;
   outcomeNounPlural: string;
   rows: PerformanceRow[];
