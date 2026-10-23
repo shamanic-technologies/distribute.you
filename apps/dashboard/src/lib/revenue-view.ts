@@ -101,6 +101,8 @@ export interface ConversionOrg {
   organizationKey?: string;
   /** The most-likely person (argmax person_EV). */
   topPerson: ConversionTopPerson | null;
+  /** Distinct people the row is built from (features-service `peopleCount`), `topPerson` included. */
+  peopleCount?: number;
   /** Conversion channels across the org (multi-tag). */
   tags: string[];
   expectedRevenueUsd: number;
