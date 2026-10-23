@@ -614,26 +614,6 @@ export function templateRowStatus(row: Pick<ResearchTemplate, "key" | "dynasty" 
   return statuses.map.get(templateContentKey(row)) === "active" ? "active" : "deprecated";
 }
 
-/** A served dollar string (`"$9.50"`, `"$1,234"`) as its number, for ordering only; null when none is served. */
-function servedUsd(v: string | null | undefined): number | null {
-  if (v == null) return null;
-  const n = Number(v.replace(/[^0-9.-]/g, ""));
-  return Number.isFinite(n) ? n : null;
-}
-
-/**
- * The Templates table's order (owner 2026-10-23): every row with an outcome first, the cheapest served
- * cost per outcome first; then the rest by served $ spent, most first. Only reorders served figures;
- * a tie keeps the served order.
- */
-export function templatesInTableOrder<T extends Pick<ResearchFigures, "cost" | "spend">>(rows: readonly T[]): T[] {
-  const priced = rows.filter((r) => servedUsd(r.cost) != null);
-  const rest = rows.filter((r) => servedUsd(r.cost) == null);
-  priced.sort((a, b) => servedUsd(a.cost)! - servedUsd(b.cost)!);
-  rest.sort((a, b) => (servedUsd(b.spend) ?? -1) - (servedUsd(a.spend) ?? -1));
-  return [...priced, ...rest];
-}
-
 /** The rows of each tab, in the served order, or null while the statuses have not answered. */
 export function templatesByTab<T extends Pick<ResearchTemplate, "key" | "dynasty" | "status">>(rows: readonly T[], statuses: TemplateStatusRead): Record<TemplateTab, T[]> | null {
   if (!statuses.answered) return null;
