@@ -5,7 +5,14 @@ import { MONITORING_PAGES, parseMonitoringPath } from "../src/lib/monitoring/mon
 import {
   COVERAGE_TARGET_PCT,
   LedgerCheckSchema,
+  LedgerReconciliationSchema,
   OutcomeCoverageSchema,
+  RECON_PARTS,
+  reconBlockers,
+  reconDayState,
+  reconPartDollars,
+  undeclaredServices,
+  unknownProvenance,
   belowTarget,
   coverageChart,
   headlinePoint,
@@ -169,5 +176,53 @@ describe("Monitoring > Cost ledger: page and hub", () => {
     const sensitive = cache.slice(cache.indexOf("export const SENSITIVE_QUERY_ROOTS"), cache.indexOf("export const PERSISTABLE_QUERY_ROOTS"));
     expect(sensitive).toContain('"staffOutcomeCoverage"');
     expect(sensitive).toContain('"staffLedgerCheck"');
+  });
+});
+
+describe("LEDGER-RECON-MONITOR-1024: the reconciliation, red on the hub until it reconciles", () => {
+  const recon = () => LedgerReconciliationSchema.parse(fixture("runs-ledger-reconciliation-prod-2026-10-24.json"));
+
+  it("the whole prod payload parses: every day since the first day of spend, both lists, the verdict", () => {
+    const r = recon();
+    expect(r.reconciled).toBe(false);
+    expect(r.days.length).toBe(r.daysMissing.length);
+    expect(r.days[0].day).toBe(r.since);
+    expect(undeclaredServices(r).map((s) => s.serviceName)).toEqual(["chat-service", "postmark-service", "social-service"]);
+    expect(unknownProvenance(r)[0]).toMatchObject({ consumedOutcomeKey: "company_researched", consumingServiceName: "workflow" });
+    expect(unknownProvenance(r).every((p) => Number(p.unknownProvenance) !== 0)).toBe(true);
+  });
+
+  it("a day not computed draws no part and says so; a stale day keeps its served parts, faded", () => {
+    const r = recon();
+    const missing = r.days.find((d) => !d.stored && !d.stale)!;
+    const stale = r.days.find((d) => d.stale)!;
+    expect(reconDayState(missing)).toBe("missing");
+    expect(reconPartDollars(missing, "undeclared")).toBe(0);
+    expect(reconDayState(stale)).toBe("stale");
+    expect(reconPartDollars(stale, "undeclared")).toBe(Number(stale.undeclared.grossCents) / 100);
+    expect(RECON_PARTS.map((p) => p.key)).toEqual(["declaredProduction", "normalLoss", "unpooledLoss", "undeclared", "support"]);
+  });
+
+  it("the verdict says why in plain words, from the served booleans and day lists", () => {
+    const r = recon();
+    expect(reconBlockers(r)).toEqual(["261 days not computed yet", "3 days to recompute"]);
+    expect(reconBlockers({ ...r, reconciled: true })).toEqual([]);
+    expect(reconBlockers({ ...r, balanced: false, unbalancedDays: ["2026-10-01"] })[0]).toBe("1 day does not add up to the cent");
+  });
+
+  it("page mounted, tile above the collapsible rows, chip and card on the hub, read through the gateway", () => {
+    expect(MONITORING_PAGES).toContain("ledger/reconciliation");
+    const page = read("components/v2/monitoring-page.tsx");
+    expect(page).toContain('view.page === "ledger/reconciliation" && <ReconciliationPage />');
+    const hub = page.slice(page.indexOf("function Hub("), page.indexOf("function Section("));
+    expect(hub.indexOf('<ReconciliationTile href={href("ledger/reconciliation")} />')).toBeGreaterThan(-1);
+    expect(hub.indexOf("<ReconciliationTile")).toBeLessThan(hub.indexOf("<Section "));
+    expect(hub).toContain('page="ledger/reconciliation"');
+    expect(read("lib/api.ts")).toContain('reconciliation: "/runs/outcome-costs/reconciliation"');
+    const cache = read("lib/persist-cache.ts");
+    expect(cache.slice(cache.indexOf("export const SENSITIVE_QUERY_ROOTS"), cache.indexOf("export const PERSISTABLE_QUERY_ROOTS"))).toContain('"staffLedgerReconciliation"');
+    const src = stripComments(read("components/v2/monitoring-cost-ledger.tsx"));
+    expect(src).toContain('<span style={{ color: RED }}>No</span>');
+    expect(src).not.toContain("declaredProduction.grossCents) +");
   });
 });

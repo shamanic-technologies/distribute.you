@@ -12926,12 +12926,13 @@ export async function runStaffWhatsappLineCheck(): Promise<void> {
 }
 
 // ─── Monitoring > Cost ledger (COST-ACCOUNTING-1023-MONITOR) ───
-import { LedgerCheckSchema as StaffLedgerCheckSchema, OutcomeCoverageSchema as StaffOutcomeCoverageSchema, type LedgerCheck as StaffLedgerCheck, type OutcomeCoverage as StaffOutcomeCoverage } from "./monitoring/cost-ledger";
+import { LedgerCheckSchema as StaffLedgerCheckSchema, LedgerReconciliationSchema as StaffLedgerReconciliationSchema, OutcomeCoverageSchema as StaffOutcomeCoverageSchema, type LedgerCheck as StaffLedgerCheck, type LedgerReconciliation as StaffLedgerReconciliation, type OutcomeCoverage as StaffOutcomeCoverage } from "./monitoring/cost-ledger";
 
 /** runs-service's ledger monitor, through api-service's staff passthroughs. */
 export const STAFF_COST_LEDGER_PATHS = {
   coverage: "/runs/stats/outcome-coverage",
   ledgerCheck: "/runs/outcome-costs/ledger-check",
+  reconciliation: "/runs/outcome-costs/reconciliation",
 } as const;
 
 /** Share of spend whose run declared its outcome, per UTC day: fleet, per service, per task (default: 60 days ending today). */
@@ -12942,6 +12943,11 @@ export async function getStaffOutcomeCoverage(): Promise<StaffOutcomeCoverage> {
 /** The to-the-cent check over the 60 days ending yesterday: totals and failing org-days only (`rows=false`). */
 export async function getStaffLedgerCheck(): Promise<StaffLedgerCheck> {
   return parseStaff("getStaffLedgerCheck", StaffLedgerCheckSchema, await apiCall<unknown>(`${STAFF_COST_LEDGER_PATHS.ledgerCheck}?rows=false`));
+}
+
+/** The reconciliation, per UTC day since the first day of spend (the producer's default range, to yesterday). */
+export async function getStaffLedgerReconciliation(): Promise<StaffLedgerReconciliation> {
+  return parseStaff("getStaffLedgerReconciliation", StaffLedgerReconciliationSchema, await apiCall<unknown>(STAFF_COST_LEDGER_PATHS.reconciliation));
 }
 
 // ─── Monitoring > Emails, ported from the admin cold-email pages (capacity-rules) ───

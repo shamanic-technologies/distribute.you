@@ -120,6 +120,7 @@ export const SENSITIVE_QUERY_ROOTS = new Set([
   // Monitoring > Cost ledger: fleet spend per service and per org-day (COST-ACCOUNTING-1023-MONITOR).
   "staffOutcomeCoverage",
   "staffLedgerCheck",
+  "staffLedgerReconciliation",
   "staffOpsThreads",
   "staffOpsThreadMessages",
   "staffOpsInfra",

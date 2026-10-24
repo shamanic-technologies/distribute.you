@@ -189,3 +189,113 @@ export function servicesOn(c: OutcomeCoverage, day: string): ServiceCoverage[] {
 export function tasksOn(c: OutcomeCoverage, day: string): TaskCoverage[] {
   return c.tasks.filter((t) => t.day === day);
 }
+
+// ─── The reconciliation (LEDGER-RECON-MONITOR-1024) ────────────────────────
+// runs-service GET /internal/outcome-costs/reconciliation (LEDGER-HISTORY-1024-RUNS), through the
+// gateway's staff passthrough: per UTC day since the first day of spend, spend split into five parts
+// to the cent, the services still spending undeclared, the consumed outcomes no run declared producing,
+// and the served `reconciled` verdict. The owner switches every price reader to the ledger the day it
+// reads true (2026-10-24). Read as served: nothing here sums, divides or re-grades.
+
+const ReconShareSchema = z.object({ gross: z.string().nullable(), net: z.string().nullable() });
+const ReconPartsShape = {
+  spend: LedgerMoneySchema,
+  declaredProduction: LedgerMoneySchema,
+  normalLoss: LedgerMoneySchema,
+  unpooledLoss: LedgerMoneySchema,
+  undeclared: LedgerMoneySchema,
+  support: LedgerMoneySchema,
+  reuseGain: LedgerMoneySchema,
+  differences: LedgerMoneySchema,
+  shares: z.object({ declaredProduction: ReconShareSchema, normalLoss: ReconShareSchema, unpooledLoss: ReconShareSchema, undeclared: ReconShareSchema, support: ReconShareSchema }),
+  consumptions: z.string(),
+  unknownProvenance: z.string(),
+};
+
+export const ReconDaySchema = z.object({ ...ReconPartsShape, day: z.string(), stored: z.boolean(), stale: z.boolean(), balanced: z.boolean(), splitConsistent: z.boolean() });
+export type ReconDay = z.infer<typeof ReconDaySchema>;
+
+export const LedgerReconciliationSchema = z.object({
+  allocationVersion: z.number(),
+  since: z.string(),
+  until: z.string(),
+  reconciled: z.boolean(),
+  balanced: z.boolean(),
+  complete: z.boolean(),
+  declarationsComplete: z.boolean(),
+  daysMissing: z.array(z.string()),
+  daysStale: z.array(z.string()),
+  supportDaysMissing: z.array(z.string()),
+  unbalancedDays: z.array(z.string()),
+  totals: z.object({ ...ReconPartsShape, unknownProvenanceShare: z.string().nullable(), balanced: z.boolean(), splitConsistent: z.boolean() }),
+  services: z.array(
+    z.object({
+      serviceName: z.string().nullable(),
+      undeclared: LedgerMoneySchema,
+      undeclaredRuns: z.number(),
+      unpooledLoss: LedgerMoneySchema,
+      unpooledLossRuns: z.number(),
+      support: LedgerMoneySchema,
+      undeclaredShareOfSpend: z.string().nullable(),
+    }),
+  ),
+  provenance: z.array(
+    z.object({
+      consumedOutcomeKey: z.string(),
+      consumingServiceName: z.string().nullable(),
+      consumptions: z.string(),
+      unknownProvenance: z.string(),
+      unknownShare: z.string().nullable(),
+    }),
+  ),
+  days: z.array(ReconDaySchema),
+});
+export type LedgerReconciliation = z.infer<typeof LedgerReconciliationSchema>;
+export type ReconPartKey = "declaredProduction" | "normalLoss" | "unpooledLoss" | "undeclared" | "support";
+
+/** The five parts of spend, in the producer's equation order, each in everyday words and one tone. */
+export const RECON_PARTS: { key: ReconPartKey; label: string; color: string }[] = [
+  { key: "declaredProduction", label: "Made an outcome", color: "var(--data-teal)" },
+  { key: "normalLoss", label: "Lost, carried by its pipe", color: "var(--data-sky)" },
+  { key: "unpooledLoss", label: "Lost, pipe made nothing", color: "var(--data-amber)" },
+  { key: "undeclared", label: "No outcome declared", color: "var(--data-rose)" },
+  { key: "support", label: "Support", color: "var(--data-violet)" },
+];
+
+/** A day's state on the chart: computed, computed before a fact recorded since (stale), or not computed yet. */
+export type ReconDayState = "computed" | "stale" | "missing";
+export function reconDayState(d: ReconDay): ReconDayState {
+  if (d.stale) return "stale";
+  return d.stored ? "computed" : "missing";
+}
+
+/** A part's served gross that day, in dollars for the chart axis. A day not computed draws no part. */
+export function reconPartDollars(d: ReconDay, key: ReconPartKey): number {
+  return reconDayState(d) === "missing" ? 0 : Number(d[key].grossCents) / 100;
+}
+
+/** The services that still spend without declaring, in the producer's order (undeclared first). */
+export function undeclaredServices(r: LedgerReconciliation): LedgerReconciliation["services"] {
+  return r.services.filter((s) => s.undeclaredRuns > 0 || Number(s.undeclared.grossCents) !== 0);
+}
+
+/** The consumed outcomes some of whose consumptions no run declared producing, in the producer's order. */
+export function unknownProvenance(r: LedgerReconciliation): LedgerReconciliation["provenance"] {
+  return r.provenance.filter((p) => Number(p.unknownProvenance) !== 0);
+}
+
+/** Why the ledger does not reconcile yet, one plain clause per served reason (empty when it does). */
+export function reconBlockers(r: LedgerReconciliation): string[] {
+  if (r.reconciled) return [];
+  const out: string[] = [];
+  const plural = (n: number, w: string) => `${n} ${w}${n === 1 ? "" : "s"}`;
+  if (!r.balanced) out.push(r.unbalancedDays.length ? `${plural(r.unbalancedDays.length, "day")} ${r.unbalancedDays.length === 1 ? "does" : "do"} not add up to the cent` : "the parts do not add up to the cent");
+  if (!r.complete) {
+    const notYet = r.daysMissing.filter((d) => !r.daysStale.includes(d)).length;
+    if (notYet) out.push(`${plural(notYet, "day")} not computed yet`);
+    if (r.daysStale.length) out.push(`${plural(r.daysStale.length, "day")} to recompute`);
+    if (!notYet && !r.daysStale.length) out.push("support not split on every day yet");
+  }
+  if (!r.declarationsComplete) out.push("some spend or some consumed outcome has no declared producer");
+  return out;
+}
