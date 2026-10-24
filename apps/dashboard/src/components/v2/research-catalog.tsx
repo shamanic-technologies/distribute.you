@@ -24,7 +24,7 @@ import {
   useTemplateStatuses,
   useWorkflowDeprecation,
 } from "@/components/v2/research-status";
-import { OutputsList, RecentRuns, ResearchDrawer, TemplateFigures, TemplateOutputsPanel, TemplateVersionDrawer, useTemplateOutputs } from "@/components/v2/research-template-outputs";
+import { OutputsList, RecentRuns, ResearchDrawer, TemplateFigures, TemplateOutputsPanel, TemplateVersionDrawer, useModelDynastyOutputs, useTemplateOutputs } from "@/components/v2/research-template-outputs";
 import { modelAliasesOf, modelsByTab, modelStatus, type ContentTarget } from "@/lib/research/content-status";
 import { CatalogueName, CatalogueObjectMark } from "@/components/v2/catalogue-name";
 import { usePipeChannel, useResearch, useResearchCatalog, useResearchTexts } from "@/lib/research/research-source";
@@ -1010,9 +1010,15 @@ function ModelNameLines({ m, href }: { m: ResearchModel; href: string }) {
   );
 }
 
+/** An LLM dynasty's last emails on this pipe; a model in no dynasty has no such read. */
+function ModelOutputs({ m, read, expanded = false }: { m: ResearchModel; read: ReturnType<typeof useModelDynastyOutputs>; expanded?: boolean }) {
+  if (!m.dynasty) return <EmptyNote>This model is in no dynasty, so its emails are not read here.</EmptyNote>;
+  return <OutputsList read={read} expanded={expanded} empty="No email written with this model on this pipe is on record." />;
+}
+
 /**
  * The Models list's right panel (owner 2026-10-24): the dynasty's figures on this pipe, the workflows
- * that write with it, its last 5 runs (every client, every template), and its page.
+ * that write with it, its last 5 emails on this pipe (every client, every template), and its page.
  */
 function ModelPanel({
   m,
@@ -1030,7 +1036,7 @@ function ModelPanel({
   onClose: () => void;
 }) {
   const second = modelSecondLine(m);
-  const runs = m.runs.slice(0, 5);
+  const read = useModelDynastyOutputs(m.dynasty?.slug ?? null, useContentPipe(pipe), 5);
   return (
     <ResearchDrawer
       label={m.label}
@@ -1077,20 +1083,8 @@ function ModelPanel({
           <p className="k-fg3 mt-1.5 text-[12px]">No workflow writes most of its emails with it.</p>
         )}
       </div>
-      <p className="k-label px-4 pt-3">Last 5 runs</p>
-      {runs.length ? (
-        <ol className="mt-1 divide-y divide-[var(--line-subtle)]">
-          {runs.map((r, i) => (
-            <li key={`${r.when}-${i}`} className="flex min-w-0 items-center gap-2 px-4 py-2">
-              <span className="k-mono k-fg2 w-[136px] shrink-0 text-[12px]">{r.when}</span>
-              {r.workflow && <CatalogueName kind="workflow" variant="chip" name={r.workflow.label} servedKey={r.workflow.key} className="min-w-0" />}
-              {r.template && <CatalogueName kind="template" variant="chip" name={r.template.label} className="ml-auto min-w-0" />}
-            </li>
-          ))}
-        </ol>
-      ) : (
-        <EmptyNote>No run recorded before the read.</EmptyNote>
-      )}
+      <p className="k-label px-4 pt-3">Last 5 emails written</p>
+      <ModelOutputs m={m} read={read} />
     </ResearchDrawer>
   );
 }
@@ -1500,6 +1494,7 @@ function ModelView({
   const why = modelStatuses.deprecationOf(aliases);
   const versions = m.models ?? [];
   const second = modelSecondLine(m);
+  const outputs = useModelDynastyOutputs(m.dynasty?.slug ?? null, useContentPipe(pipe), 5);
   return (
     <>
       <TopBar crumbs={crumbs} actions={<ResearchSwitches />} />
@@ -1527,6 +1522,12 @@ function ModelView({
           <div className="min-w-0 space-y-6">
             <Charts f={m} topic="llm" />
             {versions.length > 0 && <ModelVersionsTable pipe={pipe} m={m} versions={versions} />}
+            <section>
+              <SectionTitle right={<span>Every client and template, newest first</span>}>Last 5 emails written</SectionTitle>
+              <div className="k-card overflow-hidden">
+                <ModelOutputs m={m} read={outputs} />
+              </div>
+            </section>
             <RunsTable
               title="Last emails written"
               note="Every client, newest first"
