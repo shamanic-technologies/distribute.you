@@ -503,7 +503,7 @@ export function ReconciliationView({ data }: { data: LedgerReconciliation }) {
             sub={data.daysMissing.length ? `${plural(data.daysMissing.length, "day")} not in the totals` : undefined}
           />
         </StatTile>
-        <StatTile label="All declared" note="on computed days">
+        <StatTile label="All declared" note="spend and outcomes used">
           <Figure
             value={<span style={{ color: data.declarationsComplete ? OK : RED }}>{data.declarationsComplete ? "Yes" : "No"}</span>}
             sub={services.length || provenance.length ? `${plural(services.length, "service")}, ${plural(provenance.length, "outcome")} below` : undefined}
