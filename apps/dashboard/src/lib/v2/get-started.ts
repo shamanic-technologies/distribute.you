@@ -262,15 +262,17 @@ export const COMPETITOR_FIELDS = [
 ] as const;
 
 /**
- * Step 3's source: what the company sells, one line per distinct offer, read in the
- * SAME extraction as steps 1 and 2 (one site read). brand-service then splits it into
- * offer proposals. A key of our own, so it prefills no user field.
+ * Step 3's source: what the company sells, read in the SAME extraction as steps 1 and 2
+ * (one site read). brand-service then groups it into offer proposals. A key of our own,
+ * so it prefills no user field. It no longer asks "one line per service line": that
+ * handed brand-service eight pre-cut lines it copied as eight offers (InoGates,
+ * 2026-10-24); services one buyer buys for one need are one line.
  */
 export const OFFER_FIELDS = [
   {
     key: "offerLines",
     description:
-      "Every distinct thing this company sells, one line each: what it is, who it is for, and how it is bought (self-serve signup, sales call, custom quote). A SaaS with a self-serve plan and a sales-led enterprise plan is two lines; an agency lists one line per service line. Facts from the site only.",
+      "What this company sells, one line per offer a buyer would buy on its own: what it is, who buys it, and how it is bought (self-serve signup, sales call, custom quote). Services sold to the same buyer for the same need are ONE line. The offer the company is chiefly built around comes first. Facts from the site only.",
   },
 ] as const;
 
@@ -459,8 +461,81 @@ export interface GetStartedSnapshot {
   phone?: GetStartedPhone | null;
   /** The first and last name typed on the first page (optional, owner 2026-10-15); set on the account once it exists. */
   person?: GetStartedName | null;
+  /** The site's offer lines, the input of the offer proposals: a reload that must ask again asks with them, never the overview alone. */
+  offerLines?: string[];
+  /** The offers step 3 showed (owner 2026-10-24: a reload shows the same list, never a new LLM call). */
+  offerProposals?: SnapshotOfferProposals | null;
+  /** The audiences step 4 showed, same rule. */
+  audienceProposals?: SnapshotAudienceProposal[] | null;
   /** When it was last written (ms); a reload resumes only a snapshot younger than the anonymous session. */
   savedAt?: number;
+}
+
+/** One offer as brand-service proposed it. */
+export interface SnapshotOfferProposal {
+  name: string;
+  description: string;
+  icon: string;
+}
+
+export interface SnapshotOfferProposals {
+  items: SnapshotOfferProposal[];
+  /** Index of the offer marked Main. */
+  main: number;
+}
+
+/** One audience as human-service proposed it. */
+export interface SnapshotAudienceProposal {
+  name: string;
+  description: string;
+  icon: string;
+  iconConfidence: number;
+  estimatedLeadCount?: number | null;
+}
+
+function parseOfferProposal(v: unknown): SnapshotOfferProposal | null {
+  if (!v || typeof v !== "object") return null;
+  const o = v as Record<string, unknown>;
+  if (typeof o.name !== "string" || !o.name || typeof o.description !== "string" || typeof o.icon !== "string") return null;
+  return { name: o.name, description: o.description, icon: o.icon };
+}
+
+/** Stored offer proposals, or null when absent, empty or malformed. */
+export function parseSnapshotOfferProposals(v: unknown): SnapshotOfferProposals | null {
+  if (!v || typeof v !== "object") return null;
+  const o = v as Record<string, unknown>;
+  if (!Array.isArray(o.items)) return null;
+  const items = o.items.map(parseOfferProposal);
+  if (items.length === 0 || items.some((x) => x === null)) return null;
+  const main = typeof o.main === "number" && Number.isInteger(o.main) && o.main >= 0 && o.main < items.length ? o.main : 0;
+  return { items: items as SnapshotOfferProposal[], main };
+}
+
+/** Stored audience proposals, or null when absent, empty or malformed. */
+export function parseSnapshotAudienceProposals(v: unknown): SnapshotAudienceProposal[] | null {
+  if (!Array.isArray(v) || v.length === 0) return null;
+  const out: SnapshotAudienceProposal[] = [];
+  for (const x of v) {
+    if (!x || typeof x !== "object") return null;
+    const o = x as Record<string, unknown>;
+    if (typeof o.name !== "string" || !o.name || typeof o.description !== "string" || typeof o.icon !== "string" || typeof o.iconConfidence !== "number") return null;
+    const n = o.estimatedLeadCount;
+    out.push({ name: o.name, description: o.description, icon: o.icon, iconConfidence: o.iconConfidence, estimatedLeadCount: typeof n === "number" ? n : null });
+  }
+  return out;
+}
+
+/**
+ * What a reload does at step 3 when no offer was picked (owner 2026-10-24: « un
+ * rechargement ne devrait pas relancer un LLM »): the list it showed, as it was; only
+ * a reload that came before the list asks for it, with the SAME input as the first
+ * time (the site's offer lines, the overview only when the site gave none).
+ */
+export function resumeOfferPlan(
+  s: Pick<GetStartedSnapshot, "offerProposals" | "offerLines" | "overview">,
+): { kind: "show"; proposals: SnapshotOfferProposals } | { kind: "ask"; lines: string[] } {
+  if (s.offerProposals && s.offerProposals.items.length > 0) return { kind: "show", proposals: s.offerProposals };
+  return { kind: "ask", lines: s.offerLines ?? [] };
 }
 
 /** A phone as the field holds it: the country picked and the national number typed. */
@@ -660,6 +735,9 @@ export function parseGetStartedSnapshot(raw: string | null): GetStartedSnapshot 
     icp: typeof s.icp === "string" && s.icp.trim() ? s.icp : null,
     phone: parseSnapshotPhone(s.phone),
     person: parseSnapshotName(s.person),
+    offerLines: Array.isArray(s.offerLines) ? s.offerLines.filter((l): l is string => typeof l === "string" && l.trim().length > 0) : [],
+    offerProposals: parseSnapshotOfferProposals(s.offerProposals),
+    audienceProposals: parseSnapshotAudienceProposals(s.audienceProposals),
     savedAt: typeof s.savedAt === "number" ? s.savedAt : undefined,
   };
 }

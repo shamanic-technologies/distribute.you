@@ -9,8 +9,11 @@ describe("/get-started: a step opened to look back has a way forward (owner 2026
     expect(src).toContain("<NextContext.Provider value={focus ? () => goForward(focus) : null}>");
   });
 
-  it("the live step's number brings the walk back to it; no separate back line", () => {
-    expect(src).toContain("const openable = (settled(st) || s.key === live) && !active;");
+  it("the stepper's marks only show where the walk is: moving is Back and Continue (owner 2026-10-24)", () => {
+    const at = src.indexOf("function Stepper(");
+    const body = src.slice(at, src.indexOf("function StepMark(", at));
+    expect(body).not.toContain("<button");
+    expect(body).not.toContain("onClick");
     expect(src).not.toContain("Back to the live step");
   });
 

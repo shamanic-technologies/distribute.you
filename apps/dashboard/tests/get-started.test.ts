@@ -141,6 +141,10 @@ describe("the rules the page decides on", () => {
       icp: null,
       phone: null,
       person: null,
+      // The lists steps 3 and 4 showed are absent on an older snapshot: a reload asks for them.
+      offerLines: [],
+      offerProposals: null,
+      audienceProposals: null,
     });
     expect(parseGetStartedSnapshot("{nope")).toBeNull();
     // A snapshot from before the offer and audience steps starts over.
