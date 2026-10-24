@@ -52,6 +52,7 @@ import {
   prepareColdEmailPreviews,
   proposeAudienceSegments,
   proposeBrandOffers,
+  proposeBrandOffersFromSite,
   saveOfferLifetimeRevenue,
   saveOfferUserFields,
   setApiActiveOrgOverride,
@@ -100,7 +101,6 @@ import {
   LEVER_DRAFT_FIELDS,
   SERVICES_DRAFT_FIELD,
   NEXT_STEPS,
-  OFFER_FIELDS,
   REOPENABLE_STEPS,
   VALUE_FIELDS,
   leadCountLabel,
@@ -122,7 +122,6 @@ import {
   emailPieces,
   highlightKindLabel,
   hostOf,
-  offerSourceText,
   parseCompetitors,
   parseGetStartedSnapshot,
   resumeOfferPlan,
@@ -331,7 +330,8 @@ function GetStartedWalk({ org, ipCountry = null, gsArm = "emails", gsArmFresh = 
   const [offerError, setOfferError] = useState<string | null>(null);
   // Step 4: who to write to, in words; the ONE picked is created under the offer.
   const icpRef = useRef("");
-  const offerSource = useRef<{ lines: string[]; ov: string }>({ lines: [], ov: "" });
+  // A brand with no website: its offers are read from what the visitor typed about it.
+  const ownWordsRef = useRef<string | null>(null);
   const [audienceProposals, setAudienceProposals] = useState<AudienceSegmentProposal[]>([]);
   const [audience, setAudience] = useState<GetStartedAudience | null>(null);
   const [audienceBusy, setAudienceBusy] = useState<number | null>(null);
@@ -586,9 +586,8 @@ function GetStartedWalk({ org, ipCountry = null, gsArm = "emails", gsArmFresh = 
     if (!s.offer) {
       // A reload never asks the model again for a list it already showed (owner 2026-10-24).
       const plan = resumeOfferPlan(s);
-      offerSource.current = { lines: s.offerLines ?? [], ov: s.overview };
       if (plan.kind === "show") showOffers(plan.proposals.items, plan.proposals.main);
-      else void prepareOffers(s.brandId, plan.lines, s.overview);
+      else void prepareOffers(s.brandId);
     }
     if (!s.audience && s.offer && s.audienceProposals) {
       setAudienceProposals(s.audienceProposals);
@@ -680,8 +679,11 @@ function GetStartedWalk({ org, ipCountry = null, gsArm = "emails", gsArmFresh = 
     }
   }
 
-  /** The offers the site describes; the brand-service split runs off step 1's read. */
-  async function prepareOffers(id: string, lines: string[], ov: string) {
+  /**
+   * The offers the brand sells: brand-service reads the brand's own site in ONE step (owner
+   * 2026-10-24), after steps 1-2 saved its pages; a brand with no website, from what was typed.
+   */
+  async function prepareOffers(id: string) {
     setStep("offer", "running");
     if (org) {
       try {
@@ -699,13 +701,9 @@ function GetStartedWalk({ org, ipCountry = null, gsArm = "emails", gsArmFresh = 
         return;
       }
     }
-    const text = offerSourceText(lines, ov);
-    if (!text) {
-      setStep("offer", "failed");
-      return;
-    }
+    const ownWords = ownWordsRef.current;
     try {
-      const { offers, mainOfferIndex } = await proposeBrandOffers(id, text);
+      const { offers, mainOfferIndex } = ownWords ? await proposeBrandOffers(id, ownWords) : await proposeBrandOffersFromSite(id);
       showOffers(offers, mainOfferIndex);
     } catch (e) {
       console.error("[get-started] offer proposals failed:", e);
@@ -1644,9 +1642,8 @@ function GetStartedWalk({ org, ipCountry = null, gsArm = "emails", gsArmFresh = 
     saveSnapshot({});
     setSteps((cur) => ({ ...cur, competitors: "running", offer: "running", audience: "running" }));
 
-    // ONE extraction reads steps 1, 2 and the offer lines; then the offer split and the
-    // ideal customer + audience split run in parallel. The anonymous org holds $30,
-    // enough for both reads' holds at once.
+    // ONE extraction reads steps 1 and 2; then brand-service reads the offers off the same
+    // site (its saved pages). The audiences wait for the offer picked.
     const siteRead = (async () => {
       if (!url) {
         const ov = (ownWords ?? "").trim();
@@ -1654,25 +1651,23 @@ function GetStartedWalk({ org, ipCountry = null, gsArm = "emails", gsArmFresh = 
         setStep("company", ov ? "done" : "failed");
         setStep("competitors", "failed");
         saveSnapshot({ overview: ov });
-        offerSource.current = { lines: [], ov };
+        ownWordsRef.current = ov || null;
         return;
       }
       try {
-        const r = await extractBrandFields([id], [...COMPANY_FIELDS, ...COMPETITOR_FIELDS, ...OFFER_FIELDS], {
+        const r = await extractBrandFields([id], [...COMPANY_FIELDS, ...COMPETITOR_FIELDS], {
           mode: "suggest",
           urlStrategy: "landing",
         });
         const ov = valueText(r.fields.companyOverview?.value);
         const fs = valueLines(r.fields.companyFacts?.value).slice(0, 4);
         const list = parseCompetitors(r.fields.competitorsWithDomains?.value, host ?? "");
-        const lines = valueLines(r.fields.offerLines?.value);
         setOverview(ov);
         setFacts(fs);
         setCompetitors(list);
         setStep("company", ov || fs.length ? "done" : "failed");
         setStep("competitors", list.length ? "done" : "failed");
-        saveSnapshot({ overview: ov, facts: fs, competitors: list, offerLines: lines });
-        offerSource.current = { lines, ov };
+        saveSnapshot({ overview: ov, facts: fs, competitors: list });
       } catch (e) {
         console.error("[get-started] company read failed:", e);
         setStep("company", "failed");
@@ -1682,7 +1677,7 @@ function GetStartedWalk({ org, ipCountry = null, gsArm = "emails", gsArmFresh = 
     await siteRead;
     // The offers are drafted from what the read stored; the audiences wait for the
     // offer picked out of them (`pickOffer`), so they describe who buys THAT offer.
-    await prepareOffers(id, offerSource.current.lines, offerSource.current.ov);
+    await prepareOffers(id);
     posthog.capture("get_started_preview_ready");
   }
 
@@ -1813,7 +1808,7 @@ function GetStartedWalk({ org, ipCountry = null, gsArm = "emails", gsArmFresh = 
           error={offerError}
           onPick={(i) => void pickOffer(i)}
           onOwn={(text) => void proposeOwnOffer(text)}
-          onRetry={() => brandId && void prepareOffers(brandId, offerSource.current.lines, offerSource.current.ov)}
+          onRetry={() => brandId && void prepareOffers(brandId)}
         />
       );
     if (key === "audience")

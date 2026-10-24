@@ -1,6 +1,6 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
-import { OFFER_FIELDS, parseGetStartedSnapshot, resumeOfferPlan } from "../src/lib/v2/get-started";
+import { parseGetStartedSnapshot, resumeOfferPlan } from "../src/lib/v2/get-started";
 
 const gs = readFileSync(new URL("../src/components/v2/get-started/get-started.tsx", import.meta.url), "utf8");
 const base = {
@@ -22,16 +22,14 @@ const offers = [
 ];
 
 describe("/get-started: a reload never asks the model again for a list it showed (owner 2026-10-24)", () => {
-  it("the snapshot keeps the offer lines, the offers shown and the audiences shown", () => {
+  it("the snapshot keeps the offers shown and the audiences shown", () => {
     const s = parseGetStartedSnapshot(
       JSON.stringify({
         ...base,
-        offerLines: ["Go-to-market representation", " "],
         offerProposals: { items: offers, main: 1 },
         audienceProposals: [{ name: "Vendors", description: "Tech vendors.", icon: "users", iconConfidence: 0.9 }],
       }),
     )!;
-    expect(s.offerLines).toEqual(["Go-to-market representation"]);
     expect(s.offerProposals).toEqual({ items: offers, main: 1 });
     expect(s.audienceProposals?.[0]).toEqual({ name: "Vendors", description: "Tech vendors.", icon: "users", iconConfidence: 0.9, estimatedLeadCount: null });
   });
@@ -43,13 +41,14 @@ describe("/get-started: a reload never asks the model again for a list it showed
     expect(parseGetStartedSnapshot(JSON.stringify({ ...base, offerProposals: { items: offers, main: 9 } }))!.offerProposals?.main).toBe(0);
   });
 
-  it("shows the stored list; asks only when none was shown, with the site's lines", () => {
-    expect(resumeOfferPlan({ offerProposals: { items: offers, main: 0 }, offerLines: ["a"], overview: "o" })).toEqual({ kind: "show", proposals: { items: offers, main: 0 } });
-    expect(resumeOfferPlan({ offerProposals: null, offerLines: ["line one", "line two"], overview: "o" })).toEqual({ kind: "ask", lines: ["line one", "line two"] });
+  it("shows the stored list; asks only when none was shown, from the site again", () => {
+    expect(resumeOfferPlan({ offerProposals: { items: offers, main: 0 } })).toEqual({ kind: "show", proposals: { items: offers, main: 0 } });
+    expect(resumeOfferPlan({ offerProposals: null })).toEqual({ kind: "ask" });
   });
 
-  it("the resume path no longer asks with an empty input (the overview alone)", () => {
+  it("the resume path asks the site, never the overview alone", () => {
     expect(gs).not.toContain("prepareOffers(s.brandId, [], s.overview)");
+    expect(gs).toContain("else void prepareOffers(s.brandId);");
     const at = gs.indexOf("function resumePreparing(");
     const body = gs.slice(at, gs.indexOf("// ── Steps 3 and 4", at));
     expect(body).toContain("resumeOfferPlan(s)");
@@ -57,10 +56,9 @@ describe("/get-started: a reload never asks the model again for a list it showed
     expect(body).toContain("setAudienceProposals(s.audienceProposals)");
   });
 
-  it("each list is saved the moment it is shown, and the site's lines with the first read", () => {
+  it("each list is saved the moment it is shown", () => {
     expect(gs).toContain("saveSnapshot({ offerProposals: { items: offers, main } })");
     expect(gs).toContain("saveSnapshot({ audienceProposals: shown })");
-    expect(gs).toContain("saveSnapshot({ overview: ov, facts: fs, competitors: list, offerLines: lines })");
   });
 
   it("a resumed walk with no offer shows step 4 waiting, never Nothing found", () => {
@@ -87,11 +85,18 @@ describe("/get-started step 3: Something else (owner 2026-10-24)", () => {
   });
 });
 
-describe("/get-started site read: offers are not pre-cut one line per service", () => {
-  it("asks one line per offer a buyer buys on its own, main offer first", () => {
-    const d = OFFER_FIELDS[0].description;
-    expect(d).not.toContain("one line per service line");
-    expect(d).toContain("Services sold to the same buyer for the same need are ONE line");
-    expect(d).toContain("comes first");
+describe("/get-started step 3: ONE model reads the offers off the site (owner 2026-10-24)", () => {
+  it("the offers come from brand-service reading the brand's site, after steps 1-2 saved its pages", () => {
+    const at = gs.indexOf("async function prepareOffers(");
+    const body = gs.slice(at, gs.indexOf("function showAudiences(", at));
+    expect(body).toContain("await proposeBrandOffersFromSite(id)");
+    expect(gs).not.toContain("offerSourceText");
+    expect(gs).not.toContain("OFFER_FIELDS");
+  });
+
+  it("asks brand-service with no text, the site as source", () => {
+    const api = readFileSync(new URL("../src/lib/api.ts", import.meta.url), "utf8");
+    const at = api.indexOf("export async function proposeBrandOffersFromSite(");
+    expect(api.slice(at, at + 600)).toContain('body: { source: "site" }');
   });
 });
