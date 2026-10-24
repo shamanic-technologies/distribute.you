@@ -4,7 +4,8 @@
  * five since-inception figures and their monthly series. features-service serves every figure
  * (`GET /internal/research/performance`, gateway `/v1/features/research/performance`), each row's
  * status and its order included (RESEARCH-COMBO-STATUS-1023); this module only types the read, splits
- * rows into the Active / Deprecated tabs on the served status and words the deprecated parts.
+ * rows into the Active / Deprecated tabs on the served status, hides the untested ones unless asked
+ * (PERF-COST-ORDER-1024) and words the deprecated parts and the served combination's gaps.
  * Alias-free: unit-tested.
  */
 import type { ResearchFreshness } from "./freshness";
@@ -48,8 +49,10 @@ export interface PerformanceRow extends PerformanceFigures {
   writerUnavailableReason: string | null;
   maturity: { isMature: boolean; matureOutcomes: number | null; outcomesRequired: number };
   learning: boolean;
-  /** The figure the rows are ordered on: own spend and outcomes blended with what its parts predict. */
-  estimate: PerformanceEstimate;
+  /** What the row is ordered on (PERF-COST-ORDER-1024): its cost per outcome, else its $ spent; flash view. */
+  sortCostUsd: number;
+  /** Spent nothing on the flash view: hidden by default, shown by the "Show untested" toggle. */
+  untested: boolean;
   /** Deprecated as soon as one part can no longer run (features-service decides; never re-derived here). */
   status: "active" | "deprecated";
   /** Which parts made it deprecated; [] when active. */
@@ -58,16 +61,28 @@ export interface PerformanceRow extends PerformanceFigures {
 
 export type PerformancePart = "workflow" | "template" | "llm";
 
-export interface PerformanceEstimate {
-  costPerOutcomeUsd: number | null;
-  display: string | null;
-  ownSpentUsd: number;
-  ownOutcomes: number;
-  priorCostPerOutcomeUsd: number | null;
-  priorSource: "own_parts" | "pipe_combinations" | null;
-  priorParts?: PerformancePart[];
-  priorWeightOutcomes: number;
-  unavailableReason: "no_outcome_on_pipe" | null;
+export interface PerformanceServedPart {
+  key: string;
+  label: string;
+}
+
+export type ServedNowReason =
+  | "pipe_not_read"
+  | "workflow_ranking_not_computed_yet"
+  | "no_runnable_workflow"
+  | "writer_ranking_not_computed_yet"
+  | "no_template_picked"
+  | "no_llm_picked"
+  | "combination_not_listed"
+  | "served_pick_unreadable";
+
+export interface PerformanceServedNow {
+  workflow: PerformanceServedPart | null;
+  template: PerformanceServedPart | null;
+  llm: PerformanceServedPart | null;
+  /** That combination's row, same shape as `rows[]`; null with `unavailableReason`. */
+  row: PerformanceRow | null;
+  unavailableReason: ServedNowReason | null;
 }
 
 export interface PerformancePoint {
@@ -85,8 +100,14 @@ export interface PipePerformance {
   pipe: string;
   /** The bars the figures are read on (features-service names it; "workflow_bars" = the Workflows tab's own). */
   figuresBasis: string;
-  /** "estimated_cost": active rows first, each group cheapest estimated cost per outcome first. */
+  /** "cost_per_outcome" (PERF-COST-ORDER-1024): active first, then $ per outcome ascending, else $ spent. */
   rowOrder?: string;
+  /** The order is read on this view's figures whatever the view shown ("flash"). */
+  orderView?: string;
+  featureSlug: string | null;
+  legKey: string | null;
+  /** The combination the pipe runs today, read live by features-service (never re-derived here). */
+  servedNow: PerformanceServedNow;
   outcomeNoun: string;
   outcomeNounPlural: string;
   rows: PerformanceRow[];
@@ -129,4 +150,32 @@ export function deprecatedPartsWords(parts: readonly string[] | null | undefined
     else console.error("[research-performance] unknown deprecated part", p);
   }
   return words.length ? words.join(" · ") : null;
+}
+
+/** The rows a tab shows: untested ones ($0 spent, served flag) hidden unless asked, served order kept. */
+export function visibleRows<T extends { untested: boolean }>(rows: readonly T[], showUntested: boolean): T[] {
+  return showUntested ? [...rows] : rows.filter((r) => !r.untested);
+}
+
+/** How many rows the "Show untested" toggle would add. */
+export function untestedCount(rows: readonly { untested: boolean }[]): number {
+  return rows.filter((r) => r.untested).length;
+}
+
+const SERVED_NOW_WORDS: Record<ServedNowReason, string> = {
+  pipe_not_read: "We could not read what this pipe runs right now.",
+  workflow_ranking_not_computed_yet: "The workflow ranking is not ready yet.",
+  no_runnable_workflow: "No workflow can run on this pipe right now.",
+  writer_ranking_not_computed_yet: "The template and LLM pick is not ready yet.",
+  no_template_picked: "No template is picked for this pipe yet.",
+  no_llm_picked: "No LLM is picked for this pipe yet.",
+  combination_not_listed: "This combination has no row in the table yet.",
+  served_pick_unreadable: "We could not read the pick for this pipe.",
+};
+
+/** Why the running combination has no row, in plain words. */
+export function servedNowReasonWords(reason: string | null): string {
+  if (reason && reason in SERVED_NOW_WORDS) return SERVED_NOW_WORDS[reason as ServedNowReason];
+  console.error("[research-performance] no words for servedNow reason", reason);
+  return "This combination has no figures yet.";
 }
