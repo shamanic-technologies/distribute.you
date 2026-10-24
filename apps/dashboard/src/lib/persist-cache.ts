@@ -524,8 +524,12 @@ export function persisterStorageKey(orgId: string | null | undefined): string {
  * "9": `researchPerformance` rows gained the REQUIRED `status` + `deprecatedParts`
  * (RESEARCH-COMBO-STATUS-1023). An older snapshot put every combination, a retired LLM's
  * included, under Active until the re-read.
+ *
+ * "10": `researchPerformance` rows gained the REQUIRED `untested` + `sortCostUsd` and each pipe
+ * the REQUIRED `servedNow` (PERF-COST-ORDER-1024). An older snapshot hid no row and read
+ * `servedNow.row` off undefined.
  */
-const PERSIST_CACHE_VERSION = "9";
+const PERSIST_CACHE_VERSION = "10";
 
 export function persistCacheVersion(): string {
   return PERSIST_CACHE_VERSION;

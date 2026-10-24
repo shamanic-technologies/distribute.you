@@ -20,18 +20,24 @@ import { formatRoi } from "@/lib/format-roi";
 import {
   deprecatedPartsWords,
   performanceByTab,
+  servedNowReasonWords,
+  untestedCount,
+  visibleRows,
   type PerformanceFigure,
   type PerformancePoint,
   type PerformanceRow,
   type PerformanceTab,
   type PipePerformance,
+  type PerformanceServedNow,
 } from "@/lib/research/performance";
 
 /**
  * Research › <pipe> › Performance (owner 2026-10-23, RESEARCH-PERFORMANCE-1023): every workflow x
  * template x LLM combination that sent this pipe's emails, all clients pooled, since inception.
- * Five cards for the pipe on top, the combinations in Active / Deprecated tabs on 2/3, the pipe's
- * five curves on 1/3. A combination is Active only when its workflow, template and LLM all are.
+ * Five cards for the pipe on top, the combination running now in a one-row table (PERF-COST-ORDER-1024),
+ * then every combination in Active / Deprecated tabs on 2/3, the pipe's five curves on 1/3. A
+ * combination is Active only when its workflow, template and LLM all are. Untested rows ($0 spent,
+ * served flag) are hidden until "Show untested" is on (owner 2026-10-24).
  *
  * Every figure, each row's status (and which part deprecated it), the row order and every point of a
  * curve are features-service's (RESEARCH-COMBO-STATUS-1023), only formatted here; nothing is divided,
@@ -61,7 +67,11 @@ export function V2ResearchPerformanceView({ base, pipe }: { base: string; pipe: 
   // The tabs split on features-service's own status: a combination with one part that can no longer run is Deprecated.
   const byTab = q.data !== undefined ? performanceByTab(rows) : null;
   const [tab, setTab] = useState<PerformanceTab>("active");
-  const shown = byTab?.[tab] ?? [];
+  const [showUntested, setShowUntested] = useState(false);
+  const untested = byTab ? untestedCount(byTab.active) : 0;
+  // The Deprecated tab shows every row; the Active tab hides the untested ones unless asked.
+  const shown = byTab ? (tab === "active" ? visibleRows(byTab.active, showUntested) : byTab.deprecated) : [];
+  const nav: RowNav = { base, pipe, channelName, listedWorkflows, catalogTemplates, catalogModels };
 
   const crumbs = [{ label: "Research", href: base }, { label: <SectionName section={{ pipe }} /> }, { label: "Performance" }];
   const unit = perf ? `/ ${perf.outcomeNoun}` : "";
@@ -78,7 +88,9 @@ export function V2ResearchPerformanceView({ base, pipe }: { base: string; pipe: 
             <h1 className="text-[28px] font-medium leading-[34px] tracking-[-0.02em]">
               {!byTab ? "Performance" : `${byTab.active.length} active combinations`}
             </h1>
-            <p className="k-fg2 mt-1 text-[14px]">Every workflow, template and LLM sent together on this pipe, all clients pooled, cheapest estimated cost first.</p>
+            <p className="k-fg2 mt-1 text-[14px]">
+              {`Every workflow, template and LLM sent together on this pipe, all clients pooled. Lowest $ ${unit} first, else lowest $ spent, on the Flash figures.`}
+            </p>
           </div>
           {/* red only when features-service calls this build stale; fresh = nothing, as before */}
           <ResearchStaleNote freshness={q.data?.freshness} />
@@ -105,37 +117,35 @@ export function V2ResearchPerformanceView({ base, pipe }: { base: string; pipe: 
             </div>
 
             <div className="mt-6 grid gap-4 lg:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
-              <section className="min-w-0">
+              <section className="min-w-0 space-y-4">
+                <RunningNow answered={answered} served={perf?.servedNow ?? null} unit={unit} outcomes={perf?.outcomeNounPlural ?? ""} nav={nav} />
                 <div className="k-card overflow-hidden">
                   <RecordsTabs
                     tabs={TABS.map((x) => ({ key: x.key, label: x.label, count: byTab ? byTab[x.key].length : null }))}
                     active={tab}
                     onPick={(k) => setTab(k as PerformanceTab)}
                     right={
-                      <span className="k-fg3 inline-flex items-center gap-1.5 text-[12px]">
-                        <SectionMark section={{ pipe }} size={12} />
-                        <SectionName section={{ pipe }} />
-                      </span>
+                      <>
+                        {tab === "active" && byTab && (
+                          <button
+                            type="button"
+                            aria-pressed={showUntested}
+                            onClick={() => setShowUntested((v) => !v)}
+                            className={showUntested ? "k-btn h-7 px-2 text-[12px]" : "k-btn-ghost h-7 px-2 text-[12px]"}
+                          >
+                            {`Show untested (${formatCount(untested)})`}
+                          </button>
+                        )}
+                        <span className="k-fg3 inline-flex items-center gap-1.5 text-[12px]">
+                          <SectionMark section={{ pipe }} size={12} />
+                          <SectionName section={{ pipe }} />
+                        </span>
+                      </>
                     }
                   />
                   <div className="k-scroll relative overflow-x-auto">
                     <table className="w-full min-w-[800px] table-fixed text-[13px]">
-                      <thead>
-                        <tr className="border-b border-[var(--line-subtle)]">
-                          {/* Template is the free column: its served names are the longest; a long one truncates, its full name on hover. */}
-                          <th className={`${TH} w-[116px]`}>Workflow</th>
-                          <th className={TH}>Template</th>
-                          <th className={`${TH} w-[96px]`}>LLM</th>
-                          <th className={`${TH} w-[64px] text-right`}>
-                            <RoiLabel />
-                          </th>
-                          <th className={`${TH} w-[72px] text-right`}>{`$ ${unit}`}</th>
-                          <th className={`${TH} w-[72px] text-right`}>% Conv.</th>
-                          <th className={`${TH} w-[60px] text-right`}>{`# ${perf?.outcomeNounPlural ?? ""}`}</th>
-                          <th className={`${TH} w-[72px] text-right`}>$ Spent</th>
-                          <th className={`${TH} w-[104px]`}>Status</th>
-                        </tr>
-                      </thead>
+                      <ComboHead unit={unit} outcomes={perf?.outcomeNounPlural ?? ""} />
                       <tbody>
                         {!byTab || !answered ? (
                           [0, 1, 2, 3, 4].map((i) => (
@@ -148,69 +158,19 @@ export function V2ResearchPerformanceView({ base, pipe }: { base: string; pipe: 
                         ) : shown.length === 0 ? (
                           <tr>
                             <td colSpan={9}>
-                              <EmptyNote>{rows.length === 0 ? `No email has gone out on this pipe yet.` : tab === "active" ? "No combination on this pipe is active." : "No combination on this pipe is deprecated."}</EmptyNote>
+                              <EmptyNote>
+                                {rows.length === 0
+                                  ? `No email has gone out on this pipe yet.`
+                                  : tab === "deprecated"
+                                    ? "No combination on this pipe is deprecated."
+                                    : byTab.active.length > 0
+                                      ? "Every active combination is untested so far."
+                                      : "No combination on this pipe is active."}
+                              </EmptyNote>
                             </td>
                           </tr>
                         ) : (
-                          shown.map((r) => (
-                            <tr key={r.key} className="k-row h-11">
-                              <td className="max-w-0 pl-4 pr-3">
-                                <CatalogueName
-                                  kind="workflow"
-                                  variant="chip"
-                                  name={r.workflow.name ?? r.workflow.label}
-                                  label={shortWorkflowName(r.workflow.name ?? r.workflow.label, channelName)}
-                                  icon={r.workflow.icon ?? null}
-                                  color={r.workflow.color ?? null}
-                                  href={listedWorkflows.has(r.workflow.key) ? researchCatalogHref(base, pipe, "workflows", r.workflow.key) : null}
-                                  className="max-w-full"
-                                />
-                              </td>
-                              <td className="max-w-0 px-3">
-                                {r.template ? (
-                                  <CatalogueName
-                                    kind="template"
-                                    variant="chip"
-                                    // The template dynasty (owner 2026-10-23), its mark, opening its page.
-                                    name={r.template.dynasty?.label ?? r.template.label}
-                                    icon={r.template.dynasty?.icon ?? r.template.icon ?? null}
-                                    color={r.template.dynasty?.color ?? r.template.color ?? null}
-                                    href={catalogTemplates.has(templateDynastyKey(r.template)) ? researchCatalogHref(base, pipe, "templates", templateDynastyKey(r.template)) : null}
-                                    className="max-w-full"
-                                  />
-                                ) : (
-                                  <NotOnRecord />
-                                )}
-                              </td>
-                              <td className="max-w-0 px-3">
-                                {r.llm ? (
-                                  <CatalogueName
-                                    kind="llm"
-                                    variant="chip"
-                                    name={r.llm.label}
-                                    href={catalogModels.has(r.llm.key) ? researchCatalogHref(base, pipe, "models", r.llm.key) : null}
-                                    className="max-w-full"
-                                  />
-                                ) : (
-                                  <NotOnRecord />
-                                )}
-                              </td>
-                              <td className="whitespace-nowrap px-3 text-right tabular-nums">
-                                <RowRoi f={r.roi} learning={r.learning} />
-                              </td>
-                              <td className="whitespace-nowrap px-3 text-right tabular-nums">
-                                <Cell f={r.costPerOutcomeUsd} learning={r.learning} format={formatUsdAdaptive} stacked />
-                              </td>
-                              <td className="whitespace-nowrap px-3 text-right tabular-nums">
-                                <Cell f={r.conversionRatePct} learning={r.learning} format={formatRatePct} stacked />
-                              </td>
-                              <td className="px-3 text-right tabular-nums">{r.outcomes.display}</td>
-                              <td className="whitespace-nowrap px-3 text-right tabular-nums">{r.spentUsd.display}</td>
-                              <td className="max-w-0 px-3">
-                                <RowStatus row={r} />
-                              </td>
-                            </tr>
-                          ))
+                          shown.map((r) => <ComboRow key={r.key} row={r} nav={nav} />)
                         )}
                       </tbody>
                     </table>
@@ -234,6 +194,137 @@ export function V2ResearchPerformanceView({ base, pipe }: { base: string; pipe: 
         )}
       </div>
     </>
+  );
+}
+
+interface RowNav {
+  base: string;
+  pipe: ResearchPipe;
+  channelName: string | null;
+  listedWorkflows: Set<string>;
+  catalogTemplates: Set<string>;
+  catalogModels: Set<string>;
+}
+
+/** The columns of both tables (the running one and the list), one place so they never drift. */
+function ComboHead({ unit, outcomes }: { unit: string; outcomes: string }) {
+  return (
+    <thead>
+      <tr className="border-b border-[var(--line-subtle)]">
+        {/* Template is the free column: its served names are the longest; a long one truncates, its full name on hover. */}
+        <th className={`${TH} w-[116px]`}>Workflow</th>
+        <th className={TH}>Template</th>
+        <th className={`${TH} w-[96px]`}>LLM</th>
+        <th className={`${TH} w-[64px] text-right`}>
+          <RoiLabel />
+        </th>
+        <th className={`${TH} w-[72px] text-right`}>{`$ ${unit}`}</th>
+        <th className={`${TH} w-[72px] text-right`}>% Conv.</th>
+        <th className={`${TH} w-[60px] text-right`}>{`# ${outcomes}`}</th>
+        <th className={`${TH} w-[72px] text-right`}>$ Spent</th>
+        <th className={`${TH} w-[104px]`}>Status</th>
+      </tr>
+    </thead>
+  );
+}
+
+/** One combination's row, the same in the running-now table and the list. */
+function ComboRow({ row, nav }: { row: PerformanceRow; nav: RowNav }) {
+  return (
+    <tr className="k-row h-11">
+      <td className="max-w-0 pl-4 pr-3">
+        <CatalogueName
+          kind="workflow"
+          variant="chip"
+          name={row.workflow.name ?? row.workflow.label}
+          label={shortWorkflowName(row.workflow.name ?? row.workflow.label, nav.channelName)}
+          icon={row.workflow.icon ?? null}
+          color={row.workflow.color ?? null}
+          href={nav.listedWorkflows.has(row.workflow.key) ? researchCatalogHref(nav.base, nav.pipe, "workflows", row.workflow.key) : null}
+          className="max-w-full"
+        />
+      </td>
+      <td className="max-w-0 px-3">
+        {row.template ? (
+          <CatalogueName
+            kind="template"
+            variant="chip"
+            // The template dynasty (owner 2026-10-23), its mark, opening its page.
+            name={row.template.dynasty?.label ?? row.template.label}
+            icon={row.template.dynasty?.icon ?? row.template.icon ?? null}
+            color={row.template.dynasty?.color ?? row.template.color ?? null}
+            href={nav.catalogTemplates.has(templateDynastyKey(row.template)) ? researchCatalogHref(nav.base, nav.pipe, "templates", templateDynastyKey(row.template)) : null}
+            className="max-w-full"
+          />
+        ) : (
+          <NotOnRecord />
+        )}
+      </td>
+      <td className="max-w-0 px-3">
+        {row.llm ? (
+          <CatalogueName
+            kind="llm"
+            variant="chip"
+            name={row.llm.label}
+            href={nav.catalogModels.has(row.llm.key) ? researchCatalogHref(nav.base, nav.pipe, "models", row.llm.key) : null}
+            className="max-w-full"
+          />
+        ) : (
+          <NotOnRecord />
+        )}
+      </td>
+      <td className="whitespace-nowrap px-3 text-right tabular-nums">
+        <RowRoi f={row.roi} learning={row.learning} />
+      </td>
+      <td className="whitespace-nowrap px-3 text-right tabular-nums">
+        <Cell f={row.costPerOutcomeUsd} learning={row.learning} format={formatUsdAdaptive} stacked />
+      </td>
+      <td className="whitespace-nowrap px-3 text-right tabular-nums">
+        <Cell f={row.conversionRatePct} learning={row.learning} format={formatRatePct} stacked />
+      </td>
+      <td className="px-3 text-right tabular-nums">{row.outcomes.display}</td>
+      <td className="whitespace-nowrap px-3 text-right tabular-nums">{row.spentUsd.display}</td>
+      <td className="max-w-0 px-3">
+        <RowStatus row={row} />
+      </td>
+    </tr>
+  );
+}
+
+/**
+ * The combination the pipe runs today, as features-service reads it live (`servedNow`): its row in the
+ * table's own columns; with no row, the three part names it picked and why there are no figures.
+ */
+function RunningNow({ answered, served, unit, outcomes, nav }: { answered: boolean; served: PerformanceServedNow | null; unit: string; outcomes: string; nav: RowNav }) {
+  return (
+    <div className="k-card overflow-hidden">
+      <div className="border-b border-[var(--line-subtle)] px-4 py-2.5">
+        <span className="k-label">Running now</span>
+      </div>
+      <div className="k-scroll relative overflow-x-auto">
+        <table className="w-full min-w-[800px] table-fixed text-[13px]">
+          <ComboHead unit={unit} outcomes={outcomes} />
+          <tbody>
+            {!answered ? (
+              <tr className="k-row h-10">
+                <td colSpan={9} className="px-4">
+                  <Shimmer className="h-4 w-full" />
+                </td>
+              </tr>
+            ) : served?.row ? (
+              <ComboRow row={served.row} nav={nav} />
+            ) : (
+              <tr>
+                <td colSpan={9} className="px-4 py-3">
+                  <p className="text-[13px]">{served ? [served.workflow?.label, served.template?.label, served.llm?.label].map((x) => x ?? "—").join(" × ") : "—"}</p>
+                  <p className="k-fg3 mt-0.5 text-[12px]">{servedNowReasonWords(served ? served.unavailableReason : "pipe_not_read")}</p>
+                </td>
+              </tr>
+            )}
+          </tbody>
+        </table>
+      </div>
+    </div>
   );
 }
 
@@ -296,7 +387,6 @@ function Big({ f, format }: { f: PerformanceFigure; format: (v: number) => strin
 function Cell({ f, learning, format, stacked = false }: { f: PerformanceFigure; learning: boolean; format: (v: number) => string; stacked?: boolean }) {
   if (f.value == null) return DASH;
   const text = format(f.value);
-  if (f.basis === "expected" && stacked) return <Stacked value={text} tag="expected" />;
   if (learning && stacked) return <Stacked value={text} tag="Learning" grey />;
   if (f.basis === "expected") {
     return (
@@ -319,9 +409,9 @@ function Stacked({ value, tag, grey = false }: { value: string; tag: string; gre
   );
 }
 
+/** A row's ROI: measured only (PERF-COST-ORDER-1024), `—` before its first outcome. */
 function RowRoi({ f, learning }: { f: PerformanceFigure; learning: boolean }) {
-  if (f.value == null) return <RoiValue roi={{ value: null, expected: false, reason: f.unavailableReason }} />;
-  if (f.basis === "expected") return <Stacked value={formatRoi(f.value)} tag="expected" />;
+  if (f.value == null) return DASH;
   if (learning) return <Stacked value={formatRoi(f.value)} tag="Learning" grey />;
   return <RoiValue roi={{ value: f.value, expected: false, reason: null }} />;
 }
