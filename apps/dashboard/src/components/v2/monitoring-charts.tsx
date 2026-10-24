@@ -200,6 +200,8 @@ export interface BarSeries<M> {
 /**
  * Bars per period, stacked by series when there are several, side by side when `grouped`.
  * A negative value (a refund month) is drawn at zero height and still read in the legend.
+ * `state` marks a period the producer has not computed (a pale full-height column, never a zero bar)
+ * or computed on facts since changed (its bars faded).
  */
 export function PeriodBars<M extends { period: string }>({
   periods,
@@ -210,6 +212,7 @@ export function PeriodBars<M extends { period: string }>({
   grouped = false,
   initial,
   empty,
+  state,
 }: {
   periods: M[];
   series: BarSeries<M>[];
@@ -219,6 +222,7 @@ export function PeriodBars<M extends { period: string }>({
   grouped?: boolean;
   initial?: M | null;
   empty: string;
+  state?: (m: M) => "missing" | "stale" | null;
 }) {
   const [hover, setHover] = useState<string | null>(null);
   if (!periods.length) {
@@ -233,6 +237,8 @@ export function PeriodBars<M extends { period: string }>({
   const height = (m: M) => (grouped ? Math.max(...series.map((s) => Math.max(0, s.get(m)))) : series.reduce((t, s) => t + Math.max(0, s.get(m)), 0));
   const max = Math.max(1e-9, ...periods.map(height));
   const shown = periods.find((m) => m.period === hover) ?? initial ?? periods[periods.length - 1];
+  // Months of days: a 2px gap would leave no room for the bars.
+  const gap = periods.length > 90 ? "gap-px" : "gap-2";
   return (
     <div className="k-card p-4">
       <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
@@ -250,8 +256,19 @@ export function PeriodBars<M extends { period: string }>({
           ))}
         </span>
       </div>
-      <div className="mt-3 flex items-end gap-2" style={{ height: H }} onMouseLeave={() => setHover(null)}>
+      <div className={`mt-3 flex items-end ${gap}`} style={{ height: H }} onMouseLeave={() => setHover(null)}>
         {periods.map((m) => (
+          state?.(m) === "missing" ? (
+            <button
+              key={m.period}
+              type="button"
+              aria-label={`${label(m.period)}: not computed yet`}
+              onMouseEnter={() => setHover(m.period)}
+              onFocus={() => setHover(m.period)}
+              className="h-full min-w-0 flex-1 rounded-[1px]"
+              style={{ background: "var(--data-track)", opacity: hover && hover !== m.period ? 0.25 : 0.5 }}
+            />
+          ) : (
           <button
             key={m.period}
             type="button"
@@ -259,7 +276,7 @@ export function PeriodBars<M extends { period: string }>({
             onMouseEnter={() => setHover(m.period)}
             onFocus={() => setHover(m.period)}
             className={`flex h-full min-w-0 flex-1 ${grouped ? "items-end gap-[2px]" : "flex-col-reverse"}`}
-            style={{ opacity: hover && hover !== m.period ? 0.5 : 1 }}
+            style={{ opacity: (hover && hover !== m.period ? 0.5 : 1) * (state?.(m) === "stale" ? 0.45 : 1) }}
           >
             {series.map((s) => {
               const v = s.get(m);
@@ -273,9 +290,10 @@ export function PeriodBars<M extends { period: string }>({
               );
             })}
           </button>
+          )
         ))}
       </div>
-      <div className="k-line-subtle flex gap-2 border-t pt-1.5">
+      <div className={`k-line-subtle flex ${gap} border-t pt-1.5`}>
         {periods.map((m, i) => (
           <span key={m.period} className="k-fg3 min-w-0 flex-1 overflow-visible whitespace-nowrap text-center text-[10.5px]">
             {periods.length <= 14 || i % Math.ceil(periods.length / 12) === 0 ? label(m.period, true) : ""}

@@ -35,7 +35,7 @@ import { ThreadsPage } from "@/components/v2/monitoring-threads";
 import { WhatsappLinesPage, WhatsappLinesTile, useWhatsappLines } from "@/components/v2/monitoring-whatsapp";
 import { WhatsappLogoIcon } from "@phosphor-icons/react/dist/csr/WhatsappLogo";
 import { ScalesIcon } from "@phosphor-icons/react/dist/csr/Scales";
-import { LedgerCheckPage, LedgerCheckTile, OutcomeCoveragePage, OutcomeCoverageTile, useLedgerCheck, useOutcomeCoverage } from "@/components/v2/monitoring-cost-ledger";
+import { LedgerCheckPage, LedgerCheckTile, OutcomeCoveragePage, OutcomeCoverageTile, ReconciliationPage, ReconciliationTile, useLedgerCheck, useLedgerReconciliation, useOutcomeCoverage } from "@/components/v2/monitoring-cost-ledger";
 import { belowTarget, headlinePoint, outcomeShare, serviceNames } from "@/lib/monitoring/cost-ledger";
 import { formatRatePct } from "@/lib/pipe-stats";
 import { linesDown, linkedLines } from "@/lib/monitoring/whatsapp-lines";
@@ -122,6 +122,7 @@ const PAGE: Record<MonitoringPage, { section: SectionKey; title: string; questio
   "cost/email-sending": { section: "cost", title: "Email sending", question: "What does sending one cold email really cost us?" },
   "ledger/coverage": { section: "ledger", title: "Outcome coverage", question: "How much of our spend says which outcome it produced?" },
   "ledger/check": { section: "ledger", title: "To the cent", question: "Does every org-day of the cost ledger balance to the cent?" },
+  "ledger/reconciliation": { section: "ledger", title: "Reconciled", question: "Does every dollar spent land in one part, to the cent, every day?" },
   "customers/accounts": { section: "customers", title: "Accounts", question: "How healthy is each customer's account?" },
   "customers/absorbed": { section: "customers", title: "Absorbed", question: "What do our customers cost us that they do not pay?" },
   "price/billed": { section: "price", title: "Billed to users", question: "What did we bill for each cost item, and at what price?" },
@@ -242,6 +243,7 @@ export function V2Monitoring() {
         {view.page === "cost/email-sending" && <EmailSendingPage />}
         {view.page === "ledger/coverage" && <OutcomeCoveragePage />}
         {view.page === "ledger/check" && <LedgerCheckPage />}
+        {view.page === "ledger/reconciliation" && <ReconciliationPage />}
         {view.page === "customers/accounts" && <CustomerAccountsPage />}
         {view.page === "customers/absorbed" && <AbsorbedPage />}
         {view.page === "price/billed" && <BilledPage />}
@@ -371,6 +373,7 @@ function Hub({ base }: { base: string }) {
   const wa = useWhatsappLines();
   const coverage = useOutcomeCoverage();
   const ledger = useLedgerCheck();
+  const recon = useLedgerReconciliation();
   const covAt = coverage.data ? headlinePoint(coverage.data) : undefined;
   return (
     <Frame crumbs={[{ label: "Monitoring" }]}>
@@ -395,6 +398,8 @@ function Hub({ base }: { base: string }) {
         {/* Every outcome's cost exact to the cent (owner 2026-10-23): red here IS the alert. */}
         <OutcomeCoverageTile href={href("ledger/coverage")} />
         <LedgerCheckTile href={href("ledger/check")} />
+        {/* The day it reads Yes, every price reader moves to the ledger (owner 2026-10-24): red here IS the alert. */}
+        <ReconciliationTile href={href("ledger/reconciliation")} />
       </div>
 
       <HubOpen.Provider value={hub}>
@@ -489,10 +494,11 @@ function Hub({ base }: { base: string }) {
         />
       </Section>
 
-      <Section section="ledger" count={2} grid={false}>
+      <Section section="ledger" count={3} grid={false}>
         <HubChips>
           <HubChip href={href("ledger/coverage")} color={covAt !== undefined && belowTarget(covAt) ? "var(--data-rose)" : "var(--data-amber)"} label="Outcome coverage" />
           <HubChip href={href("ledger/check")} color={ledger.data && !ledger.data.balanced ? "var(--data-rose)" : "var(--data-amber)"} label="To the cent" />
+          <HubChip href={href("ledger/reconciliation")} color={recon.data && !recon.data.reconciled ? "var(--data-rose)" : "var(--data-amber)"} label="Reconciled" />
         </HubChips>
         <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3">
           <Card
@@ -520,6 +526,19 @@ function Hub({ base }: { base: string }) {
                 note: "gross, net and vendor",
               },
               { label: "Days not computed", value: ledger.data?.daysMissing.length, note: "checked once filled" },
+            ]}
+          />
+          <Card
+            href={href("ledger/reconciliation")}
+            page="ledger/reconciliation"
+            error={recon.isError && !recon.data}
+            cells={[
+              {
+                label: "Reconciled",
+                value: recon.data && (recon.data.reconciled ? "Yes" : <span style={{ color: "var(--data-rose)" }}>No</span>),
+                note: "every dollar, every day",
+              },
+              { label: "Days not in totals", value: recon.data?.daysMissing.length, note: "not computed or to redo" },
             ]}
           />
         </div>

@@ -2,7 +2,7 @@
 
 import { useAuthQuery } from "@/lib/use-auth-query";
 import { pollOptions } from "@/lib/query-options";
-import { getStaffLedgerCheck, getStaffOutcomeCoverage } from "@/lib/api";
+import { getStaffLedgerCheck, getStaffLedgerReconciliation, getStaffOutcomeCoverage } from "@/lib/api";
 import { formatCentsAsUsd } from "@/lib/format-number";
 import { formatRatePct } from "@/lib/pipe-stats";
 import { EmptyNote, Figure, SectionTitle, Shimmer, StatTile } from "@/components/v2/ui";
@@ -10,7 +10,13 @@ import { DailyLines, PeriodBars, SERIES_COLORS, dayLabel, dollarsExact, type Lin
 import { Dash, Failed, Loading, OK, RED, TD, TDR, TH, Table, shortDay } from "@/components/v2/monitoring-sending";
 import {
   COVERAGE_TARGET_PCT,
+  RECON_PARTS,
   belowTarget,
+  reconBlockers,
+  reconDayState,
+  reconPartDollars,
+  undeclaredServices,
+  unknownProvenance,
   coverageChart,
   headlinePoint,
   outcomeShare,
@@ -25,6 +31,8 @@ import {
   type CoveragePoint,
   type LedgerCheck,
   type LedgerMoney,
+  type LedgerReconciliation,
+  type ReconDay,
   type OutcomeCoverage,
 } from "@/lib/monitoring/cost-ledger";
 
@@ -50,6 +58,9 @@ export function useOutcomeCoverage() {
 }
 export function useLedgerCheck() {
   return useAuthQuery(["staffLedgerCheck"], getStaffLedgerCheck, { ...pollOptions, retry: false });
+}
+export function useLedgerReconciliation() {
+  return useAuthQuery(["staffLedgerReconciliation"], getStaffLedgerReconciliation, { ...pollOptions, retry: false });
 }
 
 // ─── Hub tiles ─────────────────────────────────────────────────────────────
@@ -102,6 +113,31 @@ export function LedgerCheckTile({ href }: { href: string }) {
           )
         }
         sub={data ? (data.daysMissing.length ? `${data.daysMissing.length} days not computed yet` : "every day checked") : undefined}
+      />
+    </StatTile>
+  );
+}
+
+/** The hub's one-second read of the reconciliation (LEDGER-RECON-MONITOR-1024): Yes, or No in red until it reconciles. */
+export function ReconciliationTile({ href }: { href: string }) {
+  const q = useLedgerReconciliation();
+  const data = q.data;
+  const why = data ? reconBlockers(data) : [];
+  return (
+    <StatTile label="Cost ledger reconciled" note={data ? `since ${shortDay(data.since)}` : undefined} href={href}>
+      <Figure
+        value={
+          q.isError && !data ? (
+            <span className="k-fg3 text-[13px]">not readable</span>
+          ) : !data ? (
+            <Shimmer className="h-6 w-16" />
+          ) : data.reconciled ? (
+            "Yes"
+          ) : (
+            <span style={{ color: RED }}>No</span>
+          )
+        }
+        sub={data ? (data.reconciled ? "every dollar in one part" : why[0]) : undefined}
       />
     </StatTile>
   );
@@ -417,6 +453,202 @@ export function LedgerCheckView({ data }: { data: LedgerCheck }) {
       </section>
 
       <p className="k-fg3 text-[12px]">Allocation rule {data.allocationRule}</p>
+    </div>
+  );
+}
+
+// ─── Reconciliation page (LEDGER-RECON-MONITOR-1024) ───────────────────────
+
+export function ReconciliationPage() {
+  const q = useLedgerReconciliation();
+  if (q.isError && !q.data) return <Failed what="the ledger reconciliation" />;
+  if (!q.data) return <Loading />;
+  return <ReconciliationView data={q.data} />;
+}
+
+const plural = (n: number, w: string) => `${n.toLocaleString("en-US")} ${w}${n === 1 ? "" : "s"}`;
+/** A served 0..1 share as a whole %. */
+const ratio = (v: string | null) => (v == null ? null : formatRatePct(Number(v) * 100));
+/** A served count of consumptions (10 decimals, a whole number unless a production order makes several outcomes). */
+const count = (v: string) => Number(v).toLocaleString("en-US", { maximumFractionDigits: 2 });
+
+export function ReconciliationView({ data }: { data: LedgerReconciliation }) {
+  const t = data.totals;
+  const why = reconBlockers(data);
+  const services = undeclaredServices(data);
+  const provenance = unknownProvenance(data);
+  const periods = data.days.map((d) => ({ ...d, period: d.day }));
+  const lastComputed = [...periods].reverse().find((d) => reconDayState(d) !== "missing") ?? null;
+  // The totals hold computed days only: with none, they are not a zero, they are not there yet.
+  const anyInTotals = data.days.some((d) => reconDayState(d) === "computed");
+  return (
+    <div className="space-y-8">
+      <div className="k-card flex items-start gap-3 px-4 py-3">
+        <span className="mt-[7px] h-2 w-2 shrink-0 rounded-full" style={{ background: data.reconciled ? OK : RED }} aria-hidden="true" />
+        <div className="min-w-0">
+          <p className="text-[14px] font-medium">
+            {data.reconciled ? "Reconciled. Every dollar spent lands in exactly one part, to the cent." : "Not reconciled yet."}
+          </p>
+          {why.length > 0 && <p className="k-fg2 mt-0.5 text-[13px]">{why.map((w) => w[0].toUpperCase() + w.slice(1)).join(". ")}.</p>}
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
+        <StatTile label="Adds up to the cent" note="every computed day">
+          <Figure value={<span style={{ color: data.balanced ? OK : RED }}>{data.balanced ? "Yes" : "No"}</span>} sub={data.unbalancedDays.length ? plural(data.unbalancedDays.length, "day") + " off" : undefined} />
+        </StatTile>
+        <StatTile label="Every day computed" note={`${shortDay(data.since)} to ${shortDay(data.until)}`}>
+          <Figure
+            value={<span style={{ color: data.complete ? OK : RED }}>{data.complete ? "Yes" : "No"}</span>}
+            sub={data.daysMissing.length ? `${plural(data.daysMissing.length, "day")} not in the totals` : undefined}
+          />
+        </StatTile>
+        <StatTile label="All declared" note="spend and outcomes used">
+          <Figure
+            value={<span style={{ color: data.declarationsComplete ? OK : RED }}>{data.declarationsComplete ? "Yes" : "No"}</span>}
+            sub={services.length || provenance.length ? `${plural(services.length, "service")}, ${plural(provenance.length, "outcome")} below` : undefined}
+          />
+        </StatTile>
+        <StatTile label="Spend in the totals" note="billed, gross">
+          <Figure value={anyInTotals ? usdExact(t.spend.grossCents) : <Dash />} sub={anyInTotals ? (data.daysMissing.length ? "computed days only" : undefined) : "no day computed yet"} />
+        </StatTile>
+      </div>
+
+      <section>
+        <SectionTitle right={<span>gross, per UTC day</span>}>Where each dollar of spend went, per day</SectionTitle>
+        {data.daysMissing.length > 0 && (
+          <p className="k-card k-fg2 mb-3 px-4 py-2.5 text-[13px]">
+            <span style={{ color: AMBER }}>{plural(data.daysMissing.length, "day")} not in the totals yet.</span> Pale columns are days runs-service has not computed;
+            faded bars are days it computed before a fact recorded since and will recompute. Neither reads as zero.
+          </p>
+        )}
+        <PeriodBars
+          periods={periods}
+          series={RECON_PARTS.map((p) => ({ key: p.key, label: p.label, color: p.color, get: (d: ReconDay) => reconPartDollars(d, p.key) }))}
+          format={dollarsExact}
+          label={(day, short) => (short ? shortDay(day) : dayLabel(day))}
+          state={(d) => (reconDayState(d) === "computed" ? null : reconDayState(d) === "stale" ? "stale" : "missing")}
+          caption={(d) =>
+            reconDayState(d) === "missing"
+              ? "not computed yet"
+              : `${usdExact(d.spend.grossCents)} spent${reconDayState(d) === "stale" ? ", to recompute" : ""}${d.balanced ? "" : ", does not add up"}`
+          }
+          initial={lastComputed}
+          empty="No day of spend yet."
+        />
+      </section>
+
+      <section>
+        <SectionTitle>The parts, over the computed days</SectionTitle>
+        {!anyInTotals ? (
+          <div className="k-card">
+            <EmptyNote>No day computed yet: the totals fill in as runs-service computes each day.</EmptyNote>
+          </div>
+        ) : (
+        <Table
+          head={
+            <>
+              <th className={TH}>Part</th>
+              <th className={`${TH} text-right`}>Gross</th>
+              <th className={`${TH} text-right`}>Net</th>
+              <th className={`${TH} text-right`}>Vendor</th>
+              <th className={`${TH} text-right`}>Share</th>
+            </>
+          }
+        >
+          {RECON_PARTS.map((p) => (
+            <tr key={p.key} className="k-row">
+              <td className={TD}>
+                <span className="inline-flex items-center gap-2">
+                  <span className="h-2 w-2 rounded-[2px]" style={{ background: p.color }} aria-hidden="true" />
+                  {p.label}
+                </span>
+              </td>
+              <MoneyCells m={t[p.key]} />
+              <td className={TDR}>{ratio(t.shares[p.key].gross) ?? <Dash />}</td>
+            </tr>
+          ))}
+          <tr className="k-row">
+            <td className={`${TD} font-medium`}>Spend</td>
+            <MoneyCells m={t.spend} />
+            <td className={TDR} />
+          </tr>
+          <tr className="k-row">
+            <td className={TD}>Off by</td>
+            <td className={`${TDR} k-mono text-[12px]`} style={{ color: data.balanced ? undefined : RED }}>{cents(t.differences.grossCents)}</td>
+            <td className={`${TDR} k-mono text-[12px]`} style={{ color: data.balanced ? undefined : RED }}>{cents(t.differences.netCents)}</td>
+            <td className={`${TDR} k-mono text-[12px]`} style={{ color: data.balanced ? undefined : RED }}>{cents(t.differences.vendorCents)}</td>
+            <td className={TDR} />
+          </tr>
+        </Table>
+        )}
+      </section>
+
+      <section>
+        <SectionTitle count={services.length}>Services spending with no outcome declared</SectionTitle>
+        {services.length === 0 ? (
+          <div className="k-card">
+            <EmptyNote>None. Every service declares what its spend produced.</EmptyNote>
+          </div>
+        ) : (
+          <Table
+            head={
+              <>
+                <th className={TH}>Service</th>
+                <th className={`${TH} text-right`}>Undeclared, gross</th>
+                <th className={`${TH} text-right`}>Runs</th>
+                <th className={`${TH} text-right`}>Share of its spend</th>
+              </>
+            }
+          >
+            {services.map((s) => (
+              <tr key={s.serviceName ?? "none"} className="k-row">
+                <td className={`${TD} k-mono text-[12px]`}>{s.serviceName ?? "No service named"}</td>
+                <td className={TDR} style={{ color: RED }}>
+                  {usdExact(s.undeclared.grossCents)}
+                </td>
+                <td className={TDR}>{s.undeclaredRuns.toLocaleString("en-US")}</td>
+                <td className={TDR}>{ratio(s.undeclaredShareOfSpend) ?? <Dash />}</td>
+              </tr>
+            ))}
+          </Table>
+        )}
+      </section>
+
+      <section>
+        <SectionTitle count={provenance.length}>Outcomes used with no known producer</SectionTitle>
+        {provenance.length === 0 ? (
+          <div className="k-card">
+            <EmptyNote>None. Every outcome used was declared by the run that made it.</EmptyNote>
+          </div>
+        ) : (
+          <Table
+            head={
+              <>
+                <th className={TH}>Outcome used</th>
+                <th className={TH}>Used by</th>
+                <th className={`${TH} text-right`}>No known producer</th>
+                <th className={`${TH} text-right`}>Of uses</th>
+                <th className={`${TH} text-right`}>Share</th>
+              </>
+            }
+          >
+            {provenance.map((p) => (
+              <tr key={`${p.consumedOutcomeKey}|${p.consumingServiceName}`} className="k-row">
+                <td className={`${TD} k-mono text-[12px]`}>{p.consumedOutcomeKey}</td>
+                <td className={`${TD} k-mono text-[12px]`}>{p.consumingServiceName ?? "No service named"}</td>
+                <td className={TDR} style={{ color: RED }}>
+                  {count(p.unknownProvenance)}
+                </td>
+                <td className={TDR}>{count(p.consumptions)}</td>
+                <td className={TDR}>{ratio(p.unknownShare) ?? <Dash />}</td>
+              </tr>
+            ))}
+          </Table>
+        )}
+      </section>
+
+      <p className="k-fg3 text-[12px]">Allocation version {data.allocationVersion}</p>
     </div>
   );
 }
