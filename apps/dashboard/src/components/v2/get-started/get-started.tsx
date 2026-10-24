@@ -125,6 +125,7 @@ import {
   offerSourceText,
   parseCompetitors,
   parseGetStartedSnapshot,
+  resumeOfferPlan,
   settledPhase,
   stageDwellMs,
   stageMove,
@@ -559,7 +560,8 @@ function GetStartedWalk({ org, ipCountry = null, gsArm = "emails", gsArmFresh = 
       company: "done",
       competitors: s.competitors.length ? "done" : "failed",
       offer: s.offer ? "done" : "failed",
-      audience: s.audience ? "done" : "failed",
+      // No audience yet: it waits for the offer (or its list comes back below), never "Nothing found".
+      audience: s.audience ? "done" : "waiting",
       // A snapshot from before this step that went past it counts it as passed.
       signals: s.signalsDone || s.lifetimeRevenueUsd != null ? "done" : "failed",
       value: s.lifetimeRevenueUsd != null ? "done" : "failed",
@@ -581,15 +583,23 @@ function GetStartedWalk({ org, ipCountry = null, gsArm = "emails", gsArmFresh = 
    */
   function resumePreparing(s: GetStartedSnapshot) {
     if (s.offer && !s.signalsDone && s.lifetimeRevenueUsd == null) void prepareSignals(s.brandId, s.offer.offerId);
-    if (!s.offer) void prepareOffers(s.brandId, [], s.overview);
-    if (!s.audience) {
+    if (!s.offer) {
+      // A reload never asks the model again for a list it already showed (owner 2026-10-24).
+      const plan = resumeOfferPlan(s);
+      offerSource.current = { lines: s.offerLines ?? [], ov: s.overview };
+      if (plan.kind === "show") showOffers(plan.proposals.items, plan.proposals.main);
+      else void prepareOffers(s.brandId, plan.lines, s.overview);
+    }
+    if (!s.audience && s.offer && s.audienceProposals) {
+      setAudienceProposals(s.audienceProposals);
+      setStep("audience", "choose");
+    } else if (!s.audience) {
       // The ideal customer is the picked offer's: without a pick, `pickOffer` drafts it.
       if (s.icp && s.offer) {
         setStep("audience", "running");
         proposeAudienceSegments(s.brandId, s.icp)
           .then(({ segments }) => {
-            setAudienceProposals(segments.slice(0, 6));
-            setStep("audience", segments.length ? "choose" : "failed");
+            showAudiences(segments);
           })
           .catch((e) => {
             console.error("[get-started] audience proposals failed on resume:", e);
@@ -640,6 +650,36 @@ function GetStartedWalk({ org, ipCountry = null, gsArm = "emails", gsArmFresh = 
 
   // ── Steps 3 and 4, prepared in the background ─────────────────────────────
 
+  /** The proposed offers on screen, and kept in the snapshot so a reload shows the same list. */
+  function showOffers(offers: OfferProposal[], mainOfferIndex: number) {
+    const main = mainOfferIndex >= 0 && mainOfferIndex < offers.length ? mainOfferIndex : 0;
+    setOfferProposals(offers);
+    setOfferMain(main);
+    if (offers.length) saveSnapshot({ offerProposals: { items: offers, main } });
+    setStep("offer", offers.length ? "choose" : "failed");
+  }
+
+  /**
+   * "Something else" (owner 2026-10-24): the visitor says in their words what they sell.
+   * One offer read out of it is picked at once; several are shown to pick from.
+   */
+  async function proposeOwnOffer(text: string) {
+    if (!brandId || offer || pendingOffer) return;
+    setOfferError(null);
+    setStep("offer", "running");
+    try {
+      const { offers, mainOfferIndex } = await proposeBrandOffers(brandId, text);
+      existingOffers.current = null;
+      showOffers(offers, mainOfferIndex);
+      posthog.capture("get_started_offer_own", { offers: offers.length });
+      if (offers.length === 1) pickOffer(0, offers);
+    } catch (e) {
+      console.error("[get-started] own offer read failed:", e);
+      setStep("offer", "choose");
+      setOfferError("We could not read that. Try again in other words.");
+    }
+  }
+
   /** The offers the site describes; the brand-service split runs off step 1's read. */
   async function prepareOffers(id: string, lines: string[], ov: string) {
     setStep("offer", "running");
@@ -666,13 +706,19 @@ function GetStartedWalk({ org, ipCountry = null, gsArm = "emails", gsArmFresh = 
     }
     try {
       const { offers, mainOfferIndex } = await proposeBrandOffers(id, text);
-      setOfferProposals(offers);
-      setOfferMain(mainOfferIndex >= 0 && mainOfferIndex < offers.length ? mainOfferIndex : 0);
-      setStep("offer", offers.length ? "choose" : "failed");
+      showOffers(offers, mainOfferIndex);
     } catch (e) {
       console.error("[get-started] offer proposals failed:", e);
       setStep("offer", "failed");
     }
+  }
+
+  /** The proposed audiences on screen, and kept in the snapshot so a reload shows the same list. */
+  function showAudiences(segments: AudienceSegmentProposal[]) {
+    const shown = segments.slice(0, 6);
+    setAudienceProposals(shown);
+    if (shown.length) saveSnapshot({ audienceProposals: shown });
+    setStep("audience", shown.length ? "choose" : "failed");
   }
 
   /**
@@ -686,8 +732,7 @@ function GetStartedWalk({ org, ipCountry = null, gsArm = "emails", gsArmFresh = 
       icpRef.current = icp;
       saveSnapshot({ icp });
       const { segments } = await proposeAudienceSegments(id, icp);
-      setAudienceProposals(segments.slice(0, 6));
-      setStep("audience", segments.length ? "choose" : "failed");
+      showAudiences(segments);
     } catch (e) {
       console.error("[get-started] audience proposals failed:", e);
       setStep("audience", "failed");
@@ -722,16 +767,16 @@ function GetStartedWalk({ org, ipCountry = null, gsArm = "emails", gsArmFresh = 
   }
 
   /** Step 3: the ONE offer picked moves the walk on at once; it is confirmed behind it. */
-  function pickOffer(i: number) {
+  function pickOffer(i: number, list: OfferProposal[] = offerProposals) {
     if (!brandId || offer || pendingOffer) return;
-    const picked = offerProposals[i];
+    const picked = list[i];
     if (!picked) return;
     setOfferError(null);
     setPendingOffer({ name: picked.name, description: picked.description });
     // The audiences are drafted for THIS offer, once it is saved: the step says so meanwhile.
     setStep("audience", "running");
     advance("offer");
-    posthog.capture("get_started_offer_picked", { offers: offerProposals.length });
+    posthog.capture("get_started_offer_picked", { offers: list.length });
     stepDone("offer", { offer: picked.name, description: picked.description });
     const id = brandId;
     const held = existingOffers.current?.find((o) => o.name === picked.name) ?? null;
@@ -1626,7 +1671,7 @@ function GetStartedWalk({ org, ipCountry = null, gsArm = "emails", gsArmFresh = 
         setCompetitors(list);
         setStep("company", ov || fs.length ? "done" : "failed");
         setStep("competitors", list.length ? "done" : "failed");
-        saveSnapshot({ overview: ov, facts: fs, competitors: list });
+        saveSnapshot({ overview: ov, facts: fs, competitors: list, offerLines: lines });
         offerSource.current = { lines, ov };
       } catch (e) {
         console.error("[get-started] company read failed:", e);
@@ -1767,6 +1812,7 @@ function GetStartedWalk({ org, ipCountry = null, gsArm = "emails", gsArmFresh = 
           busy={offerBusy}
           error={offerError}
           onPick={(i) => void pickOffer(i)}
+          onOwn={(text) => void proposeOwnOffer(text)}
           onRetry={() => brandId && void prepareOffers(brandId, offerSource.current.lines, offerSource.current.ov)}
         />
       );
@@ -1938,7 +1984,7 @@ function GetStartedWalk({ org, ipCountry = null, gsArm = "emails", gsArmFresh = 
         <JournalRail {...journal} />
         <main className="k-scroll lg:min-h-0 lg:overflow-y-auto">
           <div className="mx-auto max-w-[1040px] px-4 py-6 sm:px-6 sm:py-8">
-            <Stepper steps={steps} staged={stagedKey} live={GET_STARTED_STEPS[stageIdx].key} onOpen={openStep} nextLit={emailsShown ? steps.email === "done" : steps.companies === "done"} />
+            <Stepper steps={steps} staged={stagedKey} nextLit={emailsShown ? steps.email === "done" : steps.companies === "done"} />
             <LiveStatus current={current} domain={domain} pick={pick} readFailed={steps.company === "failed"} />
             <div className="mt-4">
               <JournalStrip {...journal} />
@@ -2365,20 +2411,17 @@ const settled = settledPhase;
  * Explee's stepper: numbered marks joined by rails that fill as each step lands, the
  * step on the stage named in a raised pill, then "what happens next": the three steps
  * the account turns on, drawn dotted until the preview's email is written, then lit.
- * A finished step's mark opens it on the stage; the live step's mark brings the walk
- * back to it (owner 2026-10-12: no separate "back to the live step" line).
+ * The marks only SHOW where the walk is: moving is Back and Continue on each step
+ * (owner 2026-10-24, reversing the clickable marks of 2026-10-12: a visitor opened
+ * step 4 before picking an offer and read "Nothing found").
  */
 function Stepper({
   steps,
   staged,
-  live,
-  onOpen,
   nextLit,
 }: {
   steps: Record<GetStartedStepKey, StepState>;
   staged: GetStartedStepKey;
-  live: GetStartedStepKey;
-  onOpen: (key: GetStartedStepKey) => void;
   nextLit: boolean;
 }) {
   const arm = useContext(GsArmContext);
@@ -2390,7 +2433,6 @@ function Stepper({
           const st = steps[s.key];
           const active = s.key === staged;
           const prevSettled = i > 0 && settled(steps[walk[i - 1].key]);
-          const openable = (settled(st) || s.key === live) && !active;
           const mark = (
             <>
               <StepMark index={i + 1} state={st} />
@@ -2407,13 +2449,7 @@ function Stepper({
                   <span className="gs-fill absolute inset-y-0 left-0 bg-[var(--bg-strong)]" style={{ width: prevSettled ? "100%" : "0%" }} />
                 </span>
               )}
-              {openable ? (
-                <button type="button" className={`${cls} k-hover`} onClick={() => onOpen(s.key)} title={`Open: ${s.label}`}>
-                  {mark}
-                </button>
-              ) : (
-                <span className={cls}>{mark}</span>
-              )}
+              <span className={cls}>{mark}</span>
             </li>
           );
         })}
@@ -2716,6 +2752,7 @@ function OfferStage({
   busy,
   error,
   onPick,
+  onOwn,
   onRetry,
 }: {
   state: StepState;
@@ -2725,14 +2762,67 @@ function OfferStage({
   busy: number | null;
   error: string | null;
   onPick: (i: number) => void;
+  /** "Something else": what they sell, in their words. */
+  onOwn: (text: string) => void;
   onRetry: () => void;
 }) {
+  const [own, setOwn] = useState<string | null>(null);
+  const ownBox =
+    own === null ? (
+      <button
+        type="button"
+        onClick={() => setOwn("")}
+        disabled={!!picked || busy != null}
+        style={stagger(proposals.length, 80)}
+        className="gs-in k-hover flex items-start gap-3 rounded-[12px] border border-dashed border-[var(--line-strong)] p-3 text-left transition-[background-color,opacity] duration-150 active:scale-[0.99] disabled:opacity-40"
+      >
+        <span className="k-fg3 inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-[8px] border border-dashed border-[var(--line-strong)] text-[16px]" aria-hidden="true">
+          +
+        </span>
+        <span className="min-w-0 flex-1">
+          <span className="k-fg block text-[14px] font-medium leading-5">Something else</span>
+          <span className="k-fg2 mt-1 block text-[12.5px] leading-5">Tell us what you sell.</span>
+        </span>
+      </button>
+    ) : (
+      <form
+        className="gs-in rounded-[12px] border border-dashed border-[var(--line-strong)] p-3 sm:col-span-2"
+        onSubmit={(e) => {
+          e.preventDefault();
+          if (own.trim()) onOwn(own.trim());
+        }}
+      >
+        <label className="k-fg block text-[14px] font-medium leading-5" htmlFor="gs-own-offer">
+          What do you sell?
+        </label>
+        <textarea
+          id="gs-own-offer"
+          autoFocus
+          className="k-input mt-2 min-h-[80px] w-full resize-y px-3 py-2 text-[14px] leading-5"
+          placeholder="What a customer buys from you, in a sentence or two."
+          value={own}
+          onChange={(e) => setOwn(e.target.value)}
+        />
+        <div className="mt-3 flex items-center gap-3">
+          <button type="button" className="k-fg3 h-9 text-[13px] hover:text-[var(--fg-2)]" onClick={() => setOwn(null)}>
+            Cancel
+          </button>
+          <button type="submit" className="k-btn-accent ml-auto h-9 px-4" disabled={!own.trim()}>
+            Continue
+          </button>
+        </div>
+      </form>
+    );
   return (
     <StepCard index={3} title="What you sell" state={state} meta={<StateWord state={state} />}>
       {state === "running" || state === "waiting" ? (
         <OptionSkeleton />
       ) : proposals.length === 0 && !picked ? (
-        <RetryNote text="We could not tell what you sell from your site." onRetry={onRetry} />
+        <>
+          <RetryNote text="We could not tell what you sell from your site." onRetry={onRetry} />
+          <div className="mt-3 grid gap-2 sm:grid-cols-2">{ownBox}</div>
+          {error && <p className="mt-2 text-[12px] text-[var(--data-rose)]">{error}</p>}
+        </>
       ) : (
         <>
           <p className="k-fg2 text-[13px]">
@@ -2766,6 +2856,7 @@ function OfferStage({
                 </button>
               );
             })}
+            {!picked && ownBox}
           </div>
           {error && <p className="mt-2 text-[12px] text-[var(--data-rose)]">{error}</p>}
         </>
