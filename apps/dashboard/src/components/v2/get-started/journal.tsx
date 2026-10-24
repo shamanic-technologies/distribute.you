@@ -27,6 +27,7 @@ import {
 } from "@/lib/v2/get-started";
 import { stagger } from "./motion";
 import { stepViewName } from "./view-transition";
+import { useState } from "react";
 
 export interface JournalData {
   steps: Record<GetStartedStepKey, StepPhase>;
@@ -107,39 +108,7 @@ function RailEntry({ d, k }: { d: JournalData; k: GetStartedStepKey }) {
         {d.overview && <p className="k-fg2 mt-2 line-clamp-5 text-[12px] leading-[18px]">{d.overview}</p>}
       </div>
     );
-  if (k === "competitors")
-    return (
-      <div>
-        <p className="k-label">
-          Competitors <span className="k-fg2 tabular-nums">{d.competitors.length}</span>
-        </p>
-        <ul className="mt-1.5 grid grid-cols-2 gap-1">
-          {d.competitors.slice(0, 8).map((c, i) => (
-            <li key={c.domain ?? c.name} className="gs-pop min-w-0" style={stagger(i, 40)}>
-              {/* A competitor opens its site in a new tab, so the walk stays where it is (owner 2026-10-12). */}
-              {c.domain ? (
-                <a
-                  href={`https://${c.domain}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  title={`Open ${c.domain}`}
-                  className="k-card k-hover flex min-w-0 items-center gap-1.5 rounded-md px-1.5 py-1"
-                >
-                  <BrandLogo domain={c.domain} size={14} className="rounded-sm" />
-                  <span className="k-fg2 truncate text-[12px]">{c.domain}</span>
-                </a>
-              ) : (
-                <span className="k-card flex min-w-0 items-center gap-1.5 rounded-md px-1.5 py-1">
-                  <BrandLogo domain={c.domain} size={14} className="rounded-sm" />
-                  <span className="k-fg2 truncate text-[12px]">{c.name}</span>
-                </span>
-              )}
-            </li>
-          ))}
-        </ul>
-        {d.competitors.length > 8 && <p className="k-fg3 mt-1 text-[11px]">+{d.competitors.length - 8} more</p>}
-      </div>
-    );
+  if (k === "competitors") return <CompetitorList competitors={d.competitors} />;
   if (k === "offer")
     return d.offer ? (
       <div className="k-card rounded-lg px-2.5 py-2">
@@ -172,6 +141,51 @@ function RailEntry({ d, k }: { d: JournalData; k: GetStartedStepKey }) {
       </div>
     );
   return <p className="k-fg2 text-[12px] tabular-nums">{d.written === 1 ? "1 email written" : `${d.written} emails written`}</p>;
+}
+
+/**
+ * The competitors by NAME (the domain on hover), eight then "+N more", which opens
+ * the rest. A competitor opens its site in a new tab, so the walk stays where it is
+ * (owner 2026-10-12).
+ */
+function CompetitorList({ competitors }: { competitors: Competitor[] }) {
+  const [all, setAll] = useState(false);
+  const shown = all ? competitors : competitors.slice(0, 8);
+  return (
+    <div>
+      <p className="k-label">
+        Competitors <span className="k-fg2 tabular-nums">{competitors.length}</span>
+      </p>
+      <ul className="mt-1.5 grid grid-cols-2 gap-1">
+        {shown.map((c, i) => (
+          <li key={c.domain ?? c.name} className="gs-pop min-w-0" style={stagger(i, 40)}>
+            {c.domain ? (
+              <a
+                href={`https://${c.domain}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                title={`${c.name} · ${c.domain}`}
+                className="k-card k-hover flex min-w-0 items-center gap-1.5 rounded-md px-1.5 py-1"
+              >
+                <BrandLogo domain={c.domain} size={14} className="rounded-sm" />
+                <span className="k-fg2 truncate text-[12px]">{c.name}</span>
+              </a>
+            ) : (
+              <span title={c.name} className="k-card flex min-w-0 items-center gap-1.5 rounded-md px-1.5 py-1">
+                <BrandLogo domain={c.domain} size={14} className="rounded-sm" />
+                <span className="k-fg2 truncate text-[12px]">{c.name}</span>
+              </span>
+            )}
+          </li>
+        ))}
+      </ul>
+      {competitors.length > 8 && (
+        <button type="button" onClick={() => setAll((v) => !v)} className="k-fg3 mt-1 text-[11px] tabular-nums hover:underline">
+          {all ? "Show less" : `+${competitors.length - 8} more`}
+        </button>
+      )}
+    </div>
+  );
 }
 
 /** The audiences in words; picking another one builds its companies again. */
