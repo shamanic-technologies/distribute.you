@@ -3,6 +3,7 @@ import { PartneroViaCapture } from "@/components/partnero-via-capture";
 import { InviteCapture } from "@/components/invite/invite-capture";
 import { BRAND_TINT_PRELOAD_SCRIPT } from "@/lib/brand-tint-preload";
 import { FIRST_TOUCH_CAPTURE_SCRIPT } from "@/lib/first-touch";
+import { SUBSCRIBER_LINK_CAPTURE_SCRIPT } from "@/lib/subscriber-link";
 import "./globals.css";
 
 const SITE_URL = "https://dashboard.distribute.you";
@@ -108,6 +109,13 @@ export default function RootLayout({
           landing renders the same string. See `lib/first-touch`.
         */}
         <script dangerouslySetInnerHTML={{ __html: FIRST_TOUCH_CAPTURE_SCRIPT }} />
+        {/*
+          A newsletter link's opaque dy_sub id: parked for the visit, stripped
+          from the address bar, handed to our server, which tells PostHog who
+          this visitor is. The email never reaches the browser. The landing
+          renders the same string. See `lib/subscriber-link`.
+        */}
+        <script dangerouslySetInnerHTML={{ __html: SUBSCRIBER_LINK_CAPTURE_SCRIPT }} />
         <script async src="https://www.googletagmanager.com/gtag/js?id=G-YJHNGLEJPP" />
         <script
           dangerouslySetInnerHTML={{

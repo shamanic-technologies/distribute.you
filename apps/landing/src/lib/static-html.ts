@@ -10,6 +10,7 @@ import {
 } from "@/lib/content-negotiation";
 import { htmlToMarkdown } from "@/lib/html-to-markdown";
 import { FIRST_TOUCH_CAPTURE_SCRIPT } from "@/lib/first-touch-script";
+import { SUBSCRIBER_LINK_CAPTURE_SCRIPT } from "@/lib/subscriber-link";
 import { BEFORE_SEND_JS } from "@/lib/posthog-before-send";
 import { HEADLESS_SCANNER_JS } from "@/lib/posthog-replay";
 import { SITE_URL, organizationJsonLd } from "@/lib/seo";
@@ -64,7 +65,11 @@ function analyticsHead(): string {
   // First touch: which channel brought this visitor, recorded once on the
   // registrable domain for the dashboard to hand over at org creation.
   const firstTouch = `<script>${FIRST_TOUCH_CAPTURE_SCRIPT}</script>`;
-  return firstTouch + ga + posthog + ahrefs + partneroHead() + inviteHead();
+  // A newsletter link's opaque `dy_sub` id: parked for the visit on `.distribute.you`
+  // (so /get-started still carries it), stripped from the address bar, handed to our
+  // server, which tells PostHog who this reader is (lib/subscriber-link.ts).
+  const subscriberLink = `<script>${SUBSCRIBER_LINK_CAPTURE_SCRIPT}</script>`;
+  return firstTouch + subscriberLink + ga + posthog + ahrefs + partneroHead() + inviteHead();
 }
 
 /**

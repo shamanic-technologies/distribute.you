@@ -12,7 +12,7 @@ describe("first-touch capture on the landing", () => {
   it("is rendered on every static page and in the React layout", () => {
     const html = readFileSync(join(__dirname, "../../src/lib/static-html.ts"), "utf8");
     expect(html).toContain("const firstTouch = `<script>${FIRST_TOUCH_CAPTURE_SCRIPT}</script>`");
-    expect(html).toContain("return firstTouch + ga");
+    expect(html).toContain("return firstTouch + ");
     const layout = readFileSync(join(__dirname, "../../src/app/layout.tsx"), "utf8");
     expect(layout).toContain("__html: FIRST_TOUCH_CAPTURE_SCRIPT");
   });
