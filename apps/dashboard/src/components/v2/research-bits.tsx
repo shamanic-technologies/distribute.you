@@ -25,6 +25,7 @@ import { CrosshairIcon } from "@phosphor-icons/react/dist/csr/Crosshair";
 import { HourglassIcon } from "@phosphor-icons/react/dist/csr/Hourglass";
 import { TargetIcon } from "@phosphor-icons/react/dist/csr/Target";
 import { GlobeIcon } from "@phosphor-icons/react/dist/csr/Globe";
+import { WarningCircleIcon } from "@phosphor-icons/react/dist/csr/WarningCircle";
 import { EmptyNote, SectionTitle, Shimmer } from "@/components/v2/ui";
 import { ChannelChip } from "@/components/v2/offer-sales-paths";
 import { useLegCatalogue } from "@/lib/use-leg-catalogue";
@@ -37,6 +38,7 @@ import { featureLegId } from "@/lib/outbound-leg-key";
 import { useAuthQuery } from "@/lib/use-auth-query";
 import { getPublicCatalogueSteps } from "@/lib/api";
 import { useResearch } from "@/lib/research/research-source";
+import { staleText, type ResearchFreshness } from "@/lib/research/freshness";
 import {
   outcomeEntry,
   researchPipeEntry,
@@ -115,6 +117,35 @@ export function instantText(iso: string): string {
 /** Where the page's figures come from: features-service's live build, and when it ran. */
 export function liveText(file: { computedAt?: string | null; readOn: string }): string {
   return file.computedAt ? `Live, updated ${instantText(file.computedAt)}` : `Live, read on ${dayText(file.readOn)}`;
+}
+
+/**
+ * Out-of-date figures in red (RESEARCH-STALE-1024-DASH): features-service's served `freshness.stale`,
+ * never judged here. Null when fresh or not served, so the caller keeps its usual line.
+ */
+export function ResearchStaleNote({ freshness }: { freshness?: ResearchFreshness | null }) {
+  const text = staleText(freshness);
+  if (!text) return null;
+  return (
+    <span
+      role="status"
+      className="inline-flex items-start gap-1.5 rounded-[8px] bg-[color-mix(in_srgb,var(--data-rose)_12%,transparent)] px-2 py-1 text-[13px] font-medium leading-5 text-[var(--data-rose)]"
+    >
+      <WarningCircleIcon weight="duotone" className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
+      {text}
+    </span>
+  );
+}
+
+/** The page's "Live, updated" line with its green dot, or the red out-of-date note when the build is stale. */
+export function ResearchLive({ file }: { file: { computedAt?: string | null; readOn: string; freshness?: ResearchFreshness } }) {
+  if (staleText(file.freshness)) return <ResearchStaleNote freshness={file.freshness} />;
+  return (
+    <span className="k-fg2 inline-flex items-center gap-2 text-[13px]">
+      <span className="h-1.5 w-1.5 rounded-full bg-[var(--run)]" />
+      {liveText(file)}
+    </span>
+  );
 }
 
 /** The section a study sits in: its pipe, or its outcome. */

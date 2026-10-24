@@ -38,7 +38,7 @@ import {
   topicLook,
   dayText,
   identityWord,
-  liveText,
+  ResearchLive,
 } from "@/components/v2/research-bits";
 import {
   CATALOG_KINDS,
@@ -399,10 +399,7 @@ function CatalogList({
             </p>
           </div>
           {!live && (
-            <span className="k-fg2 inline-flex items-center gap-2 text-[13px]">
-              <span className="h-1.5 w-1.5 rounded-full bg-[var(--run)]" />
-              {liveText(RESEARCH)}
-            </span>
+            <ResearchLive file={RESEARCH} />
           )}
         </div>
 
