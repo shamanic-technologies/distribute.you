@@ -1,5 +1,6 @@
 "use client";
 
+import { staleText } from "@/lib/research/freshness";
 import { V2ResearchPerformanceView } from "@/components/v2/research-performance";
 import Link from "next/link";
 import { useEffect, useRef } from "react";
@@ -22,6 +23,8 @@ import {
   type ResearchSection,
   dayText,
   liveText,
+  ResearchLive,
+  ResearchStaleNote,
   sectionOf,
   monthText,
 } from "@/components/v2/research-bits";
@@ -313,10 +316,7 @@ function V2ResearchHub({ base }: { base: string }) {
             </p>
             <p className="k-fg3 mt-1 text-[12px] leading-5">{RESEARCH.maturation.note}</p>
           </div>
-          <span className="k-fg2 inline-flex items-center gap-2 text-[13px]">
-            <span className="h-1.5 w-1.5 rounded-full bg-[var(--run)]" />
-            {liveText(RESEARCH)}
-          </span>
+          <ResearchLive file={RESEARCH} />
         </div>
 
         <div className="mt-6 grid grid-cols-2 gap-3 lg:grid-cols-4">
@@ -645,7 +645,7 @@ function V2ResearchStudy({ base, studyId }: { base: string; studyId: string }) {
               {emailLeg && RESEARCH.volume && <Row k="Emails" v={RESEARCH.volume.emails.toLocaleString("en-US")} />}
               <Row
                 k="Read on"
-                v={liveText(RESEARCH)}
+                v={staleText(RESEARCH.freshness) ? <ResearchStaleNote freshness={RESEARCH.freshness} /> : liveText(RESEARCH)}
               />
             </dl>
             <p className="k-label mt-5">How we measured</p>

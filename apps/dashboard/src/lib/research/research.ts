@@ -9,6 +9,7 @@
  *
  * Alias-free so it carries real unit tests.
  */
+import type { ResearchFreshness } from "./freshness";
 import { sameLegKey } from "../outbound-leg-key";
 
 /**
@@ -131,6 +132,8 @@ export interface ResearchFile {
   generatedAt: string;
   /** When features-service last built the studies. */
   computedAt?: string | null;
+  /** How old the build is at this read and whether it is stale (RESEARCH-STALE-1024); absent on an older build. */
+  freshness?: ResearchFreshness;
   allOrgs: true;
   /**
    * `user`: what clients were billed. `actual`: what the vendors charged us

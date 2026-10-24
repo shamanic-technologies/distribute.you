@@ -7,6 +7,7 @@
  * rows into the Active / Deprecated tabs on the served status and words the deprecated parts.
  * Alias-free: unit-tested.
  */
+import type { ResearchFreshness } from "./freshness";
 
 export interface PerformanceFigure {
   value: number | null;
@@ -98,6 +99,8 @@ export interface PipePerformance {
 /** The served read: every Research pipe's tab, on one cost basis. */
 export interface ResearchPerformance {
   computedAt: string | null;
+  /** How old the build is at this read and whether it is stale (RESEARCH-STALE-1024); absent on an older build. */
+  freshness?: ResearchFreshness;
   costBasis: string;
   pipes: Record<string, PipePerformance>;
 }

@@ -7,7 +7,7 @@ import { RecordsTabs } from "@/components/v2/records";
 import { ResearchSwitches } from "@/components/v2/maturity-view-switch";
 import { RoiLabel, RoiValue, LearningFigure } from "@/components/v2/roi-label";
 import { CatalogueName } from "@/components/v2/catalogue-name";
-import { SectionMark, SectionName } from "@/components/v2/research-bits";
+import { ResearchStaleNote, SectionMark, SectionName } from "@/components/v2/research-bits";
 import { StatusWord } from "@/components/v2/research-status";
 import { PipeTabs } from "@/components/v2/research-catalog";
 import { usePipeChannelName } from "@/components/v2/research-live-workflows";
@@ -73,11 +73,15 @@ export function V2ResearchPerformanceView({ base, pipe }: { base: string; pipe: 
     <>
       <TopBar crumbs={crumbs} actions={<ResearchSwitches />} />
       <div className="mx-auto max-w-[1280px] px-4 pb-16 pt-6 md:px-6">
-        <div className="min-w-0">
-          <h1 className="text-[28px] font-medium leading-[34px] tracking-[-0.02em]">
-            {!byTab ? "Performance" : `${byTab.active.length} active combinations`}
-          </h1>
-          <p className="k-fg2 mt-1 text-[14px]">Every workflow, template and LLM sent together on this pipe, all clients pooled, cheapest estimated cost first.</p>
+        <div className="flex flex-wrap items-end justify-between gap-3">
+          <div className="min-w-0">
+            <h1 className="text-[28px] font-medium leading-[34px] tracking-[-0.02em]">
+              {!byTab ? "Performance" : `${byTab.active.length} active combinations`}
+            </h1>
+            <p className="k-fg2 mt-1 text-[14px]">Every workflow, template and LLM sent together on this pipe, all clients pooled, cheapest estimated cost first.</p>
+          </div>
+          {/* red only when features-service calls this build stale; fresh = nothing, as before */}
+          <ResearchStaleNote freshness={q.data?.freshness} />
         </div>
 
         <PipeTabs base={base} pipe={pipe} current="performance" countOf={(k) => (k === "performance" && byTab ? byTab.active.length : null)} />
