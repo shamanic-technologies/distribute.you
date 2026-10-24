@@ -2727,7 +2727,7 @@ function CompetitorsCard({ state, competitors }: { state: StepState; competitors
           {competitors.map((c, i) => (
             <li key={c.domain ?? c.name} className="gs-pop k-inset flex min-w-0 items-center gap-2 rounded-md px-2 py-1.5" style={stagger(i, 60)}>
               <BrandLogo domain={c.domain} size={16} className="rounded-sm" />
-              <span className="k-fg2 truncate text-[13px]">{c.domain ?? c.name}</span>
+              <span className="k-fg2 truncate text-[13px]" title={c.domain ?? undefined}>{c.name}</span>
             </li>
           ))}
         </ul>
