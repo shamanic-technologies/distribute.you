@@ -155,7 +155,7 @@ describe("TEMPLATE-MODEL-STATUS-1019: the three Research pages", () => {
     expect(list).toContain('const drawerRow = kind === "templates" || kind === "models";');
     expect(list).toContain("drawerRow ? opensDrawer(e.target, e.currentTarget) && setSelected(r.key) : nav(href)");
     expect(list).toContain("<ModelPanel");
-    expect(list).toContain("m.runs.slice(0, 5)");
+    expect(list).toContain("useModelDynastyOutputs(m.dynasty?.slug ?? null, useContentPipe(pipe), 5)");
   });
 
   it("Models: Status + ⋮ keyed on the SERVED aliases, never the workflows join, no Leg column", () => {

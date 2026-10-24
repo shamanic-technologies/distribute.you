@@ -12673,6 +12673,38 @@ export async function getTemplateDynastyOutputs(slug: string, limit = 5): Promis
   return parseStaff("getTemplateDynastyOutputs", TemplateDynastyOutputsSchema, raw).outputs;
 }
 
+const ModelDynastyOutputsSchema = z.object({
+  slug: z.string(),
+  outputs: z.array(
+    z.object({
+      generationId: z.string(),
+      createdAt: z.string(),
+      // The template version the sequence was written with.
+      promptType: z.string(),
+      templateDynasty: z.object({ slug: z.string(), name: z.string(), position: z.number() }).nullish(),
+      workflowSlug: z.string().nullable(),
+      // The model version (concrete id) that wrote it.
+      model: z.string(),
+      tokensInput: z.number().nullable(),
+      tokensOutput: z.number().nullable(),
+      subject: z.string().nullable(),
+      emails: z.array(z.object({ step: z.number(), bodyText: z.string(), daysSinceLastStep: z.number().nullable() })),
+    }),
+  ),
+});
+export type ModelDynastyOutput = z.infer<typeof ModelDynastyOutputsSchema>["outputs"][number];
+
+/**
+ * STAFF ONLY. The last outputs written by ANY version of an LLM dynasty on ONE pipe, every org and
+ * template, newest first (content-generation-service via api-service
+ * `/v1/content/model-dynasties/:slug/outputs`, MODEL-OUTPUTS-1024). `slug` = chat-service's dynasty slug.
+ */
+export async function getModelDynastyOutputs(slug: string, pipe: ContentPipe, limit = 5): Promise<ModelDynastyOutput[]> {
+  const q = `featureSlug=${encodeURIComponent(pipe.featureSlug)}&legKey=${encodeURIComponent(pipe.legKey)}&limit=${limit}`;
+  const raw = await apiCall<unknown>(`/content/model-dynasties/${encodeURIComponent(slug)}/outputs?${q}`);
+  return parseStaff("getModelDynastyOutputs", ModelDynastyOutputsSchema, raw).outputs;
+}
+
 const RetireByContentSchema = z.object({
   dryRun: z.boolean(),
   workflows: z.array(

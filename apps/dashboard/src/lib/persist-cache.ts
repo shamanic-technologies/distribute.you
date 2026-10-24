@@ -100,6 +100,7 @@ export const SENSITIVE_QUERY_ROOTS = new Set([
   "retireByContentPreview",
   "templateOutputs",
   "templateDynastyOutputs",
+  "modelDynastyOutputs",
   // A workflow dynasty's recent runs with the emails they wrote (Research workflow drawer + page).
   "workflowDynastyOutputs",
   // Staff Monitoring (fleet margin, vendor costs, price catalogue, emails sent).

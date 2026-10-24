@@ -5,7 +5,7 @@ import { createPortal } from "react-dom";
 import Link from "next/link";
 import { useAuthQuery } from "@/lib/use-auth-query";
 import { pollOptions } from "@/lib/query-options";
-import { getTemplateDynastyOutputs, getTemplateOutputs, getWorkflowDynastyOutputs, type TemplateOutput, type WorkflowRunOutput } from "@/lib/api";
+import { getModelDynastyOutputs, getTemplateDynastyOutputs, getTemplateOutputs, getWorkflowDynastyOutputs, type ContentPipe, type TemplateOutput, type WorkflowRunOutput } from "@/lib/api";
 import { EmptyNote, Shimmer } from "@/components/v2/ui";
 import { RoiLabel, RoiValue } from "@/components/v2/roi-label";
 import { Arrow, instantText } from "@/components/v2/research-bits";
@@ -52,8 +52,21 @@ export function useTemplateRowOutputs(t: Pick<ResearchTemplate, "key" | "dynasty
   return { outputs: q.data, answered: q.data !== undefined || q.isFetchedAfterMount };
 }
 
+/**
+ * The last `limit` outputs an LLM dynasty wrote on ONE pipe, every client and template, newest first
+ * (MODEL-OUTPUTS-1024). A model in no dynasty, or a pipe not resolved yet, reads nothing.
+ */
+export function useModelDynastyOutputs(slug: string | null, pipe: ContentPipe | null, limit: number) {
+  const q = useAuthQuery(
+    ["modelDynastyOutputs", slug ?? "", pipe?.featureSlug ?? "", pipe?.legKey ?? "", limit],
+    () => getModelDynastyOutputs(slug ?? "", pipe as ContentPipe, limit),
+    { ...pollOptions, retry: false, enabled: slug != null && pipe != null },
+  );
+  return { outputs: q.data, answered: q.data !== undefined || q.isFetchedAfterMount };
+}
+
 /** Outputs as a list: subject and each email as sent, never a client or a lead. `expanded` opens every email in full. */
-export function OutputsList({ read, expanded = false }: { read: ReturnType<typeof useTemplateOutputs>; expanded?: boolean }) {
+export function OutputsList({ read, expanded = false, empty = "Nothing written with this template is on record." }: { read: ReturnType<typeof useTemplateOutputs>; expanded?: boolean; empty?: string }) {
   if (!read.answered) {
     return (
       <div className="space-y-2 p-4">
@@ -64,7 +77,7 @@ export function OutputsList({ read, expanded = false }: { read: ReturnType<typeo
     );
   }
   if (read.outputs === undefined) return <EmptyNote>We could not read its last emails just now. It retries on its own.</EmptyNote>;
-  if (read.outputs.length === 0) return <EmptyNote>Nothing written with this template is on record.</EmptyNote>;
+  if (read.outputs.length === 0) return <EmptyNote>{empty}</EmptyNote>;
   return (
     <ol className="divide-y divide-[var(--line-subtle)]">
       {read.outputs.map((o) => (
