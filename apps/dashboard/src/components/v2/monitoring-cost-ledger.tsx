@@ -6,16 +6,20 @@ import { getStaffLedgerCheck, getStaffOutcomeCoverage } from "@/lib/api";
 import { formatCentsAsUsd } from "@/lib/format-number";
 import { formatRatePct } from "@/lib/pipe-stats";
 import { EmptyNote, Figure, SectionTitle, Shimmer, StatTile } from "@/components/v2/ui";
-import { DailyLines, SERIES_COLORS, type Line } from "@/components/v2/monitoring-charts";
+import { DailyLines, PeriodBars, SERIES_COLORS, dayLabel, dollarsExact, type Line } from "@/components/v2/monitoring-charts";
 import { Dash, Failed, Loading, OK, RED, TD, TDR, TH, Table, shortDay } from "@/components/v2/monitoring-sending";
 import {
   COVERAGE_TARGET_PCT,
   belowTarget,
   coverageChart,
   headlinePoint,
+  outcomeShare,
   rolloutInProgress,
   serviceNames,
   servicesOn,
+  supportCents,
+  supportFunctions,
+  supportNotSplit,
   tasksOn,
   type CoverageChartPoint,
   type CoveragePoint,
@@ -28,8 +32,9 @@ import {
  * Monitoring > Cost ledger (staff only, COST-ACCOUNTING-1023-MONITOR). The owner wants every outcome's
  * production cost exact to the cent: runs-service is the general ledger, and each spending service is
  * being wired to declare, on its runs, the outcomes it produced. Two pages, two hub tiles:
- * - Outcome coverage: the share of spend whose run declared its outcome, per UTC day, fleet + per
- *   service, red under the 95% target;
+ * - Outcome coverage: the share of OUTCOME spend whose run declared its outcome, per UTC day, fleet +
+ *   per service, red under the 95% target; support spend (payment fees, brand setup, Copilot, ...)
+ *   produces no outcome by design and is shown apart per function (owner 2026-10-24);
  * - To the cent: every org-day balances on gross, net and vendor, red with the failing org-days.
  * Red on the hub IS the alert (no email). This file draws the served figures; it computes none.
  */
@@ -66,7 +71,7 @@ export function OutcomeCoverageTile({ href }: { href: string }) {
           ) : at === null ? (
             <Dash />
           ) : (
-            <span style={{ color: red ? RED : undefined }}>{share(at.coveragePct)}</span>
+            <span style={{ color: red ? RED : undefined }}>{share(outcomeShare(at))}</span>
           )
         }
         sub={data && at ? (rolloutInProgress(data) ? "rollout in progress" : shortDay(at.day)) : at === null ? "no spend yet" : undefined}
@@ -116,6 +121,7 @@ export function CoverageView({ data }: { data: OutcomeCoverage }) {
   const rollout = rolloutInProgress(data);
   const points = coverageChart(data);
   const names = serviceNames(data);
+  const notSplit = data.supportDaysMissing ?? [];
   const lines: Line<CoverageChartPoint>[] = [
     { key: "fleet", label: "Fleet", color: "var(--fg-1)", get: (p) => p.fleet },
     { key: "target", label: "Target", color: RED, dashed: true, get: () => COVERAGE_TARGET_PCT },
@@ -125,10 +131,16 @@ export function CoverageView({ data }: { data: OutcomeCoverage }) {
     <div className="space-y-8">
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
         <StatTile label="Spend with a declared outcome" note={`target ${COVERAGE_TARGET_PCT}%`}>
-          <Figure value={at ? <span style={{ color: belowTarget(at) ? RED : OK }}>{share(at.coveragePct)}</span> : <Dash />} sub={at ? shortDay(at.day) : "no spend yet"} />
+          <Figure
+            value={at ? <span style={{ color: belowTarget(at) ? RED : OK }}>{share(outcomeShare(at))}</span> : <Dash />}
+            sub={at ? `${shortDay(at.day)}, support apart` : "no spend yet"}
+          />
         </StatTile>
         <StatTile label="Spend that day" note="billed, gross">
-          <Figure value={at ? usdExact(at.spendGrossCents) : <Dash />} sub={at ? `${usdExact(at.coveredGrossCents)} declared` : undefined} />
+          <Figure
+            value={at ? usdExact(at.spendGrossCents) : <Dash />}
+            sub={at ? `${usdExact(at.coveredGrossCents)} declared, ${at.supportGrossCents == null ? "support not served" : `${usdExact(at.supportGrossCents)} support`}` : undefined}
+          />
         </StatTile>
         <StatTile label="Services spending" note="in the window">
           <Figure value={names.length} />
@@ -145,20 +157,59 @@ export function CoverageView({ data }: { data: OutcomeCoverage }) {
       )}
 
       <section>
-        <SectionTitle right={<span>Times are UTC</span>}>Share of spend with a declared outcome, per day</SectionTitle>
+        <SectionTitle right={<span>Times are UTC</span>}>Share of outcome spend with a declared outcome, per day</SectionTitle>
+        {notSplit.length > 0 && (
+          <p className="k-card k-fg2 mb-3 px-4 py-2.5 text-[13px]">
+            <span style={{ color: AMBER }}>Support not split yet on {notSplit.length === 1 ? shortDay(notSplit[0]) : `${shortDay(notSplit[0])} to ${shortDay(notSplit[notSplit.length - 1])}`}.</span>{" "}
+            The share there still counts support as spend with no outcome, until runs-service recomputes the day.
+          </p>
+        )}
         <DailyLines
           points={points}
           lines={lines}
           format={(v) => formatRatePct(v)}
           windows={[{ key: "all", label: "All", days: null }]}
-          caption={(p) => `${usdExact(p.coveredGrossCents)} of ${usdExact(p.spendGrossCents)} declared`}
+          caption={(p) =>
+            `${usdExact(p.coveredGrossCents)} declared of ${usdExact(p.spendGrossCents)}, ${p.supportNotSplit ? "support not split yet" : p.supportGrossCents == null ? "support not served" : `${usdExact(p.supportGrossCents)} support apart`}`
+          }
           empty="Not enough computed days to draw a line yet."
-          label="Share of spend with a declared outcome, fleet and per service, with the 95% target"
+          label="Share of outcome spend with a declared outcome, fleet and per service, with the 95% target"
         />
       </section>
 
+      <SupportSection data={data} />
+
       {at && <DayTables data={data} day={at.day} />}
     </div>
+  );
+}
+
+/** Support spend per function per day: no outcome by design, so never in the share. Stacked bars, served cents. */
+function SupportSection({ data }: { data: OutcomeCoverage }) {
+  const fns = supportFunctions(data);
+  const at = headlinePoint(data);
+  const periods = data.fleet.map((p) => ({ ...p, period: p.day }));
+  return (
+    <section>
+      <SectionTitle count={fns.length} right={<span>gross, per day</span>}>
+        Support spend, per function
+      </SectionTitle>
+      {fns.length === 0 ? (
+        <div className="k-card">
+          <EmptyNote>No spend marked as support in the window yet.</EmptyNote>
+        </div>
+      ) : (
+        <PeriodBars
+          periods={periods}
+          series={fns.map((f, i) => ({ key: f.key, label: f.label, color: SERIES_COLORS[i % SERIES_COLORS.length], get: (p: CoveragePoint) => supportCents(p, f.key) / 100 }))}
+          format={dollarsExact}
+          label={(day, short) => (short ? shortDay(day) : dayLabel(day))}
+          caption={(p) => (supportNotSplit(data, p.day) ? "not split yet" : p.supportGrossCents == null ? "not served" : `${usdExact(p.supportGrossCents)} support`)}
+          initial={at ? (periods.find((p) => p.day === at.day) ?? null) : null}
+          empty="No computed day yet."
+        />
+      )}
+    </section>
   );
 }
 
@@ -167,7 +218,8 @@ function CoverageCells({ p }: { p: CoveragePoint }) {
     <>
       <td className={TDR}>{usdExact(p.spendGrossCents)}</td>
       <td className={TDR}>{usdExact(p.coveredGrossCents)}</td>
-      <td className={TDR}>{p.coveragePct == null ? <Dash /> : <span style={{ color: belowTarget(p) ? RED : OK }}>{share(p.coveragePct)}</span>}</td>
+      <td className={TDR}>{p.supportGrossCents == null ? <Dash /> : usdExact(p.supportGrossCents)}</td>
+      <td className={TDR}>{outcomeShare(p) == null ? <Dash /> : <span style={{ color: belowTarget(p) ? RED : OK }}>{share(outcomeShare(p))}</span>}</td>
     </>
   );
 }
@@ -181,6 +233,7 @@ function DayTables({ data, day }: { data: OutcomeCoverage; day: string }) {
       {first}
       <th className={`${TH} text-right`}>Spend, gross</th>
       <th className={`${TH} text-right`}>Declared</th>
+      <th className={`${TH} text-right`}>Support</th>
       <th className={`${TH} text-right`}>Share</th>
     </>
   );
