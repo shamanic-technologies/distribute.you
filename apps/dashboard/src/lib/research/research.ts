@@ -86,6 +86,12 @@ export interface ResearchChart {
    * features-service off lead-service's distribution (TTFPR-RESEARCH-STUDY-1021).
    */
   curve?: { title: string; points: ResearchPoint[] };
+  /**
+   * On a `bars` chart: a second figure for the same bars, each point paired with the bar of the SAME
+   * `key`; a bar with no pair has none. Served by features-service (COST-ACCOUNTING-1023-P4: the
+   * ledger's cost per positive reply beside the figure the product uses today).
+   */
+  compare?: { title: string; points: ResearchPoint[] };
 }
 
 /** One tile of a delay study: a percentile or the average, written (`display` "5.2 days"). */

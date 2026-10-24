@@ -441,6 +441,7 @@ function BarsChart({
   nameFor?: (p: ResearchPoint) => string | null;
 }) {
   if (!chart.points.length) return <EmptyNote>Nothing to draw yet.</EmptyNote>;
+  if (chart.compare) return <PairedBarsChart chart={chart} compare={chart.compare} color={color} winner={winner} hrefFor={hrefFor} nameFor={nameFor} />;
   const max = Math.max(...chart.points.map((p) => p.value), 0) || 1;
   return (
     <ul className="divide-y divide-[var(--line-subtle)]">
@@ -489,6 +490,98 @@ function BarsChart({
         );
       })}
     </ul>
+  );
+}
+
+/** The second series of a paired chart: neutral, so the study's own bars keep the colour. */
+const COMPARE_COLOR = "var(--fg-3)";
+
+/**
+ * A bars chart served with `compare`: each bar drawn with its paired figure (same `key`) right
+ * under it, both on one scale, a legend naming the two series. A bar with no pair is drawn alone.
+ * Every figure is the served `display`; nothing is computed here.
+ */
+function PairedBarsChart({
+  chart,
+  compare,
+  color,
+  winner,
+  hrefFor,
+  nameFor,
+}: {
+  chart: ResearchChart;
+  compare: { title: string; points: ResearchPoint[] };
+  color: string;
+  winner: string | null;
+  hrefFor?: (p: ResearchPoint) => string | null;
+  nameFor?: (p: ResearchPoint) => string | null;
+}) {
+  const pairs = new Map(compare.points.filter((c) => c.key).map((c) => [c.key as string, c]));
+  const max = Math.max(...chart.points.map((p) => p.value), ...compare.points.map((p) => p.value), 0) || 1;
+  const bar = (p: ResearchPoint, fill: string) => (
+    <div className="grid grid-cols-[minmax(0,1fr)_4rem] items-center gap-2">
+      <div className="h-1.5 overflow-hidden rounded-full bg-[var(--data-track)]">
+        <div className="h-full rounded-full" style={{ width: `${Math.max(2, (p.value / max) * 100)}%`, background: fill, opacity: p.thin ? 0.3 : 0.75 }} />
+      </div>
+      <span className="text-right text-[13px] tabular-nums">{p.display}</span>
+    </div>
+  );
+  return (
+    <>
+      <div className="k-line-subtle flex flex-wrap items-center gap-x-4 gap-y-1 border-b px-4 py-2.5 text-[12px]">
+        <span className="k-fg2 inline-flex items-center gap-1.5">
+          <span className="h-2 w-2 rounded-full" style={{ background: color }} />
+          {chart.title}
+        </span>
+        <span className="k-fg2 inline-flex items-center gap-1.5">
+          <span className="h-2 w-2 rounded-full" style={{ background: COMPARE_COLOR }} />
+          {compare.title}
+        </span>
+      </div>
+      <ul className="divide-y divide-[var(--line-subtle)]">
+        {chart.points.map((p, i) => {
+          const top = winner !== null && p.label === winner && i === 0;
+          const pair = p.key ? pairs.get(p.key) ?? null : null;
+          const href = hrefFor?.(p) ?? null;
+          const name = nameFor?.(p) ?? null;
+          const inner = (
+            <>
+              <div className="flex items-baseline gap-2 text-[13px]">
+                <span className="min-w-0 flex-1 truncate" title={name ? `${name} · ${p.label}` : p.label}>
+                  {name && <span className="font-medium">{name}</span>}
+                  {name && <span className="k-fg3"> · </span>}
+                  <span className={name ? "k-fg2" : ""}>{p.label}</span>
+                </span>
+                {top && <span className="k-chip shrink-0">Winner</span>}
+                {p.thin && <span className="k-fg3 shrink-0 text-[12px]">Learning</span>}
+                {href && (
+                  <span className="k-fg4 shrink-0 opacity-0 group-hover:opacity-100">
+                    <Arrow />
+                  </span>
+                )}
+              </div>
+              <div className="mt-1.5 space-y-1">
+                {bar(p, color)}
+                {pair && bar(pair, COMPARE_COLOR)}
+              </div>
+              <p className="k-fg3 mt-1 text-[12px] tabular-nums">{p.note}</p>
+              {pair?.note && <p className="k-fg3 text-[12px] tabular-nums">{pair.note}</p>}
+            </>
+          );
+          return (
+            <li key={p.key ?? p.label}>
+              {href ? (
+                <Link href={href} className="k-hover group block px-4 py-2.5" title={`Open ${p.label}`}>
+                  {inner}
+                </Link>
+              ) : (
+                <div className="px-4 py-2.5">{inner}</div>
+              )}
+            </li>
+          );
+        })}
+      </ul>
+    </>
   );
 }
 
