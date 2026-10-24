@@ -36,7 +36,7 @@ import { WhatsappLinesPage, WhatsappLinesTile, useWhatsappLines } from "@/compon
 import { WhatsappLogoIcon } from "@phosphor-icons/react/dist/csr/WhatsappLogo";
 import { ScalesIcon } from "@phosphor-icons/react/dist/csr/Scales";
 import { LedgerCheckPage, LedgerCheckTile, OutcomeCoveragePage, OutcomeCoverageTile, useLedgerCheck, useOutcomeCoverage } from "@/components/v2/monitoring-cost-ledger";
-import { belowTarget, headlinePoint, serviceNames } from "@/lib/monitoring/cost-ledger";
+import { belowTarget, headlinePoint, outcomeShare, serviceNames } from "@/lib/monitoring/cost-ledger";
 import { formatRatePct } from "@/lib/pipe-stats";
 import { linesDown, linkedLines } from "@/lib/monitoring/whatsapp-lines";
 import { DomainsEstate, MailboxesSummary } from "@/components/v2/monitoring-details";
@@ -502,9 +502,9 @@ function Hub({ base }: { base: string }) {
             cells={[
               {
                 label: "Declared share",
-                value: covAt === undefined ? undefined : covAt === null ? null : <span style={{ color: belowTarget(covAt) ? "var(--data-rose)" : undefined }}>{formatRatePct(Number(covAt.coveragePct))}</span>,
+                value: covAt === undefined ? undefined : covAt === null ? null : <span style={{ color: belowTarget(covAt) ? "var(--data-rose)" : undefined }}>{formatRatePct(Number(outcomeShare(covAt)))}</span>,
                 note: "target 95%",
-                bars: coverage.data?.fleet.slice(-7).map((p) => Number(p.coveragePct ?? 0)),
+                bars: coverage.data?.fleet.slice(-7).map((p) => Number(outcomeShare(p) ?? 0)),
               },
               { label: "Services spending", value: coverage.data && serviceNames(coverage.data).length, note: "in the window" },
             ]}
