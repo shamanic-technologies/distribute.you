@@ -359,6 +359,18 @@ export function ChartNote({ note }: { note?: string }) {
 /** A monthly chart: the month on its own as bars, and beside it the average since inception. */
 export function MonthsRow({ chart, color }: { chart: ResearchChart; color: string }) {
   const money = chart.lowerIsBetter;
+  // A served day-by-day series (meeting-cost methods) carries no running line: its bars take the full width.
+  if (!chart.cumulative?.points.length) {
+    return (
+      <div>
+        <SectionTitle>{chart.title}</SectionTitle>
+        <div className="k-card overflow-hidden">
+          <MonthBars points={chart.points} color={color} money={money} />
+        </div>
+        <ChartNote note={chart.note} />
+      </div>
+    );
+  }
   return (
     <div>
       <div className="grid gap-3 md:grid-cols-2">

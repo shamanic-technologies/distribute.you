@@ -4,6 +4,7 @@ import { PROD_URLS } from "@/lib/env-urls";
 import { SITE_DESCRIPTION, SITE_NAME, SITE_TITLE, organizationJsonLd as sharedOrganizationJsonLd } from "@/lib/seo";
 import { INVITE_FORWARD_SCRIPT } from "@/lib/static-html";
 import { FIRST_TOUCH_CAPTURE_SCRIPT } from "@/lib/first-touch-script";
+import { SUBSCRIBER_LINK_CAPTURE_SCRIPT } from "@/lib/subscriber-link";
 import { SupportWhatsAppButton } from "@/components/support-whatsapp-button";
 
 const SITE_URL = PROD_URLS.landing;
@@ -166,6 +167,10 @@ export default function RootLayout({
             the dashboard to hand over at org creation. Same string as the
             static pages (static-html.ts analyticsHead()). */}
         <script dangerouslySetInnerHTML={{ __html: FIRST_TOUCH_CAPTURE_SCRIPT }} />
+        {/* Newsletter link id (dy_sub): parked for the visit, stripped from the
+            address bar, resolved server-side. Same string as the static pages
+            (static-html.ts analyticsHead()). See lib/subscriber-link.ts. */}
+        <script dangerouslySetInnerHTML={{ __html: SUBSCRIBER_LINK_CAPTURE_SCRIPT }} />
         <script async src="https://www.googletagmanager.com/gtag/js?id=G-YJHNGLEJPP" />
         <script
           dangerouslySetInnerHTML={{
