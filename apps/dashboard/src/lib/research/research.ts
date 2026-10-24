@@ -390,10 +390,38 @@ export interface ResearchLlmDynasty {
 export type ModelStandaloneReason = "no_dynasty_in_chat_service" | "llm_dynasties_unreadable";
 
 /** One version of an LLM dynasty, with its own share of the page's figures (they add up to it). */
+/**
+ * What ONE writing run of a model costs on a pipe (features-service `CatalogRunCost`, MODEL-RUN-COST-1024): every
+ * client, workflow and template of the pipe pooled; billed gross, committed; cache folded into input. `history` is
+ * the cumulative average per UTC day a priced run was written, its last point = `averageUsd`. Absent on an older build.
+ */
+export interface ResearchRunCost {
+  runs: number;
+  runsWithoutCost: number;
+  averageUsd: number | null;
+  averageDisplay: string | null;
+  averageInputUsd: number | null;
+  averageOutputUsd: number | null;
+  totalUsd: number;
+  totalInputUsd: number;
+  totalOutputUsd: number;
+  averageInputTokens: number | null;
+  averageOutputTokens: number | null;
+  history: { day: string; runs: number; averageUsd: number }[];
+  unavailableReason: string | null;
+}
+
+/** A per-run dollar figure printed the way features-service prints `averageDisplay` (formatting only). */
+export function runUsdText(usd: number | null): string | null {
+  if (usd == null) return null;
+  return usd >= 0.1 ? `$${usd.toFixed(2)}` : usd >= 0.001 ? `$${usd.toFixed(4)}` : `$${usd.toFixed(6)}`;
+}
+
 export interface ResearchModelVersion extends ResearchFigures {
   key: string;
   label: string;
   modelIds: string[];
+  runCost?: ResearchRunCost | null;
   /** The version the dynasty's slug runs now. */
   head: boolean;
   /** chat-service still serves it today (false = retired). */
@@ -408,6 +436,7 @@ export interface ResearchModelVersion extends ResearchFigures {
 export interface ResearchModel extends ResearchFigures {
   key: string;
   label: string;
+  runCost?: ResearchRunCost | null;
   dynasty?: ResearchLlmDynasty | null;
   standaloneReason?: ModelStandaloneReason | null;
   /** Every version, newest first, as features-service serves them; on a model on its own, that model. */

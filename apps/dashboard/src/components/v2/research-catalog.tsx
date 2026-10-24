@@ -27,6 +27,7 @@ import {
 import { OutputsList, RecentRuns, ResearchDrawer, TemplateFigures, TemplateOutputsPanel, TemplateVersionDrawer, useModelDynastyOutputs, useTemplateOutputs } from "@/components/v2/research-template-outputs";
 import { modelAliasesOf, modelsByTab, modelStatus, type ContentTarget } from "@/lib/research/content-status";
 import { CatalogueName, CatalogueObjectMark } from "@/components/v2/catalogue-name";
+import { RunCostChart, RunCostFigures, runCostGap } from "@/components/v2/research-run-cost";
 import { usePipeChannel, useResearch, useResearchCatalog, useResearchTexts } from "@/lib/research/research-source";
 import {
   Arrow,
@@ -439,7 +440,7 @@ function CatalogList({
             <div>
               <div className="k-card min-w-0 overflow-hidden">
                 <div className="k-scroll relative overflow-x-auto">
-                  <table className={`w-full ${kind === "workflows" ? "min-w-[1180px]" : kind === "templates" ? "min-w-[1100px]" : "min-w-[940px]"} text-[13px]`}>
+                  <table className={`w-full ${kind === "workflows" ? "min-w-[1180px]" : kind === "templates" ? "min-w-[1100px]" : "min-w-[1040px]"} text-[13px]`}>
                     <thead>
                       <tr className="border-b border-[var(--line-subtle)]">
                         <th className={TH}>{words.title.slice(0, -1)}</th>
@@ -465,13 +466,14 @@ function CatalogList({
                         )}
                         {kind === "models" ? (
                           <>
-                            {/* Owner 2026-10-23: Model, ROI, $ / outcome, % Conversion, # outcomes, $ Spent, Status. */}
+                            {/* Owner 2026-10-23: Model, ROI, $ / outcome, % Conversion, # outcomes, $ Spent, Status; 10-24: $ / run left of $ Spent. */}
                             <th className={`${TH} w-24 text-right`}>
                               <RoiLabel />
                             </th>
                             <th className={`${TH} w-36 text-right`}>{`$ ${o.unit}`}</th>
                             <th className={`${TH} w-28 text-right`}>% Conversion</th>
                             <th className={`${TH} w-32 text-right`}>{`# ${o.plural}`}</th>
+                            <th className={`${TH} w-24 text-right`}>$ / run</th>
                             <th className={`${TH} w-28 text-right`}>$ Spent</th>
                             <th className={`${TH} w-56`}>Status</th>
                           </>
@@ -625,6 +627,9 @@ function CatalogList({
                                     <Dash v={r.rate} />
                                   </td>
                                   <td className="px-3 text-right tabular-nums">{r.outcomes}</td>
+                                  <td className="whitespace-nowrap px-3 text-right tabular-nums" title={(r as ResearchModel).runCost?.averageDisplay ? undefined : runCostGap((r as ResearchModel).runCost)}>
+                                    <Dash v={(r as ResearchModel).runCost?.averageDisplay ?? null} />
+                                  </td>
                                   <td className="px-3 text-right tabular-nums">{r.spend}</td>
                                   <td className="max-w-0 px-3">
                                     <ContentStatusWord
@@ -1063,6 +1068,13 @@ function ModelPanel({
         </Link>
       }
     >
+      <div className="border-b border-[var(--line-subtle)] px-4 py-3">
+        <RunCostFigures c={m.runCost} />
+        <p className="k-label mt-4">$ / run since it started</p>
+        <div className="mt-1.5">
+          <RunCostChart c={m.runCost} height={120} />
+        </div>
+      </div>
       <div className="border-b border-[var(--line-subtle)] px-4 py-3">
         <TemplateFigures f={m} outcome={outcome} more />
       </div>
@@ -1520,6 +1532,15 @@ function ModelView({
 
         <div className="mt-6 grid gap-4 lg:grid-cols-[minmax(0,1fr)_320px]">
           <div className="min-w-0 space-y-6">
+            <section>
+              <SectionTitle right={<span>Every client, workflow and template of this pipe</span>}>Cost per run</SectionTitle>
+              <div className="k-card px-4 pb-3 pt-3">
+                <RunCostFigures c={m.runCost} />
+                <div className="mt-4">
+                  <RunCostChart c={m.runCost} height={180} />
+                </div>
+              </div>
+            </section>
             <Charts f={m} topic="llm" />
             {versions.length > 0 && <ModelVersionsTable pipe={pipe} m={m} versions={versions} />}
             <section>

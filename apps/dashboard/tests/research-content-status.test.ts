@@ -155,6 +155,11 @@ describe("TEMPLATE-MODEL-STATUS-1019: the three Research pages", () => {
     expect(list).toContain('const drawerRow = kind === "templates" || kind === "models";');
     expect(list).toContain("drawerRow ? opensDrawer(e.target, e.currentTarget) && setSelected(r.key) : nav(href)");
     expect(list).toContain("<ModelPanel");
+    // $ / run (owner 2026-10-24): the served average, left of $ Spent, and the figures + curve in the drawer and on the page.
+    expect(list.indexOf(">$ / run</th>")).toBeLessThan(list.lastIndexOf(">$ Spent</th>"));
+    expect(list.indexOf(">$ / run</th>")).toBeGreaterThan(list.indexOf("{`# ${o.plural}`}</th>"));
+    expect(list).toContain("<Dash v={(r as ResearchModel).runCost?.averageDisplay ?? null} />");
+    expect(list.match(/<RunCostChart c=\{m\.runCost\}/g)?.length).toBe(2);
     expect(list).toContain("useModelDynastyOutputs(m.dynasty?.slug ?? null, useContentPipe(pipe), 5)");
   });
 
