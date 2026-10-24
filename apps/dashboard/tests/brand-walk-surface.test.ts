@@ -112,7 +112,7 @@ describe("resume after a reload or a quit, per org", () => {
   it("a brand that already holds offers picks among them: never proposed or confirmed a second one", () => {
     const prep = walk.slice(walk.indexOf("async function prepareOffers("), walk.indexOf("async function prepareAudiences("));
     expect(prep.indexOf("await listBrandOffers(id)")).toBeGreaterThan(-1);
-    expect(prep.indexOf("await listBrandOffers(id)")).toBeLessThan(prep.indexOf("proposeBrandOffers("));
+    expect(prep.indexOf("await listBrandOffers(id)")).toBeLessThan(prep.indexOf("proposeBrandOffersFromSite("));
     const pick = walk.slice(walk.indexOf("function pickOffer("), walk.indexOf("async function draftAnswers("));
     expect(pick).toContain("held ? { chosenOfferId: held.offerId } : await confirmBrandOffers(id, [picked], 0)");
   });

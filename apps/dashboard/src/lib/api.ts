@@ -3174,6 +3174,26 @@ export async function proposeBrandOffers(brandId: string, description: string, t
   return parsed.data;
 }
 
+/**
+ * The offers a brand sells, read by brand-service off the brand's OWN site in one step (owner 2026-10-24:
+ * one model, never a pre-written list in between), main offer first. Call it after the site read of steps
+ * 1-2 has landed so its saved pages are read too. A 422 = the site names nothing to sell: the visitor
+ * describes it ("Something else").
+ */
+export async function proposeBrandOffersFromSite(brandId: string, token?: string): Promise<OfferProposals> {
+  const raw = await withTimeout(
+    apiCall<unknown>(`/brands/${brandId}/offers/proposals`, { token, method: "POST", body: { source: "site" } }),
+    120_000,
+    "proposeBrandOffersFromSite",
+  );
+  const parsed = ProposeOffersResponseSchema.safeParse(raw);
+  if (!parsed.success) {
+    console.error("[dashboard] proposeBrandOffersFromSite: response shape mismatch", { issues: parsed.error.issues, raw });
+    throw new Error("[dashboard] proposeBrandOffersFromSite: invalid response shape");
+  }
+  return parsed.data;
+}
+
 export async function confirmBrandOffers(
   brandId: string,
   offers: readonly OfferProposal[],

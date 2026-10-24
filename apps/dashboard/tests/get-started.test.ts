@@ -13,7 +13,6 @@ import {
   compactCount,
   hostOf,
   nextSlide,
-  offerSourceText,
   parseCompetitors,
   chosenFunnelOutlook,
   matchNote,
@@ -142,7 +141,6 @@ describe("the rules the page decides on", () => {
       phone: null,
       person: null,
       // The lists steps 3 and 4 showed are absent on an older snapshot: a reload asks for them.
-      offerLines: [],
       offerProposals: null,
       audienceProposals: null,
     });
@@ -171,12 +169,6 @@ describe("the rules the page decides on", () => {
       "email",
       "campaign",
     ]);
-  });
-
-  it("splits offers from the offer lines, else the overview", () => {
-    expect(offerSourceText([" Self-serve plan ", "", "Enterprise, sold by call"], "Overview")).toBe("Self-serve plan\nEnterprise, sold by call");
-    expect(offerSourceText([], " Acme sells anvils. ")).toBe("Acme sells anvils.");
-    expect(offerSourceText([], "")).toBe("");
   });
 
   it("writes every preview email ahead, capped at the five preview companies (owner 2026-10-06, 2026-10-16)", () => {
@@ -268,15 +260,16 @@ describe("the surface", () => {
 
   it("prepares the offers after the site read, and the audiences for the offer PICKED (owner 2026-10-06)", () => {
     const start = FLOW.slice(FLOW.indexOf("async function start("), FLOW.indexOf("const canLaunch"));
-    expect(start).toContain("...OFFER_FIELDS");
-    expect(start.indexOf("await siteRead;")).toBeLessThan(start.indexOf("await prepareOffers(id, offerSource.current.lines, offerSource.current.ov)"));
+    // One model reads the offers off the site (owner 2026-10-24): no offer lines in the site read.
+    expect(start).not.toContain("OFFER_FIELDS");
+    expect(start.indexOf("await siteRead;")).toBeLessThan(start.indexOf("await prepareOffers(id);"));
     // The audiences described the brand's OTHER offer when drafted beside the offer split.
     expect(start).not.toContain("prepareAudiences(");
     const pick = FLOW.slice(FLOW.indexOf("function pickOffer("), FLOW.indexOf("async function draftAnswers("));
     expect(pick).toContain("void prepareAudiences(id, chosenOfferId);");
     const prep = FLOW.slice(FLOW.indexOf("async function prepareAudiences("), FLOW.indexOf("function advance("));
     expect(prep).toContain("suggestBrandIcp(id, undefined, undefined, offerId)");
-    expect(FLOW).toContain("proposeBrandOffers(");
+    expect(FLOW).toContain("proposeBrandOffersFromSite(id)");
     expect(FLOW).toContain("proposeAudienceSegments(");
   });
 
