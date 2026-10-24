@@ -378,6 +378,8 @@ function CatalogList({
   // A Templates row opens its detail in the right drawer (owner 2026-10-23); its name opens its page.
   const [selected, setSelected] = useState<string | null>(null);
   const selectedTemplate = kind === "templates" ? ((shown as ResearchTemplate[]).find((r) => r.key === selected) ?? null) : null;
+  // A Models row opens its summary in the same right drawer (owner 2026-10-24); its name opens its page.
+  const selectedModel = kind === "models" ? ((shown as ResearchModel[]).find((r) => r.key === selected) ?? null) : null;
   return (
     <>
       <TopBar crumbs={crumbs} actions={<ResearchSwitches />} />
@@ -393,7 +395,11 @@ function CatalogList({
               ) : (
                 <>
                   Every {words.one} that wrote this pipe&apos;s emails, all clients pooled, the cheapest {o.noun.toLowerCase()} first.{" "}
-                  {kind === "templates" ? "Click a row for its workflows, models and last emails; its name opens its page." : "Open one for its months and its last runs."}
+                  {kind === "templates"
+                    ? "Click a row for its workflows, models and last emails; its name opens its page."
+                    : kind === "models"
+                      ? "Click a row for its summary and last runs; its name opens its page."
+                      : "Open one for its months and its last runs."}
                 </>
               )}
             </p>
@@ -511,7 +517,8 @@ function CatalogList({
                       ) : (
                         shown.map((r) => {
                           const href = researchCatalogHref(base, pipe, kind, r.key);
-                          const picked = kind === "templates" && selectedTemplate?.key === r.key;
+                          const drawerRow = kind === "templates" || kind === "models";
+                          const picked = drawerRow && selected === r.key;
                           const served = kind === "models" ? modelAliasesOf(r as ResearchModel) : { aliases: [], gap: null };
                           const modelKeys = served.aliases;
                           const target: ContentTarget | null =
@@ -534,8 +541,8 @@ function CatalogList({
                           return (
                             <tr
                               key={r.key}
-                              onClick={(e) => (kind === "templates" ? opensDrawer(e.target, e.currentTarget) && setSelected(r.key) : nav(href))}
-                              aria-selected={kind === "templates" ? picked : undefined}
+                              onClick={(e) => (drawerRow ? opensDrawer(e.target, e.currentTarget) && setSelected(r.key) : nav(href))}
+                              aria-selected={drawerRow ? picked : undefined}
                               className={`k-row group h-10 cursor-pointer ${picked ? "k-selected" : ""}`}
                             >
                               <td className={`max-w-0 pl-4 pr-3 ${kind === "models" ? "py-1.5" : ""}`}>
@@ -682,6 +689,16 @@ function CatalogList({
                   base={base}
                   pipe={pipe}
                   catalog={catalog}
+                  outcome={o}
+                  onClose={() => setSelected(null)}
+                />
+              )}
+              {selectedModel && (
+                <ModelPanel
+                  m={selectedModel}
+                  href={researchCatalogHref(base, pipe, "models", selectedModel.key)}
+                  base={base}
+                  pipe={pipe}
                   outcome={o}
                   onClose={() => setSelected(null)}
                 />
@@ -990,6 +1007,91 @@ function ModelNameLines({ m, href }: { m: ResearchModel; href: string }) {
         </span>
       )}
     </MarkLines>
+  );
+}
+
+/**
+ * The Models list's right panel (owner 2026-10-24): the dynasty's figures on this pipe, the workflows
+ * that write with it, its last 5 runs (every client, every template), and its page.
+ */
+function ModelPanel({
+  m,
+  href,
+  base,
+  pipe,
+  outcome,
+  onClose,
+}: {
+  m: ResearchModel;
+  href: string;
+  base: string;
+  pipe: ResearchPipe;
+  outcome: { noun: string; plural: string };
+  onClose: () => void;
+}) {
+  const second = modelSecondLine(m);
+  const runs = m.runs.slice(0, 5);
+  return (
+    <ResearchDrawer
+      label={m.label}
+      onClose={onClose}
+      head={
+        <div className="flex min-w-0 items-center gap-2.5">
+          <CatalogueObjectMark kind="llm" name={m.label} size={36} />
+          <div className="min-w-0">
+            <p className="truncate text-[14px] font-medium" title={m.label}>
+              {m.label}
+            </p>
+            {second && (
+              <p className="k-fg3 truncate text-[12px]" title={second.title}>
+                {second.text}
+              </p>
+            )}
+          </div>
+        </div>
+      }
+      footer={
+        <Link href={href} onClick={onClose} className="k-btn inline-flex items-center gap-1.5">
+          Open model page
+          <Arrow />
+        </Link>
+      }
+    >
+      <div className="border-b border-[var(--line-subtle)] px-4 py-3">
+        <TemplateFigures f={m} outcome={outcome} more />
+      </div>
+      <div className="border-b border-[var(--line-subtle)] px-4 py-3">
+        <p className="k-label">Workflows</p>
+        {m.workflows.length ? (
+          <ul className="mt-1.5 space-y-0.5 text-[13px]">
+            {m.workflows.map((w) => (
+              <li key={w.key}>
+                <Link href={researchCatalogHref(base, pipe, "workflows", w.key)} onClick={onClose} className="k-hover -mx-2 flex items-center gap-2 rounded-[8px] px-2 py-1" title={w.label}>
+                  <CatalogueName kind="workflow" name={w.label} servedKey={w.key} className="flex-1" />
+                  <Arrow />
+                </Link>
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <p className="k-fg3 mt-1.5 text-[12px]">No workflow writes most of its emails with it.</p>
+        )}
+      </div>
+      <p className="k-label px-4 pt-3">Last 5 runs</p>
+      {runs.length ? (
+        <ol className="mt-1 divide-y divide-[var(--line-subtle)]">
+          {runs.map((r, i) => (
+            <li key={`${r.when}-${i}`} className="flex min-w-0 items-center gap-2 px-4 py-2">
+              <span className="k-mono k-fg2 w-[136px] shrink-0 text-[12px]">{r.when}</span>
+              {r.workflow && <CatalogueName kind="workflow" variant="chip" name={r.workflow.label} servedKey={r.workflow.key} className="min-w-0" />}
+              {r.template && <CatalogueName kind="template" variant="chip" name={r.template.label} className="ml-auto min-w-0" />}
+            </li>
+          ))}
+        </ol>
+      ) : (
+        <EmptyNote>No run recorded before the read.</EmptyNote>
+      )}
+    </ResearchDrawer>
   );
 }
 

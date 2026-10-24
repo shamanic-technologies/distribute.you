@@ -151,6 +151,13 @@ describe("TEMPLATE-MODEL-STATUS-1019: the three Research pages", () => {
     expect(list).toContain("<StatusMenu");
   });
 
+  it("Models: a row click opens the model drawer, the name opens its page (owner 2026-10-24)", () => {
+    expect(list).toContain('const drawerRow = kind === "templates" || kind === "models";');
+    expect(list).toContain("drawerRow ? opensDrawer(e.target, e.currentTarget) && setSelected(r.key) : nav(href)");
+    expect(list).toContain("<ModelPanel");
+    expect(list).toContain("m.runs.slice(0, 5)");
+  });
+
   it("Models: Status + ⋮ keyed on the SERVED aliases, never the workflows join, no Leg column", () => {
     expect(list).toContain('{ kind: "model", aliases: modelKeys, label: r.label, pipe: contentPipe }');
     expect(list).toContain("modelAliasesOf(r as ResearchModel)");
