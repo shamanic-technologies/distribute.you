@@ -222,7 +222,7 @@ describe("verify screen offers a way out", () => {
 describe("auth analytics carry no credentials", () => {
   it("no capture payload references the email, password or typed code", () => {
     for (const src of [signUp, signIn, forgot]) {
-      const captures = src.match(/posthog\.capture\([^;]*?\);/gs) ?? [];
+      const captures = src.match(/posthog\.capture\([^;]*?\);/g) ?? [];
       expect(captures.length).toBeGreaterThan(0);
       for (const call of captures) {
         expect(call).not.toMatch(/\bemail\b/);

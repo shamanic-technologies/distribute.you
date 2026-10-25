@@ -13,6 +13,18 @@ import * as path from "path";
  * Discovery and the `--exclude 'tests/e2e/**'` flag in the package script are
  * untouched: the Playwright specs still stay out of the vitest run.
  */
+/**
+ * isomorphic-dompurify pulls jsdom, whose undici needs Node >= 22.19 (zlib zstd). On an
+ * older Node the sanitizer test dies at import with "reading 'bind'", which reads as a
+ * broken sanitizer. Prod runs Node 22.23 (see /.nvmrc), so say what is wrong instead.
+ */
+const [nodeMajor, nodeMinor] = process.versions.node.split(".").map(Number);
+if (nodeMajor < 22 || (nodeMajor === 22 && nodeMinor < 19)) {
+  throw new Error(
+    `admin tests need Node >= 22.19 (prod runs the version in /.nvmrc), got ${process.versions.node}. Run \`nvm use\` at the repo root.`,
+  );
+}
+
 export default defineConfig({
   resolve: {
     alias: {

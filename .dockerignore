@@ -32,3 +32,6 @@ node_modules
 !apps/admin/.env.production
 !apps/landing/.env.production
 !apps/dashboard/.env.production
+
+# Captured clones mirror npm CDN files that live under `dist/` (see .gitignore).
+!apps/landing/clones/**/dist
