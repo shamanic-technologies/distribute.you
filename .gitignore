@@ -5,6 +5,9 @@ node_modules
 
 # Build outputs
 dist/
+# A captured competitor clone mirrors third-party files byte for byte, and npm CDNs
+# serve from `dist/` folders: without this the capture's asset never reaches git.
+!apps/landing/clones/**/dist/
 .next/
 .turbo/
 out/

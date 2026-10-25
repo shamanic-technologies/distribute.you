@@ -75,7 +75,7 @@ describe("hiddenWorkflowSlugs", () => {
 
   it("KEEPS an eligible dynasty", () => {
     const hidden = hiddenWorkflowSlugs({
-      rows: [row("lithium", { eligible: true, tier: "strong" })],
+      rows: [row("lithium", { eligible: true })],
       observedPicks: NEVER_RAN,
     });
     expect(hidden.size).toBe(0);
@@ -91,7 +91,7 @@ describe("hiddenWorkflowSlugs", () => {
 
   it("KEEPS a dynasty with one excluded row and one eligible row", () => {
     const hidden = hiddenWorkflowSlugs({
-      rows: [row("dawn", { eligible: false }), row("dawn", { eligible: true, tier: "strong" })],
+      rows: [row("dawn", { eligible: false }), row("dawn", { eligible: true })],
       observedPicks: NEVER_RAN,
     });
     expect(hidden.size).toBe(0);
@@ -108,8 +108,8 @@ describe("hiddenWorkflowSlugs", () => {
       rows: [
         row("dawn", { eligible: false }),
         row("osprey", { eligible: false }),
-        row("lithium", { eligible: true, tier: "strong" }),
-        row("alioth", { eligible: true, tier: "frontier" }),
+        row("lithium", { eligible: true }),
+        row("alioth", { eligible: true }),
       ],
       observedPicks: NEVER_RAN,
     });
@@ -151,8 +151,8 @@ describe("hiddenWorkflowSlugs", () => {
         // The one excluded dynasty this campaign has spent through.
         row("cerulean", { eligible: false, grain: "campaign" }),
         row("cerulean", { eligible: false, grain: "audience" }),
-        row("lithium", { eligible: true, tier: "strong", grain: "campaign" }),
-        row("alioth", { eligible: true, tier: "frontier", grain: "crossOrg" }),
+        row("lithium", { eligible: true, grain: "campaign" }),
+        row("alioth", { eligible: true, grain: "crossOrg" }),
       ],
       observedPicks: { last: { workflowDynastySlug: "lithium" }, recent: [{ workflowDynastySlug: "lithium" }] },
     });

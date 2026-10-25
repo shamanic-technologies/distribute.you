@@ -207,7 +207,7 @@ describe("writtenByForRow: every message on its own id (WRITTEN-BY-EVERY-MESSAGE
   const wb = WrittenBySchema.parse(body);
 
   it("a first email, a follow-up and a WhatsApp message each read their own row", () => {
-    expect(writtenByForRow(wb, { id: "ievt:2c6e3448-d151-4982-904a-9f32853a87e0", campaignId: "c1", at: null })?.underTest).toBe(true);
+    expect(writtenByForRow(wb, { id: "ievt:2c6e3448-d151-4982-904a-9f32853a87e0", campaignId: "c1", at: null })?.model?.name).toBe("Claude Opus 5.5");
     expect(writtenByForRow(wb, { id: "ievt:followup-1", campaignId: "c1", at: null })?.model?.name).toBe("Gemini 3 Flash");
     const wa = writtenByForRow(wb, { id: "7a4d71b7-5200-4ea1-a733-77529a171596", campaignId: null, at: null });
     expect(wa?.tactics.map((t) => t.line)).toEqual(["Answers in the prospect's language"]);

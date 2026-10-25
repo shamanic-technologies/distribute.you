@@ -75,7 +75,7 @@ describe("the brand carried in the invite link", () => {
     expect(b).toEqual({ name: "Olive", domain: null, logoUrl: null, tint: null, mono: null });
     expect(sanitizeInviteBrand({ name: "  " })).toBeNull();
     expect(sanitizeInviteBrand(null)).toBeNull();
-    expect(parseInviteBrand(new URLSearchParams("org=o&th=900&tc=1&td=0&bn=A")).tint).toBeNull();
+    expect(parseInviteBrand(new URLSearchParams("org=o&th=900&tc=1&td=0&bn=A"))?.tint).toBeNull();
   });
 
   it("an invite with no brand carries only the org", () => {
