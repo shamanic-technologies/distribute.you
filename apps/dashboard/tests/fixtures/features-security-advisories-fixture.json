@@ -1,0 +1,1989 @@
+{
+ "status": "red",
+ "reason": "1 repo need attention on 2026-10-25: api-service (1 critical, 2 high (next, axios)).",
+ "staleAfterHours": 36,
+ "stale": false,
+ "lastReportAt": "2026-10-25T06:00:00.000Z",
+ "hoursSinceLastReport": 5.5,
+ "latestDay": "2026-10-25",
+ "redRepos": [
+  {
+   "repo": "api-service",
+   "reason": "1 critical, 2 high (next, axios)",
+   "critical": 1,
+   "high": 2,
+   "packages": [
+    "next",
+    "axios"
+   ],
+   "error": null
+  }
+ ],
+ "windowDays": 30,
+ "days": [
+  "2026-09-26",
+  "2026-09-27",
+  "2026-09-28",
+  "2026-09-29",
+  "2026-09-30",
+  "2026-10-01",
+  "2026-10-02",
+  "2026-10-03",
+  "2026-10-04",
+  "2026-10-05",
+  "2026-10-06",
+  "2026-10-07",
+  "2026-10-08",
+  "2026-10-09",
+  "2026-10-10",
+  "2026-10-11",
+  "2026-10-12",
+  "2026-10-13",
+  "2026-10-14",
+  "2026-10-15",
+  "2026-10-16",
+  "2026-10-17",
+  "2026-10-18",
+  "2026-10-19",
+  "2026-10-20",
+  "2026-10-21",
+  "2026-10-22",
+  "2026-10-23",
+  "2026-10-24",
+  "2026-10-25"
+ ],
+ "daily": [
+  {
+   "day": "2026-09-26",
+   "reported": true,
+   "repoCount": 5,
+   "critical": 0,
+   "high": 0,
+   "moderate": 10,
+   "low": 5,
+   "failedAudits": 0,
+   "redRepoCount": 0
+  },
+  {
+   "day": "2026-09-27",
+   "reported": true,
+   "repoCount": 5,
+   "critical": 0,
+   "high": 0,
+   "moderate": 10,
+   "low": 5,
+   "failedAudits": 0,
+   "redRepoCount": 0
+  },
+  {
+   "day": "2026-09-28",
+   "reported": true,
+   "repoCount": 5,
+   "critical": 0,
+   "high": 0,
+   "moderate": 10,
+   "low": 5,
+   "failedAudits": 0,
+   "redRepoCount": 0
+  },
+  {
+   "day": "2026-09-29",
+   "reported": true,
+   "repoCount": 5,
+   "critical": 0,
+   "high": 0,
+   "moderate": 10,
+   "low": 5,
+   "failedAudits": 0,
+   "redRepoCount": 0
+  },
+  {
+   "day": "2026-09-30",
+   "reported": true,
+   "repoCount": 5,
+   "critical": 0,
+   "high": 0,
+   "moderate": 10,
+   "low": 5,
+   "failedAudits": 0,
+   "redRepoCount": 0
+  },
+  {
+   "day": "2026-10-01",
+   "reported": true,
+   "repoCount": 5,
+   "critical": 0,
+   "high": 0,
+   "moderate": 10,
+   "low": 5,
+   "failedAudits": 0,
+   "redRepoCount": 0
+  },
+  {
+   "day": "2026-10-02",
+   "reported": true,
+   "repoCount": 5,
+   "critical": 0,
+   "high": 0,
+   "moderate": 10,
+   "low": 5,
+   "failedAudits": 0,
+   "redRepoCount": 0
+  },
+  {
+   "day": "2026-10-03",
+   "reported": true,
+   "repoCount": 5,
+   "critical": 0,
+   "high": 0,
+   "moderate": 10,
+   "low": 5,
+   "failedAudits": 0,
+   "redRepoCount": 0
+  },
+  {
+   "day": "2026-10-04",
+   "reported": true,
+   "repoCount": 5,
+   "critical": 0,
+   "high": 0,
+   "moderate": 10,
+   "low": 5,
+   "failedAudits": 0,
+   "redRepoCount": 0
+  },
+  {
+   "day": "2026-10-05",
+   "reported": true,
+   "repoCount": 5,
+   "critical": 0,
+   "high": 0,
+   "moderate": 10,
+   "low": 5,
+   "failedAudits": 0,
+   "redRepoCount": 0
+  },
+  {
+   "day": "2026-10-06",
+   "reported": true,
+   "repoCount": 5,
+   "critical": 0,
+   "high": 0,
+   "moderate": 10,
+   "low": 5,
+   "failedAudits": 0,
+   "redRepoCount": 0
+  },
+  {
+   "day": "2026-10-07",
+   "reported": true,
+   "repoCount": 5,
+   "critical": 0,
+   "high": 0,
+   "moderate": 10,
+   "low": 5,
+   "failedAudits": 0,
+   "redRepoCount": 0
+  },
+  {
+   "day": "2026-10-08",
+   "reported": true,
+   "repoCount": 5,
+   "critical": 0,
+   "high": 0,
+   "moderate": 10,
+   "low": 5,
+   "failedAudits": 0,
+   "redRepoCount": 0
+  },
+  {
+   "day": "2026-10-09",
+   "reported": true,
+   "repoCount": 5,
+   "critical": 0,
+   "high": 0,
+   "moderate": 10,
+   "low": 5,
+   "failedAudits": 0,
+   "redRepoCount": 0
+  },
+  {
+   "day": "2026-10-10",
+   "reported": true,
+   "repoCount": 5,
+   "critical": 0,
+   "high": 0,
+   "moderate": 10,
+   "low": 5,
+   "failedAudits": 0,
+   "redRepoCount": 0
+  },
+  {
+   "day": "2026-10-11",
+   "reported": true,
+   "repoCount": 5,
+   "critical": 0,
+   "high": 0,
+   "moderate": 10,
+   "low": 5,
+   "failedAudits": 0,
+   "redRepoCount": 0
+  },
+  {
+   "day": "2026-10-12",
+   "reported": true,
+   "repoCount": 5,
+   "critical": 0,
+   "high": 0,
+   "moderate": 10,
+   "low": 5,
+   "failedAudits": 0,
+   "redRepoCount": 0
+  },
+  {
+   "day": "2026-10-13",
+   "reported": true,
+   "repoCount": 5,
+   "critical": 0,
+   "high": 0,
+   "moderate": 10,
+   "low": 5,
+   "failedAudits": 0,
+   "redRepoCount": 0
+  },
+  {
+   "day": "2026-10-14",
+   "reported": true,
+   "repoCount": 5,
+   "critical": 0,
+   "high": 0,
+   "moderate": 10,
+   "low": 5,
+   "failedAudits": 0,
+   "redRepoCount": 0
+  },
+  {
+   "day": "2026-10-15",
+   "reported": true,
+   "repoCount": 5,
+   "critical": 0,
+   "high": 0,
+   "moderate": 10,
+   "low": 5,
+   "failedAudits": 0,
+   "redRepoCount": 0
+  },
+  {
+   "day": "2026-10-16",
+   "reported": true,
+   "repoCount": 5,
+   "critical": 0,
+   "high": 0,
+   "moderate": 10,
+   "low": 5,
+   "failedAudits": 0,
+   "redRepoCount": 0
+  },
+  {
+   "day": "2026-10-17",
+   "reported": true,
+   "repoCount": 5,
+   "critical": 0,
+   "high": 0,
+   "moderate": 10,
+   "low": 5,
+   "failedAudits": 0,
+   "redRepoCount": 0
+  },
+  {
+   "day": "2026-10-18",
+   "reported": false,
+   "repoCount": 0,
+   "critical": null,
+   "high": null,
+   "moderate": null,
+   "low": null,
+   "failedAudits": 0,
+   "redRepoCount": 0
+  },
+  {
+   "day": "2026-10-19",
+   "reported": true,
+   "repoCount": 5,
+   "critical": 0,
+   "high": 0,
+   "moderate": 10,
+   "low": 5,
+   "failedAudits": 0,
+   "redRepoCount": 0
+  },
+  {
+   "day": "2026-10-20",
+   "reported": true,
+   "repoCount": 5,
+   "critical": 0,
+   "high": 0,
+   "moderate": 10,
+   "low": 5,
+   "failedAudits": 0,
+   "redRepoCount": 0
+  },
+  {
+   "day": "2026-10-21",
+   "reported": true,
+   "repoCount": 5,
+   "critical": 0,
+   "high": 0,
+   "moderate": 10,
+   "low": 5,
+   "failedAudits": 0,
+   "redRepoCount": 0
+  },
+  {
+   "day": "2026-10-22",
+   "reported": true,
+   "repoCount": 5,
+   "critical": 1,
+   "high": 2,
+   "moderate": 11,
+   "low": 4,
+   "failedAudits": 0,
+   "redRepoCount": 1
+  },
+  {
+   "day": "2026-10-23",
+   "reported": true,
+   "repoCount": 5,
+   "critical": 1,
+   "high": 2,
+   "moderate": 11,
+   "low": 4,
+   "failedAudits": 0,
+   "redRepoCount": 1
+  },
+  {
+   "day": "2026-10-24",
+   "reported": true,
+   "repoCount": 5,
+   "critical": 1,
+   "high": 2,
+   "moderate": 11,
+   "low": 4,
+   "failedAudits": 0,
+   "redRepoCount": 1
+  },
+  {
+   "day": "2026-10-25",
+   "reported": true,
+   "repoCount": 5,
+   "critical": 1,
+   "high": 2,
+   "moderate": 11,
+   "low": 4,
+   "failedAudits": 0,
+   "redRepoCount": 1
+  }
+ ],
+ "repos": [
+  {
+   "repo": "api-service",
+   "status": "red",
+   "inLatestReport": true,
+   "latest": {
+    "day": "2026-10-25",
+    "status": "red",
+    "critical": 1,
+    "high": 2,
+    "moderate": 3,
+    "low": 0,
+    "packages": [
+     "next",
+     "axios"
+    ],
+    "error": null
+   },
+   "series": [
+    {
+     "day": "2026-09-26",
+     "status": "green",
+     "critical": 0,
+     "high": 0,
+     "moderate": 2,
+     "low": 1,
+     "packages": [],
+     "error": null
+    },
+    {
+     "day": "2026-09-27",
+     "status": "green",
+     "critical": 0,
+     "high": 0,
+     "moderate": 2,
+     "low": 1,
+     "packages": [],
+     "error": null
+    },
+    {
+     "day": "2026-09-28",
+     "status": "green",
+     "critical": 0,
+     "high": 0,
+     "moderate": 2,
+     "low": 1,
+     "packages": [],
+     "error": null
+    },
+    {
+     "day": "2026-09-29",
+     "status": "green",
+     "critical": 0,
+     "high": 0,
+     "moderate": 2,
+     "low": 1,
+     "packages": [],
+     "error": null
+    },
+    {
+     "day": "2026-09-30",
+     "status": "green",
+     "critical": 0,
+     "high": 0,
+     "moderate": 2,
+     "low": 1,
+     "packages": [],
+     "error": null
+    },
+    {
+     "day": "2026-10-01",
+     "status": "green",
+     "critical": 0,
+     "high": 0,
+     "moderate": 2,
+     "low": 1,
+     "packages": [],
+     "error": null
+    },
+    {
+     "day": "2026-10-02",
+     "status": "green",
+     "critical": 0,
+     "high": 0,
+     "moderate": 2,
+     "low": 1,
+     "packages": [],
+     "error": null
+    },
+    {
+     "day": "2026-10-03",
+     "status": "green",
+     "critical": 0,
+     "high": 0,
+     "moderate": 2,
+     "low": 1,
+     "packages": [],
+     "error": null
+    },
+    {
+     "day": "2026-10-04",
+     "status": "green",
+     "critical": 0,
+     "high": 0,
+     "moderate": 2,
+     "low": 1,
+     "packages": [],
+     "error": null
+    },
+    {
+     "day": "2026-10-05",
+     "status": "green",
+     "critical": 0,
+     "high": 0,
+     "moderate": 2,
+     "low": 1,
+     "packages": [],
+     "error": null
+    },
+    {
+     "day": "2026-10-06",
+     "status": "green",
+     "critical": 0,
+     "high": 0,
+     "moderate": 2,
+     "low": 1,
+     "packages": [],
+     "error": null
+    },
+    {
+     "day": "2026-10-07",
+     "status": "green",
+     "critical": 0,
+     "high": 0,
+     "moderate": 2,
+     "low": 1,
+     "packages": [],
+     "error": null
+    },
+    {
+     "day": "2026-10-08",
+     "status": "green",
+     "critical": 0,
+     "high": 0,
+     "moderate": 2,
+     "low": 1,
+     "packages": [],
+     "error": null
+    },
+    {
+     "day": "2026-10-09",
+     "status": "green",
+     "critical": 0,
+     "high": 0,
+     "moderate": 2,
+     "low": 1,
+     "packages": [],
+     "error": null
+    },
+    {
+     "day": "2026-10-10",
+     "status": "green",
+     "critical": 0,
+     "high": 0,
+     "moderate": 2,
+     "low": 1,
+     "packages": [],
+     "error": null
+    },
+    {
+     "day": "2026-10-11",
+     "status": "green",
+     "critical": 0,
+     "high": 0,
+     "moderate": 2,
+     "low": 1,
+     "packages": [],
+     "error": null
+    },
+    {
+     "day": "2026-10-12",
+     "status": "green",
+     "critical": 0,
+     "high": 0,
+     "moderate": 2,
+     "low": 1,
+     "packages": [],
+     "error": null
+    },
+    {
+     "day": "2026-10-13",
+     "status": "green",
+     "critical": 0,
+     "high": 0,
+     "moderate": 2,
+     "low": 1,
+     "packages": [],
+     "error": null
+    },
+    {
+     "day": "2026-10-14",
+     "status": "green",
+     "critical": 0,
+     "high": 0,
+     "moderate": 2,
+     "low": 1,
+     "packages": [],
+     "error": null
+    },
+    {
+     "day": "2026-10-15",
+     "status": "green",
+     "critical": 0,
+     "high": 0,
+     "moderate": 2,
+     "low": 1,
+     "packages": [],
+     "error": null
+    },
+    {
+     "day": "2026-10-16",
+     "status": "green",
+     "critical": 0,
+     "high": 0,
+     "moderate": 2,
+     "low": 1,
+     "packages": [],
+     "error": null
+    },
+    {
+     "day": "2026-10-17",
+     "status": "green",
+     "critical": 0,
+     "high": 0,
+     "moderate": 2,
+     "low": 1,
+     "packages": [],
+     "error": null
+    },
+    {
+     "day": "2026-10-18",
+     "status": "missing",
+     "critical": null,
+     "high": null,
+     "moderate": null,
+     "low": null,
+     "packages": [],
+     "error": null
+    },
+    {
+     "day": "2026-10-19",
+     "status": "green",
+     "critical": 0,
+     "high": 0,
+     "moderate": 2,
+     "low": 1,
+     "packages": [],
+     "error": null
+    },
+    {
+     "day": "2026-10-20",
+     "status": "green",
+     "critical": 0,
+     "high": 0,
+     "moderate": 2,
+     "low": 1,
+     "packages": [],
+     "error": null
+    },
+    {
+     "day": "2026-10-21",
+     "status": "green",
+     "critical": 0,
+     "high": 0,
+     "moderate": 2,
+     "low": 1,
+     "packages": [],
+     "error": null
+    },
+    {
+     "day": "2026-10-22",
+     "status": "red",
+     "critical": 1,
+     "high": 2,
+     "moderate": 3,
+     "low": 0,
+     "packages": [
+      "next",
+      "axios"
+     ],
+     "error": null
+    },
+    {
+     "day": "2026-10-23",
+     "status": "red",
+     "critical": 1,
+     "high": 2,
+     "moderate": 3,
+     "low": 0,
+     "packages": [
+      "next",
+      "axios"
+     ],
+     "error": null
+    },
+    {
+     "day": "2026-10-24",
+     "status": "red",
+     "critical": 1,
+     "high": 2,
+     "moderate": 3,
+     "low": 0,
+     "packages": [
+      "next",
+      "axios"
+     ],
+     "error": null
+    },
+    {
+     "day": "2026-10-25",
+     "status": "red",
+     "critical": 1,
+     "high": 2,
+     "moderate": 3,
+     "low": 0,
+     "packages": [
+      "next",
+      "axios"
+     ],
+     "error": null
+    }
+   ]
+  },
+  {
+   "repo": "brand-service",
+   "status": "green",
+   "inLatestReport": true,
+   "latest": {
+    "day": "2026-10-25",
+    "status": "green",
+    "critical": 0,
+    "high": 0,
+    "moderate": 2,
+    "low": 1,
+    "packages": [],
+    "error": null
+   },
+   "series": [
+    {
+     "day": "2026-09-26",
+     "status": "green",
+     "critical": 0,
+     "high": 0,
+     "moderate": 2,
+     "low": 1,
+     "packages": [],
+     "error": null
+    },
+    {
+     "day": "2026-09-27",
+     "status": "green",
+     "critical": 0,
+     "high": 0,
+     "moderate": 2,
+     "low": 1,
+     "packages": [],
+     "error": null
+    },
+    {
+     "day": "2026-09-28",
+     "status": "green",
+     "critical": 0,
+     "high": 0,
+     "moderate": 2,
+     "low": 1,
+     "packages": [],
+     "error": null
+    },
+    {
+     "day": "2026-09-29",
+     "status": "green",
+     "critical": 0,
+     "high": 0,
+     "moderate": 2,
+     "low": 1,
+     "packages": [],
+     "error": null
+    },
+    {
+     "day": "2026-09-30",
+     "status": "green",
+     "critical": 0,
+     "high": 0,
+     "moderate": 2,
+     "low": 1,
+     "packages": [],
+     "error": null
+    },
+    {
+     "day": "2026-10-01",
+     "status": "green",
+     "critical": 0,
+     "high": 0,
+     "moderate": 2,
+     "low": 1,
+     "packages": [],
+     "error": null
+    },
+    {
+     "day": "2026-10-02",
+     "status": "green",
+     "critical": 0,
+     "high": 0,
+     "moderate": 2,
+     "low": 1,
+     "packages": [],
+     "error": null
+    },
+    {
+     "day": "2026-10-03",
+     "status": "green",
+     "critical": 0,
+     "high": 0,
+     "moderate": 2,
+     "low": 1,
+     "packages": [],
+     "error": null
+    },
+    {
+     "day": "2026-10-04",
+     "status": "green",
+     "critical": 0,
+     "high": 0,
+     "moderate": 2,
+     "low": 1,
+     "packages": [],
+     "error": null
+    },
+    {
+     "day": "2026-10-05",
+     "status": "green",
+     "critical": 0,
+     "high": 0,
+     "moderate": 2,
+     "low": 1,
+     "packages": [],
+     "error": null
+    },
+    {
+     "day": "2026-10-06",
+     "status": "green",
+     "critical": 0,
+     "high": 0,
+     "moderate": 2,
+     "low": 1,
+     "packages": [],
+     "error": null
+    },
+    {
+     "day": "2026-10-07",
+     "status": "green",
+     "critical": 0,
+     "high": 0,
+     "moderate": 2,
+     "low": 1,
+     "packages": [],
+     "error": null
+    },
+    {
+     "day": "2026-10-08",
+     "status": "green",
+     "critical": 0,
+     "high": 0,
+     "moderate": 2,
+     "low": 1,
+     "packages": [],
+     "error": null
+    },
+    {
+     "day": "2026-10-09",
+     "status": "green",
+     "critical": 0,
+     "high": 0,
+     "moderate": 2,
+     "low": 1,
+     "packages": [],
+     "error": null
+    },
+    {
+     "day": "2026-10-10",
+     "status": "green",
+     "critical": 0,
+     "high": 0,
+     "moderate": 2,
+     "low": 1,
+     "packages": [],
+     "error": null
+    },
+    {
+     "day": "2026-10-11",
+     "status": "green",
+     "critical": 0,
+     "high": 0,
+     "moderate": 2,
+     "low": 1,
+     "packages": [],
+     "error": null
+    },
+    {
+     "day": "2026-10-12",
+     "status": "green",
+     "critical": 0,
+     "high": 0,
+     "moderate": 2,
+     "low": 1,
+     "packages": [],
+     "error": null
+    },
+    {
+     "day": "2026-10-13",
+     "status": "green",
+     "critical": 0,
+     "high": 0,
+     "moderate": 2,
+     "low": 1,
+     "packages": [],
+     "error": null
+    },
+    {
+     "day": "2026-10-14",
+     "status": "green",
+     "critical": 0,
+     "high": 0,
+     "moderate": 2,
+     "low": 1,
+     "packages": [],
+     "error": null
+    },
+    {
+     "day": "2026-10-15",
+     "status": "green",
+     "critical": 0,
+     "high": 0,
+     "moderate": 2,
+     "low": 1,
+     "packages": [],
+     "error": null
+    },
+    {
+     "day": "2026-10-16",
+     "status": "green",
+     "critical": 0,
+     "high": 0,
+     "moderate": 2,
+     "low": 1,
+     "packages": [],
+     "error": null
+    },
+    {
+     "day": "2026-10-17",
+     "status": "green",
+     "critical": 0,
+     "high": 0,
+     "moderate": 2,
+     "low": 1,
+     "packages": [],
+     "error": null
+    },
+    {
+     "day": "2026-10-18",
+     "status": "missing",
+     "critical": null,
+     "high": null,
+     "moderate": null,
+     "low": null,
+     "packages": [],
+     "error": null
+    },
+    {
+     "day": "2026-10-19",
+     "status": "green",
+     "critical": 0,
+     "high": 0,
+     "moderate": 2,
+     "low": 1,
+     "packages": [],
+     "error": null
+    },
+    {
+     "day": "2026-10-20",
+     "status": "green",
+     "critical": 0,
+     "high": 0,
+     "moderate": 2,
+     "low": 1,
+     "packages": [],
+     "error": null
+    },
+    {
+     "day": "2026-10-21",
+     "status": "green",
+     "critical": 0,
+     "high": 0,
+     "moderate": 2,
+     "low": 1,
+     "packages": [],
+     "error": null
+    },
+    {
+     "day": "2026-10-22",
+     "status": "green",
+     "critical": 0,
+     "high": 0,
+     "moderate": 2,
+     "low": 1,
+     "packages": [],
+     "error": null
+    },
+    {
+     "day": "2026-10-23",
+     "status": "green",
+     "critical": 0,
+     "high": 0,
+     "moderate": 2,
+     "low": 1,
+     "packages": [],
+     "error": null
+    },
+    {
+     "day": "2026-10-24",
+     "status": "green",
+     "critical": 0,
+     "high": 0,
+     "moderate": 2,
+     "low": 1,
+     "packages": [],
+     "error": null
+    },
+    {
+     "day": "2026-10-25",
+     "status": "green",
+     "critical": 0,
+     "high": 0,
+     "moderate": 2,
+     "low": 1,
+     "packages": [],
+     "error": null
+    }
+   ]
+  },
+  {
+   "repo": "features-service",
+   "status": "green",
+   "inLatestReport": true,
+   "latest": {
+    "day": "2026-10-25",
+    "status": "green",
+    "critical": 0,
+    "high": 0,
+    "moderate": 2,
+    "low": 1,
+    "packages": [],
+    "error": null
+   },
+   "series": [
+    {
+     "day": "2026-09-26",
+     "status": "green",
+     "critical": 0,
+     "high": 0,
+     "moderate": 2,
+     "low": 1,
+     "packages": [],
+     "error": null
+    },
+    {
+     "day": "2026-09-27",
+     "status": "green",
+     "critical": 0,
+     "high": 0,
+     "moderate": 2,
+     "low": 1,
+     "packages": [],
+     "error": null
+    },
+    {
+     "day": "2026-09-28",
+     "status": "green",
+     "critical": 0,
+     "high": 0,
+     "moderate": 2,
+     "low": 1,
+     "packages": [],
+     "error": null
+    },
+    {
+     "day": "2026-09-29",
+     "status": "green",
+     "critical": 0,
+     "high": 0,
+     "moderate": 2,
+     "low": 1,
+     "packages": [],
+     "error": null
+    },
+    {
+     "day": "2026-09-30",
+     "status": "green",
+     "critical": 0,
+     "high": 0,
+     "moderate": 2,
+     "low": 1,
+     "packages": [],
+     "error": null
+    },
+    {
+     "day": "2026-10-01",
+     "status": "green",
+     "critical": 0,
+     "high": 0,
+     "moderate": 2,
+     "low": 1,
+     "packages": [],
+     "error": null
+    },
+    {
+     "day": "2026-10-02",
+     "status": "green",
+     "critical": 0,
+     "high": 0,
+     "moderate": 2,
+     "low": 1,
+     "packages": [],
+     "error": null
+    },
+    {
+     "day": "2026-10-03",
+     "status": "green",
+     "critical": 0,
+     "high": 0,
+     "moderate": 2,
+     "low": 1,
+     "packages": [],
+     "error": null
+    },
+    {
+     "day": "2026-10-04",
+     "status": "green",
+     "critical": 0,
+     "high": 0,
+     "moderate": 2,
+     "low": 1,
+     "packages": [],
+     "error": null
+    },
+    {
+     "day": "2026-10-05",
+     "status": "green",
+     "critical": 0,
+     "high": 0,
+     "moderate": 2,
+     "low": 1,
+     "packages": [],
+     "error": null
+    },
+    {
+     "day": "2026-10-06",
+     "status": "green",
+     "critical": 0,
+     "high": 0,
+     "moderate": 2,
+     "low": 1,
+     "packages": [],
+     "error": null
+    },
+    {
+     "day": "2026-10-07",
+     "status": "green",
+     "critical": 0,
+     "high": 0,
+     "moderate": 2,
+     "low": 1,
+     "packages": [],
+     "error": null
+    },
+    {
+     "day": "2026-10-08",
+     "status": "green",
+     "critical": 0,
+     "high": 0,
+     "moderate": 2,
+     "low": 1,
+     "packages": [],
+     "error": null
+    },
+    {
+     "day": "2026-10-09",
+     "status": "green",
+     "critical": 0,
+     "high": 0,
+     "moderate": 2,
+     "low": 1,
+     "packages": [],
+     "error": null
+    },
+    {
+     "day": "2026-10-10",
+     "status": "green",
+     "critical": 0,
+     "high": 0,
+     "moderate": 2,
+     "low": 1,
+     "packages": [],
+     "error": null
+    },
+    {
+     "day": "2026-10-11",
+     "status": "green",
+     "critical": 0,
+     "high": 0,
+     "moderate": 2,
+     "low": 1,
+     "packages": [],
+     "error": null
+    },
+    {
+     "day": "2026-10-12",
+     "status": "green",
+     "critical": 0,
+     "high": 0,
+     "moderate": 2,
+     "low": 1,
+     "packages": [],
+     "error": null
+    },
+    {
+     "day": "2026-10-13",
+     "status": "green",
+     "critical": 0,
+     "high": 0,
+     "moderate": 2,
+     "low": 1,
+     "packages": [],
+     "error": null
+    },
+    {
+     "day": "2026-10-14",
+     "status": "green",
+     "critical": 0,
+     "high": 0,
+     "moderate": 2,
+     "low": 1,
+     "packages": [],
+     "error": null
+    },
+    {
+     "day": "2026-10-15",
+     "status": "green",
+     "critical": 0,
+     "high": 0,
+     "moderate": 2,
+     "low": 1,
+     "packages": [],
+     "error": null
+    },
+    {
+     "day": "2026-10-16",
+     "status": "green",
+     "critical": 0,
+     "high": 0,
+     "moderate": 2,
+     "low": 1,
+     "packages": [],
+     "error": null
+    },
+    {
+     "day": "2026-10-17",
+     "status": "green",
+     "critical": 0,
+     "high": 0,
+     "moderate": 2,
+     "low": 1,
+     "packages": [],
+     "error": null
+    },
+    {
+     "day": "2026-10-18",
+     "status": "missing",
+     "critical": null,
+     "high": null,
+     "moderate": null,
+     "low": null,
+     "packages": [],
+     "error": null
+    },
+    {
+     "day": "2026-10-19",
+     "status": "green",
+     "critical": 0,
+     "high": 0,
+     "moderate": 2,
+     "low": 1,
+     "packages": [],
+     "error": null
+    },
+    {
+     "day": "2026-10-20",
+     "status": "green",
+     "critical": 0,
+     "high": 0,
+     "moderate": 2,
+     "low": 1,
+     "packages": [],
+     "error": null
+    },
+    {
+     "day": "2026-10-21",
+     "status": "green",
+     "critical": 0,
+     "high": 0,
+     "moderate": 2,
+     "low": 1,
+     "packages": [],
+     "error": null
+    },
+    {
+     "day": "2026-10-22",
+     "status": "green",
+     "critical": 0,
+     "high": 0,
+     "moderate": 2,
+     "low": 1,
+     "packages": [],
+     "error": null
+    },
+    {
+     "day": "2026-10-23",
+     "status": "green",
+     "critical": 0,
+     "high": 0,
+     "moderate": 2,
+     "low": 1,
+     "packages": [],
+     "error": null
+    },
+    {
+     "day": "2026-10-24",
+     "status": "green",
+     "critical": 0,
+     "high": 0,
+     "moderate": 2,
+     "low": 1,
+     "packages": [],
+     "error": null
+    },
+    {
+     "day": "2026-10-25",
+     "status": "green",
+     "critical": 0,
+     "high": 0,
+     "moderate": 2,
+     "low": 1,
+     "packages": [],
+     "error": null
+    }
+   ]
+  },
+  {
+   "repo": "lead-service",
+   "status": "green",
+   "inLatestReport": true,
+   "latest": {
+    "day": "2026-10-25",
+    "status": "green",
+    "critical": 0,
+    "high": 0,
+    "moderate": 2,
+    "low": 1,
+    "packages": [],
+    "error": null
+   },
+   "series": [
+    {
+     "day": "2026-09-26",
+     "status": "green",
+     "critical": 0,
+     "high": 0,
+     "moderate": 2,
+     "low": 1,
+     "packages": [],
+     "error": null
+    },
+    {
+     "day": "2026-09-27",
+     "status": "green",
+     "critical": 0,
+     "high": 0,
+     "moderate": 2,
+     "low": 1,
+     "packages": [],
+     "error": null
+    },
+    {
+     "day": "2026-09-28",
+     "status": "green",
+     "critical": 0,
+     "high": 0,
+     "moderate": 2,
+     "low": 1,
+     "packages": [],
+     "error": null
+    },
+    {
+     "day": "2026-09-29",
+     "status": "green",
+     "critical": 0,
+     "high": 0,
+     "moderate": 2,
+     "low": 1,
+     "packages": [],
+     "error": null
+    },
+    {
+     "day": "2026-09-30",
+     "status": "green",
+     "critical": 0,
+     "high": 0,
+     "moderate": 2,
+     "low": 1,
+     "packages": [],
+     "error": null
+    },
+    {
+     "day": "2026-10-01",
+     "status": "green",
+     "critical": 0,
+     "high": 0,
+     "moderate": 2,
+     "low": 1,
+     "packages": [],
+     "error": null
+    },
+    {
+     "day": "2026-10-02",
+     "status": "green",
+     "critical": 0,
+     "high": 0,
+     "moderate": 2,
+     "low": 1,
+     "packages": [],
+     "error": null
+    },
+    {
+     "day": "2026-10-03",
+     "status": "green",
+     "critical": 0,
+     "high": 0,
+     "moderate": 2,
+     "low": 1,
+     "packages": [],
+     "error": null
+    },
+    {
+     "day": "2026-10-04",
+     "status": "green",
+     "critical": 0,
+     "high": 0,
+     "moderate": 2,
+     "low": 1,
+     "packages": [],
+     "error": null
+    },
+    {
+     "day": "2026-10-05",
+     "status": "green",
+     "critical": 0,
+     "high": 0,
+     "moderate": 2,
+     "low": 1,
+     "packages": [],
+     "error": null
+    },
+    {
+     "day": "2026-10-06",
+     "status": "green",
+     "critical": 0,
+     "high": 0,
+     "moderate": 2,
+     "low": 1,
+     "packages": [],
+     "error": null
+    },
+    {
+     "day": "2026-10-07",
+     "status": "green",
+     "critical": 0,
+     "high": 0,
+     "moderate": 2,
+     "low": 1,
+     "packages": [],
+     "error": null
+    },
+    {
+     "day": "2026-10-08",
+     "status": "green",
+     "critical": 0,
+     "high": 0,
+     "moderate": 2,
+     "low": 1,
+     "packages": [],
+     "error": null
+    },
+    {
+     "day": "2026-10-09",
+     "status": "green",
+     "critical": 0,
+     "high": 0,
+     "moderate": 2,
+     "low": 1,
+     "packages": [],
+     "error": null
+    },
+    {
+     "day": "2026-10-10",
+     "status": "green",
+     "critical": 0,
+     "high": 0,
+     "moderate": 2,
+     "low": 1,
+     "packages": [],
+     "error": null
+    },
+    {
+     "day": "2026-10-11",
+     "status": "green",
+     "critical": 0,
+     "high": 0,
+     "moderate": 2,
+     "low": 1,
+     "packages": [],
+     "error": null
+    },
+    {
+     "day": "2026-10-12",
+     "status": "green",
+     "critical": 0,
+     "high": 0,
+     "moderate": 2,
+     "low": 1,
+     "packages": [],
+     "error": null
+    },
+    {
+     "day": "2026-10-13",
+     "status": "green",
+     "critical": 0,
+     "high": 0,
+     "moderate": 2,
+     "low": 1,
+     "packages": [],
+     "error": null
+    },
+    {
+     "day": "2026-10-14",
+     "status": "green",
+     "critical": 0,
+     "high": 0,
+     "moderate": 2,
+     "low": 1,
+     "packages": [],
+     "error": null
+    },
+    {
+     "day": "2026-10-15",
+     "status": "green",
+     "critical": 0,
+     "high": 0,
+     "moderate": 2,
+     "low": 1,
+     "packages": [],
+     "error": null
+    },
+    {
+     "day": "2026-10-16",
+     "status": "green",
+     "critical": 0,
+     "high": 0,
+     "moderate": 2,
+     "low": 1,
+     "packages": [],
+     "error": null
+    },
+    {
+     "day": "2026-10-17",
+     "status": "green",
+     "critical": 0,
+     "high": 0,
+     "moderate": 2,
+     "low": 1,
+     "packages": [],
+     "error": null
+    },
+    {
+     "day": "2026-10-18",
+     "status": "missing",
+     "critical": null,
+     "high": null,
+     "moderate": null,
+     "low": null,
+     "packages": [],
+     "error": null
+    },
+    {
+     "day": "2026-10-19",
+     "status": "green",
+     "critical": 0,
+     "high": 0,
+     "moderate": 2,
+     "low": 1,
+     "packages": [],
+     "error": null
+    },
+    {
+     "day": "2026-10-20",
+     "status": "green",
+     "critical": 0,
+     "high": 0,
+     "moderate": 2,
+     "low": 1,
+     "packages": [],
+     "error": null
+    },
+    {
+     "day": "2026-10-21",
+     "status": "green",
+     "critical": 0,
+     "high": 0,
+     "moderate": 2,
+     "low": 1,
+     "packages": [],
+     "error": null
+    },
+    {
+     "day": "2026-10-22",
+     "status": "green",
+     "critical": 0,
+     "high": 0,
+     "moderate": 2,
+     "low": 1,
+     "packages": [],
+     "error": null
+    },
+    {
+     "day": "2026-10-23",
+     "status": "green",
+     "critical": 0,
+     "high": 0,
+     "moderate": 2,
+     "low": 1,
+     "packages": [],
+     "error": null
+    },
+    {
+     "day": "2026-10-24",
+     "status": "green",
+     "critical": 0,
+     "high": 0,
+     "moderate": 2,
+     "low": 1,
+     "packages": [],
+     "error": null
+    },
+    {
+     "day": "2026-10-25",
+     "status": "green",
+     "critical": 0,
+     "high": 0,
+     "moderate": 2,
+     "low": 1,
+     "packages": [],
+     "error": null
+    }
+   ]
+  },
+  {
+   "repo": "runs-service",
+   "status": "green",
+   "inLatestReport": true,
+   "latest": {
+    "day": "2026-10-25",
+    "status": "green",
+    "critical": 0,
+    "high": 0,
+    "moderate": 2,
+    "low": 1,
+    "packages": [],
+    "error": null
+   },
+   "series": [
+    {
+     "day": "2026-09-26",
+     "status": "green",
+     "critical": 0,
+     "high": 0,
+     "moderate": 2,
+     "low": 1,
+     "packages": [],
+     "error": null
+    },
+    {
+     "day": "2026-09-27",
+     "status": "green",
+     "critical": 0,
+     "high": 0,
+     "moderate": 2,
+     "low": 1,
+     "packages": [],
+     "error": null
+    },
+    {
+     "day": "2026-09-28",
+     "status": "green",
+     "critical": 0,
+     "high": 0,
+     "moderate": 2,
+     "low": 1,
+     "packages": [],
+     "error": null
+    },
+    {
+     "day": "2026-09-29",
+     "status": "green",
+     "critical": 0,
+     "high": 0,
+     "moderate": 2,
+     "low": 1,
+     "packages": [],
+     "error": null
+    },
+    {
+     "day": "2026-09-30",
+     "status": "green",
+     "critical": 0,
+     "high": 0,
+     "moderate": 2,
+     "low": 1,
+     "packages": [],
+     "error": null
+    },
+    {
+     "day": "2026-10-01",
+     "status": "green",
+     "critical": 0,
+     "high": 0,
+     "moderate": 2,
+     "low": 1,
+     "packages": [],
+     "error": null
+    },
+    {
+     "day": "2026-10-02",
+     "status": "green",
+     "critical": 0,
+     "high": 0,
+     "moderate": 2,
+     "low": 1,
+     "packages": [],
+     "error": null
+    },
+    {
+     "day": "2026-10-03",
+     "status": "green",
+     "critical": 0,
+     "high": 0,
+     "moderate": 2,
+     "low": 1,
+     "packages": [],
+     "error": null
+    },
+    {
+     "day": "2026-10-04",
+     "status": "green",
+     "critical": 0,
+     "high": 0,
+     "moderate": 2,
+     "low": 1,
+     "packages": [],
+     "error": null
+    },
+    {
+     "day": "2026-10-05",
+     "status": "green",
+     "critical": 0,
+     "high": 0,
+     "moderate": 2,
+     "low": 1,
+     "packages": [],
+     "error": null
+    },
+    {
+     "day": "2026-10-06",
+     "status": "green",
+     "critical": 0,
+     "high": 0,
+     "moderate": 2,
+     "low": 1,
+     "packages": [],
+     "error": null
+    },
+    {
+     "day": "2026-10-07",
+     "status": "green",
+     "critical": 0,
+     "high": 0,
+     "moderate": 2,
+     "low": 1,
+     "packages": [],
+     "error": null
+    },
+    {
+     "day": "2026-10-08",
+     "status": "green",
+     "critical": 0,
+     "high": 0,
+     "moderate": 2,
+     "low": 1,
+     "packages": [],
+     "error": null
+    },
+    {
+     "day": "2026-10-09",
+     "status": "green",
+     "critical": 0,
+     "high": 0,
+     "moderate": 2,
+     "low": 1,
+     "packages": [],
+     "error": null
+    },
+    {
+     "day": "2026-10-10",
+     "status": "green",
+     "critical": 0,
+     "high": 0,
+     "moderate": 2,
+     "low": 1,
+     "packages": [],
+     "error": null
+    },
+    {
+     "day": "2026-10-11",
+     "status": "green",
+     "critical": 0,
+     "high": 0,
+     "moderate": 2,
+     "low": 1,
+     "packages": [],
+     "error": null
+    },
+    {
+     "day": "2026-10-12",
+     "status": "green",
+     "critical": 0,
+     "high": 0,
+     "moderate": 2,
+     "low": 1,
+     "packages": [],
+     "error": null
+    },
+    {
+     "day": "2026-10-13",
+     "status": "green",
+     "critical": 0,
+     "high": 0,
+     "moderate": 2,
+     "low": 1,
+     "packages": [],
+     "error": null
+    },
+    {
+     "day": "2026-10-14",
+     "status": "green",
+     "critical": 0,
+     "high": 0,
+     "moderate": 2,
+     "low": 1,
+     "packages": [],
+     "error": null
+    },
+    {
+     "day": "2026-10-15",
+     "status": "green",
+     "critical": 0,
+     "high": 0,
+     "moderate": 2,
+     "low": 1,
+     "packages": [],
+     "error": null
+    },
+    {
+     "day": "2026-10-16",
+     "status": "green",
+     "critical": 0,
+     "high": 0,
+     "moderate": 2,
+     "low": 1,
+     "packages": [],
+     "error": null
+    },
+    {
+     "day": "2026-10-17",
+     "status": "green",
+     "critical": 0,
+     "high": 0,
+     "moderate": 2,
+     "low": 1,
+     "packages": [],
+     "error": null
+    },
+    {
+     "day": "2026-10-18",
+     "status": "missing",
+     "critical": null,
+     "high": null,
+     "moderate": null,
+     "low": null,
+     "packages": [],
+     "error": null
+    },
+    {
+     "day": "2026-10-19",
+     "status": "green",
+     "critical": 0,
+     "high": 0,
+     "moderate": 2,
+     "low": 1,
+     "packages": [],
+     "error": null
+    },
+    {
+     "day": "2026-10-20",
+     "status": "green",
+     "critical": 0,
+     "high": 0,
+     "moderate": 2,
+     "low": 1,
+     "packages": [],
+     "error": null
+    },
+    {
+     "day": "2026-10-21",
+     "status": "green",
+     "critical": 0,
+     "high": 0,
+     "moderate": 2,
+     "low": 1,
+     "packages": [],
+     "error": null
+    },
+    {
+     "day": "2026-10-22",
+     "status": "green",
+     "critical": 0,
+     "high": 0,
+     "moderate": 2,
+     "low": 1,
+     "packages": [],
+     "error": null
+    },
+    {
+     "day": "2026-10-23",
+     "status": "green",
+     "critical": 0,
+     "high": 0,
+     "moderate": 2,
+     "low": 1,
+     "packages": [],
+     "error": null
+    },
+    {
+     "day": "2026-10-24",
+     "status": "green",
+     "critical": 0,
+     "high": 0,
+     "moderate": 2,
+     "low": 1,
+     "packages": [],
+     "error": null
+    },
+    {
+     "day": "2026-10-25",
+     "status": "green",
+     "critical": 0,
+     "high": 0,
+     "moderate": 2,
+     "low": 1,
+     "packages": [],
+     "error": null
+    }
+   ]
+  }
+ ]
+}
