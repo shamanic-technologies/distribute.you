@@ -300,3 +300,51 @@ describe("a return index reads like the hero ROI (cold-email-roi, 2026-10-19)", 
     expect(ds.variableMeasured.unitText).toBe("multiple of spend");
   });
 });
+
+describe("an expected value says so wherever it prints (MEETING-INDEX-EXPECTED-LABEL-1025)", () => {
+  // 2026-10-25: the cost ledger is being rebuilt; features-service serves the meeting
+  // index's expected price meanwhile, flagged `valueKind: "expected"` on the summary and
+  // on every point. A visitor must never read it as a measured price.
+  const meeting = summary({
+    slug: "cold-email-cost-per-meeting", name: "Cold Email Cost Per Meeting Index", value: 794.12, valuePer: "per meeting booked", valueKind: "expected",
+  });
+  const points = [point("2026-10-24", 794.12, { valueKind: "expected" }), point("2026-10-25", 794.12, { valueKind: "expected" })];
+
+  it("reads the field, and refuses a kind it does not know", () => {
+    expect(parseIndexList({ statusRule: RULE, indexes: [meeting] }).indexes[0].valueKind).toBe("expected");
+    expect(parseIndexDetail({ statusRule: RULE, index: meeting, points }).points[0].valueKind).toBe("expected");
+    expect(() => parseIndexList({ statusRule: RULE, indexes: [summary({ valueKind: "guessed" as never })] })).toThrow();
+    expect(() => parseIndexDetail({ statusRule: RULE, index: summary(), points: [point("2026-10-25", 1, { valueKind: "guessed" as never })] })).toThrow();
+  });
+
+  it("the index page labels the value, its title, the chart and every day of the table", () => {
+    const page = renderIndexPage(meeting.slug, { statusRule: RULE, index: meeting, points }, LIST);
+    expect(page).toContain('<div class="ix-value">$794.12</div>');
+    expect(page).toContain('<span class="ix-expected">Expected</span>');
+    expect(page).toContain("<title>Cold Email Cost Per Meeting Index: $794.12 expected per meeting booked");
+    expect(page).toContain("<td>$794.12 expected</td>");
+    expect(page).toContain('title="Oct 25, 2026: $794.12 expected"');
+    expect(page).not.toContain("$0");
+  });
+
+  it("the list labels the row", () => {
+    const page = renderIndexListPage({ statusRule: RULE, indexes: [meeting, summary()] }, new Map());
+    expect(page.match(/class="ix-expected"/g)).toHaveLength(1);
+  });
+
+  it("an absent kind reads as measured: no label anywhere", () => {
+    const plain = summary({ value: 457.2 });
+    const page = renderIndexPage(plain.slug, { statusRule: RULE, index: plain, points: [point("2026-10-25", 457.2)] }, LIST);
+    expect(page).not.toContain("ix-expected\">");
+    expect(page).not.toMatch(/\d expected/);
+    expect(renderIndexListPage(LIST, new Map())).not.toContain('class="ix-expected"');
+    expect(summary({ valueKind: "measured" }).valueKind).toBe("measured");
+    expect(renderIndexPage(plain.slug, { statusRule: RULE, index: summary({ valueKind: "measured" }), points: [] }, LIST)).not.toContain('class="ix-expected"');
+  });
+
+  it("a null value stays words, the recompute said plainly", () => {
+    const page = renderIndexPage(meeting.slug, { statusRule: RULE, index: { ...meeting, value: null, valueKind: undefined, unavailableReason: "ledger_being_recomputed" }, points: [] }, LIST);
+    expect(page).toContain("Our cost records are being rebuilt.");
+    expect(page).not.toContain('class="ix-value"');
+  });
+});

@@ -16,7 +16,7 @@ import { HEADLESS_SCANNER_JS } from "@/lib/posthog-replay";
 import { SITE_URL, organizationJsonLd } from "@/lib/seo";
 import { formatReturnMultiple } from "@/lib/landing-format";
 import { reseedFounderCount } from "@/lib/founder-count";
-import { INDEX_LINKS_TOKEN, fetchIndexDetail, fetchIndexList, indexLinksHtml, type IndexDetail } from "@/lib/fleet-indexes";
+import { INDEX_LINKS_TOKEN, fetchIndexDetail, fetchIndexList, indexLinksHtml, isExpected, type IndexDetail } from "@/lib/fleet-indexes";
 import {
   renderProofSelection,
   renderShowcaseSelection,
@@ -301,12 +301,23 @@ export function hotLeadStatsFromIndex(detail: IndexDetail | null): HotLeadStats 
  */
 export function meetingCostFromIndex(detail: IndexDetail | null): number | null {
   if (!detail || !positive(detail.index.value)) return null;
+  // The floor flag describes the LEDGER reading; an expected value is not that reading.
+  if (isExpected(detail.index)) return detail.index.value;
   const inputs = latestInputs(detail);
   if (inputs.floor === "yes") {
     console.error(`[landing] ${MEETING_INDEX_SLUG} is a floor today, meeting price not stated`, JSON.stringify(inputs));
     return null;
   }
   return detail.index.value;
+}
+
+/**
+ * Whether the meeting price the hero states is the producer's EXPECTED price (owner
+ * 2026-10-25: shown labelled while the ledger is rebuilt). Every surface printing the
+ * price says so; an absent `valueKind` is a measured price, no label.
+ */
+export function meetingCostIsExpected(detail: IndexDetail | null): boolean {
+  return isExpected(detail?.index);
 }
 
 /** The ROI index as the hero states it; null drops the third stat alone. */
@@ -332,6 +343,7 @@ const FLEET_READ_TIMEOUT_MS = 8_000;
 export function hotLeadRowHtml(
   meetingCostUsd: number | null,
   fleetReturn: FleetReturnStats | null = null,
+  meetingCostExpected = false,
 ): string {
   const cost = meetingCostUsd === null ? null : formatMeetingCost(meetingCostUsd);
   const returnFigure = fleetReturn ? formatReturnMultiple(fleetReturn.medianReturnPerDollar) : null;
@@ -341,7 +353,7 @@ export function hotLeadRowHtml(
     (cost
       ? '<span class="hstat">' +
         `<span class="hstat-n"><b>${cost}</b></span>` +
-        '<span class="hstat-l">cost per booked meeting</span></span>'
+        `<span class="hstat-l">${meetingCostExpected ? "expected cost per booked meeting" : "cost per booked meeting"}</span></span>`
       : "") +
     (returnFigure
       ? '<span class="hstat">' +
@@ -363,12 +375,12 @@ function formatMeetingCost(usd: number): string {
  * figures the hero states (owner 2026-10-21), so the page never quotes two prices
  * for one meeting. No read = that tile drops; its neighbours stay.
  */
-export function stepMeetingCostHtml(meetingCostUsd: number | null): string {
+export function stepMeetingCostHtml(meetingCostUsd: number | null, expected = false): string {
   if (meetingCostUsd === null) return "";
   // The "from" price is an illustrative trend, kept on purpose by the owner
   // (2026-10-21): the live price over the ratio the mock shipped with ($600 from $740).
   const from = formatMeetingCost(meetingCostUsd * STEP_FROM_RATIO);
-  return stepTileHtml("Cost / meeting booked", formatMeetingCost(meetingCostUsd), `↓ from ${from}`);
+  return stepTileHtml(expected ? "Expected cost / meeting" : "Cost / meeting booked", formatMeetingCost(meetingCostUsd), `↓ from ${from}`);
 }
 
 const STEP_FROM_RATIO = 740 / 600;
@@ -406,6 +418,7 @@ export function hotLeadBandHtml(
   stats: HotLeadStats,
   fleetReturn: FleetReturnStats | null = null,
   meetingCostUsd: number | null = null,
+  meetingCostExpected = false,
 ): string {
   const companies = stats.companies.toLocaleString("en-US");
   const returnFigure = fleetReturn ? formatReturnMultiple(fleetReturn.medianReturnPerDollar) : null;
@@ -420,7 +433,7 @@ export function hotLeadBandHtml(
     `<div class="stat rv"><div class="n"><span data-count="${stats.hotLeads}">0</span></div><div class="l">engaged leads for ${companies} companies</div></div>` +
     (meetingCostUsd === null
       ? ""
-      : `<div class="stat rv"><div class="n"><span class="u">$</span><span data-count="${Math.round(meetingCostUsd)}">0</span></div><div class="l">cost per booked meeting</div></div>`) +
+      : `<div class="stat rv"><div class="n"><span class="u">$</span><span data-count="${Math.round(meetingCostUsd)}">0</span></div><div class="l">${meetingCostExpected ? "expected cost per booked meeting" : "cost per booked meeting"}</div></div>`) +
     (returnFigure
       ? `<div class="stat rv"><div class="n"><span data-count="${returnFigure.text}" data-decimals="${returnFigure.decimals}">0</span><span class="u">x</span></div><div class="l">median ROI of our clients</div></div>`
       : "") +
@@ -577,6 +590,7 @@ async function withHotLeadStats(html: string) {
   const stats = hotLeadStatsFromIndex(engaged === "not_found" ? null : engaged);
   const fleetReturn = fleetReturnFromIndex(roi === "not_found" ? null : roi);
   const meetingCost = meetingCostFromIndex(meeting === "not_found" ? null : meeting);
+  const meetingExpected = meetingCostIsExpected(meeting === "not_found" ? null : meeting);
   if (engaged === "not_found" || roi === "not_found" || meeting === "not_found") {
     console.error(
       `[landing] hero index missing: ${ENGAGED_LEAD_INDEX_SLUG}=${engaged === "not_found"} ${ROI_INDEX_SLUG}=${roi === "not_found"} ${MEETING_INDEX_SLUG}=${meeting === "not_found"}`,
@@ -584,11 +598,11 @@ async function withHotLeadStats(html: string) {
   }
 
   return html
-    .replaceAll(HOT_LEAD_ROW_TOKEN, hotLeadRowHtml(meetingCost, fleetReturn))
-    .replaceAll(STEP_MEETING_COST_TOKEN, stepMeetingCostHtml(meetingCost))
+    .replaceAll(HOT_LEAD_ROW_TOKEN, hotLeadRowHtml(meetingCost, fleetReturn, meetingExpected))
+    .replaceAll(STEP_MEETING_COST_TOKEN, stepMeetingCostHtml(meetingCost, meetingExpected))
     .replaceAll(STEP_RETURN_TOKEN, stepReturnHtml(fleetReturn))
     // The band states the count beside the two figures: no count, no band.
-    .replaceAll(HOT_LEAD_BAND_TOKEN, stats ? hotLeadBandHtml(stats, fleetReturn, meetingCost) : "");
+    .replaceAll(HOT_LEAD_BAND_TOKEN, stats ? hotLeadBandHtml(stats, fleetReturn, meetingCost, meetingExpected) : "");
 }
 
 function canonicalUrlFrom(html: string, fallbackPath?: string): string | undefined {

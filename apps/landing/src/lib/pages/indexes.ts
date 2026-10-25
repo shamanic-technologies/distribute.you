@@ -1,11 +1,13 @@
 import { SITE, breadcrumb, shell, whyLine } from "../v2-shell";
 import {
+  EXPECTED_LABEL,
   STATUS_LABEL,
   UNIT_TEXT,
   esc,
   formatDay,
   formatIndexValue,
   formatTick,
+  isExpected,
   statusLegend,
   statusLine,
   unavailableLine,
@@ -16,6 +18,7 @@ import {
   type IndexPoint,
   type IndexStatus,
   type IndexSummary,
+  type ValueKind,
 } from "../fleet-indexes";
 
 /**
@@ -41,6 +44,16 @@ function dayFromNumber(n: number): string {
 
 function badge(status: IndexStatus): string {
   return `<span class="ix-badge ix-${status}"><span class="ix-dot" aria-hidden="true"></span>${STATUS_LABEL[status]}</span>`;
+}
+
+/** The "Expected" chip beside a value the producer served as expected; nothing for a measured one. */
+export function expectedTag(x: { valueKind?: ValueKind } | null | undefined): string {
+  return isExpected(x) ? `<span class="ix-expected">${EXPECTED_LABEL}</span>` : "";
+}
+
+/** A value as text, with the word "expected" after it when it is one ($794 expected). */
+function valueText(value: number, unit: IndexUnit, x: { valueKind?: ValueKind }): string {
+  return `${formatIndexValue(value, unit)}${isExpected(x) ? " expected" : ""}`;
 }
 
 // ---------------------------------------------------------------------------
@@ -133,13 +146,13 @@ export function chartHtml(points: IndexPoint[], unit: IndexUnit, ariaName: strin
     .filter((p) => p.basis !== "recomputed" || p === lastMeasured)
     .map((p) => {
       const isLast = p === lastMeasured;
-      const label = `${formatDay(p.day, true)}: ${formatIndexValue(p.value, unit)}`;
+      const label = `${formatDay(p.day, true)}: ${valueText(p.value, unit, p)}`;
       return `<span class="ix-pt${isLast ? " ix-pt-now" : ""}" style="left:${pct((xOf(p.day) / W) * 100)};top:${pct((yOf(p.value) / H) * 100)}" title="${esc(label)}"></span>`;
     })
     .join("");
 
   const firstLabel = single ? `First recorded ${formatDay(points[0].day, true)}` : formatDay(points[0].day, true);
-  const summary = measured.slice(-30).map((p) => `${formatDay(p.day)} ${formatIndexValue(p.value, unit)}`).join(", ");
+  const summary = measured.slice(-30).map((p) => `${formatDay(p.day)} ${valueText(p.value, unit, p)}`).join(", ");
   return `<figure class="ix-chart-wrap">
 <div class="ix-chart" role="img" aria-label="${esc(`${ariaName}, daily: ${summary}`)}">
 ${grid}
@@ -227,6 +240,8 @@ const STYLE = `<style>
 .ix-robust .ix-dot { background: var(--good); }
 .ix-signal .ix-dot { background: var(--accent); }
 .ix-noise .ix-dot { background: #93b4f5; }
+.ix-expected { display: inline-flex; align-items: center; padding: 5px 12px; border-radius: 999px; font-size: 14px; border: 1px solid #c7d7fb; background: #eef3fe; color: var(--accent); }
+.ix-row .ix-expected { font-size: 13px; padding: 3px 10px; }
 .ix-rule { font-size: 14px; color: var(--muted); max-width: 520px; }
 
 .ix-chart-wrap { margin-top: 44px; }
@@ -325,7 +340,7 @@ export function basisLegendHtml(points: IndexPoint[], rule: BasisRule | undefine
 export function historyTableHtml(points: IndexPoint[], unit: IndexUnit, valuePer: string): string {
   if (points.length === 0) return "";
   const row = (p: IndexPoint) =>
-        `<tr><td>${esc(formatDay(p.day, true))}</td><td>${p.value !== null ? esc(formatIndexValue(p.value, unit)) : "Not stated"}</td><td>${esc(STATUS_LABEL[p.status])}</td><td>${p.basis === "recomputed" ? "Rebuilt later" : "Recorded live"}</td></tr>`;
+        `<tr><td>${esc(formatDay(p.day, true))}</td><td>${p.value !== null ? esc(valueText(p.value, unit, p)) : "Not stated"}</td><td>${esc(STATUS_LABEL[p.status])}</td><td>${p.basis === "recomputed" ? "Rebuilt later" : "Recorded live"}</td></tr>`;
   const head = (label: string) =>
     `<thead><tr><th scope="col">Day</th><th scope="col">${esc(label)}</th><th scope="col">Status</th><th scope="col">Source</th></tr></thead>`;
   // The newest month in view; older days fold away, still in the HTML for crawlers.
@@ -375,7 +390,8 @@ ${otherIndexes(list, slug)}`,
     );
   }
   const { index: i, points, statusRule } = detail;
-  const value = i.value !== null ? formatIndexValue(i.value, i.unit) : null;
+  const value = i.value !== null ? valueText(i.value, i.unit, i) : null;
+  const shown = i.value !== null ? formatIndexValue(i.value, i.unit) : null;
   const description =
     value !== null
       ? `${i.name}: ${value} ${i.valuePer} today. ${i.method}`
@@ -383,10 +399,10 @@ ${otherIndexes(list, slug)}`,
   const figure =
     value !== null
       ? `<div class="ix-figure">
-  <div class="ix-value">${esc(value)}</div>
+  <div class="ix-value">${esc(shown ?? "")}</div>
   <div class="ix-side">
     <div class="ix-per">${esc(i.valuePer)}</div>
-    ${badge(i.status)}
+    ${expectedTag(i)}${badge(i.status)}
     ${i.day ? `<div class="ix-when">Recorded ${esc(formatDay(i.day, true))}</div>` : ""}
   </div>
 </div>`
@@ -456,7 +472,7 @@ ${otherIndexes(list, i.slug)}`;
           variableMeasured: {
             "@type": "PropertyValue",
             name: i.name,
-            description: i.valuePer,
+            description: isExpected(i) ? `${i.valuePer}, expected` : i.valuePer,
             unitText: UNIT_TEXT[i.unit],
             ...(i.value !== null ? { value: i.value } : {}),
           },
@@ -490,7 +506,7 @@ function listHtml(indexes: IndexSummary[], series: Map<string, IndexPoint[]>): s
       return `<a class="ix-row" href="/indexes/${i.slug}">
   <div>
     <div class="ix-row-name">${esc(i.name)}</div>
-    <div class="ix-row-meta"><span>${esc(i.valuePer)}</span>${badge(i.status)}</div>
+    <div class="ix-row-meta"><span>${esc(i.valuePer)}</span>${expectedTag(i)}${badge(i.status)}</div>
   </div>
   <div class="ix-row-spark">${sparklineHtml(series.get(i.slug) ?? [])}</div>
   ${value}
