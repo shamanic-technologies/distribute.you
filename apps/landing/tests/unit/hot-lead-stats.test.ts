@@ -57,6 +57,10 @@ describe("the hero price is the meeting index (owner 2026-10-19)", () => {
     expect(meetingCostFromIndex(indexDetail(457.2, {}))).toBe(457.2);
     expect(meetingCostFromIndex(indexDetail(null, {}))).toBeNull();
     expect(meetingCostFromIndex(null)).toBeNull();
+    // 2026-10-25: the ledger served $0.013 per meeting while 265 of its days were still
+    // being computed, flagged `floor: "yes"`; the hero printed "$0 cost per booked meeting".
+    expect(meetingCostFromIndex(indexDetail(0.0132, { method: "ledger_every_path", floor: "yes", daysMissing: 265 }))).toBeNull();
+    expect(meetingCostFromIndex(indexDetail(866.47, { method: "ledger_every_path", floor: "no" }))).toBe(866.47);
     const row = hotLeadRowHtml(null, { medianReturnPerDollar: 2.2, brandCount: 9 });
     expect(row).not.toContain("cost per booked meeting");
     expect(row.match(/class="hstat"/g)).toHaveLength(1);
