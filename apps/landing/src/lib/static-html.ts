@@ -293,9 +293,19 @@ export function hotLeadStatsFromIndex(detail: IndexDetail | null): HotLeadStats 
   return { hotLeads: inputs.engagedLeads, companies: inputs.clients, medianCostUsd: detail.index.value };
 }
 
-/** The meeting index as the hero states it; null drops the price stat alone. */
+/**
+ * The meeting index as the hero states it; null drops the price stat alone.
+ * A point the producer flags as a FLOOR (`inputs.floor: "yes"`: ledger coverage short or
+ * days still being computed) is a lower bound, not a price: it once read $0.013 and the
+ * hero printed "$0 cost per booked meeting" (2026-10-25). Dropped, and logged.
+ */
 export function meetingCostFromIndex(detail: IndexDetail | null): number | null {
   if (!detail || !positive(detail.index.value)) return null;
+  const inputs = latestInputs(detail);
+  if (inputs.floor === "yes") {
+    console.error(`[landing] ${MEETING_INDEX_SLUG} is a floor today, meeting price not stated`, JSON.stringify(inputs));
+    return null;
+  }
   return detail.index.value;
 }
 
