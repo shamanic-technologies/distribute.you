@@ -1,7 +1,7 @@
 import { readFileSync } from "node:fs";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
-import { fleetReturnFromIndex, hotLeadBandHtml, hotLeadRowHtml, hotLeadStatsFromIndex, meetingCostFromIndex, stepMeetingCostHtml, stepReturnHtml } from "@/lib/static-html";
+import { fleetReturnFromIndex, hotLeadBandHtml, hotLeadRowHtml, hotLeadStatsFromIndex, meetingCostFromIndex, meetingCostIsExpected, stepMeetingCostHtml, stepReturnHtml } from "@/lib/static-html";
 import type { IndexDetail } from "@/lib/fleet-indexes";
 
 const LANDING = path.join(process.cwd(), "public/landing");
@@ -73,6 +73,44 @@ describe("the hero price is the meeting index (owner 2026-10-19)", () => {
       expect(html).not.toContain("cost per engaged lead");
       expect(html).not.toContain("median cost per booked meeting");
     }
+  });
+});
+
+describe("an expected meeting price is labelled expected (MEETING-INDEX-EXPECTED-LABEL-1025)", () => {
+  // features-service serves the Research expected price while the ledger is rebuilt.
+  const expected = indexDetail(794.12, { method: "ledger_every_path", floor: "yes" }, { valueKind: "expected" });
+  const stats = { hotLeads: 740, companies: 21, medianCostUsd: 6 };
+
+  it("states the expected price (the ledger floor flag does not apply to it)", () => {
+    expect(meetingCostFromIndex(expected)).toBe(794.12);
+    expect(meetingCostIsExpected(expected)).toBe(true);
+  });
+
+  it("hero, How it works step 3 and the compare band all say expected", () => {
+    expect(hotLeadRowHtml(794.12, null, true)).toContain("<b>$794</b>");
+    expect(hotLeadRowHtml(794.12, null, true)).toContain(">expected cost per booked meeting<");
+    expect(stepMeetingCostHtml(794.12, true)).toContain(">Expected cost / meeting<");
+    expect(hotLeadBandHtml(stats, null, 794.12, true)).toContain(">expected cost per booked meeting<");
+  });
+
+  it("an absent or measured kind reads as measured: no label", () => {
+    expect(meetingCostIsExpected(indexDetail(457.2, {}))).toBe(false);
+    expect(meetingCostIsExpected(indexDetail(457.2, {}, { valueKind: "measured" }))).toBe(false);
+    expect(meetingCostIsExpected(null)).toBe(false);
+    expect(hotLeadRowHtml(457.2)).not.toContain("expected");
+    expect(stepMeetingCostHtml(457.2)).not.toContain("Expected");
+    expect(hotLeadBandHtml(stats, null, 457.2)).not.toContain("expected");
+  });
+
+  it("a null expected value still drops the price", () => {
+    expect(meetingCostFromIndex(indexDetail(null, {}, { valueKind: "expected" }))).toBeNull();
+  });
+
+  it("the page wiring passes the kind to all three surfaces", () => {
+    const src = readFileSync(path.resolve(__dirname, "../../src/lib/static-html.ts"), "utf8");
+    expect(src).toContain("hotLeadRowHtml(meetingCost, fleetReturn, meetingExpected)");
+    expect(src).toContain("stepMeetingCostHtml(meetingCost, meetingExpected)");
+    expect(src).toContain("hotLeadBandHtml(stats, fleetReturn, meetingCost, meetingExpected)");
   });
 });
 

@@ -40,7 +40,26 @@ export type IndexSummary = {
   workflowDynastyName: string | null;
   unavailableReason: string | null;
   recordedAt: string | null;
+  /** Absent on payloads older than the field: read as measured. */
+  valueKind?: ValueKind;
 };
+
+/**
+ * `measured` = read off what was spent and booked; `expected` = the price the producer
+ * expects while the measured one cannot be stated (owner 2026-10-25: the cost ledger is
+ * being rebuilt, the meeting index serves the Research expected price meanwhile). An
+ * expected value always carries its label wherever it prints.
+ */
+export type ValueKind = "measured" | "expected";
+const VALUE_KINDS: readonly ValueKind[] = ["measured", "expected"];
+
+/** True only for a value the producer served as expected; absent = measured. */
+export function isExpected(x: { valueKind?: ValueKind } | null | undefined): boolean {
+  return x?.valueKind === "expected";
+}
+
+/** The one word every surface puts beside an expected value. */
+export const EXPECTED_LABEL = "Expected";
 
 export type IndexPoint = {
   day: string;
@@ -52,6 +71,7 @@ export type IndexPoint = {
   unavailableReason: string | null;
   /** `recorded` = written live that day; `recomputed` = rebuilt later as of that day (the 2026-10-19 backfill). */
   basis?: IndexBasis;
+  valueKind?: ValueKind;
 };
 
 export type IndexBasis = "recorded" | "recomputed";
@@ -81,6 +101,9 @@ function parseSummary(s: IndexSummary): IndexSummary {
   if (!UNITS.includes(s.unit)) throw new Error(`index ${s.slug} has unit ${JSON.stringify(s.unit)}`);
   if (!STATUSES.includes(s.status)) throw new Error(`index ${s.slug} has status ${JSON.stringify(s.status)}`);
   if (s.value !== null && !isNum(s.value)) throw new Error(`index ${s.slug} has value ${JSON.stringify(s.value)}`);
+  if (s.valueKind !== undefined && !VALUE_KINDS.includes(s.valueKind)) {
+    throw new Error(`index ${s.slug} has valueKind ${JSON.stringify(s.valueKind)}`);
+  }
   return s;
 }
 
@@ -101,6 +124,9 @@ export function parseIndexDetail(body: unknown): IndexDetail {
     if (!STATUSES.includes(p.status)) throw new Error(`point ${p.day} has status ${JSON.stringify(p.status)}`);
     if (p.basis !== undefined && p.basis !== "recorded" && p.basis !== "recomputed") {
       throw new Error(`point ${p.day} has basis ${JSON.stringify(p.basis)}`);
+    }
+    if (p.valueKind !== undefined && !VALUE_KINDS.includes(p.valueKind)) {
+      throw new Error(`point ${p.day} has valueKind ${JSON.stringify(p.valueKind)}`);
     }
   }
   const rule = (body as { basisRule?: BasisRule }).basisRule;
@@ -217,6 +243,7 @@ const UNAVAILABLE: Record<string, string> = {
   no_mature_workflow: "No workflow has enough results yet to state this number today.",
   not_measured: "Today's results are not enough to measure this number yet.",
   no_meeting_measured: "No meeting booked from a positive reply has been measured yet.",
+  ledger_being_recomputed: "Our cost records are being rebuilt. The number comes back once they are done.",
 };
 
 /** Why there is no number today, in plain words. An unknown reason still reads as a sentence. */
