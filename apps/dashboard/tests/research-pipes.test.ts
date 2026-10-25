@@ -202,9 +202,9 @@ describe("Research names each pipe by its served name and mark, one collapsible 
 
   it("an outcome row: the step's mark and name, the pipes under it, its population line, then its studies", () => {
     const hub = page.slice(page.indexOf("function V2ResearchHub("), page.indexOf("function BarsChart("));
-    const outcomes = hub.slice(hub.indexOf("{familyRows.map((f) => ("), hub.indexOf(">Other</SectionTitle>"));
-    // the group title is the served familyLabel, never a local word
-    expect(outcomes).toContain("<SectionTitle count={f.rows.length}>{f.label}</SectionTitle>");
+    const outcomes = hub.slice(hub.indexOf("{leadTrackRows.map((t) => ("), hub.indexOf(">Other</SectionTitle>"));
+    // the group title is the served leadTrackLabel, never a local word
+    expect(outcomes).toContain("<SectionTitle count={t.rows.length}>{t.label}</SectionTitle>");
     expect(outcomes).toContain("section={{ outcome: meta.id }}");
     // no `line` override: the line under the name is the pipes (SectionPath -> OutcomePipes)
     expect(outcomes).not.toContain("line=");
@@ -215,31 +215,31 @@ describe("Research names each pipe by its served name and mark, one collapsible 
   });
 });
 
-describe("Research hub groups the lead-state sections by served family (owner 2026-10-25, RESEARCH-STATE-SECTIONS-1025)", () => {
-  const entry = (id: string, family?: string, familyLabel?: string) => ({ id, outcome: id, step: family ? id : null, pipes: [], description: "", population: "", ...(family ? { family, familyLabel } : {}) });
+describe("Research hub groups the lead-state sections by served lead track (owner 2026-10-25, RESEARCH-LEAD-TRACK-1025)", () => {
+  const entry = (id: string, leadTrack?: string, leadTrackLabel?: string) => ({ id, outcome: id, step: leadTrack ? id : null, pipes: [], description: "", population: "", ...(leadTrack ? { leadTrack, leadTrackLabel } : {}) });
   const file = {
     outcomes: [
-      entry("positive-reply", "interest", "CRM lifecycle"),
-      entry("meeting", "interest", "CRM lifecycle"),
-      entry("meeting-attended", "interest", "CRM lifecycle"),
-      entry("paid-client", "interest", "CRM lifecycle"),
-      entry("lead-visited", "visit", "Website visits"),
+      entry("positive-reply", "crm_lifecycle", "CRM lifecycle"),
+      entry("meeting", "crm_lifecycle", "CRM lifecycle"),
+      entry("meeting-attended", "crm_lifecycle", "CRM lifecycle"),
+      entry("paid-client", "crm_lifecycle", "CRM lifecycle"),
+      entry("lead-visited", "website_visits", "Website visits"),
       entry("judgment"),
     ],
   } as unknown as ResearchFile;
 
-  it("one group per family, titled by its label, sections in the file's ladder order; no family = Other", () => {
+  it("one group per lead track, titled by its label, sections in the file's ladder order; no lead track = Other", () => {
     const g = outcomeGroups(file);
-    expect(g.families.map((f) => [f.label, f.entries.map((e) => e.id)])).toEqual([
+    expect(g.leadTracks.map((t) => [t.label, t.entries.map((e) => e.id)])).toEqual([
       ["CRM lifecycle", ["positive-reply", "meeting", "meeting-attended", "paid-client"]],
       ["Website visits", ["lead-visited"]],
     ]);
     expect(g.other.map((e) => e.id)).toEqual(["judgment"]);
   });
 
-  it("an entry served before families existed (no family) still renders, under Other", () => {
+  it("an entry served with no lead track still renders, under Other", () => {
     const old = { outcomes: [entry("positive-reply"), entry("judgment")] } as unknown as ResearchFile;
-    expect(outcomeGroups(old)).toEqual({ families: [], other: old.outcomes });
+    expect(outcomeGroups(old)).toEqual({ leadTracks: [], other: old.outcomes });
   });
 
   it("a section opens on its price over time, the rest in the file's order", () => {
