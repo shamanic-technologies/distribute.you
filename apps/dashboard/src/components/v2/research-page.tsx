@@ -43,6 +43,7 @@ import {
   topicLabel,
   outcomeEntry,
   outcomeGroups,
+  sectionStudiesPriceFirst,
   parseResearchPath,
   pointHref,
   researchPipeEntry,
@@ -298,8 +299,9 @@ function V2ResearchHub({ base }: { base: string }) {
   // Every pipe the file serves, in its order (WA-PIPE-RESEARCH-1023): a pipe with no study yet keeps its section and tabs.
   const pipeRows = RESEARCH.pipes.map(({ id: pipe }) => ({ pipe, studies: studiesFor(pipe, RESEARCH) }));
   const groups = outcomeGroups(RESEARCH);
-  const withStudies = (metas: typeof groups.outcomes) => metas.map((meta) => ({ meta, studies: studiesForOutcome(meta.id, RESEARCH) })).filter((r) => r.studies.length > 0);
-  const outcomeRows = withStudies(groups.outcomes);
+  const withStudies = (metas: typeof groups.other) =>
+    metas.map((meta) => ({ meta, studies: sectionStudiesPriceFirst(meta.id, studiesForOutcome(meta.id, RESEARCH)) })).filter((r) => r.studies.length > 0);
+  const familyRows = groups.families.map((f) => ({ ...f, rows: withStudies(f.entries) })).filter((f) => f.rows.length > 0);
   const otherRows = withStudies(groups.other);
   return (
     <>
@@ -359,7 +361,7 @@ function V2ResearchHub({ base }: { base: string }) {
           </StatTile>
         </div>
 
-        {/* Three groups (owner 2026-10-18): Pipes, Outcomes, Other; every row collapsed by default. */}
+        {/* Groups: Pipes, one per served family (owner 2026-10-25), Other; every row collapsed by default. */}
         <div className="mt-8 space-y-8">
           <div>
             <SectionTitle count={pipeRows.length}>Pipes</SectionTitle>
@@ -373,12 +375,12 @@ function V2ResearchHub({ base }: { base: string }) {
             </div>
           </div>
 
-          {/* One row per outcome, asked across every pipe that lands on it: the pipes named under it. */}
-          {outcomeRows.length > 0 && (
-            <div>
-              <SectionTitle count={outcomeRows.length}>Outcomes</SectionTitle>
+          {/* One group per served family (CRM lifecycle, Website visits), titled by the file; one row per lead state in its ladder order, the pipes named under it. */}
+          {familyRows.map((f) => (
+            <div key={f.family}>
+              <SectionTitle count={f.rows.length}>{f.label}</SectionTitle>
               <div className="space-y-3">
-                {outcomeRows.map(({ meta, studies }) => {
+                {f.rows.map(({ meta, studies }) => {
                   const id = `outcome-${meta.id}`;
                   return (
                     <ResearchSectionBlock key={meta.id} id={id} section={{ outcome: meta.id }} studies={studies} open={open.has(id)} onToggle={() => toggle(id)} animate={ready}>
@@ -389,7 +391,7 @@ function V2ResearchHub({ base }: { base: string }) {
                 })}
               </div>
             </div>
-          )}
+          ))}
 
           {otherRows.length > 0 && (
             <div>
