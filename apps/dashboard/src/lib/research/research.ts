@@ -225,6 +225,13 @@ export interface ResearchOutcomeEntry {
   step?: string | null;
   /** The pipes that land on it. */
   pipes?: ResearchPipe[];
+  /**
+   * The family a lead-state section belongs to (features-service RESEARCH-STATE-SECTIONS-1025: "interest" | "visit"),
+   * absent on a section that is no lead state (Jev, Other). Two families are never summed.
+   */
+  family?: string | null;
+  /** The family in the page's words ("CRM lifecycle", "Website visits"): the group title on the hub. */
+  familyLabel?: string | null;
   description: string;
   population: string;
 }
@@ -489,21 +496,45 @@ export type ResearchTabKind = CatalogKind | "performance";
 export const RESEARCH_TABS: ResearchTabKind[] = [...CATALOG_KINDS, "performance"];
 
 
-/** The order the Outcomes group lists its rows in (display only: the list itself is the file's). */
-export const OUTCOME_ORDER: ResearchOutcome[] = ["positive-reply", "website-visit", "meeting-booked"];
+/** One family group of the hub: its served label and its sections, in the order the file lists them (the ladder). */
+export interface ResearchOutcomeFamily {
+  family: string;
+  label: string;
+  entries: ResearchOutcomeEntry[];
+}
 
 /**
- * The hub's two lower groups (owner 2026-10-18): Outcomes, every entry that IS a step, in
- * OUTCOME_ORDER then any other the data brings; Other, the entries with no step (Jev).
+ * The hub's lower groups (owner 2026-10-25, RESEARCH-STATE-SECTIONS-1025): one group per served `family`, titled by its
+ * `familyLabel`, in the file's order (no local list, no re-sort); Other, every entry with no family (Jev).
  */
-export function outcomeGroups(file: ResearchFile): { outcomes: ResearchOutcomeEntry[]; other: ResearchOutcomeEntry[] } {
-  const all = file.outcomes ?? [];
-  const rank = (o: ResearchOutcomeEntry) => {
-    const i = OUTCOME_ORDER.indexOf(o.id);
-    return i === -1 ? OUTCOME_ORDER.length : i;
-  };
-  const outcomes = all.filter((o) => o.step).map((o, i) => ({ o, i })).sort((a, b) => rank(a.o) - rank(b.o) || a.i - b.i).map((x) => x.o);
-  return { outcomes, other: all.filter((o) => !o.step) };
+export function outcomeGroups(file: ResearchFile): { families: ResearchOutcomeFamily[]; other: ResearchOutcomeEntry[] } {
+  const families: ResearchOutcomeFamily[] = [];
+  const other: ResearchOutcomeEntry[] = [];
+  for (const o of file.outcomes ?? []) {
+    if (!o.family) {
+      other.push(o);
+      continue;
+    }
+    if (!o.familyLabel) {
+      console.error("[dashboard] research outcome has a family but no familyLabel: listed under Other", { id: o.id, family: o.family });
+      other.push(o);
+      continue;
+    }
+    const group = families.find((f) => f.family === o.family);
+    if (group) group.entries.push(o);
+    else families.push({ family: o.family, label: o.familyLabel, entries: [o] });
+  }
+  return { families, other };
+}
+
+/**
+ * A section's studies with its price over time first (owner 2026-10-25: « dans chaque une page avec les prices per
+ * outcome over time »): features-service names it `<section id>-cost-over-time` (RESEARCH-STATE-SECTIONS-1025);
+ * the rest keep the file's order.
+ */
+export function sectionStudiesPriceFirst(outcome: ResearchOutcome, studies: ResearchStudy[]): ResearchStudy[] {
+  const id = `${outcome}-cost-over-time`;
+  return [...studies.filter((st) => st.id === id), ...studies.filter((st) => st.id !== id)];
 }
 
 /** An outcome entry by id. */

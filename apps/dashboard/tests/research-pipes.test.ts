@@ -1,7 +1,7 @@
 import { readdirSync, readFileSync, statSync } from "node:fs";
 import { join, relative } from "node:path";
 import { describe, expect, it } from "vitest";
-import { catalogPipes, outcomeUnitOf, parseResearchPath, pipeCatalog, researchCatalogHref, researchPipeEntry, researchPipeFor, type ResearchPipeEntry } from "../src/lib/research/research";
+import { catalogPipes, outcomeGroups, outcomeUnitOf, parseResearchPath, sectionStudiesPriceFirst, pipeCatalog, researchCatalogHref, researchPipeEntry, researchPipeFor, type ResearchFile, type ResearchPipeEntry, type ResearchStudy } from "../src/lib/research/research";
 
 /**
  * Research speaks the current vocabulary (owner 2026-10-18): a PIPE is one leg x one channel, a
@@ -202,7 +202,9 @@ describe("Research names each pipe by its served name and mark, one collapsible 
 
   it("an outcome row: the step's mark and name, the pipes under it, its population line, then its studies", () => {
     const hub = page.slice(page.indexOf("function V2ResearchHub("), page.indexOf("function BarsChart("));
-    const outcomes = hub.slice(hub.indexOf(">Outcomes</SectionTitle>"), hub.indexOf(">Other</SectionTitle>"));
+    const outcomes = hub.slice(hub.indexOf("{familyRows.map((f) => ("), hub.indexOf(">Other</SectionTitle>"));
+    // the group title is the served familyLabel, never a local word
+    expect(outcomes).toContain("<SectionTitle count={f.rows.length}>{f.label}</SectionTitle>");
     expect(outcomes).toContain("section={{ outcome: meta.id }}");
     // no `line` override: the line under the name is the pipes (SectionPath -> OutcomePipes)
     expect(outcomes).not.toContain("line=");
@@ -210,5 +212,39 @@ describe("Research names each pipe by its served name and mark, one collapsible 
     // Jev, under Other, is named by its description
     const other = hub.slice(hub.indexOf(">Other</SectionTitle>"));
     expect(other).toContain("line={meta.description}");
+  });
+});
+
+describe("Research hub groups the lead-state sections by served family (owner 2026-10-25, RESEARCH-STATE-SECTIONS-1025)", () => {
+  const entry = (id: string, family?: string, familyLabel?: string) => ({ id, outcome: id, step: family ? id : null, pipes: [], description: "", population: "", ...(family ? { family, familyLabel } : {}) });
+  const file = {
+    outcomes: [
+      entry("positive-reply", "interest", "CRM lifecycle"),
+      entry("meeting", "interest", "CRM lifecycle"),
+      entry("meeting-attended", "interest", "CRM lifecycle"),
+      entry("paid-client", "interest", "CRM lifecycle"),
+      entry("lead-visited", "visit", "Website visits"),
+      entry("judgment"),
+    ],
+  } as unknown as ResearchFile;
+
+  it("one group per family, titled by its label, sections in the file's ladder order; no family = Other", () => {
+    const g = outcomeGroups(file);
+    expect(g.families.map((f) => [f.label, f.entries.map((e) => e.id)])).toEqual([
+      ["CRM lifecycle", ["positive-reply", "meeting", "meeting-attended", "paid-client"]],
+      ["Website visits", ["lead-visited"]],
+    ]);
+    expect(g.other.map((e) => e.id)).toEqual(["judgment"]);
+  });
+
+  it("an entry served before families existed (no family) still renders, under Other", () => {
+    const old = { outcomes: [entry("positive-reply"), entry("judgment")] } as unknown as ResearchFile;
+    expect(outcomeGroups(old)).toEqual({ families: [], other: old.outcomes });
+  });
+
+  it("a section opens on its price over time, the rest in the file's order", () => {
+    const st = (id: string) => ({ id }) as ResearchStudy;
+    const out = sectionStudiesPriceFirst("meeting", [st("meeting-cost"), st("meeting-cost-every-path"), st("meeting-cost-over-time")]);
+    expect(out.map((s) => s.id)).toEqual(["meeting-cost-over-time", "meeting-cost", "meeting-cost-every-path"]);
   });
 });

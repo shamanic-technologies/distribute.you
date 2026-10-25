@@ -19,6 +19,7 @@ import { FacebookLogoIcon } from "@phosphor-icons/react/dist/csr/FacebookLogo";
 import { FileTextIcon } from "@phosphor-icons/react/dist/csr/FileText";
 import { FlowArrowIcon } from "@phosphor-icons/react/dist/csr/FlowArrow";
 import { FunnelIcon } from "@phosphor-icons/react/dist/csr/Funnel";
+import { HandHeartIcon } from "@phosphor-icons/react/dist/csr/HandHeart";
 import { HandshakeIcon } from "@phosphor-icons/react/dist/csr/Handshake";
 import { InstagramLogoIcon } from "@phosphor-icons/react/dist/csr/InstagramLogo";
 import { LightningIcon } from "@phosphor-icons/react/dist/csr/Lightning";
@@ -68,6 +69,7 @@ const CATALOGUE_ICONS: Record<string, Icon> = {
   "file-text": FileTextIcon,
   "flow-arrow": FlowArrowIcon,
   funnel: FunnelIcon,
+  "hand-heart": HandHeartIcon,
   handshake: HandshakeIcon,
   "instagram-logo": InstagramLogoIcon,
   lightning: LightningIcon,
