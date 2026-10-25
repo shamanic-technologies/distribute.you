@@ -96,11 +96,22 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Invalid ping" }, { status: 400 });
   }
 
-  const res = await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ chat_id: chatId, text, disable_web_page_preview: true }),
-  });
+  // One more try on a transport failure: a DNS blip on the box (`EAI_AGAIN api.telegram.org`, 2026-10-25)
+  // lost a signup's "started" line with a 500.
+  const send = () =>
+    fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ chat_id: chatId, text, disable_web_page_preview: true }),
+    });
+  let res: Response;
+  try {
+    res = await send();
+  } catch (e) {
+    console.error("[dashboard/owner-ping] Telegram unreachable, trying once more:", e);
+    await new Promise((r) => setTimeout(r, 1_000));
+    res = await send();
+  }
   if (!res.ok) {
     console.error(`[dashboard/owner-ping] Telegram refused ${res.status}: ${await res.text()}`);
     return NextResponse.json({ error: "Telegram refused" }, { status: 502 });
