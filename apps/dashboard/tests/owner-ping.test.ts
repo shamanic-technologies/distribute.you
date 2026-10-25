@@ -94,4 +94,10 @@ describe("every signup step pings the owner", () => {
     expect(s).toContain("isStaffEmail(email)");
     expect(s).not.toMatch(/who:\s*z\./);
   });
+
+  it("a transport failure to Telegram is tried once more, never a 500 on the first DNS blip", () => {
+    const s = src("src/app/api/public/owner-ping/route.ts");
+    expect(s).toContain("res = await send();");
+    expect(s.match(/res = await send\(\);/g)?.length).toBe(2);
+  });
 });
