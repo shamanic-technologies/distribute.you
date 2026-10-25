@@ -34,6 +34,8 @@ import { BlocklistsPage } from "@/components/v2/monitoring-blocklists";
 import { ThreadsPage } from "@/components/v2/monitoring-threads";
 import { WhatsappLinesPage, WhatsappLinesTile, useWhatsappLines } from "@/components/v2/monitoring-whatsapp";
 import { WhatsappLogoIcon } from "@phosphor-icons/react/dist/csr/WhatsappLogo";
+import { ShieldCheckIcon } from "@phosphor-icons/react/dist/csr/ShieldCheck";
+import { SecurityAdvisoriesPage, SecurityAdvisoriesTile, useSecurityAdvisories } from "@/components/v2/monitoring-security";
 import { ScalesIcon } from "@phosphor-icons/react/dist/csr/Scales";
 import { LedgerCheckPage, LedgerCheckTile, OutcomeCoveragePage, OutcomeCoverageTile, ReconciliationPage, ReconciliationTile, useLedgerCheck, useLedgerReconciliation, useOutcomeCoverage } from "@/components/v2/monitoring-cost-ledger";
 import { belowTarget, headlinePoint, outcomeShare, serviceNames } from "@/lib/monitoring/cost-ledger";
@@ -101,7 +103,7 @@ const centsPerEmail = (c: number | null) => (c == null ? null : `${c.toLocaleStr
 
 // ─── Shell ─────────────────────────────────────────────────────────────────
 
-type SectionKey = "cost" | "ledger" | "customers" | "price" | "margin" | "emails" | "whatsapp" | "chat";
+type SectionKey = "cost" | "ledger" | "customers" | "price" | "margin" | "emails" | "whatsapp" | "security" | "chat";
 
 /** Each section wears one colour and one mark, the way Research's topics do. */
 const SECTION_LOOK: Record<SectionKey, { name: string; color: string; Icon: typeof ReceiptIcon; sub: string }> = {
@@ -112,6 +114,7 @@ const SECTION_LOOK: Record<SectionKey, { name: string; color: string; Icon: type
   margin: { name: "Margin", color: "var(--data-teal)", Icon: TrendUpIcon, sub: "Billed minus what the vendors charged" },
   emails: { name: "Emails", color: "var(--data-violet)", Icon: EnvelopeSimpleIcon, sub: "Inbox placement, mailboxes, domains, and every email we sent" },
   whatsapp: { name: "WhatsApp", color: "var(--data-lime)", Icon: WhatsappLogoIcon, sub: "Whether every linked line can send" },
+  security: { name: "Security", color: "var(--data-rose)", Icon: ShieldCheckIcon, sub: "Whether our prod repos carry open security advisories" },
   chat: { name: "Chat", color: "var(--data-amber)", Icon: ChatCircleIcon, sub: "What the Copilot knows" },
 };
 
@@ -143,6 +146,7 @@ const PAGE: Record<MonitoringPage, { section: SectionKey; title: string; questio
   "emails/threads": { section: "emails", title: "Threads", question: "What did each thread send and receive, and how did it end?" },
   "emails/rules": { section: "emails", title: "Rules", question: "What decides whether an address gets new sequences, and at what limits?" },
   "whatsapp/lines": { section: "whatsapp", title: "Lines", question: "Is every WhatsApp line connected, and since when is one down?" },
+  "security/advisories": { section: "security", title: "Advisories", question: "Does any prod repo carry an open critical or high advisory?" },
   "chat/skills": { section: "chat", title: "Skills", question: "What does the Copilot read before it acts?" },
 };
 
@@ -228,6 +232,8 @@ export function V2Monitoring() {
       <p className="k-fg3 mt-2 text-[13px]">
         {meta.section === "whatsapp"
           ? "Every org pooled, read live from production. Times are UTC."
+          : meta.section === "security"
+          ? "Every repo running in prod, audited once a day. Read live from production. Days are UTC."
           : meta.section === "chat"
           ? "Read live from production. Your edits save as you type and reach the Copilot on its next message."
           : meta.section === "ledger"
@@ -284,6 +290,7 @@ export function V2Monitoring() {
         {view.page === "emails/threads" && <ThreadsPage base={base} />}
         {view.page === "emails/rules" && <RulesPage base={base} />}
         {view.page === "whatsapp/lines" && <WhatsappLinesPage />}
+        {view.page === "security/advisories" && <SecurityAdvisoriesPage />}
         {view.page === "chat/skills" && <SkillsView />}
       </div>
     </Frame>
@@ -374,6 +381,7 @@ function Hub({ base }: { base: string }) {
   const coverage = useOutcomeCoverage();
   const ledger = useLedgerCheck();
   const recon = useLedgerReconciliation();
+  const sec = useSecurityAdvisories();
   const covAt = coverage.data ? headlinePoint(coverage.data) : undefined;
   return (
     <Frame crumbs={[{ label: "Monitoring" }]}>
@@ -400,6 +408,8 @@ function Hub({ base }: { base: string }) {
         <LedgerCheckTile href={href("ledger/check")} />
         {/* The day it reads Yes, every price reader moves to the ledger (owner 2026-10-24): red here IS the alert. */}
         <ReconciliationTile href={href("ledger/reconciliation")} />
+        {/* Open critical/high advisories on a prod repo, or no audit report for 36 h (SEC-ADVISORIES-MONITORING-1025): red here IS the alert. */}
+        <SecurityAdvisoriesTile href={href("security/advisories")} />
       </div>
 
       <HubOpen.Provider value={hub}>
@@ -646,6 +656,30 @@ function Hub({ base }: { base: string }) {
               note: "a red line sends nothing",
             },
             { label: "Linked lines", value: wa.data && linkedLines(wa.data).length, note: "every org" },
+          ]}
+        />
+        </div>
+      </Section>
+      </div>
+
+      <div>
+      <SectionTitle count={1}>Security</SectionTitle>
+      <Section section="security" count={1} grid={false}>
+        <HubChips>
+          <HubChip href={href("security/advisories")} color={sec.data?.status === "red" ? "var(--data-rose)" : "var(--data-teal)"} label="Advisories" />
+        </HubChips>
+        <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3">
+        <Card
+          href={href("security/advisories")}
+          page="security/advisories"
+          error={sec.isError && !sec.data}
+          cells={[
+            {
+              label: "Repos red",
+              value: sec.data && <span style={{ color: sec.data.redRepos.length ? "var(--data-rose)" : undefined }}>{sec.data.redRepos.length}</span>,
+              note: "critical, high or no audit",
+            },
+            { label: "Repos watched", value: sec.data?.repos.length, note: "in the last 30 days" },
           ]}
         />
         </div>

@@ -1939,6 +1939,8 @@ export const STAFF_MONITORING_PATHS = {
   brands: "/admin/brands",
   // The Copilot skill tree (chat-service), staff-only through the gateway.
   skills: "/chat/skills",
+  // Open security advisories per prod repo per day + the served red/green verdict (features-service, SEC-ADVISORIES-MONITORING-1025).
+  securityAdvisories: "/features/audit/security-advisories",
 } as const;
 
 function parseStaff<T>(name: string, schema: z.ZodType<T>, raw: unknown): T {
@@ -12923,6 +12925,14 @@ export async function getStaffWhatsappLines(days: number): Promise<StaffWhatsapp
 /** Runs one line watch pass now (the producer's loop runs every 2 min). */
 export async function runStaffWhatsappLineCheck(): Promise<void> {
   await apiCall<unknown>(STAFF_WHATSAPP_LINE_PATHS.check, { method: "POST" });
+}
+
+// ─── Monitoring > Security (SEC-ADVISORIES-MONITORING-1025) ───
+import { SecurityAdvisoriesSchema as StaffSecurityAdvisoriesSchema, type SecurityAdvisories as StaffSecurityAdvisories } from "./monitoring/security-advisories";
+
+/** features-service's daily audit of every prod repo over the last `days` UTC days, with its served verdict (api-service #1382). */
+export async function getStaffSecurityAdvisories(days: number): Promise<StaffSecurityAdvisories> {
+  return parseStaff("getStaffSecurityAdvisories", StaffSecurityAdvisoriesSchema, await apiCall<unknown>(`${STAFF_MONITORING_PATHS.securityAdvisories}?days=${days}`));
 }
 
 // ─── Monitoring > Cost ledger (COST-ACCOUNTING-1023-MONITOR) ───
