@@ -301,7 +301,7 @@ function V2ResearchHub({ base }: { base: string }) {
   const groups = outcomeGroups(RESEARCH);
   const withStudies = (metas: typeof groups.other) =>
     metas.map((meta) => ({ meta, studies: sectionStudiesPriceFirst(meta.id, studiesForOutcome(meta.id, RESEARCH)) })).filter((r) => r.studies.length > 0);
-  const familyRows = groups.families.map((f) => ({ ...f, rows: withStudies(f.entries) })).filter((f) => f.rows.length > 0);
+  const leadTrackRows = groups.leadTracks.map((t) => ({ ...t, rows: withStudies(t.entries) })).filter((t) => t.rows.length > 0);
   const otherRows = withStudies(groups.other);
   return (
     <>
@@ -361,7 +361,7 @@ function V2ResearchHub({ base }: { base: string }) {
           </StatTile>
         </div>
 
-        {/* Groups: Pipes, one per served family (owner 2026-10-25), Other; every row collapsed by default. */}
+        {/* Groups: Pipes, one per served lead track (owner 2026-10-25), Other; every row collapsed by default. */}
         <div className="mt-8 space-y-8">
           <div>
             <SectionTitle count={pipeRows.length}>Pipes</SectionTitle>
@@ -375,12 +375,12 @@ function V2ResearchHub({ base }: { base: string }) {
             </div>
           </div>
 
-          {/* One group per served family (CRM lifecycle, Website visits), titled by the file; one row per lead state in its ladder order, the pipes named under it. */}
-          {familyRows.map((f) => (
-            <div key={f.family}>
-              <SectionTitle count={f.rows.length}>{f.label}</SectionTitle>
+          {/* One group per served lead track (CRM lifecycle, Website visits), titled by the file; one row per lead state in its ladder order, the pipes named under it. */}
+          {leadTrackRows.map((t) => (
+            <div key={t.leadTrack}>
+              <SectionTitle count={t.rows.length}>{t.label}</SectionTitle>
               <div className="space-y-3">
-                {f.rows.map(({ meta, studies }) => {
+                {t.rows.map(({ meta, studies }) => {
                   const id = `outcome-${meta.id}`;
                   return (
                     <ResearchSectionBlock key={meta.id} id={id} section={{ outcome: meta.id }} studies={studies} open={open.has(id)} onToggle={() => toggle(id)} animate={ready}>

@@ -226,12 +226,12 @@ export interface ResearchOutcomeEntry {
   /** The pipes that land on it. */
   pipes?: ResearchPipe[];
   /**
-   * The family a lead-state section belongs to (features-service RESEARCH-STATE-SECTIONS-1025: "interest" | "visit"),
-   * absent on a section that is no lead state (Jev, Other). Two families are never summed.
+   * The lead track a lead-state section belongs to (features-service RESEARCH-LEAD-TRACK-1025: "crm_lifecycle" |
+   * "website_visits"), absent on a section that is no lead state (Jev, Other). Two lead tracks are never summed.
    */
-  family?: string | null;
-  /** The family in the page's words ("CRM lifecycle", "Website visits"): the group title on the hub. */
-  familyLabel?: string | null;
+  leadTrack?: string | null;
+  /** The lead track in the owner's words ("CRM lifecycle", "Website visits"): the group title on the hub. */
+  leadTrackLabel?: string | null;
   description: string;
   population: string;
 }
@@ -496,35 +496,35 @@ export type ResearchTabKind = CatalogKind | "performance";
 export const RESEARCH_TABS: ResearchTabKind[] = [...CATALOG_KINDS, "performance"];
 
 
-/** One family group of the hub: its served label and its sections, in the order the file lists them (the ladder). */
-export interface ResearchOutcomeFamily {
-  family: string;
+/** One lead-track group of the hub: its served label and its sections, in the order the file lists them (the ladder). */
+export interface ResearchLeadTrackGroup {
+  leadTrack: string;
   label: string;
   entries: ResearchOutcomeEntry[];
 }
 
 /**
- * The hub's lower groups (owner 2026-10-25, RESEARCH-STATE-SECTIONS-1025): one group per served `family`, titled by its
- * `familyLabel`, in the file's order (no local list, no re-sort); Other, every entry with no family (Jev).
+ * The hub's lower groups (owner 2026-10-25, RESEARCH-LEAD-TRACK-1025): one group per served `leadTrack`, titled by its
+ * `leadTrackLabel`, in the file's order (no local list, no re-sort); Other, every entry with no lead track (Jev).
  */
-export function outcomeGroups(file: ResearchFile): { families: ResearchOutcomeFamily[]; other: ResearchOutcomeEntry[] } {
-  const families: ResearchOutcomeFamily[] = [];
+export function outcomeGroups(file: ResearchFile): { leadTracks: ResearchLeadTrackGroup[]; other: ResearchOutcomeEntry[] } {
+  const leadTracks: ResearchLeadTrackGroup[] = [];
   const other: ResearchOutcomeEntry[] = [];
   for (const o of file.outcomes ?? []) {
-    if (!o.family) {
+    if (!o.leadTrack) {
       other.push(o);
       continue;
     }
-    if (!o.familyLabel) {
-      console.error("[dashboard] research outcome has a family but no familyLabel: listed under Other", { id: o.id, family: o.family });
+    if (!o.leadTrackLabel) {
+      console.error("[dashboard] research outcome has a leadTrack but no leadTrackLabel: listed under Other", { id: o.id, leadTrack: o.leadTrack });
       other.push(o);
       continue;
     }
-    const group = families.find((f) => f.family === o.family);
+    const group = leadTracks.find((t) => t.leadTrack === o.leadTrack);
     if (group) group.entries.push(o);
-    else families.push({ family: o.family, label: o.familyLabel, entries: [o] });
+    else leadTracks.push({ leadTrack: o.leadTrack, label: o.leadTrackLabel, entries: [o] });
   }
-  return { families, other };
+  return { leadTracks, other };
 }
 
 /**
