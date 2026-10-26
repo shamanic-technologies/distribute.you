@@ -128,6 +128,7 @@ import {
   settledPhase,
   stageDwellMs,
   stageMove,
+  stepRunningBefore,
   valueLines,
   valueText,
   websiteUrl,
@@ -385,6 +386,10 @@ function GetStartedWalk({ org, ipCountry = null, gsArm = "emails", gsArmFresh = 
   // one on cold email, the meeting-booking one), and the caps as typed.
   const [funnels, setFunnels] = useState<{ proactive: SignupFunnel | null; reactive: SignupFunnel | null } | null>(null);
   const [funnelsState, setFunnelsState] = useState<"idle" | "loading" | "failed">("idle");
+  // "Set up my campaign" pressed while a step before it is still running (the 100
+  // companies): the stage would walk straight back to that step, so the press is held
+  // here, the button says so, and the campaign opens the moment the step settles.
+  const [campaignAsked, setCampaignAsked] = useState(false);
   const [campaignDraft, setCampaignDraft] = useState<SignupCampaignDraft>(DEFAULT_SIGNUP_DRAFT);
   const [levers, setLevers] = useState<Record<LeverDraftKey, string>>(() => emptyRecord(LEVER_DRAFT_FIELDS));
   const [gives, setGives] = useState<Record<GiveDraftKey, string>>(() => emptyRecord(GIVE_DRAFT_FIELDS));
@@ -876,6 +881,11 @@ function GetStartedWalk({ org, ipCountry = null, gsArm = "emails", gsArmFresh = 
    * waits on nothing the visitor did: the funnels are read on load.
    */
   function openCampaign() {
+    if (stepRunningBefore(GET_STARTED_STEPS.map((st) => steps[st.key]), stepIndex("campaign"))) {
+      setCampaignAsked(true);
+      return;
+    }
+    setCampaignAsked(false);
     if (brandId && offer && canReadFunnels && funnelsState !== "loading") void loadFunnels(brandId, offer.offerId);
     if (emailsShown) {
       setStep("email", "done");
@@ -1403,6 +1413,12 @@ function GetStartedWalk({ org, ipCountry = null, gsArm = "emails", gsArmFresh = 
     return () => clearTimeout(t);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [phaseKey, stageIdx, wallOpen]);
+
+  // The held "Set up my campaign" press: done once nothing before the campaign runs.
+  useEffect(() => {
+    if (campaignAsked && !stepRunningBefore(phases, stepIndex("campaign"))) openCampaign();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [campaignAsked, phaseKey]);
 
   // One short Telegram line to the owner at each step of the walk (lib/owner-ping.ts):
   // the site entered, each step the stage reaches, the payment wall. Once per step per
@@ -1963,6 +1979,7 @@ function GetStartedWalk({ org, ipCountry = null, gsArm = "emails", gsArmFresh = 
             <button
               type="button"
               className="k-btn-accent gs-glow h-8 px-3"
+              disabled={campaignAsked}
               onClick={() => {
                 if (!canLaunch) return openCampaign();
                 setWallNote(null);
@@ -1993,8 +2010,8 @@ function GetStartedWalk({ org, ipCountry = null, gsArm = "emails", gsArmFresh = 
 
             {readyForCampaign && stagedKey === (emailsShown ? "email" : "companies") && (
               <div className="gs-in mt-6 flex justify-end" style={{ animationDelay: "200ms" }}>
-                <button type="button" className="k-btn-accent h-9 px-4" onClick={openCampaign}>
-                  Set up my campaign
+                <button type="button" className="k-btn-accent h-9 px-4" onClick={openCampaign} disabled={campaignAsked}>
+                  {campaignAsked ? "Finding your companies..." : "Set up my campaign"}
                 </button>
               </div>
             )}
