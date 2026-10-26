@@ -1951,6 +1951,8 @@ export const STAFF_MONITORING_PATHS = {
   skills: "/chat/skills",
   // Open security advisories per prod repo per day + the served red/green verdict (features-service, SEC-ADVISORIES-MONITORING-1025).
   securityAdvisories: "/features/audit/security-advisories",
+  // The production box's load, memory, swap and top containers + the served red/green verdict (features-service, BOX-OVERLOAD-1026-MONITORING).
+  boxHealth: "/features/audit/box-health",
 } as const;
 
 function parseStaff<T>(name: string, schema: z.ZodType<T>, raw: unknown): T {
@@ -12943,6 +12945,14 @@ import { SecurityAdvisoriesSchema as StaffSecurityAdvisoriesSchema, type Securit
 /** features-service's daily audit of every prod repo over the last `days` UTC days, with its served verdict (api-service #1382). */
 export async function getStaffSecurityAdvisories(days: number): Promise<StaffSecurityAdvisories> {
   return parseStaff("getStaffSecurityAdvisories", StaffSecurityAdvisoriesSchema, await apiCall<unknown>(`${STAFF_MONITORING_PATHS.securityAdvisories}?days=${days}`));
+}
+
+// ─── Monitoring > Box (BOX-OVERLOAD-1026-MONITORING) ───
+import { BoxHealthSchema as StaffBoxHealthSchema, type BoxHealth as StaffBoxHealth } from "./monitoring/box-health";
+
+/** The production box's samples over the last `days` UTC days, with features-service's served verdict (api-service #1384). */
+export async function getStaffBoxHealth(days: number): Promise<StaffBoxHealth> {
+  return parseStaff("getStaffBoxHealth", StaffBoxHealthSchema, await apiCall<unknown>(`${STAFF_MONITORING_PATHS.boxHealth}?days=${days}`));
 }
 
 // ─── Monitoring > Cost ledger (COST-ACCOUNTING-1023-MONITOR) ───
