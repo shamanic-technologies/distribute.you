@@ -123,6 +123,8 @@ export const SENSITIVE_QUERY_ROOTS = new Set([
   "staffLedgerReconciliation",
   // Monitoring > Security: open advisories per prod repo (SEC-ADVISORIES-MONITORING-1025).
   "staffSecurityAdvisories",
+  // Monitoring > Box: the production box's load and memory (BOX-OVERLOAD-1026-MONITORING).
+  "staffBoxHealth",
   "staffOpsThreads",
   "staffOpsThreadMessages",
   "staffOpsInfra",
