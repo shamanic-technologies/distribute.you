@@ -355,6 +355,9 @@ async function getTabSessionToken(forceRefresh = false): Promise<string | null> 
  */
 const ORG_DESYNC_BACKOFF_MS = [400, 900, 2000] as const;
 
+/** The status the authed proxy (and `proxy.ts` for every `/api/*` path) answers a refused session with. */
+const SESSION_REFUSED_STATUS = 401;
+
 async function apiCall<T>(endpoint: string, options?: ApiOptions): Promise<T> {
   const {
     token,
@@ -458,6 +461,13 @@ async function apiCall<T>(endpoint: string, options?: ApiOptions): Promise<T> {
       await new Promise((resolve) => setTimeout(resolve, ORG_DESYNC_BACKOFF_MS[attempt]));
       response = await send(true);
     }
+    // A session token the browser still holds as valid but the server reads as
+    // expired: Clerk tokens live 60s and the browser judges expiry on ITS clock,
+    // so a computer whose clock is a minute or two behind keeps sending a dead
+    // token (2026-10-26, a Windows visitor 107s behind: both "Save my card and
+    // launch" clicks refused). Mint one fresh token from Clerk and try once more.
+    // Signed out for real, the fresh token is null and the 401 surfaces.
+    if (response.status === SESSION_REFUSED_STATUS) response = await send(true);
   }
 
   if (!response.ok) {

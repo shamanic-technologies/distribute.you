@@ -345,7 +345,13 @@ export function AccountCardWall({
       setClaiming(true);
       setError(null);
       try {
-        const res = await fetch("/api/anon/claim", { method: "POST" });
+        let res = await fetch("/api/anon/claim", { method: "POST" });
+        // A session the server reads as expired while the browser still trusts it (a
+        // computer clock running behind, 2026-10-26): one fresh token, one more try.
+        if (res.status === 401) {
+          await session?.getToken({ skipCache: true });
+          res = await fetch("/api/anon/claim", { method: "POST" });
+        }
         if (!res.ok) {
           console.error(`[get-started] claim failed: ${res.status}`);
           throw new Error("We could not attach your setup to your account. Try again.");
@@ -810,14 +816,14 @@ export function AccountCardWall({
     void (async () => {
       setBusy(true);
       setError(null);
-      try {
-        await saveMonthlyLimit(limit.usd);
-      } catch (e) {
-        setError(e instanceof Error ? e.message : "We could not save your monthly limit. Try again.");
-        setBusy(false);
-        return;
-      }
-      await openCardSave(() => void afterPostpaidCardSaved());
+      // Saved WHILE the card form is fetched (owner 2026-09-28: the card form opens in
+      // under 1.5s): nothing is charged before the card is saved, so the limit only has
+      // to land before the form shows. Its refusal is stated instead of the form.
+      const limitSaved = saveMonthlyLimit(limit.usd).then(
+        () => null,
+        (e: unknown) => (e instanceof Error ? e.message : "We could not save your monthly limit. Try again."),
+      );
+      await openCardSave(() => void afterPostpaidCardSaved(), limitSaved);
     })();
   }
 
@@ -882,11 +888,16 @@ export function AccountCardWall({
   // ── The saved card's facts (owner 2026-10-13) ──
   // A card in-page that charges nothing (Stripe's embedded form; Revolut's widget for an
   // older org whose card lives there); `onSaved` runs once the form reports it.
-  async function openCardSave(onSaved: () => void) {
+  async function openCardSave(onSaved: () => void, firstSaved: Promise<string | null> = Promise.resolve(null)) {
     setBusy(true);
     setError(null);
     try {
-      const setup = await createEmbeddedCardSetup();
+      const [setup, problem] = await Promise.all([createEmbeddedCardSetup(), firstSaved]);
+      if (problem) {
+        setError(problem);
+        setBusy(false);
+        return;
+      }
       if (setup.mode === "embedded_checkout") {
         cardSaved.current = onSaved;
         setCardSecret(setup.client_secret);

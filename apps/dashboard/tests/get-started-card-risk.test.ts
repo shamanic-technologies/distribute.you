@@ -122,7 +122,9 @@ describe("the post-paid arm's wall (owner 2026-10-13)", () => {
     const wall = read("src/components/v2/get-started/account-card-wall.tsx");
     const start = wall.slice(wall.indexOf("function startPostpaid()"), wall.indexOf("async function afterPostpaidCardSaved()"));
     expect(start).toContain('monthlyLimitToSave(monthlyLimit, { kind: "postpaid" })');
-    expect(start).toContain("await saveMonthlyLimit(limit.usd);");
+    // The limit is saved while the card form is fetched; the form shows only once it landed.
+    expect(start).toContain("const limitSaved = saveMonthlyLimit(limit.usd)");
+    expect(wall).toContain("Promise.all([createEmbeddedCardSetup(), firstSaved])");
     expect(start).toContain("await openCardSave(");
     expect(start).not.toContain("payTopup");
     const arm = wall.slice(wall.indexOf("async function armPostpaid()"), wall.indexOf("// ── The saved card's facts"));

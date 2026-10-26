@@ -91,6 +91,14 @@ export default clerkMiddleware(
 
     // Protect non-public routes
     if (!isPublicRoute(req) && !userId) {
+      // An API call is answered in JSON, never redirected to a page: a fetch follows
+      // the redirect and reads the sign-in page's HTML as "200", so the caller cannot
+      // tell its session was refused (2026-10-26, a token expired by a slow client
+      // clock read as "non-JSON response (HTTP 200, text/html)"). The 401 lets
+      // `apiCall` mint a fresh token and try again.
+      if (isApiRoute(req)) {
+        return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+      }
       if (sessionStatus === "pending") {
         return NextResponse.redirect(
           new URL("/session-tasks/choose-organization", req.url),

@@ -390,6 +390,12 @@ export function stageMove(phases: StepPhase[], at: number): { to: number; dwell:
   return null;
 }
 
+/** A step before `at` is still running, so the stage would walk back to it (see `stageMove`). */
+export function stepRunningBefore(phases: StepPhase[], at: number): boolean {
+  const running = phases.indexOf("running");
+  return running >= 0 && running < at;
+}
+
 /**
  * How long a finished step stays on the stage. When the next step is still being
  * prepared, the finished result is held longer (up to `holdMs`) so the visitor reads
