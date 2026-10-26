@@ -133,12 +133,25 @@ function nanpProblem(digits: string): string | null {
 }
 
 /**
+ * Countries whose leading 0 is part of the number itself, so E.164 keeps it:
+ * Italy (landlines), San Marino and the Vatican (ITU-T E.164 national plans).
+ */
+const LEADING_ZERO_KEPT = new Set(["39", "378", "379"]);
+
+/**
  * Strict E.164 for storage. Returns `""` for an empty number, which is what a
  * skipped step stores. Callers check `phoneSyntaxProblem` first; this does no
- * validation of its own, so it never silently repairs a bad number.
+ * validation of its own.
+ *
+ * The one thing it removes is the national trunk prefix: people type their number
+ * the way they dial it at home ("06 12 34 56 78", "083370 01073"), and that 0 is
+ * never part of the international number. Kept, "+33 06…" or "+91 083…" is a number
+ * WhatsApp and every carrier refuse (2026-10-26: a signup's "+9108337001073").
  */
 export function toE164({ dialCode, national }: PhoneParts): string {
   const digits = (national ?? "").replace(/\D/g, "");
   if (digits === "") return "";
-  return `+${dialCode.replace(/\D/g, "")}${digits}`;
+  const cc = dialCode.replace(/\D/g, "");
+  const significant = LEADING_ZERO_KEPT.has(cc) ? digits : digits.replace(/^0/, "");
+  return `+${cc}${significant}`;
 }
