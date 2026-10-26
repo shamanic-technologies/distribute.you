@@ -131,7 +131,12 @@ describe("phoneSyntaxProblem", () => {
 describe("toE164", () => {
   it("joins the country code to the digits, dropping every separator", () => {
     expect(toE164(US("(415) 555-2671"))).toBe("+14155552671");
-    expect(toE164(FR("06 12 34 56 78"))).toBe("+330612345678");
+    // The national trunk 0 is dropped (2026-10-26: "+9108337001073" was unreachable on WhatsApp).
+    expect(toE164(FR("06 12 34 56 78"))).toBe("+33612345678");
+    expect(toE164({ dialCode: "+91", national: "08337001073" })).toBe("+918337001073");
+    expect(toE164({ dialCode: "+44", national: "07911 123456" })).toBe("+447911123456");
+    // Italy keeps its leading 0 (it is part of the number).
+    expect(toE164({ dialCode: "+39", national: "06 1234 5678" })).toBe("+390612345678");
     expect(toE164({ dialCode: "+44", national: "7911 123456" })).toBe("+447911123456");
   });
 
