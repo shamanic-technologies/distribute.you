@@ -21,6 +21,8 @@ import {
   type PossibleLead,
   sourceLine,
   timelineSourceNote,
+  setupRecord,
+  isAutomatedSend,
   type Person,
   type PersonTimeline,
   type PersonTimelineItem,
@@ -868,6 +870,23 @@ function ThreadItem({
   const mark = sourceMark(item.source, item.channel);
   const meta = [mark.name, item.at ? friendlyDateTime(item.at) : "No date"].join(" · ");
 
+  // What the client set up with us, whole (crm-service's record, owner 2026-10-27): one card,
+  // its title and every served line kept, nothing cut.
+  const record = setupRecord(item);
+  if (record) {
+    return (
+      <article className="k-card grid gap-1.5 px-4 py-3">
+        <div className="k-fg2 flex flex-wrap items-center gap-x-2 gap-y-1 text-[12px]">
+          <TagChip tag={tag ?? timelineTag(item)} />
+          <SourceLogo mark={mark} size={14} />
+          <span className="k-fg3">{meta}</span>
+        </div>
+        <h3 className="text-[14px] font-medium">{record.title}</h3>
+        <p className="k-fg2 whitespace-pre-wrap break-words text-[13px] leading-5">{record.text}</p>
+      </article>
+    );
+  }
+
   if (item.kind === "event") {
     // A product event the brand's own PostHog recorded (a signup walk step, owner 2026-10-15)
     // reads as crm-service's one line: the step and what the person entered.
@@ -942,7 +961,10 @@ function Message({
   const callId = outbound ? itemCallId(item) : null;
   const [callOpen, setCallOpen] = useState(false);
   const [expanded, setExpanded] = useState(!folded);
-  const who = sender.name ?? sender.email ?? (outbound ? "You" : "Them");
+  // One of our machines sent it (welcome email, sequence step, Copilot): said beside the
+  // sender, and never read as "You" typed it (owner 2026-10-27).
+  const automated = outbound && isAutomatedSend(item);
+  const who = sender.name ?? sender.email ?? (outbound ? (automated ? mark.name : "You") : "Them");
   if (!expanded) {
     return (
       <button
@@ -957,6 +979,7 @@ function Message({
           <PersonMark name={sender.name ?? sender.email ?? "Them"} emails={sender.email ? [sender.email] : []} size={16} />
         )}
         <span className="max-w-[40%] shrink-0 truncate font-medium">{who}</span>
+        {automated && <span className="k-chip shrink-0">Automated</span>}
         <span className="k-fg2 min-w-0 flex-1 truncate">{firstWords(item) ?? "—"}</span>
         <span className="k-fg3 shrink-0 tabular-nums">{item.at ? friendlyDate(item.at) : "No date"}</span>
       </button>
@@ -972,6 +995,7 @@ function Message({
           <PersonMark name={sender.name ?? sender.email ?? "Them"} emails={sender.email ? [sender.email] : []} size={16} />
         )}
         <span className="min-w-0 max-w-full truncate">{who}</span>
+        {automated && <span className="k-chip shrink-0">Automated</span>}
         {/* The address it was written FROM, on every message: a person can write from
             several mailboxes (work, personal), and a name alone hides which one (owner 2026-10-09). */}
         {sender.name && sender.email && <span className="k-mono min-w-0 max-w-full truncate text-[11.5px]">{sender.email}</span>}

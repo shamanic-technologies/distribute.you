@@ -14,7 +14,10 @@ import {
   possibleLeadRuledLine,
   stateLabel,
   timelineSourceNote,
+  setupRecord,
+  isAutomatedSend,
 } from "../src/lib/people-conversations";
+import { timelineTag } from "../src/lib/timeline-tags";
 
 const SRC = join(__dirname, "..", "src");
 const read = (rel: string) => readFileSync(join(SRC, rel), "utf8");
@@ -404,5 +407,54 @@ describe("a signup walk step on the Unibox thread (owner 2026-10-15)", () => {
     const fn = src.slice(src.indexOf("function ThreadItem("), src.indexOf("function PersonTag("));
     expect(fn).toContain('item.source === "posthog" && item.event?.step === "event" ? item.text : null');
     expect(fn).toContain("{said ? <p");
+  });
+});
+
+describe("what a client set up with us, and our automated sends (ONBOARDING-FICHE-1027)", () => {
+  const base = {
+    at: "2026-10-27T10:00:00.000Z",
+    source: "onboarding",
+    channel: "account",
+    kind: "event",
+    direction: null,
+    subject: "What they set up: Beyond Logic",
+    text: "Brand: Beyond Logic\n\nOffer: Fixed-Price Software Build\n  Client value: $50,000 per client",
+    from: null,
+    to: [],
+    event: { step: "onboarding_record", dateBasis: "latest_setup_change", detail: { orgId: "x" } },
+    sentBy: null,
+  };
+
+  it("parses the record and keeps every line of its text", () => {
+    const parsed = PersonTimelineSchema.shape.items.element.parse(base);
+    expect(setupRecord(parsed)).toEqual({ title: "What they set up: Beyond Logic", text: base.text });
+  });
+
+  it("is null for any other event, and for a record with no text", () => {
+    expect(setupRecord({ ...base, event: { step: "event", dateBasis: "x" } })).toBeNull();
+    expect(setupRecord({ ...base, text: null })).toBeNull();
+  });
+
+  it("names the source and the tag in plain words", () => {
+    expect(sourceLabel("onboarding")).toBe("Account setup");
+    expect(timelineTag(base).label).toBe("Account setup");
+  });
+
+  it("reads sentBy leniently and only `automation` as automated", () => {
+    const item = PersonTimelineSchema.shape.items.element;
+    expect(isAutomatedSend(item.parse({ ...base, sentBy: "automation" }))).toBe(true);
+    expect(isAutomatedSend(item.parse({ ...base, sentBy: "person" }))).toBe(false);
+    expect(isAutomatedSend(item.parse({ ...base, sentBy: "someday" }))).toBe(false);
+    const { sentBy: _drop, ...older } = base;
+    expect(isAutomatedSend(item.parse(older))).toBe(false);
+  });
+
+  it("the thread draws the record as one card and marks automated sends, never as You", () => {
+    const src = readFileSync(join(__dirname, "../src/components/v2/integrations-conversations.tsx"), "utf8");
+    expect(src).toContain("const record = setupRecord(item);");
+    expect(src).toContain("{record.text}");
+    expect(src).toContain("const automated = outbound && isAutomatedSend(item);");
+    expect(src).toContain('(automated ? mark.name : "You")');
+    expect(src.match(/\{automated && <span className="k-chip shrink-0">Automated<\/span>\}/g)?.length).toBe(2);
   });
 });
