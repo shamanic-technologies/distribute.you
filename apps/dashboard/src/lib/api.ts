@@ -5057,7 +5057,7 @@ export type LeadSourcingSources = z.infer<typeof LeadSourcingSourcesSchema>;
 
 export async function getLeadSourcingSources(brandId: string, offerId: string): Promise<LeadSourcingSources> {
   const raw = await apiCall<unknown>(
-    `/lead-sourcing/sources?brandId=${encodeURIComponent(brandId)}&offerId=${encodeURIComponent(offerId)}`,
+    `/orgs/lead-sourcing/sources?brandId=${encodeURIComponent(brandId)}&offerId=${encodeURIComponent(offerId)}`,
   );
   const parsed = LeadSourcingSourcesSchema.safeParse(raw);
   if (!parsed.success) {
