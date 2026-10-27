@@ -25,6 +25,25 @@ export const OutcomeStepStatSchema = z.object({
   people: z.coerce.number(),
   sources: z.array(z.object({ source: z.string(), people: z.coerce.number() })),
   contactedByUs: z.coerce.number(),
+  /**
+   * People per UTC month (`YYYY-MM`), everyone and contacted by us, from the brand's first dated reach
+   * to the current month, empty months as zeros (crm-service OUTCOMES-CONTACTED-1027). Optional while
+   * the producer rolls out.
+   */
+  months: z
+    .array(
+      z.object({
+        month: z.string(),
+        people: z.coerce.number(),
+        contactedByUs: z.coerce.number(),
+        /** Running totals since the first month, this month included (the since-you-started line). */
+        cumulativePeople: z.coerce.number(),
+        cumulativeContactedByUs: z.coerce.number(),
+      }),
+    )
+    .optional(),
+  /** Reaches no source dates, kept apart so the months reconcile with `people`. */
+  undated: z.object({ people: z.coerce.number(), contactedByUs: z.coerce.number() }).optional(),
 });
 export type OutcomeStepStat = z.infer<typeof OutcomeStepStatSchema>;
 

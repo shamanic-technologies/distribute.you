@@ -39,6 +39,7 @@ import {
   type FunnelCampaignSpendCharts,
   type OfferSpendCharts,
 } from "./spend-charts";
+import { OfferOutcomeCostSeriesSchema, type OfferOutcomeCostSeries } from "./v2/outcome-cost-series";
 import { browserHasAnonSession } from "./anon-session-cookie";
 import { offerArchiveRefusalSentence } from "./offer-archive";
 import { CrmAttributionSchema, type CrmAttribution } from "./crm-attribution";
@@ -2087,6 +2088,22 @@ export async function getOfferSpendCharts(offerId: string, brandId: string): Pro
   try {
     const raw = await apiCall<unknown>(`/offers/${encodeURIComponent(offerId)}/spend-charts?${qs.toString()}`);
     return parseStaff("getOfferSpendCharts", OfferSpendChartsSchema, raw);
+  } catch (err) {
+    if (err instanceof ApiError && err.status === 404 && err.body?.reason === "offer_has_no_campaigns") return null;
+    throw err;
+  }
+}
+
+/**
+ * $ / outcome per month and since inception, every outcome step of an offer (features-service
+ * OUTCOME-COST-SERIES-1027), net of discount. Null = the offer runs no campaign yet (the producer's
+ * `offer_has_no_campaigns` 404). Shapes: lib/v2/outcome-cost-series.ts.
+ */
+export async function getOfferOutcomeCostSeries(offerId: string, brandId: string): Promise<OfferOutcomeCostSeries | null> {
+  const qs = new URLSearchParams({ brandId, pricing: "net" });
+  try {
+    const raw = await apiCall<unknown>(`/offers/${encodeURIComponent(offerId)}/outcome-cost-series?${qs.toString()}`);
+    return parseStaff("getOfferOutcomeCostSeries", OfferOutcomeCostSeriesSchema, raw);
   } catch (err) {
     if (err instanceof ApiError && err.status === 404 && err.body?.reason === "offer_has_no_campaigns") return null;
     throw err;
