@@ -5045,6 +5045,28 @@ export async function getSourcingOrigins(): Promise<SourcingOrigin[]> {
   return parsed.data.origins;
 }
 
+/**
+ * Which origins the offer's Lead Sourcing campaign uses (human-service decides per brand x offer,
+ * re-decided on measured ROI). `leadSourcingOn` = the offer's Lead Sourcing campaign is running.
+ */
+const LeadSourcingSourcesSchema = z.object({
+  leadSourcingOn: z.boolean(),
+  chosenOriginSlugs: z.array(z.string()),
+});
+export type LeadSourcingSources = z.infer<typeof LeadSourcingSourcesSchema>;
+
+export async function getLeadSourcingSources(brandId: string, offerId: string): Promise<LeadSourcingSources> {
+  const raw = await apiCall<unknown>(
+    `/lead-sourcing/sources?brandId=${encodeURIComponent(brandId)}&offerId=${encodeURIComponent(offerId)}`,
+  );
+  const parsed = LeadSourcingSourcesSchema.safeParse(raw);
+  if (!parsed.success) {
+    console.error("[dashboard] getLeadSourcingSources: response shape mismatch", { issues: parsed.error.issues, raw });
+    throw new Error("[dashboard] getLeadSourcingSources: invalid response shape");
+  }
+  return parsed.data;
+}
+
 const ListAudiencesResponseSchema = z.object({
   audiences: z.array(AudienceSchema),
   total: z.number(),

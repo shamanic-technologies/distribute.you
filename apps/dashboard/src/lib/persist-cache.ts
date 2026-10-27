@@ -325,6 +325,7 @@ export const PERSISTABLE_QUERY_ROOTS = new Set([
   "offerEconomics",
   "offerSalesPath",
   "offerSalesPaths",
+  "leadSourcingSources",
   "offerChannels",
   "offerSelectedSalesPaths",
   "brandSalesBudget",
