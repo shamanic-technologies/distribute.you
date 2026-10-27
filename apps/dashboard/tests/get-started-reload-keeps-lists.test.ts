@@ -85,6 +85,28 @@ describe("/get-started step 3: Something else (owner 2026-10-24)", () => {
   });
 });
 
+describe("/get-started step 4: Something else (owner 2026-10-27)", () => {
+  it("the audience step ends on a dashed Something else card that opens a text box in place", () => {
+    const at = gs.indexOf("function AudienceStage(");
+    const body = gs.slice(at, gs.indexOf("function AudienceSize(", at));
+    expect(body).toContain("Something else");
+    expect(body).toContain("border-dashed");
+    expect(body).toContain("Who do you want to reach?");
+    expect(body).toContain("{!picked && ownBox}");
+    expect(gs).toContain("onOwn={(text) => void proposeOwnAudience(text)}");
+  });
+
+  it("their words become the ICP, split into audiences counted again; one audience is picked at once", () => {
+    const at = gs.indexOf("async function proposeOwnAudience(");
+    const body = gs.slice(at, gs.indexOf("async function prepareAudiences(", at));
+    expect(body).toContain("icpRef.current = text;");
+    expect(body).toContain("saveSnapshot({ icp: text });");
+    expect(body).toContain("await proposeAudienceSegments(brandId, text)");
+    expect(body).toContain("estimated.current = false;");
+    expect(body).toContain("if (segments.length === 1) pickAudience(0, segments);");
+  });
+});
+
 describe("/get-started step 3: ONE model reads the offers off the site (owner 2026-10-24)", () => {
   it("the offers come from brand-service reading the brand's site, after steps 1-2 saved its pages", () => {
     const at = gs.indexOf("async function prepareOffers(");
