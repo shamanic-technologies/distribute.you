@@ -725,6 +725,30 @@ function GetStartedWalk({ org, ipCountry = null, gsArm = "emails", gsArmFresh = 
   }
 
   /**
+   * "Something else" (owner 2026-10-27): the visitor says in their words who they want to reach.
+   * Their words become the ideal customer, split into audiences counted again; one is picked at once.
+   */
+  async function proposeOwnAudience(text: string) {
+    if (!brandId || audience || pendingAudience || audienceBusy != null) return;
+    setAudienceError(null);
+    setStep("audience", "running");
+    try {
+      const { segments } = await proposeAudienceSegments(brandId, text);
+      icpRef.current = text;
+      saveSnapshot({ icp: text });
+      estimated.current = false;
+      setAudienceCounts({});
+      showAudiences(segments);
+      posthog.capture("get_started_audience_own", { audiences: segments.length });
+      if (segments.length === 1) pickAudience(0, segments);
+    } catch (e) {
+      console.error("[get-started] own audience read failed:", e);
+      setStep("audience", "choose");
+      setAudienceError("We could not read that. Try again in other words.");
+    }
+  }
+
+  /**
    * Who to write to for the offer PICKED at step 3 (owner 2026-10-06: the audiences
    * described the brand's other offer): its ideal customer, split into at most 6 audiences.
    */
@@ -1066,10 +1090,10 @@ function GetStartedWalk({ org, ipCountry = null, gsArm = "emails", gsArmFresh = 
   }, [brandId, offer?.offerId, audienceProposals]);
 
   /** Step 4: the ONE audience picked moves the walk on at once; it is created (or found) behind it. */
-  function pickAudience(i: number) {
+  function pickAudience(i: number, list: AudienceSegmentProposal[] = audienceProposals) {
     if (!brandId || audienceBusy != null) return;
     if (!offer && !offerPromise.current) return;
-    const seg = audienceProposals[i];
+    const seg = list[i];
     if (!seg) return;
     setAudienceError(null);
     if (steps.audience !== "done") {
@@ -1099,7 +1123,7 @@ function GetStartedWalk({ org, ipCountry = null, gsArm = "emails", gsArmFresh = 
           }
         }
         chooseAudience(known);
-        posthog.capture("get_started_audience_picked", { audiences: audienceProposals.length });
+        posthog.capture("get_started_audience_picked", { audiences: list.length });
         stepDone("audience", { audience: seg.name, description: seg.description ?? "", who_they_sell_to: icpRef.current });
       } catch (e) {
         console.error("[get-started] audience confirm failed:", e);
@@ -1839,6 +1863,7 @@ function GetStartedWalk({ org, ipCountry = null, gsArm = "emails", gsArmFresh = 
           counting={estimating || (!estimated.current && !!offerPromise.current)}
           waitingForOffer={!offer && !pendingOffer}
           onPick={(i) => void pickAudience(i)}
+          onOwn={(text) => void proposeOwnAudience(text)}
           onRetry={() => brandId && offer && void prepareAudiences(brandId, offer.offerId)}
         />
       );
@@ -2778,61 +2803,68 @@ function OfferStage({
   onOwn: (text: string) => void;
   onRetry: () => void;
 }) {
-  const [own, setOwn] = useState<string | null>(null);
-  const ownBox =
-    own === null ? (
-      <button
-        type="button"
-        onClick={() => setOwn("")}
-        disabled={!!picked || busy != null}
-        style={stagger(proposals.length, 80)}
-        className="gs-in k-hover flex items-start gap-3 rounded-[12px] border border-dashed border-[var(--line-strong)] p-3 text-left transition-[background-color,opacity] duration-150 active:scale-[0.99] disabled:opacity-40"
-      >
-        <span className="k-fg3 inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-[8px] border border-dashed border-[var(--line-strong)] text-[16px]" aria-hidden="true">
-          +
-        </span>
-        <span className="min-w-0 flex-1">
-          <span className="k-fg block text-[14px] font-medium leading-5">Something else</span>
-          <span className="k-fg2 mt-1 block text-[12.5px] leading-5">Tell us what you sell.</span>
-        </span>
-      </button>
-    ) : (
-      <form
-        className="gs-in rounded-[12px] border border-dashed border-[var(--line-strong)] p-3 sm:col-span-2"
-        onSubmit={(e) => {
-          e.preventDefault();
-          if (own.trim()) onOwn(own.trim());
-        }}
-      >
-        <label className="k-fg block text-[14px] font-medium leading-5" htmlFor="gs-own-offer">
-          What do you sell?
-        </label>
-        <textarea
-          id="gs-own-offer"
-          autoFocus
-          className="k-input mt-2 min-h-[80px] w-full resize-y px-3 py-2 text-[14px] leading-5"
-          placeholder="What a customer buys from you, in a sentence or two."
-          value={own}
-          onChange={(e) => setOwn(e.target.value)}
-        />
-        <div className="mt-3 flex items-center gap-3">
-          <button type="button" className="k-fg3 h-9 text-[13px] hover:text-[var(--fg-2)]" onClick={() => setOwn(null)}>
-            Cancel
-          </button>
-          <button type="submit" className="k-btn-accent ml-auto h-9 px-4" disabled={!own.trim()}>
-            Continue
-          </button>
-        </div>
-      </form>
-    );
+  // "Something else" (owner 2026-10-24): a card shaped like its siblings, dashed; opening it
+  // leaves only the text box on the step, so no proposed card reads as picked (owner 2026-10-27).
+  const [own, setOwn] = useState("");
+  const [ownOpen, setOwnOpen] = useState(false);
+  const ownCard = (
+    <button
+      type="button"
+      onClick={() => setOwnOpen(true)}
+      disabled={!!picked || busy != null}
+      style={stagger(proposals.length, 80)}
+      className="gs-in k-card-dashed flex items-start gap-3 p-3 text-left transition-[background-color,opacity] duration-150 active:scale-[0.99] disabled:opacity-40"
+    >
+      <span className="k-mark-dashed k-fg3 inline-flex h-8 w-8 shrink-0 items-center justify-center text-[16px]" aria-hidden="true">
+        +
+      </span>
+      <span className="min-w-0 flex-1">
+        <span className="k-fg block text-[14px] font-medium leading-5">Something else</span>
+        <span className="k-fg2 mt-1 block text-[12.5px] leading-5">Tell us what you sell.</span>
+      </span>
+    </button>
+  );
+  const ownForm = (
+    <form
+      className="gs-in"
+      onSubmit={(e) => {
+        e.preventDefault();
+        if (!own.trim()) return;
+        setOwnOpen(false);
+        onOwn(own.trim());
+      }}
+    >
+      <label className="k-fg block text-[14px] font-medium leading-5" htmlFor="gs-own-offer">
+        What do you sell?
+      </label>
+      <textarea
+        id="gs-own-offer"
+        autoFocus
+        className="k-input mt-2 min-h-[96px] w-full resize-y px-3 py-2 text-[14px] leading-5"
+        placeholder="What a customer buys from you, in a sentence or two."
+        value={own}
+        onChange={(e) => setOwn(e.target.value)}
+      />
+      <div className="mt-3 flex items-center gap-3">
+        <button type="button" className="k-fg3 h-9 text-[13px] hover:text-[var(--fg-2)]" onClick={() => setOwnOpen(false)}>
+          Back to the list
+        </button>
+        <button type="submit" className="k-btn-accent ml-auto h-9 px-4" disabled={!own.trim()}>
+          Continue
+        </button>
+      </div>
+    </form>
+  );
   return (
     <StepCard index={3} title="What you sell" state={state} meta={<StateWord state={state} />}>
       {state === "running" || state === "waiting" ? (
         <OptionSkeleton />
+      ) : ownOpen ? (
+        ownForm
       ) : proposals.length === 0 && !picked ? (
         <>
           <RetryNote text="We could not tell what you sell from your site." onRetry={onRetry} />
-          <div className="mt-3 grid gap-2 sm:grid-cols-2">{ownBox}</div>
+          <div className="mt-3 grid gap-2 sm:grid-cols-2">{ownCard}</div>
           {error && <p className="mt-2 text-[12px] text-[var(--data-rose)]">{error}</p>}
         </>
       ) : (
@@ -2840,7 +2872,7 @@ function OfferStage({
           <p className="k-fg2 text-[13px]">
             {proposals.length > 1 ? "Which one do we sell first?" : "This is what we sell for you."}
           </p>
-          <div className="mt-3 grid gap-2 sm:grid-cols-2">
+          <div className="mt-3 grid gap-2 sm:auto-rows-fr sm:grid-cols-2">
             {proposals.map((o, i) => {
               const on = picked ? picked.name === o.name : false;
               const locked = !!picked && !on;
@@ -2868,7 +2900,7 @@ function OfferStage({
                 </button>
               );
             })}
-            {!picked && ownBox}
+            {!picked && ownCard}
           </div>
           {error && <p className="mt-2 text-[12px] text-[var(--data-rose)]">{error}</p>}
         </>
@@ -3434,6 +3466,7 @@ function AudienceStage({
   counting,
   waitingForOffer,
   onPick,
+  onOwn,
   onRetry,
 }: {
   state: StepState;
@@ -3447,20 +3480,80 @@ function AudienceStage({
   counting: boolean;
   waitingForOffer: boolean;
   onPick: (i: number) => void;
+  /** "Something else": who they want to reach, in their words. */
+  onOwn: (text: string) => void;
   onRetry: () => void;
 }) {
+  // "Something else" (owner 2026-10-27): a card shaped like its siblings, dashed; opening it
+  // leaves only the text box on the step, so no proposed audience reads as picked.
+  const [own, setOwn] = useState("");
+  const [ownOpen, setOwnOpen] = useState(false);
+  const ownCard = (
+    <button
+      type="button"
+      onClick={() => setOwnOpen(true)}
+      disabled={waitingForOffer || !!picked || busy != null}
+      style={stagger(proposals.length, 70)}
+      className="gs-in k-card-dashed flex flex-col p-3 text-left transition-[background-color,opacity] duration-150 active:scale-[0.99] disabled:opacity-40"
+    >
+      <span className="flex items-start gap-2">
+        <span className="k-mark-dashed k-fg3 inline-flex h-7 w-7 shrink-0 items-center justify-center text-[15px]" aria-hidden="true">
+          +
+        </span>
+        <span className="k-fg min-w-0 flex-1 text-[14px] font-medium leading-5">Something else</span>
+      </span>
+      <span className="k-fg2 mt-2 block text-[12.5px] leading-5">Tell us who you want to reach.</span>
+    </button>
+  );
+  const ownForm = (
+    <form
+      className="gs-in"
+      onSubmit={(e) => {
+        e.preventDefault();
+        if (!own.trim()) return;
+        setOwnOpen(false);
+        onOwn(own.trim());
+      }}
+    >
+      <label className="k-fg block text-[14px] font-medium leading-5" htmlFor="gs-own-audience">
+        Who do you want to reach?
+      </label>
+      <textarea
+        id="gs-own-audience"
+        autoFocus
+        className="k-input mt-2 min-h-[96px] w-full resize-y px-3 py-2 text-[14px] leading-5"
+        placeholder="The people you sell to: their role, their company, where they are."
+        value={own}
+        onChange={(e) => setOwn(e.target.value)}
+      />
+      <div className="mt-3 flex items-center gap-3">
+        <button type="button" className="k-fg3 h-9 text-[13px] hover:text-[var(--fg-2)]" onClick={() => setOwnOpen(false)}>
+          Back to the list
+        </button>
+        <button type="submit" className="k-btn-accent ml-auto h-9 px-4" disabled={!own.trim()}>
+          Continue
+        </button>
+      </div>
+    </form>
+  );
   return (
     <StepCard index={4} title="Who to write to" state={state} meta={<StateWord state={state} />}>
       {state === "running" || state === "waiting" ? (
         <OptionSkeleton />
+      ) : ownOpen ? (
+        ownForm
       ) : proposals.length === 0 ? (
-        <RetryNote text="We could not work out who to write to." onRetry={onRetry} />
+        <>
+          <RetryNote text="We could not work out who to write to." onRetry={onRetry} />
+          <div className="mt-3 grid gap-2 sm:grid-cols-2">{ownCard}</div>
+          {error && <p className="mt-2 text-[12px] text-[var(--data-rose)]">{error}</p>}
+        </>
       ) : (
         <>
           <p className="k-fg2 text-[13px]">
             {waitingForOffer ? "Pick your offer first." : "Who do we write to first?"}
           </p>
-          <div className="mt-3 grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+          <div className="mt-3 grid gap-2 sm:auto-rows-fr sm:grid-cols-2 lg:grid-cols-3">
             {proposals.map((a, i) => {
               const on = picked?.name === a.name;
               return (
@@ -3485,6 +3578,7 @@ function AudienceStage({
                 </button>
               );
             })}
+            {!picked && ownCard}
           </div>
           {error && <p className="mt-2 text-[12px] text-[var(--data-rose)]">{error}</p>}
         </>

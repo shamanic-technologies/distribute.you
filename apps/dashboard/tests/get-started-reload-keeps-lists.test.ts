@@ -67,13 +67,15 @@ describe("/get-started: a reload never asks the model again for a list it showed
 });
 
 describe("/get-started step 3: Something else (owner 2026-10-24)", () => {
-  it("the offer step ends on a dashed Something else card that opens a text box in place", () => {
+  it("the offer step ends on a dashed Something else card; opened, only its text box stays", () => {
     const at = gs.indexOf("function OfferStage(");
     const body = gs.slice(at, gs.indexOf("function CampaignChoice(", at));
     expect(body).toContain("Something else");
-    expect(body).toContain("border-dashed");
+    expect(body).toContain("k-card-dashed");
+    // Opened, only the text box stays on the step (owner 2026-10-27: no card reads as picked).
+    expect(body).toContain(") : ownOpen ? (\n        ownForm");
     expect(body).toContain("What do you sell?");
-    expect(body).toContain("{!picked && ownBox}");
+    expect(body).toContain("{!picked && ownCard}");
     expect(gs).toContain("onOwn={(text) => void proposeOwnOffer(text)}");
   });
 
@@ -82,6 +84,30 @@ describe("/get-started step 3: Something else (owner 2026-10-24)", () => {
     const body = gs.slice(at, gs.indexOf("/** The offers the site describes", at));
     expect(body).toContain("await proposeBrandOffers(brandId, text)");
     expect(body).toContain("if (offers.length === 1) pickOffer(0, offers);");
+  });
+});
+
+describe("/get-started step 4: Something else (owner 2026-10-27)", () => {
+  it("the audience step ends on a dashed Something else card; opened, only its text box stays", () => {
+    const at = gs.indexOf("function AudienceStage(");
+    const body = gs.slice(at, gs.indexOf("function AudienceSize(", at));
+    expect(body).toContain("Something else");
+    expect(body).toContain("k-card-dashed");
+    // Opened, only the text box stays on the step (owner 2026-10-27: no card reads as picked).
+    expect(body).toContain(") : ownOpen ? (\n        ownForm");
+    expect(body).toContain("Who do you want to reach?");
+    expect(body).toContain("{!picked && ownCard}");
+    expect(gs).toContain("onOwn={(text) => void proposeOwnAudience(text)}");
+  });
+
+  it("their words become the ICP, split into audiences counted again; one audience is picked at once", () => {
+    const at = gs.indexOf("async function proposeOwnAudience(");
+    const body = gs.slice(at, gs.indexOf("async function prepareAudiences(", at));
+    expect(body).toContain("icpRef.current = text;");
+    expect(body).toContain("saveSnapshot({ icp: text });");
+    expect(body).toContain("await proposeAudienceSegments(brandId, text)");
+    expect(body).toContain("estimated.current = false;");
+    expect(body).toContain("if (segments.length === 1) pickAudience(0, segments);");
   });
 });
 
