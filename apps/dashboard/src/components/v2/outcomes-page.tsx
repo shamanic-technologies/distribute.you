@@ -29,6 +29,8 @@ import { PeoplePage } from "@/components/v2/people-page";
 import { AudienceLists } from "@/components/v2/audience-page";
 import { PostsPage } from "@/components/v2/posts-page";
 import { EmptyNote, Shimmer, TopBar } from "@/components/v2/ui";
+import { OutcomeStats } from "@/components/v2/outcome-stats";
+import { stepLabel } from "@/lib/legs";
 
 /**
  * OUTCOMES (owner 2026-10-10): what the brand gets. The Overview lists one row per step an
@@ -295,6 +297,16 @@ export function OutcomePage() {
             <span>Nothing brings this in today.</span>
           )}
         </div>
+        {outcome.items.kind === "people" && listed?.all && (
+          <OutcomeStats
+            brandId={brandId}
+            offerId={offerId}
+            stepKey={outcome.key}
+            label={stepLabel(catalogue, outcome.key) ?? outcome.label}
+            plural={outcome.label}
+            all={listed.all}
+          />
+        )}
         {outcome.items.kind === "people" && listed?.all ? (
           <div className="k-card overflow-hidden">
             <RecordsTabs
