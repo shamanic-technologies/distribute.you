@@ -2,6 +2,8 @@ import { auth, clerkClient, currentUser } from "@clerk/nextjs/server";
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { clerkUserIdFromDistinctId, formatOwnerPing, isStaffEmail, OWNER_PING_EVENTS } from "@/lib/owner-ping";
+import { escapeHtml } from "@/lib/visit-recap";
+import { fetchCompanyLines } from "@/lib/visit-recap-job";
 
 export const dynamic = "force-dynamic";
 
@@ -96,13 +98,38 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Invalid ping" }, { status: 400 });
   }
 
+  // "Entered their site" is the first ping carrying the domain: it also says who the company is
+  // (HQ, industry, size, revenue, role), like the visit recap (owner 2026-10-27). Later steps stay one line.
+  const lines = [escapeHtml(text)];
+  if (body.event === "started" && body.domain) {
+    const apolloUrl = process.env.APOLLO_SERVICE_URL?.trim();
+    const apolloKey = process.env.APOLLO_SERVICE_API_KEY?.trim();
+    if (!apolloUrl || !apolloKey) {
+      console.error("[dashboard/owner-ping] APOLLO_SERVICE_URL or APOLLO_SERVICE_API_KEY is not set");
+      lines.push(`Company lookup failed for ${escapeHtml(body.domain)}`);
+    } else {
+      lines.push(
+        ...(await fetchCompanyLines(
+          { url: apolloUrl, apiKey: apolloKey },
+          {
+            domain: body.domain,
+            email: user?.primaryEmailAddress?.emailAddress ?? null,
+            firstName: user?.firstName ?? null,
+            lastName: user?.lastName ?? null,
+          },
+          "dashboard/owner-ping",
+        )),
+      );
+    }
+  }
+
   // One more try on a transport failure: a DNS blip on the box (`EAI_AGAIN api.telegram.org`, 2026-10-25)
   // lost a signup's "started" line with a 500.
   const send = () =>
     fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ chat_id: chatId, text, disable_web_page_preview: true }),
+      body: JSON.stringify({ chat_id: chatId, text: lines.join("\n"), parse_mode: "HTML", disable_web_page_preview: true }),
     });
   let res: Response;
   try {

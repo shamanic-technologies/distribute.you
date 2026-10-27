@@ -223,14 +223,24 @@ export function companyLines(res: FirmographicsResponse, email: string | null = 
   }, email);
 }
 
+export interface CompanyLookupPerson {
+  domain: string;
+  email?: string | null;
+  firstName?: string | null;
+  lastName?: string | null;
+}
+
 /**
- * Who the company behind the visit is (owner 2026-10-04): apollo-service's
+ * Who the company behind a domain is (owner 2026-10-04): apollo-service's
  * org-less, platform-billed read, cached per domain and per person. A failed
- * lookup is stated in the recap, never hidden.
+ * lookup is stated in the message, never hidden. Shared by the visit recap and
+ * the "entered their site" owner ping (owner 2026-10-27).
  */
-async function lookupCompany(config: Config, events: VisitEvent[], account: VisitAccount | null): Promise<string[]> {
-  const person = visitPerson(events, account);
-  if (!person) return [];
+export async function fetchCompanyLines(
+  apollo: { url: string; apiKey: string },
+  person: CompanyLookupPerson,
+  logTag: string,
+): Promise<string[]> {
   const body: Record<string, string> = { domain: person.domain };
   if (person.email) body.email = person.email;
   if (person.firstName && person.lastName) {
@@ -238,20 +248,26 @@ async function lookupCompany(config: Config, events: VisitEvent[], account: Visi
     body.lastName = person.lastName;
   }
   try {
-    const res = await fetch(`${config.apolloServiceUrl}/internal/company-firmographics`, {
+    const res = await fetch(`${apollo.url.replace(/\/$/, "")}/internal/company-firmographics`, {
       method: "POST",
-      headers: { "x-api-key": config.apolloServiceApiKey, "content-type": "application/json" },
+      headers: { "x-api-key": apollo.apiKey, "content-type": "application/json" },
       body: JSON.stringify(body),
       signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
     });
     if (!res.ok) throw new Error(`apollo-service ${res.status}: ${(await res.text()).slice(0, 300)}`);
     const parsed = FirmographicsResponseSchema.safeParse(await res.json());
     if (!parsed.success) throw new Error(`apollo-service answered an unexpected shape: ${parsed.error.message}`);
-    return companyLines(parsed.data, person.email);
+    return companyLines(parsed.data, person.email ?? null);
   } catch (err) {
-    console.error(`[dashboard/visit-recap] company lookup failed for ${person.domain}:`, err);
+    console.error(`[${logTag}] company lookup failed for ${person.domain}:`, err);
     return [`Company lookup failed for ${person.domain}`];
   }
+}
+
+async function lookupCompany(config: Config, events: VisitEvent[], account: VisitAccount | null): Promise<string[]> {
+  const person = visitPerson(events, account);
+  if (!person) return [];
+  return fetchCompanyLines({ url: config.apolloServiceUrl, apiKey: config.apolloServiceApiKey }, person, "dashboard/visit-recap");
 }
 
 const ResolveResponseSchema = z.object({ orgId: z.string() });
