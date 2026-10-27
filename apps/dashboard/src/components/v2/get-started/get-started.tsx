@@ -171,7 +171,7 @@ type StepState = StepPhase;
  * How long a finished step stays on the stage before it flies into the rail, and how
  * long it is held further when the next one is still being prepared. The companies
  * table is where the visitor reads and clicks, so it is held until the first email is
- * written (it takes a minute and a half) rather than flying away under the pointer.
+ * written (median ~17s, p90 ~75s, 2026-10-27) rather than flying away under the pointer.
  */
 const STAGE_DWELL_MS: Partial<Record<GetStartedStepKey, number>> = { companies: 6000 };
 const STAGE_HOLD_MS: Partial<Record<GetStartedStepKey, number>> = { companies: 150_000 };
@@ -2553,7 +2553,7 @@ const STATUS: Record<GetStartedStepKey, (domain: string | null) => string> = {
   levers: () => "Drafting your offer from your site",
   gives: () => "Drafting what you could give away",
   companies: () => "Finding companies that match, with the right person at each",
-  email: () => "Writing your example email. The first one takes about a minute and a half.",
+  email: () => "Writing your example email takes about 30 seconds.",
   campaign: () => "Picking the campaign with the best return",
 };
 
@@ -3894,7 +3894,7 @@ function EmailStyleStage({
             <div className="px-4 py-4">
               <p className="k-fg3 mb-3 flex items-center gap-2 text-[12px]">
                 <span className="k-dot-pulse h-1.5 w-1.5 rounded-full bg-[var(--run)] text-[var(--run)]" />
-                Writing this example. The first one takes about a minute and a half.
+                Writing this example takes about 30 seconds.
               </p>
               <Rows n={6} />
             </div>
