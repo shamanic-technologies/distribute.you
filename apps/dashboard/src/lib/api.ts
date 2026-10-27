@@ -1953,6 +1953,8 @@ export const STAFF_MONITORING_PATHS = {
   securityAdvisories: "/features/audit/security-advisories",
   // The production box's load, memory, swap and top containers + the served red/green verdict (features-service, BOX-OVERLOAD-1026-MONITORING).
   boxHealth: "/features/audit/box-health",
+  // Every crm-service trigger report (form, WhatsApp number, positive reply, account event): sent, skipped or stuck + the served verdict (crm-service, TRIGGER-REPORTS-MONITORING-1027).
+  triggerReports: "/crm/ops/trigger-reports",
 } as const;
 
 function parseStaff<T>(name: string, schema: z.ZodType<T>, raw: unknown): T {
@@ -12953,6 +12955,14 @@ import { BoxHealthSchema as StaffBoxHealthSchema, type BoxHealth as StaffBoxHeal
 /** The production box's samples over the last `days` UTC days, with features-service's served verdict (api-service #1384). */
 export async function getStaffBoxHealth(days: number): Promise<StaffBoxHealth> {
   return parseStaff("getStaffBoxHealth", StaffBoxHealthSchema, await apiCall<unknown>(`${STAFF_MONITORING_PATHS.boxHealth}?days=${days}`));
+}
+
+// ─── Monitoring > Triggers (TRIGGER-REPORTS-MONITORING-1027) ───
+import { TriggerReportsSchema as StaffTriggerReportsSchema, type TriggerReports as StaffTriggerReports } from "./monitoring/trigger-reports";
+
+/** Every crm-service trigger report over the last `days` UTC days, with crm-service's served verdict (api-service #1386). */
+export async function getStaffTriggerReports(days: number): Promise<StaffTriggerReports> {
+  return parseStaff("getStaffTriggerReports", StaffTriggerReportsSchema, await apiCall<unknown>(`${STAFF_MONITORING_PATHS.triggerReports}?days=${days}`));
 }
 
 // ─── Monitoring > Cost ledger (COST-ACCOUNTING-1023-MONITOR) ───
