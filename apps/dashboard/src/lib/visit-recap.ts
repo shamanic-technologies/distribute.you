@@ -233,7 +233,7 @@ function clickList(clicks: string[]): string {
   return shown.join(", ") + (more > 0 ? ` +${more} more` : "");
 }
 
-function escapeHtml(s: string): string {
+export function escapeHtml(s: string): string {
   return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 }
 

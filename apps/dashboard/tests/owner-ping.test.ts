@@ -101,3 +101,21 @@ describe("every signup step pings the owner", () => {
     expect(s.match(/res = await send\(\);/g)?.length).toBe(2);
   });
 });
+
+describe("owner-ping route: company block on 'entered their site' (owner 2026-10-27)", () => {
+  const route = src("src/app/api/public/owner-ping/route.ts");
+
+  it("looks the company up through the visit recap's shared apollo read, only on the started ping", () => {
+    expect(route).toContain('body.event === "started" && body.domain');
+    expect(route).toContain("fetchCompanyLines(");
+  });
+
+  it("sends HTML so the shared firmographic lines render, with the first line escaped", () => {
+    expect(route).toContain('parse_mode: "HTML"');
+    expect(route).toContain("escapeHtml(text)");
+  });
+
+  it("the visit recap keeps using the same lookup", () => {
+    expect(src("src/lib/visit-recap-job.ts")).toContain('fetchCompanyLines({ url: config.apolloServiceUrl');
+  });
+});
