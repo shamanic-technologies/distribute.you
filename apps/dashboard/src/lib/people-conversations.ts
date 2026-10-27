@@ -207,6 +207,13 @@ export const PersonTimelineItemSchema = z.object({
     })
     .nullable(),
   /**
+   * WHO sent an outbound message (crm-service ONBOARDING-FICHE-1027): `automation` = one of
+   * our machines (welcome email, cold-email step, automated WhatsApp, Copilot, API); `person`
+   * = a human of the brand typed it; null = inbound, an event, or the source does not say.
+   * A plain string so a word added later still parses; optional until every cached thread has it.
+   */
+  sentBy: z.string().nullish(),
+  /**
    * A sent cold email's identity (crm-service, forwarded from instantly-service): `subjectKey`
    * equals lead-service's fact id for that email, so the Unibox pairs the email with its
    * "Initial email" / "Followup" label on identity, never on time. Null on inbound mail and
@@ -302,6 +309,9 @@ const SOURCE_LABEL: Record<string, string> = {
   stripe: "Stripe",
   copilot: "AI Copilot",
   api: "API",
+  // What the client chose on their account with us (crm-service ONBOARDING-FICHE-1027).
+  onboarding: "Account setup",
+  transactional: "Our emails",
 };
 
 const CHANNEL_LABEL: Record<string, string> = {
@@ -313,6 +323,7 @@ const CHANNEL_LABEL: Record<string, string> = {
   chat: "Chat",
   api: "API",
   mcp: "MCP",
+  account: "Account",
 };
 
 /** A served word as a reader sees it: `sales_interest` -> `Sales interest`. */
@@ -328,6 +339,23 @@ export function sourceLabel(source: string): string {
 
 export function channelLabel(channel: string): string {
   return CHANNEL_LABEL[channel] ?? wordsOf(channel);
+}
+
+/** The step crm-service serves for the whole record of what a client set up with us. */
+export const SETUP_RECORD_STEP = "onboarding_record";
+
+/**
+ * The record of what a client set up with us (offer, audience, signals, client value,
+ * campaigns): one card on their thread, its served `text` whole. Null for anything else.
+ */
+export function setupRecord(item: Pick<PersonTimelineItem, "kind" | "event" | "subject" | "text">): { title: string; text: string } | null {
+  if (item.kind !== "event" || item.event?.step !== SETUP_RECORD_STEP || !item.text) return null;
+  return { title: item.subject ?? "What they set up", text: item.text };
+}
+
+/** One of our machines sent it (welcome email, sequence step, Copilot): never read as typed by a person. */
+export function isAutomatedSend(item: Pick<PersonTimelineItem, "sentBy">): boolean {
+  return item.sentBy === "automation";
 }
 
 /** The lead row whose standing decided the person's state, when lead-service decided it. */

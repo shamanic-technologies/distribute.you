@@ -45,6 +45,8 @@ const STEP_TAGS: Record<string, Omit<TimelineTag, "label"> & { label?: string }>
   added_to_crm: { tone: "neutral", icon: "check", label: "Added to CRM" },
   signup: { tone: "hot", icon: "check", label: "Signed up" },
   became_customer: { tone: "won", icon: "money", label: "Became a customer" },
+  // The whole record of what a client set up with us (crm-service ONBOARDING-FICHE-1027).
+  onboarding_record: { tone: "neutral", icon: "check", label: "Account setup" },
 };
 
 function words(s: string): string {

@@ -43,6 +43,9 @@ const SOURCE_MARK: Record<string, SourceMark> = {
   copilot: { ...DISTRIBUTE, name: "AI Copilot" },
   // A client's own calls to our API with their key: a conversation with us like any other (owner 2026-10-12).
   api: { ...DISTRIBUTE, name: "API" },
+  // Our own product emails (welcome, "You're live") and what the client set up with us read as ours.
+  transactional: DISTRIBUTE,
+  onboarding: { ...DISTRIBUTE, name: "Account setup" },
   stripe: vendor("stripe", "Stripe", "stripe.com"),
   gohighlevel: vendor("gohighlevel", "GoHighLevel", "gohighlevel.com"),
   // A contact list the client uploaded (crm-service's "added to CRM" event for an import).
