@@ -37,6 +37,12 @@ describe("Targeting in four steps (owner 2026-10-09)", () => {
     expect(tab).toContain('["offerSalesPaths", brandId, offerId, "catalogue"]');
     expect(tab).toContain("sourceCampaignsOfOffer(");
     expect(tab).toContain("<StateDot running={on}");
+    // A source runs inside any campaign (funnel units included) or through Lead Sourcing's own pick.
+    expect(tab).toContain("useCampaigns(orgId, brandId, { allOffers: true })");
+    expect(tab).toContain("for (const x of allCampaigns)");
+    expect(tab).toContain("getLeadSourcingSources(brandId, offerId)");
+    expect(tab).toContain("chosenByLeadSourcing.has(c.featureSlug)");
+    expect(tab).toContain("const on = isOn(c);");
     expect(tab).toContain('v2OfferHref(orgId, brandId, offerId, "sourcing")');
     expect(tab).not.toMatch(/setCampaignStatus|startReactiveCampaign|saveOfferCampaignBudget|getOfferCampaignBudgets/);
   });
