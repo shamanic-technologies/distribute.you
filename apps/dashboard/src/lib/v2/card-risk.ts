@@ -136,3 +136,45 @@ export function postpaidRefusalFacts(body: Record<string, unknown> | undefined, 
     country: known?.country ?? null,
   };
 }
+
+/** billing's `postpaid_card_check` on GET /v1/accounts (billing v0.83.52). */
+export type PostpaidCardCheck = "required" | "passed" | "refused" | "grandfathered";
+
+/**
+ * Where the dashboard walk's launch (`OrgLaunch`) starts, on billing's account read
+ * (ORG-LAUNCH-CARD-REFUSED-1028: Sobtra's card was refused the $50 check on the wall, then
+ * the dashboard walk read its saved card as "already pays" and launched a campaign billing
+ * gives no credit line). A saved card is not enough on POSTPAID: only a check billing says
+ * opens the line (passed, grandfathered) launches as is. Refused = the wall's choice, another
+ * card or prepaid; required = never checked, so the check runs first. Prepaid and plan orgs
+ * launch on the card they have; an org with no card adds credit first.
+ */
+export type OrgLaunchStart = "ready" | "credit" | "card_check" | "card_refused";
+
+export function orgLaunchStart(account: {
+  payment_mode?: string | null;
+  has_payment_method: boolean;
+  postpaid_card_check?: string | null;
+}): OrgLaunchStart {
+  if (!account.has_payment_method) return "credit";
+  if (account.payment_mode !== "postpaid") return "ready";
+  const check = account.postpaid_card_check;
+  if (check === "passed" || check === "grandfathered") return "ready";
+  if (check === "refused") return "card_refused";
+  if (check !== "required") console.error("[get-started] billing served no readable postpaid_card_check, checking the card first", check);
+  return "card_check";
+}
+
+/** A refused $50 check read off the account (`postpaid_card_check_message` = the bank's sentence). */
+export function refusedCheckFacts(message: string | null | undefined, known: CardFacts | null): CardFacts {
+  const sentence = typeof message === "string" && message.trim() ? message.trim() : null;
+  if (!sentence) console.error("[get-started] billing refused the card check with no sentence on the account");
+  return {
+    saved: true,
+    methodId: known?.methodId ?? null,
+    postpaidAllowed: false,
+    refusedReason: "card_hold_refused",
+    country: known?.country ?? null,
+    refusalMessage: sentence,
+  };
+}

@@ -130,8 +130,9 @@ describe("the end: prepaid credit (owner 2026-10-06), then the walk's own launch
     expect(walk).toContain("launchPlan && !org && (\n        <AccountCardWall");
     expect(end).not.toContain("ChoosePlanPanel");
     expect(end).toContain("<PrepaidTopup");
-    // An org that already pays launches on what it has; one with no card adds credit first.
-    expect(end).toContain('setStage(a.has_payment_method ? "ready" : "credit");');
+    // An org that already pays launches on what it has (a postpaid one only once its card
+    // check opened the line, ORG-LAUNCH-CARD-REFUSED-1028); one with no card adds credit first.
+    expect(end).toContain("const start = orgLaunchStart(a);");
   });
   it("launches through launchFromPreview, then marks the org set up with a token minted FOR it", () => {
     const l = launch.indexOf("await launchFromPreview(");

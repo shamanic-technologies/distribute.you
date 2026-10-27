@@ -10,13 +10,40 @@
  * first), the org marked set up with a token minted FOR it, and only THEN made active
  * (the edge first-run gate would bounce a not-yet-set-up org), and the person lands on
  * the campaign.
+ *
+ * A POSTPAID org launches only once billing's $50 card check opened its credit line
+ * (ORG-LAUNCH-CARD-REFUSED-1028, `orgLaunchStart`): refused = the wall's choice (another
+ * card, checked again, or prepaid credit, the person picks), never checked = the check
+ * runs first. A saved card alone is not "already pays".
  */
 
 import { useEffect, useRef, useState } from "react";
 import { useOrganizationList, useSession, useUser } from "@clerk/nextjs";
 import { EmbeddedCheckout, EmbeddedCheckoutProvider } from "@stripe/react-stripe-js";
 import posthog from "posthog-js";
-import { getBillingAccount, sendAuthNotification, setApiActiveOrgOverride, type BillingAccount } from "@/lib/api";
+import {
+  ApiError,
+  createEmbeddedCardSetup,
+  getBillingAccount,
+  getSavedCardFacts,
+  sendAuthNotification,
+  setApiActiveOrgOverride,
+  setPaymentMode,
+  type BillingAccount,
+} from "@/lib/api";
+import {
+  CARD_CHECK_UNFINISHED,
+  cardRiskCopy,
+  orgLaunchStart,
+  postpaidCardCheckSecret,
+  postpaidRefusalFacts,
+  refusedCheckFacts,
+  type CardFacts,
+  type CardRiskCopy,
+} from "@/lib/v2/card-risk";
+import { consentRecord, spendConsentLines } from "@/lib/v2/spend-consent";
+import { CardRiskNotice } from "./card-risk-notice";
+import { SpendConsent, allTicked } from "./spend-consent";
 import { getStripe } from "@/lib/stripe";
 import { defaultSalesRepToAccount } from "@/lib/sales-rep-default";
 import { v2Href } from "@/lib/v2/routes";
@@ -29,7 +56,7 @@ import { pingOwner } from "@/lib/owner-ping-client";
 import { sendLaunchEmail } from "@/lib/signup-emails";
 import { hostOf as pingHostOf, websiteUrl as pingWebsiteUrl } from "@/lib/v2/get-started";
 
-type Stage = "reading" | "credit" | "ready" | "launching";
+type Stage = "reading" | "credit" | "ready" | "card" | "launching";
 
 export function OrgLaunch({
   orgId,
@@ -68,6 +95,14 @@ export function OrgLaunch({
   const [cardSecret, setCardSecret] = useState<string | null>(null);
   const [paid, setPaid] = useState<{ creditedBefore: number; reload: TopupChoice["reload"] } | null>(null);
   const pending = useRef<{ creditedBefore: number; reload: TopupChoice["reload"] } | null>(null);
+  // The postpaid card check (stage "card"): billing's refusal shown, or the check still to run.
+  const [cardRisk, setCardRisk] = useState<CardFacts | null>(null);
+  const [setupSecret, setSetupSecret] = useState<string | null>(null);
+  const [chosePrepaid, setChosePrepaid] = useState(false);
+  const postpaidConsent = spendConsentLines({ arm: { kind: "postpaid" } });
+  const [postpaidTicked, setPostpaidTicked] = useState([false, false]);
+  const knownCard = useRef<CardFacts | null>(null);
+  const cardSaved = useRef<(() => void) | null>(null);
   // "Try again" replays the launch: every write that landed on an earlier attempt is skipped.
   const progress = useRef<LaunchProgress>({ ...EMPTY_PROGRESS, caps: {}, started: {}, campaignIds: {} });
 
@@ -79,12 +114,27 @@ export function OrgLaunch({
     return () => window.removeEventListener("keydown", onKey);
   }, [stage, onClose]);
 
-  // An org with a card already pays: it launches on the account it has. One with none adds credit.
+  // An org with a card launches on the account it has, except a postpaid one whose $50 card
+  // check did not open its credit line (`orgLaunchStart`). One with no card adds credit.
   useEffect(() => {
     getBillingAccount()
-      .then((a) => {
+      .then(async (a) => {
         setAccount(a);
-        setStage(a.has_payment_method ? "ready" : "credit");
+        const start = orgLaunchStart(a);
+        if (start === "ready" || start === "credit") {
+          setStage(start);
+          return;
+        }
+        // The saved card's id, so "Use another card" tells the new card from this one.
+        knownCard.current = await getSavedCardFacts().catch((e) => {
+          console.error("[brand-walk] saved card read failed:", e);
+          return null;
+        });
+        if (start === "card_refused") {
+          posthog.capture("get_started_card_risk_shown", { arm: "postpaid", reason: "card_hold_refused", source: "org_launch" });
+          setCardRisk(refusedCheckFacts(a.postpaid_card_check_message, knownCard.current));
+        }
+        setStage("card");
       })
       .catch((e) => {
         console.error("[brand-walk] billing account read failed:", e);
@@ -100,8 +150,9 @@ export function OrgLaunch({
       const opened = await payTopup({
         amountUsd: choice.topupUsd,
         consent: choice.consent,
-        // Only an org created under the offer starts prepaid; an older one keeps its mode.
-        setPrepaid: account?.free_credit_offer === "match_100",
+        // Only an org created under the offer starts prepaid; an older one keeps its mode,
+        // unless the person picked "Switch to prepaid" on a card post-paid cannot run on.
+        setPrepaid: chosePrepaid || account?.free_credit_offer === "match_100",
         name: user?.fullName ?? undefined,
         email: email ?? undefined,
         onPaid: (creditedBefore) => void afterPaid({ creditedBefore, reload: choice.reload }),
@@ -141,6 +192,139 @@ export function OrgLaunch({
     sendAuthNotification("first_payment").catch((e) => console.error("[get-started] first_payment email failed:", e));
     pingOwner({ event: "paid", domain: website ? pingHostOf(pingWebsiteUrl(website)) : null, amountUsd: (Number(settled.account.credited_cents) - p.creditedBefore) / 100 });
     void launch();
+  }
+
+  // billing runs the $50 card check on `PUT payment_mode {postpaid}` for an org already
+  // postpaid whose check did not pass (the wall's `armPostpaid`): passed = launch; refused =
+  // the choice; a bank that wants 3-D Secure gets Stripe's step, then billing is asked again.
+  async function checkCard() {
+    setBusy(true);
+    setError(null);
+    // The boxes are ticked only on a card never checked; another card after a refusal
+    // rides the consent the wall already stored.
+    const consent = allTicked(postpaidTicked) ? consentRecord(postpaidConsent, new Date(), navigator.userAgent) : undefined;
+    const putPostpaid = () => setPaymentMode("postpaid", undefined, consent);
+    try {
+      try {
+        await putPostpaid();
+      } catch (e) {
+        const clientSecret = e instanceof ApiError && e.status === 409 ? postpaidCardCheckSecret(e.body) : null;
+        if (!clientSecret) throw e;
+        const stripe = await getStripe();
+        if (!stripe) console.error("[brand-walk] Stripe.js did not load for the card confirmation");
+        else {
+          const confirmed = await stripe.handleNextAction({ clientSecret });
+          if (confirmed.error) console.error("[brand-walk] card confirmation:", confirmed.error);
+        }
+        await putPostpaid();
+      }
+    } catch (e) {
+      if (e instanceof ApiError && e.status === 409 && postpaidCardCheckSecret(e.body)) {
+        setError(CARD_CHECK_UNFINISHED);
+        setBusy(false);
+        return;
+      }
+      const refused = e instanceof ApiError && e.status === 409 ? postpaidRefusalFacts(e.body, knownCard.current) : null;
+      if (refused) {
+        posthog.capture("get_started_card_risk_shown", { arm: "postpaid", reason: refused.refusedReason, source: "org_launch" });
+        setCardRisk(refused);
+      } else {
+        console.error("[brand-walk] card check did not run:", e);
+        setError("We could not check your card. Press the button again.");
+      }
+      setBusy(false);
+      return;
+    }
+    void launch();
+  }
+
+  // A card in-page that charges nothing (Stripe's embedded form; Revolut's widget).
+  async function openCardSave(onSaved: () => void) {
+    setBusy(true);
+    setError(null);
+    try {
+      const setup = await createEmbeddedCardSetup();
+      if (setup.mode === "embedded_checkout") {
+        cardSaved.current = onSaved;
+        setSetupSecret(setup.client_secret);
+        setBusy(false);
+        return;
+      }
+      if (setup.mode === "embedded_widget") {
+        const { openCardWidget } = await import("@/lib/card-setup-widget");
+        await openCardWidget({
+          token: setup.token,
+          environment: setup.environment,
+          savePaymentMethodFor: setup.save_payment_method_for,
+          name: setup.customer_name ?? user?.fullName ?? undefined,
+          email: setup.customer_email ?? email ?? undefined,
+          onSuccess: () => {
+            setBusy(true);
+            onSaved();
+          },
+          onCancel: () => setBusy(false),
+          onError: (message) => {
+            setError(message);
+            setBusy(false);
+          },
+        });
+        return;
+      }
+      console.error("[brand-walk] card setup answered a hosted page to an in-page request", setup);
+      throw new Error("[brand-walk] card setup: no in-page card form");
+    } catch (e) {
+      console.error("[brand-walk] card setup failed to open:", e);
+      setError("We could not open the card form. Try again.");
+      setBusy(false);
+    }
+  }
+
+  // "Use another card": the new card reaches billing through the provider's webhook a
+  // moment after the form reports it, then billing's own verdict on it, then the check.
+  function pickAnotherCard() {
+    const previousId = cardRisk?.methodId ?? knownCard.current?.methodId ?? null;
+    posthog.capture("get_started_card_risk_another_card", { arm: "postpaid", source: "org_launch" });
+    setCardRisk(null);
+    void openCardSave(() =>
+      void (async () => {
+        setSetupSecret(null);
+        setBusy(true);
+        let facts: CardFacts | null = null;
+        for (let i = 0; i < 12 && !facts; i++) {
+          const read = await getSavedCardFacts().catch((e) => {
+            console.error("[brand-walk] saved card read failed:", e);
+            return null;
+          });
+          if (read?.saved && read.methodId !== previousId) facts = read;
+          else await new Promise((r) => setTimeout(r, 1000));
+        }
+        if (!facts) {
+          console.error("[brand-walk] the new card did not reach billing in time");
+          setError("Your new card is still being saved. Wait a few seconds and press the button again.");
+          setBusy(false);
+          return;
+        }
+        knownCard.current = facts;
+        if (cardRiskCopy("postpaid", facts)) {
+          setCardRisk(facts);
+          setBusy(false);
+          return;
+        }
+        await checkCard();
+      })(),
+    );
+  }
+
+  // "Switch to prepaid": the prepaid credit step takes over, chosen by the person.
+  function cardRiskSecondary(action: CardRiskCopy["secondaryAction"]) {
+    posthog.capture("get_started_card_risk_secondary", { arm: "postpaid", action, source: "org_launch" });
+    if (action !== "prepaid") {
+      console.error("[brand-walk] post-paid card choice offered a way past", action);
+      return;
+    }
+    setCardRisk(null);
+    setChosePrepaid(true);
+    setStage("credit");
   }
 
   async function launch() {
@@ -200,6 +384,32 @@ export function OrgLaunch({
                 Launch
               </button>
             </div>
+          )}
+
+          {stage === "card" && !setupSecret && cardRisk && (
+            <CardRiskNotice copy={cardRiskCopy("postpaid", cardRisk)} busy={busy} onAnotherCard={pickAnotherCard} onSecondary={cardRiskSecondary} />
+          )}
+
+          {stage === "card" && !setupSecret && !cardRisk && (
+            <div className="grid gap-3">
+              <p className="k-fg2 text-[13px]">Your campaigns start on this card. You pay after they spend.</p>
+              <SpendConsent lines={postpaidConsent} ticked={postpaidTicked} onChange={setPostpaidTicked} disabled={busy} />
+              <button type="button" className="k-cta k-btn-accent w-full justify-center" onClick={() => void checkCard()} disabled={busy || !allTicked(postpaidTicked)}>
+                {busy ? "Checking your card..." : "Launch"}
+              </button>
+            </div>
+          )}
+
+          {stage === "card" && setupSecret && (
+            <EmbeddedCheckoutProvider
+              stripe={getStripe()}
+              options={{
+                clientSecret: setupSecret,
+                onComplete: () => cardSaved.current?.(),
+              }}
+            >
+              <EmbeddedCheckout />
+            </EmbeddedCheckoutProvider>
           )}
 
           {stage === "credit" && !cardSecret && (

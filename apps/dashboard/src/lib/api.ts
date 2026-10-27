@@ -10185,6 +10185,13 @@ export interface BillingAccount {
    * owed, null when not postpaid.
    */
   amount_owed_cents?: string | null;
+  /**
+   * POSTPAID: whether the saved card held the $50 check (billing v0.83.52). Only
+   * "passed" / "grandfathered" open the credit line; "refused" carries the bank's
+   * sentence in `postpaid_card_check_message`. Read by `orgLaunchStart` (card-risk).
+   */
+  postpaid_card_check?: "required" | "passed" | "refused" | "grandfathered";
+  postpaid_card_check_message?: string | null;
   has_payment_method: boolean;
   has_auto_topup: boolean;
   // Additive (billing-service v0.40.0+): off_session auto-reload is impossible for cards
