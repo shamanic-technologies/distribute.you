@@ -2,6 +2,8 @@
 
 import { useState } from "react";
 import { useMutation } from "@tanstack/react-query";
+import { AccountTypeSelect } from "@/components/v2/account-type-select";
+import type { AccountType } from "@/lib/account-types";
 import { answerMatrixLink, listMatrixLinks, startMatrixLink, unlinkMatrixLink, updateMatrixLink, type MatrixLink } from "@/lib/api";
 import { SettingsSaveRow } from "@/components/settings/settings-save-row";
 import { useAuthQuery, useQueryClient } from "@/lib/use-auth-query";
@@ -459,7 +461,34 @@ function AccountSettings({
     onError: (err: Error) => {
       console.error("[integrations] changing automation on the account failed", link.channel, linkId, err);
       setPressed(null);
-      setError("Could not change this setting. Try again.");
+      // crm-service keeps a Pro (AI) account sending, and a personal one silent.
+      const refused = (err as { status?: number }).status === 400;
+      setError(
+        refused && link.accountType === "pro_ai"
+          ? "A Pro (AI) account sends for you. Pick another type to turn this off."
+          : refused && link.accountType === "personal_human"
+            ? "A personal account never sends for you. Pick a Pro type to turn this on."
+            : "Could not change this setting. Try again.",
+      );
+    },
+  });
+
+  // The pressed type shows at once, over the served one, until crm-service answers.
+  // Pro (AI) writes automated sends, so picking it also turns them on (crm-service
+  // refuses a pro_ai account that cannot send); Personal (human) turns them off there.
+  const [pressedType, setPressedType] = useState<AccountType | null>(null);
+  const changeType = useMutation({
+    mutationFn: (next: AccountType) =>
+      updateMatrixLink(brandId, linkId, next === "pro_ai" ? { accountType: next, automationAllowed: true } : { accountType: next }),
+    onSuccess: async ({ link: next }) => {
+      setError(null);
+      await settle(next);
+      setPressedType(null);
+    },
+    onError: (err: Error) => {
+      console.error("[integrations] changing the account type failed", link.channel, linkId, err);
+      setPressedType(null);
+      setError("Could not change this account's type. Try again.");
     },
   });
 
@@ -487,6 +516,19 @@ function AccountSettings({
 
   return (
     <>
+      {link.accountType !== undefined ? (
+        <AccountTypeSelect
+          id={`account-type-${linkId}`}
+          label={`Type of this ${link.channel} account`}
+          value={pressedType ?? link.accountType}
+          disabled={changeType.isPending}
+          onChange={(next) => {
+            setPressedType(next);
+            changeType.mutate(next);
+          }}
+          className="rounded-lg border border-gray-200 bg-white px-2 py-1 text-sm text-gray-900"
+        />
+      ) : null}
       <span className="flex items-center gap-2">
         <button
           type="button"

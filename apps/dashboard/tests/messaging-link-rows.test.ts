@@ -15,7 +15,7 @@ describe("messaging apps link self-serve from Integrations", () => {
 
   it("names the brand on the query string of every link call (the gateway reads no body)", () => {
     const api = read("lib/api.ts");
-    const block = api.slice(api.indexOf("export async function listMatrixLinks("), api.indexOf("// ==================== POSTHOG + STRIPE"));
+    const block = api.slice(api.indexOf("export async function listMatrixLinks("), api.indexOf("// ==================== THREADS ACCOUNTS"));
     expect(block.match(/brandId=\$\{encodeURIComponent\(brandId\)\}/g)?.length).toBe(5);
   });
 

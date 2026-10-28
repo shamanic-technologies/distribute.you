@@ -244,6 +244,8 @@ export const PERSISTABLE_QUERY_ROOTS = new Set([
   "inviteStatus",
   // Whether the org's owner gets Telegram updates (Profile page). One boolean + a date.
   "ownerTelegram",
+  // The brand's connected Threads accounts (Profile page): username, type, health.
+  "threadsAccounts",
   // Free credits committed but not yet granted, on the Billing page.
   "freeCreditPromises",
   // Brand metadata + config + small summaries.
