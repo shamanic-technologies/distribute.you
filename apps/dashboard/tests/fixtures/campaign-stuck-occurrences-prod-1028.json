@@ -1,0 +1,148 @@
+{
+ "generatedAt": "2026-10-28T10:49:49.491Z",
+ "days": 30,
+ "stuckAfterMinutes": 30,
+ "status": "ok",
+ "stuck": 0,
+ "queued": 23,
+ "stuckByReason": [],
+ "stuckOccurrences": [],
+ "byDay": [
+  {
+   "day": "2026-10-12",
+   "answered": 7,
+   "answeredLate": 0,
+   "skipped": 9,
+   "failed": 0,
+   "waiting": 0
+  },
+  {
+   "day": "2026-10-13",
+   "answered": 3,
+   "answeredLate": 0,
+   "skipped": 7,
+   "failed": 0,
+   "waiting": 0
+  },
+  {
+   "day": "2026-10-14",
+   "answered": 29,
+   "answeredLate": 3,
+   "skipped": 13,
+   "failed": 1,
+   "waiting": 0
+  },
+  {
+   "day": "2026-10-15",
+   "answered": 13,
+   "answeredLate": 0,
+   "skipped": 25,
+   "failed": 6,
+   "waiting": 0
+  },
+  {
+   "day": "2026-10-16",
+   "answered": 16,
+   "answeredLate": 0,
+   "skipped": 347,
+   "failed": 0,
+   "waiting": 0
+  },
+  {
+   "day": "2026-10-17",
+   "answered": 0,
+   "answeredLate": 0,
+   "skipped": 202,
+   "failed": 0,
+   "waiting": 0
+  },
+  {
+   "day": "2026-10-18",
+   "answered": 2,
+   "answeredLate": 0,
+   "skipped": 168,
+   "failed": 0,
+   "waiting": 0
+  },
+  {
+   "day": "2026-10-19",
+   "answered": 10,
+   "answeredLate": 0,
+   "skipped": 133,
+   "failed": 0,
+   "waiting": 0
+  },
+  {
+   "day": "2026-10-20",
+   "answered": 1,
+   "answeredLate": 0,
+   "skipped": 183,
+   "failed": 1,
+   "waiting": 0
+  },
+  {
+   "day": "2026-10-21",
+   "answered": 5,
+   "answeredLate": 0,
+   "skipped": 385,
+   "failed": 2,
+   "waiting": 0
+  },
+  {
+   "day": "2026-10-22",
+   "answered": 6,
+   "answeredLate": 1,
+   "skipped": 393,
+   "failed": 1,
+   "waiting": 0
+  },
+  {
+   "day": "2026-10-23",
+   "answered": 7,
+   "answeredLate": 0,
+   "skipped": 78,
+   "failed": 0,
+   "waiting": 0
+  },
+  {
+   "day": "2026-10-24",
+   "answered": 58,
+   "answeredLate": 16,
+   "skipped": 739,
+   "failed": 1,
+   "waiting": 0
+  },
+  {
+   "day": "2026-10-25",
+   "answered": 27,
+   "answeredLate": 3,
+   "skipped": 480,
+   "failed": 0,
+   "waiting": 0
+  },
+  {
+   "day": "2026-10-26",
+   "answered": 21,
+   "answeredLate": 0,
+   "skipped": 268,
+   "failed": 1,
+   "waiting": 0
+  },
+  {
+   "day": "2026-10-27",
+   "answered": 30,
+   "answeredLate": 4,
+   "skipped": 423,
+   "failed": 2,
+   "waiting": 0
+  },
+  {
+   "day": "2026-10-28",
+   "answered": 118,
+   "answeredLate": 38,
+   "skipped": 1052,
+   "failed": 0,
+   "waiting": 50
+  }
+ ]
+}

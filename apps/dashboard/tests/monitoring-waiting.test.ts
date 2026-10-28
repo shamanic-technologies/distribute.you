@@ -23,6 +23,13 @@ describe("Monitoring > Prospects waiting: campaign-service's read parses as serv
     expect(Object.keys(d.byDay[0]).sort()).toEqual(["answered", "answeredLate", "day", "failed", "skipped", "waiting"]);
   });
 
+  it("the real production read of 2026-10-28 parses whole (ok, people queued, a daily series)", () => {
+    const d = StuckOccurrencesSchema.parse(JSON.parse(readFileSync(join(__dirname, "fixtures", "campaign-stuck-occurrences-prod-1028.json"), "utf8")));
+    expect(d.status).toBe("ok");
+    expect(d.queued).toBeGreaterThan(0);
+    expect(d.byDay.length).toBeGreaterThan(0);
+  });
+
   it("an ok read with nobody stuck parses too", () => {
     const d = StuckOccurrencesSchema.parse({ ...fixture(), status: "ok", stuck: 0, stuckByReason: [], stuckOccurrences: [] });
     expect(d.status).toBe("ok");
