@@ -41,6 +41,7 @@ import { BoxHealthPage, BoxHealthTile, useBoxHealth } from "@/components/v2/moni
 import { LightningIcon } from "@phosphor-icons/react/dist/csr/Lightning";
 import { TriggerReportsPage, TriggerReportsTile, useTriggerReports } from "@/components/v2/monitoring-triggers";
 import { triggerName } from "@/lib/monitoring/trigger-reports";
+import { ProspectsWaitingPage, ProspectsWaitingTile, useStuckOccurrences } from "@/components/v2/monitoring-waiting";
 import { loadLabel, memLabel } from "@/lib/monitoring/box-health";
 import { ScalesIcon } from "@phosphor-icons/react/dist/csr/Scales";
 import { LedgerCheckPage, LedgerCheckTile, OutcomeCoveragePage, OutcomeCoverageTile, ReconciliationPage, ReconciliationTile, useLedgerCheck, useLedgerReconciliation, useOutcomeCoverage } from "@/components/v2/monitoring-cost-ledger";
@@ -122,7 +123,7 @@ const SECTION_LOOK: Record<SectionKey, { name: string; color: string; Icon: type
   whatsapp: { name: "WhatsApp", color: "var(--data-lime)", Icon: WhatsappLogoIcon, sub: "Whether every linked line can send" },
   security: { name: "Security", color: "var(--data-rose)", Icon: ShieldCheckIcon, sub: "Whether our prod repos carry open security advisories" },
   box: { name: "Box", color: "var(--data-sky)", Icon: CpuIcon, sub: "Whether the production server is overloaded, and which containers eat it" },
-  triggers: { name: "Triggers", color: "var(--data-amber)", Icon: LightningIcon, sub: "Whether every form, WhatsApp number, reply and account event reached its campaign" },
+  triggers: { name: "Triggers", color: "var(--data-amber)", Icon: LightningIcon, sub: "Whether every form, WhatsApp number, reply and account event reached its campaign, and got its answer" },
   chat: { name: "Chat", color: "var(--data-amber)", Icon: ChatCircleIcon, sub: "What the Copilot knows" },
 };
 
@@ -157,6 +158,7 @@ const PAGE: Record<MonitoringPage, { section: SectionKey; title: string; questio
   "security/advisories": { section: "security", title: "Advisories", question: "Does any prod repo carry an open critical or high advisory?" },
   "box/load": { section: "box", title: "Load and memory", question: "Is the production server overloaded, and which containers eat its CPU and memory?" },
   "triggers/reports": { section: "triggers", title: "Reports", question: "Did every form, WhatsApp number, positive reply and account event reach its campaign?" },
+  "triggers/waiting": { section: "triggers", title: "Prospects waiting", question: "Is any prospect waiting on a blocked campaign answer?" },
   "chat/skills": { section: "chat", title: "Skills", question: "What does the Copilot read before it acts?" },
 };
 
@@ -307,6 +309,7 @@ export function V2Monitoring() {
         {view.page === "security/advisories" && <SecurityAdvisoriesPage />}
         {view.page === "box/load" && <BoxHealthPage />}
         {view.page === "triggers/reports" && <TriggerReportsPage />}
+        {view.page === "triggers/waiting" && <ProspectsWaitingPage />}
         {view.page === "chat/skills" && <SkillsView />}
       </div>
     </Frame>
@@ -400,6 +403,7 @@ function Hub({ base }: { base: string }) {
   const sec = useSecurityAdvisories();
   const box = useBoxHealth();
   const trig = useTriggerReports();
+  const waiting = useStuckOccurrences();
   const covAt = coverage.data ? headlinePoint(coverage.data) : undefined;
   return (
     <Frame crumbs={[{ label: "Monitoring" }]}>
@@ -432,6 +436,8 @@ function Hub({ base }: { base: string }) {
         <BoxHealthTile href={href("box/load")} />
         {/* A form, WhatsApp number, positive reply or account event not sent to its campaign 15 min after we saw it (TRIGGER-REPORTS-MONITORING-1027): red here IS the alert. */}
         <TriggerReportsTile href={href("triggers/reports")} />
+        {/* A prospect who acted still waits 30 min later on a blocked campaign answer (REACTIVE-THROUGHPUT-1028): red here IS the alert, never an email. */}
+        <ProspectsWaitingTile href={href("triggers/waiting")} />
       </div>
 
       <HubOpen.Provider value={hub}>
@@ -686,9 +692,10 @@ function Hub({ base }: { base: string }) {
 
       <div>
       <SectionTitle count={1}>Triggers</SectionTitle>
-      <Section section="triggers" count={1} grid={false}>
+      <Section section="triggers" count={2} grid={false}>
         <HubChips>
           <HubChip href={href("triggers/reports")} color={trig.data?.status === "red" ? "var(--data-rose)" : "var(--data-teal)"} label="Reports" />
+          <HubChip href={href("triggers/waiting")} color={waiting.data?.status === "red" ? "var(--data-rose)" : "var(--data-teal)"} label="Prospects waiting" />
         </HubChips>
         <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3">
         <Card
@@ -706,6 +713,19 @@ function Hub({ base }: { base: string }) {
               value: trig.data && (trig.data.triggers.filter((t) => t.status === "red").map((t) => triggerName(t.trigger)).join(", ") || "None"),
               note: "of the four",
             },
+          ]}
+        />
+        <Card
+          href={href("triggers/waiting")}
+          page="triggers/waiting"
+          error={waiting.isError && !waiting.data}
+          cells={[
+            {
+              label: "Blocked now",
+              value: waiting.data && <span style={{ color: waiting.data.status === "red" ? "var(--data-rose)" : undefined }}>{waiting.data.stuck.toLocaleString("en-US")}</span>,
+              note: waiting.data ? `waiting over ${waiting.data.stuckAfterMinutes} min` : "waiting over 30 min",
+            },
+            { label: "In a moving queue", value: waiting.data?.queued.toLocaleString("en-US"), note: "not a problem" },
           ]}
         />
         </div>
