@@ -1,13 +1,10 @@
 "use client";
 
-import { useMemo } from "react";
 import { useParams } from "next/navigation";
 import { useAuthQuery } from "@/lib/use-auth-query";
 import { getOfferSalesPaths } from "@/lib/api";
-import { sourceCampaignsOfOffer } from "@/lib/offer-campaigns";
-import { roiUnavailableLabel } from "@/lib/offer-sales-paths";
 import { v2OfferHref } from "@/lib/v2/routes";
-import { OfferCampaigns } from "@/components/v2/offer-campaigns";
+import { OfferSourcesTab } from "@/components/v2/offer-sources-tab";
 import { OfferSourceOverlap } from "@/components/v2/offer-source-overlap";
 import { OfferSourceLists } from "@/components/v2/offer-source-lists";
 import { V2Page, useOfferName } from "@/components/v2/setup-pages";
@@ -18,6 +15,10 @@ import { V2Page, useOfferName } from "@/components/v2/setup-pages";
  * its own on/off and budget. Kept off the Sales path page to keep that one simple. The rows
  * are features-service's `sourceCampaigns[]` on the same sales-paths read (and cache key) the
  * Sales path page polls; nothing is computed here.
+ *
+ * Since 2026-10-28 the sources are the read-only Targeting > Sources table (On when a campaign or
+ * Lead Sourcing runs them): no per-source toggle starting a campaign of its own (owner: sources are
+ * picked by the campaign's Lead Sourcing step). Staff only: no menu entry, linked in staff mode.
  */
 export function V2OfferSourcingPage() {
   const { orgId, brandId, offerId } = useParams<{ orgId: string; brandId: string; offerId: string }>();
@@ -27,10 +28,6 @@ export function V2OfferSourcingPage() {
     () => getOfferSalesPaths(brandId, offerId, "catalogue"),
     { enabled: !!offerId },
   );
-  const campaigns = useMemo(
-    () => sourceCampaignsOfOffer(paths.data?.sourceCampaigns ?? [], roiUnavailableLabel),
-    [paths.data],
-  );
   return (
     <V2Page
       crumbs={[{ label: name ?? " ", href: v2OfferHref(orgId, brandId, offerId) }, { label: "Sourcing" }]}
@@ -38,19 +35,7 @@ export function V2OfferSourcingPage() {
       sub="Where this offer finds its leads."
       width="max-w-[1280px]"
     >
-      {paths.isError && !paths.data && (
-        <p className="mb-4 text-[13px] text-[var(--data-rose)]">Could not read this offer&apos;s sources.</p>
-      )}
-      <OfferCampaigns
-        orgId={orgId}
-        brandId={brandId}
-        offerId={offerId}
-        campaigns={campaigns}
-        pending={paths.isPending && !paths.isError}
-        title="Sources"
-        openRows
-        sub="Each source finds leads for your campaigns. Turn one on and set its budget."
-      />
+      <OfferSourcesTab orgId={orgId} brandId={brandId} offerId={offerId} manageLink={false} />
       <OfferSourceLists brandId={brandId} offerId={offerId} />
       <OfferSourceOverlap
         sources={paths.data?.sourceCampaigns ?? []}

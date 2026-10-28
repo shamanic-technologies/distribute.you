@@ -73,10 +73,10 @@ describe("Sourcing page wiring (owner 2026-10-07: off the Sales path page, its o
     expect(salesPath).not.toContain("OfferSourcingSection");
   });
 
-  it("the Sourcing page lists the source campaigns off the same sales-paths read", () => {
-    expect(sourcing).toContain("sourceCampaignsOfOffer(paths.data?.sourceCampaigns ?? [], roiUnavailableLabel)");
+  it("the Sourcing page lists the sources with the read-only Targeting > Sources table (owner 2026-10-28)", () => {
     expect(sourcing).toContain('["offerSalesPaths", brandId, offerId, "catalogue"]');
-    expect(sourcing).toContain("<OfferCampaigns");
+    expect(sourcing).toContain("<OfferSourcesTab orgId={orgId} brandId={brandId} offerId={offerId} manageLink={false} />");
+    expect(sourcing).not.toContain("<OfferCampaigns");
   });
 
   it("the staff Pipes overview opens Sourcing (owner 2026-10-10); the brand Audience entry is gone (now Targeting's Lists tab)", () => {

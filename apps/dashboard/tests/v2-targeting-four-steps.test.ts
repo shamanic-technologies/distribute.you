@@ -47,8 +47,9 @@ describe("Targeting in four steps (owner 2026-10-09)", () => {
     expect(tab).not.toMatch(/setCampaignStatus|startReactiveCampaign|saveOfferCampaignBudget|getOfferCampaignBudgets/);
   });
 
-  it("a Sourcing row opens its campaign page", () => {
-    expect(src("src/components/v2/offer-sourcing-page.tsx")).toContain("openRows");
-    expect(src("src/components/v2/offer-campaigns.tsx")).toContain("(results || openRows) && record");
+  it("Manage in Sourcing shows in staff mode only: the Sourcing page has no menu entry (owner 2026-10-28)", () => {
+    const tab = src("src/components/v2/offer-sources-tab.tsx");
+    expect(tab).toContain("const manage = manageLink && staffMode && (");
+    expect(tab).toContain("const { staffMode } = useStaffMode();");
   });
 });
