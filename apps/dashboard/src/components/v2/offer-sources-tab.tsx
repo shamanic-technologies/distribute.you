@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useAuthQuery } from "@/lib/use-auth-query";
 import { getLeadSourcingSources, getOfferSalesPaths } from "@/lib/api";
 import { pollOptions } from "@/lib/query-options";
+import { useStaffMode } from "@/lib/use-staff-mode";
 import { campaignKey, sortCampaigns, sourceCampaignsOfOffer } from "@/lib/offer-campaigns";
 import { roiUnavailableLabel } from "@/lib/offer-sales-paths";
 import { v2OfferHref } from "@/lib/v2/routes";
@@ -18,14 +19,27 @@ import { EmptyNote, SectionTitle, Shimmer, StateDot } from "@/components/v2/ui";
  * Targeting > Sources (owner 2026-10-09): where we find the people, read only. One row per
  * source campaign of the offer, off the SAME features-service `sourceCampaigns[]` read (and
  * cache key) the Sourcing page polls, its On/Off off the same campaign-service campaigns.
- * The toggle and the budget stay on the Sourcing page; this tab links there.
+ * Read only. The Sourcing page has no menu entry: its "Manage in Sourcing" link shows in staff mode
+ * only (owner 2026-10-28), and the Sourcing page itself renders this same table without the link.
  *
  * A source is On when its own pipe runs as part of ANY campaign of the offer (a sales funnel
  * campaign's unit included), or when the offer's Lead Sourcing campaign runs and human-service
  * chose that origin for it (Lead Sourcing picks its origins itself; 2026-10-28 every row read Off
  * while "Wide Email Replies" sourced through Lead Sourcing).
  */
-export function OfferSourcesTab({ orgId, brandId, offerId }: { orgId: string; brandId: string; offerId: string }) {
+export function OfferSourcesTab({
+  orgId,
+  brandId,
+  offerId,
+  manageLink = true,
+}: {
+  orgId: string;
+  brandId: string;
+  offerId: string;
+  /** False on the Sourcing page itself. */
+  manageLink?: boolean;
+}) {
+  const { staffMode } = useStaffMode();
   const paths = useAuthQuery(
     ["offerSalesPaths", brandId, offerId, "catalogue"],
     () => getOfferSalesPaths(brandId, offerId, "catalogue"),
@@ -67,7 +81,7 @@ export function OfferSourcesTab({ orgId, brandId, offerId }: { orgId: string; br
     [paths.data, isOn],
   );
   const pending = (!paths.isFetchedAfterMount && !paths.data) || (!leadSourcing.isFetchedAfterMount && !leadSourcing.data);
-  const manage = (
+  const manage = manageLink && staffMode && (
     <Link href={v2OfferHref(orgId, brandId, offerId, "sourcing")} className="k-btn-ghost">
       Manage in Sourcing →
     </Link>
