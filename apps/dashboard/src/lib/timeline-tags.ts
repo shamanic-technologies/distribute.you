@@ -37,7 +37,14 @@ const STEP_TAGS: Record<string, Omit<TimelineTag, "label"> & { label?: string }>
   // The client's own site (PostHog).
   visit: { tone: "hot", icon: "visit", label: "Website visit" },
   // The client's own Stripe.
-  payment: { tone: "won", icon: "money" },
+  // A `payment` is money received; every other attempt has its own step (crm-service
+  // UNIBOX-PAYMENT-REFUSED-1028), so a refused card never reads green.
+  payment: { tone: "won", icon: "money", label: "Payment received" },
+  payment_refused: { tone: "lost", icon: "money", label: "Payment refused" },
+  payment_pending: { tone: "neutral", icon: "money", label: "Payment pending" },
+  payment_attempt: { tone: "neutral", icon: "money", label: "Payment attempt" },
+  payment_disputed: { tone: "lost", icon: "money", label: "Payment disputed" },
+  refund_failed: { tone: "lost", icon: "money", label: "Refund failed" },
   subscription_started: { tone: "won", icon: "money" },
   refund: { tone: "lost", icon: "money" },
   subscription_canceled: { tone: "lost", icon: "lost" },
