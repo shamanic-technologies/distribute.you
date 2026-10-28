@@ -25,6 +25,7 @@ import {
   type ThreadsAccountType,
 } from "@/lib/threads-connect";
 import { Initials, Shimmer } from "@/components/v2/ui";
+import { AccountTypeSelect } from "@/components/v2/account-type-select";
 
 /**
  * Threads accounts of the brand (THREADS-ACCOUNT-CARD-1028): any member connects any
@@ -299,22 +300,13 @@ function ThreadsAccountRow({
       </div>
 
       <div className="flex shrink-0 items-center gap-2">
-        <label className="sr-only" htmlFor={`threads-type-${account.id}`}>
-          Account type of @{account.username}
-        </label>
-        <select
+        <AccountTypeSelect
           id={`threads-type-${account.id}`}
+          label={`Account type of @${account.username}`}
           value={pendingType ?? account.accountType}
           disabled={changeType.isPending}
-          onChange={(e) => changeType.mutate(e.target.value as ThreadsAccountType)}
-          className="k-input"
-        >
-          {THREADS_ACCOUNT_TYPES.map((t) => (
-            <option key={t.value} value={t.value}>
-              {t.label}
-            </option>
-          ))}
-        </select>
+          onChange={(next) => changeType.mutate(next)}
+        />
         {needsReconnect ? (
           <button type="button" onClick={onReconnect} disabled={reconnecting} className="k-btn-accent">
             {reconnecting ? "Opening Threads..." : "Reconnect"}

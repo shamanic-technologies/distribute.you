@@ -59,3 +59,17 @@ describe("Threads connect round trip (THREADS-ACCOUNT-CARD-1028)", () => {
     expect(read("src/app/(authed)/v2/orgs/[orgId]/brands/[brandId]/account/page.tsx")).toContain("<ThreadsAccountsCard />");
   });
 });
+
+describe("one account type picker on every account (ACCOUNT-TYPES-1028)", () => {
+  it("is the same component on Threads accounts and linked messaging accounts", () => {
+    expect(read("src/components/v2/threads-accounts-card.tsx")).toContain("<AccountTypeSelect");
+    const rows = read("src/components/settings/messaging-link-rows.tsx");
+    expect(rows).toContain("<AccountTypeSelect");
+    // Gated on crm-service serving the field: an older crm-service never gets the PATCH.
+    expect(rows).toContain("link.accountType !== undefined ? (");
+  });
+
+  it("turns automated sends on with Pro (AI), which crm-service requires", () => {
+    expect(read("src/components/settings/messaging-link-rows.tsx")).toContain('next === "pro_ai" ? { accountType: next, automationAllowed: true }');
+  });
+});

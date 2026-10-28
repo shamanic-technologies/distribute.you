@@ -16,6 +16,8 @@
  * Alias-free on purpose, so this carries REAL unit tests.
  */
 
+import { type AccountType } from "./account-types";
+
 export const THREADS_CALLBACK_PATH = "/connections/threads/callback";
 
 /** The production redirect URI registered on our Meta app. */
@@ -25,14 +27,8 @@ export function threadsCallbackUrl(origin: string): string {
   return `${origin}${THREADS_CALLBACK_PATH}`;
 }
 
-/** meta-service's account types, in the order the picker offers them. Default is Pro (AI). */
-export const THREADS_ACCOUNT_TYPES = [
-  { value: "pro_ai", label: "Pro (AI)" },
-  { value: "pro_human", label: "Pro (human)" },
-  { value: "personal_human", label: "Personal (human)" },
-] as const;
-
-export type ThreadsAccountType = (typeof THREADS_ACCOUNT_TYPES)[number]["value"];
+export { ACCOUNT_TYPES as THREADS_ACCOUNT_TYPES } from "./account-types";
+export type ThreadsAccountType = AccountType;
 
 export const DEFAULT_THREADS_ACCOUNT_TYPE: ThreadsAccountType = "pro_ai";
 

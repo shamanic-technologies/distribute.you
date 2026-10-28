@@ -1023,6 +1023,9 @@ const MatrixLinkSchema = z.object({
   persona: z
     .object({ name: z.string().nullish(), role: z.string().nullish(), instructions: z.string().nullish() })
     .nullish(),
+  // The type the brand picked for this account (crm-service ACCOUNT-TYPES-1028), null =
+  // not typed yet. Optional until it is live: an older crm-service answers without it.
+  accountType: z.enum(["pro_human", "personal_human", "pro_ai"]).nullish(),
 });
 
 export type MatrixLink = z.infer<typeof MatrixLinkSchema>;
@@ -1102,6 +1105,8 @@ export interface MatrixLinkPatch {
   automationAllowed?: boolean;
   /** Omitted fields keep their value; null or "" clears one; `persona: null` clears all. */
   persona?: { name?: string | null; role?: string | null; instructions?: string | null } | null;
+  /** pro_ai needs automated sends allowed; personal_human turns them off (crm-service rules). */
+  accountType?: "pro_human" | "personal_human" | "pro_ai";
 }
 
 /** Update ONE linked account: outreach default, whether automation may send from it, who it speaks as. */
