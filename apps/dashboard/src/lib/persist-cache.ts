@@ -134,6 +134,7 @@ export const SENSITIVE_QUERY_ROOTS = new Set([
   // GTM Factory shadow (FACTORY-P1-DASH): staff-only reads, never persisted to disk.
   "staffFactoryShadow",
   "factoryShadowPlan",
+  "staffPlanFollowing",
   "staffOpsThreads",
   "staffOpsThreadMessages",
   "staffOpsInfra",

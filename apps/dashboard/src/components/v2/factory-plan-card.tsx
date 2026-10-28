@@ -27,6 +27,7 @@ import { ServedPipeMark } from "@/components/v2/served-pipe-mark";
 import { RoiLabel } from "@/components/v2/roi-label";
 import { ExpectedLabel } from "@/components/v2/offer-sales-paths";
 import { EmptyNote, SectionTitle, Shimmer } from "@/components/v2/ui";
+import { DRAINING_WORDS, followsPlanWords, isDraining, planStateWords } from "@/lib/plan-following";
 
 /**
  * GTM FACTORY STEP 1 on the campaign page, STAFF MODE ONLY (owner 2026-10-28, FACTORY-P1-DASH): what the campaign
@@ -89,6 +90,7 @@ function FactoryPlanBody({ campaign, type }: { campaign: SalesFunnelCampaign; ty
             </div>
           </div>
         </div>
+        {campaign.followsPlan != null && <PlanSwitchRow campaign={campaign} />}
         {!settled ? (
           <div className="space-y-2 px-4 py-3.5">
             <Shimmer className="h-5 w-2/3" />
@@ -105,6 +107,57 @@ function FactoryPlanBody({ campaign, type }: { campaign: SalesFunnelCampaign; ty
       </div>
       {shadow && shadow.picks.length > 0 && <PicksTable picks={shadow.picks} />}
     </section>
+  );
+}
+
+// ─── The plan switch (campaign-service #808), read only ───
+
+/**
+ * Whether this campaign follows its plan (staff switch, off by default: a fixed funnel), the plan follower's last
+ * check in words, and every part whose pipe left the plan ("Finishing its follow-ups": it answers the people it already
+ * owes, takes no new people). Read only: the switch is turned on by staff outside this page.
+ */
+function PlanSwitchRow({ campaign }: { campaign: SalesFunnelCampaign }) {
+  const follows = campaign.followsPlan === true;
+  const check = campaign.planCheck ?? null;
+  const state = check ? planStateWords(check.state) : null;
+  const draining = campaign.units.filter(isDraining);
+  return (
+    <div className="grid gap-4 px-4 py-3.5 md:grid-cols-[240px_minmax(0,1fr)]">
+      <div className="min-w-0">
+        <p className="k-label">Runs</p>
+        <p className="mt-1.5 inline-flex items-center gap-1.5 text-[14px] font-medium">
+          <span className="h-1.5 w-1.5 rounded-full" style={{ background: follows ? "var(--run)" : "var(--fg-4)" }} aria-hidden="true" />
+          {followsPlanWords(follows)}
+        </p>
+        <p className="k-fg3 mt-0.5 text-[12px]">{follows ? "This campaign runs its plan and follows each change." : "This campaign keeps its funnel. The plan is shadow only."}</p>
+      </div>
+      <div className="min-w-0 space-y-1.5">
+        <p className="k-label">Last plan check</p>
+        {check && state ? (
+          <p className="text-[13px]">
+            <span style={state.red ? { color: ROSE } : undefined}>{state.words}</span>
+            <span className="k-mono k-fg2 ml-2 text-[12px]">{utcTime(check.checkedAt)} UTC</span>
+            {check.detail && <span className="k-fg3 block text-[12px]">{check.detail}</span>}
+          </p>
+        ) : (
+          <p className="k-fg3 text-[13px]">Never checked</p>
+        )}
+        {draining.length > 0 && (
+          <ul className="space-y-1 pt-1">
+            {draining.map((u) => (
+              <li key={u.campaignId} className="flex flex-wrap items-center gap-2 text-[13px]">
+                <ServedPipeMark pipeId={u.pipeId} size={16} />
+                <span>{u.name}</span>
+                <span className="k-chip" style={{ color: "var(--data-amber)" }}>
+                  {DRAINING_WORDS}
+                </span>
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
+    </div>
   );
 }
 

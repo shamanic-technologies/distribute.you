@@ -2064,6 +2064,8 @@ export const STAFF_MONITORING_PATHS = {
   connectorIntake: "/crm/ops/connector-intake",
   // Per client org and day, the funnel campaigns whose shadow plan or Jev pick differs from what runs + the verdict (features-service, FACTORY-P1-DASH).
   factoryShadow: "/features/audit/factory-shadow/monitoring",
+  // Funnel campaigns following their plan: status ok|red, the red ones, one row per UTC day (campaign-service #808, api-service #1409).
+  planFollowing: "/campaigns/ops/plan-following",
 } as const;
 
 function parseStaff<T>(name: string, schema: z.ZodType<T>, raw: unknown): T {
@@ -2225,6 +2227,7 @@ import {
   type FactoryShadowPlan,
   type FactoryShadowMonitoring,
 } from "./factory-shadow";
+import { PlanFollowingSchema, type PlanFollowing } from "./plan-following";
 
 /**
  * The campaign's last stored shadow pass (every 3 h): per pipe the play running vs the play Jev picks from the brief,
@@ -2241,6 +2244,11 @@ export async function getFunnelCampaignFactoryShadow(brandId: string, salesFunne
     if (err instanceof ApiError && err.status === 404 && err.body?.error === "factory_shadow_not_computed") return null;
     throw err;
   }
+}
+
+/** Monitoring > Factory plan > Following its plan: status, the red campaigns with their served state, one row per UTC day. */
+export async function getStaffPlanFollowing(days: number): Promise<PlanFollowing> {
+  return parseStaff("getStaffPlanFollowing", PlanFollowingSchema, await apiCall<unknown>(`${STAFF_MONITORING_PATHS.planFollowing}?days=${days}`));
 }
 
 /** Monitoring > Factory plan: the served verdict, the last pass, one row per UTC day x org, the last pass's campaigns. */
