@@ -2,7 +2,7 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { MONITORING_PAGES, parseMonitoringPath } from "../src/lib/monitoring/monitoring";
-import { DRAINING_WORDS, PlanFollowingSchema, followsPlanWords, isDraining, planStateWords } from "../src/lib/plan-following";
+import { DRAINING_WORDS, PlanChangesSchema, PlanFollowingSchema, followsPlanWords, isDraining, planStateWords } from "../src/lib/plan-following";
 import { SalesFunnelCampaignSchema } from "../src/lib/sales-funnel-campaigns";
 
 /**
@@ -80,7 +80,7 @@ describe("plan following: surfaces", () => {
     const card = read("components/v2/factory-plan-card.tsx");
     const body = card.slice(card.indexOf("function FactoryPlanBody("), card.indexOf("function PlanSwitchRow("));
     expect(body).toContain("<PlanSwitchRow campaign={campaign} />");
-    const row = card.slice(card.indexOf("function PlanSwitchRow("), card.indexOf("// ─── Brief: text"));
+    const row = card.slice(card.indexOf("function PlanSwitchRow("), card.indexOf("// ─── Plan changes"));
     expect(row).toContain("followsPlanWords(follows)");
     expect(row).toContain("DRAINING_WORDS");
     expect(row).not.toMatch(/onClick|onChange|useMutation/);
@@ -100,5 +100,53 @@ describe("plan following: surfaces", () => {
     expect(sensitive).toContain('"staffPlanFollowing"');
     const view = read("components/v2/monitoring-factory.tsx");
     expect(view).toContain('data.status === "red"');
+  });
+});
+
+/**
+ * FACTORY-P1-PLAN-CHANGES: the campaign card lists the plan changes a funnel campaign applied (campaign-service #808
+ * `GET /sales-funnel-campaigns/{id}/plan-changes`, api-service #1411). Body = campaign-service openapi `SalesFunnelPlanChange`.
+ */
+describe("plan changes", () => {
+  const BODY = {
+    salesFunnelCampaignId: "c1",
+    followsPlan: true,
+    salesFunnelId: "start_to_lead_found@lead-sourcing+lead_found_to_positive_reply@sales-cold-email-outreach",
+    runningSalesFunnelId: "start_to_lead_found@lead-sourcing+lead_found_to_positive_reply@sales-cold-email-outreach~s2",
+    planCheck: null,
+    changes: [
+      {
+        id: "pc1",
+        fromSalesFunnelId: "start_to_lead_found@lead-sourcing+lead_found_to_positive_reply@sales-cold-email-outreach",
+        toSalesFunnelId: "start_to_lead_found@lead-sourcing+lead_found_to_positive_reply@sales-cold-email-outreach~s2",
+        planComputedAt: null,
+        appliedAt: "2026-10-28T10:00:00.000Z",
+        units: [{ campaignId: "u1", pipeId: "sales-cold-email-outreach|lead_found_to_positive_reply", action: "born" }],
+      },
+    ],
+  };
+
+  it("parses the served body, empty list included", () => {
+    expect(PlanChangesSchema.parse(BODY).changes[0].toSalesFunnelId).toContain("~s2");
+    expect(PlanChangesSchema.parse({ ...BODY, changes: [] }).changes).toEqual([]);
+  });
+
+  it("is read through the /v1 relay, never persisted, inside the staff-only card, nothing drawn when empty", () => {
+    const api = read("lib/api.ts");
+    const reader = api.slice(api.indexOf("export async function getSalesFunnelCampaignPlanChanges("));
+    expect(reader.slice(0, 400)).toContain("/sales-funnel-campaigns/${encodeURIComponent(id)}/plan-changes");
+    expect(reader.slice(0, 400)).toContain("PlanChangesSchema");
+    const persist = read("lib/persist-cache.ts");
+    const sensitive = persist.slice(persist.indexOf("export const SENSITIVE_QUERY_ROOTS"), persist.indexOf("export const PERSISTABLE_QUERY_ROOTS"));
+    expect(sensitive).toContain('"salesFunnelPlanChanges"');
+    const card = read("components/v2/factory-plan-card.tsx");
+    const body = card.slice(card.indexOf("function FactoryPlanBody("), card.indexOf("function PlanSwitchRow("));
+    expect(body).toContain("<PlanChangesRow campaignId={campaign.id} />");
+    const row = card.slice(card.indexOf("function PlanChangesRow("), card.indexOf("function PlanChangeLine("));
+    expect(row).toContain('["salesFunnelPlanChanges", campaignId]');
+    expect(row).toContain("if (changes.length === 0) return null;");
+    const pipes = card.slice(card.indexOf("function FunnelPipes("), card.indexOf("// ─── Brief: text"));
+    expect(pipes).toContain('useStaffCatalogueObject("sales-funnels", salesFunnelId)');
+    expect(pipes).toContain("<ServedPipeMark pipeId={l.pipe.id}");
   });
 });

@@ -44,6 +44,35 @@ export const PlanFollowingSchema = z
 export type PlanFollowing = z.infer<typeof PlanFollowingSchema>;
 
 /**
+ * Every plan change a funnel campaign applied, newest first (campaign-service #808 `GET /sales-funnel-campaigns/{id}/plan-changes`,
+ * relayed by api-service #1411 as `/v1/sales-funnel-campaigns/{id}/plan-changes`). Each change: when, from which sales funnel
+ * to which, and what each unit did. As served; an empty `changes` = no change applied yet.
+ */
+export const PlanChangeSchema = z
+  .object({
+    id: z.string(),
+    fromSalesFunnelId: z.string(),
+    toSalesFunnelId: z.string(),
+    planComputedAt: z.string().nullable(),
+    appliedAt: z.string(),
+    units: z.array(z.object({ campaignId: z.string(), pipeId: z.string(), action: z.string() }).passthrough()),
+  })
+  .passthrough();
+export type PlanChange = z.infer<typeof PlanChangeSchema>;
+
+export const PlanChangesSchema = z
+  .object({
+    salesFunnelCampaignId: z.string(),
+    followsPlan: z.boolean(),
+    salesFunnelId: z.string(),
+    runningSalesFunnelId: z.string(),
+    planCheck: PlanCheckSchema.nullish(),
+    changes: z.array(PlanChangeSchema),
+  })
+  .passthrough();
+export type PlanChanges = z.infer<typeof PlanChangesSchema>;
+
+/**
  * Each served plan-check state in plain words (display lookup); an unknown state reads as served. `red` = the tone it
  * wears: campaign-service's own red list (`RED_PLAN_STATES`: the six states it puts on Monitoring), named here, never
  * decided here.
