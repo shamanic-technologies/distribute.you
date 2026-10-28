@@ -1179,6 +1179,101 @@ export async function unlinkOwnerTelegram(orgId: string, token?: string): Promis
   return apiCall<unknown>(`/orgs/${encodeURIComponent(orgId)}/owner-telegram`, { token, method: "DELETE" });
 }
 
+// ==================== THREADS ACCOUNTS (meta-service, THREADS-ACCOUNT-CARD-1028) ====================
+//
+// Any member connects any number of Threads accounts to a brand, each typed (Pro (AI),
+// Pro (human), Personal (human)). meta-service owns the Threads login; the dashboard
+// starts it with the fixed redirect URI (`lib/threads-connect.ts`) and relays `code` +
+// `state` back. `accountTypeLabel` and `health` are served: never re-derived here.
+
+const ThreadsAccountTypeSchema = z.enum(["pro_human", "personal_human", "pro_ai"]);
+
+const ThreadsAccountSchema = z.object({
+  id: z.string(),
+  brandId: z.string(),
+  threadsUserId: z.string(),
+  username: z.string(),
+  name: z.string().nullable(),
+  profilePictureUrl: z.string().nullable(),
+  profileUrl: z.string(),
+  accountType: ThreadsAccountTypeSchema,
+  accountTypeLabel: z.string(),
+  health: z.enum(["connected", "needs_reconnect"]),
+  healthReason: z.string().nullable(),
+  createdAt: z.string(),
+});
+export type ThreadsAccount = z.infer<typeof ThreadsAccountSchema>;
+
+const ThreadsConnectStartResponseSchema = z.object({
+  authorizationUrl: z.string().url(),
+  state: z.string(),
+  expiresAt: z.string(),
+});
+export type ThreadsConnectStart = z.infer<typeof ThreadsConnectStartResponseSchema>;
+
+export async function listThreadsAccounts(brandId: string, token?: string): Promise<ThreadsAccount[]> {
+  const raw = await apiCall<unknown>(`/orgs/threads/accounts?brandId=${encodeURIComponent(brandId)}`, { token });
+  const parsed = z.object({ accounts: z.array(ThreadsAccountSchema) }).safeParse(raw);
+  if (!parsed.success) {
+    console.error("[api] listThreadsAccounts response shape mismatch", parsed.error.flatten(), raw);
+    throw new Error("listThreadsAccounts returned an unexpected shape");
+  }
+  return parsed.data.accounts;
+}
+
+export async function startThreadsConnect(
+  input: { brandId: string; accountType: z.infer<typeof ThreadsAccountTypeSchema>; redirectUri: string },
+  token?: string,
+): Promise<ThreadsConnectStart> {
+  // brandId in the query too: identity values reach downstream services from headers/query only.
+  const raw = await apiCall<unknown>(`/orgs/threads/auth/start?brandId=${encodeURIComponent(input.brandId)}`, {
+    token,
+    method: "POST",
+    body: input,
+  });
+  const parsed = ThreadsConnectStartResponseSchema.safeParse(raw);
+  if (!parsed.success) {
+    console.error("[api] startThreadsConnect response shape mismatch", parsed.error.flatten(), raw);
+    throw new Error("startThreadsConnect returned an unexpected shape");
+  }
+  return parsed.data;
+}
+
+export async function finishThreadsConnect(
+  input: { code: string; state: string },
+  token?: string,
+): Promise<{ account: ThreadsAccount; created: boolean }> {
+  const raw = await apiCall<unknown>(`/orgs/threads/auth/callback`, { token, method: "POST", body: input });
+  const parsed = z.object({ account: ThreadsAccountSchema, created: z.boolean() }).safeParse(raw);
+  if (!parsed.success) {
+    console.error("[api] finishThreadsConnect response shape mismatch", parsed.error.flatten(), raw);
+    throw new Error("finishThreadsConnect returned an unexpected shape");
+  }
+  return parsed.data;
+}
+
+export async function setThreadsAccountType(
+  accountId: string,
+  accountType: z.infer<typeof ThreadsAccountTypeSchema>,
+  token?: string,
+): Promise<ThreadsAccount> {
+  const raw = await apiCall<unknown>(`/orgs/threads/accounts/${encodeURIComponent(accountId)}`, {
+    token,
+    method: "PATCH",
+    body: { accountType },
+  });
+  const parsed = z.object({ account: ThreadsAccountSchema }).safeParse(raw);
+  if (!parsed.success) {
+    console.error("[api] setThreadsAccountType response shape mismatch", parsed.error.flatten(), raw);
+    throw new Error("setThreadsAccountType returned an unexpected shape");
+  }
+  return parsed.data.account;
+}
+
+export async function disconnectThreadsAccount(accountId: string, token?: string): Promise<unknown> {
+  return apiCall<unknown>(`/orgs/threads/accounts/${encodeURIComponent(accountId)}`, { token, method: "DELETE" });
+}
+
 // ==================== POSTHOG + STRIPE + CLERK, read-only sources of Conversations ====================
 //
 // Same two-write connect as GoHighLevel: the credential goes to key-service under the
