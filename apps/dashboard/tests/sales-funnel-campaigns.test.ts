@@ -245,6 +245,8 @@ describe("sales funnel campaigns: the type picks the words (owner 2026-10-10)", 
     expect(volumeUnitWords("first_contacts", "proactive", 1)).toBe("new person");
     expect(volumeUnitWords("prospects_handled", "reactive", 3)).toBe("leads handled");
     expect(volumeUnitWords(null, "reactive", 3)).toBe("leads handled");
+    expect(volumeUnitWords("outcomes_produced", "proactive", 1)).toBe("post");
+    expect(statedVolume("proactive", { count: 5, period: "daily", unit: "outcomes_produced" })).toBe("Max 5 posts/day");
   });
 
   it("Suggested cards read the funnels FITTED TO THE OFFER, in the producer's order, estimated = expected (owner 2026-10-17)", () => {
