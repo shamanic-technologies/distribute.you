@@ -1,0 +1,1668 @@
+{
+  "generatedAt": "2026-10-28T14:21:14.746Z",
+  "days": 30,
+  "status": "red",
+  "checkedAt": "2026-10-28T14:07:24.882Z",
+  "triggers": [
+    {
+      "triggerId": "booking_call_started",
+      "label": "Booking call",
+      "firedBy": "lead-service",
+      "watched": true,
+      "watchedSince": "2026-10-16T08:52:28.254Z",
+      "status": "red",
+      "reason": "never_fired",
+      "sentence": "Never fired in 12 days while 4 live campaigns wait on it.",
+      "liveCampaigns": 4,
+      "factsWithoutEvent": null,
+      "missing": [],
+      "lastEventAt": null,
+      "byDay": [
+        {
+          "day": "2026-09-29",
+          "events": 0,
+          "status": null
+        },
+        {
+          "day": "2026-09-30",
+          "events": 0,
+          "status": null
+        },
+        {
+          "day": "2026-10-01",
+          "events": 0,
+          "status": null
+        },
+        {
+          "day": "2026-10-02",
+          "events": 0,
+          "status": null
+        },
+        {
+          "day": "2026-10-03",
+          "events": 0,
+          "status": null
+        },
+        {
+          "day": "2026-10-04",
+          "events": 0,
+          "status": null
+        },
+        {
+          "day": "2026-10-05",
+          "events": 0,
+          "status": null
+        },
+        {
+          "day": "2026-10-06",
+          "events": 0,
+          "status": null
+        },
+        {
+          "day": "2026-10-07",
+          "events": 0,
+          "status": null
+        },
+        {
+          "day": "2026-10-08",
+          "events": 0,
+          "status": null
+        },
+        {
+          "day": "2026-10-09",
+          "events": 0,
+          "status": null
+        },
+        {
+          "day": "2026-10-10",
+          "events": 0,
+          "status": null
+        },
+        {
+          "day": "2026-10-11",
+          "events": 0,
+          "status": null
+        },
+        {
+          "day": "2026-10-12",
+          "events": 0,
+          "status": null
+        },
+        {
+          "day": "2026-10-13",
+          "events": 0,
+          "status": null
+        },
+        {
+          "day": "2026-10-14",
+          "events": 0,
+          "status": null
+        },
+        {
+          "day": "2026-10-15",
+          "events": 0,
+          "status": null
+        },
+        {
+          "day": "2026-10-16",
+          "events": 0,
+          "status": null
+        },
+        {
+          "day": "2026-10-17",
+          "events": 0,
+          "status": null
+        },
+        {
+          "day": "2026-10-18",
+          "events": 0,
+          "status": null
+        },
+        {
+          "day": "2026-10-19",
+          "events": 0,
+          "status": null
+        },
+        {
+          "day": "2026-10-20",
+          "events": 0,
+          "status": null
+        },
+        {
+          "day": "2026-10-21",
+          "events": 0,
+          "status": null
+        },
+        {
+          "day": "2026-10-22",
+          "events": 0,
+          "status": null
+        },
+        {
+          "day": "2026-10-23",
+          "events": 0,
+          "status": null
+        },
+        {
+          "day": "2026-10-24",
+          "events": 0,
+          "status": null
+        },
+        {
+          "day": "2026-10-25",
+          "events": 0,
+          "status": null
+        },
+        {
+          "day": "2026-10-26",
+          "events": 0,
+          "status": null
+        },
+        {
+          "day": "2026-10-27",
+          "events": 0,
+          "status": null
+        },
+        {
+          "day": "2026-10-28",
+          "events": 0,
+          "status": "red"
+        }
+      ]
+    },
+    {
+      "triggerId": "email_pushed_via_api",
+      "label": "Email Pushed Via API",
+      "firedBy": "campaign-service",
+      "watched": true,
+      "watchedSince": "2026-10-13T20:11:03.583Z",
+      "status": "ok",
+      "reason": null,
+      "sentence": "Has fired before; quiet is not a break.",
+      "liveCampaigns": 2,
+      "factsWithoutEvent": null,
+      "missing": [],
+      "lastEventAt": "2026-10-24T12:04:02.162Z",
+      "byDay": [
+        {
+          "day": "2026-09-29",
+          "events": 0,
+          "status": null
+        },
+        {
+          "day": "2026-09-30",
+          "events": 0,
+          "status": null
+        },
+        {
+          "day": "2026-10-01",
+          "events": 0,
+          "status": null
+        },
+        {
+          "day": "2026-10-02",
+          "events": 0,
+          "status": null
+        },
+        {
+          "day": "2026-10-03",
+          "events": 0,
+          "status": null
+        },
+        {
+          "day": "2026-10-04",
+          "events": 0,
+          "status": null
+        },
+        {
+          "day": "2026-10-05",
+          "events": 0,
+          "status": null
+        },
+        {
+          "day": "2026-10-06",
+          "events": 0,
+          "status": null
+        },
+        {
+          "day": "2026-10-07",
+          "events": 0,
+          "status": null
+        },
+        {
+          "day": "2026-10-08",
+          "events": 0,
+          "status": null
+        },
+        {
+          "day": "2026-10-09",
+          "events": 0,
+          "status": null
+        },
+        {
+          "day": "2026-10-10",
+          "events": 0,
+          "status": null
+        },
+        {
+          "day": "2026-10-11",
+          "events": 0,
+          "status": null
+        },
+        {
+          "day": "2026-10-12",
+          "events": 0,
+          "status": null
+        },
+        {
+          "day": "2026-10-13",
+          "events": 11,
+          "status": null
+        },
+        {
+          "day": "2026-10-14",
+          "events": 17,
+          "status": null
+        },
+        {
+          "day": "2026-10-15",
+          "events": 8,
+          "status": null
+        },
+        {
+          "day": "2026-10-16",
+          "events": 0,
+          "status": null
+        },
+        {
+          "day": "2026-10-17",
+          "events": 0,
+          "status": null
+        },
+        {
+          "day": "2026-10-18",
+          "events": 2,
+          "status": null
+        },
+        {
+          "day": "2026-10-19",
+          "events": 0,
+          "status": null
+        },
+        {
+          "day": "2026-10-20",
+          "events": 0,
+          "status": null
+        },
+        {
+          "day": "2026-10-21",
+          "events": 0,
+          "status": null
+        },
+        {
+          "day": "2026-10-22",
+          "events": 0,
+          "status": null
+        },
+        {
+          "day": "2026-10-23",
+          "events": 0,
+          "status": null
+        },
+        {
+          "day": "2026-10-24",
+          "events": 2,
+          "status": null
+        },
+        {
+          "day": "2026-10-25",
+          "events": 0,
+          "status": null
+        },
+        {
+          "day": "2026-10-26",
+          "events": 0,
+          "status": null
+        },
+        {
+          "day": "2026-10-27",
+          "events": 0,
+          "status": null
+        },
+        {
+          "day": "2026-10-28",
+          "events": 0,
+          "status": "ok"
+        }
+      ]
+    },
+    {
+      "triggerId": "form_submitted",
+      "label": "Form submitted",
+      "firedBy": "crm-service",
+      "watched": true,
+      "watchedSince": "2026-10-14T10:32:01.636Z",
+      "status": "ok",
+      "reason": null,
+      "sentence": "Working: every fact we can see came with its event.",
+      "liveCampaigns": 2,
+      "factsWithoutEvent": 0,
+      "missing": [],
+      "lastEventAt": "2026-10-24T12:33:24.441Z",
+      "byDay": [
+        {
+          "day": "2026-09-29",
+          "events": 0,
+          "status": null
+        },
+        {
+          "day": "2026-09-30",
+          "events": 0,
+          "status": null
+        },
+        {
+          "day": "2026-10-01",
+          "events": 0,
+          "status": null
+        },
+        {
+          "day": "2026-10-02",
+          "events": 0,
+          "status": null
+        },
+        {
+          "day": "2026-10-03",
+          "events": 0,
+          "status": null
+        },
+        {
+          "day": "2026-10-04",
+          "events": 0,
+          "status": null
+        },
+        {
+          "day": "2026-10-05",
+          "events": 0,
+          "status": null
+        },
+        {
+          "day": "2026-10-06",
+          "events": 0,
+          "status": null
+        },
+        {
+          "day": "2026-10-07",
+          "events": 0,
+          "status": null
+        },
+        {
+          "day": "2026-10-08",
+          "events": 0,
+          "status": null
+        },
+        {
+          "day": "2026-10-09",
+          "events": 0,
+          "status": null
+        },
+        {
+          "day": "2026-10-10",
+          "events": 0,
+          "status": null
+        },
+        {
+          "day": "2026-10-11",
+          "events": 0,
+          "status": null
+        },
+        {
+          "day": "2026-10-12",
+          "events": 7,
+          "status": null
+        },
+        {
+          "day": "2026-10-13",
+          "events": 0,
+          "status": null
+        },
+        {
+          "day": "2026-10-14",
+          "events": 7,
+          "status": null
+        },
+        {
+          "day": "2026-10-15",
+          "events": 3,
+          "status": null
+        },
+        {
+          "day": "2026-10-16",
+          "events": 1,
+          "status": null
+        },
+        {
+          "day": "2026-10-17",
+          "events": 0,
+          "status": null
+        },
+        {
+          "day": "2026-10-18",
+          "events": 1,
+          "status": null
+        },
+        {
+          "day": "2026-10-19",
+          "events": 1,
+          "status": null
+        },
+        {
+          "day": "2026-10-20",
+          "events": 0,
+          "status": null
+        },
+        {
+          "day": "2026-10-21",
+          "events": 0,
+          "status": null
+        },
+        {
+          "day": "2026-10-22",
+          "events": 0,
+          "status": null
+        },
+        {
+          "day": "2026-10-23",
+          "events": 0,
+          "status": null
+        },
+        {
+          "day": "2026-10-24",
+          "events": 2,
+          "status": null
+        },
+        {
+          "day": "2026-10-25",
+          "events": 0,
+          "status": null
+        },
+        {
+          "day": "2026-10-26",
+          "events": 0,
+          "status": null
+        },
+        {
+          "day": "2026-10-27",
+          "events": 0,
+          "status": null
+        },
+        {
+          "day": "2026-10-28",
+          "events": 0,
+          "status": "ok"
+        }
+      ]
+    },
+    {
+      "triggerId": "hot_lead",
+      "label": "Hot Lead",
+      "firedBy": "campaign-service",
+      "watched": true,
+      "watchedSince": "2026-10-19T06:47:02.163Z",
+      "status": "ok",
+      "reason": null,
+      "sentence": "Has fired before; quiet is not a break.",
+      "liveCampaigns": 1,
+      "factsWithoutEvent": null,
+      "missing": [],
+      "lastEventAt": "2026-10-28T05:13:22.890Z",
+      "byDay": [
+        {
+          "day": "2026-09-29",
+          "events": 0,
+          "status": null
+        },
+        {
+          "day": "2026-09-30",
+          "events": 0,
+          "status": null
+        },
+        {
+          "day": "2026-10-01",
+          "events": 0,
+          "status": null
+        },
+        {
+          "day": "2026-10-02",
+          "events": 0,
+          "status": null
+        },
+        {
+          "day": "2026-10-03",
+          "events": 0,
+          "status": null
+        },
+        {
+          "day": "2026-10-04",
+          "events": 0,
+          "status": null
+        },
+        {
+          "day": "2026-10-05",
+          "events": 0,
+          "status": null
+        },
+        {
+          "day": "2026-10-06",
+          "events": 0,
+          "status": null
+        },
+        {
+          "day": "2026-10-07",
+          "events": 0,
+          "status": null
+        },
+        {
+          "day": "2026-10-08",
+          "events": 0,
+          "status": null
+        },
+        {
+          "day": "2026-10-09",
+          "events": 0,
+          "status": null
+        },
+        {
+          "day": "2026-10-10",
+          "events": 0,
+          "status": null
+        },
+        {
+          "day": "2026-10-11",
+          "events": 0,
+          "status": null
+        },
+        {
+          "day": "2026-10-12",
+          "events": 0,
+          "status": null
+        },
+        {
+          "day": "2026-10-13",
+          "events": 0,
+          "status": null
+        },
+        {
+          "day": "2026-10-14",
+          "events": 0,
+          "status": null
+        },
+        {
+          "day": "2026-10-15",
+          "events": 0,
+          "status": null
+        },
+        {
+          "day": "2026-10-16",
+          "events": 0,
+          "status": null
+        },
+        {
+          "day": "2026-10-17",
+          "events": 0,
+          "status": null
+        },
+        {
+          "day": "2026-10-18",
+          "events": 0,
+          "status": null
+        },
+        {
+          "day": "2026-10-19",
+          "events": 10,
+          "status": null
+        },
+        {
+          "day": "2026-10-20",
+          "events": 2,
+          "status": null
+        },
+        {
+          "day": "2026-10-21",
+          "events": 8,
+          "status": null
+        },
+        {
+          "day": "2026-10-22",
+          "events": 15,
+          "status": null
+        },
+        {
+          "day": "2026-10-23",
+          "events": 10,
+          "status": null
+        },
+        {
+          "day": "2026-10-24",
+          "events": 16,
+          "status": null
+        },
+        {
+          "day": "2026-10-25",
+          "events": 38,
+          "status": null
+        },
+        {
+          "day": "2026-10-26",
+          "events": 16,
+          "status": null
+        },
+        {
+          "day": "2026-10-27",
+          "events": 14,
+          "status": null
+        },
+        {
+          "day": "2026-10-28",
+          "events": 2,
+          "status": "ok"
+        }
+      ]
+    },
+    {
+      "triggerId": "lead_event",
+      "label": "Lead event",
+      "firedBy": "campaign-service",
+      "watched": true,
+      "watchedSince": "2026-10-28T06:57:42.311Z",
+      "status": "ok",
+      "reason": null,
+      "sentence": "Has fired before; quiet is not a break.",
+      "liveCampaigns": 4,
+      "factsWithoutEvent": null,
+      "missing": [],
+      "lastEventAt": "2026-10-28T14:15:13.540Z",
+      "byDay": [
+        {
+          "day": "2026-09-29",
+          "events": 0,
+          "status": null
+        },
+        {
+          "day": "2026-09-30",
+          "events": 0,
+          "status": null
+        },
+        {
+          "day": "2026-10-01",
+          "events": 0,
+          "status": null
+        },
+        {
+          "day": "2026-10-02",
+          "events": 0,
+          "status": null
+        },
+        {
+          "day": "2026-10-03",
+          "events": 0,
+          "status": null
+        },
+        {
+          "day": "2026-10-04",
+          "events": 0,
+          "status": null
+        },
+        {
+          "day": "2026-10-05",
+          "events": 0,
+          "status": null
+        },
+        {
+          "day": "2026-10-06",
+          "events": 0,
+          "status": null
+        },
+        {
+          "day": "2026-10-07",
+          "events": 0,
+          "status": null
+        },
+        {
+          "day": "2026-10-08",
+          "events": 0,
+          "status": null
+        },
+        {
+          "day": "2026-10-09",
+          "events": 0,
+          "status": null
+        },
+        {
+          "day": "2026-10-10",
+          "events": 0,
+          "status": null
+        },
+        {
+          "day": "2026-10-11",
+          "events": 0,
+          "status": null
+        },
+        {
+          "day": "2026-10-12",
+          "events": 0,
+          "status": null
+        },
+        {
+          "day": "2026-10-13",
+          "events": 0,
+          "status": null
+        },
+        {
+          "day": "2026-10-14",
+          "events": 0,
+          "status": null
+        },
+        {
+          "day": "2026-10-15",
+          "events": 0,
+          "status": null
+        },
+        {
+          "day": "2026-10-16",
+          "events": 11,
+          "status": null
+        },
+        {
+          "day": "2026-10-17",
+          "events": 9,
+          "status": null
+        },
+        {
+          "day": "2026-10-18",
+          "events": 3,
+          "status": null
+        },
+        {
+          "day": "2026-10-19",
+          "events": 16,
+          "status": null
+        },
+        {
+          "day": "2026-10-20",
+          "events": 13,
+          "status": null
+        },
+        {
+          "day": "2026-10-21",
+          "events": 13,
+          "status": null
+        },
+        {
+          "day": "2026-10-22",
+          "events": 24,
+          "status": null
+        },
+        {
+          "day": "2026-10-23",
+          "events": 19,
+          "status": null
+        },
+        {
+          "day": "2026-10-24",
+          "events": 310,
+          "status": null
+        },
+        {
+          "day": "2026-10-25",
+          "events": 52,
+          "status": null
+        },
+        {
+          "day": "2026-10-26",
+          "events": 45,
+          "status": null
+        },
+        {
+          "day": "2026-10-27",
+          "events": 39,
+          "status": null
+        },
+        {
+          "day": "2026-10-28",
+          "events": 464,
+          "status": "ok"
+        }
+      ]
+    },
+    {
+      "triggerId": "meeting_attended",
+      "label": "Meeting attended",
+      "firedBy": "lead-service",
+      "watched": true,
+      "watchedSince": "2026-10-16T08:52:28.254Z",
+      "status": "ok",
+      "reason": null,
+      "sentence": "Working: every fact we can see came with its event.",
+      "liveCampaigns": 23,
+      "factsWithoutEvent": 0,
+      "missing": [],
+      "lastEventAt": "2026-10-22T11:30:00.000Z",
+      "byDay": [
+        {
+          "day": "2026-09-29",
+          "events": 0,
+          "status": null
+        },
+        {
+          "day": "2026-09-30",
+          "events": 0,
+          "status": null
+        },
+        {
+          "day": "2026-10-01",
+          "events": 0,
+          "status": null
+        },
+        {
+          "day": "2026-10-02",
+          "events": 0,
+          "status": null
+        },
+        {
+          "day": "2026-10-03",
+          "events": 0,
+          "status": null
+        },
+        {
+          "day": "2026-10-04",
+          "events": 0,
+          "status": null
+        },
+        {
+          "day": "2026-10-05",
+          "events": 0,
+          "status": null
+        },
+        {
+          "day": "2026-10-06",
+          "events": 0,
+          "status": null
+        },
+        {
+          "day": "2026-10-07",
+          "events": 0,
+          "status": null
+        },
+        {
+          "day": "2026-10-08",
+          "events": 0,
+          "status": null
+        },
+        {
+          "day": "2026-10-09",
+          "events": 0,
+          "status": null
+        },
+        {
+          "day": "2026-10-10",
+          "events": 0,
+          "status": null
+        },
+        {
+          "day": "2026-10-11",
+          "events": 0,
+          "status": null
+        },
+        {
+          "day": "2026-10-12",
+          "events": 0,
+          "status": null
+        },
+        {
+          "day": "2026-10-13",
+          "events": 0,
+          "status": null
+        },
+        {
+          "day": "2026-10-14",
+          "events": 0,
+          "status": null
+        },
+        {
+          "day": "2026-10-15",
+          "events": 0,
+          "status": null
+        },
+        {
+          "day": "2026-10-16",
+          "events": 0,
+          "status": null
+        },
+        {
+          "day": "2026-10-17",
+          "events": 0,
+          "status": null
+        },
+        {
+          "day": "2026-10-18",
+          "events": 0,
+          "status": null
+        },
+        {
+          "day": "2026-10-19",
+          "events": 0,
+          "status": null
+        },
+        {
+          "day": "2026-10-20",
+          "events": 0,
+          "status": null
+        },
+        {
+          "day": "2026-10-21",
+          "events": 0,
+          "status": null
+        },
+        {
+          "day": "2026-10-22",
+          "events": 1,
+          "status": null
+        },
+        {
+          "day": "2026-10-23",
+          "events": 0,
+          "status": null
+        },
+        {
+          "day": "2026-10-24",
+          "events": 0,
+          "status": null
+        },
+        {
+          "day": "2026-10-25",
+          "events": 0,
+          "status": null
+        },
+        {
+          "day": "2026-10-26",
+          "events": 0,
+          "status": null
+        },
+        {
+          "day": "2026-10-27",
+          "events": 0,
+          "status": null
+        },
+        {
+          "day": "2026-10-28",
+          "events": 0,
+          "status": "ok"
+        }
+      ]
+    },
+    {
+      "triggerId": "meeting_booked",
+      "label": "Meeting booked",
+      "firedBy": "lead-service",
+      "watched": true,
+      "watchedSince": "2026-10-16T08:52:28.254Z",
+      "status": "ok",
+      "reason": null,
+      "sentence": "Working: every fact we can see came with its event.",
+      "liveCampaigns": 23,
+      "factsWithoutEvent": 0,
+      "missing": [],
+      "lastEventAt": "2026-10-27T21:54:53.341Z",
+      "byDay": [
+        {
+          "day": "2026-09-29",
+          "events": 0,
+          "status": null
+        },
+        {
+          "day": "2026-09-30",
+          "events": 0,
+          "status": null
+        },
+        {
+          "day": "2026-10-01",
+          "events": 0,
+          "status": null
+        },
+        {
+          "day": "2026-10-02",
+          "events": 0,
+          "status": null
+        },
+        {
+          "day": "2026-10-03",
+          "events": 0,
+          "status": null
+        },
+        {
+          "day": "2026-10-04",
+          "events": 0,
+          "status": null
+        },
+        {
+          "day": "2026-10-05",
+          "events": 0,
+          "status": null
+        },
+        {
+          "day": "2026-10-06",
+          "events": 0,
+          "status": null
+        },
+        {
+          "day": "2026-10-07",
+          "events": 0,
+          "status": null
+        },
+        {
+          "day": "2026-10-08",
+          "events": 0,
+          "status": null
+        },
+        {
+          "day": "2026-10-09",
+          "events": 0,
+          "status": null
+        },
+        {
+          "day": "2026-10-10",
+          "events": 0,
+          "status": null
+        },
+        {
+          "day": "2026-10-11",
+          "events": 0,
+          "status": null
+        },
+        {
+          "day": "2026-10-12",
+          "events": 0,
+          "status": null
+        },
+        {
+          "day": "2026-10-13",
+          "events": 0,
+          "status": null
+        },
+        {
+          "day": "2026-10-14",
+          "events": 0,
+          "status": null
+        },
+        {
+          "day": "2026-10-15",
+          "events": 0,
+          "status": null
+        },
+        {
+          "day": "2026-10-16",
+          "events": 0,
+          "status": null
+        },
+        {
+          "day": "2026-10-17",
+          "events": 1,
+          "status": null
+        },
+        {
+          "day": "2026-10-18",
+          "events": 0,
+          "status": null
+        },
+        {
+          "day": "2026-10-19",
+          "events": 0,
+          "status": null
+        },
+        {
+          "day": "2026-10-20",
+          "events": 1,
+          "status": null
+        },
+        {
+          "day": "2026-10-21",
+          "events": 1,
+          "status": null
+        },
+        {
+          "day": "2026-10-22",
+          "events": 2,
+          "status": null
+        },
+        {
+          "day": "2026-10-23",
+          "events": 0,
+          "status": null
+        },
+        {
+          "day": "2026-10-24",
+          "events": 1,
+          "status": null
+        },
+        {
+          "day": "2026-10-25",
+          "events": 0,
+          "status": null
+        },
+        {
+          "day": "2026-10-26",
+          "events": 0,
+          "status": null
+        },
+        {
+          "day": "2026-10-27",
+          "events": 1,
+          "status": null
+        },
+        {
+          "day": "2026-10-28",
+          "events": 0,
+          "status": "ok"
+        }
+      ]
+    },
+    {
+      "triggerId": "positive_reply_received",
+      "label": "Positive reply",
+      "firedBy": "instantly-service",
+      "watched": true,
+      "watchedSince": "2026-10-09T15:28:02.605Z",
+      "status": "ok",
+      "reason": null,
+      "sentence": "Has fired before; quiet is not a break.",
+      "liveCampaigns": 28,
+      "factsWithoutEvent": null,
+      "missing": [],
+      "lastEventAt": "2026-10-27T20:10:15.000Z",
+      "byDay": [
+        {
+          "day": "2026-09-29",
+          "events": 0,
+          "status": null
+        },
+        {
+          "day": "2026-09-30",
+          "events": 0,
+          "status": null
+        },
+        {
+          "day": "2026-10-01",
+          "events": 0,
+          "status": null
+        },
+        {
+          "day": "2026-10-02",
+          "events": 0,
+          "status": null
+        },
+        {
+          "day": "2026-10-03",
+          "events": 0,
+          "status": null
+        },
+        {
+          "day": "2026-10-04",
+          "events": 0,
+          "status": null
+        },
+        {
+          "day": "2026-10-05",
+          "events": 0,
+          "status": null
+        },
+        {
+          "day": "2026-10-06",
+          "events": 0,
+          "status": null
+        },
+        {
+          "day": "2026-10-07",
+          "events": 0,
+          "status": null
+        },
+        {
+          "day": "2026-10-08",
+          "events": 0,
+          "status": null
+        },
+        {
+          "day": "2026-10-09",
+          "events": 0,
+          "status": null
+        },
+        {
+          "day": "2026-10-10",
+          "events": 0,
+          "status": null
+        },
+        {
+          "day": "2026-10-11",
+          "events": 0,
+          "status": null
+        },
+        {
+          "day": "2026-10-12",
+          "events": 9,
+          "status": null
+        },
+        {
+          "day": "2026-10-13",
+          "events": 2,
+          "status": null
+        },
+        {
+          "day": "2026-10-14",
+          "events": 5,
+          "status": null
+        },
+        {
+          "day": "2026-10-15",
+          "events": 10,
+          "status": null
+        },
+        {
+          "day": "2026-10-16",
+          "events": 7,
+          "status": null
+        },
+        {
+          "day": "2026-10-17",
+          "events": 0,
+          "status": null
+        },
+        {
+          "day": "2026-10-18",
+          "events": 0,
+          "status": null
+        },
+        {
+          "day": "2026-10-19",
+          "events": 4,
+          "status": null
+        },
+        {
+          "day": "2026-10-20",
+          "events": 0,
+          "status": null
+        },
+        {
+          "day": "2026-10-21",
+          "events": 0,
+          "status": null
+        },
+        {
+          "day": "2026-10-22",
+          "events": 0,
+          "status": null
+        },
+        {
+          "day": "2026-10-23",
+          "events": 0,
+          "status": null
+        },
+        {
+          "day": "2026-10-24",
+          "events": 0,
+          "status": null
+        },
+        {
+          "day": "2026-10-25",
+          "events": 0,
+          "status": null
+        },
+        {
+          "day": "2026-10-26",
+          "events": 1,
+          "status": null
+        },
+        {
+          "day": "2026-10-27",
+          "events": 3,
+          "status": null
+        },
+        {
+          "day": "2026-10-28",
+          "events": 0,
+          "status": "ok"
+        }
+      ]
+    },
+    {
+      "triggerId": "signup_not_paid_30_min",
+      "label": "Signup Not Paid In 30 Min",
+      "firedBy": "campaign-service",
+      "watched": true,
+      "watchedSince": "2026-10-22T18:31:36.080Z",
+      "status": "ok",
+      "reason": null,
+      "sentence": "Has fired before; quiet is not a break.",
+      "liveCampaigns": 3,
+      "factsWithoutEvent": null,
+      "missing": [],
+      "lastEventAt": "2026-10-28T05:28:07.946Z",
+      "byDay": [
+        {
+          "day": "2026-09-29",
+          "events": 0,
+          "status": null
+        },
+        {
+          "day": "2026-09-30",
+          "events": 0,
+          "status": null
+        },
+        {
+          "day": "2026-10-01",
+          "events": 0,
+          "status": null
+        },
+        {
+          "day": "2026-10-02",
+          "events": 0,
+          "status": null
+        },
+        {
+          "day": "2026-10-03",
+          "events": 0,
+          "status": null
+        },
+        {
+          "day": "2026-10-04",
+          "events": 0,
+          "status": null
+        },
+        {
+          "day": "2026-10-05",
+          "events": 0,
+          "status": null
+        },
+        {
+          "day": "2026-10-06",
+          "events": 0,
+          "status": null
+        },
+        {
+          "day": "2026-10-07",
+          "events": 0,
+          "status": null
+        },
+        {
+          "day": "2026-10-08",
+          "events": 0,
+          "status": null
+        },
+        {
+          "day": "2026-10-09",
+          "events": 0,
+          "status": null
+        },
+        {
+          "day": "2026-10-10",
+          "events": 0,
+          "status": null
+        },
+        {
+          "day": "2026-10-11",
+          "events": 0,
+          "status": null
+        },
+        {
+          "day": "2026-10-12",
+          "events": 0,
+          "status": null
+        },
+        {
+          "day": "2026-10-13",
+          "events": 0,
+          "status": null
+        },
+        {
+          "day": "2026-10-14",
+          "events": 1,
+          "status": null
+        },
+        {
+          "day": "2026-10-15",
+          "events": 1,
+          "status": null
+        },
+        {
+          "day": "2026-10-16",
+          "events": 1,
+          "status": null
+        },
+        {
+          "day": "2026-10-17",
+          "events": 0,
+          "status": null
+        },
+        {
+          "day": "2026-10-18",
+          "events": 0,
+          "status": null
+        },
+        {
+          "day": "2026-10-19",
+          "events": 0,
+          "status": null
+        },
+        {
+          "day": "2026-10-20",
+          "events": 0,
+          "status": null
+        },
+        {
+          "day": "2026-10-21",
+          "events": 0,
+          "status": null
+        },
+        {
+          "day": "2026-10-22",
+          "events": 0,
+          "status": null
+        },
+        {
+          "day": "2026-10-23",
+          "events": 2,
+          "status": null
+        },
+        {
+          "day": "2026-10-24",
+          "events": 0,
+          "status": null
+        },
+        {
+          "day": "2026-10-25",
+          "events": 0,
+          "status": null
+        },
+        {
+          "day": "2026-10-26",
+          "events": 1,
+          "status": null
+        },
+        {
+          "day": "2026-10-27",
+          "events": 2,
+          "status": null
+        },
+        {
+          "day": "2026-10-28",
+          "events": 1,
+          "status": "ok"
+        }
+      ]
+    },
+    {
+      "triggerId": "whatsapp_number_given",
+      "label": "WhatsApp Number Given",
+      "firedBy": "campaign-service",
+      "watched": true,
+      "watchedSince": "2026-10-28T05:57:41.204Z",
+      "status": "ok",
+      "reason": null,
+      "sentence": "Has fired before; quiet is not a break.",
+      "liveCampaigns": 1,
+      "factsWithoutEvent": null,
+      "missing": [],
+      "lastEventAt": "2026-10-28T04:45:07.458Z",
+      "byDay": [
+        {
+          "day": "2026-09-29",
+          "events": 0,
+          "status": null
+        },
+        {
+          "day": "2026-09-30",
+          "events": 0,
+          "status": null
+        },
+        {
+          "day": "2026-10-01",
+          "events": 0,
+          "status": null
+        },
+        {
+          "day": "2026-10-02",
+          "events": 0,
+          "status": null
+        },
+        {
+          "day": "2026-10-03",
+          "events": 0,
+          "status": null
+        },
+        {
+          "day": "2026-10-04",
+          "events": 0,
+          "status": null
+        },
+        {
+          "day": "2026-10-05",
+          "events": 0,
+          "status": null
+        },
+        {
+          "day": "2026-10-06",
+          "events": 0,
+          "status": null
+        },
+        {
+          "day": "2026-10-07",
+          "events": 0,
+          "status": null
+        },
+        {
+          "day": "2026-10-08",
+          "events": 0,
+          "status": null
+        },
+        {
+          "day": "2026-10-09",
+          "events": 0,
+          "status": null
+        },
+        {
+          "day": "2026-10-10",
+          "events": 0,
+          "status": null
+        },
+        {
+          "day": "2026-10-11",
+          "events": 0,
+          "status": null
+        },
+        {
+          "day": "2026-10-12",
+          "events": 0,
+          "status": null
+        },
+        {
+          "day": "2026-10-13",
+          "events": 0,
+          "status": null
+        },
+        {
+          "day": "2026-10-14",
+          "events": 0,
+          "status": null
+        },
+        {
+          "day": "2026-10-15",
+          "events": 1,
+          "status": null
+        },
+        {
+          "day": "2026-10-16",
+          "events": 3,
+          "status": null
+        },
+        {
+          "day": "2026-10-17",
+          "events": 1,
+          "status": null
+        },
+        {
+          "day": "2026-10-18",
+          "events": 1,
+          "status": null
+        },
+        {
+          "day": "2026-10-19",
+          "events": 0,
+          "status": null
+        },
+        {
+          "day": "2026-10-20",
+          "events": 3,
+          "status": null
+        },
+        {
+          "day": "2026-10-21",
+          "events": 1,
+          "status": null
+        },
+        {
+          "day": "2026-10-22",
+          "events": 2,
+          "status": null
+        },
+        {
+          "day": "2026-10-23",
+          "events": 2,
+          "status": null
+        },
+        {
+          "day": "2026-10-24",
+          "events": 0,
+          "status": null
+        },
+        {
+          "day": "2026-10-25",
+          "events": 0,
+          "status": null
+        },
+        {
+          "day": "2026-10-26",
+          "events": 9,
+          "status": null
+        },
+        {
+          "day": "2026-10-27",
+          "events": 3,
+          "status": null
+        },
+        {
+          "day": "2026-10-28",
+          "events": 1,
+          "status": "ok"
+        }
+      ]
+    }
+  ]
+}
