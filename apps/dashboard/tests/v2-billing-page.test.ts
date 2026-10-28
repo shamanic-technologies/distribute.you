@@ -8,6 +8,7 @@ const read = (rel: string) => readFileSync(join(root, rel), "utf8");
 const V2 = read("src/components/v2/billing-page.tsx");
 const ROUTE = read("src/app/(authed)/v2/orgs/[orgId]/brands/[brandId]/billing/page.tsx");
 const API = read("src/lib/api.ts");
+const HERO = read("src/components/v2/balance-hero.tsx");
 
 describe("paymentModeOf", () => {
   it("reads billing's own word", () => {
@@ -105,6 +106,7 @@ describe("how the org pays: a tag, set by staff", () => {
 
 describe("the v2 page speaks Keel", () => {
   it("uses no v1 greys, brand fills or bordered cards", () => {
+    expect(HERO).not.toMatch(/text-gray-|bg-brand-50|rounded-lg border|shadow-2xl/);
     expect(V2).not.toMatch(/text-gray-|bg-brand-50|rounded-lg border|shadow-2xl/);
   });
 
@@ -130,12 +132,11 @@ describe("a postpaid org reads postpaid words only (owner 2026-10-21)", () => {
   });
 
   it("shows postpaid its next automatic payment, Google Ads style, with NO button (owner 2026-10-21)", () => {
-    const section = V2.slice(V2.indexOf('id="owed"'), V2.indexOf("{/* The monthly plan, for an org on one"));
-    expect(V2).toContain('{mode === "postpaid" && account?.has_payment_method && c.autoReloadSupported && (');
-    expect(section).toContain("<PostpaidOwedCard");
-    const card = V2.slice(V2.indexOf("function PostpaidOwedCard("), V2.indexOf("/** Dollars to cents without float noise"));
-    expect(card).toContain("Your next automatic payment is when your costs reach");
-    expect(card).toContain("nextChargeDate");
+    const balance = V2.slice(V2.indexOf('id="balance"'), V2.indexOf("{/* The monthly plan, for an org on one"));
+    expect(balance).toContain("<PostpaidOwedCard");
+    expect(balance).toContain("charging={!!account?.has_payment_method && c.autoReloadSupported}");
+    const card = HERO.slice(HERO.indexOf("function PostpaidOwedCard("), HERO.indexOf("function CreditBalanceCard("));
+    expect(card).toContain("Your next automatic payment is on ${nextChargeDate}, or sooner when your billed costs reach");
     expect(card).not.toContain("<button");
     expect(card).not.toContain("credit line");
     expect(card).not.toContain("top-up");
@@ -181,5 +182,23 @@ describe("Billing Usage shows the same moment as Billed (BILLING-PAGE-COHERENT-1
   it("keeps a NEGATIVE account adjustment row and shows what we cover", () => {
     expect(usage).toContain("Math.abs(usdToCents(cat.billedUsd)) >= 0.5");
     expect(usage).toContain("Covered by us: {formatBillingCents(coveredCents)}, on the house.");
+  });
+});
+
+describe("Balance = one figure per mode, its parts on one bar (owner 2026-10-29)", () => {
+  it("no longer draws the four equal KPI cells", () => {
+    expect(V2).not.toContain('label: "Set aside"');
+    expect(V2).not.toContain('label: "Total credits"');
+    expect(V2).not.toContain("set aside");
+  });
+
+  it("measures the early charge on BILLED only: provisioned money is never charged (owner 2026-10-29)", () => {
+    const card = HERO.slice(HERO.indexOf("function PostpaidOwedCard("), HERO.indexOf("function CreditBalanceCard("));
+    expect(card).toContain("<StackedBar parts={[billed]} totalCents={line} />");
+    expect(card).not.toContain("availableCents");
+  });
+
+  it("names the held money Provisioned, with its (i), in every mode", () => {
+    expect(HERO.match(/label: "Provisioned"[^}]*tip: PROVISIONED_TIP/g) ?? []).toHaveLength(2);
   });
 });
