@@ -1,5 +1,5 @@
 {
- "generatedAt": "2026-10-28T15:00:00.000Z",
+ "generatedAt": "2026-10-28T14:51:26.114Z",
  "days": 30,
  "rule": {
   "historyDays": 180,
@@ -11,13 +11,13 @@
  "connections": [
   {
    "source": "gohighlevel",
-   "connectionId": "c1",
-   "orgId": "o1",
-   "brandId": "b1aaaaaa-0000-0000-0000-000000000000",
+   "connectionId": "58ffed0e-fc31-4586-b751-81cc9f8c18e0",
+   "orgId": "91e76989-71ba-420d-ba73-bb3961430aa7",
+   "brandId": "75d7e3e8-6926-4f85-a557-976895400666",
    "brandName": "Doc Dinners",
-   "account": "loc123",
+   "account": "teiC3Ffcl9wA086eX4Te",
    "syncStatus": "active",
-   "lastSyncedAt": "2026-10-28T14:50:00.000Z",
+   "lastSyncedAt": "2026-10-28T14:46:43.554Z",
    "lastError": null,
    "status": "red",
    "reasons": [
@@ -29,55 +29,55 @@
    "newestRecordDay": "2026-10-20",
    "quietDays": 8,
    "usualLongestQuietDays": 5,
-   "activeDaysInHistory": 96,
+   "activeDaysInHistory": 122,
    "byDay": [
     {
      "day": "2026-09-29",
-     "records": 0
+     "records": 3
     },
     {
      "day": "2026-09-30",
-     "records": 1
+     "records": 8
     },
     {
      "day": "2026-10-01",
-     "records": 2
+     "records": 6
     },
     {
      "day": "2026-10-02",
-     "records": 3
+     "records": 0
     },
     {
      "day": "2026-10-03",
-     "records": 0
+     "records": 9
     },
     {
      "day": "2026-10-04",
-     "records": 1
+     "records": 3
     },
     {
      "day": "2026-10-05",
-     "records": 2
+     "records": 6
     },
     {
      "day": "2026-10-06",
-     "records": 3
-    },
-    {
-     "day": "2026-10-07",
-     "records": 0
-    },
-    {
-     "day": "2026-10-08",
      "records": 1
     },
     {
+     "day": "2026-10-07",
+     "records": 13
+    },
+    {
+     "day": "2026-10-08",
+     "records": 0
+    },
+    {
      "day": "2026-10-09",
-     "records": 2
+     "records": 1
     },
     {
      "day": "2026-10-10",
-     "records": 3
+     "records": 0
     },
     {
      "day": "2026-10-11",
@@ -85,39 +85,39 @@
     },
     {
      "day": "2026-10-12",
-     "records": 1
+     "records": 0
     },
     {
      "day": "2026-10-13",
-     "records": 2
+     "records": 0
     },
     {
      "day": "2026-10-14",
-     "records": 3
+     "records": 4
     },
     {
      "day": "2026-10-15",
-     "records": 0
+     "records": 4
     },
     {
      "day": "2026-10-16",
-     "records": 1
-    },
-    {
-     "day": "2026-10-17",
-     "records": 2
-    },
-    {
-     "day": "2026-10-18",
      "records": 3
     },
     {
-     "day": "2026-10-19",
+     "day": "2026-10-17",
      "records": 0
     },
     {
-     "day": "2026-10-20",
+     "day": "2026-10-18",
      "records": 1
+    },
+    {
+     "day": "2026-10-19",
+     "records": 1
+    },
+    {
+     "day": "2026-10-20",
+     "records": 5
     },
     {
      "day": "2026-10-21",
@@ -155,163 +155,302 @@
   },
   {
    "source": "posthog",
-   "connectionId": "c2",
-   "orgId": "o2",
-   "brandId": "b2bbbbbb-0000-0000-0000-000000000000",
-   "brandName": "distribute.you",
-   "account": "12345",
+   "connectionId": "f5e5a3f5-d400-4d4b-9e86-73c6c442b64b",
+   "orgId": "f0420eb5-8f72-4f0a-a150-f473746df1e6",
+   "brandId": "f4d73dab-1f9d-49b2-b16e-63ecde76a5eb",
+   "brandName": "Distribute.you",
+   "account": "171095",
    "syncStatus": "active",
-   "lastSyncedAt": "2026-10-28T14:55:00.000Z",
+   "lastSyncedAt": "2026-10-28T14:47:15.733Z",
    "lastError": null,
    "status": "ok",
    "reasons": [],
    "newestRecordDay": "2026-10-28",
    "quietDays": 0,
-   "usualLongestQuietDays": 1,
-   "activeDaysInHistory": 120,
+   "usualLongestQuietDays": 7,
+   "activeDaysInHistory": 172,
    "byDay": [
     {
      "day": "2026-09-29",
-     "records": 40
+     "records": 200
     },
     {
      "day": "2026-09-30",
-     "records": 41
+     "records": 24
     },
     {
      "day": "2026-10-01",
-     "records": 42
-    },
-    {
-     "day": "2026-10-02",
-     "records": 43
-    },
-    {
-     "day": "2026-10-03",
-     "records": 44
-    },
-    {
-     "day": "2026-10-04",
-     "records": 45
-    },
-    {
-     "day": "2026-10-05",
-     "records": 46
-    },
-    {
-     "day": "2026-10-06",
-     "records": 47
-    },
-    {
-     "day": "2026-10-07",
-     "records": 48
-    },
-    {
-     "day": "2026-10-08",
-     "records": 49
-    },
-    {
-     "day": "2026-10-09",
-     "records": 50
-    },
-    {
-     "day": "2026-10-10",
      "records": 51
     },
     {
-     "day": "2026-10-11",
-     "records": 52
+     "day": "2026-10-02",
+     "records": 13
     },
     {
-     "day": "2026-10-12",
-     "records": 53
+     "day": "2026-10-03",
+     "records": 46
     },
     {
-     "day": "2026-10-13",
+     "day": "2026-10-04",
+     "records": 23
+    },
+    {
+     "day": "2026-10-05",
+     "records": 11
+    },
+    {
+     "day": "2026-10-06",
+     "records": 82
+    },
+    {
+     "day": "2026-10-07",
+     "records": 30
+    },
+    {
+     "day": "2026-10-08",
+     "records": 28
+    },
+    {
+     "day": "2026-10-09",
      "records": 54
     },
     {
+     "day": "2026-10-10",
+     "records": 53
+    },
+    {
+     "day": "2026-10-11",
+     "records": 38
+    },
+    {
+     "day": "2026-10-12",
+     "records": 75
+    },
+    {
+     "day": "2026-10-13",
+     "records": 43
+    },
+    {
      "day": "2026-10-14",
-     "records": 55
+     "records": 36
     },
     {
      "day": "2026-10-15",
-     "records": 56
+     "records": 44
     },
     {
      "day": "2026-10-16",
-     "records": 57
+     "records": 29
     },
     {
      "day": "2026-10-17",
-     "records": 58
+     "records": 78
     },
     {
      "day": "2026-10-18",
-     "records": 59
+     "records": 28
     },
     {
      "day": "2026-10-19",
-     "records": 60
+     "records": 23
     },
     {
      "day": "2026-10-20",
-     "records": 61
+     "records": 58
     },
     {
      "day": "2026-10-21",
-     "records": 62
+     "records": 89
     },
     {
      "day": "2026-10-22",
-     "records": 63
+     "records": 101
     },
     {
      "day": "2026-10-23",
-     "records": 64
+     "records": 62
     },
     {
      "day": "2026-10-24",
-     "records": 65
+     "records": 2660
     },
     {
      "day": "2026-10-25",
-     "records": 66
+     "records": 3281
     },
     {
      "day": "2026-10-26",
-     "records": 67
+     "records": 2960
     },
     {
      "day": "2026-10-27",
-     "records": 68
+     "records": 4096
     },
     {
      "day": "2026-10-28",
-     "records": 69
+     "records": 3733
+    }
+   ]
+  },
+  {
+   "source": "stripe",
+   "connectionId": "a4517872-8250-4848-8fb2-60931ec42447",
+   "orgId": "f0420eb5-8f72-4f0a-a150-f473746df1e6",
+   "brandId": "f4d73dab-1f9d-49b2-b16e-63ecde76a5eb",
+   "brandName": "Distribute.you",
+   "account": "Distribute.you",
+   "syncStatus": "active",
+   "lastSyncedAt": "2026-10-28T14:49:04.664Z",
+   "lastError": null,
+   "status": "ok",
+   "reasons": [],
+   "newestRecordDay": "2026-10-28",
+   "quietDays": 0,
+   "usualLongestQuietDays": 9,
+   "activeDaysInHistory": 110,
+   "byDay": [
+    {
+     "day": "2026-09-29",
+     "records": 1
+    },
+    {
+     "day": "2026-09-30",
+     "records": 6
+    },
+    {
+     "day": "2026-10-01",
+     "records": 4
+    },
+    {
+     "day": "2026-10-02",
+     "records": 0
+    },
+    {
+     "day": "2026-10-03",
+     "records": 1
+    },
+    {
+     "day": "2026-10-04",
+     "records": 0
+    },
+    {
+     "day": "2026-10-05",
+     "records": 0
+    },
+    {
+     "day": "2026-10-06",
+     "records": 0
+    },
+    {
+     "day": "2026-10-07",
+     "records": 0
+    },
+    {
+     "day": "2026-10-08",
+     "records": 0
+    },
+    {
+     "day": "2026-10-09",
+     "records": 0
+    },
+    {
+     "day": "2026-10-10",
+     "records": 0
+    },
+    {
+     "day": "2026-10-11",
+     "records": 0
+    },
+    {
+     "day": "2026-10-12",
+     "records": 1
+    },
+    {
+     "day": "2026-10-13",
+     "records": 1
+    },
+    {
+     "day": "2026-10-14",
+     "records": 0
+    },
+    {
+     "day": "2026-10-15",
+     "records": 0
+    },
+    {
+     "day": "2026-10-16",
+     "records": 0
+    },
+    {
+     "day": "2026-10-17",
+     "records": 2
+    },
+    {
+     "day": "2026-10-18",
+     "records": 0
+    },
+    {
+     "day": "2026-10-19",
+     "records": 1
+    },
+    {
+     "day": "2026-10-20",
+     "records": 1
+    },
+    {
+     "day": "2026-10-21",
+     "records": 2
+    },
+    {
+     "day": "2026-10-22",
+     "records": 3
+    },
+    {
+     "day": "2026-10-23",
+     "records": 1
+    },
+    {
+     "day": "2026-10-24",
+     "records": 0
+    },
+    {
+     "day": "2026-10-25",
+     "records": 0
+    },
+    {
+     "day": "2026-10-26",
+     "records": 2
+    },
+    {
+     "day": "2026-10-27",
+     "records": 5
+    },
+    {
+     "day": "2026-10-28",
+     "records": 5
     }
    ]
   },
   {
    "source": "clerk",
-   "connectionId": "c3",
-   "orgId": "o2",
-   "brandId": "b2bbbbbb-0000-0000-0000-000000000000",
-   "brandName": null,
+   "connectionId": "b4ac4822-692d-4d36-8810-4ac0bc11789f",
+   "orgId": "f0420eb5-8f72-4f0a-a150-f473746df1e6",
+   "brandId": "f4d73dab-1f9d-49b2-b16e-63ecde76a5eb",
+   "brandName": "Distribute.you",
    "account": "clerk",
-   "syncStatus": "paused",
-   "lastSyncedAt": null,
+   "syncStatus": "active",
+   "lastSyncedAt": "2026-10-28T14:51:03.652Z",
    "lastError": null,
-   "status": "paused",
+   "status": "ok",
    "reasons": [],
-   "newestRecordDay": null,
-   "quietDays": null,
-   "usualLongestQuietDays": null,
-   "activeDaysInHistory": 0,
+   "newestRecordDay": "2026-10-28",
+   "quietDays": 0,
+   "usualLongestQuietDays": 27,
+   "activeDaysInHistory": 91,
    "byDay": [
     {
      "day": "2026-09-29",
-     "records": 0
+     "records": 3
     },
     {
      "day": "2026-09-30",
@@ -327,7 +466,7 @@
     },
     {
      "day": "2026-10-03",
-     "records": 0
+     "records": 3
     },
     {
      "day": "2026-10-04",
@@ -335,47 +474,47 @@
     },
     {
      "day": "2026-10-05",
-     "records": 0
+     "records": 1
     },
     {
      "day": "2026-10-06",
-     "records": 0
+     "records": 6
     },
     {
      "day": "2026-10-07",
-     "records": 0
+     "records": 2
     },
     {
      "day": "2026-10-08",
-     "records": 0
+     "records": 1
     },
     {
      "day": "2026-10-09",
-     "records": 0
+     "records": 5
     },
     {
      "day": "2026-10-10",
-     "records": 0
+     "records": 2
     },
     {
      "day": "2026-10-11",
-     "records": 0
+     "records": 2
     },
     {
      "day": "2026-10-12",
-     "records": 0
+     "records": 4
     },
     {
      "day": "2026-10-13",
-     "records": 0
+     "records": 5
     },
     {
      "day": "2026-10-14",
-     "records": 0
+     "records": 3
     },
     {
      "day": "2026-10-15",
-     "records": 0
+     "records": 2
     },
     {
      "day": "2026-10-16",
@@ -383,11 +522,11 @@
     },
     {
      "day": "2026-10-17",
-     "records": 0
+     "records": 2
     },
     {
      "day": "2026-10-18",
-     "records": 0
+     "records": 1
     },
     {
      "day": "2026-10-19",
@@ -395,19 +534,19 @@
     },
     {
      "day": "2026-10-20",
-     "records": 0
+     "records": 3
     },
     {
      "day": "2026-10-21",
-     "records": 0
+     "records": 3
     },
     {
      "day": "2026-10-22",
-     "records": 0
+     "records": 4
     },
     {
      "day": "2026-10-23",
-     "records": 0
+     "records": 3
     },
     {
      "day": "2026-10-24",
@@ -419,15 +558,15 @@
     },
     {
      "day": "2026-10-26",
-     "records": 0
+     "records": 2
     },
     {
      "day": "2026-10-27",
-     "records": 0
+     "records": 6
     },
     {
      "day": "2026-10-28",
-     "records": 0
+     "records": 3
     }
    ]
   }

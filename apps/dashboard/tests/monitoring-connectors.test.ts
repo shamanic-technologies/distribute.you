@@ -8,7 +8,8 @@ import { ConnectorIntakeSchema, connectionName, reasonWords, redConnections, too
  * CONNECTOR-INTAKE-MONITORING-1028: crm-service serves, per tool a client connected (GoHighLevel, PostHog, Stripe,
  * Clerk), the records the vendor dated per day and a verdict (crm #233), read through api-service's staff passthrough
  * onto Monitoring > Connected tools; red on the hub is the alert. Doc Dinners' GoHighLevel synced "fine" for 8 days
- * while taking in nothing (2026-10-20 to 10-28).
+ * while taking in nothing (2026-10-20 to 10-28). The fixture is the real production read of 2026-10-28 ~15:00 UTC
+ * (4 connections: Doc Dinners' GoHighLevel red, distribute.you's PostHog, Stripe and Clerk ok).
  */
 const read = (rel: string) => readFileSync(join(__dirname, "../src", rel), "utf8");
 const fixture = () => JSON.parse(readFileSync(join(__dirname, "fixtures", "crm-connector-intake-fixture.json"), "utf8"));
@@ -17,6 +18,8 @@ describe("Monitoring > Connected tools: crm-service's read parses as served", ()
   it("parses the payload: red, its reasons, a 30-day series per connection", () => {
     const d = ConnectorIntakeSchema.parse(fixture());
     expect(d.status).toBe("red");
+    expect(d.connections.map((c) => c.source)).toEqual(["gohighlevel", "posthog", "stripe", "clerk"]);
+    expect(redConnections(d)).toHaveLength(1);
     expect(d.connections.every((c) => c.byDay.length === d.days)).toBe(true);
     expect(redConnections(d).map(connectionName)).toContain("Doc Dinners · GoHighLevel");
   });

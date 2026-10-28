@@ -66,7 +66,7 @@ function ConnectionBlock({ c }: { c: ConnectorIntakeConnection }) {
       <p className="k-fg3 mt-2 text-[12px]">
         {c.newestRecordDay ? `Newest record ${dayLabel(c.newestRecordDay)}` : "No record yet"}
         {c.lastSyncedAt ? ` · synced ${utcTime(c.lastSyncedAt)} UTC` : " · never synced"}
-        {c.account && c.brandName ? ` · ${c.account}` : ""}
+        {c.account && c.brandName && c.account !== c.brandName && c.account !== c.source ? ` · ${c.account}` : ""}
       </p>
     </section>
   );
