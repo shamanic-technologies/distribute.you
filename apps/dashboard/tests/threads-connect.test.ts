@@ -55,8 +55,9 @@ describe("Threads connect round trip (THREADS-ACCOUNT-CARD-1028)", () => {
     expect(threadsFinishErrorMessage({ status: 400, body: { error: "expired" } })).toBe("This Threads login expired. Connect the account again.");
   });
 
-  it("puts the card on the Account page, never under Integrations", () => {
-    expect(read("src/app/(authed)/v2/orgs/[orgId]/brands/[brandId]/account/page.tsx")).toContain("<ThreadsAccountsCard />");
+  it("puts the card with the other accounts on Integrations, never on the Profile page", () => {
+    expect(read("src/components/settings/brand-integrations-card.tsx")).toContain('rows.push(<ThreadsAccountsCard key="threads" bare />);');
+    expect(read("src/app/(authed)/v2/orgs/[orgId]/brands/[brandId]/account/page.tsx")).not.toContain("ThreadsAccountsCard");
   });
 });
 
