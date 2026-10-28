@@ -128,6 +128,7 @@ export const SENSITIVE_QUERY_ROOTS = new Set([
   // Monitoring > Triggers: who reached their campaign, and who is stuck (TRIGGER-REPORTS-MONITORING-1027).
   "staffTriggerReports",
   "staffStuckOccurrences",
+  "staffTriggerHealth",
   "staffOpsThreads",
   "staffOpsThreadMessages",
   "staffOpsInfra",

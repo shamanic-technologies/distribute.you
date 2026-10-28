@@ -2058,6 +2058,8 @@ export const STAFF_MONITORING_PATHS = {
   triggerReports: "/crm/ops/trigger-reports",
   // Prospects waiting on a blocked campaign answer, queued ones, and a daily answer series + the served verdict (campaign-service, REACTIVE-THROUGHPUT-1028).
   stuckOccurrences: "/campaigns/ops/stuck-occurrences",
+  // Whether each trigger a live campaign waits on still fires, per day + the served verdict (campaign-service, TRIGGER-HEALTH-1028).
+  triggerHealth: "/campaigns/ops/trigger-health",
 } as const;
 
 function parseStaff<T>(name: string, schema: z.ZodType<T>, raw: unknown): T {
@@ -13119,6 +13121,14 @@ import { StuckOccurrencesSchema as StaffStuckOccurrencesSchema, type StuckOccurr
 /** Prospects waiting on a blocked campaign answer over the last `days` UTC days, with campaign-service's served verdict. */
 export async function getStaffStuckOccurrences(days: number): Promise<StaffStuckOccurrences> {
   return parseStaff("getStaffStuckOccurrences", StaffStuckOccurrencesSchema, await apiCall<unknown>(`${STAFF_MONITORING_PATHS.stuckOccurrences}?days=${days}`));
+}
+
+// ─── Monitoring > Triggers > Firing (TRIGGER-HEALTH-1028-DASH) ───
+import { TriggerHealthSchema as StaffTriggerHealthSchema, type TriggerHealth as StaffTriggerHealth } from "./monitoring/trigger-health";
+
+/** Whether each trigger a live campaign waits on still fires, over the last `days` UTC days, with campaign-service's served verdict. */
+export async function getStaffTriggerHealth(days: number): Promise<StaffTriggerHealth> {
+  return parseStaff("getStaffTriggerHealth", StaffTriggerHealthSchema, await apiCall<unknown>(`${STAFF_MONITORING_PATHS.triggerHealth}?days=${days}`));
 }
 
 // ─── Monitoring > Cost ledger (COST-ACCOUNTING-1023-MONITOR) ───
