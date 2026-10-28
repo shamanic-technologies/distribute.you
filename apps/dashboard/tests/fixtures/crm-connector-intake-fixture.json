@@ -1,0 +1,435 @@
+{
+ "generatedAt": "2026-10-28T15:00:00.000Z",
+ "days": 30,
+ "rule": {
+  "historyDays": 180,
+  "minActiveDays": 20,
+  "minQuietDays": 3,
+  "syncLateAfterMinutes": 120
+ },
+ "status": "red",
+ "connections": [
+  {
+   "source": "gohighlevel",
+   "connectionId": "c1",
+   "orgId": "o1",
+   "brandId": "b1aaaaaa-0000-0000-0000-000000000000",
+   "brandName": "Doc Dinners",
+   "account": "loc123",
+   "syncStatus": "active",
+   "lastSyncedAt": "2026-10-28T14:50:00.000Z",
+   "lastError": null,
+   "status": "red",
+   "reasons": [
+    {
+     "code": "quiet_unusual",
+     "text": "Nothing new for 8 days (longest quiet stretch in the 180 days before: 5 days)"
+    }
+   ],
+   "newestRecordDay": "2026-10-20",
+   "quietDays": 8,
+   "usualLongestQuietDays": 5,
+   "activeDaysInHistory": 96,
+   "byDay": [
+    {
+     "day": "2026-09-29",
+     "records": 0
+    },
+    {
+     "day": "2026-09-30",
+     "records": 1
+    },
+    {
+     "day": "2026-10-01",
+     "records": 2
+    },
+    {
+     "day": "2026-10-02",
+     "records": 3
+    },
+    {
+     "day": "2026-10-03",
+     "records": 0
+    },
+    {
+     "day": "2026-10-04",
+     "records": 1
+    },
+    {
+     "day": "2026-10-05",
+     "records": 2
+    },
+    {
+     "day": "2026-10-06",
+     "records": 3
+    },
+    {
+     "day": "2026-10-07",
+     "records": 0
+    },
+    {
+     "day": "2026-10-08",
+     "records": 1
+    },
+    {
+     "day": "2026-10-09",
+     "records": 2
+    },
+    {
+     "day": "2026-10-10",
+     "records": 3
+    },
+    {
+     "day": "2026-10-11",
+     "records": 0
+    },
+    {
+     "day": "2026-10-12",
+     "records": 1
+    },
+    {
+     "day": "2026-10-13",
+     "records": 2
+    },
+    {
+     "day": "2026-10-14",
+     "records": 3
+    },
+    {
+     "day": "2026-10-15",
+     "records": 0
+    },
+    {
+     "day": "2026-10-16",
+     "records": 1
+    },
+    {
+     "day": "2026-10-17",
+     "records": 2
+    },
+    {
+     "day": "2026-10-18",
+     "records": 3
+    },
+    {
+     "day": "2026-10-19",
+     "records": 0
+    },
+    {
+     "day": "2026-10-20",
+     "records": 1
+    },
+    {
+     "day": "2026-10-21",
+     "records": 0
+    },
+    {
+     "day": "2026-10-22",
+     "records": 0
+    },
+    {
+     "day": "2026-10-23",
+     "records": 0
+    },
+    {
+     "day": "2026-10-24",
+     "records": 0
+    },
+    {
+     "day": "2026-10-25",
+     "records": 0
+    },
+    {
+     "day": "2026-10-26",
+     "records": 0
+    },
+    {
+     "day": "2026-10-27",
+     "records": 0
+    },
+    {
+     "day": "2026-10-28",
+     "records": 0
+    }
+   ]
+  },
+  {
+   "source": "posthog",
+   "connectionId": "c2",
+   "orgId": "o2",
+   "brandId": "b2bbbbbb-0000-0000-0000-000000000000",
+   "brandName": "distribute.you",
+   "account": "12345",
+   "syncStatus": "active",
+   "lastSyncedAt": "2026-10-28T14:55:00.000Z",
+   "lastError": null,
+   "status": "ok",
+   "reasons": [],
+   "newestRecordDay": "2026-10-28",
+   "quietDays": 0,
+   "usualLongestQuietDays": 1,
+   "activeDaysInHistory": 120,
+   "byDay": [
+    {
+     "day": "2026-09-29",
+     "records": 40
+    },
+    {
+     "day": "2026-09-30",
+     "records": 41
+    },
+    {
+     "day": "2026-10-01",
+     "records": 42
+    },
+    {
+     "day": "2026-10-02",
+     "records": 43
+    },
+    {
+     "day": "2026-10-03",
+     "records": 44
+    },
+    {
+     "day": "2026-10-04",
+     "records": 45
+    },
+    {
+     "day": "2026-10-05",
+     "records": 46
+    },
+    {
+     "day": "2026-10-06",
+     "records": 47
+    },
+    {
+     "day": "2026-10-07",
+     "records": 48
+    },
+    {
+     "day": "2026-10-08",
+     "records": 49
+    },
+    {
+     "day": "2026-10-09",
+     "records": 50
+    },
+    {
+     "day": "2026-10-10",
+     "records": 51
+    },
+    {
+     "day": "2026-10-11",
+     "records": 52
+    },
+    {
+     "day": "2026-10-12",
+     "records": 53
+    },
+    {
+     "day": "2026-10-13",
+     "records": 54
+    },
+    {
+     "day": "2026-10-14",
+     "records": 55
+    },
+    {
+     "day": "2026-10-15",
+     "records": 56
+    },
+    {
+     "day": "2026-10-16",
+     "records": 57
+    },
+    {
+     "day": "2026-10-17",
+     "records": 58
+    },
+    {
+     "day": "2026-10-18",
+     "records": 59
+    },
+    {
+     "day": "2026-10-19",
+     "records": 60
+    },
+    {
+     "day": "2026-10-20",
+     "records": 61
+    },
+    {
+     "day": "2026-10-21",
+     "records": 62
+    },
+    {
+     "day": "2026-10-22",
+     "records": 63
+    },
+    {
+     "day": "2026-10-23",
+     "records": 64
+    },
+    {
+     "day": "2026-10-24",
+     "records": 65
+    },
+    {
+     "day": "2026-10-25",
+     "records": 66
+    },
+    {
+     "day": "2026-10-26",
+     "records": 67
+    },
+    {
+     "day": "2026-10-27",
+     "records": 68
+    },
+    {
+     "day": "2026-10-28",
+     "records": 69
+    }
+   ]
+  },
+  {
+   "source": "clerk",
+   "connectionId": "c3",
+   "orgId": "o2",
+   "brandId": "b2bbbbbb-0000-0000-0000-000000000000",
+   "brandName": null,
+   "account": "clerk",
+   "syncStatus": "paused",
+   "lastSyncedAt": null,
+   "lastError": null,
+   "status": "paused",
+   "reasons": [],
+   "newestRecordDay": null,
+   "quietDays": null,
+   "usualLongestQuietDays": null,
+   "activeDaysInHistory": 0,
+   "byDay": [
+    {
+     "day": "2026-09-29",
+     "records": 0
+    },
+    {
+     "day": "2026-09-30",
+     "records": 0
+    },
+    {
+     "day": "2026-10-01",
+     "records": 0
+    },
+    {
+     "day": "2026-10-02",
+     "records": 0
+    },
+    {
+     "day": "2026-10-03",
+     "records": 0
+    },
+    {
+     "day": "2026-10-04",
+     "records": 0
+    },
+    {
+     "day": "2026-10-05",
+     "records": 0
+    },
+    {
+     "day": "2026-10-06",
+     "records": 0
+    },
+    {
+     "day": "2026-10-07",
+     "records": 0
+    },
+    {
+     "day": "2026-10-08",
+     "records": 0
+    },
+    {
+     "day": "2026-10-09",
+     "records": 0
+    },
+    {
+     "day": "2026-10-10",
+     "records": 0
+    },
+    {
+     "day": "2026-10-11",
+     "records": 0
+    },
+    {
+     "day": "2026-10-12",
+     "records": 0
+    },
+    {
+     "day": "2026-10-13",
+     "records": 0
+    },
+    {
+     "day": "2026-10-14",
+     "records": 0
+    },
+    {
+     "day": "2026-10-15",
+     "records": 0
+    },
+    {
+     "day": "2026-10-16",
+     "records": 0
+    },
+    {
+     "day": "2026-10-17",
+     "records": 0
+    },
+    {
+     "day": "2026-10-18",
+     "records": 0
+    },
+    {
+     "day": "2026-10-19",
+     "records": 0
+    },
+    {
+     "day": "2026-10-20",
+     "records": 0
+    },
+    {
+     "day": "2026-10-21",
+     "records": 0
+    },
+    {
+     "day": "2026-10-22",
+     "records": 0
+    },
+    {
+     "day": "2026-10-23",
+     "records": 0
+    },
+    {
+     "day": "2026-10-24",
+     "records": 0
+    },
+    {
+     "day": "2026-10-25",
+     "records": 0
+    },
+    {
+     "day": "2026-10-26",
+     "records": 0
+    },
+    {
+     "day": "2026-10-27",
+     "records": 0
+    },
+    {
+     "day": "2026-10-28",
+     "records": 0
+    }
+   ]
+  }
+ ]
+}
