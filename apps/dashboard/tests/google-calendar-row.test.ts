@@ -57,10 +57,9 @@ describe("connect start", () => {
     expect(card).not.toContain('domain="calendar.google.com"');
   });
 
-  it("only staff mode sees the calendar row until Google verifies its scopes (GCAL-VERIFY-VIDEO-1021)", () => {
+  it("every customer sees the calendar row (owner 2026-10-28: GA)", () => {
     const card = read("components/settings/brand-integrations-card.tsx");
-    expect(card).toContain('import { useStaffMode } from "@/lib/use-staff-mode";');
-    expect(card).toContain('if (staffMode) rows.splice(1, 0, <GoogleCalendarRow key="google-calendar" orgId={orgId} />);');
+    expect(card).not.toContain("if (staffMode) rows.splice");
     expect(card.match(/<GoogleCalendarRow /g)?.length).toBe(1);
   });
 });
