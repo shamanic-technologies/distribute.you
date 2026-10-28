@@ -18,6 +18,15 @@ describe("Unibox timeline tags (owner 2026-10-08)", () => {
     expect(timelineTag(ev("deal_lost")).tone).toBe("lost");
     expect(timelineTag(ev("subscription_canceled")).tone).toBe("lost");
   });
+  it("never paints a payment attempt green unless the money arrived (UNIBOX-PAYMENT-REFUSED-1028)", () => {
+    expect(timelineTag(ev("payment"))).toMatchObject({ label: "Payment received", tone: "won" });
+    expect(timelineTag(ev("payment_refused"))).toMatchObject({ label: "Payment refused", tone: "lost", icon: "money" });
+    expect(timelineTag(ev("payment_disputed")).tone).toBe("lost");
+    expect(timelineTag(ev("refund_failed")).tone).toBe("lost");
+    expect(timelineTag(ev("payment_pending")).tone).toBe("neutral");
+    expect(timelineTag(ev("payment_attempt")).tone).toBe("neutral");
+    expect(timelineTag(ev("stripe_customer_created")).tone).toBe("neutral");
+  });
   it("keeps a step it does not know, in its producer word, neutral", () => {
     expect(timelineTag(ev("brand_new_step"))).toEqual({ label: "Brand new step", tone: "neutral", icon: "dot" });
     expect(timelineTag(ev(null)).label).toBe("Event");
